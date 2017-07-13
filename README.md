@@ -1,2 +1,3 @@
-# kronecker
-Integerbased Voxel Terrain Engine
+# Kronecker
+
+Integer-based Voxel Terrain Engine
