@@ -247,7 +247,7 @@ public:
         auto a = from.Normalized();
         auto b = to.Normalized();
        
-        auto angle = std::acos(a.Dot(b)) * nt;
+        auto angle = std::acos(a.Dot(b)) * t;
         auto rotDir = a.Cross(b);
         auto perpendicular = rotDir.Cross(a);
         auto dir = (a * std::cos(angle)) + (perpendicular * std::sin(angle));
