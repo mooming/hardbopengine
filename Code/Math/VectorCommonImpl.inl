@@ -230,7 +230,7 @@ public:
         return to;
     }
 
-    inline static This Lerp(const This& from, This to, float t)
+    inline static This Lerp(const This& from, This to, float t) const
     {
         return from.Lerp(to, t);
     }
@@ -244,7 +244,7 @@ public:
         return to;
     }
 
-    inline static This Slerp(const This& from, This to, float t)
+    inline static This Slerp(const This& from, This to, float t) const
     {
         return from.Slerp(to, t);
     }
