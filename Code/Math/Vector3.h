@@ -1,4 +1,4 @@
-// Copyright Hansol Park (anav96@naver.com, mooming.go@gmail.com). All rights reserved.
+// Copyright Hansol Park (mooming.go@gmail.com). All rights reserved.
 
 #ifndef Vector3_h
 #define Vector3_h
