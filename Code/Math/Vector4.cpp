@@ -27,7 +27,7 @@ bool HE::Vector4Test::DoTest()
     Float4 tmp;
     if (tmp != Float4::Zero)
     {
-        cerr << "Default Float4 is not ZERO." << endl;
+        cerr << "Default Float4 is not ZERO. Default = " << tmp << endl;
         return false;
     }
 

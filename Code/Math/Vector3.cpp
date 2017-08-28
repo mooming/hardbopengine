@@ -1,4 +1,4 @@
-// Copyright Hansol Park (anav96@naver.com, mooming.go@gmail.com). All rights reserved.
+// Copyright Hansol Park (mooming.go@gmail.com). All rights reserved.
 
 #include "Vector3.h"
 
@@ -81,6 +81,35 @@ bool HE::Vector3Test::DoTest()
         }
 
         cout << "Float3 Dot Time = " << heTime << ", Result = " << dotResult << endl;
+    }
+    
+    {
+        auto x = Float3::X;
+        auto y = Float3::Y;
+        
+        if (x != Float3::Slerp(x, y, 0.0f))
+        {
+            cerr << "Float3 slerp 1 should match its origin " << x
+                << ", but " << Float3::Slerp(x, y, 0.0f);
+            return false;
+        }
+        
+        if (y != Float3::Slerp(x, y, 1.0f))
+        {
+            cerr << "Float3 slerp 1 should match its destination " << y
+                << ", but " << Float3::Slerp(x, y, 1.0f);
+            return false;
+        }
+        
+        Float3 half = Float3::Slerp(x, y, 0.5f);
+        cout << "Float3, Slerp half = " << half << endl;
+        
+        if (!IsEqual(half.Length(), 1.0f))
+        {
+            cerr << "Float3 slerp of X and Y with 0.5f should have length 1 "
+                << ", but " << half.Length();
+            return false;
+        }
     }
 
     return true;

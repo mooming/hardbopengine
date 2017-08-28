@@ -100,8 +100,7 @@ namespace HE
 
         Vec3 Scale() const
         {
-            Vec3 scale = nullptr;
-            return scale;
+            return linearTr * Vec3::Unity;
         }
 
         Mat4x4 ToMatrix() const
@@ -120,6 +119,12 @@ namespace HE
         void SetRotationScale(const Quat& rotation, const Vec3& scale)
         {
             linearTr = rotation.ToMat3x3() * Mat3x3::CreateDiagonal(scale);
+        }
+        
+        void SetTRS(const Vec3& t, const Quat& r, const Vec3& s)
+        {
+            SetRotationScale(r, s);
+            SetTranslation(t);
         }
 
         void SetRotation(const Quat& rotation)
@@ -151,9 +156,9 @@ namespace HE
         auto r = transform.Rotation().EulerAngles();
         auto s = transform.Scale();
 
-        os << "Position: " << t << endl;
-        os << "Rotation: " << r << endl;
-        os << "Scale: " << s << endl;
+        os << "Position " << t << endl;
+        os << "Rotation " << r << endl;
+        os << "Scale " << s << endl;
 
         return os;
     }

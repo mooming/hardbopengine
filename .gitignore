@@ -1,0 +1,9 @@
+*.cmake
+CMakeCache.txt
+MakeFiles
+CMakeFiles
+MakeFile
+nbproject
+xcode
+*.a
+compile_commands.json

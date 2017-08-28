@@ -226,9 +226,9 @@ public:
         return Lerp(*this, to, t);
     }
 
-    inline static This Lerp(const This& from, const This& to, float t) const
+    inline static This Lerp(const This& from, const This& to, float t)
     {
-        return (*this) * (1.0f - t) + to * t;
+        return from * (1.0f - t) + to * t;
     }
 
     inline This Slerp(const This& to, float t) const
@@ -236,21 +236,26 @@ public:
         return Slerp(*this, to, t);
     }
 
-    inline static This Slerp(const This& from, This to, float t) const
+    inline static This Slerp(const This& from, const This& to, float t)
     {
-        auto lengthA = from.Length();
-        auto lengthB = to.Length();
-        
-        cosnt auto nt = 1.0f - t;
-        auto length = (lengthA * nt) + (lengthB * t);
-        
         auto a = from.Normalized();
         auto b = to.Normalized();
-       
-        auto angle = std::acos(a.Dot(b)) * t;
-        auto rotDir = a.Cross(b);
-        auto perpendicular = rotDir.Cross(a);
-        auto dir = (a * std::cos(angle)) + (perpendicular * std::sin(angle));
+
+        auto angle = std::acosf(a.Dot(b));
+
+        if (angle < epsilon)
+            return Lerp(from, to, t).Normalized();
+
+        const auto nt = 1.0f - t;
+        const auto sinA = static_cast<Number>(std::sinf(nt * angle));
+        const auto sinB = static_cast<Number>(std::sinf(t * angle));
+        auto dir = (a * sinA + b * sinB) / std::sin(angle);
+
+        auto lengthA = from.Length();
+        auto lengthB = to.Length();
+
+        auto length = (lengthA * nt) + (lengthB * t);
+
         
         return dir * length;
     }

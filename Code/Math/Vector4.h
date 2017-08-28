@@ -107,11 +107,11 @@ namespace HE
 #include "VectorCommonImpl.inl"
     };
 
-    template <typename T> const Vector4<T> Vector4<T>::Zero(0, 0, 0);
-    template <typename T> const Vector4<T> Vector4<T>::Unity(1, 1, 1);
-    template <typename T> const Vector4<T> Vector4<T>::X(1, 0, 0);
-    template <typename T> const Vector4<T> Vector4<T>::Y(0, 1, 0);
-    template <typename T> const Vector4<T> Vector4<T>::Z(0, 0, 1);
+    template <typename T> const Vector4<T> Vector4<T>::Zero(0, 0, 0, 0);
+    template <typename T> const Vector4<T> Vector4<T>::Unity(1, 1, 1, 1);
+    template <typename T> const Vector4<T> Vector4<T>::X(1, 0, 0, 0);
+    template <typename T> const Vector4<T> Vector4<T>::Y(0, 1, 0, 0);
+    template <typename T> const Vector4<T> Vector4<T>::Z(0, 0, 1, 0);
 
 #ifdef __RIGHT_HANDED__
     template <typename T> const Vector4<T> Vector4<T>::Right(1.0f, 0.0f, 0.0f);

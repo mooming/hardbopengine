@@ -497,9 +497,15 @@ namespace HE
         
         inline void SetRotationFromTo(const Vec3& from, const Vec3& to)
         {
+            if (from == to)
+            {
+                vector = Quaternion::Identity.vector;
+                return;
+            }
+
             Vec3 axis = from.Cross(to);
             axis.Normalize();
-            
+
             SetRotationAround(axis, from.AngleTo(to));
         }
     };
@@ -512,7 +518,7 @@ namespace HE
     template <typename T>
     inline std::ostream& operator<< (std::ostream& os, const Quaternion<T>& q)
     {
-        Assert(q.IsUnity());
+        AssertMessage(q.IsUnity(), "Quaternion is not a unit. length = ", q.vector.Length());
         Vector3<T> e = q.EulerAngles();
         os << "Quat (" << e.x << ", " << e.y << ", " << e.z << ")";
         return os;

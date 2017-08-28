@@ -31,6 +31,7 @@ add_library (System STATIC
  Vector.cpp
  Allocator.h
  Array.h
+ CommonUtil.h
  Component.h
  ComponentSystem.h
  Constants.h
@@ -39,10 +40,11 @@ add_library (System STATIC
  Exception.h
  Letter.h
  LinkedList.h
- MathUtil.h
  MemoryManager.h
  Optional.h
+ Platform.h
  PoolAllocator.h
+ PrintArgs.h
  Shareable.h
  StackAllocator.h
  StdUtil.h

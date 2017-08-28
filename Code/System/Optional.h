@@ -116,16 +116,6 @@ namespace HE
             return hasValue;
         }
 
-        inline operator Type& ()
-        {
-            return Value();
-        }
-
-        inline operator const Type& () const
-        {
-            return Value();
-        }
-
         inline Type& operator* ()
         {
             Assert(hasValue);

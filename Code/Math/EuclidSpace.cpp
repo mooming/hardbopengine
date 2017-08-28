@@ -11,8 +11,13 @@ namespace HE
 bool HE::EuclidSpaceTest::DoTest()
 {
     using namespace std;
-
-
+    
+    FloatSpace root;
+    cout << "Root = " << root << endl;
+    
+    root.SetPosition({0.0f, 1.0f, 2.0f});
+    cout << "Moved Root = " << root << endl;
+    
     return true;
 }
 
