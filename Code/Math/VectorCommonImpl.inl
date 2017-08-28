@@ -221,30 +221,38 @@ public:
         return Abs(SqrLength() - 1.0f) < sqrEpsilon;
     }
 
-    inline This Lerp(This to, float t) const
+    inline This Lerp(const This& to, float t) const
     {
-        to -= (*this);
-        to *= t;
-        to += (*this);
-
-        return to;
+        return Lerp(*this, to, t);
     }
 
-    inline static This Lerp(const This& from, This to, float t) const
+    inline static This Lerp(const This& from, const This& to, float t) const
     {
-        return from.Lerp(to, t);
+        return (*this) * (1.0f - t) + to * t;
     }
 
-    inline This Slerp(This to, float t) const
+    inline This Slerp(const This& to, float t) const
     {
-        to -= (*this);
-        to *= t;
-        to += (*this);
-
-        return to;
+        return Slerp(*this, to, t);
     }
 
     inline static This Slerp(const This& from, This to, float t) const
     {
-        return from.Slerp(to, t);
+        auto lengthA = from.Length();
+        auto lengthB = to.Length();
+        
+        cosnt auto nt = 1.0f - t;
+        auto length = (lengthA * nt) + (lengthB * t);
+        
+        auto a = from.Normalized();
+        auto b = to.Normalized();
+        
+        // Need to check
+        auto angle = std::acos(a.Dot(b)) * nt;
+        auto rotDir = a.Cross(b);
+        auto rightDir = rotDir.Cross(a);
+        auto dir = (a * std::cos(angle)) + (rightDir * std::sin(angle));
+        dir.Normalize();
+        
+        return a * length;
     }
