@@ -246,13 +246,11 @@ public:
         
         auto a = from.Normalized();
         auto b = to.Normalized();
-        
-        // Need to check
+       
         auto angle = std::acos(a.Dot(b)) * nt;
         auto rotDir = a.Cross(b);
-        auto rightDir = rotDir.Cross(a);
-        auto dir = (a * std::cos(angle)) + (rightDir * std::sin(angle));
-        dir.Normalize();
+        auto perpendicular = rotDir.Cross(a);
+        auto dir = (a * std::cos(angle)) + (perpendicular * std::sin(angle));
         
-        return a * length;
+        return dir * length;
     }
