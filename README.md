@@ -1,3 +1,3 @@
-# Kronecker
+# HardBop Engine
 
-Integer-based Voxel Terrain Engine
+Under Developing
