@@ -11,292 +11,317 @@
 
 namespace HE
 {
-    template <typename Element>
-    class Vector
+
+  template <typename Element>
+  class Vector
+  {
+    using Iterator = Element*;
+    using ConstIterator = const Element*;
+
+  public:
+    Vector& operator=(const Vector& rhs) = delete;
+
+  private:
+    Index capacity;
+    Index size;
+    Element* data;
+
+  public:
+
+    inline Iterator begin()
     {
-        using Iterator = Element*;
-        using ConstIterator = const Element*;
+      return &data[0];
+    }
 
-    public:
-        Vector& operator= (const Vector& rhs) = delete;
+    inline Iterator end()
+    {
+      return &data[size];
+    }
 
-    private:
-        Index capacity;
-        Index size;
-        Element* data;
+    inline ConstIterator begin() const
+    {
+      return &data[0];
+    }
 
-    public:
-        inline Iterator begin() { return &data[0]; }
-        inline Iterator end() { return &data[size]; }
-        inline ConstIterator begin() const { return &data[0]; }
-        inline ConstIterator end() const { return &data[size]; }
+    inline ConstIterator end() const
+    {
+      return &data[size];
+    }
 
-    public:
-        inline Element& operator[] (Index index)
+  public:
+
+    inline Element& operator[](Index index)
+    {
+      Assert(index < size);
+      return data[index];
+    }
+
+    inline const Element& operator[](Index index) const
+    {
+      Assert(index < size);
+      return data[index];
+    }
+
+  public:
+
+    inline Vector() : capacity(0), size(0), data(nullptr)
+    {
+    }
+
+    inline explicit Vector(Index capacity) : capacity(capacity), size(0), data(nullptr)
+    {
+      constexpr auto sizeOfElement = sizeof (Element);
+      data = Allocate<Element>(sizeOfElement * capacity);
+    }
+
+    inline ~Vector()
+    {
+      Clear();
+
+      if (data != nullptr)
+      {
+        Deallocate(data);
+      }
+    }
+
+    inline Vector& operator=(Vector&& rhs)
+    {
+      Swap(rhs);
+      return *this;
+    }
+
+  public:
+
+    inline void Add(const Element& value)
+    {
+      if (size >= capacity)
+      {
+        Reserve((size + 1) * 3 / 2);
+      }
+
+      data[size++] = value;
+    }
+
+    inline void Add(Element&& value)
+    {
+      if (size >= capacity)
+      {
+        Reserve((size + 1) * 3 / 2);
+      }
+
+      auto& element = data[size++];
+      Construct<Element>(&element, std::move(value));
+    }
+
+    template <typename ... Types>
+    inline Element& New(Types&& ... args)
+    {
+      if (size >= capacity)
+      {
+        Reserve((size + 1) * 3 / 2);
+      }
+
+      auto& element = data[size++];
+      Construct<Element>(&element, std::forward<Types>(args) ...);
+
+      return element;
+    }
+
+    inline void RemoveAt(const Element& value)
+    {
+      const auto index = GetIndex(value);
+      Assert(index < size);
+
+      data[index].~Element();
+
+      const auto indexDiff = size - index - 1;
+      constexpr auto sizeOfElement = sizeof (Element);
+      memcpy((data + index), (data + index + 1), sizeOfElement * indexDiff);
+    }
+
+    inline void Remove(const Element& value)
+    {
+      const auto index = GetIndex(value);
+
+      if (index >= 0 && index < size)
+      {
+        RemoveAt(value);
+        return;
+      }
+
+      for (auto& element : * this)
+      {
+        if (element == value)
         {
-            Assert(index < size);
-            return data[index];
+          RemoveAt(element);
+          break;
+        }
+      }
+    }
+
+    inline void RemoveAll(const Element& value)
+    {
+      for (auto& element : data)
+      {
+        if (element == value)
+        {
+          RemoveAt(element);
+        }
+      }
+    }
+
+    inline void Fit()
+    {
+      Reserve(size);
+    }
+
+    inline void Fill()
+    {
+      Resize(capacity);
+    }
+
+    inline void Clear()
+    {
+      if (data != nullptr)
+      {
+        for (Index i = 0; i < size; ++i)
+        {
+          data[i].~Element();
         }
 
-        inline const Element& operator[] (Index index) const
-        {
-            Assert(index < size);
-            return data[index];
-        }
+        size = 0;
+      }
+    }
 
-    public:
-        inline Vector() : capacity(0), size(0), data(nullptr)
-        {
-        }
+    inline Index Size() const
+    {
+      return size;
+    }
 
-        inline explicit Vector(Index capacity) : capacity(capacity), size(0), data(nullptr)
-        {
-            constexpr auto sizeOfElement = sizeof(Element);
-            data = Allocate<Element>(sizeOfElement * capacity);
-        }
+    inline bool IsEmpty() const
+    {
+      return size == 0;
+    }
 
-        inline ~Vector()
-        {
-            Clear();
+    inline Index Capacity() const
+    {
+      return capacity;
+    }
 
-            if (data != nullptr)
-            {
-                Deallocate(data);
-            }
-        }
+    inline Element* ToRawArray()
+    {
+      return data;
+    }
 
-        inline Vector& operator= (Vector&& rhs)
-        {
-            Swap(rhs);
-            return *this;
-        }
+    inline const Element * const ToRawArray() const
+    {
+      return data;
+    }
 
-    public:
-        inline void Add(const Element& value)
-        {
-            if (size >= capacity)
-            {
-                Reserve((size + 1) * 3 / 2);
-            }
+    inline Vector Clone() const
+    {
+      return Vector(*this);
+    }
 
-            data[size++] = value;
-        }
+    inline void Swap(Vector&& rhs)
+    {
+      auto tmpCapacity = capacity;
+      auto tmpSize = size;
+      auto tmpData = data;
 
-        inline void Add(Element&& value)
-        {
-            if (size >= capacity)
-            {
-                Reserve((size + 1) * 3 / 2);
-            }
+      capacity = rhs.capacity;
+      size = rhs.size;
+      data = rhs.data;
 
-            auto& element = data[size++];
-            Construct<Element>(&element, std::move(value));
-        }
+      rhs.capacity = tmpCapacity;
+      rhs.size = tmpSize;
+      rhs.data = tmpData;
+    }
 
-        template <typename ... Types>
-        inline Element& New(Types&& ... args)
-        {
-            if (size >= capacity)
-            {
-                Reserve((size + 1) * 3 / 2);
-            }
+    inline void Reserve(Index newCapacity)
+    {
+      constexpr auto sizeOfElement = sizeof (Element);
 
-            auto& element = data[size++];
-            Construct<Element>(&element, std::forward<Types>(args) ...);
+      Vector tmp(newCapacity);
+      const auto newSize = std::min(newCapacity, size);
+      tmp.size = newSize;
 
-            return element;
-        }
+      memcpy((void*) tmp.data, (void*) data, sizeOfElement * newSize);
 
-        inline void RemoveAt(const Element& value)
-        {
-            const auto index = GetIndex(value);
-            Assert(index < size);
+      for (Index i = newSize; i < size; ++i)
+      {
+        data[i].~Element();
+      }
 
-            data[index].~Element();
+      size = 0;
 
-            const auto indexDiff = size - index - 1;
-            constexpr auto sizeOfElement = sizeof(Element);
-            memcpy((data + index), (data + index + 1), sizeOfElement * indexDiff);
-        }
+      Swap(std::move(tmp));
+    }
 
-        inline void Remove(const Element& value)
-        {
-            const auto index = GetIndex(value);
+    inline void Resize(Index newSize)
+    {
+      if (capacity < newSize)
+      {
+        Reserve(newSize);
+      }
 
-            if (index >= 0 && index < size)
-            {
-                RemoveAt(value);
-                return;
-            }
+      for (Index i = newSize; i < size; ++i)
+      {
+        data[i].~Element();
+      }
 
-            for (auto& element : *this)
-            {
-                if (element == value)
-                {
-                    RemoveAt(element);
-                    break;
-                }
-            }
-        }
+      for (Index i = size; i < newSize; ++i)
+      {
+        Construct<Element>(&data[i]);
+      }
 
-        inline void RemoveAll(const Element& value)
-        {
-            for (auto& element : data)
-            {
-                if (element == value)
-                {
-                    RemoveAt(element);
-                }
-            }
-        }
+      size = newSize;
+    }
 
-        inline void Fit()
-        {
-            Reserve(size);
-        }
+    inline void ChangeSize(Index newSize)
+    {
+      if (capacity < newSize)
+      {
+        Reserve(newSize);
+      }
 
-        inline void Fill()
-        {
-            Resize(capacity);
-        }
+      size = newSize;
+    }
 
-        inline void Clear()
-        {
-            if (data != nullptr)
-            {
-                for (Index i = 0; i < size; ++i)
-                {
-                    data[i].~Element();
-                }
+    inline Index GetIndex(const Element& element) const
+    {
+      AssertMessage(data != nullptr, "vector is null.\n");
+      const Index delta = static_cast<Index> (&element - &data[0]);
+      AssertMessage(delta >= 0, "The given element is not an element of it. %p / %p\n", &element, &data[0]);
+      return delta;
+    }
 
-                size = 0;
-            }
-        }
+  private:
 
-        inline Index Size() const
-        {
-            return size;
-        }
-
-        inline bool IsEmpty() const
-        {
-            return size == 0;
-        }
-
-        inline Index Capacity() const
-        {
-            return capacity;
-        }
-
-        inline Element* ToRawArray()
-        {
-            return data;
-        }
-
-        inline const Element* const ToRawArray() const
-        {
-            return data;
-        }
-
-        inline Vector Clone() const
-        {
-            return Vector(*this);
-        }
-
-        inline void Swap(Vector&& rhs)
-        {
-            auto tmpCapacity = capacity;
-            auto tmpSize = size;
-            auto tmpData = data;
-
-            capacity = rhs.capacity;
-            size = rhs.size;
-            data = rhs.data;
-
-            rhs.capacity = tmpCapacity;
-            rhs.size = tmpSize;
-            rhs.data = tmpData;
-        }
-
-        inline void Reserve(Index newCapacity)
-        {
-            constexpr auto sizeOfElement = sizeof(Element);
-
-            Vector tmp(newCapacity);
-            const auto newSize = std::min(newCapacity, size);
-            tmp.size = newSize;
-
-            memcpy((void*)tmp.data, (void*)data, sizeOfElement * newSize);
-
-            for (Index i = newSize; i < size; ++i)
-            {
-                data[i].~Element();
-            }
-
-            size = 0;
-
-            Swap(std::move(tmp));
-        }
-
-        inline void Resize(Index newSize)
-        {
-            if (capacity < newSize)
-            {
-                Reserve(newSize);
-            }
-
-            for (Index i = newSize; i < size; ++i)
-            {
-                data[i].~Element();
-            }
-
-            for (Index i = size; i < newSize; ++i)
-            {
-                Construct<Element>(&data[i]);
-            }
-
-            size = newSize;
-        }
-
-        inline void ChangeSize(Index newSize)
-        {
-            if (capacity < newSize)
-            {
-                Reserve(newSize);
-            }
-
-            size = newSize;
-        }
-
-        inline Index GetIndex(const Element& element) const
-        {
-            AssertMessage(data != nullptr, "vector is null.\n");
-            const Index delta = static_cast<Index>(&element - &data[0]);
-            AssertMessage(delta >= 0, "The given element is not an element of it. %p / %p\n", &element, &data[0]);
-            return delta;
-        }
-
-    private:
-        inline Vector(const Vector& rhs) : Vector(rhs.size)
-        {
-            constexpr auto sizeOfElement = sizeof(Element);
-            size = rhs.size;
-            memcpy(data, rhs.data, sizeOfElement * size);
-        }
-    };
+    inline Vector(const Vector& rhs) : Vector(rhs.size)
+    {
+      constexpr auto sizeOfElement = sizeof (Element);
+      size = rhs.size;
+      memcpy(data, rhs.data, sizeOfElement * size);
+    }
+  };
 }
 
 #ifdef __UNIT_TEST__
 namespace HE
 {
-    class VectorTest : public TestCase
-    {
-    public:
-        VectorTest() : TestCase("VectorTest") {}
 
-    protected:
-        virtual bool DoTest() override;
-    };
+  class VectorTest : public TestCase
+  {
+  public:
+
+    VectorTest() : TestCase("VectorTest")
+    {
+    }
+
+  protected:
+    virtual bool DoTest() override;
+  };
 }
 #endif //__UNIT_TEST__
 
