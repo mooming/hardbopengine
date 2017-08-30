@@ -3,7 +3,7 @@ inline static This CreateDiagonal(const Number diagonal)
 {
     This result;
 
-    for (int i = 0; i < raw; ++i)
+    for (int i = 0; i < row; ++i)
     {
         result.m[i][i] = diagonal;
     }
@@ -15,7 +15,7 @@ inline static This CreateDiagonal(const Vec& diagonal)
 {
     This result;
 
-    for (int i = 0; i < raw; ++i)
+    for (int i = 0; i < row; ++i)
     {
         result.m[i][i] = diagonal.a[i];
     }
@@ -35,9 +35,9 @@ inline Vec operator* (const Vec& rhs) const
 
 inline bool operator== (const This& rhs) const
 {
-    for (int i = 0; i < raw; ++i)
+    for (int i = 0; i < row; ++i)
     {
-        if (raws[i] != rhs.raws[i])
+        if (rows[i] != rhs.rows[i])
             return false;
     }
 
@@ -51,15 +51,35 @@ inline bool operator!= (const This& rhs) const
 
 inline bool IsInvertible() const
 {
-	constexpr bool isSquare = raw == column;
+	constexpr bool isSquare = row == column;
 	return isSquare && Determinant() != 0;
+}
+
+inline bool IsIdentity() const
+{
+    for (int i = 0; i < row; ++i)
+    {
+        for (int j = 0; j < column; ++j)
+        {
+            if (i != j)
+            {
+                if (!IsZero(m[i][j]))
+                    return false;
+            }
+            else if (!IsEqual(m[i][j], 1.0f))
+            {
+                return false;
+            }
+        }
+    }
+    return true;
 }
 
 inline This Transposed() const
 {
 	This result;
 
-	for (int i = 0; i < raw; ++i)
+	for (int i = 0; i < row; ++i)
 	{
 		for (int j = 0; j < column; ++j)
 		{
@@ -89,11 +109,11 @@ inline This Multiply(const This& rhs) const
 	This result;
 	This tRhs = rhs.Transposed();
 
-	for (int i = 0; i < raw; ++i)
+	for (int i = 0; i < row; ++i)
 	{
 		for (int j = 0; j < column; ++j)
 		{
-			result.m[i][j] = raws[i].Dot(tRhs.raws[j]);
+			result.m[i][j] = rows[i].Dot(tRhs.rows[j]);
 		}
 	}
 
@@ -103,10 +123,24 @@ inline This Multiply(const This& rhs) const
 inline Vec Multiply(const Vec& rhs) const
 {
 	Vec result;
-	for (int i = 0; i < raw; ++i)
+	for (int i = 0; i < row; ++i)
 	{
-		result.a[i] = raws[i].Dot(rhs);
+		result.a[i] = rows[i].Dot(rhs);
 	}
 
 	return result;
+}
+
+inline Vec Column(int index) const
+{
+    AssertMessage(index < column, "Matrix: Index out of bounds, i = ", index);
+
+    Vec colVec = nullptr;
+
+    for (int i = 0; i < column; ++i)
+    {
+        colVec.a[i] = rows[i].a[index];
+    }
+
+    return colVec;
 }

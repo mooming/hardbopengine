@@ -41,7 +41,7 @@ bool RigidTransformTest::DoTest()
             return false;
         }
 
-        Float4x4 mat = tm;
+        Float4x4 mat = tm.ToMatrix();
         if (mat != Float4x4::Identity)
         {
             cerr << "The default constructor of RigidTR should be "
@@ -62,13 +62,13 @@ bool RigidTransformTest::DoTest()
     {
         RigidTR tm(Float3(4, 5, 6), Quat(0, 47, 0));
         RigidTR tm2(Float3(3, 4, 5), Quat(41, 0, 25));
-        Float4x4 tm3 = tm * tm2;
+        RigidTR tm3 = tm * tm2;
 
-        cout << tm.GetTR() << endl;
-        cout << tm2.GetTR() << endl;
+        cout << tm << endl;
+        cout << tm2 << endl;
         cout << tm3 << endl;
 
-        Float3 result1 = tm3 * Float4(Float3::Forward, 1.0f);
+        Float3 result1 = tm3 * Float3::Forward;
         Float3 result2 = tm * (tm2 * Float3::Forward);
         if (result1 != result2)
         {
@@ -77,7 +77,7 @@ bool RigidTransformTest::DoTest()
             return false;
         }
 
-        if (!tm3.IsInvertible())
+        if (!tm3.ToMatrix().IsInvertible())
         {
             cerr << "Transform matrix should be invertible." << endl
                 << tm3 << endl;
@@ -85,7 +85,7 @@ bool RigidTransformTest::DoTest()
             return false;
         }
 
-        Float3 result = tm3.Inverse() * Float4(result1, 1.0f);
+        Float3 result = tm3.Inverse() * result1;
         if (result != Float3::Forward)
         {
             cerr << "Transform matrix inverse failed. " << result

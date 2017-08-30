@@ -7,3 +7,8 @@ nbproject
 xcode
 *.a
 compile_commands.json
+*.h#
+*.cpp~
+*.txt#
+*.txt~
+#*

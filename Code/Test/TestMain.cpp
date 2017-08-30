@@ -24,7 +24,7 @@ int main(int argc, const char* argv[])
     using namespace std;
 
     cout << fixed;
-    cout.precision(2);
+    cout.precision(4);
 
 #ifdef __UNIT_TEST__
     auto& testEnv = TestEnv::GetEnv();
@@ -52,9 +52,6 @@ int main(int argc, const char* argv[])
 #else //__UNIT_TEST__
     cout << "Test configuration is disabled." << endl;
 #endif //__UNIT_TEST__
-
-    char ch;
-    std::cin >> ch;
 
     return 0;
 }
