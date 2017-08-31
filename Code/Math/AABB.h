@@ -39,7 +39,6 @@ namespace HE
 
     void Reset()
     {
-
       min = Vec::Unity * MAX;
       max = -Vec::Unity * MAX;
     }
@@ -86,7 +85,6 @@ namespace HE
       auto length = Vec::order;
       for (int i = 0; i < length; ++i)
       {
-
         min.a[i] = MinFast(point.a[i], min.a[i]);
         max.a[i] = MaxFast(point.a[i], max.a[i]);
       }
@@ -94,7 +92,6 @@ namespace HE
 
     inline void Add(const This& aabb)
     {
-
       Add(aabb.min);
       Add(aabb.max);
     }
@@ -112,7 +109,6 @@ namespace HE
       for (int i = 0; i < length; ++i)
       {
         if (max.a[i] <= min.a[i])
-
           return true;
       }
 
@@ -129,8 +125,8 @@ namespace HE
       {
         if (min.a[i] > point.a[i])
           return false;
-        if (max.a[i] < point.a[i])
 
+        if (max.a[i] < point.a[i])
           return false;
       }
 
@@ -139,7 +135,6 @@ namespace HE
 
     inline bool IsContaining(const This& aabb) const
     {
-
       return IsContaining(aabb.min) && IsContaining(aabb.max);
     }
 
@@ -150,7 +145,6 @@ namespace HE
       auto length = Vec::order;
       for (int i = 0; i < length; ++i)
       {
-
         result.min.a[i] = MaxFast(aabb.min.a[i], min.a[i]);
         result.max.a[i] = MinFast(aabb.max.a[i], max.a[i]);
       }
