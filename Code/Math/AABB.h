@@ -7,6 +7,9 @@
 
 #include "../System/CommonUtil.h"
 
+#include <limits>
+#include <ostream>
+
 namespace HE
 {
 
@@ -14,6 +17,7 @@ namespace HE
   class AABB
   {
     using This = AABB;
+    static constexpr auto MAX = std::numeric_limits<float>::max();
 
   public:
     Vec min;
@@ -25,7 +29,7 @@ namespace HE
     {
     }
 
-    inline AABB() : min(), max()
+    inline AABB() : min(Vec::Unity * MAX), max(Vec::Unity * -MAX)
     {
     }
 
@@ -35,8 +39,46 @@ namespace HE
 
     void Reset()
     {
-      min = Vec::Zero;
-      max = Vec::Zero;
+
+      min = Vec::Unity * MAX;
+      max = -Vec::Unity * MAX;
+    }
+
+    This operator+(const Vec& rhs) const
+    {
+      auto result = *this;
+      result += rhs;
+
+      return result;
+    }
+
+    This operator+(const This& rhs) const
+    {
+      auto result = *this;
+      result += rhs;
+
+      return result;
+    }
+
+    void operator+=(const Vec& rhs)
+    {
+      Add(rhs);
+    }
+
+    void operator+=(const This& rhs)
+    {
+      Add(rhs);
+    }
+
+    bool operator==(const This& rhs) const
+    {
+
+      return IsContaining(rhs) && rhs.IsContaining(*this);
+    }
+
+    bool operator!=(const This& rhs) const
+    {
+      return !(*this == rhs);
     }
 
     inline void Add(const Vec& point)
@@ -44,6 +86,7 @@ namespace HE
       auto length = Vec::order;
       for (int i = 0; i < length; ++i)
       {
+
         min.a[i] = MinFast(point.a[i], min.a[i]);
         max.a[i] = MaxFast(point.a[i], max.a[i]);
       }
@@ -51,8 +94,16 @@ namespace HE
 
     inline void Add(const This& aabb)
     {
+
       Add(aabb.min);
       Add(aabb.max);
+    }
+
+    inline void Translate(const Vec& t)
+    {
+      AssertMessage(!IsEmpty(), "Do not translate an empty AABB! ", *this);
+      min += t;
+      max += t;
     }
 
     bool IsEmpty() const
@@ -61,6 +112,7 @@ namespace HE
       for (int i = 0; i < length; ++i)
       {
         if (max.a[i] <= min.a[i])
+
           return true;
       }
 
@@ -69,16 +121,26 @@ namespace HE
 
     inline bool IsContaining(const Vec& point) const
     {
+      if (IsEmpty())
+        return false;
+
       auto length = Vec::order;
       for (int i = 0; i < length; ++i)
       {
         if (min.a[i] > point.a[i])
           return false;
         if (max.a[i] < point.a[i])
+
           return false;
       }
 
       return true;
+    }
+
+    inline bool IsContaining(const This& aabb) const
+    {
+
+      return IsContaining(aabb.min) && IsContaining(aabb.max);
     }
 
     inline AABB Intersection(const AABB& aabb) const
@@ -88,6 +150,7 @@ namespace HE
       auto length = Vec::order;
       for (int i = 0; i < length; ++i)
       {
+
         result.min.a[i] = MaxFast(aabb.min.a[i], min.a[i]);
         result.max.a[i] = MinFast(aabb.max.a[i], max.a[i]);
       }
@@ -99,10 +162,56 @@ namespace HE
     {
       return !Intersection(aabb).IsEmpty();
     }
+
+    inline Vec Center() const
+    {
+      return (min + max) * 0.5f;
+    }
+
+    inline Vec Diagonal() const
+    {
+      return max - min;
+    }
+
+    inline Vec Half() const
+    {
+      return Diagonal() * 0.5f;
+    }
   };
 
   using AABB2 = AABB<Float2>;
   using AABB3 = AABB<Float3>;
+
+  template <typename T>
+  inline std::ostream& operator<<(std::ostream& os, const AABB<T>& bbox)
+  {
+    using std::endl;
+
+    os << "AABB min = " << bbox.min << ", max = " << bbox.max;
+
+    return os;
+  }
 }
+
+#ifdef __UNIT_TEST__
+
+#include "System/TestCase.h"
+
+namespace HE
+{
+
+  class AABBTest : public TestCase
+  {
+  public:
+
+    AABBTest() : TestCase("AABBTest")
+    {
+    }
+
+  protected:
+    virtual bool DoTest() override;
+  };
+}
+#endif //__UNIT_TEST__
 
 #endif  // AABB_H

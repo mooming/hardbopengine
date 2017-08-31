@@ -14,6 +14,7 @@
 #include "Math/UniformTransform.h"
 #include "Math/RigidTransform.h"
 #include "Math/EuclidSpace.h"
+#include "Math/AABB.h"
 
 #include <iostream>
 
@@ -47,6 +48,7 @@ int main(int argc, const char* argv[])
     testEnv.AddTest(new UniformTransformTest());
     testEnv.AddTest(new RigidTransformTest());
     testEnv.AddTest(new EuclidSpaceTest());
+    testEnv.AddTest(new AABBTest());
 
     testEnv.Start();
 #else //__UNIT_TEST__

@@ -14,23 +14,25 @@
 
 namespace
 {
-	inline void Assert(bool shouldBeTrue)
-	{
-		if (!shouldBeTrue)
-		{
-			std::abort();
-		}
-	}
 
-	template <typename ... Types>
-	inline void AssertMessage(bool shouldBeTrue, Types&& ... args)
-	{
-		if (!shouldBeTrue)
-		{
-            PrintArgs(std::forward<Types>(args) ...);
-			std::abort();
-		}
-	}
+  inline void Assert(bool shouldBeTrue)
+  {
+    if (shouldBeTrue)
+      return;
+
+    PrintArgs("[Assert] Please check it.");
+    std::abort();
+  }
+
+  template <typename ... Types>
+  inline void AssertMessage(bool shouldBeTrue, Types&& ... args)
+  {
+    if (shouldBeTrue)
+      return;
+
+    PrintArgs("[Assert] ", std::forward<Types>(args) ...);
+    std::abort();
+  }
 }
 
 #else // __DEBUG__
@@ -41,36 +43,39 @@ namespace
 
 namespace
 {
-    inline void Assert(bool)
-    {
-    }
 
-    template <typename ... Types>
-    inline void AssertMessage(bool, const char*, Types&& ...)
-    {
-    }
+  inline void Assert(bool)
+  {
+  }
+
+  template <typename ... Types>
+  inline void AssertMessage(bool, const char*, Types&& ...)
+  {
+  }
 }
 #endif // __DEBUG__
 
 namespace
 {
-	inline void FatalAssert(bool shouldBeTrue)
-	{
-		if (!shouldBeTrue)
-		{
-			std::abort();
-		}
-	}
 
-	template <typename ... Types>
-	inline void FatalAssertMessage(bool shouldBeTrue, Types&& ... args)
-	{
-		if (!shouldBeTrue)
-		{
-            PrintArgs(std::forward<Types>(args) ...);
-			std::abort();
-		}
-	}
+  inline void FatalAssert(bool shouldBeTrue)
+  {
+    if (shouldBeTrue)
+      return;
+
+    PrintArgs("[FatalAssert] Please check it.");
+    std::abort();
+  }
+
+  template <typename ... Types>
+  inline void FatalAssertMessage(bool shouldBeTrue, Types&& ... args)
+  {
+    if (shouldBeTrue)
+      return;
+
+    PrintArgs("[FatalAssert] ", std::forward<Types>(args) ...);
+    std::abort();
+  }
 }
 
 #endif /* Debug_h */
