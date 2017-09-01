@@ -1,6 +1,9 @@
 // Copyright Hansol Park (anav96@naver.com, mooming.go@gmail.com). All rights reserved.
 
-#include "System/System.h"
+#include "Allocator.h"
+#include "Debug.h"
+#include "MemoryManager.h"
+#include "Types.h"
 
 using namespace HE;
 

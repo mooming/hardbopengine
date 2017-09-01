@@ -6,6 +6,7 @@
 using namespace HE;
 
 #include "Component.h"
+#include "ComponentState.h"
 
 #include "Time.h"
 
@@ -29,24 +30,26 @@ bool ComponentSystemTest::DoTest()
     public:
         bool isInit = false;
         uint32_t updateCount = 0;
-        bool isRelased = false;
+        bool isReleased = false;
         bool isOnEnableCalled = false;
         bool isOnDisableCalled = false;
 
         bool& testResult;
 
+    public:
         Test(bool& testResult) : Component("Test"), testResult(testResult)
         {
         }
 
-        Test(Test&& rhs) : Component(std::move(rhs))
+        Test(Test&& rhs) : Component(rhs)
             , isInit(rhs.isInit)
             , updateCount(rhs.updateCount)
-            , isRelased(rhs.isRelased)
+            , isReleased(rhs.isReleased)
             , isOnEnableCalled(rhs.isOnEnableCalled)
             , isOnDisableCalled(rhs.isOnDisableCalled)
             , testResult(rhs.testResult)
         {
+
         }
 
         Test& operator= (const Test& rhs)
@@ -55,7 +58,7 @@ bool ComponentSystemTest::DoTest()
 
             isInit = rhs.isInit;
             updateCount = rhs.updateCount;
-            isRelased = rhs.isRelased;
+            isReleased = rhs.isReleased;
             isOnEnableCalled = rhs.isOnEnableCalled;
             isOnDisableCalled = rhs.isOnDisableCalled;
             testResult = rhs.testResult;
@@ -65,7 +68,7 @@ bool ComponentSystemTest::DoTest()
 
         virtual ~Test()
         {
-            if (!isInit || !isOnEnableCalled || !isOnDisableCalled || !isRelased)
+            if (!isInit || !isOnEnableCalled || !isOnDisableCalled || !isReleased)
             {
                 testResult = false;
             }
@@ -73,10 +76,10 @@ bool ComponentSystemTest::DoTest()
 
         virtual void Init() override
         {
-            if (GetState() != BORN)
+            if (GetState() != ComponentState::BORN)
             {
                 cerr << "State failure, state = " << GetState()
-                    << ", but expected " << BORN << endl;
+                    << ", but expected " << ComponentState::BORN << endl;
                 testResult = false;
             }
 
@@ -85,10 +88,10 @@ bool ComponentSystemTest::DoTest()
 
         virtual void Update(const float deltaTime) override
         {
-            if (GetState() != ALIVE)
+            if (GetState() != ComponentState::ALIVE)
             {
                 cerr << "State failure, state = " << GetState()
-                    << ", but expected " << ALIVE << endl;
+                    << ", but expected " << ComponentState::ALIVE << endl;
                 testResult = false;
             }
 
@@ -103,22 +106,22 @@ bool ComponentSystemTest::DoTest()
 
         virtual void Release() override
         {
-            if (GetState() != DEAD)
+            if (GetState() != ComponentState::DEAD)
             {
                 cerr << "State failure, state = " << GetState()
-                    << ", but expected " << DEAD << endl;
+                    << ", but expected " << ComponentState::DEAD << endl;
                 testResult = false;
             }
 
-            isRelased = true;
+            isReleased = true;
         }
 
         virtual void OnEnable() override
         {
-            if (GetState() != ALIVE)
+            if (GetState() != ComponentState::ALIVE)
             {
                 cerr << "State failure, state = " << GetState()
-                    << ", but expected " << ALIVE << endl;
+                    << ", but expected " << ComponentState::ALIVE << endl;
                 testResult = false;
             }
 
@@ -127,10 +130,10 @@ bool ComponentSystemTest::DoTest()
 
         virtual void OnDisable() override
         {
-            if (GetState() != SLEEP)
+            if (GetState() != ComponentState::SLEEP)
             {
                 cerr << "State failure, state = " << GetState()
-                    << ", but expected " << SLEEP << endl;
+                    << ", but expected " << ComponentState::SLEEP << endl;
                 testResult = false;
             }
 

@@ -1,58 +1,68 @@
-// Copyright Hansol Park (anav96@naver.com, mooming.go@gmail.com). All rights reserved.
+// Copyright, All rights reserved by Hansol Park (mooming.go@gmail.com)
 
 #ifndef __Component_h__
 #define __Component_h__
 
-#include "System/String.h"
+#include "String.h"
+#include "ComponentState.h"
 
 namespace HE
 {
-    class Component
+
+  class Component
+  {
+    using State = ComponentState;
+
+  protected:
+    State state;
+    String name;
+
+  public:
+    virtual void Init() = 0;
+    virtual void Update(const float deltaTime) = 0;
+    virtual void Release() = 0;
+
+    virtual void OnEnable() = 0;
+    virtual void OnDisable() = 0;
+
+  public:
+
+    inline Component(const char* name) : state(State::NONE), name(name)
     {
+    }
 
-    public:
-        enum class State
-        {
-            NONE,
-            BORN,
-            ALIVE,
-            SLEEP,
-            DEAD
-        };
+    virtual ~Component() = default;
 
-    protected:
-        State state;
-        String name;
+    inline State GetState() const
+    {
+      return state;
+    }
 
-    public:
-        virtual void Init() = 0;
-        virtual void Update(const float deltaTime) = 0;
-        virtual void PostUpdate(const float deltaTime) = 0;
-        virtual void Release() = 0;
+    inline void SetState(State state)
+    {
+      Component::state = state;
+    }
 
-        virtual void OnEnable() = 0;
-        virtual void OnDisable() = 0;
+    inline const String& GetName() const
+    {
+      return name;
+    }
 
-    public:
-        inline Component(const char* name) : state(NONE), name(name) {}
-        virtual ~Component() = default;
+    inline bool IsEnabled() const
+    {
+      return state == State::ALIVE;
+    }
 
-        inline State GetState() const { return state; }
-        inline void SetState(State state) { Component::state = state; }
+    inline void SetEnable(bool isEnabled)
+    {
+      SetState(isEnabled ? State::ALIVE : State::SLEEP);
+    }
 
-        inline const String& GetName() const { return name; }
-        inline bool IsEnabled() const { return state == ALIVE; }
-
-        inline void SetEnable(bool isEnabled)
-        {
-            SetState(isEnabled ? ALIVE : SLEEP);
-        }
-        
-        inline void Destroy()
-        {
-            SetState(State.DEAD);
-        }
-    };
+    inline void Destroy()
+    {
+      SetState(State::DEAD);
+    }
+  };
 }
 
 #endif //__Component_h__

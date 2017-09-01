@@ -17,6 +17,7 @@ link_directories (${CMAKE_SOURCE_DIR}/lib)
 add_library (System STATIC 
  Allocator.cpp
  Array.cpp
+ CommonUtil.cpp
  Component.cpp
  ComponentSystem.cpp
  LinkedList.cpp
@@ -33,6 +34,7 @@ add_library (System STATIC
  Array.h
  CommonUtil.h
  Component.h
+ ComponentState.h
  ComponentSystem.h
  Constants.h
  Debug.h
@@ -49,7 +51,6 @@ add_library (System STATIC
  StackAllocator.h
  StdUtil.h
  String.h
- System.h
  TestCase.h
  TestEnv.h
  Time.h

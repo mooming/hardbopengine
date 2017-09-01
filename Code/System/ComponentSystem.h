@@ -3,6 +3,7 @@
 #ifndef __ComponentSystem_h__
 #define __ComponentSystem_h__
 
+#include "ComponentState.h"
 #include "Debug.h"
 #include "Vector.h"
 #include "String.h"
@@ -47,7 +48,7 @@ namespace HE
         inline Component& Create(Types&& ... args)
         {
             auto& compo = initList.New(std::forward<Types>(args) ...);
-            compo.SetState(Component::BORN);
+            compo.SetState(ComponentState::BORN);
 
             return compo;
         }
@@ -65,7 +66,7 @@ namespace HE
             for (auto& compo : initList)
             {
                 compo.Init();
-                compo.SetState(Component::ALIVE);
+                compo.SetState(ComponentState::ALIVE);
                 compo.OnEnable();
                 updateList.Add(std::move(compo));
             }
@@ -79,7 +80,7 @@ namespace HE
             {
                 compo.Update(deltaTime);
 
-                if (compo.GetState() != Component::ALIVE)
+                if (!compo.IsEnabled())
                 {
                     transitionList.Add(std::move(compo));
                 }
@@ -99,20 +100,20 @@ namespace HE
             {
                 switch (compo.GetState())
                 {
-                case Component::ALIVE:
+                case ComponentState::ALIVE:
                     compo.OnEnable();
                     updateList.Add(std::move(compo));
                     break;
 
-                case Component::SLEEP:
+                case ComponentState::SLEEP:
                     compo.OnDisable();
                     sleepList.Add(std::move(compo));
                     break;
 
-                case Component::DEAD:
-                    compo.SetState(Component::SLEEP);
+                case ComponentState::DEAD:
+                    compo.SetState(ComponentState::SLEEP);
                     compo.OnDisable();
-                    compo.SetState(Component::DEAD);
+                    compo.SetState(ComponentState::DEAD);
                     compo.Release();
                     break;
 

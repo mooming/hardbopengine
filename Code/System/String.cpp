@@ -5,7 +5,6 @@
 #include "System/Allocator.h"
 #include "System/MemoryManager.h"
 #include "System/StdUtil.h"
-#include "System/System.h"
 
 #include <cstdio>
 #include <cstring>

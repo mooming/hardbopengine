@@ -1,6 +1,10 @@
 // Copyright Hansol Park (anav96@naver.com, mooming.go@gmail.com). All rights reserved.
 
-#include "System/System.h"
+#include "System/CommonUtil.h"
+#include "System/ComponentSystem.h"
+#include "System/LinkedList.h"
+#include "System/PoolAllocator.h"
+#include "System/StackAllocator.h"
 #include "System/TestEnv.h"
 
 #include "Math/Vector2.h"
@@ -33,6 +37,7 @@ int main(int argc, const char* argv[])
     testEnv.AddTest(new AllocatorTest());
     testEnv.AddTest(new StackAllocatorTest());
     testEnv.AddTest(new ArrayTest());
+    testEnv.AddTest(new CommonUtilTest());
     testEnv.AddTest(new ComponentSystemTest());
     testEnv.AddTest(new LinkedListTest());
     testEnv.AddTest(new OptionalTest());

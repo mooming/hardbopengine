@@ -1,4 +1,4 @@
-// Copyright Hansol Park (anav96@naver.com, mooming.go@gmail.com). All rights reserved.
+// Copyright, All rights reserved by Hansol Park (mooming.go@gmail.com)
 
 #ifndef MathUtil_h
 #define MathUtil_h
@@ -14,14 +14,20 @@
 namespace HE
 {
 
+  template <typename T, size_t size>
+  inline size_t CountOf(T(&)[size])
+  {
+    return size;
+  }
+
   template <typename T>
-  T Abs(T value, std::false_type)
+  inline T Abs(T value, std::false_type)
   {
     return std::abs(value);
   }
 
   template <typename T>
-  T Abs(T value, std::true_type)
+  inline T Abs(T value, std::true_type)
   {
     constexpr int shift = sizeof (T) * 8 - 1;
     const uint8_t mask = value >> shift;
@@ -30,19 +36,25 @@ namespace HE
   }
 
   template <class T>
-  T Abs(T value)
+  inline T Abs(T value)
   {
     return Abs<T>(value, std::is_integral<T>());
   }
 
-  template <class T>
-  typename std::enable_if<std::is_integral<T>::value, T>::type Pow(T value, T n)
+  template <typename T>
+  inline T Pow(T value, T n)
   {
-    FatalAssert(n > 0);
+    FatalAssertMessage(false, "Unexpected argument type of Pow");
+  }
 
-    T result = 1;
-    T order = 1;
-    T factor = value;
+  template <>
+  inline int Pow(int value, int n)
+  {
+    FatalAssert(n >= 0);
+
+    int result = 1;
+    int order = 1;
+    int factor = value;
 
     while (n > 0)
     {
@@ -59,12 +71,6 @@ namespace HE
     }
 
     return result;
-  }
-
-  template <typename T>
-  T Pow(T value, T n)
-  {
-    Assert(false);
   }
 
   template <>
@@ -178,5 +184,28 @@ namespace HE
     }
   }
 }
+
+
+#ifdef __UNIT_TEST__
+
+#include "TestCase.h"
+
+namespace HE
+{
+
+  class CommonUtilTest : public TestCase
+  {
+  public:
+
+    CommonUtilTest() : TestCase("CommonUtilTest")
+    {
+    }
+
+  protected:
+    virtual bool DoTest() override;
+  };
+}
+
+#endif //__UNIT_TEST__
 
 #endif /* Common_h */
