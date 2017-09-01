@@ -35,26 +35,20 @@ namespace HE
     return (value + mask) ^ mask;
   }
 
-  template <class T>
+  template <typename T>
   inline T Abs(T value)
   {
     return Abs<T>(value, std::is_integral<T>());
   }
 
   template <typename T>
-  inline T Pow(T value, T n)
-  {
-    FatalAssertMessage(false, "Unexpected argument type of Pow");
-  }
-
-  template <>
-  inline int Pow(int value, int n)
+  inline T Pow(T value, T n, std::true_type)
   {
     FatalAssert(n >= 0);
 
-    int result = 1;
-    int order = 1;
-    int factor = value;
+    T result = 1;
+    T order = 1;
+    T factor = value;
 
     while (n > 0)
     {
@@ -73,22 +67,31 @@ namespace HE
     return result;
   }
 
+  template <typename T>
+  T Pow(T value, T n, std::false_type);
+
   template <>
-  inline float Pow(float value, float n)
+  inline float Pow(float value, float n, std::false_type)
   {
     return std::powf(value, n);
   }
 
   template <>
-  inline double Pow(double value, double n)
+  inline double Pow(double value, double n, std::false_type)
   {
     return pow(value, n);
   }
 
   template <>
-  inline long double Pow(long double value, long double n)
+  inline long double Pow(long double value, long double n, std::false_type)
   {
     return powl(value, n);
+  }
+
+  template <typename T>
+  inline T Pow(T value, T n)
+  {
+    return Pow(value, n, std::is_integral<T>());
   }
 
   template <typename T>

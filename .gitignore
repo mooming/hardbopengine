@@ -9,6 +9,7 @@ xcode
 compile_commands.json
 *.h#
 *.h~
+*.cpp#
 *.cpp~
 *.txt#
 *.txt~
