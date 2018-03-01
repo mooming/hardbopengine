@@ -10,171 +10,140 @@
 
 namespace HE
 {
+	template <typename Number>
+	class UniformTransform
+	{
+		using This = UniformTransform;
+		using Vec3 = Vector3<Number>;
+		using Quat = Quaternion<Number>;
+		using Mat3x3 = Matrix3x3<Number>;
+		using Mat4x4 = Matrix4x4<Number>;
 
-  template <typename Number>
-  class UniformTransform
-  {
-    using This = UniformTransform;
-    using Vec3 = Vector3<Number>;
-    using Quat = Quaternion<Number>;
-    using Mat3x3 = Matrix3x3<Number>;
-    using Mat4x4 = Matrix4x4<Number>;
+	public:
+		Quat rotation;
+		Number scale;
+		Vec3 translation;
 
-  public:
-    Quat rotation;
-    Vec3 translation;
-    Number scale;
+	public:
+		UniformTransform() : rotation(), translation(), scale(1)
+		{
+		}
 
-  public:
-    UniformTransform();
-    UniformTransform(std::nullptr_t);
-    UniformTransform(const Vec3& translation, const Quat& rotation, Number scale);
-    UniformTransform(const Mat4x4& mat);
+		UniformTransform(std::nullptr_t)
+			: rotation(nullptr), translation(nullptr)
+		{
+		}
 
-    inline bool operator==(const This& rhs)
-    {
-      return rotation == rhs.rotation && scale == rhs.scale && translation == rhs.translation;
-    }
+		UniformTransform(const Vec3& translation, const Quat& rotation, Number scale)
+			: rotation(rotation), translation(translation), scale(scale)
+		{
+		}
 
-    inline bool operator!=(const This& rhs)
-    {
-      return !(*this == rhs);
-    }
+		UniformTransform(const Mat4x4& mat)
+		{
+			Assert(mat.IsOrthogonal());
 
-    template <typename T>
-    inline T operator*(const T& rhs) const
-    {
-      return Transform(rhs);
-    }
+			Vec3 c1 = Vec3(mat.m11, mat.m21, mat.m31);
+			Vec3 c2 = Vec3(mat.m12, mat.m22, mat.m32);
+			Vec3 c3 = Vec3(mat.m13, mat.m23, mat.m33);
 
-    Vec3 Transform(const Vec3& x) const
-    {
-      return rotation * (scale * x) + translation;
-    }
+			constexpr float oneThird = 1.0f / 3.0f;
+			scale = (c1.Normalize() + c2.Normalize() + c3.Normalize()) * oneThird;
 
-    Quat Transform(const Quat& r) const
-    {
-      return rotation * r;
-    }
+			Assert(IsEqual(scale, c2.Normalize()));
+			Assert(IsEqual(scale, c3.Normalize()));
 
-    Number Transform(Number s) const
-    {
-      return scale * s;
-    }
+			Mat3x3 rotMat = nullptr;
 
-    This Transform(const This& rhs) const
-    {
-      This result(nullptr);
+			rotMat.m11 = c1.x;
+			rotMat.m21 = c1.y;
+			rotMat.m31 = c1.z;
 
-      result.scale = scale * rhs.scale;
-      result.rotation = rotation * rhs.rotation;
-      result.translation = rotation * (scale * rhs.translation) + translation;
+			rotMat.m12 = c2.x;
+			rotMat.m22 = c2.y;
+			rotMat.m32 = c2.z;
 
-      return result;
-    }
+			rotMat.m13 = c3.x;
+			rotMat.m23 = c3.y;
+			rotMat.m33 = c3.z;
 
-    Vec3 InverseTransform(const Vec3& x) const
-    {
-      return (rotation.Inverse() * (x - translation) / scale);
-    }
+			rotation = static_cast<Quat> (rotMat);
+		}
 
-    Quat InverseTransform(const Quat& r) const
-    {
-      return rotation.Inverse() * r;
-    }
+		inline bool operator==(const This& rhs)
+		{
+			return rotation == rhs.rotation && scale == rhs.scale && translation == rhs.translation;
+		}
 
-    Number InverseTransform(Number s) const
-    {
-      return s / scale;
-    }
+		inline bool operator!=(const This& rhs)
+		{
+			return !(*this == rhs);
+		}
 
-    This Inverse() const
-    {
-      This inverse(nullptr);
+		template <typename T>
+		inline T operator*(const T& rhs) const
+		{
+			return Transform(rhs);
+		}
 
-      scale = 1.0f / scale;
-      rotation.Invert();
-      translation = rotation * translation * (-scale);
+		Vec3 Transform(const Vec3& x) const
+		{
+			return rotation * (scale * x) + translation;
+		}
 
-      return inverse;
-    }
+		Vec3 InverseTransform(const Vec3& x) const
+		{
+			return (rotation.Inverse() * (x - translation) / scale);
+		}
 
-    Mat4x4 ToMatrix() const
-    {
-      Mat4x4 mat = rotation.ToMat4x4() * Mat4x4::CreateDiagonal(Float4(scale, scale, scale, 1.0f));
-      mat.SetTranslation(translation);
+		This Transform(const This& rhs) const
+		{
+			This result(nullptr);
 
-      return mat;
-    }
-  };
+			result.scale = scale * rhs.scale;
+			result.rotation = rotation * rhs.rotation;
+			result.translation = rotation * (scale * rhs.translation) + translation;
 
-  using UniformTRS = UniformTransform<float>;
+			return result;
+		}
 
-  template <typename T>
-  inline std::ostream& operator<<(std::ostream& os, const UniformTransform<T>& local)
-  {
-    using namespace std;
+		This Inverse() const
+		{
+			This inverse(nullptr);
 
-    os << "Uniform Transform" << endl;
-    os << "Position: (" << local.translation.x << ", "
-      << local.translation.y << ", "
-      << local.translation.z << ")" << endl;
-    auto r = local.rotation.EulerAngles();
-    os << "Rotation: (" << r.x << ", " << r.y << ", " << r.z << ")" << endl;
-    os << "Scale: (" << local.scale << ")" << endl;
+			scale = 1.0f / scale;
+			rotation.Invert();
+			translation = rotation * translation * (-scale);
 
-    return os;
-  }
+			return inverse;
+		}
 
-  template<typename Number>
-  inline UniformTransform<Number>::UniformTransform()
-    : rotation(), translation(), scale(1)
-  {
-  }
+		Mat4x4 ToMatrix() const
+		{
+			Mat4x4 mat = rotation.ToMat4x4() * Mat4x4::CreateDiagonal(Float4(scale, scale, scale, 1.0f));
+			mat.SetTranslation(translation);
 
-  template<typename Number>
-  inline UniformTransform<Number>::UniformTransform(std::nullptr_t)
-    : rotation(nullptr), translation(nullptr)
-  {
-  }
+			return mat;
+		}
+	};
 
-  template<typename Number>
-  inline UniformTransform<Number>::UniformTransform(const Vec3& t, const Quat& r, Number s)
-    : rotation(r), translation(t), scale(s)
-  {
-  }
+	using UniformTRS = UniformTransform<float>;
 
-  template<typename Number>
-  inline UniformTransform<Number>::UniformTransform(const Mat4x4& mat)
-  {
-    Assert(mat.IsOrthogonal());
+	template <typename T>
+	inline std::ostream& operator<<(std::ostream& os, const UniformTransform<T>& local)
+	{
+		using namespace std;
 
-    Vec3 c1 = Vec3(mat.m11, mat.m21, mat.m31);
-    Vec3 c2 = Vec3(mat.m12, mat.m22, mat.m32);
-    Vec3 c3 = Vec3(mat.m13, mat.m23, mat.m33);
+		os << "Uniform Transform" << endl;
+		os << "Position: (" << local.translation.x << ", "
+			<< local.translation.y << ", "
+			<< local.translation.z << ")" << endl;
+		auto r = local.rotation.EulerAngles();
+		os << "Rotation: (" << r.x << ", " << r.y << ", " << r.z << ")" << endl;
+		os << "Scale: (" << local.scale << ")" << endl;
 
-    constexpr float oneThird = 1.0f / 3.0f;
-    scale = (c1.Normalize() + c2.Normalize() + c3.Normalize()) * oneThird;
-
-    Assert(IsEqual(scale, c2.Normalize()));
-    Assert(IsEqual(scale, c3.Normalize()));
-
-    Mat3x3 rotMat = nullptr;
-
-    rotMat.m11 = c1.x;
-    rotMat.m21 = c1.y;
-    rotMat.m31 = c1.z;
-
-    rotMat.m12 = c2.x;
-    rotMat.m22 = c2.y;
-    rotMat.m32 = c2.z;
-
-    rotMat.m13 = c3.x;
-    rotMat.m23 = c3.y;
-    rotMat.m33 = c3.z;
-
-    rotation = static_cast<Quat> (rotMat);
-  }
+		return os;
+	}
 }
 
 #ifdef __UNIT_TEST__

@@ -291,6 +291,9 @@ namespace HE
 
   };
 
+  template <typename T> const Matrix3x3<T> Matrix3x3<T>::Zero({ 0, 0, 0, 0, 0, 0, 0, 0, 0 });
+  template <typename T> const Matrix3x3<T> Matrix3x3<T>::Identity;
+
   using Float3x3 = Matrix3x3<float>;
 
   template <typename T>

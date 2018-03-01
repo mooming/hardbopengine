@@ -3,9 +3,11 @@
 #include "System/CommonUtil.h"
 #include "System/ComponentSystem.h"
 #include "System/LinkedList.h"
+#include "System/Optional.h"
 #include "System/PoolAllocator.h"
 #include "System/StackAllocator.h"
 #include "System/TestEnv.h"
+#include "System/Vector.h"
 
 #include "Math/Vector2.h"
 #include "Math/Vector3.h"
@@ -14,10 +16,8 @@
 #include "Math/Matrix3x3.h"
 #include "Math/Matrix4x4.h"
 #include "Math/Quaternion.h"
-#include "Math/AffineTransform.h"
 #include "Math/UniformTransform.h"
 #include "Math/RigidTransform.h"
-#include "Math/EuclidSpace.h"
 #include "Math/AABB.h"
 
 #include <iostream>
@@ -49,13 +49,12 @@ int main(int argc, const char* argv[])
     testEnv.AddTest(new Vector4Test());
     testEnv.AddTest(new Matrix3x3Test());
     testEnv.AddTest(new QuaternionTest());
-    testEnv.AddTest(new AffineTransformTest());
     testEnv.AddTest(new UniformTransformTest());
     testEnv.AddTest(new RigidTransformTest());
-    testEnv.AddTest(new EuclidSpaceTest());
     testEnv.AddTest(new AABBTest());
 
     testEnv.Start();
+
 #else //__UNIT_TEST__
     cout << "Test configuration is disabled." << endl;
 #endif //__UNIT_TEST__

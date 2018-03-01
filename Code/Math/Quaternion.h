@@ -505,7 +505,7 @@ namespace HE
 
       auto angle = std::acosf(from.vector.Dot(to.vector));
 
-      if (angle < epsilon)
+      if (angle < Epsilon)
         return Lerp(from, to, t);
 
       const auto nt = 1.0f - t;

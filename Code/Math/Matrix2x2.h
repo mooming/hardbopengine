@@ -97,8 +97,10 @@ namespace HE
     }
 
 #include "MatrixCommonImpl.inl"
-
   };
+
+  template <typename T> const Matrix2x2<T> Matrix2x2<T>::Zero({ 0, 0, 0, 0 });
+  template <typename T> const Matrix2x2<T> Matrix2x2<T>::Identity;
 
   using Float2x2 = Matrix2x2<float>;
 

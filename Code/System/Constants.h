@@ -9,18 +9,18 @@ namespace HE
 	constexpr size_t MB = 1024 * 1024;
 	constexpr size_t GB = 1024 * 1024 * 1024;
 
-    constexpr float pi = 3.141592653589793f;
-    constexpr float halfPi = pi * 0.5f;
-    constexpr float twoPi = pi * 2.0f;
-    constexpr float e = 2.718281828459f;
+    constexpr float Pi = 3.141592653589793f;
+    constexpr float HalfPi = Pi * 0.5f;
+    constexpr float TwoPi = Pi * 2.0f;
+    constexpr float EulerNum = 2.718281828459f;
 
-    constexpr float epsilon = 0.001f;
-    constexpr float sqrEpsilon = epsilon * epsilon;
+    constexpr float Epsilon = 0.001f;
+    constexpr float SqrEpsilon = Epsilon * Epsilon;
 
 	namespace Physics
 	{
-		constexpr float epsilon = 0.005f;
-		constexpr float sqrEpsilon = epsilon * epsilon;
+		constexpr float Epsilon = 0.005f;
+		constexpr float SqrEpsilon = Epsilon * Epsilon;
 	}
 }
 

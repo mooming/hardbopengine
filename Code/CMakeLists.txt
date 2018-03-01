@@ -12,7 +12,6 @@ include_directories ( ${CMAKE_SOURCE_DIR}
 link_directories (${CMAKE_SOURCE_DIR}/lib)
 
 
-add_subdirectory (CMakeFiles)
 add_subdirectory (Math)
 add_subdirectory (System)
 add_subdirectory (Test)

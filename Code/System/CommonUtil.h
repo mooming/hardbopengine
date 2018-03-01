@@ -123,33 +123,33 @@ namespace HE
   inline float DegreeToRadian(float deg)
   {
     constexpr float inv = 1.0f / 180.0f;
-    return deg * pi * inv;
+    return deg * Pi * inv;
   }
 
   inline float RadianToDegree(float rad)
   {
-    constexpr float invPi = 1.0f / pi;
+    constexpr float invPi = 1.0f / Pi;
     return rad * 180.0f * invPi;
   }
 
   inline bool IsZero(float value)
   {
-    return Abs(value) < epsilon;
+    return Abs(value) < Epsilon;
   }
 
   inline bool IsUnity(float value)
   {
-    return Abs(value - 1.0f) < epsilon;
+    return Abs(value - 1.0f) < Epsilon;
   }
 
   inline bool IsEqual(float a, float b)
   {
-    return Abs(a - b) < epsilon;
+    return Abs(a - b) < Epsilon;
   }
 
   inline bool IsNotEqual(float a, float b)
   {
-    return Abs(a - b) >= epsilon;
+    return Abs(a - b) >= Epsilon;
   }
 
   namespace Physics
@@ -173,17 +173,17 @@ namespace HE
 
     inline bool IsZero(float value)
     {
-      return Abs(value) < epsilon;
+      return Abs(value) < Epsilon;
     }
 
     inline bool IsEqual(float a, float b)
     {
-      return Abs(a - b) < epsilon;
+      return Abs(a - b) < Epsilon;
     }
 
     inline bool IsNotEqual(float a, float b)
     {
-      return Abs(a - b) >= epsilon;
+      return Abs(a - b) >= Epsilon;
     }
   }
 }

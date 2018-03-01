@@ -138,7 +138,7 @@ inline bool IsZero() const
   for (int i = 0; i < order; ++i)
     total += Abs(a[i]);
 
-  return total < epsilon;
+  return total < Epsilon;
 }
 
 inline void Multiply(Number value)
@@ -222,7 +222,7 @@ This Normalized() const
 
 inline bool IsUnity() const
 {
-  return Abs(SqrLength() - 1.0f) < sqrEpsilon;
+  return Abs(SqrLength() - 1.0f) < SqrEpsilon;
 }
 
 inline This Lerp(const This& to, float t) const
@@ -247,7 +247,7 @@ inline static This Slerp(const This& from, const This& to, float t)
 
   auto angle = std::acosf(a.Dot(b));
 
-  if (angle < epsilon)
+  if (angle < Epsilon)
     return Lerp(from, to, t).Normalized();
 
   const auto nt = 1.0f - t;
