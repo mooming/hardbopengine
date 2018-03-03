@@ -3,7 +3,7 @@
 #ifndef Vector2_h
 #define Vector2_h
 
-#include "System/CommonUtil.h"
+#include "System/MathUtil.h"
 
 #include <ostream>
 
@@ -38,7 +38,7 @@ namespace HE
 
   public:
 
-    inline Vector2() : This(0.0f, 0.0f)
+    inline Vector2() : This(0, 0)
     {
     }
 

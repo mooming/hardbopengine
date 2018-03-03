@@ -8,6 +8,12 @@
 
 #include "Transform.h"
 
+namespace HE
+{
+	template class Transform<float>;
+	template class Transform<double>;
+}
+
 
 #ifdef __UNIT_TEST__
 
@@ -25,9 +31,14 @@ bool TransformTest::DoTest()
 
     {
         cout << "Test Hierachycal Translation" << endl;
-        FTransform a(root);
-        FTransform b(a);
-        FTransform c(b);
+        FTransform a;
+		root.Attach(a);
+
+        FTransform b;
+		a.Attach(b);
+
+        FTransform c;
+		b.Attach(c);
 
         a.Set(Float3(0, 0, 1));
         b.Set(Float3(0, 1, 0));
@@ -44,8 +55,12 @@ bool TransformTest::DoTest()
 
     {
         cout << "Test Hierachycal Rotation" << endl;
-        FTransform a(root);
-        FTransform b(a);
+        FTransform a;
+		root.Attach(a);
+
+        FTransform b;
+		a.Attach(b);
+
         b.Set(Float3(0, 0, 1));
         a.Set(Quat(0.0f, 45.0f, 0.0f));
 
@@ -63,9 +78,15 @@ bool TransformTest::DoTest()
 
     {
         cout << "Test Hierachycal Rotation 2" << endl;
-        FTransform a(root);
-        FTransform b(a);
-        FTransform c(b);
+        FTransform a;
+		root.Attach(a);
+
+		FTransform b;
+		a.Attach(b);
+
+        FTransform c;
+		b.Attach(c);
+
         a.Set(Quat(0.0f, 45.0f, 0.0f));
         b.Set(Quat(0.0f, 45.0f, 0.0f));
         c.Set(Float3(0, 0, 1));

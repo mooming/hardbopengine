@@ -6,7 +6,7 @@
 #include "CoordinateOrientation.h"
 #include "Vector2.h"
 #include "Vector3.h"
-#include "System/CommonUtil.h"
+#include "System/MathUtil.h"
 
 #include <ostream>
 
@@ -115,6 +115,7 @@ namespace HE
   template <typename T> const Vector4<T> Vector4<T>::X(1, 0, 0, 0);
   template <typename T> const Vector4<T> Vector4<T>::Y(0, 1, 0, 0);
   template <typename T> const Vector4<T> Vector4<T>::Z(0, 0, 1, 0);
+  template <typename T> const Vector4<T> Vector4<T>::W(0, 0, 0, 1);
 
 #ifdef __RIGHT_HANDED__
   template <typename T> const Vector4<T> Vector4<T>::Right(1.0f, 0.0f, 0.0f);

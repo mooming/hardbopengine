@@ -44,8 +44,11 @@ namespace HE
         return reinterpret_cast<size_t>(ptr);
     }
 
-    extern bool Equals(float a, float b);
-    extern bool Equals(double a, double b);
+	template <typename T, size_t size>
+	inline size_t CountOf(T(&)[size])
+	{
+		return size;
+	}
 }
 
 #endif /* StdUtil */

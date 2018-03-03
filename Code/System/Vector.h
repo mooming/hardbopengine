@@ -38,12 +38,12 @@ namespace HE
       return &data[size];
     }
 
-    inline ConstIterator begin() const
+    inline ConstIterator cbegin() const
     {
       return &data[0];
     }
 
-    inline ConstIterator end() const
+    inline ConstIterator cend() const
     {
       return &data[size];
     }
@@ -127,16 +127,24 @@ namespace HE
       return element;
     }
 
+	inline void RemoveAt(Index index)
+	{
+		Assert(size > 0);
+		Assert(index < size);
+
+		data[index].~Element();
+
+		const auto indexDiff = size - index - 1;
+		constexpr auto sizeOfElement = sizeof(Element);
+		memcpy((data + index), (data + index + 1), sizeOfElement * indexDiff);
+
+		--size;
+	}
+
     inline void RemoveAt(const Element& value)
     {
       const auto index = GetIndex(value);
-      Assert(index < size);
-
-      data[index].~Element();
-
-      const auto indexDiff = size - index - 1;
-      constexpr auto sizeOfElement = sizeof (Element);
-      memcpy((data + index), (data + index + 1), sizeOfElement * indexDiff);
+	  RemoveAt(index);
     }
 
     inline void Remove(const Element& value)
@@ -149,7 +157,7 @@ namespace HE
         return;
       }
 
-      for (auto& element : * this)
+      for (auto& element : *this)
       {
         if (element == value)
         {
@@ -158,6 +166,13 @@ namespace HE
         }
       }
     }
+
+	inline Iterator Erase(Iterator iter)
+	{
+		RemoveAt(*iter);
+
+		return iter - 1;
+	}
 
     inline void RemoveAll(const Element& value)
     {

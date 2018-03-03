@@ -13,13 +13,6 @@
 
 namespace HE
 {
-
-  template <typename T, size_t size>
-  inline size_t CountOf(T(&)[size])
-  {
-    return size;
-  }
-
   template <typename T>
   inline T Abs(T value, std::false_type)
   {
@@ -147,6 +140,11 @@ namespace HE
     return Abs(a - b) < Epsilon;
   }
 
+  inline bool IsEqual(double a, double b)
+  {
+	  return Abs(a - b) < Epsilon;
+  }
+
   inline bool IsNotEqual(float a, float b)
   {
     return Abs(a - b) >= Epsilon;
@@ -196,11 +194,11 @@ namespace HE
 namespace HE
 {
 
-  class CommonUtilTest : public TestCase
+  class MathUtilTest : public TestCase
   {
   public:
 
-    CommonUtilTest() : TestCase("CommonUtilTest")
+	  MathUtilTest() : TestCase("MathUtilTest")
     {
     }
 

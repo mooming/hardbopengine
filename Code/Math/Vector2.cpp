@@ -4,7 +4,6 @@
 
 namespace HE
 {
-    template class Vector2<int>;
     template class Vector2<float>;
 }
 

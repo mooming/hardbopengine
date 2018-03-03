@@ -5,7 +5,7 @@
 #include "Vector2.h"
 #include "Vector3.h"
 
-#include "../System/CommonUtil.h"
+#include "../System/MathUtil.h"
 
 #include <limits>
 #include <ostream>
@@ -171,6 +171,19 @@ namespace HE
     {
       return Diagonal() * 0.5f;
     }
+
+	inline Vec Closest(const Vec& point) const
+	{
+		Vec closePt = point;
+
+		auto length = Vec::order;
+		for (int i = 0; i < length; ++i)
+		{
+			closePt.a[i] = ClampFast(point.a[i], min.a[i], max.a[i]);
+		}
+
+		return closePt;
+	}
   };
 
   using AABB2 = AABB<Float2>;

@@ -58,11 +58,11 @@ inline This operator*(const This& rhs) const
 
 inline This operator/(const Number rhs) const
 {
-  Assert(rhs != 0.0f);
+  Assert(rhs != 0);
 
   This result(nullptr);
 
-  Number inverse = 1.0f / rhs;
+  Number inverse = static_cast<Number>(1) / rhs;
   for (int i = 0; i < order; ++i)
     result.a[i] = a[i] * inverse;
 
@@ -75,7 +75,7 @@ inline This operator/(const This& rhs) const
 
   for (int i = 0; i < order; ++i)
   {
-    Assert(!HE::IsZero(rhs.a[i]));
+    Assert(!HE::IsZero(static_cast<float>(rhs.a[i])));
     result.a[i] = a[i] / rhs.a[i];
   }
 
@@ -110,7 +110,7 @@ inline This& operator/=(const Number rhs)
 {
   Assert(rhs != 0.0f);
 
-  Multiply(1.0f / rhs);
+  Multiply(static_cast<Number>(1) / rhs);
   return *this;
 }
 
@@ -157,7 +157,7 @@ inline void Divide(const This& rhs)
 {
   for (int i = 0; i < order; ++i)
   {
-    Assert(!HE::IsZero(rhs.a[i]));
+    Assert(!HE::IsZero(static_cast<float>(rhs.a[i])));
     a[i] /= rhs.a[i];
   }
 }
@@ -182,7 +182,7 @@ inline void Negate()
 
 inline Number Dot(const This& rhs) const
 {
-  Number value = 0.0f;
+  Number value = 0;
   for (int i = 0; i < order; ++i)
     value += (a[i] * rhs.a[i]);
 
@@ -208,7 +208,7 @@ float Normalize()
     return length;
   }
 
-  Multiply(1.0f / length);
+  Multiply(static_cast<Number>(1) / length);
 
   return length;
 }
@@ -222,7 +222,7 @@ This Normalized() const
 
 inline bool IsUnity() const
 {
-  return Abs(SqrLength() - 1.0f) < SqrEpsilon;
+  return Abs(SqrLength() - static_cast<Number>(1)) < SqrEpsilon;
 }
 
 inline This Lerp(const This& to, float t) const
@@ -245,14 +245,14 @@ inline static This Slerp(const This& from, const This& to, float t)
   auto a = from.Normalized();
   auto b = to.Normalized();
 
-  auto angle = std::acosf(a.Dot(b));
+  auto angle = std::acosf(static_cast<float>(a.Dot(b)));
 
   if (angle < Epsilon)
     return Lerp(from, to, t).Normalized();
 
   const auto nt = 1.0f - t;
-  const auto sinA = static_cast<Number> (std::sinf(nt * angle));
-  const auto sinB = static_cast<Number> (std::sinf(t * angle));
+  const auto sinA = std::sinf(nt * angle);
+  const auto sinB = std::sinf(t * angle);
   auto dir = (a * sinA + b * sinB) / std::sin(angle);
 
   auto lengthA = from.Length();

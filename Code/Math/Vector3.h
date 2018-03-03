@@ -5,7 +5,7 @@
 
 #include "Vector2.h"
 #include "CoordinateOrientation.h"
-#include "System/CommonUtil.h"
+#include "System/MathUtil.h"
 
 #include <cmath>
 #include <ostream>
@@ -102,10 +102,10 @@ namespace HE
 
     inline float AngleTo(const Vector3& to) const
     {
-      Assert(! IsZero());
-      Assert(! to.IsZero());
-
-      return std::acos(Dot(to) / sqrtf(SqrLength() * to.SqrLength()));
+      Assert(!IsZero());
+      Assert(!to.IsZero());
+	  float r = sqrtf(static_cast<float>(SqrLength() * to.SqrLength()));
+      return std::acos(static_cast<float>(Dot(to)) / r);
     }
   };
 
@@ -116,15 +116,15 @@ namespace HE
   template <typename T> const Vector3<T> Vector3<T>::Z(0, 0, 1);
 
 #ifdef __RIGHT_HANDED__
-  template <typename T> const Vector3<T> Vector3<T>::Right(1.0f, 0.0f, 0.0f);
-  template <typename T> const Vector3<T> Vector3<T>::Forward(0.0f, 1.0f, 0.0f);
-  template <typename T> const Vector3<T> Vector3<T>::Up(0.0f, 0.0f, 1.0f);
+  template <typename T> const Vector3<T> Vector3<T>::Right(1, 0, 0);
+  template <typename T> const Vector3<T> Vector3<T>::Forward(0, 1, 0);
+  template <typename T> const Vector3<T> Vector3<T>::Up(0, 0, 1);
 #endif //__RIGHT_HANDED__
 
 #ifdef __LEFT_HANDED__
-  template <typename T> const Vector3<T> Vector3<T>::Right(1.0f, 0.0f, 0.0f);
-  template <typename T> const Vector3<T> Vector3<T>::Up(0.0f, 1.0f, 0.0f);
-  template <typename T> const Vector3<T> Vector3<T>::Forward(0.0f, 0.0f, 1.0f);
+  template <typename T> const Vector3<T> Vector3<T>::Right(1, 0, 0);
+  template <typename T> const Vector3<T> Vector3<T>::Up(0, 1, 0);
+  template <typename T> const Vector3<T> Vector3<T>::Forward(0, 0, 1);
 #endif //__LEFT_HANDED__
 
 

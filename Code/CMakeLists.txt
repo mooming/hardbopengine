@@ -12,7 +12,9 @@ include_directories ( ${CMAKE_SOURCE_DIR}
 link_directories (${CMAKE_SOURCE_DIR}/lib)
 
 
+add_subdirectory (Game)
 add_subdirectory (Math)
+add_subdirectory (Render)
 add_subdirectory (System)
 add_subdirectory (Test)
 

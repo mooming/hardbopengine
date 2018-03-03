@@ -21,6 +21,7 @@ add_library (Math STATIC
  Matrix4x4.cpp
  Quaternion.cpp
  RigidTransform.cpp
+ Transform.cpp
  UniformTransform.cpp
  Vector2.cpp
  Vector3.cpp

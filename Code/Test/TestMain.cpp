@@ -1,8 +1,8 @@
 // Copyright Hansol Park (anav96@naver.com, mooming.go@gmail.com). All rights reserved.
 
-#include "System/CommonUtil.h"
 #include "System/ComponentSystem.h"
 #include "System/LinkedList.h"
+#include "System/MathUtil.h"
 #include "System/Optional.h"
 #include "System/PoolAllocator.h"
 #include "System/StackAllocator.h"
@@ -38,7 +38,7 @@ int main(int argc, const char* argv[])
     testEnv.AddTest(new AllocatorTest());
     testEnv.AddTest(new StackAllocatorTest());
     testEnv.AddTest(new ArrayTest());
-    testEnv.AddTest(new CommonUtilTest());
+    testEnv.AddTest(new MathUtilTest());
     testEnv.AddTest(new ComponentSystemTest());
     testEnv.AddTest(new LinkedListTest());
     testEnv.AddTest(new OptionalTest());

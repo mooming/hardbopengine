@@ -2,14 +2,14 @@
 
 #include "UniformTransform.h"
 
+#include "../System/MathUtil.h"
 #include "../System/Optional.h"
-#include "../System/StdUtil.h"
 #include "../System/Vector.h"
 
 namespace HE
 {
 	template<typename Number>
-	class Transform
+	class Transform final
 	{
 	public:
 		using This = Transform;
@@ -50,18 +50,29 @@ namespace HE
 		{
 		}
 
-        Transform(Transform& parent) : trs(), parent(nullptr), children()
+		Transform(const UTransform& trs) : trs(trs), parent(nullptr), children()
         {
-            parent.Attach(*this);
         }
 
-        Transform(const UTransform& trs) : trs(trs), parent(nullptr), children()
-        {
-        }
+		~Transform()
+		{
+			if (parent)
+			{
+				parent->Detach(*this);
+			}
+
+			DetachAll();
+		}
 
 		void Attach(Transform& transform)
 		{
 			auto ptr = &transform;
+
+			if (ptr == parent)
+			{
+				parent->Detach(*this);
+			}
+
 			if (std::find(children.begin(), children.end(), ptr) != children.end())
 			{
 				AssertMessage(transform.parent == this, "Parent-Child Inconsistency");
@@ -74,23 +85,26 @@ namespace HE
 
         Transform* GetParent() const { return parent; }
 
-		bool Detach(Transform& transform)
+		void Detach(Transform& transform)
 		{
-			auto ptr = &transform;
-			for (auto it = children.begin(); it != children.end(); ++it)
-			{
-				auto child = *it;
-				if (child == ptr)
-				{
-					it = children.erase(it);
-					AssertMessage(child->parent == this, "Parent-Child Inconsistency");
-					child->parent = nullptr;
+			if (transform.parent != this)
+				return;
 
-					return true;
-				}
+			transform.parent = nullptr;
+
+			auto ptr = &transform;
+			children.Remove(ptr);
+		}
+
+		void DetachAll()
+		{
+			for (auto child : children)
+			{
+				AssertMessage(child->parent == this, "Parent-Child Inconsistency");
+				child->parent = nullptr;
 			}
 
-			return false;
+			children.Clear();
 		}
 
 		bool HasChild(const Transform& child) const
@@ -99,14 +113,14 @@ namespace HE
 			return std::find(children.cbegin(), children.cend(), ptr) != children.cend();
 		}
 
-		std::vector<Transform*>& GetChildren() { return children; }
-		const std::vector<Transform*>& GetChildren() const { return children; }
+		Vector<Transform*>& GetChildren() { return children; }
+		const Vector<Transform*>& GetChildren() const { return children; }
 
 		void Invalidate()
 		{
             if (!world)
                 return;
-            
+
 			world = nullptr;
 			for (auto child : children)
 			{
@@ -138,7 +152,7 @@ namespace HE
             {
                 return parent->GetWorldTransform() * trs;
             }
-            
+
             return trs;
         }
 
@@ -146,7 +160,7 @@ namespace HE
 
 		void Set(const Quat& r, Number s, const Vec3& t)
 		{
-			if (rotation == r && Equals(scale, s) && translation == t)
+			if (rotation == r && IsEqual(scale, s) && translation == t)
 				return;
 
 			rotation = r;
@@ -206,7 +220,7 @@ namespace HE
             os << "World Transform" << endl;
             os << t.GetWorldTransform() << endl;
         }
-        
+
         return os;
     }
 

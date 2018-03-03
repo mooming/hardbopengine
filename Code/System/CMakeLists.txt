@@ -25,6 +25,7 @@ add_library (System STATIC
  Optional.cpp
  PoolAllocator.cpp
  StackAllocator.cpp
+ StdUtil.cpp
  String.cpp
  TestCase.cpp
  TestEnv.cpp

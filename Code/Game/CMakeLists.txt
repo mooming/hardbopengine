@@ -1,5 +1,5 @@
 cmake_minimum_required (VERSION 2.6)
-project (Render)
+project (Game)
 
 if(CMAKE_COMPILER_IS_GNUCXX)
 	set(CMAKE_CXX_FLAGS "${ CMAKE_CXX_FLAGS } -Wall -Werror")
@@ -13,24 +13,26 @@ link_directories (${CMAKE_SOURCE_DIR}/lib)
 
 
 
-add_library (Render STATIC 
- Renderer.cpp
- MeshData.h
- Renderable.h
- Renderer.h
- RenderTarget.h
+add_library (Game STATIC 
+ GameEngine.cpp
+ GameObject.cpp
+ GameScene.cpp
+ GameEngine.h
+ GameObject.h
+ GameScene.h
 )
 
 if (APPLE)
 include_directories ( /System/Library/Frameworks )
 endif (APPLE)
 
-install (TARGETS Render DESTINATION ${CMAKE_SOURCE_DIR}/lib)
+install (TARGETS Game DESTINATION ${CMAKE_SOURCE_DIR}/lib)
 
 
-target_link_libraries (Render System Math)
+target_link_libraries (Game System Math Render)
 
-add_dependencies (Render System)
-add_dependencies (Render Math)
+add_dependencies (Game System)
+add_dependencies (Game Math)
+add_dependencies (Game Render)
 
 
