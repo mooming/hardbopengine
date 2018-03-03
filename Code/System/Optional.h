@@ -135,7 +135,7 @@ namespace HE
 
         inline const Type& Value() const
         {
-            return reinterpret_cast<Type&>(value[0]);
+            return reinterpret_cast<const Type&>(value[0]);
         }
 
     private:
