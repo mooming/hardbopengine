@@ -16,6 +16,7 @@
 #include "Math/Matrix3x3.h"
 #include "Math/Matrix4x4.h"
 #include "Math/Quaternion.h"
+#include "Math/Transform.h"
 #include "Math/UniformTransform.h"
 #include "Math/RigidTransform.h"
 #include "Math/AABB.h"
@@ -52,6 +53,7 @@ int main(int argc, const char* argv[])
     testEnv.AddTest(new UniformTransformTest());
     testEnv.AddTest(new RigidTransformTest());
     testEnv.AddTest(new AABBTest());
+    testEnv.AddTest(new TransformTest());
 
     testEnv.Start();
 

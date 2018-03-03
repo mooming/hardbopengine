@@ -16,8 +16,6 @@ link_directories (${CMAKE_SOURCE_DIR}/lib)
 
 add_library (Math STATIC 
  AABB.cpp
- AffineTransform.cpp
- EuclidSpace.cpp
  Matrix2x2.cpp
  Matrix3x3.cpp
  Matrix4x4.cpp
@@ -28,15 +26,14 @@ add_library (Math STATIC
  Vector3.cpp
  Vector4.cpp
  AABB.h
- AffineTransform.h
  CoordinateOrientation.h
- EuclidSpace.h
  Matrix2x2.h
  Matrix3x3.h
  Matrix4x4.h
  MatrixCommonImpl.inl
  Quaternion.h
  RigidTransform.h
+ Transform.h
  UniformTransform.h
  Vector2.h
  Vector3.h

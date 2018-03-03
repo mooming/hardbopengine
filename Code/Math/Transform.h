@@ -2,10 +2,9 @@
 
 #include "UniformTransform.h"
 
+#include "../System/Optional.h"
 #include "../System/StdUtil.h"
-
-#include <optional>
-#include <vector>
+#include "../System/Vector.h"
 
 namespace HE
 {
@@ -24,9 +23,12 @@ namespace HE
 		union
 		{
 			UTransform trs;
-			Quat rotation;
-			Number scale;
-			Vec3 translation;
+            struct
+            {
+                Quat rotation;
+                Number scale;
+                Vec3 translation;
+            };
 		};
 
 	private:
@@ -44,21 +46,33 @@ namespace HE
 		{
 		}
 
-		Transform(nullptr_t) : trs(nullptr), parent(nullptr), children()
+        Transform(std::nullptr_t) : trs(nullptr), parent(nullptr), children()
 		{
 		}
+
+        Transform(Transform& parent) : trs(), parent(nullptr), children()
+        {
+            parent.Attach(*this);
+        }
+
+        Transform(const UTransform& trs) : trs(trs), parent(nullptr), children()
+        {
+        }
 
 		void Attach(Transform& transform)
 		{
 			auto ptr = &transform;
-			if (std::find(children.cbegin(), children.cend(), ptr) != children.cend())
+			if (std::find(children.begin(), children.end(), ptr) != children.end())
 			{
-				AssertMessage(child->parent == this, "Parent-Child Inconsistency");
+				AssertMessage(transform.parent == this, "Parent-Child Inconsistency");
 				return;
 			}
 
-			children.push_back(ptr);
+            children.Add(ptr);
+            transform.parent = this;
 		}
+
+        Transform* GetParent() const { return parent; }
 
 		bool Detach(Transform& transform)
 		{
@@ -79,8 +93,9 @@ namespace HE
 			return false;
 		}
 
-		bool HasChild(const Transform& child)
+		bool HasChild(const Transform& child) const
 		{
+            auto ptr = &child;
 			return std::find(children.cbegin(), children.cend(), ptr) != children.cend();
 		}
 
@@ -89,6 +104,9 @@ namespace HE
 
 		void Invalidate()
 		{
+            if (!world)
+                return;
+            
 			world = nullptr;
 			for (auto child : children)
 			{
@@ -97,20 +115,36 @@ namespace HE
 			}
 		}
 
-		const UTransform& GetWorldTransform() const
+		const UTransform& GetWorldTransform()
 		{
 			if (world)
-				return world;
+				return *world;
 
 			if (parent)
-				return parent->GetWorldTransform() * trs;
+            {
+                world = parent->GetWorldTransform() * trs;
+                return *world;
+            }
 
 			return trs;
 		}
 
+        UTransform GetWorldTransform() const
+        {
+            if (world)
+                return *world;
+
+            if (parent)
+            {
+                return parent->GetWorldTransform() * trs;
+            }
+            
+            return trs;
+        }
+
 		const UTransform& GetLocalTransform() const { return trs; }
 
-		void Set(const Quaternion& r, Number s, const Vec3& t)
+		void Set(const Quat& r, Number s, const Vec3& t)
 		{
 			if (rotation == r && Equals(scale, s) && translation == t)
 				return;
@@ -122,7 +156,7 @@ namespace HE
 			Invalidate();
 		}
 
-		void Set(const Quaternion& r)
+		void Set(const Quat& r)
 		{
 			if (rotation == r)
 				return;
@@ -153,4 +187,49 @@ namespace HE
 		}
 	};
 
+    using FTransform = Transform<float>;
+    using DTransform = Transform<double>;
+
+    template <typename T>
+    inline std::ostream& operator<<(std::ostream& os, const Transform<T>& t)
+    {
+        using namespace std;
+
+        os << "Transform" << endl;
+        os << t.trs << endl;
+
+        auto parent = t.GetParent();
+        os << "Parent: " << parent << endl;
+
+        if (parent)
+        {
+            os << "World Transform" << endl;
+            os << t.GetWorldTransform() << endl;
+        }
+        
+        return os;
+    }
+
+} // HE
+
+#ifdef __UNIT_TEST__
+
+#include "System/TestCase.h"
+
+namespace HE
+{
+
+    class TransformTest : public TestCase
+    {
+    public:
+
+        TransformTest() : TestCase("TransformTest")
+        {
+        }
+
+    protected:
+        virtual bool DoTest() override;
+    };
 }
+
+#endif //__UNIT_TEST__

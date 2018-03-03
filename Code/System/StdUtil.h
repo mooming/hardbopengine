@@ -5,6 +5,8 @@
 
 #define ONCE while(false)
 
+#include <cstddef>
+
 namespace HE
 {
     class True_t {};
@@ -41,6 +43,9 @@ namespace HE
     {
         return reinterpret_cast<size_t>(ptr);
     }
+
+    extern bool Equals(float a, float b);
+    extern bool Equals(double a, double b);
 }
 
 #endif /* StdUtil */
