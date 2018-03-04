@@ -15,48 +15,50 @@ link_directories (${CMAKE_SOURCE_DIR}/lib)
 
 
 add_library (System STATIC 
- Allocator.cpp
- Array.cpp
- CommonUtil.cpp
- Component.cpp
- ComponentSystem.cpp
- LinkedList.cpp
- MemoryManager.cpp
- Optional.cpp
- PoolAllocator.cpp
- StackAllocator.cpp
- StdUtil.cpp
- String.cpp
- TestCase.cpp
  TestEnv.cpp
- Time.cpp
+ TestCase.cpp
+ LinkedList.cpp
+ StdUtil.cpp
+ Component.cpp
+ Optional.cpp
+ HardbopAllocator.cpp
+ String.cpp
+ Array.cpp
  Vector.cpp
- Allocator.h
- Array.h
- CommonUtil.h
- Component.h
- ComponentState.h
- ComponentSystem.h
- Constants.h
+ Allocator.cpp
+ MemoryManager.cpp
+ CommonUtil.cpp
+ StackAllocator.cpp
+ PoolAllocator.cpp
+ ComponentSystem.cpp
+ Time.cpp
+ Time.h
+ HardbopAllocator.h
  Debug.h
+ StackAllocator.h
+ Shareable.h
+ Types.h
+ StdUtil.h
  DoubleLinkedList.h
- Exception.h
+ MemoryManager.h
  Letter.h
  LinkedList.h
- MemoryManager.h
  Optional.h
- Platform.h
+ ComponentState.h
  PoolAllocator.h
- PrintArgs.h
- Shareable.h
- StackAllocator.h
- StdUtil.h
- String.h
  TestCase.h
+ Constants.h
  TestEnv.h
- Time.h
- Types.h
+ Allocator.h
+ Array.h
+ ComponentSystem.h
+ Component.h
+ MathUtil.h
  Vector.h
+ Exception.h
+ PrintArgs.h
+ Platform.h
+ String.h
 )
 
 if (APPLE)

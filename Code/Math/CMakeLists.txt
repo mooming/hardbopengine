@@ -15,31 +15,33 @@ link_directories (${CMAKE_SOURCE_DIR}/lib)
 
 
 add_library (Math STATIC 
- AABB.cpp
- Matrix2x2.cpp
- Matrix3x3.cpp
+ Vector4.cpp
+ Vector3.cpp
  Matrix4x4.cpp
- Quaternion.cpp
+ Matrix2x2.cpp
+ Vector2.cpp
+ OBB.cpp
+ AABB.cpp
+ Matrix3x3.cpp
  RigidTransform.cpp
  Transform.cpp
+ Quaternion.cpp
  UniformTransform.cpp
- Vector2.cpp
- Vector3.cpp
- Vector4.cpp
- AABB.h
- CoordinateOrientation.h
- Matrix2x2.h
- Matrix3x3.h
  Matrix4x4.h
- MatrixCommonImpl.inl
+ Vector2.h
+ CoordinateOrientation.h
+ Matrix3x3.h
  Quaternion.h
+ MatrixCommonImpl.inl
+ VectorCommonImpl.inl
+ Matrix2x2.h
  RigidTransform.h
+ Vector4.h
  Transform.h
  UniformTransform.h
- Vector2.h
+ OBB.h
+ AABB.h
  Vector3.h
- Vector4.h
- VectorCommonImpl.inl
 )
 
 if (APPLE)

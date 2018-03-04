@@ -93,7 +93,10 @@ namespace HE
 			transform.parent = nullptr;
 
 			auto ptr = &transform;
-			std::remove(children.begin(), children.end(), ptr);
+            auto it = std::find(children.begin(), children.end(), ptr);
+            Assert(it != children.end());
+
+            children.erase(it);
 		}
 
 		void DetachAll()

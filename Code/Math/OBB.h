@@ -25,7 +25,7 @@ namespace HE
 		{
 		}
 
-		OBB(nullptr_t) : center(nullptr), half(nullptr), rotation(nullptr)
+		OBB(std::nullptr_t) : center(nullptr), half(nullptr), rotation(nullptr)
 		{
 		}
 

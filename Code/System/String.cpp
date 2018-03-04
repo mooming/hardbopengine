@@ -64,7 +64,8 @@ String::String(const unsigned char value) : buffer(), hashCode(0)
     buffer->resize(16);
     auto& text = *buffer;
     snprintf(text.data(), text.size(), "0x%02X", value);
-
+    buffer->resize(strlen(text.data()) + 1);
+    
     CalculateHashCode();
 }
 
@@ -73,6 +74,7 @@ String::String(const short value) : buffer(), hashCode(0)
     buffer->resize(16);
     auto& text = *buffer;
     snprintf(text.data(), text.size(), "%d", value);
+    buffer->resize(strlen(text.data()) + 1);
 
     CalculateHashCode();
 }
@@ -82,13 +84,14 @@ String::String(const unsigned short value) : buffer(), hashCode(0)
     buffer->resize(16);
     auto& text = *buffer;
     snprintf(text.data(), text.size(), "%ud", value);
+    buffer->resize(strlen(text.data()) + 1);
 
     CalculateHashCode();
 }
 
 String::String(const int value) : buffer(), hashCode(0)
 {
-    buffer->reserve(16);
+    buffer->resize(16);
     auto& text = *buffer;
     snprintf(text.data(), text.capacity(), "%d", value);
     buffer->resize(strlen(text.data()) + 1);
@@ -101,6 +104,7 @@ String::String(const unsigned int value) : buffer(), hashCode(0)
     buffer->resize(16);
     auto& text = *buffer;
     snprintf(text.data(), text.size(), "%u", value);
+    buffer->resize(strlen(text.data()) + 1);
 
     CalculateHashCode();
 }
@@ -110,6 +114,7 @@ String::String(const long value) : buffer(), hashCode(0)
     buffer->resize(16);
     auto& text = *buffer;
     snprintf(text.data(), text.size(), "%ld", value);
+    buffer->resize(strlen(text.data()) + 1);
 
     CalculateHashCode();
 }
@@ -119,6 +124,7 @@ String::String(const unsigned long value) : buffer(), hashCode(0)
     buffer->resize(16);
     auto& text = *buffer;
     snprintf(text.data(), text.size(), "%lu", value);
+    buffer->resize(strlen(text.data()) + 1);
 
     CalculateHashCode();
 }
@@ -128,6 +134,7 @@ String::String(const long long value) : buffer(), hashCode(0)
     buffer->resize(16);
     auto& text = *buffer;
     snprintf(text.data(), text.size(), "%lld", value);
+    buffer->resize(strlen(text.data()) + 1);
 
     CalculateHashCode();
 }
@@ -137,6 +144,7 @@ String::String(const unsigned long long value) : buffer(), hashCode(0)
     buffer->resize(16);
     auto& text = *buffer;
     snprintf(text.data(), text.size(), "%llu", value);
+    buffer->resize(strlen(text.data()) + 1);
 
     CalculateHashCode();
 }
@@ -146,6 +154,7 @@ String::String(const float value) : buffer(), hashCode(0)
     buffer->resize(16);
     auto& text = *buffer;
     snprintf(text.data(), text.size(), "%f", value);
+    buffer->resize(strlen(text.data()) + 1);
 
     CalculateHashCode();
 }
@@ -155,6 +164,7 @@ String::String(const double value) : buffer(), hashCode(0)
     buffer->resize(16);
     auto& text = *buffer;
     snprintf(text.data(), text.size(), "%f", value);
+    buffer->resize(strlen(text.data()) + 1);
 
     CalculateHashCode();
 }
@@ -164,6 +174,7 @@ String::String(const long double value) : buffer(), hashCode(0)
     buffer->resize(16);
     auto& text = *buffer;
     snprintf(text.data(), text.size(), "%Lf", value);
+    buffer->resize(strlen(text.data()) + 1);
 
     CalculateHashCode();
 }

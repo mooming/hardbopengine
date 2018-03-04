@@ -16,11 +16,6 @@ bool HE::HardbopAllocatorTest::DoTest()
 		{
 			hbVector.push_back(i);
 		}
-
-		for (auto value : hbVector)
-		{
-			cout << value << endl;
-		}
 	}
 
 	return true;

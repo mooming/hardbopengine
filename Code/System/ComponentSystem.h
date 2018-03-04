@@ -8,6 +8,8 @@
 #include "Vector.h"
 #include "String.h"
 
+#include <algorithm>
+
 namespace HE
 {
     template <typename Component>
@@ -91,7 +93,7 @@ namespace HE
                 }
             }
 
-			std::swap(updateList, std::move(swapUpdateList));
+			std::swap(updateList, swapUpdateList);
             swapUpdateList.clear();
         }
 

@@ -14,6 +14,7 @@ link_directories (${CMAKE_SOURCE_DIR}/lib)
 
 
 add_library (Render STATIC 
+ Renderable.cpp
  Renderer.cpp
  MeshData.h
  Renderable.h

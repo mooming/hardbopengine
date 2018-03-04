@@ -42,7 +42,7 @@ bool VectorTest::DoTest()
 
         for (int i = 0; i < COUNT; ++i)
         {
-            strList.push_back(i);
+            strList.push_back(String(i));
         }
 
         int expValue = 0;
@@ -59,10 +59,10 @@ bool VectorTest::DoTest()
     }
 
     {
-        Vector<String> strList(COUNT);
+        Vector<String> strList;
         for (int i = 0; i < COUNT; ++i)
         {
-            strList.push_back(i);
+            strList.push_back(String(i));
         }
 
         int expValue = 0;

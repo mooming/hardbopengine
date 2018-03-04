@@ -33,7 +33,7 @@ bool ComponentSystemTest::DoTest()
         bool isReleased = false;
         bool isOnEnableCalled = false;
         bool isOnDisableCalled = false;
-
+        bool isValid = true;
         bool& testResult;
 
     public:
@@ -41,7 +41,9 @@ bool ComponentSystemTest::DoTest()
         {
         }
 
-        Test(Test&& rhs) : Component(rhs)
+        Test(const Test&) = delete;
+
+        Test(Test&& rhs) noexcept : Component(rhs)
             , isInit(rhs.isInit)
             , updateCount(rhs.updateCount)
             , isReleased(rhs.isReleased)
@@ -49,7 +51,7 @@ bool ComponentSystemTest::DoTest()
             , isOnDisableCalled(rhs.isOnDisableCalled)
             , testResult(rhs.testResult)
         {
-
+            rhs.isValid = false;
         }
 
         Test& operator= (const Test& rhs)
@@ -68,9 +70,13 @@ bool ComponentSystemTest::DoTest()
 
         virtual ~Test()
         {
+            if (!isValid)
+                return;
+            
             if (!isInit || !isOnEnableCalled || !isOnDisableCalled || !isReleased)
             {
                 testResult = false;
+                cerr << "Unexpected Test Destoy" << endl;
             }
         }
 

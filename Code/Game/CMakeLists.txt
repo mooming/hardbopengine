@@ -14,12 +14,12 @@ link_directories (${CMAKE_SOURCE_DIR}/lib)
 
 
 add_library (Game STATIC 
- GameEngine.cpp
  GameObject.cpp
  GameScene.cpp
- GameEngine.h
- GameObject.h
+ GameEngine.cpp
  GameScene.h
+ GameObject.h
+ GameEngine.h
 )
 
 if (APPLE)
