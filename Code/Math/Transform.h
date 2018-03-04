@@ -79,7 +79,7 @@ namespace HE
 				return;
 			}
 
-            children.Add(ptr);
+            children.push_back(ptr);
             transform.parent = this;
 		}
 
@@ -93,7 +93,7 @@ namespace HE
 			transform.parent = nullptr;
 
 			auto ptr = &transform;
-			children.Remove(ptr);
+			std::remove(children.begin(), children.end(), ptr);
 		}
 
 		void DetachAll()
@@ -104,7 +104,7 @@ namespace HE
 				child->parent = nullptr;
 			}
 
-			children.Clear();
+			children.clear();
 		}
 
 		bool HasChild(const Transform& child) const

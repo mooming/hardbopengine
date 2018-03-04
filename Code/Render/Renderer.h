@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Renderable.h"
 #include "../System/Vector.h"
 
 namespace HE
@@ -13,8 +14,15 @@ namespace HE
 
 	public:
 		Renderer();
+		virtual ~Renderer();
 
-		void Render();
-		void SetRenderTarget();
+		virtual void Render();
+
+		Renderable& Create();
+		void Remove(Renderable& renderable);
+
+	protected:
+		virtual void Open() = 0;
+		virtual void Close() = 0;
 	};
 }

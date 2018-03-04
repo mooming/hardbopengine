@@ -37,9 +37,9 @@ namespace HE
 
         inline operator bool() const
         {
-            return !initList.IsEmpty()
-                || !updateList.IsEmpty()
-                || !sleepList.IsEmpty();
+            return !initList.empty()
+                || !updateList.empty()
+                || !sleepList.empty();
         }
 
         inline const char* GetName() const { return name.ToCharArray(); }
@@ -47,7 +47,8 @@ namespace HE
         template <typename ... Types>
         inline Component& Create(Types&& ... args)
         {
-            auto& compo = initList.New(std::forward<Types>(args) ...);
+			initList.emplace_back(std::forward<Types>(args) ...);
+			auto& compo = initList.back();
             compo.SetState(ComponentState::BORN);
 
             return compo;
@@ -68,10 +69,10 @@ namespace HE
                 compo.Init();
                 compo.SetState(ComponentState::ALIVE);
                 compo.OnEnable();
-                updateList.Add(std::move(compo));
+                updateList.push_back(std::move(compo));
             }
 
-            initList.ChangeSize(0);
+            initList.clear();
         }
 
         inline void ProcessUpdate(const float deltaTime)
@@ -82,16 +83,16 @@ namespace HE
 
                 if (!compo.IsEnabled())
                 {
-                    transitionList.Add(std::move(compo));
+                    transitionList.push_back(std::move(compo));
                 }
                 else
                 {
-                    swapUpdateList.Add(std::move(compo));
+                    swapUpdateList.push_back(std::move(compo));
                 }
             }
 
-            updateList.Swap(std::move(swapUpdateList));
-            swapUpdateList.ChangeSize(0);
+			std::swap(updateList, std::move(swapUpdateList));
+            swapUpdateList.clear();
         }
 
         inline void ProcessTransition()
@@ -102,12 +103,12 @@ namespace HE
                 {
                 case ComponentState::ALIVE:
                     compo.OnEnable();
-                    updateList.Add(std::move(compo));
+                    updateList.push_back(std::move(compo));
                     break;
 
                 case ComponentState::SLEEP:
                     compo.OnDisable();
-                    sleepList.Add(std::move(compo));
+                    sleepList.push_back(std::move(compo));
                     break;
 
                 case ComponentState::DEAD:
@@ -125,7 +126,7 @@ namespace HE
                 }
             }
 
-            transitionList.Clear();
+            transitionList.clear();
         }
     };
 }

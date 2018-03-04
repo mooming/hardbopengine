@@ -18,7 +18,7 @@ namespace HE
     public:
         using Char = char;
 		//using Index = int;
-		
+
     private:
         Shareable<Vector<Char>> buffer;
         Index hashCode;
@@ -26,7 +26,7 @@ namespace HE
     public:
         String() : buffer(), hashCode(0)
         {
-            buffer->Add('\0');
+            buffer->push_back('\0');
         }
 
         String(String& rhs) : buffer(rhs.buffer), hashCode(rhs.hashCode)
@@ -78,8 +78,8 @@ namespace HE
         inline bool operator== (const char* rhs) const { return *this == String(rhs); }
         inline bool operator!= (const char* rhs) const { return !(*this == rhs); }
 
-        inline bool operator== (std::nullptr_t) const { return buffer->IsEmpty(); }
-        inline bool operator!= (std::nullptr_t) const { return !buffer->IsEmpty(); }
+        inline bool operator== (std::nullptr_t) const { return buffer->empty(); }
+        inline bool operator!= (std::nullptr_t) const { return !buffer->empty(); }
 
         String operator+ (String str)
         {
@@ -99,12 +99,12 @@ namespace HE
 
         inline Index Length() const
         {
-            return buffer->Size() - 1;
+            return buffer->size() - 1;
         }
 
         inline bool IsEmpty() const
         {
-            return buffer->IsEmpty();
+            return buffer->empty();
         }
 
         inline Index HashCode() const
@@ -220,8 +220,8 @@ namespace HE
             return String();
         }
 
-        inline Char* GetBuffer() { return buffer->ToRawArray(); }
-        inline const Char* GetBuffer() const { return buffer->ToRawArray(); }
+        inline Char* GetBuffer() { return buffer->data(); }
+        inline const Char* GetBuffer() const { return buffer->data(); }
         void ResetBuffer(size_t size);
 
         inline void Swap(String&& target)
@@ -291,54 +291,54 @@ namespace HE
 
         inline int ToInt() const
         {
-            return buffer ? std::stoi(buffer->ToRawArray()) : 0;
+            return buffer ? std::stoi(buffer->data()) : 0;
         }
 
         inline unsigned int ToUnsignedInt() const
         {
-            return buffer ? static_cast<unsigned int>(std::stoul(buffer->ToRawArray())) : 0;
+            return buffer ? static_cast<unsigned int>(std::stoul(buffer->data())) : 0;
         }
 
         inline long ToLong() const
         {
-            return buffer ? std::stol(buffer->ToRawArray()) : 0;
+            return buffer ? std::stol(buffer->data()) : 0;
         }
 
         inline unsigned long ToUnsignedLong() const
         {
-            return buffer ? std::stoul(buffer->ToRawArray()) : 0;
+            return buffer ? std::stoul(buffer->data()) : 0;
         }
 
         inline long long ToLongLong() const
         {
-            return buffer ? std::stoll(buffer->ToRawArray()) : 0;
+            return buffer ? std::stoll(buffer->data()) : 0;
         }
 
         inline unsigned long long ToUnsignedLongLong() const
         {
-            return buffer ? std::stoull(buffer->ToRawArray()) : 0;
+            return buffer ? std::stoull(buffer->data()) : 0;
         }
 
         inline float ToFloat() const
         {
-            return buffer ? std::stof(buffer->ToRawArray()) : 0.0f;
+            return buffer ? std::stof(buffer->data()) : 0.0f;
         }
 
         inline double ToDouble() const
         {
-            return buffer ? std::stod(buffer->ToRawArray()) : 0.0;
+            return buffer ? std::stod(buffer->data()) : 0.0;
         }
 
         inline long double ToLongDouble() const
         {
-            return buffer ? std::stold(buffer->ToRawArray()) : 0.0;
+            return buffer ? std::stold(buffer->data()) : 0.0;
         }
 
         inline void* ToPointer() const
         {
             if (buffer)
             {
-                unsigned long long address = std::stoull(buffer->ToRawArray(), 0, 16);
+                unsigned long long address = std::stoull(buffer->data(), 0, 16);
                 return reinterpret_cast<void*>(address);
             }
             return nullptr;

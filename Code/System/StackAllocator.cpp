@@ -145,7 +145,7 @@ bool StackAllocatorTest::DoTest()
 
     {
         Vector<int> a;
-        a.Add(0);
+        a.push_back(0);
     }
 
     if (stack.Usage() != 0)
@@ -156,9 +156,9 @@ bool StackAllocatorTest::DoTest()
 
     {
         Vector<int> a;
-        a.Add(0);
+        a.push_back(0);
         Vector<int> b;
-        b.Add(1);
+        b.push_back(1);
     }
 
     if (stack.Usage() != 0)

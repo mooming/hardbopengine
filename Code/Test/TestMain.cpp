@@ -1,6 +1,7 @@
 // Copyright Hansol Park (anav96@naver.com, mooming.go@gmail.com). All rights reserved.
 
 #include "System/ComponentSystem.h"
+#include "System/HardbopAllocator.h"
 #include "System/LinkedList.h"
 #include "System/MathUtil.h"
 #include "System/Optional.h"
@@ -37,6 +38,7 @@ int main(int argc, const char* argv[])
 
     testEnv.AddTest(new AllocatorTest());
     testEnv.AddTest(new StackAllocatorTest());
+	testEnv.AddTest(new HardbopAllocatorTest());
     testEnv.AddTest(new ArrayTest());
     testEnv.AddTest(new MathUtilTest());
     testEnv.AddTest(new ComponentSystemTest());

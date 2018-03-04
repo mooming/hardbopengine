@@ -75,13 +75,13 @@ namespace HE
     template <typename Type>
     inline Type* Allocate(size_t size)
     {
-        return static_cast<Type*>(Allocate(size));
+        return static_cast<Type*>(Allocate(size * sizeof(Type)));
     }
 
     template <typename Type>
     inline Type* Allocate(AllocatorId id, size_t size)
     {
-        return static_cast<Type*>(Allocate(id, size));
+        return static_cast<Type*>(Allocate(id, size * sizeof(Type)));
     }
 
     template <typename Type, typename ... Types>

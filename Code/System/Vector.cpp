@@ -62,7 +62,7 @@ bool VectorTest::DoTest()
         Vector<String> strList(COUNT);
         for (int i = 0; i < COUNT; ++i)
         {
-            strList.Add(i);
+            strList.push_back(i);
         }
 
         int expValue = 0;
@@ -82,7 +82,7 @@ bool VectorTest::DoTest()
         Vector<int> intList;
         for (int i = 0; i < COUNT; ++i)
         {
-            intList.Add(i);
+            intList.push_back(i);
         }
 
         int expValue = 0;
@@ -106,7 +106,7 @@ bool VectorTest::DoTest()
         Vector<int> intList;
         for (int i = 0; i < COUNT; ++i)
         {
-            intList.Add(i);
+            intList.push_back(i);
         }
 
         for (int i = 0; i < COUNT; ++i)
@@ -162,7 +162,7 @@ bool VectorTest::DoTest()
         Vector<int> intList;
         for (int i = 0; i < COUNT; ++i)
         {
-            intList.Add(i);
+            intList.push_back(i);
         }
 
         {

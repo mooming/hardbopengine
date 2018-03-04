@@ -35,12 +35,12 @@ bool HE::Vector4Test::DoTest()
     for (int i = 0; i < 1000000; ++i)
     {
         const float x = static_cast<float>(i);
-        vertices.New(x, 0.0f, 0.0f);
-        vertices.New(0.0f, x, 0.0f);
-        vertices.New(0.0f, 0.0f, x);
-        vertices.New(x, x, 0.0f);
-        vertices.New(0.0f, x, x);
-        vertices.New(x, x, x);
+        vertices.emplace_back(x, 0.0f, 0.0f);
+        vertices.emplace_back(0.0f, x, 0.0f);
+        vertices.emplace_back(0.0f, 0.0f, x);
+        vertices.emplace_back(x, x, 0.0f);
+        vertices.emplace_back(0.0f, x, x);
+        vertices.emplace_back(x, x, x);
     }
 
     {

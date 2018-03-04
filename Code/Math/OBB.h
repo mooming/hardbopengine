@@ -71,6 +71,12 @@ namespace HE
 			return ToObjectSpace(point);
 		}
 
+		bool HasIntersection(const OBB& obb, const Vec3& objPosition, const Quat& objRot)
+		{
+
+			return false;
+		}
+
 	private:
 		Vec3 ToOBBSpace(const Vec3& objSpacePoint) const
 		{

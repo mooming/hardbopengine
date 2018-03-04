@@ -3,6 +3,7 @@
 #include "System/String.h"
 
 #include "System/Allocator.h"
+#include "System/Debug.h"
 #include "System/MemoryManager.h"
 #include "System/StdUtil.h"
 
@@ -15,7 +16,7 @@ String::String(const bool value) : buffer(), hashCode(0)
 {
     if (value)
     {
-        buffer->ChangeSize(5);
+        buffer->resize(5);
 
         auto& text = *buffer;
         text[0] = 't';
@@ -26,7 +27,7 @@ String::String(const bool value) : buffer(), hashCode(0)
     }
     else
     {
-        buffer->ChangeSize(6);
+        buffer->resize(6);
 
         auto& text = *buffer;
         text[0] = 'f';
@@ -42,15 +43,15 @@ String::String(const bool value) : buffer(), hashCode(0)
 
 String::String(const Pointer ptr) : buffer(), hashCode(0)
 {
-    buffer->ChangeSize(32);
+    buffer->resize(32);
     auto& text = *buffer;
-    snprintf(text.ToRawArray(), text.Size(), "%p", ptr);
+    snprintf(text.data(), text.size(), "%p", ptr);
     CalculateHashCode();
 }
 
 String::String(const char letter) : buffer(), hashCode(0)
 {
-    buffer->ChangeSize(2);
+    buffer->resize(2);
     auto& text = *buffer;
     text[0] = letter;
     text[1] = '\0';
@@ -60,109 +61,109 @@ String::String(const char letter) : buffer(), hashCode(0)
 
 String::String(const unsigned char value) : buffer(), hashCode(0)
 {
-    buffer->ChangeSize(16);
+    buffer->resize(16);
     auto& text = *buffer;
-    snprintf(text.ToRawArray(), text.Size(), "0x%02X", value);
+    snprintf(text.data(), text.size(), "0x%02X", value);
 
     CalculateHashCode();
 }
 
 String::String(const short value) : buffer(), hashCode(0)
 {
-    buffer->ChangeSize(16);
+    buffer->resize(16);
     auto& text = *buffer;
-    snprintf(text.ToRawArray(), text.Size(), "%d", value);
+    snprintf(text.data(), text.size(), "%d", value);
 
     CalculateHashCode();
 }
 
 String::String(const unsigned short value) : buffer(), hashCode(0)
 {
-    buffer->ChangeSize(16);
+    buffer->resize(16);
     auto& text = *buffer;
-    snprintf(text.ToRawArray(), text.Size(), "%ud", value);
+    snprintf(text.data(), text.size(), "%ud", value);
 
     CalculateHashCode();
 }
 
 String::String(const int value) : buffer(), hashCode(0)
 {
-    buffer->Reserve(16);
+    buffer->reserve(16);
     auto& text = *buffer;
-    snprintf(text.ToRawArray(), text.Capacity(), "%d", value);
-    buffer->ChangeSize(strlen(text.ToRawArray()) + 1);
+    snprintf(text.data(), text.capacity(), "%d", value);
+    buffer->resize(strlen(text.data()) + 1);
 
     CalculateHashCode();
 }
 
 String::String(const unsigned int value) : buffer(), hashCode(0)
 {
-    buffer->ChangeSize(16);
+    buffer->resize(16);
     auto& text = *buffer;
-    snprintf(text.ToRawArray(), text.Size(), "%u", value);
+    snprintf(text.data(), text.size(), "%u", value);
 
     CalculateHashCode();
 }
 
 String::String(const long value) : buffer(), hashCode(0)
 {
-    buffer->ChangeSize(16);
+    buffer->resize(16);
     auto& text = *buffer;
-    snprintf(text.ToRawArray(), text.Size(), "%ld", value);
+    snprintf(text.data(), text.size(), "%ld", value);
 
     CalculateHashCode();
 }
 
 String::String(const unsigned long value) : buffer(), hashCode(0)
 {
-    buffer->ChangeSize(16);
+    buffer->resize(16);
     auto& text = *buffer;
-    snprintf(text.ToRawArray(), text.Size(), "%lu", value);
+    snprintf(text.data(), text.size(), "%lu", value);
 
     CalculateHashCode();
 }
 
 String::String(const long long value) : buffer(), hashCode(0)
 {
-    buffer->ChangeSize(16);
+    buffer->resize(16);
     auto& text = *buffer;
-    snprintf(text.ToRawArray(), text.Size(), "%lld", value);
+    snprintf(text.data(), text.size(), "%lld", value);
 
     CalculateHashCode();
 }
 
 String::String(const unsigned long long value) : buffer(), hashCode(0)
 {
-    buffer->ChangeSize(16);
+    buffer->resize(16);
     auto& text = *buffer;
-    snprintf(text.ToRawArray(), text.Size(), "%llu", value);
+    snprintf(text.data(), text.size(), "%llu", value);
 
     CalculateHashCode();
 }
 
 String::String(const float value) : buffer(), hashCode(0)
 {
-    buffer->ChangeSize(16);
+    buffer->resize(16);
     auto& text = *buffer;
-    snprintf(text.ToRawArray(), text.Size(), "%f", value);
+    snprintf(text.data(), text.size(), "%f", value);
 
     CalculateHashCode();
 }
 
 String::String(const double value) : buffer(), hashCode(0)
 {
-    buffer->ChangeSize(16);
+    buffer->resize(16);
     auto& text = *buffer;
-    snprintf(text.ToRawArray(), text.Size(), "%f", value);
+    snprintf(text.data(), text.size(), "%f", value);
 
     CalculateHashCode();
 }
 
 String::String(const long double value) : buffer(), hashCode(0)
 {
-    buffer->ChangeSize(16);
+    buffer->resize(16);
     auto& text = *buffer;
-    snprintf(text.ToRawArray(), text.Size(), "%Lf", value);
+    snprintf(text.data(), text.size(), "%Lf", value);
 
     CalculateHashCode();
 }
@@ -170,9 +171,9 @@ String::String(const long double value) : buffer(), hashCode(0)
 String::String(const char* text) : buffer(), hashCode(0)
 {
     const auto totalLength = strlen(text) + 1;
-    buffer->ChangeSize(totalLength);
+    buffer->resize(totalLength);
     Vector<Char>& textVec = *buffer;
-    memcpy(textVec.ToRawArray(), text, totalLength);
+    memcpy(textVec.data(), text, totalLength);
 
     CalculateHashCode();
 }
@@ -192,10 +193,10 @@ String::String(const String& string, Index startIndex, Index endIndex) : buffer(
 
     if (length > 0)
     {
-        buffer->ChangeSize(length + 1);
+        buffer->resize(length + 1);
 
-        auto ptr = buffer->ToRawArray();
-        memcpy(ptr, string.buffer->ToRawArray() + startIndex, length);
+        auto ptr = buffer->data();
+        memcpy(ptr, string.buffer->data() + startIndex, length);
         ptr[length] = '\0';
 
         CalculateHashCode();
@@ -215,8 +216,8 @@ String& String::operator=(const char* text)
     else
     {
         const auto textLength = strlen(text) + 1;
-        buffer->ChangeSize(textLength);
-        memcpy(buffer->ToRawArray(), text, textLength);
+        buffer->resize(textLength);
+        memcpy(buffer->data(), text, textLength);
     }
 
     return *this;
@@ -230,9 +231,9 @@ String& String::operator= (const String& rhs)
     }
     else
     {
-        const auto length = rhs.buffer->Size();
-        buffer->ChangeSize(length);
-        memcpy(buffer->ToRawArray(), rhs.buffer->ToRawArray(), length);
+        const auto length = rhs.buffer->size();
+        buffer->resize(length);
+        memcpy(buffer->data(), rhs.buffer->data(), length);
     }
 
     return *this;
@@ -283,7 +284,7 @@ bool String::operator==(const String& string) const
 
 const char* String::ToCharArray() const
 {
-    return buffer ? buffer.Get().ToRawArray() : "";
+    return buffer ? buffer.Get().data() : "";
 }
 
 String String::Clone() const
@@ -291,7 +292,8 @@ String String::Clone() const
     String str;
     Assert(str.buffer);
 
-    str.buffer->Swap(buffer->Clone());
+
+    *(str.buffer) = *buffer;
 
     return str;
 }
@@ -408,8 +410,8 @@ String String::Append(const Char letter) const
     String str;
     const auto length = Length();
 
-    str.buffer->ChangeSize(length + sizeof(Char) + 1);
-    memcpy(str.buffer->ToRawArray(), buffer->ToRawArray(), length);
+    str.buffer->resize(length + sizeof(Char) + 1);
+    memcpy(str.buffer->data(), buffer->data(), length);
 
     (*str.buffer)[length] = letter;
     (*str.buffer)[length + 1] = '\0';
@@ -426,10 +428,10 @@ String String::Append(const int value) const
     const Index tmpLength = static_cast<Index>(strlen(tmp));
 
     String str;
-    str.buffer->ChangeSize(length + tmpLength + 1);
+    str.buffer->resize(length + tmpLength + 1);
 
-    memcpy(str.buffer->ToRawArray(), buffer->ToRawArray(), length);
-    memcpy(str.buffer->ToRawArray() + length, tmp, tmpLength + 1);
+    memcpy(str.buffer->data(), buffer->data(), length);
+    memcpy(str.buffer->data() + length, tmp, tmpLength + 1);
 
     return str;
 }
@@ -443,10 +445,10 @@ String String::Append(const float value) const
     const Index tmpLength = static_cast<Index>(strlen(tmp));
 
     String str;
-    str.buffer->ChangeSize(length + tmpLength + 1);
+    str.buffer->resize(length + tmpLength + 1);
 
-    memcpy(str.buffer->ToRawArray(), buffer->ToRawArray(), length);
-    memcpy(str.buffer->ToRawArray() + length, tmp, tmpLength + 1);
+    memcpy(str.buffer->data(), buffer->data(), length);
+    memcpy(str.buffer->data() + length, tmp, tmpLength + 1);
 
     return str;
 }
@@ -457,10 +459,10 @@ String String::Append(const Char* text) const
     const Index textLength = static_cast<Index>(strlen(text));
 
     String str;
-    str.buffer->ChangeSize(length + textLength + 1);
+    str.buffer->resize(length + textLength + 1);
 
-    memcpy(str.buffer->ToRawArray(), buffer->ToRawArray(), length);
-    memcpy(str.buffer->ToRawArray() + length, text, textLength + 1);
+    memcpy(str.buffer->data(), buffer->data(), length);
+    memcpy(str.buffer->data() + length, text, textLength + 1);
 
     return str;
 }
@@ -474,10 +476,10 @@ String String::Append(const String& string) const
     const auto strLength = string.Length();
 
     String str;
-    str.buffer->ChangeSize(length + strLength + 1);
+    str.buffer->resize(length + strLength + 1);
 
-    memcpy(str.buffer->ToRawArray(), buffer->ToRawArray(), length);
-    memcpy(str.buffer->ToRawArray() + length, string.buffer->ToRawArray(), strLength + 1);
+    memcpy(str.buffer->data(), buffer->data(), length);
+    memcpy(str.buffer->data() + length, string.buffer->data(), strLength + 1);
 
     return str;
 }
@@ -485,7 +487,7 @@ String String::Append(const String& string) const
 void String::AppendSelf(const Char letter)
 {
     const auto index = Length();
-    buffer->Add('\0');
+    buffer->push_back('\0');
     buffer.Get()[index] = letter;
 }
 
@@ -498,13 +500,13 @@ void String::AppendSelf(const int value)
     const Index tmpLength = static_cast<Index>(strlen(tmp));
     const auto newLength = length + tmpLength + 1;
 
-    if (newLength > buffer->Capacity())
+    if (newLength > buffer->capacity())
     {
-        buffer->Reserve(newLength * 3 / 2);
+        buffer->reserve(newLength * 3 / 2);
     }
 
-    buffer->ChangeSize(newLength);
-    memcpy(buffer->ToRawArray() + length, tmp, tmpLength + 1);
+    buffer->resize(newLength);
+    memcpy(buffer->data() + length, tmp, tmpLength + 1);
 }
 
 void String::AppendSelf(const float value)
@@ -516,13 +518,13 @@ void String::AppendSelf(const float value)
     const Index tmpLength = static_cast<Index>(strlen(tmp));
     const auto newLength = length + tmpLength + 1;
 
-    if (newLength > buffer->Capacity())
+    if (newLength > buffer->capacity())
     {
-        buffer->Reserve(newLength * 3 / 2);
+        buffer->reserve(newLength * 3 / 2);
     }
 
-    buffer->ChangeSize(newLength);
-    memcpy(buffer->ToRawArray() + length, tmp, tmpLength + 1);
+    buffer->resize(newLength);
+    memcpy(buffer->data() + length, tmp, tmpLength + 1);
 }
 
 void String::AppendSelf(const Char* text)
@@ -531,13 +533,13 @@ void String::AppendSelf(const Char* text)
     const Index textLength = static_cast<Index>(strlen(text));;
     const auto newLength = length + textLength + 1;
 
-    if (newLength > buffer->Capacity())
+    if (newLength > buffer->capacity())
     {
-        buffer->Reserve(newLength * 3 / 2);
+        buffer->reserve(newLength * 3 / 2);
     }
 
-    buffer->ChangeSize(newLength);
-    memcpy(buffer->ToRawArray() + length, text, textLength + 1);
+    buffer->resize(newLength);
+    memcpy(buffer->data() + length, text, textLength + 1);
 }
 
 void String::AppendSelf(const String& string)
@@ -549,13 +551,13 @@ void String::AppendSelf(const String& string)
     const Index textLength = string.Length();
     const auto newLength = length + textLength + 1;
 
-    if (newLength > buffer->Capacity())
+    if (newLength > buffer->capacity())
     {
-        buffer->Reserve(newLength * 3 / 2);
+        buffer->reserve(newLength * 3 / 2);
     }
 
-    buffer->ChangeSize(newLength);
-    memcpy(buffer->ToRawArray() + length, string.buffer->ToRawArray(), textLength + 1);
+    buffer->resize(newLength);
+    memcpy(buffer->data() + length, string.buffer->data(), textLength + 1);
 }
 
 String String::Replace(const String& from, const String& to, Index offset, Index endIndex)  const
@@ -572,7 +574,7 @@ String String::ReplaceAll(char from, char to) const
         return String();
 
     String str = Clone();
-    Char* data = str.buffer->ToRawArray();
+    Char* data = str.buffer->data();
     Assert(data != nullptr);
 
     Index length = str.Length();
@@ -607,7 +609,7 @@ void String::CalculateHashCode()
     hashCode = 5381;
 
     const auto length = Length();
-    auto text = buffer->ToRawArray();
+    auto text = buffer->data();
 
     Assert(length != 0 || text[0] == '\0');
 
@@ -620,9 +622,9 @@ void String::CalculateHashCode()
 
 void String::ResetBuffer(size_t size)
 {
-    buffer->Reserve(static_cast<Index>(size + 1));
-    buffer->Clear();
-    buffer->Add('\0');
+    buffer->reserve(static_cast<Index>(size + 1));
+    buffer->clear();
+    buffer->push_back('\0');
 }
 
 #ifdef __UNIT_TEST__
