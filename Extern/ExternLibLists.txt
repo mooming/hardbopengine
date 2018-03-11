@@ -1,0 +1,6 @@
+1. libpng-1.6.34
+- http://www.libpng.org/pub/png/libpng.html
+
+2. rapidjson
+- http://rapidjson.org/
+- git clone git@github.com:Tencent/rapidjson.git
