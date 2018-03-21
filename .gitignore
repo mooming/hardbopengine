@@ -5,6 +5,8 @@ CMakeFiles
 MakeFile
 nbproject
 xcode
+vs
+Solutions
 *.a
 compile_commands.json
 *.h#
