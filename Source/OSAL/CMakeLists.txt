@@ -1,5 +1,5 @@
 cmake_minimum_required (VERSION 3.12)
-project (hardbopengine)
+project (OSAL)
 
 set (CMAKE_CXX_STANDARD 17)
 
@@ -16,8 +16,20 @@ include_directories ( ${CMAKE_SOURCE_DIR}
  )
 link_directories (${CMAKE_SOURCE_DIR}/lib)
 
-add_subdirectory (Source)
 
+add_library (OSAL STATIC 
+ Directory.cpp
+ OSAbstractLayer.cpp
+ Directory.h
+ File.h
+ OSAbstractLayer.h
+)
+
+if (APPLE)
+include_directories ( /System/Library/Frameworks )
+endif (APPLE)
+
+install (TARGETS OSAL DESTINATION ${CMAKE_SOURCE_DIR}/lib)
 
 
 

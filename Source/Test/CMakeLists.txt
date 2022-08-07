@@ -1,5 +1,5 @@
 cmake_minimum_required (VERSION 3.12)
-project (hardbopengine)
+project (Test)
 
 set (CMAKE_CXX_STANDARD 17)
 
@@ -16,8 +16,21 @@ include_directories ( ${CMAKE_SOURCE_DIR}
  )
 link_directories (${CMAKE_SOURCE_DIR}/lib)
 
-add_subdirectory (Source)
 
+add_library (Test STATIC 
+ TestCase.cpp
+ TestEnv.cpp
+ UnitTestCollection.cpp
+ TestCase.h
+ TestEnv.h
+ UnitTestCollection.h
+)
+
+if (APPLE)
+include_directories ( /System/Library/Frameworks )
+endif (APPLE)
+
+install (TARGETS Test DESTINATION ${CMAKE_SOURCE_DIR}/lib)
 
 
 

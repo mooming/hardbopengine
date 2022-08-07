@@ -1,5 +1,5 @@
 cmake_minimum_required (VERSION 3.12)
-project (hardbopengine)
+project (String)
 
 set (CMAKE_CXX_STANDARD 17)
 
@@ -16,8 +16,24 @@ include_directories ( ${CMAKE_SOURCE_DIR}
  )
 link_directories (${CMAKE_SOURCE_DIR}/lib)
 
-add_subdirectory (Source)
 
+add_library (String STATIC 
+ StaticString.cpp
+ StaticStringTable.cpp
+ String.cpp
+ StringUtil.cpp
+ Letter.h
+ StaticString.h
+ StaticStringTable.h
+ String.h
+ StringUtil.h
+)
+
+if (APPLE)
+include_directories ( /System/Library/Frameworks )
+endif (APPLE)
+
+install (TARGETS String DESTINATION ${CMAKE_SOURCE_DIR}/lib)
 
 
 

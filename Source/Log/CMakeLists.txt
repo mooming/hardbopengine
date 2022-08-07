@@ -1,5 +1,5 @@
 cmake_minimum_required (VERSION 3.12)
-project (hardbopengine)
+project (Log)
 
 set (CMAKE_CXX_STANDARD 17)
 
@@ -16,8 +16,19 @@ include_directories ( ${CMAKE_SOURCE_DIR}
  )
 link_directories (${CMAKE_SOURCE_DIR}/lib)
 
-add_subdirectory (Source)
 
+add_library (Log STATIC 
+ Log.cpp
+ Log.h
+ LogUtil.h
+ PrintArgs.h
+)
+
+if (APPLE)
+include_directories ( /System/Library/Frameworks )
+endif (APPLE)
+
+install (TARGETS Log DESTINATION ${CMAKE_SOURCE_DIR}/lib)
 
 
 

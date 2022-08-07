@@ -4,15 +4,20 @@
 
 bin
 cmakebuild
+build
+hengine
 
 CMakeCache.txt
 MakeFiles
 CMakeFiles
 MakeFile
 nbproject
+install_manifest.txt
+null.d
 
 xcode
-vs
+.vs
+.vscode
 Solutions
 cmakebuild
 CMakeScripts
@@ -25,3 +30,4 @@ compile_commands.json
 *.txt#
 *.txt~
 #*
+*.xcodeproj
