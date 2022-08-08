@@ -67,7 +67,7 @@ namespace HE
       This result;
 
       const Number det = Determinant();
-      FatalAssertMessage(row == column && det != 0, "The matrix is not invertible.");
+      FatalAssert(row == column && det != 0, "The matrix is not invertible.");
 
       const Number invDet = static_cast<Number> (1) / det;
       result.m11 = invDet * m22;

@@ -2,7 +2,7 @@
 
 #pragma once
 
-#include "Allocator.h"
+#include "MemoryManager.h"
 
 
 namespace HE
@@ -22,7 +22,8 @@ namespace HE
             template <typename ... Types>
             static Body* Create(Types&& ... args)
             {
-                auto newBody = New<Body>(std::forward<Types>(args) ...);
+                auto& mmgr = MemoryManager::GetInstance();
+                auto newBody = mmgr.New<Body>(std::forward<Types>(args) ...);
                 return newBody->Reference();
             }
 
@@ -50,7 +51,8 @@ namespace HE
 
                     if (count == 0)
                     {
-                        Delete<Body>(this);
+                        auto& mmgr = MemoryManager::GetInstance();
+                        mmgr.Delete<Body>(this);
                     }
                 }
             }

@@ -1,7 +1,7 @@
 cmake_minimum_required (VERSION 3.12)
 project (System)
 
-set (CMAKE_CXX_STANDARD 17)
+set (CMAKE_CXX_STANDARD 20)
 
 if (MSVC)
 	add_compile_options (/W4 /WX)
@@ -21,6 +21,9 @@ add_library (System STATIC
  CommandLineArguments.cpp
  Component.cpp
  ComponentSystem.cpp
+ Task.cpp
+ TaskQueue.cpp
+ TaskSystem.cpp
  Time.cpp
  CommandLineArguments.h
  CommonUtil.h
@@ -30,6 +33,9 @@ add_library (System STATIC
  Constants.h
  Debug.h
  Exception.h
+ Task.h
+ TaskQueue.h
+ TaskSystem.h
  Time.h
  Types.h
 )

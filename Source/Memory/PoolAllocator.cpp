@@ -2,6 +2,7 @@
 
 #include "PoolAllocator.h"
 
+#include "MemoryManager.h"
 #include "System/Debug.h"
 #include "System/Exception.h"
 #include "System/CommonUtil.h"
@@ -10,12 +11,12 @@
 using namespace HE;
 
 PoolAllocator::PoolAllocator(Index blockSize, Index numberOfBlocks)
-    : Allocator()
+    : id(InvalidAllocatorID)
     , blockSize(blockSize)
     , numberOfBlocks(numberOfBlocks)
     , numberOfFreeBlocks(numberOfBlocks)
     , buffer(nullptr)
-    , indexType(U32)
+    , indexType(IndexType::U32)
 {
     if (blockSize == 0)
     {
@@ -42,21 +43,22 @@ PoolAllocator::PoolAllocator(Index blockSize, Index numberOfBlocks)
 
     if (numberOfBlocks <= 0xFF)
     {
-        indexType = U8;
+        indexType = IndexType::U8;
     }
     else if (numberOfBlocks <= 0xFFFF)
     {
-        indexType = U16;
+        indexType = IndexType::U16;
     }
 
+    auto& mmgr = MemoryManager::GetInstance();
     const size_t totalSize = blockSize * numberOfBlocks;
-    buffer = static_cast<Byte*>(HE::Allocate(totalSize));
+    buffer = static_cast<Byte*>(mmgr.Allocate(totalSize));
 
     availables = &buffer[0];
 
     switch (indexType)
     {
-    case U8:
+    case IndexType::U8:
         for (uint32_t i = 0; i < numberOfBlocks; ++i)
         {
             Pointer tmp = &buffer[i * blockSize];
@@ -64,7 +66,7 @@ PoolAllocator::PoolAllocator(Index blockSize, Index numberOfBlocks)
         }
         break;
 
-    case U16:
+    case IndexType::U16:
         for (uint32_t i = 0; i < numberOfBlocks; ++i)
         {
             Pointer tmp = &buffer[i * blockSize];
@@ -84,7 +86,9 @@ PoolAllocator::PoolAllocator(Index blockSize, Index numberOfBlocks)
 
 PoolAllocator::~PoolAllocator()
 {
-    HE::Deallocate(buffer);
+    auto& mmgr = MemoryManager::GetInstance();
+    const size_t totalSize = blockSize * numberOfBlocks;
+    mmgr.Deallocate(buffer, totalSize);
 }
 
 Pointer PoolAllocator::Allocate()
@@ -152,11 +156,11 @@ Index PoolAllocator::GetIndex(Pointer ptr)
     uint32_t index = 0;
     switch (indexType)
     {
-    case U8:
+    case IndexType::U8:
         index = GetAs<uint8_t>(ptr);
         break;
 
-    case U16:
+    case IndexType::U16:
         index = GetAs<uint16_t>(ptr);
         break;
 
@@ -165,7 +169,7 @@ Index PoolAllocator::GetIndex(Pointer ptr)
         break;
     }
 
-    AssertMessage(index <= numberOfBlocks
+    Assert(index <= numberOfBlocks
         , "PoolAllocator: out of bounds index = %u / %u", index, numberOfBlocks);
     return index;
 }
@@ -173,16 +177,16 @@ Index PoolAllocator::GetIndex(Pointer ptr)
 
 void PoolAllocator::SetIndex(Pointer ptr, Index index)
 {
-    AssertMessage(index < numberOfBlocks
+    Assert(index < numberOfBlocks
         , "PoolAllocator: out of bounds index = %u / %u", index, numberOfBlocks);
 
     switch (indexType)
     {
-    case U8:
+    case IndexType::U8:
         SetAs<uint8_t>(ptr, static_cast<uint8_t>(index));
         break;
 
-    case U16:
+    case IndexType::U16:
         SetAs<uint16_t>(ptr, static_cast<uint16_t>(index));
         break;
 

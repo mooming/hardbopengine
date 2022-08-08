@@ -2,17 +2,20 @@
 
 #pragma once
 
-#include "Allocator.h"
+#include "AllocatorID.h"
+#include "System/Types.h"
+
 
 namespace HE
 {
-	class StackAllocator : public Allocator
+	class StackAllocator final
 	{
 	public:
 		using This = StackAllocator;
         using SizeType = size_t;
 
     private:
+        TAllocatorID id;
         SizeType capacity;
         SizeType freeSize;
         SizeType cursor;
@@ -24,16 +27,18 @@ namespace HE
         };
 
 	public:
-		StackAllocator(size_t capacity, AllocatorId allocatorId = NATIVE_ALLOCATOR_ID);
-		virtual ~StackAllocator();
+		StackAllocator(const char* name, size_t capacity);
+        ~StackAllocator();
 
-		virtual Pointer Allocate(size_t size) override;
-		virtual void Deallocate(const Pointer ptr) override;
+		Pointer Allocate(size_t size);
+		void Deallocate(const Pointer ptr);
 
-        virtual inline size_t GetSize(const Pointer) const override { return 0; }
-		virtual size_t Usage() const override;
-		virtual size_t Available() const override;
-
+        size_t Usage() const;
+        size_t Available() const;
+        
+        inline auto GetID() const { return id; }
+        inline size_t GetSize(const Pointer) const { return 0; }
+        
     private:
         bool IsMine(Pointer ptr) const;
 	};

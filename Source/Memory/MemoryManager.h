@@ -1,77 +1,152 @@
-// Created by mooming.go@gmail.com, 2017
+// Created by mooming.go@gmail.com, 2022
 
 #pragma once
 
+#include "AllocatorID.h"
+#include "Config/EngineConfig.h"
 #include "System/Types.h"
-#include <cstdint>
+#include <atomic>
+#include <functional>
+#include <thread>
 
 
 namespace HE
 {
-    class Allocator;
-
-    class MemoryManager
+    class MemoryManager final
     {
+        using TId = TAllocatorID;
+        using TAllocBytes = std::function<void*(size_t)>;
+        using TDeallocBytes = std::function<void(void*, size_t)>;
+        
+        static constexpr TId SystemAllocatorID = 0;
+        static constexpr TId NameBufferSize = 64;
+        static constexpr size_t MaxBaseMemory = 8'000'000'000;
+        
     private:
-        Allocator* allocators[0xFF];
-        AllocatorId freeId;
-        AllocatorId currentId;
+        struct AllocatorProxy final
+        {
+            std::atomic<bool> isValid = false;
+            TAllocBytes allocate = nullptr;
+            TDeallocBytes deallocate = nullptr;
+            
+#ifdef __MEMORY_STATISTICS__
+            bool isStack = false;
+            bool hasCapacity = false;
+            size_t capacity = 0;
+            size_t usage = 0;
+            char name[NameBufferSize] = "";
+#endif // __MEMORY_STATISTICS__
+            
+#ifdef __MEMORY_VERIFICATION__
+            std::thread::id threadId;
+#endif // __MEMORY_VERIFICATION__
+        };
+
+        AllocatorProxy allocators[MaxNumAllocators];
+
+        size_t allocCount;
+        size_t deallocCount;
+        
+        size_t totalStackUsage;
+        size_t totalHeapUsage;
+        size_t totalSysHeapUsage;
+        
+        size_t totalStackCapacity;
+        size_t totalHeapCapacity;
+        
+        static thread_local TId ScopedAllocatorID;
 
     public:
         MemoryManager(const MemoryManager&) = delete;
         MemoryManager& operator= (const MemoryManager&) = delete;
 
-    protected:
+        static MemoryManager& GetInstance();
+
+    public:
         MemoryManager();
-        ~MemoryManager() = default;
+        ~MemoryManager();
+        
+        void Initialize();
+        const char* GetName() const;
+        
+        TId Register(const char* name, bool isStack, size_t capacity
+            , TAllocBytes allocFunc, TDeallocBytes deallocFunc);
+        void Deregister(TId id);
+        
+        void ReportAllocation(TId id, void* ptr, size_t requested, size_t allocated);
+        void ReportDeallocation(TId id, void* ptr, size_t requested, size_t allocated);
 
-    public:
-        void SetAllocator(AllocatorId id);
-        AllocatorId GetAllocator();
-        size_t TotalUsage();
-
-    public:
-        inline static MemoryManager& GetInstance()
+        void* SysAllocate(size_t nBytes);
+        void SysDeallocate(void* ptr, size_t nBytes);
+        
+        void* Allocate(size_t nBytes);
+        void Deallocate(void* ptr, size_t nBytes);
+        
+        template <typename T>
+        T* Allocate(size_t n)
         {
-            static MemoryManager instance;
-            return instance;
+            constexpr size_t sizeOfT = sizeof(T);
+            auto nBytes = n * sizeOfT;
+            auto ptr = Allocate(nBytes);
+            
+            return static_cast<T*>(ptr);
+        }
+        
+        template <typename T>
+        void Deallocate(T* ptr, size_t n)
+        {
+            auto nBytes = n * sizeof(T);
+            Deallocate(static_cast<void*>(ptr), nBytes);
         }
 
-        inline AllocatorId GetCurrent()
+        template <typename Type, typename ... Types>
+        inline Type* New(Types&& ... args)
         {
-            return currentId;
+            auto ptr = Allocate(sizeof(Type));
+            auto tptr = new (ptr) Type(std::forward<Types>(args) ...);
+            return tptr;
         }
 
-        inline void SetCurrent(AllocatorId id)
+        template <typename Type, typename ... Types>
+        inline Type* NewArray(Index size, Types&& ... args)
         {
-            currentId = id;
+            auto ptr = reinterpret_cast<Type*>(Allocate(sizeof(Type) * size));
+            for (Index i = 0; i < size; ++i)
+            {
+                new (ptr[i]) Type(std::forward<Types>(args) ...);
+            }
+
+            return ptr;
         }
 
-        inline Allocator* GetAllocator(AllocatorId id)
+        template <typename Type>
+        inline void Delete(Type* ptr)
         {
-            return allocators[id];
+            ptr->~Type();
+            Deallocate(ptr, 1);
         }
 
-        inline AllocatorId Register(Allocator* allocator)
+        template <typename Type>
+        inline void DeleteArray(Type* ptr, size_t n)
         {
-            auto id = IssueId();
-            allocators[id] = allocator;
-            return id;
+            for (size_t i = 0; i < n; ++i)
+            {
+                ptr[i]->~Type();
+            }
+
+            Deallocate(ptr, n);
+
+            return ptr;
         }
 
-        inline void Deregister(AllocatorId id)
-        {
-            allocators[id] = reinterpret_cast<Allocator*>(freeId);
-            freeId = id;
-        }
+        inline size_t GetTotalStackUsage() const { return totalStackUsage; }
+        inline size_t GetTotalHeapUsage() const { return totalHeapUsage; }
+        inline size_t GetTotalUsage() const { return GetTotalStackUsage() + GetTotalHeapUsage(); }
 
     private:
-        inline AllocatorId IssueId()
-        {
-            AllocatorId issuedId = freeId;
-            freeId = static_cast<AllocatorId>(reinterpret_cast<std::uintptr_t>(allocators[freeId]));
-
-            return issuedId;
-        }
+        inline TId GetScopedAllocatorId() const { return ScopedAllocatorID; }
+        void SetScopedAllocatorId(TId id);
+        
+        friend class AllocatorScope;
     };
 }

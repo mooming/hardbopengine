@@ -1,7 +1,7 @@
 cmake_minimum_required (VERSION 3.12)
 project (Memory)
 
-set (CMAKE_CXX_STANDARD 17)
+set (CMAKE_CXX_STANDARD 20)
 
 if (MSVC)
 	add_compile_options (/W4 /WX)
@@ -18,22 +18,27 @@ link_directories (${CMAKE_SOURCE_DIR}/lib)
 
 
 add_library (Memory STATIC 
- Allocator.cpp
- HardbopAllocator.cpp
+ AllocatorScope.cpp
+ BaseAllocator.cpp
+ InlineAllocator.cpp
+ InlinePoolAllocator.cpp
  MemoryManager.cpp
  Optional.cpp
  PoolAllocator.cpp
  StackAllocator.cpp
- Allocator.h
+ SystemAllocator.cpp
+ AllocatorID.h
+ AllocatorScope.h
  BaseAllocator.h
- HardbopAllocator.h
  InlineAllocator.h
+ InlinePoolAllocator.h
+ Memory.h
  MemoryManager.h
  Optional.h
  PoolAllocator.h
- ScopedAllocator.h
  Shareable.h
  StackAllocator.h
+ SystemAllocator.h
 )
 
 if (APPLE)

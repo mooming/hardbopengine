@@ -15,6 +15,4 @@ namespace HE
 	using UInt = uint32_t;
 
 	using Real = float;
-
-    using AllocatorId = uint8_t;
-}
+} // HE

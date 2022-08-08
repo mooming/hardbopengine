@@ -97,7 +97,7 @@ namespace HE
 
     inline void Translate(const Vec& t)
     {
-      AssertMessage(!IsEmpty(), "Do not translate an empty AABB! ", *this);
+      Assert(!IsEmpty(), "Do not translate an empty AABB! ", *this);
       min += t;
       max += t;
     }

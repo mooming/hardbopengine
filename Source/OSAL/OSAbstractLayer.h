@@ -2,8 +2,10 @@
 
 #pragma once
 
-#include <string>
-#include <vector>
+#include "HSTL/HString.h"
+#include "HSTL/HVector.h"
+#include "String/StringUtil.h"
+#include <iostream>
 
 #ifdef WIN32
 #define WINDOWS
@@ -22,8 +24,11 @@
 
 namespace OS
 {
-	std::string GetFullPath(std::string path);
 
-	bool IsDirectory(const char* path);
-	std::vector<std::string> ListFilesInDirectory(const char* path);
+HSTL::HString GetFullPath(const HSTL::HString& path);
+
+bool IsDirectory(const char* path);
+
+HSTL::HVector<HSTL::HString> ListFilesInDirectory(const char* path);
+
 } // OS

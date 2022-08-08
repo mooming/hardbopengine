@@ -31,3 +31,16 @@ compile_commands.json
 *.txt~
 #*
 *.xcodeproj
+*.build
+*.xctestrun
+*.sln
+*.proj
+*.vcxproj
+*.proj.filters
+*.vcxproj.filters
+*.vcxproj.user
+*.dir
+x64
+Debug
+Release
+

@@ -1,7 +1,7 @@
 cmake_minimum_required (VERSION 3.12)
 project (OSAL)
 
-set (CMAKE_CXX_STANDARD 17)
+set (CMAKE_CXX_STANDARD 20)
 
 if (MSVC)
 	add_compile_options (/W4 /WX)
@@ -20,9 +20,12 @@ link_directories (${CMAKE_SOURCE_DIR}/lib)
 add_library (OSAL STATIC 
  Directory.cpp
  OSAbstractLayer.cpp
+ OSMemory.cpp
  Directory.h
  File.h
+ Intrinsic.h
  OSAbstractLayer.h
+ OSMemory.h
 )
 
 if (APPLE)

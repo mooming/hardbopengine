@@ -2,33 +2,36 @@
 
 #pragma once
 
+#include "HSTL/HString.h"
+#include "HSTL/HUnorderedMap.h"
 #include <optional>
-#include <string>
-#include <unordered_map>
 
 
 namespace HE
 {
-    class ConfigFile final
-    {
-    public:
-        using TString = std::string;
-        using TValue = std::optional<TString>;
 
-        bool isValid;
-        std::unordered_map<TString, TString> keymap;
+class ConfigFile final
+{
+public:
+    using TString = HSTL::HString;
+    using TValue = std::optional<TString>;
+    using TMap = HSTL::HUnorderedMap<TString, TString>;
+    
+    bool isValid;
+    TMap keymap;
+    
+public:
+    ConfigFile(const char* path);
+    ConfigFile(const char* path, const char* fileName);
+    ~ConfigFile() = default;
+    
+    TValue GetValue(const TString& key) const;
+    TString GetValue(const TString& key, const TString& defaultValue) const;
+    
+    inline auto IsValid() const { return isValid; }
+    
+private:
+    void Parse(const char* fileName);
+};
 
-    public:
-        ConfigFile(const char* path);
-        ConfigFile(const char* path, const char* fileName);
-        ~ConfigFile() = default;
-
-        TValue GetValue(const TString& key) const;
-        TString GetValue(const TString& key, const TString& defaultValue) const;
-
-        inline auto IsValid() const { return isValid; }
-
-    private:
-        void Parse(const char* fileName);
-    };
-}
+} //HE

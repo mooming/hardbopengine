@@ -1,265 +1,265 @@
 public:
 
-inline This operator+(const This& rhs) const
-{
-  This result(*this);
-  result.Add(rhs);
-  return result;
-}
+    inline This operator+(const This& rhs) const
+    {
+        This result(*this);
+        result.Add(rhs);
+        return result;
+    }
 
-inline This operator-() const
-{
-  This result(nullptr);
+    inline This operator-() const
+    {
+        This result(nullptr);
 
-  for (int i = 0; i < order; ++i)
-  {
-    result.a[i] = -a[i];
-  }
+        for (int i = 0; i < order; ++i)
+        {
+            result.a[i] = -a[i];
+        }
 
-  return result;
-}
+        return result;
+    }
 
-inline This operator-(const This& rhs) const
-{
-  This result(*this);
-  result.Sub(rhs);
-  return result;
-}
+    inline This operator-(const This& rhs) const
+    {
+        This result(*this);
+        result.Sub(rhs);
+        return result;
+    }
 
-inline bool operator==(const This& rhs) const
-{
-  return (*this -rhs).IsZero();
-}
+    inline bool operator==(const This& rhs) const
+    {
+        return (*this - rhs).IsZero();
+    }
 
-inline bool operator!=(const This& rhs) const
-{
-  return !(*this == rhs);
-}
+    inline bool operator!=(const This& rhs) const
+    {
+        return !(*this == rhs);
+    }
 
-inline This operator*(const Number rhs) const
-{
-  This result(nullptr);
+    inline This operator*(const Number rhs) const
+    {
+        This result(nullptr);
 
-  for (int i = 0; i < order; ++i)
-    result.a[i] = a[i] * rhs;
+        for (int i = 0; i < order; ++i)
+            result.a[i] = a[i] * rhs;
 
-  return result;
-}
+        return result;
+    }
 
-inline This operator*(const This& rhs) const
-{
-  This result(nullptr);
+    inline This operator*(const This& rhs) const
+    {
+        This result(nullptr);
 
-  for (int i = 0; i < order; ++i)
-    result.a[i] = a[i] * rhs.a[i];
+        for (int i = 0; i < order; ++i)
+            result.a[i] = a[i] * rhs.a[i];
 
-  return result;
-}
+        return result;
+    }
 
-inline This operator/(const Number rhs) const
-{
-  Assert(rhs != 0);
+    inline This operator/(const Number rhs) const
+    {
+        Assert(rhs != 0);
 
-  This result(nullptr);
+        This result(nullptr);
 
-  Number inverse = static_cast<Number>(1) / rhs;
-  for (int i = 0; i < order; ++i)
-    result.a[i] = a[i] * inverse;
+        Number inverse = static_cast<Number>(1) / rhs;
+        for (int i = 0; i < order; ++i)
+            result.a[i] = a[i] * inverse;
 
-  return result;
-}
+        return result;
+    }
 
-inline This operator/(const This& rhs) const
-{
-  This result(nullptr);
+    inline This operator/(const This& rhs) const
+    {
+        This result(nullptr);
 
-  for (int i = 0; i < order; ++i)
-  {
-    Assert(!HE::IsZero(static_cast<float>(rhs.a[i])));
-    result.a[i] = a[i] / rhs.a[i];
-  }
+        for (int i = 0; i < order; ++i)
+        {
+            Assert(!HE::IsZero(static_cast<float>(rhs.a[i])));
+            result.a[i] = a[i] / rhs.a[i];
+        }
 
-  return result;
-}
+        return result;
+    }
 
-inline This& operator+=(const This& rhs)
-{
-  Add(rhs);
-  return *this;
-}
+    inline This& operator+=(const This& rhs)
+    {
+        Add(rhs);
+        return *this;
+    }
 
-inline This& operator-=(const This& rhs)
-{
-  Sub(rhs);
-  return *this;
-}
+    inline This& operator-=(const This& rhs)
+    {
+        Sub(rhs);
+        return *this;
+    }
 
-inline This& operator*=(const Number rhs)
-{
-  Multiply(rhs);
-  return *this;
-}
+    inline This& operator*=(const Number rhs)
+    {
+        Multiply(rhs);
+        return *this;
+    }
 
-inline This& operator*=(const This& rhs)
-{
-  Multiply(rhs);
-  return *this;
-}
+    inline This& operator*=(const This& rhs)
+    {
+        Multiply(rhs);
+        return *this;
+    }
 
-inline This& operator/=(const Number rhs)
-{
-  Assert(rhs != 0.0f);
+    inline This& operator/=(const Number rhs)
+    {
+        Assert(rhs != 0.0f);
 
-  Multiply(static_cast<Number>(1) / rhs);
-  return *this;
-}
+        Multiply(static_cast<Number>(1) / rhs);
+        return *this;
+    }
 
-inline This& ToAbsolute()
-{
-  for (int i = 0; i < order; ++i)
-    a[i] = Abs(a[i]);
+    inline This& ToAbsolute()
+    {
+        for (int i = 0; i < order; ++i)
+            a[i] = Abs(a[i]);
 
-  return *this;
-}
+        return *this;
+    }
 
-inline This GetAbsolute() const
-{
-  This v(nullptr);
-  for (int i = 0; i < order; ++i)
-    v.a[i] = Abs(a[i]);
+    inline This GetAbsolute() const
+    {
+        This v(nullptr);
+        for (int i = 0; i < order; ++i)
+            v.a[i] = Abs(a[i]);
 
-  return v;
-}
+        return v;
+    }
 
-inline bool IsZero() const
-{
-  Number total(0);
+    inline bool IsZero() const
+    {
+        Number total(0);
 
-  for (int i = 0; i < order; ++i)
-    total += Abs(a[i]);
+        for (int i = 0; i < order; ++i)
+            total += Abs(a[i]);
 
-  return total < Epsilon;
-}
+        return total < Epsilon;
+    }
 
-inline void Multiply(Number value)
-{
-  for (int i = 0; i < order; ++i)
-    a[i] *= value;
-}
+    inline void Multiply(Number value)
+    {
+        for (int i = 0; i < order; ++i)
+            a[i] *= value;
+    }
 
-inline void Multiply(const This& rhs)
-{
-  for (int i = 0; i < order; ++i)
-    a[i] *= rhs.a[i];
-}
+    inline void Multiply(const This& rhs)
+    {
+        for (int i = 0; i < order; ++i)
+            a[i] *= rhs.a[i];
+    }
 
-inline void Divide(const This& rhs)
-{
-  for (int i = 0; i < order; ++i)
-  {
-    Assert(!HE::IsZero(static_cast<float>(rhs.a[i])));
-    a[i] /= rhs.a[i];
-  }
-}
+    inline void Divide(const This& rhs)
+    {
+        for (int i = 0; i < order; ++i)
+        {
+            Assert(!HE::IsZero(static_cast<float>(rhs.a[i])));
+            a[i] /= rhs.a[i];
+        }
+    }
 
-inline void Add(const This& rhs)
-{
-  for (int i = 0; i < order; ++i)
-    a[i] += rhs.a[i];
-}
+    inline void Add(const This& rhs)
+    {
+        for (int i = 0; i < order; ++i)
+            a[i] += rhs.a[i];
+    }
 
-inline void Sub(const This& rhs)
-{
-  for (int i = 0; i < order; ++i)
-    a[i] -= rhs.a[i];
-}
+    inline void Sub(const This& rhs)
+    {
+        for (int i = 0; i < order; ++i)
+            a[i] -= rhs.a[i];
+    }
 
-inline void Negate()
-{
-  for (int i = 0; i < order; ++i)
-    a[i] = -a[i];
-}
+    inline void Negate()
+    {
+        for (int i = 0; i < order; ++i)
+            a[i] = -a[i];
+    }
 
-inline Number Dot(const This& rhs) const
-{
-  Number value = 0;
-  for (int i = 0; i < order; ++i)
-    value += (a[i] * rhs.a[i]);
+    inline Number Dot(const This& rhs) const
+    {
+        Number value = 0;
+        for (int i = 0; i < order; ++i)
+            value += (a[i] * rhs.a[i]);
 
-  return value;
-}
+        return value;
+    }
 
-inline Number SqrLength() const
-{
-  return Dot(*this);
-}
+    inline Number SqrLength() const
+    {
+        return Dot(*this);
+    }
 
-inline float Length() const
-{
-  return std::sqrtf(SqrLength());
-}
+    inline float Length() const
+    {
+        return std::sqrtf(SqrLength());
+    }
 
-float Normalize()
-{
-  auto length = Length();
-  if (HE::IsZero(length))
-  {
-    *this = This::Forward;
-    return length;
-  }
+    float Normalize()
+    {
+        auto length = Length();
+        if (HE::IsZero(length))
+        {
+            *this = This::Forward;
+            return length;
+        }
 
-  Multiply(static_cast<Number>(1) / length);
+        Multiply(static_cast<Number>(1) / length);
 
-  return length;
-}
+        return length;
+    }
 
-This Normalized() const
-{
-  This result(*this);
-  result.Normalize();
-  return result;
-}
+    This Normalized() const
+    {
+        This result(*this);
+        result.Normalize();
+        return result;
+    }
 
-inline bool IsUnity() const
-{
-  return Abs(SqrLength() - static_cast<Number>(1)) < SqrEpsilon;
-}
+    inline bool IsUnity() const
+    {
+        return Abs(SqrLength() - static_cast<Number>(1)) < SqrEpsilon;
+    }
 
-inline This Lerp(const This& to, float t) const
-{
-  return Lerp(*this, to, t);
-}
+    inline This Lerp(const This& to, float t) const
+    {
+        return Lerp(*this, to, t);
+    }
 
-inline static This Lerp(const This& from, const This& to, float t)
-{
-  return from * (1.0f - t) + to * t;
-}
+    inline static This Lerp(const This& from, const This& to, float t)
+    {
+        return from * (1.0f - t) + to * t;
+    }
 
-inline This Slerp(const This& to, float t) const
-{
-  return Slerp(*this, to, t);
-}
+    inline This Slerp(const This& to, float t) const
+    {
+        return Slerp(*this, to, t);
+    }
 
-inline static This Slerp(const This& from, const This& to, float t)
-{
-  auto a = from.Normalized();
-  auto b = to.Normalized();
+    inline static This Slerp(const This& from, const This& to, float t)
+    {
+        auto a = from.Normalized();
+        auto b = to.Normalized();
 
-  auto angle = std::acosf(static_cast<float>(a.Dot(b)));
+        auto angle = std::acosf(static_cast<float>(a.Dot(b)));
 
-  if (angle < Epsilon)
-    return Lerp(from, to, t).Normalized();
+        if (angle < Epsilon)
+            return Lerp(from, to, t).Normalized();
 
-  const auto nt = 1.0f - t;
-  const auto sinA = std::sinf(nt * angle);
-  const auto sinB = std::sinf(t * angle);
-  auto dir = (a * sinA + b * sinB) / std::sin(angle);
+        const auto nt = 1.0f - t;
+        const auto sinA = std::sinf(nt * angle);
+        const auto sinB = std::sinf(t * angle);
+        auto dir = (a * sinA + b * sinB) / std::sin(angle);
 
-  auto lengthA = from.Length();
-  auto lengthB = to.Length();
+        auto lengthA = from.Length();
+        auto lengthB = to.Length();
 
-  auto length = (lengthA * nt) + (lengthB * t);
+        auto length = (lengthA * nt) + (lengthB * t);
 
 
-  return dir * length;
-}
+        return dir * length;
+    }

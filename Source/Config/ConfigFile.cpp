@@ -2,12 +2,15 @@
 
 #include "ConfigFile.h"
 
+#include "HSTL/HString.h"
 #include "String/StringUtil.h"
 #include <fstream>
 #include <functional>
 #include <iostream>
 #include <unordered_map>
 
+
+using namespace HSTL;
 
 namespace HE
 {
@@ -27,6 +30,7 @@ namespace HE
         {
             filePath.append("/");
         }
+        
         filePath.append(fileName);
         
         Parse(filePath.c_str());
@@ -65,10 +69,10 @@ namespace HE
 
         while (!ifs.eof())
 		{
-			string line;
+			TString line;
 			getline(ifs, line);
 
-            using TKeyValue = pair<string, string>;
+            using TKeyValue = pair<TString, TString>;
             auto ParseLine = [&line]() -> TKeyValue
             {
                 TKeyValue keyValue;
@@ -76,7 +80,7 @@ namespace HE
                     return keyValue;
 
                 auto separator = line.find('=');
-                if (separator == string::npos)
+                if (separator == TString::npos)
                     return keyValue;
                 
                 auto key = line.substr(0, separator);

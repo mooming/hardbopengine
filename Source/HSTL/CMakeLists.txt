@@ -1,7 +1,7 @@
 cmake_minimum_required (VERSION 3.12)
 project (HSTL)
 
-set (CMAKE_CXX_STANDARD 17)
+set (CMAKE_CXX_STANDARD 20)
 
 if (MSVC)
 	add_compile_options (/W4 /WX)
@@ -19,7 +19,7 @@ link_directories (${CMAKE_SOURCE_DIR}/lib)
 
 add_library (HSTL STATIC 
  HString.cpp
- HSTD.h
+ HSTL.h
  HString.h
  HUnorderedMap.h
  HVector.h

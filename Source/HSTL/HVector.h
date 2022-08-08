@@ -1,18 +1,18 @@
-// Created by mooming.go@gmail.com, 2017
+// Created by mooming.go@gmail.com, 2022
 
 #pragma once
 
+#include "Memory/BaseAllocator.h"
 #include <vector>
 
-#include "Memory/BaseAllocator.h"
-#include "Memory/ScopedAllocator.h"
 
-
-namespace HSTD
+namespace HSTL
 {
-    template <typename T>
-    using Vector = std::vector<T, HE::BaseAllocator<T>>;
 
-    template <typename T>
-    using ScopedVector = std::basic_string<char, std::char_traits<char>, HE::ScopedAllocator<char>>;
-}
+template <typename T>
+using HVector = std::vector<T, HE::BaseAllocator<T>>;
+
+template <typename T, size_t PoolSize = 16>
+using HInlineVector = std::vector<T, HE::InlinePoolAllocator<char, PoolSize, 2>>;
+
+} // HSTL

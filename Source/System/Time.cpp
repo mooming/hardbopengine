@@ -1,6 +1,6 @@
 // Created by mooming.go@gmail.com, 2017
 
-#include "System/Time.h"
+#include "Time.h"
 
 #include <chrono>
 #include <thread>

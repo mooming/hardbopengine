@@ -133,7 +133,7 @@ inline Vec Multiply(const Vec& rhs) const
 
 inline Vec Column(int index) const
 {
-    AssertMessage(index < column, "Matrix: Index out of bounds, i = ", index);
+    Assert(index < column, "Matrix: Index out of bounds, i = ", index);
 
     Vec colVec = nullptr;
 

@@ -19,10 +19,13 @@
 #include "Math/UniformTransform.h"
 #include "Math/RigidTransform.h"
 #include "Math/AABB.h"
-#include "Memory/HardbopAllocator.h"
+#include "Memory/BaseAllocator.h"
+#include "Memory/InlineAllocator.h"
+#include "Memory/InlinePoolAllocator.h"
 #include "Memory/Optional.h"
 #include "Memory/PoolAllocator.h"
 #include "Memory/StackAllocator.h"
+#include "String/StringUtil.h"
 #include "System/ComponentSystem.h"
 #include <iostream>
 
@@ -40,16 +43,20 @@ namespace Test
 
         auto& testEnv = TestEnv::GetEnv();
 
-        testEnv.AddTest(new AllocatorTest());
         testEnv.AddTest(new StackAllocatorTest());
-        testEnv.AddTest(new HardbopAllocatorTest());
+        testEnv.AddTest(new BaseAllocatorTest());
+        testEnv.AddTest(new InlineAllocatorTest());
+        testEnv.AddTest(new InlinePoolAllocatorTest());
+        testEnv.AddTest(new PoolAllocatorTest());
+        
         testEnv.AddTest(new ArrayTest());
-        testEnv.AddTest(new MathUtilTest());
-        testEnv.AddTest(new ComponentSystemTest());
         testEnv.AddTest(new LinkedListTest());
         testEnv.AddTest(new OptionalTest());
-        testEnv.AddTest(new PoolAllocatorTest());
+        
         testEnv.AddTest(new StringTest());
+        testEnv.AddTest(new StringUtilTest());
+        
+        testEnv.AddTest(new MathUtilTest());
         testEnv.AddTest(new VectorTest());
         testEnv.AddTest(new Vector2Test());
         testEnv.AddTest(new Vector3Test());
@@ -60,7 +67,9 @@ namespace Test
         testEnv.AddTest(new RigidTransformTest());
         testEnv.AddTest(new AABBTest());
         testEnv.AddTest(new TransformTest());
-
+        
+        testEnv.AddTest(new ComponentSystemTest());
+        
         testEnv.Start();
     }
 }

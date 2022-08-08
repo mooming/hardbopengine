@@ -1,7 +1,7 @@
 cmake_minimum_required (VERSION 3.12)
 project (hengine)
 
-set (CMAKE_CXX_STANDARD 17)
+set (CMAKE_CXX_STANDARD 20)
 
 if (MSVC)
 	add_compile_options (/W4 /WX)
@@ -16,16 +16,16 @@ include_directories ( ${CMAKE_SOURCE_DIR}
  )
 link_directories (${CMAKE_SOURCE_DIR}/lib)
 
-add_subdirectory (Memory)
-add_subdirectory (Test)
 add_subdirectory (Config)
-add_subdirectory (OSAL)
-add_subdirectory (Math)
 add_subdirectory (Container)
-add_subdirectory (System)
-add_subdirectory (Log)
-add_subdirectory (String)
 add_subdirectory (HSTL)
+add_subdirectory (Log)
+add_subdirectory (Math)
+add_subdirectory (Memory)
+add_subdirectory (OSAL)
+add_subdirectory (String)
+add_subdirectory (System)
+add_subdirectory (Test)
 
 add_executable (hengine
  Engine.cpp

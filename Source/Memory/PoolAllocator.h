@@ -2,24 +2,26 @@
 
 #pragma once
 
-#include "Allocator.h"
+#include "AllocatorID.h"
+#include "System/Types.h"
 
 
 namespace HE
 {
-	class PoolAllocator : public Allocator
+	class PoolAllocator final
 	{
 	public:
 		using This = PoolAllocator;
-
+        
 	private:
-		enum IndexType
+		enum class IndexType : uint8_t
 		{
 			U32,
 			U16,
 			U8
 		};
-
+        
+        TAllocatorID id;
 		Index blockSize;
 		Index numberOfBlocks;
 		Index numberOfFreeBlocks;
@@ -32,19 +34,19 @@ namespace HE
 
 	public:
 		PoolAllocator(Index blockSize, Index numberOfBlocks);
-		virtual ~PoolAllocator();
+        ~PoolAllocator();
 
-        virtual Pointer Allocate(size_t size) override;
-		virtual void Deallocate(const Pointer ptr) override;
+        virtual Pointer Allocate(size_t size);
+		virtual void Deallocate(const Pointer ptr);
 
-        virtual size_t GetSize(const Pointer) const override { return blockSize; }
+        virtual size_t GetSize(const Pointer) const { return blockSize; }
 
-		virtual size_t Usage() const override
+		virtual size_t Usage() const
 		{
 			return (numberOfBlocks - numberOfFreeBlocks) * blockSize;
 		}
 
-		virtual size_t Available() const override
+		virtual size_t Available() const
 		{
 			return numberOfFreeBlocks * blockSize;
 		}
@@ -55,15 +57,24 @@ namespace HE
 			return numberOfFreeBlocks;
 		}
 	};
+} // HE
 
 #ifdef __UNIT_TEST__
+
+#include "Test/TestCase.h"
+
+
+namespace HE
+{
     class PoolAllocatorTest : public TestCase
     {
     public:
-        PoolAllocatorTest() : TestCase("PoolAllocatorTest") {}
+        PoolAllocatorTest() : TestCase("PoolAllocatorTest")
+        {
+        }
 
     protected:
         virtual bool DoTest() override;
     };
-#endif //__UNIT_TEST__
 } // HE
+#endif //__UNIT_TEST__

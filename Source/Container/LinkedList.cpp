@@ -6,6 +6,7 @@
 using namespace HE;
 
 #ifdef __UNIT_TEST__
+#include "Memory/AllocatorScope.h"
 #include "Memory/StackAllocator.h"
 #include "System/Debug.h"
 #include "System/Time.h"
@@ -17,8 +18,8 @@ bool LinkedListTest::DoTest()
 {
     using namespace std;
 
-    StackAllocator stack(512 * 1024 * 1024);
-    AllocatorScope stackScope(stack.Id());
+    StackAllocator stack("LinkedListTest::StackAllocator", 512 * 1024 * 1024);
+    AllocatorScope stackScope(stack.GetID());
 
 #ifdef __DEBUG__
     const int COUNT = 4096;
@@ -29,6 +30,7 @@ bool LinkedListTest::DoTest()
 
     {
         LinkedList<int> intList;
+        
         for (auto value : intList)
         {
             cerr << "It iterates a loop even if a linked list is empty. value = " << value << endl;

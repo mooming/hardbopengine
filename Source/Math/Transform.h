@@ -77,7 +77,7 @@ namespace HE
 
 			if (std::find(children.begin(), children.end(), ptr) != children.end())
 			{
-				AssertMessage(transform.parent == this, "Parent-Child Inconsistency");
+				Assert(transform.parent == this, "Parent-Child Inconsistency");
 				return;
 			}
 
@@ -105,7 +105,7 @@ namespace HE
 		{
 			for (auto child : children)
 			{
-				AssertMessage(child->parent == this, "Parent-Child Inconsistency");
+				Assert(child->parent == this, "Parent-Child Inconsistency");
 				child->parent = nullptr;
 			}
 

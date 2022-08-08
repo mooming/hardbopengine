@@ -70,12 +70,12 @@ namespace HE
 			rotation = static_cast<Quat> (rotMat);
 		}
 
-		inline bool operator==(const This& rhs)
+		inline bool operator==(const This& rhs) const
 		{
 			return rotation == rhs.rotation && scale == rhs.scale && translation == rhs.translation;
 		}
 
-		inline bool operator!=(const This& rhs)
+		inline bool operator!=(const This& rhs) const
 		{
 			return !(*this == rhs);
 		}

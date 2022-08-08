@@ -29,14 +29,9 @@ namespace HE
     RigidTransform(const Vec3& translation, const Quat& rotation);
     RigidTransform(const Mat4x4& mat);
 
-    inline bool operator==(const This& rhs)
+    inline bool operator==(const This& rhs) const
     {
       return rotation == rhs.rotation && translation == rhs.translation;
-    }
-
-    inline bool operator!=(const This& rhs)
-    {
-      return !(*this == rhs);
     }
 
     template <typename T>

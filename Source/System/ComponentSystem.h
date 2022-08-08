@@ -120,7 +120,7 @@ namespace HE
                     break;
 
                 default:
-                    AssertMessage(false
+                    Assert(false
                         , "Unexpected component state %d on processing transition.\n"
                         , compo.GetState());
                     break;

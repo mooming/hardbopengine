@@ -2,144 +2,464 @@
 
 #include "MemoryManager.h"
 
-#include "Allocator.h"
-#include "System/Exception.h"
-#include "System/CommonUtil.h"
+#include "SystemAllocator.h"
+#include "OSAL/Intrinsic.h"
+#include "String/StringUtil.h"
+#include "System/Debug.h"
 
 
-using namespace HE;
-
-namespace
+namespace HE
 {
-	constexpr auto SizeTypeSize = sizeof(size_t);
-	thread_local AllocatorId allocatorId = 1;
 
-	class NullAllocator : public Allocator
-	{
-	public:
-		NullAllocator() : Allocator(0)
-		{
-		}
+static_assert(MaxNumAllocators > 0, "MaxNumAllocators is invalid.");
 
-		virtual Pointer Allocate(size_t size) override
-		{
-			throw Exception(__FILE__, __LINE__, "Null Allocation Error");
+thread_local MemoryManager::TId MemoryManager::ScopedAllocatorID = 0;
+TDebugVariable<bool> DVarScopedAllocLogging = false;
 
-			return nullptr;
-		}
+static MemoryManager* MMgrInstance = nullptr;
 
-		virtual void Deallocate(const Pointer ptr) override
-		{
-			throw Exception(__FILE__, __LINE__, "Null De-Allocation Error");
-		}
 
-        virtual size_t GetSize(const Pointer ptr) const override
+MemoryManager& MemoryManager::GetInstance()
+{
+    Assert(MMgrInstance != nullptr);
+    return *MMgrInstance;
+}
+
+MemoryManager::MemoryManager()
+    : allocCount(0)
+    , deallocCount(0)
+    , totalStackUsage(0)
+    , totalHeapUsage(0)
+    , totalSysHeapUsage(0)
+    , totalStackCapacity(0)
+    , totalHeapCapacity(0)
+{
+    Assert(MMgrInstance == nullptr);
+    MMgrInstance = this;
+}
+
+MemoryManager::~MemoryManager()
+{
+}
+
+void MemoryManager::Initialize()
+{
+    static SystemAllocator<uint8_t> systemAllocator;
+    Assert(systemAllocator.GetID() == SystemAllocatorID);
+    SetScopedAllocatorId(SystemAllocatorID);
+}
+
+const char* MemoryManager::GetName() const
+{
+    return "MemoryManager";
+}
+
+MemoryManager::TId MemoryManager::Register(const char* name, bool isStack
+    , size_t capacity, TAllocBytes allocFunc, TDeallocBytes deallocFunc)
+{
+#ifdef __MEMORY_STATISTICS__
+    auto AddAllocator = [name, isStack, capacity, allocFunc, deallocFunc](auto& allocator)
+#else // __MEMORY_STATISTICS__
+    auto AddAllocator = [allocFunc, deallocFunc](auto& allocator)
+#endif // __MEMORY_STATISTICS__
+    {
+        allocator.allocate = allocFunc;
+        allocator.deallocate = deallocFunc;
+        
+#ifdef __MEMORY_STATISTICS__
+        allocator.isStack = isStack;
+        allocator.hasCapacity = capacity > 0;
+        allocator.capacity = capacity;
+        allocator.usage = 0;
+        
         {
-            return 0;
+            constexpr int LastIndex = NameBufferSize - 1;
+            strncpy(allocator.name, name, LastIndex);
+            allocator.name[LastIndex] = '\0';
         }
+#endif // __MEMORY_STATISTICS__
+        
+#ifdef __MEMORY_VERIFICATION__
+        allocator.threadId = std::this_thread::get_id();
+#endif // __MEMORY_VERIFICATION__
+    };
+    
+    for (TId i = 0; i < MaxNumAllocators; ++i)
+    {
+        auto& allocator = allocators[i];
+        auto& isValid = allocator.isValid;
+        bool expected = false;
+        
+        if (!isValid.compare_exchange_weak(expected, true))
+            continue;
+        
+        AddAllocator(allocator);
+        Assert(allocator.isValid);
+        
+        return i;
+    }
+    
+    for (TId i = 0; i < MaxNumAllocators; ++i)
+    {
+        auto& allocator = allocators[i];
+        auto& isValid = allocator.isValid;
+        bool expected = false;
+        
+        if (!isValid.compare_exchange_strong(expected, true))
+            continue;
+        
+        AddAllocator(allocator);
+        Assert(allocator.isValid);
+        
+        return i;
+    }
+    
+    return MaxNumAllocators;
+}
 
-		virtual size_t Usage() const override
-		{
-			return 0;
-		}
+void MemoryManager::Deregister(TId id)
+{
+    using namespace std;
+    
+    if (unlikely(!IsValid(id)))
+    {
+        cerr << "[MemoryManager][" << __func__
+            << "][Error] Invalid allocator id(" << id
+            << ") is provided." << endl;
+        
+        DebugBreak();
+        
+        return;
+    }
+    
+    auto& allocator = allocators[id];
+    if (unlikely(!allocator.isValid))
+    {
+        cerr << "[MemoryManager][" << __func__
+            << "][Error] Allocator(" << id << ") is not valid." << endl;
+        
+        Assert(false);
+        
+        return;
+    }
+    
+    allocator.allocate = nullptr;
+    allocator.deallocate = nullptr;
+    
+#ifdef __MEMORY_VERIFICATION__
+    if (unlikely(allocator.threadId != std::this_thread::get_id()))
+    {
+        cerr << "[MemoryManager][" << __func__
+            << "][Error] Allocator(" << id
+            << ") Thread id is mismatched." << endl;
+        
+        Assert(false);
+        
+        return;
+    }
+#endif // __MEMORY_VERIFICATION__
 
-		virtual size_t Available() const override
-		{
-			return 0;
-		}
-	};
+#ifdef __MEMORY_STATISTICS__
+    if (unlikely(allocator.usage > 0))
+    {
+        cerr << "[MemoryManager][" << __func__
+            << "][Error] Allocator [" << allocator.name
+            << "](" << id << ") Memory leak is detected!" << endl;
+        
+        Assert(false);
+        
+        return;
+    }
+    
+    if (unlikely(allocator.usage > 0))
+    {
+        cerr << "[MemoryManager][" << __func__
+            << "][Error] Allocator [" << allocator.name
+            << "](" << id << ") Memory leak is detected!" << endl;
+        
+        Assert(false);
+        
+        return;
+    }
+    
+    if (allocator.isStack)
+    {
+        totalStackCapacity -= allocator.capacity;
+        totalStackUsage -= allocator.usage;
+    }
+    else
+    {
+        totalHeapCapacity -= allocator.capacity;
+        totalHeapUsage -= allocator.usage;
+    }
+    
+    allocator.isStack = false;
+    allocator.hasCapacity = false;
+    allocator.capacity = 0;
+    allocator.usage = 0;
+    allocator.name[0] = '\0';
+#endif // __MEMORY_STATISTICS__
+    
+#ifdef __MEMORY_VERIFICATION__
+    allocator.threadId = std::thread::id();
+#endif // __MEMORY_VERIFICATION__
+    
+    allocator.isValid.store(false);
+}
 
-
-	class NativeAllocator : public Allocator
-	{
-	private:
-		size_t usage;
-		size_t maxSize;
-
-	public:
-		NativeAllocator(const size_t maxSize) : Allocator(1), usage(0), maxSize(maxSize)
-		{
-		}
-
-		virtual Pointer Allocate(size_t size) override
-		{
-			size_t effectiveSize = size + SizeTypeSize;
-			usage += effectiveSize;
-
-			if (usage > maxSize)
-			{
-				usage -= effectiveSize;
-				throw Exception(__FILE__, __LINE__
-					, "Native Allocator : Allocation Error, required = %u, usage = %u, max = %u"
-					, size, usage, maxSize);
-			}
-
-			Byte* ptr = new Byte[effectiveSize];
-			SetAs<size_t>(ptr, effectiveSize);
-			ptr += sizeof(size_t);
-
-			return ptr;
-		}
-
-		virtual void Deallocate(const Pointer ptr) override
-		{
-			Byte* bytePtr = static_cast<Byte*>(ptr);
-
-			bytePtr -= SizeTypeSize;
-			size_t size = GetAs<size_t>(bytePtr);
-			usage -= size;
-
-			delete[] bytePtr;
-		}
-
-        virtual size_t GetSize(const Pointer ptr) const override
+void MemoryManager::ReportAllocation(TId id, void* ptr
+    , size_t requested, size_t allocated)
+{
+#ifdef __MEMORY_STATISTICS__
+    using namespace std;
+    
+    if (unlikely(!IsValid(id)))
+    {
+        cerr << "[MemoryManager][" << __func__
+            << "][Error] Invalid allocator id(" << id
+            << ") is provided. ptr = " << ptr
+            << ", requested = " << requested
+            << ", allocated = " << allocated << endl;
+        
+        DebugBreak();
+        
+        return;
+    }
+    
+    auto& allocator = allocators[id];
+    
+#ifdef __MEMORY_LOGGING__
+    std::cout << "[" << static_cast<char*>(allocator.name) << "]["
+        << id << "][ALLOC] ptr = " << ptr
+        << ", requested = " << requested
+        << ", allocated = " << allocated << endl;
+#endif // __MEMORY_LOGGING__
+            
+    allocator.usage += allocated;
+    
+    if (unlikely(allocator.hasCapacity && allocator.usage > allocator.capacity))
+    {
+        cerr << "[MemoryManager][" << __func__
+            << "][Error] Memory usage overflow. " << allocator.usage << " > "
+            << allocator.capacity
+            << ", ptr = " << ptr
+            << ", requested = " << requested
+            << ", allocated = " << allocated << endl;
+        
+        Assert(false);
+        
+        return;
+    }
+    
+    if (allocator.isStack)
+    {
+        totalStackUsage += allocated;
+        
+        if (unlikely(allocator.hasCapacity && totalStackUsage > totalStackCapacity))
         {
-            Byte* bytePtr = static_cast<Byte*>(ptr);
-            bytePtr -= SizeTypeSize;
-
-            return GetAs<size_t>(bytePtr);
+            cerr << "[MemoryManager][" << __func__
+                << "][Error] Stack usage overflow. "
+                << totalStackUsage << " > "
+                << totalStackCapacity
+                << ", ptr = " << ptr
+                << ", requested = " << requested
+                << ", allocated = " << allocated << endl;
+            
+            Assert(false);
         }
-
-		virtual size_t Usage() const override
-		{
-			return usage;
-		}
-
-		virtual size_t Available() const override
-		{
-			return maxSize - usage;
-		}
-	};
-} // unnamed namespace
-
-MemoryManager::MemoryManager() : allocators{}, freeId(2)
-{
-	static NullAllocator nullAllocator;
-	static NativeAllocator nativeAllocator(1024 * 1024 * 1024);
-
-	allocators[0] = &nullAllocator;
-	allocators[1] = &nativeAllocator;
-
-    SetCurrent(1);
-
-    const int length = sizeof(allocators) / sizeof(allocators[0]);
-	for (int i = 2; i < length; ++i)
-	{
-		allocators[i] = reinterpret_cast<Allocator*>(i + 1);
-	}
+    }
+    else
+    {
+        totalHeapUsage += allocated;
+        
+        if (unlikely(allocator.hasCapacity && totalHeapUsage > totalHeapCapacity))
+        {
+            cerr << "[MemoryManager][" << __func__
+                << "][Error] Heap usage overflow. "
+                << totalHeapUsage << " > "
+                << totalHeapCapacity
+                << ", ptr = " << ptr
+                << ", requested = " << requested
+                << ", allocated = " << allocated << endl;
+            
+            Assert(false);
+        }
+    }
+#endif // __MEMORY_STATISTICS__
 }
 
-void MemoryManager::SetAllocator(AllocatorId id)
+void MemoryManager::ReportDeallocation(TId id, void* ptr
+    , size_t requested, size_t allocated)
 {
-	allocatorId = id;
+#ifdef __MEMORY_STATISTICS__
+    using namespace std;
+    
+    if (unlikely(!IsValid(id)))
+    {
+        cerr << "[MemoryManager][" << __func__
+            << "][Error] Invalid allocator id(" << id
+            << ") is provided." << endl;
+        return;
+    }
+    
+    auto& allocator = allocators[id];
+    
+#ifdef __MEMORY_LOGGING__
+    std::cout << "[" << static_cast<char*>(allocator.name) << "]["
+        << id << "][DEALLOC] "
+        << " ptr = " << ptr
+        << ", requested = " << requested
+        << ", allocated = " << allocated << endl;
+#endif // __MEMORY_LOGGING__
+    
+    if (unlikely(allocator.usage < allocated))
+    {
+        cerr << "[MemoryManager][" << __func__
+            << "][Error] Incorrect Memory usage. "
+            << " ptr = " << ptr
+            << ", requested = " << requested
+            << ", allocated = " << allocated << endl;
+        
+        Assert(false);
+    }
+    
+    allocator.usage -= allocated;
+    
+    if (allocator.isStack)
+    {
+        if (unlikely(totalStackUsage < allocated))
+        {
+            cerr << "[MemoryManager][" << __func__
+                << "][Error] Incorrect Stack usage. "
+                << " ptr = " << ptr
+                << ", requested = " << requested
+                << ", allocated = " << allocated
+                << " > " << totalStackUsage << endl;
+            
+            Assert(false);
+        }
+        
+        totalStackUsage -= allocated;
+    }
+    else
+    {
+        if (unlikely(totalHeapUsage < allocated))
+        {
+            cerr << "[MemoryManager][" << __func__
+                << "][Error] Incorrect Heap usage."
+                << " ptr = " << ptr
+                << ", requested = " << requested
+                << ", allocated = " << allocated
+                << " > " << totalHeapUsage << endl;
+            
+            Assert(false);
+        }
+        
+        totalHeapUsage -= allocated;
+    }
+#endif // __MEMORY_STATISTICS__
 }
 
-AllocatorId MemoryManager::GetAllocator()
+void* MemoryManager::SysAllocate(size_t nBytes)
 {
-	return allocatorId;
+    auto& allocator = allocators[SystemAllocatorID];
+    
+    Assert(allocator.isValid
+           , "[", GetName(), "::",  __func__, "][Error] "
+           , "SystemAllocator hasn't been set.");
+    
+    Assert(allocator.allocate != nullptr
+           , "[", GetName(), "::", __func__, "][Error] "
+           , "SystemAllocator has no allocate function.");
+
+    return allocator.allocate(nBytes);
 }
 
-size_t MemoryManager::TotalUsage()
+void MemoryManager::SysDeallocate(void* ptr, size_t nBytes)
 {
-	return allocators[1]->Usage();
+    auto& allocator = allocators[SystemAllocatorID];
+    
+    Assert(allocator.isValid
+           , "[", GetName(), "::",  __func__, "][Error] "
+           , "SystemAllocator hasn't been set.");
+    
+    Assert(allocator.allocate != nullptr
+           , "[", GetName(), "::", __func__, "][Error] "
+           , "SystemAllocator has no allocate function.");
+
+    allocator.deallocate(ptr, nBytes);
 }
+
+void* MemoryManager::Allocate(size_t nBytes)
+{
+    using namespace std;
+
+    auto id = ScopedAllocatorID;
+    if (unlikely(!IsValid(id)))
+    {
+        cerr << "[" << GetName() << "::" << __func__ << "][Error] "
+            << "Invalid Scoped Allocator ID = "
+            << ScopedAllocatorID
+            << ", the default allocator shall be used." << endl;
+        
+        id = 0;
+    }
+
+    auto& allocator = allocators[id];
+    Assert(allocator.isValid
+           , "[", GetName(), "::", __func__, "][Error] "
+           , "Invalid Allocator ID = ", id);
+    
+    Assert(allocator.allocate != nullptr
+           , "[", GetName(), "::", __func__, "][Error] "
+           , "No allocate function, ID = ", id);
+
+    return allocator.allocate(nBytes);
+}
+
+void MemoryManager::Deallocate(void* ptr, size_t nBytes)
+{
+    using namespace std;
+
+    auto id = ScopedAllocatorID;
+    if (unlikely(!IsValid(id)))
+    {
+        cerr << "[MemorManager::Deallocate][Error] Invalid Scoped Allocator ID = "
+            << ScopedAllocatorID
+            << ", the default deallocate shall be used." << endl;
+        
+        id = 0;
+    }
+
+    auto& allocator = allocators[id];
+    Assert(allocator.allocate != nullptr
+       , "[MemoryManager::Allocate][Error] No allocate function, ID = "
+       , id);
+
+    allocator.deallocate(ptr, nBytes);
+}
+
+void MemoryManager::SetScopedAllocatorId(TId id)
+{
+    using namespace std;
+    
+    if (unlikely(!IsValid(id)))
+    {
+        cerr << "[MemorManager::SetScopedAllocatorId][Error] Invalid Scoped Allocator ID = "
+            << ScopedAllocatorID
+            << ", the default deallocate shall be used." << endl;
+        
+        id = 0;
+    }
+    
+    if (unlikely(DVarScopedAllocLogging))
+    {
+        cout << "[MemorManager::SetScopedAllocatorId] Previous ID = "
+            << ScopedAllocatorID
+            << ", New ID = " << id << endl;
+    }
+    
+    ScopedAllocatorID = id;
+}
+
+} // HE

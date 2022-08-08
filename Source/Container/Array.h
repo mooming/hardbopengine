@@ -2,7 +2,8 @@
 
 #pragma once
 
-#include "Memory/Allocator.h"
+#include "Memory/BaseAllocator.h"
+#include "Memory/Memory.h"
 #include "System/Types.h"
 #include <algorithm>
 #include <initializer_list>
@@ -10,7 +11,7 @@
 
 namespace HE
 {
-    template <typename Element>
+    template <typename Element, class TAllocator = BaseAllocator<Element>>
     class Array
     {
         using Iterator = Element*;
@@ -19,6 +20,7 @@ namespace HE
     private:
         Index length;
         Element* data;
+        TAllocator allocator;
 
     public:
         inline Iterator begin() { return &data[0]; }
@@ -35,10 +37,10 @@ namespace HE
         {
         }
 
-        explicit inline Array(Index size) : length(size)
+        explicit inline Array(Index size)
+            : length(size)
         {
-            constexpr auto sizeOfElement = sizeof(Element);
-            data = Allocate<Element>(sizeOfElement * size);
+            data = allocator.allocate(length);
         }
 
         inline Array(std::initializer_list<Element> list)
@@ -59,8 +61,10 @@ namespace HE
 
         inline virtual ~Array()
         {
-            if (data != nullptr)
-                Deallocate(data);
+            if (data == nullptr)
+                return;
+            
+            allocator.deallocate(data, length);
         }
 
         inline Array& operator= (const Array& rhs) = delete;
@@ -140,15 +144,27 @@ namespace HE
         }
     };
 
+} // HE
+
 #ifdef __UNIT_TEST__
-    class ArrayTest : public TestCase
+
+#include "Test/TestCase.h"
+
+
+namespace HE
+{
+
+class ArrayTest : public TestCase
+{
+public:
+    ArrayTest() : TestCase("ArrayTest")
     {
-    public:
-        ArrayTest() : TestCase("ArrayTest") {}
+    }
 
-    protected:
-        virtual bool DoTest() override;
-    };
+protected:
+    virtual bool DoTest() override;
+};
+
+} // HE
+    
 #endif //__UNIT_TEST__
-
-}

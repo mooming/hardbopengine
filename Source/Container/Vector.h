@@ -2,14 +2,14 @@
 
 #pragma once
 
-#include "Memory/HardbopAllocator.h"
+#include "Memory/BaseAllocator.h"
 #include <vector>
 
 
 namespace HE
 {
 	template <typename T>
-	using Vector = std::vector<T, HardbopAllocator<T>>;
+	using Vector = std::vector<T, BaseAllocator<T>>;
 } // HE
 
 #ifdef __UNIT_TEST__

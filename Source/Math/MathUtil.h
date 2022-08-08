@@ -101,14 +101,14 @@ namespace HE
   template <typename T>
   inline T ClampFast(T value, T min, T max)
   {
-    AssertMessage(min <= max, "Clamp) Invalid Args. min > max");
+    Assert(min <= max, "Clamp) Invalid Args. min > max");
     return MinFast(max, MinFast(min, value));
   }
 
   template <typename T>
   inline T Clamp(T value, T min, T max)
   {
-    AssertMessage(min <= max, "Clamp) Invalid Args. min > max");
+    Assert(min <= max, "Clamp) Invalid Args. min > max");
     return std::min(max, std::max(min, value));
   }
 

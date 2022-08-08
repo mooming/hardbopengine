@@ -33,7 +33,7 @@ namespace HE
     {
         using namespace std;
         
-        AssertMessage(argc > 0, "CommandLineArguments::Parse - Incorrect argc = ", argc);
+        Assert(argc > 0, "CommandLineArguments::Parse - Incorrect argc = ", argc);
 
         for (int i = 0; i < argc; ++i)
         {

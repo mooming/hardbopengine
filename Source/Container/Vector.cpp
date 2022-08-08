@@ -6,6 +6,7 @@
 using namespace HE;
 
 #ifdef __UNIT_TEST__
+#include "Memory/AllocatorScope.h"
 #include "Memory/StackAllocator.h"
 #include "String/String.h"
 #include "System/Time.h"
@@ -17,8 +18,8 @@ bool VectorTest::DoTest()
 {
     using namespace std;
 
-    StackAllocator stack(512 * 1024 * 1024);
-    AllocatorScope stackScope(stack.Id());
+    StackAllocator stack("VectorTest::StackAllocator", 512 * 1024 * 1024);
+    AllocatorScope stackScope(stack.GetID());
 
 #ifdef __DEBUG__
     const int COUNT = 20;

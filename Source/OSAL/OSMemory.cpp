@@ -1,0 +1,122 @@
+// Created by mooming.go@gmail.com 2022
+
+#include "OSMemory.h"
+
+#include "Intrinsic.h"
+#include "System/Debug.h"
+
+
+#ifdef __linux__
+#include <cerrno>
+#include <iostream>
+#include <malloc.h>
+#include <sys/mman.h>
+#include <unistd.h>
+
+
+size_t OS::GetAllocSize(void* ptr)
+{
+    return malloc_usable_size(ptr);
+}
+
+
+size_t OS::GetPageSize()
+{
+    return sysconf(_SC_PAGESIZE);
+}
+
+void OS::ProtectMemory(void* address, size_t n)
+{
+    auto result = mprotect(address, n, PROT_NONE);
+    
+    if (unlikely(result != 0))
+    {
+        using namespace std;
+        cerr << "[OS::ProtectMemory] address = "
+            << address << ", n = " << n << " : " << strerror(errno) << endl;
+        
+        HE::Assert(false);
+    }
+}
+
+#elif defined __APPLE__
+#include <cerrno>
+#include <iostream>
+#include <unistd.h>
+#include <malloc/malloc.h>
+#include <sys/mman.h>
+
+
+size_t OS::GetAllocSize(void* ptr)
+{
+    return malloc_size(ptr);
+}
+
+size_t OS::GetPageSize()
+{
+    static size_t pageSize = sysconf(_SC_PAGESIZE);
+    return pageSize;
+}
+
+void OS::ProtectMemory(void* address, size_t n)
+{
+    auto result = mprotect(address, n, PROT_NONE);
+    
+    if (unlikely(result != 0))
+    {
+        using namespace std;
+        cerr << "[OS::ProtectMemory] address = "
+            << address << ", n = " << n << " : " << strerror(errno) << endl;
+        
+        HE::Assert(false);
+    }
+}
+
+#elif defined _WIN32
+#include <malloc.h>
+#include <windows.h>
+#include <errhandlingapi.h>
+#include <memoryapi.h>
+#include <sysinfoapi.h>
+
+
+size_t OS::GetAllocSize(void* ptr)
+{
+    return _msize(ptr);
+}
+
+size_t OS::GetPageSize()
+{
+    auto GetPageSizeWindows = []()
+    {
+        SYSTEM_INFO sSysInfo;
+        GetSystemInfo(&sSysInfo);
+        return sSysInfo.dwPageSize;
+    };
+    
+    static size_t pageSize = GetPageSizeWindows();
+
+    return pageSize;
+}
+
+void OS::ProtectMemory(void* address, size_t n)
+{
+    DWORD oldProtect = 0;
+    auto result = VirtualProtect(address, n, PAGE_NOACCESS, &oldProtect);
+
+    if (unlikely(result))
+    {
+        using namespace std;
+        auto errorId = GetLastError();
+
+        cerr << "[OS::ProtectMemory] address = "
+            << address << ", n = " << n << " : error code = " << errorId << endl;
+
+        HE::Assert(false);
+    }
+}
+
+#else
+static_assert(false, "System is not specified.");
+#endif
+

@@ -5,9 +5,17 @@
 // Definitions for Pre-compilation
 //#define __TEST__
 //#define __UNIT_TEST__
-#define __VERIFY_MEMORY__
-//#define __VERIFY_MEMORY_HEAVY__
-#define __USE_SYSTEM_MALLOC__
+
+// Allocator
+//#define __MEMORY_VERIFICATION__
+//#define __MEMORY_STATISTICS__
+//#define __MEMORY_LOGGING__
+//#define __MEMORY_INVESTIGATION__
+//#define __MEMORY_OVERFLOW_CHECK__ 1 // 0: under-run, 1: over-run
+//#define __USE_SYSTEM_MALLOC__
+
+// Performance
+#define __PERFORMANCE_COUNTER__
 
 // Debug Control
 #if !defined(NDEBUG) || defined(_DEBUG) || defined(DEBUG)

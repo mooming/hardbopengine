@@ -4,6 +4,7 @@
 
 #include "Config/EngineConfig.h"
 #include "Log/PrintArgs.h"
+#include "OSAL/Intrinsic.h"
 
 #ifdef __DEBUG__
 
@@ -11,27 +12,33 @@
 #include <cstdio>
 #include <memory>
 
-namespace
+namespace HE
 {
+    template <typename T>
+    using TDebugVariable = volatile T;
 
-  inline void Assert(bool shouldBeTrue)
-  {
-    if (shouldBeTrue)
-      return;
+    inline void Assert(bool shouldBeTrue)
+    {
+        if (likely(shouldBeTrue))
+            return;
 
-    PrintArgs("[Assert] Please check it.");
-    std::abort();
-  }
+        PrintArgs("[Assert] Please check it.");
+        
+        DebugBreak();
+        std::abort();
+    }
 
-  template <typename ... Types>
-  inline void AssertMessage(bool shouldBeTrue, Types&& ... args)
-  {
-    if (shouldBeTrue)
-      return;
+    template <typename ... Types>
+    inline void Assert(bool shouldBeTrue, Types&& ... args)
+    {
+        if (likely(shouldBeTrue))
+            return;
 
-    PrintArgs("[Assert] ", std::forward<Types>(args) ...);
-    std::abort();
-  }
+        PrintArgs("[Assert] ", std::forward<Types>(args) ...);
+        
+        DebugBreak();
+        std::abort();
+    }
 }
 
 #else // __DEBUG__
@@ -40,39 +47,42 @@ namespace
 #include <cstdio>
 #include <memory>
 
-namespace
+namespace HE
 {
+    template <typename T>
+    using TDebugVariable = constexpr T;
 
-  inline void Assert(bool)
-  {
-  }
+    inline void Assert(bool)
+    {
+    }
 
-  template <typename ... Types>
-  inline void AssertMessage(bool, const char*, Types&& ...)
-  {
-  }
+    template <typename ... Types>
+    inline void Assert(bool, const char*, Types&& ...)
+    {
+    }
 }
 #endif // __DEBUG__
 
-namespace
+namespace HE
 {
+    inline void FatalAssert(bool shouldBeTrue)
+    {
+        if (likely(shouldBeTrue))
+            return;
 
-  inline void FatalAssert(bool shouldBeTrue)
-  {
-    if (shouldBeTrue)
-      return;
+        PrintArgs("[FatalAssert] Please check it.");
+        DebugBreak();
+        std::abort();
+    }
 
-    PrintArgs("[FatalAssert] Please check it.");
-    std::abort();
-  }
+    template <typename ... Types>
+    inline void FatalAssert(bool shouldBeTrue, Types&& ... args)
+    {
+        if (likely(shouldBeTrue))
+            return;
 
-  template <typename ... Types>
-  inline void FatalAssertMessage(bool shouldBeTrue, Types&& ... args)
-  {
-    if (shouldBeTrue)
-      return;
-
-    PrintArgs("[FatalAssert] ", std::forward<Types>(args) ...);
-    std::abort();
-  }
-}
+        PrintArgs("[FatalAssert] ", std::forward<Types>(args) ...);
+        DebugBreak();
+        std::abort();
+    }
+} // anonymous
