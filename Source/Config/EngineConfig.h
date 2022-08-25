@@ -17,6 +17,9 @@
 // Performance
 #define __PERFORMANCE_COUNTER__
 
+// Log
+#define LOG_ENABLED
+
 // Debug Control
 #if !defined(NDEBUG) || defined(_DEBUG) || defined(DEBUG)
 #undef __DEBUG__
@@ -32,6 +35,14 @@ namespace HE
 {
     namespace Config
     {
-        static constexpr int StaticStringChunkSize = 4 * 1024 * 1024;
+        // String
+        static constexpr int MaxPathLength = 512;
+        static constexpr int StaticStringBufferSize = 8 * 1024 * 1024;
+        static constexpr int StaticStringNumHashBuckets = 256;
+    
+        // Log
+        static constexpr int LogBufferSize = 1024;
+        static constexpr int LogMemoryBlockSize = 2048;
+        static constexpr int LogNumMemoryBlocks = 2048;
     }
 } // HE

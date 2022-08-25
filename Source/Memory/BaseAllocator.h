@@ -2,8 +2,10 @@
 
 #pragma once
 
+#include "AllocatorID.h"
+#include "AllocatorScope.h"
+#include "MemoryManager.h"
 #include "Config/EngineConfig.h"
-#include "Memory/MemoryManager.h"
 #include <cstddef>
 #include <iostream>
 
@@ -15,8 +17,18 @@ namespace HE
     {
         using value_type = T;
         
+    private:
+        TAllocatorID allocatorID;
+        
+    public:
+        BaseAllocator()
+            : allocatorID(MemoryManager::GetCurrentAllocatorID())
+        {
+        }
+        
         T* allocate(std::size_t n)
         {
+            AllocatorScope scope(allocatorID);
             auto& mmgr = MemoryManager::GetInstance();
             auto ptr = mmgr.Allocate<T>(n);
             
@@ -25,6 +37,7 @@ namespace HE
 
         void deallocate (T* ptr, std::size_t n)
         {
+            AllocatorScope scope(allocatorID);
             auto& mmgr = MemoryManager::GetInstance();
             mmgr.Deallocate(ptr, n);
         }

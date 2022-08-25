@@ -2,41 +2,79 @@
 
 #pragma once
 
+#include "StaticStringID.h"
+#include <cstddef>
 #include <cstdint>
+#include <functional>
 #include <ostream>
 
 
 namespace HE
 {
-    class String;
 
-    class StaticString final
+class StaticString final
+{
+private:
+    StaticStringID id;
+    
+public:
+    StaticString();
+    inline StaticString(StaticStringID id)
+        : id (id)
     {
-        using TID = int32_t;
+    }
+    
+    StaticString(const char* string);
+    
+    template <typename T>
+    StaticString(const T& string)
+        : StaticString(string.c_str())
+    {
+    }
+    
+    ~StaticString() = default;
+    
+    const char* c_str() const;
+    
+    inline auto GetID() const noexcept { return id; }
+    inline operator const char* () const { return c_str(); }
+    inline bool operator < (const StaticString& rhs) const { return id.value < rhs.id.value; }
+    inline bool operator == (const StaticString& rhs) const { return id.value == rhs.id.value; }
+    
+    inline friend std::ostream& operator <<(std::ostream& os, const StaticString& str)
+    {
+        os << str.c_str();
+        return os;
+    }
+};
 
-    private:
-        TID id;
+} // HE
 
+namespace std
+{
+template<>
+struct hash<HE::StaticString> final
+{
+    std::size_t operator() (const HE::StaticString& obj) const
+    {
+        return obj.GetID().value;
+    }
+};
+} // std
+
+
+#ifdef __UNIT_TEST__
+#include "Test/TestCase.h"
+
+namespace HE
+{
+    class StaticStringTest : public TestCase
+    {
     public:
-        StaticString();
-        StaticString(const char* string);
-        StaticString(const String& string);
-        ~StaticString() = default;
+        StaticStringTest() : TestCase("StaticStringTest") {}
 
-        operator const char* () const;
-        operator const String& () const;
-
-        inline bool operator < (const StaticString& rhs) const { return id < rhs.id; }
-        inline bool operator == (const StaticString& rhs) const { return id == rhs.id; }
-        inline bool operator != (const StaticString& rhs) const { return id != rhs.id; }
-
-        const char* c_str() const;
-        const String& ToString() const;
-
-        inline friend std::ostream& operator <<(std::ostream& os, const StaticString& str)
-        {
-            os << str.c_str();
-            return os;
-        }
+    protected:
+        virtual bool DoTest() override;
     };
 } // HE
+#endif //__UNIT_TEST__

@@ -24,6 +24,7 @@ add_library (String STATIC
  StringUtil.cpp
  Letter.h
  StaticString.h
+ StaticStringID.h
  StaticStringTable.h
  String.h
  StringUtil.h

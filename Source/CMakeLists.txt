@@ -16,16 +16,16 @@ include_directories ( ${CMAKE_SOURCE_DIR}
  )
 link_directories (${CMAKE_SOURCE_DIR}/lib)
 
-add_subdirectory (Config)
-add_subdirectory (Container)
-add_subdirectory (HSTL)
-add_subdirectory (Log)
-add_subdirectory (Math)
 add_subdirectory (Memory)
-add_subdirectory (OSAL)
-add_subdirectory (String)
-add_subdirectory (System)
 add_subdirectory (Test)
+add_subdirectory (Config)
+add_subdirectory (OSAL)
+add_subdirectory (Math)
+add_subdirectory (Container)
+add_subdirectory (System)
+add_subdirectory (Log)
+add_subdirectory (String)
+add_subdirectory (HSTL)
 
 add_executable (hengine
  Engine.cpp

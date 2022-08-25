@@ -3,8 +3,8 @@
 #pragma once
 
 #include "AllocatorID.h"
-#include "BaseAllocator.h"
 #include "MemoryManager.h"
+#include "SystemAllocator.h"
 #include "Config/EngineConfig.h"
 #include "OSAL/OSMemory.h"
 #include "System/Debug.h"
@@ -22,7 +22,7 @@
 
 namespace HE
 {
-    template <class T, int BufferSize = 64, class FallbackAllocator = BaseAllocator<T>>
+    template <class T, int BufferSize = 64, class FallbackAllocator = SystemAllocator<T>>
     struct ALIGN_STRUCT InlineAllocator final
     {
         using value_type = T;

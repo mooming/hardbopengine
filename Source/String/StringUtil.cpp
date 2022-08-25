@@ -138,17 +138,98 @@ TString PathToName(const TString& path)
     return TString(buffer + lastIndex + 1);
 }
 
-TString PrettyFunctionToClassName(const char* PrettyFunction)
+HE::StaticString PrettyFunctionToFunctionName(const char* PrettyFunction)
 {
-    return TString(PrettyFunction);
+    using TStr = HSTL::HInlineString<256>;
+    TStr str(PrettyFunction);
+    
+    auto start = str.find_last_of("::") + 1;
+    if (start == TStr::npos)
+    {
+        return HE::StaticString(PrettyFunction);
+    }
+    
+    str = str.substr(start);
+    
+    return HE::StaticString(str.c_str());
 }
 
-TString PrettyFunctionToFunctionName(const char* PrettyFunction)
+HE::StaticString PrettyFunctionToClassName(const char* PrettyFunction)
 {
-    return TString(PrettyFunction);
+    using TStr = HSTL::HInlineString<256>;
+    TStr str(PrettyFunction);
+   
+    auto end = str.find_last_of("::") - 1;
+    if (end == TStr::npos)
+        return HE::StaticString();
+    
+    str.resize(end);
+    auto start = str.find_last_of(" ") + 1;
+    str = str.substr(start, (end - start));
+    
+    return HE::StaticString(str.c_str());
 }
 
-} // HE
+HE::StaticString PrettyFunctionToMethodName(const char* PrettyFunction)
+{
+    using TStr = HSTL::HInlineString<256>;
+    TStr str(PrettyFunction);
+    
+    auto start = str.find_last_of("::");
+    if (start == TStr::npos)
+        return HE::StaticString(PrettyFunction);
+    
+    start = str.find_last_of(" ", start - 2) + 1;
+    str = str.substr(start);
+    
+    return HE::StaticString(str.c_str());
+}
+
+HE::StaticString PrettyFunctionToCompactClassName(const char* PrettyFunction)
+{
+    using TStr = HSTL::HInlineString<256>;
+    TStr str(PrettyFunction);
+   
+    auto end = str.find_last_of("::") - 1;
+    if (end == TStr::npos)
+        return HE::StaticString();
+    
+    str.resize(end);
+    auto start = str.find_last_of("::") + 1;
+    str = str.substr(start, (end - start));
+    
+    return HE::StaticString(str.c_str());
+}
+
+HE::StaticString PrettyFunctionToCompactMethodName(const char* PrettyFunction)
+{
+    using TStr = HSTL::HInlineString<256>;
+    TStr str(PrettyFunction);
+    
+    auto start = str.find_last_of("::");
+    if (start == TStr::npos)
+        return HE::StaticString();
+    start = str.find_last_of("::", start - 2) + 1;
+    str = str.substr(start);
+    
+    return HE::StaticString(str.c_str());
+}
+
+size_t CalculateHash(const char* text)
+{
+    size_t hashCode = 5381;
+    
+    while (*text != '\0')
+    {
+        size_t ch = *text;
+        ++text;
+        hashCode = ((hashCode << 5) + hashCode) + ch; /* hash * 33 + c */
+    }
+    
+    return hashCode;
+}
+
+} // StringUtil
 
 #ifdef __UNIT_TEST__
 #include "System/Time.h"
@@ -161,9 +242,119 @@ bool StringUtilTest::DoTest()
 {
     using namespace StringUtil;
     
+    using namespace std;
     
+    int testCount = 0;
+    int failCount = 0;
     
-    return true;
+    {
+        StaticString className("HE::StringUtilTest");
+        cout << "[" << className << "] Test PrettyFunctionToClassName" << endl;
+        
+        auto name = PrettyFunctionToClassName(__PRETTY_FUNCTION__);
+        cout << "[" << className << "] Class Name is " << name
+            << " / " << className << endl;
+
+        if (name != className)
+        {
+            cerr << "[Fail]" << endl;
+            ++failCount;
+        }
+        else
+        {
+            cout << "[PASS]" << endl;
+        }
+    }
+    
+    ++testCount;
+    
+    {
+        StaticString className("StringUtilTest");
+        cout << "[" << className << "] Test PrettyFunctionToCompactClassName" << endl;
+        
+        auto name = PrettyFunctionToCompactClassName(__PRETTY_FUNCTION__);
+        cout << "[" << className << "] Compact Class Name is " << name
+            << " / " << className << endl;
+
+        if (name != className)
+        {
+            cerr << "[Fail]" << endl;
+            ++failCount;
+        }
+        else
+        {
+            cout << "[PASS]" << endl;
+        }
+    }
+    
+    ++testCount;
+    
+    auto className = PrettyFunctionToClassName(__PRETTY_FUNCTION__);
+    
+    {
+        cout << "[" << className << "] Test PrettyFunctionToFunctionName" << endl;
+        
+        StaticString funcName("DoTest()");
+        auto name = PrettyFunctionToFunctionName(__PRETTY_FUNCTION__);
+        cout << "[" << className << "] Function Name is "
+            << name  << " / " << funcName << endl;
+        
+        if (name != funcName)
+        {
+            cerr << "[Fail]" << endl;
+            ++failCount;
+        }
+        else
+        {
+            cout << "[PASS]" << endl;
+        }
+    }
+    
+    ++testCount;
+    
+    {
+        cout << "[" << className << "] Test PrettyFunctionToMethodName" << endl;
+        
+        StaticString funcName("HE::StringUtilTest::DoTest()");
+        auto name = PrettyFunctionToMethodName(__PRETTY_FUNCTION__);
+        cout << "[" << className << "] Function Name is "
+            << name  << " / " << funcName << endl;
+        
+        if (name != funcName)
+        {
+            cerr << "[Fail]" << endl;
+            ++failCount;
+        }
+        else
+        {
+            cout << "[PASS]" << endl;
+        }
+    }
+    
+    ++testCount;
+    
+    {
+        cout << "[" << className << "] Test PrettyFunctionToCompactMethodName" << endl;
+        
+        StaticString funcName("StringUtilTest::DoTest()");
+        auto name = PrettyFunctionToCompactMethodName(__PRETTY_FUNCTION__);
+        cout << "[" << className << "] Function Name is "
+            << name  << " / " << funcName << endl;
+        
+        if (name != funcName)
+        {
+            cerr << "[Fail]" << endl;
+            ++failCount;
+        }
+        else
+        {
+            cout << "[PASS]" << endl;
+        }
+    }
+    
+    ++testCount;
+    
+    return failCount < 1;
 }
 } // HE
 #endif //__UNIT_TEST__

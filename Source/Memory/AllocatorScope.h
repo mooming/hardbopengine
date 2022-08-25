@@ -23,6 +23,12 @@ public:
     AllocatorScope& operator= (AllocatorScope&&) = delete;
 
     AllocatorScope(TAllocatorID id);
+    template <typename T>
+    AllocatorScope(const T& allocator)
+        : AllocatorScope(allocator.GetID())
+    {
+    }
+    
     ~AllocatorScope();
 };
 

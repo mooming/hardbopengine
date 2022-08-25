@@ -14,10 +14,6 @@
 #include <limits>
 #include <type_traits>
 
-#ifdef __USE_SYSTEM_MALLOC__
-#include <cstdlib>
-#endif // __USE_SYSTEM_MALLOC__
-
 
 namespace HE
 {
@@ -132,6 +128,18 @@ namespace HE
             }
 
             fallbackAllocator.deallocate(ptr, n);
+        }
+        
+        template <class U, int AnyBufferSize, int AnyNumBuffers, class AnyFallbackAllocator>
+        bool operator==(const InlinePoolAllocator<U, AnyBufferSize, AnyNumBuffers, AnyFallbackAllocator>&) const
+        {
+            return false;
+        }
+
+        template <class U, int AnyBufferSize, int AnyNumBuffers, class AnyFallbackAllocator>
+        bool operator!=(const InlinePoolAllocator<U, AnyBufferSize, AnyNumBuffers, AnyFallbackAllocator>&) const
+        {
+            return true;
         }
         
     private:

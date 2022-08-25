@@ -21,8 +21,13 @@ static MemoryManager* MMgrInstance = nullptr;
 
 MemoryManager& MemoryManager::GetInstance()
 {
-    Assert(MMgrInstance != nullptr);
+    FatalAssert(MMgrInstance != nullptr);
     return *MMgrInstance;
+}
+
+MemoryManager::TId MemoryManager::GetCurrentAllocatorID()
+{
+    return ScopedAllocatorID;
 }
 
 MemoryManager::MemoryManager()
@@ -36,17 +41,14 @@ MemoryManager::MemoryManager()
 {
     Assert(MMgrInstance == nullptr);
     MMgrInstance = this;
+    
+    static SystemAllocator<uint8_t> systemAllocator;
+    Assert(systemAllocator.GetID() == SystemAllocatorID);
+    SetScopedAllocatorId(SystemAllocatorID);
 }
 
 MemoryManager::~MemoryManager()
 {
-}
-
-void MemoryManager::Initialize()
-{
-    static SystemAllocator<uint8_t> systemAllocator;
-    Assert(systemAllocator.GetID() == SystemAllocatorID);
-    SetScopedAllocatorId(SystemAllocatorID);
 }
 
 const char* MemoryManager::GetName() const

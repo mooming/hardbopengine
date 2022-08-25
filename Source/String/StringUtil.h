@@ -3,6 +3,7 @@
 #pragma once
 
 #include "HSTL/HString.h"
+#include "String/StaticString.h"
 
 
 namespace StringUtil
@@ -19,8 +20,14 @@ bool StartsWithIgnoreCase(const TString& src, const TString& startTerm);
 bool EndsWith(const TString& src, const TString& endTerm);
 bool EndsWithIgnoreCase(const TString& src, const TString& endTerm);
 TString PathToName(const TString& path);
-TString PrettyFunctionToClassName(const char* PrettyFunction);
-TString PrettyFunctionToFunctionName(const char* PrettyFunction);
+
+HE::StaticString PrettyFunctionToFunctionName(const char* PrettyFunction);
+HE::StaticString PrettyFunctionToClassName(const char* PrettyFunction);
+HE::StaticString PrettyFunctionToMethodName(const char* PrettyFunction);
+HE::StaticString PrettyFunctionToCompactClassName(const char* PrettyFunction);
+HE::StaticString PrettyFunctionToCompactMethodName(const char* PrettyFunction);
+
+size_t CalculateHash(const char* text);
 
 } // StringUtil
 

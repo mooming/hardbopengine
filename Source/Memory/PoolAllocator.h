@@ -3,6 +3,7 @@
 #pragma once
 
 #include "AllocatorID.h"
+#include "String/StaticString.h"
 #include "System/Types.h"
 
 
@@ -22,40 +23,35 @@ namespace HE
 		};
         
         TAllocatorID id;
-		Index blockSize;
+        StaticString name;
+        
+        Index blockSize;
 		Index numberOfBlocks;
 		Index numberOfFreeBlocks;
-		Byte* buffer;
+
+        Byte* buffer;
 		Pointer availables;
 		IndexType indexType;
 
-		Index GetIndex(Pointer ptr);
-		void SetIndex(Pointer ptr, Index index);
-
 	public:
-		PoolAllocator(Index blockSize, Index numberOfBlocks);
+		PoolAllocator(const char* name, Index blockSize, Index numberOfBlocks);
         ~PoolAllocator();
 
-        virtual Pointer Allocate(size_t size);
-		virtual void Deallocate(const Pointer ptr);
+        Pointer Allocate(size_t size);
+		void Deallocate(Pointer ptr);
 
-        virtual size_t GetSize(const Pointer) const { return blockSize; }
-
-		virtual size_t Usage() const
-		{
-			return (numberOfBlocks - numberOfFreeBlocks) * blockSize;
-		}
-
-		virtual size_t Available() const
-		{
-			return numberOfFreeBlocks * blockSize;
-		}
-
-		Pointer Allocate();
-		inline Index NumberOfFreeBlocks()
-		{
-			return numberOfFreeBlocks;
-		}
+        inline auto GetID() const { return id; }
+        inline auto GetName() const { return name; }
+        inline size_t GetSize(const Pointer) const { return blockSize; }
+        inline  size_t Usage() const { return (numberOfBlocks - numberOfFreeBlocks) * blockSize; }
+        inline size_t Available() const { return numberOfFreeBlocks * blockSize; }
+        inline Index NumberOfFreeBlocks() const { return numberOfFreeBlocks; }
+        
+    private:
+        Index GetIndex(Pointer ptr) const;
+        Index ReadNextIndex(Pointer ptr) const;
+        void WriteNextIndex(Pointer ptr, Index index);
+        Pointer Allocate();
 	};
 } // HE
 

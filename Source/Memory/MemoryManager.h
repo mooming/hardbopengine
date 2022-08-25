@@ -61,12 +61,12 @@ namespace HE
         MemoryManager& operator= (const MemoryManager&) = delete;
 
         static MemoryManager& GetInstance();
+        static TId GetCurrentAllocatorID();
 
     public:
         MemoryManager();
         ~MemoryManager();
         
-        void Initialize();
         const char* GetName() const;
         
         TId Register(const char* name, bool isStack, size_t capacity

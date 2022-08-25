@@ -2,7 +2,9 @@
 
 #pragma once
 
+#include "Log/Logger.h"
 #include "Memory/MemoryManager.h"
+#include "String/StaticStringTable.h"
 
 
 namespace HE
@@ -11,13 +13,20 @@ namespace HE
     {
     private:
         MemoryManager memoryManager;
+        StaticStringTable staticStringTable;
+        Logger logger;
         
     public:
-        Engine() = default;
-        ~Engine() = default;
+        Engine();
+        ~Engine();
 
         void Initialize(int argc, const char* argv[]);
         void Run();
-        void Finalize();
+        
+        StaticString GetName() const;
+        
+        inline auto& GetMemoryManager() { return memoryManager; }
+        inline auto& GetLogger() { return logger; }
+        
     };
 }

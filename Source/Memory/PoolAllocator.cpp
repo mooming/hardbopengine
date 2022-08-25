@@ -3,6 +3,7 @@
 #include "PoolAllocator.h"
 
 #include "MemoryManager.h"
+#include "Log/Logger.h"
 #include "System/Debug.h"
 #include "System/Exception.h"
 #include "System/CommonUtil.h"
@@ -10,36 +11,23 @@
 
 using namespace HE;
 
-PoolAllocator::PoolAllocator(Index blockSize, Index numberOfBlocks)
+PoolAllocator::PoolAllocator(const char* name,Index blockSize, Index numberOfBlocks)
     : id(InvalidAllocatorID)
+    , name(name)
     , blockSize(blockSize)
     , numberOfBlocks(numberOfBlocks)
     , numberOfFreeBlocks(numberOfBlocks)
     , buffer(nullptr)
     , indexType(IndexType::U32)
 {
-    if (blockSize == 0)
-    {
-        throw Exception(__FILE__, __LINE__, "Pool size is zero\n");
-    }
-    else if (blockSize == 1)
-    {
-        if (numberOfBlocks > 0xFF)
-        {
-            throw Exception(__FILE__, __LINE__
-                , "Number of blocks should be less than %u, when block size is %u.\n"
-                , 0xFF, blockSize);
-        }
-    }
-    else if (blockSize <= 3)
-    {
-        if (numberOfBlocks > 0xFFFF)
-        {
-            throw Exception(__FILE__, __LINE__
-                , "Number of blocks should be less than %u, when block size is %u.\n"
-                , 0xFFFF, blockSize);
-        }
-    }
+    FatalAssert(blockSize > 0);
+    FatalAssert(blockSize != 1 || numberOfBlocks <= 0xFF
+        , "Number of blocks should be less than "
+        , 0xFF, ", when block size is ", blockSize);
+
+    FatalAssert(blockSize > 3 || numberOfBlocks <= 0xFFFF
+        , "Number of blocks should be less than "
+        , 0xFFFF, ", when block size is ", blockSize);
 
     if (numberOfBlocks <= 0xFF)
     {
@@ -82,6 +70,18 @@ PoolAllocator::PoolAllocator(Index blockSize, Index numberOfBlocks)
         }
         break;
     }
+    
+    auto allocFunc = [this](size_t n) -> void*
+    {
+        return Allocate(n);
+    };
+    
+    auto deallocFunc = [this](void* ptr, size_t)
+    {
+        Deallocate(ptr);
+    };
+    
+    id = mmgr.Register(name, false, totalSize, allocFunc, deallocFunc);
 }
 
 PoolAllocator::~PoolAllocator()
@@ -91,69 +91,66 @@ PoolAllocator::~PoolAllocator()
     mmgr.Deallocate(buffer, totalSize);
 }
 
-Pointer PoolAllocator::Allocate()
-{
-    if (availables)
-    {
-        void* ptr = availables;
-        size_t index = GetIndex(ptr);
-        if (index < numberOfBlocks)
-        {
-            availables = &buffer[index * blockSize];
-        }
-        else
-        {
-            availables = nullptr;
-        }
-        --numberOfFreeBlocks;
-        return ptr;
-    }
-    return nullptr;
-}
-
 Pointer PoolAllocator::Allocate(size_t size)
 {
-    if (size <= blockSize)
+    if (unlikely(size > blockSize))
     {
-        return Allocate();
+        auto errorLog = Logger::Get(GetName(), ELogLevel::Error);
+        errorLog.Out([size, blockSize = blockSize](auto& logStream)
+        {
+            logStream << "The requested size " << size
+                << " is exceeding its limit, " << blockSize << '.';
+        });
+
+        return nullptr;
+    }
+    
+    return Allocate();
+}
+void PoolAllocator::Deallocate(Pointer ptr)
+{
+    if (ptr == nullptr)
+        return;
+
+    if (availables)
+    {
+        const auto index =GetIndex(availables);
+        if (unlikely(index > numberOfBlocks))
+        {
+            auto errorLog = Logger::Get(GetName(), ELogLevel::Error);
+            errorLog.Out([ptr](auto& logStream)
+            {
+                logStream << ptr << " is not alloacted by this.";
+            });
+
+            return;
+        }
+
+        WriteNextIndex(ptr, index);
     }
     else
     {
-        throw Exception(__FILE__, __LINE__
-            , "Pool allocation failed. required = %u, size of block = %u"
-            , size, blockSize);
+        WriteNextIndex(ptr, numberOfBlocks);
     }
+
+    availables = ptr;
+    
+    ++numberOfFreeBlocks;
 }
-void PoolAllocator::Deallocate(const Pointer ptr)
+
+Index PoolAllocator::GetIndex(Pointer ptr) const
 {
-    if (ptr)
-    {
-        if (availables)
-        {
-            const uint32_t index = 0xFFFFFFFF
-                & ((reinterpret_cast<Byte*>(availables) - buffer) / blockSize);
+    auto bytePtr = reinterpret_cast<Byte*>(ptr);
+    auto delta = bytePtr - buffer;
+    auto index = delta / blockSize;
 
-            if (index > numberOfBlocks)
-            {
-                throw Exception(__FILE__, __LINE__
-                    , "PoolAllocator: Deallocation failed. Invalid Index = %u\n", index);
-            }
-
-            SetIndex(ptr, index);
-        }
-        else
-        {
-            SetIndex(ptr, numberOfBlocks);
-        }
-
-        availables = ptr;
-        ++numberOfFreeBlocks;
-    }
+    return index;
 }
 
-Index PoolAllocator::GetIndex(Pointer ptr)
+Index PoolAllocator::ReadNextIndex(Pointer ptr) const
 {
     uint32_t index = 0;
+
     switch (indexType)
     {
     case IndexType::U8:
@@ -171,11 +168,12 @@ Index PoolAllocator::GetIndex(Pointer ptr)
 
     Assert(index <= numberOfBlocks
         , "PoolAllocator: out of bounds index = %u / %u", index, numberOfBlocks);
+
     return index;
 }
 
 
-void PoolAllocator::SetIndex(Pointer ptr, Index index)
+void PoolAllocator::WriteNextIndex(Pointer ptr, Index index)
 {
     Assert(index < numberOfBlocks
         , "PoolAllocator: out of bounds index = %u / %u", index, numberOfBlocks);
@@ -196,6 +194,28 @@ void PoolAllocator::SetIndex(Pointer ptr, Index index)
     }
 }
 
+Pointer PoolAllocator::Allocate()
+{
+    if (!availables)
+        return nullptr;
+
+    void* ptr = availables;
+    size_t index = ReadNextIndex(ptr);
+
+    if (index < numberOfBlocks)
+    {
+        availables = &buffer[index * blockSize];
+    }
+    else
+    {
+        availables = nullptr;
+    }
+
+    --numberOfFreeBlocks;
+
+    return ptr;
+}
+
 #ifdef __UNIT_TEST__
 #include <iostream>
 
@@ -203,11 +223,11 @@ bool PoolAllocatorTest::DoTest()
 {
     for (int i = 1; i < 100; ++i)
     {
-        PoolAllocator pool(i, 100);
+        PoolAllocator pool("TestPoolAllocator", i, 100);
     }
 
     {
-        PoolAllocator pool(100, 100);
+        PoolAllocator pool("TestPoolAllocator",100, 100);
         for (int i = 0; i < 100; ++i)
         {
             auto ptr = pool.Allocate(50);

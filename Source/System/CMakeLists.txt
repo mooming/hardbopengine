@@ -21,9 +21,6 @@ add_library (System STATIC
  CommandLineArguments.cpp
  Component.cpp
  ComponentSystem.cpp
- Task.cpp
- TaskQueue.cpp
- TaskSystem.cpp
  Time.cpp
  CommandLineArguments.h
  CommonUtil.h
@@ -33,9 +30,6 @@ add_library (System STATIC
  Constants.h
  Debug.h
  Exception.h
- Task.h
- TaskQueue.h
- TaskSystem.h
  Time.h
  Types.h
 )

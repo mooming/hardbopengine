@@ -25,6 +25,7 @@
 #include "Memory/Optional.h"
 #include "Memory/PoolAllocator.h"
 #include "Memory/StackAllocator.h"
+#include "String/StaticString.h"
 #include "String/StringUtil.h"
 #include "System/ComponentSystem.h"
 #include <iostream>
@@ -53,6 +54,7 @@ namespace Test
         testEnv.AddTest(new LinkedListTest());
         testEnv.AddTest(new OptionalTest());
         
+        testEnv.AddTest(new StaticStringTest());
         testEnv.AddTest(new StringTest());
         testEnv.AddTest(new StringUtilTest());
         

@@ -21,6 +21,7 @@ add_library (HSTL STATIC
  HString.cpp
  HSTL.h
  HString.h
+ HStringStream.h
  HUnorderedMap.h
  HVector.h
 )
