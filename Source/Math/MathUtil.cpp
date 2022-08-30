@@ -6,31 +6,48 @@
 
 
 #ifdef __UNIT_TEST__
-#include <iostream>
+#include "Log/Logger.h"
+
 
 bool HE::MathUtilTest::DoTest()
 {
     using namespace std;
 
+    auto log = Logger::Get(GetName());
+
     {
-      cout << "2^10 = " << Pow(2, 10) << endl;
 
-      if (Pow(2, 10) != 1024)
-      {
-        cerr << "Pow(int, int) result failed = " << Pow(2, 10) << ", but 1024"
-          << " expected." << endl;
+        log.Out([](auto& ls)
+        {
+            ls << "2^10 = " << Pow(2, 10);
+        });
 
-        return false;
-      }
+        if (Pow(2, 10) != 1024)
+        {
+            log.OutError([](auto& ls)
+            {
+                ls << "Pow(int, int) result failed = " << Pow(2, 10)
+                    << ", but 1024 expected.";
+            });
 
-      cout << "2.0f^10.0f = " << Pow(2.0f, 10.0f) << endl;
-      if (Pow(2, 10) != Pow(2.0f, 10.0f))
-      {
-        cerr << "Pow(float, float) result failed = " << Pow(2.0f, 10.0f)
-          << ", but 1024.0f" << " expected." << endl;
+            return false;
+        }
 
-        return false;
-      }
+        log.Out([](auto& ls)
+        {
+            ls << "2.0f^10.0f = " << Pow(2.0f, 10.0f);
+        });
+        
+        if (Pow(2, 10) != Pow(2.0f, 10.0f))
+        {
+            log.OutError([](auto& ls)
+            {
+                ls << "Pow(float, float) result failed = " << Pow(2.0f, 10.0f)
+                    << ", but 1024.0f expected.";
+            });
+
+            return false;
+        }
     }
 
     return true;

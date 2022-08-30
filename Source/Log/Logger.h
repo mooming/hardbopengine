@@ -10,6 +10,7 @@
 #include "HSTL/HUnorderedMap.h"
 #include "Memory/PoolAllocator.h"
 #include "String/StaticString.h"
+#include <atomic>
 #include <chrono>
 #include <condition_variable>
 #include <fstream>
@@ -42,9 +43,13 @@ public:
         const StaticString category;
         const ELogLevel level;
 
-        SimpleLogger(StaticString category, ELogLevel level);
+        SimpleLogger(StaticString category, ELogLevel level = ELogLevel::Info);
         void Out(TLogFunction logFunc);
         void Out(ELogLevel level, TLogFunction logFunc);
+        
+        inline void OutWarning(TLogFunction logFunc) { Out(ELogLevel::Warning, logFunc); }
+        inline void OutError(TLogFunction logFunc) { Out(ELogLevel::Error, logFunc); }
+        inline void OutFatalError(TLogFunction logFunc) { Out(ELogLevel::FatalError, logFunc); }
     };
 
 private:
@@ -54,15 +59,16 @@ private:
     bool disableLogPrint;
     TTimePoint startTime;
     
+    PoolAllocator allocator;
+    
     TString logPath;
     TLogBuffer inputBuffer;
-    TLogBuffer outputBuffer;
+    TLogBuffer swapBuffer;
+    TTextBuffer textBuffer;
     TOutputFuncs flushFuncs;
     TFilters filters;
     TLogFilter baseFilter;
-    
-    PoolAllocator allocator;
-    
+
     std::ofstream outFileStream;
     std::thread logThread;
     std::mutex inputLock;
@@ -71,7 +77,7 @@ private:
     
 public:
     static Logger& Get();
-    static SimpleLogger Get(StaticString category, ELogLevel level);
+    static SimpleLogger Get(StaticString category, ELogLevel level = ELogLevel::Info);
     Logger(const char* path, const TPathStr& filename, int numRolling);
     ~Logger();
     
@@ -85,7 +91,6 @@ public:
     
 private:
     void Run();
-    void ResetOutputBuffer(size_t size);
     void Flush(const TTextBuffer& buffer);
     
     void WriteLog(const TTextBuffer& buffer);

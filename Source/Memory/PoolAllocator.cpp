@@ -3,7 +3,6 @@
 #include "PoolAllocator.h"
 
 #include "MemoryManager.h"
-#include "Log/Logger.h"
 #include "System/Debug.h"
 #include "System/Exception.h"
 #include "System/CommonUtil.h"
@@ -17,6 +16,8 @@ PoolAllocator::PoolAllocator(const char* name,Index blockSize, Index numberOfBlo
     , blockSize(blockSize)
     , numberOfBlocks(numberOfBlocks)
     , numberOfFreeBlocks(numberOfBlocks)
+    , maxUsage(0)
+    , fallbackCount(0)
     , buffer(nullptr)
     , indexType(IndexType::U32)
 {
@@ -86,39 +87,58 @@ PoolAllocator::PoolAllocator(const char* name,Index blockSize, Index numberOfBlo
 
 PoolAllocator::~PoolAllocator()
 {
+    FatalAssert(buffer != nullptr);
+    FatalAssert(id != InvalidAllocatorID);
+    
     auto& mmgr = MemoryManager::GetInstance();
+
     const size_t totalSize = blockSize * numberOfBlocks;
     mmgr.Deallocate(buffer, totalSize);
+    mmgr.Deregister(GetID());
+    
+    buffer = nullptr;
+    id = InvalidAllocatorID;
 }
 
 Pointer PoolAllocator::Allocate(size_t size)
 {
     if (unlikely(size > blockSize))
     {
-        auto errorLog = Logger::Get(GetName(), ELogLevel::Error);
-        errorLog.Out([size, blockSize = blockSize](auto& logStream)
+        auto& mmgr = MemoryManager::GetInstance();
+        mmgr.LogError([size, blockSize = blockSize](auto& logStream)
         {
             logStream << "The requested size " << size
                 << " is exceeding its limit, " << blockSize << '.';
         });
 
-        return nullptr;
+        auto ptr = mmgr.SysAllocate(size);
+        ++fallbackCount;
+        
+        return ptr;
     }
     
     return Allocate();
 }
+
 void PoolAllocator::Deallocate(Pointer ptr)
 {
     if (ptr == nullptr)
         return;
+    
+    if (unlikely(!IsValid(ptr)))
+    {
+        auto& mmgr = MemoryManager::GetInstance();
+        mmgr.SysDeallocate(ptr, 0);
+        return;
+    }
 
     if (availables)
     {
         const auto index =GetIndex(availables);
         if (unlikely(index > numberOfBlocks))
         {
-            auto errorLog = Logger::Get(GetName(), ELogLevel::Error);
-            errorLog.Out([ptr](auto& logStream)
+            auto& mmgr = MemoryManager::GetInstance();
+            mmgr.LogError([ptr](auto& logStream)
             {
                 logStream << ptr << " is not alloacted by this.";
             });
@@ -136,6 +156,15 @@ void PoolAllocator::Deallocate(Pointer ptr)
     availables = ptr;
     
     ++numberOfFreeBlocks;
+}
+
+bool PoolAllocator::IsValid(Pointer ptr) const
+{
+    auto bytePtr = reinterpret_cast<Byte*>(ptr);
+    auto offset = static_cast<size_t>(bytePtr - buffer);
+    auto totalSize = blockSize * numberOfBlocks;
+    
+    return buffer <= bytePtr && offset < totalSize;
 }
 
 Index PoolAllocator::GetIndex(Pointer ptr) const
@@ -197,7 +226,16 @@ void PoolAllocator::WriteNextIndex(Pointer ptr, Index index)
 Pointer PoolAllocator::Allocate()
 {
     if (!availables)
+    {
+        auto& mmgr = MemoryManager::GetInstance();
+        mmgr.LogError([this](auto& ls)
+        {
+            ls << "No avaiable memory blocks. Usage = "
+                << GetUsage() << " / " << GetAvailableMemory();
+        });
+        
         return nullptr;
+    }
 
     void* ptr = availables;
     size_t index = ReadNextIndex(ptr);
@@ -207,11 +245,12 @@ Pointer PoolAllocator::Allocate()
         availables = &buffer[index * blockSize];
     }
     else
-    {
+    {        
         availables = nullptr;
     }
 
     --numberOfFreeBlocks;
+    maxUsage = std::max(maxUsage, GetUsage());
 
     return ptr;
 }

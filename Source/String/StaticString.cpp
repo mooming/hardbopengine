@@ -34,6 +34,7 @@ const char* StaticString::c_str() const
 #ifdef __UNIT_TEST__
 
 #include "HSTL/HString.h"
+#include "Log/Logger.h"
 #include <iostream>
 
 
@@ -45,43 +46,86 @@ bool StaticStringTest::DoTest()
     
     int testCount = 0;
     int failCount = 0;
-    
+
+    auto log = Logger::Get(GetName());
+
     {
-        cout << "[" << GetName() <<  "][TC" << testCount
-            << "] Basic Object Test" << endl;
+        log.Out([this, testCount](auto& ls)
+        {
+            ls << "[" << GetName() <<  "][TC" << testCount
+                << "] Basic Object Test";
+        });
+
         StaticString str;
     }
     
     ++testCount;
     
     {
-        cout << "[" << GetName() <<  "][TC" << testCount
-            << "] Basic String Test" << endl;
-        
+        log.Out([testCount](auto& ls)
+        {
+            ls << "[TC" << testCount
+                << "] Basic String Test";
+        });
+
         StaticString str("Hello?");
-        cout << str << endl;
-        cout << str.c_str() << endl;
+
+        log.Out([str](auto& ls)
+        {
+            ls << str;
+        });
+
+        log.Out([str](auto& ls)
+        {
+            ls << str.c_str();
+        });
+
     }
     
     {
-        cout << "[" << GetName() <<  "][TC" << testCount
-            << "] Hetero String Test" << endl;
-        
+        log.Out([testCount](auto& ls)
+        {
+            ls << "[TC" << testCount
+                << "] Hetero String Test";
+        });
+
         HSTL::HString hello("Hello?");
         HSTL::HInlineString<> helloInline("Hello?");
         
         StaticString str(hello);
-        cout << str << endl;
-        cout << str.c_str() << endl;
+
+
+        log.Out([str](auto& ls)
+        {
+            ls << str;
+        });
+
+        log.Out([str](auto& ls)
+        {
+            ls << str.c_str();
+        });
         
         StaticString strInline(helloInline);
-        cout << strInline << endl;
-        cout << strInline.c_str() << endl;
+
+        log.Out([strInline](auto& ls)
+        {
+            ls << strInline;
+        });
+
+
+        log.Out([strInline](auto& ls)
+        {
+            ls << strInline.c_str();
+        });
         
         if (str != strInline)
         {
-            cerr << "[" << GetName() <<  "][Error][TC" << testCount
-                << "] Test failes due to comparison failure. " << endl;
+            log.OutError([testCount](auto& ls)
+            {
+                ls << "[TC" << testCount
+                    << "] Test failes due to comparison failure. ";
+            });
+
             ++failCount;
         }
     }
@@ -89,15 +133,22 @@ bool StaticStringTest::DoTest()
     ++testCount;
     
     {
-        cout << "[" << GetName() <<  "][TC" << testCount
-            << "] Test starts" << endl;
-        
+        log.Out([testCount](auto& ls)
+        {
+            ls << "[TC" << testCount
+                << "] Test starts" << endl;
+        });
+
         StaticString str("Hello?");
         
         if (str != str)
         {
-            cerr << "[" << GetName() <<  "][Error][TC" << testCount
-                << "] Test failes due to comparison failure. " << endl;
+            log.OutError([testCount](auto& ls)
+            {
+                ls << "[TC" << testCount
+                    << "] Test failes due to comparison failure.";
+            });
+
             ++failCount;
         }
     }
@@ -105,16 +156,21 @@ bool StaticStringTest::DoTest()
     ++testCount;
     
     {
-        cout << "[" << GetName() <<  "][TC" << testCount
-            << "] Test starts" << endl;
+        log.Out([testCount](auto& ls)
+        {
+            ls << "[TC" << testCount << "] Test starts";
+        });
         
         StaticString strA("Hello?");
         StaticString strB("Hello?");
         
         if (strA != strB)
         {
-            cerr << "[" << GetName() <<  "][Error][TC" << testCount
-                << "] Test failes due to comparison failure. " << endl;
+            log.OutError([testCount](auto& ls)
+            {
+                ls << "[TC" << testCount
+                    << "] Test failes due to comparison failure. ";
+            });
             ++failCount;
         }
     }
@@ -122,16 +178,22 @@ bool StaticStringTest::DoTest()
     ++testCount;
     
     {
-        cout << "[" << GetName() <<  "][TC" << testCount
-            << "] Test starts" << endl;
+        log.Out([testCount](auto& ls)
+        {
+            ls << "[TC" << testCount << "] Test starts";
+        });
         
         StaticString strA("Hello?");
         StaticString strB("Ha");
         
         if (strA == strB)
         {
-            cerr << "[" << GetName() <<  "][Error][TC" << testCount
-                << "] Test failes due to comparison failure. " << endl;
+            log.OutError([testCount](auto& ls)
+            {
+                ls << "[TC" << testCount
+                    << "] Test failes due to comparison failure. ";
+            });
+            
             ++failCount;
         }
     }

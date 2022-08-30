@@ -2,6 +2,7 @@
 
 #include "StaticStringTable.h"
 
+#include "Engine.h"
 #include "StringUtil.h"
 #include "Config/EngineConfig.h"
 #include "Memory/AllocatorScope.h"
@@ -80,9 +81,11 @@ const char* StaticStringTable::Get(StaticStringID id) const
 
 void StaticStringTable::PrintStringTable() const
 {
-    using namespace std;
-    
-    cout << "[" << GetName() << "] PrintStringTable ===" << endl;
+    auto& engine = Engine::Get();
+    engine.Log(ELogLevel::Verbose, [](auto& ls)
+    {
+        ls << "StringTable ============";
+    });
     
     size_t tableID = 0;
     
@@ -91,15 +94,17 @@ void StaticStringTable::PrintStringTable() const
         if (table.size() <= 0)
             continue;
         
-        cout << "## Table ID = " << tableID << "/" << NumTables
-            << ", Number of Elements = "
-            << table.size() << endl;
+        engine.Log(ELogLevel::Verbose, [&](auto& ls)
+        {
+            ls << "Table ID = " << tableID << "/" << NumTables
+                << ", Number of Elements = "
+                << table.size();
+        });
         
         ++tableID;
     }
     
     size_t count = 0;
-    
     tableID = 0;
 
     for (auto& table : tables)
@@ -112,16 +117,23 @@ void StaticStringTable::PrintStringTable() const
             id.tableID = tableID;
             id.index = index;
             
-            cout << count++ << " : [" << item << "] "
-                << id.value << '(' << id.tableID << ','
-                << id.index << ')' << endl;
+            engine.Log(ELogLevel::Verbose, [&](auto& ls)
+            {
+                ls << count++ << " : [" << item << "] "
+                    << id.value << '(' << id.tableID << ','
+                    << id.index << ')';
+            });
+            
             ++index;
         }
         
         ++tableID;
     }
     
-    cout << "[" << GetName() << "] Number of elements = " << count << endl;
+    engine.Log(ELogLevel::Verbose, [count](auto& ls)
+    {
+        ls << "Number of elements = " << count;
+    });
 }
 
 void StaticStringTable::RegisterPredefinedStrings()

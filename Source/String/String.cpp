@@ -638,6 +638,7 @@ void String::ResetBuffer(size_t size)
 }
 
 #ifdef __UNIT_TEST__
+#include "Log/Logger.h"
 #include "System/Time.h"
 #include <iostream>
 
@@ -646,50 +647,95 @@ bool StringTest::DoTest()
 {
     using namespace std;
 
+    auto log = Logger::Get(GetName());
+
     String str = "Hello? World!";
-    cout << str << endl;
+    log.Out([&str](auto& ls)
+    {
+        ls << str;
+    });
 
     if (str != "Hello? World!")
     {
-        cout << "String Compare Failure." << endl;
+        log.OutError([](auto& ls)
+        {
+            ls << "String Compare Failure.";
+        });
+
         return false;
     }
 
     auto lower = str.GetLowerCase();
-    cout << lower << endl;
+    log.Out([&lower](auto& ls)
+    {
+        ls << lower;
+    });
+
     if (lower != "hello? world!")
     {
-        cout << "To lowercase failed." << endl;
+        log.OutError([](auto& ls)
+        {
+            ls << "To lowercase failed.";
+        });
+
         return false;
     }
 
     auto upper = str.GetUpperCase();
-    cout << upper << endl;
+    log.Out([&upper](auto& ls)
+    {
+        ls << upper;
+    });
+
     if (upper != "HELLO? WORLD!")
     {
-        cout << "To uppercase failed." << endl;
+        log.OutError([](auto& ls)
+        {
+            ls << "To uppercase failed.";
+        });
+
         return false;
     }
 
     auto tmpString = std::move(upper);
-    cout << tmpString << endl;
+    log.Out([&tmpString](auto& ls)
+    {
+        ls << tmpString;
+    });
+
     if (tmpString != "HELLO? WORLD!")
     {
-        cout << "String move failed." << endl;
+        log.OutError([](auto& ls)
+        {
+            ls << "String move failed.";
+        });
+
         return false;
     }
 
     auto lastL = str.FindLast('l');
     if (lastL != 10)
     {
-        cout << "Failed to find the last 'l', index = " << lastL << ", but expected 10." << endl;
+        log.OutError([&lastL](auto& ls)
+        {
+            ls << "Failed to find the last 'l', index = "
+                << lastL << ", but expected 10.";
+        });
     }
 
     auto afterL = str.SubString(lastL);
-    cout << afterL << endl;
+    log.Out([&afterL](auto& ls)
+    {
+        ls << afterL;
+    });
+
     if (afterL != "ld!")
     {
-        cout << "Substring failed" << endl;
+        log.OutError([](auto& ls)
+        {
+            ls << "Substring failed";
+        });
+
         return false;
     }
 
@@ -725,7 +771,10 @@ bool StringTest::DoTest()
         }
     }
 
-    cout << "Time: he = " << heTime << ", stl = " << stlTime << endl;
+    log.Out([heTime, stlTime](auto& ls)
+    {
+        ls << "Time: he = " << heTime << ", stl = " << stlTime;
+    });
 
     return true;
 }

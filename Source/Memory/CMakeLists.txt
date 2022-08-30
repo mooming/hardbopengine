@@ -23,6 +23,7 @@ add_library (Memory STATIC
  InlineAllocator.cpp
  InlinePoolAllocator.cpp
  MemoryManager.cpp
+ MultiPoolAllocator.cpp
  Optional.cpp
  PoolAllocator.cpp
  StackAllocator.cpp
@@ -34,6 +35,7 @@ add_library (Memory STATIC
  InlinePoolAllocator.h
  Memory.h
  MemoryManager.h
+ MultiPoolAllocator.h
  Optional.h
  PoolAllocator.h
  Shareable.h

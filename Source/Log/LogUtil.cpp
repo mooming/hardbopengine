@@ -2,6 +2,7 @@
 
 #include "LogUtil.h"
 
+#include "HSTL/HStringStream.h"
 #include <sstream>
 
 
@@ -27,17 +28,16 @@ HSTL::HInlineString<64> GetTimeStampString(const LogUtil::TTimePoint& startTime
     int intMSecs = milliSeconds.count() % 1000;
     
     HSTL::HInlineString<64> str;
-    str.reserve(64);
-    
-    str.append(std::to_string(intHours));
-    str.push_back(':');
-    str.append(std::to_string(intMins));
-    str.push_back(':');
-    str.append(std::to_string(intSecs));
-    str.push_back('.');
-    str.append(std::to_string(intMSecs));
-    
-    return str;
+
+    str += std::to_string(intHours);
+    str += ':';
+    str += std::to_string(intMins);
+    str += ':';
+    str += std::to_string(intSecs);
+    str += '.';
+    str += std::to_string(intMSecs);
+
+    return str.c_str();
 }
 
 StaticString GetLogLevelString(ELogLevel level)

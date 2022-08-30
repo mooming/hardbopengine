@@ -16,6 +16,9 @@ namespace HE
     struct BaseAllocator final
     {
         using value_type = T;
+
+        template <class U>
+        using rebind = BaseAllocator<U>;
         
     private:
         TAllocatorID allocatorID;
@@ -43,16 +46,19 @@ namespace HE
         }
         
         template <class U>
-        bool operator==(const BaseAllocator<U>&) const
+        bool operator==(const BaseAllocator<U>& rhs) const
         {
-            return true;
+            return allocatorID == rhs.allocatorID;
         }
 
         template <class U>
-        bool operator!=(const BaseAllocator<U>&) const
+        bool operator!=(const BaseAllocator<U>& rhs) const
         {
-            return false;
+            return allocatorID != rhs.allocatorID;
         }
+        
+        inline auto GetID() const { return allocatorID; }
+        inline size_t GetFallbackCount() const { return 0; }
     };
 } // HE
 

@@ -4,6 +4,7 @@
 
 
 #ifdef __UNIT_TEST__
+#include "Log/Logger.h"
 #include "System/Time.h"
 #include <memory>
 #include <vector>
@@ -15,8 +16,10 @@ namespace
     class VectorGrowthTest final
     {
     public:
-        bool operator() () const
+        bool operator() (const char* name) const
         {
+            HE::TLog log(name);
+            
             using namespace HE;
 
             float inlineTime = 0.0f;
@@ -63,9 +66,13 @@ namespace
             }
 
             auto rate = inlineTime / stdTime;
-            std::cout << "[InlinePoolAllocator] Vector Growth Performance : InlineAlloc: " << inlineTime
-                << " msec vs STL: " << stdTime << " msec, rate = " << rate << std::endl;
-
+            
+            log.Out([inlineTime, stdTime, rate](auto& ls)
+            {
+                ls << "Vector Growth Performance : InlineAlloc: " << inlineTime
+                    << " msec vs STL: " << stdTime << " msec, rate = " << rate;
+            });
+            
             return rate < 1.0f;
         }
     };
@@ -74,6 +81,8 @@ namespace
 bool HE::InlinePoolAllocatorTest::DoTest()
 {
 	using namespace std;
+    
+    TLog log(GetName());
     
     int failCount = 0;
 
@@ -90,13 +99,16 @@ bool HE::InlinePoolAllocatorTest::DoTest()
     }
 
     {
-        auto allocDeallocTest = [](auto& inlineAlloc) -> bool
+        auto allocDeallocTest = [&log](auto& inlineAlloc) -> bool
         {
             constexpr int testCount = 1000;
             constexpr int loopLength = 64;
             
-            cout << "[InlinePoolAllocator] Alloc/Dealloc Test: num iteration = "
-                << testCount << ", loop length = " << loopLength << endl;
+            log.Out([testCount, loopLength](auto& ls)
+            {
+                ls << "Alloc/Dealloc Test: num iteration = "
+                    << testCount << ", loop length = " << loopLength;
+            });
             
             std::allocator<int> stdAlloc;
             
@@ -130,64 +142,103 @@ bool HE::InlinePoolAllocatorTest::DoTest()
             }
             
             auto rate = inlineTime / stdTime;
-            cout << "[InlinePoolAllocator] Alloc/Dealloc Performance : InlineAlloc: " << inlineTime
-                << " msec vs STL: " << stdTime << " msec, rate = " << rate << endl;
+            
+            log.Out([inlineTime, stdTime, rate](auto& ls)
+            {
+                ls << "Alloc/Dealloc Performance : InlineAlloc: " << inlineTime
+                    << " msec vs STL: " << stdTime << " msec, rate = " << rate;
+            });
             
             return rate < 1.0f;
         };
         
         {
             constexpr int inlineSize = 0;
-            cout << "[InlinePoolAllocator] ==========================================" << endl;
-            cout << "[InlinePoolAllocator] Alloc/Dealloc Test: Inline Alloc Size = " << inlineSize << endl;
+            
+            log.Out([inlineSize](auto& ls)
+            {
+                ls << "==========================================" << endl;
+                ls << "Alloc/Dealloc Test: Inline Alloc Size = " << inlineSize;
+            });
+            
             InlinePoolAllocator<int, inlineSize> inlineAlloc;
             allocDeallocTest(inlineAlloc);
         }
         
         {
             constexpr int inlineSize = 16;
-            cout << "[InlinePoolAllocator] ==========================================" << endl;
-            cout << "[InlinePoolAllocator] Alloc/Dealloc Test: Inline Alloc Size = " << inlineSize << endl;
+            
+            log.Out([inlineSize](auto& ls)
+            {
+                ls << "==========================================" << endl;
+                ls << "Alloc/Dealloc Test: Inline Alloc Size = " << inlineSize;
+            });
+            
             InlinePoolAllocator<int, inlineSize> inlineAlloc;
             allocDeallocTest(inlineAlloc);
         }
         
         {
             constexpr int inlineSize = 32;
-            cout << "[InlinePoolAllocator] ==========================================" << endl;
-            cout << "[InlinePoolAllocator] Alloc/Dealloc Test: Inline Alloc Size = " << inlineSize << endl;
+            
+            log.Out([inlineSize](auto& ls)
+            {
+                ls << "==========================================" << endl;
+                ls << "Alloc/Dealloc Test: Inline Alloc Size = " << inlineSize;
+            });
+            
             InlinePoolAllocator<int, inlineSize> inlineAlloc;
             allocDeallocTest(inlineAlloc);
         }
         
         {
             constexpr int inlineSize = 64;
-            cout << "[InlinePoolAllocator] ==========================================" << endl;
-            cout << "[InlinePoolAllocator] Alloc/Dealloc Test: Inline Alloc Size = " << inlineSize << endl;
+            
+            log.Out([inlineSize](auto& ls)
+            {
+                ls << "==========================================" << endl;
+                ls << "Alloc/Dealloc Test: Inline Alloc Size = " << inlineSize;
+            });
+            
             InlinePoolAllocator<int, inlineSize> inlineAlloc;
             allocDeallocTest(inlineAlloc);
         }
         
         {
             constexpr int inlineSize = 128;
-            cout << "[InlinePoolAllocator] ==========================================" << endl;
-            cout << "[InlinePoolAllocator] Alloc/Dealloc Test: Inline Alloc Size = " << inlineSize << endl;
+            
+            log.Out([inlineSize](auto& ls)
+            {
+                ls << "==========================================" << endl;
+                ls << "Alloc/Dealloc Test: Inline Alloc Size = " << inlineSize;
+            });
+            
             InlinePoolAllocator<int, inlineSize> inlineAlloc;
             allocDeallocTest(inlineAlloc);
         }
         
         {
             constexpr int inlineSize = 1024;
-            cout << "[InlinePoolAllocator] ==========================================" << endl;
-            cout << "[InlinePoolAllocator] Alloc/Dealloc Test: Inline Alloc Size = " << inlineSize << endl;
+            
+            log.Out([inlineSize](auto& ls)
+            {
+                ls << "==========================================" << endl;
+                ls << "Alloc/Dealloc Test: Inline Alloc Size = " << inlineSize;
+            });
+            
             InlinePoolAllocator<int, inlineSize> inlineAlloc;
             allocDeallocTest(inlineAlloc);
         }
         
         {
             constexpr int inlineSize = 8192;
-            cout << "[InlinePoolAllocator] ==========================================" << endl;
-            cout << "[InlinePoolAllocator] Alloc/Dealloc Test: Inline Alloc Size = " << inlineSize << endl;
+            
+            log.Out([inlineSize](auto& ls)
+            {
+                ls << "==========================================" << endl;
+                ls << "Alloc/Dealloc Test: Inline Alloc Size = " << inlineSize;
+            });
+            
             InlinePoolAllocator<int, inlineSize> inlineAlloc;
             allocDeallocTest(inlineAlloc);
         }
@@ -195,30 +246,50 @@ bool HE::InlinePoolAllocatorTest::DoTest()
 
     {
         constexpr int inlineSize = 32;
-        cout << "[InlinePoolAllocator] ==========================================" << endl;
-        cout << "[InlinePoolAllocator] Vector Growth Test: Inline Alloc Size = " << inlineSize << endl;
-        VectorGrowthTest<inlineSize>()();
+        
+        log.Out([inlineSize](auto& ls)
+        {
+            ls << "==========================================" << endl;
+            ls << "Vector Growth Test: Inline Alloc Size = " << inlineSize;
+        });
+        
+        VectorGrowthTest<inlineSize>()(GetName());
     }
 
     {
         constexpr int inlineSize = 64;
-        cout << "[InlinePoolAllocator] ==========================================" << endl;
-        cout << "[InlinePoolAllocator] Vector Growth Test: Inline Alloc Size = " << inlineSize << endl;
-        VectorGrowthTest<inlineSize>()();
+        
+        log.Out([inlineSize](auto& ls)
+        {
+            ls << "==========================================" << endl;
+            ls << "Vector Growth Test: Inline Alloc Size = " << inlineSize;
+        });
+        
+        VectorGrowthTest<inlineSize>()(GetName());
     }
 
     {
         constexpr int inlineSize = 128;
-        cout << "[InlinePoolAllocator] ==========================================" << endl;
-        cout << "[InlinePoolAllocator] Vector Growth Test: Inline Alloc Size = " << inlineSize << endl;
-        VectorGrowthTest<inlineSize>()();
+        
+        log.Out([inlineSize](auto& ls)
+        {
+            ls << "==========================================" << endl;
+            ls << "Vector Growth Test: Inline Alloc Size = " << inlineSize;
+        });
+        
+        VectorGrowthTest<inlineSize>()(GetName());
     }
 
     {
         constexpr int inlineSize = 256;
-        cout << "[InlinePoolAllocator] ==========================================" << endl;
-        cout << "[InlinePoolAllocator] Vector Growth Test: Inline Alloc Size = " << inlineSize << endl;
-        VectorGrowthTest<inlineSize>()();
+        
+        log.Out([inlineSize](auto& ls)
+        {
+            ls << "==========================================" << endl;
+            ls << "Vector Growth Test: Inline Alloc Size = " << inlineSize;
+        });
+        
+        VectorGrowthTest<inlineSize>()(GetName());
     }
 
 	return failCount <= 0;

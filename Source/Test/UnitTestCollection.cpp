@@ -24,6 +24,7 @@
 #include "Memory/InlinePoolAllocator.h"
 #include "Memory/Optional.h"
 #include "Memory/PoolAllocator.h"
+#include "Memory/MultiPoolAllocator.h"
 #include "Memory/StackAllocator.h"
 #include "String/StaticString.h"
 #include "String/StringUtil.h"
@@ -49,6 +50,7 @@ namespace Test
         testEnv.AddTest(new InlineAllocatorTest());
         testEnv.AddTest(new InlinePoolAllocatorTest());
         testEnv.AddTest(new PoolAllocatorTest());
+        testEnv.AddTest(new MultiPoolAllocatorTest());
         
         testEnv.AddTest(new ArrayTest());
         testEnv.AddTest(new LinkedListTest());

@@ -4,7 +4,9 @@
 
 #include "LogUtil.h"
 #include "Config/EngineConfig.h"
+#include "HSTL/HStringStream.h"
 #include "Memory/AllocatorScope.h"
+#include "Memory/InlinePoolAllocator.h"
 #include "OSAL/Intrinsic.h"
 #include "String/StringUtil.h"
 #include "System/Debug.h"
@@ -51,10 +53,10 @@ Logger::Logger(const char* path, const TPathStr& filename, int numRolling)
     : isRunning(false)
     , disableLogPrint(false)
     , startTime(std::chrono::steady_clock::now())
-    , logPath(path)
     , allocator("LoggerMemoryPool"
         , Config::LogMemoryBlockSize
         , Config::LogNumMemoryBlocks)
+    , logPath(path)
 {
     instance = this;
 
@@ -82,8 +84,6 @@ Logger::Logger(const char* path, const TPathStr& filename, int numRolling)
     
     outFileStream.open(logPath.c_str());
     
-    ResetOutputBuffer(Config::LogBufferSize);
-    
     flushFuncs.reserve(2);
     flushFuncs.push_back([this](const TTextBuffer& buffer) { WriteLog(buffer); });
     flushFuncs.push_back([this](const TTextBuffer& buffer) { PrintStdIO(buffer); });
@@ -97,7 +97,6 @@ Logger::Logger(const char* path, const TPathStr& filename, int numRolling)
 Logger::~Logger()
 {
     Stop();
-    logThread.join();
 }
 
 StaticString Logger::GetName() const
@@ -114,9 +113,7 @@ void Logger::AddLog(StaticString category, ELogLevel level, TLogFunction logFunc
     
     if (unlikely(logFunc == nullptr))
         return;
-
-    Assert(filters.size() == 0);
-
+    
     auto found = filters.find(category);
     auto& filter = found == filters.end()
         ? baseFilter : filters[category];
@@ -126,10 +123,54 @@ void Logger::AddLog(StaticString category, ELogLevel level, TLogFunction logFunc
 
     TLogStream ls;
     logFunc(ls);
+    
+    if (unlikely(level >= ELogLevel::Error && std::this_thread::get_id() == logThread.get_id()) )
+    {
+        TTextBuffer tmpTextBuffer;
+        tmpTextBuffer.reserve(1);
+
+        using namespace std;
+        auto timeStampStr = LogUtil::GetTimeStampString(startTime, chrono::steady_clock::now());
+        auto levelStr = LogUtil::GetLogLevelString(level);
+        
+        using namespace HSTL;
+        HInlineString<4096> text;
+        text += '[';
+        text += timeStampStr;
+        text += "][";
+        text += category;
+        text += "][";
+        text += levelStr;
+        text += "] ";
+        text += ls.str();
+
+        tmpTextBuffer.emplace_back(text.c_str());
+        
+        Flush(tmpTextBuffer);
+        tmpTextBuffer.clear();
+        
+        if (unlikely(level >= ELogLevel::FatalError))
+        {
+            DebugBreak();
+        }
+        
+        return;
+    }
 
     {
         std::lock_guard lock(inputLock);
         inputBuffer.emplace_back(level, category, ls.str());
+    }
+    
+    if (unlikely(level >= ELogLevel::FatalError))
+    {
+        DebugBreak();
+        
+        Stop();
+        logThread.join();
+
+        Assert(false);
+        return;
     }
     
     cv.notify_one();
@@ -142,14 +183,18 @@ void Logger::Start()
 
 void Logger::Stop()
 {
+    if (!isRunning)
+        return;
+    
     isRunning = false;
     
     AddLog(GetName(), ELogLevel::Info, [](auto& logStream)
     {
-        logStream << "Logger shall be terminated.";
+        logStream << "Stop() is called.";
     });
     
     cv.notify_all();
+    logThread.join();
 }
 
 void Logger::SetFilter(StaticString category, TLogFilter filter)
@@ -168,10 +213,10 @@ void Logger::FlushInputBuffers()
 
 void Logger::Run()
 {
-    AllocatorScope scope(allocator);
-
     using namespace std;
     
+    AllocatorScope scope(allocator);
+
     isRunning = true;
     startTime = chrono::steady_clock::now();
     
@@ -184,68 +229,61 @@ void Logger::Run()
     {
         AllocatorScope scope(allocator);
 
-        static TLogBuffer tmpBuffer;
-        
         {
             std::lock_guard lockInput(inputLock);
-            std::swap(inputBuffer, tmpBuffer);
+            std::swap(inputBuffer, swapBuffer);
         }
         
-        if (!tmpBuffer.empty())
+        if (!swapBuffer.empty())
         {
-            static TTextBuffer textBuffer;
-            textBuffer.reserve(tmpBuffer.size());
-            
-            for (auto& log : tmpBuffer)
+            textBuffer.reserve(swapBuffer.size());
+
+            for (auto& log : swapBuffer)
             {
                 auto timeStampStr = LogUtil::GetTimeStampString(startTime, log.timeStamp);
                 auto levelStr = LogUtil::GetLogLevelString(log.level);
-                
-                TString text;
-                text.reserve(1024);
+
+                using namespace HSTL;
+                HInlineString<4096> text;
+                text.reserve(4096);
+
                 text.push_back('[');
                 text.append(timeStampStr);
                 text.append("][");
-                text.append(log.category.c_str());
+                text.append(log.category);
                 text.append("][");
                 text.append(levelStr);
                 text.append("] ");
                 text.append(log.text);
-                
-                textBuffer.emplace_back(std::move(text));
+
+                textBuffer.emplace_back(text.c_str());
             }
             
-            tmpBuffer.clear();
+            swapBuffer.clear();
             
             Flush(textBuffer);
             textBuffer.clear();
         }
     };
 
+    std::unique_lock lock(cvLock);
+    constexpr auto timeOutMSec = 300ms;
+    
     while (isRunning)
     {
         ProcessBuffer();
-        
-        std::unique_lock lock(cvLock);
-        cv.wait(lock);
+        cv.wait_for(lock, timeOutMSec);
     }
     
     AddLog(GetName(), ELogLevel::Info, [](auto& logStream)
     {
-        logStream << "Logger is terminated.";
+        logStream << "Logger has been terminated.";
     });
     
     ProcessBuffer();
-}
-
-void Logger::ResetOutputBuffer(size_t size)
-{
-    AllocatorScope scope(allocator);
     
-    outputBuffer.clear();
-    outputBuffer.shrink_to_fit();
-    outputBuffer.reserve(size);
-    outputBuffer.resize(size);
+    outFileStream.flush();
+    outFileStream.close();
 }
 
 void Logger::Flush(const TTextBuffer& buffer)

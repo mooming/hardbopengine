@@ -2,6 +2,8 @@
 
 #include "StringUtil.h"
 
+#include "Memory/AllocatorScope.h"
+#include "Memory/InlinePoolAllocator.h"
 #include <algorithm>
 #include <memory>
 
@@ -120,6 +122,7 @@ TString PathToName(const TString& path)
     
     bool found = false;
     Index lastIndex = 0;
+    
     for (Index i = 0; i < length; ++i)
     {
         const char ch = buffer[i];
@@ -140,7 +143,7 @@ TString PathToName(const TString& path)
 
 HE::StaticString PrettyFunctionToFunctionName(const char* PrettyFunction)
 {
-    using TStr = HSTL::HInlineString<256>;
+    using TStr = HSTL::HString;
     TStr str(PrettyFunction);
     
     auto start = str.find_last_of("::") + 1;
@@ -156,23 +159,24 @@ HE::StaticString PrettyFunctionToFunctionName(const char* PrettyFunction)
 
 HE::StaticString PrettyFunctionToClassName(const char* PrettyFunction)
 {
-    using TStr = HSTL::HInlineString<256>;
+    using TStr = HSTL::HString;
     TStr str(PrettyFunction);
    
     auto end = str.find_last_of("::") - 1;
     if (end == TStr::npos)
         return HE::StaticString();
     
-    str.resize(end);
+    str = str.substr(0, end);
+
     auto start = str.find_last_of(" ") + 1;
-    str = str.substr(start, (end - start));
+    str = str.substr(start);
     
     return HE::StaticString(str.c_str());
 }
 
 HE::StaticString PrettyFunctionToMethodName(const char* PrettyFunction)
 {
-    using TStr = HSTL::HInlineString<256>;
+    using TStr = HSTL::HString;
     TStr str(PrettyFunction);
     
     auto start = str.find_last_of("::");
@@ -187,14 +191,16 @@ HE::StaticString PrettyFunctionToMethodName(const char* PrettyFunction)
 
 HE::StaticString PrettyFunctionToCompactClassName(const char* PrettyFunction)
 {
-    using TStr = HSTL::HInlineString<256>;
+    using namespace HE;
+    
+    using TStr = HSTL::HString;
     TStr str(PrettyFunction);
    
     auto end = str.find_last_of("::") - 1;
     if (end == TStr::npos)
         return HE::StaticString();
     
-    str.resize(end);
+    str = str.substr(0, end);
     auto start = str.find_last_of("::") + 1;
     str = str.substr(start, (end - start));
     
@@ -203,12 +209,13 @@ HE::StaticString PrettyFunctionToCompactClassName(const char* PrettyFunction)
 
 HE::StaticString PrettyFunctionToCompactMethodName(const char* PrettyFunction)
 {
-    using TStr = HSTL::HInlineString<256>;
+    using TStr = HSTL::HString;
     TStr str(PrettyFunction);
     
     auto start = str.find_last_of("::");
     if (start == TStr::npos)
         return HE::StaticString();
+
     start = str.find_last_of("::", start - 2) + 1;
     str = str.substr(start);
     
@@ -232,6 +239,7 @@ size_t CalculateHash(const char* text)
 } // StringUtil
 
 #ifdef __UNIT_TEST__
+#include "Log/Logger.h"
 #include "System/Time.h"
 #include <iostream>
 
@@ -246,109 +254,175 @@ bool StringUtilTest::DoTest()
     
     int testCount = 0;
     int failCount = 0;
+
+    auto log = Logger::Get(GetName());
     
     {
+        log.Out([](auto& ls)
+        {
+            ls << "Test PrettyFunctionToClassName";
+        });
+
         StaticString className("HE::StringUtilTest");
-        cout << "[" << className << "] Test PrettyFunctionToClassName" << endl;
-        
+
         auto name = PrettyFunctionToClassName(__PRETTY_FUNCTION__);
-        cout << "[" << className << "] Class Name is " << name
-            << " / " << className << endl;
+        log.Out([name, className](auto& ls)
+        {
+            ls << "Class Name is " << name << " / " << className;
+        });
 
         if (name != className)
         {
-            cerr << "[Fail]" << endl;
+            log.OutError([name, className](auto& ls)
+            {
+                ls << "[FAIL] Pretty function name " << name
+                    << " doesn't coincide with " << className;
+            });
+
             ++failCount;
         }
         else
         {
-            cout << "[PASS]" << endl;
+            log.Out([](auto& ls)
+            {
+                ls << "[PASS]";
+            });
         }
     }
     
     ++testCount;
     
     {
+        log.Out([](auto& ls)
+        {
+            ls << "Test PrettyFunctionToCompactClassName";
+        });
+
         StaticString className("StringUtilTest");
-        cout << "[" << className << "] Test PrettyFunctionToCompactClassName" << endl;
-        
+
         auto name = PrettyFunctionToCompactClassName(__PRETTY_FUNCTION__);
-        cout << "[" << className << "] Compact Class Name is " << name
-            << " / " << className << endl;
+        log.Out([name, className](auto& ls)
+        {
+            ls << "Compact Class Name is " << name << " / " << className;
+        });
 
         if (name != className)
         {
-            cerr << "[Fail]" << endl;
+            log.OutError([](auto& ls)
+            {
+                ls << "[Fail]";
+            });
+
             ++failCount;
         }
         else
         {
-            cout << "[PASS]" << endl;
+            log.Out([](auto& ls)
+            {
+                ls << "[PASS]";
+            });
         }
     }
     
     ++testCount;
     
-    auto className = PrettyFunctionToClassName(__PRETTY_FUNCTION__);
-    
     {
-        cout << "[" << className << "] Test PrettyFunctionToFunctionName" << endl;
-        
+        log.Out([](auto& ls)
+        {
+            ls << "Test PrettyFunctionToFunctionName";
+        });
+
         StaticString funcName("DoTest()");
         auto name = PrettyFunctionToFunctionName(__PRETTY_FUNCTION__);
-        cout << "[" << className << "] Function Name is "
-            << name  << " / " << funcName << endl;
+
+        log.Out([name, funcName](auto& ls)
+        {
+            ls <<  "Function Name is " << name  << " / " << funcName;
+        });
         
         if (name != funcName)
         {
-            cerr << "[Fail]" << endl;
+            log.OutError([](auto& ls)
+            {
+                ls << "[Fail]";
+            });
+
             ++failCount;
         }
         else
         {
-            cout << "[PASS]" << endl;
+            log.Out([](auto& ls)
+            {
+                ls << "[PASS]";
+            });
         }
     }
     
     ++testCount;
     
     {
-        cout << "[" << className << "] Test PrettyFunctionToMethodName" << endl;
+        log.Out([](auto& ls)
+        {
+            ls << "Test PrettyFunctionToMethodName";
+        });
         
         StaticString funcName("HE::StringUtilTest::DoTest()");
         auto name = PrettyFunctionToMethodName(__PRETTY_FUNCTION__);
-        cout << "[" << className << "] Function Name is "
-            << name  << " / " << funcName << endl;
+
+        log.Out([name, funcName](auto& ls)
+        {
+            ls << "Function Name is " << name  << " / " << funcName;
+        });
         
         if (name != funcName)
         {
-            cerr << "[Fail]" << endl;
+            log.OutError([](auto& ls)
+            {
+                ls << "[Fail]";
+            });
+
             ++failCount;
         }
         else
         {
-            cout << "[PASS]" << endl;
+            log.Out([](auto& ls)
+            {
+                ls << "[PASS]";
+            });
         }
     }
     
     ++testCount;
     
     {
-        cout << "[" << className << "] Test PrettyFunctionToCompactMethodName" << endl;
+        log.Out([](auto& ls)
+        {
+            ls << "Test PrettyFunctionToCompactMethodName";
+        });
         
         StaticString funcName("StringUtilTest::DoTest()");
         auto name = PrettyFunctionToCompactMethodName(__PRETTY_FUNCTION__);
-        cout << "[" << className << "] Function Name is "
-            << name  << " / " << funcName << endl;
+
+        log.Out([name, funcName](auto& ls)
+        {
+            ls << "Function Name is " << name  << " / " << funcName;
+        });
         
         if (name != funcName)
         {
-            cerr << "[Fail]" << endl;
+            log.OutError([](auto& ls)
+            {
+                ls << "[Fail]";
+            });
+
             ++failCount;
         }
         else
         {
-            cout << "[PASS]" << endl;
+            log.Out([](auto& ls)
+            {
+                ls << "[PASS]";
+            });
         }
     }
     

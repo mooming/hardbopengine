@@ -22,25 +22,33 @@
 
 namespace HE
 {
-    template <class T, int BufferSize = 64, class FallbackAllocator = SystemAllocator<T>>
-    struct ALIGN_STRUCT InlineAllocator final
+    template <class T, int BufferSize = 64>
+    struct ALIGN16 InlineAllocator final
     {
         using value_type = T;
         using TIndex = decltype(BufferSize);
+
+        template<typename U>
+        using rebind = InlineAllocator<U>;
         
         static_assert(std::is_signed<TIndex>(), "The type of BufferSize should be signed integral.");
         static_assert(BufferSize >= 0, "The buffer size should be greater than or equal to zero.");
         
     private:
         TAllocatorID id;
-        std::thread::id threadId;
+        size_t fallbackCount;
+
         TIndex sizeOfBlock[BufferSize];
         T buffer[BufferSize];
-        FallbackAllocator fallbackAllocator;
 
     public:
-        InlineAllocator()
-            : id(InvalidAllocatorID)
+        InlineAllocator(const InlineAllocator&) = delete;
+        InlineAllocator(InlineAllocator&&) = delete;
+        InlineAllocator& operator= (const InlineAllocator&) = delete;
+        InlineAllocator& operator= (InlineAllocator&&) = delete;
+
+    public:
+        InlineAllocator() : id(InvalidAllocatorID), fallbackCount(0)
         {
 #ifdef __MEMORY_VERIFICATION__
             Assert(OS::CheckAligned(this));
@@ -49,9 +57,13 @@ namespace HE
 #endif // __MEMORY_VERIFICATION__
 
 #ifdef __MEMORY_LOGGING__
-            std::cout << "[InlineAllocator][Stat][" << (void*)this
-                << "] Created: " << BufferSize << ", "
-                << (sizeof(T) * BufferSize) << " bytes" << std::endl;
+            auto& mmgr = MemoryManager::GetInstance();
+            mmgr.LogError([this](auto& lout)
+            {
+                lout << "[InlineAllocator][Stat][" << (void*)this
+                    << "] Created: " << BufferSize << ", "
+                    << (sizeof(T) * BufferSize) << " bytes";
+            });
 #endif // __MEMORY_LOGGING__
             
             RegisterAllocator();
@@ -69,14 +81,25 @@ namespace HE
         
         ~InlineAllocator()
         {
+            if (id == InvalidAllocatorID)
+                return;
+            
             DeregisterAllocator();
         }
+
+        auto GetID() const { return id; }
+        auto GetFallbackCount() const { return fallbackCount; }
 
         T* allocate(std::size_t n)
         {
             auto FallbackAlloc = [this, n]() -> T*
             {
-                auto ptr = fallbackAllocator.allocate(n);
+                auto& mmgr = MemoryManager::GetInstance();
+                constexpr size_t sizeOfT = sizeof(T);
+                const auto nBytes = n * sizeOfT;
+                auto ptr = reinterpret_cast<T*>(mmgr.SysAllocate(nBytes));
+                ++fallbackCount;
+
                 return ptr;
             };
             
@@ -116,7 +139,11 @@ namespace HE
             auto index = GetIndex(ptr);
             if (!IsValidIndex(index))
             {
-                fallbackAllocator.deallocate(ptr, n);
+                auto& mmgr = MemoryManager::GetInstance();
+                constexpr size_t sizeOfT = sizeof(T);
+                const auto nBytes = n * sizeOfT;
+                mmgr.SysDeallocate(ptr, nBytes);
+
                 return;
             }
             
@@ -280,6 +307,8 @@ namespace HE
             
             id = mmgr.Register("InlineAllocator", true
                 , BufferSize * sizeof(T), allocFunc, deallocFunc);
+
+            FatalAssert(id != InvalidAllocatorID);
         }
         
         void DeregisterAllocator()

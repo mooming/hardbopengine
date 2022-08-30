@@ -28,7 +28,10 @@ namespace HE
         Index blockSize;
 		Index numberOfBlocks;
 		Index numberOfFreeBlocks;
-
+        
+        size_t maxUsage;
+        size_t fallbackCount;
+        
         Byte* buffer;
 		Pointer availables;
 		IndexType indexType;
@@ -36,16 +39,22 @@ namespace HE
 	public:
 		PoolAllocator(const char* name, Index blockSize, Index numberOfBlocks);
         ~PoolAllocator();
-
+        
         Pointer Allocate(size_t size);
 		void Deallocate(Pointer ptr);
+        bool IsValid(Pointer ptr) const;
 
         inline auto GetID() const { return id; }
         inline auto GetName() const { return name; }
         inline size_t GetSize(const Pointer) const { return blockSize; }
-        inline  size_t Usage() const { return (numberOfBlocks - numberOfFreeBlocks) * blockSize; }
-        inline size_t Available() const { return numberOfFreeBlocks * blockSize; }
-        inline Index NumberOfFreeBlocks() const { return numberOfFreeBlocks; }
+        inline auto GetFallbackCount() const { return fallbackCount; }
+        
+        inline size_t GetUsage() const { return (numberOfBlocks - numberOfFreeBlocks) * blockSize; }
+        inline size_t GetMaxUsage() const { return maxUsage; }
+        inline size_t GetAvailableMemory() const { return numberOfFreeBlocks * blockSize; }
+        inline size_t GetCapacity() const { return numberOfBlocks * blockSize; }
+        inline auto GetBlockSize() const { return blockSize; }
+        inline auto NumberOfFreeBlocks() const { return numberOfFreeBlocks; }
         
     private:
         Index GetIndex(Pointer ptr) const;

@@ -73,6 +73,7 @@ namespace HE
             uint8_t* bytePtr = (uint8_t*)rawPtr;
             
             T* ptr = nullptr;
+            
             if (__MEMORY_OVERFLOW_CHECK__)
             {
                 ptr = reinterpret_cast<T*>(bytePtr + pageAllocSize - nBytes);
@@ -81,6 +82,7 @@ namespace HE
             {
                 ptr = reinterpret_cast<T*>(bytePtr);
             }
+
 #else // __MEMORY_INVESTIGATION__
             auto ptr = (T*)malloc(nBytes);
 #endif // __MEMORY_INVESTIGATION__
@@ -137,6 +139,8 @@ namespace HE
             
         void RegisterAllocator()
         {
+            Assert(id == InvalidAllocatorID);
+            
             auto& mmgr = MemoryManager::GetInstance();
             
             auto allocFunc = [this](size_t nBytes) -> void*
@@ -155,9 +159,16 @@ namespace HE
         
         void DeregisterAllocator()
         {
+            if (id == InvalidAllocatorID)
+                return;
+            
             auto& mmgr = MemoryManager::GetInstance();
             mmgr.Deregister(id);
+            
+            id = InvalidAllocatorID;
         }
+        
+        friend class MemoryManager;
     };
 } // HE
 

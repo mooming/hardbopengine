@@ -1,29 +1,43 @@
 // Created by mooming.go@gmail.com, 2017
 
 #include "Test/TestCase.h"
+
+#include "Log/Logger.h"
 #include <iostream>
 #include <exception>
 
 
 using namespace HE;
 
-TestCase::TestCase(const char * title) : title(title), isDone(false), isSuccess(false)
+TestCase::TestCase(const char* title)
+    : title(title)
+    , isDone(false)
+    , isSuccess(false)
 {
 }
 
 void TestCase::Start()
 {
-    using namespace std;
-
+    TLog log(GetName(), ELogLevel::Info);
+    
     try
     {
-        cout << title << " : START ====================" << endl;
+        log.Out([title = GetName()](auto& ls)
+        {
+            ls << "START ====================";
+        });
+        
         isSuccess = DoTest();
         isDone = true;
     }
-    catch (exception& e)
+    catch (std::exception& e)
     {
-        cout << e.what() << endl;
+        log.OutError([title = GetName(), &e](auto& ls)
+        {
+            ls << e.what() << std::endl;
+        });
+        
+        isSuccess = false;
     }
 
     Report();
@@ -31,16 +45,20 @@ void TestCase::Start()
 
 void TestCase::Report()
 {
-    using namespace std;
-
+    TLog log(GetName(), ELogLevel::Info);
+    
     if (isSuccess)
     {
-        cout << title << " : SUCCESS" << endl;
+        log.Out([title = GetName()](auto& ls)
+        {
+            ls << "Result: [SUCCESS]" << std::endl;
+        });
     }
     else
     {
-        cerr << title << " : FAILED" << endl;
+        log.OutError([](auto& ls)
+        {
+            ls << "Result [FAIL]" << std::endl;
+        });
     }
-
-    cout << endl;
 }

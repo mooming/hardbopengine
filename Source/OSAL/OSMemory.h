@@ -4,7 +4,7 @@
 
 #include <cstddef>
 
-#define ALIGN_STRUCT alignas(16)
+#define ALIGN16 alignas(16)
 
 
 namespace OS

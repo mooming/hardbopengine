@@ -42,6 +42,7 @@ StackAllocator::~StackAllocator()
 {
     auto& mmgr = MemoryManager::GetInstance();
     mmgr.Deallocate(bufferPtr, capacity);
+    mmgr.Deregister(GetID());
 }
 
 void *StackAllocator::Allocate (size_t size)
@@ -57,11 +58,13 @@ void *StackAllocator::Allocate (size_t size)
     if (freeSize < requiredSize)
     {
         using namespace std;
-        
-        cerr << "StackAllocator: Not Enough Memory" << endl
-            << "require = " << size << " : free = "
-            << freeSize << " / " << capacity << endl;
-        
+        auto& mmgr = MemoryManager::GetInstance();
+        mmgr.LogError([this, size](auto& lout){
+            lout << "StackAllocator: Not Enough Memory" << endl
+                << "require = " << size << " : free = "
+                << freeSize << " / " << capacity;
+        });
+
         return nullptr;
     }
     

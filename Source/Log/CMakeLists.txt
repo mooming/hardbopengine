@@ -18,12 +18,12 @@ link_directories (${CMAKE_SOURCE_DIR}/lib)
 
 
 add_library (Log STATIC 
- Logger.cpp
  LogUtil.cpp
+ Logger.cpp
  LogLevel.h
  LogLine.h
- Logger.h
  LogUtil.h
+ Logger.h
  PrintArgs.h
 )
 

@@ -4,6 +4,8 @@
 
 
 #ifdef __UNIT_TEST__
+#include "Log/Logger.h"
+#include "String/StaticString.h"
 #include "System/Time.h"
 #include <memory>
 #include <vector>
@@ -12,6 +14,8 @@
 bool HE::InlineAllocatorTest::DoTest()
 {
 	using namespace std;
+    
+    TLog log(GetName());
     
     struct TestBlock final
     {
@@ -33,13 +37,16 @@ bool HE::InlineAllocatorTest::DoTest()
     }
     
     {
-        auto allocDeallocTest = [](auto& inlineAlloc) -> bool
+        auto allocDeallocTest = [&log](auto& inlineAlloc) -> bool
         {
             constexpr int testCount = 1024 * 100;
             constexpr int loopLength = 64;
             
-            cout << "[InlineAllocator] Alloc/Dealloc Test: num iteration = "
-                << testCount << ", loop length = " << loopLength << endl;
+            log.Out([testCount, loopLength](auto& ls)
+            {
+                ls << "Alloc/Dealloc Test: num iteration = "
+                    << testCount << ", loop length = " << loopLength;
+            });
             
             std::allocator<TestBlock> stdAlloc;
             
@@ -73,22 +80,27 @@ bool HE::InlineAllocatorTest::DoTest()
             }
             
             auto rate = inlineTime / stdTime;
-            cout << "[InlineAllocator] Alloc/Dealloc Performance : InlineAlloc: " << inlineTime
-                << " msec vs STL: " << stdTime << " msec, rate = " << rate << endl;
+            log.Out([inlineTime, stdTime, rate](auto& ls)
+            {
+                ls << "Alloc/Dealloc Performance : InlineAlloc: " << inlineTime
+                    << " msec vs STL: " << stdTime << " msec, rate = " << rate;
+            });
             
             return rate < 1.0f;
         };
         
-        auto allocDeallocTest2 = [](auto& inlineAlloc) -> bool
+        auto allocDeallocTest2 = [&log](auto& inlineAlloc) -> bool
         {
             constexpr int testCount = 1024 * 100;
             constexpr int loopLength = 16;
             
-            cout << "[InlineAllocator] Alloc/Dealloc Test: num iteration = " << testCount
-                << ", loop length = " << loopLength << endl;
+            log.Out([testCount, loopLength](auto& ls)
+            {
+                ls << "Alloc/Dealloc Test: num iteration = " << testCount
+                    << ", loop length = " << loopLength;
+            });
             
             std::allocator<TestBlock> stdAlloc;
-            
             float inlineTime = 0.0f;
             float stdTime = 0.0f;
             
@@ -129,16 +141,25 @@ bool HE::InlineAllocatorTest::DoTest()
             }
             
             auto rate = inlineTime / stdTime;
-            cout << "[InlineAllocator] Alloc/Dealloc Performance (2) : InlineAlloc: " << inlineTime
-                << " msec vs STL: " << stdTime << " msec, rate = " << rate << endl;
+            log.Out([inlineTime, stdTime, rate](auto& ls)
+            {
+                ls << "Alloc/Dealloc Performance (2) : InlineAlloc: "
+                    << inlineTime << " msec vs STL: " << stdTime
+                    << " msec, rate = " << rate;
+            });
             
             return rate < 1.0f;
         };
         
         {
             constexpr int inlineSize = 0;
-            cout << "[InlineAllocator] ==========================================" << endl;
-            cout << "[InlineAllocator] Alloc/Dealloc Test: Inline Alloc Size = " << inlineSize << endl;
+            
+            log.Out([inlineSize](auto& ls)
+            {
+                ls << "==========================================" << endl;
+                ls << "Alloc/Dealloc Test: Inline Alloc Size = " << inlineSize;
+            });
+            
             {
                 InlineAllocator<TestBlock, inlineSize> inlineAlloc;
                 allocDeallocTest(inlineAlloc);
@@ -152,8 +173,13 @@ bool HE::InlineAllocatorTest::DoTest()
         
         {
             constexpr int inlineSize = 16;
-            cout << "[InlineAllocator] ==========================================" << endl;
-            cout << "[InlineAllocator] Alloc/Dealloc Test: Inline Alloc Size = " << inlineSize << endl;
+            
+            log.Out([inlineSize](auto& ls)
+            {
+                ls << "==========================================" << endl;
+                ls << "Alloc/Dealloc Test: Inline Alloc Size = " << inlineSize;
+            });
+            
             {
                 InlineAllocator<TestBlock, inlineSize> inlineAlloc;
                 allocDeallocTest(inlineAlloc);
@@ -167,8 +193,12 @@ bool HE::InlineAllocatorTest::DoTest()
         
         {
             constexpr int inlineSize = 32;
-            cout << "[InlineAllocator] ==========================================" << endl;
-            cout << "[InlineAllocator] Alloc/Dealloc Test: Inline Alloc Size = " << inlineSize << endl;
+            
+            log.Out([inlineSize](auto& ls)
+            {
+                ls << "==========================================" << endl;
+                ls << "Alloc/Dealloc Test: Inline Alloc Size = " << inlineSize;
+            });
             
             {
                 InlineAllocator<TestBlock, inlineSize> inlineAlloc;
@@ -183,8 +213,12 @@ bool HE::InlineAllocatorTest::DoTest()
         
         {
             constexpr int inlineSize = 64;
-            cout << "[InlineAllocator] ==========================================" << endl;
-            cout << "[InlineAllocator] Alloc/Dealloc Test: Inline Alloc Size = " << inlineSize << endl;
+            
+            log.Out([inlineSize](auto& ls)
+            {
+                ls << "==========================================" << endl;
+                ls << "Alloc/Dealloc Test: Inline Alloc Size = " << inlineSize;
+            });
             
             {
                 InlineAllocator<TestBlock, inlineSize> inlineAlloc;
@@ -201,8 +235,12 @@ bool HE::InlineAllocatorTest::DoTest()
         
         {
             constexpr int inlineSize = 128;
-            cout << "[InlineAllocator] ==========================================" << endl;
-            cout << "[InlineAllocator] Alloc/Dealloc Test: Inline Alloc Size = " << inlineSize << endl;
+            
+            log.Out([inlineSize](auto& ls)
+            {
+                ls << "==========================================" << endl;
+                ls << "Alloc/Dealloc Test: Inline Alloc Size = " << inlineSize;
+            });
             
             {
                 InlineAllocator<TestBlock, inlineSize> inlineAlloc;
@@ -219,8 +257,12 @@ bool HE::InlineAllocatorTest::DoTest()
         
         {
             constexpr int inlineSize = 1024;
-            cout << "[InlineAllocator] ==========================================" << endl;
-            cout << "[InlineAllocator] Alloc/Dealloc Test: Inline Alloc Size = " << inlineSize << endl;
+            
+            log.Out([inlineSize](auto& ls)
+            {
+                ls << "==========================================" << endl;
+                ls << "Alloc/Dealloc Test: Inline Alloc Size = " << inlineSize;
+            });
             
             {
                 InlineAllocator<TestBlock, inlineSize> inlineAlloc;
@@ -237,9 +279,13 @@ bool HE::InlineAllocatorTest::DoTest()
         
         {
             constexpr int inlineSize = 8192;
-            cout << "[InlineAllocator] ==========================================" << endl;
-            cout << "[InlineAllocator] Alloc/Dealloc Test: Inline Alloc Size = " << inlineSize << endl;
             
+            log.Out([inlineSize](auto& ls)
+            {
+                ls << "==========================================" << endl;
+                ls << "Alloc/Dealloc Test: Inline Alloc Size = " << inlineSize;
+            });
+             
             {
                 InlineAllocator<TestBlock, inlineSize> inlineAlloc;
                 if (!allocDeallocTest(inlineAlloc))

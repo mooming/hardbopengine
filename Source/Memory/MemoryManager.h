@@ -4,6 +4,7 @@
 
 #include "AllocatorID.h"
 #include "Config/EngineConfig.h"
+#include "Log/LogLevel.h"
 #include "System/Types.h"
 #include <atomic>
 #include <functional>
@@ -17,11 +18,13 @@ namespace HE
         using TId = TAllocatorID;
         using TAllocBytes = std::function<void*(size_t)>;
         using TDeallocBytes = std::function<void(void*, size_t)>;
+        using TLogFunc = std::function<void(std::ostream& out)>;
         
+    private:
         static constexpr TId SystemAllocatorID = 0;
         static constexpr TId NameBufferSize = 64;
         static constexpr size_t MaxBaseMemory = 8'000'000'000;
-        
+
     private:
         struct AllocatorProxy final
         {
@@ -53,9 +56,9 @@ namespace HE
         
         size_t totalStackCapacity;
         size_t totalHeapCapacity;
-        
-        static thread_local TId ScopedAllocatorID;
 
+        static thread_local TId ScopedAllocatorID;
+        
     public:
         MemoryManager(const MemoryManager&) = delete;
         MemoryManager& operator= (const MemoryManager&) = delete;
@@ -138,6 +141,9 @@ namespace HE
 
             return ptr;
         }
+        
+        void Log(ELogLevel level, TLogFunc func);
+        inline void LogError(TLogFunc func) { Log(ELogLevel::Error, func); }
 
         inline size_t GetTotalStackUsage() const { return totalStackUsage; }
         inline size_t GetTotalHeapUsage() const { return totalHeapUsage; }
@@ -146,7 +152,7 @@ namespace HE
     private:
         inline TId GetScopedAllocatorId() const { return ScopedAllocatorID; }
         void SetScopedAllocatorId(TId id);
-        
+
         friend class AllocatorScope;
     };
 }
