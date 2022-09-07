@@ -4,7 +4,7 @@ project (Math)
 set (CMAKE_CXX_STANDARD 20)
 
 if (MSVC)
-	add_compile_options (/W4 /WX)
+	add_compile_options (/W3 /WX)
 else (MSVC)
 	add_compile_options (-Wall -Werror)
 endif (MSVC)
