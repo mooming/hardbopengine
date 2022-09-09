@@ -2,9 +2,9 @@
 
 #include "OSAbstractLayer.h"
 
+#include "String/StringUtil.h"
 #include <cstdio>
 #include <cstdlib>
-#include <iostream>
 
 
 using namespace std;
@@ -77,7 +77,7 @@ HVector<HString> ListFilesInDirectory(const char* path)
     WIN32_FIND_DATAA fileData;
     memset(&fileData, 0, sizeof(WIN32_FIND_DATAA));
     
-    string filesPath = TrimPath(path);
+    auto filesPath = StringUtil::TrimPath(path);
     filesPath.append("/*");
     
     auto handle = FindFirstFileA(filesPath.c_str(), &fileData);
@@ -89,7 +89,7 @@ HVector<HString> ListFilesInDirectory(const char* path)
         {
             if (findParent || strcmp(fileData.cFileName, "..") != 0)
             {
-                string file(fileData.cFileName);
+                HString file(fileData.cFileName);
                 fileList.push_back(file);
             }
             else

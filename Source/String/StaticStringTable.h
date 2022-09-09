@@ -10,6 +10,7 @@
 #include "HSTL/HVector.h"
 #include "Memory/StackAllocator.h"
 #include <cstddef>
+#include <cstdint>
 
 
 namespace HE
@@ -45,7 +46,7 @@ public:
     
 private:
     void RegisterPredefinedStrings();
-    size_t GetTableID(const char* text) const;
+    TIndex GetTableID(const char* text) const;
 };
 
 } // HE

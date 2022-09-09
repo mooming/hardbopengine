@@ -29,7 +29,6 @@ compile_commands.json
 *.cpp~
 *.txt#
 *.txt~
-#*
 *.xcodeproj
 *.build
 *.xctestrun
@@ -40,7 +39,10 @@ compile_commands.json
 *.vcxproj.filters
 *.vcxproj.user
 *.dir
+*.log
+
 x64
 Debug
 Release
+RelWithDebInfo
 

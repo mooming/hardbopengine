@@ -14,19 +14,6 @@ namespace HE
 using TAllocFunc = std::function<void*(size_t)>;
 using TDeallocFunc = std::function<void(void*, size_t)>;
 
-template <typename T>
-concept CAllocator = requires(T a)
-{
-    { a.Allocate(std::size_t{}) } -> std::convertible_to<void*>;
-    a.Deallocate((void*){});
-};
-
-template <CAllocator T>
-void RegisterAllocator(T& allocator)
-{
-    
-}
-
 template <typename Type, typename ... Types, typename TAllocator>
 Type* New(TAllocator& allocator, Types&& ... args)
 {

@@ -15,13 +15,15 @@ namespace HE
 {
     class MemoryManager final
     {
+    public:
         using TId = TAllocatorID;
         using TAllocBytes = std::function<void*(size_t)>;
         using TDeallocBytes = std::function<void(void*, size_t)>;
         using TLogFunc = std::function<void(std::ostream& out)>;
         
-    private:
         static constexpr TId SystemAllocatorID = 0;
+
+    private:
         static constexpr TId NameBufferSize = 64;
         static constexpr size_t MaxBaseMemory = 8'000'000'000;
 

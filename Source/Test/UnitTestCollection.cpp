@@ -26,6 +26,7 @@
 #include "Memory/PoolAllocator.h"
 #include "Memory/MultiPoolAllocator.h"
 #include "Memory/StackAllocator.h"
+#include "Memory/SystemAllocator.h"
 #include "String/StaticString.h"
 #include "String/StringUtil.h"
 #include "System/ComponentSystem.h"
@@ -45,10 +46,11 @@ namespace Test
 
         auto& testEnv = TestEnv::GetEnv();
 
-        testEnv.AddTest(new StackAllocatorTest());
+        testEnv.AddTest(new SystemAllocatorTest());
         testEnv.AddTest(new BaseAllocatorTest());
         testEnv.AddTest(new InlineAllocatorTest());
         testEnv.AddTest(new InlinePoolAllocatorTest());
+        testEnv.AddTest(new StackAllocatorTest());
         testEnv.AddTest(new PoolAllocatorTest());
         testEnv.AddTest(new MultiPoolAllocatorTest());
         

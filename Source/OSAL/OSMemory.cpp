@@ -2,12 +2,14 @@
 
 #include "OSMemory.h"
 
+#include "Engine.h"
 #include "Intrinsic.h"
 #include "System/Debug.h"
 
 
 #ifdef __linux__
 #include <cerrno>
+#include <cstdlib>
 #include <iostream>
 #include <malloc.h>
 #include <sys/mman.h>
@@ -23,6 +25,11 @@ size_t OS::GetAllocSize(void* ptr)
 size_t OS::GetPageSize()
 {
     return sysconf(_SC_PAGESIZE);
+}
+
+void* OS::VirtualAlloc(size_t size)
+{
+    return aligned_alloc(GetPageSize(), size);
 }
 
 void OS::ProtectMemory(void* address, size_t n)
@@ -58,6 +65,11 @@ size_t OS::GetPageSize()
     return pageSize;
 }
 
+void* OS::VirtualAlloc(size_t size)
+{
+    return aligned_alloc(GetPageSize(), size);
+}
+
 void OS::ProtectMemory(void* address, size_t n)
 {
     auto result = mprotect(address, n, PROT_NONE);
@@ -82,7 +94,8 @@ void OS::ProtectMemory(void* address, size_t n)
 
 size_t OS::GetAllocSize(void* ptr)
 {
-    return _msize(ptr);
+    const auto allocSize = _msize(ptr);
+    return allocSize;
 }
 
 size_t OS::GetPageSize()
@@ -99,21 +112,30 @@ size_t OS::GetPageSize()
     return pageSize;
 }
 
+void* OS::VirtualAlloc(size_t size)
+{
+    return ::VirtualAlloc(nullptr, size, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+}
+
 void OS::ProtectMemory(void* address, size_t n)
 {
     DWORD oldProtect = 0;
     auto result = VirtualProtect(address, n, PAGE_NOACCESS, &oldProtect);
 
-    if (unlikely(result))
+    if (likely(result))
+        return;
+
+    using namespace std;
+    auto errorId = GetLastError();
+
+    auto& engine = HE::Engine::Get();
+    engine.LogError([address, n, errorId](auto& log)
     {
-        using namespace std;
-        auto errorId = GetLastError();
-
-        cerr << "[OS::ProtectMemory] address = "
+        log << "[OS::ProtectMemory] address = "
             << address << ", n = " << n << " : error code = " << errorId << endl;
+    });
 
-        HE::Assert(false);
-    }
+    HE::Assert(false);
 }
 
 #else

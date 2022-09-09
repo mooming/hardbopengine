@@ -19,7 +19,7 @@ thread_local MemoryManager::TId MemoryManager::ScopedAllocatorID = 0;
 TDebugVariable<bool> DVarScopedAllocLogging = false;
 
 static MemoryManager* MMgrInstance = nullptr;
-static SystemAllocator<uint8_t>* sysAllocInstance = nullptr;
+
 
 MemoryManager& MemoryManager::GetInstance()
 {
@@ -45,8 +45,18 @@ MemoryManager::MemoryManager()
     MMgrInstance = this;
     
     static SystemAllocator<uint8_t> systemAllocator;
-    Assert(sysAllocInstance == nullptr);
-    sysAllocInstance = &systemAllocator;
+    
+    auto allocFunc = [&sysAlloc = systemAllocator](size_t nBytes) -> void*
+    {
+        return sysAlloc.allocate(nBytes);
+    };
+
+    auto deallocFunc = [&sysAlloc = systemAllocator](void* ptr, size_t nBytes)
+    {
+        sysAlloc.deallocate(reinterpret_cast<uint8_t*>(ptr), nBytes);
+    };
+
+    Register("SystemAllocator", false, 0, allocFunc, deallocFunc);
     
     Assert(systemAllocator.GetID() == SystemAllocatorID);
     SetScopedAllocatorId(SystemAllocatorID);
@@ -54,10 +64,8 @@ MemoryManager::MemoryManager()
 
 MemoryManager::~MemoryManager()
 {
-    Assert(sysAllocInstance != nullptr);
-    sysAllocInstance->DeregisterAllocator();
-    
-    sysAllocInstance = nullptr;
+    Assert(allocators[SystemAllocatorID].isValid);
+    Deregister(SystemAllocatorID);
     MMgrInstance = nullptr;
 }
 
@@ -86,7 +94,7 @@ MemoryManager::TId MemoryManager::Register(const char* name, bool isStack
         
         {
             constexpr int LastIndex = NameBufferSize - 1;
-            strncpy(allocator.name, name, LastIndex);
+            strncpy_s(allocator.name, name, LastIndex);
             allocator.name[LastIndex] = '\0';
         }
 #endif // __MEMORY_STATISTICS__
@@ -211,7 +219,7 @@ void MemoryManager::Deregister(TId id)
                 << ") Thread id is mismatched.";
         });
         
-        DebugBreak();
+        debugBreak();
         
         return;
     }

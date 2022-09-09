@@ -17,7 +17,9 @@
 #define __MEMORY_STATISTICS__
 //#define __MEMORY_LOGGING__
 //#define __MEMORY_INVESTIGATION__
-#define __MEMORY_OVERFLOW_CHECK__ 1 // 0: under-run, 1: over-run
+//#define __MEMORY_INVESTIGATION_LOGGING__
+//#define __MEMORY_DANGLING_POINTER_CHECK__
+//#define __MEMORY_BUFFER_UNDERRUN_CHECK__
 //#define __USE_SYSTEM_MALLOC__
 
 // Performance

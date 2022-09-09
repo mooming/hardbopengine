@@ -49,7 +49,7 @@ Logger::SimpleLogger Logger::Get(StaticString category, ELogLevel level)
     return log;
 }
 
-Logger::Logger(const char* path, const TPathStr& filename, int numRolling)
+Logger::Logger(const char* path, const char* filename, int numRolling)
     : isRunning(false)
     , disableLogPrint(false)
     , startTime(std::chrono::steady_clock::now())
@@ -62,20 +62,21 @@ Logger::Logger(const char* path, const TPathStr& filename, int numRolling)
 
     AllocatorScope scope(allocator);
     
-    auto endChar = *(logPath.end());
+    auto endChar = logPath[logPath.size() - 1];
     
     {
         auto predicate = [](auto item) { return item == '\\'; };
         std::replace_if(logPath.begin(), logPath.end(), predicate, '/');
     }
     
+    auto fileNameSize = strnlen_s(filename, Config::MaxPathLength);
     if (endChar == '/')
     {
-        logPath.reserve(logPath.size() + filename.size());
+        logPath.reserve(logPath.size() + fileNameSize);
     }
     else
     {
-        logPath.reserve(logPath.size() + filename.size() + 1);
+        logPath.reserve(logPath.size() + fileNameSize + 1);
         logPath.push_back('/');
     }
     
@@ -151,7 +152,7 @@ void Logger::AddLog(StaticString category, ELogLevel level, TLogFunction logFunc
         
         if (unlikely(level >= ELogLevel::FatalError))
         {
-            DebugBreak();
+            debugBreak();
         }
         
         return;
@@ -164,7 +165,7 @@ void Logger::AddLog(StaticString category, ELogLevel level, TLogFunction logFunc
     
     if (unlikely(level >= ELogLevel::FatalError))
     {
-        DebugBreak();
+        debugBreak();
         
         Stop();
         logThread.join();

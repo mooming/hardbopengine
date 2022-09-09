@@ -28,11 +28,13 @@ namespace HE
         using value_type = T;
         using TIndex = decltype(BufferSize);
 
-        template<typename U>
-        using rebind = InlineAllocator<U>;
+        template <class U>
+        struct rebind {
+            typedef InlineAllocator<U> other;
+        };
         
         static_assert(std::is_signed<TIndex>(), "The type of BufferSize should be signed integral.");
-        static_assert(BufferSize >= 0, "The buffer size should be greater than or equal to zero.");
+        static_assert(BufferSize > 0, "The buffer size should be greater than or equal to zero.");
         
     private:
         TAllocatorID id;
@@ -136,7 +138,7 @@ namespace HE
             if (unlikely(ptr == nullptr || n == 0))
                 return;
             
-            auto index = GetIndex(ptr);
+            TIndex index = GetIndex(ptr);
             if (!IsValidIndex(index))
             {
                 auto& mmgr = MemoryManager::GetInstance();
@@ -153,7 +155,7 @@ namespace HE
             mmgr.ReportDeallocation(id, ptr, nBytes, nBytes);
 #endif // __MEMOR_STATISTICS__
 
-            ReleaseBlock(index, n);
+            ReleaseBlock(index, static_cast<TIndex>(n));
         }
 
     private:
@@ -163,7 +165,7 @@ namespace HE
             if (ptr < bufferPtr)
                 return BufferSize;
 
-            TIndex index = ptr - bufferPtr;
+            TIndex index = static_cast<TIndex>(ptr - bufferPtr);
 
             return index;
         }

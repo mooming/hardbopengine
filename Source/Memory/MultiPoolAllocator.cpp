@@ -5,7 +5,8 @@
 #include "HSTL/HStringStream.h"
 #include "Log/Logger.h"
 #include "Memory/MemoryManager.h"
-#include <iostream>
+#include <algorithm>
+#include <memory>
 
 
 namespace HE
@@ -19,7 +20,8 @@ MultiPoolAllocator::MultiPoolAllocator(const char* inName, TInitializerList list
     using namespace std;;
     using namespace HSTL;
     
-    HInlineVector<TPoolConfig, 256> vlist(list);
+    HInlineVector<TPoolConfig, 256> vlist;
+    vlist.insert(vlist.end(), list);
     std::sort(vlist.begin(), vlist.end());
     
     multiPool.reserve(vlist.size());
@@ -29,9 +31,9 @@ MultiPoolAllocator::MultiPoolAllocator(const char* inName, TInitializerList list
         HInlineString<2048> str;
         str += name;
         str += '_';
-        str += config.first;
+        str += static_cast<int>(config.first);
         str += '_';
-        str += config.second;
+        str += static_cast<int>(config.second);
         
         multiPool.emplace_back(str.c_str(), config.first, config.second);
     }

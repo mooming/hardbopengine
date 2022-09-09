@@ -26,7 +26,6 @@ class Logger final
 {
 private:
     using TString = HSTL::HString;
-    using TPathStr = HSTL::HPathString;
     using TLogBuffer = HSTL::HVector<LogLine>;
     using TTextBuffer = HSTL::HVector<TString>;
     using TTimePoint = std::chrono::time_point<std::chrono::steady_clock>;
@@ -78,7 +77,7 @@ private:
 public:
     static Logger& Get();
     static SimpleLogger Get(StaticString category, ELogLevel level = ELogLevel::Info);
-    Logger(const char* path, const TPathStr& filename, int numRolling);
+    Logger(const char* path, const char* filename, int numRolling);
     ~Logger();
     
     StaticString GetName() const;

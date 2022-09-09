@@ -7,6 +7,14 @@
 #include <algorithm>
 #include <memory>
 
+#ifdef _MSC_VER
+#include <limits.h>
+#include <windows.h>
+#ifndef PATH_MAX
+#define PATH_MAX MAX_PATH
+#endif // PATH_MAX
+#endif // _MSC_VER
+
 
 using namespace HSTL;
 
@@ -19,9 +27,7 @@ TString Trim(const TString& str)
     auto end = str.end();
     
     while (start != end && std::isspace(*start))
-    {
         ++start;
-    }
     
     do
     {

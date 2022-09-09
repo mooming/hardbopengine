@@ -35,7 +35,7 @@ namespace
 
                 for (int j = 0; j < testIterations; ++j)
                 {
-                    for (size_t i = 0; i < vectorSize; ++i)
+                    for (int i = 0; i < vectorSize; ++i)
                     {
                         v.reserve(i + 1);
                         v.push_back(i);
@@ -53,7 +53,7 @@ namespace
 
                 for (int j = 0; j < testIterations; ++j)
                 {
-                    for (size_t i = 0; i < vectorSize; ++i)
+                    for (int i = 0; i < vectorSize; ++i)
                     {
                         v.reserve(i + 1);
                         v.push_back(i);
@@ -87,12 +87,6 @@ bool HE::InlinePoolAllocatorTest::DoTest()
     int failCount = 0;
 
     {
-        InlinePoolAllocator<int, 0> allocator;
-        auto ptr = allocator.allocate(0);
-        allocator.deallocate(ptr, 0);
-    }
-
-    {
         InlinePoolAllocator<int, 16> allocator;
         auto ptr = allocator.allocate(0);
         allocator.deallocate(ptr, 0);
@@ -111,11 +105,10 @@ bool HE::InlinePoolAllocatorTest::DoTest()
             });
             
             std::allocator<int> stdAlloc;
-            
+
             float inlineTime = 0.0f;
             float stdTime = 0.0f;
-            
-            
+
             {
                 Time::MeasureSec measure(inlineTime);
                 
@@ -153,7 +146,7 @@ bool HE::InlinePoolAllocatorTest::DoTest()
         };
         
         {
-            constexpr int inlineSize = 0;
+            constexpr int inlineSize = 1;
             
             log.Out([inlineSize](auto& ls)
             {

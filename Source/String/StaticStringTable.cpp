@@ -33,7 +33,8 @@ StaticStringTable::StaticStringTable()
 
 StaticString StaticStringTable::GetName() const
 {
-    static auto className = StringUtil::PrettyFunctionToCompactClassName(__PRETTY_FUNCTION__);
+    static StaticString className = StringUtil::PrettyFunctionToCompactClassName(__PRETTY_FUNCTION__);
+
     return className;
 }
 
@@ -53,13 +54,13 @@ StaticStringID StaticStringTable::Register(const char* text)
     auto found = std::find(table.begin(), table.end(), TString(text));
     if (found != table.end())
     {
-        id.index = std::distance(table.begin(), found);
+        id.index = static_cast<TIndex>(std::distance(table.begin(), found));
         
         return id;
     }
     
     TString str(text);
-    id.index = table.size();
+    id.index = static_cast<TIndex>(table.size());
     table.push_back(str);
     
     return id;
@@ -87,7 +88,7 @@ void StaticStringTable::PrintStringTable() const
         ls << "StringTable ============";
     });
     
-    size_t tableID = 0;
+    TIndex tableID = 0;
     
     for (auto& table : tables)
     {
@@ -109,7 +110,7 @@ void StaticStringTable::PrintStringTable() const
 
     for (auto& table : tables)
     {
-        size_t index = 0;
+        TIndex index = 0;
         
         for (auto& item : table)
         {
@@ -143,13 +144,16 @@ void StaticStringTable::RegisterPredefinedStrings()
     Register("NONE");
     Register("Null");
     Register("NULL");
+    Register("True");
+    Register("False");
+
     Register("HardbopEngine");
 }
 
-size_t StaticStringTable::GetTableID(const char* text) const
+StaticStringTable::TIndex StaticStringTable::GetTableID(const char* text) const
 {
     auto hashValue = StringUtil::CalculateHash(text);
-    auto tableId = hashValue % NumTables;
+    auto tableId = static_cast<TIndex>(hashValue % NumTables);
     
     return tableId;
 }

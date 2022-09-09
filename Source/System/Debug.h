@@ -24,7 +24,7 @@ namespace HE
 
         PrintArgs("[Assert] Please check it.");
         
-        DebugBreak();
+        debugBreak();
         std::abort();
     }
 
@@ -36,7 +36,7 @@ namespace HE
 
         PrintArgs("[Assert] ", std::forward<Types>(args) ...);
         
-        DebugBreak();
+        debugBreak();
         std::abort();
     }
 }
@@ -50,7 +50,7 @@ namespace HE
 namespace HE
 {
     template <typename T>
-    using TDebugVariable = constexpr T;
+    using TDebugVariable = const T;
 
     inline void Assert(bool)
     {
@@ -71,7 +71,7 @@ namespace HE
             return;
 
         PrintArgs("[FatalAssert] Please check it.");
-        DebugBreak();
+        debugBreak();
         std::abort();
     }
 
@@ -82,7 +82,7 @@ namespace HE
             return;
 
         PrintArgs("[FatalAssert] ", std::forward<Types>(args) ...);
-        DebugBreak();
+        debugBreak();
         std::abort();
     }
 } // anonymous

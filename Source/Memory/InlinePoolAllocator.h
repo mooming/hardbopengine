@@ -11,9 +11,6 @@
 #include "System/Debug.h"
 #include <algorithm>
 #include <cstddef>
-#include <iostream>
-#include <limits>
-#include <type_traits>
 
 
 namespace HE
@@ -21,15 +18,18 @@ namespace HE
 template <class T, int BufferSize = 64, int NumBuffers = 2>
 struct ALIGN16 InlinePoolAllocator final
 {
-    using value_type = T;
     using TIndex = decltype(BufferSize);
 
-    template<typename U>
-    using rebind = InlinePoolAllocator<U>;
+    using value_type = T;
 
-    static_assert(NumBuffers >= 0, "The number of buffers should be greater than or equal to zero.");
+    template <class U>
+    struct rebind {
+        typedef InlinePoolAllocator<U> other;
+    };
+ 
+    static_assert(NumBuffers > 0, "The number of buffers should be greater than or equal to zero.");
     static_assert(std::is_signed<TIndex>(), "The type of BufferSize should be signed integral.");
-    static_assert(BufferSize >= 0, "The buffer size should be greater than or equal to zero.");
+    static_assert(BufferSize > 0, "The buffer size should be greater than or equal to zero.");
     
 private:
     bool isAllocated[NumBuffers];
@@ -162,10 +162,16 @@ public:
     auto GetFallbackCount() const { return fallbackCount; }
 
     template <class U>
-    bool operator==(const U&) const { return false; }
+    bool operator==(const U&) const
+    {
+        return false;
+    }
     
     template <class U>
-    bool operator!=(const U&) const { return true; }
+    bool operator!=(const U&) const
+    {
+        return true;
+    }
     
 private:
     void RegisterAllocator()

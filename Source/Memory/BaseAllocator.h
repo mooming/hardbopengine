@@ -18,14 +18,22 @@ namespace HE
         using value_type = T;
 
         template <class U>
-        using rebind = BaseAllocator<U>;
-        
+        struct rebind {
+            typedef BaseAllocator<U> other;
+        };
+
     private:
         TAllocatorID allocatorID;
         
     public:
         BaseAllocator()
             : allocatorID(MemoryManager::GetCurrentAllocatorID())
+        {
+        }
+
+        template <class U>
+        BaseAllocator(const BaseAllocator<U>& rhs)
+            : allocatorID(rhs.GetSourceAllocatorID())
         {
         }
         
@@ -57,7 +65,7 @@ namespace HE
             return allocatorID != rhs.allocatorID;
         }
         
-        inline auto GetID() const { return allocatorID; }
+        inline auto GetSourceAllocatorID() const { return allocatorID; }
         inline size_t GetFallbackCount() const { return 0; }
     };
 } // HE

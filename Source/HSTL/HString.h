@@ -14,5 +14,5 @@ using HString = std::basic_string<char, std::char_traits<char>, HE::BaseAllocato
 
 template <size_t PoolSize = 128>
 using HInlineString = std::basic_string<char, std::char_traits<char>, HE::InlinePoolAllocator<char, PoolSize, 2>>;
-using HPathString = std::basic_string<char, std::char_traits<char>, HE::InlinePoolAllocator<char, HE::Config::MaxPathLength, 2>>;
+using HInlinePathString = std::basic_string<char, std::char_traits<char>, HE::InlinePoolAllocator<char, HE::Config::MaxPathLength, 2>>;
 } // HSTL

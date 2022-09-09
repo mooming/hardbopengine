@@ -25,12 +25,6 @@ bool HE::InlineAllocatorTest::DoTest()
     int failCount = 0;
     
     {
-        InlineAllocator<TestBlock, 0> allocator;
-        auto ptr = allocator.allocate(0);
-        allocator.deallocate(ptr, 0);
-    }
-    
-    {
         InlineAllocator<TestBlock, 16> allocator;
         auto ptr = allocator.allocate(0);
         allocator.deallocate(ptr, 0);
@@ -152,7 +146,7 @@ bool HE::InlineAllocatorTest::DoTest()
         };
         
         {
-            constexpr int inlineSize = 0;
+            constexpr int inlineSize = 1;
             
             log.Out([inlineSize](auto& ls)
             {

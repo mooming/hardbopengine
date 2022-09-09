@@ -3,12 +3,14 @@
 #pragma once
 
 #include "AllocatorID.h"
+#include "Engine.h"
 #include "MemoryManager.h"
 #include "Config/EngineConfig.h"
 #include "OSAL/Intrinsic.h"
 #include "OSAL/OSMemory.h"
 #include "System/Debug.h"
 #include <cstddef>
+#include <cstdlib>
 #include <exception>
 #include <iostream>
 
@@ -18,24 +20,21 @@ namespace HE
     template <class T>
     struct SystemAllocator final
     {
+    public:
         using value_type = T;
-        
-    private:
-        TAllocatorID id;
     
     public:
-        SystemAllocator()
-            : id(InvalidAllocatorID)
+        SystemAllocator() = default;
+        ~SystemAllocator() = default;
+
+#ifdef _MSC_VER
+        template <class U>
+        SystemAllocator(const SystemAllocator<U>&)
         {
-            RegisterAllocator();
         }
-        
-        ~SystemAllocator()
-        {
-            DeregisterAllocator();
-        }
-        
-        auto GetID() const { return id; }
+#endif // _MSC_VER
+
+        constexpr auto GetID() const { return MemoryManager::SystemAllocatorID; }
         
         T* allocate(std::size_t n)
         {
@@ -58,6 +57,8 @@ namespace HE
         {
             return false;
         }
+
+        auto GetName() const { return "SystemAllocator"; }
         
     private:
         void* AllocateBytes(std::size_t nBytes)
@@ -67,21 +68,28 @@ namespace HE
                 nBytes = 1;
             
             const auto pageSize = OS::GetPageSize();
-            const auto pageCount = (nBytes + pageSize - 1) / pageSize;
-            const auto pageAllocSize = pageCount * pageSize;
-            auto rawPtr = aligned_alloc(pageSize, pageAllocSize);
+            const size_t pageCount = (nBytes + pageSize - 1) / pageSize;
+            const size_t allocSize = pageCount * pageSize;
+            auto rawPtr = OS::VirtualAlloc(allocSize);
+
+#ifdef __MEMORY_BUFFER_UNDERRUN_CHECK__
+            T* ptr = reinterpret_cast<T*>(rawPtr);
+#else // __MEMORY_BUFFER_UNDERRUN_CHECK__
             uint8_t* bytePtr = (uint8_t*)rawPtr;
-            
-            T* ptr = nullptr;
-            
-            if (__MEMORY_OVERFLOW_CHECK__)
+            bytePtr = bytePtr + allocSize - nBytes;
+            T* ptr = reinterpret_cast<T*>(bytePtr);
+#endif // __MEMORY_BUFFER_UNDERRUN_CHECK__
+
+#ifdef __MEMORY_INVESTIGATION_LOGGING__
             {
-                ptr = reinterpret_cast<T*>(bytePtr + pageAllocSize - nBytes);
+                auto& engine = Engine::Get();
+                engine.Log(ELogLevel::Info, [this, rawPtr, ptr](auto& ls)
+                {
+                    ls << '[' << GetName() << "][Investigator] RawPtr = " << rawPtr
+                        << ", ptr = " << (void*)ptr;
+                });
             }
-            else
-            {
-                ptr = reinterpret_cast<T*>(bytePtr);
-            }
+#endif // __MEMORY_INVESTIGATION_LOGGING__
 
 #else // __MEMORY_INVESTIGATION__
             auto ptr = (T*)malloc(nBytes);
@@ -91,12 +99,12 @@ namespace HE
             auto& mmgr = MemoryManager::GetInstance();
 
 #ifdef __MEMORY_INVESTIGATION__
-            const auto allocated = OS::GetAllocSize(bytePtr);
+            const auto allocated = allocSize;
 #else // __MEMORY_INVESTIGATION__
             const auto allocated = OS::GetAllocSize(ptr);
 #endif // __MEMORY_INVESTIGATION__
             
-            mmgr.ReportAllocation(id, ptr, nBytes, allocated);
+            mmgr.ReportAllocation(GetID(), ptr, nBytes, allocated);
 #endif // __MEMORY_STATISTICS__
             
             return ptr;
@@ -107,68 +115,38 @@ namespace HE
             Assert(ptr != nullptr, "[SysAlloc][Dealloc] Null Pointer Error");
             
 #ifdef __MEMORY_INVESTIGATION__
+            const auto pageSize = OS::GetPageSize();
+            const size_t pageCount = (nBytes + pageSize - 1) / pageSize;
+            const size_t allocSize = pageCount * pageSize;
+
+#ifdef __MEMORY_BUFFER_UNDERRUN_CHECK__
+            auto rawPtr = ptr;
+#else // __MEMORY_BUFFER_UNDERRUN_CHECK__
             auto bytePtr = reinterpret_cast<uint8_t*>(ptr);
-            
-            if (__MEMORY_OVERFLOW_CHECK__)
-            {
-                const auto pageSize = OS::GetPageSize();
-                const auto pageCount = (nBytes + pageSize - 1) / pageSize;
-                const auto pageAllocSize = pageCount * pageSize;
-                
-                bytePtr = bytePtr + nBytes - pageAllocSize;
-            }
-            
+            bytePtr = bytePtr + nBytes - allocSize;
+
             auto rawPtr = (void*)bytePtr;
-            auto allocated = OS::GetAllocSize(rawPtr);
+#endif // __MEMORY_BUFFER_UNDERRUN_CHECK__
+
+            auto allocated = allocSize;
 #endif // __MEMORY_INVESTIGATION__
 
 #ifdef __MEMORY_STATISTICS__
+
 #ifndef __MEMORY_INVESTIGATION__
             auto allocated = OS::GetAllocSize(ptr);
 #endif // __MEMORY_INVESTIGATION__
+
             auto& mmgr = MemoryManager::GetInstance();
-            mmgr.ReportDeallocation(id, ptr, nBytes, allocated);
+            mmgr.ReportDeallocation(GetID(), ptr, nBytes, allocated);
 #endif // __MEMORY_STATISTICS__
             
-#ifdef __MEMORY_INVESTIGATION__
+#if defined(__MEMORY_INVESTIGATION__) && defined(__MEMORY_DANGLING_POINTER_CHECK__)
             OS::ProtectMemory(rawPtr, allocated);
 #else // __MEMORY_INVESTIGATION__
             free(ptr);
 #endif // __MEMORY_INVESTIGATION__
         }
-            
-        void RegisterAllocator()
-        {
-            Assert(id == InvalidAllocatorID);
-            
-            auto& mmgr = MemoryManager::GetInstance();
-            
-            auto allocFunc = [this](size_t nBytes) -> void*
-            {
-                return static_cast<void*>(AllocateBytes(nBytes));
-            };
-            
-            auto deallocFunc = [this](void* ptr, size_t nBytes)
-            {
-                DeallocateBytes(static_cast<T*>(ptr), nBytes);
-            };
-            
-            id = mmgr.Register("SystemAllocator", false
-                , 0, allocFunc, deallocFunc);
-        }
-        
-        void DeregisterAllocator()
-        {
-            if (id == InvalidAllocatorID)
-                return;
-            
-            auto& mmgr = MemoryManager::GetInstance();
-            mmgr.Deregister(id);
-            
-            id = InvalidAllocatorID;
-        }
-        
-        friend class MemoryManager;
     };
 } // HE
 
