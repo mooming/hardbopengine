@@ -339,14 +339,16 @@ bool StringUtilTest::DoTest()
         });
 
         StaticString funcName("DoTest()");
+        StaticString funcName2("DoTest(void)");
         auto name = PrettyFunctionToFunctionName(__PRETTY_FUNCTION__);
 
-        log.Out([name, funcName](auto& ls)
+        log.Out([name, funcName, funcName2](auto& ls)
         {
-            ls <<  "Function Name is " << name  << " / " << funcName;
+            ls <<  "Function Name is " << name  << " / (" << funcName
+                << " or " << funcName2 << ')';
         });
         
-        if (name != funcName)
+        if (name != funcName && name != funcName2)
         {
             log.OutError([](auto& ls)
             {
@@ -373,14 +375,16 @@ bool StringUtilTest::DoTest()
         });
         
         StaticString funcName("HE::StringUtilTest::DoTest()");
+        StaticString funcName2("HE::StringUtilTest::DoTest(void)");
         auto name = PrettyFunctionToMethodName(__PRETTY_FUNCTION__);
 
-        log.Out([name, funcName](auto& ls)
+        log.Out([name, funcName, funcName2](auto& ls)
         {
-            ls << "Function Name is " << name  << " / " << funcName;
+            ls << "Function Name is " << name  << " / (" << funcName
+                << " or " << funcName2 << ')';
         });
         
-        if (name != funcName)
+        if (name != funcName && name != funcName2)
         {
             log.OutError([](auto& ls)
             {
@@ -407,14 +411,16 @@ bool StringUtilTest::DoTest()
         });
         
         StaticString funcName("StringUtilTest::DoTest()");
+        StaticString funcName2("StringUtilTest::DoTest(void)");
         auto name = PrettyFunctionToCompactMethodName(__PRETTY_FUNCTION__);
 
-        log.Out([name, funcName](auto& ls)
+        log.Out([name, funcName, funcName2](auto& ls)
         {
-            ls << "Function Name is " << name  << " / " << funcName;
+            ls << "Function Name is " << name  << " / (" << funcName
+                << " or " << funcName2 << ')';
         });
         
-        if (name != funcName)
+        if (name != funcName && name != funcName2)
         {
             log.OutError([](auto& ls)
             {

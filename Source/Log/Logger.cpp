@@ -245,8 +245,8 @@ void Logger::Run()
                 auto levelStr = LogUtil::GetLogLevelString(log.level);
 
                 using namespace HSTL;
-                HInlineString<4096> text;
-                text.reserve(4096);
+                HInlineString<Config::LogBufferSize> text;
+                text.reserve(Config::LogLineSize);
 
                 text.push_back('[');
                 text.append(timeStampStr);

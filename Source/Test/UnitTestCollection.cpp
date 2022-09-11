@@ -20,7 +20,6 @@
 #include "Math/RigidTransform.h"
 #include "Math/AABB.h"
 #include "Memory/BaseAllocator.h"
-#include "Memory/InlineAllocator.h"
 #include "Memory/InlinePoolAllocator.h"
 #include "Memory/Optional.h"
 #include "Memory/PoolAllocator.h"
@@ -48,7 +47,6 @@ namespace Test
 
         testEnv.AddTest(new SystemAllocatorTest());
         testEnv.AddTest(new BaseAllocatorTest());
-        testEnv.AddTest(new InlineAllocatorTest());
         testEnv.AddTest(new InlinePoolAllocatorTest());
         testEnv.AddTest(new StackAllocatorTest());
         testEnv.AddTest(new PoolAllocatorTest());

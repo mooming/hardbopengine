@@ -11,11 +11,12 @@
 #include "System/Debug.h"
 #include <algorithm>
 #include <cstddef>
+#include <iostream>
 
 
 namespace HE
 {
-template <class T, int BufferSize = 64, int NumBuffers = 2>
+template <class T, int BufferSize, int NumBuffers = 2>
 struct ALIGN16 InlinePoolAllocator final
 {
     using TIndex = decltype(BufferSize);
@@ -24,7 +25,7 @@ struct ALIGN16 InlinePoolAllocator final
 
     template <class U>
     struct rebind {
-        typedef InlinePoolAllocator<U> other;
+        typedef InlinePoolAllocator<U, BufferSize, NumBuffers> other;
     };
  
     static_assert(NumBuffers > 0, "The number of buffers should be greater than or equal to zero.");
@@ -33,21 +34,17 @@ struct ALIGN16 InlinePoolAllocator final
     
 private:
     bool isAllocated[NumBuffers];
-    T buffer[NumBuffers][BufferSize];
+    uint8_t buffer[NumBuffers][BufferSize * sizeof(T)];
     
+    TAllocatorID parentID;
     TAllocatorID id;
     size_t fallbackCount;
     int indexHint;
 
 public:
-    InlinePoolAllocator(const InlinePoolAllocator&) = delete;
-    InlinePoolAllocator(InlinePoolAllocator&&) = delete;
-    InlinePoolAllocator& operator= (const InlinePoolAllocator&) = delete;
-    InlinePoolAllocator& operator= (InlinePoolAllocator&&) = delete;
-
-public:
     InlinePoolAllocator()
         : id(InvalidAllocatorID)
+        , parentID(InvalidAllocatorID)
         , fallbackCount(0)
         , indexHint(0)
     {
@@ -68,10 +65,36 @@ public:
         
         RegisterAllocator();
     }
+
+    InlinePoolAllocator(TAllocatorID inParentID)
+        : id(InvalidAllocatorID)
+        , parentID(inParentID)
+        , fallbackCount(0)
+        , indexHint(0)
+    {
+    }
+
+    InlinePoolAllocator(const InlinePoolAllocator&)
+        : InlinePoolAllocator()
+    {
+    }
     
     ~InlinePoolAllocator()
     {
         DeregisterAllocator();
+    }
+
+    template <typename U>
+    operator InlinePoolAllocator<U, BufferSize, NumBuffers> ()
+    {
+        using TCastedAlloc = InlinePoolAllocator<U, BufferSize, NumBuffers>;
+
+        if (parentID != InvalidAllocatorID)
+        {
+            return TCastedAlloc(parentID);
+        }
+
+        return TCastedAlloc(GetID());
     }
 
     StaticString GetName() const
@@ -82,58 +105,104 @@ public:
     
     T* allocate(std::size_t n)
     {
-        auto FallbackAlloc = [this, n]() -> T*
+        constexpr size_t unit = sizeof(T);
+        const auto nBytes = n * unit;
+
+        if (parentID == InvalidAllocatorID)
         {
-            auto& mmgr = MemoryManager::GetInstance();
-            constexpr size_t sizeOfT = sizeof(T);
-            const auto nBytes = n * sizeOfT;
-            auto ptr = reinterpret_cast<T*>(mmgr.SysAllocate(nBytes));
-            ++fallbackCount;
-            
-            return ptr;
-        };
-        
-        if (n > BufferSize)
-            return FallbackAlloc();
-        
-        if (unlikely(n == 0))
+            auto ptr = AllocateBytes(nBytes);
+            return reinterpret_cast<T*>(ptr);
+        }
+
+        auto& mmgr = MemoryManager::GetInstance();
+        auto ptr = mmgr.Allocate(parentID, nBytes);
+
+        return reinterpret_cast<T*>(ptr);
+    }
+    
+    void deallocate (T* ptr, std::size_t n) noexcept
+    {
+        constexpr size_t unit = sizeof(T);
+        const auto nBytes = n * unit;
+
+        void* voidPtr = reinterpret_cast<void*>(ptr);
+
+        if (parentID == InvalidAllocatorID)
+        {
+            return DeallocateBytes(voidPtr, nBytes);
+        }
+
+        auto& mmgr = MemoryManager::GetInstance();
+        mmgr.Deallocate(parentID, voidPtr, nBytes);
+    }
+    
+    auto GetID() const { return id; }
+    auto GetFallbackCount() const { return fallbackCount; }
+    auto GetBlockSize() const { return BufferSize; }
+    auto GetNumBlocks() const { return NumBuffers; }
+
+    bool operator==(const InlinePoolAllocator&) const
+    {
+        return false;
+    }
+    
+    bool operator!=(const InlinePoolAllocator&) const
+    {
+        return true;
+    }
+    
+private:
+    void* FallbackAlloc(size_t nBytes)
+    {
+        ++fallbackCount;
+
+        auto& mmgr = MemoryManager::GetInstance();
+        auto ptr = mmgr.SysAllocate(nBytes);
+
+        return ptr;
+    }
+
+    void* AllocateBytes(size_t nBytes)
+    {
+        constexpr size_t unit = sizeof(T);
+        constexpr size_t bufferSizeBytes = BufferSize * unit;
+
+        if (nBytes > bufferSizeBytes)
+            return FallbackAlloc(nBytes);
+
+        if (unlikely(nBytes == 0))
             return &buffer[0][0];
-        
-#ifdef __MEMORY_VERIFICATION__
-        Assert(BufferSize > 0);
-#endif // __MEMORY_VERIFICATION__
-        
+
         int index = indexHint;
         for (int i = 0; i < NumBuffers; ++i, ++index)
         {
             index = index >= NumBuffers ? 0 : index;
             if (isAllocated[index])
                 continue;
-            
+
             indexHint = index + 1;
             if (indexHint >= NumBuffers)
                 indexHint = 0;
-            
+
+            isAllocated[index] = true;
             auto ptr = &buffer[index][0];
-            
+
 #ifdef __MEMOR_STATISTICS__
             auto& mmgr = MemoryManager::GetInstance();
-            constexpr size_t unit = sizeof(T);
-            constexpr size_t bufferSizeBytes = BufferSize * unit;
-            mmgr.ReportAllocation(id, ptr, n * unit, bufferSizeBytes);
+            mmgr.ReportAllocation(id, ptr, nBytes, bufferSizeBytes);
 #endif // __MEMOR_STATISTICS__
-            
+
             return ptr;
         }
-        
-        return FallbackAlloc();
+
+        return FallbackAlloc(nBytes);
     }
-    
-    void deallocate (T* ptr, std::size_t n) noexcept
+
+    void DeallocateBytes(void* ptr, size_t nBytes)
     {
-        if (unlikely(ptr == nullptr || n == 0))
+        if (unlikely(ptr == nullptr || nBytes == 0))
             return;
-        
+
         for (int i = 0; i < NumBuffers; ++i)
         {
             if (ptr != &buffer[i][0])
@@ -143,69 +212,31 @@ public:
             auto& mmgr = MemoryManager::GetInstance();
             constexpr size_t unit = sizeof(T);
             constexpr size_t bufferSizeBytes = BufferSize * unit;
-            mmgr.ReportDeallocation(id, ptr, n * unit, bufferSizeBytes);
+            mmgr.ReportDeallocation(id, ptr, nBytes, bufferSizeBytes);
 #endif // __MEMOR_STATISTICS__
-            
+
             isAllocated[i] = false;
             indexHint = i;
-            
+
             return;
         }
 
         auto& mmgr = MemoryManager::GetInstance();
-        constexpr size_t sizeOfT = sizeof(T);
-        const auto nBytes = n * sizeOfT;
         mmgr.SysDeallocate(ptr, nBytes);
     }
-    
-    auto GetID() const { return id; }
-    auto GetFallbackCount() const { return fallbackCount; }
 
-    template <class U>
-    bool operator==(const U&) const
-    {
-        return false;
-    }
-    
-    template <class U>
-    bool operator!=(const U&) const
-    {
-        return true;
-    }
-    
-private:
     void RegisterAllocator()
     {
         auto& mmgr = MemoryManager::GetInstance();
         
         auto allocFunc = [this](size_t nBytes) -> void*
         {
-            constexpr auto unit = sizeof(T);
-            
-            if (unit == 1)
-            {
-                return static_cast<void*>(allocate(nBytes));
-            }
-            else
-            {
-                const auto unitCounts = (nBytes + unit - 1) / unit;
-                return static_cast<void*>(allocate(unitCounts));
-            }
+            return static_cast<void*>(AllocateBytes(nBytes));
         };
         
         auto deallocFunc = [this](void* ptr, size_t nBytes)
         {
-            constexpr auto unit = sizeof(T);
-            if (unit == 1)
-            {
-                deallocate(static_cast<T*>(ptr), nBytes);
-                return;
-            }
-            else
-            {
-                const auto unitCounts = (nBytes + unit - 1) / unit;
-                deallocate(static_cast<T*>(ptr), unitCounts);
-            }
+            DeallocateBytes(ptr, nBytes);
         };
         
         const auto capacity = BufferSize * NumBuffers * sizeof(T);

@@ -84,9 +84,12 @@ namespace HE
         void* SysAllocate(size_t nBytes);
         void SysDeallocate(void* ptr, size_t nBytes);
         
+        void* Allocate(TId id, size_t nBytes);
+        void Deallocate(TId id, void* ptr, size_t nBytes);
+
         void* Allocate(size_t nBytes);
         void Deallocate(void* ptr, size_t nBytes);
-        
+
         template <typename T>
         T* Allocate(size_t n)
         {
@@ -152,8 +155,8 @@ namespace HE
         inline size_t GetTotalUsage() const { return GetTotalStackUsage() + GetTotalHeapUsage(); }
 
     private:
-        inline TId GetScopedAllocatorId() const { return ScopedAllocatorID; }
-        void SetScopedAllocatorId(TId id);
+        inline TId GetScopedAllocatorID() const { return ScopedAllocatorID; }
+        void SetScopedAllocatorID(TId id);
 
         friend class AllocatorScope;
     };

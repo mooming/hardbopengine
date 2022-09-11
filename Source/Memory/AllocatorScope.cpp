@@ -11,16 +11,16 @@ namespace HE
 AllocatorScope::AllocatorScope(TAllocatorID id)
 {
     auto& mmgr = MemoryManager::GetInstance();
-    previous = mmgr.GetScopedAllocatorId();
+    previous = mmgr.GetScopedAllocatorID();
     current = id;
 
-    mmgr.SetScopedAllocatorId(current);
+    mmgr.SetScopedAllocatorID(current);
 }
 
 AllocatorScope::~AllocatorScope()
 {
     auto& mmgr = MemoryManager::GetInstance();
-    mmgr.SetScopedAllocatorId(previous);
+    mmgr.SetScopedAllocatorID(previous);
 }
 
 } // HE
@@ -28,7 +28,6 @@ AllocatorScope::~AllocatorScope()
 
 #ifdef __UNIT_TEST__
 
-#include "InlineAllocator.h"
 #include "InlinePoolAllocator.h"
 #include <iostream>
 
@@ -38,8 +37,6 @@ namespace HE
 bool AllocatorScopeTest::DoTest()
 {
     using namespace std;
-
-    
 
     cout << "AllocatorScope Tests :: DONE" << endl;
 

@@ -59,7 +59,7 @@ MemoryManager::MemoryManager()
     Register("SystemAllocator", false, 0, allocFunc, deallocFunc);
     
     Assert(systemAllocator.GetID() == SystemAllocatorID);
-    SetScopedAllocatorId(SystemAllocatorID);
+    SetScopedAllocatorID(SystemAllocatorID);
 }
 
 MemoryManager::~MemoryManager()
@@ -478,58 +478,66 @@ void MemoryManager::SysDeallocate(void* ptr, size_t nBytes)
     allocator.deallocate(ptr, nBytes);
 }
 
-void* MemoryManager::Allocate(size_t nBytes)
+void* MemoryManager::Allocate(TId id, size_t nBytes)
 {
     using namespace std;
 
-    auto id = ScopedAllocatorID;
     if (unlikely(!IsValid(id)))
     {
         Log(ELogLevel::Error
-            , [funcName = __func__, id](auto& ls )
-        {
-            ls << '[' << funcName << "] Invalid Scoped Allocator ID = "
-                << id << ", the default allocator shall be used.";
-        });
-        
+            , [funcName = __func__, id](auto& ls)
+            {
+                ls << '[' << funcName << "] Invalid Scoped Allocator ID = "
+                    << id << ", the default allocator shall be used.";
+            });
+
         id = 0;
     }
 
     auto& allocator = allocators[id];
     Assert(allocator.isValid
-           , "[", GetName(), "::", __func__, "][Error] "
-           , "Invalid Allocator ID = ", id);
-    
+        , "[", GetName(), "::", __func__, "][Error] "
+        , "Invalid Allocator ID = ", id);
+
     Assert(allocator.allocate != nullptr
-           , "[", GetName(), "::", __func__, "][Error] "
-           , "No allocate function, ID = ", id);
+        , "[", GetName(), "::", __func__, "][Error] "
+        , "No allocate function, ID = ", id);
 
     return allocator.allocate(nBytes);
 }
 
-void MemoryManager::Deallocate(void* ptr, size_t nBytes)
+void MemoryManager::Deallocate(TId id, void* ptr, size_t nBytes)
 {
     using namespace std;
 
-    auto id = ScopedAllocatorID;
     if (unlikely(!IsValid(id)))
     {
         Log(ELogLevel::Error
-            , [funcName = __func__, id](auto& ls )
-        {
-            ls << '[' << funcName << "] Invalid Scoped Allocator ID = "
-                << id << ", the default deallocate shall be used.";
-        });
-        
+            , [funcName = __func__, id](auto& ls)
+            {
+                ls << '[' << funcName << "] Invalid Scoped Allocator ID = "
+                    << id << ", the default deallocate shall be used.";
+            });
+
         id = 0;
     }
 
     auto& allocator = allocators[id];
     Assert(allocator.deallocate != nullptr
-       , "[MemoryManager::Allocate][Error] No allocate function, ID = "
-       , id);
+        , "[MemoryManager::Allocate][Error] No allocate function, ID = "
+        , id);
 
     allocator.deallocate(ptr, nBytes);
+}
+
+void* MemoryManager::Allocate(size_t nBytes)
+{
+    return Allocate(GetScopedAllocatorID(), nBytes);
+}
+
+void MemoryManager::Deallocate(void* ptr, size_t nBytes)
+{
+    Deallocate(GetScopedAllocatorID(), ptr, nBytes);
 }
 
 void MemoryManager::Log(ELogLevel level, TLogFunc func)
@@ -543,7 +551,7 @@ void MemoryManager::Log(ELogLevel level, TLogFunc func)
 #endif // __MEMORY_LOGGING__
 }
 
-void MemoryManager::SetScopedAllocatorId(TId id)
+void MemoryManager::SetScopedAllocatorID(TId id)
 {
     using namespace std;
     

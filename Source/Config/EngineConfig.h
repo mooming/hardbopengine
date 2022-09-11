@@ -55,6 +55,7 @@ namespace HE
         static constexpr int StaticStringNumHashBuckets = 256;
     
         // Log
+        static constexpr int LogLineSize = 1000;
         static constexpr int LogBufferSize = 1024;
         static constexpr int LogMemoryBlockSize = 2048;
         static constexpr int LogNumMemoryBlocks = 2048;

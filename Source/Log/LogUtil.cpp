@@ -37,7 +37,7 @@ HSTL::HInlineString<64> GetTimeStampString(const LogUtil::TTimePoint& startTime
     str += '.';
     str += std::to_string(intMSecs);
 
-    return str.c_str();
+    return str;
 }
 
 StaticString GetLogLevelString(ELogLevel level)

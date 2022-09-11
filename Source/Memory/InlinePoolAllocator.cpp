@@ -95,12 +95,12 @@ bool HE::InlinePoolAllocatorTest::DoTest()
     {
         auto allocDeallocTest = [&log](auto& inlineAlloc) -> bool
         {
-            constexpr int testCount = 1000;
-            constexpr int loopLength = 64;
+            constexpr int testCount = 500;
+            constexpr int loopLength = 1024;
             
-            log.Out([testCount, loopLength](auto& ls)
+            log.Out([&inlineAlloc, testCount, loopLength](auto& ls)
             {
-                ls << "Alloc/Dealloc Test: num iteration = "
+                ls << '[' << inlineAlloc.GetBlockSize() << "] Alloc/Dealloc Test: num iteration = "
                     << testCount << ", loop length = " << loopLength;
             });
             
@@ -136,10 +136,12 @@ bool HE::InlinePoolAllocatorTest::DoTest()
             
             auto rate = inlineTime / stdTime;
             
-            log.Out([inlineTime, stdTime, rate](auto& ls)
+            log.Out([&inlineAlloc, inlineTime, stdTime, rate](auto& ls)
             {
                 ls << "Alloc/Dealloc Performance : InlineAlloc: " << inlineTime
-                    << " msec vs STL: " << stdTime << " msec, rate = " << rate;
+                    << " msec vs STL: " << stdTime << " msec, rate = [" << rate
+                    << "], fallback count = " << inlineAlloc.GetFallbackCount()
+                    << " / " << (testCount * loopLength);
             });
             
             return rate < 1.0f;
@@ -147,91 +149,54 @@ bool HE::InlinePoolAllocatorTest::DoTest()
         
         {
             constexpr int inlineSize = 1;
-            
-            log.Out([inlineSize](auto& ls)
-            {
-                ls << "==========================================" << endl;
-                ls << "Alloc/Dealloc Test: Inline Alloc Size = " << inlineSize;
-            });
-            
             InlinePoolAllocator<int, inlineSize> inlineAlloc;
             allocDeallocTest(inlineAlloc);
         }
         
         {
             constexpr int inlineSize = 16;
-            
-            log.Out([inlineSize](auto& ls)
-            {
-                ls << "==========================================" << endl;
-                ls << "Alloc/Dealloc Test: Inline Alloc Size = " << inlineSize;
-            });
-            
             InlinePoolAllocator<int, inlineSize> inlineAlloc;
             allocDeallocTest(inlineAlloc);
         }
         
         {
             constexpr int inlineSize = 32;
-            
-            log.Out([inlineSize](auto& ls)
-            {
-                ls << "==========================================" << endl;
-                ls << "Alloc/Dealloc Test: Inline Alloc Size = " << inlineSize;
-            });
-            
             InlinePoolAllocator<int, inlineSize> inlineAlloc;
             allocDeallocTest(inlineAlloc);
         }
         
         {
             constexpr int inlineSize = 64;
-            
-            log.Out([inlineSize](auto& ls)
-            {
-                ls << "==========================================" << endl;
-                ls << "Alloc/Dealloc Test: Inline Alloc Size = " << inlineSize;
-            });
-            
             InlinePoolAllocator<int, inlineSize> inlineAlloc;
             allocDeallocTest(inlineAlloc);
         }
         
         {
             constexpr int inlineSize = 128;
-            
-            log.Out([inlineSize](auto& ls)
-            {
-                ls << "==========================================" << endl;
-                ls << "Alloc/Dealloc Test: Inline Alloc Size = " << inlineSize;
-            });
-            
+            InlinePoolAllocator<int, inlineSize> inlineAlloc;
+            allocDeallocTest(inlineAlloc);
+        }
+
+        {
+            constexpr int inlineSize = 256;
+            InlinePoolAllocator<int, inlineSize> inlineAlloc;
+            allocDeallocTest(inlineAlloc);
+        }
+
+        {
+            constexpr int inlineSize = 512;
             InlinePoolAllocator<int, inlineSize> inlineAlloc;
             allocDeallocTest(inlineAlloc);
         }
         
         {
             constexpr int inlineSize = 1024;
-            
-            log.Out([inlineSize](auto& ls)
-            {
-                ls << "==========================================" << endl;
-                ls << "Alloc/Dealloc Test: Inline Alloc Size = " << inlineSize;
-            });
-            
             InlinePoolAllocator<int, inlineSize> inlineAlloc;
             allocDeallocTest(inlineAlloc);
         }
         
         {
             constexpr int inlineSize = 8192;
-            
-            log.Out([inlineSize](auto& ls)
-            {
-                ls << "==========================================" << endl;
-                ls << "Alloc/Dealloc Test: Inline Alloc Size = " << inlineSize;
-            });
-            
             InlinePoolAllocator<int, inlineSize> inlineAlloc;
             allocDeallocTest(inlineAlloc);
         }
