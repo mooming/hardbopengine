@@ -27,7 +27,7 @@ namespace HE
         
         PreEngineInit preEngineInit;
         std::mutex logLock;
-        std::fstream logFile;
+        std::ofstream logFile;
         TTimePoint startTime;
         
         MemoryManager memoryManager;
@@ -43,6 +43,7 @@ namespace HE
 
         void Initialize(int argc, const char* argv[]);
         void Run();
+        void FlushLog();
         
         StaticString GetName() const;
         inline auto& GetMemoryManager() { return memoryManager; }

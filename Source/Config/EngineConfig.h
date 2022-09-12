@@ -47,6 +47,7 @@ namespace HE
     {
         // Engine
         static constexpr uint8_t EngineLogLevel = 1;
+        static constexpr uint8_t EngineLogLevelPrint = 1;
     
         // Memory
         static constexpr uint8_t MemLogLevel = 1;

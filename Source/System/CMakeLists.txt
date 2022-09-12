@@ -21,6 +21,7 @@ add_library (System STATIC
  CommandLineArguments.cpp
  Component.cpp
  ComponentSystem.cpp
+ Debug.cpp
  Time.cpp
  CommandLineArguments.h
  CommonUtil.h

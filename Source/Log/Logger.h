@@ -5,11 +5,12 @@
 #include "LogLevel.h"
 #include "LogLine.h"
 #include "HSTL/HString.h"
-#include "HSTL/HStringStream.h"
 #include "HSTL/HVector.h"
 #include "HSTL/HUnorderedMap.h"
 #include "Memory/PoolAllocator.h"
 #include "String/StaticString.h"
+#include "String/StringBuilder.h"
+#include <atomic>
 #include <chrono>
 #include <condition_variable>
 #include <fstream>
@@ -23,12 +24,12 @@ namespace HE
 
 class Logger final
 {
-private:
+public:
     using TString = HSTL::HString;
     using TLogBuffer = HSTL::HVector<LogLine>;
     using TTextBuffer = HSTL::HVector<TString>;
     using TTimePoint = std::chrono::time_point<std::chrono::steady_clock>;
-    using TLogStream = HSTL::HStringStream;
+    using TLogStream = InlineStringBuilder<Config::LogLineSize>;
     using TLogFunction = std::function<void(TLogStream&)>;
     using TOutputFunc = std::function<void(const TTextBuffer&)>;
     using TOutputFuncs = HSTL::HVector<TOutputFunc>;
@@ -54,7 +55,7 @@ private:
     static Logger* instance;
     
     bool isRunning;
-    bool disableLogPrint;
+    std::atomic<bool> needFlush;
     TTimePoint startTime;
     
     PoolAllocator allocator;
@@ -85,7 +86,7 @@ public:
     void Stop();
     
     void SetFilter(StaticString category, TLogFilter filter);
-    void FlushInputBuffers();
+    void Flush();
     
 private:
     void Run();
@@ -96,4 +97,5 @@ private:
 };
 
 using TLog = Logger::SimpleLogger;
+using LogStream = Logger::TLogStream;
 } // HE

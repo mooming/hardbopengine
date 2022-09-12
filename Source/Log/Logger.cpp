@@ -4,7 +4,6 @@
 
 #include "LogUtil.h"
 #include "Config/EngineConfig.h"
-#include "HSTL/HStringStream.h"
 #include "Memory/AllocatorScope.h"
 #include "Memory/InlinePoolAllocator.h"
 #include "OSAL/Intrinsic.h"
@@ -51,7 +50,7 @@ Logger::SimpleLogger Logger::Get(StaticString category, ELogLevel level)
 
 Logger::Logger(const char* path, const char* filename, int numRolling)
     : isRunning(false)
-    , disableLogPrint(false)
+    , needFlush(false)
     , startTime(std::chrono::steady_clock::now())
     , allocator("LoggerMemoryPool"
         , Config::LogMemoryBlockSize
@@ -61,7 +60,7 @@ Logger::Logger(const char* path, const char* filename, int numRolling)
     instance = this;
 
     AllocatorScope scope(allocator);
-    
+
     auto endChar = logPath[logPath.size() - 1];
     
     {
@@ -111,6 +110,8 @@ void Logger::AddLog(StaticString category, ELogLevel level, TLogFunction logFunc
 #ifndef LOG_ENABLED
     return;
 #endif // LOG_ENABLED
+
+    AllocatorScope scope(InvalidAllocatorID);
     
     if (unlikely(logFunc == nullptr))
         return;
@@ -134,17 +135,11 @@ void Logger::AddLog(StaticString category, ELogLevel level, TLogFunction logFunc
         auto timeStampStr = LogUtil::GetTimeStampString(startTime, chrono::steady_clock::now());
         auto levelStr = LogUtil::GetLogLevelString(level);
         
-        using namespace HSTL;
-        HInlineString<4096> text;
-        text += '[';
-        text += timeStampStr;
-        text += "][";
-        text += category;
-        text += "][";
-        text += levelStr;
-        text += "] ";
-        text += ls.str();
-
+        InlineStringBuilder<Config::LogLineSize + 64> text;
+        
+        text << '[' << timeStampStr << "][" << category << "][" << levelStr
+            << "] " << ls.c_str();
+        
         tmpTextBuffer.emplace_back(text.c_str());
         
         Flush(tmpTextBuffer);
@@ -160,7 +155,8 @@ void Logger::AddLog(StaticString category, ELogLevel level, TLogFunction logFunc
     
     {
         std::lock_guard lock(inputLock);
-        inputBuffer.emplace_back(level, category, ls.str());
+        inputBuffer.emplace_back(level, category, ls.c_str());
+        needFlush = true;
     }
     
     if (unlikely(level >= ELogLevel::FatalError))
@@ -205,13 +201,15 @@ void Logger::SetFilter(StaticString category, TLogFilter filter)
     filters[category] = filter;
 }
 
-void Logger::FlushInputBuffers()
+void Logger::Flush()
 {
-    std::lock_guard lockInput(inputLock);
-    if (inputBuffer.size() <= 0)
+    if (std::this_thread::get_id() == logThread.get_id())
         return;
-    
-    cv.notify_one();
+
+    while(needFlush)
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
 }
 
 void Logger::Run()
@@ -230,8 +228,6 @@ void Logger::Run()
     
     auto ProcessBuffer = [this]()
     {
-        AllocatorScope scope(allocator);
-
         {
             std::lock_guard lockInput(inputLock);
             std::swap(inputBuffer, swapBuffer);
@@ -275,13 +271,14 @@ void Logger::Run()
         while (isRunning)
         {
             ProcessBuffer();
+            needFlush = false;
             cv.wait(lock);
         }
     }
 
-    AddLog(GetName(), ELogLevel::Info, [](auto& logStream)
+    AddLog(GetName(), ELogLevel::Info, [](auto& ls)
     {
-        logStream << "Logger has been terminated." << std::endl;
+        ls << "Logger has been terminated." << hendl;
     });
     
     ProcessBuffer();
@@ -301,13 +298,11 @@ void Logger::Flush(const TTextBuffer& buffer)
 
 void Logger::WriteLog(const TTextBuffer& buffer)
 {
-    using namespace std;
-    
     auto& ofs = outFileStream;
 
     for (auto& logText : buffer)
     {
-        ofs << logText << endl;
+        ofs << logText << std::endl;
     }
     
     ofs.flush();
@@ -315,14 +310,9 @@ void Logger::WriteLog(const TTextBuffer& buffer)
 
 void Logger::PrintStdIO(const TTextBuffer& buffer) const
 {
-    using namespace std;
-    
-    if (disableLogPrint)
-        return;
-
     for (auto& logText : buffer)
     {
-        cout << logText << endl;
+        std::cout << logText << std::endl;
     }
 }
 

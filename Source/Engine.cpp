@@ -113,6 +113,16 @@ void Engine::Run()
     logger.Stop();
 }
 
+void Engine::FlushLog()
+{
+    logger.Flush();
+
+    if (!logFile.is_open())
+        return;
+
+    logFile.flush();
+}
+
 StaticString Engine::GetName() const
 {
     static StaticString name("HEngine");
@@ -122,7 +132,8 @@ StaticString Engine::GetName() const
 void Engine::Log(ELogLevel level, TLogFunc func)
 {
 #ifdef ENGINE_LOG_ENABLED
-    if (static_cast<uint8_t>(level) < Config::EngineLogLevel)
+    auto levelAsValue = static_cast<uint8_t>(level);
+    if (levelAsValue < Config::EngineLogLevel)
         return;
 
     using namespace std;
@@ -139,21 +150,21 @@ void Engine::Log(ELogLevel level, TLogFunc func)
     int intMSecs = milliSeconds.count() % 1000;
     
     lock_guard lock(logLock);
-    
-    cerr << '[' << intHours << ':' << intMins << ':' << intSecs
-        << '.' << intMSecs << "][EngineLog] ";
-    func(cerr);
-    cerr << endl;
-    
-    if (unlikely(!logFile.is_open()))
-        return;
-    
+
+    if (levelAsValue >= Config::EngineLogLevelPrint)
+    {
+        cerr << '[' << intHours << ':' << intMins << ':' << intSecs
+            << '.' << intMSecs << "][EngineLog] ";
+        func(cerr);
+        cerr << endl;
+    }
+
+    Assert(logFile.is_open());
     logFile << '[' << intHours << ':' << intMins << ':' << intSecs
         << '.' << intMSecs << "] ";
     
     func(logFile);
     logFile << endl;
-    
 #endif // ENGINE_LOG_ENABLED
 }
 

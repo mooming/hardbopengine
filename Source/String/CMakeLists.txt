@@ -21,12 +21,15 @@ add_library (String STATIC
  StaticString.cpp
  StaticStringTable.cpp
  String.cpp
+ StringBuilder.cpp
  StringUtil.cpp
+ EndLine.h
  Letter.h
  StaticString.h
  StaticStringID.h
  StaticStringTable.h
  String.h
+ StringBuilder.h
  StringUtil.h
 )
 

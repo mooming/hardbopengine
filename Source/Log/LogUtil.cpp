@@ -2,8 +2,7 @@
 
 #include "LogUtil.h"
 
-#include "HSTL/HStringStream.h"
-#include <sstream>
+#include "String/StringBuilder.h"
 
 
 namespace HE
