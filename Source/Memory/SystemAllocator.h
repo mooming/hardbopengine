@@ -124,11 +124,9 @@ namespace HE
 #else // __MEMORY_BUFFER_UNDERRUN_CHECK__
             auto bytePtr = reinterpret_cast<uint8_t*>(ptr);
             bytePtr = bytePtr + nBytes - allocSize;
-
             auto rawPtr = (void*)bytePtr;
 #endif // __MEMORY_BUFFER_UNDERRUN_CHECK__
-
-            auto allocated = allocSize;
+            const auto allocated = allocSize;
 #endif // __MEMORY_INVESTIGATION__
 
 #ifdef __MEMORY_STATISTICS__
@@ -141,8 +139,14 @@ namespace HE
             mmgr.ReportDeallocation(GetID(), ptr, nBytes, allocated);
 #endif // __MEMORY_STATISTICS__
             
-#if defined(__MEMORY_INVESTIGATION__) && defined(__MEMORY_DANGLING_POINTER_CHECK__)
+#ifdef __MEMORY_INVESTIGATION__
+            
+#ifdef __MEMORY_DANGLING_POINTER_CHECK__
             OS::ProtectMemory(rawPtr, allocated);
+#else // __MEMORY_DANGLING_POINTER_CHECK__
+            OS::VirtualFree(rawPtr, allocated);
+#endif // __MEMORY_DANGLING_POINTER_CHECK__
+           
 #else // __MEMORY_INVESTIGATION__
             free(ptr);
 #endif // __MEMORY_INVESTIGATION__

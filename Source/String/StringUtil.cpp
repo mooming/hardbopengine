@@ -228,6 +228,24 @@ HE::StaticString PrettyFunctionToCompactMethodName(const char* PrettyFunction)
     return HE::StaticString(str.c_str());
 }
 
+size_t StrLen(const char* text, size_t bufferSize)
+{
+    if (unlikely(text == nullptr || bufferSize < 1))
+        return 0;
+    
+    const size_t maxLimit = bufferSize - 1;
+    size_t length = 0;
+
+    char ch = *text;
+    while(ch != '\0' && length < maxLimit)
+    {
+        ++length;
+        ++text;
+    }
+    
+    return length;
+}
+
 size_t CalculateHash(const char* text)
 {
     size_t hashCode = 5381;

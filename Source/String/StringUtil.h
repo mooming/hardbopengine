@@ -27,6 +27,7 @@ HE::StaticString PrettyFunctionToMethodName(const char* PrettyFunction);
 HE::StaticString PrettyFunctionToCompactClassName(const char* PrettyFunction);
 HE::StaticString PrettyFunctionToCompactMethodName(const char* PrettyFunction);
 
+size_t StrLen(const char* text, size_t bufferSize);
 size_t CalculateHash(const char* text);
 
 } // StringUtil

@@ -77,6 +77,11 @@ const char* MemoryManager::GetName() const
 MemoryManager::TId MemoryManager::Register(const char* name, bool isStack
     , size_t capacity, TAllocBytes allocFunc, TDeallocBytes deallocFunc)
 {
+    if (name == nullptr)
+    {
+        name = "None";
+    }
+    
 #ifdef __MEMORY_STATISTICS__
     auto AddAllocator = [name, isStack, capacity, allocFunc, deallocFunc](auto& allocator)
 #else // __MEMORY_STATISTICS__
@@ -94,7 +99,15 @@ MemoryManager::TId MemoryManager::Register(const char* name, bool isStack
         
         {
             constexpr int LastIndex = NameBufferSize - 1;
-            strncpy_s(allocator.name, name, LastIndex);
+            for (int i = 0; i < NameBufferSize; ++i)
+            {
+                auto ch = name[i];
+                allocator.name[i] = ch;
+                
+                if (ch == '\0')
+                    break;
+            }
+            
             allocator.name[LastIndex] = '\0';
         }
 #endif // __MEMORY_STATISTICS__
@@ -480,6 +493,10 @@ void MemoryManager::SysDeallocate(void* ptr, size_t nBytes)
 
 void* MemoryManager::Allocate(TId id, size_t nBytes)
 {
+#ifdef __USE_SYSTEM_MALLOC__
+    id = SystemAllocatorID;
+#endif // __USE_SYSTEM_MALLOC__
+    
     using namespace std;
 
     if (unlikely(!IsValid(id)))
@@ -508,6 +525,10 @@ void* MemoryManager::Allocate(TId id, size_t nBytes)
 
 void MemoryManager::Deallocate(TId id, void* ptr, size_t nBytes)
 {
+#ifdef __USE_SYSTEM_MALLOC__
+    id = SystemAllocatorID;
+#endif // __USE_SYSTEM_MALLOC__
+
     using namespace std;
 
     if (unlikely(!IsValid(id)))

@@ -50,5 +50,7 @@ namespace HE
         
         void Log(ELogLevel level, TLogFunc func);
         inline void LogError(TLogFunc func) { Log(ELogLevel::Error, func); }
+        
+        void CloseLog();
     };
 }

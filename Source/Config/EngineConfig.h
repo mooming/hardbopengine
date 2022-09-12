@@ -6,8 +6,6 @@
 
 
 // Definitions for Pre-compilation
-//#define __TEST__
-//#define __UNIT_TEST__
 
 // Engine
 #define ENGINE_LOG_ENABLED
@@ -18,7 +16,7 @@
 //#define __MEMORY_LOGGING__
 //#define __MEMORY_INVESTIGATION__
 //#define __MEMORY_INVESTIGATION_LOGGING__
-//#define __MEMORY_DANGLING_POINTER_CHECK__
+#define __MEMORY_DANGLING_POINTER_CHECK__
 //#define __MEMORY_BUFFER_UNDERRUN_CHECK__
 //#define __USE_SYSTEM_MALLOC__
 
@@ -37,6 +35,10 @@
 // Mathematics
 //#define __LEFT_HANDED__
 #define __RIGHT_HANDED__
+
+
+// Test
+//#define __MEMORY_INVESTIGATOR_TEST__
 
 // Default Setting Values
 namespace HE

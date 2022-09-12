@@ -36,8 +36,8 @@ private:
     bool isAllocated[NumBuffers];
     uint8_t buffer[NumBuffers][BufferSize * sizeof(T)];
     
-    TAllocatorID parentID;
     TAllocatorID id;
+    TAllocatorID parentID;
     size_t fallbackCount;
     int indexHint;
 

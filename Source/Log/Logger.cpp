@@ -68,8 +68,8 @@ Logger::Logger(const char* path, const char* filename, int numRolling)
         auto predicate = [](auto item) { return item == '\\'; };
         std::replace_if(logPath.begin(), logPath.end(), predicate, '/');
     }
-    
-    auto fileNameSize = strnlen_s(filename, Config::MaxPathLength);
+
+    auto fileNameSize = StringUtil::StrLen(filename, Config::MaxPathLength);
     if (endChar == '/')
     {
         logPath.reserve(logPath.size() + fileNameSize);
@@ -278,7 +278,7 @@ void Logger::Run()
     
     AddLog(GetName(), ELogLevel::Info, [](auto& logStream)
     {
-        logStream << "Logger has been terminated.";
+        logStream << "Logger has been terminated." << std::endl;
     });
     
     ProcessBuffer();

@@ -29,7 +29,15 @@ size_t OS::GetPageSize()
 
 void* OS::VirtualAlloc(size_t size)
 {
-    return aligned_alloc(GetPageSize(), size);
+    auto ptr = mmap(nullptr, size
+        , PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    
+    return ptr;
+}
+
+void OS::VirtualFree(void* address, std::size_t)
+{
+    free(address);
 }
 
 void OS::ProtectMemory(void* address, size_t n)
@@ -67,7 +75,15 @@ size_t OS::GetPageSize()
 
 void* OS::VirtualAlloc(size_t size)
 {
-    return aligned_alloc(GetPageSize(), size);
+    auto ptr = mmap(nullptr, size
+        , PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    
+    return ptr;
+}
+
+void OS::VirtualFree(void* address, std::size_t)
+{
+    free(address);
 }
 
 void OS::ProtectMemory(void* address, size_t n)
@@ -115,6 +131,15 @@ size_t OS::GetPageSize()
 void* OS::VirtualAlloc(size_t size)
 {
     return ::VirtualAlloc(nullptr, size, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+}
+
+void OS::VirtualFree(void* address, std::size_t n)
+{
+    auto result = ::VirtualFree(address, n, MEM_RELEASE);
+    if (unlikely(result))
+    {
+        Assert(false);
+    }
 }
 
 void OS::ProtectMemory(void* address, size_t n)

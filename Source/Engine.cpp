@@ -4,8 +4,41 @@
 
 #include "HSTL/HString.h"
 #include "System/Debug.h"
+#include <csignal>
 #include <iostream>
 
+
+namespace
+{
+
+void SignalHandler(int sigNum)
+{
+    using namespace HE;
+    
+    auto& engine = Engine::Get();
+    engine.GetLogger().Stop();
+    
+    engine.LogError([sigNum](auto& ls)
+    {
+        ls << "signal(" << sigNum << ") received.";
+    });
+    
+    engine.LogError([](auto& ls)
+    {
+        ls << "The application shall be terminated.";
+    });
+    
+    engine.LogError([](auto& ls)
+    {
+        ls << "Thank you for playing. Have a great day! :)" << std::endl;
+    });
+    
+    engine.CloseLog();
+
+    exit(sigNum);
+}
+
+} // Anonymous
 
 namespace HE
 {
@@ -29,12 +62,18 @@ Engine::Engine()
     , startTime(std::chrono::steady_clock::now())
     , logger("./", "hardbop.log", 5)
 {
+    std::signal(SIGABRT, SignalHandler);
+    std::signal(SIGBUS, SignalHandler);
+    std::signal(SIGFPE, SignalHandler);
+    std::signal(SIGILL, SignalHandler);
+    std::signal(SIGINT, SignalHandler);
+    std::signal(SIGSEGV, SignalHandler);
+    std::signal(SIGTERM, SignalHandler);
 }
 
 Engine::~Engine()
 {
-    logFile.flush();
-    logFile.close();
+    CloseLog();
 }
 
 void Engine::Initialize(int argc, const char* argv[])
@@ -85,7 +124,7 @@ void Engine::Log(ELogLevel level, TLogFunc func)
 #ifdef ENGINE_LOG_ENABLED
     if (static_cast<uint8_t>(level) < Config::EngineLogLevel)
         return;
-    
+
     using namespace std;
     
     const auto diff = chrono::steady_clock::now() - startTime;
@@ -101,16 +140,30 @@ void Engine::Log(ELogLevel level, TLogFunc func)
     
     lock_guard lock(logLock);
     
-    cerr << "[EngineLog][" << intHours << ':' << intMins << ':' << intSecs
-        << '.' << intMSecs << ']';
+    cerr << '[' << intHours << ':' << intMins << ':' << intSecs
+        << '.' << intMSecs << "][EngineLog] ";
     func(cerr);
     cerr << endl;
     
+    if (unlikely(!logFile.is_open()))
+        return;
+    
     logFile << '[' << intHours << ':' << intMins << ':' << intSecs
-        << '.' << intMSecs << ']';
+        << '.' << intMSecs << "] ";
+    
     func(logFile);
     logFile << endl;
+    
 #endif // ENGINE_LOG_ENABLED
+}
+
+void Engine::CloseLog()
+{
+    if (!logFile.is_open())
+        return;
+    
+    logFile.flush();
+    logFile.close();
 }
 
 } // HE

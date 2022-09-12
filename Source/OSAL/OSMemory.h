@@ -20,6 +20,7 @@ bool CheckAligned(T *ptr, unsigned int alignBytes = 16)
 size_t GetAllocSize(void* ptr);
 size_t GetPageSize();
 void* VirtualAlloc(size_t size);
+void VirtualFree(void* address, std::size_t n);
 void ProtectMemory(void* address, std::size_t n);
 
 } // OSAL
