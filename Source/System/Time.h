@@ -3,52 +3,47 @@
 #pragma once
 
 #include "Types.h"
+#include <chrono>
 
 
 namespace HE
 {
-class Time
+namespace Time
 {
+using MilliSec = uint64_t;
+using TStopWatch = std::chrono::steady_clock;
+using TTime = std::chrono::time_point<TStopWatch>;
+using TDuration = TStopWatch::duration;
+
+template <typename T = float>
+constexpr T ToMilliSec(TDuration duration)
+{
+    static_assert(std::is_floating_point<T>());
+    std::chrono::duration<T, std::milli> milliSecs = duration;
+    return milliSecs.count();
+}
+
+class Measure
+{
+private:
+    TDuration& duration;
+    TTime start;
+    
 public:
-    using MilliSec = uint64_t;
-    class Measure
+    Measure(TDuration& outDeltaTime)
+    : duration(outDeltaTime)
+    , start(TStopWatch::now())
     {
-    private:
-        MilliSec& deltaMilli;
-        MilliSec start;
-        
-    public:
-        Measure(MilliSec& deltaMilli) : deltaMilli(deltaMilli)
-        {
-            start = GetTimeMilli();
-        }
-        
-        ~Measure()
-        {
-            deltaMilli = GetTimeMilli() - start;
-        }
-    };
+    }
     
-    class MeasureSec
+    ~Measure()
     {
-    private:
-        float& deltaTime;
-        MilliSec start;
-        
-    public:
-        MeasureSec(float& deltaTime) : deltaTime(deltaTime)
-        {
-            start = GetTimeMilli();
-        }
-        
-        ~MeasureSec()
-        {
-            deltaTime = 0.001f * (GetTimeMilli() - start);
-        }
-    };
-    
-    static MilliSec GetTimeSec();
-    static MilliSec GetTimeMilli();
-    static void Sleep(MilliSec milli);
+        TTime end = TStopWatch::now();
+        duration = end - start;
+    }
 };
+
+void Sleep(MilliSec milli);
+
+} // Time
 } // HE

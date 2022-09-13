@@ -22,14 +22,14 @@ namespace
             
             using namespace HE;
 
-            float inlineTime = 0.0f;
-            float stdTime = 0.0f;
+            Time::TDuration inlineTime;
+            Time::TDuration stdTime;
 
             constexpr int testIterations = 8192;
             constexpr size_t vectorSize = 128;
 
             {
-                Time::MeasureSec measure(inlineTime);
+                Time::Measure measure(inlineTime);
 
                 std::vector<int, InlinePoolAllocator<int, BufferSize>> v;
 
@@ -48,7 +48,7 @@ namespace
             }
 
             {
-                Time::MeasureSec measure(stdTime);
+                Time::Measure measure(stdTime);
                 std::vector<int> v;
 
                 for (int j = 0; j < testIterations; ++j)
@@ -65,12 +65,14 @@ namespace
                 }
             }
 
-            auto rate = inlineTime / stdTime;
+            auto inlineTimeSec = Time::ToMilliSec(inlineTime);
+            auto stdTimeSec = Time::ToMilliSec(stdTime);
+            auto rate = inlineTimeSec / stdTimeSec;
             
-            log.Out([inlineTime, stdTime, rate](auto& ls)
+            log.Out([inlineTimeSec, stdTimeSec, rate](auto& ls)
             {
-                ls << "Vector Growth Performance : InlineAlloc: " << inlineTime
-                    << " msec vs STL: " << stdTime << " msec, rate = " << rate;
+                ls << "Vector Growth Performance : InlineAlloc: " << inlineTimeSec
+                    << " msec vs STL: " << stdTimeSec << " msec, rate = " << rate;
             });
             
             return rate < 1.0f;
@@ -106,11 +108,11 @@ bool HE::InlinePoolAllocatorTest::DoTest()
             
             std::allocator<int> stdAlloc;
 
-            float inlineTime = 0.0f;
-            float stdTime = 0.0f;
+            Time::TDuration inlineTime;
+            Time::TDuration stdTime;
 
             {
-                Time::MeasureSec measure(inlineTime);
+                Time::Measure measure(inlineTime);
                 
                 for (int j = 0; j < testCount; ++j)
                 {
@@ -123,7 +125,7 @@ bool HE::InlinePoolAllocatorTest::DoTest()
             }
             
             {
-                Time::MeasureSec measure(stdTime);
+                Time::Measure measure(stdTime);
                 for (int j = 0; j < testCount; ++j)
                 {
                     for (int i = 0; i < loopLength; ++i)
@@ -134,12 +136,16 @@ bool HE::InlinePoolAllocatorTest::DoTest()
                 }
             }
             
-            auto rate = inlineTime / stdTime;
+            auto inlineTimeSec = Time::ToMilliSec(inlineTime);
+            auto stdTimeSec = Time::ToMilliSec(stdTime);
+            auto rate = inlineTimeSec / stdTimeSec;
             
-            log.Out([&inlineAlloc, inlineTime, stdTime, rate](auto& ls)
+            log.Out([&inlineAlloc, inlineTimeSec, stdTimeSec, rate](auto& ls)
             {
-                ls << "Alloc/Dealloc Performance : InlineAlloc: " << inlineTime
-                    << " msec vs STL: " << stdTime << " msec, rate = [" << rate
+                ls << "Alloc/Dealloc Performance : InlineAlloc: "
+                    << inlineTimeSec
+                    << " msec vs STL: " << stdTimeSec
+                    << " msec, rate = [" << rate
                     << "], fallback count = " << inlineAlloc.GetFallbackCount()
                     << " / " << (testCount * loopLength);
             });

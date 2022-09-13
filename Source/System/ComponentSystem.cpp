@@ -155,9 +155,10 @@ bool ComponentSystemTest::DoTest()
         testSystem.Create(testResult);
     }
 
-    float loopTime = 0.0f;
+    Time::TDuration loopTime;
+    
     {
-        Time::MeasureSec measure(loopTime);
+        Time::Measure measure(loopTime);
         while (testSystem)
         {
             testSystem.Update(0.033f);
@@ -168,7 +169,7 @@ bool ComponentSystemTest::DoTest()
         }
     }
 
-    cout << "Total Loop Time = " << loopTime << endl;
+    cout << "Total Loop Time = " << Time::ToMilliSec<float>(loopTime) << endl;
 
     return true;
 }

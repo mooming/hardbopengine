@@ -67,11 +67,11 @@ bool HE::Vector3Test::DoTest()
     }
 
     {
-        float heTime = 0.0f;
+        Time::TDuration heTime;
         float dotResult = 0.0f;
 
         {
-            Time::MeasureSec measure(heTime);
+            Time::Measure measure(heTime);
 
             for (auto& vertex : vertices)
             {
@@ -80,7 +80,8 @@ bool HE::Vector3Test::DoTest()
             }
         }
 
-        cout << "Float3 Dot Time = " << heTime << ", Result = " << dotResult << endl;
+        cout << "Float3 Dot Time = " << Time::ToMilliSec<float>(heTime)
+            << ", Result = " << dotResult << endl;
     }
 
     {

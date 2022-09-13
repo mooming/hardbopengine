@@ -741,9 +741,10 @@ bool StringTest::DoTest()
 
     constexpr int COUNT = 100000;
 
-    float heTime = 0.0f;
+    Time::TDuration heTime;
+    
     {
-        Time::MeasureSec measure(heTime);
+        Time::Measure measure(heTime);
 
         String str;
         for (int i = 0; i < COUNT; ++i)
@@ -756,9 +757,10 @@ bool StringTest::DoTest()
         }
     }
 
-    float stlTime = 0.0f;
+    Time::TDuration stlTime;
+    
     {
-        Time::MeasureSec measure(stlTime);
+        Time::Measure measure(stlTime);
 
         std::string str;
         for (int i = 0; i < COUNT; ++i)
@@ -773,7 +775,8 @@ bool StringTest::DoTest()
 
     log.Out([heTime, stlTime](auto& ls)
     {
-        ls << "Time: he = " << heTime << ", stl = " << stlTime;
+        ls << "Time: he = " << Time::ToMilliSec<float>(heTime)
+            << ", stl = " << Time::ToMilliSec<float>(stlTime);
     });
 
     return true;

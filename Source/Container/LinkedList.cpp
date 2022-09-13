@@ -38,11 +38,11 @@ bool LinkedListTest::DoTest()
         }
     }
 
-    float heTime = 0.0f;
-    float stlTime = 0.0f;
+    Time::TDuration heTime;
+    Time::TDuration stlTime;
 
     {
-        Time::MeasureSec measure(heTime);
+        Time::Measure measure(heTime);
 
         LinkedList<int> intList;
         for (int i = 0; i < COUNT; ++i)
@@ -65,7 +65,7 @@ bool LinkedListTest::DoTest()
     }
 
     {
-        Time::MeasureSec measure(stlTime);
+        Time::Measure measure(stlTime);
 
         list<int> intList;
         for (int i = 0; i < COUNT; ++i)
@@ -87,7 +87,9 @@ bool LinkedListTest::DoTest()
         }
     }
 
-    cout << "Insert Time Compare : HE = " << heTime << ", STL = " << stlTime << endl;
+    cout << "Insert Time Compare : HE = " << Time::ToMilliSec<float>(heTime)
+        << ", STL = " << Time::ToMilliSec<float>(stlTime) << endl;
+    
     if (heTime > stlTime)
     {
         cerr << "Lower Performance than STL list." << endl;
@@ -104,7 +106,7 @@ bool LinkedListTest::DoTest()
         }
 
         {
-            Time::MeasureSec measure(stlTime);
+            Time::Measure measure(stlTime);
             for (int i = 0; i < COUNT2; ++i)
             {
                 for (auto value : intList)
@@ -123,7 +125,7 @@ bool LinkedListTest::DoTest()
         }
 
         {
-            Time::MeasureSec measure(heTime);
+            Time::Measure measure(heTime);
             for (int i = 0; i < COUNT2; ++i)
             {
                 for (auto value : intList)
@@ -140,7 +142,9 @@ bool LinkedListTest::DoTest()
         return false;
     }
 
-    cout << "Loop Time Compare : HE = " << heTime << ", STL = " << stlTime << endl;
+    cout << "Loop Time Compare : HE = " << Time::ToMilliSec<float>(heTime)
+        << ", STL = " << Time::ToMilliSec<float>(stlTime) << endl;
+    
     if (heTime > stlTime)
     {
         cerr << "Lower Performance than STL list." << endl;
