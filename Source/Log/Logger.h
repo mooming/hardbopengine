@@ -10,7 +10,6 @@
 #include "HSTL/HUnorderedMap.h"
 #include "Memory/PoolAllocator.h"
 #include "String/StaticString.h"
-#include <atomic>
 #include <chrono>
 #include <condition_variable>
 #include <fstream>

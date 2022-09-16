@@ -157,7 +157,7 @@ void Logger::AddLog(StaticString category, ELogLevel level, TLogFunction logFunc
         
         return;
     }
-
+    
     {
         std::lock_guard lock(inputLock);
         inputBuffer.emplace_back(level, category, ls.str());
@@ -174,7 +174,11 @@ void Logger::AddLog(StaticString category, ELogLevel level, TLogFunction logFunc
         return;
     }
     
-    cv.notify_one();
+    {
+        std::lock_guard lock(cvLock);
+        cv.notify_one();
+    }
+    
 }
 
 void Logger::Start()
@@ -187,14 +191,12 @@ void Logger::Stop()
     if (!isRunning)
         return;
     
-    isRunning = false;
-    
-    AddLog(GetName(), ELogLevel::Info, [](auto& logStream)
     {
-        logStream << "Stop() is called.";
-    });
+        std::lock_guard lock(cvLock);
+        isRunning = false;
+        cv.notify_all();
+    }
     
-    cv.notify_all();
     logThread.join();
 }
 
@@ -267,15 +269,16 @@ void Logger::Run()
         }
     };
 
-    std::unique_lock lock(cvLock);
-    constexpr auto timeOutMSec = 300ms;
-    
-    while (isRunning)
     {
-        ProcessBuffer();
-        cv.wait_for(lock, timeOutMSec);
+        std::unique_lock lock(cvLock);
+
+        while (isRunning)
+        {
+            ProcessBuffer();
+            cv.wait(lock);
+        }
     }
-    
+
     AddLog(GetName(), ELogLevel::Info, [](auto& logStream)
     {
         logStream << "Logger has been terminated." << std::endl;
