@@ -20,11 +20,9 @@ link_directories (${CMAKE_SOURCE_DIR}/lib)
 add_library (Container STATIC 
  Array.cpp
  LinkedList.cpp
- Vector.cpp
  Array.h
  DoubleLinkedList.h
  LinkedList.h
- Vector.h
 )
 
 if (APPLE)
