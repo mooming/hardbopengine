@@ -493,7 +493,7 @@ void MemoryManager::SysDeallocate(void* ptr, size_t nBytes)
 
 void* MemoryManager::Allocate(TId id, size_t nBytes)
 {
-    Assert(id != InvalidAllocatorID);
+    Assert(id != InvalidAllocatorID, "Memory allocation is not permitted.");
 
 #ifdef __USE_SYSTEM_MALLOC__
     id = SystemAllocatorID;
@@ -583,7 +583,7 @@ void MemoryManager::SetScopedAllocatorID(TId id)
 {
     using namespace std;
     
-    if (unlikely(!IsValid(id)))
+    if (unlikely(id != InvalidAllocatorID && !IsValid(id)))
     {
         Log(ELogLevel::Error, [funcName = __func__, id](auto& ls)
         {

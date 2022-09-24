@@ -8,6 +8,10 @@
 namespace HE
 {
 
+AllocatorScope::AllocatorScope() : AllocatorScope(InvalidAllocatorID)
+{
+}
+
 AllocatorScope::AllocatorScope(TAllocatorID id)
 {
     auto& mmgr = MemoryManager::GetInstance();

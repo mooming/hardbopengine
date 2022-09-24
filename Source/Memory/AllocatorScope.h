@@ -21,6 +21,7 @@ public:
     AllocatorScope& operator= (AllocatorScope&&) = delete;
 
 public:
+    AllocatorScope();
     AllocatorScope(TAllocatorID id);
     
     template <typename T>
