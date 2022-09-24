@@ -4,8 +4,6 @@
 
 #include "AllocatorID.h"
 
-#include <memory>
-
 
 namespace HE
 {
@@ -22,7 +20,9 @@ public:
     AllocatorScope& operator= (const AllocatorScope&) = delete;
     AllocatorScope& operator= (AllocatorScope&&) = delete;
 
+public:
     AllocatorScope(TAllocatorID id);
+    
     template <typename T>
     AllocatorScope(const T& allocator)
         : AllocatorScope(allocator.GetID())
@@ -35,17 +35,23 @@ public:
 } // HE
 
 #ifdef __UNIT_TEST__
-#include "Test/TestCase.h"
+#include "Test/TestCollection.h"
+
 
 namespace HE
 {
-class AllocatorScopeTest : public TestCase
+
+class AllocatorScopeTest
+    : public TestCollection
 {
 public:
-    AllocatorScopeTest() : TestCase("AllocatorScopeTest") {}
+    AllocatorScopeTest()
+        : TestCollection("AllocatorScopeTest")
+    {
+    }
 
 protected:
-    virtual bool DoTest() override;
+    virtual void Prepare() override;
 };
 
 } // HE

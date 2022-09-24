@@ -9,170 +9,127 @@ template class AABB<Float3>;
 } // HE
 
 #ifdef __UNIT_TEST__
-#include "Log/Logger.h"
 
 
-bool HE::AABBTest::DoTest()
+void HE::AABBTest::Prepare()
 {
-    using std::cout;
-    using std::cerr;
-    using std::endl;
+    static AABB3 bbox;
 
-    auto log = Logger::Get(GetName());
-
+    AddTest("Default Constructor", [&, this](auto& ls)
     {
-        AABB3 bbox;
+        ls << bbox << lf;
 
-        log.Out([&bbox](auto& ls)
-        {
-            ls << bbox;
-        });
+        if (bbox.IsEmpty())
+            return;
 
-        if (!bbox.IsEmpty())
-        {
+        ls << "AABB created with default constructor should be empty." << lferr;
+    });
 
-            log.OutError([](auto& ls)
-            {
-                ls << "AABB created with default constructor should be empty.";
-            });
-
-            return false;
-        }
-
+    AddTest("Add Points", [&, this](auto& ls)
+    {
         bbox.Add(Float3::Zero);
         bbox.Add(Float3::Forward);
         bbox.Add(Float3::Right);
         bbox.Add(Float3::Up);
 
-        log.Out([&bbox](auto& ls)
-        {
-            ls << "bbox = " << bbox;
-        });
+        ls << bbox << lf;
 
         if (bbox.Diagonal() != Float3::Unity)
         {
-            log.OutError([&bbox](auto& ls)
-            {
-                ls << "AABB dianoal error. " << bbox.Diagonal()
-                    << ", but expected " << Float3::Unity;
-            });
-
-            return false;
+            ls << "AABB dianoal error. "
+                << bbox.Diagonal()
+                << ", but expected " << Float3::Unity << lferr;
         }
+    });
 
+    AddTest("Self Containing", [&, this](auto& ls)
+    {
         if (!bbox.IsContaining(bbox))
         {
-            log.OutError([&bbox](auto& ls)
-            {
-                ls << "AABB should contain itself! " << bbox;
-            });
-
-            return false;
+            ls << "AABB should contain itself! " << bbox << lferr;
         }
+    });
 
+    AddTest("Self Equality", [&, this](auto& ls)
+    {
         if (bbox != bbox)
         {
-            log.OutError([&bbox](auto& ls)
-            {
-                ls << "AABB should match itself! " << bbox;
-            });
-
-            return false;
+            ls << "AABB should match itself! " << bbox << lferr;
         }
+    });
 
+    AddTest("Self Intersection", [&, this](auto& ls)
+    {
         if (bbox.Intersection(bbox) != bbox)
         {
-            log.OutError([&bbox](auto& ls)
-            {
-                ls << "Self intersection of AABB should match itself! "
-                    << bbox;
-            });
-
-            return false;
+            ls << "Self intersection of AABB should match itself! "
+                << bbox << lferr;
         }
+    });
 
-        auto bbox2 = bbox;
+    static AABB3 bbox2;
+
+    AddTest("Clone", [&, this](auto& ls)
+    {
+        bbox2 = bbox;
+
         if (bbox != bbox2)
         {
-            log.OutError([&bbox, &bbox2](auto& ls)
-            {
-                ls << "Clone of AABB should match itself! "
-                    << bbox << ", " << bbox2;
-            });
-
-            return false;
+            ls << "Clone of AABB should match itself! "
+                << bbox << ", " << bbox2 << lferr;
         }
+    });
 
+    AddTest("Containing", [&, this](auto& ls)
+    {
         bbox2.max *= 2.0f;
-        log.Out([&bbox2](auto& ls)
-        {
-            ls << "bbox2 = " << bbox2;
-        });
+        ls << "bbox2 = " << bbox2;
 
         if (bbox2.Intersection(bbox) != bbox)
         {
-            log.OutError([&bbox, &bbox2](auto& ls)
-            {
-                ls << "Invalid Intersection of AABB. Intersection of "
-                    << bbox2 << " and " << bbox << " = "
-                    << bbox2.Intersection(bbox) << endl;
-            });
-
-            return false;
+            ls << "Invalid Intersection of AABB. Intersection of "
+                << bbox2 << " and " << bbox << " = "
+                << bbox2.Intersection(bbox) << hendl << lferr;
         }
 
         if ((bbox + bbox2) != bbox2)
         {
-            log.OutError([&bbox, &bbox2](auto& ls)
-            {
-                ls << "Invalid union of AABB. Union of "
-                    << bbox << " and " << bbox2 << " = "
-                    << (bbox + bbox2);
-            });
-
-            return false;
+            ls << "Invalid union of AABB. Union of "
+                << bbox << " and " << bbox2 << " = "
+                << (bbox + bbox2) << lferr;
         }
+    });
 
-        auto bbox3 = bbox2;
+    static AABB3 bbox3;
+
+    AddTest("Intersection", [&, this](auto& ls)
+    {
+        bbox3 = bbox2;
+        ls << "bbox3 = " << bbox3 << lf;
+        
         bbox3.Translate(-Float3::Unity);
-
-        log.Out([&bbox3](auto& ls)
-        {
-            ls << "bbox3 = " << bbox3;
-        });
+        ls << "bbox3 = " << bbox3 << lf;
 
         if (bbox2.Intersection(bbox3) != bbox)
         {
-            log.OutError([&bbox, &bbox2, &bbox3](auto& ls)
-            {
-                ls << "Invalid Intersection of AABB. Intersection of "
-                    << bbox2 << " and " << bbox3 << " = "
-                    << bbox2.Intersection(bbox3)
-                    << ", but expecting " << bbox;
-            });
-
-            return false;
+            ls << "Invalid Intersection of AABB. Intersection of "
+                << bbox2 << " and " << bbox3 << " = "
+                << bbox2.Intersection(bbox3)
+                << ", but expecting " << bbox << lferr;
         }
 
         bbox2.Translate(Float3::Unity);
         if (!bbox2.Intersection(bbox3).IsEmpty())
         {
-            log.OutError([&bbox2, &bbox3](auto& ls)
-            {
-                ls << "Invalid Intersection of AABB. " << endl
-                    << "Intersection of " << endl
-                    << bbox2 << endl
-                    << " and " << endl
-                    << bbox3 << endl
-                    << "is " << bbox2.Intersection(bbox3) << endl
-                    << "But expecting the empty.";
-            });
-
-            return false;
+            ls << "Invalid Intersection of AABB. " << hendl
+                << "Intersection of " << hendl
+                << bbox2 << hendl
+                << " and " << hendl
+                << bbox3 << hendl
+                << "is " << bbox2.Intersection(bbox3) << hendl
+                << "But expecting the empty." << lferr;
         }
-    }
-
-    return true;
+    });
 }
 
 #endif  // __UNIT_TEST__

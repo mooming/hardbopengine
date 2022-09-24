@@ -256,28 +256,36 @@ Pointer PoolAllocator::Allocate()
 }
 
 #ifdef __UNIT_TEST__
-#include <iostream>
 
-bool PoolAllocatorTest::DoTest()
+void PoolAllocatorTest::Prepare()
 {
-    for (int i = 1; i < 100; ++i)
+    AddTest("Construction", [](auto&)
     {
-        PoolAllocator pool("TestPoolAllocator", i, 100);
-    }
+        for (int i = 1; i < 100; ++i)
+        {
+            PoolAllocator pool("TestPoolAllocator", i, 100);
+        }
+    });
 
+
+    AddTest("Allocation & Deallocation", [this](auto& ls)
     {
         PoolAllocator pool("TestPoolAllocator",100, 100);
+
         for (int i = 0; i < 100; ++i)
         {
             auto ptr = pool.Allocate(50);
             auto size = pool.GetSize(ptr);
             if (size != 100)
-                return false;
+            {
+                ls << "The size is incorrect. " << size
+                    << ", but 100 expected." << lferr;
+                break;
+            }
 
             pool.Deallocate(ptr);
         }
-    }
-
-    return true;
+    });
 }
+
 #endif //__UNIT_TEST__

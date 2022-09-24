@@ -18,10 +18,10 @@ link_directories (${CMAKE_SOURCE_DIR}/lib)
 
 
 add_library (Test STATIC 
- TestCase.cpp
+ TestCollection.cpp
  TestEnv.cpp
  UnitTestCollection.cpp
- TestCase.h
+ TestCollection.h
  TestEnv.h
  UnitTestCollection.h
 )

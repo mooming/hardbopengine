@@ -40,165 +40,71 @@ const char* StaticString::c_str() const
 
 namespace HE
 {
-bool StaticStringTest::DoTest()
+
+void StaticStringTest::Prepare()
 {
-    using namespace std;
-    
-    int testCount = 0;
-    int failCount = 0;
-
-    auto log = Logger::Get(GetName());
-
+    AddTest("Default Construct", [](auto&)
     {
-        log.Out([this, testCount](auto& ls)
-        {
-            ls << "[" << GetName() <<  "][TC" << testCount
-                << "] Basic Object Test";
-        });
-
         StaticString str;
-    }
+    });
     
-    ++testCount;
-    
+    AddTest("StaticStic Print", [this](TLogOut& ls)
     {
-        log.Out([testCount](auto& ls)
-        {
-            ls << "[TC" << testCount
-                << "] Basic String Test";
-        });
-
         StaticString str("Hello?");
-
-        log.Out([str](auto& ls)
-        {
-            ls << str;
-        });
-
-        log.Out([str](auto& ls)
-        {
-            ls << str.c_str();
-        });
-
-    }
+        ls << str.c_str() << lf;
+    });
     
+    AddTest("Hetero String Comparison", [this](TLogOut& ls)
     {
-        log.Out([testCount](auto& ls)
-        {
-            ls << "[TC" << testCount
-                << "] Hetero String Test";
-        });
-
         HSTL::HString hello("Hello?");
         HSTL::HInlineString<> helloInline("Hello?");
         
         StaticString str(hello);
-
-
-        log.Out([str](auto& ls)
-        {
-            ls << str;
-        });
-
-        log.Out([str](auto& ls)
-        {
-            ls << str.c_str();
-        });
+        ls << str << lf;
+        ls << str.c_str() << lf;
         
         StaticString strInline(helloInline);
-
-        log.Out([strInline](auto& ls)
-        {
-            ls << strInline;
-        });
-
-
-        log.Out([strInline](auto& ls)
-        {
-            ls << strInline.c_str();
-        });
+        ls << strInline << lf;
+        ls << strInline.c_str() << lf;
         
         if (str != strInline)
         {
-            log.OutError([testCount](auto& ls)
-            {
-                ls << "[TC" << testCount
-                    << "] Test failes due to comparison failure. ";
-            });
-
-            ++failCount;
+            ls << "Test failes due to comparison failure." << lferr;
         }
-    }
+    });
     
-    ++testCount;
     
+    AddTest("Self-Comparison", [this](auto& ls)
     {
-        log.Out([testCount](auto& ls)
-        {
-            ls << "[TC" << testCount
-                << "] Test starts" << endl;
-        });
-
         StaticString str("Hello?");
         
         if (str != str)
         {
-            log.OutError([testCount](auto& ls)
-            {
-                ls << "[TC" << testCount
-                    << "] Test failes due to comparison failure.";
-            });
-
-            ++failCount;
+            ls << "Test failes due to comparison failure." << lferr;
         }
-    }
+    });
     
-    ++testCount;
-    
+    AddTest("Two Strings Comparison", [this](auto& ls)
     {
-        log.Out([testCount](auto& ls)
-        {
-            ls << "[TC" << testCount << "] Test starts";
-        });
-        
         StaticString strA("Hello?");
         StaticString strB("Hello?");
         
         if (strA != strB)
         {
-            log.OutError([testCount](auto& ls)
-            {
-                ls << "[TC" << testCount
-                    << "] Test failes due to comparison failure. ";
-            });
-            ++failCount;
+            ls << "Test failes due to comparison failure." << lferr;
         }
-    }
+    });
     
-    ++testCount;
-    
+    AddTest("Inequality", [this](auto& ls)
     {
-        log.Out([testCount](auto& ls)
-        {
-            ls << "[TC" << testCount << "] Test starts";
-        });
-        
         StaticString strA("Hello?");
         StaticString strB("Ha");
         
         if (strA == strB)
         {
-            log.OutError([testCount](auto& ls)
-            {
-                ls << "[TC" << testCount
-                    << "] Test failes due to comparison failure. ";
-            });
-            
-            ++failCount;
+            ls << "Test failes due to comparison failure. " << lferr;
         }
-    }
-    
-    return failCount == 0;
+    });
 }
 } // HE
 

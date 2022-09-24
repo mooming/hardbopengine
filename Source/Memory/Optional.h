@@ -10,162 +10,166 @@
 
 namespace HE
 {
-    template <typename Type>
-    class Optional
+template <typename Type>
+class Optional
+{
+public:
+    bool hasValue;
+    Byte value[sizeof(Type)];
+    
+public:
+    inline Optional() : hasValue(false)
     {
-    public:
-        bool hasValue;
-        Byte value[sizeof(Type)];
-
-    public:
-        inline Optional() : hasValue(false)
+    }
+    
+    inline Optional(const Type& value) : hasValue(true)
+    {
+        Value() = value;
+    }
+    
+    inline Optional(const Optional& rhs)
+    {
+        if (rhs.hasValue)
         {
+            Value() = rhs.value;
         }
-
-        inline Optional(const Type& value) : hasValue(true)
-        {
-            Value() = value;
-        }
-
-        inline Optional(const Optional& rhs)
-        {
-            if (rhs.hasValue)
-            {
-                Value() = rhs.value;
-            }
-            else if (hasValue)
-            {
-                Destroy(typename IsReferenceType<Type>::Result());
-            }
-        }
-
-        inline Optional(Optional&& rhs)
-        {
-            if (rhs.hasValue)
-            {
-                Value() = std::move(rhs.value);
-            }
-            else
-            {
-                Destroy(typename IsReferenceType<Type>::Result());
-            }
-        }
-
-        inline Optional(std::nullptr_t) : hasValue(false)
-        {
-        }
-
-        inline ~Optional()
+        else if (hasValue)
         {
             Destroy(typename IsReferenceType<Type>::Result());
         }
-
-        inline Optional& operator= (const Type& value)
+    }
+    
+    inline Optional(Optional&& rhs)
+    {
+        if (rhs.hasValue)
         {
-            if (hasValue)
-            {
-                Destroy(typename IsReferenceType<Type>::Result());
-            }
-
-            Value() = value;
-            hasValue = true;
-
-            return *this;
+            Value() = std::move(rhs.value);
         }
-
-        inline Optional& operator= (const Optional& rhs)
-        {
-            if (rhs.hasValue)
-            {
-                Value() = rhs.value;
-                hasValue = rhs.hasValue;
-            }
-            else
-            {
-                Destroy(typename IsReferenceType<Type>::Result());
-            }
-
-            return *this;
-        }
-
-        inline Optional& operator= (Optional&& rhs)
-        {
-            if (rhs.hasValue)
-            {
-                Value() = std::move(rhs.value);
-                hasValue = rhs.hasValue;
-            }
-            else
-            {
-                Destroy(typename IsReferenceType<Type>::Result());
-            }
-
-            return *this;
-        }
-
-        inline Optional& operator= (std::nullptr_t)
+        else
         {
             Destroy(typename IsReferenceType<Type>::Result());
-
-            return *this;
         }
-
-        inline operator bool() const
+    }
+    
+    inline Optional(std::nullptr_t) : hasValue(false)
+    {
+    }
+    
+    inline ~Optional()
+    {
+        Destroy(typename IsReferenceType<Type>::Result());
+    }
+    
+    inline Optional& operator= (const Type& value)
+    {
+        if (hasValue)
         {
-            return hasValue;
+            Destroy(typename IsReferenceType<Type>::Result());
         }
-
-        inline Type& operator* ()
+        
+        Value() = value;
+        hasValue = true;
+        
+        return *this;
+    }
+    
+    inline Optional& operator= (const Optional& rhs)
+    {
+        if (rhs.hasValue)
         {
-            Assert(hasValue);
-            return Value();
+            Value() = rhs.value;
+            hasValue = rhs.hasValue;
         }
-
-        inline const Type& operator* () const
+        else
         {
-            Assert(hasValue);
-            return Value();
+            Destroy(typename IsReferenceType<Type>::Result());
         }
-
-        inline Type& Value()
+        
+        return *this;
+    }
+    
+    inline Optional& operator= (Optional&& rhs)
+    {
+        if (rhs.hasValue)
         {
-            return reinterpret_cast<Type&>(value[0]);
+            Value() = std::move(rhs.value);
+            hasValue = rhs.hasValue;
         }
-
-        inline const Type& Value() const
+        else
         {
-            return reinterpret_cast<const Type&>(value[0]);
+            Destroy(typename IsReferenceType<Type>::Result());
         }
-
-    private:
-        inline void Destroy(True_t)
+        
+        return *this;
+    }
+    
+    inline Optional& operator= (std::nullptr_t)
+    {
+        Destroy(typename IsReferenceType<Type>::Result());
+        
+        return *this;
+    }
+    
+    inline operator bool() const
+    {
+        return hasValue;
+    }
+    
+    inline Type& operator* ()
+    {
+        Assert(hasValue);
+        return Value();
+    }
+    
+    inline const Type& operator* () const
+    {
+        Assert(hasValue);
+        return Value();
+    }
+    
+    inline Type& Value()
+    {
+        return reinterpret_cast<Type&>(value[0]);
+    }
+    
+    inline const Type& Value() const
+    {
+        return reinterpret_cast<const Type&>(value[0]);
+    }
+    
+private:
+    inline void Destroy(True_t)
+    {
+        hasValue = false;
+    }
+    
+    inline void Destroy(False_t)
+    {
+        if (hasValue)
         {
-            hasValue = false;
+            Value().~Type();
         }
-
-        inline void Destroy(False_t)
-        {
-            if (hasValue)
-            {
-                Value().~Type();
-            }
-
-            hasValue = false;
-        }
-    };
+        
+        hasValue = false;
+    }
+};
 } // HE
 
 #ifdef __UNIT_TEST__
-#include "Test/TestCase.h"
+#include "Test/TestCollection.h"
+
+
 namespace HE
 {
-    class OptionalTest : public TestCase
+class OptionalTest : public TestCollection
+{
+public:
+    OptionalTest() : TestCollection("OptionalTest")
     {
-    public:
-        OptionalTest() : TestCase("OptionalTest") {}
-
-    protected:
-        virtual bool DoTest() override;
-    };
+    }
+    
+protected:
+    virtual void Prepare() override;
+};
 } // HE
 #endif //__UNIT_TEST__

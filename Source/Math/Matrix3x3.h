@@ -316,21 +316,21 @@ std::ostream& operator<<(std::ostream& os, const Matrix3x3<T>& mat)
 } // HE
 
 #ifdef __UNIT_TEST__
-#include "Test/TestCase.h"
+#include "Test/TestCollection.h"
 
 namespace HE
 {
 
-class Matrix3x3Test : public TestCase
+class Matrix3x3Test : public TestCollection
 {
 public:
     
-    Matrix3x3Test() : TestCase("Matrix3x3Test")
+    Matrix3x3Test() : TestCollection("Matrix3x3Test")
     {
     }
     
 protected:
-    virtual bool DoTest() override;
+    virtual void Prepare() override;
 };
 } // HE
 #endif //__UNIT_TEST__

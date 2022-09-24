@@ -493,6 +493,8 @@ void MemoryManager::SysDeallocate(void* ptr, size_t nBytes)
 
 void* MemoryManager::Allocate(TId id, size_t nBytes)
 {
+    Assert(id != InvalidAllocatorID);
+
 #ifdef __USE_SYSTEM_MALLOC__
     id = SystemAllocatorID;
 #endif // __USE_SYSTEM_MALLOC__
@@ -525,6 +527,8 @@ void* MemoryManager::Allocate(TId id, size_t nBytes)
 
 void MemoryManager::Deallocate(TId id, void* ptr, size_t nBytes)
 {
+    Assert(id != InvalidAllocatorID);
+    
 #ifdef __USE_SYSTEM_MALLOC__
     id = SystemAllocatorID;
 #endif // __USE_SYSTEM_MALLOC__

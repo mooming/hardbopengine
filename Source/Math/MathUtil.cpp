@@ -6,51 +6,28 @@
 
 
 #ifdef __UNIT_TEST__
-#include "Log/Logger.h"
 
 
-bool HE::MathUtilTest::DoTest()
+void HE::MathUtilTest::Prepare()
 {
-    using namespace std;
-
-    auto log = Logger::Get(GetName());
-
+    AddTest("Exponent", [this](auto& ls)
     {
-
-        log.Out([](auto& ls)
-        {
-            ls << "2^10 = " << Pow(2, 10);
-        });
+        ls << "2^10 = " << Pow(2, 10);
 
         if (Pow(2, 10) != 1024)
         {
-            log.OutError([](auto& ls)
-            {
-                ls << "Pow(int, int) result failed = " << Pow(2, 10)
-                    << ", but 1024 expected.";
-            });
-
-            return false;
+            ls << "Pow(int, int) result failed = " << Pow(2, 10)
+                << ", but 1024 expected." << lferr;
         }
 
-        log.Out([](auto& ls)
-        {
-            ls << "2.0f^10.0f = " << Pow(2.0f, 10.0f);
-        });
+        ls << "2.0f^10.0f = " << Pow(2.0f, 10.0f);
         
         if (Pow(2, 10) != Pow(2.0f, 10.0f))
         {
-            log.OutError([](auto& ls)
-            {
-                ls << "Pow(float, float) result failed = " << Pow(2.0f, 10.0f)
-                    << ", but 1024.0f expected.";
-            });
-
-            return false;
+            ls << "Pow(float, float) result failed = " << Pow(2.0f, 10.0f)
+                << ", but 1024.0f expected." << lferr;
         }
-    }
-
-    return true;
+    });
 }
 
 #endif //__UNIT_TEST__

@@ -64,17 +64,17 @@ struct hash<HE::StaticString> final
 
 
 #ifdef __UNIT_TEST__
-#include "Test/TestCase.h"
+#include "Test/TestCollection.h"
 
 namespace HE
 {
-    class StaticStringTest : public TestCase
+    class StaticStringTest : public TestCollection
     {
     public:
-        StaticStringTest() : TestCase("StaticStringTest") {}
+        StaticStringTest() : TestCollection("StaticStringTest") {}
 
     protected:
-        virtual bool DoTest() override;
+        virtual void Prepare() override;
     };
 } // HE
 #endif //__UNIT_TEST__

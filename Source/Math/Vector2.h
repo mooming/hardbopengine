@@ -63,12 +63,13 @@ namespace HE
     using Float2 = Vector2<float>;
 
     template <typename T>
-    inline Vector2<T> operator*(T value, Vector2<T> vector)
+    inline Vector2<T> operator* (T value, Vector2<T> vector)
     {
         return vector * value;
     }
 
-    inline std::ostream& operator<<(std::ostream& os, const Float2& vec)
+    template <class TOutStream>
+    inline TOutStream& operator<< (TOutStream& os, const Float2& vec)
     {
         os << "(" << vec.x << ", " << vec.y << "), norm = " << vec.Length();
         return os;
@@ -76,21 +77,21 @@ namespace HE
 } // HE
 
 #ifdef __UNIT_TEST__
-#include "Test/TestCase.h"
+#include "Test/TestCollection.h"
 
 namespace HE
 {
 
-    class Vector2Test : public TestCase
+    class Vector2Test : public TestCollection
     {
     public:
 
-        Vector2Test() : TestCase("Vector2Test")
+        Vector2Test() : TestCollection("Vector2Test")
         {
         }
 
     protected:
-        virtual bool DoTest() override;
+        virtual void Prepare() override;
     };
 } // HE
 

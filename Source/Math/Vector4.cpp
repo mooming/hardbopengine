@@ -8,43 +8,45 @@ namespace HE
 } // HE
 
 #ifdef __UNIT_TEST__
-
-#include "Container/Vector.h"
+#include "HSTL/HVector.h"
 #include "System/Time.h"
-#include <iostream>
 
 
-bool HE::Vector4Test::DoTest()
+void HE::Vector4Test::Prepare()
 {
-    using namespace std;
-
-    cout << "Forward = " << Float4::Forward << endl;
-    cout << "Right = " << Float4::Right << endl;
-    cout << "Up = " << Float4::Up << endl;
-
-    cout << "Zero = " << Float4::Zero << endl;
-    cout << "Unity = " << Float4::Unity << endl;
-
-    Float4 tmp;
-    if (tmp != Float4::Zero)
+    AddTest("Vector4 Constants", [this](auto& ls)
     {
-        cerr << "Default Float4 is not ZERO. Default = " << tmp << endl;
-        return false;
-    }
+        ls << "Forward = " << Float4::Forward << lf;
+        ls << "Right = " << Float4::Right << lf;
+        ls << "Up = " << Float4::Up << lf;
 
-    Vector<Float4> vertices;
-    for (int i = 0; i < 1000000; ++i)
-    {
-        const float x = static_cast<float>(i);
-        vertices.emplace_back(x, 0.0f, 0.0f);
-        vertices.emplace_back(0.0f, x, 0.0f);
-        vertices.emplace_back(0.0f, 0.0f, x);
-        vertices.emplace_back(x, x, 0.0f);
-        vertices.emplace_back(0.0f, x, x);
-        vertices.emplace_back(x, x, x);
-    }
+        ls << "Zero = " << Float4::Zero << lf;
+        ls << "Unity = " << Float4::Unity << lf;
 
+        Float4 tmp;
+        if (tmp != Float4::Zero)
+        {
+            ls << "Default Float4 is not ZERO. Default = " << tmp << lferr;
+        }
+    });
+
+    AddTest("Vector4 Constructors & Operator", [this](auto& ls)
     {
+        HSTL::HVector<Float4> vertices;
+
+        for (int i = 0; i < 1000000; ++i)
+        {
+            const float x = static_cast<float>(i);
+            vertices.emplace_back(x, 0.0f, 0.0f);
+            vertices.emplace_back(0.0f, x, 0.0f);
+            vertices.emplace_back(0.0f, 0.0f, x);
+            vertices.emplace_back(x, x, 0.0f);
+            vertices.emplace_back(0.0f, x, x);
+            vertices.emplace_back(x, x, x);
+        }
+
+        Float4 tmp;
+
         Time::TDuration heTime;
         float dotResult = 0.0f;
 
@@ -58,11 +60,9 @@ bool HE::Vector4Test::DoTest()
             }
         }
 
-        cout << "Float4 Dot Time = " << Time::ToMilliSec<float>(heTime)
-            << ", Result = " << dotResult << endl;
-    }
-
-    return true;
+        ls << "Float4 Dot Time = " << Time::ToMilliSec<float>(heTime)
+            << ", Result = " << dotResult << lf;
+    });
 }
 
 #endif //__UNIT_TEST__

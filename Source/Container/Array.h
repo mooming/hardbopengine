@@ -148,21 +148,21 @@ namespace HE
 
 #ifdef __UNIT_TEST__
 
-#include "Test/TestCase.h"
+#include "Test/TestCollection.h"
 
 
 namespace HE
 {
 
-class ArrayTest : public TestCase
+class ArrayTest : public TestCollection
 {
 public:
-    ArrayTest() : TestCase("ArrayTest")
+    ArrayTest() : TestCollection("ArrayTest")
     {
     }
 
 protected:
-    virtual bool DoTest() override;
+    virtual void Prepare() override;
 };
 
 } // HE

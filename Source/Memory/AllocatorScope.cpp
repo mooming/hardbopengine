@@ -27,20 +27,30 @@ AllocatorScope::~AllocatorScope()
 
 
 #ifdef __UNIT_TEST__
-
 #include "InlinePoolAllocator.h"
-#include <iostream>
+
 
 namespace HE
 {
 
-bool AllocatorScopeTest::DoTest()
+void AllocatorScopeTest::Prepare()
 {
-    using namespace std;
+    AddTest("Alloc Scope Test", [this](auto& ls)
+    {
+        InlinePoolAllocator<int, 100> allocator;
+        AllocatorScope scope(allocator);
+        
+        auto& mmgr = MemoryManager::GetInstance();
+        auto ptr = mmgr.Allocate(100);
+        
+        if (mmgr.GetCurrentAllocatorID() != allocator.GetID())
+        {
+            ls << "Current allocator ID is not the given allocator id("
+            << allocator.GetID() << ')' << lferr;
+        }
 
-    cout << "AllocatorScope Tests :: DONE" << endl;
-
-    return true;
+        mmgr.Deallocate(ptr, 100);
+    });
 }
 
 } // HE

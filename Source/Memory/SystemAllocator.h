@@ -135,6 +135,10 @@ namespace HE
             auto allocated = OS::GetAllocSize(ptr);
 #endif // __MEMORY_INVESTIGATION__
 
+#ifdef __MEMORY_VERIFICATION__
+            Assert (nBytes <= allocated);
+#endif // __MEMORY_VERIFICATION__
+            
             auto& mmgr = MemoryManager::GetInstance();
             mmgr.ReportDeallocation(GetID(), ptr, nBytes, allocated);
 #endif // __MEMORY_STATISTICS__
@@ -155,22 +159,23 @@ namespace HE
 } // HE
 
 #ifdef __UNIT_TEST__
-#include "Test/TestCase.h"
+#include "Test/TestCollection.h"
+
 
 namespace HE
 {
     class SystemAllocatorTest
-        : public TestCase
+        : public TestCollection
     {
     public:
 
         SystemAllocatorTest()
-            : TestCase("SystemAllocatorTest")
+            : TestCollection("SystemAllocatorTest")
         {
         }
 
     protected:
-        virtual bool DoTest() override;
+        virtual void Prepare() override;
     };
 } // HE
 #endif //__UNIT_TEST__

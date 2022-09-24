@@ -2,7 +2,6 @@
 
 #include "MultiPoolAllocator.h"
 
-#include "HSTL/HStringStream.h"
 #include "Log/Logger.h"
 #include "Memory/MemoryManager.h"
 #include <algorithm>
@@ -137,12 +136,14 @@ void MultiPoolAllocator::PrintUsage() const
     auto log = Logger::Get(name, ELogLevel::Info);
     log.Out([this](auto& ls)
     {
-        ls << endl << "## MultipoolAllocator(" << name <<  ") Usage ##" << endl;
+        ls << hendl << "## MultipoolAllocator(" << name
+            <<  ") Usage ##" << hendl;
         
         for (auto& pool : multiPool)
         {
-            ls << '[' << pool.GetBlockSize() << "] Max Usage = " << pool.GetMaxUsage()
-                << ", Available Memory = " << pool.GetAvailableMemory() << endl;
+            ls << '[' << pool.GetBlockSize() << "] Max Usage = "
+                << pool.GetMaxUsage() << ", Available Memory = "
+                << pool.GetAvailableMemory() << hendl;
         }
     });
 }
@@ -191,21 +192,17 @@ size_t MultiPoolAllocator::GetPoolIndex(void* ptr) const
 namespace HE
 {
 
-bool MultiPoolAllocatorTest::DoTest()
+void MultiPoolAllocatorTest::Prepare()
 {
-    int testCount = 0;
-    int failCount = 0;
-    
-    auto log = Logger::Get(GetName(), ELogLevel::Info);
-    
+    AddTest("Basic Construction", [](auto&)
     {
         MultiPoolAllocator allocator("TestMultiPoolAlloc"
             , {{64, 1024}, {128, 1024}, {256, 1024}, {512, 1024}, {1024, 1024}, {2048, 1024}, {4096, 1024} });
+
         AllocatorScope scope(allocator);
-    }
-    
-    ++testCount;
-    
+    });
+
+    AddTest("Allocation 0", [](auto&)
     {
         MultiPoolAllocator allocator("TestMultiPoolAlloc"
             , {{64, 1024}, {128, 1024}, {256, 1024}, {512, 1024}, {1024, 1024}, {2048, 1024}, {4096, 1024} });
@@ -213,10 +210,9 @@ bool MultiPoolAllocatorTest::DoTest()
         
         auto& mmgr = MemoryManager::GetInstance();
         mmgr.Allocate(0);
-    }
-    
-    ++testCount;
-    
+    });
+
+    AddTest("Multiple Allocations & Fallback", [this](auto& ls)
     {
         MultiPoolAllocator allocator("TestMultiPoolAlloc"
             , {{64, 1024}, {128, 1024}, {256, 1024}, {512, 1024}, {1024, 1024}, {2048, 1024}, {4096, 1024} });
@@ -237,18 +233,10 @@ bool MultiPoolAllocatorTest::DoTest()
         
         if (allocator.GetFallbackCount() != 2)
         {
-            ++failCount;
-            log.OutError([&allocator](auto& ls)
-            {
-                ls << "Fallback count mismatched. FallbackCount = "
-                    << allocator.GetFallbackCount() << ", but 2 expected.";
-            });
+            ls << "Fallback count mismatched. FallbackCount = "
+                << allocator.GetFallbackCount() << ", but 2 expected." << lferr;
         }
-    }
-    
-    ++testCount;
-    
-    return failCount <= 0;
+    });
 }
 
 } // HE

@@ -152,65 +152,87 @@ bool StackAllocator::IsMine(Pointer ptr) const
 
 #ifdef __UNIT_TEST__
 
-#include <iostream>
-
-#include "Container/Vector.h"
+#include "HSTL/HVector.h"
 #include "String/String.h"
 
 
-bool StackAllocatorTest::DoTest()
+void StackAllocatorTest::Prepare()
 {
     using namespace std;
+    using namespace HSTL;
     
-    StackAllocator stack("Test::StackAllocator", 1024 * 1024);
-    AllocatorScope scope(stack.GetID());
-    
+    AddTest("Vector Allocation", [this](auto& ls)
     {
-        Vector<int> a;
-        a.push_back(0);
-    }
+        StackAllocator stack("Test::StackAllocator", 1024 * 1024);
+
+        {
+            AllocatorScope scope(stack.GetID());
+
+            HVector<int> a;
+            a.push_back(0);
+        }
+
+        if (stack.Usage() != 0)
+        {
+            ls << "Deallocation Failed. Usage should be zero, but "
+                << stack.Usage() << lferr;
+        }
+    });
     
-    if (stack.Usage() != 0)
+    AddTest("Allocation (2)", [this](auto& ls)
     {
-        cerr << "Deallocation Failed. Usage should be zero, but " << stack.Usage() << endl;
-        return false;
-    }
+        StackAllocator stack("Test::StackAllocator::Allocation (2)", 1024 * 1024);
+
+        {
+            AllocatorScope scope(stack.GetID());
+
+            HVector<int> a;
+            a.push_back(0);
+
+            HVector<int> b;
+            b.push_back(1);
+        }
+
+        if (stack.Usage() != 0)
+        {
+            ls << "Deallocation Failed. Usage should be zero, but "
+                << stack.Usage() << lferr;
+        }
+    });
     
+    
+    AddTest("Deallocation", [this](auto& ls)
     {
-        Vector<int> a;
-        a.push_back(0);
-        Vector<int> b;
-        b.push_back(1);
-    }
+        StackAllocator stack("Test::StackAllocator::Deallocation", 1024 * 1024);
+        AllocatorScope scope(stack.GetID());
+        
+        {
+            String a = "0";
+        }
+        
+        if (stack.Usage() != 0)
+        {
+            ls << "Deallocation Failed. Usage should be zero, but "
+                << stack.Usage() << lferr;
+        }
+    });
     
-    if (stack.Usage() != 0)
+    AddTest("Deallocation (2)", [this](auto& ls)
     {
-        cerr << "Deallocation Failed. Usage should be zero, but " << stack.Usage() << endl;
-        return false;
-    }
-    
-    {
-        String a = "0";
-    }
-    
-    if (stack.Usage() != 0)
-    {
-        cerr << "Deallocation Failed. Usage should be zero, but " << stack.Usage() << endl;
-        return false;
-    }
-    
-    {
-        String a = "0";
-        String b = "1";
-    }
-    
-    if (stack.Usage() != 0)
-    {
-        cerr << "Deallocation Failed. Usage should be zero, but " << stack.Usage() << endl;
-        return false;
-    }
-    
-    return true;
+        StackAllocator stack("Test::StackAllocator", 1024 * 1024);
+        AllocatorScope scope(stack.GetID());
+        
+        {
+            String a = "0";
+            String b = "1";
+        }
+        
+        if (stack.Usage() != 0)
+        {
+            ls << "Deallocation Failed. Usage should be zero, but "
+                << stack.Usage() << lferr;
+        }
+    });
 }
 
 #endif //__UNIT_TEST__

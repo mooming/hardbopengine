@@ -3,117 +3,92 @@
 using namespace HE;
 
 #ifdef __UNIT_TEST__
-
 #include "Matrix4x4.h"
-
-#include "Container/Vector.h"
 #include "System/Time.h"
-#include <iostream>
 
 
-bool RigidTransformTest::DoTest()
+void RigidTransformTest::Prepare()
 {
-    using namespace std;
-
+    AddTest("Default RigidTransform & Constants", [this](auto& ls)
     {
         RigidTR tm;
-        cout << tm << endl;
+        ls << tm << lf;
 
         if (tm != tm)
         {
-            cerr << "Self equality failed" << endl;
-
-            return false;
+            ls << "Self equality failed" << lferr;
         }
 
         if (tm.rotation != Quat::Identity)
         {
-            cerr << "The default constructor of RigidTR should have "
-                << "the identity rotation." << endl;
-
-            return false;
+            ls << "The default constructor of RigidTR should have "
+                << "the identity rotation." << lferr;
         }
 
         if (tm.translation != Float3::Zero)
         {
-            cerr << "The default constructor of RigidTR should have "
-                << "the zero translation." << endl;
-
-            return false;
+            ls << "The default constructor of RigidTR should have "
+                << "the zero translation." << lferr;
         }
 
         Float4x4 mat = tm.ToMatrix();
         if (mat != Float4x4::Identity)
         {
-            cerr << "The default constructor of RigidTR should be "
-                << "equal to the identity matrix." << endl;
-
-            return false;
+            ls << "The default constructor of RigidTR should be "
+                << "equal to the identity matrix." << lferr;
         }
 
         if (tm * Float3::Forward != Float3::Forward)
         {
-            cerr << "Identity Transform Failed. " << (tm * Float3::Forward)
-                << ", but " << Float3::Forward << " expected." << endl;
-
-            return false;
+            ls << "Identity Transform Failed. " << (tm * Float3::Forward)
+                << ", but " << Float3::Forward << " expected." << lferr;
         }
-    }
+    });
 
+    AddTest("RigidTransform Operations", [this](auto& ls)
     {
         RigidTR tm(Float3(4, 5, 6), Quat(0, 47, 0));
         RigidTR tm2(Float3(3, 4, 5), Quat(41, 0, 25));
         RigidTR tm3 = tm * tm2;
 
-        cout << tm << endl;
-        cout << tm2 << endl;
-        cout << tm3 << endl;
+        ls << tm << lf;
+        ls << tm2 << lf;
+        ls << tm3 << lf;
 
         Float3 result1 = tm3 * Float3::Forward;
         Float3 result2 = tm * (tm2 * Float3::Forward);
         if (result1 != result2)
         {
-            cerr << "Transform result failed. " << (tm3 * Float3::Forward)
-                << ", but " << result2 << " expected." << endl;
-            return false;
+            ls << "Transform result failed. " << (tm3 * Float3::Forward)
+                << ", but " << result2 << " expected." << lferr;
         }
 
         if (!tm3.ToMatrix().IsInvertible())
         {
-            cerr << "Transform matrix should be invertible." << endl
-                << tm3 << endl;
-
-            return false;
+            ls << "Transform matrix should be invertible."
+                << tm3 << lferr;
         }
 
         Float3 result = tm3.Inverse() * result1;
         if (result != Float3::Forward)
         {
-            cerr << "Transform matrix inverse failed. " << result
-                << ", but " << Float3::Forward << " expected." << endl;
-
-            return false;
+            ls << "Transform matrix inverse failed. " << result
+                << ", but " << Float3::Forward << " expected." << lferr;
         }
 
         result = tm2.InverseTransform(tm.InverseTransform(result2));
         if (result != Float3::Forward)
         {
-            cerr << "Inverse transform failed. " << result
-                << ", but " << Float3::Forward << " expected." << endl;
-
-            return false;
+            ls << "Inverse transform failed. " << result
+                << ", but " << Float3::Forward << " expected." << lferr;
         }
 
         if (tm3.Inverse().Inverse() != tm3)
         {
-            cerr << "Inverse of inverse transform failed. " << tm3.Inverse().Inverse()
-                << ", but " << tm3 << " expected." << endl;
-
-            return false;
+            ls << "Inverse of inverse transform failed. " << tm3.Inverse().Inverse()
+                << ", but " << tm3 << " expected." << lferr;
         }
-    }
-
-    return true;
+    });
 }
 
 #endif //__UNIT_TEST__

@@ -4,7 +4,7 @@
 
 #include "ComponentState.h"
 #include "Debug.h"
-#include "Container/Vector.h"
+#include "HSTL/HVector.h"
 #include "String/String.h"
 #include <algorithm>
 
@@ -14,7 +14,7 @@ namespace HE
     template <typename Component>
     class ComponentSystem
     {
-        using CompoList = Vector<Component>;
+        using CompoList = HSTL::HVector<Component>;
 
     private:
         String name;
@@ -133,19 +133,19 @@ namespace HE
 } // HE
 
 #ifdef __UNIT_TEST__
-#include "Test/TestCase.h"
+#include "Test/TestCollection.h"
 
 namespace HE
 {
-    class ComponentSystemTest : public TestCase
+    class ComponentSystemTest : public TestCollection
     {
     public:
-        ComponentSystemTest() : TestCase("ComponentSystemTest")
+        ComponentSystemTest() : TestCollection("ComponentSystemTest")
         {
         }
 
     protected:
-        virtual bool DoTest() override;
+        virtual void Prepare() override;
     };
 } // HE
 #endif //__UNIT_TEST__

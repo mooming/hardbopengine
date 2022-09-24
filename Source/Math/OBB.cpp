@@ -2,18 +2,21 @@
 
 #include "OBB.h"
 
+
 namespace HE
 {
-	template class OBB<float>;
-}
+template class OBB<float>;
+} // HE
 
 #ifdef __UNIT_TEST__
 
-#include <iostream>
-
-bool HE::OBBTest::DoTest()
+namespace HE
 {
-	return true;
+
+void OBBTest::Prepare()
+{
 }
+
+} // HE
 
 #endif  // __UNIT_TEST__

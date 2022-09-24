@@ -1,33 +1,42 @@
-// Created by mooming.go@gmail.com, 2017
+// Created by mooming.go@gmail.com, 2017 - 2022
 
 #pragma once
 
-#include <list>
+#include <string>
+#include <vector>
+
 
 namespace HE
 {
-    class TestCase;
 
-    class TestEnv
+class TestCollection;
+
+class TestEnv
+{
+    
+private:
+    std::vector<TestCollection*> tests;
+    std::vector<std::string> invalidTests;
+    std::vector<std::string> failedTests;
+    std::vector<std::string> warningMessages;
+    std::vector<std::string> errorMessages;
+    
+    unsigned int testedCount;
+    unsigned int passCount;
+    
+public:
+    static TestEnv& GetEnv();
+    void Start();
+    
+    void AddTestCollection(TestCollection* test);
+    
+private:
+    inline TestEnv()
+        : tests(), testedCount(0), passCount(0)
     {
-
-    private:
-        std::list<TestCase*> tests;
-
-        unsigned int testedCount;
-        unsigned int invalidCount;
-        unsigned int passCount;
-        unsigned int failCount;
-
-    public:
-        static TestEnv& GetEnv();
-        void Start();
-
-        void AddTest(TestCase* test);
-
-    private:
-        inline TestEnv() : tests(), testedCount(0), invalidCount(0), passCount(0), failCount(0) {}
-        bool ExecuteTest(TestCase& testCase);
-        void Report();
-    };
+    }
+    
+    bool ExecuteTest(TestCollection& testCollection);
+    void Report();
+};
 }

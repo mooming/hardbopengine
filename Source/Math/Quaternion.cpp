@@ -2,153 +2,163 @@
 
 #include "Quaternion.h"
 
-using namespace std;
-using namespace HE;
 
 #ifdef __UNIT_TEST__
-
 #include "Vector3.h"
 
-#include <iostream>
-
-bool QuaternionTest::DoTest()
+namespace HE
 {
-  using namespace std;
 
-  Quat x(90.0f, 0.0f, 0.0f);
-  Quat y(0.0f, 90.0f, 0.0f);
-  Quat z(0.0f, 0.0f, 90.0f);
+void QuaternionTest::Prepare()
+{
+    static const Quat x(90.0f, 0.0f, 0.0f);
+    static const Quat y(0.0f, 90.0f, 0.0f);
+    static const Quat z(0.0f, 0.0f, 90.0f);
 
-  cout << "Quat rotate 90 around X = " << x << endl;
-  cout << "Quat rotate 90 around Y = " << y << endl;
-  cout << "Quat rotate 90 around Z = " << z << endl;
+    AddTest("Constructors & Rotate Forward Vector", [&, this](auto& ls)
+    {
+        ls << "Quat rotate 90 around X = " << x << lf;
+        ls << "Quat rotate 90 around Y = " << y << lf;
+        ls << "Quat rotate 90 around Z = " << z << lf;
 
-  cout << "Quat: Qx x Forward = " << x * Float3::Forward << endl;
-  cout << "Quat: Qy x Forward = " << y * Float3::Forward << endl;
-  cout << "Quat: Qz x Forward = " << z * Float3::Forward << endl;
+        ls << "Quat: Qx x Forward = " << x * Float3::Forward << lf;
+        ls << "Quat: Qy x Forward = " << y * Float3::Forward << lf;
+        ls << "Quat: Qz x Forward = " << z * Float3::Forward << lf;
+    });
 
+    AddTest("90 degrees Rotation Test", [&, this](auto& ls)
+    {
 #ifdef __LEFT_HANDED__
-  if (y * Float3::Right != Float3::Forward)
-  {
-    cerr << "Quat rotation failed. " << (y * Float3::Right) << ", but "
-      << Float3::Forward << " expected." << endl;
-    return false;
-  }
+        if (y * Float3::Right != Float3::Forward)
+        {
+            ls << "Quat rotation failed. " << (y * Float3::Right) << ", but "
+                << Float3::Forward << " expected." << lferr;
+        }
 #endif //__LEFT_HANDED__
+
 #ifdef __RIGHT_HANDED__
-  if (z * Float3::Right != Float3::Forward)
-  {
-    cerr << "Quat rotation failed. " << (z * Float3::Right) << ", but "
-      << Float3::Forward << " expected." << endl;
-    return false;
-  }
+        if (z * Float3::Right != Float3::Forward)
+        {
+            ls << "Quat rotation failed. " << (z * Float3::Right) << ", but "
+                << Float3::Forward << " expected." << lferr;
+        }
 #endif //__RIGHT_HANDED__
+    });
 
-  Quat xToY(nullptr);
-  xToY.SetRotationFromTo(Float3::X, Float3::Y);
+    AddTest("RotationFromTo", [&, this](auto& ls)
+    {
+        Quat xToY(nullptr);
+        xToY.SetRotationFromTo(Float3::X, Float3::Y);
 
-  if (xToY * Float3::X != Float3::Y)
-  {
-    cerr << "Quat from-to rotation failed. " << (xToY * Float3::X) << ", but "
-      << Float3::Y << " expected." << endl;
+        if (xToY * Float3::X != Float3::Y)
+        {
+            ls << "Quat from-to rotation failed. " << (xToY * Float3::X)
+                << ", but " << Float3::Y << " expected." << lferr;
+        }
+    });
 
-    return false;
-  }
+    AddTest("Composition", [&, this](auto& ls)
+    {
+        Quat yx(90.0f, 90.0f, 0.0f);
 
-  Quat yx(90.0f, 90.0f, 0.0f);
-  cout << "Quat YX = " << yx << endl;
-  cout << "Quat X x Y = " << (x * y) << endl;
-  cout << "Quat Y x X = " << (y * x) << endl;
+        ls << "Quat YX = " << yx << lf;
+        ls << "Quat X x Y = " << (x * y) << lf;
+        ls << "Quat Y x X = " << (y * x) << lf;
 
-  if (yx != (y * x))
-  {
-    cerr << "Quat: yx is not equal to (y * x)." << endl;
-    return false;
-  }
+        if (yx != (y * x))
+        {
+            ls << "Quat: yx is not equal to (y * x)." << lferr;
+        }
 
-  Quat zyx(90.0f, 90.0f, 90.0f);
-  cout << "Quat ZYX = " << zyx << endl;
-  cout << "Quat X x Y x Z = " << (x * y * z) << endl;
-  cout << "Quat Z x Y x X = " << (z * y * x) << endl;
+        Quat zyx(90.0f, 90.0f, 90.0f);
+        ls << "Quat ZYX = " << zyx << lf;
+        ls << "Quat X x Y x Z = " << (x * y * z) << lf;
+        ls << "Quat Z x Y x X = " << (z * y * x) << lf;
 
-  if (zyx != (z * y * x))
-  {
-    cerr << "Quat: zyx is not equal to (z * y * x)." << endl;
-    return false;
-  }
+        if (zyx != (z * y * x))
+        {
+            ls << "Quat: zyx = " << zyx << " is not equal to (z * y * x) = "
+                << (z * y * x) << lferr;
+        }
+    });
 
-  Float3x3 matZyx = zyx;
+    AddTest("Cast to Rotation Matrix", [&, this](auto& ls)
+    {
+        Quat zyx(90.0f, 90.0f, 90.0f);
+        Float3x3 matZyx = zyx;
 
-  if ((matZyx * Float3::Forward) != (zyx * Float3::Forward))
-  {
-    cerr << "Quat: matrix representation is not coincident." << endl;
-    return false;
-  }
+        if ((matZyx * Float3::Forward) != (zyx * Float3::Forward))
+        {
+            ls << "Quat: matrix representation is not coincident." << lferr;
+        }
+    });
 
-  if (Quat() != Quat::CreateRotationX(0.0f))
-  {
-    cerr << "Quat: CreateRotationX(0) failed." << endl;
-    return false;
-  }
 
-  if (Quat() != Quat::CreateRotationY(0.0f))
-  {
-    cerr << "Quat: CreateRotationY(0) failed." << endl;
-    return false;
-  }
+    AddTest("Create rotations", [&, this](auto& ls)
+    {
+        if (Quat() != Quat::CreateRotationX(0.0f))
+        {
+            ls << "Quat: CreateRotationX(0) failed." << lferr;
+        }
 
-  if (Quat() != Quat::CreateRotationXY(0.0f, 0.0f))
-  {
-    cerr << "Quat: CreateRotationXY(0) failed." << endl;
-    return false;
-  }
+        if (Quat() != Quat::CreateRotationY(0.0f))
+        {
+            ls << "Quat: CreateRotationY(0) failed." << lferr;
+        }
 
-  if (Quat() != Quat::CreateRotationYZ(0.0f, 0.0f))
-  {
-    cerr << "Quat: CreateRotationYZ(0) failed." << endl;
-    return false;
-  }
+        if (Quat() != Quat::CreateRotationXY(0.0f, 0.0f))
+        {
+            ls << "Quat: CreateRotationXY(0) failed." << lferr;
+        }
 
-  if (Quat() != Quat::CreateRotationXZ(0.0f, 0.0f))
-  {
-    cerr << "Quat: CreateRotationXZ(0) failed." << endl;
-    return false;
-  }
+        if (Quat() != Quat::CreateRotationYZ(0.0f, 0.0f))
+        {
+            ls << "Quat: CreateRotationYZ(0) failed." << lferr;
+        }
 
-  if (Quat() != Quat(0.0f, 0.0f, 0.0f))
-  {
-    cerr << "Quat(0, 0, 0) failed." << endl;
-    return false;
-  }
+        if (Quat() != Quat::CreateRotationXZ(0.0f, 0.0f))
+        {
+            ls << "Quat: CreateRotationXZ(0) failed." << lferr;
+        }
 
-  Quat look = Quat::LookRotation(Float3::Forward, Float3::Up);
+        if (Quat() != Quat(0.0f, 0.0f, 0.0f))
+        {
+            ls << "Quat(0, 0, 0) failed." << lferr;
+        }
+    });
 
-  cout << "Look = " << look << endl;
-  if (look != Quat())
-  {
-    cerr << "Quat: LookRotation failed." << endl;
-    return false;
-  }
+    AddTest("Look Rotation", [&, this](auto& ls)
+    {
+        Quat look = Quat::LookRotation(Float3::Forward, Float3::Up);
 
-  Quat lookBack = Quat::LookRotation(-Float3::Forward, Float3::Up);
-  cout << "Look Backward = " << lookBack << endl;
+        ls << "Look = " << look << lf;
 
-  if ((lookBack * Float3::Forward) != (-Float3::Forward))
-  {
-    cerr << "Quat: LookRotation, look back failed." << endl;
-    return false;
-  }
+        if (look != Quat())
+        {
+            ls << "Quat: LookRotation failed." << lferr;
+        }
 
-  if ((y * Float3::Forward) != (Float3x3(y) * Float3::Forward))
-  {
-    cerr << "Quat: Matrix rotation is not coincided. "
-      << (y * Float3::Forward) << " != "
-      << (Float3x3(y) * Float3::Forward) << endl;
+        Quat lookBack = Quat::LookRotation(-Float3::Forward, Float3::Up);
+        ls << "Look Backward = " << lookBack << lf;
 
-    return false;
-  }
+        if ((lookBack * Float3::Forward) != (-Float3::Forward))
+        {
+            ls << "Quat: LookRotation, look back failed." << lferr;
+        }
+    });
 
-  return true;
+
+    AddTest("Rotation Matrix Comparison", [&, this](auto& ls)
+    {
+        if ((y * Float3::Forward) != (Float3x3(y) * Float3::Forward))
+        {
+            ls << "Quat: Matrix rotation is not coincided. "
+                << (y * Float3::Forward) << " != "
+                << (Float3x3(y) * Float3::Forward) << lferr;
+        }
+    });
 }
+
+} //HE
 
 #endif //__UNIT_TEST__

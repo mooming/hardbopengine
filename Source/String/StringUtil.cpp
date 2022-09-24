@@ -263,202 +263,99 @@ size_t CalculateHash(const char* text)
 } // StringUtil
 
 #ifdef __UNIT_TEST__
-#include "Log/Logger.h"
 #include "System/Time.h"
-#include <iostream>
 
 
 namespace HE
 {
-bool StringUtilTest::DoTest()
+
+void StringUtilTest::Prepare()
 {
     using namespace StringUtil;
-    
-    using namespace std;
-    
-    int testCount = 0;
-    int failCount = 0;
 
-    auto log = Logger::Get(GetName());
-    
+    auto prettyFunction = __PRETTY_FUNCTION__;
+
+    AddTest("PrettyFunctionToClassName", [this, prettyFunction](auto& ls)
     {
-        log.Out([](auto& ls)
-        {
-            ls << "Test PrettyFunctionToClassName";
-        });
-
         StaticString className("HE::StringUtilTest");
 
-        auto name = PrettyFunctionToClassName(__PRETTY_FUNCTION__);
-        log.Out([name, className](auto& ls)
-        {
-            ls << "Class Name is " << name << " / " << className;
-        });
+        auto name = PrettyFunctionToClassName(prettyFunction);
+        ls << "Class Name is " << name << " / " << className << lf;
 
         if (name != className)
         {
-            log.OutError([name, className](auto& ls)
-            {
-                ls << "[FAIL] Pretty function name " << name
-                    << " doesn't coincide with " << className;
-            });
+            ls << "PrettyFunctionToClassName " << name
+                << " doesn't coincide with " << className << lferr;
+        }
+    });
 
-            ++failCount;
-        }
-        else
-        {
-            log.Out([](auto& ls)
-            {
-                ls << "[PASS]";
-            });
-        }
-    }
-    
-    ++testCount;
-    
+    AddTest("PrettyFunctionToCompactClassName", [this, prettyFunction](auto& ls)
     {
-        log.Out([](auto& ls)
-        {
-            ls << "Test PrettyFunctionToCompactClassName";
-        });
-
         StaticString className("StringUtilTest");
 
-        auto name = PrettyFunctionToCompactClassName(__PRETTY_FUNCTION__);
-        log.Out([name, className](auto& ls)
-        {
-            ls << "Compact Class Name is " << name << " / " << className;
-        });
+        auto name = PrettyFunctionToCompactClassName(prettyFunction);
+        ls << "Compact Class Name is " << name << " / " << className << lf;
 
         if (name != className)
         {
-            log.OutError([](auto& ls)
-            {
-                ls << "[Fail]";
-            });
+            ls << "PrettyFunctionToCompactClassName " << name
+                << " doesn't coincide with " << className << lferr;
+        }
+    });
 
-            ++failCount;
-        }
-        else
-        {
-            log.Out([](auto& ls)
-            {
-                ls << "[PASS]";
-            });
-        }
-    }
-    
-    ++testCount;
-    
+
+    AddTest("PrettyFunctionToFunctionName", [this, prettyFunction](auto& ls)
     {
-        log.Out([](auto& ls)
-        {
-            ls << "Test PrettyFunctionToFunctionName";
-        });
+        StaticString funcName("Prepare()");
+        StaticString funcName2("Prepare(void)");
 
-        StaticString funcName("DoTest()");
-        StaticString funcName2("DoTest(void)");
-        auto name = PrettyFunctionToFunctionName(__PRETTY_FUNCTION__);
-
-        log.Out([name, funcName, funcName2](auto& ls)
-        {
-            ls <<  "Function Name is " << name  << " / (" << funcName
-                << " or " << funcName2 << ')';
-        });
+        auto name = PrettyFunctionToFunctionName(prettyFunction);
+        ls <<  "Function Name is " << name  << " / (" << funcName
+            << " or " << funcName2 << ')' << lf;
         
         if (name != funcName && name != funcName2)
         {
-            log.OutError([](auto& ls)
-            {
-                ls << "[Fail]";
-            });
+            ls << "PrettyFunctionToFunctionName " << name
+                << " doesn't coincide with niether " << funcName
+                << " nor " << funcName2 << lferr;
+        }
+    });
 
-            ++failCount;
-        }
-        else
-        {
-            log.Out([](auto& ls)
-            {
-                ls << "[PASS]";
-            });
-        }
-    }
-    
-    ++testCount;
-    
+    AddTest("PrettyFunctionToMethodName", [this, prettyFunction](auto& ls)
     {
-        log.Out([](auto& ls)
-        {
-            ls << "Test PrettyFunctionToMethodName";
-        });
-        
-        StaticString funcName("HE::StringUtilTest::DoTest()");
-        StaticString funcName2("HE::StringUtilTest::DoTest(void)");
-        auto name = PrettyFunctionToMethodName(__PRETTY_FUNCTION__);
 
-        log.Out([name, funcName, funcName2](auto& ls)
-        {
-            ls << "Function Name is " << name  << " / (" << funcName
-                << " or " << funcName2 << ')';
-        });
+        StaticString funcName("HE::StringUtilTest::Prepare()");
+        StaticString funcName2("HE::StringUtilTest::Prepare(void)");
+        auto name = PrettyFunctionToMethodName(prettyFunction);
+
+        ls << "Function Name is " << name  << " / (" << funcName
+            << " or " << funcName2 << ')' << lf;
         
         if (name != funcName && name != funcName2)
         {
-            log.OutError([](auto& ls)
-            {
-                ls << "[Fail]";
-            });
+            ls << "PrettyFunctionToMethodName " << name
+                << " doesn't coincide with niether " << funcName
+                << " nor " << funcName2 << lferr;
+        }
 
-            ++failCount;
-        }
-        else
-        {
-            log.Out([](auto& ls)
-            {
-                ls << "[PASS]";
-            });
-        }
-    }
-    
-    ++testCount;
-    
+    });
+
+    AddTest("PrettyFunctionToCompactMethodName", [this, prettyFunction](auto& ls)
     {
-        log.Out([](auto& ls)
-        {
-            ls << "Test PrettyFunctionToCompactMethodName";
-        });
-        
-        StaticString funcName("StringUtilTest::DoTest()");
-        StaticString funcName2("StringUtilTest::DoTest(void)");
-        auto name = PrettyFunctionToCompactMethodName(__PRETTY_FUNCTION__);
+        StaticString funcName("StringUtilTest::Prepare()");
+        StaticString funcName2("StringUtilTest::Prepare(void)");
+        auto name = PrettyFunctionToCompactMethodName(prettyFunction);
 
-        log.Out([name, funcName, funcName2](auto& ls)
-        {
-            ls << "Function Name is " << name  << " / (" << funcName
-                << " or " << funcName2 << ')';
-        });
+        ls << "Function Name is " << name  << " / (" << funcName
+            << " or " << funcName2 << ')' << lf;
         
         if (name != funcName && name != funcName2)
         {
-            log.OutError([](auto& ls)
-            {
-                ls << "[Fail]";
-            });
-
-            ++failCount;
+            ls << "PrettyFunctionToCompactMethodName " << name
+                << " doesn't coincide with niether " << funcName
+                << " nor " << funcName2 << lferr;
         }
-        else
-        {
-            log.Out([](auto& ls)
-            {
-                ls << "[PASS]";
-            });
-        }
-    }
-    
-    ++testCount;
-    
-    return failCount < 1;
+    });
 }
 } // HE
 #endif //__UNIT_TEST__

@@ -136,7 +136,8 @@ namespace HE
     return vector * value;
   }
 
-  inline std::ostream& operator<<(std::ostream& os, const Float4& v)
+  template <class TOutStream>
+  inline TOutStream& operator<<(TOutStream& os, const Float4& v)
   {
     os << "(" << v.x << ", " << v.y << ", " << v.z << ", " << v.w << "), norm = " << v.Length();
     return os;
@@ -144,21 +145,21 @@ namespace HE
 } // HE
 
 #ifdef __UNIT_TEST__
-#include "Test/TestCase.h"
+#include "Test/TestCollection.h"
 
 namespace HE
 {
 
-  class Vector4Test : public TestCase
+  class Vector4Test : public TestCollection
   {
   public:
 
-    Vector4Test() : TestCase("Vector4Test")
+    Vector4Test() : TestCollection("Vector4Test")
     {
     }
 
   protected:
-    virtual bool DoTest() override;
+    virtual void Prepare() override;
   };
 } // HE
 #endif //__UNIT_TEST__

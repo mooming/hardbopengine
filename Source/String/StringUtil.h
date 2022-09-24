@@ -33,18 +33,18 @@ size_t CalculateHash(const char* text);
 } // StringUtil
 
 #ifdef __UNIT_TEST__
-#include "Test/TestCase.h"
+#include "Test/TestCollection.h"
 
 namespace HE
 {
 
-class StringUtilTest : public TestCase
+class StringUtilTest : public TestCollection
 {
 public:
-    StringUtilTest() : TestCase("StringUtilTest") {}
+    StringUtilTest() : TestCollection("StringUtilTest") {}
     
 protected:
-    virtual bool DoTest() override;
+    virtual void Prepare() override;
 };
 
 } // HE

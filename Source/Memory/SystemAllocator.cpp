@@ -4,42 +4,29 @@
 
 
 #ifdef __UNIT_TEST__
-
-#include "Log/Logger.h"
-#include <iostream>
 #include <vector>
 
 
-bool HE::SystemAllocatorTest::DoTest()
+void HE::SystemAllocatorTest::Prepare()
 {
-	using namespace std;
-
-    int testCount = 0;
-    int errorCount = 0;
-    
-	auto log = Logger::Get(GetName());
-
+    AddTest("Vector Growth", [](auto&)
     {
-        log.Out([testCount](auto& ls)
-        {
-            ls << '[' << testCount << "] Vector Growth Test";
-        });
-        
         for (int j = 0; j < 100; ++j)
         {
-            vector<int, SystemAllocator<int>> hbVector;
+            std::vector<int, SystemAllocator<int>> hbVector;
+
             for (int i = 0; i < 100; ++i)
             {
                 hbVector.push_back(i);
             }
         }
-    }
+    });
     
 #ifdef __MEMORY_INVESTIGATOR_TEST__
 #ifdef __MEMORY_INVESTIGATION__
 #ifdef __MEMORY_BUFFER_UNDERRUN_CHECK__
-    ++testCount;
-    
+
+    AddTest("Buffer Under-run Detection", [this](auto& ls)
 	{
 		SystemAllocator<uint8_t> allocator;
 
@@ -51,19 +38,18 @@ bool HE::SystemAllocatorTest::DoTest()
         
 		auto overRunPtr = buffer + requestedSize;
 
-		log.Out([&](auto& ls)
-		{
-            ls << "Unterrun Test: ptr = " << (void*)buffer;
-		});
+        ls << "Underrun Test: ptr = " << (void*)buffer << lf;
 
 		*overRunPtr = 0;
 
-		// Comment the following line to proceede to the next.
-		*underRunPtr = 0;
+        ls << "A signal shall be posted from the next line"
+            << " due to buffer under-run/" << lf;
+		*underRunPtr = 0; // Comment out to proceede to the next test.
 
 		allocator.deallocate(buffer, requestedSize);
-	}
+    });
 #else // __MEMORY_BUFFER_UNDERRUN_CHECK__
+    AddTest("Buffer Over-run Detection", [this](auto& ls)
 	{
 		SystemAllocator<uint8_t> allocator;
 
@@ -74,21 +60,20 @@ bool HE::SystemAllocatorTest::DoTest()
         [[maybe_unused]]
 		auto overRunPtr = buffer + requestedSize;
 
-		log.Out([&](auto& ls)
-        {
-            ls << "Overrun Test: ptr = " << (void*)buffer;
-        });
+        ls << "Over-run Test: ptr = " << (void*)buffer << lf;
 
 		*underRunPtr = 0;
 
-		// Comment the following line to proceede to the next.
-		*overRunPtr = 0;
+        ls << "A signal shall be posted from the next line"
+            << " due to buffer over-run." << lf;
+		*overRunPtr = 0;  // Comment out to proceede to the next test.
 
 		allocator.deallocate(buffer, requestedSize);
-	}
+    });
 #endif // __MEMORY_BUFFER_UNDERRUN_CHECK__
 
 #ifdef __MEMORY_DANGLING_POINTER_CHECK__
+    AddTest("Dangling Pointer Detection", [this](auto& ls)
 	{
 		SystemAllocator<uint8_t> allocator;
 
@@ -97,21 +82,18 @@ bool HE::SystemAllocatorTest::DoTest()
 		
 		*buffer = 0;
 
-		log.Out([&](auto& ls)
-        {
-            ls << "Overrun Test: ptr = " << (void*)buffer << ", value = " << (int)(*buffer);
-        });
+        ls << "Overrun Test: ptr = " << (void*)buffer
+            << ", value = " << (int)(*buffer) << lf;
 
 		allocator.deallocate(buffer, requestedSize);
 
-		// Comment the following lines to proceede to the next.
-        *buffer = 1;
-	}
+        ls << "A signal shall be posted from the next line"
+            << " due to use-after-free." << lf;
+        *buffer = 1; // Comment out to proceede to the next test.
+    });
 #endif // __MEMORY_DANGLING_POINTER_CHECK__
 #endif // __MEMORY_INVESTIGATION__
 #endif // __MEMORY_INVESTIGATOR_TEST__
-    
-	return errorCount <= 0;
 }
 
 #endif // __UNIT_TEST__

@@ -472,7 +472,9 @@ public:
         
         const float yy = y * y;
         angle.x = RadianToDegree(RotationAtan2(2.0f * (w * x + y * z), 1.0f - 2.0f * (x * x + yy)));
-        angle.y = RadianToDegree(RotationAsin(2.0f * (w * y - z * x)));
+
+        const auto sinp = 2.0f * (w * y - x * z);
+        angle.y = std::abs(sinp) >= 1 ? std::copysign(HalfPi, sinp) : RadianToDegree(RotationAsin(sinp));
         angle.z = RadianToDegree(RotationAtan2(2.0f * (w * z + x * y), 1.0f - 2.0f * (yy + z * z)));
         
         return angle;
@@ -563,21 +565,20 @@ inline std::ostream& operator<<(std::ostream& os, const Quaternion<T>& q)
 } // HE
 
 #ifdef __UNIT_TEST__
-#include "Test/TestCase.h"
+#include "Test/TestCollection.h"
 
 namespace HE
 {
 
-class QuaternionTest : public TestCase
+class QuaternionTest : public TestCollection
 {
 public:
-    
-    QuaternionTest() : TestCase("QuaternionTest")
+    QuaternionTest() : TestCollection("QuaternionTest")
     {
     }
     
 protected:
-    virtual bool DoTest() override;
+    virtual void Prepare() override;
 };
 } // HE
 #endif //__UNIT_TEST__

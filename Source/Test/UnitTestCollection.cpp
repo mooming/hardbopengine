@@ -5,7 +5,6 @@
 #include "UnitTestCollection.h"
 
 #include "TestEnv.h"
-#include "Container/Vector.h"
 #include "Container/LinkedList.h"
 #include "Math/MathUtil.h"
 #include "Math/Vector2.h"
@@ -45,34 +44,33 @@ namespace Test
 
         auto& testEnv = TestEnv::GetEnv();
 
-        testEnv.AddTest(new SystemAllocatorTest());
-        testEnv.AddTest(new BaseAllocatorTest());
-        testEnv.AddTest(new InlinePoolAllocatorTest());
-        testEnv.AddTest(new StackAllocatorTest());
-        testEnv.AddTest(new PoolAllocatorTest());
-        testEnv.AddTest(new MultiPoolAllocatorTest());
+        testEnv.AddTestCollection(new SystemAllocatorTest());
+        testEnv.AddTestCollection(new BaseAllocatorTest());
+        testEnv.AddTestCollection(new InlinePoolAllocatorTest());
+        testEnv.AddTestCollection(new StackAllocatorTest());
+        testEnv.AddTestCollection(new PoolAllocatorTest());
+        testEnv.AddTestCollection(new MultiPoolAllocatorTest());
         
-        testEnv.AddTest(new ArrayTest());
-        testEnv.AddTest(new LinkedListTest());
-        testEnv.AddTest(new OptionalTest());
+        testEnv.AddTestCollection(new ArrayTest());
+        testEnv.AddTestCollection(new LinkedListTest());
+        testEnv.AddTestCollection(new OptionalTest());
         
-        testEnv.AddTest(new StaticStringTest());
-        testEnv.AddTest(new StringTest());
-        testEnv.AddTest(new StringUtilTest());
+        testEnv.AddTestCollection(new StaticStringTest());
+        testEnv.AddTestCollection(new StringTest());
+        testEnv.AddTestCollection(new StringUtilTest());
         
-        testEnv.AddTest(new MathUtilTest());
-        testEnv.AddTest(new VectorTest());
-        testEnv.AddTest(new Vector2Test());
-        testEnv.AddTest(new Vector3Test());
-        testEnv.AddTest(new Vector4Test());
-        testEnv.AddTest(new Matrix3x3Test());
-        testEnv.AddTest(new QuaternionTest());
-        testEnv.AddTest(new UniformTransformTest());
-        testEnv.AddTest(new RigidTransformTest());
-        testEnv.AddTest(new AABBTest());
-        testEnv.AddTest(new TransformTest());
+        testEnv.AddTestCollection(new MathUtilTest());
+        testEnv.AddTestCollection(new Vector2Test());
+        testEnv.AddTestCollection(new Vector3Test());
+        testEnv.AddTestCollection(new Vector4Test());
+        testEnv.AddTestCollection(new Matrix3x3Test());
+        testEnv.AddTestCollection(new QuaternionTest());
+        testEnv.AddTestCollection(new UniformTransformTest());
+        testEnv.AddTestCollection(new RigidTransformTest());
+        testEnv.AddTestCollection(new AABBTest());
+        testEnv.AddTestCollection(new TransformTest());
         
-        testEnv.AddTest(new ComponentSystemTest());
+        testEnv.AddTestCollection(new ComponentSystemTest());
         
         testEnv.Start();
     }

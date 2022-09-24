@@ -3,30 +3,25 @@
 #include "Array.h"
 
 
-using namespace HE;
-
 #ifdef __UNIT_TEST__
 #include "Log/Logger.h"
 
-
-bool ArrayTest::DoTest()
+namespace HE
 {
-    TLog log(GetName());
-    
-    using namespace std;
+
+void ArrayTest::Prepare()
+{
+    AddTest("Default Constructor", [this](auto& ls)
     {
         const Array<int> array;
         if (array.Length() != 0)
         {
-            log.OutError([&array](auto& ls)
-            {
-                ls << "Null Array Size is not zero. Size = " << array.Size();
-            });
-            
-            return false;
+            ls << "Null Array Size is not zero. Size = "
+                << array.Size() << lferr;
         }
-    }
+    });
 
+    AddTest("Initializer List", [this](auto& ls)
     {
         Array<int> array({ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 });
 
@@ -35,24 +30,17 @@ bool ArrayTest::DoTest()
         {
             if (value != i)
             {
-                log.OutError([i, value](auto& ls)
-                {
-                    ls << "Array Value Mismatch : " << value << " != " << i;
-                });
-                
-                return false;
+                ls << "Array Value Mismatch : " << value
+                    << " != " << i << lferr;
+                break;
             }
+
             ++i;
         }
 
         if (i != 10)
         {
-            log.OutError([i](auto& ls)
-            {
-                ls << "Array Size Mismatch : " << i << " != 10.";
-            });
-            
-            return false;
+            ls << "Array Size Mismatch : " << i << " != 10." << lferr;
         }
 
         array.Resize(5);
@@ -62,27 +50,21 @@ bool ArrayTest::DoTest()
         {
             if (value != i)
             {
-                log.OutError([i, value](auto& ls)
-                {
-                    ls << "Array Value Mismatch : " << value << " != " << i;
-                });
-                
-                return false;
+                ls << "Array Value Mismatch : "
+                    << value << " != " << i << lferr;
+                break;
             }
+
             ++i;
         }
 
         if (i != 5)
         {
-            log.OutError([i](auto& ls)
-            {
-                ls << "Array Size Mismatch : " << i << " != 5.";
-            });
-            
-            return false;
+            ls << "Array Size Mismatch : " << i << " != 5." << lferr;
         }
-    }
+    });
 
+    AddTest("Initializer List (2)", [this](auto& ls)
     {
         const Array<int> array({ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 });
         int i = 0;
@@ -91,19 +73,14 @@ bool ArrayTest::DoTest()
         {
             if (value != i)
             {
-                log.OutError([i, value](auto& ls)
-                {
-                    ls << "value = " << value << ", expected " << i;
-                });
-                
-                return false;
+                ls << "value = " << value << ", expected " << i << lferr;
+                break;
             }
 
             ++i;
         }
-    }
-
-    return true;
+    });
 }
 
+} // HE
 #endif //__UNIT_TEST__

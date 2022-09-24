@@ -4,7 +4,6 @@
 
 
 #ifdef __UNIT_TEST__
-#include "Log/Logger.h"
 #include "System/Time.h"
 #include <memory>
 #include <vector>
@@ -16,10 +15,8 @@ namespace
     class VectorGrowthTest final
     {
     public:
-        bool operator() (const char* name) const
+        float operator() (const char* name, auto& ls, auto& lf) const
         {
-            HE::TLog log(name);
-            
             using namespace HE;
 
             Time::TDuration inlineTime;
@@ -69,193 +66,244 @@ namespace
             auto stdTimeSec = Time::ToMilliSec(stdTime);
             auto rate = inlineTimeSec / stdTimeSec;
             
-            log.Out([inlineTimeSec, stdTimeSec, rate](auto& ls)
-            {
-                ls << "Vector Growth Performance : InlineAlloc: " << inlineTimeSec
-                    << " msec vs STL: " << stdTimeSec << " msec, rate = " << rate;
-            });
+            ls << "Vector Growth Performance : InlineAlloc: " << inlineTimeSec
+                << " msec vs STL: " << stdTimeSec << " msec, rate = " << rate << lf;
             
-            return rate < 1.0f;
+            return rate;
         }
     };
 } // anonymous
 
-bool HE::InlinePoolAllocatorTest::DoTest()
+void HE::InlinePoolAllocatorTest::Prepare()
 {
-	using namespace std;
-    
-    TLog log(GetName());
-    
-    int failCount = 0;
-
+    AddTest("Zero-sized Allocation & Deallocation", [](auto&)
     {
         InlinePoolAllocator<int, 16> allocator;
+
         auto ptr = allocator.allocate(0);
         allocator.deallocate(ptr, 0);
-    }
+    });
 
+    auto allocDeallocTest = [](auto& inlineAlloc, auto& ls, auto& lf) -> float
     {
-        auto allocDeallocTest = [&log](auto& inlineAlloc) -> bool
+        constexpr int testCount = 500;
+        constexpr int loopLength = 1024;
+
+        ls << '[' << inlineAlloc.GetBlockSize() << "] Num Iterations = "
+            << testCount << ", Loop Length = " << loopLength << lf;
+
+        std::allocator<int> stdAlloc;
+
+        Time::TDuration inlineTime;
+        Time::TDuration stdTime;
+
         {
-            constexpr int testCount = 500;
-            constexpr int loopLength = 1024;
-            
-            log.Out([&inlineAlloc, testCount, loopLength](auto& ls)
-            {
-                ls << '[' << inlineAlloc.GetBlockSize() << "] Alloc/Dealloc Test: num iteration = "
-                    << testCount << ", loop length = " << loopLength;
-            });
-            
-            std::allocator<int> stdAlloc;
+            Time::Measure measure(inlineTime);
 
-            Time::TDuration inlineTime;
-            Time::TDuration stdTime;
-
+            for (int j = 0; j < testCount; ++j)
             {
-                Time::Measure measure(inlineTime);
-                
-                for (int j = 0; j < testCount; ++j)
+                for (int i = 0; i < loopLength; ++i)
                 {
-                    for (int i = 0; i < loopLength; ++i)
-                    {
-                        auto ptr = inlineAlloc.allocate(i);
-                        inlineAlloc.deallocate(ptr, i);
-                    }
+                    auto ptr = inlineAlloc.allocate(i);
+                    inlineAlloc.deallocate(ptr, i);
                 }
             }
-            
+        }
+
+        {
+            Time::Measure measure(stdTime);
+            for (int j = 0; j < testCount; ++j)
             {
-                Time::Measure measure(stdTime);
-                for (int j = 0; j < testCount; ++j)
+                for (int i = 0; i < loopLength; ++i)
                 {
-                    for (int i = 0; i < loopLength; ++i)
-                    {
-                        auto ptr = stdAlloc.allocate(i);
-                        stdAlloc.deallocate(ptr, i);
-                    }
+                    auto ptr = stdAlloc.allocate(i);
+                    stdAlloc.deallocate(ptr, i);
                 }
             }
-            
-            auto inlineTimeSec = Time::ToMilliSec(inlineTime);
-            auto stdTimeSec = Time::ToMilliSec(stdTime);
-            auto rate = inlineTimeSec / stdTimeSec;
-            
-            log.Out([&inlineAlloc, inlineTimeSec, stdTimeSec, rate](auto& ls)
-            {
-                ls << "Alloc/Dealloc Performance : InlineAlloc: "
-                    << inlineTimeSec
-                    << " msec vs STL: " << stdTimeSec
-                    << " msec, rate = [" << rate
-                    << "], fallback count = " << inlineAlloc.GetFallbackCount()
-                    << " / " << (testCount * loopLength);
-            });
-            
-            return rate < 1.0f;
-        };
-        
-        {
-            constexpr int inlineSize = 1;
-            InlinePoolAllocator<int, inlineSize> inlineAlloc;
-            allocDeallocTest(inlineAlloc);
-        }
-        
-        {
-            constexpr int inlineSize = 16;
-            InlinePoolAllocator<int, inlineSize> inlineAlloc;
-            allocDeallocTest(inlineAlloc);
-        }
-        
-        {
-            constexpr int inlineSize = 32;
-            InlinePoolAllocator<int, inlineSize> inlineAlloc;
-            allocDeallocTest(inlineAlloc);
-        }
-        
-        {
-            constexpr int inlineSize = 64;
-            InlinePoolAllocator<int, inlineSize> inlineAlloc;
-            allocDeallocTest(inlineAlloc);
-        }
-        
-        {
-            constexpr int inlineSize = 128;
-            InlinePoolAllocator<int, inlineSize> inlineAlloc;
-            allocDeallocTest(inlineAlloc);
         }
 
-        {
-            constexpr int inlineSize = 256;
-            InlinePoolAllocator<int, inlineSize> inlineAlloc;
-            allocDeallocTest(inlineAlloc);
-        }
+        auto inlineTimeSec = Time::ToMilliSec(inlineTime);
+        auto stdTimeSec = Time::ToMilliSec(stdTime);
+        auto rate = inlineTimeSec / stdTimeSec;
 
-        {
-            constexpr int inlineSize = 512;
-            InlinePoolAllocator<int, inlineSize> inlineAlloc;
-            allocDeallocTest(inlineAlloc);
-        }
-        
-        {
-            constexpr int inlineSize = 1024;
-            InlinePoolAllocator<int, inlineSize> inlineAlloc;
-            allocDeallocTest(inlineAlloc);
-        }
-        
-        {
-            constexpr int inlineSize = 8192;
-            InlinePoolAllocator<int, inlineSize> inlineAlloc;
-            allocDeallocTest(inlineAlloc);
-        }
-    }
+        ls << "Performance: "
+            << inlineTimeSec
+            << " msec vs STL: " << stdTimeSec
+            << " msec, rate = [" << rate
+            << "], fallback count = " << inlineAlloc.GetFallbackCount()
+            << " / " << (testCount * loopLength) << lf;
 
+        return rate;
+    };
+
+    AddTest("Perf. & Stress, Size(1)", [&, this](auto& ls)
+    {
+        constexpr int inlineSize = 1;
+        InlinePoolAllocator<int, inlineSize> inlineAlloc;
+
+        auto rate = allocDeallocTest(inlineAlloc, ls, lf);
+        if (rate > 1.0f)
+        {
+            ls << "Performance is worse than system malloc. rate = "
+                << rate << lfwarn;
+        }
+    });
+
+    AddTest("Perf. & Stress, Size(16)", [&, this](auto& ls)
+    {
+        constexpr int inlineSize = 16;
+        InlinePoolAllocator<int, inlineSize> inlineAlloc;
+
+        auto rate = allocDeallocTest(inlineAlloc, ls, lf);
+        if (rate > 1.0f)
+        {
+            ls << "Performance is worse than system malloc. rate = "
+                << rate << lfwarn;
+        }
+    });
+
+    AddTest("Perf. & Stress, Size(32)", [&, this](auto& ls)
     {
         constexpr int inlineSize = 32;
-        
-        log.Out([inlineSize](auto& ls)
-        {
-            ls << "==========================================" << endl;
-            ls << "Vector Growth Test: Inline Alloc Size = " << inlineSize;
-        });
-        
-        VectorGrowthTest<inlineSize>()(GetName());
-    }
+        InlinePoolAllocator<int, inlineSize> inlineAlloc;
 
+        auto rate = allocDeallocTest(inlineAlloc, ls, lf);
+        if (rate > 1.0f)
+        {
+            ls << "Performance is worse than system malloc. rate = "
+                << rate << lfwarn;
+        }
+    });
+
+    AddTest("Perf. & Stress, Size(64)", [&, this](auto& ls)
     {
         constexpr int inlineSize = 64;
-        
-        log.Out([inlineSize](auto& ls)
-        {
-            ls << "==========================================" << endl;
-            ls << "Vector Growth Test: Inline Alloc Size = " << inlineSize;
-        });
-        
-        VectorGrowthTest<inlineSize>()(GetName());
-    }
+        InlinePoolAllocator<int, inlineSize> inlineAlloc;
 
+        auto rate = allocDeallocTest(inlineAlloc, ls, lf);
+        if (rate > 1.0f)
+        {
+            ls << "Performance is worse than system malloc. rate = "
+                << rate << lfwarn;
+        }
+    });
+
+    AddTest("Perf. & Stress, Size(128)", [&, this](auto& ls)
     {
         constexpr int inlineSize = 128;
-        
-        log.Out([inlineSize](auto& ls)
-        {
-            ls << "==========================================" << endl;
-            ls << "Vector Growth Test: Inline Alloc Size = " << inlineSize;
-        });
-        
-        VectorGrowthTest<inlineSize>()(GetName());
-    }
+        InlinePoolAllocator<int, inlineSize> inlineAlloc;
 
+        auto rate = allocDeallocTest(inlineAlloc, ls, lf);
+        if (rate > 1.0f)
+        {
+            ls << "Performance is worse than system malloc. rate = "
+                << rate << lfwarn;
+        }
+    });
+
+    AddTest("Perf. & Stress, Size(256)", [&, this](auto& ls)
     {
         constexpr int inlineSize = 256;
-        
-        log.Out([inlineSize](auto& ls)
-        {
-            ls << "==========================================" << endl;
-            ls << "Vector Growth Test: Inline Alloc Size = " << inlineSize;
-        });
-        
-        VectorGrowthTest<inlineSize>()(GetName());
-    }
+        InlinePoolAllocator<int, inlineSize> inlineAlloc;
 
-	return failCount <= 0;
+        auto rate = allocDeallocTest(inlineAlloc, ls, lf);
+        if (rate > 1.0f)
+        {
+            ls << "Performance is worse than system malloc. rate = "
+                << rate << lfwarn;
+        }
+    });
+
+    AddTest("Perf. & Stress, Size(512)", [&, this](auto& ls)
+    {
+        constexpr int inlineSize = 512;
+        InlinePoolAllocator<int, inlineSize> inlineAlloc;
+
+        auto rate = allocDeallocTest(inlineAlloc, ls, lf);
+        if (rate > 1.0f)
+        {
+            ls << "Performance is worse than system malloc. rate = "
+                << rate << lfwarn;
+        }
+    });
+
+    AddTest("Perf. & Stress, Size(1024)", [&, this](auto& ls)
+    {
+        constexpr int inlineSize = 1024;
+        InlinePoolAllocator<int, inlineSize> inlineAlloc;
+
+        auto rate = allocDeallocTest(inlineAlloc, ls, lf);
+        if (rate > 1.0f)
+        {
+            ls << "Performance is worse than system malloc. rate = "
+                << rate << lfwarn;
+        }
+    });
+
+    AddTest("Perf. & Stress, Size(2048)", [&, this](auto& ls)
+    {
+        constexpr int inlineSize = 2048;
+        InlinePoolAllocator<int, inlineSize> inlineAlloc;
+
+        auto rate = allocDeallocTest(inlineAlloc, ls, lf);
+        if (rate > 1.0f)
+        {
+            ls << "Performance is worse than system malloc. rate = "
+                << rate << lfwarn;
+        }
+    });
+
+    AddTest("Perf. & Stress, Size(8192)", [&, this](auto& ls)
+    {
+        constexpr int inlineSize = 8192;
+        InlinePoolAllocator<int, inlineSize> inlineAlloc;
+
+        auto rate = allocDeallocTest(inlineAlloc, ls, lf);
+        if (rate > 1.0f)
+        {
+            ls << "Performance is worse than system malloc. rate = "
+                << rate << lfwarn;
+        }
+    });
+
+
+    AddTest("Vector Growth, size(32)", [&, this](auto& ls)
+    {
+        constexpr int inlineSize = 32;
+        ls << "==========================================" << lf;
+        ls << "Inline Alloc Size = " << inlineSize << lf;
+
+        auto rate = VectorGrowthTest<inlineSize>()(GetName(), ls, lf);
+        if (rate > 1.0f)
+        {
+            ls << "It's slower than system malloc. rate = " << rate << lfwarn;
+        }
+    });
+
+    AddTest("Vector Growth, size(128)", [&, this](auto& ls)
+    {
+        constexpr int inlineSize = 128;
+        ls << "==========================================" << lf;
+        ls << "Inline Alloc Size = " << inlineSize << lf;
+
+        auto rate = VectorGrowthTest<inlineSize>()(GetName(), ls, lf);
+        if (rate > 1.0f)
+        {
+            ls << "It's slower than system malloc. rate = " << rate << lfwarn;
+        }
+    });
+
+    AddTest("Vector Growth, size(512)", [&, this](auto& ls)
+    {
+        constexpr int inlineSize = 512;
+        ls << "==========================================" << lf;
+        ls << "Inline Alloc Size = " << inlineSize << lf;
+
+        auto rate = VectorGrowthTest<inlineSize>()(GetName(), ls, lf);
+        if (rate > 1.0f)
+        {
+            ls << "It's slower than system malloc. rate = " << rate << lfwarn;
+        }
+    });
 }
 #endif // __UNIT_TEST__

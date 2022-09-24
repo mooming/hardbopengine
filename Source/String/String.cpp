@@ -9,7 +9,8 @@
 #include <cstring>
 
 
-using namespace HE;
+namespace HE
+{
 
 String::String(const bool value) : hashCode(0)
 {
@@ -637,148 +638,139 @@ void String::ResetBuffer(size_t size)
     buffer->push_back('\0');
 }
 
+} // HE
+
 #ifdef __UNIT_TEST__
-#include "Log/Logger.h"
 #include "System/Time.h"
-#include <iostream>
 
 
-bool StringTest::DoTest()
+namespace HE
 {
-    using namespace std;
 
-    auto log = Logger::Get(GetName());
-
-    String str = "Hello? World!";
-    log.Out([&str](auto& ls)
+void StringTest::Prepare()
+{
+    AddTest("Comparison with Zero-Terminated String", [this](auto& ls)
     {
-        ls << str;
+        String str = "Hello? World!";
+        ls << str.c_str() << lf;
+
+        if (str != "Hello? World!")
+        {
+            ls << "String Compare Failure. " << str << lferr;
+        }
     });
 
-    if (str != "Hello? World!")
+    AddTest("To Lower Case", [this](auto& ls)
     {
-        log.OutError([](auto& ls)
+        String str("Hello? World!");
+
+        auto lower = str.GetLowerCase();
+        ls << lower.c_str() << lf;
+
+        if (lower != "hello? world!")
         {
-            ls << "String Compare Failure.";
-        });
-
-        return false;
-    }
-
-    auto lower = str.GetLowerCase();
-    log.Out([&lower](auto& ls)
-    {
-        ls << lower;
+            ls << "To lowercase failed. " << lower << lferr;
+        }
     });
 
-    if (lower != "hello? world!")
+    AddTest("To Upper Case", [this](auto& ls)
     {
-        log.OutError([](auto& ls)
+        String str("Hello? World!");
+
+        auto upper = str.GetUpperCase();
+        ls << upper.c_str() << lf;
+
+        if (upper != "HELLO? WORLD!")
         {
-            ls << "To lowercase failed.";
-        });
-
-        return false;
-    }
-
-    auto upper = str.GetUpperCase();
-    log.Out([&upper](auto& ls)
-    {
-        ls << upper;
+            ls << "To uppercase failed. " << upper << lferr;
+        }
     });
 
-    if (upper != "HELLO? WORLD!")
+    AddTest("Move Semantics", [this](auto& ls)
     {
-        log.OutError([](auto& ls)
+        String str("Hello? World!");
+
+        auto upper = str.GetUpperCase();
+        auto tmpString = std::move(upper);
+        ls << tmpString.c_str() << lf;
+
+        if (tmpString != "HELLO? WORLD!")
         {
-            ls << "To uppercase failed.";
-        });
-
-        return false;
-    }
-
-    auto tmpString = std::move(upper);
-    log.Out([&tmpString](auto& ls)
-    {
-        ls << tmpString;
+            ls << "String move failed." << lferr;
+        }
     });
 
-    if (tmpString != "HELLO? WORLD!")
+    AddTest("Find Last", [this](auto& ls)
     {
-        log.OutError([](auto& ls)
-        {
-            ls << "String move failed.";
-        });
-
-        return false;
-    }
-
-    auto lastL = str.FindLast('l');
-    if (lastL != 10)
-    {
-        log.OutError([&lastL](auto& ls)
+        String str("Hello? World!");
+        auto lastL = str.FindLast('l');
+        if (lastL != 10)
         {
             ls << "Failed to find the last 'l', index = "
-                << lastL << ", but expected 10.";
-        });
-    }
-
-    auto afterL = str.SubString(lastL);
-    log.Out([&afterL](auto& ls)
-    {
-        ls << afterL;
+                << lastL << ", but expected 10." << lferr;
+        }
     });
 
-    if (afterL != "ld!")
+    AddTest("SubString", [this](auto& ls)
     {
-        log.OutError([](auto& ls)
+        String str("Hello? World!");
+        auto lastL = str.FindLast('l');
+        auto afterL = str.SubString(lastL);
+        ls << afterL.c_str() << lf;
+
+        if (afterL != "ld!")
         {
-            ls << "Substring failed";
-        });
+            ls << "Substring failed: " << afterL << lferr;
+        }
+    });
 
-        return false;
-    }
-
-    constexpr int COUNT = 100000;
-
-    Time::TDuration heTime;
-    
+    AddTest("Performance", [this](auto& ls)
     {
-        Time::Measure measure(heTime);
+        constexpr int COUNT = 100000;
 
-        String str;
-        for (int i = 0; i < COUNT; ++i)
+        Time::TDuration heTime;
+
         {
-            str = "";
-            for (char ch = 'a'; ch <= 'z'; ++ch)
+            Time::Measure measure(heTime);
+
+            String str;
+            for (int i = 0; i < COUNT; ++i)
             {
-                str += ch;
+                str = "";
+                for (char ch = 'a'; ch <= 'z'; ++ch)
+                {
+                    str += ch;
+                }
             }
         }
-    }
 
-    Time::TDuration stlTime;
-    
-    {
-        Time::Measure measure(stlTime);
+        Time::TDuration stlTime;
 
-        std::string str;
-        for (int i = 0; i < COUNT; ++i)
         {
-            str = "";
-            for (char ch = 'a'; ch <= 'z'; ++ch)
+            Time::Measure measure(stlTime);
+
+            std::string str;
+            for (int i = 0; i < COUNT; ++i)
             {
-                str += ch;
+                str = "";
+                for (char ch = 'a'; ch <= 'z'; ++ch)
+                {
+                    str += ch;
+                }
             }
         }
-    }
 
-    log.Out([heTime, stlTime](auto& ls)
-    {
         ls << "Time: he = " << Time::ToMilliSec<float>(heTime)
-            << ", stl = " << Time::ToMilliSec<float>(stlTime);
-    });
+            << ", stl = " << Time::ToMilliSec<float>(stlTime) << lf;
 
-    return true;
+        if (heTime > stlTime)
+        {
+            ls << "HE String is slower than STL string." << std::endl
+                << "Time: he = " << Time::ToMilliSec<float>(heTime)
+                << ", stl = " << Time::ToMilliSec<float>(stlTime) << lfwarn;
+        }
+    });
 }
+
+} // HE
 #endif //__UNIT_TEST__
