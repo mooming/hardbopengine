@@ -19,13 +19,17 @@ struct LinkedListNode final
     LinkedListNode* previous;
     LinkedListNode* next;
     
-    inline LinkedListNode(const Type& value) : value(value)
-    , previous(nullptr), next(nullptr)
+    inline LinkedListNode(const Type& value)
+        : value(value)
+        , previous(nullptr)
+        , next(nullptr)
     {
     }
     
-    inline LinkedListNode(Type&& value) : value(std::move(value))
-    , previous(nullptr), next(nullptr)
+    inline LinkedListNode(Type&& value)
+        : value(std::move(value))
+        , previous(nullptr)
+        , next(nullptr)
     {
     }
     
@@ -126,7 +130,6 @@ public:
     Type& Add(const Type& value)
     {
         return AddLast(value);
-        
     }
     
     Type& Add(Type&& value)

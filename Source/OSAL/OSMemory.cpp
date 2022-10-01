@@ -138,7 +138,7 @@ void OS::VirtualFree(void* address, std::size_t n)
     auto result = ::VirtualFree(address, n, MEM_RELEASE);
     if (unlikely(result))
     {
-        Assert(false);
+        HE::Assert(false);
     }
 }
 

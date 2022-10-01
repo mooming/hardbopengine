@@ -6,19 +6,23 @@
 #include "Log/PrintArgs.h"
 #include "OSAL/Intrinsic.h"
 
-#ifdef __DEBUG__
 
+namespace HE
+{
+template <typename T>
+using TDebugVariable = const T;
+
+void FlushLogs();
+} // HE
+
+#ifdef __DEBUG__
 #include <cstdlib>
 #include <cstdio>
 #include <memory>
 
+
 namespace HE
 {
-
-template <typename T>
-using TDebugVariable = volatile T;
-
-void FlushLogs();
 
 inline void Assert(bool shouldBeTrue)
 {
@@ -44,19 +48,16 @@ inline void Assert(bool shouldBeTrue, Types&& ... args)
     debugBreak();
     std::abort();
 }
-}
+} // HE
 
 #else // __DEBUG__
-
 #include <cstdlib>
 #include <cstdio>
 #include <memory>
 
+
 namespace HE
 {
-template <typename T>
-using TDebugVariable = const T;
-
 inline void Assert(bool)
 {
 }
@@ -65,7 +66,7 @@ template <typename ... Types>
 inline void Assert(bool, const char*, Types&& ...)
 {
 }
-}
+} // HE
 #endif // __DEBUG__
 
 namespace HE
@@ -92,4 +93,4 @@ inline void FatalAssert(bool shouldBeTrue, Types&& ... args)
     debugBreak();
     std::abort();
 }
-} // anonymous
+} // HE

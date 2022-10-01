@@ -63,7 +63,9 @@ Engine::Engine()
     , logger("./", "hardbop.log", 5)
 {
     std::signal(SIGABRT, SignalHandler);
+#ifdef SIGBUS
     std::signal(SIGBUS, SignalHandler);
+#endif // SIGBUS
     std::signal(SIGFPE, SignalHandler);
     std::signal(SIGILL, SignalHandler);
     std::signal(SIGINT, SignalHandler);

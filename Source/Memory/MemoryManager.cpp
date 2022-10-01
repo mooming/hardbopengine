@@ -522,7 +522,10 @@ void* MemoryManager::Allocate(TId id, size_t nBytes)
         , "[", GetName(), "::", __func__, "][Error] "
         , "No allocate function, ID = ", id);
 
-    return allocator.allocate(nBytes);
+    auto ptr = allocator.allocate(nBytes);
+    Assert(ptr != nullptr, "Allocation Failed");
+
+    return ptr;
 }
 
 void MemoryManager::Deallocate(TId id, void* ptr, size_t nBytes)

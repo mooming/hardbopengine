@@ -66,6 +66,7 @@ public:
         return allocatorID != rhs.allocatorID;
     }
     
+    inline auto GetID() const { return allocatorID; }
     inline auto GetSourceAllocatorID() const { return allocatorID; }
     inline size_t GetFallbackCount() const { return 0; }
 };

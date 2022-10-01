@@ -13,7 +13,7 @@
 // Allocator
 #define __MEMORY_VERIFICATION__
 #define __MEMORY_STATISTICS__
-//#define __MEMORY_LOGGING__
+#define __MEMORY_LOGGING__
 //#define __MEMORY_INVESTIGATION__
 //#define __MEMORY_INVESTIGATION_LOGGING__
 #define __MEMORY_DANGLING_POINTER_CHECK__
@@ -50,7 +50,7 @@ namespace HE
         static constexpr uint8_t EngineLogLevelPrint = 1;
     
         // Memory
-        static constexpr uint8_t MemLogLevel = 1;
+        static constexpr uint8_t MemLogLevel = 4;
     
         // String
         static constexpr int MaxPathLength = 512;

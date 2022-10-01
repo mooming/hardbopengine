@@ -32,9 +32,22 @@ struct LogLine final
         , category(category)
         , level(level)
     {
+        if (unlikely(inText == nullptr))
+        {
+            text[0] = '\0';
+            return;
+        }
+
         constexpr auto LastIndex = Config::LogLineSize - 1;
-        strncpy(text, inText, LastIndex);
-        text[LastIndex] = '\0';
+        int length = 0;
+        for (; length < LastIndex; ++length)
+        {
+            if (unlikely(inText[length] == '\0'))
+                break;
+        }
+
+        std::copy(&inText[0], &inText[length], text);
+        text[length] = '\0';
     }
 };
 

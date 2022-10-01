@@ -4,6 +4,7 @@
 
 #include "AllocatorScope.h"
 #include "MemoryManager.h"
+#include "OSAL/Intrinsic.h"
 #include "System/Debug.h"
 #include "System/Exception.h"
 #include "System/CommonUtil.h"
@@ -55,7 +56,7 @@ void *StackAllocator::Allocate (size_t size)
     constexpr SizeType metaDataSize = sizeof(bool) + sizeof(SizeType);
     const size_t requiredSize = metaDataSize + size;
     
-    if (freeSize < requiredSize)
+    if (unlikely(freeSize < requiredSize))
     {
         using namespace std;
         auto& mmgr = MemoryManager::GetInstance();

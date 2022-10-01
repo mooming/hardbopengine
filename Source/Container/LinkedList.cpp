@@ -18,9 +18,10 @@ void LinkedListTest::Prepare()
 #ifdef __DEBUG__
     const int COUNT = 4096;
 #else //__DEBUG__
-    const int COUNT = 100000;
+    const int COUNT = 8192 * 2;
 #endif //__DEBUG__
     const int COUNT2 = 1024;
+    const size_t CAPACITY = COUNT * (sizeof(int) + sizeof(void*) * 2 + 64);
     
     AddTest("Iteration on the empty list", [this](auto& ls)
     {
@@ -37,7 +38,7 @@ void LinkedListTest::Prepare()
 
     AddTest("Growth and Iteration", [this](auto& ls)
     {
-        StackAllocator stack("LinkedListTest::StackAllocator", 1024 * 1024);
+        StackAllocator stack("LinkedListTest::StackAllocator", CAPACITY);
         AllocatorScope stackScope(stack.GetID());
         
         Time::TDuration heTime;
@@ -105,7 +106,7 @@ void LinkedListTest::Prepare()
     
     AddTest("Growth and Iteration", [this](auto& ls)
     {
-        StackAllocator stack("LinkedListTest::StackAllocator", 1024 * 1024);
+        StackAllocator stack("LinkedListTest::StackAllocator", CAPACITY);
         AllocatorScope stackScope(stack.GetID());
         
         Time::TDuration heTime;
