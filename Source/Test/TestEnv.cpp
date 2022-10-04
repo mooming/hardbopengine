@@ -22,26 +22,15 @@ void TestEnv::Start()
     invalidTests.clear();
     failedTests.clear();
     
-    for (auto testCase : tests)
+    for (auto& testCase : tests)
     {
         Assert(testCase != nullptr);
         ExecuteTest(*testCase);
     }
-    
-    for (auto testCase : tests)
-    {
-        delete testCase;
-    }
-    
+
     tests.clear();
 
     Report();
-}
-
-void HE::TestEnv::AddTestCollection(TestCollection* testCollection)
-{
-    Assert(testCollection != nullptr);
-    tests.push_back(testCollection);
 }
 
 bool TestEnv::ExecuteTest(TestCollection& testCollection)

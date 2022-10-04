@@ -28,6 +28,7 @@
 #include "String/StaticString.h"
 #include "String/StringUtil.h"
 #include "System/ComponentSystem.h"
+#include "System/TaskSystem.h"
 #include <iostream>
 
 
@@ -40,37 +41,39 @@ namespace Test
         using namespace std;
 
         cout << fixed;
-        cout.precision(4);
+        cout.precision(3);
 
         auto& testEnv = TestEnv::GetEnv();
 
-        testEnv.AddTestCollection(new SystemAllocatorTest());
-        testEnv.AddTestCollection(new BaseAllocatorTest());
-        testEnv.AddTestCollection(new InlinePoolAllocatorTest());
-        testEnv.AddTestCollection(new StackAllocatorTest());
-        testEnv.AddTestCollection(new PoolAllocatorTest());
-        testEnv.AddTestCollection(new MultiPoolAllocatorTest());
-        
-        testEnv.AddTestCollection(new ArrayTest());
-        testEnv.AddTestCollection(new LinkedListTest());
-        testEnv.AddTestCollection(new OptionalTest());
-        
-        testEnv.AddTestCollection(new StaticStringTest());
-        testEnv.AddTestCollection(new StringTest());
-        testEnv.AddTestCollection(new StringUtilTest());
-        
-        testEnv.AddTestCollection(new MathUtilTest());
-        testEnv.AddTestCollection(new Vector2Test());
-        testEnv.AddTestCollection(new Vector3Test());
-        testEnv.AddTestCollection(new Vector4Test());
-        testEnv.AddTestCollection(new Matrix3x3Test());
-        testEnv.AddTestCollection(new QuaternionTest());
-        testEnv.AddTestCollection(new UniformTransformTest());
-        testEnv.AddTestCollection(new RigidTransformTest());
-        testEnv.AddTestCollection(new AABBTest());
-        testEnv.AddTestCollection(new TransformTest());
-        
-        testEnv.AddTestCollection(new ComponentSystemTest());
+        testEnv.AddTestCollection<SystemAllocatorTest>();
+        testEnv.AddTestCollection<BaseAllocatorTest>();
+        testEnv.AddTestCollection<InlinePoolAllocatorTest>();
+        testEnv.AddTestCollection<StackAllocatorTest>();
+        testEnv.AddTestCollection<PoolAllocatorTest>();
+        testEnv.AddTestCollection<MultiPoolAllocatorTest>();
+
+        testEnv.AddTestCollection<ArrayTest>();
+        testEnv.AddTestCollection<LinkedListTest>();
+        testEnv.AddTestCollection<OptionalTest>();
+
+        testEnv.AddTestCollection<StaticStringTest>();
+        testEnv.AddTestCollection<StringTest>();
+        testEnv.AddTestCollection<StringUtilTest>();
+
+        testEnv.AddTestCollection<MathUtilTest>();
+        testEnv.AddTestCollection<Vector2Test>();
+        testEnv.AddTestCollection<Vector3Test>();
+        testEnv.AddTestCollection<Vector4Test>();
+
+        testEnv.AddTestCollection<Matrix3x3Test>();
+        testEnv.AddTestCollection<QuaternionTest>();
+        testEnv.AddTestCollection<UniformTransformTest>();
+        testEnv.AddTestCollection<RigidTransformTest>();
+        testEnv.AddTestCollection<AABBTest>();
+        testEnv.AddTestCollection<TransformTest>();
+
+        testEnv.AddTestCollection<ComponentSystemTest>();
+        testEnv.AddTestCollection<TaskSystemTest>();
         
         testEnv.Start();
     }
