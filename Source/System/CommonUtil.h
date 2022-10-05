@@ -13,10 +13,18 @@ namespace HE
     class False_t {};
 
     template <typename T>
-    struct IsReferenceType { using Result = False_t; };
+    struct IsReferenceType
+    {
+        using Result = False_t;
+        static constexpr size_t TypeSize = sizeof(T);
+    };
 
     template <typename T>
-    struct IsReferenceType<T&> { using Result = True_t; };
+    struct IsReferenceType<T&>
+    {
+        using Result = True_t;
+        static constexpr size_t TypeSize = sizeof(T*);
+    };
 
     template <typename Type>
     inline Type GetAs(void *src)

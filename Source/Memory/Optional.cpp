@@ -50,6 +50,14 @@ void HE::OptionalTest::Prepare()
         {
             ls << "Optional value = " << *a << ", but expected 10." << lferr;
         }
+
+        auto& aValue = a.Value();
+        if (&aValue != &x)
+        {
+            ls << "Optional<ref> value address is incorrect! ptr = "
+                << (void*)(&aValue) << ", but " << (void*)(&x)
+                << " expected." << lferr;
+        }
     });
 
     AddTest("Optional<Class&>", [this](auto& ls)
