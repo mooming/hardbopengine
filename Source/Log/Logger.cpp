@@ -23,13 +23,13 @@ Logger::SimpleLogger::SimpleLogger(StaticString category, ELogLevel level)
 {
 }
 
-void Logger::SimpleLogger::Out(TLogFunction logFunc)
+void Logger::SimpleLogger::Out(TLogFunction logFunc) const
 {
     Assert(instance != nullptr);
     instance->AddLog(category, level, logFunc);
 }
 
-void Logger::SimpleLogger::Out(ELogLevel inLevel, TLogFunction logFunc)
+void Logger::SimpleLogger::Out(ELogLevel inLevel, TLogFunction logFunc) const
 {
     Assert(instance != nullptr);
     instance->AddLog(category, inLevel, logFunc);
@@ -50,6 +50,7 @@ Logger::SimpleLogger Logger::Get(StaticString category, ELogLevel level)
 
 Logger::Logger(const char* path, const char* filename, int numRolling)
     : isRunning(false)
+    , hasInput(false)
     , needFlush(false)
     , startTime(std::chrono::steady_clock::now())
     , allocator("LoggerMemoryPool"
@@ -114,14 +115,24 @@ void Logger::AddLog(StaticString category, ELogLevel level, TLogFunction logFunc
     AllocatorScope scope(InvalidAllocatorID);
     
     if (unlikely(logFunc == nullptr))
+    {
+        AddLog(GetName(), ELogLevel::Warning, [](auto& ls)
+        {
+            ls << "Null log function!";
+        });
+        
         return;
-    
-    auto found = filters.find(category);
-    auto& filter = found == filters.end()
-        ? baseFilter : filters[category];
-    
-    if (filter != nullptr && !filter(level))
-        return;
+    }
+
+    {
+        std::lock_guard lock(filterLock);
+        auto found = filters.find(category);
+        auto& filter = found == filters.end()
+            ? baseFilter : filters[category];
+
+        if (filter != nullptr && !filter(level))
+            return;
+    }
 
     TLogStream ls;
     logFunc(ls);
@@ -156,6 +167,7 @@ void Logger::AddLog(StaticString category, ELogLevel level, TLogFunction logFunc
     {
         std::lock_guard lock(inputLock);
         inputBuffer.emplace_back(level, category, ls.c_str());
+        hasInput = true;
         needFlush = true;
     }
     
@@ -184,20 +196,22 @@ void Logger::Start()
 
 void Logger::Stop()
 {
-    if (!isRunning)
-        return;
-    
+    if (isRunning)
     {
         std::lock_guard lock(cvLock);
         isRunning = false;
         cv.notify_all();
     }
-    
-    logThread.join();
+
+    if (logThread.joinable())
+    {
+        logThread.join();
+    }
 }
 
 void Logger::SetFilter(StaticString category, TLogFilter filter)
 {
+    std::lock_guard lock(filterLock);
     filters[category] = filter;
 }
 
@@ -231,6 +245,7 @@ void Logger::Run()
         {
             std::lock_guard lockInput(inputLock);
             std::swap(inputBuffer, swapBuffer);
+            hasInput = false;
         }
         
         if (!swapBuffer.empty())
@@ -266,13 +281,17 @@ void Logger::Run()
     };
 
     {
-        std::unique_lock lock(cvLock);
-
+        auto waitPeriod = std::chrono::milliseconds(16);
         while (isRunning)
         {
             ProcessBuffer();
             needFlush = false;
-            cv.wait(lock);
+
+            if (!hasInput)
+            {
+                std::unique_lock lock(cvLock);
+                cv.wait_for(lock, waitPeriod);
+            }
         }
     }
 

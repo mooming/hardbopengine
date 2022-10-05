@@ -43,18 +43,44 @@ public:
         const ELogLevel level;
 
         SimpleLogger(StaticString category, ELogLevel level = ELogLevel::Info);
-        void Out(TLogFunction logFunc);
-        void Out(ELogLevel level, TLogFunction logFunc);
+        void Out(TLogFunction logFunc) const ;
+        void Out(ELogLevel level, TLogFunction logFunc) const;
         
-        inline void OutWarning(TLogFunction logFunc) { Out(ELogLevel::Warning, logFunc); }
-        inline void OutError(TLogFunction logFunc) { Out(ELogLevel::Error, logFunc); }
-        inline void OutFatalError(TLogFunction logFunc) { Out(ELogLevel::FatalError, logFunc); }
+        inline void OutWarning(TLogFunction logFunc) const { Out(ELogLevel::Warning, logFunc); }
+        inline void OutError(TLogFunction logFunc) const { Out(ELogLevel::Error, logFunc); }
+        inline void OutFatalError(TLogFunction logFunc) const { Out(ELogLevel::FatalError, logFunc); }
+
+        inline void Out(const char* text) const
+        {
+            Out([text](auto& ls) { ls << text; });
+        }
+
+        inline void Out(ELogLevel level, const char* text) const
+        {
+            Out(level, [text](auto& ls) { ls << text; });
+        }
+
+        inline void OutWarning(const char* text) const
+        {
+            OutWarning([text](auto& ls) { ls << text; });
+        }
+
+        inline void OutError(const char* text) const
+        {
+            OutError([text](auto& ls) { ls << text; });
+        }
+
+        inline void OutFatalError(const char* text) const
+        {
+            OutFatalError([text](auto& ls) { ls << text; });
+        }
     };
 
 private:
     static Logger* instance;
     
     bool isRunning;
+    std::atomic<bool> hasInput;
     std::atomic<bool> needFlush;
     TTimePoint startTime;
     
@@ -70,8 +96,11 @@ private:
 
     std::ofstream outFileStream;
     std::thread logThread;
+
+    std::mutex filterLock;
     std::mutex inputLock;
     std::mutex cvLock;
+
     std::condition_variable cv;
     
 public:
