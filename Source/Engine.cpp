@@ -84,27 +84,37 @@ void Engine::Initialize(int argc, const char* argv[])
 
     auto log = Logger::Get(GetName(), ELogLevel::Info);
     
-    log.Out([](auto& logStream)
+    log.Out([](auto& ls)
     {
-        logStream << "Command Line Arguments";
+        ls << "Command Line Arguments";
     });
 
     for (int i = 0; i < argc; ++i)
     {
-        log.Out([i, argv](auto& logStream)
+        log.Out([i, argv](auto& ls)
         {
-            logStream << i << " : " << argv[i];
+            ls << i << " : " << argv[i];
         });
     }
 
-    log.Out([](auto& logStream)
+    taskSystem.Initialize();
+
+    log.Out([](auto& ls)
     {
-        logStream << "Engine has been initialized.";
+        ls << "Engine has been initialized.";
     });
 }
 
 void Engine::Run()
 {
+    {
+        PreUpdate();
+        Update();
+        PostUpdate();
+    }
+
+    taskSystem.Shutdown();
+
     staticStringTable.PrintStringTable();
     auto log = Logger::Get(GetName(), ELogLevel::Info);
     log.Out([](auto& logStream)
@@ -177,6 +187,21 @@ void Engine::CloseLog()
     
     logFile.flush();
     logFile.close();
+}
+
+void Engine::PreUpdate()
+{
+
+}
+
+void Engine::Update()
+{
+
+}
+
+void Engine::PostUpdate()
+{
+    taskSystem.PostUpdate();
 }
 
 } // HE

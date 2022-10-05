@@ -6,6 +6,7 @@
 #include "Log/LogLevel.h"
 #include "Memory/MemoryManager.h"
 #include "String/StaticStringTable.h"
+#include "System/TaskSystem.h"
 #include <chrono>
 #include <fstream>
 #include <mutex>
@@ -33,6 +34,7 @@ namespace HE
         MemoryManager memoryManager;
         StaticStringTable staticStringTable;
         Logger logger;
+        TaskSystem taskSystem;
         
     public:
         static Engine& Get();
@@ -48,10 +50,16 @@ namespace HE
         StaticString GetName() const;
         inline auto& GetMemoryManager() { return memoryManager; }
         inline auto& GetLogger() { return logger; }
-        
+        inline auto& GetTaskSystem() { return taskSystem; }
+
         void Log(ELogLevel level, TLogFunc func);
         inline void LogError(TLogFunc func) { Log(ELogLevel::Error, func); }
         
         void CloseLog();
+
+    private:
+        void PreUpdate();
+        void Update();
+        void PostUpdate();
     };
 }

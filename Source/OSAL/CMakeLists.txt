@@ -21,11 +21,13 @@ add_library (OSAL STATIC
  Directory.cpp
  OSAbstractLayer.cpp
  OSMemory.cpp
+ OSThread.cpp
  Directory.h
  File.h
  Intrinsic.h
  OSAbstractLayer.h
  OSMemory.h
+ OSThread.h
 )
 
 if (APPLE)
