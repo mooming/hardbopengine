@@ -4,7 +4,7 @@
 
 #include "Memory/BaseAllocator.h"
 #include "Memory/Memory.h"
-#include "System/Types.h"
+#include "System/Debug.h"
 #include <algorithm>
 #include <initializer_list>
 
@@ -14,39 +14,48 @@ namespace HE
     template <typename Element, class TAllocator = BaseAllocator<Element>>
     class Array
     {
+    public:
+        using TIndex = int;
         using Iterator = Element*;
         using ConstIterator = const Element*;
 
     private:
-        Index length;
+        TIndex length;
         Element* data;
         TAllocator allocator;
 
     public:
-        inline Iterator begin() { return &data[0]; }
-        inline Iterator end() { return &data[length]; }
-        inline ConstIterator begin() const { return &data[0]; }
-        inline ConstIterator end() const { return &data[length]; }
+        Iterator begin() { return &data[0]; }
+        Iterator end() { return &data[length]; }
+        ConstIterator begin() const { return &data[0]; }
+        ConstIterator end() const { return &data[length]; }
 
     public:
-        inline Element& operator[] (Index index) { return data[index]; }
-        inline const Element& operator[] (Index index) const { return data[index]; }
+        Array(const Array&) = delete;
+        Array& operator= (const Array&) = delete;
 
     public:
-        inline Array() : length(0), data(nullptr)
+        Array()
+            : length(0)
+            , data(nullptr)
         {
         }
 
-        explicit inline Array(Index size)
+        explicit Array(TIndex size)
             : length(size)
         {
             data = allocator.allocate(length);
+            for (TIndex i = 0; i < length; ++i)
+            {
+                new (&data[i]) Element();
+            }
         }
 
-        inline Array(std::initializer_list<Element> list)
-            : Array(static_cast<Index>(list.size()))
+        Array(std::initializer_list<Element> list)
+            : Array(static_cast<TIndex>(list.size()))
         {
-            Index index = 0;
+            TIndex index = 0;
+
             for (auto element : list)
             {
                 data[index] = element;
@@ -54,12 +63,12 @@ namespace HE
             }
         }
 
-        inline Array(Array&& rhs) : Array()
+        Array(Array&& rhs) : Array()
         {
             Swap(rhs);
         }
 
-        inline virtual ~Array()
+        virtual ~Array()
         {
             if (data == nullptr)
                 return;
@@ -67,45 +76,63 @@ namespace HE
             allocator.deallocate(data, length);
         }
 
-        inline Array& operator= (const Array& rhs) = delete;
-
-        inline Array& operator= (Array&& rhs)
+        Array& operator= (Array&& rhs)
         {
             Swap(rhs);
             return *this;
         }
 
-        inline Element* ToRawArray()
+        Element& operator[] (TIndex index)
+        {
+            FatalAssert(IsValidIndex(index));
+            return data[index];
+        }
+
+        const Element& operator[] (TIndex index) const
+        {
+            FatalAssert(IsValidIndex(index));
+            return data[index];
+        }
+
+        template <typename ... Types>
+        Element& Emplace(TIndex index, Types&& ... args)
+        {
+            FatalAssert(IsValidIndex(index));
+
+            auto& item = data[index];
+            item.~Element();
+
+            new (&item) Element(std::forward<Types>(args) ...);
+
+            return item;
+        }
+
+        Element* ToRawArray()
         {
             return data;
         }
 
-        inline const Element* const ToRawArray() const
+        const Element* const ToRawArray() const
         {
             return data;
         }
 
-        inline Index Length() const
+        TIndex Size() const
         {
             return length;
         }
 
-        inline Index Size() const
+        bool IsValidIndex(TIndex index) const
         {
-            return length;
+            return index >= 0 && index < length;
         }
 
-        inline void Destroy()
+        void Clear()
         {
             Swap(Array());
         }
 
-        inline Array Clone()
-        {
-            return Array(*this);
-        }
-
-        inline void Swap(Array&& rhs)
+        void Swap(Array&& rhs)
         {
             auto tmpLength = length;
             auto tmpData = data;
@@ -117,30 +144,14 @@ namespace HE
             rhs.data = tmpData;
         }
 
-        inline void Resize(Index size)
+        TIndex GetIndex(const Element& element) const
         {
-            Array tmp(size);
-            const Index shorterLen = std::min(size, length);
+            if (unlikely(data == nullptr))
+                return -1;
 
-            constexpr auto sizeOfElement = sizeof(Element);
-            memcpy(tmp.data, data, sizeOfElement * shorterLen);
+            auto delta = static_cast<TIndex>(&element - &data[0]);
 
-            Swap(std::move(tmp));
-        }
-
-        inline Index GetIndex(const Element& element) const
-        {
-            AssertMessage(data != nullptr, "The array is null.\n");
-            const Index delta = static_cast<Index>(&element - &data[0]);
-            AssertMessage(delta >= 0, "The given element is not an element of it. %p / %p\n", &element, &data[0]);
-            return delta;
-        }
-
-    private:
-
-        inline Array(const Array& rhs) : Array(rhs.length)
-        {
-            memcpy(data, rhs.data, length);
+            return IsValidIndex(delta) ? delta : -1;
         }
     };
 

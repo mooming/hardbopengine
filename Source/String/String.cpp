@@ -343,7 +343,7 @@ Index String::Find(const Char ch) const
 Index String::Find(const Array<Char>& chs) const
 {
     const auto length = Length();
-    auto chsLen = chs.Length();
+    auto chsLen = chs.Size();
 
     for (Index i = 0; i < length; ++i)
     {

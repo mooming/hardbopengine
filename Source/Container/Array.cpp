@@ -14,7 +14,7 @@ void ArrayTest::Prepare()
     AddTest("Default Constructor", [this](auto& ls)
     {
         const Array<int> array;
-        if (array.Length() != 0)
+        if (array.Size() != 0)
         {
             ls << "Null Array Size is not zero. Size = "
                 << array.Size() << lferr;
@@ -41,26 +41,6 @@ void ArrayTest::Prepare()
         if (i != 10)
         {
             ls << "Array Size Mismatch : " << i << " != 10." << lferr;
-        }
-
-        array.Resize(5);
-
-        i = 0;
-        for (auto value : array)
-        {
-            if (value != i)
-            {
-                ls << "Array Value Mismatch : "
-                    << value << " != " << i << lferr;
-                break;
-            }
-
-            ++i;
-        }
-
-        if (i != 5)
-        {
-            ls << "Array Size Mismatch : " << i << " != 5." << lferr;
         }
     });
 
