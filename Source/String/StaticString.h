@@ -3,9 +3,6 @@
 #pragma once
 
 #include "StaticStringID.h"
-#include <cstddef>
-#include <cstdint>
-#include <functional>
 #include <ostream>
 
 

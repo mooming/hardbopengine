@@ -146,6 +146,7 @@ void StaticStringTable::RegisterPredefinedStrings()
     Register("NULL");
     Register("True");
     Register("False");
+    Register("Unknown");
 
     Register("HardbopEngine");
 }
