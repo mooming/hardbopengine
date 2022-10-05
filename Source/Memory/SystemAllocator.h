@@ -168,7 +168,6 @@ namespace HE
         : public TestCollection
     {
     public:
-
         SystemAllocatorTest()
             : TestCollection("SystemAllocatorTest")
         {
