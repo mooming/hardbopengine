@@ -12,7 +12,7 @@ int OS::GetCPUIndex()
     return sched_getcpu();
 }
 
-void OS::SetThreadAffinity(std::thread& thread, int coreIndex)
+void OS::SetThreadAffinity(std::thread& thread, uint64_t mask)
 {
     static_assert(false, "Not implemented yet.");
 }
@@ -89,7 +89,7 @@ int OS::GetThreadPriority(std::thread& thread)
     return sp.sched_priority;
 }
 
-void OS::SetThreadAffinity(std::thread& thread, int index)
+void OS::SetThreadAffinity(std::thread& thread, uint64_t mask)
 {
     // Not supproted on Apple Silicon
 }
@@ -151,7 +151,7 @@ int OS::GetCPUIndex()
     return static_cast<int>(index);
 }
 
-void OS::SetThreadAffinity(std::thread& thread, int coreIndex)
+void OS::SetThreadAffinity(std::thread& thread, uint64_t mask)
 {
     static_assert(false, "Not implemented yet.");
 }

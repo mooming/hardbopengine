@@ -9,7 +9,7 @@ namespace OS
 {
 int GetCPUIndex();
 int GetThreadPriority(std::thread& thread);
-void SetThreadAffinity(std::thread& thread, int coreIndex);
+void SetThreadAffinity(std::thread& thread, uint64_t mask);
 void SetThreadPriority(std::thread& thread, int priority);
 } // OS
 

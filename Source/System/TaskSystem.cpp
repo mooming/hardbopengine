@@ -4,6 +4,7 @@
 
 #include "HSTL/HString.h"
 #include "Log/Logger.h"
+#include "OSAL/OSThread.h"
 #include "String/StringBuilder.h"
 #include "String/StringUtil.h"
 #include <algorithm>
@@ -47,6 +48,7 @@ TaskSystem::TaskSystem()
     , numWorkerThreads(numHardwareThreads - 1)
     , keySeed(1)
     , workerIndexStart(0)
+    , numWorkers(0)
     , isRunning(false)
     , threadNames(numHardwareThreads)
     , threads(numHardwareThreads)
@@ -146,6 +148,28 @@ TaskSystem::ThreadID TaskSystem::SetThread(TIndex index
     Assert(thread.get_id() != std::thread::id());
 
     return thread.get_id();
+}
+
+TaskSystem::TIndex TaskSystem::GetCurrentThreadIndex() const
+{
+    return GetThreadIndex(std::this_thread::get_id());
+}
+
+TaskSystem::TIndex TaskSystem::GetThreadIndex(ThreadID id) const
+{
+    TIndex index = -1;
+    auto size = threads.Size();
+    for (TIndex i = 0; i < size; ++i)
+    {
+        auto& thread = threads[i];
+        if (thread.get_id() != id)
+            continue;
+
+        index = i;
+        break;
+    }
+
+    return index;
 }
 
 TaskSystem::TaskHandle TaskSystem::AllocateTask(StaticString name
@@ -340,15 +364,23 @@ void TaskSystem::BuildStreams()
     log.Out("# Creating TaskStreams ======================");
 
     streams.Swap(Array<TaskStream>(numHardwareThreads));
-    streams.Emplace(GetMainThreadIndex(), 0, "MainThread");
-    streams.Emplace(GetIOThreadIndex(), 0, "IOThread");
+    streams.Emplace(GetMainTaskStreamIndex(), 0, "MainTaskStream");
+    streams.Emplace(GetIOTaskStreamIndex(), 0, "IOTaskStream");
 
-    workerIndexStart = GetIOThreadIndex() + 1;
+    auto& mainThread = GetMainTaskStream();
+    auto& ioThread = GetIOTaskStream();
+
+    mainThread.InitiateFromCurrentThread();
+    ioThread.Start();
+
+    workerIndexStart = GetIOTaskStreamIndex() + 1;
 
     InlineStringBuilder<64> streamName;
     for (TIndex i = workerIndexStart; i < numHardwareThreads; ++i)
     {
-        streamName << "WorkStream" << i;
+        ++numWorkers;
+
+        streamName << "WorkStream[" << i << ']';
         streams.Emplace(i, i, streamName.c_str());
         streamName.Clear();
     }
@@ -356,10 +388,21 @@ void TaskSystem::BuildStreams()
     log.Out("# Starting TaskStreams ======================");
 
     isRunning = true;
-    for (TIndex i = 1; i < numHardwareThreads; ++i)
+    for (TIndex i = workerIndexStart; i < numHardwareThreads; ++i)
     {
         streams[i].Start();
     }
+}
+
+void TaskSystem::SetCPUAffinities()
+{
+    auto& mainTaskStream = GetMainTaskStream();
+    auto& mainThread = threads[mainTaskStream.GetThreadIndex()];
+    OS::SetThreadAffinity(mainThread, 1);
+
+    auto& ioTaskStream = GetIOTaskStream();
+    auto& ioThread = threads[ioTaskStream.GetThreadIndex()];
+    OS::SetThreadAffinity(ioThread, 8);
 }
 
 TaskSystem::TKey TaskSystem::IssueTaskKey()

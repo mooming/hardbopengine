@@ -48,6 +48,7 @@ private:
     
     uint64_t keySeed;
     TIndex workerIndexStart;
+    TIndex numWorkers;
 
     std::atomic<bool> isRunning;
     Array<StaticString> threadNames;
@@ -71,6 +72,9 @@ public:
     StaticString GetThreadName(int index) const;
     ThreadID SetThread(TIndex index, StaticString name, std::function<void()> func);
 
+    TIndex GetCurrentThreadIndex() const;
+    TIndex GetThreadIndex(ThreadID id) const;
+
     TaskHandle AllocateTask(TIndex index, Runnable func);
     TaskHandle AllocateTask(StaticString name, TaskIndex size, Runnable func);
     TaskHandle AllocateTask(StaticString name, TaskIndex size, Runnable func, TIndex numStreams);
@@ -81,11 +85,17 @@ public:
     inline StaticString GetName() const { return name; }
     inline bool IsRunning() const { return isRunning.load(); }
 
-    inline TIndex GetMainThreadIndex() const { return 0; }
-    inline TIndex GetIOThreadIndex() const { return 1; }
+    inline TIndex GetMainTaskStreamIndex() const { return 0; }
+    inline TIndex GetIOTaskStreamIndex() const { return 1; }
+
+    inline auto& GetMainTaskStream() { return streams[GetMainTaskStreamIndex()]; }
+    inline auto& GetMainTaskStream() const { return streams[GetMainTaskStreamIndex()]; }
+    inline auto& GetIOTaskStream() { return streams[GetIOTaskStreamIndex()]; }
+    inline auto& GetIOTaskStream() const { return streams[GetIOTaskStreamIndex()]; }
 
 private:
     void BuildStreams();
+    void SetCPUAffinities();
     TKey IssueTaskKey();
 };
 
