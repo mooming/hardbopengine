@@ -18,6 +18,7 @@ struct LogLine final
     using TTimePoint = std::chrono::time_point<std::chrono::steady_clock>;
     
     TTimePoint timeStamp;
+    StaticString threadName;
     StaticString category;
     ELogLevel level;
     char text[Config::LogLineSize];
@@ -27,8 +28,9 @@ struct LogLine final
     {
     }
     
-    inline LogLine(ELogLevel level, StaticString category, const char* inText)
+    inline LogLine(ELogLevel level, StaticString threadName, StaticString category, const char* inText)
         : timeStamp(std::chrono::steady_clock::now())
+        , threadName(threadName)
         , category(category)
         , level(level)
     {

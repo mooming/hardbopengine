@@ -760,14 +760,14 @@ void StringTest::Prepare()
             }
         }
 
-        ls << "Time: he = " << Time::ToMilliSec<float>(heTime)
-            << ", stl = " << Time::ToMilliSec<float>(stlTime) << lf;
+        ls << "Time: he = " << Time::ToFloat(heTime)
+            << ", stl = " << Time::ToFloat(stlTime) << lf;
 
         if (heTime > stlTime)
         {
             ls << "HE String is slower than STL string." << std::endl
-                << "Time: he = " << Time::ToMilliSec<float>(heTime)
-                << ", stl = " << Time::ToMilliSec<float>(stlTime) << lfwarn;
+                << "Time: he = " << Time::ToFloat(heTime)
+                << ", stl = " << Time::ToFloat(stlTime) << lfwarn;
         }
     });
 }

@@ -62,8 +62,8 @@ namespace
                 }
             }
 
-            auto inlineTimeSec = Time::ToMilliSec(inlineTime);
-            auto stdTimeSec = Time::ToMilliSec(stdTime);
+            auto inlineTimeSec = Time::ToFloat(inlineTime);
+            auto stdTimeSec = Time::ToFloat(stdTime);
             auto rate = inlineTimeSec / stdTimeSec;
             
             ls << "Vector Growth Performance : InlineAlloc: " << inlineTimeSec
@@ -122,8 +122,8 @@ void HE::InlinePoolAllocatorTest::Prepare()
             }
         }
 
-        auto inlineTimeSec = Time::ToMilliSec(inlineTime);
-        auto stdTimeSec = Time::ToMilliSec(stdTime);
+        auto inlineTimeSec = Time::ToFloat(inlineTime);
+        auto stdTimeSec = Time::ToFloat(stdTime);
         auto rate = inlineTimeSec / stdTimeSec;
 
         ls << "Performance: "

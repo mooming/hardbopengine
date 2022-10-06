@@ -2,6 +2,18 @@
 
 #include "OSThread.h"
 
+#include <thread>
+
+
+void OS::Yield()
+{
+    std::this_thread::yield();
+}
+
+void OS::Sleep(uint32_t milliseconds)
+{
+    std::this_thread::sleep_for(std::chrono::microseconds(milliseconds));
+}
 
 #ifdef __linux__
 #include <sched.h>
@@ -94,7 +106,7 @@ void OS::SetThreadAffinity(std::thread& thread, uint64_t mask)
     // Not supproted on Apple Silicon
 }
 
-void SetThreadPriority(std::thread& thread, int priority)
+void OS::SetThreadPriority(std::thread& thread, int priority)
 {
     auto nativeHandle = thread.native_handle();
 
@@ -102,7 +114,7 @@ void SetThreadPriority(std::thread& thread, int priority)
     memset(&sp, 0, sizeof(decltype(sp)));
     sp.sched_priority = priority;
 
-    constexpr int policy = SCHED_RR;
+    constexpr int policy = SCHED_FIFO;
     auto result = pthread_setschedparam(nativeHandle, policy, &sp);
     if (unlikely(result != 0))
     {

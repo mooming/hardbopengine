@@ -3,8 +3,11 @@
 #pragma once
 
 #include "Task.h"
+#include "TaskHandle.h"
+#include "Time.h"
 #include "HSTL/HVector.h"
 #include "String/StaticString.h"
+#include <atomic>
 #include <functional>
 #include <mutex>
 #include <thread>
@@ -13,21 +16,25 @@
 namespace HE
 {
 
+class TaskSystem;
+
 class TaskStream final
 {
     template <typename T>
     using TVector = HSTL::HVector<T>;
     using TIndex = Task::TIndex;
     using ThreadID = std::thread::id;
+    using TKey = TaskHandle::TKey;
 
     struct Request final
     {
+        TKey key;
         Task* task;
         TIndex start;
         TIndex end;
 
         Request();
-        Request(Task& task, TIndex start, TIndex end);
+        Request(TKey key, Task& task, TIndex start, TIndex end);
         ~Request() = default;
     };
 
@@ -35,24 +42,44 @@ class TaskStream final
 
 private:
     StaticString name;
-    int threadIndex;
     ThreadID threadID;
+    std::thread thread;
 
+    Time::TTime time;
+    float deltaTime;
+
+    bool isResidentListDirty;
     std::mutex queueLock;
     TRequests requests;
-    TRequests buffer;
+    TRequests residents;
+    TRequests requestsBuffer;
+    TRequests residentsBuffer;
 
 public:
     TaskStream();
-    TaskStream(int threadIndex, StaticString name);
+    TaskStream(StaticString name);
     ~TaskStream() = default;
 
-    void InitiateFromCurrentThread();
-    void Start();
-    void Request(Task& task, TIndex start, TIndex end);
     void Flush();
 
-    inline auto GetThreadIndex() const { return threadIndex; }
+    inline auto GetName() const { return name; }
+    inline auto GetThreadID() const { return threadID; }
+    inline auto& GetThread() { return thread; }
+    inline auto& GetThread() const { return thread; }
+
+private:
+    void Start(TaskSystem& taskSys);
+
+    void Request(TKey key, Task& task, TIndex start, TIndex end);
+    void AddResident(TKey key, Task& task);
+    void RemoveResidentTask(TKey key);
+
+    void FlipBuffers();
+    void RunLoop(const std::atomic<bool>& isRunning);
+    void UpdateRequests();
+    void UpdateResidents();
+
+    friend class TaskSystem;
 };
 
 } // HE

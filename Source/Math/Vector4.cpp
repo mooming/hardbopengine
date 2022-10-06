@@ -60,7 +60,7 @@ void HE::Vector4Test::Prepare()
             }
         }
 
-        ls << "Float4 Dot Time = " << Time::ToMilliSec<float>(heTime)
+        ls << "Float4 Dot Time = " << Time::ToFloat(heTime)
             << ", Result = " << dotResult << lf;
     });
 }

@@ -12,12 +12,37 @@ StaticString::StaticString()
 {
     static StaticString null("None");
     id = null.id;
+
+#ifdef __DEBUG__
+    text[0] = 'N';
+    text[1] = 'o';
+    text[2] = 'n';
+    text[3] = 'e';
+    text[4] = '\0';
+#endif // __DEBUG__
 }
 
 StaticString::StaticString(const char* string)
 {
     auto& ssTable = StaticStringTable::GetInstance();
     id = ssTable.Register(string);
+
+#ifdef __DEBUG__
+    {
+        int i = 0;
+
+        for (; i < 15; ++i)
+        {
+            char ch = string[i];
+            if (ch == '\0')
+                break;
+
+            text[i] = ch;
+        }
+        
+        text[i] = '\0';
+    }
+#endif // __DEBUG__
 }
 
 const char* StaticString::c_str() const

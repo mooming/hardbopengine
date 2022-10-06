@@ -60,8 +60,9 @@ static constexpr int StaticStringNumHashBuckets = 256;
 // Log
 static constexpr int LogLineSize = 1000;
 static constexpr int LogBufferSize = 1024;
-static constexpr int LogMemoryBlockSize = 2048;
-static constexpr int LogNumMemoryBlocks = 2048;
+static constexpr int LogMemoryBlockSize = 1024 + 256;
+static constexpr int LogNumMemoryBlocks = 1024 * 16;
+static constexpr int LogForceFlushThreshold = 1024 * 8;
 
 // TaskSystem
 static constexpr int MaxConcurrentTasks = 32;

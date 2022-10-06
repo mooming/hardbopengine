@@ -3,6 +3,7 @@
 #pragma once
 
 #include "StaticStringID.h"
+#include "Config/EngineConfig.h"
 #include <ostream>
 
 
@@ -13,12 +14,19 @@ class StaticString final
 {
 private:
     StaticStringID id;
+
+#ifdef __DEBUG__
+    char text[16];
+#endif // __DEBUG__
     
 public:
     StaticString();
     inline StaticString(StaticStringID id)
         : id (id)
     {
+#ifdef __DEBUG__
+        text[0] = '\0';
+#endif // __DEBUG__
     }
     
     StaticString(const char* string);

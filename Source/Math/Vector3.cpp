@@ -101,7 +101,7 @@ void HE::Vector3Test::Prepare()
                 }
             }
 
-            ls << "Float3 Dot Time = " << Time::ToMilliSec<float>(heTime)
+            ls << "Float3 Dot Time = " << Time::ToFloat(heTime)
                 << ", Result = " << dotResult << lf;
         }
     });

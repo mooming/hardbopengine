@@ -10,9 +10,9 @@
 #include "Memory/PoolAllocator.h"
 #include "String/StaticString.h"
 #include "String/StringBuilder.h"
+#include "System/TaskHandle.h"
 #include <atomic>
 #include <chrono>
-#include <condition_variable>
 #include <fstream>
 #include <functional>
 #include <mutex>
@@ -21,6 +21,8 @@
 
 namespace HE
 {
+
+class TaskSystem;
 
 class Logger final
 {
@@ -78,8 +80,8 @@ public:
 
 private:
     static Logger* instance;
-    
-    bool isRunning;
+
+    TaskHandle taskHandle;
     std::atomic<bool> hasInput;
     std::atomic<bool> needFlush;
     TTimePoint startTime;
@@ -95,13 +97,10 @@ private:
     TLogFilter baseFilter;
 
     std::ofstream outFileStream;
-    std::thread logThread;
+    std::thread::id threadID;
 
     std::mutex filterLock;
     std::mutex inputLock;
-    std::mutex cvLock;
-
-    std::condition_variable cv;
     
 public:
     static Logger& Get();
@@ -110,16 +109,16 @@ public:
     ~Logger();
     
     StaticString GetName() const;
-    void AddLog(StaticString category, ELogLevel level, TLogFunction logFunc);
-    void Start();
-    void Stop();
-    
+    void StartTask(TaskSystem& taskSys);
+    void StopTask(TaskSystem& taskSys);
+
     void SetFilter(StaticString category, TLogFilter filter);
+    void AddLog(StaticString category, ELogLevel level, TLogFunction logFunc);
     void Flush();
     
 private:
-    void Run();
-    void Flush(const TTextBuffer& buffer);
+    void ProcessBuffer();
+    void FlushBuffer(const TTextBuffer& buffer);
     
     void WriteLog(const TTextBuffer& buffer);
     void PrintStdIO(const TTextBuffer& buffer) const;

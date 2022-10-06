@@ -3,6 +3,7 @@
 #pragma once
 
 #include "Task.h"
+#include "TaskHandle.h"
 #include "TaskStream.h"
 #include "Container/Array.h"
 #include "Memory/Optional.h"
@@ -19,45 +20,36 @@ class TaskSystem final
 public:
     using Thread = std::thread;
     using ThreadID = std::thread::id;
-    using TIndex = Array<int>::TIndex;
+    using TIndex = TaskHandle::TIndex;
     using TaskIndex = Task::TIndex;
-    using TKey = uint32_t;
-    static constexpr TKey InvalidKey = 0;
-
-    struct TaskHandle final
-    {
-        TKey key = 0;
-        TIndex index = 0;
-        Optional<Task&> task;
-
-        bool IsValid() const;
-        void Wait(uint32_t intervalMilliSecs);
-        void BusyWait();
-    };
-
+    using TKey = TaskHandle::TKey;
+    static constexpr TKey InvalidKey = TaskHandle::InvalidKey;
+    
 private:
     struct TaskSlot final
     {
         TKey key = 0;
-        Optional<Task> task;
+        Task task;
     };
 
+    std::atomic<bool> isRunning;
+    
     const StaticString name;
     const TIndex numHardwareThreads;
-    TIndex numWorkerThreads;
-    
-    uint64_t keySeed;
     TIndex workerIndexStart;
     TIndex numWorkers;
 
-    std::atomic<bool> isRunning;
-    Array<StaticString> threadNames;
-    Array<std::thread> threads;
+    uint64_t keySeed;
+    const ThreadID mainTaskThreadID;
+    ThreadID ioTaskThreadID;
 
+    std::mutex requestLock;
     Array<TaskSlot> slots;
     Array<TaskStream> streams;
 
 public:
+    static TIndex GetNumHardwareThreads();
+
     TaskSystem();
     ~TaskSystem();
 
@@ -68,22 +60,12 @@ public:
     void Update();
     void PostUpdate();
 
-    StaticString GetCurrentThreadName() const;
-    StaticString GetThreadName(int index) const;
-    ThreadID SetThread(TIndex index, StaticString name, std::function<void()> func);
-
-    TIndex GetCurrentThreadIndex() const;
-    TIndex GetThreadIndex(ThreadID id) const;
-
-    TaskHandle AllocateTask(TIndex index, Runnable func);
-    TaskHandle AllocateTask(StaticString name, TaskIndex size, Runnable func);
-    TaskHandle AllocateTask(StaticString name, TaskIndex size, Runnable func, TIndex numStreams);
-    void DeallocateTask(TaskHandle&& task);
-
-    void FlushDone();
-
     inline StaticString GetName() const { return name; }
-    inline bool IsRunning() const { return isRunning.load(); }
+    inline auto& IsRunning() const { return isRunning; }
+
+public:
+    bool IsMainThread() const;
+    bool IsIOTaskThread() const;
 
     inline TIndex GetMainTaskStreamIndex() const { return 0; }
     inline TIndex GetIOTaskStreamIndex() const { return 1; }
@@ -93,10 +75,32 @@ public:
     inline auto& GetIOTaskStream() { return streams[GetIOTaskStreamIndex()]; }
     inline auto& GetIOTaskStream() const { return streams[GetIOTaskStreamIndex()]; }
 
+    inline auto GetWorkerIndexStart() const { return workerIndexStart; }
+    inline auto GetNumWorkers() const { return numWorkers; }
+
+public:
+    StaticString GetCurrentStreamName() const;
+    StaticString GetStreamName(int index) const;
+    TIndex GetCurrentStreamIndex() const;
+    TIndex GetStreamIndex(ThreadID id) const;
+
+public:
+    Task* GetTask(TKey key, TIndex taskIndex);
+    const Task* GetTask(TKey key, TIndex taskIndex) const;
+
+    TaskHandle RegisterTask(TIndex streamIndex, StaticString taskName, Runnable func);
+    void DeregisterTask(TIndex streamIndex, TaskHandle&& handle);
+
+    TaskHandle DispatchTask(StaticString taskName, Runnable func, TIndex streamIndex);
+    TaskHandle DispatchTask(StaticString taskName, TaskIndex size, Runnable func);
+    TaskHandle DispatchTask(StaticString taskName, TaskIndex size, Runnable func, TIndex numStreams);
+    void ReleaseTask(TaskHandle&& task);
+
 private:
     void BuildStreams();
-    void SetCPUAffinities();
     TKey IssueTaskKey();
+
+    void Flush();
 };
 
 } // HE

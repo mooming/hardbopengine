@@ -4,6 +4,7 @@
 
 #include "HSTL/HString.h"
 #include "System/Debug.h"
+#include "System/Time.h"
 #include <csignal>
 #include <iostream>
 
@@ -16,7 +17,7 @@ void SignalHandler(int sigNum)
     using namespace HE;
     
     auto& engine = Engine::Get();
-    engine.GetLogger().Stop();
+    engine.GetLogger().StopTask(engine.GetTaskSystem());
     
     engine.LogError([sigNum](auto& ls)
     {
@@ -80,14 +81,12 @@ Engine::~Engine()
 
 void Engine::Initialize(int argc, const char* argv[])
 {
-    logger.Start();
+    taskSystem.Initialize();
+    logger.StartTask(taskSystem);
 
     auto log = Logger::Get(GetName(), ELogLevel::Info);
     
-    log.Out([](auto& ls)
-    {
-        ls << "Command Line Arguments";
-    });
+    log.Out("Command Line Arguments");
 
     for (int i = 0; i < argc; ++i)
     {
@@ -97,42 +96,38 @@ void Engine::Initialize(int argc, const char* argv[])
         });
     }
 
-    taskSystem.Initialize();
-
-    log.Out([](auto& ls)
-    {
-        ls << "Engine has been initialized.";
-    });
+    log.Out("Engine has been initialized.");
 }
 
 void Engine::Run()
 {
+    isRunning = true;
+    auto timeCursor = std::chrono::steady_clock::now();
+
+    while(likely(isRunning))
     {
-        PreUpdate();
-        Update();
-        PostUpdate();
+        auto currentTime = std::chrono::steady_clock::now();
+        auto deltaTime = Time::ToFloat(currentTime - timeCursor);
+
+        PreUpdate(deltaTime);
+        Update(deltaTime);
+        PostUpdate(deltaTime);
+
+        Stop();
     }
 
-    taskSystem.Shutdown();
-
     staticStringTable.PrintStringTable();
+
     auto log = Logger::Get(GetName(), ELogLevel::Info);
-    log.Out([](auto& logStream)
-    {
-        logStream << "Shutting down...";
-    });
+    log.Out("Shutting down...");
     
-    logger.Stop();
+    logger.StopTask(taskSystem);
+    taskSystem.Shutdown();
 }
 
-void Engine::FlushLog()
+void Engine::Stop()
 {
-    logger.Flush();
-
-    if (!logFile.is_open())
-        return;
-
-    logFile.flush();
+    isRunning = false;
 }
 
 StaticString Engine::GetName() const
@@ -189,18 +184,48 @@ void Engine::CloseLog()
     logFile.close();
 }
 
-void Engine::PreUpdate()
+void Engine::FlushLog()
 {
+    logger.Flush();
 
+    if (!logFile.is_open())
+        return;
+
+    logFile.flush();
 }
 
-void Engine::Update()
+void Engine::PreUpdate(float deltaTime)
 {
+    Log(ELogLevel::Info, [deltaTime](auto& ls)
+    {
+        ls << "PreUpdate: deltaTime = " << deltaTime;
+    });
 
+    auto& mainTaskStream = taskSystem.GetMainTaskStream();
+    mainTaskStream.Flush();
 }
 
-void Engine::PostUpdate()
+void Engine::Update(float deltaTime)
 {
+    Log(ELogLevel::Info, [deltaTime](auto& ls)
+    {
+        ls << "Update: deltaTime = " << deltaTime;
+    });
+
+    auto& mainTaskStream = taskSystem.GetMainTaskStream();
+    mainTaskStream.Flush();
+}
+
+void Engine::PostUpdate(float deltaTime)
+{
+    Log(ELogLevel::Info, [deltaTime](auto& ls)
+    {
+        ls << "PostUpdate: deltaTime = " << deltaTime;
+    });
+
+    auto& mainTaskStream = taskSystem.GetMainTaskStream();
+    mainTaskStream.Flush();
+
     taskSystem.PostUpdate();
 }
 

@@ -175,7 +175,7 @@ void ComponentSystemTest::Prepare()
             }
         }
 
-        ls << "Total Loop Time = " << Time::ToMilliSec<float>(loopTime) << lf;
+        ls << "Total Loop Time = " << Time::ToFloat(loopTime) << lf;
     });
 }
 

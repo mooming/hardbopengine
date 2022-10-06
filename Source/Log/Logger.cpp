@@ -2,6 +2,7 @@
 
 #include "Logger.h"
 
+#include "Engine.h"
 #include "LogUtil.h"
 #include "Config/EngineConfig.h"
 #include "Memory/AllocatorScope.h"
@@ -9,11 +10,24 @@
 #include "OSAL/Intrinsic.h"
 #include "String/StringUtil.h"
 #include "System/Debug.h"
+#include "System/TaskSystem.h"
 #include <iostream>
+#include <memory>
 
 
 namespace HE
 {
+
+namespace
+{
+
+StaticString GetLoggerTaskName()
+{
+    static const StaticString name("LoggerTask");
+    return name;
+}
+
+} // anonymous namespace
 
 Logger* Logger::instance = nullptr;
 
@@ -49,8 +63,7 @@ Logger::SimpleLogger Logger::Get(StaticString category, ELogLevel level)
 }
 
 Logger::Logger(const char* path, const char* filename, int numRolling)
-    : isRunning(false)
-    , hasInput(false)
+    : hasInput(false)
     , needFlush(false)
     , startTime(std::chrono::steady_clock::now())
     , allocator("LoggerMemoryPool"
@@ -97,7 +110,10 @@ Logger::Logger(const char* path, const char* filename, int numRolling)
 
 Logger::~Logger()
 {
-    Stop();
+    ProcessBuffer();
+
+    outFileStream.flush();
+    outFileStream.close();
 }
 
 StaticString Logger::GetName() const
@@ -105,6 +121,62 @@ StaticString Logger::GetName() const
     static auto className = StringUtil::PrettyFunctionToCompactClassName(__PRETTY_FUNCTION__);
     return className;
 }
+
+void Logger::StartTask(TaskSystem& taskSys)
+{
+    startTime = std::chrono::steady_clock::now();
+
+    AddLog(GetName(), ELogLevel::Info, [](auto& logStream)
+    {
+        logStream << "Logger started.";
+    });
+
+    auto ioTaskIndex = taskSys.GetIOTaskStreamIndex();
+    auto func = [this](size_t, size_t)
+    {
+        ProcessBuffer();
+    };
+
+    auto taskName = GetLoggerTaskName();
+    taskHandle = taskSys.RegisterTask(ioTaskIndex, taskName, func);
+
+    auto task = taskHandle.GetTask();
+    if (unlikely(task == nullptr))
+    {
+        auto logFunc = [taskName, ioTaskIndex](auto& ls)
+        {
+            ls << taskName.c_str()
+                << " : Failed to register as a task at task index "
+                << ioTaskIndex << '.';
+        };
+
+        AddLog(GetName(), ELogLevel::FatalError, logFunc);
+    }
+
+    auto& ioTaskStream = taskSys.GetIOTaskStream();
+    threadID = ioTaskStream.GetThreadID();
+}
+
+void Logger::StopTask(TaskSystem& taskSys)
+{
+    if (!taskHandle.IsValid())
+        return;
+
+    auto streamIndex = taskSys.GetIOTaskStreamIndex();
+    taskSys.DeregisterTask(streamIndex, std::move(taskHandle));
+    threadID = std::thread::id();
+
+    AddLog(GetName(), ELogLevel::Info, [](auto& ls)
+    {
+        ls << "Logger shall be terminated." << hendl;
+    });
+
+    ProcessBuffer();
+
+    outFileStream.flush();
+    outFileStream.close();
+}
+
 
 void Logger::AddLog(StaticString category, ELogLevel level, TLogFunction logFunc)
 {
@@ -134,12 +206,18 @@ void Logger::AddLog(StaticString category, ELogLevel level, TLogFunction logFunc
             return;
     }
 
+    auto& engine = Engine::Get();
+    auto& taskSystem = engine.GetTaskSystem();
+    auto threadName = taskSystem.GetCurrentStreamName();
+
     TLogStream ls;
     logFunc(ls);
     
-    if (unlikely(level >= ELogLevel::Error && std::this_thread::get_id() == logThread.get_id()) )
+    if (unlikely(level >= ELogLevel::Error && std::this_thread::get_id() == threadID))
     {
-        TTextBuffer tmpTextBuffer;
+        AllocatorScope scope(MemoryManager::SystemAllocatorID);
+
+        static TTextBuffer tmpTextBuffer;
         tmpTextBuffer.reserve(1);
 
         using namespace std;
@@ -147,13 +225,12 @@ void Logger::AddLog(StaticString category, ELogLevel level, TLogFunction logFunc
         auto levelStr = LogUtil::GetLogLevelString(level);
         
         InlineStringBuilder<Config::LogLineSize + 64> text;
-        
-        text << '[' << timeStampStr << "][" << category << "][" << levelStr
-            << "] " << ls.c_str();
+        text << '[' << timeStampStr << "][" << threadName << "]["
+            << category << "][" << levelStr << "] " << ls.c_str();
         
         tmpTextBuffer.emplace_back(text.c_str());
         
-        Flush(tmpTextBuffer);
+        FlushBuffer(tmpTextBuffer);
         tmpTextBuffer.clear();
         
         if (unlikely(level >= ELogLevel::FatalError))
@@ -163,10 +240,13 @@ void Logger::AddLog(StaticString category, ELogLevel level, TLogFunction logFunc
         
         return;
     }
-    
+
+    size_t bufferSize = 0;
+
     {
         std::lock_guard lock(inputLock);
-        inputBuffer.emplace_back(level, category, ls.c_str());
+        inputBuffer.emplace_back(level, threadName, category, ls.c_str());
+        bufferSize = inputBuffer.size();
         hasInput = true;
         needFlush = true;
     }
@@ -174,38 +254,15 @@ void Logger::AddLog(StaticString category, ELogLevel level, TLogFunction logFunc
     if (unlikely(level >= ELogLevel::FatalError))
     {
         debugBreak();
-        
-        Stop();
-        logThread.join();
+        Flush();
 
         Assert(false);
         return;
     }
-    
-    {
-        std::lock_guard lock(cvLock);
-        cv.notify_one();
-    }
-    
-}
 
-void Logger::Start()
-{
-    logThread = std::thread(&Logger::Run, this);
-}
-
-void Logger::Stop()
-{
-    if (isRunning)
+    if (bufferSize >= Config::LogForceFlushThreshold)
     {
-        std::lock_guard lock(cvLock);
-        isRunning = false;
-        cv.notify_all();
-    }
-
-    if (logThread.joinable())
-    {
-        logThread.join();
+        Flush();
     }
 }
 
@@ -217,96 +274,76 @@ void Logger::SetFilter(StaticString category, TLogFilter filter)
 
 void Logger::Flush()
 {
-    if (std::this_thread::get_id() == logThread.get_id())
+    if (std::this_thread::get_id() == threadID)
         return;
 
+    const auto period = std::chrono::milliseconds(10);
+    
     while(needFlush)
     {
-        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        std::this_thread::sleep_for(period);
     }
 }
 
-void Logger::Run()
+void Logger::ProcessBuffer()
 {
-    using namespace std;
-    
+    if (!hasInput)
+        return;
+
     AllocatorScope scope(allocator);
 
-    isRunning = true;
-    startTime = chrono::steady_clock::now();
-    
-    AddLog(GetName(), ELogLevel::Info, [](auto& logStream)
     {
-        logStream << "Logger started.";
-    });
-    
-    auto ProcessBuffer = [this]()
-    {
-        {
-            std::lock_guard lockInput(inputLock);
-            std::swap(inputBuffer, swapBuffer);
-            hasInput = false;
-        }
-        
-        if (!swapBuffer.empty())
-        {
-            textBuffer.reserve(swapBuffer.size());
-
-            for (auto& log : swapBuffer)
-            {
-                auto timeStampStr = LogUtil::GetTimeStampString(startTime, log.timeStamp);
-                auto levelStr = LogUtil::GetLogLevelString(log.level);
-
-                using namespace HSTL;
-                HInlineString<Config::LogBufferSize> text;
-                text.reserve(Config::LogLineSize);
-
-                text.push_back('[');
-                text.append(timeStampStr);
-                text.append("][");
-                text.append(log.category);
-                text.append("][");
-                text.append(levelStr);
-                text.append("] ");
-                text.append(log.text);
-
-                textBuffer.emplace_back(text.c_str());
-            }
-            
-            swapBuffer.clear();
-            
-            Flush(textBuffer);
-            textBuffer.clear();
-        }
-    };
-
-    {
-        auto waitPeriod = std::chrono::milliseconds(16);
-        while (isRunning)
-        {
-            ProcessBuffer();
-            needFlush = false;
-
-            if (!hasInput)
-            {
-                std::unique_lock lock(cvLock);
-                cv.wait_for(lock, waitPeriod);
-            }
-        }
+        std::lock_guard lockInput(inputLock);
+        std::swap(inputBuffer, swapBuffer);
+        hasInput = false;
     }
 
-    AddLog(GetName(), ELogLevel::Info, [](auto& ls)
+    if (swapBuffer.empty())
+        return;
+
+    bool bNeedIOFlush = false;
+    textBuffer.reserve(swapBuffer.size());
+
+    for (auto& log : swapBuffer)
     {
-        ls << "Logger has been terminated." << hendl;
-    });
-    
-    ProcessBuffer();
-    
-    outFileStream.flush();
-    outFileStream.close();
+        if (log.level >= ELogLevel::Warning)
+            bNeedIOFlush = true;
+
+        auto timeStampStr = LogUtil::GetTimeStampString(startTime, log.timeStamp);
+        auto levelStr = LogUtil::GetLogLevelString(log.level);
+
+        using namespace HSTL;
+        HInlineString<Config::LogBufferSize> text;
+        text.reserve(Config::LogLineSize);
+
+        text.push_back('[');
+        text.append(timeStampStr);
+        text.append("][");
+        text.append(log.threadName);
+        text.append("][");
+        text.append(log.category);
+        text.append("][");
+        text.append(levelStr);
+        text.append("] ");
+        text.append(log.text);
+
+        textBuffer.emplace_back(text.c_str());
+    }
+
+    swapBuffer.clear();
+
+    FlushBuffer(textBuffer);
+    textBuffer.clear();
+
+    if (bNeedIOFlush)
+    {
+        outFileStream.flush();
+    }
+
+    needFlush = false;
 }
 
-void Logger::Flush(const TTextBuffer& buffer)
+void Logger::FlushBuffer(const TTextBuffer& buffer)
 {
     for (auto func : flushFuncs)
     {

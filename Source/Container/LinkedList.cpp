@@ -92,14 +92,14 @@ void LinkedListTest::Prepare()
             }
         }
         
-        ls << "Insert Time Compare : HE = " << Time::ToMilliSec<float>(heTime)
-            << ", STL = " << Time::ToMilliSec<float>(stlTime) << lf;
+        ls << "Insert Time Compare : HE = " << Time::ToFloat(heTime)
+            << ", STL = " << Time::ToFloat(stlTime) << lf;
         
         if (heTime > stlTime)
         {
             ls << "LinkedList is slower than the STL list" << std::endl
-                << "HE = " << Time::ToMilliSec<float>(heTime)
-                << ", STL = " << Time::ToMilliSec<float>(stlTime)
+                << "HE = " << Time::ToFloat(heTime)
+                << ", STL = " << Time::ToFloat(stlTime)
                 << lfwarn;
         }
     });
@@ -161,8 +161,8 @@ void LinkedListTest::Prepare()
             return;
         }
         
-        ls << "Loop Time Compare : HE = " << Time::ToMilliSec<float>(heTime)
-            << ", STL = " << Time::ToMilliSec<float>(stlTime) << lf;
+        ls << "Loop Time Compare : HE = " << Time::ToFloat(heTime)
+            << ", STL = " << Time::ToFloat(stlTime) << lf;
         
         if (heTime > stlTime)
         {

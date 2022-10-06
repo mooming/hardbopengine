@@ -7,6 +7,9 @@
 
 namespace OS
 {
+void Yield();
+void Sleep(uint32_t milliseconds);
+
 int GetCPUIndex();
 int GetThreadPriority(std::thread& thread);
 void SetThreadAffinity(std::thread& thread, uint64_t mask);

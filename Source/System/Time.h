@@ -14,16 +14,27 @@ using MilliSec = uint64_t;
 using TStopWatch = std::chrono::steady_clock;
 using TTime = std::chrono::time_point<TStopWatch>;
 using TDuration = TStopWatch::duration;
+using TMilliSecs = std::chrono::milliseconds;
 
-template <typename T = float>
-constexpr T ToMilliSec(TDuration duration)
+
+inline TTime GetNow()
 {
-    static_assert(std::is_floating_point<T>());
-    std::chrono::duration<T, std::milli> milliSecs = duration;
-    return milliSecs.count();
+    return std::chrono::steady_clock::now();
 }
 
-class Measure
+inline float ToFloat(TStopWatch::duration duration)
+{
+    std::chrono::duration<float> delta = duration;
+    return delta.count();
+}
+
+inline TMilliSecs::rep ToMilliSeconds(TStopWatch::duration duration)
+{
+    auto delta = std::chrono::duration_cast<TMilliSecs>(duration);
+    return delta.count();
+}
+
+class Measure final
 {
 private:
     TDuration& duration;
@@ -31,8 +42,8 @@ private:
     
 public:
     Measure(TDuration& outDeltaTime)
-    : duration(outDeltaTime)
-    , start(TStopWatch::now())
+        : duration(outDeltaTime)
+        , start(TStopWatch::now())
     {
     }
     

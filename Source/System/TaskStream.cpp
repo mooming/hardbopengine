@@ -3,8 +3,10 @@
 #include "TaskStream.h"
 
 #include "Engine.h"
+#include "TaskSystem.h"
 #include "Log/Logger.h"
 #include "OSAL/Intrinsic.h"
+#include "OSAL/OSThread.h"
 
 
 namespace HE
@@ -17,22 +19,25 @@ TaskStream::Request::Request()
 {
 }
 
-TaskStream::Request::Request(Task& task, TIndex start, TIndex end)
-    : task(&task)
+TaskStream::Request::Request(TKey key, Task& task, TIndex start, TIndex end)
+    : key(key)
+    , task(&task)
     , start(start)
     , end(end)
 {
 }
 
 TaskStream::TaskStream()
-    : threadIndex(-1)
+    : time(Time::GetNow())
+    , isResidentListDirty(false)
 {
     Assert(threadID == std::thread::id());
 }
 
-TaskStream::TaskStream(int index, StaticString name)
+TaskStream::TaskStream(StaticString name)
     : name(name)
-    , threadIndex(index)
+    , time(Time::GetNow())
+    , isResidentListDirty(false)
 {
     Assert(threadID == std::thread::id());
     
@@ -43,95 +48,154 @@ TaskStream::TaskStream(int index, StaticString name)
     });
 }
 
-void TaskStream::InitiateFromCurrentThread()
+void TaskStream::Flush()
 {
-    threadID = std::this_thread::get_id();
-
-    auto& engine = Engine::Get();
-    auto& taskSys = engine.GetTaskSystem();
-
-    threadIndex = taskSys.GetThreadIndex(threadID);
-    name = taskSys.GetThreadName(threadIndex);
-}
-
-
-void TaskStream::Start()
-{
-    if (unlikely(threadID != ThreadID()))
+    if (unlikely(threadID != std::this_thread::get_id()))
     {
         auto log = Logger::Get(name);
-        log.OutFatalError([](auto& ls)
-        {
-            ls << "This TaskStream has its own thread already.";
-        });
-
+        log.OutFatalError("Incorrect thread!");
         return;
     }
 
-    auto& engine = Engine::Get();
-    auto& taskSys = engine.GetTaskSystem();
+    auto currentTime = Time::GetNow();
+    deltaTime = Time::ToFloat(currentTime - time);
+    time = currentTime;
 
-    threadID = taskSys.SetThread(threadIndex, name, [this]()
+    FlipBuffers();
+
+    if (requestsBuffer.size() > 0)
+    {
+        UpdateRequests();
+    }
+
+    if (residentsBuffer.size() > 0)
+    {
+        UpdateResidents();
+    }
+}
+
+void TaskStream::Start(TaskSystem& taskSys)
+{
+    auto func = [this, &taskSys]()
     {
         auto log = Logger::Get(name);
-        log.Out([name=name](auto& ls)
+        log.Out([name = name](auto& ls)
         {
             ls << name.c_str() << " has begun.";
         });
 
-        auto& engine = Engine::Get();
-        auto& taskSys = engine.GetTaskSystem();
+        threadID = std::this_thread::get_id();
+        RunLoop(taskSys.IsRunning());
 
-        while(likely(taskSys.IsRunning()))
-        {
-            Flush();
-        }
-
-        log.Out([name=name](auto& ls)
+        log.Out([name = name](auto& ls)
         {
             ls << name.c_str() << " has been terminated.";
         });
-    });
+    };
+
+    thread = std::thread(func);
+    OS::SetThreadPriority(thread, 0);
+    
+    threadID = thread.get_id();
 }
 
-void TaskStream::Request(Task& task, TIndex start, TIndex end)
+void TaskStream::Request(TKey key, Task& task, TIndex start, TIndex end)
 {
     std::lock_guard<std::mutex> lock(queueLock);
-    requests.emplace_back(task, start, end);
+    requests.emplace_back(key, task, start, end);
     task.IncNumStreams();
 }
 
-void TaskStream::Flush()
+void TaskStream::AddResident(TKey key, Task& task)
+{
+    std::lock_guard<std::mutex> lock(queueLock);
+    residents.emplace_back(key, task, 0, 0);
+    isResidentListDirty = true;
+}
+
+void TaskStream::RemoveResidentTask(TKey key)
+{
+    std::lock_guard<std::mutex> lock(queueLock);
+
+    auto end = residents.end();
+    for (auto iter = residents.begin(); iter != end; ++iter)
+    {
+        if (iter->key != key)
+            continue;
+
+        residents.erase(iter);
+        isResidentListDirty = true;
+        break;
+    }
+}
+
+void TaskStream::FlipBuffers()
+{
+    std::lock_guard<std::mutex> lock(queueLock);
+
+    {
+        const auto size = requests.size();
+        requestsBuffer.reserve(size);
+        std::swap(requests, requestsBuffer);
+    }
+
+    if (unlikely(isResidentListDirty))
+    {
+        const auto size = residents.size();
+        residentsBuffer.reserve(size);
+        residentsBuffer = residents;
+    }
+}
+
+void TaskStream::RunLoop(const std::atomic<bool>& isRunning)
 {
     auto log = Logger::Get(name);
 
     if (unlikely(threadID != std::this_thread::get_id()))
     {
-        log.OutFatalError([](auto& ls)
-        {
-            ls << "Flush is requested from the incorrect thread.";
-        });
-
+        log.OutFatalError("Incorrect thread!");
         return;
     }
 
+    while(likely(isRunning))
     {
-        std::lock_guard<std::mutex> lock(queueLock);
-        buffer.reserve(requests.size());
-        std::swap(requests, buffer);
+        auto currentTime = Time::GetNow();
+        deltaTime = Time::ToFloat(currentTime - time);
+        time = currentTime;
+
+        if (unlikely(deltaTime > 0.1f))
+        {
+            log.OutWarning([this](auto& ls)
+            {
+                ls << "Slow DeltaTime = " << deltaTime;                
+            });
+        }
+
+        FlipBuffers();
+
+        if (requestsBuffer.size() > 0)
+        {
+            UpdateRequests();
+        }
+
+        if (residentsBuffer.size() > 0)
+        {
+            UpdateResidents();
+        }
     }
+}
 
-    if (buffer.size() <= 0)
-        return;
-
-    for (auto& request : buffer)
+void TaskStream::UpdateRequests()
+{
+    for (auto& request : requestsBuffer)
     {
         auto task = request.task;
         if (unlikely(task == nullptr))
         {
+            auto log = Logger::Get(name);
             log.OutError([name=name](auto& ls)
             {
-                ls << name.c_str() << " Task func is null.";
+                ls << name.c_str() << " task func is null.";
             });
 
             continue;
@@ -140,7 +204,28 @@ void TaskStream::Flush()
         task->Run(request.start, request.end);
     }
 
-    buffer.clear();
+    requestsBuffer.clear();
+}
+
+void TaskStream::UpdateResidents()
+{
+    for (auto& request : residentsBuffer)
+    {
+        auto task = request.task;
+        if (unlikely(task == nullptr))
+        {
+            auto log = Logger::Get(name);
+            log.OutError([name=name](auto& ls)
+            {
+                ls << name.c_str() << " task func is null.";
+            });
+
+            continue;
+        }
+
+        task->Run(0, 0);
+        task->ClearNumDone();
+    }
 }
 
 } // HE

@@ -23,6 +23,7 @@ add_library (System STATIC
  ComponentSystem.cpp
  Debug.cpp
  Task.cpp
+ TaskHandle.cpp
  TaskStream.cpp
  TaskSystem.cpp
  Time.cpp
@@ -36,6 +37,7 @@ add_library (System STATIC
  Exception.h
  Runnable.h
  Task.h
+ TaskHandle.h
  TaskStream.h
  TaskSystem.h
  Time.h
