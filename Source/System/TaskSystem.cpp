@@ -379,8 +379,8 @@ void TaskSystem::BuildStreams()
     for (TIndex i = workerIndexStart; i < numHardwareThreads; ++i)
     {
         ++numWorkers;
-
-        streamName << "WorkStream[" << i << ']';
+        streamName << "WorkStream[" << numWorkers << ']';
+        
         streams.Emplace(i, i, streamName.c_str());
         streamName.Clear();
     }
