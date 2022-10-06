@@ -209,13 +209,13 @@ TaskSystem::TaskHandle TaskSystem::AllocateTask(StaticString name
     for (TIndex index = 0; index < length; ++index)
     {
         auto& slot = slots[index];
-        auto& task = slot.task;
-        if (!task.HasValue())
+        if (slot.key == !InvalidKey)
             continue;
 
         auto key = IssueTaskKey();
         slot.key = key;
 
+        auto& task = slot.task;
         task.Emplace(name, size, func);
         taskHandle.key = key;
         taskHandle.index = index;
@@ -305,6 +305,9 @@ void TaskSystem::DeallocateTask(TaskHandle&& handle)
     }
 
     FatalAssert(&(*(handle.task)) == &(*(slot.task)));
+
+    slot.key = InvalidKey;
+    slot.task.Reset();
 
     handle.key = InvalidKey;
     handle.index = -1;
@@ -491,6 +494,12 @@ void TaskSystemTest::Prepare()
 
         auto func = [&count, IsPrimeNumbrer](auto start, auto end)
         {
+            auto log = Logger::Get("Count Prime Numbers");
+            log.Out([&](auto& ls)
+            {
+                ls << "Start: Range[" << (start + 1) << ", " << end << ']';
+            });
+
             uint64_t result = 0;
 
             for (uint64_t i = start + 1; i <= end; ++i)
@@ -501,7 +510,6 @@ void TaskSystemTest::Prepare()
 
             count += result;
 
-            auto log = Logger::Get("Count Prime Numbers");
             log.Out([&](auto& ls)
             {
                 ls << "Range[" << (start + 1)
@@ -509,9 +517,12 @@ void TaskSystemTest::Prepare()
             });
         };
 
+        constexpr int upperBound = 1000000;
+        constexpr int solution = 78498;
+
         auto& engine = Engine::Get();
         auto& taskSys = engine.GetTaskSystem();
-        auto handle = taskSys.AllocateTask("Count Prime Numbers", 1000000, func);
+        auto handle = taskSys.AllocateTask("Count Prime Numbers", upperBound, func);
         if (!handle.IsValid())
         {
             ls << "Handle should not be invalid." << lferr;
@@ -524,9 +535,243 @@ void TaskSystemTest::Prepare()
         ls << "# of Prime Numbers = " << count << ", done = " << task.NumDone()
             << "/" << task.NumStreams() << lf;
 
-        if (count != 78498)
+        if (count != solution)
         {
-            ls << "Number of prime numbers below 1000000 should be 78498 but "
+            ls << "Number of prime numbers below " << upperBound
+                << " should be " << solution <<" but "
+                << count << " found!" << lferr;
+        }
+
+        taskSys.DeallocateTask(std::move(handle));
+        taskSys.FlushDone();
+    });
+
+    AddTest("1 Thread", [this](auto& ls)
+    {
+        auto IsPrimeNumbrer = [](uint32_t value) -> bool
+        {
+            for (uint32_t i = 2; i < value; ++i)
+            {
+                if ((value % i) == 0)
+                    return false;
+            }
+
+            return true;
+        };
+
+        std::atomic<uint64_t> count = 0;
+        std::atomic<int> numThreads = 0;
+
+        auto func = [&count, &numThreads, IsPrimeNumbrer](auto start, auto end)
+        {
+            auto log = Logger::Get("Count Prime Numbers");
+            log.Out([&](auto& ls)
+            {
+                ls << "Start: Range[" << (start + 1) << ", " << end << ']';
+            });
+
+            uint64_t result = 0;
+
+            for (uint64_t i = start + 1; i <= end; ++i)
+            {
+                if (IsPrimeNumbrer(i))
+                    ++result;
+            }
+
+            count += result;
+
+            log.Out([&](auto& ls)
+            {
+                ls << "Range[" << (start + 1)
+                    << ", " << end << "] = " << result;
+            });
+            ++numThreads;
+        };
+
+        constexpr int upperBound = 1000;
+        constexpr int solution = 168;
+
+        auto& engine = Engine::Get();
+        auto& taskSys = engine.GetTaskSystem();
+        auto handle = taskSys.AllocateTask("Count Prime Numbers", upperBound, func, 1);
+        if (!handle.IsValid())
+        {
+            ls << "Handle should not be invalid." << lferr;
+            return;
+        }
+
+        handle.BusyWait();
+        count = count - 1;
+
+        if (numThreads != 1)
+        {
+            ls << "Number of threads must be 1, but " << numThreads << lferr;
+        }
+
+        auto& task = *(handle.task);
+        ls << "# of Prime Numbers = " << count << ", done = " << task.NumDone()
+            << "/" << task.NumStreams() << lf;
+
+        if (count != solution)
+        {
+            ls << "Number of prime numbers below " << upperBound
+                << " should be " << solution << " but "
+                << count << " found!" << lferr;
+        }
+
+        taskSys.DeallocateTask(std::move(handle));
+        taskSys.FlushDone();
+    });
+
+    AddTest("2 Threads", [this](auto& ls)
+    {
+        auto IsPrimeNumbrer = [](uint32_t value) -> bool
+        {
+            for (uint32_t i = 2; i < value; ++i)
+            {
+                if ((value % i) == 0)
+                    return false;
+            }
+
+            return true;
+        };
+
+        std::atomic<uint64_t> count = 0;
+        std::atomic<int> numThreads = 0;
+
+        auto func = [&count, &numThreads, IsPrimeNumbrer](auto start, auto end)
+        {
+            ++numThreads;
+
+            auto log = Logger::Get("Count Prime Numbers");
+            log.Out([&](auto& ls)
+            {
+                ls << "Start: Range[" << (start + 1) << ", " << end << ']';
+            });
+
+            uint64_t result = 0;
+
+            for (uint64_t i = start + 1; i <= end; ++i)
+            {
+                if (IsPrimeNumbrer(i))
+                    ++result;
+            }
+
+            count += result;
+
+            log.Out([&](auto& ls)
+            {
+                ls << "Range[" << (start + 1)
+                    << ", " << end << "] = " << result;
+            });
+        };
+
+        constexpr int upperBound = 1000;
+        constexpr int solution = 168;
+
+        auto& engine = Engine::Get();
+        auto& taskSys = engine.GetTaskSystem();
+        auto handle = taskSys.AllocateTask("Count Prime Numbers", upperBound, func, 2);
+        if (!handle.IsValid())
+        {
+            ls << "Handle should not be invalid." << lferr;
+            return;
+        }
+
+        handle.BusyWait();
+        count = count - 1;
+
+        if (numThreads != 2)
+        {
+            ls << "Number of threads must be 1, but " << numThreads << lferr;
+        }
+
+        auto& task = *(handle.task);
+        ls << "# of Prime Numbers = " << count << ", done = " << task.NumDone()
+            << "/" << task.NumStreams() << lf;
+
+        if (count != solution)
+        {
+            ls << "Number of prime numbers below " << upperBound
+                << " should be " << solution <<" but "
+                << count << " found!" << lferr;
+        }
+
+        taskSys.DeallocateTask(std::move(handle));
+        taskSys.FlushDone();
+    });
+
+    AddTest("3 Threads", [this](auto& ls)
+    {
+        auto IsPrimeNumbrer = [](uint32_t value) -> bool
+        {
+            for (uint32_t i = 2; i < value; ++i)
+            {
+                if ((value % i) == 0)
+                    return false;
+            }
+
+            return true;
+        };
+
+        std::atomic<uint64_t> count = 0;
+        std::atomic<int> numThreads = 0;
+
+        auto func = [&count, &numThreads, IsPrimeNumbrer](auto start, auto end)
+        {
+            ++numThreads;
+
+            auto log = Logger::Get("Count Prime Numbers");
+            log.Out([&](auto& ls)
+            {
+                ls << "Start: Range[" << (start + 1) << ", " << end << ']';
+            });
+
+            uint64_t result = 0;
+
+            for (uint64_t i = start + 1; i <= end; ++i)
+            {
+                if (IsPrimeNumbrer(i))
+                    ++result;
+            }
+
+            count += result;
+
+            log.Out([&](auto& ls)
+            {
+                ls << "Range[" << (start + 1)
+                    << ", " << end << "] = " << result;
+            });
+        };
+
+        constexpr int upperBound = 1000;
+        constexpr int solution = 168;
+
+        auto& engine = Engine::Get();
+        auto& taskSys = engine.GetTaskSystem();
+        auto handle = taskSys.AllocateTask("Count Prime Numbers", upperBound, func, 3);
+        if (!handle.IsValid())
+        {
+            ls << "Handle should not be invalid." << lferr;
+            return;
+        }
+
+        handle.BusyWait();
+        count = count - 1;
+
+        if (numThreads != 3)
+        {
+            ls << "Number of threads must be 1, but " << numThreads << lferr;
+        }
+
+        auto& task = *(handle.task);
+        ls << "# of Prime Numbers = " << count << ", done = " << task.NumDone()
+            << "/" << task.NumStreams() << lf;
+
+        if (count != solution)
+        {
+            ls << "Number of prime numbers below " << upperBound
+                << " should be " << solution << " but "
                 << count << " found!" << lferr;
         }
 
