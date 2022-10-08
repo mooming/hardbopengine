@@ -11,6 +11,7 @@
 #include "Memory/StackAllocator.h"
 #include <cstddef>
 #include <cstdint>
+#include <mutex>
 
 
 namespace HE
@@ -27,6 +28,7 @@ public:
     static constexpr size_t NumTables = Config::StaticStringNumHashBuckets;
     
 private:
+    mutable std::mutex tableLock;
     StackAllocator allocator;
     TTable tables[NumTables];
     

@@ -40,44 +40,54 @@ StaticString StaticStringTable::GetName() const
 
 StaticStringID StaticStringTable::Register(const char* text)
 {
-    AllocatorScope scope(allocator.GetID());
-    
     StaticStringID id;
-    
     auto tableID = GetTableID(text);
     id.tableID = tableID;
     
     static_assert(!std::is_signed<decltype(tableID)>());
     Assert(tableID < NumTables);
-    
-    auto& table = tables[tableID];
-    auto found = std::find(table.begin(), table.end(), TString(text));
-    if (found != table.end())
+
     {
-        id.index = static_cast<TIndex>(std::distance(table.begin(), found));
-        
-        return id;
+        std::lock_guard lock(tableLock);
+        AllocatorScope scope(allocator.GetID());
+        auto& table = tables[tableID];
+        auto found = std::find(table.begin(), table.end(), TString(text));
+        if (found != table.end())
+        {
+            id.index = static_cast<TIndex>(std::distance(table.begin(), found));
+
+            return id;
+        }
+
+        TString str(text);
+        id.index = static_cast<TIndex>(table.size());
+        table.push_back(str);
     }
-    
-    TString str(text);
-    id.index = static_cast<TIndex>(table.size());
-    table.push_back(str);
     
     return id;
 }
 
 const char* StaticStringTable::Get(StaticStringID id) const
 {
+    const char* str = "None";
+
     static_assert(!std::is_signed<decltype(id.tableID)>());
     if (unlikely(id.tableID >= NumTables))
-        return "None";
-    
-    auto& table = tables[id.tableID];
+        return str;
+
     static_assert(!std::is_signed<decltype(id.index)>());
-    if (unlikely(id.index >= table.size()))
-        return "None";
-    
-    return table[id.index].c_str();
+
+    {
+        std::lock_guard lock(tableLock);
+        auto& table = tables[id.tableID];
+
+        if (unlikely(id.index >= table.size()))
+            return "None";
+
+        str = table[id.index].c_str();
+    }
+
+    return str;
 }
 
 void StaticStringTable::PrintStringTable() const
