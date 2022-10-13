@@ -121,28 +121,19 @@ void TestEnv::Report()
     
     if (!invalidTests.empty())
     {
-        log.OutError([](auto& ls)
-        {
-            ls << "##### Invalid Tests #####";
-        });
+        log.OutError("= Invalid Tests =============================");
 
         for (auto& item : invalidTests)
         {
             log.OutError([&item](auto& ls) { ls << item; });
         }
 
-        log.OutError([](auto& ls)
-        {
-            ls << "##### Invalid Tests [Done] #####" << hendl;
-        });
+        log.OutError("=============================================");
     }
     
     if (!failedTests.empty())
     {
-        log.OutError([](auto& ls)
-        {
-            ls << "##### Failed Tests #####";
-        });
+        log.OutError("= Failed Tests ==============================");
 
         int index = 1;
         for (auto& item : failedTests)
@@ -155,18 +146,12 @@ void TestEnv::Report()
             ++index;
         }
 
-        log.OutError([](auto& ls)
-        {
-            ls << "##### Failed Tests [Done] #####" << hendl;
-        });
+        log.OutError("=============================================\n");
     }
 
     if (!warningMessages.empty())
     {
-        log.OutWarning([](auto& ls)
-        {
-            ls << "##### Warnings #####";
-        });
+        log.OutWarning("= Warnings ==================================");
 
         for (auto& item : warningMessages)
         {
@@ -174,20 +159,18 @@ void TestEnv::Report()
         }
 
         log.OutWarning([](auto& ls) { ls << hendl; });
+        log.OutWarning("=============================================\n");
     }
 
     if (!errorMessages.empty())
     {
-        log.OutError([](auto& ls)
-        {
-            ls << "##### Errors #####";
-        });
+        log.OutError("= Errors ====================================");
 
         for (auto& item : errorMessages)
         {
             log.OutError([&item](auto& ls) { ls << item; });
         }
 
-        log.OutError([](auto& ls) { ls << hendl; });
+        log.OutError("=============================================\n");
     }
 }

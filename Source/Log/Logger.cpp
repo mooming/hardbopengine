@@ -37,13 +37,13 @@ Logger::SimpleLogger::SimpleLogger(StaticString category, ELogLevel level)
 {
 }
 
-void Logger::SimpleLogger::Out(TLogFunction logFunc) const
+void Logger::SimpleLogger::Out(const TLogFunction& logFunc) const
 {
     Assert(instance != nullptr);
     instance->AddLog(category, level, logFunc);
 }
 
-void Logger::SimpleLogger::Out(ELogLevel inLevel, TLogFunction logFunc) const
+void Logger::SimpleLogger::Out(ELogLevel inLevel, const TLogFunction& logFunc) const
 {
     Assert(instance != nullptr);
     instance->AddLog(category, inLevel, logFunc);
@@ -162,8 +162,7 @@ void Logger::StopTask(TaskSystem& taskSys)
     if (!taskHandle.IsValid())
         return;
 
-    auto streamIndex = taskSys.GetIOTaskStreamIndex();
-    taskSys.DeregisterTask(streamIndex, std::move(taskHandle));
+    taskHandle.Reset();
     threadID = std::thread::id();
 
     AddLog(GetName(), ELogLevel::Info, [](auto& ls)
@@ -178,7 +177,8 @@ void Logger::StopTask(TaskSystem& taskSys)
 }
 
 
-void Logger::AddLog(StaticString category, ELogLevel level, TLogFunction logFunc)
+void Logger::AddLog(StaticString category, ELogLevel level
+    , const TLogFunction& logFunc)
 {
 #ifndef LOG_ENABLED
     return;

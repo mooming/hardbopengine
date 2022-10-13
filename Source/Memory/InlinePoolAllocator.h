@@ -17,7 +17,7 @@
 namespace HE
 {
 template <class T, int BufferSize, int NumBuffers = 2>
-struct ALIGN16 InlinePoolAllocator final
+struct ALIGNED InlinePoolAllocator final
 {
     using TIndex = decltype(BufferSize);
 

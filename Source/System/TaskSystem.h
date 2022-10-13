@@ -89,17 +89,17 @@ public:
     const Task* GetTask(TKey key, TIndex taskIndex) const;
 
     TaskHandle RegisterTask(TIndex streamIndex, StaticString taskName, Runnable func);
-    void DeregisterTask(TIndex streamIndex, TaskHandle&& handle);
-
     TaskHandle DispatchTask(StaticString taskName, Runnable func, TIndex streamIndex);
     TaskHandle DispatchTask(StaticString taskName, TaskIndex size, Runnable func);
     TaskHandle DispatchTask(StaticString taskName, TaskIndex size, Runnable func, TIndex numStreams);
-    void ReleaseTask(TaskHandle&& task);
 
 private:
+    void DeregisterTask(TIndex streamIndex, TKey key);
+    void DeregisterTaskAsync(TIndex streamIndex, TKey key);
+    void ReleaseTask(TKey key, TIndex slotIndex);
+
     void BuildStreams();
     TKey IssueTaskKey();
-
     void Flush();
 };
 

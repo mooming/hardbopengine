@@ -7,6 +7,7 @@
 #include "OSAL/OSThread.h"
 #include "String/StringBuilder.h"
 #include "String/StringUtil.h"
+#include "System/Time.h"
 #include <algorithm>
 #include <future>
 #include <thread>
@@ -225,7 +226,16 @@ TaskHandle TaskSystem::RegisterTask(TIndex streamIndex
 
             auto& task = slot.task;
             task.Reset(name, 0, func);
-            handle = TaskHandle(key, index);
+
+            auto releaseFunc =  [this, streamIndex](const TaskHandle& handle)
+            {
+                auto key = handle.GetKey();
+                auto index = handle.GetIndex();
+                DeregisterTask(streamIndex, key);
+                ReleaseTask(key, index);
+            };
+
+            handle = TaskHandle(key, index, releaseFunc);
 
             auto& stream = streams[streamIndex];
             stream.AddResident(key, task);
@@ -237,15 +247,30 @@ TaskHandle TaskSystem::RegisterTask(TIndex streamIndex
     return handle;
 }
 
-void TaskSystem::DeregisterTask(TIndex streamIndex, TaskHandle&& handle)
+void TaskSystem::DeregisterTask(TIndex streamIndex, TKey key)
 {
-    const auto key = handle.GetKey();
-
     std::lock_guard lock(requestLock);
     if (unlikely(!streams.IsValidIndex(streamIndex)))
     {
-        handle.Reset();
+        auto log = Logger::Get(GetName());
+        log.OutError([streamIndex, key](auto& ls)
+        {
+            ls << "Invalid stream index = " << streamIndex
+                << " for key " << key;
+        });
 
+        return;
+    }
+
+    auto& stream = streams[streamIndex];
+    stream.RemoveResidentTaskSync(key);
+}
+
+void TaskSystem::DeregisterTaskAsync(TIndex streamIndex, TKey key)
+{
+    std::lock_guard lock(requestLock);
+    if (unlikely(!streams.IsValidIndex(streamIndex)))
+    {
         auto log = Logger::Get(GetName());
         log.OutError([streamIndex, key](auto& ls)
         {
@@ -258,8 +283,6 @@ void TaskSystem::DeregisterTask(TIndex streamIndex, TaskHandle&& handle)
 
     auto& stream = streams[streamIndex];
     stream.RemoveResidentTask(key);
-
-    handle.Reset();
 }
 
 TaskHandle TaskSystem::DispatchTask(StaticString taskName
@@ -303,7 +326,12 @@ TaskHandle TaskSystem::DispatchTask(StaticString taskName
 
         auto& task = slot.task;
         task.Reset(taskName, 0, func);
-        handle = TaskHandle(key, index);
+        handle = TaskHandle(key, index, [this](const TaskHandle& handle)
+        {
+            auto key = handle.GetKey();
+            auto index = handle.GetIndex();
+            ReleaseTask(key, index);
+        });
 
         auto& stream = streams[streamIndex];
         stream.Request(key, task, 0, 0);
@@ -351,7 +379,12 @@ TaskHandle TaskSystem::DispatchTask(StaticString taskName
 
             auto& task = slot.task;
             task.Reset(taskName, size, func);
-            handle = TaskHandle(key, index);
+            handle = TaskHandle(key, index, [this](const TaskHandle& handle)
+            {
+                auto key = handle.GetKey();
+                auto index = handle.GetIndex();
+                ReleaseTask(key, index);
+            });
 
             TIndex start = 0;
             TIndex i = workerIndexStart;
@@ -434,7 +467,12 @@ TaskHandle TaskSystem::DispatchTask(StaticString taskName
 
             auto& task = slot.task;
             task.Reset(taskName, size, func);
-            handle = TaskHandle(key, index);
+            handle = TaskHandle(key, index, [this](const TaskHandle& handle)
+            {
+                auto key = handle.GetKey();
+                auto index = handle.GetIndex();
+                ReleaseTask(key, index);
+            });
 
             TIndex start = 0;
             TIndex i = workerIndexStart;
@@ -485,13 +523,10 @@ TaskHandle TaskSystem::DispatchTask(StaticString taskName
     return handle;
 }
 
-void TaskSystem::ReleaseTask(TaskHandle&& handle)
+void TaskSystem::ReleaseTask(TKey key, TIndex index)
 {
-    const auto key = handle.GetKey();
     if (unlikely(key == InvalidKey))
     {
-        handle.Reset();
-        
         auto log = Logger::Get(GetName());
         log.OutWarning([func = __PRETTY_FUNCTION__](auto& ls)
         {
@@ -506,11 +541,8 @@ void TaskSystem::ReleaseTask(TaskHandle&& handle)
         return;
     }
 
-    const auto index = handle.GetIndex();
     if (unlikely(!slots.IsValidIndex(index)))
     {
-        handle.Reset();
-
         auto log = Logger::Get(GetName());
         log.OutWarning([func = __PRETTY_FUNCTION__, index](auto& ls)
         {
@@ -531,8 +563,6 @@ void TaskSystem::ReleaseTask(TaskHandle&& handle)
         auto& slot = slots[index];
         if (unlikely(key != slot.key))
         {
-            handle.Reset();
-
             auto log = Logger::Get(GetName());
             log.OutWarning([func = __PRETTY_FUNCTION__, key, &slot](auto& ls)
             {
@@ -547,13 +577,11 @@ void TaskSystem::ReleaseTask(TaskHandle&& handle)
             return;
         }
 
-        FatalAssert(handle.GetTask() == &(slot.task));
+        while(!slot.task.IsDone());
 
         slot.key = InvalidKey;
         slot.task.Reset();
     }
-
-    handle.Reset();
 }
 
 void TaskSystem::BuildStreams()
@@ -626,7 +654,9 @@ TaskSystem::TKey TaskSystem::IssueTaskKey()
 
 #ifdef __UNIT_TEST__
 #include "Engine.h"
+#include "OSAL/Intrinsic.h"
 #include "Test/TestCollection.h"
+#include <memory>
 
 
 namespace HE
@@ -644,8 +674,6 @@ void TaskSystemTest::Prepare()
         {
             ls << "Handle should be invalid if func is null." << lferr;
         }
-
-        taskSys.ReleaseTask(std::move(handle));
     });
 
     AddTest("Task of size 0", [this](auto& ls)
@@ -670,16 +698,15 @@ void TaskSystemTest::Prepare()
         }
 
         handle.BusyWait();
-
-        taskSys.ReleaseTask(std::move(handle));
     });
 
-    AddTest("Resident Task", [](auto& ls)
+    AddTest("Resident Task(sync)", [](auto& ls)
     {
         auto& engine = Engine::Get();
         auto& taskSys = engine.GetTaskSystem();
 
-        size_t count = 0;
+        int count = 0;
+        
         auto func = [&count](auto start, auto end)
         {
             auto log = Logger::Get("Resident Task");
@@ -695,11 +722,33 @@ void TaskSystemTest::Prepare()
         const auto streamIndex = taskSys.GetWorkerIndexStart();
 
         auto handle = taskSys.RegisterTask(streamIndex, taskName, func);
-        std::this_thread::sleep_for(std::chrono::seconds(3));
-
-        taskSys.DeregisterTask(streamIndex, std::move(handle));
+        std::this_thread::sleep_for(std::chrono::seconds(1));
     });
 
+    AddTest("Resident Task(async)", [](auto& ls)
+    {
+        auto& engine = Engine::Get();
+        auto& taskSys = engine.GetTaskSystem();
+
+        auto count = std::make_shared<uint32_t>(0);
+
+        auto func = [count](auto start, auto end)
+        {
+            auto log = Logger::Get("Resident Task");
+            log.Out([count](auto& ls)
+            {
+                ls << "Resident Frame Count = " << (*count);
+            });
+
+            ++(*count);
+        };
+
+        StaticString taskName("DummyCount");
+        const auto streamIndex = taskSys.GetWorkerIndexStart();
+
+        auto handle = taskSys.RegisterTask(streamIndex, taskName, func);
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+    });
 
     AddTest("Sum", [this](auto& ls)
     {
@@ -754,79 +803,9 @@ void TaskSystemTest::Prepare()
         {
             ls << "Incorrect summation result = " << sum << lferr;
         }
-
-        taskSys.ReleaseTask(std::move(handle));
     });
 
-    AddTest("Number of Prime Numbers", [this](auto& ls)
-    {
-        auto IsPrimeNumbrer = [](uint32_t value) -> bool
-        {
-            for (uint32_t i = 2; i < value; ++i)
-            {
-                if ((value % i) == 0)
-                    return false;
-            }
-
-            return true;
-        };
-
-        std::atomic<uint64_t> count = 0;
-
-        auto func = [&count, IsPrimeNumbrer](auto start, auto end)
-        {
-            auto log = Logger::Get("Count Prime Numbers");
-            log.Out([&](auto& ls)
-            {
-                ls << "Start: Range[" << (start + 1) << ", " << end << ']';
-            });
-
-            uint64_t result = 0;
-
-            for (uint64_t i = start + 1; i <= end; ++i)
-            {
-                if (IsPrimeNumbrer(i))
-                    ++result;
-            }
-
-            count += result;
-
-            log.Out([&](auto& ls)
-            {
-                ls << "Finished: Range[" << (start + 1)
-                    << ", " << end << "] = " << result;
-            });
-        };
-
-        constexpr int upperBound = 1000000;
-        constexpr int solution = 78498;
-
-        auto& engine = Engine::Get();
-        auto& taskSys = engine.GetTaskSystem();
-        auto handle = taskSys.DispatchTask("Count Prime Numbers", upperBound, func);
-        if (!handle.IsValid())
-        {
-            ls << "Handle should not be invalid." << lferr;
-        }
-
-        handle.Wait(10);
-        count = count - 1;
-
-        auto& task = *(handle.GetTask());
-        ls << "# of Prime Numbers = " << count << ", done = " << task.NumDone()
-            << "/" << task.NumStreams() << lf;
-
-        if (count != solution)
-        {
-            ls << "Number of prime numbers below " << upperBound
-                << " should be " << solution <<" but "
-                << count << " found!" << lferr;
-        }
-
-        taskSys.ReleaseTask(std::move(handle));
-    });
-
-    AddTest("1 Thread", [this](auto& ls)
+    auto countPrimeNumbers = [](auto& ls, auto& lf, auto& lferr, int numWorkers)
     {
         auto IsPrimeNumbrer = [](uint32_t value) -> bool
         {
@@ -844,7 +823,9 @@ void TaskSystemTest::Prepare()
 
         auto func = [&count, &numThreads, IsPrimeNumbrer](auto start, auto end)
         {
-            auto log = Logger::Get("Count Prime Numbers");
+            ++numThreads;
+
+            auto log = Logger::Get("PNCounter");
             log.Out([&](auto& ls)
             {
                 ls << "Start: Range[" << (start + 1) << ", " << end << ']';
@@ -865,32 +846,57 @@ void TaskSystemTest::Prepare()
                 ls << "Range[" << (start + 1)
                     << ", " << end << "] = " << result;
             });
-            ++numThreads;
         };
 
-        constexpr int upperBound = 1000;
-        constexpr int solution = 168;
+        constexpr int upperBound = 100000;
+        constexpr int solution = 9592;
 
         auto& engine = Engine::Get();
         auto& taskSys = engine.GetTaskSystem();
-        auto handle = taskSys.DispatchTask("Count Prime Numbers", upperBound, func, 1);
-        if (!handle.IsValid())
+        TaskHandle handle;
+
+        Time::TDuration duration;
         {
-            ls << "Handle should not be invalid." << lferr;
-            return;
+            Time::Measure timer(duration);
+
+            handle = taskSys.DispatchTask("PNCounter"
+                , upperBound, func, numWorkers);
+
+            if (!handle.IsValid())
+            {
+                ls << "Handle should not be invalid." << lferr;
+                return;
+            }
+
+            auto taskPtr = handle.GetTask();
+            if (taskPtr == nullptr)
+            {
+                ls << "Task is null." << lferr;
+                debugBreak();
+            }
+
+            handle.BusyWait();
         }
 
-        handle.BusyWait();
         count = count - 1;
 
-        if (numThreads != 1)
+        if (numThreads != numWorkers)
         {
-            ls << "Number of threads must be 1, but " << numThreads << lferr;
+            ls << "Number of threads must be " << numWorkers
+                << ", but " << numThreads << lferr;
         }
 
-        auto& task = *(handle.GetTask());
+        auto taskPtr = handle.GetTask();
+        if (taskPtr == nullptr)
+        {
+            ls << "Task is null." << lferr;
+            debugBreak();
+        }
+
+        auto& task = *(taskPtr);
         ls << "# of Prime Numbers = " << count << ", done = " << task.NumDone()
-            << "/" << task.NumStreams() << lf;
+            << "/" << task.NumStreams() << ", time = "
+            << Time::ToFloat(duration) << " seconds" << lf;
 
         if (count != solution)
         {
@@ -898,163 +904,21 @@ void TaskSystemTest::Prepare()
                 << " should be " << solution << " but "
                 << count << " found!" << lferr;
         }
+    };
 
-        taskSys.ReleaseTask(std::move(handle));
-    });
-
-    AddTest("2 Threads", [this](auto& ls)
+    auto& engine = Engine::Get();
+    auto& taskSys = engine.GetTaskSystem();
+    auto numWorkers = taskSys.GetNumWorkers();
+    for (int i = 1; i <= numWorkers; ++i)
     {
-        auto IsPrimeNumbrer = [](uint32_t value) -> bool
+        InlineStringBuilder<> testName;
+        testName << "CountPrimeNumbers with " << i << " workers";
+
+        AddTest(testName.c_str(), [this, countPrimeNumbers, i](auto& ls)
         {
-            for (uint32_t i = 2; i < value; ++i)
-            {
-                if ((value % i) == 0)
-                    return false;
-            }
-
-            return true;
-        };
-
-        std::atomic<uint64_t> count = 0;
-        std::atomic<int> numThreads = 0;
-
-        auto func = [&count, &numThreads, IsPrimeNumbrer](auto start, auto end)
-        {
-            ++numThreads;
-
-            auto log = Logger::Get("Count Prime Numbers");
-            log.Out([&](auto& ls)
-            {
-                ls << "Start: Range[" << (start + 1) << ", " << end << ']';
-            });
-
-            uint64_t result = 0;
-
-            for (uint64_t i = start + 1; i <= end; ++i)
-            {
-                if (IsPrimeNumbrer(i))
-                    ++result;
-            }
-
-            count += result;
-
-            log.Out([&](auto& ls)
-            {
-                ls << "Range[" << (start + 1)
-                    << ", " << end << "] = " << result;
-            });
-        };
-
-        constexpr int upperBound = 1000;
-        constexpr int solution = 168;
-
-        auto& engine = Engine::Get();
-        auto& taskSys = engine.GetTaskSystem();
-        auto handle = taskSys.DispatchTask("Count Prime Numbers", upperBound, func, 2);
-        if (!handle.IsValid())
-        {
-            ls << "Handle should not be invalid." << lferr;
-            return;
-        }
-
-        handle.BusyWait();
-        count = count - 1;
-
-        if (numThreads != 2)
-        {
-            ls << "Number of threads must be 1, but " << numThreads << lferr;
-        }
-
-        auto& task = *(handle.GetTask());
-        ls << "# of Prime Numbers = " << count << ", done = " << task.NumDone()
-            << "/" << task.NumStreams() << lf;
-
-        if (count != solution)
-        {
-            ls << "Number of prime numbers below " << upperBound
-                << " should be " << solution <<" but "
-                << count << " found!" << lferr;
-        }
-
-        taskSys.ReleaseTask(std::move(handle));
-    });
-
-    AddTest("3 Threads", [this](auto& ls)
-    {
-        auto IsPrimeNumbrer = [](uint32_t value) -> bool
-        {
-            for (uint32_t i = 2; i < value; ++i)
-            {
-                if ((value % i) == 0)
-                    return false;
-            }
-
-            return true;
-        };
-
-        std::atomic<uint64_t> count = 0;
-        std::atomic<int> numThreads = 0;
-
-        auto func = [&count, &numThreads, IsPrimeNumbrer](auto start, auto end)
-        {
-            ++numThreads;
-
-            auto log = Logger::Get("Count Prime Numbers");
-            log.Out([&](auto& ls)
-            {
-                ls << "Start: Range[" << (start + 1) << ", " << end << ']';
-            });
-
-            uint64_t result = 0;
-
-            for (uint64_t i = start + 1; i <= end; ++i)
-            {
-                if (IsPrimeNumbrer(i))
-                    ++result;
-            }
-
-            count += result;
-
-            log.Out([&](auto& ls)
-            {
-                ls << "Range[" << (start + 1)
-                    << ", " << end << "] = " << result;
-            });
-        };
-
-        constexpr int upperBound = 1000;
-        constexpr int solution = 168;
-
-        auto& engine = Engine::Get();
-        auto& taskSys = engine.GetTaskSystem();
-        auto handle = taskSys.DispatchTask("Count Prime Numbers", upperBound, func, 3);
-        if (!handle.IsValid())
-        {
-            ls << "Handle should not be invalid." << lferr;
-            return;
-        }
-
-        handle.BusyWait();
-        count = count - 1;
-
-        if (numThreads != 3)
-        {
-            ls << "Number of threads must be 1, but " << numThreads << lferr;
-        }
-
-        auto& task = *(handle.GetTask());
-        ls << "# of Prime Numbers = " << count << ", done = " << task.NumDone()
-            << "/" << task.NumStreams() << lf;
-
-        if (count != solution)
-        {
-            ls << "Number of prime numbers below " << upperBound
-                << " should be " << solution << " but "
-                << count << " found!" << lferr;
-        }
-
-        taskSys.ReleaseTask(std::move(handle));
-    });
+            countPrimeNumbers(ls, lf, lferr, i);
+        });
+    }
 }
 
 } // HE

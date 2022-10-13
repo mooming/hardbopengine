@@ -22,6 +22,7 @@ add_library (System STATIC
  Component.cpp
  ComponentSystem.cpp
  Debug.cpp
+ SystemStatistics.cpp
  Task.cpp
  TaskHandle.cpp
  TaskStream.cpp
@@ -36,6 +37,7 @@ add_library (System STATIC
  Debug.h
  Exception.h
  Runnable.h
+ SystemStatistics.h
  Task.h
  TaskHandle.h
  TaskStream.h

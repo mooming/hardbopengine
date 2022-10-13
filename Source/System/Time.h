@@ -28,6 +28,12 @@ inline float ToFloat(TStopWatch::duration duration)
     return delta.count();
 }
 
+inline double ToDouble(TStopWatch::duration duration)
+{
+    std::chrono::duration<double> delta = duration;
+    return delta.count();
+}
+
 inline TMilliSecs::rep ToMilliSeconds(TStopWatch::duration duration)
 {
     auto delta = std::chrono::duration_cast<TMilliSecs>(duration);

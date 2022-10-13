@@ -29,7 +29,10 @@ TaskStream::Request::Request(TKey key, Task& task, TIndex start, TIndex end)
 
 TaskStream::TaskStream()
     : time(Time::GetNow())
+    , deltaTime(0.0f)
+    , flipCount(0)
     , isResidentListDirty(false)
+
 {
     Assert(threadID == std::thread::id());
 }
@@ -37,6 +40,8 @@ TaskStream::TaskStream()
 TaskStream::TaskStream(StaticString name)
     : name(name)
     , time(Time::GetNow())
+    , deltaTime(0.0f)
+    , flipCount(0)
     , isResidentListDirty(false)
 {
     Assert(threadID == std::thread::id());
@@ -117,21 +122,49 @@ void TaskStream::RemoveResidentTask(TKey key)
 {
     std::lock_guard<std::mutex> lock(queueLock);
 
-    auto end = residents.end();
-    for (auto iter = residents.begin(); iter != end; ++iter)
+    auto predicate = [key](auto& item)
     {
-        if (iter->key != key)
-            continue;
+        return item.key == key;
+    };
 
-        residents.erase(iter);
+    auto found = std::find_if(residents.begin(), residents.end(), predicate);
+    if (found == residents.end())
+        return;
+
+    residents.erase(found);
+    isResidentListDirty = true;
+}
+
+void TaskStream::RemoveResidentTaskSync(TKey key)
+{
+    uint64_t count = 0;
+
+    {
+        std::lock_guard<std::mutex> lock(queueLock);
+
+        count = flipCount;
+
+        auto predicate = [key](auto& item)
+        {
+            return item.key == key;
+        };
+
+        auto found = std::find_if(residents.begin(), residents.end(), predicate);
+        if (found == residents.end())
+            return;
+
+        residents.erase(found);
         isResidentListDirty = true;
-        break;
     }
+
+    while (flipCount.load() == count);
 }
 
 void TaskStream::FlipBuffers()
 {
     std::lock_guard<std::mutex> lock(queueLock);
+
+    ++flipCount;
 
     {
         const auto size = requests.size();

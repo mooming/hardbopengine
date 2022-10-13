@@ -119,9 +119,9 @@ void TestCollection::ExecuteTests()
         bool isPassed = newErrorCursor == errorCursor;
         errorCursor = newErrorCursor;
 
-        log.Out([i, isPassed](auto& ls)
+        log.Out([i, isPassed, testName](auto& ls)
         {
-            ls << "# TC" << i << " Result ";
+            ls << "# TC" << i << '.' << testName << " Result ";
             if (isPassed)
             {
                 ls << "[PASS] #";

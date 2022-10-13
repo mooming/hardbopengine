@@ -16,10 +16,47 @@ TaskHandle::TaskHandle()
 {
 }
 
-TaskHandle::TaskHandle(TKey key, TIndex taskIndex)
+TaskHandle::TaskHandle(TKey key, TIndex taskIndex, TReleaser releaser)
     : key(key)
     , taskIndex(taskIndex)
+    , releaser(std::move(releaser))
 {
+}
+
+TaskHandle::TaskHandle(TaskHandle&& rhs)
+    : key(rhs.key)
+    , taskIndex(rhs.taskIndex)
+    , releaser(std::move(rhs.releaser))
+{
+    rhs.key = InvalidKey;
+    rhs.taskIndex = -1;
+    rhs.releaser = nullptr;
+}
+
+TaskHandle::~TaskHandle()
+{
+    if (releaser == nullptr)
+        return;
+
+    if (!IsValid())
+        return;
+
+    releaser(*this);
+}
+
+TaskHandle& TaskHandle::operator=(TaskHandle&& rhs)
+{
+    this->~TaskHandle();
+
+    key = rhs.key;
+    taskIndex = rhs.taskIndex;
+    releaser = std::move(rhs.releaser);
+
+    rhs.key = InvalidKey;
+    rhs.taskIndex = -1;
+    rhs.releaser = nullptr;
+
+    return *this;
 }
 
 bool TaskHandle::IsValid() const

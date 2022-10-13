@@ -8,6 +8,7 @@
 #include "HSTL/HVector.h"
 #include "String/StaticString.h"
 #include <atomic>
+#include <cstdint>
 #include <functional>
 #include <mutex>
 #include <thread>
@@ -47,6 +48,7 @@ private:
 
     Time::TTime time;
     float deltaTime;
+    std::atomic<uint64_t> flipCount;
 
     bool isResidentListDirty;
     std::mutex queueLock;
@@ -66,6 +68,7 @@ public:
     inline auto GetThreadID() const { return threadID; }
     inline auto& GetThread() { return thread; }
     inline auto& GetThread() const { return thread; }
+    inline auto GetFlipCount() const { return flipCount.load(); }
 
 private:
     void Start(TaskSystem& taskSys);
@@ -73,6 +76,7 @@ private:
     void Request(TKey key, Task& task, TIndex start, TIndex end);
     void AddResident(TKey key, Task& task);
     void RemoveResidentTask(TKey key);
+    void RemoveResidentTaskSync(TKey key);
 
     void FlipBuffers();
     void RunLoop(const std::atomic<bool>& isRunning);
