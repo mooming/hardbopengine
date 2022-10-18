@@ -28,19 +28,24 @@ TaskStream::Request::Request(TKey key, Task& task, TIndex start, TIndex end)
 }
 
 TaskStream::TaskStream()
-    : time(Time::GetNow())
+    : deltaTime(0.0f)
+    , flipCount(0)
+    , isDirty(false)
     , isResidentListDirty(false)
+
 {
     Assert(threadID == std::thread::id());
 }
 
 TaskStream::TaskStream(StaticString name)
     : name(name)
-    , time(Time::GetNow())
+    , deltaTime(0.0f)
+    , flipCount(0)
+    , isDirty(false)
     , isResidentListDirty(false)
 {
     Assert(threadID == std::thread::id());
-    
+
     auto log = Logger::Get(name);
     log.Out([name=name](auto& ls)
     {
@@ -57,11 +62,9 @@ void TaskStream::Flush()
         return;
     }
 
-    auto currentTime = Time::GetNow();
-    deltaTime = Time::ToFloat(currentTime - time);
-    time = currentTime;
-
     FlipBuffers();
+
+    auto startTime = Time::GetNow();
 
     if (requestsBuffer.size() > 0)
     {
@@ -71,6 +74,18 @@ void TaskStream::Flush()
     if (residentsBuffer.size() > 0)
     {
         UpdateResidents();
+    }
+
+    auto endTime = Time::GetNow();
+    deltaTime = Time::ToFloat(endTime - startTime);
+
+    if (unlikely(deltaTime > 0.1f))
+    {
+        auto log = Logger::Get(name);
+        log.OutWarning([this](auto& ls)
+            {
+                ls << "Slow DeltaTime = " << deltaTime;
+            });
     }
 }
 
@@ -95,83 +110,134 @@ void TaskStream::Start(TaskSystem& taskSys)
 
     thread = std::thread(func);
     OS::SetThreadPriority(thread, 0);
-    
+
     threadID = thread.get_id();
 }
 
 void TaskStream::Request(TKey key, Task& task, TIndex start, TIndex end)
 {
-    std::lock_guard<std::mutex> lock(queueLock);
-    requests.emplace_back(key, task, start, end);
-    task.IncNumStreams();
+    {
+        std::lock_guard<std::mutex> lock(queueLock);
+        requests.emplace_back(key, task, start, end);
+        task.IncNumStreams();
+        isDirty = true;
+    }
+
+    cv.notify_one();
 }
 
 void TaskStream::AddResident(TKey key, Task& task)
 {
-    std::lock_guard<std::mutex> lock(queueLock);
-    residents.emplace_back(key, task, 0, 0);
-    isResidentListDirty = true;
+    {
+        std::lock_guard<std::mutex> lock(queueLock);
+        residents.emplace_back(key, task, 0, 0);
+
+        isDirty = true;
+        isResidentListDirty = true;
+    }
+
+    cv.notify_one();
 }
 
 void TaskStream::RemoveResidentTask(TKey key)
 {
-    std::lock_guard<std::mutex> lock(queueLock);
-
-    auto end = residents.end();
-    for (auto iter = residents.begin(); iter != end; ++iter)
     {
-        if (iter->key != key)
-            continue;
+        std::lock_guard<std::mutex> lock(queueLock);
 
-        residents.erase(iter);
+        auto predicate = [key](auto& item)
+        {
+            return item.key == key;
+        };
+
+        auto found = std::find_if(residents.begin(), residents.end(), predicate);
+        if (found == residents.end())
+            return;
+
+        residents.erase(found);
+
+        isDirty = true;
         isResidentListDirty = true;
-        break;
     }
+
+    cv.notify_one();
+}
+
+void TaskStream::RemoveResidentTaskSync(TKey key)
+{
+    uint64_t count = 0;
+
+    {
+        std::lock_guard<std::mutex> lock(queueLock);
+
+        count = flipCount;
+
+        auto predicate = [key](auto& item)
+        {
+            return item.key == key;
+        };
+
+        auto found = std::find_if(residents.begin(), residents.end(), predicate);
+        if (found == residents.end())
+            return;
+
+        residents.erase(found);
+
+        isDirty = true;
+        isResidentListDirty = true;
+    }
+
+    cv.notify_one();
+
+    while (flipCount.load() == count);
 }
 
 void TaskStream::FlipBuffers()
 {
     std::lock_guard<std::mutex> lock(queueLock);
 
-    {
-        const auto size = requests.size();
-        requestsBuffer.reserve(size);
-        std::swap(requests, requestsBuffer);
-    }
+    ++flipCount;
 
-    if (unlikely(isResidentListDirty))
+    const auto size = requests.size();
+    requestsBuffer.reserve(size);
+    std::swap(requests, requestsBuffer);
+
+    if (isResidentListDirty)
     {
         const auto size = residents.size();
         residentsBuffer.reserve(size);
         residentsBuffer = residents;
     }
+
+    isDirty = false;
+    isResidentListDirty = false;
 }
 
 void TaskStream::RunLoop(const std::atomic<bool>& isRunning)
 {
-    auto log = Logger::Get(name);
-
     if (unlikely(threadID != std::this_thread::get_id()))
     {
+        auto log = Logger::Get(name);
         log.OutFatalError("Incorrect thread!");
         return;
     }
 
+    const std::chrono::milliseconds waitPeriod(10);
+    auto IsDirty = [this]()
+    {
+        return isDirty.load();
+    };
+
     while(likely(isRunning))
     {
-        auto currentTime = Time::GetNow();
-        deltaTime = Time::ToFloat(currentTime - time);
-        time = currentTime;
-
-        if (unlikely(deltaTime > 0.1f))
+        if (!IsDirty())
         {
-            log.OutWarning([this](auto& ls)
-            {
-                ls << "Slow DeltaTime = " << deltaTime;                
-            });
+            std::unique_lock lock(cvLock);
+            cv.wait_for(lock, waitPeriod, IsDirty);
         }
 
         FlipBuffers();
+
+        auto startTime = Time::GetNow();
 
         if (requestsBuffer.size() > 0)
         {
@@ -181,6 +247,18 @@ void TaskStream::RunLoop(const std::atomic<bool>& isRunning)
         if (residentsBuffer.size() > 0)
         {
             UpdateResidents();
+        }
+
+        auto endTime = Time::GetNow();
+        deltaTime = Time::ToFloat(endTime - startTime);
+
+        if (unlikely(deltaTime > 0.1f))
+        {
+            auto log = Logger::Get(name);
+            log.OutWarning([this](auto& ls)
+            {
+                ls << "Slow DeltaTime = " << deltaTime;
+            });
         }
     }
 }

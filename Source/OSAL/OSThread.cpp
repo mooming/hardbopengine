@@ -2,6 +2,7 @@
 
 #include "OSThread.h"
 
+#include "Engine.h"
 #include <thread>
 
 
@@ -154,7 +155,7 @@ void OS::SetThreadPriority(std::thread& thread, int priority)
     }
 }
 #elif defined _WIN32
-#include <ProcessThreadsapi.h>
+#include <Windows.h>
 
 
 int OS::GetCPUIndex()
@@ -165,12 +166,20 @@ int OS::GetCPUIndex()
 
 void OS::SetThreadAffinity(std::thread& thread, uint64_t mask)
 {
-    static_assert(false, "Not implemented yet.");
+    ::SetThreadAffinityMask(thread.native_handle(), mask);
 }
 
-void SetThreadPriority(std::thread& thread, int priority)
+void OS::SetThreadPriority(std::thread& thread, int priority)
 {
-    static_assert(false, "Not implemented yet.");
+    auto result = ::SetThreadPriority(thread.native_handle(), priority);
+    if (result == false)
+    {
+        auto& engine = HE::Engine::Get();
+        engine.LogError([](auto& ls)
+        {
+            ls << "SetThreadPriority failed.";
+        });
+    }
 }
 #else
 static_assert(false, "System is not specified.");

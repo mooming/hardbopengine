@@ -44,6 +44,10 @@ void Task::Reset(StaticString name, TIndex size, Runnable func)
 void Task::Run()
 {
     func(0, size);
+
+    if (isDone)
+        return;
+
     ++numDone;
 
     if (numDone >= numStreams)
@@ -63,6 +67,10 @@ void Task::Run(TIndex start, TIndex end)
     }
 
     func(start, end);
+
+    if (isDone)
+        return;
+
     ++numDone;
 
     if (numDone >= numStreams)
