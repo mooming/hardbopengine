@@ -45,12 +45,12 @@ public:
         const ELogLevel level;
 
         SimpleLogger(StaticString category, ELogLevel level = ELogLevel::Info);
-        void Out(TLogFunction logFunc) const ;
-        void Out(ELogLevel level, TLogFunction logFunc) const;
+        void Out(const TLogFunction& logFunc) const ;
+        void Out(ELogLevel level, const TLogFunction& logFunc) const;
         
-        inline void OutWarning(TLogFunction logFunc) const { Out(ELogLevel::Warning, logFunc); }
-        inline void OutError(TLogFunction logFunc) const { Out(ELogLevel::Error, logFunc); }
-        inline void OutFatalError(TLogFunction logFunc) const { Out(ELogLevel::FatalError, logFunc); }
+        inline void OutWarning(const TLogFunction& logFunc) const { Out(ELogLevel::Warning, logFunc); }
+        inline void OutError(const TLogFunction& logFunc) const { Out(ELogLevel::Error, logFunc); }
+        inline void OutFatalError(const TLogFunction& logFunc) const { Out(ELogLevel::FatalError, logFunc); }
 
         inline void Out(const char* text) const
         {
@@ -113,7 +113,7 @@ public:
     void StopTask(TaskSystem& taskSys);
 
     void SetFilter(StaticString category, TLogFilter filter);
-    void AddLog(StaticString category, ELogLevel level, TLogFunction logFunc);
+    void AddLog(StaticString category, ELogLevel level, const TLogFunction& logFunc);
     void Flush();
     
 private:

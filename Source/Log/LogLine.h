@@ -26,6 +26,8 @@ struct LogLine final
     inline LogLine()
         : level(ELogLevel::Info)
     {
+        text[0] = '\0';
+        text[Config::LogLineSize - 1] = '\0';
     }
     
     inline LogLine(ELogLevel level, StaticString threadName, StaticString category, const char* inText)
