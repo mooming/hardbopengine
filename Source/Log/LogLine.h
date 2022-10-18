@@ -3,7 +3,7 @@
 #pragma once
 
 #include "LogLevel.h"
-#include "Config/EngineConfig.h"
+#include "Config/EngineSettings.h"
 #include "HSTL/HString.h"
 #include "String/StaticString.h"
 #include <chrono>

@@ -2,10 +2,12 @@
 
 #pragma once
 
+#include "Config/ConfigSystem.h"
 #include "Log/Logger.h"
 #include "Log/LogLevel.h"
 #include "Memory/MemoryManager.h"
 #include "String/StaticStringTable.h"
+#include "System/SystemStatistics.h"
 #include "System/TaskSystem.h"
 #include <chrono>
 #include <fstream>
@@ -18,8 +20,7 @@ class Engine final
 {
 public:
     using TLogFunc = std::function<void(std::ostream& out)>;
-    using TTimePoint = std::chrono::time_point<std::chrono::steady_clock>;
-
+    
 private:
     struct PreEngineInit final
     {
@@ -31,12 +32,14 @@ private:
     bool isRunning;
     std::mutex logLock;
     std::ofstream logFile;
-    TTimePoint startTime;
 
     MemoryManager memoryManager;
     StaticStringTable staticStringTable;
     Logger logger;
+    ConfigSystem configSystem;
     TaskSystem taskSystem;
+
+    SystemStatistics statistics;
 
 public:
     static Engine& Get();
@@ -57,7 +60,9 @@ public:
     StaticString GetName() const;
     inline auto& GetMemoryManager() { return memoryManager; }
     inline auto& GetLogger() { return logger; }
+    inline auto& GetConfigSystem() { return configSystem; }
     inline auto& GetTaskSystem() { return taskSystem; }
+    inline auto& GetStatistics() const { return statistics; }
 
     void Log(ELogLevel level, TLogFunc func);
     inline void LogError(TLogFunc func) { Log(ELogLevel::Error, func); }

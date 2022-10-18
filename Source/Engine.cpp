@@ -9,6 +9,12 @@
 #include <iostream>
 
 
+namespace Config
+{
+static constexpr uint8_t EngineLogLevel = 1;
+static constexpr uint8_t EngineLogLevelPrint = 1;
+} // Config
+
 namespace
 {
 
@@ -43,7 +49,6 @@ void SignalHandler(int sigNum)
 
 namespace HE
 {
-
 static Engine* engineInstance = nullptr;
 
 Engine& Engine::Get()
@@ -60,7 +65,6 @@ Engine::PreEngineInit::PreEngineInit(Engine* engine)
 Engine::Engine()
     : preEngineInit(this)
     , logFile("helowlevel.log")
-    , startTime(std::chrono::steady_clock::now())
     , logger("./", "hardbop.log", 5)
 {
     std::signal(SIGABRT, SignalHandler);
@@ -97,18 +101,20 @@ void Engine::Initialize(int argc, const char* argv[])
     }
 
     log.Out("Engine has been initialized.");
+
+    configSystem.Initialize();
 }
 
 void Engine::Run()
 {
     isRunning = true;
-    auto timeCursor = std::chrono::steady_clock::now();
 
     while(likely(isRunning))
     {
-        auto currentTime = std::chrono::steady_clock::now();
-        auto deltaTime = Time::ToFloat(currentTime - timeCursor);
-
+        statistics.IncFrameCount();
+        statistics.UpdateCurrentTime();
+        auto deltaTime = statistics.GetDeltaTime();
+        
         PreUpdate(deltaTime);
         Update(deltaTime);
         PostUpdate(deltaTime);
@@ -117,6 +123,7 @@ void Engine::Run()
     }
 
     staticStringTable.PrintStringTable();
+    statistics.Print();
 
     auto log = Logger::Get(GetName(), ELogLevel::Info);
     log.Out("Shutting down...");
@@ -145,9 +152,9 @@ void Engine::Log(ELogLevel level, TLogFunc func)
 
     using namespace std;
     
-    const auto diff = chrono::steady_clock::now() - startTime;
+    const auto diff = chrono::steady_clock::now() - statistics.GetStartTime();
     auto hours = chrono::duration_cast<chrono::hours>(diff);
-    auto minutes = chrono::duration_cast<chrono::minutes>(diff);
+    auto minutes = chrono::duration_cast<chrono::minutes>(diff);statistics.UpdateCurrentTime();
     auto seconds = chrono::duration_cast<chrono::seconds>(diff);
     auto milliSeconds = chrono::duration_cast<chrono::milliseconds>(diff);
     

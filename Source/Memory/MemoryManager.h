@@ -3,7 +3,7 @@
 #pragma once
 
 #include "AllocatorID.h"
-#include "Config/EngineConfig.h"
+#include "Config/BuildConfig.h"
 #include "Log/LogLevel.h"
 #include "System/Types.h"
 #include <atomic>

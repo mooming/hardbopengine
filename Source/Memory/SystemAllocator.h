@@ -5,7 +5,7 @@
 #include "AllocatorID.h"
 #include "Engine.h"
 #include "MemoryManager.h"
-#include "Config/EngineConfig.h"
+#include "Config/BuildConfig.h"
 #include "OSAL/Intrinsic.h"
 #include "OSAL/OSMemory.h"
 #include "System/Debug.h"

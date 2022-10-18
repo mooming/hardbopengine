@@ -28,6 +28,8 @@ public:
     TValue GetValue(const TString& key) const;
     TString GetValue(const TString& key, const TString& defaultValue) const;
     
+    void ForEach(std::function<void(const TMap::value_type&)> func) const;
+
     inline auto IsValid() const { return isValid; }
     
 private:

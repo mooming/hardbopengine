@@ -4,6 +4,7 @@
 
 #include "StaticString.h"
 #include "StaticStringID.h"
+#include "Config/EngineSettings.h"
 #include "HSTL/HString.h"
 #include "HSTL/HVector.h"
 #include "HSTL/HUnorderedMap.h"

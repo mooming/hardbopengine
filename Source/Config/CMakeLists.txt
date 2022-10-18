@@ -19,8 +19,12 @@ link_directories (${CMAKE_SOURCE_DIR}/lib)
 
 add_library (Config STATIC 
  ConfigFile.cpp
+ ConfigSystem.cpp
+ EngineConfig.cpp
+ BuildConfig.h
  ConfigFile.h
- EngineConfig.h
+ ConfigSystem.h
+ EngineSettings.h
 )
 
 if (APPLE)

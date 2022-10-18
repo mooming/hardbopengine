@@ -2,7 +2,7 @@
 
 #include "MathUtil.h"
 
-#include "Config/EngineConfig.h"
+#include "Config/BuildConfig.h"
 
 
 #ifdef __UNIT_TEST__

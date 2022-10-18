@@ -1,7 +1,7 @@
 // Created by mooming.go@gmail.com, 2017
 
 #include "Engine.h"
-#include "Config/EngineConfig.h"
+#include "Config/BuildConfig.h"
 #include "Test/UnitTestCollection.h"
 
 

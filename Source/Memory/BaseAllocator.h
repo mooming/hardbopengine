@@ -5,7 +5,7 @@
 #include "AllocatorID.h"
 #include "AllocatorScope.h"
 #include "MemoryManager.h"
-#include "Config/EngineConfig.h"
+#include "Config/BuildConfig.h"
 #include <cstddef>
 #include <iostream>
 

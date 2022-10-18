@@ -2,7 +2,7 @@
 
 #pragma once
 
-#include "Config/EngineConfig.h"
+#include "Config/BuildConfig.h"
 #include "Log/PrintArgs.h"
 #include "OSAL/Intrinsic.h"
 

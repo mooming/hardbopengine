@@ -3,7 +3,7 @@
 #pragma once
 
 #include "StaticStringID.h"
-#include "Config/EngineConfig.h"
+#include "Config/BuildConfig.h"
 #include <ostream>
 
 

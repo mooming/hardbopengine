@@ -4,7 +4,8 @@
 
 #include "Engine.h"
 #include "LogUtil.h"
-#include "Config/EngineConfig.h"
+#include "Config/BuildConfig.h"
+#include "Config/EngineSettings.h"
 #include "Memory/AllocatorScope.h"
 #include "Memory/InlinePoolAllocator.h"
 #include "OSAL/Intrinsic.h"
