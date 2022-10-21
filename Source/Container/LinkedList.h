@@ -43,6 +43,7 @@ struct LinkedListNode final
 template <typename Type, class TAllocator = BaseAllocator<LinkedListNode<Type>>>
 class LinkedList final
 {
+public:
     using Node = LinkedListNode<Type>;
     
 public:

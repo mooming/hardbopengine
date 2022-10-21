@@ -9,7 +9,7 @@
 #include "HSTL/HVector.h"
 #include "HSTL/HUnorderedMap.h"
 #include "HSTL/HVector.h"
-#include "Memory/StackAllocator.h"
+#include "Memory/MonotonicAllocator.h"
 #include <cstddef>
 #include <cstdint>
 #include <mutex>
@@ -30,7 +30,7 @@ public:
     
 private:
     mutable std::mutex tableLock;
-    StackAllocator allocator;
+    MonotonicAllocator allocator;
     TTable tables[NumTables];
     
 public:

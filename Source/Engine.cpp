@@ -9,12 +9,6 @@
 #include <iostream>
 
 
-namespace Config
-{
-static constexpr uint8_t EngineLogLevel = 1;
-static constexpr uint8_t EngineLogLevelPrint = 1;
-} // Config
-
 namespace
 {
 

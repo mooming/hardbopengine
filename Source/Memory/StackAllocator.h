@@ -16,8 +16,8 @@ public:
     
 private:
     TAllocatorID id;
+
     SizeType capacity;
-    SizeType freeSize;
     SizeType cursor;
     
     union
@@ -27,14 +27,14 @@ private:
     };
     
 public:
-    StackAllocator(const char* name, size_t capacity);
+    StackAllocator(const char* name, SizeType capacity);
     ~StackAllocator();
     
     Pointer Allocate(size_t size);
-    void Deallocate(const Pointer ptr);
-    
-    size_t Usage() const;
-    size_t Available() const;
+    void Deallocate(const Pointer ptr, SizeType size);
+
+    size_t GetAvailable() const;
+    size_t GetUsage() const;
     
     inline auto GetID() const { return id; }
     inline size_t GetSize(const Pointer) const { return 0; }

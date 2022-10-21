@@ -74,6 +74,16 @@ const char* MemoryManager::GetName() const
     return "MemoryManager";
 }
 
+const char* MemoryManager::GetName(TAllocatorID id) const
+{
+    if (unlikely(!IsValid(id)))
+    {
+        return "Null";
+    }
+
+    return allocators[id].name;
+}
+
 MemoryManager::TId MemoryManager::Register(const char* name, bool isStack
     , size_t capacity, TAllocBytes allocFunc, TDeallocBytes deallocFunc)
 {

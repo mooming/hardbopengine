@@ -19,9 +19,11 @@
 #include "Math/RigidTransform.h"
 #include "Math/AABB.h"
 #include "Memory/BaseAllocator.h"
+#include "Memory/InlineMonotonicAllocator.h"
 #include "Memory/InlinePoolAllocator.h"
 #include "Memory/Optional.h"
 #include "Memory/PoolAllocator.h"
+#include "Memory/MonotonicAllocator.h"
 #include "Memory/MultiPoolAllocator.h"
 #include "Memory/StackAllocator.h"
 #include "Memory/SystemAllocator.h"
@@ -48,8 +50,10 @@ namespace Test
         testEnv.AddTestCollection<SystemAllocatorTest>();
         testEnv.AddTestCollection<BaseAllocatorTest>();
         testEnv.AddTestCollection<InlinePoolAllocatorTest>();
+        testEnv.AddTestCollection<InlineMonotonicAllocatorTest>();
         testEnv.AddTestCollection<StackAllocatorTest>();
         testEnv.AddTestCollection<PoolAllocatorTest>();
+        testEnv.AddTestCollection<MonotonicAllocatorTest>();
         testEnv.AddTestCollection<MultiPoolAllocatorTest>();
 
         testEnv.AddTestCollection<ArrayTest>();

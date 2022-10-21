@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include <cstddef>
 #include <cstdint>
 
 
@@ -16,6 +17,7 @@ static constexpr uint8_t EngineLogLevelPrint = 1;
 
 // Memory
 static constexpr uint8_t MemLogLevel = 4;
+static constexpr size_t DefaultAlign = 16;
 
 // String
 static constexpr int MaxPathLength = 512;

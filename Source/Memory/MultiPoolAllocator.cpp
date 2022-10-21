@@ -171,7 +171,7 @@ size_t MultiPoolAllocator::GetPoolIndex(void* ptr) const
     
     for (auto& pool : multiPool)
     {
-        if (pool.IsValid(ptr))
+        if (pool.IsMine(ptr))
         {
             return index;
         }

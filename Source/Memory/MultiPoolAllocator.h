@@ -20,7 +20,7 @@ private:
     
     TAllocatorID id;
     StaticString name;
-    HSTL::HVector<PoolAllocator> multiPool;
+    HSTL::HVector<PoolAllocator<uint32_t>> multiPool;
     size_t fallbackCount;
     
 public:

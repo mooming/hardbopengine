@@ -5,7 +5,7 @@
 #include "Engine.h"
 #include "StringUtil.h"
 #include "Memory/AllocatorScope.h"
-#include "OSAL/Intrinsic.h"
+#include "Config/EngineSettings.h"
 #include "System/Debug.h"
 #include <iostream>
 
@@ -58,9 +58,8 @@ StaticStringID StaticStringTable::Register(const char* text)
             return id;
         }
 
-        TString str(text);
         id.index = static_cast<TIndex>(table.size());
-        table.push_back(str);
+        table.emplace_back(text);
     }
     
     return id;

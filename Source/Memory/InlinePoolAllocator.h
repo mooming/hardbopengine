@@ -17,7 +17,7 @@
 namespace HE
 {
 template <class T, int BufferSize, int NumBuffers = 2>
-struct ALIGNED InlinePoolAllocator final
+struct InlinePoolAllocator final
 {
     using TIndex = decltype(BufferSize);
 
@@ -33,13 +33,13 @@ struct ALIGNED InlinePoolAllocator final
     static_assert(BufferSize > 0, "The buffer size should be greater than or equal to zero.");
     
 private:
-    bool isAllocated[NumBuffers];
-    uint8_t buffer[NumBuffers][BufferSize * sizeof(T)];
-    
     TAllocatorID id;
     TAllocatorID parentID;
     size_t fallbackCount;
     int indexHint;
+
+    ALIGN bool isAllocated[NumBuffers];
+    alignas(std::max(sizeof(T), Config::DefaultAlign)) uint8_t buffer[NumBuffers][BufferSize * sizeof(T)];
 
 public:
     InlinePoolAllocator()
@@ -48,9 +48,8 @@ public:
         , fallbackCount(0)
         , indexHint(0)
     {
-#ifdef __MEMORY_VERIFICATION__
-        Assert(OS::CheckAligned(this));
-#endif // __MEMORY_VERIFICATION__
+        Assert(OS::CheckAligned(isAllocated));
+        Assert(OS::CheckAligned(buffer[0]));
         
         if (unlikely(BufferSize <= 0))
             return;
@@ -106,7 +105,7 @@ public:
     T* allocate(std::size_t n)
     {
         constexpr size_t unit = sizeof(T);
-        const auto nBytes = n * unit;
+        const auto nBytes = OS::GetAligned(n * unit);
 
         if (parentID == InvalidAllocatorID)
         {
@@ -123,7 +122,7 @@ public:
     void deallocate (T* ptr, std::size_t n) noexcept
     {
         constexpr size_t unit = sizeof(T);
-        const auto nBytes = n * unit;
+        const auto nBytes = OS::GetAligned(n * unit);
 
         void* voidPtr = reinterpret_cast<void*>(ptr);
 

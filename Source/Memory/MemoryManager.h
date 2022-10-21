@@ -73,7 +73,8 @@ namespace HE
         ~MemoryManager();
         
         const char* GetName() const;
-        
+        const char* GetName(TAllocatorID id) const;
+
         TId Register(const char* name, bool isStack, size_t capacity
             , TAllocBytes allocFunc, TDeallocBytes deallocFunc);
         void Deregister(TId id);
@@ -148,6 +149,7 @@ namespace HE
         }
         
         void Log(ELogLevel level, TLogFunc func);
+        inline void LogWarning(TLogFunc func) { Log(ELogLevel::Warning, func); }
         inline void LogError(TLogFunc func) { Log(ELogLevel::Error, func); }
 
         inline size_t GetTotalStackUsage() const { return totalStackUsage; }
@@ -155,6 +157,7 @@ namespace HE
         inline size_t GetTotalUsage() const { return GetTotalStackUsage() + GetTotalHeapUsage(); }
 
     private:
+        inline bool IsValid(TAllocatorID id) const { return id >= 0 && id < MaxNumAllocators; }
         inline TId GetScopedAllocatorID() const { return ScopedAllocatorID; }
         void SetScopedAllocatorID(TId id);
 

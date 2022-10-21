@@ -2,9 +2,10 @@
 
 #pragma once
 
-#define ONCE while(false)
-
+#include "Debug.h"
 #include <cstddef>
+
+#define ONCE while(false)
 
 
 namespace HE
@@ -29,12 +30,18 @@ namespace HE
     template <typename Type>
     inline Type GetAs(void *src)
     {
+        Assert((((size_t)(src)) % sizeof(Type)) == 0
+            , "Misaligned Address(", src
+            , ") is provided. Required alignment is ", sizeof(Type), ".");
         return *reinterpret_cast<Type*>(src);
     }
 
     template <typename Type>
     inline void SetAs(void *dst, Type value)
     {
+        Assert((((size_t)(dst)) % sizeof(Type)) == 0
+            , "Misaligned Address(", dst
+            , ") is provided. Required alignment is ", sizeof(Type), ".");
         Type* _dst = reinterpret_cast<Type*>(dst);
         *_dst = value;
     }

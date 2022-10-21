@@ -86,7 +86,7 @@ private:
     std::atomic<bool> needFlush;
     TTimePoint startTime;
     
-    PoolAllocator allocator;
+    PoolAllocator<> allocator;
     
     TString logPath;
     TLogBuffer inputBuffer;

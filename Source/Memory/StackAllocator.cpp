@@ -4,6 +4,7 @@
 
 #include "AllocatorScope.h"
 #include "MemoryManager.h"
+#include "Config/EngineSettings.h"
 #include "OSAL/Intrinsic.h"
 #include "System/Debug.h"
 #include "System/Exception.h"
@@ -12,16 +13,17 @@
 
 using namespace HE;
 
-StackAllocator::StackAllocator(const char* name, size_t capacity)
+StackAllocator::StackAllocator(const char* name, size_t inCapacity)
     : id(InvalidAllocatorID)
-    , capacity(capacity)
-    , freeSize(capacity)
+    , capacity(inCapacity)
     , cursor(0)
     , buffer(nullptr)
 {
-    FatalAssert(capacity > (sizeof(bool) + sizeof(SizeType))
-        , "StackAllocator: Capacity is too small. Should be larger than %lu\n"
-        , sizeof(bool) + sizeof(SizeType));
+    {
+        constexpr auto AlignUnit = Config::DefaultAlign;
+        const auto multiplier = (capacity + AlignUnit - 1) / AlignUnit;
+        capacity = multiplier * AlignUnit;
+    }
     
     auto& mmgr = MemoryManager::GetInstance();
     bufferPtr = mmgr.Allocate(capacity);
@@ -31,9 +33,9 @@ StackAllocator::StackAllocator(const char* name, size_t capacity)
         return Allocate(n);
     };
     
-    auto deallocFunc = [this](void* ptr, size_t)
+    auto deallocFunc = [this](void* ptr, size_t size)
     {
-        Deallocate(ptr);
+        Deallocate(ptr, size);
     };
     
     id = mmgr.Register(name, false, capacity, allocFunc, deallocFunc);
@@ -48,96 +50,97 @@ StackAllocator::~StackAllocator()
 
 void *StackAllocator::Allocate (size_t size)
 {
-    // Structure
-    // flag - 1 byte
-    // bufer[N] - n byte
-    // previousIndex - sizeType byte
-    
-    constexpr SizeType metaDataSize = sizeof(bool) + sizeof(SizeType);
-    const size_t requiredSize = metaDataSize + size;
-    
-    if (unlikely(freeSize < requiredSize))
     {
-        using namespace std;
+        constexpr auto AlignUnit = Config::DefaultAlign;
+        const auto multiplier = (size + AlignUnit - 1) / AlignUnit;
+        size = multiplier * AlignUnit;
+    }
+
+    const auto freeSize = GetAvailable();
+    if (unlikely(size > freeSize))
+    {
         auto& mmgr = MemoryManager::GetInstance();
-        mmgr.LogError([this, size](auto& lout){
-            lout << "StackAllocator: Not Enough Memory" << endl
+        mmgr.LogError([this, size, freeSize](auto& lout){
+            lout << "StackAllocator: Not Enough Memory! "
                 << "require = " << size << " : free = "
                 << freeSize << " / " << capacity;
         });
 
         return nullptr;
     }
-    
-    SizeType previous = cursor;
-    
-    SetAs<bool>(&buffer[cursor], true);
-    cursor += sizeof(bool);
-    Pointer ptr = &buffer[cursor];
+
+    auto ptr = reinterpret_cast<void*>(buffer + cursor);
     cursor += size;
-    
-    SetAs<SizeType>(&buffer[cursor], static_cast<SizeType>(previous));
-    
-    cursor += sizeof(SizeType);
-    freeSize -= requiredSize;
-    
+
+#ifdef __MEMORY_LOGGING__
+    {
+        auto& mmgr = MemoryManager::GetInstance();
+        mmgr.Log(ELogLevel::Info, [this, ptr, size](auto& ls)
+        {
+            ls << "StackAllocator[" << static_cast<int>(GetID())
+                << "]: Allocate " << static_cast<void*>(ptr)
+                << ", size = " << size;
+        });
+    }
+#endif // __MEMORY_LOGGING__
+
     return ptr;
 }
 
-void StackAllocator::Deallocate(const Pointer ptr)
+void StackAllocator::Deallocate(const Pointer ptr, SizeType size)
 {
-    Assert(IsMine(ptr));
-    
-    Byte* bytePtr = reinterpret_cast<Byte*>(ptr) - 1;
-    Assert(GetAs<bool>(bytePtr), "StackAllocator: Double Free Error\n");
-    
-    auto DoDealloc = [this, &bytePtr]() -> bool
+#ifdef __MEMORY_LOGGING__
     {
-        Assert(cursor <= capacity, "Invalid cursor = %lu, capacity = %lu\n", cursor, capacity);
-        Assert(cursor >= (sizeof(SizeType) + sizeof(bool)), "bad cursor = %lu, size type = %lu\n"
-                      , cursor, sizeof(SizeType));
-        
-        Pointer sizePtr = &buffer[cursor - sizeof(SizeType)];
-        size_t previous = GetAs<SizeType>(sizePtr);
-        Assert(cursor > previous, "Invalid Cursor. Expecting cursor = %lu > previpus = %lu\n", cursor, previous);
-        
-        if (bytePtr == &buffer[previous])
+        auto& mmgr = MemoryManager::GetInstance();
+        mmgr.Log(ELogLevel::Info, [this, ptr, size](auto& lout)
         {
-            const auto allocSize = cursor - previous;
-            
-            freeSize += allocSize;
-            cursor = previous;
-            
-            if (cursor == 0)
-            {
-                return false;
-            }
-            else
-            {
-                bytePtr = &buffer[previous];
-                return !GetAs<bool>(bytePtr);
-            }
-        }
-        else
+            lout << "StackAllocator[" << static_cast<int>(GetID())
+                << "]: Deallocate " << static_cast<void*>(ptr)
+                << ", size = " << size;
+        });
+    }
+#endif // __MEMORY_LOGGING__
+
+    Assert(IsMine(ptr));
+
+    {
+        constexpr auto AlignUnit = Config::DefaultAlign;
+        const auto multiplier = (size + AlignUnit - 1) / AlignUnit;
+        size = multiplier * AlignUnit;
+    }
+
+    Assert(cursor >= size);
+
+    auto expected = buffer + cursor;
+    auto provided = reinterpret_cast<Byte*>(ptr) + size;
+    if (unlikely(expected != provided))
+    {
+        auto& mmgr = MemoryManager::GetInstance();
+        mmgr.LogError([this, ptr, expected, provided](auto& lout)
         {
-            Assert(GetAs<bool>(bytePtr), "try to free %p twice.", bytePtr + 1);
-            SetAs<bool>(bytePtr, false);
-        }
-        
-        return false;
-    };
-    
-    while (DoDealloc());
+            lout << "StackAllocator[" << static_cast<int>(GetID())
+                << "]: Pointer mismatched! ptr = " << ptr << ", "
+                << static_cast<void*>(expected) << " is expected. But "
+                << static_cast<void*>(provided) << " is provided.";
+        });
+
+        Assert(false);
+        return;
+    }
+
+    cursor -= size;
 }
 
-size_t StackAllocator::Available() const
+size_t StackAllocator::GetAvailable() const
 {
-    return freeSize;
+    Assert(capacity >= cursor);
+    return capacity - cursor;
 }
 
-size_t StackAllocator::Usage() const
+size_t StackAllocator::GetUsage() const
 {
-    return capacity - freeSize;
+    Assert(cursor < capacity);
+    return cursor;
 }
 
 bool StackAllocator::IsMine(Pointer ptr) const
@@ -173,10 +176,10 @@ void StackAllocatorTest::Prepare()
             a.push_back(0);
         }
 
-        if (stack.Usage() != 0)
+        if (stack.GetUsage() != 0)
         {
             ls << "Deallocation Failed. Usage should be zero, but "
-                << stack.Usage() << lferr;
+                << stack.GetUsage() << lferr;
         }
     });
     
@@ -194,10 +197,10 @@ void StackAllocatorTest::Prepare()
             b.push_back(1);
         }
 
-        if (stack.Usage() != 0)
+        if (stack.GetUsage() != 0)
         {
             ls << "Deallocation Failed. Usage should be zero, but "
-                << stack.Usage() << lferr;
+                << stack.GetUsage() << lferr;
         }
     });
     
@@ -211,10 +214,10 @@ void StackAllocatorTest::Prepare()
             String a = "0";
         }
         
-        if (stack.Usage() != 0)
+        if (stack.GetUsage() != 0)
         {
             ls << "Deallocation Failed. Usage should be zero, but "
-                << stack.Usage() << lferr;
+                << stack.GetUsage() << lferr;
         }
     });
     
@@ -228,10 +231,10 @@ void StackAllocatorTest::Prepare()
             String b = "1";
         }
         
-        if (stack.Usage() != 0)
+        if (stack.GetUsage() != 0)
         {
             ls << "Deallocation Failed. Usage should be zero, but "
-                << stack.Usage() << lferr;
+                << stack.GetUsage() << lferr;
         }
     });
 }

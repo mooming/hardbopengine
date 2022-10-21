@@ -7,7 +7,7 @@ using namespace HE;
 
 #ifdef __UNIT_TEST__
 #include "Memory/AllocatorScope.h"
-#include "Memory/StackAllocator.h"
+#include "Memory/PoolAllocator.h"
 #include "System/Debug.h"
 #include "System/Time.h"
 #include <list>
@@ -21,7 +21,6 @@ void LinkedListTest::Prepare()
     const int COUNT = 8192 * 2;
 #endif //__DEBUG__
     const int COUNT2 = 1024;
-    const size_t CAPACITY = COUNT * (sizeof(int) + sizeof(void*) * 2 + 64);
     
     AddTest("Iteration on the empty list", [this](auto& ls)
     {
@@ -38,8 +37,9 @@ void LinkedListTest::Prepare()
 
     AddTest("Growth and Iteration", [this](auto& ls)
     {
-        StackAllocator stack("LinkedListTest::StackAllocator", CAPACITY);
-        AllocatorScope stackScope(stack.GetID());
+        const auto NodeSize = sizeof(LinkedList<int>::Node);
+        PoolAllocator<> alloc("LinkedListTest::Allocator", NodeSize, COUNT + 10);
+        AllocatorScope allocScope(alloc.GetID());
         
         Time::TDuration heTime;
         Time::TDuration stlTime;
@@ -48,7 +48,7 @@ void LinkedListTest::Prepare()
             Time::Measure measure(heTime);
             
             LinkedList<int> intList;
-            for (int i = 0; i < COUNT; ++i)
+            for (int i = 0; i < 100; ++i)
             {
                 intList.Add(i);
             }
@@ -106,8 +106,9 @@ void LinkedListTest::Prepare()
     
     AddTest("Growth and Iteration", [this](auto& ls)
     {
-        StackAllocator stack("LinkedListTest::StackAllocator", CAPACITY);
-        AllocatorScope stackScope(stack.GetID());
+        const auto NodeSize = sizeof(LinkedList<int>::Node);
+        PoolAllocator<> alloc("LinkedListTest::Allocator", NodeSize, COUNT + 10);
+        AllocatorScope allocScope(alloc.GetID());
         
         Time::TDuration heTime;
         Time::TDuration stlTime;

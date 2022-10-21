@@ -2,9 +2,11 @@
 
 #pragma once
 
+#include "OSAL/OSMemory.h"
 #include "System/CommonUtil.h"
 #include "System/Debug.h"
 #include "System/Types.h"
+#include <algorithm>
 #include <type_traits>
 #include <utility>
 
@@ -16,6 +18,8 @@ class Optional final
 {
 public:
     bool hasValue;
+
+    alignas(std::max(IsReferenceType<Type>::TypeSize, Config::DefaultAlign))
     Byte value[IsReferenceType<Type>::TypeSize];
     
 public:

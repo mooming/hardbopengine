@@ -21,7 +21,6 @@ size_t OS::GetAllocSize(void* ptr)
     return malloc_usable_size(ptr);
 }
 
-
 size_t OS::GetPageSize()
 {
     return sysconf(_SC_PAGESIZE);

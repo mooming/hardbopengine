@@ -2,19 +2,27 @@
 
 #pragma once
 
+#include "Config/EngineSettings.h"
 #include <cstddef>
+#include <cstdint>
 
-#define ALIGNED alignas(16)
+#define ALIGN alignas(HE::Config::DefaultAlign)
 
 
 namespace OS
 {
 
 template <typename T>
-bool CheckAligned(T *ptr, unsigned int alignBytes = 16)
+bool CheckAligned(T *ptr, uint32_t alignBytes = HE::Config::DefaultAlign)
 {
     const size_t address = reinterpret_cast<size_t>(ptr);
     return (address % alignBytes) == 0;
+}
+
+constexpr size_t GetAligned(size_t size, uint32_t alignBytes = HE::Config::DefaultAlign)
+{
+    const auto multiplier = (size + alignBytes - 1) / alignBytes;
+    return multiplier * alignBytes;
 }
 
 size_t GetAllocSize(void* ptr);
