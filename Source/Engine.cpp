@@ -2,6 +2,8 @@
 
 #include "Engine.h"
 
+#include "Config/ConfigSystem.h"
+#include "Config/ConfigParam.h"
 #include "HSTL/HString.h"
 #include "System/Debug.h"
 #include "System/Time.h"
@@ -95,8 +97,6 @@ void Engine::Initialize(int argc, const char* argv[])
     }
 
     log.Out("Engine has been initialized.");
-
-    configSystem.Initialize();
 }
 
 void Engine::Run()
@@ -116,7 +116,16 @@ void Engine::Run()
         Stop();
     }
 
+    auto& configSys = ConfigSystem::Get();
+    
+#ifdef __DEBUG__
+    const auto logLevel = static_cast<uint8_t>(ELogLevel::Verbose);
+    configSys.SetByte("Log.Engine", logLevel);
+    configSys.SetByte("Log.Level", logLevel);
+#endif // __DEBUG__
+
     staticStringTable.PrintStringTable();
+    configSys.PrintAllParameters();
     statistics.Print();
 
     auto log = Logger::Get(GetName(), ELogLevel::Info);
@@ -140,15 +149,23 @@ StaticString Engine::GetName() const
 void Engine::Log(ELogLevel level, TLogFunc func)
 {
 #ifdef ENGINE_LOG_ENABLED
+    static TConfigParam<uint8_t> CPEngineLogLevel("Log.Engine"
+       , "The Engine Log Level"
+       , static_cast<uint8_t>(Config::EngineLogLevel));
+
+    static TConfigParam<uint8_t> CPEnginePrintLogLevel("Log.Engine.Print"
+       , "The Engine Log Level for Standard IO"
+       , static_cast<uint8_t>(Config::EngineLogLevelPrint));
+
     auto levelAsValue = static_cast<uint8_t>(level);
-    if (levelAsValue < Config::EngineLogLevel)
+    if (levelAsValue < CPEngineLogLevel.Get())
         return;
 
     using namespace std;
     
     const auto diff = chrono::steady_clock::now() - statistics.GetStartTime();
     auto hours = chrono::duration_cast<chrono::hours>(diff);
-    auto minutes = chrono::duration_cast<chrono::minutes>(diff);statistics.UpdateCurrentTime();
+    auto minutes = chrono::duration_cast<chrono::minutes>(diff);
     auto seconds = chrono::duration_cast<chrono::seconds>(diff);
     auto milliSeconds = chrono::duration_cast<chrono::milliseconds>(diff);
     
@@ -159,7 +176,7 @@ void Engine::Log(ELogLevel level, TLogFunc func)
     
     lock_guard lock(logLock);
 
-    if (levelAsValue >= Config::EngineLogLevelPrint)
+    if (levelAsValue >= CPEnginePrintLogLevel.Get())
     {
         cerr << '[' << intHours << ':' << intMins << ':' << intSecs
             << '.' << intMSecs << "][EngineLog] ";
@@ -172,6 +189,7 @@ void Engine::Log(ELogLevel level, TLogFunc func)
         << '.' << intMSecs << "] ";
     
     func(logFile);
+    
     logFile << endl;
 #endif // ENGINE_LOG_ENABLED
 }

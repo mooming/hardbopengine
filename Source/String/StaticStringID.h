@@ -3,6 +3,7 @@
 #pragma once
 
 #include <cstdint>
+#include <ostream>
 
 
 namespace HE
@@ -21,7 +22,25 @@ struct StaticStringID final
             TIndex index;
         };
     };
+
+    inline bool operator == (const StaticStringID& rhs) const
+    {
+        return value == rhs.value;
+    }
 };
 
 } // HE
+
+namespace std
+{
+template<>
+struct hash<HE::StaticStringID> final
+{
+    std::size_t operator() (const HE::StaticStringID& obj) const
+    {
+        return static_cast<std::size_t>(obj.value);
+    }
+};
+} // std
+
 

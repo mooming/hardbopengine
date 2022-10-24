@@ -2,7 +2,7 @@
 
 #pragma once
 
-#include "Config/ConfigSystem.h"
+#include "Config/EngineSettings.h"
 #include "Log/Logger.h"
 #include "Log/LogLevel.h"
 #include "Memory/MemoryManager.h"
@@ -36,7 +36,6 @@ private:
     MemoryManager memoryManager;
     StaticStringTable staticStringTable;
     Logger logger;
-    ConfigSystem configSystem;
     TaskSystem taskSystem;
 
     SystemStatistics statistics;
@@ -60,7 +59,6 @@ public:
     StaticString GetName() const;
     inline auto& GetMemoryManager() { return memoryManager; }
     inline auto& GetLogger() { return logger; }
-    inline auto& GetConfigSystem() { return configSystem; }
     inline auto& GetTaskSystem() { return taskSystem; }
     inline auto& GetStatistics() const { return statistics; }
 

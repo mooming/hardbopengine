@@ -45,10 +45,7 @@ void TestCollection::Start()
     
     try
     {
-        log.Out([title = GetName()](auto& ls)
-        {
-            ls << "## START ========================================";
-        });
+        log.Out("= START ========================================");
         
         Prepare();
         ExecuteTests();
@@ -124,13 +121,12 @@ void TestCollection::ExecuteTests()
             ls << "# TC" << i << '.' << testName << " Result ";
             if (isPassed)
             {
-                ls << "[PASS] #";
+                ls << "[PASS] #\n";
             }
             else
             {
-                ls << "[FAIL] #";
+                ls << "[FAIL] #\n";
             }
-            ls << hendl;
         });
 
         logStream.str("");
@@ -145,14 +141,14 @@ void TestCollection::Report()
     {
         log.Out([](auto& ls)
         {
-            ls << "## Collection Result: [SUCCESS] =================" << hendl;
+            ls << "= Collection Result: [SUCCESS] =================\n";
         });
     }
     else
     {
         log.OutError([](auto& ls)
         {
-            ls << "## Collection Result: [FAIL] ====================" << hendl;
+            ls << "= Collection Result: [FAIL] ====================\n";
         });
     }
 }

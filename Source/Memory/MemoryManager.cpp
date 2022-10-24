@@ -40,6 +40,11 @@ MemoryManager::MemoryManager()
     , totalSysHeapUsage(0)
     , totalStackCapacity(0)
     , totalHeapCapacity(0)
+    , maxStackUsage(0)
+    , maxHeapUsage(0)
+    , maxSysHeapUsage(0)
+    , maxStackCapacity(0)
+    , maxHeapCapacity(0)
 {
     Assert(MMgrInstance == nullptr);
     MMgrInstance = this;
@@ -93,9 +98,9 @@ MemoryManager::TId MemoryManager::Register(const char* name, bool isStack
     }
     
 #ifdef __MEMORY_STATISTICS__
-    auto AddAllocator = [name, isStack, capacity, allocFunc, deallocFunc](auto& allocator)
+    auto AddAllocator = [this, name, isStack, capacity, allocFunc, deallocFunc](auto& allocator)
 #else // __MEMORY_STATISTICS__
-    auto AddAllocator = [allocFunc, deallocFunc](auto& allocator)
+    auto AddAllocator = [this, allocFunc, deallocFunc](auto& allocator)
 #endif // __MEMORY_STATISTICS__
     {
         allocator.allocate = allocFunc;
@@ -121,6 +126,17 @@ MemoryManager::TId MemoryManager::Register(const char* name, bool isStack
             allocator.name[LastIndex] = '\0';
         }
 #endif // __MEMORY_STATISTICS__
+
+        if (isStack)
+        {
+            totalStackCapacity += capacity;
+            maxStackCapacity = std::max(maxStackCapacity, totalStackCapacity);
+        }
+        else
+        {
+            totalHeapCapacity += capacity;
+            maxHeapCapacity = std::max(maxHeapCapacity, totalHeapCapacity);
+        }
         
 #ifdef __MEMORY_VERIFICATION__
         allocator.threadId = std::this_thread::get_id();
@@ -177,6 +193,8 @@ MemoryManager::TId MemoryManager::Register(const char* name, bool isStack
         ls << "[" << funcName << "][" << name
             << "] failed to register an allocator.";
     });
+
+    FatalAssert(false);
     
     return InvalidAllocatorID;
 }
@@ -346,14 +364,23 @@ void MemoryManager::ReportAllocation(TId id, void* ptr
         
         return;
     }
-    
+
+    if (id == SystemAllocatorID)
+    {
+        totalSysHeapUsage += allocated;
+        maxSysHeapUsage = std::max(maxSysHeapUsage, totalSysHeapUsage);
+
+        return;
+    }
+
     if (allocator.isStack)
     {
         totalStackUsage += allocated;
-        
+        maxStackUsage = std::max(maxStackUsage, totalStackUsage);
+
         if (unlikely(allocator.hasCapacity && totalStackUsage > totalStackCapacity))
         {
-            Log(ELogLevel::Warning
+            Log(ELogLevel::FatalError
                 , [this, funcName = __func__, ptr, requested, allocated](auto& ls)
             {
                 ls << "[MemoryManager][" << funcName
@@ -365,24 +392,25 @@ void MemoryManager::ReportAllocation(TId id, void* ptr
                     << ", allocated = " << allocated;
             });
         }
+
+        return;
     }
-    else
+
+    totalHeapUsage += allocated;
+    maxHeapUsage = std::max(maxHeapUsage, totalHeapUsage);
+
+    if (unlikely(allocator.hasCapacity && totalHeapUsage > totalHeapCapacity))
     {
-        totalHeapUsage += allocated;
-        
-        if (unlikely(allocator.hasCapacity && totalHeapUsage > totalHeapCapacity))
+        Log(ELogLevel::FatalError
+            , [this, funcName = __func__, ptr, requested, allocated](auto& ls)
         {
-            Log(ELogLevel::Warning
-                , [this, funcName = __func__, ptr, requested, allocated](auto& ls)
-            {
-                ls << '[' << funcName << "] Heap usage overflow. "
-                    << totalHeapUsage << " > "
-                    << totalHeapCapacity
-                    << ", ptr = " << ptr
-                    << ", requested = " << requested
-                    << ", allocated = " << allocated;
-            });
-        }
+            ls << '[' << funcName << "] Heap usage overflow. "
+                << totalHeapUsage << " > "
+                << totalHeapCapacity
+                << ", ptr = " << ptr
+                << ", requested = " << requested
+                << ", allocated = " << allocated;
+        });
     }
 #endif // __MEMORY_STATISTICS__
 }
@@ -468,6 +496,39 @@ void MemoryManager::ReportDeallocation(TId id, void* ptr
         
         totalHeapUsage -= allocated;
     }
+#endif // __MEMORY_STATISTICS__
+}
+
+void MemoryManager::ReportFallback(TId id, void* ptr, size_t amount)
+{
+#ifdef __MEMORY_STATISTICS__
+    if (unlikely(!IsValid(id)))
+    {
+        Log(ELogLevel::Error, [funcName = __func__, id](auto& ls)
+        {
+            ls <<  '[' << funcName
+                << "] Invalid allocator id(" << id
+                << ") is provided.";
+        });
+
+        return;
+    }
+
+    auto& allocator = allocators[id];
+
+    ++allocator.fallbackCount;
+    allocator.fallback += amount;
+
+    Log(ELogLevel::Verbose
+        , [&allocator, id, ptr, amount](auto& ls)
+    {
+        ls << "[" << static_cast<char*>(allocator.name) << "]["
+            << id << "][FallbackAlloc] "
+            << " ptr = " << ptr
+            << ", count = " << allocator.fallbackCount
+            << ", amount = " << amount
+            << " / " << allocator.fallback;
+    });
 #endif // __MEMORY_STATISTICS__
 }
 

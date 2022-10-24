@@ -4,6 +4,7 @@
 
 #include "Engine.h"
 #include "StringUtil.h"
+#include "Log/Logger.h"
 #include "Memory/AllocatorScope.h"
 #include "Config/EngineSettings.h"
 #include "System/Debug.h"
@@ -90,12 +91,9 @@ const char* StaticStringTable::Get(StaticStringID id) const
 
 void StaticStringTable::PrintStringTable() const
 {
-    auto& engine = Engine::Get();
-    engine.Log(ELogLevel::Verbose, [](auto& ls)
-    {
-        ls << "StringTable ============";
-    });
-    
+    auto log = Logger::Get(GetName(), ELogLevel::Verbose);
+    log.Out("= StringTable ==============================");
+
     TIndex tableID = 0;
     
     for (auto& table : tables)
@@ -103,7 +101,7 @@ void StaticStringTable::PrintStringTable() const
         if (table.size() <= 0)
             continue;
         
-        engine.Log(ELogLevel::Verbose, [&](auto& ls)
+        log.Out([&](auto& ls)
         {
             ls << "Table ID = " << tableID << "/" << NumTables
                 << ", Number of Elements = "
@@ -126,7 +124,7 @@ void StaticStringTable::PrintStringTable() const
             id.tableID = tableID;
             id.index = index;
             
-            engine.Log(ELogLevel::Verbose, [&](auto& ls)
+            log.Out([&](auto& ls)
             {
                 ls << count++ << " : [" << item << "] "
                     << id.value << '(' << id.tableID << ','
@@ -139,10 +137,12 @@ void StaticStringTable::PrintStringTable() const
         ++tableID;
     }
     
-    engine.Log(ELogLevel::Verbose, [count](auto& ls)
+    log.Out([count](auto& ls)
     {
         ls << "Number of elements = " << count;
     });
+
+    log.Out("============================================\n");
 }
 
 void StaticStringTable::RegisterPredefinedStrings()

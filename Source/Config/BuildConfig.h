@@ -4,8 +4,15 @@
 
 // Definitions for Pre-compilation
 
+// Debug Control
+#if !defined(NDEBUG) || defined(_DEBUG) || defined(DEBUG)
+#undef __DEBUG__
+#define __DEBUG__
+#endif // _DEBUG
+
 // Engine
 #define ENGINE_LOG_ENABLED
+#define ENGINE_PARAM_DESC_ENABLED
 
 // Allocator
 #define __MEMORY_VERIFICATION__
@@ -22,12 +29,6 @@
 
 // Log
 #define LOG_ENABLED
-
-// Debug Control
-#if !defined(NDEBUG) || defined(_DEBUG) || defined(DEBUG)
-#undef __DEBUG__
-#define __DEBUG__
-#endif // _DEBUG
 
 // Mathematics
 //#define __LEFT_HANDED__

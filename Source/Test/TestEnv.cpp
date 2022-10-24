@@ -157,8 +157,7 @@ void TestEnv::Report()
         {
             log.OutWarning([&item](auto& ls) { ls << item; });
         }
-
-        log.OutWarning([](auto& ls) { ls << hendl; });
+        
         log.OutWarning("=============================================\n");
     }
 

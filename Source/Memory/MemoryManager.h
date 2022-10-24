@@ -39,6 +39,8 @@ namespace HE
             bool hasCapacity = false;
             size_t capacity = 0;
             size_t usage = 0;
+            size_t fallbackCount = 0;
+            size_t fallback = 0;
             char name[NameBufferSize] = "";
 #endif // __MEMORY_STATISTICS__
             
@@ -55,9 +57,14 @@ namespace HE
         size_t totalStackUsage;
         size_t totalHeapUsage;
         size_t totalSysHeapUsage;
-        
         size_t totalStackCapacity;
         size_t totalHeapCapacity;
+
+        size_t maxStackUsage;
+        size_t maxHeapUsage;
+        size_t maxSysHeapUsage;
+        size_t maxStackCapacity;
+        size_t maxHeapCapacity;
 
         static thread_local TId ScopedAllocatorID;
         
@@ -81,6 +88,7 @@ namespace HE
         
         void ReportAllocation(TId id, void* ptr, size_t requested, size_t allocated);
         void ReportDeallocation(TId id, void* ptr, size_t requested, size_t allocated);
+        void ReportFallback(TId id, void* ptr, size_t amount);
 
         void* SysAllocate(size_t nBytes);
         void SysDeallocate(void* ptr, size_t nBytes);

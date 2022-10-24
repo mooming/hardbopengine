@@ -94,7 +94,6 @@ private:
     TTextBuffer textBuffer;
     TOutputFuncs flushFuncs;
     TFilters filters;
-    TLogFilter baseFilter;
 
     std::ofstream outFileStream;
     std::thread::id threadID;

@@ -42,6 +42,7 @@ public:
     const char* c_str() const;
     
     inline auto GetID() const noexcept { return id; }
+    inline bool IsNull() const noexcept { return id.value == 0; }
     inline operator const char* () const { return c_str(); }
     inline bool operator < (const StaticString& rhs) const { return id.value < rhs.id.value; }
     inline bool operator == (const StaticString& rhs) const { return id.value == rhs.id.value; }

@@ -46,12 +46,17 @@ public:
         };
 
         auto& mmgr = MemoryManager::GetInstance();
-        id = mmgr.Register(name, false, Capacity, allocFunc, deallocFunc);
+        id = mmgr.Register(name, true, Capacity, allocFunc, deallocFunc);
     }
 
     ~InlineMonotonicAllocator()
     {
         auto& mmgr = MemoryManager::GetInstance();
+
+#ifdef __MEMOR_STATISTICS__
+        mmgr.ReportDeallocation(id, buffer, cursor, cursor);
+#endif // __MEMOR_STATISTICS__
+
         mmgr.Deregister(GetID());
     }
 
@@ -77,6 +82,13 @@ public:
 
         auto ptr = reinterpret_cast<void*>(buffer + cursor);
         cursor += size;
+
+#ifdef __MEMOR_STATISTICS__
+        {
+            auto& mmgr = MemoryManager::GetInstance();
+            mmgr.ReportAllocation(id, ptr, size, size);
+        }
+#endif // __MEMOR_STATISTICS__
 
 #ifdef __MEMORY_LOGGING__
         {

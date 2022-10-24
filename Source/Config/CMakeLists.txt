@@ -19,10 +19,12 @@ link_directories (${CMAKE_SOURCE_DIR}/lib)
 
 add_library (Config STATIC 
  ConfigFile.cpp
+ ConfigParam.cpp
  ConfigSystem.cpp
- EngineConfig.cpp
+ EngineSettings.cpp
  BuildConfig.h
  ConfigFile.h
+ ConfigParam.h
  ConfigSystem.h
  EngineSettings.h
 )

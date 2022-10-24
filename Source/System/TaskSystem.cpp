@@ -2,6 +2,7 @@
 
 #include "TaskSystem.h"
 
+#include "Config/ConfigParam.h"
 #include "HSTL/HString.h"
 #include "Log/Logger.h"
 #include "OSAL/OSThread.h"
@@ -45,7 +46,15 @@ TaskSystem::~TaskSystem()
 void TaskSystem::Initialize()
 {
     auto& logger = Logger::Get();
-    auto logFilter = [](auto level) { return level > ELogLevel::Warning; };
+    auto logFilter = [](auto level)
+    {
+        static TConfigParam<uint8_t> CPLogLevel("Log.TaskSystem"
+           , "The TaskSystem Log Level"
+           , static_cast<uint8_t>(ELogLevel::Warning));
+
+        return level > static_cast<ELogLevel>(CPLogLevel.Get());
+    };
+
     logger.SetFilter(GetName(), logFilter);
 
     auto log = Logger::Get(GetName());

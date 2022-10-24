@@ -6,6 +6,7 @@
 #include "LogUtil.h"
 #include "Config/BuildConfig.h"
 #include "Config/EngineSettings.h"
+#include "Config/ConfigParam.h"
 #include "Memory/AllocatorScope.h"
 #include "Memory/InlinePoolAllocator.h"
 #include "OSAL/Intrinsic.h"
@@ -102,11 +103,6 @@ Logger::Logger(const char* path, const char* filename, int numRolling)
     flushFuncs.reserve(2);
     flushFuncs.push_back([this](const TTextBuffer& buffer) { WriteLog(buffer); });
     flushFuncs.push_back([this](const TTextBuffer& buffer) { PrintStdIO(buffer); });
-    
-    baseFilter = [](ELogLevel level) -> bool
-    {
-        return level >= ELogLevel::Info;
-    };
 }
 
 Logger::~Logger()
@@ -197,14 +193,22 @@ void Logger::AddLog(StaticString category, ELogLevel level
         return;
     }
 
+    static TAtomicConfigParam<uint8_t> CPLogLevel("Log.Level"
+       , "The Default Log Level"
+       , static_cast<uint8_t>(ELogLevel::Info));
+
+    if (level < static_cast<ELogLevel>(CPLogLevel.Get()))
+        return;
+
     {
         std::lock_guard lock(filterLock);
         auto found = filters.find(category);
-        auto& filter = found == filters.end()
-            ? baseFilter : filters[category];
-
-        if (filter != nullptr && !filter(level))
-            return;
+        if (found != filters.end())
+        {
+            auto& filter = found->second;
+            if (filter != nullptr && !filter(level))
+                return;
+        }
     }
 
     auto& engine = Engine::Get();
