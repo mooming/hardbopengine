@@ -145,9 +145,10 @@ void MonotonicAllocatorTest::Prepare()
             a.push_back(0);
         }
 
-        if (alloc.GetUsage() != 0)
+        if (alloc.GetUsage() == 0)
         {
-            ls << "Deallocation Failed. Usage should be zero, but "
+            ls << "Monotonic Allocator doesn't provide deallocation."
+                << " Usage should not be zero, but "
                 << alloc.GetUsage() << lferr;
         }
     });
@@ -166,13 +167,13 @@ void MonotonicAllocatorTest::Prepare()
             b.push_back(1);
         }
 
-        if (alloc.GetUsage() != 0)
+        if (alloc.GetUsage() == 0)
         {
-            ls << "Deallocation Failed. Usage should be zero, but "
+            ls << "Monotonic Allocator doesn't provide deallocation."
+                << " Usage should not be zero, but "
                 << alloc.GetUsage() << lferr;
         }
     });
-
 
     AddTest("Deallocation", [this](auto& ls)
     {
@@ -183,9 +184,10 @@ void MonotonicAllocatorTest::Prepare()
             String a = "0";
         }
 
-        if (alloc.GetUsage() > 0)
+        if (alloc.GetUsage() == 0)
         {
-            ls << "Deallocation not ignored. Usage should not be zero, but "
+            ls << "Monotonic Allocator doesn't provide deallocation."
+                << " Usage should not be zero, but "
                 << alloc.GetUsage() << lferr;
         }
     });
@@ -200,9 +202,10 @@ void MonotonicAllocatorTest::Prepare()
             String b = "1";
         }
 
-        if (alloc.GetUsage() > 0)
+        if (alloc.GetUsage() == 0)
         {
-            ls << "Deallocation is not ignored. Usage should not be zero, but "
+            ls << "Monotonic Allocator doesn't provide deallocation."
+                << " Usage should not be zero, but "
                 << alloc.GetUsage() << lferr;
         }
     });
