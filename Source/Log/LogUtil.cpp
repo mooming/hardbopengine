@@ -21,10 +21,10 @@ HSTL::HInlineString<64> GetTimeStampString(const LogUtil::TTimePoint& startTime
     auto seconds = chrono::duration_cast<chrono::seconds>(diff);
     auto milliSeconds = chrono::duration_cast<chrono::milliseconds>(diff);
     
-    int intHours = hours.count();
-    int intMins = minutes.count() % 60;
-    int intSecs = seconds.count() % 60;
-    int intMSecs = milliSeconds.count() % 1000;
+    auto intHours = hours.count();
+    auto intMins = minutes.count() % 60;
+    auto intSecs = seconds.count() % 60;
+    auto intMSecs = milliSeconds.count() % 1000;
     
     HSTL::HInlineString<64> str;
 

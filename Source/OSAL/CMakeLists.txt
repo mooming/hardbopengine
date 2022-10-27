@@ -28,6 +28,7 @@ add_library (OSAL STATIC
  OSAbstractLayer.h
  OSMemory.h
  OSThread.h
+ SourceLocation.h
 )
 
 if (APPLE)

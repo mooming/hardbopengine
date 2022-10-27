@@ -24,11 +24,11 @@
 //#define __MEMORY_BUFFER_UNDERRUN_CHECK__
 //#define __USE_SYSTEM_MALLOC__
 
-// Performance
-#define __PERFORMANCE_COUNTER__
-
 // Log
 #define LOG_ENABLED
+
+// Profile
+#define PROFILE_ENABLED
 
 // Mathematics
 //#define __LEFT_HANDED__

@@ -14,20 +14,14 @@
 namespace HE
 {
 
-static StaticStringTable* StaticStringTableInstance = nullptr;
-
 StaticStringTable& StaticStringTable::GetInstance()
 {
-    Assert(StaticStringTableInstance != nullptr);
-    return *StaticStringTableInstance;
+    static StaticStringTable instance;
+    return instance;
 }
 
 StaticStringTable::StaticStringTable()
-    : allocator("StaticStringTable", Config::StaticStringBufferSize)
-    
 {
-    StaticStringTableInstance = this;
-
     RegisterPredefinedStrings();
 }
 
@@ -49,7 +43,7 @@ StaticStringID StaticStringTable::Register(const char* text)
 
     {
         std::lock_guard lock(tableLock);
-        AllocatorScope scope(allocator.GetID());
+
         auto& table = tables[tableID];
         auto found = std::find(table.begin(), table.end(), TString(text));
         if (found != table.end())

@@ -3,7 +3,9 @@
 #pragma once
 
 #include "AllocatorID.h"
+#include "Config/BuildConfig.h"
 #include "System/Types.h"
+#include "OSAL/SourceLocation.h"
 
 
 namespace HE
@@ -13,7 +15,11 @@ class StackAllocator final
 public:
     using This = StackAllocator;
     using SizeType = size_t;
-    
+
+#ifdef PROFILE_ENABLED
+    using TSrcLoc = std::source_location;
+#endif // PROFILE_ENABLED
+
 private:
     TAllocatorID id;
 
@@ -25,9 +31,19 @@ private:
         Byte* buffer;
         Pointer bufferPtr;
     };
+
+#ifdef PROFILE_ENABLED
+    TSrcLoc srcLocation;
+#endif // PROFILE_ENABLED
     
 public:
+#ifdef PROFILE_ENABLED
+    StackAllocator(const char* name, SizeType capacity
+        , const TSrcLoc location = TSrcLoc::current());
+#else // PROFILE_ENABLED
     StackAllocator(const char* name, SizeType capacity);
+#endif // PROFILE_ENABLED
+
     ~StackAllocator();
     
     Pointer Allocate(size_t size);

@@ -3,11 +3,38 @@
 #include "SystemStatistics.h"
 
 #include "Log/Logger.h"
+#include "OSAL/SourceLocation.h"
 #include "String/StaticString.h"
 
 
 namespace HE
 {
+
+#ifdef PROFILE_ENABLED
+SystemStatistics::AllocProfile::AllocProfile()
+    : allocatorName(nullptr)
+    , file(nullptr)
+    , func(nullptr)
+    , lineNumber(0)
+    , columnNumber(0)
+    , maxUsage(0)
+{
+}
+
+SystemStatistics::AllocProfile::AllocProfile(const char* allocatorName
+    , const char* file, const char* func
+    , size_t lineNumber
+    , size_t columnNumber, size_t maxUsage)
+
+    : allocatorName(allocatorName)
+    , file(file)
+    , func(func)
+    , lineNumber(lineNumber)
+    , columnNumber(columnNumber)
+    , maxUsage(maxUsage)
+{
+}
+#endif // PROFILE_ENABLED
 
 SystemStatistics::SystemStatistics()
     : frameCount(0)
@@ -36,6 +63,16 @@ void SystemStatistics::UpdateCurrentTime()
     timeSinceStart = Time::ToDouble(fromStart);
 }
 
+#ifdef PROFILE_ENABLED
+void SystemStatistics::Report(const char* allocatorName
+    , const std::source_location& location, size_t maxUsage)
+{
+    allocatorProfiles.emplace_back(allocatorName, location.file_name()
+       , location.function_name()
+       , location.line(), location.column(), maxUsage);
+}
+#endif // PROFILE_ENABLED
+
 void SystemStatistics::Print()
 {
     auto log = Logger::Get(GetName());
@@ -56,6 +93,27 @@ void SystemStatistics::Print()
     });
 
     log.Out("==============================================");
+}
+
+void SystemStatistics::PrintAllocatorProfiles()
+{
+#ifdef PROFILE_ENABLED
+    auto log = Logger::Get(GetName());
+    log.Out("= System Statistics: Allocator Profiles ========================");
+
+    for (auto& item : allocatorProfiles)
+    {
+        log.Out([item](auto& ls)
+        {
+            ls << item.allocatorName << ':'  << item.file
+                << ':' << item.lineNumber
+                << ':' << item.columnNumber << '='
+                << item.maxUsage;
+        });
+    }
+
+    log.Out("================================================================");
+#endif //PROFILE_ENABLED
 }
 
 } // HE

@@ -13,11 +13,21 @@
 
 using namespace HE;
 
-StackAllocator::StackAllocator(const char* name, size_t inCapacity)
+#ifdef PROFILE_ENABLED
+StackAllocator::StackAllocator(const char* name
+    , SizeType inCapacity, const TSrcLoc location)
     : id(InvalidAllocatorID)
     , capacity(inCapacity)
     , cursor(0)
     , buffer(nullptr)
+    , srcLocation(location)
+#else // PROFILE_ENABLED
+StackAllocator::StackAllocator(const char* name, SizeType inCapacity)
+    : id(InvalidAllocatorID)
+    , capacity(inCapacity)
+    , cursor(0)
+    , buffer(nullptr)
+#endif // PROFILE_ENABLED
 {
     {
         constexpr auto AlignUnit = Config::DefaultAlign;
@@ -45,7 +55,12 @@ StackAllocator::~StackAllocator()
 {
     auto& mmgr = MemoryManager::GetInstance();
     mmgr.Deallocate(bufferPtr, capacity);
+    
+#ifdef PROFILE_ENABLED
+    mmgr.Deregister(GetID(), srcLocation);
+#else // PROFILE_ENABLED
     mmgr.Deregister(GetID());
+#endif // PROFILE_ENABLED
 }
 
 void *StackAllocator::Allocate (size_t size)
@@ -71,6 +86,13 @@ void *StackAllocator::Allocate (size_t size)
 
     auto ptr = reinterpret_cast<void*>(buffer + cursor);
     cursor += size;
+
+#ifdef __MEMORY_STATISTICS__
+    {
+        auto& mmgr = MemoryManager::GetInstance();
+        mmgr.ReportAllocation(id, ptr, size, size);
+    }
+#endif // __MEMORY_STATISTICS__
 
 #ifdef __MEMORY_LOGGING__
     {
@@ -129,6 +151,13 @@ void StackAllocator::Deallocate(const Pointer ptr, SizeType size)
     }
 
     cursor -= size;
+
+#ifdef __MEMORY_STATISTICS__
+    {
+        auto& mmgr = MemoryManager::GetInstance();
+        mmgr.ReportDeallocation(id, ptr, size, size);
+    }
+#endif // __MEMORY_STATISTICS__
 }
 
 size_t StackAllocator::GetAvailable() const

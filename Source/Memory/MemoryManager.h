@@ -11,6 +11,11 @@
 #include <thread>
 
 
+namespace std
+{
+struct source_location;
+} // std
+
 namespace HE
 {
     class MemoryManager final
@@ -35,10 +40,11 @@ namespace HE
             TDeallocBytes deallocate = nullptr;
             
 #ifdef __MEMORY_STATISTICS__
-            bool isStack = false;
+            bool isInline = false;
             bool hasCapacity = false;
             size_t capacity = 0;
             size_t usage = 0;
+            size_t maxUsage = 0;
             size_t fallbackCount = 0;
             size_t fallback = 0;
             char name[NameBufferSize] = "";
@@ -49,22 +55,23 @@ namespace HE
 #endif // __MEMORY_VERIFICATION__
         };
 
+        struct UsageRecord final
+        {
+            size_t totalUsage = 0;
+            size_t maxUsage = 0;
+            size_t totalCapacity = 0;
+            size_t maxCapacity = 0;
+        };
+
         AllocatorProxy allocators[MaxNumAllocators];
 
+        std::mutex statLock;
         size_t allocCount;
         size_t deallocCount;
-        
-        size_t totalStackUsage;
-        size_t totalHeapUsage;
-        size_t totalSysHeapUsage;
-        size_t totalStackCapacity;
-        size_t totalHeapCapacity;
 
-        size_t maxStackUsage;
-        size_t maxHeapUsage;
-        size_t maxSysHeapUsage;
-        size_t maxStackCapacity;
-        size_t maxHeapCapacity;
+        UsageRecord inlineUsage;
+        UsageRecord usage;
+        UsageRecord sysMemUsage;
 
         static thread_local TId ScopedAllocatorID;
         
@@ -82,9 +89,13 @@ namespace HE
         const char* GetName() const;
         const char* GetName(TAllocatorID id) const;
 
-        TId Register(const char* name, bool isStack, size_t capacity
+        TId Register(const char* name, bool isInline, size_t capacity
             , TAllocBytes allocFunc, TDeallocBytes deallocFunc);
+
         void Deregister(TId id);
+#ifdef PROFILE_ENABLED
+        void Deregister(TId id, const std::source_location& srcLocation);
+#endif // PROFILE_ENABLED
         
         void ReportAllocation(TId id, void* ptr, size_t requested, size_t allocated);
         void ReportDeallocation(TId id, void* ptr, size_t requested, size_t allocated);
@@ -160,13 +171,17 @@ namespace HE
         inline void LogWarning(TLogFunc func) { Log(ELogLevel::Warning, func); }
         inline void LogError(TLogFunc func) { Log(ELogLevel::Error, func); }
 
-        inline size_t GetTotalStackUsage() const { return totalStackUsage; }
-        inline size_t GetTotalHeapUsage() const { return totalHeapUsage; }
-        inline size_t GetTotalUsage() const { return GetTotalStackUsage() + GetTotalHeapUsage(); }
+        inline auto& GetInlineUsage() const { return inlineUsage; }
+        inline auto& GetUsage() const { return usage; }
+        inline auto& GetSystemMemoryUsage() const { return sysMemUsage; }
 
     private:
         inline bool IsValid(TAllocatorID id) const { return id >= 0 && id < MaxNumAllocators; }
         inline TId GetScopedAllocatorID() const { return ScopedAllocatorID; }
+
+        void RegisterSystemAllocator();
+        void DeregisterSystemAllocator();
+
         void SetScopedAllocatorID(TId id);
 
         friend class AllocatorScope;

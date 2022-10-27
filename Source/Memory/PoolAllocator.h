@@ -28,7 +28,7 @@ private:
     TAllocatorID id;
     StaticString name;
     
-    TIndex blockSize;
+    TSize blockSize;
     TIndex numberOfBlocks;
     TIndex numberOfFreeBlocks;
     
@@ -39,7 +39,7 @@ private:
     Pointer availables;
     
 public:
-    PoolAllocator(const char* name, TSize inBlockSize, size_t numberOfBlocks)
+    PoolAllocator(const char* name, TSize inBlockSize, TIndex numberOfBlocks)
         : id(InvalidAllocatorID)
         , name(name)
         , blockSize(OS::GetAligned(std::max(inBlockSize, sizeof(TIndex)), sizeof(TIndex)))
@@ -176,7 +176,7 @@ private:
     {
         auto bytePtr = reinterpret_cast<Byte*>(ptr);
         auto delta = bytePtr - buffer;
-        TIndex index = delta / blockSize;
+        TIndex index = static_cast<TIndex>(delta / blockSize);
 
         return index;
     }

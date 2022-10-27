@@ -2,11 +2,11 @@
 
 #pragma once
 
+#include "Config/BuildConfig.h"
 #include "Config/EngineSettings.h"
 #include "Log/Logger.h"
 #include "Log/LogLevel.h"
 #include "Memory/MemoryManager.h"
-#include "String/StaticStringTable.h"
 #include "System/SystemStatistics.h"
 #include "System/TaskSystem.h"
 #include <chrono>
@@ -34,10 +34,8 @@ private:
     std::ofstream logFile;
 
     MemoryManager memoryManager;
-    StaticStringTable staticStringTable;
     Logger logger;
     TaskSystem taskSystem;
-
     SystemStatistics statistics;
 
 public:
@@ -60,7 +58,7 @@ public:
     inline auto& GetMemoryManager() { return memoryManager; }
     inline auto& GetLogger() { return logger; }
     inline auto& GetTaskSystem() { return taskSystem; }
-    inline auto& GetStatistics() const { return statistics; }
+    inline auto& GetStatistics() { return statistics; }
 
     void Log(ELogLevel level, TLogFunc func);
     inline void LogError(TLogFunc func) { Log(ELogLevel::Error, func); }

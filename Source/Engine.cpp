@@ -5,6 +5,7 @@
 #include "Config/ConfigSystem.h"
 #include "Config/ConfigParam.h"
 #include "HSTL/HString.h"
+#include "String/StaticStringTable.h"
 #include "System/Debug.h"
 #include "System/Time.h"
 #include <csignal>
@@ -124,9 +125,15 @@ void Engine::Run()
     configSys.SetByte("Log.Level", logLevel);
 #endif // __DEBUG__
 
-    staticStringTable.PrintStringTable();
+    auto& staticStrTable = StaticStringTable::GetInstance();
+    staticStrTable.PrintStringTable();
+    
     configSys.PrintAllParameters();
     statistics.Print();
+    
+#ifdef PROFILE_ENABLED
+    statistics.PrintAllocatorProfiles();
+#endif // PROFILE_ENABLED
 
     auto log = Logger::Get(GetName(), ELogLevel::Info);
     log.Out("Shutting down...");
@@ -149,11 +156,11 @@ StaticString Engine::GetName() const
 void Engine::Log(ELogLevel level, TLogFunc func)
 {
 #ifdef ENGINE_LOG_ENABLED
-    static TConfigParam<uint8_t> CPEngineLogLevel("Log.Engine"
+    static TAtomicConfigParam<uint8_t> CPEngineLogLevel("Log.Engine"
        , "The Engine Log Level"
        , static_cast<uint8_t>(Config::EngineLogLevel));
 
-    static TConfigParam<uint8_t> CPEnginePrintLogLevel("Log.Engine.Print"
+    static TAtomicConfigParam<uint8_t> CPEnginePrintLogLevel("Log.Engine.Print"
        , "The Engine Log Level for Standard IO"
        , static_cast<uint8_t>(Config::EngineLogLevelPrint));
 
@@ -169,17 +176,17 @@ void Engine::Log(ELogLevel level, TLogFunc func)
     auto seconds = chrono::duration_cast<chrono::seconds>(diff);
     auto milliSeconds = chrono::duration_cast<chrono::milliseconds>(diff);
     
-    int intHours = hours.count();
-    int intMins = minutes.count() % 60;
-    int intSecs = seconds.count() % 60;
-    int intMSecs = milliSeconds.count() % 1000;
+    auto intHours = hours.count();
+    auto intMins = minutes.count() % 60;
+    auto intSecs = seconds.count() % 60;
+    auto intMSecs = milliSeconds.count() % 1000;
     
     lock_guard lock(logLock);
 
     if (levelAsValue >= CPEnginePrintLogLevel.Get())
     {
         cerr << '[' << intHours << ':' << intMins << ':' << intSecs
-            << '.' << intMSecs << "][EngineLog] ";
+            << '.' << intMSecs << "] ";
         func(cerr);
         cerr << endl;
     }
@@ -200,7 +207,6 @@ void Engine::CloseLog()
         return;
     
     logFile.flush();
-    logFile.close();
 }
 
 void Engine::FlushLog()

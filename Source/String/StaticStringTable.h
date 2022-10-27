@@ -5,11 +5,6 @@
 #include "StaticString.h"
 #include "StaticStringID.h"
 #include "Config/EngineSettings.h"
-#include "HSTL/HString.h"
-#include "HSTL/HVector.h"
-#include "HSTL/HUnorderedMap.h"
-#include "HSTL/HVector.h"
-#include "Memory/MonotonicAllocator.h"
 #include <cstddef>
 #include <cstdint>
 #include <mutex>
@@ -22,15 +17,14 @@ class StaticStringTable final
 {
 public:
     using TIndex = StaticStringID::TIndex;
-    using TString = HSTL::HString;
-    using TTable = HSTL::HVector<TString>;
+    using TString = std::string;
+    using TTable = std::vector<TString>;
     static_assert(!std::is_signed<TIndex>(), "StaticStringTable::TIndex");
     
     static constexpr size_t NumTables = Config::StaticStringNumHashBuckets;
     
 private:
     mutable std::mutex tableLock;
-    MonotonicAllocator allocator;
     TTable tables[NumTables];
     
 public:

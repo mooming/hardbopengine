@@ -5,6 +5,7 @@
 #include "AllocatorID.h"
 #include "BaseAllocator.h"
 #include "MemoryManager.h"
+#include "Config/BuildConfig.h"
 #include "Config/EngineSettings.h"
 #include "OSAL/OSMemory.h"
 #include "String/StaticString.h"
@@ -24,7 +25,8 @@ struct InlinePoolAllocator final
     using value_type = T;
 
     template <class U>
-    struct rebind {
+    struct rebind
+    {
         typedef InlinePoolAllocator<U, BufferSize, NumBuffers> other;
     };
  
@@ -186,10 +188,10 @@ private:
             isAllocated[index] = true;
             auto ptr = &buffer[index][0];
 
-#ifdef __MEMOR_STATISTICS__
+#ifdef __MEMORY_STATISTICS__
             auto& mmgr = MemoryManager::GetInstance();
             mmgr.ReportAllocation(id, ptr, nBytes, bufferSizeBytes);
-#endif // __MEMOR_STATISTICS__
+#endif // __MEMORY_STATISTICS__
 
             return ptr;
         }
@@ -207,12 +209,12 @@ private:
             if (ptr != &buffer[i][0])
                 continue;
 
-#ifdef __MEMOR_STATISTICS__
+#ifdef __MEMORY_STATISTICS__
             auto& mmgr = MemoryManager::GetInstance();
             constexpr size_t unit = sizeof(T);
             constexpr size_t bufferSizeBytes = BufferSize * unit;
             mmgr.ReportDeallocation(id, ptr, nBytes, bufferSizeBytes);
-#endif // __MEMOR_STATISTICS__
+#endif // __MEMORY_STATISTICS__
 
             isAllocated[i] = false;
             indexHint = i;
