@@ -72,6 +72,11 @@ namespace HE
         {
             if (data == nullptr)
                 return;
+
+            for (auto& item : *this)
+            {
+                item.~Element();
+            }
             
             allocator.deallocate(data, length);
         }

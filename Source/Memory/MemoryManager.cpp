@@ -344,6 +344,7 @@ void MemoryManager::ReportAllocation(TId id, void* ptr
     auto& allocator = allocators[id];
     allocator.usage += allocated;
     allocator.maxUsage = std::max(allocator.maxUsage, allocator.usage);
+    ++allocator.allocCount;
 
     if (unlikely(allocator.hasCapacity && allocator.usage > allocator.capacity))
     {
@@ -397,11 +398,32 @@ void MemoryManager::ReportAllocation(TId id, void* ptr
             << static_cast<char*>(allocator.name) << '('
             << id << ")] " << ptr
             << ", req = " << requested
-            << '(' << allocated
-            << "), usage = " << allocator.usage
-            << " / " << allocator.capacity
-            << ", total usage = " << rec.totalUsage
-            << " / " << rec.totalCapacity;
+            << '(' << allocated;
+
+        auto PrintMemSize = [&ls](size_t size)
+        {
+            if (size < 1024)
+            {
+                ls << size;
+                return;
+            }
+
+            ls << (size / 1024) << " KB";
+        };
+
+        ls << "), usage = ";
+        PrintMemSize(allocator.usage);
+
+        ls << " / ";
+        PrintMemSize(allocator.capacity);
+
+        ls << ", total usage = ";
+        PrintMemSize(rec.totalUsage);
+        ls << " / ";
+        PrintMemSize(rec.totalCapacity);
+
+        ls << ", count = " << allocator.deallocCount;
+        ls << " / " << allocator.allocCount;
     });
 #endif // __MEMORY_STATISTICS__
 }
@@ -449,6 +471,7 @@ void MemoryManager::ReportDeallocation(TId id, void* ptr
     }
     
     allocator.usage -= allocated;
+    ++allocator.deallocCount;
 
     auto& rec = allocator.isInline ? inlineUsage : usage;
     if (unlikely(rec.totalUsage < allocated))
@@ -481,11 +504,32 @@ void MemoryManager::ReportDeallocation(TId id, void* ptr
             << static_cast<char*>(allocator.name) << '('
             << id << ")] "  << ptr
             << ", req = " << requested
-            << '(' << allocated
-            << "), usage = " << allocator.usage
-            << " / " << allocator.capacity
-            << ", total usage = " << rec.totalUsage
-            << " / " << rec.totalCapacity;
+            << '(' << allocated;
+
+        auto PrintMemSize = [&ls](size_t size)
+        {
+            if (size < 1024)
+            {
+                ls << size;
+                return;
+            }
+
+            ls << (size / 1024) << " KB";
+        };
+
+        ls << "), usage = ";
+        PrintMemSize(allocator.usage);
+
+        ls << " / ";
+        PrintMemSize(allocator.capacity);
+
+        ls << ", total usage = ";
+        PrintMemSize(rec.totalUsage);
+        ls << " / ";
+        PrintMemSize(rec.totalCapacity);
+
+        ls << ", count = " << allocator.deallocCount;
+        ls << " / " << allocator.allocCount;
     });
 #endif // __MEMORY_STATISTICS__
 }

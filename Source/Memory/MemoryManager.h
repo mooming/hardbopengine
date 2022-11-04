@@ -45,8 +45,12 @@ namespace HE
             size_t capacity = 0;
             size_t usage = 0;
             size_t maxUsage = 0;
-            size_t fallbackCount = 0;
             size_t fallback = 0;
+
+            size_t allocCount = 0;
+            size_t deallocCount = 0;
+            size_t fallbackCount = 0;
+
             char name[NameBufferSize] = "";
 #endif // __MEMORY_STATISTICS__
             

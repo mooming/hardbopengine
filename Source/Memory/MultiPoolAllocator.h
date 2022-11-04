@@ -13,14 +13,25 @@ class MultiPoolAllocator final
 {
 public:
     using This = MultiPoolAllocator;
-    using TPoolConfig = std::pair<size_t, size_t>;
+    using TIndex = uint32_t;
+    
+    struct PoolConfig final
+    {
+        size_t blockSize = 0;
+        TIndex numberOfBlocks = 0;
+
+        inline bool operator < (const PoolConfig& rhs) const
+        {
+            return blockSize < rhs.blockSize;
+        }
+    };
     
 private:
-    using TInitializerList = std::initializer_list<TPoolConfig>;
+    using TInitializerList = std::initializer_list<PoolConfig>;
     
     TAllocatorID id;
     StaticString name;
-    HSTL::HVector<PoolAllocator<uint32_t>> multiPool;
+    HSTL::HVector<PoolAllocator<TIndex>> multiPool;
     size_t fallbackCount;
     
 public:

@@ -83,6 +83,8 @@ void TaskSystem::Shutdown()
 
         thread.join();
     }
+
+    streams.Clear();
 }
 
 void TaskSystem::PostUpdate()

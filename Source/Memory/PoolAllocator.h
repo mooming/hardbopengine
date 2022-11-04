@@ -23,6 +23,7 @@ class PoolAllocator final
     static_assert(std::is_unsigned<TIndex>::value);
 
     using TSize = size_t;
+    using TIndexType = TIndex;
 
 private:
     TAllocatorID id;
@@ -84,6 +85,7 @@ public:
 
         auto& mmgr = MemoryManager::GetInstance();
         const size_t totalSize = blockSize * numberOfBlocks;
+
         mmgr.Deallocate(buffer, totalSize);
         mmgr.Deregister(GetID());
 

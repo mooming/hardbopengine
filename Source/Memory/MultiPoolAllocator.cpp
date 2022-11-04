@@ -4,6 +4,7 @@
 
 #include "Log/Logger.h"
 #include "Memory/MemoryManager.h"
+#include "String/StringBuilder.h"
 #include <algorithm>
 #include <memory>
 
@@ -19,7 +20,7 @@ MultiPoolAllocator::MultiPoolAllocator(const char* inName, TInitializerList list
     using namespace std;;
     using namespace HSTL;
     
-    HInlineVector<TPoolConfig, 256> vlist;
+    HInlineVector<PoolConfig, 256> vlist;
     vlist.insert(vlist.end(), list);
     std::sort(vlist.begin(), vlist.end());
     
@@ -27,14 +28,12 @@ MultiPoolAllocator::MultiPoolAllocator(const char* inName, TInitializerList list
 
     for (auto& config : vlist)
     {
-        HInlineString<2048> str;
-        str += name;
-        str += '_';
-        str += static_cast<int>(config.first);
-        str += '_';
-        str += static_cast<int>(config.second);
+        InlineStringBuilder<1024> str;
+        str << name << '_' <<  static_cast<int>(config.blockSize)
+            << '_' << static_cast<int>(config.numberOfBlocks);
         
-        multiPool.emplace_back(str.c_str(), config.first, config.second);
+        multiPool.emplace_back(str.c_str()
+            , config.blockSize, config.numberOfBlocks);
     }
     
     auto& mmgr = MemoryManager::GetInstance();
@@ -55,7 +54,9 @@ MultiPoolAllocator::MultiPoolAllocator(const char* inName, TInitializerList list
 MultiPoolAllocator::~MultiPoolAllocator()
 {
     PrintUsage();
-    
+
+    multiPool.clear();
+
     auto& mmgr = MemoryManager::GetInstance();
     mmgr.Deregister(GetID());
 }

@@ -17,6 +17,8 @@ using TDeallocFunc = std::function<void(void*, size_t)>;
 template <typename Type, typename ... Types, typename TAllocator>
 Type* New(TAllocator& allocator, Types&& ... args)
 {
+    static_assert(sizeof(typename TAllocator::value_type) == sizeof(Type));
+
     auto ptr = allocator.allocate(1);
     auto tptr = new (ptr) Type(std::forward<Types>(args) ...);
     
