@@ -21,12 +21,13 @@ void PoolAllocatorTest::Prepare()
 
     AddTest("Allocation & Deallocation", [this](auto& ls)
     {
-        PoolAllocator<> pool("TestPoolAllocator",100, 100);
+        PoolAllocator<> pool("TestPoolAllocator", 4096, 100);
 
         for (int i = 0; i < 100; ++i)
         {
             auto ptr = pool.Allocate(50);
             auto size = pool.GetSize(ptr);
+
             if (size != 100)
             {
                 ls << "The size is incorrect. " << size

@@ -95,14 +95,13 @@ public:
 
     Pointer Allocate(size_t size)
     {
-        const auto availble = blockSize - 1;
-        if (unlikely(size > availble))
+        if (unlikely(size > blockSize))
         {
             auto& mmgr = MemoryManager::GetInstance();
-            mmgr.LogWarning([size, availble](auto& ls)
+            mmgr.LogWarning([this, size](auto& ls)
             {
                 ls << "The requested size " << size
-                    << " is exceeding its limit, " << availble << '.';
+                    << " is exceeding its limit, " << blockSize << '.';
             });
 
             auto ptr = mmgr.SysAllocate(size);

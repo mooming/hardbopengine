@@ -20,12 +20,14 @@ link_directories (${CMAKE_SOURCE_DIR}/lib)
 add_library (OSAL STATIC 
  Directory.cpp
  OSAbstractLayer.cpp
+ OSDebug.cpp
  OSMemory.cpp
  OSThread.cpp
  Directory.h
  File.h
  Intrinsic.h
  OSAbstractLayer.h
+ OSDebug.h
  OSMemory.h
  OSThread.h
  SourceLocation.h

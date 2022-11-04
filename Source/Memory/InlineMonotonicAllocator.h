@@ -69,7 +69,7 @@ public:
         {
             auto& mmgr = MemoryManager::GetInstance();
             mmgr.LogWarning([size, freeSize](auto& ls)
-                            {
+            {
                 ls << "The requested size " << size
                 << " is exceeding its limit, " << freeSize << '.';
             });
@@ -110,7 +110,7 @@ public:
 #ifdef __MEMORY_LOGGING__
         auto& mmgr = MemoryManager::GetInstance();
         mmgr.Log(ELogLevel::Info, [this, &mmgr, ptr, size](auto& lout)
-                 {
+        {
             lout << mmgr.GetName(id) << '[' << static_cast<int>(GetID())
             << "] Deallocate call shall be ignored. ptr = "
             << static_cast<void*>(ptr) << ", size = " << size;

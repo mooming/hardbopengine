@@ -27,6 +27,8 @@
 #include "Memory/MultiPoolAllocator.h"
 #include "Memory/StackAllocator.h"
 #include "Memory/SystemAllocator.h"
+#include "OSAL/OSDebug.h"
+#include "OSAL/OSThread.h"
 #include "String/StaticString.h"
 #include "String/StringUtil.h"
 #include "System/ComponentSystem.h"
@@ -55,6 +57,9 @@ namespace Test
         testEnv.AddTestCollection<PoolAllocatorTest>();
         testEnv.AddTestCollection<MonotonicAllocatorTest>();
         testEnv.AddTestCollection<MultiPoolAllocatorTest>();
+
+        testEnv.AddTestCollection<OSDebugTest>();
+        testEnv.AddTestCollection<OSThreadTest>();
 
         testEnv.AddTestCollection<ArrayTest>();
         testEnv.AddTestCollection<LinkedListTest>();
