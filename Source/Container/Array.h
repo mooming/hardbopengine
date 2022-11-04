@@ -7,6 +7,7 @@
 #include "System/Debug.h"
 #include <algorithm>
 #include <initializer_list>
+#include <memory>
 
 
 namespace HE

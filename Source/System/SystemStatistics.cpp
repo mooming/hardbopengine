@@ -75,21 +75,41 @@ void SystemStatistics::Report(const char* allocatorName
 
 void SystemStatistics::Print()
 {
+    auto curLogCount = logCount.load(std::memory_order_relaxed);
+    auto curLongLogCount = longLogCount.load(std::memory_order_relaxed);
+
     auto log = Logger::Get(GetName());
+
     log.Out("= System Statistics ==========================");
     log.Out([this](auto& ls)
     {
-        ls << "Frame Count = " << frameCount.load();
+        ls << "Frame Count = " << frameCount.load(std::memory_order_relaxed);
     });
 
     log.Out([this](auto& ls)
     {
-        ls << "Slow Frame Count = " << slowFrameCount.load();
+        ls << "Slow Frame Count = " << slowFrameCount.load(std::memory_order_relaxed);
     });
 
     log.Out([this](auto& ls)
     {
-        ls << "Running Time = " << timeSinceStart;
+        ls << "Engine Log Count = " << engineLogCount.load(std::memory_order_relaxed);
+    });
+
+    log.Out([curLogCount](auto& ls)
+    {
+        ls << "Log Count = " << curLogCount;
+    });
+
+    log.Out([curLongLogCount, curLogCount](auto& ls)
+    {
+        ls << "Long Log Count = " << curLongLogCount
+            << " / " << curLogCount;
+    });
+
+    log.Out([this](auto& ls)
+    {
+        ls << "Running Time = " << timeSinceStart << " sec";
     });
 
     log.Out("==============================================");

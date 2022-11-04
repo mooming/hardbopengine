@@ -25,10 +25,9 @@ static constexpr int StaticStringBufferSize = 8 * 1024 * 1024;
 static constexpr int StaticStringNumHashBuckets = 256;
 
 // Log
-static constexpr int LogLineSize = 1000;
-static constexpr int LogBufferSize = 1024;
-static constexpr int LogMemoryBlockSize = 1024 + 256;
-static constexpr int LogNumMemoryBlocks = 1024 * 16;
+static constexpr int LogLineLength = 512;
+static constexpr int LogMemoryBlockSize = LogLineLength * 256;
+static constexpr int LogNumMemoryBlocks = 1024 * 12;
 static constexpr int LogForceFlushThreshold = 1024 * 8;
 
 // TaskSystem

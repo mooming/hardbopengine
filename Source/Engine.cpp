@@ -180,6 +180,8 @@ void Engine::Log(ELogLevel level, TLogFunc func)
     auto intMins = minutes.count() % 60;
     auto intSecs = seconds.count() % 60;
     auto intMSecs = milliSeconds.count() % 1000;
+
+    statistics.IncEngineLogCount();
     
     lock_guard lock(logLock);
 

@@ -207,8 +207,9 @@ private:
             auto& mmgr = MemoryManager::GetInstance();
             mmgr.LogError([this](auto& ls)
             {
-                ls << "No avaiable memory blocks. Usage = "
-                    << GetUsage() << " / " << GetAvailableMemory();
+                ls << "No available memory blocks. Usage = "
+                    << (numberOfBlocks - numberOfFreeBlocks) << " / "
+                    << numberOfBlocks;
             });
 
             return nullptr;

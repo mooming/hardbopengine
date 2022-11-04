@@ -4,10 +4,7 @@
 
 #include "LogLevel.h"
 #include "Config/EngineSettings.h"
-#include "HSTL/HString.h"
 #include "String/StaticString.h"
-#include <chrono>
-#include <memory>
 
 
 namespace HE
@@ -21,38 +18,21 @@ struct LogLine final
     StaticString threadName;
     StaticString category;
     ELogLevel level;
-    char text[Config::LogLineSize];
-    
-    inline LogLine()
-        : level(ELogLevel::Info)
-    {
-        text[0] = '\0';
-        text[Config::LogLineSize - 1] = '\0';
-    }
-    
-    inline LogLine(ELogLevel level, StaticString threadName, StaticString category, const char* inText)
-        : timeStamp(std::chrono::steady_clock::now())
-        , threadName(threadName)
-        , category(category)
-        , level(level)
-    {
-        if (unlikely(inText == nullptr))
-        {
-            text[0] = '\0';
-            return;
-        }
+    bool isLong;
 
-        constexpr auto LastIndex = Config::LogLineSize - 1;
-        int length = 0;
-        for (; length < LastIndex; ++length)
-        {
-            if (unlikely(inText[length] == '\0'))
-                break;
-        }
+    union
+    {
+        char text[Config::LogLineLength];
+        char* longText;
+    };
 
-        std::copy(&inText[0], &inText[length], text);
-        text[length] = '\0';
-    }
+    LogLine();
+    LogLine(LogLine&& rhs);
+    LogLine(ELogLevel level, StaticString threadName, StaticString category, const char* inText);
+    LogLine(ELogLevel level, StaticString threadName, StaticString category, bool isLong, const char* inText);
+    ~LogLine();
+
+    const char* GetText() const;
 };
 
 } // HE

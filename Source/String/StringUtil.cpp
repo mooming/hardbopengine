@@ -2,6 +2,7 @@
 
 #include "StringUtil.h"
 
+#include "Log/Logger.h"
 #include "Memory/AllocatorScope.h"
 #include "Memory/InlinePoolAllocator.h"
 #include <algorithm>
@@ -147,6 +148,79 @@ TString PathToName(const TString& path)
     return TString(buffer + lastIndex + 1);
 }
 
+void Tokenize(TVector<TString>& outTokens
+    , const char* str, const char* separators)
+{
+    using namespace HE;
+
+    if (unlikely(str == nullptr))
+    {
+        auto log = Logger::Get("StringUtil");
+        log.OutWarning([func = __func__](auto& ls)
+        {
+            ls << '[' << func << "] invalid argument. str is null.";
+        });
+
+        return;
+    }
+
+    if (unlikely(separators == nullptr))
+    {
+        outTokens.reserve(1);
+        outTokens.emplace_back(str);
+        return;
+    }
+
+    using TIndex = size_t;
+
+    TIndex start = 0;
+    TIndex end = 0;
+
+    auto IsSeparator = [separators](char ch) -> bool
+    {
+        TIndex i = 0;
+        char separator = separators[i];
+
+        while (separator != '\0')
+        {
+            if (ch == separator)
+                return true;
+
+            separator = separators[++i];
+        }
+
+        return false;
+    };
+
+    char ch = str[end];
+    while (ch != '\0')
+    {
+        if (IsSeparator(ch))
+        {
+            if (start < end)
+            {
+                const char* interStr = &str[start];
+                auto length = end - start;
+                outTokens.emplace_back(interStr, length);
+            }
+            
+            start = end + 1;
+        }
+
+        ++end;
+        ch = str[end];
+    }
+
+    if (start < end)
+    {
+        const char* interStr = &str[start];
+        auto length = end - start;
+        outTokens.emplace_back(interStr, length);
+    }
+
+    outTokens.shrink_to_fit();
+}
+
 HE::StaticString PrettyFunctionToFunctionName(const char* PrettyFunction)
 {
     using TStr = HSTL::HString;
@@ -272,6 +346,66 @@ namespace HE
 void StringUtilTest::Prepare()
 {
     using namespace StringUtil;
+
+    AddTest("Tokenizer(default)", [this](auto& ls)
+    {
+        TVector<TString> tokens;
+        Tokenize(tokens, "abc def    123\n 456  \t\n\r 789    000 end.");
+
+        const auto numTokens = tokens.size();
+        if (numTokens != 7)
+        {
+            ls << "Incorrect number of tokens " << tokens.size()
+                << ", 7 is expected." << lferr;
+        }
+
+        const char* solutions[7] = {"abc", "def", "123", "456", "789", "000", "end."};
+
+        for (int i = 0; i < numTokens; ++i)
+        {
+            TString solution(solutions[i]);
+            if (tokens[i] != solution)
+            {
+                ls << "Invalid token " << tokens[i].c_str()
+                    << ", " << solution.c_str() << " is expected." << lferr;
+            }
+        }
+
+        for (auto& token : tokens)
+        {
+            ls << "Token: " << token.c_str() << lf;
+        }
+    });
+
+    AddTest("Tokenizer", [this](auto& ls)
+    {
+        TVector<TString> tokens;
+        Tokenize(tokens, "abc::def;;;123.......456::;;..;;::789.000.end.", ".:;");
+
+        const auto numTokens = tokens.size();
+        if (numTokens != 7)
+        {
+            ls << "Incorrect number of tokens " << tokens.size()
+                << ", 7 is expected." << lferr;
+        }
+
+        const char* solutions[7] = {"abc", "def", "123", "456", "789", "000", "end"};
+
+        for (int i = 0; i < numTokens; ++i)
+        {
+            TString solution(solutions[i]);
+            if (tokens[i] != solution)
+            {
+                ls << "Invalid token " << tokens[i].c_str()
+                    << ", " << solution.c_str() << " is expected." << lferr;
+            }
+        }
+
+        for (auto& token : tokens)
+        {
+            ls << "Token: " << token.c_str() << lf;
+        }
+    });
 
     auto prettyFunction = __PRETTY_FUNCTION__;
 

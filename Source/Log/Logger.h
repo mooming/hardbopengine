@@ -31,7 +31,7 @@ public:
     using TLogBuffer = HSTL::HVector<LogLine>;
     using TTextBuffer = HSTL::HVector<TString>;
     using TTimePoint = std::chrono::time_point<std::chrono::steady_clock>;
-    using TLogStream = InlineStringBuilder<Config::LogLineSize>;
+    using TLogStream = InlineStringBuilder<Config::LogLineLength>;
     using TLogFunction = std::function<void(TLogStream&)>;
     using TOutputFunc = std::function<void(const TTextBuffer&)>;
     using TOutputFuncs = HSTL::HVector<TOutputFunc>;

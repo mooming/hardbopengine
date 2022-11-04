@@ -46,7 +46,7 @@ namespace HE
             size_t usage = 0;
             size_t maxUsage = 0;
             size_t fallback = 0;
-
+            
             size_t allocCount = 0;
             size_t deallocCount = 0;
             size_t fallbackCount = 0;

@@ -228,8 +228,10 @@ void Logger::AddLog(StaticString category, ELogLevel level
         using namespace std;
         auto timeStampStr = LogUtil::GetTimeStampString(startTime, chrono::steady_clock::now());
         auto levelStr = LogUtil::GetLogLevelString(level);
-        
-        InlineStringBuilder<Config::LogLineSize + 64> text;
+
+        InlineStringBuilder<Config::LogLineLength> text;
+        text.Reserve(Config::LogLineLength - 1);
+
         text << '[' << timeStampStr << "][" << threadName << "]["
             << category << "][" << levelStr << "] " << ls.c_str();
         
@@ -250,7 +252,16 @@ void Logger::AddLog(StaticString category, ELogLevel level
 
     {
         std::lock_guard lock(inputLock);
-        inputBuffer.emplace_back(level, threadName, category, ls.c_str());
+
+        if (unlikely(ls.Size() >= Config::LogLineLength))
+        {
+            inputBuffer.emplace_back(level, threadName, category, true, ls.c_str());
+        }
+        else
+        {
+            inputBuffer.emplace_back(level, threadName, category, ls.c_str());
+        }
+
         bufferSize = inputBuffer.size();
         hasInput = true;
         needFlush = true;
@@ -318,19 +329,12 @@ void Logger::ProcessBuffer()
         auto levelStr = LogUtil::GetLogLevelString(log.level);
 
         using namespace HSTL;
-        HInlineString<Config::LogBufferSize> text;
-        text.reserve(Config::LogLineSize);
+        InlineStringBuilder<Config::LogLineLength * 2> text;
+        text.Reserve(Config::LogLineLength - 1);
 
-        text.push_back('[');
-        text.append(timeStampStr);
-        text.append("][");
-        text.append(log.threadName);
-        text.append("][");
-        text.append(log.category);
-        text.append("][");
-        text.append(levelStr);
-        text.append("] ");
-        text.append(log.text);
+        text << '[' <<timeStampStr << "][" << log.threadName << "][";
+        text << log.category << "][" << levelStr << "] ";
+        text << log.GetText();
 
         textBuffer.emplace_back(text.c_str());
     }

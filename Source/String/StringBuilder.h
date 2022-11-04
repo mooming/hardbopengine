@@ -43,6 +43,11 @@ public:
     {
         return buffer.c_str();
     }
+
+    auto Size() const
+    {
+        return buffer.size();
+    }
     
     operator const TCh* () const
     {
@@ -77,6 +82,12 @@ public:
     
     This& operator<< (const char* str)
     {
+        if (str == nullptr)
+        {
+            buffer.append("Null");
+            return *this;
+        }
+        
         buffer.append(str);
         return *this;
     }

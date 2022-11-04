@@ -42,8 +42,13 @@ public:
 #endif // PROFILE_ENABLED
 
 private:
+    static_assert(std::atomic<uint64_t>::is_always_lock_free, "");
     std::atomic<uint64_t> frameCount;
     std::atomic<uint64_t> slowFrameCount;
+    std::atomic<uint64_t> engineLogCount;
+    std::atomic<uint64_t> logCount;
+    std::atomic<uint64_t> longLogCount;
+
     Time::TTime startTime;
     Time::TTime currentTime;
     double timeSinceStart;
@@ -68,8 +73,12 @@ public:
     void Print();
     void PrintAllocatorProfiles();
 
-    inline void IncFrameCount() { ++frameCount;}
-    inline void IncSlowFrameCount() { ++slowFrameCount; }
+    inline void IncFrameCount() { frameCount.fetch_add(1, std::memory_order_relaxed);}
+    inline void IncSlowFrameCount() { slowFrameCount.fetch_add(1, std::memory_order_relaxed); }
+    inline void IncEngineLogCount() { engineLogCount.fetch_add(1, std::memory_order_relaxed); }
+    inline void IncLogCount() { logCount.fetch_add(1, std::memory_order_relaxed); }
+    inline void IncLongLogCount() { longLogCount.fetch_add(1, std::memory_order_relaxed); }
+    
     inline auto GetStartTime() const { return startTime; }
     inline auto GetCurrentTime() const { return currentTime; }
     inline auto GetTimeSinceStart() const { return timeSinceStart; }

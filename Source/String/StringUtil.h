@@ -3,13 +3,17 @@
 #pragma once
 
 #include "HSTL/HString.h"
+#include "HSTL/HVector.h"
 #include "String/StaticString.h"
 
 
 namespace StringUtil
 {
 
+template <typename T>
+using TVector = HSTL::HVector<T>;
 using TString = HSTL::HString;
+using TStrings = TVector<TString>;
 
 TString Trim(const TString& str);
 TString TrimPath(const TString& path);
@@ -20,6 +24,7 @@ bool StartsWithIgnoreCase(const TString& src, const TString& startTerm);
 bool EndsWith(const TString& src, const TString& endTerm);
 bool EndsWithIgnoreCase(const TString& src, const TString& endTerm);
 TString PathToName(const TString& path);
+void Tokenize(TStrings& outTokens, const char* str, const char* separators = " \t\n\r");
 
 HE::StaticString PrettyFunctionToFunctionName(const char* PrettyFunction);
 HE::StaticString PrettyFunctionToClassName(const char* PrettyFunction);
