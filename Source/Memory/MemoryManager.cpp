@@ -92,16 +92,8 @@ MemoryManager::TId MemoryManager::Register(const char* name, bool isInline
         allocator.usage = 0;
         
         {
-            constexpr int LastIndex = NameBufferSize - 1;
-            for (int i = 0; i < NameBufferSize; ++i)
-            {
-                auto ch = name[i];
-                allocator.name[i] = ch;
-                
-                if (ch == '\0')
-                    break;
-            }
-            
+            constexpr int LastIndex = AllocatorProxy::NameBufferSize - 1;
+            strncpy(allocator.name, name, LastIndex);
             allocator.name[LastIndex] = '\0';
         }
 #endif // __MEMORY_STATISTICS__

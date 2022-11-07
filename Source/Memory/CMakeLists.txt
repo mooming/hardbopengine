@@ -30,6 +30,7 @@ add_library (Memory STATIC
  StackAllocator.cpp
  SystemAllocator.cpp
  AllocatorID.h
+ AllocatorProxy.h
  AllocatorScope.h
  BaseAllocator.h
  InlineMonotonicAllocator.h

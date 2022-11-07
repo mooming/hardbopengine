@@ -12,7 +12,7 @@ namespace HE
 
 #ifdef PROFILE_ENABLED
 SystemStatistics::AllocProfile::AllocProfile()
-    : allocatorName(nullptr)
+    : allocatorName("")
     , file(nullptr)
     , func(nullptr)
     , lineNumber(0)
@@ -21,18 +21,20 @@ SystemStatistics::AllocProfile::AllocProfile()
 {
 }
 
-SystemStatistics::AllocProfile::AllocProfile(const char* allocatorName
+SystemStatistics::AllocProfile::AllocProfile(const char* inName
     , const char* file, const char* func
     , size_t lineNumber
     , size_t columnNumber, size_t maxUsage)
 
-    : allocatorName(allocatorName)
-    , file(file)
+    : file(file)
     , func(func)
     , lineNumber(lineNumber)
     , columnNumber(columnNumber)
     , maxUsage(maxUsage)
 {
+    constexpr auto LastIndex = AllocatorProxy::NameBufferSize - 1;
+    strncpy(allocatorName, inName, LastIndex);
+    allocatorName[LastIndex] = '\0';
 }
 #endif // PROFILE_ENABLED
 

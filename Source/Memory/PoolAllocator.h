@@ -5,6 +5,7 @@
 #include "AllocatorID.h"
 #include "MemoryManager.h"
 #include "OSAL/OSMemory.h"
+#include "OSAL/SourceLocation.h"
 #include "String/StaticString.h"
 #include "System/CommonUtil.h"
 #include "System/Debug.h"
@@ -38,9 +39,18 @@ private:
     
     Byte* buffer;
     Pointer availables;
+
+#ifdef PROFILE_ENABLED
+    std::source_location srcLocation;
+#endif // PROFILE_ENABLED
     
 public:
+#ifdef PROFILE_ENABLED
+    PoolAllocator(const char* name, TSize inBlockSize, TIndex numberOfBlocks
+        , const std::source_location location = std::source_location::current())
+#else // PROFILE_ENABLED
     PoolAllocator(const char* name, TSize inBlockSize, TIndex numberOfBlocks)
+#endif // PROFILE_ENABLED
         : id(InvalidAllocatorID)
         , name(name)
         , blockSize(OS::GetAligned(std::max(inBlockSize, sizeof(TIndex)), sizeof(TIndex)))
@@ -49,6 +59,9 @@ public:
         , maxUsage(0)
         , fallbackCount(0)
         , buffer(nullptr)
+#ifdef PROFILE_ENABLED
+        , srcLocation(location)
+#endif // PROFILE_ENABLED
     {
         FatalAssert(blockSize > 0);
         FatalAssert(numberOfBlocks <= std::numeric_limits<TIndex>::max());
@@ -80,14 +93,19 @@ public:
     
     ~PoolAllocator()
     {
-        FatalAssert(buffer != nullptr);
-        FatalAssert(id != InvalidAllocatorID);
+        Assert(buffer != nullptr);
+        Assert(id != InvalidAllocatorID);
 
         auto& mmgr = MemoryManager::GetInstance();
         const size_t totalSize = blockSize * numberOfBlocks;
 
         mmgr.Deallocate(buffer, totalSize);
+        
+#ifdef PROFILE_ENABLED
+        mmgr.Deregister(GetID(), srcLocation);
+#else // PROFILE_ENABLED
         mmgr.Deregister(GetID());
+#endif // PROFILE_ENABLED
 
         buffer = nullptr;
         id = InvalidAllocatorID;

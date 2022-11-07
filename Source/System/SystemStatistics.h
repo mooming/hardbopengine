@@ -4,6 +4,7 @@
 
 #include "Time.h"
 #include "Config/BuildConfig.h"
+#include "Memory/AllocatorProxy.h"
 #include <atomic>
 #include <cstdint>
 #include <vector>
@@ -25,9 +26,11 @@ public:
 #ifdef PROFILE_ENABLED
     struct AllocProfile final
     {
-        const char* allocatorName;
+        char allocatorName[AllocatorProxy::NameBufferSize];
+
         const char* file;
         const char* func;
+
         size_t lineNumber;
         size_t columnNumber;
         size_t maxUsage;
@@ -37,6 +40,7 @@ public:
             , const char* file, const char* func
             , size_t lineNumber
             , size_t columnNumber, size_t maxUsage);
+
         ~AllocProfile() = default;
     };
 #endif // PROFILE_ENABLED
