@@ -8,6 +8,7 @@
 #include "Memory/AllocatorScope.h"
 #include "Config/EngineSettings.h"
 #include "System/Debug.h"
+#include "System/ScopedLock.h"
 #include <iostream>
 
 
@@ -42,7 +43,7 @@ StaticStringID StaticStringTable::Register(const char* text)
     Assert(tableID < NumTables);
 
     {
-        std::lock_guard lock(tableLock);
+        ScopedLock lock(tableLock);
 
         auto& table = tables[tableID];
         auto found = std::find(table.begin(), table.end(), TString(text));
@@ -60,6 +61,34 @@ StaticStringID StaticStringTable::Register(const char* text)
     return id;
 }
 
+StaticStringID StaticStringTable::Register(const std::string_view& str)
+{
+    StaticStringID id;
+    auto tableID = GetTableID(str);
+    id.tableID = tableID;
+
+    static_assert(!std::is_signed<decltype(tableID)>());
+    Assert(tableID < NumTables);
+
+    {
+        ScopedLock lock(tableLock);
+
+        auto& table = tables[tableID];
+        auto found = std::find(table.begin(), table.end(), str);
+        if (found != table.end())
+        {
+            id.index = static_cast<TIndex>(std::distance(table.begin(), found));
+
+            return id;
+        }
+
+        id.index = static_cast<TIndex>(table.size());
+        table.emplace_back(str);
+    }
+
+    return id;
+}
+
 const char* StaticStringTable::Get(StaticStringID id) const
 {
     const char* str = "None";
@@ -71,7 +100,7 @@ const char* StaticStringTable::Get(StaticStringID id) const
     static_assert(!std::is_signed<decltype(id.index)>());
 
     {
-        std::lock_guard lock(tableLock);
+        ScopedLock lock(tableLock);
         auto& table = tables[id.tableID];
 
         if (unlikely(id.index >= table.size()))
@@ -161,5 +190,12 @@ StaticStringTable::TIndex StaticStringTable::GetTableID(const char* text) const
     return tableId;
 }
 
-} // HE
+StaticStringTable::TIndex StaticStringTable::GetTableID(const std::string_view& str) const
+{
+    auto hashValue = StringUtil::CalculateHash(str);
+    auto tableId = static_cast<TIndex>(hashValue % NumTables);
 
+    return tableId;
+}
+
+} // HE

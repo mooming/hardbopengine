@@ -8,6 +8,7 @@
 #include "Memory/InlinePoolAllocator.h"
 #include <cstdio>
 #include <string>
+#include <string_view>
 
 
 namespace HE
@@ -17,7 +18,8 @@ template <class TCh = char, class TAlloc = BaseAllocator<TCh>>
 class StringBuilder final
 {
 public:
-    static constexpr int InlineBufferSize = 64;
+    static constexpr int InlineBufferSize = 32;
+    static constexpr int InlineBufferLastIndex = InlineBufferSize - 1;
     
     using This = StringBuilder;
     using TString = std::basic_string<TCh, std::char_traits<TCh>, TAlloc>;
@@ -75,7 +77,7 @@ public:
     This& operator<< (unsigned char value)
     {
         char temp[InlineBufferSize];
-        snprintf(temp, 64, "%d", value);
+        snprintf(temp, InlineBufferSize, "%u", value);
         buffer.append(temp);
         return *this;
     }
@@ -97,11 +99,24 @@ public:
         buffer.append(str.c_str());
         return *this;
     }
+
+    This& operator<< (const std::string_view& str)
+    {
+        buffer.append(str);
+
+        return *this;
+    }
+
+    template <class CharT, class Traits, class Allocator>
+    This& operator<< (const std::basic_string<CharT, Traits, Allocator>& str)
+    {
+        return *this << static_cast<std::string_view>(str);
+    }
     
     This& operator<< (short value)
     {
         char temp[InlineBufferSize];
-        snprintf(temp, 64, "%d", value);
+        snprintf(temp, InlineBufferSize, "%d", value);
         buffer.append(temp);
         return *this;
     }
@@ -109,7 +124,7 @@ public:
     This& operator<< (unsigned short value)
     {
         char temp[InlineBufferSize];
-        snprintf(temp, 64, "%d", value);
+        snprintf(temp, InlineBufferSize, "%u", value);
         buffer.append(temp);
         return *this;
     }
@@ -117,7 +132,7 @@ public:
     This& operator<< (int value)
     {
         char temp[InlineBufferSize];
-        snprintf(temp, 64, "%d", value);
+        snprintf(temp, InlineBufferSize, "%d", value);
         buffer.append(temp);
         return *this;
     }
@@ -125,7 +140,7 @@ public:
     This& operator<< (unsigned int value)
     {
         char temp[InlineBufferSize];
-        snprintf(temp, 64, "%u", value);
+        snprintf(temp, InlineBufferSize, "%u", value);
         buffer.append(temp);
         return *this;
     }
@@ -133,7 +148,7 @@ public:
     This& operator<< (long value)
     {
         char temp[InlineBufferSize];
-        snprintf(temp, 64, "%ld", value);
+        snprintf(temp, InlineBufferSize, "%ld", value);
         buffer.append(temp);
         return *this;
     }
@@ -141,7 +156,7 @@ public:
     This& operator<< (unsigned long value)
     {
         char temp[InlineBufferSize];
-        snprintf(temp, 64, "%lu", value);
+        snprintf(temp, InlineBufferSize, "%lu", value);
         buffer.append(temp);
         return *this;
     }
@@ -149,7 +164,7 @@ public:
     This& operator<< (long long value)
     {
         char temp[InlineBufferSize];
-        snprintf(temp, 64, "%lld", value);
+        snprintf(temp, InlineBufferSize, "%lld", value);
         buffer.append(temp);
         return *this;
     }
@@ -157,7 +172,7 @@ public:
     This& operator<< (unsigned long long value)
     {
         char temp[InlineBufferSize];
-        snprintf(temp, 64, "%llu", value);
+        snprintf(temp, InlineBufferSize, "%llu", value);
         buffer.append(temp);
         return *this;
     }
@@ -165,7 +180,7 @@ public:
     This& operator<< (float value)
     {
         char temp[InlineBufferSize];
-        snprintf(temp, 64, "%f", value);
+        snprintf(temp, InlineBufferSize, "%f", value);
         buffer.append(temp);
         return *this;
     }
@@ -173,7 +188,7 @@ public:
     This& operator<< (double value)
     {
         char temp[InlineBufferSize];
-        snprintf(temp, 64, "%lf", value);
+        snprintf(temp, InlineBufferSize, "%lf", value);
         buffer.append(temp);
         return *this;
     }
@@ -181,7 +196,7 @@ public:
     This& operator<< (long double value)
     {
         char temp[InlineBufferSize];
-        snprintf(temp, 64, "%Lf", value);
+        snprintf(temp, InlineBufferSize, "%Lf", value);
         buffer.append(temp);
         return *this;
     }
@@ -189,7 +204,7 @@ public:
     This& operator<< (void* value)
     {
         char temp[InlineBufferSize];
-        snprintf(temp, 64, "%p", value);
+        snprintf(temp, InlineBufferSize, "%p", value);
         buffer.append(temp);
         return *this;
     }
@@ -201,6 +216,20 @@ public:
     }
 };
 
-template<int BufferSize = 256>
-using InlineStringBuilder = StringBuilder<char, InlinePoolAllocator<char, BufferSize>>;
 } // HSTL
+
+#ifdef __UNIT_TEST__
+#include "Test/TestCollection.h"
+
+namespace HE
+{
+    class StringBuilderTest : public TestCollection
+    {
+    public:
+        StringBuilderTest() : TestCollection("StringBuilderTest") {}
+
+    protected:
+        virtual void Prepare() override;
+    };
+} // HE
+#endif //__UNIT_TEST__

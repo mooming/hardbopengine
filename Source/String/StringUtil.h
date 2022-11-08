@@ -5,6 +5,8 @@
 #include "HSTL/HString.h"
 #include "HSTL/HVector.h"
 #include "String/StaticString.h"
+#include <functional>
+#include <string_view>
 
 
 namespace StringUtil
@@ -13,7 +15,6 @@ namespace StringUtil
 template <typename T>
 using TVector = HSTL::HVector<T>;
 using TString = HSTL::HString;
-using TStrings = TVector<TString>;
 
 TString Trim(const TString& str);
 TString TrimPath(const TString& path);
@@ -24,7 +25,7 @@ bool StartsWithIgnoreCase(const TString& src, const TString& startTerm);
 bool EndsWith(const TString& src, const TString& endTerm);
 bool EndsWithIgnoreCase(const TString& src, const TString& endTerm);
 TString PathToName(const TString& path);
-void Tokenize(TStrings& outTokens, const char* str, const char* separators = " \t\n\r");
+void ForEachToken(const char* str, const std::function<void(std::string_view)> func, const char* separators = " \t\n\r");
 
 HE::StaticString PrettyFunctionToFunctionName(const char* PrettyFunction);
 HE::StaticString PrettyFunctionToClassName(const char* PrettyFunction);
@@ -32,9 +33,10 @@ HE::StaticString PrettyFunctionToMethodName(const char* PrettyFunction);
 HE::StaticString PrettyFunctionToCompactClassName(const char* PrettyFunction);
 HE::StaticString PrettyFunctionToCompactMethodName(const char* PrettyFunction);
 
+size_t StrLen(const char* text);
 size_t StrLen(const char* text, size_t bufferSize);
 size_t CalculateHash(const char* text);
-
+size_t CalculateHash(const std::string_view& str);
 } // StringUtil
 
 #ifdef __UNIT_TEST__

@@ -33,6 +33,9 @@ static constexpr int LogForceFlushThreshold = 1024 * 8;
 // TaskSystem
 static constexpr int MaxConcurrentTasks = 32;
 
+// Profile
+static constexpr float DebugTimeOutMultiplier = 2.0f;
+
 size_t GetMaxSystemMemoryTarget();
 } // Config
 

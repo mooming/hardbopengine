@@ -5,6 +5,7 @@
 #include "AllocatorID.h"
 #include "AllocatorProxy.h"
 #include "Config/BuildConfig.h"
+#include "Container/AtomicStackView.h"
 #include "Log/LogLevel.h"
 #include "System/Types.h"
 #include <atomic>
@@ -41,6 +42,7 @@ private:
     };
 
     AllocatorProxy allocators[MaxNumAllocators];
+    AtomicStackView<AllocatorProxy> proxyPool;
 
     std::mutex statLock;
     size_t allocCount;
@@ -76,7 +78,7 @@ public:
 
     void ReportAllocation(TId id, void* ptr, size_t requested, size_t allocated);
     void ReportDeallocation(TId id, void* ptr, size_t requested, size_t allocated);
-    void ReportFallback(TId id, void* ptr, size_t amount);
+    void ReportFallback(TId id, void* ptr, size_t requested);
 
     void* SysAllocate(size_t nBytes);
     void SysDeallocate(void* ptr, size_t nBytes);

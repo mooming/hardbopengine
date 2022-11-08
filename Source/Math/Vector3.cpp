@@ -8,7 +8,7 @@ namespace HE
 } // HE
 
 #ifdef __UNIT_TEST__
-#include "System/Time.h"
+#include "System/ScopedTime.h"
 #include "HSTL/HVector.h"
 
 
@@ -92,7 +92,7 @@ void HE::Vector3Test::Prepare()
             float dotResult = 0.0f;
 
             {
-                Time::Measure measure(heTime);
+                Time::ScopedTime measure(heTime);
 
                 for (auto& vertex : vertices)
                 {

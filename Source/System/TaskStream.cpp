@@ -7,6 +7,8 @@
 #include "Log/Logger.h"
 #include "OSAL/Intrinsic.h"
 #include "OSAL/OSThread.h"
+#include "System/ScopedLock.h"
+#include <thread>
 
 
 namespace HE
@@ -32,6 +34,7 @@ TaskStream::TaskStream()
     , flipCount(0)
     , isDirty(false)
     , isResidentListDirty(false)
+    , hasCancelledTask(false)
 
 {
     Assert(threadID == std::thread::id());
@@ -43,6 +46,7 @@ TaskStream::TaskStream(StaticString name)
     , flipCount(0)
     , isDirty(false)
     , isResidentListDirty(false)
+    , hasCancelledTask(false)
 {
     Assert(threadID == std::thread::id());
 
@@ -66,12 +70,12 @@ void TaskStream::Flush()
 
     auto startTime = Time::GetNow();
 
-    if (requestsBuffer.size() > 0)
+    if (requests.size() > 0)
     {
         UpdateRequests();
     }
 
-    if (residentsBuffer.size() > 0)
+    if (residents.size() > 0)
     {
         UpdateResidents();
     }
@@ -83,9 +87,9 @@ void TaskStream::Flush()
     {
         auto log = Logger::Get(name);
         log.OutWarning([this](auto& ls)
-            {
-                ls << "Slow DeltaTime = " << deltaTime;
-            });
+        {
+            ls << "Slow DeltaTime = " << deltaTime;
+        });
     }
 }
 
@@ -117,10 +121,21 @@ void TaskStream::Start(TaskSystem& taskSys)
 void TaskStream::Request(TKey key, Task& task, TIndex start, TIndex end)
 {
     {
-        std::lock_guard<std::mutex> lock(queueLock);
-        requests.emplace_back(key, task, start, end);
+        ScopedLock lock(queueLock);
+
+        task.SetThreadID(threadID);
         task.IncNumStreams();
-        isDirty = true;
+
+        newRequests.emplace_back(key, task, start, end);
+
+        auto log = Logger::Get(name);
+        log.Out([&](auto& ls)
+        {
+            ls << "Request: Key = " << key << ", Task = " << task.GetName()
+                << '[' << start << ", " << end << ')';
+        });
+
+        isDirty.store(true, std::memory_order_release);
     }
 
     cv.notify_one();
@@ -129,11 +144,21 @@ void TaskStream::Request(TKey key, Task& task, TIndex start, TIndex end)
 void TaskStream::AddResident(TKey key, Task& task)
 {
     {
-        std::lock_guard<std::mutex> lock(queueLock);
-        residents.emplace_back(key, task, 0, 0);
+        ScopedLock lock(queueLock);
+        
+        task.SetThreadID(threadID);
+        task.IncNumStreams();
 
-        isDirty = true;
+        newResidents.emplace_back(key, task, 0, 0);
+
+        auto log = Logger::Get(name);
+        log.Out([&](auto& ls)
+        {
+            ls << "AddResident: Key = " << key << ", Task = " << task.GetName();
+        });
+
         isResidentListDirty = true;
+        isDirty.store(true, std::memory_order_release);
     }
 
     cv.notify_one();
@@ -142,7 +167,7 @@ void TaskStream::AddResident(TKey key, Task& task)
 void TaskStream::RemoveResidentTask(TKey key)
 {
     {
-        std::lock_guard<std::mutex> lock(queueLock);
+        ScopedLock lock(queueLock);
 
         auto predicate = [key](auto& item)
         {
@@ -153,10 +178,32 @@ void TaskStream::RemoveResidentTask(TKey key)
         if (found == residents.end())
             return;
 
-        residents.erase(found);
+        auto log = Logger::Get(name);
+        auto task = found->task;
+        if (likely(task != nullptr))
+        {
+            log.Out([&](auto& ls)
+            {
+                ls << "RemoveResidentTask: Key = " << key << ", Task = "
+                    << task->GetName() << '[' << found->start << ", "
+                    << found->end << ')';
+            });
 
-        isDirty = true;
+            task->SetDone();
+            task->Cancel();
+        }
+        else
+        {
+            log.Out([&](auto& ls)
+            {
+                ls << "RemoveResident: Key = " << key << ", Task = Null"
+                    << '[' << found->start << ", " << found->end << ')';
+            });
+        }
+
         isResidentListDirty = true;
+        hasCancelledTask = true;
+        isDirty.store(true, std::memory_order_release);
     }
 
     cv.notify_one();
@@ -167,7 +214,7 @@ void TaskStream::RemoveResidentTaskSync(TKey key)
     uint64_t count = 0;
 
     {
-        std::lock_guard<std::mutex> lock(queueLock);
+        ScopedLock lock(queueLock);
 
         count = flipCount.load(std::memory_order_relaxed);
 
@@ -180,36 +227,93 @@ void TaskStream::RemoveResidentTaskSync(TKey key)
         if (found == residents.end())
             return;
 
-        residents.erase(found);
+        auto log = Logger::Get(name);
+        auto task = found->task;
 
-        isDirty = true;
+        if (likely(task != nullptr))
+        {
+            log.Out([&](auto& ls)
+            {
+                ls << "RemoveResidentTaskSync: Key = " << key << ", Task = "
+                    << task->GetName() << '[' << found->start << ", "
+                    << found->end << ')';
+            });
+
+            task->SetDone();
+            task->Cancel();
+        }
+        else
+        {
+            log.Out([&](auto& ls)
+            {
+                ls << "RemoveResidentSyncSync: Key = " << key << ", Task = Null"
+                    << '[' << found->start << ", " << found->end << ')';
+            });
+        }
+
         isResidentListDirty = true;
+        hasCancelledTask = true;
+
+        isDirty.store(true, std::memory_order_release);
     }
 
-    cv.notify_one();
+    {
+        std::unique_lock lock(cvLock);
+        cv.notify_one();
+    }
 
     while (flipCount.load(std::memory_order_relaxed) == count);
 }
 
 void TaskStream::FlipBuffers()
 {
-    std::lock_guard<std::mutex> lock(queueLock);
+    ScopedLock lock(queueLock);
+    isDirty.store(false, std::memory_order_release);
 
-    flipCount.fetch_add(1, std::memory_order_relaxed);
-
-    const auto size = requests.size();
-    requestsBuffer.reserve(size);
-    std::swap(requests, requestsBuffer);
+    {
+        const auto size = newRequests.size();
+        requests.reserve(size);
+        std::swap(requests, newRequests);
+    }
 
     if (isResidentListDirty)
     {
+        isResidentListDirty = false;
+
         const auto size = residents.size();
-        residentsBuffer.reserve(size);
-        residentsBuffer = residents;
+        residents.reserve(size);
+
+        if (hasCancelledTask)
+        {
+            hasCancelledTask = false;
+
+            auto pred = [](const auto& item) -> bool
+            {
+                auto task = item.task;
+                if (unlikely(task == nullptr))
+                    return true;
+
+                if (task->IsCancelled())
+                    return true;
+
+                return false;
+            };
+
+            auto end = residents.end();
+            end = std::remove_if(residents.begin(), end, pred);
+            residents.resize(std::distance(residents.begin(), end));
+        }
+
+        const auto newItems = newResidents.size();
+        residents.reserve(residents.size() + newItems);
+
+        std::move(newResidents.begin(), newResidents.end()
+            , std::back_inserter(residents));
+
+        newResidents.clear();
     }
 
-    isDirty = false;
-    isResidentListDirty = false;
+    flipCount.fetch_add(1, std::memory_order_relaxed);
 }
 
 void TaskStream::RunLoop(const std::atomic<bool>& isRunning)
@@ -224,7 +328,7 @@ void TaskStream::RunLoop(const std::atomic<bool>& isRunning)
     const std::chrono::milliseconds waitPeriod(10);
     auto IsDirty = [this]()
     {
-        return isDirty.load();
+        return isDirty.load(std::memory_order_relaxed) || residents.size() > 0;
     };
 
     while(likely(isRunning))
@@ -239,12 +343,12 @@ void TaskStream::RunLoop(const std::atomic<bool>& isRunning)
 
         auto startTime = Time::GetNow();
 
-        if (requestsBuffer.size() > 0)
+        if (requests.size() > 0)
         {
             UpdateRequests();
         }
 
-        if (residentsBuffer.size() > 0)
+        if (residents.size() > 0)
         {
             UpdateResidents();
         }
@@ -265,7 +369,7 @@ void TaskStream::RunLoop(const std::atomic<bool>& isRunning)
 
 void TaskStream::UpdateRequests()
 {
-    for (auto& request : requestsBuffer)
+    for (auto& request : requests)
     {
         auto task = request.task;
         if (unlikely(task == nullptr))
@@ -282,27 +386,39 @@ void TaskStream::UpdateRequests()
         task->Run(request.start, request.end);
     }
 
-    requestsBuffer.clear();
+    requests.clear();
 }
 
 void TaskStream::UpdateResidents()
 {
-    for (auto& request : residentsBuffer)
+    for (auto& request : residents)
     {
         auto task = request.task;
         if (unlikely(task == nullptr))
         {
+            hasCancelledTask = true;
+
             auto log = Logger::Get(name);
-            log.OutError([name=name](auto& ls)
+            log.OutError([](auto& ls)
             {
-                ls << name.c_str() << " task func is null.";
+                ls << "The task is null.";
             });
 
             continue;
         }
 
-        task->Run(0, 0);
-        task->ClearNumDone();
+        if (unlikely(task->IsCancelled()))
+        {
+            auto log = Logger::Get(name);
+            log.OutError([](auto& ls)
+            {
+                ls << "The task is cancelled.";
+            });
+
+            continue;
+        }
+
+        task->ForceRun();
     }
 }
 

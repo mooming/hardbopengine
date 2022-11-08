@@ -2,6 +2,7 @@
 
 #include "String.h"
 
+#include "StringUtil.h"
 #include "Memory/MemoryManager.h"
 #include "System/CommonUtil.h"
 #include "System/Debug.h"
@@ -74,7 +75,7 @@ String::String(const short value) : hashCode(0)
     buffer->resize(16);
     auto& text = *buffer;
     snprintf(text.data(), text.size(), "%d", value);
-    buffer->resize(strlen(text.data()) + 1);
+    buffer->resize(StringUtil::StrLen(text.data()) + 1);
 
     CalculateHashCode();
 }
@@ -84,7 +85,7 @@ String::String(const unsigned short value) : hashCode(0)
     buffer->resize(16);
     auto& text = *buffer;
     snprintf(text.data(), text.size(), "%ud", value);
-    buffer->resize(strlen(text.data()) + 1);
+    buffer->resize(StringUtil::StrLen(text.data()) + 1);
 
     CalculateHashCode();
 }
@@ -94,7 +95,7 @@ String::String(const int value) : hashCode(0)
     buffer->resize(16);
     auto& text = *buffer;
     snprintf(text.data(), text.capacity(), "%d", value);
-    buffer->resize(strlen(text.data()) + 1);
+    buffer->resize(StringUtil::StrLen(text.data()) + 1);
 
     CalculateHashCode();
 }
@@ -104,7 +105,7 @@ String::String(const unsigned int value) : hashCode(0)
     buffer->resize(16);
     auto& text = *buffer;
     snprintf(text.data(), text.size(), "%u", value);
-    buffer->resize(strlen(text.data()) + 1);
+    buffer->resize(StringUtil::StrLen(text.data()) + 1);
 
     CalculateHashCode();
 }
@@ -114,7 +115,7 @@ String::String(const long value) : hashCode(0)
     buffer->resize(16);
     auto& text = *buffer;
     snprintf(text.data(), text.size(), "%ld", value);
-    buffer->resize(strlen(text.data()) + 1);
+    buffer->resize(StringUtil::StrLen(text.data()) + 1);
 
     CalculateHashCode();
 }
@@ -124,7 +125,7 @@ String::String(const unsigned long value) : hashCode(0)
     buffer->resize(16);
     auto& text = *buffer;
     snprintf(text.data(), text.size(), "%lu", value);
-    buffer->resize(strlen(text.data()) + 1);
+    buffer->resize(StringUtil::StrLen(text.data()) + 1);
 
     CalculateHashCode();
 }
@@ -134,7 +135,7 @@ String::String(const long long value) : hashCode(0)
     buffer->resize(16);
     auto& text = *buffer;
     snprintf(text.data(), text.size(), "%lld", value);
-    buffer->resize(strlen(text.data()) + 1);
+    buffer->resize(StringUtil::StrLen(text.data()) + 1);
 
     CalculateHashCode();
 }
@@ -144,7 +145,7 @@ String::String(const unsigned long long value) : hashCode(0)
     buffer->resize(16);
     auto& text = *buffer;
     snprintf(text.data(), text.size(), "%llu", value);
-    buffer->resize(strlen(text.data()) + 1);
+    buffer->resize(StringUtil::StrLen(text.data()) + 1);
 
     CalculateHashCode();
 }
@@ -154,7 +155,7 @@ String::String(const float value) : hashCode(0)
     buffer->resize(16);
     auto& text = *buffer;
     snprintf(text.data(), text.size(), "%f", value);
-    buffer->resize(strlen(text.data()) + 1);
+    buffer->resize(StringUtil::StrLen(text.data()) + 1);
 
     CalculateHashCode();
 }
@@ -164,7 +165,7 @@ String::String(const double value) : hashCode(0)
     buffer->resize(16);
     auto& text = *buffer;
     snprintf(text.data(), text.size(), "%f", value);
-    buffer->resize(strlen(text.data()) + 1);
+    buffer->resize(StringUtil::StrLen(text.data()) + 1);
 
     CalculateHashCode();
 }
@@ -174,7 +175,7 @@ String::String(const long double value) : hashCode(0)
     buffer->resize(16);
     auto& text = *buffer;
     snprintf(text.data(), text.size(), "%Lf", value);
-    buffer->resize(strlen(text.data()) + 1);
+    buffer->resize(StringUtil::StrLen(text.data()) + 1);
 
     CalculateHashCode();
 }
@@ -641,7 +642,7 @@ void String::ResetBuffer(size_t size)
 } // HE
 
 #ifdef __UNIT_TEST__
-#include "System/Time.h"
+#include "System/ScopedTime.h"
 
 
 namespace HE
@@ -731,7 +732,7 @@ void StringTest::Prepare()
         Time::TDuration heTime;
 
         {
-            Time::Measure measure(heTime);
+            Time::ScopedTime measure(heTime);
 
             String str;
             for (int i = 0; i < COUNT; ++i)
@@ -747,7 +748,7 @@ void StringTest::Prepare()
         Time::TDuration stlTime;
 
         {
-            Time::Measure measure(stlTime);
+            Time::ScopedTime measure(stlTime);
 
             std::string str;
             for (int i = 0; i < COUNT; ++i)

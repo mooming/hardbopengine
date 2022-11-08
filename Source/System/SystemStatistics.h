@@ -4,7 +4,8 @@
 
 #include "Time.h"
 #include "Config/BuildConfig.h"
-#include "Memory/AllocatorProxy.h"
+#include "Memory/AllocStats.h"
+#include "String/StaticStringID.h"
 #include <atomic>
 #include <cstdint>
 #include <vector>
@@ -22,29 +23,6 @@ class StaticString;
 
 class SystemStatistics final
 {
-public:
-#ifdef PROFILE_ENABLED
-    struct AllocProfile final
-    {
-        char allocatorName[AllocatorProxy::NameBufferSize];
-
-        const char* file;
-        const char* func;
-
-        size_t lineNumber;
-        size_t columnNumber;
-        size_t maxUsage;
-
-        AllocProfile();
-        AllocProfile(const char* allocatorName
-            , const char* file, const char* func
-            , size_t lineNumber
-            , size_t columnNumber, size_t maxUsage);
-
-        ~AllocProfile() = default;
-    };
-#endif // PROFILE_ENABLED
-
 private:
     static_assert(std::atomic<uint64_t>::is_always_lock_free, "");
     std::atomic<uint64_t> frameCount;
@@ -59,7 +37,7 @@ private:
     float deltaTime;
 
 #ifdef PROFILE_ENABLED
-    std::vector<AllocProfile> allocatorProfiles;
+    std::vector<AllocStats> allocStats;
 #endif // PROFILE_ENABLED
     
 public:
@@ -70,8 +48,7 @@ public:
     void UpdateCurrentTime();
 
 #ifdef PROFILE_ENABLED
-    void Report(const char* allocatorName
-        , const std::source_location& location, size_t maxUsage);
+    void Report(const AllocStats& allocStats);
 #endif // PROFILE_ENABLED
 
     void Print();

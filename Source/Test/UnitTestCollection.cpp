@@ -32,6 +32,7 @@
 #include "OSAL/OSDebug.h"
 #include "OSAL/OSThread.h"
 #include "String/StaticString.h"
+#include "String/StringBuilder.h"
 #include "String/StringUtil.h"
 #include "System/ComponentSystem.h"
 #include "System/TaskSystem.h"
@@ -70,6 +71,7 @@ namespace Test
 
         testEnv.AddTestCollection<StaticStringTest>();
         testEnv.AddTestCollection<StringTest>();
+        testEnv.AddTestCollection<StringBuilderTest>();
         testEnv.AddTestCollection<StringUtilTest>();
 
         testEnv.AddTestCollection<MathUtilTest>();

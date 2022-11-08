@@ -9,7 +9,7 @@ using namespace HE;
 #include "Memory/AllocatorScope.h"
 #include "Memory/PoolAllocator.h"
 #include "System/Debug.h"
-#include "System/Time.h"
+#include "System/ScopedTime.h"
 #include <list>
 
 
@@ -45,7 +45,7 @@ void LinkedListTest::Prepare()
         Time::TDuration stlTime;
         
         {
-            Time::Measure measure(heTime);
+            Time::ScopedTime measure(heTime);
             
             LinkedList<int> intList;
             for (int i = 0; i < 100; ++i)
@@ -69,7 +69,7 @@ void LinkedListTest::Prepare()
         }
         
         {
-            Time::Measure measure(stlTime);
+            Time::ScopedTime measure(stlTime);
 
             std::list<int> intList;
             for (int i = 0; i < COUNT; ++i)
@@ -124,7 +124,7 @@ void LinkedListTest::Prepare()
             }
             
             {
-                Time::Measure measure(stlTime);
+                Time::ScopedTime measure(stlTime);
                 for (int i = 0; i < COUNT2; ++i)
                 {
                     for (auto value : intList)
@@ -143,7 +143,7 @@ void LinkedListTest::Prepare()
             }
             
             {
-                Time::Measure measure(heTime);
+                Time::ScopedTime measure(heTime);
                 for (int i = 0; i < COUNT2; ++i)
                 {
                     for (auto value : intList)

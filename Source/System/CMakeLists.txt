@@ -22,6 +22,7 @@ add_library (System STATIC
  Component.cpp
  ComponentSystem.cpp
  Debug.cpp
+ ScopedLock.cpp
  SystemStatistics.cpp
  Task.cpp
  TaskHandle.cpp
@@ -37,6 +38,8 @@ add_library (System STATIC
  Debug.h
  Exception.h
  Runnable.h
+ ScopedLock.h
+ ScopedTime.h
  SystemStatistics.h
  Task.h
  TaskHandle.h

@@ -10,9 +10,9 @@ namespace HE
 {
 
 template <typename T>
-concept CHasNext =requires(T t) { t.next; };
+concept CNext = requires(T t) { t.next; };
 
-template <CHasNext T>
+template <CNext T>
 class AtomicStackView
 {
 private:

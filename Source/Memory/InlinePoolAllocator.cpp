@@ -4,7 +4,7 @@
 
 
 #ifdef __UNIT_TEST__
-#include "System/Time.h"
+#include "System/ScopedTime.h"
 #include <memory>
 #include <vector>
 
@@ -26,7 +26,7 @@ namespace
             constexpr size_t vectorSize = 128;
 
             {
-                Time::Measure measure(inlineTime);
+                Time::ScopedTime measure(inlineTime);
 
                 std::vector<int, InlinePoolAllocator<int, BufferSize>> v;
 
@@ -45,7 +45,7 @@ namespace
             }
 
             {
-                Time::Measure measure(stdTime);
+                Time::ScopedTime measure(stdTime);
                 std::vector<int> v;
 
                 for (int j = 0; j < testIterations; ++j)
@@ -98,7 +98,7 @@ void HE::InlinePoolAllocatorTest::Prepare()
         Time::TDuration stdTime;
 
         {
-            Time::Measure measure(inlineTime);
+            Time::ScopedTime measure(inlineTime);
 
             for (int j = 0; j < testCount; ++j)
             {
@@ -111,7 +111,7 @@ void HE::InlinePoolAllocatorTest::Prepare()
         }
 
         {
-            Time::Measure measure(stdTime);
+            Time::ScopedTime measure(stdTime);
             for (int j = 0; j < testCount; ++j)
             {
                 for (int i = 0; i < loopLength; ++i)

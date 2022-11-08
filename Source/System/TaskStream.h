@@ -55,11 +55,13 @@ private:
     std::atomic<uint64_t> flipCount;
     std::atomic<bool> isDirty;
     bool isResidentListDirty;
+    bool hasCancelledTask;
+
+    TRequests newRequests;
+    TRequests newResidents;
 
     TRequests requests;
     TRequests residents;
-    TRequests requestsBuffer;
-    TRequests residentsBuffer;
 
 public:
     TaskStream();

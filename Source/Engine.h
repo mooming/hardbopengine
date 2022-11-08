@@ -34,9 +34,9 @@ private:
     std::ofstream logFile;
 
     MemoryManager memoryManager;
+    SystemStatistics statistics;
     Logger logger;
     TaskSystem taskSystem;
-    SystemStatistics statistics;
 
 public:
     static Engine& Get();

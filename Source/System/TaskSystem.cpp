@@ -2,13 +2,13 @@
 
 #include "TaskSystem.h"
 
+#include "ScopedLock.h"
 #include "Config/ConfigParam.h"
 #include "HSTL/HString.h"
 #include "Log/Logger.h"
 #include "OSAL/OSThread.h"
 #include "String/StringBuilder.h"
 #include "String/StringUtil.h"
-#include "System/Time.h"
 #include <algorithm>
 #include <future>
 #include <thread>
@@ -209,7 +209,6 @@ TaskHandle TaskSystem::RegisterTask(TIndex streamIndex
         return handle;
     }
 
-
     if (unlikely(!streams.IsValidIndex(streamIndex)))
     {
         auto log = Logger::Get(GetName());
@@ -223,7 +222,7 @@ TaskHandle TaskSystem::RegisterTask(TIndex streamIndex
     }
 
     {
-        std::lock_guard lock(requestLock);
+        ScopedLock lock(requestLock);
 
         auto length = slots.Size();
         for (TIndex index = 0; index < length; ++index)
@@ -236,12 +235,13 @@ TaskHandle TaskSystem::RegisterTask(TIndex streamIndex
             slot.key = key;
 
             auto& task = slot.task;
-            task.Reset(name, 0, func);
+            task.Reset(taskName, 0, func);
 
             auto releaseFunc =  [this, streamIndex](const TaskHandle& handle)
             {
                 auto key = handle.GetKey();
                 auto index = handle.GetIndex();
+
                 DeregisterTask(streamIndex, key);
                 ReleaseTask(key, index);
             };
@@ -260,7 +260,7 @@ TaskHandle TaskSystem::RegisterTask(TIndex streamIndex
 
 void TaskSystem::DeregisterTask(TIndex streamIndex, TKey key)
 {
-    std::lock_guard lock(requestLock);
+    ScopedLock lock(requestLock);
     if (unlikely(!streams.IsValidIndex(streamIndex)))
     {
         auto log = Logger::Get(GetName());
@@ -279,7 +279,7 @@ void TaskSystem::DeregisterTask(TIndex streamIndex, TKey key)
 
 void TaskSystem::DeregisterTaskAsync(TIndex streamIndex, TKey key)
 {
-    std::lock_guard lock(requestLock);
+    ScopedLock lock(requestLock);
     if (unlikely(!streams.IsValidIndex(streamIndex)))
     {
         auto log = Logger::Get(GetName());
@@ -312,7 +312,7 @@ TaskHandle TaskSystem::DispatchTask(StaticString taskName
         return handle;
     }
 
-    std::lock_guard lock(requestLock);
+    ScopedLock lock(requestLock);
 
     if (unlikely(streams.IsValidIndex(streamIndex)))
     {
@@ -376,7 +376,7 @@ TaskHandle TaskSystem::DispatchTask(StaticString taskName
     }
 
     {
-        std::lock_guard lock(requestLock);
+        ScopedLock lock(requestLock);
 
         auto length = slots.Size();
         for (TIndex index = 0; index < length; ++index)
@@ -464,7 +464,7 @@ TaskHandle TaskSystem::DispatchTask(StaticString taskName
     numStreams = std::clamp<TIndex>(numStreams, 1, streams.Size());
 
     {
-        std::lock_guard lock(requestLock);
+        ScopedLock lock(requestLock);
 
         auto length = slots.Size();
         for (TIndex index = 0; index < length; ++index)
@@ -569,7 +569,7 @@ void TaskSystem::ReleaseTask(TKey key, TIndex index)
     }
 
     {
-        std::lock_guard lock(requestLock);
+        ScopedLock lock(requestLock);
 
         auto& slot = slots[index];
         if (unlikely(key != slot.key))
@@ -588,7 +588,11 @@ void TaskSystem::ReleaseTask(TKey key, TIndex index)
             return;
         }
 
-        while(!slot.task.IsDone());
+        auto& task = slot.task;
+        if (!task.IsCancelled() && !task.IsCurrentThread())
+        {
+            while(!task.IsDone());
+        }
 
         slot.key = InvalidKey;
         slot.task.Reset();
@@ -665,6 +669,7 @@ TaskSystem::TKey TaskSystem::IssueTaskKey()
 
 #ifdef __UNIT_TEST__
 #include "Engine.h"
+#include "ScopedTime.h"
 #include "OSAL/Intrinsic.h"
 #include "Test/TestCollection.h"
 #include <memory>
@@ -868,7 +873,7 @@ void TaskSystemTest::Prepare()
 
         Time::TDuration duration;
         {
-            Time::Measure timer(duration);
+            Time::ScopedTime timer(duration);
 
             handle = taskSys.DispatchTask("PNCounter"
                 , upperBound, func, numWorkers);

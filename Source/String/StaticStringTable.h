@@ -8,6 +8,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <mutex>
+#include <string_view>
 
 
 namespace HE
@@ -35,8 +36,9 @@ public:
     ~StaticStringTable() = default;
     
     StaticString GetName() const;
-    
+
     StaticStringID Register(const char* str);
+    StaticStringID Register(const std::string_view& str);
     const char* Get(StaticStringID id) const;
     
     void PrintStringTable() const;
@@ -44,6 +46,7 @@ public:
 private:
     void RegisterPredefinedStrings();
     TIndex GetTableID(const char* text) const;
+    TIndex GetTableID(const std::string_view& str) const;
 };
 
 } // HE

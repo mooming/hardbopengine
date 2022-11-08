@@ -29,9 +29,10 @@ StaticString::StaticString(const char* string)
 
 #ifdef __DEBUG__
     {
-        int i = 0;
+        constexpr auto LastIndex = DebugBufferSize - 1;
+        size_t i = 0;
 
-        for (; i < 15; ++i)
+        for (; i < LastIndex; ++i)
         {
             char ch = string[i];
             if (ch == '\0')
@@ -40,6 +41,29 @@ StaticString::StaticString(const char* string)
             text[i] = ch;
         }
         
+        text[i] = '\0';
+    }
+#endif // __DEBUG__
+}
+
+StaticString::StaticString(const std::string_view& str)
+{
+    auto& ssTable = StaticStringTable::GetInstance();
+    id = ssTable.Register(str);
+
+#ifdef __DEBUG__
+    {
+        constexpr auto LastIndex = DebugBufferSize - 1;
+        const auto len = std::min(str.length(), LastIndex);
+
+        size_t i = 0;
+        auto data = str.data();
+
+        for (; i < len; ++i)
+        {
+            text[i] = data[i];
+        }
+
         text[i] = '\0';
     }
 #endif // __DEBUG__

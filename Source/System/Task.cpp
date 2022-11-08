@@ -13,7 +13,7 @@ namespace HE
 Task::Task()
     : numStreams(0)
     , numDone(0)
-    , isDone(false)
+    , isCancelled(false)
     , size(0)
     , func(nullptr)
 {
@@ -23,7 +23,7 @@ Task::Task(StaticString name, size_t size, Runnable func)
     : name(name)
     , numStreams(0)
     , numDone(0)
-    , isDone(false)
+    , isCancelled(false)
     , size(size)
     , func(func)
 {
@@ -31,64 +31,105 @@ Task::Task(StaticString name, size_t size, Runnable func)
 
 void Task::Reset()
 {
-    this->~Task();
-    new (this) Task();
+    name = StaticString();
+    threadID = TThreadID();
+
+    numStreams = 0;
+    numDone.store(0, std::memory_order_relaxed);
+    isCancelled.store(false, std::memory_order_relaxed);
+    size = 0;
+    func = nullptr;
 }
 
-void Task::Reset(StaticString name, TIndex size, Runnable func)
+void Task::Reset(StaticString inName, TIndex inSize, Runnable inFunc)
 {
-    this->~Task();
-    new (this) Task(name, size, func);
+    name = inName;
+    threadID = TThreadID();
+
+    numStreams = 0;
+    numDone.store(0, std::memory_order_relaxed);
+    isCancelled.store(false, std::memory_order_relaxed);
+    size = inSize;
+    func = inFunc;
 }
 
 void Task::Run()
 {
-    func(0, size);
-
-    if (isDone)
+    if (unlikely(IsCancelled()))
         return;
 
-    ++numDone;
+    if (unlikely(IsDone()))
+        return;
 
-    if (numDone >= numStreams)
+    if (unlikely(func == nullptr))
     {
-        isDone = true;
+        auto log = Logger::Get(name);
+        log.OutFatalError("The given runnable is null.");
+        numDone.store(numStreams, std::memory_order_relaxed);
+
+        return;
     }
+
+    func(0, size);
+
+    numDone.fetch_add(1, std::memory_order_relaxed);
 }
 
 void Task::Run(TIndex start, TIndex end)
 {
+    if (unlikely(IsCancelled()))
+        return;
+
+    if (unlikely(IsDone()))
+        return;
+
     if (unlikely(func == nullptr))
     {
         auto log = Logger::Get(name);
-        log.OutWarning("Runnable is null.");
-        ++numDone;
+        log.OutFatalError("The given runnable is null.");
+        numDone.store(numStreams, std::memory_order_relaxed);
+
         return;
     }
 
     func(start, end);
 
-    if (isDone)
-        return;
+    numDone.fetch_add(1, std::memory_order_relaxed);
+}
 
-    ++numDone;
-
-    if (numDone >= numStreams)
+void Task::ForceRun()
+{
+    if (unlikely(func == nullptr))
     {
-        isDone = true;
+        auto log = Logger::Get(name);
+        log.OutFatalError("The given runnable is null.");
+        numDone.store(numStreams, std::memory_order_relaxed);
+
+
+        return;
     }
+
+    func(0, size);
+}
+
+void Task::Cancel()
+{
+    auto log = Logger::Get(name);
+    log.Out("The task is cancelled.");
+
+    isCancelled.store(true, std::memory_order_relaxed);
 }
 
 void Task::BusyWait() const
 {
-    while(!isDone);
+    while(!IsDone());
 }
 
 void Task::Wait(uint32_t intervalMilliSecs) const
 {
     const auto interval = std::chrono::milliseconds(intervalMilliSecs);
 
-    while(!isDone)
+    while(!IsDone())
     {
         std::this_thread::sleep_for(interval);
     }

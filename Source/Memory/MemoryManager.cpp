@@ -9,6 +9,7 @@
 #include "OSAL/SourceLocation.h"
 #include "String/StringUtil.h"
 #include "System/Debug.h"
+#include "System/ScopedLock.h"
 #include <cstdint>
 
 
@@ -40,7 +41,14 @@ MemoryManager::MemoryManager()
 {
     Assert(MMgrInstance == nullptr);
     MMgrInstance = this;
-    
+
+    for (int i = 1; i < MaxNumAllocators; ++i)
+    {
+        auto& proxy = allocators[i];
+        proxy.id = i;
+        proxyPool.Push(proxy);
+    }
+
     RegisterSystemAllocator();
 }
 
@@ -65,7 +73,14 @@ const char* MemoryManager::GetName(TAllocatorID id) const
         return "Null";
     }
 
-    return allocators[id].name;
+#ifdef PROFILE_ENABLED
+    auto& allocator = allocators[id];
+    auto& stats = allocator.stats;
+
+    return stats.name;
+#else // PROFILE_ENABLED
+    return "Unknown";
+#endif // PROFILE_ENABLED
 }
 
 MemoryManager::TId MemoryManager::Register(const char* name, bool isInline
@@ -76,92 +91,60 @@ MemoryManager::TId MemoryManager::Register(const char* name, bool isInline
         name = "None";
     }
     
-#ifdef __MEMORY_STATISTICS__
+#ifdef PROFILE_ENABLED
     auto AddAllocator = [this, name, isInline, capacity, allocFunc, deallocFunc](auto& allocator)
-#else // __MEMORY_STATISTICS__
-    auto AddAllocator = [this, allocFunc, deallocFunc](auto& allocator)
-#endif // __MEMORY_STATISTICS__
+#else // PROFILE_ENABLED
+    auto AddAllocator = [allocFunc, deallocFunc](auto& allocator)
+#endif // PROFILE_ENABLED
     {
         allocator.allocate = allocFunc;
         allocator.deallocate = deallocFunc;
         
-#ifdef __MEMORY_STATISTICS__
-        allocator.isInline = isInline;
-        allocator.hasCapacity = capacity > 0;
-        allocator.capacity = capacity;
-        allocator.usage = 0;
-        
+#ifdef PROFILE_ENABLED
         {
-            constexpr int LastIndex = AllocatorProxy::NameBufferSize - 1;
-            strncpy(allocator.name, name, LastIndex);
-            allocator.name[LastIndex] = '\0';
+            auto& stats = allocator.stats;
+            stats.OnRegister(name, isInline, capacity);
         }
-#endif // __MEMORY_STATISTICS__
 
         {
-            std::lock_guard lock(statLock);
+            ScopedLock lock(statLock);
             auto& rec = isInline ? inlineUsage : usage;
             rec.totalCapacity += capacity;
             rec.maxCapacity = std::max(rec.maxCapacity, rec.totalCapacity);
         }
+#endif // PROFILE_ENABLED
 
 #ifdef __MEMORY_VERIFICATION__
         allocator.threadId = std::this_thread::get_id();
 #endif // __MEMORY_VERIFICATION__
     };
-    
-    for (TId i = 0; i < MaxNumAllocators; ++i)
+
+    auto proxy = proxyPool.Pop();
+    if (unlikely(proxy == nullptr))
     {
-        auto& allocator = allocators[i];
-        auto& isValid = allocator.isValid;
-        bool expected = false;
-        
-        if (!isValid.compare_exchange_weak(expected, true))
-            continue;
-        
-        AddAllocator(allocator);
-        Assert(allocator.isValid);
-        
-        Log(ELogLevel::Info
-            , [funcName = __func__, name, i](auto& ls)
+        Log(ELogLevel::FatalError
+            , [funcName = __func__, name](auto& ls)
         {
-            ls << "[" << funcName << "] " << name << "(" << i << ')';
+            ls << "[" << funcName << "][" << name
+                << "] failed to register an allocator.";
         });
 
-        return i;
+        return InvalidAllocatorID;
     }
-    
-    for (TId i = 0; i < MaxNumAllocators; ++i)
-    {
-        auto& allocator = allocators[i];
-        auto& isValid = allocator.isValid;
-        bool expected = false;
-        
-        if (!isValid.compare_exchange_strong(expected, true))
-            continue;
-        
-        AddAllocator(allocator);
-        Assert(allocator.isValid);
 
-        Log(ELogLevel::Info
-            , [funcName = __func__, name, i](auto& ls)
-        {
-            ls << "[" << funcName << "][Strong] " << name << "(" << i << ')';
-        });
-        
-        return i;
-    }
-    
-    Log(ELogLevel::Error
-        , [funcName = __func__, name](auto& ls)
+    auto& allocator = *proxy;
+    auto id = allocator.id;
+
+    AddAllocator(allocator);
+    Assert(id != InvalidAllocatorID);
+
+    Log(ELogLevel::Info
+        , [funcName = __func__, name, id](auto& ls)
     {
-        ls << "[" << funcName << "][" << name
-            << "] failed to register an allocator.";
+        ls << "[" << funcName << "] " << name << "(" << id << ')';
     });
 
-    FatalAssert(false);
-    
-    return InvalidAllocatorID;
+    return id;
 }
 
 void MemoryManager::Deregister(TId id)
@@ -181,33 +164,23 @@ void MemoryManager::Deregister(TId id)
     }
 
     auto& allocator = allocators[id];
-    if (unlikely(!allocator.isValid))
-    {
-        Log(ELogLevel::Error
-            , [funcName = __func__, id](auto& ls)
-        {
-            ls << "[" << funcName
-                << "] Allocator(" << id << ") is not valid.";
-        });
 
-        return;
-    }
+#ifdef PROFILE_ENABLED
+    auto& stats = allocator.stats;
 
-#ifdef __MEMORY_STATISTICS__
     Log(ELogLevel::Info
-        , [funcName = __func__, id, &allocator](auto& ls)
+        , [funcName = __func__, id, &stats](auto& ls)
     {
-        ls << "[" << funcName << "] " << allocator.name << "(" << id << ')';
+        ls << "[" << funcName << "] " << stats.name << "(" << id << ')';
     });
 
-#else // __MEMORY_STATISTICS__
+#else // PROFILE_ENABLED
     Log(ELogLevel::Info
-        , [funcName = __func__, id, &allocator](auto& ls)
+        , [funcName = __func__, id](auto& ls)
     {
         ls << "[" << funcName << "] ID(" << id << ')';
     });
-#endif // __MEMORY_STATISTICS__
-
+#endif // PROFILE_ENABLED
 
     allocator.allocate = nullptr;
     allocator.deallocate = nullptr;
@@ -229,15 +202,15 @@ void MemoryManager::Deregister(TId id)
     }
 #endif // __MEMORY_VERIFICATION__
 
-#ifdef __MEMORY_STATISTICS__
-    if (unlikely(allocator.usage > 0))
+#ifdef PROFILE_ENABLED
+    if (unlikely(stats.usage > 0))
     {
         Log(ELogLevel::Warning
-            , [funcName = __func__, &allocator, id](auto& ls)
+            , [funcName = __func__, &stats, id](auto& ls)
         {
-            ls << "[" << funcName << "] Allocator [" << allocator.name
+            ls << "[" << funcName << "] Allocator [" << stats.name
                 << "](" << id << ") Memory leak is detected! "
-                << allocator.usage << " / " << allocator.capacity
+                << stats.usage << " / " << stats.capacity
                 << " bytes";
         });
         
@@ -248,12 +221,12 @@ void MemoryManager::Deregister(TId id)
         return;
     }
 
-    if (unlikely(allocator.usage > 0))
+    if (unlikely(stats.usage > 0))
     {
         Log(ELogLevel::Warning
-            , [funcName = __func__, &allocator, id](auto& ls)
+            , [funcName = __func__, &stats, id](auto& ls)
         {
-            ls << "[" << funcName << "] Allocator [" << allocator.name
+            ls << "[" << funcName << "] Allocator [" << stats.name
                 << "](" << id << ") Memory leak is detected!";
         });
 
@@ -261,24 +234,20 @@ void MemoryManager::Deregister(TId id)
     }
 
     {
-        lock_guard lock(statLock);
-        auto& rec = allocator.isInline ? inlineUsage : usage;
-        rec.totalUsage -= allocator.usage;
-        rec.maxCapacity -= allocator.capacity;
+        ScopedLock lock(statLock);
+        auto& rec = stats.isInline ? inlineUsage : usage;
+        rec.totalUsage -= stats.usage;
+        rec.maxCapacity -= stats.capacity;
     }
 
-    allocator.isInline = false;
-    allocator.hasCapacity = false;
-    allocator.capacity = 0;
-    allocator.usage = 0;
-    allocator.name[0] = '\0';
-#endif // __MEMORY_STATISTICS__
+    stats.Reset();
+#endif // PROFILE_ENABLED
 
 #ifdef __MEMORY_VERIFICATION__
     allocator.threadId = std::thread::id();
 #endif // __MEMORY_VERIFICATION__
 
-    allocator.isValid.store(false);
+    proxyPool.Push(allocator);
 }
 
 #ifdef PROFILE_ENABLED
@@ -297,11 +266,9 @@ void MemoryManager::Deregister(TId id, const std::source_location& srcLoc)
     }
 
     auto& allocator = allocators[id];
-
-    auto& engine = Engine::Get();
-    auto& stat = engine.GetStatistics();
-    stat.Report(static_cast<const char *>(allocator.name), srcLoc, allocator.maxUsage);
-
+    auto& stats = allocator.stats;
+    stats.Report();
+    
     Deregister(id);
 }
 #endif // PROFILE_ENABLED
@@ -309,7 +276,7 @@ void MemoryManager::Deregister(TId id, const std::source_location& srcLoc)
 void MemoryManager::ReportAllocation(TId id, void* ptr
     , size_t requested, size_t allocated)
 {
-#ifdef __MEMORY_STATISTICS__
+#ifdef PROFILE_ENABLED
     using namespace std;
 
     if (unlikely(!IsValid(id)))
@@ -334,19 +301,23 @@ void MemoryManager::ReportAllocation(TId id, void* ptr
     ++allocCount;
 
     auto& allocator = allocators[id];
-    allocator.usage += allocated;
-    allocator.maxUsage = std::max(allocator.maxUsage, allocator.usage);
-    ++allocator.allocCount;
+    auto& stats = allocator.stats;
+    stats.usage += allocated;
+    stats.maxUsage = std::max(stats.maxUsage, stats.usage);
+    ++stats.allocCount;
 
-    if (unlikely(allocator.hasCapacity && allocator.usage > allocator.capacity))
+    stats.totalRequested += requested;
+    stats.maxRequested = std::max(requested, stats.maxRequested);
+
+    if (unlikely(stats.usage > stats.capacity))
     {
-        Log(ELogLevel::Warning
-            , [func = __func__, &allocator, ptr, requested, allocated](auto& ls)
+        Log(ELogLevel::FatalError
+            , [func = __func__, &stats, ptr, requested, allocated](auto& ls)
         {
-            ls << '[' << func << "][" << static_cast<char*>(allocator.name)
+            ls << '[' << func << "][" << static_cast<char*>(stats.name)
                 << "] Memory usage overflow. "
-                << allocator.usage << " > "
-                << allocator.capacity
+                << stats.usage << " > "
+                << stats.capacity
                 << ", ptr = " << ptr
                 << ", requested = " << requested
                 << ", allocated = " << allocated;
@@ -359,18 +330,18 @@ void MemoryManager::ReportAllocation(TId id, void* ptr
         return;
     }
 
-    auto& rec = allocator.isInline ? inlineUsage : usage;
+    auto& rec = stats.isInline ? inlineUsage : usage;
     rec.totalUsage += allocated;
     rec.maxUsage = std::max(rec.maxUsage, rec.totalUsage);
 
-    if (unlikely(allocator.hasCapacity && rec.totalUsage > rec.totalCapacity))
+    if (unlikely(rec.totalUsage > rec.totalCapacity))
     {
         Log(ELogLevel::FatalError
-            , [func = __func__, &allocator, &rec, ptr, requested, allocated](auto& ls)
+            , [func = __func__, &stats, &rec, ptr, requested, allocated](auto& ls)
         {
             ls << "[MemoryManager][" << func
-                << "][" << static_cast<char*>(allocator.name)
-                << "] Inline usage overflow. "
+                << "][" << static_cast<char*>(stats.name)
+                << "] Usage overflow. "
                 << rec.totalUsage << " exceedes its limit "
                 << rec.totalCapacity
                 << ", ptr = " << ptr
@@ -384,10 +355,10 @@ void MemoryManager::ReportAllocation(TId id, void* ptr
     }
 
     Log(ELogLevel::Verbose
-        , [this, &allocator, &rec, id, ptr, requested, allocated](auto& ls)
+        , [this, &stats, &rec, id, ptr, requested, allocated](auto& ls)
     {
         ls << "[Alloc(" << allocCount << ")]["
-            << static_cast<char*>(allocator.name) << '('
+            << static_cast<char*>(stats.name) << '('
             << id << ")] " << ptr
             << ", req = " << requested
             << '(' << allocated;
@@ -404,26 +375,26 @@ void MemoryManager::ReportAllocation(TId id, void* ptr
         };
 
         ls << "), usage = ";
-        PrintMemSize(allocator.usage);
+        PrintMemSize(stats.usage);
 
         ls << " / ";
-        PrintMemSize(allocator.capacity);
+        PrintMemSize(stats.capacity);
 
         ls << ", total usage = ";
         PrintMemSize(rec.totalUsage);
         ls << " / ";
         PrintMemSize(rec.totalCapacity);
 
-        ls << ", count = " << allocator.deallocCount;
-        ls << " / " << allocator.allocCount;
+        ls << ", count = " << stats.deallocCount;
+        ls << " / " << stats.allocCount;
     });
-#endif // __MEMORY_STATISTICS__
+#endif // PROFILE_ENABLED
 }
 
 void MemoryManager::ReportDeallocation(TId id, void* ptr
     , size_t requested, size_t allocated)
 {
-#ifdef __MEMORY_STATISTICS__
+#ifdef PROFILE_ENABLED
     using namespace std;
 
     if (unlikely(!IsValid(id)))
@@ -442,19 +413,20 @@ void MemoryManager::ReportDeallocation(TId id, void* ptr
     ++deallocCount;
 
     auto& allocator = allocators[id];
-    
-    if (unlikely(allocator.usage < allocated))
+    auto& stats = allocator.stats;
+
+    if (unlikely(stats.usage < allocated))
     {
         Log(ELogLevel::Error
-            , [func = __func__, &allocator, ptr, requested, allocated](auto& ls)
+            , [func = __func__, &stats, ptr, requested, allocated](auto& ls)
         {
             ls << '[' << func
-                << "][" << static_cast<char*>(allocator.name)
+                << "][" << static_cast<char*>(stats.name)
                 << "] Incorrect Memory usage. "
                 << " ptr = " << ptr
                 << ", requested = " << requested
                 << ", allocated = " << allocated
-                << ", usage = " << allocator.usage;
+                << ", usage = " << stats.usage;
         });
 
 #ifdef __DEBUG__
@@ -462,17 +434,17 @@ void MemoryManager::ReportDeallocation(TId id, void* ptr
 #endif // __DEBUG__
     }
     
-    allocator.usage -= allocated;
-    ++allocator.deallocCount;
+    stats.usage -= allocated;
+    ++stats.deallocCount;
 
-    auto& rec = allocator.isInline ? inlineUsage : usage;
+    auto& rec = stats.isInline ? inlineUsage : usage;
     if (unlikely(rec.totalUsage < allocated))
     {
         Log(ELogLevel::Error
-            , [func = __func__, &allocator, &rec, ptr, requested, allocated](auto& ls )
+            , [func = __func__, &stats, &rec, ptr, requested, allocated](auto& ls )
         {
             ls << '[' << func
-                << "][" << static_cast<char*>(allocator.name)
+                << "][" << static_cast<char*>(stats.name)
                 << "] Incorrect memory usage."
                 << " ptr = " << ptr
                 << ", requested = " << requested
@@ -490,10 +462,10 @@ void MemoryManager::ReportDeallocation(TId id, void* ptr
     rec.totalUsage -= allocated;
 
     Log(ELogLevel::Verbose
-        , [this, &allocator, &rec, id, ptr, requested, allocated](auto& ls)
+        , [this, &stats, &rec, id, ptr, requested, allocated](auto& ls)
     {
         ls << "[Dealloc(" << deallocCount << ")]["
-            << static_cast<char*>(allocator.name) << '('
+            << static_cast<char*>(stats.name) << '('
             << id << ")] "  << ptr
             << ", req = " << requested
             << '(' << allocated;
@@ -510,25 +482,25 @@ void MemoryManager::ReportDeallocation(TId id, void* ptr
         };
 
         ls << "), usage = ";
-        PrintMemSize(allocator.usage);
+        PrintMemSize(stats.usage);
 
         ls << " / ";
-        PrintMemSize(allocator.capacity);
+        PrintMemSize(stats.capacity);
 
         ls << ", total usage = ";
         PrintMemSize(rec.totalUsage);
         ls << " / ";
         PrintMemSize(rec.totalCapacity);
 
-        ls << ", count = " << allocator.deallocCount;
-        ls << " / " << allocator.allocCount;
+        ls << ", count = " << stats.deallocCount;
+        ls << " / " << stats.allocCount;
     });
-#endif // __MEMORY_STATISTICS__
+#endif // PROFILE_ENABLED
 }
 
-void MemoryManager::ReportFallback(TId id, void* ptr, size_t amount)
+void MemoryManager::ReportFallback(TId id, void* ptr, size_t requested)
 {
-#ifdef __MEMORY_STATISTICS__
+#ifdef PROFILE_ENABLED
     if (unlikely(!IsValid(id)))
     {
         Log(ELogLevel::Error, [funcName = __func__, id](auto& ls)
@@ -547,34 +519,37 @@ void MemoryManager::ReportFallback(TId id, void* ptr, size_t amount)
 
     std::lock_guard lock(statLock);
     auto& allocator = allocators[id];
+    auto& stats = allocator.stats;
 
-    ++allocator.fallbackCount;
-    allocator.fallback += amount;
+    ++stats.fallbackCount;
+    stats.totalFallback += requested;
+    stats.maxFallback = std::max(requested, stats.maxFallback);
 
     Log(ELogLevel::Verbose
-        , [&allocator, id, ptr, amount](auto& ls)
+        , [&stats, id, ptr, requested](auto& ls)
     {
-        ls << "[" << static_cast<char*>(allocator.name) << "]["
+        ls << "[" << static_cast<char*>(stats.name) << "]["
             << id << "][FallbackAlloc] "
             << " ptr = " << ptr
-            << ", count = " << allocator.fallbackCount
-            << ", amount = " << amount
-            << " / " << allocator.fallback;
+            << ", count = " << stats.fallbackCount
+            << ", requested = " << requested;
     });
-#endif // __MEMORY_STATISTICS__
+#endif // PROFILE_ENABLED
 }
 
 void* MemoryManager::SysAllocate(size_t nBytes)
 {
     auto& allocator = allocators[SystemAllocatorID];
-    
-    Assert(allocator.isValid
-           , "[", GetName(), "::",  __func__, "][Error] "
-           , "SystemAllocator hasn't been set.");
-    
-    Assert(allocator.allocate != nullptr
-           , "[", GetName(), "::", __func__, "][Error] "
-           , "SystemAllocator has no allocate function.");
+    if (unlikely(allocator.allocate == nullptr))
+    {
+        Log(ELogLevel::FatalError, [funcName = __func__](auto& ls)
+        {
+            ls << '[' << funcName << "] "
+                << "SystemAllocator has no allocate function.";
+        });
+
+        return nullptr;
+    }
 
     return allocator.allocate(nBytes);
 }
@@ -582,16 +557,17 @@ void* MemoryManager::SysAllocate(size_t nBytes)
 void MemoryManager::SysDeallocate(void* ptr, size_t nBytes)
 {
     auto& allocator = allocators[SystemAllocatorID];
+    if (unlikely(allocator.deallocate == nullptr))
+    {
+        Log(ELogLevel::FatalError, [funcName = __func__](auto& ls)
+        {
+            ls << '[' << funcName << "] "
+                << "SystemAllocator has no deallocate function.";
+        });
 
-#ifdef __MEMORY_VERIFICATION__
-    Assert(allocator.isValid
-           , "[", GetName(), "::",  __func__, "][Error] "
-           , "SystemAllocator hasn't been set.");
-    
-    Assert(allocator.allocate != nullptr
-           , "[", GetName(), "::", __func__, "][Error] "
-           , "SystemAllocator has no allocate function.");
-#endif // __MEMORY_VERIFICATION__
+        return;
+    }
+
     allocator.deallocate(ptr, nBytes);
 }
 
@@ -618,10 +594,6 @@ void* MemoryManager::Allocate(TId id, size_t nBytes)
     }
 
     auto& allocator = allocators[id];
-    Assert(allocator.isValid
-        , "[", GetName(), "::", __func__, "][Error] "
-        , "Invalid Allocator ID = ", id);
-
     Assert(allocator.allocate != nullptr
         , "[", GetName(), "::", __func__, "][Error] "
         , "No allocate function, ID = ", id);
@@ -701,20 +673,43 @@ void MemoryManager::RegisterSystemAllocator()
         sysAlloc.deallocate(reinterpret_cast<uint8_t*>(ptr), nBytes);
     };
 
-    Register("SystemAllocator", false, Config::MemCapacity, allocFunc, deallocFunc);
+    auto& allocator = allocators[SystemAllocatorID];
+    allocator.allocate = allocFunc;
+    allocator.deallocate = deallocFunc;
 
+    Assert(usage.totalCapacity == 0);
+    Assert(usage.maxCapacity == 0);
     Assert(sysMemUsage.totalCapacity == 0);
     Assert(sysMemUsage.maxCapacity == 0);
+    usage.totalCapacity = Config::MemCapacity;
+    usage.maxCapacity = Config::MemCapacity;
     sysMemUsage.totalCapacity = Config::MemCapacity;
     sysMemUsage.maxCapacity = Config::MemCapacity;
 
     Assert(systemAllocator.GetID() == SystemAllocatorID);
     SetScopedAllocatorID(SystemAllocatorID);
+
+#ifdef PROFILE_ENABLED
+    {
+        auto& stats = allocator.stats;
+        stats.OnRegister("SystemAllocator", false, Config::MemCapacity);
+    }
+
+    {
+        std::lock_guard lock(statLock);
+        auto& rec = usage;
+        rec.totalCapacity += Config::MemCapacity;
+        rec.maxCapacity = std::max(rec.maxCapacity, rec.totalCapacity);
+    }
+#endif // PROFILE_ENABLED
+
+#ifdef __MEMORY_VERIFICATION__
+    allocator.threadId = std::this_thread::get_id();
+#endif // __MEMORY_VERIFICATION__
 }
 
 void MemoryManager::DeregisterSystemAllocator()
 {
-    Assert(allocators[SystemAllocatorID].isValid);
     Deregister(SystemAllocatorID);
 
     sysMemUsage.totalCapacity = 0;

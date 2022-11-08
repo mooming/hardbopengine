@@ -5,7 +5,7 @@
 #ifdef __UNIT_TEST__
 #include "Component.h"
 #include "ComponentState.h"
-#include "Time.h"
+#include "ScopedTime.h"
 
 namespace HE
 {
@@ -165,7 +165,7 @@ void ComponentSystemTest::Prepare()
         Time::TDuration loopTime;
         
         {
-            Time::Measure measure(loopTime);
+            Time::ScopedTime measure(loopTime);
             while (testSystem)
             {
                 testSystem.Update(0.033f);

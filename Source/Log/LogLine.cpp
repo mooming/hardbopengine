@@ -5,6 +5,7 @@
 #include "Engine.h"
 #include "Config/BuildConfig.h"
 #include "OSAL/Intrinsic.h"
+#include "String/StringUtil.h"
 #include "System/Debug.h"
 #include <chrono>
 #include <cstring>
@@ -62,7 +63,7 @@ LogLine::LogLine(ELogLevel level, StaticString threadName, StaticString category
 #endif // PROFILE_ENABLED
 
     constexpr size_t LastIndex = Config::LogLineLength - 1;
-    const auto length = strnlen(inText, LastIndex);
+    const auto length = StringUtil::StrLen(inText, LastIndex);
 
     std::copy(&inText[0], &inText[length], std::begin(text));
     text[length] = '\0';
@@ -89,7 +90,7 @@ LogLine::LogLine(ELogLevel level, StaticString threadName, StaticString category
         stat.IncLongLogCount();
 #endif // PROFILE_ENABLED
 
-        const auto length = strlen(inText);
+        const auto length = StringUtil::StrLen(inText);
         longText = (char*)malloc(length + 1);
         std::copy(&inText[0], &inText[length], longText);
         longText[length] = '\0';
@@ -106,7 +107,7 @@ LogLine::LogLine(ELogLevel level, StaticString threadName, StaticString category
 #endif // PROFILE_ENABLED
 
     constexpr size_t LastIndex = Config::LogLineLength - 1;
-    const auto length = strnlen(inText, LastIndex);
+    const auto length = StringUtil::StrLen(inText, LastIndex);
     std::copy(&inText[0], &inText[length], text);
     text[length] = '\0';
 }

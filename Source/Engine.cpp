@@ -7,6 +7,7 @@
 #include "HSTL/HString.h"
 #include "String/StaticStringTable.h"
 #include "System/Debug.h"
+#include "System/ScopedLock.h"
 #include "System/Time.h"
 #include <csignal>
 #include <iostream>
@@ -182,24 +183,26 @@ void Engine::Log(ELogLevel level, TLogFunc func)
     auto intMSecs = milliSeconds.count() % 1000;
 
     statistics.IncEngineLogCount();
-    
-    lock_guard lock(logLock);
 
-    if (levelAsValue >= CPEnginePrintLogLevel.Get())
     {
-        cerr << '[' << intHours << ':' << intMins << ':' << intSecs
-            << '.' << intMSecs << "] ";
-        func(cerr);
-        cerr << endl;
-    }
+        ScopedLock lock(logLock);
 
-    Assert(logFile.is_open());
-    logFile << '[' << intHours << ':' << intMins << ':' << intSecs
-        << '.' << intMSecs << "] ";
-    
-    func(logFile);
-    
-    logFile << endl;
+        if (levelAsValue >= CPEnginePrintLogLevel.Get())
+        {
+            cerr << '[' << intHours << ':' << intMins << ':' << intSecs
+                << '.' << intMSecs << "] ";
+            func(cerr);
+            cerr << endl;
+        }
+
+        Assert(logFile.is_open());
+        logFile << '[' << intHours << ':' << intMins << ':' << intSecs
+            << '.' << intMSecs << "] ";
+
+        func(logFile);
+
+        logFile << endl;
+    }
 #endif // ENGINE_LOG_ENABLED
 }
 

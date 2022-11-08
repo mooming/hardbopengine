@@ -9,12 +9,18 @@ namespace HE
 {
 namespace LogUtil
 {
-HSTL::HInlineString<64> GetTimeStampString(const LogUtil::TTimePoint& startTime
-    , const LogUtil::TTimePoint& currentTime)
+
+const TTimePoint& GetStartTime()
+{
+    static TTimePoint startTime;
+    return startTime;
+}
+
+HSTL::HInlineString<64> GetTimeStampString(const TTimePoint& currentTime)
 {
     using namespace std;
-    
-    auto diff = currentTime - startTime;
+
+    auto diff = currentTime - GetStartTime();
     
     auto hours = chrono::duration_cast<chrono::hours>(diff);
     auto minutes = chrono::duration_cast<chrono::minutes>(diff);

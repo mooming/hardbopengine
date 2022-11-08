@@ -3,40 +3,12 @@
 #include "SystemStatistics.h"
 
 #include "Log/Logger.h"
-#include "OSAL/SourceLocation.h"
+#include "OSAL/OSDebug.h"
 #include "String/StaticString.h"
 
 
 namespace HE
 {
-
-#ifdef PROFILE_ENABLED
-SystemStatistics::AllocProfile::AllocProfile()
-    : allocatorName("")
-    , file(nullptr)
-    , func(nullptr)
-    , lineNumber(0)
-    , columnNumber(0)
-    , maxUsage(0)
-{
-}
-
-SystemStatistics::AllocProfile::AllocProfile(const char* inName
-    , const char* file, const char* func
-    , size_t lineNumber
-    , size_t columnNumber, size_t maxUsage)
-
-    : file(file)
-    , func(func)
-    , lineNumber(lineNumber)
-    , columnNumber(columnNumber)
-    , maxUsage(maxUsage)
-{
-    constexpr auto LastIndex = AllocatorProxy::NameBufferSize - 1;
-    strncpy(allocatorName, inName, LastIndex);
-    allocatorName[LastIndex] = '\0';
-}
-#endif // PROFILE_ENABLED
 
 SystemStatistics::SystemStatistics()
     : frameCount(0)
@@ -66,12 +38,9 @@ void SystemStatistics::UpdateCurrentTime()
 }
 
 #ifdef PROFILE_ENABLED
-void SystemStatistics::Report(const char* allocatorName
-    , const std::source_location& location, size_t maxUsage)
+void SystemStatistics::Report(const AllocStats& stats)
 {
-    allocatorProfiles.emplace_back(allocatorName, location.file_name()
-       , location.function_name()
-       , location.line(), location.column(), maxUsage);
+    allocStats.emplace_back(stats);
 }
 #endif // PROFILE_ENABLED
 
@@ -123,15 +92,9 @@ void SystemStatistics::PrintAllocatorProfiles()
     auto log = Logger::Get(GetName());
     log.Out("= System Statistics: Allocator Profiles ========================");
 
-    for (auto& item : allocatorProfiles)
+    for (auto& stats : allocStats)
     {
-        log.Out([item](auto& ls)
-        {
-            ls << item.allocatorName << ':'  << item.file
-                << ':' << item.lineNumber
-                << ':' << item.columnNumber << '='
-                << item.maxUsage;
-        });
+        stats.Print();
     }
 
     log.Out("================================================================");

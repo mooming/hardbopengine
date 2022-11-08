@@ -2,6 +2,7 @@
 
 #include "StringUtil.h"
 
+#include "InlineStringBuilder.h"
 #include "Log/Logger.h"
 #include "Memory/AllocatorScope.h"
 #include "Memory/InlinePoolAllocator.h"
@@ -148,26 +149,17 @@ TString PathToName(const TString& path)
     return TString(buffer + lastIndex + 1);
 }
 
-void Tokenize(TVector<TString>& outTokens
-    , const char* str, const char* separators)
+void ForEachToken(const char* str
+    , const std::function<void(std::string_view)> func, const char* separators)
 {
     using namespace HE;
 
     if (unlikely(str == nullptr))
-    {
-        auto log = Logger::Get("StringUtil");
-        log.OutWarning([func = __func__](auto& ls)
-        {
-            ls << '[' << func << "] invalid argument. str is null.";
-        });
-
         return;
-    }
 
     if (unlikely(separators == nullptr))
     {
-        outTokens.reserve(1);
-        outTokens.emplace_back(str);
+        func(std::string_view(str));
         return;
     }
 
@@ -201,9 +193,9 @@ void Tokenize(TVector<TString>& outTokens
             {
                 const char* interStr = &str[start];
                 auto length = end - start;
-                outTokens.emplace_back(interStr, length);
+                func(std::string_view(interStr, length));
             }
-            
+
             start = end + 1;
         }
 
@@ -215,15 +207,13 @@ void Tokenize(TVector<TString>& outTokens
     {
         const char* interStr = &str[start];
         auto length = end - start;
-        outTokens.emplace_back(interStr, length);
+        func(std::string_view(interStr, length));
     }
-
-    outTokens.shrink_to_fit();
 }
 
 HE::StaticString PrettyFunctionToFunctionName(const char* PrettyFunction)
 {
-    using TStr = HSTL::HString;
+    using TStr = std::string_view;
     TStr str(PrettyFunction);
     
     auto start = str.find_last_of("::") + 1;
@@ -234,12 +224,12 @@ HE::StaticString PrettyFunctionToFunctionName(const char* PrettyFunction)
     
     str = str.substr(start);
     
-    return HE::StaticString(str.c_str());
+    return HE::StaticString(str);
 }
 
 HE::StaticString PrettyFunctionToClassName(const char* PrettyFunction)
 {
-    using TStr = HSTL::HString;
+    using TStr = std::string_view;
     TStr str(PrettyFunction);
    
     auto end = str.find_last_of("::") - 1;
@@ -251,12 +241,12 @@ HE::StaticString PrettyFunctionToClassName(const char* PrettyFunction)
     auto start = str.find_last_of(" ") + 1;
     str = str.substr(start);
     
-    return HE::StaticString(str.c_str());
+    return HE::StaticString(str);
 }
 
 HE::StaticString PrettyFunctionToMethodName(const char* PrettyFunction)
 {
-    using TStr = HSTL::HString;
+    using TStr = std::string_view;
     TStr str(PrettyFunction);
     
     auto start = str.find_last_of("::");
@@ -266,14 +256,14 @@ HE::StaticString PrettyFunctionToMethodName(const char* PrettyFunction)
     start = str.find_last_of(" ", start - 2) + 1;
     str = str.substr(start);
     
-    return HE::StaticString(str.c_str());
+    return HE::StaticString(str);
 }
 
 HE::StaticString PrettyFunctionToCompactClassName(const char* PrettyFunction)
 {
     using namespace HE;
     
-    using TStr = HSTL::HString;
+    using TStr = std::string_view;
     TStr str(PrettyFunction);
    
     auto end = str.find_last_of("::") - 1;
@@ -284,12 +274,12 @@ HE::StaticString PrettyFunctionToCompactClassName(const char* PrettyFunction)
     auto start = str.find_last_of("::") + 1;
     str = str.substr(start, (end - start));
     
-    return HE::StaticString(str.c_str());
+    return HE::StaticString(str);
 }
 
 HE::StaticString PrettyFunctionToCompactMethodName(const char* PrettyFunction)
 {
-    using TStr = HSTL::HString;
+    using TStr = std::string_view;
     TStr str(PrettyFunction);
     
     auto start = str.find_last_of("::");
@@ -299,25 +289,17 @@ HE::StaticString PrettyFunctionToCompactMethodName(const char* PrettyFunction)
     start = str.find_last_of("::", start - 2) + 1;
     str = str.substr(start);
     
-    return HE::StaticString(str.c_str());
+    return HE::StaticString(str);
+}
+
+size_t StrLen(const char* text)
+{
+    return strlen(text);
 }
 
 size_t StrLen(const char* text, size_t bufferSize)
 {
-    if (unlikely(text == nullptr || bufferSize < 1))
-        return 0;
-    
-    const size_t maxLimit = bufferSize - 1;
-    size_t length = 0;
-
-    char ch = *text;
-    while(ch != '\0' && length < maxLimit)
-    {
-        ++length;
-        ++text;
-    }
-    
-    return length;
+    return strnlen(text, bufferSize);
 }
 
 size_t CalculateHash(const char* text)
@@ -334,11 +316,21 @@ size_t CalculateHash(const char* text)
     return hashCode;
 }
 
+size_t CalculateHash(const std::string_view& str)
+{
+    size_t hashCode = 5381;
+
+    for (size_t ch : str)
+    {
+        hashCode = ((hashCode << 5) + hashCode) + ch; /* hash * 33 + c */
+    }
+
+    return hashCode;
+}
+
 } // StringUtil
 
 #ifdef __UNIT_TEST__
-#include "System/Time.h"
-
 
 namespace HE
 {
@@ -350,7 +342,12 @@ void StringUtilTest::Prepare()
     AddTest("Tokenizer(default)", [this](auto& ls)
     {
         TVector<TString> tokens;
-        Tokenize(tokens, "abc def    123\n 456  \t\n\r 789    000 end.");
+        auto func = [&tokens](auto token)
+        {
+            tokens.emplace_back(token);
+        };
+
+        ForEachToken("abc def    123\n 456  \t\n\r 789    000 end.", func);
 
         const auto numTokens = tokens.size();
         if (numTokens != 7)
@@ -379,8 +376,15 @@ void StringUtilTest::Prepare()
 
     AddTest("Tokenizer", [this](auto& ls)
     {
+        auto str = "abc::def;;;123.......456::;;..;;::789.000.end.";
+
         TVector<TString> tokens;
-        Tokenize(tokens, "abc::def;;;123.......456::;;..;;::789.000.end.", ".:;");
+        auto func = [&tokens](auto token)
+        {
+            tokens.emplace_back(token);
+        };
+
+        ForEachToken(str, func, ".:;");
 
         const auto numTokens = tokens.size();
         if (numTokens != 7)

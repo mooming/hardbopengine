@@ -5,6 +5,7 @@
 #include "StaticStringID.h"
 #include "Config/BuildConfig.h"
 #include <ostream>
+#include <string_view>
 
 
 namespace HE
@@ -16,7 +17,8 @@ private:
     StaticStringID id;
 
 #ifdef __DEBUG__
-    char text[16];
+    static constexpr size_t DebugBufferSize = 64;
+    char text[DebugBufferSize];
 #endif // __DEBUG__
     
 public:
@@ -30,6 +32,7 @@ public:
     }
     
     StaticString(const char* string);
+    StaticString(const std::string_view& str);
     
     template <typename T>
     StaticString(const T& string)

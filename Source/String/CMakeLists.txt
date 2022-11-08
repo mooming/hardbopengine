@@ -18,12 +18,14 @@ link_directories (${CMAKE_SOURCE_DIR}/lib)
 
 
 add_library (String STATIC 
+ InlineStringBuilder.cpp
  StaticString.cpp
  StaticStringTable.cpp
  String.cpp
  StringBuilder.cpp
  StringUtil.cpp
  EndLine.h
+ InlineStringBuilder.h
  Letter.h
  StaticString.h
  StaticStringID.h

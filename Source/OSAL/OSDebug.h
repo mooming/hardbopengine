@@ -8,7 +8,7 @@
 namespace OS
 {
 
-HE::StaticString GetBackTrace();
+HE::StaticString GetBackTrace(uint16_t startIndex = 0, uint16_t maxDepth = 512);
 
 } // OS
 

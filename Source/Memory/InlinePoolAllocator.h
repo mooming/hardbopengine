@@ -188,10 +188,10 @@ private:
             isAllocated[index] = true;
             auto ptr = &buffer[index][0];
 
-#ifdef __MEMORY_STATISTICS__
+#ifdef PROFILE_ENABLED
             auto& mmgr = MemoryManager::GetInstance();
             mmgr.ReportAllocation(id, ptr, nBytes, bufferSizeBytes);
-#endif // __MEMORY_STATISTICS__
+#endif // PROFILE_ENABLED
 
             return ptr;
         }
@@ -209,12 +209,12 @@ private:
             if (ptr != &buffer[i][0])
                 continue;
 
-#ifdef __MEMORY_STATISTICS__
+#ifdef PROFILE_ENABLED
             auto& mmgr = MemoryManager::GetInstance();
             constexpr size_t unit = sizeof(T);
             constexpr size_t bufferSizeBytes = BufferSize * unit;
             mmgr.ReportDeallocation(id, ptr, nBytes, bufferSizeBytes);
-#endif // __MEMORY_STATISTICS__
+#endif // PROFILE_ENABLED
 
             isAllocated[i] = false;
             indexHint = i;

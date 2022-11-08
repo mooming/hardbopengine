@@ -18,6 +18,7 @@ link_directories (${CMAKE_SOURCE_DIR}/lib)
 
 
 add_library (Memory STATIC 
+ AllocStats.cpp
  AllocatorScope.cpp
  BaseAllocator.cpp
  InlineMonotonicAllocator.cpp
@@ -29,6 +30,7 @@ add_library (Memory STATIC
  PoolAllocator.cpp
  StackAllocator.cpp
  SystemAllocator.cpp
+ AllocStats.h
  AllocatorID.h
  AllocatorProxy.h
  AllocatorScope.h

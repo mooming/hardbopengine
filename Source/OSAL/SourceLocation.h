@@ -11,7 +11,7 @@ namespace std
 
 struct source_location
 {
-public:
+private:
     const char* fileName;
     const char* functionName;
     const std::uint_least32_t lineNumber;
@@ -24,6 +24,23 @@ public:
         const uint_least32_t columnOffset = CallerColumn()) noexcept
     {
         return source_location(fileName, functionName, lineNumber, columnOffset);
+    }
+
+public:
+    constexpr source_location() noexcept
+        : fileName("Invalid")
+        , functionName("Invalid")
+        , lineNumber(0)
+        , columnOffset(0)
+    {
+    }
+
+    source_location(const source_location& rhs) noexcept
+        : fileName(rhs.fileName)
+        , functionName(rhs.functionName)
+        , lineNumber(rhs.lineNumber)
+        , columnOffset(rhs.columnOffset)
+    {
     }
 
     constexpr const char* file_name() const noexcept

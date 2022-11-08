@@ -87,12 +87,12 @@ void *StackAllocator::Allocate (size_t size)
     auto ptr = reinterpret_cast<void*>(buffer + cursor);
     cursor += size;
 
-#ifdef __MEMORY_STATISTICS__
+#ifdef PROFILE_ENABLED
     {
         auto& mmgr = MemoryManager::GetInstance();
         mmgr.ReportAllocation(id, ptr, size, size);
     }
-#endif // __MEMORY_STATISTICS__
+#endif // PROFILE_ENABLED
 
 #ifdef __MEMORY_LOGGING__
     {
@@ -152,12 +152,12 @@ void StackAllocator::Deallocate(const Pointer ptr, SizeType size)
 
     cursor -= size;
 
-#ifdef __MEMORY_STATISTICS__
+#ifdef PROFILE_ENABLED
     {
         auto& mmgr = MemoryManager::GetInstance();
         mmgr.ReportDeallocation(id, ptr, size, size);
     }
-#endif // __MEMORY_STATISTICS__
+#endif // PROFILE_ENABLED
 }
 
 size_t StackAllocator::GetAvailable() const

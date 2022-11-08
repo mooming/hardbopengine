@@ -95,7 +95,7 @@ namespace HE
             auto ptr = (T*)malloc(nBytes);
 #endif // __MEMORY_INVESTIGATION__
             
-#ifdef __MEMORY_STATISTICS__
+#ifdef PROFILE_ENABLED
             auto& mmgr = MemoryManager::GetInstance();
 
 #ifdef __MEMORY_INVESTIGATION__
@@ -105,7 +105,7 @@ namespace HE
 #endif // __MEMORY_INVESTIGATION__
             
             mmgr.ReportAllocation(GetID(), ptr, nBytes, allocated);
-#endif // __MEMORY_STATISTICS__
+#endif // PROFILE_ENABLED
             
             return ptr;
         }
@@ -129,7 +129,7 @@ namespace HE
             const auto allocated = allocSize;
 #endif // __MEMORY_INVESTIGATION__
 
-#ifdef __MEMORY_STATISTICS__
+#ifdef PROFILE_ENABLED
 
 #ifndef __MEMORY_INVESTIGATION__
             auto allocated = OS::GetAllocSize(ptr);
@@ -141,7 +141,7 @@ namespace HE
             
             auto& mmgr = MemoryManager::GetInstance();
             mmgr.ReportDeallocation(GetID(), ptr, nBytes, allocated);
-#endif // __MEMORY_STATISTICS__
+#endif // PROFILE_ENABLED
             
 #ifdef __MEMORY_INVESTIGATION__
             

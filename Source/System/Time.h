@@ -40,26 +40,6 @@ inline TMilliSecs::rep ToMilliSeconds(TStopWatch::duration duration)
     return delta.count();
 }
 
-class Measure final
-{
-private:
-    TDuration& duration;
-    TTime start;
-    
-public:
-    Measure(TDuration& outDeltaTime)
-        : duration(outDeltaTime)
-        , start(TStopWatch::now())
-    {
-    }
-    
-    ~Measure()
-    {
-        TTime end = TStopWatch::now();
-        duration = end - start;
-    }
-};
-
 void Sleep(MilliSec milli);
 
 } // Time

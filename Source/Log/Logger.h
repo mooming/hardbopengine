@@ -8,8 +8,8 @@
 #include "HSTL/HVector.h"
 #include "HSTL/HUnorderedMap.h"
 #include "Memory/PoolAllocator.h"
+#include "String/InlineStringBuilder.h"
 #include "String/StaticString.h"
-#include "String/StringBuilder.h"
 #include "System/TaskHandle.h"
 #include <atomic>
 #include <chrono>
@@ -84,8 +84,6 @@ private:
     TaskHandle taskHandle;
     std::atomic<bool> hasInput;
     std::atomic<bool> needFlush;
-    TTimePoint startTime;
-    
     PoolAllocator<> allocator;
     
     TString logPath;
@@ -104,6 +102,7 @@ private:
 public:
     static Logger& Get();
     static SimpleLogger Get(StaticString category, ELogLevel level = ELogLevel::Info);
+
     Logger(const char* path, const char* filename, int numRolling);
     ~Logger();
     
