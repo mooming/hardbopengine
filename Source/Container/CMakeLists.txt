@@ -19,8 +19,10 @@ link_directories (${CMAKE_SOURCE_DIR}/lib)
 
 add_library (Container STATIC 
  Array.cpp
+ AtomicStackView.cpp
  LinkedList.cpp
  Array.h
+ AtomicStackView.h
  DoubleLinkedList.h
  LinkedList.h
 )

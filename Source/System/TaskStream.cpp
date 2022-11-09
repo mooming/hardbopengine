@@ -169,7 +169,7 @@ void TaskStream::RemoveResidentTaskSync(TKey key)
     {
         std::lock_guard<std::mutex> lock(queueLock);
 
-        count = flipCount;
+        count = flipCount.load(std::memory_order_relaxed);
 
         auto predicate = [key](auto& item)
         {
@@ -188,14 +188,14 @@ void TaskStream::RemoveResidentTaskSync(TKey key)
 
     cv.notify_one();
 
-    while (flipCount.load() == count);
+    while (flipCount.load(std::memory_order_relaxed) == count);
 }
 
 void TaskStream::FlipBuffers()
 {
     std::lock_guard<std::mutex> lock(queueLock);
 
-    ++flipCount;
+    flipCount.fetch_add(1, std::memory_order_relaxed);
 
     const auto size = requests.size();
     requestsBuffer.reserve(size);

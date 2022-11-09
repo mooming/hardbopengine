@@ -5,6 +5,8 @@
 #include "UnitTestCollection.h"
 
 #include "TestEnv.h"
+#include "Container/Array.h"
+#include "Container/AtomicStackView.h"
 #include "Container/LinkedList.h"
 #include "Math/MathUtil.h"
 #include "Math/Vector2.h"
@@ -62,6 +64,7 @@ namespace Test
         testEnv.AddTestCollection<OSThreadTest>();
 
         testEnv.AddTestCollection<ArrayTest>();
+        testEnv.AddTestCollection<AtomicStackViewTest>();
         testEnv.AddTestCollection<LinkedListTest>();
         testEnv.AddTestCollection<OptionalTest>();
 
