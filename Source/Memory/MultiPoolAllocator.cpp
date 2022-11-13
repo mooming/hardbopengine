@@ -195,18 +195,23 @@ namespace HE
 
 void MultiPoolAllocatorTest::Prepare()
 {
-    AddTest("Basic Construction", [](auto&)
+    AddTest("Basic Construction", [this](auto& ls)
     {
         MultiPoolAllocator allocator("TestMultiPoolAlloc"
             , {{64, 1024}, {128, 1024}, {256, 1024}, {512, 1024}, {1024, 1024}, {2048, 1024}, {4096, 1024} });
+
+        ls << "Capacity = " << allocator.GetCapacity() << lf;
 
         AllocatorScope scope(allocator);
     });
 
-    AddTest("Allocation 0", [](auto&)
+    AddTest("Allocation 0", [this](auto& ls)
     {
         MultiPoolAllocator allocator("TestMultiPoolAlloc"
             , {{64, 1024}, {128, 1024}, {256, 1024}, {512, 1024}, {1024, 1024}, {2048, 1024}, {4096, 1024} });
+
+        ls << "Capacity = " << allocator.GetCapacity() << lf;
+
         AllocatorScope scope(allocator);
         
         auto& mmgr = MemoryManager::GetInstance();
@@ -217,21 +222,31 @@ void MultiPoolAllocatorTest::Prepare()
     {
         MultiPoolAllocator allocator("TestMultiPoolAlloc"
             , {{64, 1024}, {128, 1024}, {256, 1024}, {512, 1024}, {1024, 1024}, {2048, 1024}, {4096, 1024} });
+
+        ls << "Capacity = " << allocator.GetCapacity() << lf;
+
         AllocatorScope scope(allocator);
         
         auto& mmgr = MemoryManager::GetInstance();
-        mmgr.Allocate(0);
-        mmgr.Allocate(8);
-        mmgr.Allocate(16);
-        mmgr.Allocate(32);
-        mmgr.Allocate(97);
-        mmgr.Allocate(110);
-        mmgr.Allocate(140);
-        mmgr.Allocate(270);
-        mmgr.Allocate(4032);
-        mmgr.Allocate(5000);
-        mmgr.Allocate(8000);
-        
+        void* pointers[] = {
+            mmgr.Allocate(0),
+            mmgr.Allocate(8),
+            mmgr.Allocate(16),
+            mmgr.Allocate(32),
+            mmgr.Allocate(97),
+            mmgr.Allocate(110),
+            mmgr.Allocate(140),
+            mmgr.Allocate(270),
+            mmgr.Allocate(4032),
+            mmgr.Allocate(5000),
+            mmgr.Allocate(8000)
+        };
+
+        for (auto ptr : pointers)
+        {
+            mmgr.Deallocate(ptr, 0);
+        }
+
         if (allocator.GetFallbackCount() != 2)
         {
             ls << "Fallback count mismatched. FallbackCount = "
