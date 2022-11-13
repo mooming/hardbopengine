@@ -31,6 +31,7 @@
 #include "Memory/SystemAllocator.h"
 #include "OSAL/OSDebug.h"
 #include "OSAL/OSThread.h"
+#include "String/InlineStringBuilder.h"
 #include "String/StaticString.h"
 #include "String/StringBuilder.h"
 #include "String/StringUtil.h"
@@ -71,6 +72,7 @@ namespace Test
 
         testEnv.AddTestCollection<StaticStringTest>();
         testEnv.AddTestCollection<StringTest>();
+        testEnv.AddTestCollection<InlineStringBuilderTest>();
         testEnv.AddTestCollection<StringBuilderTest>();
         testEnv.AddTestCollection<StringUtilTest>();
 

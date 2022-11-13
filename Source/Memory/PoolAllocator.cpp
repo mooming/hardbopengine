@@ -28,7 +28,7 @@ void PoolAllocatorTest::Prepare()
             auto ptr = pool.Allocate(50);
             auto size = pool.GetSize(ptr);
 
-            if (size != 100)
+            if (size != 4096)
             {
                 ls << "The size is incorrect. " << size
                     << ", but 100 expected." << lferr;

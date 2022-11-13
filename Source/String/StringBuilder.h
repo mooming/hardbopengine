@@ -19,7 +19,8 @@ class StringBuilder final
 {
 public:
     static constexpr int InlineBufferSize = 32;
-    static constexpr int InlineBufferLastIndex = InlineBufferSize - 1;
+    static constexpr int InlineFloatBufferSize = 64;
+    static constexpr int InlineLongDoubleBufferSize = 512;
     
     using This = StringBuilder;
     using TString = std::basic_string<TCh, std::char_traits<TCh>, TAlloc>;
@@ -179,24 +180,24 @@ public:
     
     This& operator<< (float value)
     {
-        char temp[InlineBufferSize];
-        snprintf(temp, InlineBufferSize, "%f", value);
+        char temp[InlineFloatBufferSize];
+        snprintf(temp, InlineFloatBufferSize, "%f", value);
         buffer.append(temp);
         return *this;
     }
     
     This& operator<< (double value)
     {
-        char temp[InlineBufferSize];
-        snprintf(temp, InlineBufferSize, "%lf", value);
+        char temp[InlineLongDoubleBufferSize];
+        snprintf(temp, InlineLongDoubleBufferSize, "%lf", value);
         buffer.append(temp);
         return *this;
     }
     
     This& operator<< (long double value)
     {
-        char temp[InlineBufferSize];
-        snprintf(temp, InlineBufferSize, "%Lf", value);
+        char temp[InlineLongDoubleBufferSize];
+        snprintf(temp, InlineLongDoubleBufferSize, "%Lf", value);
         buffer.append(temp);
         return *this;
     }

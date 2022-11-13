@@ -32,6 +32,8 @@ void StringBuilderTest::Prepare()
         }
 
         strBuild.Reserve(100);
+        str = strBuild.c_str();
+        
         if (str[0] != '\0')
         {
             ls << "Reserve() varies the internal string." << lferr;
@@ -54,7 +56,7 @@ void StringBuilderTest::Prepare()
         TString str(strBuild.c_str());
         TString expected("Null");
 
-        ls << "Result: " << str << " <=> " << expected;
+        ls << "Result: " << str << " <=> " << expected << lf;
 
         if (str != expected)
         {
@@ -71,7 +73,7 @@ void StringBuilderTest::Prepare()
         TString str(strBuild.c_str());
         TString expected("True");
 
-        ls << "Result: " << str << " <=> " << expected;
+        ls << "Result: " << str << " <=> " << expected << lf;
 
         if (str != expected)
         {
@@ -86,7 +88,9 @@ void StringBuilderTest::Prepare()
         strBuild << false;
 
         TString str(strBuild.c_str());
-        TString expected("false");
+        TString expected("False");
+
+        ls << "Result: " << str << " <=> " << expected << lf;
 
         if (str != expected)
         {
@@ -103,7 +107,7 @@ void StringBuilderTest::Prepare()
         TString str(strBuild.c_str());
         TString expected("True, False");
 
-        ls << "Result: " << str << " <=> " << expected;
+        ls << "Result: " << str << " <=> " << expected << lf;
 
         if (str != expected)
         {
@@ -120,7 +124,7 @@ void StringBuilderTest::Prepare()
         TString str(strBuild.c_str());
         TString expected("a");
 
-        ls << "Result: " << str << " <=> " << expected;
+        ls << "Result: " << str << " <=> " << expected << lf;
 
         if (str != expected)
         {
@@ -137,7 +141,7 @@ void StringBuilderTest::Prepare()
         TString str(strBuild.c_str());
         TString expected("abc");
 
-        ls << "Result: " << str << " <=> " << expected;
+        ls << "Result: " << str << " <=> " << expected << lf;
 
         if (str != expected)
         {
@@ -157,7 +161,7 @@ void StringBuilderTest::Prepare()
         TString str(strBuild.c_str());
         TString expected(std::to_string(value));
 
-        ls << "Result: " << str << " <=> " << expected;
+        ls << "Result: " << str << " <=> " << expected << lf;
 
         if (str != expected)
         {
@@ -177,7 +181,7 @@ void StringBuilderTest::Prepare()
         TString str(strBuild.c_str());
         TString expected(std::to_string(value));
 
-        ls << "Result: " << str << " <=> " << expected;
+        ls << "Result: " << str << " <=> " << expected << lf;
 
         if (str != expected)
         {
@@ -197,7 +201,7 @@ void StringBuilderTest::Prepare()
         TString str(strBuild.c_str());
         TString expected(std::to_string(value));
 
-        ls << "Result: " << str << " <=> " << expected;
+        ls << "Result: " << str << " <=> " << expected << lf;
 
         if (str != expected)
         {
@@ -217,7 +221,7 @@ void StringBuilderTest::Prepare()
         TString str(strBuild.c_str());
         TString expected(std::to_string(value));
 
-        ls << "Result: " << str << " <=> " << expected;
+        ls << "Result: " << str << " <=> " << expected << lf;
 
         if (str != expected)
         {
@@ -237,7 +241,7 @@ void StringBuilderTest::Prepare()
         TString str(strBuild.c_str());
         TString expected(std::to_string(value));
 
-        ls << "Result: " << str << " <=> " << expected;
+        ls << "Result: " << str << " <=> " << expected << lf;
 
         if (str != expected)
         {
@@ -257,7 +261,7 @@ void StringBuilderTest::Prepare()
         TString str(strBuild.c_str());
         TString expected(std::to_string(value));
 
-        ls << "Result: " << str << " <=> " << expected;
+        ls << "Result: " << str << " <=> " << expected << lf;
 
         if (str != expected)
         {
@@ -277,7 +281,7 @@ void StringBuilderTest::Prepare()
         TString str(strBuild.c_str());
         TString expected(std::to_string(value));
 
-        ls << "Result: " << str << " <=> " << expected;
+        ls << "Result: " << str << " <=> " << expected << lf;
 
         if (str != expected)
         {
@@ -297,7 +301,7 @@ void StringBuilderTest::Prepare()
         TString str(strBuild.c_str());
         TString expected(std::to_string(value));
 
-        ls << "Result: " << str << " <=> " << expected;
+        ls << "Result: " << str << " <=> " << expected << lf;
 
         if (str != expected)
         {
@@ -317,7 +321,7 @@ void StringBuilderTest::Prepare()
         TString str(strBuild.c_str());
         TString expected(std::to_string(value));
 
-        ls << "Result: " << str << " <=> " << expected;
+        ls << "Result: " << str << " <=> " << expected << lf;
 
         if (str != expected)
         {
@@ -337,7 +341,7 @@ void StringBuilderTest::Prepare()
         TString str(strBuild.c_str());
         TString expected(std::to_string(value));
 
-        ls << "Result: " << str << " <=> " << expected;
+        ls << "Result: " << str << " <=> " << expected << lf;
 
         if (str != expected)
         {
