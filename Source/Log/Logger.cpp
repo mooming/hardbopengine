@@ -300,6 +300,9 @@ void Logger::AddLog(StaticString category, ELogLevel level
         return;
     }
 
+    auto& ioStream = taskSystem.GetIOTaskStream();
+    ioStream.WakeUp();
+
     if (bufferSize >= Config::LogForceFlushThreshold)
     {
         Flush();

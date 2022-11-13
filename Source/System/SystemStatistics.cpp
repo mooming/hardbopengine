@@ -89,7 +89,7 @@ void SystemStatistics::Print()
 void SystemStatistics::PrintAllocatorProfiles()
 {
 #ifdef PROFILE_ENABLED
-    auto log = Logger::Get(GetName());
+    auto log = Logger::Get(GetName(), ELogLevel::Verbose);
     log.Out("= System Statistics: Allocator Profiles ========================");
 
     for (auto& stats : allocStats)

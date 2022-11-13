@@ -67,7 +67,7 @@ void AllocStats::Report()
 void AllocStats::Print()
 {
     static const StaticString moduleName("AllocStats");
-    auto log = Logger::Get(moduleName);
+    auto log = Logger::Get(moduleName, ELogLevel::Verbose);
 
     log.Out([this](auto& ls)
     {

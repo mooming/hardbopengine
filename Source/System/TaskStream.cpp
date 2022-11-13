@@ -57,6 +57,11 @@ TaskStream::TaskStream(StaticString name)
     });
 }
 
+void TaskStream::WakeUp()
+{
+    cv.notify_one();
+}
+
 void TaskStream::Flush()
 {
     if (unlikely(threadID != std::this_thread::get_id()))

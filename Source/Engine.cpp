@@ -121,9 +121,9 @@ void Engine::Run()
     auto& configSys = ConfigSystem::Get();
     
 #ifdef __DEBUG__
-    const auto logLevel = static_cast<uint8_t>(ELogLevel::Verbose);
-    configSys.SetByte("Log.Engine", logLevel);
-    configSys.SetByte("Log.Level", logLevel);
+//    const auto logLevel = static_cast<uint8_t>(ELogLevel::Verbose);
+//    configSys.SetByte("Log.Engine", logLevel);
+//    configSys.SetByte("Log.Level", logLevel);
 #endif // __DEBUG__
 
     auto& staticStrTable = StaticStringTable::GetInstance();

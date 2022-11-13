@@ -68,6 +68,7 @@ public:
     TaskStream(StaticString name);
     ~TaskStream() = default;
 
+    void WakeUp();
     void Flush();
 
     inline auto GetName() const { return name; }
