@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "MemoryManager.h"
 #include <cstddef>
 #include <functional>
 
@@ -27,9 +28,24 @@ Type* New(TAllocator& allocator, Types&& ... args)
 template <typename Type, typename TAllocator>
 void Delete(TAllocator& allocator, Type* ptr)
 {
+    static_assert(sizeof(typename TAllocator::value_type) == sizeof(Type));
+
     ptr->~Type();
-    
     allocator.deallocate(ptr, 1);
+}
+
+template <typename Type, typename ... Types>
+Type* New(Types&& ... args)
+{
+    auto& mmgr = MemoryManager::GetInstance();
+    return mmgr.New<Type>(std::forward<Types>(args) ...);
+}
+
+template <typename Type>
+void Delete(Type* ptr)
+{
+    auto& mmgr = MemoryManager::GetInstance();
+    mmgr.Delete<Type>(ptr);
 }
 
 } // HE

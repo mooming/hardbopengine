@@ -69,7 +69,7 @@ public:
         auto& mmgr = MemoryManager::GetInstance();
         const TSize totalSize = blockSize * numberOfBlocks;
 
-        buffer = static_cast<Byte*>(mmgr.Allocate(totalSize));
+        buffer = static_cast<Byte*>(mmgr.AllocateBytes(totalSize));
         availables = &buffer[0];
 
         for (TIndex i = 0; i < numberOfBlocks; ++i)
@@ -99,7 +99,7 @@ public:
         auto& mmgr = MemoryManager::GetInstance();
         const size_t totalSize = blockSize * numberOfBlocks;
 
-        mmgr.Deallocate(buffer, totalSize);
+        mmgr.DeallocateBytes(buffer, totalSize);
         
 #ifdef PROFILE_ENABLED
         mmgr.Deregister(GetID(), srcLocation);

@@ -24,7 +24,7 @@ MonotonicAllocator::MonotonicAllocator(const char* name, TSize inCapacity)
     }
 
     auto& mmgr = MemoryManager::GetInstance();
-    bufferPtr = mmgr.Allocate(capacity);
+    bufferPtr = mmgr.AllocateBytes(capacity);
 
     auto allocFunc = [this](size_t n) -> void*
     {
@@ -42,12 +42,19 @@ MonotonicAllocator::MonotonicAllocator(const char* name, TSize inCapacity)
 MonotonicAllocator::~MonotonicAllocator()
 {
     auto& mmgr = MemoryManager::GetInstance();
-    mmgr.Deallocate(bufferPtr, capacity);
+
+#ifdef PROFILE_ENABLED
+    mmgr.ReportDeallocation(id, bufferPtr, 0, cursor);
+#endif // PROFILE_ENABLED
+
+    mmgr.DeallocateBytes(bufferPtr, capacity);
     mmgr.Deregister(GetID());
 }
 
-void *MonotonicAllocator::Allocate (size_t size)
+void *MonotonicAllocator::Allocate(size_t requested)
 {
+    auto size = requested;
+
     {
         constexpr auto AlignUnit = Config::DefaultAlign;
         const auto multiplier = (size + AlignUnit - 1) / AlignUnit;
@@ -73,32 +80,35 @@ void *MonotonicAllocator::Allocate (size_t size)
     auto ptr = reinterpret_cast<void*>(buffer + cursor);
     cursor += size;
 
-#ifdef __MEMORY_LOGGING__
+#ifdef PROFILE_ENABLED
     {
         auto& mmgr = MemoryManager::GetInstance();
-        mmgr.Log(ELogLevel::Info, [this, &mmgr, ptr, size](auto& ls)
-        {
-            ls << mmgr.GetName(id) << '[' << static_cast<int>(GetID())
-                << "]: Allocate " << static_cast<void*>(ptr)
-                << ", size = " << size;
-        });
+        mmgr.ReportAllocation(id, ptr, requested, size);
     }
-#endif // __MEMORY_LOGGING__
+#endif // PROFILE_ENABLED
+
 
     return ptr;
 }
 
-void MonotonicAllocator::Deallocate(const Pointer ptr, TSize size)
+void MonotonicAllocator::Deallocate(const Pointer ptr, TSize requested)
 {
 #ifdef __MEMORY_LOGGING__
     auto& mmgr = MemoryManager::GetInstance();
-    mmgr.Log(ELogLevel::Info, [this, &mmgr, ptr, size](auto& lout)
-    {
+    mmgr.Log(ELogLevel::Verbose, [this, &mmgr, ptr, requested](auto& lout)
+             {
         lout << mmgr.GetName(id) << '[' << static_cast<int>(GetID())
-            << "] Deallocate call shall be ignored. ptr = "
-            << static_cast<void*>(ptr) << ", size = " << size;
+        << "] Deallocate call shall be ignored. ptr = "
+        << static_cast<void*>(ptr) << ", requested size = " << requested;
     });
 #endif // __MEMORY_LOGGING__
+
+#ifdef PROFILE_ENABLED
+    {
+        auto& mmgr = MemoryManager::GetInstance();
+        mmgr.ReportDeallocation(id, ptr, requested, 0);
+    }
+#endif // PROFILE_ENABLED
 }
 
 size_t MonotonicAllocator::GetAvailable() const

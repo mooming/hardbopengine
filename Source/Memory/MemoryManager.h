@@ -83,33 +83,33 @@ public:
     void* SysAllocate(size_t nBytes);
     void SysDeallocate(void* ptr, size_t nBytes);
 
-    void* Allocate(TId id, size_t nBytes);
-    void Deallocate(TId id, void* ptr, size_t nBytes);
+    void* AllocateBytes(TId id, size_t nBytes);
+    void DeallocateBytes(TId id, void* ptr, size_t nBytes);
 
-    void* Allocate(size_t nBytes);
-    void Deallocate(void* ptr, size_t nBytes);
+    void* AllocateBytes(size_t nBytes);
+    void DeallocateBytes(void* ptr, size_t nBytes);
 
     template <typename T>
-    T* Allocate(size_t n)
+    T* AllocateTypes(size_t n)
     {
         constexpr size_t sizeOfT = sizeof(T);
         auto nBytes = n * sizeOfT;
-        auto ptr = Allocate(nBytes);
+        auto ptr = AllocateBytes(nBytes);
 
         return static_cast<T*>(ptr);
     }
 
     template <typename T>
-    void Deallocate(T* ptr, size_t n)
+    void DeallocateTypes(T* ptr, size_t n)
     {
         auto nBytes = n * sizeof(T);
-        Deallocate(static_cast<void*>(ptr), nBytes);
+        DeallocateBytes(static_cast<void*>(ptr), nBytes);
     }
 
     template <typename Type, typename ... Types>
     inline Type* New(Types&& ... args)
     {
-        auto ptr = Allocate(sizeof(Type));
+        auto ptr = AllocateBytes(sizeof(Type));
         auto tptr = new (ptr) Type(std::forward<Types>(args) ...);
         return tptr;
     }
@@ -117,7 +117,7 @@ public:
     template <typename Type, typename ... Types>
     inline Type* NewArray(Index size, Types&& ... args)
     {
-        auto ptr = reinterpret_cast<Type*>(Allocate(sizeof(Type) * size));
+        auto ptr = reinterpret_cast<Type*>(AllocateBytes(sizeof(Type) * size));
         for (Index i = 0; i < size; ++i)
         {
             new (ptr[i]) Type(std::forward<Types>(args) ...);
@@ -130,7 +130,7 @@ public:
     inline void Delete(Type* ptr)
     {
         ptr->~Type();
-        Deallocate(ptr, 1);
+        DeallocateBytes(ptr, sizeof(Type));
     }
 
     template <typename Type>

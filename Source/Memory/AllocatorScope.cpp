@@ -45,7 +45,7 @@ void AllocatorScopeTest::Prepare()
         AllocatorScope scope(allocator);
         
         auto& mmgr = MemoryManager::GetInstance();
-        auto ptr = mmgr.Allocate(100);
+        auto ptr = mmgr.AllocateBytes(100);
         
         if (mmgr.GetCurrentAllocatorID() != allocator.GetID())
         {
@@ -53,7 +53,7 @@ void AllocatorScopeTest::Prepare()
             << allocator.GetID() << ')' << lferr;
         }
 
-        mmgr.Deallocate(ptr, 100);
+        mmgr.DeallocateBytes(ptr, 100);
     });
 }
 

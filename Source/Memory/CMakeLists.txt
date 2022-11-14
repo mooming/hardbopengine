@@ -43,6 +43,7 @@ add_library (Memory STATIC
  MultiPoolAllocator.h
  Optional.h
  PoolAllocator.h
+ ScopedAllocator.h
  Shareable.h
  StackAllocator.h
  SystemAllocator.h

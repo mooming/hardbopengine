@@ -215,7 +215,7 @@ void MultiPoolAllocatorTest::Prepare()
         AllocatorScope scope(allocator);
         
         auto& mmgr = MemoryManager::GetInstance();
-        mmgr.Allocate(0);
+        mmgr.AllocateBytes(0);
     });
 
     AddTest("Multiple Allocations & Fallback", [this](auto& ls)
@@ -229,22 +229,22 @@ void MultiPoolAllocatorTest::Prepare()
         
         auto& mmgr = MemoryManager::GetInstance();
         void* pointers[] = {
-            mmgr.Allocate(0),
-            mmgr.Allocate(8),
-            mmgr.Allocate(16),
-            mmgr.Allocate(32),
-            mmgr.Allocate(97),
-            mmgr.Allocate(110),
-            mmgr.Allocate(140),
-            mmgr.Allocate(270),
-            mmgr.Allocate(4032),
-            mmgr.Allocate(5000),
-            mmgr.Allocate(8000)
+            mmgr.AllocateBytes(0),
+            mmgr.AllocateBytes(8),
+            mmgr.AllocateBytes(16),
+            mmgr.AllocateBytes(32),
+            mmgr.AllocateBytes(97),
+            mmgr.AllocateBytes(110),
+            mmgr.AllocateBytes(140),
+            mmgr.AllocateBytes(270),
+            mmgr.AllocateBytes(4032),
+            mmgr.AllocateBytes(5000),
+            mmgr.AllocateBytes(8000)
         };
 
         for (auto ptr : pointers)
         {
-            mmgr.Deallocate(ptr, 0);
+            mmgr.DeallocateBytes(ptr, 0);
         }
 
         if (allocator.GetFallbackCount() != 2)

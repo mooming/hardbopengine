@@ -42,7 +42,7 @@ public:
     {
         AllocatorScope scope(allocatorID);
         auto& mmgr = MemoryManager::GetInstance();
-        auto ptr = mmgr.Allocate<T>(n);
+        auto ptr = mmgr.AllocateTypes<T>(n);
         
         return ptr;
     }
@@ -51,7 +51,7 @@ public:
     {
         AllocatorScope scope(allocatorID);
         auto& mmgr = MemoryManager::GetInstance();
-        mmgr.Deallocate(ptr, n);
+        mmgr.DeallocateTypes(ptr, n);
     }
     
     template <class U>

@@ -116,7 +116,7 @@ public:
         }
 
         auto& mmgr = MemoryManager::GetInstance();
-        auto ptr = mmgr.Allocate(parentID, nBytes);
+        auto ptr = mmgr.AllocateBytes(parentID, nBytes);
 
         return reinterpret_cast<T*>(ptr);
     }
@@ -134,7 +134,7 @@ public:
         }
 
         auto& mmgr = MemoryManager::GetInstance();
-        mmgr.Deallocate(parentID, voidPtr, nBytes);
+        mmgr.DeallocateBytes(parentID, voidPtr, nBytes);
     }
     
     auto GetID() const { return id; }

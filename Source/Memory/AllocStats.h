@@ -14,20 +14,20 @@ struct AllocStats final
     static constexpr size_t NameBufferSize = 63;
 
     char name[NameBufferSize] = "";
-    bool isInline = false;
+    bool isInline;
 
-    size_t capacity = 0;
-    size_t usage = 0;
-    size_t maxUsage = 0;
+    size_t capacity;
+    size_t usage;
+    size_t maxUsage;
 
-    size_t totalRequested = 0;
-    size_t maxRequested = 0;
-    size_t totalFallback = 0;
-    size_t maxFallback = 0;
+    size_t totalRequested;
+    size_t maxRequested;
+    size_t totalFallback;
+    size_t maxFallback;
 
-    size_t allocCount = 0;
-    size_t deallocCount = 0;
-    size_t fallbackCount = 0;
+    size_t allocCount;
+    size_t deallocCount;
+    size_t fallbackCount;
 
     AllocStats();
     ~AllocStats() = default;

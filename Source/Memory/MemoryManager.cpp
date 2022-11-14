@@ -571,7 +571,7 @@ void MemoryManager::SysDeallocate(void* ptr, size_t nBytes)
     allocator.deallocate(ptr, nBytes);
 }
 
-void* MemoryManager::Allocate(TId id, size_t nBytes)
+void* MemoryManager::AllocateBytes(TId id, size_t nBytes)
 {
     Assert(id != InvalidAllocatorID, "Memory allocation is not permitted.");
 
@@ -604,7 +604,7 @@ void* MemoryManager::Allocate(TId id, size_t nBytes)
     return ptr;
 }
 
-void MemoryManager::Deallocate(TId id, void* ptr, size_t nBytes)
+void MemoryManager::DeallocateBytes(TId id, void* ptr, size_t nBytes)
 {
     Assert(id != InvalidAllocatorID);
     
@@ -634,14 +634,14 @@ void MemoryManager::Deallocate(TId id, void* ptr, size_t nBytes)
     allocator.deallocate(ptr, nBytes);
 }
 
-void* MemoryManager::Allocate(size_t nBytes)
+void* MemoryManager::AllocateBytes(size_t nBytes)
 {
-    return Allocate(GetScopedAllocatorID(), nBytes);
+    return AllocateBytes(GetScopedAllocatorID(), nBytes);
 }
 
-void MemoryManager::Deallocate(void* ptr, size_t nBytes)
+void MemoryManager::DeallocateBytes(void* ptr, size_t nBytes)
 {
-    Deallocate(GetScopedAllocatorID(), ptr, nBytes);
+    DeallocateBytes(GetScopedAllocatorID(), ptr, nBytes);
 }
 
 void MemoryManager::Log(ELogLevel level, TLogFunc func)

@@ -36,7 +36,7 @@ StackAllocator::StackAllocator(const char* name, SizeType inCapacity)
     }
     
     auto& mmgr = MemoryManager::GetInstance();
-    bufferPtr = mmgr.Allocate(capacity);
+    bufferPtr = mmgr.AllocateBytes(capacity);
     
     auto allocFunc = [this](size_t n) -> void*
     {
@@ -54,7 +54,7 @@ StackAllocator::StackAllocator(const char* name, SizeType inCapacity)
 StackAllocator::~StackAllocator()
 {
     auto& mmgr = MemoryManager::GetInstance();
-    mmgr.Deallocate(bufferPtr, capacity);
+    mmgr.DeallocateBytes(bufferPtr, capacity);
     
 #ifdef PROFILE_ENABLED
     mmgr.Deregister(GetID(), srcLocation);
@@ -94,35 +94,11 @@ void *StackAllocator::Allocate (size_t size)
     }
 #endif // PROFILE_ENABLED
 
-#ifdef __MEMORY_LOGGING__
-    {
-        auto& mmgr = MemoryManager::GetInstance();
-        mmgr.Log(ELogLevel::Info, [this, ptr, size](auto& ls)
-        {
-            ls << "StackAllocator[" << static_cast<int>(GetID())
-                << "]: Allocate " << static_cast<void*>(ptr)
-                << ", size = " << size;
-        });
-    }
-#endif // __MEMORY_LOGGING__
-
     return ptr;
 }
 
 void StackAllocator::Deallocate(const Pointer ptr, SizeType size)
 {
-#ifdef __MEMORY_LOGGING__
-    {
-        auto& mmgr = MemoryManager::GetInstance();
-        mmgr.Log(ELogLevel::Info, [this, ptr, size](auto& lout)
-        {
-            lout << "StackAllocator[" << static_cast<int>(GetID())
-                << "]: Deallocate " << static_cast<void*>(ptr)
-                << ", size = " << size;
-        });
-    }
-#endif // __MEMORY_LOGGING__
-
     Assert(IsMine(ptr));
 
     {
@@ -184,7 +160,7 @@ bool StackAllocator::IsMine(Pointer ptr) const
 }
 
 #ifdef __UNIT_TEST__
-
+#include "ScopedAllocator.h"
 #include "HSTL/HVector.h"
 #include "String/String.h"
 
@@ -265,6 +241,118 @@ void StackAllocatorTest::Prepare()
             ls << "Deallocation Failed. Usage should be zero, but "
                 << stack.GetUsage() << lferr;
         }
+    });
+
+    AddTest("Nested Usage", [this](auto& ls)
+    {
+        using TAlloc = StackAllocator;
+        int depthSeed = 0;
+
+        ScopedAllocator<TAlloc> scope0("NestedStack0", 1024);
+
+        const auto depth = depthSeed++;
+        ls << "Neted Level " << depth << ", free size = "
+            << scope0.GetAllocator().GetAvailable() << lf;
+
+        {
+            ScopedAllocator<TAlloc> scope1("NestedStack1", 512);
+
+            auto ptr = New<long double>(0);
+
+            const auto depth = depthSeed++;
+            ls << "Neted Level " << depth << ", free size = "
+                << scope1.GetAllocator().GetAvailable() << " / "
+                << scope0.GetAllocator().GetAvailable() << lf;
+
+            {
+                ScopedAllocator<TAlloc> scope2("NestedStack2", 256);
+
+                auto ptr = New<long double>(0);
+
+                const auto depth = depthSeed++;
+                ls << "Neted Level " << depth << ", free size = "
+                    << scope2.GetAllocator().GetAvailable() << " / "
+                    << scope1.GetAllocator().GetAvailable() << " / "
+                    << scope0.GetAllocator().GetAvailable() << lf;
+
+                {
+                    ScopedAllocator<TAlloc> scope3("NestedStack3", 128);
+
+                    auto ptr = New<long double>(0);
+
+                    const auto depth = depthSeed++;
+                    ls << "Neted Level " << depth << ", free size = "
+                        << scope3.GetAllocator().GetAvailable() << " / "
+                        << scope2.GetAllocator().GetAvailable() << " / "
+                        << scope1.GetAllocator().GetAvailable() << " / "
+                        << scope0.GetAllocator().GetAvailable() << lf;
+
+                    {
+                        ScopedAllocator<TAlloc> scope4("NestedStack4", 64);
+
+                        auto ptr = New<long double>(0);
+
+                        const auto depth = depthSeed++;
+                        ls << "Neted Level " << depth << ", free size = "
+                            << scope4.GetAllocator().GetAvailable() << " / "
+                            << scope3.GetAllocator().GetAvailable() << " / "
+                            << scope2.GetAllocator().GetAvailable() << " / "
+                            << scope1.GetAllocator().GetAvailable() << " / "
+                            << scope0.GetAllocator().GetAvailable() << lf;
+
+                        {
+                            ScopedAllocator<TAlloc> scope5("NestedStack05", 32);
+
+                            auto ptr = New<long double>(0);
+
+                            const auto depth = depthSeed++;
+                            ls << "Neted Level " << depth << ", free size = "
+                                << scope5.GetAllocator().GetAvailable() << " / "
+                                << scope4.GetAllocator().GetAvailable() << " / "
+                                << scope3.GetAllocator().GetAvailable() << " / "
+                                << scope2.GetAllocator().GetAvailable() << " / "
+                                << scope1.GetAllocator().GetAvailable() << " / "
+                                << scope0.GetAllocator().GetAvailable() << lf;
+
+                            Delete(ptr);
+                        }
+
+                        Delete(ptr);
+
+                        ls << "Neted Level " << depth << ", free size = "
+                            << scope4.GetAllocator().GetAvailable() << " / "
+                            << scope3.GetAllocator().GetAvailable() << " / "
+                            << scope2.GetAllocator().GetAvailable() << " / "
+                            << scope1.GetAllocator().GetAvailable() << " / "
+                            << scope0.GetAllocator().GetAvailable() << lf;
+                    }
+
+                    Delete(ptr);
+
+                    ls << "Neted Level " << depth << ", free size = "
+                        << scope3.GetAllocator().GetAvailable() << " / "
+                        << scope2.GetAllocator().GetAvailable() << " / "
+                        << scope1.GetAllocator().GetAvailable() << " / "
+                        << scope0.GetAllocator().GetAvailable() << lf;
+                }
+
+                Delete(ptr);
+
+                ls << "Neted Level " << depth << ", free size = "
+                    << scope2.GetAllocator().GetAvailable() << " / "
+                    << scope1.GetAllocator().GetAvailable() << " / "
+                    << scope0.GetAllocator().GetAvailable() << lf;
+            }
+
+            Delete(ptr);
+
+            ls << "Neted Level " << depth << ", free size = "
+                << scope1.GetAllocator().GetAvailable() << " / "
+                << scope0.GetAllocator().GetAvailable() << lf;
+        }
+
+        ls << "Neted Level " << depth << ", free size = "
+            << scope0.GetAllocator().GetAvailable() << lf;
     });
 }
 
