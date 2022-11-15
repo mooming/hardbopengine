@@ -358,7 +358,7 @@ void Logger::ProcessBuffer()
         using namespace HSTL;
         InlineStringBuilder<Config::LogLineLength * 2> text;
 
-        text << '[' <<timeStampStr << "][" << log.threadName << "][";
+        text << '[' << timeStampStr << "][" << log.threadName << "][";
         text << log.category << "][" << levelStr << "] ";
         text << log.GetText();
 

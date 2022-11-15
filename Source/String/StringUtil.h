@@ -35,6 +35,7 @@ HE::StaticString PrettyFunctionToCompactMethodName(const char* PrettyFunction);
 
 size_t StrLen(const char* text);
 size_t StrLen(const char* text, size_t bufferSize);
+const char* StrCopy(char* dst, const char* src, size_t n);
 size_t CalculateHash(const char* text);
 size_t CalculateHash(const std::string_view& str);
 } // StringUtil

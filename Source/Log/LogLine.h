@@ -5,14 +5,14 @@
 #include "LogLevel.h"
 #include "Config/EngineSettings.h"
 #include "String/StaticString.h"
-
+#include <chrono>
 
 namespace HE
 {
 
 struct LogLine final
 {
-    using TTimePoint = std::chrono::time_point<std::chrono::steady_clock>;
+    using TTimePoint = typename std::chrono::time_point<std::chrono::steady_clock>;
     
     TTimePoint timeStamp;
     StaticString threadName;

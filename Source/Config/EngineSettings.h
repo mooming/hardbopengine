@@ -15,7 +15,7 @@ static constexpr uint8_t EngineLogLevel = 2; // 0: Verbose, 1: Info, 2: Signific
 static constexpr uint8_t EngineLogLevelPrint = 0;
 
 // Memory
-static constexpr size_t MemCapacity = (8L * 1024L * 1024L * 1024L); // 8 GB
+static constexpr size_t MemCapacity = (8ULL * 1024 * 1024 * 1024); // 8 GB
 static constexpr uint8_t MemLogLevel = 2; // 0: Verbose, 1: Info, 2: Significant, 3: Warning, 4: Error, 5: FatalError
 static constexpr size_t DefaultAlign = 16; // 16 Bytes Alignment
 

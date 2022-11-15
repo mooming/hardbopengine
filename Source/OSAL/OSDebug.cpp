@@ -38,7 +38,6 @@ StaticString OS::GetBackTrace(uint16_t startIndex, uint16_t maxDepth )
     int frames = backtrace(callstack, MaxCallStack);
     char** strs = backtrace_symbols(callstack, frames);
 
-
     strBuild << "CallStack:\n";
     for (int i = startIndex; i < frames && maxDepth > 0; ++i, --maxDepth)
     {
@@ -84,9 +83,43 @@ StaticString OS::GetBackTrace(uint16_t startIndex, uint16_t maxDepth )
 }
 
 #elif defined _WIN32
-StaticString OS::GetBackTrace(uint16_t)
+#include "String/InlineStringBuilder.h"
+#include <cstdlib>
+#include <Windows.h>
+#include <DbgHelp.h>
+#pragma comment(lib,"dbghelp.lib")
+
+
+StaticString OS::GetBackTrace(uint16_t startIndex, uint16_t maxDepth)
 {
-    return StaticString("Not Implemented");
+    constexpr size_t BufferSize = 8192;
+    constexpr size_t LineBufferSize = 2048;
+    constexpr size_t MaxCallStack = 128;
+
+    InlineStringBuilder<BufferSize> strBuild;
+
+    HANDLE process = GetCurrentProcess();
+    SymInitialize(process, nullptr, true);
+
+    void* stack[MaxCallStack];
+    unsigned short frames = CaptureStackBackTrace(startIndex, MaxCallStack, stack, nullptr);
+
+    SYMBOL_INFO* symbol = (SYMBOL_INFO*)calloc(sizeof(SYMBOL_INFO) + 256 * sizeof(char), 1);
+    symbol->MaxNameLen = 255;
+    symbol->SizeOfStruct = sizeof(SYMBOL_INFO);
+
+    strBuild << "Backtrace:";
+    for (int i = 0; i < frames && i < maxDepth; ++i)
+    {
+        SymFromAddr(process, (DWORD64)(stack[i]), 0, symbol);
+
+        strBuild << '\t' << (frames - i - 1) << ':'
+            << static_cast<const char*>(symbol->Name) << (void*)symbol->Address;
+    }
+
+    free(symbol);
+
+    return strBuild.c_str();
 }
 #else
 static_assert(false, "System is not specified.");

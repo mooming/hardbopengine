@@ -2,6 +2,7 @@
 
 #pragma once
 #include "String/StaticStringID.h"
+#include <functional>
 #include <unordered_map>
 
 

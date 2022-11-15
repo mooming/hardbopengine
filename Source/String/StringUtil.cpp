@@ -10,6 +10,7 @@
 #include <memory>
 
 #ifdef _MSC_VER
+#include <cstdlib>
 #include <limits.h>
 #include <windows.h>
 #ifndef PATH_MAX
@@ -294,12 +295,46 @@ HE::StaticString PrettyFunctionToCompactMethodName(const char* PrettyFunction)
 
 size_t StrLen(const char* text)
 {
+    if (unlikely(text == nullptr))
+    {
+#ifdef __DEBUG__
+        debugBreak();
+#endif // __DEBUG__
+        return 0;
+    }
+
     return strlen(text);
 }
 
-size_t StrLen(const char* text, size_t bufferSize)
+size_t StrLen(const char* text, size_t n)
 {
-    return strnlen(text, bufferSize);
+    if (unlikely(text == nullptr || n == 0))
+    {
+#ifdef __DEBUG__
+        debugBreak();
+#endif // __DEBUG__
+        return 0;
+    }
+
+    return strnlen(text, n);
+}
+
+const char* StrCopy(char* dst, const char* src, size_t n)
+{
+    if (unlikely(dst == nullptr || src == nullptr || dst == src || n == 0))
+    {
+#ifdef __DEBUG__
+        debugBreak();
+#endif // __DEBUG__
+        return dst;
+    }
+
+#ifdef _MSC_VER
+    strncpy_s(dst, n, src, n);
+    return dst;
+#else // _MSC_VER
+    return strncpy(dst, src, n);
+#endif // _MSC_VER
 }
 
 size_t CalculateHash(const char* text)

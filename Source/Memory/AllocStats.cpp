@@ -5,6 +5,7 @@
 #include "Engine.h"
 #include "Log/Logger.h"
 #include "OSAL/OSDebug.h"
+#include "String/StringUtil.h"
 #include <cstring>
 #include <new>
 
@@ -31,7 +32,7 @@ AllocStats::AllocStats()
 void AllocStats::OnRegister(const char* inName, bool inIsInnline, size_t inCapacity)
 {
     constexpr int LastIndex = NameBufferSize - 1;
-    strncpy(name, inName, LastIndex);
+    StringUtil::StrCopy(name, inName, LastIndex);
     name[LastIndex] = '\0';
 
     isInline = inIsInnline;

@@ -6,6 +6,7 @@
 #include "AllocStats.h"
 #include "Config/BuildConfig.h"
 #include <atomic>
+#include <functional>
 #include <thread>
 
 
