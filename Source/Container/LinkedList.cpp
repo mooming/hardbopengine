@@ -38,7 +38,7 @@ void LinkedListTest::Prepare()
     AddTest("Growth and Iteration", [this](auto& ls)
     {
         const auto NodeSize = sizeof(LinkedList<int>::Node);
-        PoolAllocator<> alloc("LinkedListTest::Allocator", NodeSize, COUNT + 10);
+        PoolAllocator alloc("LinkedListTest::Allocator", NodeSize, COUNT + 10);
         AllocatorScope allocScope(alloc.GetID());
         
         Time::TDuration heTime;
@@ -107,7 +107,7 @@ void LinkedListTest::Prepare()
     AddTest("Growth and Iteration", [this](auto& ls)
     {
         const auto NodeSize = sizeof(LinkedList<int>::Node);
-        PoolAllocator<> alloc("LinkedListTest::Allocator", NodeSize, COUNT + 10);
+        PoolAllocator alloc("LinkedListTest::Allocator", NodeSize, COUNT + 10);
         AllocatorScope allocScope(alloc.GetID());
         
         Time::TDuration heTime;

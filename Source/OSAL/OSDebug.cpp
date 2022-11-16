@@ -102,24 +102,27 @@ StaticString OS::GetBackTrace(uint16_t startIndex, uint16_t maxDepth)
     SymInitialize(process, nullptr, true);
 
     void* stack[MaxCallStack];
-    unsigned short frames = CaptureStackBackTrace(startIndex, MaxCallStack, stack, nullptr);
+    auto frames = CaptureStackBackTrace(startIndex, MaxCallStack, stack, nullptr);
 
-    SYMBOL_INFO* symbol = (SYMBOL_INFO*)calloc(sizeof(SYMBOL_INFO) + 256 * sizeof(char), 1);
+    SYMBOL_INFO* symbol = (SYMBOL_INFO*)calloc(sizeof(SYMBOL_INFO) + LineBufferSize, 1);
     symbol->MaxNameLen = 255;
     symbol->SizeOfStruct = sizeof(SYMBOL_INFO);
 
-    strBuild << "Backtrace:";
+    strBuild << "CallStack:\n";
+
     for (int i = 0; i < frames && i < maxDepth; ++i)
     {
-        SymFromAddr(process, (DWORD64)(stack[i]), 0, symbol);
+        DWORD64 address = reinterpret_cast<DWORD64>(stack[i]);
+        SymFromAddr(process, address, 0, symbol);
 
-        strBuild << '\t' << (frames - i - 1) << ':'
-            << static_cast<const char*>(symbol->Name) << (void*)symbol->Address;
+        strBuild << i << " : "
+            << static_cast<const char*>(symbol->Name) << " ("
+            << (void*)symbol->Address << ")\n";
     }
 
     free(symbol);
 
-    return strBuild.c_str();
+    return StaticString(strBuild.c_str());
 }
 #else
 static_assert(false, "System is not specified.");

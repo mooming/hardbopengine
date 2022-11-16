@@ -13,12 +13,15 @@ class MultiPoolAllocator final
 {
 public:
     using This = MultiPoolAllocator;
-    using TIndex = uint32_t;
-    
+
+    static constexpr size_t DefaultMinBlock = 16;
+    static constexpr size_t DefaultBankUnit = 1024ULL * 1024;
+    static constexpr size_t MinNumberOfBlocks = 16;
+
     struct PoolConfig final
     {
         size_t blockSize = 0;
-        TIndex numberOfBlocks = 0;
+        size_t numberOfBlocks = 0;
 
         inline bool operator < (const PoolConfig& rhs) const
         {
@@ -30,16 +33,22 @@ private:
     using TInitializerList = std::initializer_list<PoolConfig>;
     
     TAllocatorID id;
+    TAllocatorID parentID;
     StaticString name;
-    HSTL::HVector<PoolAllocator<TIndex>> multiPool;
+    HSTL::HVector<PoolAllocator> banks;
+    size_t bankSize;
+    size_t minBlock;
     size_t fallbackCount;
     
 public:
-    MultiPoolAllocator(const char* name, TInitializerList list);
+    MultiPoolAllocator(const char* name
+        , size_t allocationUnit = DefaultBankUnit, size_t minBlockSize = DefaultMinBlock);
+    MultiPoolAllocator(const char* name, TInitializerList initialConfigurations
+        , size_t allocationUnit = DefaultBankUnit, size_t minBlockSize = DefaultMinBlock);
     ~MultiPoolAllocator();
     
     void* Allocate(size_t size);
-    void Deallocate(void* ptr);
+    void Deallocate(void* ptr, size_t size);
     
     inline auto GetName() const { return name; }
     inline auto GetID() const { return id; }
@@ -54,6 +63,9 @@ public:
 private:
     size_t GetPoolIndex(size_t nBytes) const;
     size_t GetPoolIndex(void* ptr) const;
+    size_t CalculateBlockSize(size_t requested) const;
+    size_t CalculateNumberOfBlocks(size_t bankSize, size_t blockSize) const;
+    PoolAllocator& GenerateBank(size_t blockSize, size_t numberOfBlocks);
 };
 } // HE
 

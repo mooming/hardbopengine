@@ -90,9 +90,7 @@ Logger::SimpleLogger Logger::Get(StaticString category, ELogLevel level)
 Logger::Logger(const char* path, const char* filename, int numRolling)
     : hasInput(false)
     , needFlush(false)
-    , allocator("LoggerMemoryPool"
-        , Config::LogMemoryBlockSize
-        , Config::LogNumMemoryBlocks)
+    , allocator("LoggerMemoryPool")
     , logPath(path)
 {
     instance = this;
@@ -255,7 +253,7 @@ void Logger::AddLog(StaticString category, ELogLevel level
         auto timeStampStr = LogUtil::GetTimeStampString();
         auto levelStr = LogUtil::GetLogLevelString(level);
 
-        InlineStringBuilder<Config::LogLineLength * 8> text;
+        InlineStringBuilder<Config::LogOutputBuffer + 128> text;
         text << '[' << timeStampStr << "][" << threadName << "]["
             << category << "][" << levelStr << "] " << ls.c_str();
         
@@ -318,7 +316,10 @@ void Logger::SetFilter(StaticString category, TLogFilter filter)
 void Logger::Flush()
 {
     if (std::this_thread::get_id() == threadID)
+    {
+        ProcessBuffer();
         return;
+    }
 
     const auto period = std::chrono::milliseconds(10);
     

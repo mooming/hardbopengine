@@ -7,7 +7,7 @@
 #include "HSTL/HString.h"
 #include "HSTL/HVector.h"
 #include "HSTL/HUnorderedMap.h"
-#include "Memory/PoolAllocator.h"
+#include "Memory/MultiPoolAllocator.h"
 #include "String/InlineStringBuilder.h"
 #include "String/StaticString.h"
 #include "System/TaskHandle.h"
@@ -31,7 +31,7 @@ public:
     using TLogBuffer = HSTL::HVector<LogLine>;
     using TTextBuffer = HSTL::HVector<TString>;
     using TTimePoint = std::chrono::time_point<std::chrono::steady_clock>;
-    using TLogStream = InlineStringBuilder<Config::LogLineLength>;
+    using TLogStream = InlineStringBuilder<Config::LogOutputBuffer>;
     using TLogFunction = std::function<void(TLogStream&)>;
     using TOutputFunc = std::function<void(const TTextBuffer&)>;
     using TOutputFuncs = HSTL::HVector<TOutputFunc>;
@@ -84,7 +84,7 @@ private:
     TaskHandle taskHandle;
     std::atomic<bool> hasInput;
     std::atomic<bool> needFlush;
-    PoolAllocator<> allocator;
+    MultiPoolAllocator allocator;
     
     TString logPath;
     TLogBuffer inputBuffer;

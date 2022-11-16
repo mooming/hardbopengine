@@ -172,4 +172,7 @@ void TestEnv::Report()
 
         log.OutError("=============================================\n");
     }
+
+    auto& logger = Logger::Get();
+    logger.Flush();
 }

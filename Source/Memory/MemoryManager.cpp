@@ -573,6 +573,9 @@ void MemoryManager::SysDeallocate(void* ptr, size_t nBytes)
 
 void* MemoryManager::AllocateBytes(TId id, size_t nBytes)
 {
+    if (unlikely(nBytes == 0))
+        return nullptr;
+
     Assert(id != InvalidAllocatorID, "Memory allocation is not permitted.");
 
 #ifdef __USE_SYSTEM_MALLOC__
@@ -606,6 +609,12 @@ void* MemoryManager::AllocateBytes(TId id, size_t nBytes)
 
 void MemoryManager::DeallocateBytes(TId id, void* ptr, size_t nBytes)
 {
+    if (unlikely(ptr == nullptr))
+    {
+        Assert(nBytes == 0);
+        return;
+    }
+
     Assert(id != InvalidAllocatorID);
     
 #ifdef __USE_SYSTEM_MALLOC__

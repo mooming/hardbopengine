@@ -2,52 +2,92 @@
 
 #include "MultiPoolAllocator.h"
 
+#include "Config/BuildConfig.h"
 #include "Log/Logger.h"
 #include "Memory/MemoryManager.h"
 #include "String/StringBuilder.h"
 #include <algorithm>
+#include <bit>
 #include <memory>
 
 
 namespace HE
 {
 
-MultiPoolAllocator::MultiPoolAllocator(const char* inName, TInitializerList list)
+MultiPoolAllocator::MultiPoolAllocator(const char* inName
+    , size_t allocationUnit, size_t minBlockSize)
+
     : id(InvalidAllocatorID)
+    , parentID(InvalidAllocatorID)
     , name(inName)
+    , bankSize(allocationUnit)
+    , minBlock(minBlockSize)
     , fallbackCount(0)
 {
-    using namespace std;;
     using namespace HSTL;
-    
-    HInlineVector<PoolConfig, 256> vlist;
-    vlist.insert(vlist.end(), list);
-    std::sort(vlist.begin(), vlist.end());
-    
-    multiPool.reserve(vlist.size());
 
-    for (auto& config : vlist)
-    {
-        InlineStringBuilder<1024> str;
-        str << name << '_' <<  static_cast<int>(config.blockSize)
-            << '_' << static_cast<int>(config.numberOfBlocks);
-        
-        multiPool.emplace_back(str.c_str()
-            , config.blockSize, config.numberOfBlocks);
-    }
-    
     auto& mmgr = MemoryManager::GetInstance();
-    
+    parentID = mmgr.GetCurrentAllocatorID();
+
+    AllocatorScope scope(parentID);
+
     auto allocFunc = [this](size_t n) -> void*
     {
         return Allocate(n);
     };
-    
-    auto deallocFunc = [this](void* ptr, size_t)
+
+    auto deallocFunc = [this](void* ptr, size_t n)
     {
-        Deallocate(ptr);
+        Deallocate(ptr, n);
     };
+
+    id = mmgr.Register(name, false, 0, allocFunc, deallocFunc);
+}
+
+MultiPoolAllocator::MultiPoolAllocator(const char* inName
+    , TInitializerList initialConfigurations
+    , size_t allocationUnit, size_t minBlockSize)
+
+    : id(InvalidAllocatorID)
+    , parentID(InvalidAllocatorID)
+    , name(inName)
+    , bankSize(allocationUnit)
+    , minBlock(minBlockSize)
+    , fallbackCount(0)
+{
+    using namespace HSTL;
+
+    auto& mmgr = MemoryManager::GetInstance();
+    parentID = mmgr.GetCurrentAllocatorID();
+
+    AllocatorScope scope(parentID);
+
+    HInlineVector<PoolConfig, 256> vlist;
+    vlist.insert(vlist.end(), initialConfigurations);
+    std::sort(vlist.begin(), vlist.end());
     
+    banks.reserve(vlist.size());
+
+    for (auto& config : vlist)
+    {
+        InlineStringBuilder<1024> str;
+        str << name << '_' << config.blockSize
+            << '_' << config.numberOfBlocks;
+        
+        banks.emplace_back(str.c_str()
+            , config.blockSize, config.numberOfBlocks);
+    }
+
+    auto allocFunc = [this](size_t n) -> void*
+    {
+        return Allocate(n);
+    };
+
+    auto deallocFunc = [this](void* ptr, size_t n)
+    {
+        Deallocate(ptr, n);
+    };
+
     id = mmgr.Register(name, false, 0, allocFunc, deallocFunc);
 }
 
@@ -55,50 +95,75 @@ MultiPoolAllocator::~MultiPoolAllocator()
 {
     PrintUsage();
 
-    multiPool.clear();
+    banks.clear();
 
     auto& mmgr = MemoryManager::GetInstance();
     mmgr.Deregister(GetID());
 }
 
-void* MultiPoolAllocator::Allocate(size_t size)
+void* MultiPoolAllocator::Allocate(size_t requested)
 {
-    auto index = GetPoolIndex(size);
-    if (index >= multiPool.size())
+    if (unlikely(requested <= 0))
+        return nullptr;
+
+    auto index = GetPoolIndex(requested);
+    if (index >= banks.size())
     {
-        auto& mmgr = MemoryManager::GetInstance();
-        auto ptr = mmgr.SysAllocate(size);
         ++fallbackCount;
-        
+
+        auto blockSize = CalculateBlockSize(requested);
+        auto numBlocks = CalculateNumberOfBlocks(bankSize, blockSize);
+
+        auto& bank = GenerateBank(blockSize, numBlocks);
+        auto ptr = bank.Allocate(requested);
+
+#ifdef PROFILE_ENABLED
+        {
+            auto& mmgr = MemoryManager::GetInstance();
+            mmgr.ReportFallback(GetID(), ptr, requested);
+        }
+#endif // PROFILE_ENABLED
+
         return ptr;
     }
     
-    auto& pool = multiPool[index];
-    auto ptr = pool.Allocate(size);
+    auto& pool = banks[index];
+    auto ptr = pool.Allocate(requested);
     
     return ptr;
 }
 
-void MultiPoolAllocator::Deallocate(void* ptr)
+void MultiPoolAllocator::Deallocate(void* ptr, size_t size)
 {
-    auto index = GetPoolIndex(ptr);
-    if (index >= multiPool.size())
+    if (unlikely(ptr == nullptr))
     {
-        auto& mmgr = MemoryManager::GetInstance();
-        mmgr.SysDeallocate(ptr, 0);
-        
+        Assert(size == 0);
+        return;
+    }
+
+    auto index = GetPoolIndex(ptr);
+    if (index >= banks.size())
+    {
+        auto log = Logger::Get(name);
+        log.OutFatalError([ptr](auto& ls)
+        {
+            ls << ptr << " is allocated by another allocator.";
+        });
+
         return;
     }
     
-    auto& pool = multiPool[index];
-    pool.Deallocate(ptr);
+    auto& pool = banks[index];
+    Assert(size <= pool.GetBlockSize());
+
+    pool.Deallocate(ptr, size);
 }
 
 size_t MultiPoolAllocator::GetUsage() const
 {
     size_t usage = 0;
     
-    for (auto& pool : multiPool)
+    for (auto& pool : banks)
     {
         usage += pool.GetUsage();
     }
@@ -110,7 +175,7 @@ size_t MultiPoolAllocator::GetAvailableMemory() const
 {
     size_t availableMemory = 0;
     
-    for (auto& pool : multiPool)
+    for (auto& pool : banks)
     {
         availableMemory += pool.GetAvailableMemory();
     }
@@ -122,7 +187,7 @@ size_t MultiPoolAllocator::GetCapacity() const
 {
     size_t capacity = 0;
     
-    for (auto& pool : multiPool)
+    for (auto& pool : banks)
     {
         capacity += pool.GetCapacity();
     }
@@ -140,10 +205,9 @@ void MultiPoolAllocator::PrintUsage() const
         ls << hendl << "## MultipoolAllocator(" << name
             <<  ") Usage ##" << hendl;
         
-        for (auto& pool : multiPool)
+        for (auto& pool : banks)
         {
-            ls << '[' << pool.GetBlockSize() << "] Max Usage = "
-                << pool.GetMaxUsage() << ", Available Memory = "
+            ls << '[' << pool.GetBlockSize() << "] Available Memory = "
                 << pool.GetAvailableMemory() << hendl;
         }
     });
@@ -153,9 +217,12 @@ size_t MultiPoolAllocator::GetPoolIndex(size_t nBytes) const
 {
     size_t index = 0;
     
-    for (auto& pool : multiPool)
+    for (auto& pool : banks)
     {
-        if (nBytes < pool.GetBlockSize())
+        if (pool.GetAvailableBlocks() <= 0)
+            continue;
+
+        if (nBytes <= pool.GetBlockSize())
         {
             return index;
         }
@@ -170,7 +237,7 @@ size_t MultiPoolAllocator::GetPoolIndex(void* ptr) const
 {
     size_t index = 0;
     
-    for (auto& pool : multiPool)
+    for (auto& pool : banks)
     {
         if (pool.IsMine(ptr))
         {
@@ -181,6 +248,46 @@ size_t MultiPoolAllocator::GetPoolIndex(void* ptr) const
     }
     
     return index;
+}
+
+size_t MultiPoolAllocator::CalculateBlockSize(size_t requested) const
+{
+    size_t blockSize = (requested + minBlock - 1) / minBlock;
+    blockSize = std::bit_ceil(blockSize);
+    blockSize *= minBlock;
+    blockSize = std::max(minBlock, blockSize);
+
+    return blockSize;
+}
+
+size_t MultiPoolAllocator::CalculateNumberOfBlocks(size_t bankSize, size_t blockSize) const
+{
+    size_t numberOfBlocks = (bankSize + blockSize - 1) / blockSize;
+    numberOfBlocks = std::max(MinNumberOfBlocks, numberOfBlocks);
+
+    return numberOfBlocks;
+}
+
+PoolAllocator& MultiPoolAllocator::GenerateBank(size_t blockSize, size_t numberOfBlocks)
+{
+    AllocatorScope scope(parentID);
+
+    Assert(blockSize > 0);
+    Assert(numberOfBlocks > 0);
+
+    InlineStringBuilder<1024> str;
+    str << name << '_' << blockSize << '_' << numberOfBlocks;
+
+    AllocatorScope allocScope(MemoryManager::SystemAllocatorID);
+    auto& bank = banks.emplace_back(str.c_str(), blockSize, numberOfBlocks);
+
+    auto log = Logger::Get(name);
+    log.Out(ELogLevel::Verbose, [&str](auto& ls)
+    {
+        ls << "The bank[" << str.c_str() << "] has been generated. ";
+    });
+
+    return bank;
 }
 
 } // HE

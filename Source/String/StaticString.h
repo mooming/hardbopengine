@@ -77,13 +77,15 @@ struct hash<HE::StaticString> final
 
 namespace HE
 {
-    class StaticStringTest : public TestCollection
-    {
-    public:
-        StaticStringTest() : TestCollection("StaticStringTest") {}
 
-    protected:
-        virtual void Prepare() override;
-    };
+    class StaticStringTest : public TestCollection
+{
+public:
+    StaticStringTest() : TestCollection("StaticStringTest") {}
+
+protected:
+    virtual void Prepare() override;
+};
+
 } // HE
 #endif //__UNIT_TEST__
