@@ -364,9 +364,9 @@ void TaskStream::RunLoop(const std::atomic<bool>& isRunning)
         if (unlikely(deltaTime > 0.1f))
         {
             auto log = Logger::Get(name);
-            log.OutWarning([this](auto& ls)
+            log.OutWarning([dt = deltaTime](auto& ls)
             {
-                ls << "Slow DeltaTime = " << deltaTime;
+                ls << "Slow DeltaTime = " << dt;
             });
         }
     }

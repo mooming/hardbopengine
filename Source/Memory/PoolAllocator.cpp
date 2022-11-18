@@ -55,7 +55,7 @@ PoolAllocator::PoolAllocator(const char* name, TSize inBlockSize, TIndex numberO
     id = mmgr.Register(name, false, totalSize, allocFunc, deallocFunc);
 }
 
-PoolAllocator::PoolAllocator(PoolAllocator&& rhs)
+PoolAllocator::PoolAllocator(PoolAllocator&& rhs) noexcept
     : id(rhs.id)
     , name(rhs.name)
     , blockSize(rhs.blockSize)
@@ -74,6 +74,30 @@ PoolAllocator::PoolAllocator(PoolAllocator&& rhs)
     rhs.numberOfFreeBlocks = 0;
     rhs.buffer = nullptr;
     rhs.availables = nullptr;
+
+    auto& mmgr = MemoryManager::GetInstance();
+    const TSize totalSize = blockSize * numberOfBlocks;
+
+    auto allocFunc = [this](size_t n)
+    {
+        return Allocate(n);
+    };
+
+    auto deallocFunc = [this](void* ptr, size_t n)
+    {
+        Deallocate(ptr, n);
+    };
+
+    mmgr.Update(GetID(), [totalSize, allocFunc, deallocFunc](auto& proxy)
+    {
+#ifdef PROFILE_ENABLED
+        auto& stats = proxy.stats;
+        stats.capacity = totalSize;
+#endif // PROFILE_ENABLED
+
+        proxy.allocate = allocFunc;
+        proxy.deallocate = deallocFunc;
+    }, "Move Constructor");
 }
 
 PoolAllocator::~PoolAllocator()
@@ -102,6 +126,28 @@ PoolAllocator::~PoolAllocator()
     id = InvalidAllocatorID;
 }
 
+PoolAllocator& PoolAllocator::operator= (PoolAllocator&& rhs) noexcept
+{
+    this->~PoolAllocator();
+    new (this) PoolAllocator(std::move(rhs));
+
+    return *this;
+}
+
+bool PoolAllocator::operator< (const PoolAllocator& rhs) const noexcept
+{
+    if (blockSize < rhs.blockSize)
+        return true;
+
+    if (blockSize == rhs.blockSize)
+    {
+        if (GetAvailableBlocks() > rhs.GetAvailableBlocks())
+            return true;
+    }
+
+    return false;
+}
+
 Pointer PoolAllocator::Allocate(size_t size)
 {
     if (unlikely(size > blockSize))
@@ -125,6 +171,7 @@ Pointer PoolAllocator::Allocate(size_t size)
     auto ptr = AllocateBlock();
 #ifdef PROFILE_ENABLED
     {
+        Assert(size <= blockSize);
         auto& mmgr = MemoryManager::GetInstance();
         mmgr.ReportAllocation(id, ptr, size, blockSize);
     }
@@ -147,6 +194,7 @@ void PoolAllocator::Deallocate(Pointer ptr, size_t size)
 
 #ifdef PROFILE_ENABLED
     {
+        Assert(size <= blockSize);
         auto& mmgr = MemoryManager::GetInstance();
         mmgr.ReportDeallocation(id, ptr, size, blockSize);
     }
@@ -170,7 +218,7 @@ void PoolAllocator::Deallocate(Pointer ptr, size_t size)
     }
     else
     {
-        WriteNextIndex(ptr, numberOfBlocks);
+        WriteNextIndex(ptr, numberOfBlocks - 1);
     }
 
     availables = ptr;

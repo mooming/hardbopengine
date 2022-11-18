@@ -84,16 +84,17 @@ LogLine::LogLine(ELogLevel level, StaticString threadName, StaticString category
 
     if (likely(isLong))
     {
-#ifdef PROFILE_ENABLED
         auto& engine = Engine::Get();
+
+#ifdef PROFILE_ENABLED
         auto& stat = engine.GetStatistics();
         stat.IncLongLogCount();
 #endif // PROFILE_ENABLED
 
-        const auto length = StringUtil::StrLen(inText);
-        longText = (char*)malloc(length + 1);
-        std::copy(&inText[0], &inText[length], longText);
-        longText[length] = '\0';
+        auto& mmgr = engine.GetMemoryManager();
+        longTextSize = StringUtil::StrLen(inText) + 1;
+        longText = (char*)mmgr.SysAllocate(longTextSize);
+        std::copy(&inText[0], &inText[longTextSize], longText);
 
         return;
     }
@@ -118,7 +119,8 @@ LogLine::~LogLine()
         return;
 
     Assert(longText != nullptr);
-    free(longText);
+    auto& mmgr = MemoryManager::GetInstance();
+    mmgr.SysDeallocate(longText, longTextSize);
 }
 
 const char* LogLine::GetText() const

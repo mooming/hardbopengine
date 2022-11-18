@@ -4,6 +4,7 @@
 
 #include "String/StaticStringID.h"
 #include <cstddef>
+#include <mutex>
 
 
 namespace HE
@@ -13,7 +14,7 @@ struct AllocStats final
 {
     static constexpr size_t NameBufferSize = 63;
 
-    char name[NameBufferSize] = "";
+    char name[NameBufferSize];
     bool isInline;
 
     size_t capacity;

@@ -23,7 +23,11 @@ struct LogLine final
     union
     {
         char text[Config::LogLineLength];
-        char* longText;
+        struct
+        {
+            char* longText;
+            size_t longTextSize;
+        };
     };
 
     LogLine();

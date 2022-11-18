@@ -15,17 +15,19 @@ using namespace HE;
 
 void LinkedListTest::Prepare()
 {
+    constexpr int CountBase = 1024;
+
 #ifdef __DEBUG__
-    const int COUNT = 4096;
+    constexpr int COUNT = CountBase * 2;
 #else //__DEBUG__
-    const int COUNT = 8192 * 2;
+    constexpr int COUNT = CountBase * 16;
 #endif //__DEBUG__
-    const int COUNT2 = 1024;
+    constexpr int COUNT2 = CountBase;
     
     AddTest("Iteration on the empty list", [this](auto& ls)
     {
         LinkedList<int> intList;
-        
+
         for (auto value : intList)
         {
             ls << "It iterates a loop even if the list is empty. value = "
@@ -35,11 +37,47 @@ void LinkedListTest::Prepare()
         }
     });
 
+    AddTest("Simple Construction & Destruction", [this](auto& ls)
+    {
+        const auto NodeSize = sizeof(LinkedList<int>::Node);
+
+        PoolAllocator alloc("LinkedListTest::Allocator", NodeSize, COUNT + 10);
+        AllocatorScope allocScope(alloc);
+
+        {
+            LinkedList<int> intList;
+
+            for (int i = 0; i < COUNT; ++i)
+            {
+                intList.Add(i);
+            }
+
+            ls << "A list is constructed." << lf;
+
+            int i = 0;
+            for (auto value : intList)
+            {
+                if (value != i)
+                {
+                    ls << "Value Mismatched : value = " << value
+                        << ", expected " << i << '.' << lferr;
+
+                    return;
+                }
+
+                ++i;
+            }
+        }
+
+        ls << "The list is destructed." << lf;
+    });
+
     AddTest("Growth and Iteration", [this](auto& ls)
     {
         const auto NodeSize = sizeof(LinkedList<int>::Node);
+
         PoolAllocator alloc("LinkedListTest::Allocator", NodeSize, COUNT + 10);
-        AllocatorScope allocScope(alloc.GetID());
+        AllocatorScope allocScope(alloc);
         
         Time::TDuration heTime;
         Time::TDuration stlTime;
@@ -48,7 +86,7 @@ void LinkedListTest::Prepare()
             Time::ScopedTime measure(heTime);
             
             LinkedList<int> intList;
-            for (int i = 0; i < 100; ++i)
+            for (int i = 0; i < COUNT; ++i)
             {
                 intList.Add(i);
             }

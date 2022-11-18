@@ -45,7 +45,7 @@ private:
     AllocatorProxy allocators[MaxNumAllocators];
     AtomicStackView<AllocatorProxy> proxyPool;
 
-    std::mutex statLock;
+    std::mutex statsLock;
     size_t allocCount;
     size_t deallocCount;
 
@@ -71,6 +71,9 @@ public:
 
     TId Register(const char* name, bool isInline, size_t capacity
         , TAllocBytes allocFunc, TDeallocBytes deallocFunc);
+
+    std::lock_guard<std::mutex>&& AcquireStatsLock() { return std::move(std::lock_guard(statsLock)); }
+    void Update(TId id, std::function<void(AllocatorProxy&)> func, const char* reason);
 
     void Deregister(TId id);
 #ifdef PROFILE_ENABLED

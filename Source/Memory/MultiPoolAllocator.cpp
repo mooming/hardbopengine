@@ -95,9 +95,21 @@ MultiPoolAllocator::~MultiPoolAllocator()
 {
     PrintUsage();
 
+    auto& mmgr = MemoryManager::GetInstance();
+
+#ifdef __MEMORY_VERIFICATION__
+    const auto currentTID = std::this_thread::get_id();
+    for (auto& bank : banks)
+    {
+        mmgr.Update(bank.GetID(), [&currentTID](auto& proxy)
+        {
+            proxy.threadId = currentTID;
+        }, "Releasing the thread binding.");
+    }
+#endif // __MEMORY_VERIFICATION__
+
     banks.clear();
 
-    auto& mmgr = MemoryManager::GetInstance();
     mmgr.Deregister(GetID());
 }
 
@@ -106,15 +118,22 @@ void* MultiPoolAllocator::Allocate(size_t requested)
     if (unlikely(requested <= 0))
         return nullptr;
 
-    auto index = GetPoolIndex(requested);
-    if (index >= banks.size())
+    auto FallbackAlloc = [&, this]() -> void*
     {
         ++fallbackCount;
 
         auto blockSize = CalculateBlockSize(requested);
         auto numBlocks = CalculateNumberOfBlocks(bankSize, blockSize);
 
-        auto& bank = GenerateBank(blockSize, numBlocks);
+        GenerateBank(blockSize, numBlocks);
+        auto index = GetBankIndex(requested);
+        if (unlikely(index >= banks.size()))
+        {
+            FatalAssert(false);
+            return nullptr;
+        }
+
+        auto& bank = banks[index];
         auto ptr = bank.Allocate(requested);
 
 #ifdef PROFILE_ENABLED
@@ -125,10 +144,23 @@ void* MultiPoolAllocator::Allocate(size_t requested)
 #endif // PROFILE_ENABLED
 
         return ptr;
+    };
+
+    auto index = GetBankIndex(requested);
+    if (index >= banks.size())
+    {
+        auto ptr = FallbackAlloc();
+        return ptr;
     }
     
-    auto& pool = banks[index];
-    auto ptr = pool.Allocate(requested);
+    auto& bank = banks[index];
+    if (unlikely(bank.GetAvailableBlocks() <= 0))
+    {
+        auto ptr = FallbackAlloc();
+        return ptr;
+    }
+
+    auto ptr = bank.Allocate(requested);
     
     return ptr;
 }
@@ -141,7 +173,7 @@ void MultiPoolAllocator::Deallocate(void* ptr, size_t size)
         return;
     }
 
-    auto index = GetPoolIndex(ptr);
+    auto index = GetBankIndex(ptr);
     if (index >= banks.size())
     {
         auto log = Logger::Get(name);
@@ -213,33 +245,37 @@ void MultiPoolAllocator::PrintUsage() const
     });
 }
 
-size_t MultiPoolAllocator::GetPoolIndex(size_t nBytes) const
+size_t MultiPoolAllocator::GetBankIndex(size_t nBytes) const
 {
-    size_t index = 0;
-    
-    for (auto& pool : banks)
+    nBytes = std::max(minBlock, nBytes);
+    const auto doubleSize = nBytes * 2;
+
+    const auto len = banks.size();
+    for (size_t i = 0; i < len; ++i)
     {
-        if (pool.GetAvailableBlocks() <= 0)
+        auto& bank = banks[i];
+        if (nBytes > bank.GetBlockSize())
             continue;
 
-        if (nBytes <= pool.GetBlockSize())
-        {
-            return index;
-        }
+        if (bank.GetAvailableBlocks() <=0)
+            continue;
+
+        if (bank.GetBlockSize() > doubleSize)
+            return len;
         
-        ++index;
+        return i;
     }
     
-    return index;
+    return len;
 }
 
-size_t MultiPoolAllocator::GetPoolIndex(void* ptr) const
+size_t MultiPoolAllocator::GetBankIndex(void* ptr) const
 {
     size_t index = 0;
     
-    for (auto& pool : banks)
+    for (auto& bank : banks)
     {
-        if (pool.IsMine(ptr))
+        if (bank.IsMine(ptr))
         {
             return index;
         }
@@ -268,7 +304,7 @@ size_t MultiPoolAllocator::CalculateNumberOfBlocks(size_t bankSize, size_t block
     return numberOfBlocks;
 }
 
-PoolAllocator& MultiPoolAllocator::GenerateBank(size_t blockSize, size_t numberOfBlocks)
+void MultiPoolAllocator::GenerateBank(size_t blockSize, size_t numberOfBlocks)
 {
     AllocatorScope scope(parentID);
 
@@ -278,16 +314,17 @@ PoolAllocator& MultiPoolAllocator::GenerateBank(size_t blockSize, size_t numberO
     InlineStringBuilder<1024> str;
     str << name << '_' << blockSize << '_' << numberOfBlocks;
 
-    AllocatorScope allocScope(MemoryManager::SystemAllocatorID);
-    auto& bank = banks.emplace_back(str.c_str(), blockSize, numberOfBlocks);
+    {
+        AllocatorScope allocScope(parentID);
+        banks.emplace_back(str.c_str(), blockSize, numberOfBlocks);
+        std::sort(banks.begin(), banks.end());
+    }
 
     auto log = Logger::Get(name);
     log.Out(ELogLevel::Verbose, [&str](auto& ls)
     {
         ls << "The bank[" << str.c_str() << "] has been generated. ";
     });
-
-    return bank;
 }
 
 } // HE
@@ -295,6 +332,7 @@ PoolAllocator& MultiPoolAllocator::GenerateBank(size_t blockSize, size_t numberO
 #ifdef __UNIT_TEST__
 #include "AllocatorScope.h"
 #include "MemoryManager.h"
+#include "System/ScopedTime.h"
 
 
 namespace HE
@@ -358,6 +396,79 @@ void MultiPoolAllocatorTest::Prepare()
         {
             ls << "Fallback count mismatched. FallbackCount = "
                 << allocator.GetFallbackCount() << ", but 2 expected." << lferr;
+        }
+    });
+
+    AddTest("Performance", [this](auto& ls)
+    {
+        Time::TDuration heDuration;
+        Time::TDuration stdDuration;
+
+        constexpr size_t repeatCount = 100000;
+
+        MultiPoolAllocator allocator("PerfTestMultiPoolAlloc");
+
+        {
+            AllocatorScope allocScope(allocator);
+            Time::ScopedTime timer(heDuration);
+
+            int strLen = 1;
+            HSTL::HVector<HSTL::HString> v;
+            for (size_t i = 0; i < repeatCount; ++i)
+            {
+                auto& str = v.emplace_back();
+                for (int j = 0; j < strLen; ++j)
+                {
+                    char ch = 'a' + j;
+                    if (ch == '\0')
+                    {
+                        ch = 'a';
+                        strLen = 1;
+                    }
+
+                    str.push_back(ch);
+                }
+
+                ++strLen;
+            }
+        }
+
+        {
+            AllocatorScope allocScope(MemoryManager::SystemAllocatorID);
+            Time::ScopedTime timer(stdDuration);
+
+            int strLen = 1;
+            HSTL::HVector<HSTL::HString> v;
+            for (size_t i = 0; i < repeatCount; ++i)
+            {
+                auto& str = v.emplace_back();
+                for (int j = 0; j < strLen; ++j)
+                {
+                    char ch = 'a' + j;
+                    if (ch == '\0')
+                    {
+                        ch = 'a';
+                        strLen = 1;
+                    }
+
+                    str.push_back(ch);
+                }
+
+                ++strLen;
+            }
+        }
+
+        float heSec = Time::ToFloat(heDuration);
+        float stdSec = Time::ToFloat(stdDuration);
+
+        ls << "Performance: MultiPoolAllocator = " << heSec
+            << " sec, std malloc = " << stdSec << " sec" << lf;
+
+        if (heSec > stdSec)
+        {
+            ls << "MultiPoolAllocator is slower than std malloc."
+                << " MultiPoolAllocator  = " << heSec
+                << " sec, std malloc = " << stdSec << " sec" << lfwarn;
         }
     });
 }

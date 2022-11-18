@@ -251,9 +251,13 @@ private:
         auto next = node->next;
         
         if (node == head)
+        {
             head = next;
+        }
         else if (node == tail)
+        {
             tail = node->previous;
+        }
         
         Unlink(node);
         
@@ -342,28 +346,21 @@ private:
     inline void Unlink(Node* node)
     {
         Assert(node != nullptr);
-        
-        if (node->previous == nullptr && node->next == nullptr)
-            return;
-        
-        Node* prev = node->previous;
-        Node* next = node->next;
-        
-        if (prev && next)
+
+        auto prev = node->previous;
+        auto next = node->next;
+
+        Delete<Node>(allocator, node);
+
+        if (prev != nullptr)
         {
             prev->next = next;
+        }
+
+        if (next != nullptr)
+        {
             next->previous = prev;
         }
-        else if (prev)
-        {
-            prev->next = nullptr;
-        }
-        else
-        {
-            next->previous = nullptr;
-        }
-        
-        Delete<Node>(allocator, node);
     }
 };
 } // HE

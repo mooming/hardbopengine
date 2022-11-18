@@ -9,7 +9,6 @@
 #include "OSAL/SourceLocation.h"
 #include "String/StringUtil.h"
 #include "System/Debug.h"
-#include "System/ScopedLock.h"
 #include <cstdint>
 
 
@@ -102,12 +101,11 @@ MemoryManager::TId MemoryManager::Register(const char* name, bool isInline
         
 #ifdef PROFILE_ENABLED
         {
+            std::lock_guard lockScope(statsLock);
+
             auto& stats = allocator.stats;
             stats.OnRegister(name, isInline, capacity);
-        }
 
-        {
-            ScopedLock lock(statLock);
             auto& rec = isInline ? inlineUsage : usage;
             rec.totalCapacity += capacity;
             rec.maxCapacity = std::max(rec.maxCapacity, rec.totalCapacity);
@@ -147,10 +145,34 @@ MemoryManager::TId MemoryManager::Register(const char* name, bool isInline
     return id;
 }
 
+void MemoryManager::Update(TId id, std::function<void(AllocatorProxy&)> func
+    , const char* reason)
+{
+    if (unlikely(!IsValid(id)))
+    {
+        Log(ELogLevel::Error
+            , [funcName = __func__, id](auto& ls)
+        {
+            ls << "[" << funcName << "] Invalid allocator id(" << id
+                << ") is provided.";
+        });
+
+        return;
+    }
+
+    auto& proxy = allocators[id];
+    func(proxy);
+
+    Log(ELogLevel::Verbose
+        , [funcName = __func__, &proxy, id, reason](auto& ls)
+    {
+        ls << "[" << funcName << "] " << proxy.GetName()
+            << "(" << id << ") is updated. Reason = " << reason;
+    });
+}
+
 void MemoryManager::Deregister(TId id)
 {
-    using namespace std;
-
     if (unlikely(!IsValid(id)))
     {
         Log(ELogLevel::Error
@@ -234,7 +256,8 @@ void MemoryManager::Deregister(TId id)
     }
 
     {
-        ScopedLock lock(statLock);
+        std::lock_guard lockScope(statsLock);
+
         auto& rec = stats.isInline ? inlineUsage : usage;
         rec.totalUsage -= stats.usage;
         rec.maxCapacity -= stats.capacity;
@@ -297,11 +320,12 @@ void MemoryManager::ReportAllocation(TId id, void* ptr
         return;
     }
 
-    lock_guard lock(statLock);
+    std::lock_guard lockScope(statsLock);
     ++allocCount;
 
     auto& allocator = allocators[id];
     auto& stats = allocator.stats;
+
     stats.usage += allocated;
     stats.maxUsage = std::max(stats.maxUsage, stats.usage);
     ++stats.allocCount;
@@ -354,7 +378,7 @@ void MemoryManager::ReportAllocation(TId id, void* ptr
 #endif // __DEBUG__
     }
 
-    Log(ELogLevel::Verbose
+    Log(ELogLevel::Info
         , [this, &stats, &rec, id, ptr, requested, allocated](auto& ls)
     {
         ls << "[Alloc(" << allocCount << ")]["
@@ -409,7 +433,7 @@ void MemoryManager::ReportDeallocation(TId id, void* ptr
         return;
     }
 
-    lock_guard lock(statLock);
+    std::lock_guard lockScope(statsLock);
     ++deallocCount;
 
     auto& allocator = allocators[id];
@@ -517,7 +541,8 @@ void MemoryManager::ReportFallback(TId id, void* ptr, size_t requested)
         return;
     }
 
-    std::lock_guard lock(statLock);
+    std::lock_guard lockScope(statsLock);
+
     auto& allocator = allocators[id];
     auto& stats = allocator.stats;
 
@@ -690,6 +715,7 @@ void MemoryManager::RegisterSystemAllocator()
     Assert(usage.maxCapacity == 0);
     Assert(sysMemUsage.totalCapacity == 0);
     Assert(sysMemUsage.maxCapacity == 0);
+
     usage.totalCapacity = Config::MemCapacity;
     usage.maxCapacity = Config::MemCapacity;
     sysMemUsage.totalCapacity = Config::MemCapacity;
@@ -700,12 +726,11 @@ void MemoryManager::RegisterSystemAllocator()
 
 #ifdef PROFILE_ENABLED
     {
-        auto& stats = allocator.stats;
-        stats.OnRegister("SystemAllocator", false, Config::MemCapacity);
-    }
+        std::lock_guard lockScope(statsLock);
 
-    {
-        std::lock_guard lock(statLock);
+        auto& stats = allocator.stats;
+
+        stats.OnRegister("SystemAllocator", false, Config::MemCapacity);
         auto& rec = usage;
         rec.totalCapacity += Config::MemCapacity;
         rec.maxCapacity = std::max(rec.maxCapacity, rec.totalCapacity);

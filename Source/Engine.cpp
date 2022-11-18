@@ -185,7 +185,7 @@ void Engine::Log(ELogLevel level, TLogFunc func)
     statistics.IncEngineLogCount();
 
     {
-        ScopedLock lock(logLock);
+        std::lock_guard lock(logLock);
 
         if (levelAsValue >= CPEnginePrintLogLevel.Get())
         {

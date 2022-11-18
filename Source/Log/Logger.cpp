@@ -67,9 +67,7 @@ void Logger::SimpleLogger::Out(const TLogFunction& logFunc) const
 void Logger::SimpleLogger::Out(ELogLevel inLevel, const TLogFunction& logFunc) const
 {
     if (unlikely(instance == nullptr))
-    {
         return;
-    }
 
     instance->AddLog(category, inLevel, logFunc);
 }
@@ -88,15 +86,20 @@ Logger::SimpleLogger Logger::Get(StaticString category, ELogLevel level)
 }
 
 Logger::Logger(const char* path, const char* filename, int numRolling)
-    : hasInput(false)
+    : allocator("LoggerMemoryPool")
+    , hasInput(false)
     , needFlush(false)
-    , allocator("LoggerMemoryPool")
-    , logPath(path)
 {
     instance = this;
     LogUtil::GetStartTime();
 
     AllocatorScope scope(allocator);
+
+    logPath = path;
+    inputBuffer.reserve(16);
+    swapBuffer.reserve(16);
+    textBuffer.reserve(16);
+    filters.reserve(16);
 
     auto endChar = logPath[logPath.size() - 1];
     
@@ -128,6 +131,8 @@ Logger::Logger(const char* path, const char* filename, int numRolling)
 
 Logger::~Logger()
 {
+    instance = nullptr;
+
     ProcessBuffer();
 
     outFileStream.flush();
@@ -171,6 +176,14 @@ void Logger::StartTask(TaskSystem& taskSys)
 
     auto& ioTaskStream = taskSys.GetIOTaskStream();
     threadID = ioTaskStream.GetThreadID();
+
+#ifdef __MEMORY_VERIFICATION__
+    auto& mmgr = MemoryManager::GetInstance();
+    mmgr.Update(allocator.GetID(), [this](auto& proxy)
+    {
+        proxy.threadId = threadID;
+    }, "Setup thread binding.");
+#endif // __MEMORY_VERIFICATION__
 }
 
 void Logger::StopTask(TaskSystem& taskSys)
@@ -180,6 +193,14 @@ void Logger::StopTask(TaskSystem& taskSys)
 
     taskHandle.Reset();
     threadID = std::thread::id();
+
+#ifdef __MEMORY_VERIFICATION__
+    auto& mmgr = MemoryManager::GetInstance();
+    mmgr.Update(allocator.GetID(), [](auto& proxy)
+    {
+        proxy.threadId = std::this_thread::get_id();
+    }, "Releasing the thread binding.");
+#endif // __MEMORY_VERIFICATION__
 
     AddLog(GetName(), ELogLevel::Info, [](auto& ls)
     {
@@ -192,10 +213,11 @@ void Logger::StopTask(TaskSystem& taskSys)
     outFileStream.close();
 }
 
-
 void Logger::AddLog(StaticString category, ELogLevel level
     , const TLogFunction& logFunc)
 {
+    Assert(this == instance);
+
 #ifndef LOG_ENABLED
     return;
 #endif // LOG_ENABLED

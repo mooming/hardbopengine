@@ -61,11 +61,11 @@ public:
     void PrintUsage() const;
     
 private:
-    size_t GetPoolIndex(size_t nBytes) const;
-    size_t GetPoolIndex(void* ptr) const;
+    size_t GetBankIndex(size_t nBytes) const;
+    size_t GetBankIndex(void* ptr) const;
     size_t CalculateBlockSize(size_t requested) const;
     size_t CalculateNumberOfBlocks(size_t bankSize, size_t blockSize) const;
-    PoolAllocator& GenerateBank(size_t blockSize, size_t numberOfBlocks);
+    void GenerateBank(size_t blockSize, size_t numberOfBlocks);
 };
 } // HE
 

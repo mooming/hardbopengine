@@ -38,8 +38,11 @@ public:
     PoolAllocator(const char* name, TSize inBlockSize, TIndex numberOfBlocks);
 #endif // PROFILE_ENABLED
 
-    PoolAllocator(PoolAllocator&& rhs);
+    PoolAllocator(PoolAllocator&& rhs) noexcept;
     ~PoolAllocator();
+
+    PoolAllocator& operator= (PoolAllocator&& rhs) noexcept;
+    bool operator< (const PoolAllocator& rhs) const noexcept;
 
     Pointer Allocate(size_t size);
     void Deallocate(Pointer ptr, size_t size);

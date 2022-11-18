@@ -81,11 +81,11 @@ public:
 private:
     static Logger* instance;
 
+    MultiPoolAllocator allocator;
     TaskHandle taskHandle;
     std::atomic<bool> hasInput;
     std::atomic<bool> needFlush;
-    MultiPoolAllocator allocator;
-    
+
     TString logPath;
     TLogBuffer inputBuffer;
     TLogBuffer swapBuffer;
@@ -103,6 +103,12 @@ public:
     static Logger& Get();
     static SimpleLogger Get(StaticString category, ELogLevel level = ELogLevel::Info);
 
+    Logger(const Logger&) = delete;
+    Logger(Logger&&) = delete;
+    Logger& operator= (const Logger&) = delete;
+    Logger& operator= (Logger&&) = delete;
+
+public:
     Logger(const char* path, const char* filename, int numRolling);
     ~Logger();
     

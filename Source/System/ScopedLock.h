@@ -72,7 +72,7 @@ public:
 
 #ifdef PROFILE_ENABLED
         const auto duration = Time::ToFloat(Time::TStopWatch::now() - startTime);
-        if (unlikely(duration > 0.0f && duration > timeOutSec))
+        if (unlikely(timeOutSec > 0.0f && duration > timeOutSec))
         {
             using namespace StringUtil;
             static const auto name = PrettyFunctionToCompactClassName(__PRETTY_FUNCTION__);

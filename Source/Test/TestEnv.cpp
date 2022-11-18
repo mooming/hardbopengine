@@ -28,8 +28,6 @@ void TestEnv::Start()
         ExecuteTest(*testCase);
     }
 
-    tests.clear();
-
     Report();
 }
 
