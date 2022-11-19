@@ -8,6 +8,7 @@
 #include "String/StringBuilder.h"
 #include <algorithm>
 #include <bit>
+#include <map>
 #include <memory>
 
 
@@ -230,19 +231,62 @@ size_t MultiPoolAllocator::GetCapacity() const
 void MultiPoolAllocator::PrintUsage() const
 {
     using namespace std;
-    
+
+#ifdef PROFILE_ENABLED
+    std::map<size_t, size_t> usageMap;
+#endif // PROFILE_ENABLED
+
     auto log = Logger::Get(name, ELogLevel::Info);
     log.Out([this](auto& ls)
     {
         ls << hendl << "## MultipoolAllocator(" << name
-            <<  ") Usage ##" << hendl;
-        
-        for (auto& pool : banks)
-        {
-            ls << '[' << pool.GetBlockSize() << "] Available Memory = "
-                << pool.GetAvailableMemory() << hendl;
-        }
+            <<  ") Usage ##";
     });
+
+    for (auto& pool : banks)
+    {
+        log.Out([&pool](auto& ls)
+        {
+            ls << '[' << pool.GetBlockSize() << "] Memory = "
+                << pool.GetUsage() << " / " << pool.GetCapacity()
+                << ", Max Usage = "
+                << (pool.GetUsedBlocksMax() * pool.GetBlockSize());
+        });
+
+#ifdef PROFILE_ENABLED
+        if (pool.GetUsedBlocksMax() > 0)
+        {
+            auto key = pool.GetBlockSize();
+            auto it = usageMap.find(key);
+          
+            if (unlikely(it == usageMap.end()))
+            {
+                usageMap.emplace(key, pool.GetUsedBlocksMax());
+            }
+            else
+            {
+                it->second += pool.GetUsedBlocksMax();
+            }
+        }
+#endif // PROFILE_ENABLED
+    }
+
+#ifdef PROFILE_ENABLED
+    {
+        AllocatorScope scope(MemoryManager::SystemAllocatorID);
+
+        StringBuilder args;
+        args << "Opt. Args: " << name << " {";
+
+        for (auto& item : usageMap)
+        {
+            args << " {" << item.first << ", " << item.second << "}, ";
+        }
+        args << "}";
+
+        log.Out(args.c_str());
+    }
+#endif // PROFILE_ENABLED
 }
 
 size_t MultiPoolAllocator::GetBankIndex(size_t nBytes) const

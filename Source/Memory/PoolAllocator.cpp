@@ -25,6 +25,7 @@ PoolAllocator::PoolAllocator(const char* name, TSize inBlockSize, TIndex numberO
     , numberOfFreeBlocks(numberOfBlocks)
     , buffer(nullptr)
 #ifdef PROFILE_ENABLED
+    , maxUsedBlocks(0)
     , srcLocation(location)
 #endif // PROFILE_ENABLED
 {
@@ -64,6 +65,7 @@ PoolAllocator::PoolAllocator(PoolAllocator&& rhs) noexcept
     , buffer(rhs.buffer)
     , availables(rhs.availables)
 #ifdef PROFILE_ENABLED
+    , maxUsedBlocks(rhs.maxUsedBlocks)
     , srcLocation(std::move(rhs.srcLocation))
 #endif // PROFILE_ENABLED
 {
@@ -74,6 +76,10 @@ PoolAllocator::PoolAllocator(PoolAllocator&& rhs) noexcept
     rhs.numberOfFreeBlocks = 0;
     rhs.buffer = nullptr;
     rhs.availables = nullptr;
+
+#ifdef PROFILE_ENABLED
+    rhs.maxUsedBlocks = 0;
+#endif // PROFILE_ENABLED
 
     auto& mmgr = MemoryManager::GetInstance();
     const TSize totalSize = blockSize * numberOfBlocks;
@@ -224,6 +230,8 @@ void PoolAllocator::Deallocate(Pointer ptr, size_t size)
     availables = ptr;
 
     ++numberOfFreeBlocks;
+
+    Assert(numberOfFreeBlocks <= numberOfBlocks);
 }
 
 bool PoolAllocator::IsMine(Pointer ptr) const
@@ -289,7 +297,13 @@ Pointer PoolAllocator::AllocateBlock()
         availables = nullptr;
     }
 
+    Assert(numberOfFreeBlocks > 0);
+    Assert(numberOfFreeBlocks <= numberOfBlocks);
     --numberOfFreeBlocks;
+
+#ifdef PROFILE_ENABLED
+    maxUsedBlocks = std::max(maxUsedBlocks, numberOfBlocks - numberOfFreeBlocks);
+#endif // PROFILE_ENABLED 
 
     return ptr;
 }

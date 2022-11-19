@@ -27,6 +27,7 @@ private:
     Pointer availables;
 
 #ifdef PROFILE_ENABLED
+    size_t maxUsedBlocks;
     std::source_location srcLocation;
 #endif // PROFILE_ENABLED
     
@@ -57,7 +58,11 @@ public:
     inline size_t GetCapacity() const { return numberOfBlocks * blockSize; }
     inline auto GetBlockSize() const { return blockSize; }
     inline auto NumberOfFreeBlocks() const { return numberOfFreeBlocks; }
-    
+
+#ifdef PROFILE_ENABLED
+    inline auto GetUsedBlocksMax() const { return maxUsedBlocks; }
+#endif // PROFILE_ENABLED
+
 private:
     TSize GetIndex(Pointer ptr) const;
     TSize ReadNextIndex(Pointer ptr) const;
