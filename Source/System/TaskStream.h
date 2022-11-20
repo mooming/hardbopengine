@@ -78,7 +78,7 @@ public:
     inline auto GetFlipCount() const { return flipCount.load(); }
 
 private:
-    void Start(TaskSystem& taskSys);
+    void Start(TaskSystem& taskSys, TaskHandle::TIndex streamIndex);
 
     void Request(TKey key, Task& task, TIndex start, TIndex end);
     void AddResident(TKey key, Task& task);

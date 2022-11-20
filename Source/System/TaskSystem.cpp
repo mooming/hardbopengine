@@ -17,12 +17,28 @@
 namespace HE
 {
 
+namespace
+{
+static thread_local StaticString ThreadName;
+static thread_local TaskSystem::TIndex StreamIndex = 0;
+} // anonymous
+
 TaskSystem::TIndex TaskSystem::GetNumHardwareThreads()
 {
     const auto hardwareConcurrency = std::thread::hardware_concurrency();
     TIndex numAvaibleHardwareThreads = hardwareConcurrency;
 
     return numAvaibleHardwareThreads;
+}
+
+void TaskSystem::SetThreadName(StaticString name)
+{
+    ThreadName = name;
+}
+
+void TaskSystem::SetStreamIndex(TIndex index)
+{
+    StreamIndex = index;
 }
 
 TaskSystem::TaskSystem()
@@ -120,19 +136,9 @@ bool TaskSystem::IsIOTaskThread() const
     return std::this_thread::get_id() == ioTaskThreadID;
 }
 
-StaticString TaskSystem::GetCurrentStreamName() const
+StaticString TaskSystem::GetCurrentThreadName() const
 {
-    auto currentThreadId = std::this_thread::get_id();
-    for (auto& stream : streams)
-    {
-        if (stream.GetThreadID() != currentThreadId)
-            continue;
-
-        return stream.GetName();
-    }
-
-    static StaticString unknown("Unknown");
-    return unknown;
+    return ThreadName;
 }
 
 StaticString TaskSystem::GetStreamName(int index) const
@@ -148,7 +154,7 @@ StaticString TaskSystem::GetStreamName(int index) const
 
 TaskSystem::TIndex TaskSystem::GetCurrentStreamIndex() const
 {
-    return GetStreamIndex(std::this_thread::get_id());
+    return StreamIndex;
 }
 
 TaskSystem::TIndex TaskSystem::GetStreamIndex(ThreadID id) const
@@ -637,12 +643,16 @@ void TaskSystem::BuildStreams()
 
     auto& mainTaskStream = GetMainTaskStream();
     auto& ioTaskStream = GetIOTaskStream();
+
     mainTaskStream.threadID = mainTaskThreadID;
-    ioTaskStream.Start(*this);
+    SetThreadName(mainTaskStream.GetName());
+    SetStreamIndex(GetMainTaskStreamIndex());
+
+    ioTaskStream.Start(*this, GetIOTaskStreamIndex());
 
     for (TIndex i = workerIndexStart; i < numHardwareThreads; ++i)
     {
-        streams[i].Start(*this);
+        streams[i].Start(*this, i);
     }
 }
 

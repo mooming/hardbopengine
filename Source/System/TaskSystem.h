@@ -49,7 +49,10 @@ private:
 
 public:
     static TIndex GetNumHardwareThreads();
+    static void SetThreadName(StaticString name);
+    static void SetStreamIndex(TIndex index);
 
+public:
     TaskSystem();
     ~TaskSystem();
 
@@ -77,10 +80,12 @@ public:
 
     inline auto GetWorkerIndexStart() const { return workerIndexStart; }
     inline auto GetNumWorkers() const { return numWorkers; }
-
+    inline StaticString GetCurrentStreamName() const { return GetCurrentThreadName(); }
+    
 public:
-    StaticString GetCurrentStreamName() const;
+    StaticString GetCurrentThreadName() const;
     StaticString GetStreamName(int index) const;
+    
     TIndex GetCurrentStreamIndex() const;
     TIndex GetStreamIndex(ThreadID id) const;
 

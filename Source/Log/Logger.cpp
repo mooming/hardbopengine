@@ -12,7 +12,6 @@
 #include "OSAL/Intrinsic.h"
 #include "String/StringUtil.h"
 #include "System/Debug.h"
-#include "System/ScopedLock.h"
 #include "System/TaskSystem.h"
 #include <iostream>
 #include <memory>
@@ -207,6 +206,8 @@ void Logger::StopTask(TaskSystem& taskSys)
         ls << "Logger shall be terminated." << hendl;
     });
 
+    allocator.PrintUsage();
+
     ProcessBuffer();
 
     outFileStream.flush();
@@ -242,7 +243,7 @@ void Logger::AddLog(StaticString category, ELogLevel level
         return;
 
     {
-        ScopedLock lock(filterLock);
+        std::lock_guard lock(filterLock);
         auto found = filters.find(category);
         if (found != filters.end())
         {
@@ -295,7 +296,7 @@ void Logger::AddLog(StaticString category, ELogLevel level
     size_t bufferSize = 0;
 
     {
-        ScopedLock lock(inputLock);
+        std::lock_guard lock(inputLock);
 
         if (unlikely(ls.Size() >= Config::LogLineLength))
         {
@@ -307,8 +308,8 @@ void Logger::AddLog(StaticString category, ELogLevel level
         }
 
         bufferSize = inputBuffer.size();
-        hasInput = true;
-        needFlush = true;
+        hasInput.store(true, std::memory_order_release);
+        needFlush.store(true, std::memory_order_release);
     }
     
     if (unlikely(level >= ELogLevel::FatalError))
@@ -331,7 +332,7 @@ void Logger::AddLog(StaticString category, ELogLevel level
 
 void Logger::SetFilter(StaticString category, TLogFilter filter)
 {
-    ScopedLock lock(filterLock);
+    std::lock_guard lock(filterLock);
     filters[category] = filter;
 }
 
@@ -345,7 +346,7 @@ void Logger::Flush()
 
     const auto period = std::chrono::milliseconds(10);
     
-    while(needFlush)
+    while(needFlush.load(std::memory_order_relaxed))
     {
         std::this_thread::sleep_for(period);
     }
@@ -353,15 +354,15 @@ void Logger::Flush()
 
 void Logger::ProcessBuffer()
 {
-    if (!hasInput)
+    if (!hasInput.load(std::memory_order_acquire))
         return;
 
     AllocatorScope scope(allocator);
 
     {
-        ScopedLock lockInput(inputLock);
+        std::lock_guard lockInput(inputLock);
         std::swap(inputBuffer, swapBuffer);
-        hasInput = false;
+        hasInput.store(false, std::memory_order_release);
     }
 
     if (swapBuffer.empty())
@@ -398,7 +399,7 @@ void Logger::ProcessBuffer()
         outFileStream.flush();
     }
 
-    needFlush = false;
+    needFlush.store(false, std::memory_order_release);
 }
 
 void Logger::FlushBuffer(const TTextBuffer& buffer)

@@ -98,10 +98,13 @@ void TaskStream::Flush()
     }
 }
 
-void TaskStream::Start(TaskSystem& taskSys)
+void TaskStream::Start(TaskSystem& taskSys, TaskHandle::TIndex streamIndex)
 {
-    auto func = [this, &taskSys]()
+    auto func = [this, &taskSys, streamIndex]()
     {
+        TaskSystem::SetThreadName(name);
+        TaskSystem::SetStreamIndex(streamIndex);
+
         auto log = Logger::Get(name);
         log.Out([name = name](auto& ls)
         {
