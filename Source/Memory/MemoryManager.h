@@ -4,14 +4,18 @@
 
 #include "AllocatorID.h"
 #include "AllocatorProxy.h"
+#include "PoolConfig.h"
 #include "Config/BuildConfig.h"
 #include "Container/AtomicStackView.h"
 #include "Log/LogLevel.h"
+#include "String/StaticStringID.h"
 #include "System/Types.h"
 #include <atomic>
 #include <functional>
 #include <mutex>
+#include <span>
 #include <thread>
+#include <vector>
 
 
 namespace std
@@ -29,9 +33,17 @@ public:
     using TAllocBytes = AllocatorProxy::TAllocBytes;
     using TDeallocBytes = AllocatorProxy::TDeallocBytes;
     using TLogFunc = std::function<void(std::ostream& out)>;
+    template <typename T>
+    using TVector = std::vector<T>;
 
     static constexpr TId SystemAllocatorID = 0;
     static constexpr size_t MaxBaseMemory = 8'000'000'000;
+
+    struct MultiPoolConfigItem final
+    {
+        StaticStringID uniqueName;
+        TVector<PoolConfig> configs;
+    };
 
 private:
     struct UsageRecord final
@@ -55,6 +67,8 @@ private:
 
     static thread_local TId ScopedAllocatorID;
 
+    TVector<MultiPoolConfigItem> multiPoolConfigs;
+
 public:
     MemoryManager(const MemoryManager&) = delete;
     MemoryManager& operator= (const MemoryManager&) = delete;
@@ -74,11 +88,7 @@ public:
 
     std::lock_guard<std::mutex>&& AcquireStatsLock() { return std::move(std::lock_guard(statsLock)); }
     void Update(TId id, std::function<void(AllocatorProxy&)> func, const char* reason);
-
     void Deregister(TId id);
-#ifdef PROFILE_ENABLED
-    void Deregister(TId id, const std::source_location& srcLocation);
-#endif // PROFILE_ENABLED
 
     void ReportAllocation(TId id, void* ptr, size_t requested, size_t allocated);
     void ReportDeallocation(TId id, void* ptr, size_t requested, size_t allocated);
@@ -93,11 +103,27 @@ public:
     void* AllocateBytes(size_t nBytes);
     void DeallocateBytes(void* ptr, size_t nBytes);
 
+    void Log(ELogLevel level, TLogFunc func);
+
+    const MultiPoolConfigItem& GetMultiPoolConfig(StaticStringID uniqueName) const;
+
+#ifdef PROFILE_ENABLED
+    void Deregister(TId id, const std::source_location& srcLocation);
+    void ReportMultiPoolConfigutation(const char* uniqueName,  std::span<PoolConfig> poolConfigs);
+#endif // PROFILE_ENABLED
+
+public:
+    inline void LogWarning(TLogFunc func) { Log(ELogLevel::Warning, func); }
+    inline void LogError(TLogFunc func) { Log(ELogLevel::Error, func); }
+    inline auto& GetInlineUsage() const { return inlineUsage; }
+    inline auto& GetUsage() const { return usage; }
+    inline auto& GetSystemMemoryUsage() const { return sysMemUsage; }
+
+public:
     template <typename T>
     T* AllocateTypes(size_t n)
     {
-        constexpr size_t sizeOfT = sizeof(T);
-        auto nBytes = n * sizeOfT;
+        const auto nBytes = n * sizeof(T);
         auto ptr = AllocateBytes(nBytes);
 
         return static_cast<T*>(ptr);
@@ -106,14 +132,14 @@ public:
     template <typename T>
     void DeallocateTypes(T* ptr, size_t n)
     {
-        auto nBytes = n * sizeof(T);
+        const auto nBytes = n * sizeof(T);
         DeallocateBytes(static_cast<void*>(ptr), nBytes);
     }
 
     template <typename Type, typename ... Types>
     inline Type* New(Types&& ... args)
     {
-        auto ptr = AllocateBytes(sizeof(Type));
+        auto ptr = AllocateTypes<Type>(1);
         auto tptr = new (ptr) Type(std::forward<Types>(args) ...);
         return tptr;
     }
@@ -121,10 +147,11 @@ public:
     template <typename Type, typename ... Types>
     inline Type* NewArray(Index size, Types&& ... args)
     {
-        auto ptr = reinterpret_cast<Type*>(AllocateBytes(sizeof(Type) * size));
+        auto ptr = AllocateTypes<Type>(size);
+
         for (Index i = 0; i < size; ++i)
         {
-            new (ptr[i]) Type(std::forward<Types>(args) ...);
+            new (&ptr[i]) Type(std::forward<Types>(args) ...);
         }
 
         return ptr;
@@ -134,7 +161,7 @@ public:
     inline void Delete(Type* ptr)
     {
         ptr->~Type();
-        DeallocateBytes(ptr, sizeof(Type));
+        DeallocateTypes<Type>(ptr, 1);
     }
 
     template <typename Type>
@@ -142,21 +169,11 @@ public:
     {
         for (size_t i = 0; i < n; ++i)
         {
-            ptr[i]->~Type();
+            ptr[i].~Type();
         }
 
-        Deallocate(ptr, n);
-
-        return ptr;
+        DeallocateTypes<Type>(ptr, n);
     }
-
-    void Log(ELogLevel level, TLogFunc func);
-    inline void LogWarning(TLogFunc func) { Log(ELogLevel::Warning, func); }
-    inline void LogError(TLogFunc func) { Log(ELogLevel::Error, func); }
-
-    inline auto& GetInlineUsage() const { return inlineUsage; }
-    inline auto& GetUsage() const { return usage; }
-    inline auto& GetSystemMemoryUsage() const { return sysMemUsage; }
 
 private:
     inline bool IsValid(TAllocatorID id) const { return id >= 0 && id < MaxNumAllocators; }
@@ -164,6 +181,9 @@ private:
 
     void RegisterSystemAllocator();
     void DeregisterSystemAllocator();
+
+    void LoadMultiPoolConfigs();
+    void SaveMultiPoolConfigs();
 
     void SetScopedAllocatorID(TId id);
 

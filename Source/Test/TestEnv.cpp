@@ -47,7 +47,7 @@ bool TestEnv::ExecuteTest(TestCollection& testCollection)
         {
             ls << "Exception occurred!";
         });
-    }    
+    }
 #endif // __DEBUG__
 
     if (!testCollection.IsDone())
@@ -147,18 +147,6 @@ void TestEnv::Report()
         log.OutError("=============================================\n");
     }
 
-    if (!warningMessages.empty())
-    {
-        log.OutWarning("= Warnings ==================================");
-
-        for (auto& item : warningMessages)
-        {
-            log.OutWarning([&item](auto& ls) { ls << item; });
-        }
-        
-        log.OutWarning("=============================================\n");
-    }
-
     if (!errorMessages.empty())
     {
         log.OutError("= Errors ====================================");
@@ -169,6 +157,18 @@ void TestEnv::Report()
         }
 
         log.OutError("=============================================\n");
+    }
+
+    if (!warningMessages.empty())
+    {
+        log.OutWarning("= Warnings ==================================");
+
+        for (auto& item : warningMessages)
+        {
+            log.OutWarning([&item](auto& ls) { ls << item; });
+        }
+        
+        log.OutWarning("=============================================\n");
     }
 
     auto& logger = Logger::Get();

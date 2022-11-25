@@ -11,6 +11,9 @@
 namespace HE
 {
 
+template <typename T>
+concept CToZeroTerminateStr  = requires(T t) { t.c_str(); };
+
 class StaticString final
 {
 private:
@@ -33,8 +36,8 @@ public:
     
     StaticString(const char* string);
     StaticString(const std::string_view& str);
-    
-    template <typename T>
+
+    template <CToZeroTerminateStr T>
     StaticString(const T& string)
         : StaticString(string.c_str())
     {

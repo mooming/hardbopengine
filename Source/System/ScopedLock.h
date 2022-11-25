@@ -75,7 +75,7 @@ public:
         if (unlikely(timeOutSec > 0.0f && duration > timeOutSec))
         {
             using namespace StringUtil;
-            static const auto name = PrettyFunctionToCompactClassName(__PRETTY_FUNCTION__);
+            static const auto name = ToCompactClassName(__PRETTY_FUNCTION__);
             auto log = Logger::Get(name);
             log.OutWarning([&, this](auto& ls)
             {

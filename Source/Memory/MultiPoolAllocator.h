@@ -3,6 +3,7 @@
 #pragma once
 
 #include "PoolAllocator.h"
+#include "PoolConfig.h"
 #include "HSTL/HVector.h"
 #include "String/StaticString.h"
 
@@ -17,17 +18,6 @@ public:
     static constexpr size_t DefaultMinBlock = 16;
     static constexpr size_t DefaultBankUnit = 1024ULL * 1024;
     static constexpr size_t MinNumberOfBlocks = 16;
-
-    struct PoolConfig final
-    {
-        size_t blockSize = 0;
-        size_t numberOfBlocks = 0;
-
-        inline bool operator < (const PoolConfig& rhs) const
-        {
-            return blockSize < rhs.blockSize;
-        }
-    };
     
 private:
     using TInitializerList = std::initializer_list<PoolConfig>;

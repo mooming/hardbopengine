@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include "Config/BuildConfig.h"
 #include "Config/EngineSettings.h"
 #include <cstddef>
 #include <cstdint>

@@ -5,6 +5,7 @@ Log
 Math
 Memory
 OSAL
+Resource
 String
 System
 Test

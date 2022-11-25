@@ -378,6 +378,12 @@ void MemoryManager::ReportAllocation(TId id, void* ptr
 #endif // __DEBUG__
     }
 
+    if (id == SystemAllocatorID)
+    {
+        sysMemUsage.totalUsage += allocated;
+        sysMemUsage.maxUsage = std::max(sysMemUsage.maxUsage, sysMemUsage.totalUsage);
+    }
+
     Log(ELogLevel::Info
         , [this, &stats, &rec, id, ptr, requested, allocated](auto& ls)
     {
@@ -484,6 +490,12 @@ void MemoryManager::ReportDeallocation(TId id, void* ptr
     }
 
     rec.totalUsage -= allocated;
+
+    if (id == SystemAllocatorID)
+    {
+        FatalAssert(sysMemUsage.totalUsage >= allocated);
+        sysMemUsage.totalUsage -= allocated;
+    }
 
     Log(ELogLevel::Verbose
         , [this, &stats, &rec, id, ptr, requested, allocated](auto& ls)
@@ -693,6 +705,39 @@ void MemoryManager::Log(ELogLevel level, TLogFunc func)
 #endif // __MEMORY_LOGGING__
 }
 
+const MemoryManager::MultiPoolConfigItem& MemoryManager::GetMultiPoolConfig(StaticStringID uniqueName) const
+{
+    static const MultiPoolConfigItem null;
+
+    const auto len = multiPoolConfigs.size();
+    if (len <= 0)
+        return null;
+
+    size_t start = 0;
+    size_t end = len;
+
+    while (start < end)
+    {
+        auto mid = (start + end) / 2;
+        Assert(start <= mid && mid < end);
+
+        auto& item = multiPoolConfigs[mid];
+        if (uniqueName == item.uniqueName)
+            return item;
+
+        if (uniqueName < item.uniqueName)
+        {
+            end = mid;
+            continue;
+        }
+
+        // uniqueName >= item.uniqueName
+        start = mid;
+    }
+
+    return null;
+}
+
 void MemoryManager::RegisterSystemAllocator()
 {
     static SystemAllocator<uint8_t> systemAllocator;
@@ -748,6 +793,16 @@ void MemoryManager::DeregisterSystemAllocator()
 
     sysMemUsage.totalCapacity = 0;
     sysMemUsage.maxCapacity = 0;
+}
+
+void LoadMultiPoolConfigs()
+{
+
+}
+
+void SaveMultiPoolConfigs()
+{
+
 }
 
 void MemoryManager::SetScopedAllocatorID(TId id)

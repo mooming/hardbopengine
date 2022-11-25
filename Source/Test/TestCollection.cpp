@@ -110,7 +110,11 @@ void TestCollection::ExecuteTests()
             ls << "# TC" << i << '.' << testName << " #";
         });
 
-        test(logStream);
+        {
+            MultiPoolAllocator alloc(testName);
+            AllocatorScope scope(alloc);
+            test(logStream);
+        }
 
         auto newErrorCursor = errorMessages.size();
         bool isPassed = newErrorCursor == errorCursor;
@@ -164,11 +168,12 @@ std::ostream& operator<< (std::ostream& os, const TestCollection::LogFlush& lf)
     prefix.append(std::to_string(lf.testIndex));
 
     auto str = ss.str();
-    auto log = Logger::Get(prefix.c_str(), lf.level);
+    auto log = Logger::Get(lf.name, lf.level);
 
     log.Out([&lf, &prefix, &str](auto& ls)
     {
-        ls << str.c_str();
+        ls << '[' << prefix.c_str()  << "."
+            << lf.testName << "] " <<  str.c_str();
 
         auto messages = lf.messageBuffer;
         if (messages == nullptr)
@@ -176,8 +181,7 @@ std::ostream& operator<< (std::ostream& os, const TestCollection::LogFlush& lf)
 
         {
             std::stringstream msg;
-            msg << '[' << prefix.c_str()  << "."
-                << lf.testName << "] " << ls.c_str();
+            msg << ls.c_str();
             messages->push_back(msg.str());
         }
     });

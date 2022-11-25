@@ -4,6 +4,15 @@
 
 // Definitions for Pre-compilation
 
+// Platform
+#ifdef __linux__
+#define PLATFORM_LINUX
+#elif defined __APPLE__
+#define PLATFORM_OSX
+#elif defined _WIN32
+#define PLATFORM_WINDOWS
+#endif
+
 // Debug Control
 #if !defined(NDEBUG) || defined(_DEBUG) || defined(DEBUG)
 #undef __DEBUG__

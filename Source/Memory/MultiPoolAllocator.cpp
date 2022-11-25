@@ -63,7 +63,12 @@ MultiPoolAllocator::MultiPoolAllocator(const char* inName
 
     AllocatorScope scope(parentID);
 
-    HInlineVector<PoolConfig, 256> vlist;
+    constexpr size_t InlineBufferSize = 128;
+    Assert(initialConfigurations.size() <= InlineBufferSize);
+
+    HInlineVector<PoolConfig, InlineBufferSize> vlist;
+    vlist.reserve(InlineBufferSize);
+
     vlist.insert(vlist.end(), initialConfigurations);
     std::sort(vlist.begin(), vlist.end());
     

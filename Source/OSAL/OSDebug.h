@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include "Config/BuildConfig.h"
 #include "String/StaticString.h"
 
 

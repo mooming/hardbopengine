@@ -27,11 +27,11 @@ bool EndsWithIgnoreCase(const TString& src, const TString& endTerm);
 TString PathToName(const TString& path);
 void ForEachToken(const char* str, const std::function<void(std::string_view)> func, const char* separators = " \t\n\r");
 
-HE::StaticString PrettyFunctionToFunctionName(const char* PrettyFunction);
-HE::StaticString PrettyFunctionToClassName(const char* PrettyFunction);
-HE::StaticString PrettyFunctionToMethodName(const char* PrettyFunction);
-HE::StaticString PrettyFunctionToCompactClassName(const char* PrettyFunction);
-HE::StaticString PrettyFunctionToCompactMethodName(const char* PrettyFunction);
+HE::StaticString ToFunctionName(const char* PrettyFunction);
+HE::StaticString ToClassName(const char* PrettyFunction);
+HE::StaticString ToMethodName(const char* PrettyFunction);
+HE::StaticString ToCompactClassName(const char* PrettyFunction);
+HE::StaticString ToCompactMethodName(const char* PrettyFunction);
 
 size_t StrLen(const char* text);
 size_t StrLen(const char* text, size_t bufferSize);

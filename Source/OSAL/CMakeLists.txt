@@ -19,18 +19,46 @@ link_directories (${CMAKE_SOURCE_DIR}/lib)
 
 add_library (OSAL STATIC 
  Directory.cpp
+ LinuxAbstractLayer.cpp
+ LinuxDebug.cpp
+ LinuxInputOutput.cpp
+ LinuxMemory.cpp
+ LinuxThread.cpp
  OSAbstractLayer.cpp
  OSDebug.cpp
+ OSInputOutput.cpp
  OSMemory.cpp
  OSThread.cpp
+ OSXAbstractLayer.cpp
+ OSXDebug.cpp
+ OSXFileHandle.cpp
+ OSXFileOpenMode.cpp
+ OSXInputOutput.cpp
+ OSXMapSyncMode.cpp
+ OSXMemory.cpp
+ OSXProtectionMode.cpp
+ OSXThread.cpp
+ WindowsAbstractLayer.cpp
+ WindowsDebug.cpp
+ WindowsInputOutput.cpp
+ WindowsMemory.cpp
+ WindowsThread.cpp
  Directory.h
  File.h
  Intrinsic.h
+ LinuxIntrinsic.h
  OSAbstractLayer.h
  OSDebug.h
+ OSFileHandle.h
+ OSFileOpenMode.h
+ OSInputOutput.h
+ OSMapSyncMode.h
  OSMemory.h
+ OSProtectionMode.h
  OSThread.h
+ OSXIntrinsic.h
  SourceLocation.h
+ WindowsIntrinsic.h
 )
 
 if (APPLE)

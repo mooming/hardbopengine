@@ -5,6 +5,7 @@
 #include "Config/ConfigSystem.h"
 #include "Config/ConfigParam.h"
 #include "HSTL/HString.h"
+#include "String/InlineStringBuilder.h"
 #include "String/StaticStringTable.h"
 #include "System/Debug.h"
 #include "System/ScopedLock.h"
@@ -189,10 +190,14 @@ void Engine::Log(ELogLevel level, TLogFunc func)
 
         if (levelAsValue >= CPEnginePrintLogLevel.Get())
         {
-            cerr << '[' << intHours << ':' << intMins << ':' << intSecs
+            std::stringstream ss;
+            ss << '[' << intHours << ':' << intMins << ':' << intSecs
                 << '.' << intMSecs << "] ";
-            func(cerr);
-            cerr << endl;
+
+            func(ss);
+            
+            ConsoleOutLn(ss.str().c_str());
+            ss.str("");
         }
 
         Assert(logFile.is_open());
@@ -222,6 +227,12 @@ void Engine::FlushLog()
         return;
 
     logFile.flush();
+}
+
+void Engine::ConsoleOutLn(const char* str)
+{
+    std::lock_guard lock(consoleOutLock);
+    std::cout << str << std::endl;
 }
 
 void Engine::PreUpdate(float deltaTime)

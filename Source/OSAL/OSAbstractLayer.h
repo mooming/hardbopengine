@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include "Config/BuildConfig.h"
 #include "HSTL/HString.h"
 #include "HSTL/HVector.h"
 #include "String/StringUtil.h"

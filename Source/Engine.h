@@ -16,6 +16,10 @@
 
 namespace HE
 {
+
+template <size_t, class>
+class InlineStringBuilder;
+
 class Engine final
 {
 public:
@@ -31,6 +35,7 @@ private:
 
     bool isRunning;
     std::mutex logLock;
+    std::mutex consoleOutLock;
     std::ofstream logFile;
 
     MemoryManager memoryManager;
@@ -64,6 +69,8 @@ public:
     inline void LogError(TLogFunc func) { Log(ELogLevel::Error, func); }
     void CloseLog();
     void FlushLog();
+
+    void ConsoleOutLn(const char* str);
 
 private:
     void PreUpdate(float deltaTime);

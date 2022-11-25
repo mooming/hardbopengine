@@ -14,7 +14,7 @@ struct StaticStringID final
     
     union
     {
-        uint64_t value = 0;
+        uint64_t value;
         
         struct
         {
@@ -23,9 +23,19 @@ struct StaticStringID final
         };
     };
 
+    inline StaticStringID()
+        : value(0)
+    {
+    }
+
     inline bool operator == (const StaticStringID& rhs) const
     {
         return value == rhs.value;
+    }
+
+    inline bool operator < (const StaticStringID& rhs) const
+    {
+        return value < rhs.value;
     }
 };
 

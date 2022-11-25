@@ -212,23 +212,29 @@ void ForEachToken(const char* str
     }
 }
 
-HE::StaticString PrettyFunctionToFunctionName(const char* PrettyFunction)
+HE::StaticString ToFunctionName(const char* PrettyFunction)
 {
     using TStr = std::string_view;
     TStr str(PrettyFunction);
-    
-    auto start = str.find_last_of("::") + 1;
+
+    auto bracketEnd = str.find_last_of(')') + 1;
+    auto bracketStart = str.find_last_of('(');
+    if (unlikely(bracketStart == TStr::npos))
+        return HE::StaticString(PrettyFunction);
+
+    auto subStr = str.substr(0, bracketStart);
+    auto start = subStr.find_last_of("::") + 1;
     if (start == TStr::npos)
     {
         return HE::StaticString(PrettyFunction);
     }
-    
-    str = str.substr(start);
-    
+
+    str = str.substr(start, bracketEnd - start);
+
     return HE::StaticString(str);
 }
 
-HE::StaticString PrettyFunctionToClassName(const char* PrettyFunction)
+HE::StaticString ToClassName(const char* PrettyFunction)
 {
     using TStr = std::string_view;
     TStr str(PrettyFunction);
@@ -245,7 +251,7 @@ HE::StaticString PrettyFunctionToClassName(const char* PrettyFunction)
     return HE::StaticString(str);
 }
 
-HE::StaticString PrettyFunctionToMethodName(const char* PrettyFunction)
+HE::StaticString ToMethodName(const char* PrettyFunction)
 {
     using TStr = std::string_view;
     TStr str(PrettyFunction);
@@ -260,7 +266,7 @@ HE::StaticString PrettyFunctionToMethodName(const char* PrettyFunction)
     return HE::StaticString(str);
 }
 
-HE::StaticString PrettyFunctionToCompactClassName(const char* PrettyFunction)
+HE::StaticString ToCompactClassName(const char* PrettyFunction)
 {
     using namespace HE;
     
@@ -278,17 +284,34 @@ HE::StaticString PrettyFunctionToCompactClassName(const char* PrettyFunction)
     return HE::StaticString(str);
 }
 
-HE::StaticString PrettyFunctionToCompactMethodName(const char* PrettyFunction)
+HE::StaticString ToCompactMethodName(const char* PrettyFunction)
 {
     using TStr = std::string_view;
     TStr str(PrettyFunction);
     
-    auto start = str.find_last_of("::");
-    if (start == TStr::npos)
-        return HE::StaticString();
+    auto bracketStart = str.find_last_of('(');
+    if (bracketStart == TStr::npos)
+    {
+        return HE::StaticString(PrettyFunction);
+    }
 
-    start = str.find_last_of("::", start - 2) + 1;
-    str = str.substr(start);
+    auto subStr = str.substr(0, bracketStart);
+    auto start = subStr.find_last_of("::") + 1;
+    if (start == TStr::npos)
+    {
+        return HE::StaticString(PrettyFunction);
+    }
+
+    subStr = str.substr(0, start - 2);
+    auto upperStart = subStr.find_last_of("::") + 1;
+    if (upperStart == TStr::npos)
+    {
+        str = str.substr(start);
+
+        return HE::StaticString(str);
+    }
+
+    str = str.substr(upperStart);
     
     return HE::StaticString(str);
 }
@@ -448,83 +471,82 @@ void StringUtilTest::Prepare()
 
     auto prettyFunction = __PRETTY_FUNCTION__;
 
-    AddTest("PrettyFunctionToClassName", [this, prettyFunction](auto& ls)
+    AddTest("ToClassName", [this, prettyFunction](auto& ls)
     {
         StaticString className("HE::StringUtilTest");
 
-        auto name = PrettyFunctionToClassName(prettyFunction);
+        auto name = ToClassName(prettyFunction);
         ls << "Class Name is " << name << " / " << className << lf;
 
         if (name != className)
         {
-            ls << "PrettyFunctionToClassName " << name
+            ls << "ToClassName " << name
                 << " doesn't coincide with " << className << lferr;
         }
     });
 
-    AddTest("PrettyFunctionToCompactClassName", [this, prettyFunction](auto& ls)
+    AddTest("ToCompactClassName", [this, prettyFunction](auto& ls)
     {
         StaticString className("StringUtilTest");
 
-        auto name = PrettyFunctionToCompactClassName(prettyFunction);
+        auto name = ToCompactClassName(prettyFunction);
         ls << "Compact Class Name is " << name << " / " << className << lf;
 
         if (name != className)
         {
-            ls << "PrettyFunctionToCompactClassName " << name
+            ls << "ToCompactClassName " << name
                 << " doesn't coincide with " << className << lferr;
         }
     });
 
-
-    AddTest("PrettyFunctionToFunctionName", [this, prettyFunction](auto& ls)
+    AddTest("ToFunctionName::Namespace", [this, prettyFunction](auto& ls)
     {
         StaticString funcName("Prepare()");
         StaticString funcName2("Prepare(void)");
 
-        auto name = PrettyFunctionToFunctionName(prettyFunction);
+        auto name = ToFunctionName(prettyFunction);
         ls <<  "Function Name is " << name  << " / (" << funcName
             << " or " << funcName2 << ')' << lf;
         
         if (name != funcName && name != funcName2)
         {
-            ls << "PrettyFunctionToFunctionName " << name
+            ls << "ToFunctionName " << name
                 << " doesn't coincide with niether " << funcName
                 << " nor " << funcName2 << lferr;
         }
     });
 
-    AddTest("PrettyFunctionToMethodName", [this, prettyFunction](auto& ls)
+    AddTest("ToMethodName", [this, prettyFunction](auto& ls)
     {
 
         StaticString funcName("HE::StringUtilTest::Prepare()");
         StaticString funcName2("HE::StringUtilTest::Prepare(void)");
-        auto name = PrettyFunctionToMethodName(prettyFunction);
+        auto name = ToMethodName(prettyFunction);
 
         ls << "Function Name is " << name  << " / (" << funcName
             << " or " << funcName2 << ')' << lf;
         
         if (name != funcName && name != funcName2)
         {
-            ls << "PrettyFunctionToMethodName " << name
+            ls << "ToMethodName " << name
                 << " doesn't coincide with niether " << funcName
                 << " nor " << funcName2 << lferr;
         }
 
     });
 
-    AddTest("PrettyFunctionToCompactMethodName", [this, prettyFunction](auto& ls)
+    AddTest("ToCompactMethodName", [this, prettyFunction](auto& ls)
     {
         StaticString funcName("StringUtilTest::Prepare()");
         StaticString funcName2("StringUtilTest::Prepare(void)");
-        auto name = PrettyFunctionToCompactMethodName(prettyFunction);
+        auto name = ToCompactMethodName(prettyFunction);
 
         ls << "Function Name is " << name  << " / (" << funcName
             << " or " << funcName2 << ')' << lf;
         
         if (name != funcName && name != funcName2)
         {
-            ls << "PrettyFunctionToCompactMethodName " << name
+            ls << "ToCompactMethodName " << name
                 << " doesn't coincide with niether " << funcName
                 << " nor " << funcName2 << lferr;
         }

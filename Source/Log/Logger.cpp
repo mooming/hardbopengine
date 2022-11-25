@@ -140,7 +140,7 @@ Logger::~Logger()
 
 StaticString Logger::GetName() const
 {
-    static auto className = StringUtil::PrettyFunctionToCompactClassName(__PRETTY_FUNCTION__);
+    static auto className = StringUtil::ToCompactClassName(__PRETTY_FUNCTION__);
     return className;
 }
 
@@ -425,9 +425,11 @@ void Logger::WriteLog(const TTextBuffer& buffer)
 
 void Logger::PrintStdIO(const TTextBuffer& buffer) const
 {
+    auto& engine = Engine::Get();
+    
     for (auto& logText : buffer)
     {
-        std::cout << logText << std::endl;
+        engine.ConsoleOutLn(logText.c_str());
     }
 }
 

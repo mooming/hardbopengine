@@ -41,6 +41,16 @@ void TaskSystem::SetStreamIndex(TIndex index)
     StreamIndex = index;
 }
 
+bool TaskSystem::IsMainThread()
+{
+    return StreamIndex == MainStreamIndex;
+}
+
+bool TaskSystem::IsIOThread()
+{
+    return StreamIndex == IOStreamIndex;
+}
+
 TaskSystem::TaskSystem()
     : isRunning(false)
     , name("TaskSystem")
@@ -124,16 +134,6 @@ void TaskSystem::Flush()
         slot.key = InvalidKey;
         task.Reset();
     }
-}
-
-bool TaskSystem::IsMainThread() const
-{
-    return std::this_thread::get_id() == mainTaskThreadID;
-}
-
-bool TaskSystem::IsIOTaskThread() const
-{
-    return std::this_thread::get_id() == ioTaskThreadID;
 }
 
 StaticString TaskSystem::GetCurrentThreadName() const
@@ -551,7 +551,7 @@ void TaskSystem::ReleaseTask(TKey key, TIndex index)
             AllocatorScope scope(alloc);
             
             using namespace StringUtil;
-            ls << '[' << PrettyFunctionToMethodName(func)
+            ls << '[' << ToMethodName(func)
                 << "] Failed due to the invalid key input.";
         });
 
@@ -567,7 +567,7 @@ void TaskSystem::ReleaseTask(TKey key, TIndex index)
             AllocatorScope scope(alloc);
 
             using namespace StringUtil;
-            ls << '[' << PrettyFunctionToMethodName(func)
+            ls << '[' << ToMethodName(func)
                 << "] Failed due to the invalid index " << index;
         });
 
@@ -587,7 +587,7 @@ void TaskSystem::ReleaseTask(TKey key, TIndex index)
                 AllocatorScope scope(alloc);
 
                 using namespace StringUtil;
-                ls << '[' << PrettyFunctionToMethodName(func)
+                ls << '[' << ToMethodName(func)
                     << "] Key Mismatched: " << key << " <=> " << slot.key ;
             });
 
@@ -735,11 +735,14 @@ void TaskSystemTest::Prepare()
         
         auto func = [&count](auto start, auto end)
         {
-            auto log = Logger::Get("Resident Task");
-            log.Out([count](auto& ls)
+            if ((count % 10000) == 0)
             {
-                ls << "Resident Frame Count = " << count;
-            });
+                auto log = Logger::Get("Resident Task");
+                log.Out([count](auto& ls)
+                {
+                    ls << "Resident Frame Count = " << count;
+                });
+            }
 
             ++count;
         };
@@ -760,11 +763,15 @@ void TaskSystemTest::Prepare()
 
         auto func = [count](auto start, auto end)
         {
-            auto log = Logger::Get("Resident Task");
-            log.Out([count](auto& ls)
+            uint32_t value = *count;
+            if ((value % 10000) == 0)
             {
-                ls << "Resident Frame Count = " << (*count);
-            });
+                auto log = Logger::Get("Resident Task");
+                log.Out([value](auto& ls)
+                {
+                    ls << "Resident Frame Count = " << value;
+                });
+            }
 
             ++(*count);
         };

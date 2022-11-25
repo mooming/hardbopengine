@@ -30,7 +30,11 @@
 #include "Memory/StackAllocator.h"
 #include "Memory/SystemAllocator.h"
 #include "OSAL/OSDebug.h"
+#include "OSAL/OSInputOutput.h"
 #include "OSAL/OSThread.h"
+#include "Resource/Buffer.h"
+#include "Resource/BufferInputStream.h"
+#include "Resource/BufferOutputStream.h"
 #include "String/InlineStringBuilder.h"
 #include "String/StaticString.h"
 #include "String/StringBuilder.h"
@@ -63,7 +67,12 @@ namespace Test
         testEnv.AddTestCollection<MultiPoolAllocatorTest>();
 
         testEnv.AddTestCollection<OSDebugTest>();
+        testEnv.AddTestCollection<OSInputOutputTest>();
         testEnv.AddTestCollection<OSThreadTest>();
+
+        testEnv.AddTestCollection<BufferTest>();
+        testEnv.AddTestCollection<BufferInputStreamTest>();
+        testEnv.AddTestCollection<BufferOutputStreamTest>();
 
         testEnv.AddTestCollection<ArrayTest>();
         testEnv.AddTestCollection<AtomicStackViewTest>();

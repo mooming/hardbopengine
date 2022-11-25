@@ -23,8 +23,11 @@ public:
     using TIndex = TaskHandle::TIndex;
     using TaskIndex = Task::TIndex;
     using TKey = TaskHandle::TKey;
+
     static constexpr TKey InvalidKey = TaskHandle::InvalidKey;
-    
+    static constexpr TIndex MainStreamIndex = 0;
+    static constexpr TIndex IOStreamIndex = 1;
+
 private:
     struct TaskSlot final
     {
@@ -52,6 +55,9 @@ public:
     static void SetThreadName(StaticString name);
     static void SetStreamIndex(TIndex index);
 
+    static bool IsMainThread();
+    static bool IsIOThread();
+
 public:
     TaskSystem();
     ~TaskSystem();
@@ -67,11 +73,8 @@ public:
     inline auto& IsRunning() const { return isRunning; }
 
 public:
-    bool IsMainThread() const;
-    bool IsIOTaskThread() const;
-
-    inline TIndex GetMainTaskStreamIndex() const { return 0; }
-    inline TIndex GetIOTaskStreamIndex() const { return 1; }
+    inline TIndex GetMainTaskStreamIndex() const { return MainStreamIndex; }
+    inline TIndex GetIOTaskStreamIndex() const { return IOStreamIndex; }
 
     inline auto& GetMainTaskStream() { return streams[GetMainTaskStreamIndex()]; }
     inline auto& GetMainTaskStream() const { return streams[GetMainTaskStreamIndex()]; }

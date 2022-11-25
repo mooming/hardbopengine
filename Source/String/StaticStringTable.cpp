@@ -28,7 +28,7 @@ StaticStringTable::StaticStringTable()
 
 StaticString StaticStringTable::GetName() const
 {
-    static StaticString className = StringUtil::PrettyFunctionToCompactClassName(__PRETTY_FUNCTION__);
+    static StaticString className = StringUtil::ToCompactClassName(__PRETTY_FUNCTION__);
 
     return className;
 }
@@ -83,7 +83,7 @@ StaticStringID StaticStringTable::Register(const std::string_view& str)
         }
 
         id.index = static_cast<TIndex>(table.size());
-        table.emplace_back(str);
+        table.emplace_back(str.begin(), str.end());
     }
 
     return id;
