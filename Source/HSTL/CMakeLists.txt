@@ -19,6 +19,7 @@ link_directories (${CMAKE_SOURCE_DIR}/lib)
 
 add_library (HSTL STATIC 
  HString.cpp
+ HUnorderedMap.cpp
  HSTL.h
  HString.h
  HUnorderedMap.h

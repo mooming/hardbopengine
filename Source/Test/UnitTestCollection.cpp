@@ -8,6 +8,7 @@
 #include "Container/Array.h"
 #include "Container/AtomicStackView.h"
 #include "Container/LinkedList.h"
+#include "HSTL/HUnorderedMap.h"
 #include "Math/MathUtil.h"
 #include "Math/Vector2.h"
 #include "Math/Vector3.h"
@@ -74,6 +75,8 @@ namespace Test
         testEnv.AddTestCollection<BufferInputStreamTest>();
         testEnv.AddTestCollection<BufferOutputStreamTest>();
 
+        testEnv.AddTestCollection<HUnorderedMapTest>();
+        
         testEnv.AddTestCollection<ArrayTest>();
         testEnv.AddTestCollection<AtomicStackViewTest>();
         testEnv.AddTestCollection<LinkedListTest>();
