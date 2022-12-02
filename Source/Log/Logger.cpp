@@ -84,11 +84,13 @@ Logger::SimpleLogger Logger::Get(StaticString category, ELogLevel level)
     return log;
 }
 
-Logger::Logger(const char* path, const char* filename, int numRolling)
+Logger::Logger(Engine& engine, const char* path, const char* filename)
     : allocator("LoggerMemoryPool")
     , hasInput(false)
     , needFlush(false)
 {
+    Assert(engine.IsMemoryManagerReady());
+
     instance = this;
     LogUtil::GetStartTime();
 
@@ -126,6 +128,8 @@ Logger::Logger(const char* path, const char* filename, int numRolling)
     flushFuncs.reserve(2);
     flushFuncs.push_back([this](const TTextBuffer& buffer) { WriteLog(buffer); });
     flushFuncs.push_back([this](const TTextBuffer& buffer) { PrintStdIO(buffer); });
+
+    engine.SetLoggerReady();
 }
 
 Logger::~Logger()
@@ -297,16 +301,9 @@ void Logger::AddLog(StaticString category, ELogLevel level
 
     {
         std::lock_guard lock(inputLock);
-
-        if (unlikely(ls.Size() >= Config::LogLineLength))
-        {
-            inputBuffer.emplace_back(level, threadName, category, true, ls.c_str());
-        }
-        else
-        {
-            inputBuffer.emplace_back(level, threadName, category, ls.c_str());
-        }
-
+        AllocatorScope scope(MemoryManager::SystemAllocatorID);
+        inputBuffer.emplace_back(level, threadName, category, ls.c_str(), ls.Size());
+        
         bufferSize = inputBuffer.size();
         hasInput.store(true, std::memory_order_release);
         needFlush.store(true, std::memory_order_release);

@@ -26,14 +26,7 @@ private:
     
 public:
     StaticString();
-    inline StaticString(StaticStringID id)
-        : id (id)
-    {
-#ifdef __DEBUG__
-        text[0] = '\0';
-#endif // __DEBUG__
-    }
-    
+    StaticString(StaticStringID id);
     StaticString(const char* string);
     StaticString(const std::string_view& str);
 

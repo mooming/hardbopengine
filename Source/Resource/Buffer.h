@@ -32,8 +32,17 @@ public:
 
     StaticString GetClassName() const;
     void SetReleaser(TReleaseBuffer&& releaseFunc);
-    
+
 public:
+    template <typename T>
+    T* GetDataAs() { return reinterpret_cast<T*>(data); }
+
+    template <typename T>
+    const T* GetDataAs() const { return reinterpret_cast<T*>(data); }
+
+    template <typename T>
+    size_t TranslateSizeAs() const { return size / sizeof(T); }
+
     inline uint8_t* GetData() { return data; }
     inline const uint8_t* GetData() const { return data; }
     inline auto GetSize() const { return size; }

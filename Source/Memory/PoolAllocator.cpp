@@ -30,10 +30,11 @@ PoolAllocator::PoolAllocator(const char* name, TSize inBlockSize, TIndex numberO
 #endif // PROFILE_ENABLED
 {
     Assert(blockSize >= sizeof(TSize));
+    const TSize totalSize = blockSize * numberOfBlocks;
+    if (totalSize <= 0)
+        return;
 
     auto& mmgr = MemoryManager::GetInstance();
-    const TSize totalSize = blockSize * numberOfBlocks;
-
     buffer = static_cast<Byte*>(mmgr.AllocateBytes(totalSize));
     availables = &buffer[0];
 
@@ -114,12 +115,11 @@ PoolAllocator::~PoolAllocator()
         return;
     }
 
+    const size_t totalSize = blockSize * numberOfBlocks;
     Assert(id != InvalidAllocatorID);
     Assert(buffer != nullptr);
 
     auto& mmgr = MemoryManager::GetInstance();
-    const size_t totalSize = blockSize * numberOfBlocks;
-
     mmgr.DeallocateBytes(buffer, totalSize);
 
 #ifdef PROFILE_ENABLED

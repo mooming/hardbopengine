@@ -32,8 +32,7 @@ struct LogLine final
 
     LogLine();
     LogLine(LogLine&& rhs);
-    LogLine(ELogLevel level, StaticString threadName, StaticString category, const char* inText);
-    LogLine(ELogLevel level, StaticString threadName, StaticString category, bool isLong, const char* inText);
+    LogLine(ELogLevel level, StaticString threadName, StaticString category, const char* inText, size_t size);
     ~LogLine();
 
     const char* GetText() const;

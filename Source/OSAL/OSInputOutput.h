@@ -21,6 +21,7 @@ bool Delete(HE::StaticString filePath);
 
 size_t Read(const FileHandle& handle, void* buffer, size_t size);
 size_t Write(const FileHandle& handle, void* buffer, size_t size);
+bool Truncate(const FileHandle& handle, size_t size);
 
 void* MapMemory(FileHandle& fileHandle, size_t size, ProtectionMode protection, size_t offset);
 bool MapSync(void* ptr, size_t size, MapSyncMode syncMode);

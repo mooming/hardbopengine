@@ -22,6 +22,9 @@ namespace HE
     {
     public:
         using value_type = T;
+
+        template <class U>
+        struct rebind { using other = SystemAllocator<U>; };
     
     public:
         SystemAllocator() = default;

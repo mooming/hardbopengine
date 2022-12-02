@@ -75,6 +75,12 @@ BufferOutputStream& BufferOutputStream::operator << (uint64_t value)
     return *this;
 }
 
+BufferOutputStream& BufferOutputStream::operator << (size_t value)
+{
+    Put<size_t>(value);
+    return *this;
+}
+
 BufferOutputStream& BufferOutputStream::operator << (float value)
 {
     Put<float>(value);

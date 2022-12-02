@@ -7,6 +7,7 @@
 #include "Log/Logger.h"
 #include "Log/LogLevel.h"
 #include "Memory/MemoryManager.h"
+#include "Resource/ResourceManager.h"
 #include "System/SystemStatistics.h"
 #include "System/TaskSystem.h"
 #include <chrono>
@@ -34,6 +35,12 @@ private:
     PreEngineInit preEngineInit;
 
     bool isRunning;
+    bool isMemoryManagerReady;
+    bool isSystemStatisticsReady;
+    bool isLoggerReady;
+    bool isTaskSystemReady;
+    bool isResourceManagerReady;
+
     std::mutex logLock;
     std::mutex consoleOutLock;
     std::ofstream logFile;
@@ -42,6 +49,7 @@ private:
     SystemStatistics statistics;
     Logger logger;
     TaskSystem taskSystem;
+    ResourceManager resourceManager;
 
 public:
     static Engine& Get();
@@ -59,11 +67,25 @@ public:
     void Stop();
 
 public:
-    StaticString GetName() const;
+    StaticString GetClassName() const;
+
     inline auto& GetMemoryManager() { return memoryManager; }
     inline auto& GetLogger() { return logger; }
     inline auto& GetTaskSystem() { return taskSystem; }
     inline auto& GetStatistics() { return statistics; }
+    inline auto& GetResourceManager() { return resourceManager; }
+
+    inline void SetMemoryManagerReady() { isMemoryManagerReady = true; }
+    inline void SetSystemStatisticsReady() { isSystemStatisticsReady = true; }
+    inline void SetLoggerReady() { isLoggerReady = true; }
+    inline void SetTaskSystemReady() { isTaskSystemReady = true; }
+    inline void SetResourceManagerReady() { isResourceManagerReady = true; }
+
+    inline bool IsMemoryManagerReady() const { return isMemoryManagerReady; }
+    inline bool IsSystemStatisticsReady() const { return isSystemStatisticsReady; }
+    inline bool IsLoggerReady() const { return isLoggerReady; }
+    inline bool IsTaskSystemReady() const { return isTaskSystemReady; }
+    inline bool IsResourceManagerReady() const { return isResourceManagerReady; }
 
     void Log(ELogLevel level, TLogFunc func);
     inline void LogError(TLogFunc func) { Log(ELogLevel::Error, func); }
@@ -73,8 +95,12 @@ public:
     void ConsoleOutLn(const char* str);
 
 private:
+    void PostInitialize();
+
     void PreUpdate(float deltaTime);
     void Update(float deltaTime);
     void PostUpdate(float deltaTime);
+
+    void PreShutdown();
 };
 } // HE

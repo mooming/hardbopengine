@@ -26,6 +26,8 @@ struct source_location;
 namespace HE
 {
 
+class Engine;
+
 class MemoryManager final
 {
 public:
@@ -39,11 +41,19 @@ public:
     static constexpr TId SystemAllocatorID = 0;
     static constexpr size_t MaxBaseMemory = 8'000'000'000;
 
+    using TPoolConfigs = TVector<PoolConfig>;
     struct MultiPoolConfigItem final
     {
         StaticStringID uniqueName;
-        TVector<PoolConfig> configs;
+        TPoolConfigs configs;
+
+        MultiPoolConfigItem() = default;
+        MultiPoolConfigItem(StaticStringID id, TPoolConfigs&& configs);
+
+        bool operator < (const MultiPoolConfigItem& rhs) const;
     };
+
+    using TMultiPoolConfigCache = TVector<MultiPoolConfigItem>;
 
 private:
     struct UsageRecord final
@@ -53,6 +63,9 @@ private:
         size_t totalCapacity = 0;
         size_t maxCapacity = 0;
     };
+
+private:
+    static thread_local TId ScopedAllocatorID;
 
     AllocatorProxy allocators[MaxNumAllocators];
     AtomicStackView<AllocatorProxy> proxyPool;
@@ -65,20 +78,22 @@ private:
     UsageRecord usage;
     UsageRecord sysMemUsage;
 
-    static thread_local TId ScopedAllocatorID;
-
-    TVector<MultiPoolConfigItem> multiPoolConfigs;
+    TMultiPoolConfigCache multiPoolConfigs;
 
 public:
     MemoryManager(const MemoryManager&) = delete;
     MemoryManager& operator= (const MemoryManager&) = delete;
 
+    static StaticStringID GetMultiPoolConfigCacheFilePath();
     static MemoryManager& GetInstance();
     static TId GetCurrentAllocatorID();
 
 public:
-    MemoryManager();
+    MemoryManager(Engine& engine);
     ~MemoryManager();
+
+    void PostEngineInit();
+    void PreEngineShutdown();
 
     const char* GetName() const;
     const char* GetName(TAllocatorID id) const;
@@ -103,13 +118,13 @@ public:
     void* AllocateBytes(size_t nBytes);
     void DeallocateBytes(void* ptr, size_t nBytes);
 
-    void Log(ELogLevel level, TLogFunc func);
+    void Log(ELogLevel level, TLogFunc func) const;
 
-    const MultiPoolConfigItem& GetMultiPoolConfig(StaticStringID uniqueName) const;
+    const MultiPoolConfigItem& LookUpMultiPoolConfig(StaticStringID uniqueName) const;
 
 #ifdef PROFILE_ENABLED
     void Deregister(TId id, const std::source_location& srcLocation);
-    void ReportMultiPoolConfigutation(const char* uniqueName,  std::span<PoolConfig> poolConfigs);
+    void ReportMultiPoolConfigutation(StaticStringID uniqueName, TVector<PoolConfig>&& poolConfigs);
 #endif // PROFILE_ENABLED
 
 public:

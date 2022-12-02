@@ -22,12 +22,12 @@ public:
     using TVector = HSTL::HVector<T>;
 
 private:
-    Buffer& buffer;
+    const Buffer& buffer;
     size_t cursor;
     size_t errorCount;
 
 public:
-    BufferInputStream(Buffer& buffer);
+    BufferInputStream(const Buffer& buffer);
     ~BufferInputStream() = default;
 
     inline auto GetErrorCount() const { return errorCount; }
@@ -45,6 +45,7 @@ public:
     This& operator >> (uint32_t& value);
     This& operator >> (int64_t& value);
     This& operator >> (uint64_t& value);
+    This& operator >> (size_t& value);
     This& operator >> (float& value);
     This& operator >> (double& value);
     This& operator >> (long double& value);
@@ -89,7 +90,7 @@ private:
         cursor = startIndex;
 
         auto bufferBase = buffer.GetData();
-        auto data = reinterpret_cast<T*>(&bufferBase[cursor]);
+        auto data = reinterpret_cast<const T*>(&bufferBase[cursor]);
         value = *data;
 
         cursor = newIndex;
@@ -118,7 +119,7 @@ private:
         }
 
         auto bufferBase = buffer.GetData();
-        auto dataBegin = reinterpret_cast<T*>(&bufferBase[cursor]);
+        auto dataBegin = reinterpret_cast<const T*>(&bufferBase[cursor]);
         auto dataEnd = dataBegin + length;
         std::copy(dataBegin, dataEnd, arrayBuffer);
 
@@ -151,7 +152,7 @@ private:
         array.reserve(length);
 
         auto bufferBase = buffer.GetData();
-        auto dataBegin = reinterpret_cast<T*>(&bufferBase[cursor]);
+        auto dataBegin = reinterpret_cast<const T*>(&bufferBase[cursor]);
         auto dataEnd = dataBegin + length;
         std::copy(dataBegin, dataEnd, std::back_inserter(array));
 

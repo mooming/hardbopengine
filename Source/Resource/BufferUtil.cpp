@@ -5,6 +5,7 @@
 #include "Log/Logger.h"
 #include "OSAL/OSFileHandle.h"
 #include "OSAL/OSInputOutput.h"
+#include "OSAL/OSMapSyncMode.h"
 #include "String/StringUtil.h"
 
 
@@ -14,8 +15,19 @@ namespace HE
 namespace BufferUtil
 {
 
+Buffer GenerateDummyBuffer(size_t size)
+{
+    auto generator = [size](TSize& outSize, TBufferData& outData)
+    {
+        outSize = size;
+        outData = nullptr;
+    };
+
+    return Buffer(generator);
+}
+
 Buffer GenerateFileBuffer(StaticString path, OS::FileOpenMode openMode
-    , OS::ProtectionMode protection)
+    , OS::ProtectionMode protection, size_t size)
 {
     using namespace OS;
     using namespace StringUtil;
@@ -24,7 +36,7 @@ Buffer GenerateFileBuffer(StaticString path, OS::FileOpenMode openMode
 
     FileHandle fh;
 
-    auto generator = [&fh, path, openMode, protection](TSize& outSize, TBufferData& outData)
+    auto generator = [&fh, path, openMode, protection, size](TSize& outSize, TBufferData& outData)
     {
         outSize = 0;
         outData = nullptr;
@@ -39,7 +51,22 @@ Buffer GenerateFileBuffer(StaticString path, OS::FileOpenMode openMode
             return;
         }
 
-        const auto fileSize = fh.GetFileSize();
+        auto fileSize = fh.GetFileSize();
+        if (size != 0)
+        {
+            fileSize = size;
+            if (!Truncate(fh, fileSize))
+            {
+                log.OutWarning([path, size](auto& ls)
+                {
+                    ls << "Failed to resize the file " << path
+                        << " to the given size " << size;
+                });
+
+                return;
+            }
+        }
+
         if (fileSize <= 0)
         {
             log.OutWarning([path](auto& ls)
@@ -63,22 +90,38 @@ Buffer GenerateFileBuffer(StaticString path, OS::FileOpenMode openMode
 
         outSize = fileSize;
         outData = reinterpret_cast<decltype(outData)>(ptr);
+
+        log.Out([&](auto& ls)
+        {
+            for (size_t i = 0; i < fileSize; ++i)
+            {
+                ls.Hex(outData[i]) << ' ';
+            }
+        });
     };
 
     Buffer buffer(generator);
+    if (buffer.GetData() == nullptr)
+        return buffer;
 
     auto handleData = fh.data;
     fh.Invalidate();
 
     buffer.SetReleaser([handleData](TSize size, TBufferData data) mutable
     {
-        if (data == nullptr)
+        if (unlikely(data == nullptr))
             return;
 
         FileHandle fh;
         fh.data = handleData;
 
         Assert(size > 0);
+        auto ptr = static_cast<void*>(data);
+
+        MapSyncMode syncMode;
+        syncMode.SetSync();
+
+        MapSync(ptr, size, syncMode);
         UnmapMemory((void*)data, size);
 
         OS::Close(std::move(fh));
@@ -106,7 +149,7 @@ Buffer GetReadOnlyFileBuffer(StaticString path)
     using namespace OS;
 
     FileOpenMode openMode;
-    openMode.SetReadOnly();
+    openMode.SetReadWrite();
 
     ProtectionMode protection;
     protection.SetReadable();
@@ -114,17 +157,26 @@ Buffer GetReadOnlyFileBuffer(StaticString path)
     return GenerateFileBuffer(path, openMode, protection);
 }
 
-Buffer GetWriteOnlyFileBuffer(StaticString path)
+Buffer GetWriteOnlyFileBuffer(StaticString path, size_t size)
 {
     using namespace OS;
 
     FileOpenMode openMode;
-    openMode.SetWriteOnly();
+    openMode.SetReadWrite();
+
+    if (Exist(path))
+    {
+        openMode.SetTruncate();
+    }
+    else
+    {
+        openMode.SetCreate();
+    }
 
     ProtectionMode protection;
     protection.SetWritable();
 
-    return GenerateFileBuffer(path, openMode, protection);
+    return GenerateFileBuffer(path, openMode, protection, size);
 }
 
 } // BufferUtil

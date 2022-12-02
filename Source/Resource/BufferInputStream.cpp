@@ -8,7 +8,7 @@ namespace HE
 
 using This = BufferInputStream;
 
-BufferInputStream::BufferInputStream(Buffer& buffer)
+BufferInputStream::BufferInputStream(const Buffer& buffer)
     : buffer(buffer)
     , cursor(0)
     , errorCount(0)
@@ -69,6 +69,12 @@ This& BufferInputStream::operator >> (uint64_t& value)
     return *this;
 }
 
+This& BufferInputStream::operator >> (size_t& value)
+{
+    Get<size_t>(value, 0);
+    return *this;
+}
+
 This& BufferInputStream::operator >> (float& value)
 {
     Get<float>(value, 0.0f);
@@ -102,13 +108,20 @@ This& BufferInputStream::operator >> (StaticString& str)
     using namespace HSTL;
 
     constexpr size_t InlineBufferSize = 256;
-    HInlineVector<char, InlineBufferSize> tempBuffer;
-    tempBuffer.reserve(InlineBufferSize);
+    HInlineString<InlineBufferSize> tmpStr;
+    tmpStr.reserve(length);
 
-    Get<char>(tempBuffer);
-    Assert(tempBuffer.size() == length);
+    char ch = '\0';
+
+    for (size_t i = 0; i < length; ++i)
+    {
+        Get<char>(ch, '\0');
+        tmpStr.push_back(ch);
+    }
+
+    Assert(tmpStr.size() == length);
     
-    str = StaticString(static_cast<const char*>(tempBuffer.data()));
+    str = StaticString(tmpStr.c_str());
 
     return *this;
 }

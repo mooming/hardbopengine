@@ -10,6 +10,9 @@
 
 namespace HE
 {
+
+class MemoryManager;
+
 class MultiPoolAllocator final
 {
 public:
@@ -51,6 +54,7 @@ public:
     void PrintUsage() const;
     
 private:
+    bool GenerateBanksByCache(MemoryManager& mmgr);
     size_t GetBankIndex(size_t nBytes) const;
     size_t GetBankIndex(void* ptr) const;
     size_t CalculateBlockSize(size_t requested) const;

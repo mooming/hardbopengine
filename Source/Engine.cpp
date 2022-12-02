@@ -63,8 +63,16 @@ Engine::PreEngineInit::PreEngineInit(Engine* engine)
 
 Engine::Engine()
     : preEngineInit(this)
+    , isRunning(false)
+    , isMemoryManagerReady(false)
+    , isSystemStatisticsReady(false)
+    , isLoggerReady(false)
+    , isTaskSystemReady(false)
+    , isResourceManagerReady(false)
     , logFile("helowlevel.log")
-    , logger("./", "hardbop.log", 5)
+    , memoryManager(*this)
+    , statistics(*this)
+    , logger(*this, "./", "hardbop.log")
 {
     std::signal(SIGABRT, SignalHandler);
 #ifdef SIGBUS
@@ -84,10 +92,14 @@ Engine::~Engine()
 
 void Engine::Initialize(int argc, const char* argv[])
 {
+    
     taskSystem.Initialize();
-    logger.StartTask(taskSystem);
+    isTaskSystemReady = true;
 
-    auto log = Logger::Get(GetName(), ELogLevel::Info);
+    logger.StartTask(taskSystem);
+    isLoggerReady = true;
+
+    auto log = Logger::Get(GetClassName());
     
     log.Out("Command Line Arguments");
 
@@ -100,6 +112,8 @@ void Engine::Initialize(int argc, const char* argv[])
     }
 
     log.Out("Engine has been initialized.");
+
+    PostInitialize();
 }
 
 void Engine::Run()
@@ -137,7 +151,9 @@ void Engine::Run()
     statistics.PrintAllocatorProfiles();
 #endif // PROFILE_ENABLED
 
-    auto log = Logger::Get(GetName(), ELogLevel::Info);
+    PreShutdown();
+
+    auto log = Logger::Get(GetClassName(), ELogLevel::Info);
     log.Out("Shutting down...");
     
     logger.StopTask(taskSystem);
@@ -149,9 +165,9 @@ void Engine::Stop()
     isRunning = false;
 }
 
-StaticString Engine::GetName() const
+StaticString Engine::GetClassName() const
 {
-    static StaticString name("HEngine");
+    static StaticString name("Engine");
     return name;
 }
 
@@ -235,6 +251,18 @@ void Engine::ConsoleOutLn(const char* str)
     std::cout << str << std::endl;
 }
 
+void Engine::PostInitialize()
+{
+    using namespace StringUtil;
+    auto log = Logger::Get(ToCompactMethodName(__PRETTY_FUNCTION__));
+
+    log.Out("Engine PostInitialize [Start]");
+
+    memoryManager.PostEngineInit();
+
+    log.Out("Engine PostInitialize [Done]");
+}
+
 void Engine::PreUpdate(float deltaTime)
 {
     Log(ELogLevel::Info, [deltaTime](auto& ls)
@@ -268,6 +296,18 @@ void Engine::PostUpdate(float deltaTime)
     mainTaskStream.Flush();
 
     taskSystem.PostUpdate();
+}
+
+void Engine::PreShutdown()
+{
+    using namespace StringUtil;
+    auto log = Logger::Get(ToCompactMethodName(__PRETTY_FUNCTION__));
+
+    log.Out("Engine PreShutdown [Start]");
+
+    memoryManager.PreEngineShutdown();
+
+    log.Out("Engine PreShutdown [Done]");
 }
 
 } // HE

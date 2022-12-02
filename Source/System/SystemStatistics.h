@@ -19,6 +19,7 @@ struct source_location;
 namespace HE
 {
 
+class Engine;
 class StaticString;
 
 class SystemStatistics final
@@ -41,7 +42,7 @@ private:
 #endif // PROFILE_ENABLED
     
 public:
-    SystemStatistics();
+    SystemStatistics(Engine& engine);
     ~SystemStatistics() = default;
 
     const StaticString& GetName() const;

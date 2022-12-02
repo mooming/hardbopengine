@@ -8,7 +8,6 @@
 #include "Memory/AllocatorScope.h"
 #include "Config/EngineSettings.h"
 #include "System/Debug.h"
-#include "System/ScopedLock.h"
 #include <iostream>
 
 
@@ -43,7 +42,7 @@ StaticStringID StaticStringTable::Register(const char* text)
     Assert(tableID < NumTables);
 
     {
-        ScopedLock lock(tableLock);
+        std::lock_guard lock(tableLock);
 
         auto& table = tables[tableID];
         auto found = std::find(table.begin(), table.end(), TString(text));
@@ -71,7 +70,7 @@ StaticStringID StaticStringTable::Register(const std::string_view& str)
     Assert(tableID < NumTables);
 
     {
-        ScopedLock lock(tableLock);
+        std::lock_guard lock(tableLock);
 
         auto& table = tables[tableID];
         auto found = std::find(table.begin(), table.end(), str);
@@ -100,7 +99,7 @@ const char* StaticStringTable::Get(StaticStringID id) const
     static_assert(!std::is_signed<decltype(id.index)>());
 
     {
-        ScopedLock lock(tableLock);
+        std::lock_guard lock(tableLock);
         auto& table = tables[id.tableID];
 
         if (unlikely(id.index >= table.size()))

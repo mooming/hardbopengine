@@ -30,8 +30,6 @@ MultiPoolAllocator::MultiPoolAllocator(const char* inName
     auto& mmgr = MemoryManager::GetInstance();
     parentID = mmgr.GetCurrentAllocatorID();
 
-    AllocatorScope scope(parentID);
-
     auto allocFunc = [this](size_t n) -> void*
     {
         return Allocate(n);
@@ -43,6 +41,8 @@ MultiPoolAllocator::MultiPoolAllocator(const char* inName
     };
 
     id = mmgr.Register(name, false, 0, allocFunc, deallocFunc);
+
+    GenerateBanksByCache(mmgr);
 }
 
 MultiPoolAllocator::MultiPoolAllocator(const char* inName
@@ -61,29 +61,6 @@ MultiPoolAllocator::MultiPoolAllocator(const char* inName
     auto& mmgr = MemoryManager::GetInstance();
     parentID = mmgr.GetCurrentAllocatorID();
 
-    AllocatorScope scope(parentID);
-
-    constexpr size_t InlineBufferSize = 128;
-    Assert(initialConfigurations.size() <= InlineBufferSize);
-
-    HInlineVector<PoolConfig, InlineBufferSize> vlist;
-    vlist.reserve(InlineBufferSize);
-
-    vlist.insert(vlist.end(), initialConfigurations);
-    std::sort(vlist.begin(), vlist.end());
-    
-    banks.reserve(vlist.size());
-
-    for (auto& config : vlist)
-    {
-        InlineStringBuilder<1024> str;
-        str << name << '_' << config.blockSize
-            << '_' << config.numberOfBlocks;
-        
-        banks.emplace_back(str.c_str()
-            , config.blockSize, config.numberOfBlocks);
-    }
-
     auto allocFunc = [this](size_t n) -> void*
     {
         return Allocate(n);
@@ -95,6 +72,30 @@ MultiPoolAllocator::MultiPoolAllocator(const char* inName
     };
 
     id = mmgr.Register(name, false, 0, allocFunc, deallocFunc);
+
+    if (GenerateBanksByCache(mmgr))
+        return;
+
+    constexpr size_t InlineBufferSize = 128;
+    Assert(initialConfigurations.size() <= InlineBufferSize);
+
+    HInlineVector<PoolConfig, InlineBufferSize> vlist;
+    vlist.reserve(InlineBufferSize);
+
+    vlist.insert(vlist.end(), initialConfigurations);
+    std::sort(vlist.begin(), vlist.end());
+
+    banks.reserve(vlist.size());
+
+    for (auto& config : vlist)
+    {
+        InlineStringBuilder<1024> str;
+        str << name << '_' << config.blockSize
+            << '_' << config.numberOfBlocks;
+
+        banks.emplace_back(str.c_str()
+            , config.blockSize, config.numberOfBlocks);
+    }
 }
 
 MultiPoolAllocator::~MultiPoolAllocator()
@@ -102,6 +103,42 @@ MultiPoolAllocator::~MultiPoolAllocator()
     PrintUsage();
 
     auto& mmgr = MemoryManager::GetInstance();
+
+#ifdef PROFILE_ENABLED
+    {
+        using TPoolConfigs = MemoryManager::TPoolConfigs;
+
+        TPoolConfigs configs;
+        configs.reserve(banks.size());
+
+        auto InsertItem = [&configs](PoolAllocator& alloc)
+        {
+            auto key = alloc.GetBlockSize();
+            auto value = alloc.GetUsedBlocksMax();
+
+            auto pred = [key](const PoolConfig& item)
+            {
+                return item.blockSize == key;
+            };
+
+            auto found = std::find_if(configs.begin(), configs.end(), pred);
+            if (found == configs.end())
+            {
+                configs.emplace_back(key, value);
+            }
+
+            found->numberOfBlocks += value;
+        };
+
+        for (auto& bank : banks)
+        {
+            InsertItem(bank);
+        }
+
+        auto uniqueName = GetName();
+        mmgr.ReportMultiPoolConfigutation(uniqueName.GetID(), std::move(configs));
+    }
+#endif // PROFILE_ENABLED
 
 #ifdef __MEMORY_VERIFICATION__
     const auto currentTID = std::this_thread::get_id();
@@ -294,6 +331,26 @@ void MultiPoolAllocator::PrintUsage() const
 #endif // PROFILE_ENABLED
 }
 
+bool MultiPoolAllocator::GenerateBanksByCache(MemoryManager& mmgr)
+{
+    auto nameID = name.GetID();
+    auto& cacheItem = mmgr.LookUpMultiPoolConfig(nameID);
+    if (cacheItem.uniqueName != nameID)
+        return false;
+
+    auto& configs = cacheItem.configs;
+    for (auto& config : configs)
+    {
+        InlineStringBuilder<1024> str;
+        str << name << '_' << config.blockSize
+            << '_' << config.numberOfBlocks;
+
+        banks.emplace_back(str.c_str()
+            , config.blockSize, config.numberOfBlocks);
+    }
+
+    return true;
+}
 size_t MultiPoolAllocator::GetBankIndex(size_t nBytes) const
 {
     nBytes = std::max(minBlock, nBytes);

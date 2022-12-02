@@ -42,7 +42,8 @@ void SetHandle(FileHandle& outHandle, int fd)
 
 bool Open(FileHandle& outHandle, HE::StaticString filePath, FileOpenMode openMode)
 {
-    int fd = ::open(filePath.c_str(), openMode.value, S_IRUSR | S_IWUSR);
+    auto path = filePath.c_str();
+    int fd = ::open(path, openMode.value, S_IRUSR | S_IWUSR);
     if (unlikely(fd < 0))
     {
         using namespace HE;
@@ -222,7 +223,40 @@ size_t Write(const FileHandle& handle, void* buffer, size_t size)
     }
 
     return result;
+}
 
+bool Truncate(const FileHandle& handle, size_t size)
+{
+    using namespace HE;
+    using namespace StringUtil;
+    using namespace FileHandleHelper;
+
+    static auto log = Logger::Get(ToFunctionName(__PRETTY_FUNCTION__));
+
+    int fd = GetHandle(handle);
+    if (unlikely(fd < 0))
+    {
+        log.OutWarning([fd](auto& ls)
+        {
+            ls << "Invalid file handle (fd:" << fd << ").";
+        });
+
+        return 0;
+    }
+
+    auto result = ftruncate(fd, size);
+    if (unlikely(result != 0))
+    {
+        log.OutWarning([fd, size](auto& ls)
+        {
+            ls << "Failed to truncate the file(" << fd << ") with the size "
+                << size << ". Reason(" << std::strerror(errno) << ')';
+        });
+
+        return 0;
+    }
+
+    return true;
 }
 
 void* MapMemory(FileHandle& fileHandle, size_t size, ProtectionMode protection, size_t offset)

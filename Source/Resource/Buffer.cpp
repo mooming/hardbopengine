@@ -42,10 +42,7 @@ Buffer::Buffer(const TGenerateBuffer& genFunc, const TReleaseBuffer& releaseFunc
 Buffer::~Buffer()
 {
     if (data == nullptr)
-    {
-        Assert(size == 0);
         return;
-    }
 
     if (unlikely(releaser == nullptr))
     {

@@ -4,9 +4,13 @@
 
 #include "Engine.h"
 #include "SystemAllocator.h"
+#include "MultiPoolConfigCache.h"
 #include "Config/ConfigParam.h"
 #include "OSAL/Intrinsic.h"
+#include "OSAL/OSInputOutput.h"
 #include "OSAL/SourceLocation.h"
+#include "Resource/Buffer.h"
+#include "Resource/BufferUtil.h"
 #include "String/StringUtil.h"
 #include "System/Debug.h"
 #include <cstdint>
@@ -22,6 +26,11 @@ TDebugVariable<bool> DVarScopedAllocLogging = false;
 
 static MemoryManager* MMgrInstance = nullptr;
 
+StaticStringID MemoryManager::GetMultiPoolConfigCacheFilePath()
+{
+    static const StaticString path(".multiPoolConfigCache.dat");
+    return path.GetID();
+}
 
 MemoryManager& MemoryManager::GetInstance()
 {
@@ -34,7 +43,19 @@ MemoryManager::TId MemoryManager::GetCurrentAllocatorID()
     return ScopedAllocatorID;
 }
 
-MemoryManager::MemoryManager()
+using TMultiPoolConfigItem = MemoryManager::MultiPoolConfigItem;
+TMultiPoolConfigItem::MultiPoolConfigItem(StaticStringID id, TVector<PoolConfig>&& configs)
+    : uniqueName(id)
+    , configs(configs)
+{
+}
+
+bool TMultiPoolConfigItem::operator < (const MultiPoolConfigItem& rhs) const
+{
+    return uniqueName < rhs.uniqueName;
+}
+
+MemoryManager::MemoryManager(Engine& engine)
     : allocCount(0)
     , deallocCount(0)
 {
@@ -49,6 +70,8 @@ MemoryManager::MemoryManager()
     }
 
     RegisterSystemAllocator();
+
+    engine.SetMemoryManagerReady();
 }
 
 MemoryManager::~MemoryManager()
@@ -58,6 +81,18 @@ MemoryManager::~MemoryManager()
 
     DeregisterSystemAllocator();
     MMgrInstance = nullptr;
+}
+
+void MemoryManager::PostEngineInit()
+{
+    LoadMultiPoolConfigs();
+}
+
+void MemoryManager::PreEngineShutdown()
+{
+#ifdef PROFILE_ENABLED
+    SaveMultiPoolConfigs();
+#endif // PROFILE_ENABLED
 }
 
 const char* MemoryManager::GetName() const
@@ -293,6 +328,12 @@ void MemoryManager::Deregister(TId id, const std::source_location& srcLoc)
     stats.Report();
     
     Deregister(id);
+}
+
+void MemoryManager::ReportMultiPoolConfigutation(StaticStringID uniqueName
+    , TVector<PoolConfig>&& poolConfigs)
+{
+    multiPoolConfigs.emplace_back(uniqueName, std::move(poolConfigs));
 }
 #endif // PROFILE_ENABLED
 
@@ -690,7 +731,7 @@ void MemoryManager::DeallocateBytes(void* ptr, size_t nBytes)
     DeallocateBytes(GetScopedAllocatorID(), ptr, nBytes);
 }
 
-void MemoryManager::Log(ELogLevel level, TLogFunc func)
+void MemoryManager::Log(ELogLevel level, TLogFunc func) const
 {
 #ifdef __MEMORY_LOGGING__
     static TAtomicConfigParam<uint8_t> CPLogLevel("Log.Memory"
@@ -705,7 +746,7 @@ void MemoryManager::Log(ELogLevel level, TLogFunc func)
 #endif // __MEMORY_LOGGING__
 }
 
-const MemoryManager::MultiPoolConfigItem& MemoryManager::GetMultiPoolConfig(StaticStringID uniqueName) const
+const TMultiPoolConfigItem& MemoryManager::LookUpMultiPoolConfig(StaticStringID uniqueName) const
 {
     static const MultiPoolConfigItem null;
 
@@ -723,7 +764,21 @@ const MemoryManager::MultiPoolConfigItem& MemoryManager::GetMultiPoolConfig(Stat
 
         auto& item = multiPoolConfigs[mid];
         if (uniqueName == item.uniqueName)
+        {
+            Log(ELogLevel::Warning, [&item](auto& ls)
+            {
+                StaticString name(item.uniqueName);
+                for (auto& config : item.configs)
+                {
+                    ls << "LookUpMultiPoolConfig: Found [" << name << "] ("
+                        << config.blockSize
+                        << ", " << config.numberOfBlocks << ")\n";
+                }
+
+            });
+
             return item;
+        }
 
         if (uniqueName < item.uniqueName)
         {
@@ -731,8 +786,8 @@ const MemoryManager::MultiPoolConfigItem& MemoryManager::GetMultiPoolConfig(Stat
             continue;
         }
 
-        // uniqueName >= item.uniqueName
-        start = mid;
+        // uniqueName > item.uniqueName
+        start = mid + 1;
     }
 
     return null;
@@ -795,14 +850,89 @@ void MemoryManager::DeregisterSystemAllocator()
     sysMemUsage.maxCapacity = 0;
 }
 
-void LoadMultiPoolConfigs()
+void MemoryManager::LoadMultiPoolConfigs()
 {
+    using namespace StringUtil;
+    static const StaticString func(ToMethodName(__PRETTY_FUNCTION__));
 
+    StaticString path(GetMultiPoolConfigCacheFilePath());
+    if (!OS::Exist(path))
+    {
+        Log(ELogLevel::Significant, [path](auto& ls)
+        {
+            ls << "Load MultiPoolConfig: Failed to find " << path;
+        });
+
+        return;
+    }
+
+    Log(ELogLevel::Significant, [path](auto& ls)
+    {
+        ls << "Load MultiPoolConfig: " << path;
+    });
+
+    auto buffer = BufferUtil::GetReadOnlyFileBuffer(path);
+    if (buffer.GetData() == nullptr)
+    {
+        Log(ELogLevel::Error, [path](auto& ls)
+        {
+            ls << '[' << func << "] Failed to open the file " << path;
+        });
+
+        return;
+    }
+
+    MultiPoolConfigCache cache;
+    if (!cache.Deserialize(buffer))
+    {
+        Log(ELogLevel::Error, [path](auto& ls)
+        {
+            ls << '[' << func << "] Failed to deserialize the file " << path;
+        });
+
+        return;
+    }
+
+    cache.Swap(multiPoolConfigs);
 }
 
-void SaveMultiPoolConfigs()
+void MemoryManager::SaveMultiPoolConfigs()
 {
+    using namespace StringUtil;
+    static const StaticString func(ToMethodName(__PRETTY_FUNCTION__));
 
+    MultiPoolConfigCache cache;
+    cache.Swap(multiPoolConfigs);
+
+    size_t size = 0;
+
+    {
+        auto buffer = BufferUtil::GenerateDummyBuffer();
+        size = cache.Serialize(buffer);
+    }
+
+    auto pathStrID = GetMultiPoolConfigCacheFilePath();
+    StaticString path(pathStrID);
+
+    Log(ELogLevel::Info, [size, path](auto& ls)
+    {
+        ls << '[' << func << "] MultiPoolConfig cache data(" << size
+            << " bytes) shall be saved in " << path;
+    });
+
+    auto buffer = BufferUtil::GetWriteOnlyFileBuffer(path, size);
+    auto result = cache.Serialize(buffer);
+    cache.Swap(multiPoolConfigs);
+
+    if (result != size)
+    {
+        Log(ELogLevel::Error, [path](auto& ls)
+        {
+            ls << '[' << func << "] Failed to deserialize the file " << path;
+        });
+
+        return;
+    }
 }
 
 void MemoryManager::SetScopedAllocatorID(TId id)

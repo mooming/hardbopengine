@@ -32,7 +32,11 @@ LogLine::LogLine(LogLine&& rhs)
     if (unlikely(isLong))
     {
         longText = rhs.longText;
+        longTextSize = rhs.longTextSize;
+
         rhs.isLong = false;
+        rhs.longText = nullptr;
+        rhs.longTextSize = 0;
         rhs.text[0] = '\0';
 
         return;
@@ -41,40 +45,12 @@ LogLine::LogLine(LogLine&& rhs)
     std::copy(std::begin(rhs.text), std::end(rhs.text), std::begin(text));
 }
 
-LogLine::LogLine(ELogLevel level, StaticString threadName, StaticString category, const char* inText)
+LogLine::LogLine(ELogLevel level, StaticString threadName, StaticString category, const char* inText, size_t size)
     : timeStamp(std::chrono::steady_clock::now())
     , threadName(threadName)
     , category(category)
     , level(level)
-    , isLong(false)
-{
-    if (unlikely(inText == nullptr))
-    {
-        text[0] = '\0';
-        return;
-    }
-
-#ifdef PROFILE_ENABLED
-    {
-        auto& engine = Engine::Get();
-        auto& stat = engine.GetStatistics();
-        stat.IncLogCount();
-    }
-#endif // PROFILE_ENABLED
-
-    constexpr size_t LastIndex = Config::LogLineLength - 1;
-    const auto length = StringUtil::StrLen(inText, LastIndex);
-
-    std::copy(&inText[0], &inText[length], std::begin(text));
-    text[length] = '\0';
-}
-
-LogLine::LogLine(ELogLevel level, StaticString threadName, StaticString category, bool isLong, const char* inText)
-    : timeStamp(std::chrono::steady_clock::now())
-    , threadName(threadName)
-    , category(category)
-    , level(level)
-    , isLong(isLong)
+    , isLong(size >= (Config::LogLineLength - 1))
 {
     if (unlikely(inText == nullptr))
     {
@@ -92,7 +68,7 @@ LogLine::LogLine(ELogLevel level, StaticString threadName, StaticString category
 #endif // PROFILE_ENABLED
 
         auto& mmgr = engine.GetMemoryManager();
-        longTextSize = StringUtil::StrLen(inText) + 1;
+        longTextSize = size + 1;
         longText = (char*)mmgr.SysAllocate(longTextSize);
         std::copy(&inText[0], &inText[longTextSize], longText);
 
@@ -109,7 +85,8 @@ LogLine::LogLine(ELogLevel level, StaticString threadName, StaticString category
 
     constexpr size_t LastIndex = Config::LogLineLength - 1;
     const auto length = StringUtil::StrLen(inText, LastIndex);
-    std::copy(&inText[0], &inText[length], text);
+
+    std::copy(&inText[0], &inText[length], std::begin(text));
     text[length] = '\0';
 }
 

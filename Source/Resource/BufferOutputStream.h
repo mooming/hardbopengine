@@ -31,6 +31,7 @@ public:
     BufferOutputStream(Buffer& buffer);
     ~BufferOutputStream() = default;
 
+    inline auto GetCursor() const { return cursor; }
     inline auto GetErrorCount() const { return errorCount; }
     inline bool HasError() const { return errorCount > 0; }
     inline void ClearErrorCount() { errorCount = 0; }
@@ -46,6 +47,7 @@ public:
     This& operator << (uint32_t value);
     This& operator << (int64_t value);
     This& operator << (uint64_t value);
+    This& operator << (size_t value);
     This& operator << (float value);
     This& operator << (double value);
     This& operator << (long double value);
@@ -84,28 +86,33 @@ private:
     void Put (T value)
     {
         Assert(std::this_thread::get_id() == threadID);
+        const size_t size = buffer.GetSize();
+        if (cursor >= size)
+            return;
 
         constexpr size_t tSize = sizeof(T);
         const size_t startIndex = ((cursor + tSize - 1) / tSize) * tSize;
-        const size_t size = buffer.GetSize();
+        const auto newIndex = startIndex + tSize;
 
         auto bufferBase = buffer.GetData();
-        while (cursor < startIndex)
+        if (bufferBase == nullptr)
         {
-            bufferBase[cursor++] = 0;
+            if (newIndex <= size)
+                cursor = newIndex;
 
-            if (cursor >= size)
-            {
-                ++errorCount;
-                return;
-            }
+            return;
         }
 
-        const auto newIndex = cursor + tSize;
+        Assert(startIndex <= newIndex);
         if (newIndex > size)
         {
             ++errorCount;
             return;
+        }
+
+        while (cursor < startIndex)
+        {
+            bufferBase[cursor++] = 0;
         }
 
         auto data = reinterpret_cast<T*>(&bufferBase[cursor]);
@@ -118,30 +125,36 @@ private:
     void Put (const T* value, size_t length)
     {
         Assert(std::this_thread::get_id() == threadID);
-        
+
+        const size_t size = buffer.GetSize();
+        if (cursor >= size)
+            return;
+
         Put<size_t>(length);
         
         constexpr size_t tSize = sizeof(T);
         const size_t startIndex = ((cursor + tSize - 1) / tSize) * tSize;
-        const size_t size = buffer.GetSize();
-
+        const auto newIndex = startIndex + (tSize * length);
+        
         auto bufferBase = buffer.GetData();
-        while (cursor < startIndex)
+        if (bufferBase == nullptr)
         {
-            bufferBase[cursor++] = 0;
+            if (newIndex <= size)
+                cursor = newIndex;
 
-            if (cursor >= size)
-            {
-                ++errorCount;
-                return;
-            }
+            return;
         }
 
-        const auto newIndex = cursor + (tSize * length);
+        Assert(startIndex <= newIndex);
         if (newIndex > size)
         {
             ++errorCount;
             return;
+        }
+
+        while (cursor < startIndex)
+        {
+            bufferBase[cursor++] = 0;
         }
 
         auto data = reinterpret_cast<T*>(&bufferBase[cursor]);

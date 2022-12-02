@@ -25,10 +25,7 @@ struct InlinePoolAllocator final
     using value_type = T;
 
     template <class U>
-    struct rebind
-    {
-        typedef InlinePoolAllocator<U, BufferSize, NumBuffers> other;
-    };
+    struct rebind { using other = InlinePoolAllocator<U, BufferSize, NumBuffers>; };
  
     static_assert(NumBuffers > 0, "The number of buffers should be greater than or equal to zero.");
     static_assert(std::is_signed<TIndex>(), "The type of BufferSize should be signed integral.");

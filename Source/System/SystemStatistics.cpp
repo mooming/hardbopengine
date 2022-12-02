@@ -2,6 +2,7 @@
 
 #include "SystemStatistics.h"
 
+#include "Engine.h"
 #include "Log/Logger.h"
 #include "OSAL/OSDebug.h"
 #include "String/StaticString.h"
@@ -10,12 +11,14 @@
 namespace HE
 {
 
-SystemStatistics::SystemStatistics()
+SystemStatistics::SystemStatistics(Engine& engine)
     : frameCount(0)
     , slowFrameCount(0)
     , startTime(Time::TStopWatch::now())
     , currentTime(startTime)
 {
+    Assert(engine.IsMemoryManagerReady());
+    engine.SetSystemStatisticsReady();
 }
 
 const StaticString& SystemStatistics::GetName() const

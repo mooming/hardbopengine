@@ -22,6 +22,30 @@ StaticString::StaticString()
 #endif // __DEBUG__
 }
 
+StaticString::StaticString(StaticStringID id)
+    : id (id)
+{
+#ifdef __DEBUG__
+    {
+        constexpr auto LastIndex = DebugBufferSize - 1;
+
+        auto string = c_str();
+        size_t i = 0;
+
+        for (; i < LastIndex; ++i)
+        {
+            char ch = string[i];
+            if (ch == '\0')
+                break;
+
+            text[i] = ch;
+        }
+
+        text[i] = '\0';
+    }
+#endif // __DEBUG__
+}
+
 StaticString::StaticString(const char* string)
 {
     auto& ssTable = StaticStringTable::GetInstance();

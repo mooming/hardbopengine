@@ -12,16 +12,15 @@
 
 namespace HE
 {
-template <class T>
-struct BaseAllocator final
+
+template <typename T>
+class BaseAllocator final
 {
+public:
     using value_type = T;
     
     template <class U>
-    struct rebind
-    {
-        typedef BaseAllocator<U> other;
-    };
+    struct rebind { using other = BaseAllocator<U>; };
     
 private:
     TAllocatorID allocatorID;
@@ -70,6 +69,7 @@ public:
     inline auto GetSourceAllocatorID() const { return allocatorID; }
     inline size_t GetFallbackCount() const { return 0; }
 };
+
 } // HE
 
 #ifdef __UNIT_TEST__

@@ -22,6 +22,7 @@
 namespace HE
 {
 
+class Engine;
 class TaskSystem;
 
 class Logger final
@@ -103,13 +104,14 @@ public:
     static Logger& Get();
     static SimpleLogger Get(StaticString category, ELogLevel level = ELogLevel::Info);
 
+public:
     Logger(const Logger&) = delete;
     Logger(Logger&&) = delete;
     Logger& operator= (const Logger&) = delete;
     Logger& operator= (Logger&&) = delete;
 
 public:
-    Logger(const char* path, const char* filename, int numRolling);
+    Logger(Engine& engine, const char* path, const char* filename);
     ~Logger();
     
     StaticString GetName() const;

@@ -6,6 +6,7 @@
 #include "StaticString.h"
 #include "StringUtil.h"
 #include "OSAL/Intrinsic.h"
+#include <cctype>
 #include <cstring>
 #include <string>
 #include <string_view>
@@ -58,6 +59,30 @@ public:
     operator const TChar* () const
     {
         return c_str();
+    }
+
+    This& Hex(uint8_t value)
+    {
+        auto print = [&]()
+        {
+            const size_t remained = BufferSize - length;
+
+            if(std::isprint(value))
+            {
+                return snprintf(&buffer[length]
+                    , remained, "%c", value);
+            }
+
+            return snprintf(&buffer[length]
+                , remained, "%02x", value);
+        };
+
+        int written = print();
+
+        Assert(written >= 0);
+        length = std::min(LastIndex, length + written);
+
+        return *this;
     }
 
     This& operator<< (nullptr_t)

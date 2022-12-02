@@ -9,6 +9,7 @@
 #include "OSAL/OSProtectionMode.h"
 #include "String/StaticString.h"
 #include "System/Debug.h"
+#include <limits>
 
 
 namespace OS
@@ -22,6 +23,12 @@ namespace BufferUtil
 {
 using namespace BufferTypes;
 
+Buffer GenerateDummyBuffer(size_t size = std::numeric_limits<size_t>::max());
+Buffer GenerateFileBuffer(StaticString path, OS::FileOpenMode openMode
+    , OS::ProtectionMode protection, size_t size = 0);
+Buffer GetFileBuffer(StaticString path);
+Buffer GetReadOnlyFileBuffer(StaticString path);
+Buffer GetWriteOnlyFileBuffer(StaticString path, size_t size);
 
 template<typename T>
 Buffer GetMemoryBuffer(TSize numElements, const T& defaultValue)
@@ -45,12 +52,6 @@ Buffer GetMemoryBuffer(TSize numElements, const T& defaultValue)
 
     return Buffer(generator, releaser);
 }
-
-Buffer GenerateFileBuffer(StaticString path, OS::FileOpenMode openMode
-    , OS::ProtectionMode protection);
-Buffer GetFileBuffer(StaticString path);
-Buffer GetReadOnlyFileBuffer(StaticString path);
-Buffer GetWriteOnlyFileBuffer(StaticString path);
 
 } // BufferUtil
 } // HE
