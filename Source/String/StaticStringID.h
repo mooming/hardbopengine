@@ -10,6 +10,7 @@ namespace HE
 {
 struct StaticStringID final
 {
+    static constexpr uint64_t Default = 0;
     using TIndex = uint16_t;
     
     union
@@ -24,7 +25,7 @@ struct StaticStringID final
     };
 
     inline StaticStringID()
-        : value(0)
+        : value(Default)
     {
     }
 

@@ -4,6 +4,7 @@
 
 #include "AllocatorID.h"
 #include "AllocatorProxy.h"
+#include "MultiPoolConfigCache.h"
 #include "PoolConfig.h"
 #include "Config/BuildConfig.h"
 #include "Container/AtomicStackView.h"
@@ -31,29 +32,17 @@ class Engine;
 class MemoryManager final
 {
 public:
+    template <typename T>
+    using TVector = std::vector<T>;
+
     using TId = TAllocatorID;
     using TAllocBytes = AllocatorProxy::TAllocBytes;
     using TDeallocBytes = AllocatorProxy::TDeallocBytes;
     using TLogFunc = std::function<void(std::ostream& out)>;
-    template <typename T>
-    using TVector = std::vector<T>;
+    using TPoolConfigs = TVector<PoolConfig>;
 
     static constexpr TId SystemAllocatorID = 0;
     static constexpr size_t MaxBaseMemory = 8'000'000'000;
-
-    using TPoolConfigs = TVector<PoolConfig>;
-    struct MultiPoolConfigItem final
-    {
-        StaticStringID uniqueName;
-        TPoolConfigs configs;
-
-        MultiPoolConfigItem() = default;
-        MultiPoolConfigItem(StaticStringID id, TPoolConfigs&& configs);
-
-        bool operator < (const MultiPoolConfigItem& rhs) const;
-    };
-
-    using TMultiPoolConfigCache = TVector<MultiPoolConfigItem>;
 
 private:
     struct UsageRecord final
@@ -78,7 +67,10 @@ private:
     UsageRecord usage;
     UsageRecord sysMemUsage;
 
-    TMultiPoolConfigCache multiPoolConfigs;
+    MultiPoolConfigCache multiPoolConfigCache;
+#ifdef PROFILE_ENABLED
+    MultiPoolConfigCache multiPoolConfigLog;
+#endif // PROFILE_ENABLED
 
 public:
     MemoryManager(const MemoryManager&) = delete;
@@ -118,13 +110,14 @@ public:
     void* AllocateBytes(size_t nBytes);
     void DeallocateBytes(void* ptr, size_t nBytes);
 
+    bool IsLogEnabled(ELogLevel level) const;
     void Log(ELogLevel level, TLogFunc func) const;
 
-    const MultiPoolConfigItem& LookUpMultiPoolConfig(StaticStringID uniqueName) const;
+    const MultiPoolAllocatorConfig& LookUpMultiPoolConfig(StaticStringID uniqueName) const;
 
 #ifdef PROFILE_ENABLED
     void Deregister(TId id, const std::source_location& srcLocation);
-    void ReportMultiPoolConfigutation(StaticStringID uniqueName, TVector<PoolConfig>&& poolConfigs);
+    void ReportMultiPoolConfigutation(StaticStringID uniqueName, TPoolConfigs&& poolConfigs);
 #endif // PROFILE_ENABLED
 
 public:

@@ -92,7 +92,6 @@ Engine::~Engine()
 
 void Engine::Initialize(int argc, const char* argv[])
 {
-    
     taskSystem.Initialize();
     isTaskSystemReady = true;
 
@@ -120,36 +119,38 @@ void Engine::Run()
 {
     isRunning = true;
 
-    while(likely(isRunning))
     {
-        statistics.IncFrameCount();
-        statistics.UpdateCurrentTime();
-        auto deltaTime = statistics.GetDeltaTime();
-        
-        PreUpdate(deltaTime);
-        Update(deltaTime);
-        PostUpdate(deltaTime);
+        MultiPoolAllocator allocator("Main");
+        AllocatorScope scope(allocator);
 
-        Stop();
+        while(likely(isRunning))
+        {
+            statistics.IncFrameCount();
+            statistics.UpdateCurrentTime();
+
+            const auto deltaTime = statistics.GetDeltaTime();
+            PreUpdate(deltaTime);
+            Update(deltaTime);
+            PostUpdate(deltaTime);
+
+            Stop();
+        }
     }
 
-    auto& configSys = ConfigSystem::Get();
-    
-#ifdef __DEBUG__
-//    const auto logLevel = static_cast<uint8_t>(ELogLevel::Verbose);
-//    configSys.SetByte("Log.Engine", logLevel);
-//    configSys.SetByte("Log.Level", logLevel);
-#endif // __DEBUG__
+    {
+        auto& configSys = ConfigSystem::Get();
 
-    auto& staticStrTable = StaticStringTable::GetInstance();
-    staticStrTable.PrintStringTable();
-    
-    configSys.PrintAllParameters();
-    statistics.Print();
-    
-#ifdef PROFILE_ENABLED
-    statistics.PrintAllocatorProfiles();
-#endif // PROFILE_ENABLED
+#ifdef __DEBUG__
+//        const auto logLevel = static_cast<uint8_t>(ELogLevel::Verbose);
+//        configSys.SetByte("Log.Engine", logLevel);
+//        configSys.SetByte("Log.Level", logLevel);
+#endif // __DEBUG__
+        
+        auto& staticStrTable = StaticStringTable::GetInstance();
+        staticStrTable.PrintStringTable();
+        configSys.PrintAllParameters();
+        statistics.Print();
+    }
 
     PreShutdown();
 
@@ -217,6 +218,7 @@ void Engine::Log(ELogLevel level, TLogFunc func)
         }
 
         Assert(logFile.is_open());
+
         logFile << '[' << intHours << ':' << intMins << ':' << intSecs
             << '.' << intMSecs << "] ";
 
@@ -304,6 +306,10 @@ void Engine::PreShutdown()
     auto log = Logger::Get(ToCompactMethodName(__PRETTY_FUNCTION__));
 
     log.Out("Engine PreShutdown [Start]");
+
+#ifdef PROFILE_ENABLED
+    logger.ReportMemoryConfiguration();
+#endif // PROFILE_ENABLED
 
     memoryManager.PreEngineShutdown();
 

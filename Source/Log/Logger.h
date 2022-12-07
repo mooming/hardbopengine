@@ -121,7 +121,11 @@ public:
     void SetFilter(StaticString category, TLogFilter filter);
     void AddLog(StaticString category, ELogLevel level, const TLogFunction& logFunc);
     void Flush();
-    
+
+#ifdef PROFILE_ENABLED
+    void ReportMemoryConfiguration();
+#endif // PROFILE_ENABLED
+
 private:
     void ProcessBuffer();
     void FlushBuffer(const TTextBuffer& buffer);

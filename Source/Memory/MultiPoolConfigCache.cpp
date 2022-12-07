@@ -2,6 +2,7 @@
 
 #include "MultiPoolConfigCache.h"
 
+#include "PoolConfigUtil.h"
 #include "HSTL/HString.h"
 #include "Log/Logger.h"
 #include "OSAL/Intrinsic.h"
@@ -23,15 +24,10 @@ StaticString MultiPoolConfigCache::GetClassName() const
     return className;
 }
 
-void MultiPoolConfigCache::Swap(TCacheContainer& inOutData)
-{
-    std::swap(data, inOutData);
-}
-
 size_t MultiPoolConfigCache::Serialize(Buffer& outBuffer)
 {
     using namespace StringUtil;
-    auto log = Logger::Get(ToMethodName(__PRETTY_FUNCTION__));
+    auto log = Logger::Get(ToCompactMethodName(__PRETTY_FUNCTION__));
 
     BufferOutputStream bos(outBuffer);
 
@@ -40,129 +36,7 @@ size_t MultiPoolConfigCache::Serialize(Buffer& outBuffer)
     bos << classNameStr;
     bos << GetVersion();
 
-    auto& data = GetData();
-    std::sort(data.begin(), data.end());
-
-    auto MergeBlocks = [](auto& a)
-    {
-        std::sort(a.begin(), a.end());
-
-        TPoolConfigs temp;
-        std::swap(a, temp);
-
-        size_t blockSize = 0;
-        size_t numBlocks = 0;
-
-        for (auto& config : temp)
-        {
-            if (config.blockSize != blockSize)
-            {
-                if (blockSize > 0 && numBlocks > 0)
-                {
-                    a.emplace_back(blockSize, numBlocks);
-                }
-
-                blockSize = config.blockSize;
-                numBlocks = 0;
-            }
-
-            numBlocks += config.numberOfBlocks;
-        }
-
-        if (blockSize > 0 && numBlocks > 0)
-        {
-            a.emplace_back(blockSize, numBlocks);
-        }
-    };
-
-    auto MergeMax = [MergeBlocks](auto& a, auto& b)
-    {
-        MergeBlocks(a);
-
-        if (b.size() == 0)
-            return;
-
-        MergeBlocks(b);
-
-        size_t bIndex = 0;
-        const size_t bLen = b.size();
-
-        auto iterate = [&]()
-        {
-            if (bIndex >= bLen)
-                return;
-
-            size_t aIndex = 0;
-            const size_t aLen = a.size();
-
-            while (aIndex < aLen && bIndex < bLen)
-            {
-                auto aBlockSize = a[aIndex].blockSize;
-                while (b[bIndex].blockSize < aBlockSize)
-                {
-                    a.push_back(b[bIndex]);
-                    ++bIndex;
-
-                    if (bIndex >= bLen)
-                        return;
-                }
-
-                auto bBlockSize = b[bIndex].blockSize;
-                if (bBlockSize == aBlockSize)
-                {
-                    auto aNumBlocks = a[aIndex].numberOfBlocks;
-                    auto bNumBlocks = b[bIndex].numberOfBlocks;
-                    a[aIndex].numberOfBlocks = std::max(aNumBlocks, bNumBlocks);
-                    ++bIndex;
-
-                    if (bIndex >= bLen)
-                        return;
-                }
-
-                ++aIndex;
-            }
-        };
-
-        iterate();
-
-        while (bIndex < bLen)
-        {
-            a.push_back(b[bIndex]);
-            ++bIndex;
-        }
-    };
-
-    {
-        TCacheContainer tempContainer;
-        std::swap(data, tempContainer);
-
-        StaticStringID itemName;
-        TPoolConfigs tempConfigs;
-
-        for (auto& item : tempContainer)
-        {
-            if (itemName != item.uniqueName)
-            {
-                if (tempConfigs.size() > 0)
-                {
-                    MergeBlocks(tempConfigs);
-                    data.emplace_back(itemName, std::move(tempConfigs));
-                }
-
-                itemName = item.uniqueName;
-                tempConfigs.clear();
-            }
-
-            auto& configs = item.configs;
-            MergeMax(tempConfigs, configs);
-        }
-    }
-
-    for (auto& item : data)
-    {
-        auto& configs = item.configs;
-        std::sort(configs.begin(), configs.end());
-    }
+    Normalize();
 
     size_t cacheSize = data.size();
     bos << cacheSize;
@@ -191,12 +65,6 @@ size_t MultiPoolConfigCache::Serialize(Buffer& outBuffer)
         {
             bos << config.blockSize;
             bos << config.numberOfBlocks;
-
-            log.Out([nameStr, &config](auto& ls)
-            {
-                ls << nameStr << " : block = " << config.blockSize
-                    << ", n = " << config.numberOfBlocks;
-            });
         }
 
         if (unlikely(bos.HasError()))
@@ -216,7 +84,7 @@ size_t MultiPoolConfigCache::Serialize(Buffer& outBuffer)
 bool MultiPoolConfigCache::Deserialize(const Buffer& buffer)
 {
     using namespace StringUtil;
-    static StaticString logName(ToMethodName(__PRETTY_FUNCTION__));
+    static StaticString logName(ToCompactMethodName(__PRETTY_FUNCTION__));
     auto log = Logger::Get(logName);
 
     BufferInputStream bis(buffer);
@@ -300,6 +168,7 @@ bool MultiPoolConfigCache::Deserialize(const Buffer& buffer)
         {
             const auto& a = configs[i - 1];
             const auto& b = configs[i];
+
             if (unlikely(!(a < b)))
             {
                 log.OutFatalError([&item, &a, &b](auto& ls)
@@ -312,25 +181,74 @@ bool MultiPoolConfigCache::Deserialize(const Buffer& buffer)
             }
         }
     }
-
-    for (auto& item : data)
-    {
-        StaticString name(item.uniqueName);
-        auto nameStr = name.c_str();
-        auto& configs = item.configs;
-
-        for (auto& config : configs)
-        {
-            log.Out([nameStr, &config](auto& ls)
-            {
-                ls << nameStr << " : block = " << config.blockSize
-                    << ", n = " << config.numberOfBlocks;
-            });
-        }
-    }
 #endif // __DEBUG__
 
     return true;
+}
+
+void MultiPoolConfigCache::Normalize()
+{
+    std::sort(data.begin(), data.end());
+
+    for (auto& item : data)
+    {
+        PoolConfigUtil::Normalize(item.configs);
+    }
+
+    auto CountUniqueAllocators = [this]() -> size_t
+    {
+        size_t count = 0;
+
+        StaticStringID itemName;
+        for (auto& item : data)
+        {
+            if (item.configs.size() <= 0)
+                continue;
+
+            if (item.uniqueName != itemName)
+            {
+                ++count;
+                itemName = item.uniqueName;
+            }
+        }
+
+        return count;
+    };
+
+    auto uniqueAllocators = CountUniqueAllocators();
+
+    TMultiPoolConfigs tempData;
+    std::swap(data, tempData);
+    data.reserve(uniqueAllocators);
+
+    StaticStringID itemName;
+    TVector<PoolConfig> tempConfigs;
+
+    for (auto& item : tempData)
+    {
+        if (item.configs.size() <= 0)
+            continue;
+
+        if (itemName != item.uniqueName)
+        {
+            if (tempConfigs.size() > 0)
+            {
+                data.emplace_back(itemName, std::move(tempConfigs));
+            }
+
+            itemName = item.uniqueName;
+            tempConfigs.clear();
+        }
+
+        PoolConfigUtil::MergeMax(tempConfigs, item.configs);
+    }
+
+    if (tempConfigs.size() > 0)
+    {
+        data.emplace_back(itemName, std::move(tempConfigs));
+    }
+
+    std::sort(data.begin(), data.end());
 }
 
 } // HE

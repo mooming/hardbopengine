@@ -1,6 +1,7 @@
 // Created by mooming.go@gmail.com, 2022
 
 #pragma once
+#include <cstddef>
 
 
 struct PoolConfig final

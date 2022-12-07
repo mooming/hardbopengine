@@ -4,6 +4,7 @@
 
 #include "PoolAllocator.h"
 #include "PoolConfig.h"
+#include "Config/BuildConfig.h"
 #include "HSTL/HVector.h"
 #include "String/StaticString.h"
 
@@ -50,9 +51,13 @@ public:
     size_t GetUsage() const;
     size_t GetAvailableMemory() const;
     size_t GetCapacity() const;
-    
+
     void PrintUsage() const;
-    
+
+#ifdef PROFILE_ENABLED
+    void ReportConfiguration() const;
+#endif // PROFILE_ENABLED
+
 private:
     bool GenerateBanksByCache(MemoryManager& mmgr);
     size_t GetBankIndex(size_t nBytes) const;

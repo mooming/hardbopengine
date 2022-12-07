@@ -90,14 +90,6 @@ Buffer GenerateFileBuffer(StaticString path, OS::FileOpenMode openMode
 
         outSize = fileSize;
         outData = reinterpret_cast<decltype(outData)>(ptr);
-
-        log.Out([&](auto& ls)
-        {
-            for (size_t i = 0; i < fileSize; ++i)
-            {
-                ls.Hex(outData[i]) << ' ';
-            }
-        });
     };
 
     Buffer buffer(generator);

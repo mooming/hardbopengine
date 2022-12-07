@@ -26,9 +26,11 @@ add_library (Memory STATIC
  MemoryManager.cpp
  MonotonicAllocator.cpp
  MultiPoolAllocator.cpp
+ MultiPoolAllocatorConfig.cpp
  MultiPoolConfigCache.cpp
  Optional.cpp
  PoolAllocator.cpp
+ PoolConfigUtil.cpp
  StackAllocator.cpp
  SystemAllocator.cpp
  AllocStats.h
@@ -42,10 +44,12 @@ add_library (Memory STATIC
  MemoryManager.h
  MonotonicAllocator.h
  MultiPoolAllocator.h
+ MultiPoolAllocatorConfig.h
  MultiPoolConfigCache.h
  Optional.h
  PoolAllocator.h
  PoolConfig.h
+ PoolConfigUtil.h
  ScopedAllocator.h
  Shareable.h
  StackAllocator.h

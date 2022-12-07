@@ -105,39 +105,7 @@ MultiPoolAllocator::~MultiPoolAllocator()
     auto& mmgr = MemoryManager::GetInstance();
 
 #ifdef PROFILE_ENABLED
-    {
-        using TPoolConfigs = MemoryManager::TPoolConfigs;
-
-        TPoolConfigs configs;
-        configs.reserve(banks.size());
-
-        auto InsertItem = [&configs](PoolAllocator& alloc)
-        {
-            auto key = alloc.GetBlockSize();
-            auto value = alloc.GetUsedBlocksMax();
-
-            auto pred = [key](const PoolConfig& item)
-            {
-                return item.blockSize == key;
-            };
-
-            auto found = std::find_if(configs.begin(), configs.end(), pred);
-            if (found == configs.end())
-            {
-                configs.emplace_back(key, value);
-            }
-
-            found->numberOfBlocks += value;
-        };
-
-        for (auto& bank : banks)
-        {
-            InsertItem(bank);
-        }
-
-        auto uniqueName = GetName();
-        mmgr.ReportMultiPoolConfigutation(uniqueName.GetID(), std::move(configs));
-    }
+    ReportConfiguration();
 #endif // PROFILE_ENABLED
 
 #ifdef __MEMORY_VERIFICATION__
@@ -330,6 +298,42 @@ void MultiPoolAllocator::PrintUsage() const
     }
 #endif // PROFILE_ENABLED
 }
+
+#ifdef PROFILE_ENABLED
+void MultiPoolAllocator::ReportConfiguration() const
+{
+    MemoryManager::TPoolConfigs configs;
+    configs.reserve(banks.size());
+
+    auto InsertItem = [&configs](const PoolAllocator& alloc)
+    {
+        auto key = alloc.GetBlockSize();
+        auto value = alloc.GetUsedBlocksMax();
+
+        auto pred = [key](const PoolConfig& item)
+        {
+            return item.blockSize == key;
+        };
+
+        auto found = std::find_if(configs.begin(), configs.end(), pred);
+        if (found == configs.end())
+        {
+            configs.emplace_back(key, value);
+        }
+
+        found->numberOfBlocks += value;
+    };
+
+    for (auto& bank : banks)
+    {
+        InsertItem(bank);
+    }
+
+    auto& mmgr = MemoryManager::GetInstance();
+    auto uniqueName = GetName();
+    mmgr.ReportMultiPoolConfigutation(uniqueName.GetID(), std::move(configs));
+}
+#endif // PROFILE_ENABLED
 
 bool MultiPoolAllocator::GenerateBanksByCache(MemoryManager& mmgr)
 {

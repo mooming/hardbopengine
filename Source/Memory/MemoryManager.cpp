@@ -43,18 +43,6 @@ MemoryManager::TId MemoryManager::GetCurrentAllocatorID()
     return ScopedAllocatorID;
 }
 
-using TMultiPoolConfigItem = MemoryManager::MultiPoolConfigItem;
-TMultiPoolConfigItem::MultiPoolConfigItem(StaticStringID id, TVector<PoolConfig>&& configs)
-    : uniqueName(id)
-    , configs(configs)
-{
-}
-
-bool TMultiPoolConfigItem::operator < (const MultiPoolConfigItem& rhs) const
-{
-    return uniqueName < rhs.uniqueName;
-}
-
 MemoryManager::MemoryManager(Engine& engine)
     : allocCount(0)
     , deallocCount(0)
@@ -331,9 +319,10 @@ void MemoryManager::Deregister(TId id, const std::source_location& srcLoc)
 }
 
 void MemoryManager::ReportMultiPoolConfigutation(StaticStringID uniqueName
-    , TVector<PoolConfig>&& poolConfigs)
+    , TPoolConfigs&& poolConfigs)
 {
-    multiPoolConfigs.emplace_back(uniqueName, std::move(poolConfigs));
+    auto& data = multiPoolConfigLog.GetData();
+    data.emplace_back(uniqueName, std::move(poolConfigs));
 }
 #endif // PROFILE_ENABLED
 
@@ -731,7 +720,7 @@ void MemoryManager::DeallocateBytes(void* ptr, size_t nBytes)
     DeallocateBytes(GetScopedAllocatorID(), ptr, nBytes);
 }
 
-void MemoryManager::Log(ELogLevel level, TLogFunc func) const
+bool MemoryManager::IsLogEnabled(ELogLevel level) const
 {
 #ifdef __MEMORY_LOGGING__
     static TAtomicConfigParam<uint8_t> CPLogLevel("Log.Memory"
@@ -739,6 +728,18 @@ void MemoryManager::Log(ELogLevel level, TLogFunc func) const
        , static_cast<uint8_t>(Config::MemLogLevel));
 
     if (static_cast<uint8_t>(level) < CPLogLevel.Get())
+        return false;
+
+    return true;
+#else // __MEMORY_LOGGING__
+    return false;
+#endif // __MEMORY_LOGGING__
+}
+
+void MemoryManager::Log(ELogLevel level, TLogFunc func) const
+{
+#ifdef __MEMORY_LOGGING__
+    if (!IsLogEnabled(level))
         return;
 
     auto& engine = Engine::Get();
@@ -746,11 +747,12 @@ void MemoryManager::Log(ELogLevel level, TLogFunc func) const
 #endif // __MEMORY_LOGGING__
 }
 
-const TMultiPoolConfigItem& MemoryManager::LookUpMultiPoolConfig(StaticStringID uniqueName) const
+const MultiPoolAllocatorConfig& MemoryManager::LookUpMultiPoolConfig(StaticStringID uniqueName) const
 {
-    static const MultiPoolConfigItem null;
+    static const MultiPoolAllocatorConfig null;
 
-    const auto len = multiPoolConfigs.size();
+    auto& data = multiPoolConfigCache.GetData();
+    const auto len = data.size();
     if (len <= 0)
         return null;
 
@@ -762,7 +764,7 @@ const TMultiPoolConfigItem& MemoryManager::LookUpMultiPoolConfig(StaticStringID 
         auto mid = (start + end) / 2;
         Assert(start <= mid && mid < end);
 
-        auto& item = multiPoolConfigs[mid];
+        auto& item = data[mid];
         if (uniqueName == item.uniqueName)
         {
             Log(ELogLevel::Warning, [&item](auto& ls)
@@ -853,7 +855,7 @@ void MemoryManager::DeregisterSystemAllocator()
 void MemoryManager::LoadMultiPoolConfigs()
 {
     using namespace StringUtil;
-    static const StaticString func(ToMethodName(__PRETTY_FUNCTION__));
+    static const StaticString func(ToCompactMethodName(__PRETTY_FUNCTION__));
 
     StaticString path(GetMultiPoolConfigCacheFilePath());
     if (!OS::Exist(path))
@@ -882,8 +884,7 @@ void MemoryManager::LoadMultiPoolConfigs()
         return;
     }
 
-    MultiPoolConfigCache cache;
-    if (!cache.Deserialize(buffer))
+    if (!multiPoolConfigCache.Deserialize(buffer))
     {
         Log(ELogLevel::Error, [path](auto& ls)
         {
@@ -893,24 +894,44 @@ void MemoryManager::LoadMultiPoolConfigs()
         return;
     }
 
-    cache.Swap(multiPoolConfigs);
+#ifdef __DEBUG__
+    constexpr auto logLevel = ELogLevel::Significant;
+    if (!IsLogEnabled(logLevel))
+        return;
+
+    auto& data = multiPoolConfigCache.GetData();
+    size_t index = 0;
+
+    for (auto& item : data)
+    {
+        StaticString itemName(item.uniqueName);
+        auto& configs = item.configs;
+
+        for (auto& config : configs)
+        {
+            Log(logLevel, [&index, itemName, &config](auto& ls)
+            {
+                ls << index++ << " : " << itemName << " ("
+                    << config.blockSize << ", "
+                    << config.numberOfBlocks << ')';
+            });
+        }
+    }
+#endif // __DEBUG__
 }
 
 void MemoryManager::SaveMultiPoolConfigs()
 {
     using namespace StringUtil;
-    static const StaticString func(ToMethodName(__PRETTY_FUNCTION__));
+    static const StaticString func(ToCompactMethodName(__PRETTY_FUNCTION__));
 
-    MultiPoolConfigCache cache;
-    cache.Swap(multiPoolConfigs);
-
-    size_t size = 0;
-
+    auto GetOutputSize = [this]() -> size_t
     {
         auto buffer = BufferUtil::GenerateDummyBuffer();
-        size = cache.Serialize(buffer);
-    }
+        return multiPoolConfigLog.Serialize(buffer);
+    };
 
+    const size_t size = GetOutputSize();
     auto pathStrID = GetMultiPoolConfigCacheFilePath();
     StaticString path(pathStrID);
 
@@ -921,8 +942,7 @@ void MemoryManager::SaveMultiPoolConfigs()
     });
 
     auto buffer = BufferUtil::GetWriteOnlyFileBuffer(path, size);
-    auto result = cache.Serialize(buffer);
-    cache.Swap(multiPoolConfigs);
+    auto result = multiPoolConfigLog.Serialize(buffer);
 
     if (result != size)
     {
@@ -933,6 +953,31 @@ void MemoryManager::SaveMultiPoolConfigs()
 
         return;
     }
+
+#ifdef __DEBUG__
+    constexpr auto logLevel = ELogLevel::Significant;
+    if (!IsLogEnabled(logLevel))
+        return;
+
+    auto& data = multiPoolConfigLog.GetData();
+    size_t index = 0;
+
+    for (auto& item : data)
+    {
+        StaticString itemName(item.uniqueName);
+        auto& configs = item.configs;
+
+        for (auto& config : configs)
+        {
+            Log(logLevel, [&index, itemName, &config](auto& ls)
+            {
+                ls << index++ << " : " << itemName << " ("
+                    << config.blockSize << ", "
+                    << config.numberOfBlocks << ')';
+            });
+        }
+    }
+#endif // __DEBUG__
 }
 
 void MemoryManager::SetScopedAllocatorID(TId id)

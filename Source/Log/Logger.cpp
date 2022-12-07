@@ -349,6 +349,13 @@ void Logger::Flush()
     }
 }
 
+#ifdef PROFILE_ENABLED
+void Logger::ReportMemoryConfiguration()
+{
+    allocator.ReportConfiguration();
+}
+#endif // PROFILE_ENABLED
+
 void Logger::ProcessBuffer()
 {
     if (!hasInput.load(std::memory_order_acquire))
