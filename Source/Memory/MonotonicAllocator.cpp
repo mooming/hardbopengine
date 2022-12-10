@@ -123,17 +123,6 @@ size_t MonotonicAllocator::GetUsage() const
     return cursor;
 }
 
-bool MonotonicAllocator::IsMine(Pointer ptr) const
-{
-    if (ptr < bufferPtr)
-        return false;
-
-    if (ptr >= static_cast<void*>(buffer + capacity))
-        return false;
-
-    return true;
-}
-
 #ifdef __UNIT_TEST__
 #include "HSTL/HVector.h"
 #include "String/String.h"

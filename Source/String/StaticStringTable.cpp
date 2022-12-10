@@ -9,10 +9,68 @@
 #include "Config/EngineSettings.h"
 #include "System/Debug.h"
 #include <iostream>
+#include <mutex>
 
 
 namespace HE
 {
+
+namespace
+{
+
+struct Bank final
+{
+    size_t cursor;
+    size_t capacity;
+    uint8_t* buffer;
+
+    Bank(size_t capacity)
+        : cursor(0)
+        , capacity(capacity)
+    {
+        buffer = (uint8_t*)malloc(capacity);
+    }
+
+    Bank(const Bank& rhs) = delete;
+
+    Bank(Bank&& rhs)
+        : cursor(rhs.cursor)
+        , capacity(rhs.capacity)
+        , buffer(rhs.buffer)
+    {
+        rhs.cursor = 0;
+        rhs.capacity = 0;
+        rhs.buffer = nullptr;
+    }
+
+    ~Bank()
+    {
+        if (buffer == nullptr)
+            return;
+
+        free(buffer);
+    }
+
+    bool IsAvailable(size_t n) const
+    {
+        return (cursor + n) < capacity;
+    }
+
+    uint8_t* Allocate(size_t n)
+    {
+        auto ptr = &buffer[cursor];
+        cursor += n;
+        Assert(cursor <= capacity);
+
+        return ptr;
+    }
+};
+
+std::vector<Bank> banks;
+size_t bankIndex = 0;
+std::mutex memLock;
+
+} // Anonymous
 
 StaticStringTable& StaticStringTable::GetInstance()
 {
@@ -25,6 +83,12 @@ StaticStringTable::StaticStringTable()
     RegisterPredefinedStrings();
 }
 
+StaticStringTable::~StaticStringTable()
+{
+    banks.clear();
+    banks.shrink_to_fit();
+}
+
 StaticString StaticStringTable::GetName() const
 {
     static StaticString className = StringUtil::ToCompactClassName(__PRETTY_FUNCTION__);
@@ -35,6 +99,7 @@ StaticString StaticStringTable::GetName() const
 StaticStringID StaticStringTable::Register(const char* text)
 {
     StaticStringID id;
+
     auto tableID = GetTableID(text);
     id.tableID = tableID;
     
@@ -44,8 +109,10 @@ StaticStringID StaticStringTable::Register(const char* text)
     {
         std::lock_guard lock(tableLock);
 
+        TString str(text);
+
         auto& table = tables[tableID];
-        auto found = std::find(table.begin(), table.end(), TString(text));
+        auto found = std::find(table.begin(), table.end(), str);
         if (found != table.end())
         {
             id.index = static_cast<TIndex>(std::distance(table.begin(), found));
@@ -54,7 +121,7 @@ StaticStringID StaticStringTable::Register(const char* text)
         }
 
         id.index = static_cast<TIndex>(table.size());
-        table.emplace_back(text);
+        table.emplace_back(std::move(str));
     }
     
     return id;
@@ -63,6 +130,7 @@ StaticStringID StaticStringTable::Register(const char* text)
 StaticStringID StaticStringTable::Register(const std::string_view& str)
 {
     StaticStringID id;
+
     auto tableID = GetTableID(str);
     id.tableID = tableID;
 
@@ -82,7 +150,9 @@ StaticStringID StaticStringTable::Register(const std::string_view& str)
         }
 
         id.index = static_cast<TIndex>(table.size());
-        table.emplace_back(str.begin(), str.end());
+        
+        TString tempStr(str.begin(), str.end());
+        table.emplace_back(std::move(tempStr));
     }
 
     return id;
@@ -114,7 +184,25 @@ const char* StaticStringTable::Get(StaticStringID id) const
 void StaticStringTable::PrintStringTable() const
 {
     auto log = Logger::Get(GetName(), ELogLevel::Verbose);
+    
     log.Out("= StringTable ==============================");
+    log.Out([](auto& ls)
+    {
+        ls << "Number of Banks = " << banks.size();
+    });
+
+    {
+        size_t index = 0;
+        for (auto& bank : banks)
+        {
+            log.Out([index, &bank](auto& ls)
+            {
+                ls << index << " : " << bank.cursor << " / " << bank.capacity;
+            });
+
+            ++index;
+        }
+    }
 
     TIndex tableID = 0;
     
@@ -195,6 +283,28 @@ StaticStringTable::TIndex StaticStringTable::GetTableID(const std::string_view& 
     auto tableId = static_cast<TIndex>(hashValue % NumTables);
 
     return tableId;
+}
+
+void* StaticStringTable::Allocate(size_t n)
+{
+    constexpr size_t capacity = 1024UL * 1024;
+
+    std::lock_guard lock(memLock);
+    while (banks.size() <= bankIndex)
+    {
+        banks.emplace_back(capacity);
+    }
+
+    if (!banks[bankIndex].IsAvailable(n))
+    {
+        banks.emplace_back(std::max(n, capacity));
+        ++bankIndex;
+    }
+
+    auto& bank = banks[bankIndex];
+    auto ptr = bank.Allocate(n);
+
+    return ptr;
 }
 
 } // HE

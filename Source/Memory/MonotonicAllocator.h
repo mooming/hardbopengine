@@ -39,9 +39,6 @@ public:
     size_t GetUsage() const;
 
     inline auto GetID() const { return id; }
-
-private:
-    bool IsMine(TPointer ptr) const;
 };
 } // HE
 

@@ -11,7 +11,7 @@ namespace HE
 struct StaticStringID final
 {
     static constexpr uint64_t Default = 0;
-    using TIndex = uint16_t;
+    using TIndex = uint32_t;
     
     union
     {

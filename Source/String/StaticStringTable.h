@@ -18,11 +18,36 @@ class StaticStringTable final
 {
 public:
     using TIndex = StaticStringID::TIndex;
-    using TString = std::string;
-    using TTable = std::vector<TString>;
     static_assert(!std::is_signed<TIndex>(), "StaticStringTable::TIndex");
     
     static constexpr size_t NumTables = Config::StaticStringNumHashBuckets;
+
+private:
+    template <typename T>
+    class Allocator final
+    {
+    public:
+        using value_type = T;
+
+        template <class U>
+        struct rebind { using other = Allocator<U>; };
+
+    public:
+        Allocator() = default;
+        ~Allocator() = default;
+
+        T* allocate(std::size_t n) { return (T*)Allocate(n * sizeof(T)); }
+        void deallocate (T*, std::size_t) {}
+
+        template <class U>
+        bool operator==(const Allocator<U>& rhs) const { return true; }
+        
+        template <class U>
+        bool operator!=(const Allocator<U>& rhs) const { return false; }
+    };
+
+    using TString = std::basic_string<char, std::char_traits<char>, Allocator<char>>;;
+    using TTable = std::vector<TString>;
     
 private:
     mutable std::mutex tableLock;
@@ -33,7 +58,7 @@ public:
     
 public:
     StaticStringTable();
-    ~StaticStringTable() = default;
+    ~StaticStringTable();
     
     StaticString GetName() const;
 
@@ -47,6 +72,8 @@ private:
     void RegisterPredefinedStrings();
     TIndex GetTableID(const char* text) const;
     TIndex GetTableID(const std::string_view& str) const;
+
+    static void* Allocate(size_t n);
 };
 
 } // HE
