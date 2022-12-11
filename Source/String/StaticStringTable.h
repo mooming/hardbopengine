@@ -17,9 +17,7 @@ namespace HE
 class StaticStringTable final
 {
 public:
-    using TIndex = StaticStringID::TIndex;
-    static_assert(!std::is_signed<TIndex>(), "StaticStringTable::TIndex");
-    
+    using TIndex = size_t;
     static constexpr size_t NumTables = Config::StaticStringNumHashBuckets;
 
 private:
@@ -46,8 +44,7 @@ private:
         bool operator!=(const Allocator<U>& rhs) const { return false; }
     };
 
-    using TString = std::basic_string<char, std::char_traits<char>, Allocator<char>>;;
-    using TTable = std::vector<TString>;
+    using TTable = std::vector<std::string_view>;
     
 private:
     mutable std::mutex tableLock;
@@ -72,6 +69,9 @@ private:
     void RegisterPredefinedStrings();
     TIndex GetTableID(const char* text) const;
     TIndex GetTableID(const std::string_view& str) const;
+
+    std::string_view Store(const char* text);
+    std::string_view Store(const std::string_view& str);
 
     static void* Allocate(size_t n);
 };

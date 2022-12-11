@@ -12,93 +12,29 @@ StaticString::StaticString()
 {
     static StaticString null("None");
     id = null.id;
-
-#ifdef __DEBUG__
-    text[0] = 'N';
-    text[1] = 'o';
-    text[2] = 'n';
-    text[3] = 'e';
-    text[4] = '\0';
-#endif // __DEBUG__
 }
 
 StaticString::StaticString(StaticStringID id)
     : id (id)
 {
-#ifdef __DEBUG__
-    {
-        constexpr auto LastIndex = DebugBufferSize - 1;
-
-        auto string = c_str();
-        size_t i = 0;
-
-        for (; i < LastIndex; ++i)
-        {
-            char ch = string[i];
-            if (ch == '\0')
-                break;
-
-            text[i] = ch;
-        }
-
-        text[i] = '\0';
-    }
-#endif // __DEBUG__
 }
 
 StaticString::StaticString(const char* string)
 {
     auto& ssTable = StaticStringTable::GetInstance();
     id = ssTable.Register(string);
-
-#ifdef __DEBUG__
-    {
-        constexpr auto LastIndex = DebugBufferSize - 1;
-        size_t i = 0;
-
-        for (; i < LastIndex; ++i)
-        {
-            char ch = string[i];
-            if (ch == '\0')
-                break;
-
-            text[i] = ch;
-        }
-        
-        text[i] = '\0';
-    }
-#endif // __DEBUG__
 }
 
 StaticString::StaticString(const std::string_view& str)
 {
     auto& ssTable = StaticStringTable::GetInstance();
     id = ssTable.Register(str);
-
-#ifdef __DEBUG__
-    {
-        constexpr auto LastIndex = DebugBufferSize - 1;
-        const auto len = std::min(str.length(), LastIndex);
-
-        size_t i = 0;
-        auto data = str.data();
-
-        for (; i < len; ++i)
-        {
-            text[i] = data[i];
-        }
-
-        text[i] = '\0';
-    }
-#endif // __DEBUG__
 }
 
 const char* StaticString::c_str() const
 {
     auto& ssTable = StaticStringTable::GetInstance();
-    auto str = ssTable.Get(id);
-    
-    return str;
+    return ssTable.Get(id);
 }
 
 } // HE

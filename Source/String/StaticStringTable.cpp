@@ -101,27 +101,27 @@ StaticStringID StaticStringTable::Register(const char* text)
     StaticStringID id;
 
     auto tableID = GetTableID(text);
-    id.tableID = tableID;
-    
+
     static_assert(!std::is_signed<decltype(tableID)>());
     Assert(tableID < NumTables);
 
     {
         std::lock_guard lock(tableLock);
 
-        TString str(text);
-
         auto& table = tables[tableID];
-        auto found = std::find(table.begin(), table.end(), str);
+        std::string_view tmp(text);
+
+        auto found = std::find(table.begin(), table.end(), tmp);
         if (found != table.end())
         {
-            id.index = static_cast<TIndex>(std::distance(table.begin(), found));
-
+            id.ptr = reinterpret_cast<const uint8_t*>(found->data());
             return id;
         }
 
-        id.index = static_cast<TIndex>(table.size());
-        table.emplace_back(std::move(str));
+        std::string_view sv = Store(tmp);
+        table.emplace_back(sv);
+
+        id.ptr = reinterpret_cast<const uint8_t*>(sv.data());
     }
     
     return id;
@@ -132,7 +132,6 @@ StaticStringID StaticStringTable::Register(const std::string_view& str)
     StaticStringID id;
 
     auto tableID = GetTableID(str);
-    id.tableID = tableID;
 
     static_assert(!std::is_signed<decltype(tableID)>());
     Assert(tableID < NumTables);
@@ -144,15 +143,14 @@ StaticStringID StaticStringTable::Register(const std::string_view& str)
         auto found = std::find(table.begin(), table.end(), str);
         if (found != table.end())
         {
-            id.index = static_cast<TIndex>(std::distance(table.begin(), found));
-
+            id.ptr = reinterpret_cast<const uint8_t*>(found->data());
             return id;
         }
 
-        id.index = static_cast<TIndex>(table.size());
-        
-        TString tempStr(str.begin(), str.end());
-        table.emplace_back(std::move(tempStr));
+        auto sv = Store(str);
+        table.emplace_back(sv);
+
+        id.ptr = reinterpret_cast<const uint8_t*>(sv.data());
     }
 
     return id;
@@ -160,31 +158,16 @@ StaticStringID StaticStringTable::Register(const std::string_view& str)
 
 const char* StaticStringTable::Get(StaticStringID id) const
 {
-    const char* str = "None";
+    if (id.ptr == nullptr)
+        return "None";
 
-    static_assert(!std::is_signed<decltype(id.tableID)>());
-    if (unlikely(id.tableID >= NumTables))
-        return str;
-
-    static_assert(!std::is_signed<decltype(id.index)>());
-
-    {
-        std::lock_guard lock(tableLock);
-        auto& table = tables[id.tableID];
-
-        if (unlikely(id.index >= table.size()))
-            return "None";
-
-        str = table[id.index].c_str();
-    }
-
-    return str;
+    return reinterpret_cast<const char*>(id.ptr);
 }
 
 void StaticStringTable::PrintStringTable() const
 {
     auto log = Logger::Get(GetName(), ELogLevel::Verbose);
-    
+
     log.Out("= StringTable ==============================");
     log.Out([](auto& ls)
     {
@@ -231,14 +214,9 @@ void StaticStringTable::PrintStringTable() const
         for (auto& item : table)
         {
             StaticStringID id;
-            id.tableID = tableID;
-            id.index = index;
-            
             log.Out([&](auto& ls)
             {
-                ls << count++ << " : [" << item << "] "
-                    << id.value << '(' << id.tableID << ','
-                    << id.index << ')';
+                ls << count++ << " : [" << item << "] 0x" << (void*)id.ptr;
             });
             
             ++index;
@@ -283,6 +261,23 @@ StaticStringTable::TIndex StaticStringTable::GetTableID(const std::string_view& 
     auto tableId = static_cast<TIndex>(hashValue % NumTables);
 
     return tableId;
+}
+
+std::string_view StaticStringTable::Store(const char* text)
+{
+    std::string_view sv(text);
+    return Store(sv);
+}
+
+std::string_view StaticStringTable::Store(const std::string_view& str)
+{
+    const auto strLen = str.length();
+
+    auto ptr = (char*)Allocate(strLen + 1);
+    std::copy(str.begin(), str.end(), ptr);
+    ptr[strLen] = '\0';
+
+    return std::string_view(ptr, strLen);
 }
 
 void* StaticStringTable::Allocate(size_t n)

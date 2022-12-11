@@ -10,33 +10,22 @@ namespace HE
 {
 struct StaticStringID final
 {
-    static constexpr uint64_t Default = 0;
-    using TIndex = uint32_t;
-    
-    union
-    {
-        uint64_t value;
-        
-        struct
-        {
-            TIndex tableID;
-            TIndex index;
-        };
-    };
+    static constexpr uint8_t* Default = nullptr;
+    const uint8_t* ptr;
 
     inline StaticStringID()
-        : value(Default)
+        : ptr(Default)
     {
     }
 
     inline bool operator == (const StaticStringID& rhs) const
     {
-        return value == rhs.value;
+        return ptr == rhs.ptr;
     }
 
     inline bool operator < (const StaticStringID& rhs) const
     {
-        return value < rhs.value;
+        return ptr < rhs.ptr;
     }
 };
 
@@ -49,7 +38,7 @@ struct hash<HE::StaticStringID> final
 {
     std::size_t operator() (const HE::StaticStringID& obj) const
     {
-        return static_cast<std::size_t>(obj.value);
+        return reinterpret_cast<std::size_t>(obj.ptr);
     }
 };
 } // std

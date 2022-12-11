@@ -18,11 +18,6 @@ class StaticString final
 {
 private:
     StaticStringID id;
-
-#ifdef __DEBUG__
-    static constexpr size_t DebugBufferSize = 64;
-    char text[DebugBufferSize];
-#endif // __DEBUG__
     
 public:
     StaticString();
@@ -41,10 +36,10 @@ public:
     const char* c_str() const;
     
     inline auto GetID() const noexcept { return id; }
-    inline bool IsNull() const noexcept { return id.value == 0; }
+    inline bool IsNull() const noexcept { return id.ptr == nullptr; }
     inline operator const char* () const { return c_str(); }
-    inline bool operator < (const StaticString& rhs) const { return id.value < rhs.id.value; }
-    inline bool operator == (const StaticString& rhs) const { return id.value == rhs.id.value; }
+    inline bool operator < (const StaticString& rhs) const { return id.ptr < rhs.id.ptr; }
+    inline bool operator == (const StaticString& rhs) const { return id.ptr == rhs.id.ptr; }
     
     inline friend std::ostream& operator <<(std::ostream& os, const StaticString& str)
     {
@@ -62,7 +57,7 @@ struct hash<HE::StaticString> final
 {
     std::size_t operator() (const HE::StaticString& obj) const
     {
-        return obj.GetID().value;
+        return reinterpret_cast<std::size_t>(obj.GetID().ptr);
     }
 };
 } // std
