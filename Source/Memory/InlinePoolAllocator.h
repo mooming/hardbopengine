@@ -34,22 +34,25 @@ struct InlinePoolAllocator final
 private:
     TAllocatorID id;
     TAllocatorID parentID;
-    size_t fallbackCount;
     int indexHint;
 
     ALIGN bool isAllocated[NumBuffers];
     alignas(std::max(sizeof(T), Config::DefaultAlign)) uint8_t buffer[NumBuffers][BufferSize * sizeof(T)];
 
 public:
+    InlinePoolAllocator(const InlinePoolAllocator&) = delete;
+    
     InlinePoolAllocator()
         : id(InvalidAllocatorID)
         , parentID(InvalidAllocatorID)
-        , fallbackCount(0)
         , indexHint(0)
     {
         Assert(OS::CheckAligned(isAllocated));
         Assert(OS::CheckAligned(buffer[0]));
-        
+
+        auto& mmgr = MemoryManager::GetInstance();
+        parentID = mmgr.GetCurrentAllocatorID();
+
         if (unlikely(BufferSize <= 0))
             return;
         
@@ -62,19 +65,6 @@ public:
 #endif // __MEMORY_VERIFICATION__
         
         RegisterAllocator();
-    }
-
-    InlinePoolAllocator(TAllocatorID inParentID)
-        : id(InvalidAllocatorID)
-        , parentID(inParentID)
-        , fallbackCount(0)
-        , indexHint(0)
-    {
-    }
-
-    InlinePoolAllocator(const InlinePoolAllocator&)
-        : InlinePoolAllocator()
-    {
     }
     
     ~InlinePoolAllocator()
@@ -105,16 +95,7 @@ public:
     {
         constexpr size_t unit = sizeof(T);
         const auto nBytes = OS::GetAligned(n * unit);
-
-        if (parentID == InvalidAllocatorID)
-        {
-            auto ptr = AllocateBytes(nBytes);
-            return reinterpret_cast<T*>(ptr);
-        }
-
-        auto& mmgr = MemoryManager::GetInstance();
-        auto ptr = mmgr.AllocateBytes(parentID, nBytes);
-
+        auto ptr = AllocateBytes(nBytes);
         return reinterpret_cast<T*>(ptr);
     }
     
@@ -124,18 +105,10 @@ public:
         const auto nBytes = OS::GetAligned(n * unit);
 
         void* voidPtr = reinterpret_cast<void*>(ptr);
-
-        if (parentID == InvalidAllocatorID)
-        {
-            return DeallocateBytes(voidPtr, nBytes);
-        }
-
-        auto& mmgr = MemoryManager::GetInstance();
-        mmgr.DeallocateBytes(parentID, voidPtr, nBytes);
+        return DeallocateBytes(voidPtr, nBytes);
     }
     
     auto GetID() const { return id; }
-    auto GetFallbackCount() const { return fallbackCount; }
     auto GetBlockSize() const { return BufferSize; }
     auto GetNumBlocks() const { return NumBuffers; }
 
@@ -152,10 +125,8 @@ public:
 private:
     void* FallbackAlloc(size_t nBytes)
     {
-        ++fallbackCount;
-
         auto& mmgr = MemoryManager::GetInstance();
-        auto ptr = mmgr.SysAllocate(nBytes);
+        auto ptr = mmgr.AllocateBytes(parentID, nBytes);
 
         return ptr;
     }
@@ -220,7 +191,7 @@ private:
         }
 
         auto& mmgr = MemoryManager::GetInstance();
-        mmgr.SysDeallocate(ptr, nBytes);
+        mmgr.DeallocateBytes(parentID, ptr, nBytes);
     }
 
     void RegisterAllocator()

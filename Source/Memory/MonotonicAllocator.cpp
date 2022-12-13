@@ -14,7 +14,6 @@ MonotonicAllocator::MonotonicAllocator(const char* name, TSize inCapacity)
     : id(InvalidAllocatorID)
     , cursor(0)
     , capacity(inCapacity)
-    , fallbackCount(0)
     , buffer(nullptr)
 {
     {
@@ -24,6 +23,7 @@ MonotonicAllocator::MonotonicAllocator(const char* name, TSize inCapacity)
     }
 
     auto& mmgr = MemoryManager::GetInstance();
+    parentID = mmgr.GetCurrentAllocatorID();
     bufferPtr = mmgr.AllocateBytes(capacity);
 
     auto allocFunc = [this](size_t n) -> void*
@@ -51,9 +51,9 @@ MonotonicAllocator::~MonotonicAllocator()
     mmgr.Deregister(GetID());
 }
 
-void *MonotonicAllocator::Allocate(size_t requested)
+void *MonotonicAllocator::Allocate(const size_t requested)
 {
-    auto size = requested;
+    size_t size = requested;
 
     {
         constexpr auto AlignUnit = Config::DefaultAlign;
@@ -71,8 +71,7 @@ void *MonotonicAllocator::Allocate(size_t requested)
                 << " is exceeding its limit, " << freeSize << '.';
         });
 
-        auto ptr = mmgr.SysAllocate(size);
-        ++fallbackCount;
+        auto ptr = mmgr.AllocateBytes(parentID, requested);
 
         return ptr;
     }
@@ -93,8 +92,15 @@ void *MonotonicAllocator::Allocate(size_t requested)
 
 void MonotonicAllocator::Deallocate(const Pointer ptr, TSize requested)
 {
-#ifdef __MEMORY_LOGGING__
     auto& mmgr = MemoryManager::GetInstance();
+
+    if (unlikely(!IsMine(ptr)))
+    {
+        mmgr.DeallocateBytes(parentID, ptr, requested);
+        return;
+    }
+
+#ifdef __MEMORY_LOGGING__
     mmgr.Log(ELogLevel::Verbose, [this, &mmgr, ptr, requested](auto& lout)
              {
         lout << mmgr.GetName(id) << '[' << static_cast<int>(GetID())
@@ -121,6 +127,18 @@ size_t MonotonicAllocator::GetUsage() const
 {
     Assert(cursor < capacity);
     return cursor;
+}
+
+bool MonotonicAllocator::IsMine(const TPointer ptr) const
+{
+    auto bytePtr = reinterpret_cast<const uint8_t*>(ptr);
+    if (bytePtr < buffer)
+        return false;
+
+    if (bytePtr >= (buffer + capacity))
+        return false;
+
+    return true;
 }
 
 #ifdef __UNIT_TEST__

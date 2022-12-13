@@ -31,9 +31,7 @@ AllocStats::AllocStats()
 
 void AllocStats::OnRegister(const char* inName, bool inIsInnline, size_t inCapacity)
 {
-    constexpr int LastIndex = NameBufferSize - 1;
-    StringUtil::StrCopy(name, inName, LastIndex);
-    name[LastIndex] = '\0';
+    name = StaticString(inName);
 
     isInline = inIsInnline;
     capacity = inCapacity;

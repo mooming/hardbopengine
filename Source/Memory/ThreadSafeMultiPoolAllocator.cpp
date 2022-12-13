@@ -1,6 +1,6 @@
 // Created by mooming.go@gmail.com, 2022
 
-#include "MultiPoolAllocator.h"
+#include "ThreadSafeMultiPoolAllocator.h"
 
 #include "Engine.h"
 #include "Config/BuildConfig.h"
@@ -17,7 +17,7 @@
 namespace HE
 {
 
-MultiPoolAllocator::MultiPoolAllocator(const char* inName
+ThreadSafeMultiPoolAllocator::ThreadSafeMultiPoolAllocator(const char* inName
     , size_t allocationUnit, size_t minBlockSize)
 
     : id(InvalidAllocatorID)
@@ -52,7 +52,7 @@ MultiPoolAllocator::MultiPoolAllocator(const char* inName
     id = mmgr.Register(name, false, capacity, allocFunc, deallocFunc);
 }
 
-MultiPoolAllocator::MultiPoolAllocator(const char* inName
+ThreadSafeMultiPoolAllocator::ThreadSafeMultiPoolAllocator(const char* inName
     , TInitializerList initialConfigurations
     , size_t allocationUnit, size_t minBlockSize)
 
@@ -77,26 +77,31 @@ MultiPoolAllocator::MultiPoolAllocator(const char* inName
         Deallocate(ptr, n);
     };
 
-    constexpr size_t InlineBufferSize = 128;
-    Assert(initialConfigurations.size() <= InlineBufferSize);
-
-    HInlineVector<PoolConfig, InlineBufferSize> vlist;
-    vlist.reserve(InlineBufferSize);
-
-    vlist.insert(vlist.end(), initialConfigurations);
-    std::sort(vlist.begin(), vlist.end());
-
-    banks.reserve(vlist.size());
-
-    for (auto& config : vlist)
+    auto ConfigureBanks = [&, this]()
     {
-        InlineStringBuilder<1024> str;
-        str << name << '_' << config.blockSize
-            << '_' << config.numberOfBlocks;
+        constexpr size_t InlineBufferSize = 128;
+        Assert(initialConfigurations.size() <= InlineBufferSize);
 
-        banks.emplace_back(str.c_str()
-            , config.blockSize, config.numberOfBlocks);
-    }
+        HInlineVector<PoolConfig, InlineBufferSize> vlist;
+        vlist.reserve(InlineBufferSize);
+
+        vlist.insert(vlist.end(), initialConfigurations);
+        std::sort(vlist.begin(), vlist.end());
+
+        banks.reserve(vlist.size());
+
+        for (auto& config : vlist)
+        {
+            InlineStringBuilder<1024> str;
+            str << name << '_' << config.blockSize
+                << '_' << config.numberOfBlocks;
+
+            banks.emplace_back(str.c_str()
+                , config.blockSize, config.numberOfBlocks);
+        }
+    };
+
+    ConfigureBanks();
 
     size_t capacity = 0;
     for (auto& bank : banks)
@@ -107,31 +112,35 @@ MultiPoolAllocator::MultiPoolAllocator(const char* inName
     id = mmgr.Register(name, false, capacity, allocFunc, deallocFunc);
 }
 
-MultiPoolAllocator::~MultiPoolAllocator()
+ThreadSafeMultiPoolAllocator::~ThreadSafeMultiPoolAllocator()
 {
     auto& mmgr = MemoryManager::GetInstance();
 
 #ifdef PROFILE_ENABLED
-    ReportConfiguration();
+        ReportConfiguration();
 #endif // PROFILE_ENABLED
 
-#ifdef __MEMORY_VERIFICATION__
-    const auto currentTID = std::this_thread::get_id();
-    for (auto& bank : banks)
     {
-        mmgr.Update(bank.GetID(), [&currentTID](auto& proxy)
+        std::lock_guard lockGuard(lock);
+
+#ifdef __MEMORY_VERIFICATION__
+        const auto currentTID = std::this_thread::get_id();
+        for (auto& bank : banks)
         {
-            proxy.threadId = currentTID;
-        }, "Releasing the thread binding.");
-    }
+            mmgr.Update(bank.GetID(), [&currentTID](auto& proxy)
+            {
+                proxy.threadId = currentTID;
+            }, "Releasing the thread binding.");
+        }
 #endif // __MEMORY_VERIFICATION__
 
-    banks.clear();
+        banks.clear();
+    }
 
     mmgr.Deregister(GetID());
 }
 
-void* MultiPoolAllocator::Allocate(size_t requested)
+void* ThreadSafeMultiPoolAllocator::Allocate(size_t requested)
 {
     if (unlikely(requested <= 0))
         return nullptr;
@@ -167,33 +176,45 @@ void* MultiPoolAllocator::Allocate(size_t requested)
         return ptr;
     };
 
-    auto index = GetBankIndex(requested);
-    if (index >= banks.size())
+    void* ptr = nullptr;
+#ifdef PROFILE_ENABLED
+    size_t allocated = 0;
+#endif // PROFILE_ENABLED
     {
-        auto ptr = FallbackAlloc();
-        return ptr;
-    }
-    
-    auto& bank = banks[index];
-    if (unlikely(bank.GetAvailableBlocks() <= 0))
-    {
-        auto ptr = FallbackAlloc();
-        return ptr;
-    }
+        std::lock_guard lockGuard(lock);
 
-    auto ptr = bank.Allocate(requested);
+        auto index = GetBankIndex(requested);
+        if (index >= banks.size())
+        {
+            auto ptr = FallbackAlloc();
+            return ptr;
+        }
+
+        auto& bank = banks[index];
+        if (unlikely(bank.GetAvailableBlocks() <= 0))
+        {
+            auto ptr = FallbackAlloc();
+            return ptr;
+        }
+
+        ptr = bank.Allocate(requested);
+        
+#ifdef PROFILE_ENABLED
+        allocated = bank.GetBlockSize();
+#endif // PROFILE_ENABLED
+    }
 
 #ifdef PROFILE_ENABLED
     {
         auto& mmgr = MemoryManager::GetInstance();
-        mmgr.ReportAllocation(GetID(), ptr, requested, bank.GetBlockSize());
+        mmgr.ReportAllocation(GetID(), ptr, requested, allocated);
     }
 #endif // PROFILE_ENABLED
 
     return ptr;
 }
 
-void MultiPoolAllocator::Deallocate(void* ptr, size_t size)
+void ThreadSafeMultiPoolAllocator::Deallocate(void* ptr, size_t size)
 {
     if (unlikely(ptr == nullptr))
     {
@@ -201,32 +222,44 @@ void MultiPoolAllocator::Deallocate(void* ptr, size_t size)
         return;
     }
 
-    auto index = GetBankIndex(ptr);
-    if (index >= banks.size())
+#ifdef PROFILE_ENABLED
+    size_t allocated = 0;
+#endif // PROFILE_ENABLED
     {
-        auto log = Logger::Get(name);
-        log.OutFatalError([ptr](auto& ls)
+        std::lock_guard lockGuard(lock);
+
+        auto index = GetBankIndex(ptr);
+        if (index >= banks.size())
         {
-            ls << ptr << " is allocated by another allocator.";
-        });
+            auto log = Logger::Get(name);
+            log.OutFatalError([ptr](auto& ls)
+                              {
+                ls << ptr << " is allocated by another allocator.";
+            });
 
-        return;
+            return;
+        }
+
+        auto& bank = banks[index];
+        Assert(size <= bank.GetBlockSize());
+
+        bank.Deallocate(ptr, size);
+        
+#ifdef PROFILE_ENABLED
+        allocated = bank.GetBlockSize();
+#endif // PROFILE_ENABLED
     }
-    
-    auto& bank = banks[index];
-    Assert(size <= bank.GetBlockSize());
-
-    bank.Deallocate(ptr, size);
 
 #ifdef PROFILE_ENABLED
     {
         auto& mmgr = MemoryManager::GetInstance();
-        mmgr.ReportDeallocation(GetID(), ptr, size, bank.GetBlockSize());
+        mmgr.ReportDeallocation(GetID(), ptr, size, allocated);
     }
 #endif // PROFILE_ENABLED
+
 }
 
-void MultiPoolAllocator::PrintUsage() const
+void ThreadSafeMultiPoolAllocator::PrintUsage()
 {
     using namespace std;
 
@@ -235,27 +268,13 @@ void MultiPoolAllocator::PrintUsage() const
 #endif // PROFILE_ENABLED
 
     auto log = Logger::Get(name, ELogLevel::Info);
-    log.Out("= Allocator Usage ========================================");
-
-    auto& mmgr = MemoryManager::GetInstance();
-    auto stats = mmgr.GetAllocatorStat(GetID());
-
-    log.Out([&stats](auto& ls)
+    log.Out([this](auto& ls)
     {
-        ls << "Usage = " << stats.usage << " / " << stats.maxUsage;
+        ls << hendl << "## MultipoolAllocator(" << name
+            <<  ") Usage ##";
     });
 
-    log.Out([&stats](auto& ls)
-    {
-        ls << "Capacity = " << stats.capacity;
-    });
-
-    log.Out([&stats](auto& ls)
-    {
-        ls << "Alloc: " << stats.allocCount
-            << ", Dealloc: " << stats.deallocCount
-            << ", Fallback: " << stats.fallbackCount;
-    });
+    std::lock_guard lockGuard(lock);
 
     for (auto& pool : banks)
     {
@@ -272,7 +291,7 @@ void MultiPoolAllocator::PrintUsage() const
         {
             auto key = pool.GetBlockSize();
             auto it = usageMap.find(key);
-          
+
             if (unlikely(it == usageMap.end()))
             {
                 usageMap.emplace(key, pool.GetUsedBlocksMax());
@@ -290,7 +309,7 @@ void MultiPoolAllocator::PrintUsage() const
         AllocatorScope scope(MemoryManager::SystemAllocatorID);
 
         StringBuilder args;
-        args << "Opt.{";
+        args << "Opt. Args: " << name << " {";
 
         for (auto& item : usageMap)
         {
@@ -301,12 +320,10 @@ void MultiPoolAllocator::PrintUsage() const
         log.Out(args.c_str());
     }
 #endif // PROFILE_ENABLED
-
-    log.Out("==========================================================");
 }
 
 #ifdef PROFILE_ENABLED
-void MultiPoolAllocator::ReportConfiguration() const
+void ThreadSafeMultiPoolAllocator::ReportConfiguration()
 {
     MemoryManager::TPoolConfigs configs;
     configs.reserve(banks.size());
@@ -330,9 +347,13 @@ void MultiPoolAllocator::ReportConfiguration() const
         found->numberOfBlocks += value;
     };
 
-    for (auto& bank : banks)
     {
-        InsertItem(bank);
+        std::lock_guard lockGuard(lock);
+
+        for (auto& bank : banks)
+        {
+            InsertItem(bank);
+        }
     }
 
     auto& mmgr = MemoryManager::GetInstance();
@@ -341,7 +362,7 @@ void MultiPoolAllocator::ReportConfiguration() const
 }
 #endif // PROFILE_ENABLED
 
-bool MultiPoolAllocator::GenerateBanksByCache(MemoryManager& mmgr)
+bool ThreadSafeMultiPoolAllocator::GenerateBanksByCache(MemoryManager& mmgr)
 {
     auto nameID = name.GetID();
     auto& cacheItem = mmgr.LookUpMultiPoolConfig(nameID);
@@ -361,7 +382,7 @@ bool MultiPoolAllocator::GenerateBanksByCache(MemoryManager& mmgr)
 
     return true;
 }
-size_t MultiPoolAllocator::GetBankIndex(size_t nBytes) const
+size_t ThreadSafeMultiPoolAllocator::GetBankIndex(size_t nBytes) const
 {
     nBytes = std::max(minBlock, nBytes);
     const auto doubleSize = nBytes * 2;
@@ -378,31 +399,31 @@ size_t MultiPoolAllocator::GetBankIndex(size_t nBytes) const
 
         if (bank.GetBlockSize() > doubleSize)
             return len;
-        
+
         return i;
     }
-    
+
     return len;
 }
 
-size_t MultiPoolAllocator::GetBankIndex(void* ptr) const
+size_t ThreadSafeMultiPoolAllocator::GetBankIndex(void* ptr) const
 {
     size_t index = 0;
-    
+
     for (auto& bank : banks)
     {
         if (bank.IsMine(ptr))
         {
             return index;
         }
-        
+
         ++index;
     }
-    
+
     return index;
 }
 
-size_t MultiPoolAllocator::CalculateBlockSize(size_t requested) const
+size_t ThreadSafeMultiPoolAllocator::CalculateBlockSize(size_t requested) const
 {
     size_t blockSize = (requested + minBlock - 1) / minBlock;
     blockSize = std::bit_ceil(blockSize);
@@ -412,7 +433,7 @@ size_t MultiPoolAllocator::CalculateBlockSize(size_t requested) const
     return blockSize;
 }
 
-size_t MultiPoolAllocator::CalculateNumberOfBlocks(size_t bankSize, size_t blockSize) const
+size_t ThreadSafeMultiPoolAllocator::CalculateNumberOfBlocks(size_t bankSize, size_t blockSize) const
 {
     size_t numberOfBlocks = (bankSize + blockSize - 1) / blockSize;
 
@@ -429,7 +450,7 @@ size_t MultiPoolAllocator::CalculateNumberOfBlocks(size_t bankSize, size_t block
     return numberOfBlocks;
 }
 
-void MultiPoolAllocator::GenerateBank(size_t blockSize, size_t numberOfBlocks)
+void ThreadSafeMultiPoolAllocator::GenerateBank(size_t blockSize, size_t numberOfBlocks)
 {
     AllocatorScope scope(parentID);
 
@@ -470,11 +491,11 @@ void MultiPoolAllocator::GenerateBank(size_t blockSize, size_t numberOfBlocks)
 namespace HE
 {
 
-void MultiPoolAllocatorTest::Prepare()
+void ThreadSafeMultiPoolAllocatorTest::Prepare()
 {
     AddTest("Basic Construction", [this](auto& ls)
     {
-        MultiPoolAllocator allocator("TestMultiPoolAlloc"
+        ThreadSafeMultiPoolAllocator allocator("TC0 ThreadSafeMultiPoolAlloc"
             , {{64, 1024}, {128, 1024}, {256, 1024}, {512, 1024}, {1024, 1024}, {2048, 1024}, {4096, 1024} });
 
 #ifdef PROFILE_ENABLED
@@ -488,7 +509,7 @@ void MultiPoolAllocatorTest::Prepare()
 
     AddTest("Allocation 0", [this](auto& ls)
     {
-        MultiPoolAllocator allocator("TestMultiPoolAlloc"
+        ThreadSafeMultiPoolAllocator allocator("TC1 ThreadSafeMultiPoolAlloc"
             , {{64, 1024}, {128, 1024}, {256, 1024}, {512, 1024}, {1024, 1024}, {2048, 1024}, {4096, 1024} });
 
 #ifdef PROFILE_ENABLED
@@ -498,13 +519,12 @@ void MultiPoolAllocatorTest::Prepare()
 #endif // PROFILE_ENABLED
 
         AllocatorScope scope(allocator);
-
         mmgr.AllocateBytes(0);
     });
 
     AddTest("Multiple Allocations & Fallback", [this](auto& ls)
     {
-        MultiPoolAllocator allocator("TestMultiPoolAlloc"
+        ThreadSafeMultiPoolAllocator allocator("TC2 ThreadSafeMultiPoolAlloc"
             , {{64, 1024}, {128, 1024}, {256, 1024}, {512, 1024}, {1024, 1024}, {2048, 1024}, {4096, 1024} });
 
         auto& mmgr = MemoryManager::GetInstance();
@@ -515,6 +535,7 @@ void MultiPoolAllocatorTest::Prepare()
 #endif // PROFILE_ENABLED
 
         AllocatorScope scope(allocator);
+
         void* pointers[] = {
             mmgr.AllocateBytes(0),
             mmgr.AllocateBytes(8),
@@ -550,7 +571,7 @@ void MultiPoolAllocatorTest::Prepare()
 
         constexpr size_t repeatCount = 100000;
 
-        MultiPoolAllocator allocator("PerfTestMultiPoolAlloc");
+        ThreadSafeMultiPoolAllocator allocator("PerfTestMultiPoolAlloc");
 
         {
             AllocatorScope allocScope(allocator);
@@ -604,13 +625,13 @@ void MultiPoolAllocatorTest::Prepare()
         float heSec = Time::ToFloat(heDuration);
         float stdSec = Time::ToFloat(stdDuration);
 
-        ls << "Performance: MultiPoolAllocator = " << heSec
+        ls << "Performance: ThreadSafeMultiPoolAllocator = " << heSec
             << " sec, std malloc = " << stdSec << " sec" << lf;
 
         if (heSec > stdSec)
         {
-            ls << "MultiPoolAllocator is slower than std malloc."
-                << " MultiPoolAllocator  = " << heSec
+            ls << "ThreadSafeMultiPoolAllocator is slower than std malloc."
+                << " ThreadSafeMultiPoolAllocator  = " << heSec
                 << " sec, std malloc = " << stdSec << " sec" << lfwarn;
         }
     });

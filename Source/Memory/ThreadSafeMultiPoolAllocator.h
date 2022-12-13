@@ -7,53 +7,54 @@
 #include "Config/BuildConfig.h"
 #include "HSTL/HVector.h"
 #include "String/StaticString.h"
+#include <mutex>
 
 
 namespace HE
 {
 
-class MemoryManager;
-
-class MultiPoolAllocator final
+class ThreadSafeMultiPoolAllocator final
 {
 public:
-    using This = MultiPoolAllocator;
+    using This = ThreadSafeMultiPoolAllocator;
 
     static constexpr size_t DefaultMinBlock = 16;
     static constexpr size_t DefaultBankUnit = 1024ULL * 1024;
     static constexpr size_t MinNumberOfBlocks = 16;
-    
+
 private:
     using TInitializerList = std::initializer_list<PoolConfig>;
-    
+
     TAllocatorID id;
     TAllocatorID parentID;
     StaticString name;
+
+    std::mutex lock;
     HSTL::HVector<PoolAllocator> banks;
     size_t bankSize;
     size_t minBlock;
-    
+
 public:
-    MultiPoolAllocator(const char* name
+    ThreadSafeMultiPoolAllocator(const char* name
         , size_t allocationUnit = DefaultBankUnit, size_t minBlockSize = DefaultMinBlock);
-    MultiPoolAllocator(const char* name, TInitializerList initialConfigurations
+    ThreadSafeMultiPoolAllocator(const char* name, TInitializerList initialConfigurations
         , size_t allocationUnit = DefaultBankUnit, size_t minBlockSize = DefaultMinBlock);
-    ~MultiPoolAllocator();
-    
+    ~ThreadSafeMultiPoolAllocator();
+
     void* Allocate(size_t size);
     void Deallocate(void* ptr, size_t size);
-    
+
     inline auto GetName() const { return name; }
     inline auto GetID() const { return id; }
-    
-    void PrintUsage() const;
+
+    void PrintUsage();
 
 #ifdef PROFILE_ENABLED
-    void ReportConfiguration() const;
+    void ReportConfiguration();
 #endif // PROFILE_ENABLED
 
 private:
-    bool GenerateBanksByCache(MemoryManager& mmgr);
+    bool GenerateBanksByCache(class MemoryManager& mmgr);
     size_t GetBankIndex(size_t nBytes) const;
     size_t GetBankIndex(void* ptr) const;
     size_t CalculateBlockSize(size_t requested) const;
@@ -69,13 +70,15 @@ private:
 
 namespace HE
 {
-class MultiPoolAllocatorTest : public TestCollection
+class ThreadSafeMultiPoolAllocatorTest
+    : public TestCollection
 {
 public:
-    MultiPoolAllocatorTest() : TestCollection("MultiPoolAllocatorTest")
+    ThreadSafeMultiPoolAllocatorTest()
+        : TestCollection("ThreadSafeMultiPoolAllocatorTest")
     {
     }
-    
+
 protected:
     virtual void Prepare() override;
 };

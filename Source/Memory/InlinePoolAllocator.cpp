@@ -126,12 +126,22 @@ void HE::InlinePoolAllocatorTest::Prepare()
         auto stdTimeSec = Time::ToFloat(stdTime);
         auto rate = inlineTimeSec / stdTimeSec;
 
+#ifdef PROFILE_ENABLED
+        auto& mmgr = MemoryManager::GetInstance();
+        auto stat = mmgr.GetAllocatorStat(inlineAlloc.GetID());
+
         ls << "Performance: "
             << inlineTimeSec
             << " msec vs STL: " << stdTimeSec
             << " msec, rate = [" << rate
-            << "], fallback count = " << inlineAlloc.GetFallbackCount()
+            << "], fallback count = " << stat.fallbackCount
             << " / " << (testCount * loopLength) << lf;
+#else // PROFILE_ENABLED
+        ls << "Performance: "
+            << inlineTimeSec
+            << " msec vs STL: " << stdTimeSec
+            << " msec, rate = [" << rate << ']' << lf;
+#endif // PROFILE_ENABLED
 
         return rate;
     };

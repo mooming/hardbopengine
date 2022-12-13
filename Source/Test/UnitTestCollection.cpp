@@ -30,6 +30,7 @@
 #include "Memory/MultiPoolAllocator.h"
 #include "Memory/StackAllocator.h"
 #include "Memory/SystemAllocator.h"
+#include "Memory/ThreadSafeMultiPoolAllocator.h"
 #include "OSAL/OSDebug.h"
 #include "OSAL/OSInputOutput.h"
 #include "OSAL/OSThread.h"
@@ -51,10 +52,8 @@ namespace Test
 {
     void RunUnitTests()
     {
-        using namespace std;
-
-        cout << fixed;
-        cout.precision(3);
+        MultiPoolAllocator allocator("UnitTest");
+        AllocatorScope scope(allocator);
 
         auto& testEnv = TestEnv::GetEnv();
 
@@ -66,6 +65,7 @@ namespace Test
         testEnv.AddTestCollection<PoolAllocatorTest>();
         testEnv.AddTestCollection<MonotonicAllocatorTest>();
         testEnv.AddTestCollection<MultiPoolAllocatorTest>();
+        testEnv.AddTestCollection<ThreadSafeMultiPoolAllocatorTest>();
 
         testEnv.AddTestCollection<OSDebugTest>();
         testEnv.AddTestCollection<OSInputOutputTest>();

@@ -47,6 +47,8 @@ public:
 private:
     struct UsageRecord final
     {
+        size_t allocCount = 0;
+        size_t deallocCount = 0;
         size_t totalUsage = 0;
         size_t maxUsage = 0;
         size_t totalCapacity = 0;
@@ -65,9 +67,9 @@ private:
 
     UsageRecord inlineUsage;
     UsageRecord usage;
-    UsageRecord sysMemUsage;
 
     MultiPoolConfigCache multiPoolConfigCache;
+
 #ifdef PROFILE_ENABLED
     MultiPoolConfigCache multiPoolConfigLog;
 #endif // PROFILE_ENABLED
@@ -116,6 +118,8 @@ public:
     const MultiPoolAllocatorConfig& LookUpMultiPoolConfig(StaticStringID uniqueName) const;
 
 #ifdef PROFILE_ENABLED
+    AllocStats GetAllocatorStat(TAllocatorID id);
+    
     void Deregister(TId id, const std::source_location& srcLocation);
     void ReportMultiPoolConfigutation(StaticStringID uniqueName, TPoolConfigs&& poolConfigs);
 #endif // PROFILE_ENABLED
@@ -125,7 +129,6 @@ public:
     inline void LogError(TLogFunc func) { Log(ELogLevel::Error, func); }
     inline auto& GetInlineUsage() const { return inlineUsage; }
     inline auto& GetUsage() const { return usage; }
-    inline auto& GetSystemMemoryUsage() const { return sysMemUsage; }
 
 public:
     template <typename T>

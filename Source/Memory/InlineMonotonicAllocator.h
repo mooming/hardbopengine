@@ -22,15 +22,15 @@ public:
 
 private:
     TAllocatorID id;
+    TAllocatorID parentID;
     TSize cursor;
-    TSize fallbackCount;
     ALIGN uint8_t buffer[Capacity];
 
 public:
     InlineMonotonicAllocator(const char* name)
         : id(InvalidAllocatorID)
+        , parentID(InvalidAllocatorID)
         , cursor(0)
-        , fallbackCount(0)
     {
         Assert(OS::CheckAligned(buffer));
         buffer[0] = 0;
@@ -46,6 +46,8 @@ public:
         };
 
         auto& mmgr = MemoryManager::GetInstance();
+        parentID = mmgr.GetCurrentAllocatorID();
+
         id = mmgr.Register(name, true, Capacity, allocFunc, deallocFunc);
     }
 
@@ -60,9 +62,9 @@ public:
         mmgr.Deregister(GetID());
     }
 
-    TPointer Allocate(size_t size)
+    TPointer Allocate(size_t requested)
     {
-        size = OS::GetAligned(size, Config::DefaultAlign);
+        auto size = OS::GetAligned(requested, Config::DefaultAlign);
 
         const auto freeSize = GetAvailable();
         if (unlikely(size > freeSize))
@@ -74,8 +76,7 @@ public:
                 << " is exceeding its limit, " << freeSize << '.';
             });
 
-            auto ptr = mmgr.SysAllocate(size);
-            ++fallbackCount;
+            auto ptr = mmgr.AllocateBytes(parentID, requested);
 
             return ptr;
         }
@@ -105,17 +106,29 @@ public:
         return ptr;
     }
     
-    void Deallocate(const TPointer ptr, TSize size)
+    void Deallocate(const TPointer ptr, TSize requested)
     {
-#ifdef __MEMORY_LOGGING__
         auto& mmgr = MemoryManager::GetInstance();
-        mmgr.Log(ELogLevel::Info, [this, &mmgr, ptr, size](auto& lout)
+
+        if (unlikely(!IsMine(ptr)))
         {
-            lout << mmgr.GetName(id) << '[' << static_cast<int>(GetID())
-            << "] Deallocate call shall be ignored. ptr = "
-            << static_cast<void*>(ptr) << ", size = " << size;
+            mmgr.DeallocateBytes(parentID, ptr, requested);
+            return;
+        }
+
+#ifdef __MEMORY_LOGGING__
+        mmgr.Log(ELogLevel::Info, [this, &mmgr, ptr, requested](auto& ls)
+        {
+            ls << mmgr.GetName(id) << '[' << static_cast<int>(GetID())
+                << "] Deallocate call shall be ignored. ptr = "
+                << static_cast<void*>(ptr) << ", size = " << requested;
         });
 #endif // __MEMORY_LOGGING__
+
+#ifdef PROFILE_ENABLED
+        mmgr.ReportDeallocation(id, ptr, requested, 0);
+#endif // PROFILE_ENABLED
+
     }
 
     size_t GetAvailable() const
@@ -135,10 +148,11 @@ public:
 private:
     bool IsMine(TPointer ptr) const
     {
-        if (ptr < static_cast<TPointer>(buffer))
+        auto bytePtr = reinterpret_cast<const uint8_t*>(ptr);
+        if (bytePtr < buffer)
             return false;
 
-        if (ptr >= static_cast<void*>(buffer + Capacity))
+        if (bytePtr >= (buffer + Capacity))
             return false;
 
         return true;

@@ -2,7 +2,7 @@
 
 #pragma once
 
-#include "String/StaticStringID.h"
+#include "String/StaticString.h"
 #include <cstddef>
 #include <mutex>
 
@@ -12,9 +12,7 @@ namespace HE
 
 struct AllocStats final
 {
-    static constexpr size_t NameBufferSize = 63;
-
-    char name[NameBufferSize];
+    StaticString name;
     bool isInline;
 
     size_t capacity;

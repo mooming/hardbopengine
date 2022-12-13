@@ -17,6 +17,7 @@ using namespace HE;
 StackAllocator::StackAllocator(const char* name
     , SizeType inCapacity, const TSrcLoc location)
     : id(InvalidAllocatorID)
+    , parentID(InvalidAllocatorID)
     , capacity(inCapacity)
     , cursor(0)
     , buffer(nullptr)
@@ -36,6 +37,7 @@ StackAllocator::StackAllocator(const char* name, SizeType inCapacity)
     }
     
     auto& mmgr = MemoryManager::GetInstance();
+    parentID = mmgr.GetCurrentAllocatorID();
     bufferPtr = mmgr.AllocateBytes(capacity);
     
     auto allocFunc = [this](size_t n) -> void*
@@ -63,8 +65,10 @@ StackAllocator::~StackAllocator()
 #endif // PROFILE_ENABLED
 }
 
-void *StackAllocator::Allocate (size_t size)
+void *StackAllocator::Allocate(const size_t requested)
 {
+    size_t size = requested;
+
     {
         constexpr auto AlignUnit = Config::DefaultAlign;
         const auto multiplier = (size + AlignUnit - 1) / AlignUnit;
@@ -81,7 +85,13 @@ void *StackAllocator::Allocate (size_t size)
                 << freeSize << " / " << capacity;
         });
 
-        return nullptr;
+        auto ptr = mmgr.AllocateBytes(parentID, requested);
+
+#ifdef PROFILE_ENABLED
+        mmgr.ReportFallback(id, ptr, requested);
+#endif // PROFILE_ENABLED
+
+        return ptr;
     }
 
     auto ptr = reinterpret_cast<void*>(buffer + cursor);
@@ -97,9 +107,17 @@ void *StackAllocator::Allocate (size_t size)
     return ptr;
 }
 
-void StackAllocator::Deallocate(const Pointer ptr, SizeType size)
+void StackAllocator::Deallocate(const Pointer ptr, const SizeType requested)
 {
-    Assert(IsMine(ptr));
+    auto& mmgr = MemoryManager::GetInstance();
+
+    if (unlikely(!IsMine(ptr)))
+    {
+        mmgr.DeallocateBytes(parentID, ptr, requested);
+        return;
+    }
+
+    SizeType size = requested;
 
     {
         constexpr auto AlignUnit = Config::DefaultAlign;
@@ -129,10 +147,7 @@ void StackAllocator::Deallocate(const Pointer ptr, SizeType size)
     cursor -= size;
 
 #ifdef PROFILE_ENABLED
-    {
-        auto& mmgr = MemoryManager::GetInstance();
-        mmgr.ReportDeallocation(id, ptr, size, size);
-    }
+    mmgr.ReportDeallocation(id, ptr, size, size);
 #endif // PROFILE_ENABLED
 }
 

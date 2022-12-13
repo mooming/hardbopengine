@@ -112,8 +112,11 @@ void TestCollection::ExecuteTests()
 
         {
             MultiPoolAllocator alloc(testName);
+            
             AllocatorScope scope(alloc);
             test(logStream);
+
+            alloc.PrintUsage();
         }
 
         auto newErrorCursor = errorMessages.size();

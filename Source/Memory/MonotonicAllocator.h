@@ -17,10 +17,10 @@ public:
 
 private:
     TAllocatorID id;
-
+    TAllocatorID parentID;
+    
     TSize cursor;
     TSize capacity;
-    TSize fallbackCount;
 
     union
     {
@@ -39,6 +39,9 @@ public:
     size_t GetUsage() const;
 
     inline auto GetID() const { return id; }
+
+private:
+    bool IsMine(const TPointer ptr) const;
 };
 } // HE
 

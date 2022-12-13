@@ -17,6 +17,7 @@ class PoolAllocator final
     
 private:
     TAllocatorID id;
+    TAllocatorID parentID;
     StaticString name;
     
     TSize blockSize;

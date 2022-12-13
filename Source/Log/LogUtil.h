@@ -5,6 +5,7 @@
 #include "LogLevel.h"
 #include "HSTL/HString.h"
 #include "String/StaticString.h"
+#include "String/InlineStringBuilder.h"
 #include <chrono>
 
 
@@ -16,7 +17,8 @@ namespace LogUtil
 using TTimePoint = std::chrono::time_point<std::chrono::steady_clock>;
 
 const TTimePoint& GetStartTime();
-HSTL::HInlineString<64> GetTimeStampString(const TTimePoint& currentTime = std::chrono::steady_clock::now());
+void GetTimeStampString(InlineStringBuilder<64>& outStr
+    , const TTimePoint& currentTime = std::chrono::steady_clock::now());
 StaticString GetLogLevelString(ELogLevel level);
 
 } // LogUtil

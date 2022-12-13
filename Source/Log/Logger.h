@@ -8,6 +8,7 @@
 #include "HSTL/HVector.h"
 #include "HSTL/HUnorderedMap.h"
 #include "Memory/MultiPoolAllocator.h"
+#include "Memory/ThreadSafeMultiPoolAllocator.h"
 #include "String/InlineStringBuilder.h"
 #include "String/StaticString.h"
 #include "System/TaskHandle.h"
@@ -83,6 +84,7 @@ private:
     static Logger* instance;
 
     MultiPoolAllocator allocator;
+    ThreadSafeMultiPoolAllocator inputAlloc;
     TaskHandle taskHandle;
     std::atomic<bool> hasInput;
     std::atomic<bool> needFlush;

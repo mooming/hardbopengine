@@ -19,6 +19,7 @@ PoolAllocator::PoolAllocator(const char* name, TSize inBlockSize, TSize numberOf
 PoolAllocator::PoolAllocator(const char* name, TSize inBlockSize, TIndex numberOfBlocks)
 #endif // PROFILE_ENABLED
     : id(InvalidAllocatorID)
+    , parentID(InvalidAllocatorID)
     , name(name)
     , blockSize(OS::GetAligned(std::max(inBlockSize, sizeof(TSize)), sizeof(TSize)))
     , numberOfBlocks(numberOfBlocks)
@@ -30,11 +31,14 @@ PoolAllocator::PoolAllocator(const char* name, TSize inBlockSize, TIndex numberO
 #endif // PROFILE_ENABLED
 {
     Assert(blockSize >= sizeof(TSize));
+
+    auto& mmgr = MemoryManager::GetInstance();
+    parentID = mmgr.GetCurrentAllocatorID();
+
     const TSize totalSize = blockSize * numberOfBlocks;
     if (totalSize <= 0)
         return;
 
-    auto& mmgr = MemoryManager::GetInstance();
     buffer = static_cast<Byte*>(mmgr.AllocateBytes(totalSize));
     availables = &buffer[0];
 
@@ -59,6 +63,7 @@ PoolAllocator::PoolAllocator(const char* name, TSize inBlockSize, TIndex numberO
 
 PoolAllocator::PoolAllocator(PoolAllocator&& rhs) noexcept
     : id(rhs.id)
+    , parentID(rhs.parentID)
     , name(rhs.name)
     , blockSize(rhs.blockSize)
     , numberOfBlocks(rhs.numberOfBlocks)
@@ -71,6 +76,7 @@ PoolAllocator::PoolAllocator(PoolAllocator&& rhs) noexcept
 #endif // PROFILE_ENABLED
 {
     rhs.id = InvalidAllocatorID;
+    rhs.parentID = InvalidAllocatorID;
     rhs.name = StaticString();
     rhs.blockSize = 0;
     rhs.numberOfBlocks = 0;
@@ -165,7 +171,7 @@ Pointer PoolAllocator::Allocate(size_t size)
                     << " is exceeding its limit, " << blockSize << '.';
             });
 
-        auto ptr = mmgr.SysAllocate(size);
+        auto ptr = mmgr.AllocateBytes(parentID, size);
 
 #ifdef PROFILE_ENABLED
         mmgr.ReportFallback(id, ptr, size);
@@ -194,7 +200,7 @@ void PoolAllocator::Deallocate(Pointer ptr, size_t size)
     if (unlikely(!IsMine(ptr)))
     {
         auto& mmgr = MemoryManager::GetInstance();
-        mmgr.SysDeallocate(ptr, 0);
+        mmgr.DeallocateBytes(parentID, ptr, size);
         return;
     }
 

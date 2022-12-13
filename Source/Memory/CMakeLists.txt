@@ -33,6 +33,7 @@ add_library (Memory STATIC
  PoolConfigUtil.cpp
  StackAllocator.cpp
  SystemAllocator.cpp
+ ThreadSafeMultiPoolAllocator.cpp
  AllocStats.h
  AllocatorID.h
  AllocatorProxy.h
@@ -54,6 +55,7 @@ add_library (Memory STATIC
  Shareable.h
  StackAllocator.h
  SystemAllocator.h
+ ThreadSafeMultiPoolAllocator.h
 )
 
 if (APPLE)

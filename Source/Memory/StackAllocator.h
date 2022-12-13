@@ -22,6 +22,7 @@ public:
 
 private:
     TAllocatorID id;
+    TAllocatorID parentID;
 
     SizeType capacity;
     SizeType cursor;

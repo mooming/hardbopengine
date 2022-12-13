@@ -16,7 +16,8 @@ const TTimePoint& GetStartTime()
     return startTime;
 }
 
-HSTL::HInlineString<64> GetTimeStampString(const TTimePoint& currentTime)
+void GetTimeStampString(InlineStringBuilder<64>& outStr
+    , const TTimePoint& currentTime)
 {
     using namespace std;
 
@@ -31,18 +32,14 @@ HSTL::HInlineString<64> GetTimeStampString(const TTimePoint& currentTime)
     auto intMins = minutes.count() % 60;
     auto intSecs = seconds.count() % 60;
     auto intMSecs = milliSeconds.count() % 1000;
-    
-    HSTL::HInlineString<64> str;
 
-    str += std::to_string(intHours);
-    str += ':';
-    str += std::to_string(intMins);
-    str += ':';
-    str += std::to_string(intSecs);
-    str += '.';
-    str += std::to_string(intMSecs);
-
-    return str;
+    outStr << std::to_string(intHours);
+    outStr << ':';
+    outStr << std::to_string(intMins);
+    outStr << ':';
+    outStr << std::to_string(intSecs);
+    outStr << '.';
+    outStr << std::to_string(intMSecs);
 }
 
 StaticString GetLogLevelString(ELogLevel level)

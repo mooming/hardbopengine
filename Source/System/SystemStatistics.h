@@ -8,6 +8,7 @@
 #include "String/StaticStringID.h"
 #include <atomic>
 #include <cstdint>
+#include <mutex>
 #include <vector>
 
 
@@ -31,6 +32,13 @@ private:
     std::atomic<uint64_t> engineLogCount;
     std::atomic<uint64_t> logCount;
     std::atomic<uint64_t> longLogCount;
+    std::atomic<uint64_t> fallbackAllocCount;
+
+    std::mutex sysMemReportLock;
+    size_t allocCount;
+    size_t deallocCount;
+    size_t totalUsage;
+    size_t maxUsage;
 
     Time::TTime startTime;
     Time::TTime currentTime;
@@ -50,6 +58,8 @@ public:
 
 #ifdef PROFILE_ENABLED
     void Report(const AllocStats& allocStats);
+    void ReportSysMemAlloc(size_t usage);
+    void ReportSysMemDealloc(size_t usage);
 #endif // PROFILE_ENABLED
 
     void Print();
@@ -60,7 +70,8 @@ public:
     inline void IncEngineLogCount() { engineLogCount.fetch_add(1, std::memory_order_relaxed); }
     inline void IncLogCount() { logCount.fetch_add(1, std::memory_order_relaxed); }
     inline void IncLongLogCount() { longLogCount.fetch_add(1, std::memory_order_relaxed); }
-    
+    inline void IncFallbackAllocCount() { fallbackAllocCount.fetch_add(1, std::memory_order_relaxed); }
+
     inline auto GetStartTime() const { return startTime; }
     inline auto GetCurrentTime() const { return currentTime; }
     inline auto GetTimeSinceStart() const { return timeSinceStart; }

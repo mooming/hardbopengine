@@ -43,6 +43,20 @@ void ImmediateLog(ELogLevel level, StaticString category, const char* logStr)
 }
 #endif // LOG_FORCE_IMMEDIATE
 
+void FallbackLog(StaticString category, ELogLevel level, const Logger::TLogFunction& logFunc)
+{
+    auto& engine = Engine::Get();
+
+    Logger::TLogStream str;
+    str << '[' << category << "] ";
+    logFunc(str);
+
+    engine.Log(level, [&str](auto& ls)
+    {
+        ls << str.c_str();
+    });
+}
+
 } // anonymous namespace
 
 Logger* Logger::instance = nullptr;
@@ -57,6 +71,7 @@ void Logger::SimpleLogger::Out(const TLogFunction& logFunc) const
 {
     if (unlikely(instance == nullptr))
     {
+        FallbackLog(category, level, logFunc);
         return;
     }
 
@@ -66,7 +81,10 @@ void Logger::SimpleLogger::Out(const TLogFunction& logFunc) const
 void Logger::SimpleLogger::Out(ELogLevel inLevel, const TLogFunction& logFunc) const
 {
     if (unlikely(instance == nullptr))
+    {
+        FallbackLog(category, inLevel, logFunc);
         return;
+    }
 
     instance->AddLog(category, inLevel, logFunc);
 }
@@ -86,6 +104,7 @@ Logger::SimpleLogger Logger::Get(StaticString category, ELogLevel level)
 
 Logger::Logger(Engine& engine, const char* path, const char* filename)
     : allocator("LoggerMemoryPool")
+    , inputAlloc("LoggerInputPool")
     , hasInput(false)
     , needFlush(false)
 {
@@ -97,8 +116,13 @@ Logger::Logger(Engine& engine, const char* path, const char* filename)
     AllocatorScope scope(allocator);
 
     logPath = path;
-    inputBuffer.reserve(16);
-    swapBuffer.reserve(16);
+
+    {
+        AllocatorScope inputAllocScope(inputAlloc);
+        inputBuffer.reserve(16);
+        swapBuffer.reserve(16);
+    }
+
     textBuffer.reserve(16);
     filters.reserve(16);
 
@@ -210,8 +234,6 @@ void Logger::StopTask(TaskSystem& taskSys)
         ls << "Logger shall be terminated." << hendl;
     });
 
-    allocator.PrintUsage();
-
     ProcessBuffer();
 
     outFileStream.flush();
@@ -277,11 +299,13 @@ void Logger::AddLog(StaticString category, ELogLevel level
         tmpTextBuffer.reserve(1);
 
         using namespace std;
-        auto timeStampStr = LogUtil::GetTimeStampString();
+        InlineStringBuilder<64> timeStampStr;
+        LogUtil::GetTimeStampString(timeStampStr);
+
         auto levelStr = LogUtil::GetLogLevelString(level);
 
         InlineStringBuilder<Config::LogOutputBuffer + 128> text;
-        text << '[' << timeStampStr << "][" << threadName << "]["
+        text << '[' << timeStampStr.c_str() << "][" << threadName << "]["
             << category << "][" << levelStr << "] " << ls.c_str();
         
         tmpTextBuffer.emplace_back(text.c_str());
@@ -301,7 +325,7 @@ void Logger::AddLog(StaticString category, ELogLevel level
 
     {
         std::lock_guard lock(inputLock);
-        AllocatorScope scope(MemoryManager::SystemAllocatorID);
+        AllocatorScope inputAllocScope(inputAlloc);
         inputBuffer.emplace_back(level, threadName, category, ls.c_str(), ls.Size());
         
         bufferSize = inputBuffer.size();
@@ -380,13 +404,14 @@ void Logger::ProcessBuffer()
         if (log.level >= ELogLevel::Warning)
             bNeedIOFlush = true;
 
-        auto timeStampStr = LogUtil::GetTimeStampString(log.timeStamp);
+        InlineStringBuilder<64> timeStampStr;
+        LogUtil::GetTimeStampString(timeStampStr, log.timeStamp);
         auto levelStr = LogUtil::GetLogLevelString(log.level);
 
         using namespace HSTL;
         InlineStringBuilder<Config::LogLineLength * 2> text;
 
-        text << '[' << timeStampStr << "][" << log.threadName << "][";
+        text << '[' << timeStampStr.c_str() << "][" << log.threadName << "][";
         text << log.category << "][" << levelStr << "] ";
         text << log.GetText();
 

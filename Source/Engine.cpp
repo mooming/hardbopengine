@@ -150,6 +150,7 @@ void Engine::Run()
         staticStrTable.PrintStringTable();
         configSys.PrintAllParameters();
         statistics.Print();
+        statistics.PrintAllocatorProfiles();
     }
 
     PreShutdown();
