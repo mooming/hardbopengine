@@ -12,18 +12,14 @@ namespace Time
 
 class ScopedTime final
 {
-private:
+  private:
     TDuration& duration;
     TTime start;
 
-public:
+  public:
     ScopedTime(const ScopedTime&) = delete;
-    
-    ScopedTime(TDuration& outDeltaTime)
-        : duration(outDeltaTime)
-        , start(TStopWatch::now())
-    {
-    }
+
+    ScopedTime(TDuration& outDeltaTime) : duration(outDeltaTime), start(TStopWatch::now()) {}
 
     ~ScopedTime()
     {
@@ -32,5 +28,5 @@ public:
     }
 };
 
-} // Time
-} // HE
+} // namespace Time
+} // namespace HE

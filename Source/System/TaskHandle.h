@@ -12,29 +12,29 @@ class Task;
 
 class TaskHandle final
 {
-public:
+  public:
     using TKey = uint32_t;
     using TIndex = Array<int>::TIndex;
     using TReleaser = std::function<void(const TaskHandle& handle)>;
 
     static constexpr TKey InvalidKey = 0;
-    
-private:
+
+  private:
     TKey key;
     TIndex taskIndex;
     TReleaser releaser;
 
-public:
+  public:
     TaskHandle(const TaskHandle& rhs) = delete;
-    TaskHandle& operator= (const TaskHandle& rhs) = delete;
+    TaskHandle& operator=(const TaskHandle& rhs) = delete;
 
-public:
+  public:
     TaskHandle();
     TaskHandle(TKey key, TIndex taskIndex, TReleaser releaser);
     TaskHandle(TaskHandle&& rhs);
     ~TaskHandle();
 
-    TaskHandle& operator= (TaskHandle&& rhs);
+    TaskHandle& operator=(TaskHandle&& rhs);
 
     bool IsValid() const;
     Task* GetTask() const;
@@ -47,4 +47,4 @@ public:
     inline auto GetIndex() const { return taskIndex; }
 };
 
-} // HE
+} // namespace HE

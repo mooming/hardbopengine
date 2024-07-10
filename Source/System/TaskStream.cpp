@@ -3,58 +3,42 @@
 #include "TaskStream.h"
 
 #include "Engine.h"
-#include "TaskSystem.h"
 #include "Log/Logger.h"
 #include "OSAL/Intrinsic.h"
 #include "OSAL/OSThread.h"
 #include "System/ScopedLock.h"
+#include "TaskSystem.h"
 #include <thread>
 
 
 namespace HE
 {
 
-TaskStream::Request::Request()
-    : task(nullptr)
-    , start(0)
-    , end(0)
+TaskStream::Request::Request() : task(nullptr), start(0), end(0)
 {
 }
 
 TaskStream::Request::Request(TKey key, Task& task, TIndex start, TIndex end)
-    : key(key)
-    , task(&task)
-    , start(start)
-    , end(end)
+    : key(key), task(&task), start(start), end(end)
 {
 }
 
 TaskStream::TaskStream()
-    : deltaTime(0.0f)
-    , flipCount(0)
-    , isDirty(false)
-    , isResidentListDirty(false)
-    , hasCancelledTask(false)
+    : deltaTime(0.0f), flipCount(0), isDirty(false), isResidentListDirty(false),
+      hasCancelledTask(false)
 
 {
     Assert(threadID == std::thread::id());
 }
 
 TaskStream::TaskStream(StaticString name)
-    : name(name)
-    , deltaTime(0.0f)
-    , flipCount(0)
-    , isDirty(false)
-    , isResidentListDirty(false)
-    , hasCancelledTask(false)
+    : name(name), deltaTime(0.0f), flipCount(0), isDirty(false), isResidentListDirty(false),
+      hasCancelledTask(false)
 {
     Assert(threadID == std::thread::id());
 
     auto log = Logger::Get(name);
-    log.Out([name=name](auto& ls)
-    {
-        ls << name.c_str() << " is created.";
-    });
+    log.Out([name = name](auto& ls) { ls << name.c_str() << " is created."; });
 }
 
 void TaskStream::WakeUp()
@@ -91,10 +75,7 @@ void TaskStream::Flush()
     if (unlikely(deltaTime > 0.1f))
     {
         auto log = Logger::Get(name);
-        log.OutWarning([this](auto& ls)
-        {
-            ls << "Slow DeltaTime = " << deltaTime;
-        });
+        log.OutWarning([this](auto& ls) { ls << "Slow DeltaTime = " << deltaTime; });
     }
 }
 
@@ -106,18 +87,12 @@ void TaskStream::Start(TaskSystem& taskSys, TaskHandle::TIndex streamIndex)
         TaskSystem::SetStreamIndex(streamIndex);
 
         auto log = Logger::Get(name);
-        log.Out([name = name](auto& ls)
-        {
-            ls << name.c_str() << " has begun.";
-        });
+        log.Out([name = name](auto& ls) { ls << name.c_str() << " has begun."; });
 
         threadID = std::this_thread::get_id();
         RunLoop(taskSys.IsRunning());
 
-        log.Out([name = name](auto& ls)
-        {
-            ls << name.c_str() << " has been terminated.";
-        });
+        log.Out([name = name](auto& ls) { ls << name.c_str() << " has been terminated."; });
     };
 
     thread = std::thread(func);
@@ -137,11 +112,12 @@ void TaskStream::Request(TKey key, Task& task, TIndex start, TIndex end)
         newRequests.emplace_back(key, task, start, end);
 
         auto log = Logger::Get(name);
-        log.Out([&](auto& ls)
-        {
-            ls << "Request: Key = " << key << ", Task = " << task.GetName()
-                << '[' << start << ", " << end << ')';
-        });
+        log.Out(
+            [&](auto& ls)
+            {
+                ls << "Request: Key = " << key << ", Task = " << task.GetName() << '[' << start
+                   << ", " << end << ')';
+            });
 
         isDirty.store(true, std::memory_order_release);
     }
@@ -153,7 +129,7 @@ void TaskStream::AddResident(TKey key, Task& task)
 {
     {
         ScopedLock lock(queueLock);
-        
+
         task.SetThreadID(threadID);
         task.IncNumStreams();
 
@@ -161,9 +137,7 @@ void TaskStream::AddResident(TKey key, Task& task)
 
         auto log = Logger::Get(name);
         log.Out([&](auto& ls)
-        {
-            ls << "AddResident: Key = " << key << ", Task = " << task.GetName();
-        });
+                { ls << "AddResident: Key = " << key << ", Task = " << task.GetName(); });
 
         isResidentListDirty = true;
         isDirty.store(true, std::memory_order_release);
@@ -177,36 +151,36 @@ void TaskStream::RemoveResidentTask(TKey key)
     {
         ScopedLock lock(queueLock);
 
-        auto predicate = [key](auto& item)
-        {
-            return item.key == key;
-        };
+        auto predicate = [key](auto& item) { return item.key == key; };
 
         auto found = std::find_if(residents.begin(), residents.end(), predicate);
         if (found == residents.end())
+        {
             return;
+        }
 
         auto log = Logger::Get(name);
         auto task = found->task;
         if (likely(task != nullptr))
         {
-            log.Out([&](auto& ls)
-            {
-                ls << "RemoveResidentTask: Key = " << key << ", Task = "
-                    << task->GetName() << '[' << found->start << ", "
-                    << found->end << ')';
-            });
+            log.Out(
+                [&](auto& ls)
+                {
+                    ls << "RemoveResidentTask: Key = " << key << ", Task = " << task->GetName()
+                       << '[' << found->start << ", " << found->end << ')';
+                });
 
             task->SetDone();
             task->Cancel();
         }
         else
         {
-            log.Out([&](auto& ls)
-            {
-                ls << "RemoveResident: Key = " << key << ", Task = Null"
-                    << '[' << found->start << ", " << found->end << ')';
-            });
+            log.Out(
+                [&](auto& ls)
+                {
+                    ls << "RemoveResident: Key = " << key << ", Task = Null" << '[' << found->start
+                       << ", " << found->end << ')';
+                });
         }
 
         isResidentListDirty = true;
@@ -226,37 +200,37 @@ void TaskStream::RemoveResidentTaskSync(TKey key)
 
         count = flipCount.load(std::memory_order_relaxed);
 
-        auto predicate = [key](auto& item)
-        {
-            return item.key == key;
-        };
+        auto predicate = [key](auto& item) { return item.key == key; };
 
         auto found = std::find_if(residents.begin(), residents.end(), predicate);
         if (found == residents.end())
+        {
             return;
+        }
 
         auto log = Logger::Get(name);
         auto task = found->task;
 
         if (likely(task != nullptr))
         {
-            log.Out([&](auto& ls)
-            {
-                ls << "RemoveResidentTaskSync: Key = " << key << ", Task = "
-                    << task->GetName() << '[' << found->start << ", "
-                    << found->end << ')';
-            });
+            log.Out(
+                [&](auto& ls)
+                {
+                    ls << "RemoveResidentTaskSync: Key = " << key << ", Task = " << task->GetName()
+                       << '[' << found->start << ", " << found->end << ')';
+                });
 
             task->SetDone();
             task->Cancel();
         }
         else
         {
-            log.Out([&](auto& ls)
-            {
-                ls << "RemoveResidentSyncSync: Key = " << key << ", Task = Null"
-                    << '[' << found->start << ", " << found->end << ')';
-            });
+            log.Out(
+                [&](auto& ls)
+                {
+                    ls << "RemoveResidentSyncSync: Key = " << key << ", Task = Null" << '['
+                       << found->start << ", " << found->end << ')';
+                });
         }
 
         isResidentListDirty = true;
@@ -270,7 +244,8 @@ void TaskStream::RemoveResidentTaskSync(TKey key)
         cv.notify_one();
     }
 
-    while (flipCount.load(std::memory_order_relaxed) == count);
+    while (flipCount.load(std::memory_order_relaxed) == count)
+        ;
 }
 
 void TaskStream::FlipBuffers()
@@ -299,10 +274,14 @@ void TaskStream::FlipBuffers()
             {
                 auto task = item.task;
                 if (unlikely(task == nullptr))
+                {
                     return true;
+                }
 
                 if (task->IsCancelled())
+                {
                     return true;
+                }
 
                 return false;
             };
@@ -315,8 +294,7 @@ void TaskStream::FlipBuffers()
         const auto newItems = newResidents.size();
         residents.reserve(residents.size() + newItems);
 
-        std::move(newResidents.begin(), newResidents.end()
-            , std::back_inserter(residents));
+        std::move(newResidents.begin(), newResidents.end(), std::back_inserter(residents));
 
         newResidents.clear();
     }
@@ -335,11 +313,9 @@ void TaskStream::RunLoop(const std::atomic<bool>& isRunning)
 
     const std::chrono::milliseconds waitPeriod(10);
     auto IsDirty = [this]()
-    {
-        return isDirty.load(std::memory_order_relaxed) || residents.size() > 0;
-    };
+    { return isDirty.load(std::memory_order_relaxed) || residents.size() > 0; };
 
-    while(likely(isRunning))
+    while (likely(isRunning))
     {
         if (!IsDirty())
         {
@@ -367,10 +343,7 @@ void TaskStream::RunLoop(const std::atomic<bool>& isRunning)
         if (unlikely(deltaTime > 0.1f))
         {
             auto log = Logger::Get(name);
-            log.OutWarning([dt = deltaTime](auto& ls)
-            {
-                ls << "Slow DeltaTime = " << dt;
-            });
+            log.OutWarning([dt = deltaTime](auto& ls) { ls << "Slow DeltaTime = " << dt; });
         }
     }
 }
@@ -383,10 +356,7 @@ void TaskStream::UpdateRequests()
         if (unlikely(task == nullptr))
         {
             auto log = Logger::Get(name);
-            log.OutError([name=name](auto& ls)
-            {
-                ls << name.c_str() << " task func is null.";
-            });
+            log.OutError([name = name](auto& ls) { ls << name.c_str() << " task func is null."; });
 
             continue;
         }
@@ -407,10 +377,7 @@ void TaskStream::UpdateResidents()
             hasCancelledTask = true;
 
             auto log = Logger::Get(name);
-            log.OutError([](auto& ls)
-            {
-                ls << "The task is null.";
-            });
+            log.OutError([](auto& ls) { ls << "The task is null."; });
 
             continue;
         }
@@ -418,10 +385,7 @@ void TaskStream::UpdateResidents()
         if (unlikely(task->IsCancelled()))
         {
             auto log = Logger::Get(name);
-            log.OutError([](auto& ls)
-            {
-                ls << "The task is cancelled.";
-            });
+            log.OutError([](auto& ls) { ls << "The task is cancelled."; });
 
             continue;
         }
@@ -430,4 +394,4 @@ void TaskStream::UpdateResidents()
     }
 }
 
-} // HE
+} // namespace HE

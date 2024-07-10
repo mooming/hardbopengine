@@ -2,8 +2,8 @@
 
 #pragma once
 
-#include "AllocatorID.h"
 #include "AllocStats.h"
+#include "AllocatorID.h"
 #include "Config/BuildConfig.h"
 #include <atomic>
 #include <functional>
@@ -33,9 +33,9 @@ struct AllocatorProxy final
 
 #ifdef PROFILE_ENABLED
     inline const char* GetName() const { return stats.name; }
-#else // PROFILE_ENABLED
+#else  // PROFILE_ENABLED
     inline const char* GetName() const { return "NoName"; }
 #endif // PROFILE_ENABLED
 };
 
-} // HE
+} // namespace HE

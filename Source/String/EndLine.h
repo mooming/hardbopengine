@@ -7,12 +7,9 @@ namespace HE
 
 struct EndLine final
 {
-    operator const char* () const
-    {
-        return "\n";
-    }
+    operator const char*() const { return "\n"; }
 };
 
 static constexpr EndLine hendl;
 
-} // HE
+} // namespace HE

@@ -13,18 +13,18 @@ class Buffer;
 
 class MultiPoolConfigCache final
 {
-public:
+  public:
     using TVersion = uint32_t;
 
     template <typename T>
     using TVector = std::vector<T>;
     using TMultiPoolConfigs = TVector<MultiPoolAllocatorConfig>;
 
-private:
+  private:
     static constexpr TVersion version = 0;
     TMultiPoolConfigs data;
 
-public:
+  public:
     StaticString GetClassName() const;
 
     size_t Serialize(Buffer& outBuffer);
@@ -35,8 +35,8 @@ public:
     inline auto& GetData() { return data; }
     inline auto& GetData() const { return data; }
 
-private:
+  private:
     void Normalize();
 };
 
-} // HE
+} // namespace HE

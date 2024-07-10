@@ -22,7 +22,7 @@ class ConfigSystem final
     template <typename T>
     using TAtomicConfigParam = ConfigParam<T, true>;
 
-public:
+  public:
     template <typename T>
     using TGetter = std::function<T()>;
 
@@ -40,19 +40,19 @@ public:
     template <typename T>
     using TMap = std::unordered_map<StaticStringID, ParamItem<T>>;
 
-private:
+  private:
     TMap<uint8_t> byteParams;
     TMap<int> intParams;
     TMap<size_t> sizeParams;
     TMap<float> floatParams;
 
-private:
+  private:
     ConfigSystem(const ConfigSystem&) = delete;
     ConfigSystem(ConfigSystem&&) = delete;
-    ConfigSystem& operator= (const ConfigSystem&) = delete;
-    ConfigSystem& operator= (ConfigSystem&&) = delete;
+    ConfigSystem& operator=(const ConfigSystem&) = delete;
+    ConfigSystem& operator=(ConfigSystem&&) = delete;
 
-public:
+  public:
     static ConfigSystem& Get();
     ConfigSystem() = default;
     ~ConfigSystem() = default;
@@ -84,4 +84,4 @@ public:
 
     void PrintAllParameters() const;
 };
-} // HE
+} // namespace HE

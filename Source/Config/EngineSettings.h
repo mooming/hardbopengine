@@ -11,12 +11,14 @@ namespace HE
 namespace Config
 {
 // Engine
-static constexpr uint8_t EngineLogLevel = 2; // 0: Verbose, 1: Info, 2: Significant, 3: Warning, 4: Error, 5: FatalError
+static constexpr uint8_t EngineLogLevel =
+    2; // 0: Verbose, 1: Info, 2: Significant, 3: Warning, 4: Error, 5: FatalError
 static constexpr uint8_t EngineLogLevelPrint = 0;
 
 // Memory
 static constexpr size_t MemCapacity = (5ULL * 1024 * 1024 * 1024); // 5 GB
-static constexpr uint8_t MemLogLevel = 2; // 0: Verbose, 1: Info, 2: Significant, 3: Warning, 4: Error, 5: FatalError
+static constexpr uint8_t MemLogLevel =
+    2; // 0: Verbose, 1: Info, 2: Significant, 3: Warning, 4: Error, 5: FatalError
 static constexpr size_t DefaultAlign = 16; // 16 Bytes Alignment
 
 // String
@@ -38,6 +40,6 @@ static constexpr int MaxConcurrentTasks = 32;
 static constexpr float DebugTimeOutMultiplier = 2.0f;
 
 size_t GetMaxSystemMemoryTarget();
-} // Config
+} // namespace Config
 
-} // HE
+} // namespace HE

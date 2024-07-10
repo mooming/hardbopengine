@@ -4,11 +4,11 @@
 
 #include "AllocatorID.h"
 #include "AllocatorProxy.h"
-#include "MultiPoolConfigCache.h"
-#include "PoolConfig.h"
 #include "Config/BuildConfig.h"
 #include "Container/AtomicStackView.h"
 #include "Log/LogLevel.h"
+#include "MultiPoolConfigCache.h"
+#include "PoolConfig.h"
 #include "String/StaticStringID.h"
 #include "System/Types.h"
 #include <atomic>
@@ -22,7 +22,7 @@
 namespace std
 {
 struct source_location;
-} // std
+} // namespace std
 
 namespace HE
 {
@@ -31,7 +31,7 @@ class Engine;
 
 class MemoryManager final
 {
-public:
+  public:
     template <typename T>
     using TVector = std::vector<T>;
 
@@ -44,7 +44,7 @@ public:
     static constexpr TId SystemAllocatorID = 0;
     static constexpr size_t MaxBaseMemory = 8'000'000'000;
 
-private:
+  private:
     struct UsageRecord final
     {
         size_t allocCount = 0;
@@ -55,7 +55,7 @@ private:
         size_t maxCapacity = 0;
     };
 
-private:
+  private:
     static thread_local TId ScopedAllocatorID;
 
     AllocatorProxy allocators[MaxNumAllocators];
@@ -74,15 +74,15 @@ private:
     MultiPoolConfigCache multiPoolConfigLog;
 #endif // PROFILE_ENABLED
 
-public:
+  public:
     MemoryManager(const MemoryManager&) = delete;
-    MemoryManager& operator= (const MemoryManager&) = delete;
+    MemoryManager& operator=(const MemoryManager&) = delete;
 
     static StaticStringID GetMultiPoolConfigCacheFilePath();
     static MemoryManager& GetInstance();
     static TId GetCurrentAllocatorID();
 
-public:
+  public:
     MemoryManager(Engine& engine);
     ~MemoryManager();
 
@@ -92,10 +92,14 @@ public:
     const char* GetName() const;
     const char* GetName(TAllocatorID id) const;
 
-    TId Register(const char* name, bool isInline, size_t capacity
-        , TAllocBytes allocFunc, TDeallocBytes deallocFunc);
+    TId Register(
+        const char* name, bool isInline, size_t capacity, TAllocBytes allocFunc,
+        TDeallocBytes deallocFunc);
 
-    std::lock_guard<std::mutex>&& AcquireStatsLock() { return std::move(std::lock_guard(statsLock)); }
+    std::lock_guard<std::mutex>&& AcquireStatsLock()
+    {
+        return std::move(std::lock_guard(statsLock));
+    }
     void Update(TId id, std::function<void(AllocatorProxy&)> func, const char* reason);
     void Deregister(TId id);
 
@@ -119,18 +123,18 @@ public:
 
 #ifdef PROFILE_ENABLED
     AllocStats GetAllocatorStat(TAllocatorID id);
-    
+
     void Deregister(TId id, const std::source_location& srcLocation);
     void ReportMultiPoolConfigutation(StaticStringID uniqueName, TPoolConfigs&& poolConfigs);
 #endif // PROFILE_ENABLED
 
-public:
+  public:
     inline void LogWarning(TLogFunc func) { Log(ELogLevel::Warning, func); }
     inline void LogError(TLogFunc func) { Log(ELogLevel::Error, func); }
     inline auto& GetInlineUsage() const { return inlineUsage; }
     inline auto& GetUsage() const { return usage; }
 
-public:
+  public:
     template <typename T>
     T* AllocateTypes(size_t n)
     {
@@ -147,22 +151,22 @@ public:
         DeallocateBytes(static_cast<void*>(ptr), nBytes);
     }
 
-    template <typename Type, typename ... Types>
-    inline Type* New(Types&& ... args)
+    template <typename Type, typename... Types>
+    inline Type* New(Types&&... args)
     {
         auto ptr = AllocateTypes<Type>(1);
-        auto tptr = new (ptr) Type(std::forward<Types>(args) ...);
+        auto tptr = new (ptr) Type(std::forward<Types>(args)...);
         return tptr;
     }
 
-    template <typename Type, typename ... Types>
-    inline Type* NewArray(Index size, Types&& ... args)
+    template <typename Type, typename... Types>
+    inline Type* NewArray(Index size, Types&&... args)
     {
         auto ptr = AllocateTypes<Type>(size);
 
         for (Index i = 0; i < size; ++i)
         {
-            new (&ptr[i]) Type(std::forward<Types>(args) ...);
+            new (&ptr[i]) Type(std::forward<Types>(args)...);
         }
 
         return ptr;
@@ -186,7 +190,7 @@ public:
         DeallocateTypes<Type>(ptr, n);
     }
 
-private:
+  private:
     inline bool IsValid(TAllocatorID id) const { return id >= 0 && id < MaxNumAllocators; }
     inline TId GetScopedAllocatorID() const { return ScopedAllocatorID; }
 
@@ -201,4 +205,4 @@ private:
     friend class AllocatorScope;
 };
 
-} // HE
+} // namespace HE

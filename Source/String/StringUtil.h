@@ -25,7 +25,9 @@ bool StartsWithIgnoreCase(const TString& src, const TString& startTerm);
 bool EndsWith(const TString& src, const TString& endTerm);
 bool EndsWithIgnoreCase(const TString& src, const TString& endTerm);
 TString PathToName(const TString& path);
-void ForEachToken(const char* str, const std::function<void(std::string_view)> func, const char* separators = " \t\n\r");
+void ForEachToken(
+    const char* str, const std::function<void(std::string_view)> func,
+    const char* separators = " \t\n\r");
 
 HE::StaticString ToFunctionName(const char* PrettyFunction);
 HE::StaticString ToClassName(const char* PrettyFunction);
@@ -38,7 +40,7 @@ size_t StrLen(const char* text, size_t bufferSize);
 const char* StrCopy(char* dst, const char* src, size_t n);
 size_t CalculateHash(const char* text);
 size_t CalculateHash(const std::string_view& str);
-} // StringUtil
+} // namespace StringUtil
 
 #ifdef __UNIT_TEST__
 #include "Test/TestCollection.h"
@@ -48,12 +50,12 @@ namespace HE
 
 class StringUtilTest : public TestCollection
 {
-public:
+  public:
     StringUtilTest() : TestCollection("StringUtilTest") {}
-    
-protected:
+
+  protected:
     virtual void Prepare() override;
 };
 
-} // HE
+} // namespace HE
 #endif //__UNIT_TEST__

@@ -2,9 +2,9 @@
 
 #pragma once
 
-#include "Vector2.h"
 #include "CoordinateOrientation.h"
 #include "Math/MathUtil.h"
+#include "Vector2.h"
 #include <cmath>
 #include <ostream>
 
@@ -17,8 +17,8 @@ class Vector3
 {
     using This = Vector3;
     using Vec2 = Vector2<Number>;
-    
-public:
+
+  public:
     static constexpr int order = 3;
     static const This Zero;
     static const This Unity;
@@ -28,77 +28,57 @@ public:
     static const This Right;
     static const This Up;
     static const This Forward;
-    
-public:
-    
+
+  public:
     union
     {
-        
         struct
         {
             Number x;
             Number y;
             Number z;
         };
-        
+
         Number a[order];
     };
-    
-public:
-    
-    inline Vector3() : This(0, 0, 0)
-    {
-    }
-    
-    inline Vector3(std::nullptr_t)
-    {
-    }
-    
-    inline Vector3(Number x, Number y) : This(x, y, 0)
-    {
-    }
-    
-    inline Vector3(Number x, Number y, Number z) : x(x), y(y), z(z)
-    {
-    }
-    
-    inline Vector3(const Vec2& v, Number z = 0) : x(v.x), y(v.y), z(z)
-    {
-    }
-    
+
+  public:
+    inline Vector3() : This(0, 0, 0) {}
+
+    inline Vector3(std::nullptr_t) {}
+
+    inline Vector3(Number x, Number y) : This(x, y, 0) {}
+
+    inline Vector3(Number x, Number y, Number z) : x(x), y(y), z(z) {}
+
+    inline Vector3(const Vec2& v, Number z = 0) : x(v.x), y(v.y), z(z) {}
+
     inline This& operator=(const Vec2& v)
     {
         x = v.x;
         y = v.y;
-        
+
         return *this;
     }
-    
-    inline operator Vec2& ()
-    {
-        return reinterpret_cast<Vec2&> (*this);
-    }
-    
-    inline operator const Vec2& () const
-    {
-        return reinterpret_cast<const Vec2&> (*this);
-    }
-    
+
+    inline operator Vec2&() { return reinterpret_cast<Vec2&>(*this); }
+
+    inline operator const Vec2&() const { return reinterpret_cast<const Vec2&>(*this); }
+
 #include "VectorCommonImpl.inl"
-    
-public:
-    
+
+  public:
     inline Vector3 Cross(const Vector3& rhs) const
     {
         Vector3 result(nullptr);
-        
+
         result.x = y * rhs.z - z * rhs.y;
         result.y = z * rhs.x - x * rhs.z;
         result.z = x * rhs.y - y * rhs.x;
-        
+
         return result;
     }
-    
+
     inline float AngleTo(const Vector3& to) const
     {
         Assert(!IsZero());
@@ -108,22 +88,33 @@ public:
     }
 };
 
-template <typename T> const Vector3<T> Vector3<T>::Zero(0, 0, 0);
-template <typename T> const Vector3<T> Vector3<T>::Unity(1, 1, 1);
-template <typename T> const Vector3<T> Vector3<T>::X(1, 0, 0);
-template <typename T> const Vector3<T> Vector3<T>::Y(0, 1, 0);
-template <typename T> const Vector3<T> Vector3<T>::Z(0, 0, 1);
+template <typename T>
+const Vector3<T> Vector3<T>::Zero(0, 0, 0);
+template <typename T>
+const Vector3<T> Vector3<T>::Unity(1, 1, 1);
+template <typename T>
+const Vector3<T> Vector3<T>::X(1, 0, 0);
+template <typename T>
+const Vector3<T> Vector3<T>::Y(0, 1, 0);
+template <typename T>
+const Vector3<T> Vector3<T>::Z(0, 0, 1);
 
 #ifdef __RIGHT_HANDED__
-template <typename T> const Vector3<T> Vector3<T>::Right(1, 0, 0);
-template <typename T> const Vector3<T> Vector3<T>::Forward(0, 1, 0);
-template <typename T> const Vector3<T> Vector3<T>::Up(0, 0, 1);
+template <typename T>
+const Vector3<T> Vector3<T>::Right(1, 0, 0);
+template <typename T>
+const Vector3<T> Vector3<T>::Forward(0, 1, 0);
+template <typename T>
+const Vector3<T> Vector3<T>::Up(0, 0, 1);
 #endif //__RIGHT_HANDED__
 
 #ifdef __LEFT_HANDED__
-template <typename T> const Vector3<T> Vector3<T>::Right(1, 0, 0);
-template <typename T> const Vector3<T> Vector3<T>::Up(0, 1, 0);
-template <typename T> const Vector3<T> Vector3<T>::Forward(0, 0, 1);
+template <typename T>
+const Vector3<T> Vector3<T>::Right(1, 0, 0);
+template <typename T>
+const Vector3<T> Vector3<T>::Up(0, 1, 0);
+template <typename T>
+const Vector3<T> Vector3<T>::Forward(0, 0, 1);
 #endif //__LEFT_HANDED__
 
 
@@ -142,7 +133,7 @@ inline TOutStream& operator<<(TOutStream& os, const Vector3<Number>& v)
     os << "(" << v.x << ", " << v.y << ", " << v.z << "), norm = " << v.Length();
     return os;
 }
-} // HE
+} // namespace HE
 
 #ifdef __UNIT_TEST__
 #include "Test/TestCollection.h"
@@ -151,13 +142,11 @@ namespace HE
 {
 class Vector3Test : public TestCollection
 {
-public:
-    Vector3Test() : TestCollection("Vector3Test")
-    {
-    }
-    
-protected:
+  public:
+    Vector3Test() : TestCollection("Vector3Test") {}
+
+  protected:
     virtual void Prepare() override;
 };
-} // HE
+} // namespace HE
 #endif //__UNIT_TEST__

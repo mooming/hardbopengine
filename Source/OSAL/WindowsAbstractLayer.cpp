@@ -73,7 +73,9 @@ HVector<HString> ListFilesInDirectory(const char* path)
         }
 
         if (FindNextFileA(handle, &fileData) == false)
+        {
             break;
+        }
     }
 
     FindClose(handle);
@@ -83,6 +85,6 @@ HVector<HString> ListFilesInDirectory(const char* path)
     return fileList;
 }
 
-} // OS
+} // namespace OS
 
 #endif // PLATFORM_WINDOWS

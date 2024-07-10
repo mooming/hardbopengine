@@ -16,6 +16,6 @@ using TPoolConfigs = std::vector<PoolConfig>;
 void Normalize(TPoolConfigs& configs);
 void MergeMax(TPoolConfigs& dst, TPoolConfigs& src);
 
-} // PoolConfigUtil
+} // namespace PoolConfigUtil
 
-} // HE
+} // namespace HE

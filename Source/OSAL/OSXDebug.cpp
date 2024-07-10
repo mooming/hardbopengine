@@ -50,11 +50,10 @@ StaticString OS::GetBackTrace(uint16_t startIndex, uint16_t maxDepth)
             mangledName << tokens[3];
 
             int status = 0;
-            auto name = abi::__cxa_demangle(mangledName.c_str()
-                , nullptr, nullptr, &status);
+            auto name = abi::__cxa_demangle(mangledName.c_str(), nullptr, nullptr, &status);
 
-            strBuild << (i - 1) << ": [" << tokens[1] << "] " << tokens[2]
-                << ' ' << name << " +" << tokens[4] << '\n';
+            strBuild << (i - 1) << ": [" << tokens[1] << "] " << tokens[2] << ' ' << name << " +"
+                     << tokens[4] << '\n';
 
             free(name);
         }

@@ -14,12 +14,12 @@ namespace HE
 class PoolAllocator final
 {
     using TSize = size_t;
-    
-private:
+
+  private:
     TAllocatorID id;
     TAllocatorID parentID;
     StaticString name;
-    
+
     TSize blockSize;
     TSize numberOfBlocks;
     TSize numberOfFreeBlocks;
@@ -31,20 +31,21 @@ private:
     size_t maxUsedBlocks;
     std::source_location srcLocation;
 #endif // PROFILE_ENABLED
-    
-public:
+
+  public:
 #ifdef PROFILE_ENABLED
-    PoolAllocator(const char* name, TSize inBlockSize, TSize numberOfBlocks
-        , const std::source_location location = std::source_location::current());
-#else // PROFILE_ENABLED
+    PoolAllocator(
+        const char* name, TSize inBlockSize, TSize numberOfBlocks,
+        const std::source_location location = std::source_location::current());
+#else  // PROFILE_ENABLED
     PoolAllocator(const char* name, TSize inBlockSize, TIndex numberOfBlocks);
 #endif // PROFILE_ENABLED
 
     PoolAllocator(PoolAllocator&& rhs) noexcept;
     ~PoolAllocator();
 
-    PoolAllocator& operator= (PoolAllocator&& rhs) noexcept;
-    bool operator< (const PoolAllocator& rhs) const noexcept;
+    PoolAllocator& operator=(PoolAllocator&& rhs) noexcept;
+    bool operator<(const PoolAllocator& rhs) const noexcept;
 
     Pointer Allocate(size_t size);
     void Deallocate(Pointer ptr, size_t size);
@@ -64,7 +65,7 @@ public:
     inline auto GetUsedBlocksMax() const { return maxUsedBlocks; }
 #endif // PROFILE_ENABLED
 
-private:
+  private:
     TSize GetIndex(Pointer ptr) const;
     TSize ReadNextIndex(Pointer ptr) const;
     void WriteNextIndex(Pointer ptr, TSize index);
@@ -72,7 +73,7 @@ private:
     Pointer AllocateBlock();
 };
 
-} // HE
+} // namespace HE
 
 #ifdef __UNIT_TEST__
 #include "Test/TestCollection.h"
@@ -82,13 +83,11 @@ namespace HE
 {
 class PoolAllocatorTest : public TestCollection
 {
-public:
-    PoolAllocatorTest() : TestCollection("PoolAllocatorTest")
-    {
-    }
-    
-protected:
+  public:
+    PoolAllocatorTest() : TestCollection("PoolAllocatorTest") {}
+
+  protected:
     virtual void Prepare() override;
 };
-} // HE
+} // namespace HE
 #endif //__UNIT_TEST__

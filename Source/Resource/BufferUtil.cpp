@@ -26,8 +26,8 @@ Buffer GenerateDummyBuffer(size_t size)
     return Buffer(generator);
 }
 
-Buffer GenerateFileBuffer(StaticString path, OS::FileOpenMode openMode
-    , OS::ProtectionMode protection, size_t size)
+Buffer GenerateFileBuffer(
+    StaticString path, OS::FileOpenMode openMode, OS::ProtectionMode protection, size_t size)
 {
     using namespace OS;
     using namespace StringUtil;
@@ -43,10 +43,7 @@ Buffer GenerateFileBuffer(StaticString path, OS::FileOpenMode openMode
 
         if (!Open(fh, path, openMode))
         {
-            log.OutError([path](auto& ls)
-            {
-                ls << "Failed to open " << path;
-            });
+            log.OutError([path](auto& ls) { ls << "Failed to open " << path; });
 
             return;
         }
@@ -57,11 +54,10 @@ Buffer GenerateFileBuffer(StaticString path, OS::FileOpenMode openMode
             fileSize = size;
             if (!Truncate(fh, fileSize))
             {
-                log.OutWarning([path, size](auto& ls)
-                {
-                    ls << "Failed to resize the file " << path
-                        << " to the given size " << size;
-                });
+                log.OutWarning(
+                    [path, size](auto& ls) {
+                        ls << "Failed to resize the file " << path << " to the given size " << size;
+                    });
 
                 return;
             }
@@ -70,9 +66,7 @@ Buffer GenerateFileBuffer(StaticString path, OS::FileOpenMode openMode
         if (fileSize <= 0)
         {
             log.OutWarning([path](auto& ls)
-            {
-                ls << "Nothing to map. File size is zero. path = " << path;
-            });
+                           { ls << "Nothing to map. File size is zero. path = " << path; });
 
             return;
         }
@@ -80,10 +74,7 @@ Buffer GenerateFileBuffer(StaticString path, OS::FileOpenMode openMode
         auto ptr = MapMemory(fh, fileSize, protection, 0);
         if (unlikely(ptr == nullptr))
         {
-            log.OutError([path](auto& ls)
-            {
-                ls << "Failed to map " << path;
-            });
+            log.OutError([path](auto& ls) { ls << "Failed to map " << path; });
 
             return;
         }
@@ -94,30 +85,35 @@ Buffer GenerateFileBuffer(StaticString path, OS::FileOpenMode openMode
 
     Buffer buffer(generator);
     if (buffer.GetData() == nullptr)
+    {
         return buffer;
+    }
 
     auto handleData = fh.data;
     fh.Invalidate();
 
-    buffer.SetReleaser([handleData](TSize size, TBufferData data) mutable
-    {
-        if (unlikely(data == nullptr))
-            return;
+    buffer.SetReleaser(
+        [handleData](TSize size, TBufferData data) mutable
+        {
+            if (unlikely(data == nullptr))
+            {
+                return;
+            }
 
-        FileHandle fh;
-        fh.data = handleData;
+            FileHandle fh;
+            fh.data = handleData;
 
-        Assert(size > 0);
-        auto ptr = static_cast<void*>(data);
+            Assert(size > 0);
+            auto ptr = static_cast<void*>(data);
 
-        MapSyncMode syncMode;
-        syncMode.SetSync();
+            MapSyncMode syncMode;
+            syncMode.SetSync();
 
-        MapSync(ptr, size, syncMode);
-        UnmapMemory((void*)data, size);
+            MapSync(ptr, size, syncMode);
+            UnmapMemory((void*)data, size);
 
-        OS::Close(std::move(fh));
-    });
+            OS::Close(std::move(fh));
+        });
 
     return buffer;
 }
@@ -171,6 +167,6 @@ Buffer GetWriteOnlyFileBuffer(StaticString path, size_t size)
     return GenerateFileBuffer(path, openMode, protection, size);
 }
 
-} // BufferUtil
+} // namespace BufferUtil
 
-} // HE
+} // namespace HE

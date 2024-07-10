@@ -2,11 +2,11 @@
 
 #pragma once
 
+#include "HSTL/HVector.h"
+#include "String/StaticString.h"
 #include "Task.h"
 #include "TaskHandle.h"
 #include "Time.h"
-#include "HSTL/HVector.h"
-#include "String/StaticString.h"
 #include <atomic>
 #include <condition_variable>
 #include <cstdint>
@@ -42,7 +42,7 @@ class TaskStream final
 
     using TRequests = TVector<Request>;
 
-private:
+  private:
     StaticString name;
     ThreadID threadID;
 
@@ -63,7 +63,7 @@ private:
     TRequests requests;
     TRequests residents;
 
-public:
+  public:
     TaskStream();
     TaskStream(StaticString name);
     ~TaskStream() = default;
@@ -77,7 +77,7 @@ public:
     inline auto& GetThread() const { return thread; }
     inline auto GetFlipCount() const { return flipCount.load(); }
 
-private:
+  private:
     void Start(TaskSystem& taskSys, TaskHandle::TIndex streamIndex);
 
     void Request(TKey key, Task& task, TIndex start, TIndex end);
@@ -93,4 +93,4 @@ private:
     friend class TaskSystem;
 };
 
-} // HE
+} // namespace HE

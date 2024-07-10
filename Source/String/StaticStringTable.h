@@ -2,9 +2,9 @@
 
 #pragma once
 
+#include "Config/EngineSettings.h"
 #include "StaticString.h"
 #include "StaticStringID.h"
-#include "Config/EngineSettings.h"
 #include <cstddef>
 #include <cstdint>
 #include <mutex>
@@ -16,56 +16,65 @@ namespace HE
 
 class StaticStringTable final
 {
-public:
+  public:
     using TIndex = size_t;
     static constexpr size_t NumTables = Config::StaticStringNumHashBuckets;
 
-private:
+  private:
     template <typename T>
     class Allocator final
     {
-    public:
+      public:
         using value_type = T;
 
         template <class U>
-        struct rebind { using other = Allocator<U>; };
+        struct rebind
+        {
+            using other = Allocator<U>;
+        };
 
-    public:
+      public:
         Allocator() = default;
         ~Allocator() = default;
 
         T* allocate(std::size_t n) { return (T*)Allocate(n * sizeof(T)); }
-        void deallocate (T*, std::size_t) {}
+        void deallocate(T*, std::size_t) {}
 
         template <class U>
-        bool operator==(const Allocator<U>& rhs) const { return true; }
-        
+        bool operator==(const Allocator<U>& rhs) const
+        {
+            return true;
+        }
+
         template <class U>
-        bool operator!=(const Allocator<U>& rhs) const { return false; }
+        bool operator!=(const Allocator<U>& rhs) const
+        {
+            return false;
+        }
     };
 
     using TTable = std::vector<std::string_view>;
-    
-private:
+
+  private:
     mutable std::mutex tableLock;
     TTable tables[NumTables];
-    
-public:
+
+  public:
     static StaticStringTable& GetInstance();
-    
-public:
+
+  public:
     StaticStringTable();
     ~StaticStringTable();
-    
+
     StaticString GetName() const;
 
     StaticStringID Register(const char* str);
     StaticStringID Register(const std::string_view& str);
     const char* Get(StaticStringID id) const;
-    
+
     void PrintStringTable() const;
-    
-private:
+
+  private:
     void RegisterPredefinedStrings();
     TIndex GetTableID(const char* text) const;
     TIndex GetTableID(const std::string_view& str) const;
@@ -76,4 +85,4 @@ private:
     static void* Allocate(size_t n);
 };
 
-} // HE
+} // namespace HE

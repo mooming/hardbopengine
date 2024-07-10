@@ -6,7 +6,7 @@
 namespace HE
 {
 template class StringBuilder<char, BaseAllocator<char>>;
-} // HE
+} // namespace HE
 
 #ifdef __UNIT_TEST__
 #include "HSTL/HString.h"
@@ -21,335 +21,353 @@ void StringBuilderTest::Prepare()
     using TString = HSTL::HInlineString<256>;
     using TStrBuild = StringBuilder<>;
 
-    AddTest("Default Construct", [this](auto& ls)
-    {
-        TStrBuild strBuild;
-        auto str = strBuild.c_str();
-
-        if (str[0] != '\0')
+    AddTest(
+        "Default Construct",
+        [this](auto& ls)
         {
-            ls << "Default constructed StringBuild doesn't provide an empty string." << lferr;
-        }
+            TStrBuild strBuild;
+            auto str = strBuild.c_str();
 
-        strBuild.Reserve(100);
-        str = strBuild.c_str();
-        
-        if (str[0] != '\0')
+            if (str[0] != '\0')
+            {
+                ls << "Default constructed StringBuild doesn't provide an empty string." << lferr;
+            }
+
+            strBuild.Reserve(100);
+            str = strBuild.c_str();
+
+            if (str[0] != '\0')
+            {
+                ls << "Reserve() varies the internal string." << lferr;
+            }
+
+            strBuild.Clear();
+            str = strBuild.c_str();
+
+            if (str[0] != '\0')
+            {
+                ls << "Clear() varies the internal string." << lferr;
+            }
+        });
+
+    AddTest(
+        "Add Nullptr",
+        [this](auto& ls)
         {
-            ls << "Reserve() varies the internal string." << lferr;
-        }
+            TStrBuild strBuild;
+            strBuild << nullptr;
 
-        strBuild.Clear();
-        str = strBuild.c_str();
+            TString str(strBuild.c_str());
+            TString expected("Null");
 
-        if (str[0] != '\0')
+            ls << "Result: " << str << " <=> " << expected << lf;
+
+            if (str != expected)
+            {
+                ls << "Invalid result " << str << ", but " << expected << " expected." << lferr;
+            }
+        });
+
+    AddTest(
+        "Add Boolean(true)",
+        [this](auto& ls)
         {
-            ls << "Clear() varies the internal string." << lferr;
-        }
-    });
+            TStrBuild strBuild;
+            strBuild << true;
 
-    AddTest("Add Nullptr", [this](auto& ls)
-    {
-        TStrBuild strBuild;
-        strBuild << nullptr;
+            TString str(strBuild.c_str());
+            TString expected("True");
 
-        TString str(strBuild.c_str());
-        TString expected("Null");
+            ls << "Result: " << str << " <=> " << expected << lf;
 
-        ls << "Result: " << str << " <=> " << expected << lf;
+            if (str != expected)
+            {
+                ls << "Invalid result " << str << ", but " << expected << " expected." << lferr;
+            }
+        });
 
-        if (str != expected)
+    AddTest(
+        "Add Boolean(false)",
+        [this](auto& ls)
         {
-            ls << "Invalid result " << str << ", but "
-                << expected << " expected." << lferr;
-        }
-    });
+            TStrBuild strBuild;
+            strBuild << false;
 
-    AddTest("Add Boolean(true)", [this](auto& ls)
-    {
-        TStrBuild strBuild;
-        strBuild << true;
+            TString str(strBuild.c_str());
+            TString expected("False");
 
-        TString str(strBuild.c_str());
-        TString expected("True");
+            ls << "Result: " << str << " <=> " << expected << lf;
 
-        ls << "Result: " << str << " <=> " << expected << lf;
+            if (str != expected)
+            {
+                ls << "Invalid result " << str << ", but " << expected << " expected." << lferr;
+            }
+        });
 
-        if (str != expected)
+    AddTest(
+        "Add Boolean(true, false)",
+        [this](auto& ls)
         {
-            ls << "Invalid result " << str << ", but "
-                << expected << " expected." << lferr;
-        }
-    });
+            TStrBuild strBuild;
+            strBuild << true << ", " << false;
 
-    AddTest("Add Boolean(false)", [this](auto& ls)
-    {
-        TStrBuild strBuild;
-        strBuild << false;
+            TString str(strBuild.c_str());
+            TString expected("True, False");
 
-        TString str(strBuild.c_str());
-        TString expected("False");
+            ls << "Result: " << str << " <=> " << expected << lf;
 
-        ls << "Result: " << str << " <=> " << expected << lf;
+            if (str != expected)
+            {
+                ls << "Invalid result " << str << ", but " << expected << " expected." << lferr;
+            }
+        });
 
-        if (str != expected)
+    AddTest(
+        "Add Char",
+        [this](auto& ls)
         {
-            ls << "Invalid result " << str << ", but "
-                << expected << " expected." << lferr;
-        }
-    });
+            TStrBuild strBuild;
+            strBuild << 'a';
 
-    AddTest("Add Boolean(true, false)", [this](auto& ls)
-    {
-        TStrBuild strBuild;
-        strBuild << true << ", " << false;
+            TString str(strBuild.c_str());
+            TString expected("a");
 
-        TString str(strBuild.c_str());
-        TString expected("True, False");
+            ls << "Result: " << str << " <=> " << expected << lf;
 
-        ls << "Result: " << str << " <=> " << expected << lf;
+            if (str != expected)
+            {
+                ls << "Invalid result " << str << ", but " << expected << " expected." << lferr;
+            }
+        });
 
-        if (str != expected)
+    AddTest(
+        "Add Chars",
+        [this](auto& ls)
         {
-            ls << "Invalid result " << str << ", but "
-                << expected << " expected." << lferr;
-        }
-    });
+            TStrBuild strBuild;
+            strBuild << 'a' << 'b' << 'c';
 
-    AddTest("Add Char", [this](auto& ls)
-    {
-        TStrBuild strBuild;
-        strBuild << 'a';
+            TString str(strBuild.c_str());
+            TString expected("abc");
 
-        TString str(strBuild.c_str());
-        TString expected("a");
+            ls << "Result: " << str << " <=> " << expected << lf;
 
-        ls << "Result: " << str << " <=> " << expected << lf;
+            if (str != expected)
+            {
+                ls << "Invalid result " << str << ", but " << expected << " expected." << lferr;
+            }
+        });
 
-        if (str != expected)
+    AddTest(
+        "uint8_t",
+        [this](auto& ls)
         {
-            ls << "Invalid result " << str << ", but "
-                << expected << " expected." << lferr;
-        }
-    });
+            TStrBuild strBuild;
 
-    AddTest("Add Chars", [this](auto& ls)
-    {
-        TStrBuild strBuild;
-        strBuild << 'a' << 'b' << 'c';
+            using T = uint8_t;
+            T value = std::numeric_limits<T>::max();
+            strBuild << value;
 
-        TString str(strBuild.c_str());
-        TString expected("abc");
+            TString str(strBuild.c_str());
+            TString expected(std::to_string(value));
 
-        ls << "Result: " << str << " <=> " << expected << lf;
+            ls << "Result: " << str << " <=> " << expected << lf;
 
-        if (str != expected)
+            if (str != expected)
+            {
+                ls << "Invalid result " << str << ", but " << expected << " expected." << lferr;
+            }
+        });
+
+    AddTest(
+        "int16_t",
+        [this](auto& ls)
         {
-            ls << "Invalid result " << str << ", but "
-                << expected << " expected." << lferr;
-        }
-    });
+            TStrBuild strBuild;
 
-    AddTest("uint8_t", [this](auto& ls)
-    {
-        TStrBuild strBuild;
+            using T = int16_t;
+            T value = std::numeric_limits<T>::max();
+            strBuild << value;
 
-        using T = uint8_t;
-        T value = std::numeric_limits<T>::max();
-        strBuild << value;
+            TString str(strBuild.c_str());
+            TString expected(std::to_string(value));
 
-        TString str(strBuild.c_str());
-        TString expected(std::to_string(value));
+            ls << "Result: " << str << " <=> " << expected << lf;
 
-        ls << "Result: " << str << " <=> " << expected << lf;
+            if (str != expected)
+            {
+                ls << "Invalid result " << str << ", but " << expected << " expected." << lferr;
+            }
+        });
 
-        if (str != expected)
+    AddTest(
+        "uint16_t",
+        [this](auto& ls)
         {
-            ls << "Invalid result " << str << ", but "
-                << expected << " expected." << lferr;
-        }
-    });
+            TStrBuild strBuild;
 
-    AddTest("int16_t", [this](auto& ls)
-    {
-        TStrBuild strBuild;
+            using T = uint16_t;
+            T value = std::numeric_limits<T>::max();
+            strBuild << value;
 
-        using T = int16_t;
-        T value = std::numeric_limits<T>::max();
-        strBuild << value;
+            TString str(strBuild.c_str());
+            TString expected(std::to_string(value));
 
-        TString str(strBuild.c_str());
-        TString expected(std::to_string(value));
+            ls << "Result: " << str << " <=> " << expected << lf;
 
-        ls << "Result: " << str << " <=> " << expected << lf;
+            if (str != expected)
+            {
+                ls << "Invalid result " << str << ", but " << expected << " expected." << lferr;
+            }
+        });
 
-        if (str != expected)
+    AddTest(
+        "int32_t",
+        [this](auto& ls)
         {
-            ls << "Invalid result " << str << ", but "
-                << expected << " expected." << lferr;
-        }
-    });
+            TStrBuild strBuild;
 
-    AddTest("uint16_t", [this](auto& ls)
-    {
-        TStrBuild strBuild;
+            using T = int32_t;
+            T value = std::numeric_limits<T>::max();
+            strBuild << value;
 
-        using T = uint16_t;
-        T value = std::numeric_limits<T>::max();
-        strBuild << value;
+            TString str(strBuild.c_str());
+            TString expected(std::to_string(value));
 
-        TString str(strBuild.c_str());
-        TString expected(std::to_string(value));
+            ls << "Result: " << str << " <=> " << expected << lf;
 
-        ls << "Result: " << str << " <=> " << expected << lf;
+            if (str != expected)
+            {
+                ls << "Invalid result " << str << ", but " << expected << " expected." << lferr;
+            }
+        });
 
-        if (str != expected)
+    AddTest(
+        "uint32_t",
+        [this](auto& ls)
         {
-            ls << "Invalid result " << str << ", but "
-                << expected << " expected." << lferr;
-        }
-    });
+            TStrBuild strBuild;
 
-    AddTest("int32_t", [this](auto& ls)
-    {
-        TStrBuild strBuild;
+            using T = uint32_t;
+            T value = std::numeric_limits<T>::max();
+            strBuild << value;
 
-        using T = int32_t;
-        T value = std::numeric_limits<T>::max();
-        strBuild << value;
+            TString str(strBuild.c_str());
+            TString expected(std::to_string(value));
 
-        TString str(strBuild.c_str());
-        TString expected(std::to_string(value));
+            ls << "Result: " << str << " <=> " << expected << lf;
 
-        ls << "Result: " << str << " <=> " << expected << lf;
+            if (str != expected)
+            {
+                ls << "Invalid result " << str << ", but " << expected << " expected." << lferr;
+            }
+        });
 
-        if (str != expected)
+    AddTest(
+        "int64_t",
+        [this](auto& ls)
         {
-            ls << "Invalid result " << str << ", but "
-                << expected << " expected." << lferr;
-        }
-    });
+            TStrBuild strBuild;
 
-    AddTest("uint32_t", [this](auto& ls)
-    {
-        TStrBuild strBuild;
+            using T = int64_t;
+            T value = std::numeric_limits<T>::max();
+            strBuild << value;
 
-        using T = uint32_t;
-        T value = std::numeric_limits<T>::max();
-        strBuild << value;
+            TString str(strBuild.c_str());
+            TString expected(std::to_string(value));
 
-        TString str(strBuild.c_str());
-        TString expected(std::to_string(value));
+            ls << "Result: " << str << " <=> " << expected << lf;
 
-        ls << "Result: " << str << " <=> " << expected << lf;
+            if (str != expected)
+            {
+                ls << "Invalid result " << str << ", but " << expected << " expected." << lferr;
+            }
+        });
 
-        if (str != expected)
+    AddTest(
+        "uint64_t",
+        [this](auto& ls)
         {
-            ls << "Invalid result " << str << ", but "
-                << expected << " expected." << lferr;
-        }
-    });
+            TStrBuild strBuild;
 
-    AddTest("int64_t", [this](auto& ls)
-    {
-        TStrBuild strBuild;
+            using T = uint64_t;
+            T value = std::numeric_limits<T>::max();
+            strBuild << value;
 
-        using T = int64_t;
-        T value = std::numeric_limits<T>::max();
-        strBuild << value;
+            TString str(strBuild.c_str());
+            TString expected(std::to_string(value));
 
-        TString str(strBuild.c_str());
-        TString expected(std::to_string(value));
+            ls << "Result: " << str << " <=> " << expected << lf;
 
-        ls << "Result: " << str << " <=> " << expected << lf;
+            if (str != expected)
+            {
+                ls << "Invalid result " << str << ", but " << expected << " expected." << lferr;
+            }
+        });
 
-        if (str != expected)
+    AddTest(
+        "float",
+        [this](auto& ls)
         {
-            ls << "Invalid result " << str << ", but "
-                << expected << " expected." << lferr;
-        }
-    });
+            TStrBuild strBuild;
 
-    AddTest("uint64_t", [this](auto& ls)
-    {
-        TStrBuild strBuild;
+            using T = float;
+            T value = std::numeric_limits<T>::max();
+            strBuild << value;
 
-        using T = uint64_t;
-        T value = std::numeric_limits<T>::max();
-        strBuild << value;
+            TString str(strBuild.c_str());
+            TString expected(std::to_string(value));
 
-        TString str(strBuild.c_str());
-        TString expected(std::to_string(value));
+            ls << "Result: " << str << " <=> " << expected << lf;
 
-        ls << "Result: " << str << " <=> " << expected << lf;
+            if (str != expected)
+            {
+                ls << "Invalid result " << str << ", but " << expected << " expected." << lferr;
+            }
+        });
 
-        if (str != expected)
+    AddTest(
+        "double",
+        [this](auto& ls)
         {
-            ls << "Invalid result " << str << ", but "
-                << expected << " expected." << lferr;
-        }
-    });
+            TStrBuild strBuild;
 
-    AddTest("float", [this](auto& ls)
-    {
-        TStrBuild strBuild;
+            using T = double;
+            T value = std::numeric_limits<T>::max();
+            strBuild << value;
 
-        using T = float;
-        T value = std::numeric_limits<T>::max();
-        strBuild << value;
+            TString str(strBuild.c_str());
+            TString expected(std::to_string(value));
 
-        TString str(strBuild.c_str());
-        TString expected(std::to_string(value));
+            ls << "Result: " << str << " <=> " << expected << lf;
 
-        ls << "Result: " << str << " <=> " << expected << lf;
+            if (str != expected)
+            {
+                ls << "Invalid result " << str << ", but " << expected << " expected." << lferr;
+            }
+        });
 
-        if (str != expected)
+    AddTest(
+        "long double",
+        [this](auto& ls)
         {
-            ls << "Invalid result " << str << ", but "
-                << expected << " expected." << lferr;
-        }
-    });
+            TStrBuild strBuild;
 
-    AddTest("double", [this](auto& ls)
-    {
-        TStrBuild strBuild;
+            using T = long double;
+            T value = std::numeric_limits<T>::max();
+            strBuild << value;
 
-        using T = double;
-        T value = std::numeric_limits<T>::max();
-        strBuild << value;
+            TString str(strBuild.c_str());
+            TString expected(std::to_string(value));
 
-        TString str(strBuild.c_str());
-        TString expected(std::to_string(value));
+            ls << "Result: " << str << " <=> " << expected << lf;
 
-        ls << "Result: " << str << " <=> " << expected << lf;
-
-        if (str != expected)
-        {
-            ls << "Invalid result " << str << ", but "
-                << expected << " expected." << lferr;
-        }
-    });
-
-    AddTest("long double", [this](auto& ls)
-    {
-        TStrBuild strBuild;
-
-        using T = long double;
-        T value = std::numeric_limits<T>::max();
-        strBuild << value;
-
-        TString str(strBuild.c_str());
-        TString expected(std::to_string(value));
-
-        ls << "Result: " << str << " <=> " << expected << lf;
-
-        if (str != expected)
-        {
-            ls << "Invalid result " << str << ", but "
-                << expected << " expected." << lferr;
-        }
-    });
+            if (str != expected)
+            {
+                ls << "Invalid result " << str << ", but " << expected << " expected." << lferr;
+            }
+        });
 }
 
-} // HE
+} // namespace HE
 #endif //__UNIT_TEST__

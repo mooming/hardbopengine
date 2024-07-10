@@ -13,21 +13,17 @@
 namespace HE
 {
 #ifdef PROFILE_ENABLED
-PoolAllocator::PoolAllocator(const char* name, TSize inBlockSize, TSize numberOfBlocks
-    , const std::source_location location)
-#else // PROFILE_ENABLED
+PoolAllocator::PoolAllocator(
+    const char* name, TSize inBlockSize, TSize numberOfBlocks, const std::source_location location)
+#else  // PROFILE_ENABLED
 PoolAllocator::PoolAllocator(const char* name, TSize inBlockSize, TIndex numberOfBlocks)
 #endif // PROFILE_ENABLED
-    : id(InvalidAllocatorID)
-    , parentID(InvalidAllocatorID)
-    , name(name)
-    , blockSize(OS::GetAligned(std::max(inBlockSize, sizeof(TSize)), sizeof(TSize)))
-    , numberOfBlocks(numberOfBlocks)
-    , numberOfFreeBlocks(numberOfBlocks)
-    , buffer(nullptr)
+    : id(InvalidAllocatorID), parentID(InvalidAllocatorID), name(name),
+      blockSize(OS::GetAligned(std::max(inBlockSize, sizeof(TSize)), sizeof(TSize))),
+      numberOfBlocks(numberOfBlocks), numberOfFreeBlocks(numberOfBlocks), buffer(nullptr)
 #ifdef PROFILE_ENABLED
-    , maxUsedBlocks(0)
-    , srcLocation(location)
+      ,
+      maxUsedBlocks(0), srcLocation(location)
 #endif // PROFILE_ENABLED
 {
     Assert(blockSize >= sizeof(TSize));
@@ -37,7 +33,9 @@ PoolAllocator::PoolAllocator(const char* name, TSize inBlockSize, TIndex numberO
 
     const TSize totalSize = blockSize * numberOfBlocks;
     if (totalSize <= 0)
+    {
         return;
+    }
 
     buffer = static_cast<Byte*>(mmgr.AllocateBytes(totalSize));
     availables = &buffer[0];
@@ -48,31 +46,20 @@ PoolAllocator::PoolAllocator(const char* name, TSize inBlockSize, TIndex numberO
         SetAs<TSize>(cursor, i + 1);
     }
 
-    auto allocFunc = [this](size_t n)
-    {
-        return Allocate(n);
-    };
+    auto allocFunc = [this](size_t n) { return Allocate(n); };
 
-    auto deallocFunc = [this](void* ptr, size_t n)
-    {
-        Deallocate(ptr, n);
-    };
+    auto deallocFunc = [this](void* ptr, size_t n) { Deallocate(ptr, n); };
 
     id = mmgr.Register(name, false, totalSize, allocFunc, deallocFunc);
 }
 
 PoolAllocator::PoolAllocator(PoolAllocator&& rhs) noexcept
-    : id(rhs.id)
-    , parentID(rhs.parentID)
-    , name(rhs.name)
-    , blockSize(rhs.blockSize)
-    , numberOfBlocks(rhs.numberOfBlocks)
-    , numberOfFreeBlocks(rhs.numberOfFreeBlocks)
-    , buffer(rhs.buffer)
-    , availables(rhs.availables)
+    : id(rhs.id), parentID(rhs.parentID), name(rhs.name), blockSize(rhs.blockSize),
+      numberOfBlocks(rhs.numberOfBlocks), numberOfFreeBlocks(rhs.numberOfFreeBlocks),
+      buffer(rhs.buffer), availables(rhs.availables)
 #ifdef PROFILE_ENABLED
-    , maxUsedBlocks(rhs.maxUsedBlocks)
-    , srcLocation(std::move(rhs.srcLocation))
+      ,
+      maxUsedBlocks(rhs.maxUsedBlocks), srcLocation(std::move(rhs.srcLocation))
 #endif // PROFILE_ENABLED
 {
     rhs.id = InvalidAllocatorID;
@@ -91,26 +78,23 @@ PoolAllocator::PoolAllocator(PoolAllocator&& rhs) noexcept
     auto& mmgr = MemoryManager::GetInstance();
     const TSize totalSize = blockSize * numberOfBlocks;
 
-    auto allocFunc = [this](size_t n)
-    {
-        return Allocate(n);
-    };
+    auto allocFunc = [this](size_t n) { return Allocate(n); };
 
-    auto deallocFunc = [this](void* ptr, size_t n)
-    {
-        Deallocate(ptr, n);
-    };
+    auto deallocFunc = [this](void* ptr, size_t n) { Deallocate(ptr, n); };
 
-    mmgr.Update(GetID(), [totalSize, allocFunc, deallocFunc](auto& proxy)
-    {
+    mmgr.Update(
+        GetID(),
+        [totalSize, allocFunc, deallocFunc](auto& proxy)
+        {
 #ifdef PROFILE_ENABLED
-        auto& stats = proxy.stats;
-        stats.capacity = totalSize;
+            auto& stats = proxy.stats;
+            stats.capacity = totalSize;
 #endif // PROFILE_ENABLED
 
-        proxy.allocate = allocFunc;
-        proxy.deallocate = deallocFunc;
-    }, "Move Constructor");
+            proxy.allocate = allocFunc;
+            proxy.deallocate = deallocFunc;
+        },
+        "Move Constructor");
 }
 
 PoolAllocator::~PoolAllocator()
@@ -130,7 +114,7 @@ PoolAllocator::~PoolAllocator()
 
 #ifdef PROFILE_ENABLED
     mmgr.Deregister(GetID(), srcLocation);
-#else // PROFILE_ENABLED
+#else  // PROFILE_ENABLED
     mmgr.Deregister(GetID());
 #endif // PROFILE_ENABLED
 
@@ -138,7 +122,7 @@ PoolAllocator::~PoolAllocator()
     id = InvalidAllocatorID;
 }
 
-PoolAllocator& PoolAllocator::operator= (PoolAllocator&& rhs) noexcept
+PoolAllocator& PoolAllocator::operator=(PoolAllocator&& rhs) noexcept
 {
     this->~PoolAllocator();
     new (this) PoolAllocator(std::move(rhs));
@@ -146,15 +130,19 @@ PoolAllocator& PoolAllocator::operator= (PoolAllocator&& rhs) noexcept
     return *this;
 }
 
-bool PoolAllocator::operator< (const PoolAllocator& rhs) const noexcept
+bool PoolAllocator::operator<(const PoolAllocator& rhs) const noexcept
 {
     if (blockSize < rhs.blockSize)
+    {
         return true;
+    }
 
     if (blockSize == rhs.blockSize)
     {
         if (GetAvailableBlocks() > rhs.GetAvailableBlocks())
+        {
             return true;
+        }
     }
 
     return false;
@@ -165,10 +153,10 @@ Pointer PoolAllocator::Allocate(size_t size)
     if (unlikely(size > blockSize))
     {
         auto& mmgr = MemoryManager::GetInstance();
-        mmgr.LogWarning([this, size](auto& ls)
-            {
-                ls << "The requested size " << size
-                    << " is exceeding its limit, " << blockSize << '.';
+        mmgr.LogWarning(
+            [this, size](auto& ls) {
+                ls << "The requested size " << size << " is exceeding its limit, " << blockSize
+                   << '.';
             });
 
         auto ptr = mmgr.AllocateBytes(parentID, size);
@@ -195,7 +183,9 @@ Pointer PoolAllocator::Allocate(size_t size)
 void PoolAllocator::Deallocate(Pointer ptr, size_t size)
 {
     if (unlikely(ptr == nullptr))
+    {
         return;
+    }
 
     if (unlikely(!IsMine(ptr)))
     {
@@ -219,9 +209,7 @@ void PoolAllocator::Deallocate(Pointer ptr, size_t size)
         {
             auto& mmgr = MemoryManager::GetInstance();
             mmgr.LogError([ptr](auto& logStream)
-                {
-                    logStream << ptr << " is not alloacted by this.";
-                });
+                          { logStream << ptr << " is not alloacted by this."; });
 
             return;
         }
@@ -261,17 +249,18 @@ PoolAllocator::TSize PoolAllocator::GetIndex(Pointer ptr) const
 PoolAllocator::TSize PoolAllocator::ReadNextIndex(Pointer ptr) const
 {
     auto index = GetAs<TSize>(ptr);
-    Assert(index <= numberOfBlocks
-        , "PoolAllocator: out of bounds index = %u / %u", index, numberOfBlocks);
+    Assert(
+        index <= numberOfBlocks, "PoolAllocator: out of bounds index = %u / %u", index,
+        numberOfBlocks);
 
     return index;
 }
 
 void PoolAllocator::WriteNextIndex(Pointer ptr, TSize index)
 {
-    Assert(index < numberOfBlocks
-        , "PoolAllocator: out of bounds index. The index "
-        , index, " should be less than ", numberOfBlocks);
+    Assert(
+        index < numberOfBlocks, "PoolAllocator: out of bounds index. The index ", index,
+        " should be less than ", numberOfBlocks);
 
     SetAs<TSize>(ptr, index);
 }
@@ -281,11 +270,11 @@ Pointer PoolAllocator::AllocateBlock()
     if (!availables)
     {
         auto& mmgr = MemoryManager::GetInstance();
-        mmgr.LogError([this](auto& ls)
+        mmgr.LogError(
+            [this](auto& ls)
             {
                 ls << "No available memory blocks. Usage = "
-                    << (numberOfBlocks - numberOfFreeBlocks) << " / "
-                    << numberOfBlocks;
+                   << (numberOfBlocks - numberOfFreeBlocks) << " / " << numberOfBlocks;
             });
 
         return nullptr;
@@ -309,12 +298,12 @@ Pointer PoolAllocator::AllocateBlock()
 
 #ifdef PROFILE_ENABLED
     maxUsedBlocks = std::max(maxUsedBlocks, numberOfBlocks - numberOfFreeBlocks);
-#endif // PROFILE_ENABLED 
+#endif // PROFILE_ENABLED
 
     return ptr;
 }
 
-} // HE
+} // namespace HE
 
 #ifdef __UNIT_TEST__
 
@@ -323,37 +312,40 @@ namespace HE
 
 void PoolAllocatorTest::Prepare()
 {
-    AddTest("Construction", [](auto&)
-    {
-        for (int i = 1; i < 100; ++i)
+    AddTest(
+        "Construction",
+        [](auto&)
         {
-            PoolAllocator pool("TestPoolAllocator", i, 100);
-        }
-    });
-
-
-    AddTest("Allocation & Deallocation", [this](auto& ls)
-    {
-        PoolAllocator pool("TestPoolAllocator", 4096, 100);
-
-        for (int i = 0; i < 100; ++i)
-        {
-            constexpr size_t allocSize = 50;
-            auto ptr = pool.Allocate(allocSize);
-            auto size = pool.GetSize(ptr);
-
-            if (size != 4096)
+            for (int i = 1; i < 100; ++i)
             {
-                ls << "The size is incorrect. " << size
-                    << ", but 100 expected." << lferr;
-                break;
+                PoolAllocator pool("TestPoolAllocator", i, 100);
             }
+        });
 
-            pool.Deallocate(ptr, allocSize);
-        }
-    });
+
+    AddTest(
+        "Allocation & Deallocation",
+        [this](auto& ls)
+        {
+            PoolAllocator pool("TestPoolAllocator", 4096, 100);
+
+            for (int i = 0; i < 100; ++i)
+            {
+                constexpr size_t allocSize = 50;
+                auto ptr = pool.Allocate(allocSize);
+                auto size = pool.GetSize(ptr);
+
+                if (size != 4096)
+                {
+                    ls << "The size is incorrect. " << size << ", but 100 expected." << lferr;
+                    break;
+                }
+
+                pool.Deallocate(ptr, allocSize);
+            }
+        });
 }
 
-} // HE
+} // namespace HE
 
 #endif //__UNIT_TEST__

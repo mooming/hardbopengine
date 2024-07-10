@@ -16,4 +16,4 @@ struct ProtectionMode final
     void SetExecutable();
 };
 
-} // OS
+} // namespace OS

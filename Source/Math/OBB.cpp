@@ -6,7 +6,7 @@
 namespace HE
 {
 template class OBB<float>;
-} // HE
+} // namespace HE
 
 #ifdef __UNIT_TEST__
 
@@ -17,6 +17,6 @@ void OBBTest::Prepare()
 {
 }
 
-} // HE
+} // namespace HE
 
-#endif  // __UNIT_TEST__
+#endif // __UNIT_TEST__

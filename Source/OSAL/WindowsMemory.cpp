@@ -3,11 +3,11 @@
 #include "OSMemory.h"
 
 #ifdef PLATFORM_WINDOWS
-#include <malloc.h>
-#include <windows.h>
 #include <errhandlingapi.h>
+#include <malloc.h>
 #include <memoryapi.h>
 #include <sysinfoapi.h>
+#include <windows.h>
 
 
 size_t OS::GetAllocSize(void* ptr)
@@ -50,17 +50,20 @@ void OS::ProtectMemory(void* address, size_t n)
     auto result = VirtualProtect(address, n, PAGE_NOACCESS, &oldProtect);
 
     if (likely(result))
+    {
         return;
+    }
 
     using namespace std;
     auto errorId = GetLastError();
 
     auto& engine = HE::Engine::Get();
-    engine.LogError([address, n, errorId](auto& log)
-    {
-        log << "[OS::ProtectMemory] address = "
-            << address << ", n = " << n << " : error code = " << errorId << endl;
-    });
+    engine.LogError(
+        [address, n, errorId](auto& log)
+        {
+            log << "[OS::ProtectMemory] address = " << address << ", n = " << n
+                << " : error code = " << errorId << endl;
+        });
 
     HE::Assert(false);
 }

@@ -2,10 +2,9 @@
 
 #include "MemoryManager.h"
 
-#include "Engine.h"
-#include "SystemAllocator.h"
-#include "MultiPoolConfigCache.h"
 #include "Config/ConfigParam.h"
+#include "Engine.h"
+#include "MultiPoolConfigCache.h"
 #include "OSAL/Intrinsic.h"
 #include "OSAL/OSInputOutput.h"
 #include "OSAL/SourceLocation.h"
@@ -13,6 +12,7 @@
 #include "Resource/BufferUtil.h"
 #include "String/StringUtil.h"
 #include "System/Debug.h"
+#include "SystemAllocator.h"
 #include <cstdint>
 
 
@@ -43,9 +43,7 @@ MemoryManager::TId MemoryManager::GetCurrentAllocatorID()
     return ScopedAllocatorID;
 }
 
-MemoryManager::MemoryManager(Engine& engine)
-    : allocCount(0)
-    , deallocCount(0)
+MemoryManager::MemoryManager(Engine& engine) : allocCount(0), deallocCount(0)
 {
     Assert(MMgrInstance == nullptr);
     MMgrInstance = this;
@@ -66,7 +64,9 @@ MemoryManager::MemoryManager(Engine& engine)
 MemoryManager::~MemoryManager()
 {
     if (MMgrInstance == nullptr)
+    {
         return;
+    }
 
     DeregisterSystemAllocator();
     MMgrInstance = nullptr;
@@ -102,28 +102,29 @@ const char* MemoryManager::GetName(TAllocatorID id) const
 
         return stats.name;
     }
-#else // PROFILE_ENABLED
+#else  // PROFILE_ENABLED
     return "Unknown";
 #endif // PROFILE_ENABLED
 }
 
-MemoryManager::TId MemoryManager::Register(const char* name, bool isInline
-    , size_t capacity, TAllocBytes allocFunc, TDeallocBytes deallocFunc)
+MemoryManager::TId MemoryManager::Register(
+    const char* name, bool isInline, size_t capacity, TAllocBytes allocFunc,
+    TDeallocBytes deallocFunc)
 {
     if (name == nullptr)
     {
         name = "None";
     }
-    
+
 #ifdef PROFILE_ENABLED
     auto AddAllocator = [this, name, isInline, capacity, allocFunc, deallocFunc](auto& allocator)
-#else // PROFILE_ENABLED
+#else  // PROFILE_ENABLED
     auto AddAllocator = [allocFunc, deallocFunc](auto& allocator)
 #endif // PROFILE_ENABLED
     {
         allocator.allocate = allocFunc;
         allocator.deallocate = deallocFunc;
-        
+
 #ifdef PROFILE_ENABLED
         {
             std::lock_guard lockScope(statsLock);
@@ -145,12 +146,8 @@ MemoryManager::TId MemoryManager::Register(const char* name, bool isInline
     auto proxy = proxyPool.Pop();
     if (unlikely(proxy == nullptr))
     {
-        Log(ELogLevel::FatalError
-            , [funcName = __func__, name](auto& ls)
-        {
-            ls << "[" << funcName << "][" << name
-                << "] failed to register an allocator.";
-        });
+        Log(ELogLevel::FatalError, [funcName = __func__, name](auto& ls)
+            { ls << "[" << funcName << "][" << name << "] failed to register an allocator."; });
 
         return InvalidAllocatorID;
     }
@@ -161,26 +158,18 @@ MemoryManager::TId MemoryManager::Register(const char* name, bool isInline
     AddAllocator(allocator);
     Assert(id != InvalidAllocatorID);
 
-    Log(ELogLevel::Info
-        , [funcName = __func__, name, id](auto& ls)
-    {
-        ls << "[" << funcName << "] " << name << "(" << id << ')';
-    });
+    Log(ELogLevel::Info, [funcName = __func__, name, id](auto& ls)
+        { ls << "[" << funcName << "] " << name << "(" << id << ')'; });
 
     return id;
 }
 
-void MemoryManager::Update(TId id, std::function<void(AllocatorProxy&)> func
-    , const char* reason)
+void MemoryManager::Update(TId id, std::function<void(AllocatorProxy&)> func, const char* reason)
 {
     if (unlikely(!IsValid(id)))
     {
-        Log(ELogLevel::Error
-            , [funcName = __func__, id](auto& ls)
-        {
-            ls << "[" << funcName << "] Invalid allocator id(" << id
-                << ") is provided.";
-        });
+        Log(ELogLevel::Error, [funcName = __func__, id](auto& ls)
+            { ls << "[" << funcName << "] Invalid allocator id(" << id << ") is provided."; });
 
         return;
     }
@@ -188,24 +177,20 @@ void MemoryManager::Update(TId id, std::function<void(AllocatorProxy&)> func
     auto& proxy = allocators[id];
     func(proxy);
 
-    Log(ELogLevel::Verbose
-        , [funcName = __func__, &proxy, id, reason](auto& ls)
-    {
-        ls << "[" << funcName << "] " << proxy.GetName()
-            << "(" << id << ") is updated. Reason = " << reason;
-    });
+    Log(ELogLevel::Verbose,
+        [funcName = __func__, &proxy, id, reason](auto& ls)
+        {
+            ls << "[" << funcName << "] " << proxy.GetName() << "(" << id
+               << ") is updated. Reason = " << reason;
+        });
 }
 
 void MemoryManager::Deregister(TId id)
 {
     if (unlikely(!IsValid(id)))
     {
-        Log(ELogLevel::Error
-            , [funcName = __func__, id](auto& ls)
-        {
-            ls << "[" << funcName << "] Invalid allocator id(" << id
-                << ") is provided.";
-        });
+        Log(ELogLevel::Error, [funcName = __func__, id](auto& ls)
+            { ls << "[" << funcName << "] Invalid allocator id(" << id << ") is provided."; });
 
         return;
     }
@@ -215,18 +200,12 @@ void MemoryManager::Deregister(TId id)
 #ifdef PROFILE_ENABLED
     auto& stats = allocator.stats;
 
-    Log(ELogLevel::Info
-        , [funcName = __func__, id, &stats](auto& ls)
-    {
-        ls << "[" << funcName << "] " << stats.name << "(" << id << ')';
-    });
+    Log(ELogLevel::Info, [funcName = __func__, id, &stats](auto& ls)
+        { ls << "[" << funcName << "] " << stats.name << "(" << id << ')'; });
 
-#else // PROFILE_ENABLED
-    Log(ELogLevel::Info
-        , [funcName = __func__, id](auto& ls)
-    {
-        ls << "[" << funcName << "] ID(" << id << ')';
-    });
+#else  // PROFILE_ENABLED
+    Log(ELogLevel::Info,
+        [funcName = __func__, id](auto& ls) { ls << "[" << funcName << "] ID(" << id << ')'; });
 #endif // PROFILE_ENABLED
 
     allocator.allocate = nullptr;
@@ -235,13 +214,8 @@ void MemoryManager::Deregister(TId id)
 #ifdef __MEMORY_VERIFICATION__
     if (unlikely(allocator.threadId != std::this_thread::get_id()))
     {
-        Log(ELogLevel::Error
-            , [funcName = __func__, id](auto& ls)
-        {
-            ls << "[" << funcName
-                << "] Allocator(" << id
-                << ") Thread id is mismatched.";
-        });
+        Log(ELogLevel::Error, [funcName = __func__, id](auto& ls)
+            { ls << "[" << funcName << "] Allocator(" << id << ") Thread id is mismatched."; });
 
         debugBreak();
 
@@ -252,15 +226,14 @@ void MemoryManager::Deregister(TId id)
 #ifdef PROFILE_ENABLED
     if (unlikely(stats.usage > 0))
     {
-        Log(ELogLevel::Warning
-            , [funcName = __func__, &stats, id](auto& ls)
-        {
-            ls << "[" << funcName << "] Allocator [" << stats.name
-                << "](" << id << ") Memory leak is detected! "
-                << stats.usage << " / " << stats.capacity
-                << " bytes";
-        });
-        
+        Log(ELogLevel::Warning,
+            [funcName = __func__, &stats, id](auto& ls)
+            {
+                ls << "[" << funcName << "] Allocator [" << stats.name << "](" << id
+                   << ") Memory leak is detected! " << stats.usage << " / " << stats.capacity
+                   << " bytes";
+            });
+
 #ifdef __DEBUG__
         debugBreak();
 #endif // __DEBUG__
@@ -270,12 +243,12 @@ void MemoryManager::Deregister(TId id)
 
     if (unlikely(stats.usage > 0))
     {
-        Log(ELogLevel::Warning
-            , [funcName = __func__, &stats, id](auto& ls)
-        {
-            ls << "[" << funcName << "] Allocator [" << stats.name
-                << "](" << id << ") Memory leak is detected!";
-        });
+        Log(ELogLevel::Warning,
+            [funcName = __func__, &stats, id](auto& ls)
+            {
+                ls << "[" << funcName << "] Allocator [" << stats.name << "](" << id
+                   << ") Memory leak is detected!";
+            });
 
         return;
     }
@@ -303,12 +276,8 @@ AllocStats MemoryManager::GetAllocatorStat(TAllocatorID id)
 {
     if (unlikely(!IsValid(id)))
     {
-        Log(ELogLevel::Error
-            , [funcName = __func__, id](auto& ls)
-        {
-            ls << "[" << funcName << "] Invalid allocator id(" << id
-                << ") is provided.";
-        });
+        Log(ELogLevel::Error, [funcName = __func__, id](auto& ls)
+            { ls << "[" << funcName << "] Invalid allocator id(" << id << ") is provided."; });
 
         static const AllocStats stats;
         return stats;
@@ -330,12 +299,8 @@ void MemoryManager::Deregister(TId id, const std::source_location& srcLoc)
 {
     if (unlikely(!IsValid(id)))
     {
-        Log(ELogLevel::Error
-            , [funcName = __func__, id](auto& ls)
-        {
-            ls << "[" << funcName << "] Invalid allocator id(" << id
-                << ") is provided.";
-        });
+        Log(ELogLevel::Error, [funcName = __func__, id](auto& ls)
+            { ls << "[" << funcName << "] Invalid allocator id(" << id << ") is provided."; });
 
         return;
     }
@@ -350,30 +315,28 @@ void MemoryManager::Deregister(TId id, const std::source_location& srcLoc)
     Deregister(id);
 }
 
-void MemoryManager::ReportMultiPoolConfigutation(StaticStringID uniqueName
-    , TPoolConfigs&& poolConfigs)
+void MemoryManager::ReportMultiPoolConfigutation(
+    StaticStringID uniqueName, TPoolConfigs&& poolConfigs)
 {
     auto& data = multiPoolConfigLog.GetData();
     data.emplace_back(uniqueName, std::move(poolConfigs));
 }
 #endif // PROFILE_ENABLED
 
-void MemoryManager::ReportAllocation(TId id, void* ptr
-    , size_t requested, size_t allocated)
+void MemoryManager::ReportAllocation(TId id, void* ptr, size_t requested, size_t allocated)
 {
 #ifdef PROFILE_ENABLED
     using namespace std;
 
     if (unlikely(!IsValid(id)))
     {
-        Log(ELogLevel::Error
-            , [func = __func__, id, ptr, requested, allocated](auto& ls)
-        {
-            ls << '[' << func << "] Invalid allocator id(" << id
-                << ") is provided. ptr = " << ptr
-                << ", requested = " << requested
-                << ", allocated = " << allocated;
-        });
+        Log(ELogLevel::Error,
+            [func = __func__, id, ptr, requested, allocated](auto& ls)
+            {
+                ls << '[' << func << "] Invalid allocator id(" << id
+                   << ") is provided. ptr = " << ptr << ", requested = " << requested
+                   << ", allocated = " << allocated;
+            });
 
 #ifdef __DEBUG__
         debugBreak();
@@ -412,17 +375,13 @@ void MemoryManager::ReportAllocation(TId id, void* ptr
 
     if (unlikely(stats.usage > stats.capacity))
     {
-        Log(ELogLevel::FatalError
-            , [func = __func__, &stats, ptr, requested, allocated](auto& ls)
-        {
-            ls << '[' << func << "][" << stats.name
-                << "] Memory usage overflow. "
-                << stats.usage << " > "
-                << stats.capacity
-                << ", ptr = " << ptr
-                << ", requested = " << requested
-                << ", allocated = " << allocated;
-        });
+        Log(ELogLevel::FatalError,
+            [func = __func__, &stats, ptr, requested, allocated](auto& ls)
+            {
+                ls << '[' << func << "][" << stats.name << "] Memory usage overflow. "
+                   << stats.usage << " > " << stats.capacity << ", ptr = " << ptr
+                   << ", requested = " << requested << ", allocated = " << allocated;
+            });
 
 #ifdef __DEBUG__
         debugBreak();
@@ -433,58 +392,51 @@ void MemoryManager::ReportAllocation(TId id, void* ptr
 
     if (unlikely(rec.totalUsage > rec.totalCapacity))
     {
-        Log(ELogLevel::FatalError
-            , [func = __func__, &stats, &rec, ptr, requested, allocated](auto& ls)
-        {
-            ls << "[MemoryManager][" << func
-                << "][" << stats.name
-                << "] Usage overflow. "
-                << rec.totalUsage << " exceedes its limit "
-                << rec.totalCapacity
-                << ", ptr = " << ptr
-                << ", requested = " << requested
-                << ", allocated = " << allocated;
-        });
+        Log(ELogLevel::FatalError,
+            [func = __func__, &stats, &rec, ptr, requested, allocated](auto& ls)
+            {
+                ls << "[MemoryManager][" << func << "][" << stats.name << "] Usage overflow. "
+                   << rec.totalUsage << " exceedes its limit " << rec.totalCapacity
+                   << ", ptr = " << ptr << ", requested = " << requested
+                   << ", allocated = " << allocated;
+            });
 
 #ifdef __DEBUG__
         debugBreak();
 #endif // __DEBUG__
     }
 
-    Log(ELogLevel::Info
-        , [this, &stats, &rec, id, ptr, requested, allocated](auto& ls)
-    {
-        ls << "[Alloc(" << allocCount << ")]["
-            << stats.name << '('
-            << id << ")] " << ptr
-            << ", req = " << requested
-            << '(' << allocated;
-
-        auto PrintMemSize = [&ls](size_t size)
+    Log(ELogLevel::Info,
+        [this, &stats, &rec, id, ptr, requested, allocated](auto& ls)
         {
-            if (size < 1024)
+            ls << "[Alloc(" << allocCount << ")][" << stats.name << '(' << id << ")] " << ptr
+               << ", req = " << requested << '(' << allocated;
+
+            auto PrintMemSize = [&ls](size_t size)
             {
-                ls << size;
-                return;
-            }
+                if (size < 1024)
+                {
+                    ls << size;
+                    return;
+                }
 
-            ls << (size / 1024) << " KB";
-        };
+                ls << (size / 1024) << " KB";
+            };
 
-        ls << "), usage = ";
-        PrintMemSize(stats.usage);
+            ls << "), usage = ";
+            PrintMemSize(stats.usage);
 
-        ls << " / ";
-        PrintMemSize(stats.capacity);
+            ls << " / ";
+            PrintMemSize(stats.capacity);
 
-        ls << ", total usage = ";
-        PrintMemSize(rec.totalUsage);
-        ls << " / ";
-        PrintMemSize(rec.totalCapacity);
+            ls << ", total usage = ";
+            PrintMemSize(rec.totalUsage);
+            ls << " / ";
+            PrintMemSize(rec.totalCapacity);
 
-        ls << ", count = " << stats.deallocCount;
-        ls << " / " << stats.allocCount;
-    });
+            ls << ", count = " << stats.deallocCount;
+            ls << " / " << stats.allocCount;
+        });
 
 
     if (id == SystemAllocatorID)
@@ -496,8 +448,7 @@ void MemoryManager::ReportAllocation(TId id, void* ptr
 #endif // PROFILE_ENABLED
 }
 
-void MemoryManager::ReportDeallocation(TId id, void* ptr
-    , size_t requested, size_t allocated)
+void MemoryManager::ReportDeallocation(TId id, void* ptr, size_t requested, size_t allocated)
 {
 #ifdef PROFILE_ENABLED
     using namespace std;
@@ -505,12 +456,8 @@ void MemoryManager::ReportDeallocation(TId id, void* ptr
     if (unlikely(!IsValid(id)))
     {
         Log(ELogLevel::Error, [func = __func__, id](auto& ls)
-        {
-            ls <<  '[' << func
-                << "] Invalid allocator id(" << id
-                << ") is provided.";
-        });
-        
+            { ls << '[' << func << "] Invalid allocator id(" << id << ") is provided."; });
+
         return;
     }
 
@@ -522,40 +469,32 @@ void MemoryManager::ReportDeallocation(TId id, void* ptr
 
     if (unlikely(stats.usage < allocated))
     {
-        Log(ELogLevel::Error
-            , [func = __func__, &stats, ptr, requested, allocated](auto& ls)
-        {
-            ls << '[' << func
-                << "][" << stats.name
-                << "] Incorrect Memory usage. "
-                << " ptr = " << ptr
-                << ", requested = " << requested
-                << ", allocated = " << allocated
-                << ", usage = " << stats.usage;
-        });
+        Log(ELogLevel::Error,
+            [func = __func__, &stats, ptr, requested, allocated](auto& ls)
+            {
+                ls << '[' << func << "][" << stats.name << "] Incorrect Memory usage. "
+                   << " ptr = " << ptr << ", requested = " << requested
+                   << ", allocated = " << allocated << ", usage = " << stats.usage;
+            });
 
 #ifdef __DEBUG__
         debugBreak();
 #endif // __DEBUG__
     }
-    
+
     stats.usage -= allocated;
     ++stats.deallocCount;
 
     auto& rec = stats.isInline ? inlineUsage : usage;
     if (unlikely(rec.totalUsage < allocated))
     {
-        Log(ELogLevel::Error
-            , [func = __func__, &stats, &rec, ptr, requested, allocated](auto& ls )
-        {
-            ls << '[' << func
-                << "][" << stats.name
-                << "] Incorrect memory usage."
-                << " ptr = " << ptr
-                << ", requested = " << requested
-                << ", allocated = " << allocated
-                << " > " << rec.totalUsage;
-        });
+        Log(ELogLevel::Error,
+            [func = __func__, &stats, &rec, ptr, requested, allocated](auto& ls)
+            {
+                ls << '[' << func << "][" << stats.name << "] Incorrect memory usage."
+                   << " ptr = " << ptr << ", requested = " << requested
+                   << ", allocated = " << allocated << " > " << rec.totalUsage;
+            });
 
 #ifdef __DEBUG__
         debugBreak();
@@ -574,40 +513,37 @@ void MemoryManager::ReportDeallocation(TId id, void* ptr
         statistics.ReportSysMemDealloc(allocated);
     }
 
-    Log(ELogLevel::Verbose
-        , [this, &stats, &rec, id, ptr, requested, allocated](auto& ls)
-    {
-        ls << "[Dealloc(" << deallocCount << ")]["
-            << stats.name << '('
-            << id << ")] "  << ptr
-            << ", req = " << requested
-            << '(' << allocated;
-
-        auto PrintMemSize = [&ls](size_t size)
+    Log(ELogLevel::Verbose,
+        [this, &stats, &rec, id, ptr, requested, allocated](auto& ls)
         {
-            if (size < 1024)
+            ls << "[Dealloc(" << deallocCount << ")][" << stats.name << '(' << id << ")] " << ptr
+               << ", req = " << requested << '(' << allocated;
+
+            auto PrintMemSize = [&ls](size_t size)
             {
-                ls << size;
-                return;
-            }
+                if (size < 1024)
+                {
+                    ls << size;
+                    return;
+                }
 
-            ls << (size / 1024) << " KB";
-        };
+                ls << (size / 1024) << " KB";
+            };
 
-        ls << "), usage = ";
-        PrintMemSize(stats.usage);
+            ls << "), usage = ";
+            PrintMemSize(stats.usage);
 
-        ls << " / ";
-        PrintMemSize(stats.capacity);
+            ls << " / ";
+            PrintMemSize(stats.capacity);
 
-        ls << ", total usage = ";
-        PrintMemSize(rec.totalUsage);
-        ls << " / ";
-        PrintMemSize(rec.totalCapacity);
+            ls << ", total usage = ";
+            PrintMemSize(rec.totalUsage);
+            ls << " / ";
+            PrintMemSize(rec.totalCapacity);
 
-        ls << ", count = " << stats.deallocCount;
-        ls << " / " << stats.allocCount;
-    });
+            ls << ", count = " << stats.deallocCount;
+            ls << " / " << stats.allocCount;
+        });
 #endif // PROFILE_ENABLED
 }
 
@@ -617,11 +553,7 @@ void MemoryManager::ReportFallback(TId id, void* ptr, size_t requested)
     if (unlikely(!IsValid(id)))
     {
         Log(ELogLevel::Error, [funcName = __func__, id](auto& ls)
-        {
-            ls <<  '[' << funcName
-                << "] Invalid allocator id(" << id
-                << ") is provided.";
-        });
+            { ls << '[' << funcName << "] Invalid allocator id(" << id << ") is provided."; });
 
 #ifdef __DEBUG__
         debugBreak();
@@ -639,15 +571,13 @@ void MemoryManager::ReportFallback(TId id, void* ptr, size_t requested)
     stats.totalFallback += requested;
     stats.maxFallback = std::max(requested, stats.maxFallback);
 
-    Log(ELogLevel::Verbose
-        , [&stats, id, ptr, requested](auto& ls)
-    {
-        ls << "[" << stats.name << "]["
-            << id << "][FallbackAlloc] "
-            << " ptr = " << ptr
-            << ", count = " << stats.fallbackCount
-            << ", requested = " << requested;
-    });
+    Log(ELogLevel::Verbose,
+        [&stats, id, ptr, requested](auto& ls)
+        {
+            ls << "[" << stats.name << "][" << id << "][FallbackAlloc] "
+               << " ptr = " << ptr << ", count = " << stats.fallbackCount
+               << ", requested = " << requested;
+        });
 #endif // PROFILE_ENABLED
 }
 
@@ -656,11 +586,12 @@ void* MemoryManager::SysAllocate(size_t nBytes)
     auto& allocator = allocators[SystemAllocatorID];
     if (unlikely(allocator.allocate == nullptr))
     {
-        Log(ELogLevel::FatalError, [funcName = __func__](auto& ls)
-        {
-            ls << '[' << funcName << "] "
-                << "SystemAllocator has no allocate function.";
-        });
+        Log(ELogLevel::FatalError,
+            [funcName = __func__](auto& ls)
+            {
+                ls << '[' << funcName << "] "
+                   << "SystemAllocator has no allocate function.";
+            });
 
         return nullptr;
     }
@@ -673,11 +604,12 @@ void MemoryManager::SysDeallocate(void* ptr, size_t nBytes)
     auto& allocator = allocators[SystemAllocatorID];
     if (unlikely(allocator.deallocate == nullptr))
     {
-        Log(ELogLevel::FatalError, [funcName = __func__](auto& ls)
-        {
-            ls << '[' << funcName << "] "
-                << "SystemAllocator has no deallocate function.";
-        });
+        Log(ELogLevel::FatalError,
+            [funcName = __func__](auto& ls)
+            {
+                ls << '[' << funcName << "] "
+                   << "SystemAllocator has no deallocate function.";
+            });
 
         return;
     }
@@ -688,32 +620,34 @@ void MemoryManager::SysDeallocate(void* ptr, size_t nBytes)
 void* MemoryManager::AllocateBytes(TId id, size_t nBytes)
 {
     if (unlikely(nBytes == 0))
+    {
         return nullptr;
+    }
 
     Assert(id != InvalidAllocatorID, "Memory allocation is not permitted.");
 
 #ifdef __USE_SYSTEM_MALLOC__
     id = SystemAllocatorID;
 #endif // __USE_SYSTEM_MALLOC__
-    
+
     using namespace std;
 
     if (unlikely(!IsValid(id)))
     {
-        Log(ELogLevel::Error
-            , [funcName = __func__, id](auto& ls)
+        Log(ELogLevel::Error,
+            [funcName = __func__, id](auto& ls)
             {
-                ls << '[' << funcName << "] Invalid Scoped Allocator ID = "
-                    << id << ", the default allocator shall be used.";
+                ls << '[' << funcName << "] Invalid Scoped Allocator ID = " << id
+                   << ", the default allocator shall be used.";
             });
 
         id = 0;
     }
 
     auto& allocator = allocators[id];
-    Assert(allocator.allocate != nullptr
-        , "[", GetName(), "::", __func__, "][Error] "
-        , "No allocate function, ID = ", id);
+    Assert(
+        allocator.allocate != nullptr, "[", GetName(), "::", __func__, "][Error] ",
+        "No allocate function, ID = ", id);
 
     auto ptr = allocator.allocate(nBytes);
     Assert(ptr != nullptr, "Allocation Failed");
@@ -730,7 +664,7 @@ void MemoryManager::DeallocateBytes(TId id, void* ptr, size_t nBytes)
     }
 
     Assert(id != InvalidAllocatorID);
-    
+
 #ifdef __USE_SYSTEM_MALLOC__
     id = SystemAllocatorID;
 #endif // __USE_SYSTEM_MALLOC__
@@ -739,20 +673,20 @@ void MemoryManager::DeallocateBytes(TId id, void* ptr, size_t nBytes)
 
     if (unlikely(!IsValid(id)))
     {
-        Log(ELogLevel::Error
-            , [funcName = __func__, id](auto& ls)
+        Log(ELogLevel::Error,
+            [funcName = __func__, id](auto& ls)
             {
-                ls << '[' << funcName << "] Invalid Scoped Allocator ID = "
-                    << id << ", the default deallocate shall be used.";
+                ls << '[' << funcName << "] Invalid Scoped Allocator ID = " << id
+                   << ", the default deallocate shall be used.";
             });
 
         id = 0;
     }
 
     auto& allocator = allocators[id];
-    Assert(allocator.deallocate != nullptr
-        , "[MemoryManager::Allocate][Error] No allocate function, ID = "
-        , id);
+    Assert(
+        allocator.deallocate != nullptr,
+        "[MemoryManager::Allocate][Error] No allocate function, ID = ", id);
 
     allocator.deallocate(ptr, nBytes);
 }
@@ -770,15 +704,16 @@ void MemoryManager::DeallocateBytes(void* ptr, size_t nBytes)
 bool MemoryManager::IsLogEnabled(ELogLevel level) const
 {
 #ifdef __MEMORY_LOGGING__
-    static TAtomicConfigParam<uint8_t> CPLogLevel("Log.Memory"
-       , "The Memory System Log Level"
-       , static_cast<uint8_t>(Config::MemLogLevel));
+    static TAtomicConfigParam<uint8_t> CPLogLevel(
+        "Log.Memory", "The Memory System Log Level", static_cast<uint8_t>(Config::MemLogLevel));
 
     if (static_cast<uint8_t>(level) < CPLogLevel.Get())
+    {
         return false;
+    }
 
     return true;
-#else // __MEMORY_LOGGING__
+#else  // __MEMORY_LOGGING__
     return false;
 #endif // __MEMORY_LOGGING__
 }
@@ -787,21 +722,26 @@ void MemoryManager::Log(ELogLevel level, TLogFunc func) const
 {
 #ifdef __MEMORY_LOGGING__
     if (!IsLogEnabled(level))
+    {
         return;
+    }
 
     auto& engine = Engine::Get();
     engine.Log(level, func);
 #endif // __MEMORY_LOGGING__
 }
 
-const MultiPoolAllocatorConfig& MemoryManager::LookUpMultiPoolConfig(StaticStringID uniqueName) const
+const MultiPoolAllocatorConfig&
+MemoryManager::LookUpMultiPoolConfig(StaticStringID uniqueName) const
 {
     static const MultiPoolAllocatorConfig null;
 
     auto& data = multiPoolConfigCache.GetData();
     const auto len = data.size();
     if (len <= 0)
+    {
         return null;
+    }
 
     size_t start = 0;
     size_t end = len;
@@ -814,17 +754,16 @@ const MultiPoolAllocatorConfig& MemoryManager::LookUpMultiPoolConfig(StaticStrin
         auto& item = data[mid];
         if (uniqueName == item.uniqueName)
         {
-            Log(ELogLevel::Warning, [&item](auto& ls)
-            {
-                StaticString name(item.uniqueName);
-                for (auto& config : item.configs)
+            Log(ELogLevel::Warning,
+                [&item](auto& ls)
                 {
-                    ls << "LookUpMultiPoolConfig: Found [" << name << "] ("
-                        << config.blockSize
-                        << ", " << config.numberOfBlocks << ")\n";
-                }
-
-            });
+                    StaticString name(item.uniqueName);
+                    for (auto& config : item.configs)
+                    {
+                        ls << "LookUpMultiPoolConfig: Found [" << name << "] (" << config.blockSize
+                           << ", " << config.numberOfBlocks << ")\n";
+                    }
+                });
 
             return item;
         }
@@ -847,14 +786,10 @@ void MemoryManager::RegisterSystemAllocator()
     static SystemAllocator<uint8_t> systemAllocator;
 
     auto allocFunc = [&sysAlloc = systemAllocator](size_t nBytes) -> void*
-    {
-        return sysAlloc.allocate(nBytes);
-    };
+    { return sysAlloc.allocate(nBytes); };
 
     auto deallocFunc = [&sysAlloc = systemAllocator](void* ptr, size_t nBytes)
-    {
-        sysAlloc.deallocate(reinterpret_cast<uint8_t*>(ptr), nBytes);
-    };
+    { sysAlloc.deallocate(reinterpret_cast<uint8_t*>(ptr), nBytes); };
 
     auto& allocator = allocators[SystemAllocatorID];
     allocator.allocate = allocFunc;
@@ -898,36 +833,27 @@ void MemoryManager::LoadMultiPoolConfigs()
     StaticString path(GetMultiPoolConfigCacheFilePath());
     if (!OS::Exist(path))
     {
-        Log(ELogLevel::Significant, [path](auto& ls)
-        {
-            ls << "Load MultiPoolConfig: Failed to find " << path;
-        });
+        Log(ELogLevel::Significant,
+            [path](auto& ls) { ls << "Load MultiPoolConfig: Failed to find " << path; });
 
         return;
     }
 
-    Log(ELogLevel::Significant, [path](auto& ls)
-    {
-        ls << "Load MultiPoolConfig: " << path;
-    });
+    Log(ELogLevel::Significant, [path](auto& ls) { ls << "Load MultiPoolConfig: " << path; });
 
     auto buffer = BufferUtil::GetReadOnlyFileBuffer(path);
     if (buffer.GetData() == nullptr)
     {
-        Log(ELogLevel::Error, [path](auto& ls)
-        {
-            ls << '[' << func << "] Failed to open the file " << path;
-        });
+        Log(ELogLevel::Error,
+            [path](auto& ls) { ls << '[' << func << "] Failed to open the file " << path; });
 
         return;
     }
 
     if (!multiPoolConfigCache.Deserialize(buffer))
     {
-        Log(ELogLevel::Error, [path](auto& ls)
-        {
-            ls << '[' << func << "] Failed to deserialize the file " << path;
-        });
+        Log(ELogLevel::Error,
+            [path](auto& ls) { ls << '[' << func << "] Failed to deserialize the file " << path; });
 
         return;
     }
@@ -935,7 +861,9 @@ void MemoryManager::LoadMultiPoolConfigs()
 #ifdef __DEBUG__
     constexpr auto logLevel = ELogLevel::Verbose;
     if (!IsLogEnabled(logLevel))
+    {
         return;
+    }
 
     auto& data = multiPoolConfigCache.GetData();
     size_t index = 0;
@@ -947,12 +875,12 @@ void MemoryManager::LoadMultiPoolConfigs()
 
         for (auto& config : configs)
         {
-            Log(logLevel, [&index, itemName, &config](auto& ls)
-            {
-                ls << index++ << " : " << itemName << " ("
-                    << config.blockSize << ", "
-                    << config.numberOfBlocks << ')';
-            });
+            Log(logLevel,
+                [&index, itemName, &config](auto& ls)
+                {
+                    ls << index++ << " : " << itemName << " (" << config.blockSize << ", "
+                       << config.numberOfBlocks << ')';
+                });
         }
     }
 #endif // __DEBUG__
@@ -973,21 +901,20 @@ void MemoryManager::SaveMultiPoolConfigs()
     auto pathStrID = GetMultiPoolConfigCacheFilePath();
     StaticString path(pathStrID);
 
-    Log(ELogLevel::Info, [size, path](auto& ls)
-    {
-        ls << '[' << func << "] MultiPoolConfig cache data(" << size
-            << " bytes) shall be saved in " << path;
-    });
+    Log(ELogLevel::Info,
+        [size, path](auto& ls)
+        {
+            ls << '[' << func << "] MultiPoolConfig cache data(" << size
+               << " bytes) shall be saved in " << path;
+        });
 
     auto buffer = BufferUtil::GetWriteOnlyFileBuffer(path, size);
     auto result = multiPoolConfigLog.Serialize(buffer);
 
     if (result != size)
     {
-        Log(ELogLevel::Error, [path](auto& ls)
-        {
-            ls << '[' << func << "] Failed to deserialize the file " << path;
-        });
+        Log(ELogLevel::Error,
+            [path](auto& ls) { ls << '[' << func << "] Failed to deserialize the file " << path; });
 
         return;
     }
@@ -995,7 +922,9 @@ void MemoryManager::SaveMultiPoolConfigs()
 #ifdef __DEBUG__
     constexpr auto logLevel = ELogLevel::Verbose;
     if (!IsLogEnabled(logLevel))
+    {
         return;
+    }
 
     auto& data = multiPoolConfigLog.GetData();
     size_t index = 0;
@@ -1007,12 +936,12 @@ void MemoryManager::SaveMultiPoolConfigs()
 
         for (auto& config : configs)
         {
-            Log(logLevel, [&index, itemName, &config](auto& ls)
-            {
-                ls << index++ << " : " << itemName << " ("
-                    << config.blockSize << ", "
-                    << config.numberOfBlocks << ')';
-            });
+            Log(logLevel,
+                [&index, itemName, &config](auto& ls)
+                {
+                    ls << index++ << " : " << itemName << " (" << config.blockSize << ", "
+                       << config.numberOfBlocks << ')';
+                });
         }
     }
 #endif // __DEBUG__
@@ -1021,28 +950,26 @@ void MemoryManager::SaveMultiPoolConfigs()
 void MemoryManager::SetScopedAllocatorID(TId id)
 {
     using namespace std;
-    
+
     if (unlikely(id != InvalidAllocatorID && !IsValid(id)))
     {
-        Log(ELogLevel::Error, [funcName = __func__, id](auto& ls)
-        {
-            ls << '[' << funcName << "] Invalid Scoped Allocator ID = "
-                << id << ", the default deallocate shall be used.";
-        });
-        
+        Log(ELogLevel::Error,
+            [funcName = __func__, id](auto& ls)
+            {
+                ls << '[' << funcName << "] Invalid Scoped Allocator ID = " << id
+                   << ", the default deallocate shall be used.";
+            });
+
         id = 0;
     }
-    
+
     if (unlikely(DVarScopedAllocLogging))
     {
         Log(ELogLevel::Error, [funcName = __func__, id](auto& ls)
-        {
-            ls << '[' << funcName << "] Previous ID = "
-                << id << ", New ID = " << id;
-        });
+            { ls << '[' << funcName << "] Previous ID = " << id << ", New ID = " << id; });
     }
-    
+
     ScopedAllocatorID = id;
 }
 
-} // HE
+} // namespace HE

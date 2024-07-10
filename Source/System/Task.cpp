@@ -2,30 +2,20 @@
 
 #include "Task.h"
 
-#include "Time.h"
 #include "Log/Logger.h"
 #include "OSAL/Intrinsic.h"
+#include "Time.h"
 
 
 namespace HE
 {
 
-Task::Task()
-    : numStreams(0)
-    , numDone(0)
-    , isCancelled(false)
-    , size(0)
-    , func(nullptr)
+Task::Task() : numStreams(0), numDone(0), isCancelled(false), size(0), func(nullptr)
 {
 }
 
 Task::Task(StaticString name, size_t size, Runnable func)
-    : name(name)
-    , numStreams(0)
-    , numDone(0)
-    , isCancelled(false)
-    , size(size)
-    , func(func)
+    : name(name), numStreams(0), numDone(0), isCancelled(false), size(size), func(func)
 {
 }
 
@@ -56,10 +46,14 @@ void Task::Reset(StaticString inName, TIndex inSize, Runnable inFunc)
 void Task::Run()
 {
     if (unlikely(IsCancelled()))
+    {
         return;
+    }
 
     if (unlikely(IsDone()))
+    {
         return;
+    }
 
     if (unlikely(func == nullptr))
     {
@@ -78,10 +72,14 @@ void Task::Run()
 void Task::Run(TIndex start, TIndex end)
 {
     if (unlikely(IsCancelled()))
+    {
         return;
+    }
 
     if (unlikely(IsDone()))
+    {
         return;
+    }
 
     if (unlikely(func == nullptr))
     {
@@ -122,17 +120,18 @@ void Task::Cancel()
 
 void Task::BusyWait() const
 {
-    while(!IsDone());
+    while (!IsDone())
+        ;
 }
 
 void Task::Wait(uint32_t intervalMilliSecs) const
 {
     const auto interval = std::chrono::milliseconds(intervalMilliSecs);
 
-    while(!IsDone())
+    while (!IsDone())
     {
         std::this_thread::sleep_for(interval);
     }
 }
 
-} // HE
+} // namespace HE

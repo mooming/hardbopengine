@@ -9,4 +9,4 @@
 namespace HE
 {
 using Runnable = std::function<void(std::size_t, std::size_t)>;
-} //HE
+} // namespace HE

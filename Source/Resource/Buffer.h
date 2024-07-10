@@ -12,18 +12,18 @@ namespace HE
 
 class Buffer final
 {
-public:
+  public:
     using TSize = BufferTypes::TSize;
     using TBufferData = BufferTypes::TBufferData;
     using TGenerateBuffer = BufferTypes::TGenerateBuffer;
     using TReleaseBuffer = BufferTypes::TReleaseBuffer;
 
-private:
+  private:
     TSize size;
     TBufferData data;
     TReleaseBuffer releaser;
 
-public:
+  public:
     Buffer();
     Buffer(Buffer&& rhs);
     Buffer(const TGenerateBuffer& genFunc);
@@ -33,22 +33,31 @@ public:
     StaticString GetClassName() const;
     void SetReleaser(TReleaseBuffer&& releaseFunc);
 
-public:
+  public:
     template <typename T>
-    T* GetDataAs() { return reinterpret_cast<T*>(data); }
+    T* GetDataAs()
+    {
+        return reinterpret_cast<T*>(data);
+    }
 
     template <typename T>
-    const T* GetDataAs() const { return reinterpret_cast<T*>(data); }
+    const T* GetDataAs() const
+    {
+        return reinterpret_cast<T*>(data);
+    }
 
     template <typename T>
-    size_t TranslateSizeAs() const { return size / sizeof(T); }
+    size_t TranslateSizeAs() const
+    {
+        return size / sizeof(T);
+    }
 
     inline uint8_t* GetData() { return data; }
     inline const uint8_t* GetData() const { return data; }
     inline auto GetSize() const { return size; }
 };
 
-} // HE
+} // namespace HE
 
 #ifdef __UNIT_TEST__
 #include "Test/TestCollection.h"
@@ -57,12 +66,12 @@ namespace HE
 {
 class BufferTest : public TestCollection
 {
-public:
+  public:
     BufferTest();
     virtual ~BufferTest() = default;
 
-protected:
+  protected:
     virtual void Prepare() override;
 };
-} // HE
+} // namespace HE
 #endif //__UNIT_TEST__

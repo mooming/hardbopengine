@@ -12,7 +12,6 @@ Resource::Resource()
 
 Resource::~Resource()
 {
-    
 }
 
-} // HE
+} // namespace HE

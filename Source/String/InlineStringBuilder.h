@@ -3,9 +3,9 @@
 #pragma once
 
 #include "EndLine.h"
+#include "OSAL/Intrinsic.h"
 #include "StaticString.h"
 #include "StringUtil.h"
-#include "OSAL/Intrinsic.h"
 #include <cctype>
 #include <cstring>
 #include <string>
@@ -18,18 +18,18 @@ namespace HE
 template <size_t BufferSize = 1024, class TChar = char>
 class InlineStringBuilder final
 {
-private:
+  private:
     static_assert(BufferSize > 0, "BufferSize should be greater than 0.");
 
     static constexpr size_t LastIndex = BufferSize - 1;
 
     using This = InlineStringBuilder;
 
-private:
+  private:
     size_t length;
     TChar buffer[BufferSize];
 
-public:
+  public:
     InlineStringBuilder() : length(0)
     {
         buffer[0] = '\0';
@@ -46,20 +46,11 @@ public:
         buffer[LastIndex] = '\0';
     }
 
-    auto c_str() const
-    {
-        return static_cast<const char*>(buffer);
-    }
+    auto c_str() const { return static_cast<const char*>(buffer); }
 
-    auto Size() const
-    {
-        return length;
-    }
+    auto Size() const { return length; }
 
-    operator const TChar* () const
-    {
-        return c_str();
-    }
+    operator const TChar*() const { return c_str(); }
 
     This& Hex(uint8_t value)
     {
@@ -67,14 +58,12 @@ public:
         {
             const size_t remained = BufferSize - length;
 
-            if(std::isprint(value))
+            if (std::isprint(value))
             {
-                return snprintf(&buffer[length]
-                    , remained, "%c", value);
+                return snprintf(&buffer[length], remained, "%c", value);
             }
 
-            return snprintf(&buffer[length]
-                , remained, "%02x", value);
+            return snprintf(&buffer[length], remained, "%02x", value);
         };
 
         int written = print();
@@ -85,12 +74,9 @@ public:
         return *this;
     }
 
-    This& operator<< (nullptr_t)
-    {
-        return *this << "Null";
-    }
+    This& operator<<(nullptr_t) { return *this << "Null"; }
 
-    This& operator<< (bool value)
+    This& operator<<(bool value)
     {
         if (value)
         {
@@ -100,10 +86,12 @@ public:
         return *this << "False";
     }
 
-    This& operator<< (char ch)
+    This& operator<<(char ch)
     {
         if (length >= LastIndex)
+        {
             return *this;
+        }
 
         buffer[length++] = ch;
 
@@ -113,7 +101,7 @@ public:
         return *this;
     }
 
-    This& operator<< (unsigned char value)
+    This& operator<<(unsigned char value)
     {
         const size_t remained = BufferSize - length;
         auto written = snprintf(&buffer[length], remained, "%u", value);
@@ -124,7 +112,7 @@ public:
         return *this;
     }
 
-    This& operator<< (const char* str)
+    This& operator<<(const char* str)
     {
         if (unlikely(str == nullptr))
         {
@@ -142,7 +130,9 @@ public:
         }
 
         if (unlikely(len <= 0))
+        {
             return *this;
+        }
 
         memcpy((void*)(&buffer[length]), str, len);
         length = newLength;
@@ -152,11 +142,13 @@ public:
     }
 
     template <size_t N>
-    This& operator<< (char str[N])
+    This& operator<<(char str[N])
     {
         if (N == 0)
+        {
             return *this;
-        
+        }
+
         auto len = StringUtil::StrLen(str, N);
         size_t newLength = length + len;
 
@@ -168,7 +160,9 @@ public:
         }
 
         if (unlikely(len <= 0))
+        {
             return *this;
+        }
 
         memcpy((void*)(&buffer[length]), &str[0], len);
         length = newLength;
@@ -177,7 +171,7 @@ public:
         return *this;
     }
 
-    This& operator<< (const std::string_view& str)
+    This& operator<<(const std::string_view& str)
     {
         size_t len = str.length();
         size_t newLength = length + len;
@@ -190,7 +184,9 @@ public:
         }
 
         if (unlikely(len <= 0))
+        {
             return *this;
+        }
 
         memcpy((void*)(&buffer[length]), str.data(), len);
 
@@ -201,17 +197,14 @@ public:
     }
 
     template <class CharT, class Traits, class Allocator>
-    This& operator<< (const std::basic_string<CharT, Traits, Allocator>& str)
+    This& operator<<(const std::basic_string<CharT, Traits, Allocator>& str)
     {
         return *this << static_cast<std::string_view>(str);
     }
 
-    This& operator<< (StaticString str)
-    {
-        return *this << str.c_str();
-    }
+    This& operator<<(StaticString str) { return *this << str.c_str(); }
 
-    This& operator<< (short value)
+    This& operator<<(short value)
     {
         const size_t remained = BufferSize - length;
         auto written = snprintf(&buffer[length], remained, "%d", value);
@@ -222,7 +215,7 @@ public:
         return *this;
     }
 
-    This& operator<< (unsigned short value)
+    This& operator<<(unsigned short value)
     {
         const size_t remained = BufferSize - length;
         auto written = snprintf(&buffer[length], remained, "%u", value);
@@ -233,7 +226,7 @@ public:
         return *this;
     }
 
-    This& operator<< (int value)
+    This& operator<<(int value)
     {
         const size_t remained = BufferSize - length;
         auto written = snprintf(&buffer[length], remained, "%d", value);
@@ -244,7 +237,7 @@ public:
         return *this;
     }
 
-    This& operator<< (unsigned int value)
+    This& operator<<(unsigned int value)
     {
         const size_t remained = BufferSize - length;
         auto written = snprintf(&buffer[length], remained, "%u", value);
@@ -255,7 +248,7 @@ public:
         return *this;
     }
 
-    This& operator<< (long value)
+    This& operator<<(long value)
     {
         const size_t remained = BufferSize - length;
         auto written = snprintf(&buffer[length], remained, "%ld", value);
@@ -266,7 +259,7 @@ public:
         return *this;
     }
 
-    This& operator<< (unsigned long value)
+    This& operator<<(unsigned long value)
     {
         const size_t remained = BufferSize - length;
         auto written = snprintf(&buffer[length], remained, "%lu", value);
@@ -277,7 +270,7 @@ public:
         return *this;
     }
 
-    This& operator<< (long long value)
+    This& operator<<(long long value)
     {
         const size_t remained = BufferSize - length;
         auto written = snprintf(&buffer[length], remained, "%lld", value);
@@ -288,7 +281,7 @@ public:
         return *this;
     }
 
-    This& operator<< (unsigned long long value)
+    This& operator<<(unsigned long long value)
     {
         const size_t remained = BufferSize - length;
         auto written = snprintf(&buffer[length], remained, "%llu", value);
@@ -299,7 +292,7 @@ public:
         return *this;
     }
 
-    This& operator<< (float value)
+    This& operator<<(float value)
     {
         const size_t remained = BufferSize - length;
         auto written = snprintf(&buffer[length], remained, "%f", value);
@@ -310,7 +303,7 @@ public:
         return *this;
     }
 
-    This& operator<< (double value)
+    This& operator<<(double value)
     {
         const size_t remained = BufferSize - length;
         auto written = snprintf(&buffer[length], remained, "%lf", value);
@@ -321,7 +314,7 @@ public:
         return *this;
     }
 
-    This& operator<< (long double value)
+    This& operator<<(long double value)
     {
         const size_t remained = BufferSize - length;
         auto written = snprintf(&buffer[length], remained, "%Lf", value);
@@ -332,7 +325,7 @@ public:
         return *this;
     }
 
-    This& operator<< (void* value)
+    This& operator<<(void* value)
     {
         const size_t remained = BufferSize - length;
         auto written = snprintf(&buffer[length], remained, "%p", value);
@@ -343,27 +336,24 @@ public:
         return *this;
     }
 
-    This& operator<< (EndLine)
-    {
-        return *this << '\n';
-    }
+    This& operator<<(EndLine) { return *this << '\n'; }
 };
 
-} // HSTL
+} // namespace HE
 
 #ifdef __UNIT_TEST__
 #include "Test/TestCollection.h"
 
 namespace HE
 {
-    class InlineStringBuilderTest : public TestCollection
-    {
-    public:
-        InlineStringBuilderTest() : TestCollection("InlineStringBuilderTest") {}
+class InlineStringBuilderTest : public TestCollection
+{
+  public:
+    InlineStringBuilderTest() : TestCollection("InlineStringBuilderTest") {}
 
-    protected:
-        virtual void Prepare() override;
-    };
-} // HE
+  protected:
+    virtual void Prepare() override;
+};
+} // namespace HE
 
 #endif //__UNIT_TEST__

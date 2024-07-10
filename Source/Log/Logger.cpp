@@ -2,11 +2,11 @@
 
 #include "Logger.h"
 
+#include "Config/BuildConfig.h"
+#include "Config/ConfigParam.h"
+#include "Config/EngineSettings.h"
 #include "Engine.h"
 #include "LogUtil.h"
-#include "Config/BuildConfig.h"
-#include "Config/EngineSettings.h"
-#include "Config/ConfigParam.h"
 #include "Memory/AllocatorScope.h"
 #include "Memory/InlinePoolAllocator.h"
 #include "OSAL/Intrinsic.h"
@@ -38,8 +38,8 @@ void ImmediateLog(ELogLevel level, StaticString category, const char* logStr)
     auto timeStampStr = LogUtil::GetTimeStampString();
     auto levelStr = LogUtil::GetLogLevelString(level);
 
-    cout << '[' << timeStampStr << "][" << std::this_thread::get_id() << "]["
-        << category << "][" << levelStr << "] " << logStr << endl;
+    cout << '[' << timeStampStr << "][" << std::this_thread::get_id() << "][" << category << "]["
+         << levelStr << "] " << logStr << endl;
 }
 #endif // LOG_FORCE_IMMEDIATE
 
@@ -51,10 +51,7 @@ void FallbackLog(StaticString category, ELogLevel level, const Logger::TLogFunct
     str << '[' << category << "] ";
     logFunc(str);
 
-    engine.Log(level, [&str](auto& ls)
-    {
-        ls << str.c_str();
-    });
+    engine.Log(level, [&str](auto& ls) { ls << str.c_str(); });
 }
 
 } // anonymous namespace
@@ -62,8 +59,7 @@ void FallbackLog(StaticString category, ELogLevel level, const Logger::TLogFunct
 Logger* Logger::instance = nullptr;
 
 Logger::SimpleLogger::SimpleLogger(StaticString category, ELogLevel level)
-    : category(category)
-    , level(level)
+    : category(category), level(level)
 {
 }
 
@@ -92,7 +88,7 @@ void Logger::SimpleLogger::Out(ELogLevel inLevel, const TLogFunction& logFunc) c
 Logger& Logger::Get()
 {
     FatalAssert(instance != nullptr);
-    
+
     return *instance;
 }
 
@@ -103,10 +99,8 @@ Logger::SimpleLogger Logger::Get(StaticString category, ELogLevel level)
 }
 
 Logger::Logger(Engine& engine, const char* path, const char* filename)
-    : allocator("LoggerMemoryPool")
-    , inputAlloc("LoggerInputPool")
-    , hasInput(false)
-    , needFlush(false)
+    : allocator("LoggerMemoryPool"), inputAlloc("LoggerInputPool"), hasInput(false),
+      needFlush(false)
 {
     Assert(engine.IsMemoryManagerReady());
 
@@ -127,7 +121,7 @@ Logger::Logger(Engine& engine, const char* path, const char* filename)
     filters.reserve(16);
 
     auto endChar = logPath[logPath.size() - 1];
-    
+
     {
         auto predicate = [](auto item) { return item == '\\'; };
         std::replace_if(logPath.begin(), logPath.end(), predicate, '/');
@@ -143,12 +137,12 @@ Logger::Logger(Engine& engine, const char* path, const char* filename)
         logPath.reserve(logPath.size() + fileNameSize + 1);
         logPath.push_back('/');
     }
-    
+
     logPath.append(filename);
     logPath.shrink_to_fit();
-    
+
     outFileStream.open(logPath.c_str());
-    
+
     flushFuncs.reserve(2);
     flushFuncs.push_back([this](const TTextBuffer& buffer) { WriteLog(buffer); });
     flushFuncs.push_back([this](const TTextBuffer& buffer) { PrintStdIO(buffer); });
@@ -174,16 +168,10 @@ StaticString Logger::GetName() const
 
 void Logger::StartTask(TaskSystem& taskSys)
 {
-    AddLog(GetName(), ELogLevel::Info, [](auto& logStream)
-    {
-        logStream << "Logger started.";
-    });
+    AddLog(GetName(), ELogLevel::Info, [](auto& logStream) { logStream << "Logger started."; });
 
     auto ioTaskIndex = taskSys.GetIOTaskStreamIndex();
-    auto func = [this](size_t, size_t)
-    {
-        ProcessBuffer();
-    };
+    auto func = [this](size_t, size_t) { ProcessBuffer(); };
 
     auto taskName = GetLoggerTaskName();
     taskHandle = taskSys.RegisterTask(ioTaskIndex, taskName, func);
@@ -193,9 +181,8 @@ void Logger::StartTask(TaskSystem& taskSys)
     {
         auto logFunc = [taskName, ioTaskIndex](auto& ls)
         {
-            ls << taskName.c_str()
-                << " : Failed to register as a task at task index "
-                << ioTaskIndex << '.';
+            ls << taskName.c_str() << " : Failed to register as a task at task index "
+               << ioTaskIndex << '.';
         };
 
         AddLog(GetName(), ELogLevel::FatalError, logFunc);
@@ -206,33 +193,31 @@ void Logger::StartTask(TaskSystem& taskSys)
 
 #ifdef __MEMORY_VERIFICATION__
     auto& mmgr = MemoryManager::GetInstance();
-    mmgr.Update(allocator.GetID(), [this](auto& proxy)
-    {
-        proxy.threadId = threadID;
-    }, "Setup thread binding.");
+    mmgr.Update(
+        allocator.GetID(), [this](auto& proxy) { proxy.threadId = threadID; },
+        "Setup thread binding.");
 #endif // __MEMORY_VERIFICATION__
 }
 
 void Logger::StopTask(TaskSystem& taskSys)
 {
     if (!taskHandle.IsValid())
+    {
         return;
+    }
 
     taskHandle.Reset();
     threadID = std::thread::id();
 
 #ifdef __MEMORY_VERIFICATION__
     auto& mmgr = MemoryManager::GetInstance();
-    mmgr.Update(allocator.GetID(), [](auto& proxy)
-    {
-        proxy.threadId = std::this_thread::get_id();
-    }, "Releasing the thread binding.");
+    mmgr.Update(
+        allocator.GetID(), [](auto& proxy) { proxy.threadId = std::this_thread::get_id(); },
+        "Releasing the thread binding.");
 #endif // __MEMORY_VERIFICATION__
 
-    AddLog(GetName(), ELogLevel::Info, [](auto& ls)
-    {
-        ls << "Logger shall be terminated." << hendl;
-    });
+    AddLog(
+        GetName(), ELogLevel::Info, [](auto& ls) { ls << "Logger shall be terminated." << hendl; });
 
     ProcessBuffer();
 
@@ -240,8 +225,7 @@ void Logger::StopTask(TaskSystem& taskSys)
     outFileStream.close();
 }
 
-void Logger::AddLog(StaticString category, ELogLevel level
-    , const TLogFunction& logFunc)
+void Logger::AddLog(StaticString category, ELogLevel level, const TLogFunction& logFunc)
 {
     Assert(this == instance);
 
@@ -250,23 +234,21 @@ void Logger::AddLog(StaticString category, ELogLevel level
 #endif // LOG_ENABLED
 
     AllocatorScope scope(InvalidAllocatorID);
-    
+
     if (unlikely(logFunc == nullptr))
     {
-        AddLog(GetName(), ELogLevel::Warning, [](auto& ls)
-        {
-            ls << "Null log function!";
-        });
-        
+        AddLog(GetName(), ELogLevel::Warning, [](auto& ls) { ls << "Null log function!"; });
+
         return;
     }
 
-    static TAtomicConfigParam<uint8_t> CPLogLevel("Log.Level"
-       , "The Default Log Level"
-       , static_cast<uint8_t>(ELogLevel::Info));
+    static TAtomicConfigParam<uint8_t> CPLogLevel(
+        "Log.Level", "The Default Log Level", static_cast<uint8_t>(ELogLevel::Info));
 
     if (level < static_cast<ELogLevel>(CPLogLevel.Get()))
+    {
         return;
+    }
 
     {
         std::lock_guard lock(filterLock);
@@ -275,7 +257,9 @@ void Logger::AddLog(StaticString category, ELogLevel level
         {
             auto& filter = found->second;
             if (filter != nullptr && !filter(level))
+            {
                 return;
+            }
         }
     }
 
@@ -305,19 +289,19 @@ void Logger::AddLog(StaticString category, ELogLevel level
         auto levelStr = LogUtil::GetLogLevelString(level);
 
         InlineStringBuilder<Config::LogOutputBuffer + 128> text;
-        text << '[' << timeStampStr.c_str() << "][" << threadName << "]["
-            << category << "][" << levelStr << "] " << ls.c_str();
-        
+        text << '[' << timeStampStr.c_str() << "][" << threadName << "][" << category << "]["
+             << levelStr << "] " << ls.c_str();
+
         tmpTextBuffer.emplace_back(text.c_str());
-        
+
         FlushBuffer(tmpTextBuffer);
         tmpTextBuffer.clear();
-        
+
         if (unlikely(level >= ELogLevel::FatalError))
         {
             debugBreak();
         }
-        
+
         return;
     }
 
@@ -327,12 +311,12 @@ void Logger::AddLog(StaticString category, ELogLevel level
         std::lock_guard lock(inputLock);
         AllocatorScope inputAllocScope(inputAlloc);
         inputBuffer.emplace_back(level, threadName, category, ls.c_str(), ls.Size());
-        
+
         bufferSize = inputBuffer.size();
         hasInput.store(true, std::memory_order_release);
         needFlush.store(true, std::memory_order_release);
     }
-    
+
     if (unlikely(level >= ELogLevel::FatalError))
     {
         debugBreak();
@@ -366,8 +350,8 @@ void Logger::Flush()
     }
 
     const auto period = std::chrono::milliseconds(10);
-    
-    while(needFlush.load(std::memory_order_relaxed))
+
+    while (needFlush.load(std::memory_order_relaxed))
     {
         std::this_thread::sleep_for(period);
     }
@@ -383,7 +367,9 @@ void Logger::ReportMemoryConfiguration()
 void Logger::ProcessBuffer()
 {
     if (!hasInput.load(std::memory_order_acquire))
+    {
         return;
+    }
 
     AllocatorScope scope(allocator);
 
@@ -394,7 +380,9 @@ void Logger::ProcessBuffer()
     }
 
     if (swapBuffer.empty())
+    {
         return;
+    }
 
     bool bNeedIOFlush = false;
     textBuffer.reserve(swapBuffer.size());
@@ -402,7 +390,9 @@ void Logger::ProcessBuffer()
     for (auto& log : swapBuffer)
     {
         if (log.level >= ELogLevel::Warning)
+        {
             bNeedIOFlush = true;
+        }
 
         InlineStringBuilder<64> timeStampStr;
         LogUtil::GetTimeStampString(timeStampStr, log.timeStamp);
@@ -448,18 +438,18 @@ void Logger::WriteLog(const TTextBuffer& buffer)
     {
         ofs << logText << std::endl;
     }
-    
+
     ofs.flush();
 }
 
 void Logger::PrintStdIO(const TTextBuffer& buffer) const
 {
     auto& engine = Engine::Get();
-    
+
     for (auto& logText : buffer)
     {
         engine.ConsoleOutLn(logText.c_str());
     }
 }
 
-} // HE
+} // namespace HE

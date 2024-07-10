@@ -2,8 +2,8 @@
 
 #include "String.h"
 
-#include "StringUtil.h"
 #include "Memory/MemoryManager.h"
+#include "StringUtil.h"
 #include "System/CommonUtil.h"
 #include "System/Debug.h"
 #include <cstdio>
@@ -66,7 +66,7 @@ String::String(const unsigned char value) : hashCode(0)
     auto& text = *buffer;
     snprintf(text.data(), text.size(), "0x%02X", value);
     buffer->resize(strlen(text.data()) + 1);
-    
+
     CalculateHashCode();
 }
 
@@ -193,13 +193,19 @@ String::String(const char* text) : hashCode(0)
 String::String(const String& string, Index startIndex, Index endIndex) : buffer()
 {
     if (startIndex >= string.Length())
+    {
         startIndex = string.Length();
+    }
 
     if (endIndex > string.Length())
+    {
         endIndex = string.Length();
+    }
 
     if (startIndex > endIndex)
+    {
         startIndex = endIndex;
+    }
 
     auto length = endIndex - startIndex;
 
@@ -235,7 +241,7 @@ String& String::operator=(const char* text)
     return *this;
 }
 
-String& String::operator= (const String& rhs)
+String& String::operator=(const String& rhs)
 {
     if (buffer.GetReferenceCount() > 1)
     {
@@ -251,7 +257,7 @@ String& String::operator= (const String& rhs)
     return *this;
 }
 
-bool String::operator< (const String& rhs) const
+bool String::operator<(const String& rhs) const
 {
     const Index shorterLen = std::min(Length(), rhs.Length());
     Index matchCount = 0;
@@ -265,13 +271,17 @@ bool String::operator< (const String& rhs) const
         }
 
         if ((*buffer)[i] > (*rhs.buffer)[i])
+        {
             return false;
+        }
 
         return true;
     }
 
     if (matchCount == shorterLen)
+    {
         return Length() < rhs.Length();
+    }
 
     return true;
 }
@@ -279,16 +289,22 @@ bool String::operator< (const String& rhs) const
 bool String::operator==(const String& string) const
 {
     if (hashCode != string.hashCode)
+    {
         return false;
+    }
 
     const auto length = Length();
     if (length != string.Length())
+    {
         return false;
+    }
 
     for (Index i = 0; i < length; ++i)
     {
         if ((*buffer)[i] != (*string.buffer)[i])
+        {
             return false;
+        }
     }
 
     return true;
@@ -315,14 +331,18 @@ bool String::ContainsAt(const String& keyword, Index startIndex) const
     const Index endIndex = startIndex + keyword.Length();
 
     if (endIndex > Length())
+    {
         return false;
+    }
 
     Index index = 0;
 
     for (Index i = startIndex; i < endIndex; ++i, ++index)
     {
         if ((*buffer)[i] != (*keyword.buffer)[index])
+        {
             return false;
+        }
     }
 
     return true;
@@ -335,7 +355,9 @@ Index String::Find(const Char ch) const
     for (Index i = 0; i < length; ++i)
     {
         if ((*buffer)[i] == ch)
+        {
             return i;
+        }
     }
 
     return length;
@@ -351,7 +373,9 @@ Index String::Find(const Array<Char>& chs) const
         for (decltype(chsLen) j = 0; j < chsLen; ++j)
         {
             if ((*buffer)[i] == chs[j])
+            {
                 return i;
+            }
         }
     }
 
@@ -364,13 +388,17 @@ Index String::Find(const String& keyword) const
     const auto keywordLength = Length();
 
     if (keywordLength > length)
+    {
         return length;
+    }
 
     const Index lastIndex = length - keywordLength + 1;
     for (Index i = 0; i < lastIndex; ++i)
     {
         if (ContainsAt(keyword, i))
+        {
             return i;
+        }
     }
     return length;
 }
@@ -382,24 +410,34 @@ Index String::Find(const String& keyword, Index startIndex, Index endIndex) cons
 
     Assert(startIndex < length);
     if (startIndex >= length)
+    {
         startIndex = length - 1;
+    }
 
     Assert(endIndex >= startIndex);
     if (endIndex < startIndex)
+    {
         endIndex = startIndex;
+    }
 
     Assert(endIndex <= length);
     if (endIndex > length)
+    {
         endIndex = length;
+    }
 
     if ((startIndex + keywordLength) > endIndex)
+    {
         return length;
+    }
 
     const Index lastIndex = endIndex - keywordLength + 1;
     for (Index i = startIndex; i < lastIndex; ++i)
     {
         if (ContainsAt(keyword, i))
+        {
             return i;
+        }
     }
 
     return length;
@@ -411,7 +449,9 @@ Index String::FindLast(const Char ch) const
     for (Index i = length; i > 0;)
     {
         if ((*buffer)[--i] == ch)
+        {
             return i;
+        }
     }
 
     return length;
@@ -482,7 +522,9 @@ String String::Append(const Char* text) const
 String String::Append(const String& string) const
 {
     if (string.IsEmpty())
+    {
         return Clone();
+    }
 
     const auto length = Length();
     const auto strLength = string.Length();
@@ -542,7 +584,8 @@ void String::AppendSelf(const float value)
 void String::AppendSelf(const Char* text)
 {
     const auto length = Length();
-    const Index textLength = static_cast<Index>(strlen(text));;
+    const Index textLength = static_cast<Index>(strlen(text));
+    ;
     const auto newLength = length + textLength + 1;
 
     if (newLength > buffer->capacity())
@@ -557,7 +600,9 @@ void String::AppendSelf(const Char* text)
 void String::AppendSelf(const String& string)
 {
     if (string.IsEmpty())
+    {
         return;
+    }
 
     const auto length = Length();
     const Index textLength = string.Length();
@@ -572,7 +617,7 @@ void String::AppendSelf(const String& string)
     memcpy(buffer->data() + length, string.buffer->data(), textLength + 1);
 }
 
-String String::Replace(const String& from, const String& to, Index offset, Index endIndex)  const
+String String::Replace(const String& from, const String& to, Index offset, Index endIndex) const
 {
     // TODO - NOT IMPLEMENTED YET
 
@@ -583,7 +628,9 @@ String String::Replace(const String& from, const String& to, Index offset, Index
 String String::ReplaceAll(char from, char to) const
 {
     if (!buffer)
+    {
         return String();
+    }
 
     String str = Clone();
     Char* data = str.buffer->data();
@@ -593,7 +640,9 @@ String String::ReplaceAll(char from, char to) const
     for (Index i = 0; i < length; ++i)
     {
         if (data[i] == from)
+        {
             data[i] = to;
+        }
     }
 
     str.CalculateHashCode();
@@ -639,7 +688,7 @@ void String::ResetBuffer(size_t size)
     buffer->push_back('\0');
 }
 
-} // HE
+} // namespace HE
 
 #ifdef __UNIT_TEST__
 #include "System/ScopedTime.h"
@@ -650,128 +699,142 @@ namespace HE
 
 void StringTest::Prepare()
 {
-    AddTest("Comparison with Zero-Terminated String", [this](auto& ls)
-    {
-        String str = "Hello? World!";
-        ls << str.c_str() << lf;
-
-        if (str != "Hello? World!")
+    AddTest(
+        "Comparison with Zero-Terminated String",
+        [this](auto& ls)
         {
-            ls << "String Compare Failure. " << str << lferr;
-        }
-    });
+            String str = "Hello? World!";
+            ls << str.c_str() << lf;
 
-    AddTest("To Lower Case", [this](auto& ls)
-    {
-        String str("Hello? World!");
-
-        auto lower = str.GetLowerCase();
-        ls << lower.c_str() << lf;
-
-        if (lower != "hello? world!")
-        {
-            ls << "To lowercase failed. " << lower << lferr;
-        }
-    });
-
-    AddTest("To Upper Case", [this](auto& ls)
-    {
-        String str("Hello? World!");
-
-        auto upper = str.GetUpperCase();
-        ls << upper.c_str() << lf;
-
-        if (upper != "HELLO? WORLD!")
-        {
-            ls << "To uppercase failed. " << upper << lferr;
-        }
-    });
-
-    AddTest("Move Semantics", [this](auto& ls)
-    {
-        String str("Hello? World!");
-
-        auto upper = str.GetUpperCase();
-        auto tmpString = std::move(upper);
-        ls << tmpString.c_str() << lf;
-
-        if (tmpString != "HELLO? WORLD!")
-        {
-            ls << "String move failed." << lferr;
-        }
-    });
-
-    AddTest("Find Last", [this](auto& ls)
-    {
-        String str("Hello? World!");
-        auto lastL = str.FindLast('l');
-        if (lastL != 10)
-        {
-            ls << "Failed to find the last 'l', index = "
-                << lastL << ", but expected 10." << lferr;
-        }
-    });
-
-    AddTest("SubString", [this](auto& ls)
-    {
-        String str("Hello? World!");
-        auto lastL = str.FindLast('l');
-        auto afterL = str.SubString(lastL);
-        ls << afterL.c_str() << lf;
-
-        if (afterL != "ld!")
-        {
-            ls << "Substring failed: " << afterL << lferr;
-        }
-    });
-
-    AddTest("Performance", [this](auto& ls)
-    {
-        constexpr int COUNT = 100000;
-
-        Time::TDuration heTime;
-
-        {
-            Time::ScopedTime measure(heTime);
-
-            String str;
-            for (int i = 0; i < COUNT; ++i)
+            if (str != "Hello? World!")
             {
-                str = "";
-                for (char ch = 'a'; ch <= 'z'; ++ch)
+                ls << "String Compare Failure. " << str << lferr;
+            }
+        });
+
+    AddTest(
+        "To Lower Case",
+        [this](auto& ls)
+        {
+            String str("Hello? World!");
+
+            auto lower = str.GetLowerCase();
+            ls << lower.c_str() << lf;
+
+            if (lower != "hello? world!")
+            {
+                ls << "To lowercase failed. " << lower << lferr;
+            }
+        });
+
+    AddTest(
+        "To Upper Case",
+        [this](auto& ls)
+        {
+            String str("Hello? World!");
+
+            auto upper = str.GetUpperCase();
+            ls << upper.c_str() << lf;
+
+            if (upper != "HELLO? WORLD!")
+            {
+                ls << "To uppercase failed. " << upper << lferr;
+            }
+        });
+
+    AddTest(
+        "Move Semantics",
+        [this](auto& ls)
+        {
+            String str("Hello? World!");
+
+            auto upper = str.GetUpperCase();
+            auto tmpString = std::move(upper);
+            ls << tmpString.c_str() << lf;
+
+            if (tmpString != "HELLO? WORLD!")
+            {
+                ls << "String move failed." << lferr;
+            }
+        });
+
+    AddTest(
+        "Find Last",
+        [this](auto& ls)
+        {
+            String str("Hello? World!");
+            auto lastL = str.FindLast('l');
+            if (lastL != 10)
+            {
+                ls << "Failed to find the last 'l', index = " << lastL << ", but expected 10."
+                   << lferr;
+            }
+        });
+
+    AddTest(
+        "SubString",
+        [this](auto& ls)
+        {
+            String str("Hello? World!");
+            auto lastL = str.FindLast('l');
+            auto afterL = str.SubString(lastL);
+            ls << afterL.c_str() << lf;
+
+            if (afterL != "ld!")
+            {
+                ls << "Substring failed: " << afterL << lferr;
+            }
+        });
+
+    AddTest(
+        "Performance",
+        [this](auto& ls)
+        {
+            constexpr int COUNT = 100000;
+
+            Time::TDuration heTime;
+
+            {
+                Time::ScopedTime measure(heTime);
+
+                String str;
+                for (int i = 0; i < COUNT; ++i)
                 {
-                    str += ch;
+                    str = "";
+                    for (char ch = 'a'; ch <= 'z'; ++ch)
+                    {
+                        str += ch;
+                    }
                 }
             }
-        }
 
-        Time::TDuration stlTime;
+            Time::TDuration stlTime;
 
-        {
-            Time::ScopedTime measure(stlTime);
-
-            std::string str;
-            for (int i = 0; i < COUNT; ++i)
             {
-                str = "";
-                for (char ch = 'a'; ch <= 'z'; ++ch)
+                Time::ScopedTime measure(stlTime);
+
+                std::string str;
+                for (int i = 0; i < COUNT; ++i)
                 {
-                    str += ch;
+                    str = "";
+                    for (char ch = 'a'; ch <= 'z'; ++ch)
+                    {
+                        str += ch;
+                    }
                 }
             }
-        }
 
-        ls << "Time: he = " << Time::ToFloat(heTime)
-            << ", stl = " << Time::ToFloat(stlTime) << lf;
+            ls << "Time: he = " << Time::ToFloat(heTime) << ", stl = " << Time::ToFloat(stlTime)
+               << lf;
 
-        if (heTime > stlTime)
-        {
-            ls << "HE String is slower than STL string." << std::endl
-                << "Time: he = " << Time::ToFloat(heTime)
-                << ", stl = " << Time::ToFloat(stlTime) << lfwarn;
-        }
-    });
+            if (heTime > stlTime)
+            {
+                ls << "HE String is slower than STL string." << std::endl
+                   << "Time: he = " << Time::ToFloat(heTime) << ", stl = " << Time::ToFloat(stlTime)
+                   << lfwarn;
+            }
+        });
 }
 
-} // HE
+} // namespace HE
 #endif //__UNIT_TEST__

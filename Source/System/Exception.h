@@ -9,14 +9,14 @@
 
 namespace HE
 {
-    class Exception
+class Exception
+{
+  public:
+    template <typename... Types>
+    inline Exception(const char* file, int line, Types&&... args)
     {
-    public:
-        template <typename ... Types>
-        inline Exception(const char* file, int line, Types&& ... args)
-        {
-            using namespace std;
-            PrintArgs(file, ":", line, forward<Types>(args) ...);
-        }
-    };
-} // HE
+        using namespace std;
+        PrintArgs(file, ":", line, forward<Types>(args)...);
+    }
+};
+} // namespace HE

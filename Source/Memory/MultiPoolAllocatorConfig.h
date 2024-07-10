@@ -16,15 +16,15 @@ struct MultiPoolAllocatorConfig final
     using TVector = std::vector<T>;
     using TPoolConfigs = TVector<PoolConfig>;
 
-public:
+  public:
     StaticStringID uniqueName;
     TPoolConfigs configs;
 
-public:
+  public:
     MultiPoolAllocatorConfig() = default;
     MultiPoolAllocatorConfig(StaticStringID id, TPoolConfigs&& configs);
 
-    bool operator < (const MultiPoolAllocatorConfig& rhs) const;
+    bool operator<(const MultiPoolAllocatorConfig& rhs) const;
 };
 
-} // HE
+} // namespace HE

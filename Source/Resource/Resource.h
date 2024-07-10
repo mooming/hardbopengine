@@ -11,9 +11,9 @@ namespace HE
 
 class Resource final
 {
-public:
+  public:
     Resource();
     ~Resource();
 };
 
-} // HE
+} // namespace HE

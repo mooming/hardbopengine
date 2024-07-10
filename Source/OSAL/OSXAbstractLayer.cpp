@@ -22,8 +22,7 @@ HString GetFullPath(const HString& path)
     void* ptr = realpath(path.c_str(), fullPath);
     if (ptr != fullPath)
     {
-        std::cerr << "[OS::GetFullPath] Failed to get the full path of "
-        << path << std::endl;
+        std::cerr << "[OS::GetFullPath] Failed to get the full path of " << path << std::endl;
 
         return TrimPath(path);
     }
@@ -53,13 +52,19 @@ HVector<HString> ListFilesInDirectory(const char* path)
         while (struct dirent* element = readdir(dir))
         {
             if (strcmp(element->d_name, ".") == 0)
+            {
                 continue;
+            }
 
             if (strcmp(element->d_name, "..") == 0)
+            {
                 continue;
+            }
 
             if (element->d_name[0] == '.' || element->d_name[0] == '\0')
+            {
                 continue;
+            }
 
             fileList.push_back(HString(element->d_name));
         }
@@ -72,6 +77,6 @@ HVector<HString> ListFilesInDirectory(const char* path)
     return fileList;
 }
 
-} // OS
+} // namespace OS
 
 #endif // PLATFORM_OSX

@@ -2,14 +2,14 @@
 
 #pragma once
 
-#include "Vector3.h"
-#include "Quaternion.h"
 #include "Matrix3x3.h"
 #include "Matrix4x4.h"
+#include "Quaternion.h"
+#include "Vector3.h"
 
 namespace HE
 {
-template <typename Number = float, int PaddingSize = 8 >
+template <typename Number = float, int PaddingSize = 8>
 class RigidTransform
 {
     using This = RigidTransform;
@@ -18,12 +18,12 @@ class RigidTransform
     using Mat3x3 = Matrix3x3<Number>;
     using Mat4x4 = Matrix4x4<Number>;
 
-public:
+  public:
     Quat rotation;
     Vec3 translation;
     uint8_t padding[PaddingSize];
 
-public:
+  public:
     RigidTransform();
     RigidTransform(std::nullptr_t);
     RigidTransform(const Vec3& translation, const Quat& rotation);
@@ -40,15 +40,9 @@ public:
         return Transform(rhs);
     }
 
-    Vec3 Transform(const Vec3& x) const
-    {
-        return rotation * x + translation;
-    }
+    Vec3 Transform(const Vec3& x) const { return rotation * x + translation; }
 
-    Quat Transform(const Quat& r) const
-    {
-        return rotation * r;
-    }
+    Quat Transform(const Quat& r) const { return rotation * r; }
 
     This Transform(const This& rhs) const
     {
@@ -60,15 +54,9 @@ public:
         return result;
     }
 
-    Vec3 InverseTransform(const Vec3& x) const
-    {
-        return (rotation.Inverse() * (x - translation));
-    }
+    Vec3 InverseTransform(const Vec3& x) const { return (rotation.Inverse() * (x - translation)); }
 
-    Quat InverseTransform(const Quat& r) const
-    {
-        return rotation.Inverse() * r;
-    }
+    Quat InverseTransform(const Quat& r) const { return rotation.Inverse() * r; }
 
     This InverseTransform(const This& rhs) const
     {
@@ -107,41 +95,39 @@ inline std::ostream& operator<<(std::ostream& os, const RigidTransform<T>& local
     using namespace std;
 
     os << "Rigid Transform" << endl;
-    os << "Position: (" << local.translation.x << ", "
-    << local.translation.y << ", "
-    << local.translation.z << ")" << endl;
+    os << "Position: (" << local.translation.x << ", " << local.translation.y << ", "
+       << local.translation.z << ")" << endl;
     auto r = local.rotation.EulerAngles();
     os << "Rotation: (" << r.x << ", " << r.y << ", " << r.z << ")" << endl;
 
     return os;
 }
 
-template<typename T, int N>
-inline RigidTransform<T, N>::RigidTransform()
-    : rotation(), translation()
+template <typename T, int N>
+inline RigidTransform<T, N>::RigidTransform() : rotation(), translation()
 {
 }
 
-template<typename T, int N>
+template <typename T, int N>
 inline RigidTransform<T, N>::RigidTransform(std::nullptr_t)
     : rotation(nullptr), translation(nullptr)
 {
 }
 
-template<typename T, int N>
+template <typename T, int N>
 inline RigidTransform<T, N>::RigidTransform(const Vec3& t, const Quat& r)
     : rotation(r), translation(t)
 {
 }
 
-template<typename T, int N>
-inline RigidTransform<T, N>::RigidTransform(const Mat4x4& mat) : rotation(mat)
-    , translation(mat.m14, mat.m24, mat.m34)
+template <typename T, int N>
+inline RigidTransform<T, N>::RigidTransform(const Mat4x4& mat)
+    : rotation(mat), translation(mat.m14, mat.m24, mat.m34)
 {
     Assert(mat.IsOrthogonal());
 }
 
-} // HE
+} // namespace HE
 
 #ifdef __UNIT_TEST__
 #include "Test/TestCollection.h"
@@ -150,13 +136,11 @@ namespace HE
 {
 class RigidTransformTest : public TestCollection
 {
-public:
-    RigidTransformTest() : TestCollection("RigidTransformTest")
-    {
-    }
+  public:
+    RigidTransformTest() : TestCollection("RigidTransformTest") {}
 
-protected:
+  protected:
     virtual void Prepare() override;
 };
-} // HE
+} // namespace HE
 #endif //__UNIT_TEST__

@@ -13,11 +13,11 @@ template <typename T>
 using TDebugVariable = const T;
 
 void FlushLogs();
-} // HE
+} // namespace HE
 
 #ifdef __DEBUG__
-#include <cstdlib>
 #include <cstdio>
+#include <cstdlib>
 #include <memory>
 
 
@@ -27,7 +27,9 @@ namespace HE
 inline void Assert(bool shouldBeTrue)
 {
     if (likely(shouldBeTrue))
+    {
         return;
+    }
 
     FlushLogs();
     PrintArgs("[Assert] Please check it.");
@@ -36,23 +38,25 @@ inline void Assert(bool shouldBeTrue)
     std::abort();
 }
 
-template <typename ... Types>
-inline void Assert(bool shouldBeTrue, Types&& ... args)
+template <typename... Types>
+inline void Assert(bool shouldBeTrue, Types&&... args)
 {
     if (likely(shouldBeTrue))
+    {
         return;
+    }
 
     FlushLogs();
-    PrintArgs("[Assert] ", std::forward<Types>(args) ...);
+    PrintArgs("[Assert] ", std::forward<Types>(args)...);
 
     debugBreak();
     std::abort();
 }
-} // HE
+} // namespace HE
 
 #else // __DEBUG__
-#include <cstdlib>
 #include <cstdio>
+#include <cstdlib>
 #include <memory>
 
 
@@ -62,11 +66,11 @@ inline void Assert(bool)
 {
 }
 
-template <typename ... Types>
-inline void Assert(bool, const char*, Types&& ...)
+template <typename... Types>
+inline void Assert(bool, const char*, Types&&...)
 {
 }
-} // HE
+} // namespace HE
 #endif // __DEBUG__
 
 namespace HE
@@ -74,7 +78,9 @@ namespace HE
 inline void FatalAssert(bool shouldBeTrue)
 {
     if (likely(shouldBeTrue))
+    {
         return;
+    }
 
     FlushLogs();
     PrintArgs("[FatalAssert] Please check it.");
@@ -82,15 +88,17 @@ inline void FatalAssert(bool shouldBeTrue)
     std::abort();
 }
 
-template <typename ... Types>
-inline void FatalAssert(bool shouldBeTrue, Types&& ... args)
+template <typename... Types>
+inline void FatalAssert(bool shouldBeTrue, Types&&... args)
 {
     if (likely(shouldBeTrue))
+    {
         return;
+    }
 
     FlushLogs();
-    PrintArgs("[FatalAssert] ", std::forward<Types>(args) ...);
+    PrintArgs("[FatalAssert] ", std::forward<Types>(args)...);
     debugBreak();
     std::abort();
 }
-} // HE
+} // namespace HE

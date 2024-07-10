@@ -12,28 +12,28 @@ namespace HE
 
 class ConfigFile final
 {
-public:
+  public:
     using TString = HSTL::HString;
     using TValue = std::optional<TString>;
     using TMap = HSTL::HUnorderedMap<TString, TString>;
-    
+
     bool isValid;
     TMap keymap;
-    
-public:
+
+  public:
     ConfigFile(const char* path);
     ConfigFile(const char* path, const char* fileName);
     ~ConfigFile() = default;
-    
+
     TValue GetValue(const TString& key) const;
     TString GetValue(const TString& key, const TString& defaultValue) const;
-    
+
     void ForEach(std::function<void(const TMap::value_type&)> func) const;
 
     inline auto IsValid() const { return isValid; }
-    
-private:
+
+  private:
     void Parse(const char* fileName);
 };
 
-} //HE
+} // namespace HE

@@ -25,8 +25,7 @@ size_t OS::GetPageSize()
 
 void* OS::VirtualAlloc(size_t size)
 {
-    auto ptr = mmap(nullptr, size
-        , PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    auto ptr = mmap(nullptr, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
 
     return ptr;
 }
@@ -43,8 +42,8 @@ void OS::ProtectMemory(void* address, size_t n)
     if (unlikely(result != 0))
     {
         using namespace std;
-        cerr << "[OS::ProtectMemory] address = "
-            << address << ", n = " << n << " : " << strerror(errno) << endl;
+        cerr << "[OS::ProtectMemory] address = " << address << ", n = " << n << " : "
+             << strerror(errno) << endl;
 
         HE::Assert(false);
     }

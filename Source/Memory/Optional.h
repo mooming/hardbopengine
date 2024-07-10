@@ -16,22 +16,17 @@ namespace HE
 template <typename Type>
 class Optional final
 {
-public:
+  public:
     bool hasValue;
 
     alignas(std::max(IsReferenceType<Type>::TypeSize, Config::DefaultAlign))
-    Byte value[IsReferenceType<Type>::TypeSize];
-    
-public:
-    Optional() : hasValue(false)
-    {
-    }
-    
-    Optional(const Type& value) : hasValue(true)
-    {
-        Value() = value;
-    }
-    
+        Byte value[IsReferenceType<Type>::TypeSize];
+
+  public:
+    Optional() : hasValue(false) {}
+
+    Optional(const Type& value) : hasValue(true) { Value() = value; }
+
     Optional(const Optional& rhs)
     {
         if (rhs.hasValue)
@@ -43,7 +38,7 @@ public:
             Destroy(typename IsReferenceType<Type>::Result());
         }
     }
-    
+
     Optional(Optional&& rhs)
     {
         if (rhs.hasValue)
@@ -55,17 +50,12 @@ public:
             Destroy(typename IsReferenceType<Type>::Result());
         }
     }
-    
-    Optional(std::nullptr_t) : hasValue(false)
-    {
-    }
-    
-    ~Optional()
-    {
-        Destroy(typename IsReferenceType<Type>::Result());
-    }
-    
-    Optional& operator= (Type& value)
+
+    Optional(std::nullptr_t) : hasValue(false) {}
+
+    ~Optional() { Destroy(typename IsReferenceType<Type>::Result()); }
+
+    Optional& operator=(Type& value)
     {
         if (hasValue)
         {
@@ -77,14 +67,14 @@ public:
 
         return *this;
     }
-    
-    Optional& operator= (const Optional& rhs)
+
+    Optional& operator=(const Optional& rhs)
     {
         if (hasValue)
         {
             Destroy(typename IsReferenceType<Type>::Result());
         }
-        
+
         if (rhs.hasValue)
         {
             CopyValue(typename IsReferenceType<Type>::Result(), rhs);
@@ -92,8 +82,8 @@ public:
 
         return *this;
     }
-    
-    Optional& operator= (Optional&& rhs)
+
+    Optional& operator=(Optional&& rhs)
     {
         if (hasValue)
         {
@@ -107,43 +97,39 @@ public:
 
         return *this;
     }
-    
-    Optional& operator= (std::nullptr_t)
+
+    Optional& operator=(std::nullptr_t)
     {
         Reset();
-        
+
         return *this;
     }
 
     auto HasValue() const { return hasValue; }
     operator bool() const { return hasValue; }
 
-    Type& operator* ()
+    Type& operator*()
     {
         FatalAssert(hasValue);
         return Value();
     }
 
-    const Type& operator* () const
+    const Type& operator*() const
     {
         FatalAssert(hasValue);
         return Value();
     }
-    
-    Type& Value()
-    {
-        return GetValue(typename IsReferenceType<Type>::Result());
-    }
-    
-    const Type& Value() const
-    {
-        return GetValue(typename IsReferenceType<Type>::Result());
-    }
+
+    Type& Value() { return GetValue(typename IsReferenceType<Type>::Result()); }
+
+    const Type& Value() const { return GetValue(typename IsReferenceType<Type>::Result()); }
 
     void Reset()
     {
         if (!hasValue)
+        {
             return;
+        }
 
         Destroy(typename IsReferenceType<Type>::Result());
     }
@@ -158,19 +144,18 @@ public:
         ConstructAt(typename IsReferenceType<Type>::Result(), value);
     }
 
-    template <typename ... Types>
-    void Emplace(Types&& ... args)
+    template <typename... Types>
+    void Emplace(Types&&... args)
     {
         if (hasValue)
         {
             Destroy(typename IsReferenceType<Type>::Result());
         }
 
-        ConstructAt(typename IsReferenceType<Type>::Result()
-            , std::forward<Types>(args) ...);
+        ConstructAt(typename IsReferenceType<Type>::Result(), std::forward<Types>(args)...);
     }
-    
-private:
+
+  private:
     void ConstructAt(True_t, Type& inValue)
     {
         using TValue = typename std::decay<Type>::type;
@@ -189,11 +174,11 @@ private:
         hasValue = true;
     }
 
-    template <typename ... Types>
-    void ConstructAt(False_t, Types&& ... args)
+    template <typename... Types>
+    void ConstructAt(False_t, Types&&... args)
     {
         hasValue = true;
-        new (value) Type(std::forward<Types>(args) ...);
+        new (value) Type(std::forward<Types>(args)...);
     }
 
     void CopyValue(True_t, const Optional& rhs)
@@ -232,10 +217,7 @@ private:
         return *valuePtr;
     }
 
-    Type& GetValue(False_t)
-    {
-        return reinterpret_cast<Type&>(value[0]);
-    }
+    Type& GetValue(False_t) { return reinterpret_cast<Type&>(value[0]); }
 
     const Type& GetValue(True_t) const
     {
@@ -247,27 +229,21 @@ private:
         return *valuePtr;
     }
 
-    const Type& GetValue(False_t) const
-    {
-        return reinterpret_cast<const Type&>(value[0]);
-    }
+    const Type& GetValue(False_t) const { return reinterpret_cast<const Type&>(value[0]); }
 
-    void Destroy(True_t)
-    {
-        hasValue = false;
-    }
-    
+    void Destroy(True_t) { hasValue = false; }
+
     void Destroy(False_t)
     {
         if (hasValue)
         {
             Value().~Type();
         }
-        
+
         hasValue = false;
     }
 };
-} // HE
+} // namespace HE
 
 #ifdef __UNIT_TEST__
 #include "Test/TestCollection.h"
@@ -277,13 +253,11 @@ namespace HE
 {
 class OptionalTest : public TestCollection
 {
-public:
-    OptionalTest() : TestCollection("OptionalTest")
-    {
-    }
-    
-protected:
+  public:
+    OptionalTest() : TestCollection("OptionalTest") {}
+
+  protected:
     virtual void Prepare() override;
 };
-} // HE
+} // namespace HE
 #endif //__UNIT_TEST__

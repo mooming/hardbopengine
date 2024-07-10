@@ -8,4 +8,4 @@
 namespace HE
 {
 template class ScopedLock<std::mutex>;
-} // HE
+} // namespace HE

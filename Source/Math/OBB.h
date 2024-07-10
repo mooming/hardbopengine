@@ -3,8 +3,8 @@
 #pragma once
 
 #include "AABB.h"
-#include "Vector3.h"
 #include "Quaternion.h"
+#include "Vector3.h"
 
 
 namespace HE
@@ -15,7 +15,7 @@ class OBB
     using Vec3 = Vector3<Number>;
     using Quat = Quaternion<Number>;
 
-public:
+  public:
     // offset from an object space origin
     Vec3 center;
     // offset from the center
@@ -23,14 +23,10 @@ public:
     // rotation in an object space
     Quat rotation;
 
-public:
-    OBB() : center(), half(), rotation()
-    {
-    }
+  public:
+    OBB() : center(), half(), rotation() {}
 
-    OBB(std::nullptr_t) : center(nullptr), half(nullptr), rotation(nullptr)
-    {
-    }
+    OBB(std::nullptr_t) : center(nullptr), half(nullptr), rotation(nullptr) {}
 
     OBB(const Vec3& center, const Vec3& half, const Quat& rotation)
         : center(center), half(half), rotation(rotation)
@@ -38,9 +34,8 @@ public:
     }
 
     OBB(const AABB<Vec3>& aabb, const Quat& rotation)
-        : center((aabb.min + aabb.max) * 0.5f)
-        , half((aabb.max - aabb.min) * 0.5f)
-        , rotation(rotation)
+        : center((aabb.min + aabb.max) * 0.5f), half((aabb.max - aabb.min) * 0.5f),
+          rotation(rotation)
     {
     }
 
@@ -49,13 +44,19 @@ public:
         auto point = ToOBBSpace(objSpacePoint);
 
         if (Abs(point.x) > half.x)
+        {
             return false;
+        }
 
         if (Abs(point.y) > half.y)
+        {
             return false;
+        }
 
         if (Abs(point.z) > half.z)
+        {
             return false;
+        }
 
         return true;
     }
@@ -76,11 +77,10 @@ public:
 
     bool HasIntersection(const OBB& obb, const Vec3& objPosition, const Quat& objRot)
     {
-
         return false;
     }
 
-private:
+  private:
     Vec3 ToOBBSpace(const Vec3& objSpacePoint) const
     {
         auto point = objSpacePoint - center;
@@ -97,7 +97,7 @@ private:
         return point;
     }
 };
-} // HE
+} // namespace HE
 
 #ifdef __UNIT_TEST__
 #include "Test/TestCollection.h"
@@ -108,14 +108,11 @@ namespace HE
 
 class OBBTest : public TestCollection
 {
-public:
+  public:
+    OBBTest() : TestCollection("OBBTest") {}
 
-    OBBTest() : TestCollection("OBBTest")
-    {
-    }
-
-protected:
+  protected:
     virtual void Prepare() override;
 };
-} // HE
+} // namespace HE
 #endif //__UNIT_TEST__

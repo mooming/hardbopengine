@@ -3,30 +3,24 @@
 #include "TaskHandle.h"
 
 #include "Engine.h"
-#include "Task.h"
 #include "Log/Logger.h"
+#include "Task.h"
 
 
 namespace HE
 {
 
-TaskHandle::TaskHandle()
-    : key(InvalidKey)
-    , taskIndex(-1)
+TaskHandle::TaskHandle() : key(InvalidKey), taskIndex(-1)
 {
 }
 
 TaskHandle::TaskHandle(TKey key, TIndex taskIndex, TReleaser releaser)
-    : key(key)
-    , taskIndex(taskIndex)
-    , releaser(std::move(releaser))
+    : key(key), taskIndex(taskIndex), releaser(std::move(releaser))
 {
 }
 
 TaskHandle::TaskHandle(TaskHandle&& rhs)
-    : key(rhs.key)
-    , taskIndex(rhs.taskIndex)
-    , releaser(std::move(rhs.releaser))
+    : key(rhs.key), taskIndex(rhs.taskIndex), releaser(std::move(rhs.releaser))
 {
     rhs.key = InvalidKey;
     rhs.taskIndex = -1;
@@ -36,10 +30,14 @@ TaskHandle::TaskHandle(TaskHandle&& rhs)
 TaskHandle::~TaskHandle()
 {
     if (releaser == nullptr)
+    {
         return;
+    }
 
     if (!IsValid())
+    {
         return;
+    }
 
     releaser(*this);
 }
@@ -69,21 +67,27 @@ Task* TaskHandle::GetTask() const
     auto& engine = Engine::Get();
     auto& taskSys = engine.GetTaskSystem();
     auto task = taskSys.GetTask(key, taskIndex);
-    
+
     return task;
 }
 
 void TaskHandle::Wait(uint32_t intervalMilliSecs)
 {
     if (!IsValid())
+    {
         return;
+    }
 
     auto task = GetTask();
     if (task == nullptr)
+    {
         return;
+    }
 
     if (task->IsDone())
+    {
         return;
+    }
 
     task->Wait(intervalMilliSecs);
 }
@@ -91,14 +95,20 @@ void TaskHandle::Wait(uint32_t intervalMilliSecs)
 void TaskHandle::BusyWait()
 {
     if (!IsValid())
+    {
         return;
+    }
 
     auto task = GetTask();
     if (task == nullptr)
+    {
         return;
+    }
 
     if (task->IsDone())
+    {
         return;
+    }
 
     task->BusyWait();
 }
@@ -109,4 +119,4 @@ void TaskHandle::Reset()
     new (this) TaskHandle();
 }
 
-} // HE
+} // namespace HE

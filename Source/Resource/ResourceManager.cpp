@@ -19,7 +19,6 @@ ResourceManager::~ResourceManager()
 
 void ResourceManager::PostUpdate(Engine& engine)
 {
-
 }
 
 Resource ResourceManager::RequestLoad(StaticString path)
@@ -45,4 +44,4 @@ void ResourceManager::RequestTasks(TaskSystem& taskSys)
 }
 
 
-} // HE
+} // namespace HE

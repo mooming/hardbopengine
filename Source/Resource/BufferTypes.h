@@ -21,6 +21,6 @@ using TGenerateBuffer = std::function<void(TSize&, TBufferData&)>;
 using TReleaseBuffer = std::function<void(TSize, TBufferData)>;
 using TResizeBuffer = std::function<TSize(TSize)>;
 
-} // BufferTypes
+} // namespace BufferTypes
 
-} // HE
+} // namespace HE

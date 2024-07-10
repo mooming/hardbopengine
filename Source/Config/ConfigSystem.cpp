@@ -28,10 +28,7 @@ TItem<T>& FindGetSet(TMap<T>& map, const char* func, const StaticString& key)
     if (unlikely(key.IsNull()))
     {
         auto log = Logger::Get(name);
-        log.OutWarning([func](auto& ls)
-        {
-            ls << func << " : key is null.";
-        });
+        log.OutWarning([func](auto& ls) { ls << func << " : key is null."; });
 
         return nullPair;
     }
@@ -40,10 +37,7 @@ TItem<T>& FindGetSet(TMap<T>& map, const char* func, const StaticString& key)
     if (unlikely(it == map.end()))
     {
         auto log = Logger::Get(name);
-        log.Out([func, key](auto& ls)
-        {
-            ls << func << " : " << key << " is not found.";
-        });
+        log.Out([func, key](auto& ls) { ls << func << " : " << key << " is not found."; });
 
         return nullPair;
     }
@@ -60,10 +54,7 @@ const TItem<T>& FindGetSet(const TMap<T>& map, const char* func, const StaticStr
     if (unlikely(key.IsNull()))
     {
         auto log = Logger::Get(name);
-        log.OutWarning([func](auto& ls)
-        {
-            ls << func << " : key is null.";
-        });
+        log.OutWarning([func](auto& ls) { ls << func << " : key is null."; });
 
         return nullPair;
     }
@@ -72,10 +63,7 @@ const TItem<T>& FindGetSet(const TMap<T>& map, const char* func, const StaticStr
     if (unlikely(it == map.end()))
     {
         auto log = Logger::Get(name);
-        log.Out([func, key](auto& ls)
-        {
-            ls << func << " : " << key << " is not found.";
-        });
+        log.Out([func, key](auto& ls) { ls << func << " : " << key << " is not found."; });
 
         return nullPair;
     }
@@ -83,7 +71,7 @@ const TItem<T>& FindGetSet(const TMap<T>& map, const char* func, const StaticStr
     return it->second;
 }
 
-} // anonymous
+} // namespace
 
 ConfigSystem& ConfigSystem::Get()
 {
@@ -104,26 +92,18 @@ void ConfigSystem::Register(TConfigParam<bool>& param)
     if (unlikely(byteParams.find(name) != byteParams.end()))
     {
         auto log = Logger::Get(GetName());
-        log.OutFatalError([name](auto& ls)
-        {
-            ls << "The key " << name
-                << " is duplicated. It's not allowed strictly.";
-        });
+        log.OutFatalError(
+            [name](auto& ls)
+            { ls << "The key " << name << " is duplicated. It's not allowed strictly."; });
 
         return;
     }
 
     ParamItem<TValue> item;
     item.desc = param.GetDescription().GetID();
-    item.getter = [&param]() -> TValue
-    {
-        return param.Get();
-    };
+    item.getter = [&param]() -> TValue { return param.Get(); };
 
-    item.setter = [&param](TValue value)
-    {
-        param.Set(value);
-    };
+    item.setter = [&param](TValue value) { param.Set(value); };
 
     byteParams.emplace(std::make_pair(name, item));
 }
@@ -136,26 +116,18 @@ void ConfigSystem::Register(TAtomicConfigParam<bool>& param)
     if (unlikely(byteParams.find(name) != byteParams.end()))
     {
         auto log = Logger::Get(GetName());
-        log.OutFatalError([name](auto& ls)
-        {
-            ls << "The key " << name
-                << " is duplicated. It's not allowed strictly.";
-        });
+        log.OutFatalError(
+            [name](auto& ls)
+            { ls << "The key " << name << " is duplicated. It's not allowed strictly."; });
 
         return;
     }
 
     ParamItem<TValue> item;
     item.desc = param.GetDescription().GetID();
-    item.getter = [&param]() -> TValue
-    {
-        return param.Get();
-    };
+    item.getter = [&param]() -> TValue { return param.Get(); };
 
-    item.setter = [&param](TValue value)
-    {
-        param.Set(value);
-    };
+    item.setter = [&param](TValue value) { param.Set(value); };
 
     byteParams.emplace(std::make_pair(name, item));
 }
@@ -168,26 +140,18 @@ void ConfigSystem::Register(TConfigParam<uint8_t>& param)
     if (unlikely(byteParams.find(name) != byteParams.end()))
     {
         auto log = Logger::Get(GetName());
-        log.OutFatalError([name](auto& ls)
-        {
-            ls << "The key " << name
-                << " is duplicated. It's not allowed strictly.";
-        });
+        log.OutFatalError(
+            [name](auto& ls)
+            { ls << "The key " << name << " is duplicated. It's not allowed strictly."; });
 
         return;
     }
 
     ParamItem<TValue> item;
     item.desc = param.GetDescription().GetID();
-    item.getter = [&param]() -> TValue
-    {
-        return param.Get();
-    };
+    item.getter = [&param]() -> TValue { return param.Get(); };
 
-    item.setter = [&param](TValue value)
-    {
-        param.Set(value);
-    };
+    item.setter = [&param](TValue value) { param.Set(value); };
 
     byteParams.emplace(std::make_pair(name, item));
 }
@@ -200,26 +164,18 @@ void ConfigSystem::Register(TAtomicConfigParam<uint8_t>& param)
     if (unlikely(byteParams.find(name) != byteParams.end()))
     {
         auto log = Logger::Get(GetName());
-        log.OutFatalError([name](auto& ls)
-        {
-            ls << "The key " << name
-                << " is duplicated. It's not allowed strictly.";
-        });
+        log.OutFatalError(
+            [name](auto& ls)
+            { ls << "The key " << name << " is duplicated. It's not allowed strictly."; });
 
         return;
     }
 
     ParamItem<TValue> item;
     item.desc = param.GetDescription().GetID();
-    item.getter = [&param]() -> TValue
-    {
-        return param.Get();
-    };
+    item.getter = [&param]() -> TValue { return param.Get(); };
 
-    item.setter = [&param](TValue value)
-    {
-        param.Set(value);
-    };
+    item.setter = [&param](TValue value) { param.Set(value); };
 
     byteParams.emplace(std::make_pair(name, item));
 }
@@ -232,26 +188,18 @@ void ConfigSystem::Register(TConfigParam<int>& param)
     if (unlikely(intParams.find(name) != intParams.end()))
     {
         auto log = Logger::Get(GetName());
-        log.OutFatalError([name](auto& ls)
-        {
-            ls << "The key " << name
-                << " is duplicated. It's not allowed strictly.";
-        });
+        log.OutFatalError(
+            [name](auto& ls)
+            { ls << "The key " << name << " is duplicated. It's not allowed strictly."; });
 
         return;
     }
 
     ParamItem<TValue> item;
     item.desc = param.GetDescription().GetID();
-    item.getter = [&param]() -> TValue
-    {
-        return param.Get();
-    };
+    item.getter = [&param]() -> TValue { return param.Get(); };
 
-    item.setter = [&param](TValue value)
-    {
-        param.Set(value);
-    };
+    item.setter = [&param](TValue value) { param.Set(value); };
 
     intParams.emplace(std::make_pair(name, item));
 }
@@ -264,26 +212,18 @@ void ConfigSystem::Register(TAtomicConfigParam<int>& param)
     if (unlikely(intParams.find(name) != intParams.end()))
     {
         auto log = Logger::Get(GetName());
-        log.OutFatalError([name](auto& ls)
-        {
-            ls << "The key " << name
-                << " is duplicated. It's not allowed strictly.";
-        });
+        log.OutFatalError(
+            [name](auto& ls)
+            { ls << "The key " << name << " is duplicated. It's not allowed strictly."; });
 
         return;
     }
 
     ParamItem<TValue> item;
     item.desc = param.GetDescription().GetID();
-    item.getter = [&param]() -> TValue
-    {
-        return param.Get();
-    };
+    item.getter = [&param]() -> TValue { return param.Get(); };
 
-    item.setter = [&param](TValue value)
-    {
-        param.Set(value);
-    };
+    item.setter = [&param](TValue value) { param.Set(value); };
 
     intParams.emplace(std::make_pair(name, item));
 }
@@ -296,26 +236,18 @@ void ConfigSystem::Register(TConfigParam<size_t>& param)
     if (unlikely(sizeParams.find(name) != sizeParams.end()))
     {
         auto log = Logger::Get(GetName());
-        log.OutFatalError([name](auto& ls)
-        {
-            ls << "The key " << name
-                << " is duplicated. It's not allowed strictly.";
-        });
+        log.OutFatalError(
+            [name](auto& ls)
+            { ls << "The key " << name << " is duplicated. It's not allowed strictly."; });
 
         return;
     }
 
     ParamItem<TValue> item;
     item.desc = param.GetDescription().GetID();
-    item.getter = [&param]() -> TValue
-    {
-        return param.Get();
-    };
+    item.getter = [&param]() -> TValue { return param.Get(); };
 
-    item.setter = [&param](TValue value)
-    {
-        param.Set(value);
-    };
+    item.setter = [&param](TValue value) { param.Set(value); };
 
     sizeParams.emplace(std::make_pair(name, item));
 }
@@ -328,26 +260,18 @@ void ConfigSystem::Register(TAtomicConfigParam<size_t>& param)
     if (unlikely(sizeParams.find(name) != sizeParams.end()))
     {
         auto log = Logger::Get(GetName());
-        log.OutFatalError([name](auto& ls)
-        {
-            ls << "The key " << name
-                << " is duplicated. It's not allowed strictly.";
-        });
+        log.OutFatalError(
+            [name](auto& ls)
+            { ls << "The key " << name << " is duplicated. It's not allowed strictly."; });
 
         return;
     }
 
     ParamItem<TValue> item;
     item.desc = param.GetDescription().GetID();
-    item.getter = [&param]() -> TValue
-    {
-        return param.Get();
-    };
+    item.getter = [&param]() -> TValue { return param.Get(); };
 
-    item.setter = [&param](TValue value)
-    {
-        param.Set(value);
-    };
+    item.setter = [&param](TValue value) { param.Set(value); };
 
     sizeParams.emplace(std::make_pair(name, item));
 }
@@ -360,26 +284,18 @@ void ConfigSystem::Register(TConfigParam<float>& param)
     if (unlikely(floatParams.find(name) != floatParams.end()))
     {
         auto log = Logger::Get(GetName());
-        log.OutFatalError([name](auto& ls)
-        {
-            ls << "The key " << name
-                << " is duplicated. It's not allowed strictly.";
-        });
+        log.OutFatalError(
+            [name](auto& ls)
+            { ls << "The key " << name << " is duplicated. It's not allowed strictly."; });
 
         return;
     }
 
     ParamItem<TValue> item;
     item.desc = param.GetDescription().GetID();
-    item.getter = [&param]() -> TValue
-    {
-        return param.Get();
-    };
+    item.getter = [&param]() -> TValue { return param.Get(); };
 
-    item.setter = [&param](TValue value)
-    {
-        param.Set(value);
-    };
+    item.setter = [&param](TValue value) { param.Set(value); };
 
     floatParams.emplace(std::make_pair(name, item));
 }
@@ -392,26 +308,18 @@ void ConfigSystem::Register(TAtomicConfigParam<float>& param)
     if (unlikely(floatParams.find(name) != floatParams.end()))
     {
         auto log = Logger::Get(GetName());
-        log.OutFatalError([name](auto& ls)
-        {
-            ls << "The key " << name
-                << " is duplicated. It's not allowed strictly.";
-        });
+        log.OutFatalError(
+            [name](auto& ls)
+            { ls << "The key " << name << " is duplicated. It's not allowed strictly."; });
 
         return;
     }
 
     ParamItem<TValue> item;
     item.desc = param.GetDescription().GetID();
-    item.getter = [&param]() -> TValue
-    {
-        return param.Get();
-    };
+    item.getter = [&param]() -> TValue { return param.Get(); };
 
-    item.setter = [&param](TValue value)
-    {
-        param.Set(value);
-    };
+    item.setter = [&param](TValue value) { param.Set(value); };
 
     floatParams.emplace(std::make_pair(name, item));
 }
@@ -425,9 +333,7 @@ void ConfigSystem::SetBool(const StaticString& key, bool value)
     {
         auto log = Logger::Get(GetName());
         log.Out([func = __func__, key](auto& ls)
-        {
-            ls << func << " : " << key << " has no setter.";
-        });
+                { ls << func << " : " << key << " has no setter."; });
 
         return;
     }
@@ -444,9 +350,7 @@ void ConfigSystem::SetByte(const StaticString& key, uint8_t value)
     {
         auto log = Logger::Get(GetName());
         log.Out([func = __func__, key](auto& ls)
-        {
-            ls << func << " : " << key << " has no setter.";
-        });
+                { ls << func << " : " << key << " has no setter."; });
 
         return;
     }
@@ -463,9 +367,7 @@ void ConfigSystem::SetInt(const StaticString& key, int value)
     {
         auto log = Logger::Get(GetName());
         log.Out([func = __func__, key](auto& ls)
-        {
-            ls << func << " : " << key << " has no setter.";
-        });
+                { ls << func << " : " << key << " has no setter."; });
 
         return;
     }
@@ -482,9 +384,7 @@ void ConfigSystem::SetSize(const StaticString& key, size_t value)
     {
         auto log = Logger::Get(GetName());
         log.Out([func = __func__, key](auto& ls)
-        {
-            ls << func << " : " << key << " has no setter.";
-        });
+                { ls << func << " : " << key << " has no setter."; });
 
         return;
     }
@@ -501,9 +401,7 @@ void ConfigSystem::SetFloat(const StaticString& key, float value)
     {
         auto log = Logger::Get(GetName());
         log.Out([func = __func__, key](auto& ls)
-        {
-            ls << func << " : " << key << " has no setter.";
-        });
+                { ls << func << " : " << key << " has no setter."; });
 
         return;
     }
@@ -520,9 +418,7 @@ bool ConfigSystem::GetBool(const StaticString& key) const
     {
         auto log = Logger::Get(GetName());
         log.Out([func = __func__, key](auto& ls)
-        {
-            ls << func << " : " << key << " has no getter.";
-        });
+                { ls << func << " : " << key << " has no getter."; });
 
         return false;
     }
@@ -539,9 +435,7 @@ uint8_t ConfigSystem::GetByte(const StaticString& key) const
     {
         auto log = Logger::Get(GetName());
         log.Out([func = __func__, key](auto& ls)
-        {
-            ls << func << " : " << key << " has no getter.";
-        });
+                { ls << func << " : " << key << " has no getter."; });
 
         return false;
     }
@@ -558,9 +452,7 @@ int ConfigSystem::GetInt(const StaticString& key) const
     {
         auto log = Logger::Get(GetName());
         log.Out([func = __func__, key](auto& ls)
-        {
-            ls << func << " : " << key << " has no getter.";
-        });
+                { ls << func << " : " << key << " has no getter."; });
 
         return -1;
     }
@@ -577,9 +469,7 @@ size_t ConfigSystem::GetSize(const StaticString& key) const
     {
         auto log = Logger::Get(GetName());
         log.Out([func = __func__, key](auto& ls)
-        {
-            ls << func << " : " << key << " has no getter.";
-        });
+                { ls << func << " : " << key << " has no getter."; });
 
         return 0;
     }
@@ -596,9 +486,7 @@ float ConfigSystem::GetFloat(const StaticString& key) const
     {
         auto log = Logger::Get(GetName());
         log.Out([func = __func__, key](auto& ls)
-                {
-            ls << func << " : " << key << " has no getter.";
-        });
+                { ls << func << " : " << key << " has no getter."; });
 
         return 0.0f;
     }
@@ -620,10 +508,7 @@ void ConfigSystem::PrintAllParameters() const
 
             if (getter == nullptr)
             {
-                log.OutError([&name](auto& ls)
-                {
-                    ls << name << " : null getter";
-                });
+                log.OutError([&name](auto& ls) { ls << name << " : null getter"; });
 
                 continue;
             }
@@ -632,9 +517,7 @@ void ConfigSystem::PrintAllParameters() const
             auto value = getter();
 
             log.Out([name, desc, value](auto& ls)
-            {
-                ls << name << " = " << value << " (" << desc << ')';
-            });
+                    { ls << name << " = " << value << " (" << desc << ')'; });
         }
     };
 
@@ -646,4 +529,4 @@ void ConfigSystem::PrintAllParameters() const
     log.Out("========================================================\n");
 }
 
-} // HE
+} // namespace HE

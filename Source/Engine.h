@@ -4,8 +4,8 @@
 
 #include "Config/BuildConfig.h"
 #include "Config/EngineSettings.h"
-#include "Log/Logger.h"
 #include "Log/LogLevel.h"
+#include "Log/Logger.h"
 #include "Memory/MemoryManager.h"
 #include "Resource/ResourceManager.h"
 #include "System/SystemStatistics.h"
@@ -18,7 +18,8 @@
 namespace HE
 {
 
-template <size_t, class> class InlineStringBuilder;
+template <size_t, class>
+class InlineStringBuilder;
 
 class Engine final
 {
@@ -102,4 +103,4 @@ class Engine final
 
     void PreShutdown();
 };
-} // HE
+} // namespace HE

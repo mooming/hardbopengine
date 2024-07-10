@@ -9,91 +9,89 @@ namespace HE
 using This = BufferInputStream;
 
 BufferInputStream::BufferInputStream(const Buffer& buffer)
-    : buffer(buffer)
-    , cursor(0)
-    , errorCount(0)
+    : buffer(buffer), cursor(0), errorCount(0)
 {
 }
 
-This& BufferInputStream::operator >> (char& value)
+This& BufferInputStream::operator>>(char& value)
 {
     Get<char>(value, '\0');
     return *this;
 }
 
-This& BufferInputStream::operator >> (int8_t& value)
+This& BufferInputStream::operator>>(int8_t& value)
 {
     Get<int8_t>(value, 0);
     return *this;
 }
 
-This& BufferInputStream::operator >> (uint8_t& value)
+This& BufferInputStream::operator>>(uint8_t& value)
 {
     Get<uint8_t>(value, 0);
     return *this;
 }
 
-This& BufferInputStream::operator >> (int16_t& value)
+This& BufferInputStream::operator>>(int16_t& value)
 {
     Get<int16_t>(value, 0);
     return *this;
 }
 
-This& BufferInputStream::operator >> (uint16_t& value)
+This& BufferInputStream::operator>>(uint16_t& value)
 {
     Get<uint16_t>(value, 0);
     return *this;
 }
 
-This& BufferInputStream::operator >> (int32_t& value)
+This& BufferInputStream::operator>>(int32_t& value)
 {
     Get<int32_t>(value, 0);
     return *this;
 }
 
-This& BufferInputStream::operator >> (uint32_t& value)
+This& BufferInputStream::operator>>(uint32_t& value)
 {
     Get<uint32_t>(value, 0);
     return *this;
 }
 
-This& BufferInputStream::operator >> (int64_t& value)
+This& BufferInputStream::operator>>(int64_t& value)
 {
     Get<int64_t>(value, 0);
     return *this;
 }
 
-This& BufferInputStream::operator >> (uint64_t& value)
+This& BufferInputStream::operator>>(uint64_t& value)
 {
     Get<uint64_t>(value, 0);
     return *this;
 }
 
-This& BufferInputStream::operator >> (size_t& value)
+This& BufferInputStream::operator>>(size_t& value)
 {
     Get<size_t>(value, 0);
     return *this;
 }
 
-This& BufferInputStream::operator >> (float& value)
+This& BufferInputStream::operator>>(float& value)
 {
     Get<float>(value, 0.0f);
     return *this;
 }
 
-This& BufferInputStream::operator >> (double& value)
+This& BufferInputStream::operator>>(double& value)
 {
     Get<double>(value, 0.0);
     return *this;
 }
 
-This& BufferInputStream::operator >> (long double& value)
+This& BufferInputStream::operator>>(long double& value)
 {
     Get<long double>(value, 0);
     return *this;
 }
 
-This& BufferInputStream::operator >> (StaticString& str)
+This& BufferInputStream::operator>>(StaticString& str)
 {
     size_t length = 0;
     Get<size_t>(length, 0);
@@ -120,18 +118,18 @@ This& BufferInputStream::operator >> (StaticString& str)
     }
 
     Assert(tmpStr.size() == length);
-    
+
     str = StaticString(tmpStr.c_str());
 
     return *this;
 }
 
-This& BufferInputStream::operator >> (const HSTL::HString& str)
+This& BufferInputStream::operator>>(const HSTL::HString& str)
 {
     return *this;
 }
 
-} // HE
+} // namespace HE
 
 #ifdef __UNIT_TEST__
 #include "Memory/MemoryManager.h"
@@ -148,110 +146,109 @@ BufferInputStreamTest::BufferInputStreamTest()
 
 void BufferInputStreamTest::Prepare()
 {
-    AddTest("Empty Buffer", [this](auto& ls)
-    {
-        Buffer buffer;
-        BufferInputStream bis(buffer);
-
-        int value = 0;
-        bis >> value;
-
-        if (!bis.HasError())
+    AddTest(
+        "Empty Buffer",
+        [this](auto& ls)
         {
-            ls << "The error should be occured when trying to"
-                << " get something from the empty buffer" << lferr;
-        }
-    });
+            Buffer buffer;
+            BufferInputStream bis(buffer);
 
-    AddTest("Memory Buffer", [this](auto& ls)
-    {
-        constexpr size_t TestCount = 128;
-        constexpr size_t BufferSize = TestCount * sizeof(int);
+            int value = 0;
+            bis >> value;
 
-        auto& mmgr = MemoryManager::GetInstance();
+            if (!bis.HasError())
+            {
+                ls << "The error should be occured when trying to"
+                   << " get something from the empty buffer" << lferr;
+            }
+        });
 
-        auto genFunc = [&](auto& size, auto& data)
+    AddTest(
+        "Memory Buffer",
+        [this](auto& ls)
         {
-            size = BufferSize;
-            auto intBuffer = mmgr.NewArray<int>(TestCount);
+            constexpr size_t TestCount = 128;
+            constexpr size_t BufferSize = TestCount * sizeof(int);
+
+            auto& mmgr = MemoryManager::GetInstance();
+
+            auto genFunc = [&](auto& size, auto& data)
+            {
+                size = BufferSize;
+                auto intBuffer = mmgr.NewArray<int>(TestCount);
+                for (int i = 0; i < TestCount; ++i)
+                {
+                    intBuffer[i] = i;
+                }
+
+                data = reinterpret_cast<Buffer::TBufferData>(intBuffer);
+            };
+
+            auto relFunc = [&](auto size, auto data)
+            {
+                if (size != BufferSize)
+                {
+                    ls << "Invalid size " << size << ", " << TestCount << " is expected." << lferr;
+                    return;
+                }
+
+                if (data == nullptr)
+                {
+                    ls << "Invalid data " << (void*)data << lferr;
+                    return;
+                }
+
+                mmgr.DeleteArray<int>((int*)data, TestCount);
+            };
+
+            Buffer buffer(genFunc, relFunc);
+            BufferInputStream bis(buffer);
+
             for (int i = 0; i < TestCount; ++i)
             {
-                intBuffer[i] = i;
+                int value = 0;
+                bis >> value;
+
+                ls << i << "th value = " << value << lf;
+
+                if (value != i)
+                {
+                    ls << "Invalid value " << value << ", but " << i << " is expected." << lferr;
+                }
             }
 
-            data = reinterpret_cast<Buffer::TBufferData>(intBuffer);
-        };
-
-        auto relFunc = [&](auto size, auto data)
-        {
-            if (size != BufferSize)
+            if (bis.HasError())
             {
-                ls << "Invalid size " << size << ", " << TestCount
-                    << " is expected." << lferr;
-                return;
+                ls << "Unexpected error occured! Error Count = " << bis.GetErrorCount() << lferr;
             }
 
-            if (data == nullptr)
+            bis.ClearErrorCount();
+
             {
-                ls << "Invalid data " << (void*)data << lferr;
-                return;
+                int value = 0;
+                bis >> value;
+                bis >> value;
+                bis >> value;
             }
 
-            mmgr.DeleteArray<int>((int*)data, TestCount);
-        };
-
-        Buffer buffer(genFunc, relFunc);
-        BufferInputStream bis(buffer);
-
-        for (int i = 0; i < TestCount; ++i)
-        {
-            int value = 0;
-            bis >> value;
-
-            ls << i << "th value = " << value << lf;
-
-            if (value != i)
+            if (!bis.HasError())
             {
-                ls << "Invalid value " << value
-                    << ", but " << i << " is expected." << lferr;
+                ls << "An error is not occured when exceeding its limit." << lferr;
             }
-        }
 
-        if (bis.HasError())
-        {
-            ls << "Unexpected error occured! Error Count = "
-                << bis.GetErrorCount() << lferr;
-        }
+            if (bis.GetErrorCount() != 3)
+            {
+                ls << "Invalid error count " << bis.GetErrorCount() << ", 3 is expected." << lferr;
+            }
 
-        bis.ClearErrorCount();
+            bis.ClearErrorCount();
 
-        {
-            int value = 0;
-            bis >> value;
-            bis >> value;
-            bis >> value;
-        }
-
-        if (!bis.HasError())
-        {
-            ls << "An error is not occured when exceeding its limit." << lferr;
-        }
-
-        if (bis.GetErrorCount() != 3)
-        {
-            ls << "Invalid error count " << bis.GetErrorCount()
-                << ", 3 is expected." << lferr;
-        }
-
-        bis.ClearErrorCount();
-
-        if (bis.GetErrorCount() != 0)
-        {
-            ls << "Invalid error count " << bis.GetErrorCount()
-                << ", 0 is expected." << lferr;
-        }
-    });
+            if (bis.GetErrorCount() != 0)
+            {
+                ls << "Invalid error count " << bis.GetErrorCount() << ", 0 is expected." << lferr;
+            }
+        });
 }
 
-} // HE
+} // namespace HE
 #endif //__UNIT_TEST__

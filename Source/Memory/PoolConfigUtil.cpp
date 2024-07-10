@@ -23,7 +23,9 @@ void Normalize(TPoolConfigs& configs)
         for (auto& config : configs)
         {
             if (config.numberOfBlocks <= 0)
+            {
                 continue;
+            }
 
             if (config.blockSize != blockSize)
             {
@@ -73,7 +75,9 @@ void MergeMax(TPoolConfigs& dst, TPoolConfigs& src)
     Normalize(dst);
 
     if (src.size() == 0)
+    {
         return;
+    }
 
     Normalize(src);
 
@@ -83,7 +87,9 @@ void MergeMax(TPoolConfigs& dst, TPoolConfigs& src)
     auto iterate = [&]()
     {
         if (srcIndex >= srcLen)
+        {
             return;
+        }
 
         size_t dstIndex = 0;
         const size_t dstLen = dst.size();
@@ -99,7 +105,9 @@ void MergeMax(TPoolConfigs& dst, TPoolConfigs& src)
                 ++srcIndex;
 
                 if (unlikely(srcIndex >= srcLen))
+                {
                     return;
+                }
             }
 
             Assert(srcIndex < src.size());
@@ -114,7 +122,9 @@ void MergeMax(TPoolConfigs& dst, TPoolConfigs& src)
                 ++srcIndex;
 
                 if (unlikely(srcIndex >= srcLen))
+                {
                     return;
+                }
             }
 
             ++dstIndex;
@@ -133,6 +143,6 @@ void MergeMax(TPoolConfigs& dst, TPoolConfigs& src)
     std::sort(dst.begin(), dst.end());
 }
 
-} // PoolConfigUtil
+} // namespace PoolConfigUtil
 
-} // HE
+} // namespace HE

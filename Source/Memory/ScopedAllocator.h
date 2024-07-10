@@ -13,21 +13,19 @@ namespace HE
 template <typename TAlloc>
 class ScopedAllocator final
 {
-private:
+  private:
     TAlloc allocator;
     AllocatorScope scope;
 
-public:
+  public:
     ScopedAllocator(const ScopedAllocator&) = delete;
     ScopedAllocator(ScopedAllocator&&) = delete;
-    ScopedAllocator& operator= (const ScopedAllocator&) = delete;
-    ScopedAllocator& operator= (ScopedAllocator&&) = delete;
+    ScopedAllocator& operator=(const ScopedAllocator&) = delete;
+    ScopedAllocator& operator=(ScopedAllocator&&) = delete;
 
-public:
-    template <typename ... Types>
-    ScopedAllocator(Types&& ... args)
-        : allocator(std::forward<Types>(args) ...)
-        , scope(allocator)
+  public:
+    template <typename... Types>
+    ScopedAllocator(Types&&... args) : allocator(std::forward<Types>(args)...), scope(allocator)
     {
     }
 
@@ -37,4 +35,4 @@ public:
     auto& GetAllocator() const { return allocator; }
 };
 
-} // HE
+} // namespace HE

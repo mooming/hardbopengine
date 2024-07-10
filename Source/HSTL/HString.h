@@ -13,16 +13,18 @@ namespace HSTL
 using HString = std::basic_string<char, std::char_traits<char>, HE::BaseAllocator<char>>;
 
 template <size_t PoolSize = 128>
-using HInlineString = std::basic_string<char, std::char_traits<char>, HE::InlinePoolAllocator<char, PoolSize, 2>>;
-using HInlinePathString = std::basic_string<char, std::char_traits<char>, HE::InlinePoolAllocator<char, HE::Config::MaxPathLength, 2>>;
-} // HSTL
+using HInlineString =
+    std::basic_string<char, std::char_traits<char>, HE::InlinePoolAllocator<char, PoolSize, 2>>;
+using HInlinePathString = std::basic_string<
+    char, std::char_traits<char>, HE::InlinePoolAllocator<char, HE::Config::MaxPathLength, 2>>;
+} // namespace HSTL
 
 namespace std
 {
-template<>
+template <>
 struct hash<HSTL::HString> final
 {
-    std::size_t operator() (const HSTL::HString& obj) const
+    std::size_t operator()(const HSTL::HString& obj) const
     {
         auto text = obj.c_str();
         size_t hashCode = 5381;
@@ -37,4 +39,4 @@ struct hash<HSTL::HString> final
         return hashCode;
     }
 };
-} // std
+} // namespace std

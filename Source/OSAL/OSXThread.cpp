@@ -23,10 +23,7 @@ int OS::GetCPUIndex()
         auto funcName = ToFunctionName(__PRETTY_FUNCTION__);
         auto log = Logger::Get(funcName);
 
-        log.OutError([](auto& ls)
-        {
-            ls << "failed to get cpu number";
-        });
+        log.OutError([](auto& ls) { ls << "failed to get cpu number"; });
 
         return -1;
     }
@@ -51,19 +48,13 @@ int OS::GetThreadPriority(std::thread& thread)
 
         switch (result)
         {
-            case ESRCH:
-                log.OutError([](auto& ls)
-                {
-                    ls << "Non-existent thread.";
-                });
-                break;
+        case ESRCH:
+            log.OutError([](auto& ls) { ls << "Non-existent thread."; });
+            break;
 
-            default:
-                log.OutError([result](auto& ls)
-                {
-                    ls << "Unexpected error code = " << result;
-                });
-                break;
+        default:
+            log.OutError([result](auto& ls) { ls << "Unexpected error code = " << result; });
+            break;
         }
 
         return -1;
@@ -94,33 +85,22 @@ void OS::SetThreadPriority(std::thread& thread, int priority)
 
         switch (result)
         {
-            case EINVAL:
-                log.OutError([policy](auto& ls)
-                {
-                    ls << "Invalid value for policy. Input policy = " << policy;
-                });
-                break;
+        case EINVAL:
+            log.OutError([policy](auto& ls)
+                         { ls << "Invalid value for policy. Input policy = " << policy; });
+            break;
 
-            case ENOTSUP:
-                log.OutError([](auto& ls)
-                {
-                    ls << "Invalid value for scheduling parameters.";
-                });
-                break;
+        case ENOTSUP:
+            log.OutError([](auto& ls) { ls << "Invalid value for scheduling parameters."; });
+            break;
 
-            case ESRCH:
-                log.OutError([](auto& ls)
-                {
-                    ls << "Non-existent thread.";
-                });
-                break;
+        case ESRCH:
+            log.OutError([](auto& ls) { ls << "Non-existent thread."; });
+            break;
 
-            default:
-                log.OutError([result](auto& ls)
-                {
-                    ls << "Unexpected error code = " << result;
-                });
-                break;
+        default:
+            log.OutError([result](auto& ls) { ls << "Unexpected error code = " << result; });
+            break;
         }
     }
 }

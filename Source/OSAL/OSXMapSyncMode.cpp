@@ -27,6 +27,6 @@ void MapSyncMode::Invalidate()
     value |= MS_INVALIDATE;
 }
 
-} // OS
+} // namespace OS
 
 #endif // PLATFORM_OSX

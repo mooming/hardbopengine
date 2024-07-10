@@ -9,12 +9,11 @@
 namespace HSTL
 {
 
-template < class Key, class T
-           , class Hash = std::hash<Key>
-           , class Pred = std::equal_to<Key>>
-using HUnorderedMap = std::unordered_map< Key, T, Hash, Pred, HE::BaseAllocator<std::pair<const Key, T>> >;
+template <class Key, class T, class Hash = std::hash<Key>, class Pred = std::equal_to<Key>>
+using HUnorderedMap =
+    std::unordered_map<Key, T, Hash, Pred, HE::BaseAllocator<std::pair<const Key, T>>>;
 
-} // HSTL
+} // namespace HSTL
 
 
 #ifdef __UNIT_TEST__
@@ -24,12 +23,12 @@ namespace HE
 {
 class HUnorderedMapTest : public TestCollection
 {
-public:
+  public:
     HUnorderedMapTest();
     virtual ~HUnorderedMapTest() = default;
 
-protected:
+  protected:
     virtual void Prepare() override;
 };
-} // HE
+} // namespace HE
 #endif //__UNIT_TEST__

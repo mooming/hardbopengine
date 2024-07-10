@@ -13,11 +13,11 @@ namespace HE
 
 class Task final
 {
-public:
+  public:
     using TIndex = std::size_t;
     using TThreadID = std::thread::id;
 
-private:
+  private:
     StaticString name;
     TThreadID threadID;
 
@@ -28,14 +28,14 @@ private:
     TIndex size;
     Runnable func;
 
-public:
+  public:
     Task();
     Task(StaticString name, TIndex size, Runnable func);
     ~Task() = default;
 
     void Reset();
     void Reset(StaticString name, TIndex size, Runnable func);
-    
+
     void Run();
     void Run(TIndex start, TIndex end);
     void ForceRun();
@@ -61,4 +61,4 @@ public:
     inline auto GetSize() const { return size; }
 };
 
-} // HE
+} // namespace HE

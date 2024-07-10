@@ -21,9 +21,9 @@ inline T Abs(T value, std::false_type)
 template <typename T>
 inline T Abs(T value, std::true_type)
 {
-    constexpr int shift = sizeof (T) * 8 - 1;
+    constexpr int shift = sizeof(T) * 8 - 1;
     const uint8_t mask = value >> shift;
-    
+
     return (value + mask) ^ mask;
 }
 
@@ -37,11 +37,11 @@ template <typename T>
 inline T Pow(T value, T n, std::true_type)
 {
     FatalAssert(n >= 0);
-    
+
     T result = 1;
     T order = 1;
     T factor = value;
-    
+
     while (n > 0)
     {
         while (n >= order)
@@ -51,11 +51,11 @@ inline T Pow(T value, T n, std::true_type)
             factor *= factor;
             order *= 2;
         }
-        
+
         order = 1;
         factor = value;
     }
-    
+
     return result;
 }
 
@@ -89,13 +89,13 @@ inline T Pow(T value, T n)
 template <typename T>
 inline T MinFast(T a, T b)
 {
-    return ((a + b) - Abs(a - b)) / static_cast<T> (2);
+    return ((a + b) - Abs(a - b)) / static_cast<T>(2);
 }
 
 template <typename T>
 inline T MaxFast(T a, T b)
 {
-    return ((a + b) + Abs(a - b)) / static_cast<T> (2);
+    return ((a + b) + Abs(a - b)) / static_cast<T>(2);
 }
 
 template <typename T>
@@ -182,8 +182,8 @@ inline bool IsNotEqual(float a, float b)
 {
     return Abs(a - b) >= Epsilon;
 }
-}
-}
+} // namespace Physics
+} // namespace HE
 
 
 #ifdef __UNIT_TEST__
@@ -195,14 +195,12 @@ namespace HE
 
 class MathUtilTest : public TestCollection
 {
-public:
-    MathUtilTest() : TestCollection("MathUtilTest")
-    {
-    }
-    
-protected:
+  public:
+    MathUtilTest() : TestCollection("MathUtilTest") {}
+
+  protected:
     virtual void Prepare() override;
 };
-}
+} // namespace HE
 
 #endif //__UNIT_TEST__

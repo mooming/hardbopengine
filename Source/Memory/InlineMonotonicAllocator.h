@@ -3,8 +3,8 @@
 #pragma once
 
 #include "AllocatorID.h"
-#include "MemoryManager.h"
 #include "Config/BuildConfig.h"
+#include "MemoryManager.h"
 #include "OSAL/OSMemory.h"
 #include "System/Debug.h"
 #include <cstddef>
@@ -16,34 +16,26 @@ namespace HE
 template <size_t Capacity>
 class InlineMonotonicAllocator final
 {
-public:
+  public:
     using TSize = size_t;
     using TPointer = void*;
 
-private:
+  private:
     TAllocatorID id;
     TAllocatorID parentID;
     TSize cursor;
     ALIGN uint8_t buffer[Capacity];
 
-public:
+  public:
     InlineMonotonicAllocator(const char* name)
-        : id(InvalidAllocatorID)
-        , parentID(InvalidAllocatorID)
-        , cursor(0)
+        : id(InvalidAllocatorID), parentID(InvalidAllocatorID), cursor(0)
     {
         Assert(OS::CheckAligned(buffer));
         buffer[0] = 0;
 
-        auto allocFunc = [this](size_t n) -> void*
-        {
-            return Allocate(n);
-        };
+        auto allocFunc = [this](size_t n) -> void* { return Allocate(n); };
 
-        auto deallocFunc = [this](void* ptr, size_t size)
-        {
-            Deallocate(ptr, size);
-        };
+        auto deallocFunc = [this](void* ptr, size_t size) { Deallocate(ptr, size); };
 
         auto& mmgr = MemoryManager::GetInstance();
         parentID = mmgr.GetCurrentAllocatorID();
@@ -70,11 +62,11 @@ public:
         if (unlikely(size > freeSize))
         {
             auto& mmgr = MemoryManager::GetInstance();
-            mmgr.LogWarning([size, freeSize](auto& ls)
-            {
-                ls << "The requested size " << size
-                << " is exceeding its limit, " << freeSize << '.';
-            });
+            mmgr.LogWarning(
+                [size, freeSize](auto& ls) {
+                    ls << "The requested size " << size << " is exceeding its limit, " << freeSize
+                       << '.';
+                });
 
             auto ptr = mmgr.AllocateBytes(parentID, requested);
 
@@ -94,18 +86,19 @@ public:
 #ifdef __MEMORY_LOGGING__
         {
             auto& mmgr = MemoryManager::GetInstance();
-            mmgr.Log(ELogLevel::Info, [this, &mmgr, ptr, size](auto& ls)
-                     {
-                ls << mmgr.GetName(id) << '[' << static_cast<int>(GetID())
-                << "]: Allocate " << static_cast<void*>(ptr)
-                << ", size = " << size;
-            });
+            mmgr.Log(
+                ELogLevel::Info,
+                [this, &mmgr, ptr, size](auto& ls)
+                {
+                    ls << mmgr.GetName(id) << '[' << static_cast<int>(GetID()) << "]: Allocate "
+                       << static_cast<void*>(ptr) << ", size = " << size;
+                });
         }
 #endif // __MEMORY_LOGGING__
 
         return ptr;
     }
-    
+
     void Deallocate(const TPointer ptr, TSize requested)
     {
         auto& mmgr = MemoryManager::GetInstance();
@@ -117,18 +110,19 @@ public:
         }
 
 #ifdef __MEMORY_LOGGING__
-        mmgr.Log(ELogLevel::Info, [this, &mmgr, ptr, requested](auto& ls)
-        {
-            ls << mmgr.GetName(id) << '[' << static_cast<int>(GetID())
-                << "] Deallocate call shall be ignored. ptr = "
-                << static_cast<void*>(ptr) << ", size = " << requested;
-        });
+        mmgr.Log(
+            ELogLevel::Info,
+            [this, &mmgr, ptr, requested](auto& ls)
+            {
+                ls << mmgr.GetName(id) << '[' << static_cast<int>(GetID())
+                   << "] Deallocate call shall be ignored. ptr = " << static_cast<void*>(ptr)
+                   << ", size = " << requested;
+            });
 #endif // __MEMORY_LOGGING__
 
 #ifdef PROFILE_ENABLED
         mmgr.ReportDeallocation(id, ptr, requested, 0);
 #endif // PROFILE_ENABLED
-
     }
 
     size_t GetAvailable() const
@@ -145,20 +139,24 @@ public:
 
     inline auto GetID() const { return id; }
 
-private:
+  private:
     bool IsMine(TPointer ptr) const
     {
         auto bytePtr = reinterpret_cast<const uint8_t*>(ptr);
         if (bytePtr < buffer)
+        {
             return false;
+        }
 
         if (bytePtr >= (buffer + Capacity))
+        {
             return false;
+        }
 
         return true;
     }
 };
-} // HE
+} // namespace HE
 
 #ifdef __UNIT_TEST__
 #include "Test/TestCollection.h"
@@ -168,15 +166,12 @@ namespace HE
 
 class InlineMonotonicAllocatorTest : public TestCollection
 {
-public:
-    InlineMonotonicAllocatorTest()
-        : TestCollection("InlineMonotonicAllocatorTest")
-    {
-    }
+  public:
+    InlineMonotonicAllocatorTest() : TestCollection("InlineMonotonicAllocatorTest") {}
 
-protected:
+  protected:
     virtual void Prepare() override;
 };
 
-} // HE
+} // namespace HE
 #endif //__UNIT_TEST__

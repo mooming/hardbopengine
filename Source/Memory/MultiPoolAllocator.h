@@ -2,10 +2,10 @@
 
 #pragma once
 
-#include "PoolAllocator.h"
-#include "PoolConfig.h"
 #include "Config/BuildConfig.h"
 #include "HSTL/HVector.h"
+#include "PoolAllocator.h"
+#include "PoolConfig.h"
 #include "String/StaticString.h"
 
 
@@ -16,43 +16,45 @@ class MemoryManager;
 
 class MultiPoolAllocator final
 {
-public:
+  public:
     using This = MultiPoolAllocator;
 
     static constexpr size_t DefaultMinBlock = 16;
     static constexpr size_t DefaultBankUnit = 1024ULL * 1024;
     static constexpr size_t MinNumberOfBlocks = 16;
-    
-private:
+
+  private:
     using TInitializerList = std::initializer_list<PoolConfig>;
-    
+
     TAllocatorID id;
     TAllocatorID parentID;
     StaticString name;
     HSTL::HVector<PoolAllocator> banks;
     size_t bankSize;
     size_t minBlock;
-    
-public:
-    MultiPoolAllocator(const char* name
-        , size_t allocationUnit = DefaultBankUnit, size_t minBlockSize = DefaultMinBlock);
-    MultiPoolAllocator(const char* name, TInitializerList initialConfigurations
-        , size_t allocationUnit = DefaultBankUnit, size_t minBlockSize = DefaultMinBlock);
+
+  public:
+    MultiPoolAllocator(
+        const char* name, size_t allocationUnit = DefaultBankUnit,
+        size_t minBlockSize = DefaultMinBlock);
+    MultiPoolAllocator(
+        const char* name, TInitializerList initialConfigurations,
+        size_t allocationUnit = DefaultBankUnit, size_t minBlockSize = DefaultMinBlock);
     ~MultiPoolAllocator();
-    
+
     void* Allocate(size_t size);
     void Deallocate(void* ptr, size_t size);
-    
+
     inline auto GetName() const { return name; }
     inline auto GetID() const { return id; }
-    
+
     void PrintUsage() const;
 
 #ifdef PROFILE_ENABLED
     void ReportConfiguration() const;
 #endif // PROFILE_ENABLED
 
-private:
+  private:
     bool GenerateBanksByCache(MemoryManager& mmgr);
     size_t GetBankIndex(size_t nBytes) const;
     size_t GetBankIndex(void* ptr) const;
@@ -60,7 +62,7 @@ private:
     size_t CalculateNumberOfBlocks(size_t bankSize, size_t blockSize) const;
     void GenerateBank(size_t blockSize, size_t numberOfBlocks);
 };
-} // HE
+} // namespace HE
 
 #ifdef __UNIT_TEST__
 
@@ -71,13 +73,11 @@ namespace HE
 {
 class MultiPoolAllocatorTest : public TestCollection
 {
-public:
-    MultiPoolAllocatorTest() : TestCollection("MultiPoolAllocatorTest")
-    {
-    }
-    
-protected:
+  public:
+    MultiPoolAllocatorTest() : TestCollection("MultiPoolAllocatorTest") {}
+
+  protected:
     virtual void Prepare() override;
 };
-} // HE
+} // namespace HE
 #endif //__UNIT_TEST__

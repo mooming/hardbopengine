@@ -14,4 +14,4 @@ void FlushLogs()
     auto& engine = Engine::Get();
     engine.FlushLog();
 }
-} // HE
+} // namespace HE

@@ -27,7 +27,7 @@ void* MapMemory(FileHandle& fileHandle, size_t size, ProtectionMode protection, 
 bool MapSync(void* ptr, size_t size, MapSyncMode syncMode);
 bool UnmapMemory(void* ptr, size_t size);
 
-} // OS
+} // namespace OS
 
 #ifdef __UNIT_TEST__
 #include "Test/TestCollection.h"
@@ -37,12 +37,12 @@ namespace HE
 
 class OSInputOutputTest : public TestCollection
 {
-public:
+  public:
     OSInputOutputTest();
 
-protected:
+  protected:
     virtual void Prepare() override;
 };
 
-} // HE
+} // namespace HE
 #endif //__UNIT_TEST__

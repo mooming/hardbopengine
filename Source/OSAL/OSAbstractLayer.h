@@ -32,4 +32,4 @@ bool IsDirectory(const char* path);
 
 HSTL::HVector<HSTL::HString> ListFilesInDirectory(const char* path);
 
-} // OS
+} // namespace OS

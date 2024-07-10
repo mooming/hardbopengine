@@ -8,23 +8,23 @@
 
 namespace HE
 {
-    class CommandLineArguments final
-    {
-    private:
-        String executablePath;
-        String executableFilename;
-        Array<String> arguments;
+class CommandLineArguments final
+{
+  private:
+    String executablePath;
+    String executableFilename;
+    Array<String> arguments;
 
-    public:
-        CommandLineArguments() = delete;
-        CommandLineArguments(int argc, const char* argv[]);
-        ~CommandLineArguments() = default;
+  public:
+    CommandLineArguments() = delete;
+    CommandLineArguments(int argc, const char* argv[]);
+    ~CommandLineArguments() = default;
 
-        inline auto& GetArguments() const { return arguments; }
+    inline auto& GetArguments() const { return arguments; }
 
-        void Print();
-        
-    private:
-        void Parse(int argc, const char *argv[]);
-    };
-} // HE
+    void Print();
+
+  private:
+    void Parse(int argc, const char* argv[]);
+};
+} // namespace HE

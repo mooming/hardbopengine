@@ -11,14 +11,14 @@ namespace HE
 {
 class MonotonicAllocator final
 {
-public:
+  public:
     using TSize = size_t;
     using TPointer = void*;
 
-private:
+  private:
     TAllocatorID id;
     TAllocatorID parentID;
-    
+
     TSize cursor;
     TSize capacity;
 
@@ -28,7 +28,7 @@ private:
         TPointer bufferPtr;
     };
 
-public:
+  public:
     MonotonicAllocator(const char* name, TSize capacity);
     ~MonotonicAllocator();
 
@@ -40,10 +40,10 @@ public:
 
     inline auto GetID() const { return id; }
 
-private:
+  private:
     bool IsMine(const TPointer ptr) const;
 };
-} // HE
+} // namespace HE
 
 #ifdef __UNIT_TEST__
 #include "Test/TestCollection.h"
@@ -53,14 +53,12 @@ namespace HE
 
 class MonotonicAllocatorTest : public TestCollection
 {
-public:
-    MonotonicAllocatorTest() : TestCollection("MonotonicAllocatorTest")
-    {
-    }
+  public:
+    MonotonicAllocatorTest() : TestCollection("MonotonicAllocatorTest") {}
 
-protected:
+  protected:
     virtual void Prepare() override;
 };
 
-} // HE
+} // namespace HE
 #endif //__UNIT_TEST__

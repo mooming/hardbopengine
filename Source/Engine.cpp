@@ -2,8 +2,8 @@
 
 #include "Engine.h"
 
-#include "Config/ConfigSystem.h"
 #include "Config/ConfigParam.h"
+#include "Config/ConfigSystem.h"
 #include "HSTL/HString.h"
 #include "String/InlineStringBuilder.h"
 #include "String/StaticStringTable.h"
@@ -20,31 +20,23 @@ namespace
 void SignalHandler(int sigNum)
 {
     using namespace HE;
-    
+
     auto& engine = Engine::Get();
     engine.GetLogger().StopTask(engine.GetTaskSystem());
-    
-    engine.LogError([sigNum](auto& ls)
-    {
-        ls << "signal(" << sigNum << ") received.";
-    });
-    
+
+    engine.LogError([sigNum](auto& ls) { ls << "signal(" << sigNum << ") received."; });
+
+    engine.LogError([](auto& ls) { ls << "The application shall be terminated."; });
+
     engine.LogError([](auto& ls)
-    {
-        ls << "The application shall be terminated.";
-    });
-    
-    engine.LogError([](auto& ls)
-    {
-        ls << "Thank you for playing. Have a great day! :)" << std::endl;
-    });
-    
+                    { ls << "Thank you for playing. Have a great day! :)" << std::endl; });
+
     engine.CloseLog();
 
     exit(sigNum);
 }
 
-} // Anonymous
+} // namespace
 
 namespace HE
 {
@@ -62,17 +54,10 @@ Engine::PreEngineInit::PreEngineInit(Engine* engine)
 }
 
 Engine::Engine()
-    : preEngineInit(this)
-    , isRunning(false)
-    , isMemoryManagerReady(false)
-    , isSystemStatisticsReady(false)
-    , isLoggerReady(false)
-    , isTaskSystemReady(false)
-    , isResourceManagerReady(false)
-    , logFile("helowlevel.log")
-    , memoryManager(*this)
-    , statistics(*this)
-    , logger(*this, "./", "hardbop.log")
+    : preEngineInit(this), isRunning(false), isMemoryManagerReady(false),
+      isSystemStatisticsReady(false), isLoggerReady(false), isTaskSystemReady(false),
+      isResourceManagerReady(false), logFile("helowlevel.log"), memoryManager(*this),
+      statistics(*this), logger(*this, "./", "hardbop.log")
 {
     std::signal(SIGABRT, SignalHandler);
 #ifdef SIGBUS
@@ -99,15 +84,12 @@ void Engine::Initialize(int argc, const char* argv[])
     isLoggerReady = true;
 
     auto log = Logger::Get(GetClassName());
-    
+
     log.Out("Command Line Arguments");
 
     for (int i = 0; i < argc; ++i)
     {
-        log.Out([i, argv](auto& ls)
-        {
-            ls << i << " : " << argv[i];
-        });
+        log.Out([i, argv](auto& ls) { ls << i << " : " << argv[i]; });
     }
 
     log.Out("Engine has been initialized.");
@@ -123,7 +105,7 @@ void Engine::Run()
         MultiPoolAllocator allocator("Main");
         AllocatorScope scope(allocator);
 
-        while(likely(isRunning))
+        while (likely(isRunning))
         {
             statistics.IncFrameCount();
             statistics.UpdateCurrentTime();
@@ -145,7 +127,7 @@ void Engine::Run()
 //        configSys.SetByte("Log.Engine", logLevel);
 //        configSys.SetByte("Log.Level", logLevel);
 #endif // __DEBUG__
-        
+
         auto& staticStrTable = StaticStringTable::GetInstance();
         staticStrTable.PrintStringTable();
         configSys.PrintAllParameters();
@@ -157,7 +139,7 @@ void Engine::Run()
 
     auto log = Logger::Get(GetClassName(), ELogLevel::Info);
     log.Out("Shutting down...");
-    
+
     logger.StopTask(taskSystem);
     taskSystem.Shutdown();
 }
@@ -176,26 +158,27 @@ StaticString Engine::GetClassName() const
 void Engine::Log(ELogLevel level, TLogFunc func)
 {
 #ifdef ENGINE_LOG_ENABLED
-    static TAtomicConfigParam<uint8_t> CPEngineLogLevel("Log.Engine"
-       , "The Engine Log Level"
-       , static_cast<uint8_t>(Config::EngineLogLevel));
+    static TAtomicConfigParam<uint8_t> CPEngineLogLevel(
+        "Log.Engine", "The Engine Log Level", static_cast<uint8_t>(Config::EngineLogLevel));
 
-    static TAtomicConfigParam<uint8_t> CPEnginePrintLogLevel("Log.Engine.Print"
-       , "The Engine Log Level for Standard IO"
-       , static_cast<uint8_t>(Config::EngineLogLevelPrint));
+    static TAtomicConfigParam<uint8_t> CPEnginePrintLogLevel(
+        "Log.Engine.Print", "The Engine Log Level for Standard IO",
+        static_cast<uint8_t>(Config::EngineLogLevelPrint));
 
     auto levelAsValue = static_cast<uint8_t>(level);
     if (levelAsValue < CPEngineLogLevel.Get())
+    {
         return;
+    }
 
     using namespace std;
-    
+
     const auto diff = chrono::steady_clock::now() - statistics.GetStartTime();
     auto hours = chrono::duration_cast<chrono::hours>(diff);
     auto minutes = chrono::duration_cast<chrono::minutes>(diff);
     auto seconds = chrono::duration_cast<chrono::seconds>(diff);
     auto milliSeconds = chrono::duration_cast<chrono::milliseconds>(diff);
-    
+
     auto intHours = hours.count();
     auto intMins = minutes.count() % 60;
     auto intSecs = seconds.count() % 60;
@@ -209,19 +192,17 @@ void Engine::Log(ELogLevel level, TLogFunc func)
         if (levelAsValue >= CPEnginePrintLogLevel.Get())
         {
             std::stringstream ss;
-            ss << '[' << intHours << ':' << intMins << ':' << intSecs
-                << '.' << intMSecs << "] ";
+            ss << '[' << intHours << ':' << intMins << ':' << intSecs << '.' << intMSecs << "] ";
 
             func(ss);
-            
+
             ConsoleOutLn(ss.str().c_str());
             ss.str("");
         }
 
         Assert(logFile.is_open());
 
-        logFile << '[' << intHours << ':' << intMins << ':' << intSecs
-            << '.' << intMSecs << "] ";
+        logFile << '[' << intHours << ':' << intMins << ':' << intSecs << '.' << intMSecs << "] ";
 
         func(logFile);
 
@@ -233,8 +214,10 @@ void Engine::Log(ELogLevel level, TLogFunc func)
 void Engine::CloseLog()
 {
     if (!logFile.is_open())
+    {
         return;
-    
+    }
+
     logFile.flush();
 }
 
@@ -243,7 +226,9 @@ void Engine::FlushLog()
     logger.Flush();
 
     if (!logFile.is_open())
+    {
         return;
+    }
 
     logFile.flush();
 }
@@ -268,10 +253,7 @@ void Engine::PostInitialize()
 
 void Engine::PreUpdate(float deltaTime)
 {
-    Log(ELogLevel::Info, [deltaTime](auto& ls)
-    {
-        ls << "PreUpdate: deltaTime = " << deltaTime;
-    });
+    Log(ELogLevel::Info, [deltaTime](auto& ls) { ls << "PreUpdate: deltaTime = " << deltaTime; });
 
     auto& mainTaskStream = taskSystem.GetMainTaskStream();
     mainTaskStream.Flush();
@@ -279,10 +261,7 @@ void Engine::PreUpdate(float deltaTime)
 
 void Engine::Update(float deltaTime)
 {
-    Log(ELogLevel::Info, [deltaTime](auto& ls)
-    {
-        ls << "Update: deltaTime = " << deltaTime;
-    });
+    Log(ELogLevel::Info, [deltaTime](auto& ls) { ls << "Update: deltaTime = " << deltaTime; });
 
     auto& mainTaskStream = taskSystem.GetMainTaskStream();
     mainTaskStream.Flush();
@@ -290,10 +269,7 @@ void Engine::Update(float deltaTime)
 
 void Engine::PostUpdate(float deltaTime)
 {
-    Log(ELogLevel::Info, [deltaTime](auto& ls)
-    {
-        ls << "PostUpdate: deltaTime = " << deltaTime;
-    });
+    Log(ELogLevel::Info, [deltaTime](auto& ls) { ls << "PostUpdate: deltaTime = " << deltaTime; });
 
     auto& mainTaskStream = taskSystem.GetMainTaskStream();
     mainTaskStream.Flush();
@@ -317,4 +293,4 @@ void Engine::PreShutdown()
     log.Out("Engine PreShutdown [Done]");
 }
 
-} // HE
+} // namespace HE

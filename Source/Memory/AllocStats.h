@@ -30,7 +30,7 @@ struct AllocStats final
 
     AllocStats();
     ~AllocStats() = default;
-    
+
     void OnRegister(const char* name, bool inIsInnline, size_t inCapacity);
     void Reset();
     void Report();
@@ -38,4 +38,4 @@ struct AllocStats final
     void Print();
 };
 
-} // HE
+} // namespace HE

@@ -14,4 +14,4 @@ inline bool IsValid(TAllocatorID id)
     return id >= 0 && id < MaxNumAllocators;
 }
 
-} // HE
+} // namespace HE

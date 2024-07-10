@@ -10,30 +10,29 @@ namespace HE
 
 class AllocatorScope final
 {
-private:
+  private:
     TAllocatorID previous;
     TAllocatorID current;
 
-public:
+  public:
     AllocatorScope(const AllocatorScope&) = delete;
     AllocatorScope(AllocatorScope&&) = delete;
-    AllocatorScope& operator= (const AllocatorScope&) = delete;
-    AllocatorScope& operator= (AllocatorScope&&) = delete;
+    AllocatorScope& operator=(const AllocatorScope&) = delete;
+    AllocatorScope& operator=(AllocatorScope&&) = delete;
 
-public:
+  public:
     AllocatorScope();
     AllocatorScope(TAllocatorID id);
-    
+
     template <typename T>
-    AllocatorScope(const T& allocator)
-        : AllocatorScope(allocator.GetID())
+    AllocatorScope(const T& allocator) : AllocatorScope(allocator.GetID())
     {
     }
-    
+
     ~AllocatorScope();
 };
 
-} // HE
+} // namespace HE
 
 #ifdef __UNIT_TEST__
 #include "Test/TestCollection.h"
@@ -42,19 +41,15 @@ public:
 namespace HE
 {
 
-class AllocatorScopeTest
-    : public TestCollection
+class AllocatorScopeTest : public TestCollection
 {
-public:
-    AllocatorScopeTest()
-        : TestCollection("AllocatorScopeTest")
-    {
-    }
+  public:
+    AllocatorScopeTest() : TestCollection("AllocatorScopeTest") {}
 
-protected:
+  protected:
     virtual void Prepare() override;
 };
 
-} // HE
+} // namespace HE
 
 #endif //__UNIT_TEST__

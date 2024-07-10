@@ -10,13 +10,13 @@ namespace OS
 
 struct FileHandle final
 {
-public:
+  public:
     void* data;
 
-public:
+  public:
     FileHandle(const FileHandle&) = delete;
 
-public:
+  public:
     FileHandle();
     FileHandle(FileHandle&& rhs);
     ~FileHandle();
@@ -26,4 +26,4 @@ public:
     void Invalidate();
 };
 
-} // OS
+} // namespace OS

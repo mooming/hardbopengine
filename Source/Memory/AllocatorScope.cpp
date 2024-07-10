@@ -27,7 +27,7 @@ AllocatorScope::~AllocatorScope()
     mmgr.SetScopedAllocatorID(previous);
 }
 
-} // HE
+} // namespace HE
 
 
 #ifdef __UNIT_TEST__
@@ -39,24 +39,26 @@ namespace HE
 
 void AllocatorScopeTest::Prepare()
 {
-    AddTest("Alloc Scope Test", [this](auto& ls)
-    {
-        InlinePoolAllocator<int, 100> allocator;
-        AllocatorScope scope(allocator);
-        
-        auto& mmgr = MemoryManager::GetInstance();
-        auto ptr = mmgr.AllocateBytes(100);
-        
-        if (mmgr.GetCurrentAllocatorID() != allocator.GetID())
+    AddTest(
+        "Alloc Scope Test",
+        [this](auto& ls)
         {
-            ls << "Current allocator ID is not the given allocator id("
-            << allocator.GetID() << ')' << lferr;
-        }
+            InlinePoolAllocator<int, 100> allocator;
+            AllocatorScope scope(allocator);
 
-        mmgr.DeallocateBytes(ptr, 100);
-    });
+            auto& mmgr = MemoryManager::GetInstance();
+            auto ptr = mmgr.AllocateBytes(100);
+
+            if (mmgr.GetCurrentAllocatorID() != allocator.GetID())
+            {
+                ls << "Current allocator ID is not the given allocator id(" << allocator.GetID()
+                   << ')' << lferr;
+            }
+
+            mmgr.DeallocateBytes(ptr, 100);
+        });
 }
 
-} // HE
+} // namespace HE
 
 #endif //__UNIT_TEST__

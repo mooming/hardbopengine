@@ -2,10 +2,10 @@
 
 #include "MultiPoolConfigCache.h"
 
-#include "PoolConfigUtil.h"
 #include "HSTL/HString.h"
 #include "Log/Logger.h"
 #include "OSAL/Intrinsic.h"
+#include "PoolConfigUtil.h"
 #include "Resource/Buffer.h"
 #include "Resource/BufferInputStream.h"
 #include "Resource/BufferOutputStream.h"
@@ -43,10 +43,7 @@ size_t MultiPoolConfigCache::Serialize(Buffer& outBuffer)
 
     if (unlikely(bos.HasError()))
     {
-        log.OutError([](auto& ls)
-        {
-            ls << "An error occured while streaming out header data.";
-        });
+        log.OutError([](auto& ls) { ls << "An error occured while streaming out header data."; });
 
         return 0;
     }
@@ -70,9 +67,7 @@ size_t MultiPoolConfigCache::Serialize(Buffer& outBuffer)
         if (unlikely(bos.HasError()))
         {
             log.OutError([](auto& ls)
-            {
-                ls << "An error occured while streaming out pool config data";
-            });
+                         { ls << "An error occured while streaming out pool config data"; });
 
             return 0;
         }
@@ -94,11 +89,11 @@ bool MultiPoolConfigCache::Deserialize(const Buffer& buffer)
 
     if (unlikely(className != GetClassName()))
     {
-        log.OutError([this, className](auto& ls)
-        {
-            ls << "Invalid class name " << className << ", "
-                << GetClassName() << " is expected.";
-        });
+        log.OutError(
+            [this, className](auto& ls) {
+                ls << "Invalid class name " << className << ", " << GetClassName()
+                   << " is expected.";
+            });
 
         return false;
     }
@@ -108,11 +103,12 @@ bool MultiPoolConfigCache::Deserialize(const Buffer& buffer)
 
     if (unlikely(version != inVersion))
     {
-        log.OutError([inVersion](auto& ls)
-        {
-            ls << "Version mismatched! Read version = " << inVersion
-                << ", " << version << " is expected.";
-        });
+        log.OutError(
+            [inVersion](auto& ls)
+            {
+                ls << "Version mismatched! Read version = " << inVersion << ", " << version
+                   << " is expected.";
+            });
 
         return false;
     }
@@ -171,13 +167,13 @@ bool MultiPoolConfigCache::Deserialize(const Buffer& buffer)
 
             if (unlikely(!(a < b)))
             {
-                log.OutFatalError([&item, &a, &b](auto& ls)
-                {
-                    StaticString name(item.uniqueName);
-                    ls << name << " : configs should be well-orddered. "
-                        << a.blockSize << " < " << b.blockSize
-                        << " should be true.";
-                });
+                log.OutFatalError(
+                    [&item, &a, &b](auto& ls)
+                    {
+                        StaticString name(item.uniqueName);
+                        ls << name << " : configs should be well-orddered. " << a.blockSize << " < "
+                           << b.blockSize << " should be true.";
+                    });
             }
         }
     }
@@ -203,7 +199,9 @@ void MultiPoolConfigCache::Normalize()
         for (auto& item : data)
         {
             if (item.configs.size() <= 0)
+            {
                 continue;
+            }
 
             if (item.uniqueName != itemName)
             {
@@ -227,7 +225,9 @@ void MultiPoolConfigCache::Normalize()
     for (auto& item : tempData)
     {
         if (item.configs.size() <= 0)
+        {
             continue;
+        }
 
         if (itemName != item.uniqueName)
         {
@@ -251,4 +251,4 @@ void MultiPoolConfigCache::Normalize()
     std::sort(data.begin(), data.end());
 }
 
-} // HE
+} // namespace HE

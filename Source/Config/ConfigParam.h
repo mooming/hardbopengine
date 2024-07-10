@@ -21,7 +21,7 @@ class ConfigParam final
 
     using TValue = typename std::conditional<IsAtomic, std::atomic<T>, T>::type;
 
-private:
+  private:
 #ifdef ENGINE_PARAM_DESC_ENABLED
     StaticString name;
     StaticString desc;
@@ -34,18 +34,18 @@ private:
     std::thread::id threadID;
 #endif // __DEBUG__
 
-public:
-    ConfigParam(const char *inName, const char *inDesc, T defaultValue
-        , std::thread::id id = std::this_thread::get_id())
+  public:
+    ConfigParam(
+        const char* inName, const char* inDesc, T defaultValue,
+        std::thread::id id = std::this_thread::get_id())
 #ifdef ENGINE_PARAM_DESC_ENABLED
-        : name(inName)
-        , desc(inDesc)
-        , value(defaultValue)
-#else // ENGINE_PARAM_DESC_ENABLED
+        : name(inName), desc(inDesc), value(defaultValue)
+#else  // ENGINE_PARAM_DESC_ENABLED
         : value(defaultValue)
 #endif // ENGINE_PARAM_DESC_ENABLED
 #ifdef __DEBUG__
-        , threadID(id)
+          ,
+          threadID(id)
 #endif // __DEBUG__
     {
         auto& settings = ConfigSystem::Get();
@@ -56,7 +56,7 @@ public:
     {
 #ifdef ENGINE_PARAM_DESC_ENABLED
         return name;
-#else // ENGINE_PARAM_DESC_ENABLED
+#else  // ENGINE_PARAM_DESC_ENABLED
         return StaticString();
 #endif // ENGINE_PARAM_DESC_ENABLED
     }
@@ -65,7 +65,7 @@ public:
     {
 #ifdef ENGINE_PARAM_DESC_ENABLED
         return desc;
-#else // ENGINE_PARAM_DESC_ENABLED
+#else  // ENGINE_PARAM_DESC_ENABLED
         return StaticString();
 #endif // ENGINE_PARAM_DESC_ENABLED
     }
@@ -75,7 +75,7 @@ public:
 #ifdef __DEBUG__
         Assert(IsAtomic || std::this_thread::get_id() == threadID);
 #endif // __DEBUG__
-        
+
         return value;
     }
 
@@ -95,4 +95,4 @@ using TConfigParam = ConfigParam<T, false>;
 template <typename T>
 using TAtomicConfigParam = ConfigParam<T, true>;
 
-} // HE
+} // namespace HE

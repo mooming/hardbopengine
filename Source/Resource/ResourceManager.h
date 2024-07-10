@@ -3,8 +3,8 @@
 #pragma once
 
 #include "Buffer.h"
-#include "Resource.h"
 #include "HSTL/HVector.h"
+#include "Resource.h"
 #include "String/StaticString.h"
 
 
@@ -19,7 +19,7 @@ class ResourceManager final
     template <typename T>
     using TVector = HSTL::HVector<T>;
 
-private:
+  private:
     struct ResourceItem final
     {
         uint32_t id = 0;
@@ -38,7 +38,7 @@ private:
     TVector<ResourceItem> resources;
     TVector<ResourceItem*> loadingRequests;
 
-public:
+  public:
     ResourceManager();
     ~ResourceManager();
 
@@ -47,8 +47,8 @@ public:
     Resource RequestLoad(StaticString path);
     Resource Load(StaticString path);
 
-private:
+  private:
     void RequestTasks(TaskSystem& taskSys);
 };
 
-} // HE
+} // namespace HE

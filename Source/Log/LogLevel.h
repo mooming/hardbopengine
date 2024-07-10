@@ -16,4 +16,4 @@ enum class ELogLevel : unsigned char
     MAX
 };
 
-} // HE
+} // namespace HE

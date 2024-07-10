@@ -32,6 +32,6 @@ void ProtectionMode::SetExecutable()
     value |= PROT_EXEC;
 }
 
-} // OS
+} // namespace OS
 
 #endif // PLATFORM_OSX

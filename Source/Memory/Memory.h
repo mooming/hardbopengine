@@ -14,14 +14,14 @@ namespace HE
 using TAllocFunc = std::function<void*(size_t)>;
 using TDeallocFunc = std::function<void(void*, size_t)>;
 
-template <typename Type, typename ... Types, typename TAllocator>
-Type* New(TAllocator& allocator, Types&& ... args)
+template <typename Type, typename... Types, typename TAllocator>
+Type* New(TAllocator& allocator, Types&&... args)
 {
     static_assert(sizeof(typename TAllocator::value_type) == sizeof(Type));
 
     auto ptr = allocator.allocate(1);
-    auto tptr = new (ptr) Type(std::forward<Types>(args) ...);
-    
+    auto tptr = new (ptr) Type(std::forward<Types>(args)...);
+
     return tptr;
 }
 
@@ -34,11 +34,11 @@ void Delete(TAllocator& allocator, Type* ptr)
     allocator.deallocate(ptr, 1);
 }
 
-template <typename Type, typename ... Types>
-Type* New(Types&& ... args)
+template <typename Type, typename... Types>
+Type* New(Types&&... args)
 {
     auto& mmgr = MemoryManager::GetInstance();
-    return mmgr.New<Type>(std::forward<Types>(args) ...);
+    return mmgr.New<Type>(std::forward<Types>(args)...);
 }
 
 template <typename Type>
@@ -48,4 +48,4 @@ void Delete(Type* ptr)
     mmgr.Delete<Type>(ptr);
 }
 
-} // HE
+} // namespace HE

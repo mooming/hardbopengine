@@ -19,4 +19,4 @@ struct FileOpenMode final
     void SetAppend();
 };
 
-} // OS
+} // namespace OS

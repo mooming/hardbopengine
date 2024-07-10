@@ -2,8 +2,8 @@
 
 #include "ThreadSafeMultiPoolAllocator.h"
 
-#include "Engine.h"
 #include "Config/BuildConfig.h"
+#include "Engine.h"
 #include "Log/Logger.h"
 #include "Memory/MemoryManager.h"
 #include "String/StringBuilder.h"
@@ -17,29 +17,20 @@
 namespace HE
 {
 
-ThreadSafeMultiPoolAllocator::ThreadSafeMultiPoolAllocator(const char* inName
-    , size_t allocationUnit, size_t minBlockSize)
+ThreadSafeMultiPoolAllocator::ThreadSafeMultiPoolAllocator(
+    const char* inName, size_t allocationUnit, size_t minBlockSize)
 
-    : id(InvalidAllocatorID)
-    , parentID(InvalidAllocatorID)
-    , name(inName)
-    , bankSize(allocationUnit)
-    , minBlock(minBlockSize)
+    : id(InvalidAllocatorID), parentID(InvalidAllocatorID), name(inName), bankSize(allocationUnit),
+      minBlock(minBlockSize)
 {
     using namespace HSTL;
 
     auto& mmgr = MemoryManager::GetInstance();
     parentID = mmgr.GetCurrentAllocatorID();
 
-    auto allocFunc = [this](size_t n) -> void*
-    {
-        return Allocate(n);
-    };
+    auto allocFunc = [this](size_t n) -> void* { return Allocate(n); };
 
-    auto deallocFunc = [this](void* ptr, size_t n)
-    {
-        Deallocate(ptr, n);
-    };
+    auto deallocFunc = [this](void* ptr, size_t n) { Deallocate(ptr, n); };
 
     GenerateBanksByCache(mmgr);
 
@@ -52,30 +43,21 @@ ThreadSafeMultiPoolAllocator::ThreadSafeMultiPoolAllocator(const char* inName
     id = mmgr.Register(name, false, capacity, allocFunc, deallocFunc);
 }
 
-ThreadSafeMultiPoolAllocator::ThreadSafeMultiPoolAllocator(const char* inName
-    , TInitializerList initialConfigurations
-    , size_t allocationUnit, size_t minBlockSize)
+ThreadSafeMultiPoolAllocator::ThreadSafeMultiPoolAllocator(
+    const char* inName, TInitializerList initialConfigurations, size_t allocationUnit,
+    size_t minBlockSize)
 
-    : id(InvalidAllocatorID)
-    , parentID(InvalidAllocatorID)
-    , name(inName)
-    , bankSize(allocationUnit)
-    , minBlock(minBlockSize)
+    : id(InvalidAllocatorID), parentID(InvalidAllocatorID), name(inName), bankSize(allocationUnit),
+      minBlock(minBlockSize)
 {
     using namespace HSTL;
 
     auto& mmgr = MemoryManager::GetInstance();
     parentID = mmgr.GetCurrentAllocatorID();
 
-    auto allocFunc = [this](size_t n) -> void*
-    {
-        return Allocate(n);
-    };
+    auto allocFunc = [this](size_t n) -> void* { return Allocate(n); };
 
-    auto deallocFunc = [this](void* ptr, size_t n)
-    {
-        Deallocate(ptr, n);
-    };
+    auto deallocFunc = [this](void* ptr, size_t n) { Deallocate(ptr, n); };
 
     auto ConfigureBanks = [&, this]()
     {
@@ -93,11 +75,9 @@ ThreadSafeMultiPoolAllocator::ThreadSafeMultiPoolAllocator(const char* inName
         for (auto& config : vlist)
         {
             InlineStringBuilder<1024> str;
-            str << name << '_' << config.blockSize
-                << '_' << config.numberOfBlocks;
+            str << name << '_' << config.blockSize << '_' << config.numberOfBlocks;
 
-            banks.emplace_back(str.c_str()
-                , config.blockSize, config.numberOfBlocks);
+            banks.emplace_back(str.c_str(), config.blockSize, config.numberOfBlocks);
         }
     };
 
@@ -117,7 +97,7 @@ ThreadSafeMultiPoolAllocator::~ThreadSafeMultiPoolAllocator()
     auto& mmgr = MemoryManager::GetInstance();
 
 #ifdef PROFILE_ENABLED
-        ReportConfiguration();
+    ReportConfiguration();
 #endif // PROFILE_ENABLED
 
     {
@@ -127,10 +107,9 @@ ThreadSafeMultiPoolAllocator::~ThreadSafeMultiPoolAllocator()
         const auto currentTID = std::this_thread::get_id();
         for (auto& bank : banks)
         {
-            mmgr.Update(bank.GetID(), [&currentTID](auto& proxy)
-            {
-                proxy.threadId = currentTID;
-            }, "Releasing the thread binding.");
+            mmgr.Update(
+                bank.GetID(), [&currentTID](auto& proxy) { proxy.threadId = currentTID; },
+                "Releasing the thread binding.");
         }
 #endif // __MEMORY_VERIFICATION__
 
@@ -143,7 +122,9 @@ ThreadSafeMultiPoolAllocator::~ThreadSafeMultiPoolAllocator()
 void* ThreadSafeMultiPoolAllocator::Allocate(size_t requested)
 {
     if (unlikely(requested <= 0))
+    {
         return nullptr;
+    }
 
     auto FallbackAlloc = [&, this]() -> void*
     {
@@ -198,7 +179,7 @@ void* ThreadSafeMultiPoolAllocator::Allocate(size_t requested)
         }
 
         ptr = bank.Allocate(requested);
-        
+
 #ifdef PROFILE_ENABLED
         allocated = bank.GetBlockSize();
 #endif // PROFILE_ENABLED
@@ -233,9 +214,7 @@ void ThreadSafeMultiPoolAllocator::Deallocate(void* ptr, size_t size)
         {
             auto log = Logger::Get(name);
             log.OutFatalError([ptr](auto& ls)
-                              {
-                ls << ptr << " is allocated by another allocator.";
-            });
+                              { ls << ptr << " is allocated by another allocator."; });
 
             return;
         }
@@ -244,7 +223,7 @@ void ThreadSafeMultiPoolAllocator::Deallocate(void* ptr, size_t size)
         Assert(size <= bank.GetBlockSize());
 
         bank.Deallocate(ptr, size);
-        
+
 #ifdef PROFILE_ENABLED
         allocated = bank.GetBlockSize();
 #endif // PROFILE_ENABLED
@@ -256,7 +235,6 @@ void ThreadSafeMultiPoolAllocator::Deallocate(void* ptr, size_t size)
         mmgr.ReportDeallocation(GetID(), ptr, size, allocated);
     }
 #endif // PROFILE_ENABLED
-
 }
 
 void ThreadSafeMultiPoolAllocator::PrintUsage()
@@ -268,23 +246,19 @@ void ThreadSafeMultiPoolAllocator::PrintUsage()
 #endif // PROFILE_ENABLED
 
     auto log = Logger::Get(name, ELogLevel::Info);
-    log.Out([this](auto& ls)
-    {
-        ls << hendl << "## MultipoolAllocator(" << name
-            <<  ") Usage ##";
-    });
+    log.Out([this](auto& ls) { ls << hendl << "## MultipoolAllocator(" << name << ") Usage ##"; });
 
     std::lock_guard lockGuard(lock);
 
     for (auto& pool : banks)
     {
-        log.Out([&pool](auto& ls)
-        {
-            ls << '[' << pool.GetBlockSize() << "] Memory = "
-                << pool.GetUsage() << " / " << pool.GetCapacity()
-                << ", Max Usage = "
-                << (pool.GetUsedBlocksMax() * pool.GetBlockSize());
-        });
+        log.Out(
+            [&pool](auto& ls)
+            {
+                ls << '[' << pool.GetBlockSize() << "] Memory = " << pool.GetUsage() << " / "
+                   << pool.GetCapacity()
+                   << ", Max Usage = " << (pool.GetUsedBlocksMax() * pool.GetBlockSize());
+            });
 
 #ifdef PROFILE_ENABLED
         if (pool.GetUsedBlocksMax() > 0)
@@ -333,10 +307,7 @@ void ThreadSafeMultiPoolAllocator::ReportConfiguration()
         auto key = alloc.GetBlockSize();
         auto value = alloc.GetUsedBlocksMax();
 
-        auto pred = [key](const PoolConfig& item)
-        {
-            return item.blockSize == key;
-        };
+        auto pred = [key](const PoolConfig& item) { return item.blockSize == key; };
 
         auto found = std::find_if(configs.begin(), configs.end(), pred);
         if (found == configs.end())
@@ -367,17 +338,17 @@ bool ThreadSafeMultiPoolAllocator::GenerateBanksByCache(MemoryManager& mmgr)
     auto nameID = name.GetID();
     auto& cacheItem = mmgr.LookUpMultiPoolConfig(nameID);
     if (cacheItem.uniqueName != nameID)
+    {
         return false;
+    }
 
     auto& configs = cacheItem.configs;
     for (auto& config : configs)
     {
         InlineStringBuilder<1024> str;
-        str << name << '_' << config.blockSize
-            << '_' << config.numberOfBlocks;
+        str << name << '_' << config.blockSize << '_' << config.numberOfBlocks;
 
-        banks.emplace_back(str.c_str()
-            , config.blockSize, config.numberOfBlocks);
+        banks.emplace_back(str.c_str(), config.blockSize, config.numberOfBlocks);
     }
 
     return true;
@@ -392,13 +363,19 @@ size_t ThreadSafeMultiPoolAllocator::GetBankIndex(size_t nBytes) const
     {
         auto& bank = banks[i];
         if (nBytes > bank.GetBlockSize())
+        {
             continue;
+        }
 
-        if (bank.GetAvailableBlocks() <=0)
+        if (bank.GetAvailableBlocks() <= 0)
+        {
             continue;
+        }
 
         if (bank.GetBlockSize() > doubleSize)
+        {
             return len;
+        }
 
         return i;
     }
@@ -433,7 +410,8 @@ size_t ThreadSafeMultiPoolAllocator::CalculateBlockSize(size_t requested) const
     return blockSize;
 }
 
-size_t ThreadSafeMultiPoolAllocator::CalculateNumberOfBlocks(size_t bankSize, size_t blockSize) const
+size_t
+ThreadSafeMultiPoolAllocator::CalculateNumberOfBlocks(size_t bankSize, size_t blockSize) const
 {
     size_t numberOfBlocks = (bankSize + blockSize - 1) / blockSize;
 
@@ -467,20 +445,18 @@ void ThreadSafeMultiPoolAllocator::GenerateBank(size_t blockSize, size_t numberO
     }
 
     auto log = Logger::Get(name);
-    log.Out(ELogLevel::Verbose, [&str](auto& ls)
-    {
-        ls << "The bank[" << str.c_str() << "] has been generated. ";
-    });
+    log.Out(
+        ELogLevel::Verbose,
+        [&str](auto& ls) { ls << "The bank[" << str.c_str() << "] has been generated. "; });
 
     const auto incCapacity = blockSize * numberOfBlocks;
     auto& mmgr = MemoryManager::GetInstance();
-    mmgr.Update(GetID(), [incCapacity](auto& allocProxy)
-    {
-        allocProxy.stats.capacity += incCapacity;
-    }, "A new bank is added.");
+    mmgr.Update(
+        GetID(), [incCapacity](auto& allocProxy) { allocProxy.stats.capacity += incCapacity; },
+        "A new bank is added.");
 }
 
-} // HE
+} // namespace HE
 
 #ifdef __UNIT_TEST__
 #include "AllocatorScope.h"
@@ -493,149 +469,173 @@ namespace HE
 
 void ThreadSafeMultiPoolAllocatorTest::Prepare()
 {
-    AddTest("Basic Construction", [this](auto& ls)
-    {
-        ThreadSafeMultiPoolAllocator allocator("TC0 ThreadSafeMultiPoolAlloc"
-            , {{64, 1024}, {128, 1024}, {256, 1024}, {512, 1024}, {1024, 1024}, {2048, 1024}, {4096, 1024} });
-
-#ifdef PROFILE_ENABLED
-        auto& mmgr = MemoryManager::GetInstance();
-        auto stat = mmgr.GetAllocatorStat(allocator.GetID());
-        ls << "Capacity = " << stat.capacity << lf;
-#endif // PROFILE_ENABLED
-
-        AllocatorScope scope(allocator);
-    });
-
-    AddTest("Allocation 0", [this](auto& ls)
-    {
-        ThreadSafeMultiPoolAllocator allocator("TC1 ThreadSafeMultiPoolAlloc"
-            , {{64, 1024}, {128, 1024}, {256, 1024}, {512, 1024}, {1024, 1024}, {2048, 1024}, {4096, 1024} });
-
-#ifdef PROFILE_ENABLED
-        auto& mmgr = MemoryManager::GetInstance();
-        auto stat = mmgr.GetAllocatorStat(allocator.GetID());
-        ls << "Capacity = " << stat.capacity << lf;
-#endif // PROFILE_ENABLED
-
-        AllocatorScope scope(allocator);
-        mmgr.AllocateBytes(0);
-    });
-
-    AddTest("Multiple Allocations & Fallback", [this](auto& ls)
-    {
-        ThreadSafeMultiPoolAllocator allocator("TC2 ThreadSafeMultiPoolAlloc"
-            , {{64, 1024}, {128, 1024}, {256, 1024}, {512, 1024}, {1024, 1024}, {2048, 1024}, {4096, 1024} });
-
-        auto& mmgr = MemoryManager::GetInstance();
-
-#ifdef PROFILE_ENABLED
-        auto stat = mmgr.GetAllocatorStat(allocator.GetID());
-        ls << "Capacity = " << stat.capacity << lf;
-#endif // PROFILE_ENABLED
-
-        AllocatorScope scope(allocator);
-
-        void* pointers[] = {
-            mmgr.AllocateBytes(0),
-            mmgr.AllocateBytes(8),
-            mmgr.AllocateBytes(16),
-            mmgr.AllocateBytes(32),
-            mmgr.AllocateBytes(97),
-            mmgr.AllocateBytes(110),
-            mmgr.AllocateBytes(140),
-            mmgr.AllocateBytes(270),
-            mmgr.AllocateBytes(4032),
-            mmgr.AllocateBytes(5000),
-            mmgr.AllocateBytes(8000)
-        };
-
-        for (auto ptr : pointers)
+    AddTest(
+        "Basic Construction",
+        [this](auto& ls)
         {
-            mmgr.DeallocateBytes(ptr, 0);
-        }
+            ThreadSafeMultiPoolAllocator allocator(
+                "TC0 ThreadSafeMultiPoolAlloc", {
+                                                    {  64, 1024},
+                                                    { 128, 1024},
+                                                    { 256, 1024},
+                                                    { 512, 1024},
+                                                    {1024, 1024},
+                                                    {2048, 1024},
+                                                    {4096, 1024}
+            });
 
 #ifdef PROFILE_ENABLED
-        if (stat.fallbackCount != 2)
-        {
-            ls << "Fallback count mismatched. FallbackCount = "
-                << stat.fallbackCount << ", but 2 expected." << lferr;
-        }
+            auto& mmgr = MemoryManager::GetInstance();
+            auto stat = mmgr.GetAllocatorStat(allocator.GetID());
+            ls << "Capacity = " << stat.capacity << lf;
 #endif // PROFILE_ENABLED
-    });
 
-    AddTest("Performance", [this](auto& ls)
-    {
-        Time::TDuration heDuration;
-        Time::TDuration stdDuration;
+            AllocatorScope scope(allocator);
+        });
 
-        constexpr size_t repeatCount = 100000;
-
-        ThreadSafeMultiPoolAllocator allocator("PerfTestMultiPoolAlloc");
-
+    AddTest(
+        "Allocation 0",
+        [this](auto& ls)
         {
-            AllocatorScope allocScope(allocator);
-            Time::ScopedTime timer(heDuration);
+            ThreadSafeMultiPoolAllocator allocator(
+                "TC1 ThreadSafeMultiPoolAlloc", {
+                                                    {  64, 1024},
+                                                    { 128, 1024},
+                                                    { 256, 1024},
+                                                    { 512, 1024},
+                                                    {1024, 1024},
+                                                    {2048, 1024},
+                                                    {4096, 1024}
+            });
 
-            int strLen = 1;
-            HSTL::HVector<HSTL::HString> v;
-            for (size_t i = 0; i < repeatCount; ++i)
+#ifdef PROFILE_ENABLED
+            auto& mmgr = MemoryManager::GetInstance();
+            auto stat = mmgr.GetAllocatorStat(allocator.GetID());
+            ls << "Capacity = " << stat.capacity << lf;
+#endif // PROFILE_ENABLED
+
+            AllocatorScope scope(allocator);
+            mmgr.AllocateBytes(0);
+        });
+
+    AddTest(
+        "Multiple Allocations & Fallback",
+        [this](auto& ls)
+        {
+            ThreadSafeMultiPoolAllocator allocator(
+                "TC2 ThreadSafeMultiPoolAlloc", {
+                                                    {  64, 1024},
+                                                    { 128, 1024},
+                                                    { 256, 1024},
+                                                    { 512, 1024},
+                                                    {1024, 1024},
+                                                    {2048, 1024},
+                                                    {4096, 1024}
+            });
+
+            auto& mmgr = MemoryManager::GetInstance();
+
+#ifdef PROFILE_ENABLED
+            auto stat = mmgr.GetAllocatorStat(allocator.GetID());
+            ls << "Capacity = " << stat.capacity << lf;
+#endif // PROFILE_ENABLED
+
+            AllocatorScope scope(allocator);
+
+            void* pointers[] = {
+                mmgr.AllocateBytes(0),    mmgr.AllocateBytes(8),   mmgr.AllocateBytes(16),
+                mmgr.AllocateBytes(32),   mmgr.AllocateBytes(97),  mmgr.AllocateBytes(110),
+                mmgr.AllocateBytes(140),  mmgr.AllocateBytes(270), mmgr.AllocateBytes(4032),
+                mmgr.AllocateBytes(5000), mmgr.AllocateBytes(8000)};
+
+            for (auto ptr : pointers)
             {
-                auto& str = v.emplace_back();
-                for (int j = 0; j < strLen; ++j)
+                mmgr.DeallocateBytes(ptr, 0);
+            }
+
+#ifdef PROFILE_ENABLED
+            if (stat.fallbackCount != 2)
+            {
+                ls << "Fallback count mismatched. FallbackCount = " << stat.fallbackCount
+                   << ", but 2 expected." << lferr;
+            }
+#endif // PROFILE_ENABLED
+        });
+
+    AddTest(
+        "Performance",
+        [this](auto& ls)
+        {
+            Time::TDuration heDuration;
+            Time::TDuration stdDuration;
+
+            constexpr size_t repeatCount = 100000;
+
+            ThreadSafeMultiPoolAllocator allocator("PerfTestMultiPoolAlloc");
+
+            {
+                AllocatorScope allocScope(allocator);
+                Time::ScopedTime timer(heDuration);
+
+                int strLen = 1;
+                HSTL::HVector<HSTL::HString> v;
+                for (size_t i = 0; i < repeatCount; ++i)
                 {
-                    char ch = 'a' + j;
-                    if (ch == '\0')
+                    auto& str = v.emplace_back();
+                    for (int j = 0; j < strLen; ++j)
                     {
-                        ch = 'a';
-                        strLen = 1;
+                        char ch = 'a' + j;
+                        if (ch == '\0')
+                        {
+                            ch = 'a';
+                            strLen = 1;
+                        }
+
+                        str.push_back(ch);
                     }
 
-                    str.push_back(ch);
+                    ++strLen;
                 }
-
-                ++strLen;
             }
-        }
 
-        {
-            Time::ScopedTime timer(stdDuration);
-
-            int strLen = 1;
-            std::vector<std::string> v;
-            for (size_t i = 0; i < repeatCount; ++i)
             {
-                auto& str = v.emplace_back();
-                for (int j = 0; j < strLen; ++j)
+                Time::ScopedTime timer(stdDuration);
+
+                int strLen = 1;
+                std::vector<std::string> v;
+                for (size_t i = 0; i < repeatCount; ++i)
                 {
-                    char ch = 'a' + j;
-                    if (ch == '\0')
+                    auto& str = v.emplace_back();
+                    for (int j = 0; j < strLen; ++j)
                     {
-                        ch = 'a';
-                        strLen = 1;
+                        char ch = 'a' + j;
+                        if (ch == '\0')
+                        {
+                            ch = 'a';
+                            strLen = 1;
+                        }
+
+                        str.push_back(ch);
                     }
 
-                    str.push_back(ch);
+                    ++strLen;
                 }
-
-                ++strLen;
             }
-        }
 
-        float heSec = Time::ToFloat(heDuration);
-        float stdSec = Time::ToFloat(stdDuration);
+            float heSec = Time::ToFloat(heDuration);
+            float stdSec = Time::ToFloat(stdDuration);
 
-        ls << "Performance: ThreadSafeMultiPoolAllocator = " << heSec
-            << " sec, std malloc = " << stdSec << " sec" << lf;
+            ls << "Performance: ThreadSafeMultiPoolAllocator = " << heSec
+               << " sec, std malloc = " << stdSec << " sec" << lf;
 
-        if (heSec > stdSec)
-        {
-            ls << "ThreadSafeMultiPoolAllocator is slower than std malloc."
-                << " ThreadSafeMultiPoolAllocator  = " << heSec
-                << " sec, std malloc = " << stdSec << " sec" << lfwarn;
-        }
-    });
+            if (heSec > stdSec)
+            {
+                ls << "ThreadSafeMultiPoolAllocator is slower than std malloc."
+                   << " ThreadSafeMultiPoolAllocator  = " << heSec
+                   << " sec, std malloc = " << stdSec << " sec" << lfwarn;
+            }
+        });
 }
 
-} // HE
+} // namespace HE
 #endif //__UNIT_TEST__

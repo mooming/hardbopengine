@@ -7,14 +7,13 @@ namespace HE
 {
 
 MultiPoolAllocatorConfig::MultiPoolAllocatorConfig(StaticStringID id, TPoolConfigs&& inConfigs)
-    : uniqueName(id)
-    , configs(std::move(inConfigs))
+    : uniqueName(id), configs(std::move(inConfigs))
 {
 }
 
-bool MultiPoolAllocatorConfig::operator < (const MultiPoolAllocatorConfig& rhs) const
+bool MultiPoolAllocatorConfig::operator<(const MultiPoolAllocatorConfig& rhs) const
 {
     return uniqueName < rhs.uniqueName;
 }
 
-} // HE
+} // namespace HE

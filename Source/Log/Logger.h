@@ -2,11 +2,11 @@
 
 #pragma once
 
+#include "HSTL/HString.h"
+#include "HSTL/HUnorderedMap.h"
+#include "HSTL/HVector.h"
 #include "LogLevel.h"
 #include "LogLine.h"
-#include "HSTL/HString.h"
-#include "HSTL/HVector.h"
-#include "HSTL/HUnorderedMap.h"
 #include "Memory/MultiPoolAllocator.h"
 #include "Memory/ThreadSafeMultiPoolAllocator.h"
 #include "String/InlineStringBuilder.h"
@@ -28,7 +28,7 @@ class TaskSystem;
 
 class Logger final
 {
-public:
+  public:
     using TString = HSTL::HString;
     using TLogBuffer = HSTL::HVector<LogLine>;
     using TTextBuffer = HSTL::HVector<TString>;
@@ -40,19 +40,25 @@ public:
     using TLogFilter = std::function<bool(ELogLevel)>;
     using TFilters = HSTL::HUnorderedMap<StaticString, TLogFilter>;
 
-public:
+  public:
     struct SimpleLogger final
     {
         const StaticString category;
         const ELogLevel level;
 
         SimpleLogger(StaticString category, ELogLevel level = ELogLevel::Info);
-        void Out(const TLogFunction& logFunc) const ;
+        void Out(const TLogFunction& logFunc) const;
         void Out(ELogLevel level, const TLogFunction& logFunc) const;
-        
-        inline void OutWarning(const TLogFunction& logFunc) const { Out(ELogLevel::Warning, logFunc); }
+
+        inline void OutWarning(const TLogFunction& logFunc) const
+        {
+            Out(ELogLevel::Warning, logFunc);
+        }
         inline void OutError(const TLogFunction& logFunc) const { Out(ELogLevel::Error, logFunc); }
-        inline void OutFatalError(const TLogFunction& logFunc) const { Out(ELogLevel::FatalError, logFunc); }
+        inline void OutFatalError(const TLogFunction& logFunc) const
+        {
+            Out(ELogLevel::FatalError, logFunc);
+        }
 
         inline void Out(const char* text) const
         {
@@ -80,7 +86,7 @@ public:
         }
     };
 
-private:
+  private:
     static Logger* instance;
 
     MultiPoolAllocator allocator;
@@ -101,21 +107,21 @@ private:
 
     std::mutex filterLock;
     std::mutex inputLock;
-    
-public:
+
+  public:
     static Logger& Get();
     static SimpleLogger Get(StaticString category, ELogLevel level = ELogLevel::Info);
 
-public:
+  public:
     Logger(const Logger&) = delete;
     Logger(Logger&&) = delete;
-    Logger& operator= (const Logger&) = delete;
-    Logger& operator= (Logger&&) = delete;
+    Logger& operator=(const Logger&) = delete;
+    Logger& operator=(Logger&&) = delete;
 
-public:
+  public:
     Logger(Engine& engine, const char* path, const char* filename);
     ~Logger();
-    
+
     StaticString GetName() const;
     void StartTask(TaskSystem& taskSys);
     void StopTask(TaskSystem& taskSys);
@@ -128,14 +134,14 @@ public:
     void ReportMemoryConfiguration();
 #endif // PROFILE_ENABLED
 
-private:
+  private:
     void ProcessBuffer();
     void FlushBuffer(const TTextBuffer& buffer);
-    
+
     void WriteLog(const TTextBuffer& buffer);
     void PrintStdIO(const TTextBuffer& buffer) const;
 };
 
 using TLog = Logger::SimpleLogger;
 using LogStream = Logger::TLogStream;
-} // HE
+} // namespace HE

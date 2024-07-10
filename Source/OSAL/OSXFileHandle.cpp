@@ -2,9 +2,9 @@
 
 #include "OSFileHandle.h"
 
+#include "Config/BuildConfig.h"
 #include "Intrinsic.h"
 #include "OSInputOutput.h"
-#include "Config/BuildConfig.h"
 
 
 #ifdef PLATFORM_OSX
@@ -29,15 +29,14 @@ void SetHandle(FileHandle& outHandle, int fd)
     data = fd;
 }
 
-} // Anonymous
+} // namespace
 
 FileHandle::FileHandle()
 {
     Invalidate();
 }
 
-FileHandle::FileHandle(FileHandle&& rhs)
-    : data(rhs.data)
+FileHandle::FileHandle(FileHandle&& rhs) : data(rhs.data)
 {
     rhs.Invalidate();
 }
@@ -46,7 +45,9 @@ FileHandle::~FileHandle()
 {
     auto fd = GetHandle(*this);
     if (fd < 0)
+    {
         return;
+    }
 
     Close(std::move(*this));
 }
@@ -55,13 +56,17 @@ size_t FileHandle::GetFileSize() const
 {
     auto fd = GetHandle(*this);
     if (unlikely(fd < 0))
+    {
         return 0;
+    }
 
     struct stat statValue;
     int result = fstat(fd, &statValue);
 
     if (unlikely(result != 0))
+    {
         return 0;
+    }
 
     static_assert(sizeof(size_t) == sizeof(statValue.st_size));
 
@@ -79,6 +84,5 @@ void FileHandle::Invalidate()
     SetHandle(*this, -1);
 }
 
-} // OS
+} // namespace OS
 #endif // PLATFORM_OSX
-

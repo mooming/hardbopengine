@@ -2,11 +2,11 @@
 
 #include "OSInputOutput.h"
 
+#include "Log/Logger.h"
 #include "OSFileHandle.h"
 #include "OSFileOpenMode.h"
 #include "OSMapSyncMode.h"
 #include "OSProtectionMode.h"
-#include "Log/Logger.h"
 #include "String/StringUtil.h"
 
 
@@ -15,9 +15,9 @@
 #include <cstdio>
 #include <cstring>
 #include <fcntl.h>
-#include <unistd.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
+#include <unistd.h>
 
 
 namespace OS
@@ -38,7 +38,7 @@ void SetHandle(FileHandle& outHandle, int fd)
     data = fd;
 }
 
-} // FileHandleHelper
+} // namespace FileHandleHelper
 
 bool Open(FileHandle& outHandle, HE::StaticString filePath, FileOpenMode openMode)
 {
@@ -50,11 +50,11 @@ bool Open(FileHandle& outHandle, HE::StaticString filePath, FileOpenMode openMod
         using namespace StringUtil;
         static auto log = Logger::Get(ToFunctionName(__PRETTY_FUNCTION__));
 
-        log.OutWarning([&filePath](auto& ls)
-        {
-            ls << "File open failed. path = " << filePath << ", reason("
-                << std::strerror(errno) << ')';
-        });
+        log.OutWarning(
+            [&filePath](auto& ls) {
+                ls << "File open failed. path = " << filePath << ", reason(" << std::strerror(errno)
+                   << ')';
+            });
 
         return false;
     }
@@ -79,10 +79,7 @@ bool Close(FileHandle&& inHandle)
 
     if (unlikely(fd < 0))
     {
-        log.OutWarning([fd](auto& ls)
-        {
-            ls << "File Close (fd:" << fd << ") failed.";
-        });
+        log.OutWarning([fd](auto& ls) { ls << "File Close (fd:" << fd << ") failed."; });
 
         return false;
     }
@@ -90,12 +87,12 @@ bool Close(FileHandle&& inHandle)
     auto result = close(fd);
     if (unlikely(result < 0))
     {
-        log.OutWarning([fd, result](auto& ls)
-        {
-            ls << "File Close (fd:" << fd
-                << ") failed. result = " << result << ", reason("
-                << std::strerror(errno) << ')';
-        });
+        log.OutWarning(
+            [fd, result](auto& ls)
+            {
+                ls << "File Close (fd:" << fd << ") failed. result = " << result << ", reason("
+                   << std::strerror(errno) << ')';
+            });
 
         return false;
     }
@@ -126,30 +123,21 @@ size_t Read(const FileHandle& handle, void* buffer, size_t size)
     int fd = GetHandle(handle);
     if (unlikely(fd < 0))
     {
-        log.OutWarning([fd](auto& ls)
-        {
-            ls << "Invalid file handle (fd:" << fd << ").";
-        });
+        log.OutWarning([fd](auto& ls) { ls << "Invalid file handle (fd:" << fd << ")."; });
 
         return 0;
     }
 
     if (unlikely(buffer == nullptr))
     {
-        log.OutWarning([](auto& ls)
-        {
-            ls << "Null buffer error.";
-        });
+        log.OutWarning([](auto& ls) { ls << "Null buffer error."; });
 
         return 0;
     }
 
     if (unlikely(size == 0))
     {
-        log.OutWarning([](auto& ls)
-        {
-            ls << "Zero size error.";
-        });
+        log.OutWarning([](auto& ls) { ls << "Zero size error."; });
 
         return 0;
     }
@@ -157,12 +145,12 @@ size_t Read(const FileHandle& handle, void* buffer, size_t size)
     auto result = read(fd, buffer, size);
     if (unlikely(result != size))
     {
-        log.OutWarning([size, result](auto& ls)
-        {
-            ls << "Read failed. Read done " << result << ", but "
-                << size << " is expected. Reason("
-                << std::strerror(errno) << ')';
-        });
+        log.OutWarning(
+            [size, result](auto& ls)
+            {
+                ls << "Read failed. Read done " << result << ", but " << size
+                   << " is expected. Reason(" << std::strerror(errno) << ')';
+            });
 
         return result;
     }
@@ -181,30 +169,21 @@ size_t Write(const FileHandle& handle, void* buffer, size_t size)
     int fd = GetHandle(handle);
     if (unlikely(fd < 0))
     {
-        log.OutWarning([fd](auto& ls)
-        {
-            ls << "Invalid file handle (fd:" << fd << ").";
-        });
+        log.OutWarning([fd](auto& ls) { ls << "Invalid file handle (fd:" << fd << ")."; });
 
         return 0;
     }
 
     if (unlikely(buffer == nullptr))
     {
-        log.OutWarning([](auto& ls)
-        {
-            ls << "Null buffer error.";
-        });
+        log.OutWarning([](auto& ls) { ls << "Null buffer error."; });
 
         return 0;
     }
 
     if (unlikely(size == 0))
     {
-        log.OutWarning([](auto& ls)
-        {
-            ls << "Zero size error.";
-        });
+        log.OutWarning([](auto& ls) { ls << "Zero size error."; });
 
         return 0;
     }
@@ -212,12 +191,12 @@ size_t Write(const FileHandle& handle, void* buffer, size_t size)
     auto result = write(fd, buffer, size);
     if (unlikely(result != size))
     {
-        log.OutWarning([size, result](auto& ls)
-        {
-            ls << "Write failed. Written " << result << ", but "
-                << size << " is expected. Reason("
-                << std::strerror(errno) << ')';
-        });
+        log.OutWarning(
+            [size, result](auto& ls)
+            {
+                ls << "Write failed. Written " << result << ", but " << size
+                   << " is expected. Reason(" << std::strerror(errno) << ')';
+            });
 
         return result;
     }
@@ -236,10 +215,7 @@ bool Truncate(const FileHandle& handle, size_t size)
     int fd = GetHandle(handle);
     if (unlikely(fd < 0))
     {
-        log.OutWarning([fd](auto& ls)
-        {
-            ls << "Invalid file handle (fd:" << fd << ").";
-        });
+        log.OutWarning([fd](auto& ls) { ls << "Invalid file handle (fd:" << fd << ")."; });
 
         return 0;
     }
@@ -247,11 +223,12 @@ bool Truncate(const FileHandle& handle, size_t size)
     auto result = ftruncate(fd, size);
     if (unlikely(result != 0))
     {
-        log.OutWarning([fd, size](auto& ls)
-        {
-            ls << "Failed to truncate the file(" << fd << ") with the size "
-                << size << ". Reason(" << std::strerror(errno) << ')';
-        });
+        log.OutWarning(
+            [fd, size](auto& ls)
+            {
+                ls << "Failed to truncate the file(" << fd << ") with the size " << size
+                   << ". Reason(" << std::strerror(errno) << ')';
+            });
 
         return 0;
     }
@@ -269,20 +246,14 @@ void* MapMemory(FileHandle& fileHandle, size_t size, ProtectionMode protection, 
     int fd = FileHandleHelper::GetHandle(fileHandle);
     if (unlikely(fd < 0))
     {
-        log.OutWarning([fd](auto& ls)
-        {
-            ls << "Invalid file handle. fd = " << fd;
-        });
+        log.OutWarning([fd](auto& ls) { ls << "Invalid file handle. fd = " << fd; });
 
         return nullptr;
     }
 
     if (unlikely(size == 0))
     {
-        log.OutWarning([size](auto& ls)
-        {
-            ls << "Invalid size = " << size;
-        });
+        log.OutWarning([size](auto& ls) { ls << "Invalid size = " << size; });
 
         return nullptr;
     }
@@ -290,14 +261,13 @@ void* MapMemory(FileHandle& fileHandle, size_t size, ProtectionMode protection, 
     auto ptr = mmap(nullptr, size, protection.value, MAP_SHARED, fd, offset);
     if (unlikely(ptr == MAP_FAILED))
     {
-        log.OutError([fd, size, protection, offset](auto& ls)
-        {
-            ls << "Failed to map the file(" << fd
-                << ") to a memory address. ErrorMsg("
-                << std::strerror(errno) << ") with arguments size = " << size
-                << ", protection = " << protection.value
-                << ", offset = " << offset;
-        });
+        log.OutError(
+            [fd, size, protection, offset](auto& ls)
+            {
+                ls << "Failed to map the file(" << fd << ") to a memory address. ErrorMsg("
+                   << std::strerror(errno) << ") with arguments size = " << size
+                   << ", protection = " << protection.value << ", offset = " << offset;
+            });
 
         return nullptr;
     }
@@ -308,10 +278,14 @@ void* MapMemory(FileHandle& fileHandle, size_t size, ProtectionMode protection, 
 bool MapSync(void* ptr, size_t size, MapSyncMode syncMode)
 {
     if (unlikely(ptr == nullptr))
+    {
         return false;
+    }
 
     if (unlikely(size == 0))
+    {
         return true;
+    }
 
     auto rc = msync(ptr, size, syncMode.value);
     if (unlikely(rc != 0))
@@ -319,12 +293,11 @@ bool MapSync(void* ptr, size_t size, MapSyncMode syncMode)
         using namespace HE;
         using namespace StringUtil;
         static auto log = Logger::Get(ToFunctionName(__PRETTY_FUNCTION__));
-        log.OutError([ptr](auto& ls)
-        {
-            ls << "Failed to set sync. ptr = " << ptr
-                << ", ErrorMsg("
-                << std::strerror(errno) << ')';
-        });
+        log.OutError(
+            [ptr](auto& ls) {
+                ls << "Failed to set sync. ptr = " << ptr << ", ErrorMsg(" << std::strerror(errno)
+                   << ')';
+            });
     }
 
     return true;
@@ -339,10 +312,7 @@ bool UnmapMemory(void* ptr, size_t size)
 
     if (unlikely(ptr == nullptr))
     {
-        log.OutWarning([](auto& ls)
-        {
-            ls << "Null pointer input.";
-        });
+        log.OutWarning([](auto& ls) { ls << "Null pointer input."; });
 
         return false;
     }
@@ -350,15 +320,16 @@ bool UnmapMemory(void* ptr, size_t size)
     auto result = munmap(ptr, size);
     if (unlikely(result != 0))
     {
-        log.OutError([ptr, size](auto& ls)
-        {
-            ls << "Failed to unmap(" << ptr << ") with the size " << size
-                << ". ErrorMsg(" << std::strerror(errno) << ')';
-        });
+        log.OutError(
+            [ptr, size](auto& ls)
+            {
+                ls << "Failed to unmap(" << ptr << ") with the size " << size << ". ErrorMsg("
+                   << std::strerror(errno) << ')';
+            });
     }
 
     return true;
 }
 
-} // OS
+} // namespace OS
 #endif // PLATFORM_OSX

@@ -10,55 +10,43 @@
 
 namespace OS
 {
-	class File
-	{
-	private:
-		std::string path;
+class File
+{
+  private:
+    std::string path;
 
-	public:
-		explicit File(const char* path)
-			: path(path)
-		{
-		}
-		
-		File(const File& src)
-			: path(src.path)
-		{
-		}
+  public:
+    explicit File(const char* path) : path(path) {}
 
-		File(File&& src)
-			: path(std::move(src.path))
-		{
-		}
+    File(const File& src) : path(src.path) {}
 
-		File& operator= (const File& src)
-		{
-			path = src.path;
+    File(File&& src) : path(std::move(src.path)) {}
 
-			return *this;
-		}
+    File& operator=(const File& src)
+    {
+        path = src.path;
 
-		File& operator= (File&& src)
-		{
-			path = std::move(src.path);
+        return *this;
+    }
 
-			return *this;
-		}
+    File& operator=(File&& src)
+    {
+        path = std::move(src.path);
 
-		inline bool operator < (const File& rhs) const
-		{
-			return path < rhs.path;
-		}
+        return *this;
+    }
 
-		friend std::ostream& operator << (std::ostream& os, const File& file)
-		{
-			os << file.path;
+    inline bool operator<(const File& rhs) const { return path < rhs.path; }
 
-			return os;
-		}
+    friend std::ostream& operator<<(std::ostream& os, const File& file)
+    {
+        os << file.path;
 
-		inline auto& GetPath() const { return path; }
-	};
+        return os;
+    }
 
-	using Files = std::vector<File>;
-} // OS
+    inline auto& GetPath() const { return path; }
+};
+
+using Files = std::vector<File>;
+} // namespace OS

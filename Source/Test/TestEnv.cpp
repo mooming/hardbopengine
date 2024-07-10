@@ -1,10 +1,10 @@
 // Created by mooming.go@gmail.com, 2017
 
-#include "TestCollection.h"
 #include "TestEnv.h"
 #include "Log/Logger.h"
 #include "System/Debug.h"
 #include "System/Exception.h"
+#include "TestCollection.h"
 #include <iostream>
 #include <sstream>
 
@@ -21,7 +21,7 @@ void TestEnv::Start()
 {
     invalidTests.clear();
     failedTests.clear();
-    
+
     for (auto& testCase : tests)
     {
         Assert(testCase != nullptr);
@@ -35,7 +35,7 @@ bool TestEnv::ExecuteTest(TestCollection& testCollection)
 {
 #ifdef __DEBUG__
     testCollection.Start();
-#else // _DEBUG__
+#else  // _DEBUG__
     try
     {
         testCollection.Start();
@@ -43,10 +43,7 @@ bool TestEnv::ExecuteTest(TestCollection& testCollection)
     catch (Exception)
     {
         auto log = Logger::Get("TestEnv");
-        log.OutError([](auto& ls)
-        {
-            ls << "Exception occurred!";
-        });
+        log.OutError([](auto& ls) { ls << "Exception occurred!"; });
     }
 #endif // __DEBUG__
 
@@ -86,7 +83,7 @@ bool TestEnv::ExecuteTest(TestCollection& testCollection)
                 warningMessages.push_back(ss.str());
                 ss.str("");
             }
-            
+
             auto& errMessages = testCollection.GetErrorMessages();
             for (auto& msg : errMessages)
             {
@@ -104,19 +101,20 @@ void TestEnv::Report()
 {
     using namespace std;
     auto log = Logger::Get("TestEnv");
-    
-    log.Out([this](auto& ls)
-    {
-        ls << hendl;
-        ls << "##### TEST COMPLETED #####" << hendl;
-        ls << "# Total Count = " << tests.size() << hendl;
-        ls << "# Test Done = " << testedCount << hendl;
-        ls << "# Invalid Test = " << invalidTests.size() << hendl;
-        ls << "# Pass = " << passCount << hendl;
-        ls << "# Fail = " << failedTests.size() << hendl;
-        ls << "##### TEST Report Done #####" << hendl;
-    });
-    
+
+    log.Out(
+        [this](auto& ls)
+        {
+            ls << hendl;
+            ls << "##### TEST COMPLETED #####" << hendl;
+            ls << "# Total Count = " << tests.size() << hendl;
+            ls << "# Test Done = " << testedCount << hendl;
+            ls << "# Invalid Test = " << invalidTests.size() << hendl;
+            ls << "# Pass = " << passCount << hendl;
+            ls << "# Fail = " << failedTests.size() << hendl;
+            ls << "##### TEST Report Done #####" << hendl;
+        });
+
     if (!invalidTests.empty())
     {
         log.OutError("= Invalid Tests =============================");
@@ -128,7 +126,7 @@ void TestEnv::Report()
 
         log.OutError("=============================================");
     }
-    
+
     if (!failedTests.empty())
     {
         log.OutError("= Failed Tests ==============================");
@@ -136,10 +134,7 @@ void TestEnv::Report()
         int index = 1;
         for (auto& item : failedTests)
         {
-            log.OutError([index, &item](auto& ls)
-            {
-                ls << index << ": "<< item;
-            });
+            log.OutError([index, &item](auto& ls) { ls << index << ": " << item; });
 
             ++index;
         }
@@ -167,7 +162,7 @@ void TestEnv::Report()
         {
             log.OutWarning([&item](auto& ls) { ls << item; });
         }
-        
+
         log.OutWarning("=============================================\n");
     }
 

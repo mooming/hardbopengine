@@ -16,5 +16,4 @@ struct MapSyncMode final
     void Invalidate();
 };
 
-} // OS
-
+} // namespace OS

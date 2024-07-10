@@ -17,17 +17,17 @@ class BufferOutputStream final
 {
     using This = BufferOutputStream;
 
-private:
+  private:
     Buffer& buffer;
     size_t cursor;
     size_t errorCount;
     std::thread::id threadID;
 
-public:
+  public:
     BufferOutputStream(const BufferOutputStream&) = delete;
     BufferOutputStream(BufferOutputStream&&) = delete;
 
-public:
+  public:
     BufferOutputStream(Buffer& buffer);
     ~BufferOutputStream() = default;
 
@@ -36,59 +36,52 @@ public:
     inline bool HasError() const { return errorCount > 0; }
     inline void ClearErrorCount() { errorCount = 0; }
     inline bool IsDone() const { return cursor >= buffer.GetSize(); }
-    
-public:
-    This& operator << (char value);
-    This& operator << (int8_t value);
-    This& operator << (uint8_t value);
-    This& operator << (int16_t value);
-    This& operator << (uint16_t value);
-    This& operator << (int32_t value);
-    This& operator << (uint32_t value);
-    This& operator << (int64_t value);
-    This& operator << (uint64_t value);
-    This& operator << (size_t value);
-    This& operator << (float value);
-    This& operator << (double value);
-    This& operator << (long double value);
-    This& operator << (const char* str);
+
+  public:
+    This& operator<<(char value);
+    This& operator<<(int8_t value);
+    This& operator<<(uint8_t value);
+    This& operator<<(int16_t value);
+    This& operator<<(uint16_t value);
+    This& operator<<(int32_t value);
+    This& operator<<(uint32_t value);
+    This& operator<<(int64_t value);
+    This& operator<<(uint64_t value);
+    This& operator<<(size_t value);
+    This& operator<<(float value);
+    This& operator<<(double value);
+    This& operator<<(long double value);
+    This& operator<<(const char* str);
 
     template <typename T, size_t N>
-    This& operator << (T (&array)[N])
+    This& operator<<(T (&array)[N])
     {
         Put<T>(array, N);
         return *this;
     }
 
     template <size_t N>
-    This& operator << (const HSTL::HInlineString<N>& str)
+    This& operator<<(const HSTL::HInlineString<N>& str)
     {
         return *this << str.c_str();
     }
 
-    inline This& operator << (const HSTL::HString& str)
-    {
-        return *this << str.c_str();
-    }
+    inline This& operator<<(const HSTL::HString& str) { return *this << str.c_str(); }
 
-    inline This& operator << (StaticString str)
-    {
-        return *this << str.c_str();
-    }
+    inline This& operator<<(StaticString str) { return *this << str.c_str(); }
 
-private:
-    inline bool IsValidIndex(size_t index) const
-    {
-        return cursor < buffer.GetSize();
-    }
+  private:
+    inline bool IsValidIndex(size_t index) const { return cursor < buffer.GetSize(); }
 
     template <typename T>
-    void Put (T value)
+    void Put(T value)
     {
         Assert(std::this_thread::get_id() == threadID);
         const size_t size = buffer.GetSize();
         if (cursor >= size)
+        {
             return;
+        }
 
         constexpr size_t tSize = sizeof(T);
         const size_t startIndex = ((cursor + tSize - 1) / tSize) * tSize;
@@ -98,7 +91,9 @@ private:
         if (bufferBase == nullptr)
         {
             if (newIndex <= size)
+            {
                 cursor = newIndex;
+            }
 
             return;
         }
@@ -122,25 +117,29 @@ private:
     }
 
     template <typename T>
-    void Put (const T* value, size_t length)
+    void Put(const T* value, size_t length)
     {
         Assert(std::this_thread::get_id() == threadID);
 
         const size_t size = buffer.GetSize();
         if (cursor >= size)
+        {
             return;
+        }
 
         Put<size_t>(length);
-        
+
         constexpr size_t tSize = sizeof(T);
         const size_t startIndex = ((cursor + tSize - 1) / tSize) * tSize;
         const auto newIndex = startIndex + (tSize * length);
-        
+
         auto bufferBase = buffer.GetData();
         if (bufferBase == nullptr)
         {
             if (newIndex <= size)
+            {
                 cursor = newIndex;
+            }
 
             return;
         }
@@ -167,7 +166,7 @@ private:
     }
 };
 
-} // HE
+} // namespace HE
 
 #ifdef __UNIT_TEST__
 #include "Test/TestCollection.h"
@@ -176,13 +175,12 @@ namespace HE
 {
 class BufferOutputStreamTest : public TestCollection
 {
-public:
+  public:
     BufferOutputStreamTest();
     virtual ~BufferOutputStreamTest() = default;
 
-protected:
+  protected:
     virtual void Prepare() override;
 };
-} // HE
+} // namespace HE
 #endif //__UNIT_TEST__
-

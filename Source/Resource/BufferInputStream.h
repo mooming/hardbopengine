@@ -16,17 +16,17 @@ namespace HE
 
 class BufferInputStream final
 {
-public:
+  public:
     using This = BufferInputStream;
     template <typename T>
     using TVector = HSTL::HVector<T>;
 
-private:
+  private:
     const Buffer& buffer;
     size_t cursor;
     size_t errorCount;
 
-public:
+  public:
     BufferInputStream(const Buffer& buffer);
     ~BufferInputStream() = default;
 
@@ -35,43 +35,40 @@ public:
     inline void ClearErrorCount() { errorCount = 0; }
     inline bool IsDone() const { return cursor >= buffer.GetSize(); }
 
-public:
-    This& operator >> (char& value);
-    This& operator >> (int8_t& value);
-    This& operator >> (uint8_t& value);
-    This& operator >> (int16_t& value);
-    This& operator >> (uint16_t& value);
-    This& operator >> (int32_t& value);
-    This& operator >> (uint32_t& value);
-    This& operator >> (int64_t& value);
-    This& operator >> (uint64_t& value);
-    This& operator >> (size_t& value);
-    This& operator >> (float& value);
-    This& operator >> (double& value);
-    This& operator >> (long double& value);
+  public:
+    This& operator>>(char& value);
+    This& operator>>(int8_t& value);
+    This& operator>>(uint8_t& value);
+    This& operator>>(int16_t& value);
+    This& operator>>(uint16_t& value);
+    This& operator>>(int32_t& value);
+    This& operator>>(uint32_t& value);
+    This& operator>>(int64_t& value);
+    This& operator>>(uint64_t& value);
+    This& operator>>(size_t& value);
+    This& operator>>(float& value);
+    This& operator>>(double& value);
+    This& operator>>(long double& value);
 
-    This& operator >> (StaticString& str);
-    This& operator >> (const HSTL::HString& str);
+    This& operator>>(StaticString& str);
+    This& operator>>(const HSTL::HString& str);
 
     template <typename T, size_t N>
-    This& operator >> (T (&array)[N])
+    This& operator>>(T (&array)[N])
     {
         Get<T>(array, N);
         return *this;
     }
 
     template <typename T, class TContainer = TVector<T>>
-    This& operator >> (TContainer& container)
+    This& operator>>(TContainer& container)
     {
         Get<T>(container);
         return *this;
     }
 
-private:
-    inline bool IsValidIndex(size_t index) const
-    {
-        return cursor < buffer.GetSize();
-    }
+  private:
+    inline bool IsValidIndex(size_t index) const { return cursor < buffer.GetSize(); }
 
     template <typename T>
     void Get(T& value, const T& defaultValue)
@@ -137,7 +134,9 @@ private:
         Get<size_t>(length, 0);
 
         if (length <= 0)
+        {
             return;
+        }
 
         constexpr size_t tSize = sizeof(T);
         const size_t startIndex = ((cursor + tSize - 1) / tSize) * tSize;
@@ -160,7 +159,7 @@ private:
     }
 };
 
-} // HE
+} // namespace HE
 
 #ifdef __UNIT_TEST__
 #include "Test/TestCollection.h"
@@ -169,12 +168,12 @@ namespace HE
 {
 class BufferInputStreamTest : public TestCollection
 {
-public:
+  public:
     BufferInputStreamTest();
     virtual ~BufferInputStreamTest() = default;
 
-protected:
+  protected:
     virtual void Prepare() override;
 };
-} // HE
+} // namespace HE
 #endif //__UNIT_TEST__

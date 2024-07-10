@@ -2,10 +2,10 @@
 
 #pragma once
 
-#include "PoolAllocator.h"
-#include "PoolConfig.h"
 #include "Config/BuildConfig.h"
 #include "HSTL/HVector.h"
+#include "PoolAllocator.h"
+#include "PoolConfig.h"
 #include "String/StaticString.h"
 #include <mutex>
 
@@ -15,14 +15,14 @@ namespace HE
 
 class ThreadSafeMultiPoolAllocator final
 {
-public:
+  public:
     using This = ThreadSafeMultiPoolAllocator;
 
     static constexpr size_t DefaultMinBlock = 16;
     static constexpr size_t DefaultBankUnit = 1024ULL * 1024;
     static constexpr size_t MinNumberOfBlocks = 16;
 
-private:
+  private:
     using TInitializerList = std::initializer_list<PoolConfig>;
 
     TAllocatorID id;
@@ -34,11 +34,13 @@ private:
     size_t bankSize;
     size_t minBlock;
 
-public:
-    ThreadSafeMultiPoolAllocator(const char* name
-        , size_t allocationUnit = DefaultBankUnit, size_t minBlockSize = DefaultMinBlock);
-    ThreadSafeMultiPoolAllocator(const char* name, TInitializerList initialConfigurations
-        , size_t allocationUnit = DefaultBankUnit, size_t minBlockSize = DefaultMinBlock);
+  public:
+    ThreadSafeMultiPoolAllocator(
+        const char* name, size_t allocationUnit = DefaultBankUnit,
+        size_t minBlockSize = DefaultMinBlock);
+    ThreadSafeMultiPoolAllocator(
+        const char* name, TInitializerList initialConfigurations,
+        size_t allocationUnit = DefaultBankUnit, size_t minBlockSize = DefaultMinBlock);
     ~ThreadSafeMultiPoolAllocator();
 
     void* Allocate(size_t size);
@@ -53,7 +55,7 @@ public:
     void ReportConfiguration();
 #endif // PROFILE_ENABLED
 
-private:
+  private:
     bool GenerateBanksByCache(class MemoryManager& mmgr);
     size_t GetBankIndex(size_t nBytes) const;
     size_t GetBankIndex(void* ptr) const;
@@ -61,7 +63,7 @@ private:
     size_t CalculateNumberOfBlocks(size_t bankSize, size_t blockSize) const;
     void GenerateBank(size_t blockSize, size_t numberOfBlocks);
 };
-} // HE
+} // namespace HE
 
 #ifdef __UNIT_TEST__
 
@@ -70,17 +72,13 @@ private:
 
 namespace HE
 {
-class ThreadSafeMultiPoolAllocatorTest
-    : public TestCollection
+class ThreadSafeMultiPoolAllocatorTest : public TestCollection
 {
-public:
-    ThreadSafeMultiPoolAllocatorTest()
-        : TestCollection("ThreadSafeMultiPoolAllocatorTest")
-    {
-    }
+  public:
+    ThreadSafeMultiPoolAllocatorTest() : TestCollection("ThreadSafeMultiPoolAllocatorTest") {}
 
-protected:
+  protected:
     virtual void Prepare() override;
 };
-} // HE
+} // namespace HE
 #endif //__UNIT_TEST__

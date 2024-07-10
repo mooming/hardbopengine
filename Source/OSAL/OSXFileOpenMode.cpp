@@ -42,6 +42,6 @@ void FileOpenMode::SetAppend()
     value |= O_APPEND;
 }
 
-} // OS
+} // namespace OS
 
 #endif // PLATFORM_OSX

@@ -2,11 +2,11 @@
 
 #pragma once
 
+#include "Container/Array.h"
+#include "Memory/Optional.h"
 #include "Task.h"
 #include "TaskHandle.h"
 #include "TaskStream.h"
-#include "Container/Array.h"
-#include "Memory/Optional.h"
 #include <array>
 #include <atomic>
 #include <thread>
@@ -17,7 +17,7 @@ namespace HE
 
 class TaskSystem final
 {
-public:
+  public:
     using Thread = std::thread;
     using ThreadID = std::thread::id;
     using TIndex = TaskHandle::TIndex;
@@ -28,7 +28,7 @@ public:
     static constexpr TIndex MainStreamIndex = 0;
     static constexpr TIndex IOStreamIndex = 1;
 
-private:
+  private:
     struct TaskSlot final
     {
         TKey key = 0;
@@ -36,7 +36,7 @@ private:
     };
 
     std::atomic<bool> isRunning;
-    
+
     const StaticString name;
     const TIndex numHardwareThreads;
     TIndex workerIndexStart;
@@ -50,7 +50,7 @@ private:
     Array<TaskSlot> slots;
     Array<TaskStream> streams;
 
-public:
+  public:
     static TIndex GetNumHardwareThreads();
     static void SetThreadName(StaticString name);
     static void SetStreamIndex(TIndex index);
@@ -58,13 +58,13 @@ public:
     static bool IsMainThread();
     static bool IsIOThread();
 
-public:
+  public:
     TaskSystem();
     ~TaskSystem();
 
     void Initialize();
     void Shutdown();
-    
+
     void PreUpdate();
     void Update();
     void PostUpdate();
@@ -72,7 +72,7 @@ public:
     inline StaticString GetName() const { return name; }
     inline auto& IsRunning() const { return isRunning; }
 
-public:
+  public:
     inline TIndex GetMainTaskStreamIndex() const { return MainStreamIndex; }
     inline TIndex GetIOTaskStreamIndex() const { return IOStreamIndex; }
 
@@ -84,24 +84,25 @@ public:
     inline auto GetWorkerIndexStart() const { return workerIndexStart; }
     inline auto GetNumWorkers() const { return numWorkers; }
     inline StaticString GetCurrentStreamName() const { return GetCurrentThreadName(); }
-    
-public:
+
+  public:
     StaticString GetCurrentThreadName() const;
     StaticString GetStreamName(int index) const;
-    
+
     TIndex GetCurrentStreamIndex() const;
     TIndex GetStreamIndex(ThreadID id) const;
 
-public:
+  public:
     Task* GetTask(TKey key, TIndex taskIndex);
     const Task* GetTask(TKey key, TIndex taskIndex) const;
 
     TaskHandle RegisterTask(TIndex streamIndex, StaticString taskName, Runnable func);
     TaskHandle DispatchTask(StaticString taskName, Runnable func, TIndex streamIndex);
     TaskHandle DispatchTask(StaticString taskName, TaskIndex size, Runnable func);
-    TaskHandle DispatchTask(StaticString taskName, TaskIndex size, Runnable func, TIndex numStreams);
+    TaskHandle
+    DispatchTask(StaticString taskName, TaskIndex size, Runnable func, TIndex numStreams);
 
-private:
+  private:
     void DeregisterTask(TIndex streamIndex, TKey key);
     void DeregisterTaskAsync(TIndex streamIndex, TKey key);
     void ReleaseTask(TKey key, TIndex slotIndex);
@@ -111,7 +112,7 @@ private:
     void Flush();
 };
 
-} // HE
+} // namespace HE
 
 #ifdef __UNIT_TEST__
 #include "Test/TestCollection.h"
@@ -121,14 +122,12 @@ namespace HE
 
 class TaskSystemTest : public TestCollection
 {
-public:
-    TaskSystemTest() : TestCollection("TaskSystemTest")
-    {
-    }
+  public:
+    TaskSystemTest() : TestCollection("TaskSystemTest") {}
 
-protected:
+  protected:
     virtual void Prepare() override;
 };
 
-} // HE
+} // namespace HE
 #endif //__UNIT_TEST__

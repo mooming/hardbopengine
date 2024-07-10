@@ -28,15 +28,18 @@ TString Trim(const TString& str)
 {
     auto start = str.begin();
     auto end = str.end();
-    
+
     while (start != end && std::isspace(*start))
+    {
         ++start;
-    
+    }
+
     do
     {
         --end;
-    } while (std::distance(start, end) > 0 && std::isspace(*end));
-    
+    }
+    while (std::distance(start, end) > 0 && std::isspace(*end));
+
     return TString(start, end + 1);
 }
 
@@ -44,7 +47,7 @@ TString TrimPath(const TString& path)
 {
     char tmp[PATH_MAX + 1];
     auto cStr = path.c_str();
-    
+
     for (size_t i = 0; i < path.length(); ++i)
     {
         if (cStr[i] == '\\')
@@ -56,14 +59,14 @@ TString TrimPath(const TString& path)
             tmp[i] = cStr[i];
         }
     }
-    
+
     if (path.length() > 2 && tmp[path.length() - 2] != '.' && tmp[path.length() - 1] == '/')
     {
         tmp[path.length() - 1] = '\0';
     }
-    
+
     tmp[path.length()] = '\0';
-    
+
     return TString(tmp);
 }
 
@@ -72,17 +75,17 @@ TString ToLowerCase(TString src)
     auto ToLowerChar = [](char ch)
     {
         constexpr char delta = 'A' - 'a';
-        
+
         if ('A' <= ch && ch <= 'Z')
         {
             ch -= delta;
         }
-        
+
         return ch;
     };
-    
+
     std::transform(src.begin(), src.end(), src.begin(), ToLowerChar);
-    
+
     return src;
 }
 
@@ -94,10 +97,12 @@ bool EqualsIgnoreCase(const TString& a, const TString& b)
 bool StartsWith(const TString& src, const TString& startTerm)
 {
     if (src.length() < startTerm.length())
+    {
         return false;
-    
+    }
+
     TString head = src.substr(0, startTerm.length());
-    
+
     return head == startTerm;
 }
 
@@ -109,11 +114,13 @@ bool StartsWithIgnoreCase(const TString& src, const TString& startTerm)
 bool EndsWith(const TString& src, const TString& endTerm)
 {
     if (src.length() < endTerm.length())
+    {
         return false;
-    
+    }
+
     const char* srcStr = src.c_str();
     TString last(srcStr + (src.length() - endTerm.length()));
-    
+
     return last == endTerm;
 }
 
@@ -126,12 +133,12 @@ TString PathToName(const TString& path)
 {
     auto length = path.size();
     using Index = decltype(length);
-    
+
     auto buffer = path.c_str();
-    
+
     bool found = false;
     Index lastIndex = 0;
-    
+
     for (Index i = 0; i < length; ++i)
     {
         const char ch = buffer[i];
@@ -141,22 +148,24 @@ TString PathToName(const TString& path)
             found = true;
         }
     }
-    
+
     if (!found || lastIndex >= (length - 1))
     {
         return path;
     }
-    
+
     return TString(buffer + lastIndex + 1);
 }
 
-void ForEachToken(const char* str
-    , const std::function<void(std::string_view)> func, const char* separators)
+void ForEachToken(
+    const char* str, const std::function<void(std::string_view)> func, const char* separators)
 {
     using namespace HE;
 
     if (unlikely(str == nullptr))
+    {
         return;
+    }
 
     if (unlikely(separators == nullptr))
     {
@@ -177,7 +186,9 @@ void ForEachToken(const char* str
         while (separator != '\0')
         {
             if (ch == separator)
+            {
                 return true;
+            }
 
             separator = separators[++i];
         }
@@ -220,7 +231,9 @@ HE::StaticString ToFunctionName(const char* PrettyFunction)
     auto bracketEnd = str.find_last_of(')') + 1;
     auto bracketStart = str.find_last_of('(');
     if (unlikely(bracketStart == TStr::npos))
+    {
         return HE::StaticString(PrettyFunction);
+    }
 
     auto subStr = str.substr(0, bracketStart);
     auto start = subStr.find_last_of("::") + 1;
@@ -238,16 +251,18 @@ HE::StaticString ToClassName(const char* PrettyFunction)
 {
     using TStr = std::string_view;
     TStr str(PrettyFunction);
-   
+
     auto end = str.find_last_of("::") - 1;
     if (end == TStr::npos)
+    {
         return HE::StaticString();
-    
+    }
+
     str = str.substr(0, end);
 
     auto start = str.find_last_of(" ") + 1;
     str = str.substr(start);
-    
+
     return HE::StaticString(str);
 }
 
@@ -272,25 +287,27 @@ HE::StaticString ToMethodName(const char* PrettyFunction)
     subStr = str.substr(0, start - 2);
     start = subStr.find_last_of(" ") + 1;
     str = str.substr(start, bracketStart - start);
-    
+
     return HE::StaticString(str);
 }
 
 HE::StaticString ToCompactClassName(const char* PrettyFunction)
 {
     using namespace HE;
-    
+
     using TStr = std::string_view;
     TStr str(PrettyFunction);
-   
+
     auto end = str.find_last_of("::") - 1;
     if (end == TStr::npos)
+    {
         return HE::StaticString();
-    
+    }
+
     str = str.substr(0, end);
     auto start = str.find_last_of("::") + 1;
     str = str.substr(start, (end - start));
-    
+
     return HE::StaticString(str);
 }
 
@@ -298,7 +315,7 @@ HE::StaticString ToCompactMethodName(const char* PrettyFunction)
 {
     using TStr = std::string_view;
     TStr str(PrettyFunction);
-    
+
     auto bracketStart = str.find_last_of('(');
     if (bracketStart == TStr::npos)
     {
@@ -322,7 +339,7 @@ HE::StaticString ToCompactMethodName(const char* PrettyFunction)
     }
 
     str = str.substr(upperStart, bracketStart - upperStart);
-    
+
     return HE::StaticString(str);
 }
 
@@ -365,7 +382,7 @@ const char* StrCopy(char* dst, const char* src, size_t n)
 #ifdef _MSC_VER
     strncpy_s(dst, n, src, n);
     return dst;
-#else // _MSC_VER
+#else  // _MSC_VER
     return strncpy(dst, src, n);
 #endif // _MSC_VER
 }
@@ -373,14 +390,14 @@ const char* StrCopy(char* dst, const char* src, size_t n)
 size_t CalculateHash(const char* text)
 {
     size_t hashCode = 5381;
-    
+
     while (*text != '\0')
     {
         size_t ch = *text;
         ++text;
         hashCode = ((hashCode << 5) + hashCode) + ch; /* hash * 33 + c */
     }
-    
+
     return hashCode;
 }
 
@@ -396,7 +413,7 @@ size_t CalculateHash(const std::string_view& str)
     return hashCode;
 }
 
-} // StringUtil
+} // namespace StringUtil
 
 #ifdef __UNIT_TEST__
 
@@ -407,154 +424,156 @@ void StringUtilTest::Prepare()
 {
     using namespace StringUtil;
 
-    AddTest("Tokenizer(default)", [this](auto& ls)
-    {
-        TVector<TString> tokens;
-        auto func = [&tokens](auto token)
+    AddTest(
+        "Tokenizer(default)",
+        [this](auto& ls)
         {
-            tokens.emplace_back(token);
-        };
+            TVector<TString> tokens;
+            auto func = [&tokens](auto token) { tokens.emplace_back(token); };
 
-        ForEachToken("abc def    123\n 456  \t\n\r 789    000 end.", func);
+            ForEachToken("abc def    123\n 456  \t\n\r 789    000 end.", func);
 
-        const auto numTokens = tokens.size();
-        if (numTokens != 7)
-        {
-            ls << "Incorrect number of tokens " << tokens.size()
-                << ", 7 is expected." << lferr;
-        }
-
-        const char* solutions[7] = {"abc", "def", "123", "456", "789", "000", "end."};
-
-        for (int i = 0; i < numTokens; ++i)
-        {
-            TString solution(solutions[i]);
-            if (tokens[i] != solution)
+            const auto numTokens = tokens.size();
+            if (numTokens != 7)
             {
-                ls << "Invalid token " << tokens[i].c_str()
-                    << ", " << solution.c_str() << " is expected." << lferr;
+                ls << "Incorrect number of tokens " << tokens.size() << ", 7 is expected." << lferr;
             }
-        }
 
-        for (auto& token : tokens)
-        {
-            ls << "Token: " << token.c_str() << lf;
-        }
-    });
+            const char* solutions[7] = {"abc", "def", "123", "456", "789", "000", "end."};
 
-    AddTest("Tokenizer", [this](auto& ls)
-    {
-        auto str = "abc::def;;;123.......456::;;..;;::789.000.end.";
-
-        TVector<TString> tokens;
-        auto func = [&tokens](auto token)
-        {
-            tokens.emplace_back(token);
-        };
-
-        ForEachToken(str, func, ".:;");
-
-        const auto numTokens = tokens.size();
-        if (numTokens != 7)
-        {
-            ls << "Incorrect number of tokens " << tokens.size()
-                << ", 7 is expected." << lferr;
-        }
-
-        const char* solutions[7] = {"abc", "def", "123", "456", "789", "000", "end"};
-
-        for (int i = 0; i < numTokens; ++i)
-        {
-            TString solution(solutions[i]);
-            if (tokens[i] != solution)
+            for (int i = 0; i < numTokens; ++i)
             {
-                ls << "Invalid token " << tokens[i].c_str()
-                    << ", " << solution.c_str() << " is expected." << lferr;
+                TString solution(solutions[i]);
+                if (tokens[i] != solution)
+                {
+                    ls << "Invalid token " << tokens[i].c_str() << ", " << solution.c_str()
+                       << " is expected." << lferr;
+                }
             }
-        }
 
-        for (auto& token : tokens)
+            for (auto& token : tokens)
+            {
+                ls << "Token: " << token.c_str() << lf;
+            }
+        });
+
+    AddTest(
+        "Tokenizer",
+        [this](auto& ls)
         {
-            ls << "Token: " << token.c_str() << lf;
-        }
-    });
+            auto str = "abc::def;;;123.......456::;;..;;::789.000.end.";
+
+            TVector<TString> tokens;
+            auto func = [&tokens](auto token) { tokens.emplace_back(token); };
+
+            ForEachToken(str, func, ".:;");
+
+            const auto numTokens = tokens.size();
+            if (numTokens != 7)
+            {
+                ls << "Incorrect number of tokens " << tokens.size() << ", 7 is expected." << lferr;
+            }
+
+            const char* solutions[7] = {"abc", "def", "123", "456", "789", "000", "end"};
+
+            for (int i = 0; i < numTokens; ++i)
+            {
+                TString solution(solutions[i]);
+                if (tokens[i] != solution)
+                {
+                    ls << "Invalid token " << tokens[i].c_str() << ", " << solution.c_str()
+                       << " is expected." << lferr;
+                }
+            }
+
+            for (auto& token : tokens)
+            {
+                ls << "Token: " << token.c_str() << lf;
+            }
+        });
 
     auto prettyFunction = __PRETTY_FUNCTION__;
 
-    AddTest("ToClassName", [this, prettyFunction](auto& ls)
-    {
-        StaticString className("HE::StringUtilTest");
-
-        auto name = ToClassName(prettyFunction);
-        ls << "Class Name is " << name << " / " << className << lf;
-
-        if (name != className)
+    AddTest(
+        "ToClassName",
+        [this, prettyFunction](auto& ls)
         {
-            ls << "ToClassName " << name
-                << " doesn't coincide with " << className << lferr;
-        }
-    });
+            StaticString className("HE::StringUtilTest");
 
-    AddTest("ToCompactClassName", [this, prettyFunction](auto& ls)
-    {
-        StaticString className("StringUtilTest");
+            auto name = ToClassName(prettyFunction);
+            ls << "Class Name is " << name << " / " << className << lf;
 
-        auto name = ToCompactClassName(prettyFunction);
-        ls << "Compact Class Name is " << name << " / " << className << lf;
+            if (name != className)
+            {
+                ls << "ToClassName " << name << " doesn't coincide with " << className << lferr;
+            }
+        });
 
-        if (name != className)
+    AddTest(
+        "ToCompactClassName",
+        [this, prettyFunction](auto& ls)
         {
-            ls << "ToCompactClassName " << name
-                << " doesn't coincide with " << className << lferr;
-        }
-    });
+            StaticString className("StringUtilTest");
 
-    AddTest("ToFunctionName::Namespace", [this, prettyFunction](auto& ls)
-    {
-        StaticString funcName("Prepare()");
-        StaticString funcName2("Prepare(void)");
+            auto name = ToCompactClassName(prettyFunction);
+            ls << "Compact Class Name is " << name << " / " << className << lf;
 
-        auto name = ToFunctionName(prettyFunction);
-        ls <<  "Function Name is " << name  << " / (" << funcName
-            << " or " << funcName2 << ')' << lf;
-        
-        if (name != funcName && name != funcName2)
+            if (name != className)
+            {
+                ls << "ToCompactClassName " << name << " doesn't coincide with " << className
+                   << lferr;
+            }
+        });
+
+    AddTest(
+        "ToFunctionName::Namespace",
+        [this, prettyFunction](auto& ls)
         {
-            ls << "ToFunctionName " << name
-                << " doesn't coincide with niether " << funcName
-                << " nor " << funcName2 << lferr;
-        }
-    });
+            StaticString funcName("Prepare()");
+            StaticString funcName2("Prepare(void)");
 
-    AddTest("ToMethodName", [this, prettyFunction](auto& ls)
-    {
+            auto name = ToFunctionName(prettyFunction);
+            ls << "Function Name is " << name << " / (" << funcName << " or " << funcName2 << ')'
+               << lf;
 
-        StaticString funcName("HE::StringUtilTest::Prepare");
-        auto name = ToMethodName(prettyFunction);
+            if (name != funcName && name != funcName2)
+            {
+                ls << "ToFunctionName " << name << " doesn't coincide with niether " << funcName
+                   << " nor " << funcName2 << lferr;
+            }
+        });
 
-        ls << "Function Name is " << name  << " / (" << funcName << ')' << lf;
-        
-        if (name != funcName)
+    AddTest(
+        "ToMethodName",
+        [this, prettyFunction](auto& ls)
         {
-            ls << "ToMethodName " << name
-                << " doesn't coincide with niether " << funcName << lferr;
-        }
+            StaticString funcName("HE::StringUtilTest::Prepare");
+            auto name = ToMethodName(prettyFunction);
 
-    });
+            ls << "Function Name is " << name << " / (" << funcName << ')' << lf;
 
-    AddTest("ToCompactMethodName", [this, prettyFunction](auto& ls)
-    {
-        StaticString funcName("StringUtilTest::Prepare");
-        auto name = ToCompactMethodName(prettyFunction);
+            if (name != funcName)
+            {
+                ls << "ToMethodName " << name << " doesn't coincide with niether " << funcName
+                   << lferr;
+            }
+        });
 
-        ls << "Function Name is " << name  << " / (" << funcName << ')' << lf;
-        
-        if (name != funcName)
+    AddTest(
+        "ToCompactMethodName",
+        [this, prettyFunction](auto& ls)
         {
-            ls << "ToCompactMethodName " << name
-                << " doesn't coincide with niether " << funcName << lferr;
-        }
-    });
+            StaticString funcName("StringUtilTest::Prepare");
+            auto name = ToCompactMethodName(prettyFunction);
+
+            ls << "Function Name is " << name << " / (" << funcName << ')' << lf;
+
+            if (name != funcName)
+            {
+                ls << "ToCompactMethodName " << name << " doesn't coincide with niether "
+                   << funcName << lferr;
+            }
+        });
 }
-} // HE
+} // namespace HE
 #endif //__UNIT_TEST__

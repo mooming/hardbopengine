@@ -42,5 +42,5 @@ inline TMilliSecs::rep ToMilliSeconds(TStopWatch::duration duration)
 
 void Sleep(MilliSec milli);
 
-} // Time
-} // HE
+} // namespace Time
+} // namespace HE

@@ -28,9 +28,8 @@ size_t OS::GetPageSize()
 
 void* OS::VirtualAlloc(size_t size)
 {
-    auto ptr = mmap(nullptr, size
-        , PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-    
+    auto ptr = mmap(nullptr, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+
     return ptr;
 }
 
@@ -42,13 +41,13 @@ void OS::VirtualFree(void* address, std::size_t)
 void OS::ProtectMemory(void* address, size_t n)
 {
     auto result = mprotect(address, n, PROT_NONE);
-    
+
     if (unlikely(result != 0))
     {
         using namespace std;
-        cerr << "[OS::ProtectMemory] address = "
-            << address << ", n = " << n << " : " << strerror(errno) << endl;
-        
+        cerr << "[OS::ProtectMemory] address = " << address << ", n = " << n << " : "
+             << strerror(errno) << endl;
+
         HE::Assert(false);
     }
 }
@@ -56,9 +55,9 @@ void OS::ProtectMemory(void* address, size_t n)
 #elif defined __APPLE__
 #include <cerrno>
 #include <iostream>
-#include <unistd.h>
 #include <malloc/malloc.h>
 #include <sys/mman.h>
+#include <unistd.h>
 
 
 size_t OS::GetAllocSize(void* ptr)
@@ -74,9 +73,8 @@ size_t OS::GetPageSize()
 
 void* OS::VirtualAlloc(size_t size)
 {
-    auto ptr = mmap(nullptr, size
-        , PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-    
+    auto ptr = mmap(nullptr, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+
     return ptr;
 }
 
@@ -88,23 +86,23 @@ void OS::VirtualFree(void* address, std::size_t)
 void OS::ProtectMemory(void* address, size_t n)
 {
     auto result = mprotect(address, n, PROT_NONE);
-    
+
     if (unlikely(result != 0))
     {
         using namespace std;
-        cerr << "[OS::ProtectMemory] address = "
-            << address << ", n = " << n << " : " << strerror(errno) << endl;
-        
+        cerr << "[OS::ProtectMemory] address = " << address << ", n = " << n << " : "
+             << strerror(errno) << endl;
+
         HE::Assert(false);
     }
 }
 
 #elif defined _WIN32
-#include <malloc.h>
-#include <windows.h>
 #include <errhandlingapi.h>
+#include <malloc.h>
 #include <memoryapi.h>
 #include <sysinfoapi.h>
+#include <windows.h>
 
 
 size_t OS::GetAllocSize(void* ptr)
@@ -121,7 +119,7 @@ size_t OS::GetPageSize()
         GetSystemInfo(&sSysInfo);
         return sSysInfo.dwPageSize;
     };
-    
+
     static size_t pageSize = GetPageSizeWindows();
 
     return pageSize;
@@ -147,17 +145,20 @@ void OS::ProtectMemory(void* address, size_t n)
     auto result = VirtualProtect(address, n, PAGE_NOACCESS, &oldProtect);
 
     if (likely(result))
+    {
         return;
+    }
 
     using namespace std;
     auto errorId = GetLastError();
 
     auto& engine = HE::Engine::Get();
-    engine.LogError([address, n, errorId](auto& log)
-    {
-        log << "[OS::ProtectMemory] address = "
-            << address << ", n = " << n << " : error code = " << errorId << endl;
-    });
+    engine.LogError(
+        [address, n, errorId](auto& log)
+        {
+            log << "[OS::ProtectMemory] address = " << address << ", n = " << n
+                << " : error code = " << errorId << endl;
+        });
 
     HE::Assert(false);
 }
@@ -165,4 +166,3 @@ void OS::ProtectMemory(void* address, size_t n)
 #else
 static_assert(false, "System is not specified.");
 #endif
-

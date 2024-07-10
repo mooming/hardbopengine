@@ -15,17 +15,17 @@ namespace HE
 
 class TestCollection
 {
-public:
+  public:
     using TLogOut = std::stringstream;
     using TLogBuffer = std::vector<std::string>;
     using TestFunc = std::function<void(TLogOut& /*ls*/)>;
 
-private:
+  private:
     std::string title;
     bool isDone;
     bool isSuccess;
 
-public:
+  public:
     struct LogFlush final
     {
         const char* name;
@@ -41,33 +41,33 @@ public:
     LogFlush lf;
     LogFlush lfwarn;
     LogFlush lferr;
-    
-protected:
+
+  protected:
     std::vector<std::pair<std::string, TestFunc>> tests;
     std::vector<std::string> warningMessages;
     std::vector<std::string> errorMessages;
-    
-public:
+
+  public:
     TestCollection(const char* title);
     virtual ~TestCollection() = default;
-    
+
     void Start();
     void AddTest(const char* testName, TestFunc testCase);
-    
+
     inline auto GetName() const { return title.c_str(); }
     inline auto& GetWarningMessages() const { return warningMessages; }
     inline auto& GetErrorMessages() const { return errorMessages; }
     inline bool IsDone() const { return isDone; }
     inline bool IsSuccess() const { return isSuccess; }
-    
-protected:
-    friend std::ostream& operator << (std::ostream& os, const LogFlush& lf);
+
+  protected:
+    friend std::ostream& operator<<(std::ostream& os, const LogFlush& lf);
 
     virtual void Prepare() = 0;
-    
-private:
+
+  private:
     void ExecuteTests();
     void Report();
 };
 
-} // HE
+} // namespace HE

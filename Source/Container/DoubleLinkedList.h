@@ -12,48 +12,42 @@ namespace HE
 template <typename Type>
 class DoubleLinkedList
 {
-private:
+  private:
     struct Node
     {
         Type value;
         Node* previous;
         Node* next;
 
-        inline Node(const Type& value) : value(value)
-        , previous(nullptr), next(nullptr)
-        {
-        }
+        inline Node(const Type& value) : value(value), previous(nullptr), next(nullptr) {}
 
-        inline Node(Type&& value) : value(std::move(value))
-        , previous(nullptr), next(nullptr)
-        {
-        }
+        inline Node(Type&& value) : value(std::move(value)), previous(nullptr), next(nullptr) {}
 
-        inline bool operator != (const Node& rhs) const { return this != &rhs; }
+        inline bool operator!=(const Node& rhs) const { return this != &rhs; }
 
-        inline Type& operator* () { return value; }
-        inline const Type& operator* () const { return value; }
+        inline Type& operator*() { return value; }
+        inline const Type& operator*() const { return value; }
 
         inline bool IsHead() const { return previous == nullptr; }
         inline bool IsTail() const { return next == nullptr; }
     };
 
-private:
+  private:
     Node* head;
     Node* tail;
     Index size;
 
-public:
+  public:
     class Iterator
     {
-    private:
+      private:
         Node* node;
         Node* next;
 
-    public:
+      public:
         Iterator(Node* node) : node(node), next(node ? node->next : nullptr) {}
 
-        inline Iterator& operator++ ()
+        inline Iterator& operator++()
         {
             node = next;
             next = node ? node->next : nullptr;
@@ -61,31 +55,26 @@ public:
             return *this;
         }
 
-        inline bool operator != (const Iterator& rhs) const
-        {
-            return node != rhs.node;
-        }
+        inline bool operator!=(const Iterator& rhs) const { return node != rhs.node; }
 
-        inline Type& operator* () { return node->value; }
-        inline const Type& operator* () const { return node->value; }
+        inline Type& operator*() { return node->value; }
+        inline const Type& operator*() const { return node->value; }
     };
 
     using ConstIterator = Iterator;
 
-public:
+  public:
     Iterator begin() { return Iterator(head); }
     Iterator end() { return Iterator(nullptr); }
     ConstIterator begin() const { return Iterator(head); }
     ConstIterator end() const { return Iterator(nullptr); }
 
-public:
+  public:
     DoubleLinkedList(const DoubleLinkedList&) = delete;
-    DoubleLinkedList& operator= (const DoubleLinkedList&) = delete;
+    DoubleLinkedList& operator=(const DoubleLinkedList&) = delete;
 
-public:
-    DoubleLinkedList() : head(nullptr), tail(nullptr), size(0)
-    {
-    }
+  public:
+    DoubleLinkedList() : head(nullptr), tail(nullptr), size(0) {}
 
     DoubleLinkedList(DoubleLinkedList&& rhs) : head(rhs.head), tail(rhs.tail), size(rhs.size)
     {
@@ -93,7 +82,7 @@ public:
         rhs.tail = nullptr;
     }
 
-    DoubleLinkedList& operator= (DoubleLinkedList&& rhs)
+    DoubleLinkedList& operator=(DoubleLinkedList&& rhs)
     {
         Node* tmpHead = rhs.head;
         Node* tmpTail = rhs.tail;
@@ -110,12 +99,9 @@ public:
         return *this;
     }
 
-    ~DoubleLinkedList()
-    {
-        Clear();
-    }
+    ~DoubleLinkedList() { Clear(); }
 
-public:
+  public:
     inline Index Size() const { return size; }
     inline bool IsEmpty() const
     {
@@ -123,7 +109,7 @@ public:
         return head == nullptr;
     }
 
-public:
+  public:
     inline void Clear()
     {
         for (auto& element : *this)
@@ -141,7 +127,9 @@ public:
         for (auto& element : *this)
         {
             if (element == value)
+            {
                 return true;
+            }
         }
 
         return false;
@@ -152,7 +140,9 @@ public:
         for (auto& element : *this)
         {
             if (&element == &value)
+            {
                 return true;
+            }
         }
 
         return false;
@@ -163,7 +153,9 @@ public:
         for (auto& element : *this)
         {
             if (element == value)
+            {
                 return &element;
+            }
         }
 
         return nullptr;
@@ -174,7 +166,9 @@ public:
         for (auto& element : *this)
         {
             if (element == value)
+            {
                 return &element;
+            }
         }
 
         return nullptr;
@@ -186,7 +180,9 @@ public:
         for (auto& element : *this)
         {
             if (element == value)
+            {
                 ++count;
+            }
         }
         return count;
     }
@@ -202,21 +198,15 @@ public:
         return false;
     }
 
-public:
-    inline Type& AddFirst(const Type& value)
-    {
-        return AddFirst(New<Node>(value))->value;
-    }
+  public:
+    inline Type& AddFirst(const Type& value) { return AddFirst(New<Node>(value))->value; }
 
     inline Type& AddFirst(Type&& value)
     {
         return AddFirst(New<Node>(std::forward<Type&&>(value)))->value;
     }
 
-    inline Type& AddLast(const Type& value)
-    {
-        return AddLast(New<Node>(value))->value;
-    }
+    inline Type& AddLast(const Type& value) { return AddLast(New<Node>(value))->value; }
 
     inline Type& AddLast(Type&& value)
     {
@@ -243,7 +233,7 @@ public:
         return AddNext(GetNodeOf(current), New<Node>(std::forward(value)))->value;
     }
 
-private:
+  private:
     inline Node* GetNodeOf(Type& element)
     {
         Assert(ContainsElement(element));
@@ -287,7 +277,7 @@ private:
         return node;
     }
 
-private:
+  private:
     inline void LinkPrevious(Node* node, Node* newNode)
     {
         Assert(node != nullptr);
@@ -322,7 +312,8 @@ private:
         else
         {
             Node* next = node->next;
-            next->previous = newNode;;
+            next->previous = newNode;
+            ;
             newNode->next = next;
         }
 
@@ -374,12 +365,12 @@ private:
 
 class DoubleLinkedListTest : public TestCollection
 {
-public:
+  public:
     DoubleLinkedListTest() : TestCollection("DoubleLinkedListTest") {}
 
-protected:
+  protected:
     virtual void Prepare() override;
 };
 #endif __UNIT_TEST__
 
-} // HE
+} // namespace HE

@@ -4,11 +4,11 @@
 
 #ifdef PLATFORM_WINDOWS
 #include "String/InlineStringBuilder.h"
-#include <cstdlib>
-#include <Windows.h>
 #include <DbgHelp.h>
+#include <Windows.h>
+#include <cstdlib>
 
-#pragma comment(lib,"dbghelp.lib")
+#pragma comment(lib, "dbghelp.lib")
 
 
 using namespace HE;
@@ -38,9 +38,8 @@ StaticString OS::GetBackTrace(uint16_t startIndex, uint16_t maxDepth)
         DWORD64 address = reinterpret_cast<DWORD64>(stack[i]);
         SymFromAddr(process, address, 0, symbol);
 
-        strBuild << i << " : "
-            << static_cast<const char*>(symbol->Name) << " ("
-            << (void*)symbol->Address << ")\n";
+        strBuild << i << " : " << static_cast<const char*>(symbol->Name) << " ("
+                 << (void*)symbol->Address << ")\n";
     }
 
     free(symbol);
