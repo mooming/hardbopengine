@@ -199,14 +199,10 @@ void StaticStringTable::PrintStringTable() const
 
     for (auto& table : tables)
     {
-        TIndex index = 0;
-
         for (auto& item : table)
         {
             StaticStringID id;
             log.Out([&](auto& ls) { ls << count++ << " : [" << item << "] 0x" << (void*)id.ptr; });
-
-            ++index;
         }
 
         ++tableID;

@@ -8,8 +8,7 @@
 #ifdef __LEFT_HANDED__
 #ifdef __RIGHT_HANDED__
 
-ERROR
-    : SHOULD NOT DEFINE BOTH HANDEDNESS !
+static_assert(false, "SHOULD NOT DEFINE BOTH HANDEDNESS !");
 
 #endif //__RIGHT_HANDED__
 #endif //__LEFT_HANDED__
