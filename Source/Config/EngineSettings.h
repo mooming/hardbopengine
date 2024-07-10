@@ -5,7 +5,8 @@
 #include <cstdint>
 
 
-// Default Setting Values
+// Static Engine Default Settings
+
 namespace HE
 {
 

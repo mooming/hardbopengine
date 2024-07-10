@@ -13,6 +13,8 @@
 namespace HE
 {
 
+// ConfigParam represents a single config value with arbitrary file.
+// It could be thread-safe when IsAtomic is set to true.
 template <typename T, bool IsAtomic = false>
 class ConfigParam final
 {

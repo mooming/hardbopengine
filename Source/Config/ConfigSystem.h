@@ -15,6 +15,7 @@ class StaticString;
 template <typename T, bool IsAtomic>
 class ConfigParam;
 
+// ConfigSystem is a simple key-value database for all setting values.
 class ConfigSystem final
 {
     template <typename T>
@@ -47,7 +48,7 @@ class ConfigSystem final
     TMap<size_t> sizeParams;
     TMap<float> floatParams;
 
-  private:
+  public:
     ConfigSystem(const ConfigSystem&) = delete;
     ConfigSystem(ConfigSystem&&) = delete;
     ConfigSystem& operator=(const ConfigSystem&) = delete;

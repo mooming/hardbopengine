@@ -10,6 +10,8 @@
 namespace HE
 {
 
+// ConfigFile represent a single config file.
+// Both key and value are string data.
 class ConfigFile final
 {
   public:
