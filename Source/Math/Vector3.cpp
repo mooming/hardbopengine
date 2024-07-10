@@ -1,4 +1,4 @@
-// Copyright Hansol Park (mooming.go@gmail.com). All rights reserved.
+// Created by mooming.go@gmail.com
 
 #include "Vector3.h"
 

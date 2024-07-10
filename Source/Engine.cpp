@@ -1,4 +1,4 @@
-// Created by mooming.go@gmail.com, 2022
+// Created by mooming.go@gmail.com
 
 #include "Engine.h"
 
@@ -9,7 +9,6 @@
 #include "String/StaticStringTable.h"
 #include "System/Debug.h"
 #include "System/ScopedLock.h"
-#include "System/Time.h"
 #include <csignal>
 #include <iostream>
 

@@ -2,7 +2,6 @@
 
 #pragma once
 
-#include "Config/BuildConfig.h"
 #include "Memory/BaseAllocator.h"
 #include "Memory/InlinePoolAllocator.h"
 #include <string>

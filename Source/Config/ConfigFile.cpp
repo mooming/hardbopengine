@@ -1,4 +1,4 @@
-// Created by mooming.go@gmail.com 2022
+// Created by mooming.go@gmail.com
 
 #include "ConfigFile.h"
 
@@ -14,6 +14,7 @@ using namespace HSTL;
 
 namespace HE
 {
+
 ConfigFile::ConfigFile(const char* path) : isValid(false)
 {
     Parse(path);

@@ -1,12 +1,10 @@
-// Created by mooming.go@gmail.com, 2017
+// Created by mooming.go@gmail.com
 
 #pragma once
 
-#include "CoordinateOrientation.h"
 #include "Math/MathUtil.h"
 #include "Vector2.h"
 #include "Vector3.h"
-#include <ostream>
 
 
 namespace HE

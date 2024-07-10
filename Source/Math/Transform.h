@@ -1,13 +1,12 @@
-// Created by mooming.go@gmail.com, 2017
+// Created by mooming.go@gmail.com
 
 #pragma once
-
-#include "UniformTransform.h"
 
 #include "HSTL/HVector.h"
 #include "Log/Logger.h"
 #include "MathUtil.h"
 #include "Memory/Optional.h"
+#include "UniformTransform.h"
 #include <ostream>
 
 

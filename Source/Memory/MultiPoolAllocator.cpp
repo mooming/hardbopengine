@@ -1,4 +1,4 @@
-// Created by mooming.go@gmail.com, 2022
+// Created by mooming.go@gmail.com
 
 #include "MultiPoolAllocator.h"
 
@@ -11,7 +11,6 @@
 #include <algorithm>
 #include <bit>
 #include <map>
-#include <memory>
 
 
 namespace HE

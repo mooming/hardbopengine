@@ -1,12 +1,10 @@
-// Created by mooming.go@gmail.com, 2022
+// Created by mooming.go@gmail.com
 
 #include "AllocStats.h"
 
 #include "Engine.h"
 #include "Log/Logger.h"
 #include "OSAL/OSDebug.h"
-#include "String/StringUtil.h"
-#include <cstring>
 #include <new>
 
 

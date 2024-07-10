@@ -1,4 +1,4 @@
-// Copyright Hansol Park (anav96@naver.com, mooming.go@gmail.com). All rights reserved.
+// Created by mooming.go@gmail.com
 
 #include "Quaternion.h"
 

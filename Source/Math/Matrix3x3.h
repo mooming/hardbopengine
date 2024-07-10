@@ -1,4 +1,4 @@
-// Created by mooming.go@gmail.com, 2017
+// Created by mooming.go@gmail.com
 
 #pragma once
 
@@ -6,7 +6,6 @@
 #include "Matrix2x2.h"
 #include "Vector3.h"
 #include <array>
-#include <utility>
 
 
 namespace HE

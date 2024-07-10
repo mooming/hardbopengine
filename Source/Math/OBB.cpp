@@ -1,4 +1,4 @@
-// Copyright, all rights are reserved by Hansol Park, mooming.go@gmail.compl
+// Created by mooming.go@gmail.com
 
 #include "OBB.h"
 

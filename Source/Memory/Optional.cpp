@@ -1,11 +1,9 @@
-// Created by mooming.go@gmail.com, 2017
+// Created by mooming.go@gmail.com
 
 #include "Optional.h"
 
 
 #ifdef __UNIT_TEST__
-#include <iostream>
-
 
 void HE::OptionalTest::Prepare()
 {

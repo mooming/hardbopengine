@@ -1,4 +1,4 @@
-// Created by mooming.go@gmail.com 2022
+// Created by mooming.go@gmail.com
 
 #include "Logger.h"
 
@@ -13,8 +13,6 @@
 #include "String/StringUtil.h"
 #include "System/Debug.h"
 #include "System/TaskSystem.h"
-#include <iostream>
-#include <memory>
 
 
 namespace HE

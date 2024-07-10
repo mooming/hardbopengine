@@ -1,4 +1,4 @@
-// Created by mooming.go@gmail.com, 2022
+// Created by mooming.go@gmail.com
 
 #pragma once
 #include <cstddef>
@@ -8,8 +8,10 @@
 // Default Setting Values
 namespace HE
 {
+
 namespace Config
 {
+
 // Engine
 static constexpr uint8_t EngineLogLevel =
     2; // 0: Verbose, 1: Info, 2: Significant, 3: Warning, 4: Error, 5: FatalError
@@ -40,6 +42,7 @@ static constexpr int MaxConcurrentTasks = 32;
 static constexpr float DebugTimeOutMultiplier = 2.0f;
 
 size_t GetMaxSystemMemoryTarget();
+
 } // namespace Config
 
 } // namespace HE

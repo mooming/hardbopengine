@@ -1,11 +1,13 @@
-// Copyright, all rights are reserved by Hansol Park, mooming.go@gmail.compl
+// Created by mooming.go@gmail.com
 
 #include "AABB.h"
 
 namespace HE
 {
+
 template class AABB<Float2>;
 template class AABB<Float3>;
+
 } // namespace HE
 
 #ifdef __UNIT_TEST__

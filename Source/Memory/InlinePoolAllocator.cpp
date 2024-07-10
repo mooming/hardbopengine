@@ -1,11 +1,10 @@
-// Created by mooming.go@gmail.com, 2022
+// Created by mooming.go@gmail.com
 
 #include "InlinePoolAllocator.h"
 
 
 #ifdef __UNIT_TEST__
 #include "System/ScopedTime.h"
-#include <memory>
 #include <vector>
 
 

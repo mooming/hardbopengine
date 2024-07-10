@@ -1,4 +1,4 @@
-// Created by mooming.go@gmail.com 2016
+// Created by mooming.go@gmail.com
 
 #include "Directory.h"
 

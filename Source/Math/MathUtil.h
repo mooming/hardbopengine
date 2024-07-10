@@ -1,17 +1,16 @@
-// Created by mooming.go@gmail.com, 2017
+// Created by mooming.go@gmail.com
 
 #pragma once
 
 #include "System/Constants.h"
 #include "System/Debug.h"
-#include <algorithm>
 #include <cmath>
 #include <cstdint>
-#include <type_traits>
 
 
 namespace HE
 {
+
 template <typename T>
 inline T Abs(T value, std::false_type)
 {
@@ -182,7 +181,9 @@ inline bool IsNotEqual(float a, float b)
 {
     return Abs(a - b) >= Epsilon;
 }
+
 } // namespace Physics
+
 } // namespace HE
 
 
@@ -201,6 +202,7 @@ class MathUtilTest : public TestCollection
   protected:
     virtual void Prepare() override;
 };
+
 } // namespace HE
 
 #endif //__UNIT_TEST__

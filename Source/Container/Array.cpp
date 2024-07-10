@@ -1,7 +1,6 @@
-// Created by mooming.go@gmail.com, 2017
+// Created by mooming.go@gmail.com
 
 #include "Array.h"
-
 
 #ifdef __UNIT_TEST__
 #include "Log/Logger.h"

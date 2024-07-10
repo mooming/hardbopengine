@@ -6,7 +6,6 @@
 #include "Memory/Memory.h"
 #include "System/Debug.h"
 #include <functional>
-#include <memory>
 
 
 namespace HE

@@ -1,18 +1,15 @@
-// Created by mooming.go@gmail.com, 2017
+// Created by mooming.go@gmail.com
 
 #pragma once
 
 #include "AllocatorID.h"
-#include "BaseAllocator.h"
 #include "Config/BuildConfig.h"
 #include "Config/EngineSettings.h"
 #include "MemoryManager.h"
 #include "OSAL/OSMemory.h"
 #include "String/StaticString.h"
 #include "System/Debug.h"
-#include <algorithm>
 #include <cstddef>
-#include <iostream>
 
 
 namespace HE

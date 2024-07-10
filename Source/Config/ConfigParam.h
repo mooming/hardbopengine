@@ -1,12 +1,12 @@
-// Created by mooming.go@gmail.com, 2022
+// Created by mooming.go@gmail.com
 
 #pragma once
+
 #include "BuildConfig.h"
 #include "ConfigSystem.h"
 #include "String/StaticString.h"
 #include "System/Debug.h"
 #include <algorithm>
-#include <mutex>
 #include <thread>
 
 

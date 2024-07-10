@@ -1,6 +1,5 @@
-// Created by mooming.go@gmail.com, 2017
+// Created by mooming.go@gmail.com
 
-#include "Config/BuildConfig.h"
 #include "Engine.h"
 #include "Test/UnitTestCollection.h"
 

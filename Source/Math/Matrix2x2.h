@@ -1,11 +1,9 @@
-// Created by mooming.go@gmail.com, 2017
+// Created by mooming.go@gmail.com
 
 #pragma once
 
 #include "System/Debug.h"
 #include "Vector2.h"
-
-#include <algorithm>
 #include <array>
 
 namespace HE

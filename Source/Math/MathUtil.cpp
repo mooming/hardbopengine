@@ -1,8 +1,6 @@
-// Created by mooming.go@gmail.com, 2017
+// Created by mooming.go@gmail.com
 
 #include "MathUtil.h"
-
-#include "Config/BuildConfig.h"
 
 
 #ifdef __UNIT_TEST__

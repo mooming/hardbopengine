@@ -1,4 +1,4 @@
-// Created by mooming.go@gmail.com, 2017
+// Created by mooming.go@gmail.com
 
 #include "MemoryManager.h"
 
@@ -7,7 +7,6 @@
 #include "MultiPoolConfigCache.h"
 #include "OSAL/Intrinsic.h"
 #include "OSAL/OSInputOutput.h"
-#include "OSAL/SourceLocation.h"
 #include "Resource/Buffer.h"
 #include "Resource/BufferUtil.h"
 #include "String/StringUtil.h"

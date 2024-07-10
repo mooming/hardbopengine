@@ -1,4 +1,4 @@
-// Created by mooming.go@gmail.com, 2022
+// Created by mooming.go@gmail.com
 
 #pragma once
 
@@ -7,7 +7,6 @@
 #include "PoolAllocator.h"
 #include "PoolConfig.h"
 #include "String/StaticString.h"
-#include <mutex>
 
 
 namespace HE

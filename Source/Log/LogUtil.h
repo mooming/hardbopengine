@@ -1,8 +1,7 @@
-// Created by mooming.go@gmail.com, 2017
+// Created by mooming.go@gmail.com
 
 #pragma once
 
-#include "HSTL/HString.h"
 #include "LogLevel.h"
 #include "String/InlineStringBuilder.h"
 #include "String/StaticString.h"
@@ -14,6 +13,7 @@ namespace HE
 
 namespace LogUtil
 {
+
 using TTimePoint = std::chrono::time_point<std::chrono::steady_clock>;
 
 const TTimePoint& GetStartTime();

@@ -1,4 +1,4 @@
-// Created by mooming.go@gmail.com, 2017
+// Created by mooming.go@gmail.com
 
 #include "StackAllocator.h"
 
@@ -6,9 +6,7 @@
 #include "Config/EngineSettings.h"
 #include "MemoryManager.h"
 #include "OSAL/Intrinsic.h"
-#include "System/CommonUtil.h"
 #include "System/Debug.h"
-#include "System/Exception.h"
 
 
 using namespace HE;

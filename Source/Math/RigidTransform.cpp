@@ -1,10 +1,11 @@
+// Created by mooming.go@gmail.com
+
 #include "RigidTransform.h"
 
 using namespace HE;
 
 #ifdef __UNIT_TEST__
 #include "Matrix4x4.h"
-#include "System/Time.h"
 
 
 void RigidTransformTest::Prepare()

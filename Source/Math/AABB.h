@@ -1,4 +1,4 @@
-// Created by mooming.go@gmail.com, 2017
+// Created by mooming.go@gmail.com
 
 #pragma once
 
@@ -201,5 +201,7 @@ class AABBTest : public TestCollection
   protected:
     virtual void Prepare() override;
 };
+
 } // namespace HE
+
 #endif //__UNIT_TEST__

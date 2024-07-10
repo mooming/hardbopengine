@@ -1,16 +1,13 @@
-// Created by mooming.go@gmail.com, 2022
+// Created by mooming.go@gmail.com
 
 #include "MultiPoolConfigCache.h"
 
-#include "HSTL/HString.h"
 #include "Log/Logger.h"
 #include "OSAL/Intrinsic.h"
 #include "PoolConfigUtil.h"
-#include "Resource/Buffer.h"
 #include "Resource/BufferInputStream.h"
 #include "Resource/BufferOutputStream.h"
 #include "String/StringUtil.h"
-#include <exception>
 
 
 namespace HE

@@ -1,13 +1,11 @@
-// Created by mooming.go@gmail.com, 2017 ~ 2022
+// Created by mooming.go@gmail.com
 
 #pragma once
 
 #include "AllocatorID.h"
 #include "AllocatorScope.h"
-#include "Config/BuildConfig.h"
 #include "MemoryManager.h"
 #include <cstddef>
-#include <iostream>
 
 
 namespace HE

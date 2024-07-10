@@ -1,18 +1,14 @@
-// Created by mooming.go@gmail.com, 2022
+// Created by mooming.go@gmail.com
 
 #pragma once
 
-#include "Config/BuildConfig.h"
-#include "Config/EngineSettings.h"
 #include "Log/LogLevel.h"
 #include "Log/Logger.h"
 #include "Memory/MemoryManager.h"
 #include "Resource/ResourceManager.h"
 #include "System/SystemStatistics.h"
 #include "System/TaskSystem.h"
-#include <chrono>
 #include <fstream>
-#include <mutex>
 
 
 namespace HE

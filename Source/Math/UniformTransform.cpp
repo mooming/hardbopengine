@@ -1,8 +1,9 @@
+// Created by mooming.go@gmail.com
+
 #include "UniformTransform.h"
 
 #ifdef __UNIT_TEST__
 #include "Matrix4x4.h"
-#include "System/Time.h"
 
 
 void HE::UniformTransformTest::Prepare()

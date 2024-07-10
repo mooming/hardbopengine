@@ -1,4 +1,4 @@
-// Created by mooming.go@gmail.com 2022
+// Created by mooming.go@gmail.com
 
 #pragma once
 
@@ -12,11 +12,9 @@
 #include "String/InlineStringBuilder.h"
 #include "String/StaticString.h"
 #include "System/TaskHandle.h"
-#include <atomic>
 #include <chrono>
 #include <fstream>
 #include <functional>
-#include <mutex>
 #include <thread>
 
 
@@ -144,4 +142,5 @@ class Logger final
 
 using TLog = Logger::SimpleLogger;
 using LogStream = Logger::TLogStream;
+
 } // namespace HE

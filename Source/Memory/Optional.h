@@ -1,4 +1,4 @@
-// Created by mooming.go@gmail.com, 2017
+// Created by mooming.go@gmail.com
 
 #pragma once
 
@@ -6,13 +6,11 @@
 #include "System/CommonUtil.h"
 #include "System/Debug.h"
 #include "System/Types.h"
-#include <algorithm>
-#include <type_traits>
-#include <utility>
 
 
 namespace HE
 {
+
 template <typename Type>
 class Optional final
 {
@@ -259,5 +257,7 @@ class OptionalTest : public TestCollection
   protected:
     virtual void Prepare() override;
 };
+
 } // namespace HE
+
 #endif //__UNIT_TEST__

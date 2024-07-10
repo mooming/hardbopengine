@@ -1,4 +1,4 @@
-// Created by mooming.go@gmail.com, 2022
+// Created by mooming.go@gmail.com
 
 #pragma once
 
@@ -11,7 +11,6 @@
 #include "PoolConfig.h"
 #include "String/StaticStringID.h"
 #include "System/Types.h"
-#include <atomic>
 #include <functional>
 #include <mutex>
 #include <span>

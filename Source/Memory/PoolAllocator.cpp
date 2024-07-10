@@ -1,4 +1,4 @@
-// Created by mooming.go@gmail.com, 2017
+// Created by mooming.go@gmail.com
 
 #include "PoolAllocator.h"
 
@@ -6,8 +6,6 @@
 #include "OSAL/OSMemory.h"
 #include "System/CommonUtil.h"
 #include "System/Debug.h"
-#include <algorithm>
-#include <limits>
 
 
 namespace HE

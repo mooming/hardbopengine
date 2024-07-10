@@ -1,6 +1,7 @@
-// Created by mooming.go@gmail.com, 2022
+// Created by mooming.go@gmail.com
 
 #pragma once
+
 #include "String/StaticStringID.h"
 #include <functional>
 #include <unordered_map>

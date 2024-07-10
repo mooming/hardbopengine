@@ -1,11 +1,10 @@
-// Created by mooming.go@gmail.com, 2022
+// Created by mooming.go@gmail.com
 
 #pragma once
 
 #include "AllocStats.h"
 #include "AllocatorID.h"
 #include "Config/BuildConfig.h"
-#include <atomic>
 #include <functional>
 #include <thread>
 

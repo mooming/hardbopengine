@@ -1,17 +1,17 @@
-// Created by mooming.go@gmail.com, 2017
+// Created by mooming.go@gmail.com
 
 #pragma once
 
 #include "Memory/BaseAllocator.h"
 #include "Memory/Memory.h"
 #include "System/Debug.h"
-#include <algorithm>
 #include <initializer_list>
-#include <memory>
 
 
 namespace HE
 {
+
+// Static array supporting custom allocators
 template <typename Element, class TAllocator = BaseAllocator<Element>>
 class Array
 {
