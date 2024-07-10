@@ -1,4 +1,5 @@
 .DS_Store
+.idea
 
 *.cmake
 
@@ -19,7 +20,6 @@ xcode
 .vs
 .vscode
 Solutions
-cmakebuild
 CMakeScripts
 *.a
 compile_commands.json

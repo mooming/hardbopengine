@@ -12,7 +12,7 @@
 #define WINDOWS
 #else // _WINDOWS
 #define POSIX
-#endif // _WINDOWS
+#endif // WIN32
 
 #ifdef WINDOWS
 #include <windows.h>

@@ -1,4 +1,3 @@
-
 // Created by mooming.go@gmail.com, 2022
 
 #pragma once
@@ -45,7 +44,7 @@ public:
         lockable.lock();
 #ifdef __DEBUG__
         ScopedLock::timeOutSec *= Config::DebugTimeOutMultiplier;
-#endif // _DEBUG__
+#endif // __DEBUG__
     }
 #else // PROFILE_ENABLED
     ScopedLock(TLockable& lockable)

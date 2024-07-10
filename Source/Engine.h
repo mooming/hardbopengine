@@ -18,15 +18,14 @@
 namespace HE
 {
 
-template <size_t, class>
-class InlineStringBuilder;
+template <size_t, class> class InlineStringBuilder;
 
 class Engine final
 {
-public:
+  public:
     using TLogFunc = std::function<void(std::ostream& out)>;
-    
-private:
+
+  private:
     struct PreEngineInit final
     {
         PreEngineInit(Engine* engine);
@@ -51,14 +50,14 @@ private:
     TaskSystem taskSystem;
     ResourceManager resourceManager;
 
-public:
+  public:
     static Engine& Get();
 
-public:
+  public:
     Engine(const Engine&) = delete;
-    Engine& operator= (const Engine&) = delete;
+    Engine& operator=(const Engine&) = delete;
 
-public:
+  public:
     Engine();
     ~Engine();
 
@@ -66,7 +65,7 @@ public:
     void Run();
     void Stop();
 
-public:
+  public:
     StaticString GetClassName() const;
 
     inline auto& GetMemoryManager() { return memoryManager; }
@@ -94,7 +93,7 @@ public:
 
     void ConsoleOutLn(const char* str);
 
-private:
+  private:
     void PostInitialize();
 
     void PreUpdate(float deltaTime);
