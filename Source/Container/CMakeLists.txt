@@ -23,7 +23,6 @@ add_library (Container STATIC
  LinkedList.cpp
  Array.h
  AtomicStackView.h
- DoubleLinkedList.h
  LinkedList.h
 )
 
