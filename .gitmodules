@@ -1,0 +1,6 @@
+[submodule "Extern/RapidJson"]
+	path = Extern/RapidJson
+	url = git@github.com:Tencent/rapidjson.git
+[submodule "Extern/SDL"]
+	path = Extern/SDL
+	url = https://github.com/libsdl-org/SDL.git
