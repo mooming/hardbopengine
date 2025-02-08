@@ -17,12 +17,12 @@ namespace HE
 
     void TransformTest::Prepare()
     {
-        AddTest("Default Constructor", [this](auto &ls) {
+        AddTest("Default Constructor", [this](auto& ls) {
             FTransform root;
             ls << root << lf;
         });
 
-        AddTest("Hierachycal Transform", [this](auto &ls) {
+        AddTest("Hierachycal Transform", [this](auto& ls) {
             FTransform root;
             FTransform a;
             root.Attach(a);
@@ -49,7 +49,7 @@ namespace HE
             }
         });
 
-        AddTest("Hierachycal Rotation", [this](auto &ls) {
+        AddTest("Hierachycal Rotation", [this](auto& ls) {
             FTransform root;
             FTransform a;
             root.Attach(a);
@@ -80,7 +80,7 @@ namespace HE
             }
         });
 
-        AddTest("Hierachycal Rotation (2)", [this](auto &ls) {
+        AddTest("Hierachycal Rotation (2)", [this](auto& ls) {
             FTransform root;
             FTransform a;
             root.Attach(a);

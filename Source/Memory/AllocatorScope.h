@@ -14,17 +14,17 @@ namespace HE
         TAllocatorID current;
 
     public:
-        AllocatorScope(const AllocatorScope &) = delete;
-        AllocatorScope(AllocatorScope &&) = delete;
-        AllocatorScope &operator=(const AllocatorScope &) = delete;
-        AllocatorScope &operator=(AllocatorScope &&) = delete;
+        AllocatorScope(const AllocatorScope&) = delete;
+        AllocatorScope(AllocatorScope&&) = delete;
+        AllocatorScope& operator=(const AllocatorScope&) = delete;
+        AllocatorScope& operator=(AllocatorScope&&) = delete;
 
     public:
         AllocatorScope();
         AllocatorScope(TAllocatorID id);
 
         template <typename T>
-        AllocatorScope(const T &allocator)
+        AllocatorScope(const T& allocator)
             : AllocatorScope(allocator.GetID())
         {
         }

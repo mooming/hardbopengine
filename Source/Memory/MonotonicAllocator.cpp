@@ -9,7 +9,7 @@
 
 using namespace HE;
 
-MonotonicAllocator::MonotonicAllocator(const char *name, TSize inCapacity)
+MonotonicAllocator::MonotonicAllocator(const char* name, TSize inCapacity)
     : id(InvalidAllocatorID),
       cursor(0),
       capacity(inCapacity),
@@ -21,21 +21,21 @@ MonotonicAllocator::MonotonicAllocator(const char *name, TSize inCapacity)
         capacity = multiplier * AlignUnit;
     }
 
-    auto &mmgr = MemoryManager::GetInstance();
+    auto& mmgr = MemoryManager::GetInstance();
     parentID = mmgr.GetCurrentAllocatorID();
     bufferPtr = mmgr.AllocateBytes(capacity);
 
-    auto allocFunc = [this](size_t n) -> void * { return Allocate(n); };
+    auto allocFunc = [this](size_t n) -> void* { return Allocate(n); };
 
     auto deallocFunc = [this](
-                           void *ptr, size_t size) { Deallocate(ptr, size); };
+                           void* ptr, size_t size) { Deallocate(ptr, size); };
 
     id = mmgr.Register(name, false, capacity, allocFunc, deallocFunc);
 }
 
 MonotonicAllocator::~MonotonicAllocator()
 {
-    auto &mmgr = MemoryManager::GetInstance();
+    auto& mmgr = MemoryManager::GetInstance();
 
 #ifdef PROFILE_ENABLED
     mmgr.ReportDeallocation(id, bufferPtr, 0, cursor);
@@ -45,7 +45,7 @@ MonotonicAllocator::~MonotonicAllocator()
     mmgr.Deregister(GetID());
 }
 
-void *MonotonicAllocator::Allocate(const size_t requested)
+void* MonotonicAllocator::Allocate(const size_t requested)
 {
     size_t size = requested;
 
@@ -58,8 +58,8 @@ void *MonotonicAllocator::Allocate(const size_t requested)
     const auto freeSize = GetAvailable();
     if (unlikely(size > freeSize))
     {
-        auto &mmgr = MemoryManager::GetInstance();
-        mmgr.LogWarning([size, freeSize](auto &ls) {
+        auto& mmgr = MemoryManager::GetInstance();
+        mmgr.LogWarning([size, freeSize](auto& ls) {
             ls << "The requested size " << size << " is exceeding its limit, "
                << freeSize << '.';
         });
@@ -69,12 +69,12 @@ void *MonotonicAllocator::Allocate(const size_t requested)
         return ptr;
     }
 
-    auto ptr = reinterpret_cast<void *>(buffer + cursor);
+    auto ptr = reinterpret_cast<void*>(buffer + cursor);
     cursor += size;
 
 #ifdef PROFILE_ENABLED
     {
-        auto &mmgr = MemoryManager::GetInstance();
+        auto& mmgr = MemoryManager::GetInstance();
         mmgr.ReportAllocation(id, ptr, requested, size);
     }
 #endif // PROFILE_ENABLED
@@ -84,7 +84,7 @@ void *MonotonicAllocator::Allocate(const size_t requested)
 
 void MonotonicAllocator::Deallocate(const Pointer ptr, TSize requested)
 {
-    auto &mmgr = MemoryManager::GetInstance();
+    auto& mmgr = MemoryManager::GetInstance();
 
     if (unlikely(!IsMine(ptr)))
     {
@@ -93,16 +93,16 @@ void MonotonicAllocator::Deallocate(const Pointer ptr, TSize requested)
     }
 
 #ifdef __MEMORY_LOGGING__
-    mmgr.Log(ELogLevel::Verbose, [this, &mmgr, ptr, requested](auto &lout) {
+    mmgr.Log(ELogLevel::Verbose, [this, &mmgr, ptr, requested](auto& lout) {
         lout << mmgr.GetName(id) << '[' << static_cast<int>(GetID())
              << "] Deallocate call shall be ignored. ptr = "
-             << static_cast<void *>(ptr) << ", requested size = " << requested;
+             << static_cast<void*>(ptr) << ", requested size = " << requested;
     });
 #endif // __MEMORY_LOGGING__
 
 #ifdef PROFILE_ENABLED
     {
-        auto &mmgr = MemoryManager::GetInstance();
+        auto& mmgr = MemoryManager::GetInstance();
         mmgr.ReportDeallocation(id, ptr, requested, 0);
     }
 #endif // PROFILE_ENABLED
@@ -122,7 +122,7 @@ size_t MonotonicAllocator::GetUsage() const
 
 bool MonotonicAllocator::IsMine(const TPointer ptr) const
 {
-    auto bytePtr = reinterpret_cast<const uint8_t *>(ptr);
+    auto bytePtr = reinterpret_cast<const uint8_t*>(ptr);
     if (bytePtr < buffer)
     {
         return false;
@@ -145,7 +145,7 @@ void MonotonicAllocatorTest::Prepare()
     using namespace std;
     using namespace HSTL;
 
-    AddTest("Vector Allocation", [this](auto &ls) {
+    AddTest("Vector Allocation", [this](auto& ls) {
         MonotonicAllocator alloc("Test::MonotonicAllocator", 1024 * 1024);
 
         {
@@ -163,7 +163,7 @@ void MonotonicAllocatorTest::Prepare()
         }
     });
 
-    AddTest("Allocation (2)", [this](auto &ls) {
+    AddTest("Allocation (2)", [this](auto& ls) {
         MonotonicAllocator alloc("Test::MonotonicAllocator", 1024 * 1024);
 
         {
@@ -184,7 +184,7 @@ void MonotonicAllocatorTest::Prepare()
         }
     });
 
-    AddTest("Deallocation", [this](auto &ls) {
+    AddTest("Deallocation", [this](auto& ls) {
         MonotonicAllocator alloc("Test::MonotonicAllocator", 1024);
         AllocatorScope scope(alloc.GetID());
 
@@ -200,7 +200,7 @@ void MonotonicAllocatorTest::Prepare()
         }
     });
 
-    AddTest("Deallocation (2)", [this](auto &ls) {
+    AddTest("Deallocation (2)", [this](auto& ls) {
         MonotonicAllocator alloc("Test::MonotonicAllocator", 1024);
         AllocatorScope scope(alloc.GetID());
 

@@ -52,7 +52,7 @@ namespace Test
         MultiPoolAllocator allocator("UnitTest");
         AllocatorScope scope(allocator);
 
-        auto &testEnv = TestEnv::GetEnv();
+        auto& testEnv = TestEnv::GetEnv();
 
         testEnv.AddTestCollection<SystemAllocatorTest>();
         testEnv.AddTestCollection<BaseAllocatorTest>();

@@ -37,7 +37,7 @@ namespace HE
 #endif // __DEBUG__
 
     public:
-        ConfigParam(const char *inName, const char *inDesc, T defaultValue,
+        ConfigParam(const char* inName, const char* inDesc, T defaultValue,
             std::thread::id id = std::this_thread::get_id())
 #ifdef ENGINE_PARAM_DESC_ENABLED
             : name(inName),
@@ -51,7 +51,7 @@ namespace HE
               threadID(id)
 #endif // __DEBUG__
         {
-            auto &settings = ConfigSystem::Get();
+            auto& settings = ConfigSystem::Get();
             settings.Register(*this);
         }
 
@@ -82,7 +82,7 @@ namespace HE
             return value;
         }
 
-        void Set(const T &inValue)
+        void Set(const T& inValue)
         {
 #ifdef __DEBUG__
             Assert(IsAtomic || std::this_thread::get_id() == threadID);

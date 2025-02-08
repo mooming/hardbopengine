@@ -15,15 +15,15 @@ namespace OS
     namespace
     {
 
-        int GetHandle(const FileHandle &handle)
+        int GetHandle(const FileHandle& handle)
         {
-            auto &fd = reinterpret_cast<const int &>(handle.data);
+            auto& fd = reinterpret_cast<const int&>(handle.data);
             return fd;
         }
 
-        void SetHandle(FileHandle &outHandle, int fd)
+        void SetHandle(FileHandle& outHandle, int fd)
         {
-            int &data = reinterpret_cast<int &>(outHandle.data);
+            int& data = reinterpret_cast<int&>(outHandle.data);
             data = fd;
         }
 
@@ -34,7 +34,7 @@ namespace OS
         Invalidate();
     }
 
-    FileHandle::FileHandle(FileHandle &&rhs)
+    FileHandle::FileHandle(FileHandle&& rhs)
         : data(rhs.data)
     {
         rhs.Invalidate();

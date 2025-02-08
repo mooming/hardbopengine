@@ -9,12 +9,14 @@
 #include "OSAL/OSMemory.h"
 #include "String/StaticString.h"
 #include "System/Debug.h"
+#include <cassert>
 #include <cstddef>
+#include <cstring>
 
 namespace HE
 {
     template <class T, int BufferSize, int NumBuffers = 2>
-    struct InlinePoolAllocator final
+    struct InlinePoolAllocator
     {
         using TIndex = decltype(BufferSize);
 
@@ -31,7 +33,7 @@ namespace HE
         static_assert(std::is_signed<TIndex>(),
             "The type of BufferSize should be signed integral.");
         static_assert(BufferSize > 0,
-            "The buffer size should be greater than or equal to zero.");
+            "The buffer size should be greater than or memsetequal to zero.");
 
     private:
         TAllocatorID id;
@@ -43,8 +45,6 @@ namespace HE
             uint8_t buffer[NumBuffers][BufferSize * sizeof(T)];
 
     public:
-        InlinePoolAllocator(const InlinePoolAllocator &) = delete;
-
         InlinePoolAllocator()
             : id(InvalidAllocatorID),
               parentID(InvalidAllocatorID),
@@ -53,7 +53,7 @@ namespace HE
             Assert(OS::CheckAligned(isAllocated));
             Assert(OS::CheckAligned(buffer[0]));
 
-            auto &mmgr = MemoryManager::GetInstance();
+            auto& mmgr = MemoryManager::GetInstance();
             parentID = mmgr.GetCurrentAllocatorID();
 
             if (unlikely(BufferSize <= 0))
@@ -61,20 +61,26 @@ namespace HE
                 return;
             }
 
-            for (auto &item : isAllocated)
+            for (auto& item : isAllocated)
             {
                 item = false;
             }
 
 #ifdef __MEMORY_VERIFICATION__
             constexpr size_t length = sizeof(T) * BufferSize * NumBuffers;
-            memset(buffer, 0, length);
+            std::memset(buffer, 0, length);
 #endif // __MEMORY_VERIFICATION__
 
             RegisterAllocator();
         }
 
-        ~InlinePoolAllocator() { DeregisterAllocator(); }
+        InlinePoolAllocator(const InlinePoolAllocator&)
+            : InlinePoolAllocator()
+        {
+            assert(false);
+        }
+
+        virtual ~InlinePoolAllocator() { DeregisterAllocator(); }
 
         template <typename U>
         operator InlinePoolAllocator<U, BufferSize, NumBuffers>()
@@ -95,20 +101,20 @@ namespace HE
             return name;
         }
 
-        T *allocate(std::size_t n)
+        T* allocate(std::size_t n)
         {
             constexpr size_t unit = sizeof(T);
             const auto nBytes = OS::GetAligned(n * unit);
             auto ptr = AllocateBytes(nBytes);
-            return reinterpret_cast<T *>(ptr);
+            return reinterpret_cast<T*>(ptr);
         }
 
-        void deallocate(T *ptr, std::size_t n) noexcept
+        void deallocate(T* ptr, std::size_t n) noexcept
         {
             constexpr size_t unit = sizeof(T);
             const auto nBytes = OS::GetAligned(n * unit);
 
-            void *voidPtr = reinterpret_cast<void *>(ptr);
+            void* voidPtr = reinterpret_cast<void*>(ptr);
             return DeallocateBytes(voidPtr, nBytes);
         }
 
@@ -116,20 +122,20 @@ namespace HE
         auto GetBlockSize() const { return BufferSize; }
         auto GetNumBlocks() const { return NumBuffers; }
 
-        bool operator==(const InlinePoolAllocator &) const { return false; }
+        bool operator==(const InlinePoolAllocator&) const { return false; }
 
-        bool operator!=(const InlinePoolAllocator &) const { return true; }
+        bool operator!=(const InlinePoolAllocator&) const { return true; }
 
     private:
-        void *FallbackAlloc(size_t nBytes)
+        void* FallbackAlloc(size_t nBytes)
         {
-            auto &mmgr = MemoryManager::GetInstance();
+            auto& mmgr = MemoryManager::GetInstance();
             auto ptr = mmgr.AllocateBytes(parentID, nBytes);
 
             return ptr;
         }
 
-        void *AllocateBytes(size_t nBytes)
+        void* AllocateBytes(size_t nBytes)
         {
             constexpr size_t unit = sizeof(T);
             constexpr size_t bufferSizeBytes = BufferSize * unit;
@@ -163,7 +169,7 @@ namespace HE
                 auto ptr = &buffer[index][0];
 
 #ifdef PROFILE_ENABLED
-                auto &mmgr = MemoryManager::GetInstance();
+                auto& mmgr = MemoryManager::GetInstance();
                 mmgr.ReportAllocation(id, ptr, nBytes, bufferSizeBytes);
 #endif // PROFILE_ENABLED
 
@@ -173,7 +179,7 @@ namespace HE
             return FallbackAlloc(nBytes);
         }
 
-        void DeallocateBytes(void *ptr, size_t nBytes)
+        void DeallocateBytes(void* ptr, size_t nBytes)
         {
             if (unlikely(ptr == nullptr || nBytes == 0))
             {
@@ -188,7 +194,7 @@ namespace HE
                 }
 
 #ifdef PROFILE_ENABLED
-                auto &mmgr = MemoryManager::GetInstance();
+                auto& mmgr = MemoryManager::GetInstance();
                 constexpr size_t unit = sizeof(T);
                 constexpr size_t bufferSizeBytes = BufferSize * unit;
                 mmgr.ReportDeallocation(id, ptr, nBytes, bufferSizeBytes);
@@ -200,19 +206,19 @@ namespace HE
                 return;
             }
 
-            auto &mmgr = MemoryManager::GetInstance();
+            auto& mmgr = MemoryManager::GetInstance();
             mmgr.DeallocateBytes(parentID, ptr, nBytes);
         }
 
         void RegisterAllocator()
         {
-            auto &mmgr = MemoryManager::GetInstance();
+            auto& mmgr = MemoryManager::GetInstance();
 
-            auto allocFunc = [this](size_t nBytes) -> void * {
-                return static_cast<void *>(AllocateBytes(nBytes));
+            auto allocFunc = [this](size_t nBytes) -> void* {
+                return static_cast<void*>(AllocateBytes(nBytes));
             };
 
-            auto deallocFunc = [this](void *ptr, size_t nBytes) {
+            auto deallocFunc = [this](void* ptr, size_t nBytes) {
                 DeallocateBytes(ptr, nBytes);
             };
 
@@ -231,7 +237,7 @@ namespace HE
                 return;
             }
 
-            auto &mmgr = MemoryManager::GetInstance();
+            auto& mmgr = MemoryManager::GetInstance();
             mmgr.Deregister(id);
         }
     };

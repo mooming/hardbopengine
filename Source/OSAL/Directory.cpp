@@ -9,14 +9,14 @@ using namespace std;
 
 namespace OS
 {
-    Directory::Directory(const char *path)
+    Directory::Directory(const char* path)
         : path(StringUtil::TrimPath(path))
     {
         auto list = ListFilesInDirectory(path);
 
-        for (const auto &element : list)
+        for (const auto& element : list)
         {
-            const char *name = element.c_str();
+            const char* name = element.c_str();
 
             if (name[0] == '.')
             {

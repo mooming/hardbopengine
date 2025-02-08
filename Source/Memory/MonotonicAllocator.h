@@ -12,7 +12,7 @@ namespace HE
     {
     public:
         using TSize = size_t;
-        using TPointer = void *;
+        using TPointer = void*;
 
     private:
         TAllocatorID id;
@@ -23,12 +23,12 @@ namespace HE
 
         union
         {
-            uint8_t *buffer;
+            uint8_t* buffer;
             TPointer bufferPtr;
         };
 
     public:
-        MonotonicAllocator(const char *name, TSize capacity);
+        MonotonicAllocator(const char* name, TSize capacity);
         ~MonotonicAllocator();
 
         TPointer Allocate(size_t size);

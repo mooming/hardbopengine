@@ -10,11 +10,11 @@
 namespace HE
 {
 #ifdef PROFILE_ENABLED
-    PoolAllocator::PoolAllocator(const char *name, TSize inBlockSize,
+    PoolAllocator::PoolAllocator(const char* name, TSize inBlockSize,
         TSize numberOfBlocks, const std::source_location location)
 #else  // PROFILE_ENABLED
     PoolAllocator::PoolAllocator(
-        const char *name, TSize inBlockSize, TIndex numberOfBlocks)
+        const char* name, TSize inBlockSize, TIndex numberOfBlocks)
 #endif // PROFILE_ENABLED
         : id(InvalidAllocatorID),
           parentID(InvalidAllocatorID),
@@ -32,7 +32,7 @@ namespace HE
     {
         Assert(blockSize >= sizeof(TSize));
 
-        auto &mmgr = MemoryManager::GetInstance();
+        auto& mmgr = MemoryManager::GetInstance();
         parentID = mmgr.GetCurrentAllocatorID();
 
         const TSize totalSize = blockSize * numberOfBlocks;
@@ -41,7 +41,7 @@ namespace HE
             return;
         }
 
-        buffer = static_cast<Byte *>(mmgr.AllocateBytes(totalSize));
+        buffer = static_cast<Byte*>(mmgr.AllocateBytes(totalSize));
         availables = &buffer[0];
 
         for (TSize i = 0; i < numberOfBlocks; ++i)
@@ -52,12 +52,12 @@ namespace HE
 
         auto allocFunc = [this](size_t n) { return Allocate(n); };
 
-        auto deallocFunc = [this](void *ptr, size_t n) { Deallocate(ptr, n); };
+        auto deallocFunc = [this](void* ptr, size_t n) { Deallocate(ptr, n); };
 
         id = mmgr.Register(name, false, totalSize, allocFunc, deallocFunc);
     }
 
-    PoolAllocator::PoolAllocator(PoolAllocator &&rhs) noexcept
+    PoolAllocator::PoolAllocator(PoolAllocator&& rhs) noexcept
         : id(rhs.id),
           parentID(rhs.parentID),
           name(rhs.name),
@@ -85,18 +85,18 @@ namespace HE
         rhs.maxUsedBlocks = 0;
 #endif // PROFILE_ENABLED
 
-        auto &mmgr = MemoryManager::GetInstance();
+        auto& mmgr = MemoryManager::GetInstance();
         const TSize totalSize = blockSize * numberOfBlocks;
 
         auto allocFunc = [this](size_t n) { return Allocate(n); };
 
-        auto deallocFunc = [this](void *ptr, size_t n) { Deallocate(ptr, n); };
+        auto deallocFunc = [this](void* ptr, size_t n) { Deallocate(ptr, n); };
 
         mmgr.Update(
             GetID(),
-            [totalSize, allocFunc, deallocFunc](auto &proxy) {
+            [totalSize, allocFunc, deallocFunc](auto& proxy) {
 #ifdef PROFILE_ENABLED
-                auto &stats = proxy.stats;
+                auto& stats = proxy.stats;
                 stats.capacity = totalSize;
 #endif // PROFILE_ENABLED
 
@@ -118,7 +118,7 @@ namespace HE
         Assert(id != InvalidAllocatorID);
         Assert(buffer != nullptr);
 
-        auto &mmgr = MemoryManager::GetInstance();
+        auto& mmgr = MemoryManager::GetInstance();
         mmgr.DeallocateBytes(buffer, totalSize);
 
 #ifdef PROFILE_ENABLED
@@ -131,7 +131,7 @@ namespace HE
         id = InvalidAllocatorID;
     }
 
-    PoolAllocator &PoolAllocator::operator=(PoolAllocator &&rhs) noexcept
+    PoolAllocator& PoolAllocator::operator=(PoolAllocator&& rhs) noexcept
     {
         this->~PoolAllocator();
         new (this) PoolAllocator(std::move(rhs));
@@ -139,7 +139,7 @@ namespace HE
         return *this;
     }
 
-    bool PoolAllocator::operator<(const PoolAllocator &rhs) const noexcept
+    bool PoolAllocator::operator<(const PoolAllocator& rhs) const noexcept
     {
         if (blockSize < rhs.blockSize)
         {
@@ -161,8 +161,8 @@ namespace HE
     {
         if (unlikely(size > blockSize))
         {
-            auto &mmgr = MemoryManager::GetInstance();
-            mmgr.LogWarning([this, size](auto &ls) {
+            auto& mmgr = MemoryManager::GetInstance();
+            mmgr.LogWarning([this, size](auto& ls) {
                 ls << "The requested size " << size
                    << " is exceeding its limit, " << blockSize << '.';
             });
@@ -180,7 +180,7 @@ namespace HE
 #ifdef PROFILE_ENABLED
         {
             Assert(size <= blockSize);
-            auto &mmgr = MemoryManager::GetInstance();
+            auto& mmgr = MemoryManager::GetInstance();
             mmgr.ReportAllocation(id, ptr, size, blockSize);
         }
 #endif // PROFILE_ENABLED
@@ -197,7 +197,7 @@ namespace HE
 
         if (unlikely(!IsMine(ptr)))
         {
-            auto &mmgr = MemoryManager::GetInstance();
+            auto& mmgr = MemoryManager::GetInstance();
             mmgr.DeallocateBytes(parentID, ptr, size);
             return;
         }
@@ -205,7 +205,7 @@ namespace HE
 #ifdef PROFILE_ENABLED
         {
             Assert(size <= blockSize);
-            auto &mmgr = MemoryManager::GetInstance();
+            auto& mmgr = MemoryManager::GetInstance();
             mmgr.ReportDeallocation(id, ptr, size, blockSize);
         }
 #endif // PROFILE_ENABLED
@@ -215,8 +215,8 @@ namespace HE
             const auto index = GetIndex(availables);
             if (unlikely(index > numberOfBlocks))
             {
-                auto &mmgr = MemoryManager::GetInstance();
-                mmgr.LogError([ptr](auto &logStream) {
+                auto& mmgr = MemoryManager::GetInstance();
+                mmgr.LogError([ptr](auto& logStream) {
                     logStream << ptr << " is not alloacted by this.";
                 });
 
@@ -239,7 +239,7 @@ namespace HE
 
     bool PoolAllocator::IsMine(Pointer ptr) const
     {
-        auto bytePtr = reinterpret_cast<Byte *>(ptr);
+        auto bytePtr = reinterpret_cast<Byte*>(ptr);
         auto offset = static_cast<size_t>(bytePtr - buffer);
         auto totalSize = blockSize * numberOfBlocks;
 
@@ -248,7 +248,7 @@ namespace HE
 
     PoolAllocator::TSize PoolAllocator::GetIndex(Pointer ptr) const
     {
-        auto bytePtr = reinterpret_cast<Byte *>(ptr);
+        auto bytePtr = reinterpret_cast<Byte*>(ptr);
         auto delta = bytePtr - buffer;
         auto index = static_cast<TSize>(delta / blockSize);
 
@@ -278,8 +278,8 @@ namespace HE
     {
         if (!availables)
         {
-            auto &mmgr = MemoryManager::GetInstance();
-            mmgr.LogError([this](auto &ls) {
+            auto& mmgr = MemoryManager::GetInstance();
+            mmgr.LogError([this](auto& ls) {
                 ls << "No available memory blocks. Usage = "
                    << (numberOfBlocks - numberOfFreeBlocks) << " / "
                    << numberOfBlocks;
@@ -288,7 +288,7 @@ namespace HE
             return nullptr;
         }
 
-        void *ptr = availables;
+        void* ptr = availables;
         size_t index = ReadNextIndex(ptr);
 
         if (index < numberOfBlocks)
@@ -321,14 +321,14 @@ namespace HE
 
     void PoolAllocatorTest::Prepare()
     {
-        AddTest("Construction", [](auto &) {
+        AddTest("Construction", [](auto&) {
             for (int i = 1; i < 100; ++i)
             {
                 PoolAllocator pool("TestPoolAllocator", i, 100);
             }
         });
 
-        AddTest("Allocation & Deallocation", [this](auto &ls) {
+        AddTest("Allocation & Deallocation", [this](auto& ls) {
             PoolAllocator pool("TestPoolAllocator", 4096, 100);
 
             for (int i = 0; i < 100; ++i)

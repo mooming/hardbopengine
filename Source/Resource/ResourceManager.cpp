@@ -16,7 +16,7 @@ namespace HE
     {
     }
 
-    void ResourceManager::PostUpdate(Engine &engine)
+    void ResourceManager::PostUpdate(Engine& engine)
     {
     }
 
@@ -38,7 +38,7 @@ namespace HE
         return resource;
     }
 
-    void ResourceManager::RequestTasks(TaskSystem &taskSys)
+    void ResourceManager::RequestTasks(TaskSystem& taskSys)
     {
     }
 

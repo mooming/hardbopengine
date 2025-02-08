@@ -22,7 +22,7 @@ namespace HE
     {
     }
 
-    TaskHandle::TaskHandle(TaskHandle &&rhs)
+    TaskHandle::TaskHandle(TaskHandle&& rhs)
         : key(rhs.key),
           taskIndex(rhs.taskIndex),
           releaser(std::move(rhs.releaser))
@@ -47,7 +47,7 @@ namespace HE
         releaser(*this);
     }
 
-    TaskHandle &TaskHandle::operator=(TaskHandle &&rhs)
+    TaskHandle& TaskHandle::operator=(TaskHandle&& rhs)
     {
         this->~TaskHandle();
 
@@ -67,10 +67,10 @@ namespace HE
         return key != InvalidKey && taskIndex >= 0;
     }
 
-    Task *TaskHandle::GetTask() const
+    Task* TaskHandle::GetTask() const
     {
-        auto &engine = Engine::Get();
-        auto &taskSys = engine.GetTaskSystem();
+        auto& engine = Engine::Get();
+        auto& taskSys = engine.GetTaskSystem();
         auto task = taskSys.GetTask(key, taskIndex);
 
         return task;

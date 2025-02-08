@@ -13,7 +13,7 @@ namespace HE
 
 void HE::Vector4Test::Prepare()
 {
-    AddTest("Vector4 Constants", [this](auto &ls) {
+    AddTest("Vector4 Constants", [this](auto& ls) {
         ls << "Forward = " << Float4::Forward << lf;
         ls << "Right = " << Float4::Right << lf;
         ls << "Up = " << Float4::Up << lf;
@@ -28,7 +28,7 @@ void HE::Vector4Test::Prepare()
         }
     });
 
-    AddTest("Vector4 Constructors & Operator", [this](auto &ls) {
+    AddTest("Vector4 Constructors & Operator", [this](auto& ls) {
         HSTL::HVector<Float4> vertices;
 
         for (int i = 0; i < 1000000; ++i)
@@ -50,7 +50,7 @@ void HE::Vector4Test::Prepare()
         {
             Time::ScopedTime measure(heTime);
 
-            for (auto &vertex : vertices)
+            for (auto& vertex : vertices)
             {
                 dotResult += tmp.Dot(vertex);
                 tmp = vertex;

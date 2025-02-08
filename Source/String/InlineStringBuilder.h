@@ -49,13 +49,13 @@ namespace HE
             buffer[LastIndex] = '\0';
         }
 
-        auto c_str() const { return static_cast<const char *>(buffer); }
+        auto c_str() const { return static_cast<const char*>(buffer); }
 
         auto Size() const { return length; }
 
-        operator const TChar *() const { return c_str(); }
+        operator const TChar*() const { return c_str(); }
 
-        This &Hex(uint8_t value)
+        This& Hex(uint8_t value)
         {
             auto print = [&]() {
                 const size_t remained = BufferSize - length;
@@ -76,9 +76,9 @@ namespace HE
             return *this;
         }
 
-        This &operator<<(nullptr_t) { return *this << "Null"; }
+        This& operator<<(nullptr_t) { return *this << "Null"; }
 
-        This &operator<<(bool value)
+        This& operator<<(bool value)
         {
             if (value)
             {
@@ -88,7 +88,7 @@ namespace HE
             return *this << "False";
         }
 
-        This &operator<<(char ch)
+        This& operator<<(char ch)
         {
             if (length >= LastIndex)
             {
@@ -103,7 +103,7 @@ namespace HE
             return *this;
         }
 
-        This &operator<<(unsigned char value)
+        This& operator<<(unsigned char value)
         {
             const size_t remained = BufferSize - length;
             auto written = snprintf(&buffer[length], remained, "%u", value);
@@ -114,7 +114,7 @@ namespace HE
             return *this;
         }
 
-        This &operator<<(const char *str)
+        This& operator<<(const char* str)
         {
             if (unlikely(str == nullptr))
             {
@@ -136,7 +136,7 @@ namespace HE
                 return *this;
             }
 
-            memcpy((void *)(&buffer[length]), str, len);
+            memcpy((void*)(&buffer[length]), str, len);
             length = newLength;
             buffer[length] = '\0';
 
@@ -144,7 +144,7 @@ namespace HE
         }
 
         template <size_t N>
-        This &operator<<(char str[N])
+        This& operator<<(char str[N])
         {
             if (N == 0)
             {
@@ -166,14 +166,14 @@ namespace HE
                 return *this;
             }
 
-            memcpy((void *)(&buffer[length]), &str[0], len);
+            memcpy((void*)(&buffer[length]), &str[0], len);
             length = newLength;
             buffer[length] = '\0';
 
             return *this;
         }
 
-        This &operator<<(const std::string_view &str)
+        This& operator<<(const std::string_view& str)
         {
             size_t len = str.length();
             size_t newLength = length + len;
@@ -190,7 +190,7 @@ namespace HE
                 return *this;
             }
 
-            memcpy((void *)(&buffer[length]), str.data(), len);
+            memcpy((void*)(&buffer[length]), str.data(), len);
 
             length = newLength;
             buffer[length] = '\0';
@@ -199,14 +199,14 @@ namespace HE
         }
 
         template <class CharT, class Traits, class Allocator>
-        This &operator<<(const std::basic_string<CharT, Traits, Allocator> &str)
+        This& operator<<(const std::basic_string<CharT, Traits, Allocator>& str)
         {
             return *this << static_cast<std::string_view>(str);
         }
 
-        This &operator<<(StaticString str) { return *this << str.c_str(); }
+        This& operator<<(StaticString str) { return *this << str.c_str(); }
 
-        This &operator<<(short value)
+        This& operator<<(short value)
         {
             const size_t remained = BufferSize - length;
             auto written = snprintf(&buffer[length], remained, "%d", value);
@@ -217,7 +217,7 @@ namespace HE
             return *this;
         }
 
-        This &operator<<(unsigned short value)
+        This& operator<<(unsigned short value)
         {
             const size_t remained = BufferSize - length;
             auto written = snprintf(&buffer[length], remained, "%u", value);
@@ -228,7 +228,7 @@ namespace HE
             return *this;
         }
 
-        This &operator<<(int value)
+        This& operator<<(int value)
         {
             const size_t remained = BufferSize - length;
             auto written = snprintf(&buffer[length], remained, "%d", value);
@@ -239,7 +239,7 @@ namespace HE
             return *this;
         }
 
-        This &operator<<(unsigned int value)
+        This& operator<<(unsigned int value)
         {
             const size_t remained = BufferSize - length;
             auto written = snprintf(&buffer[length], remained, "%u", value);
@@ -250,7 +250,7 @@ namespace HE
             return *this;
         }
 
-        This &operator<<(long value)
+        This& operator<<(long value)
         {
             const size_t remained = BufferSize - length;
             auto written = snprintf(&buffer[length], remained, "%ld", value);
@@ -261,7 +261,7 @@ namespace HE
             return *this;
         }
 
-        This &operator<<(unsigned long value)
+        This& operator<<(unsigned long value)
         {
             const size_t remained = BufferSize - length;
             auto written = snprintf(&buffer[length], remained, "%lu", value);
@@ -272,7 +272,7 @@ namespace HE
             return *this;
         }
 
-        This &operator<<(long long value)
+        This& operator<<(long long value)
         {
             const size_t remained = BufferSize - length;
             auto written = snprintf(&buffer[length], remained, "%lld", value);
@@ -283,7 +283,7 @@ namespace HE
             return *this;
         }
 
-        This &operator<<(unsigned long long value)
+        This& operator<<(unsigned long long value)
         {
             const size_t remained = BufferSize - length;
             auto written = snprintf(&buffer[length], remained, "%llu", value);
@@ -294,7 +294,7 @@ namespace HE
             return *this;
         }
 
-        This &operator<<(float value)
+        This& operator<<(float value)
         {
             const size_t remained = BufferSize - length;
             auto written = snprintf(&buffer[length], remained, "%f", value);
@@ -305,7 +305,7 @@ namespace HE
             return *this;
         }
 
-        This &operator<<(double value)
+        This& operator<<(double value)
         {
             const size_t remained = BufferSize - length;
             auto written = snprintf(&buffer[length], remained, "%lf", value);
@@ -316,10 +316,10 @@ namespace HE
             return *this;
         }
 
-        This &operator<<(long double value)
+        This& operator<<(long double value)
         {
             const size_t remained = BufferSize - length;
-            auto written = snprintf(&buffer[length], remained, "%Lf", value);
+            auto written = snprintf(&buffer[length], remained, "%Le", value);
 
             Assert(written >= 0);
             length = std::min(LastIndex, length + written);
@@ -327,7 +327,7 @@ namespace HE
             return *this;
         }
 
-        This &operator<<(void *value)
+        This& operator<<(void* value)
         {
             const size_t remained = BufferSize - length;
             auto written = snprintf(&buffer[length], remained, "%p", value);
@@ -338,7 +338,7 @@ namespace HE
             return *this;
         }
 
-        This &operator<<(EndLine) { return *this << '\n'; }
+        This& operator<<(EndLine) { return *this << '\n'; }
     };
 
 } // namespace HE

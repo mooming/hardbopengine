@@ -11,7 +11,7 @@ namespace HE
 {
 
     template <typename T>
-    class BaseAllocator final
+    class BaseAllocator
     {
     public:
         using value_type = T;
@@ -32,42 +32,44 @@ namespace HE
         }
 
         template <class U>
-        BaseAllocator(const BaseAllocator<U> &rhs)
+        BaseAllocator(const BaseAllocator<U>& rhs)
             : allocatorID(rhs.GetSourceAllocatorID())
         {
         }
 
-        T *allocate(std::size_t n)
+        virtual ~BaseAllocator() = default;
+
+        T* allocate(std::size_t n)
         {
             AllocatorScope scope(allocatorID);
-            auto &mmgr = MemoryManager::GetInstance();
+            auto& mmgr = MemoryManager::GetInstance();
             auto ptr = mmgr.AllocateTypes<T>(n);
 
             return ptr;
         }
 
-        void deallocate(T *ptr, std::size_t n)
+        void deallocate(T* ptr, std::size_t n)
         {
             AllocatorScope scope(allocatorID);
-            auto &mmgr = MemoryManager::GetInstance();
+            auto& mmgr = MemoryManager::GetInstance();
             mmgr.DeallocateTypes(ptr, n);
         }
 
         template <class U>
-        bool operator==(const BaseAllocator<U> &rhs) const
+        bool operator==(const BaseAllocator<U>& rhs) const
         {
             return allocatorID == rhs.allocatorID;
         }
 
         template <class U>
-        bool operator!=(const BaseAllocator<U> &rhs) const
+        bool operator!=(const BaseAllocator<U>& rhs) const
         {
             return allocatorID != rhs.allocatorID;
         }
 
-        inline auto GetID() const { return allocatorID; }
-        inline auto GetSourceAllocatorID() const { return allocatorID; }
-        inline size_t GetFallbackCount() const { return 0; }
+        auto GetID() const { return allocatorID; }
+        auto GetSourceAllocatorID() const { return allocatorID; }
+        size_t GetFallbackCount() const { return 0; }
     };
 
 } // namespace HE

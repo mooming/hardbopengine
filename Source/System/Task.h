@@ -44,12 +44,12 @@ namespace HE
         void Wait(uint32_t intervalMilliSecs = 10) const;
 
         auto GetName() const { return name; }
-        auto &GetThreadID() const { return threadID; }
+        auto& GetThreadID() const { return threadID; }
         bool IsCurrentThread() const
         {
             return threadID == std::this_thread::get_id();
         }
-        void SetThreadID(const TThreadID &id) { threadID = id; }
+        void SetThreadID(const TThreadID& id) { threadID = id; }
 
         bool IsDone() const { return NumDone() >= numStreams; }
         bool IsCancelled() const

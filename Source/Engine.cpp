@@ -18,13 +18,13 @@ namespace
     {
         using namespace HE;
 
-        auto &engine = Engine::Get();
+        auto& engine = Engine::Get();
         engine.GetLogger().StopTask(engine.GetTaskSystem());
         engine.LogError(
-            [sigNum](auto &ls) { ls << "signal(" << sigNum << ") received."; });
+            [sigNum](auto& ls) { ls << "signal(" << sigNum << ") received."; });
         engine.LogError(
-            [](auto &ls) { ls << "The application shall be terminated."; });
-        engine.LogError([](auto &ls) {
+            [](auto& ls) { ls << "The application shall be terminated."; });
+        engine.LogError([](auto& ls) {
             ls << "Thank you for playing. Have a great day! :)" << std::endl;
         });
 
@@ -37,15 +37,15 @@ namespace
 
 namespace HE
 {
-    static Engine *engineInstance = nullptr;
+    static Engine* engineInstance = nullptr;
 
-    Engine &Engine::Get()
+    Engine& Engine::Get()
     {
         Assert(engineInstance != nullptr);
         return *engineInstance;
     }
 
-    Engine::PreEngineInit::PreEngineInit(Engine *engine)
+    Engine::PreEngineInit::PreEngineInit(Engine* engine)
     {
         engineInstance = engine;
     }
@@ -79,7 +79,7 @@ namespace HE
         CloseLog();
     }
 
-    void Engine::Initialize(int argc, const char *argv[])
+    void Engine::Initialize(int argc, const char* argv[])
     {
         taskSystem.Initialize();
         isTaskSystemReady = true;
@@ -93,7 +93,7 @@ namespace HE
 
         for (int i = 0; i < argc; ++i)
         {
-            log.Out([i, argv](auto &ls) { ls << i << " : " << argv[i]; });
+            log.Out([i, argv](auto& ls) { ls << i << " : " << argv[i]; });
         }
 
         log.Out("Engine has been initialized.");
@@ -124,7 +124,7 @@ namespace HE
         }
 
         {
-            auto &configSys = ConfigSystem::Get();
+            auto& configSys = ConfigSystem::Get();
 
 #ifdef __DEBUG__
 //        const auto logLevel = static_cast<uint8_t>(ELogLevel::Verbose);
@@ -132,7 +132,7 @@ namespace HE
 //        configSys.SetByte("Log.Level", logLevel);
 #endif // __DEBUG__
 
-            auto &staticStrTable = StaticStringTable::GetInstance();
+            auto& staticStrTable = StaticStringTable::GetInstance();
             staticStrTable.PrintStringTable();
             configSys.PrintAllParameters();
             statistics.Print();
@@ -241,7 +241,7 @@ namespace HE
         logFile.flush();
     }
 
-    void Engine::ConsoleOutLn(const char *str)
+    void Engine::ConsoleOutLn(const char* str)
     {
         std::lock_guard lock(consoleOutLock);
         std::cout << str << std::endl;
@@ -261,31 +261,31 @@ namespace HE
 
     void Engine::PreUpdate(float deltaTime)
     {
-        Log(ELogLevel::Info, [deltaTime](auto &ls) {
+        Log(ELogLevel::Info, [deltaTime](auto& ls) {
             ls << "PreUpdate: deltaTime = " << deltaTime;
         });
 
-        auto &mainTaskStream = taskSystem.GetMainTaskStream();
+        auto& mainTaskStream = taskSystem.GetMainTaskStream();
         mainTaskStream.Flush();
     }
 
     void Engine::Update(float deltaTime)
     {
-        Log(ELogLevel::Info, [deltaTime](auto &ls) {
+        Log(ELogLevel::Info, [deltaTime](auto& ls) {
             ls << "Update: deltaTime = " << deltaTime;
         });
 
-        auto &mainTaskStream = taskSystem.GetMainTaskStream();
+        auto& mainTaskStream = taskSystem.GetMainTaskStream();
         mainTaskStream.Flush();
     }
 
     void Engine::PostUpdate(float deltaTime)
     {
-        Log(ELogLevel::Info, [deltaTime](auto &ls) {
+        Log(ELogLevel::Info, [deltaTime](auto& ls) {
             ls << "PostUpdate: deltaTime = " << deltaTime;
         });
 
-        auto &mainTaskStream = taskSystem.GetMainTaskStream();
+        auto& mainTaskStream = taskSystem.GetMainTaskStream();
         mainTaskStream.Flush();
 
         taskSystem.PostUpdate();

@@ -9,14 +9,14 @@ namespace HE
     namespace LogUtil
     {
 
-        const TTimePoint &GetStartTime()
+        const TTimePoint& GetStartTime()
         {
             static TTimePoint startTime;
             return startTime;
         }
 
         void GetTimeStampString(
-            InlineStringBuilder<64> &outStr, const TTimePoint &currentTime)
+            InlineStringBuilder<64>& outStr, const TTimePoint& currentTime)
         {
             using namespace std;
 

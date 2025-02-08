@@ -4,14 +4,13 @@
 
 #include "Log/Logger.h"
 #include <exception>
-#include <iostream>
-#include <memory>
+
 
 namespace HE
 {
 
     TestCollection::LogFlush::LogFlush(
-        const char *name, ELogLevel level, TLogBuffer *buffer)
+        const char* name, ELogLevel level, TLogBuffer* buffer)
         : name(name),
           level(level),
           testIndex(0),
@@ -23,7 +22,7 @@ namespace HE
     {
     }
 
-    TestCollection::TestCollection(const char *inTitle)
+    TestCollection::TestCollection(const char* inTitle)
         : title(inTitle),
           isDone(false),
           isSuccess(false),
@@ -53,10 +52,10 @@ namespace HE
             isSuccess = errorMessages.size() <= 0;
             isDone = true;
         }
-        catch (std::exception &e)
+        catch (std::exception& e)
         {
             log.OutError(
-                [title = GetName(), &e](auto &ls) { ls << e.what() << hendl; });
+                [title = GetName(), &e](auto& ls) { ls << e.what() << hendl; });
 
             isSuccess = false;
         }
@@ -64,12 +63,12 @@ namespace HE
         Report();
     }
 
-    void TestCollection::AddTest(const char *name, TestFunc testCase)
+    void TestCollection::AddTest(const char* name, TestFunc testCase)
     {
         if (unlikely(testCase == nullptr))
         {
             auto log = Logger::Get(GetName());
-            log.OutError([](auto &ls) { ls << "Null test-case error."; });
+            log.OutError([](auto& ls) { ls << "Null test-case error."; });
 
             return;
         }
@@ -86,7 +85,7 @@ namespace HE
 
         for (uint32_t i = 0; i < length; ++i)
         {
-            auto &testPair = tests[i];
+            auto& testPair = tests[i];
             auto testName = testPair.first.c_str();
 
             lf.testIndex = i;
@@ -96,11 +95,11 @@ namespace HE
             lferr.testIndex = i;
             lferr.testName = testName;
 
-            auto &test = testPair.second;
+            auto& test = testPair.second;
             Assert(test != nullptr);
 
             auto log = Logger::Get(GetName());
-            log.Out([i, testName](auto &ls) {
+            log.Out([i, testName](auto& ls) {
                 ls << "# TC" << i << '.' << testName << " #";
             });
 
@@ -117,7 +116,7 @@ namespace HE
             bool isPassed = newErrorCursor == errorCursor;
             errorCursor = newErrorCursor;
 
-            log.Out([i, isPassed, testName](auto &ls) {
+            log.Out([i, isPassed, testName](auto& ls) {
                 ls << "# TC" << i << '.' << testName << " Result ";
                 if (isPassed)
                 {
@@ -139,20 +138,20 @@ namespace HE
 
         if (isSuccess)
         {
-            log.Out([](auto &ls) {
+            log.Out([](auto& ls) {
                 ls << "= Collection Result: [SUCCESS] =================\n";
             });
         }
         else
         {
-            log.OutError([](auto &ls) {
+            log.OutError([](auto& ls) {
                 ls << "= Collection Result: [FAIL] ====================\n";
             });
         }
     }
 
-    std::ostream &operator<<(
-        std::ostream &os, const TestCollection::LogFlush &lf)
+    std::ostream& operator<<(
+        std::ostream& os, const TestCollection::LogFlush& lf)
     {
         std::stringstream ss;
         ss << os.rdbuf();
@@ -165,7 +164,7 @@ namespace HE
         auto str = ss.str();
         auto log = Logger::Get(lf.name, lf.level);
 
-        log.Out([&lf, &prefix, &str](auto &ls) {
+        log.Out([&lf, &prefix, &str](auto& ls) {
             ls << '[' << prefix.c_str() << "." << lf.testName << "] "
                << str.c_str();
 

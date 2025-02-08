@@ -26,28 +26,28 @@ namespace HE
     public:
         RigidTransform();
         RigidTransform(std::nullptr_t);
-        RigidTransform(const Vec3 &translation, const Quat &rotation);
-        RigidTransform(const Mat4x4 &mat);
+        RigidTransform(const Vec3& translation, const Quat& rotation);
+        RigidTransform(const Mat4x4& mat);
 
-        inline bool operator==(const This &rhs) const
+        inline bool operator==(const This& rhs) const
         {
             return rotation == rhs.rotation && translation == rhs.translation;
         }
 
         template <typename T>
-        inline T operator*(const T &rhs) const
+        inline T operator*(const T& rhs) const
         {
             return Transform(rhs);
         }
 
-        Vec3 Transform(const Vec3 &x) const
+        Vec3 Transform(const Vec3& x) const
         {
             return rotation * x + translation;
         }
 
-        Quat Transform(const Quat &r) const { return rotation * r; }
+        Quat Transform(const Quat& r) const { return rotation * r; }
 
-        This Transform(const This &rhs) const
+        This Transform(const This& rhs) const
         {
             This result(nullptr);
 
@@ -57,17 +57,17 @@ namespace HE
             return result;
         }
 
-        Vec3 InverseTransform(const Vec3 &x) const
+        Vec3 InverseTransform(const Vec3& x) const
         {
             return (rotation.Inverse() * (x - translation));
         }
 
-        Quat InverseTransform(const Quat &r) const
+        Quat InverseTransform(const Quat& r) const
         {
             return rotation.Inverse() * r;
         }
 
-        This InverseTransform(const This &rhs) const
+        This InverseTransform(const This& rhs) const
         {
             This result(nullptr);
 
@@ -99,8 +99,8 @@ namespace HE
     using RigidTR = RigidTransform<float>;
 
     template <typename T>
-    inline std::ostream &operator<<(
-        std::ostream &os, const RigidTransform<T> &local)
+    inline std::ostream& operator<<(
+        std::ostream& os, const RigidTransform<T>& local)
     {
         using namespace std;
 
@@ -128,14 +128,14 @@ namespace HE
     }
 
     template <typename T, int N>
-    inline RigidTransform<T, N>::RigidTransform(const Vec3 &t, const Quat &r)
+    inline RigidTransform<T, N>::RigidTransform(const Vec3& t, const Quat& r)
         : rotation(r),
           translation(t)
     {
     }
 
     template <typename T, int N>
-    inline RigidTransform<T, N>::RigidTransform(const Mat4x4 &mat)
+    inline RigidTransform<T, N>::RigidTransform(const Mat4x4& mat)
         : rotation(mat),
           translation(mat.m14, mat.m24, mat.m34)
     {

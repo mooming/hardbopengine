@@ -13,7 +13,7 @@ namespace HE
 
 void HE::Vector3Test::Prepare()
 {
-    AddTest("Constants", [this](auto &ls) {
+    AddTest("Constants", [this](auto& ls) {
         ls << "Forward = " << Float3::Forward << lf;
         ls << "Right = " << Float3::Right << lf;
         ls << "Up = " << Float3::Up << lf;
@@ -22,7 +22,7 @@ void HE::Vector3Test::Prepare()
         ls << "Unity = " << Float3::Unity << lf;
     });
 
-    AddTest("Cross Product", [this](auto &ls) {
+    AddTest("Cross Product", [this](auto& ls) {
         auto xCrossY = Float3::X.Cross(Float3::Y);
         ls << "X x Y = " << xCrossY << lf;
 
@@ -55,7 +55,7 @@ void HE::Vector3Test::Prepare()
 #endif //__RIGHT_HANDED__
     });
 
-    AddTest("Default Constructor", [this](auto &ls) {
+    AddTest("Default Constructor", [this](auto& ls) {
         Float3 tmp;
 
         if (tmp != Float3::Zero)
@@ -66,7 +66,7 @@ void HE::Vector3Test::Prepare()
 
     using namespace HSTL;
 
-    AddTest("Constructors and Operators", [this](auto &ls) {
+    AddTest("Constructors and Operators", [this](auto& ls) {
         HVector<Float3> vertices;
 
         for (int i = 0; i < 1000000; ++i)
@@ -89,7 +89,7 @@ void HE::Vector3Test::Prepare()
             {
                 Time::ScopedTime measure(heTime);
 
-                for (auto &vertex : vertices)
+                for (auto& vertex : vertices)
                 {
                     dotResult += tmp.Dot(vertex);
                     tmp = vertex;
@@ -101,7 +101,7 @@ void HE::Vector3Test::Prepare()
         }
     });
 
-    AddTest("Interpolation", [this](auto &ls) {
+    AddTest("Interpolation", [this](auto& ls) {
         auto x = Float3::X;
         auto y = Float3::Y;
 

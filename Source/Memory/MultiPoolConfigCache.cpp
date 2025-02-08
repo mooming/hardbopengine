@@ -20,7 +20,7 @@ namespace HE
         return className;
     }
 
-    size_t MultiPoolConfigCache::Serialize(Buffer &outBuffer)
+    size_t MultiPoolConfigCache::Serialize(Buffer& outBuffer)
     {
         using namespace StringUtil;
         auto log = Logger::Get(ToCompactMethodName(__PRETTY_FUNCTION__));
@@ -28,7 +28,7 @@ namespace HE
         BufferOutputStream bos(outBuffer);
 
         StaticString className = GetClassName();
-        const char *classNameStr = className.c_str();
+        const char* classNameStr = className.c_str();
         bos << classNameStr;
         bos << GetVersion();
 
@@ -39,24 +39,24 @@ namespace HE
 
         if (unlikely(bos.HasError()))
         {
-            log.OutError([](auto &ls) {
+            log.OutError([](auto& ls) {
                 ls << "An error occured while streaming out header data.";
             });
 
             return 0;
         }
 
-        for (auto &item : data)
+        for (auto& item : data)
         {
             StaticString name(item.uniqueName);
 
             auto nameStr = name.c_str();
             bos << nameStr;
 
-            auto &configs = item.configs;
+            auto& configs = item.configs;
             bos << configs.size();
 
-            for (auto &config : configs)
+            for (auto& config : configs)
             {
                 bos << config.blockSize;
                 bos << config.numberOfBlocks;
@@ -64,7 +64,7 @@ namespace HE
 
             if (unlikely(bos.HasError()))
             {
-                log.OutError([](auto &ls) {
+                log.OutError([](auto& ls) {
                     ls << "An error occured while streaming out pool config "
                           "data";
                 });
@@ -76,7 +76,7 @@ namespace HE
         return bos.GetCursor();
     }
 
-    bool MultiPoolConfigCache::Deserialize(const Buffer &buffer)
+    bool MultiPoolConfigCache::Deserialize(const Buffer& buffer)
     {
         using namespace StringUtil;
         static StaticString logName(ToCompactMethodName(__PRETTY_FUNCTION__));
@@ -89,7 +89,7 @@ namespace HE
 
         if (unlikely(className != GetClassName()))
         {
-            log.OutError([this, className](auto &ls) {
+            log.OutError([this, className](auto& ls) {
                 ls << "Invalid class name " << className << ", "
                    << GetClassName() << " is expected.";
             });
@@ -102,7 +102,7 @@ namespace HE
 
         if (unlikely(version != inVersion))
         {
-            log.OutError([inVersion](auto &ls) {
+            log.OutError([inVersion](auto& ls) {
                 ls << "Version mismatched! Read version = " << inVersion << ", "
                    << version << " is expected.";
             });
@@ -153,18 +153,18 @@ namespace HE
         }
 
 #ifdef __DEBUG__
-        for (auto &item : data)
+        for (auto& item : data)
         {
-            auto &configs = item.configs;
+            auto& configs = item.configs;
             auto len = configs.size();
             for (size_t i = 1; i < len; ++i)
             {
-                const auto &a = configs[i - 1];
-                const auto &b = configs[i];
+                const auto& a = configs[i - 1];
+                const auto& b = configs[i];
 
                 if (unlikely(!(a < b)))
                 {
-                    log.OutFatalError([&item, &a, &b](auto &ls) {
+                    log.OutFatalError([&item, &a, &b](auto& ls) {
                         StaticString name(item.uniqueName);
                         ls << name << " : configs should be well-orddered. "
                            << a.blockSize << " < " << b.blockSize
@@ -182,7 +182,7 @@ namespace HE
     {
         std::sort(data.begin(), data.end());
 
-        for (auto &item : data)
+        for (auto& item : data)
         {
             PoolConfigUtil::Normalize(item.configs);
         }
@@ -191,7 +191,7 @@ namespace HE
             size_t count = 0;
 
             StaticStringID itemName;
-            for (auto &item : data)
+            for (auto& item : data)
             {
                 if (item.configs.size() <= 0)
                 {
@@ -217,7 +217,7 @@ namespace HE
         StaticStringID itemName;
         TVector<PoolConfig> tempConfigs;
 
-        for (auto &item : tempData)
+        for (auto& item : tempData)
         {
             if (item.configs.size() <= 0)
             {

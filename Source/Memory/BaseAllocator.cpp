@@ -9,7 +9,7 @@
 
 void HE::BaseAllocatorTest::Prepare()
 {
-    AddTest("Basic Usage", [this](auto &ls) {
+    AddTest("Basic Usage", [this](auto& ls) {
         PoolAllocator alloc("BaseAllocTestAlloc", 1024, 1024);
 
         {
@@ -32,7 +32,7 @@ void HE::BaseAllocatorTest::Prepare()
         }
     });
 
-    AddTest("Multiple Allocations", [](auto &) {
+    AddTest("Multiple Allocations", [](auto&) {
         for (int j = 0; j < 100; ++j)
         {
             std::vector<int, BaseAllocator<int>> v;
@@ -43,7 +43,7 @@ void HE::BaseAllocatorTest::Prepare()
         }
     });
 
-    AddTest("Nested Allocations", [this](auto &ls) {
+    AddTest("Nested Allocations", [this](auto& ls) {
         {
             PoolAllocator alloc("BaseAllocTestAlloc", 1024, 1024);
             AllocatorScope allocScope(alloc);

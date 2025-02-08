@@ -23,7 +23,7 @@ namespace HE
         TSize numberOfBlocks;
         TSize numberOfFreeBlocks;
 
-        Byte *buffer;
+        Byte* buffer;
         Pointer availables;
 
 #ifdef PROFILE_ENABLED
@@ -33,19 +33,19 @@ namespace HE
 
     public:
 #ifdef PROFILE_ENABLED
-        PoolAllocator(const char *name, TSize inBlockSize, TSize numberOfBlocks,
+        PoolAllocator(const char* name, TSize inBlockSize, TSize numberOfBlocks,
             const std::source_location location =
                 std::source_location::current());
 #else  // PROFILE_ENABLED
         PoolAllocator(
-            const char *name, TSize inBlockSize, TIndex numberOfBlocks);
+            const char* name, TSize inBlockSize, TIndex numberOfBlocks);
 #endif // PROFILE_ENABLED
 
-        PoolAllocator(PoolAllocator &&rhs) noexcept;
+        PoolAllocator(PoolAllocator&& rhs) noexcept;
         ~PoolAllocator();
 
-        PoolAllocator &operator=(PoolAllocator &&rhs) noexcept;
-        bool operator<(const PoolAllocator &rhs) const noexcept;
+        PoolAllocator& operator=(PoolAllocator&& rhs) noexcept;
+        bool operator<(const PoolAllocator& rhs) const noexcept;
 
         Pointer Allocate(size_t size);
         void Deallocate(Pointer ptr, size_t size);

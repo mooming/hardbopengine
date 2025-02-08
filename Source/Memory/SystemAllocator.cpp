@@ -7,7 +7,7 @@
 
 void HE::SystemAllocatorTest::Prepare()
 {
-    AddTest("Vector Growth", [](auto &) {
+    AddTest("Vector Growth", [](auto&) {
         for (int j = 0; j < 100; ++j)
         {
             std::vector<int, SystemAllocator<int>> hbVector;
@@ -23,18 +23,18 @@ void HE::SystemAllocatorTest::Prepare()
 #ifdef __MEMORY_INVESTIGATION__
 #ifdef __MEMORY_BUFFER_UNDERRUN_CHECK__
 
-    AddTest("Buffer Under-run Detection", [this](auto &ls) {
+    AddTest("Buffer Under-run Detection", [this](auto& ls) {
         SystemAllocator<uint8_t> allocator;
 
         const size_t requestedSize = 1;
-        uint8_t *buffer = allocator.allocate(requestedSize);
+        uint8_t* buffer = allocator.allocate(requestedSize);
 
         [[maybe_unused]]
         auto underRunPtr = buffer - 1;
 
         auto overRunPtr = buffer + requestedSize;
 
-        ls << "Underrun Test: ptr = " << (void *)buffer << lf;
+        ls << "Underrun Test: ptr = " << (void*)buffer << lf;
 
         *overRunPtr = 0;
 
@@ -45,17 +45,17 @@ void HE::SystemAllocatorTest::Prepare()
         allocator.deallocate(buffer, requestedSize);
     });
 #else  // __MEMORY_BUFFER_UNDERRUN_CHECK__
-    AddTest("Buffer Over-run Detection", [this](auto &ls) {
+    AddTest("Buffer Over-run Detection", [this](auto& ls) {
         SystemAllocator<uint8_t> allocator;
 
         const size_t requestedSize = 1;
-        uint8_t *buffer = allocator.allocate(requestedSize);
+        uint8_t* buffer = allocator.allocate(requestedSize);
         auto underRunPtr = buffer - 1;
 
         [[maybe_unused]]
         auto overRunPtr = buffer + requestedSize;
 
-        ls << "Over-run Test: ptr = " << (void *)buffer << lf;
+        ls << "Over-run Test: ptr = " << (void*)buffer << lf;
 
         *underRunPtr = 0;
 
@@ -68,15 +68,15 @@ void HE::SystemAllocatorTest::Prepare()
 #endif // __MEMORY_BUFFER_UNDERRUN_CHECK__
 
 #ifdef __MEMORY_DANGLING_POINTER_CHECK__
-    AddTest("Dangling Pointer Detection", [this](auto &ls) {
+    AddTest("Dangling Pointer Detection", [this](auto& ls) {
         SystemAllocator<uint8_t> allocator;
 
         const size_t requestedSize = 1;
-        uint8_t *buffer = allocator.allocate(requestedSize);
+        uint8_t* buffer = allocator.allocate(requestedSize);
 
         *buffer = 0;
 
-        ls << "Overrun Test: ptr = " << (void *)buffer
+        ls << "Overrun Test: ptr = " << (void*)buffer
            << ", value = " << (int)(*buffer) << lf;
 
         allocator.deallocate(buffer, requestedSize);

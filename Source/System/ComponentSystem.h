@@ -26,7 +26,7 @@ namespace HE
         CompoList transitionList;
 
     public:
-        inline ComponentSystem(const char *name)
+        inline ComponentSystem(const char* name)
             : name(name),
               initList(),
               updateList(),
@@ -42,13 +42,13 @@ namespace HE
                 !sleepList.empty();
         }
 
-        inline const char *GetName() const { return name.ToCharArray(); }
+        inline const char* GetName() const { return name.ToCharArray(); }
 
         template <typename... Types>
-        inline Component &Create(Types &&...args)
+        inline Component& Create(Types&&... args)
         {
             initList.emplace_back(std::forward<Types>(args)...);
-            auto &compo = initList.back();
+            auto& compo = initList.back();
             compo.SetState(ComponentState::BORN);
 
             return compo;
@@ -64,7 +64,7 @@ namespace HE
     private:
         inline void ProcessInit()
         {
-            for (auto &compo : initList)
+            for (auto& compo : initList)
             {
                 compo.Init();
                 compo.SetState(ComponentState::ALIVE);
@@ -77,7 +77,7 @@ namespace HE
 
         inline void ProcessUpdate(const float deltaTime)
         {
-            for (auto &compo : updateList)
+            for (auto& compo : updateList)
             {
                 compo.Update(deltaTime);
 
@@ -97,7 +97,7 @@ namespace HE
 
         inline void ProcessTransition()
         {
-            for (auto &compo : transitionList)
+            for (auto& compo : transitionList)
             {
                 switch (compo.GetState())
                 {

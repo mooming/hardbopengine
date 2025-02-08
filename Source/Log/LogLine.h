@@ -26,18 +26,18 @@ namespace HE
             char text[Config::LogLineLength];
             struct
             {
-                char *longText;
+                char* longText;
                 size_t longTextSize;
             };
         };
 
         LogLine();
-        LogLine(LogLine &&rhs);
+        LogLine(LogLine&& rhs);
         LogLine(ELogLevel level, StaticString threadName, StaticString category,
-            const char *inText, size_t size);
+            const char* inText, size_t size);
         ~LogLine();
 
-        const char *GetText() const;
+        const char* GetText() const;
     };
 
 } // namespace HE

@@ -15,7 +15,10 @@ MakeFile
 nbproject
 install_manifest.txt
 null.d
+Makefile
 
+.idea
+cmake-build-*
 xcode
 .vs
 .vscode

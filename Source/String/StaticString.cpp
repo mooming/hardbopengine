@@ -18,21 +18,21 @@ namespace HE
     {
     }
 
-    StaticString::StaticString(const char *string)
+    StaticString::StaticString(const char* string)
     {
-        auto &ssTable = StaticStringTable::GetInstance();
+        auto& ssTable = StaticStringTable::GetInstance();
         id = ssTable.Register(string);
     }
 
-    StaticString::StaticString(const std::string_view &str)
+    StaticString::StaticString(const std::string_view& str)
     {
-        auto &ssTable = StaticStringTable::GetInstance();
+        auto& ssTable = StaticStringTable::GetInstance();
         id = ssTable.Register(str);
     }
 
-    const char *StaticString::c_str() const
+    const char* StaticString::c_str() const
     {
-        auto &ssTable = StaticStringTable::GetInstance();
+        auto& ssTable = StaticStringTable::GetInstance();
         return ssTable.Get(id);
     }
 
@@ -49,14 +49,14 @@ namespace HE
 
     void StaticStringTest::Prepare()
     {
-        AddTest("Default Construct", [](auto &) { StaticString str; });
+        AddTest("Default Construct", [](auto&) { StaticString str; });
 
-        AddTest("StaticStic Print", [this](TLogOut &ls) {
+        AddTest("StaticStic Print", [this](TLogOut& ls) {
             StaticString str("Hello?");
             ls << str.c_str() << lf;
         });
 
-        AddTest("Hetero String Comparison", [this](TLogOut &ls) {
+        AddTest("Hetero String Comparison", [this](TLogOut& ls) {
             HSTL::HString hello("Hello?");
             HSTL::HInlineString<> helloInline("Hello?");
 
@@ -74,7 +74,7 @@ namespace HE
             }
         });
 
-        AddTest("Self-Comparison", [this](auto &ls) {
+        AddTest("Self-Comparison", [this](auto& ls) {
             StaticString str("Hello?");
 
             if (str != str)
@@ -83,7 +83,7 @@ namespace HE
             }
         });
 
-        AddTest("Two Strings Comparison", [this](auto &ls) {
+        AddTest("Two Strings Comparison", [this](auto& ls) {
             StaticString strA("Hello?");
             StaticString strB("Hello?");
 
@@ -93,7 +93,7 @@ namespace HE
             }
         });
 
-        AddTest("Inequality", [this](auto &ls) {
+        AddTest("Inequality", [this](auto& ls) {
             StaticString strA("Hello?");
             StaticString strB("Ha");
 

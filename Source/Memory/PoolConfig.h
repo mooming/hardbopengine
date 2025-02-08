@@ -20,7 +20,7 @@ struct PoolConfig final
     {
     }
 
-    inline bool operator<(const PoolConfig &rhs) const
+    inline bool operator<(const PoolConfig& rhs) const
     {
         return blockSize < rhs.blockSize;
     }

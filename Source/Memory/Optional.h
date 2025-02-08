@@ -25,13 +25,13 @@ namespace HE
         {
         }
 
-        Optional(const Type &value)
+        Optional(const Type& value)
             : hasValue(true)
         {
             Value() = value;
         }
 
-        Optional(const Optional &rhs)
+        Optional(const Optional& rhs)
         {
             if (rhs.hasValue)
             {
@@ -43,7 +43,7 @@ namespace HE
             }
         }
 
-        Optional(Optional &&rhs)
+        Optional(Optional&& rhs)
         {
             if (rhs.hasValue)
             {
@@ -62,7 +62,7 @@ namespace HE
 
         ~Optional() { Destroy(typename IsReferenceType<Type>::Result()); }
 
-        Optional &operator=(Type &value)
+        Optional& operator=(Type& value)
         {
             if (hasValue)
             {
@@ -75,7 +75,7 @@ namespace HE
             return *this;
         }
 
-        Optional &operator=(const Optional &rhs)
+        Optional& operator=(const Optional& rhs)
         {
             if (hasValue)
             {
@@ -90,7 +90,7 @@ namespace HE
             return *this;
         }
 
-        Optional &operator=(Optional &&rhs)
+        Optional& operator=(Optional&& rhs)
         {
             if (hasValue)
             {
@@ -105,7 +105,7 @@ namespace HE
             return *this;
         }
 
-        Optional &operator=(std::nullptr_t)
+        Optional& operator=(std::nullptr_t)
         {
             Reset();
 
@@ -115,24 +115,24 @@ namespace HE
         auto HasValue() const { return hasValue; }
         operator bool() const { return hasValue; }
 
-        Type &operator*()
+        Type& operator*()
         {
             FatalAssert(hasValue);
             return Value();
         }
 
-        const Type &operator*() const
+        const Type& operator*() const
         {
             FatalAssert(hasValue);
             return Value();
         }
 
-        Type &Value()
+        Type& Value()
         {
             return GetValue(typename IsReferenceType<Type>::Result());
         }
 
-        const Type &Value() const
+        const Type& Value() const
         {
             return GetValue(typename IsReferenceType<Type>::Result());
         }
@@ -147,7 +147,7 @@ namespace HE
             Destroy(typename IsReferenceType<Type>::Result());
         }
 
-        void Emplace(Type &value)
+        void Emplace(Type& value)
         {
             if (hasValue)
             {
@@ -158,7 +158,7 @@ namespace HE
         }
 
         template <typename... Types>
-        void Emplace(Types &&...args)
+        void Emplace(Types&&... args)
         {
             if (hasValue)
             {
@@ -170,18 +170,18 @@ namespace HE
         }
 
     private:
-        void ConstructAt(True_t, Type &inValue)
+        void ConstructAt(True_t, Type& inValue)
         {
             using TValue = typename std::decay<Type>::type;
-            using TPtr = void *;
+            using TPtr = void*;
 
             TPtr inValuePtr = &inValue;
             Assert(inValuePtr != nullptr);
 
-            TPtr &ptr = reinterpret_cast<TPtr &>(value[0]);
+            TPtr& ptr = reinterpret_cast<TPtr&>(value[0]);
             ptr = inValuePtr;
 
-            TValue &myValue = Value();
+            TValue& myValue = Value();
             TPtr valuePtr = &myValue;
             Assert(inValuePtr == valuePtr);
 
@@ -189,63 +189,63 @@ namespace HE
         }
 
         template <typename... Types>
-        void ConstructAt(False_t, Types &&...args)
+        void ConstructAt(False_t, Types&&... args)
         {
             hasValue = true;
             new (value) Type(std::forward<Types>(args)...);
         }
 
-        void CopyValue(True_t, const Optional &rhs)
+        void CopyValue(True_t, const Optional& rhs)
         {
             hasValue = rhs.hasValue;
             memcpy(value, rhs.value, sizeof(Type));
         }
 
-        void CopyValue(False_t, const Optional &rhs)
+        void CopyValue(False_t, const Optional& rhs)
         {
             hasValue = rhs.hasValue;
             Value() = rhs.Value();
         }
 
-        void MoveValue(True_t, Optional &rhs)
+        void MoveValue(True_t, Optional& rhs)
         {
             hasValue = rhs.hasValue;
             memcpy(value, rhs.value, sizeof(Type));
             rhs.hasValue = false;
         }
 
-        void MoveValue(False_t, Optional &rhs)
+        void MoveValue(False_t, Optional& rhs)
         {
             hasValue = rhs.hasValue;
             Value() = std::move(rhs.Value());
             rhs.hasValue = false;
         }
 
-        Type &GetValue(True_t)
+        Type& GetValue(True_t)
         {
             using TValue = typename std::decay<Type>::type;
-            using TypePtr = TValue *;
-            TypePtr &valuePtr = reinterpret_cast<TypePtr &>(value[0]);
+            using TypePtr = TValue*;
+            TypePtr& valuePtr = reinterpret_cast<TypePtr&>(value[0]);
             Assert(valuePtr != nullptr);
 
             return *valuePtr;
         }
 
-        Type &GetValue(False_t) { return reinterpret_cast<Type &>(value[0]); }
+        Type& GetValue(False_t) { return reinterpret_cast<Type&>(value[0]); }
 
-        const Type &GetValue(True_t) const
+        const Type& GetValue(True_t) const
         {
             using TValue = typename std::decay<Type>::type;
-            using TypePtr = TValue *;
-            TypePtr &valuePtr = reinterpret_cast<TypePtr &>(value[0]);
+            using TypePtr = TValue*;
+            TypePtr& valuePtr = reinterpret_cast<TypePtr&>(value[0]);
             Assert(valuePtr != nullptr);
 
             return *valuePtr;
         }
 
-        const Type &GetValue(False_t) const
+        const Type& GetValue(False_t) const
         {
-            return reinterpret_cast<const Type &>(value[0]);
+            return reinterpret_cast<const Type&>(value[0]);
         }
 
         void Destroy(True_t) { hasValue = false; }

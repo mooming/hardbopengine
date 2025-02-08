@@ -12,8 +12,8 @@ namespace HE
 
         using TPoolConfigs = std::vector<PoolConfig>;
 
-        void Normalize(TPoolConfigs &configs);
-        void MergeMax(TPoolConfigs &dst, TPoolConfigs &src);
+        void Normalize(TPoolConfigs& configs);
+        void MergeMax(TPoolConfigs& dst, TPoolConfigs& src);
 
     } // namespace PoolConfigUtil
 

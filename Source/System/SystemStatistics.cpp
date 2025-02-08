@@ -11,7 +11,7 @@
 namespace HE
 {
 
-    SystemStatistics::SystemStatistics(Engine &engine)
+    SystemStatistics::SystemStatistics(Engine& engine)
         : frameCount(0),
           slowFrameCount(0),
           engineLogCount(0),
@@ -29,7 +29,7 @@ namespace HE
         engine.SetSystemStatisticsReady();
     }
 
-    const StaticString &SystemStatistics::GetName() const
+    const StaticString& SystemStatistics::GetName() const
     {
         static StaticString name("SystemStatistics");
         return name;
@@ -49,7 +49,7 @@ namespace HE
     }
 
 #ifdef PROFILE_ENABLED
-    void SystemStatistics::Report(const AllocStats &stats)
+    void SystemStatistics::Report(const AllocStats& stats)
     {
         allocStats.emplace_back(stats);
     }
@@ -72,7 +72,7 @@ namespace HE
             static auto log =
                 Logger::Get(ToCompactMethodName(__PRETTY_FUNCTION__));
 
-            log.OutWarning([localTotalUsage](auto &ls) {
+            log.OutWarning([localTotalUsage](auto& ls) {
                 ls << "System Memory Usage " << localTotalUsage
                    << " exceeds its limit " << Config::MemCapacity;
             });
@@ -97,46 +97,46 @@ namespace HE
         auto log = Logger::Get(GetName());
 
         log.Out("= System Statistics ==========================");
-        log.Out([this](auto &ls) {
+        log.Out([this](auto& ls) {
             ls << "Frame Count = "
                << frameCount.load(std::memory_order_relaxed);
         });
 
-        log.Out([this](auto &ls) {
+        log.Out([this](auto& ls) {
             ls << "Slow Frame Count = "
                << slowFrameCount.load(std::memory_order_relaxed);
         });
 
-        log.Out([this](auto &ls) {
+        log.Out([this](auto& ls) {
             ls << "Engine Log Count = "
                << engineLogCount.load(std::memory_order_relaxed);
         });
 
         log.Out(
-            [curLogCount](auto &ls) { ls << "Log Count = " << curLogCount; });
+            [curLogCount](auto& ls) { ls << "Log Count = " << curLogCount; });
 
-        log.Out([curLongLogCount, curLogCount](auto &ls) {
+        log.Out([curLongLogCount, curLogCount](auto& ls) {
             ls << "Long Log Count = " << curLongLogCount << " / "
                << curLogCount;
         });
 
-        log.Out([this](auto &ls) {
+        log.Out([this](auto& ls) {
             ls << "Running Time = " << timeSinceStart << " sec";
         });
 
-        log.Out([this](auto &ls) {
+        log.Out([this](auto& ls) {
             ls << "Allocation Count = " << allocCount << " (Alloc), "
                << deallocCount << " (Dealloc)";
         });
 
-        log.Out([this](auto &ls) {
+        log.Out([this](auto& ls) {
             constexpr size_t MegaBytes = 1024UL * 1024;
             ls << "System Memory Usage = " << totalUsage << " ("
                << (totalUsage / MegaBytes) << " MB) / " << maxUsage << " ("
                << (maxUsage / MegaBytes) << " MB)";
         });
 
-        log.Out([this](auto &ls) {
+        log.Out([this](auto& ls) {
             ls << "Fallback Allocation Count = "
                << fallbackAllocCount.load(std::memory_order_relaxed);
         });
@@ -151,7 +151,7 @@ namespace HE
         log.Out(
             "= System Statistics: Allocator Profiles ========================");
 
-        for (auto &stats : allocStats)
+        for (auto& stats : allocStats)
         {
             stats.Print();
         }

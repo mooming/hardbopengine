@@ -14,26 +14,26 @@ namespace HE
     {
         using This = LinkedListNode;
         Type value;
-        LinkedListNode *previous;
-        LinkedListNode *next;
+        LinkedListNode* previous;
+        LinkedListNode* next;
 
-        inline LinkedListNode(const Type &value)
+        inline LinkedListNode(const Type& value)
             : value(value),
               previous(nullptr),
               next(nullptr)
         {
         }
 
-        inline LinkedListNode(Type &&value)
+        inline LinkedListNode(Type&& value)
             : value(std::move(value)),
               previous(nullptr),
               next(nullptr)
         {
         }
 
-        inline bool operator!=(const This &rhs) const { return this != &rhs; }
-        inline Type &operator*() { return value; }
-        inline const Type &operator*() const { return value; }
+        inline bool operator!=(const This& rhs) const { return this != &rhs; }
+        inline Type& operator*() { return value; }
+        inline const Type& operator*() const { return value; }
         inline bool IsHead() const { return previous == nullptr; }
         inline bool IsTail() const { return next == nullptr; }
     };
@@ -49,32 +49,32 @@ namespace HE
         class Iterator
         {
         private:
-            Node *node;
+            Node* node;
 
         public:
-            inline Iterator(Node *node)
+            inline Iterator(Node* node)
                 : node(node)
             {
             }
             inline void operator++() { node = node->next; }
-            inline bool operator!=(const Iterator &rhs) const
+            inline bool operator!=(const Iterator& rhs) const
             {
                 return node != rhs.node;
             }
-            inline Type &operator*() { return node->value; }
-            inline const Type &operator*() const { return node->value; }
+            inline Type& operator*() { return node->value; }
+            inline const Type& operator*() const { return node->value; }
         };
 
         using ConstIterator = Iterator;
 
     private:
-        Node *head;
-        Node *tail;
+        Node* head;
+        Node* tail;
         TAllocator allocator;
 
     public:
-        LinkedList(const LinkedList &) = delete;
-        LinkedList &operator=(const LinkedList &) = delete;
+        LinkedList(const LinkedList&) = delete;
+        LinkedList& operator=(const LinkedList&) = delete;
 
     public:
         LinkedList()
@@ -83,7 +83,7 @@ namespace HE
         {
         }
 
-        LinkedList(LinkedList &&rhs)
+        LinkedList(LinkedList&& rhs)
             : head(rhs.head),
               tail(rhs.tail)
         {
@@ -91,10 +91,10 @@ namespace HE
             rhs.tail = nullptr;
         }
 
-        LinkedList &operator=(LinkedList &&rhs)
+        LinkedList& operator=(LinkedList&& rhs)
         {
-            Node *tmpHead = rhs.head;
-            Node *tmpTail = rhs.tail;
+            Node* tmpHead = rhs.head;
+            Node* tmpTail = rhs.tail;
 
             rhs.head = nullptr;
             rhs.tail = nullptr;
@@ -128,19 +128,19 @@ namespace HE
             }
         }
 
-        Iterator Remove(const Type &element)
+        Iterator Remove(const Type& element)
         {
             Assert(ContainsElement(element));
             return Iterator(RemoveNode(GetNodeOf(element)));
         }
 
-        Type &Add(const Type &value) { return AddLast(value); }
+        Type& Add(const Type& value) { return AddLast(value); }
 
-        Type &Add(Type &&value) { return AddLast(std::move(value)); }
+        Type& Add(Type&& value) { return AddLast(std::move(value)); }
 
-        bool Contains(const Type &value) const
+        bool Contains(const Type& value) const
         {
-            for (auto &element : *this)
+            for (auto& element : *this)
             {
                 if (element == value)
                 {
@@ -151,9 +151,9 @@ namespace HE
             return false;
         }
 
-        bool Contains(const Type *ptr) const
+        bool Contains(const Type* ptr) const
         {
-            for (auto &element : *this)
+            for (auto& element : *this)
             {
                 if (&element == ptr)
                 {
@@ -164,9 +164,9 @@ namespace HE
             return false;
         }
 
-        Type *Find(const Type &value)
+        Type* Find(const Type& value)
         {
-            for (auto &element : *this)
+            for (auto& element : *this)
             {
                 if (element == value)
                 {
@@ -177,9 +177,9 @@ namespace HE
             return nullptr;
         }
 
-        const Type *Find(const Type &value) const
+        const Type* Find(const Type& value) const
         {
-            for (auto &element : *this)
+            for (auto& element : *this)
             {
                 if (element == value)
                 {
@@ -190,10 +190,10 @@ namespace HE
             return nullptr;
         }
 
-        Index Count(const Type &value) const
+        Index Count(const Type& value) const
         {
             int count = 0;
-            for (auto &element : *this)
+            for (auto& element : *this)
             {
                 if (element == value)
                 {
@@ -203,7 +203,7 @@ namespace HE
             return count;
         }
 
-        bool FindAndRemove(const Type &value)
+        bool FindAndRemove(const Type& value)
         {
             if (auto found = Find(value))
             {
@@ -215,50 +215,50 @@ namespace HE
         }
 
     public:
-        inline Type &AddFirst(const Type &value)
+        inline Type& AddFirst(const Type& value)
         {
             return AddPrevious(head, New<Node>(allocator, value))->value;
         }
 
-        inline Type &AddFirst(Type &&value)
+        inline Type& AddFirst(Type&& value)
         {
             return AddPrevious(
-                head, New<Node>(allocator, std::forward<Type &&>(value)))
+                head, New<Node>(allocator, std::forward<Type&&>(value)))
                 ->value;
         }
 
-        inline Type &AddLast(const Type &value)
+        inline Type& AddLast(const Type& value)
         {
             return AddNext(tail, New<Node>(allocator, value))->value;
         }
 
-        inline Type &AddLast(Type &&value)
+        inline Type& AddLast(Type&& value)
         {
             return AddNext(
-                tail, New<Node>(allocator, std::forward<Type &&>(value)))
+                tail, New<Node>(allocator, std::forward<Type&&>(value)))
                 ->value;
         }
 
-        inline Type &AddPrevious(Type &current, const Type &value)
+        inline Type& AddPrevious(Type& current, const Type& value)
         {
             return AddPrevious(GetNodeOf(current), New<Node>(allocator, value))
                 ->value;
         }
 
-        inline Type &AddPrevious(Type &current, Type &&value)
+        inline Type& AddPrevious(Type& current, Type&& value)
         {
             return AddPrevious(GetNodeOf(current),
-                New<Node>(allocator, std::forward<Type &&>(value)))
+                New<Node>(allocator, std::forward<Type&&>(value)))
                 ->value;
         }
 
-        inline Type &AddNext(Type &current, const Type &value)
+        inline Type& AddNext(Type& current, const Type& value)
         {
             return AddNext(GetNodeOf(current), New<Node>(allocator, value))
                 ->value;
         }
 
-        inline Type &AddNext(Type &current, Type &&value)
+        inline Type& AddNext(Type& current, Type&& value)
         {
             return AddNext(
                 GetNodeOf(current), New<Node>(allocator, std::forward(value)))
@@ -266,7 +266,7 @@ namespace HE
         }
 
     private:
-        Node *RemoveNode(Node *node)
+        Node* RemoveNode(Node* node)
         {
             auto next = node->next;
 
@@ -284,13 +284,13 @@ namespace HE
             return next;
         }
 
-        inline Node *GetNodeOf(Type &element)
+        inline Node* GetNodeOf(Type& element)
         {
             Assert(ContainsElement(element));
-            return reinterpret_cast<Node *>(&element);
+            return reinterpret_cast<Node*>(&element);
         }
 
-        inline Node *AddPrevious(Node *current, Node *node)
+        inline Node* AddPrevious(Node* current, Node* node)
         {
             Assert((current != nullptr || IsEmpty()) && node != nullptr);
 
@@ -311,7 +311,7 @@ namespace HE
             return node;
         }
 
-        inline Node *AddNext(Node *current, Node *node)
+        inline Node* AddNext(Node* current, Node* node)
         {
             Assert((current != nullptr || IsEmpty()) && node != nullptr);
 
@@ -333,7 +333,7 @@ namespace HE
         }
 
     private:
-        inline void LinkPrevious(Node *node, Node *newNode)
+        inline void LinkPrevious(Node* node, Node* newNode)
         {
             Assert(node != nullptr);
             Assert(newNode != nullptr);
@@ -350,7 +350,7 @@ namespace HE
             }
         }
 
-        inline void LinkNext(Node *node, Node *newNode)
+        inline void LinkNext(Node* node, Node* newNode)
         {
             Assert(node != nullptr);
             Assert(newNode != nullptr);
@@ -367,7 +367,7 @@ namespace HE
             }
         }
 
-        inline void Unlink(Node *node)
+        inline void Unlink(Node* node)
         {
             Assert(node != nullptr);
 

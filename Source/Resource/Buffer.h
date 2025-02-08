@@ -24,26 +24,26 @@ namespace HE
 
     public:
         Buffer();
-        Buffer(Buffer &&rhs);
-        Buffer(const TGenerateBuffer &genFunc);
+        Buffer(Buffer&& rhs) noexcept;
+        explicit Buffer(const TGenerateBuffer& genFunc);
         Buffer(
-            const TGenerateBuffer &genFunc, const TReleaseBuffer &releaseFunc);
+            const TGenerateBuffer& genFunc, const TReleaseBuffer& releaseFunc);
         ~Buffer();
 
         StaticString GetClassName() const;
-        void SetReleaser(TReleaseBuffer &&releaseFunc);
+        void SetReleaser(TReleaseBuffer&& releaseFunc);
 
     public:
         template <typename T>
-        T *GetDataAs()
+        T* GetDataAs()
         {
-            return reinterpret_cast<T *>(data);
+            return reinterpret_cast<T*>(data);
         }
 
         template <typename T>
-        const T *GetDataAs() const
+        const T* GetDataAs() const
         {
-            return reinterpret_cast<T *>(data);
+            return reinterpret_cast<T*>(data);
         }
 
         template <typename T>
@@ -52,9 +52,9 @@ namespace HE
             return size / sizeof(T);
         }
 
-        inline uint8_t *GetData() { return data; }
-        inline const uint8_t *GetData() const { return data; }
-        inline auto GetSize() const { return size; }
+        uint8_t* GetData() { return data; }
+        const uint8_t* GetData() const { return data; }
+        auto GetSize() const { return size; }
     };
 
 } // namespace HE

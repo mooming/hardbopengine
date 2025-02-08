@@ -40,4 +40,8 @@ endif (APPLE)
 install (TARGETS Resource DESTINATION ${CMAKE_SOURCE_DIR}/lib)
 
 
+target_link_libraries (Resource OSAL)
+
+add_dependencies (Resource OSAL)
+
 

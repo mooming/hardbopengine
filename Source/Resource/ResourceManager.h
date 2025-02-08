@@ -35,19 +35,19 @@ namespace HE
         };
 
         TVector<ResourceItem> resources;
-        TVector<ResourceItem *> loadingRequests;
+        TVector<ResourceItem*> loadingRequests;
 
     public:
         ResourceManager();
         ~ResourceManager();
 
-        void PostUpdate(Engine &engine);
+        void PostUpdate(Engine& engine);
 
         Resource RequestLoad(StaticString path);
         Resource Load(StaticString path);
 
     private:
-        void RequestTasks(TaskSystem &taskSys);
+        void RequestTasks(TaskSystem& taskSys);
     };
 
 } // namespace HE

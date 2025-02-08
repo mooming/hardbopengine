@@ -16,12 +16,12 @@ namespace HE
     {
     public:
         using TIndex = int;
-        using Iterator = Element *;
-        using ConstIterator = const Element *;
+        using Iterator = Element*;
+        using ConstIterator = const Element*;
 
     private:
         TIndex length;
-        Element *data;
+        Element* data;
         TAllocator allocator;
 
     public:
@@ -31,8 +31,8 @@ namespace HE
         ConstIterator end() const { return &data[length]; }
 
     public:
-        Array(const Array &) = delete;
-        Array &operator=(const Array &) = delete;
+        Array(const Array&) = delete;
+        Array& operator=(const Array&) = delete;
 
     public:
         Array()
@@ -63,7 +63,7 @@ namespace HE
             }
         }
 
-        Array(Array &&rhs)
+        Array(Array&& rhs)
             : Array()
         {
             Swap(rhs);
@@ -76,7 +76,7 @@ namespace HE
                 return;
             }
 
-            for (auto &item : *this)
+            for (auto& item : *this)
             {
                 item.~Element();
             }
@@ -84,30 +84,30 @@ namespace HE
             allocator.deallocate(data, length);
         }
 
-        Array &operator=(Array &&rhs)
+        Array& operator=(Array&& rhs)
         {
             Swap(rhs);
             return *this;
         }
 
-        Element &operator[](TIndex index)
+        Element& operator[](TIndex index)
         {
             FatalAssert(IsValidIndex(index));
             return data[index];
         }
 
-        const Element &operator[](TIndex index) const
+        const Element& operator[](TIndex index) const
         {
             FatalAssert(IsValidIndex(index));
             return data[index];
         }
 
         template <typename... Types>
-        Element &Emplace(TIndex index, Types &&...args)
+        Element& Emplace(TIndex index, Types&&... args)
         {
             FatalAssert(IsValidIndex(index));
 
-            auto &item = data[index];
+            auto& item = data[index];
             item.~Element();
 
             new (&item) Element(std::forward<Types>(args)...);
@@ -115,9 +115,9 @@ namespace HE
             return item;
         }
 
-        Element *ToRawArray() { return data; }
+        Element* ToRawArray() { return data; }
 
-        const Element *const ToRawArray() const { return data; }
+        const Element* const ToRawArray() const { return data; }
 
         TIndex Size() const { return length; }
 
@@ -128,7 +128,7 @@ namespace HE
 
         void Clear() { Swap(Array()); }
 
-        void Swap(Array &&rhs)
+        void Swap(Array&& rhs)
         {
             auto tmpLength = length;
             auto tmpData = data;
@@ -140,7 +140,7 @@ namespace HE
             rhs.data = tmpData;
         }
 
-        TIndex GetIndex(const Element &element) const
+        TIndex GetIndex(const Element& element) const
         {
             if (unlikely(data == nullptr))
             {

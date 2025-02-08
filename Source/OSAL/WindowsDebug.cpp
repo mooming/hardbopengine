@@ -23,12 +23,12 @@ StaticString OS::GetBackTrace(uint16_t startIndex, uint16_t maxDepth)
     HANDLE process = GetCurrentProcess();
     SymInitialize(process, nullptr, true);
 
-    void *stack[MaxCallStack];
+    void* stack[MaxCallStack];
     auto frames =
         CaptureStackBackTrace(startIndex, MaxCallStack, stack, nullptr);
 
-    SYMBOL_INFO *symbol =
-        (SYMBOL_INFO *)calloc(sizeof(SYMBOL_INFO) + LineBufferSize, 1);
+    SYMBOL_INFO* symbol =
+        (SYMBOL_INFO*)calloc(sizeof(SYMBOL_INFO) + LineBufferSize, 1);
     symbol->MaxNameLen = 255;
     symbol->SizeOfStruct = sizeof(SYMBOL_INFO);
 
@@ -39,8 +39,8 @@ StaticString OS::GetBackTrace(uint16_t startIndex, uint16_t maxDepth)
         DWORD64 address = reinterpret_cast<DWORD64>(stack[i]);
         SymFromAddr(process, address, 0, symbol);
 
-        strBuild << i << " : " << static_cast<const char *>(symbol->Name)
-                 << " (" << (void *)symbol->Address << ")\n";
+        strBuild << i << " : " << static_cast<const char*>(symbol->Name) << " ("
+                 << (void*)symbol->Address << ")\n";
     }
 
     free(symbol);

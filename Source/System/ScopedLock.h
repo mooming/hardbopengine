@@ -26,7 +26,7 @@ namespace HE
         using TSrcLoc = std::source_location;
 
     private:
-        TLockable &lockable;
+        TLockable& lockable;
 
 #ifdef PROFILE_ENABLED
         Time::TTime startTime;
@@ -35,11 +35,11 @@ namespace HE
 #endif // PROFILE_ENABLED
 
     public:
-        ScopedLock(const ScopedLock &) = delete;
+        ScopedLock(const ScopedLock&) = delete;
 
 #ifdef PROFILE_ENABLED
-        ScopedLock(TLockable &lockable, float timeOutSec = 0.01f,
-            const TSrcLoc &srcLoc = TSrcLoc::current())
+        ScopedLock(TLockable& lockable, float timeOutSec = 0.01f,
+            const TSrcLoc& srcLoc = TSrcLoc::current())
             : lockable(lockable),
               startTime(Time::TStopWatch::now()),
               timeOutSec(timeOutSec),
@@ -51,18 +51,18 @@ namespace HE
 #endif // __DEBUG__
         }
 #else  // PROFILE_ENABLED
-        ScopedLock(TLockable &lockable)
+        ScopedLock(TLockable& lockable)
             : lockable(lockable)
         {
             lockable.lock();
         }
 
-        ScopedLock(TLockable &lockable, float)
+        ScopedLock(TLockable& lockable, float)
             : ScopedLock(lockable)
         {
         }
 
-        ScopedLock(TLockable &lockable, float, const TSrcLoc &)
+        ScopedLock(TLockable& lockable, float, const TSrcLoc&)
             : ScopedLock(lockable)
         {
         }
@@ -81,7 +81,7 @@ namespace HE
                 static const auto name =
                     ToCompactClassName(__PRETTY_FUNCTION__);
                 auto log = Logger::Get(name);
-                log.OutWarning([&, this](auto &ls) {
+                log.OutWarning([&, this](auto& ls) {
                     ls << "[file: " << srcLoc.file_name() << '('
                        << srcLoc.line() << ':' << srcLoc.column() << ") "
                        << srcLoc.function_name() << ": TimedOut! " << duration

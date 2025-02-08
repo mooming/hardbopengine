@@ -15,7 +15,7 @@ void InlineMonotonicAllocatorTest::Prepare()
     using namespace HSTL;
     using Allocator = InlineMonotonicAllocator<2048>;
 
-    AddTest("Vector Allocation", [this](auto &ls) {
+    AddTest("Vector Allocation", [this](auto& ls) {
         Allocator alloc("InlineMonotonicAllocator");
 
         {
@@ -33,7 +33,7 @@ void InlineMonotonicAllocatorTest::Prepare()
         }
     });
 
-    AddTest("Allocation (2)", [this](auto &ls) {
+    AddTest("Allocation (2)", [this](auto& ls) {
         Allocator alloc("InlineMonotonicAllocator");
 
         {
@@ -54,7 +54,7 @@ void InlineMonotonicAllocatorTest::Prepare()
         }
     });
 
-    AddTest("Deallocation", [this](auto &ls) {
+    AddTest("Deallocation", [this](auto& ls) {
         Allocator alloc("InlineMonotonicAllocator");
         AllocatorScope scope(alloc.GetID());
 
@@ -70,7 +70,7 @@ void InlineMonotonicAllocatorTest::Prepare()
         }
     });
 
-    AddTest("Deallocation (2)", [this](auto &ls) {
+    AddTest("Deallocation (2)", [this](auto& ls) {
         Allocator alloc("InlineMonotonicAllocator");
         AllocatorScope scope(alloc.GetID());
 

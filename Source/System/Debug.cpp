@@ -10,7 +10,7 @@ namespace HE
 {
     void FlushLogs()
     {
-        auto &engine = Engine::Get();
+        auto& engine = Engine::Get();
         engine.FlushLog();
     }
 } // namespace HE

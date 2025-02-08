@@ -21,7 +21,7 @@ namespace HE
         text[Config::LogLineLength - 1] = '\0';
     }
 
-    LogLine::LogLine(LogLine &&rhs)
+    LogLine::LogLine(LogLine&& rhs)
         : timeStamp(rhs.timeStamp),
           threadName(rhs.threadName),
           category(rhs.category),
@@ -45,7 +45,7 @@ namespace HE
     }
 
     LogLine::LogLine(ELogLevel level, StaticString threadName,
-        StaticString category, const char *inText, size_t size)
+        StaticString category, const char* inText, size_t size)
         : timeStamp(std::chrono::steady_clock::now()),
           threadName(threadName),
           category(category),
@@ -60,16 +60,16 @@ namespace HE
 
         if (likely(isLong))
         {
-            auto &engine = Engine::Get();
+            auto& engine = Engine::Get();
 
 #ifdef PROFILE_ENABLED
-            auto &stat = engine.GetStatistics();
+            auto& stat = engine.GetStatistics();
             stat.IncLongLogCount();
 #endif // PROFILE_ENABLED
 
-            auto &mmgr = engine.GetMemoryManager();
+            auto& mmgr = engine.GetMemoryManager();
             longTextSize = size + 1;
-            longText = (char *)mmgr.SysAllocate(longTextSize);
+            longText = (char*)mmgr.SysAllocate(longTextSize);
             std::copy(&inText[0], &inText[longTextSize], longText);
 
             return;
@@ -77,8 +77,8 @@ namespace HE
 
 #ifdef PROFILE_ENABLED
         {
-            auto &engine = Engine::Get();
-            auto &stat = engine.GetStatistics();
+            auto& engine = Engine::Get();
+            auto& stat = engine.GetStatistics();
             stat.IncLogCount();
         }
 #endif // PROFILE_ENABLED
@@ -98,11 +98,11 @@ namespace HE
         }
 
         Assert(longText != nullptr);
-        auto &mmgr = MemoryManager::GetInstance();
+        auto& mmgr = MemoryManager::GetInstance();
         mmgr.SysDeallocate(longText, longTextSize);
     }
 
-    const char *LogLine::GetText() const
+    const char* LogLine::GetText() const
     {
         if (unlikely(isLong))
         {

@@ -14,7 +14,7 @@ namespace HE
         static const Quat y(0.0f, 90.0f, 0.0f);
         static const Quat z(0.0f, 0.0f, 90.0f);
 
-        AddTest("Constructors & Rotate Forward Vector", [&, this](auto &ls) {
+        AddTest("Constructors & Rotate Forward Vector", [&, this](auto& ls) {
             ls << "Quat rotate 90 around X = " << x << lf;
             ls << "Quat rotate 90 around Y = " << y << lf;
             ls << "Quat rotate 90 around Z = " << z << lf;
@@ -24,7 +24,7 @@ namespace HE
             ls << "Quat: Qz x Forward = " << z * Float3::Forward << lf;
         });
 
-        AddTest("90 degrees Rotation Test", [&, this](auto &ls) {
+        AddTest("90 degrees Rotation Test", [&, this](auto& ls) {
 #ifdef __LEFT_HANDED__
             if (y * Float3::Right != Float3::Forward)
             {
@@ -42,7 +42,7 @@ namespace HE
 #endif //__RIGHT_HANDED__
         });
 
-        AddTest("RotationFromTo", [&, this](auto &ls) {
+        AddTest("RotationFromTo", [&, this](auto& ls) {
             Quat xToY(nullptr);
             xToY.SetRotationFromTo(Float3::X, Float3::Y);
 
@@ -53,7 +53,7 @@ namespace HE
             }
         });
 
-        AddTest("Composition", [&, this](auto &ls) {
+        AddTest("Composition", [&, this](auto& ls) {
             Quat yx(90.0f, 90.0f, 0.0f);
 
             ls << "Quat YX = " << yx << lf;
@@ -77,7 +77,7 @@ namespace HE
             }
         });
 
-        AddTest("Cast to Rotation Matrix", [&, this](auto &ls) {
+        AddTest("Cast to Rotation Matrix", [&, this](auto& ls) {
             Quat zyx(90.0f, 90.0f, 90.0f);
             Float3x3 matZyx = zyx;
 
@@ -87,7 +87,7 @@ namespace HE
             }
         });
 
-        AddTest("Create rotations", [&, this](auto &ls) {
+        AddTest("Create rotations", [&, this](auto& ls) {
             if (Quat() != Quat::CreateRotationX(0.0f))
             {
                 ls << "Quat: CreateRotationX(0) failed." << lferr;
@@ -119,7 +119,7 @@ namespace HE
             }
         });
 
-        AddTest("Look Rotation", [&, this](auto &ls) {
+        AddTest("Look Rotation", [&, this](auto& ls) {
             Quat look = Quat::LookRotation(Float3::Forward, Float3::Up);
 
             ls << "Look = " << look << lf;
@@ -138,7 +138,7 @@ namespace HE
             }
         });
 
-        AddTest("Rotation Matrix Comparison", [&, this](auto &ls) {
+        AddTest("Rotation Matrix Comparison", [&, this](auto& ls) {
             if ((y * Float3::Forward) != (Float3x3(y) * Float3::Forward))
             {
                 ls << "Quat: Matrix rotation is not coincided. "

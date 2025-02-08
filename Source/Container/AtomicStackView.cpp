@@ -17,9 +17,9 @@ namespace HE
         struct TNode final
         {
             T value;
-            TNode *next = nullptr;
+            TNode* next = nullptr;
 
-            TNode(const T &value)
+            TNode(const T& value)
                 : value(value)
             {
             }
@@ -29,7 +29,7 @@ namespace HE
 
     void AtomicStackViewTest::Prepare()
     {
-        AddTest("Default Constructor", [this](auto &ls) {
+        AddTest("Default Constructor", [this](auto& ls) {
             {
                 AtomicStackView<TNode<bool>> stack;
                 ls << "Bool Stack: [Done]" << lf;
@@ -56,14 +56,14 @@ namespace HE
             }
         });
 
-        AddTest("Push", [this](auto &ls) {
+        AddTest("Push", [this](auto& ls) {
             AtomicStackView<TNode<bool>> stack;
 
             TNode<bool> boolValues[] = {true, true, true, false, false, false};
 
-            for (auto &node : boolValues)
+            for (auto& node : boolValues)
             {
-                auto &value = node.value;
+                auto& value = node.value;
 
                 ls << "Push Input = " << value << lf;
                 stack.Push(node);
@@ -77,12 +77,12 @@ namespace HE
                     continue;
                 }
 
-                auto &value = node->value;
+                auto& value = node->value;
                 ls << "Pop Output = " << value << lf;
             }
         });
 
-        AddTest("Thread-Safety", [this](auto &ls) {
+        AddTest("Thread-Safety", [this](auto& ls) {
             constexpr int NumItem = 1000;
             constexpr int NumLoop = 500;
 
@@ -98,7 +98,7 @@ namespace HE
 
             std::atomic<int> pushCount = 0;
             auto PushFunc = [&]() {
-                for (auto &node : values)
+                for (auto& node : values)
                 {
                     stack.Push(node);
                     pushCount.fetch_add(1, std::memory_order_relaxed);
@@ -118,7 +118,7 @@ namespace HE
 
                 popCount.fetch_add(count, std::memory_order_relaxed);
                 auto log = HE::Logger::Get(GetName());
-                log.Out([count](auto &ls) { ls << "Num Pop = " << count; });
+                log.Out([count](auto& ls) { ls << "Num Pop = " << count; });
             };
 
             HSTL::HVector<std::thread> threads;
@@ -132,7 +132,7 @@ namespace HE
                 threads.emplace_back(PopFunc);
                 threads.emplace_back(PopFunc);
 
-                for (auto &thread : threads)
+                for (auto& thread : threads)
                 {
                     thread.join();
                 }

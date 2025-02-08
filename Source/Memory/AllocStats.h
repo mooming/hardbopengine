@@ -29,7 +29,7 @@ namespace HE
         AllocStats();
         ~AllocStats() = default;
 
-        void OnRegister(const char *name, bool inIsInnline, size_t inCapacity);
+        void OnRegister(const char* name, bool inIsInnline, size_t inCapacity);
         void Reset();
         void Report();
 

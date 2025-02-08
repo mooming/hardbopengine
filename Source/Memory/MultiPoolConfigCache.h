@@ -26,13 +26,13 @@ namespace HE
     public:
         StaticString GetClassName() const;
 
-        size_t Serialize(Buffer &outBuffer);
-        bool Deserialize(const Buffer &buffer);
+        size_t Serialize(Buffer& outBuffer);
+        bool Deserialize(const Buffer& buffer);
 
         inline auto GetVersion() const { return version; }
 
-        inline auto &GetData() { return data; }
-        inline auto &GetData() const { return data; }
+        inline auto& GetData() { return data; }
+        inline auto& GetData() const { return data; }
 
     private:
         void Normalize();

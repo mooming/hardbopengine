@@ -9,7 +9,7 @@ using namespace HE;
 
 void RigidTransformTest::Prepare()
 {
-    AddTest("Default RigidTransform & Constants", [this](auto &ls) {
+    AddTest("Default RigidTransform & Constants", [this](auto& ls) {
         RigidTR tm;
         ls << tm << lf;
 
@@ -44,7 +44,7 @@ void RigidTransformTest::Prepare()
         }
     });
 
-    AddTest("RigidTransform Operations", [this](auto &ls) {
+    AddTest("RigidTransform Operations", [this](auto& ls) {
         RigidTR tm(Float3(4, 5, 6), Quat(0, 47, 0));
         RigidTR tm2(Float3(3, 4, 5), Quat(41, 0, 25));
         RigidTR tm3 = tm * tm2;

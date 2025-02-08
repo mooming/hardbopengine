@@ -6,7 +6,6 @@
 #include "Log/Logger.h"
 #include "OSAL/Intrinsic.h"
 #include "String/StringUtil.h"
-#include "System/Debug.h"
 
 namespace HE
 {
@@ -17,7 +16,7 @@ namespace HE
     {
     }
 
-    Buffer::Buffer(Buffer &&rhs)
+    Buffer::Buffer(Buffer&& rhs) noexcept
         : size(rhs.size),
           data(rhs.data),
           releaser(std::move(rhs.releaser))
@@ -27,13 +26,17 @@ namespace HE
         rhs.releaser = nullptr;
     }
 
-    Buffer::Buffer(const TGenerateBuffer &genFunc)
+    Buffer::Buffer(const TGenerateBuffer& genFunc)
+        : size(0),
+          data(nullptr)
     {
         genFunc(size, data);
     }
 
     Buffer::Buffer(
-        const TGenerateBuffer &genFunc, const TReleaseBuffer &releaseFunc)
+        const TGenerateBuffer& genFunc, const TReleaseBuffer& releaseFunc)
+        : size(0),
+          data(nullptr)
     {
         genFunc(size, data);
         releaser = releaseFunc;
@@ -49,7 +52,7 @@ namespace HE
         if (unlikely(releaser == nullptr))
         {
             auto log = Logger::Get(GetClassName());
-            log.OutWarning([this, func = __func__](auto &ls) {
+            log.OutWarning([this, func = __func__](auto& ls) {
                 ls << '[' << func
                    << "] Releaser func is null, in spite of data is " << data;
             });
@@ -77,7 +80,7 @@ namespace HE
         return className;
     }
 
-    void Buffer::SetReleaser(TReleaseBuffer &&releaseFunc)
+    void Buffer::SetReleaser(TReleaseBuffer&& releaseFunc)
     {
         releaser = std::move(releaseFunc);
         releaseFunc = nullptr;
@@ -100,7 +103,7 @@ namespace HE
 
     void BufferTest::Prepare()
     {
-        AddTest("Default Construction", [this](auto &ls) {
+        AddTest("Default Construction", [this](auto& ls) {
             Buffer buffer;
 
             if (buffer.GetSize() != 0)
@@ -110,18 +113,18 @@ namespace HE
 
             if (buffer.GetData() != nullptr)
             {
-                ls << "Invalid buffer data = " << (void *)buffer.GetData()
+                ls << "Invalid buffer data = " << (void*)buffer.GetData()
                    << lferr;
             }
         });
 
-        AddTest("Generation & Release", [this](auto &ls) {
+        AddTest("Generation & Release", [this](auto& ls) {
             constexpr size_t TestSize = 10;
             constexpr size_t BufferSize = TestSize * sizeof(int);
 
-            auto &mmgr = MemoryManager::GetInstance();
+            auto& mmgr = MemoryManager::GetInstance();
 
-            auto gen = [&mmgr](auto &size, auto &data) {
+            auto gen = [&mmgr](auto& size, auto& data) {
                 size = BufferSize;
 
                 auto ptr = mmgr.NewArray<int>(TestSize, -1);
@@ -143,7 +146,7 @@ namespace HE
                     return;
                 }
 
-                mmgr.DeleteArray<int>((int *)(data), TestSize);
+                mmgr.DeleteArray<int>((int*)(data), TestSize);
             };
 
             {
@@ -156,20 +159,20 @@ namespace HE
 
                 if (buffer.GetData() == nullptr)
                 {
-                    ls << "Invalid buffer data = " << (void *)buffer.GetData()
+                    ls << "Invalid buffer data = " << (void*)buffer.GetData()
                        << lferr;
                 }
             }
         });
 
-        AddTest("Memory Buffer", [this](auto &ls) {
+        AddTest("Memory Buffer", [this](auto& ls) {
             using namespace BufferUtil;
 
             constexpr int TestSize = 16;
             constexpr int InitialValue = 3;
 
             auto buffer = GetMemoryBuffer<int>(TestSize, InitialValue);
-            int *ptr = reinterpret_cast<int *>(buffer.GetData());
+            int* ptr = reinterpret_cast<int*>(buffer.GetData());
             if (ptr == nullptr)
             {
                 ls << "Failed to create a memory buffer" << lferr;
@@ -186,7 +189,7 @@ namespace HE
             }
         });
 
-        AddTest("File Buffer", [this](auto &ls) {
+        AddTest("File Buffer", [this](auto& ls) {
             using namespace BufferUtil;
 
             constexpr int TestSize = 26;
@@ -200,6 +203,7 @@ namespace HE
 
                 FileHandle fh;
                 FileOpenMode openMode;
+
                 openMode.SetWriteOnly();
                 openMode.SetTruncate();
                 openMode.SetCreate();
@@ -210,7 +214,7 @@ namespace HE
                     return;
                 }
 
-                auto wSize = Write(fh, (void *)text, TestSize);
+                auto wSize = Write(fh, (void*)text, TestSize);
                 if (wSize != TestSize)
                 {
                     ls << "Failed to write a file with the path = " << path
@@ -235,7 +239,7 @@ namespace HE
 
                 auto buffer = GetFileBuffer(path);
 
-                char *ptr = reinterpret_cast<char *>(buffer.GetData());
+                char* ptr = reinterpret_cast<char*>(buffer.GetData());
                 if (ptr == nullptr)
                 {
                     ls << "Failed to create a memory buffer" << lferr;

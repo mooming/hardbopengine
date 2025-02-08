@@ -14,13 +14,13 @@ using namespace HSTL;
 namespace HE
 {
 
-    ConfigFile::ConfigFile(const char *path)
+    ConfigFile::ConfigFile(const char* path)
         : isValid(false)
     {
         Parse(path);
     }
 
-    ConfigFile::ConfigFile(const char *path, const char *fileName)
+    ConfigFile::ConfigFile(const char* path, const char* fileName)
         : isValid(false)
     {
         TString filePath(path);
@@ -36,7 +36,7 @@ namespace HE
         Parse(filePath.c_str());
     }
 
-    ConfigFile::TValue ConfigFile::GetValue(const TString &key) const
+    ConfigFile::TValue ConfigFile::GetValue(const TString& key) const
     {
         auto found = keymap.find(key);
         if (found == keymap.end())
@@ -48,7 +48,7 @@ namespace HE
     }
 
     ConfigFile::TString ConfigFile::GetValue(
-        const TString &key, const TString &defaultValue) const
+        const TString& key, const TString& defaultValue) const
     {
         auto found = keymap.find(key);
         if (found == keymap.end())
@@ -59,7 +59,7 @@ namespace HE
         return found->second;
     }
 
-    void ConfigFile::Parse(const char *filePath)
+    void ConfigFile::Parse(const char* filePath)
     {
         using namespace std;
 
@@ -112,14 +112,14 @@ namespace HE
     }
 
     void ConfigFile::ForEach(
-        std::function<void(const TMap::value_type &)> func) const
+        std::function<void(const TMap::value_type&)> func) const
     {
         if (func == nullptr)
         {
             return;
         }
 
-        for (auto &element : keymap)
+        for (auto& element : keymap)
         {
             func(element);
         }

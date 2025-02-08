@@ -56,4 +56,8 @@ endif (APPLE)
 install (TARGETS System DESTINATION ${CMAKE_SOURCE_DIR}/lib)
 
 
+target_link_libraries (System OSAL)
+
+add_dependencies (System OSAL)
+
 

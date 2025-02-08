@@ -21,8 +21,12 @@ add_library (OSAL STATIC
  Directory.cpp
  LinuxAbstractLayer.cpp
  LinuxDebug.cpp
+ LinuxFileHandle.cpp
+ LinuxFileOpenMode.cpp
  LinuxInputOutput.cpp
+ LinuxMapSyncMode.cpp
  LinuxMemory.cpp
+ LinuxProtectionMode.cpp
  LinuxThread.cpp
  OSAbstractLayer.cpp
  OSDebug.cpp

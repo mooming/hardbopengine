@@ -13,7 +13,7 @@
 namespace HE
 {
     template <class T>
-    struct SystemAllocator final
+    struct SystemAllocator
     {
     public:
         using value_type = T;
@@ -26,11 +26,11 @@ namespace HE
 
     public:
         SystemAllocator() = default;
-        ~SystemAllocator() = default;
+        virtual ~SystemAllocator() = default;
 
 #ifdef _MSC_VER
         template <class U>
-        SystemAllocator(const SystemAllocator<U> &)
+        SystemAllocator(const SystemAllocator<U>&)
         {
         }
 #endif // _MSC_VER
@@ -40,24 +40,24 @@ namespace HE
             return MemoryManager::SystemAllocatorID;
         }
 
-        T *allocate(std::size_t n)
+        T* allocate(std::size_t n)
         {
-            return reinterpret_cast<T *>(AllocateBytes(n * sizeof(T)));
+            return reinterpret_cast<T*>(AllocateBytes(n * sizeof(T)));
         }
 
-        void deallocate(T *ptr, std::size_t n)
+        void deallocate(T* ptr, std::size_t n)
         {
             DeallocateBytes(ptr, n * sizeof(T));
         }
 
         template <class U>
-        bool operator==(const SystemAllocator<U> &)
+        bool operator==(const SystemAllocator<U>&)
         {
             return true;
         }
 
         template <class U>
-        bool operator!=(const SystemAllocator<U> &)
+        bool operator!=(const SystemAllocator<U>&)
         {
             return false;
         }
@@ -65,7 +65,7 @@ namespace HE
         auto GetName() const { return "SystemAllocator"; }
 
     private:
-        void *AllocateBytes(std::size_t nBytes)
+        void* AllocateBytes(std::size_t nBytes)
         {
 #ifdef __MEMORY_INVESTIGATION__
             if (unlikely(nBytes == 1))
@@ -79,30 +79,30 @@ namespace HE
             auto rawPtr = OS::VirtualAlloc(allocSize);
 
 #ifdef __MEMORY_BUFFER_UNDERRUN_CHECK__
-            T *ptr = reinterpret_cast<T *>(rawPtr);
+            T* ptr = reinterpret_cast<T*>(rawPtr);
 #else  // __MEMORY_BUFFER_UNDERRUN_CHECK__
-            uint8_t *bytePtr = (uint8_t *)rawPtr;
+            uint8_t* bytePtr = (uint8_t*)rawPtr;
             bytePtr = bytePtr + allocSize - nBytes;
-            T *ptr = reinterpret_cast<T *>(bytePtr);
+            T* ptr = reinterpret_cast<T*>(bytePtr);
 #endif // __MEMORY_BUFFER_UNDERRUN_CHECK__
 
 #ifdef __MEMORY_INVESTIGATION_LOGGING__
             {
-                auto &engine = Engine::Get();
-                engine.Log(ELogLevel::Info, [this, rawPtr, ptr](auto &ls) {
+                auto& engine = Engine::Get();
+                engine.Log(ELogLevel::Info, [this, rawPtr, ptr](auto& ls) {
                     ls << '[' << GetName()
                        << "][Investigator] RawPtr = " << rawPtr
-                       << ", ptr = " << (void *)ptr;
+                       << ", ptr = " << (void*)ptr;
                 });
             }
 #endif // __MEMORY_INVESTIGATION_LOGGING__
 
 #else  // __MEMORY_INVESTIGATION__
-            auto ptr = (T *)malloc(nBytes);
+            auto ptr = (T*)malloc(nBytes);
 #endif // __MEMORY_INVESTIGATION__
 
 #ifdef PROFILE_ENABLED
-            auto &mmgr = MemoryManager::GetInstance();
+            auto& mmgr = MemoryManager::GetInstance();
 
 #ifdef __MEMORY_INVESTIGATION__
             const auto allocated = allocSize;
@@ -116,7 +116,7 @@ namespace HE
             return ptr;
         }
 
-        void DeallocateBytes(void *ptr, std::size_t nBytes)
+        void DeallocateBytes(void* ptr, std::size_t nBytes)
         {
             Assert(ptr != nullptr, "[SysAlloc][Dealloc] Null Pointer Error");
 
@@ -128,9 +128,9 @@ namespace HE
 #ifdef __MEMORY_BUFFER_UNDERRUN_CHECK__
             auto rawPtr = ptr;
 #else  // __MEMORY_BUFFER_UNDERRUN_CHECK__
-            auto bytePtr = reinterpret_cast<uint8_t *>(ptr);
+            auto bytePtr = reinterpret_cast<uint8_t*>(ptr);
             bytePtr = bytePtr + nBytes - allocSize;
-            auto rawPtr = (void *)bytePtr;
+            auto rawPtr = (void*)bytePtr;
 #endif // __MEMORY_BUFFER_UNDERRUN_CHECK__
             const auto allocated = allocSize;
 #endif // __MEMORY_INVESTIGATION__
@@ -145,7 +145,7 @@ namespace HE
             Assert(nBytes <= allocated);
 #endif // __MEMORY_VERIFICATION__
 
-            auto &mmgr = MemoryManager::GetInstance();
+            auto& mmgr = MemoryManager::GetInstance();
             mmgr.ReportDeallocation(GetID(), ptr, nBytes, allocated);
 #endif // PROFILE_ENABLED
 
@@ -178,7 +178,7 @@ namespace HE
         }
 
     protected:
-        virtual void Prepare() override;
+        void Prepare() override;
     };
 } // namespace HE
 #endif //__UNIT_TEST__

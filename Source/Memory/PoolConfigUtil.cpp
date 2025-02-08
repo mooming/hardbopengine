@@ -3,6 +3,7 @@
 #include "PoolConfigUtil.h"
 
 #include "System/Debug.h"
+#include <algorithm>
 
 namespace HE
 {
@@ -10,7 +11,7 @@ namespace HE
     namespace PoolConfigUtil
     {
 
-        void Normalize(TPoolConfigs &configs)
+        void Normalize(TPoolConfigs& configs)
         {
             std::sort(configs.begin(), configs.end());
 
@@ -18,7 +19,7 @@ namespace HE
                 size_t blockSize = 0;
                 size_t uniqueItems = 0;
 
-                for (auto &config : configs)
+                for (auto& config : configs)
                 {
                     if (config.numberOfBlocks <= 0)
                     {
@@ -44,7 +45,7 @@ namespace HE
             size_t blockSize = 0;
             size_t numBlocks = 0;
 
-            for (auto &config : temp)
+            for (auto& config : temp)
             {
                 if (config.blockSize != blockSize)
                 {
@@ -68,7 +69,7 @@ namespace HE
             Assert(configs.size() == numUniqueBlocks);
         }
 
-        void MergeMax(TPoolConfigs &dst, TPoolConfigs &src)
+        void MergeMax(TPoolConfigs& dst, TPoolConfigs& src)
         {
             Normalize(dst);
 

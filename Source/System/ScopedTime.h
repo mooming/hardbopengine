@@ -12,13 +12,13 @@ namespace HE
         class ScopedTime final
         {
         private:
-            TDuration &duration;
+            TDuration& duration;
             TTime start;
 
         public:
-            ScopedTime(const ScopedTime &) = delete;
+            ScopedTime(const ScopedTime&) = delete;
 
-            ScopedTime(TDuration &outDeltaTime)
+            ScopedTime(TDuration& outDeltaTime)
                 : duration(outDeltaTime),
                   start(TStopWatch::now())
             {

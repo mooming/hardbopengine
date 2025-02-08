@@ -16,7 +16,7 @@ void HE::AABBTest::Prepare()
 {
     static AABB3 bbox;
 
-    AddTest("Default Constructor", [&, this](auto &ls) {
+    AddTest("Default Constructor", [&, this](auto& ls) {
         ls << bbox << lf;
 
         if (bbox.IsEmpty())
@@ -27,7 +27,7 @@ void HE::AABBTest::Prepare()
         ls << "AABB created with default constructor should be empty." << lferr;
     });
 
-    AddTest("Add Points", [&, this](auto &ls) {
+    AddTest("Add Points", [&, this](auto& ls) {
         bbox.Add(Float3::Zero);
         bbox.Add(Float3::Forward);
         bbox.Add(Float3::Right);
@@ -42,21 +42,21 @@ void HE::AABBTest::Prepare()
         }
     });
 
-    AddTest("Self Containing", [&, this](auto &ls) {
+    AddTest("Self Containing", [&, this](auto& ls) {
         if (!bbox.IsContaining(bbox))
         {
             ls << "AABB should contain itself! " << bbox << lferr;
         }
     });
 
-    AddTest("Self Equality", [&, this](auto &ls) {
+    AddTest("Self Equality", [&, this](auto& ls) {
         if (bbox != bbox)
         {
             ls << "AABB should match itself! " << bbox << lferr;
         }
     });
 
-    AddTest("Self Intersection", [&, this](auto &ls) {
+    AddTest("Self Intersection", [&, this](auto& ls) {
         if (bbox.Intersection(bbox) != bbox)
         {
             ls << "Self intersection of AABB should match itself! " << bbox
@@ -66,7 +66,7 @@ void HE::AABBTest::Prepare()
 
     static AABB3 bbox2;
 
-    AddTest("Clone", [&, this](auto &ls) {
+    AddTest("Clone", [&, this](auto& ls) {
         bbox2 = bbox;
 
         if (bbox != bbox2)
@@ -76,7 +76,7 @@ void HE::AABBTest::Prepare()
         }
     });
 
-    AddTest("Containing", [&, this](auto &ls) {
+    AddTest("Containing", [&, this](auto& ls) {
         bbox2.max *= 2.0f;
         ls << "bbox2 = " << bbox2;
 
@@ -96,7 +96,7 @@ void HE::AABBTest::Prepare()
 
     static AABB3 bbox3;
 
-    AddTest("Intersection", [&, this](auto &ls) {
+    AddTest("Intersection", [&, this](auto& ls) {
         bbox3 = bbox2;
         ls << "bbox3 = " << bbox3 << lf;
 

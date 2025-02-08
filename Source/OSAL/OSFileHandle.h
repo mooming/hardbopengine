@@ -10,14 +10,18 @@ namespace OS
     struct FileHandle final
     {
     public:
-        void *data;
+        union
+        {
+            void* data;
+            int fd;
+        };
 
     public:
-        FileHandle(const FileHandle &) = delete;
+        FileHandle(const FileHandle&) = delete;
 
     public:
         FileHandle();
-        FileHandle(FileHandle &&rhs);
+        FileHandle(FileHandle&& rhs);
         ~FileHandle();
 
         size_t GetFileSize() const;

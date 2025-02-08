@@ -72,7 +72,7 @@ namespace HE
     }
 
     template <class TOutStream>
-    inline TOutStream &operator<<(TOutStream &os, const Float2 &vec)
+    inline TOutStream& operator<<(TOutStream& os, const Float2& vec)
     {
         os << "(" << vec.x << ", " << vec.y << "), norm = " << vec.Length();
         return os;

@@ -3,7 +3,7 @@
 #include "Engine.h"
 #include "Test/UnitTestCollection.h"
 
-int main(int argc, const char *argv[])
+int main(int argc, const char* argv[])
 {
     HE::Engine hengine;
 

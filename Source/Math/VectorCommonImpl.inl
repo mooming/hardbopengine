@@ -1,13 +1,13 @@
 public:
 
-    inline This operator+(const This& rhs) const
+    This operator+(const This& rhs) const
     {
         This result(*this);
         result.Add(rhs);
         return result;
     }
 
-    inline This operator-() const
+    This operator-() const
     {
         This result(nullptr);
 
@@ -19,24 +19,24 @@ public:
         return result;
     }
 
-    inline This operator-(const This& rhs) const
+    This operator-(const This& rhs) const
     {
         This result(*this);
         result.Sub(rhs);
         return result;
     }
 
-    inline bool operator==(const This& rhs) const
+    bool operator==(const This& rhs) const
     {
         return (*this - rhs).IsZero();
     }
 
-    inline bool operator!=(const This& rhs) const
+    bool operator!=(const This& rhs) const
     {
         return !(*this == rhs);
     }
 
-    inline This operator*(const Number rhs) const
+    This operator*(const Number rhs) const
     {
         This result(nullptr);
 
@@ -46,7 +46,7 @@ public:
         return result;
     }
 
-    inline This operator*(const This& rhs) const
+    This operator*(const This& rhs) const
     {
         This result(nullptr);
 
@@ -56,7 +56,7 @@ public:
         return result;
     }
 
-    inline This operator/(const Number rhs) const
+    This operator/(const Number rhs) const
     {
         Assert(rhs != 0);
 
@@ -69,7 +69,7 @@ public:
         return result;
     }
 
-    inline This operator/(const This& rhs) const
+    This operator/(const This& rhs) const
     {
         This result(nullptr);
 
@@ -82,31 +82,31 @@ public:
         return result;
     }
 
-    inline This& operator+=(const This& rhs)
+    This& operator+=(const This& rhs)
     {
         Add(rhs);
         return *this;
     }
 
-    inline This& operator-=(const This& rhs)
+    This& operator-=(const This& rhs)
     {
         Sub(rhs);
         return *this;
     }
 
-    inline This& operator*=(const Number rhs)
+    This& operator*=(const Number rhs)
     {
         Multiply(rhs);
         return *this;
     }
 
-    inline This& operator*=(const This& rhs)
+    This& operator*=(const This& rhs)
     {
         Multiply(rhs);
         return *this;
     }
 
-    inline This& operator/=(const Number rhs)
+    This& operator/=(const Number rhs)
     {
         Assert(rhs != 0.0f);
 
@@ -114,7 +114,7 @@ public:
         return *this;
     }
 
-    inline This& ToAbsolute()
+    This& ToAbsolute()
     {
         for (int i = 0; i < order; ++i)
             a[i] = Abs(a[i]);
@@ -122,7 +122,7 @@ public:
         return *this;
     }
 
-    inline This GetAbsolute() const
+    This GetAbsolute() const
     {
         This v(nullptr);
         for (int i = 0; i < order; ++i)
@@ -131,7 +131,7 @@ public:
         return v;
     }
 
-    inline bool IsZero() const
+    bool IsZero() const
     {
         Number total(0);
 
@@ -141,19 +141,19 @@ public:
         return total < Epsilon;
     }
 
-    inline void Multiply(Number value)
+    void Multiply(Number value)
     {
         for (int i = 0; i < order; ++i)
             a[i] *= value;
     }
 
-    inline void Multiply(const This& rhs)
+    void Multiply(const This& rhs)
     {
         for (int i = 0; i < order; ++i)
             a[i] *= rhs.a[i];
     }
 
-    inline void Divide(const This& rhs)
+    void Divide(const This& rhs)
     {
         for (int i = 0; i < order; ++i)
         {
@@ -162,25 +162,25 @@ public:
         }
     }
 
-    inline void Add(const This& rhs)
+    void Add(const This& rhs)
     {
         for (int i = 0; i < order; ++i)
             a[i] += rhs.a[i];
     }
 
-    inline void Sub(const This& rhs)
+    void Sub(const This& rhs)
     {
         for (int i = 0; i < order; ++i)
             a[i] -= rhs.a[i];
     }
 
-    inline void Negate()
+    void Negate()
     {
         for (int i = 0; i < order; ++i)
             a[i] = -a[i];
     }
 
-    inline Number Dot(const This& rhs) const
+    Number Dot(const This& rhs) const
     {
         Number value = 0;
         for (int i = 0; i < order; ++i)
@@ -189,14 +189,14 @@ public:
         return value;
     }
 
-    inline Number SqrLength() const
+    Number SqrLength() const
     {
         return Dot(*this);
     }
 
-    inline float Length() const
+    float Length() const
     {
-        return std::sqrtf(SqrLength());
+        return sqrtf(SqrLength());
     }
 
     float Normalize()
@@ -220,40 +220,40 @@ public:
         return result;
     }
 
-    inline bool IsUnity() const
+    bool IsUnity() const
     {
         return Abs(SqrLength() - static_cast<Number>(1)) < SqrEpsilon;
     }
 
-    inline This Lerp(const This& to, float t) const
+    This Lerp(const This& to, float t) const
     {
         return Lerp(*this, to, t);
     }
 
-    inline static This Lerp(const This& from, const This& to, float t)
+    static This Lerp(const This& from, const This& to, float t)
     {
         return from * (1.0f - t) + to * t;
     }
 
-    inline This Slerp(const This& to, float t) const
+    This Slerp(const This& to, float t) const
     {
         return Slerp(*this, to, t);
     }
 
-    inline static This Slerp(const This& from, const This& to, float t)
+    static This Slerp(const This& from, const This& to, float t)
     {
         auto a = from.Normalized();
         auto b = to.Normalized();
 
-        auto angle = std::acosf(static_cast<float>(a.Dot(b)));
+        auto angle = acosf(static_cast<float>(a.Dot(b)));
 
         if (angle < Epsilon)
             return Lerp(from, to, t).Normalized();
 
         const auto nt = 1.0f - t;
-        const auto sinA = std::sinf(nt * angle);
-        const auto sinB = std::sinf(t * angle);
-        auto dir = (a * sinA + b * sinB) / std::sin(angle);
+        const auto sinA = sin(nt * angle);
+        const auto sinB = sin(t * angle);
+        auto dir = (a * sinA + b * sinB) / sin(angle);
 
         auto lengthA = from.Length();
         auto lengthB = to.Length();

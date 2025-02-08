@@ -15,9 +15,9 @@ namespace HE
 
         using TTimePoint = std::chrono::time_point<std::chrono::steady_clock>;
 
-        const TTimePoint &GetStartTime();
-        void GetTimeStampString(InlineStringBuilder<64> &outStr,
-            const TTimePoint &currentTime = std::chrono::steady_clock::now());
+        const TTimePoint& GetStartTime();
+        void GetTimeStampString(InlineStringBuilder<64>& outStr,
+            const TTimePoint& currentTime = std::chrono::steady_clock::now());
         StaticString GetLogLevelString(ELogLevel level);
 
     } // namespace LogUtil

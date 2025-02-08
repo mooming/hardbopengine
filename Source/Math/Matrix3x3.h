@@ -76,12 +76,12 @@ namespace HE
 
         inline Matrix3x3(std::nullptr_t) {}
 
-        inline Matrix3x3(std::array<Number, numberOfElements> &&values)
+        inline Matrix3x3(std::array<Number, numberOfElements>&& values)
             : element(std::move(values))
         {
         }
 
-        inline Matrix3x3(const Mat2x2 &rhs)
+        inline Matrix3x3(const Mat2x2& rhs)
         {
             m11 = rhs.m11;
             m12 = rhs.m12;
@@ -96,7 +96,7 @@ namespace HE
             m33 = 1.0f;
         }
 
-        This &operator=(const Mat2x2 &rhs)
+        This& operator=(const Mat2x2& rhs)
         {
             m11 = rhs.m11;
             m12 = rhs.m12;
@@ -166,7 +166,7 @@ namespace HE
                 rows[0].IsUnity() && rows[1].IsUnity() && rows[2].IsUnity();
         }
 
-        inline void LookAt(const Vec &forward, Vec up)
+        inline void LookAt(const Vec& forward, Vec up)
         {
             Assert(forward.IsUnity());
             Assert(up.IsUnity());
@@ -249,7 +249,7 @@ namespace HE
             m33 = 0.0f;
         }
 
-        inline void SetEulerAngles(const Vec &euler)
+        inline void SetEulerAngles(const Vec& euler)
         {
             SetEulerAngles(euler.x, euler.y, euler.z);
         }
@@ -288,7 +288,7 @@ namespace HE
     using Float3x3 = Matrix3x3<float>;
 
     template <typename T>
-    std::ostream &operator<<(std::ostream &os, const Matrix3x3<T> &mat)
+    std::ostream& operator<<(std::ostream& os, const Matrix3x3<T>& mat)
     {
         using namespace std;
         os << "Matrix " << mat.row << "x" << mat.column << endl;

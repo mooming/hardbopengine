@@ -2,7 +2,6 @@
 
 #pragma once
 
-#include "Config/BuildConfig.h"
 #include "String/StaticString.h"
 
 namespace OS
@@ -13,20 +12,20 @@ namespace OS
     struct ProtectionMode;
     struct MapSyncMode;
 
-    bool Open(FileHandle &outHandle, HE::StaticString filePath,
+    bool Open(FileHandle& outHandle, HE::StaticString filePath,
         FileOpenMode openMode);
-    bool Close(FileHandle &&handle);
+    bool Close(FileHandle&& handle);
     bool Exist(HE::StaticString filePath);
     bool Delete(HE::StaticString filePath);
 
-    size_t Read(const FileHandle &handle, void *buffer, size_t size);
-    size_t Write(const FileHandle &handle, void *buffer, size_t size);
-    bool Truncate(const FileHandle &handle, size_t size);
+    size_t Read(const FileHandle& handle, void* buffer, size_t size);
+    size_t Write(const FileHandle& handle, void* buffer, size_t size);
+    bool Truncate(const FileHandle& handle, size_t size);
 
-    void *MapMemory(FileHandle &fileHandle, size_t size,
+    void* MapMemory(FileHandle& fileHandle, size_t size,
         ProtectionMode protection, size_t offset);
-    bool MapSync(void *ptr, size_t size, MapSyncMode syncMode);
-    bool UnmapMemory(void *ptr, size_t size);
+    bool MapSync(void* ptr, size_t size, MapSyncMode syncMode);
+    bool UnmapMemory(void* ptr, size_t size);
 
 } // namespace OS
 

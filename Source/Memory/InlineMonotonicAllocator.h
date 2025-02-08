@@ -17,7 +17,7 @@ namespace HE
     {
     public:
         using TSize = size_t;
-        using TPointer = void *;
+        using TPointer = void*;
 
     private:
         TAllocatorID id;
@@ -26,7 +26,7 @@ namespace HE
         ALIGN uint8_t buffer[Capacity];
 
     public:
-        InlineMonotonicAllocator(const char *name)
+        InlineMonotonicAllocator(const char* name)
             : id(InvalidAllocatorID),
               parentID(InvalidAllocatorID),
               cursor(0)
@@ -34,13 +34,13 @@ namespace HE
             Assert(OS::CheckAligned(buffer));
             buffer[0] = 0;
 
-            auto allocFunc = [this](size_t n) -> void * { return Allocate(n); };
+            auto allocFunc = [this](size_t n) -> void* { return Allocate(n); };
 
-            auto deallocFunc = [this](void *ptr, size_t size) {
+            auto deallocFunc = [this](void* ptr, size_t size) {
                 Deallocate(ptr, size);
             };
 
-            auto &mmgr = MemoryManager::GetInstance();
+            auto& mmgr = MemoryManager::GetInstance();
             parentID = mmgr.GetCurrentAllocatorID();
 
             id = mmgr.Register(name, true, Capacity, allocFunc, deallocFunc);
@@ -48,7 +48,7 @@ namespace HE
 
         ~InlineMonotonicAllocator()
         {
-            auto &mmgr = MemoryManager::GetInstance();
+            auto& mmgr = MemoryManager::GetInstance();
 
 #ifdef __MEMOR_STATISTICS__
             mmgr.ReportDeallocation(id, buffer, cursor, cursor);
@@ -64,8 +64,8 @@ namespace HE
             const auto freeSize = GetAvailable();
             if (unlikely(size > freeSize))
             {
-                auto &mmgr = MemoryManager::GetInstance();
-                mmgr.LogWarning([size, freeSize](auto &ls) {
+                auto& mmgr = MemoryManager::GetInstance();
+                mmgr.LogWarning([size, freeSize](auto& ls) {
                     ls << "The requested size " << size
                        << " is exceeding its limit, " << freeSize << '.';
                 });
@@ -75,22 +75,22 @@ namespace HE
                 return ptr;
             }
 
-            auto ptr = reinterpret_cast<void *>(buffer + cursor);
+            auto ptr = reinterpret_cast<void*>(buffer + cursor);
             cursor += size;
 
 #ifdef __MEMOR_STATISTICS__
             {
-                auto &mmgr = MemoryManager::GetInstance();
+                auto& mmgr = MemoryManager::GetInstance();
                 mmgr.ReportAllocation(id, ptr, size, size);
             }
 #endif // __MEMOR_STATISTICS__
 
 #ifdef __MEMORY_LOGGING__
             {
-                auto &mmgr = MemoryManager::GetInstance();
-                mmgr.Log(ELogLevel::Info, [this, &mmgr, ptr, size](auto &ls) {
+                auto& mmgr = MemoryManager::GetInstance();
+                mmgr.Log(ELogLevel::Info, [this, &mmgr, ptr, size](auto& ls) {
                     ls << mmgr.GetName(id) << '[' << static_cast<int>(GetID())
-                       << "]: Allocate " << static_cast<void *>(ptr)
+                       << "]: Allocate " << static_cast<void*>(ptr)
                        << ", size = " << size;
                 });
             }
@@ -101,7 +101,7 @@ namespace HE
 
         void Deallocate(const TPointer ptr, TSize requested)
         {
-            auto &mmgr = MemoryManager::GetInstance();
+            auto& mmgr = MemoryManager::GetInstance();
 
             if (unlikely(!IsMine(ptr)))
             {
@@ -110,10 +110,10 @@ namespace HE
             }
 
 #ifdef __MEMORY_LOGGING__
-            mmgr.Log(ELogLevel::Info, [this, &mmgr, ptr, requested](auto &ls) {
+            mmgr.Log(ELogLevel::Info, [this, &mmgr, ptr, requested](auto& ls) {
                 ls << mmgr.GetName(id) << '[' << static_cast<int>(GetID())
                    << "] Deallocate call shall be ignored. ptr = "
-                   << static_cast<void *>(ptr) << ", size = " << requested;
+                   << static_cast<void*>(ptr) << ", size = " << requested;
             });
 #endif // __MEMORY_LOGGING__
 
@@ -139,7 +139,7 @@ namespace HE
     private:
         bool IsMine(TPointer ptr) const
         {
-            auto bytePtr = reinterpret_cast<const uint8_t *>(ptr);
+            auto bytePtr = reinterpret_cast<const uint8_t*>(ptr);
             if (bytePtr < buffer)
             {
                 return false;

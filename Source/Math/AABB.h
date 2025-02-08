@@ -31,7 +31,7 @@ namespace HE
         {
         }
 
-        inline AABB(const Vec &min, const Vec &max)
+        inline AABB(const Vec& min, const Vec& max)
             : min(min),
               max(max)
         {
@@ -43,7 +43,7 @@ namespace HE
             max = -Vec::Unity * MAX;
         }
 
-        This operator+(const Vec &rhs) const
+        This operator+(const Vec& rhs) const
         {
             auto result = *this;
             result += rhs;
@@ -51,7 +51,7 @@ namespace HE
             return result;
         }
 
-        This operator+(const This &rhs) const
+        This operator+(const This& rhs) const
         {
             auto result = *this;
             result += rhs;
@@ -59,18 +59,18 @@ namespace HE
             return result;
         }
 
-        void operator+=(const Vec &rhs) { Add(rhs); }
+        void operator+=(const Vec& rhs) { Add(rhs); }
 
-        void operator+=(const This &rhs) { Add(rhs); }
+        void operator+=(const This& rhs) { Add(rhs); }
 
-        bool operator==(const This &rhs) const
+        bool operator==(const This& rhs) const
         {
             return IsContaining(rhs) && rhs.IsContaining(*this);
         }
 
-        bool operator!=(const This &rhs) const { return !(*this == rhs); }
+        bool operator!=(const This& rhs) const { return !(*this == rhs); }
 
-        inline void Add(const Vec &point)
+        inline void Add(const Vec& point)
         {
             auto length = Vec::order;
             for (int i = 0; i < length; ++i)
@@ -80,13 +80,13 @@ namespace HE
             }
         }
 
-        inline void Add(const This &aabb)
+        inline void Add(const This& aabb)
         {
             Add(aabb.min);
             Add(aabb.max);
         }
 
-        inline void Translate(const Vec &t)
+        inline void Translate(const Vec& t)
         {
             Assert(!IsEmpty(), "Do not translate an empty AABB! ", *this);
             min += t;
@@ -107,7 +107,7 @@ namespace HE
             return false;
         }
 
-        inline bool IsContaining(const Vec &point) const
+        inline bool IsContaining(const Vec& point) const
         {
             if (IsEmpty())
             {
@@ -131,12 +131,12 @@ namespace HE
             return true;
         }
 
-        inline bool IsContaining(const This &aabb) const
+        inline bool IsContaining(const This& aabb) const
         {
             return IsContaining(aabb.min) && IsContaining(aabb.max);
         }
 
-        inline AABB Intersection(const AABB &aabb) const
+        inline AABB Intersection(const AABB& aabb) const
         {
             This result = nullptr;
 
@@ -150,7 +150,7 @@ namespace HE
             return result;
         }
 
-        inline bool HasIntersectionWith(const AABB &aabb) const
+        inline bool HasIntersectionWith(const AABB& aabb) const
         {
             return !Intersection(aabb).IsEmpty();
         }
@@ -161,7 +161,7 @@ namespace HE
 
         inline Vec Half() const { return Diagonal() * 0.5f; }
 
-        inline Vec Closest(const Vec &point) const
+        inline Vec Closest(const Vec& point) const
         {
             Vec closePt = point;
 
@@ -179,7 +179,7 @@ namespace HE
     using AABB3 = AABB<Float3>;
 
     template <typename T>
-    std::ostream &operator<<(std::ostream &os, const AABB<T> &bbox)
+    std::ostream& operator<<(std::ostream& os, const AABB<T>& bbox)
     {
         using std::endl;
 
@@ -189,7 +189,7 @@ namespace HE
     }
 
     template <class TStringBuilder, typename T>
-    TStringBuilder &operator<<(TStringBuilder &os, const AABB<T> &bbox)
+    TStringBuilder& operator<<(TStringBuilder& os, const AABB<T>& bbox)
     {
         os << "AABB min = " << bbox.min << ", max = " << bbox.max;
         return os;

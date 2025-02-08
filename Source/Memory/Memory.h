@@ -10,11 +10,11 @@
 namespace HE
 {
 
-    using TAllocFunc = std::function<void *(size_t)>;
-    using TDeallocFunc = std::function<void(void *, size_t)>;
+    using TAllocFunc = std::function<void*(size_t)>;
+    using TDeallocFunc = std::function<void(void*, size_t)>;
 
     template <typename Type, typename... Types, typename TAllocator>
-    Type *New(TAllocator &allocator, Types &&...args)
+    Type* New(TAllocator& allocator, Types&&... args)
     {
         static_assert(sizeof(typename TAllocator::value_type) == sizeof(Type));
 
@@ -25,7 +25,7 @@ namespace HE
     }
 
     template <typename Type, typename TAllocator>
-    void Delete(TAllocator &allocator, Type *ptr)
+    void Delete(TAllocator& allocator, Type* ptr)
     {
         static_assert(sizeof(typename TAllocator::value_type) == sizeof(Type));
 
@@ -34,16 +34,16 @@ namespace HE
     }
 
     template <typename Type, typename... Types>
-    Type *New(Types &&...args)
+    Type* New(Types&&... args)
     {
-        auto &mmgr = MemoryManager::GetInstance();
+        auto& mmgr = MemoryManager::GetInstance();
         return mmgr.New<Type>(std::forward<Types>(args)...);
     }
 
     template <typename Type>
-    void Delete(Type *ptr)
+    void Delete(Type* ptr)
     {
-        auto &mmgr = MemoryManager::GetInstance();
+        auto& mmgr = MemoryManager::GetInstance();
         mmgr.Delete<Type>(ptr);
     }
 

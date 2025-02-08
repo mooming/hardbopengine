@@ -12,7 +12,7 @@ namespace HE
     {
     public:
         template <typename... Types>
-        inline Exception(const char *file, int line, Types &&...args)
+        inline Exception(const char* file, int line, Types&&... args)
         {
             using namespace std;
             PrintArgs(file, ":", line, forward<Types>(args)...);

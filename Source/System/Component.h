@@ -24,7 +24,7 @@ namespace HE
         virtual void OnDisable() = 0;
 
     public:
-        inline Component(const char *name)
+        inline Component(const char* name)
             : state(State::NONE),
               name(name)
         {
@@ -36,7 +36,7 @@ namespace HE
 
         inline void SetState(State state) { Component::state = state; }
 
-        inline const String &GetName() const { return name; }
+        inline const String& GetName() const { return name; }
 
         inline bool IsEnabled() const { return state == State::ALIVE; }
 

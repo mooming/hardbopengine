@@ -22,7 +22,7 @@ void LinkedListTest::Prepare()
 #endif //__DEBUG__
     constexpr int COUNT2 = CountBase;
 
-    AddTest("Iteration on the empty list", [this](auto &ls) {
+    AddTest("Iteration on the empty list", [this](auto& ls) {
         LinkedList<int> intList;
 
         for (auto value : intList)
@@ -34,7 +34,7 @@ void LinkedListTest::Prepare()
         }
     });
 
-    AddTest("Simple Construction & Destruction", [this](auto &ls) {
+    AddTest("Simple Construction & Destruction", [this](auto& ls) {
         const auto NodeSize = sizeof(LinkedList<int>::Node);
 
         PoolAllocator alloc("LinkedListTest::Allocator", NodeSize, COUNT + 10);
@@ -68,7 +68,7 @@ void LinkedListTest::Prepare()
         ls << "The list is destructed." << lf;
     });
 
-    AddTest("Growth and Iteration", [this](auto &ls) {
+    AddTest("Growth and Iteration", [this](auto& ls) {
         const auto NodeSize = sizeof(LinkedList<int>::Node);
 
         PoolAllocator alloc("LinkedListTest::Allocator", NodeSize, COUNT + 10);
@@ -136,7 +136,7 @@ void LinkedListTest::Prepare()
         }
     });
 
-    AddTest("Growth and Iteration", [this](auto &ls) {
+    AddTest("Growth and Iteration", [this](auto& ls) {
         const auto NodeSize = sizeof(LinkedList<int>::Node);
         PoolAllocator alloc("LinkedListTest::Allocator", NodeSize, COUNT + 10);
         AllocatorScope allocScope(alloc.GetID());

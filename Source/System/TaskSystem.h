@@ -69,25 +69,25 @@ namespace HE
         void PostUpdate();
 
         inline StaticString GetName() const { return name; }
-        inline auto &IsRunning() const { return isRunning; }
+        inline auto& IsRunning() const { return isRunning; }
 
     public:
         inline TIndex GetMainTaskStreamIndex() const { return MainStreamIndex; }
         inline TIndex GetIOTaskStreamIndex() const { return IOStreamIndex; }
 
-        inline auto &GetMainTaskStream()
+        inline auto& GetMainTaskStream()
         {
             return streams[GetMainTaskStreamIndex()];
         }
-        inline auto &GetMainTaskStream() const
+        inline auto& GetMainTaskStream() const
         {
             return streams[GetMainTaskStreamIndex()];
         }
-        inline auto &GetIOTaskStream()
+        inline auto& GetIOTaskStream()
         {
             return streams[GetIOTaskStreamIndex()];
         }
-        inline auto &GetIOTaskStream() const
+        inline auto& GetIOTaskStream() const
         {
             return streams[GetIOTaskStreamIndex()];
         }
@@ -107,8 +107,8 @@ namespace HE
         TIndex GetStreamIndex(ThreadID id) const;
 
     public:
-        Task *GetTask(TKey key, TIndex taskIndex);
-        const Task *GetTask(TKey key, TIndex taskIndex) const;
+        Task* GetTask(TKey key, TIndex taskIndex);
+        const Task* GetTask(TKey key, TIndex taskIndex) const;
 
         TaskHandle RegisterTask(
             TIndex streamIndex, StaticString taskName, Runnable func);

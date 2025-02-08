@@ -14,7 +14,7 @@ namespace HE
 
     AllocatorScope::AllocatorScope(TAllocatorID id)
     {
-        auto &mmgr = MemoryManager::GetInstance();
+        auto& mmgr = MemoryManager::GetInstance();
         previous = mmgr.GetScopedAllocatorID();
         current = id;
 
@@ -23,7 +23,7 @@ namespace HE
 
     AllocatorScope::~AllocatorScope()
     {
-        auto &mmgr = MemoryManager::GetInstance();
+        auto& mmgr = MemoryManager::GetInstance();
         mmgr.SetScopedAllocatorID(previous);
     }
 
@@ -37,11 +37,11 @@ namespace HE
 
     void AllocatorScopeTest::Prepare()
     {
-        AddTest("Alloc Scope Test", [this](auto &ls) {
+        AddTest("Alloc Scope Test", [this](auto& ls) {
             InlinePoolAllocator<int, 100> allocator;
             AllocatorScope scope(allocator);
 
-            auto &mmgr = MemoryManager::GetInstance();
+            auto& mmgr = MemoryManager::GetInstance();
             auto ptr = mmgr.AllocateBytes(100);
 
             if (mmgr.GetCurrentAllocatorID() != allocator.GetID())

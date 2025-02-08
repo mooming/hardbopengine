@@ -49,14 +49,14 @@ namespace HE
 #endif // PROFILE_ENABLED
 
     public:
-        SystemStatistics(Engine &engine);
+        SystemStatistics(Engine& engine);
         ~SystemStatistics() = default;
 
-        const StaticString &GetName() const;
+        const StaticString& GetName() const;
         void UpdateCurrentTime();
 
 #ifdef PROFILE_ENABLED
-        void Report(const AllocStats &allocStats);
+        void Report(const AllocStats& allocStats);
         void ReportSysMemAlloc(size_t usage);
         void ReportSysMemDealloc(size_t usage);
 #endif // PROFILE_ENABLED

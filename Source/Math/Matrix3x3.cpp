@@ -12,10 +12,10 @@ namespace HE
 
 void HE::Matrix3x3Test::Prepare()
 {
-    AddTest("Matrix3x3 Test", [this](auto &ls) {
-        const auto &right = Float3::Right;
-        const auto &up = Float3::Up;
-        const auto &forward = Float3::Forward;
+    AddTest("Matrix3x3 Test", [this](auto& ls) {
+        const auto& right = Float3::Right;
+        const auto& up = Float3::Up;
+        const auto& forward = Float3::Forward;
 
 #ifdef __LEFT_HANDED__
         Float3x3 rRight = Float3x3::CreateRotation(90, 0, 0);

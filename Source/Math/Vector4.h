@@ -59,7 +59,7 @@ namespace HE
         {
         }
 
-        inline Vector4(const Vec2 &v, Number z = 0, Number w = 1)
+        inline Vector4(const Vec2& v, Number z = 0, Number w = 1)
             : x(v.x),
               y(v.y),
               z(z),
@@ -67,7 +67,7 @@ namespace HE
         {
         }
 
-        inline Vector4(const Vec3 &v, Number w = 1)
+        inline Vector4(const Vec3& v, Number w = 1)
             : x(v.x),
               y(v.y),
               z(v.z),
@@ -75,7 +75,7 @@ namespace HE
         {
         }
 
-        inline This &operator=(const Vec2 &v)
+        inline This& operator=(const Vec2& v)
         {
             x = v.x;
             y = v.y;
@@ -83,7 +83,7 @@ namespace HE
             return *this;
         }
 
-        inline This &operator=(const Vec3 &v)
+        inline This& operator=(const Vec3& v)
         {
             x = v.x;
             y = v.y;
@@ -92,18 +92,18 @@ namespace HE
             return *this;
         }
 
-        inline operator Vec2 &() { return reinterpret_cast<Vec2 &>(*this); }
+        inline operator Vec2&() { return reinterpret_cast<Vec2&>(*this); }
 
-        inline operator const Vec2 &() const
+        inline operator const Vec2&() const
         {
-            return reinterpret_cast<const Vec2 &>(*this);
+            return reinterpret_cast<const Vec2&>(*this);
         }
 
-        inline operator Vec3 &() { return reinterpret_cast<Vec3 &>(*this); }
+        inline operator Vec3&() { return reinterpret_cast<Vec3&>(*this); }
 
-        inline operator const Vec3 &() const
+        inline operator const Vec3&() const
         {
-            return reinterpret_cast<const Vec3 &>(*this);
+            return reinterpret_cast<const Vec3&>(*this);
         }
 
 #include "VectorCommonImpl.inl"
@@ -149,7 +149,7 @@ namespace HE
     }
 
     template <class TOutStream>
-    inline TOutStream &operator<<(TOutStream &os, const Float4 &v)
+    inline TOutStream& operator<<(TOutStream& os, const Float4& v)
     {
         os << "(" << v.x << ", " << v.y << ", " << v.z << ", " << v.w
            << "), norm = " << v.Length();

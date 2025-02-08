@@ -71,7 +71,7 @@ namespace HE
 
     void TaskSystem::Initialize()
     {
-        auto &logger = Logger::Get();
+        auto& logger = Logger::Get();
         auto logFilter = [](auto level) {
             static TConfigParam<uint8_t> CPLogLevel("Log.TaskSystem",
                 "The TaskSystem Log Level",
@@ -83,7 +83,7 @@ namespace HE
         logger.SetFilter(GetName(), logFilter);
 
         auto log = Logger::Get(GetName());
-        log.Out([this](auto &ls) {
+        log.Out([this](auto& ls) {
             ls << "Hardware Concurrency = " << numHardwareThreads;
         });
 
@@ -101,9 +101,9 @@ namespace HE
 
         isRunning = false;
 
-        for (auto &stream : streams)
+        for (auto& stream : streams)
         {
-            auto &thread = stream.GetThread();
+            auto& thread = stream.GetThread();
             if (unlikely(!thread.joinable()))
             {
                 continue;
@@ -124,14 +124,14 @@ namespace HE
     {
         Assert(IsMainThread());
 
-        for (auto &slot : slots)
+        for (auto& slot : slots)
         {
             if (slot.key == InvalidKey)
             {
                 continue;
             }
 
-            auto &task = slot.task;
+            auto& task = slot.task;
             if (!task.IsDone())
             {
                 continue;
@@ -170,7 +170,7 @@ namespace HE
         auto size = streams.Size();
         for (TIndex i = 0; i < size; ++i)
         {
-            auto &stream = streams[i];
+            auto& stream = streams[i];
             if (stream.GetThreadID() != id)
             {
                 continue;
@@ -183,14 +183,14 @@ namespace HE
         return index;
     }
 
-    Task *TaskSystem::GetTask(TKey key, TIndex taskIndex)
+    Task* TaskSystem::GetTask(TKey key, TIndex taskIndex)
     {
         if (unlikely(!slots.IsValidIndex(taskIndex)))
         {
             return nullptr;
         }
 
-        auto &slot = slots[taskIndex];
+        auto& slot = slots[taskIndex];
         if (slot.key == key)
         {
             return &(slot.task);
@@ -199,14 +199,14 @@ namespace HE
         return nullptr;
     }
 
-    const Task *TaskSystem::GetTask(TKey key, TIndex taskIndex) const
+    const Task* TaskSystem::GetTask(TKey key, TIndex taskIndex) const
     {
         if (unlikely(!slots.IsValidIndex(taskIndex)))
         {
             return nullptr;
         }
 
-        auto &slot = slots[taskIndex];
+        auto& slot = slots[taskIndex];
         if (slot.key == key)
         {
             return &(slot.task);
@@ -223,7 +223,7 @@ namespace HE
         if (unlikely(func == nullptr))
         {
             auto log = Logger::Get(GetName());
-            log.OutWarning([taskName](auto &ls) {
+            log.OutWarning([taskName](auto& ls) {
                 ls << "Null runnable function input for " << taskName.c_str();
             });
 
@@ -233,7 +233,7 @@ namespace HE
         if (unlikely(!streams.IsValidIndex(streamIndex)))
         {
             auto log = Logger::Get(GetName());
-            log.OutWarning([streamIndex, taskName](auto &ls) {
+            log.OutWarning([streamIndex, taskName](auto& ls) {
                 ls << "Incorrect stream index = " << streamIndex << " for "
                    << taskName.c_str();
             });
@@ -247,7 +247,7 @@ namespace HE
             auto length = slots.Size();
             for (TIndex index = 0; index < length; ++index)
             {
-                auto &slot = slots[index];
+                auto& slot = slots[index];
                 if (slot.key != InvalidKey)
                 {
                     continue;
@@ -256,11 +256,11 @@ namespace HE
                 auto key = IssueTaskKey();
                 slot.key = key;
 
-                auto &task = slot.task;
+                auto& task = slot.task;
                 task.Reset(taskName, 0, func);
 
                 auto releaseFunc = [this, streamIndex](
-                                       const TaskHandle &handle) {
+                                       const TaskHandle& handle) {
                     auto key = handle.GetKey();
                     auto index = handle.GetIndex();
 
@@ -270,7 +270,7 @@ namespace HE
 
                 handle = TaskHandle(key, index, releaseFunc);
 
-                auto &stream = streams[streamIndex];
+                auto& stream = streams[streamIndex];
                 stream.AddResident(key, task);
 
                 break;
@@ -286,7 +286,7 @@ namespace HE
         if (unlikely(!streams.IsValidIndex(streamIndex)))
         {
             auto log = Logger::Get(GetName());
-            log.OutError([streamIndex, key](auto &ls) {
+            log.OutError([streamIndex, key](auto& ls) {
                 ls << "Invalid stream index = " << streamIndex << " for key "
                    << key;
             });
@@ -294,7 +294,7 @@ namespace HE
             return;
         }
 
-        auto &stream = streams[streamIndex];
+        auto& stream = streams[streamIndex];
         stream.RemoveResidentTaskSync(key);
     }
 
@@ -304,7 +304,7 @@ namespace HE
         if (unlikely(!streams.IsValidIndex(streamIndex)))
         {
             auto log = Logger::Get(GetName());
-            log.OutError([streamIndex, key](auto &ls) {
+            log.OutError([streamIndex, key](auto& ls) {
                 ls << "Invalid stream index = " << streamIndex << " for key "
                    << key;
             });
@@ -312,7 +312,7 @@ namespace HE
             return;
         }
 
-        auto &stream = streams[streamIndex];
+        auto& stream = streams[streamIndex];
         stream.RemoveResidentTask(key);
     }
 
@@ -324,7 +324,7 @@ namespace HE
         auto log = Logger::Get(GetName());
         if (unlikely(func == nullptr))
         {
-            log.OutWarning([taskName](auto &ls) {
+            log.OutWarning([taskName](auto& ls) {
                 ls << "Null runnable function input for " << taskName.c_str();
             });
 
@@ -335,7 +335,7 @@ namespace HE
 
         if (unlikely(streams.IsValidIndex(streamIndex)))
         {
-            log.OutWarning([streamIndex, taskName](auto &ls) {
+            log.OutWarning([streamIndex, taskName](auto& ls) {
                 ls << "Invalid stream index " << streamIndex << " for "
                    << taskName.c_str();
             });
@@ -346,7 +346,7 @@ namespace HE
         auto length = slots.Size();
         for (TIndex index = 0; index < length; ++index)
         {
-            auto &slot = slots[index];
+            auto& slot = slots[index];
             if (slot.key != InvalidKey)
             {
                 continue;
@@ -355,18 +355,18 @@ namespace HE
             auto key = IssueTaskKey();
             slot.key = key;
 
-            auto &task = slot.task;
+            auto& task = slot.task;
             task.Reset(taskName, 0, func);
-            handle = TaskHandle(key, index, [this](const TaskHandle &handle) {
+            handle = TaskHandle(key, index, [this](const TaskHandle& handle) {
                 auto key = handle.GetKey();
                 auto index = handle.GetIndex();
                 ReleaseTask(key, index);
             });
 
-            auto &stream = streams[streamIndex];
+            auto& stream = streams[streamIndex];
             stream.Request(key, task, 0, 0);
 
-            log.Out([taskName, &stream](auto &ls) {
+            log.Out([taskName, &stream](auto& ls) {
                 ls << taskName.c_str() << " is assigned to "
                    << stream.GetName().c_str();
             });
@@ -385,7 +385,7 @@ namespace HE
         auto log = Logger::Get(GetName());
         if (unlikely(func == nullptr))
         {
-            log.OutWarning([taskName](auto &ls) {
+            log.OutWarning([taskName](auto& ls) {
                 ls << "Null runnable function input for " << taskName.c_str();
             });
 
@@ -398,7 +398,7 @@ namespace HE
             auto length = slots.Size();
             for (TIndex index = 0; index < length; ++index)
             {
-                auto &slot = slots[index];
+                auto& slot = slots[index];
                 if (slot.key != InvalidKey)
                 {
                     continue;
@@ -407,10 +407,10 @@ namespace HE
                 auto key = IssueTaskKey();
                 slot.key = key;
 
-                auto &task = slot.task;
+                auto& task = slot.task;
                 task.Reset(taskName, size, func);
                 handle =
-                    TaskHandle(key, index, [this](const TaskHandle &handle) {
+                    TaskHandle(key, index, [this](const TaskHandle& handle) {
                         auto key = handle.GetKey();
                         auto index = handle.GetIndex();
                         ReleaseTask(key, index);
@@ -430,13 +430,13 @@ namespace HE
                     const TaskIndex interval = size / numWorkers;
                     TaskIndex end = interval;
 
-                    const auto length = i + numWorkers - 1;
+                    const TIndex length = i + numWorkers - 1;
                     for (; i < length; ++i)
                     {
-                        auto &stream = streams[i];
+                        auto& stream = streams[i];
                         stream.Request(key, task, start, end);
 
-                        log.Out([taskName, &stream, start, end](auto &ls) {
+                        log.Out([taskName, &stream, start, end](auto& ls) {
                             ls << taskName.c_str() << " is assigned to "
                                << stream.GetName().c_str() << " on [" << start
                                << ", " << end << ')';
@@ -447,10 +447,10 @@ namespace HE
                     }
                 }
 
-                auto &stream = streams[i];
+                auto& stream = streams[i];
                 stream.Request(key, task, start, size);
 
-                log.Out([taskName, &stream, start, size](auto &ls) {
+                log.Out([taskName, &stream, start, size](auto& ls) {
                     ls << taskName.c_str() << " is assigned to "
                        << stream.GetName().c_str() << " on [" << start << ", "
                        << size << ')';
@@ -471,7 +471,7 @@ namespace HE
         auto log = Logger::Get(GetName());
         if (unlikely(func == nullptr))
         {
-            log.OutWarning([taskName](auto &ls) {
+            log.OutWarning([taskName](auto& ls) {
                 ls << "Null runnable function input for " << taskName.c_str();
             });
 
@@ -486,7 +486,7 @@ namespace HE
             auto length = slots.Size();
             for (TIndex index = 0; index < length; ++index)
             {
-                auto &slot = slots[index];
+                auto& slot = slots[index];
                 if (slot.key != InvalidKey)
                 {
                     continue;
@@ -495,10 +495,10 @@ namespace HE
                 auto key = IssueTaskKey();
                 slot.key = key;
 
-                auto &task = slot.task;
+                auto& task = slot.task;
                 task.Reset(taskName, size, func);
                 handle =
-                    TaskHandle(key, index, [this](const TaskHandle &handle) {
+                    TaskHandle(key, index, [this](const TaskHandle& handle) {
                         auto key = handle.GetKey();
                         auto index = handle.GetIndex();
                         ReleaseTask(key, index);
@@ -520,13 +520,13 @@ namespace HE
                     const TaskIndex interval = size / num;
                     TaskIndex end = interval;
 
-                    const auto length = i + num - 1;
+                    const TIndex length = i + num - 1;
                     for (; i < length; ++i)
                     {
-                        auto &stream = streams[i];
+                        auto& stream = streams[i];
                         stream.Request(key, task, start, end);
 
-                        log.Out([taskName, &stream, start, end](auto &ls) {
+                        log.Out([taskName, &stream, start, end](auto& ls) {
                             ls << taskName.c_str() << " is assigned to "
                                << stream.GetName().c_str() << " on [" << start
                                << ", " << end << ')';
@@ -537,10 +537,10 @@ namespace HE
                     }
                 }
 
-                auto &stream = streams[i];
+                auto& stream = streams[i];
                 stream.Request(key, task, start, size);
 
-                log.Out([taskName, &stream, start, size](auto &ls) {
+                log.Out([taskName, &stream, start, size](auto& ls) {
                     ls << taskName.c_str() << " is assigned to "
                        << stream.GetName().c_str() << " on [" << start << ", "
                        << size << ')';
@@ -558,7 +558,7 @@ namespace HE
         if (unlikely(key == InvalidKey))
         {
             auto log = Logger::Get(GetName());
-            log.OutWarning([func = __PRETTY_FUNCTION__](auto &ls) {
+            log.OutWarning([func = __PRETTY_FUNCTION__](auto& ls) {
                 InlinePoolAllocator<char, 128> alloc;
                 AllocatorScope scope(alloc);
 
@@ -573,7 +573,7 @@ namespace HE
         if (unlikely(!slots.IsValidIndex(index)))
         {
             auto log = Logger::Get(GetName());
-            log.OutWarning([func = __PRETTY_FUNCTION__, index](auto &ls) {
+            log.OutWarning([func = __PRETTY_FUNCTION__, index](auto& ls) {
                 InlinePoolAllocator<char, 128> alloc;
                 AllocatorScope scope(alloc);
 
@@ -588,12 +588,12 @@ namespace HE
         {
             ScopedLock lock(requestLock);
 
-            auto &slot = slots[index];
+            auto& slot = slots[index];
             if (unlikely(key != slot.key))
             {
                 auto log = Logger::Get(GetName());
                 log.OutWarning([func = __PRETTY_FUNCTION__, key, &slot](
-                                   auto &ls) {
+                                   auto& ls) {
                     InlinePoolAllocator<char, 128> alloc;
                     AllocatorScope scope(alloc);
 
@@ -605,7 +605,7 @@ namespace HE
                 return;
             }
 
-            auto &task = slot.task;
+            auto& task = slot.task;
             if (!task.IsCancelled() && !task.IsCurrentThread())
             {
                 while (!task.IsDone())
@@ -654,8 +654,8 @@ namespace HE
 
         isRunning = true;
 
-        auto &mainTaskStream = GetMainTaskStream();
-        auto &ioTaskStream = GetIOTaskStream();
+        auto& mainTaskStream = GetMainTaskStream();
+        auto& ioTaskStream = GetIOTaskStream();
 
         mainTaskStream.threadID = mainTaskThreadID;
         SetThreadName(mainTaskStream.GetName());
@@ -673,7 +673,7 @@ namespace HE
     {
         Assert(requestLock.try_lock() == false);
 
-        for (auto &slot : slots)
+        for (auto& slot : slots)
         {
             if (unlikely(keySeed == 0))
             {
@@ -706,9 +706,9 @@ namespace HE
 
     void TaskSystemTest::Prepare()
     {
-        AddTest("Empty Task", [this](auto &ls) {
-            auto &engine = Engine::Get();
-            auto &taskSys = engine.GetTaskSystem();
+        AddTest("Empty Task", [this](auto& ls) {
+            auto& engine = Engine::Get();
+            auto& taskSys = engine.GetTaskSystem();
 
             auto handle = taskSys.DispatchTask("Test", 0, nullptr);
             if (handle.IsValid())
@@ -717,13 +717,13 @@ namespace HE
             }
         });
 
-        AddTest("Task of size 0", [this](auto &ls) {
-            auto &engine = Engine::Get();
-            auto &taskSys = engine.GetTaskSystem();
+        AddTest("Task of size 0", [this](auto& ls) {
+            auto& engine = Engine::Get();
+            auto& taskSys = engine.GetTaskSystem();
 
             auto func = [](auto start, auto end) {
                 auto log = Logger::Get("Size 0 Task");
-                log.Out([&](auto &ls) {
+                log.Out([&](auto& ls) {
                     ls << "Range[" << (start + 1) << ", " << end << ')';
                 });
             };
@@ -737,9 +737,9 @@ namespace HE
             handle.BusyWait();
         });
 
-        AddTest("Resident Task(sync)", [](auto &ls) {
-            auto &engine = Engine::Get();
-            auto &taskSys = engine.GetTaskSystem();
+        AddTest("Resident Task(sync)", [](auto& ls) {
+            auto& engine = Engine::Get();
+            auto& taskSys = engine.GetTaskSystem();
 
             int count = 0;
 
@@ -747,7 +747,7 @@ namespace HE
                 if ((count % 10000) == 0)
                 {
                     auto log = Logger::Get("Resident Task");
-                    log.Out([count](auto &ls) {
+                    log.Out([count](auto& ls) {
                         ls << "Resident Frame Count = " << count;
                     });
                 }
@@ -762,9 +762,9 @@ namespace HE
             std::this_thread::sleep_for(std::chrono::seconds(1));
         });
 
-        AddTest("Resident Task(async)", [](auto &ls) {
-            auto &engine = Engine::Get();
-            auto &taskSys = engine.GetTaskSystem();
+        AddTest("Resident Task(async)", [](auto& ls) {
+            auto& engine = Engine::Get();
+            auto& taskSys = engine.GetTaskSystem();
 
             auto count = std::make_shared<uint32_t>(0);
 
@@ -773,7 +773,7 @@ namespace HE
                 if ((value % 10000) == 0)
                 {
                     auto log = Logger::Get("Resident Task");
-                    log.Out([value](auto &ls) {
+                    log.Out([value](auto& ls) {
                         ls << "Resident Frame Count = " << value;
                     });
                 }
@@ -788,12 +788,12 @@ namespace HE
             std::this_thread::sleep_for(std::chrono::seconds(1));
         });
 
-        AddTest("Sum", [this](auto &ls) {
+        AddTest("Sum", [this](auto& ls) {
             std::atomic<uint64_t> sum = 0;
 
             auto func = [&sum](auto start, auto end) {
                 auto log = Logger::Get("Sum");
-                log.Out([start, end](auto &ls) {
+                log.Out([start, end](auto& ls) {
                     ls << "Start: Sum Range[" << (start + 1) << ", " << end
                        << ']';
                 });
@@ -806,14 +806,14 @@ namespace HE
 
                 sum += result;
 
-                log.Out([start, end, result](auto &ls) {
+                log.Out([start, end, result](auto& ls) {
                     ls << "Sum Range[" << (start + 1) << ", " << end
                        << "] = " << result;
                 });
             };
 
-            auto &engine = Engine::Get();
-            auto &taskSys = engine.GetTaskSystem();
+            auto& engine = Engine::Get();
+            auto& taskSys = engine.GetTaskSystem();
             auto handle = taskSys.DispatchTask("SummationTask", 10000000, func);
             if (!handle.IsValid())
             {
@@ -839,7 +839,7 @@ namespace HE
             }
         });
 
-        auto countPrimeNumbers = [](auto &ls, auto &lf, auto &lferr,
+        auto countPrimeNumbers = [](auto& ls, auto& lf, auto& lferr,
                                      int numWorkers) {
             auto IsPrimeNumbrer = [](uint64_t value) -> bool {
                 for (uint64_t i = 2; i < value; ++i)
@@ -861,7 +861,7 @@ namespace HE
                 ++numThreads;
 
                 auto log = Logger::Get("PNCounter");
-                log.Out([&](auto &ls) {
+                log.Out([&](auto& ls) {
                     ls << "Start: Range[" << (start + 1) << ", " << end << ']';
                 });
 
@@ -877,7 +877,7 @@ namespace HE
 
                 count += result;
 
-                log.Out([&](auto &ls) {
+                log.Out([&](auto& ls) {
                     ls << "Range[" << (start + 1) << ", " << end
                        << "] = " << result;
                 });
@@ -886,8 +886,8 @@ namespace HE
             constexpr int upperBound = 100000;
             constexpr int solution = 9592;
 
-            auto &engine = Engine::Get();
-            auto &taskSys = engine.GetTaskSystem();
+            auto& engine = Engine::Get();
+            auto& taskSys = engine.GetTaskSystem();
             TaskHandle handle;
 
             Time::TDuration duration;
@@ -928,7 +928,7 @@ namespace HE
                 debugBreak();
             }
 
-            auto &task = *(taskPtr);
+            auto& task = *(taskPtr);
             ls << "# of Prime Numbers = " << count
                << ", done = " << task.NumDone() << "/" << task.NumStreams()
                << ", time = " << Time::ToFloat(duration) << " seconds" << lf;
@@ -941,15 +941,15 @@ namespace HE
             }
         };
 
-        auto &engine = Engine::Get();
-        auto &taskSys = engine.GetTaskSystem();
+        auto& engine = Engine::Get();
+        auto& taskSys = engine.GetTaskSystem();
         auto numWorkers = taskSys.GetNumWorkers();
         for (int i = 1; i <= numWorkers; ++i)
         {
             InlineStringBuilder<> testName;
             testName << "CountPrimeNumbers with " << i << " workers";
 
-            AddTest(testName.c_str(), [this, countPrimeNumbers, i](auto &ls) {
+            AddTest(testName.c_str(), [this, countPrimeNumbers, i](auto& ls) {
                 countPrimeNumbers(ls, lf, lferr, i);
             });
         }

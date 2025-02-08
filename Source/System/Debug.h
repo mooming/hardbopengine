@@ -37,7 +37,7 @@ namespace HE
     }
 
     template <typename... Types>
-    inline void Assert(bool shouldBeTrue, Types &&...args)
+    inline void Assert(bool shouldBeTrue, Types&&... args)
     {
         if (likely(shouldBeTrue))
         {
@@ -64,7 +64,7 @@ namespace HE
     }
 
     template <typename... Types>
-    inline void Assert(bool, const char *, Types &&...)
+    inline void Assert(bool, const char*, Types&&...)
     {
     }
 } // namespace HE
@@ -86,7 +86,7 @@ namespace HE
     }
 
     template <typename... Types>
-    inline void FatalAssert(bool shouldBeTrue, Types &&...args)
+    inline void FatalAssert(bool shouldBeTrue, Types&&... args)
     {
         if (likely(shouldBeTrue))
         {

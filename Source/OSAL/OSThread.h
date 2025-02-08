@@ -11,9 +11,9 @@ namespace OS
     void Sleep(uint32_t milliseconds);
 
     int GetCPUIndex();
-    int GetThreadPriority(std::thread &thread);
-    void SetThreadAffinity(std::thread &thread, uint64_t mask);
-    void SetThreadPriority(std::thread &thread, int priority);
+    int GetThreadPriority(std::thread& thread);
+    void SetThreadAffinity(std::thread& thread, uint64_t mask);
+    void SetThreadPriority(std::thread& thread, int priority);
 } // namespace OS
 
 #ifdef __UNIT_TEST__

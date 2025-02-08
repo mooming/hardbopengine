@@ -6,7 +6,7 @@
 
 void HE::OptionalTest::Prepare()
 {
-    AddTest("Optional<int>", [this](auto &ls) {
+    AddTest("Optional<int>", [this](auto& ls) {
         Optional<int> a;
         if (a)
         {
@@ -26,8 +26,8 @@ void HE::OptionalTest::Prepare()
         }
     });
 
-    AddTest("Optional<int&>", [this](auto &ls) {
-        Optional<int &> a;
+    AddTest("Optional<int&>", [this](auto& ls) {
+        Optional<int&> a;
         if (a)
         {
             ls << "Uninitialized optional SHOULD BE false." << lferr;
@@ -46,16 +46,16 @@ void HE::OptionalTest::Prepare()
             ls << "Optional value = " << *a << ", but expected 10." << lferr;
         }
 
-        auto &aValue = a.Value();
+        auto& aValue = a.Value();
         if (&aValue != &x)
         {
             ls << "Optional<ref> value address is incorrect! ptr = "
-               << (void *)(&aValue) << ", but " << (void *)(&x) << " expected."
+               << (void*)(&aValue) << ", but " << (void*)(&x) << " expected."
                << lferr;
         }
     });
 
-    AddTest("Optional<Class&>", [this](auto &ls) {
+    AddTest("Optional<Class&>", [this](auto& ls) {
         static int conCount = 0;
         static int desCount = 0;
 
@@ -71,7 +71,7 @@ void HE::OptionalTest::Prepare()
             ~Integer() { ++desCount; }
         };
 
-        Optional<Integer &> a;
+        Optional<Integer&> a;
         if (a)
         {
             ls << "Uninitialized optional SHOULD BE false." << lferr;

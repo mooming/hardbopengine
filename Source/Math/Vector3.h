@@ -59,14 +59,14 @@ namespace HE
         {
         }
 
-        inline Vector3(const Vec2 &v, Number z = 0)
+        inline Vector3(const Vec2& v, Number z = 0)
             : x(v.x),
               y(v.y),
               z(z)
         {
         }
 
-        inline This &operator=(const Vec2 &v)
+        inline This& operator=(const Vec2& v)
         {
             x = v.x;
             y = v.y;
@@ -74,17 +74,17 @@ namespace HE
             return *this;
         }
 
-        inline operator Vec2 &() { return reinterpret_cast<Vec2 &>(*this); }
+        inline operator Vec2&() { return reinterpret_cast<Vec2&>(*this); }
 
-        inline operator const Vec2 &() const
+        inline operator const Vec2&() const
         {
-            return reinterpret_cast<const Vec2 &>(*this);
+            return reinterpret_cast<const Vec2&>(*this);
         }
 
 #include "VectorCommonImpl.inl"
 
     public:
-        inline Vector3 Cross(const Vector3 &rhs) const
+        inline Vector3 Cross(const Vector3& rhs) const
         {
             Vector3 result(nullptr);
 
@@ -95,7 +95,7 @@ namespace HE
             return result;
         }
 
-        inline float AngleTo(const Vector3 &to) const
+        inline float AngleTo(const Vector3& to) const
         {
             Assert(!IsZero());
             Assert(!to.IsZero());
@@ -143,7 +143,7 @@ namespace HE
     }
 
     template <class TOutStream, typename Number>
-    inline TOutStream &operator<<(TOutStream &os, const Vector3<Number> &v)
+    inline TOutStream& operator<<(TOutStream& os, const Vector3<Number>& v)
     {
         os << "(" << v.x << ", " << v.y << ", " << v.z
            << "), norm = " << v.Length();

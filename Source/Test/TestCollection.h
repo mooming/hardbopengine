@@ -3,6 +3,7 @@
 #pragma once
 
 #include "Log/LogLevel.h"
+#include <cstdint>
 #include <functional>
 #include <sstream>
 #include <string>
@@ -17,7 +18,7 @@ namespace HE
     public:
         using TLogOut = std::stringstream;
         using TLogBuffer = std::vector<std::string>;
-        using TestFunc = std::function<void(TLogOut & /*ls*/)>;
+        using TestFunc = std::function<void(TLogOut& /*ls*/)>;
 
     private:
         std::string title;
@@ -27,13 +28,13 @@ namespace HE
     public:
         struct LogFlush final
         {
-            const char *name;
+            const char* name;
             ELogLevel level;
             uint32_t testIndex;
-            const char *testName;
-            TLogBuffer *messageBuffer;
+            const char* testName;
+            TLogBuffer* messageBuffer;
 
-            LogFlush(const char *name, ELogLevel level, TLogBuffer *buffer);
+            LogFlush(const char* name, ELogLevel level, TLogBuffer* buffer);
             ~LogFlush() = default;
         };
 
@@ -47,20 +48,29 @@ namespace HE
         std::vector<std::string> errorMessages;
 
     public:
-        TestCollection(const char *title);
+        explicit TestCollection(const char* title);
         virtual ~TestCollection() = default;
 
         void Start();
-        void AddTest(const char *testName, TestFunc testCase);
+        void AddTest(const char* testName, TestFunc testCase);
 
-        inline auto GetName() const { return title.c_str(); }
-        inline auto &GetWarningMessages() const { return warningMessages; }
-        inline auto &GetErrorMessages() const { return errorMessages; }
-        inline bool IsDone() const { return isDone; }
-        inline bool IsSuccess() const { return isSuccess; }
+        [[nodiscard]]
+        auto GetName() const { return title.c_str(); }
+
+        [[nodiscard]]
+        auto& GetWarningMessages() const { return warningMessages; }
+
+        [[nodiscard]]
+        auto& GetErrorMessages() const { return errorMessages; }
+
+        [[nodiscard]]
+        bool IsDone() const { return isDone; }
+
+        [[nodiscard]]
+        bool IsSuccess() const { return isSuccess; }
 
     protected:
-        friend std::ostream &operator<<(std::ostream &os, const LogFlush &lf);
+        friend std::ostream& operator<<(std::ostream& os, const LogFlush& lf);
 
         virtual void Prepare() = 0;
 

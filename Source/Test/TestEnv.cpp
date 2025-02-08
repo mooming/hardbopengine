@@ -10,7 +10,7 @@
 
 using namespace HE;
 
-TestEnv &TestEnv::GetEnv()
+TestEnv& TestEnv::GetEnv()
 {
     static TestEnv instance;
     return instance;
@@ -21,7 +21,7 @@ void TestEnv::Start()
     invalidTests.clear();
     failedTests.clear();
 
-    for (auto &testCase : tests)
+    for (auto& testCase : tests)
     {
         Assert(testCase != nullptr);
         ExecuteTest(*testCase);
@@ -30,7 +30,7 @@ void TestEnv::Start()
     Report();
 }
 
-bool TestEnv::ExecuteTest(TestCollection &testCollection)
+bool TestEnv::ExecuteTest(TestCollection& testCollection)
 {
 #ifdef __DEBUG__
     testCollection.Start();
@@ -42,7 +42,7 @@ bool TestEnv::ExecuteTest(TestCollection &testCollection)
     catch (Exception)
     {
         auto log = Logger::Get("TestEnv");
-        log.OutError([](auto &ls) { ls << "Exception occurred!"; });
+        log.OutError([](auto& ls) { ls << "Exception occurred!"; });
     }
 #endif // __DEBUG__
 
@@ -61,8 +61,8 @@ bool TestEnv::ExecuteTest(TestCollection &testCollection)
         {
             ++passCount;
 
-            auto &warnMessages = testCollection.GetWarningMessages();
-            for (auto &msg : warnMessages)
+            auto& warnMessages = testCollection.GetWarningMessages();
+            for (auto& msg : warnMessages)
             {
                 ss << '[' << testCollection.GetName() << "] " << msg;
                 warningMessages.push_back(ss.str());
@@ -75,16 +75,16 @@ bool TestEnv::ExecuteTest(TestCollection &testCollection)
             failedTests.push_back(ss.str());
             ss.str("");
 
-            auto &warnMessages = testCollection.GetWarningMessages();
-            for (auto &msg : warnMessages)
+            auto& warnMessages = testCollection.GetWarningMessages();
+            for (auto& msg : warnMessages)
             {
                 ss << '[' << testCollection.GetName() << "]" << msg;
                 warningMessages.push_back(ss.str());
                 ss.str("");
             }
 
-            auto &errMessages = testCollection.GetErrorMessages();
-            for (auto &msg : errMessages)
+            auto& errMessages = testCollection.GetErrorMessages();
+            for (auto& msg : errMessages)
             {
                 ss << '[' << testCollection.GetName() << "]" << msg;
                 errorMessages.push_back(ss.str());
@@ -101,7 +101,7 @@ void TestEnv::Report()
     using namespace std;
     auto log = Logger::Get("TestEnv");
 
-    log.Out([this](auto &ls) {
+    log.Out([this](auto& ls) {
         ls << hendl;
         ls << "##### TEST COMPLETED #####" << hendl;
         ls << "# Total Count = " << tests.size() << hendl;
@@ -116,9 +116,9 @@ void TestEnv::Report()
     {
         log.OutError("= Invalid Tests =============================");
 
-        for (auto &item : invalidTests)
+        for (auto& item : invalidTests)
         {
-            log.OutError([&item](auto &ls) { ls << item; });
+            log.OutError([&item](auto& ls) { ls << item; });
         }
 
         log.OutError("=============================================");
@@ -129,10 +129,10 @@ void TestEnv::Report()
         log.OutError("= Failed Tests ==============================");
 
         int index = 1;
-        for (auto &item : failedTests)
+        for (auto& item : failedTests)
         {
             log.OutError(
-                [index, &item](auto &ls) { ls << index << ": " << item; });
+                [index, &item](auto& ls) { ls << index << ": " << item; });
 
             ++index;
         }
@@ -144,9 +144,9 @@ void TestEnv::Report()
     {
         log.OutError("= Errors ====================================");
 
-        for (auto &item : errorMessages)
+        for (auto& item : errorMessages)
         {
-            log.OutError([&item](auto &ls) { ls << item; });
+            log.OutError([&item](auto& ls) { ls << item; });
         }
 
         log.OutError("=============================================\n");
@@ -156,14 +156,14 @@ void TestEnv::Report()
     {
         log.OutWarning("= Warnings ==================================");
 
-        for (auto &item : warningMessages)
+        for (auto& item : warningMessages)
         {
-            log.OutWarning([&item](auto &ls) { ls << item; });
+            log.OutWarning([&item](auto& ls) { ls << item; });
         }
 
         log.OutWarning("=============================================\n");
     }
 
-    auto &logger = Logger::Get();
+    auto& logger = Logger::Get();
     logger.Flush();
 }

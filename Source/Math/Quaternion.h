@@ -90,7 +90,7 @@ namespace HE
         }
 
         static inline Quaternion LookRotation(
-            const Vec3 &forward, const Vec3 &up)
+            const Vec3& forward, const Vec3& up)
         {
             Quaternion result(nullptr);
             result.LookAt(forward, up);
@@ -98,7 +98,7 @@ namespace HE
         }
 
         static inline Quaternion RotationAround(
-            const Vec3 &unitAxis, float radian)
+            const Vec3& unitAxis, float radian)
         {
             Quaternion result(nullptr);
             result.SetRotationAround(unitAxis, radian);
@@ -107,7 +107,7 @@ namespace HE
         }
 
         static inline Quaternion RotationFromTo(
-            const Vec3 &from, const Vec3 &to)
+            const Vec3& from, const Vec3& to)
         {
             Quaternion result(nullptr);
             result.SetRotationFromTo(from, to);
@@ -121,7 +121,7 @@ namespace HE
         {
         }
 
-        inline Quaternion(const Vec3 &eulerAngles)
+        inline Quaternion(const Vec3& eulerAngles)
             : Quaternion(nullptr)
         {
             SetEulerAngles(eulerAngles.x, eulerAngles.y, eulerAngles.z);
@@ -138,12 +138,12 @@ namespace HE
         {
         }
 
-        inline Quaternion(const Vec4 &vector)
+        inline Quaternion(const Vec4& vector)
             : vector(vector)
         {
         }
 
-        inline Quaternion(const Mat3x3 &mat)
+        inline Quaternion(const Mat3x3& mat)
         {
             Assert(mat.IsOrthogonal(),
                 "[Quaternion] Given matrix is not orthogonal!", mat);
@@ -271,36 +271,36 @@ namespace HE
 
         inline operator Mat4x4() const { return ToMat4x4(); }
 
-        inline Vec3 operator*(const Vec3 &rhs) const { return Multiply(rhs); }
+        inline Vec3 operator*(const Vec3& rhs) const { return Multiply(rhs); }
 
-        Quaternion operator*(const Quaternion &rhs) const
+        Quaternion operator*(const Quaternion& rhs) const
         {
             return Multiply(rhs);
         }
 
-        Quaternion operator/(const Quaternion &rhs) const
+        Quaternion operator/(const Quaternion& rhs) const
         {
             return Multiply(rhs.Inverse());
         }
 
-        Quaternion &operator*=(const Quaternion &rhs)
+        Quaternion& operator*=(const Quaternion& rhs)
         {
             *this = Multiply(rhs);
             return *this;
         }
 
-        Quaternion &operator/=(const Quaternion &rhs)
+        Quaternion& operator/=(const Quaternion& rhs)
         {
             *this = Multiply(rhs.Inverse());
             return *this;
         }
 
-        bool operator==(const Quaternion &rhs) const
+        bool operator==(const Quaternion& rhs) const
         {
             return vector == rhs.vector;
         }
 
-        bool operator!=(const Quaternion &rhs) const
+        bool operator!=(const Quaternion& rhs) const
         {
             return vector != rhs.vector;
         }
@@ -344,7 +344,7 @@ namespace HE
 
         inline bool IsUnity() const { return vector.IsUnity(); }
 
-        inline Quaternion Multiply(const Quaternion &rhs) const
+        inline Quaternion Multiply(const Quaternion& rhs) const
         {
             Quaternion result(nullptr);
 
@@ -356,7 +356,7 @@ namespace HE
             return result;
         }
 
-        inline Vec3 Multiply(const Vec3 &rhs) const
+        inline Vec3 Multiply(const Vec3& rhs) const
         {
             Quaternion qv(nullptr);
 
@@ -477,7 +477,7 @@ namespace HE
             return Lerp(*this, to, t);
         }
 
-        inline static This Lerp(const This &from, const This &to, float t)
+        inline static This Lerp(const This& from, const This& to, float t)
         {
             This result = from.vector * (1.0f - t) + to.vector * t;
             result.Normalize();
@@ -490,7 +490,7 @@ namespace HE
             return Slerp(*this, to, t);
         }
 
-        inline static This Slerp(const This &from, const This &to, float t)
+        inline static This Slerp(const This& from, const This& to, float t)
         {
             AssertMessage(from.IsUnity(),
                 "Quaternion slerp should have unit length", ", but ",
@@ -499,7 +499,7 @@ namespace HE
                 "Quaternion slerp should have unit length", ", but ",
                 to.vector.Length());
 
-            auto angle = std::acosf(from.vector.Dot(to.vector));
+            auto angle = std::acos(from.vector.Dot(to.vector));
 
             if (angle < Epsilon)
             {
@@ -507,20 +507,20 @@ namespace HE
             }
 
             const auto nt = 1.0f - t;
-            const auto sinA = static_cast<Number>(std::sinf(nt * angle));
-            const auto sinB = static_cast<Number>(std::sinf(t * angle));
+            const auto sinA = static_cast<Number>(std::sin(nt * angle));
+            const auto sinB = static_cast<Number>(std::sin(t * angle));
 
             return (from.vector * sinA + to.vector * sinB) / std::sin(angle);
         }
 
-        inline void LookAt(const Vec3 &forward, const Vec3 &up)
+        inline void LookAt(const Vec3& forward, const Vec3& up)
         {
             Mat3x3 lookMat(nullptr);
             lookMat.LookAt(forward, up);
             *this = Quaternion(lookMat);
         }
 
-        inline void SetRotationAround(const Vec3 &unitAxis, float radian)
+        inline void SetRotationAround(const Vec3& unitAxis, float radian)
         {
             Assert(
                 unitAxis.IsUnity(), "Quaternion Length = ", unitAxis.Length());
@@ -528,7 +528,7 @@ namespace HE
             v = unitAxis * RotationSin(radian * 0.5f);
         }
 
-        inline void SetRotationFromTo(const Vec3 &from, const Vec3 &to)
+        inline void SetRotationFromTo(const Vec3& from, const Vec3& to)
         {
             if (from == to)
             {
@@ -551,7 +551,7 @@ namespace HE
     using Quat = Quaternion<float>;
 
     template <typename T>
-    inline std::ostream &operator<<(std::ostream &os, const Quaternion<T> &q)
+    inline std::ostream& operator<<(std::ostream& os, const Quaternion<T>& q)
     {
         Assert(q.IsUnity(),
             "Quaternion is not a unit. length = ", q.vector.Length());

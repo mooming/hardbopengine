@@ -20,7 +20,7 @@ namespace HE
     {
     }
 
-    TaskStream::Request::Request(TKey key, Task &task, TIndex start, TIndex end)
+    TaskStream::Request::Request(TKey key, Task& task, TIndex start, TIndex end)
         : key(key),
           task(&task),
           start(start),
@@ -51,7 +51,7 @@ namespace HE
 
         auto log = Logger::Get(name);
         log.Out(
-            [name = name](auto &ls) { ls << name.c_str() << " is created."; });
+            [name = name](auto& ls) { ls << name.c_str() << " is created."; });
     }
 
     void TaskStream::WakeUp()
@@ -89,11 +89,11 @@ namespace HE
         {
             auto log = Logger::Get(name);
             log.OutWarning(
-                [this](auto &ls) { ls << "Slow DeltaTime = " << deltaTime; });
+                [this](auto& ls) { ls << "Slow DeltaTime = " << deltaTime; });
         }
     }
 
-    void TaskStream::Start(TaskSystem &taskSys, TaskHandle::TIndex streamIndex)
+    void TaskStream::Start(TaskSystem& taskSys, TaskHandle::TIndex streamIndex)
     {
         auto func = [this, &taskSys, streamIndex]() {
             TaskSystem::SetThreadName(name);
@@ -101,12 +101,12 @@ namespace HE
 
             auto log = Logger::Get(name);
             log.Out([name = name](
-                        auto &ls) { ls << name.c_str() << " has begun."; });
+                        auto& ls) { ls << name.c_str() << " has begun."; });
 
             threadID = std::this_thread::get_id();
             RunLoop(taskSys.IsRunning());
 
-            log.Out([name = name](auto &ls) {
+            log.Out([name = name](auto& ls) {
                 ls << name.c_str() << " has been terminated.";
             });
         };
@@ -117,7 +117,7 @@ namespace HE
         threadID = thread.get_id();
     }
 
-    void TaskStream::Request(TKey key, Task &task, TIndex start, TIndex end)
+    void TaskStream::Request(TKey key, Task& task, TIndex start, TIndex end)
     {
         {
             ScopedLock lock(queueLock);
@@ -128,7 +128,7 @@ namespace HE
             newRequests.emplace_back(key, task, start, end);
 
             auto log = Logger::Get(name);
-            log.Out([&](auto &ls) {
+            log.Out([&](auto& ls) {
                 ls << "Request: Key = " << key << ", Task = " << task.GetName()
                    << '[' << start << ", " << end << ')';
             });
@@ -139,7 +139,7 @@ namespace HE
         cv.notify_one();
     }
 
-    void TaskStream::AddResident(TKey key, Task &task)
+    void TaskStream::AddResident(TKey key, Task& task)
     {
         {
             ScopedLock lock(queueLock);
@@ -150,7 +150,7 @@ namespace HE
             newResidents.emplace_back(key, task, 0, 0);
 
             auto log = Logger::Get(name);
-            log.Out([&](auto &ls) {
+            log.Out([&](auto& ls) {
                 ls << "AddResident: Key = " << key
                    << ", Task = " << task.GetName();
             });
@@ -167,7 +167,7 @@ namespace HE
         {
             ScopedLock lock(queueLock);
 
-            auto predicate = [key](auto &item) { return item.key == key; };
+            auto predicate = [key](auto& item) { return item.key == key; };
 
             auto found =
                 std::find_if(residents.begin(), residents.end(), predicate);
@@ -180,7 +180,7 @@ namespace HE
             auto task = found->task;
             if (likely(task != nullptr))
             {
-                log.Out([&](auto &ls) {
+                log.Out([&](auto& ls) {
                     ls << "RemoveResidentTask: Key = " << key
                        << ", Task = " << task->GetName() << '[' << found->start
                        << ", " << found->end << ')';
@@ -191,7 +191,7 @@ namespace HE
             }
             else
             {
-                log.Out([&](auto &ls) {
+                log.Out([&](auto& ls) {
                     ls << "RemoveResident: Key = " << key << ", Task = Null"
                        << '[' << found->start << ", " << found->end << ')';
                 });
@@ -214,7 +214,7 @@ namespace HE
 
             count = flipCount.load(std::memory_order_relaxed);
 
-            auto predicate = [key](auto &item) { return item.key == key; };
+            auto predicate = [key](auto& item) { return item.key == key; };
 
             auto found =
                 std::find_if(residents.begin(), residents.end(), predicate);
@@ -228,7 +228,7 @@ namespace HE
 
             if (likely(task != nullptr))
             {
-                log.Out([&](auto &ls) {
+                log.Out([&](auto& ls) {
                     ls << "RemoveResidentTaskSync: Key = " << key
                        << ", Task = " << task->GetName() << '[' << found->start
                        << ", " << found->end << ')';
@@ -239,7 +239,7 @@ namespace HE
             }
             else
             {
-                log.Out([&](auto &ls) {
+                log.Out([&](auto& ls) {
                     ls << "RemoveResidentSyncSync: Key = " << key
                        << ", Task = Null" << '[' << found->start << ", "
                        << found->end << ')';
@@ -283,7 +283,7 @@ namespace HE
             {
                 hasCancelledTask = false;
 
-                auto pred = [](const auto &item) -> bool {
+                auto pred = [](const auto& item) -> bool {
                     auto task = item.task;
                     if (unlikely(task == nullptr))
                     {
@@ -315,7 +315,7 @@ namespace HE
         flipCount.fetch_add(1, std::memory_order_relaxed);
     }
 
-    void TaskStream::RunLoop(const std::atomic<bool> &isRunning)
+    void TaskStream::RunLoop(const std::atomic<bool>& isRunning)
     {
         if (unlikely(threadID != std::this_thread::get_id()))
         {
@@ -358,7 +358,7 @@ namespace HE
             if (unlikely(deltaTime > 0.1f))
             {
                 auto log = Logger::Get(name);
-                log.OutWarning([dt = deltaTime](auto &ls) {
+                log.OutWarning([dt = deltaTime](auto& ls) {
                     ls << "Slow DeltaTime = " << dt;
                 });
             }
@@ -367,13 +367,13 @@ namespace HE
 
     void TaskStream::UpdateRequests()
     {
-        for (auto &request : requests)
+        for (auto& request : requests)
         {
             auto task = request.task;
             if (unlikely(task == nullptr))
             {
                 auto log = Logger::Get(name);
-                log.OutError([name = name](auto &ls) {
+                log.OutError([name = name](auto& ls) {
                     ls << name.c_str() << " task func is null.";
                 });
 
@@ -388,7 +388,7 @@ namespace HE
 
     void TaskStream::UpdateResidents()
     {
-        for (auto &request : residents)
+        for (auto& request : residents)
         {
             auto task = request.task;
             if (unlikely(task == nullptr))
@@ -396,7 +396,7 @@ namespace HE
                 hasCancelledTask = true;
 
                 auto log = Logger::Get(name);
-                log.OutError([](auto &ls) { ls << "The task is null."; });
+                log.OutError([](auto& ls) { ls << "The task is null."; });
 
                 continue;
             }
@@ -404,7 +404,7 @@ namespace HE
             if (unlikely(task->IsCancelled()))
             {
                 auto log = Logger::Get(name);
-                log.OutError([](auto &ls) { ls << "The task is cancelled."; });
+                log.OutError([](auto& ls) { ls << "The task is cancelled."; });
 
                 continue;
             }

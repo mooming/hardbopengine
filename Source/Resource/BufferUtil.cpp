@@ -16,7 +16,7 @@ namespace HE
 
         Buffer GenerateDummyBuffer(size_t size)
         {
-            auto generator = [size](TSize &outSize, TBufferData &outData) {
+            auto generator = [size](TSize& outSize, TBufferData& outData) {
                 outSize = size;
                 outData = nullptr;
             };
@@ -35,14 +35,14 @@ namespace HE
             FileHandle fh;
 
             auto generator = [&fh, path, openMode, protection, size](
-                                 TSize &outSize, TBufferData &outData) {
+                                 TSize& outSize, TBufferData& outData) {
                 outSize = 0;
                 outData = nullptr;
 
                 if (!Open(fh, path, openMode))
                 {
                     log.OutError(
-                        [path](auto &ls) { ls << "Failed to open " << path; });
+                        [path](auto& ls) { ls << "Failed to open " << path; });
 
                     return;
                 }
@@ -53,7 +53,7 @@ namespace HE
                     fileSize = size;
                     if (!Truncate(fh, fileSize))
                     {
-                        log.OutWarning([path, size](auto &ls) {
+                        log.OutWarning([path, size](auto& ls) {
                             ls << "Failed to resize the file " << path
                                << " to the given size " << size;
                         });
@@ -64,7 +64,7 @@ namespace HE
 
                 if (fileSize <= 0)
                 {
-                    log.OutWarning([path](auto &ls) {
+                    log.OutWarning([path](auto& ls) {
                         ls << "Nothing to map. File size is zero. path = "
                            << path;
                     });
@@ -76,7 +76,7 @@ namespace HE
                 if (unlikely(ptr == nullptr))
                 {
                     log.OutError(
-                        [path](auto &ls) { ls << "Failed to map " << path; });
+                        [path](auto& ls) { ls << "Failed to map " << path; });
 
                     return;
                 }
@@ -105,13 +105,13 @@ namespace HE
                     fh.data = handleData;
 
                     Assert(size > 0);
-                    auto ptr = static_cast<void *>(data);
+                    auto ptr = static_cast<void*>(data);
 
                     MapSyncMode syncMode;
                     syncMode.SetSync();
 
                     MapSync(ptr, size, syncMode);
-                    UnmapMemory((void *)data, size);
+                    UnmapMemory((void*)data, size);
 
                     OS::Close(std::move(fh));
                 });

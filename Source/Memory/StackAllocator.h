@@ -28,7 +28,7 @@ namespace HE
 
         union
         {
-            Byte *buffer;
+            Byte* buffer;
             Pointer bufferPtr;
         };
 
@@ -38,10 +38,10 @@ namespace HE
 
     public:
 #ifdef PROFILE_ENABLED
-        StackAllocator(const char *name, SizeType capacity,
+        StackAllocator(const char* name, SizeType capacity,
             const TSrcLoc location = TSrcLoc::current());
 #else  // PROFILE_ENABLED
-        StackAllocator(const char *name, SizeType capacity);
+        StackAllocator(const char* name, SizeType capacity);
 #endif // PROFILE_ENABLED
 
         ~StackAllocator();

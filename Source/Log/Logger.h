@@ -31,8 +31,8 @@ namespace HE
         using TTextBuffer = HSTL::HVector<TString>;
         using TTimePoint = std::chrono::time_point<std::chrono::steady_clock>;
         using TLogStream = InlineStringBuilder<Config::LogOutputBuffer>;
-        using TLogFunction = std::function<void(TLogStream &)>;
-        using TOutputFunc = std::function<void(const TTextBuffer &)>;
+        using TLogFunction = std::function<void(TLogStream&)>;
+        using TOutputFunc = std::function<void(const TTextBuffer&)>;
         using TOutputFuncs = HSTL::HVector<TOutputFunc>;
         using TLogFilter = std::function<bool(ELogLevel)>;
         using TFilters = HSTL::HUnorderedMap<StaticString, TLogFilter>;
@@ -45,50 +45,50 @@ namespace HE
 
             SimpleLogger(
                 StaticString category, ELogLevel level = ELogLevel::Info);
-            void Out(const TLogFunction &logFunc) const;
-            void Out(ELogLevel level, const TLogFunction &logFunc) const;
+            void Out(const TLogFunction& logFunc) const;
+            void Out(ELogLevel level, const TLogFunction& logFunc) const;
 
-            inline void OutWarning(const TLogFunction &logFunc) const
+            inline void OutWarning(const TLogFunction& logFunc) const
             {
                 Out(ELogLevel::Warning, logFunc);
             }
-            inline void OutError(const TLogFunction &logFunc) const
+            inline void OutError(const TLogFunction& logFunc) const
             {
                 Out(ELogLevel::Error, logFunc);
             }
-            inline void OutFatalError(const TLogFunction &logFunc) const
+            inline void OutFatalError(const TLogFunction& logFunc) const
             {
                 Out(ELogLevel::FatalError, logFunc);
             }
 
-            inline void Out(const char *text) const
+            inline void Out(const char* text) const
             {
-                Out([text](auto &ls) { ls << text; });
+                Out([text](auto& ls) { ls << text; });
             }
 
-            inline void Out(ELogLevel level, const char *text) const
+            inline void Out(ELogLevel level, const char* text) const
             {
-                Out(level, [text](auto &ls) { ls << text; });
+                Out(level, [text](auto& ls) { ls << text; });
             }
 
-            inline void OutWarning(const char *text) const
+            inline void OutWarning(const char* text) const
             {
-                OutWarning([text](auto &ls) { ls << text; });
+                OutWarning([text](auto& ls) { ls << text; });
             }
 
-            inline void OutError(const char *text) const
+            inline void OutError(const char* text) const
             {
-                OutError([text](auto &ls) { ls << text; });
+                OutError([text](auto& ls) { ls << text; });
             }
 
-            inline void OutFatalError(const char *text) const
+            inline void OutFatalError(const char* text) const
             {
-                OutFatalError([text](auto &ls) { ls << text; });
+                OutFatalError([text](auto& ls) { ls << text; });
             }
         };
 
     private:
-        static Logger *instance;
+        static Logger* instance;
 
         MultiPoolAllocator allocator;
         ThreadSafeMultiPoolAllocator inputAlloc;
@@ -110,27 +110,27 @@ namespace HE
         std::mutex inputLock;
 
     public:
-        static Logger &Get();
+        static Logger& Get();
         static SimpleLogger Get(
             StaticString category, ELogLevel level = ELogLevel::Info);
 
     public:
-        Logger(const Logger &) = delete;
-        Logger(Logger &&) = delete;
-        Logger &operator=(const Logger &) = delete;
-        Logger &operator=(Logger &&) = delete;
+        Logger(const Logger&) = delete;
+        Logger(Logger&&) = delete;
+        Logger& operator=(const Logger&) = delete;
+        Logger& operator=(Logger&&) = delete;
 
     public:
-        Logger(Engine &engine, const char *path, const char *filename);
+        Logger(Engine& engine, const char* path, const char* filename);
         ~Logger();
 
         StaticString GetName() const;
-        void StartTask(TaskSystem &taskSys);
-        void StopTask(TaskSystem &taskSys);
+        void StartTask(TaskSystem& taskSys);
+        void StopTask(TaskSystem& taskSys);
 
         void SetFilter(StaticString category, TLogFilter filter);
         void AddLog(StaticString category, ELogLevel level,
-            const TLogFunction &logFunc);
+            const TLogFunction& logFunc);
         void Flush();
 
 #ifdef PROFILE_ENABLED
@@ -139,10 +139,10 @@ namespace HE
 
     private:
         void ProcessBuffer();
-        void FlushBuffer(const TTextBuffer &buffer);
+        void FlushBuffer(const TTextBuffer& buffer);
 
-        void WriteLog(const TTextBuffer &buffer);
-        void PrintStdIO(const TTextBuffer &buffer) const;
+        void WriteLog(const TTextBuffer& buffer);
+        void PrintStdIO(const TTextBuffer& buffer) const;
     };
 
     using TLog = Logger::SimpleLogger;

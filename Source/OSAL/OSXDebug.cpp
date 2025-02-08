@@ -20,10 +20,10 @@ StaticString OS::GetBackTrace(uint16_t startIndex, uint16_t maxDepth)
     ++startIndex;
 
     InlineStringBuilder<BufferSize> strBuild;
-    void *callstack[MaxCallStack];
+    void* callstack[MaxCallStack];
 
     int frames = backtrace(callstack, MaxCallStack);
-    char **strs = backtrace_symbols(callstack, frames);
+    char** strs = backtrace_symbols(callstack, frames);
 
     strBuild << "CallStack:\n";
     for (int i = startIndex; i < frames && maxDepth > 0; ++i, --maxDepth)

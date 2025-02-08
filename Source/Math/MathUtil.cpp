@@ -6,7 +6,7 @@
 
 void HE::MathUtilTest::Prepare()
 {
-    AddTest("Exponent", [this](auto &ls) {
+    AddTest("Exponent", [this](auto& ls) {
         ls << "2^10 = " << Pow(2, 10);
 
         if (Pow(2, 10) != 1024)

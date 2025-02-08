@@ -16,10 +16,10 @@ namespace HE
     {
         using namespace HSTL;
 
-        AddTest("Default Construction",
-            [](auto &) { HUnorderedMap<int, int> map; });
+        AddTest(
+            "Default Construction", [](auto&) { HUnorderedMap<int, int> map; });
 
-        AddTest("Insert Item", [this](auto &ls) {
+        AddTest("Insert Item", [this](auto& ls) {
             HUnorderedMap<int, int> map;
             map[1] = 2;
             map[2] = 1;

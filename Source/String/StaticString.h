@@ -21,33 +21,33 @@ namespace HE
     public:
         StaticString();
         StaticString(StaticStringID id);
-        StaticString(const char *string);
-        StaticString(const std::string_view &str);
+        StaticString(const char* string);
+        StaticString(const std::string_view& str);
 
         template <CToZeroTerminateStr T>
-        StaticString(const T &string)
+        StaticString(const T& string)
             : StaticString(string.c_str())
         {
         }
 
         ~StaticString() = default;
 
-        const char *c_str() const;
+        const char* c_str() const;
 
         inline auto GetID() const noexcept { return id; }
         inline bool IsNull() const noexcept { return id.ptr == nullptr; }
-        inline operator const char *() const { return c_str(); }
-        inline bool operator<(const StaticString &rhs) const
+        inline operator const char*() const { return c_str(); }
+        inline bool operator<(const StaticString& rhs) const
         {
             return id.ptr < rhs.id.ptr;
         }
-        inline bool operator==(const StaticString &rhs) const
+        inline bool operator==(const StaticString& rhs) const
         {
             return id.ptr == rhs.id.ptr;
         }
 
-        inline friend std::ostream &operator<<(
-            std::ostream &os, const StaticString &str)
+        inline friend std::ostream& operator<<(
+            std::ostream& os, const StaticString& str)
         {
             os << str.c_str();
             return os;
@@ -61,7 +61,7 @@ namespace std
     template <>
     struct hash<HE::StaticString> final
     {
-        std::size_t operator()(const HE::StaticString &obj) const
+        std::size_t operator()(const HE::StaticString& obj) const
         {
             return reinterpret_cast<std::size_t>(obj.GetID().ptr);
         }

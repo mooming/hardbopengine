@@ -26,11 +26,11 @@ namespace HE
         unsigned int passCount;
 
     public:
-        static TestEnv &GetEnv();
+        static TestEnv& GetEnv();
         void Start();
 
         template <typename T, typename... Types>
-        void AddTestCollection(Types &&...args)
+        void AddTestCollection(Types&&... args)
         {
             tests.push_back(std::make_unique<T>(std::forward(args)...));
         }
@@ -42,7 +42,7 @@ namespace HE
         {
         }
 
-        bool ExecuteTest(TestCollection &testCollection);
+        bool ExecuteTest(TestCollection& testCollection);
         void Report();
     };
 } // namespace HE

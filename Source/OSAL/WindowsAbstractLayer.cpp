@@ -13,7 +13,7 @@ using namespace HSTL;
 namespace OS
 {
 
-    HString GetFullPath(const HString &path)
+    HString GetFullPath(const HString& path)
     {
         using namespace StringUtil;
 
@@ -23,7 +23,7 @@ namespace OS
         return TrimPath(fullPath);
     }
 
-    bool IsDirectory(const char *path)
+    bool IsDirectory(const char* path)
     {
         DWORD fileType = GetFileAttributesA(path);
         if (fileType == INVALID_FILE_ATTRIBUTES)
@@ -39,7 +39,7 @@ namespace OS
         return true;
     }
 
-    HVector<HString> ListFilesInDirectory(const char *path)
+    HVector<HString> ListFilesInDirectory(const char* path)
     {
         HVector<HString> fileList;
 

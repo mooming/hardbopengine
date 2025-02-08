@@ -63,7 +63,7 @@ namespace HE
     template <>
     inline float Pow(float value, float n, std::false_type)
     {
-        return std::powf(value, n);
+        return powf(value, n);
     }
 
     template <>

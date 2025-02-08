@@ -37,21 +37,21 @@ namespace HE
         {
         }
 
-        OBB(const Vec3 &center, const Vec3 &half, const Quat &rotation)
+        OBB(const Vec3& center, const Vec3& half, const Quat& rotation)
             : center(center),
               half(half),
               rotation(rotation)
         {
         }
 
-        OBB(const AABB<Vec3> &aabb, const Quat &rotation)
+        OBB(const AABB<Vec3>& aabb, const Quat& rotation)
             : center((aabb.min + aabb.max) * 0.5f),
               half((aabb.max - aabb.min) * 0.5f),
               rotation(rotation)
         {
         }
 
-        bool IsContaining(const Vec3 &objSpacePoint) const
+        bool IsContaining(const Vec3& objSpacePoint) const
         {
             auto point = ToOBBSpace(objSpacePoint);
 
@@ -73,7 +73,7 @@ namespace HE
             return true;
         }
 
-        Vec3 Closest(const Vec3 &objSpacePoint) const
+        Vec3 Closest(const Vec3& objSpacePoint) const
         {
             auto point = ToOBBSpace(objSpacePoint);
 
@@ -88,13 +88,13 @@ namespace HE
         }
 
         bool HasIntersection(
-            const OBB &obb, const Vec3 &objPosition, const Quat &objRot)
+            const OBB& obb, const Vec3& objPosition, const Quat& objRot)
         {
             return false;
         }
 
     private:
-        Vec3 ToOBBSpace(const Vec3 &objSpacePoint) const
+        Vec3 ToOBBSpace(const Vec3& objSpacePoint) const
         {
             auto point = objSpacePoint - center;
             point = rotation.Inverse() * point;
@@ -102,7 +102,7 @@ namespace HE
             return point;
         }
 
-        Vec3 ToObjectSpace(const Vec3 &obbSpacePoint) const
+        Vec3 ToObjectSpace(const Vec3& obbSpacePoint) const
         {
             auto point = rotation * obbSpacePoint;
             point -= center;

@@ -30,13 +30,13 @@ namespace HE
             buffer->push_back('\0');
         }
 
-        String(String &rhs)
+        String(String& rhs)
             : buffer(rhs.buffer),
               hashCode(rhs.hashCode)
         {
         }
 
-        String(String &&rhs)
+        String(String&& rhs)
             : buffer(std::move(rhs.buffer)),
               hashCode(rhs.hashCode)
         {
@@ -58,45 +58,45 @@ namespace HE
         String(const float value);
         String(const double value);
         String(const long double value);
-        String(const char *text);
+        String(const char* text);
 
         String(const std::string str)
             : String(str.c_str())
         {
         }
-        String(const String &string, Index startIndex, Index endIndex = -1);
+        String(const String& string, Index startIndex, Index endIndex = -1);
 
-        inline String &operator=(String &&rhs)
+        inline String& operator=(String&& rhs)
         {
             Swap(std::move(rhs));
             return *this;
         }
 
-        String &operator=(const char *text);
-        String &operator=(const String &rhs);
+        String& operator=(const char* text);
+        String& operator=(const String& rhs);
 
-        bool operator<(const String &rhs) const;
-        inline bool operator>(const String &rhs) const { return rhs < *this; }
-        inline bool operator<=(const String &rhs) const
+        bool operator<(const String& rhs) const;
+        inline bool operator>(const String& rhs) const { return rhs < *this; }
+        inline bool operator<=(const String& rhs) const
         {
             return !(*this > rhs);
         }
-        inline bool operator>=(const String &rhs) const
+        inline bool operator>=(const String& rhs) const
         {
             return !(*this < rhs);
         }
 
-        bool operator==(const String &rhs) const;
-        inline bool operator!=(const String &rhs) const
+        bool operator==(const String& rhs) const;
+        inline bool operator!=(const String& rhs) const
         {
             return !(*this == rhs);
         }
 
-        inline bool operator==(const char *rhs) const
+        inline bool operator==(const char* rhs) const
         {
             return *this == String(rhs);
         }
-        inline bool operator!=(const char *rhs) const
+        inline bool operator!=(const char* rhs) const
         {
             return !(*this == rhs);
         }
@@ -115,9 +115,9 @@ namespace HE
             AppendSelf(str);
         }
 
-        inline operator const char *() const { return ToCharArray(); }
+        inline operator const char*() const { return ToCharArray(); }
 
-        inline const char *c_str() const { return ToCharArray(); }
+        inline const char* c_str() const { return ToCharArray(); }
 
         inline Index Length() const { return buffer->size() - 1; }
 
@@ -132,13 +132,13 @@ namespace HE
             return String(*this, startIndex, endIndex);
         }
 
-        bool ContainsAt(const String &keyword, Index startIndex) const;
+        bool ContainsAt(const String& keyword, Index startIndex) const;
 
         Index Find(const Char ch) const;
-        Index Find(const Array<Char> &chs) const;
-        Index Find(const String &keyword) const;
+        Index Find(const Array<Char>& chs) const;
+        Index Find(const String& keyword) const;
         Index Find(
-            const String &keyword, Index startIndex, Index endIndex = -1) const;
+            const String& keyword, Index startIndex, Index endIndex = -1) const;
 
         Index FindLast(const Char ch) const;
 
@@ -151,7 +151,7 @@ namespace HE
             return (*buffer)[0] == ch;
         }
 
-        bool StartsWith(const String &header) const
+        bool StartsWith(const String& header) const
         {
             return ContainsAt(header, 0);
         }
@@ -165,7 +165,7 @@ namespace HE
             return (*buffer)[Length() - 1] == ch;
         }
 
-        bool EndsWith(const String &tail) const
+        bool EndsWith(const String& tail) const
         {
             if (Length() < tail.Length())
             {
@@ -174,7 +174,7 @@ namespace HE
             return ContainsAt(tail, Length() - tail.Length());
         }
 
-        inline bool Contains(const String &keyword) const
+        inline bool Contains(const String& keyword) const
         {
             return Find(keyword) >= Length();
         }
@@ -182,16 +182,16 @@ namespace HE
         String Append(const Char letter) const;
         String Append(const int value) const;
         String Append(const float value) const;
-        String Append(const Char *text) const;
-        String Append(const String &string) const;
+        String Append(const Char* text) const;
+        String Append(const String& string) const;
 
         void AppendSelf(const Char letter);
         void AppendSelf(const int value);
         void AppendSelf(const float value);
-        void AppendSelf(const Char *text);
-        void AppendSelf(const String &string);
+        void AppendSelf(const Char* text);
+        void AppendSelf(const String& string);
 
-        String Replace(const String &from, const String &to, Index offset = 0,
+        String Replace(const String& from, const String& to, Index offset = 0,
             Index endIndex = -1) const;
         String ReplaceAll(char from, char to) const;
         String ReplaceAll(String from, String to) const;
@@ -243,11 +243,11 @@ namespace HE
             return String();
         }
 
-        inline Char *GetBuffer() { return buffer->data(); }
-        inline const Char *GetBuffer() const { return buffer->data(); }
+        inline Char* GetBuffer() { return buffer->data(); }
+        inline const Char* GetBuffer() const { return buffer->data(); }
         void ResetBuffer(size_t size);
 
-        inline void Swap(String &&target)
+        inline void Swap(String&& target)
         {
             Index tmpHashCode = hashCode;
             hashCode = target.hashCode;
@@ -304,7 +304,7 @@ namespace HE
             return str;
         }
 
-        const char *ToCharArray() const;
+        const char* ToCharArray() const;
 
         inline char ToChar() const { return buffer ? (*buffer)[0] : '\0'; }
 
@@ -360,17 +360,17 @@ namespace HE
             return buffer ? std::stold(buffer->data()) : 0.0;
         }
 
-        inline void *ToPointer() const
+        inline void* ToPointer() const
         {
             if (buffer)
             {
                 unsigned long long address = std::stoull(buffer->data(), 0, 16);
-                return reinterpret_cast<void *>(address);
+                return reinterpret_cast<void*>(address);
             }
             return nullptr;
         }
 
-        void ParseKeyValue(String &key, String &value);
+        void ParseKeyValue(String& key, String& value);
 
     private:
         void CalculateHashCode();

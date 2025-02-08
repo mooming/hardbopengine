@@ -20,7 +20,7 @@
 #define CallerFile() __builtin_FILE()
 #define CallerFunc() __builtin_FUNCTION()
 #define CallerLine() __builtin_LINE()
-#define CallerColumn() __builtin_COLUMN()
+#define CallerColumn() 0
 
 #elif _MSC_VER
 #include <intrin.h>

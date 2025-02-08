@@ -15,7 +15,7 @@ namespace HE
         using TString = HSTL::HInlineString<MaxLength>;
         using TStrBuild = InlineStringBuilder<MaxLength>;
 
-        AddTest("Default Construct", [this](auto &ls) {
+        AddTest("Default Construct", [this](auto& ls) {
             TStrBuild strBuild;
             auto str = strBuild.c_str();
 
@@ -35,7 +35,7 @@ namespace HE
             }
         });
 
-        AddTest("Add Nullptr", [this](auto &ls) {
+        AddTest("Add Nullptr", [this](auto& ls) {
             TStrBuild strBuild;
             strBuild << nullptr;
 
@@ -51,7 +51,7 @@ namespace HE
             }
         });
 
-        AddTest("Add Boolean(true)", [this](auto &ls) {
+        AddTest("Add Boolean(true)", [this](auto& ls) {
             TStrBuild strBuild;
             strBuild << true;
 
@@ -67,7 +67,7 @@ namespace HE
             }
         });
 
-        AddTest("Add Boolean(false)", [this](auto &ls) {
+        AddTest("Add Boolean(false)", [this](auto& ls) {
             TStrBuild strBuild;
             strBuild << false;
 
@@ -83,7 +83,7 @@ namespace HE
             }
         });
 
-        AddTest("Add Boolean(true, false)", [this](auto &ls) {
+        AddTest("Add Boolean(true, false)", [this](auto& ls) {
             TStrBuild strBuild;
             strBuild << true << ", " << false;
 
@@ -99,7 +99,7 @@ namespace HE
             }
         });
 
-        AddTest("Add Char", [this](auto &ls) {
+        AddTest("Add Char", [this](auto& ls) {
             TStrBuild strBuild;
             strBuild << 'a';
 
@@ -115,7 +115,7 @@ namespace HE
             }
         });
 
-        AddTest("Add Chars", [this](auto &ls) {
+        AddTest("Add Chars", [this](auto& ls) {
             TStrBuild strBuild;
             strBuild << 'a' << 'b' << 'c';
 
@@ -131,7 +131,7 @@ namespace HE
             }
         });
 
-        AddTest("uint8_t", [this](auto &ls) {
+        AddTest("uint8_t", [this](auto& ls) {
             TStrBuild strBuild;
 
             using T = uint8_t;
@@ -150,7 +150,7 @@ namespace HE
             }
         });
 
-        AddTest("int16_t", [this](auto &ls) {
+        AddTest("int16_t", [this](auto& ls) {
             TStrBuild strBuild;
 
             using T = int16_t;
@@ -169,7 +169,7 @@ namespace HE
             }
         });
 
-        AddTest("uint16_t", [this](auto &ls) {
+        AddTest("uint16_t", [this](auto& ls) {
             TStrBuild strBuild;
 
             using T = uint16_t;
@@ -188,7 +188,7 @@ namespace HE
             }
         });
 
-        AddTest("int32_t", [this](auto &ls) {
+        AddTest("int32_t", [this](auto& ls) {
             TStrBuild strBuild;
 
             using T = int32_t;
@@ -207,7 +207,7 @@ namespace HE
             }
         });
 
-        AddTest("uint32_t", [this](auto &ls) {
+        AddTest("uint32_t", [this](auto& ls) {
             TStrBuild strBuild;
 
             using T = uint32_t;
@@ -226,7 +226,7 @@ namespace HE
             }
         });
 
-        AddTest("int64_t", [this](auto &ls) {
+        AddTest("int64_t", [this](auto& ls) {
             TStrBuild strBuild;
 
             using T = int64_t;
@@ -245,7 +245,7 @@ namespace HE
             }
         });
 
-        AddTest("uint64_t", [this](auto &ls) {
+        AddTest("uint64_t", [this](auto& ls) {
             TStrBuild strBuild;
 
             using T = uint64_t;
@@ -264,7 +264,7 @@ namespace HE
             }
         });
 
-        AddTest("float", [this](auto &ls) {
+        AddTest("float", [this](auto& ls) {
             TStrBuild strBuild;
 
             using T = float;
@@ -283,7 +283,7 @@ namespace HE
             }
         });
 
-        AddTest("double", [this](auto &ls) {
+        AddTest("double", [this](auto& ls) {
             TStrBuild strBuild;
 
             using T = double;
@@ -302,7 +302,7 @@ namespace HE
             }
         });
 
-        AddTest("long double", [this](auto &ls) {
+        AddTest("long double", [this](auto& ls) {
             TStrBuild strBuild;
 
             using T = long double;

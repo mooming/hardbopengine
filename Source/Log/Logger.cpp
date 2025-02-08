@@ -28,7 +28,7 @@ namespace HE
 
 #ifdef LOG_FORCE_IMMEDIATE
         void ImmediateLog(
-            ELogLevel level, StaticString category, const char *logStr)
+            ELogLevel level, StaticString category, const char* logStr)
         {
             AllocatorScope scope(MemoryManager::SystemAllocatorID);
 
@@ -43,20 +43,20 @@ namespace HE
 #endif // LOG_FORCE_IMMEDIATE
 
         void FallbackLog(StaticString category, ELogLevel level,
-            const Logger::TLogFunction &logFunc)
+            const Logger::TLogFunction& logFunc)
         {
-            auto &engine = Engine::Get();
+            auto& engine = Engine::Get();
 
             Logger::TLogStream str;
             str << '[' << category << "] ";
             logFunc(str);
 
-            engine.Log(level, [&str](auto &ls) { ls << str.c_str(); });
+            engine.Log(level, [&str](auto& ls) { ls << str.c_str(); });
         }
 
     } // anonymous namespace
 
-    Logger *Logger::instance = nullptr;
+    Logger* Logger::instance = nullptr;
 
     Logger::SimpleLogger::SimpleLogger(StaticString category, ELogLevel level)
         : category(category),
@@ -64,7 +64,7 @@ namespace HE
     {
     }
 
-    void Logger::SimpleLogger::Out(const TLogFunction &logFunc) const
+    void Logger::SimpleLogger::Out(const TLogFunction& logFunc) const
     {
         if (unlikely(instance == nullptr))
         {
@@ -76,7 +76,7 @@ namespace HE
     }
 
     void Logger::SimpleLogger::Out(
-        ELogLevel inLevel, const TLogFunction &logFunc) const
+        ELogLevel inLevel, const TLogFunction& logFunc) const
     {
         if (unlikely(instance == nullptr))
         {
@@ -87,7 +87,7 @@ namespace HE
         instance->AddLog(category, inLevel, logFunc);
     }
 
-    Logger &Logger::Get()
+    Logger& Logger::Get()
     {
         FatalAssert(instance != nullptr);
 
@@ -100,7 +100,7 @@ namespace HE
         return log;
     }
 
-    Logger::Logger(Engine &engine, const char *path, const char *filename)
+    Logger::Logger(Engine& engine, const char* path, const char* filename)
         : allocator("LoggerMemoryPool"),
           inputAlloc("LoggerInputPool"),
           hasInput(false),
@@ -149,9 +149,9 @@ namespace HE
 
         flushFuncs.reserve(2);
         flushFuncs.push_back(
-            [this](const TTextBuffer &buffer) { WriteLog(buffer); });
+            [this](const TTextBuffer& buffer) { WriteLog(buffer); });
         flushFuncs.push_back(
-            [this](const TTextBuffer &buffer) { PrintStdIO(buffer); });
+            [this](const TTextBuffer& buffer) { PrintStdIO(buffer); });
 
         engine.SetLoggerReady();
     }
@@ -173,10 +173,10 @@ namespace HE
         return className;
     }
 
-    void Logger::StartTask(TaskSystem &taskSys)
+    void Logger::StartTask(TaskSystem& taskSys)
     {
         AddLog(GetName(), ELogLevel::Info,
-            [](auto &logStream) { logStream << "Logger started."; });
+            [](auto& logStream) { logStream << "Logger started."; });
 
         auto ioTaskIndex = taskSys.GetIOTaskStreamIndex();
         auto func = [this](size_t, size_t) { ProcessBuffer(); };
@@ -187,7 +187,7 @@ namespace HE
         auto task = taskHandle.GetTask();
         if (unlikely(task == nullptr))
         {
-            auto logFunc = [taskName, ioTaskIndex](auto &ls) {
+            auto logFunc = [taskName, ioTaskIndex](auto& ls) {
                 ls << taskName.c_str()
                    << " : Failed to register as a task at task index "
                    << ioTaskIndex << '.';
@@ -196,19 +196,19 @@ namespace HE
             AddLog(GetName(), ELogLevel::FatalError, logFunc);
         }
 
-        auto &ioTaskStream = taskSys.GetIOTaskStream();
+        auto& ioTaskStream = taskSys.GetIOTaskStream();
         threadID = ioTaskStream.GetThreadID();
 
 #ifdef __MEMORY_VERIFICATION__
-        auto &mmgr = MemoryManager::GetInstance();
+        auto& mmgr = MemoryManager::GetInstance();
         mmgr.Update(
             allocator.GetID(),
-            [this](auto &proxy) { proxy.threadId = threadID; },
+            [this](auto& proxy) { proxy.threadId = threadID; },
             "Setup thread binding.");
 #endif // __MEMORY_VERIFICATION__
     }
 
-    void Logger::StopTask(TaskSystem &taskSys)
+    void Logger::StopTask(TaskSystem& taskSys)
     {
         if (!taskHandle.IsValid())
         {
@@ -219,15 +219,15 @@ namespace HE
         threadID = std::thread::id();
 
 #ifdef __MEMORY_VERIFICATION__
-        auto &mmgr = MemoryManager::GetInstance();
+        auto& mmgr = MemoryManager::GetInstance();
         mmgr.Update(
             allocator.GetID(),
-            [](auto &proxy) { proxy.threadId = std::this_thread::get_id(); },
+            [](auto& proxy) { proxy.threadId = std::this_thread::get_id(); },
             "Releasing the thread binding.");
 #endif // __MEMORY_VERIFICATION__
 
         AddLog(GetName(), ELogLevel::Info,
-            [](auto &ls) { ls << "Logger shall be terminated." << hendl; });
+            [](auto& ls) { ls << "Logger shall be terminated." << hendl; });
 
         ProcessBuffer();
 
@@ -236,7 +236,7 @@ namespace HE
     }
 
     void Logger::AddLog(
-        StaticString category, ELogLevel level, const TLogFunction &logFunc)
+        StaticString category, ELogLevel level, const TLogFunction& logFunc)
     {
         Assert(this == instance);
 
@@ -249,7 +249,7 @@ namespace HE
         if (unlikely(logFunc == nullptr))
         {
             AddLog(GetName(), ELogLevel::Warning,
-                [](auto &ls) { ls << "Null log function!"; });
+                [](auto& ls) { ls << "Null log function!"; });
 
             return;
         }
@@ -267,7 +267,7 @@ namespace HE
             auto found = filters.find(category);
             if (found != filters.end())
             {
-                auto &filter = found->second;
+                auto& filter = found->second;
                 if (filter != nullptr && !filter(level))
                 {
                     return;
@@ -275,8 +275,8 @@ namespace HE
             }
         }
 
-        auto &engine = Engine::Get();
-        auto &taskSystem = engine.GetTaskSystem();
+        auto& engine = Engine::Get();
+        auto& taskSystem = engine.GetTaskSystem();
         auto threadName = taskSystem.GetCurrentStreamName();
 
         TLogStream ls;
@@ -340,7 +340,7 @@ namespace HE
             return;
         }
 
-        auto &ioStream = taskSystem.GetIOTaskStream();
+        auto& ioStream = taskSystem.GetIOTaskStream();
         ioStream.WakeUp();
 
         if (bufferSize >= Config::LogForceFlushThreshold)
@@ -401,7 +401,7 @@ namespace HE
         bool bNeedIOFlush = false;
         textBuffer.reserve(swapBuffer.size());
 
-        for (auto &log : swapBuffer)
+        for (auto& log : swapBuffer)
         {
             if (log.level >= ELogLevel::Warning)
             {
@@ -436,7 +436,7 @@ namespace HE
         needFlush.store(false, std::memory_order_release);
     }
 
-    void Logger::FlushBuffer(const TTextBuffer &buffer)
+    void Logger::FlushBuffer(const TTextBuffer& buffer)
     {
         for (auto func : flushFuncs)
         {
@@ -445,11 +445,11 @@ namespace HE
         }
     }
 
-    void Logger::WriteLog(const TTextBuffer &buffer)
+    void Logger::WriteLog(const TTextBuffer& buffer)
     {
-        auto &ofs = outFileStream;
+        auto& ofs = outFileStream;
 
-        for (auto &logText : buffer)
+        for (auto& logText : buffer)
         {
             ofs << logText << std::endl;
         }
@@ -457,11 +457,11 @@ namespace HE
         ofs.flush();
     }
 
-    void Logger::PrintStdIO(const TTextBuffer &buffer) const
+    void Logger::PrintStdIO(const TTextBuffer& buffer) const
     {
-        auto &engine = Engine::Get();
+        auto& engine = Engine::Get();
 
-        for (auto &logText : buffer)
+        for (auto& logText : buffer)
         {
             engine.ConsoleOutLn(logText.c_str());
         }

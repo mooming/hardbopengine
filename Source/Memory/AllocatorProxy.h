@@ -13,11 +13,11 @@ namespace HE
 
     struct AllocatorProxy final
     {
-        using TAllocBytes = std::function<void *(size_t)>;
-        using TDeallocBytes = std::function<void(void *, size_t)>;
+        using TAllocBytes = std::function<void*(size_t)>;
+        using TDeallocBytes = std::function<void(void*, size_t)>;
 
         TAllocatorID id = InvalidAllocatorID;
-        AllocatorProxy *next = nullptr;
+        AllocatorProxy* next = nullptr;
         TAllocBytes allocate = nullptr;
         TDeallocBytes deallocate = nullptr;
 
@@ -30,9 +30,9 @@ namespace HE
 #endif // __MEMORY_VERIFICATION__
 
 #ifdef PROFILE_ENABLED
-        inline const char *GetName() const { return stats.name; }
+        inline const char* GetName() const { return stats.name; }
 #else  // PROFILE_ENABLED
-        inline const char *GetName() const { return "NoName"; }
+        inline const char* GetName() const { return "NoName"; }
 #endif // PROFILE_ENABLED
     };
 

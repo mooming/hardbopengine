@@ -24,38 +24,38 @@ namespace HE
     };
 
     template <typename T>
-    struct IsReferenceType<T &>
+    struct IsReferenceType<T&>
     {
         using Result = True_t;
-        static constexpr size_t TypeSize = sizeof(T *);
+        static constexpr size_t TypeSize = sizeof(T*);
     };
 
     template <typename Type>
-    inline Type GetAs(void *src)
+    inline Type GetAs(void* src)
     {
         Assert((((size_t)(src)) % sizeof(Type)) == 0, "Misaligned Address(",
             src, ") is provided. Required alignment is ", sizeof(Type), ".");
-        return *reinterpret_cast<Type *>(src);
+        return *reinterpret_cast<Type*>(src);
     }
 
     template <typename Type>
-    inline void SetAs(void *dst, Type value)
+    inline void SetAs(void* dst, Type value)
     {
         Assert((((size_t)(dst)) % sizeof(Type)) == 0, "Misaligned Address(",
             dst, ") is provided. Required alignment is ", sizeof(Type), ".");
-        Type *_dst = reinterpret_cast<Type *>(dst);
+        Type* _dst = reinterpret_cast<Type*>(dst);
         *_dst = value;
     }
 
     template <typename Type>
-    inline void CopyAs(void *dst, void *src)
+    inline void CopyAs(void* dst, void* src)
     {
-        Type *_src = reinterpret_cast<Type *>(src);
-        Type *_dst = reinterpret_cast<Type *>(dst);
+        Type* _src = reinterpret_cast<Type*>(src);
+        Type* _dst = reinterpret_cast<Type*>(dst);
         *_dst = *_src;
     }
 
-    inline size_t ToAddress(void *ptr)
+    inline size_t ToAddress(void* ptr)
     {
         return reinterpret_cast<size_t>(ptr);
     }

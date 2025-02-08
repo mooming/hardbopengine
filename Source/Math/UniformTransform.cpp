@@ -7,7 +7,7 @@
 
 void HE::UniformTransformTest::Prepare()
 {
-    AddTest("Constants", [this](auto &ls) {
+    AddTest("Constants", [this](auto& ls) {
         UniformTRS tm;
         ls << tm << lf;
 
@@ -49,7 +49,7 @@ void HE::UniformTransformTest::Prepare()
         }
     });
 
-    AddTest("Inverse Matrix", [this](auto &ls) {
+    AddTest("Inverse Matrix", [this](auto& ls) {
         UniformTRS tm(Float3(4, 5, 6), Quat(0, 47, 0), 2);
         UniformTRS tm2(Float3(3, 4, 5), Quat(41, 0, 25), 3);
         Float4x4 tm3 = (tm * tm2).ToMatrix();

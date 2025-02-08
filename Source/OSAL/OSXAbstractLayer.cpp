@@ -13,12 +13,12 @@ using namespace HSTL;
 namespace OS
 {
 
-    HString GetFullPath(const HString &path)
+    HString GetFullPath(const HString& path)
     {
         using namespace StringUtil;
 
         char fullPath[PATH_MAX];
-        void *ptr = realpath(path.c_str(), fullPath);
+        void* ptr = realpath(path.c_str(), fullPath);
         if (ptr != fullPath)
         {
             std::cerr << "[OS::GetFullPath] Failed to get the full path of "
@@ -30,9 +30,9 @@ namespace OS
         return TrimPath(fullPath);
     }
 
-    bool IsDirectory(const char *path)
+    bool IsDirectory(const char* path)
     {
-        DIR *dir = opendir(path);
+        DIR* dir = opendir(path);
 
         if (dir != nullptr)
         {
@@ -43,13 +43,13 @@ namespace OS
         return false;
     }
 
-    HVector<HString> ListFilesInDirectory(const char *path)
+    HVector<HString> ListFilesInDirectory(const char* path)
     {
         HVector<HString> fileList;
 
-        if (DIR *dir = opendir(path))
+        if (DIR* dir = opendir(path))
         {
-            while (struct dirent *element = readdir(dir))
+            while (struct dirent* element = readdir(dir))
             {
                 if (strcmp(element->d_name, ".") == 0)
                 {

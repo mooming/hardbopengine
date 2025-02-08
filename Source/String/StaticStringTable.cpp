@@ -21,18 +21,18 @@ namespace HE
         {
             size_t cursor;
             size_t capacity;
-            uint8_t *buffer;
+            uint8_t* buffer;
 
             Bank(size_t capacity)
                 : cursor(0),
                   capacity(capacity)
             {
-                buffer = (uint8_t *)malloc(capacity);
+                buffer = (uint8_t*)malloc(capacity);
             }
 
-            Bank(const Bank &rhs) = delete;
+            Bank(const Bank& rhs) = delete;
 
-            Bank(Bank &&rhs)
+            Bank(Bank&& rhs)
                 : cursor(rhs.cursor),
                   capacity(rhs.capacity),
                   buffer(rhs.buffer)
@@ -54,7 +54,7 @@ namespace HE
 
             bool IsAvailable(size_t n) const { return (cursor + n) < capacity; }
 
-            uint8_t *Allocate(size_t n)
+            uint8_t* Allocate(size_t n)
             {
                 auto ptr = &buffer[cursor];
                 cursor += n;
@@ -70,7 +70,7 @@ namespace HE
 
     } // namespace
 
-    StaticStringTable &StaticStringTable::GetInstance()
+    StaticStringTable& StaticStringTable::GetInstance()
     {
         static StaticStringTable instance;
         return instance;
@@ -95,7 +95,7 @@ namespace HE
         return className;
     }
 
-    StaticStringID StaticStringTable::Register(const char *text)
+    StaticStringID StaticStringTable::Register(const char* text)
     {
         StaticStringID id;
 
@@ -107,26 +107,26 @@ namespace HE
         {
             std::lock_guard lock(tableLock);
 
-            auto &table = tables[tableID];
+            auto& table = tables[tableID];
             std::string_view tmp(text);
 
             auto found = std::find(table.begin(), table.end(), tmp);
             if (found != table.end())
             {
-                id.ptr = reinterpret_cast<const uint8_t *>(found->data());
+                id.ptr = reinterpret_cast<const uint8_t*>(found->data());
                 return id;
             }
 
             std::string_view sv = Store(tmp);
             table.emplace_back(sv);
 
-            id.ptr = reinterpret_cast<const uint8_t *>(sv.data());
+            id.ptr = reinterpret_cast<const uint8_t*>(sv.data());
         }
 
         return id;
     }
 
-    StaticStringID StaticStringTable::Register(const std::string_view &str)
+    StaticStringID StaticStringTable::Register(const std::string_view& str)
     {
         StaticStringID id;
 
@@ -138,31 +138,31 @@ namespace HE
         {
             std::lock_guard lock(tableLock);
 
-            auto &table = tables[tableID];
+            auto& table = tables[tableID];
             auto found = std::find(table.begin(), table.end(), str);
             if (found != table.end())
             {
-                id.ptr = reinterpret_cast<const uint8_t *>(found->data());
+                id.ptr = reinterpret_cast<const uint8_t*>(found->data());
                 return id;
             }
 
             auto sv = Store(str);
             table.emplace_back(sv);
 
-            id.ptr = reinterpret_cast<const uint8_t *>(sv.data());
+            id.ptr = reinterpret_cast<const uint8_t*>(sv.data());
         }
 
         return id;
     }
 
-    const char *StaticStringTable::Get(StaticStringID id) const
+    const char* StaticStringTable::Get(StaticStringID id) const
     {
         if (id.ptr == nullptr)
         {
             return "None";
         }
 
-        return reinterpret_cast<const char *>(id.ptr);
+        return reinterpret_cast<const char*>(id.ptr);
     }
 
     void StaticStringTable::PrintStringTable() const
@@ -170,13 +170,13 @@ namespace HE
         auto log = Logger::Get(GetName(), ELogLevel::Verbose);
 
         log.Out("= StringTable ==============================");
-        log.Out([](auto &ls) { ls << "Number of Banks = " << banks.size(); });
+        log.Out([](auto& ls) { ls << "Number of Banks = " << banks.size(); });
 
         {
             size_t index = 0;
-            for (auto &bank : banks)
+            for (auto& bank : banks)
             {
-                log.Out([index, &bank](auto &ls) {
+                log.Out([index, &bank](auto& ls) {
                     ls << index << " : " << bank.cursor << " / "
                        << bank.capacity;
                 });
@@ -187,14 +187,14 @@ namespace HE
 
         TIndex tableID = 0;
 
-        for (auto &table : tables)
+        for (auto& table : tables)
         {
             if (table.size() <= 0)
             {
                 continue;
             }
 
-            log.Out([&](auto &ls) {
+            log.Out([&](auto& ls) {
                 ls << "Table ID = " << tableID << "/" << NumTables
                    << ", Number of Elements = " << table.size();
             });
@@ -205,20 +205,20 @@ namespace HE
         size_t count = 0;
         tableID = 0;
 
-        for (auto &table : tables)
+        for (auto& table : tables)
         {
-            for (auto &item : table)
+            for (auto& item : table)
             {
                 StaticStringID id;
-                log.Out([&](auto &ls) {
-                    ls << count++ << " : [" << item << "] 0x" << (void *)id.ptr;
+                log.Out([&](auto& ls) {
+                    ls << count++ << " : [" << item << "] 0x" << (void*)id.ptr;
                 });
             }
 
             ++tableID;
         }
 
-        log.Out([count](auto &ls) { ls << "Number of elements = " << count; });
+        log.Out([count](auto& ls) { ls << "Number of elements = " << count; });
 
         log.Out("============================================\n");
     }
@@ -238,7 +238,7 @@ namespace HE
     }
 
     StaticStringTable::TIndex StaticStringTable::GetTableID(
-        const char *text) const
+        const char* text) const
     {
         auto hashValue = StringUtil::CalculateHash(text);
         auto tableId = static_cast<TIndex>(hashValue % NumTables);
@@ -247,7 +247,7 @@ namespace HE
     }
 
     StaticStringTable::TIndex StaticStringTable::GetTableID(
-        const std::string_view &str) const
+        const std::string_view& str) const
     {
         auto hashValue = StringUtil::CalculateHash(str);
         auto tableId = static_cast<TIndex>(hashValue % NumTables);
@@ -255,24 +255,24 @@ namespace HE
         return tableId;
     }
 
-    std::string_view StaticStringTable::Store(const char *text)
+    std::string_view StaticStringTable::Store(const char* text)
     {
         std::string_view sv(text);
         return Store(sv);
     }
 
-    std::string_view StaticStringTable::Store(const std::string_view &str)
+    std::string_view StaticStringTable::Store(const std::string_view& str)
     {
         const auto strLen = str.length();
 
-        auto ptr = (char *)Allocate(strLen + 1);
+        auto ptr = (char*)Allocate(strLen + 1);
         std::copy(str.begin(), str.end(), ptr);
         ptr[strLen] = '\0';
 
         return std::string_view(ptr, strLen);
     }
 
-    void *StaticStringTable::Allocate(size_t n)
+    void* StaticStringTable::Allocate(size_t n)
     {
         constexpr size_t capacity = 1024UL * 1024;
 
@@ -288,7 +288,7 @@ namespace HE
             ++bankIndex;
         }
 
-        auto &bank = banks[bankIndex];
+        auto& bank = banks[bankIndex];
         auto ptr = bank.Allocate(n);
 
         return ptr;

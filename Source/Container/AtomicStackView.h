@@ -15,13 +15,13 @@ namespace HE
     class AtomicStackView
     {
     private:
-        static_assert(std::atomic<T *>::is_always_lock_free,
+        static_assert(std::atomic<T*>::is_always_lock_free,
             "The speicified type is not always lock free on this platfrom.");
-        std::atomic<T *> top;
+        std::atomic<T*> top;
 
     public:
-        using Iterator = T *;
-        using ConstIterator = const T *;
+        using Iterator = T*;
+        using ConstIterator = const T*;
 
     public:
         AtomicStackView()
@@ -31,7 +31,7 @@ namespace HE
 
         ~AtomicStackView() = default;
 
-        void Push(T &newItem)
+        void Push(T& newItem)
         {
             newItem.next = top.load(std::memory_order_relaxed);
 
@@ -40,9 +40,9 @@ namespace HE
                 ;
         }
 
-        T *Pop()
+        T* Pop()
         {
-            T *node = top.load(std::memory_order_relaxed);
+            T* node = top.load(std::memory_order_relaxed);
             if (unlikely(node == nullptr))
             {
                 return nullptr;

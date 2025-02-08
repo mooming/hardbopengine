@@ -22,19 +22,19 @@ namespace HE
         TMap keymap;
 
     public:
-        ConfigFile(const char *path);
-        ConfigFile(const char *path, const char *fileName);
+        ConfigFile(const char* path);
+        ConfigFile(const char* path, const char* fileName);
         ~ConfigFile() = default;
 
-        TValue GetValue(const TString &key) const;
-        TString GetValue(const TString &key, const TString &defaultValue) const;
+        TValue GetValue(const TString& key) const;
+        TString GetValue(const TString& key, const TString& defaultValue) const;
 
-        void ForEach(std::function<void(const TMap::value_type &)> func) const;
+        void ForEach(std::function<void(const TMap::value_type&)> func) const;
 
         inline auto IsValid() const { return isValid; }
 
     private:
-        void Parse(const char *fileName);
+        void Parse(const char* fileName);
     };
 
 } // namespace HE

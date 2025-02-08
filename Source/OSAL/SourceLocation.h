@@ -11,15 +11,15 @@ namespace std
     struct source_location
     {
     private:
-        const char *fileName;
-        const char *functionName;
+        const char* fileName;
+        const char* functionName;
         const std::uint_least32_t lineNumber;
         const std::uint_least32_t columnOffset;
 
     public:
         static constexpr source_location current(
-            const char *fileName = CallerFile(),
-            const char *functionName = CallerFunc(),
+            const char* fileName = CallerFile(),
+            const char* functionName = CallerFunc(),
             const uint_least32_t lineNumber = CallerLine(),
             const uint_least32_t columnOffset = CallerColumn()) noexcept
         {
@@ -36,7 +36,7 @@ namespace std
         {
         }
 
-        source_location(const source_location &rhs) noexcept
+        source_location(const source_location& rhs) noexcept
             : fileName(rhs.fileName),
               functionName(rhs.functionName),
               lineNumber(rhs.lineNumber),
@@ -44,9 +44,9 @@ namespace std
         {
         }
 
-        constexpr const char *file_name() const noexcept { return fileName; }
+        constexpr const char* file_name() const noexcept { return fileName; }
 
-        constexpr const char *function_name() const noexcept
+        constexpr const char* function_name() const noexcept
         {
             return functionName;
         }
@@ -59,8 +59,8 @@ namespace std
         }
 
     private:
-        constexpr source_location(const char *fileName,
-            const char *functionName, const uint_least32_t lineNumber,
+        constexpr source_location(const char* fileName,
+            const char* functionName, const uint_least32_t lineNumber,
             const uint_least32_t columnOffset) noexcept
 
             : fileName(fileName),

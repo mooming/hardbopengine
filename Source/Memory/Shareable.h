@@ -19,16 +19,16 @@ namespace HE
 
         public:
             template <typename... Types>
-            static Body *Create(Types &&...args)
+            static Body* Create(Types&&... args)
             {
-                auto &mmgr = MemoryManager::GetInstance();
+                auto& mmgr = MemoryManager::GetInstance();
                 auto newBody = mmgr.New<Body>(std::forward<Types>(args)...);
                 return newBody->Reference();
             }
 
-            inline Type &GetBody() { return data; }
+            inline Type& GetBody() { return data; }
 
-            inline Body *Reference()
+            inline Body* Reference()
             {
                 ++count;
                 return this;
@@ -44,14 +44,14 @@ namespace HE
 
                     if (count == 0)
                     {
-                        auto &mmgr = MemoryManager::GetInstance();
+                        auto& mmgr = MemoryManager::GetInstance();
                         mmgr.Delete<Body>(this);
                     }
                 }
             }
 
             template <typename... Types>
-            inline Body(Types &&...args)
+            inline Body(Types&&... args)
                 : count(0),
                   data(std::forward<Types>(args)...)
             {
@@ -59,16 +59,16 @@ namespace HE
         };
 
     private:
-        Body *body;
+        Body* body;
 
     public:
         template <typename... Types>
-        inline Shareable(Types &&...args)
+        inline Shareable(Types&&... args)
             : body(Body::Create(std::forward<Types>(args)...))
         {
         }
 
-        inline Shareable(Shareable &rhs)
+        inline Shareable(Shareable& rhs)
         {
             if (rhs)
             {
@@ -80,7 +80,7 @@ namespace HE
             }
         }
 
-        inline Shareable(Shareable &&rhs)
+        inline Shareable(Shareable&& rhs)
         {
             body = rhs.body;
             rhs.body = nullptr;
@@ -95,7 +95,7 @@ namespace HE
             }
         }
 
-        inline Shareable &operator=(Shareable &rhs)
+        inline Shareable& operator=(Shareable& rhs)
         {
             Release();
 
@@ -112,17 +112,17 @@ namespace HE
 
         inline operator bool() const { return body != nullptr; }
 
-        inline Type &Get() { return body->GetBody(); }
+        inline Type& Get() { return body->GetBody(); }
 
-        inline const Type &Get() const { return body->GetBody(); }
+        inline const Type& Get() const { return body->GetBody(); }
 
-        inline Type &operator*() { return body->GetBody(); }
+        inline Type& operator*() { return body->GetBody(); }
 
-        inline const Type &operator*() const { return body->GetBody(); }
+        inline const Type& operator*() const { return body->GetBody(); }
 
-        inline Type *operator->() { return &body->GetBody(); }
+        inline Type* operator->() { return &body->GetBody(); }
 
-        inline const Type *operator->() const { return &body->GetBody(); }
+        inline const Type* operator->() const { return &body->GetBody(); }
 
         inline void Release()
         {
@@ -133,7 +133,7 @@ namespace HE
             }
         }
 
-        inline void Swap(Shareable &rhs)
+        inline void Swap(Shareable& rhs)
         {
             auto tmpBody = body;
             body = rhs.body;

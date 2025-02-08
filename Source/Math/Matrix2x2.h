@@ -52,7 +52,7 @@ namespace HE
 
         inline Matrix2x2(std::nullptr_t) {}
 
-        inline Matrix2x2(std::array<Number, numberOfElements> &&values)
+        inline Matrix2x2(std::array<Number, numberOfElements>&& values)
             : element(std::move(values))
         {
         }
@@ -95,7 +95,7 @@ namespace HE
     using Float2x2 = Matrix2x2<float>;
 
     template <typename T>
-    std::ostream &operator<<(std::ostream &os, const Matrix2x2<T> &mat)
+    std::ostream& operator<<(std::ostream& os, const Matrix2x2<T>& mat)
     {
         using namespace std;
         os << "Matrix " << mat.row << "x" << mat.column << endl;

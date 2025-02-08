@@ -7,7 +7,7 @@
 
 namespace HE
 {
-    CommandLineArguments::CommandLineArguments(int argc, const char *argv[])
+    CommandLineArguments::CommandLineArguments(int argc, const char* argv[])
     {
         Parse(argc, argv);
     }
@@ -22,13 +22,13 @@ namespace HE
         cout << "# Number of Arguments = " << arguments.Size() << endl;
 
         int index = 0;
-        for (auto &argument : arguments)
+        for (auto& argument : arguments)
         {
             cout << ++index << " : " << argument << endl;
         }
     }
 
-    void CommandLineArguments::Parse(int argc, const char *argv[])
+    void CommandLineArguments::Parse(int argc, const char* argv[])
     {
         using namespace std;
 

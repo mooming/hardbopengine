@@ -11,7 +11,7 @@ namespace HE
 
 void HE::Vector2Test::Prepare()
 {
-    AddTest("Vector2 Constants & Operations", [this](auto &ls) {
+    AddTest("Vector2 Constants & Operations", [this](auto& ls) {
         ls << "Zero = " << Float2::Zero << lf;
         ls << "X = " << Float2::X << lf;
         ls << "Y = " << Float2::Y << lf;

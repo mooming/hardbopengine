@@ -16,14 +16,14 @@ namespace HE
 
     public:
         CommandLineArguments() = delete;
-        CommandLineArguments(int argc, const char *argv[]);
+        CommandLineArguments(int argc, const char* argv[]);
         ~CommandLineArguments() = default;
 
-        auto &GetArguments() const { return arguments; }
+        auto& GetArguments() const { return arguments; }
 
         void Print();
 
     private:
-        void Parse(int argc, const char *argv[]);
+        void Parse(int argc, const char* argv[]);
     };
 } // namespace HE

@@ -12,7 +12,7 @@ namespace HE
 
     void ComponentSystemTest::Prepare()
     {
-        AddTest("Update Component Test", [this](auto &ls) {
+        AddTest("Update Component Test", [this](auto& ls) {
 #ifdef __DEBUG__
             constexpr int componentNum = 1024;
             constexpr int updateNum = 60;
@@ -29,15 +29,15 @@ namespace HE
                 bool isOnEnableCalled = false;
                 bool isOnDisableCalled = false;
                 bool isValid = true;
-                bool &testResult;
+                bool& testResult;
 
-                TestCollection::TLogOut &ls;
-                TestCollection::LogFlush &lferr;
+                TestCollection::TLogOut& ls;
+                TestCollection::LogFlush& lferr;
 
-                Test(const Test &) = delete;
+                Test(const Test&) = delete;
 
-                Test(bool &testResult, TestCollection::TLogOut &ls,
-                    TestCollection::LogFlush &lferr)
+                Test(bool& testResult, TestCollection::TLogOut& ls,
+                    TestCollection::LogFlush& lferr)
                     : Component("Test"),
                       testResult(testResult),
                       ls(ls),
@@ -45,7 +45,7 @@ namespace HE
                 {
                 }
 
-                Test(Test &&rhs) noexcept
+                Test(Test&& rhs) noexcept
                     : Component(rhs),
                       isInit(rhs.isInit),
                       updateCount(rhs.updateCount),
@@ -59,10 +59,10 @@ namespace HE
                     rhs.isValid = false;
                 }
 
-                Test &operator=(const Test &rhs)
+                Test& operator=(const Test& rhs)
                 {
-                    static_cast<Component &>(*this) =
-                        static_cast<const Component &>(rhs);
+                    static_cast<Component&>(*this) =
+                        static_cast<const Component&>(rhs);
 
                     isInit = rhs.isInit;
                     updateCount = rhs.updateCount;

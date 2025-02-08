@@ -11,18 +11,18 @@ int OS::GetCPUIndex()
     return static_cast<int>(index);
 }
 
-void OS::SetThreadAffinity(std::thread &thread, uint64_t mask)
+void OS::SetThreadAffinity(std::thread& thread, uint64_t mask)
 {
     ::SetThreadAffinityMask(thread.native_handle(), mask);
 }
 
-void OS::SetThreadPriority(std::thread &thread, int priority)
+void OS::SetThreadPriority(std::thread& thread, int priority)
 {
     auto result = ::SetThreadPriority(thread.native_handle(), priority);
     if (result == false)
     {
-        auto &engine = HE::Engine::Get();
-        engine.LogError([](auto &ls) { ls << "SetThreadPriority failed."; });
+        auto& engine = HE::Engine::Get();
+        engine.LogError([](auto& ls) { ls << "SetThreadPriority failed."; });
     }
 }
 

@@ -33,17 +33,17 @@ namespace HE
         size_t minBlock;
 
     public:
-        ThreadSafeMultiPoolAllocator(const char *name,
+        ThreadSafeMultiPoolAllocator(const char* name,
             size_t allocationUnit = DefaultBankUnit,
             size_t minBlockSize = DefaultMinBlock);
-        ThreadSafeMultiPoolAllocator(const char *name,
+        ThreadSafeMultiPoolAllocator(const char* name,
             TInitializerList initialConfigurations,
             size_t allocationUnit = DefaultBankUnit,
             size_t minBlockSize = DefaultMinBlock);
         ~ThreadSafeMultiPoolAllocator();
 
-        void *Allocate(size_t size);
-        void Deallocate(void *ptr, size_t size);
+        void* Allocate(size_t size);
+        void Deallocate(void* ptr, size_t size);
 
         inline auto GetName() const { return name; }
         inline auto GetID() const { return id; }
@@ -55,9 +55,9 @@ namespace HE
 #endif // PROFILE_ENABLED
 
     private:
-        bool GenerateBanksByCache(class MemoryManager &mmgr);
+        bool GenerateBanksByCache(class MemoryManager& mmgr);
         size_t GetBankIndex(size_t nBytes) const;
-        size_t GetBankIndex(void *ptr) const;
+        size_t GetBankIndex(void* ptr) const;
         size_t CalculateBlockSize(size_t requested) const;
         size_t CalculateNumberOfBlocks(size_t bankSize, size_t blockSize) const;
         void GenerateBank(size_t blockSize, size_t numberOfBlocks);

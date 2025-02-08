@@ -19,7 +19,7 @@ namespace HE
         {
             buffer->resize(5);
 
-            auto &text = *buffer;
+            auto& text = *buffer;
             text[0] = 't';
             text[1] = 'r';
             text[2] = 'u';
@@ -30,7 +30,7 @@ namespace HE
         {
             buffer->resize(6);
 
-            auto &text = *buffer;
+            auto& text = *buffer;
             text[0] = 'f';
             text[1] = 'a';
             text[2] = 'l';
@@ -46,7 +46,7 @@ namespace HE
         : hashCode(0)
     {
         buffer->resize(32);
-        auto &text = *buffer;
+        auto& text = *buffer;
         snprintf(text.data(), text.size(), "%p", ptr);
         CalculateHashCode();
     }
@@ -55,7 +55,7 @@ namespace HE
         : hashCode(0)
     {
         buffer->resize(2);
-        auto &text = *buffer;
+        auto& text = *buffer;
         text[0] = letter;
         text[1] = '\0';
 
@@ -66,7 +66,7 @@ namespace HE
         : hashCode(0)
     {
         buffer->resize(16);
-        auto &text = *buffer;
+        auto& text = *buffer;
         snprintf(text.data(), text.size(), "0x%02X", value);
         buffer->resize(strlen(text.data()) + 1);
 
@@ -77,7 +77,7 @@ namespace HE
         : hashCode(0)
     {
         buffer->resize(16);
-        auto &text = *buffer;
+        auto& text = *buffer;
         snprintf(text.data(), text.size(), "%d", value);
         buffer->resize(StringUtil::StrLen(text.data()) + 1);
 
@@ -88,7 +88,7 @@ namespace HE
         : hashCode(0)
     {
         buffer->resize(16);
-        auto &text = *buffer;
+        auto& text = *buffer;
         snprintf(text.data(), text.size(), "%ud", value);
         buffer->resize(StringUtil::StrLen(text.data()) + 1);
 
@@ -99,7 +99,7 @@ namespace HE
         : hashCode(0)
     {
         buffer->resize(16);
-        auto &text = *buffer;
+        auto& text = *buffer;
         snprintf(text.data(), text.capacity(), "%d", value);
         buffer->resize(StringUtil::StrLen(text.data()) + 1);
 
@@ -110,7 +110,7 @@ namespace HE
         : hashCode(0)
     {
         buffer->resize(16);
-        auto &text = *buffer;
+        auto& text = *buffer;
         snprintf(text.data(), text.size(), "%u", value);
         buffer->resize(StringUtil::StrLen(text.data()) + 1);
 
@@ -121,7 +121,7 @@ namespace HE
         : hashCode(0)
     {
         buffer->resize(16);
-        auto &text = *buffer;
+        auto& text = *buffer;
         snprintf(text.data(), text.size(), "%ld", value);
         buffer->resize(StringUtil::StrLen(text.data()) + 1);
 
@@ -132,7 +132,7 @@ namespace HE
         : hashCode(0)
     {
         buffer->resize(16);
-        auto &text = *buffer;
+        auto& text = *buffer;
         snprintf(text.data(), text.size(), "%lu", value);
         buffer->resize(StringUtil::StrLen(text.data()) + 1);
 
@@ -143,7 +143,7 @@ namespace HE
         : hashCode(0)
     {
         buffer->resize(16);
-        auto &text = *buffer;
+        auto& text = *buffer;
         snprintf(text.data(), text.size(), "%lld", value);
         buffer->resize(StringUtil::StrLen(text.data()) + 1);
 
@@ -154,7 +154,7 @@ namespace HE
         : hashCode(0)
     {
         buffer->resize(16);
-        auto &text = *buffer;
+        auto& text = *buffer;
         snprintf(text.data(), text.size(), "%llu", value);
         buffer->resize(StringUtil::StrLen(text.data()) + 1);
 
@@ -165,7 +165,7 @@ namespace HE
         : hashCode(0)
     {
         buffer->resize(16);
-        auto &text = *buffer;
+        auto& text = *buffer;
         snprintf(text.data(), text.size(), "%f", value);
         buffer->resize(StringUtil::StrLen(text.data()) + 1);
 
@@ -176,7 +176,7 @@ namespace HE
         : hashCode(0)
     {
         buffer->resize(16);
-        auto &text = *buffer;
+        auto& text = *buffer;
         snprintf(text.data(), text.size(), "%f", value);
         buffer->resize(StringUtil::StrLen(text.data()) + 1);
 
@@ -187,25 +187,25 @@ namespace HE
         : hashCode(0)
     {
         buffer->resize(16);
-        auto &text = *buffer;
+        auto& text = *buffer;
         snprintf(text.data(), text.size(), "%Lf", value);
         buffer->resize(StringUtil::StrLen(text.data()) + 1);
 
         CalculateHashCode();
     }
 
-    String::String(const char *text)
+    String::String(const char* text)
         : hashCode(0)
     {
         const auto totalLength = strlen(text) + 1;
         buffer->resize(totalLength);
-        Vector<Char> &textVec = *buffer;
+        Vector<Char>& textVec = *buffer;
         memcpy(textVec.data(), text, totalLength);
 
         CalculateHashCode();
     }
 
-    String::String(const String &string, Index startIndex, Index endIndex)
+    String::String(const String& string, Index startIndex, Index endIndex)
         : buffer()
     {
         if (startIndex >= string.Length())
@@ -241,7 +241,7 @@ namespace HE
         }
     }
 
-    String &String::operator=(const char *text)
+    String& String::operator=(const char* text)
     {
         if (buffer.GetReferenceCount() > 1)
         {
@@ -257,7 +257,7 @@ namespace HE
         return *this;
     }
 
-    String &String::operator=(const String &rhs)
+    String& String::operator=(const String& rhs)
     {
         if (buffer.GetReferenceCount() > 1)
         {
@@ -273,7 +273,7 @@ namespace HE
         return *this;
     }
 
-    bool String::operator<(const String &rhs) const
+    bool String::operator<(const String& rhs) const
     {
         const Index shorterLen = std::min(Length(), rhs.Length());
         Index matchCount = 0;
@@ -302,7 +302,7 @@ namespace HE
         return true;
     }
 
-    bool String::operator==(const String &string) const
+    bool String::operator==(const String& string) const
     {
         if (hashCode != string.hashCode)
         {
@@ -326,7 +326,7 @@ namespace HE
         return true;
     }
 
-    const char *String::ToCharArray() const
+    const char* String::ToCharArray() const
     {
         return buffer ? buffer.Get().data() : "";
     }
@@ -341,7 +341,7 @@ namespace HE
         return str;
     }
 
-    bool String::ContainsAt(const String &keyword, Index startIndex) const
+    bool String::ContainsAt(const String& keyword, Index startIndex) const
     {
         const Index endIndex = startIndex + keyword.Length();
 
@@ -378,7 +378,7 @@ namespace HE
         return length;
     }
 
-    Index String::Find(const Array<Char> &chs) const
+    Index String::Find(const Array<Char>& chs) const
     {
         const auto length = Length();
         auto chsLen = chs.Size();
@@ -397,7 +397,7 @@ namespace HE
         return length;
     }
 
-    Index String::Find(const String &keyword) const
+    Index String::Find(const String& keyword) const
     {
         const auto length = Length();
         const auto keywordLength = Length();
@@ -419,7 +419,7 @@ namespace HE
     }
 
     Index String::Find(
-        const String &keyword, Index startIndex, Index endIndex) const
+        const String& keyword, Index startIndex, Index endIndex) const
     {
         const auto length = Length();
         const auto keywordLength = Length();
@@ -521,7 +521,7 @@ namespace HE
         return str;
     }
 
-    String String::Append(const Char *text) const
+    String String::Append(const Char* text) const
     {
         const auto length = Length();
         const Index textLength = static_cast<Index>(strlen(text));
@@ -535,7 +535,7 @@ namespace HE
         return str;
     }
 
-    String String::Append(const String &string) const
+    String String::Append(const String& string) const
     {
         if (string.IsEmpty())
         {
@@ -598,7 +598,7 @@ namespace HE
         memcpy(buffer->data() + length, tmp, tmpLength + 1);
     }
 
-    void String::AppendSelf(const Char *text)
+    void String::AppendSelf(const Char* text)
     {
         const auto length = Length();
         const Index textLength = static_cast<Index>(strlen(text));
@@ -614,7 +614,7 @@ namespace HE
         memcpy(buffer->data() + length, text, textLength + 1);
     }
 
-    void String::AppendSelf(const String &string)
+    void String::AppendSelf(const String& string)
     {
         if (string.IsEmpty())
         {
@@ -634,7 +634,7 @@ namespace HE
         memcpy(buffer->data() + length, string.buffer->data(), textLength + 1);
     }
 
-    String String::Replace(const String &from, const String &to, Index offset,
+    String String::Replace(const String& from, const String& to, Index offset,
         Index endIndex) const
     {
         // TODO - NOT IMPLEMENTED YET
@@ -651,7 +651,7 @@ namespace HE
         }
 
         String str = Clone();
-        Char *data = str.buffer->data();
+        Char* data = str.buffer->data();
         Assert(data != nullptr);
 
         Index length = str.Length();
@@ -676,7 +676,7 @@ namespace HE
         return String();
     }
 
-    void String::ParseKeyValue(String &key, String &value)
+    void String::ParseKeyValue(String& key, String& value)
     {
         auto index = Find("=");
         key = SubString(0, index).Trim();
@@ -716,7 +716,7 @@ namespace HE
 
     void StringTest::Prepare()
     {
-        AddTest("Comparison with Zero-Terminated String", [this](auto &ls) {
+        AddTest("Comparison with Zero-Terminated String", [this](auto& ls) {
             String str = "Hello? World!";
             ls << str.c_str() << lf;
 
@@ -726,7 +726,7 @@ namespace HE
             }
         });
 
-        AddTest("To Lower Case", [this](auto &ls) {
+        AddTest("To Lower Case", [this](auto& ls) {
             String str("Hello? World!");
 
             auto lower = str.GetLowerCase();
@@ -738,7 +738,7 @@ namespace HE
             }
         });
 
-        AddTest("To Upper Case", [this](auto &ls) {
+        AddTest("To Upper Case", [this](auto& ls) {
             String str("Hello? World!");
 
             auto upper = str.GetUpperCase();
@@ -750,7 +750,7 @@ namespace HE
             }
         });
 
-        AddTest("Move Semantics", [this](auto &ls) {
+        AddTest("Move Semantics", [this](auto& ls) {
             String str("Hello? World!");
 
             auto upper = str.GetUpperCase();
@@ -763,7 +763,7 @@ namespace HE
             }
         });
 
-        AddTest("Find Last", [this](auto &ls) {
+        AddTest("Find Last", [this](auto& ls) {
             String str("Hello? World!");
             auto lastL = str.FindLast('l');
             if (lastL != 10)
@@ -773,7 +773,7 @@ namespace HE
             }
         });
 
-        AddTest("SubString", [this](auto &ls) {
+        AddTest("SubString", [this](auto& ls) {
             String str("Hello? World!");
             auto lastL = str.FindLast('l');
             auto afterL = str.SubString(lastL);
@@ -785,7 +785,7 @@ namespace HE
             }
         });
 
-        AddTest("Performance", [this](auto &ls) {
+        AddTest("Performance", [this](auto& ls) {
             constexpr int COUNT = 100000;
 
             Time::TDuration heTime;

@@ -50,7 +50,7 @@ namespace HE
         };
 
     public:
-        inline static This CreateTranslation(const Vec3 &v)
+        inline static This CreateTranslation(const Vec3& v)
         {
             This mat(nullptr);
 
@@ -102,17 +102,17 @@ namespace HE
 
         inline Matrix4x4(std::nullptr_t) {}
 
-        inline Matrix4x4(const std::array<Number, numberOfElements> &values)
+        inline Matrix4x4(const std::array<Number, numberOfElements>& values)
             : element(values)
         {
         }
 
-        inline Matrix4x4(std::array<Number, numberOfElements> &&values)
+        inline Matrix4x4(std::array<Number, numberOfElements>&& values)
             : element(std::move(values))
         {
         }
 
-        inline Matrix4x4(const Mat2x2 &rhs)
+        inline Matrix4x4(const Mat2x2& rhs)
         {
             m11 = rhs.m11;
             m12 = rhs.m12;
@@ -135,7 +135,7 @@ namespace HE
             m44 = 1.0f;
         }
 
-        inline Matrix4x4(const Mat3x3 &rhs)
+        inline Matrix4x4(const Mat3x3& rhs)
         {
             m11 = rhs.m11;
             m12 = rhs.m12;
@@ -158,7 +158,7 @@ namespace HE
             m44 = 1.0f;
         }
 
-        This &operator=(const Mat2x2 &rhs)
+        This& operator=(const Mat2x2& rhs)
         {
             m11 = rhs.m11;
             m12 = rhs.m12;
@@ -169,7 +169,7 @@ namespace HE
             return *this;
         }
 
-        This &operator=(const Mat3x3 &rhs)
+        This& operator=(const Mat3x3& rhs)
         {
             m11 = rhs.m11;
             m12 = rhs.m12;
@@ -317,7 +317,7 @@ namespace HE
                 rows[1].IsUnity() && rows[2].IsUnity() && rows[3].IsUnity();
         }
 
-        void SetTranslation(const Vec3 &translation)
+        void SetTranslation(const Vec3& translation)
         {
             m14 = translation.x;
             m24 = translation.y;
@@ -408,7 +408,7 @@ namespace HE
     using Float4x4 = Matrix4x4<float>;
 
     template <typename T>
-    std::ostream &operator<<(std::ostream &os, const Matrix4x4<T> &mat)
+    std::ostream& operator<<(std::ostream& os, const Matrix4x4<T>& mat)
     {
         using namespace std;
 

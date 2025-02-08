@@ -23,7 +23,7 @@ namespace std
     template <>
     struct hash<HSTL::HString> final
     {
-        std::size_t operator()(const HSTL::HString &obj) const
+        std::size_t operator()(const HSTL::HString& obj) const
         {
             auto text = obj.c_str();
             size_t hashCode = 5381;

@@ -12,7 +12,7 @@ using namespace HE;
 
 #ifdef PROFILE_ENABLED
 StackAllocator::StackAllocator(
-    const char *name, SizeType inCapacity, const TSrcLoc location)
+    const char* name, SizeType inCapacity, const TSrcLoc location)
     : id(InvalidAllocatorID),
       parentID(InvalidAllocatorID),
       capacity(inCapacity),
@@ -20,7 +20,7 @@ StackAllocator::StackAllocator(
       buffer(nullptr),
       srcLocation(location)
 #else  // PROFILE_ENABLED
-StackAllocator::StackAllocator(const char *name, SizeType inCapacity)
+StackAllocator::StackAllocator(const char* name, SizeType inCapacity)
     : id(InvalidAllocatorID),
       capacity(inCapacity),
       cursor(0),
@@ -33,21 +33,21 @@ StackAllocator::StackAllocator(const char *name, SizeType inCapacity)
         capacity = multiplier * AlignUnit;
     }
 
-    auto &mmgr = MemoryManager::GetInstance();
+    auto& mmgr = MemoryManager::GetInstance();
     parentID = mmgr.GetCurrentAllocatorID();
     bufferPtr = mmgr.AllocateBytes(capacity);
 
-    auto allocFunc = [this](size_t n) -> void * { return Allocate(n); };
+    auto allocFunc = [this](size_t n) -> void* { return Allocate(n); };
 
     auto deallocFunc = [this](
-                           void *ptr, size_t size) { Deallocate(ptr, size); };
+                           void* ptr, size_t size) { Deallocate(ptr, size); };
 
     id = mmgr.Register(name, false, capacity, allocFunc, deallocFunc);
 }
 
 StackAllocator::~StackAllocator()
 {
-    auto &mmgr = MemoryManager::GetInstance();
+    auto& mmgr = MemoryManager::GetInstance();
     mmgr.DeallocateBytes(bufferPtr, capacity);
 
 #ifdef PROFILE_ENABLED
@@ -57,7 +57,7 @@ StackAllocator::~StackAllocator()
 #endif // PROFILE_ENABLED
 }
 
-void *StackAllocator::Allocate(const size_t requested)
+void* StackAllocator::Allocate(const size_t requested)
 {
     size_t size = requested;
 
@@ -70,8 +70,8 @@ void *StackAllocator::Allocate(const size_t requested)
     const auto freeSize = GetAvailable();
     if (unlikely(size > freeSize))
     {
-        auto &mmgr = MemoryManager::GetInstance();
-        mmgr.LogError([this, size, freeSize](auto &lout) {
+        auto& mmgr = MemoryManager::GetInstance();
+        mmgr.LogError([this, size, freeSize](auto& lout) {
             lout << "StackAllocator: Not Enough Memory! "
                  << "require = " << size << " : free = " << freeSize << " / "
                  << capacity;
@@ -86,12 +86,12 @@ void *StackAllocator::Allocate(const size_t requested)
         return ptr;
     }
 
-    auto ptr = reinterpret_cast<void *>(buffer + cursor);
+    auto ptr = reinterpret_cast<void*>(buffer + cursor);
     cursor += size;
 
 #ifdef PROFILE_ENABLED
     {
-        auto &mmgr = MemoryManager::GetInstance();
+        auto& mmgr = MemoryManager::GetInstance();
         mmgr.ReportAllocation(id, ptr, size, size);
     }
 #endif // PROFILE_ENABLED
@@ -101,7 +101,7 @@ void *StackAllocator::Allocate(const size_t requested)
 
 void StackAllocator::Deallocate(const Pointer ptr, const SizeType requested)
 {
-    auto &mmgr = MemoryManager::GetInstance();
+    auto& mmgr = MemoryManager::GetInstance();
 
     if (unlikely(!IsMine(ptr)))
     {
@@ -120,15 +120,15 @@ void StackAllocator::Deallocate(const Pointer ptr, const SizeType requested)
     Assert(cursor >= size);
 
     auto expected = buffer + cursor;
-    auto provided = reinterpret_cast<Byte *>(ptr) + size;
+    auto provided = reinterpret_cast<Byte*>(ptr) + size;
     if (unlikely(expected != provided))
     {
-        auto &mmgr = MemoryManager::GetInstance();
-        mmgr.LogError([this, ptr, expected, provided](auto &lout) {
+        auto& mmgr = MemoryManager::GetInstance();
+        mmgr.LogError([this, ptr, expected, provided](auto& lout) {
             lout << "StackAllocator[" << static_cast<int>(GetID())
                  << "]: Pointer mismatched! ptr = " << ptr << ", "
-                 << static_cast<void *>(expected) << " is expected. But "
-                 << static_cast<void *>(provided) << " is provided.";
+                 << static_cast<void*>(expected) << " is expected. But "
+                 << static_cast<void*>(provided) << " is provided.";
         });
 
         Assert(false);
@@ -156,12 +156,12 @@ size_t StackAllocator::GetUsage() const
 
 bool StackAllocator::IsMine(Pointer ptr) const
 {
-    if (ptr < static_cast<void *>(buffer))
+    if (ptr < static_cast<void*>(buffer))
     {
         return false;
     }
 
-    if (ptr >= static_cast<void *>(buffer + capacity))
+    if (ptr >= static_cast<void*>(buffer + capacity))
     {
         return false;
     }
@@ -179,7 +179,7 @@ void StackAllocatorTest::Prepare()
     using namespace std;
     using namespace HSTL;
 
-    AddTest("Vector Allocation", [this](auto &ls) {
+    AddTest("Vector Allocation", [this](auto& ls) {
         StackAllocator stack("Test::StackAllocator", 1024 * 1024);
 
         {
@@ -196,7 +196,7 @@ void StackAllocatorTest::Prepare()
         }
     });
 
-    AddTest("Allocation (2)", [this](auto &ls) {
+    AddTest("Allocation (2)", [this](auto& ls) {
         StackAllocator stack(
             "Test::StackAllocator::Allocation (2)", 1024 * 1024);
 
@@ -217,7 +217,7 @@ void StackAllocatorTest::Prepare()
         }
     });
 
-    AddTest("Deallocation", [this](auto &ls) {
+    AddTest("Deallocation", [this](auto& ls) {
         StackAllocator stack("Test::StackAllocator::Deallocation", 1024 * 1024);
         AllocatorScope scope(stack.GetID());
 
@@ -232,7 +232,7 @@ void StackAllocatorTest::Prepare()
         }
     });
 
-    AddTest("Deallocation (2)", [this](auto &ls) {
+    AddTest("Deallocation (2)", [this](auto& ls) {
         StackAllocator stack("Test::StackAllocator", 1024 * 1024);
         AllocatorScope scope(stack.GetID());
 
@@ -248,7 +248,7 @@ void StackAllocatorTest::Prepare()
         }
     });
 
-    AddTest("Nested Usage", [this](auto &ls) {
+    AddTest("Nested Usage", [this](auto& ls) {
         using TAlloc = StackAllocator;
         int depthSeed = 0;
 

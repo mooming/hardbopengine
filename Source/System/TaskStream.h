@@ -30,12 +30,12 @@ namespace HE
         struct Request final
         {
             TKey key;
-            Task *task;
+            Task* task;
             TIndex start;
             TIndex end;
 
             Request();
-            Request(TKey key, Task &task, TIndex start, TIndex end);
+            Request(TKey key, Task& task, TIndex start, TIndex end);
             ~Request() = default;
         };
 
@@ -72,20 +72,20 @@ namespace HE
 
         inline auto GetName() const { return name; }
         inline auto GetThreadID() const { return threadID; }
-        inline auto &GetThread() { return thread; }
-        inline auto &GetThread() const { return thread; }
+        inline auto& GetThread() { return thread; }
+        inline auto& GetThread() const { return thread; }
         inline auto GetFlipCount() const { return flipCount.load(); }
 
     private:
-        void Start(TaskSystem &taskSys, TaskHandle::TIndex streamIndex);
+        void Start(TaskSystem& taskSys, TaskHandle::TIndex streamIndex);
 
-        void Request(TKey key, Task &task, TIndex start, TIndex end);
-        void AddResident(TKey key, Task &task);
+        void Request(TKey key, Task& task, TIndex start, TIndex end);
+        void AddResident(TKey key, Task& task);
         void RemoveResidentTask(TKey key);
         void RemoveResidentTaskSync(TKey key);
 
         void FlipBuffers();
-        void RunLoop(const std::atomic<bool> &isRunning);
+        void RunLoop(const std::atomic<bool>& isRunning);
         void UpdateRequests();
         void UpdateResidents();
 

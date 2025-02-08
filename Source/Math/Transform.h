@@ -40,12 +40,12 @@ namespace HE
     private:
         Optional<UTransform> world;
 
-        Transform *parent;
-        Vector<Transform *> children;
+        Transform* parent;
+        Vector<Transform*> children;
 
     public:
-        Transform(const Transform &) = delete;
-        Transform &operator==(const Transform &) = delete;
+        Transform(const Transform&) = delete;
+        Transform& operator==(const Transform&) = delete;
 
         Transform()
             : trs(),
@@ -59,7 +59,7 @@ namespace HE
         {
         }
 
-        Transform(const UTransform &trs)
+        Transform(const UTransform& trs)
             : trs(trs),
               parent(nullptr)
         {
@@ -75,7 +75,7 @@ namespace HE
             DetachAll();
         }
 
-        void Attach(Transform &transform)
+        void Attach(Transform& transform)
         {
             auto ptr = &transform;
 
@@ -95,9 +95,9 @@ namespace HE
             transform.parent = this;
         }
 
-        Transform *GetParent() const { return parent; }
+        Transform* GetParent() const { return parent; }
 
-        void Detach(Transform &transform)
+        void Detach(Transform& transform)
         {
             if (transform.parent != this)
             {
@@ -124,7 +124,7 @@ namespace HE
             children.clear();
         }
 
-        bool HasChild(const Transform &child) const
+        bool HasChild(const Transform& child) const
         {
             auto ptr = &child;
             bool bHasChild = std::find(children.cbegin(), children.cend(),
@@ -133,8 +133,8 @@ namespace HE
             return bHasChild;
         }
 
-        Vector<Transform *> &GetChildren() { return children; }
-        const Vector<Transform *> &GetChildren() const { return children; }
+        Vector<Transform*>& GetChildren() { return children; }
+        const Vector<Transform*>& GetChildren() const { return children; }
 
         void Invalidate()
         {
@@ -151,7 +151,7 @@ namespace HE
             }
         }
 
-        const UTransform &GetWorldTransform()
+        const UTransform& GetWorldTransform()
         {
             if (world)
             {
@@ -182,9 +182,9 @@ namespace HE
             return trs;
         }
 
-        const UTransform &GetLocalTransform() const { return trs; }
+        const UTransform& GetLocalTransform() const { return trs; }
 
-        void Set(const Quat &r, Number s, const Vec3 &t)
+        void Set(const Quat& r, Number s, const Vec3& t)
         {
             if (rotation == r && IsEqual(scale, s) && translation == t)
             {
@@ -198,7 +198,7 @@ namespace HE
             Invalidate();
         }
 
-        void Set(const Quat &r)
+        void Set(const Quat& r)
         {
             if (rotation == r)
             {
@@ -222,7 +222,7 @@ namespace HE
             Invalidate();
         }
 
-        void Set(const Vec3 &t)
+        void Set(const Vec3& t)
         {
             if (translation == t)
             {
@@ -239,7 +239,7 @@ namespace HE
     using DTransform = Transform<double>;
 
     template <typename T>
-    std::ostream &operator<<(std::ostream &os, const Transform<T> &t)
+    std::ostream& operator<<(std::ostream& os, const Transform<T>& t)
     {
         using namespace std;
         os << "Transform" << endl;
@@ -258,7 +258,7 @@ namespace HE
     }
 
     template <typename T>
-    LogStream &operator<<(LogStream &os, const Transform<T> &t)
+    LogStream& operator<<(LogStream& os, const Transform<T>& t)
     {
         os << "Transform" << hendl;
         os << t.trs << hendl;

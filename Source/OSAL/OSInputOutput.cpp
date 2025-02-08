@@ -23,7 +23,7 @@ namespace HE
         using namespace OS;
         static const StaticString path("Test.data");
 
-        AddTest("Open/Close/Delete", [&, this](auto &ls) {
+        AddTest("Open/Close/Delete", [&, this](auto& ls) {
             FileHandle fh;
             FileOpenMode openMode;
 
@@ -74,8 +74,8 @@ namespace HE
             }
         });
 
-        AddTest("MapMemory", [&, this](auto &ls) {
-            constexpr size_t TestSize = 256;
+        AddTest("MapMemory", [&, this](auto& ls) {
+            constexpr int TestSize = 256;
 
             {
                 FileHandle fh;
@@ -114,7 +114,7 @@ namespace HE
                     return;
                 }
 
-                auto buffer = reinterpret_cast<uint8_t *>(ptr);
+                auto buffer = reinterpret_cast<uint8_t*>(ptr);
                 for (int i = 0; i < TestSize; ++i)
                 {
                     buffer[i] = static_cast<uint8_t>(i);

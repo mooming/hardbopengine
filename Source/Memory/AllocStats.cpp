@@ -27,7 +27,7 @@ namespace HE
     }
 
     void AllocStats::OnRegister(
-        const char *inName, bool inIsInnline, size_t inCapacity)
+        const char* inName, bool inIsInnline, size_t inCapacity)
     {
         name = StaticString(inName);
 
@@ -55,8 +55,8 @@ namespace HE
     void AllocStats::Report()
     {
 #ifdef PROFILE_ENABLED
-        auto &engine = Engine::Get();
-        auto &stats = engine.GetStatistics();
+        auto& engine = Engine::Get();
+        auto& stats = engine.GetStatistics();
         stats.Report(*this);
 #endif // PROFILE_ENABLED
     }
@@ -66,29 +66,29 @@ namespace HE
         static const StaticString moduleName("AllocStats");
         auto log = Logger::Get(moduleName, ELogLevel::Verbose);
 
-        log.Out([this](auto &ls) { ls << "name = " << name; });
+        log.Out([this](auto& ls) { ls << "name = " << name; });
 
-        log.Out([this](auto &ls) { ls << "inline = " << isInline; });
+        log.Out([this](auto& ls) { ls << "inline = " << isInline; });
 
-        log.Out([this](auto &ls) {
+        log.Out([this](auto& ls) {
             ls << "usage = " << usage << " / " << maxUsage << " / " << capacity;
         });
 
-        log.Out([this](auto &ls) {
+        log.Out([this](auto& ls) {
             ls << "requested = "
                << (allocCount > 0 ? totalRequested / allocCount
                                   : totalRequested)
                << " / " << maxRequested << " / " << totalRequested;
         });
 
-        log.Out([this](auto &ls) {
+        log.Out([this](auto& ls) {
             ls << "fallback = "
                << (fallbackCount > 0 ? totalFallback / fallbackCount
                                      : totalFallback)
                << " / " << maxFallback << " / " << totalFallback;
         });
 
-        log.Out([this](auto &ls) {
+        log.Out([this](auto& ls) {
             ls << "alloc/dealloc/fallback = " << allocCount << " / "
                << deallocCount << " / " << fallbackCount << '('
                << (allocCount > 0 ? fallbackCount * 100 / allocCount : 0)

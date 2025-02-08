@@ -39,27 +39,27 @@ namespace HE
 
         auto Size() const { return buffer.size(); }
 
-        operator const TCh *() const { return buffer.c_str(); }
+        operator const TCh*() const { return buffer.c_str(); }
 
-        This &operator<<(nullptr_t)
+        This& operator<<(nullptr_t)
         {
             buffer.append("Null");
             return *this;
         }
 
-        This &operator<<(bool value)
+        This& operator<<(bool value)
         {
             buffer.append(value ? "True" : "False");
             return *this;
         }
 
-        This &operator<<(char ch)
+        This& operator<<(char ch)
         {
             buffer.push_back(ch);
             return *this;
         }
 
-        This &operator<<(unsigned char value)
+        This& operator<<(unsigned char value)
         {
             char temp[InlineBufferSize];
             snprintf(temp, InlineBufferSize, "%u", value);
@@ -67,7 +67,7 @@ namespace HE
             return *this;
         }
 
-        This &operator<<(const char *str)
+        This& operator<<(const char* str)
         {
             if (str == nullptr)
             {
@@ -79,13 +79,13 @@ namespace HE
             return *this;
         }
 
-        This &operator<<(StaticString str)
+        This& operator<<(StaticString str)
         {
             buffer.append(str.c_str());
             return *this;
         }
 
-        This &operator<<(const std::string_view &str)
+        This& operator<<(const std::string_view& str)
         {
             buffer.append(str);
 
@@ -93,12 +93,12 @@ namespace HE
         }
 
         template <class CharT, class Traits, class Allocator>
-        This &operator<<(const std::basic_string<CharT, Traits, Allocator> &str)
+        This& operator<<(const std::basic_string<CharT, Traits, Allocator>& str)
         {
             return *this << static_cast<std::string_view>(str);
         }
 
-        This &operator<<(short value)
+        This& operator<<(short value)
         {
             char temp[InlineBufferSize];
             snprintf(temp, InlineBufferSize, "%d", value);
@@ -106,7 +106,7 @@ namespace HE
             return *this;
         }
 
-        This &operator<<(unsigned short value)
+        This& operator<<(unsigned short value)
         {
             char temp[InlineBufferSize];
             snprintf(temp, InlineBufferSize, "%u", value);
@@ -114,7 +114,7 @@ namespace HE
             return *this;
         }
 
-        This &operator<<(int value)
+        This& operator<<(int value)
         {
             char temp[InlineBufferSize];
             snprintf(temp, InlineBufferSize, "%d", value);
@@ -122,7 +122,7 @@ namespace HE
             return *this;
         }
 
-        This &operator<<(unsigned int value)
+        This& operator<<(unsigned int value)
         {
             char temp[InlineBufferSize];
             snprintf(temp, InlineBufferSize, "%u", value);
@@ -130,7 +130,7 @@ namespace HE
             return *this;
         }
 
-        This &operator<<(long value)
+        This& operator<<(long value)
         {
             char temp[InlineBufferSize];
             snprintf(temp, InlineBufferSize, "%ld", value);
@@ -138,7 +138,7 @@ namespace HE
             return *this;
         }
 
-        This &operator<<(unsigned long value)
+        This& operator<<(unsigned long value)
         {
             char temp[InlineBufferSize];
             snprintf(temp, InlineBufferSize, "%lu", value);
@@ -146,7 +146,7 @@ namespace HE
             return *this;
         }
 
-        This &operator<<(long long value)
+        This& operator<<(long long value)
         {
             char temp[InlineBufferSize];
             snprintf(temp, InlineBufferSize, "%lld", value);
@@ -154,7 +154,7 @@ namespace HE
             return *this;
         }
 
-        This &operator<<(unsigned long long value)
+        This& operator<<(unsigned long long value)
         {
             char temp[InlineBufferSize];
             snprintf(temp, InlineBufferSize, "%llu", value);
@@ -162,7 +162,7 @@ namespace HE
             return *this;
         }
 
-        This &operator<<(float value)
+        This& operator<<(float value)
         {
             char temp[InlineFloatBufferSize];
             snprintf(temp, InlineFloatBufferSize, "%f", value);
@@ -170,7 +170,7 @@ namespace HE
             return *this;
         }
 
-        This &operator<<(double value)
+        This& operator<<(double value)
         {
             char temp[InlineLongDoubleBufferSize];
             snprintf(temp, InlineLongDoubleBufferSize, "%lf", value);
@@ -178,15 +178,15 @@ namespace HE
             return *this;
         }
 
-        This &operator<<(long double value)
+        This& operator<<(long double value)
         {
             char temp[InlineLongDoubleBufferSize];
-            snprintf(temp, InlineLongDoubleBufferSize, "%Lf", value);
+            snprintf(temp, InlineLongDoubleBufferSize, "%Le", value);
             buffer.append(temp);
             return *this;
         }
 
-        This &operator<<(void *value)
+        This& operator<<(void* value)
         {
             char temp[InlineBufferSize];
             snprintf(temp, InlineBufferSize, "%p", value);
@@ -194,7 +194,7 @@ namespace HE
             return *this;
         }
 
-        This &operator<<(EndLine)
+        This& operator<<(EndLine)
         {
             buffer.append("\n");
             return *this;

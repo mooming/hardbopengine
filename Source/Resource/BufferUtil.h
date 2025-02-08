@@ -31,11 +31,11 @@ namespace HE
         Buffer GetWriteOnlyFileBuffer(StaticString path, size_t size);
 
         template <typename T>
-        Buffer GetMemoryBuffer(TSize numElements, const T &defaultValue)
+        Buffer GetMemoryBuffer(TSize numElements, const T& defaultValue)
         {
-            auto &mmgr = MemoryManager::GetInstance();
+            auto& mmgr = MemoryManager::GetInstance();
             auto generator = [&mmgr, numElements, defaultValue](
-                                 TSize &outSize, TBufferData &outData) {
+                                 TSize& outSize, TBufferData& outData) {
                 outSize = numElements * sizeof(T);
                 auto ptr = mmgr.NewArray<T>(numElements, defaultValue);
                 outData = reinterpret_cast<TBufferData>(ptr);
@@ -45,7 +45,7 @@ namespace HE
                 const TSize numElements = size / sizeof(T);
                 Assert((numElements * sizeof(T)) == size);
 
-                auto ptr = reinterpret_cast<T *>(data);
+                auto ptr = reinterpret_cast<T*>(data);
                 mmgr.DeleteArray<T>(ptr, numElements);
             };
 

@@ -38,14 +38,14 @@ namespace HE
         }
 
         UniformTransform(
-            const Vec3 &translation, const Quat &rotation, Number scale)
+            const Vec3& translation, const Quat& rotation, Number scale)
             : rotation(rotation),
               scale(scale),
               translation(translation)
         {
         }
 
-        UniformTransform(const Mat4x4 &mat)
+        UniformTransform(const Mat4x4& mat)
         {
             Assert(mat.IsOrthogonal());
 
@@ -77,34 +77,34 @@ namespace HE
             rotation = static_cast<Quat>(rotMat);
         }
 
-        inline bool operator==(const This &rhs) const
+        inline bool operator==(const This& rhs) const
         {
             return rotation == rhs.rotation && scale == rhs.scale &&
                 translation == rhs.translation;
         }
 
-        inline bool operator!=(const This &rhs) const
+        inline bool operator!=(const This& rhs) const
         {
             return !(*this == rhs);
         }
 
         template <typename T>
-        inline T operator*(const T &rhs) const
+        inline T operator*(const T& rhs) const
         {
             return Transform(rhs);
         }
 
-        Vec3 Transform(const Vec3 &x) const
+        Vec3 Transform(const Vec3& x) const
         {
             return rotation * (scale * x) + translation;
         }
 
-        Vec3 InverseTransform(const Vec3 &x) const
+        Vec3 InverseTransform(const Vec3& x) const
         {
             return (rotation.Inverse() * (x - translation) / scale);
         }
 
-        This Transform(const This &rhs) const
+        This Transform(const This& rhs) const
         {
             This result(nullptr);
 
@@ -140,7 +140,7 @@ namespace HE
     using UniformTRS = UniformTransform<float>;
 
     template <typename T>
-    std::ostream &operator<<(std::ostream &os, const UniformTransform<T> &local)
+    std::ostream& operator<<(std::ostream& os, const UniformTransform<T>& local)
     {
         using namespace std;
 
@@ -157,7 +157,7 @@ namespace HE
     }
 
     template <typename T>
-    LogStream &operator<<(LogStream &os, const UniformTransform<T> &local)
+    LogStream& operator<<(LogStream& os, const UniformTransform<T>& local)
     {
         os << "Uniform Transform" << hendl;
 

@@ -21,9 +21,9 @@ namespace HE
 
     public:
         MultiPoolAllocatorConfig() = default;
-        MultiPoolAllocatorConfig(StaticStringID id, TPoolConfigs &&configs);
+        MultiPoolAllocatorConfig(StaticStringID id, TPoolConfigs&& configs);
 
-        bool operator<(const MultiPoolAllocatorConfig &rhs) const;
+        bool operator<(const MultiPoolAllocatorConfig& rhs) const;
     };
 
 } // namespace HE

@@ -19,12 +19,12 @@ namespace HE
     class Engine final
     {
     public:
-        using TLogFunc = std::function<void(std::ostream &out)>;
+        using TLogFunc = std::function<void(std::ostream& out)>;
 
     private:
         struct PreEngineInit final
         {
-            PreEngineInit(Engine *engine);
+            PreEngineInit(Engine* engine);
         };
 
         PreEngineInit preEngineInit;
@@ -47,28 +47,28 @@ namespace HE
         ResourceManager resourceManager;
 
     public:
-        static Engine &Get();
+        static Engine& Get();
 
     public:
-        Engine(const Engine &) = delete;
-        Engine &operator=(const Engine &) = delete;
+        Engine(const Engine&) = delete;
+        Engine& operator=(const Engine&) = delete;
 
     public:
         Engine();
         ~Engine();
 
-        void Initialize(int argc, const char *argv[]);
+        void Initialize(int argc, const char* argv[]);
         void Run();
         void Stop();
 
     public:
         StaticString GetClassName() const;
 
-        auto &GetMemoryManager() { return memoryManager; }
-        auto &GetLogger() { return logger; }
-        auto &GetTaskSystem() { return taskSystem; }
-        auto &GetStatistics() { return statistics; }
-        auto &GetResourceManager() { return resourceManager; }
+        auto& GetMemoryManager() { return memoryManager; }
+        auto& GetLogger() { return logger; }
+        auto& GetTaskSystem() { return taskSystem; }
+        auto& GetStatistics() { return statistics; }
+        auto& GetResourceManager() { return resourceManager; }
 
         void SetMemoryManagerReady() { isMemoryManagerReady = true; }
         void SetSystemStatisticsReady() { isSystemStatisticsReady = true; }
@@ -87,7 +87,7 @@ namespace HE
         void CloseLog();
         void FlushLog();
 
-        void ConsoleOutLn(const char *str);
+        void ConsoleOutLn(const char* str);
 
     private:
         void PostInitialize();
