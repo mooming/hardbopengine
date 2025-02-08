@@ -2,7 +2,6 @@
 
 #include "OSDebug.h"
 
-
 #ifdef PLATFORM_LINUX
 
 using namespace HE;

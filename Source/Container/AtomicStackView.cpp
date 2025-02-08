@@ -2,36 +2,34 @@
 
 #include "AtomicStackView.h"
 
-
 #ifdef __UNIT_TEST__
 #include "HSTL/HVector.h"
 #include "Log/Logger.h"
 #include <thread>
 
-
 namespace HE
 {
 
-namespace
-{
+    namespace
+    {
 
-template <typename T>
-struct TNode final
-{
-    T value;
-    TNode* next = nullptr;
-
-    TNode(const T& value) : value(value) {}
-};
-
-} // namespace
-
-void AtomicStackViewTest::Prepare()
-{
-    AddTest(
-        "Default Constructor",
-        [this](auto& ls)
+        template <typename T>
+        struct TNode final
         {
+            T value;
+            TNode *next = nullptr;
+
+            TNode(const T &value)
+                : value(value)
+            {
+            }
+        };
+
+    } // namespace
+
+    void AtomicStackViewTest::Prepare()
+    {
+        AddTest("Default Constructor", [this](auto &ls) {
             {
                 AtomicStackView<TNode<bool>> stack;
                 ls << "Bool Stack: [Done]" << lf;
@@ -58,17 +56,14 @@ void AtomicStackViewTest::Prepare()
             }
         });
 
-    AddTest(
-        "Push",
-        [this](auto& ls)
-        {
+        AddTest("Push", [this](auto &ls) {
             AtomicStackView<TNode<bool>> stack;
 
             TNode<bool> boolValues[] = {true, true, true, false, false, false};
 
-            for (auto& node : boolValues)
+            for (auto &node : boolValues)
             {
-                auto& value = node.value;
+                auto &value = node.value;
 
                 ls << "Push Input = " << value << lf;
                 stack.Push(node);
@@ -82,15 +77,12 @@ void AtomicStackViewTest::Prepare()
                     continue;
                 }
 
-                auto& value = node->value;
+                auto &value = node->value;
                 ls << "Pop Output = " << value << lf;
             }
         });
 
-    AddTest(
-        "Thread-Safety",
-        [this](auto& ls)
-        {
+        AddTest("Thread-Safety", [this](auto &ls) {
             constexpr int NumItem = 1000;
             constexpr int NumLoop = 500;
 
@@ -105,19 +97,16 @@ void AtomicStackViewTest::Prepare()
             AtomicStackView<TNode<int>> stack;
 
             std::atomic<int> pushCount = 0;
-            auto PushFunc = [&]()
-            {
-                for (auto& node : values)
+            auto PushFunc = [&]() {
+                for (auto &node : values)
                 {
                     stack.Push(node);
                     pushCount.fetch_add(1, std::memory_order_relaxed);
                 }
             };
 
-
             std::atomic<int> popCount = 0;
-            auto PopFunc = [&]()
-            {
+            auto PopFunc = [&]() {
                 int count = 0;
                 while (!stack.IsEmpty())
                 {
@@ -129,7 +118,7 @@ void AtomicStackViewTest::Prepare()
 
                 popCount.fetch_add(count, std::memory_order_relaxed);
                 auto log = HE::Logger::Get(GetName());
-                log.Out([count](auto& ls) { ls << "Num Pop = " << count; });
+                log.Out([count](auto &ls) { ls << "Num Pop = " << count; });
             };
 
             HSTL::HVector<std::thread> threads;
@@ -143,7 +132,7 @@ void AtomicStackViewTest::Prepare()
                 threads.emplace_back(PopFunc);
                 threads.emplace_back(PopFunc);
 
-                for (auto& thread : threads)
+                for (auto &thread : threads)
                 {
                     thread.join();
                 }
@@ -152,14 +141,15 @@ void AtomicStackViewTest::Prepare()
 
                 PopFunc();
 
-                ls << "Iteration: " << j
-                   << ", push count = " << pushCount.load(std::memory_order_relaxed)
-                   << ", pop count = " << popCount.load(std::memory_order_relaxed) << lf;
+                ls << "Iteration: " << j << ", push count = "
+                   << pushCount.load(std::memory_order_relaxed)
+                   << ", pop count = "
+                   << popCount.load(std::memory_order_relaxed) << lf;
             }
 
             ls << "Multithreaded push & pop test done!" << lf;
         });
-}
+    }
 
 } // namespace HE
 #endif //__UNIT_TEST__

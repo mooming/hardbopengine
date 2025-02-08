@@ -10,34 +10,34 @@
 namespace HE
 {
 
-struct LogLine final
-{
-    using TTimePoint = typename std::chrono::time_point<std::chrono::steady_clock>;
-
-    TTimePoint timeStamp;
-    StaticString threadName;
-    StaticString category;
-    ELogLevel level;
-    bool isLong;
-
-    union
+    struct LogLine final
     {
-        char text[Config::LogLineLength];
-        struct
+        using TTimePoint =
+            typename std::chrono::time_point<std::chrono::steady_clock>;
+
+        TTimePoint timeStamp;
+        StaticString threadName;
+        StaticString category;
+        ELogLevel level;
+        bool isLong;
+
+        union
         {
-            char* longText;
-            size_t longTextSize;
+            char text[Config::LogLineLength];
+            struct
+            {
+                char *longText;
+                size_t longTextSize;
+            };
         };
+
+        LogLine();
+        LogLine(LogLine &&rhs);
+        LogLine(ELogLevel level, StaticString threadName, StaticString category,
+            const char *inText, size_t size);
+        ~LogLine();
+
+        const char *GetText() const;
     };
-
-    LogLine();
-    LogLine(LogLine&& rhs);
-    LogLine(
-        ELogLevel level, StaticString threadName, StaticString category, const char* inText,
-        size_t size);
-    ~LogLine();
-
-    const char* GetText() const;
-};
 
 } // namespace HE

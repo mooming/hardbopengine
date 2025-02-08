@@ -5,8 +5,7 @@
 #include <cstddef>
 #include <functional>
 
-
 namespace HE
 {
-using Runnable = std::function<void(std::size_t, std::size_t)>;
+    using Runnable = std::function<void(std::size_t, std::size_t)>;
 } // namespace HE

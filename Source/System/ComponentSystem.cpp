@@ -10,12 +10,9 @@
 namespace HE
 {
 
-void ComponentSystemTest::Prepare()
-{
-    AddTest(
-        "Update Component Test",
-        [this](auto& ls)
-        {
+    void ComponentSystemTest::Prepare()
+    {
+        AddTest("Update Component Test", [this](auto &ls) {
 #ifdef __DEBUG__
             constexpr int componentNum = 1024;
             constexpr int updateNum = 60;
@@ -32,30 +29,40 @@ void ComponentSystemTest::Prepare()
                 bool isOnEnableCalled = false;
                 bool isOnDisableCalled = false;
                 bool isValid = true;
-                bool& testResult;
+                bool &testResult;
 
-                TestCollection::TLogOut& ls;
-                TestCollection::LogFlush& lferr;
+                TestCollection::TLogOut &ls;
+                TestCollection::LogFlush &lferr;
 
-                Test(const Test&) = delete;
+                Test(const Test &) = delete;
 
-                Test(bool& testResult, TestCollection::TLogOut& ls, TestCollection::LogFlush& lferr)
-                    : Component("Test"), testResult(testResult), ls(ls), lferr(lferr)
+                Test(bool &testResult, TestCollection::TLogOut &ls,
+                    TestCollection::LogFlush &lferr)
+                    : Component("Test"),
+                      testResult(testResult),
+                      ls(ls),
+                      lferr(lferr)
                 {
                 }
 
-                Test(Test&& rhs) noexcept
-                    : Component(rhs), isInit(rhs.isInit), updateCount(rhs.updateCount),
-                      isReleased(rhs.isReleased), isOnEnableCalled(rhs.isOnEnableCalled),
-                      isOnDisableCalled(rhs.isOnDisableCalled), testResult(rhs.testResult),
-                      ls(rhs.ls), lferr(rhs.lferr)
+                Test(Test &&rhs) noexcept
+                    : Component(rhs),
+                      isInit(rhs.isInit),
+                      updateCount(rhs.updateCount),
+                      isReleased(rhs.isReleased),
+                      isOnEnableCalled(rhs.isOnEnableCalled),
+                      isOnDisableCalled(rhs.isOnDisableCalled),
+                      testResult(rhs.testResult),
+                      ls(rhs.ls),
+                      lferr(rhs.lferr)
                 {
                     rhs.isValid = false;
                 }
 
-                Test& operator=(const Test& rhs)
+                Test &operator=(const Test &rhs)
                 {
-                    static_cast<Component&>(*this) = static_cast<const Component&>(rhs);
+                    static_cast<Component &>(*this) =
+                        static_cast<const Component &>(rhs);
 
                     isInit = rhs.isInit;
                     updateCount = rhs.updateCount;
@@ -72,7 +79,8 @@ void ComponentSystemTest::Prepare()
                     if (!isValid)
                         return;
 
-                    if (!isInit || !isOnEnableCalled || !isOnDisableCalled || !isReleased)
+                    if (!isInit || !isOnEnableCalled || !isOnDisableCalled ||
+                        !isReleased)
                     {
                         testResult = false;
                         ls << "Test object is destroyed accidently." << lferr;
@@ -83,8 +91,9 @@ void ComponentSystemTest::Prepare()
                 {
                     if (GetState() != ComponentState::BORN)
                     {
-                        ls << "State failure, state = " << GetState() << ", but expected "
-                           << ComponentState::BORN << lferr;
+                        ls << "State failure, state = " << GetState()
+                           << ", but expected " << ComponentState::BORN
+                           << lferr;
 
                         testResult = false;
                     }
@@ -96,8 +105,9 @@ void ComponentSystemTest::Prepare()
                 {
                     if (GetState() != ComponentState::ALIVE)
                     {
-                        ls << "State failure, state = " << GetState() << ", but expected "
-                           << ComponentState::ALIVE << lferr;
+                        ls << "State failure, state = " << GetState()
+                           << ", but expected " << ComponentState::ALIVE
+                           << lferr;
                         testResult = false;
                     }
 
@@ -113,8 +123,9 @@ void ComponentSystemTest::Prepare()
                 {
                     if (GetState() != ComponentState::DEAD)
                     {
-                        ls << "State failure, state = " << GetState() << ", but expected "
-                           << ComponentState::DEAD << lferr;
+                        ls << "State failure, state = " << GetState()
+                           << ", but expected " << ComponentState::DEAD
+                           << lferr;
 
                         testResult = false;
                     }
@@ -126,8 +137,9 @@ void ComponentSystemTest::Prepare()
                 {
                     if (GetState() != ComponentState::ALIVE)
                     {
-                        ls << "State failure, state = " << GetState() << ", but expected "
-                           << ComponentState::ALIVE << lferr;
+                        ls << "State failure, state = " << GetState()
+                           << ", but expected " << ComponentState::ALIVE
+                           << lferr;
 
                         testResult = false;
                     }
@@ -139,8 +151,9 @@ void ComponentSystemTest::Prepare()
                 {
                     if (GetState() != ComponentState::SLEEP)
                     {
-                        ls << "State failure, state = " << GetState() << ", but expected "
-                           << ComponentState::SLEEP << lferr;
+                        ls << "State failure, state = " << GetState()
+                           << ", but expected " << ComponentState::SLEEP
+                           << lferr;
 
                         testResult = false;
                     }
@@ -172,7 +185,7 @@ void ComponentSystemTest::Prepare()
 
             ls << "Total Loop Time = " << Time::ToFloat(loopTime) << lf;
         });
-}
+    }
 
 } // namespace HE
 

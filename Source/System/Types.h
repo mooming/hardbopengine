@@ -7,12 +7,12 @@
 
 namespace HE
 {
-using Byte = uint8_t;
-using Pointer = void*;
-using Index = size_t;
+    using Byte = uint8_t;
+    using Pointer = void *;
+    using Index = size_t;
 
-using Int = int32_t;
-using UInt = uint32_t;
+    using Int = int32_t;
+    using UInt = uint32_t;
 
-using Real = float;
+    using Real = float;
 } // namespace HE

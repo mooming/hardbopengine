@@ -2,7 +2,6 @@
 
 #include "LinkedList.h"
 
-
 using namespace HE;
 
 #ifdef __UNIT_TEST__
@@ -11,7 +10,6 @@ using namespace HE;
 #include "System/Debug.h"
 #include "System/ScopedTime.h"
 #include <list>
-
 
 void LinkedListTest::Prepare()
 {
@@ -24,194 +22,184 @@ void LinkedListTest::Prepare()
 #endif //__DEBUG__
     constexpr int COUNT2 = CountBase;
 
-    AddTest(
-        "Iteration on the empty list",
-        [this](auto& ls)
+    AddTest("Iteration on the empty list", [this](auto &ls) {
+        LinkedList<int> intList;
+
+        for (auto value : intList)
+        {
+            ls << "It iterates a loop even if the list is empty. value = "
+               << value << lferr;
+
+            break;
+        }
+    });
+
+    AddTest("Simple Construction & Destruction", [this](auto &ls) {
+        const auto NodeSize = sizeof(LinkedList<int>::Node);
+
+        PoolAllocator alloc("LinkedListTest::Allocator", NodeSize, COUNT + 10);
+        AllocatorScope allocScope(alloc);
+
         {
             LinkedList<int> intList;
 
+            for (int i = 0; i < COUNT; ++i)
+            {
+                intList.Add(i);
+            }
+
+            ls << "A list is constructed." << lf;
+
+            int i = 0;
             for (auto value : intList)
             {
-                ls << "It iterates a loop even if the list is empty. value = " << value << lferr;
+                if (value != i)
+                {
+                    ls << "Value Mismatched : value = " << value
+                       << ", expected " << i << '.' << lferr;
 
-                break;
+                    return;
+                }
+
+                ++i;
             }
-        });
+        }
 
-    AddTest(
-        "Simple Construction & Destruction",
-        [this](auto& ls)
+        ls << "The list is destructed." << lf;
+    });
+
+    AddTest("Growth and Iteration", [this](auto &ls) {
+        const auto NodeSize = sizeof(LinkedList<int>::Node);
+
+        PoolAllocator alloc("LinkedListTest::Allocator", NodeSize, COUNT + 10);
+        AllocatorScope allocScope(alloc);
+
+        Time::TDuration heTime;
+        Time::TDuration stlTime;
+
         {
-            const auto NodeSize = sizeof(LinkedList<int>::Node);
+            Time::ScopedTime measure(heTime);
 
-            PoolAllocator alloc("LinkedListTest::Allocator", NodeSize, COUNT + 10);
-            AllocatorScope allocScope(alloc);
-
+            LinkedList<int> intList;
+            for (int i = 0; i < COUNT; ++i)
             {
-                LinkedList<int> intList;
-
-                for (int i = 0; i < COUNT; ++i)
-                {
-                    intList.Add(i);
-                }
-
-                ls << "A list is constructed." << lf;
-
-                int i = 0;
-                for (auto value : intList)
-                {
-                    if (value != i)
-                    {
-                        ls << "Value Mismatched : value = " << value << ", expected " << i << '.'
-                           << lferr;
-
-                        return;
-                    }
-
-                    ++i;
-                }
+                intList.Add(i);
             }
 
-            ls << "The list is destructed." << lf;
-        });
-
-    AddTest(
-        "Growth and Iteration",
-        [this](auto& ls)
-        {
-            const auto NodeSize = sizeof(LinkedList<int>::Node);
-
-            PoolAllocator alloc("LinkedListTest::Allocator", NodeSize, COUNT + 10);
-            AllocatorScope allocScope(alloc);
-
-            Time::TDuration heTime;
-            Time::TDuration stlTime;
-
+            int i = 0;
+            for (auto value : intList)
             {
-                Time::ScopedTime measure(heTime);
-
-                LinkedList<int> intList;
-                for (int i = 0; i < COUNT; ++i)
+                if (value != i)
                 {
-                    intList.Add(i);
+                    ls << "Value Mismatched : value = " << value
+                       << ", expected " << i << '.' << lferr;
+
+                    return;
                 }
 
-                int i = 0;
-                for (auto value : intList)
+                ++i;
+            }
+        }
+
+        {
+            Time::ScopedTime measure(stlTime);
+
+            std::list<int> intList;
+            for (int i = 0; i < COUNT; ++i)
+            {
+                intList.push_back(i);
+            }
+
+            int i = 0;
+            for (auto value : intList)
+            {
+                if (value != i)
                 {
-                    if (value != i)
-                    {
-                        ls << "Value Mismatched : value = " << value << ", expected " << i << '.'
-                           << lferr;
+                    ls << "Value Mismatched : value = " << value
+                       << ", expected " << i << "." << lferr;
 
-                        return;
-                    }
-
-                    ++i;
+                    return;
                 }
+
+                ++i;
+            }
+        }
+
+        ls << "Insert Time Compare : HE = " << Time::ToFloat(heTime)
+           << ", STL = " << Time::ToFloat(stlTime) << lf;
+
+        if (heTime > stlTime)
+        {
+            ls << "LinkedList is slower than the STL list" << std::endl
+               << "HE = " << Time::ToFloat(heTime)
+               << ", STL = " << Time::ToFloat(stlTime) << lfwarn;
+        }
+    });
+
+    AddTest("Growth and Iteration", [this](auto &ls) {
+        const auto NodeSize = sizeof(LinkedList<int>::Node);
+        PoolAllocator alloc("LinkedListTest::Allocator", NodeSize, COUNT + 10);
+        AllocatorScope allocScope(alloc.GetID());
+
+        Time::TDuration heTime;
+        Time::TDuration stlTime;
+
+        long long stlValue = 0;
+        long long heValue = 0;
+
+        {
+            std::list<int> intList;
+            for (int i = 0; i < COUNT; ++i)
+            {
+                intList.push_back(i);
             }
 
             {
                 Time::ScopedTime measure(stlTime);
-
-                std::list<int> intList;
-                for (int i = 0; i < COUNT; ++i)
+                for (int i = 0; i < COUNT2; ++i)
                 {
-                    intList.push_back(i);
-                }
-
-                int i = 0;
-                for (auto value : intList)
-                {
-                    if (value != i)
+                    for (auto value : intList)
                     {
-                        ls << "Value Mismatched : value = " << value << ", expected " << i << "."
-                           << lferr;
-
-                        return;
+                        stlValue += value;
                     }
-
-                    ++i;
                 }
             }
+        }
 
-            ls << "Insert Time Compare : HE = " << Time::ToFloat(heTime)
-               << ", STL = " << Time::ToFloat(stlTime) << lf;
-
-            if (heTime > stlTime)
-            {
-                ls << "LinkedList is slower than the STL list" << std::endl
-                   << "HE = " << Time::ToFloat(heTime) << ", STL = " << Time::ToFloat(stlTime)
-                   << lfwarn;
-            }
-        });
-
-    AddTest(
-        "Growth and Iteration",
-        [this](auto& ls)
         {
-            const auto NodeSize = sizeof(LinkedList<int>::Node);
-            PoolAllocator alloc("LinkedListTest::Allocator", NodeSize, COUNT + 10);
-            AllocatorScope allocScope(alloc.GetID());
-
-            Time::TDuration heTime;
-            Time::TDuration stlTime;
-
-            long long stlValue = 0;
-            long long heValue = 0;
+            LinkedList<int> intList;
+            for (int i = 0; i < COUNT; ++i)
+            {
+                intList.Add(i);
+            }
 
             {
-                std::list<int> intList;
-                for (int i = 0; i < COUNT; ++i)
+                Time::ScopedTime measure(heTime);
+                for (int i = 0; i < COUNT2; ++i)
                 {
-                    intList.push_back(i);
-                }
-
-                {
-                    Time::ScopedTime measure(stlTime);
-                    for (int i = 0; i < COUNT2; ++i)
+                    for (auto value : intList)
                     {
-                        for (auto value : intList)
-                        {
-                            stlValue += value;
-                        }
+                        heValue += value;
                     }
                 }
             }
+        }
 
-            {
-                LinkedList<int> intList;
-                for (int i = 0; i < COUNT; ++i)
-                {
-                    intList.Add(i);
-                }
+        if (heValue != stlValue)
+        {
+            ls << "Result Mismatched : HE = " << heValue
+               << ", STL = " << stlValue << lferr;
 
-                {
-                    Time::ScopedTime measure(heTime);
-                    for (int i = 0; i < COUNT2; ++i)
-                    {
-                        for (auto value : intList)
-                        {
-                            heValue += value;
-                        }
-                    }
-                }
-            }
+            return;
+        }
 
-            if (heValue != stlValue)
-            {
-                ls << "Result Mismatched : HE = " << heValue << ", STL = " << stlValue << lferr;
+        ls << "Loop Time Compare : HE = " << Time::ToFloat(heTime)
+           << ", STL = " << Time::ToFloat(stlTime) << lf;
 
-                return;
-            }
-
-            ls << "Loop Time Compare : HE = " << Time::ToFloat(heTime)
-               << ", STL = " << Time::ToFloat(stlTime) << lf;
-
-            if (heTime > stlTime)
-            {
-                ls << "Lower Performance than STL list." << lfwarn;
-            }
-        });
+        if (heTime > stlTime)
+        {
+            ls << "Lower Performance than STL list." << lfwarn;
+        }
+    });
 }
 #endif //__UNIT_TEST__

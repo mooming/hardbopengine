@@ -7,75 +7,75 @@
 #include <cstdio>
 #include <cstdlib>
 
-
 using namespace std;
 using namespace HSTL;
 
 namespace OS
 {
 
-HString GetFullPath(const HString& path)
-{
-    using namespace StringUtil;
-
-    char fullPath[PATH_MAX];
-    void* ptr = realpath(path.c_str(), fullPath);
-    if (ptr != fullPath)
+    HString GetFullPath(const HString &path)
     {
-        std::cerr << "[OS::GetFullPath] Failed to get the full path of " << path << std::endl;
+        using namespace StringUtil;
 
-        return TrimPath(path);
-    }
-
-    return TrimPath(fullPath);
-}
-
-bool IsDirectory(const char* path)
-{
-    DIR* dir = opendir(path);
-
-    if (dir != nullptr)
-    {
-        closedir(dir);
-        return true;
-    }
-
-    return false;
-}
-
-HVector<HString> ListFilesInDirectory(const char* path)
-{
-    HVector<HString> fileList;
-
-    if (DIR* dir = opendir(path))
-    {
-        while (struct dirent* element = readdir(dir))
+        char fullPath[PATH_MAX];
+        void *ptr = realpath(path.c_str(), fullPath);
+        if (ptr != fullPath)
         {
-            if (strcmp(element->d_name, ".") == 0)
-            {
-                continue;
-            }
+            std::cerr << "[OS::GetFullPath] Failed to get the full path of "
+                      << path << std::endl;
 
-            if (strcmp(element->d_name, "..") == 0)
-            {
-                continue;
-            }
-
-            if (element->d_name[0] == '.' || element->d_name[0] == '\0')
-            {
-                continue;
-            }
-
-            fileList.push_back(HString(element->d_name));
+            return TrimPath(path);
         }
 
-        closedir(dir);
+        return TrimPath(fullPath);
     }
 
-    fileList.shrink_to_fit();
+    bool IsDirectory(const char *path)
+    {
+        DIR *dir = opendir(path);
 
-    return fileList;
-}
+        if (dir != nullptr)
+        {
+            closedir(dir);
+            return true;
+        }
+
+        return false;
+    }
+
+    HVector<HString> ListFilesInDirectory(const char *path)
+    {
+        HVector<HString> fileList;
+
+        if (DIR *dir = opendir(path))
+        {
+            while (struct dirent *element = readdir(dir))
+            {
+                if (strcmp(element->d_name, ".") == 0)
+                {
+                    continue;
+                }
+
+                if (strcmp(element->d_name, "..") == 0)
+                {
+                    continue;
+                }
+
+                if (element->d_name[0] == '.' || element->d_name[0] == '\0')
+                {
+                    continue;
+                }
+
+                fileList.push_back(HString(element->d_name));
+            }
+
+            closedir(dir);
+        }
+
+        fileList.shrink_to_fit();
+
+        return fileList;
+    }
 
 } // namespace OS
 

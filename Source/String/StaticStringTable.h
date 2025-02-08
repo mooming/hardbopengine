@@ -10,79 +10,78 @@
 #include <mutex>
 #include <string_view>
 
-
 namespace HE
 {
 
-class StaticStringTable final
-{
-  public:
-    using TIndex = size_t;
-    static constexpr size_t NumTables = Config::StaticStringNumHashBuckets;
-
-  private:
-    template <typename T>
-    class Allocator final
+    class StaticStringTable final
     {
-      public:
-        using value_type = T;
+    public:
+        using TIndex = size_t;
+        static constexpr size_t NumTables = Config::StaticStringNumHashBuckets;
 
-        template <class U>
-        struct rebind
+    private:
+        template <typename T>
+        class Allocator final
         {
-            using other = Allocator<U>;
+        public:
+            using value_type = T;
+
+            template <class U>
+            struct rebind
+            {
+                using other = Allocator<U>;
+            };
+
+        public:
+            Allocator() = default;
+            ~Allocator() = default;
+
+            T *allocate(std::size_t n) { return (T *)Allocate(n * sizeof(T)); }
+            void deallocate(T *, std::size_t) {}
+
+            template <class U>
+            bool operator==(const Allocator<U> &rhs) const
+            {
+                return true;
+            }
+
+            template <class U>
+            bool operator!=(const Allocator<U> &rhs) const
+            {
+                return false;
+            }
         };
 
-      public:
-        Allocator() = default;
-        ~Allocator() = default;
+        using TTable = std::vector<std::string_view>;
 
-        T* allocate(std::size_t n) { return (T*)Allocate(n * sizeof(T)); }
-        void deallocate(T*, std::size_t) {}
+    private:
+        mutable std::mutex tableLock;
+        TTable tables[NumTables];
 
-        template <class U>
-        bool operator==(const Allocator<U>& rhs) const
-        {
-            return true;
-        }
+    public:
+        static StaticStringTable &GetInstance();
 
-        template <class U>
-        bool operator!=(const Allocator<U>& rhs) const
-        {
-            return false;
-        }
+    public:
+        StaticStringTable();
+        ~StaticStringTable();
+
+        StaticString GetName() const;
+
+        StaticStringID Register(const char *str);
+        StaticStringID Register(const std::string_view &str);
+        const char *Get(StaticStringID id) const;
+
+        void PrintStringTable() const;
+
+    private:
+        void RegisterPredefinedStrings();
+        TIndex GetTableID(const char *text) const;
+        TIndex GetTableID(const std::string_view &str) const;
+
+        std::string_view Store(const char *text);
+        std::string_view Store(const std::string_view &str);
+
+        static void *Allocate(size_t n);
     };
-
-    using TTable = std::vector<std::string_view>;
-
-  private:
-    mutable std::mutex tableLock;
-    TTable tables[NumTables];
-
-  public:
-    static StaticStringTable& GetInstance();
-
-  public:
-    StaticStringTable();
-    ~StaticStringTable();
-
-    StaticString GetName() const;
-
-    StaticStringID Register(const char* str);
-    StaticStringID Register(const std::string_view& str);
-    const char* Get(StaticStringID id) const;
-
-    void PrintStringTable() const;
-
-  private:
-    void RegisterPredefinedStrings();
-    TIndex GetTableID(const char* text) const;
-    TIndex GetTableID(const std::string_view& str) const;
-
-    std::string_view Store(const char* text);
-    std::string_view Store(const std::string_view& str);
-
-    static void* Allocate(size_t n);
-};
 
 } // namespace HE

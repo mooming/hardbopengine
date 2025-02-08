@@ -2,7 +2,6 @@
 
 #include "OSInputOutput.h"
 
-
 #ifdef __UNIT_TEST__
 #include "OSFileHandle.h"
 #include "OSFileOpenMode.h"
@@ -11,24 +10,20 @@
 #include "String/StringUtil.h"
 #include "Test/TestCollection.h"
 
-
 namespace HE
 {
 
-OSInputOutputTest::OSInputOutputTest()
-    : TestCollection(StringUtil::ToCompactClassName(__PRETTY_FUNCTION__))
-{
-}
+    OSInputOutputTest::OSInputOutputTest()
+        : TestCollection(StringUtil::ToCompactClassName(__PRETTY_FUNCTION__))
+    {
+    }
 
-void OSInputOutputTest::Prepare()
-{
-    using namespace OS;
-    static const StaticString path("Test.data");
+    void OSInputOutputTest::Prepare()
+    {
+        using namespace OS;
+        static const StaticString path("Test.data");
 
-    AddTest(
-        "Open/Close/Delete",
-        [&, this](auto& ls)
-        {
+        AddTest("Open/Close/Delete", [&, this](auto &ls) {
             FileHandle fh;
             FileOpenMode openMode;
 
@@ -79,10 +74,7 @@ void OSInputOutputTest::Prepare()
             }
         });
 
-    AddTest(
-        "MapMemory",
-        [&, this](auto& ls)
-        {
+        AddTest("MapMemory", [&, this](auto &ls) {
             constexpr size_t TestSize = 256;
 
             {
@@ -122,7 +114,7 @@ void OSInputOutputTest::Prepare()
                     return;
                 }
 
-                auto buffer = reinterpret_cast<uint8_t*>(ptr);
+                auto buffer = reinterpret_cast<uint8_t *>(ptr);
                 for (int i = 0; i < TestSize; ++i)
                 {
                     buffer[i] = static_cast<uint8_t>(i);
@@ -138,8 +130,9 @@ void OSInputOutputTest::Prepare()
 
                     if (buffer[i] != i)
                     {
-                        ls << "Mapped memory lost data. buffer[" << i << "] is supposed to be " << i
-                           << ", but " << buffer[i];
+                        ls << "Mapped memory lost data. buffer[" << i
+                           << "] is supposed to be " << i << ", but "
+                           << buffer[i];
                     }
                 }
 
@@ -162,8 +155,8 @@ void OSInputOutputTest::Prepare()
                 auto fileSize = fh.GetFileSize();
                 if (fileSize != TestSize)
                 {
-                    ls << "File size(" << fileSize << ") is not valid. " << TestSize
-                       << " is expected." << lferr;
+                    ls << "File size(" << fileSize << ") is not valid. "
+                       << TestSize << " is expected." << lferr;
                     return;
                 }
 
@@ -174,8 +167,8 @@ void OSInputOutputTest::Prepare()
                     Close(std::move(fh));
                     Delete(path);
 
-                    ls << "File read failed. Returned Size = " << readBytes << ", but " << TestSize
-                       << " is expected." << lferr;
+                    ls << "File read failed. Returned Size = " << readBytes
+                       << ", but " << TestSize << " is expected." << lferr;
 
                     return;
                 }
@@ -184,12 +177,14 @@ void OSInputOutputTest::Prepare()
 
                 for (int i = 0; i < TestSize; ++i)
                 {
-                    ls << "Read: buffer[" << i << "] = " << buffer[i] << " <=> " << i << lf;
+                    ls << "Read: buffer[" << i << "] = " << buffer[i] << " <=> "
+                       << i << lf;
 
                     if (buffer[i] != i)
                     {
                         ls << "Mapped memory lost data. Read: buffer[" << i
-                           << "] is supposed to be " << i << ", but " << buffer[i];
+                           << "] is supposed to be " << i << ", but "
+                           << buffer[i];
                     }
                 }
 
@@ -197,7 +192,7 @@ void OSInputOutputTest::Prepare()
                 Delete(path);
             }
         });
-}
+    }
 
 } // namespace HE
 #endif //__UNIT_TEST__

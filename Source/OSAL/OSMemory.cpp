@@ -6,7 +6,6 @@
 #include "Intrinsic.h"
 #include "System/Debug.h"
 
-
 #ifdef __linux__
 #include <cerrno>
 #include <cstdlib>
@@ -15,8 +14,7 @@
 #include <sys/mman.h>
 #include <unistd.h>
 
-
-size_t OS::GetAllocSize(void* ptr)
+size_t OS::GetAllocSize(void *ptr)
 {
     return malloc_usable_size(ptr);
 }
@@ -26,27 +24,28 @@ size_t OS::GetPageSize()
     return sysconf(_SC_PAGESIZE);
 }
 
-void* OS::VirtualAlloc(size_t size)
+void *OS::VirtualAlloc(size_t size)
 {
-    auto ptr = mmap(nullptr, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    auto ptr = mmap(nullptr, size, PROT_READ | PROT_WRITE,
+        MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
 
     return ptr;
 }
 
-void OS::VirtualFree(void* address, std::size_t)
+void OS::VirtualFree(void *address, std::size_t)
 {
     free(address);
 }
 
-void OS::ProtectMemory(void* address, size_t n)
+void OS::ProtectMemory(void *address, size_t n)
 {
     auto result = mprotect(address, n, PROT_NONE);
 
     if (unlikely(result != 0))
     {
         using namespace std;
-        cerr << "[OS::ProtectMemory] address = " << address << ", n = " << n << " : "
-             << strerror(errno) << endl;
+        cerr << "[OS::ProtectMemory] address = " << address << ", n = " << n
+             << " : " << strerror(errno) << endl;
 
         HE::Assert(false);
     }
@@ -59,8 +58,7 @@ void OS::ProtectMemory(void* address, size_t n)
 #include <sys/mman.h>
 #include <unistd.h>
 
-
-size_t OS::GetAllocSize(void* ptr)
+size_t OS::GetAllocSize(void *ptr)
 {
     return malloc_size(ptr);
 }
@@ -71,27 +69,28 @@ size_t OS::GetPageSize()
     return pageSize;
 }
 
-void* OS::VirtualAlloc(size_t size)
+void *OS::VirtualAlloc(size_t size)
 {
-    auto ptr = mmap(nullptr, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    auto ptr = mmap(nullptr, size, PROT_READ | PROT_WRITE,
+        MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
 
     return ptr;
 }
 
-void OS::VirtualFree(void* address, std::size_t)
+void OS::VirtualFree(void *address, std::size_t)
 {
     free(address);
 }
 
-void OS::ProtectMemory(void* address, size_t n)
+void OS::ProtectMemory(void *address, size_t n)
 {
     auto result = mprotect(address, n, PROT_NONE);
 
     if (unlikely(result != 0))
     {
         using namespace std;
-        cerr << "[OS::ProtectMemory] address = " << address << ", n = " << n << " : "
-             << strerror(errno) << endl;
+        cerr << "[OS::ProtectMemory] address = " << address << ", n = " << n
+             << " : " << strerror(errno) << endl;
 
         HE::Assert(false);
     }
@@ -104,8 +103,7 @@ void OS::ProtectMemory(void* address, size_t n)
 #include <sysinfoapi.h>
 #include <windows.h>
 
-
-size_t OS::GetAllocSize(void* ptr)
+size_t OS::GetAllocSize(void *ptr)
 {
     const auto allocSize = _msize(ptr);
     return allocSize;
@@ -113,8 +111,7 @@ size_t OS::GetAllocSize(void* ptr)
 
 size_t OS::GetPageSize()
 {
-    auto GetPageSizeWindows = []()
-    {
+    auto GetPageSizeWindows = []() {
         SYSTEM_INFO sSysInfo;
         GetSystemInfo(&sSysInfo);
         return sSysInfo.dwPageSize;
@@ -125,12 +122,13 @@ size_t OS::GetPageSize()
     return pageSize;
 }
 
-void* OS::VirtualAlloc(size_t size)
+void *OS::VirtualAlloc(size_t size)
 {
-    return ::VirtualAlloc(nullptr, size, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+    return ::VirtualAlloc(
+        nullptr, size, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
 }
 
-void OS::VirtualFree(void* address, std::size_t n)
+void OS::VirtualFree(void *address, std::size_t n)
 {
     auto result = ::VirtualFree(address, n, MEM_RELEASE);
     if (unlikely(result))
@@ -139,7 +137,7 @@ void OS::VirtualFree(void* address, std::size_t n)
     }
 }
 
-void OS::ProtectMemory(void* address, size_t n)
+void OS::ProtectMemory(void *address, size_t n)
 {
     DWORD oldProtect = 0;
     auto result = VirtualProtect(address, n, PAGE_NOACCESS, &oldProtect);
@@ -152,13 +150,11 @@ void OS::ProtectMemory(void* address, size_t n)
     using namespace std;
     auto errorId = GetLastError();
 
-    auto& engine = HE::Engine::Get();
-    engine.LogError(
-        [address, n, errorId](auto& log)
-        {
-            log << "[OS::ProtectMemory] address = " << address << ", n = " << n
-                << " : error code = " << errorId << endl;
-        });
+    auto &engine = HE::Engine::Get();
+    engine.LogError([address, n, errorId](auto &log) {
+        log << "[OS::ProtectMemory] address = " << address << ", n = " << n
+            << " : error code = " << errorId << endl;
+    });
 
     HE::Assert(false);
 }

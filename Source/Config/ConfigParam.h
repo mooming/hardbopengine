@@ -9,92 +9,93 @@
 #include <algorithm>
 #include <thread>
 
-
 namespace HE
 {
 
-// ConfigParam represents a single config value with arbitrary file.
-// It could be thread-safe when IsAtomic is set to true.
-template <typename T, bool IsAtomic = false>
-class ConfigParam final
-{
-    static constexpr size_t MaxNameLength = 127;
-    static constexpr size_t MaxDescLength = 127;
+    // ConfigParam represents a single config value with arbitrary file.
+    // It could be thread-safe when IsAtomic is set to true.
+    template <typename T, bool IsAtomic = false>
+    class ConfigParam final
+    {
+        static constexpr size_t MaxNameLength = 127;
+        static constexpr size_t MaxDescLength = 127;
 
-    using TValue = typename std::conditional<IsAtomic, std::atomic<T>, T>::type;
+        using TValue =
+            typename std::conditional<IsAtomic, std::atomic<T>, T>::type;
 
-  private:
+    private:
 #ifdef ENGINE_PARAM_DESC_ENABLED
-    StaticString name;
-    StaticString desc;
+        StaticString name;
+        StaticString desc;
 #endif // ENGINE_PARAM_DESC_ENABLED
 
-    TValue value;
-    std::mutex lock;
+        TValue value;
+        std::mutex lock;
 
 #ifdef __DEBUG__
-    std::thread::id threadID;
+        std::thread::id threadID;
 #endif // __DEBUG__
 
-  public:
-    ConfigParam(
-        const char* inName, const char* inDesc, T defaultValue,
-        std::thread::id id = std::this_thread::get_id())
+    public:
+        ConfigParam(const char *inName, const char *inDesc, T defaultValue,
+            std::thread::id id = std::this_thread::get_id())
 #ifdef ENGINE_PARAM_DESC_ENABLED
-        : name(inName), desc(inDesc), value(defaultValue)
+            : name(inName),
+              desc(inDesc),
+              value(defaultValue)
 #else  // ENGINE_PARAM_DESC_ENABLED
-        : value(defaultValue)
+            : value(defaultValue)
 #endif // ENGINE_PARAM_DESC_ENABLED
 #ifdef __DEBUG__
-          ,
-          threadID(id)
+              ,
+              threadID(id)
 #endif // __DEBUG__
-    {
-        auto& settings = ConfigSystem::Get();
-        settings.Register(*this);
-    }
+        {
+            auto &settings = ConfigSystem::Get();
+            settings.Register(*this);
+        }
 
-    StaticString GetName() const
-    {
+        StaticString GetName() const
+        {
 #ifdef ENGINE_PARAM_DESC_ENABLED
-        return name;
+            return name;
 #else  // ENGINE_PARAM_DESC_ENABLED
-        return StaticString();
+            return StaticString();
 #endif // ENGINE_PARAM_DESC_ENABLED
-    }
+        }
 
-    StaticString GetDescription() const
-    {
+        StaticString GetDescription() const
+        {
 #ifdef ENGINE_PARAM_DESC_ENABLED
-        return desc;
+            return desc;
 #else  // ENGINE_PARAM_DESC_ENABLED
-        return StaticString();
+            return StaticString();
 #endif // ENGINE_PARAM_DESC_ENABLED
-    }
+        }
 
-    T Get()
-    {
+        T Get()
+        {
 #ifdef __DEBUG__
-        Assert(IsAtomic || std::this_thread::get_id() == threadID);
+            Assert(IsAtomic || std::this_thread::get_id() == threadID);
 #endif // __DEBUG__
 
-        return value;
-    }
+            return value;
+        }
 
-    void Set(const T& inValue)
-    {
+        void Set(const T &inValue)
+        {
 #ifdef __DEBUG__
-        Assert(IsAtomic || std::this_thread::get_id() == threadID);
+            Assert(IsAtomic || std::this_thread::get_id() == threadID);
 #endif // __DEBUG__
 
-        value = inValue;
-    }
-};
+            value = inValue;
+        }
+    };
 
-template <typename T>
-using TConfigParam = ConfigParam<T, false>;
+    template <typename T>
+    using TConfigParam = ConfigParam<T, false>;
 
-template <typename T>
-using TAtomicConfigParam = ConfigParam<T, true>;
+    template <typename T>
+    using TAtomicConfigParam = ConfigParam<T, true>;
 
 } // namespace HE

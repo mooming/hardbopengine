@@ -4,40 +4,39 @@
 
 #include "StaticStringTable.h"
 
-
 namespace HE
 {
 
-StaticString::StaticString()
-{
-    static StaticString null("None");
-    id = null.id;
-}
+    StaticString::StaticString()
+    {
+        static StaticString null("None");
+        id = null.id;
+    }
 
-StaticString::StaticString(StaticStringID id) : id(id)
-{
-}
+    StaticString::StaticString(StaticStringID id)
+        : id(id)
+    {
+    }
 
-StaticString::StaticString(const char* string)
-{
-    auto& ssTable = StaticStringTable::GetInstance();
-    id = ssTable.Register(string);
-}
+    StaticString::StaticString(const char *string)
+    {
+        auto &ssTable = StaticStringTable::GetInstance();
+        id = ssTable.Register(string);
+    }
 
-StaticString::StaticString(const std::string_view& str)
-{
-    auto& ssTable = StaticStringTable::GetInstance();
-    id = ssTable.Register(str);
-}
+    StaticString::StaticString(const std::string_view &str)
+    {
+        auto &ssTable = StaticStringTable::GetInstance();
+        id = ssTable.Register(str);
+    }
 
-const char* StaticString::c_str() const
-{
-    auto& ssTable = StaticStringTable::GetInstance();
-    return ssTable.Get(id);
-}
+    const char *StaticString::c_str() const
+    {
+        auto &ssTable = StaticStringTable::GetInstance();
+        return ssTable.Get(id);
+    }
 
 } // namespace HE
-
 
 #ifdef __UNIT_TEST__
 
@@ -45,26 +44,19 @@ const char* StaticString::c_str() const
 #include "Log/Logger.h"
 #include <iostream>
 
-
 namespace HE
 {
 
-void StaticStringTest::Prepare()
-{
-    AddTest("Default Construct", [](auto&) { StaticString str; });
+    void StaticStringTest::Prepare()
+    {
+        AddTest("Default Construct", [](auto &) { StaticString str; });
 
-    AddTest(
-        "StaticStic Print",
-        [this](TLogOut& ls)
-        {
+        AddTest("StaticStic Print", [this](TLogOut &ls) {
             StaticString str("Hello?");
             ls << str.c_str() << lf;
         });
 
-    AddTest(
-        "Hetero String Comparison",
-        [this](TLogOut& ls)
-        {
+        AddTest("Hetero String Comparison", [this](TLogOut &ls) {
             HSTL::HString hello("Hello?");
             HSTL::HInlineString<> helloInline("Hello?");
 
@@ -82,11 +74,7 @@ void StaticStringTest::Prepare()
             }
         });
 
-
-    AddTest(
-        "Self-Comparison",
-        [this](auto& ls)
-        {
+        AddTest("Self-Comparison", [this](auto &ls) {
             StaticString str("Hello?");
 
             if (str != str)
@@ -95,10 +83,7 @@ void StaticStringTest::Prepare()
             }
         });
 
-    AddTest(
-        "Two Strings Comparison",
-        [this](auto& ls)
-        {
+        AddTest("Two Strings Comparison", [this](auto &ls) {
             StaticString strA("Hello?");
             StaticString strB("Hello?");
 
@@ -108,10 +93,7 @@ void StaticStringTest::Prepare()
             }
         });
 
-    AddTest(
-        "Inequality",
-        [this](auto& ls)
-        {
+        AddTest("Inequality", [this](auto &ls) {
             StaticString strA("Hello?");
             StaticString strB("Ha");
 
@@ -120,7 +102,7 @@ void StaticStringTest::Prepare()
                 ls << "Test failes due to comparison failure. " << lferr;
             }
         });
-}
+    }
 } // namespace HE
 
 #endif //__UNIT_TEST__

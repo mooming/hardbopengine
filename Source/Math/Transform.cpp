@@ -2,36 +2,27 @@
 
 #include "Transform.h"
 
-
 namespace HE
 {
-template class Transform<float>;
-template class Transform<double>;
+    template class Transform<float>;
+    template class Transform<double>;
 } // namespace HE
 
 #ifdef __UNIT_TEST__
 #include "System/CommonUtil.h"
 #include "Vector3.h"
 
-
 namespace HE
 {
 
-void TransformTest::Prepare()
-{
-    AddTest(
-        "Default Constructor",
-        [this](auto& ls)
-        {
+    void TransformTest::Prepare()
+    {
+        AddTest("Default Constructor", [this](auto &ls) {
             FTransform root;
             ls << root << lf;
         });
 
-
-    AddTest(
-        "Hierachycal Transform",
-        [this](auto& ls)
-        {
+        AddTest("Hierachycal Transform", [this](auto &ls) {
             FTransform root;
             FTransform a;
             root.Attach(a);
@@ -53,14 +44,12 @@ void TransformTest::Prepare()
             auto worldC = c.GetWorldTransform().translation;
             if (worldC != Float3(1, 1, 1))
             {
-                ls << "c(" << worldC << ") doesn't coincide with (1, 1, 1)" << lferr;
+                ls << "c(" << worldC << ") doesn't coincide with (1, 1, 1)"
+                   << lferr;
             }
         });
 
-    AddTest(
-        "Hierachycal Rotation",
-        [this](auto& ls)
-        {
+        AddTest("Hierachycal Rotation", [this](auto &ls) {
             FTransform root;
             FTransform a;
             root.Attach(a);
@@ -86,14 +75,12 @@ void TransformTest::Prepare()
             worldB = b.GetWorldTransform().translation;
             if (worldB != Float3(1, 0, 0))
             {
-                ls << "b " << worldB << " doesn't coincide with (1, 0, 0)" << lferr;
+                ls << "b " << worldB << " doesn't coincide with (1, 0, 0)"
+                   << lferr;
             }
         });
 
-    AddTest(
-        "Hierachycal Rotation (2)",
-        [this](auto& ls)
-        {
+        AddTest("Hierachycal Rotation (2)", [this](auto &ls) {
             FTransform root;
             FTransform a;
             root.Attach(a);
@@ -113,7 +100,8 @@ void TransformTest::Prepare()
             auto worldC = c.GetWorldTransform().translation;
             if (!worldC.IsUnity())
             {
-                ls << "The world transformed c" << worldC << " is not unity." << lferr;
+                ls << "The world transformed c" << worldC << " is not unity."
+                   << lferr;
             }
 
             ls << "c = " << c << lf;
@@ -121,11 +109,11 @@ void TransformTest::Prepare()
             worldC = c.GetWorldTransform().translation;
             if (c.GetWorldTransform().translation != Float3(1, 0, 0))
             {
-                ls << "The world transformed c" << worldC << " doesn't coincide with (1, 0, 0)"
-                   << lferr;
+                ls << "The world transformed c" << worldC
+                   << " doesn't coincide with (1, 0, 0)" << lferr;
             }
         });
-}
+    }
 
 } // namespace HE
 

@@ -4,7 +4,6 @@
 
 #include "Config/BuildConfig.h"
 
-
 #ifdef __LEFT_HANDED__
 #ifdef __RIGHT_HANDED__
 
@@ -15,7 +14,7 @@ static_assert(false, "SHOULD NOT DEFINE BOTH HANDEDNESS !");
 
 #include <cmath>
 
-      namespace HE
+namespace HE
 {
 #ifdef __LEFT_HANDED__
     inline float RotationSin(float radian)
@@ -70,4 +69,4 @@ static_assert(false, "SHOULD NOT DEFINE BOTH HANDEDNESS !");
         return atan2f(y, x);
     }
 #endif //__RIGHT_HANDED__
-}
+} // namespace HE

@@ -5,7 +5,6 @@
 #include "Engine.h"
 #include <thread>
 
-
 void OS::Yield()
 {
     std::this_thread::yield();

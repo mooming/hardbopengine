@@ -8,122 +8,128 @@
 #include "String/String.h"
 #include <algorithm>
 
-
 namespace HE
 {
-template <typename Component>
-class ComponentSystem
-{
-    using CompoList = HSTL::HVector<Component>;
-
-  private:
-    String name;
-
-    CompoList initList;
-    CompoList updateList;
-    CompoList swapUpdateList;
-    CompoList sleepList;
-
-    CompoList transitionList;
-
-  public:
-    inline ComponentSystem(const char* name)
-        : name(name), initList(), updateList(), swapUpdateList(), sleepList(), transitionList()
+    template <typename Component>
+    class ComponentSystem
     {
-    }
+        using CompoList = HSTL::HVector<Component>;
 
-    inline operator bool() const
-    {
-        return !initList.empty() || !updateList.empty() || !sleepList.empty();
-    }
+    private:
+        String name;
 
-    inline const char* GetName() const { return name.ToCharArray(); }
+        CompoList initList;
+        CompoList updateList;
+        CompoList swapUpdateList;
+        CompoList sleepList;
 
-    template <typename... Types>
-    inline Component& Create(Types&&... args)
-    {
-        initList.emplace_back(std::forward<Types>(args)...);
-        auto& compo = initList.back();
-        compo.SetState(ComponentState::BORN);
+        CompoList transitionList;
 
-        return compo;
-    }
-
-    void Update(const float deltaTime)
-    {
-        ProcessInit();
-        ProcessUpdate(deltaTime);
-        ProcessTransition();
-    }
-
-  private:
-    inline void ProcessInit()
-    {
-        for (auto& compo : initList)
+    public:
+        inline ComponentSystem(const char *name)
+            : name(name),
+              initList(),
+              updateList(),
+              swapUpdateList(),
+              sleepList(),
+              transitionList()
         {
-            compo.Init();
-            compo.SetState(ComponentState::ALIVE);
-            compo.OnEnable();
-            updateList.push_back(std::move(compo));
         }
 
-        initList.clear();
-    }
-
-    inline void ProcessUpdate(const float deltaTime)
-    {
-        for (auto& compo : updateList)
+        inline operator bool() const
         {
-            compo.Update(deltaTime);
-
-            if (!compo.IsEnabled())
-            {
-                transitionList.push_back(std::move(compo));
-            }
-            else
-            {
-                swapUpdateList.push_back(std::move(compo));
-            }
+            return !initList.empty() || !updateList.empty() ||
+                !sleepList.empty();
         }
 
-        std::swap(updateList, swapUpdateList);
-        swapUpdateList.clear();
-    }
+        inline const char *GetName() const { return name.ToCharArray(); }
 
-    inline void ProcessTransition()
-    {
-        for (auto& compo : transitionList)
+        template <typename... Types>
+        inline Component &Create(Types &&...args)
         {
-            switch (compo.GetState())
+            initList.emplace_back(std::forward<Types>(args)...);
+            auto &compo = initList.back();
+            compo.SetState(ComponentState::BORN);
+
+            return compo;
+        }
+
+        void Update(const float deltaTime)
+        {
+            ProcessInit();
+            ProcessUpdate(deltaTime);
+            ProcessTransition();
+        }
+
+    private:
+        inline void ProcessInit()
+        {
+            for (auto &compo : initList)
             {
-            case ComponentState::ALIVE:
+                compo.Init();
+                compo.SetState(ComponentState::ALIVE);
                 compo.OnEnable();
                 updateList.push_back(std::move(compo));
-                break;
-
-            case ComponentState::SLEEP:
-                compo.OnDisable();
-                sleepList.push_back(std::move(compo));
-                break;
-
-            case ComponentState::DEAD:
-                compo.SetState(ComponentState::SLEEP);
-                compo.OnDisable();
-                compo.SetState(ComponentState::DEAD);
-                compo.Release();
-                break;
-
-            default:
-                Assert(
-                    false, "Unexpected component state %d on processing transition.\n",
-                    compo.GetState());
-                break;
             }
+
+            initList.clear();
         }
 
-        transitionList.clear();
-    }
-};
+        inline void ProcessUpdate(const float deltaTime)
+        {
+            for (auto &compo : updateList)
+            {
+                compo.Update(deltaTime);
+
+                if (!compo.IsEnabled())
+                {
+                    transitionList.push_back(std::move(compo));
+                }
+                else
+                {
+                    swapUpdateList.push_back(std::move(compo));
+                }
+            }
+
+            std::swap(updateList, swapUpdateList);
+            swapUpdateList.clear();
+        }
+
+        inline void ProcessTransition()
+        {
+            for (auto &compo : transitionList)
+            {
+                switch (compo.GetState())
+                {
+                case ComponentState::ALIVE:
+                    compo.OnEnable();
+                    updateList.push_back(std::move(compo));
+                    break;
+
+                case ComponentState::SLEEP:
+                    compo.OnDisable();
+                    sleepList.push_back(std::move(compo));
+                    break;
+
+                case ComponentState::DEAD:
+                    compo.SetState(ComponentState::SLEEP);
+                    compo.OnDisable();
+                    compo.SetState(ComponentState::DEAD);
+                    compo.Release();
+                    break;
+
+                default:
+                    Assert(false,
+                        "Unexpected component state %d on processing "
+                        "transition.\n",
+                        compo.GetState());
+                    break;
+                }
+            }
+
+            transitionList.clear();
+        }
+    };
 } // namespace HE
 
 #ifdef __UNIT_TEST__
@@ -131,13 +137,16 @@ class ComponentSystem
 
 namespace HE
 {
-class ComponentSystemTest : public TestCollection
-{
-  public:
-    ComponentSystemTest() : TestCollection("ComponentSystemTest") {}
+    class ComponentSystemTest : public TestCollection
+    {
+    public:
+        ComponentSystemTest()
+            : TestCollection("ComponentSystemTest")
+        {
+        }
 
-  protected:
-    virtual void Prepare() override;
-};
+    protected:
+        virtual void Prepare() override;
+    };
 } // namespace HE
 #endif //__UNIT_TEST__

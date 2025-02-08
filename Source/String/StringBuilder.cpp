@@ -2,35 +2,32 @@
 
 #include "StringBuilder.h"
 
-
 namespace HE
 {
-template class StringBuilder<char, BaseAllocator<char>>;
+    template class StringBuilder<char, BaseAllocator<char>>;
 } // namespace HE
 
 #ifdef __UNIT_TEST__
 #include "HSTL/HString.h"
 #include <limits>
 
-
 namespace HE
 {
 
-void StringBuilderTest::Prepare()
-{
-    using TString = HSTL::HInlineString<256>;
-    using TStrBuild = StringBuilder<>;
+    void StringBuilderTest::Prepare()
+    {
+        using TString = HSTL::HInlineString<256>;
+        using TStrBuild = StringBuilder<>;
 
-    AddTest(
-        "Default Construct",
-        [this](auto& ls)
-        {
+        AddTest("Default Construct", [this](auto &ls) {
             TStrBuild strBuild;
             auto str = strBuild.c_str();
 
             if (str[0] != '\0')
             {
-                ls << "Default constructed StringBuild doesn't provide an empty string." << lferr;
+                ls << "Default constructed StringBuild doesn't provide an "
+                      "empty string."
+                   << lferr;
             }
 
             strBuild.Reserve(100);
@@ -50,10 +47,7 @@ void StringBuilderTest::Prepare()
             }
         });
 
-    AddTest(
-        "Add Nullptr",
-        [this](auto& ls)
-        {
+        AddTest("Add Nullptr", [this](auto &ls) {
             TStrBuild strBuild;
             strBuild << nullptr;
 
@@ -64,14 +58,12 @@ void StringBuilderTest::Prepare()
 
             if (str != expected)
             {
-                ls << "Invalid result " << str << ", but " << expected << " expected." << lferr;
+                ls << "Invalid result " << str << ", but " << expected
+                   << " expected." << lferr;
             }
         });
 
-    AddTest(
-        "Add Boolean(true)",
-        [this](auto& ls)
-        {
+        AddTest("Add Boolean(true)", [this](auto &ls) {
             TStrBuild strBuild;
             strBuild << true;
 
@@ -82,14 +74,12 @@ void StringBuilderTest::Prepare()
 
             if (str != expected)
             {
-                ls << "Invalid result " << str << ", but " << expected << " expected." << lferr;
+                ls << "Invalid result " << str << ", but " << expected
+                   << " expected." << lferr;
             }
         });
 
-    AddTest(
-        "Add Boolean(false)",
-        [this](auto& ls)
-        {
+        AddTest("Add Boolean(false)", [this](auto &ls) {
             TStrBuild strBuild;
             strBuild << false;
 
@@ -100,14 +90,12 @@ void StringBuilderTest::Prepare()
 
             if (str != expected)
             {
-                ls << "Invalid result " << str << ", but " << expected << " expected." << lferr;
+                ls << "Invalid result " << str << ", but " << expected
+                   << " expected." << lferr;
             }
         });
 
-    AddTest(
-        "Add Boolean(true, false)",
-        [this](auto& ls)
-        {
+        AddTest("Add Boolean(true, false)", [this](auto &ls) {
             TStrBuild strBuild;
             strBuild << true << ", " << false;
 
@@ -118,14 +106,12 @@ void StringBuilderTest::Prepare()
 
             if (str != expected)
             {
-                ls << "Invalid result " << str << ", but " << expected << " expected." << lferr;
+                ls << "Invalid result " << str << ", but " << expected
+                   << " expected." << lferr;
             }
         });
 
-    AddTest(
-        "Add Char",
-        [this](auto& ls)
-        {
+        AddTest("Add Char", [this](auto &ls) {
             TStrBuild strBuild;
             strBuild << 'a';
 
@@ -136,14 +122,12 @@ void StringBuilderTest::Prepare()
 
             if (str != expected)
             {
-                ls << "Invalid result " << str << ", but " << expected << " expected." << lferr;
+                ls << "Invalid result " << str << ", but " << expected
+                   << " expected." << lferr;
             }
         });
 
-    AddTest(
-        "Add Chars",
-        [this](auto& ls)
-        {
+        AddTest("Add Chars", [this](auto &ls) {
             TStrBuild strBuild;
             strBuild << 'a' << 'b' << 'c';
 
@@ -154,14 +138,12 @@ void StringBuilderTest::Prepare()
 
             if (str != expected)
             {
-                ls << "Invalid result " << str << ", but " << expected << " expected." << lferr;
+                ls << "Invalid result " << str << ", but " << expected
+                   << " expected." << lferr;
             }
         });
 
-    AddTest(
-        "uint8_t",
-        [this](auto& ls)
-        {
+        AddTest("uint8_t", [this](auto &ls) {
             TStrBuild strBuild;
 
             using T = uint8_t;
@@ -175,14 +157,12 @@ void StringBuilderTest::Prepare()
 
             if (str != expected)
             {
-                ls << "Invalid result " << str << ", but " << expected << " expected." << lferr;
+                ls << "Invalid result " << str << ", but " << expected
+                   << " expected." << lferr;
             }
         });
 
-    AddTest(
-        "int16_t",
-        [this](auto& ls)
-        {
+        AddTest("int16_t", [this](auto &ls) {
             TStrBuild strBuild;
 
             using T = int16_t;
@@ -196,14 +176,12 @@ void StringBuilderTest::Prepare()
 
             if (str != expected)
             {
-                ls << "Invalid result " << str << ", but " << expected << " expected." << lferr;
+                ls << "Invalid result " << str << ", but " << expected
+                   << " expected." << lferr;
             }
         });
 
-    AddTest(
-        "uint16_t",
-        [this](auto& ls)
-        {
+        AddTest("uint16_t", [this](auto &ls) {
             TStrBuild strBuild;
 
             using T = uint16_t;
@@ -217,14 +195,12 @@ void StringBuilderTest::Prepare()
 
             if (str != expected)
             {
-                ls << "Invalid result " << str << ", but " << expected << " expected." << lferr;
+                ls << "Invalid result " << str << ", but " << expected
+                   << " expected." << lferr;
             }
         });
 
-    AddTest(
-        "int32_t",
-        [this](auto& ls)
-        {
+        AddTest("int32_t", [this](auto &ls) {
             TStrBuild strBuild;
 
             using T = int32_t;
@@ -238,14 +214,12 @@ void StringBuilderTest::Prepare()
 
             if (str != expected)
             {
-                ls << "Invalid result " << str << ", but " << expected << " expected." << lferr;
+                ls << "Invalid result " << str << ", but " << expected
+                   << " expected." << lferr;
             }
         });
 
-    AddTest(
-        "uint32_t",
-        [this](auto& ls)
-        {
+        AddTest("uint32_t", [this](auto &ls) {
             TStrBuild strBuild;
 
             using T = uint32_t;
@@ -259,14 +233,12 @@ void StringBuilderTest::Prepare()
 
             if (str != expected)
             {
-                ls << "Invalid result " << str << ", but " << expected << " expected." << lferr;
+                ls << "Invalid result " << str << ", but " << expected
+                   << " expected." << lferr;
             }
         });
 
-    AddTest(
-        "int64_t",
-        [this](auto& ls)
-        {
+        AddTest("int64_t", [this](auto &ls) {
             TStrBuild strBuild;
 
             using T = int64_t;
@@ -280,14 +252,12 @@ void StringBuilderTest::Prepare()
 
             if (str != expected)
             {
-                ls << "Invalid result " << str << ", but " << expected << " expected." << lferr;
+                ls << "Invalid result " << str << ", but " << expected
+                   << " expected." << lferr;
             }
         });
 
-    AddTest(
-        "uint64_t",
-        [this](auto& ls)
-        {
+        AddTest("uint64_t", [this](auto &ls) {
             TStrBuild strBuild;
 
             using T = uint64_t;
@@ -301,14 +271,12 @@ void StringBuilderTest::Prepare()
 
             if (str != expected)
             {
-                ls << "Invalid result " << str << ", but " << expected << " expected." << lferr;
+                ls << "Invalid result " << str << ", but " << expected
+                   << " expected." << lferr;
             }
         });
 
-    AddTest(
-        "float",
-        [this](auto& ls)
-        {
+        AddTest("float", [this](auto &ls) {
             TStrBuild strBuild;
 
             using T = float;
@@ -322,14 +290,12 @@ void StringBuilderTest::Prepare()
 
             if (str != expected)
             {
-                ls << "Invalid result " << str << ", but " << expected << " expected." << lferr;
+                ls << "Invalid result " << str << ", but " << expected
+                   << " expected." << lferr;
             }
         });
 
-    AddTest(
-        "double",
-        [this](auto& ls)
-        {
+        AddTest("double", [this](auto &ls) {
             TStrBuild strBuild;
 
             using T = double;
@@ -343,14 +309,12 @@ void StringBuilderTest::Prepare()
 
             if (str != expected)
             {
-                ls << "Invalid result " << str << ", but " << expected << " expected." << lferr;
+                ls << "Invalid result " << str << ", but " << expected
+                   << " expected." << lferr;
             }
         });
 
-    AddTest(
-        "long double",
-        [this](auto& ls)
-        {
+        AddTest("long double", [this](auto &ls) {
             TStrBuild strBuild;
 
             using T = long double;
@@ -364,10 +328,11 @@ void StringBuilderTest::Prepare()
 
             if (str != expected)
             {
-                ls << "Invalid result " << str << ", but " << expected << " expected." << lferr;
+                ls << "Invalid result " << str << ", but " << expected
+                   << " expected." << lferr;
             }
         });
-}
+    }
 
 } // namespace HE
 #endif //__UNIT_TEST__

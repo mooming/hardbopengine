@@ -11,221 +11,230 @@
 #include "System/Debug.h"
 #include <cstddef>
 
-
 namespace HE
 {
-template <class T, int BufferSize, int NumBuffers = 2>
-struct InlinePoolAllocator final
-{
-    using TIndex = decltype(BufferSize);
-
-    using value_type = T;
-
-    template <class U>
-    struct rebind
+    template <class T, int BufferSize, int NumBuffers = 2>
+    struct InlinePoolAllocator final
     {
-        using other = InlinePoolAllocator<U, BufferSize, NumBuffers>;
-    };
+        using TIndex = decltype(BufferSize);
 
-    static_assert(NumBuffers > 0, "The number of buffers should be greater than or equal to zero.");
-    static_assert(std::is_signed<TIndex>(), "The type of BufferSize should be signed integral.");
-    static_assert(BufferSize > 0, "The buffer size should be greater than or equal to zero.");
+        using value_type = T;
 
-  private:
-    TAllocatorID id;
-    TAllocatorID parentID;
-    int indexHint;
-
-    ALIGN bool isAllocated[NumBuffers];
-    alignas(std::max(
-        sizeof(T), Config::DefaultAlign)) uint8_t buffer[NumBuffers][BufferSize * sizeof(T)];
-
-  public:
-    InlinePoolAllocator(const InlinePoolAllocator&) = delete;
-
-    InlinePoolAllocator() : id(InvalidAllocatorID), parentID(InvalidAllocatorID), indexHint(0)
-    {
-        Assert(OS::CheckAligned(isAllocated));
-        Assert(OS::CheckAligned(buffer[0]));
-
-        auto& mmgr = MemoryManager::GetInstance();
-        parentID = mmgr.GetCurrentAllocatorID();
-
-        if (unlikely(BufferSize <= 0))
+        template <class U>
+        struct rebind
         {
-            return;
-        }
+            using other = InlinePoolAllocator<U, BufferSize, NumBuffers>;
+        };
 
-        for (auto& item : isAllocated)
+        static_assert(NumBuffers > 0,
+            "The number of buffers should be greater than or equal to zero.");
+        static_assert(std::is_signed<TIndex>(),
+            "The type of BufferSize should be signed integral.");
+        static_assert(BufferSize > 0,
+            "The buffer size should be greater than or equal to zero.");
+
+    private:
+        TAllocatorID id;
+        TAllocatorID parentID;
+        int indexHint;
+
+        ALIGN bool isAllocated[NumBuffers];
+        alignas(std::max(sizeof(T), Config::DefaultAlign))
+            uint8_t buffer[NumBuffers][BufferSize * sizeof(T)];
+
+    public:
+        InlinePoolAllocator(const InlinePoolAllocator &) = delete;
+
+        InlinePoolAllocator()
+            : id(InvalidAllocatorID),
+              parentID(InvalidAllocatorID),
+              indexHint(0)
         {
-            item = false;
-        }
+            Assert(OS::CheckAligned(isAllocated));
+            Assert(OS::CheckAligned(buffer[0]));
+
+            auto &mmgr = MemoryManager::GetInstance();
+            parentID = mmgr.GetCurrentAllocatorID();
+
+            if (unlikely(BufferSize <= 0))
+            {
+                return;
+            }
+
+            for (auto &item : isAllocated)
+            {
+                item = false;
+            }
 
 #ifdef __MEMORY_VERIFICATION__
-        constexpr size_t length = sizeof(T) * BufferSize * NumBuffers;
-        memset(buffer, 0, length);
+            constexpr size_t length = sizeof(T) * BufferSize * NumBuffers;
+            memset(buffer, 0, length);
 #endif // __MEMORY_VERIFICATION__
 
-        RegisterAllocator();
-    }
-
-    ~InlinePoolAllocator() { DeregisterAllocator(); }
-
-    template <typename U>
-    operator InlinePoolAllocator<U, BufferSize, NumBuffers>()
-    {
-        using TCastedAlloc = InlinePoolAllocator<U, BufferSize, NumBuffers>;
-
-        if (parentID != InvalidAllocatorID)
-        {
-            return TCastedAlloc(parentID);
+            RegisterAllocator();
         }
 
-        return TCastedAlloc(GetID());
-    }
+        ~InlinePoolAllocator() { DeregisterAllocator(); }
 
-    StaticString GetName() const
-    {
-        static StaticString name("InlinePoolAllocator");
-        return name;
-    }
-
-    T* allocate(std::size_t n)
-    {
-        constexpr size_t unit = sizeof(T);
-        const auto nBytes = OS::GetAligned(n * unit);
-        auto ptr = AllocateBytes(nBytes);
-        return reinterpret_cast<T*>(ptr);
-    }
-
-    void deallocate(T* ptr, std::size_t n) noexcept
-    {
-        constexpr size_t unit = sizeof(T);
-        const auto nBytes = OS::GetAligned(n * unit);
-
-        void* voidPtr = reinterpret_cast<void*>(ptr);
-        return DeallocateBytes(voidPtr, nBytes);
-    }
-
-    auto GetID() const { return id; }
-    auto GetBlockSize() const { return BufferSize; }
-    auto GetNumBlocks() const { return NumBuffers; }
-
-    bool operator==(const InlinePoolAllocator&) const { return false; }
-
-    bool operator!=(const InlinePoolAllocator&) const { return true; }
-
-  private:
-    void* FallbackAlloc(size_t nBytes)
-    {
-        auto& mmgr = MemoryManager::GetInstance();
-        auto ptr = mmgr.AllocateBytes(parentID, nBytes);
-
-        return ptr;
-    }
-
-    void* AllocateBytes(size_t nBytes)
-    {
-        constexpr size_t unit = sizeof(T);
-        constexpr size_t bufferSizeBytes = BufferSize * unit;
-
-        if (nBytes > bufferSizeBytes)
+        template <typename U>
+        operator InlinePoolAllocator<U, BufferSize, NumBuffers>()
         {
-            return FallbackAlloc(nBytes);
-        }
+            using TCastedAlloc = InlinePoolAllocator<U, BufferSize, NumBuffers>;
 
-        if (unlikely(nBytes == 0))
-        {
-            return &buffer[0][0];
-        }
-
-        int index = indexHint;
-        for (int i = 0; i < NumBuffers; ++i, ++index)
-        {
-            index = index >= NumBuffers ? 0 : index;
-            if (isAllocated[index])
+            if (parentID != InvalidAllocatorID)
             {
-                continue;
+                return TCastedAlloc(parentID);
             }
 
-            indexHint = index + 1;
-            if (indexHint >= NumBuffers)
-            {
-                indexHint = 0;
-            }
+            return TCastedAlloc(GetID());
+        }
 
-            isAllocated[index] = true;
-            auto ptr = &buffer[index][0];
+        StaticString GetName() const
+        {
+            static StaticString name("InlinePoolAllocator");
+            return name;
+        }
 
-#ifdef PROFILE_ENABLED
-            auto& mmgr = MemoryManager::GetInstance();
-            mmgr.ReportAllocation(id, ptr, nBytes, bufferSizeBytes);
-#endif // PROFILE_ENABLED
+        T *allocate(std::size_t n)
+        {
+            constexpr size_t unit = sizeof(T);
+            const auto nBytes = OS::GetAligned(n * unit);
+            auto ptr = AllocateBytes(nBytes);
+            return reinterpret_cast<T *>(ptr);
+        }
+
+        void deallocate(T *ptr, std::size_t n) noexcept
+        {
+            constexpr size_t unit = sizeof(T);
+            const auto nBytes = OS::GetAligned(n * unit);
+
+            void *voidPtr = reinterpret_cast<void *>(ptr);
+            return DeallocateBytes(voidPtr, nBytes);
+        }
+
+        auto GetID() const { return id; }
+        auto GetBlockSize() const { return BufferSize; }
+        auto GetNumBlocks() const { return NumBuffers; }
+
+        bool operator==(const InlinePoolAllocator &) const { return false; }
+
+        bool operator!=(const InlinePoolAllocator &) const { return true; }
+
+    private:
+        void *FallbackAlloc(size_t nBytes)
+        {
+            auto &mmgr = MemoryManager::GetInstance();
+            auto ptr = mmgr.AllocateBytes(parentID, nBytes);
 
             return ptr;
         }
 
-        return FallbackAlloc(nBytes);
-    }
-
-    void DeallocateBytes(void* ptr, size_t nBytes)
-    {
-        if (unlikely(ptr == nullptr || nBytes == 0))
+        void *AllocateBytes(size_t nBytes)
         {
-            return;
-        }
-
-        for (int i = 0; i < NumBuffers; ++i)
-        {
-            if (ptr != &buffer[i][0])
-            {
-                continue;
-            }
-
-#ifdef PROFILE_ENABLED
-            auto& mmgr = MemoryManager::GetInstance();
             constexpr size_t unit = sizeof(T);
             constexpr size_t bufferSizeBytes = BufferSize * unit;
-            mmgr.ReportDeallocation(id, ptr, nBytes, bufferSizeBytes);
+
+            if (nBytes > bufferSizeBytes)
+            {
+                return FallbackAlloc(nBytes);
+            }
+
+            if (unlikely(nBytes == 0))
+            {
+                return &buffer[0][0];
+            }
+
+            int index = indexHint;
+            for (int i = 0; i < NumBuffers; ++i, ++index)
+            {
+                index = index >= NumBuffers ? 0 : index;
+                if (isAllocated[index])
+                {
+                    continue;
+                }
+
+                indexHint = index + 1;
+                if (indexHint >= NumBuffers)
+                {
+                    indexHint = 0;
+                }
+
+                isAllocated[index] = true;
+                auto ptr = &buffer[index][0];
+
+#ifdef PROFILE_ENABLED
+                auto &mmgr = MemoryManager::GetInstance();
+                mmgr.ReportAllocation(id, ptr, nBytes, bufferSizeBytes);
 #endif // PROFILE_ENABLED
 
-            isAllocated[i] = false;
-            indexHint = i;
+                return ptr;
+            }
 
-            return;
+            return FallbackAlloc(nBytes);
         }
 
-        auto& mmgr = MemoryManager::GetInstance();
-        mmgr.DeallocateBytes(parentID, ptr, nBytes);
-    }
-
-    void RegisterAllocator()
-    {
-        auto& mmgr = MemoryManager::GetInstance();
-
-        auto allocFunc = [this](size_t nBytes) -> void*
-        { return static_cast<void*>(AllocateBytes(nBytes)); };
-
-        auto deallocFunc = [this](void* ptr, size_t nBytes) { DeallocateBytes(ptr, nBytes); };
-
-        const auto capacity = BufferSize * NumBuffers * sizeof(T);
-        id = mmgr.Register("InlinePoolAllocator", true, capacity, allocFunc, deallocFunc);
-
-        FatalAssert(id != InvalidAllocatorID);
-        FatalAssert(id != 0);
-    }
-
-    void DeregisterAllocator()
-    {
-        if (id == InvalidAllocatorID)
+        void DeallocateBytes(void *ptr, size_t nBytes)
         {
-            return;
+            if (unlikely(ptr == nullptr || nBytes == 0))
+            {
+                return;
+            }
+
+            for (int i = 0; i < NumBuffers; ++i)
+            {
+                if (ptr != &buffer[i][0])
+                {
+                    continue;
+                }
+
+#ifdef PROFILE_ENABLED
+                auto &mmgr = MemoryManager::GetInstance();
+                constexpr size_t unit = sizeof(T);
+                constexpr size_t bufferSizeBytes = BufferSize * unit;
+                mmgr.ReportDeallocation(id, ptr, nBytes, bufferSizeBytes);
+#endif // PROFILE_ENABLED
+
+                isAllocated[i] = false;
+                indexHint = i;
+
+                return;
+            }
+
+            auto &mmgr = MemoryManager::GetInstance();
+            mmgr.DeallocateBytes(parentID, ptr, nBytes);
         }
 
-        auto& mmgr = MemoryManager::GetInstance();
-        mmgr.Deregister(id);
-    }
-};
+        void RegisterAllocator()
+        {
+            auto &mmgr = MemoryManager::GetInstance();
+
+            auto allocFunc = [this](size_t nBytes) -> void * {
+                return static_cast<void *>(AllocateBytes(nBytes));
+            };
+
+            auto deallocFunc = [this](void *ptr, size_t nBytes) {
+                DeallocateBytes(ptr, nBytes);
+            };
+
+            const auto capacity = BufferSize * NumBuffers * sizeof(T);
+            id = mmgr.Register(
+                "InlinePoolAllocator", true, capacity, allocFunc, deallocFunc);
+
+            FatalAssert(id != InvalidAllocatorID);
+            FatalAssert(id != 0);
+        }
+
+        void DeregisterAllocator()
+        {
+            if (id == InvalidAllocatorID)
+            {
+                return;
+            }
+
+            auto &mmgr = MemoryManager::GetInstance();
+            mmgr.Deregister(id);
+        }
+    };
 } // namespace HE
 
 #ifdef __UNIT_TEST__
@@ -234,14 +243,17 @@ struct InlinePoolAllocator final
 namespace HE
 {
 
-class InlinePoolAllocatorTest : public TestCollection
-{
-  public:
-    InlinePoolAllocatorTest() : TestCollection("InlinePoolAllocatorTest") {}
+    class InlinePoolAllocatorTest : public TestCollection
+    {
+    public:
+        InlinePoolAllocatorTest()
+            : TestCollection("InlinePoolAllocatorTest")
+        {
+        }
 
-  protected:
-    virtual void Prepare() override;
-};
+    protected:
+        virtual void Prepare() override;
+    };
 
 } // namespace HE
 #endif //__UNIT_TEST__

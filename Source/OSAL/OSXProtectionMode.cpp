@@ -4,33 +4,31 @@
 
 #include "Config/BuildConfig.h"
 
-
 #ifdef PLATFORM_OSX
 #include <sys/mman.h>
-
 
 namespace OS
 {
 
-void ProtectionMode::SetForbidden()
-{
-    value |= PROT_NONE;
-}
+    void ProtectionMode::SetForbidden()
+    {
+        value |= PROT_NONE;
+    }
 
-void ProtectionMode::SetReadable()
-{
-    value |= PROT_READ;
-}
+    void ProtectionMode::SetReadable()
+    {
+        value |= PROT_READ;
+    }
 
-void ProtectionMode::SetWritable()
-{
-    value |= PROT_WRITE;
-}
+    void ProtectionMode::SetWritable()
+    {
+        value |= PROT_WRITE;
+    }
 
-void ProtectionMode::SetExecutable()
-{
-    value |= PROT_EXEC;
-}
+    void ProtectionMode::SetExecutable()
+    {
+        value |= PROT_EXEC;
+    }
 
 } // namespace OS
 

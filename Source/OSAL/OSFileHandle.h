@@ -4,26 +4,25 @@
 
 #include <cstddef>
 
-
 namespace OS
 {
 
-struct FileHandle final
-{
-  public:
-    void* data;
+    struct FileHandle final
+    {
+    public:
+        void *data;
 
-  public:
-    FileHandle(const FileHandle&) = delete;
+    public:
+        FileHandle(const FileHandle &) = delete;
 
-  public:
-    FileHandle();
-    FileHandle(FileHandle&& rhs);
-    ~FileHandle();
+    public:
+        FileHandle();
+        FileHandle(FileHandle &&rhs);
+        ~FileHandle();
 
-    size_t GetFileSize() const;
-    bool IsValid() const;
-    void Invalidate();
-};
+        size_t GetFileSize() const;
+        bool IsValid() const;
+        void Invalidate();
+    };
 
 } // namespace OS

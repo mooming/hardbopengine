@@ -2,132 +2,133 @@
 
 #include "BufferInputStream.h"
 
-
 namespace HE
 {
 
-using This = BufferInputStream;
+    using This = BufferInputStream;
 
-BufferInputStream::BufferInputStream(const Buffer& buffer)
-    : buffer(buffer), cursor(0), errorCount(0)
-{
-}
-
-This& BufferInputStream::operator>>(char& value)
-{
-    Get<char>(value, '\0');
-    return *this;
-}
-
-This& BufferInputStream::operator>>(int8_t& value)
-{
-    Get<int8_t>(value, 0);
-    return *this;
-}
-
-This& BufferInputStream::operator>>(uint8_t& value)
-{
-    Get<uint8_t>(value, 0);
-    return *this;
-}
-
-This& BufferInputStream::operator>>(int16_t& value)
-{
-    Get<int16_t>(value, 0);
-    return *this;
-}
-
-This& BufferInputStream::operator>>(uint16_t& value)
-{
-    Get<uint16_t>(value, 0);
-    return *this;
-}
-
-This& BufferInputStream::operator>>(int32_t& value)
-{
-    Get<int32_t>(value, 0);
-    return *this;
-}
-
-This& BufferInputStream::operator>>(uint32_t& value)
-{
-    Get<uint32_t>(value, 0);
-    return *this;
-}
-
-This& BufferInputStream::operator>>(int64_t& value)
-{
-    Get<int64_t>(value, 0);
-    return *this;
-}
-
-This& BufferInputStream::operator>>(uint64_t& value)
-{
-    Get<uint64_t>(value, 0);
-    return *this;
-}
-
-This& BufferInputStream::operator>>(size_t& value)
-{
-    Get<size_t>(value, 0);
-    return *this;
-}
-
-This& BufferInputStream::operator>>(float& value)
-{
-    Get<float>(value, 0.0f);
-    return *this;
-}
-
-This& BufferInputStream::operator>>(double& value)
-{
-    Get<double>(value, 0.0);
-    return *this;
-}
-
-This& BufferInputStream::operator>>(long double& value)
-{
-    Get<long double>(value, 0);
-    return *this;
-}
-
-This& BufferInputStream::operator>>(StaticString& str)
-{
-    size_t length = 0;
-    Get<size_t>(length, 0);
-
-    if (length <= 0)
+    BufferInputStream::BufferInputStream(const Buffer &buffer)
+        : buffer(buffer),
+          cursor(0),
+          errorCount(0)
     {
-        const static StaticString zeroStr("");
-        str = zeroStr;
+    }
+
+    This &BufferInputStream::operator>>(char &value)
+    {
+        Get<char>(value, '\0');
         return *this;
     }
 
-    using namespace HSTL;
-
-    constexpr size_t InlineBufferSize = 256;
-    HInlineString<InlineBufferSize> tmpStr;
-    tmpStr.reserve(length);
-
-    char ch = '\0';
-
-    for (size_t i = 0; i < length; ++i)
+    This &BufferInputStream::operator>>(int8_t &value)
     {
-        Get<char>(ch, '\0');
-        tmpStr.push_back(ch);
+        Get<int8_t>(value, 0);
+        return *this;
     }
 
-    Assert(tmpStr.size() == length);
+    This &BufferInputStream::operator>>(uint8_t &value)
+    {
+        Get<uint8_t>(value, 0);
+        return *this;
+    }
 
-    str = StaticString(tmpStr.c_str());
+    This &BufferInputStream::operator>>(int16_t &value)
+    {
+        Get<int16_t>(value, 0);
+        return *this;
+    }
 
-    return *this;
-}
+    This &BufferInputStream::operator>>(uint16_t &value)
+    {
+        Get<uint16_t>(value, 0);
+        return *this;
+    }
 
-This& BufferInputStream::operator>>(const HSTL::HString& str)
-{
-    return *this;
-}
+    This &BufferInputStream::operator>>(int32_t &value)
+    {
+        Get<int32_t>(value, 0);
+        return *this;
+    }
+
+    This &BufferInputStream::operator>>(uint32_t &value)
+    {
+        Get<uint32_t>(value, 0);
+        return *this;
+    }
+
+    This &BufferInputStream::operator>>(int64_t &value)
+    {
+        Get<int64_t>(value, 0);
+        return *this;
+    }
+
+    This &BufferInputStream::operator>>(uint64_t &value)
+    {
+        Get<uint64_t>(value, 0);
+        return *this;
+    }
+
+    This &BufferInputStream::operator>>(size_t &value)
+    {
+        Get<size_t>(value, 0);
+        return *this;
+    }
+
+    This &BufferInputStream::operator>>(float &value)
+    {
+        Get<float>(value, 0.0f);
+        return *this;
+    }
+
+    This &BufferInputStream::operator>>(double &value)
+    {
+        Get<double>(value, 0.0);
+        return *this;
+    }
+
+    This &BufferInputStream::operator>>(long double &value)
+    {
+        Get<long double>(value, 0);
+        return *this;
+    }
+
+    This &BufferInputStream::operator>>(StaticString &str)
+    {
+        size_t length = 0;
+        Get<size_t>(length, 0);
+
+        if (length <= 0)
+        {
+            const static StaticString zeroStr("");
+            str = zeroStr;
+            return *this;
+        }
+
+        using namespace HSTL;
+
+        constexpr size_t InlineBufferSize = 256;
+        HInlineString<InlineBufferSize> tmpStr;
+        tmpStr.reserve(length);
+
+        char ch = '\0';
+
+        for (size_t i = 0; i < length; ++i)
+        {
+            Get<char>(ch, '\0');
+            tmpStr.push_back(ch);
+        }
+
+        Assert(tmpStr.size() == length);
+
+        str = StaticString(tmpStr.c_str());
+
+        return *this;
+    }
+
+    This &BufferInputStream::operator>>(const HSTL::HString &str)
+    {
+        return *this;
+    }
 
 } // namespace HE
 
@@ -135,21 +136,17 @@ This& BufferInputStream::operator>>(const HSTL::HString& str)
 #include "Memory/MemoryManager.h"
 #include "String/StringUtil.h"
 
-
 namespace HE
 {
 
-BufferInputStreamTest::BufferInputStreamTest()
-    : TestCollection(StringUtil::ToCompactClassName(__PRETTY_FUNCTION__))
-{
-}
+    BufferInputStreamTest::BufferInputStreamTest()
+        : TestCollection(StringUtil::ToCompactClassName(__PRETTY_FUNCTION__))
+    {
+    }
 
-void BufferInputStreamTest::Prepare()
-{
-    AddTest(
-        "Empty Buffer",
-        [this](auto& ls)
-        {
+    void BufferInputStreamTest::Prepare()
+    {
+        AddTest("Empty Buffer", [this](auto &ls) {
             Buffer buffer;
             BufferInputStream bis(buffer);
 
@@ -163,17 +160,13 @@ void BufferInputStreamTest::Prepare()
             }
         });
 
-    AddTest(
-        "Memory Buffer",
-        [this](auto& ls)
-        {
+        AddTest("Memory Buffer", [this](auto &ls) {
             constexpr size_t TestCount = 128;
             constexpr size_t BufferSize = TestCount * sizeof(int);
 
-            auto& mmgr = MemoryManager::GetInstance();
+            auto &mmgr = MemoryManager::GetInstance();
 
-            auto genFunc = [&](auto& size, auto& data)
-            {
+            auto genFunc = [&](auto &size, auto &data) {
                 size = BufferSize;
                 auto intBuffer = mmgr.NewArray<int>(TestCount);
                 for (int i = 0; i < TestCount; ++i)
@@ -184,21 +177,21 @@ void BufferInputStreamTest::Prepare()
                 data = reinterpret_cast<Buffer::TBufferData>(intBuffer);
             };
 
-            auto relFunc = [&](auto size, auto data)
-            {
+            auto relFunc = [&](auto size, auto data) {
                 if (size != BufferSize)
                 {
-                    ls << "Invalid size " << size << ", " << TestCount << " is expected." << lferr;
+                    ls << "Invalid size " << size << ", " << TestCount
+                       << " is expected." << lferr;
                     return;
                 }
 
                 if (data == nullptr)
                 {
-                    ls << "Invalid data " << (void*)data << lferr;
+                    ls << "Invalid data " << (void *)data << lferr;
                     return;
                 }
 
-                mmgr.DeleteArray<int>((int*)data, TestCount);
+                mmgr.DeleteArray<int>((int *)data, TestCount);
             };
 
             Buffer buffer(genFunc, relFunc);
@@ -213,13 +206,15 @@ void BufferInputStreamTest::Prepare()
 
                 if (value != i)
                 {
-                    ls << "Invalid value " << value << ", but " << i << " is expected." << lferr;
+                    ls << "Invalid value " << value << ", but " << i
+                       << " is expected." << lferr;
                 }
             }
 
             if (bis.HasError())
             {
-                ls << "Unexpected error occured! Error Count = " << bis.GetErrorCount() << lferr;
+                ls << "Unexpected error occured! Error Count = "
+                   << bis.GetErrorCount() << lferr;
             }
 
             bis.ClearErrorCount();
@@ -233,22 +228,25 @@ void BufferInputStreamTest::Prepare()
 
             if (!bis.HasError())
             {
-                ls << "An error is not occured when exceeding its limit." << lferr;
+                ls << "An error is not occured when exceeding its limit."
+                   << lferr;
             }
 
             if (bis.GetErrorCount() != 3)
             {
-                ls << "Invalid error count " << bis.GetErrorCount() << ", 3 is expected." << lferr;
+                ls << "Invalid error count " << bis.GetErrorCount()
+                   << ", 3 is expected." << lferr;
             }
 
             bis.ClearErrorCount();
 
             if (bis.GetErrorCount() != 0)
             {
-                ls << "Invalid error count " << bis.GetErrorCount() << ", 0 is expected." << lferr;
+                ls << "Invalid error count " << bis.GetErrorCount()
+                   << ", 0 is expected." << lferr;
             }
         });
-}
+    }
 
 } // namespace HE
 #endif //__UNIT_TEST__

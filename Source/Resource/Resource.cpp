@@ -2,16 +2,15 @@
 
 #include "Resource.h"
 
-
 namespace HE
 {
 
-Resource::Resource()
-{
-}
+    Resource::Resource()
+    {
+    }
 
-Resource::~Resource()
-{
-}
+    Resource::~Resource()
+    {
+    }
 
 } // namespace HE

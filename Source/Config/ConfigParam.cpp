@@ -2,7 +2,6 @@
 
 #include "ConfigParam.h"
 
-
 template class HE::ConfigParam<bool, true>;
 template class HE::ConfigParam<bool, false>;
 template class HE::ConfigParam<int, true>;

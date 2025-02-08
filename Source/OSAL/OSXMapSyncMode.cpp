@@ -4,28 +4,26 @@
 
 #include "Config/BuildConfig.h"
 
-
 #ifdef PLATFORM_OSX
 #include <sys/mman.h>
-
 
 namespace OS
 {
 
-void MapSyncMode::SetAsync()
-{
-    value |= MS_ASYNC;
-}
+    void MapSyncMode::SetAsync()
+    {
+        value |= MS_ASYNC;
+    }
 
-void MapSyncMode::SetSync()
-{
-    value |= MS_SYNC;
-}
+    void MapSyncMode::SetSync()
+    {
+        value |= MS_SYNC;
+    }
 
-void MapSyncMode::Invalidate()
-{
-    value |= MS_INVALIDATE;
-}
+    void MapSyncMode::Invalidate()
+    {
+        value |= MS_INVALIDATE;
+    }
 
 } // namespace OS
 

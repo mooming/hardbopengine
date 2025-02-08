@@ -5,11 +5,11 @@
 namespace HE
 {
 
-struct EndLine final
-{
-    operator const char*() const { return "\n"; }
-};
+    struct EndLine final
+    {
+        operator const char *() const { return "\n"; }
+    };
 
-static constexpr EndLine hendl;
+    static constexpr EndLine hendl;
 
 } // namespace HE

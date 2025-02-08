@@ -8,23 +8,18 @@
 namespace HE
 {
 
-void ArrayTest::Prepare()
-{
-    AddTest(
-        "Default Constructor",
-        [this](auto& ls)
-        {
+    void ArrayTest::Prepare()
+    {
+        AddTest("Default Constructor", [this](auto &ls) {
             const Array<int> array;
             if (array.Size() != 0)
             {
-                ls << "Null Array Size is not zero. Size = " << array.Size() << lferr;
+                ls << "Null Array Size is not zero. Size = " << array.Size()
+                   << lferr;
             }
         });
 
-    AddTest(
-        "Initializer List",
-        [this](auto& ls)
-        {
+        AddTest("Initializer List", [this](auto &ls) {
             Array<int> array({0, 1, 2, 3, 4, 5, 6, 7, 8, 9});
 
             int i = 0;
@@ -32,7 +27,8 @@ void ArrayTest::Prepare()
             {
                 if (value != i)
                 {
-                    ls << "Array Value Mismatch : " << value << " != " << i << lferr;
+                    ls << "Array Value Mismatch : " << value << " != " << i
+                       << lferr;
                     break;
                 }
 
@@ -45,10 +41,7 @@ void ArrayTest::Prepare()
             }
         });
 
-    AddTest(
-        "Initializer List (2)",
-        [this](auto& ls)
-        {
+        AddTest("Initializer List (2)", [this](auto &ls) {
             const Array<int> array({0, 1, 2, 3, 4, 5, 6, 7, 8, 9});
             int i = 0;
 
@@ -63,7 +56,7 @@ void ArrayTest::Prepare()
                 ++i;
             }
         });
-}
+    }
 
 } // namespace HE
 #endif //__UNIT_TEST__
