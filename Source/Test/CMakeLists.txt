@@ -33,7 +33,7 @@ endif (APPLE)
 install (TARGETS Test DESTINATION ${CMAKE_SOURCE_DIR}/lib)
 
 
-target_link_libraries (Test Config Container HSTL Log Math Memory OSAL Resource String System Test)
+target_link_libraries (Test Config Container HSTL Log Math Memory OSAL Resource String System)
 
 add_dependencies (Test Config)
 add_dependencies (Test Container)
@@ -45,6 +45,5 @@ add_dependencies (Test OSAL)
 add_dependencies (Test Resource)
 add_dependencies (Test String)
 add_dependencies (Test System)
-add_dependencies (Test Test)
 
 

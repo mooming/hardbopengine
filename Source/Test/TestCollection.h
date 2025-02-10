@@ -76,7 +76,7 @@ namespace HE
 
     private:
         void ExecuteTests();
-        void Report();
+        void Report() const;
     };
 
 } // namespace HE

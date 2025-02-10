@@ -132,7 +132,7 @@ namespace HE
         }
     }
 
-    void TestCollection::Report()
+    void TestCollection::Report() const
     {
         TLog log(GetName(), ELogLevel::Info);
 
