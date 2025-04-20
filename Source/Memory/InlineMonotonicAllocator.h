@@ -85,7 +85,7 @@ namespace HE
             }
 #endif // __MEMOR_STATISTICS__
 
-#ifdef __MEMORY_LOGGING__
+#if __MEMORY_LOGGING__
             {
                 auto& mmgr = MemoryManager::GetInstance();
                 mmgr.Log(ELogLevel::Info, [this, &mmgr, ptr, size](auto& ls) {
@@ -109,7 +109,7 @@ namespace HE
                 return;
             }
 
-#ifdef __MEMORY_LOGGING__
+#if __MEMORY_LOGGING__
             mmgr.Log(ELogLevel::Info, [this, &mmgr, ptr, requested](auto& ls) {
                 ls << mmgr.GetName(id) << '[' << static_cast<int>(GetID())
                    << "] Deallocate call shall be ignored. ptr = "

@@ -81,12 +81,12 @@ namespace HE
 #ifdef __MEMORY_BUFFER_UNDERRUN_CHECK__
             T* ptr = reinterpret_cast<T*>(rawPtr);
 #else  // __MEMORY_BUFFER_UNDERRUN_CHECK__
-            uint8_t* bytePtr = (uint8_t*)rawPtr;
+            auto bytePtr = static_cast<uint8_t*>(rawPtr);
             bytePtr = bytePtr + allocSize - nBytes;
             T* ptr = reinterpret_cast<T*>(bytePtr);
 #endif // __MEMORY_BUFFER_UNDERRUN_CHECK__
 
-#ifdef __MEMORY_INVESTIGATION_LOGGING__
+#if __MEMORY_LOGGING__
             {
                 auto& engine = Engine::Get();
                 engine.Log(ELogLevel::Info, [this, rawPtr, ptr](auto& ls) {
@@ -95,7 +95,7 @@ namespace HE
                        << ", ptr = " << (void*)ptr;
                 });
             }
-#endif // __MEMORY_INVESTIGATION_LOGGING__
+#endif // __MEMORY_LOGGING__
 
 #else  // __MEMORY_INVESTIGATION__
             auto ptr = (T*)malloc(nBytes);

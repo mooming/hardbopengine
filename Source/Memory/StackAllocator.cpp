@@ -3,7 +3,7 @@
 #include "StackAllocator.h"
 
 #include "AllocatorScope.h"
-#include "Config/EngineSettings.h"
+#include "Config/EngineConfig.h"
 #include "MemoryManager.h"
 #include "OSAL/Intrinsic.h"
 #include "System/Debug.h"

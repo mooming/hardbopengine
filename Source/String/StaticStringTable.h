@@ -2,7 +2,7 @@
 
 #pragma once
 
-#include "Config/EngineSettings.h"
+#include "Config/EngineConfig.h"
 #include "StaticString.h"
 #include "StaticStringID.h"
 #include <cstddef>

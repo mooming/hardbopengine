@@ -714,7 +714,7 @@ namespace HE
 
     bool MemoryManager::IsLogEnabled(ELogLevel level) const
     {
-#ifdef __MEMORY_LOGGING__
+#if __MEMORY_LOGGING__
         static TAtomicConfigParam<uint8_t> CPLogLevel("Log.Memory",
             "The Memory System Log Level",
             static_cast<uint8_t>(Config::MemLogLevel));
@@ -732,7 +732,7 @@ namespace HE
 
     void MemoryManager::Log(ELogLevel level, TLogFunc func) const
     {
-#ifdef __MEMORY_LOGGING__
+#if __MEMORY_LOGGING__
         if (!IsLogEnabled(level))
         {
             return;

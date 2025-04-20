@@ -4,7 +4,7 @@
 
 #include "AllocatorID.h"
 #include "Config/BuildConfig.h"
-#include "Config/EngineSettings.h"
+#include "Config/EngineConfig.h"
 #include "MemoryManager.h"
 #include "OSAL/OSMemory.h"
 #include "String/StaticString.h"

@@ -21,12 +21,12 @@ add_library (Config STATIC
  ConfigFile.cpp
  ConfigParam.cpp
  ConfigSystem.cpp
- EngineSettings.cpp
+        EngineConfig.cpp
  BuildConfig.h
  ConfigFile.h
  ConfigParam.h
  ConfigSystem.h
- EngineSettings.h
+        EngineConfig.h
 )
 
 if (APPLE)

@@ -4,7 +4,7 @@
 
 #include "Config/BuildConfig.h"
 #include "Config/ConfigParam.h"
-#include "Config/EngineSettings.h"
+#include "Config/EngineConfig.h"
 #include "Engine.h"
 #include "LogUtil.h"
 #include "Memory/AllocatorScope.h"
@@ -33,7 +33,8 @@ namespace HE
             AllocatorScope scope(MemoryManager::SystemAllocatorID);
 
             using namespace std;
-            auto timeStampStr = LogUtil::GetTimeStampString();
+            InlineStringBuilder<64> timeStampStr;
+            LogUtil::GetTimeStampString(timeStampStr);
             auto levelStr = LogUtil::GetLogLevelString(level);
 
             cout << '[' << timeStampStr << "][" << std::this_thread::get_id()

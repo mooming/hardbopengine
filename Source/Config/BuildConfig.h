@@ -25,16 +25,15 @@
 
 // Allocator
 #define __MEMORY_VERIFICATION__
-#define __MEMORY_LOGGING__
-// #define __MEMORY_INVESTIGATION__
-// #define __MEMORY_INVESTIGATION_LOGGING__
+#define __MEMORY_LOGGING__ 0
+#define __MEMORY_INVESTIGATION__
 // #define __MEMORY_DANGLING_POINTER_CHECK__
 // #define __MEMORY_BUFFER_UNDERRUN_CHECK__
 // #define __USE_SYSTEM_MALLOC__
 
 // Log
 #define LOG_ENABLED
-// #define LOG_FORCE_IMMEDIATE
+#define LOG_FORCE_IMMEDIATE
 
 // Profile
 #define PROFILE_ENABLED

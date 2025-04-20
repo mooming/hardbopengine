@@ -3,7 +3,7 @@
 #include "MonotonicAllocator.h"
 
 #include "Config/BuildConfig.h"
-#include "Config/EngineSettings.h"
+#include "Config/EngineConfig.h"
 #include "MemoryManager.h"
 #include "System/Debug.h"
 
@@ -92,7 +92,7 @@ void MonotonicAllocator::Deallocate(const Pointer ptr, TSize requested)
         return;
     }
 
-#ifdef __MEMORY_LOGGING__
+#if __MEMORY_LOGGING__
     mmgr.Log(ELogLevel::Verbose, [this, &mmgr, ptr, requested](auto& lout) {
         lout << mmgr.GetName(id) << '[' << static_cast<int>(GetID())
              << "] Deallocate call shall be ignored. ptr = "

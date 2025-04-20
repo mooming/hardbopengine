@@ -3,7 +3,7 @@
 #pragma once
 
 #include "Config/BuildConfig.h"
-#include "Config/EngineSettings.h"
+#include "Config/EngineConfig.h"
 #include "Debug.h"
 #include "Log/Logger.h"
 #include "OSAL/SourceLocation.h"

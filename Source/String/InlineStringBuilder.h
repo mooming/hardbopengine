@@ -213,6 +213,7 @@ namespace HE
 
             Assert(written >= 0);
             length = std::min(LastIndex, length + written);
+            buffer[length] = '\0';
 
             return *this;
         }
@@ -224,6 +225,7 @@ namespace HE
 
             Assert(written >= 0);
             length = std::min(LastIndex, length + written);
+            buffer[length] = '\0';
 
             return *this;
         }
@@ -235,6 +237,7 @@ namespace HE
 
             Assert(written >= 0);
             length = std::min(LastIndex, length + written);
+            buffer[length] = '\0';
 
             return *this;
         }
@@ -246,6 +249,7 @@ namespace HE
 
             Assert(written >= 0);
             length = std::min(LastIndex, length + written);
+            buffer[length] = '\0';
 
             return *this;
         }
@@ -257,6 +261,7 @@ namespace HE
 
             Assert(written >= 0);
             length = std::min(LastIndex, length + written);
+            buffer[length] = '\0';
 
             return *this;
         }
@@ -268,6 +273,7 @@ namespace HE
 
             Assert(written >= 0);
             length = std::min(LastIndex, length + written);
+            buffer[length] = '\0';
 
             return *this;
         }
@@ -279,6 +285,7 @@ namespace HE
 
             Assert(written >= 0);
             length = std::min(LastIndex, length + written);
+            buffer[length] = '\0';
 
             return *this;
         }
@@ -290,6 +297,7 @@ namespace HE
 
             Assert(written >= 0);
             length = std::min(LastIndex, length + written);
+            buffer[length] = '\0';
 
             return *this;
         }
