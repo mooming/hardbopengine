@@ -4,3 +4,6 @@
 [submodule "Extern/SDL"]
 	path = Extern/SDL
 	url = https://github.com/libsdl-org/SDL.git
+[submodule "Extern/GLFW"]
+	path = Extern/GLFW
+	url = git@github.com:glfw/glfw.git
