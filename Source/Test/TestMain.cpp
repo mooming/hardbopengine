@@ -1,7 +1,7 @@
 // Created by mooming.go@gmail.com
 
-#include "Engine.h"
-#include "Test/UnitTestCollection.h"
+#include "../Engine/Engine.h"
+#include "UnitTestCollection.h"
 
 int main(int argc, const char* argv[])
 {

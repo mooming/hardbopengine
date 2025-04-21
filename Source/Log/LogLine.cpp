@@ -2,8 +2,8 @@
 
 #include "LogLine.h"
 
+#include "../Engine/Engine.h"
 #include "Config/BuildConfig.h"
-#include "Engine.h"
 #include "OSAL/Intrinsic.h"
 #include "String/StringUtil.h"
 #include "System/Debug.h"

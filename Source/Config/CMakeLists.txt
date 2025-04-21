@@ -13,6 +13,7 @@ add_compile_definitions (__TEST__ __UNIT_TEST__ )
 include_directories ( ${CMAKE_SOURCE_DIR}
  ${CMAKE_SOURCE_DIR}/include
  ${CMAKE_SOURCE_DIR}/Source
+ ${CMAKE_SOURCE_DIR}/External
  )
 link_directories (${CMAKE_SOURCE_DIR}/lib)
 
@@ -21,12 +22,12 @@ add_library (Config STATIC
  ConfigFile.cpp
  ConfigParam.cpp
  ConfigSystem.cpp
-        EngineConfig.cpp
+ EngineConfig.cpp
  BuildConfig.h
  ConfigFile.h
  ConfigParam.h
  ConfigSystem.h
-        EngineConfig.h
+ EngineConfig.h
 )
 
 if (APPLE)

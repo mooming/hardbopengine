@@ -2,12 +2,12 @@
 
 #pragma once
 
-#include "Log/LogLevel.h"
-#include "Log/Logger.h"
-#include "Memory/MemoryManager.h"
-#include "Resource/ResourceManager.h"
-#include "System/SystemStatistics.h"
-#include "System/TaskSystem.h"
+#include "../Log/LogLevel.h"
+#include "../Log/Logger.h"
+#include "../Memory/MemoryManager.h"
+#include "../Resource/ResourceManager.h"
+#include "../System/SystemStatistics.h"
+#include "../System/TaskSystem.h"
 #include <fstream>
 
 namespace HE

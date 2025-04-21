@@ -2,10 +2,10 @@
 
 #include "Logger.h"
 
+#include "../Engine/Engine.h"
 #include "Config/BuildConfig.h"
 #include "Config/ConfigParam.h"
 #include "Config/EngineConfig.h"
-#include "Engine.h"
 #include "LogUtil.h"
 #include "Memory/AllocatorScope.h"
 #include "Memory/InlinePoolAllocator.h"

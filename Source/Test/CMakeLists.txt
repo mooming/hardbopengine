@@ -9,10 +9,11 @@ else (MSVC)
 	add_compile_options (-Wall -Werror)
 endif (MSVC)
 
-add_compile_definitions (__TEST__ __UNIT_TEST__ )
+add_compile_definitions (__TEST__ __UNIT_TEST__ __UNIT_TEST__ )
 include_directories ( ${CMAKE_SOURCE_DIR}
  ${CMAKE_SOURCE_DIR}/include
  ${CMAKE_SOURCE_DIR}/Source
+ ${CMAKE_SOURCE_DIR}/External
  )
 link_directories (${CMAKE_SOURCE_DIR}/lib)
 
@@ -20,6 +21,7 @@ link_directories (${CMAKE_SOURCE_DIR}/lib)
 add_library (Test STATIC 
  TestCollection.cpp
  TestEnv.cpp
+ TestMain.cpp
  UnitTestCollection.cpp
  TestCollection.h
  TestEnv.h
@@ -32,18 +34,5 @@ endif (APPLE)
 
 install (TARGETS Test DESTINATION ${CMAKE_SOURCE_DIR}/lib)
 
-
-target_link_libraries (Test Config Container HSTL Log Math Memory OSAL Resource String System)
-
-add_dependencies (Test Config)
-add_dependencies (Test Container)
-add_dependencies (Test HSTL)
-add_dependencies (Test Log)
-add_dependencies (Test Math)
-add_dependencies (Test Memory)
-add_dependencies (Test OSAL)
-add_dependencies (Test Resource)
-add_dependencies (Test String)
-add_dependencies (Test System)
 
 

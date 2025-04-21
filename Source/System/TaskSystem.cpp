@@ -695,7 +695,7 @@ namespace HE
 } // namespace HE
 
 #ifdef __UNIT_TEST__
-#include "Engine.h"
+#include "../Engine/Engine.h"
 #include "OSAL/Intrinsic.h"
 #include "ScopedTime.h"
 #include "Test/TestCollection.h"

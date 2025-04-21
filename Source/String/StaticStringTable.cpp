@@ -2,8 +2,8 @@
 
 #include "StaticStringTable.h"
 
+#include "../Engine/Engine.h"
 #include "Config/EngineConfig.h"
-#include "Engine.h"
 #include "Log/Logger.h"
 #include "Memory/AllocatorScope.h"
 #include "StringUtil.h"

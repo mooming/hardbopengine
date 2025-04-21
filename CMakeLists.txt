@@ -13,9 +13,11 @@ add_compile_definitions (__TEST__ __UNIT_TEST__ )
 include_directories ( ${CMAKE_SOURCE_DIR}
  ${CMAKE_SOURCE_DIR}/include
  ${CMAKE_SOURCE_DIR}/Source
+ ${CMAKE_SOURCE_DIR}/External
  )
 link_directories (${CMAKE_SOURCE_DIR}/lib)
 
+add_subdirectory (Applications)
 add_subdirectory (Source)
 
 

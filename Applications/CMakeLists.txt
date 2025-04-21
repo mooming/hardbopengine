@@ -1,5 +1,5 @@
 cmake_minimum_required (VERSION 3.12)
-project (HEngineBase)
+project (Applications)
 
 set (CMAKE_CXX_STANDARD 20)
 
@@ -17,18 +17,7 @@ include_directories ( ${CMAKE_SOURCE_DIR}
  )
 link_directories (${CMAKE_SOURCE_DIR}/lib)
 
-add_subdirectory (Config)
-add_subdirectory (Container)
-add_subdirectory (Engine)
-add_subdirectory (HSTL)
-add_subdirectory (Log)
-add_subdirectory (Math)
-add_subdirectory (Memory)
-add_subdirectory (OSAL)
-add_subdirectory (Resource)
-add_subdirectory (String)
-add_subdirectory (System)
-add_subdirectory (Test)
+add_subdirectory (EngineTest)
 
 
 
