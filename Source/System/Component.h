@@ -7,44 +7,44 @@
 
 namespace HE
 {
-    class Component
+class Component
+{
+    using State = ComponentState;
+
+protected:
+    State state;
+    String name;
+
+public:
+    virtual void Init() = 0;
+    virtual void Update(const float deltaTime) = 0;
+    virtual void Release() = 0;
+
+    virtual void OnEnable() = 0;
+    virtual void OnDisable() = 0;
+
+public:
+    inline Component(const char* name)
+        : state(State::NONE),
+          name(name)
     {
-        using State = ComponentState;
+    }
 
-    protected:
-        State state;
-        String name;
+    virtual ~Component() = default;
 
-    public:
-        virtual void Init() = 0;
-        virtual void Update(const float deltaTime) = 0;
-        virtual void Release() = 0;
+    inline State GetState() const { return state; }
 
-        virtual void OnEnable() = 0;
-        virtual void OnDisable() = 0;
+    inline void SetState(State state) { Component::state = state; }
 
-    public:
-        inline Component(const char* name)
-            : state(State::NONE),
-              name(name)
-        {
-        }
+    inline const String& GetName() const { return name; }
 
-        virtual ~Component() = default;
+    inline bool IsEnabled() const { return state == State::ALIVE; }
 
-        inline State GetState() const { return state; }
+    inline void SetEnable(bool isEnabled)
+    {
+        SetState(isEnabled ? State::ALIVE : State::SLEEP);
+    }
 
-        inline void SetState(State state) { Component::state = state; }
-
-        inline const String& GetName() const { return name; }
-
-        inline bool IsEnabled() const { return state == State::ALIVE; }
-
-        inline void SetEnable(bool isEnabled)
-        {
-            SetState(isEnabled ? State::ALIVE : State::SLEEP);
-        }
-
-        inline void Destroy() { SetState(State::DEAD); }
-    };
+    inline void Destroy() { SetState(State::DEAD); }
+};
 } // namespace HE

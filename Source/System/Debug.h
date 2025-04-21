@@ -8,10 +8,10 @@
 
 namespace HE
 {
-    template <typename T>
-    using TDebugVariable = const T;
+template <typename T>
+using TDebugVariable = const T;
 
-    void FlushLogs();
+void FlushLogs();
 } // namespace HE
 
 #ifdef __DEBUG__
@@ -22,34 +22,34 @@ namespace HE
 namespace HE
 {
 
-    inline void Assert(bool shouldBeTrue)
+inline void Assert(bool shouldBeTrue)
+{
+    if (likely(shouldBeTrue))
     {
-        if (likely(shouldBeTrue))
-        {
-            return;
-        }
-
-        FlushLogs();
-        PrintArgs("[Assert] Please check it.");
-
-        debugBreak();
-        std::abort();
+        return;
     }
 
-    template <typename... Types>
-    inline void Assert(bool shouldBeTrue, Types&&... args)
+    FlushLogs();
+    PrintArgs("[Assert] Please check it.");
+
+    debugBreak();
+    std::abort();
+}
+
+template <typename... Types>
+inline void Assert(bool shouldBeTrue, Types&&... args)
+{
+    if (likely(shouldBeTrue))
     {
-        if (likely(shouldBeTrue))
-        {
-            return;
-        }
-
-        FlushLogs();
-        PrintArgs("[Assert] ", std::forward<Types>(args)...);
-
-        debugBreak();
-        std::abort();
+        return;
     }
+
+    FlushLogs();
+    PrintArgs("[Assert] ", std::forward<Types>(args)...);
+
+    debugBreak();
+    std::abort();
+}
 } // namespace HE
 
 #else // __DEBUG__
@@ -59,43 +59,43 @@ namespace HE
 
 namespace HE
 {
-    inline void Assert(bool)
-    {
-    }
+inline void Assert(bool)
+{
+}
 
-    template <typename... Types>
-    inline void Assert(bool, const char*, Types&&...)
-    {
-    }
+template <typename... Types>
+inline void Assert(bool, const char*, Types&&...)
+{
+}
 } // namespace HE
 #endif // __DEBUG__
 
 namespace HE
 {
-    inline void FatalAssert(bool shouldBeTrue)
+inline void FatalAssert(bool shouldBeTrue)
+{
+    if (likely(shouldBeTrue))
     {
-        if (likely(shouldBeTrue))
-        {
-            return;
-        }
-
-        FlushLogs();
-        PrintArgs("[FatalAssert] Please check it.");
-        debugBreak();
-        std::abort();
+        return;
     }
 
-    template <typename... Types>
-    inline void FatalAssert(bool shouldBeTrue, Types&&... args)
-    {
-        if (likely(shouldBeTrue))
-        {
-            return;
-        }
+    FlushLogs();
+    PrintArgs("[FatalAssert] Please check it.");
+    debugBreak();
+    std::abort();
+}
 
-        FlushLogs();
-        PrintArgs("[FatalAssert] ", std::forward<Types>(args)...);
-        debugBreak();
-        std::abort();
+template <typename... Types>
+inline void FatalAssert(bool shouldBeTrue, Types&&... args)
+{
+    if (likely(shouldBeTrue))
+    {
+        return;
     }
+
+    FlushLogs();
+    PrintArgs("[FatalAssert] ", std::forward<Types>(args)...);
+    debugBreak();
+    std::abort();
+}
 } // namespace HE

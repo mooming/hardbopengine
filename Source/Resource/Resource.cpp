@@ -5,12 +5,12 @@
 namespace HE
 {
 
-    Resource::Resource()
-    {
-    }
+Resource::Resource()
+{
+}
 
-    Resource::~Resource()
-    {
-    }
+Resource::~Resource()
+{
+}
 
 } // namespace HE

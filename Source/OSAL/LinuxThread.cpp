@@ -8,7 +8,6 @@
 #include <sched.h>
 #include <sys/resource.h>
 
-
 int OS::GetCPUIndex()
 {
     return sched_getcpu();

@@ -8,11 +8,11 @@
 namespace HE
 {
 
-    class Resource final
-    {
-    public:
-        Resource();
-        ~Resource();
-    };
+class Resource final
+{
+public:
+    Resource();
+    ~Resource();
+};
 
 } // namespace HE

@@ -6,5 +6,5 @@
 
 namespace HE
 {
-    template class ScopedLock<std::mutex>;
+template class ScopedLock<std::mutex>;
 } // namespace HE

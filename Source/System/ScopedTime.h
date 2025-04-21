@@ -6,30 +6,30 @@
 
 namespace HE
 {
-    namespace Time
+namespace Time
+{
+
+class ScopedTime final
+{
+private:
+    TDuration& duration;
+    TTime start;
+
+public:
+    ScopedTime(const ScopedTime&) = delete;
+
+    ScopedTime(TDuration& outDeltaTime)
+        : duration(outDeltaTime),
+          start(TStopWatch::now())
     {
+    }
 
-        class ScopedTime final
-        {
-        private:
-            TDuration& duration;
-            TTime start;
+    ~ScopedTime()
+    {
+        TTime end = TStopWatch::now();
+        duration = end - start;
+    }
+};
 
-        public:
-            ScopedTime(const ScopedTime&) = delete;
-
-            ScopedTime(TDuration& outDeltaTime)
-                : duration(outDeltaTime),
-                  start(TStopWatch::now())
-            {
-            }
-
-            ~ScopedTime()
-            {
-                TTime end = TStopWatch::now();
-                duration = end - start;
-            }
-        };
-
-    } // namespace Time
+} // namespace Time
 } // namespace HE

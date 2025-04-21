@@ -7,26 +7,26 @@
 namespace OS
 {
 
-    struct FileHandle final
+struct FileHandle final
+{
+public:
+    union
     {
-    public:
-        union
-        {
-            void* data;
-            int fd;
-        };
-
-    public:
-        FileHandle(const FileHandle&) = delete;
-
-    public:
-        FileHandle();
-        FileHandle(FileHandle&& rhs);
-        ~FileHandle();
-
-        size_t GetFileSize() const;
-        bool IsValid() const;
-        void Invalidate();
+        void* data;
+        int fd;
     };
+
+public:
+    FileHandle(const FileHandle&) = delete;
+
+public:
+    FileHandle();
+    FileHandle(FileHandle&& rhs);
+    ~FileHandle();
+
+    size_t GetFileSize() const;
+    bool IsValid() const;
+    void Invalidate();
+};
 
 } // namespace OS

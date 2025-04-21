@@ -14,340 +14,340 @@
 namespace HE
 {
 
-    /**
-     InlineStringBuilder
-     A buffer designed for String Building.
-     It declares a fixed size static buffer. It doesn't handle a logner text
-     than its buffer size. It'll drop letters exceeding its limit.
-     */
-    template <size_t BufferSize = 1024, class TChar = char>
-    class InlineStringBuilder final
+/**
+ InlineStringBuilder
+ A buffer designed for String Building.
+ It declares a fixed size static buffer. It doesn't handle a logner text
+ than its buffer size. It'll drop letters exceeding its limit.
+ */
+template <size_t BufferSize = 1024, class TChar = char>
+class InlineStringBuilder final
+{
+private:
+    static_assert(BufferSize > 0, "BufferSize should be greater than 0.");
+    static constexpr size_t LastIndex = BufferSize - 1;
+    using This = InlineStringBuilder;
+
+private:
+    size_t length;
+    TChar buffer[BufferSize];
+
+public:
+    InlineStringBuilder()
+        : length(0)
     {
-    private:
-        static_assert(BufferSize > 0, "BufferSize should be greater than 0.");
-        static constexpr size_t LastIndex = BufferSize - 1;
-        using This = InlineStringBuilder;
+        buffer[0] = '\0';
+        buffer[LastIndex] = '\0';
+    }
 
-    private:
-        size_t length;
-        TChar buffer[BufferSize];
+    ~InlineStringBuilder() = default;
 
-    public:
-        InlineStringBuilder()
-            : length(0)
+    void Clear()
+    {
+        length = 0;
+        buffer[0] = '\0';
+        buffer[LastIndex] = '\0';
+    }
+
+    auto c_str() const { return static_cast<const char*>(buffer); }
+
+    auto Size() const { return length; }
+
+    operator const TChar*() const { return c_str(); }
+
+    This& Hex(uint8_t value)
+    {
+        auto print = [&]() {
+            const size_t remained = BufferSize - length;
+
+            if (std::isprint(value))
+            {
+                return snprintf(&buffer[length], remained, "%c", value);
+            }
+
+            return snprintf(&buffer[length], remained, "%02x", value);
+        };
+
+        int written = print();
+
+        Assert(written >= 0);
+        length = std::min(LastIndex, length + written);
+
+        return *this;
+    }
+
+    This& operator<<(nullptr_t) { return *this << "Null"; }
+
+    This& operator<<(bool value)
+    {
+        if (value)
         {
-            buffer[0] = '\0';
-            buffer[LastIndex] = '\0';
+            return *this << "True";
         }
 
-        ~InlineStringBuilder() = default;
+        return *this << "False";
+    }
 
-        void Clear()
+    This& operator<<(char ch)
+    {
+        if (length >= LastIndex)
         {
-            length = 0;
-            buffer[0] = '\0';
-            buffer[LastIndex] = '\0';
-        }
-
-        auto c_str() const { return static_cast<const char*>(buffer); }
-
-        auto Size() const { return length; }
-
-        operator const TChar*() const { return c_str(); }
-
-        This& Hex(uint8_t value)
-        {
-            auto print = [&]() {
-                const size_t remained = BufferSize - length;
-
-                if (std::isprint(value))
-                {
-                    return snprintf(&buffer[length], remained, "%c", value);
-                }
-
-                return snprintf(&buffer[length], remained, "%02x", value);
-            };
-
-            int written = print();
-
-            Assert(written >= 0);
-            length = std::min(LastIndex, length + written);
-
             return *this;
         }
 
-        This& operator<<(nullptr_t) { return *this << "Null"; }
+        buffer[length++] = ch;
 
-        This& operator<<(bool value)
+        Assert(length <= LastIndex);
+        buffer[length] = '\0';
+
+        return *this;
+    }
+
+    This& operator<<(unsigned char value)
+    {
+        const size_t remained = BufferSize - length;
+        auto written = snprintf(&buffer[length], remained, "%u", value);
+
+        Assert(written >= 0);
+        length = std::min(LastIndex, length + written);
+
+        return *this;
+    }
+
+    This& operator<<(const char* str)
+    {
+        if (unlikely(str == nullptr))
         {
-            if (value)
-            {
-                return *this << "True";
-            }
-
-            return *this << "False";
+            return *this << nullptr;
         }
 
-        This& operator<<(char ch)
+        auto len = StringUtil::StrLen(str);
+        size_t newLength = length + len;
+
+        if (unlikely(newLength >= LastIndex))
         {
-            if (length >= LastIndex)
-            {
-                return *this;
-            }
-
-            buffer[length++] = ch;
-
+            newLength = LastIndex;
             Assert(length <= LastIndex);
-            buffer[length] = '\0';
+            len = LastIndex - length;
+        }
 
+        if (unlikely(len <= 0))
+        {
             return *this;
         }
 
-        This& operator<<(unsigned char value)
+        memcpy((void*)(&buffer[length]), str, len);
+        length = newLength;
+        buffer[length] = '\0';
+
+        return *this;
+    }
+
+    template <size_t N>
+    This& operator<<(char str[N])
+    {
+        if (N == 0)
         {
-            const size_t remained = BufferSize - length;
-            auto written = snprintf(&buffer[length], remained, "%u", value);
-
-            Assert(written >= 0);
-            length = std::min(LastIndex, length + written);
-
             return *this;
         }
 
-        This& operator<<(const char* str)
+        auto len = StringUtil::StrLen(str, N);
+        size_t newLength = length + len;
+
+        if (unlikely(newLength >= LastIndex))
         {
-            if (unlikely(str == nullptr))
-            {
-                return *this << nullptr;
-            }
+            newLength = LastIndex;
+            Assert(length <= LastIndex);
+            len = LastIndex - length;
+        }
 
-            auto len = StringUtil::StrLen(str);
-            size_t newLength = length + len;
-
-            if (unlikely(newLength >= LastIndex))
-            {
-                newLength = LastIndex;
-                Assert(length <= LastIndex);
-                len = LastIndex - length;
-            }
-
-            if (unlikely(len <= 0))
-            {
-                return *this;
-            }
-
-            memcpy((void*)(&buffer[length]), str, len);
-            length = newLength;
-            buffer[length] = '\0';
-
+        if (unlikely(len <= 0))
+        {
             return *this;
         }
 
-        template <size_t N>
-        This& operator<<(char str[N])
+        memcpy((void*)(&buffer[length]), &str[0], len);
+        length = newLength;
+        buffer[length] = '\0';
+
+        return *this;
+    }
+
+    This& operator<<(const std::string_view& str)
+    {
+        size_t len = str.length();
+        size_t newLength = length + len;
+
+        if (unlikely(newLength >= LastIndex))
         {
-            if (N == 0)
-            {
-                return *this;
-            }
+            newLength = LastIndex;
+            Assert(length <= LastIndex);
+            len = LastIndex - length;
+        }
 
-            auto len = StringUtil::StrLen(str, N);
-            size_t newLength = length + len;
-
-            if (unlikely(newLength >= LastIndex))
-            {
-                newLength = LastIndex;
-                Assert(length <= LastIndex);
-                len = LastIndex - length;
-            }
-
-            if (unlikely(len <= 0))
-            {
-                return *this;
-            }
-
-            memcpy((void*)(&buffer[length]), &str[0], len);
-            length = newLength;
-            buffer[length] = '\0';
-
+        if (unlikely(len <= 0))
+        {
             return *this;
         }
 
-        This& operator<<(const std::string_view& str)
-        {
-            size_t len = str.length();
-            size_t newLength = length + len;
+        memcpy((void*)(&buffer[length]), str.data(), len);
 
-            if (unlikely(newLength >= LastIndex))
-            {
-                newLength = LastIndex;
-                Assert(length <= LastIndex);
-                len = LastIndex - length;
-            }
+        length = newLength;
+        buffer[length] = '\0';
 
-            if (unlikely(len <= 0))
-            {
-                return *this;
-            }
+        return *this;
+    }
 
-            memcpy((void*)(&buffer[length]), str.data(), len);
+    template <class CharT, class Traits, class Allocator>
+    This& operator<<(const std::basic_string<CharT, Traits, Allocator>& str)
+    {
+        return *this << static_cast<std::string_view>(str);
+    }
 
-            length = newLength;
-            buffer[length] = '\0';
+    This& operator<<(StaticString str) { return *this << str.c_str(); }
 
-            return *this;
-        }
+    This& operator<<(short value)
+    {
+        const size_t remained = BufferSize - length;
+        auto written = snprintf(&buffer[length], remained, "%d", value);
 
-        template <class CharT, class Traits, class Allocator>
-        This& operator<<(const std::basic_string<CharT, Traits, Allocator>& str)
-        {
-            return *this << static_cast<std::string_view>(str);
-        }
+        Assert(written >= 0);
+        length = std::min(LastIndex, length + written);
+        buffer[length] = '\0';
 
-        This& operator<<(StaticString str) { return *this << str.c_str(); }
+        return *this;
+    }
 
-        This& operator<<(short value)
-        {
-            const size_t remained = BufferSize - length;
-            auto written = snprintf(&buffer[length], remained, "%d", value);
+    This& operator<<(unsigned short value)
+    {
+        const size_t remained = BufferSize - length;
+        auto written = snprintf(&buffer[length], remained, "%u", value);
 
-            Assert(written >= 0);
-            length = std::min(LastIndex, length + written);
-            buffer[length] = '\0';
+        Assert(written >= 0);
+        length = std::min(LastIndex, length + written);
+        buffer[length] = '\0';
 
-            return *this;
-        }
+        return *this;
+    }
 
-        This& operator<<(unsigned short value)
-        {
-            const size_t remained = BufferSize - length;
-            auto written = snprintf(&buffer[length], remained, "%u", value);
+    This& operator<<(int value)
+    {
+        const size_t remained = BufferSize - length;
+        auto written = snprintf(&buffer[length], remained, "%d", value);
 
-            Assert(written >= 0);
-            length = std::min(LastIndex, length + written);
-            buffer[length] = '\0';
+        Assert(written >= 0);
+        length = std::min(LastIndex, length + written);
+        buffer[length] = '\0';
 
-            return *this;
-        }
+        return *this;
+    }
 
-        This& operator<<(int value)
-        {
-            const size_t remained = BufferSize - length;
-            auto written = snprintf(&buffer[length], remained, "%d", value);
+    This& operator<<(unsigned int value)
+    {
+        const size_t remained = BufferSize - length;
+        auto written = snprintf(&buffer[length], remained, "%u", value);
 
-            Assert(written >= 0);
-            length = std::min(LastIndex, length + written);
-            buffer[length] = '\0';
+        Assert(written >= 0);
+        length = std::min(LastIndex, length + written);
+        buffer[length] = '\0';
 
-            return *this;
-        }
+        return *this;
+    }
 
-        This& operator<<(unsigned int value)
-        {
-            const size_t remained = BufferSize - length;
-            auto written = snprintf(&buffer[length], remained, "%u", value);
+    This& operator<<(long value)
+    {
+        const size_t remained = BufferSize - length;
+        auto written = snprintf(&buffer[length], remained, "%ld", value);
 
-            Assert(written >= 0);
-            length = std::min(LastIndex, length + written);
-            buffer[length] = '\0';
+        Assert(written >= 0);
+        length = std::min(LastIndex, length + written);
+        buffer[length] = '\0';
 
-            return *this;
-        }
+        return *this;
+    }
 
-        This& operator<<(long value)
-        {
-            const size_t remained = BufferSize - length;
-            auto written = snprintf(&buffer[length], remained, "%ld", value);
+    This& operator<<(unsigned long value)
+    {
+        const size_t remained = BufferSize - length;
+        auto written = snprintf(&buffer[length], remained, "%lu", value);
 
-            Assert(written >= 0);
-            length = std::min(LastIndex, length + written);
-            buffer[length] = '\0';
+        Assert(written >= 0);
+        length = std::min(LastIndex, length + written);
+        buffer[length] = '\0';
 
-            return *this;
-        }
+        return *this;
+    }
 
-        This& operator<<(unsigned long value)
-        {
-            const size_t remained = BufferSize - length;
-            auto written = snprintf(&buffer[length], remained, "%lu", value);
+    This& operator<<(long long value)
+    {
+        const size_t remained = BufferSize - length;
+        auto written = snprintf(&buffer[length], remained, "%lld", value);
 
-            Assert(written >= 0);
-            length = std::min(LastIndex, length + written);
-            buffer[length] = '\0';
+        Assert(written >= 0);
+        length = std::min(LastIndex, length + written);
+        buffer[length] = '\0';
 
-            return *this;
-        }
+        return *this;
+    }
 
-        This& operator<<(long long value)
-        {
-            const size_t remained = BufferSize - length;
-            auto written = snprintf(&buffer[length], remained, "%lld", value);
+    This& operator<<(unsigned long long value)
+    {
+        const size_t remained = BufferSize - length;
+        auto written = snprintf(&buffer[length], remained, "%llu", value);
 
-            Assert(written >= 0);
-            length = std::min(LastIndex, length + written);
-            buffer[length] = '\0';
+        Assert(written >= 0);
+        length = std::min(LastIndex, length + written);
+        buffer[length] = '\0';
 
-            return *this;
-        }
+        return *this;
+    }
 
-        This& operator<<(unsigned long long value)
-        {
-            const size_t remained = BufferSize - length;
-            auto written = snprintf(&buffer[length], remained, "%llu", value);
+    This& operator<<(float value)
+    {
+        const size_t remained = BufferSize - length;
+        auto written = snprintf(&buffer[length], remained, "%f", value);
 
-            Assert(written >= 0);
-            length = std::min(LastIndex, length + written);
-            buffer[length] = '\0';
+        Assert(written >= 0);
+        length = std::min(LastIndex, length + written);
 
-            return *this;
-        }
+        return *this;
+    }
 
-        This& operator<<(float value)
-        {
-            const size_t remained = BufferSize - length;
-            auto written = snprintf(&buffer[length], remained, "%f", value);
+    This& operator<<(double value)
+    {
+        const size_t remained = BufferSize - length;
+        auto written = snprintf(&buffer[length], remained, "%lf", value);
 
-            Assert(written >= 0);
-            length = std::min(LastIndex, length + written);
+        Assert(written >= 0);
+        length = std::min(LastIndex, length + written);
 
-            return *this;
-        }
+        return *this;
+    }
 
-        This& operator<<(double value)
-        {
-            const size_t remained = BufferSize - length;
-            auto written = snprintf(&buffer[length], remained, "%lf", value);
+    This& operator<<(long double value)
+    {
+        const size_t remained = BufferSize - length;
+        auto written = snprintf(&buffer[length], remained, "%Le", value);
 
-            Assert(written >= 0);
-            length = std::min(LastIndex, length + written);
+        Assert(written >= 0);
+        length = std::min(LastIndex, length + written);
 
-            return *this;
-        }
+        return *this;
+    }
 
-        This& operator<<(long double value)
-        {
-            const size_t remained = BufferSize - length;
-            auto written = snprintf(&buffer[length], remained, "%Le", value);
+    This& operator<<(void* value)
+    {
+        const size_t remained = BufferSize - length;
+        auto written = snprintf(&buffer[length], remained, "%p", value);
 
-            Assert(written >= 0);
-            length = std::min(LastIndex, length + written);
+        Assert(written >= 0);
+        length = std::min(LastIndex, length + written);
 
-            return *this;
-        }
+        return *this;
+    }
 
-        This& operator<<(void* value)
-        {
-            const size_t remained = BufferSize - length;
-            auto written = snprintf(&buffer[length], remained, "%p", value);
-
-            Assert(written >= 0);
-            length = std::min(LastIndex, length + written);
-
-            return *this;
-        }
-
-        This& operator<<(EndLine) { return *this << '\n'; }
-    };
+    This& operator<<(EndLine) { return *this << '\n'; }
+};
 
 } // namespace HE
 
@@ -356,17 +356,17 @@ namespace HE
 
 namespace HE
 {
-    class InlineStringBuilderTest : public TestCollection
+class InlineStringBuilderTest : public TestCollection
+{
+public:
+    InlineStringBuilderTest()
+        : TestCollection("InlineStringBuilderTest")
     {
-    public:
-        InlineStringBuilderTest()
-            : TestCollection("InlineStringBuilderTest")
-        {
-        }
+    }
 
-    protected:
-        virtual void Prepare() override;
-    };
+protected:
+    virtual void Prepare() override;
+};
 } // namespace HE
 
 #endif //__UNIT_TEST__

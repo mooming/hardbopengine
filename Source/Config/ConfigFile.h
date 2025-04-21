@@ -9,32 +9,32 @@
 namespace HE
 {
 
-    // ConfigFile represent a single config file.
-    // Both key and value are string data.
-    class ConfigFile final
-    {
-    public:
-        using TString = HSTL::HString;
-        using TValue = std::optional<TString>;
-        using TMap = HSTL::HUnorderedMap<TString, TString>;
+// ConfigFile represent a single config file.
+// Both key and value are string data.
+class ConfigFile final
+{
+public:
+    using TString = HSTL::HString;
+    using TValue = std::optional<TString>;
+    using TMap = HSTL::HUnorderedMap<TString, TString>;
 
-        bool isValid;
-        TMap keymap;
+    bool isValid;
+    TMap keymap;
 
-    public:
-        ConfigFile(const char* path);
-        ConfigFile(const char* path, const char* fileName);
-        ~ConfigFile() = default;
+public:
+    ConfigFile(const char* path);
+    ConfigFile(const char* path, const char* fileName);
+    ~ConfigFile() = default;
 
-        TValue GetValue(const TString& key) const;
-        TString GetValue(const TString& key, const TString& defaultValue) const;
+    TValue GetValue(const TString& key) const;
+    TString GetValue(const TString& key, const TString& defaultValue) const;
 
-        void ForEach(std::function<void(const TMap::value_type&)> func) const;
+    void ForEach(std::function<void(const TMap::value_type&)> func) const;
 
-        inline auto IsValid() const { return isValid; }
+    inline auto IsValid() const { return isValid; }
 
-    private:
-        void Parse(const char* fileName);
-    };
+private:
+    void Parse(const char* fileName);
+};
 
 } // namespace HE

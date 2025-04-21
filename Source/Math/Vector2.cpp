@@ -4,7 +4,7 @@
 
 namespace HE
 {
-    template class Vector2<float>;
+template class Vector2<float>;
 }
 
 #ifdef __UNIT_TEST__

@@ -7,46 +7,45 @@
 
 namespace HE
 {
-    HUnorderedMapTest::HUnorderedMapTest()
-        : TestCollection(StringUtil::ToCompactClassName(__PRETTY_FUNCTION__))
-    {
-    }
+HUnorderedMapTest::HUnorderedMapTest()
+    : TestCollection(StringUtil::ToCompactClassName(__PRETTY_FUNCTION__))
+{
+}
 
-    void HUnorderedMapTest::Prepare()
-    {
-        using namespace HSTL;
+void HUnorderedMapTest::Prepare()
+{
+    using namespace HSTL;
 
-        AddTest(
-            "Default Construction", [](auto&) { HUnorderedMap<int, int> map; });
+    AddTest("Default Construction", [](auto&) { HUnorderedMap<int, int> map; });
 
-        AddTest("Insert Item", [this](auto& ls) {
-            HUnorderedMap<int, int> map;
-            map[1] = 2;
-            map[2] = 1;
+    AddTest("Insert Item", [this](auto& ls) {
+        HUnorderedMap<int, int> map;
+        map[1] = 2;
+        map[2] = 1;
 
-            ls << "map[1] = " << map[1] << lf;
-            ls << "map[2] = " << map[2] << lf;
-            ls << "map[3] = " << map[3] << lf;
+        ls << "map[1] = " << map[1] << lf;
+        ls << "map[2] = " << map[2] << lf;
+        ls << "map[3] = " << map[3] << lf;
 
-            if (map[1] != 2)
-            {
-                ls << "Invalid value, map[1] = " << map[1]
-                   << ", but 2 is expected." << lferr;
-            }
+        if (map[1] != 2)
+        {
+            ls << "Invalid value, map[1] = " << map[1] << ", but 2 is expected."
+               << lferr;
+        }
 
-            if (map[2] != 1)
-            {
-                ls << "Invalid value, map[2] = " << map[2]
-                   << ", but 1 is expected." << lferr;
-            }
+        if (map[2] != 1)
+        {
+            ls << "Invalid value, map[2] = " << map[2] << ", but 1 is expected."
+               << lferr;
+        }
 
-            if (map[3] != 0)
-            {
-                ls << "Invalid value, map[3] = " << map[3]
-                   << ", but 0 is expected." << lferr;
-            }
-        });
-    }
+        if (map[3] != 0)
+        {
+            ls << "Invalid value, map[3] = " << map[3] << ", but 0 is expected."
+               << lferr;
+        }
+    });
+}
 
 } // namespace HE
 #endif //__UNIT_TEST__

@@ -10,7 +10,18 @@ int main(int argc, const char* argv[])
 
     hengine.Initialize(argc, argv);
 
-    Test::RunUnitTests();
+    auto testFunc = [](std::size_t, std::size_t)
+    {
+        Test::RunUnitTests();
+
+        auto& engine = HE::Engine::Get();
+        engine.Stop();
+    };
+
+    auto& taskSys = hengine.GetTaskSystem();
+    auto streamIndex = taskSys.GetMainTaskStreamIndex();
+    HE::StaticString taskName("TestMain");
+    taskSys.DispatchTask(taskName, testFunc, streamIndex);
 
     hengine.Run();
 

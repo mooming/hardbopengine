@@ -9,119 +9,119 @@
 namespace HE
 {
 
-    TaskHandle::TaskHandle()
-        : key(InvalidKey),
-          taskIndex(-1)
+TaskHandle::TaskHandle()
+    : key(InvalidKey),
+      taskIndex(-1)
+{
+}
+
+TaskHandle::TaskHandle(TKey key, TIndex taskIndex, TReleaser releaser)
+    : key(key),
+      taskIndex(taskIndex),
+      releaser(std::move(releaser))
+{
+}
+
+TaskHandle::TaskHandle(TaskHandle&& rhs)
+    : key(rhs.key),
+      taskIndex(rhs.taskIndex),
+      releaser(std::move(rhs.releaser))
+{
+    rhs.key = InvalidKey;
+    rhs.taskIndex = -1;
+    rhs.releaser = nullptr;
+}
+
+TaskHandle::~TaskHandle()
+{
+    if (releaser == nullptr)
     {
+        return;
     }
 
-    TaskHandle::TaskHandle(TKey key, TIndex taskIndex, TReleaser releaser)
-        : key(key),
-          taskIndex(taskIndex),
-          releaser(std::move(releaser))
+    if (!IsValid())
     {
+        return;
     }
 
-    TaskHandle::TaskHandle(TaskHandle&& rhs)
-        : key(rhs.key),
-          taskIndex(rhs.taskIndex),
-          releaser(std::move(rhs.releaser))
+    releaser(*this);
+}
+
+TaskHandle& TaskHandle::operator=(TaskHandle&& rhs)
+{
+    this->~TaskHandle();
+
+    key = rhs.key;
+    taskIndex = rhs.taskIndex;
+    releaser = std::move(rhs.releaser);
+
+    rhs.key = InvalidKey;
+    rhs.taskIndex = -1;
+    rhs.releaser = nullptr;
+
+    return *this;
+}
+
+bool TaskHandle::IsValid() const
+{
+    return key != InvalidKey && taskIndex >= 0;
+}
+
+Task* TaskHandle::GetTask() const
+{
+    auto& engine = Engine::Get();
+    auto& taskSys = engine.GetTaskSystem();
+    auto task = taskSys.GetTask(key, taskIndex);
+
+    return task;
+}
+
+void TaskHandle::Wait(uint32_t intervalMilliSecs)
+{
+    if (!IsValid())
     {
-        rhs.key = InvalidKey;
-        rhs.taskIndex = -1;
-        rhs.releaser = nullptr;
+        return;
     }
 
-    TaskHandle::~TaskHandle()
+    auto task = GetTask();
+    if (task == nullptr)
     {
-        if (releaser == nullptr)
-        {
-            return;
-        }
-
-        if (!IsValid())
-        {
-            return;
-        }
-
-        releaser(*this);
+        return;
     }
 
-    TaskHandle& TaskHandle::operator=(TaskHandle&& rhs)
+    if (task->IsDone())
     {
-        this->~TaskHandle();
-
-        key = rhs.key;
-        taskIndex = rhs.taskIndex;
-        releaser = std::move(rhs.releaser);
-
-        rhs.key = InvalidKey;
-        rhs.taskIndex = -1;
-        rhs.releaser = nullptr;
-
-        return *this;
+        return;
     }
 
-    bool TaskHandle::IsValid() const
+    task->Wait(intervalMilliSecs);
+}
+
+void TaskHandle::BusyWait()
+{
+    if (!IsValid())
     {
-        return key != InvalidKey && taskIndex >= 0;
+        return;
     }
 
-    Task* TaskHandle::GetTask() const
+    auto task = GetTask();
+    if (task == nullptr)
     {
-        auto& engine = Engine::Get();
-        auto& taskSys = engine.GetTaskSystem();
-        auto task = taskSys.GetTask(key, taskIndex);
-
-        return task;
+        return;
     }
 
-    void TaskHandle::Wait(uint32_t intervalMilliSecs)
+    if (task->IsDone())
     {
-        if (!IsValid())
-        {
-            return;
-        }
-
-        auto task = GetTask();
-        if (task == nullptr)
-        {
-            return;
-        }
-
-        if (task->IsDone())
-        {
-            return;
-        }
-
-        task->Wait(intervalMilliSecs);
+        return;
     }
 
-    void TaskHandle::BusyWait()
-    {
-        if (!IsValid())
-        {
-            return;
-        }
+    task->BusyWait();
+}
 
-        auto task = GetTask();
-        if (task == nullptr)
-        {
-            return;
-        }
-
-        if (task->IsDone())
-        {
-            return;
-        }
-
-        task->BusyWait();
-    }
-
-    void TaskHandle::Reset()
-    {
-        this->~TaskHandle();
-        new (this) TaskHandle();
-    }
+void TaskHandle::Reset()
+{
+    this->~TaskHandle();
+    new (this) TaskHandle();
+}
 
 } // namespace HE

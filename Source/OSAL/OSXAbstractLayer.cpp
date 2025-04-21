@@ -13,69 +13,69 @@ using namespace HSTL;
 namespace OS
 {
 
-    HString GetFullPath(const HString& path)
+HString GetFullPath(const HString& path)
+{
+    using namespace StringUtil;
+
+    char fullPath[PATH_MAX];
+    void* ptr = realpath(path.c_str(), fullPath);
+    if (ptr != fullPath)
     {
-        using namespace StringUtil;
+        std::cerr << "[OS::GetFullPath] Failed to get the full path of " << path
+                  << std::endl;
 
-        char fullPath[PATH_MAX];
-        void* ptr = realpath(path.c_str(), fullPath);
-        if (ptr != fullPath)
-        {
-            std::cerr << "[OS::GetFullPath] Failed to get the full path of "
-                      << path << std::endl;
-
-            return TrimPath(path);
-        }
-
-        return TrimPath(fullPath);
+        return TrimPath(path);
     }
 
-    bool IsDirectory(const char* path)
+    return TrimPath(fullPath);
+}
+
+bool IsDirectory(const char* path)
+{
+    DIR* dir = opendir(path);
+
+    if (dir != nullptr)
     {
-        DIR* dir = opendir(path);
-
-        if (dir != nullptr)
-        {
-            closedir(dir);
-            return true;
-        }
-
-        return false;
+        closedir(dir);
+        return true;
     }
 
-    HVector<HString> ListFilesInDirectory(const char* path)
-    {
-        HVector<HString> fileList;
+    return false;
+}
 
-        if (DIR* dir = opendir(path))
+HVector<HString> ListFilesInDirectory(const char* path)
+{
+    HVector<HString> fileList;
+
+    if (DIR* dir = opendir(path))
+    {
+        while (struct dirent* element = readdir(dir))
         {
-            while (struct dirent* element = readdir(dir))
+            if (strcmp(element->d_name, ".") == 0)
             {
-                if (strcmp(element->d_name, ".") == 0)
-                {
-                    continue;
-                }
-
-                if (strcmp(element->d_name, "..") == 0)
-                {
-                    continue;
-                }
-
-                if (element->d_name[0] == '.' || element->d_name[0] == '\0')
-                {
-                    continue;
-                }
-
-                fileList.push_back(HString(element->d_name));
+                continue;
             }
 
-            closedir(dir);
+            if (strcmp(element->d_name, "..") == 0)
+            {
+                continue;
+            }
+
+            if (element->d_name[0] == '.' || element->d_name[0] == '\0')
+            {
+                continue;
+            }
+
+            fileList.push_back(HString(element->d_name));
         }
 
-        fileList.shrink_to_fit();
-
-        return fileList;
+        closedir(dir);
     }
+
+    fileList.shrink_to_fit();
+
+    return fileList;
+}
 
 } // namespace OS
 

@@ -8,38 +8,38 @@
 namespace HE
 {
 
-    ResourceManager::ResourceManager()
-    {
-    }
+ResourceManager::ResourceManager()
+{
+}
 
-    ResourceManager::~ResourceManager()
-    {
-    }
+ResourceManager::~ResourceManager()
+{
+}
 
-    void ResourceManager::PostUpdate(Engine& engine)
-    {
-    }
+void ResourceManager::PostUpdate(Engine& engine)
+{
+}
 
-    Resource ResourceManager::RequestLoad(StaticString path)
-    {
-        Assert(TaskSystem::IsMainThread());
+Resource ResourceManager::RequestLoad(StaticString path)
+{
+    Assert(TaskSystem::IsMainThread());
 
-        Resource resource;
+    Resource resource;
 
-        return resource;
-    }
+    return resource;
+}
 
-    Resource ResourceManager::Load(StaticString path)
-    {
-        Assert(TaskSystem::IsMainThread());
+Resource ResourceManager::Load(StaticString path)
+{
+    Assert(TaskSystem::IsMainThread());
 
-        Resource resource;
+    Resource resource;
 
-        return resource;
-    }
+    return resource;
+}
 
-    void ResourceManager::RequestTasks(TaskSystem& taskSys)
-    {
-    }
+void ResourceManager::RequestTasks(TaskSystem& taskSys)
+{
+}
 
 } // namespace HE

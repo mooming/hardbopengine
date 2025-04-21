@@ -11,29 +11,29 @@
 namespace HE
 {
 
-    struct AllocatorProxy final
-    {
-        using TAllocBytes = std::function<void*(size_t)>;
-        using TDeallocBytes = std::function<void(void*, size_t)>;
+struct AllocatorProxy final
+{
+    using TAllocBytes = std::function<void*(size_t)>;
+    using TDeallocBytes = std::function<void(void*, size_t)>;
 
-        TAllocatorID id = InvalidAllocatorID;
-        AllocatorProxy* next = nullptr;
-        TAllocBytes allocate = nullptr;
-        TDeallocBytes deallocate = nullptr;
+    TAllocatorID id = InvalidAllocatorID;
+    AllocatorProxy* next = nullptr;
+    TAllocBytes allocate = nullptr;
+    TDeallocBytes deallocate = nullptr;
 
 #ifdef PROFILE_ENABLED
-        AllocStats stats;
+    AllocStats stats;
 #endif // PROFILE_ENABLED
 
 #ifdef __MEMORY_VERIFICATION__
-        std::thread::id threadId;
+    std::thread::id threadId;
 #endif // __MEMORY_VERIFICATION__
 
 #ifdef PROFILE_ENABLED
-        inline const char* GetName() const { return stats.name; }
+    inline const char* GetName() const { return stats.name; }
 #else  // PROFILE_ENABLED
-        inline const char* GetName() const { return "NoName"; }
+    inline const char* GetName() const { return "NoName"; }
 #endif // PROFILE_ENABLED
-    };
+};
 
 } // namespace HE

@@ -9,33 +9,33 @@ using namespace std;
 
 namespace OS
 {
-    Directory::Directory(const char* path)
-        : path(StringUtil::TrimPath(path))
+Directory::Directory(const char* path)
+    : path(StringUtil::TrimPath(path))
+{
+    auto list = ListFilesInDirectory(path);
+
+    for (const auto& element : list)
     {
-        auto list = ListFilesInDirectory(path);
+        const char* name = element.c_str();
 
-        for (const auto& element : list)
+        if (name[0] == '.')
         {
-            const char* name = element.c_str();
+            continue;
+        }
 
-            if (name[0] == '.')
-            {
-                continue;
-            }
+        string childPath(path);
+        childPath.append("/");
+        childPath.append(name);
 
-            string childPath(path);
-            childPath.append("/");
-            childPath.append(name);
-
-            if (IsDirectory(childPath.c_str()))
-            {
-                dirList.push_back(Directory(childPath.c_str()));
-            }
-            else
-            {
-                File file(name);
-                fileList.push_back(file);
-            }
+        if (IsDirectory(childPath.c_str()))
+        {
+            dirList.push_back(Directory(childPath.c_str()));
+        }
+        else
+        {
+            File file(name);
+            fileList.push_back(file);
         }
     }
+}
 } // namespace OS

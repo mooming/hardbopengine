@@ -4,7 +4,7 @@
 
 namespace HE
 {
-    template class Matrix3x3<float>;
+template class Matrix3x3<float>;
 } // namespace HE
 
 #ifdef __UNIT_TEST__

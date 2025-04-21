@@ -7,30 +7,30 @@
 namespace HE
 {
 
-    class AllocatorScope final
+class AllocatorScope final
+{
+private:
+    TAllocatorID previous;
+    TAllocatorID current;
+
+public:
+    AllocatorScope(const AllocatorScope&) = delete;
+    AllocatorScope(AllocatorScope&&) = delete;
+    AllocatorScope& operator=(const AllocatorScope&) = delete;
+    AllocatorScope& operator=(AllocatorScope&&) = delete;
+
+public:
+    AllocatorScope();
+    AllocatorScope(TAllocatorID id);
+
+    template <typename T>
+    AllocatorScope(const T& allocator)
+        : AllocatorScope(allocator.GetID())
     {
-    private:
-        TAllocatorID previous;
-        TAllocatorID current;
+    }
 
-    public:
-        AllocatorScope(const AllocatorScope&) = delete;
-        AllocatorScope(AllocatorScope&&) = delete;
-        AllocatorScope& operator=(const AllocatorScope&) = delete;
-        AllocatorScope& operator=(AllocatorScope&&) = delete;
-
-    public:
-        AllocatorScope();
-        AllocatorScope(TAllocatorID id);
-
-        template <typename T>
-        AllocatorScope(const T& allocator)
-            : AllocatorScope(allocator.GetID())
-        {
-        }
-
-        ~AllocatorScope();
-    };
+    ~AllocatorScope();
+};
 
 } // namespace HE
 
@@ -40,17 +40,17 @@ namespace HE
 namespace HE
 {
 
-    class AllocatorScopeTest : public TestCollection
+class AllocatorScopeTest : public TestCollection
+{
+public:
+    AllocatorScopeTest()
+        : TestCollection("AllocatorScopeTest")
     {
-    public:
-        AllocatorScopeTest()
-            : TestCollection("AllocatorScopeTest")
-        {
-        }
+    }
 
-    protected:
-        virtual void Prepare() override;
-    };
+protected:
+    virtual void Prepare() override;
+};
 
 } // namespace HE
 
