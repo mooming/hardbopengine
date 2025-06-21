@@ -24,6 +24,7 @@ add_library (Math STATIC
  Matrix2x2.cpp
  Matrix3x3.cpp
  Matrix4x4.cpp
+ MonteCarloIntegrator.cpp
  OBB.cpp
  Quaternion.cpp
  RigidTransform.cpp
@@ -39,6 +40,7 @@ add_library (Math STATIC
  Matrix3x3.h
  Matrix4x4.h
  MatrixCommonImpl.inl
+ MonteCarloIntegrator.h
  OBB.h
  Quaternion.h
  RigidTransform.h
