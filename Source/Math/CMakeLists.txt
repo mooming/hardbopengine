@@ -20,6 +20,7 @@ link_directories (${CMAKE_SOURCE_DIR}/lib)
 
 add_library (Math STATIC 
  AABB.cpp
+ ImportanceSampling.cpp
  MathUtil.cpp
  Matrix2x2.cpp
  Matrix3x3.cpp
@@ -28,6 +29,7 @@ add_library (Math STATIC
  OBB.cpp
  Quaternion.cpp
  RigidTransform.cpp
+ StratifiedSampling.cpp
  Transform.cpp
  UniformTransform.cpp
  Vector2.cpp
@@ -35,6 +37,7 @@ add_library (Math STATIC
  Vector4.cpp
  AABB.h
  CoordinateOrientation.h
+ ImportanceResampling.h
  MathUtil.h
  Matrix2x2.h
  Matrix3x3.h
@@ -44,6 +47,7 @@ add_library (Math STATIC
  OBB.h
  Quaternion.h
  RigidTransform.h
+ StratifiedSampling.h
  Transform.h
  UniformTransform.h
  Vector2.h

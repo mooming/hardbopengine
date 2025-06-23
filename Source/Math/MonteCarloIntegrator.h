@@ -5,53 +5,56 @@
 #pragma once
 
 #include <cstdint>
+#include <type_traits>
 
 namespace HE
 {
 
-template <typename TInput = double, typename TOutput = double,
-    typename TReal = double, typename TInteger = uint32_t>
-class MonteCarloIntegrator final
-{
-public:
-    using TFunction = TOutput (*)(const TInput&);
-    using TPDF = TReal (*)(const TInput&);
-    using TRandomGen = TInput (*)();
+	template<typename TInput = double, typename TOutput = double, typename TReal = double, typename TInteger = uint32_t>
+	class MonteCarloIntegrator final
+	{
+	public:
+		static_assert(std::is_floating_point_v<TReal>);
+		static_assert(std::is_integral_v<TInteger>);
 
-public:
-    MonteCarloIntegrator() = default;
-    ~MonteCarloIntegrator() = default;
+	public:
+		MonteCarloIntegrator() = default;
+		~MonteCarloIntegrator() = default;
 
-    bool operator()(TOutput& result, const TFunction f, const TPDF p,
-        const TRandomGen random, const TInteger numIterations)
-    {
-        result = 0;
+		// TFunction - TOutput f(const TInput& input), A general function
+		// TPDF - TReal p(const TInput& input), Probability Density Function
+		// TRandomGen - TInput sample(), return a random number
+		template<typename TFunction, typename TPDF, typename TRandomGen>
+		bool operator()(TOutput& result, const TFunction& f, const TPDF& p, const TRandomGen& sample,
+						const TInteger numIterations)
+		{
+			result = 0;
 
-        if (numIterations <= 0)
-        {
-            return false;
-        }
+			if (numIterations <= 0)
+			{
+				return false;
+			}
 
-        for (TInteger i = 0; i < numIterations; ++i)
-        {
-            const TInput x = random();
-            const TReal p_x = p(x);
-            if (p_x <= 0)
-            {
-                return false;
-            }
+			for (TInteger i = 0; i < numIterations; ++i)
+			{
+				const TInput x = sample();
+				const TReal p_x = p(x);
+				if (p_x <= 0)
+				{
+					return false;
+				}
 
-            const TOutput f_x = f(x);
-            const TReal fx_over_px = f_x / p_x;
+				const TOutput f_x = f(x);
+				const TOutput fx_over_px = f_x / p_x;
 
-            result += fx_over_px;
-        }
+				result += fx_over_px;
+			}
 
-        result /= numIterations;
+			result /= numIterations;
 
-        return result;
-    }
-};
+			return true;
+		}
+	};
 
 } // namespace HE
 
@@ -61,16 +64,13 @@ public:
 namespace HE
 {
 
-class MonteCarloIntegrationTest : public TestCollection
-{
-public:
-    MonteCarloIntegrationTest()
-        : TestCollection("Monte Carlo Integration Test")
-    {
-    }
+	class MonteCarloIntegrationTest : public TestCollection
+	{
+	public:
+		MonteCarloIntegrationTest() : TestCollection("Monte Carlo Integration Test") {}
 
-protected:
-    void Prepare() override;
-};
+	protected:
+		void Prepare() override;
+	};
 } // namespace HE
 #endif //__UNIT_TEST__
