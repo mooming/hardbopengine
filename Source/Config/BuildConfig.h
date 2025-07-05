@@ -33,6 +33,7 @@
 
 // Log
 #define LOG_ENABLED
+#define LOG_BREAK_IF_ERROR
 #define LOG_FORCE_IMMEDIATE
 
 // Profile
