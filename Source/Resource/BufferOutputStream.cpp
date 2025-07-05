@@ -147,7 +147,7 @@ namespace HE
 			auto buffer = GetMemoryBuffer<int>(TestCount, -1);
 			BufferOutputStream bos(buffer);
 
-			for (size_t i = 0; i < TestCount; ++i)
+			for (int i = 0; i < TestCount; ++i)
 			{
 				bos << i;
 			}
