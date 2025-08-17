@@ -4,7 +4,7 @@
 
 #ifdef __UNIT_TEST__
 
-namespace HE
+namespace hbe
 {
 
     void OSDebugTest::Prepare()
@@ -15,5 +15,5 @@ namespace HE
         });
     }
 
-} // namespace HE
+} // namespace hbe
 #endif //__UNIT_TEST__

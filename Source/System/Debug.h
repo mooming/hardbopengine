@@ -6,20 +6,20 @@
 #include "Log/PrintArgs.h"
 #include "OSAL/Intrinsic.h"
 
-namespace HE
+namespace hbe
 {
     template <typename T>
     using TDebugVariable = const T;
 
     void FlushLogs();
-} // namespace HE
+} // namespace hbe
 
 #ifdef __DEBUG__
 #include <cstdio>
 #include <cstdlib>
 #include <memory>
 
-namespace HE
+namespace hbe
 {
 
     inline void Assert(bool shouldBeTrue)
@@ -50,14 +50,14 @@ namespace HE
         debugBreak();
         std::abort();
     }
-} // namespace HE
+} // namespace hbe
 
 #else // __DEBUG__
 #include <cstdio>
 #include <cstdlib>
 #include <memory>
 
-namespace HE
+namespace hbe
 {
     inline void Assert(bool)
     {
@@ -67,10 +67,10 @@ namespace HE
     inline void Assert(bool, const char*, Types&&...)
     {
     }
-} // namespace HE
+} // namespace hbe
 #endif // __DEBUG__
 
-namespace HE
+namespace hbe
 {
     inline void FatalAssert(bool shouldBeTrue)
     {
@@ -98,4 +98,4 @@ namespace HE
         debugBreak();
         std::abort();
     }
-} // namespace HE
+} // namespace hbe

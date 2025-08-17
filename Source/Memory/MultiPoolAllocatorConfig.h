@@ -6,7 +6,7 @@
 #include "String/StaticStringID.h"
 #include <vector>
 
-namespace HE
+namespace hbe
 {
 
     struct MultiPoolAllocatorConfig final
@@ -26,4 +26,4 @@ namespace HE
         bool operator<(const MultiPoolAllocatorConfig& rhs) const;
     };
 
-} // namespace HE
+} // namespace hbe

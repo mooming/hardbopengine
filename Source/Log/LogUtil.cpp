@@ -4,7 +4,7 @@
 
 #include "String/StringBuilder.h"
 
-namespace HE
+namespace hbe
 {
     namespace LogUtil
     {
@@ -78,4 +78,4 @@ namespace HE
         }
 
     } // namespace LogUtil
-} // namespace HE
+} // namespace hbe

@@ -5,7 +5,7 @@
 #ifdef __UNIT_TEST__
 #include "Matrix4x4.h"
 
-void HE::UniformTransformTest::Prepare()
+void hbe::UniformTransformTest::Prepare()
 {
     AddTest("Constants", [this](auto& ls) {
         UniformTRS tm;

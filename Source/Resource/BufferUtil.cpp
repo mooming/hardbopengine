@@ -8,7 +8,7 @@
 #include "OSAL/OSMapSyncMode.h"
 #include "String/StringUtil.h"
 
-namespace HE
+namespace hbe
 {
 
     namespace BufferUtil
@@ -170,4 +170,4 @@ namespace HE
 
     } // namespace BufferUtil
 
-} // namespace HE
+} // namespace hbe

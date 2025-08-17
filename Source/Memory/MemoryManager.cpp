@@ -14,7 +14,7 @@
 #include "SystemAllocator.h"
 #include <cstdint>
 
-namespace HE
+namespace hbe
 {
 
     static_assert(MaxNumAllocators > 0, "MaxNumAllocators is invalid.");
@@ -991,4 +991,4 @@ namespace HE
         ScopedAllocatorID = id;
     }
 
-} // namespace HE
+} // namespace hbe

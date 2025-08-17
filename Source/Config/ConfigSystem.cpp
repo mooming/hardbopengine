@@ -6,7 +6,7 @@
 #include "Log/Logger.h"
 #include "OSAL/Intrinsic.h"
 
-namespace HE
+namespace hbe
 {
 
     namespace
@@ -556,4 +556,4 @@ namespace HE
         log.Out("========================================================\n");
     }
 
-} // namespace HE
+} // namespace hbe

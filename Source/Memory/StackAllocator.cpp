@@ -8,7 +8,7 @@
 #include "OSAL/Intrinsic.h"
 #include "System/Debug.h"
 
-using namespace HE;
+using namespace hbe;
 
 #ifdef PROFILE_ENABLED
 StackAllocator::StackAllocator(

@@ -5,7 +5,7 @@
 #include <cstddef>
 #include <cstdint>
 
-namespace HE
+namespace hbe
 {
 
     class Resource final
@@ -15,4 +15,4 @@ namespace HE
         ~Resource();
     };
 
-} // namespace HE
+} // namespace hbe

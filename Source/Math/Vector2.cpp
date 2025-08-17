@@ -2,14 +2,14 @@
 
 #include "Vector2.h"
 
-namespace HE
+namespace hbe
 {
     template class Vector2<float>;
 }
 
 #ifdef __UNIT_TEST__
 
-void HE::Vector2Test::Prepare()
+void hbe::Vector2Test::Prepare()
 {
     AddTest("Vector2 Constants & Operations", [this](auto& ls) {
         ls << "Zero = " << Float2::Zero << lf;

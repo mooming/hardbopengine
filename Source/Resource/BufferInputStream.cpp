@@ -2,7 +2,7 @@
 
 #include "BufferInputStream.h"
 
-namespace HE
+namespace hbe
 {
 
     using This = BufferInputStream;
@@ -132,13 +132,13 @@ namespace HE
         return *this;
     }
 
-} // namespace HE
+} // namespace hbe
 
 #ifdef __UNIT_TEST__
 #include "Memory/MemoryManager.h"
 #include "String/StringUtil.h"
 
-namespace HE
+namespace hbe
 {
 
     BufferInputStreamTest::BufferInputStreamTest()
@@ -250,5 +250,5 @@ namespace HE
         });
     }
 
-} // namespace HE
+} // namespace hbe
 #endif //__UNIT_TEST__

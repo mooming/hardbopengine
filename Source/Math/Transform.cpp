@@ -2,17 +2,17 @@
 
 #include "Transform.h"
 
-namespace HE
+namespace hbe
 {
     template class Transform<float>;
     template class Transform<double>;
-} // namespace HE
+} // namespace hbe
 
 #ifdef __UNIT_TEST__
 #include "System/CommonUtil.h"
 #include "Vector3.h"
 
-namespace HE
+namespace hbe
 {
 
     void TransformTest::Prepare()
@@ -115,6 +115,6 @@ namespace HE
         });
     }
 
-} // namespace HE
+} // namespace hbe
 
 #endif //__UNIT_TEST__

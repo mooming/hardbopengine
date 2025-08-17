@@ -17,7 +17,7 @@ void OS::Sleep(uint32_t milliseconds)
 
 #ifdef __UNIT_TEST__
 
-void HE::OSThreadTest::Prepare()
+void hbe::OSThreadTest::Prepare()
 {
     // TODO
 }

@@ -10,7 +10,7 @@
 #include "../System/TaskSystem.h"
 #include <fstream>
 
-namespace HE
+namespace hbe
 {
 
     template <size_t, class>
@@ -98,4 +98,4 @@ namespace HE
 
         void PreShutdown();
     };
-} // namespace HE
+} // namespace hbe

@@ -5,7 +5,7 @@
 #include "System/Debug.h"
 #include <algorithm>
 
-namespace HE
+namespace hbe
 {
 
     namespace PoolConfigUtil
@@ -144,4 +144,4 @@ namespace HE
 
     } // namespace PoolConfigUtil
 
-} // namespace HE
+} // namespace hbe

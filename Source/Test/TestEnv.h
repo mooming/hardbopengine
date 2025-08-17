@@ -6,7 +6,7 @@
 #include <string>
 #include <vector>
 
-namespace HE
+namespace hbe
 {
 
     class TestCollection;
@@ -45,4 +45,4 @@ namespace HE
         bool ExecuteTest(TestCollection& testCollection);
         void Report();
     };
-} // namespace HE
+} // namespace hbe

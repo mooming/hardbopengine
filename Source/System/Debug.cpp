@@ -6,11 +6,11 @@
 #include "../Engine/Engine.h"
 #include "Log/Logger.h"
 
-namespace HE
+namespace hbe
 {
     void FlushLogs()
     {
         auto& engine = Engine::Get();
         engine.FlushLog();
     }
-} // namespace HE
+} // namespace hbe

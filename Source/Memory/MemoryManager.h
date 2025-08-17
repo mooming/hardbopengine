@@ -22,7 +22,7 @@ namespace std
 	struct source_location;
 } // namespace std
 
-namespace HE
+namespace hbe
 {
 
 	class Engine;
@@ -200,4 +200,4 @@ namespace HE
 		friend class AllocatorScope;
 	};
 
-} // namespace HE
+} // namespace hbe

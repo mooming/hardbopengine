@@ -8,7 +8,7 @@
 #include <functional>
 #include <thread>
 
-namespace HE
+namespace hbe
 {
 
     struct AllocatorProxy final
@@ -36,4 +36,4 @@ namespace HE
 #endif // PROFILE_ENABLED
     };
 
-} // namespace HE
+} // namespace hbe

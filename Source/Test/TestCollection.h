@@ -10,7 +10,7 @@
 #include <utility>
 #include <vector>
 
-namespace HE
+namespace hbe
 {
 
     class TestCollection
@@ -79,4 +79,4 @@ namespace HE
         void Report() const;
     };
 
-} // namespace HE
+} // namespace hbe

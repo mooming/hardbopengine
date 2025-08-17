@@ -7,7 +7,7 @@
 #include <atomic>
 #include <thread>
 
-namespace HE
+namespace hbe
 {
 
     class Task final
@@ -66,4 +66,4 @@ namespace HE
         auto GetSize() const { return size; }
     };
 
-} // namespace HE
+} // namespace hbe

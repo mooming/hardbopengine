@@ -5,7 +5,7 @@
 #include "../Engine/Engine.h"
 #include "System/TaskSystem.h"
 
-namespace HE
+namespace hbe
 {
 
     ResourceManager::ResourceManager()
@@ -42,4 +42,4 @@ namespace HE
     {
     }
 
-} // namespace HE
+} // namespace hbe

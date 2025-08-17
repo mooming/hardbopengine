@@ -14,7 +14,7 @@
 #include <mutex>
 #include <thread>
 
-namespace HE
+namespace hbe
 {
 
     class TaskSystem;
@@ -92,4 +92,4 @@ namespace HE
         friend class TaskSystem;
     };
 
-} // namespace HE
+} // namespace hbe

@@ -9,7 +9,7 @@
 #include <random>
 #include "System/Constants.h"
 
-void HE::ImportanceResamplingTest::Prepare()
+void hbe::ImportanceResamplingTest::Prepare()
 {
 	constexpr uint32_t numSrcSamples = 200;
 	constexpr uint32_t numResamplingIterations = 50;

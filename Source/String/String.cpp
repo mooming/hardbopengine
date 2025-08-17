@@ -9,7 +9,7 @@
 #include <cstdio>
 #include <cstring>
 
-namespace HE
+namespace hbe
 {
 
     String::String(const bool value)
@@ -706,12 +706,12 @@ namespace HE
         buffer->push_back('\0');
     }
 
-} // namespace HE
+} // namespace hbe
 
 #ifdef __UNIT_TEST__
 #include "System/ScopedTime.h"
 
-namespace HE
+namespace hbe
 {
 
     void StringTest::Prepare()
@@ -832,5 +832,5 @@ namespace HE
         });
     }
 
-} // namespace HE
+} // namespace hbe
 #endif //__UNIT_TEST__

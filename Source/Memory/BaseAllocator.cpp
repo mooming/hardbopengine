@@ -7,7 +7,7 @@
 #include "PoolAllocator.h"
 #include <vector>
 
-void HE::BaseAllocatorTest::Prepare()
+void hbe::BaseAllocatorTest::Prepare()
 {
     AddTest("Basic Usage", [this](auto& ls) {
         PoolAllocator alloc("BaseAllocTestAlloc", 1024, 1024);

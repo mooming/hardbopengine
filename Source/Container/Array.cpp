@@ -5,7 +5,7 @@
 #ifdef __UNIT_TEST__
 #include "Log/Logger.h"
 
-namespace HE
+namespace hbe
 {
 
     void ArrayTest::Prepare()
@@ -58,5 +58,5 @@ namespace HE
         });
     }
 
-} // namespace HE
+} // namespace hbe
 #endif //__UNIT_TEST__

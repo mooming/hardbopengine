@@ -7,7 +7,7 @@
 #include "String/StaticString.h"
 #include <chrono>
 
-namespace HE
+namespace hbe
 {
 
     namespace LogUtil
@@ -22,4 +22,4 @@ namespace HE
 
     } // namespace LogUtil
 
-} // namespace HE
+} // namespace hbe

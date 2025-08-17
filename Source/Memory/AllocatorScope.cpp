@@ -4,7 +4,7 @@
 
 #include "MemoryManager.h"
 
-namespace HE
+namespace hbe
 {
 
     AllocatorScope::AllocatorScope()
@@ -27,12 +27,12 @@ namespace HE
         mmgr.SetScopedAllocatorID(previous);
     }
 
-} // namespace HE
+} // namespace hbe
 
 #ifdef __UNIT_TEST__
 #include "InlinePoolAllocator.h"
 
-namespace HE
+namespace hbe
 {
 
     void AllocatorScopeTest::Prepare()
@@ -54,6 +54,6 @@ namespace HE
         });
     }
 
-} // namespace HE
+} // namespace hbe
 
 #endif //__UNIT_TEST__

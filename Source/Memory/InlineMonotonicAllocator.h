@@ -10,7 +10,7 @@
 #include <cstddef>
 #include <cstdint>
 
-namespace HE
+namespace hbe
 {
     template <size_t Capacity>
     class InlineMonotonicAllocator final
@@ -153,12 +153,12 @@ namespace HE
             return true;
         }
     };
-} // namespace HE
+} // namespace hbe
 
 #ifdef __UNIT_TEST__
 #include "Test/TestCollection.h"
 
-namespace HE
+namespace hbe
 {
 
     class InlineMonotonicAllocatorTest : public TestCollection
@@ -173,5 +173,5 @@ namespace HE
         virtual void Prepare() override;
     };
 
-} // namespace HE
+} // namespace hbe
 #endif //__UNIT_TEST__

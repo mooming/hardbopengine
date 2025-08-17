@@ -2,7 +2,7 @@
 
 #include "LinkedList.h"
 
-using namespace HE;
+using namespace hbe;
 
 #ifdef __UNIT_TEST__
 #include "Memory/AllocatorScope.h"

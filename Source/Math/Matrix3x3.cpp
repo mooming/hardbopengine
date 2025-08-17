@@ -2,15 +2,15 @@
 
 #include "Matrix3x3.h"
 
-namespace HE
+namespace hbe
 {
     template class Matrix3x3<float>;
-} // namespace HE
+} // namespace hbe
 
 #ifdef __UNIT_TEST__
 #include "HSTL/HVector.h"
 
-void HE::Matrix3x3Test::Prepare()
+void hbe::Matrix3x3Test::Prepare()
 {
     AddTest("Matrix3x3 Test", [this](auto& ls) {
         const auto& right = Float3::Right;

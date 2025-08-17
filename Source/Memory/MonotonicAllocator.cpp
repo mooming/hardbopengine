@@ -7,7 +7,7 @@
 #include "MemoryManager.h"
 #include "System/Debug.h"
 
-using namespace HE;
+using namespace hbe;
 
 MonotonicAllocator::MonotonicAllocator(const char* name, TSize inCapacity)
     : id(InvalidAllocatorID),

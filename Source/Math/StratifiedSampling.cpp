@@ -12,7 +12,7 @@
 #include "MonteCarloIntegrator.h"
 #include "System/Constants.h"
 
-void HE::StratifiedSamplingTest::Prepare()
+void hbe::StratifiedSamplingTest::Prepare()
 {
 	auto calculatePi = [this](auto& ls) -> void
 	{

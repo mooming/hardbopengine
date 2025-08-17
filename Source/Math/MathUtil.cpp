@@ -4,7 +4,7 @@
 
 #ifdef __UNIT_TEST__
 
-void HE::MathUtilTest::Prepare()
+void hbe::MathUtilTest::Prepare()
 {
     AddTest("Exponent", [this](auto& ls) {
         ls << "2^10 = " << Pow(2, 10);

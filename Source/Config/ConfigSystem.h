@@ -6,7 +6,7 @@
 #include <functional>
 #include <unordered_map>
 
-namespace HE
+namespace hbe
 {
 
     class StaticString;
@@ -85,4 +85,4 @@ namespace HE
 
         void PrintAllParameters() const;
     };
-} // namespace HE
+} // namespace hbe

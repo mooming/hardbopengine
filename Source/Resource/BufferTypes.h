@@ -6,7 +6,7 @@
 #include <cstdint>
 #include <functional>
 
-namespace HE
+namespace hbe
 {
 
     namespace BufferTypes
@@ -22,4 +22,4 @@ namespace HE
 
     } // namespace BufferTypes
 
-} // namespace HE
+} // namespace hbe

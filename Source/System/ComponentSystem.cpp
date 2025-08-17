@@ -7,7 +7,7 @@
 #include "ComponentState.h"
 #include "ScopedTime.h"
 
-namespace HE
+namespace hbe
 {
 
     void ComponentSystemTest::Prepare()
@@ -187,6 +187,6 @@ namespace HE
         });
     }
 
-} // namespace HE
+} // namespace hbe
 
 #endif //__UNIT_TEST__

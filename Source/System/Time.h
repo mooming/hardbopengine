@@ -5,7 +5,7 @@
 #include "Types.h"
 #include <chrono>
 
-namespace HE
+namespace hbe
 {
     namespace Time
     {
@@ -41,4 +41,4 @@ namespace HE
         void Sleep(MilliSec milli);
 
     } // namespace Time
-} // namespace HE
+} // namespace hbe

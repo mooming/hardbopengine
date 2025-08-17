@@ -6,7 +6,7 @@
 #include "HSTL/HUnorderedMap.h"
 #include <optional>
 
-namespace HE
+namespace hbe
 {
 
     // ConfigFile represent a single config file.
@@ -37,4 +37,4 @@ namespace HE
         void Parse(const char* fileName);
     };
 
-} // namespace HE
+} // namespace hbe

@@ -7,7 +7,7 @@
 #include "String/StaticString.h"
 #include <chrono>
 
-namespace HE
+namespace hbe
 {
 
     struct LogLine final
@@ -40,4 +40,4 @@ namespace HE
         const char* GetText() const;
     };
 
-} // namespace HE
+} // namespace hbe

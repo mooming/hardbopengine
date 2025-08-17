@@ -17,7 +17,7 @@
 #include "String/StaticString.h"
 #include "System/TaskHandle.h"
 
-namespace HE
+namespace hbe
 {
 
 	class Engine;
@@ -136,4 +136,4 @@ namespace HE
 	using TLog = Logger::SimpleLogger;
 	using LogStream = Logger::TLogStream;
 
-} // namespace HE
+} // namespace hbe

@@ -5,7 +5,7 @@
 #include "OSAL/Intrinsic.h"
 #include <atomic>
 
-namespace HE
+namespace hbe
 {
 
     template <typename T>
@@ -68,12 +68,12 @@ namespace HE
         }
     };
 
-} // namespace HE
+} // namespace hbe
 
 #ifdef __UNIT_TEST__
 #include "Test/TestCollection.h"
 
-namespace HE
+namespace hbe
 {
 
     class AtomicStackViewTest : public TestCollection
@@ -88,6 +88,6 @@ namespace HE
         virtual void Prepare() override;
     };
 
-} // namespace HE
+} // namespace hbe
 
 #endif //__UNIT_TEST__

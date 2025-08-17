@@ -75,7 +75,7 @@ public:
 
         for (int i = 0; i < order; ++i)
         {
-            Assert(!HE::IsZero(static_cast<float>(rhs.a[i])));
+            Assert(!hbe::IsZero(static_cast<float>(rhs.a[i])));
             result.a[i] = a[i] / rhs.a[i];
         }
 
@@ -157,7 +157,7 @@ public:
     {
         for (int i = 0; i < order; ++i)
         {
-            Assert(!HE::IsZero(static_cast<float>(rhs.a[i])));
+            Assert(!hbe::IsZero(static_cast<float>(rhs.a[i])));
             a[i] /= rhs.a[i];
         }
     }
@@ -202,7 +202,7 @@ public:
     float Normalize()
     {
         auto length = Length();
-        if (HE::IsZero(length))
+        if (hbe::IsZero(length))
         {
             *this = This::Forward;
             return length;

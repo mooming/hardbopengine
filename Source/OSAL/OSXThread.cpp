@@ -17,7 +17,7 @@ int OS::GetCPUIndex()
     auto result = pthread_cpu_number_np(&cpuNumber);
     if (unlikely(result != 0))
     {
-        using namespace HE;
+        using namespace hbe;
         using namespace StringUtil;
         auto funcName = ToFunctionName(__PRETTY_FUNCTION__);
         auto log = Logger::Get(funcName);
@@ -40,7 +40,7 @@ int OS::GetThreadPriority(std::thread& thread)
     auto result = pthread_getschedparam(nativeHandle, &policy, &sp);
     if (unlikely(result != 0))
     {
-        using namespace HE;
+        using namespace hbe;
         using namespace StringUtil;
         auto funcName = ToFunctionName(__PRETTY_FUNCTION__);
         auto log = Logger::Get(funcName);
@@ -81,7 +81,7 @@ void OS::SetThreadPriority(std::thread& thread, int priority)
     auto result = pthread_setschedparam(nativeHandle, policy, &sp);
     if (unlikely(result != 0))
     {
-        using namespace HE;
+        using namespace hbe;
         auto log = Logger::Get("OS::Thread");
 
         switch (result)

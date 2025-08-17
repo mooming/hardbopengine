@@ -14,7 +14,7 @@ static_assert(false, "SHOULD NOT DEFINE BOTH HANDEDNESS !");
 
 #include <cmath>
 
-namespace HE
+namespace hbe
 {
 #ifdef __LEFT_HANDED__
     inline float RotationSin(float radian)
@@ -69,4 +69,4 @@ namespace HE
         return atan2f(y, x);
     }
 #endif //__RIGHT_HANDED__
-} // namespace HE
+} // namespace hbe

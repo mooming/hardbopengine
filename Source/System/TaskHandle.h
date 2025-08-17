@@ -4,7 +4,7 @@
 #include "Container/Array.h"
 #include <functional>
 
-namespace HE
+namespace hbe
 {
 
     class Task;
@@ -46,4 +46,4 @@ namespace HE
         inline auto GetIndex() const { return taskIndex; }
     };
 
-} // namespace HE
+} // namespace hbe

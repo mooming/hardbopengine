@@ -8,7 +8,7 @@
 #include "Vector3.h"
 #include "Vector4.h"
 
-namespace HE
+namespace hbe
 {
 // Assume every quaternion is a unit quaternion.
 
@@ -550,12 +550,12 @@ inline std::ostream& operator<<(std::ostream& os, const Quaternion<T>& q)
     os << "Quat (" << e.x << ", " << e.y << ", " << e.z << ")";
     return os;
 }
-} // namespace HE
+} // namespace hbe
 
 #ifdef __UNIT_TEST__
 #include "Test/TestCollection.h"
 
-namespace HE
+namespace hbe
 {
 
 class QuaternionTest : public TestCollection
@@ -569,5 +569,5 @@ public:
 protected:
     virtual void Prepare() override;
 };
-} // namespace HE
+} // namespace hbe
 #endif //__UNIT_TEST__

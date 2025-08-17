@@ -4,7 +4,7 @@
 
 #ifdef PLATFORM_LINUX
 
-using namespace HE;
+using namespace hbe;
 
 StaticString OS::GetBackTrace(uint16_t, uint16_t)
 {

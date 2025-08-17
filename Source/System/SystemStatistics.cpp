@@ -8,7 +8,7 @@
 #include "String/StaticString.h"
 #include "String/StringUtil.h"
 
-namespace HE
+namespace hbe
 {
 
     SystemStatistics::SystemStatistics(Engine& engine)
@@ -161,4 +161,4 @@ namespace HE
 #endif // PROFILE_ENABLED
     }
 
-} // namespace HE
+} // namespace hbe

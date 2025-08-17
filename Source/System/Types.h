@@ -5,7 +5,7 @@
 #include <cstddef>
 #include <cstdint>
 
-namespace HE
+namespace hbe
 {
     using Byte = uint8_t;
     using Pointer = void*;
@@ -15,4 +15,4 @@ namespace HE
     using UInt = uint32_t;
 
     using Real = float;
-} // namespace HE
+} // namespace hbe

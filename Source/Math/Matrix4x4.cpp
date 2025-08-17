@@ -1,6 +1,6 @@
 #include "Matrix4x4.h"
 
-namespace HE
+namespace hbe
 {
     template class Matrix4x4<float>;
 }

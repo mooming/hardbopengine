@@ -11,7 +11,7 @@
 #include "Time.h"
 #include <mutex>
 
-namespace HE
+namespace hbe
 {
 
     template <typename T>
@@ -91,4 +91,4 @@ namespace HE
 #endif // PROFILE_ENABLED
         }
     };
-} // namespace HE
+} // namespace hbe

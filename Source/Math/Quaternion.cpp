@@ -5,7 +5,7 @@
 #ifdef __UNIT_TEST__
 #include "Vector3.h"
 
-namespace HE
+namespace hbe
 {
 
     void QuaternionTest::Prepare()
@@ -148,6 +148,6 @@ namespace HE
         });
     }
 
-} // namespace HE
+} // namespace hbe
 
 #endif //__UNIT_TEST__

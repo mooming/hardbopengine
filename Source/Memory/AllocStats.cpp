@@ -7,7 +7,7 @@
 #include "OSAL/OSDebug.h"
 #include <new>
 
-namespace HE
+namespace hbe
 {
 
     AllocStats::AllocStats()
@@ -96,4 +96,4 @@ namespace HE
         });
     }
 
-} // namespace HE
+} // namespace hbe

@@ -10,7 +10,7 @@
 #include <cstddef>
 #include <cstdlib>
 
-namespace HE
+namespace hbe
 {
     template <class T>
     struct SystemAllocator
@@ -162,12 +162,12 @@ namespace HE
 #endif // __MEMORY_INVESTIGATION__
         }
     };
-} // namespace HE
+} // namespace hbe
 
 #ifdef __UNIT_TEST__
 #include "Test/TestCollection.h"
 
-namespace HE
+namespace hbe
 {
     class SystemAllocatorTest : public TestCollection
     {
@@ -180,5 +180,5 @@ namespace HE
     protected:
         void Prepare() override;
     };
-} // namespace HE
+} // namespace hbe
 #endif //__UNIT_TEST__

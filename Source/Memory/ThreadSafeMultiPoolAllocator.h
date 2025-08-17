@@ -8,7 +8,7 @@
 #include "PoolConfig.h"
 #include "String/StaticString.h"
 
-namespace HE
+namespace hbe
 {
 
 	class ThreadSafeMultiPoolAllocator final
@@ -59,13 +59,13 @@ namespace HE
 		static size_t CalculateNumberOfBlocks(size_t bankSize, size_t blockSize);
 		void GenerateBank(size_t blockSize, size_t numberOfBlocks);
 	};
-} // namespace HE
+} // namespace hbe
 
 #ifdef __UNIT_TEST__
 
 #include "Test/TestCollection.h"
 
-namespace HE
+namespace hbe
 {
 	class ThreadSafeMultiPoolAllocatorTest : public TestCollection
 	{
@@ -75,5 +75,5 @@ namespace HE
 	protected:
 		void Prepare() override;
 	};
-} // namespace HE
+} // namespace hbe
 #endif //__UNIT_TEST__

@@ -5,7 +5,7 @@
 #include "String/StaticString.h"
 #include <cstddef>
 
-namespace HE
+namespace hbe
 {
 
     struct AllocStats final
@@ -36,4 +36,4 @@ namespace HE
         void Print();
     };
 
-} // namespace HE
+} // namespace hbe

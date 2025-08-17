@@ -5,7 +5,7 @@
 #include <array>
 #include <ostream>
 
-namespace HE
+namespace hbe
 {
 
     enum class ComponentState : int
@@ -25,4 +25,4 @@ namespace HE
         os << names[static_cast<int>(state)];
         return os;
     }
-} // namespace HE
+} // namespace hbe

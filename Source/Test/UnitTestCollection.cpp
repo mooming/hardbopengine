@@ -47,7 +47,7 @@
 
 #include <iostream>
 
-using namespace HE;
+using namespace hbe;
 
 namespace Test
 {

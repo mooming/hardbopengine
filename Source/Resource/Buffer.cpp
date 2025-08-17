@@ -7,7 +7,7 @@
 #include "OSAL/Intrinsic.h"
 #include "String/StringUtil.h"
 
-namespace HE
+namespace hbe
 {
 
     Buffer::Buffer()
@@ -86,7 +86,7 @@ namespace HE
         releaseFunc = nullptr;
     }
 
-} // namespace HE
+} // namespace hbe
 
 #ifdef __UNIT_TEST__
 #include "BufferUtil.h"
@@ -94,7 +94,7 @@ namespace HE
 #include "OSAL/OSFileHandle.h"
 #include "OSAL/OSInputOutput.h"
 
-namespace HE
+namespace hbe
 {
     BufferTest::BufferTest()
         : TestCollection(StringUtil::ToCompactClassName(__PRETTY_FUNCTION__))
@@ -322,5 +322,5 @@ namespace HE
         });
     }
 
-} // namespace HE
+} // namespace hbe
 #endif //__UNIT_TEST__

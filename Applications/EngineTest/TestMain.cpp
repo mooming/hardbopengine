@@ -6,7 +6,7 @@
 
 int main(int argc, const char* argv[])
 {
-    HE::Engine hengine;
+    hbe::Engine hengine;
 
     hengine.Initialize(argc, argv);
 

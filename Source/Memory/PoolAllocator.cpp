@@ -7,7 +7,7 @@
 #include "System/CommonUtil.h"
 #include "System/Debug.h"
 
-namespace HE
+namespace hbe
 {
 #ifdef PROFILE_ENABLED
     PoolAllocator::PoolAllocator(const char* name, TSize inBlockSize,
@@ -312,11 +312,11 @@ namespace HE
         return ptr;
     }
 
-} // namespace HE
+} // namespace hbe
 
 #ifdef __UNIT_TEST__
 
-namespace HE
+namespace hbe
 {
 
     void PoolAllocatorTest::Prepare()
@@ -349,6 +349,6 @@ namespace HE
         });
     }
 
-} // namespace HE
+} // namespace hbe
 
 #endif //__UNIT_TEST__

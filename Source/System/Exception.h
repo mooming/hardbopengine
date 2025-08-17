@@ -6,7 +6,7 @@
 #include <cstdio>
 #include <utility>
 
-namespace HE
+namespace hbe
 {
     class Exception
     {
@@ -18,4 +18,4 @@ namespace HE
             PrintArgs(file, ":", line, forward<Types>(args)...);
         }
     };
-} // namespace HE
+} // namespace hbe

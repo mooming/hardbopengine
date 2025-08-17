@@ -5,7 +5,7 @@
 #include "ComponentState.h"
 #include "String/String.h"
 
-namespace HE
+namespace hbe
 {
     class Component
     {
@@ -47,4 +47,4 @@ namespace HE
 
         inline void Destroy() { SetState(State::DEAD); }
     };
-} // namespace HE
+} // namespace hbe

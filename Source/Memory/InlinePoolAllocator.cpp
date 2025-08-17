@@ -14,7 +14,7 @@ namespace
 	public:
 		float operator()(const char *name, auto& ls, auto& lf) const
 		{
-			using namespace HE;
+			using namespace hbe;
 
 			Time::TDuration inlineTime;
 			Time::TDuration stdTime;
@@ -71,7 +71,7 @@ namespace
 	};
 } // namespace
 
-void HE::InlinePoolAllocatorTest::Prepare()
+void hbe::InlinePoolAllocatorTest::Prepare()
 {
 	AddTest("Zero-sized Allocation & Deallocation", [](auto&)
 	{
@@ -81,14 +81,14 @@ void HE::InlinePoolAllocatorTest::Prepare()
 		allocator.deallocate(ptr, 0);
 	});
 
-	auto allocDeallocTest = [](auto& inlineAlloc, auto& ls, auto& lf) -> float
+	auto AllocDeallocTestFunc = [](auto& allocator, auto& ls, auto& lf) -> float
 	{
-		constexpr int testCount = 10;
+		constexpr int testCount = 100;
 		constexpr int loopLength = 1000000;
 		constexpr double testCountInv = 1.0 / testCount;
 
-		ls << '[' << inlineAlloc.GetBlockSize() << "] Num Iterations = " << testCount
-		   << ", Loop Length = " << loopLength << lf;
+		ls << '[' << allocator.GetBlockSize() << "] Num Iterations = " << testCount << ", Loop Length = " << loopLength
+		   << lf;
 
 		std::allocator<int> stdAlloc;
 
@@ -103,8 +103,8 @@ void HE::InlinePoolAllocatorTest::Prepare()
 				Time::ScopedTime measure(inlineTime);
 				for (int i = 0; i < loopLength; ++i)
 				{
-					auto ptr = inlineAlloc.allocate(i);
-					inlineAlloc.deallocate(ptr, i);
+					auto ptr = allocator.allocate(i);
+					allocator.deallocate(ptr, i);
 				}
 			}
 
@@ -134,7 +134,7 @@ void HE::InlinePoolAllocatorTest::Prepare()
 
 #ifdef PROFILE_ENABLED
 		auto& mmgr = MemoryManager::GetInstance();
-		auto stat = mmgr.GetAllocatorStat(inlineAlloc.GetID());
+		auto stat = mmgr.GetAllocatorStat(allocator.GetID());
 
 		ls << "Performance: " << inlineTimeAvg << " msec vs STL: " << stdTimeAvg << " msec, rate = [" << rate
 		   << "], fallback count = " << stat.fallbackCount << " / " << (testCount * loopLength) << lf;
@@ -151,7 +151,7 @@ void HE::InlinePoolAllocatorTest::Prepare()
 		constexpr int inlineSize = 1;
 		InlinePoolAllocator<int, inlineSize> inlineAlloc;
 
-		auto rate = allocDeallocTest(inlineAlloc, ls, lf);
+		auto rate = AllocDeallocTestFunc(inlineAlloc, ls, lf);
 		if (rate > 1.0f)
 		{
 			ls << "Performance is worse than system malloc. rate = " << rate << lfwarn;
@@ -163,7 +163,7 @@ void HE::InlinePoolAllocatorTest::Prepare()
 		constexpr int inlineSize = 16;
 		InlinePoolAllocator<int, inlineSize> inlineAlloc;
 
-		auto rate = allocDeallocTest(inlineAlloc, ls, lf);
+		auto rate = AllocDeallocTestFunc(inlineAlloc, ls, lf);
 		if (rate > 1.0f)
 		{
 			ls << "Performance is worse than system malloc. rate = " << rate << lfwarn;
@@ -175,7 +175,7 @@ void HE::InlinePoolAllocatorTest::Prepare()
 		constexpr int inlineSize = 32;
 		InlinePoolAllocator<int, inlineSize> inlineAlloc;
 
-		auto rate = allocDeallocTest(inlineAlloc, ls, lf);
+		auto rate = AllocDeallocTestFunc(inlineAlloc, ls, lf);
 		if (rate > 1.0f)
 		{
 			ls << "Performance is worse than system malloc. rate = " << rate << lfwarn;
@@ -187,7 +187,7 @@ void HE::InlinePoolAllocatorTest::Prepare()
 		constexpr int inlineSize = 64;
 		InlinePoolAllocator<int, inlineSize> inlineAlloc;
 
-		auto rate = allocDeallocTest(inlineAlloc, ls, lf);
+		auto rate = AllocDeallocTestFunc(inlineAlloc, ls, lf);
 		if (rate > 1.0f)
 		{
 			ls << "Performance is worse than system malloc. rate = " << rate << lfwarn;
@@ -199,7 +199,7 @@ void HE::InlinePoolAllocatorTest::Prepare()
 		constexpr int inlineSize = 128;
 		InlinePoolAllocator<int, inlineSize> inlineAlloc;
 
-		auto rate = allocDeallocTest(inlineAlloc, ls, lf);
+		auto rate = AllocDeallocTestFunc(inlineAlloc, ls, lf);
 		if (rate > 1.0f)
 		{
 			ls << "Performance is worse than system malloc. rate = " << rate << lfwarn;
@@ -211,7 +211,7 @@ void HE::InlinePoolAllocatorTest::Prepare()
 		constexpr int inlineSize = 256;
 		InlinePoolAllocator<int, inlineSize> inlineAlloc;
 
-		auto rate = allocDeallocTest(inlineAlloc, ls, lf);
+		auto rate = AllocDeallocTestFunc(inlineAlloc, ls, lf);
 		if (rate > 1.0f)
 		{
 			ls << "Performance is worse than system malloc. rate = " << rate << lfwarn;
@@ -223,7 +223,7 @@ void HE::InlinePoolAllocatorTest::Prepare()
 		constexpr int inlineSize = 512;
 		InlinePoolAllocator<int, inlineSize> inlineAlloc;
 
-		auto rate = allocDeallocTest(inlineAlloc, ls, lf);
+		auto rate = AllocDeallocTestFunc(inlineAlloc, ls, lf);
 		if (rate > 1.0f)
 		{
 			ls << "Performance is worse than system malloc. rate = " << rate << lfwarn;
@@ -235,7 +235,7 @@ void HE::InlinePoolAllocatorTest::Prepare()
 		constexpr int inlineSize = 1024;
 		InlinePoolAllocator<int, inlineSize> inlineAlloc;
 
-		auto rate = allocDeallocTest(inlineAlloc, ls, lf);
+		auto rate = AllocDeallocTestFunc(inlineAlloc, ls, lf);
 		if (rate > 1.0f)
 		{
 			ls << "Performance is worse than system malloc. rate = " << rate << lfwarn;
@@ -247,7 +247,7 @@ void HE::InlinePoolAllocatorTest::Prepare()
 		constexpr int inlineSize = 2048;
 		InlinePoolAllocator<int, inlineSize> inlineAlloc;
 
-		auto rate = allocDeallocTest(inlineAlloc, ls, lf);
+		auto rate = AllocDeallocTestFunc(inlineAlloc, ls, lf);
 		if (rate > 1.0f)
 		{
 			ls << "Performance is worse than system malloc. rate = " << rate << lfwarn;
@@ -259,7 +259,7 @@ void HE::InlinePoolAllocatorTest::Prepare()
 		constexpr int inlineSize = 8192;
 		InlinePoolAllocator<int, inlineSize> inlineAlloc;
 
-		auto rate = allocDeallocTest(inlineAlloc, ls, lf);
+		auto rate = AllocDeallocTestFunc(inlineAlloc, ls, lf);
 		if (rate > 1.0f)
 		{
 			ls << "Performance is worse than system malloc. rate = " << rate << lfwarn;

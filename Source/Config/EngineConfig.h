@@ -8,7 +8,7 @@
 
 // Static Engine Default Settings
 
-namespace HE
+namespace hbe
 {
 
 namespace Config
@@ -60,4 +60,4 @@ size_t GetMaxSystemMemoryTarget();
 
 } // namespace Config
 
-} // namespace HE
+} // namespace hbe

@@ -5,7 +5,7 @@
 #include "System/Debug.h"
 #include <iostream>
 
-namespace HE
+namespace hbe
 {
     CommandLineArguments::CommandLineArguments(int argc, const char* argv[])
     {
@@ -40,4 +40,4 @@ namespace HE
             cout << i << " : " << argv[i] << endl;
         }
     }
-} // namespace HE
+} // namespace hbe

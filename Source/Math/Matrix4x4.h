@@ -9,7 +9,7 @@
 #include "Vector4.h"
 #include <array>
 
-namespace HE
+namespace hbe
 {
 
     template <typename Number>
@@ -427,4 +427,4 @@ namespace HE
 
         return os;
     }
-} // namespace HE
+} // namespace hbe

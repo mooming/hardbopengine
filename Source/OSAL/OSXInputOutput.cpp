@@ -39,13 +39,13 @@ namespace OS
     } // namespace FileHandleHelper
 
     bool Open(
-        FileHandle& outHandle, HE::StaticString filePath, FileOpenMode openMode)
+        FileHandle& outHandle, hbe::StaticString filePath, FileOpenMode openMode)
     {
         auto path = filePath.c_str();
         int fd = ::open(path, openMode.value, S_IRUSR | S_IWUSR);
         if (unlikely(fd < 0))
         {
-            using namespace HE;
+            using namespace hbe;
             using namespace StringUtil;
             static auto log = Logger::Get(ToFunctionName(__PRETTY_FUNCTION__));
 
@@ -64,7 +64,7 @@ namespace OS
 
     bool Close(FileHandle&& inHandle)
     {
-        using namespace HE;
+        using namespace hbe;
         using namespace StringUtil;
         using namespace FileHandleHelper;
 
@@ -98,13 +98,13 @@ namespace OS
         return true;
     }
 
-    bool Exist(HE::StaticString filePath)
+    bool Exist(hbe::StaticString filePath)
     {
         auto rc = access(filePath.c_str(), F_OK);
         return rc == 0;
     }
 
-    bool Delete(HE::StaticString filePath)
+    bool Delete(hbe::StaticString filePath)
     {
         auto rc = remove(filePath.c_str());
         return rc == 0;
@@ -112,7 +112,7 @@ namespace OS
 
     size_t Read(const FileHandle& handle, void* buffer, size_t size)
     {
-        using namespace HE;
+        using namespace hbe;
         using namespace StringUtil;
         using namespace FileHandleHelper;
 
@@ -158,7 +158,7 @@ namespace OS
 
     size_t Write(const FileHandle& handle, void* buffer, size_t size)
     {
-        using namespace HE;
+        using namespace hbe;
         using namespace StringUtil;
         using namespace FileHandleHelper;
 
@@ -204,7 +204,7 @@ namespace OS
 
     bool Truncate(const FileHandle& handle, size_t size)
     {
-        using namespace HE;
+        using namespace hbe;
         using namespace StringUtil;
         using namespace FileHandleHelper;
 
@@ -237,7 +237,7 @@ namespace OS
     void* MapMemory(FileHandle& fileHandle, size_t size,
         ProtectionMode protection, size_t offset)
     {
-        using namespace HE;
+        using namespace hbe;
         using namespace StringUtil;
 
         static auto log = Logger::Get(ToFunctionName(__PRETTY_FUNCTION__));
@@ -292,7 +292,7 @@ namespace OS
         auto rc = msync(ptr, size, syncMode.value);
         if (unlikely(rc != 0))
         {
-            using namespace HE;
+            using namespace hbe;
             using namespace StringUtil;
             static auto log = Logger::Get(ToFunctionName(__PRETTY_FUNCTION__));
             log.OutError([ptr](auto& ls) {
@@ -306,7 +306,7 @@ namespace OS
 
     bool UnmapMemory(void* ptr, size_t size)
     {
-        using namespace HE;
+        using namespace hbe;
         using namespace StringUtil;
 
         static auto log = Logger::Get(ToFunctionName(__PRETTY_FUNCTION__));

@@ -6,7 +6,7 @@
 #include "Vector2.h"
 #include <cmath>
 
-namespace HE
+namespace hbe
 {
 
     template <typename Number>
@@ -149,12 +149,12 @@ namespace HE
            << "), norm = " << v.Length();
         return os;
     }
-} // namespace HE
+} // namespace hbe
 
 #ifdef __UNIT_TEST__
 #include "Test/TestCollection.h"
 
-namespace HE
+namespace hbe
 {
     class Vector3Test : public TestCollection
     {
@@ -167,5 +167,5 @@ namespace HE
     protected:
         virtual void Prepare() override;
     };
-} // namespace HE
+} // namespace hbe
 #endif //__UNIT_TEST__

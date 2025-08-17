@@ -39,7 +39,7 @@ void OS::VirtualFree(void* address, std::size_t n)
     auto result = ::VirtualFree(address, n, MEM_RELEASE);
     if (unlikely(result))
     {
-        HE::Assert(false);
+        hbe::Assert(false);
     }
 }
 
@@ -56,12 +56,12 @@ void OS::ProtectMemory(void* address, size_t n)
     using namespace std;
     auto errorId = GetLastError();
 
-    auto& engine = HE::Engine::Get();
+    auto& engine = hbe::Engine::Get();
     engine.LogError([address, n, errorId](auto& log) {
         log << "[OS::ProtectMemory] address = " << address << ", n = " << n
             << " : error code = " << errorId << endl;
     });
 
-    HE::Assert(false);
+    hbe::Assert(false);
 }
 #endif // PLATFORM_WINDOWS

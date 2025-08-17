@@ -16,7 +16,7 @@ namespace std
     struct source_location;
 } // namespace std
 
-namespace HE
+namespace hbe
 {
 
     class Engine;
@@ -95,4 +95,4 @@ namespace HE
         inline auto GetDeltaTime() const { return deltaTime; }
     };
 
-} // namespace HE
+} // namespace hbe

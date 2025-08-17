@@ -5,7 +5,7 @@
 #ifdef __UNIT_TEST__
 #include <vector>
 
-void HE::SystemAllocatorTest::Prepare()
+void hbe::SystemAllocatorTest::Prepare()
 {
     AddTest("Vector Growth", [](auto&) {
         for (int j = 0; j < 100; ++j)

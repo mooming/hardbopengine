@@ -16,7 +16,7 @@ namespace
 {
     void SignalHandler(int sigNum)
     {
-        using namespace HE;
+        using namespace hbe;
 
         auto& engine = Engine::Get();
         engine.GetLogger().StopTask(engine.GetTaskSystem());
@@ -35,7 +35,7 @@ namespace
 
 } // namespace
 
-namespace HE
+namespace hbe
 {
     static Engine* engineInstance = nullptr;
 
@@ -307,4 +307,4 @@ namespace HE
         log.Out("Engine PreShutdown [Done]");
     }
 
-} // namespace HE
+} // namespace hbe

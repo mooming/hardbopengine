@@ -2,7 +2,7 @@
 
 #include "MultiPoolAllocatorConfig.h"
 
-namespace HE
+namespace hbe
 {
 
     MultiPoolAllocatorConfig::MultiPoolAllocatorConfig(
@@ -18,4 +18,4 @@ namespace HE
         return uniqueName < rhs.uniqueName;
     }
 
-} // namespace HE
+} // namespace hbe

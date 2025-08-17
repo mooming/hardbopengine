@@ -7,7 +7,7 @@
 
 #define ONCE while (false)
 
-namespace HE
+namespace hbe
 {
     class True_t
     {
@@ -65,4 +65,4 @@ namespace HE
     {
         return size;
     }
-} // namespace HE
+} // namespace hbe

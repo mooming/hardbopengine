@@ -2,20 +2,20 @@
 
 #include "OBB.h"
 
-namespace HE
+namespace hbe
 {
     template class OBB<float>;
-} // namespace HE
+} // namespace hbe
 
 #ifdef __UNIT_TEST__
 
-namespace HE
+namespace hbe
 {
 
     void OBBTest::Prepare()
     {
     }
 
-} // namespace HE
+} // namespace hbe
 
 #endif // __UNIT_TEST__

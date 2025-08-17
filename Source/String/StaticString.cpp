@@ -4,7 +4,7 @@
 
 #include "StaticStringTable.h"
 
-namespace HE
+namespace hbe
 {
 
     StaticString::StaticString()
@@ -36,7 +36,7 @@ namespace HE
         return ssTable.Get(id);
     }
 
-} // namespace HE
+} // namespace hbe
 
 #ifdef __UNIT_TEST__
 
@@ -44,7 +44,7 @@ namespace HE
 #include "Log/Logger.h"
 #include <iostream>
 
-namespace HE
+namespace hbe
 {
 
     void StaticStringTest::Prepare()
@@ -103,6 +103,6 @@ namespace HE
             }
         });
     }
-} // namespace HE
+} // namespace hbe
 
 #endif //__UNIT_TEST__

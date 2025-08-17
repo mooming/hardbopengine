@@ -2,17 +2,17 @@
 
 #include "AABB.h"
 
-namespace HE
+namespace hbe
 {
 
     template class AABB<Float2>;
     template class AABB<Float3>;
 
-} // namespace HE
+} // namespace hbe
 
 #ifdef __UNIT_TEST__
 
-void HE::AABBTest::Prepare()
+void hbe::AABBTest::Prepare()
 {
     static AABB3 bbox;
 

@@ -6,7 +6,7 @@
 #include "Log/Logger.h"
 #include "Task.h"
 
-namespace HE
+namespace hbe
 {
 
     TaskHandle::TaskHandle()
@@ -124,4 +124,4 @@ namespace HE
         new (this) TaskHandle();
     }
 
-} // namespace HE
+} // namespace hbe

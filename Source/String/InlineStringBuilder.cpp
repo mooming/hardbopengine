@@ -6,7 +6,7 @@
 #include <limits>
 #include "HSTL/HString.h"
 
-namespace HE
+namespace hbe
 {
 
 	void InlineStringBuilderTest::Prepare()
@@ -326,5 +326,5 @@ namespace HE
 		});
 	}
 
-} // namespace HE
+} // namespace hbe
 #endif //__UNIT_TEST__

@@ -7,7 +7,7 @@
 #include <cstddef>
 #include <functional>
 
-namespace HE
+namespace hbe
 {
 
     using TAllocFunc = std::function<void*(size_t)>;
@@ -47,4 +47,4 @@ namespace HE
         mmgr.Delete<Type>(ptr);
     }
 
-} // namespace HE
+} // namespace hbe

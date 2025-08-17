@@ -9,7 +9,7 @@
 #include <algorithm>
 #include <thread>
 
-namespace HE
+namespace hbe
 {
 
     // ConfigParam represents a single config value with arbitrary file.
@@ -98,4 +98,4 @@ namespace HE
     template <typename T>
     using TAtomicConfigParam = ConfigParam<T, true>;
 
-} // namespace HE
+} // namespace hbe

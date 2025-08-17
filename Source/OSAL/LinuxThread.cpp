@@ -28,7 +28,7 @@ void OS::SetThreadAffinity(std::thread& thread, uint64_t mask)
 
     if (sched_setaffinity(thread.native_handle(), sizeof(set), &set) != 0)
     {
-        const auto log = HE::Logger::Get("OS::Thread");
+        const auto log = hbe::Logger::Get("OS::Thread");
         log.OutError([](auto& ls) { ls << "failed to set cpu affinity"; });
     }
 }
@@ -37,7 +37,7 @@ void OS::SetThreadPriority(std::thread& thread, int priority)
 {
     if (setpriority(PRIO_PROCESS, thread.native_handle(), priority) != 0)
     {
-        const auto log = HE::Logger::Get("OS::Thread");
+        const auto log = hbe::Logger::Get("OS::Thread");
         log.OutError([](auto& ls) { ls << "failed to set thread affinity"; });
     }
 }

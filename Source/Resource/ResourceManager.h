@@ -7,7 +7,7 @@
 #include "Resource.h"
 #include "String/StaticString.h"
 
-namespace HE
+namespace hbe
 {
 
     class Engine;
@@ -50,4 +50,4 @@ namespace HE
         void RequestTasks(TaskSystem& taskSys);
     };
 
-} // namespace HE
+} // namespace hbe

@@ -7,20 +7,20 @@
 #include <cstddef>
 #include <cstdint>
 
-#define ALIGN alignas(HE::Config::DefaultAlign)
+#define ALIGN alignas(hbe::Config::DefaultAlign)
 
 namespace OS
 {
 
     template <typename T>
-    bool CheckAligned(T* ptr, uint32_t alignBytes = HE::Config::DefaultAlign)
+    bool CheckAligned(T* ptr, uint32_t alignBytes = hbe::Config::DefaultAlign)
     {
         const size_t address = reinterpret_cast<size_t>(ptr);
         return (address % alignBytes) == 0;
     }
 
     constexpr size_t GetAligned(
-        size_t size, uint32_t alignBytes = HE::Config::DefaultAlign)
+        size_t size, uint32_t alignBytes = hbe::Config::DefaultAlign)
     {
         const auto multiplier = (size + alignBytes - 1) / alignBytes;
         return multiplier * alignBytes;

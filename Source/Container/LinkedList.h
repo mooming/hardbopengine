@@ -7,7 +7,7 @@
 #include "System/Debug.h"
 #include <functional>
 
-namespace HE
+namespace hbe
 {
     template <typename Type>
     struct LinkedListNode final
@@ -387,12 +387,12 @@ namespace HE
             }
         }
     };
-} // namespace HE
+} // namespace hbe
 
 #ifdef __UNIT_TEST__
 #include "Test/TestCollection.h"
 
-namespace HE
+namespace hbe
 {
     class LinkedListTest : public TestCollection
     {
@@ -405,5 +405,5 @@ namespace HE
     protected:
         virtual void Prepare() override;
     };
-} // namespace HE
+} // namespace hbe
 #endif //__UNIT_TEST__

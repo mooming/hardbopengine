@@ -10,7 +10,7 @@
 #include <cstddef>
 #include <cstdint>
 
-namespace HE
+namespace hbe
 {
 
     class BufferInputStream final
@@ -164,12 +164,12 @@ namespace HE
         }
     };
 
-} // namespace HE
+} // namespace hbe
 
 #ifdef __UNIT_TEST__
 #include "Test/TestCollection.h"
 
-namespace HE
+namespace hbe
 {
     class BufferInputStreamTest : public TestCollection
     {
@@ -180,5 +180,5 @@ namespace HE
     protected:
         virtual void Prepare() override;
     };
-} // namespace HE
+} // namespace hbe
 #endif //__UNIT_TEST__

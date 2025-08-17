@@ -2,7 +2,7 @@
 
 #include "Resource.h"
 
-namespace HE
+namespace hbe
 {
 
     Resource::Resource()
@@ -13,4 +13,4 @@ namespace HE
     {
     }
 
-} // namespace HE
+} // namespace hbe

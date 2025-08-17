@@ -5,7 +5,7 @@
 #include <cstdint>
 #include <ostream>
 
-namespace HE
+namespace hbe
 {
     struct StaticStringID final
     {
@@ -28,14 +28,14 @@ namespace HE
         }
     };
 
-} // namespace HE
+} // namespace hbe
 
 namespace std
 {
     template <>
-    struct hash<HE::StaticStringID> final
+    struct hash<hbe::StaticStringID> final
     {
-        std::size_t operator()(const HE::StaticStringID& obj) const
+        std::size_t operator()(const hbe::StaticStringID& obj) const
         {
             return reinterpret_cast<std::size_t>(obj.ptr);
         }

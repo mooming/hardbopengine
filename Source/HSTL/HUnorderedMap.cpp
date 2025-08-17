@@ -5,7 +5,7 @@
 #ifdef __UNIT_TEST__
 #include "String/StringUtil.h"
 
-namespace HE
+namespace hbe
 {
     HUnorderedMapTest::HUnorderedMapTest()
         : TestCollection(StringUtil::ToCompactClassName(__PRETTY_FUNCTION__))
@@ -48,5 +48,5 @@ namespace HE
         });
     }
 
-} // namespace HE
+} // namespace hbe
 #endif //__UNIT_TEST__

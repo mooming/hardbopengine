@@ -4,7 +4,7 @@
 
 #include "MemoryManager.h"
 
-namespace HE
+namespace hbe
 {
     template <typename Type, typename RefCount = uint8_t>
     class Shareable
@@ -140,4 +140,4 @@ namespace HE
             rhs.body = tmpBody;
         }
     };
-} // namespace HE
+} // namespace hbe

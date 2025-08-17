@@ -2,7 +2,7 @@
 
 #pragma once
 
-namespace HE
+namespace hbe
 {
 
     struct EndLine final
@@ -12,4 +12,4 @@ namespace HE
 
     static constexpr EndLine hendl;
 
-} // namespace HE
+} // namespace hbe

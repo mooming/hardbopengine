@@ -4,7 +4,7 @@
 #include "PoolConfig.h"
 #include <vector>
 
-namespace HE
+namespace hbe
 {
 
     namespace PoolConfigUtil
@@ -17,4 +17,4 @@ namespace HE
 
     } // namespace PoolConfigUtil
 
-} // namespace HE
+} // namespace hbe

@@ -8,7 +8,7 @@
 #include <iostream>
 #include <sstream>
 
-using namespace HE;
+using namespace hbe;
 
 TestEnv& TestEnv::GetEnv()
 {

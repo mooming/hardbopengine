@@ -7,7 +7,7 @@
 #include <ostream>
 #include <string_view>
 
-namespace HE
+namespace hbe
 {
 
     template <typename T>
@@ -54,14 +54,14 @@ namespace HE
         }
     };
 
-} // namespace HE
+} // namespace hbe
 
 namespace std
 {
     template <>
-    struct hash<HE::StaticString> final
+    struct hash<hbe::StaticString> final
     {
-        std::size_t operator()(const HE::StaticString& obj) const
+        std::size_t operator()(const hbe::StaticString& obj) const
         {
             return reinterpret_cast<std::size_t>(obj.GetID().ptr);
         }
@@ -71,7 +71,7 @@ namespace std
 #ifdef __UNIT_TEST__
 #include "Test/TestCollection.h"
 
-namespace HE
+namespace hbe
 {
 
     class StaticStringTest : public TestCollection
@@ -86,5 +86,5 @@ namespace HE
         virtual void Prepare() override;
     };
 
-} // namespace HE
+} // namespace hbe
 #endif //__UNIT_TEST__

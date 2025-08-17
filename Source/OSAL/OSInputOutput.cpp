@@ -10,7 +10,7 @@
 #include "String/StringUtil.h"
 #include "Test/TestCollection.h"
 
-namespace HE
+namespace hbe
 {
 
     OSInputOutputTest::OSInputOutputTest()
@@ -194,5 +194,5 @@ namespace HE
         });
     }
 
-} // namespace HE
+} // namespace hbe
 #endif //__UNIT_TEST__

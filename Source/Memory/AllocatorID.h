@@ -2,7 +2,7 @@
 
 #pragma once
 
-namespace HE
+namespace hbe
 {
 
     using TAllocatorID = int;
@@ -14,4 +14,4 @@ namespace HE
         return id >= 0 && id < MaxNumAllocators;
     }
 
-} // namespace HE
+} // namespace hbe

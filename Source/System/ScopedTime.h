@@ -4,7 +4,7 @@
 
 #include "Time.h"
 
-namespace HE
+namespace hbe
 {
     namespace Time
     {
@@ -32,4 +32,4 @@ namespace HE
         };
 
     } // namespace Time
-} // namespace HE
+} // namespace hbe

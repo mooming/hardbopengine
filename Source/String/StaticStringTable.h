@@ -10,7 +10,7 @@
 #include <mutex>
 #include <string_view>
 
-namespace HE
+namespace hbe
 {
 
     class StaticStringTable final
@@ -84,4 +84,4 @@ namespace HE
         static void* Allocate(size_t n);
     };
 
-} // namespace HE
+} // namespace hbe

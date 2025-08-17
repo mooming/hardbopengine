@@ -11,7 +11,7 @@
 #include <iostream>
 #include <mutex>
 
-namespace HE
+namespace hbe
 {
 
     namespace
@@ -294,4 +294,4 @@ namespace HE
         return ptr;
     }
 
-} // namespace HE
+} // namespace hbe

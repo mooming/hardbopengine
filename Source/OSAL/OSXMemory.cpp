@@ -45,7 +45,7 @@ void OS::ProtectMemory(void* address, size_t n)
         cerr << "[OS::ProtectMemory] address = " << address << ", n = " << n
              << " : " << strerror(errno) << endl;
 
-        HE::Assert(false);
+        hbe::Assert(false);
     }
 }
 

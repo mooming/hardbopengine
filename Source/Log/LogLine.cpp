@@ -9,7 +9,7 @@
 #include "System/Debug.h"
 #include <chrono>
 
-namespace HE
+namespace hbe
 {
 
     LogLine::LogLine()
@@ -112,4 +112,4 @@ namespace HE
         return text;
     }
 
-} // namespace HE
+} // namespace hbe

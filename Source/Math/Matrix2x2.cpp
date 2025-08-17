@@ -1,6 +1,6 @@
 #include "Matrix2x2.h"
 
-namespace HE
+namespace hbe
 {
     template class Matrix2x2<float>;
 }

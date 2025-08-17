@@ -4,7 +4,7 @@
 
 #ifdef __UNIT_TEST__
 
-void HE::OptionalTest::Prepare()
+void hbe::OptionalTest::Prepare()
 {
     AddTest("Optional<int>", [this](auto& ls) {
         Optional<int> a;

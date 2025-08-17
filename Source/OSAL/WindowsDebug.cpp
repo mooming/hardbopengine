@@ -10,7 +10,7 @@
 
 #pragma comment(lib, "dbghelp.lib")
 
-using namespace HE;
+using namespace hbe;
 
 StaticString OS::GetBackTrace(uint16_t startIndex, uint16_t maxDepth)
 {

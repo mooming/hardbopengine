@@ -2,16 +2,16 @@
 
 #include "Vector4.h"
 
-namespace HE
+namespace hbe
 {
     template class Vector4<float>;
-} // namespace HE
+} // namespace hbe
 
 #ifdef __UNIT_TEST__
 #include "HSTL/HVector.h"
 #include "System/ScopedTime.h"
 
-void HE::Vector4Test::Prepare()
+void hbe::Vector4Test::Prepare()
 {
     AddTest("Vector4 Constants", [this](auto& ls) {
         ls << "Forward = " << Float4::Forward << lf;

@@ -28,11 +28,11 @@ namespace StringUtil
         const std::function<void(std::string_view)> func,
         const char* separators = " \t\n\r");
 
-    HE::StaticString ToFunctionName(const char* PrettyFunction);
-    HE::StaticString ToClassName(const char* PrettyFunction);
-    HE::StaticString ToMethodName(const char* PrettyFunction);
-    HE::StaticString ToCompactClassName(const char* PrettyFunction);
-    HE::StaticString ToCompactMethodName(const char* PrettyFunction);
+    hbe::StaticString ToFunctionName(const char* PrettyFunction);
+    hbe::StaticString ToClassName(const char* PrettyFunction);
+    hbe::StaticString ToMethodName(const char* PrettyFunction);
+    hbe::StaticString ToCompactClassName(const char* PrettyFunction);
+    hbe::StaticString ToCompactMethodName(const char* PrettyFunction);
 
     size_t StrLen(const char* text);
     size_t StrLen(const char* text, size_t bufferSize);
@@ -44,7 +44,7 @@ namespace StringUtil
 #ifdef __UNIT_TEST__
 #include "Test/TestCollection.h"
 
-namespace HE
+namespace hbe
 {
 
     class StringUtilTest : public TestCollection
@@ -59,5 +59,5 @@ namespace HE
         virtual void Prepare() override;
     };
 
-} // namespace HE
+} // namespace hbe
 #endif //__UNIT_TEST__

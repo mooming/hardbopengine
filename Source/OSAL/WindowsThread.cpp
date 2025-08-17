@@ -21,7 +21,7 @@ void OS::SetThreadPriority(std::thread& thread, int priority)
     auto result = ::SetThreadPriority(thread.native_handle(), priority);
     if (result == false)
     {
-        auto& engine = HE::Engine::Get();
+        auto& engine = hbe::Engine::Get();
         engine.LogError([](auto& ls) { ls << "SetThreadPriority failed."; });
     }
 }

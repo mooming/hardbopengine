@@ -2,7 +2,7 @@
 
 #pragma once
 
-namespace HE
+namespace hbe
 {
     class Letter
     {
@@ -45,4 +45,4 @@ namespace HE
             return true;
         }
     };
-} // namespace HE
+} // namespace hbe

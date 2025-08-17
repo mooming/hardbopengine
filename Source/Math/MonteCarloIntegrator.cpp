@@ -8,7 +8,7 @@
 #include <random>
 #include "System/Constants.h"
 
-void HE::MonteCarloIntegrationTest::Prepare()
+void hbe::MonteCarloIntegrationTest::Prepare()
 {
 	AddTest("Calculate Pi",
 			[this](auto& ls) -> void

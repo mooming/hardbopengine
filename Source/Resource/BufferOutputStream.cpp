@@ -4,7 +4,7 @@
 
 #include "String/StringUtil.h"
 
-namespace HE
+namespace hbe
 {
 
 	static_assert(!std::is_copy_constructible<BufferOutputStream>::value);
@@ -109,13 +109,13 @@ namespace HE
 		return *this;
 	}
 
-} // namespace HE
+} // namespace hbe
 
 #ifdef __UNIT_TEST__
 #include "BufferInputStream.h"
 #include "BufferUtil.h"
 
-namespace HE
+namespace hbe
 {
 
 	BufferOutputStreamTest::BufferOutputStreamTest() :
@@ -280,5 +280,5 @@ namespace HE
 		});
 	}
 
-} // namespace HE
+} // namespace hbe
 #endif //__UNIT_TEST__

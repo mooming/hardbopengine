@@ -159,7 +159,7 @@ namespace StringUtil
         const std::function<void(std::string_view)> func,
         const char* separators)
     {
-        using namespace HE;
+        using namespace hbe;
 
         if (unlikely(str == nullptr))
         {
@@ -221,7 +221,7 @@ namespace StringUtil
         }
     }
 
-    HE::StaticString ToFunctionName(const char* PrettyFunction)
+    hbe::StaticString ToFunctionName(const char* PrettyFunction)
     {
         using TStr = std::string_view;
         TStr str(PrettyFunction);
@@ -230,22 +230,22 @@ namespace StringUtil
         auto bracketStart = str.find_last_of('(');
         if (unlikely(bracketStart == TStr::npos))
         {
-            return HE::StaticString(PrettyFunction);
+            return hbe::StaticString(PrettyFunction);
         }
 
         auto subStr = str.substr(0, bracketStart);
         auto start = subStr.find_last_of("::") + 1;
         if (start == TStr::npos)
         {
-            return HE::StaticString(PrettyFunction);
+            return hbe::StaticString(PrettyFunction);
         }
 
         str = str.substr(start, bracketEnd - start);
 
-        return HE::StaticString(str);
+        return hbe::StaticString(str);
     }
 
-    HE::StaticString ToClassName(const char* PrettyFunction)
+    hbe::StaticString ToClassName(const char* PrettyFunction)
     {
         using TStr = std::string_view;
         TStr str(PrettyFunction);
@@ -253,7 +253,7 @@ namespace StringUtil
         auto end = str.find_last_of("::") - 1;
         if (end == TStr::npos)
         {
-            return HE::StaticString();
+            return hbe::StaticString();
         }
 
         str = str.substr(0, end);
@@ -261,10 +261,10 @@ namespace StringUtil
         auto start = str.find_last_of(" ") + 1;
         str = str.substr(start);
 
-        return HE::StaticString(str);
+        return hbe::StaticString(str);
     }
 
-    HE::StaticString ToMethodName(const char* PrettyFunction)
+    hbe::StaticString ToMethodName(const char* PrettyFunction)
     {
         using TStr = std::string_view;
         TStr str(PrettyFunction);
@@ -272,26 +272,26 @@ namespace StringUtil
         auto bracketStart = str.find_last_of('(');
         if (bracketStart == TStr::npos)
         {
-            return HE::StaticString(PrettyFunction);
+            return hbe::StaticString(PrettyFunction);
         }
 
         auto subStr = str.substr(0, bracketStart);
         auto start = subStr.find_last_of("::") + 1;
         if (start == TStr::npos)
         {
-            return HE::StaticString(PrettyFunction);
+            return hbe::StaticString(PrettyFunction);
         }
 
         subStr = str.substr(0, start - 2);
         start = subStr.find_last_of(" ") + 1;
         str = str.substr(start, bracketStart - start);
 
-        return HE::StaticString(str);
+        return hbe::StaticString(str);
     }
 
-    HE::StaticString ToCompactClassName(const char* PrettyFunction)
+    hbe::StaticString ToCompactClassName(const char* PrettyFunction)
     {
-        using namespace HE;
+        using namespace hbe;
 
         using TStr = std::string_view;
         TStr str(PrettyFunction);
@@ -299,17 +299,17 @@ namespace StringUtil
         auto end = str.find_last_of("::") - 1;
         if (end == TStr::npos)
         {
-            return HE::StaticString();
+            return hbe::StaticString();
         }
 
         str = str.substr(0, end);
         auto start = str.find_last_of("::") + 1;
         str = str.substr(start, (end - start));
 
-        return HE::StaticString(str);
+        return hbe::StaticString(str);
     }
 
-    HE::StaticString ToCompactMethodName(const char* PrettyFunction)
+    hbe::StaticString ToCompactMethodName(const char* PrettyFunction)
     {
         using TStr = std::string_view;
         TStr str(PrettyFunction);
@@ -317,14 +317,14 @@ namespace StringUtil
         auto bracketStart = str.find_last_of('(');
         if (bracketStart == TStr::npos)
         {
-            return HE::StaticString(PrettyFunction);
+            return hbe::StaticString(PrettyFunction);
         }
 
         auto subStr = str.substr(0, bracketStart);
         auto start = subStr.find_last_of("::") + 1;
         if (start == TStr::npos)
         {
-            return HE::StaticString(PrettyFunction);
+            return hbe::StaticString(PrettyFunction);
         }
 
         subStr = str.substr(0, start - 2);
@@ -333,12 +333,12 @@ namespace StringUtil
         {
             str = str.substr(start);
 
-            return HE::StaticString(str);
+            return hbe::StaticString(str);
         }
 
         str = str.substr(upperStart, bracketStart - upperStart);
 
-        return HE::StaticString(str);
+        return hbe::StaticString(str);
     }
 
     size_t StrLen(const char* text)
@@ -415,7 +415,7 @@ namespace StringUtil
 
 #ifdef __UNIT_TEST__
 
-namespace HE
+namespace hbe
 {
 
     void StringUtilTest::Prepare()
@@ -491,7 +491,7 @@ namespace HE
         auto prettyFunction = __PRETTY_FUNCTION__;
 
         AddTest("ToClassName", [this, prettyFunction](auto& ls) {
-            StaticString className("HE::StringUtilTest");
+            StaticString className("hbe::StringUtilTest");
 
             auto name = ToClassName(prettyFunction);
             ls << "Class Name is " << name << " / " << className << lf;
@@ -533,7 +533,7 @@ namespace HE
         });
 
         AddTest("ToMethodName", [this, prettyFunction](auto& ls) {
-            StaticString funcName("HE::StringUtilTest::Prepare");
+            StaticString funcName("hbe::StringUtilTest::Prepare");
             auto name = ToMethodName(prettyFunction);
 
             ls << "Function Name is " << name << " / (" << funcName << ')'
@@ -560,5 +560,5 @@ namespace HE
             }
         });
     }
-} // namespace HE
+} // namespace hbe
 #endif //__UNIT_TEST__

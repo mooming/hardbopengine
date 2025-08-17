@@ -12,7 +12,7 @@
 #include "String/StringBuilder.h"
 #include "System/SystemStatistics.h"
 
-namespace HE
+namespace hbe
 {
 
 	ThreadSafeMultiPoolAllocator::ThreadSafeMultiPoolAllocator(const char *inName, size_t allocationUnit,
@@ -446,14 +446,14 @@ namespace HE
 					"A new bank is added.");
 	}
 
-} // namespace HE
+} // namespace hbe
 
 #ifdef __UNIT_TEST__
 #include "AllocatorScope.h"
 #include "MemoryManager.h"
 #include "System/ScopedTime.h"
 
-namespace HE
+namespace hbe
 {
 
 	void ThreadSafeMultiPoolAllocatorTest::Prepare()
@@ -601,5 +601,5 @@ namespace HE
 		});
 	}
 
-} // namespace HE
+} // namespace hbe
 #endif //__UNIT_TEST__

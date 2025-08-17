@@ -7,7 +7,7 @@
 #include "Vector3.h"
 #include <array>
 
-namespace HE
+namespace hbe
 {
     template <typename Number>
     class Matrix3x3
@@ -306,12 +306,12 @@ namespace HE
 
         return os;
     }
-} // namespace HE
+} // namespace hbe
 
 #ifdef __UNIT_TEST__
 #include "Test/TestCollection.h"
 
-namespace HE
+namespace hbe
 {
 
     class Matrix3x3Test : public TestCollection
@@ -325,5 +325,5 @@ namespace HE
     protected:
         virtual void Prepare() override;
     };
-} // namespace HE
+} // namespace hbe
 #endif //__UNIT_TEST__

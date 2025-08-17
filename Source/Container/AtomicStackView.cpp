@@ -7,7 +7,7 @@
 #include "Log/Logger.h"
 #include <thread>
 
-namespace HE
+namespace hbe
 {
 
     namespace
@@ -117,7 +117,7 @@ namespace HE
                 }
 
                 popCount.fetch_add(count, std::memory_order_relaxed);
-                auto log = HE::Logger::Get(GetName());
+                auto log = hbe::Logger::Get(GetName());
                 log.Out([count](auto& ls) { ls << "Num Pop = " << count; });
             };
 
@@ -151,5 +151,5 @@ namespace HE
         });
     }
 
-} // namespace HE
+} // namespace hbe
 #endif //__UNIT_TEST__

@@ -16,7 +16,7 @@ namespace OS
     struct FileHandle;
 };
 
-namespace HE
+namespace hbe
 {
     namespace BufferUtil
     {
@@ -53,4 +53,4 @@ namespace HE
         }
 
     } // namespace BufferUtil
-} // namespace HE
+} // namespace hbe

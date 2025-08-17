@@ -5,7 +5,7 @@
 #include "Container/Array.h"
 #include "String/String.h"
 
-namespace HE
+namespace hbe
 {
     class CommandLineArguments final
     {
@@ -26,4 +26,4 @@ namespace HE
     private:
         void Parse(int argc, const char* argv[]);
     };
-} // namespace HE
+} // namespace hbe

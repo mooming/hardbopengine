@@ -12,7 +12,7 @@
 #include "String/StringBuilder.h"
 #include "System/SystemStatistics.h"
 
-namespace HE
+namespace hbe
 {
 
 	MultiPoolAllocator::MultiPoolAllocator(const char *inName, size_t allocationUnit, size_t minBlockSize)
@@ -423,14 +423,14 @@ namespace HE
 					"A new bank is added.");
 	}
 
-} // namespace HE
+} // namespace hbe
 
 #ifdef __UNIT_TEST__
 #include "AllocatorScope.h"
 #include "MemoryManager.h"
 #include "System/ScopedTime.h"
 
-namespace HE
+namespace hbe
 {
 
 	void MultiPoolAllocatorTest::Prepare()
@@ -576,5 +576,5 @@ namespace HE
 		});
 	}
 
-} // namespace HE
+} // namespace hbe
 #endif //__UNIT_TEST__

@@ -8,7 +8,7 @@
 namespace OS
 {
 
-    HE::StaticString GetBackTrace(
+    hbe::StaticString GetBackTrace(
         uint16_t startIndex = 0, uint16_t maxDepth = 512);
 
 } // namespace OS
@@ -16,7 +16,7 @@ namespace OS
 #ifdef __UNIT_TEST__
 #include "Test/TestCollection.h"
 
-namespace HE
+namespace hbe
 {
 
     class OSDebugTest : public TestCollection
@@ -31,5 +31,5 @@ namespace HE
         virtual void Prepare() override;
     };
 
-} // namespace HE
+} // namespace hbe
 #endif //__UNIT_TEST__

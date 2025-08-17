@@ -7,7 +7,7 @@
 #include <random>
 #include "HSTL/HVector.h"
 
-namespace HE
+namespace hbe
 {
 
 	template<typename TReal = double, typename TInteger = uint32_t>
@@ -56,12 +56,12 @@ namespace HE
 			}
 		}
 	};
-} // namespace HE
+} // namespace hbe
 
 #ifdef __UNIT_TEST__
 #include "Test/TestCollection.h"
 
-namespace HE
+namespace hbe
 {
 	class StratifiedSamplingTest : public TestCollection
 	{
@@ -71,5 +71,5 @@ namespace HE
 	protected:
 		void Prepare() override;
 	};
-} // namespace HE
+} // namespace hbe
 #endif //__UNIT_TEST__

@@ -6,7 +6,7 @@
 #include <cstddef>
 #include <cstdint>
 
-namespace HE
+namespace hbe
 {
     class MonotonicAllocator final
     {
@@ -42,12 +42,12 @@ namespace HE
     private:
         bool IsMine(const TPointer ptr) const;
     };
-} // namespace HE
+} // namespace hbe
 
 #ifdef __UNIT_TEST__
 #include "Test/TestCollection.h"
 
-namespace HE
+namespace hbe
 {
 
     class MonotonicAllocatorTest : public TestCollection
@@ -62,5 +62,5 @@ namespace HE
         virtual void Prepare() override;
     };
 
-} // namespace HE
+} // namespace hbe
 #endif //__UNIT_TEST__

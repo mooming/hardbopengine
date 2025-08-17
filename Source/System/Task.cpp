@@ -6,7 +6,7 @@
 #include "OSAL/Intrinsic.h"
 #include "Time.h"
 
-namespace HE
+namespace hbe
 {
 
     Task::Task()
@@ -142,4 +142,4 @@ namespace HE
         }
     }
 
-} // namespace HE
+} // namespace hbe

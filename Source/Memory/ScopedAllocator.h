@@ -4,7 +4,7 @@
 
 #include "AllocatorScope.h"
 
-namespace HE
+namespace hbe
 {
 
     template <typename TAlloc>
@@ -34,4 +34,4 @@ namespace HE
         auto& GetAllocator() const { return allocator; }
     };
 
-} // namespace HE
+} // namespace hbe

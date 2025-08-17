@@ -13,7 +13,7 @@
 #include <future>
 #include <thread>
 
-namespace HE
+namespace hbe
 {
 
     namespace
@@ -692,7 +692,7 @@ namespace HE
         return keySeed++;
     }
 
-} // namespace HE
+} // namespace hbe
 
 #ifdef __UNIT_TEST__
 #include "../Engine/Engine.h"
@@ -701,7 +701,7 @@ namespace HE
 #include "Test/TestCollection.h"
 #include <memory>
 
-namespace HE
+namespace hbe
 {
 
     void TaskSystemTest::Prepare()
@@ -955,5 +955,5 @@ namespace HE
         }
     }
 
-} // namespace HE
+} // namespace hbe
 #endif //__UNIT_TEST__

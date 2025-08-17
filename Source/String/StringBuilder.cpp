@@ -2,16 +2,16 @@
 
 #include "StringBuilder.h"
 
-namespace HE
+namespace hbe
 {
 	template class StringBuilder<char, BaseAllocator<char>>;
-} // namespace HE
+} // namespace hbe
 
 #ifdef __UNIT_TEST__
 #include <limits>
 #include "HSTL/HString.h"
 
-namespace HE
+namespace hbe
 {
 
 	void StringBuilderTest::Prepare()
@@ -341,5 +341,5 @@ namespace HE
 		});
 	}
 
-} // namespace HE
+} // namespace hbe
 #endif //__UNIT_TEST__

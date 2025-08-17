@@ -14,7 +14,7 @@
 #include "System/Debug.h"
 #include "System/TaskSystem.h"
 
-namespace HE
+namespace hbe
 {
 
 	namespace
@@ -260,14 +260,18 @@ namespace HE
 #ifdef LOG_BREAK_IF_WARNING
 		if (unlikely(level >= ELogLevel::Warning))
 		{
+			ImmediateLog(level, category, ls.c_str());
 			debugBreak();
+			return;
 		}
 #endif // LOG_BREAK_IF_WARNING
 
 #ifdef LOG_BREAK_IF_ERROR
 		if (unlikely(level >= ELogLevel::Error))
 		{
+			ImmediateLog(level, category, ls.c_str());
 			debugBreak();
+			return;
 		}
 #endif // LOG_BREAK_IF_ERROR
 
@@ -450,4 +454,4 @@ namespace HE
 		}
 	}
 
-} // namespace HE
+} // namespace hbe

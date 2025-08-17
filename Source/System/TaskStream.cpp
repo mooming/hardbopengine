@@ -10,7 +10,7 @@
 #include "TaskSystem.h"
 #include <thread>
 
-namespace HE
+namespace hbe
 {
 
     TaskStream::Request::Request()
@@ -413,4 +413,4 @@ namespace HE
         }
     }
 
-} // namespace HE
+} // namespace hbe

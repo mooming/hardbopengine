@@ -11,7 +11,7 @@
 
 using namespace HSTL;
 
-namespace HE
+namespace hbe
 {
 
     ConfigFile::ConfigFile(const char* path)
@@ -124,4 +124,4 @@ namespace HE
             func(element);
         }
     }
-} // namespace HE
+} // namespace hbe

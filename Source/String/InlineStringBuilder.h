@@ -11,7 +11,7 @@
 #include "StaticString.h"
 #include "StringUtil.h"
 
-namespace HE
+namespace hbe
 {
 
 	/**
@@ -353,12 +353,12 @@ namespace HE
 		This& operator<<(EndLine) { return *this << '\n'; }
 	};
 
-} // namespace HE
+} // namespace hbe
 
 #ifdef __UNIT_TEST__
 #include "Test/TestCollection.h"
 
-namespace HE
+namespace hbe
 {
 	class InlineStringBuilderTest : public TestCollection
 	{
@@ -368,6 +368,6 @@ namespace HE
 	protected:
 		virtual void Prepare() override;
 	};
-} // namespace HE
+} // namespace hbe
 
 #endif //__UNIT_TEST__

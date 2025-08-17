@@ -2,7 +2,7 @@
 
 #pragma once
 
-namespace HE
+namespace hbe
 {
 
     enum class ELogLevel : unsigned char
@@ -16,4 +16,4 @@ namespace HE
         MAX
     };
 
-} // namespace HE
+} // namespace hbe

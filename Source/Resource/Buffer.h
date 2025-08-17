@@ -6,7 +6,7 @@
 #include "String/StaticString.h"
 #include "System/Debug.h"
 
-namespace HE
+namespace hbe
 {
 
     class Buffer final
@@ -57,12 +57,12 @@ namespace HE
         auto GetSize() const { return size; }
     };
 
-} // namespace HE
+} // namespace hbe
 
 #ifdef __UNIT_TEST__
 #include "Test/TestCollection.h"
 
-namespace HE
+namespace hbe
 {
     class BufferTest : public TestCollection
     {
@@ -73,5 +73,5 @@ namespace HE
     protected:
         virtual void Prepare() override;
     };
-} // namespace HE
+} // namespace hbe
 #endif //__UNIT_TEST__

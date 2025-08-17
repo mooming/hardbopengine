@@ -4,7 +4,7 @@
 
 #include <cstddef>
 
-namespace HE
+namespace hbe
 {
     constexpr size_t KB = 1024;
     constexpr size_t MB = 1024 * 1024;
@@ -23,4 +23,4 @@ namespace HE
         constexpr float Epsilon = 0.005f;
         constexpr float SqrEpsilon = Epsilon * Epsilon;
     } // namespace Physics
-} // namespace HE
+} // namespace hbe
