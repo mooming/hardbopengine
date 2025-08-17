@@ -257,6 +257,13 @@ namespace HE
 		TLogStream ls;
 		logFunc(ls);
 
+#ifdef LOG_BREAK_IF_WARNING
+		if (unlikely(level >= ELogLevel::Warning))
+		{
+			debugBreak();
+		}
+#endif // LOG_BREAK_IF_WARNING
+
 #ifdef LOG_BREAK_IF_ERROR
 		if (unlikely(level >= ELogLevel::Error))
 		{
