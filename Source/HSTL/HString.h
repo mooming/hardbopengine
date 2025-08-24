@@ -2,14 +2,14 @@
 
 #pragma once
 
-#include "Memory/BaseAllocator.h"
-#include "Memory/InlinePoolAllocator.h"
 #include <string>
+#include "Memory/DefaultAllocator.h"
+#include "Memory/InlinePoolAllocator.h"
 
 namespace HSTL
 {
     using HString = std::basic_string<char, std::char_traits<char>,
-        hbe::BaseAllocator<char>>;
+        hbe::DefaultAllocator<char>>;
 
     template <size_t PoolSize = 128>
     using HInlineString = std::basic_string<char, std::char_traits<char>,

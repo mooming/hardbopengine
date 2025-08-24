@@ -2,16 +2,16 @@
 
 #pragma once
 
-#include "Memory/BaseAllocator.h"
+#include <initializer_list>
+#include "Memory/DefaultAllocator.h"
 #include "Memory/Memory.h"
 #include "System/Debug.h"
-#include <initializer_list>
 
 namespace hbe
 {
 
     // Static array supporting custom allocators
-    template <typename Element, class TAllocator = BaseAllocator<Element>>
+    template <typename Element, class TAllocator = DefaultAllocator<Element>>
     class Array
     {
     public:

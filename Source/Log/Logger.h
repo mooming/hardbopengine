@@ -51,34 +51,34 @@ namespace hbe
 			void OutError(const TLogFunction& logFunc) const { Out(ELogLevel::Error, logFunc); }
 			void OutFatalError(const TLogFunction& logFunc) const { Out(ELogLevel::FatalError, logFunc); }
 
-			void Out(const char *text) const
+			void Out(const char* text) const
 			{
 				Out([text](auto& ls) { ls << text; });
 			}
 
-			void Out(ELogLevel level, const char *text) const
+			void Out(ELogLevel level, const char* text) const
 			{
 				Out(level, [text](auto& ls) { ls << text; });
 			}
 
-			void OutWarning(const char *text) const
+			void OutWarning(const char* text) const
 			{
 				OutWarning([text](auto& ls) { ls << text; });
 			}
 
-			void OutError(const char *text) const
+			void OutError(const char* text) const
 			{
 				OutError([text](auto& ls) { ls << text; });
 			}
 
-			void OutFatalError(const char *text) const
+			void OutFatalError(const char* text) const
 			{
 				OutFatalError([text](auto& ls) { ls << text; });
 			}
 		};
 
 	private:
-		static Logger *instance;
+		static Logger* instance;
 
 		MultiPoolAllocator allocator;
 		ThreadSafeMultiPoolAllocator inputAlloc;
@@ -110,18 +110,18 @@ namespace hbe
 		Logger& operator=(Logger&&) = delete;
 
 	public:
-		Logger(Engine& engine, const char *path, const char *filename);
+		Logger(Engine& engine, const char* path, const char* filename);
 		~Logger();
 
-		StaticString GetName() const;
+		static StaticString GetName();
 		void StartTask(TaskSystem& taskSys);
 		void StopTask(TaskSystem& taskSys);
 
-		void SetFilter(StaticString category, TLogFilter filter);
+		void SetFilter(StaticString category, TLogFilter&& filter);
 		void AddLog(StaticString category, ELogLevel level, const TLogFunction& logFunc);
 		void Flush();
 
-#ifdef PROFILE_ENABLED
+#if PROFILE_ENABLED
 		void ReportMemoryConfiguration();
 #endif // PROFILE_ENABLED
 
@@ -130,7 +130,7 @@ namespace hbe
 		void FlushBuffer(const TTextBuffer& buffer);
 
 		void WriteLog(const TTextBuffer& buffer);
-		void PrintStdIO(const TTextBuffer& buffer) const;
+		static void PrintStdIO(const TTextBuffer& buffer);
 	};
 
 	using TLog = Logger::SimpleLogger;

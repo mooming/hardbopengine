@@ -21,7 +21,7 @@
 #include "Math/Vector2.h"
 #include "Math/Vector3.h"
 #include "Math/Vector4.h"
-#include "Memory/BaseAllocator.h"
+#include "Memory/DefaultAllocator.h"
 #include "Memory/InlineMonotonicAllocator.h"
 #include "Memory/InlinePoolAllocator.h"
 #include "Memory/MonotonicAllocator.h"
@@ -57,7 +57,6 @@ namespace Test
 		AllocatorScope scope(allocator);
 
 		auto& testEnv = TestEnv::GetEnv();
-
 		testEnv.AddTestCollection<SystemAllocatorTest>();
 		testEnv.AddTestCollection<BaseAllocatorTest>();
 		testEnv.AddTestCollection<InlinePoolAllocatorTest>();

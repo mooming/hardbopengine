@@ -33,28 +33,29 @@ namespace hbe
 		size_t minBlock;
 
 	public:
-		explicit ThreadSafeMultiPoolAllocator(const char *name, size_t allocationUnit = DefaultBankUnit,
+		explicit ThreadSafeMultiPoolAllocator(const char* name, size_t allocationUnit = DefaultBankUnit,
 											  size_t minBlockSize = DefaultMinBlock);
-		ThreadSafeMultiPoolAllocator(const char *name, TInitializerList initialConfigurations,
+		ThreadSafeMultiPoolAllocator(const char* name, TInitializerList initialConfigurations,
 									 size_t allocationUnit = DefaultBankUnit, size_t minBlockSize = DefaultMinBlock);
 		~ThreadSafeMultiPoolAllocator();
 
-		void *Allocate(size_t size);
-		void Deallocate(void *ptr, size_t size);
+		void* Allocate(size_t size);
+		void Deallocate(void* ptr, size_t size);
 
 		[[nodiscard]] auto GetName() const { return name; }
 		[[nodiscard]] auto GetID() const { return id; }
 
 		void PrintUsage();
 
-#ifdef PROFILE_ENABLED
+#if PROFILE_ENABLED
 		void ReportConfiguration();
 #endif // PROFILE_ENABLED
 
 	private:
-		bool GenerateBanksByCache(class MemoryManager& mmgr);
+		void* NewBankAllocate(size_t size);
+		bool GenerateBanksByCache(const class MemoryManager& mmgr);
 		[[nodiscard]] size_t GetBankIndex(size_t nBytes) const;
-		size_t GetBankIndex(void *ptr) const;
+		size_t GetBankIndex(void* ptr) const;
 		[[nodiscard]] size_t CalculateBlockSize(size_t requested) const;
 		static size_t CalculateNumberOfBlocks(size_t bankSize, size_t blockSize);
 		void GenerateBank(size_t blockSize, size_t numberOfBlocks);

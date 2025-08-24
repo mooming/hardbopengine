@@ -24,7 +24,7 @@ namespace hbe
             typename std::conditional<IsAtomic, std::atomic<T>, T>::type;
 
     private:
-#ifdef ENGINE_PARAM_DESC_ENABLED
+#if ENGINE_PARAM_DESC_ENABLED
         StaticString name;
         StaticString desc;
 #endif // ENGINE_PARAM_DESC_ENABLED
@@ -39,7 +39,7 @@ namespace hbe
     public:
         ConfigParam(const char* inName, const char* inDesc, T defaultValue,
             std::thread::id id = std::this_thread::get_id())
-#ifdef ENGINE_PARAM_DESC_ENABLED
+#if ENGINE_PARAM_DESC_ENABLED
             : name(inName),
               desc(inDesc),
               value(defaultValue)
@@ -57,7 +57,7 @@ namespace hbe
 
         StaticString GetName() const
         {
-#ifdef ENGINE_PARAM_DESC_ENABLED
+#if ENGINE_PARAM_DESC_ENABLED
             return name;
 #else  // ENGINE_PARAM_DESC_ENABLED
             return StaticString();
@@ -66,7 +66,7 @@ namespace hbe
 
         StaticString GetDescription() const
         {
-#ifdef ENGINE_PARAM_DESC_ENABLED
+#if ENGINE_PARAM_DESC_ENABLED
             return desc;
 #else  // ENGINE_PARAM_DESC_ENABLED
             return StaticString();

@@ -17,14 +17,9 @@
 #include "String/StaticStringID.h"
 #include "System/Types.h"
 
-namespace std
-{
-	struct source_location;
-} // namespace std
-
 namespace hbe
 {
-
+	struct source_location;
 	class Engine;
 
 	class MemoryManager final
@@ -53,7 +48,6 @@ namespace hbe
 			size_t maxCapacity = 0;
 		};
 
-	private:
 		static thread_local TId ScopedAllocatorID;
 
 		AllocatorProxy allocators[MaxNumAllocators];
@@ -68,7 +62,7 @@ namespace hbe
 
 		MultiPoolConfigCache multiPoolConfigCache;
 
-#ifdef PROFILE_ENABLED
+#if PROFILE_ENABLED
 		MultiPoolConfigCache multiPoolConfigLog;
 #endif // PROFILE_ENABLED
 
@@ -87,39 +81,37 @@ namespace hbe
 		void PostEngineInit();
 		void PreEngineShutdown();
 
-		const char *GetName() const;
-		const char *GetName(TAllocatorID id) const;
-
-		TId Register(const char *name, bool isInline, size_t capacity, TAllocBytes allocFunc,
-					 TDeallocBytes deallocFunc);
+		static const char* GetName();
+		const char* GetAllocatorName(TAllocatorID id) const;
 
 		std::lock_guard<std::mutex> AcquireStatsLock() { return std::lock_guard(statsLock); }
+		AllocatorProxy& GetAllocatorProxy(TId id);
+		TId RegisterAllocator(void* allocator, const char* name, bool isInline, size_t capacity, TAllocBytes allocFunc,
+							  TDeallocBytes deallocFunc);
+		void DeregisterAllocator(TId id);
 
-		void Update(TId id, std::function<void(AllocatorProxy&)> func, const char *reason);
-		void Deregister(TId id);
+		void ReportAllocation(TId id, void* ptr, size_t requested, size_t allocated);
+		void ReportDeallocation(TId id, void* ptr, size_t requested, size_t allocated);
 
-		void ReportAllocation(TId id, void *ptr, size_t requested, size_t allocated);
-		void ReportDeallocation(TId id, void *ptr, size_t requested, size_t allocated);
-		void ReportFallback(TId id, void *ptr, size_t requested);
+		void* SysAllocate(size_t nBytes);
+		void SysDeallocate(void* ptr, size_t nBytes);
+		void* FallbackAllocate(TId id, TId parentId, size_t requested);
 
-		void *SysAllocate(size_t nBytes);
-		void SysDeallocate(void *ptr, size_t nBytes);
+		void* Allocate(TId id, size_t nBytes);
+		void Deallocate(TId id, void* ptr, size_t nBytes);
 
-		void *AllocateBytes(TId id, size_t nBytes);
-		void DeallocateBytes(TId id, void *ptr, size_t nBytes);
-
-		void *AllocateBytes(size_t nBytes);
-		void DeallocateBytes(void *ptr, size_t nBytes);
+		void* Allocate(size_t nBytes);
+		void Deallocate(void* ptr, size_t nBytes);
 
 		bool IsLogEnabled(ELogLevel level) const;
 		void Log(ELogLevel level, TLogFunc func) const;
 
 		const MultiPoolAllocatorConfig& LookUpMultiPoolConfig(StaticStringID uniqueName) const;
 
-#ifdef PROFILE_ENABLED
+#if PROFILE_ENABLED
 		AllocStats GetAllocatorStat(TAllocatorID id);
 
-		void Deregister(TId id, const std::source_location& srcLocation);
+		void DeregisterAllocator(TId id, const hbe::source_location& srcLocation);
 		void ReportMultiPoolConfigutation(StaticStringID uniqueName, TPoolConfigs&& poolConfigs);
 #endif // PROFILE_ENABLED
 
@@ -131,33 +123,33 @@ namespace hbe
 
 	public:
 		template<typename T>
-		T *AllocateTypes(size_t n)
+		T* AllocateByType(size_t n)
 		{
 			const auto nBytes = n * sizeof(T);
-			auto ptr = AllocateBytes(nBytes);
+			auto ptr = Allocate(GetScopedAllocatorID(), nBytes);
 
-			return static_cast<T *>(ptr);
+			return static_cast<T*>(ptr);
 		}
 
 		template<typename T>
-		void DeallocateTypes(T *ptr, size_t n)
+		void DeallocateTypes(T* ptr, size_t n)
 		{
 			const auto nBytes = n * sizeof(T);
-			DeallocateBytes(static_cast<void *>(ptr), nBytes);
+			Deallocate(GetScopedAllocatorID(), static_cast<void*>(ptr), nBytes);
 		}
 
 		template<typename Type, typename... Types>
-		Type *New(Types&&...args)
+		Type* New(Types&&... args)
 		{
-			auto ptr = AllocateTypes<Type>(1);
+			auto ptr = AllocateByType<Type>(1);
 			auto tptr = new (ptr) Type(std::forward<Types>(args)...);
 			return tptr;
 		}
 
 		template<typename Type, typename... Types>
-		Type *NewArray(Index size, Types&&...args)
+		Type* NewArray(Index size, Types&&... args)
 		{
-			auto ptr = AllocateTypes<Type>(size);
+			auto ptr = AllocateByType<Type>(size);
 
 			for (Index i = 0; i < size; ++i)
 			{
@@ -168,14 +160,14 @@ namespace hbe
 		}
 
 		template<typename Type>
-		void Delete(Type *ptr)
+		void Delete(Type* ptr)
 		{
 			ptr->~Type();
 			DeallocateTypes<Type>(ptr, 1);
 		}
 
 		template<typename Type>
-		void DeleteArray(Type *ptr, size_t n)
+		void DeleteArray(Type* ptr, size_t n)
 		{
 			for (size_t i = 0; i < n; ++i)
 			{
@@ -189,12 +181,11 @@ namespace hbe
 		static bool IsValid(TAllocatorID id) { return id >= 0 && id < MaxNumAllocators; }
 		static TId GetScopedAllocatorID() { return ScopedAllocatorID; }
 
+		void ReportFallback(TId id, void* ptr, size_t requested);
 		void RegisterSystemAllocator();
 		void DeregisterSystemAllocator();
-
 		void LoadMultiPoolConfigs();
 		void SaveMultiPoolConfigs();
-
 		void SetScopedAllocatorID(TId id);
 
 		friend class AllocatorScope;

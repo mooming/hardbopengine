@@ -20,29 +20,30 @@
 #endif // _DEBUG
 
 // Engine
-#define ENGINE_LOG_ENABLED
-#define ENGINE_PARAM_DESC_ENABLED
+#define ENGINE_LOG_ENABLED 1
+#define ENGINE_PARAM_DESC_ENABLED 1
 
 // Allocator
-#define __MEMORY_VERIFICATION__
+#define MULTIPOOL_ALLOC_LOG ".multiPoolConfig.dat"
+#define __MEMORY_VERIFICATION__ 0
 #define __MEMORY_LOGGING__ 0
-#define __MEMORY_INVESTIGATION__
-// #define __MEMORY_DANGLING_POINTER_CHECK__
-// #define __MEMORY_BUFFER_UNDERRUN_CHECK__
-// #define __USE_SYSTEM_MALLOC__
+#define __MEMORY_INVESTIGATION__ 0
+#define __MEMORY_DANGLING_POINTER_CHECK__ 0
+#define __MEMORY_BUFFER_UNDERRUN_CHECK__ 0
+#define __FORCE_USE_SYSTEM_MALLOC__ 0
 
 // Log
-#define LOG_ENABLED
-#define LOG_BREAK_IF_WARNING
-#define LOG_BREAK_IF_ERROR
-#define LOG_FORCE_IMMEDIATE
+#define LOG_ENABLED 1
+#define LOG_BREAK_IF_WARNING 1
+#define LOG_BREAK_IF_ERROR 1
+#define LOG_FORCE_PRINT_IMMEDIATELY 0
 
 // Profile
-#define PROFILE_ENABLED
+#define PROFILE_ENABLED 0
 
 // Mathematics
 // #define __LEFT_HANDED__
 #define __RIGHT_HANDED__
 
 // Test
-// #define __MEMORY_INVESTIGATOR_TEST__
+#define __MEMORY_INVESTIGATOR_TEST__ 0

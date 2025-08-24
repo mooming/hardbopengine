@@ -2,15 +2,15 @@
 
 #pragma once
 
-#include "Memory/BaseAllocator.h"
-#include "Memory/InlinePoolAllocator.h"
 #include <vector>
+#include "Memory/DefaultAllocator.h"
+#include "Memory/InlinePoolAllocator.h"
 
 namespace HSTL
 {
 
     template <typename T>
-    using HVector = std::vector<T, hbe::BaseAllocator<T>>;
+    using HVector = std::vector<T, hbe::DefaultAllocator<T>>;
 
     template <typename T, size_t PoolSize = 16>
     using HInlineVector =

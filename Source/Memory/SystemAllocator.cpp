@@ -19,9 +19,9 @@ void hbe::SystemAllocatorTest::Prepare()
         }
     });
 
-#ifdef __MEMORY_INVESTIGATOR_TEST__
-#ifdef __MEMORY_INVESTIGATION__
-#ifdef __MEMORY_BUFFER_UNDERRUN_CHECK__
+#if __MEMORY_INVESTIGATOR_TEST__
+#if __MEMORY_INVESTIGATION__
+#if __MEMORY_BUFFER_UNDERRUN_CHECK__
 
     AddTest("Buffer Under-run Detection", [this](auto& ls) {
         SystemAllocator<uint8_t> allocator;
@@ -67,7 +67,7 @@ void hbe::SystemAllocatorTest::Prepare()
     });
 #endif // __MEMORY_BUFFER_UNDERRUN_CHECK__
 
-#ifdef __MEMORY_DANGLING_POINTER_CHECK__
+#if __MEMORY_DANGLING_POINTER_CHECK__
     AddTest("Dangling Pointer Detection", [this](auto& ls) {
         SystemAllocator<uint8_t> allocator;
 

@@ -2,38 +2,39 @@
 
 #pragma once
 
+#include <functional>
+#include <thread>
 #include "AllocStats.h"
 #include "AllocatorID.h"
 #include "Config/BuildConfig.h"
-#include <functional>
-#include <thread>
 
 namespace hbe
 {
 
-    struct AllocatorProxy final
-    {
-        using TAllocBytes = std::function<void*(size_t)>;
-        using TDeallocBytes = std::function<void(void*, size_t)>;
+	struct AllocatorProxy final
+	{
+		using TAllocBytes = void* (*) (void* /*userData*/, size_t /* allocSize */);
+		using TDeallocBytes = void (*)(void* /*userData*/, void* /* pointer */, size_t /* allocSize */);
 
-        TAllocatorID id = InvalidAllocatorID;
-        AllocatorProxy* next = nullptr;
-        TAllocBytes allocate = nullptr;
-        TDeallocBytes deallocate = nullptr;
+		TAllocatorID id = InvalidAllocatorID;
+		AllocatorProxy* next = nullptr;
+		void* allocator = nullptr;
+		TAllocBytes allocate = nullptr;
+		TDeallocBytes deallocate = nullptr;
 
-#ifdef PROFILE_ENABLED
-        AllocStats stats;
+#if PROFILE_ENABLED
+		AllocStats stats;
 #endif // PROFILE_ENABLED
 
-#ifdef __MEMORY_VERIFICATION__
-        std::thread::id threadId;
+#if __MEMORY_VERIFICATION__
+		std::thread::id threadId;
 #endif // __MEMORY_VERIFICATION__
 
-#ifdef PROFILE_ENABLED
-        inline const char* GetName() const { return stats.name; }
-#else  // PROFILE_ENABLED
-        inline const char* GetName() const { return "NoName"; }
+#if PROFILE_ENABLED
+		[[nodiscard]] const char* GetName() const { return stats.name; }
+#else // PROFILE_ENABLED
+		const char* GetName() const { return "NoName"; }
 #endif // PROFILE_ENABLED
-    };
+	};
 
 } // namespace hbe

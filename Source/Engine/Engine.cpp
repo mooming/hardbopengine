@@ -161,7 +161,7 @@ namespace hbe
 
     void Engine::Log(ELogLevel level, TLogFunc func)
     {
-#ifdef ENGINE_LOG_ENABLED
+#if ENGINE_LOG_ENABLED
         static TAtomicConfigParam<uint8_t> CPEngineLogLevel("Log.Engine",
             "The Engine Log Level",
             static_cast<uint8_t>(Config::EngineLogLevel));
@@ -298,7 +298,7 @@ namespace hbe
 
         log.Out("Engine PreShutdown [Start]");
 
-#ifdef PROFILE_ENABLED
+#if PROFILE_ENABLED
         logger.ReportMemoryConfiguration();
 #endif // PROFILE_ENABLED
 

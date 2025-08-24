@@ -2,10 +2,10 @@
 
 #pragma once
 
-#include "Memory/BaseAllocator.h"
+#include <functional>
+#include "Memory/DefaultAllocator.h"
 #include "Memory/Memory.h"
 #include "System/Debug.h"
-#include <functional>
 
 namespace hbe
 {
@@ -39,7 +39,7 @@ namespace hbe
     };
 
     template <typename Type,
-        class TAllocator = BaseAllocator<LinkedListNode<Type>>>
+        class TAllocator = DefaultAllocator<LinkedListNode<Type>>>
     class LinkedList final
     {
     public:

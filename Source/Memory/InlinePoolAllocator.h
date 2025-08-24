@@ -58,7 +58,7 @@ namespace hbe
 				item = false;
 			}
 
-#ifdef __MEMORY_VERIFICATION__
+#if __MEMORY_VERIFICATION__
 			constexpr size_t length = sizeof(T) * BufferSize * NumBuffers;
 			std::memset(buffer, 0, length);
 #endif // __MEMORY_VERIFICATION__
@@ -82,26 +82,38 @@ namespace hbe
 			return TCastedAlloc(GetID());
 		}
 
-		[[nodiscard]] StaticString GetName() const
+		[[nodiscard]] static StaticString GetName()
 		{
 			static StaticString name("InlinePoolAllocator");
 			return name;
 		}
 
-		T *allocate(std::size_t n)
+		// This function name is enforced by STL
+		T* allocate(std::size_t n)
 		{
+			if (n == 0)
+			{
+				return nullptr;
+			}
+
 			constexpr size_t unit = sizeof(T);
-			const auto nBytes = OS::GetAligned(n * unit);
+			const auto nBytes = n * unit;
 			auto ptr = AllocateBytes(nBytes);
-			return reinterpret_cast<T *>(ptr);
+			return reinterpret_cast<T*>(ptr);
 		}
 
-		void deallocate(T *ptr, std::size_t n) noexcept
+		// This function name is enforced by STL
+		void deallocate(T* ptr, std::size_t n) noexcept
 		{
+			if (ptr == nullptr)
+			{
+				return;
+			}
+
 			constexpr size_t unit = sizeof(T);
 			const auto nBytes = OS::GetAligned(n * unit);
 
-			void *voidPtr = reinterpret_cast<void *>(ptr);
+			void* voidPtr = reinterpret_cast<void*>(ptr);
 			return DeallocateBytes(voidPtr, nBytes);
 		}
 
@@ -114,27 +126,20 @@ namespace hbe
 		bool operator!=(const InlinePoolAllocator&) const { return true; }
 
 	private:
-		void *FallbackAlloc(size_t nBytes)
+		void* AllocateBytes(size_t nBytes)
 		{
-			auto& mmgr = MemoryManager::GetInstance();
-			auto ptr = mmgr.AllocateBytes(parentID, nBytes);
+			if (unlikely(nBytes == 0))
+			{
+				return nullptr;
+			}
 
-			return ptr;
-		}
-
-		void *AllocateBytes(size_t nBytes)
-		{
 			constexpr size_t unit = sizeof(T);
 			constexpr size_t bufferSizeBytes = BufferSize * unit;
 
 			if (nBytes > bufferSizeBytes)
 			{
-				return FallbackAlloc(nBytes);
-			}
-
-			if (unlikely(nBytes == 0))
-			{
-				return &buffer[0][0];
+				auto& mmgr = MemoryManager::GetInstance();
+				return mmgr.FallbackAllocate(GetID(), parentID, nBytes);
 			}
 
 			int index = indexHint;
@@ -155,7 +160,7 @@ namespace hbe
 				isAllocated[index] = true;
 				auto ptr = &buffer[index][0];
 
-#ifdef PROFILE_ENABLED
+#if PROFILE_ENABLED
 				auto& mmgr = MemoryManager::GetInstance();
 				mmgr.ReportAllocation(id, ptr, nBytes, bufferSizeBytes);
 #endif // PROFILE_ENABLED
@@ -163,10 +168,11 @@ namespace hbe
 				return ptr;
 			}
 
-			return FallbackAlloc(nBytes);
+			auto& mmgr = MemoryManager::GetInstance();
+			return mmgr.FallbackAllocate(GetID(), parentID, nBytes);
 		}
 
-		void DeallocateBytes(void *ptr, size_t nBytes)
+		void DeallocateBytes(void* ptr, size_t nBytes)
 		{
 			if (unlikely(ptr == nullptr || nBytes == 0))
 			{
@@ -180,7 +186,7 @@ namespace hbe
 					continue;
 				}
 
-#ifdef PROFILE_ENABLED
+#if PROFILE_ENABLED
 				auto& mmgr = MemoryManager::GetInstance();
 				constexpr size_t unit = sizeof(T);
 				constexpr size_t bufferSizeBytes = BufferSize * unit;
@@ -194,19 +200,27 @@ namespace hbe
 			}
 
 			auto& mmgr = MemoryManager::GetInstance();
-			mmgr.DeallocateBytes(parentID, ptr, nBytes);
+			mmgr.Deallocate(parentID, ptr, nBytes);
 		}
 
 		void RegisterAllocator()
 		{
 			auto& mmgr = MemoryManager::GetInstance();
 
-			auto allocFunc = [this](size_t nBytes) -> void * { return static_cast<void *>(AllocateBytes(nBytes)); };
+			auto allocFunc = [](void* allocatorPtr, size_t nBytes) -> void*
+			{
+				auto allocator = static_cast<InlinePoolAllocator*>(allocatorPtr);
+				return static_cast<void*>(allocator->AllocateBytes(nBytes));
+			};
 
-			auto deallocFunc = [this](void *ptr, size_t nBytes) { DeallocateBytes(ptr, nBytes); };
+			auto deallocFunc = [](void* allocatorPtr, void* ptr, size_t nBytes)
+			{
+				auto allocator = static_cast<InlinePoolAllocator*>(allocatorPtr);
+				allocator->DeallocateBytes(ptr, nBytes);
+			};
 
 			const auto capacity = BufferSize * NumBuffers * sizeof(T);
-			id = mmgr.Register("InlinePoolAllocator", true, capacity, allocFunc, deallocFunc);
+			id = mmgr.RegisterAllocator(this, "InlinePoolAllocator", true, capacity, allocFunc, deallocFunc);
 
 			FatalAssert(id != InvalidAllocatorID);
 			FatalAssert(id != 0);
@@ -220,7 +234,7 @@ namespace hbe
 			}
 
 			auto& mmgr = MemoryManager::GetInstance();
-			mmgr.Deregister(id);
+			mmgr.DeregisterAllocator(id);
 		}
 	};
 } // namespace hbe

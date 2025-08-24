@@ -6,14 +6,14 @@
 #include <string>
 #include <string_view>
 #include "EndLine.h"
-#include "Memory/BaseAllocator.h"
+#include "Memory/DefaultAllocator.h"
 #include "Memory/InlinePoolAllocator.h"
 #include "StaticString.h"
 
 namespace hbe
 {
 
-	template<class TCh = char, class TAlloc = BaseAllocator<TCh>>
+	template<class TCh = char, class TAlloc = DefaultAllocator<TCh>>
 	class StringBuilder final
 	{
 	public:
@@ -39,7 +39,7 @@ namespace hbe
 
 		auto Size() const { return buffer.size(); }
 
-		operator const TCh *() const { return buffer.c_str(); }
+		operator const TCh*() const { return buffer.c_str(); }
 
 		This& operator<<(nullptr_t)
 		{
@@ -67,7 +67,7 @@ namespace hbe
 			return *this;
 		}
 
-		This& operator<<(const char *str)
+		This& operator<<(const char* str)
 		{
 			if (str == nullptr)
 			{
@@ -186,7 +186,7 @@ namespace hbe
 			return *this;
 		}
 
-		This& operator<<(void *value)
+		This& operator<<(void* value)
 		{
 			char temp[InlineBufferSize];
 			snprintf(temp, InlineBufferSize, "%p", value);

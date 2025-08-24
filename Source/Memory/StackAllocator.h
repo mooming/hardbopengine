@@ -9,55 +9,55 @@
 
 namespace hbe
 {
-    class StackAllocator final
-    {
-    public:
-        using This = StackAllocator;
-        using SizeType = size_t;
+	class StackAllocator final
+	{
+	public:
+		using This = StackAllocator;
+		using SizeType = size_t;
 
-#ifdef PROFILE_ENABLED
-        using TSrcLoc = std::source_location;
+#if PROFILE_ENABLED
+		using TSrcLoc = hbe::source_location;
 #endif // PROFILE_ENABLED
 
-    private:
-        TAllocatorID id;
-        TAllocatorID parentID;
+	private:
+		TAllocatorID id;
+		TAllocatorID parentID;
 
-        SizeType capacity;
-        SizeType cursor;
+		SizeType capacity;
+		SizeType cursor;
 
-        union
-        {
-            Byte* buffer;
-            Pointer bufferPtr;
-        };
+		union
+		{
+			Byte* buffer;
+			Pointer bufferPtr;
+		};
 
-#ifdef PROFILE_ENABLED
-        TSrcLoc srcLocation;
+#if PROFILE_ENABLED
+		TSrcLoc srcLocation;
 #endif // PROFILE_ENABLED
 
-    public:
-#ifdef PROFILE_ENABLED
-        StackAllocator(const char* name, SizeType capacity,
-            const TSrcLoc location = TSrcLoc::current());
-#else  // PROFILE_ENABLED
-        StackAllocator(const char* name, SizeType capacity);
+	public:
+		// Not Supported
+		static size_t GetSize(Pointer) { return 0; }
+
+#if PROFILE_ENABLED
+		StackAllocator(const char* name, SizeType capacity, const TSrcLoc& location = TSrcLoc::current());
+#else // PROFILE_ENABLED
+		StackAllocator(const char* name, SizeType capacity);
 #endif // PROFILE_ENABLED
 
-        ~StackAllocator();
+		~StackAllocator();
 
-        Pointer Allocate(size_t size);
-        void Deallocate(const Pointer ptr, SizeType size);
+		Pointer Allocate(size_t size);
+		void Deallocate(Pointer ptr, SizeType size);
 
-        size_t GetAvailable() const;
-        size_t GetUsage() const;
+		[[nodiscard]] size_t GetAvailable() const;
+		[[nodiscard]] size_t GetUsage() const;
+		[[nodiscard]] auto GetID() const { return id; }
 
-        inline auto GetID() const { return id; }
-        inline size_t GetSize(const Pointer) const { return 0; }
-
-    private:
-        bool IsMine(Pointer ptr) const;
-    };
+	private:
+		bool IsMine(Pointer ptr) const;
+	};
 } // namespace hbe
 
 #ifdef __UNIT_TEST__
@@ -66,17 +66,14 @@ namespace hbe
 namespace hbe
 {
 
-    class StackAllocatorTest : public TestCollection
-    {
-    public:
-        StackAllocatorTest()
-            : TestCollection("StackAllocatorTest")
-        {
-        }
+	class StackAllocatorTest : public TestCollection
+	{
+	public:
+		StackAllocatorTest() : TestCollection("StackAllocatorTest") {}
 
-    protected:
-        virtual void Prepare() override;
-    };
+	protected:
+		void Prepare() override;
+	};
 
 } // namespace hbe
 #endif //__UNIT_TEST__

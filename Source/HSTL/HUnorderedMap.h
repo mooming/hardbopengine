@@ -2,8 +2,8 @@
 
 #pragma once
 
-#include "Memory/BaseAllocator.h"
 #include <unordered_map>
+#include "Memory/DefaultAllocator.h"
 
 namespace HSTL
 {
@@ -11,7 +11,7 @@ namespace HSTL
     template <class Key, class T, class Hash = std::hash<Key>,
         class Pred = std::equal_to<Key>>
     using HUnorderedMap = std::unordered_map<Key, T, Hash, Pred,
-        hbe::BaseAllocator<std::pair<const Key, T>>>;
+        hbe::DefaultAllocator<std::pair<const Key, T>>>;
 
 } // namespace HSTL
 

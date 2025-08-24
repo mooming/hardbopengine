@@ -26,8 +26,8 @@ namespace hbe
 			return name;
 		}
 
-#ifdef LOG_FORCE_IMMEDIATE
-		void ImmediateLog(ELogLevel level, StaticString category, const char *logStr)
+#if LOG_FORCE_PRINT_IMMEDIATELY || LOG_BREAK_IF_WARNING || LOG_BREAK_IF_ERROR
+		void ImmediateLog(ELogLevel level, StaticString category, const char* logStr)
 		{
 			AllocatorScope scope(MemoryManager::SystemAllocatorID);
 
@@ -54,7 +54,7 @@ namespace hbe
 
 	} // anonymous namespace
 
-	Logger *Logger::instance = nullptr;
+	Logger* Logger::instance = nullptr;
 
 	Logger::SimpleLogger::SimpleLogger(StaticString category, ELogLevel level) : category(category), level(level) {}
 
@@ -93,7 +93,7 @@ namespace hbe
 		return log;
 	}
 
-	Logger::Logger(Engine& engine, const char *path, const char *filename) :
+	Logger::Logger(Engine& engine, const char* path, const char* filename) :
 		allocator("LoggerMemoryPool"), inputAlloc("LoggerInputPool"), hasInput(false), needFlush(false)
 	{
 		Assert(engine.IsMemoryManagerReady());
@@ -138,8 +138,8 @@ namespace hbe
 		outFileStream.open(logPath.c_str());
 
 		flushFuncs.reserve(2);
-		flushFuncs.push_back([this](const TTextBuffer& buffer) { WriteLog(buffer); });
-		flushFuncs.push_back([this](const TTextBuffer& buffer) { PrintStdIO(buffer); });
+		flushFuncs.emplace_back([this](const TTextBuffer& buffer) { WriteLog(buffer); });
+		flushFuncs.emplace_back([](const TTextBuffer& buffer) { PrintStdIO(buffer); });
 
 		engine.SetLoggerReady();
 	}
@@ -154,7 +154,7 @@ namespace hbe
 		outFileStream.close();
 	}
 
-	StaticString Logger::GetName() const
+	StaticString Logger::GetName()
 	{
 		static auto className = StringUtil::ToCompactClassName(__PRETTY_FUNCTION__);
 		return className;
@@ -182,9 +182,12 @@ namespace hbe
 		auto& ioTaskStream = taskSys.GetIOTaskStream();
 		threadID = ioTaskStream.GetThreadID();
 
-#ifdef __MEMORY_VERIFICATION__
-		auto& mmgr = MemoryManager::GetInstance();
-		mmgr.Update(allocator.GetID(), [this](auto& proxy) { proxy.threadId = threadID; }, "Setup thread binding.");
+#if __MEMORY_VERIFICATION__
+		{
+			auto& mmgr = MemoryManager::GetInstance();
+			auto& allocatorProxy = mmgr.GetAllocatorProxy(allocator.GetID());
+			allocatorProxy.threadId = threadID;
+		}
 #endif // __MEMORY_VERIFICATION__
 	}
 
@@ -198,10 +201,12 @@ namespace hbe
 		taskHandle.Reset();
 		threadID = std::thread::id();
 
-#ifdef __MEMORY_VERIFICATION__
-		auto& mmgr = MemoryManager::GetInstance();
-		mmgr.Update(allocator.GetID(), [](auto& proxy) { proxy.threadId = std::this_thread::get_id(); },
-					"Releasing the thread binding.");
+#if __MEMORY_VERIFICATION__
+		{
+			auto& mmgr = MemoryManager::GetInstance();
+			auto& allocatorProxy = mmgr.GetAllocatorProxy(allocator.GetID());
+			allocatorProxy.threadId = std::this_thread::get_id();
+		}
 #endif // __MEMORY_VERIFICATION__
 
 		AddLog(GetName(), ELogLevel::Info, [](auto& ls) { ls << "Logger shall be terminated." << hendl; });
@@ -216,7 +221,7 @@ namespace hbe
 	{
 		Assert(this == instance);
 
-#ifndef LOG_ENABLED
+#if !LOG_ENABLED
 		return;
 #endif // LOG_ENABLED
 
@@ -257,7 +262,7 @@ namespace hbe
 		TLogStream ls;
 		logFunc(ls);
 
-#ifdef LOG_BREAK_IF_WARNING
+#if LOG_BREAK_IF_WARNING
 		if (unlikely(level >= ELogLevel::Warning))
 		{
 			ImmediateLog(level, category, ls.c_str());
@@ -266,7 +271,7 @@ namespace hbe
 		}
 #endif // LOG_BREAK_IF_WARNING
 
-#ifdef LOG_BREAK_IF_ERROR
+#if LOG_BREAK_IF_ERROR
 		if (unlikely(level >= ELogLevel::Error))
 		{
 			ImmediateLog(level, category, ls.c_str());
@@ -275,7 +280,7 @@ namespace hbe
 		}
 #endif // LOG_BREAK_IF_ERROR
 
-#ifdef LOG_FORCE_IMMEDIATE
+#if LOG_FORCE_PRINT_IMMEDIATELY
 		ImmediateLog(level, category, ls.c_str());
 		return;
 #endif // LOG_FORCE_IMMEDIATE
@@ -324,9 +329,8 @@ namespace hbe
 
 		if (unlikely(level >= ELogLevel::FatalError))
 		{
-			debugBreak();
 			Flush();
-
+			debugBreak();
 			Assert(false);
 			return;
 		}
@@ -340,10 +344,10 @@ namespace hbe
 		}
 	}
 
-	void Logger::SetFilter(StaticString category, TLogFilter filter)
+	void Logger::SetFilter(StaticString category, TLogFilter&& filter)
 	{
 		std::lock_guard lock(filterLock);
-		filters[category] = filter;
+		filters[category] = std::move(filter);
 	}
 
 	void Logger::Flush()
@@ -362,7 +366,7 @@ namespace hbe
 		}
 	}
 
-#ifdef PROFILE_ENABLED
+#if PROFILE_ENABLED
 	void Logger::ReportMemoryConfiguration() { allocator.ReportConfiguration(); }
 #endif // PROFILE_ENABLED
 
@@ -425,7 +429,7 @@ namespace hbe
 
 	void Logger::FlushBuffer(const TTextBuffer& buffer)
 	{
-		for (auto func : flushFuncs)
+		for (auto& func : flushFuncs)
 		{
 			Assert(func != nullptr);
 			func(buffer);
@@ -444,7 +448,7 @@ namespace hbe
 		ofs.flush();
 	}
 
-	void Logger::PrintStdIO(const TTextBuffer& buffer) const
+	void Logger::PrintStdIO(const TTextBuffer& buffer)
 	{
 		auto& engine = Engine::Get();
 

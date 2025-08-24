@@ -135,7 +135,7 @@ inline Vec Column(int index) const
 {
     Assert(index < column, "Matrix: Index out of bounds, i = ", index);
 
-    Vec colVec = nullptr;
+    Vec colVec(nullptr);
 
     for (int i = 0; i < column; ++i)
     {

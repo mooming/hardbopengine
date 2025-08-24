@@ -48,7 +48,7 @@ namespace hbe
         timeSinceStart = Time::ToDouble(fromStart);
     }
 
-#ifdef PROFILE_ENABLED
+#if PROFILE_ENABLED
     void SystemStatistics::Report(const AllocStats& stats)
     {
         allocStats.emplace_back(stats);
@@ -146,7 +146,7 @@ namespace hbe
 
     void SystemStatistics::PrintAllocatorProfiles()
     {
-#ifdef PROFILE_ENABLED
+#if PROFILE_ENABLED
         auto log = Logger::Get(GetName(), ELogLevel::Verbose);
         log.Out(
             "= System Statistics: Allocator Profiles ========================");

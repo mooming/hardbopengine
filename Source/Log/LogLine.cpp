@@ -62,7 +62,7 @@ namespace hbe
         {
             auto& engine = Engine::Get();
 
-#ifdef PROFILE_ENABLED
+#if PROFILE_ENABLED
             auto& stat = engine.GetStatistics();
             stat.IncLongLogCount();
 #endif // PROFILE_ENABLED
@@ -75,7 +75,7 @@ namespace hbe
             return;
         }
 
-#ifdef PROFILE_ENABLED
+#if PROFILE_ENABLED
         {
             auto& engine = Engine::Get();
             auto& stat = engine.GetStatistics();

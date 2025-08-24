@@ -15,7 +15,7 @@
 namespace hbe
 {
 
-	ThreadSafeMultiPoolAllocator::ThreadSafeMultiPoolAllocator(const char *inName, size_t allocationUnit,
+	ThreadSafeMultiPoolAllocator::ThreadSafeMultiPoolAllocator(const char* inName, size_t allocationUnit,
 															   size_t minBlockSize)
 
 		:
@@ -26,8 +26,17 @@ namespace hbe
 
 		parentID = MemoryManager::GetCurrentAllocatorID();
 
-		auto allocFunc = [this](size_t n) -> void * { return Allocate(n); };
-		auto deallocFunc = [this](void *ptr, size_t n) { Deallocate(ptr, n); };
+		auto allocFunc = [](void* allocPtr, size_t n) -> void*
+		{
+			auto* allocator = static_cast<ThreadSafeMultiPoolAllocator*>(allocPtr);
+			return allocator->Allocate(n);
+		};
+
+		auto deallocFunc = [](void* allocPtr, void* ptr, size_t n)
+		{
+			auto* allocator = static_cast<ThreadSafeMultiPoolAllocator*>(allocPtr);
+			allocator->Deallocate(ptr, n);
+		};
 
 		auto& mmgr = MemoryManager::GetInstance();
 		GenerateBanksByCache(mmgr);
@@ -38,10 +47,10 @@ namespace hbe
 			capacity += bank.GetCapacity();
 		}
 
-		id = mmgr.Register(name, false, capacity, allocFunc, deallocFunc);
+		id = mmgr.RegisterAllocator(this, name, false, capacity, allocFunc, deallocFunc);
 	}
 
-	ThreadSafeMultiPoolAllocator::ThreadSafeMultiPoolAllocator(const char *inName,
+	ThreadSafeMultiPoolAllocator::ThreadSafeMultiPoolAllocator(const char* inName,
 															   TInitializerList initialConfigurations,
 															   size_t allocationUnit, size_t minBlockSize)
 
@@ -53,8 +62,17 @@ namespace hbe
 
 		parentID = MemoryManager::GetCurrentAllocatorID();
 
-		auto allocFunc = [this](size_t n) -> void * { return Allocate(n); };
-		auto deallocFunc = [this](void *ptr, size_t n) { Deallocate(ptr, n); };
+		auto allocFunc = [](void* allocPtr, size_t n) -> void*
+		{
+			auto* allocator = static_cast<ThreadSafeMultiPoolAllocator*>(allocPtr);
+			return allocator->Allocate(n);
+		};
+
+		auto deallocFunc = [](void* allocPtr, void* ptr, size_t n)
+		{
+			auto* allocator = static_cast<ThreadSafeMultiPoolAllocator*>(allocPtr);
+			allocator->Deallocate(ptr, n);
+		};
 
 		auto ConfigureBanks = [&, this]()
 		{
@@ -87,75 +105,44 @@ namespace hbe
 		}
 
 		auto& mmgr = MemoryManager::GetInstance();
-		id = mmgr.Register(name, false, capacity, allocFunc, deallocFunc);
+		id = mmgr.RegisterAllocator(this, name, false, capacity, allocFunc, deallocFunc);
 	}
 
 	ThreadSafeMultiPoolAllocator::~ThreadSafeMultiPoolAllocator()
 	{
 		auto& mmgr = MemoryManager::GetInstance();
 
-#ifdef PROFILE_ENABLED
+#if PROFILE_ENABLED
 		ReportConfiguration();
 #endif // PROFILE_ENABLED
 
 		{
 			std::lock_guard lockGuard(lock);
 
-#ifdef __MEMORY_VERIFICATION__
+#if __MEMORY_VERIFICATION__
 			const auto currentTID = std::this_thread::get_id();
 			for (auto& bank : banks)
 			{
-				mmgr.Update(bank.GetID(), [&currentTID](auto& proxy) { proxy.threadId = currentTID; },
-							"Releasing the thread binding.");
+				auto& allocProxy = mmgr.GetAllocatorProxy(bank.GetID());
+				allocProxy.threadId = currentTID;
 			}
 #endif // __MEMORY_VERIFICATION__
 
 			banks.clear();
 		}
 
-		mmgr.Deregister(GetID());
+		mmgr.DeregisterAllocator(GetID());
 	}
 
-	void *ThreadSafeMultiPoolAllocator::Allocate(size_t requested)
+	void* ThreadSafeMultiPoolAllocator::Allocate(size_t requested)
 	{
 		if (unlikely(requested <= 0))
 		{
 			return nullptr;
 		}
 
-		auto FallbackAlloc = [&, this]() -> void *
-		{
-			auto& engine = Engine::Get();
-			auto& statistics = engine.GetStatistics();
-			statistics.IncFallbackAllocCount();
-
-			auto blockSize = CalculateBlockSize(requested);
-			auto numBlocks = CalculateNumberOfBlocks(bankSize, blockSize);
-
-			GenerateBank(blockSize, numBlocks);
-			auto index = GetBankIndex(requested);
-			if (unlikely(index >= banks.size()))
-			{
-				FatalAssert(false);
-				return nullptr;
-			}
-
-			auto& bank = banks[index];
-			auto ptr = bank.Allocate(requested);
-
-#ifdef PROFILE_ENABLED
-			{
-				auto& mmgr = MemoryManager::GetInstance();
-				mmgr.ReportFallback(GetID(), ptr, requested);
-				mmgr.ReportAllocation(GetID(), ptr, requested, bank.GetBlockSize());
-			}
-#endif // PROFILE_ENABLED
-
-			return ptr;
-		};
-
-		void *ptr = nullptr;
-#ifdef PROFILE_ENABLED
+		void* ptr = nullptr;
+#if PROFILE_ENABLED
 		size_t allocated = 0;
 #endif // PROFILE_ENABLED
 		{
@@ -164,25 +151,23 @@ namespace hbe
 			auto index = GetBankIndex(requested);
 			if (index >= banks.size())
 			{
-				ptr = FallbackAlloc();
-				return ptr;
+				return NewBankAllocate(requested);
 			}
 
 			auto& bank = banks[index];
 			if (unlikely(bank.GetAvailableBlocks() <= 0))
 			{
-				ptr = FallbackAlloc();
-				return ptr;
+				return NewBankAllocate(requested);
 			}
 
 			ptr = bank.Allocate(requested);
 
-#ifdef PROFILE_ENABLED
+#if PROFILE_ENABLED
 			allocated = bank.GetBlockSize();
 #endif // PROFILE_ENABLED
 		}
 
-#ifdef PROFILE_ENABLED
+#if PROFILE_ENABLED
 		{
 			auto& mmgr = MemoryManager::GetInstance();
 			mmgr.ReportAllocation(GetID(), ptr, requested, allocated);
@@ -192,7 +177,7 @@ namespace hbe
 		return ptr;
 	}
 
-	void ThreadSafeMultiPoolAllocator::Deallocate(void *ptr, size_t size)
+	void ThreadSafeMultiPoolAllocator::Deallocate(void* ptr, size_t size)
 	{
 		if (unlikely(ptr == nullptr))
 		{
@@ -200,7 +185,7 @@ namespace hbe
 			return;
 		}
 
-#ifdef PROFILE_ENABLED
+#if PROFILE_ENABLED
 		size_t allocated = 0;
 #endif // PROFILE_ENABLED
 		{
@@ -220,12 +205,12 @@ namespace hbe
 
 			bank.Deallocate(ptr, size);
 
-#ifdef PROFILE_ENABLED
+#if PROFILE_ENABLED
 			allocated = bank.GetBlockSize();
 #endif // PROFILE_ENABLED
 		}
 
-#ifdef PROFILE_ENABLED
+#if PROFILE_ENABLED
 		{
 			auto& mmgr = MemoryManager::GetInstance();
 			mmgr.ReportDeallocation(GetID(), ptr, size, allocated);
@@ -237,7 +222,7 @@ namespace hbe
 	{
 		using namespace std;
 
-#ifdef PROFILE_ENABLED
+#if PROFILE_ENABLED
 		std::map<size_t, size_t> usageMap;
 #endif // PROFILE_ENABLED
 
@@ -248,13 +233,13 @@ namespace hbe
 
 		for (auto& pool : banks)
 		{
+#if PROFILE_ENABLED
 			log.Out([&pool](auto& ls)
 			{
 				ls << '[' << pool.GetBlockSize() << "] Memory = " << pool.GetUsage() << " / " << pool.GetCapacity()
 				   << ", Max Usage = " << (pool.GetUsedBlocksMax() * pool.GetBlockSize());
 			});
 
-#ifdef PROFILE_ENABLED
 			if (pool.GetUsedBlocksMax() > 0)
 			{
 				auto key = pool.GetBlockSize();
@@ -269,10 +254,13 @@ namespace hbe
 					it->second += pool.GetUsedBlocksMax();
 				}
 			}
+#else
+			log.Out([&pool](auto& ls)
+			{ ls << '[' << pool.GetBlockSize() << "] Memory = " << pool.GetUsage() << " / " << pool.GetCapacity(); });
 #endif // PROFILE_ENABLED
 		}
 
-#ifdef PROFILE_ENABLED
+#if PROFILE_ENABLED
 		{
 			AllocatorScope scope(MemoryManager::SystemAllocatorID);
 
@@ -290,7 +278,7 @@ namespace hbe
 #endif // PROFILE_ENABLED
 	}
 
-#ifdef PROFILE_ENABLED
+#if PROFILE_ENABLED
 	void ThreadSafeMultiPoolAllocator::ReportConfiguration()
 	{
 		MemoryManager::TPoolConfigs configs;
@@ -303,7 +291,7 @@ namespace hbe
 
 			auto pred = [key](const PoolConfig& item) { return item.blockSize == key; };
 
-			auto found = std::find_if(configs.begin(), configs.end(), pred);
+			auto found = std::ranges::find_if(configs, pred);
 			if (found == configs.end())
 			{
 				configs.emplace_back(key, value);
@@ -327,7 +315,37 @@ namespace hbe
 	}
 #endif // PROFILE_ENABLED
 
-	bool ThreadSafeMultiPoolAllocator::GenerateBanksByCache(MemoryManager& mmgr)
+	void* ThreadSafeMultiPoolAllocator::NewBankAllocate(size_t size)
+	{
+		auto& engine = Engine::Get();
+		auto& statistics = engine.GetStatistics();
+		statistics.IncFallbackAllocCount();
+
+		auto blockSize = CalculateBlockSize(size);
+		auto numBlocks = CalculateNumberOfBlocks(bankSize, blockSize);
+
+		GenerateBank(blockSize, numBlocks);
+		auto index = GetBankIndex(size);
+		if (unlikely(index >= banks.size()))
+		{
+			FatalAssert(false);
+			return nullptr;
+		}
+
+		auto& bank = banks[index];
+		auto ptr = bank.Allocate(size);
+
+#ifdef PROFILE_ENABLED
+		{
+			auto& mmgr = MemoryManager::GetInstance();
+			mmgr.ReportAllocation(GetID(), ptr, size, bank.GetBlockSize());
+		}
+#endif // PROFILE_ENABLED
+
+		return ptr;
+	}
+
+	bool ThreadSafeMultiPoolAllocator::GenerateBanksByCache(const MemoryManager& mmgr)
 	{
 		auto nameID = name.GetID();
 		auto& cacheItem = mmgr.LookUpMultiPoolConfig(nameID);
@@ -377,7 +395,7 @@ namespace hbe
 		return len;
 	}
 
-	size_t ThreadSafeMultiPoolAllocator::GetBankIndex(void *ptr) const
+	size_t ThreadSafeMultiPoolAllocator::GetBankIndex(void* ptr) const
 	{
 		size_t index = 0;
 
@@ -415,7 +433,7 @@ namespace hbe
 		}
 		else
 		{
-			numberOfBlocks = std::max((size_t) 1, numberOfBlocks);
+			numberOfBlocks = std::max(static_cast<size_t>(1), numberOfBlocks);
 		}
 
 		return numberOfBlocks;
@@ -440,17 +458,18 @@ namespace hbe
 		auto log = Logger::Get(name);
 		log.Out(ELogLevel::Verbose, [&str](auto& ls) { ls << "The bank[" << str.c_str() << "] has been generated. "; });
 
+#if PROFILE_ENABLED
 		const auto incCapacity = blockSize * numberOfBlocks;
 		auto& mmgr = MemoryManager::GetInstance();
-		mmgr.Update(GetID(), [incCapacity](auto& allocProxy) { allocProxy.stats.capacity += incCapacity; },
-					"A new bank is added.");
+		auto& allocProxy = mmgr.GetAllocatorProxy(GetID());
+		allocProxy.stats.capacity += incCapacity;
+#endif // PROFILE_ENABLED
 	}
 
 } // namespace hbe
 
 #ifdef __UNIT_TEST__
 #include "AllocatorScope.h"
-#include "MemoryManager.h"
 #include "System/ScopedTime.h"
 
 namespace hbe
@@ -464,10 +483,12 @@ namespace hbe
 					"TC0 ThreadSafeMultiPoolAlloc",
 					{{64, 1024}, {128, 1024}, {256, 1024}, {512, 1024}, {1024, 1024}, {2048, 1024}, {4096, 1024}});
 
-#ifdef PROFILE_ENABLED
+#if PROFILE_ENABLED
 			auto& mmgr = MemoryManager::GetInstance();
 			auto stat = mmgr.GetAllocatorStat(allocator.GetID());
 			ls << "Capacity = " << stat.capacity << lf;
+#else
+			ls << "ThreadSafeMultiPoolAllocator has been created." << lf;
 #endif // PROFILE_ENABLED
 
 			AllocatorScope scope(allocator);
@@ -479,14 +500,16 @@ namespace hbe
 					"TC1 ThreadSafeMultiPoolAlloc",
 					{{64, 1024}, {128, 1024}, {256, 1024}, {512, 1024}, {1024, 1024}, {2048, 1024}, {4096, 1024}});
 
-#ifdef PROFILE_ENABLED
 			auto& mmgr = MemoryManager::GetInstance();
+#if PROFILE_ENABLED
 			auto stat = mmgr.GetAllocatorStat(allocator.GetID());
 			ls << "Capacity = " << stat.capacity << lf;
+#else
+			ls << "ThreadSafeMultiPoolAlloc has been created" << lf;
 #endif // PROFILE_ENABLED
 
 			AllocatorScope scope(allocator);
-			mmgr.AllocateBytes(0);
+			mmgr.Allocate(0);
 		});
 
 		AddTest("Multiple Allocations & Fallback", [this](auto& ls)
@@ -497,26 +520,27 @@ namespace hbe
 
 			auto& mmgr = MemoryManager::GetInstance();
 
-#ifdef PROFILE_ENABLED
+#if PROFILE_ENABLED
 			{
 				auto stat = mmgr.GetAllocatorStat(allocator.GetID());
 				ls << "Capacity = " << stat.capacity << lf;
 			}
+#else
+			ls << "ThreadSafeMultiPoolAlloc has been created" << lf;
 #endif // PROFILE_ENABLED
 
 			AllocatorScope scope(allocator);
 
-			void *pointers[] = {mmgr.AllocateBytes(0),	  mmgr.AllocateBytes(8),   mmgr.AllocateBytes(16),
-								mmgr.AllocateBytes(32),	  mmgr.AllocateBytes(97),  mmgr.AllocateBytes(110),
-								mmgr.AllocateBytes(140),  mmgr.AllocateBytes(270), mmgr.AllocateBytes(4032),
-								mmgr.AllocateBytes(5000), mmgr.AllocateBytes(8000)};
+			void* pointers[] = {mmgr.Allocate(0),	 mmgr.Allocate(8),	  mmgr.Allocate(16),  mmgr.Allocate(32),
+								mmgr.Allocate(97),	 mmgr.Allocate(110),  mmgr.Allocate(140), mmgr.Allocate(270),
+								mmgr.Allocate(4032), mmgr.Allocate(5000), mmgr.Allocate(8000)};
 
 			for (auto ptr : pointers)
 			{
-				mmgr.DeallocateBytes(ptr, 0);
+				mmgr.Deallocate(ptr, 0);
 			}
 
-#ifdef PROFILE_ENABLED
+#if PROFILE_ENABLED
 			auto stat = mmgr.GetAllocatorStat(allocator.GetID());
 			ls << "Capacity = " << stat.capacity << lf;
 

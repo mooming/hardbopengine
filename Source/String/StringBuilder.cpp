@@ -4,7 +4,7 @@
 
 namespace hbe
 {
-	template class StringBuilder<char, BaseAllocator<char>>;
+	template class StringBuilder<char, DefaultAllocator<char>>;
 } // namespace hbe
 
 #ifdef __UNIT_TEST__

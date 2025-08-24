@@ -54,7 +54,7 @@ namespace hbe
 
     void AllocStats::Report()
     {
-#ifdef PROFILE_ENABLED
+#if PROFILE_ENABLED
         auto& engine = Engine::Get();
         auto& stats = engine.GetStatistics();
         stats.Report(*this);
