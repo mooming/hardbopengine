@@ -175,16 +175,22 @@ void StackAllocatorTest::Prepare()
 			HVector<int> a;
 			a.push_back(0);
 
+#if PROFILE_ENABLED
 			if (stack.GetUsage() > 0)
 			{
 				ls << "Allocation Failed. Usage should not be zero, but " << stack.GetUsage() << lferr;
 			}
+#else
+			ls << "Profile Disabled" << lf;
+#endif // PROFILE_ENABLED
 		}
 
+#if PROFILE_ENABLED
 		if (stack.GetUsage() != 0)
 		{
 			ls << "Deallocation Failed. Usage should be zero, but " << stack.GetUsage() << lferr;
 		}
+#endif // PROFILE_ENABLED
 	});
 
 	AddTest("Allocation (2)", [this](auto& ls)
@@ -200,16 +206,22 @@ void StackAllocatorTest::Prepare()
 			HVector<int> b;
 			b.push_back(1);
 
+#if PROFILE_ENABLED
 			if (stack.GetUsage() > 0)
 			{
 				ls << "Allocation Failed. Usage should not be zero, but " << stack.GetUsage() << lferr;
 			}
+#else
+			ls << "Profile Disabled" << lf;
+#endif // PROFILE_ENABLED
 		}
 
+#if PROFILE_ENABLED
 		if (stack.GetUsage() != 0)
 		{
 			ls << "Deallocation Failed. Usage should be zero, but " << stack.GetUsage() << lferr;
 		}
+#endif // PROFILE_ENABLED
 	});
 
 	AddTest("Deallocation", [this](auto& ls)
@@ -220,7 +232,7 @@ void StackAllocatorTest::Prepare()
 		{
 			String a = "0";
 
-			if (stack.GetUsage() > 0)
+			if (stack.GetUsage() <= 0)
 			{
 				ls << "Allocation Failed. Usage should not be zero, but " << stack.GetUsage() << lferr;
 			}
@@ -241,7 +253,7 @@ void StackAllocatorTest::Prepare()
 			String a = "0";
 			String b = "1";
 
-			if (stack.GetUsage() > 0)
+			if (stack.GetUsage() <= 0)
 			{
 				ls << "Allocation Failed. Usage should not be zero, but " << stack.GetUsage() << lferr;
 			}

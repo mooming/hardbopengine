@@ -30,7 +30,6 @@ namespace
 				{
 					for (int i = 0; i < vectorSize; ++i)
 					{
-						v.reserve(i + 1);
 						v.push_back(i);
 						v.shrink_to_fit();
 					}
