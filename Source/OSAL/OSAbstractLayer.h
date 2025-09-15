@@ -2,11 +2,11 @@
 
 #pragma once
 
+#include <iostream>
 #include "Config/BuildConfig.h"
 #include "HSTL/HString.h"
 #include "HSTL/HVector.h"
 #include "String/StringUtil.h"
-#include <iostream>
 
 #ifdef WIN32
 #define WINDOWS
@@ -26,10 +26,10 @@
 namespace OS
 {
 
-    HSTL::HString GetFullPath(const HSTL::HString& path);
+	HSTL::HString GetFullPath(const HSTL::HString& path);
 
-    bool IsDirectory(const char* path);
+	bool IsDirectory(const char* path);
 
-    HSTL::HVector<HSTL::HString> ListFilesInDirectory(const char* path);
+	HSTL::HVector<HSTL::HString> ListFilesInDirectory(const char* path);
 
 } // namespace OS

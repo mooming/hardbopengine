@@ -3,59 +3,58 @@
 #pragma once
 
 #include "BufferTypes.h"
+#include "Core/Debug.h"
 #include "String/StaticString.h"
-#include "System/Debug.h"
 
 namespace hbe
 {
 
-    class Buffer final
-    {
-    public:
-        using TSize = BufferTypes::TSize;
-        using TBufferData = BufferTypes::TBufferData;
-        using TGenerateBuffer = BufferTypes::TGenerateBuffer;
-        using TReleaseBuffer = BufferTypes::TReleaseBuffer;
+	class Buffer final
+	{
+	public:
+		using TSize = BufferTypes::TSize;
+		using TBufferData = BufferTypes::TBufferData;
+		using TGenerateBuffer = BufferTypes::TGenerateBuffer;
+		using TReleaseBuffer = BufferTypes::TReleaseBuffer;
 
-    private:
-        TSize size;
-        TBufferData data;
-        TReleaseBuffer releaser;
+	private:
+		TSize size;
+		TBufferData data;
+		TReleaseBuffer releaser;
 
-    public:
-        Buffer();
-        Buffer(Buffer&& rhs) noexcept;
-        explicit Buffer(const TGenerateBuffer& genFunc);
-        Buffer(
-            const TGenerateBuffer& genFunc, const TReleaseBuffer& releaseFunc);
-        ~Buffer();
+	public:
+		Buffer();
+		Buffer(Buffer&& rhs) noexcept;
+		explicit Buffer(const TGenerateBuffer& genFunc);
+		Buffer(const TGenerateBuffer& genFunc, const TReleaseBuffer& releaseFunc);
+		~Buffer();
 
-        StaticString GetClassName() const;
-        void SetReleaser(TReleaseBuffer&& releaseFunc);
+		StaticString GetClassName() const;
+		void SetReleaser(TReleaseBuffer&& releaseFunc);
 
-    public:
-        template <typename T>
-        T* GetDataAs()
-        {
-            return reinterpret_cast<T*>(data);
-        }
+	public:
+		template<typename T>
+		T* GetDataAs()
+		{
+			return reinterpret_cast<T*>(data);
+		}
 
-        template <typename T>
-        const T* GetDataAs() const
-        {
-            return reinterpret_cast<T*>(data);
-        }
+		template<typename T>
+		const T* GetDataAs() const
+		{
+			return reinterpret_cast<T*>(data);
+		}
 
-        template <typename T>
-        size_t TranslateSizeAs() const
-        {
-            return size / sizeof(T);
-        }
+		template<typename T>
+		size_t TranslateSizeAs() const
+		{
+			return size / sizeof(T);
+		}
 
-        uint8_t* GetData() { return data; }
-        const uint8_t* GetData() const { return data; }
-        auto GetSize() const { return size; }
-    };
+		uint8_t* GetData() { return data; }
+		const uint8_t* GetData() const { return data; }
+		auto GetSize() const { return size; }
+	};
 
 } // namespace hbe
 
@@ -64,14 +63,14 @@ namespace hbe
 
 namespace hbe
 {
-    class BufferTest : public TestCollection
-    {
-    public:
-        BufferTest();
-        virtual ~BufferTest() = default;
+	class BufferTest : public TestCollection
+	{
+	public:
+		BufferTest();
+		virtual ~BufferTest() = default;
 
-    protected:
-        virtual void Prepare() override;
-    };
+	protected:
+		virtual void Prepare() override;
+	};
 } // namespace hbe
 #endif //__UNIT_TEST__

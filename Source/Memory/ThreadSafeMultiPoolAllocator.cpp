@@ -7,10 +7,10 @@
 #include <map>
 #include "../Engine/Engine.h"
 #include "Config/BuildConfig.h"
+#include "Core/SystemStatistics.h"
 #include "Log/Logger.h"
 #include "Memory/MemoryManager.h"
 #include "String/StringBuilder.h"
-#include "System/SystemStatistics.h"
 
 namespace hbe
 {
@@ -470,7 +470,7 @@ namespace hbe
 
 #ifdef __UNIT_TEST__
 #include "AllocatorScope.h"
-#include "System/ScopedTime.h"
+#include "Core/ScopedTime.h"
 
 namespace hbe
 {

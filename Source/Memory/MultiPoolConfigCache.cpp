@@ -27,7 +27,7 @@ namespace hbe
 		BufferOutputStream bos(outBuffer);
 
 		StaticString className = GetClassName();
-		const char *classNameStr = className.c_str();
+		const char* classNameStr = className.c_str();
 		bos << classNameStr;
 		bos << GetVersion();
 

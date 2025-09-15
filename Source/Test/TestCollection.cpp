@@ -8,7 +8,7 @@
 namespace hbe
 {
 
-	TestCollection::LogFlush::LogFlush(const char *name, ELogLevel level, TLogBuffer *buffer) :
+	TestCollection::LogFlush::LogFlush(const char* name, ELogLevel level, TLogBuffer* buffer) :
 		name(name), level(level), testIndex(0), testName("None")
 
 		,
@@ -16,7 +16,7 @@ namespace hbe
 
 	{}
 
-	TestCollection::TestCollection(const char *inTitle) :
+	TestCollection::TestCollection(const char* inTitle) :
 		title(inTitle), isDone(false), isSuccess(false), lf(title.c_str(), ELogLevel::Info, nullptr),
 		lfwarn(title.c_str(), ELogLevel::Warning, &warningMessages),
 		lferr(title.c_str(), ELogLevel::Error, &errorMessages)
@@ -52,7 +52,7 @@ namespace hbe
 		Report();
 	}
 
-	void TestCollection::AddTest(const char *name, TestFunc testCase)
+	void TestCollection::AddTest(const char* name, TestFunc testCase)
 	{
 		if (unlikely(testCase == nullptr))
 		{

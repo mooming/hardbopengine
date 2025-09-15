@@ -2,10 +2,10 @@
 
 #include "PoolAllocator.h"
 
+#include "Core/CommonUtil.h"
+#include "Core/Debug.h"
 #include "MemoryManager.h"
 #include "OSAL/OSMemory.h"
-#include "System/CommonUtil.h"
-#include "System/Debug.h"
 
 namespace hbe
 {

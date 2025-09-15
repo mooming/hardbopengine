@@ -8,9 +8,9 @@
 
 #include <random>
 
+#include "Core/Constants.h"
 #include "Memory/MultiPoolAllocator.h"
 #include "MonteCarloIntegrator.h"
-#include "System/Constants.h"
 
 void hbe::StratifiedSamplingTest::Prepare()
 {

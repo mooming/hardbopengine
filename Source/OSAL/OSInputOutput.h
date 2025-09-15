@@ -7,25 +7,23 @@
 namespace OS
 {
 
-    struct FileHandle;
-    struct FileOpenMode;
-    struct ProtectionMode;
-    struct MapSyncMode;
+	struct FileHandle;
+	struct FileOpenMode;
+	struct ProtectionMode;
+	struct MapSyncMode;
 
-    bool Open(FileHandle& outHandle, hbe::StaticString filePath,
-        FileOpenMode openMode);
-    bool Close(FileHandle&& handle);
-    bool Exist(hbe::StaticString filePath);
-    bool Delete(hbe::StaticString filePath);
+	bool Open(FileHandle& outHandle, hbe::StaticString filePath, FileOpenMode openMode);
+	bool Close(FileHandle&& handle);
+	bool Exist(hbe::StaticString filePath);
+	bool Delete(hbe::StaticString filePath);
 
-    size_t Read(const FileHandle& handle, void* buffer, size_t size);
-    size_t Write(const FileHandle& handle, void* buffer, size_t size);
-    bool Truncate(const FileHandle& handle, size_t size);
+	size_t Read(const FileHandle& handle, void* buffer, size_t size);
+	size_t Write(const FileHandle& handle, void* buffer, size_t size);
+	bool Truncate(const FileHandle& handle, size_t size);
 
-    void* MapMemory(FileHandle& fileHandle, size_t size,
-        ProtectionMode protection, size_t offset);
-    bool MapSync(void* ptr, size_t size, MapSyncMode syncMode);
-    bool UnmapMemory(void* ptr, size_t size);
+	void* MapMemory(FileHandle& fileHandle, size_t size, ProtectionMode protection, size_t offset);
+	bool MapSync(void* ptr, size_t size, MapSyncMode syncMode);
+	bool UnmapMemory(void* ptr, size_t size);
 
 } // namespace OS
 
@@ -35,14 +33,14 @@ namespace OS
 namespace hbe
 {
 
-    class OSInputOutputTest : public TestCollection
-    {
-    public:
-        OSInputOutputTest();
+	class OSInputOutputTest : public TestCollection
+	{
+	public:
+		OSInputOutputTest();
 
-    protected:
-        virtual void Prepare() override;
-    };
+	protected:
+		virtual void Prepare() override;
+	};
 
 } // namespace hbe
 #endif //__UNIT_TEST__

@@ -3,10 +3,10 @@
 #pragma once
 
 #include "Config/BuildConfig.h"
+#include "Core/Debug.h"
 #include "Engine/Engine.h"
 #include "MemoryManager.h"
 #include "OSAL/OSMemory.h"
-#include "System/Debug.h"
 
 namespace hbe
 {

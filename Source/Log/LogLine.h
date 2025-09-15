@@ -2,42 +2,40 @@
 
 #pragma once
 
+#include <chrono>
 #include "Config/EngineConfig.h"
 #include "LogLevel.h"
 #include "String/StaticString.h"
-#include <chrono>
 
 namespace hbe
 {
 
-    struct LogLine final
-    {
-        using TTimePoint =
-            typename std::chrono::time_point<std::chrono::steady_clock>;
+	struct LogLine final
+	{
+		using TTimePoint = typename std::chrono::time_point<std::chrono::steady_clock>;
 
-        TTimePoint timeStamp;
-        StaticString threadName;
-        StaticString category;
-        ELogLevel level;
-        bool isLong;
+		TTimePoint timeStamp;
+		StaticString threadName;
+		StaticString category;
+		ELogLevel level;
+		bool isLong;
 
-        union
-        {
-            char text[Config::LogLineLength];
-            struct
-            {
-                char* longText;
-                size_t longTextSize;
-            };
-        };
+		union
+		{
+			char text[Config::LogLineLength];
+			struct
+			{
+				char* longText;
+				size_t longTextSize;
+			};
+		};
 
-        LogLine();
-        LogLine(LogLine&& rhs);
-        LogLine(ELogLevel level, StaticString threadName, StaticString category,
-            const char* inText, size_t size);
-        ~LogLine();
+		LogLine();
+		LogLine(LogLine&& rhs);
+		LogLine(ELogLevel level, StaticString threadName, StaticString category, const char* inText, size_t size);
+		~LogLine();
 
-        const char* GetText() const;
-    };
+		const char* GetText() const;
+	};
 
 } // namespace hbe

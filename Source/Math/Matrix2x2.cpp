@@ -2,5 +2,5 @@
 
 namespace hbe
 {
-    template class Matrix2x2<float>;
+	template class Matrix2x2<float>;
 }

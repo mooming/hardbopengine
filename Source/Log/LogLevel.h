@@ -5,15 +5,15 @@
 namespace hbe
 {
 
-    enum class ELogLevel : unsigned char
-    {
-        Verbose,
-        Info,
-        Significant,
-        Warning,
-        Error,
-        FatalError,
-        MAX
-    };
+	enum class ELogLevel : unsigned char
+	{
+		Verbose,
+		Info,
+		Significant,
+		Warning,
+		Error,
+		FatalError,
+		MAX
+	};
 
 } // namespace hbe

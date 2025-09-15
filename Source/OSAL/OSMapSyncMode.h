@@ -6,13 +6,13 @@
 namespace OS
 {
 
-    struct MapSyncMode final
-    {
-        int value = 0;
+	struct MapSyncMode final
+	{
+		int value = 0;
 
-        void SetAsync();
-        void SetSync();
-        void Invalidate();
-    };
+		void SetAsync();
+		void SetSync();
+		void Invalidate();
+	};
 
 } // namespace OS

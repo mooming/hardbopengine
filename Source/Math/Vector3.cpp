@@ -4,128 +4,130 @@
 
 namespace hbe
 {
-    template class Vector3<float>;
+	template class Vector3<float>;
 } // namespace hbe
 
 #ifdef __UNIT_TEST__
+#include "Core/ScopedTime.h"
 #include "HSTL/HVector.h"
-#include "System/ScopedTime.h"
 
 void hbe::Vector3Test::Prepare()
 {
-    AddTest("Constants", [this](auto& ls) {
-        ls << "Forward = " << Float3::Forward << lf;
-        ls << "Right = " << Float3::Right << lf;
-        ls << "Up = " << Float3::Up << lf;
+	AddTest("Constants", [this](auto& ls)
+	{
+		ls << "Forward = " << Float3::Forward << lf;
+		ls << "Right = " << Float3::Right << lf;
+		ls << "Up = " << Float3::Up << lf;
 
-        ls << "Zero = " << Float3::Zero << lf;
-        ls << "Unity = " << Float3::Unity << lf;
-    });
+		ls << "Zero = " << Float3::Zero << lf;
+		ls << "Unity = " << Float3::Unity << lf;
+	});
 
-    AddTest("Cross Product", [this](auto& ls) {
-        auto xCrossY = Float3::X.Cross(Float3::Y);
-        ls << "X x Y = " << xCrossY << lf;
+	AddTest("Cross Product", [this](auto& ls)
+	{
+		auto xCrossY = Float3::X.Cross(Float3::Y);
+		ls << "X x Y = " << xCrossY << lf;
 
-        if (xCrossY != Float3::Z)
-        {
-            ls << "Incorrect Cross Product Result: X x Y = " << xCrossY
-               << ", but " << Float3::Z << " expected." << lferr;
-        }
+		if (xCrossY != Float3::Z)
+		{
+			ls << "Incorrect Cross Product Result: X x Y = " << xCrossY << ", but " << Float3::Z << " expected."
+			   << lferr;
+		}
 
 #ifdef __LEFT_HANDED__
-        auto fCrossR = Float3::Forward.Cross(Float3::Right);
-        ls << "Forward x Right = " << fCrossR << lf;
+		auto fCrossR = Float3::Forward.Cross(Float3::Right);
+		ls << "Forward x Right = " << fCrossR << lf;
 
-        if (fCrossR != Float3::Up)
-        {
-            ls << "Incorrect Cross Product Result: Forward x Right = "
-               << fCrossR << ", but " << Float3::Up << " expected." << lferr;
-        }
+		if (fCrossR != Float3::Up)
+		{
+			ls << "Incorrect Cross Product Result: Forward x Right = " << fCrossR << ", but " << Float3::Up
+			   << " expected." << lferr;
+		}
 #endif //__LEFT_HANDED__
 
 #ifdef __RIGHT_HANDED__
-        auto rCrossF = Float3::Right.Cross(Float3::Forward);
-        ls << "Right x Forward = " << rCrossF << lf;
+		auto rCrossF = Float3::Right.Cross(Float3::Forward);
+		ls << "Right x Forward = " << rCrossF << lf;
 
-        if (rCrossF != Float3::Up)
-        {
-            ls << "Incorrect Cross Product Result: Right x Forward = "
-               << rCrossF << ", but " << Float3::Up << " expected." << lferr;
-        }
+		if (rCrossF != Float3::Up)
+		{
+			ls << "Incorrect Cross Product Result: Right x Forward = " << rCrossF << ", but " << Float3::Up
+			   << " expected." << lferr;
+		}
 #endif //__RIGHT_HANDED__
-    });
+	});
 
-    AddTest("Default Constructor", [this](auto& ls) {
-        Float3 tmp;
+	AddTest("Default Constructor", [this](auto& ls)
+	{
+		Float3 tmp;
 
-        if (tmp != Float3::Zero)
-        {
-            ls << "Default Float3 is not ZERO." << lferr;
-        }
-    });
+		if (tmp != Float3::Zero)
+		{
+			ls << "Default Float3 is not ZERO." << lferr;
+		}
+	});
 
-    using namespace HSTL;
+	using namespace HSTL;
 
-    AddTest("Constructors and Operators", [this](auto& ls) {
-        HVector<Float3> vertices;
+	AddTest("Constructors and Operators", [this](auto& ls)
+	{
+		HVector<Float3> vertices;
 
-        for (int i = 0; i < 1000000; ++i)
-        {
-            const float x = static_cast<float>(i);
-            vertices.emplace_back(x, 0.0f, 0.0f);
-            vertices.emplace_back(0.0f, x, 0.0f);
-            vertices.emplace_back(0.0f, 0.0f, x);
-            vertices.emplace_back(x, x, 0.0f);
-            vertices.emplace_back(0.0f, x, x);
-            vertices.emplace_back(x, x, x);
-        }
+		for (int i = 0; i < 1000000; ++i)
+		{
+			const float x = static_cast<float>(i);
+			vertices.emplace_back(x, 0.0f, 0.0f);
+			vertices.emplace_back(0.0f, x, 0.0f);
+			vertices.emplace_back(0.0f, 0.0f, x);
+			vertices.emplace_back(x, x, 0.0f);
+			vertices.emplace_back(0.0f, x, x);
+			vertices.emplace_back(x, x, x);
+		}
 
-        Float3 tmp;
+		Float3 tmp;
 
-        {
-            Time::TDuration heTime;
-            float dotResult = 0.0f;
+		{
+			Time::TDuration heTime;
+			float dotResult = 0.0f;
 
-            {
-                Time::ScopedTime measure(heTime);
+			{
+				Time::ScopedTime measure(heTime);
 
-                for (auto& vertex : vertices)
-                {
-                    dotResult += tmp.Dot(vertex);
-                    tmp = vertex;
-                }
-            }
+				for (auto& vertex : vertices)
+				{
+					dotResult += tmp.Dot(vertex);
+					tmp = vertex;
+				}
+			}
 
-            ls << "Float3 Dot Time = " << Time::ToFloat(heTime)
-               << ", Result = " << dotResult << lf;
-        }
-    });
+			ls << "Float3 Dot Time = " << Time::ToFloat(heTime) << ", Result = " << dotResult << lf;
+		}
+	});
 
-    AddTest("Interpolation", [this](auto& ls) {
-        auto x = Float3::X;
-        auto y = Float3::Y;
+	AddTest("Interpolation", [this](auto& ls)
+	{
+		auto x = Float3::X;
+		auto y = Float3::Y;
 
-        if (x != Float3::Slerp(x, y, 0.0f))
-        {
-            ls << "Float3 slerp 1 should match its origin " << x << ", but "
-               << Float3::Slerp(x, y, 0.0f) << lferr;
-        }
+		if (x != Float3::Slerp(x, y, 0.0f))
+		{
+			ls << "Float3 slerp 1 should match its origin " << x << ", but " << Float3::Slerp(x, y, 0.0f) << lferr;
+		}
 
-        if (y != Float3::Slerp(x, y, 1.0f))
-        {
-            ls << "Float3 slerp 1 should match its destination " << y
-               << ", but " << Float3::Slerp(x, y, 1.0f) << lferr;
-        }
+		if (y != Float3::Slerp(x, y, 1.0f))
+		{
+			ls << "Float3 slerp 1 should match its destination " << y << ", but " << Float3::Slerp(x, y, 1.0f) << lferr;
+		}
 
-        Float3 half = Float3::Slerp(x, y, 0.5f);
-        ls << "Float3, Slerp half = " << half << lf;
+		Float3 half = Float3::Slerp(x, y, 0.5f);
+		ls << "Float3, Slerp half = " << half << lf;
 
-        if (!IsEqual(half.Length(), 1.0f))
-        {
-            ls << "Float3 slerp of X and Y with 0.5f should have length 1 "
-               << ", but " << half.Length() << lferr;
-        }
-    });
+		if (!IsEqual(half.Length(), 1.0f))
+		{
+			ls << "Float3 slerp of X and Y with 0.5f should have length 1 "
+			   << ", but " << half.Length() << lferr;
+		}
+	});
 }
 
 #endif //__UNIT_TEST__

@@ -8,8 +8,7 @@
 namespace OS
 {
 
-    hbe::StaticString GetBackTrace(
-        uint16_t startIndex = 0, uint16_t maxDepth = 512);
+	hbe::StaticString GetBackTrace(uint16_t startIndex = 0, uint16_t maxDepth = 512);
 
 } // namespace OS
 
@@ -19,17 +18,14 @@ namespace OS
 namespace hbe
 {
 
-    class OSDebugTest : public TestCollection
-    {
-    public:
-        inline OSDebugTest()
-            : TestCollection("OSDebugTest")
-        {
-        }
+	class OSDebugTest : public TestCollection
+	{
+	public:
+		inline OSDebugTest() : TestCollection("OSDebugTest") {}
 
-    protected:
-        virtual void Prepare() override;
-    };
+	protected:
+		virtual void Prepare() override;
+	};
 
 } // namespace hbe
 #endif //__UNIT_TEST__

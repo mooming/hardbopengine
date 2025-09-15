@@ -3,6 +3,7 @@
 #include "MemoryManager.h"
 
 #include "Config/ConfigParam.h"
+#include "Core/Debug.h"
 #include "Engine/Engine.h"
 #include "MultiPoolConfigCache.h"
 #include "OSAL/Intrinsic.h"
@@ -10,7 +11,6 @@
 #include "Resource/Buffer.h"
 #include "Resource/BufferUtil.h"
 #include "String/StringUtil.h"
-#include "System/Debug.h"
 #include "SystemAllocator.h"
 
 namespace hbe

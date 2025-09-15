@@ -19,6 +19,7 @@ link_directories (${CMAKE_SOURCE_DIR}/lib)
 
 add_subdirectory (Config)
 add_subdirectory (Container)
+add_subdirectory (Core)
 add_subdirectory (Engine)
 add_subdirectory (HSTL)
 add_subdirectory (Log)
@@ -27,7 +28,6 @@ add_subdirectory (Memory)
 add_subdirectory (OSAL)
 add_subdirectory (Resource)
 add_subdirectory (String)
-add_subdirectory (System)
 add_subdirectory (Test)
 
 

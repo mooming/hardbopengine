@@ -9,138 +9,118 @@
 
 namespace hbe
 {
-    template <typename Number = float, int PaddingSize = 8>
-    class RigidTransform
-    {
-        using This = RigidTransform;
-        using Vec3 = Vector3<Number>;
-        using Quat = Quaternion<Number>;
-        using Mat3x3 = Matrix3x3<Number>;
-        using Mat4x4 = Matrix4x4<Number>;
+	template<typename Number = float, int PaddingSize = 8>
+	class RigidTransform
+	{
+		using This = RigidTransform;
+		using Vec3 = Vector3<Number>;
+		using Quat = Quaternion<Number>;
+		using Mat3x3 = Matrix3x3<Number>;
+		using Mat4x4 = Matrix4x4<Number>;
 
-    public:
-        Quat rotation;
-        Vec3 translation;
-        uint8_t padding[PaddingSize];
+	public:
+		Quat rotation;
+		Vec3 translation;
+		uint8_t padding[PaddingSize];
 
-    public:
-        RigidTransform();
-        RigidTransform(std::nullptr_t);
-        RigidTransform(const Vec3& translation, const Quat& rotation);
-        RigidTransform(const Mat4x4& mat);
+	public:
+		RigidTransform();
+		RigidTransform(std::nullptr_t);
+		RigidTransform(const Vec3& translation, const Quat& rotation);
+		RigidTransform(const Mat4x4& mat);
 
-        inline bool operator==(const This& rhs) const
-        {
-            return rotation == rhs.rotation && translation == rhs.translation;
-        }
+		inline bool operator==(const This& rhs) const
+		{
+			return rotation == rhs.rotation && translation == rhs.translation;
+		}
 
-        template <typename T>
-        inline T operator*(const T& rhs) const
-        {
-            return Transform(rhs);
-        }
+		template<typename T>
+		inline T operator*(const T& rhs) const
+		{
+			return Transform(rhs);
+		}
 
-        Vec3 Transform(const Vec3& x) const
-        {
-            return rotation * x + translation;
-        }
+		Vec3 Transform(const Vec3& x) const { return rotation * x + translation; }
 
-        Quat Transform(const Quat& r) const { return rotation * r; }
+		Quat Transform(const Quat& r) const { return rotation * r; }
 
-        This Transform(const This& rhs) const
-        {
-            This result(nullptr);
+		This Transform(const This& rhs) const
+		{
+			This result(nullptr);
 
-            result.rotation = rotation * rhs.rotation;
-            result.translation = rotation * rhs.translation + translation;
+			result.rotation = rotation * rhs.rotation;
+			result.translation = rotation * rhs.translation + translation;
 
-            return result;
-        }
+			return result;
+		}
 
-        Vec3 InverseTransform(const Vec3& x) const
-        {
-            return (rotation.Inverse() * (x - translation));
-        }
+		Vec3 InverseTransform(const Vec3& x) const { return (rotation.Inverse() * (x - translation)); }
 
-        Quat InverseTransform(const Quat& r) const
-        {
-            return rotation.Inverse() * r;
-        }
+		Quat InverseTransform(const Quat& r) const { return rotation.Inverse() * r; }
 
-        This InverseTransform(const This& rhs) const
-        {
-            This result(nullptr);
+		This InverseTransform(const This& rhs) const
+		{
+			This result(nullptr);
 
-            result.rotation = InverseTransform(rhs.rotation);
-            result.translation = InverseTransform(rhs.translation);
+			result.rotation = InverseTransform(rhs.rotation);
+			result.translation = InverseTransform(rhs.translation);
 
-            return result;
-        }
+			return result;
+		}
 
-        This Inverse() const
-        {
-            This inverse = nullptr;
+		This Inverse() const
+		{
+			This inverse = nullptr;
 
-            inverse.rotation = rotation.Inverse();
-            inverse.translation = inverse.rotation * -translation;
+			inverse.rotation = rotation.Inverse();
+			inverse.translation = inverse.rotation * -translation;
 
-            return inverse;
-        }
+			return inverse;
+		}
 
-        Mat4x4 ToMatrix() const
-        {
-            Mat4x4 mat = rotation.ToMat4x4();
-            mat.SetTranslation(translation);
+		Mat4x4 ToMatrix() const
+		{
+			Mat4x4 mat = rotation.ToMat4x4();
+			mat.SetTranslation(translation);
 
-            return mat;
-        }
-    };
+			return mat;
+		}
+	};
 
-    using RigidTR = RigidTransform<float>;
+	using RigidTR = RigidTransform<float>;
 
-    template <typename T>
-    inline std::ostream& operator<<(
-        std::ostream& os, const RigidTransform<T>& local)
-    {
-        using namespace std;
+	template<typename T>
+	inline std::ostream& operator<<(std::ostream& os, const RigidTransform<T>& local)
+	{
+		using namespace std;
 
-        os << "Rigid Transform" << endl;
-        os << "Position: (" << local.translation.x << ", "
-           << local.translation.y << ", " << local.translation.z << ")" << endl;
-        auto r = local.rotation.EulerAngles();
-        os << "Rotation: (" << r.x << ", " << r.y << ", " << r.z << ")" << endl;
+		os << "Rigid Transform" << endl;
+		os << "Position: (" << local.translation.x << ", " << local.translation.y << ", " << local.translation.z << ")"
+		   << endl;
+		auto r = local.rotation.EulerAngles();
+		os << "Rotation: (" << r.x << ", " << r.y << ", " << r.z << ")" << endl;
 
-        return os;
-    }
+		return os;
+	}
 
-    template <typename T, int N>
-    inline RigidTransform<T, N>::RigidTransform()
-        : rotation(),
-          translation()
-    {
-    }
+	template<typename T, int N>
+	inline RigidTransform<T, N>::RigidTransform() : rotation(), translation()
+	{}
 
-    template <typename T, int N>
-    inline RigidTransform<T, N>::RigidTransform(std::nullptr_t)
-        : rotation(nullptr),
-          translation(nullptr)
-    {
-    }
+	template<typename T, int N>
+	inline RigidTransform<T, N>::RigidTransform(std::nullptr_t) : rotation(nullptr), translation(nullptr)
+	{}
 
-    template <typename T, int N>
-    inline RigidTransform<T, N>::RigidTransform(const Vec3& t, const Quat& r)
-        : rotation(r),
-          translation(t)
-    {
-    }
+	template<typename T, int N>
+	inline RigidTransform<T, N>::RigidTransform(const Vec3& t, const Quat& r) : rotation(r), translation(t)
+	{}
 
-    template <typename T, int N>
-    inline RigidTransform<T, N>::RigidTransform(const Mat4x4& mat)
-        : rotation(mat),
-          translation(mat.m14, mat.m24, mat.m34)
-    {
-        Assert(mat.IsOrthogonal());
-    }
+	template<typename T, int N>
+	inline RigidTransform<T, N>::RigidTransform(const Mat4x4& mat) :
+		rotation(mat), translation(mat.m14, mat.m24, mat.m34)
+	{
+		Assert(mat.IsOrthogonal());
+	}
 
 } // namespace hbe
 
@@ -149,16 +129,13 @@ namespace hbe
 
 namespace hbe
 {
-    class RigidTransformTest : public TestCollection
-    {
-    public:
-        RigidTransformTest()
-            : TestCollection("RigidTransformTest")
-        {
-        }
+	class RigidTransformTest : public TestCollection
+	{
+	public:
+		RigidTransformTest() : TestCollection("RigidTransformTest") {}
 
-    protected:
-        virtual void Prepare() override;
-    };
+	protected:
+		virtual void Prepare() override;
+	};
 } // namespace hbe
 #endif //__UNIT_TEST__

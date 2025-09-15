@@ -9,40 +9,36 @@
 namespace hbe
 {
 
-    class TestCollection;
+	class TestCollection;
 
-    class TestEnv
-    {
-        using TCPtr = std::unique_ptr<TestCollection>;
+	class TestEnv
+	{
+		using TCPtr = std::unique_ptr<TestCollection>;
 
-    private:
-        std::vector<TCPtr> tests;
-        std::vector<std::string> invalidTests;
-        std::vector<std::string> failedTests;
-        std::vector<std::string> warningMessages;
-        std::vector<std::string> errorMessages;
+	private:
+		std::vector<TCPtr> tests;
+		std::vector<std::string> invalidTests;
+		std::vector<std::string> failedTests;
+		std::vector<std::string> warningMessages;
+		std::vector<std::string> errorMessages;
 
-        unsigned int testedCount;
-        unsigned int passCount;
+		unsigned int testedCount;
+		unsigned int passCount;
 
-    public:
-        static TestEnv& GetEnv();
-        void Start();
+	public:
+		static TestEnv& GetEnv();
+		void Start();
 
-        template <typename T, typename... Types>
-        void AddTestCollection(Types&&... args)
-        {
-            tests.push_back(std::make_unique<T>(std::forward(args)...));
-        }
+		template<typename T, typename... Types>
+		void AddTestCollection(Types&&... args)
+		{
+			tests.push_back(std::make_unique<T>(std::forward(args)...));
+		}
 
-    private:
-        inline TestEnv()
-            : testedCount(0),
-              passCount(0)
-        {
-        }
+	private:
+		inline TestEnv() : testedCount(0), passCount(0) {}
 
-        bool ExecuteTest(TestCollection& testCollection);
-        void Report();
-    };
+		bool ExecuteTest(TestCollection& testCollection);
+		void Report();
+	};
 } // namespace hbe

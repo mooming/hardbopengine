@@ -4,8 +4,8 @@
 
 #include "Config/BuildConfig.h"
 #include "Config/EngineConfig.h"
+#include "Core/Debug.h"
 #include "MemoryManager.h"
-#include "System/Debug.h"
 
 using namespace hbe;
 

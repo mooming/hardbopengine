@@ -96,7 +96,7 @@ namespace hbe
 		return *this;
 	}
 
-	BufferOutputStream& BufferOutputStream::operator<<(const char *str)
+	BufferOutputStream& BufferOutputStream::operator<<(const char* str)
 	{
 		if (unlikely(str == nullptr))
 		{
@@ -180,7 +180,7 @@ namespace hbe
 				ls << "Invalid error count " << bos.GetErrorCount() << ", 0 is expected." << lferr;
 			}
 
-			int *intArray = reinterpret_cast<int *>(buffer.GetData());
+			int* intArray = reinterpret_cast<int*>(buffer.GetData());
 			for (size_t i = 0; i < TestCount; ++i)
 			{
 				ls << i << "th value = " << intArray[i] << lf;
@@ -218,7 +218,7 @@ namespace hbe
 
 			bos.ClearErrorCount();
 
-			int *intArray = reinterpret_cast<int *>(buffer.GetData() + sizeof(size_t));
+			int* intArray = reinterpret_cast<int*>(buffer.GetData() + sizeof(size_t));
 			for (int i = 0; i < 10; ++i)
 			{
 				ls << i << "th value = " << intArray[i] << lf;

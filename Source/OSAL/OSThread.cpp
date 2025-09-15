@@ -2,24 +2,18 @@
 
 #include "OSThread.h"
 
-#include "../Engine/Engine.h"
 #include <thread>
+#include "../Engine/Engine.h"
 
-void OS::Yield()
-{
-    std::this_thread::yield();
-}
+void OS::Yield() { std::this_thread::yield(); }
 
-void OS::Sleep(uint32_t milliseconds)
-{
-    std::this_thread::sleep_for(std::chrono::milliseconds(milliseconds));
-}
+void OS::Sleep(uint32_t milliseconds) { std::this_thread::sleep_for(std::chrono::milliseconds(milliseconds)); }
 
 #ifdef __UNIT_TEST__
 
 void hbe::OSThreadTest::Prepare()
 {
-    // TODO
+	// TODO
 }
 
 #endif //__UNIT_TEST__

@@ -1,20 +1,20 @@
 // Created by mooming.go@gmail.com
 
 #pragma once
-#include "PoolConfig.h"
 #include <vector>
+#include "PoolConfig.h"
 
 namespace hbe
 {
 
-    namespace PoolConfigUtil
-    {
+	namespace PoolConfigUtil
+	{
 
-        using TPoolConfigs = std::vector<PoolConfig>;
+		using TPoolConfigs = std::vector<PoolConfig>;
 
-        void Normalize(TPoolConfigs& configs);
-        void MergeMax(TPoolConfigs& dst, TPoolConfigs& src);
+		void Normalize(TPoolConfigs& configs);
+		void MergeMax(TPoolConfigs& dst, TPoolConfigs& src);
 
-    } // namespace PoolConfigUtil
+	} // namespace PoolConfigUtil
 
 } // namespace hbe

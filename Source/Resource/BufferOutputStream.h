@@ -6,8 +6,8 @@
 #include <cstdint>
 #include <thread>
 #include "Buffer.h"
+#include "Core/Debug.h"
 #include "HSTL/HString.h"
-#include "System/Debug.h"
 
 namespace hbe
 {
@@ -52,7 +52,7 @@ namespace hbe
 		This& operator<<(float value);
 		This& operator<<(double value);
 		This& operator<<(long double value);
-		This& operator<<(const char *str);
+		This& operator<<(const char* str);
 
 		template<typename T, size_t N>
 		This& operator<<(T (&array)[N])
@@ -115,14 +115,14 @@ namespace hbe
 				bufferBase[cursor++] = 0;
 			}
 
-			auto data = reinterpret_cast<T *>(&bufferBase[cursor]);
+			auto data = reinterpret_cast<T*>(&bufferBase[cursor]);
 			data[0] = value;
 
 			cursor = newIndex;
 		}
 
 		template<typename T>
-		void Put(const T *value, size_t length)
+		void Put(const T* value, size_t length)
 		{
 			Assert(std::this_thread::get_id() == threadID);
 
@@ -161,7 +161,7 @@ namespace hbe
 				bufferBase[cursor++] = 0;
 			}
 
-			auto data = reinterpret_cast<T *>(&bufferBase[cursor]);
+			auto data = reinterpret_cast<T*>(&bufferBase[cursor]);
 			for (size_t i = 0; i < length; ++i)
 			{
 				data[i] = value[i];
