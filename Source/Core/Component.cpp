@@ -1,5 +1,5 @@
 // Created by mooming.go@gmail.com, 2017
 
-#include "System/Component.h"
+#include "Core/Component.h"
 
 using namespace hbe;

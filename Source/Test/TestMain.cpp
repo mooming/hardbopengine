@@ -5,15 +5,15 @@
 
 int main(int argc, const char* argv[])
 {
-    hbe::Engine hengine;
+	hbe::Engine hengine;
 
-    hengine.Initialize(argc, argv);
+	hengine.Initialize(argc, argv);
 
 #ifdef __UNIT_TEST__
-    Test::RunUnitTests();
+	Test::RunUnitTests();
 #endif // __UNIT_TEST__
 
-    hengine.Run();
+	hengine.Run();
 
-    return 0;
+	return 0;
 }

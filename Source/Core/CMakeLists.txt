@@ -1,5 +1,5 @@
 cmake_minimum_required (VERSION 3.12)
-project (System)
+project (Core)
 
 set (CMAKE_CXX_STANDARD 20)
 
@@ -18,7 +18,8 @@ include_directories ( ${CMAKE_SOURCE_DIR}
 link_directories (${CMAKE_SOURCE_DIR}/lib)
 
 
-add_library (System STATIC 
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/lib)
+add_library (Core STATIC 
  CommandLineArguments.cpp
  Component.cpp
  ComponentSystem.cpp
@@ -54,11 +55,11 @@ if (APPLE)
 include_directories ( /System/Library/Frameworks )
 endif (APPLE)
 
-install (TARGETS System DESTINATION ${CMAKE_SOURCE_DIR}/lib)
+install (TARGETS Core DESTINATION ${CMAKE_SOURCE_DIR}/lib)
 
 
-target_link_libraries (System OSAL)
+target_link_libraries (Core OSAL)
 
-add_dependencies (System OSAL)
+add_dependencies (Core OSAL)
 
 

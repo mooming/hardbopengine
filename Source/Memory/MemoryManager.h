@@ -11,11 +11,11 @@
 #include "AllocatorProxy.h"
 #include "Config/BuildConfig.h"
 #include "Container/AtomicStackView.h"
+#include "Core/Types.h"
 #include "Log/LogLevel.h"
 #include "MultiPoolConfigCache.h"
 #include "PoolConfig.h"
 #include "String/StaticStringID.h"
-#include "System/Types.h"
 
 namespace hbe
 {

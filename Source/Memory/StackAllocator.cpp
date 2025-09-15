@@ -4,9 +4,9 @@
 
 #include "AllocatorScope.h"
 #include "Config/EngineConfig.h"
+#include "Core/Debug.h"
 #include "MemoryManager.h"
 #include "OSAL/Intrinsic.h"
-#include "System/Debug.h"
 
 using namespace hbe;
 

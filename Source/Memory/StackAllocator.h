@@ -4,8 +4,8 @@
 
 #include "AllocatorID.h"
 #include "Config/BuildConfig.h"
+#include "Core/Types.h"
 #include "OSAL/SourceLocation.h"
-#include "System/Types.h"
 
 namespace hbe
 {

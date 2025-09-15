@@ -8,10 +8,8 @@
 namespace HSTL
 {
 
-    template <class Key, class T, class Hash = std::hash<Key>,
-        class Pred = std::equal_to<Key>>
-    using HUnorderedMap = std::unordered_map<Key, T, Hash, Pred,
-        hbe::DefaultAllocator<std::pair<const Key, T>>>;
+	template<class Key, class T, class Hash = std::hash<Key>, class Pred = std::equal_to<Key>>
+	using HUnorderedMap = std::unordered_map<Key, T, Hash, Pred, hbe::DefaultAllocator<std::pair<const Key, T>>>;
 
 } // namespace HSTL
 
@@ -20,14 +18,14 @@ namespace HSTL
 
 namespace hbe
 {
-    class HUnorderedMapTest : public TestCollection
-    {
-    public:
-        HUnorderedMapTest();
-        virtual ~HUnorderedMapTest() = default;
+	class HUnorderedMapTest : public TestCollection
+	{
+	public:
+		HUnorderedMapTest();
+		virtual ~HUnorderedMapTest() = default;
 
-    protected:
-        virtual void Prepare() override;
-    };
+	protected:
+		virtual void Prepare() override;
+	};
 } // namespace hbe
 #endif //__UNIT_TEST__

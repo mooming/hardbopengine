@@ -6,5 +6,5 @@
 
 namespace hbe
 {
-    template class ScopedLock<std::mutex>;
+	template class ScopedLock<std::mutex>;
 } // namespace hbe

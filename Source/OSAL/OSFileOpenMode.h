@@ -6,16 +6,16 @@
 namespace OS
 {
 
-    struct FileOpenMode final
-    {
-        int value = 0;
+	struct FileOpenMode final
+	{
+		int value = 0;
 
-        void SetReadOnly();
-        void SetWriteOnly();
-        void SetReadWrite();
-        void SetCreate();
-        void SetTruncate();
-        void SetAppend();
-    };
+		void SetReadOnly();
+		void SetWriteOnly();
+		void SetReadWrite();
+		void SetCreate();
+		void SetTruncate();
+		void SetAppend();
+	};
 
 } // namespace OS

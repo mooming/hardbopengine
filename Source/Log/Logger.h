@@ -6,6 +6,7 @@
 #include <fstream>
 #include <functional>
 #include <thread>
+#include "Core/TaskHandle.h"
 #include "HSTL/HString.h"
 #include "HSTL/HUnorderedMap.h"
 #include "HSTL/HVector.h"
@@ -15,7 +16,6 @@
 #include "Memory/ThreadSafeMultiPoolAllocator.h"
 #include "String/InlineStringBuilder.h"
 #include "String/StaticString.h"
-#include "System/TaskHandle.h"
 
 namespace hbe
 {

@@ -7,5 +7,5 @@
 
 namespace hbe
 {
-    using Runnable = std::function<void(std::size_t, std::size_t)>;
+	using Runnable = std::function<void(std::size_t, std::size_t)>;
 } // namespace hbe

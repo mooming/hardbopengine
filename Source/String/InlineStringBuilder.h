@@ -48,11 +48,11 @@ namespace hbe
 			buffer[LastIndex] = '\0';
 		}
 
-		auto c_str() const { return static_cast<const char *>(buffer); }
+		auto c_str() const { return static_cast<const char*>(buffer); }
 
 		auto Size() const { return length; }
 
-		operator const TChar *() const { return c_str(); }
+		operator const TChar*() const { return c_str(); }
 
 		This& Hex(uint8_t value)
 		{
@@ -114,7 +114,7 @@ namespace hbe
 			return *this;
 		}
 
-		This& operator<<(const char *str)
+		This& operator<<(const char* str)
 		{
 			if (unlikely(str == nullptr))
 			{
@@ -136,7 +136,7 @@ namespace hbe
 				return *this;
 			}
 
-			memcpy((void *) (&buffer[length]), str, len);
+			memcpy((void*) (&buffer[length]), str, len);
 			length = newLength;
 			buffer[length] = '\0';
 
@@ -166,7 +166,7 @@ namespace hbe
 				return *this;
 			}
 
-			memcpy((void *) (&buffer[length]), &str[0], len);
+			memcpy((void*) (&buffer[length]), &str[0], len);
 			length = newLength;
 			buffer[length] = '\0';
 
@@ -190,7 +190,7 @@ namespace hbe
 				return *this;
 			}
 
-			memcpy((void *) (&buffer[length]), str.data(), len);
+			memcpy((void*) (&buffer[length]), str.data(), len);
 
 			length = newLength;
 			buffer[length] = '\0';
@@ -338,7 +338,7 @@ namespace hbe
 			return *this;
 		}
 
-		This& operator<<(void *value)
+		This& operator<<(void* value)
 		{
 			const size_t remained = BufferSize - length;
 			auto written = snprintf(&buffer[length], remained, "%p", value);

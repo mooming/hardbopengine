@@ -12,76 +12,66 @@
 namespace OS
 {
 
-    namespace
-    {
+	namespace
+	{
 
-        int GetHandle(const FileHandle& handle)
-        {
-            auto& fd = reinterpret_cast<const int&>(handle.data);
-            return fd;
-        }
+		int GetHandle(const FileHandle& handle)
+		{
+			auto& fd = reinterpret_cast<const int&>(handle.data);
+			return fd;
+		}
 
-        void SetHandle(FileHandle& outHandle, int fd)
-        {
-            int& data = reinterpret_cast<int&>(outHandle.data);
-            data = fd;
-        }
+		void SetHandle(FileHandle& outHandle, int fd)
+		{
+			int& data = reinterpret_cast<int&>(outHandle.data);
+			data = fd;
+		}
 
-    } // namespace
+	} // namespace
 
-    FileHandle::FileHandle()
-    {
-        Invalidate();
-    }
+	FileHandle::FileHandle() { Invalidate(); }
 
-    FileHandle::FileHandle(FileHandle&& rhs)
-        : data(rhs.data)
-    {
-        rhs.Invalidate();
-    }
+	FileHandle::FileHandle(FileHandle&& rhs) : data(rhs.data) { rhs.Invalidate(); }
 
-    FileHandle::~FileHandle()
-    {
-        auto fd = GetHandle(*this);
-        if (fd < 0)
-        {
-            return;
-        }
+	FileHandle::~FileHandle()
+	{
+		auto fd = GetHandle(*this);
+		if (fd < 0)
+		{
+			return;
+		}
 
-        Close(std::move(*this));
-    }
+		Close(std::move(*this));
+	}
 
-    size_t FileHandle::GetFileSize() const
-    {
-        auto fd = GetHandle(*this);
-        if (unlikely(fd < 0))
-        {
-            return 0;
-        }
+	size_t FileHandle::GetFileSize() const
+	{
+		auto fd = GetHandle(*this);
+		if (unlikely(fd < 0))
+		{
+			return 0;
+		}
 
-        struct stat statValue;
-        int result = fstat(fd, &statValue);
+		struct stat statValue;
+		int result = fstat(fd, &statValue);
 
-        if (unlikely(result != 0))
-        {
-            return 0;
-        }
+		if (unlikely(result != 0))
+		{
+			return 0;
+		}
 
-        static_assert(sizeof(size_t) == sizeof(statValue.st_size));
+		static_assert(sizeof(size_t) == sizeof(statValue.st_size));
 
-        return statValue.st_size;
-    }
+		return statValue.st_size;
+	}
 
-    bool FileHandle::IsValid() const
-    {
-        auto fd = GetHandle(*this);
-        return fd >= 0;
-    }
+	bool FileHandle::IsValid() const
+	{
+		auto fd = GetHandle(*this);
+		return fd >= 0;
+	}
 
-    void FileHandle::Invalidate()
-    {
-        SetHandle(*this, -1);
-    }
+	void FileHandle::Invalidate() { SetHandle(*this, -1); }
 
 } // namespace OS
 #endif // PLATFORM_OSX

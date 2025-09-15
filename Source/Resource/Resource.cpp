@@ -5,12 +5,8 @@
 namespace hbe
 {
 
-    Resource::Resource()
-    {
-    }
+	Resource::Resource() {}
 
-    Resource::~Resource()
-    {
-    }
+	Resource::~Resource() {}
 
 } // namespace hbe

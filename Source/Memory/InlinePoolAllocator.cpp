@@ -4,7 +4,7 @@
 
 #ifdef __UNIT_TEST__
 #include <vector>
-#include "System/ScopedTime.h"
+#include "Core/ScopedTime.h"
 
 namespace
 {

@@ -3,9 +3,9 @@
 #pragma once
 
 #include "AllocatorID.h"
+#include "Core/Types.h"
 #include "OSAL/SourceLocation.h"
 #include "String/StaticString.h"
-#include "System/Types.h"
 
 namespace hbe
 {

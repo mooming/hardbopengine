@@ -8,10 +8,10 @@
 #include "AllocatorID.h"
 #include "Config/BuildConfig.h"
 #include "Config/EngineConfig.h"
+#include "Core/Debug.h"
 #include "MemoryManager.h"
 #include "OSAL/OSMemory.h"
 #include "String/StaticString.h"
-#include "System/Debug.h"
 
 namespace hbe
 {

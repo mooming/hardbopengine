@@ -6,9 +6,6 @@
 
 using namespace hbe;
 
-StaticString OS::GetBackTrace(uint16_t, uint16_t)
-{
-    return StaticString("Not Implemented");
-}
+StaticString OS::GetBackTrace(uint16_t, uint16_t) { return StaticString("Not Implemented"); }
 
 #endif // PLATFORM_LINUX

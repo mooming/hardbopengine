@@ -7,6 +7,8 @@
 #include "Container/Array.h"
 #include "Container/AtomicStackView.h"
 #include "Container/LinkedList.h"
+#include "Core/ComponentSystem.h"
+#include "Core/TaskSystem.h"
 #include "HSTL/HUnorderedMap.h"
 #include "Math/AABB.h"
 #include "Math/ImportanceResampling.h"
@@ -41,8 +43,6 @@
 #include "String/StaticString.h"
 #include "String/StringBuilder.h"
 #include "String/StringUtil.h"
-#include "System/ComponentSystem.h"
-#include "System/TaskSystem.h"
 #include "TestEnv.h"
 
 #include <iostream>

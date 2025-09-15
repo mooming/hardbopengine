@@ -6,13 +6,13 @@
 #include "Config/BuildConfig.h"
 #include "Config/ConfigParam.h"
 #include "Config/EngineConfig.h"
+#include "Core/Debug.h"
+#include "Core/TaskSystem.h"
 #include "LogUtil.h"
 #include "Memory/AllocatorScope.h"
 #include "Memory/InlinePoolAllocator.h"
 #include "OSAL/Intrinsic.h"
 #include "String/StringUtil.h"
-#include "System/Debug.h"
-#include "System/TaskSystem.h"
 
 namespace hbe
 {
