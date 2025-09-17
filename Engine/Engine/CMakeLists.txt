@@ -1,5 +1,5 @@
 cmake_minimum_required (VERSION 3.12)
-project (Log)
+project (HEngine)
 
 set (CMAKE_CXX_STANDARD 20)
 
@@ -12,29 +12,23 @@ endif (MSVC)
 add_compile_definitions (__TEST__ __UNIT_TEST__ )
 include_directories ( ${CMAKE_SOURCE_DIR}
  ${CMAKE_SOURCE_DIR}/include
- ${CMAKE_SOURCE_DIR}/Source
  ${CMAKE_SOURCE_DIR}/External
+ ${CMAKE_SOURCE_DIR}/Engine
  )
 link_directories (${CMAKE_SOURCE_DIR}/lib)
 
 
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/lib)
-add_library (Log STATIC 
- LogLine.cpp
- LogUtil.cpp
- Logger.cpp
- LogLevel.h
- LogLine.h
- LogUtil.h
- Logger.h
- PrintArgs.h
+add_library (HEngine STATIC 
+ Engine.cpp
+ Engine.h
 )
 
 if (APPLE)
 include_directories ( /System/Library/Frameworks )
 endif (APPLE)
 
-install (TARGETS Log DESTINATION ${CMAKE_SOURCE_DIR}/lib)
+install (TARGETS HEngine DESTINATION ${CMAKE_SOURCE_DIR}/lib)
 
 
 

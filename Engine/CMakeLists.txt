@@ -1,5 +1,5 @@
 cmake_minimum_required (VERSION 3.12)
-project (HEngine)
+project (HEngineBase)
 
 set (CMAKE_CXX_STANDARD 20)
 
@@ -12,23 +12,24 @@ endif (MSVC)
 add_compile_definitions (__TEST__ __UNIT_TEST__ )
 include_directories ( ${CMAKE_SOURCE_DIR}
  ${CMAKE_SOURCE_DIR}/include
- ${CMAKE_SOURCE_DIR}/Source
  ${CMAKE_SOURCE_DIR}/External
+ ${CMAKE_SOURCE_DIR}/Engine
  )
 link_directories (${CMAKE_SOURCE_DIR}/lib)
 
+add_subdirectory (Config)
+add_subdirectory (Container)
+add_subdirectory (Core)
+add_subdirectory (Engine)
+add_subdirectory (HSTL)
+add_subdirectory (Log)
+add_subdirectory (Math)
+add_subdirectory (Memory)
+add_subdirectory (OSAL)
+add_subdirectory (Resource)
+add_subdirectory (String)
+add_subdirectory (Test)
 
-set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/lib)
-add_library (HEngine STATIC 
- Engine.cpp
- Engine.h
-)
-
-if (APPLE)
-include_directories ( /System/Library/Frameworks )
-endif (APPLE)
-
-install (TARGETS HEngine DESTINATION ${CMAKE_SOURCE_DIR}/lib)
 
 
 
