@@ -8,7 +8,7 @@
 using namespace std;
 using namespace hbe;
 
-void Time::Sleep(Time::MilliSec milli)
+void time::Sleep(time::MilliSec milli)
 {
 	using namespace std::chrono;
 	this_thread::sleep_for(milliseconds(milli));

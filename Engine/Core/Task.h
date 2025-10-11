@@ -4,60 +4,61 @@
 
 #include <atomic>
 #include <thread>
+#include "RangedTask.h"
 #include "Runnable.h"
 #include "String/StaticString.h"
 
 namespace hbe
 {
-
+	// It represents a task which consists of RangedTasks. The task can be split into multiple RangedTasks on multiple threads.
 	class Task final
 	{
 	public:
 		using TIndex = std::size_t;
 		using TThreadID = std::thread::id;
+		using TNumSubTasks = uint8_t;
 
 	private:
+		// Task Name
 		StaticString name;
-		TThreadID threadID;
 
-		uint8_t numStreams;
-		std::atomic<uint8_t> numDone;
-		std::atomic<bool> isCancelled;
+		// Number of RangedTasks
+		TNumSubTasks numSubTasks;
 
-		TIndex size;
+		// Number of finished RangedTasks
+		std::atomic<TNumSubTasks> numFinishedSubTasks;
+
+		// Runnable Function
 		Runnable func;
+
+		// Custom User Data
+		void* userData;
 
 	public:
 		Task();
-		Task(StaticString name, TIndex size, Runnable func);
+		Task(StaticString taskName, Runnable func, void* userData);
 		~Task() = default;
 
-		void Reset();
-		void Reset(StaticString name, TIndex size, Runnable func);
+		void Start(TIndex numberOfSubTasks, TIndex startIndex, TIndex endIndex, uint8_t priority = 0);
 
-		void Run();
-		void Run(TIndex start, TIndex end);
-		void ForceRun();
-
-		void Cancel();
+		// Wait
 		void BusyWait() const;
 		void Wait(uint32_t intervalMilliSecs = 10) const;
 
+	public:
 		auto GetName() const { return name; }
-		auto& GetThreadID() const { return threadID; }
-		bool IsCurrentThread() const { return threadID == std::this_thread::get_id(); }
-		void SetThreadID(const TThreadID& id) { threadID = id; }
+		auto NumSubTasks() const { return numSubTasks; }
+		auto NumFinishedSubTasks() const { return numFinishedSubTasks.load(std::memory_order::relaxed); }
+		bool HasDone() const { return numSubTasks > 0 && NumFinishedSubTasks() >= numSubTasks; }
 
-		bool IsDone() const { return NumDone() >= numStreams; }
-		bool IsCancelled() const { return isCancelled.load(std::memory_order_relaxed); }
+		// Increase numFinishedSubTasks.  It guarantees all other global memory values are synced properly.
+		void ReportFinishedSubTask() { numFinishedSubTasks.fetch_add(1, std::memory_order::seq_cst); }
 
-		int NumStreams() const { return numStreams; }
-		int NumDone() const { return numDone.load(std::memory_order_relaxed); }
-		void IncNumStreams() { ++numStreams; }
-		void SetDone() { numDone.store(numStreams, std::memory_order_relaxed); }
-		void ClearDone() { numDone.store(0, std::memory_order_relaxed); }
+		Runnable GetRunnable() const { return func;}
+		void SetRunnable(Runnable runnable) { func = runnable; }
+		void* GetUserData() const { return userData; }
 
-		auto GetSize() const { return size; }
+		// Generate a RangedTask with the given range [start, end)
+		RangedTask GenerateSubTask(TIndex start, TIndex end, uint8_t priority = 0);
 	};
-
 } // namespace hbe

@@ -5,7 +5,7 @@
 #include <unordered_map>
 #include "Memory/DefaultAllocator.h"
 
-namespace HSTL
+namespace hbe
 {
 
 	template<class Key, class T, class Hash = std::hash<Key>, class Pred = std::equal_to<Key>>

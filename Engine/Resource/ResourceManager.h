@@ -16,7 +16,7 @@ namespace hbe
 	class ResourceManager final
 	{
 		template<typename T>
-		using TVector = HSTL::HVector<T>;
+		using TVector = hbe::HVector<T>;
 
 	private:
 		struct ResourceItem final

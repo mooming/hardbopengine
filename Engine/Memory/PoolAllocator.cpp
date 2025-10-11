@@ -56,6 +56,7 @@ namespace hbe
 		};
 
 		id = mmgr.RegisterAllocator(this, name, false, totalSize, allocFunc, deallocFunc);
+		Assert(id != InvalidAllocatorID);
 	}
 
 	PoolAllocator::PoolAllocator(PoolAllocator&& rhs) noexcept :
@@ -67,6 +68,8 @@ namespace hbe
 		maxUsedBlocks(rhs.maxUsedBlocks), srcLocation(rhs.srcLocation)
 #endif // PROFILE_ENABLED
 	{
+		Assert(id != InvalidAllocatorID);
+
 		rhs.id = InvalidAllocatorID;
 		rhs.parentID = InvalidAllocatorID;
 		rhs.name = StaticString();

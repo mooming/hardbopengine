@@ -6,7 +6,7 @@
 #include <fstream>
 #include <functional>
 #include <thread>
-#include "Core/TaskHandle.h"
+#include "Core/Task.h"
 #include "HSTL/HString.h"
 #include "HSTL/HUnorderedMap.h"
 #include "HSTL/HVector.h"
@@ -26,16 +26,16 @@ namespace hbe
 	class Logger final
 	{
 	public:
-		using TString = HSTL::HString;
-		using TLogBuffer = HSTL::HVector<LogLine>;
-		using TTextBuffer = HSTL::HVector<TString>;
+		using TString = hbe::HString;
+		using TLogBuffer = hbe::HVector<LogLine>;
+		using TTextBuffer = hbe::HVector<TString>;
 		using TTimePoint = std::chrono::time_point<std::chrono::steady_clock>;
 		using TLogStream = InlineStringBuilder<Config::LogOutputBuffer>;
 		using TLogFunction = std::function<void(TLogStream&)>;
 		using TOutputFunc = std::function<void(const TTextBuffer&)>;
-		using TOutputFuncs = HSTL::HVector<TOutputFunc>;
+		using TOutputFuncs = hbe::HVector<TOutputFunc>;
 		using TLogFilter = std::function<bool(ELogLevel)>;
-		using TFilters = HSTL::HUnorderedMap<StaticString, TLogFilter>;
+		using TFilters = hbe::HUnorderedMap<StaticString, TLogFilter>;
 
 	public:
 		struct SimpleLogger final
@@ -82,7 +82,8 @@ namespace hbe
 
 		MultiPoolAllocator allocator;
 		ThreadSafeMultiPoolAllocator inputAlloc;
-		TaskHandle taskHandle;
+		Task task;
+		std::atomic<bool> isRunning;
 		std::atomic<bool> hasInput;
 		std::atomic<bool> needFlush;
 
@@ -127,7 +128,7 @@ namespace hbe
 
 	private:
 		void ProcessBuffer();
-		void FlushBuffer(const TTextBuffer& buffer);
+		void FlushBuffer(const TTextBuffer& buffer) const;
 
 		void WriteLog(const TTextBuffer& buffer);
 		static void PrintStdIO(const TTextBuffer& buffer);

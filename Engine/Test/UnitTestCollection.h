@@ -5,6 +5,6 @@
 #ifdef __UNIT_TEST__
 namespace Test
 {
-	void RunUnitTests();
+	void RunTests();
 }
 #endif // __UNIT_TEST__

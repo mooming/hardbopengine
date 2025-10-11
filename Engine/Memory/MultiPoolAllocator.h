@@ -28,7 +28,7 @@ namespace hbe
 		TAllocatorID id;
 		TAllocatorID parentID;
 		StaticString name;
-		HSTL::HVector<PoolAllocator> banks;
+		hbe::HVector<PoolAllocator> banks;
 		size_t bankSize;
 		size_t minBlock;
 

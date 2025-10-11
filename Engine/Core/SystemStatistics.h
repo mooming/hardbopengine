@@ -32,8 +32,8 @@ namespace hbe
 		size_t totalUsage;
 		size_t maxUsage;
 
-		Time::TTime startTime;
-		Time::TTime currentTime;
+		time::TTime startTime;
+		time::TTime currentTime;
 		double timeSinceStart;
 		float deltaTime;
 

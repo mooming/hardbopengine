@@ -62,12 +62,12 @@ namespace hbe
 		}
 
 		template<size_t N>
-		This& operator<<(const HSTL::HInlineString<N>& str)
+		This& operator<<(const hbe::HInlineString<N>& str)
 		{
 			return *this << str.c_str();
 		}
 
-		This& operator<<(const HSTL::HString& str) { return *this << str.c_str(); }
+		This& operator<<(const hbe::HString& str) { return *this << str.c_str(); }
 
 		This& operator<<(StaticString str) { return *this << str.c_str(); }
 

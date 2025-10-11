@@ -11,7 +11,7 @@ namespace hbe
 
 	void HUnorderedMapTest::Prepare()
 	{
-		using namespace HSTL;
+		using namespace hbe;
 
 		AddTest("Default Construction", [](auto&) { HUnorderedMap<int, int> map; });
 

@@ -771,10 +771,10 @@ namespace hbe
 		{
 			constexpr int COUNT = 100000;
 
-			Time::TDuration heTime;
+			time::TDuration heTime;
 
 			{
-				Time::ScopedTime measure(heTime);
+				time::ScopedTime measure(heTime);
 
 				String str;
 				for (int i = 0; i < COUNT; ++i)
@@ -787,10 +787,10 @@ namespace hbe
 				}
 			}
 
-			Time::TDuration stlTime;
+			time::TDuration stlTime;
 
 			{
-				Time::ScopedTime measure(stlTime);
+				time::ScopedTime measure(stlTime);
 
 				std::string str;
 				for (int i = 0; i < COUNT; ++i)
@@ -803,12 +803,12 @@ namespace hbe
 				}
 			}
 
-			ls << "Time: he = " << Time::ToFloat(heTime) << ", stl = " << Time::ToFloat(stlTime) << lf;
+			ls << "Time: he = " << time::ToFloat(heTime) << ", stl = " << time::ToFloat(stlTime) << lf;
 
 			if (heTime > stlTime)
 			{
 				ls << "HE String is slower than STL string." << std::endl
-				   << "Time: he = " << Time::ToFloat(heTime) << ", stl = " << Time::ToFloat(stlTime) << lfwarn;
+				   << "Time: he = " << time::ToFloat(heTime) << ", stl = " << time::ToFloat(stlTime) << lfwarn;
 			}
 		});
 	}

@@ -1,7 +1,7 @@
 cmake_minimum_required (VERSION 3.12)
 project (Core)
 
-set (CMAKE_CXX_STANDARD 20)
+set (CMAKE_CXX_STANDARD 23)
 
 if (MSVC)
 	add_compile_options (/W3 /WX)
@@ -24,10 +24,10 @@ add_library (Core STATIC
  Component.cpp
  ComponentSystem.cpp
  Debug.cpp
+ RangedTask.cpp
  ScopedLock.cpp
  SystemStatistics.cpp
  Task.cpp
- TaskHandle.cpp
  TaskStream.cpp
  TaskSystem.cpp
  Time.cpp
@@ -39,12 +39,12 @@ add_library (Core STATIC
  Constants.h
  Debug.h
  Exception.h
+ RangedTask.h
  Runnable.h
  ScopedLock.h
  ScopedTime.h
  SystemStatistics.h
  Task.h
- TaskHandle.h
  TaskStream.h
  TaskSystem.h
  Time.h

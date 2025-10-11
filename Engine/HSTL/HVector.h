@@ -6,7 +6,7 @@
 #include "Memory/DefaultAllocator.h"
 #include "Memory/InlinePoolAllocator.h"
 
-namespace HSTL
+namespace hbe
 {
 
 	template<typename T>

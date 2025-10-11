@@ -153,10 +153,10 @@ namespace hbe
 				testSystem.Create(testResult, ls, lferr);
 			}
 
-			Time::TDuration loopTime;
+			time::TDuration loopTime;
 
 			{
-				Time::ScopedTime measure(loopTime);
+				time::ScopedTime measure(loopTime);
 				while (testSystem)
 				{
 					testSystem.Update(0.033f);
@@ -166,7 +166,7 @@ namespace hbe
 				}
 			}
 
-			ls << "Total Loop Time = " << Time::ToFloat(loopTime) << lf;
+			ls << "Total Loop Time = " << time::ToFloat(loopTime) << lf;
 		});
 	}
 

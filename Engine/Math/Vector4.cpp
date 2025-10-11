@@ -31,7 +31,7 @@ void hbe::Vector4Test::Prepare()
 
 	AddTest("Vector4 Constructors & Operator", [this](auto& ls)
 	{
-		HSTL::HVector<Float4> vertices;
+		hbe::HVector<Float4> vertices;
 
 		for (int i = 0; i < 1000000; ++i)
 		{
@@ -46,11 +46,11 @@ void hbe::Vector4Test::Prepare()
 
 		Float4 tmp;
 
-		Time::TDuration heTime;
+		time::TDuration heTime;
 		float dotResult = 0.0f;
 
 		{
-			Time::ScopedTime measure(heTime);
+			time::ScopedTime measure(heTime);
 
 			for (auto& vertex : vertices)
 			{
@@ -59,7 +59,7 @@ void hbe::Vector4Test::Prepare()
 			}
 		}
 
-		ls << "Float4 Dot Time = " << Time::ToFloat(heTime) << ", Result = " << dotResult << lf;
+		ls << "Float4 Dot Time = " << time::ToFloat(heTime) << ", Result = " << dotResult << lf;
 	});
 }
 

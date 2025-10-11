@@ -5,11 +5,11 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include "TestCollection.h"
+
 
 namespace hbe
 {
-
-	class TestCollection;
 
 	class TestEnv
 	{
@@ -36,7 +36,7 @@ namespace hbe
 		}
 
 	private:
-		inline TestEnv() : testedCount(0), passCount(0) {}
+		TestEnv() : testedCount(0), passCount(0) {}
 
 		bool ExecuteTest(TestCollection& testCollection);
 		void Report();

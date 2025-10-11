@@ -101,7 +101,7 @@ namespace hbe
 			return *this;
 		}
 
-		using namespace HSTL;
+		using namespace hbe;
 
 		constexpr size_t InlineBufferSize = 256;
 		HInlineString<InlineBufferSize> tmpStr;
@@ -122,7 +122,7 @@ namespace hbe
 		return *this;
 	}
 
-	This& BufferInputStream::operator>>(const HSTL::HString& str) { return *this; }
+	This& BufferInputStream::operator>>(const hbe::HString& str) { return *this; }
 
 } // namespace hbe
 

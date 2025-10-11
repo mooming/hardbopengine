@@ -39,12 +39,12 @@ namespace hbe
 			Prepare();
 			ExecuteTests();
 
-			isSuccess = errorMessages.size() <= 0;
+			isSuccess = errorMessages.empty();
 			isDone = true;
 		}
 		catch (std::exception& e)
 		{
-			log.OutError([title = GetName(), &e](auto& ls) { ls << e.what() << hendl; });
+			log.OutError([title = GetName(), &e](auto& ls) { ls << title << " : " << e.what() << hendl; });
 
 			isSuccess = false;
 		}
@@ -52,7 +52,7 @@ namespace hbe
 		Report();
 	}
 
-	void TestCollection::AddTest(const char* name, TestFunc testCase)
+	void TestCollection::AddTest(const char* name, const TestFunc& testCase)
 	{
 		if (unlikely(testCase == nullptr))
 		{

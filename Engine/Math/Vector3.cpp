@@ -67,7 +67,7 @@ void hbe::Vector3Test::Prepare()
 		}
 	});
 
-	using namespace HSTL;
+	using namespace hbe;
 
 	AddTest("Constructors and Operators", [this](auto& ls)
 	{
@@ -87,11 +87,11 @@ void hbe::Vector3Test::Prepare()
 		Float3 tmp;
 
 		{
-			Time::TDuration heTime;
+			time::TDuration heTime;
 			float dotResult = 0.0f;
 
 			{
-				Time::ScopedTime measure(heTime);
+				time::ScopedTime measure(heTime);
 
 				for (auto& vertex : vertices)
 				{
@@ -100,7 +100,7 @@ void hbe::Vector3Test::Prepare()
 				}
 			}
 
-			ls << "Float3 Dot Time = " << Time::ToFloat(heTime) << ", Result = " << dotResult << lf;
+			ls << "Float3 Dot Time = " << time::ToFloat(heTime) << ", Result = " << dotResult << lf;
 		}
 	});
 

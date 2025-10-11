@@ -6,7 +6,7 @@
 #include "Memory/DefaultAllocator.h"
 #include "Memory/InlinePoolAllocator.h"
 
-namespace HSTL
+namespace hbe
 {
 	using HString = std::basic_string<char, std::char_traits<char>, hbe::DefaultAllocator<char>>;
 
@@ -19,9 +19,9 @@ namespace HSTL
 namespace std
 {
 	template<>
-	struct hash<HSTL::HString> final
+	struct hash<hbe::HString> final
 	{
-		std::size_t operator()(const HSTL::HString& obj) const
+		std::size_t operator()(const hbe::HString& obj) const
 		{
 			auto text = obj.c_str();
 			size_t hashCode = 5381;

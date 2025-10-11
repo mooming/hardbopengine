@@ -2,112 +2,81 @@
 
 #pragma once
 
-#include <array>
 #include <atomic>
 #include <thread>
 #include "Container/Array.h"
-#include "Memory/Optional.h"
-#include "Task.h"
-#include "TaskHandle.h"
+#include "HSTL/HVector.h"
 #include "TaskStream.h"
 
 namespace hbe
 {
 
+	// TaskSystem is a class to manage tasks and task streams.
 	class TaskSystem final
 	{
 	public:
 		using Thread = std::thread;
 		using ThreadID = std::thread::id;
-		using TIndex = TaskHandle::TIndex;
-		using TaskIndex = Task::TIndex;
-		using TKey = TaskHandle::TKey;
+		using StreamArray = Array<TaskStream>;
+		using TIndex = StreamArray::TIndex;
 
-		static constexpr TKey InvalidKey = TaskHandle::InvalidKey;
 		static constexpr TIndex MainStreamIndex = 0;
 		static constexpr TIndex IOStreamIndex = 1;
 
 	private:
-		struct TaskSlot final
-		{
-			TKey key = 0;
-			Task task;
-		};
-
 		std::atomic<bool> isRunning;
 
 		const StaticString name;
 		const TIndex numHardwareThreads;
-		TIndex workerIndexStart;
-		TIndex numWorkers;
-
-		TKey keySeed;
 		const ThreadID mainTaskThreadID;
 		ThreadID ioTaskThreadID;
+		StreamArray streams;
 
-		std::mutex requestLock;
-		Array<TaskSlot> slots;
-		Array<TaskStream> streams;
+		std::mutex taskQueueMutex;
+		std::priority_queue<RangedTask, HVector<RangedTask>> taskQueue;
 
 	public:
 		static TIndex GetNumHardwareThreads();
 		static void SetThreadName(StaticString name);
 		static void SetStreamIndex(TIndex index);
+		static StaticString GetCurrentStreamName();
+		static StaticString GetCurrentThreadName();
+		static TIndex GetCurrentStreamIndex();
 
 		static bool IsMainThread();
 		static bool IsIOThread();
+		static TIndex GetMainTaskStreamIndex() { return MainStreamIndex; }
+		static TIndex GetIOTaskStreamIndex() { return IOStreamIndex; }
 
 	public:
 		TaskSystem();
 		~TaskSystem();
 
 		void Initialize();
-		void Shutdown();
+		void RequestShutDown();
+		void JoinAndClear();
 
-		void PreUpdate();
-		void Update();
-		void PostUpdate();
+		// Enqueue a task into the general task queue which is a low-priority queue. The task will be executed after
+		// performing all existing special queue for eash task stream.
+		void Enqueue(const RangedTask& task);
+		void Dequeue(std::optional<RangedTask>& outTask);
 
-		inline StaticString GetName() const { return name; }
-		inline auto& IsRunning() const { return isRunning; }
+		void Enqueue(TIndex streamIndex, const RangedTask& task);
 
-	public:
-		inline TIndex GetMainTaskStreamIndex() const { return MainStreamIndex; }
-		inline TIndex GetIOTaskStreamIndex() const { return IOStreamIndex; }
+		StaticString GetName() const { return name; }
+		auto& IsRunning() const { return isRunning; }
 
-		inline auto& GetMainTaskStream() { return streams[GetMainTaskStreamIndex()]; }
-		inline auto& GetMainTaskStream() const { return streams[GetMainTaskStreamIndex()]; }
-		inline auto& GetIOTaskStream() { return streams[GetIOTaskStreamIndex()]; }
-		inline auto& GetIOTaskStream() const { return streams[GetIOTaskStreamIndex()]; }
+		auto& GetMainTaskStream() { return streams[GetMainTaskStreamIndex()]; }
+		auto& GetMainTaskStream() const { return streams[GetMainTaskStreamIndex()]; }
+		auto& GetIOTaskStream() { return streams[GetIOTaskStreamIndex()]; }
+		auto& GetIOTaskStream() const { return streams[GetIOTaskStreamIndex()]; }
 
-		inline auto GetWorkerIndexStart() const { return workerIndexStart; }
-		inline auto GetNumWorkers() const { return numWorkers; }
-		inline StaticString GetCurrentStreamName() const { return GetCurrentThreadName(); }
-
-	public:
-		StaticString GetCurrentThreadName() const;
 		StaticString GetStreamName(int index) const;
-
-		TIndex GetCurrentStreamIndex() const;
 		TIndex GetStreamIndex(ThreadID id) const;
-
-	public:
-		Task* GetTask(TKey key, TIndex taskIndex);
-		const Task* GetTask(TKey key, TIndex taskIndex) const;
-
-		TaskHandle RegisterTask(TIndex streamIndex, StaticString taskName, Runnable func);
-		TaskHandle DispatchTask(StaticString taskName, Runnable func, TIndex streamIndex);
-		TaskHandle DispatchTask(StaticString taskName, TaskIndex size, Runnable func);
-		TaskHandle DispatchTask(StaticString taskName, TaskIndex size, Runnable func, TIndex numStreams);
+		TaskStream& GetStream(int index);
 
 	private:
-		void DeregisterTask(TIndex streamIndex, TKey key);
-		void DeregisterTaskAsync(TIndex streamIndex, TKey key);
-		void ReleaseTask(TKey key, TIndex slotIndex);
-
 		void BuildStreams();
-		TKey IssueTaskKey();
-		void Flush();
 	};
 
 } // namespace hbe
@@ -124,7 +93,7 @@ namespace hbe
 		TaskSystemTest() : TestCollection("TaskSystemTest") {}
 
 	protected:
-		virtual void Prepare() override;
+		void Prepare() override;
 	};
 
 } // namespace hbe

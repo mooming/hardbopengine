@@ -19,6 +19,9 @@
 #define __DEBUG__
 #endif // _DEBUG
 
+// Minimum Requirements
+#define ENGINE_MIN_HARDWARE_THREADS 4
+
 // Engine
 #define ENGINE_LOG_ENABLED 1
 #define ENGINE_PARAM_DESC_ENABLED 1

@@ -17,7 +17,7 @@ namespace hbe
 	public:
 		using Char = char;
 		template<class T>
-		using Vector = HSTL::HVector<T>;
+		using Vector = hbe::HVector<T>;
 
 	private:
 		Shareable<Vector<Char>> buffer;

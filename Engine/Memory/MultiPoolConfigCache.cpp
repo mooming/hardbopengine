@@ -2,6 +2,7 @@
 
 #include "MultiPoolConfigCache.h"
 
+#include <algorithm>
 #include "Log/Logger.h"
 #include "OSAL/Intrinsic.h"
 #include "PoolConfigUtil.h"
@@ -11,7 +12,7 @@
 
 namespace hbe
 {
-	StaticString MultiPoolConfigCache::GetClassName() const
+	StaticString MultiPoolConfigCache::GetClassName()
 	{
 		using namespace StringUtil;
 		static StaticString className(ToCompactClassName(__PRETTY_FUNCTION__));
@@ -87,7 +88,7 @@ namespace hbe
 
 		if (unlikely(className != GetClassName()))
 		{
-			log.OutError([this, className](auto& ls)
+			log.OutError([className](auto& ls)
 			{ ls << "Invalid class name " << className << ", " << GetClassName() << " is expected."; });
 
 			return false;
@@ -188,7 +189,7 @@ namespace hbe
 			StaticStringID itemName;
 			for (auto& item : data)
 			{
-				if (item.configs.size() <= 0)
+				if (item.configs.empty())
 				{
 					continue;
 				}
@@ -214,14 +215,14 @@ namespace hbe
 
 		for (auto& item : tempData)
 		{
-			if (item.configs.size() <= 0)
+			if (item.configs.empty())
 			{
 				continue;
 			}
 
 			if (itemName != item.uniqueName)
 			{
-				if (tempConfigs.size() > 0)
+				if (!tempConfigs.empty())
 				{
 					data.emplace_back(itemName, std::move(tempConfigs));
 				}
@@ -233,7 +234,7 @@ namespace hbe
 			PoolConfigUtil::MergeMax(tempConfigs, item.configs);
 		}
 
-		if (tempConfigs.size() > 0)
+		if (!tempConfigs.empty())
 		{
 			data.emplace_back(itemName, std::move(tempConfigs));
 		}

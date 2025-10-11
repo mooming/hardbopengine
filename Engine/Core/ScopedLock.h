@@ -26,7 +26,7 @@ namespace hbe
 		TLockable& lockable;
 
 #if PROFILE_ENABLED
-		Time::TTime startTime;
+		time::TTime startTime;
 		float timeOutSec;
 		TSrcLoc srcLoc;
 #endif // PROFILE_ENABLED
@@ -36,7 +36,7 @@ namespace hbe
 
 #if PROFILE_ENABLED
 		explicit ScopedLock(TLockable& lockable, float timeOutSec = 0.01f, const TSrcLoc& srcLoc = TSrcLoc::current()) :
-			lockable(lockable), startTime(Time::TStopWatch::now()), timeOutSec(timeOutSec), srcLoc(srcLoc)
+			lockable(lockable), startTime(time::TStopWatch::now()), timeOutSec(timeOutSec), srcLoc(srcLoc)
 		{
 			lockable.lock();
 #ifdef __DEBUG__
@@ -56,7 +56,7 @@ namespace hbe
 			lockable.unlock();
 
 #if PROFILE_ENABLED
-			const auto duration = Time::ToFloat(Time::TStopWatch::now() - startTime);
+			const auto duration = time::ToFloat(time::TStopWatch::now() - startTime);
 			if (unlikely(timeOutSec > 0.0f && duration > timeOutSec))
 			{
 				using namespace StringUtil;

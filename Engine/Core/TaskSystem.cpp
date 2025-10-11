@@ -2,50 +2,78 @@
 
 #include "TaskSystem.h"
 
-#include <algorithm>
+#include <exception>
 #include <future>
 #include <thread>
 #include "Config/ConfigParam.h"
-#include "HSTL/HString.h"
 #include "Log/Logger.h"
-#include "OSAL/OSThread.h"
-#include "ScopedLock.h"
-#include "String/StringBuilder.h"
-#include "String/StringUtil.h"
+
 
 namespace hbe
 {
 
 	namespace
 	{
-		static thread_local StaticString ThreadName;
-		static thread_local TaskSystem::TIndex StreamIndex = 0;
+		thread_local StaticString ThreadName;
+		thread_local TaskSystem::TIndex StreamIndex = 0;
 	} // namespace
 
 	TaskSystem::TIndex TaskSystem::GetNumHardwareThreads()
 	{
 		const auto hardwareConcurrency = std::thread::hardware_concurrency();
-		TIndex numAvaibleHardwareThreads = hardwareConcurrency;
+		const auto numAvaibleHardwareThreads = static_cast<TIndex>(hardwareConcurrency);
 
 		return numAvaibleHardwareThreads;
 	}
 
-	void TaskSystem::SetThreadName(StaticString name) { ThreadName = name; }
+	void TaskSystem::SetThreadName(StaticString name)
+	{
+		ThreadName = name;
+	}
 
-	void TaskSystem::SetStreamIndex(TIndex index) { StreamIndex = index; }
+	void TaskSystem::SetStreamIndex(TIndex index)
+	{
+		StreamIndex = index;
+	}
 
-	bool TaskSystem::IsMainThread() { return StreamIndex == MainStreamIndex; }
+	StaticString TaskSystem::GetCurrentStreamName()
+	{
+		return ThreadName;
+	}
 
-	bool TaskSystem::IsIOThread() { return StreamIndex == IOStreamIndex; }
+	StaticString TaskSystem::GetCurrentThreadName()
+	{
+		return ThreadName;
+	}
 
-	TaskSystem::TaskSystem() :
-		isRunning(false), name("TaskSystem"), numHardwareThreads(GetNumHardwareThreads()), workerIndexStart(0),
-		numWorkers(0), keySeed(1), mainTaskThreadID(std::this_thread::get_id()), slots(numHardwareThreads)
+	TaskSystem::TIndex TaskSystem::GetCurrentStreamIndex()
+	{
+		return StreamIndex;
+	}
+
+	bool TaskSystem::IsMainThread()
+	{
+		return StreamIndex == MainStreamIndex;
+	}
+
+	bool TaskSystem::IsIOThread()
+	{
+		return StreamIndex == IOStreamIndex;
+	}
+
+	TaskSystem::TaskSystem()
+		: isRunning(false)
+		, name("TaskSystem")
+		, numHardwareThreads(GetNumHardwareThreads())
+		, mainTaskThreadID(std::this_thread::get_id())
 	{
 		FatalAssert(numHardwareThreads > 0, "It should have at least one hardware thread.");
 	}
 
-	TaskSystem::~TaskSystem() { Shutdown(); }
+	TaskSystem::~TaskSystem()
+	{
+		JoinAndClear();
+	}
 
 	void TaskSystem::Initialize()
 	{
@@ -66,17 +94,13 @@ namespace hbe
 		BuildStreams();
 	}
 
-	void TaskSystem::Shutdown()
+	void TaskSystem::RequestShutDown()
 	{
-		Assert(IsMainThread());
-
-		if (!isRunning)
-		{
-			return;
-		}
-
 		isRunning = false;
+	}
 
+	void TaskSystem::JoinAndClear()
+	{
 		for (auto& stream : streams)
 		{
 			auto& thread = stream.GetThread();
@@ -85,37 +109,65 @@ namespace hbe
 				continue;
 			}
 
-			thread.join();
+			try
+			{
+				if (thread.joinable() && thread.get_id() != std::this_thread::get_id())
+				{
+					thread.join();
+				}
+			}
+			catch (const std::exception& e)
+			{
+				std::cerr << e.what() << ", thread = " << stream.GetName() << ", loop count = " << stream.GetLoopCount()
+					<< ", Joinable = " << thread.joinable() << std::endl;
+				std::flush(std::cerr);
+				debugBreak();
+			}
 		}
 
-		streams.Clear();
-	}
-
-	void TaskSystem::PostUpdate() { Flush(); }
-
-	void TaskSystem::Flush()
-	{
-		Assert(IsMainThread());
-
-		for (auto& slot : slots)
+		try
 		{
-			if (slot.key == InvalidKey)
-			{
-				continue;
-			}
-
-			auto& task = slot.task;
-			if (!task.IsDone())
-			{
-				continue;
-			}
-
-			slot.key = InvalidKey;
-			task.Reset();
+			streams.Clear();
+		}
+		catch (const std::exception& e)
+		{
+			std::cerr << e.what() << std::endl;
+			std::flush(std::cerr);
+			debugBreak();
 		}
 	}
 
-	StaticString TaskSystem::GetCurrentThreadName() const { return ThreadName; }
+	void TaskSystem::Enqueue(const RangedTask& task)
+	{
+		std::scoped_lock<std::mutex> lock(taskQueueMutex);
+		taskQueue.push(task);
+	}
+
+	void TaskSystem::Dequeue(std::optional<RangedTask>& outTask)
+	{
+		std::scoped_lock<std::mutex> lock(taskQueueMutex);
+		if (taskQueue.empty())
+		{
+			outTask.reset();
+			return;
+		}
+
+		outTask = taskQueue.top();
+		taskQueue.pop();
+	}
+
+	void TaskSystem::Enqueue(const TIndex streamIndex, const RangedTask& task)
+	{
+		if (!streams.IsValidIndex(streamIndex))
+		{
+			Assert(false, "Invalid stream index %d", streamIndex);
+
+			return;
+		}
+
+		auto& stream = streams[streamIndex];
+		stream.Enqueue(task);
+	}
 
 	StaticString TaskSystem::GetStreamName(int index) const
 	{
@@ -128,17 +180,14 @@ namespace hbe
 		return streams[index].GetName();
 	}
 
-	TaskSystem::TIndex TaskSystem::GetCurrentStreamIndex() const { return StreamIndex; }
-
 	TaskSystem::TIndex TaskSystem::GetStreamIndex(ThreadID id) const
 	{
 		TIndex index = -1;
 
 		auto size = streams.Size();
-		for (TIndex i = 0; i < size; ++i)
+		for (decltype(size) i = 0; i < size; ++i)
 		{
-			auto& stream = streams[i];
-			if (stream.GetThreadID() != id)
+			if (auto& stream = streams[i]; stream.GetThreadID() != id)
 			{
 				continue;
 			}
@@ -150,436 +199,44 @@ namespace hbe
 		return index;
 	}
 
-	Task* TaskSystem::GetTask(TKey key, TIndex taskIndex)
+	TaskStream& TaskSystem::GetStream(int index)
 	{
-		if (unlikely(!slots.IsValidIndex(taskIndex)))
+		if (index < 0 || index >= streams.Size())
 		{
-			return nullptr;
+			return streams[0];
 		}
 
-		auto& slot = slots[taskIndex];
-		if (slot.key == key)
-		{
-			return &(slot.task);
-		}
-
-		return nullptr;
-	}
-
-	const Task* TaskSystem::GetTask(TKey key, TIndex taskIndex) const
-	{
-		if (unlikely(!slots.IsValidIndex(taskIndex)))
-		{
-			return nullptr;
-		}
-
-		auto& slot = slots[taskIndex];
-		if (slot.key == key)
-		{
-			return &(slot.task);
-		}
-
-		return nullptr;
-	}
-
-	TaskHandle TaskSystem::RegisterTask(TIndex streamIndex, StaticString taskName, Runnable func)
-	{
-		TaskHandle handle;
-
-		if (unlikely(func == nullptr))
-		{
-			auto log = Logger::Get(GetName());
-			log.OutWarning([taskName](auto& ls) { ls << "Null runnable function input for " << taskName.c_str(); });
-
-			return handle;
-		}
-
-		if (unlikely(!streams.IsValidIndex(streamIndex)))
-		{
-			auto log = Logger::Get(GetName());
-			log.OutWarning([streamIndex, taskName](auto& ls)
-			{ ls << "Incorrect stream index = " << streamIndex << " for " << taskName.c_str(); });
-
-			return handle;
-		}
-
-		{
-			ScopedLock lock(requestLock);
-
-			auto length = slots.Size();
-			for (TIndex index = 0; index < length; ++index)
-			{
-				auto& slot = slots[index];
-				if (slot.key != InvalidKey)
-				{
-					continue;
-				}
-
-				auto key = IssueTaskKey();
-				slot.key = key;
-
-				auto& task = slot.task;
-				task.Reset(taskName, 0, func);
-
-				auto releaseFunc = [this, streamIndex](const TaskHandle& handle)
-				{
-					auto key = handle.GetKey();
-					auto index = handle.GetIndex();
-
-					DeregisterTask(streamIndex, key);
-					ReleaseTask(key, index);
-				};
-
-				handle = TaskHandle(key, index, releaseFunc);
-
-				auto& stream = streams[streamIndex];
-				stream.AddResident(key, task);
-
-				break;
-			}
-		}
-
-		return handle;
-	}
-
-	void TaskSystem::DeregisterTask(TIndex streamIndex, TKey key)
-	{
-		ScopedLock lock(requestLock);
-		if (unlikely(!streams.IsValidIndex(streamIndex)))
-		{
-			auto log = Logger::Get(GetName());
-			log.OutError([streamIndex, key](auto& ls)
-			{ ls << "Invalid stream index = " << streamIndex << " for key " << key; });
-
-			return;
-		}
-
-		auto& stream = streams[streamIndex];
-		stream.RemoveResidentTaskSync(key);
-	}
-
-	void TaskSystem::DeregisterTaskAsync(TIndex streamIndex, TKey key)
-	{
-		ScopedLock lock(requestLock);
-		if (unlikely(!streams.IsValidIndex(streamIndex)))
-		{
-			auto log = Logger::Get(GetName());
-			log.OutError([streamIndex, key](auto& ls)
-			{ ls << "Invalid stream index = " << streamIndex << " for key " << key; });
-
-			return;
-		}
-
-		auto& stream = streams[streamIndex];
-		stream.RemoveResidentTask(key);
-	}
-
-	TaskHandle TaskSystem::DispatchTask(StaticString taskName, Runnable func, TIndex streamIndex)
-	{
-		TaskHandle handle;
-
-		auto log = Logger::Get(GetName());
-		if (unlikely(func == nullptr))
-		{
-			log.OutWarning([taskName](auto& ls) { ls << "Null runnable function input for " << taskName.c_str(); });
-
-			return handle;
-		}
-
-		ScopedLock lock(requestLock);
-
-		if (unlikely(streams.IsValidIndex(streamIndex)))
-		{
-			log.OutWarning([streamIndex, taskName](auto& ls)
-			{ ls << "Invalid stream index " << streamIndex << " for " << taskName.c_str(); });
-
-			return handle;
-		}
-
-		auto length = slots.Size();
-		for (TIndex index = 0; index < length; ++index)
-		{
-			auto& slot = slots[index];
-			if (slot.key != InvalidKey)
-			{
-				continue;
-			}
-
-			auto key = IssueTaskKey();
-			slot.key = key;
-
-			auto& task = slot.task;
-			task.Reset(taskName, 0, func);
-			handle = TaskHandle(key, index, [this](const TaskHandle& handle)
-			{
-				auto key = handle.GetKey();
-				auto index = handle.GetIndex();
-				ReleaseTask(key, index);
-			});
-
-			auto& stream = streams[streamIndex];
-			stream.Request(key, task, 0, 0);
-
-			log.Out([taskName, &stream](auto& ls)
-			{ ls << taskName.c_str() << " is assigned to " << stream.GetName().c_str(); });
-
-			break;
-		}
-
-		return handle;
-	}
-
-	TaskHandle TaskSystem::DispatchTask(StaticString taskName, TaskIndex size, Runnable func)
-	{
-		TaskHandle handle;
-
-		auto log = Logger::Get(GetName());
-		if (unlikely(func == nullptr))
-		{
-			log.OutWarning([taskName](auto& ls) { ls << "Null runnable function input for " << taskName.c_str(); });
-
-			return handle;
-		}
-
-		{
-			ScopedLock lock(requestLock);
-
-			auto length = slots.Size();
-			for (TIndex index = 0; index < length; ++index)
-			{
-				auto& slot = slots[index];
-				if (slot.key != InvalidKey)
-				{
-					continue;
-				}
-
-				auto key = IssueTaskKey();
-				slot.key = key;
-
-				auto& task = slot.task;
-				task.Reset(taskName, size, func);
-				handle = TaskHandle(key, index, [this](const TaskHandle& handle)
-				{
-					auto key = handle.GetKey();
-					auto index = handle.GetIndex();
-					ReleaseTask(key, index);
-				});
-
-				TaskIndex start = 0;
-				TIndex i = workerIndexStart;
-
-				if (size > 0)
-				{
-					TaskIndex numWorkers = numHardwareThreads - workerIndexStart;
-					numWorkers = std::min(numWorkers, size);
-
-					Assert(numWorkers > 0);
-
-					const TaskIndex interval = size / numWorkers;
-					TaskIndex end = interval;
-
-					const TIndex length = i + numWorkers - 1;
-					for (; i < length; ++i)
-					{
-						auto& stream = streams[i];
-						stream.Request(key, task, start, end);
-
-						log.Out([taskName, &stream, start, end](auto& ls)
-						{
-							ls << taskName.c_str() << " is assigned to " << stream.GetName().c_str() << " on [" << start
-							   << ", " << end << ')';
-						});
-
-						start = end;
-						end += interval;
-					}
-				}
-
-				auto& stream = streams[i];
-				stream.Request(key, task, start, size);
-
-				log.Out([taskName, &stream, start, size](auto& ls)
-				{
-					ls << taskName.c_str() << " is assigned to " << stream.GetName().c_str() << " on [" << start << ", "
-					   << size << ')';
-				});
-
-				break;
-			}
-		}
-
-		return handle;
-	}
-
-	TaskHandle TaskSystem::DispatchTask(StaticString taskName, TaskIndex size, Runnable func, TIndex numStreams)
-	{
-		TaskHandle handle;
-
-		auto log = Logger::Get(GetName());
-		if (unlikely(func == nullptr))
-		{
-			log.OutWarning([taskName](auto& ls) { ls << "Null runnable function input for " << taskName.c_str(); });
-
-			return handle;
-		}
-
-		numStreams = std::clamp<TIndex>(numStreams, 1, streams.Size());
-
-		{
-			ScopedLock lock(requestLock);
-
-			auto length = slots.Size();
-			for (TIndex index = 0; index < length; ++index)
-			{
-				auto& slot = slots[index];
-				if (slot.key != InvalidKey)
-				{
-					continue;
-				}
-
-				auto key = IssueTaskKey();
-				slot.key = key;
-
-				auto& task = slot.task;
-				task.Reset(taskName, size, func);
-				handle = TaskHandle(key, index, [this](const TaskHandle& handle)
-				{
-					auto key = handle.GetKey();
-					auto index = handle.GetIndex();
-					ReleaseTask(key, index);
-				});
-
-				TaskIndex start = 0;
-				TIndex i = workerIndexStart;
-
-				if (size > 0)
-				{
-					const TaskIndex numWorkers = numHardwareThreads - workerIndexStart;
-					Assert(numWorkers > 0);
-
-					TaskIndex num = std::min(static_cast<TaskIndex>(numStreams), size);
-					num = std::min(num, numWorkers);
-
-					const TaskIndex interval = size / num;
-					TaskIndex end = interval;
-
-					const TIndex length = i + num - 1;
-					for (; i < length; ++i)
-					{
-						auto& stream = streams[i];
-						stream.Request(key, task, start, end);
-
-						log.Out([taskName, &stream, start, end](auto& ls)
-						{
-							ls << taskName.c_str() << " is assigned to " << stream.GetName().c_str() << " on [" << start
-							   << ", " << end << ')';
-						});
-
-						start = end;
-						end += interval;
-					}
-				}
-
-				auto& stream = streams[i];
-				stream.Request(key, task, start, size);
-
-				log.Out([taskName, &stream, start, size](auto& ls)
-				{
-					ls << taskName.c_str() << " is assigned to " << stream.GetName().c_str() << " on [" << start << ", "
-					   << size << ')';
-				});
-
-				break;
-			}
-		}
-
-		return handle;
-	}
-
-	void TaskSystem::ReleaseTask(TKey key, TIndex index)
-	{
-		if (unlikely(key == InvalidKey))
-		{
-			auto log = Logger::Get(GetName());
-			log.OutWarning([func = __PRETTY_FUNCTION__](auto& ls)
-			{
-				InlinePoolAllocator<char, 128> alloc;
-				AllocatorScope scope(alloc);
-
-				using namespace StringUtil;
-				ls << '[' << ToMethodName(func) << "] Failed due to the invalid key input.";
-			});
-
-			return;
-		}
-
-		if (unlikely(!slots.IsValidIndex(index)))
-		{
-			auto log = Logger::Get(GetName());
-			log.OutWarning([func = __PRETTY_FUNCTION__, index](auto& ls)
-			{
-				InlinePoolAllocator<char, 128> alloc;
-				AllocatorScope scope(alloc);
-
-				using namespace StringUtil;
-				ls << '[' << ToMethodName(func) << "] Failed due to the invalid index " << index;
-			});
-
-			return;
-		}
-
-		{
-			ScopedLock lock(requestLock);
-
-			auto& slot = slots[index];
-			if (unlikely(key != slot.key))
-			{
-				auto log = Logger::Get(GetName());
-				log.OutWarning([func = __PRETTY_FUNCTION__, key, &slot](auto& ls)
-				{
-					InlinePoolAllocator<char, 128> alloc;
-					AllocatorScope scope(alloc);
-
-					using namespace StringUtil;
-					ls << '[' << ToMethodName(func) << "] Key Mismatched: " << key << " <=> " << slot.key;
-				});
-
-				return;
-			}
-
-			auto& task = slot.task;
-			if (!task.IsCancelled() && !task.IsCurrentThread())
-			{
-				while (!task.IsDone())
-					;
-			}
-
-			slot.key = InvalidKey;
-			slot.task.Reset();
-		}
+		return streams[index];
 	}
 
 	void TaskSystem::BuildStreams()
 	{
 		Assert(IsMainThread());
-		FatalAssert(numHardwareThreads >= 4, "System minimum requirement: quad cores");
+		FatalAssert(numHardwareThreads >= ENGINE_MIN_HARDWARE_THREADS,
+			"Number of hardware threads are less than the minimum requirement");
 
-		workerIndexStart = 0;
+		SetThreadName("Base");
+		SetStreamIndex(-1);
+
+		TIndex workerIndexStart = 0;
 
 		auto log = Logger::Get(GetName());
 		log.Out("# Creating TaskStreams ======================");
 
 		streams.Swap(Array<TaskStream>(numHardwareThreads));
 
+		// Pre-defined Engine Task Streams
 		{
 			auto index = GetMainTaskStreamIndex();
-			streams.Emplace(index, "Main");
+			streams.Emplace(index, "Main", index);
 
 			index = GetIOTaskStreamIndex();
-			streams.Emplace(index, "IO");
+			streams.Emplace(index, "IO", index);
 		}
 
 		workerIndexStart = GetIOTaskStreamIndex() + 1;
+
+		TIndex numWorkers = 0;
 
 		InlineStringBuilder<64> streamName;
 		for (TIndex i = workerIndexStart; i < numHardwareThreads; ++i)
@@ -587,7 +244,7 @@ namespace hbe
 			++numWorkers;
 			streamName << "Worker" << numWorkers;
 
-			streams.Emplace(i, streamName.c_str());
+			streams.Emplace(i, streamName.c_str(), i);
 			streamName.Clear();
 		}
 
@@ -595,44 +252,11 @@ namespace hbe
 
 		isRunning = true;
 
-		auto& mainTaskStream = GetMainTaskStream();
-		auto& ioTaskStream = GetIOTaskStream();
-
-		mainTaskStream.threadID = mainTaskThreadID;
-		SetThreadName(mainTaskStream.GetName());
-		SetStreamIndex(GetMainTaskStreamIndex());
-
-		ioTaskStream.Start(*this, GetIOTaskStreamIndex());
-
-		for (TIndex i = workerIndexStart; i < numHardwareThreads; ++i)
+		for (auto& stream : streams)
 		{
-			streams[i].Start(*this, i);
+			stream.Start(*this);
 		}
 	}
-
-	TaskSystem::TKey TaskSystem::IssueTaskKey()
-	{
-		Assert(requestLock.try_lock() == false);
-
-		for (auto& slot : slots)
-		{
-			if (unlikely(keySeed == 0))
-			{
-				++keySeed;
-			}
-
-			if (likely(slot.key != keySeed))
-			{
-				break;
-			}
-
-			++keySeed;
-		}
-
-		Assert(keySeed != InvalidKey);
-		return keySeed++;
-	}
-
 } // namespace hbe
 
 #ifdef __UNIT_TEST__
@@ -647,39 +271,45 @@ namespace hbe
 
 	void TaskSystemTest::Prepare()
 	{
-		AddTest("Empty Task", [this](auto& ls)
+		AddTest("Empty Task", [this](TLogOut& ls)
 		{
-			auto& engine = Engine::Get();
-			auto& taskSys = engine.GetTaskSystem();
-
-			auto handle = taskSys.DispatchTask("Test", 0, nullptr);
-			if (handle.IsValid())
+			Task task;
+			if (task.HasDone())
 			{
-				ls << "Handle should be invalid if func is null." << lferr;
+				ls << "Dummy task should not be set to done before it's enqueued." << lferr;
 			}
 		});
 
-		AddTest("Task of size 0", [this](auto& ls)
+		AddTest("Task of size 0", [this](TLogOut& ls)
 		{
 			auto& engine = Engine::Get();
 			auto& taskSys = engine.GetTaskSystem();
 
-			auto func = [](auto start, auto end)
+			auto func = [](void*, std::size_t start, std::size_t end) -> std::size_t
 			{
 				auto log = Logger::Get("Size 0 Task");
 				log.Out([&](auto& ls) { ls << "Range[" << (start + 1) << ", " << end << ')'; });
+
+				return 1;
 			};
 
-			auto handle = taskSys.DispatchTask("Test", 0, func);
-			if (!handle.IsValid())
+			Task task("TestTask", func, nullptr);
+			if (task.HasDone())
 			{
-				ls << "Handle should not be invalid." << lferr;
+				ls << "The task should not be marked done before running." << lferr;
 			}
 
-			handle.BusyWait();
+			taskSys.Enqueue(task.GenerateSubTask(0, 0));
+			task.BusyWait();
+
+			if (!task.HasDone())
+			{
+				ls << "The task should be marked done after running." << lferr;
+			}
 		});
 
-		AddTest("Resident Task(sync)", [](auto& ls)
+#if 0
+		AddTest("Resident Task(sync)", [](TLogOut& ls)
 		{
 			auto& engine = Engine::Get();
 			auto& taskSys = engine.GetTaskSystem();
@@ -753,7 +383,7 @@ namespace hbe
 
 			auto& engine = Engine::Get();
 			auto& taskSys = engine.GetTaskSystem();
-			auto handle = taskSys.DispatchTask("SummationTask", 10000000, func);
+			auto handle = taskSys.RequestTask("SummationTask", 10000000, func);
 			if (!handle.IsValid())
 			{
 				ls << "Handle should not be invalid." << lferr;
@@ -824,11 +454,11 @@ namespace hbe
 			auto& taskSys = engine.GetTaskSystem();
 			TaskHandle handle;
 
-			Time::TDuration duration;
+			time::TDuration duration;
 			{
-				Time::ScopedTime timer(duration);
+				time::ScopedTime timer(duration);
 
-				handle = taskSys.DispatchTask("PNCounter", upperBound, func, numWorkers);
+				handle = taskSys.RequestTask("PNCounter", upperBound, func, numWorkers);
 
 				if (!handle.IsValid())
 				{
@@ -862,7 +492,7 @@ namespace hbe
 
 			auto& task = *(taskPtr);
 			ls << "# of Prime Numbers = " << count << ", done = " << task.NumDone() << "/" << task.NumStreams()
-			   << ", time = " << Time::ToFloat(duration) << " seconds" << lf;
+			   << ", time = " << time::ToFloat(duration) << " seconds" << lf;
 
 			if (count != solution)
 			{
@@ -881,6 +511,7 @@ namespace hbe
 
 			AddTest(testName.c_str(), [this, countPrimeNumbers, i](auto& ls) { countPrimeNumbers(ls, lf, lferr, i); });
 		}
+#endif
 	}
 
 } // namespace hbe

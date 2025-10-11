@@ -12,8 +12,8 @@ namespace StringUtil
 {
 
 	template<typename T>
-	using TVector = HSTL::HVector<T>;
-	using TString = HSTL::HString;
+	using TVector = hbe::HVector<T>;
+	using TString = hbe::HString;
 
 	TString Trim(const TString& str);
 	TString TrimPath(const TString& path);

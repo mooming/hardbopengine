@@ -1,7 +1,7 @@
 cmake_minimum_required (VERSION 3.12)
 project (Test)
 
-set (CMAKE_CXX_STANDARD 20)
+set (CMAKE_CXX_STANDARD 23)
 
 if (MSVC)
 	add_compile_options (/W3 /WX)
@@ -22,7 +22,6 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/lib)
 add_library (Test STATIC 
  TestCollection.cpp
  TestEnv.cpp
- TestMain.cpp
  UnitTestCollection.cpp
  TestCollection.h
  TestEnv.h

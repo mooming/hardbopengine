@@ -22,7 +22,7 @@ namespace hbe
 		id(InvalidAllocatorID), parentID(InvalidAllocatorID), name(inName), bankSize(allocationUnit),
 		minBlock(minBlockSize)
 	{
-		using namespace HSTL;
+		using namespace hbe;
 
 		parentID = MemoryManager::GetCurrentAllocatorID();
 
@@ -58,7 +58,7 @@ namespace hbe
 		id(InvalidAllocatorID), parentID(InvalidAllocatorID), name(inName), bankSize(allocationUnit),
 		minBlock(minBlockSize)
 	{
-		using namespace HSTL;
+		using namespace hbe;
 
 		parentID = MemoryManager::GetCurrentAllocatorID();
 
@@ -554,8 +554,8 @@ namespace hbe
 
 		AddTest("Performance", [this](auto& ls)
 		{
-			Time::TDuration heDuration;
-			Time::TDuration stdDuration;
+			time::TDuration heDuration;
+			time::TDuration stdDuration;
 
 			constexpr size_t repeatCount = 100000;
 
@@ -563,10 +563,10 @@ namespace hbe
 
 			{
 				AllocatorScope allocScope(allocator);
-				Time::ScopedTime timer(heDuration);
+				time::ScopedTime timer(heDuration);
 
 				int strLen = 1;
-				HSTL::HVector<HSTL::HString> v;
+				hbe::HVector<hbe::HString> v;
 				for (size_t i = 0; i < repeatCount; ++i)
 				{
 					auto& str = v.emplace_back();
@@ -587,7 +587,7 @@ namespace hbe
 			}
 
 			{
-				Time::ScopedTime timer(stdDuration);
+				time::ScopedTime timer(stdDuration);
 
 				int strLen = 1;
 				std::vector<std::string> v;
@@ -610,8 +610,8 @@ namespace hbe
 				}
 			}
 
-			float heSec = Time::ToFloat(heDuration);
-			float stdSec = Time::ToFloat(stdDuration);
+			float heSec = time::ToFloat(heDuration);
+			float stdSec = time::ToFloat(stdDuration);
 
 			ls << "Performance: ThreadSafeMultiPoolAllocator = " << heSec << " sec, std malloc = " << stdSec << " sec"
 			   << lf;

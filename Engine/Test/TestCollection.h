@@ -2,7 +2,6 @@
 
 #pragma once
 
-#include <cstdint>
 #include <functional>
 #include <sstream>
 #include <string>
@@ -52,7 +51,7 @@ namespace hbe
 		virtual ~TestCollection() = default;
 
 		void Start();
-		void AddTest(const char* testName, TestFunc testCase);
+		void AddTest(const char* testName, const TestFunc& testCase);
 
 		[[nodiscard]]
 		auto GetName() const

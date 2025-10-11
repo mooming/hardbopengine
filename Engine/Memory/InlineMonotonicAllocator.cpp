@@ -12,7 +12,7 @@ using namespace hbe;
 void InlineMonotonicAllocatorTest::Prepare()
 {
 	using namespace std;
-	using namespace HSTL;
+	using namespace hbe;
 	using Allocator = InlineMonotonicAllocator<2048>;
 
 	AddTest("Vector Allocation", [this](auto& ls)

@@ -20,9 +20,9 @@ namespace hbe
 
 	private:
 		TReal totalWeight;
-		HSTL::HVector<TReal> weights;
-		HSTL::HVector<TInput> samples;
-		HSTL::HVector<TReal> normalizedWeights;
+		hbe::HVector<TReal> weights;
+		hbe::HVector<TInput> samples;
+		hbe::HVector<TReal> normalizedWeights;
 
 	public:
 		ImportanceResampling() = default;
@@ -35,9 +35,9 @@ namespace hbe
 		void Reset()
 		{
 			totalWeight = 0;
-			std::swap(weights, HSTL::HVector<TReal>());
-			std::swap(normalizedWeights, HSTL::HVector<TReal>());
-			std::swap(samples, HSTL::HVector<TInput>());
+			std::swap(weights, hbe::HVector<TReal>());
+			std::swap(normalizedWeights, hbe::HVector<TReal>());
+			std::swap(samples, hbe::HVector<TInput>());
 		}
 
 		void ClearResampledData()

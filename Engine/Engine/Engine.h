@@ -24,12 +24,11 @@ namespace hbe
 	private:
 		struct PreEngineInit final
 		{
-			PreEngineInit(Engine* engine);
+			explicit PreEngineInit(Engine* engine);
 		};
 
 		PreEngineInit preEngineInit;
 
-		bool isRunning;
 		bool isMemoryManagerReady;
 		bool isSystemStatisticsReady;
 		bool isLoggerReady;
@@ -58,11 +57,13 @@ namespace hbe
 		~Engine();
 
 		void Initialize(int argc, const char* argv[]);
-		void Run();
-		void Stop();
+		void WaitForEnd();
+
+		// Shut down engine. It'll shut down its task system.
+		void ShutDown();
 
 	public:
-		StaticString GetClassName() const;
+		static StaticString GetClassName();
 
 		auto& GetMemoryManager() { return memoryManager; }
 		auto& GetLogger() { return logger; }
@@ -82,8 +83,8 @@ namespace hbe
 		bool IsTaskSystemReady() const { return isTaskSystemReady; }
 		bool IsResourceManagerReady() const { return isResourceManagerReady; }
 
-		void Log(ELogLevel level, TLogFunc func);
-		void LogError(TLogFunc func) { Log(ELogLevel::Error, func); }
+		void Log(ELogLevel level, const TLogFunc& func);
+		void LogError(const TLogFunc& func) { Log(ELogLevel::Error, func); }
 		void CloseLog();
 		void FlushLog();
 
@@ -91,11 +92,6 @@ namespace hbe
 
 	private:
 		void PostInitialize();
-
-		void PreUpdate(float deltaTime);
-		void Update(float deltaTime);
-		void PostUpdate(float deltaTime);
-
 		void PreShutdown();
 	};
 } // namespace hbe

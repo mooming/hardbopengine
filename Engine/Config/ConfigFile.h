@@ -14,24 +14,23 @@ namespace hbe
 	class ConfigFile final
 	{
 	public:
-		using TString = HSTL::HString;
+		using TString = hbe::HString;
 		using TValue = std::optional<TString>;
-		using TMap = HSTL::HUnorderedMap<TString, TString>;
+		using TMap = hbe::HUnorderedMap<TString, TString>;
 
 		bool isValid;
 		TMap keymap;
 
 	public:
-		ConfigFile(const char* path);
+		explicit ConfigFile(const char* path);
 		ConfigFile(const char* path, const char* fileName);
 		~ConfigFile() = default;
 
-		TValue GetValue(const TString& key) const;
-		TString GetValue(const TString& key, const TString& defaultValue) const;
+		[[nodiscard]] TValue GetValue(const TString& key) const;
+		[[nodiscard]] TString GetValue(const TString& key, const TString& defaultValue) const;
+		[[nodiscard]] auto IsValid() const { return isValid; }
 
 		void ForEach(std::function<void(const TMap::value_type&)> func) const;
-
-		inline auto IsValid() const { return isValid; }
 
 	private:
 		void Parse(const char* fileName);

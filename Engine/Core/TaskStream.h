@@ -2,94 +2,76 @@
 
 #pragma once
 
-#include <atomic>
 #include <condition_variable>
-#include <cstdint>
-#include <functional>
 #include <mutex>
 #include <thread>
+#include <queue>
+#include "Container/Array.h"
 #include "HSTL/HVector.h"
+#include "Memory/MultiPoolAllocator.h"
+#include "RangedTask.h"
 #include "String/StaticString.h"
 #include "Task.h"
-#include "TaskHandle.h"
-#include "Time.h"
 
 namespace hbe
 {
-
 	class TaskSystem;
 
+	// TaskStream represents a thread performing a series of tasks.
 	class TaskStream final
 	{
 		template<typename T>
-		using TVector = HSTL::HVector<T>;
+		using TVector = hbe::HVector<T>;
 		using TIndex = Task::TIndex;
+		using TStreamIndex = Array<RangedTask>::TIndex;
 		using ThreadID = std::thread::id;
-		using TKey = TaskHandle::TKey;
-
-		struct Request final
-		{
-			TKey key;
-			Task* task;
-			TIndex start;
-			TIndex end;
-
-			Request();
-			Request(TKey key, Task& task, TIndex start, TIndex end);
-			~Request() = default;
-		};
-
-		using TRequests = TVector<Request>;
+		using RangedTasks = TVector<RangedTask>;
 
 	private:
+		struct TaskQueueItem final
+		{
+			uint8_t priority;
+			mutable RangedTask task;
+			float duration;
+
+			TaskQueueItem(uint8_t priority, const RangedTask& task);
+
+			TaskQueueItem& operator= (const TaskQueueItem& other) = default;
+			bool operator< (const TaskQueueItem& other) const;
+		};
+
 		StaticString name;
 		ThreadID threadID;
+		TStreamIndex streamIndex;
+		std::uint64_t loopCount;
+		MultiPoolAllocator allocator;
 
 		std::mutex queueLock;
-		std::mutex cvLock;
 		std::condition_variable cv;
 		std::thread thread;
-
-		float deltaTime;
-		std::atomic<uint64_t> flipCount;
-		std::atomic<bool> isDirty;
-		bool isResidentListDirty;
-		bool hasCancelledTask;
-
-		TRequests newRequests;
-		TRequests newResidents;
-
-		TRequests requests;
-		TRequests residents;
+		std::priority_queue<RangedTask, HVector<RangedTask>> taskQueue;
 
 	public:
 		TaskStream();
-		TaskStream(StaticString name);
+		explicit TaskStream(StaticString name, TStreamIndex streamIndex);
 		~TaskStream() = default;
 
+		void Enqueue(const RangedTask& task);
 		void WakeUp();
-		void Flush();
+		void Join() { thread.join(); }
 
-		inline auto GetName() const { return name; }
-		inline auto GetThreadID() const { return threadID; }
-		inline auto& GetThread() { return thread; }
-		inline auto& GetThread() const { return thread; }
-		inline auto GetFlipCount() const { return flipCount.load(); }
+		[[nodiscard]] auto GetName() const { return name; }
+		[[nodiscard]] auto GetThreadID() const { return threadID; }
+		[[nodiscard]] auto& GetThread() { return thread; }
+		[[nodiscard]] auto& GetThread() const { return thread; }
+		[[nodiscard]] auto GetStreamIndex() const { return streamIndex; }
+		[[nodiscard]] auto GetLoopCount() const { return loopCount; }
+
+		void Start(TaskSystem& taskSys);
+		void RunLoop();
 
 	private:
-		void Start(TaskSystem& taskSys, TaskHandle::TIndex streamIndex);
-
-		void Request(TKey key, Task& task, TIndex start, TIndex end);
-		void AddResident(TKey key, Task& task);
-		void RemoveResidentTask(TKey key);
-		void RemoveResidentTaskSync(TKey key);
-
-		void FlipBuffers();
-		void RunLoop(const std::atomic<bool>& isRunning);
-		void UpdateRequests();
-		void UpdateResidents();
-
-		friend class TaskSystem;
+		void Dequeue(std::optional<RangedTask>& outTask);
 	};
 
 } // namespace hbe

@@ -56,8 +56,8 @@ namespace hbe
 
 		AddTest("Hetero String Comparison", [this](TLogOut& ls)
 		{
-			HSTL::HString hello("Hello?");
-			HSTL::HInlineString<> helloInline("Hello?");
+			hbe::HString hello("Hello?");
+			hbe::HInlineString<> helloInline("Hello?");
 
 			StaticString str(hello);
 			ls << str << lf;

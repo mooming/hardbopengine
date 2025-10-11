@@ -8,7 +8,6 @@
 #include "Config/ConfigSystem.h"
 #include "Core/Debug.h"
 #include "Core/ScopedLock.h"
-#include "String/InlineStringBuilder.h"
 #include "String/StaticStringTable.h"
 
 namespace
@@ -42,10 +41,17 @@ namespace hbe
 
 	Engine::PreEngineInit::PreEngineInit(Engine* engine) { engineInstance = engine; }
 
-	Engine::Engine() :
-		preEngineInit(this), isRunning(false), isMemoryManagerReady(false), isSystemStatisticsReady(false),
-		isLoggerReady(false), isTaskSystemReady(false), isResourceManagerReady(false), logFile("helowlevel.log"),
-		memoryManager(*this), statistics(*this), logger(*this, "./", "hardbop.log")
+	Engine::Engine()
+		: preEngineInit(this)
+		, isMemoryManagerReady(false)
+		, isSystemStatisticsReady(false)
+		, isLoggerReady(false)
+		, isTaskSystemReady(false)
+		, isResourceManagerReady(false)
+		, logFile("helowlevel.log")
+		, memoryManager(*this)
+		, statistics(*this)
+		, logger(*this, "./", "hardbop.log")
 	{
 		std::signal(SIGABRT, SignalHandler);
 #ifdef SIGBUS
@@ -82,35 +88,21 @@ namespace hbe
 		PostInitialize();
 	}
 
-	void Engine::Run()
+	void Engine::WaitForEnd()
 	{
-		isRunning = true;
+		taskSystem.JoinAndClear();
+	}
 
-		{
-			MultiPoolAllocator allocator("Main");
-			AllocatorScope scope(allocator);
-
-			while (likely(isRunning))
-			{
-				statistics.IncFrameCount();
-				statistics.UpdateCurrentTime();
-
-				const auto deltaTime = statistics.GetDeltaTime();
-				PreUpdate(deltaTime);
-				Update(deltaTime);
-				PostUpdate(deltaTime);
-
-				Stop();
-			}
-		}
-
+	void Engine::ShutDown()
+	{
+		// Print final statistics
 		{
 			auto& configSys = ConfigSystem::Get();
 
 #ifdef __DEBUG__
-//        const auto logLevel = static_cast<uint8_t>(ELogLevel::Verbose);
-//        configSys.SetByte("Log.Engine", logLevel);
-//        configSys.SetByte("Log.Level", logLevel);
+			//        const auto logLevel = static_cast<uint8_t>(ELogLevel::Verbose);
+			//        configSys.SetByte("Log.Engine", logLevel);
+			//        configSys.SetByte("Log.Level", logLevel);
 #endif // __DEBUG__
 
 			auto& staticStrTable = StaticStringTable::GetInstance();
@@ -125,19 +117,16 @@ namespace hbe
 		auto log = Logger::Get(GetClassName(), ELogLevel::Info);
 		log.Out("Shutting down...");
 
-		logger.StopTask(taskSystem);
-		taskSystem.Shutdown();
+		taskSystem.RequestShutDown();
 	}
 
-	void Engine::Stop() { isRunning = false; }
-
-	StaticString Engine::GetClassName() const
+	StaticString Engine::GetClassName()
 	{
 		static StaticString name("Engine");
 		return name;
 	}
 
-	void Engine::Log(ELogLevel level, TLogFunc func)
+	void Engine::Log(ELogLevel level, const TLogFunc& func)
 	{
 #if ENGINE_LOG_ENABLED
 		static TAtomicConfigParam<uint8_t> CPEngineLogLevel("Log.Engine", "The Engine Log Level",
@@ -231,32 +220,6 @@ namespace hbe
 		memoryManager.PostEngineInit();
 
 		log.Out("Engine PostInitialize [Done]");
-	}
-
-	void Engine::PreUpdate(float deltaTime)
-	{
-		Log(ELogLevel::Info, [deltaTime](auto& ls) { ls << "PreUpdate: deltaTime = " << deltaTime; });
-
-		auto& mainTaskStream = taskSystem.GetMainTaskStream();
-		mainTaskStream.Flush();
-	}
-
-	void Engine::Update(float deltaTime)
-	{
-		Log(ELogLevel::Info, [deltaTime](auto& ls) { ls << "Update: deltaTime = " << deltaTime; });
-
-		auto& mainTaskStream = taskSystem.GetMainTaskStream();
-		mainTaskStream.Flush();
-	}
-
-	void Engine::PostUpdate(float deltaTime)
-	{
-		Log(ELogLevel::Info, [deltaTime](auto& ls) { ls << "PostUpdate: deltaTime = " << deltaTime; });
-
-		auto& mainTaskStream = taskSystem.GetMainTaskStream();
-		mainTaskStream.Flush();
-
-		taskSystem.PostUpdate();
 	}
 
 	void Engine::PreShutdown()

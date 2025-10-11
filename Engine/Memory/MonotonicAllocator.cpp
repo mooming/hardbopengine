@@ -143,7 +143,7 @@ bool MonotonicAllocator::IsMine(TPointer ptr) const
 void MonotonicAllocatorTest::Prepare()
 {
 	using namespace std;
-	using namespace HSTL;
+	using namespace hbe;
 
 	AddTest("Vector Allocation", [this](auto& ls)
 	{

@@ -13,7 +13,7 @@ namespace hbe
 
 	SystemStatistics::SystemStatistics(Engine& engine) :
 		frameCount(0), slowFrameCount(0), engineLogCount(0), logCount(0), longLogCount(0), fallbackAllocCount(0),
-		allocCount(0), deallocCount(0), totalUsage(0), maxUsage(0), startTime(Time::TStopWatch::now()),
+		allocCount(0), deallocCount(0), totalUsage(0), maxUsage(0), startTime(time::TStopWatch::now()),
 		currentTime(startTime)
 	{
 		Assert(engine.IsMemoryManagerReady());
@@ -29,14 +29,14 @@ namespace hbe
 	void SystemStatistics::UpdateCurrentTime()
 	{
 		{
-			auto newTime = Time::TStopWatch::now();
+			auto newTime = time::TStopWatch::now();
 			const auto delta = newTime - currentTime;
-			deltaTime = Time::ToFloat(delta);
+			deltaTime = time::ToFloat(delta);
 			currentTime = newTime;
 		}
 
 		const auto fromStart = currentTime - startTime;
-		timeSinceStart = Time::ToDouble(fromStart);
+		timeSinceStart = time::ToDouble(fromStart);
 	}
 
 #if PROFILE_ENABLED

@@ -12,7 +12,7 @@ namespace hbe
 	void InlineStringBuilderTest::Prepare()
 	{
 		constexpr size_t MaxLength = 1024;
-		using TString = HSTL::HInlineString<MaxLength>;
+		using TString = hbe::HInlineString<MaxLength>;
 		using TStrBuild = InlineStringBuilder<MaxLength>;
 
 		AddTest("Default Construct", [this](auto& ls)

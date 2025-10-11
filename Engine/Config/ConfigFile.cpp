@@ -9,7 +9,7 @@
 #include "HSTL/HString.h"
 #include "String/StringUtil.h"
 
-using namespace HSTL;
+using namespace hbe;
 
 namespace hbe
 {

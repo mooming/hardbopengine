@@ -2,7 +2,6 @@
 
 #pragma once
 
-#include <algorithm>
 #include <thread>
 #include "BuildConfig.h"
 #include "ConfigSystem.h"
@@ -13,14 +12,14 @@ namespace hbe
 {
 
 	// ConfigParam represents a single config value with arbitrary file.
-	// It could be thread-safe when IsAtomic is set to true.
+	// It can be thread-safe when IsAtomic is set to true.
 	template<typename T, bool IsAtomic = false>
 	class ConfigParam final
 	{
 		static constexpr size_t MaxNameLength = 127;
 		static constexpr size_t MaxDescLength = 127;
 
-		using TValue = typename std::conditional<IsAtomic, std::atomic<T>, T>::type;
+		using TValue = std::conditional_t<IsAtomic, std::atomic<T>, T>;
 
 	private:
 #if ENGINE_PARAM_DESC_ENABLED
@@ -53,7 +52,7 @@ namespace hbe
 			settings.Register(*this);
 		}
 
-		StaticString GetName() const
+		[[nodiscard]] StaticString GetName() const
 		{
 #if ENGINE_PARAM_DESC_ENABLED
 			return name;
@@ -62,7 +61,7 @@ namespace hbe
 #endif // ENGINE_PARAM_DESC_ENABLED
 		}
 
-		StaticString GetDescription() const
+		[[nodiscard]] StaticString GetDescription() const
 		{
 #if ENGINE_PARAM_DESC_ENABLED
 			return desc;

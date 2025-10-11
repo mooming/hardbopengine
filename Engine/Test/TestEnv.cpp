@@ -1,7 +1,6 @@
 // Created by mooming.go@gmail.com, 2017
 
 #include "TestEnv.h"
-#include <iostream>
 #include <sstream>
 #include "Core/Debug.h"
 #include "Core/Exception.h"

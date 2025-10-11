@@ -13,7 +13,7 @@ namespace hbe
 	template<typename Component>
 	class ComponentSystem
 	{
-		using CompoList = HSTL::HVector<Component>;
+		using CompoList = hbe::HVector<Component>;
 
 	private:
 		String name;

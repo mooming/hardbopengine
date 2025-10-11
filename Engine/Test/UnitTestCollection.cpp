@@ -51,57 +51,71 @@ using namespace hbe;
 
 namespace Test
 {
-	void RunUnitTests()
+	void RunTests()
 	{
-		MultiPoolAllocator allocator("UnitTest");
-		AllocatorScope scope(allocator);
+		auto testFunc = [](void*, std::size_t, std::size_t) -> std::size_t
+		{
+			MultiPoolAllocator allocator("UnitTest");
+			AllocatorScope scope(allocator);
 
-		auto& testEnv = TestEnv::GetEnv();
-		testEnv.AddTestCollection<SystemAllocatorTest>();
-		testEnv.AddTestCollection<BaseAllocatorTest>();
-		testEnv.AddTestCollection<InlinePoolAllocatorTest>();
-		testEnv.AddTestCollection<InlineMonotonicAllocatorTest>();
-		testEnv.AddTestCollection<StackAllocatorTest>();
-		testEnv.AddTestCollection<PoolAllocatorTest>();
-		testEnv.AddTestCollection<MonotonicAllocatorTest>();
-		testEnv.AddTestCollection<MultiPoolAllocatorTest>();
-		testEnv.AddTestCollection<ThreadSafeMultiPoolAllocatorTest>();
-		testEnv.AddTestCollection<OSDebugTest>();
-		testEnv.AddTestCollection<OSInputOutputTest>();
-		testEnv.AddTestCollection<OSThreadTest>();
-		testEnv.AddTestCollection<BufferTest>();
-		testEnv.AddTestCollection<BufferInputStreamTest>();
-		testEnv.AddTestCollection<BufferOutputStreamTest>();
-		testEnv.AddTestCollection<HUnorderedMapTest>();
-		testEnv.AddTestCollection<ArrayTest>();
-		testEnv.AddTestCollection<AtomicStackViewTest>();
-		testEnv.AddTestCollection<LinkedListTest>();
-		testEnv.AddTestCollection<OptionalTest>();
-		testEnv.AddTestCollection<StaticStringTest>();
-		testEnv.AddTestCollection<StringTest>();
-		testEnv.AddTestCollection<InlineStringBuilderTest>();
-		testEnv.AddTestCollection<StringBuilderTest>();
-		testEnv.AddTestCollection<StringUtilTest>();
+			auto& testEnv = TestEnv::GetEnv();
+			testEnv.AddTestCollection<SystemAllocatorTest>();
+			testEnv.AddTestCollection<BaseAllocatorTest>();
+			testEnv.AddTestCollection<InlinePoolAllocatorTest>();
+			testEnv.AddTestCollection<InlineMonotonicAllocatorTest>();
+			testEnv.AddTestCollection<StackAllocatorTest>();
+			testEnv.AddTestCollection<PoolAllocatorTest>();
+			testEnv.AddTestCollection<MonotonicAllocatorTest>();
+			testEnv.AddTestCollection<MultiPoolAllocatorTest>();
+			testEnv.AddTestCollection<ThreadSafeMultiPoolAllocatorTest>();
+			testEnv.AddTestCollection<OSDebugTest>();
+			testEnv.AddTestCollection<OSInputOutputTest>();
+			testEnv.AddTestCollection<OSThreadTest>();
+			testEnv.AddTestCollection<BufferTest>();
+			testEnv.AddTestCollection<BufferInputStreamTest>();
+			testEnv.AddTestCollection<BufferOutputStreamTest>();
+			testEnv.AddTestCollection<HUnorderedMapTest>();
+			testEnv.AddTestCollection<ArrayTest>();
+			testEnv.AddTestCollection<AtomicStackViewTest>();
+			testEnv.AddTestCollection<LinkedListTest>();
+			testEnv.AddTestCollection<OptionalTest>();
+			testEnv.AddTestCollection<StaticStringTest>();
+			testEnv.AddTestCollection<StringTest>();
+			testEnv.AddTestCollection<InlineStringBuilderTest>();
+			testEnv.AddTestCollection<StringBuilderTest>();
+			testEnv.AddTestCollection<StringUtilTest>();
 
-		testEnv.AddTestCollection<MathUtilTest>();
-		testEnv.AddTestCollection<Vector2Test>();
-		testEnv.AddTestCollection<Vector3Test>();
-		testEnv.AddTestCollection<Vector4Test>();
-		testEnv.AddTestCollection<MonteCarloIntegrationTest>();
-		testEnv.AddTestCollection<StratifiedSamplingTest>();
-		testEnv.AddTestCollection<ImportanceResamplingTest>();
+			testEnv.AddTestCollection<MathUtilTest>();
+			testEnv.AddTestCollection<Vector2Test>();
+			testEnv.AddTestCollection<Vector3Test>();
+			testEnv.AddTestCollection<Vector4Test>();
+			testEnv.AddTestCollection<MonteCarloIntegrationTest>();
+			testEnv.AddTestCollection<StratifiedSamplingTest>();
+			testEnv.AddTestCollection<ImportanceResamplingTest>();
 
-		testEnv.AddTestCollection<Matrix3x3Test>();
-		testEnv.AddTestCollection<QuaternionTest>();
-		testEnv.AddTestCollection<UniformTransformTest>();
-		testEnv.AddTestCollection<RigidTransformTest>();
-		testEnv.AddTestCollection<AABBTest>();
-		testEnv.AddTestCollection<TransformTest>();
+			testEnv.AddTestCollection<Matrix3x3Test>();
+			testEnv.AddTestCollection<QuaternionTest>();
+			testEnv.AddTestCollection<UniformTransformTest>();
+			testEnv.AddTestCollection<RigidTransformTest>();
+			testEnv.AddTestCollection<AABBTest>();
+			testEnv.AddTestCollection<TransformTest>();
 
-		testEnv.AddTestCollection<ComponentSystemTest>();
-		testEnv.AddTestCollection<TaskSystemTest>();
+			testEnv.AddTestCollection<ComponentSystemTest>();
+			testEnv.AddTestCollection<TaskSystemTest>();
 
-		testEnv.Start();
+			testEnv.Start();
+
+			Engine::Get().ShutDown();
+
+			return 1;
+		};
+
+		Task task("TestEnv", testFunc, nullptr);
+
+		auto rangedTask = task.GenerateSubTask(0, 1, 0);
+		auto& taskSystem = Engine::Get().GetTaskSystem();
+		taskSystem.Enqueue(rangedTask);
+		taskSystem.GetMainTaskStream().Join();
 	}
 } // namespace Test
 

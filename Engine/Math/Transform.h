@@ -23,7 +23,7 @@ namespace hbe
 		using UTransform = UniformTransform<Number>;
 
 		template<class T>
-		using Vector = HSTL::HVector<T>;
+		using Vector = hbe::HVector<T>;
 
 	public:
 		union

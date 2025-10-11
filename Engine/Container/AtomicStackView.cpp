@@ -86,7 +86,7 @@ namespace hbe
 			constexpr int NumItem = 1000;
 			constexpr int NumLoop = 500;
 
-			HSTL::HVector<TNode<int>> values;
+			hbe::HVector<TNode<int>> values;
 			values.reserve(NumItem);
 
 			for (int i = 0; i < NumItem; ++i)
@@ -123,7 +123,7 @@ namespace hbe
 				log.Out([count](auto& ls) { ls << "Num Pop = " << count; });
 			};
 
-			HSTL::HVector<std::thread> threads;
+			hbe::HVector<std::thread> threads;
 			values.reserve(5);
 
 			for (int j = 0; j < NumLoop; ++j)

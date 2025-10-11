@@ -75,11 +75,11 @@ void LinkedListTest::Prepare()
 		PoolAllocator alloc("LinkedListTest::Allocator", NodeSize, COUNT + 10);
 		AllocatorScope allocScope(alloc);
 
-		Time::TDuration heTime;
-		Time::TDuration stlTime;
+		time::TDuration heTime;
+		time::TDuration stlTime;
 
 		{
-			Time::ScopedTime measure(heTime);
+			time::ScopedTime measure(heTime);
 
 			LinkedList<int> intList;
 			for (int i = 0; i < COUNT; ++i)
@@ -102,7 +102,7 @@ void LinkedListTest::Prepare()
 		}
 
 		{
-			Time::ScopedTime measure(stlTime);
+			time::ScopedTime measure(stlTime);
 
 			std::list<int> intList;
 			for (int i = 0; i < COUNT; ++i)
@@ -124,12 +124,12 @@ void LinkedListTest::Prepare()
 			}
 		}
 
-		ls << "Insert Time Compare : HE = " << Time::ToFloat(heTime) << ", STL = " << Time::ToFloat(stlTime) << lf;
+		ls << "Insert Time Compare : HE = " << time::ToFloat(heTime) << ", STL = " << time::ToFloat(stlTime) << lf;
 
 		if (heTime > stlTime)
 		{
 			ls << "LinkedList is slower than the STL list" << std::endl
-			   << "HE = " << Time::ToFloat(heTime) << ", STL = " << Time::ToFloat(stlTime) << lfwarn;
+			   << "HE = " << time::ToFloat(heTime) << ", STL = " << time::ToFloat(stlTime) << lfwarn;
 		}
 	});
 
@@ -139,8 +139,8 @@ void LinkedListTest::Prepare()
 		PoolAllocator alloc("LinkedListTest::Allocator", NodeSize, COUNT + 10);
 		AllocatorScope allocScope(alloc.GetID());
 
-		Time::TDuration heTime;
-		Time::TDuration stlTime;
+		time::TDuration heTime;
+		time::TDuration stlTime;
 
 		long long stlValue = 0;
 		long long heValue = 0;
@@ -153,7 +153,7 @@ void LinkedListTest::Prepare()
 			}
 
 			{
-				Time::ScopedTime measure(stlTime);
+				time::ScopedTime measure(stlTime);
 				for (int i = 0; i < COUNT2; ++i)
 				{
 					for (auto value : intList)
@@ -172,7 +172,7 @@ void LinkedListTest::Prepare()
 			}
 
 			{
-				Time::ScopedTime measure(heTime);
+				time::ScopedTime measure(heTime);
 				for (int i = 0; i < COUNT2; ++i)
 				{
 					for (auto value : intList)
@@ -190,7 +190,7 @@ void LinkedListTest::Prepare()
 			return;
 		}
 
-		ls << "Loop Time Compare : HE = " << Time::ToFloat(heTime) << ", STL = " << Time::ToFloat(stlTime) << lf;
+		ls << "Loop Time Compare : HE = " << time::ToFloat(heTime) << ", STL = " << time::ToFloat(stlTime) << lf;
 
 		if (heTime > stlTime)
 		{

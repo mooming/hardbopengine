@@ -4,7 +4,6 @@
 
 #include <functional>
 #include <mutex>
-#include <span>
 #include <thread>
 #include <vector>
 #include "AllocatorID.h"

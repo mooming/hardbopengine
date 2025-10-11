@@ -16,13 +16,13 @@ namespace
 		{
 			using namespace hbe;
 
-			Time::TDuration inlineTime;
-			Time::TDuration stdTime;
+			time::TDuration inlineTime;
+			time::TDuration stdTime;
 
 			constexpr int testIterations = 8192;
 
 			{
-				Time::ScopedTime measure(inlineTime);
+				time::ScopedTime measure(inlineTime);
 
 				std::vector<int, InlinePoolAllocator<int, BufferSize>> v;
 
@@ -40,7 +40,7 @@ namespace
 			}
 
 			{
-				Time::ScopedTime measure(stdTime);
+				time::ScopedTime measure(stdTime);
 				std::vector<int> v;
 
 				for (int j = 0; j < testIterations; ++j)
@@ -57,8 +57,8 @@ namespace
 				}
 			}
 
-			auto inlineTimeSec = Time::ToFloat(inlineTime);
-			auto stdTimeSec = Time::ToFloat(stdTime);
+			auto inlineTimeSec = time::ToFloat(inlineTime);
+			auto stdTimeSec = time::ToFloat(stdTime);
 			auto rate = inlineTimeSec / stdTimeSec;
 
 			ls << "Vector Growth Performance : InlineAlloc: " << inlineTimeSec << " msec vs STL: " << stdTimeSec
@@ -88,15 +88,15 @@ void hbe::InlinePoolAllocatorTest::Prepare()
 
 		std::allocator<int> stdAlloc;
 
-		Time::TDuration inlineTime;
-		Time::TDuration stdTime;
+		time::TDuration inlineTime;
+		time::TDuration stdTime;
 
 		double inlineTimeDuration = 0;
 
 		for (int j = 0; j < testCount; ++j)
 		{
 			{
-				Time::ScopedTime measure(inlineTime);
+				time::ScopedTime measure(inlineTime);
 				for (int i = 0; i < maxAllocSize; ++i)
 				{
 					auto ptr = allocator.allocate(i);
@@ -104,14 +104,14 @@ void hbe::InlinePoolAllocatorTest::Prepare()
 				}
 			}
 
-			inlineTimeDuration += Time::ToFloat(inlineTime);
+			inlineTimeDuration += time::ToFloat(inlineTime);
 		}
 
 		double stdTimeDuration = 0;
 		for (int j = 0; j < testCount; ++j)
 		{
 			{
-				Time::ScopedTime measure(stdTime);
+				time::ScopedTime measure(stdTime);
 
 				for (int i = 0; i < maxAllocSize; ++i)
 				{
@@ -120,7 +120,7 @@ void hbe::InlinePoolAllocatorTest::Prepare()
 				}
 			}
 
-			stdTimeDuration += Time::ToFloat(stdTime);
+			stdTimeDuration += time::ToFloat(stdTime);
 		}
 
 		auto rate = static_cast<float>(inlineTimeDuration / stdTimeDuration);

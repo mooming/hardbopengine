@@ -163,7 +163,7 @@ bool StackAllocator::IsMine(Pointer ptr) const
 void StackAllocatorTest::Prepare()
 {
 	using namespace std;
-	using namespace HSTL;
+	using namespace hbe;
 
 	AddTest("Vector Allocation", [this](auto& ls)
 	{

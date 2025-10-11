@@ -28,7 +28,7 @@ namespace hbe
 		StaticString name;
 
 		std::mutex lock;
-		HSTL::HVector<PoolAllocator> banks;
+		hbe::HVector<PoolAllocator> banks;
 		size_t bankSize;
 		size_t minBlock;
 

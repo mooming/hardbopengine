@@ -2,6 +2,8 @@
 
 #include "Logger.h"
 
+#include <algorithm>
+
 #include "../Engine/Engine.h"
 #include "Config/BuildConfig.h"
 #include "Config/ConfigParam.h"
@@ -16,16 +18,8 @@
 
 namespace hbe
 {
-
 	namespace
 	{
-
-		StaticString GetLoggerTaskName()
-		{
-			static const StaticString name("LoggerTask");
-			return name;
-		}
-
 #if LOG_FORCE_PRINT_IMMEDIATELY || LOG_BREAK_IF_WARNING || LOG_BREAK_IF_ERROR
 		void ImmediateLog(ELogLevel level, StaticString category, const char* logStr)
 		{
@@ -93,8 +87,11 @@ namespace hbe
 		return log;
 	}
 
-	Logger::Logger(Engine& engine, const char* path, const char* filename) :
-		allocator("LoggerMemoryPool"), inputAlloc("LoggerInputPool"), hasInput(false), needFlush(false)
+	Logger::Logger(Engine& engine, const char* path, const char* filename)
+		: allocator("LoggerMemoryPool"), inputAlloc("LoggerInputPool")
+		, task("Logger", nullptr, this)
+		, hasInput(false)
+		, needFlush(false)
 	{
 		Assert(engine.IsMemoryManagerReady());
 
@@ -118,7 +115,7 @@ namespace hbe
 
 		{
 			auto predicate = [](auto item) { return item == '\\'; };
-			std::replace_if(logPath.begin(), logPath.end(), predicate, '/');
+			std::ranges::replace_if(logPath, predicate, '/');
 		}
 
 		auto fileNameSize = StringUtil::StrLen(filename, Config::MaxPathLength);
@@ -164,20 +161,33 @@ namespace hbe
 	{
 		AddLog(GetName(), ELogLevel::Info, [](auto& logStream) { logStream << "Logger started."; });
 
-		auto ioTaskIndex = taskSys.GetIOTaskStreamIndex();
-		auto func = [this](size_t, size_t) { ProcessBuffer(); };
+		auto ioStreamIndex = TaskSystem::GetIOTaskStreamIndex();
 
-		auto taskName = GetLoggerTaskName();
-		taskHandle = taskSys.RegisterTask(ioTaskIndex, taskName, func);
-
-		auto task = taskHandle.GetTask();
-		if (unlikely(task == nullptr))
+		auto runnable = [](void* userData,  std::size_t startIndex,  std::size_t endIndex) ->  std::size_t
 		{
-			auto logFunc = [taskName, ioTaskIndex](auto& ls)
-			{ ls << taskName.c_str() << " : Failed to register as a task at task index " << ioTaskIndex << '.'; };
+			auto self = static_cast<Logger*>(userData);
+			if (self == nullptr)
+			{
+				Assert(false, "Invalid userdata %p", userData);
+				return 1;
+			}
 
-			AddLog(GetName(), ELogLevel::FatalError, logFunc);
-		}
+			const bool isRunning = self->isRunning.load(std::memory_order_relaxed);
+			if (!isRunning)
+			{
+				return 1;
+			}
+
+			self->ProcessBuffer();
+
+			return 0;
+		};
+
+		isRunning.store(true, std::memory_order_release);
+
+		task.SetRunnable(runnable);
+		auto rangedTask = task.GenerateSubTask(0, 1, 0);
+		taskSys.Enqueue(ioStreamIndex, rangedTask);
 
 		auto& ioTaskStream = taskSys.GetIOTaskStream();
 		threadID = ioTaskStream.GetThreadID();
@@ -193,12 +203,14 @@ namespace hbe
 
 	void Logger::StopTask(TaskSystem& taskSys)
 	{
-		if (!taskHandle.IsValid())
+		isRunning.store(false, std::memory_order_release);
+
+		if (task.HasDone())
 		{
 			return;
 		}
 
-		taskHandle.Reset();
+		task.Wait();
 		threadID = std::thread::id();
 
 #if __MEMORY_VERIFICATION__
@@ -257,7 +269,7 @@ namespace hbe
 
 		auto& engine = Engine::Get();
 		auto& taskSystem = engine.GetTaskSystem();
-		auto threadName = taskSystem.GetCurrentStreamName();
+		auto threadName = TaskSystem::GetCurrentStreamName();
 
 		TLogStream ls;
 		logFunc(ls);
@@ -287,7 +299,7 @@ namespace hbe
 
 		if (unlikely(level >= ELogLevel::Error && std::this_thread::get_id() == threadID))
 		{
-			AllocatorScope scope(MemoryManager::SystemAllocatorID);
+			AllocatorScope memAllocScope(MemoryManager::SystemAllocatorID);
 
 			static TTextBuffer tmpTextBuffer;
 			tmpTextBuffer.reserve(1);
@@ -358,8 +370,7 @@ namespace hbe
 			return;
 		}
 
-		const auto period = std::chrono::milliseconds(10);
-
+		constexpr auto period = std::chrono::milliseconds(10);
 		while (needFlush.load(std::memory_order_relaxed))
 		{
 			std::this_thread::sleep_for(period);
@@ -404,7 +415,7 @@ namespace hbe
 			LogUtil::GetTimeStampString(timeStampStr, log.timeStamp);
 			auto levelStr = LogUtil::GetLogLevelString(log.level);
 
-			using namespace HSTL;
+			using namespace hbe;
 			InlineStringBuilder<Config::LogLineLength * 2> text;
 
 			text << '[' << timeStampStr.c_str() << "][" << log.threadName << "][";
@@ -427,7 +438,7 @@ namespace hbe
 		needFlush.store(false, std::memory_order_release);
 	}
 
-	void Logger::FlushBuffer(const TTextBuffer& buffer)
+	void Logger::FlushBuffer(const TTextBuffer& buffer) const
 	{
 		for (auto& func : flushFuncs)
 		{

@@ -16,7 +16,7 @@ namespace hbe
 
 	void StringBuilderTest::Prepare()
 	{
-		using TString = HSTL::HInlineString<256>;
+		using TString = hbe::HInlineString<256>;
 		using TStrBuild = StringBuilder<>;
 
 		AddTest("Default Construct", [this](auto& ls)

@@ -2,131 +2,89 @@
 
 #include "Task.h"
 
+#include "Engine/Engine.h"
 #include "Log/Logger.h"
-#include "OSAL/Intrinsic.h"
-#include "Time.h"
+#include "TaskSystem.h"
+
 
 namespace hbe
 {
 
-	Task::Task() : numStreams(0), numDone(0), isCancelled(false), size(0), func(nullptr) {}
+	Task::Task()
+		: numSubTasks(0)
+		, numFinishedSubTasks(0)
+		, func(nullptr)
+		, userData(nullptr)
+	{
+	}
 
-	Task::Task(StaticString name, size_t size, Runnable func) :
-		name(name), numStreams(0), numDone(0), isCancelled(false), size(size), func(func)
+	Task::Task(StaticString taskName, Runnable func, void* userData)
+		: name(taskName)
+		, numSubTasks(0)
+		, numFinishedSubTasks(0)
+		, func(func)
+		, userData(userData)
 	{}
 
-	void Task::Reset()
+	void Task::Start(TIndex numberOfSubTasks, TIndex startIndex, TIndex endIndex, uint8_t priority)
 	{
-		name = StaticString();
-		threadID = TThreadID();
+		auto& taskSystem = Engine::Get().GetTaskSystem();
 
-		numStreams = 0;
-		numDone.store(0, std::memory_order_relaxed);
-		isCancelled.store(false, std::memory_order_relaxed);
-		size = 0;
-		func = nullptr;
-	}
-
-	void Task::Reset(StaticString inName, TIndex inSize, Runnable inFunc)
-	{
-		name = inName;
-		threadID = TThreadID();
-
-		numStreams = 0;
-		numDone.store(0, std::memory_order_relaxed);
-		isCancelled.store(false, std::memory_order_relaxed);
-		size = inSize;
-		func = inFunc;
-	}
-
-	void Task::Run()
-	{
-		if (unlikely(IsCancelled()))
+		if (endIndex <= startIndex)
 		{
+			auto rangedTask = GenerateSubTask(startIndex, endIndex, priority);
+			taskSystem.Enqueue(rangedTask);
 			return;
 		}
 
-		if (unlikely(IsDone()))
+		endIndex = std::max(startIndex, endIndex);
+		if (numberOfSubTasks < 2)
 		{
-			return;
-		}
-
-		if (unlikely(func == nullptr))
-		{
-			auto log = Logger::Get(name);
-			log.OutFatalError("The given runnable is null.");
-			numDone.store(numStreams, std::memory_order_relaxed);
+			// Single Thread Task
+			const auto rangedTask = GenerateSubTask(startIndex, endIndex, priority);
+			taskSystem.Enqueue(rangedTask);
 
 			return;
 		}
 
-		func(0, size);
+		constexpr TIndex one = 1;
+		const TIndex length = endIndex - startIndex + 1;
+		TIndex interval = length / numSubTasks; // always bigger than zero.
+		interval = std::max(interval, one);
+		TIndex iStart = startIndex;
+		TIndex iEnd = iStart + interval;
 
-		numDone.fetch_add(1, std::memory_order_relaxed);
-	}
-
-	void Task::Run(TIndex start, TIndex end)
-	{
-		if (unlikely(IsCancelled()))
+		while (iEnd < endIndex)
 		{
-			return;
+			auto rangedTask = GenerateSubTask(iStart, iEnd, priority);
+			taskSystem.Enqueue(rangedTask);
+
+			iStart = iEnd;
+			iEnd += interval;
 		}
 
-		if (unlikely(IsDone()))
-		{
-			return;
-		}
-
-		if (unlikely(func == nullptr))
-		{
-			auto log = Logger::Get(name);
-			log.OutFatalError("The given runnable is null.");
-			numDone.store(numStreams, std::memory_order_relaxed);
-
-			return;
-		}
-
-		func(start, end);
-
-		numDone.fetch_add(1, std::memory_order_relaxed);
-	}
-
-	void Task::ForceRun()
-	{
-		if (unlikely(func == nullptr))
-		{
-			auto log = Logger::Get(name);
-			log.OutFatalError("The given runnable is null.");
-			numDone.store(numStreams, std::memory_order_relaxed);
-
-			return;
-		}
-
-		func(0, size);
-	}
-
-	void Task::Cancel()
-	{
-		auto log = Logger::Get(name);
-		log.Out("The task is cancelled.");
-
-		isCancelled.store(true, std::memory_order_relaxed);
+		auto rangedTask = GenerateSubTask(iStart, endIndex, priority);
+		taskSystem.Enqueue(rangedTask);
 	}
 
 	void Task::BusyWait() const
 	{
-		while (!IsDone())
-			;
+		while (!HasDone());
 	}
 
 	void Task::Wait(uint32_t intervalMilliSecs) const
 	{
 		const auto interval = std::chrono::milliseconds(intervalMilliSecs);
 
-		while (!IsDone())
+		while (!HasDone())
 		{
 			std::this_thread::sleep_for(interval);
 		}
 	}
 
+	RangedTask Task::GenerateSubTask(TIndex start, TIndex end, uint8_t priority)
+	{
+		++numSubTasks;
+		return {*this, start, end, priority};
+	}
 } // namespace hbe

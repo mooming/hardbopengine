@@ -4,28 +4,24 @@
 
 #include "Time.h"
 
-namespace hbe
+namespace hbe::time
 {
-	namespace Time
+	class ScopedTime final
 	{
+	private:
+		TDuration& duration;
+		TTime start;
 
-		class ScopedTime final
+	public:
+		ScopedTime(const ScopedTime&) = delete;
+
+		explicit ScopedTime(TDuration& outDeltaTime) : duration(outDeltaTime), start(TStopWatch::now()) {}
+
+		~ScopedTime()
 		{
-		private:
-			TDuration& duration;
-			TTime start;
+			TTime end = TStopWatch::now();
+			duration = end - start;
+		}
+	};
+} // namespace hbe::Time
 
-		public:
-			ScopedTime(const ScopedTime&) = delete;
-
-			ScopedTime(TDuration& outDeltaTime) : duration(outDeltaTime), start(TStopWatch::now()) {}
-
-			~ScopedTime()
-			{
-				TTime end = TStopWatch::now();
-				duration = end - start;
-			}
-		};
-
-	} // namespace Time
-} // namespace hbe

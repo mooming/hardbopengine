@@ -18,7 +18,7 @@
 #endif // PATH_MAX
 #endif // _MSC_VER
 
-using namespace HSTL;
+using namespace hbe;
 
 namespace StringUtil
 {

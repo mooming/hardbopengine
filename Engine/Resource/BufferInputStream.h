@@ -18,7 +18,7 @@ namespace hbe
 	public:
 		using This = BufferInputStream;
 		template<typename T>
-		using TVector = HSTL::HVector<T>;
+		using TVector = hbe::HVector<T>;
 
 	private:
 		const Buffer& buffer;
@@ -52,7 +52,7 @@ namespace hbe
 		This& operator>>(long double& value);
 
 		This& operator>>(StaticString& str);
-		This& operator>>(const HSTL::HString& str);
+		This& operator>>(const hbe::HString& str);
 
 		template<typename T, size_t N>
 		This& operator>>(T (&array)[N])

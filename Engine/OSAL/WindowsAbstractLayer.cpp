@@ -8,7 +8,7 @@
 #include "String/StringUtil.h"
 
 using namespace std;
-using namespace HSTL;
+using namespace hbe;
 
 namespace OS
 {
