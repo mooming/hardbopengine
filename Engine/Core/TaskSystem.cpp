@@ -5,9 +5,10 @@
 #include <exception>
 #include <future>
 #include <thread>
-#include "Config/ConfigParam.h"
-#include "Log/Logger.h"
 
+#include "Config/ConfigParam.h"
+#include "Constants.h"
+#include "Log/Logger.h"
 
 namespace hbe
 {
@@ -80,10 +81,10 @@ namespace hbe
 		auto& logger = Logger::Get();
 		auto logFilter = [](auto level)
 		{
-			static TConfigParam<uint8_t> CPLogLevel("Log.TaskSystem", "The TaskSystem Log Level",
+			static TAtomicConfigParam<uint8_t> logLevel("Log.TaskSystem", "The TaskSystem Log Level",
 													static_cast<uint8_t>(ELogLevel::Warning));
 
-			return level > static_cast<ELogLevel>(CPLogLevel.Get());
+			return level > static_cast<ELogLevel>(logLevel.Get());
 		};
 
 		logger.SetFilter(GetName(), logFilter);
@@ -282,9 +283,6 @@ namespace hbe
 
 		AddTest("Task of size 0", [this](TLogOut& ls)
 		{
-			auto& engine = Engine::Get();
-			auto& taskSys = engine.GetTaskSystem();
-
 			auto func = [](void*, std::size_t start, std::size_t end) -> std::size_t
 			{
 				auto log = Logger::Get("Size 0 Task");
@@ -299,6 +297,8 @@ namespace hbe
 				ls << "The task should not be marked done before running." << lferr;
 			}
 
+			auto& engine = Engine::Get();
+			auto& taskSys = engine.GetTaskSystem();
 			taskSys.Enqueue(task.GenerateSubTask(0, 0));
 			task.BusyWait();
 
@@ -308,210 +308,126 @@ namespace hbe
 			}
 		});
 
-#if 0
-		AddTest("Resident Task(sync)", [](TLogOut& ls)
+		AddTest("Bagel Problem", [this](TLogOut& ls)
 		{
-			auto& engine = Engine::Get();
-			auto& taskSys = engine.GetTaskSystem();
+			constexpr std::size_t Count = 1000000;
+			constexpr std::size_t NumSubtasks = 10;
+			constexpr std::size_t Increment = Count / NumSubtasks;
 
-			int count = 0;
+			double result = 0;
 
-			auto func = [&count](auto start, auto end)
+			auto func = [](void* userData, std::size_t start, std::size_t end) -> std::size_t
 			{
-				if ((count % 10000) == 0)
+				double taskResult = 0;
+
+				for(std::size_t i = start + 1; i <= end; ++i)
 				{
-					auto log = Logger::Get("Resident Task");
-					log.Out([count](auto& ls) { ls << "Resident Frame Count = " << count; });
+					double value = 1.0 / static_cast<double>(i);
+					value *= value;
+					taskResult += value;
 				}
 
-				++count;
+				auto* totalSumPtr = static_cast<double*>(userData);
+				double& totalSum = *totalSumPtr;
+				totalSum += static_cast<float>(taskResult);
+
+				auto log = Logger::Get("Bagel Problem");
+				log.Out([=](auto& ls) { ls << "Num[" << (start + 1) << ", " << end << "], result = " << taskResult; });
+
+				return end - start;
 			};
 
-			StaticString taskName("DummyCount");
-			const auto streamIndex = taskSys.GetWorkerIndexStart();
-
-			auto handle = taskSys.RegisterTask(streamIndex, taskName, func);
-			std::this_thread::sleep_for(std::chrono::seconds(1));
-		});
-
-		AddTest("Resident Task(async)", [](auto& ls)
-		{
-			auto& engine = Engine::Get();
-			auto& taskSys = engine.GetTaskSystem();
-
-			auto count = std::make_shared<uint32_t>(0);
-
-			auto func = [count](auto start, auto end)
+			Task task("TestTask", func, &result);
+			if (task.HasDone())
 			{
-				uint32_t value = *count;
-				if ((value % 10000) == 0)
-				{
-					auto log = Logger::Get("Resident Task");
-					log.Out([value](auto& ls) { ls << "Resident Frame Count = " << value; });
-				}
-
-				++(*count);
-			};
-
-			StaticString taskName("DummyCount");
-			const auto streamIndex = taskSys.GetWorkerIndexStart();
-
-			auto handle = taskSys.RegisterTask(streamIndex, taskName, func);
-			std::this_thread::sleep_for(std::chrono::seconds(1));
-		});
-
-		AddTest("Sum", [this](auto& ls)
-		{
-			std::atomic<uint64_t> sum = 0;
-
-			auto func = [&sum](auto start, auto end)
-			{
-				auto log = Logger::Get("Sum");
-				log.Out([start, end](auto& ls) { ls << "Start: Sum Range[" << (start + 1) << ", " << end << ']'; });
-
-				uint64_t result = 0;
-				for (uint64_t i = start + 1; i <= end; ++i)
-				{
-					result += i;
-				}
-
-				sum += result;
-
-				log.Out([start, end, result](auto& ls)
-				{ ls << "Sum Range[" << (start + 1) << ", " << end << "] = " << result; });
-			};
-
-			auto& engine = Engine::Get();
-			auto& taskSys = engine.GetTaskSystem();
-			auto handle = taskSys.RequestTask("SummationTask", 10000000, func);
-			if (!handle.IsValid())
-			{
-				ls << "Handle should not be invalid." << lferr;
-				return;
+				ls << "The task should not be marked done before running." << lferr;
 			}
 
-			auto task = handle.GetTask();
-			if (task == nullptr)
+			auto& engine = Engine::Get();
+			auto& taskSys = engine.GetTaskSystem();
+
+			for (std::size_t i = 0; i < Count; i += Increment)
 			{
-				ls << "DispatchTask failed due to null task." << lferr;
-				return;
+				taskSys.Enqueue(task.GenerateSubTask(i , i + Increment));
 			}
 
-			handle.BusyWait();
+			task.BusyWait();
 
-			ls << "Sum = " << sum << ", done = " << task->NumDone() << "/" << task->NumStreams() << lf;
-
-			if (sum != 50000005000000L)
+			if (!task.HasDone())
 			{
-				ls << "Incorrect summation result = " << sum << lferr;
+				ls << "The task should be marked done after running." << lferr;
+			}
+
+			constexpr double EulerAnswer = Pi * Pi/ 6.0;
+			ls << "Test Result = " << result << ", Pi/6 = " << EulerAnswer << lf;
+
+			const double error = std::round(result - EulerAnswer);
+			if (error > Epsilon)
+			{
+				ls << "The error exceeds limit. Error = " << error << lferr;
 			}
 		});
 
-		auto countPrimeNumbers = [](auto& ls, auto& lf, auto& lferr, int numWorkers)
+		AddTest("Bagel Problem (Incremental Task)", [this](TLogOut& ls)
 		{
-			auto IsPrimeNumbrer = [](uint64_t value) -> bool
+			constexpr std::size_t Count = 1000000;
+			constexpr std::size_t NumSubtasks = 10;
+			constexpr std::size_t Increment = Count / NumSubtasks;
+
+			double result = 0;
+
+			auto func = [](void* userData, std::size_t start, std::size_t end) -> std::size_t
 			{
-				for (uint64_t i = 2; i < value; ++i)
+				double taskResult = 0;
+
+				auto incEnd = std::min(end, start + (Increment / 64));
+				for(std::size_t i = start + 1; i <= incEnd; ++i)
 				{
-					if ((value % i) == 0)
-					{
-						return false;
-					}
+					double value = 1.0 / static_cast<double>(i);
+					value *= value;
+					taskResult += value;
 				}
 
-				return true;
+				auto* totalSumPtr = static_cast<double*>(userData);
+				double& totalSum = *totalSumPtr;
+				totalSum += static_cast<float>(taskResult);
+
+				auto log = Logger::Get("Bagel Problem (Incremental Task)");
+				log.Out([=](auto& ls) { ls << "Num[" << (start + 1) << ", " << incEnd << "], result = " << taskResult; });
+
+				return incEnd - start;
 			};
 
-			std::atomic<uint64_t> count = 0;
-			std::atomic<int> numThreads = 0;
-
-			auto func = [&count, &numThreads, IsPrimeNumbrer](auto start, auto end)
+			Task task("TestTask", func, &result);
+			if (task.HasDone())
 			{
-				++numThreads;
-
-				auto log = Logger::Get("PNCounter");
-				log.Out([&](auto& ls) { ls << "Start: Range[" << (start + 1) << ", " << end << ']'; });
-
-				uint64_t result = 0;
-
-				for (uint64_t i = start + 1; i <= end; ++i)
-				{
-					if (IsPrimeNumbrer(i))
-					{
-						++result;
-					}
-				}
-
-				count += result;
-
-				log.Out([&](auto& ls) { ls << "Range[" << (start + 1) << ", " << end << "] = " << result; });
-			};
-
-			constexpr int upperBound = 100000;
-			constexpr int solution = 9592;
+				ls << "The task should not be marked done before running." << lferr;
+			}
 
 			auto& engine = Engine::Get();
 			auto& taskSys = engine.GetTaskSystem();
-			TaskHandle handle;
 
-			time::TDuration duration;
+			for (std::size_t i = 0; i < Count; i += Increment)
 			{
-				time::ScopedTime timer(duration);
-
-				handle = taskSys.RequestTask("PNCounter", upperBound, func, numWorkers);
-
-				if (!handle.IsValid())
-				{
-					ls << "Handle should not be invalid." << lferr;
-					return;
-				}
-
-				auto taskPtr = handle.GetTask();
-				if (taskPtr == nullptr)
-				{
-					ls << "Task is null." << lferr;
-					debugBreak();
-				}
-
-				handle.BusyWait();
+				taskSys.Enqueue(task.GenerateSubTask(i , i + Increment));
 			}
 
-			count = count - 1;
+			task.BusyWait();
 
-			if (numThreads != numWorkers)
+			if (!task.HasDone())
 			{
-				ls << "Number of threads must be " << numWorkers << ", but " << numThreads << lferr;
+				ls << "The task should be marked done after running." << lferr;
 			}
 
-			auto taskPtr = handle.GetTask();
-			if (taskPtr == nullptr)
+			constexpr double EulerAnswer = Pi * Pi/ 6.0;
+			ls << "Test Result = " << result << ", Pi/6 = " << EulerAnswer << lf;
+
+			const double error = std::round(result - EulerAnswer);
+			if (error > Epsilon)
 			{
-				ls << "Task is null." << lferr;
-				debugBreak();
+				ls << "The error exceeds limit. Error = " << error << lferr;
 			}
-
-			auto& task = *(taskPtr);
-			ls << "# of Prime Numbers = " << count << ", done = " << task.NumDone() << "/" << task.NumStreams()
-			   << ", time = " << time::ToFloat(duration) << " seconds" << lf;
-
-			if (count != solution)
-			{
-				ls << "Number of prime numbers below " << upperBound << " should be " << solution << " but " << count
-				   << " found!" << lferr;
-			}
-		};
-
-		auto& engine = Engine::Get();
-		auto& taskSys = engine.GetTaskSystem();
-		auto numWorkers = taskSys.GetNumWorkers();
-		for (int i = 1; i <= numWorkers; ++i)
-		{
-			InlineStringBuilder<> testName;
-			testName << "CountPrimeNumbers with " << i << " workers";
-
-			AddTest(testName.c_str(), [this, countPrimeNumbers, i](auto& ls) { countPrimeNumbers(ls, lf, lferr, i); });
-		}
-#endif
+		});
 	}
 
 } // namespace hbe

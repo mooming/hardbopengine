@@ -115,6 +115,7 @@ namespace hbe
 				if (!taskQueue.empty())
 				{
 					rangedTask = taskQueue.top();
+					taskQueue.pop();
 				}
 			}
 

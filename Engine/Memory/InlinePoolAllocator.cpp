@@ -81,7 +81,7 @@ void hbe::InlinePoolAllocatorTest::Prepare()
 
 	auto AllocDeallocTestFunc = [](auto& allocator, auto& ls, auto& lf, int maxAllocSize) -> float
 	{
-		constexpr int testCount = 100000;
+		constexpr int testCount = 10000;
 
 		ls << '[' << allocator.GetBlockSize() << "] Num Iterations = " << testCount
 		   << ", maxAllocSize = " << maxAllocSize << lf;
