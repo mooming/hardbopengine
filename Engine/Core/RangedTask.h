@@ -5,8 +5,9 @@
 #pragma once
 #include <cstddef>
 #include <functional>
-
 #include "String/StaticString.h"
+#include "TaskStreamAffinity.h"
+
 
 namespace hbe
 {
@@ -19,9 +20,9 @@ namespace hbe
 		using TIndex = std::size_t;
 
 	public:
-		StaticString taskName;
-
 		uint8_t priority;
+		mutable TaskStreamAffinity affinity;
+		StaticString taskName;
 
 		// Shared Task
 		std::reference_wrapper<Task> taskRef;

@@ -5,15 +5,10 @@
 #include "RangedTask.h"
 
 #include "Log/Logger.h"
-
+#include "TaskSystem.h"
 
 namespace hbe
 {
-	RangedTask::RangedTask(Task& task, TIndex start, TIndex end, uint8_t priority)
-		: taskName(task.GetName()), priority(priority), taskRef(task), start(start), end(end), currentIndex(start)
-	{
-	}
-
 	void RangedTask::Run()
 	{
 		auto& task = taskRef.get();
@@ -23,7 +18,7 @@ namespace hbe
 			currentIndex = end;
 
 			auto logger = Logger::Get(task.GetName());
-			logger.OutError([](auto& ls){ ls << "Null Runnable.";});
+			logger.OutError([](auto& ls) { ls << "Null Runnable."; });
 
 			return;
 		}
@@ -36,5 +31,17 @@ namespace hbe
 		{
 			task.ReportFinishedSubTask();
 		}
+	}
+
+	RangedTask::RangedTask(Task& task, TIndex start, TIndex end, uint8_t priority)
+		: priority(priority)
+		, taskName(task.GetName())
+		, taskRef(task)
+		, start(start)
+		, end(end)
+		, currentIndex(start)
+	{
+		affinity.Unset(TaskSystem::GetMainTaskStreamIndex());
+		affinity.Unset(TaskSystem::GetIOTaskStreamIndex());
 	}
 } // namespace hbe

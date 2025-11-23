@@ -153,7 +153,17 @@ namespace hbe
 			return;
 		}
 
-		outTask = taskQueue.top();
+		const RangedTask& rangedTask = taskQueue.top();
+		const unsigned int streamIndex = GetCurrentStreamIndex();
+
+		auto& affinity = rangedTask.affinity;
+		if (!affinity.Get(streamIndex))
+		{
+			affinity.Set(streamIndex);
+			return;
+		}
+
+		outTask = rangedTask;
 		taskQueue.pop();
 	}
 
@@ -264,7 +274,6 @@ namespace hbe
 #include <memory>
 #include "../Engine/Engine.h"
 #include "OSAL/Intrinsic.h"
-#include "ScopedTime.h"
 #include "Test/TestCollection.h"
 
 namespace hbe
@@ -371,7 +380,7 @@ namespace hbe
 		AddTest("Bagel Problem (Incremental Task)", [this](TLogOut& ls)
 		{
 			constexpr std::size_t Count = 1000000;
-			constexpr std::size_t NumSubtasks = 10;
+			constexpr std::size_t NumSubtasks = 5;
 			constexpr std::size_t Increment = Count / NumSubtasks;
 
 			double result = 0;
@@ -380,7 +389,7 @@ namespace hbe
 			{
 				double taskResult = 0;
 
-				auto incEnd = std::min(end, start + (Increment / 64));
+				auto incEnd = std::min(end, start + (Increment / 7));
 				for(std::size_t i = start + 1; i <= incEnd; ++i)
 				{
 					double value = 1.0 / static_cast<double>(i);

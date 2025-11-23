@@ -59,6 +59,10 @@ namespace hbe
 		// Enqueue a task into the general task queue which is a low-priority queue. The task will be executed after
 		// performing all existing special queue for eash task stream.
 		void Enqueue(const RangedTask& task);
+
+		// Take the top priority task from the general task queue if task stream affinity has been set.
+		// It'll add an task-stream affinity once it fails to take the top priority task due to its task-stream affinity
+		// to prevent blocking the entire task streams by a task with null-affinity
 		void Dequeue(std::optional<RangedTask>& outTask);
 
 		void Enqueue(TIndex streamIndex, const RangedTask& task);

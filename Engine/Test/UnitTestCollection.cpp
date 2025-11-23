@@ -45,7 +45,6 @@
 #include "String/StringUtil.h"
 #include "TestEnv.h"
 
-#include <iostream>
 
 using namespace hbe;
 
@@ -59,6 +58,7 @@ namespace Test
 			AllocatorScope scope(allocator);
 
 			auto& testEnv = TestEnv::GetEnv();
+
 			testEnv.AddTestCollection<SystemAllocatorTest>();
 			testEnv.AddTestCollection<BaseAllocatorTest>();
 			testEnv.AddTestCollection<InlinePoolAllocatorTest>();
@@ -101,6 +101,7 @@ namespace Test
 			testEnv.AddTestCollection<TransformTest>();
 
 			testEnv.AddTestCollection<ComponentSystemTest>();
+			testEnv.AddTestCollection<TaskStreamAffinityTest>();
 			testEnv.AddTestCollection<TaskSystemTest>();
 
 			testEnv.Start();
@@ -114,7 +115,9 @@ namespace Test
 
 		auto rangedTask = task.GenerateSubTask(0, 1, 0);
 		auto& taskSystem = Engine::Get().GetTaskSystem();
-		taskSystem.Enqueue(rangedTask);
+
+		const auto mainStreamIndex = TaskSystem::GetMainTaskStreamIndex();
+		taskSystem.Enqueue(mainStreamIndex, rangedTask);
 		taskSystem.GetMainTaskStream().Join();
 	}
 } // namespace Test

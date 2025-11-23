@@ -49,6 +49,8 @@ add_library (Core STATIC
  TaskSystem.h
  Time.h
  Types.h
+        TaskStreamAffinity.cpp
+        TaskStreamAffinity.h
 )
 
 if (APPLE)

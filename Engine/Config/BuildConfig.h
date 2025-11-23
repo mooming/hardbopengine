@@ -13,6 +13,8 @@
 #define PLATFORM_WINDOWS
 #endif
 
+#define MAX_NUM_TASK_STREAMS 64;
+
 // Debug Control
 #if !defined(NDEBUG) || defined(_DEBUG) || defined(DEBUG)
 #undef __DEBUG__
@@ -38,7 +40,7 @@
 // Log
 #define LOG_ENABLED 1
 #define LOG_BREAK_IF_WARNING 0
-#define LOG_BREAK_IF_ERROR 1
+#define LOG_BREAK_IF_ERROR 0
 #define LOG_FORCE_PRINT_IMMEDIATELY 0
 
 // Profile
