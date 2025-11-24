@@ -29,6 +29,7 @@ add_library (Core STATIC
  SystemStatistics.cpp
  Task.cpp
  TaskStream.cpp
+ TaskStreamAffinity.cpp
  TaskSystem.cpp
  Time.cpp
  CommandLineArguments.h
@@ -46,11 +47,10 @@ add_library (Core STATIC
  SystemStatistics.h
  Task.h
  TaskStream.h
+ TaskStreamAffinity.h
  TaskSystem.h
  Time.h
  Types.h
-        TaskStreamAffinity.cpp
-        TaskStreamAffinity.h
 )
 
 if (APPLE)
