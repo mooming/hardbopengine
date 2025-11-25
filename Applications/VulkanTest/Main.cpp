@@ -24,6 +24,7 @@ private:
 	int height;
 	StaticString title;
 	GLFWwindow* window;
+	VkInstance vkInstance;
 
 public:
 	WindowApplication(const char* title)
@@ -33,8 +34,8 @@ public:
 		, height(-1)
 		, title(title)
 		, window(nullptr)
-	{
-	}
+		, vkInstance(nullptr)
+	{}
 
 	void SetDisplayMode(EDisplayMode mode)
 	{
@@ -87,6 +88,8 @@ public:
 		}
 
 		glfwSetWindowAttrib(window, GLFW_RESIZABLE, isResizable ? GLFW_TRUE : GLFW_FALSE);
+
+		CreateVKInstance();
 	}
 
 	void Update()
@@ -99,9 +102,53 @@ public:
 
 	void Cleanup()
 	{
+		vkDestroyInstance(vkInstance, nullptr);
 		glfwDestroyWindow(window);
-
 		glfwTerminate();
+	}
+
+private:
+	bool CreateVKInstance()
+	{
+		VkApplicationInfo appInfo{};
+		appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
+		appInfo.pApplicationName = title.c_str();
+		appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
+		appInfo.pEngineName = "No Engine";
+		appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
+		appInfo.apiVersion = VK_API_VERSION_1_0;
+
+		VkInstanceCreateInfo createInfo{};
+		createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
+		createInfo.pApplicationInfo = &appInfo;
+
+		uint32_t glfwExtensionCount = 0;
+		const char** glfwExtensions;
+		glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
+
+		createInfo.enabledExtensionCount = glfwExtensionCount;
+		createInfo.ppEnabledExtensionNames = glfwExtensions;
+		createInfo.enabledLayerCount = 0;
+
+		const VkResult result = vkCreateInstance(&createInfo, nullptr, &vkInstance);
+		if (result != VK_SUCCESS)
+			{
+			return false;
+		}
+
+		uint32_t extensionCount = 0;
+		vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
+
+		std::vector<VkExtensionProperties> extensions(extensionCount);
+		vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, extensions.data());
+
+		std::cout << "available extensions:\n";
+
+		for (const auto& extension : extensions) {
+			std::cout << '\t' << extension.extensionName << '\n';
+		}
+
+		return true;
 	}
 };
 } // namespace hbbe

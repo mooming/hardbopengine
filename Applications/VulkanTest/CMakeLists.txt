@@ -3,6 +3,8 @@ project (VulkanTest)
 
 set (CMAKE_CXX_STANDARD 23)
 
+find_package(Vulkan REQUIRED)
+
 if (MSVC)
 	add_compile_options (/W3 /WX)
 else (MSVC)
@@ -29,7 +31,7 @@ endif (APPLE)
 install (TARGETS VulkanTest DESTINATION ${CMAKE_SOURCE_DIR}/bin)
 
 
-target_link_libraries (VulkanTest Config Container Core HEngine HSTL Log Math Memory OSAL Resource String Test glfw)
+target_link_libraries (VulkanTest Config Container Core HEngine HSTL Log Math Memory OSAL Resource String Test glfw Vulkan::Vulkan)
 
 add_dependencies (VulkanTest Config)
 add_dependencies (VulkanTest Container)
@@ -44,5 +46,6 @@ add_dependencies (VulkanTest Resource)
 add_dependencies (VulkanTest String)
 add_dependencies (VulkanTest Test)
 add_dependencies (VulkanTest glfw)
+
 
 
