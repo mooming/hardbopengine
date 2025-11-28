@@ -13,7 +13,7 @@ namespace hbe
 	// A proxy allocator which uses the current allocator defined in Memory Manager.
 	// It should be careful to use this when the current allocator is stack allocators.
 	template<typename T>
-	class DefaultAllocator final
+	class DefaultAllocator
 	{
 	public:
 		using value_type = T;

@@ -25,7 +25,7 @@ void* OS::VirtualAlloc(size_t size)
 	return ptr;
 }
 
-void OS::VirtualFree(void* address, std::size_t) { munmap(address, size); }
+void OS::VirtualFree(void* address, std::size_t size) { munmap(address, size); }
 
 void OS::ProtectMemory(void* address, size_t n)
 {

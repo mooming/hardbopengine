@@ -370,7 +370,7 @@ namespace hbe
 			constexpr double EulerAnswer = Pi * Pi/ 6.0;
 			ls << "Test Result = " << result << ", Pi/6 = " << EulerAnswer << lf;
 
-			const double error = std::round(result - EulerAnswer);
+			const double error = std::abs(result - EulerAnswer);
 			if (error > Epsilon)
 			{
 				ls << "The error exceeds limit. Error = " << error << lferr;
@@ -431,7 +431,7 @@ namespace hbe
 			constexpr double EulerAnswer = Pi * Pi/ 6.0;
 			ls << "Test Result = " << result << ", Pi/6 = " << EulerAnswer << lf;
 
-			const double error = std::round(result - EulerAnswer);
+			const double error = std::abs(result - EulerAnswer);
 			if (error > Epsilon)
 			{
 				ls << "The error exceeds limit. Error = " << error << lferr;
