@@ -10,6 +10,15 @@ Many game engines multiple platforms more than that though, they are very comple
 should be simple and easy to learn and use if users are familiar with standard C/C++ library.
 </p>
 
+# How to build
+C++ 23 and Vulkan SDK are required to build the engine.
+
+## Mac OS X
+Latest xcode and Apple clang are required to build C++ 23 features.
+
+## Linux
+g++ 15 is required to build C++ 23 features
+
 # Directory Structure
 
 Hardbop Engine<br>
