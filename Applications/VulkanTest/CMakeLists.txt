@@ -26,9 +26,12 @@ if (APPLE)
 include_directories ( /System/Library/Frameworks )
 endif (APPLE)
 
-find_package (Vulkan)
+find_library(Vulkan_LIBRARY Vulkan)
 
-target_link_libraries (VulkanTest Vulkan::Vulkan)
+if (Vulkan_LIBRARY)
+target_link_libraries (VulkanTest ${Vulkan_LIBRARY})
+endif (Vulkan_LIBRARY)
+
 install (TARGETS VulkanTest DESTINATION ${CMAKE_SOURCE_DIR}/bin)
 
 

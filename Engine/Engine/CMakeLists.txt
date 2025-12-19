@@ -31,4 +31,9 @@ endif (APPLE)
 install (TARGETS HEngine DESTINATION ${CMAKE_SOURCE_DIR}/lib)
 
 
+target_link_libraries (HEngine Config Core)
+
+add_dependencies (HEngine Config)
+add_dependencies (HEngine Core)
+
 
