@@ -1,6 +1,15 @@
 cmake_minimum_required (VERSION 3.12)
 project (String)
 
+set (CMAKE_CONFIGURATION_TYPES "Debug;Dev;Release" CACHE STRING "" FORCE)
+if (NOT CMAKE_BUILD_TYPE)
+    set (CMAKE_BUILD_TYPE "Release" CACHE STRING "Build type" FORCE)
+endif ()
+
+set (CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g -O0")
+set (CMAKE_CXX_FLAGS_DEV "${CMAKE_CXX_FLAGS_DEBUG} -O1")
+set (CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3")
+
 set (CMAKE_CXX_STANDARD 23)
 
 if (MSVC)
@@ -21,19 +30,34 @@ link_directories (${CMAKE_SOURCE_DIR}/lib)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/lib)
 add_library (String STATIC 
  InlineStringBuilder.cpp
+ InlineStringBuilder.cpp
+ StaticString.cpp
  StaticString.cpp
  StaticStringTable.cpp
+ StaticStringTable.cpp
+ String.cpp
  String.cpp
  StringBuilder.cpp
+ StringBuilder.cpp
+ StringUtil.cpp
  StringUtil.cpp
  EndLine.h
+ EndLine.h
+ InlineStringBuilder.h
  InlineStringBuilder.h
  Letter.h
+ Letter.h
+ StaticString.h
  StaticString.h
  StaticStringID.h
+ StaticStringID.h
+ StaticStringTable.h
  StaticStringTable.h
  String.h
+ String.h
  StringBuilder.h
+ StringBuilder.h
+ StringUtil.h
  StringUtil.h
 )
 
