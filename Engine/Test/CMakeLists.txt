@@ -30,16 +30,10 @@ link_directories (${CMAKE_SOURCE_DIR}/lib)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/lib)
 add_library (Test STATIC 
  TestCollection.cpp
- TestCollection.cpp
- TestEnv.cpp
  TestEnv.cpp
  UnitTestCollection.cpp
- UnitTestCollection.cpp
- TestCollection.h
  TestCollection.h
  TestEnv.h
- TestEnv.h
- UnitTestCollection.h
  UnitTestCollection.h
 )
 

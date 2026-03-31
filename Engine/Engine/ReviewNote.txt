@@ -1,0 +1,19 @@
+================================================================================
+HARDBOP ENGINE CODE REVIEW - Engine Module
+================================================================================
+
+OVERVIEW: Main engine singleton and initialization.
+
+FILES:
+  - Engine.h/cpp    - Main engine class
+
+STRENGTHS:
+  + Singleton pattern with Get()
+  + Explicit initialization phases with ready flags
+  + RAII with proper shutdown sequence
+
+ISSUES:
+  - PreEngineInit pattern is unusual - could use constructor delegation
+  - Engine::ConsoleOutLn uses std::cout directly instead of logging system (Engine.cpp:210)
+
+================================================================================

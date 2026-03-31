@@ -83,7 +83,9 @@ namespace hbe
 	{
 		buffer->resize(16);
 		auto& text = *buffer;
-		snprintf(text.data(), text.size(), "%ud", value);
+		// BUG FIX: "%ud" is not a valid format specifier - should be "%u" for unsigned
+		// The 'd' was being printed literally, producing output like "5d" instead of "5"
+		snprintf(text.data(), text.size(), "%u", value);
 		buffer->resize(StringUtil::StrLen(text.data()) + 1);
 
 		CalculateHashCode();
@@ -612,12 +614,78 @@ namespace hbe
 		memcpy(buffer->data() + length, string.buffer->data(), textLength + 1);
 	}
 
+	// BUG FIX: Implemented Replace() - previously asserted false and crashed in debug builds
 	String String::Replace(const String& from, const String& to, Index offset, Index endIndex) const
 	{
-		// TODO - NOT IMPLEMENTED YET
+		if (!buffer || from.IsEmpty())
+		{
+			return Clone();
+		}
 
-		Assert(false);
-		return String();
+		const Index strLength = Length();
+		const Index actualEndIndex = (endIndex < 0 || endIndex > strLength) ? strLength : endIndex;
+		const Index actualOffset = (offset < 0) ? 0 : offset;
+
+		if (actualOffset >= actualEndIndex)
+		{
+			return Clone();
+		}
+
+		const Index searchLength = from.Length();
+		Index foundIndex = -1;
+
+		// Find first occurrence of 'from' within the specified range
+		for (Index i = actualOffset; i <= actualEndIndex - searchLength; ++i)
+		{
+			bool match = true;
+			for (Index j = 0; j < searchLength; ++j)
+			{
+				if ((*buffer)[i + j] != from.buffer->data()[j])
+				{
+					match = false;
+					break;
+				}
+			}
+			if (match)
+			{
+				foundIndex = i;
+				break;
+			}
+		}
+
+		// If not found, return clone of original
+		if (foundIndex < 0)
+		{
+			return Clone();
+		}
+
+		// Build result: prefix + replacement + suffix
+		String result;
+		result.buffer->clear();
+
+		// Add prefix (before the match)
+		for (Index i = 0; i < foundIndex; ++i)
+		{
+			result.buffer->push_back((*buffer)[i]);
+		}
+
+		// Add replacement string
+		for (Index i = 0; i < to.Length(); ++i)
+		{
+			result.buffer->push_back(to.buffer->data()[i]);
+		}
+
+		// Add suffix (after the match)
+		for (Index i = foundIndex + searchLength; i < strLength; ++i)
+		{
+			result.buffer->push_back((*buffer)[i]);
+		}
+
+		// Add null terminator
+		result.buffer->push_back('\0');
+
+		result.CalculateHashCode();
+		return result;
 	}
 
 	String String::ReplaceAll(char from, char to) const
@@ -645,12 +713,68 @@ namespace hbe
 		return str;
 	}
 
+	// BUG FIX: Implemented ReplaceAll(String, String) - previously asserted false and crashed in debug builds
 	String String::ReplaceAll(String from, String to) const
 	{
-		// TODO - NOT IMPLEMENTED YET
+		if (!buffer || from.IsEmpty())
+		{
+			return Clone();
+		}
 
-		Assert(false);
-		return String();
+		const Index strLength = Length();
+		const Index searchLength = from.Length();
+
+		if (searchLength > strLength)
+		{
+			return Clone();
+		}
+
+		// Build result with replacements
+		String result;
+		result.buffer->clear();
+
+		Index i = 0;
+		while (i <= strLength - searchLength)
+		{
+			bool match = true;
+			for (Index j = 0; j < searchLength; ++j)
+			{
+				if ((*buffer)[i + j] != from.buffer->data()[j])
+				{
+					match = false;
+					break;
+				}
+			}
+
+			if (match)
+			{
+				// Found match - add replacement
+				for (Index j = 0; j < to.Length(); ++j)
+				{
+					result.buffer->push_back(to.buffer->data()[j]);
+				}
+				i += searchLength;
+			}
+			else
+			{
+				// No match - copy character
+				result.buffer->push_back((*buffer)[i]);
+				++i;
+			}
+		}
+
+		// Copy remaining characters
+		while (i < strLength)
+		{
+			result.buffer->push_back((*buffer)[i]);
+			++i;
+		}
+
+		// Add null terminator
+		result.buffer->push_back('\0');
+
+		result.CalculateHashCode();
+		return result;
 	}
 
 	void String::ParseKeyValue(String& key, String& value)

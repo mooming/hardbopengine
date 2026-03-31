@@ -1,0 +1,29 @@
+================================================================================
+HARDBOP ENGINE CODE REVIEW - Math Module
+================================================================================
+
+OVERVIEW: Math library - Vectors, Matrices, Quaternions, Transforms, sampling.
+
+FILES:
+  - Vector2.h, Vector3.h, Vector4.h - Dimension-specific vectors
+  - Matrix2x2.h, Matrix3x3.h, Matrix4x4.h - Matrix classes
+  - Quaternion.h       - Quaternion for rotations
+  - Transform.h        - Affine transforms
+  - AABB.h, OBB.h      - Bounding boxes
+  - MonteCarloIntegrator.h, ImportanceResampling.h, StratifiedSampling.h - Sampling
+
+STRENGTHS:
+  + Template-based for numeric type flexibility (int, float, double)
+  + Union for named and array access (x,y,z vs a[3])
+  + Static constexpr constants (Zero, Unity, X, Y, Z, Right, Up, Forward)
+  + Handedness-aware constants (RIGHT_HANDED vs LEFT_HANDED)
+  + Cross-product and angle calculations in Vector3
+
+PATTERNS:
+  - VectorCommonImpl.inl for shared implementation
+  - Type aliases: Int3, Float3, etc.
+
+ISSUES:
+  - No critical issues found
+
+================================================================================

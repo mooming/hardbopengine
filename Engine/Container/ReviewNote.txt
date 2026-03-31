@@ -1,0 +1,26 @@
+================================================================================
+HARDBOP ENGINE CODE REVIEW - Container Module
+================================================================================
+
+OVERVIEW: Core container implementations with custom allocator support.
+
+FILES:
+  - Array.h          - Static array with allocator template
+  - LinkedList.h     - Linked list implementation
+  - AtomicStackView.h - Lock-free stack
+
+STRENGTHS:
+  + Array uses placement new for proper object construction
+  + Move semantics properly implemented (move constructor, move assignment)
+  + FatalAssert for bounds checking in debug builds
+  + Custom iterator support with begin()/end()
+  + Proper RAII destructor with element destruction
+
+PATTERNS:
+  - Array uses swap-and-clear idiom for Clear()
+  - Allocator type is template parameter with DefaultAllocator as default
+
+ISSUES:
+  - Minor: Inconsistent #endif comment for __DEBUG__ in LinkedList.cpp
+
+================================================================================

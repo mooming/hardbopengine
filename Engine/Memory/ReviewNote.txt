@@ -1,0 +1,37 @@
+================================================================================
+HARDBOP ENGINE CODE REVIEW - Memory Module
+================================================================================
+
+OVERVIEW: Memory management - allocators, manager, scoped allocation.
+
+FILES:
+  - MemoryManager.h/cpp     - Global memory manager (singleton)
+  - PoolAllocator.h         - Fixed-size pool allocator
+  - StackAllocator.h        - Stack-based allocator
+  - MonotonicAllocator.h    - Monotonic (arena) allocator
+  - MultiPoolAllocator.h   - Multiple pool sizes
+  - ThreadSafeMultiPoolAllocator.h - Thread-safe variant
+  - InlinePoolAllocator.h   - Stack-allocated pool
+  - InlineMonotonicAllocator.h - Stack-allocated arena
+  - DefaultAllocator.h      - Default STL allocator adapter
+  - SystemAllocator.h      - OS-level allocation
+  - AllocatorScope.h       - Scoped allocator context
+  - Memory.h               - New<T>/Delete<T> helpers
+
+STRENGTHS:
+  + Comprehensive allocator suite for different use cases
+  + MemoryManager singleton with registration system
+  + AllocatorScope for automatic context management
+  + New<T>/Delete<T> helpers with static_assert for type safety
+  + AllocatorProxy for C-style callbacks
+  + Thread-local ScopedAllocatorID for automatic allocation
+
+KEY PATTERNS:
+  - AllocatorID for tracking
+  - MultiPoolConfigCache for configuration management
+  - PROFILE_ENABLED for detailed statistics
+
+ISSUES:
+  - No critical issues found in Memory module itself
+
+================================================================================

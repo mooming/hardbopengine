@@ -1,0 +1,28 @@
+================================================================================
+HARDBOP ENGINE CODE REVIEW - Test Module
+================================================================================
+
+OVERVIEW: Unit testing framework.
+
+FILES:
+  - TestCollection.h/cpp   - Base test collection class
+  - TestEnv.h/cpp          - Test environment/runner
+  - UnitTestCollection.h   - Test registration entry point
+
+STRENGTHS:
+  + Simple, self-contained test framework
+  + TestCollection with Prepare() virtual method
+  + TLogOut (std::stringstream) for test output
+  + ELogLevel for log filtering
+
+PATTERNS:
+  - Tests defined with AddTest(name, lambda)
+  - Tests registered in UnitTestCollection.cpp
+  - Tests run via TestEnv::GetEnv().Start()
+
+ISSUES:
+  - LOW: HUnitTest binary checked into source control
+    Impact: Build artifact in repo - should be in .gitignore
+  - Minor: Inconsistent #endif comment for __DEBUG__ in TestEnv.cpp
+
+================================================================================

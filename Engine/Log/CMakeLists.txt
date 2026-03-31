@@ -30,20 +30,12 @@ link_directories (${CMAKE_SOURCE_DIR}/lib)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/lib)
 add_library (Log STATIC 
  LogLine.cpp
- LogLine.cpp
- LogUtil.cpp
  LogUtil.cpp
  Logger.cpp
- Logger.cpp
- LogLevel.h
  LogLevel.h
  LogLine.h
- LogLine.h
- LogUtil.h
  LogUtil.h
  Logger.h
- Logger.h
- PrintArgs.h
  PrintArgs.h
 )
 

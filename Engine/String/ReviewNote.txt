@@ -1,0 +1,37 @@
+================================================================================
+HARDBOP ENGINE CODE REVIEW - String Module
+================================================================================
+
+OVERVIEW: String utilities - StaticString, StringBuilder, StaticStringTable.
+
+FILES:
+  - StaticString.h        - Interned string (via StaticStringTable)
+  - StaticStringID.h      - String ID handle
+  - StaticStringTable.h   - String interning table
+  - StringBuilder.h       - Dynamic string builder
+  - InlineStringBuilder.h - Stack-allocated builder
+  - StringUtil.h          - String utilities
+  - String.h/.cpp         - Main string class
+
+STRENGTHS:
+  + StaticString uses string interning for cheap comparison
+  + StaticStringID for efficient hashing
+  + Concept-based constructor (CToZeroTerminateStr)
+  + std::hash specialization for StaticString
+  + InlineStringBuilder avoids heap allocation
+
+PATTERNS:
+  - StaticString is lightweight (just an ID)
+  - Comparison is pointer comparison (after interning)
+
+CRITICAL ISSUES:
+  - CRITICAL: String::Replace() NOT IMPLEMENTED - asserts false at runtime (String.cpp:617-620)
+    Impact: Any code calling Replace() will crash in debug builds
+    
+  - CRITICAL: String::ReplaceAll(String, String) NOT IMPLEMENTED - asserts false (String.cpp:650-653)
+    Impact: Any code calling ReplaceAll will crash in debug builds
+    
+  - BUG: Format string "%ud" is invalid - should be "%u" or "%hu" (String.cpp:86)
+    Impact: Produces incorrect output like "5d" instead of "5"
+
+================================================================================

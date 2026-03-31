@@ -25,7 +25,9 @@ void* OS::VirtualAlloc(size_t size)
 	return ptr;
 }
 
-void OS::VirtualFree(void* address, std::size_t) { munmap(address, size); }
+// BUG FIX: Parameter was unnamed but body referenced 'size' - caused compilation error
+// Added parameter name to fix undefined variable error
+void OS::VirtualFree(void* address, std::size_t size) { munmap(address, size); }
 
 void OS::ProtectMemory(void* address, size_t n)
 {
@@ -109,7 +111,10 @@ void* OS::VirtualAlloc(size_t size) { return ::VirtualAlloc(nullptr, size, MEM_R
 void OS::VirtualFree(void* address, std::size_t n)
 {
 	auto result = ::VirtualFree(address, n, MEM_RELEASE);
-	if (unlikely(result))
+	// BUG FIX: VirtualFree returns non-zero on SUCCESS, zero on FAILURE
+	// Original code checked if (result) which triggered Assert on success
+	// Fixed to check if (!result) to assert only on actual failure
+	if (unlikely(!result))
 	{
 		hbe::Assert(false);
 	}

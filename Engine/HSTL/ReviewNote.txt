@@ -1,0 +1,25 @@
+================================================================================
+HARDBOP ENGINE CODE REVIEW - HSTL Module
+================================================================================
+
+OVERVIEW: "HardBop STL" - thin wrappers around standard containers with custom allocators.
+
+FILES:
+  - HVector.h       - std::vector with DefaultAllocator
+  - HString.h       - std::string with custom allocator
+  - HUnorderedMap.h - std::unordered_map with custom allocator
+
+STRENGTHS:
+  + Simple, clean type aliases
+  + InlinePoolAllocator variant (HInlineVector)
+  + Consistent namespace usage (hbe::)
+
+PATTERNS:
+  - All use hbe::DefaultAllocator as default
+  - HInlineVector uses InlinePoolAllocator for stack-like allocation
+
+ISSUES:
+  - Namespace comment mismatch: closing comment says "namespace HSTL" but actual namespace is "namespace hbe"
+    Files: HVector.h:18, HUnorderedMap.h:14, HString.h:17
+
+================================================================================

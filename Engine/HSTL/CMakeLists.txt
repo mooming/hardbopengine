@@ -30,14 +30,9 @@ link_directories (${CMAKE_SOURCE_DIR}/lib)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/lib)
 add_library (HSTL STATIC 
  HString.cpp
- HString.cpp
- HUnorderedMap.cpp
  HUnorderedMap.cpp
  HString.h
- HString.h
  HUnorderedMap.h
- HUnorderedMap.h
- HVector.h
  HVector.h
 )
 

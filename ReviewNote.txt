@@ -273,6 +273,104 @@ OBSERVATIONS:
   - CMakeLists.txt has duplicate entries (target_link_libraries, add_dependencies)
 
 ================================================================================
+DIRECTORY: Engine/String (CRITICAL ISSUES)
+================================================================================
+
+CRITICAL ISSUES:
+  - CRITICAL: String::Replace() NOT IMPLEMENTED - asserts false at runtime
+    File: Engine/String/String.cpp:617-620
+    Impact: Any code calling Replace() will crash in debug builds
+    
+  - CRITICAL: String::ReplaceAll(String, String) NOT IMPLEMENTED - asserts false
+    File: Engine/String/String.cpp:650-653
+    Impact: Any code calling ReplaceAll will crash in debug builds
+    
+  - BUG: Format string "%ud" is invalid - should be "%u" or "%hu"
+    File: Engine/String/String.cpp:86
+    Impact: Produces incorrect output like "5d" instead of "5"
+
+COMPILATION ERRORS (LSP Diagnostics):
+  - CRITICAL: 'Container/Array.h' file not found in String.h:6
+    Impact: String module cannot compile without Array.h
+  - CRITICAL: Unknown type name 'Pointer' (String.h:44)
+  - CRITICAL: No template named 'Vector' - should use hbe::HVector or std::vector
+  - CRITICAL: Unknown type name 'Index' - multiple occurrences throughout String.h
+  - CRITICAL: Use of undeclared identifier 'matchCount' (String.h:262, 268, 280)
+    Impact: String class has undefined variables preventing compilation
+
+================================================================================
+DIRECTORY: Engine/OSAL (CRITICAL ISSUES)
+================================================================================
+
+CRITICAL ISSUES:
+  - CRITICAL: VirtualFree on Linux/macOS uses free() instead of munmap()
+    Files: Engine/OSAL/OSXMemory.cpp:29, Engine/OSAL/LinuxMemory.cpp:27
+    Impact: Memory corruption - mmap'd memory must be freed with munmap, not free
+    Fix: Replace free(address) with munmap(address, 0)
+    
+  - CRITICAL: VirtualFree on Windows has inverted error check
+    Files: Engine/OSAL/OSMemory.cpp:112, Engine/OSAL/WindowsMemory.cpp:37
+    Issue: Checks if (result) instead of if (!result) - triggers Assert on SUCCESS
+    Impact: Engine crashes on successful memory deallocation
+    
+  - CRITICAL: VirtualFree in OSMemory.cpp Linux branch references undefined 'size'
+    File: Engine/OSAL/OSMemory.cpp:28
+    Issue: Parameter unnamed but body uses 'size' variable
+    Impact: Should not compile - compilation error
+    
+  - MEDIUM: GetBackTrace() on Linux returns "Not Implemented"
+    File: Engine/OSAL/LinuxDebug.cpp:9
+    Impact: No stack traces on Linux for debugging
+    
+  - MEDIUM: Dual memory implementation files may cause ODR violations
+    Issue: Both OSMemory.cpp (uses __linux__ etc.) and platform-specific files exist
+    Impact: Potential linker errors or undefined behavior
+
+================================================================================
+DIRECTORY: Engine/HSTL (ISSUES)
+================================================================================
+
+ISSUES:
+  - Namespace comment mismatch: closing comment says "namespace HSTL" but actual namespace is "namespace hbe"
+    Files: HVector.h:18, HUnorderedMap.h:14, HString.h:17
+
+================================================================================
+DIRECTORY: Engine/Test (ISSUES)
+================================================================================
+
+ISSUES:
+  - MEDIUM: OSThreadTest::Prepare() is empty with TODO comment
+    File: Engine/OSAL/OSThread.cpp:14-17
+    
+  - LOW: HUnitTest binary checked into source control
+    File: Engine/Test/HUnitTest
+    Impact: Build artifact in repo - should be in .gitignore
+
+================================================================================
+DIRECTORY: Engine/Config (ISSUES)
+================================================================================
+
+ISSUES:
+  - LOW: MAX_NUM_TASK_STREAMS macro has trailing semicolon
+    File: Engine/Config/BuildConfig.h:16
+    Impact: Unusual but not harmful
+    
+  - LOW: __DEBUG__ macro logic has unnecessary #undef and mismatched comments
+    File: Engine/Config/BuildConfig.h:19-22
+
+================================================================================
+DIRECTORY: Engine/Log (ISSUES)
+================================================================================
+
+ISSUES:
+  - MEDIUM: PrintArgs.h uses std::cout directly instead of logging system
+    File: Engine/Log/PrintArgs.h:13, 19
+    Impact: Assert output bypasses engine logging infrastructure
+    
+  - MEDIUM: Engine::ConsoleOutLn uses std::cout directly
+    File: Engine/Engine/Engine.cpp:210
+
+================================================================================
                                 OVERALL SUMMARY
 ================================================================================
 
@@ -287,6 +385,13 @@ STRENGTHS:
   8. Template-based flexible numeric types in Math
   9. String interning for performance
 
+CRITICAL ISSUES REQUIRING IMMEDIATE ATTENTION:
+  1. VirtualFree memory bug on Linux/macOS - uses free() instead of munmap()
+  2. VirtualFree Windows error check is inverted - crashes on success
+  3. VirtualFree Linux in OSMemory.cpp references undefined 'size' variable
+  4. String::Replace() and ReplaceAll() are unimplemented but not stubbed safely
+  5. Format string "%ud" bug produces incorrect output
+
 AREAS FOR IMPROVEMENT:
   1. Exception.h exists but project claims exception-free - verify consistency
   2. Some CMakeLists.txt files have duplicate entries
@@ -294,6 +399,9 @@ AREAS FOR IMPROVEMENT:
   4. PreEngineInit pattern in Engine is unusual
   5. Consider adding more [[nodiscard]] to allocation functions
   6. Some files have inconsistent inline placement (some inline in class, some outside)
+  7. Dual memory implementation files (OSMemory.cpp vs platform-specific) need cleanup
+  8. Linux backtrace not implemented
+  9. Empty unit test for OSThreadTest
 
 CODING STANDARDS COMPLIANCE:
   + Mostly follows .clang-format settings
@@ -301,5 +409,12 @@ CODING STANDARDS COMPLIANCE:
   + Proper use of [[nodiscard]], [[maybe_unused]]
   + Good separation of definition blocks
   + Consistent import ordering (system, then local)
+  - Namespace comments sometimes mismatch actual namespace names
+
+TODO/FIXME/BUG COMMENTS FOUND IN CODE:
+  - String.cpp:617 - TODO: Replace() NOT IMPLEMENTED YET
+  - String.cpp:650 - TODO: ReplaceAll(String, String) NOT IMPLEMENTED YET
+  - OSThread.cpp:16 - TODO: Empty test implementation
+  - LinuxDebug.cpp:9 - Returns "Not Implemented" for backtrace
 
 ================================================================================

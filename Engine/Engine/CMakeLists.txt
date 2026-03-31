@@ -30,8 +30,6 @@ link_directories (${CMAKE_SOURCE_DIR}/lib)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/lib)
 add_library (HEngine STATIC 
  Engine.cpp
- Engine.cpp
- Engine.h
  Engine.h
 )
 
