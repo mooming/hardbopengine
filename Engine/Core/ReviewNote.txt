@@ -1,0 +1,31 @@
+================================================================================
+HARDBOP ENGINE CODE REVIEW - Core Module
+================================================================================
+
+OVERVIEW: Core engine systems - TaskSystem, Debug, Time, Components, Exceptions.
+
+FILES:
+  - TaskSystem.h/cpp     - Multi-threaded task scheduling
+  - Debug.h              - Assert/FatalAssert macros
+  - Task.h               - Task definition
+  - ComponentSystem.h    - Entity-component system
+  - Time.h               - Time utilities
+  - Exception.h          - Exception handling
+
+STRENGTHS:
+  + TaskSystem with main/I/O stream separation
+  + Proper use of std::atomic for thread safety
+  + Branch prediction hints (likely/unlikely) in Debug.h
+  + Compile-time guards for debug-only code
+
+KEY PATTERNS:
+  - StaticString for type-safe names
+  - HVector for internal collections
+  - Task affinity system for load balancing
+
+ISSUES:
+  - Exception.h exists but project claims exception-free - verify consistency
+  - CommandLineArguments - verify it's used correctly
+  - Minor: Inconsistent #endif comment in ComponentSystem.cpp
+
+================================================================================

@@ -1,0 +1,22 @@
+================================================================================
+HARDBOP ENGINE CODE REVIEW - Resource Module
+================================================================================
+
+OVERVIEW: Resource management - buffers, streams, resource manager.
+
+FILES:
+  - Buffer.h, Buffer.cpp        - Binary data container
+  - BufferInputStream.h         - Binary input stream
+  - BufferOutputStream.h        - Binary output stream
+  - ResourceManager.h           - Resource lifecycle management
+  - BufferTypes.h              - Type definitions
+
+STRENGTHS:
+  + Buffer uses RAII with custom releaser callback
+  + Type-safe GetDataAs<T>() template
+  + Move semantics for Buffer
+
+ISSUES:
+  - Consider using std::span for buffer views
+
+================================================================================

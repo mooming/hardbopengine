@@ -30,22 +30,13 @@ link_directories (${CMAKE_SOURCE_DIR}/lib)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/lib)
 add_library (Config STATIC 
  ConfigFile.cpp
- ConfigFile.cpp
- ConfigParam.cpp
  ConfigParam.cpp
  ConfigSystem.cpp
- ConfigSystem.cpp
- EngineConfig.cpp
  EngineConfig.cpp
  BuildConfig.h
- BuildConfig.h
- ConfigFile.h
  ConfigFile.h
  ConfigParam.h
- ConfigParam.h
  ConfigSystem.h
- ConfigSystem.h
- EngineConfig.h
  EngineConfig.h
 )
 

@@ -1,0 +1,25 @@
+================================================================================
+HARDBOP ENGINE CODE REVIEW - Log Module
+================================================================================
+
+OVERVIEW: Logging system with multiple output destinations and filtering.
+
+FILES:
+  - Logger.h           - Main logger with async processing
+  - LogLevel.h         - Log level enum
+  - LogLine.h          - Log entry structure
+  - PrintArgs.h        - Variadic print utilities
+  - LogUtil.h          - Logging utilities
+
+STRENGTHS:
+  + Async logging with dedicated task
+  + Double-buffering for lock-free writes
+  + Category-based filtering with TFilters map
+  + SimpleLogger convenience struct
+  + Multiple output functions (file, stdout)
+
+ISSUES:
+  - MEDIUM: PrintArgs.h uses std::cout directly instead of logging system (PrintArgs.h:13, 19)
+    Impact: Assert output bypasses engine logging infrastructure
+
+================================================================================

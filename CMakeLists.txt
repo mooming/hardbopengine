@@ -29,6 +29,10 @@ link_directories (${CMAKE_SOURCE_DIR}/lib)
 add_subdirectory (Applications)
 add_subdirectory (External)
 add_subdirectory (Engine)
+add_subdirectory (cmake-build-debug)
+add_subdirectory (cmake-build-minsizerel)
+add_subdirectory (cmake-build-release)
+add_subdirectory (cmake-build-relwithdebinfo)
 
 
 

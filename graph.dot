@@ -1,0 +1,39 @@
+digraph MakeBuilder {
+  rankdir=LR;
+  node [shape=box, style=rounded];
+  edge [arrowhead=vee];
+
+  "hardbopengine" [label="hardbopengine\n(None)", style=filled, fillcolor=white];
+  "Applications" [label="Applications\n(None)", style=filled, fillcolor=white];
+  "EngineTest" [label="EngineTest\n(Executable)", style=filled, fillcolor=lightgreen];
+  "ExternalLibraries" [label="ExternalLibraries\n(ExternalLibraries)", style=filled, fillcolor=lightgray];
+  "/Users/anav/Atelier/hardbopengine/External/GLFW" [label="/Users/anav/Atelier/hardbopengine/External/GLFW\n(ExternalCMakeProject)", style=filled, fillcolor=white];
+  "HEngineBase" [label="HEngineBase\n(None)", style=filled, fillcolor=white];
+  "Config" [label="Config\n(StaticLibrary)", style=filled, fillcolor=lightblue];
+  "Container" [label="Container\n(StaticLibrary)", style=filled, fillcolor=lightblue];
+  "Core" [label="Core\n(StaticLibrary)", style=filled, fillcolor=lightblue];
+  "HEngine" [label="HEngine\n(StaticLibrary)", style=filled, fillcolor=lightblue];
+  "HSTL" [label="HSTL\n(StaticLibrary)", style=filled, fillcolor=lightblue];
+  "Log" [label="Log\n(StaticLibrary)", style=filled, fillcolor=lightblue];
+  "Math" [label="Math\n(StaticLibrary)", style=filled, fillcolor=lightblue];
+  "Memory" [label="Memory\n(StaticLibrary)", style=filled, fillcolor=lightblue];
+  "OSAL" [label="OSAL\n(StaticLibrary)", style=filled, fillcolor=lightblue];
+  "Resource" [label="Resource\n(StaticLibrary)", style=filled, fillcolor=lightblue];
+  "String" [label="String\n(StaticLibrary)", style=filled, fillcolor=lightblue];
+  "Test" [label="Test\n(StaticLibrary)", style=filled, fillcolor=lightblue];
+  "EngineTest" -> "Config";
+  "EngineTest" -> "Container";
+  "EngineTest" -> "Core";
+  "EngineTest" -> "HEngine";
+  "EngineTest" -> "HSTL";
+  "EngineTest" -> "Log";
+  "EngineTest" -> "Math";
+  "EngineTest" -> "Memory";
+  "EngineTest" -> "OSAL";
+  "EngineTest" -> "Resource";
+  "EngineTest" -> "String";
+  "EngineTest" -> "Test";
+  "EngineTest" -> "glfw";
+  "Core" -> "OSAL";
+  "Resource" -> "OSAL";
+}

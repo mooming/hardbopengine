@@ -30,30 +30,17 @@ link_directories (${CMAKE_SOURCE_DIR}/lib)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/lib)
 add_library (Resource STATIC 
  Buffer.cpp
- Buffer.cpp
- BufferInputStream.cpp
  BufferInputStream.cpp
  BufferOutputStream.cpp
- BufferOutputStream.cpp
- BufferUtil.cpp
  BufferUtil.cpp
  Resource.cpp
- Resource.cpp
- ResourceManager.cpp
  ResourceManager.cpp
  Buffer.h
- Buffer.h
- BufferInputStream.h
  BufferInputStream.h
  BufferOutputStream.h
- BufferOutputStream.h
- BufferTypes.h
  BufferTypes.h
  BufferUtil.h
- BufferUtil.h
  Resource.h
- Resource.h
- ResourceManager.h
  ResourceManager.h
 )
 
@@ -64,9 +51,8 @@ endif (APPLE)
 install (TARGETS Resource DESTINATION ${CMAKE_SOURCE_DIR}/lib)
 
 
-target_link_libraries (Resource OSAL OSAL)
+target_link_libraries (Resource OSAL)
 
-add_dependencies (Resource OSAL)
 add_dependencies (Resource OSAL)
 
 

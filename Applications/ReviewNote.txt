@@ -1,0 +1,16 @@
+================================================================================
+HARDBOP ENGINE CODE REVIEW - Applications Module
+================================================================================
+
+OVERVIEW: Application entry points.
+
+FILES:
+  - EngineTest/           - Unit test executable
+
+STRENGTHS:
+  + Clean separation between library and application
+
+ISSUES:
+  - CMakeLists.txt has duplicate entries (target_link_libraries, add_dependencies)
+
+================================================================================

@@ -30,66 +30,35 @@ link_directories (${CMAKE_SOURCE_DIR}/lib)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/lib)
 add_library (Core STATIC 
  CommandLineArguments.cpp
- CommandLineArguments.cpp
- Component.cpp
  Component.cpp
  ComponentSystem.cpp
- ComponentSystem.cpp
- Debug.cpp
  Debug.cpp
  RangedTask.cpp
- RangedTask.cpp
- ScopedLock.cpp
  ScopedLock.cpp
  SystemStatistics.cpp
- SystemStatistics.cpp
- Task.cpp
  Task.cpp
  TaskStream.cpp
- TaskStream.cpp
- TaskStreamAffinity.cpp
  TaskStreamAffinity.cpp
  TaskSystem.cpp
- TaskSystem.cpp
- Time.cpp
  Time.cpp
  CommandLineArguments.h
- CommandLineArguments.h
- CommonUtil.h
  CommonUtil.h
  Component.h
- Component.h
- ComponentState.h
  ComponentState.h
  ComponentSystem.h
- ComponentSystem.h
- Constants.h
  Constants.h
  Debug.h
- Debug.h
- Exception.h
  Exception.h
  RangedTask.h
- RangedTask.h
- Runnable.h
  Runnable.h
  ScopedLock.h
- ScopedLock.h
- ScopedTime.h
  ScopedTime.h
  SystemStatistics.h
- SystemStatistics.h
- Task.h
  Task.h
  TaskStream.h
- TaskStream.h
- TaskStreamAffinity.h
  TaskStreamAffinity.h
  TaskSystem.h
- TaskSystem.h
  Time.h
- Time.h
- Types.h
  Types.h
 )
 
@@ -100,9 +69,8 @@ endif (APPLE)
 install (TARGETS Core DESTINATION ${CMAKE_SOURCE_DIR}/lib)
 
 
-target_link_libraries (Core OSAL OSAL)
+target_link_libraries (Core OSAL)
 
-add_dependencies (Core OSAL)
 add_dependencies (Core OSAL)
 
 
