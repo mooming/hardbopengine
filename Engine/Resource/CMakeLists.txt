@@ -1,6 +1,15 @@
 cmake_minimum_required (VERSION 3.12)
 project (Resource)
 
+set (CMAKE_CONFIGURATION_TYPES "Debug;Dev;Release" CACHE STRING "" FORCE)
+if (NOT CMAKE_BUILD_TYPE)
+    set (CMAKE_BUILD_TYPE "Release" CACHE STRING "Build type" FORCE)
+endif ()
+
+set (CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g -O0")
+set (CMAKE_CXX_FLAGS_DEV "${CMAKE_CXX_FLAGS_DEBUG} -O1")
+set (CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3")
+
 set (CMAKE_CXX_STANDARD 23)
 
 if (MSVC)
@@ -21,17 +30,30 @@ link_directories (${CMAKE_SOURCE_DIR}/lib)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/lib)
 add_library (Resource STATIC 
  Buffer.cpp
+ Buffer.cpp
+ BufferInputStream.cpp
  BufferInputStream.cpp
  BufferOutputStream.cpp
+ BufferOutputStream.cpp
+ BufferUtil.cpp
  BufferUtil.cpp
  Resource.cpp
+ Resource.cpp
+ ResourceManager.cpp
  ResourceManager.cpp
  Buffer.h
+ Buffer.h
+ BufferInputStream.h
  BufferInputStream.h
  BufferOutputStream.h
+ BufferOutputStream.h
+ BufferTypes.h
  BufferTypes.h
  BufferUtil.h
+ BufferUtil.h
  Resource.h
+ Resource.h
+ ResourceManager.h
  ResourceManager.h
 )
 
@@ -42,8 +64,9 @@ endif (APPLE)
 install (TARGETS Resource DESTINATION ${CMAKE_SOURCE_DIR}/lib)
 
 
-target_link_libraries (Resource OSAL)
+target_link_libraries (Resource OSAL OSAL)
 
+add_dependencies (Resource OSAL)
 add_dependencies (Resource OSAL)
 
 

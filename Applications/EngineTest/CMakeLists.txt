@@ -1,6 +1,15 @@
 cmake_minimum_required (VERSION 3.12)
 project (EngineTest)
 
+set (CMAKE_CONFIGURATION_TYPES "Debug;Dev;Release" CACHE STRING "" FORCE)
+if (NOT CMAKE_BUILD_TYPE)
+    set (CMAKE_BUILD_TYPE "Release" CACHE STRING "Build type" FORCE)
+endif ()
+
+set (CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g -O0")
+set (CMAKE_CXX_FLAGS_DEV "${CMAKE_CXX_FLAGS_DEBUG} -O1")
+set (CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3")
+
 set (CMAKE_CXX_STANDARD 23)
 
 if (MSVC)
@@ -20,6 +29,7 @@ link_directories (${CMAKE_SOURCE_DIR}/lib)
 
 add_executable (EngineTest
  TestMain.cpp
+ TestMain.cpp
 )
 
 if (APPLE)
@@ -29,20 +39,33 @@ endif (APPLE)
 install (TARGETS EngineTest DESTINATION ${CMAKE_SOURCE_DIR}/bin)
 
 
-target_link_libraries (EngineTest Config Container Core HEngine HSTL Log Math Memory OSAL Resource String Test glfw)
+target_link_libraries (EngineTest Config Config Container Container Core Core HEngine HEngine HSTL HSTL Log Log Math Math Memory Memory OSAL OSAL Resource Resource String String Test Test glfw glfw)
 
 add_dependencies (EngineTest Config)
+add_dependencies (EngineTest Config)
+add_dependencies (EngineTest Container)
 add_dependencies (EngineTest Container)
 add_dependencies (EngineTest Core)
+add_dependencies (EngineTest Core)
+add_dependencies (EngineTest HEngine)
 add_dependencies (EngineTest HEngine)
 add_dependencies (EngineTest HSTL)
+add_dependencies (EngineTest HSTL)
+add_dependencies (EngineTest Log)
 add_dependencies (EngineTest Log)
 add_dependencies (EngineTest Math)
+add_dependencies (EngineTest Math)
+add_dependencies (EngineTest Memory)
 add_dependencies (EngineTest Memory)
 add_dependencies (EngineTest OSAL)
+add_dependencies (EngineTest OSAL)
+add_dependencies (EngineTest Resource)
 add_dependencies (EngineTest Resource)
 add_dependencies (EngineTest String)
+add_dependencies (EngineTest String)
 add_dependencies (EngineTest Test)
+add_dependencies (EngineTest Test)
+add_dependencies (EngineTest glfw)
 add_dependencies (EngineTest glfw)
 
 

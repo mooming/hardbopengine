@@ -1,0 +1,305 @@
+================================================================================
+                            HARDBOP ENGINE CODE REVIEW
+================================================================================
+
+================================================================================
+DIRECTORY: Engine/Config
+================================================================================
+OVERVIEW: Configuration system with key-value parameters and file-based settings.
+
+FILES:
+  - BuildConfig.h     - Build-time configuration flags
+  - ConfigParam.h    - Thread-safe config parameter template
+  - ConfigSystem.h   - Global config registry
+  - ConfigFile.h     - File-based configuration
+  - EngineConfig.h  - Engine-specific settings
+
+OBSERVATIONS:
+  + Good: Template-based ConfigParam with optional atomic support
+  + Good: Conditional compilation for parameter descriptions (ENGINE_PARAM_DESC_ENABLED)
+  + Good: Thread ID tracking in debug builds for thread safety validation
+  ~ Note: std::mutex in ConfigParam may cause contention in high-frequency access
+  - Issue: Constructor uses conditional initialization - could use delegating constructors
+
+STYLE CONCERNS:
+  - Mix of camelCase and PascalCase in internal types (TValue vs template params)
+
+================================================================================
+DIRECTORY: Engine/Container
+================================================================================
+OVERVIEW: Core container implementations with custom allocator support.
+
+FILES:
+  - Array.h          - Static array with allocator template
+  - LinkedList.h     - Linked list implementation
+  - AtomicStackView.h - Lock-free stack
+
+OBSERVATIONS:
+  + Excellent: Array uses placement new for proper object construction
+  + Excellent: Move semantics properly implemented (move constructor, move assignment)
+  + Good: FatalAssert for bounds checking in debug builds
+  + Good: Custom iterator support with begin()/end()
+  + Excellent: Proper RAII destructor with element destruction
+
+PATTERNS:
+  - Array uses swap-and-clear idiom for Clear()
+  - Allocator type is template parameter with DefaultAllocator as default
+
+================================================================================
+DIRECTORY: Engine/Core
+================================================================================
+OVERVIEW: Core engine systems - TaskSystem, Debug, Time, Components, Exceptions.
+
+FILES:
+  - TaskSystem.h/cpp     - Multi-threaded task scheduling
+  - Debug.h              - Assert/FatalAssert macros
+  - Task.h               - Task definition
+  - ComponentSystem.h    - Entity-component system
+  - Time.h               - Time utilities
+  - Exception.h          - Exception handling
+
+OBSERVATIONS:
+  + Excellent: TaskSystem with main/I/O stream separation
+  + Excellent: Proper use of std::atomic for thread safety
+  + Good: Branch prediction hints (likely/unlikely) in Debug.h
+  + Good: Compile-time guards for debug-only code
+  - Issue: Exception.h exists but project claims exception-free
+  - Issue: CommandLineArguments - verify it's used correctly
+
+KEY PATTERNS:
+  - StaticString for type-safe names
+  - HVector for internal collections
+  - Task affinity system for load balancing
+
+================================================================================
+DIRECTORY: Engine/Engine
+================================================================================
+OVERVIEW: Main engine singleton and initialization.
+
+FILES:
+  - Engine.h/cpp    - Main engine class
+
+OBSERVATIONS:
+  + Good: Singleton pattern with Get()
+  + Good: Explicit initialization phases with ready flags
+  + Good: RAII with proper shutdown sequence
+  - Issue: PreEngineInit pattern is unusual - could use constructor delegation
+
+================================================================================
+DIRECTORY: Engine/HSTL
+================================================================================
+OVERVIEW: "HardBop STL" - thin wrappers around standard containers with custom allocators.
+
+FILES:
+  - HVector.h       - std::vector with DefaultAllocator
+  - HString.h       - std::string with custom allocator
+  - HUnorderedMap.h - std::unordered_map with custom allocator
+
+OBSERVATIONS:
+  + Excellent: Simple, clean type aliases
+  + Good: InlinePoolAllocator variant (HInlineVector)
+  + Good: Consistent namespace usage (hbe::)
+
+PATTERNS:
+  - All use hbe::DefaultAllocator as default
+  - HInlineVector uses InlinePoolAllocator for stack-like allocation
+
+================================================================================
+DIRECTORY: Engine/Log
+================================================================================
+OVERVIEW: Logging system with multiple output destinations and filtering.
+
+FILES:
+  - Logger.h           - Main logger with async processing
+  - LogLevel.h         - Log level enum
+  - LogLine.h          - Log entry structure
+  - PrintArgs.h        - Variadic print utilities
+  - LogUtil.h          - Logging utilities
+
+OBSERVATIONS:
+  + Excellent: Async logging with dedicated task
+  + Excellent: Double-buffering for lock-free writes
+  + Good: Category-based filtering with TFilters map
+  + Good: SimpleLogger convenience struct
+  + Good: Multiple output functions (file, stdout)
+
+================================================================================
+DIRECTORY: Engine/Math
+================================================================================
+OVERVIEW: Math library - Vectors, Matrices, Quaternions, Transforms, sampling.
+
+FILES:
+  - Vector2.h, Vector3.h, Vector4.h - Dimension-specific vectors
+  - Matrix2x2.h, Matrix3x3.h, Matrix4x4.h - Matrix classes
+  - Quaternion.h       - Quaternion for rotations
+  - Transform.h        - Affine transforms
+  - AABB.h, OBB.h      - Bounding boxes
+  - MonteCarloIntegrator.h, ImportanceResampling.h, StratifiedSampling.h - Sampling
+
+OBSERVATIONS:
+  + Excellent: Template-based for numeric type flexibility (int, float, double)
+  + Excellent: Union for named and array access (x,y,z vs a[3])
+  + Excellent: Static constexpr constants (Zero, Unity, X, Y, Z, Right, Up, Forward)
+  + Good: Handedness-aware constants (RIGHT_HANDED vs LEFT_HANDED)
+  + Good: Cross-product and angle calculations in Vector3
+
+PATTERNS:
+  - VectorCommonImpl.inl for shared implementation
+  - Type aliases: Int3, Float3, etc.
+
+================================================================================
+DIRECTORY: Engine/Memory
+================================================================================
+OVERVIEW: Memory management - allocators, manager, scoped allocation.
+
+FILES:
+  - MemoryManager.h/cpp     - Global memory manager (singleton)
+  - PoolAllocator.h         - Fixed-size pool allocator
+  - StackAllocator.h        - Stack-based allocator
+  - MonotonicAllocator.h    - Monotonic (arena) allocator
+  - MultiPoolAllocator.h   - Multiple pool sizes
+  - ThreadSafeMultiPoolAllocator.h - Thread-safe variant
+  - InlinePoolAllocator.h   - Stack-allocated pool
+  - InlineMonotonicAllocator.h - Stack-allocated arena
+  - DefaultAllocator.h      - Default STL allocator adapter
+  - SystemAllocator.h      - OS-level allocation
+  - AllocatorScope.h       - Scoped allocator context
+  - Memory.h               - New<T>/Delete<T> helpers
+
+OBSERVATIONS:
+  + Excellent: Comprehensive allocator suite for different use cases
+  + Excellent: MemoryManager singleton with registration system
+  + Excellent: AllocatorScope for automatic context management
+  + Excellent: New<T>/Delete<T> helpers with static_assert for type safety
+  + Good: AllocatorProxy for C-style callbacks
+  + Good: Thread-local ScopedAllocatorID for automatic allocation
+
+KEY PATTERNS:
+  - AllocatorID for tracking
+  - MultiPoolConfigCache for configuration management
+  - PROFILE_ENABLED for detailed statistics
+
+================================================================================
+DIRECTORY: Engine/OSAL
+================================================================================
+OVERVIEW: OS Abstraction Layer - platform-specific implementations.
+
+FILES:
+  - OSThread.h, OSInputOutput.h, OSMemory.h, OSDebug.h
+  - Platform-specific: Windows*.h, OSX*.h, Linux*.h
+  - Intrinsic.h - Compiler intrinsics (likely, unlikely, debugBreak)
+  - Directory.h, File.h - File system abstractions
+  - SourceLocation.h - Source location capture
+
+OBSERVATIONS:
+  + Excellent: Clean platform abstraction
+  + Excellent: Intrinsics properly handle clang, GCC, MSVC
+  + Good: Platform-specific implementations in separate files
+  + Good: File and Directory abstractions
+
+================================================================================
+DIRECTORY: Engine/Resource
+================================================================================
+OVERVIEW: Resource management - buffers, streams, resource manager.
+
+FILES:
+  - Buffer.h, Buffer.cpp        - Binary data container
+  - BufferInputStream.h         - Binary input stream
+  - BufferOutputStream.h        - Binary output stream
+  - ResourceManager.h           - Resource lifecycle management
+  - BufferTypes.h              - Type definitions
+
+OBSERVATIONS:
+  + Good: Buffer uses RAII with custom releaser callback
+  + Good: Type-safe GetDataAs<T>() template
+  + Good: Move semantics for Buffer
+  ~ Note: Consider std::span for buffer views
+
+================================================================================
+DIRECTORY: Engine/String
+================================================================================
+OVERVIEW: String utilities - StaticString, StringBuilder, StaticStringTable.
+
+FILES:
+  - StaticString.h        - Interned string (via StaticStringTable)
+  - StaticStringID.h      - String ID handle
+  - StaticStringTable.h   - String interning table
+  - StringBuilder.h       - Dynamic string builder
+  - InlineStringBuilder.h - Stack-allocated builder
+  - StringUtil.h          - String utilities
+
+OBSERVATIONS:
+  + Excellent: StaticString uses string interning for cheap comparison
+  + Excellent: StaticStringID for efficient hashing
+  + Good: Concept-based constructor (CToZeroTerminateStr)
+  + Good: std::hash specialization for StaticString
+  + Good: InlineStringBuilder avoids heap allocation
+
+PATTERNS:
+  - StaticString is lightweight (just an ID)
+  - Comparison is pointer comparison (after interning)
+
+================================================================================
+DIRECTORY: Engine/Test
+================================================================================
+OVERVIEW: Unit testing framework.
+
+FILES:
+  - TestCollection.h/cpp   - Base test collection class
+  - TestEnv.h/cpp          - Test environment/runner
+  - UnitTestCollection.h   - Test registration entry point
+
+OBSERVATIONS:
+  + Good: Simple, self-contained test framework
+  + Good: TestCollection with Prepare() virtual method
+  + Good: TLogOut (std::stringstream) for test output
+  + Good: ELogLevel for log filtering
+
+PATTERNS:
+  - Tests defined with AddTest(name, lambda)
+  - Tests registered in UnitTestCollection.cpp
+  - Tests run via TestEnv::GetEnv().Start()
+
+================================================================================
+DIRECTORY: Applications
+================================================================================
+OVERVIEW: Application entry points.
+
+FILES:
+  - EngineTest/           - Unit test executable
+
+OBSERVATIONS:
+  + Clean separation between library and application
+  - CMakeLists.txt has duplicate entries (target_link_libraries, add_dependencies)
+
+================================================================================
+                                OVERALL SUMMARY
+================================================================================
+
+STRENGTHS:
+  1. Comprehensive memory allocator system for different use cases
+  2. Clean module organization (Config, Container, Core, Memory, Math, etc.)
+  3. Good use of C++23 features (concepts, static_assert, std::atomic)
+  4. Proper RAII and move semantics throughout
+  5. Consistent naming conventions (PascalCase for types, hbe namespace)
+  6. Platform abstraction with OSAL
+  7. Async logging system
+  8. Template-based flexible numeric types in Math
+  9. String interning for performance
+
+AREAS FOR IMPROVEMENT:
+  1. Exception.h exists but project claims exception-free - verify consistency
+  2. Some CMakeLists.txt files have duplicate entries
+  3. ConfigParam constructor could use delegating constructors
+  4. PreEngineInit pattern in Engine is unusual
+  5. Consider adding more [[nodiscard]] to allocation functions
+  6. Some files have inconsistent inline placement (some inline in class, some outside)
+
+CODING STANDARDS COMPLIANCE:
+  + Mostly follows .clang-format settings
+  + Uses #pragma once for header guards
+  + Proper use of [[nodiscard]], [[maybe_unused]]
+  + Good separation of definition blocks
+  + Consistent import ordering (system, then local)
+
+================================================================================
