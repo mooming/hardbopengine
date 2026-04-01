@@ -2,6 +2,11 @@
 
 #include "OSMemory.h"
 
+// Ensure this file only compiles on Windows
+#if !defined(PLATFORM_WINDOWS)
+    #error "WindowsMemory.cpp should only be compiled on Windows platform"
+#endif
+
 #ifdef PLATFORM_WINDOWS
 #include <errhandlingapi.h>
 #include <malloc.h>
