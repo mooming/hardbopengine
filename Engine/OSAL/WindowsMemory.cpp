@@ -2,10 +2,8 @@
 
 #include "OSMemory.h"
 
-// Ensure this file only compiles on Windows
-#if !defined(PLATFORM_WINDOWS)
-    #error "WindowsMemory.cpp should only be compiled on Windows platform"
-#endif
+// Ensure this file only compiles on Windows platform
+static_assert(PLATFORM_WINDOWS, "WindowsMemory.cpp should only be compiled on Windows platform");
 
 #ifdef PLATFORM_WINDOWS
 #include <errhandlingapi.h>

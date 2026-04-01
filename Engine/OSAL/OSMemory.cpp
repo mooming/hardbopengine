@@ -10,10 +10,14 @@
 // are not compiled. If PLATFORM_LINUX, PLATFORM_OSX, or PLATFORM_WINDOWS is defined,
 // the corresponding platform-specific file should be used instead.
 
+// Ensure a valid platform is defined
+#if !defined(PLATFORM_LINUX) && !defined(PLATFORM_OSX) && !defined(PLATFORM_WINDOWS)
+    #error "No platform macro defined. Please define one of: PLATFORM_LINUX, PLATFORM_OSX, PLATFORM_WINDOWS"
+#endif
+
 // Skip fallback implementation if platform-specific files are being compiled
 #if defined(PLATFORM_LINUX) || defined(PLATFORM_OSX) || defined(PLATFORM_WINDOWS)
     // Platform-specific implementation will handle this
-    // Include empty implementation to avoid linker errors
 #elif defined(__linux__)
 #include <cerrno>
 #include <cstdlib>
