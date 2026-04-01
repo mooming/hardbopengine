@@ -1,18 +1,12 @@
 # HardBop Engine
 
-<p>
- It's not a trivial work to produce a multiplatform software that works with Unix/Linux, Windows, and Mac OS.
-Many game engines multiple platforms more than that though, they are very complex and huge to use for casual applications.
-</p>
+A lightweight, multiplatform C++23 game engine designed for casual applications and experimental projects.
 
-<p>
- This project is created for my personal software development and testing bed for study and experiments. Therefore, it
-should be simple and easy to learn and use if users are familiar with standard C/C++ library.
-</p>
+## Overview
 
-# Prerequisites
+HardBop Engine provides a comprehensive set of modules for game development while maintaining simplicity and ease of use. It supports Windows, macOS, and Linux with a unified API across platforms.
 
-## Required Dependencies
+## Prerequisites
 
 ### All Platforms
 - **CMake 3.12+**
@@ -44,8 +38,9 @@ choco install cmake visualstudio2022buildtools
 choco install glfw
 ```
 
-### Vulkan SDK (for running tests)
-Run the appropriate script for your platform:
+### Vulkan SDK (Optional - for running tests)
+If Vulkan SDK is not installed, tests will still run but Vulkan-related features will be disabled with a compile-time warning. To enable full test support:
+
 ```bash
 # macOS
 ./Scripts/InstallVulkanMacOS.sh
@@ -57,44 +52,207 @@ Run the appropriate script for your platform:
 Scripts\InstallVulkanWindows.bat
 ```
 
-# Building
+## Building
 
+### Quick Start
 ```bash
 # Create build directory
 mkdir -p build && cd build
 
-# Configure with CMake
+# Configure with CMake (Debug/Dev/Release)
 cmake .. -DCMAKE_BUILD_TYPE=Release
 
-# Build
+# Build (use -j for parallel compilation)
 make -j$(nproc)
 
 # Run tests
-./bin/EngineTest
+./build/Applications/EngineTest/EngineTest
 ```
 
-# Directory Structure
+### Build Types
+- **Debug**: `-g -O0` - Full debug symbols, no optimization
+- **Dev**: `-O1` - Light optimization for development
+- **Release**: `-O3` - Full optimization for production
 
-Hardbop Engine<br>
-|<br>
-|- Applications: Base directory for applications based on the hardbop engine.<br>
-|- Engine: Base engine directory<br>
-|- External: Base directory for external solutions<br>
-|- Scripts: Build and utility scripts<br>
-|- lib: Built static libraries<br>
-|- bin: Built executables<br>
+### Running Tests
+```bash
+# Build and run tests
+cd build
+make EngineTest
+./Applications/EngineTest/EngineTest
+```
 
+## Directory Structure
 
-# Modules
+```
+HardBopEngine/
+├── Applications/          # Application entry points
+│   └── EngineTest/       # Unit test executable
+├── Engine/               # Core engine modules
+│   ├── Config/          # Configuration system
+│   ├── Container/       # Core containers (Array, LinkedList)
+│   ├── Core/            # Task system, Debug, Time, Components
+│   ├── Engine/          # Main engine singleton
+│   ├── HSTL/            # HardBop STL (HVector, HString, HMap)
+│   ├── Log/             # Async logging system
+│   ├── Math/            # Vectors, Matrices, Quaternions
+│   ├── Memory/          # Custom allocators
+│   ├── OSAL/            # OS Abstraction Layer
+│   ├── Resource/        # Buffer, Stream, Resource Manager
+│   ├── String/          # String utilities
+│   └── Test/            # Unit testing framework
+├── External/            # Third-party libraries (GLFW)
+├── Scripts/             # Build and utility scripts
+├── lib/                 # Built static libraries (generated)
+└── bin/                 # Built executables (generated)
+```
 
-<p>
-Basically, each module is an individual library.
-</p>
+## Module Descriptions
 
-## Config
+### Config
+Thread-safe configuration parameters with atomic support. Key-value storage for runtime tweaking.
 
-This module provides a simple key-value database for all tweakable config values.
-ConfigParam could be thread-safe if IsAtomic=true.
-ConfigFile represents a config file. It can have only string values.
+- `ConfigParam<T>` - Thread-safe config parameter
+- `ConfigFile` - File-based configuration (string values only)
 
+### Container
+Core data structures with custom allocator support.
 
+- `Array<T>` - Static array with allocator template
+- `LinkedList<T>` - Linked list implementation
+- `AtomicStackView<T>` - Lock-free stack
+
+### Core
+Essential engine systems.
+
+- `TaskSystem` - Multi-threaded task scheduling with stream separation
+- `Debug` - Assert macros with branch prediction hints
+- `ComponentSystem` - Entity-component system
+- `Time` - Time utilities
+
+### HSTL (HardBop STL)
+Thin wrappers around standard containers with custom allocators.
+
+- `HVector<T>` - std::vector with DefaultAllocator
+- `HString<T>` - std::string with custom allocator
+- `HUnorderedMap<K,V>` - std::unordered_map with custom allocator
+
+### Log
+Asynchronous logging system.
+
+- Double-buffered, lock-free writes
+- Category-based filtering
+- Multiple output destinations
+
+### Math
+Comprehensive math library.
+
+- `Vector2`, `Vector3`, `Vector4` - Dimension-specific vectors
+- `Matrix2x2`, `Matrix3x3`, `Matrix4x4` - Matrix classes
+- `Quaternion` - Rotation representation
+- `Transform` - Affine transformations
+- `AABB`, `OBB` - Bounding boxes
+
+### Memory
+Custom memory management system.
+
+- `PoolAllocator` - Fixed-size pool
+- `StackAllocator` - Stack-based allocation
+- `MonotonicAllocator` - Arena allocator
+- `MultiPoolAllocator` - Multiple pool sizes
+- `ThreadSafeMultiPoolAllocator` - Thread-safe variant
+
+### OSAL (OS Abstraction Layer)
+Platform-specific implementations.
+
+- Thread management
+- File I/O
+- Memory operations
+- Debug utilities
+
+### Resource
+Resource management.
+
+- `Buffer` - Binary data container
+- `BufferInputStream` / `BufferOutputStream` - Binary streams
+- `ResourceManager` - Resource lifecycle management
+
+### String
+String utilities with interning.
+
+- `StaticString` - Interned string for cheap comparison
+- `String` - Main string class with full functionality
+- `StringBuilder` - Dynamic string building
+- `InlineStringBuilder` - Stack-allocated builder
+
+## Usage Examples
+
+### Basic Engine Initialization
+```cpp
+#include "Engine/Engine.h"
+
+int main(int argc, const char* argv[])
+{
+    hbe::Engine engine;
+    engine.Initialize(argc, argv);
+    
+    // Your game logic here
+    
+    engine.WaitForEnd();
+    return 0;
+}
+```
+
+### Custom Allocator
+```cpp
+#include "Memory/PoolAllocator.h"
+
+void Example()
+{
+    PoolAllocator allocator(1024 * 1024, 64); // 1MB pool, 64-byte blocks
+    
+    void* ptr = allocator.Allocate(64);
+    allocator.Deallocate(ptr);
+}
+```
+
+### String Operations
+```cpp
+#include "String/String.h"
+
+void Example()
+{
+    hbe::String str("Hello World");
+    
+    // Replace
+    auto result = str.Replace("World", "Engine"); // "Hello Engine"
+    
+    // ReplaceAll
+    auto all = str.ReplaceAll("o", "0"); // "Hell0 W0rld"
+}
+```
+
+## Known Issues
+
+### Build Issues
+- **Vulkan SDK not found**: If you see a compile warning about Vulkan, install it using the scripts in `Scripts/` folder, or tests will run without Vulkan support (sufficient for most testing).
+
+### Platform-Specific
+- **Linux backtrace**: `OS::GetBackTrace()` returns "Not Implemented" on Linux - no stack traces available.
+- **macOS Vulkan**: Requires MoltenVK or LunarG SDK for full Vulkan support.
+
+### Code Quality
+- **OSAL CMakeLists.txt**: Contains duplicate file entries in original version - may need cleanup.
+- **ODR Violation Risk**: Platform-specific files and generic OSMemory.cpp both define memory functions - ensure only one is compiled per platform.
+
+### Deprecated/Unfinished
+- **String::Replace/ReplaceAll**: Now implemented (was previously stubs).
+- **OSThreadTest**: Empty test placeholder.
+
+## Contributing
+
+This is a personal project used for learning and experimentation. Issues and pull requests are welcome but may have limited response time.
+
+## License
+
+See repository for license information.
