@@ -82,6 +82,36 @@ make EngineTest
 ./Applications/EngineTest/EngineTest
 ```
 
+## Configuration
+
+The engine can be configured via `Engine/Config/BuildConfig.h`. Most settings work out of the box with defaults.
+
+### Key Configuration Options
+
+| Category | Setting | Default | Description |
+|----------|---------|---------|-------------|
+| Engine | `MAX_NUM_TASK_STREAMS` | 64 | Maximum task streams |
+| Engine | `ENGINE_LOG_ENABLED` | 1 | Enable logging system |
+| Memory | `__MEMORY_VERIFICATION__` | 0 | Verify memory integrity |
+| Memory | `__FORCE_USE_SYSTEM_MALLOC__` | 0 | Use system malloc instead of custom allocators |
+| Log | `LOG_ENABLED` | 1 | Master log switch |
+| Profile | `PROFILE_ENABLED` | 0 | Enable performance profiling |
+| Math | `__RIGHT_HANDED__` | - | Coordinate system (default right-handed) |
+
+### Platform Macros
+Automatically defined based on compiler:
+- `PLATFORM_LINUX` - Linux
+- `PLATFORM_OSX` - macOS  
+- `PLATFORM_WINDOWS` - Windows
+
+### Vulkan SDK
+Auto-detected at compile time using `__has_include`. If not found:
+- `VULKAN_SDK` is set to 0
+- Compile-time warning is shown
+- Code still compiles without Vulkan support
+
+For full Vulkan support, run the installation scripts in `Scripts/`.
+
 ## Directory Structure
 
 ```
