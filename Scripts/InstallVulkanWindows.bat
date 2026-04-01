@@ -1,62 +1,65 @@
 @echo off
-REM Install Vulkan SDK on Windows using Chocolatey or manual download
+REM Install Vulkan SDK for Windows under project directory
+REM Downloads LunarG Vulkan SDK and extracts to External\VulkanSDK
+
+setlocal enabledelayedexpansion
+
+set "SCRIPT_DIR=%~dp0"
+set "PROJECT_ROOT=%SCRIPT_DIR%.."
+set "VULKAN_DIR=%PROJECT_ROOT%\External\VulkanSDK"
 
 echo === Vulkan SDK Installer for Windows ===
+echo Installing to: %VULKAN_DIR%
 
-REM Check if Chocolatey is installed
+REM Check if already installed
+if exist "%VULKAN_DIR%\include\vulkan\vulkan.h" (
+    echo Vulkan SDK already installed at %VULKAN_DIR%
+    echo To rebuild with Vulkan SDK:
+    echo   cd build
+    echo   cmake .. -DCMAKE_BUILD_TYPE=Release
+    echo   make EngineTest
+    exit /b 0
+)
+
+REM Try Chocolatey first
 where choco >nul 2>&1
 if %ERRORLEVEL% EQU 0 (
-    echo Chocolatey detected
-    goto :choco_install
-)
-
-REM Check if Vulkan is already available
-dir /s /b C:\vulkan\vulkan.h 2>nul >nul
-if %ERRORLEVEL% EQU 0 (
-    echo Vulkan SDK is already installed!
-    exit /b 0
-)
-
-dir /s /b "C:\Program Files (x86)\Vulkan\vulkan.h" 2>nul >nul
-if %ERRORLEVEL% EQU 0 (
-    echo Vulkan SDK is already installed!
-    exit /b 0
-)
-
-echo Vulkan SDK not found.
-
-REM Try Chocolatey
-echo Attempting to install via Chocolatey...
-choco install vulkan-sdk -y >nul 2>&1
-if %ERRORLEVEL% EQU 0 (
-    echo Vulkan SDK installed via Chocolatey
-    goto :verify
+    echo Attempting to install via Chocolatey...
+    choco install vulkan-sdk -y >nul 2>&1
+    if %ERRORLEVEL% EQU 0 (
+        echo Installed via Chocolatey. Copying headers to project directory...
+        mkdir "%VULKAN_DIR%\include\vulkan" 2>nul
+        
+        REM Find and copy Vulkan headers
+        for /f "delims=" %%i in ('dir /s /b "C:\Program Files*\vulkan\vulkan.h" 2^>nul') do (
+            xcopy "%%i" "%VULKAN_DIR%\include\vulkan\" /Y >nul 2>&1
+            goto :copy_done
+        )
+        
+        :copy_done
+        if exist "%VULKAN_DIR%\include\vulkan\vulkan.h" (
+            echo Vulkan SDK installed from Chocolatey packages!
+            goto :build_steps
+        )
+    )
 )
 
 :manual_install
 echo.
-echo Please install Vulkan SDK manually:
+echo Please download Vulkan SDK manually:
 echo   1. Download from: https://www.lunarg.com/vulkan-sdk/
-echo   2. Run the installer
-echo   3. Restart your terminal and try building again
+echo   2. Extract to: %VULKAN_DIR%
+echo.
+echo Or install via Chocolatey:
+echo   choco install vulkan-sdk
 echo.
 exit /b 1
 
-:choco_install
-choco install vulkan-sdk -y
-if %ERRORLEVEL% NEQ 0 (
-    echo Chocolatey install failed
-    goto :manual_install
-)
-
-:verify
-dir /s /b C:\vulkan\vulkan.h 2>nul >nul
-if %ERRORLEVEL% EQU 0 (
-    echo Vulkan SDK installed successfully!
-) else (
-    echo Installation completed but vulkan.h not found
-    goto :manual_install
-)
-
+:build_steps
 echo.
-echo Note: You may need to restart your terminal or IDE for changes to take effect.
+echo To build with Vulkan SDK:
+echo   cd build
+echo   cmake .. -DCMAKE_BUILD_TYPE=Release
+echo   make EngineTest
+
+endlocal
