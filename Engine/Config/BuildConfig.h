@@ -12,22 +12,22 @@
 // Platform Detection
 // =============================================================================
 // Automatically detected from compiler macros:
-// Only ONE of these should be defined:
+// Only ONE of these should be defined (as 1):
 //   - PLATFORM_LINUX  : Running on Linux
 //   - PLATFORM_OSX    : Running on macOS
 //   - PLATFORM_WINDOWS: Running on Windows
 
 #ifdef __linux__
-    #define PLATFORM_LINUX
+    #define PLATFORM_LINUX 1
 #elif defined __APPLE__
-    #define PLATFORM_OSX
+    #define PLATFORM_OSX 1
 #elif defined _WIN32
-    #define PLATFORM_WINDOWS
+    #define PLATFORM_WINDOWS 1
 #endif
 
 // Ensure exactly one platform is defined
 #if !defined(PLATFORM_LINUX) && !defined(PLATFORM_OSX) && !defined(PLATFORM_WINDOWS)
-    #error "No platform defined. Please define PLATFORM_LINUX, PLATFORM_OSX, or PLATFORM_WINDOWS."
+    static_assert(false, "No platform defined. Please define PLATFORM_LINUX, PLATFORM_OSX, or PLATFORM_WINDOWS.");
 #endif
 
 // =============================================================================
