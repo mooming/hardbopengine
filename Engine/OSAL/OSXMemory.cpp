@@ -2,6 +2,11 @@
 
 #include "OSMemory.h"
 
+// Ensure this file only compiles on macOS
+#if !defined(PLATFORM_OSX)
+    #error "OSXMemory.cpp should only be compiled on macOS platform"
+#endif
+
 #ifdef PLATFORM_OSX
 #include <cerrno>
 #include <iostream>
