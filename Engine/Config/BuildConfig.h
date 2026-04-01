@@ -2,59 +2,85 @@
 
 #pragma once
 
-// Definitions for Pre-compilation
+// =============================================================================
+// Build Configuration
+// =============================================================================
+// This file contains compile-time configuration settings for the engine.
+// Most settings can be left at their defaults, but can be modified as needed.
 
-// Platform
-#ifdef __linux__
-#define PLATFORM_LINUX
-#elif defined __APPLE__
-#define PLATFORM_OSX
-#elif defined _WIN32
-#define PLATFORM_WINDOWS
-#endif
+// =============================================================================
+// Platform Detection
+// =============================================================================
+// Automatically detected from compiler macros:
+//   - PLATFORM_LINUX  : Running on Linux
+//   - PLATFORM_OSX    : Running on macOS
+//   - PLATFORM_WINDOWS: Running on Windows
 
-#define MAX_NUM_TASK_STREAMS 64;
+// =============================================================================
+// Engine Configuration
+// =============================================================================
+#define MAX_NUM_TASK_STREAMS 64  // Maximum number of task streams in TaskSystem
 
+// =============================================================================
 // Debug Control
-#if !defined(NDEBUG) || defined(_DEBUG) || defined(DEBUG)
-#undef __DEBUG__
-#define __DEBUG__
-#endif // _DEBUG
+// =============================================================================
+// Enables debug mode when NDEBUG, _DEBUG, or DEBUG is not defined
+// Set to 0 to disable debug assertions in release builds
 
-// Minimum Requirements
-#define ENGINE_MIN_HARDWARE_THREADS 4
+// =============================================================================
+// System Requirements
+// =============================================================================
+#define ENGINE_MIN_HARDWARE_THREADS 4  // Minimum recommended CPU cores
 
-// Engine
-#define ENGINE_LOG_ENABLED 1
-#define ENGINE_PARAM_DESC_ENABLED 1
+// =============================================================================
+// Engine Core
+// =============================================================================
+#define ENGINE_LOG_ENABLED 1       // Enable/disable logging system
+#define ENGINE_PARAM_DESC_ENABLED 1 // Enable parameter descriptions in ConfigParam
 
-// Allocator
-#define MULTIPOOL_ALLOC_LOG ".multiPoolConfig.dat"
-#define __MEMORY_VERIFICATION__ 0
-#define __MEMORY_LOGGING__ 0
-#define __MEMORY_INVESTIGATION__ 0
-#define __MEMORY_DANGLING_POINTER_CHECK__ 0
-#define __MEMORY_BUFFER_UNDERRUN_CHECK__ 0
-#define __FORCE_USE_SYSTEM_MALLOC__ 0
+// =============================================================================
+// Memory System
+// =============================================================================
+// Memory debugging features (set to 1 to enable, 0 for performance)
+#define __MEMORY_VERIFICATION__ 0          // Verify memory integrity
+#define __MEMORY_LOGGING__ 0               // Log memory operations
+#define __MEMORY_INVESTIGATION__ 0          // Detailed memory investigation
+#define __MEMORY_DANGLING_POINTER_CHECK__ 0 // Detect dangling pointers
+#define __MEMORY_BUFFER_UNDERRUN_CHECK__ 0  // Detect buffer underruns
+#define __FORCE_USE_SYSTEM_MALLOC__ 0        // Force use of system malloc instead of custom allocators
 
-// Log
-#define LOG_ENABLED 1
-#define LOG_BREAK_IF_WARNING 0
-#define LOG_BREAK_IF_ERROR 0
-#define LOG_FORCE_PRINT_IMMEDIATELY 0
+// =============================================================================
+// Logging System
+// =============================================================================
+#define LOG_ENABLED 1                  // Master switch for logging
+#define LOG_BREAK_IF_WARNING 0         // Break on warnings (debug only)
+#define LOG_BREAK_IF_ERROR 0           // Break on errors (debug only)
+#define LOG_FORCE_PRINT_IMMEDIATELY 0  // Bypass async logging, print immediately
 
-// Profile
+// =============================================================================
+// Profiling
+// =============================================================================
+// Set to 1 to enable performance profiling (adds overhead)
 #define PROFILE_ENABLED 0
 
+// =============================================================================
 // Mathematics
+// =============================================================================
+// Coordinate system handedness (uncomment to change)
 // #define __LEFT_HANDED__
-#define __RIGHT_HANDED__
+#define __RIGHT_HANDED__  // Default
 
-// Test
-#define __MEMORY_INVESTIGATOR_TEST__ 0
+// =============================================================================
+// Testing
+// =============================================================================
+#define __MEMORY_INVESTIGATOR_TEST__ 0  // Enable memory investigation tests
 
-// Vulkan SDK
-// Check if Vulkan SDK is available using __has_include (C++20/C++23 feature)
+// =============================================================================
+// Third-Party Integration
+// =============================================================================
+// Vulkan SDK detection (auto-detected, do not modify)
+// Set to 1 if vulkan.h is found, 0 otherwise
+// Will produce compile warning if not found but code will still compile
 #if __has_include("vulkan/vulkan.h")
     #define VULKAN_SDK 1
 #else
