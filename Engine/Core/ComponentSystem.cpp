@@ -17,10 +17,10 @@ namespace hbe
 #ifdef __DEBUG__
 			constexpr int componentNum = 1024;
 			constexpr int updateNum = 60;
-#else //__DEBUG__
+#else // !__DEBUG__
 			constexpr int componentNum = 4096 * 5;
 			constexpr int updateNum = 600;
-#endif //__DEBUG__
+#endif // __DEBUG__
 
 			struct Test : public Component
 			{
