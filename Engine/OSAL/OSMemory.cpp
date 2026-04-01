@@ -160,7 +160,7 @@ namespace hbe
 			constexpr size_t allocSize = 4096;
 			void* ptr = OS::VirtualAlloc(allocSize);
 
-			if (ptr == nullptr || ptr == (void*)-1)
+			if (ptr == nullptr)
 			{
 				ls << "VirtualAlloc failed" << lferr;
 				return;
@@ -236,7 +236,7 @@ namespace hbe
 				size_t size = (i + 1) * OS::GetPageSize();
 				void* ptr = OS::VirtualAlloc(size);
 
-				if (ptr == nullptr || ptr == (void*)-1)
+				if (ptr == nullptr)
 				{
 					ls << "VirtualAlloc failed at cycle " << i << lferr;
 					allOk = false;
