@@ -43,6 +43,11 @@ void OS::VirtualFree(void* address, std::size_t n)
 	}
 }
 
+bool OS::IsValidAllocation(void* ptr)
+{
+	return ptr != nullptr;
+}
+
 void OS::ProtectMemory(void* address, size_t n)
 {
 	DWORD oldProtect = 0;

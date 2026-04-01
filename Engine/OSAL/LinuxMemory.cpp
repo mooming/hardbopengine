@@ -28,6 +28,11 @@ void* OS::VirtualAlloc(size_t size)
 // Using free() on mmap'd memory causes undefined behavior and heap corruption
 void OS::VirtualFree(void* address, std::size_t size) { munmap(address, size); }
 
+bool OS::IsValidAllocation(void* ptr)
+{
+	return ptr != nullptr && ptr != reinterpret_cast<void*>(-1);
+}
+
 void OS::ProtectMemory(void* address, size_t n)
 {
 	auto result = mprotect(address, n, PROT_NONE);
