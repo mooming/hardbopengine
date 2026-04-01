@@ -6,7 +6,15 @@
 #include "Core/Debug.h"
 #include "Intrinsic.h"
 
-#ifdef __linux__
+// OSMemory.cpp serves as a fallback implementation when platform-specific files
+// are not compiled. If PLATFORM_LINUX, PLATFORM_OSX, or PLATFORM_WINDOWS is defined,
+// the corresponding platform-specific file should be used instead.
+
+// Skip fallback implementation if platform-specific files are being compiled
+#if defined(PLATFORM_LINUX) || defined(PLATFORM_OSX) || defined(PLATFORM_WINDOWS)
+    // Platform-specific implementation will handle this
+    // Include empty implementation to avoid linker errors
+#elif defined(__linux__)
 #include <cerrno>
 #include <cstdlib>
 #include <iostream>
