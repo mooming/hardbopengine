@@ -2,10 +2,8 @@
 
 #include "OSMemory.h"
 
-// Ensure this file only compiles on Linux
-#if !defined(PLATFORM_LINUX)
-    #error "LinuxMemory.cpp should only be compiled on Linux platform"
-#endif
+// Ensure this file only compiles on Linux platform
+static_assert(PLATFORM_LINUX, "LinuxMemory.cpp should only be compiled on Linux platform");
 
 #ifdef PLATFORM_LINUX
 #include <cerrno>
