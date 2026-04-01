@@ -12,9 +12,23 @@
 // Platform Detection
 // =============================================================================
 // Automatically detected from compiler macros:
+// Only ONE of these should be defined:
 //   - PLATFORM_LINUX  : Running on Linux
 //   - PLATFORM_OSX    : Running on macOS
 //   - PLATFORM_WINDOWS: Running on Windows
+
+#ifdef __linux__
+    #define PLATFORM_LINUX
+#elif defined __APPLE__
+    #define PLATFORM_OSX
+#elif defined _WIN32
+    #define PLATFORM_WINDOWS
+#endif
+
+// Ensure exactly one platform is defined
+#if !defined(PLATFORM_LINUX) && !defined(PLATFORM_OSX) && !defined(PLATFORM_WINDOWS)
+    #error "No platform defined. Please define PLATFORM_LINUX, PLATFORM_OSX, or PLATFORM_WINDOWS."
+#endif
 
 // =============================================================================
 // Engine Configuration
