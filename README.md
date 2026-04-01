@@ -133,6 +133,7 @@ HardBopEngine/
 │   └── Test/            # Unit testing framework
 ├── External/            # Third-party libraries (GLFW)
 ├── Scripts/             # Build and utility scripts
+├── docs/                 # Documentation
 ├── lib/                 # Built static libraries (generated)
 └── bin/                 # Built executables (generated)
 ```
@@ -261,6 +262,18 @@ void Example()
     auto all = str.ReplaceAll("o", "0"); // "Hell0 W0rld"
 }
 ```
+
+## Documentation
+
+### Allocator Guide
+Detailed guide for using custom memory allocators:
+- `docs/AllocatorGuide.md`
+
+Topics covered:
+- All 9 allocator types (Pool, Stack, Monotonic, MultiPool, etc.)
+- Usage examples and code snippets
+- Profile-guided optimization for MultiPoolAllocator
+- Configuration flags and best practices
 
 ## Known Issues
 
