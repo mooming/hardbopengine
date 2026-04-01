@@ -71,6 +71,7 @@ namespace Test
 			testEnv.AddTestCollection<OSDebugTest>();
 			testEnv.AddTestCollection<OSInputOutputTest>();
 			testEnv.AddTestCollection<OSThreadTest>();
+			testEnv.AddTestCollection<OSMemoryTest>();
 			testEnv.AddTestCollection<BufferTest>();
 			testEnv.AddTestCollection<BufferInputStreamTest>();
 			testEnv.AddTestCollection<BufferOutputStreamTest>();

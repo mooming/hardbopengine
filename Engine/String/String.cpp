@@ -891,6 +891,191 @@ namespace hbe
 			}
 		});
 
+		// BUG FIX TEST: Unsigned short constructor - format string was "%ud" instead of "%u"
+		AddTest("Unsigned Short Constructor", [this](auto& ls)
+		{
+			unsigned short value = 42;
+			String str(value);
+			ls << "Unsigned short 42 = " << str.c_str() << lf;
+
+			if (str != "42")
+			{
+				ls << "Unsigned short constructor failed: expected '42', got '" << str.c_str() << "'" << lferr;
+			}
+
+			unsigned short zero = 0;
+			String strZero(zero);
+			if (strZero != "0")
+			{
+				ls << "Unsigned short constructor failed for 0: expected '0', got '" << strZero.c_str() << "'" << lferr;
+			}
+
+			unsigned short maxVal = 65535;
+			String strMax(maxVal);
+			if (strMax != "65535")
+			{
+				ls << "Unsigned short constructor failed for 65535: expected '65535', got '" << strMax.c_str() << "'" << lferr;
+			}
+		});
+
+		// BUG FIX TEST: String::Replace() - was unimplemented and asserted false
+		AddTest("Replace Single", [this](auto& ls)
+		{
+			String str("Hello World");
+			auto result = str.Replace("World", "Engine");
+			ls << "Replace: " << result.c_str() << lf;
+
+			if (result != "Hello Engine")
+			{
+				ls << "Replace failed: expected 'Hello Engine', got '" << result.c_str() << "'" << lferr;
+			}
+		});
+
+		AddTest("Replace Not Found", [this](auto& ls)
+		{
+			String str("Hello World");
+			auto result = str.Replace("Foo", "Bar");
+			ls << "Replace not found: " << result.c_str() << lf;
+
+			if (result != "Hello World")
+			{
+				ls << "Replace not found should return original: expected 'Hello World', got '" << result.c_str() << "'" << lferr;
+			}
+		});
+
+		AddTest("Replace With Offset", [this](auto& ls)
+		{
+			String str("foo bar foo baz");
+			auto result = str.Replace("foo", "XXX", 5);
+			ls << "Replace with offset: " << result.c_str() << lf;
+
+			if (result != "foo bar XXX baz")
+			{
+				ls << "Replace with offset failed: expected 'foo bar XXX baz', got '" << result.c_str() << "'" << lferr;
+			}
+		});
+
+		AddTest("Replace Empty From", [this](auto& ls)
+		{
+			String str("Hello");
+			auto result = str.Replace("", "X");
+			ls << "Replace empty from: " << result.c_str() << lf;
+
+			if (result != "Hello")
+			{
+				ls << "Replace empty from should return clone: expected 'Hello', got '" << result.c_str() << "'" << lferr;
+			}
+		});
+
+		AddTest("Replace Longer To", [this](auto& ls)
+		{
+			String str("abc");
+			auto result = str.Replace("b", "XYZ");
+			ls << "Replace longer to: " << result.c_str() << lf;
+
+			if (result != "aXYZc")
+			{
+				ls << "Replace longer to failed: expected 'aXYZc', got '" << result.c_str() << "'" << lferr;
+			}
+		});
+
+		AddTest("Replace Shorter To", [this](auto& ls)
+		{
+			String str("Hello World");
+			auto result = str.Replace(" World", "");
+			ls << "Replace shorter to: " << result.c_str() << lf;
+
+			if (result != "Hello")
+			{
+				ls << "Replace shorter to failed: expected 'Hello', got '" << result.c_str() << "'" << lferr;
+			}
+		});
+
+		// BUG FIX TEST: String::ReplaceAll(String, String) - was unimplemented and asserted false
+		AddTest("ReplaceAll Single Char Pattern", [this](auto& ls)
+		{
+			String str("a.b.c.d");
+			auto result = str.ReplaceAll(String("."), String("-"));
+			ls << "ReplaceAll: " << result.c_str() << lf;
+
+			if (result != "a-b-c-d")
+			{
+				ls << "ReplaceAll failed: expected 'a-b-c-d', got '" << result.c_str() << "'" << lferr;
+			}
+		});
+
+		AddTest("ReplaceAll Multi Char Pattern", [this](auto& ls)
+		{
+			String str("foo bar foo baz foo");
+			auto result = str.ReplaceAll(String("foo"), String("XXX"));
+			ls << "ReplaceAll multi: " << result.c_str() << lf;
+
+			if (result != "XXX bar XXX baz XXX")
+			{
+				ls << "ReplaceAll multi failed: expected 'XXX bar XXX baz XXX', got '" << result.c_str() << "'" << lferr;
+			}
+		});
+
+		AddTest("ReplaceAll Not Found", [this](auto& ls)
+		{
+			String str("Hello World");
+			auto result = str.ReplaceAll(String("Foo"), String("Bar"));
+			ls << "ReplaceAll not found: " << result.c_str() << lf;
+
+			if (result != "Hello World")
+			{
+				ls << "ReplaceAll not found should return original: expected 'Hello World', got '" << result.c_str() << "'" << lferr;
+			}
+		});
+
+		AddTest("ReplaceAll Empty From", [this](auto& ls)
+		{
+			String str("Hello");
+			auto result = str.ReplaceAll(String(""), String("X"));
+			ls << "ReplaceAll empty from: " << result.c_str() << lf;
+
+			if (result != "Hello")
+			{
+				ls << "ReplaceAll empty from should return clone: expected 'Hello', got '" << result.c_str() << "'" << lferr;
+			}
+		});
+
+		AddTest("ReplaceAll Longer Replacement", [this](auto& ls)
+		{
+			String str("abc");
+			auto result = str.ReplaceAll(String("b"), String("XYZ"));
+			ls << "ReplaceAll longer: " << result.c_str() << lf;
+
+			if (result != "aXYZc")
+			{
+				ls << "ReplaceAll longer failed: expected 'aXYZc', got '" << result.c_str() << "'" << lferr;
+			}
+		});
+
+		AddTest("ReplaceAll Shorter Replacement", [this](auto& ls)
+		{
+			String str("Hello World");
+			auto result = str.ReplaceAll(String("o"), String(""));
+			ls << "ReplaceAll shorter: " << result.c_str() << lf;
+
+			if (result != "Hell Wrld")
+			{
+				ls << "ReplaceAll shorter failed: expected 'Hell Wrld', got '" << result.c_str() << "'" << lferr;
+			}
+		});
+
+		AddTest("ReplaceAll Adjacent Matches", [this](auto& ls)
+		{
+			String str("aabbcc");
+			auto result = str.ReplaceAll(String("ab"), String("X"));
+			ls << "ReplaceAll adjacent: " << result.c_str() << lf;
+
+			if (result != "aXcc")
+			{
+				ls << "ReplaceAll adjacent failed: expected 'aXcc', got '" << result.c_str() << "'" << lferr;
+			}
+		});
+
 		AddTest("Performance", [this](auto& ls)
 		{
 			constexpr int COUNT = 100000;
