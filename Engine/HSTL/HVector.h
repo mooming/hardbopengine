@@ -15,4 +15,4 @@ namespace hbe
 	template<typename T, size_t PoolSize = 16>
 	using HInlineVector = std::vector<T, hbe::InlinePoolAllocator<T, PoolSize, 2>>;
 
-} // namespace HSTL
+} // namespace hbe

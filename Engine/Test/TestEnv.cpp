@@ -33,7 +33,7 @@ bool TestEnv::ExecuteTest(TestCollection& testCollection)
 {
 #ifdef __DEBUG__
 	testCollection.Start();
-#else // _DEBUG__
+#else // !__DEBUG__
 	try
 	{
 		testCollection.Start();

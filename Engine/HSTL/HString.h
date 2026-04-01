@@ -14,7 +14,7 @@ namespace hbe
 	using HInlineString = std::basic_string<char, std::char_traits<char>, hbe::InlinePoolAllocator<char, PoolSize, 2>>;
 	using HInlinePathString = std::basic_string<char, std::char_traits<char>,
 												hbe::InlinePoolAllocator<char, hbe::Config::MaxPathLength, 2>>;
-} // namespace HSTL
+} // namespace hbe
 
 namespace std
 {

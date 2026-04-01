@@ -17,9 +17,9 @@ void LinkedListTest::Prepare()
 
 #ifdef __DEBUG__
 	constexpr int COUNT = CountBase * 2;
-#else //__DEBUG__
+#else // !__DEBUG__
 	constexpr int COUNT = CountBase * 16;
-#endif //__DEBUG__
+#endif // __DEBUG__
 	constexpr int COUNT2 = CountBase;
 
 	AddTest("Iteration on the empty list", [this](auto& ls)

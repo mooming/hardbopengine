@@ -11,7 +11,7 @@ namespace hbe
 	template<class Key, class T, class Hash = std::hash<Key>, class Pred = std::equal_to<Key>>
 	using HUnorderedMap = std::unordered_map<Key, T, Hash, Pred, hbe::DefaultAllocator<std::pair<const Key, T>>>;
 
-} // namespace HSTL
+} // namespace hbe
 
 #ifdef __UNIT_TEST__
 #include "Test/TestCollection.h"
