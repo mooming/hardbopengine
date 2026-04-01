@@ -32,3 +32,21 @@ namespace OS
 	void ProtectMemory(void* address, std::size_t n);
 
 } // namespace OS
+
+#ifdef __UNIT_TEST__
+#include "Test/TestCollection.h"
+
+namespace hbe
+{
+
+	class OSMemoryTest : public TestCollection
+	{
+	public:
+		inline OSMemoryTest() : TestCollection("OSMemoryTest") {}
+
+	protected:
+		virtual void Prepare() override;
+	};
+
+} // namespace hbe
+#endif //__UNIT_TEST__
