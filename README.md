@@ -10,13 +10,79 @@ Many game engines multiple platforms more than that though, they are very comple
 should be simple and easy to learn and use if users are familiar with standard C/C++ library.
 </p>
 
+# Prerequisites
+
+## Required Dependencies
+
+### All Platforms
+- **CMake 3.12+**
+- **C++23 compatible compiler** (Clang 16+, GCC 13+, MSVC 2022+)
+
+### Platform-Specific
+
+#### macOS
+```bash
+# Install Homebrew (if not installed)
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
+# Install required packages
+brew install glfw
+```
+
+#### Linux (Ubuntu/Debian)
+```bash
+sudo apt-get update
+sudo apt-get install -y libglfw3-dev libglfw3
+```
+
+#### Windows
+```bash
+# Install Chocolatey (if not installed)
+choco install cmake visualstudio2022buildtools
+
+# Install GLFW via Chocolatey
+choco install glfw
+```
+
+### Vulkan SDK (for running tests)
+Run the appropriate script for your platform:
+```bash
+# macOS
+./Scripts/InstallVulkanMacOS.sh
+
+# Linux
+./Scripts/InstallVulkanLinux.sh
+
+# Windows
+Scripts\InstallVulkanWindows.bat
+```
+
+# Building
+
+```bash
+# Create build directory
+mkdir -p build && cd build
+
+# Configure with CMake
+cmake .. -DCMAKE_BUILD_TYPE=Release
+
+# Build
+make -j$(nproc)
+
+# Run tests
+./bin/EngineTest
+```
+
 # Directory Structure
 
 Hardbop Engine<br>
 |<br>
 |- Applications: Base directory for applications based on the hardbop engine.<br>
-|- Source: Base engine directory<br>
+|- Engine: Base engine directory<br>
 |- External: Base directory for external solutions<br>
+|- Scripts: Build and utility scripts<br>
+|- lib: Built static libraries<br>
+|- bin: Built executables<br>
 
 
 # Modules
