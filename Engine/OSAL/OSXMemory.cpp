@@ -2,9 +2,6 @@
 
 #include "OSMemory.h"
 
-// Ensure this file only compiles on macOS platform
-static_assert(PLATFORM_OSX == 1, "OSXMemory.cpp should only be compiled on macOS platform");
-
 #ifdef PLATFORM_OSX
 #include <cerrno>
 #include <iostream>
