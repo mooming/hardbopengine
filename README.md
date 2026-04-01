@@ -234,19 +234,13 @@ void Example()
 
 ## Known Issues
 
-### Build Issues
-- **Vulkan SDK not found**: If you see a compile warning about Vulkan, install it using the scripts in `Scripts/` folder, or tests will run without Vulkan support (sufficient for most testing).
-
 ### Platform-Specific
 - **Linux backtrace**: `OS::GetBackTrace()` returns "Not Implemented" on Linux - no stack traces available.
-- **macOS Vulkan**: Requires MoltenVK or LunarG SDK for full Vulkan support.
 
 ### Code Quality
-- **OSAL CMakeLists.txt**: Contains duplicate file entries in original version - may need cleanup.
-- **ODR Violation Risk**: Platform-specific files and generic OSMemory.cpp both define memory functions - ensure only one is compiled per platform.
+- **ODR Violation Risk**: Platform-specific files and generic OSMemory.cpp both define memory functions - ensure only one is compiled per platform (CMakeLists.txt should use platform-conditional source selection).
 
-### Deprecated/Unfinished
-- **String::Replace/ReplaceAll**: Now implemented (was previously stubs).
+### Unfinished Features
 - **OSThreadTest**: Empty test placeholder.
 
 ## Contributing
