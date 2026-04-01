@@ -6,6 +6,17 @@
 #include "Core/Debug.h"
 #include "Intrinsic.h"
 
+bool OS::IsValidAllocation(void* ptr)
+{
+#if defined(PLATFORM_WINDOWS)
+	return ptr != nullptr;
+#elif defined(PLATFORM_LINUX) || defined(PLATFORM_OSX)
+	return ptr != nullptr && ptr != reinterpret_cast<void*>(-1);
+#else
+	return ptr != nullptr;
+#endif
+}
+
 #ifdef __linux__
 #include <cerrno>
 #include <cstdlib>
@@ -153,20 +164,6 @@ namespace hbe
 
 	void OSMemoryTest::Prepare()
 	{
-		// Helper to check if VirtualAlloc returned an invalid address
-		// Windows: returns nullptr on failure
-		// Linux/macOS: mmap returns MAP_FAILED ((void*)-1) on failure
-		auto IsValidAllocation = [](void* ptr) -> bool
-		{
-#if defined(PLATFORM_WINDOWS)
-			return ptr != nullptr;
-#elif defined(PLATFORM_LINUX) || defined(PLATFORM_OSX)
-			return ptr != nullptr && ptr != reinterpret_cast<void*>(-1);
-#else
-			return ptr != nullptr;
-#endif
-		};
-
 		// BUG FIX TEST: VirtualFree on Linux/macOS was using free() instead of munmap()
 		// This test verifies VirtualAlloc/VirtualFree round-trip works correctly
 		AddTest("VirtualAlloc VirtualFree Round Trip", [this](auto& ls)
@@ -174,7 +171,7 @@ namespace hbe
 			constexpr size_t allocSize = 4096;
 			void* ptr = OS::VirtualAlloc(allocSize);
 
-			if (!IsValidAllocation(ptr))
+			if (!OS::IsValidAllocation(ptr))
 			{
 				ls << "VirtualAlloc failed" << lferr;
 				return;
@@ -250,7 +247,7 @@ namespace hbe
 				size_t size = (i + 1) * OS::GetPageSize();
 				void* ptr = OS::VirtualAlloc(size);
 
-				if (!IsValidAllocation(ptr))
+				if (!OS::IsValidAllocation(ptr))
 				{
 					ls << "VirtualAlloc failed at cycle " << i << lferr;
 					allOk = false;
