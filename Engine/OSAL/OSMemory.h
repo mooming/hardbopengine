@@ -12,6 +12,9 @@
 namespace OS
 {
 
+	// Check if pointer is a valid allocation (not nullptr or MAP_FAILED)
+	bool IsValidAllocation(void* ptr);
+
 	template<typename T>
 	bool CheckAligned(T* ptr, uint32_t alignBytes = hbe::Config::DefaultAlign)
 	{
