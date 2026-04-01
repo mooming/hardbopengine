@@ -52,3 +52,12 @@
 
 // Test
 #define __MEMORY_INVESTIGATOR_TEST__ 0
+
+// Vulkan SDK
+// Check if Vulkan SDK is available using __has_include (C++20/C++23 feature)
+#if __has_include("vulkan/vulkan.h")
+    #define VULKAN_SDK 1
+#else
+    #define VULKAN_SDK 0
+    #warning "Vulkan SDK not found. Vulkan support will be disabled."
+#endif
