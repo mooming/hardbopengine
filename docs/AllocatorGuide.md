@@ -346,6 +346,99 @@ These can be modified in `Engine/Config/BuildConfig.h`:
 
 ---
 
+## Profile-Guided MultiPoolAllocator Optimization
+
+The `MultiPoolAllocator` can optimize itself based on actual allocation patterns. The engine records allocation sizes and frequencies, then generates an optimized pool configuration.
+
+### How It Works
+
+1. **First Run (Learning Phase)**
+   - MultiPoolAllocator starts with default/generic configuration
+   - All allocations are tracked in `MultiPoolConfigCache`
+   - A log file `.multiPoolConfig.dat` is created
+
+2. **Subsequent Runs (Optimized)**
+   - On next launch, the allocator loads the cached configuration
+   - Pools are generated to match actual usage patterns
+   - Fewer memory wasted on over-sized pools
+
+### Enabling Profile Logging
+
+In `Engine/Config/BuildConfig.h`:
+
+```cpp
+#define __MEMORY_LOGGING__ 1
+```
+
+This enables detailed allocation logging to `.multiPoolConfig.dat`.
+
+### How to Use
+
+**Step 1: Run your application normally**
+```bash
+# Run with memory logging enabled
+./build/Applications/EngineTest/EngineTest
+```
+
+This creates `.multiPoolConfig.dat` in the working directory.
+
+**Step 2: Review the configuration**
+```cpp
+// The next run will automatically use the cached configuration
+MultiPoolAllocator allocator("OptimizedMultiPool");
+
+// Print current usage
+allocator.PrintUsage();
+```
+
+**Step 3: Fine-tune manually (optional)**
+
+You can also specify custom pool configurations:
+
+```cpp
+MultiPoolAllocator allocator("CustomMulti", {
+    {16, 1000},   // 16-byte blocks, 1000 blocks - for small objects
+    {32, 500},    // 32-byte blocks, 500 blocks
+    {64, 250},    // 64-byte blocks, 500 blocks - for medium objects
+    {128, 100},  // 128-byte blocks, 100 blocks
+    {256, 50},   // 256-byte blocks, 50 blocks - for large objects
+}, 1024 * 1024,  // 1MB bank size
+16);             // minimum 16-byte blocks
+```
+
+### Configuration File
+
+The cache file format (`.multiPoolConfig.dat`) contains:
+- Allocation size histogram
+- Frequency of each size class
+- Peak usage per size class
+- Bank size recommendations
+
+### Resetting the Profile
+
+To clear cached data and start fresh:
+
+```bash
+# Delete the cache file
+rm .multiPoolConfig.dat
+```
+
+Or programmatically:
+
+```cpp
+auto& mmgr = MemoryManager::GetInstance();
+mmgr.ResetMultiPoolConfig();
+```
+
+### Best Practices
+
+1. **Run representative workload**: Profile with typical game scenarios, not minimal tests
+2. **Multiple runs**: Let it accumulate data over several sessions
+3. **Platform-specific**: Profile on each target platform separately
+4. **Version reset**: Re-profile when allocation patterns change significantly
+
+---
+
 ## See Also
 
 - `Engine/Memory/MemoryManager.h` - Global memory manager
