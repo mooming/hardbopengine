@@ -6,17 +6,6 @@
 #include "Core/Debug.h"
 #include "Intrinsic.h"
 
-bool OS::IsValidAllocation(void* ptr)
-{
-#if defined(PLATFORM_WINDOWS)
-	return ptr != nullptr;
-#elif defined(PLATFORM_LINUX) || defined(PLATFORM_OSX)
-	return ptr != nullptr && ptr != reinterpret_cast<void*>(-1);
-#else
-	return ptr != nullptr;
-#endif
-}
-
 #ifdef __linux__
 #include <cerrno>
 #include <cstdlib>
@@ -77,6 +66,11 @@ void* OS::VirtualAlloc(size_t size)
 
 void OS::VirtualFree(void* address, std::size_t size) { munmap(address, size); }
 
+bool OS::IsValidAllocation(void* ptr)
+{
+	return ptr != nullptr && ptr != reinterpret_cast<void*>(-1);
+}
+
 void OS::ProtectMemory(void* address, size_t n)
 {
 	auto result = mprotect(address, n, PROT_NONE);
@@ -129,6 +123,11 @@ void OS::VirtualFree(void* address, std::size_t n)
 	{
 		hbe::Assert(false);
 	}
+}
+
+bool OS::IsValidAllocation(void* ptr)
+{
+	return ptr != nullptr;
 }
 
 void OS::ProtectMemory(void* address, size_t n)
