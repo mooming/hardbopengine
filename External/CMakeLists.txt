@@ -1,5 +1,5 @@
 cmake_minimum_required (VERSION 3.12)
-project (ExternalLibraries)
+project (External)
 
 set (CMAKE_CONFIGURATION_TYPES "Debug;Dev;Release" CACHE STRING "" FORCE)
 if (NOT CMAKE_BUILD_TYPE)
@@ -23,11 +23,17 @@ include_directories ( ${CMAKE_SOURCE_DIR}
  ${CMAKE_SOURCE_DIR}/include
  ${CMAKE_SOURCE_DIR}/External
  ${CMAKE_SOURCE_DIR}/Engine
+ ${CMAKE_SOURCE_DIR}/External/VulkanSDK/include
+ ${CMAKE_SOURCE_DIR}/External/GLFW/include
  )
 link_directories (${CMAKE_SOURCE_DIR}/lib)
 
-add_subdirectory (GLFW)
 
+add_library (External INTERFACE)
+target_include_directories (External INTERFACE
+ ${CMAKE_SOURCE_DIR}/External/VulkanSDK/include
+ ${CMAKE_SOURCE_DIR}/External/GLFW/include
+)
 
 
 
