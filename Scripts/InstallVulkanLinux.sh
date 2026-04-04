@@ -11,17 +11,29 @@ VULKAN_DIR="$PROJECT_ROOT/External/VulkanSDK"
 echo "=== Vulkan SDK Installer for Linux ==="
 echo "Installing to: $VULKAN_DIR"
 
-# Check if already installed
-if [ -f "$VULKAN_DIR/include/vulkan/vulkan.h" ]; then
-    echo "Vulkan SDK already installed at $VULKAN_DIR"
-    echo "To rebuild with Vulkan SDK:"
-    echo "  cd build"
-    echo "  cmake .. -DCMAKE_BUILD_TYPE=Release"
-    echo "  make -j\$(nproc) EngineTest"
-    exit 0
+# Create directories
+mkdir -p "$VULKAN_DIR/include" "$VULKAN_DIR/lib"
+
+# Check if already fully installed
+if [ -f "$VULKAN_DIR/include/vulkan/vulkan.h" ] && [ -d "$VULKAN_DIR/lib" ]; then
+    LIB_COUNT=$(ls "$VULKAN_DIR/lib"/libvulkan*.so* 2>/dev/null | wc -l || ls "$VULKAN_DIR/lib"/libvulkan*.a 2>/dev/null | wc -l)
+    if [ "$LIB_COUNT" -gt 0 ]; then
+        echo "Vulkan SDK already installed at $VULKAN_DIR"
+        echo "To rebuild with Vulkan SDK:"
+        echo "  cd build"
+        echo "  cmake .. -DCMAKE_BUILD_TYPE=Release"
+        echo "  make -j\$(nproc) EngineTest"
+        exit 0
+    fi
 fi
 
-# Detect package manager
+# Vulkan SDK version
+VULKAN_VERSION="1.4.341.0"
+LINUX_VERSION="linux"
+
+# Try to install via package manager first (most reliable on Linux)
+echo "Checking for system Vulkan packages..."
+
 if command -v apt-get &> /dev/null; then
     echo "Detected Debian/Ubuntu-based system"
     PKG_MGR="apt"
@@ -33,7 +45,6 @@ elif command -v pacman &> /dev/null; then
     PKG_MGR="pacman"
 fi
 
-# Try to install via package manager first
 if [ -n "$PKG_MGR" ]; then
     echo "Attempting to install via $PKG_MGR..."
     
@@ -46,22 +57,40 @@ if [ -n "$PKG_MGR" ]; then
     fi
     
     if [ "$SYSTEM_VULKAN" = "true" ]; then
-        # Copy system headers to project directory for build
-        echo "Copying system Vulkan headers to project directory..."
-        mkdir -p "$VULKAN_DIR/include/vulkan"
+        echo "Installing system Vulkan packages..."
         
-        # Try common system header locations
+        # Copy system headers
+        mkdir -p "$VULKAN_DIR/include/vulkan"
         if [ -f /usr/include/vulkan/vulkan.h ]; then
             cp -r /usr/include/vulkan/* "$VULKAN_DIR/include/vulkan/"
-            echo "Vulkan SDK installed from system packages!"
-            echo ""
-            echo "To build with Vulkan SDK:"
-            echo "  cd build"
-            echo "  cmake .. -DCMAKE_BUILD_TYPE=Release"
-            echo "  make -j\$(nproc) EngineTest"
-            exit 0
         elif [ -f /usr/local/include/vulkan/vulkan.h ]; then
             cp -r /usr/local/include/vulkan/* "$VULKAN_DIR/include/vulkan/"
+        fi
+        
+        # Copy vk_video headers
+        if [ -d /usr/include/vk_video ]; then
+            cp -r /usr/include/vk_video "$VULKAN_DIR/include/"
+        elif [ -d /usr/local/include/vk_video ]; then
+            cp -r /usr/local/include/vk_video "$VULKAN_DIR/include/"
+        fi
+        
+        # Copy system libraries
+        mkdir -p "$VULKAN_DIR/lib"
+        
+        # Try common library locations
+        for LIB_PATH in /usr/lib/x86_64-linux-gnu /usr/lib /usr/local/lib /lib /lib/x86_64-linux-gnu; do
+            if [ -f "$LIB_PATH/libvulkan.so.1" ]; then
+                cp "$LIB_PATH/libvulkan.so"* "$VULKAN_DIR/lib/" 2>/dev/null || true
+            fi
+            if [ -f "$LIB_PATH/libvulkan.so" ]; then
+                cp "$LIB_PATH/libvulkan.so"* "$VULKAN_DIR/lib/" 2>/dev/null || true
+            fi
+            if [ -f "$LIB_PATH/libvulkan.a" ]; then
+                cp "$LIB_PATH/libvulkan.a" "$VULKAN_DIR/lib/" 2>/dev/null || true
+            fi
+        done
+        
+        if [ -f "$VULKAN_DIR/include/vulkan/vulkan.h" ]; then
             echo "Vulkan SDK installed from system packages!"
             echo ""
             echo "To build with Vulkan SDK:"
@@ -73,52 +102,49 @@ if [ -n "$PKG_MGR" ]; then
     fi
 fi
 
-# Download Vulkan SDK for Linux
-VULKAN_VERSION="1.3.280"
-LINUX_VERSION="linux"
+# Download Vulkan SDK from LunarG as fallback
+echo "Downloading Vulkan SDK from LunarG..."
 FILENAME="vulkan-sdk-${VULKAN_VERSION}.${LINUX_VERSION}"
-
-echo "Downloading Vulkan SDK ${VULKAN_VERSION} for Linux..."
-echo "This may take a few minutes..."
-
-# Create external directory
-mkdir -p "$VULKAN_DIR"
-
 DOWNLOAD_URL="https://sdk.lunarg.com/sdk/download/${VULKAN_VERSION}/${FILENAME}.tar.gz?u="
 
+rm -f "/tmp/${FILENAME}.tar.gz"
+
 if command -v curl &> /dev/null; then
-    curl -L -o "/tmp/${FILENAME}.tar.gz" "$DOWNLOAD_URL" --fail || true
+    curl -L -o "/tmp/${FILENAME}.tar.gz" "$DOWNLOAD_URL" --fail -# || true
 elif command -v wget &> /dev/null; then
     wget -O "/tmp/${FILENAME}.tar.gz" "$DOWNLOAD_URL" || true
 fi
 
-# Check if download succeeded
-if [ ! -f "/tmp/${FILENAME}.tar.gz" ] || [ ! -s "/tmp/${FILENAME}.tar.gz" ]; then
-    echo "Download failed or not available."
-    echo ""
-    echo "Please install Vulkan SDK via your system's package manager:"
-    echo "  Ubuntu/Debian: sudo apt-get install libvulkan-dev"
-    echo "  Fedora: sudo dnf install vulkan-loader-devel"
-    echo "  Arch: sudo pacman -S vulkan-headers"
+if [ -f "/tmp/${FILENAME}.tar.gz" ] && [ -s "/tmp/${FILENAME}.tar.gz" ]; then
+    echo "Extracting SDK..."
+    rm -rf "$VULKAN_DIR/include"/* "$VULKAN_DIR/lib"/*
+    tar -xzf "/tmp/${FILENAME}.tar.gz" -C "$VULKAN_DIR" --strip-components=1
+    rm -f "/tmp/${FILENAME}.tar.gz"
+    echo "Vulkan SDK installed successfully!"
+else
+    echo "Download failed. Please install Vulkan SDK manually."
     exit 1
 fi
-
-# Extract
-echo "Extracting..."
-tar -xzf "/tmp/${FILENAME}.tar.gz" -C "$VULKAN_DIR" --strip-components=1
-
-# Cleanup
-rm -f "/tmp/${FILENAME}.tar.gz"
 
 # Verify
 if [ -f "$VULKAN_DIR/include/vulkan/vulkan.h" ]; then
-    echo "Vulkan SDK installed successfully!"
-    echo ""
-    echo "To build with Vulkan SDK:"
-    echo "  cd build"
-    echo "  cmake .. -DCMAKE_BUILD_TYPE=Release"
-    echo "  make -j\$(nproc) EngineTest"
+    echo "Vulkan SDK headers installed successfully!"
 else
-    echo "Installation verification failed."
+    echo "Error: Vulkan headers not found. Installation failed."
     exit 1
 fi
+
+LIB_COUNT=$(ls "$VULKAN_DIR/lib"/libvulkan*.so* 2>/dev/null | wc -l || ls "$VULKAN_DIR/lib"/libvulkan*.a 2>/dev/null | wc -l)
+if [ "$LIB_COUNT" -gt 0 ]; then
+    echo "Vulkan SDK libraries installed successfully!"
+    ls -la "$VULKAN_DIR/lib"/
+else
+    echo "Warning: No Vulkan libraries found."
+    ls -la "$VULKAN_DIR/lib"/
+fi
+
+echo ""
+echo "To build with Vulkan SDK:"
+echo "  cd build"
+echo "  cmake .. -DCMAKE_BUILD_TYPE=Release"
+echo "  make -j\$(nproc) EngineTest"

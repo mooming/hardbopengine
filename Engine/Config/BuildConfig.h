@@ -62,6 +62,7 @@
 #define __MEMORY_DANGLING_POINTER_CHECK__ 0 // Detect dangling pointers
 #define __MEMORY_BUFFER_UNDERRUN_CHECK__ 0  // Detect buffer underruns
 #define __FORCE_USE_SYSTEM_MALLOC__ 0        // Force use of system malloc instead of custom allocators
+#define MULTIPOOL_ALLOC_LOG ".multiPoolConfig.dat"  // MultiPool config cache file
 
 // =============================================================================
 // Logging System
