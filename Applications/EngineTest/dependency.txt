@@ -10,4 +10,4 @@ Resource
 String
 Core
 Test
-glfw
+External
