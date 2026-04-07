@@ -15,27 +15,28 @@ namespace hbe
 	/// @brief A bounded priority queue using bucket-based approach.
 	/// @details Uses an array of vectors indexed by priority value (0-255).
 	/// Provides O(1) insertion and O(1) extraction of highest priority task.
+	/// Tracks lowest non-empty bucket for O(1) pop operations.
 	/// Ideal when priority range is known and bounded.
 	/// @tparam T Task type must have uint8_t priority and HasFinished() method.
-	template<typename T, std::size_t MaxPriority = 256>
+	template<typename T, std::size_t MaxPriority = 256, std::size_t BucketSizeHint = 0>
 	class BoundedPriorityQueue final
 	{
-		static_assert(MaxPriority <= 256, "Priority must fit in uint8_t");
-
 		using TBuckets = std::array<HVector<T>, MaxPriority>;
 
 		TBuckets buckets;
 		std::size_t totalSize;
+		std::size_t lowestBucket;
 
 	public:
 		BoundedPriorityQueue()
 		{
 			for (auto& bucket : buckets)
 			{
-				bucket.reserve(4);
+				bucket.reserve(BucketSizeHint);
 			}
 
 			totalSize = 0;
+			lowestBucket = MaxPriority;
 		}
 
 		BoundedPriorityQueue(const BoundedPriorityQueue&) = delete;
@@ -53,6 +54,9 @@ namespace hbe
 			const auto priority = static_cast<std::size_t>(item.priority);
 			buckets[priority].push_back(item);
 			++totalSize;
+
+			if (priority < lowestBucket)
+				lowestBucket = priority;
 		}
 
 		void Push(T&& item)
@@ -60,6 +64,9 @@ namespace hbe
 			const auto priority = static_cast<std::size_t>(item.priority);
 			buckets[priority].emplace_back(std::move(item));
 			++totalSize;
+
+			if (priority < lowestBucket)
+				lowestBucket = priority;
 		}
 
 		[[nodiscard]] std::optional<T> Pop()
@@ -67,19 +74,18 @@ namespace hbe
 			if (totalSize == 0)
 				return std::nullopt;
 
-			for (auto& bucket : buckets)
+			auto& bucket = buckets[lowestBucket];
+			auto item = bucket.back();
+			bucket.pop_back();
+			--totalSize;
+
+			if (bucket.empty())
 			{
-				if (bucket.empty())
-					continue;
-
-				auto item = bucket.back();
-				bucket.pop_back();
-				--totalSize;
-
-				return item; // NRVO
+				while (lowestBucket < MaxPriority && buckets[lowestBucket].empty())
+					++lowestBucket;
 			}
 
-			return std::nullopt;
+			return item;
 		}
 
 		[[nodiscard]] std::optional<T> Top() const
@@ -87,13 +93,7 @@ namespace hbe
 			if (totalSize == 0)
 				return std::nullopt;
 
-			for (const auto& bucket : buckets)
-			{
-				if (!bucket.empty())
-					return bucket.back();
-			}
-
-			return std::nullopt;
+			return buckets[lowestBucket].back();
 		}
 
 		using TPredicate = bool (*)(const T&);
@@ -103,14 +103,21 @@ namespace hbe
 				return 0;
 
 			std::size_t removed = 0;
-			for (auto& bucket : buckets)
+			for (auto i = lowestBucket; i < MaxPriority; ++i)
 			{
+				auto& bucket = buckets[i];
 				const std::size_t numItems = bucket.size();
-				auto newEnd = std::erase_if(bucket.begin(), bucket.end(), predicate);
+				bucket.erase(std::remove_if(bucket.begin(), bucket.end(), predicate), bucket.end());
 				removed += (numItems - bucket.size());
 			}
 
 			totalSize -= removed;
+
+			if (removed > 0)
+			{
+				while (lowestBucket < MaxPriority && buckets[lowestBucket].empty())
+					++lowestBucket;
+			}
 
 			return removed;
 		}
@@ -138,7 +145,25 @@ namespace hbe
 			}
 
 			totalSize = 0;
+			lowestBucket = MaxPriority;
 		}
 	};
 
 } // namespace hbe
+
+#ifdef __UNIT_TEST__
+#include "Test/TestCollection.h"
+
+namespace hbe
+{
+	class BoundedPriorityQueueTest : public TestCollection
+	{
+	public:
+		BoundedPriorityQueueTest() : TestCollection("BoundedPriorityQueueTest") {}
+
+	protected:
+		void Prepare() override;
+	};
+
+} // namespace hbe
+#endif // __UNIT_TEST__

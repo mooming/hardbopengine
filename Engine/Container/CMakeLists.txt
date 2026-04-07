@@ -31,9 +31,11 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/lib)
 add_library (Container STATIC 
  Array.cpp
  AtomicStackView.cpp
+ BoundedPriorityQueue.cpp
  LinkedList.cpp
  Array.h
  AtomicStackView.h
+ BoundedPriorityQueue.h
  LinkedList.h
 )
 

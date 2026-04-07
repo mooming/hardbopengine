@@ -6,6 +6,7 @@
 
 #include "Container/Array.h"
 #include "Container/AtomicStackView.h"
+#include "Container/BoundedPriorityQueue.h"
 #include "Container/LinkedList.h"
 #include "Core/ComponentSystem.h"
 #include "Core/TaskSystem.h"
@@ -77,6 +78,7 @@ namespace Test
 			testEnv.AddTestCollection<BufferOutputStreamTest>();
 			testEnv.AddTestCollection<HUnorderedMapTest>();
 			testEnv.AddTestCollection<ArrayTest>();
+			testEnv.AddTestCollection<BoundedPriorityQueueTest>();
 			testEnv.AddTestCollection<AtomicStackViewTest>();
 			testEnv.AddTestCollection<LinkedListTest>();
 			testEnv.AddTestCollection<OptionalTest>();
