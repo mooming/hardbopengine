@@ -5,6 +5,7 @@
 #include <atomic>
 #include <thread>
 #include "Container/Array.h"
+#include "Container/BoundedPriorityQueue.h"
 #include "HSTL/HVector.h"
 #include "TaskStream.h"
 
@@ -33,7 +34,7 @@ namespace hbe
 		StreamArray streams;
 
 		std::mutex taskQueueMutex;
-		std::priority_queue<RangedTask, HVector<RangedTask>> taskQueue;
+		BoundedPriorityQueue<RangedTask> taskQueue;
 
 	public:
 		static TIndex GetNumHardwareThreads();

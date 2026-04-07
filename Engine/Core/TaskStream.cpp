@@ -47,21 +47,20 @@ namespace hbe
 	void TaskStream::Enqueue(const RangedTask& task)
 	{
 		std::scoped_lock<std::mutex> lock(queueLock);
-		taskQueue.push(task);
+		taskQueue.Push(task);
 		cv.notify_one();
 	}
 
 	void TaskStream::Dequeue(std::optional<RangedTask>& outTask)
 	{
 		std::scoped_lock<std::mutex> lock(queueLock);
-		if (taskQueue.empty())
+		if (taskQueue.IsEmpty())
 		{
 			outTask.reset();
 			return;
 		}
 
-		outTask = taskQueue.top();
-		taskQueue.pop();
+		outTask = taskQueue.Pop();
 	}
 
 	void TaskStream::WakeUp() { cv.notify_one(); }
@@ -102,20 +101,16 @@ namespace hbe
 			std::optional<RangedTask> rangedTask;
 
 			{
-				// Pop out finished tasks
+				// Remove finished tasks
 				std::unique_lock lock(queueLock);
-				while (!taskQueue.empty() && taskQueue.top().HasFinished())
-				{
-					taskQueue.pop();
-				}
+				taskQueue.Remove([](const RangedTask& task) { return task.HasFinished(); });
 
-				taskQueue.push_range(readdingBuffer);
+				taskQueue.PushRange(readdingBuffer);
 				readdingBuffer.clear();
 
-				if (!taskQueue.empty())
+				if (!taskQueue.IsEmpty())
 				{
-					rangedTask = taskQueue.top();
-					taskQueue.pop();
+					rangedTask = taskQueue.Pop();
 				}
 			}
 

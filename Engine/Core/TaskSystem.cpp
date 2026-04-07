@@ -141,19 +141,26 @@ namespace hbe
 	void TaskSystem::Enqueue(const RangedTask& task)
 	{
 		std::scoped_lock<std::mutex> lock(taskQueueMutex);
-		taskQueue.push(task);
+		taskQueue.Push(task);
 	}
 
 	void TaskSystem::Dequeue(std::optional<RangedTask>& outTask)
 	{
 		std::scoped_lock<std::mutex> lock(taskQueueMutex);
-		if (taskQueue.empty())
+		if (taskQueue.IsEmpty())
 		{
 			outTask.reset();
 			return;
 		}
 
-		const RangedTask& rangedTask = taskQueue.top();
+		auto rangedTaskOpt = taskQueue.Top();
+		if (!rangedTaskOpt.has_value())
+		{
+			outTask.reset();
+			return;
+		}
+
+		const RangedTask& rangedTask = rangedTaskOpt.value();
 		const unsigned int streamIndex = GetCurrentStreamIndex();
 
 		auto& affinity = rangedTask.affinity;
@@ -164,7 +171,7 @@ namespace hbe
 		}
 
 		outTask = rangedTask;
-		taskQueue.pop();
+		(void)taskQueue.Pop();
 	}
 
 	void TaskSystem::Enqueue(const TIndex streamIndex, const RangedTask& task)

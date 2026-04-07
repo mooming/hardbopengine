@@ -7,6 +7,7 @@
 #include <thread>
 #include <queue>
 #include "Container/Array.h"
+#include "Container/BoundedPriorityQueue.h"
 #include "HSTL/HVector.h"
 #include "Memory/MultiPoolAllocator.h"
 #include "RangedTask.h"
@@ -50,7 +51,7 @@ namespace hbe
 		std::mutex queueLock;
 		std::condition_variable cv;
 		std::thread thread;
-		std::priority_queue<RangedTask, HVector<RangedTask>> taskQueue;
+		BoundedPriorityQueue<RangedTask> taskQueue;
 
 	public:
 		TaskStream();
