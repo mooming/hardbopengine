@@ -8,6 +8,9 @@
 namespace hbe
 {
 
+	/// @brief Stores source code location information for debugging and logging.
+	/// @details Used with macros like CallerFile(), CallerFunc(), CallerLine() to capture
+	/// the location where a function is called.
 	struct source_location
 	{
 	private:

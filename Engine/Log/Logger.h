@@ -23,6 +23,9 @@ namespace hbe
 	class Engine;
 	class TaskSystem;
 
+	/// @brief Asynchronous, thread-safe logging system for the HardBop Engine.
+	/// @details Runs on a dedicated IO thread to avoid blocking main application threads.
+	/// Uses a producer-consumer pattern with thread-safe input buffer.
 	class Logger final
 	{
 	public:
@@ -38,6 +41,9 @@ namespace hbe
 		using TFilters = hbe::HUnorderedMap<StaticString, TLogFilter>;
 
 	public:
+		/// @brief A lightweight logger wrapper that bundles category and default log level.
+		/// @details Simplifies logging by pre-setting category and level. Can be reused
+		/// across multiple log calls with the same settings.
 		struct SimpleLogger final
 		{
 			const StaticString category;

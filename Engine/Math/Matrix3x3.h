@@ -9,6 +9,7 @@
 
 namespace hbe
 {
+	/// @brief A 3x3 matrix template class for 3D transformations.
 	template<typename Number>
 	class Matrix3x3
 	{

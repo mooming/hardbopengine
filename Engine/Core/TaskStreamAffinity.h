@@ -8,6 +8,7 @@
 
 namespace hbe
 {
+	/// @brief A bitmask template for specifying which task streams a task can execute on.
 	template<unsigned int NumBits>
 	class TaskStreamAffinityBase final
 	{

@@ -8,6 +8,7 @@
 
 namespace OS
 {
+	/// @brief Represents a directory in the file system with access to files and subdirectories.
 	class Directory
 	{
 		using Dirs = std::vector<Directory>;

@@ -9,6 +9,7 @@
 
 namespace hbe
 {
+	/// @brief Node structure for doubly-linked list containing value and pointers to adjacent nodes
 	template<typename Type>
 	struct LinkedListNode final
 	{
@@ -28,6 +29,7 @@ namespace hbe
 		inline bool IsTail() const { return next == nullptr; }
 	};
 
+	/// @brief Doubly-linked list implementation with custom allocator support
 	template<typename Type, class TAllocator = DefaultAllocator<LinkedListNode<Type>>>
 	class LinkedList final
 	{

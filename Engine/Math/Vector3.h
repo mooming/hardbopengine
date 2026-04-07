@@ -9,7 +9,7 @@
 
 namespace hbe
 {
-
+	/// @brief A 3D vector template class.
 	template<typename Number>
 	class Vector3
 	{

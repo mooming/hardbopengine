@@ -11,6 +11,8 @@
 namespace hbe
 {
 
+	/// @brief Singleton environment for managing and running all unit tests.
+	/// @details Coordinates test execution, collects results, and provides summary reporting.
 	class TestEnv
 	{
 		using TCPtr = std::unique_ptr<TestCollection>;

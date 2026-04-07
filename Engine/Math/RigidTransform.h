@@ -9,6 +9,7 @@
 
 namespace hbe
 {
+	/// @brief A rigid body transform with rotation and translation but no scaling.
 	template<typename Number = float, int PaddingSize = 8>
 	class RigidTransform
 	{

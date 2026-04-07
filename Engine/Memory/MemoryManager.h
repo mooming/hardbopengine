@@ -21,6 +21,9 @@ namespace hbe
 	struct source_location;
 	class Engine;
 
+	/// @brief Centralized memory management system for the engine.
+	/// @details Manages all allocator instances, tracks memory usage statistics,
+	/// and provides allocation/deallocation services across the engine.
 	class MemoryManager final
 	{
 	public:

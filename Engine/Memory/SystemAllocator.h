@@ -10,6 +10,8 @@
 
 namespace hbe
 {
+	/// @brief Allocator that uses the system heap (malloc/free).
+	/// @details Wraps OS-level memory allocation functions.
 	template<class T>
 	struct SystemAllocator
 	{

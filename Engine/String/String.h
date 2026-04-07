@@ -12,12 +12,14 @@
 namespace hbe
 {
 
+	/// @brief A dynamic string class with automatic memory management and various utility methods.
 	class String
 	{
 	public:
 		using Char = char;
 		template<class T>
 		using Vector = hbe::HVector<T>;
+		static constexpr Index INVALID_INDEX = std::is_unsigned<Index>::value ? std::numeric_limits<Index>::max() : -1;
 
 	private:
 		Shareable<Vector<Char>> buffer;
@@ -48,9 +50,9 @@ namespace hbe
 		String(const char* text);
 
 		String(const std::string str) : String(str.c_str()) {}
-		String(const String& string, Index startIndex, Index endIndex = -1);
+		String(const String& string, Index startIndex, Index endIndex = INVALID_INDEX);
 
-		inline String& operator=(String&& rhs)
+		String& operator=(String&& rhs)
 		{
 			Swap(std::move(rhs));
 			return *this;
@@ -60,20 +62,20 @@ namespace hbe
 		String& operator=(const String& rhs);
 
 		bool operator<(const String& rhs) const;
-		inline bool operator>(const String& rhs) const { return rhs < *this; }
-		inline bool operator<=(const String& rhs) const { return !(*this > rhs); }
-		inline bool operator>=(const String& rhs) const { return !(*this < rhs); }
+		bool operator>(const String& rhs) const { return rhs < *this; }
+		bool operator<=(const String& rhs) const { return !(*this > rhs); }
+		bool operator>=(const String& rhs) const { return !(*this < rhs); }
 
 		bool operator==(const String& rhs) const;
-		inline bool operator!=(const String& rhs) const { return !(*this == rhs); }
+		bool operator!=(const String& rhs) const { return !(*this == rhs); }
 
-		inline bool operator==(const char* rhs) const { return *this == String(rhs); }
-		inline bool operator!=(const char* rhs) const { return !(*this == rhs); }
+		bool operator==(const char* rhs) const;
+		bool operator!=(const char* rhs) const { return !(*this == rhs); }
 
-		inline bool operator==(std::nullptr_t) const { return buffer->empty(); }
-		inline bool operator!=(std::nullptr_t) const { return !buffer->empty(); }
+		bool operator==(std::nullptr_t) const { return buffer->empty(); }
+		bool operator!=(std::nullptr_t) const { return !buffer->empty(); }
 
-		String operator+(String str) { return Append(str); }
+		String operator+(const String& str) const { return Append(str); }
 
 		template<typename U>
 		void operator+=(U str)
@@ -81,33 +83,38 @@ namespace hbe
 			AppendSelf(str);
 		}
 
-		inline operator const char*() const { return ToCharArray(); }
+		// Convenient conversion operator to (const char*)
+		[[nodiscard]] operator const char*() const { return ToCharArray(); }
 
-		inline const char* c_str() const { return ToCharArray(); }
+		[[nodiscard]] const char* c_str() const { return ToCharArray(); }
 
-		inline Index Length() const { return buffer->size() - 1; }
+		// Return the length of this string. It doesn't count the termination letter '\0'.
+		[[nodiscard]] Index Length() const { return static_cast<bool>(buffer) && buffer->size() > 0 ? buffer->size() - 1 : 0; }
 
-		inline bool IsEmpty() const { return buffer->empty(); }
+		// True if it has at least one valid character. (The null termination letter will not be counted.)
+		[[nodiscard]] bool IsEmpty() const { return Length() == 0; }
 
-		inline Index HashCode() const { return hashCode; }
+		[[nodiscard]] Index HashCode() const { return hashCode; }
 
-		String Clone() const;
+		[[nodiscard]] String Clone() const;
 
-		inline String SubString(Index startIndex, Index endIndex = -1) const
+		[[nodiscard]] String SubString(Index startIndex, Index endIndex = INVALID_INDEX) const
 		{
-			return String(*this, startIndex, endIndex);
+			return String {*this, startIndex, endIndex};
 		}
 
-		bool ContainsAt(const String& keyword, Index startIndex) const;
+		[[nodiscard]] bool ContainsAt(const String& keyword, Index startIndex) const;
 
-		Index Find(const Char ch) const;
-		Index Find(const Array<Char>& chs) const;
-		Index Find(const String& keyword) const;
-		Index Find(const String& keyword, Index startIndex, Index endIndex = -1) const;
+		[[nodiscard]] Index Find(const Char ch) const;
+		[[nodiscard]] Index Find(const Array<Char>& chs) const;
+		[[nodiscard]] Index Find(const String& keyword) const;
+		[[nodiscard]] Index Find(const String& keyword, Index startIndex, Index endIndex = INVALID_INDEX) const;
 
-		Index FindLast(const Char ch) const;
+		[[nodiscard]] Index FindLast(const Char ch) const;
 
-		bool StartsWith(const Char ch) const
+		[[nodiscard]] bool IsValidIndex(Index index) const { return index >= 0 && index < Length(); }
+
+		[[nodiscard]] bool StartsWith(const Char ch) const
 		{
 			if (IsEmpty())
 			{
@@ -116,33 +123,35 @@ namespace hbe
 			return (*buffer)[0] == ch;
 		}
 
-		bool StartsWith(const String& header) const { return ContainsAt(header, 0); }
+		[[nodiscard]] bool StartsWith(const String& header) const { return ContainsAt(header, 0); }
 
-		bool EndsWith(const Char ch) const
+		[[nodiscard]] bool EndsWith(const Char ch) const
 		{
 			if (IsEmpty())
 			{
 				return false;
 			}
+
 			return (*buffer)[Length() - 1] == ch;
 		}
 
-		bool EndsWith(const String& tail) const
+		[[nodiscard]] bool EndsWith(const String& tail) const
 		{
 			if (Length() < tail.Length())
 			{
 				return false;
 			}
+
 			return ContainsAt(tail, Length() - tail.Length());
 		}
 
-		inline bool Contains(const String& keyword) const { return Find(keyword) >= Length(); }
+		[[nodiscard]] bool Contains(const String& keyword) const { return Find(keyword) < Length(); }
 
-		String Append(const Char letter) const;
-		String Append(const int value) const;
-		String Append(const float value) const;
-		String Append(const Char* text) const;
-		String Append(const String& string) const;
+		[[nodiscard]] String Append(const Char letter) const;
+		[[nodiscard]] String Append(const int value) const;
+		[[nodiscard]] String Append(const float value) const;
+		[[nodiscard]] String Append(const Char* text) const;
+		[[nodiscard]] String Append(const String& string) const;
 
 		void AppendSelf(const Char letter);
 		void AppendSelf(const int value);
@@ -150,14 +159,14 @@ namespace hbe
 		void AppendSelf(const Char* text);
 		void AppendSelf(const String& string);
 
-		String Replace(const String& from, const String& to, Index offset = 0, Index endIndex = -1) const;
-		String ReplaceAll(char from, char to) const;
-		String ReplaceAll(String from, String to) const;
+		[[nodiscard]] String Replace(const String& from, const String& to, Index offset = 0, Index endIndex = INVALID_INDEX) const;
+		[[nodiscard]] String ReplaceAll(char from, char to) const;
+		[[nodiscard]] String ReplaceAll(String from, String to) const;
 
-		inline String Trim() const
+		[[nodiscard]] String Trim() const
 		{
-			Index startIndex = -1;
-			Index endIndex = -1;
+			Index startIndex = INVALID_INDEX;
+			Index endIndex = INVALID_INDEX;
 
 			const auto length = Length();
 			for (Index i = 0; i < length; ++i)
@@ -174,13 +183,13 @@ namespace hbe
 
 			if (startIndex >= length)
 			{
-				return String();
+				return {};
 			}
 
 			return SubString(startIndex, endIndex + 1);
 		}
 
-		String Head() const
+		[[nodiscard]] String Head() const
 		{
 			Index index = Find(Array<Char>({' ', '\t', '\n', '\r'}));
 			if (index < Length())
@@ -188,24 +197,24 @@ namespace hbe
 				return SubString(0, index);
 			}
 
-			return *this;
+			return Clone();
 		}
 
-		String ExceptHead() const
+		[[nodiscard]] String ExceptHead() const
 		{
 			Index index = Find(Array<Char>({' ', '\t', '\n', '\r'}));
 			if (index < Length())
 			{
 				return SubString(index);
 			}
-			return String();
+			return {};
 		}
 
-		inline Char* GetBuffer() { return buffer->data(); }
-		inline const Char* GetBuffer() const { return buffer->data(); }
+		[[nodiscard]] Char* GetBuffer() { return buffer->data(); }
+		[[nodiscard]] const Char* GetBuffer() const { return buffer->data(); }
 		void ResetBuffer(size_t size);
 
-		inline void Swap(String&& target)
+		void Swap(String&& target)
 		{
 			Index tmpHashCode = hashCode;
 			hashCode = target.hashCode;
@@ -214,7 +223,7 @@ namespace hbe
 			buffer.Swap(target.buffer);
 		}
 
-		inline void ToLowerCase()
+		void ToLowerCase()
 		{
 			constexpr Char diff = 'a' - 'A';
 
@@ -231,14 +240,14 @@ namespace hbe
 			CalculateHashCode();
 		}
 
-		inline String GetLowerCase() const
+		[[nodiscard]] String GetLowerCase() const
 		{
 			String str = Clone();
 			str.ToLowerCase();
 			return str;
 		}
 
-		inline void ToUpperCase()
+		void ToUpperCase()
 		{
 			constexpr Char diff = 'A' - 'a';
 
@@ -255,41 +264,41 @@ namespace hbe
 			CalculateHashCode();
 		}
 
-		inline String GetUpperCase() const
+		[[nodiscard]] String GetUpperCase() const
 		{
 			String str = Clone();
 			str.ToUpperCase();
 			return str;
 		}
 
-		const char* ToCharArray() const;
+		[[nodiscard]] const char* ToCharArray() const;
 
-		inline char ToChar() const { return buffer ? (*buffer)[0] : '\0'; }
+		[[nodiscard]] char ToChar() const { return buffer ? (*buffer)[0] : '\0'; }
 
-		inline char ToUnsignedChar() const { return buffer ? static_cast<unsigned char>((*buffer)[0]) : 0; }
+		[[nodiscard]] char ToUnsignedChar() const { return buffer ? static_cast<unsigned char>((*buffer)[0]) : 0; }
 
-		inline int ToInt() const { return buffer ? std::stoi(buffer->data()) : 0; }
+		[[nodiscard]] int ToInt() const { return buffer ? std::stoi(buffer->data()) : 0; }
 
-		inline unsigned int ToUnsignedInt() const
+		[[nodiscard]] unsigned int ToUnsignedInt() const
 		{
 			return buffer ? static_cast<unsigned int>(std::stoul(buffer->data())) : 0;
 		}
 
-		inline long ToLong() const { return buffer ? std::stol(buffer->data()) : 0; }
+		[[nodiscard]] long ToLong() const { return buffer ? std::stol(buffer->data()) : 0; }
 
-		inline unsigned long ToUnsignedLong() const { return buffer ? std::stoul(buffer->data()) : 0; }
+		[[nodiscard]] unsigned long ToUnsignedLong() const { return buffer ? std::stoul(buffer->data()) : 0; }
 
-		inline long long ToLongLong() const { return buffer ? std::stoll(buffer->data()) : 0; }
+		[[nodiscard]] long long ToLongLong() const { return buffer ? std::stoll(buffer->data()) : 0; }
 
-		inline unsigned long long ToUnsignedLongLong() const { return buffer ? std::stoull(buffer->data()) : 0; }
+		[[nodiscard]] unsigned long long ToUnsignedLongLong() const { return buffer ? std::stoull(buffer->data()) : 0; }
 
-		inline float ToFloat() const { return buffer ? std::stof(buffer->data()) : 0.0f; }
+		[[nodiscard]] float ToFloat() const { return buffer ? std::stof(buffer->data()) : 0.0f; }
 
-		inline double ToDouble() const { return buffer ? std::stod(buffer->data()) : 0.0; }
+		[[nodiscard]] double ToDouble() const { return buffer ? std::stod(buffer->data()) : 0.0; }
 
-		inline long double ToLongDouble() const { return buffer ? std::stold(buffer->data()) : 0.0; }
+		[[nodiscard]] long double ToLongDouble() const { return buffer ? std::stold(buffer->data()) : 0.0; }
 
-		inline void* ToPointer() const
+		[[nodiscard]] void* ToPointer() const
 		{
 			if (buffer)
 			{
@@ -299,7 +308,8 @@ namespace hbe
 			return nullptr;
 		}
 
-		void ParseKeyValue(String& key, String& value);
+		// A simple helper function to parse 'Key = Value' string.
+		void ParseKeyValue(String& outKey, String& outValue);
 
 	private:
 		void CalculateHashCode();
@@ -317,7 +327,7 @@ namespace hbe
 		StringTest() : TestCollection("StringTest") {}
 
 	protected:
-		virtual void Prepare() override;
+		void Prepare() override;
 	};
 } // namespace hbe
 #endif //__UNIT_TEST__

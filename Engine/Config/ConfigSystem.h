@@ -15,6 +15,7 @@ namespace hbe
 	class ConfigParam;
 
 	// ConfigSystem is a simple key-value database for all setting values.
+	/// @brief Singleton system for managing runtime configuration parameters.
 	class ConfigSystem final
 	{
 		template<typename T>

@@ -9,7 +9,7 @@
 
 namespace hbe
 {
-
+	/// @brief A stratified sampling class for generating samples within intervals.
 	template<typename TReal = double, typename TInteger = uint32_t>
 	class StratifiedSampling
 	{

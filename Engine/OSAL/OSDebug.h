@@ -8,6 +8,7 @@
 namespace OS
 {
 
+	/// @brief Get a stack backtrace for debugging purposes.
 	hbe::StaticString GetBackTrace(uint16_t startIndex = 0, uint16_t maxDepth = 512);
 
 } // namespace OS
@@ -18,6 +19,7 @@ namespace OS
 namespace hbe
 {
 
+	/// @brief Test collection for OS debug operations.
 	class OSDebugTest : public TestCollection
 	{
 	public:

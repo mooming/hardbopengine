@@ -6,7 +6,7 @@
 
 namespace hbe
 {
-
+	/// @brief Utility functions for pool configuration management.
 	namespace PoolConfigUtil
 	{
 

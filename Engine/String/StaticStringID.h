@@ -7,6 +7,7 @@
 
 namespace hbe
 {
+	/// @brief A lightweight identifier for static strings stored in the global string table.
 	struct StaticStringID final
 	{
 		static constexpr uint8_t* Default = nullptr;

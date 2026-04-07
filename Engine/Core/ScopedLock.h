@@ -17,6 +17,7 @@ namespace hbe
 		t.unlock();
 	};
 
+	/// @brief A RAII-style lock wrapper that acquires a lock on construction and releases it on destruction.
 	template<CLockable TLockable>
 	class ScopedLock final
 	{
