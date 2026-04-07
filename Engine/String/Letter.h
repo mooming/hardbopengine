@@ -4,6 +4,7 @@
 
 namespace hbe
 {
+	/// @brief Utility class for character classification and validation.
 	class Letter
 	{
 	public:

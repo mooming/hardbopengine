@@ -12,6 +12,8 @@
 namespace hbe
 {
 
+	/// @brief Base class for test collections in the unit test framework.
+	/// @details Provides infrastructure for defining and running tests with logging and result tracking.
 	class TestCollection
 	{
 	public:

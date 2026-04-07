@@ -13,8 +13,7 @@ namespace hbe
 {
 	class Task;
 
-	// A task can be split into multiple RangedTasks with ranges.
-	// Task with a range [start, end).
+	/// @brief A task with a specific range of indices [start, end) that can be executed in parallel.
 	class RangedTask final
 	{
 		using TIndex = std::size_t;

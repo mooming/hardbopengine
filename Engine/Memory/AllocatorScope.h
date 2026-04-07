@@ -7,6 +7,9 @@
 namespace hbe
 {
 
+	/// @brief RAII wrapper for temporarily changing the scoped allocator.
+	/// @details Saves the current allocator ID on construction and restores it on destruction.
+	/// Used to temporarily redirect allocations to a specific allocator within a scope.
 	class AllocatorScope final
 	{
 	private:

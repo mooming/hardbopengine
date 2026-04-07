@@ -6,6 +6,9 @@
 
 namespace hbe
 {
+	/// @brief Reference-counted smart pointer for shared ownership.
+	/// @details Manages a heap-allocated object with reference counting.
+	/// Automatically deallocates when reference count reaches zero.
 	template<typename Type, typename RefCount = uint8_t>
 	class Shareable
 	{
@@ -26,17 +29,17 @@ namespace hbe
 				return newBody->Reference();
 			}
 
-			inline Type& GetBody() { return data; }
+			Type& GetBody() { return data; }
 
-			inline Body* Reference()
+			Body* Reference()
 			{
 				++count;
 				return this;
 			}
 
-			inline RefCount GetRefCount() const { return count; }
+			RefCount GetRefCount() const { return count; }
 
-			inline void Dereference()
+			void Dereference()
 			{
 				if (count > 0)
 				{
@@ -51,7 +54,7 @@ namespace hbe
 			}
 
 			template<typename... Types>
-			inline Body(Types&&... args) : count(0), data(std::forward<Types>(args)...)
+			Body(Types&&... args) : count(0), data(std::forward<Types>(args)...)
 			{}
 		};
 
@@ -60,10 +63,10 @@ namespace hbe
 
 	public:
 		template<typename... Types>
-		inline Shareable(Types&&... args) : body(Body::Create(std::forward<Types>(args)...))
+		Shareable(Types&&... args) : body(Body::Create(std::forward<Types>(args)...))
 		{}
 
-		inline Shareable(Shareable& rhs)
+		Shareable(Shareable& rhs)
 		{
 			if (rhs)
 			{
@@ -75,13 +78,13 @@ namespace hbe
 			}
 		}
 
-		inline Shareable(Shareable&& rhs)
+		Shareable(Shareable&& rhs)
 		{
 			body = rhs.body;
 			rhs.body = nullptr;
 		}
 
-		inline ~Shareable()
+		~Shareable()
 		{
 			if (body != nullptr)
 			{
@@ -90,7 +93,7 @@ namespace hbe
 			}
 		}
 
-		inline Shareable& operator=(Shareable& rhs)
+		Shareable& operator=(Shareable& rhs)
 		{
 			Release();
 
@@ -100,23 +103,23 @@ namespace hbe
 			}
 		}
 
-		inline RefCount GetReferenceCount() const { return body != nullptr ? body->GetRefCount() : 0; }
+		RefCount GetReferenceCount() const { return body != nullptr ? body->GetRefCount() : 0; }
 
-		inline operator bool() const { return body != nullptr; }
+		operator bool() const { return body != nullptr; }
 
-		inline Type& Get() { return body->GetBody(); }
+		Type& Get() { return body->GetBody(); }
 
-		inline const Type& Get() const { return body->GetBody(); }
+		const Type& Get() const { return body->GetBody(); }
 
-		inline Type& operator*() { return body->GetBody(); }
+		Type& operator*() { return body->GetBody(); }
 
-		inline const Type& operator*() const { return body->GetBody(); }
+		const Type& operator*() const { return body->GetBody(); }
 
-		inline Type* operator->() { return &body->GetBody(); }
+		Type* operator->() { return &body->GetBody(); }
 
-		inline const Type* operator->() const { return &body->GetBody(); }
+		const Type* operator->() const { return &body->GetBody(); }
 
-		inline void Release()
+		void Release()
 		{
 			if (body != nullptr)
 			{
@@ -125,7 +128,7 @@ namespace hbe
 			}
 		}
 
-		inline void Swap(Shareable& rhs)
+		void Swap(Shareable& rhs)
 		{
 			auto tmpBody = body;
 			body = rhs.body;

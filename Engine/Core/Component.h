@@ -7,6 +7,7 @@
 
 namespace hbe
 {
+	/// @brief Base class for game engine components with lifecycle management (init, update, enable, disable, release).
 	class Component
 	{
 		using State = ComponentState;

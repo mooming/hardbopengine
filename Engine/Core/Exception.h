@@ -8,6 +8,7 @@
 
 namespace hbe
 {
+	/// @brief A simple exception class for reporting errors with file and line information.
 	class Exception
 	{
 	public:

@@ -8,7 +8,7 @@
 
 namespace hbe
 {
-
+	/// @brief A 2x2 matrix template class for 2D transformations.
 	template<typename Number>
 	class Matrix2x2
 	{

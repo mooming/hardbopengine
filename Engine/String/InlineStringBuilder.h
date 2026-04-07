@@ -14,12 +14,7 @@
 namespace hbe
 {
 
-	/**
-	 InlineStringBuilder
-	 A buffer designed for String Building.
-	 It declares a fixed size static buffer. It doesn't handle a logner text
-	 than its buffer size. It'll drop letters exceeding its limit.
-	 */
+	/// @brief A fixed-size inline string builder with a static buffer for efficient string construction.
 	template<size_t BufferSize = 1024, class TChar = char>
 	class InlineStringBuilder final
 	{

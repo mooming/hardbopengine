@@ -15,9 +15,10 @@
 
 namespace hbe
 {
+	class TaskStream;
 	class TaskSystem;
 
-	// TaskStream represents a thread performing a series of tasks.
+	/// @brief Represents a thread that processes a series of tasks from a priority queue.
 	class TaskStream final
 	{
 		template<typename T>

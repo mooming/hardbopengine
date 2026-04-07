@@ -15,6 +15,7 @@ namespace hbe
 	class Engine;
 	class StaticString;
 
+	/// @brief Tracks engine runtime statistics including frame counts, timing, and memory usage.
 	class SystemStatistics final
 	{
 	private:

@@ -6,7 +6,7 @@
 
 namespace hbe
 {
-
+	/// @brief A 2D vector template class.
 	template<typename Number>
 	class Vector2
 	{

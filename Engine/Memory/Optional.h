@@ -9,7 +9,8 @@
 
 namespace hbe
 {
-
+	/// @brief Stack-allocated optional value similar to std::optional.
+	/// @details Stores a value or null without heap allocation.
 	template<typename Type>
 	class Optional final
 	{

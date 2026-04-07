@@ -14,6 +14,8 @@ namespace hbe
 	template<CNext T>
 	class AtomicStackView
 	{
+	public:
+		/// @brief A lock-free atomic stack implementation using CAS operations
 	private:
 		static_assert(std::atomic<T*>::is_always_lock_free,
 					  "The speicified type is not always lock free on this platfrom.");

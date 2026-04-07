@@ -11,6 +11,7 @@ namespace hbe
 
 	// ConfigFile represent a single config file.
 	// Both key and value are string data.
+	/// @brief Represents a configuration file with key-value pair parsing.
 	class ConfigFile final
 	{
 	public:

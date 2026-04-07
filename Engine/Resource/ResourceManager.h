@@ -13,12 +13,14 @@ namespace hbe
 	class Engine;
 	class TaskSystem;
 
+	/// @brief Manages resource loading and lifetime with reference counting.
 	class ResourceManager final
 	{
 		template<typename T>
 		using TVector = hbe::HVector<T>;
 
 	private:
+		/// @brief Internal storage for a loaded resource with reference counting.
 		struct ResourceItem final
 		{
 			uint32_t id = 0;

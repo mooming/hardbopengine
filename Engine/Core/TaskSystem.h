@@ -11,7 +11,7 @@
 namespace hbe
 {
 
-	// TaskSystem is a class to manage tasks and task streams.
+	/// @brief Manages tasks and task streams for parallel task execution.
 	class TaskSystem final
 	{
 	public:

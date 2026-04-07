@@ -10,7 +10,7 @@
 
 namespace hbe
 {
-	// It represents a task which consists of RangedTasks. The task can be split into multiple RangedTasks on multiple threads.
+	/// @brief Represents a unit of work to be executed by the task system. It consists of multiple RangedTasks and can be split across threads.
 	class Task final
 	{
 	public:

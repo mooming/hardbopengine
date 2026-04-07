@@ -301,7 +301,7 @@ namespace hbe
 		{
 			AllocatorScope memAllocScope(MemoryManager::SystemAllocatorID);
 
-			static TTextBuffer tmpTextBuffer;
+			thread_local TTextBuffer tmpTextBuffer;
 			tmpTextBuffer.reserve(1);
 
 			using namespace std;

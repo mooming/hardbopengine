@@ -3,6 +3,7 @@
 #pragma once
 #include <cstddef>
 
+/// @brief Configuration for a memory pool block.
 struct PoolConfig final
 {
 	size_t blockSize = 0;
