@@ -8,7 +8,8 @@
 
 namespace hbe
 {
-
+	/// @brief Configuration for a multi-pool allocator.
+	/// @details Stores name and pool configurations for a multi-pool allocator.
 	struct MultiPoolAllocatorConfig final
 	{
 		template<typename T>

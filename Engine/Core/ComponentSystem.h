@@ -10,6 +10,7 @@
 
 namespace hbe
 {
+	/// @brief A template-based system for managing components through their lifecycle states (init, update, sleep, dead).
 	template<typename Component>
 	class ComponentSystem
 	{

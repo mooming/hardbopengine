@@ -8,7 +8,7 @@
 
 namespace hbe
 {
-
+	/// @brief Type definitions for buffer operations.
 	namespace BufferTypes
 	{
 		using TSize = size_t;

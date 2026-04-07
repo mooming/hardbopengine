@@ -7,6 +7,7 @@
 
 namespace hbe
 {
+	/// @brief Parses and stores command line arguments passed to the application.
 	class CommandLineArguments final
 	{
 	private:

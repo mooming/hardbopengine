@@ -9,6 +9,7 @@
 #include "Core/Debug.h"
 #include "Core/ScopedLock.h"
 #include "String/StaticStringTable.h"
+#include "OSAL/OSDebug.h"
 
 namespace
 {
@@ -18,13 +19,16 @@ namespace
 
 		auto& engine = Engine::Get();
 		engine.GetLogger().StopTask(engine.GetTaskSystem());
-		engine.LogError([sigNum](auto& ls) { ls << "signal(" << sigNum << ") received."; });
-		engine.LogError([](auto& ls) { ls << "The application shall be terminated."; });
-		engine.LogError([](auto& ls) { ls << "Thank you for playing. Have a great day! :)" << std::endl; });
+		engine.LogError([sigNum](auto& ls) { ls << "ERROR: signal(" << sigNum << ") received. The application shall be terminated."; });
+		engine.LogError([](auto& ls) {
+			auto stackTrace = OS::GetBackTrace();
+			ls << stackTrace << std::endl;
+		});
 
+		engine.LogError([](auto& ls) { ls << "Thank you for playing. Have a great day! :)" << std::endl; });
 		engine.CloseLog();
 
-		exit(sigNum);
+		exit(128 + sigNum);
 	}
 
 } // namespace

@@ -10,6 +10,7 @@
 
 namespace hbe
 {
+	/// @brief A quaternion template class for representing 3D rotations.
 	// Assume every quaternion is a unit quaternion.
 
 	template<typename Number>

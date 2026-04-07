@@ -8,6 +8,7 @@
 
 namespace hbe
 {
+	/// @brief An Oriented Bounding Box class for collision detection.
 	template<typename Number>
 	class OBB
 	{

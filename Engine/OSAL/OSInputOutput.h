@@ -33,6 +33,7 @@ namespace OS
 namespace hbe
 {
 
+	/// @brief Test collection for OS input/output operations.
 	class OSInputOutputTest : public TestCollection
 	{
 	public:

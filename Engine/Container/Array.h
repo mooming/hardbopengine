@@ -11,6 +11,7 @@ namespace hbe
 {
 
 	// Static array supporting custom allocators
+	/// @brief A dynamic array template supporting custom memory allocators
 	template<typename Element, class TAllocator = DefaultAllocator<Element>>
 	class Array
 	{

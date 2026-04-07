@@ -4,9 +4,7 @@
 
 #include <cstdio>
 #include <cstring>
-#include "Core/CommonUtil.h"
 #include "Core/Debug.h"
-#include "Memory/MemoryManager.h"
 #include "StringUtil.h"
 
 namespace hbe
@@ -309,6 +307,31 @@ namespace hbe
 		}
 
 		return true;
+	}
+
+	bool String::operator==(const char* rhs) const
+	{
+		const bool isEmpty = IsEmpty();
+		if (rhs == nullptr)
+		{
+			return isEmpty;
+		}
+
+		if (isEmpty)
+		{
+			return rhs[0] == '\0';
+		}
+
+		const auto length = Length();
+		for (Index i = 0; i < length; ++i)
+		{
+			if ((*buffer)[i] != rhs[i])
+			{
+				return false;
+			}
+		}
+
+		return rhs[length] == '\0';
 	}
 
 	const char* String::ToCharArray() const { return buffer ? buffer.Get().data() : ""; }
@@ -623,16 +646,15 @@ namespace hbe
 		}
 
 		const Index strLength = Length();
-		const Index actualEndIndex = (endIndex < 0 || endIndex > strLength) ? strLength : endIndex;
-		const Index actualOffset = (offset < 0) ? 0 : offset;
-
+		const Index actualEndIndex =  !IsValidIndex(endIndex) ? strLength : endIndex;
+		const Index actualOffset = !IsValidIndex(offset) ? 0 : offset;
 		if (actualOffset >= actualEndIndex)
 		{
 			return Clone();
 		}
 
 		const Index searchLength = from.Length();
-		Index foundIndex = -1;
+		Index foundIndex = strLength;
 
 		// Find first occurrence of 'from' within the specified range
 		for (Index i = actualOffset; i <= actualEndIndex - searchLength; ++i)
@@ -646,6 +668,7 @@ namespace hbe
 					break;
 				}
 			}
+
 			if (match)
 			{
 				foundIndex = i;
@@ -654,7 +677,7 @@ namespace hbe
 		}
 
 		// If not found, return clone of original
-		if (foundIndex < 0)
+		if (!IsValidIndex(foundIndex))
 		{
 			return Clone();
 		}
@@ -681,10 +704,10 @@ namespace hbe
 			result.buffer->push_back((*buffer)[i]);
 		}
 
-		// Add null terminator
+		// Add null terminator and recalculate its hash code.
 		result.buffer->push_back('\0');
-
 		result.CalculateHashCode();
+
 		return result;
 	}
 
@@ -692,7 +715,7 @@ namespace hbe
 	{
 		if (!buffer)
 		{
-			return String();
+			return {};
 		}
 
 		String str = Clone();
@@ -723,6 +746,7 @@ namespace hbe
 
 		const Index strLength = Length();
 		const Index searchLength = from.Length();
+		const Index toLength = to.Length();
 
 		if (searchLength > strLength)
 		{
@@ -734,7 +758,8 @@ namespace hbe
 		result.buffer->clear();
 
 		Index i = 0;
-		while (i <= strLength - searchLength)
+		const Index lastIndex = strLength - searchLength;
+		while (i <= lastIndex)
 		{
 			bool match = true;
 			for (Index j = 0; j < searchLength; ++j)
@@ -749,10 +774,11 @@ namespace hbe
 			if (match)
 			{
 				// Found match - add replacement
-				for (Index j = 0; j < to.Length(); ++j)
+				for (Index j = 0; j < toLength; ++j)
 				{
 					result.buffer->push_back(to.buffer->data()[j]);
 				}
+
 				i += searchLength;
 			}
 			else
@@ -770,10 +796,10 @@ namespace hbe
 			++i;
 		}
 
-		// Add null terminator
+		// Add null terminator and calculate a hash code.
 		result.buffer->push_back('\0');
-
 		result.CalculateHashCode();
+
 		return result;
 	}
 
@@ -1070,9 +1096,9 @@ namespace hbe
 			auto result = str.ReplaceAll(String("ab"), String("X"));
 			ls << "ReplaceAll adjacent: " << result.c_str() << lf;
 
-			if (result != "aXcc")
+			if (result != "aXbcc")
 			{
-				ls << "ReplaceAll adjacent failed: expected 'aXcc', got '" << result.c_str() << "'" << lferr;
+				ls << "ReplaceAll adjacent failed: expected 'aXbcc', got '" << result.c_str() << "'" << lferr;
 			}
 		});
 

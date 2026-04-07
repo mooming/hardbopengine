@@ -10,6 +10,7 @@
 namespace hbe
 {
 
+	/// @brief Utility functions for logging operations
 	namespace LogUtil
 	{
 

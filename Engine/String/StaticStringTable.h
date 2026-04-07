@@ -13,6 +13,7 @@
 namespace hbe
 {
 
+	/// @brief A global table for storing and managing interned static strings.
 	class StaticStringTable final
 	{
 	public:

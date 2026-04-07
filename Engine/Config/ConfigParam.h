@@ -13,6 +13,7 @@ namespace hbe
 
 	// ConfigParam represents a single config value with arbitrary file.
 	// It can be thread-safe when IsAtomic is set to true.
+	/// @brief Template class representing a single configuration parameter with optional thread safety.
 	template<typename T, bool IsAtomic = false>
 	class ConfigParam final
 	{

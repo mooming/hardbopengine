@@ -11,6 +11,7 @@
 
 namespace hbe
 {
+	/// @brief Importance resampling class for Monte Carlo integration.
 	template<typename TInput = double, typename TOutput = double, typename TReal = double, typename TInteger = uint32_t>
 	class ImportanceResampling
 	{

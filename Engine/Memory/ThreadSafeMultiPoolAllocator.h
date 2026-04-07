@@ -10,7 +10,9 @@
 
 namespace hbe
 {
-
+	/// @brief Thread-safe multi-pool allocator with multiple block sizes.
+	/// @details Manages multiple pool allocators of different block sizes.
+	/// Uses mutex synchronization for thread safety.
 	class ThreadSafeMultiPoolAllocator final
 	{
 	public:

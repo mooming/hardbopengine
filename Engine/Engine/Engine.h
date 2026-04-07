@@ -16,6 +16,9 @@ namespace hbe
 	template<size_t, class>
 	class InlineStringBuilder;
 
+	/// @brief Main entry point for the HardBop Engine.
+	/// @details Initializes and manages all engine subsystems including memory, logging,
+	/// task system, and resources. Acts as the central coordinator for the entire engine.
 	class Engine final
 	{
 	public:

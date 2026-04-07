@@ -13,6 +13,7 @@
 namespace hbe
 {
 
+	/// @brief A template-based string builder supporting various types with stream-style output.
 	template<class TCh = char, class TAlloc = DefaultAllocator<TCh>>
 	class StringBuilder final
 	{

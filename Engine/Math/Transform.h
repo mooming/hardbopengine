@@ -11,6 +11,7 @@
 
 namespace hbe
 {
+	/// @brief A hierarchical transform with parent-child relationships and world transform caching.
 	template<typename Number>
 	class Transform final
 	{

@@ -11,7 +11,7 @@
 
 namespace hbe
 {
-
+	/// @brief An Axis-Aligned Bounding Box template class.
 	template<typename Vec>
 	class AABB
 	{

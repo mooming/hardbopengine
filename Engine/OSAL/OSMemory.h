@@ -12,7 +12,8 @@
 namespace OS
 {
 
-	// Check if pointer is a valid allocation (not nullptr or MAP_FAILED)
+	/// @brief Provides low-level memory management operations for platform-independent memory allocation,
+	/// alignment, and protection.
 	bool IsValidAllocation(void* ptr);
 
 	template<typename T>
@@ -42,6 +43,7 @@ namespace OS
 namespace hbe
 {
 
+	/// @brief Test collection for OS memory operations.
 	class OSMemoryTest : public TestCollection
 	{
 	public:

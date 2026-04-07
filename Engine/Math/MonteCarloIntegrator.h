@@ -9,7 +9,7 @@
 
 namespace hbe
 {
-
+	/// @brief A Monte Carlo integrator for numerical integration using importance sampling.
 	template<typename TInput = double, typename TOutput = double, typename TReal = double, typename TInteger = uint32_t>
 	class MonteCarloIntegrator final
 	{

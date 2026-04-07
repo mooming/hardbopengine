@@ -10,6 +10,8 @@
 namespace hbe
 {
 
+	/// @brief Represents a single log entry with metadata and message text.
+	/// Uses a union to optimize memory: short messages stored inline, long messages use dynamic allocation.
 	struct LogLine final
 	{
 		using TTimePoint = typename std::chrono::time_point<std::chrono::steady_clock>;

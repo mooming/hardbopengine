@@ -9,6 +9,9 @@
 
 namespace hbe
 {
+	/// @brief Stack-based allocator for temporary allocations.
+	/// @details Linear allocator that allocates from a fixed-size buffer.
+	/// Deallocations are not supported (memory is released on destruction).
 	class StackAllocator final
 	{
 	public:

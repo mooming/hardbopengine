@@ -11,6 +11,7 @@
 
 namespace hbe
 {
+	/// @brief A transform with uniform scale, rotation, and translation.
 	template<typename Number>
 	class UniformTransform
 	{

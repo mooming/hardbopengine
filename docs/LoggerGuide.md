@@ -401,18 +401,19 @@ struct SimpleLogger
 
 ## Known Issues & Potential Bugs
 
-### 1. Static tmpTextBuffer Thread Safety Issue (Line 304-320)
+### 1. Static tmpTextBuffer on Logger Thread (Line 304-320)
 
 ```cpp
-static TTextBuffer tmpTextBuffer;
-tmpTextBuffer.reserve(1);
+if (unlikely(level >= ELogLevel::Error && std::this_thread::get_id() == threadID))
+{
+    static TTextBuffer tmpTextBuffer;
+    ...
+}
 ```
 
-**Problem**: Using a static buffer for error logging from the logger thread creates a race condition. If multiple errors occur simultaneously on the logger thread, they will overwrite each other's content.
+**Status**: NOT A BUG.
 
-**Impact**: Only the last error message may be logged if multiple errors occur in quick succession from the logger thread.
-
-**Recommendation**: Use a thread-local buffer or scoped allocation instead.
+**Reason**: This code only executes when `std::this_thread::get_id() == threadID`, i.e., only on the logger's dedicated IO thread. Since Logger is a singleton, there's no possibility of concurrent access from multiple threads. The static buffer is safe in this context.
 
 ---
 
@@ -426,11 +427,9 @@ if (unlikely(logFunc == nullptr))
 }
 ```
 
-**Problem**: When `logFunc` is null, `AddLog` calls itself recursively with a valid lambda. If the filter or log level settings cause this warning to be filtered out, no log is produced. However, if there's a bug in the filter logic, this could cause infinite recursion.
+**Status**: NOT A BUG.
 
-**Impact**: Low - but creates a potential stack overflow risk if filter logic has bugs.
-
-**Recommendation**: Use FallbackLog directly instead of AddLog for this internal warning.
+**Reason**: The recursive AddLog call passes a valid non-null lambda, so it won't trigger the null check again. The filter is checked after this null check, so even if filtered, it won't recurse. This is safe.
 
 ---
 
@@ -444,11 +443,11 @@ while (needFlush.load(std::memory_order_relaxed))
 }
 ```
 
-**Problem**: When called from a non-logger thread, this polls with 10ms sleep intervals. During heavy logging, this could cause significant delays (up to ~80ms if buffer fills completely).
+**Status**: POTENTIAL ISSUE.
 
-**Impact**: Performance degradation when calling Flush() under heavy load.
+**Reason**: When called from a non-logger thread, this polls with 10ms sleep intervals. During heavy logging, this could cause up to ~10ms delay per call (single iteration).
 
-**Recommendation**: Consider using a condition variable for more efficient waiting.
+**Trade-off**: The current implementation is simple and safe. Using a condition variable would be more efficient but adds complexity. For typical usage patterns (calling Flush rarely, not in hot paths), this is acceptable.
 
 ---
 
@@ -458,16 +457,25 @@ while (needFlush.load(std::memory_order_relaxed))
 void Logger::StopTask(TaskSystem& taskSys)
 {
     isRunning.store(false, std::memory_order_release);  // Line 206
-    ...
-    AddLog(GetName(), ELogLevel::Info, [](auto& ls) { ls << "Logger shall be terminated." << hendl; });  // Line 224
+    
+    if (task.HasDone())
+    {
+        return;
+    }
+
+    task.Wait();  // Line 213 - waits for logger task to complete
+    threadID = std::thread::id();
+    
+    // ... 
+    
+    AddLog(GetName(), ELogLevel::Info, ...);  // Line 224
+    ProcessBuffer();  // Line 226 - processes the final log
+}
 ```
 
-**Problem**: `AddLog` can still add entries after `isRunning` is set to false because:
-- The check `if (unlikely(instance == nullptr))` passes (instance is valid)
-- The `LOG_ENABLED` check passes
-- The runnable in `ProcessBuffer` checks `isRunning` but `AddLog` doesn't
+**Status**: NOT A BUG.
 
-**Impact**: Last log message may be lost if it gets added after the logger thread has already stopped checking for new work.
+**Reason**: After setting `isRunning = false`, the code calls `task.Wait()` which blocks until the logger task finishes processing all pending logs. Only after that does it call `AddLog` and then `ProcessBuffer` directly. So the final "Logger shall be terminated." message is guaranteed to be logged.
 
 ---
 
@@ -481,45 +489,55 @@ if (unlikely(instance == nullptr))
 }
 ```
 
-**Problem**: Between logger construction and `StartTask`, or after `StopTask` but before destructor, the logger is in an inconsistent state. Logs will go to FallbackLog which uses Engine's synchronous logging.
+**Status**: NOT A BUG - BY DESIGN.
 
-**Impact**: During startup/shutdown phases, logging behavior differs from normal operation.
-
----
-
-### 6. LogLine Text Buffer Overflow (LogLine.h)
-
-```cpp
-union
-{
-    char text[Config::LogLineLength];  // 1024 bytes
-    ...
-};
-```
-
-**Problem**: If log message exceeds 1024 characters, only the first 1024 characters are stored (depending on LogLine implementation).
-
-**Impact**: Long log messages may be truncated without indication.
+**Reason**: This is intentional fallback behavior. Between logger construction and `StartTask()`, or after `StopTask()` but before destructor, the logger is in a transitional state. Logs go to Engine's synchronous console output via `FallbackLog()`. This is documented behavior, not a bug.
 
 ---
 
-### 7. Memory Allocation in Hot Path (Line 334)
+### 6. LogLine Long Message Handling (LogLine.cpp:41-81)
 
 ```cpp
+LogLine(..., size_t size) : isLong(size >= (Config::LogLineLength - 1))
 {
-    std::lock_guard lock(inputLock);
-    AllocatorScope inputAllocScope(inputAlloc);
-    inputBuffer.emplace_back(level, threadName, category, ls.c_str(), ls.Size());
+    if (isLong) {
+        longTextSize = size + 1;
+        longText = (char*) mmgr.SysAllocate(longTextSize);
+        std::copy(&inText[0], &inText[longTextSize], longText);
+    }
 }
 ```
 
-**Problem**: Every log message performs a heap allocation via `inputAlloc` even when logging is disabled at the filter level.
+**Status**: NOT A BUG.
 
-**Impact**: Performance overhead in high-frequency logging scenarios.
+**Reason**: When `size >= Config::LogLineLength - 1` (1023), it allocates `size + 1` bytes and copies exactly that many bytes. The sizes match correctly. Long messages are handled properly via dynamic allocation.
 
 ---
 
-### 8. Missing Return After FatalError Flush (Line 342-347)
+### 7. Memory Allocation Order (Line 252-255, 334)
+
+```cpp
+if (level < static_cast<ELogLevel>(CPLogLevel.Get()))  // Check BEFORE allocation
+{
+    return;
+}
+...
+{
+    std::lock_guard lock(inputLock);
+    AllocatorScope inputAllocScope(inputAlloc);  // Allocation happens AFTER checks
+    inputBuffer.emplace_back(...);
+}
+```
+
+**Status**: NOT A BUG.
+
+**Reason**: The log level check (line 252) happens BEFORE any allocation. If the level is below the configured threshold, the function returns early without any allocation. Similarly, filter checks (line 257-268) happen before allocation. So memory is only allocated for logs that will actually be processed.
+
+**Note**: The `TLogStream ls` is constructed at line 274 before these checks, which uses stack space (`InlineStringBuilder<Config::LogOutputBuffer>` = 128KB). This could be moved after the checks for marginal optimization in filtered-out paths.
+
+---
+
+### 8. FatalError Flow (Line 342-347)
 
 ```cpp
 if (unlikely(level >= ELogLevel::FatalError))
@@ -531,7 +549,51 @@ if (unlikely(level >= ELogLevel::FatalError))
 }
 ```
 
-**Note**: The code does have `return;` after `Assert(false)` in most cases, but the control flow could be confusing. The `Assert(false)` in debug builds does not return, so the explicit `return` is necessary.
+**Status**: NOT A BUG.
+
+**Reason**: `Assert(false)` does not return - execution continues to the explicit `return;`. This is intentional: in debug builds `Assert(false)` may break, then continue to the return. In release builds it does nothing. The explicit return ensures we don't continue to other code paths.
+
+---
+
+### 9. Logger::StopTask Never Called on Normal Exit (Engine.cpp)
+
+```cpp
+// Engine::ShutDown() - line 96-121
+void Engine::ShutDown()
+{
+    // ... print statistics ...
+    PreShutdown();
+    log.Out("Shutting down...");
+    taskSystem.RequestShutDown();
+    // NO logger.StopTask() call!
+}
+
+// Engine::~Engine() - line 67
+Engine::~Engine() { CloseLog(); }  // Only calls CloseLog(), not StopTask()
+```
+
+**Status**: BUG - Last logs not flushed.
+
+**Problem**: `Logger::StopTask()` is only called from `SignalHandler` (line 20), not during normal shutdown. When the application exits normally:
+
+1. Test task runs on MainStream (stream 0), calls `testEnv.Start()` → `TestEnv::Report()` → logs summary
+2. Test task calls `Engine::Get().ShutDown()` (line 110)
+3. `ShutDown()` calls `taskSystem.RequestShutDown()` → sets `isRunning = false`
+4. Test task completes, returns from `RunTests()`
+5. `main()` calls `hengine.WaitForEnd()` → `JoinAndClear()` - blocks until ALL streams exit including IO stream (stream 1)
+6. IO stream exits loop when `isRunning = false`
+7. After WaitForEnd() returns, Engine destructor runs - only calls `CloseLog()`
+
+**Root Cause**: When `TestEnv::Report()` calls `logger.Flush()` (line 166-167):
+- Calling thread = MainStream thread (stream 0)  
+- Logger thread = IOStream thread (stream 1)
+- `Flush()` sees thread mismatch → enters polling loop
+- But IO stream might already be exiting or stopped processing new work after `RequestShutDown()`
+- The final logs may never be processed before the IO thread stops
+
+**Impact**: Last log messages (including test result summary) are not printed to console/file in release builds.
+
+**Fix Required**: Call `Logger::StopTask()` during normal shutdown sequence, specifically before `WaitForEnd()` or before `RequestShutDown()`.
 
 ---
 
