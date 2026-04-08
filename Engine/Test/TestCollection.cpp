@@ -9,11 +9,7 @@ namespace hbe
 {
 
 	TestCollection::LogFlush::LogFlush(const char* name, ELogLevel level, TLogBuffer* buffer) :
-		name(name), level(level), testIndex(0), testName("None")
-
-		,
-		messageBuffer(buffer)
-
+		name(name), level(level), testIndex(0), testName("None"), messageBuffer(buffer)
 	{}
 
 	TestCollection::TestCollection(const char* inTitle) :
@@ -166,6 +162,24 @@ namespace hbe
 		ss.str("");
 
 		return os;
+
+#if 0
+		// Add prefix for the current test case.
+
+		auto log = Logger::Get(lf.name, lf.level);
+		log.Out([&lf, &os](auto& ls)
+		{
+			ls << "[TC" << lf.testIndex << "." << lf.testName << "] ";
+			std::istreambuf_iterator<char> strIter(os.rdbuf()), endIter;
+			while (strIter != endIter)
+			{
+				ls << *strIter;
+				++strIter;
+			}
+		});
+
+		return os;
+#endif
 	}
 
 } // namespace hbe
