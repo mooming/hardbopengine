@@ -36,7 +36,7 @@ namespace hbe
 	{
 		AddTest("Alloc Scope Test", [this](auto& ls)
 		{
-			InlinePoolAllocator<int, 100> allocator;
+			InlinePoolAllocator<int, 100, 2> allocator;
 			AllocatorScope scope(allocator);
 
 			auto& mmgr = MemoryManager::GetInstance();

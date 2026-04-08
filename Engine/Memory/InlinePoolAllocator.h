@@ -2,7 +2,6 @@
 
 #pragma once
 
-#include <cassert>
 #include <cstddef>
 #include <cstring>
 #include "AllocatorID.h"
@@ -15,64 +14,60 @@
 
 namespace hbe
 {
-	template<class T, int BufferSize, int NumBuffers = 2>
+
+	template<class T, size_t BlockSize, size_t NumBlocks>
 	struct InlinePoolAllocator
 	{
-		using TIndex = decltype(BufferSize);
+		using TIndex = size_t;
 		using value_type = T;
 
 		template<class U>
 		struct rebind
 		{
-			using other = InlinePoolAllocator<U, BufferSize, NumBuffers>;
+			using other = InlinePoolAllocator<U, BlockSize, NumBlocks>;
 		};
 
-		static_assert(NumBuffers > 0, "The number of buffers should be greater than or equal to zero.");
-		static_assert(std::is_signed<TIndex>(), "The type of BufferSize should be signed integral.");
-		static_assert(BufferSize > 0, "The buffer size should be greater than or memsetequal to zero.");
-
+		static constexpr size_t ActualBlockSize = std::max(BlockSize, sizeof(void*));
+		static constexpr size_t ActualNumBlocks = std::max(NumBlocks, static_cast<size_t>(1));
+		static constexpr size_t BlockSizeInBytes = sizeof(T) * ActualBlockSize;
 		static constexpr auto AlignUnit = std::max(sizeof(T), Config::DefaultAlign);
 
 	private:
 		TAllocatorID id;
 		TAllocatorID parentID;
-		int indexHint;
-
-		ALIGN bool isAllocated[NumBuffers]{};
-		alignas(AlignUnit) uint8_t buffer[NumBuffers][BufferSize * sizeof(T)]{};
+		void* availableBlock;
+		void* immediateBlock;
+		alignas(AlignUnit) uint8_t block[ActualNumBlocks][BlockSizeInBytes];
 
 	public:
-		InlinePoolAllocator() : id(InvalidAllocatorID), parentID(InvalidAllocatorID), indexHint(0)
+		InlinePoolAllocator() : id(InvalidAllocatorID), parentID(InvalidAllocatorID), availableBlock(&block[0][0]), immediateBlock(nullptr)
 		{
-			Assert(OS::CheckAligned(isAllocated));
-			Assert(OS::CheckAligned(buffer[0]));
+			Assert(OS::CheckAligned(block[0]));
 			parentID = MemoryManager::GetCurrentAllocatorID();
 
-			if (unlikely(BufferSize <= 0))
+			// Place a pointer to the next block at the beginning of blocks.
+			for (size_t i = 1; i < ActualNumBlocks; i++)
 			{
-				return;
+				WritePointerToNext(block[i-1], block[i]);
 			}
 
-			for (auto& item : isAllocated)
-			{
-				item = false;
-			}
+			WritePointerToNext(block[ActualNumBlocks-1], nullptr);
 
 #if __MEMORY_VERIFICATION__
-			constexpr size_t length = sizeof(T) * BufferSize * NumBuffers;
+			constexpr size_t length = sizeof(T) * ActualBlockSize * ActualNumBlocks;
 			std::memset(buffer, 0, length);
 #endif // __MEMORY_VERIFICATION__
 
 			RegisterAllocator();
 		}
 
-		InlinePoolAllocator(const InlinePoolAllocator&) : InlinePoolAllocator() { assert(false); }
+		InlinePoolAllocator(const InlinePoolAllocator&) : InlinePoolAllocator() { Assert(false); }
 		virtual ~InlinePoolAllocator() { DeregisterAllocator(); }
 
 		template<typename U>
-		explicit operator InlinePoolAllocator<U, BufferSize, NumBuffers>()
+		explicit operator InlinePoolAllocator<U, ActualBlockSize, ActualNumBlocks>()
 		{
-			using TCastedAlloc = InlinePoolAllocator<U, BufferSize, NumBuffers>;
+			using TCastedAlloc = InlinePoolAllocator<U, ActualBlockSize, ActualNumBlocks>;
 
 			if (parentID != InvalidAllocatorID)
 			{
@@ -91,122 +86,88 @@ namespace hbe
 		// This function name is enforced by STL
 		T* allocate(std::size_t n)
 		{
-			if (n == 0)
-			{
-				return nullptr;
-			}
-
-			constexpr size_t unit = sizeof(T);
-			const auto nBytes = n * unit;
+			const auto nBytes = n * sizeof(T);
 			auto ptr = AllocateBytes(nBytes);
-			return reinterpret_cast<T*>(ptr);
+
+			return static_cast<T*>(ptr);
 		}
 
 		// This function name is enforced by STL
 		void deallocate(T* ptr, std::size_t n) noexcept
 		{
-			if (ptr == nullptr)
-			{
-				return;
-			}
-
-			constexpr size_t unit = sizeof(T);
-			const auto nBytes = OS::GetAligned(n * unit);
-
-			void* voidPtr = reinterpret_cast<void*>(ptr);
-			return DeallocateBytes(voidPtr, nBytes);
+			return DeallocateBytes(ptr, n);
 		}
 
 		auto GetID() const { return id; }
-		auto GetBlockSize() const { return BufferSize; }
-		auto GetNumBlocks() const { return NumBuffers; }
+		static auto GetBlockSize() { return ActualBlockSize; }
+		static auto GetNumBlocks() { return ActualNumBlocks; }
 
 		bool operator==(const InlinePoolAllocator&) const { return false; }
-
 		bool operator!=(const InlinePoolAllocator&) const { return true; }
 
 	private:
 		void* AllocateBytes(size_t nBytes)
 		{
-			if (unlikely(nBytes == 0))
+			if (nBytes <= BlockSizeInBytes)
 			{
-				return nullptr;
-			}
-
-			constexpr size_t unit = sizeof(T);
-			constexpr size_t bufferSizeBytes = BufferSize * unit;
-
-			if (nBytes > bufferSizeBytes)
-			{
-				auto& mmgr = MemoryManager::GetInstance();
-				return mmgr.FallbackAllocate(GetID(), parentID, nBytes);
-			}
-
-			int index = indexHint;
-			for (int i = 0; i < NumBuffers; ++i, ++index)
-			{
-				index = index >= NumBuffers ? 0 : index;
-				if (isAllocated[index])
+				if (immediateBlock != nullptr)
 				{
-					continue;
+					auto ptr = immediateBlock;
+					immediateBlock = nullptr;
+
+					return ptr;
 				}
 
-				indexHint = index + 1;
-				if (indexHint >= NumBuffers)
+				if (availableBlock != nullptr)
 				{
-					indexHint = 0;
-				}
-
-				isAllocated[index] = true;
-				auto ptr = &buffer[index][0];
+					T* ptr = static_cast<T*>(availableBlock);
+					auto nextPtr = GetPointerToNext(availableBlock);
+					availableBlock = nextPtr;
 
 #if PROFILE_ENABLED
-				auto& mmgr = MemoryManager::GetInstance();
-				mmgr.ReportAllocation(id, ptr, nBytes, bufferSizeBytes);
+					auto& mmgr = MemoryManager::GetInstance();
+					mmgr.ReportAllocation(id, ptr, nBytes, BlockSizeInBytes);
 #endif // PROFILE_ENABLED
 
-				return ptr;
+					return ptr;
+				}
 			}
 
 			auto& mmgr = MemoryManager::GetInstance();
-			return mmgr.FallbackAllocate(GetID(), parentID, nBytes);
+			auto ptr = mmgr.FallbackAllocate(GetID(), parentID, nBytes);
+
+			return ptr;
 		}
 
 		void DeallocateBytes(void* ptr, size_t nBytes)
 		{
-			if (unlikely(ptr == nullptr || nBytes == 0))
+			if (immediateBlock == nullptr && nBytes <= BlockSizeInBytes)
 			{
+				immediateBlock = ptr;
 				return;
 			}
 
-			for (int i = 0; i < NumBuffers; ++i)
+			if (!IsValidPointer(ptr))
 			{
-				if (ptr != &buffer[i][0])
-				{
-					continue;
-				}
+				// Fallback Deallocation
+				auto& mmgr = MemoryManager::GetInstance();
+				mmgr.Deallocate(parentID, ptr, nBytes);
+				return;
+			}
+
+			// Return a block
+			WritePointerToNext(ptr, availableBlock);
+			availableBlock = ptr;
 
 #if PROFILE_ENABLED
-				auto& mmgr = MemoryManager::GetInstance();
-				constexpr size_t unit = sizeof(T);
-				constexpr size_t bufferSizeBytes = BufferSize * unit;
-				mmgr.ReportDeallocation(id, ptr, nBytes, bufferSizeBytes);
-#endif // PROFILE_ENABLED
-
-				isAllocated[i] = false;
-				indexHint = i;
-
-				return;
-			}
-
 			auto& mmgr = MemoryManager::GetInstance();
-			mmgr.Deallocate(parentID, ptr, nBytes);
+			mmgr.ReportDeallocation(id, ptr, nBytes, BlockSizeInBytes);
+#endif // PROFILE_ENABLED
 		}
 
 		void RegisterAllocator()
 		{
 			auto& mmgr = MemoryManager::GetInstance();
-
 			auto allocFunc = [](void* allocatorPtr, size_t nBytes) -> void*
 			{
 				auto allocator = static_cast<InlinePoolAllocator*>(allocatorPtr);
@@ -219,7 +180,7 @@ namespace hbe
 				allocator->DeallocateBytes(ptr, nBytes);
 			};
 
-			const auto capacity = BufferSize * NumBuffers * sizeof(T);
+			const auto capacity = ActualBlockSize * ActualNumBlocks * sizeof(T);
 			id = mmgr.RegisterAllocator(this, "InlinePoolAllocator", true, capacity, allocFunc, deallocFunc);
 
 			FatalAssert(id != InvalidAllocatorID);
@@ -235,6 +196,27 @@ namespace hbe
 
 			auto& mmgr = MemoryManager::GetInstance();
 			mmgr.DeregisterAllocator(id);
+			id = InvalidAllocatorID;
+		}
+
+		bool IsValidPointer(void* ptr) const
+		{
+			constexpr size_t LastBlockIndex = ActualNumBlocks - 1;
+			return block[0] <= ptr && ptr <= block[LastBlockIndex];
+		}
+
+		static void WritePointerToNext(void* ptr, void* nextPtr)
+		{
+			void** ptrArray = static_cast<void**>(ptr);
+			auto& pointerToNext = reinterpret_cast<void*&>(ptrArray[0]);
+			pointerToNext = nextPtr;
+		}
+
+		static void* GetPointerToNext(void* ptr)
+		{
+			void** ptrArray = static_cast<void**>(ptr);
+			auto& pointerToNext = reinterpret_cast<void*&>(ptrArray[0]);
+			return pointerToNext;
 		}
 	};
 } // namespace hbe

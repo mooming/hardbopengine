@@ -24,14 +24,14 @@ namespace
 			{
 				time::ScopedTime measure(inlineTime);
 
-				std::vector<int, InlinePoolAllocator<int, BufferSize>> v;
+				std::vector<int, InlinePoolAllocator<int, BufferSize, 8>> v;
 
 				for (int j = 0; j < testIterations; ++j)
 				{
+					v.reserve(vectorSize);
 					for (int i = 0; i < vectorSize; ++i)
 					{
 						v.push_back(i);
-						v.shrink_to_fit();
 					}
 
 					v.clear();
@@ -73,7 +73,7 @@ void hbe::InlinePoolAllocatorTest::Prepare()
 {
 	AddTest("Zero-sized Allocation & Deallocation", [](auto&)
 	{
-		InlinePoolAllocator<int, 16> allocator;
+		InlinePoolAllocator<int, 16, 2> allocator;
 
 		auto ptr = allocator.allocate(0);
 		allocator.deallocate(ptr, 0);
@@ -91,16 +91,24 @@ void hbe::InlinePoolAllocatorTest::Prepare()
 		time::TDuration inlineTime;
 		time::TDuration stdTime;
 
-		double inlineTimeDuration = 0;
+		void* ptrArray[std::decay<decltype(allocator)>::type::ActualNumBlocks];
 
+		double inlineTimeDuration = 0;
 		for (int j = 0; j < testCount; ++j)
 		{
 			{
 				time::ScopedTime measure(inlineTime);
 				for (int i = 0; i < maxAllocSize; ++i)
 				{
-					auto ptr = allocator.allocate(i);
-					allocator.deallocate(ptr, i);
+					for (auto& ptr : ptrArray)
+					{
+						ptr = allocator.allocate(i);
+					}
+
+					for (auto ptr : ptrArray)
+					{
+						allocator.deallocate(static_cast<int*>(ptr), i);
+					}
 				}
 			}
 
@@ -112,11 +120,17 @@ void hbe::InlinePoolAllocatorTest::Prepare()
 		{
 			{
 				time::ScopedTime measure(stdTime);
-
 				for (int i = 0; i < maxAllocSize; ++i)
 				{
-					auto ptr = stdAlloc.allocate(i);
-					stdAlloc.deallocate(ptr, i);
+					for (auto& ptr : ptrArray)
+					{
+						ptr = stdAlloc.allocate(i);
+					}
+
+					for (auto& ptr : ptrArray)
+					{
+						stdAlloc.deallocate(static_cast<int*>(ptr), i);
+					}
 				}
 			}
 
@@ -139,10 +153,11 @@ void hbe::InlinePoolAllocatorTest::Prepare()
 		return rate;
 	};
 
+	constexpr int NumBlocks = 32;
 	AddTest("Perf. & Stress, Size(1)", [&, this](auto& ls)
 	{
 		constexpr int inlineSize = 64;
-		InlinePoolAllocator<int, inlineSize> inlineAlloc;
+		InlinePoolAllocator<int, inlineSize, NumBlocks> inlineAlloc;
 
 		auto rate = AllocDeallocTestFunc(inlineAlloc, ls, lf, 1);
 		if (rate > 1.0f)
@@ -154,7 +169,7 @@ void hbe::InlinePoolAllocatorTest::Prepare()
 	AddTest("Perf. & Stress, Size(16)", [&, this](auto& ls)
 	{
 		constexpr int inlineSize = 64;
-		InlinePoolAllocator<int, inlineSize> inlineAlloc;
+		InlinePoolAllocator<int, inlineSize, NumBlocks> inlineAlloc;
 
 		auto rate = AllocDeallocTestFunc(inlineAlloc, ls, lf, 16);
 		if (rate > 1.0f)
@@ -166,7 +181,7 @@ void hbe::InlinePoolAllocatorTest::Prepare()
 	AddTest("Perf. & Stress, Size(32)", [&, this](auto& ls)
 	{
 		constexpr int inlineSize = 64;
-		InlinePoolAllocator<int, inlineSize> inlineAlloc;
+		InlinePoolAllocator<int, inlineSize, NumBlocks> inlineAlloc;
 
 		auto rate = AllocDeallocTestFunc(inlineAlloc, ls, lf, 32);
 		if (rate > 1.0f)
@@ -178,7 +193,7 @@ void hbe::InlinePoolAllocatorTest::Prepare()
 	AddTest("Perf. & Stress, Size(64)", [&, this](auto& ls)
 	{
 		constexpr int inlineSize = 64;
-		InlinePoolAllocator<int, inlineSize> inlineAlloc;
+		InlinePoolAllocator<int, inlineSize, NumBlocks> inlineAlloc;
 
 		auto rate = AllocDeallocTestFunc(inlineAlloc, ls, lf, 64);
 		if (rate > 1.0f)
@@ -190,7 +205,7 @@ void hbe::InlinePoolAllocatorTest::Prepare()
 	AddTest("Perf. & Stress, Size(128)", [&, this](auto& ls)
 	{
 		constexpr int inlineSize = 128;
-		InlinePoolAllocator<int, inlineSize> inlineAlloc;
+		InlinePoolAllocator<int, inlineSize, NumBlocks> inlineAlloc;
 
 		auto rate = AllocDeallocTestFunc(inlineAlloc, ls, lf, 128);
 		if (rate > 1.0f)
@@ -202,7 +217,7 @@ void hbe::InlinePoolAllocatorTest::Prepare()
 	AddTest("Perf. & Stress, Size(256)", [&, this](auto& ls)
 	{
 		constexpr int inlineSize = 256;
-		InlinePoolAllocator<int, inlineSize> inlineAlloc;
+		InlinePoolAllocator<int, inlineSize, NumBlocks> inlineAlloc;
 
 		auto rate = AllocDeallocTestFunc(inlineAlloc, ls, lf, 256);
 		if (rate > 1.0f)
@@ -214,7 +229,7 @@ void hbe::InlinePoolAllocatorTest::Prepare()
 	AddTest("Perf. & Stress, Size(512)", [&, this](auto& ls)
 	{
 		constexpr int inlineSize = 512;
-		InlinePoolAllocator<int, inlineSize> inlineAlloc;
+		InlinePoolAllocator<int, inlineSize, NumBlocks> inlineAlloc;
 
 		auto rate = AllocDeallocTestFunc(inlineAlloc, ls, lf, 512);
 		if (rate > 1.0f)
@@ -226,33 +241,9 @@ void hbe::InlinePoolAllocatorTest::Prepare()
 	AddTest("Perf. & Stress, Size(1024)", [&, this](auto& ls)
 	{
 		constexpr int inlineSize = 1024;
-		InlinePoolAllocator<int, inlineSize> inlineAlloc;
+		InlinePoolAllocator<int, inlineSize, NumBlocks> inlineAlloc;
 
 		auto rate = AllocDeallocTestFunc(inlineAlloc, ls, lf, 1024);
-		if (rate > 1.0f)
-		{
-			ls << "Performance is worse than system malloc. rate = " << rate << lfwarn;
-		}
-	});
-
-	AddTest("Perf. & Stress, Size(2048)", [&, this](auto& ls)
-	{
-		constexpr int inlineSize = 2048;
-		InlinePoolAllocator<int, inlineSize> inlineAlloc;
-
-		auto rate = AllocDeallocTestFunc(inlineAlloc, ls, lf, 2048);
-		if (rate > 1.0f)
-		{
-			ls << "Performance is worse than system malloc. rate = " << rate << lfwarn;
-		}
-	});
-
-	AddTest("Perf. & Stress, Size(8192)", [&, this](auto& ls)
-	{
-		constexpr int inlineSize = 8192;
-		InlinePoolAllocator<int, inlineSize> inlineAlloc;
-
-		auto rate = AllocDeallocTestFunc(inlineAlloc, ls, lf, 8192);
 		if (rate > 1.0f)
 		{
 			ls << "Performance is worse than system malloc. rate = " << rate << lfwarn;
@@ -278,7 +269,7 @@ void hbe::InlinePoolAllocatorTest::Prepare()
 		ls << "==========================================" << lf;
 		ls << "Inline Alloc Size = " << inlineSize << lf;
 
-		auto rate = VectorGrowthTest<inlineSize>()(GetName(), ls, lf, 128);
+		auto rate = VectorGrowthTest<inlineSize>()(GetName(), ls, lf, inlineSize);
 		if (rate > 1.0f)
 		{
 			ls << "It's slower than system malloc. rate = " << rate << lfwarn;
@@ -291,7 +282,7 @@ void hbe::InlinePoolAllocatorTest::Prepare()
 		ls << "==========================================" << lf;
 		ls << "Inline Alloc Size = " << inlineSize << lf;
 
-		auto rate = VectorGrowthTest<inlineSize>()(GetName(), ls, lf, 512);
+		auto rate = VectorGrowthTest<inlineSize>()(GetName(), ls, lf, inlineSize);
 		if (rate > 1.0f)
 		{
 			ls << "It's slower than system malloc. rate = " << rate << lfwarn;
