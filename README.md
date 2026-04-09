@@ -56,17 +56,18 @@ Scripts\InstallVulkanWindows.bat
 
 ### Quick Start
 ```bash
-# Create build directory
-mkdir -p build && cd build
+# Configure with CMake
+cmake --fresh -B build -G "Ninja Multi-Config" -S .
 
-# Configure with CMake (Debug/Dev/Release)
-cmake .. -DCMAKE_BUILD_TYPE=Release
-
-# Build (use -j for parallel compilation)
-make -j$(nproc)
+# Build with config options(Debug, Dev, Release)
+cmake --build build --config Debug
+cmake --build build --config Dev
+cmake --build build --config Release
 
 # Run tests
-./build/Applications/EngineTest/EngineTest
+./build/Applications/EngineTest/Debug/EngineTest
+./build/Applications/EngineTest/Dev/EngineTest
+./build/Applications/EngineTest/Release/EngineTest
 ```
 
 ### Build Types
