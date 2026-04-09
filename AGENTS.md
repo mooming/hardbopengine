@@ -5,29 +5,22 @@
 ### CMake Configuration
 The project supports three build types: `Debug`, `Dev`, and `Release` (default).
 ```bash
-mkdir -p build && cd build
-cmake .. -DCMAKE_BUILD_TYPE=Release    # or Debug, Dev
-make -j$(nproc)
+cmake --fresh -B build -G "Ninja Multi-Config" -S .
 ```
 
 ### Build Targets
 ```bash
-# Build everything
-make
-
-# Build specific module
-make Memory
-make Math
-make String
-
-# Build test executable
-make EngineTest
+# Build with config options(Debug, Dev, Release)
+cmake --build build --config Debug
+cmake --build build --config Dev
+cmake --build build --config Release
 ```
 
 ### Running All Tests
 ```bash
-cd build
-./bin/EngineTest
+./build/Applications/EngineTest/Debug/EngineTest
+./build/Applications/EngineTest/Dev/EngineTest
+./build/Applications/EngineTest/Release/EngineTest
 ```
 
 ### Running a Single Test
@@ -37,10 +30,6 @@ To run a specific test:
 1. Open `Engine/Test/UnitTestCollection.cpp`
 2. Comment out unwanted test collections in the `RunTests()` function
 3. Rebuild and run:
-```bash
-make EngineTest
-./bin/EngineTest
-```
 
 ## Code Formatting
 
@@ -81,6 +70,9 @@ find Engine/ Applications/ -name '*.h' -o -name '*.cpp' | xargs clang-tidy -head
 - **Access modifiers**: Indented -4 relative to class
 - **Template declarations**: Always break before `>`
 - **Short functions**: InlineOnly (only in header if one-liner)
+- Put an empty line before "return".
+- Place two empty lines after include declerations.
+- Make sure teamplate type starts with 'T' letter. e.g. TIndex (O), Index (X)
 
 ### Import Organization
 Order (per `.clang-format` IncludeCategories):
@@ -97,7 +89,10 @@ Example:
 #include "MemoryManager.h"
 #include "Core/Debug.h"
 #include "String/StaticString.h"
+
+
 ```
+
 
 ### C++23 Type System
 - Use `static_assert` to validate type sizes in allocator templates
@@ -156,3 +151,4 @@ protected:
 - Prefer pass-by-reference over raw pointers
 - Use `constexpr` for compile-time constants
 - Separate definition blocks with empty line (per `SeparateDefinitionBlocks: Always`)
+
