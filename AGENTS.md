@@ -46,6 +46,18 @@ clang-tidy Engine/Memory/Memory.h -- -std=c++23 -I. -IEngine -IExternal
 # Entire codebase
 find Engine/ Applications/ -name '*.h' -o -name '*.cpp' | xargs clang-tidy -header-filter='.*' -- -std=c++23 -I. -IEngine -IExternal
 ```
+## Process
+- Read README.md
+- Read ReviewNoteSummary.txt at the base directory
+- Read ReviewNote.txt at each directory
+- Understand the current code base by reading related source code
+- Do requested jobs
+- Create or revise testcases
+- Build the project to ensure it doesn't have any errors or warnings. Fix errors and warnings.
+- Execute EngineTest
+- Review test results and fix errors. Clear all errors. And, suggest solutions to clear warnings
+- Update ReviewNote.txt files if necessary
+- Update README.md and ReviewNoteSummary.txt files if necessary
 
 ## Code Style Guidelines
 
