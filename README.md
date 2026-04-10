@@ -270,13 +270,9 @@ void Example()
 Detailed guide for using custom memory allocators:
 - `docs/AllocatorGuide.md`
 
-Topics covered:
-- All 9 allocator types (Pool, Stack, Monotonic, MultiPool, etc.)
-- Usage examples and code snippets
-- Profile-guided optimization for MultiPoolAllocator
-- Configuration flags and best practices
+### Code Standard
+Refer to [CodeStandard.md](docs/CodeStandard.md) for coding guidelines and conventions.
 
-## Known Issues
 
 ### Platform-Specific
 - **Linux backtrace**: `OS::GetBackTrace()` returns "Not Implemented" on Linux - no stack traces available.
