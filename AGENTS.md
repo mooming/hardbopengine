@@ -46,18 +46,14 @@ clang-tidy Engine/Memory/Memory.h -- -std=c++23 -I. -IEngine -IExternal
 # Entire codebase
 find Engine/ Applications/ -name '*.h' -o -name '*.cpp' | xargs clang-tidy -header-filter='.*' -- -std=c++23 -I. -IEngine -IExternal
 ```
-## Process
-- Read README.md
-- Read ReviewNoteSummary.txt at the base directory
-- Read ReviewNote.txt at each directory
-- Understand the current code base by reading related source code
+## Basic Workflow
+- Understand the current code base by reading related source code first
 - Do requested jobs
-- Create or revise testcases
+- Create or revise testcases to verify changes
 - Build the project to ensure it doesn't have any errors or warnings. Fix errors and warnings.
-- Execute EngineTest
-- Review test results and fix errors. Clear all errors. And, suggest solutions to clear warnings
+- Execute EngineTest if you have changed the engine. And then, Review test results and fix errors and warnings.
 - Update ReviewNote.txt files if necessary
-- Update README.md and ReviewNoteSummary.txt files if necessary
+- Update README.md and ReviewNoteSummary.txt files at the base directory if necessary
 
 ## Code Style Guidelines
 
@@ -82,9 +78,8 @@ find Engine/ Applications/ -name '*.h' -o -name '*.cpp' | xargs clang-tidy -head
 - **Access modifiers**: Indented -4 relative to class
 - **Template declarations**: Always break before `>`
 - **Short functions**: InlineOnly (only in header if one-liner)
-- Put an empty line before "return".
-- Place two empty lines after include declerations.
-- Make sure teamplate type starts with 'T' letter. e.g. TIndex (O), Index (X)
+- **Readability**: Put an empty line before "return". Place two empty lines after include declerations.
+- **TemplateType**: Make sure template type starts with 'T' letter. e.g. TIndex (O), Index (X)
 
 ### Import Organization
 Order (per `.clang-format` IncludeCategories):
@@ -94,17 +89,13 @@ Order (per `.clang-format` IncludeCategories):
 
 Example:
 ```cpp
-#include <cstddef>
-#include <functional>
-#include <memory>
-
 #include "MemoryManager.h"
 #include "Core/Debug.h"
 #include "String/StaticString.h"
-
-
+#include <cstddef>
+#include <functional>
+#include <memory>
 ```
-
 
 ### C++23 Type System
 - Use `static_assert` to validate type sizes in allocator templates
@@ -158,9 +149,16 @@ protected:
 
 ### General Patterns
 - Forward declare classes in headers when possible
+- Place member variables first
+- Place properties and methods by visibility order. e.g. (public > protected > private)
+- Place static variables and methods first in class declarations.
 - Use `#pragma once` for header guards
 - Use `virtual ~ClassName() = default` for virtual destructors
-- Prefer pass-by-reference over raw pointers
+- Prefer pass-by-reference over raw pointers.
+- Ensure reference variables should be always valid.
+- Always check pointer validity before using in functions.
 - Use `constexpr` for compile-time constants
 - Separate definition blocks with empty line (per `SeparateDefinitionBlocks: Always`)
-
+- Remove unnecessary includes
+// Copyright (c) 2026 Hansol Park (mooming.go@gmail.com). All rights reserved.
+- Place the copyright notice at the beginning of all files.

@@ -1,4 +1,4 @@
-// Created by mooming.go@gmail.com, 2017
+// Copyright (c) 2026 Hansol Park (mooming.go@gmail.com). All rights reserved.
 
 #include "CommandLineArguments.h"
 
