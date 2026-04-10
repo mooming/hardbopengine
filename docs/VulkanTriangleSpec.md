@@ -41,6 +41,7 @@ A simple triangle rendering application using Vulkan API, integrated with the Ha
 - Register with TaskSystem for render updates
 - Use Memory module for buffer allocations
 - Use Log for debug output
+- Use TaskSystem for a dedicated rendering thread
 
 ### 3.4 Window Modes
 The application supports three window modes:

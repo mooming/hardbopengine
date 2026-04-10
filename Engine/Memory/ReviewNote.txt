@@ -1,6 +1,6 @@
-================================================================================
+===================================================================================
 HARDBOP ENGINE CODE REVIEW - Memory Module
-================================================================================
+====================================================================================
 
 OVERVIEW: Memory management - allocators, manager, scoped allocation.
 
@@ -25,13 +25,15 @@ STRENGTHS:
   + New<T>/Delete<T> helpers with static_assert for type safety
   + AllocatorProxy for C-style callbacks
   + Thread-local ScopedAllocatorID for automatic allocation
+  + Advanced profiling and tracking capabilities
 
 KEY PATTERNS:
   - AllocatorID for tracking
   - MultiPoolConfigCache for configuration management
   - PROFILE_ENABLED for detailed statistics
+  - RAII-based scoped allocation
 
 ISSUES:
   - No critical issues found in Memory module itself
 
-================================================================================
+====================================================================================

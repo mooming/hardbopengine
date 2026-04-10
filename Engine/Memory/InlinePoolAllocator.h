@@ -254,6 +254,7 @@ namespace hbe
 namespace hbe
 {
 
+	/// @brief Test class for InlinePoolAllocator.
 	class InlinePoolAllocatorTest : public TestCollection
 	{
 	public:
