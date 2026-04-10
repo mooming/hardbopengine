@@ -69,6 +69,7 @@ namespace hbe
 namespace hbe
 {
 
+	/// @brief Test class for StackAllocator.
 	class StackAllocatorTest : public TestCollection
 	{
 	public:

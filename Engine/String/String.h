@@ -2,7 +2,6 @@
 
 #pragma once
 
-#include <string>
 #include "Container/Array.h"
 #include "Core/Types.h"
 #include "HSTL/HVector.h"
