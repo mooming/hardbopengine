@@ -22,8 +22,14 @@ namespace hbe
 	class Engine;
 
 	/// @brief Centralized memory management system for the engine.
-	/// @details Manages all allocator instances, tracks memory usage statistics,
-	/// and provides allocation/deallocation services across the engine.
+	/// @details This singleton class serves as the core memory controller, providing:
+	/// - **Allocator Management**: Registration and retrieval of various allocators (System, Pool, Stack, etc.) via `TAllocatorID`.
+	/// - **Scoped Allocation**: Support for thread-local allocation scopes using `ScopedAllocator`.
+	/// - **Object Lifecycle**: Type-safe object creation (`New`, `NewArray`) and destruction (`Delete`, `DeleteArray`) with automatic constructor/destructor calls.
+	/// - **Tracking & Statistics**: Real-time tracking of allocation/deallocation counts, usage, and capacity across all registered allocators.
+	/// - **Fallthrough Mechanism**: A hierarchical fallback system for handling exhausted allocators.
+	/// - **Configuration Persistence**: Loading and saving `MultiPool` configurations via `MultiPoolConfigCache`.
+	/// - **Profiling Support**: Built-in hooks for memory investigation, logging, and detailed usage reporting when `PROFILE_ENABLED` is active.
 	class MemoryManager final
 	{
 	public:
