@@ -1,4 +1,5 @@
 //
+// Copyright (c) 2026 Hansol Park (mooming.go@gmail.com). All rights reserved.
 // Created by mooming on 11/10/2025.
 //
 

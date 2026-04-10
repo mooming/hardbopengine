@@ -1,5 +1,4 @@
 
-// Created by mooming.go@gmail.com
 
 #pragma once
 
