@@ -15,7 +15,8 @@ To maintain code quality and consistency, please follow these guidelines:
 - **Column limit**: 120 characters
 - **Brace wrapping**: K&R variant
 - **Template declarations**: Always break before `>`
-- **Readability**: Put an empty line before `return`. Place two empty lines after include declarations.
+- **Readability**: Put an empty line before `return` unless 'return' is the only content within its scope. Place two empty lines after include declarations.
+- **System Compatibility**: Pleace an empty line at the end of files
 
 ### Error Handling & Memory
 - Use `Assert()` and `FatalAssert()` from `Core/Debug.h` for debug checks.

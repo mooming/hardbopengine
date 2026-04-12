@@ -17,7 +17,7 @@ namespace StringUtil
 
 	TString Trim(const TString& str);
 	TString TrimPath(const TString& path);
-	TString ToLowerCase(TString src);
+	TString ToLowerCase(const TString& src);
 	bool EqualsIgnoreCase(const TString& a, const TString& b);
 	bool StartsWith(const TString& src, const TString& startTerm);
 	bool StartsWithIgnoreCase(const TString& src, const TString& startTerm);

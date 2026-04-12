@@ -38,7 +38,10 @@ namespace hbe
 
 		T* allocate(std::size_t n) { return reinterpret_cast<T*>(AllocateBytes(n * sizeof(T))); }
 
-		void deallocate(T* ptr, std::size_t n) { DeallocateBytes(ptr, n * sizeof(T)); }
+		void deallocate(T* ptr, std::size_t n) { 
+			Assert(ptr != nullptr);
+			DeallocateBytes(ptr, n * sizeof(T)); 
+		}
 
 		template<class U>
 		bool operator==(const SystemAllocator<U>&)
