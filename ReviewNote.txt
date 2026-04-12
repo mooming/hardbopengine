@@ -15,6 +15,14 @@ NOTE: The following critical issues from the previous review have been FIXED:
   5. String::ReplaceAll() - now implemented
   6. Format string "%ud" bug - now uses "%u"
 
+== CODE STANDARD FIXES (Current Review):
+  - Renamed LogFlush to TLogFlush in TestCollection.h (internal type prefixing)
+  - Renamed PrettyFunction to prettyFunction in StringUtil.h (parameter naming)
+  - Renamed INVALID_INDEX to InvalidIndex in String.h (constant naming)
+  - Changed ToLowerCase to pass by const reference in StringUtil.h (prefer pass-by-reference)
+  - Added empty line before return statements in StringBuilder.h and InlineStringBuilder.h (readability)
+  - Added Assert for pointer validity in SystemAllocator.h::deallocate and DefaultAllocator.h::deallocate (pointer safety)
+
 ================================================================================
 DIRECTORY: Engine/Config
 ================================================================================

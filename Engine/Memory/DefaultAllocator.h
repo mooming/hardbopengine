@@ -3,6 +3,7 @@
 #pragma once
 
 #include <cstddef>
+#include "Core/Debug.h"
 #include "AllocatorID.h"
 #include "AllocatorScope.h"
 #include "MemoryManager.h"
@@ -45,6 +46,7 @@ namespace hbe
 
 		void deallocate(T* ptr, std::size_t n)
 		{
+			Assert(ptr != nullptr);
 			AllocatorScope scope(allocatorID);
 			auto& mmgr = MemoryManager::GetInstance();
 			mmgr.DeallocateTypes(ptr, n);

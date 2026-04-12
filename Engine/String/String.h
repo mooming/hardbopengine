@@ -18,7 +18,7 @@ namespace hbe
 		using Char = char;
 		template<class T>
 		using Vector = hbe::HVector<T>;
-		static constexpr Index INVALID_INDEX = std::is_unsigned<Index>::value ? std::numeric_limits<Index>::max() : -1;
+		static constexpr Index InvalidIndex = std::is_unsigned<Index>::value ? std::numeric_limits<Index>::max() : -1;
 
 	private:
 		Shareable<Vector<Char>> buffer;
@@ -49,7 +49,7 @@ namespace hbe
 		String(const char* text);
 
 		String(const std::string str) : String(str.c_str()) {}
-		String(const String& string, Index startIndex, Index endIndex = INVALID_INDEX);
+		String(const String& string, Index startIndex, Index endIndex = InvalidIndex);
 
 		String& operator=(String&& rhs)
 		{
@@ -97,7 +97,7 @@ namespace hbe
 
 		[[nodiscard]] String Clone() const;
 
-		[[nodiscard]] String SubString(Index startIndex, Index endIndex = INVALID_INDEX) const
+		[[nodiscard]] String SubString(Index startIndex, Index endIndex = InvalidIndex) const
 		{
 			return String {*this, startIndex, endIndex};
 		}
@@ -107,7 +107,7 @@ namespace hbe
 		[[nodiscard]] Index Find(const Char ch) const;
 		[[nodiscard]] Index Find(const Array<Char>& chs) const;
 		[[nodiscard]] Index Find(const String& keyword) const;
-		[[nodiscard]] Index Find(const String& keyword, Index startIndex, Index endIndex = INVALID_INDEX) const;
+		[[nodiscard]] Index Find(const String& keyword, Index startIndex, Index endIndex = InvalidIndex) const;
 
 		[[nodiscard]] Index FindLast(const Char ch) const;
 
@@ -158,14 +158,14 @@ namespace hbe
 		void AppendSelf(const Char* text);
 		void AppendSelf(const String& string);
 
-		[[nodiscard]] String Replace(const String& from, const String& to, Index offset = 0, Index endIndex = INVALID_INDEX) const;
+		[[nodiscard]] String Replace(const String& from, const String& to, Index offset = 0, Index endIndex = InvalidIndex) const;
 		[[nodiscard]] String ReplaceAll(char from, char to) const;
 		[[nodiscard]] String ReplaceAll(String from, String to) const;
 
 		[[nodiscard]] String Trim() const
 		{
-			Index startIndex = INVALID_INDEX;
-			Index endIndex = INVALID_INDEX;
+			Index startIndex = InvalidIndex;
+			Index endIndex = InvalidIndex;
 
 			const auto length = Length();
 			for (Index i = 0; i < length; ++i)

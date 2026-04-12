@@ -68,23 +68,24 @@ namespace StringUtil
 		return TString(tmp);
 	}
 
-	TString ToLowerCase(TString src)
+	TString ToLowerCase(const TString& src)
 	{
+		TString result;
 		auto ToLowerChar = [](char ch)
 		{
-			constexpr char delta = 'A' - 'a';
+			constexpr char diff = 'A' - 'a';
 
 			if ('A' <= ch && ch <= 'Z')
 			{
-				ch -= delta;
+				ch -= diff;
 			}
 
 			return ch;
 		};
 
-		std::transform(src.begin(), src.end(), src.begin(), ToLowerChar);
+		std::transform(src.begin(), src.end(), result.begin(), ToLowerChar);
 
-		return src;
+		return result;
 	}
 
 	bool EqualsIgnoreCase(const TString& a, const TString& b) { return ToLowerCase(a) == ToLowerCase(b); }
