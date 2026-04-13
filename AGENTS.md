@@ -2,7 +2,12 @@
 
 ## Build Commands
 
+
 ### CMake Configuration
+The project uses Tool/MakeBuild to configure CMake.
+Read Tool/MakeBuild/README.md and understand how to build and use it.
+Use this tool to modify CMakeLists.txt files always.
+
 The project supports three build types: `Debug`, `Dev`, and `Release` (default).
 ```bash
 cmake --fresh -B build -G "Ninja Multi-Config" -S .
