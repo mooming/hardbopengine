@@ -4,3 +4,6 @@
 [submodule "External/GLFW"]
 	path = External/GLFW
 	url = git@github.com:glfw/glfw.git
+[submodule "Tools/makebuilder"]
+	path = Tool/MakeBuild
+	url = git@github.com:mooming/makebuilder.git
