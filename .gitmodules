@@ -1,6 +1,3 @@
 [submodule "External/RapidJson"]
 	path = External/RapidJson
 	url = git@github.com:Tencent/rapidjson.git
-[submodule "Tools/MakeBuild"]
-	path = Tools/MakeBuild
-	url = git@github.com:mooming/makebuilder.git
