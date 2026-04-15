@@ -56,6 +56,9 @@ Scripts\InstallVulkanWindows.bat
 
 ### Quick Start
 ```bash
+# Build all tools and copy executables to bin/
+./Tools/BuildAllTools.sh
+
 # Configure with CMake
 cmake --fresh -B build -G "Ninja Multi-Config" -S .
 

@@ -3,6 +3,13 @@
 ## Build Commands
 
 
+### Build All Tools
+```bash
+./Tools/BuildAllTools.sh
+```
+
+This script compiles all tools in the `Tools/` directory and copies their Release executables to the project-level `bin/` directory for easy access.
+
 ### CMake Configuration
 The project uses Tool/MakeBuild to configure CMake.
 Read Tool/MakeBuild/README.md and understand how to build and use it.
