@@ -50,6 +50,5 @@ Release
 RelWithDebInfo
 MinSizeRel
 
-VulkanSDK
 .opencode
 .cache

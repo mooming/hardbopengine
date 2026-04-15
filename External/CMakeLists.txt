@@ -23,14 +23,12 @@ include_directories ( ${CMAKE_SOURCE_DIR}
  ${CMAKE_SOURCE_DIR}/include
  ${CMAKE_SOURCE_DIR}/External
  ${CMAKE_SOURCE_DIR}/Engine
- ${CMAKE_SOURCE_DIR}/External/VulkanSDK/include
  )
 link_directories (${CMAKE_SOURCE_DIR}/lib)
 
 
 add_library (External INTERFACE)
 target_include_directories (External INTERFACE
- ${CMAKE_SOURCE_DIR}/External/VulkanSDK/include
 )
 
 
