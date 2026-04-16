@@ -51,7 +51,6 @@ add_library (OSAL STATIC
  OSInputOutput.cpp
  OSMemory.cpp
  OSThread.cpp
- OSWindowFactory.cpp
  OSXAbstractLayer.cpp
  OSXDebug.cpp
  OSXFileHandle.cpp
@@ -69,7 +68,6 @@ add_library (OSAL STATIC
  WindowsThread.cpp
  Directory.h
  File.h
- IWindow.h
  Intrinsic.h
  LinuxIntrinsic.h
  LinuxWindow.h
@@ -82,12 +80,13 @@ add_library (OSAL STATIC
  OSMemory.h
  OSProtectionMode.h
  OSThread.h
- OSWindowFactory.h
  OSXIntrinsic.h
  OSXWindow.h
  SourceLocation.h
  Win32Window.h
  WindowsIntrinsic.h
+ Window.cpp
+ Window.h
 ${PLATFORM_SOURCES}
 )
 

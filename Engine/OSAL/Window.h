@@ -4,6 +4,7 @@
 #pragma once
 
 
+#include "Config/BuildConfig.h"
 #include "HSTL/HString.h"
 
 namespace OS
@@ -80,10 +81,31 @@ public:
 	[[nodiscard]] virtual bool ShouldClose() const = 0;
 };
 
-// Factory function to create a window for the current platform
+/**
+ * @brief Factory function to create a window for the current platform.
+ * @param title The title of the window.
+ * @param width The width of the window in pixels.
+ * @param height The height of the window in pixels.
+ * @return Pointer to the created window, or nullptr if creation failed.
+ */
 IWindow* CreateWindow(const hbe::HString& title, int width, int height);
 
 } // namespace OS
 
+#ifdef __UNIT_TEST__
+#include "Test/TestCollection.h"
 
+namespace hbe
+{
 
+class WindowTest : public TestCollection
+{
+public:
+	WindowTest();
+
+protected:
+	void Prepare() override;
+};
+
+} // namespace hbe
+#endif // __UNIT_TEST__

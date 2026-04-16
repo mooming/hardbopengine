@@ -37,6 +37,7 @@
 #include "OSAL/OSDebug.h"
 #include "OSAL/OSInputOutput.h"
 #include "OSAL/OSThread.h"
+#include "OSAL/Window.h"
 #include "Resource/Buffer.h"
 #include "Resource/BufferInputStream.h"
 #include "Resource/BufferOutputStream.h"
@@ -72,6 +73,7 @@ namespace Test
 			testEnv.AddTestCollection<OSDebugTest>();
 			testEnv.AddTestCollection<OSInputOutputTest>();
 			testEnv.AddTestCollection<OSThreadTest>();
+			testEnv.AddTestCollection<WindowTest>();
 			testEnv.AddTestCollection<OSMemoryTest>();
 			testEnv.AddTestCollection<BufferTest>();
 			testEnv.AddTestCollection<BufferInputStreamTest>();

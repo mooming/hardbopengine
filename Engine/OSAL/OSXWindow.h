@@ -7,7 +7,7 @@
 #include "Config/BuildConfig.h"
 
 #ifdef PLATFORM_OSX
-#include "IWindow.h"
+#include "Window.h"
 
 namespace OS
 {

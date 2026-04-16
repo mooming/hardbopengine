@@ -7,7 +7,7 @@
 #include "Config/BuildConfig.h"
 
 #ifdef PLATFORM_WINDOWS
-#include "IWindow.h"
+#include "Window.h"
 
 namespace OS
 {

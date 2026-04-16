@@ -7,7 +7,7 @@
 #include "Config/BuildConfig.h"
 
 #ifdef PLATFORM_LINUX
-#include "IWindow.h"
+#include "Window.h"
 #include <X11/Xlib.h>
 
 namespace OS
