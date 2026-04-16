@@ -12,6 +12,14 @@ set (CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3")
 
 set (CMAKE_CXX_STANDARD 23)
 
+if (APPLE)
+    set(PLATFORM_SOURCES
+        OSXWindow.mm
+    )
+else()
+    set(PLATFORM_SOURCES "")
+endif()
+
 if (MSVC)
 	add_compile_options (/W3 /WX)
 else (MSVC)
@@ -24,8 +32,6 @@ include_directories ( ${CMAKE_SOURCE_DIR}
  ${CMAKE_SOURCE_DIR}/External
  ${CMAKE_SOURCE_DIR}/Engine
  )
-link_directories (${CMAKE_SOURCE_DIR}/lib)
-
 
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/lib)
 add_library (OSAL STATIC 
@@ -39,11 +45,13 @@ add_library (OSAL STATIC
  LinuxMemory.cpp
  LinuxProtectionMode.cpp
  LinuxThread.cpp
+ LinuxWindow.cpp
  OSAbstractLayer.cpp
  OSDebug.cpp
  OSInputOutput.cpp
  OSMemory.cpp
  OSThread.cpp
+ OSWindowFactory.cpp
  OSXAbstractLayer.cpp
  OSXDebug.cpp
  OSXFileHandle.cpp
@@ -53,6 +61,7 @@ add_library (OSAL STATIC
  OSXMemory.cpp
  OSXProtectionMode.cpp
  OSXThread.cpp
+ Win32Window.cpp
  WindowsAbstractLayer.cpp
  WindowsDebug.cpp
  WindowsInputOutput.cpp
@@ -60,8 +69,10 @@ add_library (OSAL STATIC
  WindowsThread.cpp
  Directory.h
  File.h
+ IWindow.h
  Intrinsic.h
  LinuxIntrinsic.h
+ LinuxWindow.h
  OSAbstractLayer.h
  OSDebug.h
  OSFileHandle.h
@@ -71,14 +82,23 @@ add_library (OSAL STATIC
  OSMemory.h
  OSProtectionMode.h
  OSThread.h
+ OSWindowFactory.h
  OSXIntrinsic.h
+ OSXWindow.h
  SourceLocation.h
+ Win32Window.h
  WindowsIntrinsic.h
+${PLATFORM_SOURCES}
 )
 
 if (APPLE)
-include_directories ( /System/Library/Frameworks )
+	include_directories ( /System/Library/Frameworks )
 endif (APPLE)
+
+find_library(COCOA_FRAMEWORK Cocoa)
+if (COCOA_FRAMEWORK)
+	target_link_libraries (OSAL ${COCOA_FRAMEWORK})
+endif ()
 
 install (TARGETS OSAL DESTINATION ${CMAKE_SOURCE_DIR}/lib)
 
