@@ -2,11 +2,14 @@
 
 #pragma once
 
+
 #include <atomic>
+#include <functional>
 #include <thread>
 #include "Container/Array.h"
 #include "Container/BoundedPriorityQueue.h"
 #include "HSTL/HVector.h"
+#include "MainThreadTaskQueue.h"
 #include "TaskStream.h"
 
 namespace hbe
@@ -20,6 +23,7 @@ namespace hbe
 		using ThreadID = std::thread::id;
 		using StreamArray = Array<TaskStream>;
 		using TIndex = StreamArray::TIndex;
+		using MainThreadTask = std::function<void()>;
 
 		static constexpr TIndex MainStreamIndex = 0;
 		static constexpr TIndex IOStreamIndex = 1;
@@ -35,6 +39,8 @@ namespace hbe
 
 		std::mutex taskQueueMutex;
 		BoundedPriorityQueue<RangedTask> taskQueue;
+
+		MainThreadTaskQueue mainThreadTaskQueue;
 
 	public:
 		static TIndex GetNumHardwareThreads();
@@ -68,6 +74,13 @@ namespace hbe
 
 		void Enqueue(TIndex streamIndex, const RangedTask& task);
 
+		// Dispatch a task to be executed on the main thread.
+		// The task will be queued and executed when the main thread processes its queue.
+		void DispatchToMainThread(MainThreadTask task);
+
+		// Process all pending main thread tasks.
+		size_t ProcessMainThreadTasks();
+
 		StaticString GetName() const { return name; }
 		auto& IsRunning() const { return isRunning; }
 
@@ -75,6 +88,8 @@ namespace hbe
 		auto& GetMainTaskStream() const { return streams[GetMainTaskStreamIndex()]; }
 		auto& GetIOTaskStream() { return streams[GetIOTaskStreamIndex()]; }
 		auto& GetIOTaskStream() const { return streams[GetIOTaskStreamIndex()]; }
+
+		auto& GetMainThreadTaskQueue() { return mainThreadTaskQueue; }
 
 		StaticString GetStreamName(int index) const;
 		TIndex GetStreamIndex(ThreadID id) const;

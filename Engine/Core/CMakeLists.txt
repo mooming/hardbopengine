@@ -38,6 +38,7 @@ add_library (Core STATIC
  Component.cpp
  ComponentSystem.cpp
  Debug.cpp
+ MainThreadTaskQueue.cpp
  RangedTask.cpp
  ScopedLock.cpp
  SystemStatistics.cpp
@@ -54,6 +55,7 @@ add_library (Core STATIC
  Constants.h
  Debug.h
  Exception.h
+ MainThreadTaskQueue.h
  RangedTask.h
  Runnable.h
  ScopedLock.h

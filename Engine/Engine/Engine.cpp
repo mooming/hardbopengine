@@ -4,6 +4,7 @@
 
 #include <csignal>
 #include <iostream>
+#include <thread>
 #include "Config/ConfigParam.h"
 #include "Config/ConfigSystem.h"
 #include "Core/Debug.h"
@@ -94,6 +95,12 @@ namespace hbe
 
 	void Engine::WaitForEnd()
 	{
+		while (taskSystem.GetMainThreadTaskQueue().HasPendingTasks() || taskSystem.IsRunning())
+		{
+			taskSystem.ProcessMainThreadTasks();
+			std::this_thread::sleep_for(std::chrono::milliseconds(1));
+		}
+
 		taskSystem.JoinAndClear();
 	}
 

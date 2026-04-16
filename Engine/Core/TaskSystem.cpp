@@ -102,6 +102,17 @@ namespace hbe
 
 	void TaskSystem::JoinAndClear()
 	{
+		const bool isMainThread = std::this_thread::get_id() == mainTaskThreadID;
+
+		if (isMainThread)
+		{
+			while (isRunning || mainThreadTaskQueue.HasPendingTasks())
+			{
+				ProcessMainThreadTasks();
+				std::this_thread::sleep_for(std::chrono::milliseconds(1));
+			}
+		}
+
 		for (auto& stream : streams)
 		{
 			auto& thread = stream.GetThread();
@@ -114,7 +125,11 @@ namespace hbe
 			{
 				if (thread.joinable() && thread.get_id() != std::this_thread::get_id())
 				{
-					thread.join();
+					while (thread.joinable())
+					{
+						ProcessMainThreadTasks();
+						std::this_thread::sleep_for(std::chrono::milliseconds(1));
+					}
 				}
 			}
 			catch (const std::exception& e)
@@ -125,6 +140,8 @@ namespace hbe
 				debugBreak();
 			}
 		}
+
+		ProcessMainThreadTasks();
 
 		try
 		{
@@ -185,6 +202,16 @@ namespace hbe
 
 		auto& stream = streams[streamIndex];
 		stream.Enqueue(task);
+	}
+
+	void TaskSystem::DispatchToMainThread(MainThreadTask task)
+	{
+		mainThreadTaskQueue.Enqueue(std::move(task));
+	}
+
+	size_t TaskSystem::ProcessMainThreadTasks()
+	{
+		return mainThreadTaskQueue.ProcessTasks();
 	}
 
 	StaticString TaskSystem::GetStreamName(int index) const

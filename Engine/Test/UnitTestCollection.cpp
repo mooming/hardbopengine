@@ -4,6 +4,7 @@
 
 #include "UnitTestCollection.h"
 
+#include <thread>
 #include "Container/Array.h"
 #include "Container/AtomicStackView.h"
 #include "Container/BoundedPriorityQueue.h"
@@ -123,7 +124,21 @@ namespace Test
 
 		const auto mainStreamIndex = TaskSystem::GetMainTaskStreamIndex();
 		taskSystem.Enqueue(mainStreamIndex, rangedTask);
-		taskSystem.GetMainTaskStream().Join();
+
+		auto& mainThread = taskSystem.GetMainTaskStream().GetThread();
+		while (mainThread.joinable())
+		{
+			taskSystem.ProcessMainThreadTasks();
+
+			if (!mainThread.joinable())
+			{
+				break;
+			}
+
+			std::this_thread::sleep_for(std::chrono::milliseconds(1));
+		}
+
+		taskSystem.ProcessMainThreadTasks();
 	}
 } // namespace Test
 
