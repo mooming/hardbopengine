@@ -12,6 +12,13 @@ set (CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3")
 
 set (CMAKE_CXX_STANDARD 23)
 
+if (APPLE)
+    set(PLATFORM_SOURCES
+    )
+else()
+    set(PLATFORM_SOURCES "")
+endif()
+
 if (MSVC)
 	add_compile_options (/W3 /WX)
 else (MSVC)
@@ -24,17 +31,16 @@ include_directories ( ${CMAKE_SOURCE_DIR}
  ${CMAKE_SOURCE_DIR}/External
  ${CMAKE_SOURCE_DIR}/Engine
  )
-link_directories (${CMAKE_SOURCE_DIR}/lib)
-
 
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/lib)
 add_library (HEngine STATIC 
  Engine.cpp
  Engine.h
+${PLATFORM_SOURCES}
 )
 
 if (APPLE)
-include_directories ( /System/Library/Frameworks )
+	include_directories ( /System/Library/Frameworks )
 endif (APPLE)
 
 install (TARGETS HEngine DESTINATION ${CMAKE_SOURCE_DIR}/lib)
