@@ -5,65 +5,101 @@
 
 #ifdef PLATFORM_OSX
 #import <Cocoa/Cocoa.h>
+#include <cstdio>
+
+
+@interface WindowDelegate : NSObject <NSWindowDelegate>
+@end
+
+@implementation WindowDelegate
+- (void)windowWillClose:(NSNotification *)notification
+{
+    [NSApp terminate:nil];
+}
+@end
 
 namespace OS
 {
 
 OSXWindow::OSXWindow()
+    : nsWindow(nullptr)
+    , nsDelegate(nullptr)
+	, width(0)
+    , height(0)
+    , visibleFlag(false)
+    , shouldCloseFlag(false)
 {
 }
 
 OSXWindow::~OSXWindow()
 {
-	Close();
+    Close();
 }
 
 bool OSXWindow::CreateWindow(const hbe::HString& title, int width, int height)
 {
-	NSRect frame = NSMakeRect(0, 0, width, height);
-	NSWindow* window = [[NSWindow alloc] initWithContentRect:frame
-		styleMask:(NSWindowStyleMaskTitled | NSWindowStyleMaskClosable | NSWindowStyleMaskResizable)
-		backing:NSBackingStoreBuffered
-		defer:NO];
+    if (nsWindow != nullptr)
+    {
+        return false;
+    }
 
-	if (!window)
-	{
-		return false;
-	}
+    NSRect frame = NSMakeRect(0, 0, width, height);
+    NSUInteger styleMask = NSWindowStyleMaskTitled | NSWindowStyleMaskClosable | NSWindowStyleMaskMiniaturizable;
 
-	[window setTitle:[NSString stringWithUTF8String:title.c_str()]];
-	[window setFrame:frame display:YES animate:NO];
-	[window makeKeyAndOrderFront:nil];
+    NSWindow *window = [[NSWindow alloc] initWithContentRect:frame
+                                                  styleMask:styleMask
+                                                    backing:NSBackingStoreBuffered
+                                                      defer:NO];
 
-	this->width = width;
-	this->height = height;
-	visibleFlag = true;
-	nsWindow = window;
+    if (window == nullptr)
+    {
+        return false;
+    }
 
-	return true;
+    WindowDelegate* windowDelegate = [[WindowDelegate alloc] init];
+    [window setDelegate:windowDelegate];
+
+    if (nsDelegate != nullptr)
+    {
+        CFRelease(nsDelegate);
+        nsDelegate = nullptr;
+    }
+
+    nsDelegate = (void*)windowDelegate;
+    [window setTitle:[NSString stringWithUTF8String:title.c_str()]];
+    [window setFrame:frame display:YES animate:NO];
+    [window makeKeyAndOrderFront:nil];
+    [window center];
+
+    OSXWindow::width = width;
+    OSXWindow::height = height;
+    visibleFlag = true;
+    nsWindow = window;
+
+    return true;
 }
 
 void OSXWindow::SetTitle(const hbe::HString& title)
 {
-	if (nsWindow)
-	{
-		NSWindow* window = static_cast<NSWindow*>(nsWindow);
-		[window setTitle:[NSString stringWithUTF8String:title.c_str()]];
-	}
+    if (nsWindow == nullptr)
+        return;
+
+    auto window = static_cast<NSWindow*>(nsWindow);
+	[window setTitle:[NSString stringWithUTF8String:title.c_str()]];
 }
 
 void OSXWindow::SetSize(int width, int height)
 {
-	if (nsWindow)
-	{
-		NSWindow* window = static_cast<NSWindow*>(nsWindow);
-		NSRect frame = [window frame];
-		frame.size.width = width;
-		frame.size.height = height;
-		[window setFrame:frame display:YES animate:NO];
-		this->width = width;
-		this->height = height;
-	}
+	if (nsWindow == nullptr)
+        return;
+
+	auto window = static_cast<NSWindow*>(nsWindow);
+	NSRect frame = [window frame];
+	frame.size.width = width;
+	frame.size.height = height;
+	[window setFrame:frame display:YES animate:NO];
+	OSXWindow::width = width;
+	OSXWindow::height = height;
 }
 
 int OSXWindow::GetWidth() const
@@ -83,21 +119,21 @@ bool OSXWindow::IsVisible() const
 
 void OSXWindow::SetVisible(bool visible)
 {
-	if (nsWindow)
+	if (nsWindow == nullptr)
+        return;
+
+	auto window = static_cast<NSWindow*>(nsWindow);
+
+	if (visible)
 	{
-		NSWindow* window = static_cast<NSWindow*>(nsWindow);
-
-		if (visible)
-		{
-			[window makeKeyAndOrderFront:nil];
-		}
-		else
-		{
-			[window orderOut:nil];
-		}
-
-		visibleFlag = visible;
+		[window makeKeyAndOrderFront:nil];
 	}
+	else
+	{
+		[window orderOut:nil];
+	}
+
+	visibleFlag = visible;
 }
 
 void OSXWindow::PollEvents()
@@ -113,12 +149,19 @@ bool OSXWindow::ShouldClose() const
 
 void OSXWindow::Close()
 {
-	if (nsWindow)
-	{
-		NSWindow* window = static_cast<NSWindow*>(nsWindow);
-		[window close];
-		nsWindow = nullptr;
-	}
+	if (nsWindow != nullptr)
+    {
+        auto window = static_cast<NSWindow*>(nsWindow);
+        [window close];
+        [window release];
+        nsWindow = nullptr;
+    }
+
+    if (nsDelegate != nullptr)
+    {
+        CFRelease(nsDelegate);
+        nsDelegate = nullptr;
+    }
 }
 
 } // namespace OS

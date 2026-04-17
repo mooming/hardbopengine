@@ -34,6 +34,7 @@ OSXApplication::~OSXApplication()
 void OSXApplication::Initialize()
 {
     NSApplication *app = [NSApplication sharedApplication];
+    [app setActivationPolicy:NSApplicationActivationPolicyRegular];
     appHandle = app;
 }
 
