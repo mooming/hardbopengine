@@ -9,36 +9,25 @@
 #import "OSXApplication.h"
 #import <Cocoa/Cocoa.h>
 
+@interface AppDelegate : NSObject <NSApplicationDelegate>
+@end
+
+@implementation AppDelegate
+- (BOOL)applicationShouldTerminateAfterLastWindowClosed:(NSApplication *)sender
+{
+    return NO;
+}
+@end
 
 namespace OS
 {
 
 OSXApplication::OSXApplication()
 	: appHandle(nullptr)
-	, shouldTerminate(false)
 {
 }
 
 OSXApplication::~OSXApplication()
-{
-    if (!appHandle)
-    {
-        return;
-    }
-
-    auto app = static_cast<NSApplication*>(appHandle);
-    [app terminate:nil];
-    [app release];
-}
-
-void OSXApplication::Initialize()
-{
-    NSApplication *app = [NSApplication sharedApplication];
-    [app setActivationPolicy:NSApplicationActivationPolicyRegular];
-    appHandle = app;
-}
-
-void OSXApplication::Run()
 {
     if (appHandle == nullptr)
     {
@@ -46,21 +35,51 @@ void OSXApplication::Run()
     }
 
     auto app = static_cast<NSApplication*>(appHandle);
-	[app run];
+    [app terminate:nil];
+
+    appHandle = nullptr;
+}
+
+void OSXApplication::Initialize()
+{
+    if (appHandle != nullptr)
+    {
+        // Already initialised
+        return;
+    }
+
+    NSApplication *app = [NSApplication sharedApplication];
+    [app setActivationPolicy:NSApplicationActivationPolicyRegular];
+    auto delegate = [app delegate];
+    if (delegate == nil)
+    {
+        AppDelegate* appDelegate = [[AppDelegate alloc] init];
+        [app setDelegate:appDelegate];
+    }
+
+    [app finishLaunching];
+    appHandle = app;
 }
 
 void OSXApplication::PollEvents()
 {
-}
+    if (appHandle == nullptr)
+    {
+        // It hasn't be initialised.
+        return;
+    }
 
-bool OSXApplication::ShouldTerminate() const
-{
-	return shouldTerminate;
-}
+    auto app = static_cast<NSApplication*>(appHandle);
 
-void OSXApplication::Terminate()
-{
-	shouldTerminate = true;
+    // Clear all the queued events
+    while (NSEvent *event = [app nextEventMatchingMask:NSEventMaskAny
+                                       untilDate:[NSDate distantPast]
+                                          inMode:NSDefaultRunLoopMode
+                                         dequeue:YES])
+    {
+        [app sendEvent:event];
+        [app updateWindows];
+    }
 }
 
 } // namespace OS

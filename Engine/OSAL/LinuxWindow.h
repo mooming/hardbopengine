@@ -88,12 +88,6 @@ public:
 	void PollEvents() override;
 
 	/**
-	 * @brief Checks if the Linux window should be closed.
-	 * @return True if a close event was received, false otherwise.
-	 */
-	[[nodiscard]] bool ShouldClose() const override;
-
-	/**
 	 * @brief Closes and destroys the Linux window resources.
 	 */
 	void Close() override;
@@ -104,7 +98,6 @@ private:
 	int width = 0;
 	int height = 0;
 	bool visibleFlag = true;
-	bool shouldCloseFlag = false;
 };
 
 } // namespace OS

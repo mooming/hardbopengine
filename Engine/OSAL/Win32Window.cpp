@@ -110,11 +110,6 @@ void Win32Window::PollEvents()
 	}
 }
 
-bool Win32Window::ShouldClose() const
-{
-	return shouldCloseFlag;
-}
-
 void Win32Window::Close()
 {
 	if (hwnd)

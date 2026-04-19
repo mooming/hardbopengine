@@ -106,11 +106,6 @@ void LinuxWindow::PollEvents()
 	}
 }
 
-bool LinuxWindow::ShouldClose() const
-{
-	return shouldCloseFlag;
-}
-
 void LinuxWindow::Close()
 {
 	if (display && window)

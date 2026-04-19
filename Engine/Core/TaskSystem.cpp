@@ -52,9 +52,9 @@ namespace hbe
 		return StreamIndex;
 	}
 
-	bool TaskSystem::IsMainThread()
+	bool TaskSystem::IsBaseThread()
 	{
-		return StreamIndex == MainStreamIndex;
+		return StreamIndex == BaseStreamIndex;
 	}
 
 	bool TaskSystem::IsIOThread()
@@ -66,7 +66,7 @@ namespace hbe
 		: isRunning(false)
 		, name("TaskSystem")
 		, numHardwareThreads(GetNumHardwareThreads())
-		, mainTaskThreadID(std::this_thread::get_id())
+		, baseTaskThreadID(std::this_thread::get_id())
 	{
 		FatalAssert(numHardwareThreads > 0, "It should have at least one hardware thread.");
 	}
@@ -102,7 +102,7 @@ namespace hbe
 
 	void TaskSystem::JoinAndClear()
 	{
-		const bool isMainThread = std::this_thread::get_id() == mainTaskThreadID;
+		const bool isMainThread = std::this_thread::get_id() == baseTaskThreadID;
 
 		if (isMainThread)
 		{
@@ -123,14 +123,7 @@ namespace hbe
 
 			try
 			{
-				if (thread.joinable() && thread.get_id() != std::this_thread::get_id())
-				{
-					while (thread.joinable())
-					{
-						ProcessMainThreadTasks();
-						std::this_thread::sleep_for(std::chrono::milliseconds(1));
-					}
-				}
+				thread.join();
 			}
 			catch (const std::exception& e)
 			{
@@ -140,8 +133,6 @@ namespace hbe
 				debugBreak();
 			}
 		}
-
-		ProcessMainThreadTasks();
 
 		try
 		{
@@ -204,9 +195,9 @@ namespace hbe
 		stream.Enqueue(task);
 	}
 
-	void TaskSystem::DispatchToMainThread(MainThreadTask task)
+	void TaskSystem::DispatchToMainThread(TMainThreadTask taskFunc, void* userData, uint8_t priority)
 	{
-		mainThreadTaskQueue.Enqueue(std::move(task));
+		mainThreadTaskQueue.Enqueue(taskFunc, userData, priority);
 	}
 
 	size_t TaskSystem::ProcessMainThreadTasks()
@@ -256,7 +247,7 @@ namespace hbe
 
 	void TaskSystem::BuildStreams()
 	{
-		Assert(IsMainThread());
+		Assert(IsBaseThread());
 		FatalAssert(numHardwareThreads >= ENGINE_MIN_HARDWARE_THREADS,
 			"Number of hardware threads are less than the minimum requirement");
 
@@ -272,7 +263,7 @@ namespace hbe
 
 		// Pre-defined Engine Task Streams
 		{
-			auto index = GetMainTaskStreamIndex();
+			auto index = GetBaseTaskStreamIndex();
 			streams.Emplace(index, "Main", index);
 
 			index = GetIOTaskStreamIndex();

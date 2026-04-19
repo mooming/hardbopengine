@@ -16,7 +16,7 @@ namespace hbe
 
 	Resource ResourceManager::RequestLoad(StaticString path)
 	{
-		Assert(TaskSystem::IsMainThread());
+		Assert(TaskSystem::IsBaseThread());
 
 		Resource resource;
 
@@ -25,7 +25,7 @@ namespace hbe
 
 	Resource ResourceManager::Load(StaticString path)
 	{
-		Assert(TaskSystem::IsMainThread());
+		Assert(TaskSystem::IsBaseThread());
 
 		Resource resource;
 

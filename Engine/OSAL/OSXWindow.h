@@ -17,6 +17,12 @@ namespace OS
  */
 class OSXWindow : public IWindow
 {
+private:
+	void* nsWindow;
+	int width;
+	int height;
+	bool visibleFlag;
+
 public:
 	/**
 	 * @brief Default constructor for OSXWindow.
@@ -80,22 +86,9 @@ public:
 	void PollEvents() override;
 
 	/**
-	 * @brief Checks if the OSX window should be closed.
-	 * @return True if a close event was received, false otherwise.
-	 */
-	[[nodiscard]] bool ShouldClose() const override;
-
-	/**
 	 * @brief Closes and destroys the OSX window resources.
 	 */
 	void Close() override;
-
-private:
-	void* nsWindow = nullptr;
-	int width = 0;
-	int height = 0;
-	bool visibleFlag = true;
-	bool shouldCloseFlag = false;
 };
 
 } // namespace OS

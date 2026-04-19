@@ -11,9 +11,9 @@ MainThreadTaskQueue::MainThreadTaskQueue()
 {
 }
 
-void MainThreadTaskQueue::Enqueue(Task task, uint8_t priority)
+void MainThreadTaskQueue::Enqueue(TTaskFunc taskFunc, void* userData, uint8_t priority)
 {
-	TaskItem item(priority, std::move(task));
+	TaskItem item(priority, taskFunc, userData);
 	queue.Push(item);
 }
 
@@ -30,9 +30,9 @@ size_t MainThreadTaskQueue::ProcessTasks()
 		}
 
 		TaskItem& item = *itemOpt;
-		if (item.task)
+		if (item.taskFunc)
 		{
-			item.task();
+			item.taskFunc(item.userData);
 			++processed;
 		}
 	}

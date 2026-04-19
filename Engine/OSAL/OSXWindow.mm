@@ -8,26 +8,14 @@
 #include <cstdio>
 
 
-@interface WindowDelegate : NSObject <NSWindowDelegate>
-@end
-
-@implementation WindowDelegate
-- (void)windowWillClose:(NSNotification *)notification
-{
-    [NSApp terminate:nil];
-}
-@end
-
 namespace OS
 {
 
 OSXWindow::OSXWindow()
     : nsWindow(nullptr)
-    , nsDelegate(nullptr)
 	, width(0)
     , height(0)
     , visibleFlag(false)
-    , shouldCloseFlag(false)
 {
 }
 
@@ -43,7 +31,7 @@ bool OSXWindow::CreateWindow(const hbe::HString& title, int width, int height)
         return false;
     }
 
-    NSRect frame = NSMakeRect(0, 0, width, height);
+    NSRect frame = NSMakeRect(100, 100, width, height);
     NSUInteger styleMask = NSWindowStyleMaskTitled | NSWindowStyleMaskClosable | NSWindowStyleMaskMiniaturizable;
 
     NSWindow *window = [[NSWindow alloc] initWithContentRect:frame
@@ -56,16 +44,7 @@ bool OSXWindow::CreateWindow(const hbe::HString& title, int width, int height)
         return false;
     }
 
-    WindowDelegate* windowDelegate = [[WindowDelegate alloc] init];
-    [window setDelegate:windowDelegate];
-
-    if (nsDelegate != nullptr)
-    {
-        CFRelease(nsDelegate);
-        nsDelegate = nullptr;
-    }
-
-    nsDelegate = (void*)windowDelegate;
+    [window setReleasedWhenClosed:NO];
     [window setTitle:[NSString stringWithUTF8String:title.c_str()]];
     [window setFrame:frame display:YES animate:NO];
     [window makeKeyAndOrderFront:nil];
@@ -142,11 +121,6 @@ void OSXWindow::PollEvents()
 	// In a real engine, we'd hook into the event queue or use NSEvent.
 }
 
-bool OSXWindow::ShouldClose() const
-{
-	return shouldCloseFlag;
-}
-
 void OSXWindow::Close()
 {
 	if (nsWindow != nullptr)
@@ -155,12 +129,6 @@ void OSXWindow::Close()
         [window close];
         [window release];
         nsWindow = nullptr;
-    }
-
-    if (nsDelegate != nullptr)
-    {
-        CFRelease(nsDelegate);
-        nsDelegate = nullptr;
     }
 }
 

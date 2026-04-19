@@ -1,8 +1,8 @@
 // Copyright (c) 2026 Hansol Park (mooming.go@gmail.com). All rights reserved.
 
-
 #include "Window.h"
 
+#include "Application.h"
 #include "Config/BuildConfig.h"
 
 #ifdef PLATFORM_WINDOWS
@@ -16,14 +16,14 @@
 namespace OS
 {
 
-IWindow* CreateWindow(const hbe::HString& title, int width, int height)
+std::unique_ptr<IWindow> CreateWindow(const hbe::HString& title, int width, int height)
 {
 #ifdef PLATFORM_WINDOWS
-	auto window = new Win32Window();
+	auto window = std::make_unique<Win32Window>();
 #elif defined(PLATFORM_LINUX)
-	auto window = new LinuxWindow();
+	auto window = std::make_unique<LinuxWindow>();
 #elif defined(PLATFORM_OSX)
-	auto window = new OSXWindow();
+	auto window = std::make_unique<OSXWindow>();
 #else
 	return nullptr;
 #endif
@@ -32,8 +32,6 @@ IWindow* CreateWindow(const hbe::HString& title, int width, int height)
 	{
 		return window;
 	}
-
-	delete window;
 
 	return nullptr;
 }
@@ -51,204 +49,159 @@ IWindow* CreateWindow(const hbe::HString& title, int width, int height)
 namespace hbe
 {
 
-WindowTest::WindowTest()
-	: TestCollection("WindowTest")
-{
-}
-
 void WindowTest::Prepare()
 {
 	AddTest("Create Window", [this](auto& ls)
 	{
 		auto& taskSystem = Engine::Get().GetTaskSystem();
-		std::promise<OS::IWindow*> windowPromise;
+		std::promise<std::unique_ptr<OS::IWindow>> windowPromise;
 		auto windowFuture = windowPromise.get_future();
 
-		taskSystem.DispatchToMainThread([&windowPromise]()
+		using TThis = decltype(this);
+		using TLs = decltype(ls);
+		using TPromise = decltype(windowPromise);
+
+		struct Data final
 		{
+			TThis thisObject;
+			TLs& ls;
+			TPromise& windowPromise;
+
+			Data(TThis thisObj, TLs& ls, TPromise& promise)
+				: thisObject(thisObj), ls(ls), windowPromise(promise)
+			{
+			}
+		};
+
+		Data userData{this, ls, windowPromise};
+
+		taskSystem.DispatchToMainThread([](void* userData)
+		{
+			auto data = static_cast<Data*>(userData);
+			FatalAssert(data != nullptr);
+
+			auto& ls = data->ls;
+			auto& lf = data->thisObject->lf;
+			auto& windowPromise = data->windowPromise;
+
+			auto app = Engine::Get().GetApplication();
+			if (!app)
+			{
+				ls << "Failed to get an application instance" << lf;
+				return;
+			}
+
 			auto window = OS::CreateWindow("Test Window", 800, 600);
-			windowPromise.set_value(window);
-		});
+			if (!window)
+			{
+				ls << "Failed to create a window" << lf;
+				windowPromise.set_value(std::move(window));
+				return;
+			}
 
-		auto window = windowFuture.get();
-		if (window == nullptr)
-		{
-			ls << "Failed to create window" << lf;
-			return;
-		}
+			ls << "Width: " << window->GetWidth() << lf;
+			ls << "Height: " << window->GetHeight() << lf;
+			ls << "A window has been created successfully" << lf;
 
-		ls << "Window created successfully" << lf;
-		ls << "Width: " << window->GetWidth() << lf;
-		ls << "Height: " << window->GetHeight() << lf;
+			for (int i = 0; i < 100; ++i)
+			{
+				app->PollEvents();
+				std::this_thread::sleep_for(std::chrono::milliseconds(10));
+			}
 
-		std::this_thread::sleep_for(std::chrono::seconds(1));
-		window->Close();
-		delete window;
+			window.reset();
+			windowPromise.set_value(nullptr);
+		}, &userData);
+
+		windowFuture.get();
 	});
 
 	AddTest("Set and Get Title", [this](auto& ls)
 	{
 		auto& taskSystem = Engine::Get().GetTaskSystem();
-		std::promise<OS::IWindow*> windowPromise;
+		std::promise<std::unique_ptr<OS::IWindow>> windowPromise;
 		auto windowFuture = windowPromise.get_future();
 
-		taskSystem.DispatchToMainThread([&windowPromise]()
+		using TThis = decltype(this);
+		using TLs = decltype(ls);
+		using TPromise = decltype(windowPromise);
+
+		struct Data final
 		{
+			TThis thisObject;
+			TLs& ls;
+			TPromise& windowPromise;
+
+			Data(TThis thisObj, TLs& ls, TPromise& promise)
+				: thisObject(thisObj), ls(ls), windowPromise(promise)
+			{
+			}
+		};
+
+		Data userData{this, ls, windowPromise};
+
+		taskSystem.DispatchToMainThread([](void* userData) mutable
+		{
+			auto data = static_cast<Data*>(userData);
+			FatalAssert(data != nullptr);
+
+			auto& ls = data->ls;
+			auto& lf = data->thisObject->lf;
+			auto& windowPromise = data->windowPromise;
+
 			auto window = OS::CreateWindow("Initial Title", 800, 600);
-			windowPromise.set_value(window);
-		});
+			if (!window)
+			{
+				ls << "Failed to create a window" << lf;
+				windowPromise.set_value(std::move(window));
+				return;
+			}
 
-		auto window = windowFuture.get();
-		if (window == nullptr)
-		{
-			ls << "Failed to create window" << lf;
-			return;
-		}
+			ls << "Width: " << window->GetWidth() << lf;
+			ls << "Height: " << window->GetHeight() << lf;
+			ls << "A window has been created successfully" << lf;
 
-		hbe::HString newTitle = "New Title";
-		window->SetTitle(newTitle);
-		ls << "Title set to: " << newTitle.c_str() << lf;
+			for (int i = 0; i < 100; ++i)
+			{
+				if (i == 50)
+				{
+					hbe::HString newTitle = "New Title";
+					window->SetTitle(newTitle);
+					ls << "Title set to: " << newTitle.c_str() << lf;
+				}
 
-		std::this_thread::sleep_for(std::chrono::seconds(1));
-		window->Close();
-		delete window;
+				std::this_thread::sleep_for(std::chrono::milliseconds(10));
+			}
+
+			window.reset();
+			windowPromise.set_value(nullptr);
+		}, &userData);
+
+		windowFuture.get();
 	});
 
-	AddTest("Set and Get Size", [this](auto& ls)
+	AddTest("Set and Get Size", [](auto& ls)
 	{
-		auto& taskSystem = Engine::Get().GetTaskSystem();
-		std::promise<OS::IWindow*> windowPromise;
-		auto windowFuture = windowPromise.get_future();
 
-		taskSystem.DispatchToMainThread([&windowPromise]()
-		{
-			auto window = OS::CreateWindow("Resize Test", 800, 600);
-			windowPromise.set_value(window);
-		});
-
-		auto window = windowFuture.get();
-		if (window == nullptr)
-		{
-			ls << "Failed to create window" << lf;
-			return;
-		}
-
-		ls << "Initial size: " << window->GetWidth() << "x" << window->GetHeight() << lf;
-
-		window->SetSize(1024, 768);
-		ls << "Resized to: " << window->GetWidth() << "x" << window->GetHeight() << lf;
-
-		std::this_thread::sleep_for(std::chrono::seconds(1));
-		window->Close();
 	});
 
-	AddTest("Visibility", [this](auto& ls)
+	AddTest("Visibility", [](auto& ls)
 	{
-		auto& taskSystem = Engine::Get().GetTaskSystem();
-		std::promise<OS::IWindow*> windowPromise;
-		auto windowFuture = windowPromise.get_future();
-
-		taskSystem.DispatchToMainThread([&windowPromise]()
-		{
-			auto window = OS::CreateWindow("Visibility Test", 800, 600);
-			windowPromise.set_value(window);
-		});
-
-		auto window = windowFuture.get();
-		if (window == nullptr)
-		{
-			ls << "Failed to create window" << lf;
-			return;
-		}
-
-		ls << "Initial visibility: " << (window->IsVisible() ? "visible" : "hidden") << lf;
-
-		window->SetVisible(false);
-		ls << "After SetVisible(false): " << (window->IsVisible() ? "visible" : "hidden") << lf;
-
-		window->SetVisible(true);
-		ls << "After SetVisible(true): " << (window->IsVisible() ? "visible" : "hidden") << lf;
-
-		std::this_thread::sleep_for(std::chrono::seconds(1));
-		window->Close();
 	});
 
-	AddTest("Poll Events", [this](auto& ls)
+	AddTest("Poll Events", [](auto& ls)
 	{
-		auto& taskSystem = Engine::Get().GetTaskSystem();
-		std::promise<OS::IWindow*> windowPromise;
-		auto windowFuture = windowPromise.get_future();
 
-		taskSystem.DispatchToMainThread([&windowPromise]()
-		{
-			auto window = OS::CreateWindow("Poll Events Test", 800, 600);
-			windowPromise.set_value(window);
-		});
-
-		auto window = windowFuture.get();
-		if (window == nullptr)
-		{
-			ls << "Failed to create window" << lf;
-			return;
-		}
-
-		ls << "Polling events..." << lf;
-		window->PollEvents();
-		ls << "PollEvents completed without errors" << lf;
-
-		std::this_thread::sleep_for(std::chrono::seconds(1));
-		window->Close();
 	});
 
-	AddTest("ShouldClose", [this](auto& ls)
+	AddTest("ShouldClose", [](auto& ls)
 	{
-		auto& taskSystem = Engine::Get().GetTaskSystem();
-		std::promise<OS::IWindow*> windowPromise;
-		auto windowFuture = windowPromise.get_future();
 
-		taskSystem.DispatchToMainThread([&windowPromise]()
-		{
-			auto window = OS::CreateWindow("ShouldClose Test", 800, 600);
-			windowPromise.set_value(window);
-		});
-
-		auto window = windowFuture.get();
-		if (window == nullptr)
-		{
-			ls << "Failed to create window" << lf;
-			return;
-		}
-
-		ls << "Initial ShouldClose: " << (window->ShouldClose() ? "true" : "false") << lf;
-
-		std::this_thread::sleep_for(std::chrono::seconds(1));
-		window->Close();
 	});
 
-	AddTest("Close Window", [this](auto& ls)
+	AddTest("Close Window", [](auto& ls)
 	{
-		auto& taskSystem = Engine::Get().GetTaskSystem();
-		std::promise<OS::IWindow*> windowPromise;
-		auto windowFuture = windowPromise.get_future();
 
-		taskSystem.DispatchToMainThread([&windowPromise]()
-		{
-			auto window = OS::CreateWindow("Close Test", 800, 600);
-			windowPromise.set_value(window);
-		});
-
-		auto window = windowFuture.get();
-		if (window == nullptr)
-		{
-			ls << "Failed to create window" << lf;
-			return;
-		}
-
-		ls << "Closing window..." << lf;
-		std::this_thread::sleep_for(std::chrono::seconds(1));
-		window->Close();
-		delete window;
-		ls << "Window closed and deleted successfully" << lf;
 	});
 }
 

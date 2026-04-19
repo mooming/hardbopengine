@@ -122,23 +122,8 @@ namespace Test
 		auto rangedTask = task.GenerateSubTask(0, 1, 0);
 		auto& taskSystem = Engine::Get().GetTaskSystem();
 
-		const auto mainStreamIndex = TaskSystem::GetMainTaskStreamIndex();
+		const auto mainStreamIndex = TaskSystem::GetBaseTaskStreamIndex();
 		taskSystem.Enqueue(mainStreamIndex, rangedTask);
-
-		auto& mainThread = taskSystem.GetMainTaskStream().GetThread();
-		while (mainThread.joinable())
-		{
-			taskSystem.ProcessMainThreadTasks();
-
-			if (!mainThread.joinable())
-			{
-				break;
-			}
-
-			std::this_thread::sleep_for(std::chrono::milliseconds(1));
-		}
-
-		taskSystem.ProcessMainThreadTasks();
 	}
 } // namespace Test
 

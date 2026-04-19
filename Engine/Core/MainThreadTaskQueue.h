@@ -16,19 +16,21 @@ namespace hbe
 class MainThreadTaskQueue final
 {
 public:
-	using Task = std::function<void()>;
+	using TTaskFunc = void (*)(void*);
 
 private:
 	struct TaskItem
 	{
 		uint8_t priority;
 		mutable bool isDone;
-		Task task;
+		TTaskFunc taskFunc;
+		void* userData;
 
-		TaskItem(uint8_t p, Task t)
+		TaskItem(uint8_t p, TTaskFunc t, void* userData)
 			: priority(p)
 			, isDone(false)
-			, task(std::move(t))
+			, taskFunc(t)
+			, userData(userData)
 		{
 		}
 
@@ -56,7 +58,7 @@ public:
 	/// @brief Enqueue a task to be executed on the main thread.
 	/// @param task The task function to execute.
 	/// @param priority The priority of the task (0 = highest, 255 = lowest). Default is 128.
-	void Enqueue(Task task, uint8_t priority = 128);
+	void Enqueue(TTaskFunc taskFunc, void* userData, uint8_t priority = 128);
 
 	/// @brief Process all pending tasks in the queue.
 	/// @return The number of tasks processed.
