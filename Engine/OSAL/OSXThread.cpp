@@ -64,7 +64,7 @@ int OS::GetThreadPriority(std::thread& thread)
 
 void OS::SetThreadAffinity(std::thread& thread, uint64_t mask)
 {
-	// Not supproted on Apple Silicon
+	// Not supported on Apple Silicon
 }
 
 void OS::SetThreadPriority(std::thread& thread, int priority)

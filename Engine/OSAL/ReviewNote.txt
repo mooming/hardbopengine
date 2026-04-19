@@ -11,18 +11,82 @@ FILES:
   - Directory.h, File.h - File system abstractions
   - SourceLocation.h - Source location capture
 
-STRENGTHS:
-  + Clean platform abstraction with compile-time guards (PLATFORM_*)
-  + Intrinsics properly handle clang, GCC, MSVC
-  + Platform-specific implementations in separate files
-  + File and Directory abstractions
+================================================================================
+ISSUES FOUND
+================================================================================
 
-ISSUES:
-  - OSAbstractLayer.h:5 - Uses `<iostream>` instead of HSTL
-  - Directory.h - Uses `std::string`/`std::vector` instead of HSTL
+1. [HIGH] File.h:5-9 - Uses std::string, std::vector, <ostream> instead of HSTL
+   - Line 16: std::string path;
+   - Line 51: std::vector<File>
+   - Must use HString and HVector instead
 
-FIXED:
-  - LinuxDebug.cpp - Implemented GetBackTrace() using execinfo/backtrace
-  - OSThread.cpp - Implemented test cases for thread operations
+2. [HIGH] Directory.h:5-7 - Uses std::string, std::vector instead of HSTL
+   - Line 16: std::string path;
+   - Line 14, 31: std::vector<Directory>
+   - Must use HString and HVector instead
+
+3. [MEDIUM] OSXWindow.h:20-25 - Member variables defined in wrong visibility section
+   - Member variables (lines 20-25) are declared before public section
+   - Must move to private section after all method declarations
+   - Current: private: (nsWindow, width...) -> public: (constructors/methods)
+   - Required: public: (constructors/methods) -> private: (member variables)
+
+4. [MEDIUM] Win32Window.h:93-101 - Member variables in wrong location
+   - Private member function WindowProc at line 94
+   - Member variables at lines 96-101 after the private method
+   - Standard: static methods, then member variables, then methods
+
+5. [MEDIUM] LinuxWindow.h:76-91 - Inline SetVisible implementation in wrong visibility
+   - Method implementation embedded in class with inline in header
+   - Member variables at lines 110-115 come AFTER method implementation
+   - Inconsistent with Win32Window and OSXWindow
+
+6. [MEDIUM] OSXThread.cpp:67 - Typo in comment
+   - "Not supproted on Apple Silicon" -> "Not supported on Apple Silicon"
+
+7. [MEDIUM] OSThread.h - Missing GetThreadPriority implementation
+   - GetThreadPriority declared in OSThread.h but only implemented in OSXThread.cpp
+   - WindowsThread.cpp and LinuxThread.cpp do not implement this function
+   - LinuxThread.cpp only has SetThreadPriority
+
+8. [LOW] LinuxThread.cpp:17 - Incorrect loop boundary in SetThreadAffinity
+   - Line 17: loops for sizeof(uint64_t) bytes (8), but should loop over bit count
+   - Bit iteration should iterate over 64 bits, not 8 bytes
+
+9. [LOW] OSAbstractLayer.h:5 - Unnecessary <iostream> include
+   - Should use HSTL instead
+
+================================================================================
+STRENGTHS
+================================================================================
+
++ Clean platform abstraction with compile-time guards (PLATFORM_*)
++ Intrinsics properly handle clang, GCC, MSVC
++ Platform-specific implementations in separate files
++ Comprehensive tests for memory and thread operations
++ Proper RAII patterns in Window classes (destructor calls Close())
++ Good documentation in class comments
++ Consistent interface across all platforms (IWindow, IApplication)
+
+================================================================================
+BUG FIXES VERIFIED
+================================================================================
+
++ WindowsMemory.cpp:42 - VirtualFree error check was inverted (fixed)
++ LinuxMemory.cpp:29 - VirtualFree now uses munmap (fixed)
++ LinuxDebug.cpp - GetBackTrace implemented (fixed)
+
+================================================================================
+RECOMMENDED ACTIONS
+================================================================================
+
+1. Replace std::string/std::vector with HString/HVector in File.h and Directory.h
+2. Reorder member variables in OSXWindow.h to follow visibility conventions
+3. Reorder member variables in Win32Window.h
+4. Fix LinuxWindow.h member variable placement
+5. Add GetThreadPriority to WindowsThread.cpp and verify in LinuxThread.cpp
+6. Fix typo in OSXThread.cpp
+7. Fix LinuxThread.cpp SetThreadAffinity loop boundary
+8. Replace <iostream> with HSTL in OSAbstractLayer.h
 
 ================================================================================
