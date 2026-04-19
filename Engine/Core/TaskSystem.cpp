@@ -102,9 +102,9 @@ namespace hbe
 
 	void TaskSystem::JoinAndClear()
 	{
-		const bool isMainThread = std::this_thread::get_id() == baseTaskThreadID;
+		const bool isBaseThread = std::this_thread::get_id() == baseTaskThreadID;
 
-		if (isMainThread)
+		if (isBaseThread)
 		{
 			while (isRunning || mainThreadTaskQueue.HasPendingTasks())
 			{
