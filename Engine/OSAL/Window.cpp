@@ -89,6 +89,7 @@ void WindowTest::Prepare()
 			if (!app)
 			{
 				ls << "Failed to get an application instance" << lf;
+				windowPromise.set_value(nullptr);
 				return;
 			}
 
@@ -96,7 +97,7 @@ void WindowTest::Prepare()
 			if (!window)
 			{
 				ls << "Failed to create a window" << lferr;
-				windowPromise.set_value(std::move(window));
+				windowPromise.set_value(nullptr);
 				return;
 			}
 
@@ -170,11 +171,19 @@ void WindowTest::Prepare()
 			auto& lferr = data->thisObject->lferr;
 			auto& windowPromise = data->windowPromise;
 
+			auto app = Engine::Get().GetApplication();
+			if (!app)
+			{
+				ls << "Failed to get an application instance" << lf;
+				windowPromise.set_value(nullptr);
+				return;
+			}
+
 			auto window = OS::CreateWindow("Initial Title", 800, 600);
 			if (!window)
 			{
 				ls << "Failed to create a window" << lferr;
-				windowPromise.set_value(std::move(window));
+				windowPromise.set_value(nullptr);
 				return;
 			}
 
@@ -203,6 +212,9 @@ void WindowTest::Prepare()
 			bool titleSet = false;
 			for (int i = 0; i < 100; ++i)
 			{
+				app->PollEvents();
+				window->PollEvents();
+
 				if (i == 50)
 				{
 					hbe::HString newTitle = "New Title";
@@ -215,7 +227,9 @@ void WindowTest::Prepare()
 			}
 
 			if (!titleSet)
+			{
 				ls << "Failed to set title" << lf;
+			}
 
 			window.reset();
 			windowPromise.set_value(nullptr);
@@ -258,11 +272,19 @@ void WindowTest::Prepare()
 			auto& lferr = data->thisObject->lferr;
 			auto& windowPromise = data->windowPromise;
 
+			auto app = Engine::Get().GetApplication();
+			if (!app)
+			{
+				ls << "Failed to get an application instance" << lf;
+				windowPromise.set_value(nullptr);
+				return;
+			}
+
 			auto window = OS::CreateWindow("Resize Test", 800, 600);
 			if (!window)
 			{
 				ls << "Failed to create a window" << lferr;
-				windowPromise.set_value(std::move(window));
+				windowPromise.set_value(nullptr);
 				return;
 			}
 
@@ -274,6 +296,7 @@ void WindowTest::Prepare()
 			{
 				ls << "Invalid initial width: " << initialWidth << ", expected 800" << lferr;
 			}
+
 			if (initialHeight != 600)
 			{
 				ls << "Invalid initial height: " << initialHeight << ", expected 600" << lferr;
@@ -281,6 +304,9 @@ void WindowTest::Prepare()
 
 			for (int i = 0; i < 100; ++i)
 			{
+				app->PollEvents();
+				window->PollEvents();
+
 				if (i == 50)
 				{
 					const int newWidth = 1024;
@@ -346,11 +372,19 @@ void WindowTest::Prepare()
 			auto& lferr = data->thisObject->lferr;
 			auto& windowPromise = data->windowPromise;
 
+			auto app = Engine::Get().GetApplication();
+			if (!app)
+			{
+				ls << "Failed to get an application instance" << lf;
+				windowPromise.set_value(nullptr);
+				return;
+			}
+
 			auto window = OS::CreateWindow("Visibility Test", 800, 600);
 			if (!window)
 			{
 				ls << "Failed to create a window" << lferr;
-				windowPromise.set_value(std::move(window));
+				windowPromise.set_value(nullptr);
 				return;
 			}
 
@@ -364,6 +398,9 @@ void WindowTest::Prepare()
 
 			for (int i = 0; i < 100; ++i)
 			{
+				app->PollEvents();
+				window->PollEvents();
+
 				if (i == 25)
 				{
 					window->SetVisible(false);
@@ -437,19 +474,18 @@ void WindowTest::Prepare()
 			auto& lferr = data->thisObject->lferr;
 			auto& windowPromise = data->windowPromise;
 
-			auto window = OS::CreateWindow("Poll Events Test", 800, 600);
-			if (!window)
-			{
-				ls << "Failed to create a window" << lferr;
-				windowPromise.set_value(std::move(window));
-				return;
-			}
-
 			auto app = Engine::Get().GetApplication();
 			if (!app)
 			{
 				ls << "Failed to get an application instance" << lferr;
-				window.reset();
+				windowPromise.set_value(nullptr);
+				return;
+			}
+
+			auto window = OS::CreateWindow("Poll Events Test", 800, 600);
+			if (!window)
+			{
+				ls << "Failed to create a window" << lferr;
 				windowPromise.set_value(nullptr);
 				return;
 			}
@@ -532,11 +568,19 @@ void WindowTest::Prepare()
 			auto& lferr = data->thisObject->lferr;
 			auto& windowPromise = data->windowPromise;
 
+			auto app = Engine::Get().GetApplication();
+			if (!app)
+			{
+				ls << "Failed to get an application instance" << lf;
+				windowPromise.set_value(nullptr);
+				return;
+			}
+
 			auto window = OS::CreateWindow("Close Test", 800, 600);
 			if (!window)
 			{
 				ls << "Failed to create a window" << lferr;
-				windowPromise.set_value(std::move(window));
+				windowPromise.set_value(nullptr);
 				return;
 			}
 
@@ -564,6 +608,8 @@ void WindowTest::Prepare()
 
 			for (int i = 0; i < 20; ++i)
 			{
+				app->PollEvents();
+				window->PollEvents();
 				std::this_thread::sleep_for(std::chrono::milliseconds(10));
 			}
 

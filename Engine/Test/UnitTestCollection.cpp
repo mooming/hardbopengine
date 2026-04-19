@@ -117,13 +117,13 @@ namespace Test
 			return 1;
 		};
 
-		Task task("TestEnv", testFunc, nullptr);
+		static Task task("TestEnv", testFunc, nullptr);
 
 		auto rangedTask = task.GenerateSubTask(0, 1, 0);
 		auto& taskSystem = Engine::Get().GetTaskSystem();
 
-		const auto mainStreamIndex = TaskSystem::GetBaseTaskStreamIndex();
-		taskSystem.Enqueue(mainStreamIndex, rangedTask);
+		const auto baseStreamIndex = TaskSystem::GetBaseTaskStreamIndex();
+		taskSystem.Enqueue(baseStreamIndex, rangedTask);
 	}
 } // namespace Test
 
