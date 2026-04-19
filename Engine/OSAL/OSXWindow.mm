@@ -130,6 +130,13 @@ void OSXWindow::Close()
         [window release];
         nsWindow = nullptr;
     }
+
+	closedFlag = true;
+}
+
+bool OSXWindow::IsClosed() const
+{
+	return closedFlag;
 }
 
 } // namespace OS

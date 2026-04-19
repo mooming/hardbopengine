@@ -74,6 +74,12 @@ public:
 	 * @return True if the window is visible, false otherwise.
 	 */
 	[[nodiscard]] virtual bool IsVisible() const = 0;
+
+	/**
+	 * @brief Checks if the window has been closed.
+	 * @return True if the window is closed, false otherwise.
+	 */
+	[[nodiscard]] virtual bool IsClosed() const = 0;
 };
 
 /**

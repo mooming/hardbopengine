@@ -84,6 +84,12 @@ public:
 	 */
 	void Close() override;
 
+	/**
+	 * @brief Checks if the Win32 window has been closed.
+	 * @return True if closed, false otherwise.
+	 */
+	[[nodiscard]] bool IsClosed() const override;
+
 private:
 	static long WindowProc(void* hwnd, unsigned int uMsg, unsigned long long wParam, long lParam);
 
@@ -91,6 +97,8 @@ private:
 	int width = 0;
 	int height = 0;
 	bool visibleFlag = true;
+	bool closedFlag = false;
+	bool shouldCloseFlag = false;
 };
 
 } // namespace OS

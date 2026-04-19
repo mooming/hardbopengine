@@ -63,7 +63,7 @@ void LinuxWindow::SetSize(int width, int height)
 	{
 		this->width = width;
 		this->height = height;
-		XResizeSubpixWindow(display, window, width, height);
+		XResizeWindow(display, window, width, height);
 	}
 }
 
@@ -115,6 +115,13 @@ void LinuxWindow::Close()
 		display = nullptr;
 		window = 0;
 	}
+
+	closedFlag = true;
+}
+
+bool LinuxWindow::IsClosed() const
+{
+	return closedFlag;
 }
 
 } // namespace OS

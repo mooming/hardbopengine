@@ -22,6 +22,7 @@ private:
 	int width;
 	int height;
 	bool visibleFlag;
+	bool closedFlag;
 
 public:
 	/**
@@ -89,6 +90,12 @@ public:
 	 * @brief Closes and destroys the OSX window resources.
 	 */
 	void Close() override;
+
+	/**
+	 * @brief Checks if the OSX window has been closed.
+	 * @return True if closed, false otherwise.
+	 */
+	[[nodiscard]] bool IsClosed() const override;
 };
 
 } // namespace OS

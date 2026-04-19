@@ -540,7 +540,7 @@ void WindowTest::Prepare()
 				return;
 			}
 
-			ls << "Window created, closing..." << lf;
+			ls << "Window created, verifying initial state..." << lf;
 
 			if (window->GetWidth() != 800)
 			{
@@ -557,13 +557,23 @@ void WindowTest::Prepare()
 				ls << "Window should be visible" << lferr;
 			}
 
+			if (window->IsClosed())
+			{
+				ls << "Window should not be closed initially" << lferr;
+			}
+
 			for (int i = 0; i < 20; ++i)
 			{
 				std::this_thread::sleep_for(std::chrono::milliseconds(10));
 			}
 
 			window->Close();
-			ls << "Window closed" << lf;
+			ls << "Window closed, verifying IsClosed()..." << lf;
+
+			if (!window->IsClosed())
+			{
+				ls << "Window should be closed after Close()" << lferr;
+			}
 
 			window.reset();
 			windowPromise.set_value(nullptr);

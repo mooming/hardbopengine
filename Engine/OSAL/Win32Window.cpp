@@ -94,9 +94,8 @@ void Win32Window::SetVisible(bool visible)
 	if (hwnd)
 	{
 		ShowWindow(static_cast<HWND>(hwnd), visible ? SW_SHOW : SW_HIDE);
+		visibleFlag = visible;
 	}
-
-	visibleFlag = visible;
 }
 
 void Win32Window::PollEvents()
@@ -117,6 +116,13 @@ void Win32Window::Close()
 		DestroyWindow(static_cast<HWND>(hwnd));
 		hwnd = nullptr;
 	}
+
+	closedFlag = true;
+}
+
+bool Win32Window::IsClosed() const
+{
+	return closedFlag;
 }
 
 } // namespace OS
