@@ -12,21 +12,17 @@ FILES:
   - SourceLocation.h - Source location capture
 
 STRENGTHS:
-  + Clean platform abstraction
-  + Platform-specific files now have compile-time guards
+  + Clean platform abstraction with compile-time guards (PLATFORM_*)
   + Intrinsics properly handle clang, GCC, MSVC
   + Platform-specific implementations in separate files
   + File and Directory abstractions
-  + IsValidAllocation() moved to platform files
-  + Platform macros now exclusive (PLATFORM_* = 1)
-
-CRITICAL ISSUES (ALL FIXED):
-  - FIXED: VirtualFree on Linux/macOS uses munmap() instead of free()
-  - FIXED: VirtualFree on Windows has correct error check (if !result)
-  - FIXED: VirtualFree parameter properly named
 
 ISSUES:
-  - GetBackTrace() on Linux returns "Not Implemented" (LinuxDebug.cpp:9)
-  - OSThreadTest::Prepare() is empty with TODO comment (OSThread.cpp:14-17)
+  - OSAbstractLayer.h:5 - Uses `<iostream>` instead of HSTL
+  - Directory.h - Uses `std::string`/`std::vector` instead of HSTL
+
+FIXED:
+  - LinuxDebug.cpp - Implemented GetBackTrace() using execinfo/backtrace
+  - OSThread.cpp - Implemented test cases for thread operations
 
 ================================================================================
