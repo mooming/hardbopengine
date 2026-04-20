@@ -6,6 +6,7 @@
 
 #include "Config/BuildConfig.h"
 #include "HSTL/HString.h"
+#include <memory>
 
 namespace OS
 {
@@ -70,25 +71,25 @@ public:
 
 	/**
 	 * @brief Checks if the window is currently visible.
-	 * @return True if visible, false otherwise.
+	 * @return True if the window is visible, false otherwise.
 	 */
 	[[nodiscard]] virtual bool IsVisible() const = 0;
 
 	/**
-	 * @brief Checks if a close event has been triggered.
-	 * @return True if the window should be closed, false otherwise.
+	 * @brief Checks if the window has been closed.
+	 * @return True if the window is closed, false otherwise.
 	 */
-	[[nodiscard]] virtual bool ShouldClose() const = 0;
+	[[nodiscard]] virtual bool IsClosed() const = 0;
 };
 
 /**
  * @brief Factory function to create a window for the current platform.
  * @param title The title of the window.
- * @param width The width of the window in pixels.
- * @param height The height of the window in pixels.
- * @return Pointer to the created window, or nullptr if creation failed.
+ * @param width The initial width of the window in pixels.
+ * @param height The initial height of the window in pixels.
+ * @return Unique pointer to the created window, or nullptr if creation failed.
  */
-IWindow* CreateWindow(const hbe::HString& title, int width, int height);
+std::unique_ptr<IWindow> CreateWindow(const hbe::HString& title, int width, int height);
 
 } // namespace OS
 
@@ -101,7 +102,7 @@ namespace hbe
 class WindowTest : public TestCollection
 {
 public:
-	WindowTest();
+	WindowTest() : TestCollection("WindowTest") {}
 
 protected:
 	void Prepare() override;

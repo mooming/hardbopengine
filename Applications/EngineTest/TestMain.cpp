@@ -10,7 +10,7 @@ int main(int argc, const char* argv[])
     hengine.Initialize(argc, argv);
 
 	Test::RunTests();
-    hengine.WaitForEnd();
+    hengine.Run();
 
     return 0;
 }

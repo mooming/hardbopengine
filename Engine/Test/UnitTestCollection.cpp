@@ -4,6 +4,7 @@
 
 #include "UnitTestCollection.h"
 
+#include <thread>
 #include "Container/Array.h"
 #include "Container/AtomicStackView.h"
 #include "Container/BoundedPriorityQueue.h"
@@ -116,14 +117,13 @@ namespace Test
 			return 1;
 		};
 
-		Task task("TestEnv", testFunc, nullptr);
+		static Task task("TestEnv", testFunc, nullptr);
 
 		auto rangedTask = task.GenerateSubTask(0, 1, 0);
 		auto& taskSystem = Engine::Get().GetTaskSystem();
 
-		const auto mainStreamIndex = TaskSystem::GetMainTaskStreamIndex();
-		taskSystem.Enqueue(mainStreamIndex, rangedTask);
-		taskSystem.GetMainTaskStream().Join();
+		const auto baseStreamIndex = TaskSystem::GetBaseTaskStreamIndex();
+		taskSystem.Enqueue(baseStreamIndex, rangedTask);
 	}
 } // namespace Test
 

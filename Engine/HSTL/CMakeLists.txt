@@ -44,6 +44,8 @@ ${PLATFORM_SOURCES}
 
 if (APPLE)
 	include_directories ( /System/Library/Frameworks )
+	set(MACOSX_BUNDLE_TRUE TRUE)
+	set(MACOSX_BUNDLE_INFO_PLIST ${CMAKE_CURRENT_SOURCE_DIR}/Info.plist)
 endif (APPLE)
 
 install (TARGETS HSTL DESTINATION ${CMAKE_SOURCE_DIR}/lib)

@@ -14,6 +14,7 @@ set (CMAKE_CXX_STANDARD 23)
 
 if (APPLE)
     set(PLATFORM_SOURCES
+        OSXApplication.mm
         OSXWindow.mm
     )
 else()
@@ -35,8 +36,10 @@ include_directories ( ${CMAKE_SOURCE_DIR}
 
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/lib)
 add_library (OSAL STATIC 
+ Application.cpp
  Directory.cpp
  LinuxAbstractLayer.cpp
+ LinuxApplication.cpp
  LinuxDebug.cpp
  LinuxFileHandle.cpp
  LinuxFileOpenMode.cpp
@@ -60,15 +63,19 @@ add_library (OSAL STATIC
  OSXMemory.cpp
  OSXProtectionMode.cpp
  OSXThread.cpp
+ Win32Application.cpp
  Win32Window.cpp
+ Window.cpp
  WindowsAbstractLayer.cpp
  WindowsDebug.cpp
  WindowsInputOutput.cpp
  WindowsMemory.cpp
  WindowsThread.cpp
+ Application.h
  Directory.h
  File.h
  Intrinsic.h
+ LinuxApplication.h
  LinuxIntrinsic.h
  LinuxWindow.h
  OSAbstractLayer.h
@@ -80,18 +87,21 @@ add_library (OSAL STATIC
  OSMemory.h
  OSProtectionMode.h
  OSThread.h
+ OSXApplication.h
  OSXIntrinsic.h
  OSXWindow.h
  SourceLocation.h
+ Win32Application.h
  Win32Window.h
- WindowsIntrinsic.h
- Window.cpp
  Window.h
+ WindowsIntrinsic.h
 ${PLATFORM_SOURCES}
 )
 
 if (APPLE)
 	include_directories ( /System/Library/Frameworks )
+	set(MACOSX_BUNDLE_TRUE TRUE)
+	set(MACOSX_BUNDLE_INFO_PLIST ${CMAKE_CURRENT_SOURCE_DIR}/Info.plist)
 endif (APPLE)
 
 find_library(COCOA_FRAMEWORK Cocoa)

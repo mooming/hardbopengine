@@ -1,5 +1,5 @@
 cmake_minimum_required (VERSION 3.12)
-project (Log)
+project (WindowExample)
 
 set (CMAKE_CONFIGURATION_TYPES "Debug;Dev;Release" CACHE STRING "" FORCE)
 if (NOT CMAKE_BUILD_TYPE)
@@ -31,17 +31,12 @@ include_directories ( ${CMAKE_SOURCE_DIR}
  ${CMAKE_SOURCE_DIR}/External
  ${CMAKE_SOURCE_DIR}/Engine
  )
+link_directories (${CMAKE_SOURCE_DIR}/lib
+)
 
-set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/lib)
-add_library (Log STATIC 
- LogLine.cpp
- LogUtil.cpp
- Logger.cpp
- LogLevel.h
- LogLine.h
- LogUtil.h
- Logger.h
- PrintArgs.h
+
+add_executable (WindowExample
+ Main.cpp
 ${PLATFORM_SOURCES}
 )
 
@@ -51,7 +46,22 @@ if (APPLE)
 	set(MACOSX_BUNDLE_INFO_PLIST ${CMAKE_CURRENT_SOURCE_DIR}/Info.plist)
 endif (APPLE)
 
-install (TARGETS Log DESTINATION ${CMAKE_SOURCE_DIR}/lib)
+install (TARGETS WindowExample DESTINATION ${CMAKE_SOURCE_DIR}/bin)
 
+
+target_link_libraries (WindowExample Config Container Core HEngine HSTL Log Math Memory OSAL Resource String Test)
+
+add_dependencies (WindowExample Config)
+add_dependencies (WindowExample Container)
+add_dependencies (WindowExample Core)
+add_dependencies (WindowExample HEngine)
+add_dependencies (WindowExample HSTL)
+add_dependencies (WindowExample Log)
+add_dependencies (WindowExample Math)
+add_dependencies (WindowExample Memory)
+add_dependencies (WindowExample OSAL)
+add_dependencies (WindowExample Resource)
+add_dependencies (WindowExample String)
+add_dependencies (WindowExample Test)
 
 

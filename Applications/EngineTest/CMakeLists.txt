@@ -25,7 +25,7 @@ else (MSVC)
 	add_compile_options (-Wall -Werror)
 endif (MSVC)
 
-add_compile_definitions (__TEST__ __UNIT_TEST__ __UNIT_TEST__ )
+add_compile_definitions (__TEST__ __UNIT_TEST__ )
 include_directories ( ${CMAKE_SOURCE_DIR}
  ${CMAKE_SOURCE_DIR}/include
  ${CMAKE_SOURCE_DIR}/External
@@ -42,6 +42,8 @@ ${PLATFORM_SOURCES}
 
 if (APPLE)
 	include_directories ( /System/Library/Frameworks )
+	set(MACOSX_BUNDLE_TRUE TRUE)
+	set(MACOSX_BUNDLE_INFO_PLIST ${CMAKE_CURRENT_SOURCE_DIR}/Info.plist)
 endif (APPLE)
 
 install (TARGETS EngineTest DESTINATION ${CMAKE_SOURCE_DIR}/bin)
