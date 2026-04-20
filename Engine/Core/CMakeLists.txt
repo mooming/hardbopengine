@@ -38,6 +38,7 @@ add_library (Core STATIC
  Component.cpp
  ComponentSystem.cpp
  Debug.cpp
+ MainThreadTaskQueue.cpp
  RangedTask.cpp
  ScopedLock.cpp
  SystemStatistics.cpp
@@ -54,6 +55,7 @@ add_library (Core STATIC
  Constants.h
  Debug.h
  Exception.h
+ MainThreadTaskQueue.h
  RangedTask.h
  Runnable.h
  ScopedLock.h
@@ -70,6 +72,8 @@ ${PLATFORM_SOURCES}
 
 if (APPLE)
 	include_directories ( /System/Library/Frameworks )
+	set(MACOSX_BUNDLE_TRUE TRUE)
+	set(MACOSX_BUNDLE_INFO_PLIST ${CMAKE_CURRENT_SOURCE_DIR}/Info.plist)
 endif (APPLE)
 
 install (TARGETS Core DESTINATION ${CMAKE_SOURCE_DIR}/lib)

@@ -73,13 +73,21 @@ public:
 	 * @brief Sets the visibility of the Linux window.
 	 * @param visible True to show, false to hide.
 	 */
-	void SetVisible(bool visible)
+	void SetVisible(bool visible) override
 	{
-		visibleFlag = visible;
 		if (display && window)
 		{
-			XMapWindow(display, window);
+			if (visible)
+			{
+				XMapWindow(display, window);
+			}
+			else
+			{
+				XUnmapWindow(display, window);
+			}
 		}
+
+		visibleFlag = visible;
 	}
 
 	/**
@@ -88,15 +96,15 @@ public:
 	void PollEvents() override;
 
 	/**
-	 * @brief Checks if the Linux window should be closed.
-	 * @return True if a close event was received, false otherwise.
-	 */
-	[[nodiscard]] bool ShouldClose() const override;
-
-	/**
 	 * @brief Closes and destroys the Linux window resources.
 	 */
 	void Close() override;
+
+	/**
+	 * @brief Checks if the Linux window has been closed.
+	 * @return True if closed, false otherwise.
+	 */
+	[[nodiscard]] bool IsClosed() const override;
 
 private:
 	Display* display = nullptr;
@@ -104,7 +112,7 @@ private:
 	int width = 0;
 	int height = 0;
 	bool visibleFlag = true;
-	bool shouldCloseFlag = false;
+	bool closedFlag = false;
 };
 
 } // namespace OS

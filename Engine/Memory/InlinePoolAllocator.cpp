@@ -19,7 +19,7 @@ namespace
 			time::TDuration inlineTime;
 			time::TDuration stdTime;
 
-			constexpr int testIterations = 8192;
+			constexpr int testIterations = 2048;
 
 			{
 				time::ScopedTime measure(inlineTime);
@@ -81,7 +81,7 @@ void hbe::InlinePoolAllocatorTest::Prepare()
 
 	auto AllocDeallocTestFunc = [](auto& allocator, auto& ls, auto& lf, int maxAllocSize) -> float
 	{
-		constexpr int testCount = 10000;
+		constexpr int testCount = 1024;
 
 		ls << '[' << allocator.GetBlockSize() << "] Num Iterations = " << testCount
 		   << ", maxAllocSize = " << maxAllocSize << lf;

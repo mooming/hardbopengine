@@ -4,6 +4,7 @@
 
 #include <csignal>
 #include <iostream>
+#include <thread>
 #include "Config/ConfigParam.h"
 #include "Config/ConfigSystem.h"
 #include "Core/Debug.h"
@@ -68,7 +69,10 @@ namespace hbe
 		std::signal(SIGTERM, SignalHandler);
 	}
 
-	Engine::~Engine() { CloseLog(); }
+	Engine::~Engine()
+	{
+		CloseLog();
+	}
 
 	void Engine::Initialize(int argc, const char* argv[])
 	{
@@ -89,12 +93,27 @@ namespace hbe
 
 		log.Out("Engine has been initialized.");
 
+		application = OS::CreateApplication();
+		FatalAssert(application != nullptr);
+		application->Initialize();
+
 		PostInitialize();
 	}
 
-	void Engine::WaitForEnd()
+	void Engine::Run()
 	{
+		while (taskSystem.GetMainThreadTaskQueue().HasPendingTasks() || taskSystem.IsRunning())
+		{
+			taskSystem.ProcessMainThreadTasks();
+			std::this_thread::yield();
+		}
+
 		taskSystem.JoinAndClear();
+		taskSystem.ProcessMainThreadTasks();
+
+		// It may terminate the application immediately.
+		FatalAssert(application != nullptr);
+		application.reset();
 	}
 
 	void Engine::ShutDown()

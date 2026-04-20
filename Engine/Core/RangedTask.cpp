@@ -42,7 +42,7 @@ namespace hbe
 		, end(end)
 		, currentIndex(start)
 	{
-		affinity.Unset(TaskSystem::GetMainTaskStreamIndex());
+		affinity.Unset(TaskSystem::GetBaseTaskStreamIndex());
 		affinity.Unset(TaskSystem::GetIOTaskStreamIndex());
 	}
 } // namespace hbe

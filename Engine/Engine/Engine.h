@@ -8,6 +8,7 @@
 #include "Log/LogLevel.h"
 #include "Log/Logger.h"
 #include "Memory/MemoryManager.h"
+#include "OSAL/Application.h"
 #include "Resource/ResourceManager.h"
 
 namespace hbe
@@ -47,25 +48,25 @@ namespace hbe
 		Logger logger;
 		TaskSystem taskSystem;
 		ResourceManager resourceManager;
+		std::unique_ptr<OS::IApplication> application;
 
 	public:
 		static Engine& Get();
 
-	public:
 		Engine(const Engine&) = delete;
 		Engine& operator=(const Engine&) = delete;
 
-	public:
 		Engine();
 		~Engine();
 
 		void Initialize(int argc, const char* argv[]);
-		void WaitForEnd();
+
+		// Should call on main thread.
+		void Run();
 
 		// Shut down engine. It'll shut down its task system.
 		void ShutDown();
 
-	public:
 		static StaticString GetClassName();
 
 		auto& GetMemoryManager() { return memoryManager; }
@@ -85,6 +86,8 @@ namespace hbe
 		bool IsLoggerReady() const { return isLoggerReady; }
 		bool IsTaskSystemReady() const { return isTaskSystemReady; }
 		bool IsResourceManagerReady() const { return isResourceManagerReady; }
+
+		OS::IApplication* GetApplication() const { return application.get(); }
 
 		void Log(ELogLevel level, const TLogFunc& func);
 		void LogError(const TLogFunc& func) { Log(ELogLevel::Error, func); }
