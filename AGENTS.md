@@ -1,176 +1,103 @@
 # AGENTS.md - HardBop Engine Developer Guide
 
-## Build Commands
+This document provides essential information for developers and AI agents working on the HardBop Engine codebase.
 
+## Project Overview
 
-### Build All Tools
+HardBop Engine is a high-performance C++23 engine focused on modularity and efficiency. It utilizes custom memory management, an advanced task system, and a robust abstraction layer (OSAL) for cross-platform compatibility.
+
+## Build System
+
+### Building Tools
+All tools located in the `Tools/` directory can be compiled and installed to `bin/` using:
 ```bash
 ./Tools/BuildAllTools.sh
 ```
 
-This script compiles all tools in the `Tools/` directory and copies their Release executables to the project-level `bin/` directory for easy access.
-
 ### CMake Configuration
-The project uses Tool/MakeBuild to configure CMake.
-Read Tool/MakeBuild/README.md and understand how to build and use it.
-Use this tool to modify CMakeLists.txt files always.
+The project uses a custom tool, `MakeBuild`, to manage CMake configurations. 
+**Important:** Always use `MakeBuild` when modifying `CMakeLists.txt` files.
 
-The project supports three build types: `Debug`, `Dev`, and `Release` (default).
+Read `Tool/MakeBuild/README.md` for detailed usage instructions.
+
+Common build types include `Debug`, `Dev`, and `Release`. You can configure CMake using:
 ```bash
 cmake --fresh -B build -G "Ninja Multi-Config" -S .
 ```
 
-### Build Targets
+### Building Targets
+To build the project with a specific configuration:
 ```bash
-# Build with config options(Debug, Dev, Release)
+# Build with Debug configuration
 cmake --build build --config Debug
+
+# Build with Dev configuration
 cmake --build build --config Dev
+
+# Build with Release configuration (default)
 cmake --build build --config Release
 ```
 
-### Running All Tests
+### Running Tests
+Tests are registered in `Engine/Test/UnitTestCollection.cpp`. 
+
+To run all tests:
 ```bash
-./build/Applications/EngineTest/Debug/EngineTest
-./build/Applications/EngineTest/Dev/EngineTest
-./build/Applications/EngineTest/Release/EngineTest
+./build/Applications/EngineTest/<Config>/EngineTest
 ```
+*(Replace `<Config>` with `Debug`, `Dev`, or `Release`)*
 
-### Running a Single Test
-Tests are registered in `Engine/Test/UnitTestCollection.cpp` via `TestEnv::AddTestCollection<T>()`.
-To run a specific test:
+To run a specific test collection, you must temporarily comment out the unwanted collections in `Engine/Test/UnitTestCollection.cpp`'s `RunTests()` function, rebuild, and execute.
 
-1. Open `Engine/Test/UnitTestCollection.cpp`
-2. Comment out unwanted test collections in the `RunTests()` function
-3. Rebuild and run:
+## Development Workflow
 
-## Code Formatting
+1.  **Understand**: Read relevant source code and documentation (`docs/`) before making changes.
+2.  **Implement**: Apply requested changes or new features.
+3.  **Verify**: 
+    *   Create or update test cases in `Engine/Test/`.
+    *   Build the project to ensure no errors or warnings are introduced.
+    *   Execute `EngineTest` to verify correctness.
+4.  **Review**: Update `ReviewNote.txt` and other relevant documentation (e.g., `README.md`, `ReviewNoteSummary.txt`) if necessary.
 
-### Format Code
-```bash
-find Engine/ Applications/ -name '*.h' -o -name '*.cpp' | xargs clang-format -i
-```
+## Code Style & Standards
 
-### Static Analysis (clang-tidy)
-```bash
-# Single file
-clang-tidy Engine/Memory/Memory.h -- -std=c++23 -I. -IEngine -IExternal
+### Formatting & Analysis
+*   **Formatting**: Use `clang-format` to maintain consistency.
+    ```bash
+    find Engine/ Applications/ -name '*.h' -o -name '*.cpp' | xargs clang-format -i
+    ```
+*   **Static Analysis**: Use `clang-tidy` for code quality checks.
+    ```bash
+    # For a single file
+    clang-tidy Engine/Memory/Memory.h -- -std=cmake++23 -I. -IEngine -IExternal
 
-# Entire codebase
-find Engine/ Applications/ -name '*.h' -o -name '*.cpp' | xargs clang-tidy -header-filter='.*' -- -std=c++23 -I. -IEngine -IExternal
-```
-## Basic Workflow
-- Understand the current code base by reading related source code first
-- Do requested jobs
-- Create or revise testcases to verify changes
-- Build the project to ensure it doesn't have any errors or warnings. Fix errors and warnings.
-- Execute EngineTest if you have changed the engine. And then, Review test results and fix errors and warnings.
-- Update ReviewNote.txt files if necessary
-- Update README.md and ReviewNoteSummary.txt files at the base directory if necessary
-
-## Code Style Guidelines
-
-### File Organization
-- Header files: `.h` extension, implementation: `.cpp`
-- Source file header: `// Created by email@example.com`
-- Modules live in `Engine/<ModuleName>/` (Memory, Math, String, etc.)
-- Custom types follow module naming (e.g., `Memory/Array.h` creates `hbe::Array`)
+    # For the entire codebase
+    find Engine/ Applications/ -name '*.h' -o -name '*.cpp' | xargs clang-tidy -header-filter='.*' -- -std=c++23 -I. -IEngine -IExternal
+    ```
 
 ### Naming Conventions
-- **Classes/Functions/Types**: PascalCase (e.g., `MemoryManager`, `ConfigParam`)
-- **Variables**: camelCase (e.g., `defaultValue`, `isDone`)
-- **Constants**: PascalCase with prefix (e.g., `MaxNameLength`)
-- **Macros**: SCREAMING_SNAKE_CASE (e.g., `__DEBUG__`, `__UNIT_TEST__`)
-- **Namespace**: `hbe` (HardBopEngine)
-- **Internal types**: Prefix with `T` (e.g., `TLogOut`, `TAllocFunc`)
+*   **Classes, Functions, Types**: `PascalCase` (e.g., `MemoryManager`, `TLogOut`)
+*   **Variables**: `camelCase` (e.g., `defaultValue`, `isDone`)
+*   **Constants**: `PascalCase` with a prefix (eg., `MaxNameLength`)
+*   **Macros**: `SCREAMING_SNAKE_CASE` (e.g., `__DEBUG__`)
+*   **Namespaces**: `hbe`
 
-### Code Formatting (per .clang-format)
-- **Indentation**: 4 spaces (UseTab: Always)
-- **Column limit**: 120 characters
-- **Brace wrapping**: BreakBeforeBraces: Custom (K&R variant)
-- **Access modifiers**: Indented -4 relative to class
-- **Template declarations**: Always break before `>`
-- **Short functions**: InlineOnly (only in header if one-liner)
-- **Readability**: Put an empty line before "return". Place two empty lines after include declerations.
-- **TemplateType**: Make sure template type starts with 'T' letter. e.g. TIndex (O), Index (X)
+### C++ Standards & Features
+*   **C++23**: Utilize modern C++23 features where appropriate. Use `static_assert` for type validation in templates.
+*   **Memory Management**: Prefer the engine's custom allocators (`PoolAllocator`, `StackAllocator`, etc.) via `MemoryManager`.
+*   **Error Handling**: The project is **exception-free**. Use `Assert()` and `FatalAssert()` from `Core/Debug.h` for runtime checks.
+*   **Attributes**: Use `[[nodiscard]]`, `[[maybe_unused]]`, `explicit`, `final`, and `override` to improve code clarity and safety.
 
-### Import Organization
-Order (per `.clang-format` IncludeCategories):
-1. Standard library headers (`<cstddef>`, `<memory>`, etc.)
-2. Local project headers (`"Memory/Memory.h"`)
-3. Other
-
-Example:
-```cpp
-#include "MemoryManager.h"
-#include "Core/Debug.h"
-#include "String/StaticString.h"
-#include <cstddef>
-#include <functional>
-#include <memory>
-```
-
-### C++23 Type System
-- Use `static_assert` to validate type sizes in allocator templates
-- Use `std::conditional_t` for conditional type selection
-- Use `std::enable_if` for template constraints
-- Use `std::atomic` for thread-safe types
-- Prefer `using` aliases over typedefs
-
-### Attributes
-- Use `[[nodiscard]]` for functions with important return values
-- Use `[[maybe_unused]]` for intentionally unused parameters
-- Use `explicit` for single-argument constructors
-- Use `final` for classes not meant for inheritance
-- Use `override` explicitly for virtual overrides
-
-### Error Handling
-- Use `Assert()` and `FatalAssert()` from `Core/Debug.h` for debug checks
-- Use `likely()` and `unlikely()` macros for branch prediction hints
-- No exceptions (project is exception-free)
-- In release builds, `Assert()` becomes a no-op
-
-### Memory Management
-- Custom allocator system: `PoolAllocator`, `StackAllocator`, `MonotonicAllocator`, `MultiPoolAllocator`
-- Use `MemoryManager::GetInstance()` for global allocation
-- Helper templates in `Memory/Memory.h`:
-  - `New<T>(args...)` - allocate and construct
-  - `Delete<T>(ptr)` - destruct and deallocate
-
-### Testing Patterns
-- Tests extend `TestCollection` base class
-- Register via `TestEnv::GetEnv().AddTestCollection<MyTest>(args...)`
-- Use `Prepare()` virtual method to add test cases
-- Output via `TLogOut` (std::stringstream) and `ELogLevel`
-
-Example test class:
-```cpp
-class MyTest : public TestCollection
-{
-public:
-    explicit MyTest() : TestCollection("My Test") {}
-
-protected:
-    void Prepare() override
-    {
-        AddTest("Test Name", [this](TLogOut& log) {
-            // test code
-        });
-    }
-};
-```
+### File Organization
+*   **Headers**: `.h` extension.
+*   **Implementation**: `.cpp` extension.
+*   **Module Structure**: Modules reside in `Engine/<ModuleName>/` (e.g., `Memory`, `Math`, `String`).
+*   **Copyright**: Every file must start with a copyright notice:
+    `// Copyright (c) 2026 Hansol Park (mooming.go@gmail.com). All rights reserved.`
 
 ### General Patterns
-- Forward declare classes in headers when possible
-- Place member variables first
-- Place properties and methods by visibility order. e.g. (public > protected > private)
-- Place static variables and methods first in class declarations.
-- Use `#pragma once` for header guards
-- Use `virtual ~ClassName() = default` for virtual destructors
-- Prefer pass-by-reference over raw pointers.
-- Ensure reference variables should be always valid.
-- Always check pointer validity before using in functions.
-- Use `constexpr` for compile-time constants
-- Separate definition blocks with empty line (per `SeparateDefinitionBlocks: Always`)
-- Remove unnecessary includes
-// Copyright (c) 2026 Hansol Park (mooming.go@gmail.com). All rights reserved.
-- Place the copyright notice at the beginning of all files.
+*   Use `#pragma once` for header guards.
+*   Prefer pass-by-reference over raw pointers.
+*   Forward declare classes in headers whenever possible to reduce dependencies.
+*   Place member variables first, followed by properties and methods (ordered by visibility: `public > protected > private`).
+*   Use `constexpr` for compile-time constants.
