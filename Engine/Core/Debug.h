@@ -21,7 +21,7 @@ namespace hbe
 namespace hbe
 {
 
-	inline void Assert(bool shouldBeTrue)
+	void Assert(bool shouldBeTrue)
 	{
 		if (likely(shouldBeTrue))
 		{
@@ -36,7 +36,7 @@ namespace hbe
 	}
 
 	template<typename... Types>
-	inline void Assert(bool shouldBeTrue, Types&&... args)
+	void Assert(bool shouldBeTrue, Types&&... args)
 	{
 		if (likely(shouldBeTrue))
 		{
@@ -49,23 +49,22 @@ namespace hbe
 		debugBreak();
 		std::abort();
 	}
-} // namespace hbe
 
 #else // __DEBUG__
 
 namespace hbe
 {
-	inline void Assert(bool) {}
+	void Assert(bool) {}
 
 	template<typename... Types>
-	inline void Assert(bool, const char*, Types&&...)
+	void Assert(bool, const char*, Types&&...)
 	{}
 } // namespace hbe
 #endif // __DEBUG__
 
 namespace hbe
 {
-	inline void FatalAssert(bool shouldBeTrue)
+	void FatalAssert(bool shouldBeTrue)
 	{
 		if (likely(shouldBeTrue))
 		{
@@ -79,7 +78,7 @@ namespace hbe
 	}
 
 	template<typename... Types>
-	inline void FatalAssert(bool shouldBeTrue, Types&&... args)
+	void FatalAssert(bool shouldBeTrue, Types&&... args)
 	{
 		if (likely(shouldBeTrue))
 		{

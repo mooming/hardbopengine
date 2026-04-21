@@ -61,6 +61,8 @@ To run a specific test collection, you must temporarily comment out the unwanted
 
 ## Code Style & Standards
 
+For detailed coding standards, including naming conventions, class design, and formatting rules, please refer to [docs/CodeStandard.md](./docs/CodeStandard.md).
+
 ### Formatting & Analysis
 *   **Formatting**: Use `clang-format` to maintain consistency.
     ```bash
@@ -75,29 +77,9 @@ To run a specific test collection, you must temporarily comment out the unwanted
     find Engine/ Applications/ -name '*.h' -o -name '*.cpp' | xargs clang-tidy -header-filter='.*' -- -std=c++23 -I. -IEngine -IExternal
     ```
 
-### Naming Conventions
-*   **Classes, Functions, Types**: `PascalCase` (e.g., `MemoryManager`, `TLogOut`)
-*   **Variables**: `camelCase` (e.g., `defaultValue`, `isDone`)
-*   **Constants**: `PascalCase` with a prefix (eg., `MaxNameLength`)
-*   **Macros**: `SCREAMING_SNAKE_CASE` (e.g., `__DEBUG__`)
-*   **Namespaces**: `hbe`
-
-### C++ Standards & Features
-*   **C++23**: Utilize modern C++23 features where appropriate. Use `static_assert` for type validation in templates.
-*   **Memory Management**: Prefer the engine's custom allocators (`PoolAllocator`, `StackAllocator`, etc.) via `MemoryManager`.
-*   **Error Handling**: The project is **exception-free**. Use `Assert()` and `FatalAssert()` from `Core/Debug.h` for runtime checks.
-*   **Attributes**: Use `[[nodiscard]]`, `[[maybe_unused]]`, `explicit`, `final`, and `override` to improve code clarity and safety.
-
 ### File Organization
 *   **Headers**: `.h` extension.
 *   **Implementation**: `.cpp` extension.
 *   **Module Structure**: Modules reside in `Engine/<ModuleName>/` (e.g., `Memory`, `Math`, `String`).
 *   **Copyright**: Every file must start with a copyright notice:
     `// Copyright (c) 2026 Hansol Park (mooming.go@gmail.com). All rights reserved.`
-
-### General Patterns
-*   Use `#pragma once` for header guards.
-*   Prefer pass-by-reference over raw pointers.
-*   Forward declare classes in headers whenever possible to reduce dependencies.
-*   Place member variables first, followed by properties and methods (ordered by visibility: `public > protected > private`).
-*   Use `constexpr` for compile-time constants.

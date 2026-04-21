@@ -1,39 +1,39 @@
 ## Code Standard
 
-To maintain code quality and consistency, please follow these guidelines:
+To maintain high code quality and consistency, please adhere to the following guidelines:
 
 ### Naming Conventions
-- **Classes/Functions/Types**: `PascalCase` (e.g., `MemoryManager`, `ConfigParam`)
-- **Variables**: `camelCase` (e.g., `defaultValue`, `isDone`). Do not use 'm_' for member variables. Do not use hungarian notation.
-- **Constants**: `PascalCase` with prefix (e.g., `MaxNameLength`)
-- **Macros**: `SCREAMING_SNAKE_CASE` (e.g., `__DEBUG__`, `__UNIT_TEST__`)
-- **Namespace**: `hbe` (HardBopEngine)
-- **Internal types**: Prefix with `T` (e.g., `TLogOut`, `TAllocFunc`)
+- **Classes, Functions, and Types**: Use `PascalCase` (e.g., `MemoryManager`, `ConfigParam`).
+- **Variables**: Use `camelCase` (e.g., `defaultValue`, `isDone`). Do not use an `m_` prefix for member variables, and do not use Hungarian notation.
+- **Constants**: Use `PascalCase` with a descriptive prefix (e.g., `MaxNameLength`).
+- **Macros**: Use `SCRAMING_SNAKE_CASE` (e.g., `__DEBUG__`, `__UNIT_TEST__`).
+- **Namespaces**: Use the `hbe` namespace.
+- **Internal Types**: Prefix with `T` (e.g., `TLogOut`, `TAllocFunc`).
 
 ### Class Conventions
-- **Order**: Properties first, high access permission first (public > protected > private). static first.
-- Always use access specifiers regardless of class or struct.
-- [[nodiscard]] for getters
-- Use 'final' for all classes not designed for inheritance
-- Do not use in-class initialisation(initializing member variable in header). Always use default constructor instead.
-- Do not use 'inline' keyword
-- Do not use 'virtual' keyword if it has 'override'
+- **Member Ordering**: Place `static` members first, followed by other members ordered by visibility (`public` > `protected` > `private`).
+- **Access Specifiers**: Always explicitly define access specifiers for all classes and structs.
+- **Getters**: Use the `[[nodiscard]]` attribute for getter functions.
+- **Inheritance**: Use the `final` specifier for classes that are not intended to be inherited from.
+- **Initialization**: Avoid in-class initialization except when using `constexpr`. Prefer initializing members via constructors.
+- **Inline Functions**: Do not use the `inline` keyword unless necessary (e.g., to prevent ODR violations).
+- **Virtual Functions**: Do not explicitly use the `virtual` keyword when the function is marked with `override`.
 
 ### Code Formatting
-- **Indentation**: 4 spaces (UseTab: Always)
-- **Column limit**: 120 characters
-- **Brace wrapping**: K&R variant
-- **Template declarations**: Always break before `>`
-- **Readability**: Put an empty line before `return` unless 'return' is the only content within its scope. Place two empty lines after include declarations.
-- **System Compatibility**: Pleace an empty line at the end of files
-- Do not indent for namespaces
-- Do not use brackets for online 'continue' and 'return'.
+- **Indentation**: 4 spaces (Always use tabs for indentation).
+- **Column Limit**: 120 characters.
+- **Brace Style**: K&R variant.
+- **Readability**:
+    - Place an empty line before `return` statements, unless the `return` is the only statement within its scope.
+    - Place two empty lines after include declarations.
+- **System Compatibility**: Ensure every file ends with a newline character.
+- **Namespaces**: Do not indent code blocks contained within namespaces.
+- **Single-line Statements**: Avoid using braces for single-line `continue` or `return` statements.
 
-
-### Error Handling & Memory
-- Use `Assert()` and `FatalAssert()` from `Core/Debug.h` for debug checks.
-- No exceptions (the project is exception-free).
-- Prefer pass-by-reference over raw pointers.
-- Prefer 'constexpr' and 'const'.
-- Always check pointer validity before usage.
-- Use brackets to limit scope of local variables clearly 
+### Error Handling & Memory Management
+- **Assertions**: Use `Assert()` and `FatalAssert()` from `Core/Debug.h` for runtime checks and debugging.
+- **Exception-free**: The engine is exception-free; do not use C++ exceptions.
+- **Pointers**: Prefer passing by reference over raw pointers whenever possible.
+- **Constants**: Favor the use of `constexpr` and `const`.
+- **Safety**: Always validate pointer validity before dereferencing or using them.
+- **Scoping**: Use braces `{}` to clearly define the scope of local variables.

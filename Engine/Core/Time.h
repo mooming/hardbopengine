@@ -14,21 +14,21 @@ namespace hbe::time
 	using TDuration = TStopWatch::duration;
 	using TMilliSecs = std::chrono::milliseconds;
 
-	inline TTime GetNow() { return std::chrono::steady_clock::now(); }
+	TTime GetNow() { return std::chrono::steady_clock::now(); }
 
-	inline float ToFloat(TStopWatch::duration duration)
+	float ToFloat(TStopWatch::duration duration)
 	{
 		std::chrono::duration<float> delta = duration;
 		return delta.count();
 	}
 
-	inline double ToDouble(TStopWatch::duration duration)
+	double ToDouble(TStopWatch::duration duration)
 	{
 		std::chrono::duration<double> delta = duration;
 		return delta.count();
 	}
 
-	inline TMilliSecs::rep ToMilliSeconds(TStopWatch::duration duration)
+	TMilliSecs::rep ToMilliSeconds(TStopWatch::duration duration)
 	{
 		auto delta = std::chrono::duration_cast<TMilliSecs>(duration);
 		return delta.count();
