@@ -2,7 +2,7 @@
 ---
 Language: Cpp
 BasedOnStyle: LLVM
-AccessModifierOffset: -4
+AccessModifierOffset: 0
 AlignConsecutiveAssignments: false
 AlignConsecutiveDeclarations: false
 PointerAlignment: Left
