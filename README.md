@@ -20,13 +20,15 @@ HardBop Engine provides a comprehensive set of modules for game development whil
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 
 # Install required packages
+# Note: GLFW is no longer a mandatory dependency for the core engine, 
+# but might be needed for certain third-party integrations.
 brew install glfw
 ```
 
 #### Linux (Ubuntu/Debian)
 ```bash
 sudo apt-get update
-sudo apt-get install -y libglfw3-dev libglfw3
+sudo apt-get install -y libglfw3-dev libglfw3 x11-base-dev
 ```
 
 #### Windows
@@ -67,10 +69,10 @@ cmake --build build --config Debug
 cmake --build build --config Dev
 cmake --build build --config Release
 
-# Run tests
+# Run tests (paths depend on build configuration)
 ./build/Applications/EngineTest/Debug/EngineTest
 ./build/Applications/EngineTest/Dev/EngineTest
-./build/Applications/EngineTest/Release/EngineTest
+./build/Applications/EngineTest/Release/EngineTest.app/Contents/MacOS/EngineTest
 ```
 
 ### Build Types
@@ -80,9 +82,9 @@ cmake --build build --config Release
 
 ### Running Tests
 ```bash
-# Build and run tests
+# Build and run tests (Note: 'make' depends on your generator, e.g., Ninja)
 cd build
-make EngineTest
+cmake --build . --target EngineTest
 ./Applications/EngineTest/EngineTest
 ```
 
@@ -96,9 +98,17 @@ The engine can be configured via `Engine/Config/BuildConfig.h`. Most settings wo
 |----------|---------|---------|-------------|
 | Engine | `MAX_NUM_TASK_STREAMS` | 64 | Maximum task streams |
 | Engine | `ENGINE_LOG_ENABLED` | 1 | Enable logging system |
+| Engine | `ENGINE_PARAM_DESC_ENABLED` | 1 | Enable parameter descriptions |
+| Engine | `ENGINE_MIN_HARDWARE_THREADS` | 4 | Minimum recommended CPU cores |
 | Memory | `__MEMORY_VERIFICATION__` | 0 | Verify memory integrity |
-| Memory | `__FORCE_USE_SYSTEM_MALLOC__` | 0 | Use system malloc instead of custom allocators |
+| Memory | `__FORCE_USE_SYSTEM_MALLOC__` | 0 | Use system malloc instead |
+| Memory | `__MEMORY_LOGGING__` | 0 | Log memory operations |
+| Memory | `__MEMORY_DANGLING_POINTER_CHECK__` | 0 | Detect dangling pointers |
+| Memory | `MULTIPOOL_ALLOC_LOG` | ".multiPoolConfig.dat" | MultiPool config cache file |
 | Log | `LOG_ENABLED` | 1 | Master log switch |
+| Log | `LOG_BREAK_IF_WARNING` | 0 | Break on warnings |
+| Log | `LOG_BREAK_IF_ERROR` | 0 | Break on errors |
+| Log | `LOG_FORCE_PRINT_IMMEDIATELY` | 0 | Print immediately (no async) |
 | Profile | `PROFILE_ENABLED` | 0 | Enable performance profiling |
 | Math | `__RIGHT_HANDED__` | - | Coordinate system (default right-handed) |
 
@@ -244,10 +254,10 @@ int main(int argc, const char* argv[])
 
 void Example()
 {
-    PoolAllocator allocator(1024 * 1024, 64); // 1MB pool, 64-byte blocks
+    PoolAllocator allocator("MyPool", 64, 1024); // name, block size (bytes), number of blocks
     
     void* ptr = allocator.Allocate(64);
-    allocator.Deallocate(ptr);
+    allocator.Deallocate(ptr, 64);
 }
 ```
 
@@ -278,7 +288,7 @@ Refer to [CodeStandard.md](docs/CodeStandard.md) for coding guidelines and conve
 
 
 ### Platform-Specific
-- **Linux backtrace**: `OS::GetBackTrace()` returns "Not Implemented" on Linux - no stack traces available.
+- **Linux backtrace**: `OS::GetBackTrace()` is implemented on Linux using `backtrace()` function from `<execinfo.h>`, with symbol demangling via `cxxabi`.
 
 ### Code Quality
 - **ODR Violation Risk**: Platform-specific files and generic OSMemory.cpp both define memory functions - ensure only one is compiled per platform (CMakeLists.txt should use platform-conditional source selection).
