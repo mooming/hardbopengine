@@ -303,3 +303,7 @@ This is a personal project used for learning and experimentation. Issues and pul
 ## License
 
 See repository for license information.
+
+
+## Build
+cmake --fresh -B build -G "Ninja Multi-Config" -S . && cmake --build build --config Debug
