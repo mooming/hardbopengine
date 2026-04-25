@@ -27,7 +27,11 @@ int main(int argc, const char* argv[])
 		return 1;
 	}
 
-	std::this_thread::sleep_for(std::chrono::seconds(2));
+	for (int i = 0; i < 3; ++i)
+	{
+		app->PollEvents();
+		std::this_thread::sleep_for(std::chrono::seconds(1));
+	}
 
 	window->Close();
 	hengine.ShutDown();
