@@ -139,6 +139,11 @@ bool OSXWindow::IsClosed() const
 	return closedFlag;
 }
 
+intptr_t OSXWindow::GetNativeHandle() const
+{
+	return reinterpret_cast<intptr_t>(nsWindow);
+}
+
 } // namespace OS
 
 #endif // PLATFORM_OSX

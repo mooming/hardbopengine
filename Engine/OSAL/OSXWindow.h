@@ -96,6 +96,12 @@ public:
 	 * @return True if closed, false otherwise.
 	 */
 	[[nodiscard]] bool IsClosed() const override;
+
+	/**
+	 * @brief Gets the native window handle (NSWindow*).
+	 * @return The native window handle.
+	 */
+	[[nodiscard]] intptr_t GetNativeHandle() const override;
 };
 
 } // namespace OS

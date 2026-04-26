@@ -39,6 +39,7 @@
 #include "OSAL/OSInputOutput.h"
 #include "OSAL/OSThread.h"
 #include "OSAL/Window.h"
+#include "Renderer/RHICapabilities.h"
 #include "Resource/Buffer.h"
 #include "Resource/BufferInputStream.h"
 #include "Resource/BufferOutputStream.h"
@@ -109,6 +110,7 @@ namespace Test
 			testEnv.AddTestCollection<ComponentSystemTest>();
 			testEnv.AddTestCollection<TaskStreamAffinityTest>();
 			testEnv.AddTestCollection<TaskSystemTest>();
+			testEnv.AddTestCollection<RHICapabilitiesTest>();
 
 			testEnv.Start();
 

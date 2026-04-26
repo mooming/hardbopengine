@@ -49,7 +49,7 @@ endif (APPLE)
 install (TARGETS EngineTest DESTINATION ${CMAKE_SOURCE_DIR}/bin)
 
 
-target_link_libraries (EngineTest Config Container Core External HEngine HSTL Log Math Memory OSAL Resource String Test)
+target_link_libraries (EngineTest Config Container Core External HEngine HSTL Log Math Memory OSAL Renderer Resource String Test)
 
 add_dependencies (EngineTest Config)
 add_dependencies (EngineTest Container)
@@ -61,6 +61,7 @@ add_dependencies (EngineTest Log)
 add_dependencies (EngineTest Math)
 add_dependencies (EngineTest Memory)
 add_dependencies (EngineTest OSAL)
+add_dependencies (EngineTest Renderer)
 add_dependencies (EngineTest Resource)
 add_dependencies (EngineTest String)
 add_dependencies (EngineTest Test)

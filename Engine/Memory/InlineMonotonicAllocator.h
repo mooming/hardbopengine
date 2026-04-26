@@ -23,7 +23,7 @@ namespace hbe
 		TAllocatorID id;
 		TAllocatorID parentID;
 		TSize cursor;
-		ALIGN uint8_t buffer[Capacity];
+		HE_ALIGN uint8_t buffer[Capacity];
 
 	public:
 		explicit InlineMonotonicAllocator(const char* name) :
