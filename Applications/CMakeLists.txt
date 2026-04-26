@@ -33,6 +33,7 @@ include_directories ( ${CMAKE_SOURCE_DIR}
  )
 add_subdirectory (EngineTest)
 add_subdirectory (WindowExample)
+add_subdirectory (VulkanExample)
 
 
 

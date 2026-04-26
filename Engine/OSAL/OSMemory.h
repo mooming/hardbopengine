@@ -7,7 +7,7 @@
 #include "Config/BuildConfig.h"
 #include "Config/EngineConfig.h"
 
-#define ALIGN alignas(hbe::Config::DefaultAlign)
+#define HE_ALIGN alignas(hbe::Config::DefaultAlign)
 
 namespace OS
 {

@@ -80,6 +80,12 @@ public:
 	 * @return True if the window is closed, false otherwise.
 	 */
 	[[nodiscard]] virtual bool IsClosed() const = 0;
+
+	/**
+	 * @brief Gets the native window handle (e.g., HWND on Windows, NSWindow* on macOS, Window on Linux).
+	 * @return The native window handle as a pointer.
+	 */
+	[[nodiscard]] virtual intptr_t GetNativeHandle() const = 0;
 };
 
 /**
