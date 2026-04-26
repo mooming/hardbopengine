@@ -65,10 +65,10 @@ int main(int argc, const char* argv[])
 	{
 		app->PollEvents();
 
+		static auto lastTime = std::chrono::high_resolution_clock::now();
 		auto currentTime = std::chrono::high_resolution_clock::now();
-		static auto startTime = currentTime;
-		float deltaTime = std::chrono::duration<float>(currentTime - startTime).count();
-		startTime = currentTime;
+		float deltaTime = std::chrono::duration<float>(currentTime - lastTime).count();
+		lastTime = currentTime;
 
 		renderer->BeginFrame();
 		renderer->Render(deltaTime);
