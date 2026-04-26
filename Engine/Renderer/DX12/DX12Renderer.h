@@ -9,6 +9,11 @@ namespace hbe
 namespace Renderer
 {
 
+struct DX12Vertex {
+    float x, y;
+    float r, g, b, a;
+};
+
 class DX12Renderer final : public IRenderer
 {
 public:
@@ -30,6 +35,11 @@ private:
 	OS::IWindow* m_Window = nullptr;
 	APIType m_APIType = APIType::DX12;
 	RenderCapabilities m_Capabilities;
+
+	intptr_t m_Device = 0;
+	intptr_t m_CommandQueue = 0;
+	intptr_t m_CommandList = 0;
+	intptr_t m_VertexBuffer = 0;
 
 	float m_RotationAngle = 0.0f;
 	bool m_Initialized = false;

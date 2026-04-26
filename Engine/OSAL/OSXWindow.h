@@ -12,9 +12,6 @@
 namespace OS
 {
 
-/**
- * @brief OSX Window class implementation using Cocoa API.
- */
 class OSXWindow : public IWindow
 {
 private:
