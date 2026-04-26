@@ -1,6 +1,6 @@
 #!/bin/bash
 # Install Vulkan SDK for macOS under project directory
-# Downloads LunarG Vulkan SDK and extracts to External/VulkanSDK
+# Uses Homebrew as primary source, LunarG as fallback
 
 set -e
 
@@ -11,11 +11,15 @@ VULKAN_DIR="$PROJECT_ROOT/External/VulkanSDK"
 echo "=== Vulkan SDK Installer for macOS ==="
 echo "Installing to: $VULKAN_DIR"
 
-# Create directories
 mkdir -p "$VULKAN_DIR/include" "$VULKAN_DIR/lib"
 
+BREW_PREFIX=""
+if command -v brew &> /dev/null; then
+    BREW_PREFIX=$(brew --prefix)
+fi
+
 # Check if already fully installed
-if [ -f "$VULKAN_DIR/include/vulkan/vulkan.h" ] && [ -d "$VULKAN_DIR/lib" ]; then
+if [ -f "$VULKAN_DIR/include/vulkan/vulkan.h" ]; then
     LIB_COUNT=$(ls "$VULKAN_DIR/lib"/libvulkan*.dylib 2>/dev/null | wc -l || ls "$VULKAN_DIR/lib"/libvulkan*.a 2>/dev/null | wc -l || ls "$VULKAN_DIR/lib"/libMoltenVK*.dylib 2>/dev/null | wc -l)
     if [ "$LIB_COUNT" -gt 0 ]; then
         echo "Vulkan SDK already installed at $VULKAN_DIR"
@@ -27,60 +31,47 @@ if [ -f "$VULKAN_DIR/include/vulkan/vulkan.h" ] && [ -d "$VULKAN_DIR/lib" ]; the
     fi
 fi
 
-# Vulkan SDK version
-VULKAN_VERSION="1.4.341.0"
-MACOS_VERSION="mac"
-
-# Method 1: Try to download Vulkan SDK from LunarG (tar.gz)
-echo "Downloading Vulkan SDK ${VULKAN_VERSION} for macOS..."
-echo "This may take a few minutes..."
-
-FILENAME="vulkan-sdk-${VULKAN_VERSION}.${MACOS_VERSION}"
-DOWNLOAD_URL="https://sdk.lunarg.com/sdk/download/${VULKAN_VERSION}/${FILENAME}.tar.gz?u="
-
-# Clean up any existing partial downloads
-rm -f "/tmp/${FILENAME}.tar.gz"
-
-if command -v curl &> /dev/null; then
-    curl -L -o "/tmp/${FILENAME}.tar.gz" "$DOWNLOAD_URL" --fail -# || true
-elif command -v wget &> /dev/null; then
-    wget -O "/tmp/${FILENAME}.tar.gz" "$DOWNLOAD_URL" || true
-fi
-
-if [ -f "/tmp/${FILENAME}.tar.gz" ] && [ -s "/tmp/${FILENAME}.tar.gz" ]; then
-    echo "Extracting SDK..."
-    rm -rf "$VULKAN_DIR/include"/* "$VULKAN_DIR/lib"/*
-    tar -xzf "/tmp/${FILENAME}.tar.gz" -C "$VULKAN_DIR" --strip-components=1
-    rm -f "/tmp/${FILENAME}.tar.gz"
-    echo "Vulkan SDK extracted successfully!"
-else
-    echo "Download from LunarG failed or not available."
-    echo ""
+# Method 1: Use Homebrew (primary source)
+echo "Installing Vulkan SDK from Homebrew..."
+if [ -n "$BREW_PREFIX" ]; then
+    # Install packages if not already installed
+    brew install vulkan-headers vulkan-loader 2>/dev/null || true
     
-    # Method 2: Try Homebrew's MoltenVK as fallback (macOS Vulkan implementation)
-    echo "Trying Homebrew MoltenVK as fallback..."
-    if command -v brew &> /dev/null; then
-        BREW_PREFIX=$(brew --prefix molten-vk 2>/dev/null || echo "")
-        if [ -n "$BREW_PREFIX" ] && [ -f "$BREW_PREFIX/lib/libMoltenVK.dylib" ]; then
-            echo "Found Homebrew MoltenVK at $BREW_PREFIX"
-            cp "$BREW_PREFIX/lib/libMoltenVK.dylib" "$VULKAN_DIR/lib/"
-            if [ -f "$BREW_PREFIX/lib/libMoltenVK.a" ]; then
-                cp "$BREW_PREFIX/lib/libMoltenVK.a" "$VULKAN_DIR/lib/"
-            fi
-            # Copy headers if available
-            if [ -d "$BREW_PREFIX/libexec/include" ]; then
-                cp -r "$BREW_PREFIX/libexec/include/"* "$VULKAN_DIR/include/" 2>/dev/null || true
-            fi
-            echo "Installed MoltenVK from Homebrew"
-        fi
+    # Copy headers
+    if [ -d "$BREW_PREFIX/include/vulkan" ]; then
+        cp -r "$BREW_PREFIX/include/vulkan" "$VULKAN_DIR/include/" 2>/dev/null || true
     fi
     
-    # Method 3: Copy from system installation as last resort
-    if [ ! -f "$VULKAN_DIR/include/vulkan/vulkan.h" ]; then
-        echo "Trying to copy from system installation..."
-        if [ -f /usr/local/include/vulkan/vulkan.h ]; then
-            cp -r /usr/local/include/vulkan/* "$VULKAN_DIR/include/vulkan/" 2>/dev/null || true
-            cp -r /usr/local/include/vk_video "$VULKAN_DIR/include/" 2>/dev/null || true
+    # Copy loader library
+    if [ -f "$BREW_PREFIX/lib/libvulkan.dylib" ]; then
+        cp "$BREW_PREFIX/lib/libvulkan.dylib" "$VULKAN_DIR/lib/" 2>/dev/null || true
+    fi
+    if [ -f "$BREW_PREFIX/lib/libvulkan.1.dylib" ]; then
+        cp "$BREW_PREFIX/lib/libvulkan.1.dylib" "$VULKAN_DIR/lib/" 2>/dev/null || true
+    fi
+    if [ -f "$BREW_PREFIX/lib/libvulkan.a" ]; then
+        cp "$BREW_PREFIX/lib/libvulkan.a" "$VULKAN_DIR/lib/" 2>/dev/null || true
+    fi
+fi
+
+# Method 2: Check system installation
+if [ ! -f "$VULKAN_DIR/include/vulkan/vulkan.h" ] && [ -f /opt/homebrew/include/vulkan/vulkan.h ]; then
+    echo "Using system Homebrew Vulkan installation..."
+    cp -r /opt/homebrew/include/vulkan "$VULKAN_DIR/include/" 2>/dev/null || true
+fi
+
+# Method 3: Try Homebrew's MoltenVK as fallback (macOS Vulkan implementation)
+if [ ! -f "$VULKAN_DIR/include/vulkan/vulkan.h" ] || [ ! -f "$VULKAN_DIR/lib/libvulkan.dylib" ]; then
+    echo "Trying Homebrew MoltenVK as fallback..."
+    BREW_PREFIX=$(brew --prefix molten-vk 2>/dev/null || echo "")
+    if [ -n "$BREW_PREFIX" ] && [ -f "$BREW_PREFIX/lib/libMoltenVK.dylib" ]; then
+        echo "Found Homebrew MoltenVK at $BREW_PREFIX"
+        cp "$BREW_PREFIX/lib/libMoltenVK.dylib" "$VULKAN_DIR/lib/" 2>/dev/null || true
+        if [ -f "$BREW_PREFIX/lib/libMoltenVK.a" ]; then
+            cp "$BREW_PREFIX/lib/libMoltenVK.a" "$VULKAN_DIR/lib/" 2>/dev/null || true
+        fi
+        if [ -d "$BREW_PREFIX/libexec/include" ]; then
+            cp -r "$BREW_PREFIX/libexec/include/"* "$VULKAN_DIR/include/" 2>/dev/null || true
         fi
     fi
 fi

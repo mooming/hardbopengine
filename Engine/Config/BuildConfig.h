@@ -96,7 +96,7 @@
 // Vulkan SDK detection (auto-detected, do not modify)
 // Set to 1 if vulkan.h is found, 0 otherwise
 // Will produce compile warning if not found but code will still compile
-#if __has_include("vulkan/vulkan.h") || __has_include("/opt/homebrew/include/vulkan/vulkan.h") || __has_include("/usr/local/include/vulkan/vulkan.h")
+#if __has_include("vulkan/vulkan.h") || __has_include("/opt/homebrew/include/vulkan/vulkan.h") || __has_include("/usr/local/include/vulkan/vulkan.h") || __has_include("External/VulkanSDK/include/vulkan/vulkan.h")
     #define VULKAN_SDK 1
 #else
     #define VULKAN_SDK 0

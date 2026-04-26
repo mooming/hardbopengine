@@ -9,6 +9,8 @@ add_library (Renderer STATIC
 
 target_include_directories (Renderer PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}
+    /opt/homebrew/include
+    ${CMAKE_SOURCE_DIR}/External/VulkanSDK/include
 )
 
 add_library (Renderer::Renderer ALIAS Renderer)
@@ -16,12 +18,13 @@ add_library (Renderer::Renderer ALIAS Renderer)
 add_library (VulkanRenderer STATIC
     Vulkan/VulkanRenderer.h
     Vulkan/VulkanRenderer.cpp
+    Vulkan/VulkanRenderer.mm
 )
 
 target_include_directories (VulkanRenderer PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
-    /usr/local/include
     /opt/homebrew/include
+    ${CMAKE_SOURCE_DIR}/External/VulkanSDK/include
 )
 
 target_link_libraries (VulkanRenderer PRIVATE Renderer)

@@ -81,3 +81,21 @@ On macOS: Query returns Metal and Vulkan available.
 - 4 vertices with unique colors (RGBA)
 - Rotation animation using TaskSystem
 - Vertex colors interpolated by GPU
+
+---
+
+## Bug Fixes Applied
+
+### Fix 1: Quad Rotation
+- Initially, `Render()` calculated rotated colors but applied them to static vertex positions
+- Fixed by applying rotation matrix to vertex positions in the `Render()` method
+
+### Fix 2: Window Close Detection
+- `OSXWindow::PollEvents()` was empty (no-op)
+- Fixed by checking window visibility state in `PollEvents()`
+- When window becomes invisible, it is considered closed
+
+### Implementation Status
+- MetalRenderer: Full implementation - renders rotating quad with colors
+- VulkanRenderer: Stub with rotation calculation (no actual rendering)
+- DX12Renderer: Stub with rotation calculation (no actual rendering)

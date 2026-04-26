@@ -12,10 +12,11 @@ namespace OS
 {
 
 OSXWindow::OSXWindow()
-    : nsWindow(nullptr)
-	, width(0)
-    , height(0)
-    , visibleFlag(false)
+:   nsWindow(nullptr)
+,   width(0)
+,   height(0)
+,   visibleFlag(false)
+,   closedFlag(false)
 {
 }
 
@@ -117,13 +118,19 @@ void OSXWindow::SetVisible(bool visible)
 
 void OSXWindow::PollEvents()
 {
-	// Cocoa handles its own event loop via NSRunLoop.
-	// In a real engine, we'd hook into the event queue or use NSEvent.
+    if (nsWindow != nullptr)
+    {
+        auto window = static_cast<NSWindow*>(nsWindow);
+        if (![window isVisible])
+        {
+            closedFlag = true;
+        }
+    }
 }
 
 void OSXWindow::Close()
 {
-	if (nsWindow != nullptr)
+    if (nsWindow != nullptr)
     {
         auto window = static_cast<NSWindow*>(nsWindow);
         [window close];
@@ -131,7 +138,7 @@ void OSXWindow::Close()
         nsWindow = nullptr;
     }
 
-	closedFlag = true;
+    closedFlag = true;
 }
 
 bool OSXWindow::IsClosed() const

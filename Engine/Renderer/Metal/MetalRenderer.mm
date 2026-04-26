@@ -238,26 +238,22 @@ void MetalRenderer::Render(float deltaTime)
     float rad = m_RotationAngle * M_PI / 180.0f;
     float c = cosf(rad);
     float s = sinf(rad);
-
-    float r1 = 0.5f + 0.5f * c;
-    float g1 = 0.5f + 0.5f * s;
-    float b1 = 0.5f - 0.5f * (c + s);
-
-    float r2 = 0.5f + 0.5f * s;
-    float g2 = 0.5f + 0.5f * c;
-    float b2 = 0.5f - 0.5f * (s - c);
-
-    float r3 = 0.5f - 0.5f * c;
-    float g3 = 0.5f - 0.5f * s;
-    float b3 = 0.5f + 0.5f * (c + s);
+    float x1 = -0.5f * c - (-0.5f) * s;
+    float y1 = -0.5f * s + (-0.5f) * c;
+    float x2 = 0.5f * c - (-0.5f) * s;
+    float y2 = 0.5f * s + (-0.5f) * c;
+    float x3 = 0.5f * c - 0.5f * s;
+    float y3 = 0.5f * s + 0.5f * c;
+    float x4 = -0.5f * c - 0.5f * s;
+    float y4 = -0.5f * s + 0.5f * c;
 
     QuadVertex vertices[6] = {
-        {-0.5f, -0.5f,  r1, g1, b1, 1.0f},
-        { 0.5f, -0.5f,  r2, g2, b2, 1.0f},
-        { 0.5f,  0.5f,  r3, g3, b3, 1.0f},
-        {-0.5f, -0.5f,  r1, g1, b1, 1.0f},
-        { 0.5f,  0.5f,  r3, g3, b3, 1.0f},
-        {-0.5f,  0.5f,  r2, g2, b2, 1.0f}
+        {x1, y1,  1.0f, 0.0f, 0.0f, 1.0f},
+        {x2, y2,  0.0f, 1.0f, 0.0f, 1.0f},
+        {x3, y3,  0.0f, 0.0f, 1.0f, 1.0f},
+        {x1, y1,  1.0f, 0.0f, 0.0f, 1.0f},
+        {x3, y3,  0.0f, 0.0f, 1.0f, 1.0f},
+        {x4, y4,  1.0f, 1.0f, 1.0f, 1.0f}
     };
 
     if (m_VertexBuffer != 0)

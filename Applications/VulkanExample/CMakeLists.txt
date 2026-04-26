@@ -37,7 +37,7 @@ link_directories (${CMAKE_SOURCE_DIR}/lib
 
 add_executable (VulkanExample
   Main.cpp
- ${PLATFORM_SOURCES}
+  ${PLATFORM_SOURCES}
 )
 
 if (APPLE)
