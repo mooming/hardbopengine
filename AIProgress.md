@@ -49,10 +49,32 @@ Create a VulkanExample application that:
 
 ---
 
+### Phase 6: Vulkan Full Implementation
+
+- [ ] 6.1 Create Vulkan instance and device
+  - [ ] Enumerate physical devices
+  - [ ] Create logical device with queue
+  - [ ] Get graphics queue
+- [ ] 6.2 Create window surface (VkSurfaceKHR)
+  - [ ] Use MoltenVK for macOS (CAMetalLayer)
+  - [ ] Configure swapchain
+- [ ] 6.3 Create render pass and framebuffer
+  - [ ] Define color attachment
+  - [ ] Create framebuffer for swapchain images
+- [ ] 6.4 Create graphics pipeline
+  - [ ] Load vertex/fragment shaders
+  - [ ] Configure vertex input
+  - [ ] Configure blending
+- [ ] 6.5 Implement render loop
+  - [ ] Create command buffer
+  - [ ] Record and submit commands
+  - [ ] Present swapchain
+
+---
+
 ## Technical Design
 
 ### Renderer Architecture
-
 ```
 Engine/Renderer/
 ├── RendererCommon.h      - Common types, enums
@@ -82,6 +104,34 @@ On macOS: Query returns Metal and Vulkan available.
 - Rotation animation using TaskSystem
 - Vertex colors interpolated by GPU
 
+### Vulkan Pipeline Implementation
+
+```
+VulkanRenderer Implementation Steps:
+1. vkEnumerateInstanceVersion
+2. vkCreateInstance (with MoltenVK extension)
+3. vkEnumeratePhysicalDevices
+4. vkCreateDevice (with graphics queue)
+5. Get graphics queue
+6. Create VkSurfaceKHR (MoltenVK: using vkCreateMacOSSurfaceMVK)
+7. Create Swapchain
+8. Create Render Pass
+9. Create Framebuffers
+10. Create Pipeline (vertex + fragment shaders)
+11. Create Vertex Buffer
+12. Create Command Buffer
+13. Render Loop:
+    a. BeginCommandBuffer
+    b. BeginRenderPass
+    c. BindPipeline
+    d. BindVertexBuffer
+    e. Draw
+    f. EndRenderPass
+    g. EndCommandBuffer
+    h. QueueSubmit
+    i. Present
+```
+
 ---
 
 ## Bug Fixes Applied
@@ -95,7 +145,32 @@ On macOS: Query returns Metal and Vulkan available.
 - Fixed by checking window visibility state in `PollEvents()`
 - When window becomes invisible, it is considered closed
 
+### Fix 3: Vulkan Header Issue
+- Homebrew's vulkan-headers includes Windows-specific types (HANDLE, DWORD)
+- Fixed by using conditional includes with PLATFORM_OSX guard
+- Added VULKAN_SDK macro in BuildConfig.h for detection
+
 ### Implementation Status
 - MetalRenderer: Full implementation - renders rotating quad with colors
 - VulkanRenderer: Stub with rotation calculation (no actual rendering)
 - DX12Renderer: Stub with rotation calculation (no actual rendering)
+
+---
+
+## Implementation Notes
+
+### Vulkan SDK Detection
+- BuildConfig.h uses `__has_include` to detect Vulkan headers
+- Checks multiple paths: system, Homebrew, External/VulkanSDK
+- `VULKAN_SDK` macro set to 1 if found, 0 otherwise
+
+### Cross-Platform Header Strategy
+- Use platform-specific includes only on target platform
+- macOS: `vulkan_metal.h` for CAMetalLayer integration
+- Windows: `vulkan_win32.h` for DXGI integration
+- Linux: `vulkan_xlib.h` for X11 integration
+
+### Build Configuration
+- Use `MakeBuild` tool for CMake configuration
+- Install Vulkan SDK via `Scripts/InstallVulkanMacOS.sh`
+- External/VulkanSDK excluded from git (in .gitignore)
