@@ -12,33 +12,7 @@ HardBop Engine provides a comprehensive set of modules for game development whil
 - **CMake 3.12+**
 - **C++23 compatible compiler** (Clang 16+, GCC 13+, MSVC 2022+)
 
-### Platform-Specific
-
-#### macOS
-```bash
-# Install Homebrew (if not installed)
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-
-# Install required packages
-# Note: GLFW is no longer a mandatory dependency for the core engine, 
-# but might be needed for certain third-party integrations.
-brew install glfw
-```
-
-#### Linux (Ubuntu/Debian)
-```bash
-sudo apt-get update
-sudo apt-get install -y libglfw3-dev libglfw3 x11-base-dev
-```
-
-#### Windows
-```bash
-# Install Chocolatey (if not installed)
-choco install cmake visualstudio2022buildtools
-
-# Install GLFW via Chocolatey
-choco install glfw
-```
+No additional dependencies required beyond CMake and a C++23 compatible compiler.
 
 ### Vulkan SDK (Optional - for running tests)
 If Vulkan SDK is not installed, tests will still run but Vulkan-related features will be disabled with a compile-time warning. To enable full test support:
@@ -145,7 +119,7 @@ HardBopEngine/
 │   ├── Resource/        # Buffer, Stream, Resource Manager
 │   ├── String/          # String utilities
 │   └── Test/            # Unit testing framework
-├── External/            # Third-party libraries (GLFW)
+├── External/            # Third-party libraries (placeholder for future)
 ├── Scripts/             # Build and utility scripts
 ├── docs/                 # Documentation
 ├── lib/                 # Built static libraries (generated)
