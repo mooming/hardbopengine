@@ -23,6 +23,7 @@ To maintain high code quality and consistency, please adhere to the following gu
 - **Indentation**: 4 spaces (Always use tabs for indentation).
 - **Column Limit**: 120 characters.
 - **Brace Style**: K&R variant.
+    - Always break line before '{': `type FunctionName(args) {`.
 - **Readability**:
     - Place an empty line before `return` statements, unless the `return` is the only statement within its scope.
     - Place two empty lines after include declarations.
@@ -37,3 +38,9 @@ To maintain high code quality and consistency, please adhere to the following gu
 - **Constants**: Favor the use of `constexpr` and `const`.
 - **Safety**: Always validate pointer validity before dereferencing or using them.
 - **Scoping**: Use braces `{}` to clearly define the scope of local variables.
+
+### Optimization & Move Semantics
+- **RVO/NRVO**: Prefer returning objects by value to enable Return Value Optimization (RVO) and Named Return Value Optimization (NRVO).
+  - Define functions to return values: `Object create()` instead of `Object* create() const`.
+  - NRVO is automatically applied when returning a locally constructed object.
+  - Avoid unnecessary `std::move` calls that prevent RVO/NRVO.
