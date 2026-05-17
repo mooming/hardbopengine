@@ -67,7 +67,7 @@ To maintain high code quality and consistency, please adhere to the following gu
 - **Exception-free**: The engine is exception-free; do not use C++ exceptions.
 - **Pointers**: Prefer passing by reference over raw pointers whenever possible, and assume reference variables always point to valid addresses.
 - **Constants**: Favor the use of `constexpr` and `const`.
-- **Safety**: Always validate pointer validity before dereferencing or using them. Prefer passing by reference over raw pointers, and assume reference variables always point to valid addresses. Use local variables to take return values and validate them before using, except for builder design patterns. Avoid dynamic allocations as much as possible. Avoid using macros unless it's inevitable. Prefer using constexpr and consteval.
+- **Safety**: Always validate pointer validity before dereferencing or using them. Use local variables to take return values and validate them before using, except for builder design patterns. Avoid dynamic allocations as much as possible. Avoid using macros unless it's inevitable.
 - **Scoping**: Use braces `{}` to clearly define the scope of local variables.
 
 ### Optimization & Move Semantics
