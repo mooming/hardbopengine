@@ -45,12 +45,28 @@ To maintain high code quality and consistency, please adhere to the following gu
 - **Namespaces**: Do not indent code blocks contained within namespaces.
 - **Single-line Statements**: Avoid using braces for single-line `continue` or `return` statements.
 
-### Error Handling & Memory Management
+### Error Handling, Logging & Memory Management
+- **Error and Warning Logging**: Always output a descriptive log
+  message (via `std::cerr` or a dedicated logger) in error or
+  warning conditions before returning, asserting, or taking
+  corrective action. Logging provides essential diagnostic
+  information for debugging and post-mortem analysis — a bare
+  `Assert()` or silent early-return makes failures much harder
+  to diagnose.
+  - Include the specific reason and relevant state values in the
+    log message so it is actionable.
+  - Log *before* any `Assert()` or `return` so the information
+    survives even if the assertion terminates the process.
+  - Use distinct prefixes/severities (e.g. `"Error:"` vs
+    `"Warning:"`) so messages can be filtered.
+  - Do not log in hot paths where the condition is expected and
+    handled silently; reserve logging for exceptional or
+    unexpected conditions.
 - **Assertions**: Use `Assert()` and `FatalAssert()` from `Core/Debug.h` for runtime checks and debugging.
 - **Exception-free**: The engine is exception-free; do not use C++ exceptions.
 - **Pointers**: Prefer passing by reference over raw pointers whenever possible, and assume reference variables always point to valid addresses.
 - **Constants**: Favor the use of `constexpr` and `const`.
-- **Safety**: Always validate pointer validity before dereferencing or using them. Prefer passing by reference over raw pointers, and assume reference variables always point to valid addresses. Use local variables to take return values and validate them before using, except for builder design patterns. Avoid dynamic allocations as much as possible. Avoid using macros unless it's inevitable. Prefer using constexpr and consteval. Always put error logs in error conditions.
+- **Safety**: Always validate pointer validity before dereferencing or using them. Prefer passing by reference over raw pointers, and assume reference variables always point to valid addresses. Use local variables to take return values and validate them before using, except for builder design patterns. Avoid dynamic allocations as much as possible. Avoid using macros unless it's inevitable. Prefer using constexpr and consteval.
 - **Scoping**: Use braces `{}` to clearly define the scope of local variables.
 
 ### Optimization & Move Semantics
