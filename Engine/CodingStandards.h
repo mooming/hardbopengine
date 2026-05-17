@@ -54,30 +54,9 @@ struct CodingStandardsData
     bool isInitialized;
 };
 
-/*
- * static_assert: Use static_assert for any condition that can be
- * validated at compile time — struct sizes, constant ranges,
- * template constraints, etc. This catches violations at build
- * time instead of at runtime.
- *
- * Examples (commented to avoid interfering with other tests):
- *
- *   // Validate struct layout / size assumptions
- *   // static_assert(sizeof(CodingStandardsData) >= 12,
- *   //     "CodingStandardsData must be at least 12 bytes");
- *
- *   // Validate constant ranges
- *   // static_assert(DefaultVersion > 0,
- *   //     "DefaultVersion must be positive");
- *
- *   // Validate template parameters (in a template context)
- *   // template <typename T>
- *   // void ProcessType()
- *   // {
- *   //     static_assert(std::is_integral_v<T>,
- *   //         "ProcessType requires an integral type");
- *   // }
- */
+/* Validate struct layout / size assumptions at compile time */
+static_assert(sizeof(CodingStandardsData) >= 12,
+    "CodingStandardsData is unexpectedly small");
 
 // ========================================================================
 // INTERFACE: ICodingStandards
@@ -170,6 +149,10 @@ using TAllocFunc = void (*)(void*, size_t);
 template <typename TEntry>
 class TemplateExample final
 {
+    /* Validate template parameter constraints at compile time */
+    static_assert(std::is_integral_v<TEntry>,
+        "TemplateExample requires an integral type");
+
 public:
     explicit TemplateExample(const TEntry& initial) noexcept
         : value(initial)
@@ -285,6 +268,9 @@ public:
     static constexpr int MaxValue = 100;
     static constexpr int ArraySize = 64;
 
+    /* Validate constant ranges at compile time */
+    static_assert(MaxValue > 0, "MaxValue must be positive");
+
     CodingStandardsBase() noexcept;
     virtual ~CodingStandardsBase() = default;
 
@@ -374,6 +360,10 @@ class CodingStandards final : public CodingStandardsBase, public ICodingStandard
 public:
     static constexpr int DefaultVersion = 1;
     static constexpr size_t MaxNameLength = 128;
+
+    /* Validate constant ranges at compile time */
+    static_assert(DefaultVersion > 0, "DefaultVersion must be positive");
+    static_assert(MaxNameLength > 0, "MaxNameLength must be positive");
 
     CodingStandards() noexcept;
     ~CodingStandards() override;
