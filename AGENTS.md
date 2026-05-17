@@ -25,6 +25,7 @@ HardBop Engine is a high-performance C++23 engine focused on modularity and effi
  10. **Record progress** — Log useful information and progress with timestamps in `JOURNAL.md`. Keep it compact and well-organized with a top-level summary section.
  11. **Read the summary first** — Always check the top-level summary of `JOURNAL.md` before starting new work.
  12. **Follow the coding standards** — Always make sure any code you write or modify adheres to the conventions documented in `docs/CodingStandards.md` and demonstrated in `Engine/CodingStandards.h` and `Engine/CodingStandards.cpp`. Treat these files as the authoritative reference for style, structure, and best practices across the entire codebase.
+13. **Use AI prompt automation scripts** — When batch processing source files (C/C++/Obj-C), use `ai_prompt_files.sh` (Linux/macOS) or `ai_prompt_files.bat` (Windows) to iterate over all `.c`, `.h`, `.cpp`, `.hpp`, `.cc`, `.cxx`, `.m`, `.mm` files and execute review prompts one-by-one. These scripts handle spaces in filenames and ensure sequential processing.
 
 ## Build System
 

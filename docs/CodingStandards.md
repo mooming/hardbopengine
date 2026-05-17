@@ -6,6 +6,8 @@ To maintain high code quality and consistency, please adhere to the following gu
 - **Classes, Functions, and Types**: Use `PascalCase` (e.g., `MemoryManager`, `ConfigParam`). Prefer using `class` instead of `struct` unless it is a Plain Old Data (POD) type.
 
 - **Variables**: Use `camelCase` (e.g., `defaultValue`, `isDone`). Do not use an `m_` prefix for member variables, and do not use Hungarian notation.
+- **Return-by-Reference Parameters**: Prefix out-parameters (write-only references) with `out` (e.g., `bool TryParse(const char* text, int& outResult);`). Prefix in-out parameters (read-write references) with `inOut` (e.g., `void Normalize(Vector3& inOutVector);`).
+- **Function Parameter Naming**: When a function parameter would collide with a member variable name, prefix it with `in` (e.g., `TestCollection(const char* inTitle) : title(inTitle) {}`).
 - **Constants**: Use `PascalCase` with a descriptive prefix (e.g., `MaxNameLength`).
 - **Macros**: Use `SCREAMING_SNAKE_CASE` (e.g., `DEBUG_ENABLED`, `UNIT_TEST_ENABLED`). Do not use a leading double underscore or underscore+capital prefix — those names are reserved for the C++ implementation.
 - **Namespaces**: Use the `hbe` namespace.
@@ -21,7 +23,7 @@ To maintain high code quality and consistency, please adhere to the following gu
 - **Single-argument Constructors**: Mark single-argument constructors with `explicit` to prevent implicit conversions.
 - **Defaulted Members**: Use `= default` instead of empty `{}` for trivial special member function implementations.
 - **Member Initializer Lists**: Prefer member initializer lists over assignment in constructors.
-- **noexcept**: Mark functions that do not throw with `noexcept`.
+- **noexcept**: Mark functions that do not throw with `noexcept`. **Warning**: Do not add `noexcept` to complex functions whose implementation cannot be guaranteed exception-free — a `noexcept` violation at runtime terminates the process.
 - **constexpr/consteval**: Use `constexpr` for compile-time constants and `consteval` for functions that must always evaluate at compile time.
 - **static_assert**: Use `static_assert` for any condition that can be validated at compile time (struct sizes, constant ranges, template constraints, etc.). This catches violations at build time instead of at runtime. Prefer `static_assert` over a runtime `Assert()` when the expression is evaluable at compile time.
 - **Virtual Functions**: Use `override` solely when you override a virtual function. Do not explicitly use the `virtual` keyword alongside `override`.
