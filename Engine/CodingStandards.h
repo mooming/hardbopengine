@@ -54,6 +54,31 @@ struct CodingStandardsData
     bool isInitialized;
 };
 
+/*
+ * static_assert: Use static_assert for any condition that can be
+ * validated at compile time — struct sizes, constant ranges,
+ * template constraints, etc. This catches violations at build
+ * time instead of at runtime.
+ *
+ * Examples (commented to avoid interfering with other tests):
+ *
+ *   // Validate struct layout / size assumptions
+ *   // static_assert(sizeof(CodingStandardsData) >= 12,
+ *   //     "CodingStandardsData must be at least 12 bytes");
+ *
+ *   // Validate constant ranges
+ *   // static_assert(DefaultVersion > 0,
+ *   //     "DefaultVersion must be positive");
+ *
+ *   // Validate template parameters (in a template context)
+ *   // template <typename T>
+ *   // void ProcessType()
+ *   // {
+ *   //     static_assert(std::is_integral_v<T>,
+ *   //         "ProcessType requires an integral type");
+ *   // }
+ */
+
 // ========================================================================
 // INTERFACE: ICodingStandards
 // Demonstrates interface conventions: I-prefix, pure virtual (= 0),
@@ -238,6 +263,8 @@ private:
 //   - noexcept on non-throwing functions.
 //   - constexpr for compile-time constants, consteval for CT-only
 //     functions.
+//   - static_assert for compile-time validation (struct sizes,
+//     constant ranges, template constraints).
 //   - [[nodiscard]] on getters and value-returning functions.
 //   - override (without virtual) when overriding a virtual.
 //   - final specifier on classes not intended for inheritance.
