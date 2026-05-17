@@ -1,12 +1,17 @@
 # AGENTS.md - HardBop Engine Developer Guide
 
-This document provides essential information for developers and AI agents working on the HardBop Engine codebase.
+**This document is mandatory for all AI agents working on this codebase.**
+Every instruction below is a binding rule, not a suggestion. Violations undermine
+consistency, reliability, and the project's quality standards. If you cannot
+follow a rule, state why and ask for guidance before proceeding.
 
 ## Project Overview
 
 HardBop Engine is a high-performance C++23 engine focused on modularity and efficiency. It utilizes custom memory management, an advanced task system, and a robust abstraction layer (OSAL) for cross-platform compatibility.
 
 ## Important Work Policy
+
+**These rules are binding. You must follow every applicable rule in order. If you cannot comply, explain why and ask for guidance before proceeding.**
 
   1. **Understand goals first** — Read and fully grasp the objectives before diving into any task.
   2. **Suggest improvements** — After understanding the goals, propose ideas that could make the outcome better.
@@ -79,7 +84,7 @@ To run a specific test collection, you must temporarily comment out the unwanted
 
 ## Code Style & Standards
 
-For detailed coding standards, including naming conventions, class design, and formatting rules, please refer to [docs/CodeStandard.md](./docs/CodeStandard.md).
+For detailed coding standards, including naming conventions, class design, and formatting rules, please refer to [docs/CodingStandards.md](./docs/CodingStandards.md).
 
 ### Formatting & Analysis
 *   **Formatting**: Use `clang-format` to maintain consistency.
