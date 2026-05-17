@@ -1,14 +1,16 @@
 #!/bin/bash
 
-# Usage: ./ai_prompt_files.sh <directory> "<prompt_template_or_text>"
-# Example: ./ai_prompt_files.sh ./src "/review"
-# Example: ./ai_prompt_files.sh ./Engine "Summarize this file:"
+# Usage: ./batch_ai_prompt.sh <directory> "<prompt>" [output_file]
+# Example: ./batch_ai_prompt.sh ./Engine "Check naming conventions"
+# Example: ./batch_ai_prompt.sh ./Engine "Review for coding standards" review_output.md
 
 TARGET_DIR=$1
 PROMPT=$2
+OUTPUT_FILE=${3:-review_output.md}
 
 if [ -z "$TARGET_DIR" ] || [ -z "$PROMPT" ]; then
-    echo "Usage: $0 <directory> \"<prompt>\""
+    echo "Usage: $0 <directory> \"<prompt>\" [output_file]"
+    echo "  output_file  File to append all reviews into (default: review_output.md)"
     exit 1
 fi
 
@@ -18,19 +20,22 @@ if [ ! -d "$TARGET_DIR" ]; then
 fi
 
 if ! command -v pi &>/dev/null; then
-    echo "Error: 'pi' command not found. Install opencode's CLI tool first."
+    echo "Error: 'pi' command not found."
     exit 1
 fi
 
+# Initialize empty output file
+> "$OUTPUT_FILE"
+
 echo "Starting batch processing in: $TARGET_DIR"
 echo "Prompt template: $PROMPT"
+echo "Output file: $OUTPUT_FILE"
 echo "------------------------------------------"
 
-# 1. find: Searches recursively for files
-# 2. \( ... \): Groups the name patterns
-# 3. -name: Matches extensions for C, C++, Obj-C, and Obj-C++
-# 4. -print0: Uses a null character to separate filenames (handles spaces/special chars)
-# 5. while IFS= read -r -d '': Reads the null-terminated strings correctly
+COUNT=0
+FAIL=0
+
+# Iterate over all C/C++/Obj-C source files, handling spaces in filenames
 find "$TARGET_DIR" -type f \( \
     -name "*.c" -o \
     -name "*.h" -o \
@@ -41,14 +46,34 @@ find "$TARGET_DIR" -type f \( \
     -name "*.m" -o \
     -name "*.mm" \
 \) -print0 | while IFS= read -r -d '' file; do
-    
+
     echo ">>> Processing: $file"
-    
-    # Executes pi with the prompt followed by the specific file path
-    # This treats each file as a new command/turn for the CLI
-    pi $PROMPT "$file"
-    
+
+    # Append a separator and header for this file
+    {
+        echo ""
+        echo "========================================"
+        echo "File: $file"
+        echo "========================================"
+        echo ""
+    } >> "$OUTPUT_FILE"
+
+    # Run pi in non-interactive mode (-p) and append output
+    if pi -p $PROMPT "$file" >> "$OUTPUT_FILE" 2>&1; then
+        echo "    -> Done"
+    else
+        echo "    -> FAILED"
+        {
+            echo ""
+            echo "**FAILED**"
+        } >> "$OUTPUT_FILE"
+        FAIL=$((FAIL + 1))
+    fi
+
+    COUNT=$((COUNT + 1))
     echo "------------------------------------------"
 done
 
-echo "Batch processing complete."
+echo ""
+echo "Batch processing complete. $COUNT files processed, $FAIL failures."
+echo "Accumulated review written to: $OUTPUT_FILE"
