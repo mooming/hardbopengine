@@ -7,7 +7,7 @@ To maintain high code quality and consistency, please adhere to the following gu
 
 - **Variables**: Use `camelCase` (e.g., `defaultValue`, `isDone`). Do not use an `m_` prefix for member variables, and do not use Hungarian notation.
 - **Constants**: Use `PascalCase` with a descriptive prefix (e.g., `MaxNameLength`).
-- **Macros**: Use `SCREAMING_SNAKE_CASE` (e.g., `__DEBUG__`, `__UNIT_TEST__`).
+- **Macros**: Use `SCREAMING_SNAKE_CASE` (e.g., `DEBUG_ENABLED`, `UNIT_TEST_ENABLED`). Do not use a leading double underscore or underscore+capital prefix — those names are reserved for the C++ implementation.
 - **Namespaces**: Use the `hbe` namespace.
 - **Template Type Parameters & Type Aliases**: Prefix with `T` (e.g., `template <typename TEntry>`, `using TIndex = uint32_t;`).
 
@@ -31,8 +31,8 @@ To maintain high code quality and consistency, please adhere to the following gu
 ### Code Formatting
 - **Indentation**: Use tabs (not spaces) for indentation.
 - **Column Limit**: 120 characters.
-- **Brace Style**: K&R variant.
-    - Always break line before '{': `type FunctionName(args) {`.
+- **Brace Style**: K&R variant — opening brace on the same line as the declaration/statement.
+    - Example: `type FunctionName(args) {`.
 - **Readability**:
     - Place an empty line before `return` statements, unless the `return` is the only statement within its scope.
     - Place an empty line after close brackets `}`.

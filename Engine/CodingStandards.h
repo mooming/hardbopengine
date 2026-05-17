@@ -55,7 +55,7 @@ struct CodingStandardsData
 };
 
 /* Validate struct layout / size assumptions at compile time */
-static_assert(sizeof(CodingStandardsData) >= 12,
+static_assert(sizeof(CodingStandardsData) >= sizeof(int) + sizeof(size_t) + sizeof(bool),
     "CodingStandardsData is unexpectedly small");
 
 // ========================================================================
@@ -91,7 +91,7 @@ public:
 };
 
 // ========================================================================
-// RVO/NRVO: InlinedData (large-ish POD on the stack)
+// RVO/NRVO: InlinedData (large-ish stack data type)
 // A 4 KiB data block initialized from a single int value.
 // Exists so the CodingStandardsBase methods below can demonstrate
 // RVO vs. NRVO vs. std::move-on-return behaviour.
