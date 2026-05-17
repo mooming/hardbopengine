@@ -3,23 +3,24 @@
 #pragma once
 
 #include <thread>
+
 #include "Config/BuildConfig.h"
 
 namespace OS
 {
-	/// @brief Yield the current thread's time slice to the scheduler.
-	void Yield();
-	/// @brief Sleep for the specified number of milliseconds.
-	void Sleep(uint32_t milliseconds);
+/// @brief Yield the current thread's time slice to the scheduler.
+void Yield() noexcept;
+/// @brief Sleep for the specified number of milliseconds.
+void Sleep(uint32_t milliseconds) noexcept;
 
-	/// @brief Get the current CPU core index.
-	int GetCPUIndex();
-	/// @brief Get the priority of a thread.
-	int GetThreadPriority(std::thread& thread);
-	/// @brief Set CPU affinity mask for a thread.
-	void SetThreadAffinity(std::thread& thread, uint64_t mask);
-	/// @brief Set priority for a thread.
-	void SetThreadPriority(std::thread& thread, int priority);
+/// @brief Get the current CPU core index.
+[[nodiscard]] int GetCPUIndex() noexcept;
+/// @brief Get the priority of a thread.
+[[nodiscard]] int GetThreadPriority(std::thread& thread) noexcept;
+/// @brief Set CPU affinity mask for a thread.
+void SetThreadAffinity(std::thread& thread, uint64_t mask) noexcept;
+/// @brief Set priority for a thread.
+void SetThreadPriority(std::thread& thread, int priority) noexcept;
 } // namespace OS
 
 #ifdef __UNIT_TEST__
@@ -28,15 +29,15 @@ namespace OS
 namespace hbe
 {
 
-	/// @brief Test collection for OS thread operations.
-	class OSThreadTest : public TestCollection
-	{
-	public:
-		OSThreadTest() : TestCollection("OSThreadTest") {}
+/// @brief Test collection for OS thread operations.
+class OSThreadTest final : public TestCollection
+{
+public:
+	OSThreadTest() : TestCollection("OSThreadTest") {}
 
-	protected:
-		virtual void Prepare() override;
-	};
+protected:
+	void Prepare() override;
+};
 
 } // namespace hbe
 #endif //__UNIT_TEST__

@@ -11,43 +11,38 @@
 
 namespace OS
 {
-	FileHandle::FileHandle() : data(nullptr) { Invalidate(); }
 
-	FileHandle::FileHandle(FileHandle&& rhs) : data(rhs.data) { rhs.Invalidate(); }
+FileHandle::FileHandle() { Invalidate(); }
 
-	FileHandle::~FileHandle()
-	{
-		if (fd < 0)
-		{
-			return;
-		}
+FileHandle::FileHandle(FileHandle&& rhs) : data(rhs.data) { rhs.Invalidate(); }
 
-		Close(std::move(*this));
-	}
+FileHandle::~FileHandle()
+{
+	if (fd < 0)
+		return;
 
-	size_t FileHandle::GetFileSize() const
-	{
-		if (unlikely(fd < 0))
-		{
-			return 0;
-		}
+	Close(std::move(*this));
+}
 
-		struct stat statValue;
-		int result = fstat(fd, &statValue);
+size_t FileHandle::GetFileSize() const
+{
+	if (unlikely(fd < 0))
+		return 0;
 
-		if (unlikely(result != 0))
-		{
-			return 0;
-		}
+	struct stat statValue;
+	int result = fstat(fd, &statValue);
 
-		static_assert(sizeof(size_t) == sizeof(statValue.st_size));
+	if (unlikely(result != 0))
+		return 0;
 
-		return statValue.st_size;
-	}
+	static_assert(sizeof(size_t) == sizeof(statValue.st_size));
 
-	bool FileHandle::IsValid() const { return fd >= 0; }
+	return statValue.st_size;
+}
 
-	void FileHandle::Invalidate() { fd = -1; }
+bool FileHandle::IsValid() const { return fd >= 0; }
+
+void FileHandle::Invalidate() { fd = -1; }
 
 } // namespace OS
 #endif // PLATFORM_LINUX

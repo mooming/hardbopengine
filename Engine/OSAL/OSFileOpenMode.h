@@ -1,20 +1,22 @@
 
-
 #pragma once
 
 namespace OS
 {
 
-	struct FileOpenMode final
-	{
-		int value = 0;
+class FileOpenMode final
+{
+public:
+	int value;
 
-		void SetReadOnly();
-		void SetWriteOnly();
-		void SetReadWrite();
-		void SetCreate();
-		void SetTruncate();
-		void SetAppend();
-	};
+	FileOpenMode() noexcept : value(0) {}
+
+	void SetReadOnly() noexcept;
+	void SetWriteOnly() noexcept;
+	void SetReadWrite() noexcept;
+	void SetCreate() noexcept;
+	void SetTruncate() noexcept;
+	void SetAppend() noexcept;
+};
 
 } // namespace OS

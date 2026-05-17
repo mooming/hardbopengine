@@ -1,17 +1,19 @@
 
-
 #pragma once
 
 namespace OS
 {
 
-	struct MapSyncMode final
-	{
-		int value = 0;
+class MapSyncMode final
+{
+public:
+	int value;
 
-		void SetAsync();
-		void SetSync();
-		void Invalidate();
-	};
+	MapSyncMode() noexcept : value(0) {}
+
+	void SetAsync() noexcept;
+	void SetSync() noexcept;
+	void Invalidate() noexcept;
+};
 
 } // namespace OS

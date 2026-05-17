@@ -1,8 +1,6 @@
 // Copyright (c) 2026 Hansol Park (mooming.go@gmail.com). All rights reserved.
 
-
 #pragma once
-
 
 #include "Config/BuildConfig.h"
 
@@ -12,93 +10,33 @@
 namespace OS
 {
 
-class OSXWindow : public IWindow
+class OSXWindow final : public IWindow
 {
+public:
+	OSXWindow();
+	~OSXWindow() override;
+
+	bool CreateWindow(const hbe::HString& title, int width, int height) override;
+	void SetTitle(const hbe::HString& title) override;
+	void SetSize(int width, int height) override;
+
+	[[nodiscard]] int GetWidth() const override;
+	[[nodiscard]] int GetHeight() const override;
+	[[nodiscard]] bool IsVisible() const override;
+
+	void SetVisible(bool visible) override;
+	void PollEvents() override;
+	void Close() override;
+
+	[[nodiscard]] bool IsClosed() const override;
+	[[nodiscard]] intptr_t GetNativeHandle() const override;
+
 private:
 	void* nsWindow;
 	int width;
 	int height;
 	bool visibleFlag;
 	bool closedFlag;
-
-public:
-	/**
-	 * @brief Default constructor for OSXWindow.
-	 */
-	OSXWindow();
-
-	/**
-	 * @brief Virtual destructor for OSXWindow.
-	 */
-	~OSXWindow() override;
-
-	/**
-	 * @brief Creates a window on the OSX platform using Cocoa API.
-	 * @param title The title of the window.
-	 * @param width The initial width in pixels.
-	 * @param height The initial height in pixels.
-	 * @return True if successful, false otherwise.
-	 */
-	bool CreateWindow(const hbe::HString& title, int width, int height) override;
-
-	/**
-	 * @brief Sets the window title on OSX via Cocoa API.
-	 * @param title The new title for the window.
-	 */
-	void SetTitle(const hbe::HString& title) override;
-
-	/**
-	 * @brief Resizes the OSX window to specified dimensions.
-	 * @param width New width in pixels.
-	 * @param height New height in pixels.
-	 */
-	void SetSize(int width, int height) override;
-
-	/**
-	 * @brief Gets the current width of the OSX window.
-	 * @return The width in pixels.
-	 */
-	[[nodiscard]] int GetWidth() const override;
-
-	/**
-	 * @brief Gets the current height of the OSX window.
-	 * @return The height in pixels.
-	 */
-	[[nodiscard]] int GetHeight() const override;
-
-	/**
-	 * @brief Checks if the OSX window is visible.
-	 * @return True if visible, false otherwise.
-	 */
-	[[nodiscard]] bool IsVisible() const override;
-
-	/**
-	 * @brief Sets the visibility of the OSX window.
-	 * @param visible True to show, false to hide.
-	 */
-	void SetVisible(bool visible) override;
-
-	/**
-	 * @brief Polls for Cocoa events via NSEvent.
-	 */
-	void PollEvents() override;
-
-	/**
-	 * @brief Closes and destroys the OSX window resources.
-	 */
-	void Close() override;
-
-	/**
-	 * @brief Checks if the OSX window has been closed.
-	 * @return True if closed, false otherwise.
-	 */
-	[[nodiscard]] bool IsClosed() const override;
-
-	/**
-	 * @brief Gets the native window handle (NSWindow*).
-	 * @return The native window handle.
-	 */
-	[[nodiscard]] intptr_t GetNativeHandle() const override;
 };
 
 } // namespace OS

@@ -1,8 +1,6 @@
 // Copyright (c) 2026 Hansol Park (mooming.go@gmail.com). All rights reserved.
 
-
 #include "Config/BuildConfig.h"
-
 
 #ifdef PLATFORM_OSX
 
@@ -15,7 +13,7 @@
 @implementation AppDelegate
 - (BOOL)applicationShouldTerminateAfterLastWindowClosed:(NSApplication *)sender
 {
-    return NO;
+	return NO;
 }
 @end
 
@@ -29,57 +27,55 @@ OSXApplication::OSXApplication()
 
 OSXApplication::~OSXApplication()
 {
-    if (appHandle == nullptr)
-    {
-        return;
-    }
+	if (appHandle == nullptr)
+		return;
 
-    auto app = static_cast<NSApplication*>(appHandle);
-    [app terminate:nil];
+	auto app = static_cast<NSApplication*>(appHandle);
+	[app terminate:nil];
 
-    appHandle = nullptr;
+	appHandle = nullptr;
 }
 
 void OSXApplication::Initialize()
 {
-    if (appHandle != nullptr)
-    {
-        // Already initialised
-        return;
-    }
+	if (appHandle != nullptr)
+	{
+		// Already initialised
+		return;
+	}
 
-    NSApplication *app = [NSApplication sharedApplication];
-    [app setActivationPolicy:NSApplicationActivationPolicyRegular];
-    auto delegate = [app delegate];
-    if (delegate == nil)
-    {
-        AppDelegate* appDelegate = [[AppDelegate alloc] init];
-        [app setDelegate:appDelegate];
-    }
+	NSApplication *app = [NSApplication sharedApplication];
+	[app setActivationPolicy:NSApplicationActivationPolicyRegular];
+	auto delegate = [app delegate];
+	if (delegate == nil)
+	{
+		AppDelegate* appDelegate = [[AppDelegate alloc] init];
+		[app setDelegate:appDelegate];
+	}
 
-    [app finishLaunching];
-    appHandle = app;
+	[app finishLaunching];
+	appHandle = app;
 }
 
 void OSXApplication::PollEvents()
 {
-    if (appHandle == nullptr)
-    {
-        // It hasn't be initialised.
-        return;
-    }
+	if (appHandle == nullptr)
+	{
+		// It hasn't be initialised.
+		return;
+	}
 
-    auto app = static_cast<NSApplication*>(appHandle);
+	auto app = static_cast<NSApplication*>(appHandle);
 
-    // Clear all the queued events
-    while (NSEvent *event = [app nextEventMatchingMask:NSEventMaskAny
-                                       untilDate:[NSDate distantPast]
-                                          inMode:NSDefaultRunLoopMode
-                                         dequeue:YES])
-    {
-        [app sendEvent:event];
-        [app updateWindows];
-    }
+	// Clear all the queued events
+	while (NSEvent *event = [app nextEventMatchingMask:NSEventMaskAny
+									   untilDate:[NSDate distantPast]
+										  inMode:NSDefaultRunLoopMode
+										 dequeue:YES])
+	{
+		[app sendEvent:event];
+		[app updateWindows];
+	}
 }
 
 } // namespace OS

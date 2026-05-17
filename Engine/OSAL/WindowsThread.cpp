@@ -5,18 +5,18 @@
 #ifdef PLATFORM_WINDOWS
 #include <Windows.h>
 
-int OS::GetCPUIndex()
+int OS::GetCPUIndex() noexcept
 {
 	auto index = GetCurrentProcessorNumber();
 	return static_cast<int>(index);
 }
 
-void OS::SetThreadAffinity(std::thread& thread, uint64_t mask)
+void OS::SetThreadAffinity(std::thread& thread, uint64_t mask) noexcept
 {
 	::SetThreadAffinityMask(thread.native_handle(), mask);
 }
 
-void OS::SetThreadPriority(std::thread& thread, int priority)
+void OS::SetThreadPriority(std::thread& thread, int priority) noexcept
 {
 	auto result = ::SetThreadPriority(thread.native_handle(), priority);
 	if (result == false)

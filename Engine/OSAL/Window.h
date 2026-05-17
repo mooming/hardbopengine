@@ -1,12 +1,11 @@
 // Copyright (c) 2026 Hansol Park (mooming.go@gmail.com). All rights reserved.
 
-
 #pragma once
 
+#include <memory>
 
 #include "Config/BuildConfig.h"
 #include "HSTL/HString.h"
-#include <memory>
 
 namespace OS
 {
@@ -105,7 +104,7 @@ std::unique_ptr<IWindow> CreateWindow(const hbe::HString& title, int width, int 
 namespace hbe
 {
 
-class WindowTest : public TestCollection
+class WindowTest final : public TestCollection
 {
 public:
 	WindowTest() : TestCollection("WindowTest") {}

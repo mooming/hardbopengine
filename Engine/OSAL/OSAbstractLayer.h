@@ -3,6 +3,7 @@
 #pragma once
 
 #include <iostream>
+
 #include "Config/BuildConfig.h"
 #include "HSTL/HString.h"
 #include "HSTL/HVector.h"
@@ -26,10 +27,10 @@
 namespace OS
 {
 
-	hbe::HString GetFullPath(const hbe::HString& path);
+hbe::HString GetFullPath(const hbe::HString& path);
 
-	bool IsDirectory(const char* path);
+bool IsDirectory(const char* path);
 
-	hbe::HVector<hbe::HString> ListFilesInDirectory(const char* path);
+hbe::HVector<hbe::HString> ListFilesInDirectory(const char* path);
 
 } // namespace OS

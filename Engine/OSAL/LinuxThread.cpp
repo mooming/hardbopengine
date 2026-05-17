@@ -8,9 +8,9 @@
 #include <sched.h>
 #include <sys/resource.h>
 
-int OS::GetCPUIndex() { return sched_getcpu(); }
+int OS::GetCPUIndex() noexcept { return sched_getcpu(); }
 
-void OS::SetThreadAffinity(std::thread& thread, uint64_t mask)
+void OS::SetThreadAffinity(std::thread& thread, uint64_t mask) noexcept
 {
 	cpu_set_t set;
 	CPU_ZERO(&set);
@@ -29,7 +29,7 @@ void OS::SetThreadAffinity(std::thread& thread, uint64_t mask)
 	}
 }
 
-void OS::SetThreadPriority(std::thread& thread, int priority)
+void OS::SetThreadPriority(std::thread& thread, int priority) noexcept
 {
 	if (setpriority(PRIO_PROCESS, thread.native_handle(), priority) != 0)
 	{
