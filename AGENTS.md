@@ -38,7 +38,7 @@ All tools located in the `Tools/` directory can be compiled and installed to `bi
 The project uses a custom tool, `MakeBuild`, to manage CMake configurations. 
 **Important:** Always use `MakeBuild` when modifying `CMakeLists.txt` files.
 
-Read `Tool/MakeBuild/README.md` for detailed usage instructions.
+Read `Tools/MakeBuild/README.md` for detailed usage instructions.
 
 Common build types include `Debug`, `Dev`, and `Release`. You can configure CMake using:
 ```bash
