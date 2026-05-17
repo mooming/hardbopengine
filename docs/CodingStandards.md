@@ -7,9 +7,9 @@ To maintain high code quality and consistency, please adhere to the following gu
 
 - **Variables**: Use `camelCase` (e.g., `defaultValue`, `isDone`). Do not use an `m_` prefix for member variables, and do not use Hungarian notation.
 - **Constants**: Use `PascalCase` with a descriptive prefix (e.g., `MaxNameLength`).
-- **Macros**: Use `SCRAMING_SNAKE_CASE` (e.g., `__DEBUG__`, `__UNIT_TEST__`).
+- **Macros**: Use `SCREAMING_SNAKE_CASE` (e.g., `__DEBUG__`, `__UNIT_TEST__`).
 - **Namespaces**: Use the `hbe` namespace.
-- **Internal Types**: Prefix with `T` (e.g., `TLogOut`, `TAllocFunc`).
+- **Template Type Parameters & Type Aliases**: Prefix with `T` (e.g., `template <typename TEntry>`, `using TIndex = uint32_t;`).
 
 ### Class Conventions
 - **Member Ordering**: Place `static` members first, followed by other members ordered by visibility (`public` > `protected` > `private`).
@@ -18,7 +18,12 @@ To maintain high code quality and consistency, please adhere to the following gu
 - **Inheritance**: Use the `final` specifier for classes that are not intended to be inherited from.
 - **Initialization**: Avoid in-class initialization except when using `constexpr`. Prefer initializing members via constructors.
 - **Inline Functions**: Do not use the `inline` keyword explicitly. Do not define multi-line functions in headers unless it's absolutely necessary (e.g., for templates or `constexpr`).
-- **Virtual Functions**: Do not explicitly use the `virtual` keyword when the function is marked with `override`.
+- **Single-argument Constructors**: Mark single-argument constructors with `explicit` to prevent implicit conversions.
+- **Defaulted Members**: Use `= default` instead of empty `{}` for trivial special member function implementations.
+- **Member Initializer Lists**: Prefer member initializer lists over assignment in constructors.
+- **noexcept**: Mark functions that do not throw with `noexcept`.
+- **constexpr/consteval**: Use `constexpr` for compile-time constants and `consteval` for functions that must always evaluate at compile time.
+- **Virtual Functions**: Use `override` solely when you override a virtual function. Do not explicitly use the `virtual` keyword alongside `override`.
 - **Interfaces**: Interfaces should be pure virtual. Define interfaces using the `I` prefix convention and ensure all virtual methods are `= 0` except the virtual destructor.
 - **Composition Over Inheritance**: Prefer has-a (composition) over is-a (inheritance) unless inheritance is truly necessary for polymorphism or interface contract fulfillment.
 
@@ -29,9 +34,13 @@ To maintain high code quality and consistency, please adhere to the following gu
     - Always break line before '{': `type FunctionName(args) {`.
 - **Readability**:
     - Place an empty line before `return` statements, unless the `return` is the only statement within its scope.
+    - Place an empty line after close brackets `}`.
+    - Place an empty line between member variables and methods for readability.
     - Prefer range-based for loops unless inevitable.
-    - Include declarations are sorted by alphabetical order, except for the file's own header.
-    - Place two empty lines after include declarations.
+    - Include the file's own header first, followed by a blank line,
+      then the remaining includes sorted alphabetically.
+    - After all include and define directives at the top of source files,
+      place two empty lines before the first code body.
 - **System Compatibility**: Ensure every file ends with a newline character.
 - **Namespaces**: Do not indent code blocks contained within namespaces.
 - **Single-line Statements**: Avoid using braces for single-line `continue` or `return` statements.
