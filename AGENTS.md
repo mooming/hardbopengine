@@ -35,10 +35,18 @@ All tools located in the `Tools/` directory can be compiled and installed to `bi
 ```
 
 ### CMake Configuration
-The project uses a custom tool, `MakeBuild`, to manage CMake configurations. 
-**Important:** Always use `MakeBuild` when modifying `CMakeLists.txt` files.
+The project uses a custom tool, `MakeBuild`, to manage CMake configurations.
+**Important:** Never edit generated `CMakeLists.txt` files directly. Instead, modify the
+appropriate `.module.config`, `.project.config`, or specifier files (e.g., `dependency.txt`,
+`library.txt`, `framework.txt`, `include.txt`, `customCMake.txt`) in the relevant module
+directory, then regenerate `CMakeLists.txt` files by running `makebuild` on the project root.
 
-Read `Tools/MakeBuild/README.md` for detailed usage instructions.
+Read `Tools/MakeBuild/README.md` for detailed configuration and build instructions.
+
+**Improving MakeBuild:** If a build-system feature cannot be expressed through the existing
+config/specifier files, improve MakeBuild itself (in `Tools/MakeBuild/`) to support the
+required capability. MakeBuild's design is intentionally extensible — add the necessary
+config file, specifier type, or generator logic rather than working around its limitations.
 
 Common build types include `Debug`, `Dev`, and `Release`. You can configure CMake using:
 ```bash
