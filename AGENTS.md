@@ -13,7 +13,7 @@ HardBop Engine is a high-performance C++23 engine focused on modularity and effi
   3. Create checklist - After user confirmation, create a checklist for the goals.
   4. Avoid unnecessary work - Double-check that nothing is done beyond what was requested.
   5. Self-review and improve - Review your work before presenting, and try to improve outcomes yourself first.
-  6. Verify functionality - Always verify that it works as desired, and offer test methods/functions to users.
+  6. Verify functionality - Always verify that it works as desired with builds and tests. And then, offer test methods/functions to users.
   7. Update checklist - When tasks are completed, update the checklist and provide a summary with brief descriptions.
   8. Create commits - Always create a commit when completing a task.
   9. No premature submission - Do not submit or push anything before user confirmation.
