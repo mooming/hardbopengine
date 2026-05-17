@@ -1,0 +1,1080 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HardBop Engine — Renderer Implementation Design</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --border: #30363d;
+    --text: #e6edf3;
+    --text-dim: #8b949e;
+    --accent: #58a6ff;
+    --accent2: #3fb950;
+    --accent3: #d29922;
+    --accent4: #f85149;
+    --metal: #f0a030;
+    --vulkan: #ab47bc;
+    --dx12: #42a5f5;
+    --code-bg: #1c2128;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+  }
+  .container { max-width: 1000px; margin: 0 auto; padding: 2rem 1.5rem; }
+  h1 { font-size: 2.2rem; font-weight: 700; margin-bottom: 0.3rem; letter-spacing: -0.02em; }
+  h2 {
+    font-size: 1.5rem; font-weight: 600; margin: 2.5rem 0 1rem 0;
+    padding-bottom: 0.4rem; border-bottom: 1px solid var(--border);
+    color: var(--accent);
+  }
+  h3 { font-size: 1.15rem; font-weight: 600; margin: 1.5rem 0 0.6rem 0; color: var(--text); }
+  p { margin: 0.6rem 0; color: var(--text-dim); }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  .subtitle { color: var(--text-dim); font-size: 1rem; margin-bottom: 1.5rem; }
+  .meta { color: var(--text-dim); font-size: 0.85rem; display: flex; gap: 1.5rem; margin-bottom: 2rem; flex-wrap: wrap; }
+
+  /* SVG containers */
+  .fig {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+    padding: 1.5rem; margin: 1.2rem 0; overflow-x: auto;
+  }
+  .fig svg { display: block; margin: 0 auto; max-width: 100%; height: auto; }
+  .fig-caption { text-align: center; font-size: 0.85rem; color: var(--text-dim); margin-top: 0.6rem; }
+
+  /* Code blocks */
+  pre {
+    background: var(--code-bg); border: 1px solid var(--border); border-radius: 6px;
+    padding: 1rem; overflow-x: auto; font-size: 0.82rem; line-height: 1.5;
+    font-family: 'JetBrains Mono', 'SF Mono', 'Fira Code', monospace;
+  }
+  code { font-family: 'JetBrains Mono', 'SF Mono', 'Fira Code', monospace; }
+  p > code { background: var(--code-bg); padding: 0.15em 0.4em; border-radius: 3px; font-size: 0.85em; }
+
+  /* Tables */
+  table {
+    width: 100%; border-collapse: collapse; margin: 1rem 0;
+    font-size: 0.9rem;
+  }
+  th, td { padding: 0.55rem 0.75rem; text-align: left; border: 1px solid var(--border); }
+  th { background: var(--surface); color: var(--accent); font-weight: 600; }
+  td { color: var(--text-dim); }
+  tr:hover td { background: rgba(88,166,255,0.05); }
+
+  .badge {
+    display: inline-block; padding: 0.15em 0.5em; border-radius: 4px;
+    font-size: 0.75rem; font-weight: 600; letter-spacing: 0.01em;
+  }
+  .badge-metal { background: rgba(240,160,48,0.2); color: var(--metal); }
+  .badge-vulkan { background: rgba(171,71,188,0.2); color: var(--vulkan); }
+  .badge-dx12 { background: rgba(66,165,245,0.2); color: var(--dx12); }
+  .badge-done { background: rgba(63,185,80,0.2); color: var(--accent2); }
+  .badge-warn { background: rgba(210,153,34,0.2); color: var(--accent3); }
+  .badge-err { background: rgba(248,81,73,0.2); color: var(--accent4); }
+
+  .toc { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 1.2rem 1.5rem; margin: 1.5rem 0; }
+  .toc ul { list-style: none; columns: 2; column-gap: 2rem; }
+  .toc li { margin: 0.25rem 0; break-inside: avoid; }
+  .toc a { color: var(--text-dim); font-size: 0.9rem; }
+  .toc a:hover { color: var(--accent); }
+
+  .hl { color: var(--accent); }
+  .hl2 { color: var(--accent2); }
+  .hl3 { color: var(--accent3); }
+  .dim { color: var(--text-dim); }
+
+  .box {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+    padding: 1rem 1.2rem; margin: 1rem 0;
+  }
+  .box-label { font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-dim); margin-bottom: 0.3rem; }
+
+  .progress-bar { display: flex; height: 1.4rem; border-radius: 6px; overflow: hidden; margin: 0.5rem 0; font-size: 0.75rem; font-weight: 600; }
+  .progress-bar div { display: flex; align-items: center; justify-content: center; color: #fff; }
+  .p-metal { background: var(--metal); width: 100%; }
+  .p-vulkan { background: var(--vulkan); width: 10%; }
+  .p-dx12 { background: var(--dx12); width: 5%; }
+
+  @media (max-width: 700px) {
+    .toc ul { columns: 1; }
+    table { font-size: 0.8rem; }
+    pre { font-size: 0.75rem; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+<h1>HardBop Engine — Renderer Implementation Design</h1>
+<p class="subtitle">Architecture, pipeline, and implementation details of the graphics abstraction layer</p>
+<div class="meta">
+  <span>📅 May 2026</span>
+  <span>📁 <code>Engine/Renderer/</code></span>
+  <span>🔧 C++23 + Metal/Vulkan/DX12</span>
+  <span>📐 Strategy + Factory pattern</span>
+</div>
+
+<div class="toc">
+<h3 style="margin:0 0 0.5rem 0; border:none; padding:0; color:var(--text);">Contents</h3>
+<ul>
+  <li><a href="#arch">1. Architecture Overview</a></li>
+  <li><a href="#hierarchy">2. Class Hierarchy</a></li>
+  <li><a href="#factory">3. Backend Factory Strategy</a></li>
+  <li><a href="#rhi">4. RHI Capability Detection</a></li>
+  <li><a href="#pipeline">5. Rendering Pipeline</a></li>
+  <li><a href="#frame">6. Frame Lifecycle</a></li>
+  <li><a href="#deps">7. Module Dependencies</a></li>
+  <li><a href="#matrix">8. Backend Comparison</a></li>
+  <li><a href="#metal">9. Metal Deep-Dive</a></li>
+  <li><a href="#stubs">10. Vulkan &amp; DX12 Stubs</a></li>
+  <li><a href="#abstractions">11. Key Abstractions</a></li>
+  <li><a href="#memory">12. Memory Management</a></li>
+  <li><a href="#testing">13. Testing</a></li>
+  <li><a href="#roadmap">14. Roadmap</a></li>
+</ul>
+</div>
+
+<!-- ================================================================== -->
+<h2 id="arch">1. Architecture Overview</h2>
+
+<p>
+  The renderer follows a <strong>strategy + factory</strong> pattern: a single abstract interface
+  (<code>IRenderer</code>) with concrete backends selected at runtime via platform-conditional factory logic.
+  The renderer is <strong>not owned by the core <code>Engine</code> class</strong> — application code
+  creates and manages it directly, reflecting a deliberate decoupling between engine subsystems and
+  the graphics layer.
+</p>
+
+<div class="fig">
+<svg viewBox="0 0 800 500" xmlns="http://www.w3.org/2000/svg" font-family="system-ui, sans-serif">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M0,0 L10,5 L0,10 Z" fill="#58a6ff"/>
+    </marker>
+    <marker id="arrow-dim" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M0,0 L10,5 L0,10 Z" fill="#8b949e"/>
+    </marker>
+  </defs>
+
+  <!-- Background band -->
+  <rect x="0" y="0" width="800" height="500" rx="4" fill="#161b22"/>
+
+  <!-- Application row -->
+  <rect x="150" y="20" width="500" height="70" rx="8" fill="#1c2128" stroke="#30363d"/>
+  <text x="400" y="45" text-anchor="middle" fill="#e6edf3" font-size="13" font-weight="700">Application Code (VulkanExample/Main.cpp)</text>
+  <text x="400" y="65" text-anchor="middle" fill="#8b949e" font-size="11">Engine hengine;  app = CreateApplication();  window = CreateWindow();</text>
+  <text x="400" y="80" text-anchor="middle" fill="#8b949e" font-size="11">renderer = RendererFactory::Create();  renderer-&gt;Initialize(window.get());</text>
+
+  <!-- arrow down -->
+  <line x1="400" y1="90" x2="400" y2="130" stroke="#58a6ff" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- IRenderer -->
+  <rect x="225" y="130" width="350" height="50" rx="8" fill="#0d1117" stroke="#58a6ff" stroke-width="2"/>
+  <text x="400" y="152" text-anchor="middle" fill="#58a6ff" font-size="13" font-weight="700">IRenderer</text>
+  <text x="400" y="168" text-anchor="middle" fill="#8b949e" font-size="10">Engine/Renderer/IRenderer.h</text>
+
+  <!-- branches -->
+  <line x1="300" y1="180" x2="150" y2="230" stroke="#58a6ff" stroke-width="2" marker-end="url(#arrow)"/>
+  <line x1="400" y1="180" x2="400" y2="230" stroke="#58a6ff" stroke-width="2" marker-end="url(#arrow)"/>
+  <line x1="500" y1="180" x2="650" y2="230" stroke="#58a6ff" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- Metal -->
+  <rect x="80" y="230" width="150" height="50" rx="8" fill="#1c2128" stroke="#f0a030" stroke-width="2"/>
+  <text x="155" y="252" text-anchor="middle" fill="#f0a030" font-size="12" font-weight="700">MetalRenderer</text>
+  <text x="155" y="268" text-anchor="middle" fill="#8b949e" font-size="10">.mm (ObjC++)</text>
+
+  <!-- Vulkan -->
+  <rect x="325" y="230" width="150" height="50" rx="8" fill="#1c2128" stroke="#ab47bc" stroke-width="2"/>
+  <text x="400" y="252" text-anchor="middle" fill="#ab47bc" font-size="12" font-weight="700">VulkanRenderer</text>
+  <text x="400" y="268" text-anchor="middle" fill="#8b949e" font-size="10">.cpp / .mm</text>
+
+  <!-- DX12 -->
+  <rect x="575" y="230" width="150" height="50" rx="8" fill="#1c2128" stroke="#42a5f5" stroke-width="2"/>
+  <text x="650" y="252" text-anchor="middle" fill="#42a5f5" font-size="12" font-weight="700">DX12Renderer</text>
+  <text x="650" y="268" text-anchor="middle" fill="#8b949e" font-size="10">.cpp</text>
+
+  <!-- status labels -->
+  <text x="155" y="298" text-anchor="middle" fill="#3fb950" font-size="10" font-weight="600">✓ Fully functional</text>
+  <text x="400" y="298" text-anchor="middle" fill="#d29922" font-size="10" font-weight="600">⚠ Stub (CPU-only)</text>
+  <text x="650" y="298" text-anchor="middle" fill="#d29922" font-size="10" font-weight="600">⚠ Stub (CPU-only)</text>
+
+  <!-- arrow down to OSAL -->
+  <line x1="155" y1="280" x2="155" y2="340" stroke="#8b949e" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arrow-dim)"/>
+  <line x1="400" y1="280" x2="400" y2="340" stroke="#8b949e" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arrow-dim)"/>
+  <line x1="650" y1="280" x2="650" y2="340" stroke="#8b949e" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arrow-dim)"/>
+
+  <!-- OSAL IWindow -->
+  <rect x="175" y="340" width="450" height="50" rx="8" fill="#1c2128" stroke="#8b949e" stroke-width="1.5"/>
+  <text x="400" y="363" text-anchor="middle" fill="#8b949e" font-size="13" font-weight="600">OSAL :: IWindow</text>
+  <text x="400" y="379" text-anchor="middle" fill="#8b949e" font-size="10">OSXWindow | Win32Window | LinuxWindow</text>
+
+  <!-- arrow down to platform backends -->
+  <line x1="240" y1="390" x2="140" y2="440" stroke="#8b949e" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arrow-dim)"/>
+  <line x1="400" y1="390" x2="400" y2="440" stroke="#8b949e" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arrow-dim)"/>
+  <line x1="560" y1="390" x2="660" y2="440" stroke="#8b949e" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arrow-dim)"/>
+
+  <rect x="60" y="440" width="160" height="35" rx="6" fill="#0d1117" stroke="#30363d"/>
+  <text x="140" y="462" text-anchor="middle" fill="#8b949e" font-size="10">macOS :: NSWindow / CAMetalLayer</text>
+
+  <rect x="320" y="440" width="160" height="35" rx="6" fill="#0d1117" stroke="#30363d"/>
+  <text x="400" y="462" text-anchor="middle" fill="#8b949e" font-size="10">Linux :: X11 / Wayland</text>
+
+  <rect x="580" y="440" width="160" height="35" rx="6" fill="#0d1117" stroke="#30363d"/>
+  <text x="660" y="462" text-anchor="middle" fill="#8b949e" font-size="10">Windows :: HWND</text>
+</svg>
+<div class="fig-caption">Figure 1: High-level architecture — application code creates a renderer via the factory, which selects a backend based on the target platform.</div>
+</div>
+
+<!-- ================================================================== -->
+<h2 id="hierarchy">2. Class Hierarchy</h2>
+
+<div class="fig">
+<svg viewBox="0 0 800 320" xmlns="http://www.w3.org/2000/svg" font-family="system-ui, sans-serif">
+  <defs>
+    <marker id="arr-tri" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M0,0 L10,5 L0,10 Z" fill="#58a6ff"/>
+    </marker>
+    <marker id="arr-tri2" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M0,0 L10,5 L0,10 Z" fill="#8b949e"/>
+    </marker>
+  </defs>
+  <rect x="0" y="0" width="800" height="320" rx="4" fill="#161b22"/>
+
+  <!-- IRenderer -->
+  <rect x="250" y="20" width="300" height="44" rx="8" fill="#0d1117" stroke="#58a6ff" stroke-width="2"/>
+  <text x="400" y="40" text-anchor="middle" fill="#58a6ff" font-size="13" font-weight="700">hbe::Renderer::IRenderer</text>
+  <text x="400" y="55" text-anchor="middle" fill="#8b949e" font-size="10">abstract interface</text>
+
+  <line x1="350" y1="64" x2="160" y2="120" stroke="#58a6ff" stroke-width="2" marker-end="url(#arr-tri)"/>
+  <line x1="400" y1="64" x2="400" y2="120" stroke="#58a6ff" stroke-width="2" marker-end="url(#arr-tri)"/>
+  <line x1="450" y1="64" x2="640" y2="120" stroke="#58a6ff" stroke-width="2" marker-end="url(#arr-tri)"/>
+
+  <rect x="70" y="120" width="180" height="44" rx="8" fill="#1c2128" stroke="#f0a030" stroke-width="2"/>
+  <text x="160" y="140" text-anchor="middle" fill="#f0a030" font-size="12" font-weight="700">MetalRenderer</text>
+  <text x="160" y="155" text-anchor="middle" fill="#3fb950" font-size="10">final ✅</text>
+
+  <rect x="310" y="120" width="180" height="44" rx="8" fill="#1c2128" stroke="#ab47bc" stroke-width="2"/>
+  <text x="400" y="140" text-anchor="middle" fill="#ab47bc" font-size="12" font-weight="700">VulkanRenderer</text>
+  <text x="400" y="155" text-anchor="middle" fill="#d29922" font-size="10">final ⚠</text>
+
+  <rect x="550" y="120" width="180" height="44" rx="8" fill="#1c2128" stroke="#42a5f5" stroke-width="2"/>
+  <text x="640" y="140" text-anchor="middle" fill="#42a5f5" font-size="12" font-weight="700">DX12Renderer</text>
+  <text x="640" y="155" text-anchor="middle" fill="#d29922" font-size="10">final ⚠</text>
+
+  <!-- utility classes below -->
+  <rect x="70" y="210" width="220" height="36" rx="6" fill="#0d1117" stroke="#30363d"/>
+  <text x="180" y="232" text-anchor="middle" fill="#8b949e" font-size="11">RendererFactory (static)</text>
+
+  <rect x="310" y="210" width="180" height="36" rx="6" fill="#0d1117" stroke="#30363d"/>
+  <text x="400" y="232" text-anchor="middle" fill="#8b949e" font-size="11">RHICapabilities (static)</text>
+
+  <rect x="510" y="210" width="220" height="36" rx="6" fill="#0d1117" stroke="#30363d"/>
+  <text x="620" y="232" text-anchor="middle" fill="#8b949e" font-size="11">RenderCapabilities (POD)</text>
+
+  <!-- connectors from utility to interface -->
+  <line x1="180" y1="210" x2="180" y2="185" stroke="#8b949e" stroke-width="1" stroke-dasharray="3,3"/>
+  <line x1="400" y1="210" x2="400" y2="185" stroke="#8b949e" stroke-width="1" stroke-dasharray="3,3"/>
+  <line x1="620" y1="210" x2="620" y2="185" stroke="#8b949e" stroke-width="1" stroke-dasharray="3,3"/>
+
+  <text x="180" y="268" text-anchor="middle" fill="#8b949e" font-size="10">Factory ::Create() platform dispatch</text>
+  <text x="400" y="268" text-anchor="middle" fill="#8b949e" font-size="10">IsXxxSupported() lazy checks</text>
+  <text x="620" y="268" text-anchor="middle" fill="#8b949e" font-size="10">Capability value object</text>
+
+  <text x="400" y="305" text-anchor="middle" fill="#8b949e" font-size="11">OSAL :: IWindow &nbsp;&nbsp; (Window.h — platform window interface)</text>
+  <text x="400" y="318" text-anchor="middle" fill="#8b949e" font-size="10">OSXWindow | Win32Window | LinuxWindow</text>
+</svg>
+<div class="fig-caption">Figure 2: Full class hierarchy showing the IRenderer interface, three concrete backends, and supporting utility classes.</div>
+</div>
+
+<!-- ================================================================== -->
+<h2 id="factory">3. Backend Factory Strategy</h2>
+
+<div class="fig">
+<svg viewBox="0 0 800 480" xmlns="http://www.w3.org/2000/svg" font-family="system-ui, sans-serif">
+  <defs>
+    <marker id="arr3" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0,0 L10,5 L0,10 Z" fill="#58a6ff"/>
+    </marker>
+  </defs>
+  <rect x="0" y="0" width="800" height="480" rx="4" fill="#161b22"/>
+
+  <!-- entry point -->
+  <rect x="275" y="15" width="250" height="40" rx="8" fill="#1c2128" stroke="#58a6ff" stroke-width="2"/>
+  <text x="400" y="35" text-anchor="middle" fill="#58a6ff" font-size="12" font-weight="700">RendererFactory::Create(api)</text>
+  <text x="400" y="49" text-anchor="middle" fill="#8b949e" font-size="10">preferredAPI = APIType::Unknown | Vulkan | Metal | DX12</text>
+
+  <line x1="400" y1="55" x2="400" y2="85" stroke="#58a6ff" stroke-width="2" marker-end="url(#arr3)"/>
+
+  <!-- decision: Unknown? -->
+  <polygon points="400,85 455,105 400,125 345,105" fill="#0d1117" stroke="#d29922" stroke-width="1.5"/>
+  <text x="400" y="109" text-anchor="middle" fill="#d29922" font-size="10" font-weight="600">Unknown?</text>
+
+  <line x1="455" y1="105" x2="600" y2="105" stroke="#d29922" stroke-width="1.5" marker-end="url(#arr3)"/>
+  <line x1="345" y1="105" x2="200" y2="105" stroke="#3fb950" stroke-width="1.5" marker-end="url(#arr3)"/>
+
+  <text x="610" y="101" fill="#d29922" font-size="10">Yes</text>
+  <text x="180" y="101" text-anchor="end" fill="#3fb950" font-size="10">No</text>
+
+  <rect x="490" y="88" width="180" height="34" rx="6" fill="#0d1117" stroke="#d29922"/>
+  <text x="580" y="109" text-anchor="middle" fill="#d29922" font-size="10">RHICapabilities::GetPreferredAPI()</text>
+
+  <!-- platform dispatch -->
+  <rect x="250" y="150" width="300" height="34" rx="8" fill="#0d1117" stroke="#30363d"/>
+  <text x="400" y="171" text-anchor="middle" fill="#e6edf3" font-size="11">Platform-conditional instantiation</text>
+
+  <line x1="400" y1="184" x2="400" y2="215" stroke="#8b949e" stroke-width="1.5" marker-end="url(#arr3)"/>
+
+  <!-- three branches -->
+  <line x1="400" y1="215" x2="130" y2="260" stroke="#58a6ff" stroke-width="2" marker-end="url(#arr3)"/>
+  <line x1="400" y1="215" x2="400" y2="260" stroke="#58a6ff" stroke-width="2" marker-end="url(#arr3)"/>
+  <line x1="400" y1="215" x2="670" y2="260" stroke="#58a6ff" stroke-width="2" marker-end="url(#arr3)"/>
+
+  <!-- macOS -->
+  <rect x="40" y="260" width="180" height="55" rx="8" fill="#1c2128" stroke="#f0a030" stroke-width="2"/>
+  <text x="130" y="280" text-anchor="middle" fill="#f0a030" font-size="12" font-weight="700">PLATFORM_OSX</text>
+  <text x="130" y="297" text-anchor="middle" fill="#e6edf3" font-size="11">Metal (primary)</text>
+  <text x="130" y="310" text-anchor="middle" fill="#8b949e" font-size="10">Vulkan fallback if VULKAN_SDK</text>
+
+  <!-- VULKAN_SDK -->
+  <rect x="300" y="260" width="200" height="55" rx="8" fill="#1c2128" stroke="#ab47bc" stroke-width="2"/>
+  <text x="400" y="280" text-anchor="middle" fill="#ab47bc" font-size="12" font-weight="700">VULKAN_SDK</text>
+  <text x="400" y="297" text-anchor="middle" fill="#e6edf3" font-size="11">VulkanRenderer fallback</text>
+  <text x="400" y="310" text-anchor="middle" fill="#8b949e" font-size="10">Available on any platform</text>
+
+  <!-- Windows -->
+  <rect x="590" y="260" width="180" height="55" rx="8" fill="#1c2128" stroke="#42a5f5" stroke-width="2"/>
+  <text x="680" y="280" text-anchor="middle" fill="#42a5f5" font-size="12" font-weight="700">PLATFORM_WINDOWS</text>
+  <text x="680" y="297" text-anchor="middle" fill="#e6edf3" font-size="11">DX12 (primary)</text>
+  <text x="680" y="310" text-anchor="middle" fill="#8b949e" font-size="10">Vulkan fallback</text>
+
+  <!-- fall through to fallback chain -->
+  <line x1="130" y1="315" x2="130" y2="370" stroke="#8b949e" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arr3)"/>
+  <line x1="400" y1="315" x2="400" y2="370" stroke="#8b949e" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arr3)"/>
+  <line x1="680" y1="315" x2="680" y2="370" stroke="#8b949e" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arr3)"/>
+
+  <!-- merge back -->
+  <line x1="130" y1="370" x2="300" y2="420" stroke="#8b949e" stroke-width="1.5"/>
+  <line x1="680" y1="370" x2="500" y2="420" stroke="#8b949e" stroke-width="1.5"/>
+  <line x1="400" y1="370" x2="400" y2="420" stroke="#8b949e" stroke-width="1.5"/>
+
+  <!-- fallback chain -->
+  <rect x="250" y="410" width="300" height="40" rx="8" fill="#0d1117" stroke="#3fb950" stroke-width="1.5"/>
+  <text x="400" y="430" text-anchor="middle" fill="#3fb950" font-size="11" font-weight="600">Fallback Chain: Metal → Vulkan → DX12</text>
+  <text x="400" y="445" text-anchor="middle" fill="#8b949e" font-size="10">Last resort: std::cerr + nullptr</text>
+</svg>
+<div class="fig-caption">Figure 3: Factory selection flow with platform dispatch and fallback chain.</div>
+</div>
+
+<!-- ================================================================== -->
+<h2 id="rhi">4. RHI Capability Detection</h2>
+
+<p>
+  <code>RHICapabilities</code> is a purely static utility class with lazy-evaluated, one-time platform checks.
+  Each support check is memoized after the first invocation.
+</p>
+
+<div class="fig">
+<svg viewBox="0 0 800 310" xmlns="http://www.w3.org/2000/svg" font-family="system-ui, sans-serif">
+  <rect x="0" y="0" width="800" height="310" rx="4" fill="#161b22"/>
+
+  <!-- RHICapabilities box -->
+  <rect x="30" y="15" width="340" height="280" rx="8" fill="#1c2128" stroke="#58a6ff" stroke-width="1.5"/>
+  <text x="200" y="38" text-anchor="middle" fill="#58a6ff" font-size="13" font-weight="700">RHICapabilities</text>
+  <text x="200" y="54" text-anchor="middle" fill="#8b949e" font-size="10">static utility, Engine/Renderer/RHICapabilities.h/.cpp</text>
+
+  <!-- static state -->
+  <rect x="50" y="65" width="300" height="70" rx="6" fill="#0d1117" stroke="#30363d"/>
+  <text x="200" y="83" text-anchor="middle" fill="#d29922" font-size="11" font-weight="600">Static State (memoized)</text>
+  <text x="200" y="100" text-anchor="middle" fill="#8b949e" font-size="10">vulkanChecked / metalChecked / dx12Checked : bool</text>
+  <text x="200" y="115" text-anchor="middle" fill="#8b949e" font-size="10">vulkanSupported / metalSupported / dx12Supported : bool</text>
+  <text x="200" y="130" text-anchor="middle" fill="#8b949e" font-size="10">All initialized to false</text>
+
+  <!-- check methods -->
+  <rect x="50" y="145" width="300" height="90" rx="6" fill="#0d1117" stroke="#30363d"/>
+  <text x="200" y="163" text-anchor="middle" fill="#e6edf3" font-size="11" font-weight="600">Check Methods</text>
+  <text x="200" y="182" text-anchor="middle" fill="#f0a030" font-size="10">CheckMetalSupport   → #if PLATFORM_OSX</text>
+  <text x="200" y="198" text-anchor="middle" fill="#ab47bc" font-size="10">CheckVulkanSupport  → #if VULKAN_SDK</text>
+  <text x="200" y="214" text-anchor="middle" fill="#42a5f5" font-size="10">CheckDX12Support    → #if defined(PLATFORM_WINDOWS)</text>
+
+  <!-- public API -->
+  <rect x="50" y="245" width="300" height="40" rx="6" fill="#0d1117" stroke="#3fb950"/>
+  <text x="200" y="263" text-anchor="middle" fill="#3fb950" font-size="11" font-weight="600">Public API</text>
+  <text x="200" y="279" text-anchor="middle" fill="#8b949e" font-size="10">IsXxxSupported() | GetPreferredAPI() | GetCapabilities()</text>
+
+  <!-- Capabilities object -->
+  <rect x="430" y="15" width="340" height="280" rx="8" fill="#1c2128" stroke="#3fb950" stroke-width="1.5"/>
+  <text x="600" y="38" text-anchor="middle" fill="#3fb950" font-size="13" font-weight="700">GetCapabilities(APIType)</text>
+  <text x="600" y="54" text-anchor="middle" fill="#8b949e" font-size="10">Returns per-API RenderCapabilities</text>
+
+  <rect x="450" y="70" width="300" height="40" rx="6" fill="#0d1117" stroke="#f0a030"/>
+  <text x="600" y="88" text-anchor="middle" fill="#f0a030" font-size="12" font-weight="700">Metal</text>
+  <text x="600" y="103" text-anchor="middle" fill="#8b949e" font-size="10">compute ✓  tess ✗  maxTex 4096  attribs 31</text>
+
+  <rect x="450" y="120" width="300" height="40" rx="6" fill="#0d1117" stroke="#ab47bc"/>
+  <text x="600" y="138" text-anchor="middle" fill="#ab47bc" font-size="12" font-weight="700">Vulkan</text>
+  <text x="600" y="153" text-anchor="middle" fill="#8b949e" font-size="10">compute ✓  tess ✗  maxTex 4096  attribs 16</text>
+
+  <rect x="450" y="170" width="300" height="40" rx="6" fill="#0d1117" stroke="#42a5f5"/>
+  <text x="600" y="188" text-anchor="middle" fill="#42a5f5" font-size="12" font-weight="700">DX12</text>
+  <text x="600" y="203" text-anchor="middle" fill="#8b949e" font-size="10">compute ✓  tess ✓  maxTex 16384  attribs 32</text>
+
+  <!-- GetPreferredAPI -->
+  <rect x="450" y="225" width="300" height="55" rx="6" fill="#0d1117" stroke="#d29922"/>
+  <text x="600" y="245" text-anchor="middle" fill="#d29922" font-size="12" font-weight="700">GetPreferredAPI()</text>
+  <text x="600" y="262" text-anchor="middle" fill="#8b949e" font-size="10">macOS → Metal,  VULKAN_SDK → Vulkan,  Windows → DX12</text>
+  <text x="600" y="275" text-anchor="middle" fill="#8b949e" font-size="10">Last resort: Vulkan (if SDK) else Unknown</text>
+</svg>
+<div class="fig-caption">Figure 4: RHICapabilities structure — static checks, lazy memoization, and per-API capability reporting.</div>
+</div>
+
+<!-- ================================================================== -->
+<h2 id="pipeline">5. Rendering Pipeline</h2>
+
+<p>
+  The pipeline is intentionally simple — a single pass rendering a rotating quad with per-frame CPU vertex
+  transformation. This demonstrates the frame lifecycle without complex resource management.
+</p>
+
+<div class="fig">
+<svg viewBox="0 0 800 560" xmlns="http://www.w3.org/2000/svg" font-family="system-ui, sans-serif">
+  <defs>
+    <marker id="arr5" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0,0 L10,5 L0,10 Z" fill="#58a6ff"/>
+    </marker>
+  </defs>
+  <rect x="0" y="0" width="800" height="560" rx="4" fill="#161b22"/>
+
+  <!-- BeginFrame -->
+  <rect x="250" y="15" width="300" height="36" rx="8" fill="#0d1117" stroke="#58a6ff" stroke-width="1.5"/>
+  <text x="400" y="37" text-anchor="middle" fill="#58a6ff" font-size="12" font-weight="700">BeginFrame()</text>
+  <text x="400" y="49" text-anchor="middle" fill="#8b949e" font-size="10">(no-op in all backends currently)</text>
+  <line x1="400" y1="51" x2="400" y2="75" stroke="#58a6ff" stroke-width="1.5" marker-end="url(#arr5)"/>
+
+  <!-- Render -->
+  <rect x="50" y="75" width="700" height="200" rx="8" fill="#1c2128" stroke="#d29922" stroke-width="1.5"/>
+  <text x="400" y="97" text-anchor="middle" fill="#d29922" font-size="12" font-weight="700">Render(deltaTime)</text>
+
+  <!-- sub-steps in Render -->
+  <rect x="75" y="110" width="310" height="40" rx="6" fill="#0d1117" stroke="#30363d"/>
+  <text x="230" y="127" text-anchor="middle" fill="#e6edf3" font-size="11">Update rotation angle</text>
+  <text x="230" y="142" text-anchor="middle" fill="#8b949e" font-size="10">angle += deltaTime × 90°, wrap at 360°</text>
+  <line x1="230" y1="150" x2="230" y2="165" stroke="#8b949e" stroke-width="1" marker-end="url(#arr5)"/>
+
+  <rect x="75" y="165" width="310" height="40" rx="6" fill="#0d1117" stroke="#30363d"/>
+  <text x="230" y="182" text-anchor="middle" fill="#e6edf3" font-size="11">Compute rotated vertex positions</text>
+  <text x="230" y="197" text-anchor="middle" fill="#8b949e" font-size="10">2D rotation matrix: [x'] = R(θ)[x]</text>
+  <line x1="230" y1="205" x2="230" y2="220" stroke="#8b949e" stroke-width="1" marker-end="url(#arr5)"/>
+
+  <rect x="75" y="220" width="310" height="40" rx="6" fill="#0d1117" stroke="#30363d"/>
+  <text x="230" y="237" text-anchor="middle" fill="#e6edf3" font-size="11">Release old MTLBuffer / create new</text>
+  <text x="230" y="252" text-anchor="middle" fill="#8b949e" font-size="10">CFBridgingRelease + newBufferWithBytes</text>
+
+  <!-- right column: vertex layout -->
+  <rect x="430" y="110" width="295" height="150" rx="6" fill="#0d1117" stroke="#f0a030"/>
+  <text x="577" y="130" text-anchor="middle" fill="#f0a030" font-size="11" font-weight="600">Quad Vertex Layout (6 vertices)</text>
+  <text x="577" y="148" text-anchor="middle" fill="#8b949e" font-size="9">Interleaved: [x, y, r, g, b, a] × 6</text>
+
+  <text x="445" y="168" fill="#f85149" font-size="9">v0: (-0.5,-0.5)  red    (1,0,0,1)</text>
+  <text x="445" y="183" fill="#3fb950" font-size="9">v1: ( 0.5,-0.5)  green  (0,1,0,1)</text>
+  <text x="445" y="198" fill="#58a6ff" font-size="9">v2: ( 0.5, 0.5)  blue   (0,0,1,1)</text>
+  <text x="445" y="213" fill="#f85149" font-size="9">v3: (-0.5,-0.5)  red    (1,0,0,1)</text>
+  <text x="445" y="228" fill="#58a6ff" font-size="9">v4: ( 0.5, 0.5)  blue   (0,0,1,1)</text>
+  <text x="445" y="243" fill="#e6edf3" font-size="9">v5: (-0.5, 0.5)  white  (1,1,1,1)</text>
+  <text x="577" y="258" text-anchor="middle" fill="#8b949e" font-size="9">2 triangles forming a quad</text>
+
+  <line x1="400" y1="275" x2="400" y2="310" stroke="#58a6ff" stroke-width="1.5" marker-end="url(#arr5)"/>
+
+  <!-- EndFrame -->
+  <rect x="50" y="310" width="700" height="230" rx="8" fill="#1c2128" stroke="#58a6ff" stroke-width="1.5"/>
+  <text x="400" y="332" text-anchor="middle" fill="#58a6ff" font-size="12" font-weight="700">EndFrame() — Metal Backend</text>
+
+  <rect x="75" y="345" width="310" height="30" rx="6" fill="#0d1117" stroke="#30363d"/>
+  <text x="230" y="364" text-anchor="middle" fill="#e6edf3" font-size="10">[metalLayer nextDrawable]</text>
+
+  <rect x="75" y="382" width="310" height="30" rx="6" fill="#0d1117" stroke="#30363d"/>
+  <text x="230" y="401" text-anchor="middle" fill="#e6edf3" font-size="10">[commandQueue commandBuffer]</text>
+
+  <rect x="75" y="419" width="310" height="30" rx="6" fill="#0d1117" stroke="#30363d"/>
+  <text x="230" y="438" text-anchor="middle" fill="#e6edf3" font-size="10">MTLRenderPassDescriptor (clear)</text>
+
+  <rect x="75" y="456" width="310" height="30" rx="6" fill="#0d1117" stroke="#30363d"/>
+  <text x="230" y="475" text-anchor="middle" fill="#e6edf3" font-size="10">MTLRenderCommandEncoder</text>
+
+  <rect x="75" y="493" width="310" height="30" rx="6" fill="#0d1117" stroke="#30363d"/>
+  <text x="230" y="512" text-anchor="middle" fill="#e6edf3" font-size="10">present + commit + waitUntilCompleted</text>
+
+  <!-- right: encoder details -->
+  <rect x="430" y="345" width="295" height="180" rx="6" fill="#0d1117" stroke="#f0a030"/>
+  <text x="577" y="365" text-anchor="middle" fill="#f0a030" font-size="11" font-weight="600">Encoder Commands</text>
+
+  <text x="445" y="388" fill="#8b949e" font-size="10">1. setRenderPipelineState(pipeline)</text>
+  <text x="445" y="406" fill="#8b949e" font-size="10">2. setVertexBuffer(vertexBuf, 0)</text>
+  <text x="445" y="424" fill="#8b949e" font-size="10">3. drawPrimitives(Triangle, 0, 6)</text>
+  <text x="445" y="442" fill="#8b949e" font-size="10">4. endEncoding</text>
+  <text x="445" y="468" fill="#8b949e" font-size="10">Clear: (0.1, 0.1, 0.15, 1.0)</text>
+  <text x="445" y="486" fill="#8b949e" font-size="10">Format: MTLPixelFormatBGRA8Unorm</text>
+  <text x="445" y="504" fill="#8b949e" font-size="10">Sync: CPU blocks until GPU done</text>
+</svg>
+<div class="fig-caption">Figure 5: Per-frame rendering pipeline flow showing the Render() and EndFrame() stages.</div>
+</div>
+
+<!-- ================================================================== -->
+<h2 id="frame">6. Frame Lifecycle</h2>
+
+<div class="fig">
+<svg viewBox="0 0 800 260" xmlns="http://www.w3.org/2000/svg" font-family="system-ui, sans-serif">
+  <rect x="0" y="0" width="800" height="260" rx="4" fill="#161b22"/>
+
+  <!-- timeline -->
+  <line x1="50" y1="220" x2="770" y2="220" stroke="#30363d" stroke-width="2"/>
+  <text x="50" y="245" fill="#8b949e" font-size="10">Frame N</text>
+  <text x="290" y="245" fill="#8b949e" font-size="10">Frame N+1</text>
+  <text x="530" y="245" fill="#8b949e" font-size="10">Frame N+2</text>
+  <text x="770" y="245" fill="#8b949e" font-size="10">→ time</text>
+
+  <!-- CPU activity bars -->
+  <rect x="50" y="30" width="210" height="28" rx="4" fill="#0d1117" stroke="#58a6ff"/>
+  <text x="155" y="49" text-anchor="middle" fill="#58a6ff" font-size="10">CPU: PollEvents</text>
+
+  <rect x="50" y="68" width="210" height="28" rx="4" fill="#0d1117" stroke="#f0a030"/>
+  <text x="155" y="87" text-anchor="middle" fill="#f0a030" font-size="10">CPU: BeginFrame (no-op)</text>
+
+  <rect x="50" y="106" width="210" height="28" rx="4" fill="#0d1117" stroke="#d29922"/>
+  <text x="155" y="125" text-anchor="middle" fill="#d29922" font-size="10">CPU: Render (rotate + upload)</text>
+
+  <rect x="50" y="144" width="80" height="28" rx="4" fill="#0d1117" stroke="#58a6ff"/>
+  <text x="90" y="163" text-anchor="middle" fill="#58a6ff" font-size="10">CPU submit</text>
+
+  <rect x="50" y="182" width="210" height="28" rx="4" fill="#0d1117" stroke="#8b949e"/>
+  <text x="155" y="201" text-anchor="middle" fill="#8b949e" font-size="10">sleep(16ms) — frame cap</text>
+
+  <!-- GPU activity -->
+  <rect x="135" y="144" width="125" height="28" rx="4" fill="#2d1d10" stroke="#f0a030"/>
+  <text x="197" y="163" text-anchor="middle" fill="#f0a030" font-size="10">GPU: draw + present</text>
+
+  <!-- cpu blocked marker -->
+  <rect x="135" y="144" width="4" height="28" rx="2" fill="#f85149" opacity="0.6"/>
+  <text x="145" y="140" fill="#f85149" font-size="8" font-weight="600">CPU blocked</text>
+
+  <!-- frame N+1 -->
+  <rect x="290" y="30" width="210" height="28" rx="4" fill="#0d1117" stroke="#58a6ff"/>
+  <text x="395" y="49" text-anchor="middle" fill="#58a6ff" font-size="10">PollEvents</text>
+
+  <rect x="290" y="68" width="210" height="28" rx="4" fill="#0d1117" stroke="#f0a030"/>
+  <text x="395" y="87" text-anchor="middle" fill="#f0a030" font-size="10">BeginFrame</text>
+
+  <rect x="290" y="106" width="210" height="28" rx="4" fill="#0d1117" stroke="#d29922"/>
+  <text x="395" y="125" text-anchor="middle" fill="#d29922" font-size="10">Render</text>
+
+  <rect x="290" y="144" width="80" height="28" rx="4" fill="#0d1117" stroke="#58a6ff"/>
+  <text x="330" y="163" text-anchor="middle" fill="#58a6ff" font-size="10">submit</text>
+
+  <rect x="290" y="182" width="210" height="28" rx="4" fill="#0d1117" stroke="#8b949e"/>
+  <text x="395" y="201" text-anchor="middle" fill="#8b949e" font-size="10">sleep(16ms)</text>
+
+  <rect x="375" y="144" width="125" height="28" rx="4" fill="#2d1d10" stroke="#f0a030"/>
+  <text x="437" y="163" text-anchor="middle" fill="#f0a030" font-size="10">GPU: draw + present</text>
+  <rect x="375" y="144" width="4" height="28" rx="2" fill="#f85149" opacity="0.6"/>
+
+  <!-- frame N+2 -->
+  <rect x="530" y="30" width="210" height="28" rx="4" fill="#0d1117" stroke="#58a6ff"/>
+  <text x="635" y="49" text-anchor="middle" fill="#58a6ff" font-size="10">PollEvents</text>
+
+  <rect x="530" y="68" width="210" height="28" rx="4" fill="#0d1117" stroke="#f0a030"/>
+  <text x="635" y="87" text-anchor="middle" fill="#f0a030" font-size="10">BeginFrame</text>
+
+  <rect x="530" y="106" width="210" height="28" rx="4" fill="#0d1117" stroke="#d29922"/>
+  <text x="635" y="125" text-anchor="middle" fill="#d29922" font-size="10">Render</text>
+
+  <rect x="530" y="144" width="80" height="28" rx="4" fill="#0d1117" stroke="#58a6ff"/>
+  <text x="570" y="163" text-anchor="middle" fill="#58a6ff" font-size="10">submit</text>
+
+  <rect x="530" y="182" width="210" height="28" rx="4" fill="#0d1117" stroke="#8b949e"/>
+  <text x="635" y="201" text-anchor="middle" fill="#8b949e" font-size="10">sleep(16ms)</text>
+
+  <rect x="615" y="144" width="125" height="28" rx="4" fill="#2d1d10" stroke="#f0a030"/>
+  <text x="677" y="163" text-anchor="middle" fill="#f0a030" font-size="10">GPU: draw + present</text>
+  <rect x="615" y="144" width="4" height="28" rx="2" fill="#f85149" opacity="0.6"/>
+
+  <!-- labels -->
+  <text x="400" y="15" text-anchor="middle" fill="#8b949e" font-size="11">Per-frame timeline (3 frames shown — note CPU blocks on waitUntilCompleted)</text>
+</svg>
+<div class="fig-caption">Figure 6: Frame timeline — CPU submits work, blocks on GPU completion, then sleeps to maintain ~60 FPS.</div>
+</div>
+
+<!-- ================================================================== -->
+<h2 id="deps">7. Module Dependencies</h2>
+
+<div class="fig">
+<svg viewBox="0 0 800 340" xmlns="http://www.w3.org/2000/svg" font-family="system-ui, sans-serif">
+  <defs>
+    <marker id="arr-dep" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0,0 L10,5 L0,10 Z" fill="#58a6ff"/>
+    </marker>
+  </defs>
+  <rect x="0" y="0" width="800" height="340" rx="4" fill="#161b22"/>
+
+  <!-- Engine -->
+  <rect x="275" y="15" width="250" height="45" rx="8" fill="#1c2128" stroke="#58a6ff" stroke-width="2"/>
+  <text x="400" y="35" text-anchor="middle" fill="#58a6ff" font-size="13" font-weight="700">Engine (core)</text>
+  <text x="400" y="51" text-anchor="middle" fill="#8b949e" font-size="10">Engine.h — TaskSystem, MemoryManager, Logger</text>
+
+  <line x1="400" y1="60" x2="400" y2="90" stroke="#8b949e" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arr-dep)"/>
+  <text x="410" y="78" fill="#8b949e" font-size="9">(no direct dependency — app-managed)</text>
+
+  <!-- Renderer -->
+  <rect x="275" y="90" width="250" height="45" rx="8" fill="#1c2128" stroke="#d29922" stroke-width="2"/>
+  <text x="400" y="110" text-anchor="middle" fill="#d29922" font-size="13" font-weight="700">Renderer (static lib)</text>
+  <text x="400" y="126" text-anchor="middle" fill="#8b949e" font-size="10">Engine/Renderer/CMakeLists.txt</text>
+
+  <!-- dependencies: down arrows -->
+  <line x1="310" y1="135" x2="120" y2="180" stroke="#58a6ff" stroke-width="1.5" marker-end="url(#arr-dep)"/>
+  <line x1="360" y1="135" x2="260" y2="180" stroke="#58a6ff" stroke-width="1.5" marker-end="url(#arr-dep)"/>
+  <line x1="400" y1="135" x2="400" y2="180" stroke="#58a6ff" stroke-width="1.5" marker-end="url(#arr-dep)"/>
+  <line x1="440" y1="135" x2="540" y2="180" stroke="#58a6ff" stroke-width="1.5" marker-end="url(#arr-dep)"/>
+  <line x1="490" y1="135" x2="680" y2="180" stroke="#58a6ff" stroke-width="1.5" marker-end="url(#arr-dep)"/>
+
+  <rect x="40" y="180" width="160" height="40" rx="6" fill="#0d1117" stroke="#30363d"/>
+  <text x="120" y="200" text-anchor="middle" fill="#8b949e" font-size="11">Config (BuildConfig)</text>
+  <text x="120" y="214" text-anchor="middle" fill="#8b949e" font-size="9">platform defines, VULKAN_SDK</text>
+
+  <rect x="190" y="180" width="135" height="40" rx="6" fill="#0d1117" stroke="#30363d"/>
+  <text x="257" y="200" text-anchor="middle" fill="#8b949e" font-size="11">HSTL (HString)</text>
+  <text x="257" y="214" text-anchor="middle" fill="#8b949e" font-size="9">string type</text>
+
+  <rect x="335" y="180" width="130" height="40" rx="6" fill="#0d1117" stroke="#30363d"/>
+  <text x="400" y="200" text-anchor="middle" fill="#8b949e" font-size="11">Math (Vec3, Vec4)</text>
+  <text x="400" y="214" text-anchor="middle" fill="#8b949e" font-size="9">Vertex position/color</text>
+
+  <rect x="480" y="180" width="130" height="40" rx="6" fill="#0d1117" stroke="#30363d"/>
+  <text x="545" y="200" text-anchor="middle" fill="#8b949e" font-size="11">OSAL (IWindow)</text>
+  <text x="545" y="214" text-anchor="middle" fill="#8b949e" font-size="9">platform window</text>
+
+  <rect x="620" y="180" width="140" height="40" rx="6" fill="#0d1117" stroke="#30363d"/>
+  <text x="690" y="200" text-anchor="middle" fill="#8b949e" font-size="11">Memory (&lt;memory&gt;)</text>
+  <text x="690" y="214" text-anchor="middle" fill="#8b949e" font-size="9">unique_ptr</text>
+
+  <!-- Applications that link Renderer -->
+  <rect x="150" y="265" width="220" height="40" rx="6" fill="#0d1117" stroke="#3fb950"/>
+  <text x="260" y="285" text-anchor="middle" fill="#3fb950" font-size="12" font-weight="600">VulkanExample</text>
+  <text x="260" y="299" text-anchor="middle" fill="#8b949e" font-size="10">Usage demo: rotating quad</text>
+
+  <rect x="430" y="265" width="220" height="40" rx="6" fill="#0d1117" stroke="#3fb950"/>
+  <text x="540" y="285" text-anchor="middle" fill="#3fb950" font-size="12" font-weight="600">EngineTest</text>
+  <text x="540" y="299" text-anchor="middle" fill="#8b949e" font-size="10">RHICapabilitiesTest (registered)</text>
+
+  <line x1="260" y1="265" x2="260" y2="230" stroke="#8b949e" stroke-width="1" stroke-dasharray="3,3"/>
+  <line x1="540" y1="265" x2="540" y2="230" stroke="#8b949e" stroke-width="1" stroke-dasharray="3,3"/>
+</svg>
+<div class="fig-caption">Figure 7: Module dependency graph showing Renderer's dependencies and the applications that consume it.</div>
+</div>
+
+<!-- ================================================================== -->
+<h2 id="matrix">8. Backend Comparison Matrix</h2>
+
+<div class="box">
+<div class="box-label">Implementation Progress</div>
+<div class="progress-bar">
+  <div class="p-metal">Metal 100%</div>
+  <div class="p-vulkan">Vulkan 10%</div>
+  <div class="p-dx12">DX12 5%</div>
+</div>
+</div>
+
+<table>
+  <thead>
+    <tr>
+      <th>Aspect</th>
+      <th><span class="badge badge-metal">Metal</span></th>
+      <th><span class="badge badge-vulkan">Vulkan</span></th>
+      <th><span class="badge badge-dx12">DX12</span></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td><strong>Status</strong></td><td><span class="badge badge-done">✓ Fully functional</span></td><td><span class="badge badge-warn">⚠ Stub (CPU-only)</span></td><td><span class="badge badge-warn">⚠ Stub (CPU-only)</span></td></tr>
+    <tr><td><strong>Source</strong></td><td>Objective-C++ (.mm)</td><td>C++ (.cpp) + ObjC++ (.mm)</td><td>C++ (.cpp)</td></tr>
+    <tr><td><strong>Device</strong></td><td>MTLCreateSystemDefaultDevice</td><td>Not implemented</td><td>Not implemented</td></tr>
+    <tr><td><strong>Cmd Queue</strong></td><td>[device newCommandQueue]</td><td>Stub storage</td><td>Stub storage</td></tr>
+    <tr><td><strong>Surface</strong></td><td>CAMetalLayer on NSView</td><td>vkCreateMetalSurfaceEXT (macOS)</td><td>HWND-based (not done)</td></tr>
+    <tr><td><strong>Shaders</strong></td><td>Inline string + Shaders.metal</td><td>N/A</td><td>N/A</td></tr>
+    <tr><td><strong>Pipeline</strong></td><td>MTLRenderPipelineState</td><td>No PSO</td><td>No PSO</td></tr>
+    <tr><td><strong>Vertex Data</strong></td><td>MTLBuffer (GPU-resident)</td><td>QuadVertex[6] (CPU only)</td><td>QuadVertex[6] (CPU only)</td></tr>
+    <tr><td><strong>Clear Color</strong></td><td>(0.1, 0.1, 0.15, 1.0)</td><td>N/A</td><td>N/A</td></tr>
+    <tr><td><strong>Sync</strong></td><td>waitUntilCompleted (blocking)</td><td>N/A</td><td>N/A</td></tr>
+    <tr><td><strong>Vertex Format</strong></td><td>QuadVertex{x,y,r,g,b,a}</td><td>QuadVertex{x,y,r,g,b,a}</td><td>DX12Vertex{x,y,r,g,b,a}</td></tr>
+    <tr><td><strong>Rotation</strong></td><td>CPU → new MTLBuffer each frame</td><td>CPU array update only</td><td>CPU array update only</td></tr>
+    <tr><td><strong>Backbuffer</strong></td><td>Auto via CAMetalLayer</td><td>N/A</td><td>N/A</td></tr>
+  </tbody>
+</table>
+
+<!-- ================================================================== -->
+<h2 id="metal">9. Metal Backend Deep-Dive</h2>
+
+<h3>Resource Handles (Opaque)</h3>
+<p>All GPU resources are stored as <code>intptr_t</code> to avoid leaking Objective-C types into the C++ header:</p>
+
+<pre>class MetalRenderer : public IRenderer {
+    intptr_t device;          // id&lt;MTLDevice&gt;
+    intptr_t commandQueue;    // id&lt;MTLCommandQueue&gt;
+    intptr_t pipelineState;   // id&lt;MTLRenderPipelineState&gt;
+    intptr_t vertexBuffer;    // id&lt;MTLBuffer&gt;
+    intptr_t metalLayer;      // CAMetalLayer*
+};</pre>
+
+<h3>Initialization Sequence</h3>
+<div class="fig">
+<svg viewBox="0 0 800 360" xmlns="http://www.w3.org/2000/svg" font-family="system-ui, sans-serif">
+  <defs>
+    <marker id="arr-init" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0,0 L10,5 L0,10 Z" fill="#58a6ff"/>
+    </marker>
+  </defs>
+  <rect x="0" y="0" width="800" height="360" rx="4" fill="#161b22"/>
+
+  <rect x="50" y="15" width="700" height="40" rx="8" fill="#0d1117" stroke="#58a6ff"/>
+  <text x="400" y="35" text-anchor="middle" fill="#58a6ff" font-size="12" font-weight="700">MetalRenderer::Initialize(OS::IWindow* window)</text>
+  <text x="400" y="50" text-anchor="middle" fill="#8b949e" font-size="9">window-&gt;GetNativeHandle() → NSWindow* → contentView</text>
+
+  <line x1="400" y1="55" x2="400" y2="75" stroke="#58a6ff" stroke-width="1.5" marker-end="url(#arr-init)"/>
+
+  <!-- step 1 -->
+  <rect x="50" y="75" width="700" height="36" rx="6" fill="#1c2128" stroke="#30363d"/>
+  <text x="70" y="96" fill="#f0a030" font-size="12" font-weight="700">1.</text>
+  <text x="90" y="96" fill="#e6edf3" font-size="11">MTLCreateSystemDefaultDevice()</text>
+  <text x="500" y="96" fill="#8b949e" font-size="10">→ store as intptr_t via CFBridgingRetain</text>
+  <line x1="400" y1="111" x2="400" y2="120" stroke="#58a6ff" stroke-width="1.5" marker-end="url(#arr-init)"/>
+
+  <!-- step 2 -->
+  <rect x="50" y="120" width="700" height="36" rx="6" fill="#1c2128" stroke="#30363d"/>
+  <text x="70" y="141" fill="#f0a030" font-size="12" font-weight="700">2.</text>
+  <text x="90" y="141" fill="#e6edf3" font-size="11">[device newCommandQueue]</text>
+  <text x="500" y="141" fill="#8b949e" font-size="10">→ MTLCommandQueue</text>
+  <line x1="400" y1="156" x2="400" y2="165" stroke="#58a6ff" stroke-width="1.5" marker-end="url(#arr-init)"/>
+
+  <!-- step 3 -->
+  <rect x="50" y="165" width="700" height="36" rx="6" fill="#1c2128" stroke="#30363d"/>
+  <text x="70" y="186" fill="#f0a030" font-size="12" font-weight="700">3.</text>
+  <text x="90" y="186" fill="#e6edf3" font-size="11">Create CAMetalLayer → set as contentView.layer</text>
+  <text x="500" y="186" fill="#8b949e" font-size="10">BGRA8Unorm, drawableSize=window dims</text>
+  <line x1="400" y1="201" x2="400" y2="210" stroke="#58a6ff" stroke-width="1.5" marker-end="url(#arr-init)"/>
+
+  <!-- step 4 -->
+  <rect x="50" y="210" width="700" height="36" rx="6" fill="#1c2128" stroke="#30363d"/>
+  <text x="70" y="231" fill="#f0a030" font-size="12" font-weight="700">4.</text>
+  <text x="90" y="231" fill="#e6edf3" font-size="11">Compile shaders: newLibraryWithSource (inline Metal string)</text>
+  <text x="500" y="231" fill="#8b949e" font-size="10">vertexShader + fragmentShader</text>
+  <line x1="400" y1="246" x2="400" y2="255" stroke="#58a6ff" stroke-width="1.5" marker-end="url(#arr-init)"/>
+
+  <!-- step 5 -->
+  <rect x="50" y="255" width="700" height="36" rx="6" fill="#1c2128" stroke="#30363d"/>
+  <text x="70" y="276" fill="#f0a030" font-size="12" font-weight="700">5.</text>
+  <text x="90" y="276" fill="#e6edf3" font-size="11">Create MTLRenderPipelineDescriptor → newRenderPipelineState</text>
+  <text x="500" y="276" fill="#8b949e" font-size="10">Attach vertex/fragment, pixelFormat=BGRA8Unorm</text>
+  <line x1="400" y1="291" x2="400" y2="300" stroke="#58a6ff" stroke-width="1.5" marker-end="url(#arr-init)"/>
+
+  <!-- step 6 -->
+  <rect x="50" y="300" width="700" height="36" rx="6" fill="#1c2128" stroke="#3fb950"/>
+  <text x="70" y="321" fill="#3fb950" font-size="12" font-weight="700">6.</text>
+  <text x="90" y="321" fill="#e6edf3" font-size="11">Create initial MTLBuffer: 6 vertices × QuadVertex</text>
+  <text x="500" y="321" fill="#8b949e" font-size="10">initialized = true</text>
+</svg>
+<div class="fig-caption">Figure 8: Metal initialization sequence — 6 steps from device creation to initial vertex buffer.</div>
+</div>
+
+<h3>EndFrame GPU Work</h3>
+<pre>MetalRenderer::EndFrame()
+  1. [metalLayer nextDrawable]                    // get backbuffer texture
+  2. [commandQueue commandBuffer]                 // create command buffer
+  3. MTLRenderPassDescriptor:
+       colorAttachment[0].texture = drawable.texture
+       loadAction = Clear (.storeAction = Store)
+       clearColor = (0.1, 0.1, 0.15, 1.0)
+  4. [commandBuffer renderCommandEncoderWithDescriptor]
+       setRenderPipelineState
+       setVertexBuffer (offset:0, index:0)
+       drawPrimitives (triangle, 0, 6)
+       endEncoding
+  5. [commandBuffer presentDrawable] + commit
+  6. [commandBuffer waitUntilCompleted]           // ← CPU blocks</pre>
+
+<h3>Rotation Shader (compiled at runtime)</h3>
+<pre>// Inline Metal shader — vertex + fragment
+vertex VertexOut vertexShader(uint vertexID [[vertex_id]],
+                     constant float *vertices [[buffer(0)]]) {
+    VertexOut out;
+    float2 pos = float2(vertices[vertexID*6], vertices[vertexID*6+1]);
+    out.position = float4(pos, 0.0, 1.0);
+    out.color = float4(vertices[vertexID*6+2], vertices[vertexID*6+3],
+                       vertices[vertexID*6+4], vertices[vertexID*6+5]);
+    return out;
+}
+fragment float4 fragmentShader(VertexOut in [[stage_in]]) {
+    return in.color;
+}</pre>
+
+<!-- ================================================================== -->
+<h2 id="stubs">10. Vulkan &amp; DX12 Stubs</h2>
+
+<div class="fig">
+<svg viewBox="0 0 800 260" xmlns="http://www.w3.org/2000/svg" font-family="system-ui, sans-serif">
+  <rect x="0" y="0" width="800" height="260" rx="4" fill="#161b22"/>
+
+  <!-- Vulkan side -->
+  <rect x="30" y="15" width="360" height="230" rx="8" fill="#1c2128" stroke="#ab47bc" stroke-width="1.5"/>
+  <text x="210" y="38" text-anchor="middle" fill="#ab47bc" font-size="14" font-weight="700">VulkanRenderer (stub)</text>
+
+  <rect x="50" y="55" width="320" height="40" rx="6" fill="#0d1117" stroke="#30363d"/>
+  <text x="210" y="73" text-anchor="middle" fill="#e6edf3" font-size="11">!initialized → true</text>
+  <text x="210" y="88" text-anchor="middle" fill="#8b949e" font-size="10">Always succeeds, no Vulkan API calls</text>
+
+  <rect x="50" y="105" width="320" height="40" rx="6" fill="#0d1117" stroke="#30363d"/>
+  <text x="210" y="123" text-anchor="middle" fill="#e6edf3" font-size="11">Render(dt): CPU rotation → vertices[6]</text>
+  <text x="210" y="138" text-anchor="middle" fill="#8b949e" font-size="10">Same math as Metal, no GPU upload</text>
+
+  <rect x="50" y="155" width="320" height="40" rx="6" fill="#0d1117" stroke="#30363d"/>
+  <text x="210" y="173" text-anchor="middle" fill="#e6edf3" font-size="11">BeginFrame / EndFrame: no-ops</text>
+
+  <rect x="50" y="205" width="320" height="30" rx="6" fill="#0d1117" stroke="#ab47bc"/>
+  <text x="210" y="225" text-anchor="middle" fill="#ab47bc" font-size="10">.mm: SetMetalLayer() for MoltenVK interop</text>
+
+  <!-- DX12 side -->
+  <rect x="410" y="15" width="360" height="230" rx="8" fill="#1c2128" stroke="#42a5f5" stroke-width="1.5"/>
+  <text x="590" y="38" text-anchor="middle" fill="#42a5f5" font-size="14" font-weight="700">DX12Renderer (stub)</text>
+
+  <rect x="430" y="55" width="320" height="40" rx="6" fill="#0d1117" stroke="#30363d"/>
+  <text x="590" y="73" text-anchor="middle" fill="#e6edf3" font-size="11">!initialized → true</text>
+  <text x="590" y="88" text-anchor="middle" fill="#8b949e" font-size="10">No D3D12 API calls at all</text>
+
+  <rect x="430" y="105" width="320" height="40" rx="6" fill="#0d1117" stroke="#30363d"/>
+  <text x="590" y="123" text-anchor="middle" fill="#e6edf3" font-size="11">Render(dt): CPU rotation → DX12Vertex[6]</text>
+  <text x="590" y="138" text-anchor="middle" fill="#8b949e" font-size="10">IntPtr storage for device/queue/list/buffer</text>
+
+  <rect x="430" y="155" width="320" height="40" rx="6" fill="#0d1117" stroke="#30363d"/>
+  <text x="590" y="173" text-anchor="middle" fill="#e6edf3" font-size="11">BeginFrame / EndFrame: no-ops</text>
+
+  <rect x="430" y="205" width="320" height="30" rx="6" fill="#0d1117" stroke="#42a5f5"/>
+  <text x="590" y="225" text-anchor="middle" fill="#42a5f5" font-size="10">No #include &lt;d3d12.h&gt; yet</text>
+</svg>
+<div class="fig-caption">Figure 9: Vulkan and DX12 stub implementations — both compute CPU-side vertex transforms but lack GPU resource creation.</div>
+</div>
+
+<!-- ================================================================== -->
+<h2 id="abstractions">11. Key Abstractions &amp; Data Structures</h2>
+
+<h3>Vertex Format (Shared)</h3>
+<pre>// RendererCommon.h
+struct Vertex {
+    Vector3&lt;float&gt; position;  // x, y, z
+    Vector4&lt;float&gt; color;     // r, g, b, a
+};</pre>
+
+<h3>Backend-Specific (identical layout)</h3>
+<pre>// Metal &amp; Vulkan
+struct QuadVertex { float x, y; float r, g, b, a; };
+
+// DX12 alias
+struct DX12Vertex { float x, y; float r, g, b, a; };</pre>
+
+<h3>APIType Enum</h3>
+<pre>enum class APIType : uint8_t {
+    Unknown = 0,
+    Vulkan,
+    Metal,
+    DX12
+};</pre>
+
+<h3>RenderCapabilities (capability POD)</h3>
+<pre>class RenderCapabilities {
+public:
+    APIType apiType;
+    bool    supportsGeometryShader;
+    bool    supportsTessellation;
+    bool    supportsComputeShader;
+    uint32_t maxTextureSize;
+    uint32_t maxUniformBuffers;
+    uint32_t maxVertexAttribs;
+};</pre>
+
+<!-- ================================================================== -->
+<h2 id="memory">12. Memory Management</h2>
+
+<div class="fig">
+<svg viewBox="0 0 800 280" xmlns="http://www.w3.org/2000/svg" font-family="system-ui, sans-serif">
+  <defs>
+    <marker id="arr-mem" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0,0 L10,5 L0,10 Z" fill="#58a6ff"/>
+    </marker>
+    <marker id="arr-mem2" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0,0 L10,5 L0,10 Z" fill="#f85149"/>
+    </marker>
+  </defs>
+  <rect x="0" y="0" width="800" height="280" rx="4" fill="#161b22"/>
+
+  <text x="400" y="22" text-anchor="middle" fill="#8b949e" font-size="11">Renderer Memory Lifecycle — Metal Backend</text>
+
+  <!-- Creation -->
+  <rect x="50" y="35" width="220" height="45" rx="6" fill="#1c2128" stroke="#3fb950"/>
+  <text x="160" y="55" text-anchor="middle" fill="#3fb950" font-size="12" font-weight="600">Create</text>
+  <text x="160" y="72" text-anchor="middle" fill="#8b949e" font-size="10">raw new + unique_ptr</text>
+
+  <line x1="270" y1="57" x2="330" y2="57" stroke="#3fb950" stroke-width="1.5" marker-end="url(#arr-mem)"/>
+
+  <!-- GPU Resources -->
+  <rect x="330" y="35" width="200" height="90" rx="6" fill="#0d1117" stroke="#58a6ff"/>
+  <text x="430" y="55" text-anchor="middle" fill="#58a6ff" font-size="11" font-weight="600">GPU Resource Allocation</text>
+  <text x="430" y="73" text-anchor="middle" fill="#8b949e" font-size="10">MTLCreateDevice</text>
+  <text x="430" y="88" text-anchor="middle" fill="#8b949e" font-size="10">newCommandQueue</text>
+  <text x="430" y="103" text-anchor="middle" fill="#8b949e" font-size="10">newRenderPipelineState</text>
+  <text x="430" y="118" text-anchor="middle" fill="#8b949e" font-size="10">newBufferWithBytes</text>
+
+  <line x1="530" y1="57" x2="590" y2="57" stroke="#58a6ff" stroke-width="1.5" marker-end="url(#arr-mem2)"/>
+
+  <!-- Shutdown -->
+  <rect x="590" y="35" width="160" height="45" rx="6" fill="#1c2128" stroke="#f85149"/>
+  <text x="670" y="55" text-anchor="middle" fill="#f85149" font-size="12" font-weight="600">Shutdown</text>
+  <text x="670" y="72" text-anchor="middle" fill="#8b949e" font-size="10">CFBridgingRelease</text>
+
+  <!-- Per-frame buffer cycle -->
+  <rect x="330" y="145" width="420" height="60" rx="8" fill="#1c2128" stroke="#d29922" stroke-width="1.5"/>
+  <text x="540" y="165" text-anchor="middle" fill="#d29922" font-size="12" font-weight="600">Per-Frame Buffer Cycle (every Render call)</text>
+  <text x="540" y="183" text-anchor="middle" fill="#8b949e" font-size="10">CFBridgingRelease(old vertex buffer)</text>
+  <text x="540" y="198" text-anchor="middle" fill="#8b949e" font-size="10">newBufferWithBytes(rotated vertices) → CFBridgingRetain</text>
+
+  <!-- Engine allocators (available but unused) -->
+  <rect x="50" y="145" width="250" height="120" rx="6" fill="#0d1117" stroke="#30363d"/>
+  <text x="175" y="165" text-anchor="middle" fill="#8b949e" font-size="11" font-weight="600">Engine Memory System (unused)</text>
+  <text x="175" y="185" text-anchor="middle" fill="#8b949e" font-size="10">SystemAllocator</text>
+  <text x="175" y="200" text-anchor="middle" fill="#8b949e" font-size="10">MultiPoolAllocator</text>
+  <text x="175" y="215" text-anchor="middle" fill="#8b949e" font-size="10">MonotonicAllocator</text>
+  <text x="175" y="230" text-anchor="middle" fill="#8b949e" font-size="10">StackAllocator</text>
+  <text x="175" y="248" text-anchor="middle" fill="#d29922" font-size="10">⚠ Not yet integrated</text>
+</svg>
+<div class="fig-caption">Figure 10: Memory management — opaque handles via CFBridging, per-frame buffer recreation, and the engine allocator system (available but not yet used by the renderer).</div>
+</div>
+
+<!-- ================================================================== -->
+<h2 id="testing">13. Testing &amp; Validation</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Test Collection</th>
+      <th>Test Case</th>
+      <th>Assertion</th>
+      <th>Registered</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td rowspan="3"><code>RHICapabilitiesTest</code></td>
+      <td>IsMetalSupported</td>
+      <td><code>true</code> on macOS</td>
+      <td><span class="badge badge-done">✓</span></td>
+    </tr>
+    <tr>
+      <td>GetPreferredAPI</td>
+      <td><code>!= Unknown</code></td>
+      <td><span class="badge badge-done">✓</span></td>
+    </tr>
+    <tr>
+      <td>GetCapabilities</td>
+      <td><code>apiType</code> matches input</td>
+      <td><span class="badge badge-done">✓</span></td>
+    </tr>
+    <tr>
+      <td rowspan="3"><code>RendererTest</code></td>
+      <td>RHICapabilities</td>
+      <td><code>caps.apiType == Metal</code></td>
+      <td><span class="badge badge-warn">⚠ Not registered</span></td>
+    </tr>
+    <tr>
+      <td>GetPreferredAPI</td>
+      <td><code>!= Unknown</code></td>
+      <td><span class="badge badge-warn">⚠ Not registered</span></td>
+    </tr>
+    <tr>
+      <td>RendererFactory</td>
+      <td><code>renderer != nullptr</code></td>
+      <td><span class="badge badge-warn">⚠ Not registered</span></td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="box">
+<div class="box-label">Notable Implementation Patterns</div>
+<table>
+  <thead>
+    <tr><th>File</th><th>Pattern</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>RHICapabilities.cpp</code></td><td>Lazy memoization: <code>if (!checked) { check(); checked = true; }</code></td></tr>
+    <tr><td><code>RendererFactory.cpp</code></td><td>Conditional compilation with fallback chain; <code>HEADER_FILE_ONLY</code> CMake property on <code>RendererFactory.cpp</code></td></tr>
+    <tr><td><code>MetalRenderer.mm</code></td><td>ObjC++ ARC managed via <code>CFBridgingRetain</code>/<code>CFBridgingRelease</code></td></tr>
+    <tr><td><code>VulkanRenderer.mm</code></td><td>Platform-specific interop for MoltenVK surface creation (stub)</td></tr>
+  </tbody>
+</table>
+</div>
+
+<!-- ================================================================== -->
+<h2 id="roadmap">14. Future Development Roadmap</h2>
+
+<h3>Short-Term</h3>
+<div class="box">
+<pre>1. [ ] Shader file compilation pipeline
+        Load .metal/.spv/.dxil files instead of inline strings
+
+2. [ ] Swap chain management
+        Replace waitUntilCompleted with triple-buffering
+        MTLFence / MTLSharedEvent synchronization
+
+3. [ ] Resource system integration
+        Buffer pools, texture cache, descriptor heaps
+        Custom allocator integration (MultiPool for GPU buffers)
+
+4. [ ] Full Vulkan implementation
+        Instance → Device → Swapchain → Pipeline → Draw
+        MoltenVK interop on macOS
+
+5. [ ] Full DX12 implementation
+        ID3D12Device → CommandQueue → RootSignature → PSO</pre>
+</div>
+
+<h3>Medium-Term</h3>
+<div class="box">
+<pre>6.  [ ] Compute shader dispatch support
+7.  [ ] Render graph / command list recording
+8.  [ ] Multi-threaded command buffer recording via TaskSystem
+9.  [ ] Material &amp; shader variant system
+10. [ ] GPU-driven culling &amp; indirect draw</pre>
+</div>
+
+<h3>Design Principles</h3>
+<table>
+  <thead>
+    <tr><th>Principle</th><th>How It's Applied</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><strong>Composition over inheritance</strong></td><td>Future subsystems compose <code>IRenderer</code> rather than deriving from it</td></tr>
+    <tr><td><strong><code>noexcept</code> correctness</strong></td><td>All renderer API methods are <code>noexcept</code></td></tr>
+    <tr><td><strong>RAII</strong></td><td><code>std::unique_ptr&lt;IRenderer&gt;</code> for lifecycle, <code>CFBridging</code> for ObjC ownership</td></tr>
+    <tr><td><strong>Opaque handles</strong></td><td><code>intptr_t</code> for GPU resources avoids header contamination with platform types</td></tr>
+    <tr><td><strong>Platform abstraction</strong></td><td>Factory + platform-conditional compilation isolates platform-specific code</td></tr>
+    <tr><td><strong>Modular decoupling</strong></td><td>Renderer is not owned by <code>Engine</code> — applications create and manage it independently</td></tr>
+  </tbody>
+</table>
+
+<div style="margin-top: 3rem; padding-top: 1.5rem; border-top: 1px solid var(--border); text-align: center; color: var(--text-dim); font-size: 0.85rem;">
+  HardBop Engine — Renderer Design Document • Generated May 2026<br>
+  Source: <code>Engine/Renderer/</code> • Build: CMake + Ninja Multi-Config • C++23
+</div>
+
+</div>
+</body>
+</html>
