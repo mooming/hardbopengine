@@ -30,6 +30,7 @@ include_directories ( ${CMAKE_SOURCE_DIR}
  ${CMAKE_SOURCE_DIR}/include
  ${CMAKE_SOURCE_DIR}/External
  ${CMAKE_SOURCE_DIR}/Engine
+ ${CMAKE_SOURCE_DIR}/Engine/Renderer
  )
 
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/lib)
@@ -37,11 +38,23 @@ add_library (Container STATIC
  Array.cpp
  AtomicStackView.cpp
  BoundedPriorityQueue.cpp
+ Deque.cpp
+ HashMap.cpp
  LinkedList.cpp
+ Map.cpp
+ Queue.cpp
+ RingQueue.cpp
+ Vector.cpp
  Array.h
  AtomicStackView.h
  BoundedPriorityQueue.h
+ Deque.h
+ HashMap.h
  LinkedList.h
+ Map.h
+ Queue.h
+ RingQueue.h
+ Vector.h
 ${PLATFORM_SOURCES}
 )
 

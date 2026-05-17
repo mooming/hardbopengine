@@ -1,51 +1,60 @@
-add_library (Renderer STATIC
-    RendererCommon.h
-    RHICapabilities.h
-    RHICapabilities.cpp
-    IRenderer.h
-    RendererFactory.h
-    RendererFactory.cpp
-)
+cmake_minimum_required (VERSION 3.12)
+project (Renderer)
 
-target_include_directories (Renderer PUBLIC
-    ${CMAKE_CURRENT_SOURCE_DIR}
-    /opt/homebrew/include
-    ${CMAKE_SOURCE_DIR}/External/VulkanSDK/include
-)
+set (CMAKE_CONFIGURATION_TYPES "Debug;Dev;Release" CACHE STRING "" FORCE)
+if (NOT CMAKE_BUILD_TYPE)
+    set (CMAKE_BUILD_TYPE "Release" CACHE STRING "Build type" FORCE)
+endif ()
 
-add_library (Renderer::Renderer ALIAS Renderer)
+set (CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g -O0")
+set (CMAKE_CXX_FLAGS_DEV "${CMAKE_CXX_FLAGS_DEBUG} -O1")
+set (CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3")
 
-add_library (VulkanRenderer STATIC
-    Vulkan/VulkanRenderer.h
-    Vulkan/VulkanRenderer.cpp
-    Vulkan/VulkanRenderer.mm
-)
+set (CMAKE_CXX_STANDARD 23)
 
-target_include_directories (VulkanRenderer PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}
-    /opt/homebrew/include
-    ${CMAKE_SOURCE_DIR}/External/VulkanSDK/include
-)
-
-target_link_libraries (VulkanRenderer PRIVATE Renderer)
-find_library(VULKAN_LIBRARY vulkan HINT /usr/local/lib /opt/homebrew/lib)
-if (VULKAN_LIBRARY)
-    target_link_libraries (VulkanRenderer PRIVATE ${VULKAN_LIBRARY})
+if (APPLE)
+    set(PLATFORM_SOURCES
+    )
 else()
-    message(WARNING "Vulkan library not found, Vulkan rendering will not work")
+    set(PLATFORM_SOURCES "")
 endif()
 
-add_library (MetalRenderer STATIC
-    Metal/MetalRenderer.h
-    Metal/MetalRenderer.mm
-    Metal/Shaders.metal
+if (MSVC)
+	add_compile_options (/W3 /WX)
+else (MSVC)
+	add_compile_options (-Wall -Werror)
+endif (MSVC)
+
+add_compile_definitions (__TEST__ __UNIT_TEST__ )
+include_directories ( ${CMAKE_SOURCE_DIR}
+ ${CMAKE_SOURCE_DIR}/include
+ ${CMAKE_SOURCE_DIR}/External
+ ${CMAKE_SOURCE_DIR}/Engine
+ ${CMAKE_SOURCE_DIR}/Engine/Renderer
+ ${CMAKE_SOURCE_DIR}/Engine/Renderer/.
+ )
+
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/lib)
+add_library (Renderer STATIC 
+ RHICapabilities.cpp
+ RendererFactory.cpp
+ IRenderer.h
+ RHICapabilities.h
+ RendererCommon.h
+ RendererFactory.h
+ RendererTest.h
+${PLATFORM_SOURCES}
 )
 
-target_include_directories (MetalRenderer PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}
-)
+if (APPLE)
+	include_directories ( /System/Library/Frameworks )
+	set(MACOSX_BUNDLE_TRUE TRUE)
+	set(MACOSX_BUNDLE_INFO_PLIST ${CMAKE_CURRENT_SOURCE_DIR}/Info.plist)
+endif (APPLE)
 
-target_link_libraries (MetalRenderer PRIVATE Renderer)
-target_link_libraries (MetalRenderer PRIVATE "-framework Metal")
-target_link_libraries (MetalRenderer PRIVATE "-framework MetalKit")
-target_link_libraries (MetalRenderer PRIVATE "-framework QuartzCore")
+install (TARGETS Renderer DESTINATION ${CMAKE_SOURCE_DIR}/lib)
+
+
+
+set_source_files_properties(RendererFactory.cpp PROPERTIES HEADER_FILE_ONLY TRUE)
+

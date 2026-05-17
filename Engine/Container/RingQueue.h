@@ -1,0 +1,198 @@
+// Copyright (c) 2026 Hansol Park (mooming.go@gmail.com). All rights reserved.
+
+#pragma once
+
+#include <cstddef>
+#include <utility>
+
+#include "Core/Debug.h"
+#include "Memory/DefaultAllocator.h"
+#include "Memory/Memory.h"
+
+namespace hbe
+{
+
+	template<typename TElement, class TAllocator = DefaultAllocator<TElement>>
+	class RingQueue final
+	{
+	public:
+		using TIndex = int;
+
+	private:
+		TIndex cap;
+		TIndex head;
+		TIndex tail;
+		TIndex count;
+		TElement* data;
+
+	public:
+		RingQueue(const RingQueue&) = delete;
+		RingQueue& operator=(const RingQueue&) = delete;
+
+		explicit RingQueue(TIndex fixedCapacity)
+			: cap(0)
+			, head(0)
+			, tail(0)
+			, count(0)
+			, data(nullptr)
+		{
+			FatalAssert(fixedCapacity > 0, "RingQueue capacity must be positive");
+
+			TAllocator alloc;
+			data = alloc.allocate(fixedCapacity);
+			cap = fixedCapacity;
+		}
+
+		RingQueue(RingQueue&& rhs) noexcept
+			: cap(0)
+			, head(0)
+			, tail(0)
+			, count(0)
+			, data(nullptr)
+		{
+			Swap(rhs);
+		}
+
+		~RingQueue()
+		{
+			if (data == nullptr)
+				return;
+
+			DestroyAll();
+			TAllocator alloc;
+			alloc.deallocate(data, cap);
+		}
+
+		RingQueue& operator=(RingQueue&& rhs) noexcept
+		{
+			Swap(rhs);
+			return *this;
+		}
+
+		TElement& operator[](TIndex index)
+		{
+			FatalAssert(IsValidIndex(index));
+			return data[WrapIndex(head + index)];
+		}
+
+		const TElement& operator[](TIndex index) const
+		{
+			FatalAssert(IsValidIndex(index));
+			return data[WrapIndex(head + index)];
+		}
+
+		void Push(const TElement& value)
+		{
+			FatalAssert(!IsFull(), "RingQueue is full");
+			new (&data[tail]) TElement(value);
+			tail = WrapIndex(tail + 1);
+			++count;
+		}
+
+		void Push(TElement&& value)
+		{
+			FatalAssert(!IsFull(), "RingQueue is full");
+			new (&data[tail]) TElement(std::move(value));
+			tail = WrapIndex(tail + 1);
+			++count;
+		}
+
+		template<typename... Types>
+		TElement& Emplace(Types&&... args)
+		{
+			FatalAssert(!IsFull(), "RingQueue is full");
+			auto* ptr = new (&data[tail]) TElement(std::forward<Types>(args)...);
+			tail = WrapIndex(tail + 1);
+			++count;
+			return *ptr;
+		}
+
+		TElement Pop()
+		{
+			FatalAssert(!IsEmpty(), "RingQueue is empty");
+			auto item = std::move(data[head]);
+			data[head].~TElement();
+			head = WrapIndex(head + 1);
+			--count;
+			return item;
+		}
+
+		TElement& Front()
+		{
+			FatalAssert(!IsEmpty());
+			return data[head];
+		}
+
+		const TElement& Front() const
+		{
+			FatalAssert(!IsEmpty());
+			return data[head];
+		}
+
+		TElement& Back()
+		{
+			FatalAssert(!IsEmpty());
+			return data[WrapIndex(tail - 1)];
+		}
+
+		const TElement& Back() const
+		{
+			FatalAssert(!IsEmpty());
+			return data[WrapIndex(tail - 1)];
+		}
+
+		[[nodiscard]] TIndex Size() const { return count; }
+		[[nodiscard]] TIndex Capacity() const { return cap; }
+		[[nodiscard]] bool IsEmpty() const { return count == 0; }
+		[[nodiscard]] bool IsFull() const { return count == cap; }
+		[[nodiscard]] bool IsValidIndex(TIndex index) const { return index >= 0 && index < Size(); }
+
+		void Clear()
+		{
+			DestroyAll();
+			head = 0;
+			tail = 0;
+			count = 0;
+		}
+
+		void Swap(RingQueue& rhs) noexcept
+		{
+			std::swap(cap, rhs.cap);
+			std::swap(head, rhs.head);
+			std::swap(tail, rhs.tail);
+			std::swap(count, rhs.count);
+			std::swap(data, rhs.data);
+		}
+
+	private:
+		TIndex WrapIndex(TIndex index) const { return index % cap; }
+
+		void DestroyAll()
+		{
+			for (TIndex i = 0; i < count; ++i)
+			{
+				auto idx = WrapIndex(head + i);
+				data[idx].~TElement();
+			}
+		}
+	};
+
+} // namespace hbe
+
+#ifdef __UNIT_TEST__
+#include "Test/TestCollection.h"
+
+namespace hbe
+{
+
+	class RingQueueTest : public TestCollection
+	{
+	public:
+		RingQueueTest() : TestCollection("RingQueueTest") {}
+
+	protected:
+		void Prepare() override;
+	};
+
+} // namespace hbe
+#endif //__UNIT_TEST__

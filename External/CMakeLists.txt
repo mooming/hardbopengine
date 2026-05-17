@@ -30,6 +30,7 @@ include_directories ( ${CMAKE_SOURCE_DIR}
  ${CMAKE_SOURCE_DIR}/include
  ${CMAKE_SOURCE_DIR}/External
  ${CMAKE_SOURCE_DIR}/Engine
+ ${CMAKE_SOURCE_DIR}/Engine/Renderer
  )
 
 add_library (External INTERFACE)

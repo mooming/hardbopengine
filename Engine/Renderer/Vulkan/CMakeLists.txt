@@ -1,5 +1,5 @@
 cmake_minimum_required (VERSION 3.12)
-project (HEngine)
+project (Vulkan)
 
 set (CMAKE_CONFIGURATION_TYPES "Debug;Dev;Release" CACHE STRING "" FORCE)
 if (NOT CMAKE_BUILD_TYPE)
@@ -14,6 +14,7 @@ set (CMAKE_CXX_STANDARD 23)
 
 if (APPLE)
     set(PLATFORM_SOURCES
+        VulkanRenderer.mm
     )
 else()
     set(PLATFORM_SOURCES "")
@@ -30,23 +31,8 @@ include_directories ( ${CMAKE_SOURCE_DIR}
  ${CMAKE_SOURCE_DIR}/include
  ${CMAKE_SOURCE_DIR}/External
  ${CMAKE_SOURCE_DIR}/Engine
- ${CMAKE_SOURCE_DIR}/Engine/Renderer
  )
 
-set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/lib)
-add_library (HEngine STATIC 
- Engine.cpp
- Engine.h
-${PLATFORM_SOURCES}
-)
-
-if (APPLE)
-	include_directories ( /System/Library/Frameworks )
-	set(MACOSX_BUNDLE_TRUE TRUE)
-	set(MACOSX_BUNDLE_INFO_PLIST ${CMAKE_CURRENT_SOURCE_DIR}/Info.plist)
-endif (APPLE)
-
-install (TARGETS HEngine DESTINATION ${CMAKE_SOURCE_DIR}/lib)
 
 
 
