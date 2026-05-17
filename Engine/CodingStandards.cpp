@@ -156,7 +156,7 @@ CodingStandards::CodingStandards() noexcept
 {
 }
 
-CodingStandards::~CodingStandards() {}
+CodingStandards::~CodingStandards() = default;
 
 void CodingStandards::ProcessBraced() noexcept {}
 

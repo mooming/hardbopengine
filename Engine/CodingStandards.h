@@ -274,10 +274,10 @@ public:
     CodingStandardsBase() noexcept;
     virtual ~CodingStandardsBase() = default;
 
-    examples::InlinedData Compute() noexcept;
-    examples::InlinedData Create() noexcept;
-    examples::InlinedData CreateWithMove() noexcept;
-    static examples::TextBuffer UseMoveCorrectly(examples::TextBuffer&& source) noexcept;
+    InlinedData Compute() noexcept;
+    InlinedData Create() noexcept;
+    InlinedData CreateWithMove() noexcept;
+    static TextBuffer UseMoveCorrectly(TextBuffer&& source) noexcept;
 
     /* Use consteval (C++20) for functions that must evaluate at compile time */
     static consteval int Square(int x)
