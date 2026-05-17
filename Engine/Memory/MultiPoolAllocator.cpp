@@ -198,16 +198,14 @@ namespace hbe
 
 	void MultiPoolAllocator::PrintUsage() const
 	{
+#if PROFILE_ENABLED
 		using namespace std;
 
-#if PROFILE_ENABLED
 		std::map<size_t, size_t> usageMap;
-#endif // PROFILE_ENABLED
 
 		auto log = Logger::Get(name, ELogLevel::Info);
 		log.Out("= Allocator Usage ========================================");
 
-#if PROFILE_ENABLED
 		auto& mmgr = MemoryManager::GetInstance();
 		auto stats = mmgr.GetAllocatorStat(GetID());
 
@@ -220,11 +218,9 @@ namespace hbe
 			ls << "Alloc: " << stats.allocCount << ", Dealloc: " << stats.deallocCount
 			   << ", Fallback: " << stats.fallbackCount;
 		});
-#endif // PROFILE_ENABLED
 
 		for (auto& pool : banks)
 		{
-#if PROFILE_ENABLED
 			log.Out([&pool](auto& ls)
 			{
 				ls << '[' << pool.GetBlockSize() << "] Memory = " << pool.GetUsage() << " / " << pool.GetCapacity()
@@ -245,13 +241,8 @@ namespace hbe
 					it->second += pool.GetUsedBlocksMax();
 				}
 			}
-#else // PROFILE_ENABLED
-			log.Out([&pool](auto& ls)
-			{ ls << '[' << pool.GetBlockSize() << "] Memory = " << pool.GetUsage() << " / " << pool.GetCapacity(); });
-#endif // PROFILE_ENABLED
 		}
 
-#if PROFILE_ENABLED
 		{
 			AllocatorScope scope(MemoryManager::SystemAllocatorID);
 
@@ -266,9 +257,9 @@ namespace hbe
 
 			log.Out(args.c_str());
 		}
-#endif // PROFILE_ENABLED
 
 		log.Out("==========================================================");
+#endif // PROFILE_ENABLED
 	}
 
 #if PROFILE_ENABLED

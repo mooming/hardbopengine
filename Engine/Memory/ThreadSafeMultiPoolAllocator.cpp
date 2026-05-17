@@ -220,11 +220,10 @@ namespace hbe
 
 	void ThreadSafeMultiPoolAllocator::PrintUsage()
 	{
+#if PROFILE_ENABLED
 		using namespace std;
 
-#if PROFILE_ENABLED
 		std::map<size_t, size_t> usageMap;
-#endif // PROFILE_ENABLED
 
 		auto log = Logger::Get(name, ELogLevel::Info);
 		log.Out([this](auto& ls) { ls << hendl << "## MultipoolAllocator(" << name << ") Usage ##"; });
@@ -233,7 +232,6 @@ namespace hbe
 
 		for (auto& pool : banks)
 		{
-#if PROFILE_ENABLED
 			log.Out([&pool](auto& ls)
 			{
 				ls << '[' << pool.GetBlockSize() << "] Memory = " << pool.GetUsage() << " / " << pool.GetCapacity()
@@ -254,13 +252,8 @@ namespace hbe
 					it->second += pool.GetUsedBlocksMax();
 				}
 			}
-#else
-			log.Out([&pool](auto& ls)
-			{ ls << '[' << pool.GetBlockSize() << "] Memory = " << pool.GetUsage() << " / " << pool.GetCapacity(); });
-#endif // PROFILE_ENABLED
 		}
 
-#if PROFILE_ENABLED
 		{
 			AllocatorScope scope(MemoryManager::SystemAllocatorID);
 

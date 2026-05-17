@@ -9,6 +9,7 @@
 #include "Memory/DefaultAllocator.h"
 #include "Memory/Memory.h"
 
+
 namespace hbe
 {
 
@@ -18,16 +19,7 @@ namespace hbe
 	public:
 		using TIndex = int;
 
-	private:
-		TIndex cap;
-		TIndex head;
-		TIndex tail;
-		TIndex count;
-		TElement* data;
-
-	public:
 		RingQueue(const RingQueue&) = delete;
-		RingQueue& operator=(const RingQueue&) = delete;
 
 		explicit RingQueue(TIndex fixedCapacity)
 			: cap(0)
@@ -62,6 +54,8 @@ namespace hbe
 			TAllocator alloc;
 			alloc.deallocate(data, cap);
 		}
+
+		RingQueue& operator=(const RingQueue&) = delete;
 
 		RingQueue& operator=(RingQueue&& rhs) noexcept
 		{
@@ -165,6 +159,12 @@ namespace hbe
 		}
 
 	private:
+		TIndex cap;
+		TIndex head;
+		TIndex tail;
+		TIndex count;
+		TElement* data;
+
 		TIndex WrapIndex(TIndex index) const { return index % cap; }
 
 		void DestroyAll()

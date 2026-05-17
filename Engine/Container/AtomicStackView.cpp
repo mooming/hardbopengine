@@ -119,8 +119,6 @@ namespace hbe
 				}
 
 				popCount.fetch_add(count, std::memory_order_relaxed);
-				auto log = hbe::Logger::Get(GetName());
-				log.Out([count](auto& ls) { ls << "Num Pop = " << count; });
 			};
 
 			hbe::HVector<std::thread> threads;

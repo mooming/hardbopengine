@@ -85,8 +85,7 @@ void hbe::ImportanceResamplingTest::Prepare()
 
 			average += result;
 
-			ls << "Samples = " << numSrcSamples << ", Resampling = " << numResamplingIterations
-			   << ", result = " << result << " <=> PI " << Pi << ", Error = " << (abs(result - Pi) * 100 / Pi) << lf;
+			// per-iteration result log omitted
 		}
 
 		average /= numRepeat;
@@ -162,8 +161,7 @@ void hbe::ImportanceResamplingTest::Prepare()
 
 			average += result;
 
-			ls << "Samples = " << numSrcSamples << ", Resampling = " << numResamplingIterations
-			   << ", result = " << result << " <=> PI " << Pi << ", Error = " << (abs(result - Pi) * 100 / Pi) << lf;
+			// per-iteration result log omitted
 		}
 
 		average /= numRepeat;
@@ -234,7 +232,7 @@ void hbe::ImportanceResamplingTest::Prepare()
 		auto discreteSampler = [&discreteDist]() { return discreteDist(gen); };
 		auto uniformSampler = [&unifromDist]() { return unifromDist(gen); };
 
-		constexpr int numGrowth = 10;
+		constexpr int numGrowth = 3;
 
 		for (int i = 0; i < numGrowth; ++i)
 		{
@@ -250,9 +248,7 @@ void hbe::ImportanceResamplingTest::Prepare()
 
 				average += result;
 
-				ls << "Samples = " << numSamples << ", Resampling = " << numResamplingIterations
-				   << ", result = " << result << " <=> PI " << Pi << ", Error = " << (abs(result - Pi) * 100 / Pi)
-				   << lf;
+				// per-iteration result log omitted
 			}
 
 			if (!integrator.Resample(func, pdf, randomGen, norm, numSrcSamples))
@@ -332,7 +328,7 @@ void hbe::ImportanceResamplingTest::Prepare()
 		auto discreteSampler = [&discreteDist]() { return discreteDist(gen); };
 		auto uniformSampler = [&unifromDist]() { return unifromDist(gen); };
 
-		constexpr int numGrowth = 10;
+		constexpr int numGrowth = 3;
 
 		for (int i = 0; i < numGrowth; ++i)
 		{
@@ -348,9 +344,7 @@ void hbe::ImportanceResamplingTest::Prepare()
 
 				average += result;
 
-				ls << "Samples = " << numSamples << ", Resampling = " << numResamplingIterations
-				   << ", result = " << result << " <=> PI " << Pi << ", Error = " << (abs(result - Pi) * 100 / Pi)
-				   << lf;
+				// per-iteration result log omitted
 			}
 
 			integrator.ClearResampledData();

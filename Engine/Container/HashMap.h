@@ -11,6 +11,7 @@
 #include "Memory/DefaultAllocator.h"
 #include "Memory/Memory.h"
 
+
 namespace hbe
 {
 
@@ -26,13 +27,16 @@ namespace hbe
 	class HashMap final
 	{
 	public:
+		using TIndex = int;
+
+		static constexpr TIndex MinCapacity = 4;
+		static constexpr double MaxLoadFactor = 0.7;
+
 		struct Pair final
 		{
 			TKey key;
 			TValue value;
 		};
-
-		using TIndex = int;
 
 		class Iterator
 		{
@@ -141,50 +145,6 @@ namespace hbe
 			const Pair* operator->() const { return &(**this); }
 		};
 
-	private:
-		static constexpr TIndex MinCapacity = 4;
-		static constexpr double MaxLoadFactor = 0.7;
-
-		TIndex cap;
-		TIndex count;
-		TIndex tombstoneCount;
-		Pair* entries;
-		EHashEntryState* states;
-		THash hash;
-		TKeyEqual keyEqual;
-		TAllocator allocator;
-
-	public:
-		Iterator begin()
-		{
-			TIndex first = 0;
-			while (first < cap && states[first] != EHashEntryState::Occupied)
-			{
-				++first;
-			}
-
-			return Iterator(this, first);
-		}
-
-		Iterator end() { return Iterator(this, cap); }
-
-		ConstIterator begin() const
-		{
-			TIndex first = 0;
-			while (first < cap && states[first] != EHashEntryState::Occupied)
-			{
-				++first;
-			}
-
-			return ConstIterator(this, first);
-		}
-
-		ConstIterator end() const { return ConstIterator(this, cap); }
-
-	public:
-		HashMap(const HashMap&) = delete;
-		HashMap& operator=(const HashMap&) = delete;
-
 		HashMap() noexcept
 			: cap(0)
 			, count(0)
@@ -193,6 +153,8 @@ namespace hbe
 			, states(nullptr)
 		{
 		}
+
+		HashMap(const HashMap&) = delete;
 
 		explicit HashMap(TIndex initialCapacity)
 			: cap(0)
@@ -225,6 +187,8 @@ namespace hbe
 
 		~HashMap() { Release(); }
 
+		HashMap& operator=(const HashMap&) = delete;
+
 		HashMap& operator=(HashMap&& rhs) noexcept
 		{
 			if (this != &rhs)
@@ -248,6 +212,32 @@ namespace hbe
 
 			return *this;
 		}
+
+		Iterator begin()
+		{
+			TIndex first = 0;
+			while (first < cap && states[first] != EHashEntryState::Occupied)
+			{
+				++first;
+			}
+
+			return Iterator(this, first);
+		}
+
+		Iterator end() { return Iterator(this, cap); }
+
+		ConstIterator begin() const
+		{
+			TIndex first = 0;
+			while (first < cap && states[first] != EHashEntryState::Occupied)
+			{
+				++first;
+			}
+
+			return ConstIterator(this, first);
+		}
+
+		ConstIterator end() const { return ConstIterator(this, cap); }
 
 		TValue& operator[](const TKey& key)
 		{
@@ -392,6 +382,15 @@ namespace hbe
 		}
 
 	private:
+		TIndex cap;
+		TIndex count;
+		TIndex tombstoneCount;
+		Pair* entries;
+		EHashEntryState* states;
+		THash hash;
+		TKeyEqual keyEqual;
+		TAllocator allocator;
+
 		bool IsValidSlot(TIndex index) const
 		{
 			return index >= 0 && index < cap && states[index] == EHashEntryState::Occupied;
