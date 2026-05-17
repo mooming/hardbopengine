@@ -49,24 +49,26 @@ find "$TARGET_DIR" -type f \( \
 
     echo ">>> Processing: $file"
 
-    # Append a separator and header for this file
-    {
-        echo ""
-        echo "========================================"
-        echo "File: $file"
-        echo "========================================"
-        echo ""
-    } >> "$OUTPUT_FILE"
+    echo ""
+    echo "========================================"
+    echo "File: $file"
+    echo "========================================"
+    echo ""
 
-    # Run pi in non-interactive mode (-p) and append output
-    if pi -p $PROMPT "$file" >> "$OUTPUT_FILE" 2>&1; then
+    # Print the command being executed (with prompt quoted for clarity)
+    echo "> pi -p \"$PROMPT\" \"$file\""
+    echo ""
+
+    # Run pi in non-interactive mode (-p), streaming to both terminal and output file
+    pi -p "$PROMPT" "$file" 2>&1 | tee -a "$OUTPUT_FILE"
+    local pi_exit=${PIPESTATUS[0]}
+
+    if [ $pi_exit -eq 0 ]; then
         echo "    -> Done"
     else
-        echo "    -> FAILED"
-        {
-            echo ""
-            echo "**FAILED**"
-        } >> "$OUTPUT_FILE"
+        echo "    -> FAILED (exit code $pi_exit)"
+        echo "" >> "$OUTPUT_FILE"
+        echo "**FAILED**" >> "$OUTPUT_FILE"
         FAIL=$((FAIL + 1))
     fi
 
