@@ -68,7 +68,7 @@ void hbe::StratifiedSamplingTest::Prepare()
 		using MCI = MonteCarloIntegrator<Vec2, double, double, uint32_t>;
 		MCI Integrator;
 
-		constexpr int numRepeat = 10;
+		constexpr int numRepeat = 5;
 		{
 			auto randomGen = []()
 			{
@@ -94,8 +94,6 @@ void hbe::StratifiedSamplingTest::Prepare()
 
 				i = result;
 				average += result;
-
-				ls << "MC Samples = " << numIterations << ", result = " << result << ", PI " << Pi << lf;
 			}
 
 			average /= numRepeat;
@@ -127,8 +125,6 @@ void hbe::StratifiedSamplingTest::Prepare()
 
 				i = result;
 				average += result;
-
-				ls << "MC Samples = " << numIterations << ", result = " << result << ", PI " << Pi << lf;
 			}
 
 			average /= numRepeat;

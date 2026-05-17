@@ -1,3 +1,5 @@
+// Copyright (c) 2026 Hansol Park (mooming.go@gmail.com). All rights reserved.
+
 #pragma once
 
 #include <algorithm>
@@ -8,6 +10,7 @@
 #include "Memory/DefaultAllocator.h"
 #include "Memory/Memory.h"
 
+
 namespace hbe
 {
 
@@ -15,6 +18,8 @@ namespace hbe
 	class Map final
 	{
 	public:
+		static constexpr int DefaultCapacity = 4;
+
 		struct Pair final
 		{
 			TKey key;
@@ -34,6 +39,7 @@ namespace hbe
 
 		public:
 			explicit Iterator(Pair* ptr) noexcept : ptr(ptr) {}
+
 			Iterator& operator++() { ++ptr; return *this; }
 			bool operator==(const Iterator& rhs) const { return ptr == rhs.ptr; }
 			bool operator!=(const Iterator& rhs) const { return ptr != rhs.ptr; }
@@ -45,31 +51,14 @@ namespace hbe
 
 		using ConstIterator = Iterator;
 
-	private:
-		static constexpr TIndex DefaultCapacity = 4;
-
-		Pair* entries;
-		TIndex count;
-		TIndex cap;
-		TCompare compare;
-		TAllocator allocator;
-
-	public:
-		Iterator begin() { return Iterator(entries); }
-		Iterator end() { return Iterator(entries + count); }
-		ConstIterator begin() const { return ConstIterator(entries); }
-		ConstIterator end() const { return ConstIterator(entries + count); }
-
-	public:
-		Map(const Map&) = delete;
-		Map& operator=(const Map&) = delete;
-
 		Map() noexcept
 			: entries(nullptr)
 			, count(0)
 			, cap(0)
 		{
 		}
+
+		Map(const Map&) = delete;
 
 		Map(Map&& rhs) noexcept
 			: entries(rhs.entries)
@@ -85,6 +74,8 @@ namespace hbe
 		{
 			Release();
 		}
+
+		Map& operator=(const Map&) = delete;
 
 		Map& operator=(Map&& rhs) noexcept
 		{
@@ -103,6 +94,11 @@ namespace hbe
 
 			return *this;
 		}
+
+		Iterator begin() { return Iterator(entries); }
+		Iterator end() { return Iterator(entries + count); }
+		ConstIterator begin() const { return ConstIterator(entries); }
+		ConstIterator end() const { return ConstIterator(entries + count); }
 
 		TValue& operator[](const TKey& key)
 		{
@@ -216,6 +212,12 @@ namespace hbe
 		}
 
 	private:
+		Pair* entries;
+		TIndex count;
+		TIndex cap;
+		TCompare compare;
+		TAllocator allocator;
+
 		TIndex FindIndex(const TKey& key) const
 		{
 			if (count == 0)

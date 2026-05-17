@@ -10,6 +10,7 @@
 #include "Memory/DefaultAllocator.h"
 #include "Memory/Memory.h"
 
+
 namespace hbe
 {
 
@@ -17,29 +18,11 @@ namespace hbe
 	class Deque final
 	{
 	public:
+		static constexpr int DefaultCapacity = 4;
+
 		using TIndex = int;
 		using Iterator = TElement*;
 		using ConstIterator = const TElement*;
-
-	private:
-		static constexpr TIndex DefaultCapacity = 4;
-
-		TAllocator allocator;
-		TIndex head;
-		TIndex tail;
-		TIndex count;
-		TIndex mask;
-		TElement* data;
-
-	public:
-		Iterator begin() { return &data[head]; }
-		Iterator end() { return &data[head + count]; }
-		ConstIterator begin() const { return &data[head]; }
-		ConstIterator end() const { return &data[head + count]; }
-
-	public:
-		Deque(const Deque&) = delete;
-		Deque& operator=(const Deque&) = delete;
 
 		Deque() noexcept
 			: head(0)
@@ -49,6 +32,8 @@ namespace hbe
 			, data(allocator.allocate(DefaultCapacity))
 		{
 		}
+
+		Deque(const Deque&) = delete;
 
 		explicit Deque(TIndex initialCapacity)
 			: head(0)
@@ -75,11 +60,18 @@ namespace hbe
 			allocator.deallocate(data, Capacity());
 		}
 
+		Deque& operator=(const Deque&) = delete;
+
 		Deque& operator=(Deque&& rhs) noexcept
 		{
 			Swap(rhs);
 			return *this;
 		}
+
+		Iterator begin() { return &data[head]; }
+		Iterator end() { return &data[head + count]; }
+		ConstIterator begin() const { return &data[head]; }
+		ConstIterator end() const { return &data[head + count]; }
 
 		TElement& operator[](TIndex index)
 		{
@@ -264,6 +256,13 @@ namespace hbe
 		}
 
 	private:
+		TAllocator allocator;
+		TIndex head;
+		TIndex tail;
+		TIndex count;
+		TIndex mask;
+		TElement* data;
+
 		TIndex WrapIndex(TIndex index) const { return index & mask; }
 
 		void Grow()

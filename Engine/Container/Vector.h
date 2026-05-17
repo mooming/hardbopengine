@@ -10,6 +10,7 @@
 #include "Memory/DefaultAllocator.h"
 #include "Memory/Memory.h"
 
+
 namespace hbe
 {
 
@@ -17,38 +18,22 @@ namespace hbe
 	class Vector final
 	{
 	public:
+		static constexpr int DefaultCapacity = 4;
+
 		using TIndex = int;
 		using Iterator = TElement*;
 		using ConstIterator = const TElement*;
 
-	private:
-		static constexpr TIndex DefaultCapacity = 4;
-
-		TAllocator allocator;
-		TIndex count;
-		TIndex cap;
-		TElement* data;
-
-	public:
-		Iterator begin() { return data; }
-		Iterator end() { return data + count; }
-		ConstIterator begin() const { return data; }
-		ConstIterator end() const { return data + count; }
-
-	public:
-		Vector(const Vector&) = delete;
-		Vector& operator=(const Vector&) = delete;
-
 		Vector() noexcept
 			: count(0)
-			, cap(0)
+			, capacity(0)
 			, data(nullptr)
 		{
 		}
 
 		explicit Vector(TIndex initialCapacity)
 			: count(0)
-			, cap(0)
+			, capacity(0)
 			, data(nullptr)
 		{
 			Reserve(initialCapacity);
@@ -56,7 +41,7 @@ namespace hbe
 
 		Vector(std::initializer_list<TElement> list)
 			: count(0)
-			, cap(0)
+			, capacity(0)
 			, data(nullptr)
 		{
 			Reserve(static_cast<TIndex>(list.size()));
@@ -66,13 +51,15 @@ namespace hbe
 			}
 		}
 
+		Vector(const Vector&) = delete;
+
 		Vector(Vector&& rhs) noexcept
 			: count(rhs.count)
-			, cap(rhs.cap)
+			, capacity(rhs.capacity)
 			, data(rhs.data)
 		{
 			rhs.count = 0;
-			rhs.cap = 0;
+			rhs.capacity = 0;
 			rhs.data = nullptr;
 		}
 
@@ -82,8 +69,10 @@ namespace hbe
 				return;
 
 			DestroyAll();
-			allocator.deallocate(data, cap);
+			allocator.deallocate(data, capacity);
 		}
+
+		Vector& operator=(const Vector&) = delete;
 
 		Vector& operator=(Vector&& rhs) noexcept
 		{
@@ -92,20 +81,25 @@ namespace hbe
 				if (data != nullptr)
 				{
 					DestroyAll();
-					allocator.deallocate(data, cap);
+					allocator.deallocate(data, capacity);
 				}
 
 				count = rhs.count;
-				cap = rhs.cap;
+				capacity = rhs.capacity;
 				data = rhs.data;
 
 				rhs.count = 0;
-				rhs.cap = 0;
+				rhs.capacity = 0;
 				rhs.data = nullptr;
 			}
 
 			return *this;
 		}
+
+		Iterator begin() { return data; }
+		Iterator end() { return data + count; }
+		ConstIterator begin() const { return data; }
+		ConstIterator end() const { return data + count; }
 
 		TElement& operator[](TIndex index)
 		{
@@ -145,7 +139,7 @@ namespace hbe
 
 		void PushBack(const TElement& value)
 		{
-			if (count == cap)
+			if (count == capacity)
 			{
 				Grow();
 			}
@@ -156,7 +150,7 @@ namespace hbe
 
 		void PushBack(TElement&& value)
 		{
-			if (count == cap)
+			if (count == capacity)
 			{
 				Grow();
 			}
@@ -168,7 +162,7 @@ namespace hbe
 		template<typename... Types>
 		TElement& EmplaceBack(Types&&... args)
 		{
-			if (count == cap)
+			if (count == capacity)
 			{
 				Grow();
 			}
@@ -209,7 +203,7 @@ namespace hbe
 
 		void Reserve(TIndex newCapacity)
 		{
-			if (newCapacity <= cap)
+			if (newCapacity <= capacity)
 				return;
 
 			auto* newData = allocator.allocate(newCapacity);
@@ -222,11 +216,11 @@ namespace hbe
 
 			if (data != nullptr)
 			{
-				allocator.deallocate(data, cap);
+				allocator.deallocate(data, capacity);
 			}
 
 			data = newData;
-			cap = newCapacity;
+			capacity = newCapacity;
 		}
 
 		void Clear()
@@ -236,7 +230,7 @@ namespace hbe
 		}
 
 		[[nodiscard]] TIndex Size() const { return count; }
-		[[nodiscard]] TIndex Capacity() const { return cap; }
+		[[nodiscard]] TIndex Capacity() const { return capacity; }
 		[[nodiscard]] bool IsEmpty() const { return count == 0; }
 		[[nodiscard]] bool IsValidIndex(TIndex index) const { return index >= 0 && index < count; }
 
@@ -246,7 +240,7 @@ namespace hbe
 		void Swap(Vector& rhs) noexcept
 		{
 			std::swap(count, rhs.count);
-			std::swap(cap, rhs.cap);
+			std::swap(capacity, rhs.capacity);
 			std::swap(data, rhs.data);
 		}
 
@@ -264,9 +258,14 @@ namespace hbe
 		}
 
 	private:
+		TAllocator allocator;
+		TIndex count;
+		TIndex capacity;
+		TElement* data;
+
 		void Grow()
 		{
-			auto newCap = std::max(DefaultCapacity, cap * 2);
+			auto newCap = std::max(DefaultCapacity, capacity * 2);
 			Reserve(newCap);
 		}
 

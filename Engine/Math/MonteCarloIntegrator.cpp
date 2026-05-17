@@ -66,7 +66,7 @@ void hbe::MonteCarloIntegrationTest::Prepare()
 			i = result;
 			average += result;
 
-			ls << "MC Samples = " << numIterations << ", result = " << result << ", PI " << Pi << lf;
+			// per-iteration result log omitted
 		}
 
 		average /= numRepeat;
@@ -79,7 +79,7 @@ void hbe::MonteCarloIntegrationTest::Prepare()
 
 		variance /= numRepeat;
 
-		ls << "Average = " << average << ", Std. Deviation = " << sqrt(variance) << lf;
+		ls << "MC Samples = " << numIterations << ", Average = " << average << ", Std. Deviation = " << sqrt(variance) << lf;
 	});
 
 	AddTest("Calculate Pi (2)", [this](auto& ls) -> void
@@ -129,7 +129,7 @@ void hbe::MonteCarloIntegrationTest::Prepare()
 			i = result;
 			average += result;
 
-			ls << "MC Samples = " << numIterations << ", result = " << result << ", PI " << Pi << lf;
+			// per-iteration result log omitted
 		}
 
 		average /= numRepeat;
@@ -142,7 +142,7 @@ void hbe::MonteCarloIntegrationTest::Prepare()
 
 		variance /= numRepeat;
 
-		ls << "Average = " << average << ", Std. Deviation = " << sqrt(variance) << lf;
+		ls << "MC Samples = " << numIterations << ", Average = " << average << ", Std. Deviation = " << sqrt(variance) << lf;
 	});
 }
 #endif // __UNIT_TEST__

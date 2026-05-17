@@ -1,4 +1,4 @@
-.DS_Store
+..DS_Store
 .idea
 
 *.cmake
@@ -52,3 +52,6 @@ MinSizeRel
 
 .opencode
 .cache
+
+# Generated test output, not source
+/test_output.txt

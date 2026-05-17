@@ -365,9 +365,6 @@ namespace hbe
 				double& totalSum = *totalSumPtr;
 				totalSum += static_cast<float>(taskResult);
 
-				auto log = Logger::Get("Bagel Problem");
-				log.Out([=](auto& ls) { ls << "Num[" << (start + 1) << ", " << end << "], result = " << taskResult; });
-
 				return end - start;
 			};
 
@@ -425,9 +422,6 @@ namespace hbe
 				auto* totalSumPtr = static_cast<double*>(userData);
 				double& totalSum = *totalSumPtr;
 				totalSum += static_cast<float>(taskResult);
-
-				auto log = Logger::Get("Bagel Problem (Incremental Task)");
-				log.Out([=](auto& ls) { ls << "Num[" << (start + 1) << ", " << incEnd << "], result = " << taskResult; });
 
 				return incEnd - start;
 			};

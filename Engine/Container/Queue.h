@@ -8,6 +8,7 @@
 #include "Container/Deque.h"
 #include "Core/Debug.h"
 
+
 namespace hbe
 {
 
@@ -17,18 +18,16 @@ namespace hbe
 	public:
 		using TContainerType = TContainer;
 
-	private:
-		TContainer container;
-
-	public:
 		Queue() = default;
+
 		Queue(const Queue&) = delete;
-		Queue& operator=(const Queue&) = delete;
 
 		Queue(Queue&& rhs) noexcept
 			: container(std::move(rhs.container))
 		{
 		}
+
+		Queue& operator=(const Queue&) = delete;
 
 		Queue& operator=(Queue&& rhs) noexcept
 		{
@@ -59,6 +58,9 @@ namespace hbe
 		[[nodiscard]] auto Size() const { return container.Size(); }
 		[[nodiscard]] bool IsEmpty() const { return container.IsEmpty(); }
 		void Clear() { container.Clear(); }
+
+	private:
+		TContainer container;
 	};
 
 } // namespace hbe

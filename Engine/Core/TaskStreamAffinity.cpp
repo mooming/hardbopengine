@@ -3,6 +3,7 @@
 
 #include "TaskStreamAffinity.h"
 
+#include <algorithm>
 
 void hbe::TaskStreamAffinityTest::Prepare()
 {
@@ -29,10 +30,21 @@ void hbe::TaskStreamAffinityTest::Prepare()
 			affinity.Unset(i);
 		}
 
-		for (unsigned int i = 0; i < affinity.GetNumBits(); ++i)
 		{
-			const bool affinityValue = affinity.Get(i);
-			ls << i << ": affinity " << affinityValue << lf;
+			constexpr unsigned int PrintCount = 3;
+			const auto numBits = affinity.GetNumBits();
+			for (unsigned int i = 0; i < std::min(PrintCount, numBits); ++i)
+			{
+				ls << i << ": affinity " << affinity.Get(i) << lf;
+			}
+			if (numBits > PrintCount * 2)
+			{
+				ls << "... " << (numBits - PrintCount * 2) << " similar lines omitted ..." << lf;
+			}
+			for (unsigned int i = std::max(PrintCount, numBits - PrintCount); i < numBits; ++i)
+			{
+				ls << i << ": affinity " << affinity.Get(i) << lf;
+			}
 		}
 
 		for (unsigned int i = 0; i < affinity.GetNumBits(); ++i)
@@ -61,10 +73,21 @@ void hbe::TaskStreamAffinityTest::Prepare()
 			}
 		}
 
-		for (unsigned int i = 0; i < affinity.GetNumBits(); ++i)
 		{
-			const bool affinityValue = affinity.Get(i);
-			ls << i << ": affinity " << affinityValue << lf;
+			constexpr unsigned int PrintCount = 3;
+			const auto numBits = affinity.GetNumBits();
+			for (unsigned int i = 0; i < std::min(PrintCount, numBits); ++i)
+			{
+				ls << i << ": affinity " << affinity.Get(i) << lf;
+			}
+			if (numBits > PrintCount * 2)
+			{
+				ls << "... " << (numBits - PrintCount * 2) << " similar lines omitted ..." << lf;
+			}
+			for (unsigned int i = std::max(PrintCount, numBits - PrintCount); i < numBits; ++i)
+			{
+				ls << i << ": affinity " << affinity.Get(i) << lf;
+			}
 		}
 
 		for (unsigned int i = 0; i < affinity.GetNumBits(); ++i)
