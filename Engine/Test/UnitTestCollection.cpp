@@ -9,6 +9,12 @@
 #include "Container/AtomicStackView.h"
 #include "Container/BoundedPriorityQueue.h"
 #include "Container/LinkedList.h"
+#include "Container/Vector.h"
+#include "Container/Map.h"
+#include "Container/HashMap.h"
+#include "Container/Deque.h"
+#include "Container/Queue.h"
+#include "Container/RingQueue.h"
 #include "Core/ComponentSystem.h"
 #include "Core/TaskSystem.h"
 #include "HSTL/HUnorderedMap.h"
@@ -85,6 +91,12 @@ namespace Test
 			testEnv.AddTestCollection<BoundedPriorityQueueTest>();
 			testEnv.AddTestCollection<AtomicStackViewTest>();
 			testEnv.AddTestCollection<LinkedListTest>();
+			testEnv.AddTestCollection<VectorTest>();
+			testEnv.AddTestCollection<MapTest>();
+			testEnv.AddTestCollection<HashMapTest>();
+			testEnv.AddTestCollection<DequeTest>();
+			testEnv.AddTestCollection<QueueTest>();
+			testEnv.AddTestCollection<RingQueueTest>();
 			testEnv.AddTestCollection<OptionalTest>();
 			testEnv.AddTestCollection<StaticStringTest>();
 			testEnv.AddTestCollection<StringTest>();
