@@ -260,6 +260,28 @@ Detailed guide for using custom memory allocators:
 ### Code Standard
 Refer to [CodeStandard.md](docs/CodeStandard.md) for coding guidelines and conventions.
 
+### AI Prompt Automation Scripts
+Automate code review with these scripts that iterate over source files and execute prompts one-by-one:
+
+| Script | Location | Description |
+|--------|----------|-------------|
+| `ai_prompt_files.sh` | Project root (Linux/macOS) | Bash script for C/C++/Obj-C file analysis on Unix systems |
+| `ai_prompt_files.bat` | Project root (Windows) | Batch script for code review automation on Windows |
+
+**Supported file types:** `.c`, `.h`, `.cpp`, `.hpp`, `.cc`, `.cxx`, `.m`, `.mm`
+
+**Quick Start:**
+```bash
+# macOS/Linux
+chmod +x ai_prompt_files.sh
+./ai_prompt_files.sh ./Engine "/review"
+
+# Windows
+ai_prompt_files.bat .\Engine "/review"
+```
+
+These scripts are perfect for batch code review, documentation generation, or automated analysis of the entire codebase.
+
 
 ### Platform-Specific
 - **Linux backtrace**: `OS::GetBackTrace()` is implemented on Linux using `backtrace()` function from `<execinfo.h>`, with symbol demangling via `cxxabi`.
