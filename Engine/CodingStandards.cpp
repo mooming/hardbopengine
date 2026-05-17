@@ -1,149 +1,210 @@
 // Copyright (c) 2026 Hansol Park (mooming.go@gmail.com). All rights reserved.
 
 #include "CodingStandards.h"
+
 #include <cstring>
 #include <iostream>
 #include <utility>
 
+
 namespace hbe
 {
+namespace examples
+{
 
-CodingStandardsBase::CodingStandardsBase() {}
+CodingStandardsBase::CodingStandardsBase() noexcept {}
 
-/**
- * @brief RVO/NRVO: Return by value
- *
- * Prefer returning objects by value to enable Return Value
- * Optimization (RVO) and Named RVO (NRVO).
- *
- * Why: RVO/NRVO allows the compiler to construct the
- * return value directly in the caller's stack frame, avoiding
- * copy/move operations entirely. Modern compilers apply this
- * optimization automatically for eligible return statements.
+InlinedData::InlinedData(int value) noexcept
+{
+    for (auto& v : buffer)
+    {
+        v = value;
+    }
+}
+
+DataProcessor::DataProcessor(int initialValue) noexcept
+    : value(initialValue)
+{
+}
+
+void DataProcessor::Process() noexcept
+{
+    for (auto& v : workBuffer)
+    {
+        v = value;
+    }
+}
+
+int DataProcessor::GetValue() const noexcept
+{
+    return value;
+}
+
+/*
+ * RVO/NRVO: Return by value. Prefer returning objects by value
+ * to enable Return Value Optimization (RVO) and Named Return
+ * Value Optimization (NRVO).
  */
-CodingStandardsBase::InlinedData CodingStandardsBase::Compute()
+InlinedData CodingStandardsBase::Compute() noexcept
 {
     return InlinedData(42);
 }
 
-/**
- * @brief NRVO: Return local without std::move (efficient)
- *
- * The compiler applies Named Return Value Optimization when a
- * local variable is returned without std::move, constructing it
- * directly in the caller's stack frame and eliminating the 4 KB
- * copy entirely.
- *
- * Why: Without std::move the variable remains an lvalue, eligible
- * for NRVO. The compiler elides the copy/move and constructs the
- * object in place. With a 1024-int (4 KB) InlinedData, this elision
- * eliminates a non-trivial runtime copy.
+/*
+ * NRVO: Return local without std::move (efficient). The compiler
+ * applies NRVO when a local variable is returned as an lvalue,
+ * constructing the 4 KB InlinedData directly in the caller's
+ * stack frame — no copy or move occurs.
  */
-CodingStandardsBase::InlinedData CodingStandardsBase::Create()
+InlinedData CodingStandardsBase::Create() noexcept
 {
     InlinedData result(42);
+
     return result;
 }
 
-/**
- * @brief BAD EXAMPLE: std::move on return prevents NRVO (less efficient)
- *
- * Using std::move forces the return value to be treated as an rvalue,
- * making it ineligible for NRVO. The compiler falls back to the move
- * constructor, performing a real 4 KB copy at runtime.
- *
- * Why: std::move prevents NRVO because NRVO requires the object to
- * be constructed directly in the target location. The explicit move
- * forces a move construction that could have been elided.
+/*
+ * BAD EXAMPLE: std::move on return prevents NRVO (less efficient).
+ * std::move converts the local into an rvalue, making it ineligible
+ * for NRVO. The compiler falls back to a real 4 KB move.
  */
-CodingStandardsBase::InlinedData CodingStandardsBase::CreateWithMove()
+InlinedData CodingStandardsBase::CreateWithMove() noexcept
 {
     InlinedData result(42);
+
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wpessimizing-move"
     return std::move(result);
 #pragma clang diagnostic pop
 }
 
-/**
- * @brief GOOD EXAMPLE: using std::move where it actually helps
+/*
+ * GOOD EXAMPLE: using std::move where it actually helps. Pass
+ * std::move(source) to sink parameters (T&&) to enable O(1)
+ * pointer-swap moves instead of O(n) deep copies.
  *
- * Use std::move when transferring ownership into a sink (a function
- * that intends to take ownership via an rvalue reference parameter).
- * This avoids an unnecessary copy when the caller no longer needs
- * the original object.
- *
- * Why: An rvalue reference parameter signals intent to take ownership.
- * Passing std::move(source) makes the caller's intent explicit and
- * enables move semantics, which can be significantly cheaper than a
- * deep copy — especially for heap-allocated types like TextBuffer where
- * a move is a pointer swap (O(1)) versus a deep copy (O(n)).
- *
- * @par Guidance:
+ * Guidance:
  * - Do NOT use std::move on a return statement (breaks NRVO).
  * - Do NOT use std::move on a const object (falls back to copy).
- * - DO use std::move when passing to a sink that takes an rvalue
- *   reference (T&&) and the source will not be used again.
- * - DO use std::move in move constructors and move assignments
- *   to transfer owned resources.
+ * - DO use std::move when passing to a T&& sink parameter.
+ * - DO use std::move in move constructors and move assignments.
  */
-CodingStandardsBase::TextBuffer CodingStandardsBase::UseMoveCorrectly(TextBuffer&& source)
+TextBuffer CodingStandardsBase::UseMoveCorrectly(TextBuffer&& source) noexcept
 {
     TextBuffer result(std::move(source));
+
     return result;
 }
 
-void CodingStandardsBase::LogValidationError(const char* message)
+void CodingStandardsBase::LogValidationError(const char* message) noexcept
 {
     std::cerr << "Validation Error: " << message << std::endl;
 }
 
-bool CodingStandardsBase::ValidateLength(size_t length, size_t maxLength)
+bool CodingStandardsBase::ValidateLength(size_t length, size_t maxLength) noexcept
 {
     return length <= maxLength;
 }
 
-CodingStandards::CodingStandards()
+CodingStandards::CodingStandards() noexcept
     : data{DefaultVersion, MaxNameLength, false}
 {
 }
 
 CodingStandards::~CodingStandards() {}
 
-void CodingStandards::SetData(const CodingStandardsData& newData)
+void CodingStandards::ProcessBraced() noexcept {}
+
+void CodingStandards::SetData(const CodingStandardsData& newData) noexcept
 {
     data = newData;
 }
 
-const CodingStandardsData& CodingStandards::GetData() const
+const CodingStandardsData& CodingStandards::GetData() const noexcept
 {
     return data;
 }
 
-int CodingStandards::GetVersion() const
+int CodingStandards::GetVersion() const noexcept
 {
     return data.version;
 }
 
-void CodingStandards::Validate() const {}
+void CodingStandards::Validate() const noexcept {}
 
-void CodingStandards::Initialize()
+void CodingStandards::Initialize() noexcept
 {
     data.isInitialized = true;
 }
 
-bool CodingStandards::IsValid() const
+bool CodingStandards::IsValid() const noexcept
 {
     return data.isInitialized;
 }
 
-CodingStandardsBase::TextBuffer::TextBuffer()
+/*
+ * Assertions with pointer validation: Uses Assert() and
+ * validates pointers before dereference — demonstrating
+ * assertion-based defensive programming.
+ */
+void CodingStandards::ProcessWithAssertion(const int* ptr) noexcept
+{
+    Assert(ptr != nullptr);
+    Assert(*ptr > 0);
+}
+
+/*
+ * Range-based for with validation: Prefer range-based for
+ * when iterating over containers, combined with Assert()
+ * for invariant checking.
+ */
+void CodingStandards::ProcessWithRangeFor(std::vector<int>& values) noexcept
+{
+    for (const auto& v : values)
+    {
+        Assert(v >= 0);
+    }
+}
+
+/*
+ * Scoped variable with safety validation: Uses explicit
+ * braces to narrow variable lifetime and validates return
+ * values before using them.
+ */
+int CodingStandards::ComputeWithValidation() noexcept
+{
+    {
+        int temp = DefaultVersion;
+        if (temp < 0)
+        {
+            Assert(false && "Invalid default version");
+            return -1;
+        }
+    }
+
+    return MaxNameLength;
+}
+
+/*
+ * Stack allocation: Prefer fixed-size stack buffers over
+ * dynamic allocation.
+ */
+void CodingStandards::ProcessWithStackBuffer() noexcept
+{
+    int buffer[256];
+    for (int i = 0; i < 256; ++i)
+    {
+        buffer[i] = i * i;
+    }
+}
+
+TextBuffer::TextBuffer() noexcept
     : data(nullptr)
     , length(0)
 {
 }
 
-CodingStandardsBase::TextBuffer::TextBuffer(const char* text)
+TextBuffer::TextBuffer(const char* text)
     : data(nullptr)
     , length(0)
 {
@@ -155,7 +216,7 @@ CodingStandardsBase::TextBuffer::TextBuffer(const char* text)
     }
 }
 
-CodingStandardsBase::TextBuffer::TextBuffer(const TextBuffer& other)
+TextBuffer::TextBuffer(const TextBuffer& other)
     : data(nullptr)
     , length(other.length)
 {
@@ -166,7 +227,7 @@ CodingStandardsBase::TextBuffer::TextBuffer(const TextBuffer& other)
     }
 }
 
-CodingStandardsBase::TextBuffer::TextBuffer(TextBuffer&& other) noexcept
+TextBuffer::TextBuffer(TextBuffer&& other) noexcept
     : data(other.data)
     , length(other.length)
 {
@@ -174,7 +235,7 @@ CodingStandardsBase::TextBuffer::TextBuffer(TextBuffer&& other) noexcept
     other.length = 0;
 }
 
-CodingStandardsBase::TextBuffer& CodingStandardsBase::TextBuffer::operator=(const TextBuffer& other)
+TextBuffer& TextBuffer::operator=(const TextBuffer& other)
 {
     if (this != &other)
     {
@@ -190,10 +251,11 @@ CodingStandardsBase::TextBuffer& CodingStandardsBase::TextBuffer::operator=(cons
             data = nullptr;
         }
     }
+
     return *this;
 }
 
-CodingStandardsBase::TextBuffer& CodingStandardsBase::TextBuffer::operator=(TextBuffer&& other) noexcept
+TextBuffer& TextBuffer::operator=(TextBuffer&& other) noexcept
 {
     if (this != &other)
     {
@@ -203,17 +265,19 @@ CodingStandardsBase::TextBuffer& CodingStandardsBase::TextBuffer::operator=(Text
         other.data = nullptr;
         other.length = 0;
     }
+
     return *this;
 }
 
-CodingStandardsBase::TextBuffer::~TextBuffer()
+TextBuffer::~TextBuffer()
 {
     delete[] data;
 }
 
-const char* CodingStandardsBase::TextBuffer::GetText() const
+const char* TextBuffer::GetText() const noexcept
 {
     return data != nullptr ? data : "";
 }
 
+} // namespace examples
 } // namespace hbe
