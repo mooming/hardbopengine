@@ -265,19 +265,19 @@ Automate code review with these scripts that iterate over source files and execu
 
 | Script | Location | Description |
 |--------|----------|-------------|
-| `ai_prompt_files.sh` | Project root (Linux/macOS) | Bash script for C/C++/Obj-C file analysis on Unix systems |
-| `ai_prompt_files.bat` | Project root (Windows) | Batch script for code review automation on Windows |
+| `batch_ai_prompt.sh` | Project root (Linux/macOS) | Bash script for C/C++/Obj-C file analysis on Unix systems |
+| `batch_ai_prompt.bat` | Project root (Windows) | Batch script for code review automation on Windows |
 
 **Supported file types:** `.c`, `.h`, `.cpp`, `.hpp`, `.cc`, `.cxx`, `.m`, `.mm`
 
 **Quick Start:**
 ```bash
 # macOS/Linux
-chmod +x ai_prompt_files.sh
-./ai_prompt_files.sh ./Engine "/review"
+chmod +x batch_ai_prompt.sh
+./batch_ai_prompt.sh ./Engine "/review"
 
 # Windows
-ai_prompt_files.bat .\Engine "/review"
+batch_ai_prompt.bat .\Engine "/review"
 ```
 
 These scripts are perfect for batch code review, documentation generation, or automated analysis of the entire codebase.
