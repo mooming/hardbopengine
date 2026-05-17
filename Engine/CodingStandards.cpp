@@ -96,6 +96,51 @@ TextBuffer CodingStandardsBase::UseMoveCorrectly(TextBuffer&& source) noexcept
     return result;
 }
 
+/*
+ * Logging in error/warning conditions. Always output a descriptive
+ * log message before returning, asserting, or taking corrective
+ * action when an error or warning is detected. A bare Assert() or
+ * silent early-return makes it difficult to diagnose what went wrong
+ * and where.
+ *
+ * Guidance:
+ * - Include the specific reason and relevant state values in the
+ *   log message so it is actionable.
+ * - Log *before* any Assert() or return so the information
+ *   survives even if the assertion terminates the process.
+ * - Use distinct prefixes ("Error:" vs "Warning:") so messages
+ *   can be filtered by severity.
+ * - Do not log in hot paths where the condition is expected and
+ *   handled silently; reserve logging for truly exceptional or
+ *   unexpected conditions.
+ *
+ * In this example, an input value exceeding the expected range
+ * triggers a warning log before corrective action (clamping).
+ * The critical invariant is still asserted at the end.
+ */
+void CodingStandards::ProcessWithErrorLogging() noexcept
+{
+    int inputSize = 200;
+
+    if (inputSize > static_cast<int>(MaxNameLength))
+    {
+        std::cerr << "Warning: inputSize (" << inputSize
+                  << ") exceeds MaxNameLength (" << MaxNameLength
+                  << "). Clamping to MaxNameLength." << std::endl;
+        inputSize = MaxNameLength;
+    }
+
+    Assert(inputSize >= 0);
+}
+
+/*
+ * Error logging helper. Logs a validation error message via std::cerr
+ * before the caller handles the failure. Demonstrates the rule:
+ * always log in error conditions.
+ *
+ * Distinct prefix ("Validation Error:") makes the message
+ * identifiable and filterable by severity.
+ */
 void CodingStandardsBase::LogValidationError(const char* message) noexcept
 {
     std::cerr << "Validation Error: " << message << std::endl;

@@ -372,6 +372,15 @@ public:
     [[nodiscard]] int ComputeWithValidation() noexcept;
     void ProcessWithStackBuffer() noexcept;
 
+    /*
+     * Error and warning logging: Always output a descriptive log
+     * message in error or warning conditions before returning,
+     * asserting, or taking corrective action. This provides essential
+     * diagnostic information for debugging and post-mortem analysis.
+     * See .cpp for the comprehensive rule explanation.
+     */
+    void ProcessWithErrorLogging() noexcept;
+
 private:
     // Has-a relationship: CodingStandards owns CodingStandardsData
     CodingStandardsData data;
