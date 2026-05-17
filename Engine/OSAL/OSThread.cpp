@@ -4,12 +4,13 @@
 
 #include <chrono>
 #include <thread>
+
 #include "../Engine/Engine.h"
 #include "OSMemory.h"
 
-void OS::Yield() { std::this_thread::yield(); }
+void OS::Yield() noexcept { std::this_thread::yield(); }
 
-void OS::Sleep(uint32_t milliseconds) { std::this_thread::sleep_for(std::chrono::milliseconds(milliseconds)); }
+void OS::Sleep(uint32_t milliseconds) noexcept { std::this_thread::sleep_for(std::chrono::milliseconds(milliseconds)); }
 
 #ifdef __UNIT_TEST__
 

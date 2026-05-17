@@ -6,6 +6,7 @@
 #include <DbgHelp.h>
 #include <Windows.h>
 #include <cstdlib>
+
 #include "String/InlineStringBuilder.h"
 
 #pragma comment(lib, "dbghelp.lib")

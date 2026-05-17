@@ -5,14 +5,17 @@
 namespace OS
 {
 
-	struct ProtectionMode final
-	{
-		int value = 0;
+class ProtectionMode final
+{
+public:
+	int value;
 
-		void SetForbidden();
-		void SetReadable();
-		void SetWritable();
-		void SetExecutable();
-	};
+	ProtectionMode() noexcept : value(0) {}
+
+	void SetForbidden() noexcept;
+	void SetReadable() noexcept;
+	void SetWritable() noexcept;
+	void SetExecutable() noexcept;
+};
 
 } // namespace OS

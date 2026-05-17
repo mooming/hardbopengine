@@ -9,44 +9,45 @@
 
 namespace OS
 {
-	/// @brief Represents a file in the file system with path access and comparison operators.
-	class File
+
+/// @brief Represents a file in the file system with path access and comparison operators.
+class File
+{
+public:
+	explicit File(const char* path) : path(path) {}
+
+	File(const File& src) : path(src.path) {}
+
+	File(File&& src) noexcept : path(std::move(src.path)) {}
+
+	File& operator=(const File& src)
 	{
-	private:
-		std::string path;
+		path = src.path;
 
-	public:
-		explicit File(const char* path) : path(path) {}
+		return *this;
+	}
 
-		File(const File& src) : path(src.path) {}
+	File& operator=(File&& src) noexcept
+	{
+		path = std::move(src.path);
 
-		File(File&& src) : path(std::move(src.path)) {}
+		return *this;
+	}
 
-		File& operator=(const File& src)
-		{
-			path = src.path;
+	bool operator<(const File& rhs) const { return path < rhs.path; }
 
-			return *this;
-		}
+	friend std::ostream& operator<<(std::ostream& os, const File& file)
+	{
+		os << file.path;
 
-		File& operator=(File&& src)
-		{
-			path = std::move(src.path);
+		return os;
+	}
 
-			return *this;
-		}
+	[[nodiscard]] const auto& GetPath() const { return path; }
 
-		inline bool operator<(const File& rhs) const { return path < rhs.path; }
+private:
+	std::string path;
+};
 
-		friend std::ostream& operator<<(std::ostream& os, const File& file)
-		{
-			os << file.path;
-
-			return os;
-		}
-
-		inline auto& GetPath() const { return path; }
-	};
-
-	using Files = std::vector<File>;
+using Files = std::vector<File>;
 } // namespace OS

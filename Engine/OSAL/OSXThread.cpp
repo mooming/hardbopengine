@@ -8,10 +8,11 @@
 #define _GNU_SOURCE
 
 #include <pthread.h>
+
 #include "Log/Logger.h"
 #include "String/StringUtil.h"
 
-int OS::GetCPUIndex()
+int OS::GetCPUIndex() noexcept
 {
 	size_t cpuNumber = 0;
 	auto result = pthread_cpu_number_np(&cpuNumber);
@@ -30,7 +31,7 @@ int OS::GetCPUIndex()
 	return static_cast<int>(cpuNumber);
 }
 
-int OS::GetThreadPriority(std::thread& thread)
+int OS::GetThreadPriority(std::thread& thread) noexcept
 {
 	auto nativeHandle = thread.native_handle();
 
@@ -62,12 +63,12 @@ int OS::GetThreadPriority(std::thread& thread)
 	return sp.sched_priority;
 }
 
-void OS::SetThreadAffinity(std::thread& thread, uint64_t mask)
+void OS::SetThreadAffinity(std::thread& thread, uint64_t mask) noexcept
 {
 	// Not supported on Apple Silicon
 }
 
-void OS::SetThreadPriority(std::thread& thread, int priority)
+void OS::SetThreadPriority(std::thread& thread, int priority) noexcept
 {
 	auto nativeHandle = thread.native_handle();
 

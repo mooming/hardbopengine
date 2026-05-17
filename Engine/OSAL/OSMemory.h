@@ -4,6 +4,7 @@
 
 #include <cstddef>
 #include <cstdint>
+
 #include "Config/BuildConfig.h"
 #include "Config/EngineConfig.h"
 
@@ -12,28 +13,28 @@
 namespace OS
 {
 
-	/// @brief Provides low-level memory management operations for platform-independent memory allocation,
-	/// alignment, and protection.
-	bool IsValidAllocation(void* ptr);
+/// @brief Provides low-level memory management operations for platform-independent memory allocation,
+/// alignment, and protection.
+[[nodiscard]] bool IsValidAllocation(void* ptr) noexcept;
 
-	template<typename T>
-	bool CheckAligned(T* ptr, uint32_t alignBytes = hbe::Config::DefaultAlign)
-	{
-		const size_t address = reinterpret_cast<size_t>(ptr);
-		return (address % alignBytes) == 0;
-	}
+template<typename T>
+[[nodiscard]] bool CheckAligned(T* ptr, uint32_t alignBytes = hbe::Config::DefaultAlign) noexcept
+{
+	const size_t address = reinterpret_cast<size_t>(ptr);
+	return (address % alignBytes) == 0;
+}
 
-	constexpr size_t GetAligned(size_t size, uint32_t alignBytes = hbe::Config::DefaultAlign)
-	{
-		const auto multiplier = (size + alignBytes - 1) / alignBytes;
-		return multiplier * alignBytes;
-	}
+[[nodiscard]] constexpr size_t GetAligned(size_t size, uint32_t alignBytes = hbe::Config::DefaultAlign) noexcept
+{
+	const auto multiplier = (size + alignBytes - 1) / alignBytes;
+	return multiplier * alignBytes;
+}
 
-	size_t GetAllocSize(void* ptr);
-	size_t GetPageSize();
-	void* VirtualAlloc(size_t size);
-	void VirtualFree(void* address, std::size_t n);
-	void ProtectMemory(void* address, std::size_t n);
+[[nodiscard]] size_t GetAllocSize(void* ptr) noexcept;
+[[nodiscard]] size_t GetPageSize() noexcept;
+void* VirtualAlloc(size_t size);
+void VirtualFree(void* address, std::size_t n) noexcept;
+void ProtectMemory(void* address, std::size_t n) noexcept;
 
 } // namespace OS
 
@@ -43,15 +44,15 @@ namespace OS
 namespace hbe
 {
 
-	/// @brief Test collection for OS memory operations.
-	class OSMemoryTest : public TestCollection
-	{
-	public:
-		inline OSMemoryTest() : TestCollection("OSMemoryTest") {}
+/// @brief Test collection for OS memory operations.
+class OSMemoryTest final : public TestCollection
+{
+public:
+	OSMemoryTest() : TestCollection("OSMemoryTest") {}
 
-	protected:
-		virtual void Prepare() override;
-	};
+protected:
+	void Prepare() override;
+};
 
 } // namespace hbe
 #endif //__UNIT_TEST__

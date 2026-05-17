@@ -1,6 +1,5 @@
 // Copyright (c) 2026 Hansol Park (mooming.go@gmail.com). All rights reserved.
 
-
 #include "LinuxWindow.h"
 
 #ifdef PLATFORM_LINUX
@@ -9,6 +8,7 @@ namespace OS
 {
 
 LinuxWindow::LinuxWindow()
+	: display(nullptr), window(0), width(0), height(0), visibleFlag(true), closedFlag(false)
 {
 }
 
@@ -22,9 +22,7 @@ bool LinuxWindow::CreateWindow(const hbe::HString& title, int width, int height)
 	display = XOpenDisplay(nullptr);
 
 	if (!display)
-	{
 		return false;
-	}
 
 	window = XCreateSimpleWindow(
 		display,
@@ -36,9 +34,7 @@ bool LinuxWindow::CreateWindow(const hbe::HString& title, int width, int height)
 	);
 
 	if (!window)
-	{
 		return false;
-	}
 
 	this->width = width;
 	this->height = height;
@@ -85,9 +81,7 @@ bool LinuxWindow::IsVisible() const
 void LinuxWindow::PollEvents()
 {
 	if (!display)
-	{
 		return;
-	}
 
 	while (XPending(display))
 	{

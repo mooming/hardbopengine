@@ -1,6 +1,5 @@
 // Copyright (c) 2026 Hansol Park (mooming.go@gmail.com). All rights reserved.
 
-
 #include "Win32Window.h"
 
 #ifdef PLATFORM_WINDOWS
@@ -10,6 +9,7 @@ namespace OS
 {
 
 Win32Window::Win32Window()
+	: hwnd(nullptr), width(0), height(0), visibleFlag(true), closedFlag(false), shouldCloseFlag(false)
 {
 }
 
@@ -41,9 +41,7 @@ bool Win32Window::CreateWindow(const hbe::HString& title, int width, int height)
 	);
 
 	if (hwnd == nullptr)
-	{
 		return false;
-	}
 
 	ShowWindow(static_cast<HWND>(hwnd), SW_SHOW);
 	UpdateWindow(static_cast<HWND>(hwnd));
@@ -125,9 +123,7 @@ bool Win32Window::IsClosed() const
 	return closedFlag;
 }
 
-} // namespace OS
-
-long OS::WindowProc(void* hwnd, unsigned int uMsg, unsigned long long wParam, long lParam)
+long Win32Window::WindowProc(void* hwnd, unsigned int uMsg, unsigned long long wParam, long lParam)
 {
 	Win32Window* pThis = nullptr;
 
@@ -161,5 +157,7 @@ long OS::WindowProc(void* hwnd, unsigned int uMsg, unsigned long long wParam, lo
 
 	return DefWindowProc(static_cast<HWND>(hwnd), uMsg, wParam, lParam);
 }
+
+} // namespace OS
 
 #endif // PLATFORM_WINDOWS

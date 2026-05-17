@@ -9,13 +9,13 @@
 #include <sysinfoapi.h>
 #include <windows.h>
 
-size_t OS::GetAllocSize(void* ptr)
+size_t OS::GetAllocSize(void* ptr) noexcept
 {
 	const auto allocSize = _msize(ptr);
 	return allocSize;
 }
 
-size_t OS::GetPageSize()
+size_t OS::GetPageSize() noexcept
 {
 	auto GetPageSizeWindows = []()
 	{
@@ -31,7 +31,7 @@ size_t OS::GetPageSize()
 
 void* OS::VirtualAlloc(size_t size) { return ::VirtualAlloc(nullptr, size, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE); }
 
-void OS::VirtualFree(void* address, std::size_t n)
+void OS::VirtualFree(void* address, std::size_t n) noexcept
 {
 	auto result = ::VirtualFree(address, n, MEM_RELEASE);
 	// BUG FIX: VirtualFree returns non-zero on SUCCESS, zero on FAILURE
@@ -43,20 +43,18 @@ void OS::VirtualFree(void* address, std::size_t n)
 	}
 }
 
-bool OS::IsValidAllocation(void* ptr)
+bool OS::IsValidAllocation(void* ptr) noexcept
 {
 	return ptr != nullptr;
 }
 
-void OS::ProtectMemory(void* address, size_t n)
+void OS::ProtectMemory(void* address, size_t n) noexcept
 {
 	DWORD oldProtect = 0;
 	auto result = VirtualProtect(address, n, PAGE_NOACCESS, &oldProtect);
 
 	if (likely(result))
-	{
 		return;
-	}
 
 	using namespace std;
 	auto errorId = GetLastError();
