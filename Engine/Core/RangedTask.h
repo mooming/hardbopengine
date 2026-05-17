@@ -12,44 +12,44 @@
 
 namespace hbe
 {
-	class Task;
+class Task;
 
-	/// @brief A task with a specific range of indices [start, end) that can be executed in parallel.
-	class RangedTask final
-	{
-		using TIndex = std::size_t;
+/// @brief A task with a specific range of indices [start, end) that can be executed in parallel.
+class RangedTask final
+{
+	using TIndex = std::size_t;
 
-	public:
-		uint8_t priority;
-		mutable TaskStreamAffinity affinity;
-		StaticString taskName;
+public:
+	uint8_t priority;
+	mutable TaskStreamAffinity affinity;
+	StaticString taskName;
 
-		// Shared Task
-		std::reference_wrapper<Task> taskRef;
+	// Shared Task
+	std::reference_wrapper<Task> taskRef;
 
-		// RangedTask Start Index
-		TIndex start;
+	// RangedTask Start Index
+	TIndex start;
 
-		// RangedTask End Index
-		TIndex end;
+	// RangedTask End Index
+	TIndex end;
 
-		// Index to be processed
-		mutable TIndex currentIndex;
+	// Index to be processed
+	mutable TIndex currentIndex;
 
-	public:
-		~RangedTask() = default;
-		RangedTask& operator=(const RangedTask& other) = default;
+public:
+	~RangedTask() = default;
+	RangedTask& operator=(const RangedTask& other) = default;
 
-		bool operator<(const RangedTask& other) const { return priority < other.priority; }
-		bool HasFinished() const { return currentIndex >= end; }
+	bool operator<(const RangedTask& other) const noexcept { return priority < other.priority; }
+	[[nodiscard]] bool HasFinished() const noexcept { return currentIndex >= end; }
 
-		// Run the runnable of the task. It'll call ReportFinishedSubTask when it's finished or been cancelled.
-		void Run();
+	// Run the runnable of the task. It'll call ReportFinishedSubTask when it's finished or been cancelled.
+	void Run() noexcept;
 
-	private:
-		RangedTask(Task& task, TIndex start, TIndex end, uint8_t priority);
+private:
+	RangedTask(Task& task, TIndex start, TIndex end, uint8_t priority) noexcept;
 
-		friend class Task;
-		friend class TaskStream;
-	};
+	friend class Task;
+	friend class TaskStream;
+};
 } // namespace hbe

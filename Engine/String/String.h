@@ -15,154 +15,140 @@ namespace hbe
 	class String
 	{
 	public:
-		using Char = char;
+		using TChar = char;
 		template<class T>
 		using Vector = hbe::HVector<T>;
 		static constexpr Index InvalidIndex = std::is_unsigned<Index>::value ? std::numeric_limits<Index>::max() : -1;
 
-	private:
-		Shareable<Vector<Char>> buffer;
-		Index hashCode;
+		String() noexcept : hashCode(0) { buffer->push_back('\0'); }
 
-	public:
-		String() : hashCode(0) { buffer->push_back('\0'); }
+		String(String& rhs) noexcept : buffer(rhs.buffer), hashCode(rhs.hashCode) {}
 
-		String(String& rhs) : buffer(rhs.buffer), hashCode(rhs.hashCode) {}
+		String(String&& rhs) noexcept : buffer(std::move(rhs.buffer)), hashCode(rhs.hashCode) { rhs.hashCode = 0; }
 
-		String(String&& rhs) : buffer(std::move(rhs.buffer)), hashCode(rhs.hashCode) { rhs.hashCode = 0; }
+		explicit String(const bool value) noexcept;
+		explicit String(const Pointer ptr) noexcept;
+		explicit String(const char letter) noexcept;
+		explicit String(const unsigned char value) noexcept;
+		explicit String(const short value) noexcept;
+		explicit String(const unsigned short value) noexcept;
+		explicit String(const int value) noexcept;
+		explicit String(const unsigned int value) noexcept;
+		explicit String(const long value) noexcept;
+		explicit String(const unsigned long value) noexcept;
+		explicit String(const long long value) noexcept;
+		explicit String(const unsigned long long value) noexcept;
+		explicit String(const float value) noexcept;
+		explicit String(const double value) noexcept;
+		explicit String(const long double value) noexcept;
+		String(const char* text) noexcept;
+		explicit String(const std::string str) noexcept : String(str.c_str()) {}
+		explicit String(const String& string, Index startIndex, Index endIndex = InvalidIndex) noexcept;
 
-		String(const bool value);
-		String(const Pointer ptr);
-		String(const char letter);
-		String(const unsigned char value);
-		String(const short value);
-		String(const unsigned short value);
-		String(const int value);
-		String(const unsigned int value);
-		String(const long value);
-		String(const unsigned long value);
-		String(const long long value);
-		String(const unsigned long long value);
-		String(const float value);
-		String(const double value);
-		String(const long double value);
-		String(const char* text);
-
-		String(const std::string str) : String(str.c_str()) {}
-		String(const String& string, Index startIndex, Index endIndex = InvalidIndex);
-
-		String& operator=(String&& rhs)
+		String& operator=(String&& rhs) noexcept
 		{
 			Swap(std::move(rhs));
 			return *this;
 		}
 
-		String& operator=(const char* text);
-		String& operator=(const String& rhs);
+		String& operator=(const char* text) noexcept;
+		String& operator=(const String& rhs) noexcept;
 
-		bool operator<(const String& rhs) const;
-		bool operator>(const String& rhs) const { return rhs < *this; }
-		bool operator<=(const String& rhs) const { return !(*this > rhs); }
-		bool operator>=(const String& rhs) const { return !(*this < rhs); }
+		bool operator<(const String& rhs) const noexcept;
+		bool operator>(const String& rhs) const noexcept { return rhs < *this; }
+		bool operator<=(const String& rhs) const noexcept { return !(*this > rhs); }
+		bool operator>=(const String& rhs) const noexcept { return !(*this < rhs); }
 
-		bool operator==(const String& rhs) const;
-		bool operator!=(const String& rhs) const { return !(*this == rhs); }
+		bool operator==(const String& rhs) const noexcept;
+		bool operator!=(const String& rhs) const noexcept { return !(*this == rhs); }
 
-		bool operator==(const char* rhs) const;
-		bool operator!=(const char* rhs) const { return !(*this == rhs); }
+		bool operator==(const char* rhs) const noexcept;
+		bool operator!=(const char* rhs) const noexcept { return !(*this == rhs); }
 
-		bool operator==(std::nullptr_t) const { return buffer->empty(); }
-		bool operator!=(std::nullptr_t) const { return !buffer->empty(); }
+		bool operator==(std::nullptr_t) const noexcept { return buffer->empty(); }
+		bool operator!=(std::nullptr_t) const noexcept { return !buffer->empty(); }
 
-		String operator+(const String& str) const { return Append(str); }
+		String operator+(const String& str) const noexcept { return Append(str); }
 
 		template<typename U>
-		void operator+=(U str)
+		void operator+=(U str) noexcept
 		{
 			AppendSelf(str);
 		}
 
-		// Convenient conversion operator to (const char*)
-		[[nodiscard]] operator const char*() const { return ToCharArray(); }
+		[[nodiscard]] operator const char*() const noexcept { return ToCharArray(); }
 
-		[[nodiscard]] const char* c_str() const { return ToCharArray(); }
+		[[nodiscard]] const char* c_str() const noexcept { return ToCharArray(); }
 
-		// Return the length of this string. It doesn't count the termination letter '\0'.
-		[[nodiscard]] Index Length() const { return static_cast<bool>(buffer) && buffer->size() > 0 ? buffer->size() - 1 : 0; }
+		[[nodiscard]] Index Length() const noexcept { return static_cast<bool>(buffer) && buffer->size() > 0 ? buffer->size() - 1 : 0; }
 
-		// True if it has at least one valid character. (The null termination letter will not be counted.)
-		[[nodiscard]] bool IsEmpty() const { return Length() == 0; }
+		[[nodiscard]] bool IsEmpty() const noexcept { return Length() == 0; }
 
-		[[nodiscard]] Index HashCode() const { return hashCode; }
+		[[nodiscard]] Index HashCode() const noexcept { return hashCode; }
 
-		[[nodiscard]] String Clone() const;
+		[[nodiscard]] String Clone() const noexcept;
 
-		[[nodiscard]] String SubString(Index startIndex, Index endIndex = InvalidIndex) const
+		[[nodiscard]] String SubString(Index startIndex, Index endIndex = InvalidIndex) const noexcept
 		{
 			return String {*this, startIndex, endIndex};
 		}
 
-		[[nodiscard]] bool ContainsAt(const String& keyword, Index startIndex) const;
+		[[nodiscard]] bool ContainsAt(const String& keyword, Index startIndex) const noexcept;
 
-		[[nodiscard]] Index Find(const Char ch) const;
-		[[nodiscard]] Index Find(const Array<Char>& chs) const;
-		[[nodiscard]] Index Find(const String& keyword) const;
-		[[nodiscard]] Index Find(const String& keyword, Index startIndex, Index endIndex = InvalidIndex) const;
+		[[nodiscard]] Index Find(const TChar ch) const noexcept;
+		[[nodiscard]] Index Find(const Array<TChar>& chs) const noexcept;
+		[[nodiscard]] Index Find(const String& keyword) const noexcept;
+		[[nodiscard]] Index Find(const String& keyword, Index startIndex, Index endIndex = InvalidIndex) const noexcept;
 
-		[[nodiscard]] Index FindLast(const Char ch) const;
+		[[nodiscard]] Index FindLast(const TChar ch) const noexcept;
 
-		[[nodiscard]] bool IsValidIndex(Index index) const { return index >= 0 && index < Length(); }
+		[[nodiscard]] bool IsValidIndex(Index index) const noexcept { return index >= 0 && index < Length(); }
 
-		[[nodiscard]] bool StartsWith(const Char ch) const
+		[[nodiscard]] bool StartsWith(const TChar ch) const noexcept
 		{
 			if (IsEmpty())
-			{
 				return false;
-			}
+
 			return (*buffer)[0] == ch;
 		}
 
-		[[nodiscard]] bool StartsWith(const String& header) const { return ContainsAt(header, 0); }
+		[[nodiscard]] bool StartsWith(const String& header) const noexcept { return ContainsAt(header, 0); }
 
-		[[nodiscard]] bool EndsWith(const Char ch) const
+		[[nodiscard]] bool EndsWith(const TChar ch) const noexcept
 		{
 			if (IsEmpty())
-			{
 				return false;
-			}
 
 			return (*buffer)[Length() - 1] == ch;
 		}
 
-		[[nodiscard]] bool EndsWith(const String& tail) const
+		[[nodiscard]] bool EndsWith(const String& tail) const noexcept
 		{
 			if (Length() < tail.Length())
-			{
 				return false;
-			}
 
 			return ContainsAt(tail, Length() - tail.Length());
 		}
 
-		[[nodiscard]] bool Contains(const String& keyword) const { return Find(keyword) < Length(); }
+		[[nodiscard]] bool Contains(const String& keyword) const noexcept { return Find(keyword) < Length(); }
 
-		[[nodiscard]] String Append(const Char letter) const;
-		[[nodiscard]] String Append(const int value) const;
-		[[nodiscard]] String Append(const float value) const;
-		[[nodiscard]] String Append(const Char* text) const;
-		[[nodiscard]] String Append(const String& string) const;
+		[[nodiscard]] String Append(const TChar letter) const noexcept;
+		[[nodiscard]] String Append(const int value) const noexcept;
+		[[nodiscard]] String Append(const float value) const noexcept;
+		[[nodiscard]] String Append(const TChar* text) const noexcept;
+		[[nodiscard]] String Append(const String& string) const noexcept;
 
-		void AppendSelf(const Char letter);
-		void AppendSelf(const int value);
-		void AppendSelf(const float value);
-		void AppendSelf(const Char* text);
-		void AppendSelf(const String& string);
+		void AppendSelf(const TChar letter) noexcept;
+		void AppendSelf(const int value) noexcept;
+		void AppendSelf(const float value) noexcept;
+		void AppendSelf(const TChar* text) noexcept;
+		void AppendSelf(const String& string) noexcept;
 
-		[[nodiscard]] String Replace(const String& from, const String& to, Index offset = 0, Index endIndex = InvalidIndex) const;
-		[[nodiscard]] String ReplaceAll(char from, char to) const;
-		[[nodiscard]] String ReplaceAll(String from, String to) const;
+		[[nodiscard]] String Replace(const String& from, const String& to, Index offset = 0, Index endIndex = InvalidIndex) const noexcept;
+		[[nodiscard]] String ReplaceAll(char from, char to) const noexcept;
+		[[nodiscard]] String ReplaceAll(String from, String to) const noexcept;
 
-		[[nodiscard]] String Trim() const
+		[[nodiscard]] String Trim() const noexcept
 		{
 			Index startIndex = InvalidIndex;
 			Index endIndex = InvalidIndex;
@@ -188,9 +174,9 @@ namespace hbe
 			return SubString(startIndex, endIndex + 1);
 		}
 
-		[[nodiscard]] String Head() const
+		[[nodiscard]] String Head() const noexcept
 		{
-			Index index = Find(Array<Char>({' ', '\t', '\n', '\r'}));
+			Index index = Find(Array<TChar>({' ', '\t', '\n', '\r'}));
 			if (index < Length())
 			{
 				return SubString(0, index);
@@ -199,21 +185,22 @@ namespace hbe
 			return Clone();
 		}
 
-		[[nodiscard]] String ExceptHead() const
+		[[nodiscard]] String ExceptHead() const noexcept
 		{
-			Index index = Find(Array<Char>({' ', '\t', '\n', '\r'}));
+			Index index = Find(Array<TChar>({' ', '\t', '\n', '\r'}));
 			if (index < Length())
 			{
 				return SubString(index);
 			}
+
 			return {};
 		}
 
-		[[nodiscard]] Char* GetBuffer() { return buffer->data(); }
-		[[nodiscard]] const Char* GetBuffer() const { return buffer->data(); }
-		void ResetBuffer(size_t size);
+		[[nodiscard]] TChar* GetBuffer() noexcept { return buffer->data(); }
+		[[nodiscard]] const TChar* GetBuffer() const noexcept { return buffer->data(); }
+		void ResetBuffer(size_t size) noexcept;
 
-		void Swap(String&& target)
+		void Swap(String&& target) noexcept
 		{
 			Index tmpHashCode = hashCode;
 			hashCode = target.hashCode;
@@ -222,9 +209,9 @@ namespace hbe
 			buffer.Swap(target.buffer);
 		}
 
-		void ToLowerCase()
+		void ToLowerCase() noexcept
 		{
-			constexpr Char diff = 'a' - 'A';
+			constexpr TChar diff = 'a' - 'A';
 
 			auto tmp = GetBuffer();
 			const auto length = Length();
@@ -239,16 +226,17 @@ namespace hbe
 			CalculateHashCode();
 		}
 
-		[[nodiscard]] String GetLowerCase() const
+		[[nodiscard]] String GetLowerCase() const noexcept
 		{
 			String str = Clone();
 			str.ToLowerCase();
+
 			return str;
 		}
 
-		void ToUpperCase()
+		void ToUpperCase() noexcept
 		{
-			constexpr Char diff = 'A' - 'a';
+			constexpr TChar diff = 'A' - 'a';
 
 			auto tmp = GetBuffer();
 			const auto length = Length();
@@ -263,55 +251,58 @@ namespace hbe
 			CalculateHashCode();
 		}
 
-		[[nodiscard]] String GetUpperCase() const
+		[[nodiscard]] String GetUpperCase() const noexcept
 		{
 			String str = Clone();
 			str.ToUpperCase();
+
 			return str;
 		}
 
-		[[nodiscard]] const char* ToCharArray() const;
+		[[nodiscard]] const char* ToCharArray() const noexcept;
 
-		[[nodiscard]] char ToChar() const { return buffer ? (*buffer)[0] : '\0'; }
+		[[nodiscard]] char ToChar() const noexcept { return buffer ? (*buffer)[0] : '\0'; }
 
-		[[nodiscard]] char ToUnsignedChar() const { return buffer ? static_cast<unsigned char>((*buffer)[0]) : 0; }
+		[[nodiscard]] char ToUnsignedChar() const noexcept { return buffer ? static_cast<unsigned char>((*buffer)[0]) : 0; }
 
-		[[nodiscard]] int ToInt() const { return buffer ? std::stoi(buffer->data()) : 0; }
+		[[nodiscard]] int ToInt() const noexcept { return buffer ? std::stoi(buffer->data()) : 0; }
 
-		[[nodiscard]] unsigned int ToUnsignedInt() const
+		[[nodiscard]] unsigned int ToUnsignedInt() const noexcept
 		{
 			return buffer ? static_cast<unsigned int>(std::stoul(buffer->data())) : 0;
 		}
 
-		[[nodiscard]] long ToLong() const { return buffer ? std::stol(buffer->data()) : 0; }
+		[[nodiscard]] long ToLong() const noexcept { return buffer ? std::stol(buffer->data()) : 0; }
 
-		[[nodiscard]] unsigned long ToUnsignedLong() const { return buffer ? std::stoul(buffer->data()) : 0; }
+		[[nodiscard]] unsigned long ToUnsignedLong() const noexcept { return buffer ? std::stoul(buffer->data()) : 0; }
 
-		[[nodiscard]] long long ToLongLong() const { return buffer ? std::stoll(buffer->data()) : 0; }
+		[[nodiscard]] long long ToLongLong() const noexcept { return buffer ? std::stoll(buffer->data()) : 0; }
 
-		[[nodiscard]] unsigned long long ToUnsignedLongLong() const { return buffer ? std::stoull(buffer->data()) : 0; }
+		[[nodiscard]] unsigned long long ToUnsignedLongLong() const noexcept { return buffer ? std::stoull(buffer->data()) : 0; }
 
-		[[nodiscard]] float ToFloat() const { return buffer ? std::stof(buffer->data()) : 0.0f; }
+		[[nodiscard]] float ToFloat() const noexcept { return buffer ? std::stof(buffer->data()) : 0.0f; }
 
-		[[nodiscard]] double ToDouble() const { return buffer ? std::stod(buffer->data()) : 0.0; }
+		[[nodiscard]] double ToDouble() const noexcept { return buffer ? std::stod(buffer->data()) : 0.0; }
 
-		[[nodiscard]] long double ToLongDouble() const { return buffer ? std::stold(buffer->data()) : 0.0; }
+		[[nodiscard]] long double ToLongDouble() const noexcept { return buffer ? std::stold(buffer->data()) : 0.0; }
 
-		[[nodiscard]] void* ToPointer() const
+		[[nodiscard]] void* ToPointer() const noexcept
 		{
 			if (buffer)
 			{
 				unsigned long long address = std::stoull(buffer->data(), 0, 16);
 				return reinterpret_cast<void*>(address);
 			}
+
 			return nullptr;
 		}
 
-		// A simple helper function to parse 'Key = Value' string.
-		void ParseKeyValue(String& outKey, String& outValue);
+		void ParseKeyValue(String& outKey, String& outValue) noexcept;
 
 	private:
-		void CalculateHashCode();
+		Shareable<Vector<TChar>> buffer;
+		Index hashCode;
+		void CalculateHashCode() noexcept;
 	};
 } // namespace hbe
 

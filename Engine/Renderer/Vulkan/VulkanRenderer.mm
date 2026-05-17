@@ -2,7 +2,6 @@
 
 // VulkanRenderer.mm - macOS platform-specific implementation
 
-#include "Config/BuildConfig.h"
 #include "VulkanRenderer.h"
 
 #if __has_include("vulkan/vulkan_h")
@@ -15,35 +14,34 @@
 #import <Metal/Metal.h>
 #endif
 
-#include <iostream>
 
 namespace hbe
 {
 namespace Renderer
 {
 
-void VulkanRenderer::InitPlatformLayers()
+void VulkanRenderer::InitPlatformLayers() noexcept
 {
 #if defined(PLATFORM_OSX) && __has_include("vulkan/vulkan_h")
-    if (m_Window != nullptr && m_MetalLayer == nullptr)
+    if (window != nullptr && metalLayer == nullptr)
     {
-        NSWindow* nsWindow = (NSWindow*)m_Window->GetNativeHandle();
+        NSWindow* nsWindow = (NSWindow*)window->GetNativeHandle();
         if (nsWindow != nil)
         {
             NSView* contentView = nsWindow.contentView;
             if (contentView != nil && contentView.layer != nil)
             {
-                m_MetalLayer = (__bridge void*)contentView.layer;
+                metalLayer = (__bridge void*)contentView.layer;
             }
         }
     }
 #endif
 }
 
-void VulkanRenderer::SetMetalLayer(void* layer)
+void VulkanRenderer::SetMetalLayer(void* layer) noexcept
 {
 #if defined(PLATFORM_OSX)
-    m_MetalLayer = layer;
+    metalLayer = layer;
 #endif
 }
 

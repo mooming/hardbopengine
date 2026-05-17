@@ -11,6 +11,7 @@
 #include "Memory/AllocatorScope.h"
 #include "StringUtil.h"
 
+
 namespace hbe
 {
 
@@ -206,16 +207,16 @@ namespace hbe
 
 	void StaticStringTable::RegisterPredefinedStrings()
 	{
-		Register("");
-		Register("None");
-		Register("NONE");
-		Register("Null");
-		Register("NULL");
-		Register("True");
-		Register("False");
-		Register("Unknown");
+		(void) Register("");
+		(void) Register("None");
+		(void) Register("NONE");
+		(void) Register("Null");
+		(void) Register("NULL");
+		(void) Register("True");
+		(void) Register("False");
+		(void) Register("Unknown");
 
-		Register("HardbopEngine");
+		(void) Register("HardbopEngine");
 	}
 
 	StaticStringTable::TIndex StaticStringTable::GetTableID(const char* text) const

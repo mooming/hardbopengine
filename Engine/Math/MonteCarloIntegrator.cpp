@@ -5,11 +5,12 @@
 
 #include "MonteCarloIntegrator.h"
 
+
 #ifdef __UNIT_TEST__
 #include <random>
 #include "Core/Constants.h"
 
-void hbe::MonteCarloIntegrationTest::Prepare()
+void hbe::MonteCarloIntegrationTest::Prepare() noexcept
 {
 	AddTest("Calculate Pi", [this](auto& ls) -> void
 	{

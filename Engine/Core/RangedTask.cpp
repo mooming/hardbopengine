@@ -8,41 +8,42 @@
 #include "Log/Logger.h"
 #include "TaskSystem.h"
 
+
 namespace hbe
 {
-	void RangedTask::Run()
+void RangedTask::Run() noexcept
+{
+	auto& task = taskRef.get();
+	auto runnable = task.GetRunnable();
+	if (runnable == nullptr)
 	{
-		auto& task = taskRef.get();
-		auto runnable = task.GetRunnable();
-		if (runnable == nullptr)
-		{
-			currentIndex = end;
+		currentIndex = end;
 
-			auto logger = Logger::Get(task.GetName());
-			logger.OutError([](auto& ls) { ls << "Null Runnable."; });
+		auto logger = Logger::Get(task.GetName());
+		logger.OutError([](auto& ls) { ls << "Null Runnable."; });
 
-			return;
-		}
-
-		auto userData = task.GetUserData();
-		auto delta = runnable(userData, currentIndex, end);
-		currentIndex += delta;
-
-		if (HasFinished())
-		{
-			task.ReportFinishedSubTask();
-		}
+		return;
 	}
 
-	RangedTask::RangedTask(Task& task, TIndex start, TIndex end, uint8_t priority)
-		: priority(priority)
-		, taskName(task.GetName())
-		, taskRef(task)
-		, start(start)
-		, end(end)
-		, currentIndex(start)
+	auto userData = task.GetUserData();
+	auto delta = runnable(userData, currentIndex, end);
+	currentIndex += delta;
+
+	if (HasFinished())
 	{
-		affinity.Unset(TaskSystem::GetBaseTaskStreamIndex());
-		affinity.Unset(TaskSystem::GetIOTaskStreamIndex());
+		task.ReportFinishedSubTask();
 	}
+}
+
+RangedTask::RangedTask(Task& task, TIndex start, TIndex end, uint8_t priority) noexcept
+	: priority(priority)
+	, taskName(task.GetName())
+	, taskRef(task)
+	, start(start)
+	, end(end)
+	, currentIndex(start)
+{
+	affinity.Unset(TaskSystem::GetBaseTaskStreamIndex());
+	affinity.Unset(TaskSystem::GetIOTaskStreamIndex());
+}
 } // namespace hbe

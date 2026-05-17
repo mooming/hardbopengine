@@ -3,183 +3,203 @@
 #include "Test/TestCollection.h"
 
 #include <exception>
+
 #include "Log/Logger.h"
+
 
 namespace hbe
 {
 
-	TestCollection::LogFlush::LogFlush(const char* name, ELogLevel level, TLogBuffer* buffer) :
-		name(name), level(level), testIndex(0), testName("None"), messageBuffer(buffer)
-	{}
+TestCollection::LogFlush::LogFlush(const char* name, ELogLevel level, TLogBuffer* buffer) :
+	name(name), level(level), testIndex(0), testName("None"), messageBuffer(buffer)
+{}
 
-	TestCollection::TestCollection(const char* inTitle) :
-		title(inTitle), isDone(false), isSuccess(false), lf(title.c_str(), ELogLevel::Info, nullptr),
-		lfwarn(title.c_str(), ELogLevel::Warning, &warningMessages),
-		lferr(title.c_str(), ELogLevel::Error, &errorMessages)
-	{}
+TestCollection::TestCollection(const char* inTitle) :
+	lf(inTitle, ELogLevel::Info, nullptr),
+	lfwarn(inTitle, ELogLevel::Warning, &warningMessages),
+	lferr(inTitle, ELogLevel::Error, &errorMessages),
+	title(inTitle), isDone(false), isSuccess(false)
+{}
 
-	void TestCollection::Start()
+const char* TestCollection::GetName() const noexcept
+{
+	return title.c_str();
+}
+
+const std::vector<std::string>& TestCollection::GetWarningMessages() const noexcept
+{
+	return warningMessages;
+}
+
+const std::vector<std::string>& TestCollection::GetErrorMessages() const noexcept
+{
+	return errorMessages;
+}
+
+bool TestCollection::IsDone() const noexcept
+{
+	return isDone;
+}
+
+bool TestCollection::IsSuccess() const noexcept
+{
+	return isSuccess;
+}
+
+void TestCollection::Start()
+{
+	isDone = false;
+	isSuccess = false;
+	tests.clear();
+	warningMessages.clear();
+	errorMessages.clear();
+
+	auto log = Logger::Get(GetName());
+
+	log.Out("= START ========================================");
+
+	Prepare();
+	ExecuteTests();
+
+	isSuccess = errorMessages.empty();
+	isDone = true;
+
+	Report();
+}
+
+void TestCollection::AddTest(const char* name, const TTestFunc& testCase)
+{
+	if (unlikely(testCase == nullptr))
 	{
-		isDone = false;
-		isSuccess = false;
-		tests.clear();
-		warningMessages.clear();
-		errorMessages.clear();
+		auto log = Logger::Get(GetName());
+		log.OutError([](auto& ls) { ls << "Null test-case error."; });
+
+		return;
+	}
+
+	tests.emplace_back(name != nullptr ? name : "None", testCase);
+}
+
+void TestCollection::ExecuteTests()
+{
+	TLogOut logStream;
+
+	size_t errorCursor = 0;
+	const size_t length = tests.size();
+
+	for (uint32_t i = 0; i < length; ++i)
+	{
+		auto& testPair = tests[i];
+		auto testName = testPair.first.c_str();
+
+		lf.testIndex = i;
+		lf.testName = testName;
+		lfwarn.testIndex = i;
+		lfwarn.testName = testName;
+		lferr.testIndex = i;
+		lferr.testName = testName;
+
+		auto& test = testPair.second;
+		if (test == nullptr)
+		{
+			std::cerr << "Error: test is null" << std::endl;
+		}
+		Assert(test != nullptr);
 
 		auto log = Logger::Get(GetName());
+		log.Out([i, testName](auto& ls) { ls << "# TC" << i << '.' << testName << " #"; });
 
-		try
 		{
-			log.Out("= START ========================================");
+			MultiPoolAllocator alloc(testName);
+			AllocatorScope scope(alloc);
+			test(logStream);
 
-			Prepare();
-			ExecuteTests();
-
-			isSuccess = errorMessages.empty();
-			isDone = true;
-		}
-		catch (std::exception& e)
-		{
-			log.OutError([title = GetName(), &e](auto& ls) { ls << title << " : " << e.what() << hendl; });
-
-			isSuccess = false;
+			alloc.PrintUsage();
 		}
 
-		Report();
-	}
+		auto newErrorCursor = errorMessages.size();
+		bool isPassed = newErrorCursor == errorCursor;
+		errorCursor = newErrorCursor;
 
-	void TestCollection::AddTest(const char* name, const TestFunc& testCase)
-	{
-		if (unlikely(testCase == nullptr))
+		log.Out([i, isPassed, testName](auto& ls)
 		{
-			auto log = Logger::Get(GetName());
-			log.OutError([](auto& ls) { ls << "Null test-case error."; });
-
-			return;
-		}
-
-		tests.emplace_back(name != nullptr ? name : "None", testCase);
-	}
-
-	void TestCollection::ExecuteTests()
-	{
-		TLogOut logStream;
-
-		size_t errorCursor = 0;
-		const size_t length = tests.size();
-
-		for (uint32_t i = 0; i < length; ++i)
-		{
-			auto& testPair = tests[i];
-			auto testName = testPair.first.c_str();
-
-			lf.testIndex = i;
-			lf.testName = testName;
-			lfwarn.testIndex = i;
-			lfwarn.testName = testName;
-			lferr.testIndex = i;
-			lferr.testName = testName;
-
-			auto& test = testPair.second;
-			Assert(test != nullptr);
-
-			auto log = Logger::Get(GetName());
-			log.Out([i, testName](auto& ls) { ls << "# TC" << i << '.' << testName << " #"; });
-
+			ls << "# TC" << i << '.' << testName << " Result ";
+			if (isPassed)
 			{
-				MultiPoolAllocator alloc(testName);
-				AllocatorScope scope(alloc);
-				test(logStream);
-
-				alloc.PrintUsage();
+				ls << "[PASS] #\n";
 			}
-
-			auto newErrorCursor = errorMessages.size();
-			bool isPassed = newErrorCursor == errorCursor;
-			errorCursor = newErrorCursor;
-
-			log.Out([i, isPassed, testName](auto& ls)
+			else
 			{
-				ls << "# TC" << i << '.' << testName << " Result ";
-				if (isPassed)
-				{
-					ls << "[PASS] #\n";
-				}
-				else
-				{
-					ls << "[FAIL] #\n";
-				}
-			});
-
-			logStream.str("");
-		}
-	}
-
-	void TestCollection::Report() const
-	{
-		TLog log(GetName(), ELogLevel::Info);
-
-		if (isSuccess)
-		{
-			log.Out([](auto& ls) { ls << "= Collection Result: [SUCCESS] =================\n"; });
-		}
-		else
-		{
-			log.OutError([](auto& ls) { ls << "= Collection Result: [FAIL] ====================\n"; });
-		}
-	}
-
-	std::ostream& operator<<(std::ostream& os, const TestCollection::LogFlush& lf)
-	{
-		std::stringstream ss;
-		ss << os.rdbuf();
-
-		std::string prefix;
-		prefix.reserve(32);
-		prefix.append("TC");
-		prefix.append(std::to_string(lf.testIndex));
-
-		auto str = ss.str();
-		auto log = Logger::Get(lf.name, lf.level);
-
-		log.Out([&lf, &prefix, &str](auto& ls)
-		{
-			ls << '[' << prefix.c_str() << "." << lf.testName << "] " << str.c_str();
-
-			auto messages = lf.messageBuffer;
-			if (messages == nullptr)
-			{
-				return;
-			}
-
-			{
-				std::stringstream msg;
-				msg << ls.c_str();
-				messages->push_back(msg.str());
+				ls << "[FAIL] #\n";
 			}
 		});
 
-		ss.str("");
+		logStream.str("");
+	}
+}
 
-		return os;
+void TestCollection::Report() const
+{
+	TLog log(GetName(), ELogLevel::Info);
+
+	if (isSuccess)
+	{
+		log.Out([](auto& ls) { ls << "= Collection Result: [SUCCESS] =================\n"; });
+	}
+	else
+	{
+		log.OutError([](auto& ls) { ls << "= Collection Result: [FAIL] ====================\n"; });
+	}
+}
+
+std::ostream& operator<<(std::ostream& os, const TestCollection::LogFlush& lf)
+{
+	std::stringstream ss;
+	ss << os.rdbuf();
+
+	std::string prefix;
+	prefix.reserve(32);
+	prefix.append("TC");
+	prefix.append(std::to_string(lf.testIndex));
+
+	auto str = ss.str();
+	auto log = Logger::Get(lf.name, lf.level);
+
+	log.Out([&lf, &prefix, &str](auto& ls)
+	{
+		ls << '[' << prefix.c_str() << "." << lf.testName << "] " << str.c_str();
+
+		auto messages = lf.messageBuffer;
+		if (messages == nullptr) return;
+
+		{
+			std::stringstream msg;
+			msg << ls.c_str();
+			messages->push_back(msg.str());
+		}
+	});
+
+	ss.str("");
+
+	return os;
 
 #if 0
-		// Add prefix for the current test case.
+	// Add prefix for the current test case.
 
-		auto log = Logger::Get(lf.name, lf.level);
-		log.Out([&lf, &os](auto& ls)
+	auto log = Logger::Get(lf.name, lf.level);
+	log.Out([&lf, &os](auto& ls)
+	{
+		ls << "[TC" << lf.testIndex << "." << lf.testName << "] ";
+		std::istreambuf_iterator<char> strIter(os.rdbuf()), endIter;
+		while (strIter != endIter)
 		{
-			ls << "[TC" << lf.testIndex << "." << lf.testName << "] ";
-			std::istreambuf_iterator<char> strIter(os.rdbuf()), endIter;
-			while (strIter != endIter)
-			{
-				ls << *strIter;
-				++strIter;
-			}
-		});
+			ls << *strIter;
+			++strIter;
+		}
+	});
 
-		return os;
+	return os;
 #endif
-	}
+}
 
 } // namespace hbe

@@ -11,13 +11,13 @@ namespace hbe
 {
 
 	template<typename T>
-	inline T Abs(T value, std::false_type)
+	[[nodiscard]] T Abs(T value, std::false_type) noexcept
 	{
 		return std::abs(value);
 	}
 
 	template<typename T>
-	inline T Abs(T value, std::true_type)
+	[[nodiscard]] T Abs(T value, std::true_type) noexcept
 	{
 		constexpr int shift = sizeof(T) * 8 - 1;
 		const uint8_t mask = value >> shift;
@@ -26,13 +26,13 @@ namespace hbe
 	}
 
 	template<typename T>
-	inline T Abs(T value)
+	[[nodiscard]] T Abs(T value) noexcept
 	{
 		return Abs<T>(value, std::is_integral<T>());
 	}
 
 	template<typename T>
-	inline T Pow(T value, T n, std::true_type)
+	[[nodiscard]] T Pow(T value, T n, std::true_type) noexcept
 	{
 		FatalAssert(n >= 0);
 
@@ -58,98 +58,103 @@ namespace hbe
 	}
 
 	template<typename T>
-	T Pow(T value, T n, std::false_type);
+	T Pow(T value, T n, std::false_type) noexcept;
 
 	template<>
-	inline float Pow(float value, float n, std::false_type)
+	[[nodiscard]] inline float Pow(float value, float n, std::false_type) noexcept
 	{
 		return powf(value, n);
 	}
 
 	template<>
-	inline double Pow(double value, double n, std::false_type)
+	[[nodiscard]] inline double Pow(double value, double n, std::false_type) noexcept
 	{
 		return pow(value, n);
 	}
 
 	template<>
-	inline long double Pow(long double value, long double n, std::false_type)
+	[[nodiscard]] inline long double Pow(long double value, long double n, std::false_type) noexcept
 	{
 		return powl(value, n);
 	}
 
 	template<typename T>
-	inline T Pow(T value, T n)
+	[[nodiscard]] T Pow(T value, T n) noexcept
 	{
 		return Pow(value, n, std::is_integral<T>());
 	}
 
 	template<typename T>
-	inline T MinFast(T a, T b)
+	[[nodiscard]] T MinFast(T a, T b) noexcept
 	{
 		return ((a + b) - Abs(a - b)) / static_cast<T>(2);
 	}
 
 	template<typename T>
-	inline T MaxFast(T a, T b)
+	[[nodiscard]] T MaxFast(T a, T b) noexcept
 	{
 		return ((a + b) + Abs(a - b)) / static_cast<T>(2);
 	}
 
 	template<typename T>
-	inline T ClampFast(T value, T min, T max)
+	[[nodiscard]] T ClampFast(T value, T min, T max) noexcept
 	{
 		Assert(min <= max, "Clamp) Invalid Args. min > max");
+
 		return MinFast(max, MinFast(min, value));
 	}
 
 	template<typename T>
-	inline T Clamp(T value, T min, T max)
+	[[nodiscard]] T Clamp(T value, T min, T max) noexcept
 	{
 		Assert(min <= max, "Clamp) Invalid Args. min > max");
+
 		return std::min(max, std::max(min, value));
 	}
 
-	inline float DegreeToRadian(float deg)
+	[[nodiscard]] inline float DegreeToRadian(float deg) noexcept
 	{
 		constexpr float inv = 1.0f / 180.0f;
+
 		return deg * Pi * inv;
 	}
 
-	inline float RadianToDegree(float rad)
+	[[nodiscard]] inline float RadianToDegree(float rad) noexcept
 	{
 		constexpr float invPi = 1.0f / Pi;
+
 		return rad * 180.0f * invPi;
 	}
 
-	inline bool IsZero(float value) { return Abs(value) < Epsilon; }
+	[[nodiscard]] inline bool IsZero(float value) noexcept { return Abs(value) < Epsilon; }
 
-	inline bool IsUnity(float value) { return Abs(value - 1.0f) < Epsilon; }
+	[[nodiscard]] inline bool IsUnity(float value) noexcept { return Abs(value - 1.0f) < Epsilon; }
 
-	inline bool IsEqual(float a, float b) { return Abs(a - b) < Epsilon; }
+	[[nodiscard]] inline bool IsEqual(float a, float b) noexcept { return Abs(a - b) < Epsilon; }
 
-	inline bool IsEqual(double a, double b) { return Abs(a - b) < Epsilon; }
+	[[nodiscard]] inline bool IsEqual(double a, double b) noexcept { return Abs(a - b) < Epsilon; }
 
-	inline bool IsNotEqual(float a, float b) { return Abs(a - b) >= Epsilon; }
+	[[nodiscard]] inline bool IsNotEqual(float a, float b) noexcept { return Abs(a - b) >= Epsilon; }
 
 	namespace Physics
 	{
 
-		inline float Min(float a, float b) { return ((a + b) - Abs(a - b)) * 0.5f; }
+		[[nodiscard]] inline float Min(float a, float b) noexcept { return ((a + b) - Abs(a - b)) * 0.5f; }
 
-		inline float Max(float a, float b) { return ((a + b) + Abs(a - b)) * 0.5f; }
+		[[nodiscard]] inline float Max(float a, float b) noexcept { return ((a + b) + Abs(a - b)) * 0.5f; }
 
-		inline float Clamp(float value, float min, float max)
+		[[nodiscard]] inline float Clamp(float value, float min, float max) noexcept
 		{
 			Assert(min <= max);
+
 			return Min(max, Max(min, value));
 		}
 
-		inline bool IsZero(float value) { return Abs(value) < Epsilon; }
+		[[nodiscard]] inline bool IsZero(float value) noexcept { return Abs(value) < Epsilon; }
 
-		inline bool IsEqual(float a, float b) { return Abs(a - b) < Epsilon; }
+		[[nodiscard]] inline bool IsEqual(float a, float b) noexcept { return Abs(a - b) < Epsilon; }
 
-		inline bool IsNotEqual(float a, float b) { return Abs(a - b) >= Epsilon; }
+		[[nodiscard]] inline bool IsNotEqual(float a, float b) noexcept { return Abs(a - b) >= Epsilon; }
 
 	} // namespace Physics
 
@@ -162,13 +167,13 @@ namespace hbe
 namespace hbe
 {
 
-	class MathUtilTest : public TestCollection
+	class MathUtilTest final : public TestCollection
 	{
 	public:
 		MathUtilTest() : TestCollection("MathUtilTest") {}
 
 	protected:
-		virtual void Prepare() override;
+		void Prepare() noexcept override;
 	};
 
 } // namespace hbe

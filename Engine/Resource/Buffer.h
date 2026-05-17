@@ -18,22 +18,15 @@ namespace hbe
 		using TGenerateBuffer = BufferTypes::TGenerateBuffer;
 		using TReleaseBuffer = BufferTypes::TReleaseBuffer;
 
-	private:
-		TSize size;
-		TBufferData data;
-		TReleaseBuffer releaser;
-
-	public:
 		Buffer();
 		Buffer(Buffer&& rhs) noexcept;
 		explicit Buffer(const TGenerateBuffer& genFunc);
 		Buffer(const TGenerateBuffer& genFunc, const TReleaseBuffer& releaseFunc);
 		~Buffer();
 
-		StaticString GetClassName() const;
+		[[nodiscard]] StaticString GetClassName() const noexcept;
 		void SetReleaser(TReleaseBuffer&& releaseFunc);
 
-	public:
 		template<typename T>
 		T* GetDataAs()
 		{
@@ -47,14 +40,19 @@ namespace hbe
 		}
 
 		template<typename T>
-		size_t TranslateSizeAs() const
+		[[nodiscard]] size_t TranslateSizeAs() const noexcept
 		{
 			return size / sizeof(T);
 		}
 
-		uint8_t* GetData() { return data; }
-		const uint8_t* GetData() const { return data; }
-		auto GetSize() const { return size; }
+		[[nodiscard]] uint8_t* GetData() noexcept { return data; }
+		[[nodiscard]] const uint8_t* GetData() const noexcept { return data; }
+		[[nodiscard]] auto GetSize() const noexcept { return size; }
+
+	private:
+		TSize size;
+		TBufferData data;
+		TReleaseBuffer releaser;
 	};
 
 } // namespace hbe
@@ -64,14 +62,14 @@ namespace hbe
 
 namespace hbe
 {
-	class BufferTest : public TestCollection
+	class BufferTest final : public TestCollection
 	{
 	public:
 		BufferTest();
-		virtual ~BufferTest() = default;
+		~BufferTest() override = default;
 
 	protected:
-		virtual void Prepare() override;
+		void Prepare() override;
 	};
 } // namespace hbe
 #endif //__UNIT_TEST__

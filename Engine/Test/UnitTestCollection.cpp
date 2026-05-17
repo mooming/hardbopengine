@@ -5,6 +5,7 @@
 #include "UnitTestCollection.h"
 
 #include <thread>
+
 #include "Container/Array.h"
 #include "Container/AtomicStackView.h"
 #include "Container/BoundedPriorityQueue.h"
@@ -56,89 +57,92 @@
 #include "TestEnv.h"
 
 
-using namespace hbe;
-
+namespace hbe
+{
 namespace Test
 {
-	void RunTests()
+
+void RunTests()
+{
+	auto testFunc = [](void*, std::size_t, std::size_t) -> std::size_t
 	{
-		auto testFunc = [](void*, std::size_t, std::size_t) -> std::size_t
-		{
-			MultiPoolAllocator allocator("UnitTest");
-			AllocatorScope scope(allocator);
+		MultiPoolAllocator allocator("UnitTest");
+		AllocatorScope scope(allocator);
 
-			auto& testEnv = TestEnv::GetEnv();
+		auto& testEnv = TestEnv::GetEnv();
 
-			testEnv.AddTestCollection<SystemAllocatorTest>();
-			testEnv.AddTestCollection<BaseAllocatorTest>();
-			testEnv.AddTestCollection<InlinePoolAllocatorTest>();
-			testEnv.AddTestCollection<InlineMonotonicAllocatorTest>();
-			testEnv.AddTestCollection<StackAllocatorTest>();
-			testEnv.AddTestCollection<PoolAllocatorTest>();
-			testEnv.AddTestCollection<MonotonicAllocatorTest>();
-			testEnv.AddTestCollection<MultiPoolAllocatorTest>();
-			testEnv.AddTestCollection<ThreadSafeMultiPoolAllocatorTest>();
-			testEnv.AddTestCollection<OSDebugTest>();
-			testEnv.AddTestCollection<OSInputOutputTest>();
-			testEnv.AddTestCollection<OSThreadTest>();
-			testEnv.AddTestCollection<WindowTest>();
-			testEnv.AddTestCollection<OSMemoryTest>();
-			testEnv.AddTestCollection<BufferTest>();
-			testEnv.AddTestCollection<BufferInputStreamTest>();
-			testEnv.AddTestCollection<BufferOutputStreamTest>();
-			testEnv.AddTestCollection<HUnorderedMapTest>();
-			testEnv.AddTestCollection<ArrayTest>();
-			testEnv.AddTestCollection<BoundedPriorityQueueTest>();
-			testEnv.AddTestCollection<AtomicStackViewTest>();
-			testEnv.AddTestCollection<LinkedListTest>();
-			testEnv.AddTestCollection<VectorTest>();
-			testEnv.AddTestCollection<MapTest>();
-			testEnv.AddTestCollection<HashMapTest>();
-			testEnv.AddTestCollection<DequeTest>();
-			testEnv.AddTestCollection<QueueTest>();
-			testEnv.AddTestCollection<RingQueueTest>();
-			testEnv.AddTestCollection<OptionalTest>();
-			testEnv.AddTestCollection<StaticStringTest>();
-			testEnv.AddTestCollection<StringTest>();
-			testEnv.AddTestCollection<InlineStringBuilderTest>();
-			testEnv.AddTestCollection<StringBuilderTest>();
-			testEnv.AddTestCollection<StringUtilTest>();
+		testEnv.AddTestCollection<SystemAllocatorTest>();
+		testEnv.AddTestCollection<BaseAllocatorTest>();
+		testEnv.AddTestCollection<InlinePoolAllocatorTest>();
+		testEnv.AddTestCollection<InlineMonotonicAllocatorTest>();
+		testEnv.AddTestCollection<StackAllocatorTest>();
+		testEnv.AddTestCollection<PoolAllocatorTest>();
+		testEnv.AddTestCollection<MonotonicAllocatorTest>();
+		testEnv.AddTestCollection<MultiPoolAllocatorTest>();
+		testEnv.AddTestCollection<ThreadSafeMultiPoolAllocatorTest>();
+		testEnv.AddTestCollection<OSDebugTest>();
+		testEnv.AddTestCollection<OSInputOutputTest>();
+		testEnv.AddTestCollection<OSThreadTest>();
+		testEnv.AddTestCollection<WindowTest>();
+		testEnv.AddTestCollection<OSMemoryTest>();
+		testEnv.AddTestCollection<BufferTest>();
+		testEnv.AddTestCollection<BufferInputStreamTest>();
+		testEnv.AddTestCollection<BufferOutputStreamTest>();
+		testEnv.AddTestCollection<HUnorderedMapTest>();
+		testEnv.AddTestCollection<ArrayTest>();
+		testEnv.AddTestCollection<BoundedPriorityQueueTest>();
+		testEnv.AddTestCollection<AtomicStackViewTest>();
+		testEnv.AddTestCollection<LinkedListTest>();
+		testEnv.AddTestCollection<VectorTest>();
+		testEnv.AddTestCollection<MapTest>();
+		testEnv.AddTestCollection<HashMapTest>();
+		testEnv.AddTestCollection<DequeTest>();
+		testEnv.AddTestCollection<QueueTest>();
+		testEnv.AddTestCollection<RingQueueTest>();
+		testEnv.AddTestCollection<OptionalTest>();
+		testEnv.AddTestCollection<StaticStringTest>();
+		testEnv.AddTestCollection<StringTest>();
+		testEnv.AddTestCollection<InlineStringBuilderTest>();
+		testEnv.AddTestCollection<StringBuilderTest>();
+		testEnv.AddTestCollection<StringUtilTest>();
 
-			testEnv.AddTestCollection<MathUtilTest>();
-			testEnv.AddTestCollection<Vector2Test>();
-			testEnv.AddTestCollection<Vector3Test>();
-			testEnv.AddTestCollection<Vector4Test>();
-			testEnv.AddTestCollection<MonteCarloIntegrationTest>();
-			testEnv.AddTestCollection<StratifiedSamplingTest>();
-			testEnv.AddTestCollection<ImportanceResamplingTest>();
+		testEnv.AddTestCollection<MathUtilTest>();
+		testEnv.AddTestCollection<Vector2Test>();
+		testEnv.AddTestCollection<Vector3Test>();
+		testEnv.AddTestCollection<Vector4Test>();
+		testEnv.AddTestCollection<MonteCarloIntegrationTest>();
+		testEnv.AddTestCollection<StratifiedSamplingTest>();
+		testEnv.AddTestCollection<ImportanceResamplingTest>();
 
-			testEnv.AddTestCollection<Matrix3x3Test>();
-			testEnv.AddTestCollection<QuaternionTest>();
-			testEnv.AddTestCollection<UniformTransformTest>();
-			testEnv.AddTestCollection<RigidTransformTest>();
-			testEnv.AddTestCollection<AABBTest>();
-			testEnv.AddTestCollection<TransformTest>();
+		testEnv.AddTestCollection<Matrix3x3Test>();
+		testEnv.AddTestCollection<QuaternionTest>();
+		testEnv.AddTestCollection<UniformTransformTest>();
+		testEnv.AddTestCollection<RigidTransformTest>();
+		testEnv.AddTestCollection<AABBTest>();
+		testEnv.AddTestCollection<TransformTest>();
 
-			testEnv.AddTestCollection<ComponentSystemTest>();
-			testEnv.AddTestCollection<TaskStreamAffinityTest>();
-			testEnv.AddTestCollection<TaskSystemTest>();
-			testEnv.AddTestCollection<RHICapabilitiesTest>();
+		testEnv.AddTestCollection<ComponentSystemTest>();
+		testEnv.AddTestCollection<TaskStreamAffinityTest>();
+		testEnv.AddTestCollection<TaskSystemTest>();
+		testEnv.AddTestCollection<RHICapabilitiesTest>();
 
-			testEnv.Start();
+		testEnv.Start();
 
-			Engine::Get().ShutDown();
+		Engine::Get().ShutDown();
 
-			return 1;
-		};
+		return 1;
+	};
 
-		static Task task("TestEnv", testFunc, nullptr);
+	static Task task("TestEnv", testFunc, nullptr);
 
-		auto rangedTask = task.GenerateSubTask(0, 1, 0);
-		auto& taskSystem = Engine::Get().GetTaskSystem();
+	auto rangedTask = task.GenerateSubTask(0, 1, 0);
+	auto& taskSystem = Engine::Get().GetTaskSystem();
 
-		const auto baseStreamIndex = TaskSystem::GetBaseTaskStreamIndex();
-		taskSystem.Enqueue(baseStreamIndex, rangedTask);
-	}
+	const auto baseStreamIndex = TaskSystem::GetBaseTaskStreamIndex();
+	taskSystem.Enqueue(baseStreamIndex, rangedTask);
+}
+
 } // namespace Test
+} // namespace hbe
 
 #endif // __UNIT_TEST__

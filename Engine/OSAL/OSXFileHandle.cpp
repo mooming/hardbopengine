@@ -42,7 +42,7 @@ FileHandle::~FileHandle()
 	Close(std::move(*this));
 }
 
-size_t FileHandle::GetFileSize() const
+size_t FileHandle::GetFileSize() const noexcept
 {
 	auto fd = GetHandle(*this);
 	if (unlikely(fd < 0))
@@ -59,13 +59,13 @@ size_t FileHandle::GetFileSize() const
 	return statValue.st_size;
 }
 
-bool FileHandle::IsValid() const
+bool FileHandle::IsValid() const noexcept
 {
 	auto fd = GetHandle(*this);
 	return fd >= 0;
 }
 
-void FileHandle::Invalidate() { SetHandle(*this, -1); }
+void FileHandle::Invalidate() noexcept { SetHandle(*this, -1); }
 
 } // namespace OS
 #endif // PLATFORM_OSX

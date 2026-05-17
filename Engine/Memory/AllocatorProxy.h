@@ -11,29 +11,33 @@
 namespace hbe
 {
 
-	struct AllocatorProxy final
+	class AllocatorProxy final
 	{
+	public:
 		using TAllocBytes = void* (*) (void* /*userData*/, size_t /* allocSize */);
 		using TDeallocBytes = void (*)(void* /*userData*/, void* /* pointer */, size_t /* allocSize */);
 
-		TAllocatorID id = InvalidAllocatorID;
-		AllocatorProxy* next = nullptr;
-		void* allocator = nullptr;
-		TAllocBytes allocate = nullptr;
-		TDeallocBytes deallocate = nullptr;
+		TAllocatorID id;
+		AllocatorProxy* next;
+		void* allocator;
+		TAllocBytes allocate;
+		TDeallocBytes deallocate;
 
 #if PROFILE_ENABLED
 		AllocStats stats;
 #endif // PROFILE_ENABLED
 
-#if __MEMORY_VERIFICATION__
+#if MEMORY_VERIFICATION_ENABLED
 		std::thread::id threadId;
-#endif // __MEMORY_VERIFICATION__
+#endif // MEMORY_VERIFICATION_ENABLED
+
+	public:
+		AllocatorProxy() : id(InvalidAllocatorID), next(nullptr), allocator(nullptr), allocate(nullptr), deallocate(nullptr) {}
 
 #if PROFILE_ENABLED
 		[[nodiscard]] const char* GetName() const { return stats.name; }
 #else // PROFILE_ENABLED
-		const char* GetName() const { return "NoName"; }
+		[[nodiscard]] const char* GetName() const { return "NoName"; }
 #endif // PROFILE_ENABLED
 	};
 

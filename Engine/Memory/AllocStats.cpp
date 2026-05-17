@@ -7,6 +7,7 @@
 #include "Log/Logger.h"
 #include "OSAL/OSDebug.h"
 
+
 namespace hbe
 {
 
@@ -15,11 +16,11 @@ namespace hbe
 		totalFallback(0), maxFallback(0), allocCount(0), deallocCount(0), fallbackCount(0)
 	{}
 
-	void AllocStats::OnRegister(const char* inName, bool inIsInnline, size_t inCapacity)
+	void AllocStats::OnRegister(const char* inName, bool inIsInline, size_t inCapacity) noexcept
 	{
 		name = StaticString(inName);
 
-		isInline = inIsInnline;
+		isInline = inIsInline;
 		capacity = inCapacity;
 		usage = 0;
 		maxUsage = 0;
@@ -34,13 +35,13 @@ namespace hbe
 		fallbackCount = 0;
 	}
 
-	void AllocStats::Reset()
+	void AllocStats::Reset() noexcept
 	{
 		this->~AllocStats();
 		new (this) AllocStats();
 	}
 
-	void AllocStats::Report()
+	void AllocStats::Report() noexcept
 	{
 #if PROFILE_ENABLED
 		auto& engine = Engine::Get();
@@ -49,7 +50,7 @@ namespace hbe
 #endif // PROFILE_ENABLED
 	}
 
-	void AllocStats::Print()
+	void AllocStats::Print() noexcept
 	{
 		static const StaticString moduleName("AllocStats");
 		auto log = Logger::Get(moduleName, ELogLevel::Verbose);

@@ -12,63 +12,63 @@
 namespace hbe
 {
 
-	class Engine;
-	class StaticString;
+class Engine;
+class StaticString;
 
-	/// @brief Tracks engine runtime statistics including frame counts, timing, and memory usage.
-	class SystemStatistics final
-	{
-	private:
-		static_assert(std::atomic<uint64_t>::is_always_lock_free);
-		std::atomic<uint64_t> frameCount;
-		std::atomic<uint64_t> slowFrameCount;
-		std::atomic<uint64_t> engineLogCount;
-		std::atomic<uint64_t> logCount;
-		std::atomic<uint64_t> longLogCount;
-		std::atomic<uint64_t> fallbackAllocCount;
+/// @brief Tracks engine runtime statistics including frame counts, timing, and memory usage.
+class SystemStatistics final
+{
+private:
+	static_assert(std::atomic<uint64_t>::is_always_lock_free);
+	std::atomic<uint64_t> frameCount;
+	std::atomic<uint64_t> slowFrameCount;
+	std::atomic<uint64_t> engineLogCount;
+	std::atomic<uint64_t> logCount;
+	std::atomic<uint64_t> longLogCount;
+	std::atomic<uint64_t> fallbackAllocCount;
 
-		std::mutex sysMemReportLock;
-		size_t allocCount;
-		size_t deallocCount;
-		size_t totalUsage;
-		size_t maxUsage;
+	std::mutex sysMemReportLock;
+	size_t allocCount;
+	size_t deallocCount;
+	size_t totalUsage;
+	size_t maxUsage;
 
-		time::TTime startTime;
-		time::TTime currentTime;
-		double timeSinceStart;
-		float deltaTime;
-
-#if PROFILE_ENABLED
-		std::vector<AllocStats> allocStats;
-#endif // PROFILE_ENABLED
-
-	public:
-		explicit SystemStatistics(Engine& engine);
-		~SystemStatistics() = default;
-
-		const StaticString& GetName() const;
-		void UpdateCurrentTime();
+	time::TTime startTime;
+	time::TTime currentTime;
+	double timeSinceStart;
+	float deltaTime;
 
 #if PROFILE_ENABLED
-		void Report(const AllocStats& allocStats);
-		void ReportSysMemAlloc(size_t usage);
-		void ReportSysMemDealloc(size_t usage);
+	std::vector<AllocStats> allocStats;
 #endif // PROFILE_ENABLED
 
-		void Print();
-		void PrintAllocatorProfiles();
+public:
+	explicit SystemStatistics(Engine& engine);
+	~SystemStatistics() = default;
 
-		inline void IncFrameCount() { frameCount.fetch_add(1, std::memory_order_relaxed); }
-		inline void IncSlowFrameCount() { slowFrameCount.fetch_add(1, std::memory_order_relaxed); }
-		inline void IncEngineLogCount() { engineLogCount.fetch_add(1, std::memory_order_relaxed); }
-		inline void IncLogCount() { logCount.fetch_add(1, std::memory_order_relaxed); }
-		inline void IncLongLogCount() { longLogCount.fetch_add(1, std::memory_order_relaxed); }
-		inline void IncFallbackAllocCount() { fallbackAllocCount.fetch_add(1, std::memory_order_relaxed); }
+	[[nodiscard]] const StaticString& GetName() const noexcept;
+	void UpdateCurrentTime() noexcept;
 
-		inline auto GetStartTime() const { return startTime; }
-		inline auto GetCurrentTime() const { return currentTime; }
-		inline auto GetTimeSinceStart() const { return timeSinceStart; }
-		inline auto GetDeltaTime() const { return deltaTime; }
-	};
+#if PROFILE_ENABLED
+	void Report(const AllocStats& allocStats) noexcept;
+	void ReportSysMemAlloc(size_t usage) noexcept;
+	void ReportSysMemDealloc(size_t usage) noexcept;
+#endif // PROFILE_ENABLED
+
+	void Print() noexcept;
+	void PrintAllocatorProfiles() noexcept;
+
+	void IncFrameCount() noexcept { frameCount.fetch_add(1, std::memory_order_relaxed); }
+	void IncSlowFrameCount() noexcept { slowFrameCount.fetch_add(1, std::memory_order_relaxed); }
+	void IncEngineLogCount() noexcept { engineLogCount.fetch_add(1, std::memory_order_relaxed); }
+	void IncLogCount() noexcept { logCount.fetch_add(1, std::memory_order_relaxed); }
+	void IncLongLogCount() noexcept { longLogCount.fetch_add(1, std::memory_order_relaxed); }
+	void IncFallbackAllocCount() noexcept { fallbackAllocCount.fetch_add(1, std::memory_order_relaxed); }
+
+	[[nodiscard]] auto GetStartTime() const noexcept { return startTime; }
+	[[nodiscard]] auto GetCurrentTime() const noexcept { return currentTime; }
+	[[nodiscard]] auto GetTimeSinceStart() const noexcept { return timeSinceStart; }
+	[[nodiscard]] auto GetDeltaTime() const noexcept { return deltaTime; }
+};
 
 } // namespace hbe

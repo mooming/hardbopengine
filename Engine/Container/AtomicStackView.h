@@ -12,7 +12,7 @@ namespace hbe
 	concept CNext = requires(T t) { t.next; };
 
 	template<CNext T>
-	class AtomicStackView
+	class AtomicStackView final
 	{
 	public:
 		/// @brief A lock-free atomic stack implementation using CAS operations
@@ -26,11 +26,11 @@ namespace hbe
 		using ConstIterator = const T*;
 
 	public:
-		AtomicStackView() : top(nullptr) {}
+		AtomicStackView() noexcept : top(nullptr) {}
 
 		~AtomicStackView() = default;
 
-		void Push(T& newItem)
+		void Push(T& newItem) noexcept
 		{
 			newItem.next = top.load(std::memory_order_relaxed);
 
@@ -39,7 +39,7 @@ namespace hbe
 				;
 		}
 
-		T* Pop()
+		T* Pop() noexcept
 		{
 			T* node = top.load(std::memory_order_relaxed);
 			if (unlikely(node == nullptr))
@@ -60,7 +60,7 @@ namespace hbe
 			return node;
 		}
 
-		[[nodiscard]] bool IsEmpty() const { return top.load(std::memory_order_relaxed) == nullptr; }
+		[[nodiscard]] bool IsEmpty() const noexcept { return top.load(std::memory_order_relaxed) == nullptr; }
 	};
 
 } // namespace hbe

@@ -2,13 +2,13 @@
 
 #pragma once
 
-#include "Config/BuildConfig.h"
-#include "IRenderer.h"
-
 #if defined(PLATFORM_OSX) && defined(VULKAN_SDK)
 #include <vulkan/vulkan.h>
 #include <vulkan/vulkan_metal.h>
 #endif
+
+#include "Config/BuildConfig.h"
+#include "IRenderer.h"
 
 namespace hbe
 {
@@ -23,36 +23,36 @@ struct QuadVertex {
 class VulkanRenderer final : public IRenderer
 {
 public:
-    VulkanRenderer();
+    VulkanRenderer() noexcept;
     ~VulkanRenderer() override;
 
-    bool Initialize(OS::IWindow* window) override;
-    void Shutdown() override;
+    [[nodiscard]] bool Initialize(OS::IWindow* window) noexcept override;
+    void Shutdown() noexcept override;
 
-    void BeginFrame() override;
-    void EndFrame() override;
+    void BeginFrame() noexcept override;
+    void EndFrame() noexcept override;
 
-    void Render(float deltaTime) override;
+    void Render(float deltaTime) noexcept override;
 
-    APIType GetAPIType() const override;
-    RenderCapabilities GetCapabilities() const override;
+    [[nodiscard]] APIType GetAPIType() const noexcept override;
+    [[nodiscard]] RenderCapabilities GetCapabilities() const noexcept override;
 
-    void SetMetalLayer(void* layer);
+    void SetMetalLayer(void* layer) noexcept;
 
 private:
-    void InitPlatformLayers();
+    void InitPlatformLayers() noexcept;
 
-    OS::IWindow* m_Window = nullptr;
-    APIType m_APIType = APIType::Vulkan;
-    RenderCapabilities m_Capabilities;
+    OS::IWindow* window;
+    APIType apiType;
+    RenderCapabilities capabilities;
 
 #if defined(PLATFORM_OSX)
-    void* m_MetalLayer = nullptr;
+    void* metalLayer;
 #endif
 
-    float m_RotationAngle = 0.0f;
-    bool m_Initialized = false;
-    QuadVertex m_Vertices[6];
+    float rotationAngle;
+    bool initialized;
+    QuadVertex vertices[6];
 };
 
 } // namespace Renderer

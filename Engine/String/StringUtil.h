@@ -8,37 +8,37 @@
 #include "HSTL/HVector.h"
 #include "String/StaticString.h"
 
-namespace StringUtil
+namespace hbe { namespace StringUtil
 {
 
 	template<typename T>
-	using TVector = hbe::HVector<T>;
-	using TString = hbe::HString;
+	using TVector = HVector<T>;
+	using TString = HString;
 
-	TString Trim(const TString& str);
-	TString TrimPath(const TString& path);
-	TString ToLowerCase(const TString& src);
-	bool EqualsIgnoreCase(const TString& a, const TString& b);
-	bool StartsWith(const TString& src, const TString& startTerm);
-	bool StartsWithIgnoreCase(const TString& src, const TString& startTerm);
-	bool EndsWith(const TString& src, const TString& endTerm);
-	bool EndsWithIgnoreCase(const TString& src, const TString& endTerm);
-	TString PathToName(const TString& path);
+	[[nodiscard]] TString Trim(const TString& str);
+	[[nodiscard]] TString TrimPath(const TString& path);
+	[[nodiscard]] TString ToLowerCase(const TString& src);
+	[[nodiscard]] bool EqualsIgnoreCase(const TString& a, const TString& b);
+	[[nodiscard]] bool StartsWith(const TString& src, const TString& startTerm);
+	[[nodiscard]] bool StartsWithIgnoreCase(const TString& src, const TString& startTerm);
+	[[nodiscard]] bool EndsWith(const TString& src, const TString& endTerm);
+	[[nodiscard]] bool EndsWithIgnoreCase(const TString& src, const TString& endTerm);
+	[[nodiscard]] TString PathToName(const TString& path);
 	void ForEachToken(const char* str, const std::function<void(std::string_view)> func,
 					  const char* separators = " \t\n\r");
 
-	hbe::StaticString ToFunctionName(const char* PrettyFunction);
-	hbe::StaticString ToClassName(const char* PrettyFunction);
-	hbe::StaticString ToMethodName(const char* PrettyFunction);
-	hbe::StaticString ToCompactClassName(const char* PrettyFunction);
-	hbe::StaticString ToCompactMethodName(const char* PrettyFunction);
+	[[nodiscard]] StaticString ToFunctionName(const char* PrettyFunction);
+	[[nodiscard]] StaticString ToClassName(const char* PrettyFunction);
+	[[nodiscard]] StaticString ToMethodName(const char* PrettyFunction);
+	[[nodiscard]] StaticString ToCompactClassName(const char* PrettyFunction);
+	[[nodiscard]] StaticString ToCompactMethodName(const char* PrettyFunction);
 
-	size_t StrLen(const char* text);
-	size_t StrLen(const char* text, size_t bufferSize);
-	const char* StrCopy(char* dst, const char* src, size_t n);
-	size_t CalculateHash(const char* text);
-	size_t CalculateHash(const std::string_view& str);
-} // namespace StringUtil
+	[[nodiscard]] size_t StrLen(const char* text);
+	[[nodiscard]] size_t StrLen(const char* text, size_t bufferSize);
+	[[nodiscard]] const char* StrCopy(char* dst, const char* src, size_t n);
+	[[nodiscard]] size_t CalculateHash(const char* text);
+	[[nodiscard]] size_t CalculateHash(const std::string_view& str);
+}} // namespace hbe::StringUtil
 
 #ifdef __UNIT_TEST__
 #include "Test/TestCollection.h"
@@ -52,7 +52,7 @@ namespace hbe
 		StringUtilTest() : TestCollection("StringUtilTest") {}
 
 	protected:
-		virtual void Prepare() override;
+		void Prepare() override;
 	};
 
 } // namespace hbe

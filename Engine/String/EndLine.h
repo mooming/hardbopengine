@@ -5,9 +5,10 @@
 namespace hbe
 {
 
-	/// @brief A marker struct for inserting newlines in string builders.
-	struct EndLine final
+	/// @brief A marker class for inserting newlines in string builders.
+	class EndLine final
 	{
+	public:
 		operator const char*() const { return "\n"; }
 	};
 

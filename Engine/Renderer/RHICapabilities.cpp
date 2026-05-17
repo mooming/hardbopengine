@@ -1,21 +1,23 @@
 // Copyright (c) 2026 Hansol Park (mooming.go@gmail.com). All rights reserved.
 
-#include "Config/BuildConfig.h"
 #include "RHICapabilities.h"
+
+#include "Config/BuildConfig.h"
+
 
 namespace hbe
 {
 namespace Renderer
 {
 
-bool RHICapabilities::s_VulkanChecked = false;
-bool RHICapabilities::s_MetalChecked = false;
-bool RHICapabilities::s_DX12Checked = false;
-bool RHICapabilities::s_VulkanSupported = false;
-bool RHICapabilities::s_MetalSupported = false;
-bool RHICapabilities::s_DX12Supported = false;
+bool RHICapabilities::vulkanChecked = false;
+bool RHICapabilities::metalChecked = false;
+bool RHICapabilities::dx12Checked = false;
+bool RHICapabilities::vulkanSupported = false;
+bool RHICapabilities::metalSupported = false;
+bool RHICapabilities::dx12Supported = false;
 
-bool RHICapabilities::CheckVulkanSupport()
+bool RHICapabilities::CheckVulkanSupport() noexcept
 {
 #if VULKAN_SDK
 	return true;
@@ -24,7 +26,7 @@ bool RHICapabilities::CheckVulkanSupport()
 #endif
 }
 
-bool RHICapabilities::CheckMetalSupport()
+bool RHICapabilities::CheckMetalSupport() noexcept
 {
 #if PLATFORM_OSX
 	return true;
@@ -33,7 +35,7 @@ bool RHICapabilities::CheckMetalSupport()
 #endif
 }
 
-bool RHICapabilities::CheckDX12Support()
+bool RHICapabilities::CheckDX12Support() noexcept
 {
 #if defined(PLATFORM_WINDOWS)
 	return true;
@@ -42,37 +44,40 @@ bool RHICapabilities::CheckDX12Support()
 #endif
 }
 
-bool RHICapabilities::IsVulkanSupported()
+bool RHICapabilities::IsVulkanSupported() noexcept
 {
-	if (!s_VulkanChecked)
+	if (!vulkanChecked)
 	{
-		s_VulkanSupported = CheckVulkanSupport();
-		s_VulkanChecked = true;
+		vulkanSupported = CheckVulkanSupport();
+		vulkanChecked = true;
 	}
-	return s_VulkanSupported;
+
+	return vulkanSupported;
 }
 
-bool RHICapabilities::IsMetalSupported()
+bool RHICapabilities::IsMetalSupported() noexcept
 {
-	if (!s_MetalChecked)
+	if (!metalChecked)
 	{
-		s_MetalSupported = CheckMetalSupport();
-		s_MetalChecked = true;
+		metalSupported = CheckMetalSupport();
+		metalChecked = true;
 	}
-	return s_MetalSupported;
+
+	return metalSupported;
 }
 
-bool RHICapabilities::IsDX12Supported()
+bool RHICapabilities::IsDX12Supported() noexcept
 {
-	if (!s_DX12Checked)
+	if (!dx12Checked)
 	{
-		s_DX12Supported = CheckDX12Support();
-		s_DX12Checked = true;
+		dx12Supported = CheckDX12Support();
+		dx12Checked = true;
 	}
-	return s_DX12Supported;
+
+	return dx12Supported;
 }
 
-APIType RHICapabilities::GetPreferredAPI()
+APIType RHICapabilities::GetPreferredAPI() noexcept
 {
 #if PLATFORM_OSX
 	if (IsMetalSupported())
@@ -102,7 +107,7 @@ APIType RHICapabilities::GetPreferredAPI()
 #endif
 }
 
-RenderCapabilities RHICapabilities::GetCapabilities(APIType api)
+RenderCapabilities RHICapabilities::GetCapabilities(APIType api) noexcept
 {
 	RenderCapabilities caps;
 	caps.apiType = api;

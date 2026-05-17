@@ -12,7 +12,7 @@ namespace hbe
 {
 	/// @brief A stratified sampling class for generating samples within intervals.
 	template<typename TReal = double, typename TInteger = uint32_t>
-	class StratifiedSampling
+	class StratifiedSampling final
 	{
 	public:
 		static_assert(std::is_floating_point_v<TReal>);
@@ -26,20 +26,20 @@ namespace hbe
 		TReal end;
 
 	public:
-		StratifiedSampling() : numSubGroups(0), subGroupIndex(0), interval(0), start(0), end(0) {}
-		StratifiedSampling(TInteger inNumSubGroups, TReal start, TReal end) :
+		StratifiedSampling() noexcept : numSubGroups(0), subGroupIndex(0), interval(0), start(0), end(0) {}
+		StratifiedSampling(TInteger inNumSubGroups, TReal start, TReal end) noexcept :
 			numSubGroups(inNumSubGroups > 0 ? inNumSubGroups : 1), subGroupIndex(0),
 			interval((end - start) / numSubGroups), start(start), end(end)
 		{}
 
 		~StratifiedSampling() = default;
 
-		TInteger GetSubGroupIndex() const { return subGroupIndex; }
+		[[nodiscard]] TInteger GetSubGroupIndex() const noexcept { return subGroupIndex; }
 
 		// TRangeSampler - TReal sampler(TReal rangeStart, TReal rangeEnd), return a random number within the given
 		// range
 		template<typename TRangeSampler>
-		TReal Sample(const TRangeSampler& sampler)
+		[[nodiscard]] TReal Sample(const TRangeSampler& sampler) noexcept
 		{
 			const TReal rangeStart = start + (interval * subGroupIndex);
 			const TReal rangeEnd = rangeStart + interval;
@@ -47,14 +47,12 @@ namespace hbe
 			return sampler(rangeStart, rangeEnd);
 		}
 
-		void ChangeSubGroup(TInteger delta = 1)
+		void ChangeSubGroup(TInteger delta = 1) noexcept
 		{
 			subGroupIndex += delta;
 
 			if (subGroupIndex <= 0 || subGroupIndex >= numSubGroups)
-			{
 				subGroupIndex = 0;
-			}
 		}
 	};
 } // namespace hbe
@@ -64,13 +62,13 @@ namespace hbe
 
 namespace hbe
 {
-	class StratifiedSamplingTest : public TestCollection
+	class StratifiedSamplingTest final : public TestCollection
 	{
 	public:
 		StratifiedSamplingTest() : TestCollection("Stratified Sampling Test") {}
 
 	protected:
-		void Prepare() override;
+		void Prepare() noexcept override;
 	};
 } // namespace hbe
 #endif //__UNIT_TEST__

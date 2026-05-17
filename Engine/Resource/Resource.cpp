@@ -2,11 +2,12 @@
 
 #include "Resource.h"
 
+
 namespace hbe
 {
 
-	Resource::Resource() {}
+	Resource::Resource() noexcept = default;
 
-	Resource::~Resource() {}
+	Resource::~Resource() noexcept = default;
 
 } // namespace hbe

@@ -1,17 +1,24 @@
 // Copyright (c) 2026 Hansol Park (mooming.go@gmail.com). All rights reserved.
 
 #pragma once
+
 #include <cstddef>
 
-/// @brief Configuration for a memory pool block.
-struct PoolConfig final
+namespace hbe
 {
-	size_t blockSize = 0;
-	size_t numberOfBlocks = 0;
 
-	inline PoolConfig() : blockSize(0), numberOfBlocks(0) {}
+/// @brief Configuration for a memory pool block.
+class PoolConfig final
+{
+public:
+	size_t blockSize;
+	size_t numberOfBlocks;
 
-	inline PoolConfig(size_t blockSize, size_t nBlocks) : blockSize(blockSize), numberOfBlocks(nBlocks) {}
+	PoolConfig() noexcept : blockSize(0), numberOfBlocks(0) {}
 
-	inline bool operator<(const PoolConfig& rhs) const { return blockSize < rhs.blockSize; }
+	PoolConfig(size_t blockSize, size_t nBlocks) noexcept : blockSize(blockSize), numberOfBlocks(nBlocks) {}
+
+	bool operator<(const PoolConfig& rhs) const noexcept { return blockSize < rhs.blockSize; }
 };
+
+} // namespace hbe

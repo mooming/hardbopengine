@@ -2,6 +2,7 @@
 
 #include "StringBuilder.h"
 
+
 namespace hbe
 {
 	template class StringBuilder<char, DefaultAllocator<char>>;

@@ -2,6 +2,7 @@
 
 #include "SystemAllocator.h"
 
+
 #ifdef __UNIT_TEST__
 #include <vector>
 
@@ -20,9 +21,9 @@ void hbe::SystemAllocatorTest::Prepare()
 		}
 	});
 
-#if __MEMORY_INVESTIGATOR_TEST__
-#if __MEMORY_INVESTIGATION__
-#if __MEMORY_BUFFER_UNDERRUN_CHECK__
+#if MEMORY_INVESTIGATOR_TEST_ENABLED
+#if MEMORY_INVESTIGATION_ENABLED
+#if MEMORY_BUFFER_UNDERRUN_CHECK_ENABLED
 
 	AddTest("Buffer Under-run Detection", [this](auto& ls)
 	{
@@ -46,7 +47,7 @@ void hbe::SystemAllocatorTest::Prepare()
 
 		allocator.deallocate(buffer, requestedSize);
 	});
-#else // __MEMORY_BUFFER_UNDERRUN_CHECK__
+#else // MEMORY_BUFFER_UNDERRUN_CHECK_ENABLED
 	AddTest("Buffer Over-run Detection", [this](auto& ls)
 	{
 		SystemAllocator<uint8_t> allocator;
@@ -68,9 +69,9 @@ void hbe::SystemAllocatorTest::Prepare()
 
 		allocator.deallocate(buffer, requestedSize);
 	});
-#endif // __MEMORY_BUFFER_UNDERRUN_CHECK__
+#endif // MEMORY_BUFFER_UNDERRUN_CHECK_ENABLED
 
-#if __MEMORY_DANGLING_POINTER_CHECK__
+#if MEMORY_DANGLING_POINTER_CHECK_ENABLED
 	AddTest("Dangling Pointer Detection", [this](auto& ls)
 	{
 		SystemAllocator<uint8_t> allocator;
@@ -88,9 +89,9 @@ void hbe::SystemAllocatorTest::Prepare()
 		   << " due to use-after-free." << lf;
 		*buffer = 1; // Comment out to proceede to the next test.
 	});
-#endif // __MEMORY_DANGLING_POINTER_CHECK__
-#endif // __MEMORY_INVESTIGATION__
-#endif // __MEMORY_INVESTIGATOR_TEST__
+#endif // MEMORY_DANGLING_POINTER_CHECK_ENABLED
+#endif // MEMORY_INVESTIGATION_ENABLED
+#endif // MEMORY_INVESTIGATOR_TEST_ENABLED
 }
 
 #endif // __UNIT_TEST__

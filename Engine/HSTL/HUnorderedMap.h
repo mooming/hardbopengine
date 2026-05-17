@@ -3,13 +3,15 @@
 #pragma once
 
 #include <unordered_map>
+
 #include "Memory/DefaultAllocator.h"
+
 
 namespace hbe
 {
 
-	template<class Key, class T, class Hash = std::hash<Key>, class Pred = std::equal_to<Key>>
-	using HUnorderedMap = std::unordered_map<Key, T, Hash, Pred, hbe::DefaultAllocator<std::pair<const Key, T>>>;
+template<class TKey, class T, class THash = std::hash<TKey>, class TPred = std::equal_to<TKey>>
+using HUnorderedMap = std::unordered_map<TKey, T, THash, TPred, hbe::DefaultAllocator<std::pair<const TKey, T>>>;
 
 } // namespace hbe
 
@@ -18,14 +20,14 @@ namespace hbe
 
 namespace hbe
 {
-	class HUnorderedMapTest : public TestCollection
-	{
-	public:
-		HUnorderedMapTest();
-		virtual ~HUnorderedMapTest() = default;
+class HUnorderedMapTest final : public TestCollection
+{
+public:
+	HUnorderedMapTest();
+	~HUnorderedMapTest() override = default;
 
-	protected:
-		virtual void Prepare() override;
-	};
+protected:
+	void Prepare() override;
+};
 } // namespace hbe
 #endif //__UNIT_TEST__

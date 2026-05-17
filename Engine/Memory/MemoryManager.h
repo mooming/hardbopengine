@@ -23,13 +23,17 @@ namespace hbe
 
 	/// @brief Centralized memory management system for the engine.
 	/// @details This singleton class serves as the core memory controller, providing:
-	/// - **Allocator Management**: Registration and retrieval of various allocators (System, Pool, Stack, etc.) via `TAllocatorID`.
+	/// - **Allocator Management**: Registration and retrieval of various allocators (System, Pool, Stack, etc.)
+	///   via `TAllocatorID`.
 	/// - **Scoped Allocation**: Support for thread-local allocation scopes using `ScopedAllocator`.
-	/// - **Object Lifecycle**: Type-safe object creation (`New`, `NewArray`) and destruction (`Delete`, `DeleteArray`) with automatic constructor/destructor calls.
-	/// - **Tracking & Statistics**: Real-time tracking of allocation/deallocation counts, usage, and capacity across all registered allocators.
+	/// - **Object Lifecycle**: Type-safe object creation (`New`, `NewArray`) and destruction (`Delete`, `DeleteArray`)
+	///   with automatic constructor/destructor calls.
+	/// - **Tracking & Statistics**: Real-time tracking of allocation/deallocation counts, usage, and capacity
+	///   across all registered allocators.
 	/// - **Fallthrough Mechanism**: A hierarchical fallback system for handling exhausted allocators.
 	/// - **Configuration Persistence**: Loading and saving `MultiPool` configurations via `MultiPoolConfigCache`.
-	/// - **Profiling Support**: Built-in hooks for memory investigation, logging, and detailed usage reporting when `PROFILE_ENABLED` is active.
+	/// - **Profiling Support**: Built-in hooks for memory investigation, logging, and detailed usage reporting
+	///   when `PROFILE_ENABLED` is active.
 	class MemoryManager final
 	{
 	public:
@@ -44,8 +48,12 @@ namespace hbe
 
 		static constexpr TId SystemAllocatorID = 0;
 		static constexpr size_t MaxBaseMemory = 8'000'000'000;
+		static thread_local TId scopedAllocatorID;
 
-	private:
+		static StaticStringID GetMultiPoolConfigCacheFilePath();
+		static MemoryManager& GetInstance();
+		static TId GetCurrentAllocatorID();
+
 		struct UsageRecord final
 		{
 			size_t allocCount = 0;
@@ -56,38 +64,15 @@ namespace hbe
 			size_t maxCapacity = 0;
 		};
 
-		static thread_local TId ScopedAllocatorID;
-
-		AllocatorProxy allocators[MaxNumAllocators];
-		AtomicStackView<AllocatorProxy> proxyPool;
-
-		std::mutex statsLock;
-		size_t allocCount;
-		size_t deallocCount;
-
-		UsageRecord inlineUsage;
-		UsageRecord usage;
-
-		MultiPoolConfigCache multiPoolConfigCache;
-
-#if PROFILE_ENABLED
-		MultiPoolConfigCache multiPoolConfigLog;
-#endif // PROFILE_ENABLED
-
 	public:
 		MemoryManager(const MemoryManager&) = delete;
 		MemoryManager& operator=(const MemoryManager&) = delete;
 
-		static StaticStringID GetMultiPoolConfigCacheFilePath();
-		static MemoryManager& GetInstance();
-		static TId GetCurrentAllocatorID();
-
-	public:
 		explicit MemoryManager(Engine& engine);
 		~MemoryManager();
 
-		void PostEngineInit();
-		void PreEngineShutdown();
+		void PostEngineInit() noexcept;
+		void PreEngineShutdown() noexcept;
 
 		static const char* GetName();
 		const char* GetAllocatorName(TAllocatorID id) const;
@@ -116,6 +101,11 @@ namespace hbe
 
 		const MultiPoolAllocatorConfig& LookUpMultiPoolConfig(StaticStringID uniqueName) const;
 
+		void LogWarning(const TLogFunc& func) const { Log(ELogLevel::Warning, func); }
+		void LogError(const TLogFunc& func) const { Log(ELogLevel::Error, func); }
+		[[nodiscard]] auto& GetInlineUsage() const { return inlineUsage; }
+		[[nodiscard]] auto& GetUsage() const { return usage; }
+
 #if PROFILE_ENABLED
 		AllocStats GetAllocatorStat(TAllocatorID id);
 
@@ -123,13 +113,6 @@ namespace hbe
 		void ReportMultiPoolConfigutation(StaticStringID uniqueName, TPoolConfigs&& poolConfigs);
 #endif // PROFILE_ENABLED
 
-	public:
-		void LogWarning(const TLogFunc& func) const { Log(ELogLevel::Warning, func); }
-		void LogError(const TLogFunc& func) const { Log(ELogLevel::Error, func); }
-		auto& GetInlineUsage() const { return inlineUsage; }
-		auto& GetUsage() const { return usage; }
-
-	public:
 		template<typename T>
 		T* AllocateByType(size_t n)
 		{
@@ -186,8 +169,24 @@ namespace hbe
 		}
 
 	private:
-		static bool IsValid(TAllocatorID id) { return id >= 0 && id < MaxNumAllocators; }
-		static TId GetScopedAllocatorID() { return ScopedAllocatorID; }
+		AllocatorProxy allocators[MaxNumAllocators];
+		AtomicStackView<AllocatorProxy> proxyPool;
+
+		std::mutex statsLock;
+		size_t allocCount;
+		size_t deallocCount;
+
+		UsageRecord inlineUsage;
+		UsageRecord usage;
+
+		MultiPoolConfigCache multiPoolConfigCache;
+
+#if PROFILE_ENABLED
+		MultiPoolConfigCache multiPoolConfigLog;
+#endif // PROFILE_ENABLED
+
+		[[nodiscard]] static bool IsValid(TAllocatorID id) { return id >= 0 && id < MaxNumAllocators; }
+		[[nodiscard]] static TId GetScopedAllocatorID() { return scopedAllocatorID; }
 
 		void ReportFallback(TId id, void* ptr, size_t requested);
 		void RegisterSystemAllocator();

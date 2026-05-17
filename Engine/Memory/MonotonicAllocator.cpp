@@ -7,7 +7,9 @@
 #include "Core/Debug.h"
 #include "MemoryManager.h"
 
-using namespace hbe;
+
+namespace hbe
+{
 
 MonotonicAllocator::MonotonicAllocator(const char* name, TSize inCapacity) :
 	id(InvalidAllocatorID), cursor(0), capacity(inCapacity), buffer(nullptr)
@@ -84,7 +86,7 @@ void* MonotonicAllocator::Allocate(const size_t requested)
 	return ptr;
 }
 
-void MonotonicAllocator::Deallocate(Pointer ptr, TSize requested)
+void MonotonicAllocator::Deallocate(Pointer ptr, TSize requested) noexcept
 {
 	auto& mmgr = MemoryManager::GetInstance();
 
@@ -94,14 +96,14 @@ void MonotonicAllocator::Deallocate(Pointer ptr, TSize requested)
 		return;
 	}
 
-#if __MEMORY_LOGGING__
+#if MEMORY_LOGGING_ENABLED
 	mmgr.Log(ELogLevel::Verbose, [this, &mmgr, ptr, requested](auto& lout)
 	{
 		lout << mmgr.GetAllocatorName(id) << '[' << static_cast<int>(GetID())
 			 << "] Deallocate call shall be ignored. ptr = " << static_cast<void*>(ptr)
 			 << ", requested size = " << requested;
 	});
-#endif // __MEMORY_LOGGING__
+#endif // MEMORY_LOGGING_ENABLED
 
 #if PROFILE_ENABLED
 	mmgr.ReportDeallocation(id, ptr, requested, 0);
@@ -120,25 +122,30 @@ size_t MonotonicAllocator::GetUsage() const
 	return cursor;
 }
 
-bool MonotonicAllocator::IsMine(TPointer ptr) const
-{
-	auto bytePtr = static_cast<uint8_t*>(ptr);
-	if (bytePtr < buffer)
+	bool MonotonicAllocator::IsMine(TPointer ptr) const
 	{
-		return false;
+		auto bytePtr = static_cast<uint8_t*>(ptr);
+		if (bytePtr < buffer)
+		{
+			return false;
+		}
+
+		if (bytePtr >= (buffer + capacity))
+		{
+			return false;
+		}
+
+		return true;
 	}
 
-	if (bytePtr >= (buffer + capacity))
-	{
-		return false;
-	}
-
-	return true;
-}
+} // namespace hbe
 
 #ifdef __UNIT_TEST__
 #include "HSTL/HVector.h"
 #include "String/String.h"
+
+namespace hbe
+{
 
 void MonotonicAllocatorTest::Prepare()
 {
@@ -217,5 +224,7 @@ void MonotonicAllocatorTest::Prepare()
 		}
 	});
 }
+
+} // namespace hbe
 
 #endif //__UNIT_TEST__

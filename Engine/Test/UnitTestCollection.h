@@ -3,8 +3,11 @@
 #pragma once
 
 #ifdef __UNIT_TEST__
+namespace hbe
+{
 namespace Test
 {
-	void RunTests();
+void RunTests();
 }
+} // namespace hbe
 #endif // __UNIT_TEST__

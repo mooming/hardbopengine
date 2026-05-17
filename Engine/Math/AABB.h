@@ -12,30 +12,30 @@
 namespace hbe
 {
 	/// @brief An Axis-Aligned Bounding Box template class.
-	template<typename Vec>
-	class AABB
+	template<typename TVec>
+	class AABB final
 	{
 		using This = AABB;
 		static constexpr auto MAX = std::numeric_limits<float>::max();
 
 	public:
-		Vec min;
-		Vec max;
+		TVec min;
+		TVec max;
 
 	public:
-		inline AABB(std::nullptr_t) {}
+		explicit AABB(std::nullptr_t) noexcept {}
 
-		inline AABB() : min(Vec::Unity * MAX), max(Vec::Unity * -MAX) {}
+		AABB() noexcept : min(TVec::Unity * MAX), max(TVec::Unity * -MAX) {}
 
-		inline AABB(const Vec& min, const Vec& max) : min(min), max(max) {}
+		AABB(const TVec& min, const TVec& max) noexcept : min(min), max(max) {}
 
-		void Reset()
+		void Reset() noexcept
 		{
-			min = Vec::Unity * MAX;
-			max = -Vec::Unity * MAX;
+			min = TVec::Unity * MAX;
+			max = -TVec::Unity * MAX;
 		}
 
-		This operator+(const Vec& rhs) const
+		[[nodiscard]] This operator+(const TVec& rhs) const noexcept
 		{
 			auto result = *this;
 			result += rhs;
@@ -43,7 +43,7 @@ namespace hbe
 			return result;
 		}
 
-		This operator+(const This& rhs) const
+		[[nodiscard]] This operator+(const This& rhs) const noexcept
 		{
 			auto result = *this;
 			result += rhs;
@@ -51,41 +51,42 @@ namespace hbe
 			return result;
 		}
 
-		void operator+=(const Vec& rhs) { Add(rhs); }
+		void operator+=(const TVec& rhs) noexcept { Add(rhs); }
 
-		void operator+=(const This& rhs) { Add(rhs); }
+		void operator+=(const This& rhs) noexcept { Add(rhs); }
 
-		bool operator==(const This& rhs) const { return IsContaining(rhs) && rhs.IsContaining(*this); }
-
-		bool operator!=(const This& rhs) const { return !(*this == rhs); }
-
-		inline void Add(const Vec& point)
+		[[nodiscard]] bool operator==(const This& rhs) const noexcept
 		{
-			auto length = Vec::order;
-			for (int i = 0; i < length; ++i)
+			return IsContaining(rhs) && rhs.IsContaining(*this);
+		}
+
+		[[nodiscard]] bool operator!=(const This& rhs) const noexcept { return !(*this == rhs); }
+
+		void Add(const TVec& point) noexcept
+		{
+			for (int i = 0; i < TVec::order; ++i)
 			{
 				min.a[i] = MinFast(point.a[i], min.a[i]);
 				max.a[i] = MaxFast(point.a[i], max.a[i]);
 			}
 		}
 
-		inline void Add(const This& aabb)
+		void Add(const This& aabb) noexcept
 		{
 			Add(aabb.min);
 			Add(aabb.max);
 		}
 
-		inline void Translate(const Vec& t)
+		void Translate(const TVec& t) noexcept
 		{
 			Assert(!IsEmpty(), "Do not translate an empty AABB! ", *this);
 			min += t;
 			max += t;
 		}
 
-		bool IsEmpty() const
+		[[nodiscard]] bool IsEmpty() const noexcept
 		{
-			auto length = Vec::order;
-			for (int i = 0; i < length; ++i)
+			for (int i = 0; i < TVec::order; ++i)
 			{
 				if (max.a[i] <= min.a[i])
 				{
@@ -96,15 +97,14 @@ namespace hbe
 			return false;
 		}
 
-		inline bool IsContaining(const Vec& point) const
+		[[nodiscard]] bool IsContaining(const TVec& point) const noexcept
 		{
 			if (IsEmpty())
 			{
 				return false;
 			}
 
-			auto length = Vec::order;
-			for (int i = 0; i < length; ++i)
+			for (int i = 0; i < TVec::order; ++i)
 			{
 				if (min.a[i] > point.a[i])
 				{
@@ -120,14 +120,16 @@ namespace hbe
 			return true;
 		}
 
-		inline bool IsContaining(const This& aabb) const { return IsContaining(aabb.min) && IsContaining(aabb.max); }
-
-		inline AABB Intersection(const AABB& aabb) const
+		[[nodiscard]] bool IsContaining(const This& aabb) const noexcept
 		{
-			This result = nullptr;
+			return IsContaining(aabb.min) && IsContaining(aabb.max);
+		}
 
-			auto length = Vec::order;
-			for (int i = 0; i < length; ++i)
+		[[nodiscard]] AABB Intersection(const AABB& aabb) const noexcept
+		{
+			This result(nullptr);
+
+			for (int i = 0; i < TVec::order; ++i)
 			{
 				result.min.a[i] = MaxFast(aabb.min.a[i], min.a[i]);
 				result.max.a[i] = MinFast(aabb.max.a[i], max.a[i]);
@@ -136,20 +138,22 @@ namespace hbe
 			return result;
 		}
 
-		inline bool HasIntersectionWith(const AABB& aabb) const { return !Intersection(aabb).IsEmpty(); }
-
-		inline Vec Center() const { return (min + max) * 0.5f; }
-
-		inline Vec Diagonal() const { return max - min; }
-
-		inline Vec Half() const { return Diagonal() * 0.5f; }
-
-		inline Vec Closest(const Vec& point) const
+		[[nodiscard]] bool HasIntersectionWith(const AABB& aabb) const noexcept
 		{
-			Vec closePt = point;
+			return !Intersection(aabb).IsEmpty();
+		}
 
-			auto length = Vec::order;
-			for (int i = 0; i < length; ++i)
+		[[nodiscard]] TVec Center() const noexcept { return (min + max) * 0.5f; }
+
+		[[nodiscard]] TVec Diagonal() const noexcept { return max - min; }
+
+		[[nodiscard]] TVec Half() const noexcept { return Diagonal() * 0.5f; }
+
+		[[nodiscard]] TVec Closest(const TVec& point) const noexcept
+		{
+			TVec closePt = point;
+
+			for (int i = 0; i < TVec::order; ++i)
 			{
 				closePt.a[i] = ClampFast(point.a[i], min.a[i], max.a[i]);
 			}
@@ -158,11 +162,11 @@ namespace hbe
 		}
 	};
 
-	using AABB2 = AABB<Float2>;
-	using AABB3 = AABB<Float3>;
+	using AABB2 = AABB<TFloat2>;
+	using AABB3 = AABB<TFloat3>;
 
 	template<typename T>
-	std::ostream& operator<<(std::ostream& os, const AABB<T>& bbox)
+	std::ostream& operator<<(std::ostream& os, const AABB<T>& bbox) noexcept
 	{
 		using std::endl;
 
@@ -172,9 +176,10 @@ namespace hbe
 	}
 
 	template<class TStringBuilder, typename T>
-	TStringBuilder& operator<<(TStringBuilder& os, const AABB<T>& bbox)
+	TStringBuilder& operator<<(TStringBuilder& os, const AABB<T>& bbox) noexcept
 	{
 		os << "AABB min = " << bbox.min << ", max = " << bbox.max;
+
 		return os;
 	}
 
@@ -186,13 +191,13 @@ namespace hbe
 namespace hbe
 {
 
-	class AABBTest : public TestCollection
+	class AABBTest final : public TestCollection
 	{
 	public:
 		AABBTest() : TestCollection("AABBTest") {}
 
 	protected:
-		virtual void Prepare() override;
+		void Prepare() noexcept override;
 	};
 
 } // namespace hbe

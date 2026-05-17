@@ -60,7 +60,7 @@ namespace hbe
 
 		bool GenerateBanksByCache(MemoryManager& mmgr);
 		[[nodiscard]] size_t GetBankIndex(size_t nBytes) const;
-		size_t GetBankIndex(void* ptr) const;
+		[[nodiscard]] size_t GetBankIndex(void* ptr) const;
 		[[nodiscard]] size_t CalculateBlockSize(size_t requested) const;
 		static size_t CalculateNumberOfBlocks(size_t bankSize, size_t blockSize);
 		void GenerateBank(size_t blockSize, size_t numberOfBlocks);

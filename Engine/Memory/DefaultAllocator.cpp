@@ -2,12 +2,13 @@
 
 #include "DefaultAllocator.h"
 
+
 #ifdef __UNIT_TEST__
 #include <vector>
 #include "AllocatorScope.h"
 #include "PoolAllocator.h"
 
-void hbe::BaseAllocatorTest::Prepare()
+void hbe::BaseAllocatorTest::Prepare() noexcept
 {
 	AddTest("Basic Usage", [this](auto& ls)
 	{

@@ -7,8 +7,8 @@
 namespace hbe
 {
 	/// @brief A 2D vector template class.
-	template<typename Number>
-	class Vector2
+	template<typename TNumber>
+	class Vector2 final
 	{
 		using This = Vector2;
 
@@ -25,19 +25,19 @@ namespace hbe
 		{
 			struct
 			{
-				Number x;
-				Number y;
+				TNumber x;
+				TNumber y;
 			};
 
-			Number a[order];
+			TNumber a[order];
 		};
 
 	public:
-		inline Vector2() : This(0, 0) {}
+		Vector2() noexcept : This(0, 0) {}
 
-		inline Vector2(Number x, Number y) : x(x), y(y) {}
+		Vector2(TNumber x, TNumber y) noexcept : x(x), y(y) {}
 
-		inline Vector2(std::nullptr_t) {}
+		explicit Vector2(std::nullptr_t) noexcept {}
 
 #include "VectorCommonImpl.inl"
 	};
@@ -55,19 +55,20 @@ namespace hbe
 	template<typename T>
 	const Vector2<T> Vector2<T>::Up(0, 1);
 
-	using Int2 = Vector2<int>;
-	using Float2 = Vector2<float>;
+	using TInt2 = Vector2<int>;
+	using TFloat2 = Vector2<float>;
 
 	template<typename T>
-	inline Vector2<T> operator*(T value, Vector2<T> vector)
+	[[nodiscard]] Vector2<T> operator*(T value, Vector2<T> vector) noexcept
 	{
 		return vector * value;
 	}
 
 	template<class TOutStream>
-	inline TOutStream& operator<<(TOutStream& os, const Float2& vec)
+	TOutStream& operator<<(TOutStream& os, const TFloat2& vec) noexcept
 	{
 		os << "(" << vec.x << ", " << vec.y << "), norm = " << vec.Length();
+
 		return os;
 	}
 } // namespace hbe
@@ -78,13 +79,13 @@ namespace hbe
 namespace hbe
 {
 
-	class Vector2Test : public TestCollection
+	class Vector2Test final : public TestCollection
 	{
 	public:
 		Vector2Test() : TestCollection("Vector2Test") {}
 
 	protected:
-		virtual void Prepare() override;
+		void Prepare() noexcept override;
 	};
 } // namespace hbe
 

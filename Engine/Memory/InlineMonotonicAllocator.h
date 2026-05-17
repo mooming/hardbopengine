@@ -60,7 +60,7 @@ namespace hbe
 			mmgr.DeregisterAllocator(GetID());
 		}
 
-		TPointer Allocate(size_t requested)
+		[[nodiscard]] TPointer Allocate(size_t requested)
 		{
 			auto size = OS::GetAligned(requested, Config::DefaultAlign);
 
@@ -86,7 +86,7 @@ namespace hbe
 			}
 #endif // __MEMOR_STATISTICS__
 
-#if __MEMORY_LOGGING__
+#if MEMORY_LOGGING_ENABLED
 			{
 				auto& mmgr = MemoryManager::GetInstance();
 				mmgr.Log(ELogLevel::Info, [this, &mmgr, ptr, size](auto& ls)
@@ -95,12 +95,12 @@ namespace hbe
 					   << static_cast<void*>(ptr) << ", size = " << size;
 				});
 			}
-#endif // __MEMORY_LOGGING__
+#endif // MEMORY_LOGGING_ENABLED
 
 			return ptr;
 		}
 
-		void Deallocate(TPointer ptr, TSize requested)
+		void Deallocate(TPointer ptr, TSize requested) noexcept
 		{
 			auto& mmgr = MemoryManager::GetInstance();
 
@@ -110,14 +110,14 @@ namespace hbe
 				return;
 			}
 
-#if __MEMORY_LOGGING__
+#if MEMORY_LOGGING_ENABLED
 			mmgr.Log(ELogLevel::Info, [this, &mmgr, ptr, requested](auto& ls)
 			{
 				ls << mmgr.GetAllocatorName(id) << '[' << static_cast<int>(GetID())
 				   << "] Deallocate call shall be ignored. ptr = " << static_cast<void*>(ptr)
 				   << ", size = " << requested;
 			});
-#endif // __MEMORY_LOGGING__
+#endif // MEMORY_LOGGING_ENABLED
 
 #if PROFILE_ENABLED
 			mmgr.ReportDeallocation(id, ptr, requested, 0);
@@ -136,10 +136,10 @@ namespace hbe
 			return cursor;
 		}
 
-		auto GetID() const { return id; }
+		[[nodiscard]] auto GetID() const { return id; }
 
 	private:
-		bool IsMine(TPointer ptr) const
+		[[nodiscard]] bool IsMine(TPointer ptr) const
 		{
 			auto bytePtr = reinterpret_cast<const uint8_t*>(ptr);
 			if (bytePtr < buffer)
@@ -169,7 +169,7 @@ namespace hbe
 		InlineMonotonicAllocatorTest() : TestCollection("InlineMonotonicAllocatorTest") {}
 
 	protected:
-		void Prepare() override;
+		void Prepare() noexcept override;
 	};
 
 } // namespace hbe

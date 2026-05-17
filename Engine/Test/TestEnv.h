@@ -5,42 +5,41 @@
 #include <memory>
 #include <string>
 #include <vector>
+
 #include "TestCollection.h"
 
 
 namespace hbe
 {
 
-	/// @brief Singleton environment for managing and running all unit tests.
-	/// @details Coordinates test execution, collects results, and provides summary reporting.
-	class TestEnv
+class TestEnv final
+{
+public:
+	TestEnv() noexcept : testedCount(0), passCount(0) {}
+
+	[[nodiscard]] static TestEnv& GetEnv();
+	void Start();
+
+	template<typename T, typename... Types>
+	void AddTestCollection(Types&&... args)
 	{
-		using TCPtr = std::unique_ptr<TestCollection>;
+		tests.push_back(std::make_unique<T>(std::forward(args)...));
+	}
 
-	private:
-		std::vector<TCPtr> tests;
-		std::vector<std::string> invalidTests;
-		std::vector<std::string> failedTests;
-		std::vector<std::string> warningMessages;
-		std::vector<std::string> errorMessages;
+private:
+	using TCPtr = std::unique_ptr<TestCollection>;
 
-		unsigned int testedCount;
-		unsigned int passCount;
+	std::vector<TCPtr> tests;
+	std::vector<std::string> invalidTests;
+	std::vector<std::string> failedTests;
+	std::vector<std::string> warningMessages;
+	std::vector<std::string> errorMessages;
 
-	public:
-		static TestEnv& GetEnv();
-		void Start();
+	unsigned int testedCount;
+	unsigned int passCount;
 
-		template<typename T, typename... Types>
-		void AddTestCollection(Types&&... args)
-		{
-			tests.push_back(std::make_unique<T>(std::forward(args)...));
-		}
+	bool ExecuteTest(TestCollection& testCollection);
+	void Report();
+};
 
-	private:
-		TestEnv() : testedCount(0), passCount(0) {}
-
-		bool ExecuteTest(TestCollection& testCollection);
-		void Report();
-	};
 } // namespace hbe

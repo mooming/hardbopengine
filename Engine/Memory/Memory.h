@@ -12,38 +12,38 @@ namespace hbe
 	using TAllocFunc = std::function<void*(size_t)>;
 	using TDeallocFunc = std::function<void(void*, size_t)>;
 
-	template<typename Type, typename... Types, typename TAllocator>
-	Type* New(TAllocator& allocator, Types&&... args)
+	template<typename TType, typename... TTypes, typename TAllocator>
+	TType* New(TAllocator& allocator, TTypes&&... args) noexcept
 	{
-		static_assert(sizeof(typename TAllocator::value_type) == sizeof(Type));
+		static_assert(sizeof(typename TAllocator::value_type) == sizeof(TType));
 
 		auto ptr = allocator.allocate(1);
-		auto tptr = new (ptr) Type(std::forward<Types>(args)...);
+		auto tptr = new (ptr) TType(std::forward<TTypes>(args)...);
 
 		return tptr;
 	}
 
-	template<typename Type, typename TAllocator>
-	void Delete(TAllocator& allocator, Type* ptr)
+	template<typename TType, typename TAllocator>
+	void Delete(TAllocator& allocator, TType* ptr) noexcept
 	{
-		static_assert(sizeof(typename TAllocator::value_type) == sizeof(Type));
+		static_assert(sizeof(typename TAllocator::value_type) == sizeof(TType));
 
-		ptr->~Type();
+		ptr->~TType();
 		allocator.deallocate(ptr, 1);
 	}
 
-	template<typename Type, typename... Types>
-	Type* New(Types&&... args)
+	template<typename TType, typename... TTypes>
+	TType* New(TTypes&&... args) noexcept
 	{
 		auto& mmgr = MemoryManager::GetInstance();
-		return mmgr.New<Type>(std::forward<Types>(args)...);
+		return mmgr.New<TType>(std::forward<TTypes>(args)...);
 	}
 
-	template<typename Type>
-	void Delete(Type* ptr)
+	template<typename TType>
+	void Delete(TType* ptr) noexcept
 	{
 		auto& mmgr = MemoryManager::GetInstance();
-		mmgr.Delete<Type>(ptr);
+		mmgr.Delete<TType>(ptr);
 	}
 
 } // namespace hbe

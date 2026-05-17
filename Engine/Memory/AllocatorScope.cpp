@@ -4,12 +4,13 @@
 
 #include "MemoryManager.h"
 
+
 namespace hbe
 {
 
-	AllocatorScope::AllocatorScope() : AllocatorScope(InvalidAllocatorID) {}
+	AllocatorScope::AllocatorScope() noexcept : AllocatorScope(InvalidAllocatorID) {}
 
-	AllocatorScope::AllocatorScope(TAllocatorID id)
+	AllocatorScope::AllocatorScope(TAllocatorID id) noexcept
 	{
 		auto& mmgr = MemoryManager::GetInstance();
 		previous = mmgr.GetScopedAllocatorID();
@@ -18,7 +19,7 @@ namespace hbe
 		mmgr.SetScopedAllocatorID(current);
 	}
 
-	AllocatorScope::~AllocatorScope()
+	AllocatorScope::~AllocatorScope() noexcept
 	{
 		auto& mmgr = MemoryManager::GetInstance();
 		mmgr.SetScopedAllocatorID(previous);

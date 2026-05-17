@@ -15,6 +15,6 @@ namespace hbe
 	static constexpr TAllocatorID InvalidAllocatorID = -1;
 
 	/// @brief Check if an allocator ID is valid (within range)
-	inline bool IsValid(TAllocatorID id) { return id >= 0 && id < MaxNumAllocators; }
+	[[nodiscard]] inline bool IsValid(TAllocatorID id) noexcept { return id >= 0 && id < MaxNumAllocators; }
 
 } // namespace hbe

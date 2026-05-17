@@ -10,34 +10,35 @@
 namespace hbe
 {
 
-	/// @brief Represents a single log entry with metadata and message text.
-	/// Uses a union to optimize memory: short messages stored inline, long messages use dynamic allocation.
-	struct LogLine final
+/// @brief Represents a single log entry with metadata and message text.
+/// Uses a union to optimize memory: short messages stored inline, long messages use dynamic allocation.
+class LogLine final
+{
+public:
+	using TTimePoint = typename std::chrono::time_point<std::chrono::steady_clock>;
+
+	TTimePoint timeStamp;
+	StaticString threadName;
+	StaticString category;
+	ELogLevel level;
+	bool isLong;
+
+	union
 	{
-		using TTimePoint = typename std::chrono::time_point<std::chrono::steady_clock>;
-
-		TTimePoint timeStamp;
-		StaticString threadName;
-		StaticString category;
-		ELogLevel level;
-		bool isLong;
-
-		union
+		char text[Config::LogLineLength];
+		struct
 		{
-			char text[Config::LogLineLength];
-			struct
-			{
-				char* longText;
-				size_t longTextSize;
-			};
+			char* longText;
+			size_t longTextSize;
 		};
-
-		LogLine();
-		LogLine(LogLine&& rhs);
-		LogLine(ELogLevel level, StaticString threadName, StaticString category, const char* inText, size_t size);
-		~LogLine();
-
-		const char* GetText() const;
 	};
+
+	LogLine() noexcept;
+	LogLine(LogLine&& rhs) noexcept;
+	LogLine(ELogLevel level, StaticString threadName, StaticString category, const char* inText, size_t size) noexcept;
+	~LogLine() noexcept;
+
+	[[nodiscard]] const char* GetText() const noexcept;
+};
 
 } // namespace hbe

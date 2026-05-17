@@ -8,40 +8,33 @@ namespace hbe
 	class Letter
 	{
 	public:
-		using Char = char;
+		using TChar = char;
 
-		static inline bool IsLowerCase(Char letter)
+		static bool IsLowerCase(TChar letter)
 		{
 			if (letter < 'a')
-			{
 				return false;
-			}
 			if (letter > 'z')
-			{
 				return false;
-			}
+
 			return true;
 		}
 
-		static inline bool IsUpperCase(Char letter)
+		static bool IsUpperCase(TChar letter)
 		{
 			if (letter < 'A')
-			{
 				return false;
-			}
 			if (letter > 'Z')
-			{
 				return false;
-			}
+
 			return true;
 		}
 
-		static inline bool IsGenuineLetter(Char letter)
+		static bool IsGenuineLetter(TChar letter)
 		{
 			if (letter == ' ' || letter == '\t' || letter == '\n' || letter == '\r')
-			{
 				return false;
-			}
+
 			return true;
 		}
 	};

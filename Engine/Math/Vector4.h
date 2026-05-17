@@ -10,12 +10,12 @@
 namespace hbe
 {
 	/// @brief A 4D vector template class.
-	template<typename Number>
-	class Vector4
+	template<typename TNumber>
+	class Vector4 final
 	{
 		using This = Vector4;
-		using Vec2 = Vector2<Number>;
-		using Vec3 = Vector3<Number>;
+		using TVec2 = Vector2<TNumber>;
+		using TVec3 = Vector3<TNumber>;
 
 	public:
 		static constexpr int order = 4;
@@ -35,27 +35,27 @@ namespace hbe
 		{
 			struct
 			{
-				Number x;
-				Number y;
-				Number z;
-				Number w;
+				TNumber x;
+				TNumber y;
+				TNumber z;
+				TNumber w;
 			};
 
-			Number a[order];
+			TNumber a[order];
 		};
 
 	public:
-		Vector4() : This(0, 0, 0, 0) {}
+		Vector4() noexcept : This(0, 0, 0, 0) {}
 
-		Vector4(std::nullptr_t) {}
+		explicit Vector4(std::nullptr_t) noexcept {}
 
-		Vector4(Number x, Number y, Number z = 0, Number w = 1) : x(x), y(y), z(z), w(w) {}
+		Vector4(TNumber x, TNumber y, TNumber z = 0, TNumber w = 1) noexcept : x(x), y(y), z(z), w(w) {}
 
-		Vector4(const Vec2& v, Number z = 0, Number w = 1) : x(v.x), y(v.y), z(z), w(w) {}
+		explicit Vector4(const TVec2& v, TNumber z = 0, TNumber w = 1) noexcept : x(v.x), y(v.y), z(z), w(w) {}
 
-		Vector4(const Vec3& v, Number w = 1) : x(v.x), y(v.y), z(v.z), w(w) {}
+		explicit Vector4(const TVec3& v, TNumber w = 1) noexcept : x(v.x), y(v.y), z(v.z), w(w) {}
 
-		This& operator=(const Vec2& v)
+		This& operator=(const TVec2& v) noexcept
 		{
 			x = v.x;
 			y = v.y;
@@ -63,7 +63,7 @@ namespace hbe
 			return *this;
 		}
 
-		This& operator=(const Vec3& v)
+		This& operator=(const TVec3& v) noexcept
 		{
 			x = v.x;
 			y = v.y;
@@ -72,13 +72,13 @@ namespace hbe
 			return *this;
 		}
 
-		operator Vec2&() { return reinterpret_cast<Vec2&>(*this); }
+		operator TVec2&() noexcept { return reinterpret_cast<TVec2&>(*this); }
 
-		operator const Vec2&() const { return reinterpret_cast<const Vec2&>(*this); }
+		operator const TVec2&() const noexcept { return reinterpret_cast<const TVec2&>(*this); }
 
-		operator Vec3&() { return reinterpret_cast<Vec3&>(*this); }
+		operator TVec3&() noexcept { return reinterpret_cast<TVec3&>(*this); }
 
-		operator const Vec3&() const { return reinterpret_cast<const Vec3&>(*this); }
+		operator const TVec3&() const noexcept { return reinterpret_cast<const TVec3&>(*this); }
 
 #include "VectorCommonImpl.inl"
 	};
@@ -96,36 +96,37 @@ namespace hbe
 	template<typename T>
 	const Vector4<T> Vector4<T>::W(0, 0, 0, 1);
 
-#ifdef __RIGHT_HANDED__
+#ifdef RIGHT_HANDED_COORDINATE
 	template<typename T>
 	const Vector4<T> Vector4<T>::Right(1.0f, 0.0f, 0.0f);
 	template<typename T>
 	const Vector4<T> Vector4<T>::Forward(0.0f, 1.0f, 0.0f);
 	template<typename T>
 	const Vector4<T> Vector4<T>::Up(0.0f, 0.0f, 1.0f);
-#endif //__RIGHT_HANDED__
+#endif
 
-#ifdef __LEFT_HANDED__
+#ifndef RIGHT_HANDED_COORDINATE
 	template<typename T>
 	const Vector4<T> Vector4<T>::Right(1.0f, 0.0f, 0.0f);
 	template<typename T>
 	const Vector4<T> Vector4<T>::Up(0.0f, 1.0f, 0.0f);
 	template<typename T>
 	const Vector4<T> Vector4<T>::Forward(0.0f, 0.0f, 1.0f);
-#endif //__LEFT_HANDED__
+#endif
 
-	using Float4 = Vector4<float>;
+	using TFloat4 = Vector4<float>;
 
-	template<typename Number>
-	Vector4<Number> operator*(Number value, Vector4<Number> vector)
+	template<typename TNumber>
+	[[nodiscard]] Vector4<TNumber> operator*(TNumber value, Vector4<TNumber> vector) noexcept
 	{
 		return vector * value;
 	}
 
 	template<class TOutStream>
-	TOutStream& operator<<(TOutStream& os, const Float4& v)
+	TOutStream& operator<<(TOutStream& os, const TFloat4& v) noexcept
 	{
 		os << "(" << v.x << ", " << v.y << ", " << v.z << ", " << v.w << "), norm = " << v.Length();
+
 		return os;
 	}
 } // namespace hbe
@@ -136,13 +137,13 @@ namespace hbe
 namespace hbe
 {
 
-	class Vector4Test : public TestCollection
+	class Vector4Test final : public TestCollection
 	{
 	public:
 		Vector4Test() : TestCollection("Vector4Test") {}
 
 	protected:
-		virtual void Prepare() override;
+		void Prepare() noexcept override;
 	};
 } // namespace hbe
 #endif //__UNIT_TEST__

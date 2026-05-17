@@ -5,11 +5,14 @@
 #include <chrono>
 #include <thread>
 
-using namespace std;
-using namespace hbe;
 
-void time::Sleep(time::MilliSec milli)
+namespace hbe
 {
-	using namespace std::chrono;
-	this_thread::sleep_for(milliseconds(milli));
+
+void time::Sleep(time::TMilliSec milli) noexcept
+{
+using namespace std::chrono;
+std::this_thread::sleep_for(std::chrono::milliseconds(milli));
 }
+
+} // namespace hbe

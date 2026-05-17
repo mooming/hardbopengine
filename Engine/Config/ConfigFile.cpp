@@ -9,6 +9,7 @@
 #include "HSTL/HString.h"
 #include "String/StringUtil.h"
 
+
 using namespace hbe;
 
 namespace hbe
@@ -31,7 +32,7 @@ namespace hbe
 		Parse(filePath.c_str());
 	}
 
-	ConfigFile::TValue ConfigFile::GetValue(const TString& key) const
+	ConfigFile::TValue ConfigFile::GetValue(const TString& key) const noexcept
 	{
 		auto found = keymap.find(key);
 		if (found == keymap.end())
@@ -42,7 +43,7 @@ namespace hbe
 		return found->second;
 	}
 
-	ConfigFile::TString ConfigFile::GetValue(const TString& key, const TString& defaultValue) const
+	ConfigFile::TString ConfigFile::GetValue(const TString& key, const TString& defaultValue) const noexcept
 	{
 		auto found = keymap.find(key);
 		if (found == keymap.end())
@@ -61,6 +62,7 @@ namespace hbe
 		if (!ifs.is_open())
 		{
 			cout << "[ConfigFile] Not Found: " << filePath << endl;
+
 			return;
 		}
 
@@ -96,9 +98,7 @@ namespace hbe
 
 			auto keyValue = ParseLine();
 			if (keyValue.first.empty() || keyValue.second.empty())
-			{
 				continue;
-			}
 
 			keymap[keyValue.first] = keyValue.second;
 		}
@@ -106,7 +106,7 @@ namespace hbe
 		isValid = true;
 	}
 
-	void ConfigFile::ForEach(std::function<void(const TMap::value_type&)> func) const
+	void ConfigFile::ForEach(std::function<void(const TMap::value_type&)> func) const noexcept
 	{
 		if (func == nullptr)
 		{

@@ -1,18 +1,19 @@
 // Copyright (c) 2026 Hansol Park (mooming.go@gmail.com). All rights reserved.
 
+#ifdef __UNIT_TEST__
+
 #include "InlineMonotonicAllocator.h"
 
-using namespace hbe;
-
-#ifdef __UNIT_TEST__
 #include "AllocatorScope.h"
 #include "HSTL/HVector.h"
 #include "String/String.h"
 
-void InlineMonotonicAllocatorTest::Prepare()
+namespace hbe
+{
+
+void InlineMonotonicAllocatorTest::Prepare() noexcept
 {
 	using namespace std;
-	using namespace hbe;
 	using Allocator = InlineMonotonicAllocator<2048>;
 
 	AddTest("Vector Allocation", [this](auto& ls)
@@ -87,5 +88,7 @@ void InlineMonotonicAllocatorTest::Prepare()
 		}
 	});
 }
+
+} // namespace hbe
 
 #endif //__UNIT_TEST__

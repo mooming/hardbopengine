@@ -28,15 +28,14 @@ namespace hbe
 		std::size_t lowestBucket;
 
 	public:
-		BoundedPriorityQueue()
+		BoundedPriorityQueue() noexcept
+			: totalSize(0)
+			, lowestBucket(MaxPriority)
 		{
 			for (auto& bucket : buckets)
 			{
 				bucket.reserve(BucketSizeHint);
 			}
-
-			totalSize = 0;
-			lowestBucket = MaxPriority;
 		}
 
 		BoundedPriorityQueue(const BoundedPriorityQueue&) = delete;
@@ -46,10 +45,10 @@ namespace hbe
 		BoundedPriorityQueue& operator=(const BoundedPriorityQueue&) = delete;
 		BoundedPriorityQueue& operator=(BoundedPriorityQueue&&) = delete;
 
-		[[nodiscard]] bool IsEmpty() const { return totalSize == 0; }
-		[[nodiscard]] std::size_t Size() const { return totalSize; }
+		[[nodiscard]] bool IsEmpty() const noexcept { return totalSize == 0; }
+		[[nodiscard]] std::size_t Size() const noexcept { return totalSize; }
 
-		void Push(const T& item)
+		void Push(const T& item) noexcept
 		{
 			const auto priority = static_cast<std::size_t>(item.priority);
 			buckets[priority].push_back(item);
@@ -59,7 +58,7 @@ namespace hbe
 				lowestBucket = priority;
 		}
 
-		void Push(T&& item)
+		void Push(T&& item) noexcept
 		{
 			const auto priority = static_cast<std::size_t>(item.priority);
 			buckets[priority].emplace_back(std::move(item));
@@ -69,7 +68,7 @@ namespace hbe
 				lowestBucket = priority;
 		}
 
-		[[nodiscard]] std::optional<T> Pop()
+		[[nodiscard]] std::optional<T> Pop() noexcept
 		{
 			if (totalSize == 0)
 				return std::nullopt;
@@ -88,7 +87,7 @@ namespace hbe
 			return item;
 		}
 
-		[[nodiscard]] std::optional<T> Top() const
+		[[nodiscard]] std::optional<T> Top() const noexcept
 		{
 			if (totalSize == 0)
 				return std::nullopt;
@@ -97,7 +96,7 @@ namespace hbe
 		}
 
 		using TPredicate = bool (*)(const T&);
-		std::size_t Remove(TPredicate predicate)
+		std::size_t Remove(TPredicate predicate) noexcept
 		{
 			if (predicate == nullptr)
 				return 0;
@@ -123,7 +122,7 @@ namespace hbe
 		}
 
 		template<typename Iterator>
-		void PushRange(Iterator begin, Iterator end)
+		void PushRange(Iterator begin, Iterator end) noexcept
 		{
 			for (auto it = begin; it != end; ++it)
 			{
@@ -132,12 +131,12 @@ namespace hbe
 		}
 
 		template<typename TContainer>
-		void PushRange(const TContainer& container)
+		void PushRange(const TContainer& container) noexcept
 		{
 			PushRange(container.begin(), container.end());
 		}
 
-		void Clear()
+		void Clear() noexcept
 		{
 			for (auto& bucket : buckets)
 			{

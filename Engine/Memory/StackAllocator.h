@@ -51,8 +51,8 @@ namespace hbe
 
 		~StackAllocator();
 
-		Pointer Allocate(size_t size);
-		void Deallocate(Pointer ptr, SizeType size);
+		[[nodiscard]] Pointer Allocate(size_t size);
+		void Deallocate(Pointer ptr, SizeType size) noexcept;
 
 		[[nodiscard]] size_t GetAvailable() const;
 		[[nodiscard]] size_t GetUsage() const;

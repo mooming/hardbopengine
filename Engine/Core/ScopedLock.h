@@ -11,66 +11,66 @@
 namespace hbe
 {
 
-	template<typename T>
-	concept CLockable = requires(T t) {
-		t.lock();
-		t.unlock();
-	};
+template<typename T>
+concept CLockable = requires(T t) {
+	t.lock();
+	t.unlock();
+};
 
-	/// @brief A RAII-style lock wrapper that acquires a lock on construction and releases it on destruction.
-	template<CLockable TLockable>
-	class ScopedLock final
+/// @brief A RAII-style lock wrapper that acquires a lock on construction and releases it on destruction.
+template<CLockable TLockable>
+class ScopedLock final
+{
+	using TSrcLoc = hbe::source_location;
+
+private:
+	TLockable& lockable;
+
+#if PROFILE_ENABLED
+	time::TTime startTime;
+	float timeOutSec;
+	TSrcLoc srcLoc;
+#endif // PROFILE_ENABLED
+
+public:
+	ScopedLock(const ScopedLock&) = delete;
+
+#if PROFILE_ENABLED
+	explicit ScopedLock(TLockable& lockable, float timeOutSec = 0.01f, const TSrcLoc& srcLoc = TSrcLoc::current()) :
+		lockable(lockable), startTime(time::TStopWatch::now()), timeOutSec(timeOutSec), srcLoc(srcLoc)
 	{
-		using TSrcLoc = hbe::source_location;
-
-	private:
-		TLockable& lockable;
-
-#if PROFILE_ENABLED
-		time::TTime startTime;
-		float timeOutSec;
-		TSrcLoc srcLoc;
-#endif // PROFILE_ENABLED
-
-	public:
-		ScopedLock(const ScopedLock&) = delete;
-
-#if PROFILE_ENABLED
-		explicit ScopedLock(TLockable& lockable, float timeOutSec = 0.01f, const TSrcLoc& srcLoc = TSrcLoc::current()) :
-			lockable(lockable), startTime(time::TStopWatch::now()), timeOutSec(timeOutSec), srcLoc(srcLoc)
-		{
-			lockable.lock();
+		lockable.lock();
 #ifdef __DEBUG__
-			ScopedLock::timeOutSec *= Config::DebugTimeOutMultiplier;
+		ScopedLock::timeOutSec *= Config::DebugTimeOutMultiplier;
 #endif // __DEBUG__
-		}
+	}
 #else // PROFILE_ENABLED
-		ScopedLock(TLockable& lockable) : lockable(lockable) { lockable.lock(); }
+	ScopedLock(TLockable& lockable) : lockable(lockable) { lockable.lock(); }
 
-		ScopedLock(TLockable& lockable, float) : ScopedLock(lockable) {}
+	ScopedLock(TLockable& lockable, float) : ScopedLock(lockable) {}
 
-		ScopedLock(TLockable& lockable, float, const TSrcLoc&) : ScopedLock(lockable) {}
+	ScopedLock(TLockable& lockable, float, const TSrcLoc&) : ScopedLock(lockable) {}
 #endif // PROFILE_ENABLED
 
-		~ScopedLock()
-		{
-			lockable.unlock();
+	~ScopedLock()
+	{
+		lockable.unlock();
 
 #if PROFILE_ENABLED
-			const auto duration = time::ToFloat(time::TStopWatch::now() - startTime);
-			if (unlikely(timeOutSec > 0.0f && duration > timeOutSec))
+		const auto duration = time::ToFloat(time::TStopWatch::now() - startTime);
+		if (unlikely(timeOutSec > 0.0f && duration > timeOutSec))
+		{
+			using namespace StringUtil;
+			static const auto name = ToCompactClassName(__PRETTY_FUNCTION__);
+			auto log = Logger::Get(name);
+			log.OutWarning([&, this](auto& ls)
 			{
-				using namespace StringUtil;
-				static const auto name = ToCompactClassName(__PRETTY_FUNCTION__);
-				auto log = Logger::Get(name);
-				log.OutWarning([&, this](auto& ls)
-				{
-					ls << "[file: " << srcLoc.file_name() << '(' << srcLoc.line() << ':' << srcLoc.column() << ") "
-					   << srcLoc.function_name() << ": TimedOut! " << duration << " sec exceeds its timelimt "
-					   << timeOutSec;
-				});
-			}
-#endif // PROFILE_ENABLED
+				ls << "[file: " << srcLoc.file_name() << '(' << srcLoc.line() << ':' << srcLoc.column() << ") "
+				   << srcLoc.function_name() << ": TimedOut! " << duration << " sec exceeds its timelimt "
+				   << timeOutSec;
+			});
 		}
-	};
+#endif // PROFILE_ENABLED
+	}
+};
 } // namespace hbe

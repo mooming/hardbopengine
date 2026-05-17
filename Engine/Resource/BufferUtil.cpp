@@ -14,7 +14,7 @@ namespace hbe
 	namespace BufferUtil
 	{
 
-		Buffer GenerateDummyBuffer(size_t size)
+		Buffer GenerateDummyBuffer(size_t size) noexcept
 		{
 			auto generator = [size](TSize& outSize, TBufferData& outData)
 			{

@@ -68,10 +68,10 @@ namespace hbe
 			return *this;
 		}
 
-		Iterator begin() { return &data[head]; }
-		Iterator end() { return &data[head + count]; }
-		ConstIterator begin() const { return &data[head]; }
-		ConstIterator end() const { return &data[head + count]; }
+		Iterator begin() noexcept { return &data[head]; }
+		Iterator end() noexcept { return &data[head + count]; }
+		ConstIterator begin() const noexcept { return &data[head]; }
+		ConstIterator end() const noexcept { return &data[head + count]; }
 
 		TElement& operator[](TIndex index)
 		{
@@ -85,7 +85,7 @@ namespace hbe
 			return data[WrapIndex(head + index)];
 		}
 
-		void PushFront(const TElement& value)
+		void PushFront(const TElement& value) noexcept
 		{
 			if (count == Capacity())
 			{
@@ -97,7 +97,7 @@ namespace hbe
 			++count;
 		}
 
-		void PushFront(TElement&& value)
+		void PushFront(TElement&& value) noexcept
 		{
 			if (count == Capacity())
 			{
@@ -110,7 +110,7 @@ namespace hbe
 		}
 
 		template<typename... Types>
-		TElement& EmplaceFront(Types&&... args)
+		TElement& EmplaceFront(Types&&... args) noexcept
 		{
 			if (count == Capacity())
 			{
@@ -123,7 +123,7 @@ namespace hbe
 			return *ptr;
 		}
 
-		void PushBack(const TElement& value)
+		void PushBack(const TElement& value) noexcept
 		{
 			if (count == Capacity())
 			{
@@ -135,7 +135,7 @@ namespace hbe
 			++count;
 		}
 
-		void PushBack(TElement&& value)
+		void PushBack(TElement&& value) noexcept
 		{
 			if (count == Capacity())
 			{
@@ -148,7 +148,7 @@ namespace hbe
 		}
 
 		template<typename... Types>
-		TElement& EmplaceBack(Types&&... args)
+		TElement& EmplaceBack(Types&&... args) noexcept
 		{
 			if (count == Capacity())
 			{
@@ -161,7 +161,7 @@ namespace hbe
 			return *ptr;
 		}
 
-		void PopFront()
+		void PopFront() noexcept
 		{
 			FatalAssert(!IsEmpty());
 			data[head].~TElement();
@@ -169,7 +169,7 @@ namespace hbe
 			--count;
 		}
 
-		void PopBack()
+		void PopBack() noexcept
 		{
 			FatalAssert(!IsEmpty());
 			tail = WrapIndex(tail - 1);
@@ -177,36 +177,36 @@ namespace hbe
 			--count;
 		}
 
-		TElement& Front()
+		TElement& Front() noexcept
 		{
 			FatalAssert(!IsEmpty());
 			return data[head];
 		}
 
-		const TElement& Front() const
+		const TElement& Front() const noexcept
 		{
 			FatalAssert(!IsEmpty());
 			return data[head];
 		}
 
-		TElement& Back()
+		TElement& Back() noexcept
 		{
 			FatalAssert(!IsEmpty());
 			return data[WrapIndex(tail - 1)];
 		}
 
-		const TElement& Back() const
+		const TElement& Back() const noexcept
 		{
 			FatalAssert(!IsEmpty());
 			return data[WrapIndex(tail - 1)];
 		}
 
-		[[nodiscard]] TIndex Size() const { return count; }
-		[[nodiscard]] TIndex Capacity() const { return mask + 1; }
-		[[nodiscard]] bool IsEmpty() const { return count == 0; }
-		[[nodiscard]] bool IsValidIndex(TIndex index) const { return index >= 0 && index < count; }
+		[[nodiscard]] TIndex Size() const noexcept { return count; }
+		[[nodiscard]] TIndex Capacity() const noexcept { return mask + 1; }
+		[[nodiscard]] bool IsEmpty() const noexcept { return count == 0; }
+		[[nodiscard]] bool IsValidIndex(TIndex index) const noexcept { return index >= 0 && index < count; }
 
-		void Clear()
+		void Clear() noexcept
 		{
 			DestroyAll();
 			head = 0;
@@ -214,7 +214,7 @@ namespace hbe
 			count = 0;
 		}
 
-		void Reserve(TIndex newCapacity)
+		void Reserve(TIndex newCapacity) noexcept
 		{
 			if (newCapacity <= Capacity())
 				return;
@@ -263,15 +263,15 @@ namespace hbe
 		TIndex mask;
 		TElement* data;
 
-		TIndex WrapIndex(TIndex index) const { return index & mask; }
+		TIndex WrapIndex(TIndex index) const noexcept { return index & mask; }
 
-		void Grow()
+		void Grow() noexcept
 		{
 			auto newCapacity = std::max(DefaultCapacity, Capacity() * 2);
 			Reserve(newCapacity);
 		}
 
-		void DestroyAll()
+		void DestroyAll() noexcept
 		{
 			for (TIndex i = 0; i < count; ++i)
 			{

@@ -2,14 +2,18 @@
 
 #include "LinkedList.h"
 
-using namespace hbe;
 
 #ifdef __UNIT_TEST__
+
 #include <list>
 #include "Core/Debug.h"
 #include "Core/ScopedTime.h"
 #include "Memory/AllocatorScope.h"
 #include "Memory/PoolAllocator.h"
+
+
+namespace hbe
+{
 
 void LinkedListTest::Prepare()
 {
@@ -198,4 +202,6 @@ void LinkedListTest::Prepare()
 		}
 	});
 }
+
+} // namespace hbe
 #endif //__UNIT_TEST__

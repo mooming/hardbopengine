@@ -14,7 +14,7 @@ namespace hbe
 {
 	/// @brief Importance resampling class for Monte Carlo integration.
 	template<typename TInput = double, typename TOutput = double, typename TReal = double, typename TInteger = uint32_t>
-	class ImportanceResampling
+	class ImportanceResampling final
 	{
 	public:
 		static_assert(std::is_floating_point_v<TReal>);
@@ -30,11 +30,11 @@ namespace hbe
 		ImportanceResampling() = default;
 		~ImportanceResampling() = default;
 
-		auto& GetWeights() const noexcept { return weights; }
-		auto& GetSamples() const noexcept { return samples; }
-		auto& GetNormalizedWeights() const noexcept { return normalizedWeights; }
+		[[nodiscard]] auto& GetWeights() const noexcept { return weights; }
+		[[nodiscard]] auto& GetSamples() const noexcept { return samples; }
+		[[nodiscard]] auto& GetNormalizedWeights() const noexcept { return normalizedWeights; }
 
-		void Reset()
+		void Reset() noexcept
 		{
 			totalWeight = 0;
 			std::swap(weights, hbe::HVector<TReal>());
@@ -42,7 +42,7 @@ namespace hbe
 			std::swap(samples, hbe::HVector<TInput>());
 		}
 
-		void ClearResampledData()
+		void ClearResampledData() noexcept
 		{
 			totalWeight = 0;
 			weights.clear();
@@ -63,13 +63,11 @@ namespace hbe
 		/// @return false if it fails to resample
 		///
 		template<typename TFunction, typename TPDF, typename TRandomSampler, typename TOutputNorm>
-		bool Resample(const TFunction& f, const TPDF& p, const TRandomSampler& sampler, const TOutputNorm& norm,
-					  const TInteger numSourceSamples)
+		[[nodiscard]] bool Resample(const TFunction& f, const TPDF& p, const TRandomSampler& sampler,
+									 const TOutputNorm& norm, const TInteger numSourceSamples) noexcept
 		{
 			if (numSourceSamples <= 0)
-			{
 				return false;
-			}
 
 			weights.reserve(weights.size() + numSourceSamples);
 			samples.reserve(samples.size() + numSourceSamples);
@@ -80,18 +78,14 @@ namespace hbe
 				const TInput x = sampler();
 				const TReal p_x = p(x);
 				if (p_x <= 0)
-				{
 					return false;
-				}
 
 				const TOutput f_x = f(x);
 				const TOutput fx_over_px = f_x / p_x;
 				const TReal weight = norm(fx_over_px);
 
 				if (weight <= 0)
-				{
 					continue;
-				}
 
 				sumWeights += weight;
 				weights.emplace_back(weight);
@@ -99,9 +93,7 @@ namespace hbe
 			}
 
 			if (sumWeights <= 0)
-			{
 				return false;
-			}
 
 			totalWeight += sumWeights;
 
@@ -139,20 +131,16 @@ namespace hbe
 		/// @return false if it fails to calculate the integration.
 		///
 		template<typename TFunction, typename TDiscreteSampler, typename TUniformSampler>
-		bool Integrate(TOutput& result, const TFunction& f, const TDiscreteSampler& discreteSampler,
-					   const TUniformSampler& uniformSampler, const TInteger numIterations)
+		[[nodiscard]] bool Integrate(TOutput& result, const TFunction& f, const TDiscreteSampler& discreteSampler,
+									  const TUniformSampler& uniformSampler, const TInteger numIterations) noexcept
 		{
 			result = 0;
 
 			if (numIterations <= 0 || f == nullptr)
-			{
 				return false;
-			}
 
 			if (samples.empty() || weights.empty())
-			{
 				return false;
-			}
 
 			// Now we have importance resamples
 			for (TInteger i = 0; i < numIterations; ++i)
@@ -185,13 +173,13 @@ namespace hbe
 
 namespace hbe
 {
-	class ImportanceResamplingTest : public TestCollection
+	class ImportanceResamplingTest final : public TestCollection
 	{
 	public:
 		ImportanceResamplingTest() : TestCollection("Importance Resampling Test") {}
 
 	protected:
-		void Prepare() override;
+		void Prepare() noexcept override;
 	};
 } // namespace hbe
 #endif //__UNIT_TEST__

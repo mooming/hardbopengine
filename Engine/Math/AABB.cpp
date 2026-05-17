@@ -2,17 +2,18 @@
 
 #include "AABB.h"
 
+
 namespace hbe
 {
 
-	template class AABB<Float2>;
-	template class AABB<Float3>;
+	template class AABB<TFloat2>;
+	template class AABB<TFloat3>;
 
 } // namespace hbe
 
 #ifdef __UNIT_TEST__
 
-void hbe::AABBTest::Prepare()
+void hbe::AABBTest::Prepare() noexcept
 {
 	static AABB3 bbox;
 
@@ -30,16 +31,16 @@ void hbe::AABBTest::Prepare()
 
 	AddTest("Add Points", [&, this](auto& ls)
 	{
-		bbox.Add(Float3::Zero);
-		bbox.Add(Float3::Forward);
-		bbox.Add(Float3::Right);
-		bbox.Add(Float3::Up);
+		bbox.Add(TFloat3::Zero);
+		bbox.Add(TFloat3::Forward);
+		bbox.Add(TFloat3::Right);
+		bbox.Add(TFloat3::Up);
 
 		ls << bbox << lf;
 
-		if (bbox.Diagonal() != Float3::Unity)
+		if (bbox.Diagonal() != TFloat3::Unity)
 		{
-			ls << "AABB dianoal error. " << bbox.Diagonal() << ", but expected " << Float3::Unity << lferr;
+			ls << "AABB dianoal error. " << bbox.Diagonal() << ", but expected " << TFloat3::Unity << lferr;
 		}
 	});
 
@@ -103,7 +104,7 @@ void hbe::AABBTest::Prepare()
 		bbox3 = bbox2;
 		ls << "bbox3 = " << bbox3 << lf;
 
-		bbox3.Translate(-Float3::Unity);
+		bbox3.Translate(-TFloat3::Unity);
 		ls << "bbox3 = " << bbox3 << lf;
 
 		if (bbox2.Intersection(bbox3) != bbox)
@@ -112,7 +113,7 @@ void hbe::AABBTest::Prepare()
 			   << bbox2.Intersection(bbox3) << ", but expecting " << bbox << lferr;
 		}
 
-		bbox2.Translate(Float3::Unity);
+		bbox2.Translate(TFloat3::Unity);
 		if (!bbox2.Intersection(bbox3).IsEmpty())
 		{
 			ls << "Invalid Intersection of AABB. " << hendl << "Intersection of " << hendl << bbox2 << hendl << " and "

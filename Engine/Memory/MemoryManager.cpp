@@ -13,15 +13,16 @@
 #include "String/StringUtil.h"
 #include "SystemAllocator.h"
 
+
 namespace hbe
 {
 
 	static_assert(MaxNumAllocators > 0, "MaxNumAllocators is invalid.");
 
-	thread_local MemoryManager::TId MemoryManager::ScopedAllocatorID = 0;
-	TDebugVariable<bool> DVarScopedAllocLogging = false;
+	thread_local MemoryManager::TId MemoryManager::scopedAllocatorID = 0;
+	TDebugVariable<bool> dVarScopedAllocLogging = false;
 
-	static MemoryManager* MMgrInstance = nullptr;
+	static MemoryManager* mmgrInstance = nullptr;
 
 	StaticStringID MemoryManager::GetMultiPoolConfigCacheFilePath()
 	{
@@ -31,16 +32,16 @@ namespace hbe
 
 	MemoryManager& MemoryManager::GetInstance()
 	{
-		FatalAssert(MMgrInstance != nullptr);
-		return *MMgrInstance;
+		FatalAssert(mmgrInstance != nullptr);
+		return *mmgrInstance;
 	}
 
-	MemoryManager::TId MemoryManager::GetCurrentAllocatorID() { return ScopedAllocatorID; }
+	MemoryManager::TId MemoryManager::GetCurrentAllocatorID() { return scopedAllocatorID; }
 
 	MemoryManager::MemoryManager(Engine& engine) : allocCount(0), deallocCount(0)
 	{
-		Assert(MMgrInstance == nullptr);
-		MMgrInstance = this;
+		Assert(mmgrInstance == nullptr);
+		mmgrInstance = this;
 
 		for (int i = 1; i < MaxNumAllocators; ++i)
 		{
@@ -57,18 +58,18 @@ namespace hbe
 
 	MemoryManager::~MemoryManager()
 	{
-		if (MMgrInstance == nullptr)
+		if (mmgrInstance == nullptr)
 		{
 			return;
 		}
 
 		DeregisterSystemAllocator();
-		MMgrInstance = nullptr;
+		mmgrInstance = nullptr;
 	}
 
-	void MemoryManager::PostEngineInit() {}
+	void MemoryManager::PostEngineInit() noexcept {}
 
-	void MemoryManager::PreEngineShutdown()
+	void MemoryManager::PreEngineShutdown() noexcept
 	{
 #if PROFILE_ENABLED
 		SaveMultiPoolConfigs();
@@ -131,9 +132,9 @@ namespace hbe
 			}
 #endif // PROFILE_ENABLED
 
-#if __MEMORY_VERIFICATION__
+#if MEMORY_VERIFICATION_ENABLED
 			allocProxy.threadId = std::this_thread::get_id();
-#endif // __MEMORY_VERIFICATION__
+#endif // MEMORY_VERIFICATION_ENABLED
 		};
 
 		auto allocatorProxyPtr = proxyPool.Pop();
@@ -198,7 +199,7 @@ namespace hbe
 		allocator.allocate = nullptr;
 		allocator.deallocate = nullptr;
 
-#if __MEMORY_VERIFICATION__
+#if MEMORY_VERIFICATION_ENABLED
 		if (unlikely(allocator.threadId != std::this_thread::get_id()))
 		{
 			Log(ELogLevel::Error, [funcName = __func__, id](auto& ls)
@@ -210,7 +211,7 @@ namespace hbe
 
 			return;
 		}
-#endif // __MEMORY_VERIFICATION__
+#endif // MEMORY_VERIFICATION_ENABLED
 
 #if PROFILE_ENABLED
 		if (unlikely(stats.usage > 0))
@@ -247,9 +248,9 @@ namespace hbe
 
 #endif // PROFILE_ENABLED
 
-#if __MEMORY_VERIFICATION__
+#if MEMORY_VERIFICATION_ENABLED
 		allocator.threadId = std::thread::id();
-#endif // __MEMORY_VERIFICATION__
+#endif // MEMORY_VERIFICATION_ENABLED
 
 		proxyPool.Push(allocator);
 	}
@@ -602,7 +603,7 @@ namespace hbe
 
 		Assert(id != InvalidAllocatorID, "Memory allocation is not permitted.");
 
-#if __FORCE_USE_SYSTEM_MALLOC__
+#if FORCE_USE_SYSTEM_MALLOC
 		id = SystemAllocatorID;
 #endif // __USE_SYSTEM_MALLOC__
 
@@ -639,7 +640,7 @@ namespace hbe
 
 		Assert(id != InvalidAllocatorID);
 
-#if __FORCE_USE_SYSTEM_MALLOC__
+#if FORCE_USE_SYSTEM_MALLOC
 		id = SystemAllocatorID;
 #endif // __USE_SYSTEM_MALLOC__
 
@@ -667,7 +668,7 @@ namespace hbe
 
 	bool MemoryManager::IsLogEnabled(ELogLevel level) const
 	{
-#if __MEMORY_LOGGING__
+#if MEMORY_LOGGING_ENABLED
 		static TAtomicConfigParam<uint8_t> CPLogLevel("Log.Memory", "The Memory System Log Level",
 													  static_cast<uint8_t>(Config::MemLogLevel));
 
@@ -677,14 +678,14 @@ namespace hbe
 		}
 
 		return true;
-#else // __MEMORY_LOGGING__
+#else // MEMORY_LOGGING_ENABLED
 		return false;
-#endif // __MEMORY_LOGGING__
+#endif // MEMORY_LOGGING_ENABLED
 	}
 
 	void MemoryManager::Log(ELogLevel level, TLogFunc func) const
 	{
-#if __MEMORY_LOGGING__
+#if MEMORY_LOGGING_ENABLED
 		if (!IsLogEnabled(level))
 		{
 			return;
@@ -692,7 +693,7 @@ namespace hbe
 
 		auto& engine = Engine::Get();
 		engine.Log(level, func);
-#endif // __MEMORY_LOGGING__
+#endif // MEMORY_LOGGING_ENABLED
 	}
 
 	const MultiPoolAllocatorConfig& MemoryManager::LookUpMultiPoolConfig(StaticStringID uniqueName) const
@@ -776,9 +777,9 @@ namespace hbe
 		}
 #endif // PROFILE_ENABLED
 
-#if __MEMORY_VERIFICATION__
+#if MEMORY_VERIFICATION_ENABLED
 		allocator.threadId = std::this_thread::get_id();
-#endif // __MEMORY_VERIFICATION__
+#endif // MEMORY_VERIFICATION_ENABLED
 	}
 
 	void MemoryManager::DeregisterSystemAllocator() { DeregisterAllocator(SystemAllocatorID); }
@@ -914,13 +915,13 @@ namespace hbe
 			id = 0;
 		}
 
-		if (unlikely(DVarScopedAllocLogging))
+		if (unlikely(dVarScopedAllocLogging))
 		{
 			Log(ELogLevel::Error, [funcName = __func__, id](auto& ls)
 			{ ls << '[' << funcName << "] Previous ID = " << id << ", New ID = " << id; });
 		}
 
-		ScopedAllocatorID = id;
+		scopedAllocatorID = id;
 	}
 
 } // namespace hbe

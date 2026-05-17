@@ -12,16 +12,16 @@ namespace hbe
 	/// @brief Reference-counted smart pointer for shared ownership.
 	/// @details Manages a heap-allocated object with reference counting.
 	/// Automatically deallocates when reference count reaches zero.
-	template<typename Type, typename RefCount = uint8_t>
+	template<typename TType, typename RefCount = uint8_t>
 	class Shareable
 	{
 	private:
 		class Body
 		{
 		private:
-			static constexpr auto SizeOfType = sizeof(Type);
+			static constexpr auto SizeOfType = sizeof(TType);
 			RefCount count;
-			Type data;
+			TType data;
 
 		public:
 			template<typename... Types>
@@ -32,7 +32,7 @@ namespace hbe
 				return newBody->Reference();
 			}
 
-			Type& GetBody() { return data; }
+			TType& GetBody() { return data; }
 
 			Body* Reference()
 			{
@@ -106,21 +106,21 @@ namespace hbe
 			}
 		}
 
-		RefCount GetReferenceCount() const { return body != nullptr ? body->GetRefCount() : 0; }
+		[[nodiscard]] RefCount GetReferenceCount() const { return body != nullptr ? body->GetRefCount() : 0; }
 
 		operator bool() const { return body != nullptr; }
 
-		Type& Get() { return body->GetBody(); }
+		[[nodiscard]] TType& Get() { return body->GetBody(); }
 
-		const Type& Get() const { return body->GetBody(); }
+		[[nodiscard]] const TType& Get() const { return body->GetBody(); }
 
-		Type& operator*() { return body->GetBody(); }
+		[[nodiscard]] TType& operator*() { return body->GetBody(); }
 
-		const Type& operator*() const { return body->GetBody(); }
+		[[nodiscard]] const TType& operator*() const { return body->GetBody(); }
 
-		Type* operator->() { return &body->GetBody(); }
+		[[nodiscard]] TType* operator->() { return &body->GetBody(); }
 
-		const Type* operator->() const { return &body->GetBody(); }
+		[[nodiscard]] const TType* operator->() const { return &body->GetBody(); }
 
 		void Release()
 		{

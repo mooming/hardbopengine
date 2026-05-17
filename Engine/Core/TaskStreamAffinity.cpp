@@ -5,6 +5,7 @@
 
 #include <algorithm>
 
+
 void hbe::TaskStreamAffinityTest::Prepare()
 {
 	AddTest("Default Constructor", [this](TLogOut& ls)

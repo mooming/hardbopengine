@@ -10,117 +10,117 @@
 
 namespace hbe
 {
-	/// @brief A template-based system for managing components through their lifecycle states (init, update, sleep, dead).
-	template<typename Component>
-	class ComponentSystem
-	{
-		using CompoList = hbe::HVector<Component>;
+/// @brief A template-based system for managing components through their lifecycle states (init, update, sleep, dead).
+template<typename TComponent>
+class ComponentSystem
+{
+	using TCompoList = hbe::HVector<TComponent>;
 
-	private:
-		String name;
+private:
+	String name;
 
-		CompoList initList;
-		CompoList updateList;
-		CompoList swapUpdateList;
-		CompoList sleepList;
+	TCompoList initList;
+	TCompoList updateList;
+	TCompoList swapUpdateList;
+	TCompoList sleepList;
 
-		CompoList transitionList;
+	TCompoList transitionList;
 
-	public:
-		inline ComponentSystem(const char* name) :
-			name(name), initList(), updateList(), swapUpdateList(), sleepList(), transitionList()
-		{}
+public:
+	ComponentSystem(const char* name) :
+		name(name), initList(), updateList(), swapUpdateList(), sleepList(), transitionList()
+	{}
 
-		inline operator bool() const { return !initList.empty() || !updateList.empty() || !sleepList.empty(); }
+	[[nodiscard]] explicit operator bool() const noexcept { return !initList.empty() || !updateList.empty() || !sleepList.empty(); }
 
-		inline const char* GetName() const { return name.ToCharArray(); }
+	[[nodiscard]] inline const char* GetName() const noexcept { return name.ToCharArray(); }
 
-		template<typename... Types>
-		inline Component& Create(Types&&... args)
+	template<typename... Types>
+		TComponent& Create(Types&&... args)
 		{
 			initList.emplace_back(std::forward<Types>(args)...);
 			auto& compo = initList.back();
-			compo.SetState(ComponentState::BORN);
+		compo.SetState(ComponentState::BORN);
 
-			return compo;
+		return compo;
+	}
+
+	void Update(const float deltaTime)
+	{
+		ProcessInit();
+		ProcessUpdate(deltaTime);
+		ProcessTransition();
+	}
+
+private:
+	void ProcessInit()
+	{
+		for (auto& compo : initList)
+		{
+			compo.Init();
+			compo.SetState(ComponentState::ALIVE);
+			compo.OnEnable();
+			updateList.push_back(std::move(compo));
 		}
 
-		void Update(const float deltaTime)
-		{
-			ProcessInit();
-			ProcessUpdate(deltaTime);
-			ProcessTransition();
-		}
+		initList.clear();
+	}
 
-	private:
-		inline void ProcessInit()
+	void ProcessUpdate(const float deltaTime)
+	{
+		for (auto& compo : updateList)
 		{
-			for (auto& compo : initList)
+			compo.Update(deltaTime);
+
+			if (!compo.IsEnabled())
 			{
-				compo.Init();
-				compo.SetState(ComponentState::ALIVE);
-				compo.OnEnable();
-				updateList.push_back(std::move(compo));
+				transitionList.push_back(std::move(compo));
 			}
-
-			initList.clear();
-		}
-
-		inline void ProcessUpdate(const float deltaTime)
-		{
-			for (auto& compo : updateList)
+			else
 			{
-				compo.Update(deltaTime);
-
-				if (!compo.IsEnabled())
-				{
-					transitionList.push_back(std::move(compo));
-				}
-				else
-				{
-					swapUpdateList.push_back(std::move(compo));
-				}
+				swapUpdateList.push_back(std::move(compo));
 			}
-
-			std::swap(updateList, swapUpdateList);
-			swapUpdateList.clear();
 		}
 
-		inline void ProcessTransition()
+		std::swap(updateList, swapUpdateList);
+		swapUpdateList.clear();
+	}
+
+	void ProcessTransition()
+	{
+		for (auto& compo : transitionList)
 		{
-			for (auto& compo : transitionList)
+			switch (compo.GetState())
 			{
-				switch (compo.GetState())
-				{
-					case ComponentState::ALIVE:
-						compo.OnEnable();
-						updateList.push_back(std::move(compo));
-						break;
+				case ComponentState::ALIVE:
+					compo.OnEnable();
+					updateList.push_back(std::move(compo));
+					break;
 
-					case ComponentState::SLEEP:
-						compo.OnDisable();
-						sleepList.push_back(std::move(compo));
-						break;
+				case ComponentState::SLEEP:
+					compo.OnDisable();
+					sleepList.push_back(std::move(compo));
+					break;
 
-					case ComponentState::DEAD:
-						compo.SetState(ComponentState::SLEEP);
-						compo.OnDisable();
-						compo.SetState(ComponentState::DEAD);
-						compo.Release();
-						break;
+				case ComponentState::DEAD:
+					compo.SetState(ComponentState::SLEEP);
+					compo.OnDisable();
+					compo.SetState(ComponentState::DEAD);
+					compo.Release();
+					break;
 
-					default:
-						Assert(false,
-							   "Unexpected component state %d on processing "
-							   "transition.\n",
-							   compo.GetState());
-						break;
-				}
+				default:
+					Assert(false,
+						   "Unexpected component state %d on processing "
+						   "transition.\n",
+						   compo.GetState());
+					break;
 			}
-
-			transitionList.clear();
 		}
-	};
+
+		transitionList.clear();
+	}
+};
 } // namespace hbe
 
 #ifdef __UNIT_TEST__
@@ -128,13 +128,13 @@ namespace hbe
 
 namespace hbe
 {
-	class ComponentSystemTest : public TestCollection
-	{
-	public:
-		ComponentSystemTest() : TestCollection("ComponentSystemTest") {}
+class ComponentSystemTest : public TestCollection
+{
+public:
+	ComponentSystemTest() : TestCollection("ComponentSystemTest") {}
 
-	protected:
-		virtual void Prepare() override;
-	};
+protected:
+	void Prepare() override;
+};
 } // namespace hbe
 #endif //__UNIT_TEST__
