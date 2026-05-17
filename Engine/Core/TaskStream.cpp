@@ -12,141 +12,142 @@
 #include "ScopedTime.h"
 #include "TaskSystem.h"
 
+
 namespace hbe
 {
 
-	TaskStream::TaskQueueItem::TaskQueueItem(uint8_t priority, const RangedTask& task)
-		: priority(priority)
-		, task(task)
-		, duration(0)
-	{}
+TaskStream::TaskQueueItem::TaskQueueItem(uint8_t priority, const RangedTask& task)
+	: priority(priority)
+	, task(task)
+	, duration(0)
+{}
 
-	bool TaskStream::TaskQueueItem::operator<(const TaskQueueItem& other) const
+bool TaskStream::TaskQueueItem::operator<(const TaskQueueItem& other) const
+{
+	return priority < other.priority;
+}
+
+TaskStream::TaskStream()
+	: streamIndex(0)
+	, loopCount(0)
+	, allocator("None")
+{
+	Assert(threadID == std::thread::id());
+}
+
+TaskStream::TaskStream(StaticString name, TStreamIndex streamIndex)
+	: name(name)
+	, streamIndex(streamIndex)
+	, loopCount(0)
+	, allocator(name)
+{
+	auto log = Logger::Get(name);
+	log.Out([name = name](auto& ls) { ls << name.c_str() << " is created."; });
+}
+
+void TaskStream::Enqueue(const RangedTask& task) noexcept
+{
+	std::scoped_lock<std::mutex> lock(queueLock);
+	taskQueue.Push(task);
+	cv.notify_one();
+}
+
+void TaskStream::Dequeue(std::optional<RangedTask>& outTask)
+{
+	std::scoped_lock<std::mutex> lock(queueLock);
+	if (taskQueue.IsEmpty())
 	{
-		return priority < other.priority;
+		outTask.reset();
+		return;
 	}
 
-	TaskStream::TaskStream()
-		: streamIndex(0)
-		, loopCount(0)
-		, allocator("None")
-	{
-		Assert(threadID == std::thread::id());
-	}
+	outTask = taskQueue.Pop();
+}
 
-	TaskStream::TaskStream(StaticString name, TStreamIndex streamIndex)
-		: name(name)
-		, streamIndex(streamIndex)
-		, loopCount(0)
-		, allocator(name)
-	{
-		auto log = Logger::Get(name);
-		log.Out([name = name](auto& ls) { ls << name.c_str() << " is created."; });
-	}
+void TaskStream::WakeUp() noexcept { cv.notify_one(); }
 
-	void TaskStream::Enqueue(const RangedTask& task)
+void TaskStream::Start(TaskSystem& taskSys) noexcept
+{
+	auto func = [this]()
 	{
-		std::scoped_lock<std::mutex> lock(queueLock);
-		taskQueue.Push(task);
-		cv.notify_one();
-	}
+		RunLoop();
+	};
 
-	void TaskStream::Dequeue(std::optional<RangedTask>& outTask)
+	thread = std::thread(func);
+	OS::SetThreadPriority(thread, 0);
+}
+
+void TaskStream::RunLoop() noexcept
+{
+	AllocatorScope scope(allocator);
+
+	TaskSystem::SetThreadName(name);
+	TaskSystem::SetStreamIndex(streamIndex);
+
+	const auto log = Logger::Get(name);
+	log.Out([name = name](auto& ls) { ls << name.c_str() << " has begun."; });
+
+	threadID = std::this_thread::get_id();
+
+	static ConfigParam<float, true> thresholdDuration("TaskStreamDurationThreshold",
+		"Print a warning log if it detects slower task. (seconds)", 0.16f);
+
+	auto& engine = Engine::Get();
+	auto& taskSys = engine.GetTaskSystem();
+
+	HVector<RangedTask> readdingBuffer;
+
+	for (;likely(taskSys.IsRunning()); ++loopCount)
 	{
-		std::scoped_lock<std::mutex> lock(queueLock);
-		if (taskQueue.IsEmpty())
+		std::optional<RangedTask> rangedTask;
+
 		{
-			outTask.reset();
-			return;
-		}
+			// Remove finished tasks
+			std::unique_lock lock(queueLock);
+			taskQueue.Remove([](const RangedTask& task) { return task.HasFinished(); });
 
-		outTask = taskQueue.Pop();
-	}
+			taskQueue.PushRange(readdingBuffer);
+			readdingBuffer.clear();
 
-	void TaskStream::WakeUp() { cv.notify_one(); }
-
-	void TaskStream::Start(TaskSystem& taskSys)
-	{
-		auto func = [this]()
-		{
-			RunLoop();
-		};
-
-		thread = std::thread(func);
-		OS::SetThreadPriority(thread, 0);
-	}
-
-	void TaskStream::RunLoop()
-	{
-		AllocatorScope scope(allocator);
-
-		TaskSystem::SetThreadName(name);
-		TaskSystem::SetStreamIndex(streamIndex);
-
-		const auto log = Logger::Get(name);
-		log.Out([name = name](auto& ls) { ls << name.c_str() << " has begun."; });
-
-		threadID = std::this_thread::get_id();
-
-		static ConfigParam<float, true> thresholdDuration("TaskStreamDurationThreshold",
-			"Print a warning log if it detects slower task. (seconds)", 0.16f);
-
-		auto& engine = Engine::Get();
-		auto& taskSys = engine.GetTaskSystem();
-
-		HVector<RangedTask> readdingBuffer;
-
-		for (;likely(taskSys.IsRunning()); ++loopCount)
-		{
-			std::optional<RangedTask> rangedTask;
-
+			if (!taskQueue.IsEmpty())
 			{
-				// Remove finished tasks
-				std::unique_lock lock(queueLock);
-				taskQueue.Remove([](const RangedTask& task) { return task.HasFinished(); });
-
-				taskQueue.PushRange(readdingBuffer);
-				readdingBuffer.clear();
-
-				if (!taskQueue.IsEmpty())
-				{
-					rangedTask = taskQueue.Pop();
-				}
-			}
-
-			if (!rangedTask.has_value())
-			{
-				taskSys.Dequeue(rangedTask);
-			}
-
-			if (!rangedTask.has_value())
-			{
-				// Wait for a signal for waitPeriod
-				std::unique_lock lock(queueLock);
-				constexpr std::chrono::milliseconds waitPeriod(10);
-				cv.wait_for(lock, waitPeriod);
-
-				continue;
-			}
-
-			time::TDuration duration;
-			{
-				time::ScopedTime timer(duration);
-				rangedTask->Run();
-			}
-
-			const float deltaTime = time::ToFloat(duration);
-			if (deltaTime > thresholdDuration.Get())
-			{
-				log.OutWarning([dt = deltaTime](auto& ls) { ls << "Slow DeltaTime = " << dt; });
-			}
-
-			if (!rangedTask->HasFinished())
-			{
-				readdingBuffer.push_back(*rangedTask);
+				rangedTask = taskQueue.Pop();
 			}
 		}
 
-		log.Out([name = name](auto& ls) { ls << name.c_str() << " has been terminated."; });
+		if (!rangedTask.has_value())
+		{
+			taskSys.Dequeue(rangedTask);
+		}
+
+		if (!rangedTask.has_value())
+		{
+			// Wait for a signal for waitPeriod
+			std::unique_lock lock(queueLock);
+			constexpr std::chrono::milliseconds waitPeriod(10);
+			cv.wait_for(lock, waitPeriod);
+
+			continue;
+		}
+
+		time::TDuration duration;
+		{
+			time::ScopedTime timer(duration);
+			rangedTask->Run();
+		}
+
+		const float deltaTime = time::ToFloat(duration);
+		if (deltaTime > thresholdDuration.Get())
+		{
+			log.OutWarning([dt = deltaTime](auto& ls) { ls << "Slow DeltaTime = " << dt; });
+		}
+
+		if (!rangedTask->HasFinished())
+		{
+			readdingBuffer.push_back(*rangedTask);
+		}
 	}
+
+	log.Out([name = name](auto& ls) { ls << name.c_str() << " has been terminated."; });
+}
 } // namespace hbe

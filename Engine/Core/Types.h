@@ -7,12 +7,20 @@
 
 namespace hbe
 {
-	using Byte = uint8_t;
-	using Pointer = void*;
-	using Index = size_t;
+using TByte = uint8_t;
+using TPointer = void*;
+using TIndex = size_t;
 
-	using Int = int32_t;
-	using UInt = uint32_t;
+using TInt = int32_t;
+using TUInt = uint32_t;
 
-	using Real = float;
+using TReal = float;
+
+// Backward-compatible aliases
+using Byte = TByte;
+using Pointer = TPointer;
+using Index = TIndex;
+using Int = TInt;
+using UInt = TUInt;
+using Real = TReal;
 } // namespace hbe

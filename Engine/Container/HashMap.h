@@ -55,7 +55,7 @@ namespace hbe
 			{
 			}
 
-			Iterator& operator++()
+			Iterator& operator++() noexcept
 			{
 				FatalAssert(map != nullptr);
 				FatalAssert(index >= 0);
@@ -69,30 +69,30 @@ namespace hbe
 				return *this;
 			}
 
-			bool operator==(const Iterator& rhs) const
+			bool operator==(const Iterator& rhs) const noexcept
 			{
 				return index == rhs.index && map == rhs.map;
 			}
 
-			bool operator!=(const Iterator& rhs) const
+			bool operator!=(const Iterator& rhs) const noexcept
 			{
 				return !(*this == rhs);
 			}
 
-			Pair& operator*()
+			Pair& operator*() noexcept
 			{
 				FatalAssert(map != nullptr && map->IsValidSlot(index));
 				return map->entries[index];
 			}
 
-			const Pair& operator*() const
+			const Pair& operator*() const noexcept
 			{
 				FatalAssert(map != nullptr && map->IsValidSlot(index));
 				return map->entries[index];
 			}
 
-			Pair* operator->() { return &(**this); }
-			const Pair* operator->() const { return &(**this); }
+			Pair* operator->() noexcept { return &(**this); }
+			const Pair* operator->() const noexcept { return &(**this); }
 		};
 
 		class ConstIterator
@@ -112,7 +112,7 @@ namespace hbe
 			{
 			}
 
-			ConstIterator& operator++()
+			ConstIterator& operator++() noexcept
 			{
 				FatalAssert(map != nullptr);
 				FatalAssert(index >= 0);
@@ -126,23 +126,23 @@ namespace hbe
 				return *this;
 			}
 
-			bool operator==(const ConstIterator& rhs) const
+			bool operator==(const ConstIterator& rhs) const noexcept
 			{
 				return index == rhs.index && map == rhs.map;
 			}
 
-			bool operator!=(const ConstIterator& rhs) const
+			bool operator!=(const ConstIterator& rhs) const noexcept
 			{
 				return !(*this == rhs);
 			}
 
-			const Pair& operator*() const
+			const Pair& operator*() const noexcept
 			{
 				FatalAssert(map != nullptr && map->IsValidSlot(index));
 				return map->entries[index];
 			}
 
-			const Pair* operator->() const { return &(**this); }
+			const Pair* operator->() const noexcept { return &(**this); }
 		};
 
 		HashMap() noexcept
@@ -185,7 +185,7 @@ namespace hbe
 			rhs.states = nullptr;
 		}
 
-		~HashMap() { Release(); }
+		~HashMap() noexcept { Release(); }
 
 		HashMap& operator=(const HashMap&) = delete;
 
@@ -213,7 +213,7 @@ namespace hbe
 			return *this;
 		}
 
-		Iterator begin()
+		Iterator begin() noexcept
 		{
 			TIndex first = 0;
 			while (first < cap && states[first] != EHashEntryState::Occupied)
@@ -224,9 +224,9 @@ namespace hbe
 			return Iterator(this, first);
 		}
 
-		Iterator end() { return Iterator(this, cap); }
+		Iterator end() noexcept { return Iterator(this, cap); }
 
-		ConstIterator begin() const
+		ConstIterator begin() const noexcept
 		{
 			TIndex first = 0;
 			while (first < cap && states[first] != EHashEntryState::Occupied)
@@ -237,7 +237,7 @@ namespace hbe
 			return ConstIterator(this, first);
 		}
 
-		ConstIterator end() const { return ConstIterator(this, cap); }
+		ConstIterator end() const noexcept { return ConstIterator(this, cap); }
 
 		TValue& operator[](const TKey& key)
 		{
@@ -265,7 +265,7 @@ namespace hbe
 			return entries[slot].value;
 		}
 
-		Iterator Find(const TKey& key)
+		[[nodiscard]] Iterator Find(const TKey& key) noexcept
 		{
 			auto idx = FindSlot(key);
 			if (idx < 0 || states[idx] != EHashEntryState::Occupied)
@@ -274,7 +274,7 @@ namespace hbe
 			return Iterator(this, idx);
 		}
 
-		ConstIterator Find(const TKey& key) const
+		[[nodiscard]] ConstIterator Find(const TKey& key) const noexcept
 		{
 			auto idx = FindSlot(key);
 			if (idx < 0 || states[idx] != EHashEntryState::Occupied)
@@ -338,20 +338,21 @@ namespace hbe
 			states[idx] = EHashEntryState::Tombstone;
 			--count;
 			++tombstoneCount;
+
 			return true;
 		}
 
-		bool Contains(const TKey& key) const
+		[[nodiscard]] bool Contains(const TKey& key) const noexcept
 		{
 			auto idx = FindSlot(key);
 			return idx >= 0 && states[idx] == EHashEntryState::Occupied;
 		}
 
-		[[nodiscard]] TIndex Size() const { return count; }
-		[[nodiscard]] TIndex Capacity() const { return cap; }
-		[[nodiscard]] bool IsEmpty() const { return count == 0; }
+		[[nodiscard]] TIndex Size() const noexcept { return count; }
+		[[nodiscard]] TIndex Capacity() const noexcept { return cap; }
+		[[nodiscard]] bool IsEmpty() const noexcept { return count == 0; }
 
-		void Clear()
+		void Clear() noexcept
 		{
 			for (TIndex i = 0; i < cap; ++i)
 			{
@@ -391,12 +392,12 @@ namespace hbe
 		TKeyEqual keyEqual;
 		TAllocator allocator;
 
-		bool IsValidSlot(TIndex index) const
+		[[nodiscard]] bool IsValidSlot(TIndex index) const noexcept
 		{
 			return index >= 0 && index < cap && states[index] == EHashEntryState::Occupied;
 		}
 
-		TIndex FindSlot(const TKey& key) const
+		TIndex FindSlot(const TKey& key) const noexcept
 		{
 			if (cap == 0)
 				return -1;
@@ -418,7 +419,7 @@ namespace hbe
 			return -1;
 		}
 
-		std::pair<bool, TIndex> InsertInternal(const TKey& key)
+		std::pair<bool, TIndex> InsertInternal(const TKey& key) noexcept
 		{
 			if (ShouldGrow())
 			{
@@ -447,15 +448,17 @@ namespace hbe
 					new (&entries[slot]) Pair{key, TValue{}};
 					states[slot] = EHashEntryState::Occupied;
 					++count;
+
 					return {true, slot};
 				}
 			}
 
 			FatalAssert(false, "HashMap should have grown before reaching full capacity");
+
 			return {false, -1};
 		}
 
-		std::pair<bool, TIndex> InsertInternal(TKey&& key)
+		std::pair<bool, TIndex> InsertInternal(TKey&& key) noexcept
 		{
 			if (ShouldGrow())
 			{
@@ -484,27 +487,29 @@ namespace hbe
 					new (&entries[slot]) Pair{std::move(key), TValue{}};
 					states[slot] = EHashEntryState::Occupied;
 					++count;
+
 					return {true, slot};
 				}
 			}
 
 			FatalAssert(false, "HashMap should have grown before reaching full capacity");
+
 			return {false, -1};
 		}
 
-		bool ShouldGrow() const
+		[[nodiscard]] bool ShouldGrow() const noexcept
 		{
 			auto totalUsed = count + tombstoneCount;
 			return cap == 0 || static_cast<double>(totalUsed) >= static_cast<double>(cap) * MaxLoadFactor;
 		}
 
-		void Grow()
+		void Grow() noexcept
 		{
 			auto newCap = std::max(MinCapacity, cap * 2);
 			Rehash(newCap);
 		}
 
-		void Rehash(TIndex newCapacity)
+		void Rehash(TIndex newCapacity) noexcept
 		{
 			auto allocSize = sizeof(Pair) * newCapacity + sizeof(EHashEntryState) * newCapacity;
 			auto* raw = allocator.allocate(allocSize);
@@ -557,7 +562,7 @@ namespace hbe
 			}
 		}
 
-		void Release()
+		void Release() noexcept
 		{
 			if (entries == nullptr)
 				return;

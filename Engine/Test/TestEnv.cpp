@@ -1,13 +1,17 @@
 // Copyright (c) 2026 Hansol Park (mooming.go@gmail.com). All rights reserved.
 
 #include "TestEnv.h"
+
 #include <sstream>
+
 #include "Core/Debug.h"
 #include "Core/Exception.h"
 #include "Log/Logger.h"
 #include "TestCollection.h"
 
-using namespace hbe;
+
+namespace hbe
+{
 
 TestEnv& TestEnv::GetEnv()
 {
@@ -22,6 +26,10 @@ void TestEnv::Start()
 
 	for (auto& testCase : tests)
 	{
+		if (testCase == nullptr)
+		{
+			std::cerr << "Error: testCase is null" << std::endl;
+		}
 		Assert(testCase != nullptr);
 		ExecuteTest(*testCase);
 	}
@@ -31,19 +39,7 @@ void TestEnv::Start()
 
 bool TestEnv::ExecuteTest(TestCollection& testCollection)
 {
-#ifdef __DEBUG__
 	testCollection.Start();
-#else // !__DEBUG__
-	try
-	{
-		testCollection.Start();
-	}
-	catch (Exception)
-	{
-		auto log = Logger::Get("TestEnv");
-		log.OutError([](auto& ls) { ls << "Exception occurred!"; });
-	}
-#endif // __DEBUG__
 
 	if (!testCollection.IsDone())
 	{
@@ -166,3 +162,5 @@ void TestEnv::Report()
 	auto& logger = Logger::Get();
 	logger.Flush();
 }
+
+} // namespace hbe

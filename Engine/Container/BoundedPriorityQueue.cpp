@@ -1,11 +1,13 @@
 // Copyright (c) 2026 Hansol Park (mooming.go@gmail.com). All rights reserved.
 
+#include "Container/BoundedPriorityQueue.h"
+
 #ifdef __UNIT_TEST__
 
 #include <chrono>
 #include <queue>
-#include "Container/BoundedPriorityQueue.h"
 #include "Core/ScopedTime.h"
+
 
 namespace hbe
 {

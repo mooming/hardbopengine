@@ -3,6 +3,7 @@
 #pragma once
 
 #include <optional>
+
 #include "HSTL/HString.h"
 #include "HSTL/HUnorderedMap.h"
 
@@ -15,9 +16,9 @@ namespace hbe
 	class ConfigFile final
 	{
 	public:
-		using TString = hbe::HString;
+		using TString = HString;
 		using TValue = std::optional<TString>;
-		using TMap = hbe::HUnorderedMap<TString, TString>;
+		using TMap = HUnorderedMap<TString, TString>;
 
 		bool isValid;
 		TMap keymap;
@@ -27,11 +28,11 @@ namespace hbe
 		ConfigFile(const char* path, const char* fileName);
 		~ConfigFile() = default;
 
-		[[nodiscard]] TValue GetValue(const TString& key) const;
-		[[nodiscard]] TString GetValue(const TString& key, const TString& defaultValue) const;
-		[[nodiscard]] auto IsValid() const { return isValid; }
+		[[nodiscard]] TValue GetValue(const TString& key) const noexcept;
+		[[nodiscard]] TString GetValue(const TString& key, const TString& defaultValue) const noexcept;
+		[[nodiscard]] auto IsValid() const noexcept { return isValid; }
 
-		void ForEach(std::function<void(const TMap::value_type&)> func) const;
+		void ForEach(std::function<void(const TMap::value_type&)> func) const noexcept;
 
 	private:
 		void Parse(const char* fileName);

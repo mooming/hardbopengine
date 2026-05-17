@@ -2,8 +2,8 @@
 
 #pragma once
 
-#include "RendererCommon.h"
 #include "OSAL/Window.h"
+#include "RendererCommon.h"
 
 namespace hbe
 {
@@ -15,19 +15,19 @@ class IRenderer
 public:
 	virtual ~IRenderer() = default;
 
-	virtual bool Initialize(OS::IWindow* window) = 0;
-	virtual void Shutdown() = 0;
+	[[nodiscard]] virtual bool Initialize(OS::IWindow* window) noexcept = 0;
+	virtual void Shutdown() noexcept = 0;
 
-	virtual void BeginFrame() = 0;
-	virtual void EndFrame() = 0;
+	virtual void BeginFrame() noexcept = 0;
+	virtual void EndFrame() noexcept = 0;
 
-	virtual void Render(float deltaTime) = 0;
+	virtual void Render(float deltaTime) noexcept = 0;
 
-	virtual APIType GetAPIType() const = 0;
-	virtual RenderCapabilities GetCapabilities() const = 0;
+	[[nodiscard]] virtual APIType GetAPIType() const noexcept = 0;
+	[[nodiscard]] virtual RenderCapabilities GetCapabilities() const noexcept = 0;
 
 protected:
-	IRenderer() = default;
+	IRenderer() noexcept = default;
 };
 
 } // namespace Renderer

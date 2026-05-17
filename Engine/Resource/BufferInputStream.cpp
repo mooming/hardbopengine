@@ -2,94 +2,110 @@
 
 #include "BufferInputStream.h"
 
+
 namespace hbe
 {
 
 	using This = BufferInputStream;
 
-	BufferInputStream::BufferInputStream(const Buffer& buffer) : buffer(buffer), cursor(0), errorCount(0) {}
+	BufferInputStream::BufferInputStream(const Buffer& buffer) noexcept :
+		buffer(buffer), cursor(0), errorCount(0)
+	{}
 
-	This& BufferInputStream::operator>>(char& value)
+	This& BufferInputStream::operator>>(char& value) noexcept
 	{
 		Get<char>(value, '\0');
+
 		return *this;
 	}
 
-	This& BufferInputStream::operator>>(int8_t& value)
+	This& BufferInputStream::operator>>(int8_t& value) noexcept
 	{
 		Get<int8_t>(value, 0);
+
 		return *this;
 	}
 
-	This& BufferInputStream::operator>>(uint8_t& value)
+	This& BufferInputStream::operator>>(uint8_t& value) noexcept
 	{
 		Get<uint8_t>(value, 0);
+
 		return *this;
 	}
 
-	This& BufferInputStream::operator>>(int16_t& value)
+	This& BufferInputStream::operator>>(int16_t& value) noexcept
 	{
 		Get<int16_t>(value, 0);
+
 		return *this;
 	}
 
-	This& BufferInputStream::operator>>(uint16_t& value)
+	This& BufferInputStream::operator>>(uint16_t& value) noexcept
 	{
 		Get<uint16_t>(value, 0);
+
 		return *this;
 	}
 
-	This& BufferInputStream::operator>>(int32_t& value)
+	This& BufferInputStream::operator>>(int32_t& value) noexcept
 	{
 		Get<int32_t>(value, 0);
+
 		return *this;
 	}
 
-	This& BufferInputStream::operator>>(uint32_t& value)
+	This& BufferInputStream::operator>>(uint32_t& value) noexcept
 	{
 		Get<uint32_t>(value, 0);
+
 		return *this;
 	}
 
-	This& BufferInputStream::operator>>(int64_t& value)
+	This& BufferInputStream::operator>>(int64_t& value) noexcept
 	{
 		Get<int64_t>(value, 0);
+
 		return *this;
 	}
 
-	This& BufferInputStream::operator>>(uint64_t& value)
+	This& BufferInputStream::operator>>(uint64_t& value) noexcept
 	{
 		Get<uint64_t>(value, 0);
+
 		return *this;
 	}
 
 #ifndef PLATFORM_LINUX
-	This& BufferInputStream::operator>>(size_t& value)
+	This& BufferInputStream::operator>>(size_t& value) noexcept
 	{
 		Get<size_t>(value, 0);
+
 		return *this;
 	}
 #endif // PLATFORM_LINUX
 
-	This& BufferInputStream::operator>>(float& value)
+	This& BufferInputStream::operator>>(float& value) noexcept
 	{
 		Get<float>(value, 0.0f);
+
 		return *this;
 	}
 
-	This& BufferInputStream::operator>>(double& value)
+	This& BufferInputStream::operator>>(double& value) noexcept
 	{
 		Get<double>(value, 0.0);
+
 		return *this;
 	}
 
-	This& BufferInputStream::operator>>(long double& value)
+	This& BufferInputStream::operator>>(long double& value) noexcept
 	{
 		Get<long double>(value, 0);
+
 		return *this;
 	}
 
-	This& BufferInputStream::operator>>(StaticString& str)
+	This& BufferInputStream::operator>>(StaticString& str) noexcept
 	{
 		size_t length = 0;
 		Get<size_t>(length, 0);
@@ -122,7 +138,7 @@ namespace hbe
 		return *this;
 	}
 
-	This& BufferInputStream::operator>>(const hbe::HString& str) { return *this; }
+	This& BufferInputStream::operator>>(const hbe::HString& str) noexcept { return *this; }
 
 } // namespace hbe
 

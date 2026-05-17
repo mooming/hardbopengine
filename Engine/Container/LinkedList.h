@@ -10,31 +10,31 @@
 namespace hbe
 {
 	/// @brief Node structure for doubly-linked list containing value and pointers to adjacent nodes
-	template<typename Type>
+	template<typename TType>
 	struct LinkedListNode final
 	{
 		using This = LinkedListNode;
-		Type value;
+		TType value;
 		LinkedListNode* previous;
 		LinkedListNode* next;
 
-		inline LinkedListNode(const Type& value) : value(value), previous(nullptr), next(nullptr) {}
+		explicit LinkedListNode(const TType& value) noexcept : value(value), previous(nullptr), next(nullptr) {}
 
-		inline LinkedListNode(Type&& value) : value(std::move(value)), previous(nullptr), next(nullptr) {}
+		explicit LinkedListNode(TType&& value) noexcept : value(std::move(value)), previous(nullptr), next(nullptr) {}
 
-		inline bool operator!=(const This& rhs) const { return this != &rhs; }
-		inline Type& operator*() { return value; }
-		inline const Type& operator*() const { return value; }
-		inline bool IsHead() const { return previous == nullptr; }
-		inline bool IsTail() const { return next == nullptr; }
+		bool operator!=(const This& rhs) const noexcept { return this != &rhs; }
+		TType& operator*() noexcept { return value; }
+		const TType& operator*() const noexcept { return value; }
+		bool IsHead() const noexcept { return previous == nullptr; }
+		bool IsTail() const noexcept { return next == nullptr; }
 	};
 
 	/// @brief Doubly-linked list implementation with custom allocator support
-	template<typename Type, class TAllocator = DefaultAllocator<LinkedListNode<Type>>>
+	template<typename TType, class TAllocator = DefaultAllocator<LinkedListNode<TType>>>
 	class LinkedList final
 	{
 	public:
-		using Node = LinkedListNode<Type>;
+		using Node = LinkedListNode<TType>;
 
 	public:
 		class Iterator
@@ -43,11 +43,11 @@ namespace hbe
 			Node* node;
 
 		public:
-			inline Iterator(Node* node) : node(node) {}
-			inline void operator++() { node = node->next; }
-			inline bool operator!=(const Iterator& rhs) const { return node != rhs.node; }
-			inline Type& operator*() { return node->value; }
-			inline const Type& operator*() const { return node->value; }
+			Iterator(Node* node) noexcept : node(node) {}
+			void operator++() noexcept { node = node->next; }
+			bool operator!=(const Iterator& rhs) const noexcept { return node != rhs.node; }
+			TType& operator*() noexcept { return node->value; }
+			const TType& operator*() const noexcept { return node->value; }
 		};
 
 		using ConstIterator = Iterator;
@@ -62,15 +62,15 @@ namespace hbe
 		LinkedList& operator=(const LinkedList&) = delete;
 
 	public:
-		LinkedList() : head(nullptr), tail(nullptr) {}
+		LinkedList() noexcept : head(nullptr), tail(nullptr) {}
 
-		LinkedList(LinkedList&& rhs) : head(rhs.head), tail(rhs.tail)
+		LinkedList(LinkedList&& rhs) noexcept : head(rhs.head), tail(rhs.tail)
 		{
 			rhs.head = nullptr;
 			rhs.tail = nullptr;
 		}
 
-		LinkedList& operator=(LinkedList&& rhs)
+		LinkedList& operator=(LinkedList&& rhs) noexcept
 		{
 			Node* tmpHead = rhs.head;
 			Node* tmpTail = rhs.tail;
@@ -84,22 +84,22 @@ namespace hbe
 			return *this;
 		}
 
-		~LinkedList() { Clear(); }
+		~LinkedList() noexcept { Clear(); }
 
 	public:
-		Iterator begin() { return Iterator(head); }
-		Iterator end() { return Iterator(nullptr); }
-		ConstIterator begin() const { return ConstIterator(head); }
-		ConstIterator end() const { return ConstIterator(nullptr); }
+		Iterator begin() noexcept { return Iterator(head); }
+		Iterator end() noexcept { return Iterator(nullptr); }
+		ConstIterator begin() const noexcept { return ConstIterator(head); }
+		ConstIterator end() const noexcept { return ConstIterator(nullptr); }
 
 	public:
-		bool IsEmpty() const
+		[[nodiscard]] bool IsEmpty() const noexcept
 		{
 			Assert(head != nullptr || head == tail);
 			return head == nullptr;
 		}
 
-		void Clear()
+		void Clear() noexcept
 		{
 			while (head != nullptr)
 			{
@@ -107,69 +107,61 @@ namespace hbe
 			}
 		}
 
-		Iterator Remove(const Type& element)
+		Iterator Remove(const TType& element) noexcept
 		{
 			Assert(ContainsElement(element));
 			return Iterator(RemoveNode(GetNodeOf(element)));
 		}
 
-		Type& Add(const Type& value) { return AddLast(value); }
+		TType& Add(const TType& value) noexcept { return AddLast(value); }
 
-		Type& Add(Type&& value) { return AddLast(std::move(value)); }
+		TType& Add(TType&& value) noexcept { return AddLast(std::move(value)); }
 
-		bool Contains(const Type& value) const
+		[[nodiscard]] bool Contains(const TType& value) const noexcept
 		{
 			for (auto& element : *this)
 			{
 				if (element == value)
-				{
 					return true;
-				}
 			}
 
 			return false;
 		}
 
-		bool Contains(const Type* ptr) const
+		[[nodiscard]] bool Contains(const TType* ptr) const noexcept
 		{
 			for (auto& element : *this)
 			{
 				if (&element == ptr)
-				{
 					return true;
-				}
 			}
 
 			return false;
 		}
 
-		Type* Find(const Type& value)
+		[[nodiscard]] TType* Find(const TType& value) noexcept
 		{
 			for (auto& element : *this)
 			{
 				if (element == value)
-				{
 					return &element;
-				}
 			}
 
 			return nullptr;
 		}
 
-		const Type* Find(const Type& value) const
+		[[nodiscard]] const TType* Find(const TType& value) const noexcept
 		{
 			for (auto& element : *this)
 			{
 				if (element == value)
-				{
 					return &element;
-				}
 			}
 
 			return nullptr;
 		}
 
-		Index Count(const Type& value) const
+		[[nodiscard]] Index Count(const TType& value) const noexcept
 		{
 			int count = 0;
 			for (auto& element : *this)
@@ -182,7 +174,7 @@ namespace hbe
 			return count;
 		}
 
-		bool FindAndRemove(const Type& value)
+		bool FindAndRemove(const TType& value) noexcept
 		{
 			if (auto found = Find(value))
 			{
@@ -194,42 +186,42 @@ namespace hbe
 		}
 
 	public:
-		inline Type& AddFirst(const Type& value) { return AddPrevious(head, New<Node>(allocator, value))->value; }
+		TType& AddFirst(const TType& value) noexcept { return AddPrevious(head, New<Node>(allocator, value))->value; }
 
-		inline Type& AddFirst(Type&& value)
+		TType& AddFirst(TType&& value) noexcept
 		{
-			return AddPrevious(head, New<Node>(allocator, std::forward<Type&&>(value)))->value;
+			return AddPrevious(head, New<Node>(allocator, std::forward<TType&&>(value)))->value;
 		}
 
-		inline Type& AddLast(const Type& value) { return AddNext(tail, New<Node>(allocator, value))->value; }
+		TType& AddLast(const TType& value) noexcept { return AddNext(tail, New<Node>(allocator, value))->value; }
 
-		inline Type& AddLast(Type&& value)
+		TType& AddLast(TType&& value) noexcept
 		{
-			return AddNext(tail, New<Node>(allocator, std::forward<Type&&>(value)))->value;
+			return AddNext(tail, New<Node>(allocator, std::forward<TType&&>(value)))->value;
 		}
 
-		inline Type& AddPrevious(Type& current, const Type& value)
+		TType& AddPrevious(TType& current, const TType& value) noexcept
 		{
 			return AddPrevious(GetNodeOf(current), New<Node>(allocator, value))->value;
 		}
 
-		inline Type& AddPrevious(Type& current, Type&& value)
+		TType& AddPrevious(TType& current, TType&& value) noexcept
 		{
-			return AddPrevious(GetNodeOf(current), New<Node>(allocator, std::forward<Type&&>(value)))->value;
+			return AddPrevious(GetNodeOf(current), New<Node>(allocator, std::forward<TType&&>(value)))->value;
 		}
 
-		inline Type& AddNext(Type& current, const Type& value)
+		TType& AddNext(TType& current, const TType& value) noexcept
 		{
 			return AddNext(GetNodeOf(current), New<Node>(allocator, value))->value;
 		}
 
-		inline Type& AddNext(Type& current, Type&& value)
+		TType& AddNext(TType& current, TType&& value) noexcept
 		{
 			return AddNext(GetNodeOf(current), New<Node>(allocator, std::forward(value)))->value;
 		}
 
 	private:
-		Node* RemoveNode(Node* node)
+		Node* RemoveNode(Node* node) noexcept
 		{
 			auto next = node->next;
 
@@ -247,13 +239,13 @@ namespace hbe
 			return next;
 		}
 
-		inline Node* GetNodeOf(Type& element)
+		Node* GetNodeOf(TType& element) noexcept
 		{
 			Assert(ContainsElement(element));
 			return reinterpret_cast<Node*>(&element);
 		}
 
-		inline Node* AddPrevious(Node* current, Node* node)
+		Node* AddPrevious(Node* current, Node* node) noexcept
 		{
 			Assert((current != nullptr || IsEmpty()) && node != nullptr);
 
@@ -274,7 +266,7 @@ namespace hbe
 			return node;
 		}
 
-		inline Node* AddNext(Node* current, Node* node)
+		Node* AddNext(Node* current, Node* node) noexcept
 		{
 			Assert((current != nullptr || IsEmpty()) && node != nullptr);
 
@@ -296,7 +288,7 @@ namespace hbe
 		}
 
 	private:
-		inline void LinkPrevious(Node* node, Node* newNode)
+		void LinkPrevious(Node* node, Node* newNode) noexcept
 		{
 			Assert(node != nullptr);
 			Assert(newNode != nullptr);
@@ -313,7 +305,7 @@ namespace hbe
 			}
 		}
 
-		inline void LinkNext(Node* node, Node* newNode)
+		void LinkNext(Node* node, Node* newNode) noexcept
 		{
 			Assert(node != nullptr);
 			Assert(newNode != nullptr);
@@ -330,7 +322,7 @@ namespace hbe
 			}
 		}
 
-		inline void Unlink(Node* node)
+		void Unlink(Node* node) noexcept
 		{
 			Assert(node != nullptr);
 
@@ -363,7 +355,7 @@ namespace hbe
 		LinkedListTest() : TestCollection("LinkedListTest") {}
 
 	protected:
-		virtual void Prepare() override;
+		void Prepare() override;
 	};
 } // namespace hbe
 #endif //__UNIT_TEST__

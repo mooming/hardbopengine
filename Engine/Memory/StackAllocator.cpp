@@ -8,7 +8,9 @@
 #include "MemoryManager.h"
 #include "OSAL/Intrinsic.h"
 
-using namespace hbe;
+
+namespace hbe
+{
 
 #if PROFILE_ENABLED
 StackAllocator::StackAllocator(const char* name, SizeType inCapacity, const TSrcLoc& location) :
@@ -86,7 +88,7 @@ void* StackAllocator::Allocate(const size_t requested)
 	return ptr;
 }
 
-void StackAllocator::Deallocate(Pointer ptr, const SizeType requested)
+void StackAllocator::Deallocate(Pointer ptr, const SizeType requested) noexcept
 {
 	auto& mmgr = MemoryManager::GetInstance();
 
@@ -155,10 +157,15 @@ bool StackAllocator::IsMine(Pointer ptr) const
 	return true;
 }
 
+} // namespace hbe
+
 #ifdef __UNIT_TEST__
 #include "HSTL/HVector.h"
 #include "ScopedAllocator.h"
 #include "String/String.h"
+
+namespace hbe
+{
 
 void StackAllocatorTest::Prepare()
 {
@@ -359,5 +366,7 @@ void StackAllocatorTest::Prepare()
 		ls << "Neted Level " << depth << ", free size = " << scope0.GetAllocator().GetAvailable() << lf;
 	});
 }
+
+} // namespace hbe
 
 #endif //__UNIT_TEST__

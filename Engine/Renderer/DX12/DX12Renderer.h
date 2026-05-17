@@ -17,32 +17,32 @@ struct DX12Vertex {
 class DX12Renderer final : public IRenderer
 {
 public:
-	DX12Renderer();
+	DX12Renderer() noexcept;
 	~DX12Renderer() override;
 
-	bool Initialize(OS::IWindow* window) override;
-	void Shutdown() override;
+	[[nodiscard]] bool Initialize(OS::IWindow* window) noexcept override;
+	void Shutdown() noexcept override;
 
-	void BeginFrame() override;
-	void EndFrame() override;
+	void BeginFrame() noexcept override;
+	void EndFrame() noexcept override;
 
-	void Render(float deltaTime) override;
+	void Render(float deltaTime) noexcept override;
 
-	APIType GetAPIType() const override;
-	RenderCapabilities GetCapabilities() const override;
+	[[nodiscard]] APIType GetAPIType() const noexcept override;
+	[[nodiscard]] RenderCapabilities GetCapabilities() const noexcept override;
 
 private:
-	OS::IWindow* m_Window = nullptr;
-	APIType m_APIType = APIType::DX12;
-	RenderCapabilities m_Capabilities;
+	OS::IWindow* window;
+	APIType apiType;
+	RenderCapabilities capabilities;
 
-	intptr_t m_Device = 0;
-	intptr_t m_CommandQueue = 0;
-	intptr_t m_CommandList = 0;
-	intptr_t m_VertexBuffer = 0;
+	intptr_t device;
+	intptr_t commandQueue;
+	intptr_t commandList;
+	intptr_t vertexBuffer;
 
-	float m_RotationAngle = 0.0f;
-	bool m_Initialized = false;
+	float rotationAngle;
+	bool initialized;
 };
 
 } // namespace Renderer

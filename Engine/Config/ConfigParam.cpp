@@ -2,6 +2,7 @@
 
 #include "ConfigParam.h"
 
+
 template class hbe::ConfigParam<bool, true>;
 template class hbe::ConfigParam<bool, false>;
 template class hbe::ConfigParam<int, true>;

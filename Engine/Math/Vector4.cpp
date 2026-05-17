@@ -2,6 +2,7 @@
 
 #include "Vector4.h"
 
+
 namespace hbe
 {
 	template class Vector4<float>;
@@ -11,19 +12,19 @@ namespace hbe
 #include "Core/ScopedTime.h"
 #include "HSTL/HVector.h"
 
-void hbe::Vector4Test::Prepare()
+void hbe::Vector4Test::Prepare() noexcept
 {
 	AddTest("Vector4 Constants", [this](auto& ls)
 	{
-		ls << "Forward = " << Float4::Forward << lf;
-		ls << "Right = " << Float4::Right << lf;
-		ls << "Up = " << Float4::Up << lf;
+		ls << "Forward = " << TFloat4::Forward << lf;
+		ls << "Right = " << TFloat4::Right << lf;
+		ls << "Up = " << TFloat4::Up << lf;
 
-		ls << "Zero = " << Float4::Zero << lf;
-		ls << "Unity = " << Float4::Unity << lf;
+		ls << "Zero = " << TFloat4::Zero << lf;
+		ls << "Unity = " << TFloat4::Unity << lf;
 
-		Float4 tmp;
-		if (tmp != Float4::Zero)
+		TFloat4 tmp;
+		if (tmp != TFloat4::Zero)
 		{
 			ls << "Default Float4 is not ZERO. Default = " << tmp << lferr;
 		}
@@ -31,7 +32,7 @@ void hbe::Vector4Test::Prepare()
 
 	AddTest("Vector4 Constructors & Operator", [this](auto& ls)
 	{
-		hbe::HVector<Float4> vertices;
+		hbe::HVector<TFloat4> vertices;
 
 		for (int i = 0; i < 1000000; ++i)
 		{
@@ -44,7 +45,7 @@ void hbe::Vector4Test::Prepare()
 			vertices.emplace_back(x, x, x);
 		}
 
-		Float4 tmp;
+		TFloat4 tmp;
 
 		time::TDuration heTime;
 		float dotResult = 0.0f;

@@ -16,40 +16,43 @@ namespace hbe
 	/// @brief Manages resource loading and lifetime with reference counting.
 	class ResourceManager final
 	{
+	public:
 		template<typename T>
 		using TVector = hbe::HVector<T>;
 
-	private:
-		/// @brief Internal storage for a loaded resource with reference counting.
-		struct ResourceItem final
-		{
-			uint32_t id = 0;
-			uint32_t referenceCount = 0;
+		ResourceManager() noexcept;
+		~ResourceManager() noexcept;
 
+		void PostUpdate(Engine& engine) noexcept;
+		[[nodiscard]] Resource RequestLoad(StaticString path);
+		[[nodiscard]] Resource Load(StaticString path);
+
+	private:
+		void RequestTasks(TaskSystem& taskSys) noexcept;
+
+		/// @brief Internal storage for a loaded resource with reference counting.
+		class ResourceItem final
+		{
+		public:
+			ResourceItem() : id(0), referenceCount(0) {}
+
+			uint32_t id;
+			uint32_t referenceCount;
 			StaticString path;
 			Buffer buffer;
 		};
 
-		struct LoadingRequest final
+		class LoadingRequest final
 		{
-			uint32_t resourceID = 0;
+		public:
+			LoadingRequest() : resourceID(0) {}
+
+			uint32_t resourceID;
 			StaticString path;
 		};
 
 		TVector<ResourceItem> resources;
 		TVector<ResourceItem*> loadingRequests;
-
-	public:
-		ResourceManager();
-		~ResourceManager();
-
-		void PostUpdate(Engine& engine);
-
-		Resource RequestLoad(StaticString path);
-		Resource Load(StaticString path);
-
-	private:
-		void RequestTasks(TaskSystem& taskSys);
 	};
 
 } // namespace hbe

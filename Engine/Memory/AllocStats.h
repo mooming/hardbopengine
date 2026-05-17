@@ -8,8 +8,9 @@
 namespace hbe
 {
 
-	struct AllocStats final
+	class AllocStats final
 	{
+	public:
 		StaticString name;
 		bool isInline;
 
@@ -29,11 +30,11 @@ namespace hbe
 		AllocStats();
 		~AllocStats() = default;
 
-		void OnRegister(const char* name, bool inIsInnline, size_t inCapacity);
-		void Reset();
-		void Report();
+		void OnRegister(const char* name, bool isInline, size_t inCapacity) noexcept;
+		void Reset() noexcept;
+		void Report() noexcept;
 
-		void Print();
+		void Print() noexcept;
 	};
 
 } // namespace hbe

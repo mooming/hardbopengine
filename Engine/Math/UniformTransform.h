@@ -12,44 +12,44 @@
 namespace hbe
 {
 	/// @brief A transform with uniform scale, rotation, and translation.
-	template<typename Number>
-	class UniformTransform
+	template<typename TNumber>
+	class UniformTransform final
 	{
 		using This = UniformTransform;
-		using Vec3 = Vector3<Number>;
-		using Quat = Quaternion<Number>;
-		using Mat3x3 = Matrix3x3<Number>;
-		using Mat4x4 = Matrix4x4<Number>;
+		using TVec3 = Vector3<TNumber>;
+		using TQuat = Quaternion<TNumber>;
+		using TMat3x3 = Matrix3x3<TNumber>;
+		using TMat4x4 = Matrix4x4<TNumber>;
 
 	public:
-		Quat rotation;
-		Number scale;
-		Vec3 translation;
+		TQuat rotation;
+		TNumber scale;
+		TVec3 translation;
 
 	public:
-		UniformTransform() : scale(1) {}
+		UniformTransform() noexcept : scale(1) {}
 
-		UniformTransform(std::nullptr_t) : rotation(nullptr), translation(nullptr) {}
+		explicit UniformTransform(std::nullptr_t) noexcept : rotation(nullptr), translation(nullptr) {}
 
-		UniformTransform(const Vec3& translation, const Quat& rotation, Number scale) :
+		UniformTransform(const TVec3& translation, const TQuat& rotation, TNumber scale) noexcept :
 			rotation(rotation), scale(scale), translation(translation)
 		{}
 
-		UniformTransform(const Mat4x4& mat)
+		explicit UniformTransform(const TMat4x4& mat) noexcept
 		{
-			Assert(mat.IsOrthogonal());
+			Assert(mat.IsOrthogonal(), "UniformTransform::UniformTransform(Mat4x4) - matrix not orthogonal");
 
-			Vec3 c1 = Vec3(mat.m11, mat.m21, mat.m31);
-			Vec3 c2 = Vec3(mat.m12, mat.m22, mat.m32);
-			Vec3 c3 = Vec3(mat.m13, mat.m23, mat.m33);
+			TVec3 c1 = TVec3(mat.m11, mat.m21, mat.m31);
+			TVec3 c2 = TVec3(mat.m12, mat.m22, mat.m32);
+			TVec3 c3 = TVec3(mat.m13, mat.m23, mat.m33);
 
 			constexpr float oneThird = 1.0f / 3.0f;
 			scale = (c1.Normalize() + c2.Normalize() + c3.Normalize()) * oneThird;
 
-			Assert(IsEqual(scale, c2.Normalize()));
-			Assert(IsEqual(scale, c3.Normalize()));
+			Assert(IsEqual(scale, c2.Normalize()), "UniformTransform - scale mismatch");
+			Assert(IsEqual(scale, c3.Normalize()), "UniformTransform - scale mismatch");
 
-			Mat3x3 rotMat = nullptr;
+			TMat3x3 rotMat(nullptr);
 
 			rotMat.m11 = c1.x;
 			rotMat.m21 = c1.y;
@@ -63,27 +63,30 @@ namespace hbe
 			rotMat.m23 = c3.y;
 			rotMat.m33 = c3.z;
 
-			rotation = static_cast<Quat>(rotMat);
+			rotation = static_cast<TQuat>(rotMat);
 		}
 
-		inline bool operator==(const This& rhs) const
+		[[nodiscard]] bool operator==(const This& rhs) const noexcept
 		{
 			return rotation == rhs.rotation && scale == rhs.scale && translation == rhs.translation;
 		}
 
-		inline bool operator!=(const This& rhs) const { return !(*this == rhs); }
+		[[nodiscard]] bool operator!=(const This& rhs) const noexcept { return !(*this == rhs); }
 
 		template<typename T>
-		inline T operator*(const T& rhs) const
+		[[nodiscard]] T operator*(const T& rhs) const noexcept
 		{
 			return Transform(rhs);
 		}
 
-		Vec3 Transform(const Vec3& x) const { return rotation * (scale * x) + translation; }
+		[[nodiscard]] TVec3 Transform(const TVec3& x) const noexcept { return rotation * (scale * x) + translation; }
 
-		Vec3 InverseTransform(const Vec3& x) const { return (rotation.Inverse() * (x - translation) / scale); }
+		[[nodiscard]] TVec3 InverseTransform(const TVec3& x) const noexcept
+		{
+			return (rotation.Inverse() * (x - translation) / scale);
+		}
 
-		This Transform(const This& rhs) const
+		[[nodiscard]] This Transform(const This& rhs) const noexcept
 		{
 			This result(nullptr);
 
@@ -94,7 +97,7 @@ namespace hbe
 			return result;
 		}
 
-		This Inverse() const
+		[[nodiscard]] This Inverse() const noexcept
 		{
 			This inverse(nullptr);
 
@@ -105,19 +108,19 @@ namespace hbe
 			return inverse;
 		}
 
-		Mat4x4 ToMatrix() const
+		[[nodiscard]] TMat4x4 ToMatrix() const noexcept
 		{
-			Mat4x4 mat = rotation.ToMat4x4() * Mat4x4::CreateDiagonal(Float4(scale, scale, scale, 1.0f));
+			TMat4x4 mat = rotation.ToMat4x4() * TMat4x4::CreateDiagonal(TFloat4(scale, scale, scale, 1.0f));
 			mat.SetTranslation(translation);
 
 			return mat;
 		}
 	};
 
-	using UniformTRS = UniformTransform<float>;
+	using TUniformTRS = UniformTransform<float>;
 
 	template<typename T>
-	std::ostream& operator<<(std::ostream& os, const UniformTransform<T>& local)
+	std::ostream& operator<<(std::ostream& os, const UniformTransform<T>& local) noexcept
 	{
 		using namespace std;
 
@@ -134,7 +137,7 @@ namespace hbe
 	}
 
 	template<typename T>
-	LogStream& operator<<(LogStream& os, const UniformTransform<T>& local)
+	LogStream& operator<<(LogStream& os, const UniformTransform<T>& local) noexcept
 	{
 		os << "Uniform Transform" << hendl;
 
@@ -154,13 +157,13 @@ namespace hbe
 
 namespace hbe
 {
-	class UniformTransformTest : public TestCollection
+	class UniformTransformTest final : public TestCollection
 	{
 	public:
 		UniformTransformTest() : TestCollection("UniformTransformTest") {}
 
 	protected:
-		virtual void Prepare() override;
+		void Prepare() noexcept override;
 	};
 } // namespace hbe
 #endif //__UNIT_TEST__

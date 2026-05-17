@@ -16,34 +16,34 @@ namespace hbe
 	/// @brief An interned string stored in a global table for efficient comparison and storage.
 	class StaticString final
 	{
-	private:
-		StaticStringID id;
-
 	public:
-		StaticString();
-		StaticString(StaticStringID id);
-		StaticString(const char* string);
-		StaticString(const std::string_view& str);
+		StaticString() noexcept;
+		StaticString(StaticStringID id) noexcept;
+		StaticString(const char* string) noexcept;
+		StaticString(const std::string_view& str) noexcept;
 
 		template<CToZeroTerminateStr T>
-		StaticString(const T& string) : StaticString(string.c_str())
+		StaticString(const T& string) noexcept : StaticString(string.c_str())
 		{}
 
 		~StaticString() = default;
 
-		const char* c_str() const;
+		[[nodiscard]] const char* c_str() const noexcept;
 
-		inline auto GetID() const noexcept { return id; }
-		inline bool IsNull() const noexcept { return id.ptr == nullptr; }
-		inline operator const char*() const { return c_str(); }
-		inline bool operator<(const StaticString& rhs) const { return id.ptr < rhs.id.ptr; }
-		inline bool operator==(const StaticString& rhs) const { return id.ptr == rhs.id.ptr; }
+		[[nodiscard]] auto GetID() const noexcept { return id; }
+		[[nodiscard]] bool IsNull() const noexcept { return id.ptr == nullptr; }
+		[[nodiscard]] operator const char*() const noexcept { return c_str(); }
+		bool operator<(const StaticString& rhs) const noexcept { return id.ptr < rhs.id.ptr; }
+		bool operator==(const StaticString& rhs) const noexcept { return id.ptr == rhs.id.ptr; }
 
-		inline friend std::ostream& operator<<(std::ostream& os, const StaticString& str)
+		friend std::ostream& operator<<(std::ostream& os, const StaticString& str) noexcept
 		{
 			os << str.c_str();
 			return os;
 		}
+
+	private:
+		StaticStringID id;
 	};
 
 } // namespace hbe
@@ -72,7 +72,7 @@ namespace hbe
 		StaticStringTest() : TestCollection("StaticStringTest") {}
 
 	protected:
-		virtual void Prepare() override;
+		void Prepare() override;
 	};
 
 } // namespace hbe

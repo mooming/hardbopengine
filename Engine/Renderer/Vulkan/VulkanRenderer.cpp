@@ -1,12 +1,9 @@
 // Copyright (c) 2026 Hansol Park (mooming.go@gmail.com). All rights reserved.
 
-// VulkanRenderer.cpp - Cross-platform Vulkan implementation
-
-#include "Config/BuildConfig.h"
 #include "VulkanRenderer.h"
 
-#include <cstring>
 #include <cmath>
+#include <cstring>
 
 #if defined(PLATFORM_WINDOWS) && defined(VULKAN_SDK)
 #include <vulkan/vulkan.h>
@@ -18,18 +15,19 @@
 #include <vulkan/vulkan_xlib.h>
 #endif
 
+
 namespace hbe
 {
 namespace Renderer
 {
 
-VulkanRenderer::VulkanRenderer()
+VulkanRenderer::VulkanRenderer() noexcept
+    : apiType(APIType::Vulkan)
 {
-    m_APIType = APIType::Vulkan;
-    m_Capabilities.apiType = APIType::Vulkan;
-    m_Capabilities.supportsComputeShader = true;
-    m_Capabilities.maxTextureSize = 4096;
-    m_Capabilities.maxVertexAttribs = 16;
+    capabilities.apiType = APIType::Vulkan;
+    capabilities.supportsComputeShader = true;
+    capabilities.maxTextureSize = 4096;
+    capabilities.maxVertexAttribs = 16;
 }
 
 VulkanRenderer::~VulkanRenderer()
@@ -37,45 +35,40 @@ VulkanRenderer::~VulkanRenderer()
     Shutdown();
 }
 
-bool VulkanRenderer::Initialize(OS::IWindow* window)
+bool VulkanRenderer::Initialize(OS::IWindow* window) noexcept
 {
-    if (m_Initialized)
-    {
-        return true;
-    }
+    if (initialized) return true;
 
-    m_Window = window;
-    m_Initialized = true;
+    this->window = window;
+    initialized = true;
+
     return true;
 }
 
-void VulkanRenderer::Shutdown()
+void VulkanRenderer::Shutdown() noexcept
 {
-    if (!m_Initialized)
+    if (!initialized) return;
+
+    initialized = false;
+}
+
+void VulkanRenderer::BeginFrame() noexcept
+{
+}
+
+void VulkanRenderer::EndFrame() noexcept
+{
+}
+
+void VulkanRenderer::Render(float deltaTime) noexcept
+{
+    rotationAngle += deltaTime * 90.0f;
+    if (rotationAngle > 360.0f)
     {
-        return;
+        rotationAngle -= 360.0f;
     }
 
-    m_Initialized = false;
-}
-
-void VulkanRenderer::BeginFrame()
-{
-}
-
-void VulkanRenderer::EndFrame()
-{
-}
-
-void VulkanRenderer::Render(float deltaTime)
-{
-    m_RotationAngle += deltaTime * 90.0f;
-    if (m_RotationAngle > 360.0f)
-    {
-        m_RotationAngle -= 360.0f;
-    }
-
-    float rad = m_RotationAngle * 3.14159265359f / 180.0f;
+    float rad = rotationAngle * 3.14159265359f / 180.0f;
     float c = cosf(rad);
     float s = sinf(rad);
 
@@ -88,32 +81,32 @@ void VulkanRenderer::Render(float deltaTime)
     float x4 = -0.5f * c - 0.5f * s;
     float y4 = -0.5f * s + 0.5f * c;
 
-    m_Vertices[0] = {x1, y1, 1.0f, 0.0f, 0.0f, 1.0f};
-    m_Vertices[1] = {x2, y2, 0.0f, 1.0f, 0.0f, 1.0f};
-    m_Vertices[2] = {x3, y3, 0.0f, 0.0f, 1.0f, 1.0f};
-    m_Vertices[3] = {x1, y1, 1.0f, 0.0f, 0.0f, 1.0f};
-    m_Vertices[4] = {x3, y3, 0.0f, 0.0f, 1.0f, 1.0f};
-    m_Vertices[5] = {x4, y4, 1.0f, 1.0f, 1.0f, 1.0f};
+    vertices[0] = {x1, y1, 1.0f, 0.0f, 0.0f, 1.0f};
+    vertices[1] = {x2, y2, 0.0f, 1.0f, 0.0f, 1.0f};
+    vertices[2] = {x3, y3, 0.0f, 0.0f, 1.0f, 1.0f};
+    vertices[3] = {x1, y1, 1.0f, 0.0f, 0.0f, 1.0f};
+    vertices[4] = {x3, y3, 0.0f, 0.0f, 1.0f, 1.0f};
+    vertices[5] = {x4, y4, 1.0f, 1.0f, 1.0f, 1.0f};
 }
 
-APIType VulkanRenderer::GetAPIType() const
+APIType VulkanRenderer::GetAPIType() const noexcept
 {
-    return m_APIType;
+    return apiType;
 }
 
-RenderCapabilities VulkanRenderer::GetCapabilities() const
+RenderCapabilities VulkanRenderer::GetCapabilities() const noexcept
 {
-    return m_Capabilities;
+    return capabilities;
 }
 
-void VulkanRenderer::InitPlatformLayers()
+void VulkanRenderer::InitPlatformLayers() noexcept
 {
 }
 
-void VulkanRenderer::SetMetalLayer(void* layer)
+void VulkanRenderer::SetMetalLayer(void* layer) noexcept
 {
 #if defined(PLATFORM_OSX)
-    m_MetalLayer = layer;
+    metalLayer = layer;
 #endif
 }
 

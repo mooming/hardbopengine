@@ -12,33 +12,33 @@ namespace Renderer
 class MetalRenderer final : public IRenderer
 {
 public:
-	MetalRenderer();
+	MetalRenderer() noexcept;
 	~MetalRenderer() override;
 
-	bool Initialize(OS::IWindow* window) override;
-	void Shutdown() override;
+	[[nodiscard]] bool Initialize(OS::IWindow* window) noexcept override;
+	void Shutdown() noexcept override;
 
-	void BeginFrame() override;
-	void EndFrame() override;
+	void BeginFrame() noexcept override;
+	void EndFrame() noexcept override;
 
-	void Render(float deltaTime) override;
+	void Render(float deltaTime) noexcept override;
 
-	APIType GetAPIType() const override;
-	RenderCapabilities GetCapabilities() const override;
+	[[nodiscard]] APIType GetAPIType() const noexcept override;
+	[[nodiscard]] RenderCapabilities GetCapabilities() const noexcept override;
 
 private:
-	OS::IWindow* m_Window = nullptr;
-	APIType m_APIType = APIType::Metal;
-	RenderCapabilities m_Capabilities;
+	OS::IWindow* window;
+	APIType apiType;
+	RenderCapabilities capabilities;
 
-	intptr_t m_Device = 0;
-	intptr_t m_CommandQueue = 0;
-	intptr_t m_PipelineState = 0;
-	intptr_t m_VertexBuffer = 0;
-	intptr_t m_MetalLayer = 0;
+	intptr_t device;
+	intptr_t commandQueue;
+	intptr_t pipelineState;
+	intptr_t vertexBuffer;
+	intptr_t metalLayer;
 
-	float m_RotationAngle = 0.0f;
-	bool m_Initialized = false;
+	float rotationAngle;
+	bool initialized;
 };
 
 } // namespace Renderer

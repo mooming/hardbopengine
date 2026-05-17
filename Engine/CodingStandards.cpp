@@ -2,6 +2,7 @@
 
 #include "CodingStandards.h"
 
+#include <cstdlib>
 #include <cstring>
 #include <iostream>
 #include <utility>
@@ -13,6 +14,36 @@ namespace examples
 {
 
 CodingStandardsBase::CodingStandardsBase() noexcept {}
+
+bool CodingStandardsBase::TryParse(const char* text, int& outResult) noexcept
+{
+    /*
+     * out-prefix: `outResult` is written to but never read — the
+     * caller receives the parsed value through this reference.
+     */
+    if (text == nullptr)
+        return false;
+
+    char* end = nullptr;
+    long parsed = std::strtol(text, &end, 10);
+    if (end == text || *end != '\0')
+        return false;
+
+    outResult = static_cast<int>(parsed);
+    return true;
+}
+
+void CodingStandardsBase::ClampToRange(int& inOutValue, int min, int max) noexcept
+{
+    /*
+     * inOut-prefix: `inOutValue` is both read and written, making
+     * it an in-out parameter.
+     */
+    if (inOutValue < min)
+        inOutValue = min;
+    else if (inOutValue > max)
+        inOutValue = max;
+}
 
 InlinedData::InlinedData(int value) noexcept
 {
@@ -38,6 +69,15 @@ void DataProcessor::Process() noexcept
 int DataProcessor::GetValue() const noexcept
 {
     return value;
+}
+
+void DataProcessor::SetValue(int inValue) noexcept
+{
+    /*
+     * in-prefix avoids name collision with the member `value`,
+     * making the assignment clear and unambiguous.
+     */
+    value = inValue;
 }
 
 /*

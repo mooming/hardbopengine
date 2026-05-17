@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include <iostream>
 #include "Matrix3x3.h"
 #include "Matrix4x4.h"
 #include "Quaternion.h"
@@ -10,42 +11,44 @@
 namespace hbe
 {
 	/// @brief A rigid body transform with rotation and translation but no scaling.
-	template<typename Number = float, int PaddingSize = 8>
-	class RigidTransform
+	template<typename TNumber = float, int PaddingSize = 8>
+	class RigidTransform final
 	{
 		using This = RigidTransform;
-		using Vec3 = Vector3<Number>;
-		using Quat = Quaternion<Number>;
-		using Mat3x3 = Matrix3x3<Number>;
-		using Mat4x4 = Matrix4x4<Number>;
+		using TVec3 = Vector3<TNumber>;
+		using TQuat = Quaternion<TNumber>;
+		using TMat3x3 = Matrix3x3<TNumber>;
+		using TMat4x4 = Matrix4x4<TNumber>;
 
 	public:
-		Quat rotation;
-		Vec3 translation;
+		TQuat rotation;
+		TVec3 translation;
 		uint8_t padding[PaddingSize];
 
 	public:
-		RigidTransform();
-		RigidTransform(std::nullptr_t);
-		RigidTransform(const Vec3& translation, const Quat& rotation);
-		RigidTransform(const Mat4x4& mat);
+		RigidTransform() noexcept;
+		explicit RigidTransform(std::nullptr_t) noexcept;
+		RigidTransform(const TVec3& translation, const TQuat& rotation) noexcept;
+		explicit RigidTransform(const TMat4x4& mat) noexcept;
 
-		inline bool operator==(const This& rhs) const
+		[[nodiscard]] bool operator==(const This& rhs) const noexcept
 		{
 			return rotation == rhs.rotation && translation == rhs.translation;
 		}
 
+		[[nodiscard]] bool operator!=(const This& rhs) const noexcept { return !(*this == rhs); }
+
 		template<typename T>
-		inline T operator*(const T& rhs) const
+		[[nodiscard]] T operator*(const T& rhs) const noexcept
 		{
 			return Transform(rhs);
 		}
 
-		Vec3 Transform(const Vec3& x) const { return rotation * x + translation; }
+		[[nodiscard]] TVec3 Transform(const TVec3& x) const noexcept { return rotation * x + translation; }
 
-		Quat Transform(const Quat& r) const { return rotation * r; }
+		[[nodiscard]] TQuat Transform(const TQuat& r) const noexcept { return rotation * r; }
 
-		This Transform(const This& rhs) const
+		[[nodiscard]] This Transform(const This& rhs) const noexcept
 		{
 			This result(nullptr);
 
@@ -55,11 +58,14 @@ namespace hbe
 			return result;
 		}
 
-		Vec3 InverseTransform(const Vec3& x) const { return (rotation.Inverse() * (x - translation)); }
+		[[nodiscard]] TVec3 InverseTransform(const TVec3& x) const noexcept
+		{
+			return (rotation.Inverse() * (x - translation));
+		}
 
-		Quat InverseTransform(const Quat& r) const { return rotation.Inverse() * r; }
+		[[nodiscard]] TQuat InverseTransform(const TQuat& r) const noexcept { return rotation.Inverse() * r; }
 
-		This InverseTransform(const This& rhs) const
+		[[nodiscard]] This InverseTransform(const This& rhs) const noexcept
 		{
 			This result(nullptr);
 
@@ -69,9 +75,9 @@ namespace hbe
 			return result;
 		}
 
-		This Inverse() const
+		[[nodiscard]] This Inverse() const noexcept
 		{
-			This inverse = nullptr;
+			This inverse(nullptr);
 
 			inverse.rotation = rotation.Inverse();
 			inverse.translation = inverse.rotation * -translation;
@@ -79,19 +85,19 @@ namespace hbe
 			return inverse;
 		}
 
-		Mat4x4 ToMatrix() const
+		[[nodiscard]] TMat4x4 ToMatrix() const noexcept
 		{
-			Mat4x4 mat = rotation.ToMat4x4();
+			TMat4x4 mat = rotation.ToMat4x4();
 			mat.SetTranslation(translation);
 
 			return mat;
 		}
 	};
 
-	using RigidTR = RigidTransform<float>;
+	using TRigidTR = RigidTransform<float>;
 
 	template<typename T>
-	inline std::ostream& operator<<(std::ostream& os, const RigidTransform<T>& local)
+	std::ostream& operator<<(std::ostream& os, const RigidTransform<T>& local) noexcept
 	{
 		using namespace std;
 
@@ -105,22 +111,22 @@ namespace hbe
 	}
 
 	template<typename T, int N>
-	inline RigidTransform<T, N>::RigidTransform() : rotation(), translation()
+	RigidTransform<T, N>::RigidTransform() noexcept : rotation(), translation()
 	{}
 
 	template<typename T, int N>
-	inline RigidTransform<T, N>::RigidTransform(std::nullptr_t) : rotation(nullptr), translation(nullptr)
+	RigidTransform<T, N>::RigidTransform(std::nullptr_t) noexcept : rotation(nullptr), translation(nullptr)
 	{}
 
 	template<typename T, int N>
-	inline RigidTransform<T, N>::RigidTransform(const Vec3& t, const Quat& r) : rotation(r), translation(t)
+	RigidTransform<T, N>::RigidTransform(const TVec3& t, const TQuat& r) noexcept : rotation(r), translation(t)
 	{}
 
 	template<typename T, int N>
-	inline RigidTransform<T, N>::RigidTransform(const Mat4x4& mat) :
+	RigidTransform<T, N>::RigidTransform(const TMat4x4& mat) noexcept :
 		rotation(mat), translation(mat.m14, mat.m24, mat.m34)
 	{
-		Assert(mat.IsOrthogonal());
+		Assert(mat.IsOrthogonal(), "RigidTransform::RigidTransform(Mat4x4) - matrix not orthogonal");
 	}
 
 } // namespace hbe
@@ -130,13 +136,13 @@ namespace hbe
 
 namespace hbe
 {
-	class RigidTransformTest : public TestCollection
+	class RigidTransformTest final : public TestCollection
 	{
 	public:
 		RigidTransformTest() : TestCollection("RigidTransformTest") {}
 
 	protected:
-		virtual void Prepare() override;
+		void Prepare() noexcept override;
 	};
 } // namespace hbe
 #endif //__UNIT_TEST__

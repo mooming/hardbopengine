@@ -2,6 +2,7 @@
 
 #include "ThreadSafeMultiPoolAllocator.h"
 
+
 #include <algorithm>
 #include <bit>
 #include <map>
@@ -119,14 +120,14 @@ namespace hbe
 		{
 			std::lock_guard lockGuard(lock);
 
-#if __MEMORY_VERIFICATION__
+#if MEMORY_VERIFICATION_ENABLED
 			const auto currentTID = std::this_thread::get_id();
 			for (auto& bank : banks)
 			{
 				auto& allocProxy = mmgr.GetAllocatorProxy(bank.GetID());
 				allocProxy.threadId = currentTID;
 			}
-#endif // __MEMORY_VERIFICATION__
+#endif // MEMORY_VERIFICATION_ENABLED
 
 			banks.clear();
 		}

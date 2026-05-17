@@ -5,6 +5,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <thread>
+
 #include "Buffer.h"
 #include "Core/Debug.h"
 #include "HSTL/HString.h"
@@ -15,76 +16,64 @@ namespace hbe
 	/// @brief Stream for writing primitive types and strings into a buffer.
 	class BufferOutputStream final
 	{
+	public:
 		using This = BufferOutputStream;
 
-	private:
-		Buffer& buffer;
-		size_t cursor;
-		size_t errorCount;
-		std::thread::id threadID;
-
-	public:
 		BufferOutputStream(const BufferOutputStream&) = delete;
 		BufferOutputStream(BufferOutputStream&&) = delete;
 
-	public:
-		BufferOutputStream(Buffer& buffer);
+		explicit BufferOutputStream(Buffer& buffer) noexcept;
 		~BufferOutputStream() = default;
 
-		auto GetCursor() const { return cursor; }
-		auto GetErrorCount() const { return errorCount; }
-		bool HasError() const { return errorCount > 0; }
-		void ClearErrorCount() { errorCount = 0; }
-		bool IsDone() const { return cursor >= buffer.GetSize(); }
+		[[nodiscard]] auto GetCursor() const noexcept { return cursor; }
+		[[nodiscard]] auto GetErrorCount() const noexcept { return errorCount; }
+		[[nodiscard]] bool HasError() const noexcept { return errorCount > 0; }
+		void ClearErrorCount() noexcept { errorCount = 0; }
+		[[nodiscard]] bool IsDone() const noexcept { return cursor >= buffer.GetSize(); }
 
-	public:
-		This& operator<<(char value);
-		This& operator<<(int8_t value);
-		This& operator<<(uint8_t value);
-		This& operator<<(int16_t value);
-		This& operator<<(uint16_t value);
-		This& operator<<(int32_t value);
-		This& operator<<(uint32_t value);
-		This& operator<<(int64_t value);
-		This& operator<<(uint64_t value);
+		This& operator<<(char value) noexcept;
+		This& operator<<(int8_t value) noexcept;
+		This& operator<<(uint8_t value) noexcept;
+		This& operator<<(int16_t value) noexcept;
+		This& operator<<(uint16_t value) noexcept;
+		This& operator<<(int32_t value) noexcept;
+		This& operator<<(uint32_t value) noexcept;
+		This& operator<<(int64_t value) noexcept;
+		This& operator<<(uint64_t value) noexcept;
 #ifndef PLATFORM_LINUX
-		This& operator<<(size_t value);
+		This& operator<<(size_t value) noexcept;
 #endif // PLATFORM_LINUX
-		This& operator<<(float value);
-		This& operator<<(double value);
-		This& operator<<(long double value);
-		This& operator<<(const char* str);
+		This& operator<<(float value) noexcept;
+		This& operator<<(double value) noexcept;
+		This& operator<<(long double value) noexcept;
+		This& operator<<(const char* str) noexcept;
 
 		template<typename T, size_t N>
-		This& operator<<(T (&array)[N])
+		This& operator<<(T (&array)[N]) noexcept
 		{
 			Put<T>(array, N);
 			return *this;
 		}
 
 		template<size_t N>
-		This& operator<<(const hbe::HInlineString<N>& str)
+		This& operator<<(const hbe::HInlineString<N>& str) noexcept
 		{
 			return *this << str.c_str();
 		}
 
-		This& operator<<(const hbe::HString& str) { return *this << str.c_str(); }
+		This& operator<<(const hbe::HString& str) noexcept { return *this << str.c_str(); }
 
-		This& operator<<(StaticString str) { return *this << str.c_str(); }
+		This& operator<<(StaticString str) noexcept { return *this << str.c_str(); }
 
 	private:
-		bool IsValidIndex(size_t index) const { return cursor < buffer.GetSize(); }
+		[[nodiscard]] bool IsValidIndex(size_t index) const noexcept { return cursor < buffer.GetSize(); }
 
 		template<typename T>
-		void Put(T value)
+		void Put(T value) noexcept
 		{
 			Assert(std::this_thread::get_id() == threadID);
 			const size_t size = buffer.GetSize();
-			if (cursor >= size)
-			{
-				++errorCount;
-				return;
-			}
+			if (cursor >= size) return;
 
 			constexpr size_t tSize = sizeof(T);
 			static_assert(tSize > 0);
@@ -95,7 +84,6 @@ namespace hbe
 			auto bufferBase = buffer.GetData();
 			if (bufferBase == nullptr)
 			{
-				// Dummy Buffer?
 				if (newIndex <= size)
 				{
 					cursor = newIndex;
@@ -123,15 +111,12 @@ namespace hbe
 		}
 
 		template<typename T>
-		void Put(const T* value, size_t length)
+		void Put(const T* value, size_t length) noexcept
 		{
 			Assert(std::this_thread::get_id() == threadID);
 
 			const size_t size = buffer.GetSize();
-			if (cursor >= size)
-			{
-				return;
-			}
+			if (cursor >= size) return;
 
 			Put<size_t>(length);
 
@@ -170,6 +155,11 @@ namespace hbe
 
 			cursor = newIndex;
 		}
+
+		Buffer& buffer;
+		size_t cursor;
+		size_t errorCount;
+		std::thread::id threadID;
 	};
 
 } // namespace hbe
@@ -179,14 +169,14 @@ namespace hbe
 
 namespace hbe
 {
-	class BufferOutputStreamTest : public TestCollection
+	class BufferOutputStreamTest final : public TestCollection
 	{
 	public:
 		BufferOutputStreamTest();
-		virtual ~BufferOutputStreamTest() = default;
+		~BufferOutputStreamTest() override = default;
 
 	protected:
-		virtual void Prepare() override;
+		void Prepare() override;
 	};
 } // namespace hbe
 #endif //__UNIT_TEST__

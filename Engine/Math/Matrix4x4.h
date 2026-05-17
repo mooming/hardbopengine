@@ -3,6 +3,7 @@
 #pragma once
 
 #include <array>
+#include <iostream>
 #include "CoordinateOrientation.h"
 #include "Matrix2x2.h"
 #include "Matrix3x3.h"
@@ -12,15 +13,15 @@
 namespace hbe
 {
 	/// @brief A 4x4 matrix template class for 3D homogeneous transformations.
-	template<typename Number>
-	class Matrix4x4
+	template<typename TNumber>
+	class Matrix4x4 final
 	{
 		using This = Matrix4x4;
-		using Vec = Vector4<Number>;
+		using TVec = Vector4<TNumber>;
 
-		using Vec3 = Vector3<Number>;
-		using Mat2x2 = Matrix2x2<Number>;
-		using Mat3x3 = Matrix3x3<Number>;
+		using TVec3 = Vector3<TNumber>;
+		using TMat2x2 = Matrix2x2<TNumber>;
+		using TMat3x3 = Matrix3x3<TNumber>;
 
 	public:
 		constexpr static int row = 4;
@@ -34,11 +35,11 @@ namespace hbe
 		{
 			struct
 			{
-				Vec rows[row];
+				TVec rows[row];
 			};
 
-			Number m[row][column];
-			std::array<Number, numberOfElements> element;
+			TNumber m[row][column];
+			std::array<TNumber, numberOfElements> element;
 
 			struct
 			{
@@ -50,7 +51,7 @@ namespace hbe
 		};
 
 	public:
-		inline static This CreateTranslation(const Vec3& v)
+		[[nodiscard]] static This CreateTranslation(const TVec3& v) noexcept
 		{
 			This mat(nullptr);
 
@@ -77,36 +78,15 @@ namespace hbe
 			return mat;
 		}
 
-		inline Matrix4x4()
-		{
-			m11 = 1;
-			m12 = 0;
-			m13 = 0;
-			m14 = 0;
+		Matrix4x4() noexcept : element{1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1} {}
 
-			m21 = 0;
-			m22 = 1;
-			m23 = 0;
-			m24 = 0;
+		explicit Matrix4x4(std::nullptr_t) noexcept {}
 
-			m31 = 0;
-			m32 = 0;
-			m33 = 1;
-			m34 = 0;
+		explicit Matrix4x4(const std::array<TNumber, numberOfElements>& values) noexcept : element(values) {}
 
-			m41 = 0;
-			m42 = 0;
-			m43 = 0;
-			m44 = 1;
-		}
+		explicit Matrix4x4(std::array<TNumber, numberOfElements>&& values) noexcept : element(std::move(values)) {}
 
-		inline Matrix4x4(std::nullptr_t) {}
-
-		inline Matrix4x4(const std::array<Number, numberOfElements>& values) : element(values) {}
-
-		inline Matrix4x4(std::array<Number, numberOfElements>&& values) : element(std::move(values)) {}
-
-		inline Matrix4x4(const Mat2x2& rhs)
+		explicit Matrix4x4(const TMat2x2& rhs) noexcept
 		{
 			m11 = rhs.m11;
 			m12 = rhs.m12;
@@ -129,7 +109,7 @@ namespace hbe
 			m44 = 1.0f;
 		}
 
-		inline Matrix4x4(const Mat3x3& rhs)
+		explicit Matrix4x4(const TMat3x3& rhs) noexcept
 		{
 			m11 = rhs.m11;
 			m12 = rhs.m12;
@@ -152,7 +132,7 @@ namespace hbe
 			m44 = 1.0f;
 		}
 
-		This& operator=(const Mat2x2& rhs)
+		This& operator=(const TMat2x2& rhs) noexcept
 		{
 			m11 = rhs.m11;
 			m12 = rhs.m12;
@@ -163,7 +143,7 @@ namespace hbe
 			return *this;
 		}
 
-		This& operator=(const Mat3x3& rhs)
+		This& operator=(const TMat3x3& rhs) noexcept
 		{
 			m11 = rhs.m11;
 			m12 = rhs.m12;
@@ -180,9 +160,9 @@ namespace hbe
 			return *this;
 		}
 
-		inline operator Mat2x2() const
+		operator TMat2x2() const noexcept
 		{
-			Mat2x2 mat = nullptr;
+			TMat2x2 mat(nullptr);
 
 			mat.m11 = m11;
 			mat.m12 = m12;
@@ -193,9 +173,9 @@ namespace hbe
 			return mat;
 		}
 
-		inline operator Mat3x3() const
+		operator TMat3x3() const noexcept
 		{
-			Mat3x3 mat(nullptr);
+			TMat3x3 mat(nullptr);
 
 			mat.m11 = m11;
 			mat.m12 = m12;
@@ -212,14 +192,14 @@ namespace hbe
 			return mat;
 		}
 
-		inline This Inverse() const
+		[[nodiscard]] This Inverse() const noexcept
 		{
 			This result;
 
-			const Number det = Determinant();
+			const TNumber det = Determinant();
 			FatalAssert(row == column && det != 0, "The matrix is not invertible.");
 
-			const Number invDet = static_cast<Number>(1) / det;
+			const TNumber invDet = static_cast<TNumber>(1) / det;
 
 			result.m11 = invDet * (m22 * m33 * m44 + m23 * m34 * m42 + m24 * m32 * m43 - m22 * m34 * m43 -
 								   m23 * m32 * m44 - m24 * m33 * m42);
@@ -254,12 +234,10 @@ namespace hbe
 			result.m44 = invDet * (m11 * m22 * m33 + m12 * m23 * m31 + m13 * m21 * m32 - m11 * m23 * m32 -
 								   m12 * m21 * m33 - m13 * m22 * m31);
 
-			result.Multiply(invDet);
-
 			return result;
 		}
 
-		inline void Transpose()
+		void Transpose() noexcept
 		{
 			std::swap(m12, m21);
 			std::swap(m13, m31);
@@ -269,7 +247,7 @@ namespace hbe
 			std::swap(m34, m43);
 		}
 
-		inline Number Determinant() const
+		[[nodiscard]] TNumber Determinant() const noexcept
 		{
 			return m11 * m22 * m33 * m44 + m11 * m23 * m34 * m42 + m11 * m24 * m32 * m43 + m12 * m21 * m34 * m43 +
 				   m12 * m23 * m31 * m44 + m12 * m24 * m33 * m41 + m13 * m21 * m32 * m44 + m13 * m22 * m34 * m41 +
@@ -280,21 +258,21 @@ namespace hbe
 				   m13 * m24 * m32 * m41 - m14 * m21 * m32 * m43 - m14 * m22 * m33 * m41 - m14 * m23 * m31 * m42;
 		}
 
-		inline bool IsOrthogonal() const
+		[[nodiscard]] bool IsOrthogonal() const noexcept
 		{
 			return IsZero(rows[0].Dot(rows[1])) && IsZero(rows[1].Dot(rows[2])) && IsZero(rows[2].Dot(rows[3])) &&
 				   IsZero(rows[3].Dot(rows[0])) && rows[0].IsUnity() && rows[1].IsUnity() && rows[2].IsUnity() &&
 				   rows[3].IsUnity();
 		}
 
-		void SetTranslation(const Vec3& translation)
+		void SetTranslation(const TVec3& translation) noexcept
 		{
 			m14 = translation.x;
 			m24 = translation.y;
 			m34 = translation.z;
 		}
 
-		inline void SetRotationX(float radian)
+		void SetRotationX(float radian) noexcept
 		{
 			const float c = RotationCos(radian);
 			const float s = RotationSin(radian);
@@ -310,7 +288,7 @@ namespace hbe
 			m33 = c;
 		}
 
-		inline void SetRotationY(float radian)
+		void SetRotationY(float radian) noexcept
 		{
 			const float c = RotationCos(radian);
 			const float s = RotationSin(radian);
@@ -326,7 +304,7 @@ namespace hbe
 			m33 = c;
 		}
 
-		inline void SetRotationZ(float radian)
+		void SetRotationZ(float radian) noexcept
 		{
 			const float c = RotationCos(radian);
 			const float s = RotationSin(radian);
@@ -342,7 +320,7 @@ namespace hbe
 			m33 = 0.0f;
 		}
 
-		inline void EulerAngles(float x, float y, float z)
+		void EulerAngles(float x, float y, float z) noexcept
 		{
 			const float cx = RotationCos(x);
 			const float cy = RotationCos(y);
@@ -375,10 +353,10 @@ namespace hbe
 	template<typename T>
 	const Matrix4x4<T> Matrix4x4<T>::Identity;
 
-	using Float4x4 = Matrix4x4<float>;
+	using TFloat4x4 = Matrix4x4<float>;
 
 	template<typename T>
-	std::ostream& operator<<(std::ostream& os, const Matrix4x4<T>& mat)
+	std::ostream& operator<<(std::ostream& os, const Matrix4x4<T>& mat) noexcept
 	{
 		using namespace std;
 

@@ -6,6 +6,7 @@
 #include "Log/Logger.h"
 #include "OSAL/Intrinsic.h"
 
+
 namespace hbe
 {
 
@@ -71,13 +72,13 @@ namespace hbe
 
 	} // namespace
 
-	ConfigSystem& ConfigSystem::Get()
+	ConfigSystem& ConfigSystem::Get() noexcept
 	{
 		static ConfigSystem instance;
 		return instance;
 	}
 
-	const char* ConfigSystem::GetName() const { return "EngineSettings"; }
+	const char* ConfigSystem::GetName() const noexcept { return "EngineSettings"; }
 
 	void ConfigSystem::Register(TConfigParam<bool>& param)
 	{
@@ -389,7 +390,7 @@ namespace hbe
 		setter(value);
 	}
 
-	bool ConfigSystem::GetBool(const StaticString& key) const
+	bool ConfigSystem::GetBool(const StaticString& key) const noexcept
 	{
 		auto& item = FindGetSet(byteParams, __func__, key);
 		auto& getter = item.getter;
@@ -405,7 +406,7 @@ namespace hbe
 		return getter();
 	}
 
-	uint8_t ConfigSystem::GetByte(const StaticString& key) const
+	uint8_t ConfigSystem::GetByte(const StaticString& key) const noexcept
 	{
 		auto& item = FindGetSet(byteParams, __func__, key);
 		auto& getter = item.getter;
@@ -421,7 +422,7 @@ namespace hbe
 		return getter();
 	}
 
-	int ConfigSystem::GetInt(const StaticString& key) const
+	int ConfigSystem::GetInt(const StaticString& key) const noexcept
 	{
 		auto& item = FindGetSet(intParams, __func__, key);
 		auto& getter = item.getter;
@@ -437,7 +438,7 @@ namespace hbe
 		return getter();
 	}
 
-	size_t ConfigSystem::GetSize(const StaticString& key) const
+	size_t ConfigSystem::GetSize(const StaticString& key) const noexcept
 	{
 		auto& item = FindGetSet(sizeParams, __func__, key);
 		auto& getter = item.getter;
@@ -453,7 +454,7 @@ namespace hbe
 		return getter();
 	}
 
-	float ConfigSystem::GetFloat(const StaticString& key) const
+	float ConfigSystem::GetFloat(const StaticString& key) const noexcept
 	{
 		auto& item = FindGetSet(floatParams, __func__, key);
 		auto& getter = item.getter;

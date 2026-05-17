@@ -4,6 +4,7 @@
 
 #include "String/StringUtil.h"
 
+
 namespace hbe
 {
 
@@ -12,96 +13,106 @@ namespace hbe
 	static_assert(!std::is_move_constructible<BufferOutputStream>::value);
 	static_assert(!std::is_move_assignable<BufferOutputStream>::value);
 
-	BufferOutputStream::BufferOutputStream(Buffer& buffer) :
+	BufferOutputStream::BufferOutputStream(Buffer& buffer) noexcept :
 		buffer(buffer), cursor(0), errorCount(0), threadID(std::this_thread::get_id())
 	{}
 
-	BufferOutputStream& BufferOutputStream::operator<<(char value)
+	BufferOutputStream& BufferOutputStream::operator<<(char value) noexcept
 	{
 		Put<char>(value);
+
 		return *this;
 	}
 
-	BufferOutputStream& BufferOutputStream::operator<<(int8_t value)
+	BufferOutputStream& BufferOutputStream::operator<<(int8_t value) noexcept
 	{
 		Put<int8_t>(value);
+
 		return *this;
 	}
 
-	BufferOutputStream& BufferOutputStream::operator<<(uint8_t value)
+	BufferOutputStream& BufferOutputStream::operator<<(uint8_t value) noexcept
 	{
 		Put<uint8_t>(value);
+
 		return *this;
 	}
 
-	BufferOutputStream& BufferOutputStream::operator<<(int16_t value)
+	BufferOutputStream& BufferOutputStream::operator<<(int16_t value) noexcept
 	{
 		Put<int16_t>(value);
+
 		return *this;
 	}
 
-	BufferOutputStream& BufferOutputStream::operator<<(uint16_t value)
+	BufferOutputStream& BufferOutputStream::operator<<(uint16_t value) noexcept
 	{
 		Put<uint16_t>(value);
+
 		return *this;
 	}
 
-	BufferOutputStream& BufferOutputStream::operator<<(int32_t value)
+	BufferOutputStream& BufferOutputStream::operator<<(int32_t value) noexcept
 	{
 		Put<int32_t>(value);
+
 		return *this;
 	}
 
-	BufferOutputStream& BufferOutputStream::operator<<(uint32_t value)
+	BufferOutputStream& BufferOutputStream::operator<<(uint32_t value) noexcept
 	{
 		Put<uint32_t>(value);
+
 		return *this;
 	}
 
-	BufferOutputStream& BufferOutputStream::operator<<(int64_t value)
+	BufferOutputStream& BufferOutputStream::operator<<(int64_t value) noexcept
 	{
 		Put<int64_t>(value);
+
 		return *this;
 	}
 
-	BufferOutputStream& BufferOutputStream::operator<<(uint64_t value)
+	BufferOutputStream& BufferOutputStream::operator<<(uint64_t value) noexcept
 	{
 		Put<uint64_t>(value);
+
 		return *this;
 	}
 
 #ifndef PLATFORM_LINUX
-	BufferOutputStream& BufferOutputStream::operator<<(size_t value)
+	BufferOutputStream& BufferOutputStream::operator<<(size_t value) noexcept
 	{
 		Put<size_t>(value);
+
 		return *this;
 	}
 #endif // PLATFORM_LINUX
 
-	BufferOutputStream& BufferOutputStream::operator<<(float value)
+	BufferOutputStream& BufferOutputStream::operator<<(float value) noexcept
 	{
 		Put<float>(value);
+
 		return *this;
 	}
 
-	BufferOutputStream& BufferOutputStream::operator<<(double value)
+	BufferOutputStream& BufferOutputStream::operator<<(double value) noexcept
 	{
 		Put<double>(value);
+
 		return *this;
 	}
 
-	BufferOutputStream& BufferOutputStream::operator<<(long double value)
+	BufferOutputStream& BufferOutputStream::operator<<(long double value) noexcept
 	{
 		Put<long double>(value);
+
 		return *this;
 	}
 
-	BufferOutputStream& BufferOutputStream::operator<<(const char* str)
+	BufferOutputStream& BufferOutputStream::operator<<(const char* str) noexcept
 	{
-		if (unlikely(str == nullptr))
-		{
-			return *this;
-		}
+		if (unlikely(str == nullptr)) return *this;
 
 		auto length = StringUtil::StrLen(str);
 		Put<char>(str, length);

@@ -4,6 +4,7 @@
 
 #include <functional>
 #include <unordered_map>
+
 #include "String/StaticStringID.h"
 
 namespace hbe
@@ -55,11 +56,11 @@ namespace hbe
 		ConfigSystem& operator=(ConfigSystem&&) = delete;
 
 	public:
-		static ConfigSystem& Get();
-		ConfigSystem() = default;
+		[[nodiscard]] static ConfigSystem& Get() noexcept;
+		ConfigSystem() noexcept = default;
 		~ConfigSystem() = default;
 
-		const char* GetName() const;
+		[[nodiscard]] const char* GetName() const noexcept;
 
 		void Register(TConfigParam<bool>& engineParam);
 		void Register(TAtomicConfigParam<bool>& engineParam);
@@ -78,11 +79,11 @@ namespace hbe
 		void SetSize(const StaticString& key, size_t value);
 		void SetFloat(const StaticString& key, float value);
 
-		bool GetBool(const StaticString& key) const;
-		uint8_t GetByte(const StaticString& key) const;
-		int GetInt(const StaticString& key) const;
-		size_t GetSize(const StaticString& key) const;
-		float GetFloat(const StaticString& key) const;
+		[[nodiscard]] bool GetBool(const StaticString& key) const noexcept;
+		[[nodiscard]] uint8_t GetByte(const StaticString& key) const noexcept;
+		[[nodiscard]] int GetInt(const StaticString& key) const noexcept;
+		[[nodiscard]] size_t GetSize(const StaticString& key) const noexcept;
+		[[nodiscard]] float GetFloat(const StaticString& key) const noexcept;
 
 		void PrintAllParameters() const;
 	};

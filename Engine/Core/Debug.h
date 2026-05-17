@@ -7,10 +7,10 @@
 
 namespace hbe
 {
-	template<typename T>
-	using TDebugVariable = const T;
+template<typename T>
+using TDebugVariable = const T;
 
-	void FlushLogs();
+void FlushLogs();
 } // namespace hbe
 
 #ifdef __DEBUG__
@@ -21,73 +21,73 @@ namespace hbe
 namespace hbe
 {
 
-	inline void Assert(bool shouldBeTrue)
+inline void Assert(bool shouldBeTrue)
+{
+	if (likely(shouldBeTrue))
 	{
-		if (likely(shouldBeTrue))
-		{
-			return;
-		}
-
-		FlushLogs();
-		PrintArgs("[Assert] Please check it.");
-
-		debugBreak();
-		std::abort();
+		return;
 	}
 
-	template<typename... Types>
-	inline void Assert(bool shouldBeTrue, Types&&... args)
+	FlushLogs();
+	PrintArgs("[Assert] Please check it.");
+
+	debugBreak();
+	std::abort();
+}
+
+template<typename... Types>
+void Assert(bool shouldBeTrue, Types&&... args)
+{
+	if (likely(shouldBeTrue))
 	{
-		if (likely(shouldBeTrue))
-		{
-			return;
-		}
-
-		FlushLogs();
-		PrintArgs("[Assert] ", std::forward<Types>(args)...);
-
-		debugBreak();
-		std::abort();
+		return;
 	}
+
+	FlushLogs();
+	PrintArgs("[Assert] ", std::forward<Types>(args)...);
+
+	debugBreak();
+	std::abort();
+}
 
 #else // __DEBUG__
 
 namespace hbe
 {
-	inline void Assert(bool) {}
+inline void Assert(bool) noexcept {}
 
-	template<typename... Types>
-	void Assert(bool, const char*, Types&&...)
-	{}
+template<typename... Types>
+void Assert(bool, const char*, Types&&...) noexcept
+{}
 } // namespace hbe
 #endif // __DEBUG__
 
 namespace hbe
 {
-	inline void FatalAssert(bool shouldBeTrue)
+inline void FatalAssert(bool shouldBeTrue)
+{
+	if (likely(shouldBeTrue))
 	{
-		if (likely(shouldBeTrue))
-		{
-			return;
-		}
-
-		FlushLogs();
-		PrintArgs("[FatalAssert] Please check it.");
-		debugBreak();
-		std::abort();
+		return;
 	}
 
-	template<typename... Types>
-	void FatalAssert(bool shouldBeTrue, Types&&... args)
-	{
-		if (likely(shouldBeTrue))
-		{
-			return;
-		}
+	FlushLogs();
+	PrintArgs("[FatalAssert] Please check it.");
+	debugBreak();
+	std::abort();
+}
 
-		FlushLogs();
-		PrintArgs("[FatalAssert] ", std::forward<Types>(args)...);
-		debugBreak();
-		std::abort();
+template<typename... Types>
+void FatalAssert(bool shouldBeTrue, Types&&... args)
+{
+	if (likely(shouldBeTrue))
+	{
+		return;
 	}
+
+	FlushLogs();
+	PrintArgs("[FatalAssert] ", std::forward<Types>(args)...);
+	debugBreak();
+	std::abort();
+}
 } // namespace hbe

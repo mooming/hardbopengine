@@ -56,12 +56,12 @@
 // Memory System
 // =============================================================================
 // Memory debugging features (set to 1 to enable, 0 for performance)
-#define __MEMORY_VERIFICATION__ 0          // Verify memory integrity
-#define __MEMORY_LOGGING__ 0               // Log memory operations
-#define __MEMORY_INVESTIGATION__ 0          // Detailed memory investigation
-#define __MEMORY_DANGLING_POINTER_CHECK__ 0 // Detect dangling pointers
-#define __MEMORY_BUFFER_UNDERRUN_CHECK__ 0  // Detect buffer underruns
-#define __FORCE_USE_SYSTEM_MALLOC__ 0        // Force use of system malloc instead of custom allocators
+#define MEMORY_VERIFICATION_ENABLED 0          // Verify memory integrity
+#define MEMORY_LOGGING_ENABLED 0               // Log memory operations
+#define MEMORY_INVESTIGATION_ENABLED 0          // Detailed memory investigation
+#define MEMORY_DANGLING_POINTER_CHECK_ENABLED 0 // Detect dangling pointers
+#define MEMORY_BUFFER_UNDERRUN_CHECK_ENABLED 0  // Detect buffer underruns
+#define FORCE_USE_SYSTEM_MALLOC 0        // Force use of system malloc instead of custom allocators
 #define MULTIPOOL_ALLOC_LOG ".multiPoolConfig.dat"  // MultiPool config cache file
 
 // =============================================================================
@@ -82,13 +82,13 @@
 // Mathematics
 // =============================================================================
 // Coordinate system handedness (uncomment to change)
-// #define __LEFT_HANDED__
-#define __RIGHT_HANDED__  // Default
+// #define LEFT_HANDED_COORDINATE
+#define RIGHT_HANDED_COORDINATE  // Default
 
 // =============================================================================
 // Testing
 // =============================================================================
-#define __MEMORY_INVESTIGATOR_TEST__ 0  // Enable memory investigation tests
+#define MEMORY_INVESTIGATOR_TEST_ENABLED 0  // Enable memory investigation tests
 
 // =============================================================================
 // Third-Party Integration
@@ -96,7 +96,10 @@
 // Vulkan SDK detection (auto-detected, do not modify)
 // Set to 1 if vulkan.h is found, 0 otherwise
 // Will produce compile warning if not found but code will still compile
-#if __has_include("vulkan/vulkan.h") || __has_include("/opt/homebrew/include/vulkan/vulkan.h") || __has_include("/usr/local/include/vulkan/vulkan.h") || __has_include("External/VulkanSDK/include/vulkan/vulkan.h")
+#if __has_include("vulkan/vulkan.h")                                      \
+    || __has_include("/opt/homebrew/include/vulkan/vulkan.h")             \
+    || __has_include("/usr/local/include/vulkan/vulkan.h")                \
+    || __has_include("External/VulkanSDK/include/vulkan/vulkan.h")
     #define VULKAN_SDK 1
 #else
     #define VULKAN_SDK 0

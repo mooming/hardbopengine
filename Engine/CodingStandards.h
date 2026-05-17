@@ -117,6 +117,13 @@ public:
     void Process() noexcept;
     [[nodiscard]] int GetValue() const noexcept;
 
+    /*
+     * in-prefix parameter: When a function parameter would collide
+     * with a member variable name, prefix it with `in`.
+     * Here `inValue` avoids colliding with the member `value`.
+     */
+    void SetValue(int inValue) noexcept;
+
 private:
     int value;
     int workBuffer[256];
@@ -126,8 +133,8 @@ class TextBuffer final
 {
 public:
     TextBuffer() noexcept;
-    explicit TextBuffer(const char* text);
-    TextBuffer(const TextBuffer& other);
+    explicit TextBuffer(const char* text); // Deliberately noexcept-free: uses new (can throw std::bad_alloc)
+    TextBuffer(const TextBuffer& other);   // Deliberately noexcept-free: copy allocates
     TextBuffer(TextBuffer&& other) noexcept;
     TextBuffer& operator=(const TextBuffer& other);
     TextBuffer& operator=(TextBuffer&& other) noexcept;
@@ -290,6 +297,18 @@ public:
      * cannot throw with noexcept to enable compiler optimizations
      * and document intent.
      *
+     * WARNING: Do NOT add noexcept to complex functions whose
+     * implementation cannot be guaranteed exception-free. A
+     * noexcept contract broken at runtime terminates the process,
+     * making it worse than no annotation at all. When in doubt
+     * about a non-trivial function, leave noexcept off.
+     *
+     * In this exception-free engine, use of `new`, dynamic
+     * allocation, or external calls are signals to omit noexcept.
+     * See TextBuffer for examples: copy construction (uses `new`)
+     * intentionally omits noexcept, while move construction (no
+     * allocation) correctly marks noexcept.
+     *
      * Macros (e.g. Assert) use SCREAMING_SNAKE_CASE and are used
      * only where a function call cannot be substituted.
      *
@@ -301,6 +320,18 @@ public:
     {
         Assert(true);
     }
+
+    /*
+     * out-prefix parameter: Prefix write-only reference
+     * parameters with `out` to distinguish them from inputs.
+     */
+    static bool TryParse(const char* text, int& outResult) noexcept;
+
+    /*
+     * inOut-prefix parameter: Prefix read-write reference
+     * parameters with `inOut` to signal modification intent.
+     */
+    static void ClampToRange(int& inOutValue, int min, int max) noexcept;
 
     /*
      * Single-line Statements: Avoid unnecessary braces for

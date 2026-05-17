@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include <iostream>
 #include "CoordinateOrientation.h"
 #include "Matrix3x3.h"
 #include "Matrix4x4.h"
@@ -13,14 +14,14 @@ namespace hbe
 	/// @brief A quaternion template class for representing 3D rotations.
 	// Assume every quaternion is a unit quaternion.
 
-	template<typename Number>
-	class Quaternion
+	template<typename TNumber>
+	class Quaternion final
 	{
 		using This = Quaternion;
-		using Vec3 = Vector3<Number>;
-		using Vec4 = Vector4<Number>;
-		using Mat3x3 = Matrix3x3<Number>;
-		using Mat4x4 = Matrix4x4<Number>;
+		using TVec3 = Vector3<TNumber>;
+		using TVec4 = Vector4<TNumber>;
+		using TMat3x3 = Matrix3x3<TNumber>;
+		using TMat4x4 = Matrix4x4<TNumber>;
 
 	public:
 		static const This Zero;
@@ -31,73 +32,80 @@ namespace hbe
 		{
 			struct
 			{
-				Number x;
-				Number y;
-				Number z;
-				Number w;
+				TNumber x;
+				TNumber y;
+				TNumber z;
+				TNumber w;
 			};
 
 			struct
 			{
-				Vec3 v;
-				Number s;
+				TVec3 v;
+				TNumber s;
 			};
 
-			Vec4 vector;
-			Number a[4];
+			TVec4 vector;
+			TNumber a[4];
 		};
 
 	public:
-		static inline Quaternion CreateRotationX(const float x)
+		[[nodiscard]] static Quaternion CreateRotationX(const float x) noexcept
 		{
 			Quaternion result(nullptr);
 			result.SetEulerX(x);
+
 			return result;
 		}
 
-		static inline Quaternion CreateRotationY(const float y)
+		[[nodiscard]] static Quaternion CreateRotationY(const float y) noexcept
 		{
 			Quaternion result(nullptr);
 			result.SetEulerY(y);
+
 			return result;
 		}
 
-		static inline Quaternion CreateRotationZ(const float z)
+		[[nodiscard]] static Quaternion CreateRotationZ(const float z) noexcept
 		{
 			Quaternion result(nullptr);
 			result.SetEulerZ(z);
+
 			return result;
 		}
 
-		static inline Quaternion CreateRotationXY(float x, float y)
+		[[nodiscard]] static Quaternion CreateRotationXY(float x, float y) noexcept
 		{
 			Quaternion result(nullptr);
 			result.SetEulerXY(x, y);
+
 			return result;
 		}
 
-		static inline Quaternion CreateRotationYZ(float y, float z)
+		[[nodiscard]] static Quaternion CreateRotationYZ(float y, float z) noexcept
 		{
 			Quaternion result(nullptr);
 			result.SetEulerYZ(y, z);
+
 			return result;
 		}
 
-		static inline Quaternion CreateRotationXZ(float x, float z)
+		[[nodiscard]] static Quaternion CreateRotationXZ(float x, float z) noexcept
 		{
 			Quaternion result(nullptr);
 			result.SetEulerXZ(x, z);
+
 			return result;
 		}
 
-		static inline Quaternion LookRotation(const Vec3& forward, const Vec3& up)
+		[[nodiscard]] static Quaternion LookRotation(const TVec3& forward, const TVec3& up) noexcept
 		{
 			Quaternion result(nullptr);
 			result.LookAt(forward, up);
+
 			return result;
 		}
 
-		static inline Quaternion RotationAround(const Vec3& unitAxis, float radian)
+		[[nodiscard]] static Quaternion RotationAround(const TVec3& unitAxis, float radian) noexcept
 		{
 			Quaternion result(nullptr);
 			result.SetRotationAround(unitAxis, radian);
@@ -105,7 +113,7 @@ namespace hbe
 			return result;
 		}
 
-		static inline Quaternion RotationFromTo(const Vec3& from, const Vec3& to)
+		[[nodiscard]] static Quaternion RotationFromTo(const TVec3& from, const TVec3& to) noexcept
 		{
 			Quaternion result(nullptr);
 			result.SetRotationFromTo(from, to);
@@ -113,20 +121,20 @@ namespace hbe
 			return result;
 		}
 
-		inline Quaternion() : v(), s(1.0f) {}
+		Quaternion() noexcept : v(), s(1.0f) {}
 
-		inline Quaternion(const Vec3& eulerAngles) : Quaternion(nullptr)
+		Quaternion(const TVec3& eulerAngles) noexcept : Quaternion(nullptr)
 		{
 			SetEulerAngles(eulerAngles.x, eulerAngles.y, eulerAngles.z);
 		}
 
-		inline Quaternion(float x, float y, float z) : Quaternion(nullptr) { SetEulerAngles(x, y, z); }
+		Quaternion(float x, float y, float z) noexcept : Quaternion(nullptr) { SetEulerAngles(x, y, z); }
 
-		inline Quaternion(float x, float y, float z, float w) : vector(x, y, z, w) {}
+		Quaternion(float x, float y, float z, float w) noexcept : vector(x, y, z, w) {}
 
-		inline Quaternion(const Vec4& vector) : vector(vector) {}
+		Quaternion(const TVec4& vector) noexcept : vector(vector) {}
 
-		inline Quaternion(const Mat3x3& mat)
+		Quaternion(const TMat3x3& mat) noexcept
 		{
 			Assert(mat.IsOrthogonal(), "[Quaternion] Given matrix is not orthogonal!", mat);
 			Assert(IsEqual(mat.Determinant(), 1.0f), "[Quaternion] Matrix Determinant should be 1, but ",
@@ -174,11 +182,11 @@ namespace hbe
 			Normalize();
 		}
 
-		inline Quaternion(std::nullptr_t) {}
+		explicit Quaternion(std::nullptr_t) noexcept {}
 
-		inline Mat3x3 ToMat3x3() const
+		[[nodiscard]] TMat3x3 ToMat3x3() const noexcept
 		{
-			Mat3x3 mat(nullptr);
+			TMat3x3 mat(nullptr);
 
 			const float xx = x * x;
 			const float yy = y * y;
@@ -207,9 +215,9 @@ namespace hbe
 			return mat;
 		}
 
-		inline Mat4x4 ToMat4x4() const
+		[[nodiscard]] TMat4x4 ToMat4x4() const noexcept
 		{
-			Mat4x4 mat(nullptr);
+			TMat4x4 mat(nullptr);
 
 			const float xx = x * x;
 			const float yy = y * y;
@@ -246,72 +254,77 @@ namespace hbe
 			return mat;
 		}
 
-		inline operator Mat3x3() const { return ToMat3x3(); }
+		operator TMat3x3() const noexcept { return ToMat3x3(); }
 
-		inline operator Mat4x4() const { return ToMat4x4(); }
+		operator TMat4x4() const noexcept { return ToMat4x4(); }
 
-		inline Vec3 operator*(const Vec3& rhs) const { return Multiply(rhs); }
+		[[nodiscard]] TVec3 operator*(const TVec3& rhs) const noexcept { return Multiply(rhs); }
 
-		Quaternion operator*(const Quaternion& rhs) const { return Multiply(rhs); }
+		[[nodiscard]] Quaternion operator*(const Quaternion& rhs) const noexcept { return Multiply(rhs); }
 
-		Quaternion operator/(const Quaternion& rhs) const { return Multiply(rhs.Inverse()); }
+		[[nodiscard]] Quaternion operator/(const Quaternion& rhs) const noexcept { return Multiply(rhs.Inverse()); }
 
-		Quaternion& operator*=(const Quaternion& rhs)
+		Quaternion& operator*=(const Quaternion& rhs) noexcept
 		{
 			*this = Multiply(rhs);
+
 			return *this;
 		}
 
-		Quaternion& operator/=(const Quaternion& rhs)
+		Quaternion& operator/=(const Quaternion& rhs) noexcept
 		{
 			*this = Multiply(rhs.Inverse());
+
 			return *this;
 		}
 
-		bool operator==(const Quaternion& rhs) const { return vector == rhs.vector; }
+		[[nodiscard]] bool operator==(const Quaternion& rhs) const noexcept { return vector == rhs.vector; }
 
-		bool operator!=(const Quaternion& rhs) const { return vector != rhs.vector; }
+		[[nodiscard]] bool operator!=(const Quaternion& rhs) const noexcept { return vector != rhs.vector; }
 
-		inline void Conjugate() { v.Negate(); }
+		void Conjugate() noexcept { v.Negate(); }
 
-		inline Quaternion Conjugated() const
+		[[nodiscard]] Quaternion Conjugated() const noexcept
 		{
 			Quaternion result(*this);
 			result.Conjugate();
+
 			return result;
 		}
 
 		// Invert itself
 
-		inline void Invert()
+		void Invert() noexcept
 		{
-			Assert(!vector.IsZero());
-			Assert(IsEqual(vector.SqrLength(), 1.0f));
+			Assert(!vector.IsZero(), "Quaternion::Invert - vector is zero");
+			Assert(IsEqual(vector.SqrLength(), 1.0f), "Quaternion::Invert - not unit length");
 
 			Conjugate();
 		}
 
 		// Return the inverse of it
 
-		inline Quaternion Inverse() const
+		[[nodiscard]] Quaternion Inverse() const noexcept
 		{
 			Quaternion result(*this);
 			result.Invert();
+
 			return result;
 		}
 
-		inline void Normalize() { vector.Normalize(); }
+		void Normalize() noexcept { vector.Normalize(); }
 
-		inline Quaternion Normalized() const
+		[[nodiscard]] Quaternion Normalized() const noexcept
 		{
 			Quaternion result(*this);
 			result.vector.Normalize();
+
 			return result;
 		}
 
-		inline bool IsUnity() const { return vector.IsUnity(); }
+		[[nodiscard]] bool IsUnity() const noexcept { return vector.IsUnity(); }
 
-		inline Quaternion Multiply(const Quaternion& rhs) const
+		[[nodiscard]] Quaternion Multiply(const Quaternion& rhs) const noexcept
 		{
 			Quaternion result(nullptr);
 
@@ -323,7 +336,7 @@ namespace hbe
 			return result;
 		}
 
-		inline Vec3 Multiply(const Vec3& rhs) const
+		[[nodiscard]] TVec3 Multiply(const TVec3& rhs) const noexcept
 		{
 			Quaternion qv(nullptr);
 
@@ -332,7 +345,7 @@ namespace hbe
 			qv.z = w * rhs.z + x * rhs.y - y * rhs.x + z;
 			qv.w = w - x * rhs.x - y * rhs.y - z * rhs.z;
 
-			Vec3 result(nullptr);
+			TVec3 result(nullptr);
 			result.x = -qv.w * x + qv.x * w - qv.y * z + qv.z * y;
 			result.y = -qv.w * y + qv.x * z + qv.y * w - qv.z * x;
 			result.z = -qv.w * z - qv.x * y + qv.y * x + qv.z * w;
@@ -340,7 +353,7 @@ namespace hbe
 			return result;
 		}
 
-		inline void SetEulerAngles(float x, float y, float z)
+		void SetEulerAngles(float x, float y, float z) noexcept
 		{
 			float sx = RotationSin(DegreeToRadian(x) * 0.5f);
 			float sy = RotationSin(DegreeToRadian(y) * 0.5f);
@@ -356,7 +369,7 @@ namespace hbe
 			This::z = cx * cy * sz - sx * sy * cz;
 		}
 
-		inline void SetEulerX(float x)
+		void SetEulerX(float x) noexcept
 		{
 			This::w = RotationCos(DegreeToRadian(x) * 0.5f);
 			This::x = RotationSin(DegreeToRadian(x) * 0.5f);
@@ -364,7 +377,7 @@ namespace hbe
 			This::z = 0.0f;
 		}
 
-		inline void SetEulerY(float y)
+		void SetEulerY(float y) noexcept
 		{
 			This::w = RotationCos(DegreeToRadian(y) * 0.5f);
 			This::x = 0.0f;
@@ -372,7 +385,7 @@ namespace hbe
 			This::z = 0.0f;
 		}
 
-		inline void SetEulerZ(float z)
+		void SetEulerZ(float z) noexcept
 		{
 			This::w = RotationCos(DegreeToRadian(z) * 0.5f);
 			This::x = 0.0f;
@@ -380,7 +393,7 @@ namespace hbe
 			This::z = RotationSin(DegreeToRadian(z) * 0.5f);
 		}
 
-		inline void SetEulerXY(float x, float y)
+		void SetEulerXY(float x, float y) noexcept
 		{
 			float sx = RotationSin(DegreeToRadian(x) * 0.5f);
 			float sy = RotationSin(DegreeToRadian(y) * 0.5f);
@@ -394,7 +407,7 @@ namespace hbe
 			This::z = -sx * sy;
 		}
 
-		inline void SetEulerXZ(float x, float z)
+		void SetEulerXZ(float x, float z) noexcept
 		{
 			float sx = RotationSin(DegreeToRadian(x) * 0.5f);
 			float sz = RotationSin(DegreeToRadian(z) * 0.5f);
@@ -408,7 +421,7 @@ namespace hbe
 			This::z = cx * sz;
 		}
 
-		inline void SetEulerYZ(float y, float z)
+		void SetEulerYZ(float y, float z) noexcept
 		{
 			float sy = RotationSin(DegreeToRadian(y) * 0.5f);
 			float sz = RotationSin(DegreeToRadian(z) * 0.5f);
@@ -422,9 +435,9 @@ namespace hbe
 			This::z = cy * sz;
 		}
 
-		inline Vec3 EulerAngles() const
+		[[nodiscard]] TVec3 EulerAngles() const noexcept
 		{
-			Vec3 angle(nullptr);
+			TVec3 angle(nullptr);
 
 			const float yy = y * y;
 			angle.x = RadianToDegree(RotationAtan2(2.0f * (w * x + y * z), 1.0f - 2.0f * (x * x + yy)));
@@ -436,9 +449,9 @@ namespace hbe
 			return angle;
 		}
 
-		inline Quaternion LerpTo(Quaternion to, float t) { return Lerp(*this, to, t); }
+		[[nodiscard]] Quaternion LerpTo(Quaternion to, float t) noexcept { return Lerp(*this, to, t); }
 
-		inline static This Lerp(const This& from, const This& to, float t)
+		[[nodiscard]] static This Lerp(const This& from, const This& to, float t) noexcept
 		{
 			This result = from.vector * (1.0f - t) + to.vector * t;
 			result.Normalize();
@@ -446,9 +459,9 @@ namespace hbe
 			return result;
 		}
 
-		inline Quaternion SlerpTo(Quaternion to, float t) { return Slerp(*this, to, t); }
+		[[nodiscard]] Quaternion SlerpTo(Quaternion to, float t) noexcept { return Slerp(*this, to, t); }
 
-		inline static This Slerp(const This& from, const This& to, float t)
+		[[nodiscard]] static This Slerp(const This& from, const This& to, float t) noexcept
 		{
 			AssertMessage(from.IsUnity(), "Quaternion slerp should have unit length", ", but ", from.vector.Length());
 			AssertMessage(to.IsUnity(), "Quaternion slerp should have unit length", ", but ", to.vector.Length());
@@ -461,31 +474,32 @@ namespace hbe
 			}
 
 			const auto nt = 1.0f - t;
-			const auto sinA = static_cast<Number>(std::sin(nt * angle));
-			const auto sinB = static_cast<Number>(std::sin(t * angle));
+			const auto sinA = static_cast<TNumber>(std::sin(nt * angle));
+			const auto sinB = static_cast<TNumber>(std::sin(t * angle));
 
 			return (from.vector * sinA + to.vector * sinB) / std::sin(angle);
 		}
 
-		inline void LookAt(const Vec3& forward, const Vec3& up)
+		void LookAt(const TVec3& forward, const TVec3& up) noexcept
 		{
-			Mat3x3 lookMat(nullptr);
+			TMat3x3 lookMat(nullptr);
 			lookMat.LookAt(forward, up);
 			*this = Quaternion(lookMat);
 		}
 
-		inline void SetRotationAround(const Vec3& unitAxis, float radian)
+		void SetRotationAround(const TVec3& unitAxis, float radian) noexcept
 		{
 			Assert(unitAxis.IsUnity(), "Quaternion Length = ", unitAxis.Length());
 			w = RotationCos(radian * 0.5f);
 			v = unitAxis * RotationSin(radian * 0.5f);
 		}
 
-		inline void SetRotationFromTo(const Vec3& from, const Vec3& to)
+		void SetRotationFromTo(const TVec3& from, const TVec3& to) noexcept
 		{
 			if (from == to)
 			{
 				vector = Quaternion::Identity.vector;
+
 				return;
 			}
 
@@ -501,15 +515,16 @@ namespace hbe
 	template<typename T>
 	const Quaternion<T> Quaternion<T>::Identity(0, 0, 0, 1);
 
-	using Quat = Quaternion<float>;
+	using TQuat = Quaternion<float>;
 
 	template<typename T>
-	inline std::ostream& operator<<(std::ostream& os, const Quaternion<T>& q)
+	std::ostream& operator<<(std::ostream& os, const Quaternion<T>& q) noexcept
 	{
 		Assert(q.IsUnity(), "Quaternion is not a unit. length = ", q.vector.Length());
 
 		Vector3<T> e = q.EulerAngles();
 		os << "Quat (" << e.x << ", " << e.y << ", " << e.z << ")";
+
 		return os;
 	}
 } // namespace hbe
@@ -520,13 +535,13 @@ namespace hbe
 namespace hbe
 {
 
-	class QuaternionTest : public TestCollection
+	class QuaternionTest final : public TestCollection
 	{
 	public:
 		QuaternionTest() : TestCollection("Quaternion Test") {}
 
 	protected:
-		virtual void Prepare() override;
+		void Prepare() noexcept override;
 	};
 } // namespace hbe
 #endif //__UNIT_TEST__

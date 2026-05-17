@@ -12,8 +12,8 @@ namespace hbe
 	class Resource final
 	{
 	public:
-		Resource();
-		~Resource();
+		Resource() noexcept;
+		~Resource() noexcept;
 	};
 
 } // namespace hbe

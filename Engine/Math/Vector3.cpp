@@ -2,6 +2,7 @@
 
 #include "Vector3.h"
 
+
 namespace hbe
 {
 	template class Vector3<float>;
@@ -11,57 +12,59 @@ namespace hbe
 #include "Core/ScopedTime.h"
 #include "HSTL/HVector.h"
 
-void hbe::Vector3Test::Prepare()
+void hbe::Vector3Test::Prepare() noexcept
 {
 	AddTest("Constants", [this](auto& ls)
 	{
-		ls << "Forward = " << Float3::Forward << lf;
-		ls << "Right = " << Float3::Right << lf;
-		ls << "Up = " << Float3::Up << lf;
+		ls << "Forward = " << TFloat3::Forward << lf;
+		ls << "Right = " << TFloat3::Right << lf;
+		ls << "Up = " << TFloat3::Up << lf;
 
-		ls << "Zero = " << Float3::Zero << lf;
-		ls << "Unity = " << Float3::Unity << lf;
+		ls << "Zero = " << TFloat3::Zero << lf;
+		ls << "Unity = " << TFloat3::Unity << lf;
 	});
 
 	AddTest("Cross Product", [this](auto& ls)
 	{
-		auto xCrossY = Float3::X.Cross(Float3::Y);
+		auto xCrossY = TFloat3::X.Cross(TFloat3::Y);
 		ls << "X x Y = " << xCrossY << lf;
 
-		if (xCrossY != Float3::Z)
+		if (xCrossY != TFloat3::Z)
 		{
-			ls << "Incorrect Cross Product Result: X x Y = " << xCrossY << ", but " << Float3::Z << " expected."
+			ls << "Incorrect Cross Product Result: X x Y = " << xCrossY << ", but " << TFloat3::Z << " expected."
 			   << lferr;
 		}
 
-#ifdef __LEFT_HANDED__
-		auto fCrossR = Float3::Forward.Cross(Float3::Right);
-		ls << "Forward x Right = " << fCrossR << lf;
-
-		if (fCrossR != Float3::Up)
+#ifndef RIGHT_HANDED_COORDINATE
+		AddTest("Left-Handed Coordinate Test", [this](auto& ls)
 		{
-			ls << "Incorrect Cross Product Result: Forward x Right = " << fCrossR << ", but " << Float3::Up
-			   << " expected." << lferr;
-		}
-#endif //__LEFT_HANDED__
+			TFloat3 right = TFloat3::Right;
+			TFloat3 up = TFloat3::Up;
+			if (right.Cross(up) != TFloat3::Forward)
+			{
+				ls << "Cross Right x Up should be Forward..." << lferr;
+			}
+		});
+#endif
 
-#ifdef __RIGHT_HANDED__
-		auto rCrossF = Float3::Right.Cross(Float3::Forward);
-		ls << "Right x Forward = " << rCrossF << lf;
-
-		if (rCrossF != Float3::Up)
+#ifdef RIGHT_HANDED_COORDINATE
+		AddTest("Right-Handed Coordinate Test", [this](auto& ls)
 		{
-			ls << "Incorrect Cross Product Result: Right x Forward = " << rCrossF << ", but " << Float3::Up
-			   << " expected." << lferr;
-		}
-#endif //__RIGHT_HANDED__
+			TFloat3 right = TFloat3::Right;
+			TFloat3 up = TFloat3::Up;
+			if (right.Cross(up) != -TFloat3::Forward)
+			{
+				ls << "Cross Right x Up should be -Forward..." << lferr;
+			}
+		});
+#endif
 	});
 
 	AddTest("Default Constructor", [this](auto& ls)
 	{
-		Float3 tmp;
+		TFloat3 tmp;
 
-		if (tmp != Float3::Zero)
+		if (tmp != TFloat3::Zero)
 		{
 			ls << "Default Float3 is not ZERO." << lferr;
 		}
@@ -71,7 +74,7 @@ void hbe::Vector3Test::Prepare()
 
 	AddTest("Constructors and Operators", [this](auto& ls)
 	{
-		HVector<Float3> vertices;
+		HVector<TFloat3> vertices;
 
 		for (int i = 0; i < 1000000; ++i)
 		{
@@ -84,7 +87,7 @@ void hbe::Vector3Test::Prepare()
 			vertices.emplace_back(x, x, x);
 		}
 
-		Float3 tmp;
+		TFloat3 tmp;
 
 		{
 			time::TDuration heTime;
@@ -106,20 +109,20 @@ void hbe::Vector3Test::Prepare()
 
 	AddTest("Interpolation", [this](auto& ls)
 	{
-		auto x = Float3::X;
-		auto y = Float3::Y;
+		auto x = TFloat3::X;
+		auto y = TFloat3::Y;
 
-		if (x != Float3::Slerp(x, y, 0.0f))
+		if (x != TFloat3::Slerp(x, y, 0.0f))
 		{
-			ls << "Float3 slerp 1 should match its origin " << x << ", but " << Float3::Slerp(x, y, 0.0f) << lferr;
+			ls << "Float3 slerp 1 should match its origin " << x << ", but " << TFloat3::Slerp(x, y, 0.0f) << lferr;
 		}
 
-		if (y != Float3::Slerp(x, y, 1.0f))
+		if (y != TFloat3::Slerp(x, y, 1.0f))
 		{
-			ls << "Float3 slerp 1 should match its destination " << y << ", but " << Float3::Slerp(x, y, 1.0f) << lferr;
+			ls << "Float3 slerp 1 should match its destination " << y << ", but " << TFloat3::Slerp(x, y, 1.0f) << lferr;
 		}
 
-		Float3 half = Float3::Slerp(x, y, 0.5f);
+		TFloat3 half = TFloat3::Slerp(x, y, 0.5f);
 		ls << "Float3, Slerp half = " << half << lf;
 
 		if (!IsEqual(half.Length(), 1.0f))

@@ -5,6 +5,7 @@
 
 #include "StratifiedSampling.h"
 
+
 #ifdef __UNIT_TEST__
 
 #include <random>
@@ -13,7 +14,7 @@
 #include "Memory/MultiPoolAllocator.h"
 #include "MonteCarloIntegrator.h"
 
-void hbe::StratifiedSamplingTest::Prepare()
+void hbe::StratifiedSamplingTest::Prepare() noexcept
 {
 	auto calculatePi = [this](auto& ls) -> void
 	{

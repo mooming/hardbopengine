@@ -10,16 +10,17 @@
 #include "Constants.h"
 #include "Log/Logger.h"
 
+
 namespace hbe
 {
 
-	namespace
-	{
-		thread_local StaticString ThreadName;
-		thread_local TaskSystem::TIndex StreamIndex = 0;
+namespace
+{
+	thread_local StaticString ThreadName;
+	thread_local TaskSystem::TIndex StreamIndex = 0;
 	} // namespace
 
-	TaskSystem::TIndex TaskSystem::GetNumHardwareThreads()
+	TaskSystem::TIndex TaskSystem::GetNumHardwareThreads() noexcept
 	{
 		const auto hardwareConcurrency = std::thread::hardware_concurrency();
 		const auto numAvaibleHardwareThreads = static_cast<TIndex>(hardwareConcurrency);
@@ -27,42 +28,42 @@ namespace hbe
 		return numAvaibleHardwareThreads;
 	}
 
-	void TaskSystem::SetThreadName(StaticString name)
+	void TaskSystem::SetThreadName(StaticString name) noexcept
 	{
 		ThreadName = name;
 	}
 
-	void TaskSystem::SetStreamIndex(TIndex index)
+	void TaskSystem::SetStreamIndex(TIndex index) noexcept
 	{
 		StreamIndex = index;
 	}
 
-	StaticString TaskSystem::GetCurrentStreamName()
+	StaticString TaskSystem::GetCurrentStreamName() noexcept
 	{
 		return ThreadName;
 	}
 
-	StaticString TaskSystem::GetCurrentThreadName()
+	StaticString TaskSystem::GetCurrentThreadName() noexcept
 	{
 		return ThreadName;
 	}
 
-	TaskSystem::TIndex TaskSystem::GetCurrentStreamIndex()
+	TaskSystem::TIndex TaskSystem::GetCurrentStreamIndex() noexcept
 	{
 		return StreamIndex;
 	}
 
-	bool TaskSystem::IsBaseThread()
+	bool TaskSystem::IsBaseThread() noexcept
 	{
 		return StreamIndex == BaseStreamIndex;
 	}
 
-	bool TaskSystem::IsIOThread()
+	bool TaskSystem::IsIOThread() noexcept
 	{
 		return StreamIndex == IOStreamIndex;
 	}
 
-	TaskSystem::TaskSystem()
+	TaskSystem::TaskSystem() noexcept
 		: isRunning(false)
 		, name("TaskSystem")
 		, numHardwareThreads(GetNumHardwareThreads())
@@ -71,12 +72,12 @@ namespace hbe
 		FatalAssert(numHardwareThreads > 0, "It should have at least one hardware thread.");
 	}
 
-	TaskSystem::~TaskSystem()
+	TaskSystem::~TaskSystem() noexcept
 	{
 		JoinAndClear();
 	}
 
-	void TaskSystem::Initialize()
+	void TaskSystem::Initialize() noexcept
 	{
 		auto& logger = Logger::Get();
 		auto logFilter = [](auto level)
@@ -95,12 +96,12 @@ namespace hbe
 		BuildStreams();
 	}
 
-	void TaskSystem::RequestShutDown()
+	void TaskSystem::RequestShutDown() noexcept
 	{
 		isRunning = false;
 	}
 
-	void TaskSystem::JoinAndClear()
+	void TaskSystem::JoinAndClear() noexcept
 	{
 		const bool isBaseThread = std::this_thread::get_id() == baseTaskThreadID;
 
@@ -121,38 +122,19 @@ namespace hbe
 				continue;
 			}
 
-			try
-			{
-				thread.join();
-			}
-			catch (const std::exception& e)
-			{
-				std::cerr << e.what() << ", thread = " << stream.GetName() << ", loop count = " << stream.GetLoopCount()
-					<< ", Joinable = " << thread.joinable() << std::endl;
-				std::flush(std::cerr);
-				debugBreak();
-			}
+			thread.join();
 		}
 
-		try
-		{
-			streams.Clear();
-		}
-		catch (const std::exception& e)
-		{
-			std::cerr << e.what() << std::endl;
-			std::flush(std::cerr);
-			debugBreak();
-		}
+		streams.Clear();
 	}
 
-	void TaskSystem::Enqueue(const RangedTask& task)
+	void TaskSystem::Enqueue(const RangedTask& task) noexcept
 	{
 		std::scoped_lock<std::mutex> lock(taskQueueMutex);
 		taskQueue.Push(task);
 	}
 
-	void TaskSystem::Dequeue(std::optional<RangedTask>& outTask)
+	void TaskSystem::Dequeue(std::optional<RangedTask>& outTask) noexcept
 	{
 		std::scoped_lock<std::mutex> lock(taskQueueMutex);
 		if (taskQueue.IsEmpty())
@@ -182,7 +164,7 @@ namespace hbe
 		(void)taskQueue.Pop();
 	}
 
-	void TaskSystem::Enqueue(const TIndex streamIndex, const RangedTask& task)
+	void TaskSystem::Enqueue(const TIndex streamIndex, const RangedTask& task) noexcept
 	{
 		if (!streams.IsValidIndex(streamIndex))
 		{
@@ -195,17 +177,17 @@ namespace hbe
 		stream.Enqueue(task);
 	}
 
-	void TaskSystem::DispatchToMainThread(TMainThreadTask taskFunc, void* userData, uint8_t priority)
+	void TaskSystem::DispatchToMainThread(TMainThreadTask taskFunc, void* userData, uint8_t priority) noexcept
 	{
 		mainThreadTaskQueue.Enqueue(taskFunc, userData, priority);
 	}
 
-	size_t TaskSystem::ProcessMainThreadTasks()
+	size_t TaskSystem::ProcessMainThreadTasks() noexcept
 	{
 		return mainThreadTaskQueue.ProcessTasks();
 	}
 
-	StaticString TaskSystem::GetStreamName(int index) const
+	StaticString TaskSystem::GetStreamName(int index) const noexcept
 	{
 		if (unlikely(!streams.IsValidIndex(index)))
 		{
@@ -216,7 +198,7 @@ namespace hbe
 		return streams[index].GetName();
 	}
 
-	TaskSystem::TIndex TaskSystem::GetStreamIndex(ThreadID id) const
+	TaskSystem::TIndex TaskSystem::GetStreamIndex(TThreadID id) const noexcept
 	{
 		TIndex index = -1;
 
@@ -235,7 +217,7 @@ namespace hbe
 		return index;
 	}
 
-	TaskStream& TaskSystem::GetStream(int index)
+	TaskStream& TaskSystem::GetStream(int index) noexcept
 	{
 		if (index < 0 || index >= streams.Size())
 		{
@@ -304,159 +286,159 @@ namespace hbe
 namespace hbe
 {
 
-	void TaskSystemTest::Prepare()
+void TaskSystemTest::Prepare()
+{
+	AddTest("Empty Task", [this](TLogOut& ls)
 	{
-		AddTest("Empty Task", [this](TLogOut& ls)
+		Task task;
+		if (task.HasDone())
 		{
-			Task task;
-			if (task.HasDone())
-			{
-				ls << "Dummy task should not be set to done before it's enqueued." << lferr;
-			}
-		});
+			ls << "Dummy task should not be set to done before it's enqueued." << lferr;
+		}
+	});
 
-		AddTest("Task of size 0", [this](TLogOut& ls)
+	AddTest("Task of size 0", [this](TLogOut& ls)
+	{
+		auto func = [](void*, std::size_t start, std::size_t end) -> std::size_t
 		{
-			auto func = [](void*, std::size_t start, std::size_t end) -> std::size_t
-			{
-				auto log = Logger::Get("Size 0 Task");
-				log.Out([&](auto& ls) { ls << "Range[" << (start + 1) << ", " << end << ')'; });
+			auto log = Logger::Get("Size 0 Task");
+			log.Out([&](auto& ls) { ls << "Range[" << (start + 1) << ", " << end << ')'; });
 
-				return 1;
-			};
+			return 1;
+		};
 
-			Task task("TestTask", func, nullptr);
-			if (task.HasDone())
-			{
-				ls << "The task should not be marked done before running." << lferr;
-			}
-
-			auto& engine = Engine::Get();
-			auto& taskSys = engine.GetTaskSystem();
-			taskSys.Enqueue(task.GenerateSubTask(0, 0));
-			task.BusyWait();
-
-			if (!task.HasDone())
-			{
-				ls << "The task should be marked done after running." << lferr;
-			}
-		});
-
-		AddTest("Bagel Problem", [this](TLogOut& ls)
+		Task task("TestTask", func, nullptr);
+		if (task.HasDone())
 		{
-			constexpr std::size_t Count = 1000000;
-			constexpr std::size_t NumSubtasks = 10;
-			constexpr std::size_t Increment = Count / NumSubtasks;
+			ls << "The task should not be marked done before running." << lferr;
+		}
 
-			double result = 0;
+		auto& engine = Engine::Get();
+		auto& taskSys = engine.GetTaskSystem();
+		taskSys.Enqueue(task.GenerateSubTask(0, 0));
+		task.BusyWait();
 
-			auto func = [](void* userData, std::size_t start, std::size_t end) -> std::size_t
-			{
-				double taskResult = 0;
-
-				for(std::size_t i = start + 1; i <= end; ++i)
-				{
-					double value = 1.0 / static_cast<double>(i);
-					value *= value;
-					taskResult += value;
-				}
-
-				auto* totalSumPtr = static_cast<double*>(userData);
-				double& totalSum = *totalSumPtr;
-				totalSum += static_cast<float>(taskResult);
-
-				return end - start;
-			};
-
-			Task task("TestTask", func, &result);
-			if (task.HasDone())
-			{
-				ls << "The task should not be marked done before running." << lferr;
-			}
-
-			auto& engine = Engine::Get();
-			auto& taskSys = engine.GetTaskSystem();
-
-			for (std::size_t i = 0; i < Count; i += Increment)
-			{
-				taskSys.Enqueue(task.GenerateSubTask(i , i + Increment));
-			}
-
-			task.BusyWait();
-
-			if (!task.HasDone())
-			{
-				ls << "The task should be marked done after running." << lferr;
-			}
-
-			constexpr double EulerAnswer = Pi * Pi/ 6.0;
-			ls << "Test Result = " << result << ", Pi/6 = " << EulerAnswer << lf;
-
-			const double error = std::round(result - EulerAnswer);
-			if (error > Epsilon)
-			{
-				ls << "The error exceeds limit. Error = " << error << lferr;
-			}
-		});
-
-		AddTest("Bagel Problem (Incremental Task)", [this](TLogOut& ls)
+		if (!task.HasDone())
 		{
-			constexpr std::size_t Count = 1000000;
-			constexpr std::size_t NumSubtasks = 5;
-			constexpr std::size_t Increment = Count / NumSubtasks;
+			ls << "The task should be marked done after running." << lferr;
+		}
+	});
 
-			double result = 0;
+	AddTest("Bagel Problem", [this](TLogOut& ls)
+	{
+		constexpr std::size_t Count = 1000000;
+		constexpr std::size_t NumSubtasks = 10;
+		constexpr std::size_t Increment = Count / NumSubtasks;
 
-			auto func = [](void* userData, std::size_t start, std::size_t end) -> std::size_t
+		double result = 0;
+
+		auto func = [](void* userData, std::size_t start, std::size_t end) -> std::size_t
+		{
+			double taskResult = 0;
+
+			for(std::size_t i = start + 1; i <= end; ++i)
 			{
-				double taskResult = 0;
-
-				auto incEnd = std::min(end, start + (Increment / 7));
-				for(std::size_t i = start + 1; i <= incEnd; ++i)
-				{
-					double value = 1.0 / static_cast<double>(i);
-					value *= value;
-					taskResult += value;
-				}
-
-				auto* totalSumPtr = static_cast<double*>(userData);
-				double& totalSum = *totalSumPtr;
-				totalSum += static_cast<float>(taskResult);
-
-				return incEnd - start;
-			};
-
-			Task task("TestTask", func, &result);
-			if (task.HasDone())
-			{
-				ls << "The task should not be marked done before running." << lferr;
+				double value = 1.0 / static_cast<double>(i);
+				value *= value;
+				taskResult += value;
 			}
 
-			auto& engine = Engine::Get();
-			auto& taskSys = engine.GetTaskSystem();
+			auto* totalSumPtr = static_cast<double*>(userData);
+			double& totalSum = *totalSumPtr;
+			totalSum += static_cast<float>(taskResult);
 
-			for (std::size_t i = 0; i < Count; i += Increment)
+			return end - start;
+		};
+
+		Task task("TestTask", func, &result);
+		if (task.HasDone())
+		{
+			ls << "The task should not be marked done before running." << lferr;
+		}
+
+		auto& engine = Engine::Get();
+		auto& taskSys = engine.GetTaskSystem();
+
+		for (std::size_t i = 0; i < Count; i += Increment)
+		{
+			taskSys.Enqueue(task.GenerateSubTask(i , i + Increment));
+		}
+
+		task.BusyWait();
+
+		if (!task.HasDone())
+		{
+			ls << "The task should be marked done after running." << lferr;
+		}
+
+		constexpr double EulerAnswer = Pi * Pi/ 6.0;
+		ls << "Test Result = " << result << ", Pi/6 = " << EulerAnswer << lf;
+
+		const double error = std::round(result - EulerAnswer);
+		if (error > Epsilon)
+		{
+			ls << "The error exceeds limit. Error = " << error << lferr;
+		}
+	});
+
+	AddTest("Bagel Problem (Incremental Task)", [this](TLogOut& ls)
+	{
+		constexpr std::size_t Count = 1000000;
+		constexpr std::size_t NumSubtasks = 5;
+		constexpr std::size_t Increment = Count / NumSubtasks;
+
+		double result = 0;
+
+		auto func = [](void* userData, std::size_t start, std::size_t end) -> std::size_t
+		{
+			double taskResult = 0;
+
+			auto incEnd = std::min(end, start + (Increment / 7));
+			for(std::size_t i = start + 1; i <= incEnd; ++i)
 			{
-				taskSys.Enqueue(task.GenerateSubTask(i , i + Increment));
+				double value = 1.0 / static_cast<double>(i);
+				value *= value;
+				taskResult += value;
 			}
 
-			task.BusyWait();
+			auto* totalSumPtr = static_cast<double*>(userData);
+			double& totalSum = *totalSumPtr;
+			totalSum += static_cast<float>(taskResult);
 
-			if (!task.HasDone())
-			{
-				ls << "The task should be marked done after running." << lferr;
-			}
+			return incEnd - start;
+		};
 
-			constexpr double EulerAnswer = Pi * Pi/ 6.0;
-			ls << "Test Result = " << result << ", Pi/6 = " << EulerAnswer << lf;
+		Task task("TestTask", func, &result);
+		if (task.HasDone())
+		{
+			ls << "The task should not be marked done before running." << lferr;
+		}
 
-			const double error = std::round(result - EulerAnswer);
-			if (error > Epsilon)
-			{
-				ls << "The error exceeds limit. Error = " << error << lferr;
-			}
-		});
-	}
+		auto& engine = Engine::Get();
+		auto& taskSys = engine.GetTaskSystem();
+
+		for (std::size_t i = 0; i < Count; i += Increment)
+		{
+			taskSys.Enqueue(task.GenerateSubTask(i , i + Increment));
+		}
+
+		task.BusyWait();
+
+		if (!task.HasDone())
+		{
+			ls << "The task should be marked done after running." << lferr;
+		}
+
+		constexpr double EulerAnswer = Pi * Pi/ 6.0;
+		ls << "Test Result = " << result << ", Pi/6 = " << EulerAnswer << lf;
+
+		const double error = std::round(result - EulerAnswer);
+		if (error > Epsilon)
+		{
+			ls << "The error exceeds limit. Error = " << error << lferr;
+		}
+	});
+}
 
 } // namespace hbe
 #endif //__UNIT_TEST__

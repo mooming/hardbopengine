@@ -4,30 +4,31 @@
 
 #include "StaticStringTable.h"
 
+
 namespace hbe
 {
 
-	StaticString::StaticString()
+	StaticString::StaticString() noexcept
 	{
 		static StaticString null("None");
 		id = null.id;
 	}
 
-	StaticString::StaticString(StaticStringID id) : id(id) {}
+	StaticString::StaticString(StaticStringID id) noexcept : id(id) {}
 
-	StaticString::StaticString(const char* string)
+	StaticString::StaticString(const char* string) noexcept
 	{
 		auto& ssTable = StaticStringTable::GetInstance();
 		id = ssTable.Register(string);
 	}
 
-	StaticString::StaticString(const std::string_view& str)
+	StaticString::StaticString(const std::string_view& str) noexcept
 	{
 		auto& ssTable = StaticStringTable::GetInstance();
 		id = ssTable.Register(str);
 	}
 
-	const char* StaticString::c_str() const
+	const char* StaticString::c_str() const noexcept
 	{
 		auto& ssTable = StaticStringTable::GetInstance();
 		return ssTable.Get(id);

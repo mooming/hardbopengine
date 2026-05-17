@@ -5,33 +5,16 @@
 #include "../Engine/Engine.h"
 #include "Core/TaskSystem.h"
 
+
 namespace hbe
 {
 
-	ResourceManager::ResourceManager() {}
+	ResourceManager::ResourceManager() noexcept = default;
 
-	ResourceManager::~ResourceManager() {}
+	ResourceManager::~ResourceManager() noexcept = default;
 
-	void ResourceManager::PostUpdate(Engine& engine) {}
+	void ResourceManager::PostUpdate(Engine& engine) noexcept {}
 
-	Resource ResourceManager::RequestLoad(StaticString path)
-	{
-		Assert(TaskSystem::IsBaseThread());
-
-		Resource resource;
-
-		return resource;
-	}
-
-	Resource ResourceManager::Load(StaticString path)
-	{
-		Assert(TaskSystem::IsBaseThread());
-
-		Resource resource;
-
-		return resource;
-	}
-
-	void ResourceManager::RequestTasks(TaskSystem& taskSys) {}
+	void ResourceManager::RequestTasks(TaskSystem& taskSys) noexcept {}
 
 } // namespace hbe

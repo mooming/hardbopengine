@@ -26,24 +26,20 @@ namespace hbe
 		// TPDF - TReal p(const TInput& input), Probability Density Function
 		// TRandomGen - TInput sample(), return a random number
 		template<typename TFunction, typename TPDF, typename TRandomGen>
-		bool operator()(TOutput& result, const TFunction& f, const TPDF& p, const TRandomGen& sample,
-						const TInteger numIterations)
+		[[nodiscard]] bool operator()(TOutput& result, const TFunction& f, const TPDF& p, const TRandomGen& sample,
+									   const TInteger numIterations) noexcept
 		{
 			result = 0;
 
 			if (numIterations <= 0)
-			{
 				return false;
-			}
 
 			for (TInteger i = 0; i < numIterations; ++i)
 			{
 				const TInput x = sample();
 				const TReal p_x = p(x);
 				if (p_x <= 0)
-				{
 					return false;
-				}
 
 				const TOutput f_x = f(x);
 				const TOutput fx_over_px = f_x / p_x;
@@ -65,13 +61,13 @@ namespace hbe
 namespace hbe
 {
 
-	class MonteCarloIntegrationTest : public TestCollection
+	class MonteCarloIntegrationTest final : public TestCollection
 	{
 	public:
 		MonteCarloIntegrationTest() : TestCollection("Monte Carlo Integration Test") {}
 
 	protected:
-		void Prepare() override;
+		void Prepare() noexcept override;
 	};
 } // namespace hbe
 #endif //__UNIT_TEST__

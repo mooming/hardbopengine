@@ -13,11 +13,11 @@ namespace hbe
 		static constexpr uint8_t* Default = nullptr;
 		const uint8_t* ptr;
 
-		inline StaticStringID() : ptr(Default) {}
+		StaticStringID() : ptr(Default) {}
 
-		inline bool operator==(const StaticStringID& rhs) const { return ptr == rhs.ptr; }
+		bool operator==(const StaticStringID& rhs) const { return ptr == rhs.ptr; }
 
-		inline bool operator<(const StaticStringID& rhs) const { return ptr < rhs.ptr; }
+		bool operator<(const StaticStringID& rhs) const { return ptr < rhs.ptr; }
 	};
 
 } // namespace hbe

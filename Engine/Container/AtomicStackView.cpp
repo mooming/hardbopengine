@@ -7,6 +7,7 @@
 #include "HSTL/HVector.h"
 #include "Log/Logger.h"
 
+
 namespace hbe
 {
 
@@ -14,12 +15,13 @@ namespace hbe
 	{
 
 		template<typename T>
-		struct TNode final
+		class TNode final
 		{
+		public:
 			T value;
-			TNode* next = nullptr;
+			TNode* next;
 
-			TNode(const T& value) : value(value) {}
+			TNode(const T& value) : value(value), next(nullptr) {}
 		};
 
 	} // namespace

@@ -2,6 +2,7 @@
 
 #include "PoolAllocator.h"
 
+
 #include "Core/CommonUtil.h"
 #include "Core/Debug.h"
 #include "MemoryManager.h"
@@ -10,14 +11,14 @@
 namespace hbe
 {
 #if PROFILE_ENABLED
-	PoolAllocator::PoolAllocator(const char* name, TSize inBlockSize, TSize numberOfBlocks,
+	PoolAllocator::PoolAllocator(const char* name, TSize blockSize, TSize numberOfBlocks,
 								 const hbe::source_location location)
 #else // PROFILE_ENABLED
-	PoolAllocator::PoolAllocator(const char* name, TSize inBlockSize, TSize numberOfBlocks)
+	PoolAllocator::PoolAllocator(const char* name, TSize blockSize, TSize numberOfBlocks)
 #endif // PROFILE_ENABLED
 		:
 		id(InvalidAllocatorID), parentID(InvalidAllocatorID), name(name),
-		blockSize(OS::GetAligned(std::max(inBlockSize, sizeof(TSize)), sizeof(TSize))), numberOfBlocks(numberOfBlocks),
+		blockSize(OS::GetAligned(std::max(blockSize, sizeof(TSize)), sizeof(TSize))), numberOfBlocks(numberOfBlocks),
 		numberOfFreeBlocks(numberOfBlocks), buffer(nullptr)
 #if PROFILE_ENABLED
 		,
@@ -245,7 +246,7 @@ namespace hbe
 	PoolAllocator::TSize PoolAllocator::ReadNextIndex(Pointer ptr) const
 	{
 		auto index = GetAs<TSize>(ptr);
-		Assert(index <= numberOfBlocks, "PoolAllocator: out of bounds index = %u / %u", index, numberOfBlocks);
+		Assert(index <= numberOfBlocks, "PoolAllocator: out of bounds index = %zu / %zu", index, numberOfBlocks);
 
 		return index;
 	}

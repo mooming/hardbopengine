@@ -1,14 +1,15 @@
 // Copyright (c) 2026 Hansol Park (mooming.go@gmail.com). All rights reserved.
 
-// MetalRenderer.mm - Objective-C++ implementation with full render pipeline
+#include "MetalRenderer.h"
+
+#import <Cocoa/Cocoa.h>
 #import <Foundation/Foundation.h>
 #import <Metal/Metal.h>
 #import <MetalKit/MetalKit.h>
 #import <QuartzCore/QuartzCore.h>
-#import <Cocoa/Cocoa.h>
-
-#include "MetalRenderer.h"
 #include <cmath>
+#include <iostream>
+
 
 namespace hbe {
 namespace Renderer {
@@ -18,13 +19,13 @@ struct QuadVertex {
     float r, g, b, a;
 };
 
-MetalRenderer::MetalRenderer()
+MetalRenderer::MetalRenderer() noexcept
+    : apiType(APIType::Metal)
 {
-    m_APIType = APIType::Metal;
-    m_Capabilities.apiType = APIType::Metal;
-    m_Capabilities.supportsComputeShader = true;
-    m_Capabilities.maxTextureSize = 4096;
-    m_Capabilities.maxVertexAttribs = 31;
+    capabilities.apiType = APIType::Metal;
+    capabilities.supportsComputeShader = true;
+    capabilities.maxTextureSize = 4096;
+    capabilities.maxVertexAttribs = 31;
 }
 
 MetalRenderer::~MetalRenderer()
@@ -32,34 +33,40 @@ MetalRenderer::~MetalRenderer()
     Shutdown();
 }
 
-bool MetalRenderer::Initialize(OS::IWindow* window)
+bool MetalRenderer::Initialize(OS::IWindow* window) noexcept
 {
-    if (m_Initialized)
+    if (initialized) return true;
+
+    if (window == nullptr)
     {
-        return true;
+        std::cerr << "Error: MetalRenderer::Initialize - window is null" << std::endl;
+        return false;
     }
 
-    m_Window = window;
+    this->window = window;
 
     NSWindow* nsWindow = (NSWindow*)window->GetNativeHandle();
     if (nsWindow == nil)
     {
+        std::cerr << "Error: MetalRenderer::Initialize - failed to get native window handle" << std::endl;
         return false;
     }
 
     id<MTLDevice> device = MTLCreateSystemDefaultDevice();
     if (device == nil)
     {
+        std::cerr << "Error: MetalRenderer::Initialize - Metal is not supported on this device" << std::endl;
         return false;
     }
-    m_Device = (intptr_t)CFBridgingRetain(device);
+    this->device = (intptr_t)CFBridgingRetain(device);
 
     id<MTLCommandQueue> queue = [device newCommandQueue];
     if (queue == nil)
     {
+        std::cerr << "Error: MetalRenderer::Initialize - failed to create command queue" << std::endl;
         return false;
     }
-    m_CommandQueue = (intptr_t)CFBridgingRetain(queue);
+    commandQueue = (intptr_t)CFBridgingRetain(queue);
 
     NSView* contentView = nsWindow.contentView;
     CAMetalLayer* metalLayer = [CAMetalLayer layer];
@@ -72,7 +79,7 @@ bool MetalRenderer::Initialize(OS::IWindow* window)
     contentView.wantsLayer = YES;
     contentView.layer = metalLayer;
     contentView.layer.contentsScale = nsWindow.backingScaleFactor;
-    m_MetalLayer = (intptr_t)CFBridgingRetain(metalLayer);
+    this->metalLayer = (intptr_t)CFBridgingRetain(metalLayer);
 
     NSString* shaderSource = @""
         "#include <metal_stdlib>\n"
@@ -105,6 +112,7 @@ bool MetalRenderer::Initialize(OS::IWindow* window)
                                                 error:&compileError];
     if (library == nil)
     {
+        std::cerr << "Error: MetalRenderer::Initialize - failed to compile shaders" << std::endl;
         return false;
     }
 
@@ -113,6 +121,7 @@ bool MetalRenderer::Initialize(OS::IWindow* window)
 
     if (vertexFunc == nil || fragmentFunc == nil)
     {
+        std::cerr << "Error: MetalRenderer::Initialize - failed to find shader functions" << std::endl;
         return false;
     }
 
@@ -126,10 +135,11 @@ bool MetalRenderer::Initialize(OS::IWindow* window)
     id<MTLRenderPipelineState> pipeline = [device newRenderPipelineStateWithDescriptor:pipelineDesc error:&pipelineError];
     if (pipeline == nil)
     {
+        std::cerr << "Error: MetalRenderer::Initialize - failed to create pipeline state" << std::endl;
         return false;
     }
 
-    m_PipelineState = (intptr_t)CFBridgingRetain(pipeline);
+    pipelineState = (intptr_t)CFBridgingRetain(pipeline);
 
     QuadVertex vertices[6] = {
         {-0.5f, -0.5f,  1.0f, 0.0f, 0.0f, 1.0f},
@@ -143,71 +153,63 @@ bool MetalRenderer::Initialize(OS::IWindow* window)
     id<MTLBuffer> vertexBuffer = [device newBufferWithBytes:vertices
                                                    length:sizeof(vertices)
                                                   options:MTLStorageModeShared];
-    m_VertexBuffer = (intptr_t)CFBridgingRetain(vertexBuffer);
+    this->vertexBuffer = (intptr_t)CFBridgingRetain(vertexBuffer);
 
-    m_Initialized = true;
+    initialized = true;
+
     return true;
 }
 
-void MetalRenderer::Shutdown()
+void MetalRenderer::Shutdown() noexcept
 {
-    if (!m_Initialized)
+    if (!initialized) return;
+
+    if (pipelineState != 0)
     {
-        return;
+        CFBridgingRelease((void*)pipelineState);
+        pipelineState = 0;
     }
 
-    if (m_PipelineState != 0)
+    if (vertexBuffer != 0)
     {
-        CFBridgingRelease((void*)m_PipelineState);
-        m_PipelineState = 0;
+        CFBridgingRelease((void*)vertexBuffer);
+        vertexBuffer = 0;
     }
 
-    if (m_VertexBuffer != 0)
+    if (commandQueue != 0)
     {
-        CFBridgingRelease((void*)m_VertexBuffer);
-        m_VertexBuffer = 0;
+        CFBridgingRelease((void*)commandQueue);
+        commandQueue = 0;
     }
 
-    if (m_CommandQueue != 0)
+    if (device != 0)
     {
-        CFBridgingRelease((void*)m_CommandQueue);
-        m_CommandQueue = 0;
+        CFBridgingRelease((void*)device);
+        device = 0;
     }
 
-    if (m_Device != 0)
+    if (metalLayer != 0)
     {
-        CFBridgingRelease((void*)m_Device);
-        m_Device = 0;
+        CFBridgingRelease((void*)metalLayer);
+        metalLayer = 0;
     }
 
-    if (m_MetalLayer != 0)
-    {
-        CFBridgingRelease((void*)m_MetalLayer);
-        m_MetalLayer = 0;
-    }
-
-    m_Initialized = false;
+    initialized = false;
 }
 
-void MetalRenderer::BeginFrame()
+void MetalRenderer::BeginFrame() noexcept
 {
 }
 
-void MetalRenderer::EndFrame()
+void MetalRenderer::EndFrame() noexcept
 {
-    if (!m_Initialized || m_MetalLayer == 0 || m_CommandQueue == 0)
-    {
-        return;
-    }
+    if (!initialized || metalLayer == 0 || commandQueue == 0) return;
 
-    CAMetalLayer* metalLayer = (CAMetalLayer*)m_MetalLayer;
+    CAMetalLayer* metalLayer = (CAMetalLayer*)this->metalLayer;
     id<CAMetalDrawable> drawable = [metalLayer nextDrawable];
-    if (drawable == nil)
-    {
-        return;
-    }
+    if (drawable == nil) return;
 
-    id<MTLCommandQueue> queue = (id<MTLCommandQueue>)m_CommandQueue;
+    id<MTLCommandQueue> queue = (id<MTLCommandQueue>)commandQueue;
     id<MTLCommandBuffer> commandBuffer = [queue commandBuffer];
 
     MTLRenderPassDescriptor* passDesc = [MTLRenderPassDescriptor renderPassDescriptor];
@@ -217,8 +219,8 @@ void MetalRenderer::EndFrame()
     passDesc.colorAttachments[0].clearColor = MTLClearColorMake(0.1, 0.1, 0.15, 1.0);
 
     id<MTLRenderCommandEncoder> encoder = [commandBuffer renderCommandEncoderWithDescriptor:passDesc];
-    [encoder setRenderPipelineState:(id<MTLRenderPipelineState>)m_PipelineState];
-    [encoder setVertexBuffer:(id<MTLBuffer>)m_VertexBuffer offset:0 atIndex:0];
+    [encoder setRenderPipelineState:(id<MTLRenderPipelineState>)pipelineState];
+    [encoder setVertexBuffer:(id<MTLBuffer>)vertexBuffer offset:0 atIndex:0];
     [encoder drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:6];
     [encoder endEncoding];
 
@@ -227,15 +229,15 @@ void MetalRenderer::EndFrame()
     [commandBuffer waitUntilCompleted];
 }
 
-void MetalRenderer::Render(float deltaTime)
+void MetalRenderer::Render(float deltaTime) noexcept
 {
-    m_RotationAngle += deltaTime * 90.0f;
-    if (m_RotationAngle > 360.0f)
+    rotationAngle += deltaTime * 90.0f;
+    if (rotationAngle > 360.0f)
     {
-        m_RotationAngle -= 360.0f;
+        rotationAngle -= 360.0f;
     }
 
-    float rad = m_RotationAngle * M_PI / 180.0f;
+    float rad = rotationAngle * M_PI / 180.0f;
     float c = cosf(rad);
     float s = sinf(rad);
     float x1 = -0.5f * c - (-0.5f) * s;
@@ -256,28 +258,28 @@ void MetalRenderer::Render(float deltaTime)
         {x4, y4,  1.0f, 1.0f, 1.0f, 1.0f}
     };
 
-    if (m_VertexBuffer != 0)
+    if (vertexBuffer != 0)
     {
-        CFBridgingRelease((void*)m_VertexBuffer);
+        CFBridgingRelease((void*)vertexBuffer);
     }
 
-    id<MTLDevice> device = (id<MTLDevice>)m_Device;
+    id<MTLDevice> device = (id<MTLDevice>)this->device;
     id<MTLBuffer> newBuffer = [device newBufferWithBytes:vertices
                                                length:sizeof(vertices)
                                               options:MTLStorageModeShared];
-    m_VertexBuffer = (intptr_t)CFBridgingRetain(newBuffer);
+    vertexBuffer = (intptr_t)CFBridgingRetain(newBuffer);
 
     (void)deltaTime;
 }
 
-APIType MetalRenderer::GetAPIType() const
+APIType MetalRenderer::GetAPIType() const noexcept
 {
-    return m_APIType;
+    return apiType;
 }
 
-RenderCapabilities MetalRenderer::GetCapabilities() const
+RenderCapabilities MetalRenderer::GetCapabilities() const noexcept
 {
-    return m_Capabilities;
+    return capabilities;
 }
 
 } // namespace Renderer

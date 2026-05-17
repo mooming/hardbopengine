@@ -3,6 +3,7 @@
 #pragma once
 
 #include <thread>
+
 #include "BuildConfig.h"
 #include "ConfigSystem.h"
 #include "Core/Debug.h"
@@ -17,6 +18,7 @@ namespace hbe
 	template<typename T, bool IsAtomic = false>
 	class ConfigParam final
 	{
+	public:
 		static constexpr size_t MaxNameLength = 127;
 		static constexpr size_t MaxDescLength = 127;
 
@@ -71,7 +73,7 @@ namespace hbe
 #endif // ENGINE_PARAM_DESC_ENABLED
 		}
 
-		T Get()
+		[[nodiscard]] T Get() const noexcept
 		{
 #ifdef __DEBUG__
 			Assert(IsAtomic || std::this_thread::get_id() == threadID);
@@ -80,7 +82,7 @@ namespace hbe
 			return value;
 		}
 
-		void Set(const T& inValue)
+		void Set(const T& inValue) noexcept
 		{
 #ifdef __DEBUG__
 			Assert(IsAtomic || std::this_thread::get_id() == threadID);

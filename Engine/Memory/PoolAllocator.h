@@ -36,10 +36,10 @@ namespace hbe
 
 	public:
 #if PROFILE_ENABLED
-		PoolAllocator(const char* name, TSize inBlockSize, TSize numberOfBlocks,
+		PoolAllocator(const char* name, TSize blockSize, TSize numberOfBlocks,
 					  hbe::source_location location = hbe::source_location::current());
 #else // PROFILE_ENABLED
-		PoolAllocator(const char* name, TSize inBlockSize, TSize numberOfBlocks);
+		PoolAllocator(const char* name, TSize blockSize, TSize numberOfBlocks);
 #endif // PROFILE_ENABLED
 
 		PoolAllocator(PoolAllocator&& rhs) noexcept;
@@ -54,7 +54,7 @@ namespace hbe
 
 		[[nodiscard]] auto GetID() const { return id; }
 		[[nodiscard]] auto GetName() const { return name; }
-		size_t GetSize(Pointer) const { return blockSize; }
+		[[nodiscard]] size_t GetSize(Pointer) const { return blockSize; }
 		[[nodiscard]] size_t GetUsage() const { return (numberOfBlocks - numberOfFreeBlocks) * blockSize; }
 		[[nodiscard]] TSize GetAvailableBlocks() const { return numberOfFreeBlocks; }
 		[[nodiscard]] size_t GetAvailableMemory() const { return numberOfFreeBlocks * blockSize; }

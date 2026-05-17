@@ -7,6 +7,7 @@
 #include "OSAL/Intrinsic.h"
 #include "String/StringUtil.h"
 
+
 namespace hbe
 {
 
@@ -29,10 +30,7 @@ namespace hbe
 
 	Buffer::~Buffer()
 	{
-		if (data == nullptr)
-		{
-			return;
-		}
+	if (data == nullptr) return;
 
 		if (unlikely(releaser == nullptr))
 		{
@@ -56,7 +54,7 @@ namespace hbe
 #endif // __DEBUG__
 	}
 
-	StaticString Buffer::GetClassName() const
+	StaticString Buffer::GetClassName() const noexcept
 	{
 		using namespace StringUtil;
 		static auto className = ToCompactClassName(__PRETTY_FUNCTION__);

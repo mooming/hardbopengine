@@ -3,6 +3,7 @@
 #pragma once
 
 #include <limits>
+
 #include "Buffer.h"
 #include "BufferTypes.h"
 #include "Core/Debug.h"
@@ -13,7 +14,7 @@
 
 namespace OS
 {
-	struct FileHandle;
+	class FileHandle;
 };
 
 namespace hbe
@@ -23,15 +24,15 @@ namespace hbe
 	{
 		using namespace BufferTypes;
 
-		Buffer GenerateDummyBuffer(size_t size = std::numeric_limits<size_t>::max());
-		Buffer GenerateFileBuffer(StaticString path, OS::FileOpenMode openMode, OS::ProtectionMode protection,
+		[[nodiscard]] Buffer GenerateDummyBuffer(size_t size = std::numeric_limits<size_t>::max()) noexcept;
+		[[nodiscard]] Buffer GenerateFileBuffer(StaticString path, OS::FileOpenMode openMode, OS::ProtectionMode protection,
 								  size_t size = 0);
-		Buffer GetFileBuffer(StaticString path);
-		Buffer GetReadOnlyFileBuffer(StaticString path);
-		Buffer GetWriteOnlyFileBuffer(StaticString path, size_t size);
+		[[nodiscard]] Buffer GetFileBuffer(StaticString path);
+		[[nodiscard]] Buffer GetReadOnlyFileBuffer(StaticString path);
+		[[nodiscard]] Buffer GetWriteOnlyFileBuffer(StaticString path, size_t size);
 
 		template<typename T>
-		Buffer GetMemoryBuffer(TSize numElements, const T& defaultValue)
+		[[nodiscard]] Buffer GetMemoryBuffer(TSize numElements, const T& defaultValue)
 		{
 			auto& mmgr = MemoryManager::GetInstance();
 			auto generator = [&mmgr, numElements, defaultValue](TSize& outSize, TBufferData& outData)

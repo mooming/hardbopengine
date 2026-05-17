@@ -11,11 +11,11 @@ namespace Renderer
 {
 
 class IRenderer;
-class RendererFactory
+class RendererFactory final
 {
 public:
-	static std::unique_ptr<IRenderer> Create(APIType preferredAPI = APIType::Unknown);
-	static std::unique_ptr<IRenderer> CreateWithFallback();
+	[[nodiscard]] static std::unique_ptr<IRenderer> Create(APIType preferredAPI = APIType::Unknown) noexcept;
+	[[nodiscard]] static std::unique_ptr<IRenderer> CreateWithFallback() noexcept;
 };
 
 } // namespace Renderer

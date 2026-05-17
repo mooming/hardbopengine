@@ -9,33 +9,33 @@
 namespace hbe
 {
 	/// @brief An Oriented Bounding Box class for collision detection.
-	template<typename Number>
-	class OBB
+	template<typename TNumber>
+	class OBB final
 	{
-		using Vec3 = Vector3<Number>;
-		using Quat = Quaternion<Number>;
+		using TVec3 = Vector3<TNumber>;
+		using TQuat = Quaternion<TNumber>;
 
 	public:
 		// offset from an object space origin
-		Vec3 center;
+		TVec3 center;
 		// offset from the center
-		Vec3 half;
+		TVec3 half;
 		// rotation in an object space
-		Quat rotation;
+		TQuat rotation;
 
 	public:
-		OBB() : center(), half(), rotation() {}
+		OBB() noexcept : center(), half(), rotation() {}
 
-		OBB(std::nullptr_t) : center(nullptr), half(nullptr), rotation(nullptr) {}
+		explicit OBB(std::nullptr_t) noexcept : center(nullptr), half(nullptr), rotation(nullptr) {}
 
-		OBB(const Vec3& center, const Vec3& half, const Quat& rotation) : center(center), half(half), rotation(rotation)
+		OBB(const TVec3& center, const TVec3& half, const TQuat& rotation) noexcept : center(center), half(half), rotation(rotation)
 		{}
 
-		OBB(const AABB<Vec3>& aabb, const Quat& rotation) :
+		OBB(const AABB<TVec3>& aabb, const TQuat& rotation) noexcept :
 			center((aabb.min + aabb.max) * 0.5f), half((aabb.max - aabb.min) * 0.5f), rotation(rotation)
 		{}
 
-		bool IsContaining(const Vec3& objSpacePoint) const
+		[[nodiscard]] bool IsContaining(const TVec3& objSpacePoint) const noexcept
 		{
 			auto point = ToOBBSpace(objSpacePoint);
 
@@ -57,11 +57,11 @@ namespace hbe
 			return true;
 		}
 
-		Vec3 Closest(const Vec3& objSpacePoint) const
+		[[nodiscard]] TVec3 Closest(const TVec3& objSpacePoint) const noexcept
 		{
 			auto point = ToOBBSpace(objSpacePoint);
 
-			auto length = Vec3::order;
+			auto length = TVec3::order;
 			for (int i = 0; i < length; ++i)
 			{
 				float h = half.a[i];
@@ -71,10 +71,11 @@ namespace hbe
 			return ToObjectSpace(point);
 		}
 
-		bool HasIntersection(const OBB& obb, const Vec3& objPosition, const Quat& objRot) { return false; }
+		[[nodiscard]] bool HasIntersection(const OBB& obb, const TVec3& objPosition, const TQuat& objRot) noexcept { return false; }
+
 
 	private:
-		Vec3 ToOBBSpace(const Vec3& objSpacePoint) const
+		[[nodiscard]] TVec3 ToOBBSpace(const TVec3& objSpacePoint) const noexcept
 		{
 			auto point = objSpacePoint - center;
 			point = rotation.Inverse() * point;
@@ -82,7 +83,7 @@ namespace hbe
 			return point;
 		}
 
-		Vec3 ToObjectSpace(const Vec3& obbSpacePoint) const
+		[[nodiscard]] TVec3 ToObjectSpace(const TVec3& obbSpacePoint) const noexcept
 		{
 			auto point = rotation * obbSpacePoint;
 			point -= center;
@@ -98,13 +99,13 @@ namespace hbe
 namespace hbe
 {
 
-	class OBBTest : public TestCollection
+	class OBBTest final : public TestCollection
 	{
 	public:
 		OBBTest() : TestCollection("OBBTest") {}
 
 	protected:
-		virtual void Prepare() override;
+		void Prepare() noexcept override;
 	};
 } // namespace hbe
 #endif //__UNIT_TEST__

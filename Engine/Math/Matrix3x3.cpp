@@ -2,6 +2,7 @@
 
 #include "Matrix3x3.h"
 
+
 namespace hbe
 {
 	template class Matrix3x3<float>;
@@ -10,25 +11,25 @@ namespace hbe
 #ifdef __UNIT_TEST__
 #include "HSTL/HVector.h"
 
-void hbe::Matrix3x3Test::Prepare()
+void hbe::Matrix3x3Test::Prepare() noexcept
 {
 	AddTest("Matrix3x3 Test", [this](auto& ls)
 	{
-		const auto& right = Float3::Right;
-		const auto& up = Float3::Up;
-		const auto& forward = Float3::Forward;
+		const auto& right = TFloat3::Right;
+		const auto& up = TFloat3::Up;
+		const auto& forward = TFloat3::Forward;
 
-#ifdef __LEFT_HANDED__
-		Float3x3 rRight = Float3x3::CreateRotation(90, 0, 0);
-		Float3x3 rUp = Float3x3::CreateRotation(0, 90, 0);
-		Float3x3 rForward = Float3x3::CreateRotation(0, 0, 90);
-#endif //__LEFT_HANDED__
+#ifndef RIGHT_HANDED_COORDINATE
+		TFloat3x3 rRight = TFloat3x3::CreateRotation(90, 0, 0);
+		TFloat3x3 rUp = TFloat3x3::CreateRotation(0, 90, 0);
+		TFloat3x3 rForward = TFloat3x3::CreateRotation(0, 0, 90);
+#endif
 
-#ifdef __RIGHT_HANDED__
-		Float3x3 rRight = Float3x3::CreateRotation(90, 0, 0);
-		Float3x3 rUp = Float3x3::CreateRotation(0, 0, 90);
-		Float3x3 rForward = Float3x3::CreateRotation(0, 90, 0);
-#endif //__RIGHT_HANDED__
+#ifdef RIGHT_HANDED_COORDINATE
+		TFloat3x3 rRight = TFloat3x3::CreateRotation(90, 0, 0);
+		TFloat3x3 rUp = TFloat3x3::CreateRotation(0, 0, 90);
+		TFloat3x3 rForward = TFloat3x3::CreateRotation(0, 90, 0);
+#endif
 
 		if (rRight * right != right)
 		{

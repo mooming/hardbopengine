@@ -3,56 +3,57 @@
 
 #include "MainThreadTaskQueue.h"
 
+
 namespace hbe
 {
 
 MainThreadTaskQueue::MainThreadTaskQueue()
-	: isRunning(true)
+: isRunning(true)
 {
 }
 
-void MainThreadTaskQueue::Enqueue(TTaskFunc taskFunc, void* userData, uint8_t priority)
+void MainThreadTaskQueue::Enqueue(TTaskFunc taskFunc, void* userData, uint8_t priority) noexcept
 {
-	TaskItem item(priority, taskFunc, userData);
-	queue.Push(item);
+TaskItem item(priority, taskFunc, userData);
+queue.Push(item);
 }
 
-size_t MainThreadTaskQueue::ProcessTasks()
+size_t MainThreadTaskQueue::ProcessTasks() noexcept
 {
-	size_t processed = 0;
+size_t processed = 0;
 
-	while (!queue.IsEmpty())
+while (!queue.IsEmpty())
+{
+	auto itemOpt = queue.Pop();
+	if (!itemOpt.has_value())
 	{
-		auto itemOpt = queue.Pop();
-		if (!itemOpt.has_value())
-		{
-			break;
-		}
-
-		TaskItem& item = *itemOpt;
-		if (item.taskFunc)
-		{
-			item.taskFunc(item.userData);
-			++processed;
-		}
+		break;
 	}
 
-	return processed;
+	TaskItem& item = *itemOpt;
+	if (item.taskFunc)
+	{
+		item.taskFunc(item.userData);
+		++processed;
+	}
 }
 
-bool MainThreadTaskQueue::HasPendingTasks() const
-{
-	return !queue.IsEmpty();
+return processed;
 }
 
-void MainThreadTaskQueue::RequestStop()
+bool MainThreadTaskQueue::HasPendingTasks() const noexcept
 {
-	isRunning = false;
+return !queue.IsEmpty();
 }
 
-bool MainThreadTaskQueue::IsRunning() const
+void MainThreadTaskQueue::RequestStop() noexcept
 {
-	return isRunning;
+isRunning = false;
+}
+
+bool MainThreadTaskQueue::IsRunning() const noexcept
+{
+return isRunning;
 }
 
 } // namespace hbe

@@ -43,15 +43,16 @@ namespace hbe
 	 * allocation and registration/de-registration of allocation IDs.
 	 */
 	template<class T, size_t BlockSize, size_t NumBlocks>
-	struct InlinePoolAllocator
+	class InlinePoolAllocator
 	{
+	public:
 		using TIndex = size_t;
 		using value_type = T;
 
-		template<class U>
+		template<class TOther>
 		struct rebind
 		{
-			using other = InlinePoolAllocator<U, BlockSize, NumBlocks>;
+			using other = InlinePoolAllocator<TOther, BlockSize, NumBlocks>;
 		};
 
 		static constexpr size_t ActualBlockSize = std::max(BlockSize, sizeof(void*));
@@ -67,7 +68,8 @@ namespace hbe
 		alignas(AlignUnit) uint8_t block[ActualNumBlocks][BlockSizeInBytes];
 
 	public:
-		InlinePoolAllocator() : id(InvalidAllocatorID), parentID(InvalidAllocatorID), availableBlock(&block[0][0]), immediateBlock(nullptr)
+		InlinePoolAllocator() :
+			id(InvalidAllocatorID), parentID(InvalidAllocatorID), availableBlock(&block[0][0]), immediateBlock(nullptr)
 		{
 			Assert(OS::CheckAligned(block[0]));
 			parentID = MemoryManager::GetCurrentAllocatorID();
@@ -80,10 +82,10 @@ namespace hbe
 
 			WritePointerToNext(block[ActualNumBlocks-1], nullptr);
 
-#if __MEMORY_VERIFICATION__
+#if MEMORY_VERIFICATION_ENABLED
 			constexpr size_t length = sizeof(T) * ActualBlockSize * ActualNumBlocks;
 			std::memset(buffer, 0, length);
-#endif // __MEMORY_VERIFICATION__
+#endif // MEMORY_VERIFICATION_ENABLED
 
 			RegisterAllocator();
 		}
@@ -91,10 +93,10 @@ namespace hbe
 		InlinePoolAllocator(const InlinePoolAllocator&) : InlinePoolAllocator() { Assert(false); }
 		virtual ~InlinePoolAllocator() { DeregisterAllocator(); }
 
-		template<typename U>
-		explicit operator InlinePoolAllocator<U, ActualBlockSize, ActualNumBlocks>()
+		template<typename TOther>
+		explicit operator InlinePoolAllocator<TOther, ActualBlockSize, ActualNumBlocks>() noexcept
 		{
-			using TCastedAlloc = InlinePoolAllocator<U, ActualBlockSize, ActualNumBlocks>;
+			using TCastedAlloc = InlinePoolAllocator<TOther, ActualBlockSize, ActualNumBlocks>;
 
 			if (parentID != InvalidAllocatorID)
 			{
@@ -111,7 +113,7 @@ namespace hbe
 		}
 
 		// This function name is enforced by STL
-		T* allocate(std::size_t n)
+		[[nodiscard]] T* allocate(std::size_t n) noexcept
 		{
 			const auto nBytes = n * sizeof(T);
 			auto ptr = AllocateBytes(nBytes);
@@ -125,15 +127,15 @@ namespace hbe
 			return DeallocateBytes(ptr, n);
 		}
 
-		auto GetID() const { return id; }
-		static auto GetBlockSize() { return ActualBlockSize; }
-		static auto GetNumBlocks() { return ActualNumBlocks; }
+		[[nodiscard]] auto GetID() const { return id; }
+		[[nodiscard]] static auto GetBlockSize() { return ActualBlockSize; }
+		[[nodiscard]] static auto GetNumBlocks() { return ActualNumBlocks; }
 
 		bool operator==(const InlinePoolAllocator&) const { return false; }
 		bool operator!=(const InlinePoolAllocator&) const { return true; }
 
 	private:
-		void* AllocateBytes(size_t nBytes)
+		void* AllocateBytes(size_t nBytes) noexcept
 		{
 			if (nBytes <= BlockSizeInBytes)
 			{
@@ -166,7 +168,7 @@ namespace hbe
 			return ptr;
 		}
 
-		void DeallocateBytes(void* ptr, size_t nBytes)
+		void DeallocateBytes(void* ptr, size_t nBytes) noexcept
 		{
 			if (immediateBlock == nullptr && nBytes <= BlockSizeInBytes)
 			{
@@ -192,7 +194,7 @@ namespace hbe
 #endif // PROFILE_ENABLED
 		}
 
-		void RegisterAllocator()
+		void RegisterAllocator() noexcept
 		{
 			auto& mmgr = MemoryManager::GetInstance();
 			auto allocFunc = [](void* allocatorPtr, size_t nBytes) -> void*
@@ -214,7 +216,7 @@ namespace hbe
 			FatalAssert(id != 0);
 		}
 
-		void DeregisterAllocator()
+		void DeregisterAllocator() noexcept
 		{
 			if (id == InvalidAllocatorID)
 			{
@@ -226,7 +228,7 @@ namespace hbe
 			id = InvalidAllocatorID;
 		}
 
-		bool IsValidPointer(void* ptr) const
+		[[nodiscard]] bool IsValidPointer(void* ptr) const
 		{
 			constexpr size_t LastBlockIndex = ActualNumBlocks - 1;
 			return block[0] <= ptr && ptr <= block[LastBlockIndex];

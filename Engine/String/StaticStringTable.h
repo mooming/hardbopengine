@@ -66,11 +66,11 @@ namespace hbe
 		StaticStringTable();
 		~StaticStringTable();
 
-		StaticString GetName() const;
+		[[nodiscard]] StaticString GetName() const;
 
-		StaticStringID Register(const char* str);
-		StaticStringID Register(const std::string_view& str);
-		const char* Get(StaticStringID id) const;
+		[[nodiscard]] StaticStringID Register(const char* str);
+		[[nodiscard]] StaticStringID Register(const std::string_view& str);
+		[[nodiscard]] const char* Get(StaticStringID id) const;
 
 		void PrintStringTable() const;
 

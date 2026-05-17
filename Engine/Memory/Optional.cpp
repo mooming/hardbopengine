@@ -2,6 +2,7 @@
 
 #include "Optional.h"
 
+
 #ifdef __UNIT_TEST__
 
 void hbe::OptionalTest::Prepare()

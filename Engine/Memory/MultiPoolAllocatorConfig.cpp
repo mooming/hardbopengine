@@ -2,14 +2,15 @@
 
 #include "MultiPoolAllocatorConfig.h"
 
+
 namespace hbe
 {
 
-	MultiPoolAllocatorConfig::MultiPoolAllocatorConfig(StaticStringID id, TPoolConfigs&& inConfigs) :
+	MultiPoolAllocatorConfig::MultiPoolAllocatorConfig(StaticStringID id, TPoolConfigs&& inConfigs) noexcept :
 		uniqueName(id), configs(std::move(inConfigs))
 	{}
 
-	bool MultiPoolAllocatorConfig::operator<(const MultiPoolAllocatorConfig& rhs) const
+	bool MultiPoolAllocatorConfig::operator<(const MultiPoolAllocatorConfig& rhs) const noexcept
 	{
 		return uniqueName < rhs.uniqueName;
 	}

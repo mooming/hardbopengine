@@ -18,17 +18,12 @@ namespace hbe
 	template<size_t BufferSize = 1024, class TChar = char>
 	class InlineStringBuilder final
 	{
-	private:
+	public:
 		static_assert(BufferSize > 0, "BufferSize should be greater than 0.");
 		static constexpr size_t LastIndex = BufferSize - 1;
-		using This = InlineStringBuilder;
+		using TThis = InlineStringBuilder;
 
-	private:
-		size_t length;
-		TChar buffer[BufferSize];
-
-	public:
-		InlineStringBuilder() : length(0)
+		InlineStringBuilder() noexcept : length(0)
 		{
 			buffer[0] = '\0';
 			buffer[LastIndex] = '\0';
@@ -36,20 +31,20 @@ namespace hbe
 
 		~InlineStringBuilder() = default;
 
-		void Clear()
+		void Clear() noexcept
 		{
 			length = 0;
 			buffer[0] = '\0';
 			buffer[LastIndex] = '\0';
 		}
 
-		auto c_str() const { return static_cast<const char*>(buffer); }
+		[[nodiscard]] auto c_str() const noexcept { return static_cast<const char*>(buffer); }
 
-		auto Size() const { return length; }
+		[[nodiscard]] auto Size() const noexcept { return length; }
 
-		operator const TChar*() const { return c_str(); }
+		[[nodiscard]] operator const TChar*() const noexcept { return c_str(); }
 
-		This& Hex(uint8_t value)
+		TThis& Hex(uint8_t value) noexcept
 		{
 			auto print = [&]()
 			{
@@ -71,9 +66,9 @@ namespace hbe
 			return *this;
 		}
 
-		This& operator<<(nullptr_t) { return *this << "Null"; }
+		TThis& operator<<(nullptr_t) noexcept { return *this << "Null"; }
 
-		This& operator<<(bool value)
+		TThis& operator<<(bool value) noexcept
 		{
 			if (value)
 			{
@@ -83,7 +78,7 @@ namespace hbe
 			return *this << "False";
 		}
 
-		This& operator<<(char ch)
+		TThis& operator<<(char ch) noexcept
 		{
 			if (length >= LastIndex)
 			{
@@ -98,7 +93,7 @@ namespace hbe
 			return *this;
 		}
 
-		This& operator<<(unsigned char value)
+		TThis& operator<<(unsigned char value) noexcept
 		{
 			const size_t remained = BufferSize - length;
 			auto written = snprintf(&buffer[length], remained, "%u", value);
@@ -109,7 +104,7 @@ namespace hbe
 			return *this;
 		}
 
-		This& operator<<(const char* str)
+		TThis& operator<<(const char* str) noexcept
 		{
 			if (unlikely(str == nullptr))
 			{
@@ -139,7 +134,7 @@ namespace hbe
 		}
 
 		template<size_t N>
-		This& operator<<(char str[N])
+		TThis& operator<<(char str[N]) noexcept
 		{
 			if (N == 0)
 			{
@@ -168,7 +163,7 @@ namespace hbe
 			return *this;
 		}
 
-		This& operator<<(const std::string_view& str)
+		TThis& operator<<(const std::string_view& str) noexcept
 		{
 			size_t len = str.length();
 			size_t newLength = length + len;
@@ -194,14 +189,14 @@ namespace hbe
 		}
 
 		template<class CharT, class Traits, class Allocator>
-		This& operator<<(const std::basic_string<CharT, Traits, Allocator>& str)
+		TThis& operator<<(const std::basic_string<CharT, Traits, Allocator>& str) noexcept
 		{
 			return *this << static_cast<std::string_view>(str);
 		}
 
-		This& operator<<(StaticString str) { return *this << str.c_str(); }
+		TThis& operator<<(StaticString str) noexcept { return *this << str.c_str(); }
 
-		This& operator<<(short value)
+		TThis& operator<<(short value) noexcept
 		{
 			const size_t remained = BufferSize - length;
 			auto written = snprintf(&buffer[length], remained, "%d", value);
@@ -213,7 +208,7 @@ namespace hbe
 			return *this;
 		}
 
-		This& operator<<(unsigned short value)
+		TThis& operator<<(unsigned short value) noexcept
 		{
 			const size_t remained = BufferSize - length;
 			auto written = snprintf(&buffer[length], remained, "%u", value);
@@ -225,7 +220,7 @@ namespace hbe
 			return *this;
 		}
 
-		This& operator<<(int value)
+		TThis& operator<<(int value) noexcept
 		{
 			const size_t remained = BufferSize - length;
 			auto written = snprintf(&buffer[length], remained, "%d", value);
@@ -237,7 +232,7 @@ namespace hbe
 			return *this;
 		}
 
-		This& operator<<(unsigned int value)
+		TThis& operator<<(unsigned int value) noexcept
 		{
 			const size_t remained = BufferSize - length;
 			auto written = snprintf(&buffer[length], remained, "%u", value);
@@ -249,7 +244,7 @@ namespace hbe
 			return *this;
 		}
 
-		This& operator<<(long value)
+		TThis& operator<<(long value) noexcept
 		{
 			const size_t remained = BufferSize - length;
 			auto written = snprintf(&buffer[length], remained, "%ld", value);
@@ -261,7 +256,7 @@ namespace hbe
 			return *this;
 		}
 
-		This& operator<<(unsigned long value)
+		TThis& operator<<(unsigned long value) noexcept
 		{
 			const size_t remained = BufferSize - length;
 			auto written = snprintf(&buffer[length], remained, "%lu", value);
@@ -273,7 +268,7 @@ namespace hbe
 			return *this;
 		}
 
-		This& operator<<(long long value)
+		TThis& operator<<(long long value) noexcept
 		{
 			const size_t remained = BufferSize - length;
 			auto written = snprintf(&buffer[length], remained, "%lld", value);
@@ -285,7 +280,7 @@ namespace hbe
 			return *this;
 		}
 
-		This& operator<<(unsigned long long value)
+		TThis& operator<<(unsigned long long value) noexcept
 		{
 			const size_t remained = BufferSize - length;
 			auto written = snprintf(&buffer[length], remained, "%llu", value);
@@ -297,7 +292,7 @@ namespace hbe
 			return *this;
 		}
 
-		This& operator<<(float value)
+		TThis& operator<<(float value) noexcept
 		{
 			const size_t remained = BufferSize - length;
 			auto written = snprintf(&buffer[length], remained, "%f", value);
@@ -309,7 +304,7 @@ namespace hbe
 			return *this;
 		}
 
-		This& operator<<(double value)
+		TThis& operator<<(double value) noexcept
 		{
 			const size_t remained = BufferSize - length;
 			auto written = snprintf(&buffer[length], remained, "%lf", value);
@@ -321,7 +316,7 @@ namespace hbe
 			return *this;
 		}
 
-		This& operator<<(long double value)
+		TThis& operator<<(long double value) noexcept
 		{
 			const size_t remained = BufferSize - length;
 			auto written = snprintf(&buffer[length], remained, "%Le", value);
@@ -333,7 +328,7 @@ namespace hbe
 			return *this;
 		}
 
-		This& operator<<(void* value)
+		TThis& operator<<(void* value) noexcept
 		{
 			const size_t remained = BufferSize - length;
 			auto written = snprintf(&buffer[length], remained, "%p", value);
@@ -345,7 +340,11 @@ namespace hbe
 			return *this;
 		}
 
-		This& operator<<(EndLine) { return *this << '\n'; }
+		TThis& operator<<(EndLine) noexcept { return *this << '\n'; }
+
+	private:
+		size_t length;
+		TChar buffer[BufferSize];
 	};
 
 } // namespace hbe
@@ -361,7 +360,7 @@ namespace hbe
 		InlineStringBuilderTest() : TestCollection("InlineStringBuilderTest") {}
 
 	protected:
-		virtual void Prepare() override;
+		void Prepare() override;
 	};
 } // namespace hbe
 

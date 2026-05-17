@@ -7,10 +7,11 @@
 #include "Core/Debug.h"
 #include "StringUtil.h"
 
+
 namespace hbe
 {
 
-	String::String(const bool value) : hashCode(0)
+	String::String(const bool value) noexcept : hashCode(0)
 	{
 		if (value)
 		{
@@ -39,7 +40,7 @@ namespace hbe
 		CalculateHashCode();
 	}
 
-	String::String(const Pointer ptr) : hashCode(0)
+	String::String(const Pointer ptr) noexcept : hashCode(0)
 	{
 		buffer->resize(32);
 		auto& text = *buffer;
@@ -47,7 +48,7 @@ namespace hbe
 		CalculateHashCode();
 	}
 
-	String::String(const char letter) : hashCode(0)
+	String::String(const char letter) noexcept : hashCode(0)
 	{
 		buffer->resize(2);
 		auto& text = *buffer;
@@ -57,7 +58,7 @@ namespace hbe
 		CalculateHashCode();
 	}
 
-	String::String(const unsigned char value) : hashCode(0)
+	String::String(const unsigned char value) noexcept : hashCode(0)
 	{
 		buffer->resize(16);
 		auto& text = *buffer;
@@ -67,7 +68,7 @@ namespace hbe
 		CalculateHashCode();
 	}
 
-	String::String(const short value) : hashCode(0)
+	String::String(const short value) noexcept : hashCode(0)
 	{
 		buffer->resize(16);
 		auto& text = *buffer;
@@ -77,19 +78,17 @@ namespace hbe
 		CalculateHashCode();
 	}
 
-	String::String(const unsigned short value) : hashCode(0)
+	String::String(const unsigned short value) noexcept : hashCode(0)
 	{
 		buffer->resize(16);
 		auto& text = *buffer;
-		// BUG FIX: "%ud" is not a valid format specifier - should be "%u" for unsigned
-		// The 'd' was being printed literally, producing output like "5d" instead of "5"
 		snprintf(text.data(), text.size(), "%u", value);
 		buffer->resize(StringUtil::StrLen(text.data()) + 1);
 
 		CalculateHashCode();
 	}
 
-	String::String(const int value) : hashCode(0)
+	String::String(const int value) noexcept : hashCode(0)
 	{
 		buffer->resize(16);
 		auto& text = *buffer;
@@ -99,7 +98,7 @@ namespace hbe
 		CalculateHashCode();
 	}
 
-	String::String(const unsigned int value) : hashCode(0)
+	String::String(const unsigned int value) noexcept : hashCode(0)
 	{
 		buffer->resize(16);
 		auto& text = *buffer;
@@ -109,7 +108,7 @@ namespace hbe
 		CalculateHashCode();
 	}
 
-	String::String(const long value) : hashCode(0)
+	String::String(const long value) noexcept : hashCode(0)
 	{
 		buffer->resize(16);
 		auto& text = *buffer;
@@ -119,7 +118,7 @@ namespace hbe
 		CalculateHashCode();
 	}
 
-	String::String(const unsigned long value) : hashCode(0)
+	String::String(const unsigned long value) noexcept : hashCode(0)
 	{
 		buffer->resize(16);
 		auto& text = *buffer;
@@ -129,7 +128,7 @@ namespace hbe
 		CalculateHashCode();
 	}
 
-	String::String(const long long value) : hashCode(0)
+	String::String(const long long value) noexcept : hashCode(0)
 	{
 		buffer->resize(16);
 		auto& text = *buffer;
@@ -139,7 +138,7 @@ namespace hbe
 		CalculateHashCode();
 	}
 
-	String::String(const unsigned long long value) : hashCode(0)
+	String::String(const unsigned long long value) noexcept : hashCode(0)
 	{
 		buffer->resize(16);
 		auto& text = *buffer;
@@ -149,7 +148,7 @@ namespace hbe
 		CalculateHashCode();
 	}
 
-	String::String(const float value) : hashCode(0)
+	String::String(const float value) noexcept : hashCode(0)
 	{
 		buffer->resize(16);
 		auto& text = *buffer;
@@ -159,7 +158,7 @@ namespace hbe
 		CalculateHashCode();
 	}
 
-	String::String(const double value) : hashCode(0)
+	String::String(const double value) noexcept : hashCode(0)
 	{
 		buffer->resize(16);
 		auto& text = *buffer;
@@ -169,7 +168,7 @@ namespace hbe
 		CalculateHashCode();
 	}
 
-	String::String(const long double value) : hashCode(0)
+	String::String(const long double value) noexcept : hashCode(0)
 	{
 		buffer->resize(16);
 		auto& text = *buffer;
@@ -179,17 +178,22 @@ namespace hbe
 		CalculateHashCode();
 	}
 
-	String::String(const char* text) : hashCode(0)
+	String::String(const char* text) noexcept : hashCode(0)
 	{
+		if (text == nullptr)
+		{
+			text = "";
+		}
+
 		const auto totalLength = strlen(text) + 1;
 		buffer->resize(totalLength);
-		Vector<Char>& textVec = *buffer;
+		Vector<char>& textVec = *buffer;
 		memcpy(textVec.data(), text, totalLength);
 
 		CalculateHashCode();
 	}
 
-	String::String(const String& string, Index startIndex, Index endIndex) : buffer()
+	String::String(const String& string, Index startIndex, Index endIndex) noexcept : buffer()
 	{
 		if (startIndex >= string.Length())
 		{
@@ -224,8 +228,13 @@ namespace hbe
 		}
 	}
 
-	String& String::operator=(const char* text)
+	String& String::operator=(const char* text) noexcept
 	{
+		if (text == nullptr)
+		{
+			text = "";
+		}
+
 		if (buffer.GetReferenceCount() > 1)
 		{
 			Swap(String(text));
@@ -240,7 +249,7 @@ namespace hbe
 		return *this;
 	}
 
-	String& String::operator=(const String& rhs)
+	String& String::operator=(const String& rhs) noexcept
 	{
 		if (buffer.GetReferenceCount() > 1)
 		{
@@ -256,7 +265,7 @@ namespace hbe
 		return *this;
 	}
 
-	bool String::operator<(const String& rhs) const
+	bool String::operator<(const String& rhs) const noexcept
 	{
 		const Index shorterLen = std::min(Length(), rhs.Length());
 		Index matchCount = 0;
@@ -266,6 +275,7 @@ namespace hbe
 			if ((*buffer)[i] == (*rhs.buffer)[i])
 			{
 				++matchCount;
+
 				continue;
 			}
 
@@ -285,7 +295,7 @@ namespace hbe
 		return true;
 	}
 
-	bool String::operator==(const String& string) const
+	bool String::operator==(const String& string) const noexcept
 	{
 		if (hashCode != string.hashCode)
 		{
@@ -309,7 +319,7 @@ namespace hbe
 		return true;
 	}
 
-	bool String::operator==(const char* rhs) const
+	bool String::operator==(const char* rhs) const noexcept
 	{
 		const bool isEmpty = IsEmpty();
 		if (rhs == nullptr)
@@ -334,9 +344,9 @@ namespace hbe
 		return rhs[length] == '\0';
 	}
 
-	const char* String::ToCharArray() const { return buffer ? buffer.Get().data() : ""; }
+	const char* String::ToCharArray() const noexcept { return buffer ? buffer.Get().data() : ""; }
 
-	String String::Clone() const
+	String String::Clone() const noexcept
 	{
 		String str;
 		Assert(str.buffer);
@@ -346,7 +356,7 @@ namespace hbe
 		return str;
 	}
 
-	bool String::ContainsAt(const String& keyword, Index startIndex) const
+	bool String::ContainsAt(const String& keyword, Index startIndex) const noexcept
 	{
 		const Index endIndex = startIndex + keyword.Length();
 
@@ -368,7 +378,7 @@ namespace hbe
 		return true;
 	}
 
-	Index String::Find(const Char ch) const
+	Index String::Find(const TChar ch) const noexcept
 	{
 		const auto length = Length();
 
@@ -383,7 +393,7 @@ namespace hbe
 		return length;
 	}
 
-	Index String::Find(const Array<Char>& chs) const
+	Index String::Find(const Array<TChar>& chs) const noexcept
 	{
 		const auto length = Length();
 		auto chsLen = chs.Size();
@@ -402,10 +412,10 @@ namespace hbe
 		return length;
 	}
 
-	Index String::Find(const String& keyword) const
+	Index String::Find(const String& keyword) const noexcept
 	{
 		const auto length = Length();
-		const auto keywordLength = Length();
+		const auto keywordLength = keyword.Length();
 
 		if (keywordLength > length)
 		{
@@ -420,13 +430,14 @@ namespace hbe
 				return i;
 			}
 		}
+
 		return length;
 	}
 
-	Index String::Find(const String& keyword, Index startIndex, Index endIndex) const
+	Index String::Find(const String& keyword, Index startIndex, Index endIndex) const noexcept
 	{
 		const auto length = Length();
-		const auto keywordLength = Length();
+		const auto keywordLength = keyword.Length();
 
 		Assert(startIndex < length);
 		if (startIndex >= length)
@@ -463,7 +474,7 @@ namespace hbe
 		return length;
 	}
 
-	Index String::FindLast(const Char ch) const
+	Index String::FindLast(const TChar ch) const noexcept
 	{
 		const auto length = Length();
 		for (Index i = length; i > 0;)
@@ -477,12 +488,12 @@ namespace hbe
 		return length;
 	}
 
-	String String::Append(const Char letter) const
+	String String::Append(const TChar letter) const noexcept
 	{
 		String str;
 		const auto length = Length();
 
-		str.buffer->resize(length + sizeof(Char) + 1);
+		str.buffer->resize(length + sizeof(TChar) + 1);
 		memcpy(str.buffer->data(), buffer->data(), length);
 
 		(*str.buffer)[length] = letter;
@@ -491,7 +502,7 @@ namespace hbe
 		return str;
 	}
 
-	String String::Append(const int value) const
+	String String::Append(const int value) const noexcept
 	{
 		char tmp[16];
 		snprintf(tmp, sizeof(tmp), "%d", value);
@@ -508,7 +519,7 @@ namespace hbe
 		return str;
 	}
 
-	String String::Append(const float value) const
+	String String::Append(const float value) const noexcept
 	{
 		char tmp[16];
 		snprintf(tmp, sizeof(tmp), "%f", value);
@@ -525,7 +536,7 @@ namespace hbe
 		return str;
 	}
 
-	String String::Append(const Char* text) const
+	String String::Append(const TChar* text) const noexcept
 	{
 		const auto length = Length();
 		const Index textLength = static_cast<Index>(strlen(text));
@@ -539,7 +550,7 @@ namespace hbe
 		return str;
 	}
 
-	String String::Append(const String& string) const
+	String String::Append(const String& string) const noexcept
 	{
 		if (string.IsEmpty())
 		{
@@ -558,14 +569,14 @@ namespace hbe
 		return str;
 	}
 
-	void String::AppendSelf(const Char letter)
+	void String::AppendSelf(const TChar letter) noexcept
 	{
 		const auto index = Length();
 		buffer->push_back('\0');
 		buffer.Get()[index] = letter;
 	}
 
-	void String::AppendSelf(const int value)
+	void String::AppendSelf(const int value) noexcept
 	{
 		char tmp[16];
 		snprintf(tmp, sizeof(tmp), "%d", value);
@@ -583,7 +594,7 @@ namespace hbe
 		memcpy(buffer->data() + length, tmp, tmpLength + 1);
 	}
 
-	void String::AppendSelf(const float value)
+	void String::AppendSelf(const float value) noexcept
 	{
 		char tmp[16];
 		snprintf(tmp, sizeof(tmp), "%f", value);
@@ -601,11 +612,10 @@ namespace hbe
 		memcpy(buffer->data() + length, tmp, tmpLength + 1);
 	}
 
-	void String::AppendSelf(const Char* text)
+	void String::AppendSelf(const TChar* text) noexcept
 	{
 		const auto length = Length();
 		const Index textLength = static_cast<Index>(strlen(text));
-		;
 		const auto newLength = length + textLength + 1;
 
 		if (newLength > buffer->capacity())
@@ -617,7 +627,7 @@ namespace hbe
 		memcpy(buffer->data() + length, text, textLength + 1);
 	}
 
-	void String::AppendSelf(const String& string)
+	void String::AppendSelf(const String& string) noexcept
 	{
 		if (string.IsEmpty())
 		{
@@ -637,8 +647,7 @@ namespace hbe
 		memcpy(buffer->data() + length, string.buffer->data(), textLength + 1);
 	}
 
-	// BUG FIX: Implemented Replace() - previously asserted false and crashed in debug builds
-	String String::Replace(const String& from, const String& to, Index offset, Index endIndex) const
+	String String::Replace(const String& from, const String& to, Index offset, Index endIndex) const noexcept
 	{
 		if (!buffer || from.IsEmpty())
 		{
@@ -656,7 +665,6 @@ namespace hbe
 		const Index searchLength = from.Length();
 		Index foundIndex = strLength;
 
-		// Find first occurrence of 'from' within the specified range
 		for (Index i = actualOffset; i <= actualEndIndex - searchLength; ++i)
 		{
 			bool match = true;
@@ -676,42 +684,36 @@ namespace hbe
 			}
 		}
 
-		// If not found, return clone of original
 		if (!IsValidIndex(foundIndex))
 		{
 			return Clone();
 		}
 
-		// Build result: prefix + replacement + suffix
 		String result;
 		result.buffer->clear();
 
-		// Add prefix (before the match)
 		for (Index i = 0; i < foundIndex; ++i)
 		{
 			result.buffer->push_back((*buffer)[i]);
 		}
 
-		// Add replacement string
 		for (Index i = 0; i < to.Length(); ++i)
 		{
 			result.buffer->push_back(to.buffer->data()[i]);
 		}
 
-		// Add suffix (after the match)
 		for (Index i = foundIndex + searchLength; i < strLength; ++i)
 		{
 			result.buffer->push_back((*buffer)[i]);
 		}
 
-		// Add null terminator and recalculate its hash code.
 		result.buffer->push_back('\0');
 		result.CalculateHashCode();
 
 		return result;
 	}
 
-	String String::ReplaceAll(char from, char to) const
+	String String::ReplaceAll(char from, char to) const noexcept
 	{
 		if (!buffer)
 		{
@@ -719,7 +721,7 @@ namespace hbe
 		}
 
 		String str = Clone();
-		Char* data = str.buffer->data();
+		TChar* data = str.buffer->data();
 		Assert(data != nullptr);
 
 		Index length = str.Length();
@@ -736,8 +738,7 @@ namespace hbe
 		return str;
 	}
 
-	// BUG FIX: Implemented ReplaceAll(String, String) - previously asserted false and crashed in debug builds
-	String String::ReplaceAll(String from, String to) const
+	String String::ReplaceAll(String from, String to) const noexcept
 	{
 		if (!buffer || from.IsEmpty())
 		{
@@ -753,7 +754,6 @@ namespace hbe
 			return Clone();
 		}
 
-		// Build result with replacements
 		String result;
 		result.buffer->clear();
 
@@ -773,7 +773,6 @@ namespace hbe
 
 			if (match)
 			{
-				// Found match - add replacement
 				for (Index j = 0; j < toLength; ++j)
 				{
 					result.buffer->push_back(to.buffer->data()[j]);
@@ -783,34 +782,31 @@ namespace hbe
 			}
 			else
 			{
-				// No match - copy character
 				result.buffer->push_back((*buffer)[i]);
 				++i;
 			}
 		}
 
-		// Copy remaining characters
 		while (i < strLength)
 		{
 			result.buffer->push_back((*buffer)[i]);
 			++i;
 		}
 
-		// Add null terminator and calculate a hash code.
 		result.buffer->push_back('\0');
 		result.CalculateHashCode();
 
 		return result;
 	}
 
-	void String::ParseKeyValue(String& key, String& value)
+	void String::ParseKeyValue(String& key, String& value) noexcept
 	{
-		auto index = Find("=");
+		auto index = Find('=');
 		key = SubString(0, index).Trim();
 		value = SubString(index + 1).Trim();
 	}
 
-	void String::CalculateHashCode()
+	void String::CalculateHashCode() noexcept
 	{
 		hashCode = 5381;
 
@@ -826,7 +822,7 @@ namespace hbe
 		}
 	}
 
-	void String::ResetBuffer(size_t size)
+	void String::ResetBuffer(size_t size) noexcept
 	{
 		buffer->reserve(static_cast<Index>(size + 1));
 		buffer->clear();
@@ -845,7 +841,7 @@ namespace hbe
 	{
 		AddTest("Comparison with Zero-Terminated String", [this](auto& ls)
 		{
-			String str = "Hello? World!";
+			String str("Hello? World!");
 			ls << str.c_str() << lf;
 
 			if (str != "Hello? World!")
@@ -917,7 +913,6 @@ namespace hbe
 			}
 		});
 
-		// BUG FIX TEST: Unsigned short constructor - format string was "%ud" instead of "%u"
 		AddTest("Unsigned Short Constructor", [this](auto& ls)
 		{
 			unsigned short value = 42;
@@ -944,11 +939,10 @@ namespace hbe
 			}
 		});
 
-		// BUG FIX TEST: String::Replace() - was unimplemented and asserted false
 		AddTest("Replace Single", [this](auto& ls)
 		{
 			String str("Hello World");
-			auto result = str.Replace("World", "Engine");
+			auto result = str.Replace(String("World"), String("Engine"));
 			ls << "Replace: " << result.c_str() << lf;
 
 			if (result != "Hello Engine")
@@ -960,7 +954,7 @@ namespace hbe
 		AddTest("Replace Not Found", [this](auto& ls)
 		{
 			String str("Hello World");
-			auto result = str.Replace("Foo", "Bar");
+			auto result = str.Replace(String("Foo"), String("Bar"));
 			ls << "Replace not found: " << result.c_str() << lf;
 
 			if (result != "Hello World")
@@ -972,7 +966,7 @@ namespace hbe
 		AddTest("Replace With Offset", [this](auto& ls)
 		{
 			String str("foo bar foo baz");
-			auto result = str.Replace("foo", "XXX", 5);
+			auto result = str.Replace(String("foo"), String("XXX"), 5);
 			ls << "Replace with offset: " << result.c_str() << lf;
 
 			if (result != "foo bar XXX baz")
@@ -984,7 +978,7 @@ namespace hbe
 		AddTest("Replace Empty From", [this](auto& ls)
 		{
 			String str("Hello");
-			auto result = str.Replace("", "X");
+			auto result = str.Replace(String(""), String("X"));
 			ls << "Replace empty from: " << result.c_str() << lf;
 
 			if (result != "Hello")
@@ -996,7 +990,7 @@ namespace hbe
 		AddTest("Replace Longer To", [this](auto& ls)
 		{
 			String str("abc");
-			auto result = str.Replace("b", "XYZ");
+			auto result = str.Replace(String("b"), String("XYZ"));
 			ls << "Replace longer to: " << result.c_str() << lf;
 
 			if (result != "aXYZc")
@@ -1008,7 +1002,7 @@ namespace hbe
 		AddTest("Replace Shorter To", [this](auto& ls)
 		{
 			String str("Hello World");
-			auto result = str.Replace(" World", "");
+			auto result = str.Replace(String(" World"), String(""));
 			ls << "Replace shorter to: " << result.c_str() << lf;
 
 			if (result != "Hello")
@@ -1017,7 +1011,6 @@ namespace hbe
 			}
 		});
 
-		// BUG FIX TEST: String::ReplaceAll(String, String) - was unimplemented and asserted false
 		AddTest("ReplaceAll Single Char Pattern", [this](auto& ls)
 		{
 			String str("a.b.c.d");

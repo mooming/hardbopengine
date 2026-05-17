@@ -96,10 +96,10 @@ namespace hbe
 			return *this;
 		}
 
-		Iterator begin() { return data; }
-		Iterator end() { return data + count; }
-		ConstIterator begin() const { return data; }
-		ConstIterator end() const { return data + count; }
+		Iterator begin() noexcept { return data; }
+		Iterator end() noexcept { return data + count; }
+		ConstIterator begin() const noexcept { return data; }
+		ConstIterator end() const noexcept { return data + count; }
 
 		TElement& operator[](TIndex index)
 		{
@@ -137,7 +137,7 @@ namespace hbe
 			return data[count - 1];
 		}
 
-		void PushBack(const TElement& value)
+		void PushBack(const TElement& value) noexcept
 		{
 			if (count == capacity)
 			{
@@ -148,7 +148,7 @@ namespace hbe
 			++count;
 		}
 
-		void PushBack(TElement&& value)
+		void PushBack(TElement&& value) noexcept
 		{
 			if (count == capacity)
 			{
@@ -160,7 +160,7 @@ namespace hbe
 		}
 
 		template<typename... Types>
-		TElement& EmplaceBack(Types&&... args)
+		TElement& EmplaceBack(Types&&... args) noexcept
 		{
 			if (count == capacity)
 			{
@@ -173,14 +173,14 @@ namespace hbe
 			return *ptr;
 		}
 
-		void PopBack()
+		void PopBack() noexcept
 		{
 			FatalAssert(!IsEmpty());
 			--count;
 			data[count].~TElement();
 		}
 
-		void Resize(TIndex newSize)
+		void Resize(TIndex newSize) noexcept
 		{
 			if (newSize < count)
 			{
@@ -201,7 +201,7 @@ namespace hbe
 			count = newSize;
 		}
 
-		void Reserve(TIndex newCapacity)
+		void Reserve(TIndex newCapacity) noexcept
 		{
 			if (newCapacity <= capacity)
 				return;
@@ -223,19 +223,19 @@ namespace hbe
 			capacity = newCapacity;
 		}
 
-		void Clear()
+		void Clear() noexcept
 		{
 			DestroyAll();
 			count = 0;
 		}
 
-		[[nodiscard]] TIndex Size() const { return count; }
-		[[nodiscard]] TIndex Capacity() const { return capacity; }
-		[[nodiscard]] bool IsEmpty() const { return count == 0; }
-		[[nodiscard]] bool IsValidIndex(TIndex index) const { return index >= 0 && index < count; }
+		[[nodiscard]] TIndex Size() const noexcept { return count; }
+		[[nodiscard]] TIndex Capacity() const noexcept { return capacity; }
+		[[nodiscard]] bool IsEmpty() const noexcept { return count == 0; }
+		[[nodiscard]] bool IsValidIndex(TIndex index) const noexcept { return index >= 0 && index < count; }
 
-		TElement* Data() { return data; }
-		const TElement* Data() const { return data; }
+		[[nodiscard]] TElement* Data() noexcept { return data; }
+		[[nodiscard]] const TElement* Data() const noexcept { return data; }
 
 		void Swap(Vector& rhs) noexcept
 		{
@@ -244,7 +244,7 @@ namespace hbe
 			std::swap(data, rhs.data);
 		}
 
-		TIndex FindIndex(const TElement& element) const
+		[[nodiscard]] TIndex FindIndex(const TElement& element) const noexcept
 		{
 			for (TIndex i = 0; i < count; ++i)
 			{
@@ -263,13 +263,13 @@ namespace hbe
 		TIndex capacity;
 		TElement* data;
 
-		void Grow()
+		void Grow() noexcept
 		{
 			auto newCap = std::max(DefaultCapacity, capacity * 2);
 			Reserve(newCap);
 		}
 
-		void DestroyAll()
+		void DestroyAll() noexcept
 		{
 			for (TIndex i = 0; i < count; ++i)
 			{

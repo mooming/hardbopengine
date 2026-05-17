@@ -5,6 +5,7 @@
 #ifdef __UNIT_TEST__
 #include "Log/Logger.h"
 
+
 namespace hbe
 {
 

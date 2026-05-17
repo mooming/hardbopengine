@@ -4,6 +4,7 @@
 
 #include <cstddef>
 #include <cstdint>
+
 #include "Buffer.h"
 #include "Core/Debug.h"
 #include "HSTL/HString.h"
@@ -21,59 +22,52 @@ namespace hbe
 		template<typename T>
 		using TVector = hbe::HVector<T>;
 
-	private:
-		const Buffer& buffer;
-		size_t cursor;
-		size_t errorCount;
-
-	public:
-		BufferInputStream(const Buffer& buffer);
+		explicit BufferInputStream(const Buffer& buffer) noexcept;
 		~BufferInputStream() = default;
 
-		inline auto GetErrorCount() const { return errorCount; }
-		inline bool HasError() const { return errorCount > 0; }
-		inline void ClearErrorCount() { errorCount = 0; }
-		inline bool IsDone() const { return cursor >= buffer.GetSize(); }
+		[[nodiscard]] auto GetErrorCount() const noexcept { return errorCount; }
+		[[nodiscard]] bool HasError() const noexcept { return errorCount > 0; }
+		void ClearErrorCount() noexcept { errorCount = 0; }
+		[[nodiscard]] bool IsDone() const noexcept { return cursor >= buffer.GetSize(); }
 
-	public:
-		This& operator>>(char& value);
-		This& operator>>(int8_t& value);
-		This& operator>>(uint8_t& value);
-		This& operator>>(int16_t& value);
-		This& operator>>(uint16_t& value);
-		This& operator>>(int32_t& value);
-		This& operator>>(uint32_t& value);
-		This& operator>>(int64_t& value);
-		This& operator>>(uint64_t& value);
+		This& operator>>(char& value) noexcept;
+		This& operator>>(int8_t& value) noexcept;
+		This& operator>>(uint8_t& value) noexcept;
+		This& operator>>(int16_t& value) noexcept;
+		This& operator>>(uint16_t& value) noexcept;
+		This& operator>>(int32_t& value) noexcept;
+		This& operator>>(uint32_t& value) noexcept;
+		This& operator>>(int64_t& value) noexcept;
+		This& operator>>(uint64_t& value) noexcept;
 #ifndef PLATFORM_LINUX
-		This& operator>>(size_t& value);
+		This& operator>>(size_t& value) noexcept;
 #endif // PLATFORM_LINUX
-		This& operator>>(float& value);
-		This& operator>>(double& value);
-		This& operator>>(long double& value);
+		This& operator>>(float& value) noexcept;
+		This& operator>>(double& value) noexcept;
+		This& operator>>(long double& value) noexcept;
 
-		This& operator>>(StaticString& str);
-		This& operator>>(const hbe::HString& str);
+		This& operator>>(StaticString& str) noexcept;
+		This& operator>>(const hbe::HString& str) noexcept;
 
 		template<typename T, size_t N>
-		This& operator>>(T (&array)[N])
+		This& operator>>(T (&array)[N]) noexcept
 		{
 			Get<T>(array, N);
 			return *this;
 		}
 
 		template<typename T, class TContainer = TVector<T>>
-		This& operator>>(TContainer& container)
+		This& operator>>(TContainer& container) noexcept
 		{
 			Get<T>(container);
 			return *this;
 		}
 
 	private:
-		inline bool IsValidIndex(size_t index) const { return cursor < buffer.GetSize(); }
+		[[nodiscard]] bool IsValidIndex(size_t index) const noexcept { return cursor < buffer.GetSize(); }
 
 		template<typename T>
-		void Get(T& value, const T& defaultValue)
+		void Get(T& value, const T& defaultValue) noexcept
 		{
 			constexpr size_t tSize = sizeof(T);
 			const size_t startIndex = ((cursor + tSize - 1) / tSize) * tSize;
@@ -96,7 +90,7 @@ namespace hbe
 		}
 
 		template<typename T>
-		void Get(T* arrayBuffer, size_t size)
+		void Get(T* arrayBuffer, size_t size) noexcept
 		{
 			size_t length = 0;
 			Get<size_t>(length, 0);
@@ -126,7 +120,7 @@ namespace hbe
 		}
 
 		template<typename T, class TContainer = TVector<T>>
-		void Get(TContainer& array)
+		void Get(TContainer& array) noexcept
 		{
 			static_assert(std::is_same<T, typename TContainer::value_type>::value);
 
@@ -135,10 +129,7 @@ namespace hbe
 			size_t length = 0;
 			Get<size_t>(length, 0);
 
-			if (length <= 0)
-			{
-				return;
-			}
+			if (length <= 0) return;
 
 			constexpr size_t tSize = sizeof(T);
 			const size_t startIndex = ((cursor + tSize - 1) / tSize) * tSize;
@@ -159,6 +150,10 @@ namespace hbe
 
 			cursor = newIndex;
 		}
+
+		const Buffer& buffer;
+		size_t cursor;
+		size_t errorCount;
 	};
 
 } // namespace hbe
@@ -168,14 +163,14 @@ namespace hbe
 
 namespace hbe
 {
-	class BufferInputStreamTest : public TestCollection
+	class BufferInputStreamTest final : public TestCollection
 	{
 	public:
 		BufferInputStreamTest();
-		virtual ~BufferInputStreamTest() = default;
+		~BufferInputStreamTest() override = default;
 
 	protected:
-		virtual void Prepare() override;
+		void Prepare() override;
 	};
 } // namespace hbe
 #endif //__UNIT_TEST__

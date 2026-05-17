@@ -2,23 +2,25 @@
 
 #include "DX12Renderer.h"
 
-#include "Config/BuildConfig.h"
-#include <cstring>
 #include <cmath>
+#include <cstring>
+
+#include "Config/BuildConfig.h"
+
 
 namespace hbe
 {
 namespace Renderer
 {
 
-DX12Renderer::DX12Renderer()
+DX12Renderer::DX12Renderer() noexcept
+	: apiType(APIType::DX12)
 {
-	m_APIType = APIType::DX12;
-	m_Capabilities.apiType = APIType::DX12;
-	m_Capabilities.supportsComputeShader = true;
-	m_Capabilities.supportsTessellation = true;
-	m_Capabilities.maxTextureSize = 16384;
-	m_Capabilities.maxVertexAttribs = 32;
+	capabilities.apiType = APIType::DX12;
+	capabilities.supportsComputeShader = true;
+	capabilities.supportsTessellation = true;
+	capabilities.maxTextureSize = 16384;
+	capabilities.maxVertexAttribs = 32;
 }
 
 DX12Renderer::~DX12Renderer()
@@ -26,51 +28,46 @@ DX12Renderer::~DX12Renderer()
 	Shutdown();
 }
 
-bool DX12Renderer::Initialize(OS::IWindow* window)
+bool DX12Renderer::Initialize(OS::IWindow* window) noexcept
 {
 	HBE_UNUSED(window);
 
-	if (m_Initialized)
-	{
-		return true;
-	}
+	if (initialized) return true;
 
-	m_Initialized = true;
+	initialized = true;
+
 	return true;
 }
 
-void DX12Renderer::Shutdown()
+void DX12Renderer::Shutdown() noexcept
 {
-	if (!m_Initialized)
+	if (!initialized) return;
+
+	device = 0;
+	commandQueue = 0;
+	commandList = 0;
+	vertexBuffer = 0;
+
+	initialized = false;
+}
+
+void DX12Renderer::BeginFrame() noexcept
+{
+}
+
+void DX12Renderer::EndFrame() noexcept
+{
+}
+
+void DX12Renderer::Render(float deltaTime) noexcept
+{
+	rotationAngle += deltaTime * 90.0f;
+	if (rotationAngle > 360.0f)
 	{
-		return;
+		rotationAngle -= 360.0f;
 	}
 
-	m_Device = 0;
-	m_CommandQueue = 0;
-	m_CommandList = 0;
-	m_VertexBuffer = 0;
-
-	m_Initialized = false;
-}
-
-void DX12Renderer::BeginFrame()
-{
-}
-
-void DX12Renderer::EndFrame()
-{
-}
-
-void DX12Renderer::Render(float deltaTime)
-{
-	m_RotationAngle += deltaTime * 90.0f;
-	if (m_RotationAngle > 360.0f)
-	{
-		m_RotationAngle -= 360.0f;
-	}
-
-	float rad = m_RotationAngle * 3.14159265359f / 180.0f;
+	float rad = rotationAngle * 3.14159265359f / 180.0f;
 	float c = cosf(rad);
 	float s = sinf(rad);
 
@@ -93,17 +90,17 @@ void DX12Renderer::Render(float deltaTime)
 	};
 
 	(void)vertices;
-	(void)m_VertexBuffer;
+	(void)vertexBuffer;
 }
 
-APIType DX12Renderer::GetAPIType() const
+APIType DX12Renderer::GetAPIType() const noexcept
 {
-	return m_APIType;
+	return apiType;
 }
 
-RenderCapabilities DX12Renderer::GetCapabilities() const
+RenderCapabilities DX12Renderer::GetCapabilities() const noexcept
 {
-	return m_Capabilities;
+	return capabilities;
 }
 
 } // namespace Renderer

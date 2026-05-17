@@ -3,6 +3,7 @@
 #pragma once
 
 #include <array>
+#include <iostream>
 #include "CoordinateOrientation.h"
 #include "Matrix2x2.h"
 #include "Vector3.h"
@@ -10,12 +11,12 @@
 namespace hbe
 {
 	/// @brief A 3x3 matrix template class for 3D transformations.
-	template<typename Number>
-	class Matrix3x3
+	template<typename TNumber>
+	class Matrix3x3 final
 	{
 		using This = Matrix3x3;
-		using Vec = Vector3<Number>;
-		using Mat2x2 = Matrix2x2<Number>;
+		using TVec = Vector3<TNumber>;
+		using TMat2x2 = Matrix2x2<TNumber>;
 
 	public:
 		constexpr static int row = 3;
@@ -29,11 +30,11 @@ namespace hbe
 		{
 			struct
 			{
-				Vec rows[row];
+				TVec rows[row];
 			};
 
-			Number m[row][column];
-			std::array<Number, numberOfElements> element;
+			TNumber m[row][column];
+			std::array<TNumber, numberOfElements> element;
 
 			struct
 			{
@@ -44,7 +45,7 @@ namespace hbe
 		};
 
 	public:
-		static This CreateRotation(float x, float y, float z)
+		[[nodiscard]] static This CreateRotation(float x, float y, float z) noexcept
 		{
 			Matrix3x3 mat(nullptr);
 			mat.SetEulerAngles(x, y, z);
@@ -52,7 +53,7 @@ namespace hbe
 			return mat;
 		}
 
-		static This CreateRotation(const Vec euler)
+		[[nodiscard]] static This CreateRotation(const TVec euler) noexcept
 		{
 			Matrix3x3 mat(nullptr);
 			mat.SetEulerAngles(euler);
@@ -60,26 +61,13 @@ namespace hbe
 			return mat;
 		}
 
-		Matrix3x3()
-		{
-			m11 = 1;
-			m12 = 0;
-			m13 = 0;
+		Matrix3x3() noexcept : element{1, 0, 0, 0, 1, 0, 0, 0, 1} {}
 
-			m21 = 0;
-			m22 = 1;
-			m23 = 0;
+		explicit Matrix3x3(std::nullptr_t) noexcept {}
 
-			m31 = 0;
-			m32 = 0;
-			m33 = 1;
-		}
+		explicit Matrix3x3(std::array<TNumber, numberOfElements>&& values) noexcept : element(std::move(values)) {}
 
-		explicit Matrix3x3(std::nullptr_t) {}
-
-		explicit Matrix3x3(std::array<Number, numberOfElements>&& values) : element(std::move(values)) {}
-
-		explicit Matrix3x3(const Mat2x2& rhs)
+		explicit Matrix3x3(const TMat2x2& rhs) noexcept
 		{
 			m11 = rhs.m11;
 			m12 = rhs.m12;
@@ -94,7 +82,7 @@ namespace hbe
 			m33 = 1.0f;
 		}
 
-		This& operator=(const Mat2x2& rhs)
+		This& operator=(const TMat2x2& rhs) noexcept
 		{
 			m11 = rhs.m11;
 			m12 = rhs.m12;
@@ -105,9 +93,9 @@ namespace hbe
 			return *this;
 		}
 
-		explicit operator Mat2x2() const
+		explicit operator TMat2x2() const noexcept
 		{
-			Mat2x2 mat(nullptr);
+			TMat2x2 mat(nullptr);
 			mat.m11 = m11;
 			mat.m12 = m12;
 			mat.m21 = m21;
@@ -116,14 +104,14 @@ namespace hbe
 			return mat;
 		}
 
-		This Inverse() const
+		[[nodiscard]] This Inverse() const noexcept
 		{
 			This temp;
 
-			const Number det = Determinant();
+			const TNumber det = Determinant();
 			Assert(row == column && det != 0, "The matrix is not invertible.");
 
-			const Number invDet = static_cast<Number>(1) / det;
+			const TNumber invDet = static_cast<TNumber>(1) / det;
 
 			temp.m11 = invDet * (m22 * m33 - m23 * m32);
 			temp.m12 = invDet * (m13 * m32 - m12 * m33);
@@ -140,35 +128,35 @@ namespace hbe
 			return temp.Multiply(invDet);
 		}
 
-		void Transpose()
+		void Transpose() noexcept
 		{
 			std::swap(m12, m21);
 			std::swap(m13, m31);
 			std::swap(m23, m32);
 		}
 
-		Number Determinant() const
+		[[nodiscard]] TNumber Determinant() const noexcept
 		{
 			return m11 * m22 * m33 + m12 * m23 * m31 + m13 * m21 * m32 - m11 * m23 * m32 - m12 * m21 * m33 -
 				   m13 * m22 * m31;
 		}
 
-		bool IsOrthogonal() const
+		[[nodiscard]] bool IsOrthogonal() const noexcept
 		{
 			return IsZero(rows[0].Dot(rows[1])) && IsZero(rows[1].Dot(rows[2])) && IsZero(rows[2].Dot(rows[0])) &&
 				   rows[0].IsUnity() && rows[1].IsUnity() && rows[2].IsUnity();
 		}
 
-		void LookAt(const Vec& forward, Vec up)
+		void LookAt(const TVec& forward, TVec up) noexcept
 		{
-			Assert(forward.IsUnity());
-			Assert(up.IsUnity());
+			Assert(forward.IsUnity(), "Matrix3x3::LookAt - forward must be unit");
+			Assert(up.IsUnity(), "Matrix3x3::LookAt - up must be unit");
 
 			const float cosAngle = forward.Dot(up);
-			Assert((cosAngle * cosAngle) < 1.0f);
+			Assert((cosAngle * cosAngle) < 1.0f, "Matrix3x3::LookAt - forward and up are parallel");
 
-#ifdef __LEFT_HANDED__
-			Vec right = up.Cross(forward);
+#ifndef RIGHT_HANDED_COORDINATE
+			TVec right = up.Cross(forward);
 			if (!IsZero(cosAngle))
 			{
 				up = forward.Cross(right);
@@ -177,10 +165,10 @@ namespace hbe
 			raws[0] = right;
 			raws[1] = up;
 			raws[2] = forward;
-#endif //__LEFT_HANDED__
+#endif
 
-#ifdef __RIGHT_HANDED__
-			Float3 right = forward.Cross(up);
+#ifdef RIGHT_HANDED_COORDINATE
+			TFloat3 right = forward.Cross(up);
 			if (!IsZero(cosAngle))
 			{
 				up = forward.Cross(right);
@@ -189,12 +177,12 @@ namespace hbe
 			rows[0] = right;
 			rows[1] = forward;
 			rows[2] = up;
-#endif //__RIGHT_HANDED__
+#endif
 
 			Transpose();
 		}
 
-		void SetEulerX(float radian)
+		void SetEulerX(float radian) noexcept
 		{
 			const float c = RotationCos(radian);
 			const float s = RotationSin(radian);
@@ -210,7 +198,7 @@ namespace hbe
 			m33 = c;
 		}
 
-		void SetEulerY(float radian)
+		void SetEulerY(float radian) noexcept
 		{
 			const float c = RotationCos(radian);
 			const float s = RotationSin(radian);
@@ -226,7 +214,7 @@ namespace hbe
 			m33 = c;
 		}
 
-		void SetEulerZ(float radian)
+		void SetEulerZ(float radian) noexcept
 		{
 			const float c = RotationCos(radian);
 			const float s = RotationSin(radian);
@@ -242,9 +230,9 @@ namespace hbe
 			m33 = 0.0f;
 		}
 
-		void SetEulerAngles(const Vec& euler) { SetEulerAngles(euler.x, euler.y, euler.z); }
+		void SetEulerAngles(const TVec& euler) noexcept { SetEulerAngles(euler.x, euler.y, euler.z); }
 
-		void SetEulerAngles(float x, float y, float z)
+		void SetEulerAngles(float x, float y, float z) noexcept
 		{
 			const float cx = RotationCos(DegreeToRadian(x));
 			const float cy = RotationCos(DegreeToRadian(y));
@@ -275,10 +263,10 @@ namespace hbe
 	template<typename T>
 	const Matrix3x3<T> Matrix3x3<T>::Identity;
 
-	using Float3x3 = Matrix3x3<float>;
+	using TFloat3x3 = Matrix3x3<float>;
 
 	template<typename T>
-	std::ostream& operator<<(std::ostream& os, const Matrix3x3<T>& mat)
+	std::ostream& operator<<(std::ostream& os, const Matrix3x3<T>& mat) noexcept
 	{
 		using namespace std;
 		os << "Matrix " << mat.row << "x" << mat.column << endl;
@@ -304,13 +292,13 @@ namespace hbe
 namespace hbe
 {
 
-	class Matrix3x3Test : public TestCollection
+	class Matrix3x3Test final : public TestCollection
 	{
 	public:
 		Matrix3x3Test() : TestCollection("Matrix3x3Test") {}
 
 	protected:
-		virtual void Prepare() override;
+		void Prepare() noexcept override;
 	};
 } // namespace hbe
 #endif //__UNIT_TEST__

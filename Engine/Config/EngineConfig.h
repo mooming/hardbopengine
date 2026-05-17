@@ -20,10 +20,10 @@ namespace hbe
 		// FatalError
 
 		// Engine Log Level to Log
-		static constexpr uint8_t EngineLogLevel = __MEMORY_LOGGING__ ? 0 : 1;
+		static constexpr uint8_t EngineLogLevel = MEMORY_LOGGING_ENABLED ? 0 : 1;
 
 		// Engine Log Level to Print on STD OUT
-		static constexpr uint8_t EngineLogLevelPrint = __MEMORY_LOGGING__ ? 1 : 2;
+		static constexpr uint8_t EngineLogLevelPrint = MEMORY_LOGGING_ENABLED ? 1 : 2;
 
 		static_assert(EngineLogLevel <= EngineLogLevelPrint,
 					  "EngineLogLevelPrint should be greater than or equal to EngineLogLevel");
@@ -56,7 +56,7 @@ namespace hbe
 		// Profile
 		static constexpr float DebugTimeOutMultiplier = 2.0f;
 
-		size_t GetMaxSystemMemoryTarget();
+		[[nodiscard]] size_t GetMaxSystemMemoryTarget() noexcept;
 
 	} // namespace Config
 

@@ -2,6 +2,7 @@
 
 #include "Vector2.h"
 
+
 namespace hbe
 {
 	template class Vector2<float>;
@@ -9,22 +10,22 @@ namespace hbe
 
 #ifdef __UNIT_TEST__
 
-void hbe::Vector2Test::Prepare()
+void hbe::Vector2Test::Prepare() noexcept
 {
 	AddTest("Vector2 Constants & Operations", [this](auto& ls)
 	{
-		ls << "Zero = " << Float2::Zero << lf;
-		ls << "X = " << Float2::X << lf;
-		ls << "Y = " << Float2::Y << lf;
+		ls << "Zero = " << TFloat2::Zero << lf;
+		ls << "X = " << TFloat2::X << lf;
+		ls << "Y = " << TFloat2::Y << lf;
 
-		if ((Float2::X + Float2::Y) != Float2(1.0f, 1.0f))
+		if ((TFloat2::X + TFloat2::Y) != TFloat2(1.0f, 1.0f))
 		{
-			ls << "Float2 addition failed. X + Y = " << (Float2::X + Float2::Y) << lferr;
+			ls << "Float2 addition failed. X + Y = " << (TFloat2::X + TFloat2::Y) << lferr;
 		}
 
-		if (!Float2::Zero.IsZero())
+		if (!TFloat2::Zero.IsZero())
 		{
-			ls << "Float2 zero test failed. zero = " << Float2::Zero << lferr;
+			ls << "Float2 zero test failed. zero = " << TFloat2::Zero << lferr;
 		}
 	});
 }

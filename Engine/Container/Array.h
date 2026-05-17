@@ -13,7 +13,7 @@ namespace hbe
 	// Static array supporting custom allocators
 	/// @brief A dynamic array template supporting custom memory allocators
 	template<typename Element, class TAllocator = DefaultAllocator<Element>>
-	class Array
+	class Array final
 	{
 	public:
 		using TIndex = int;
@@ -36,7 +36,7 @@ namespace hbe
 		Array& operator=(const Array&) = delete;
 
 	public:
-		Array() : length(0), data(nullptr) {}
+		Array() noexcept : length(0), data(nullptr) {}
 
 		explicit Array(TIndex size) : length(size)
 		{
@@ -58,9 +58,9 @@ namespace hbe
 			}
 		}
 
-		Array(Array&& rhs) : Array() { Swap(rhs); }
+		Array(Array&& rhs) noexcept : Array() { Swap(rhs); }
 
-		virtual ~Array()
+		~Array()
 		{
 			if (data == nullptr)
 			{
@@ -75,26 +75,26 @@ namespace hbe
 			allocator.deallocate(data, length);
 		}
 
-		Array& operator=(Array&& rhs)
+		Array& operator=(Array&& rhs) noexcept
 		{
 			Swap(rhs);
 			return *this;
 		}
 
-		Element& operator[](TIndex index)
+		Element& operator[](TIndex index) noexcept
 		{
 			FatalAssert(IsValidIndex(index));
 			return data[index];
 		}
 
-		const Element& operator[](TIndex index) const
+		const Element& operator[](TIndex index) const noexcept
 		{
 			FatalAssert(IsValidIndex(index));
 			return data[index];
 		}
 
 		template<typename... Types>
-		Element& Emplace(TIndex index, Types&&... args)
+		Element& Emplace(TIndex index, Types&&... args) noexcept
 		{
 			FatalAssert(IsValidIndex(index));
 
@@ -106,17 +106,17 @@ namespace hbe
 			return item;
 		}
 
-		Element* ToRawArray() { return data; }
+		[[nodiscard]] Element* ToRawArray() noexcept { return data; }
 
-		const Element* const ToRawArray() const { return data; }
+		[[nodiscard]] const Element* const ToRawArray() const noexcept { return data; }
 
-		TIndex Size() const { return length; }
+		[[nodiscard]] TIndex Size() const noexcept { return length; }
 
-		bool IsValidIndex(TIndex index) const { return index >= 0 && index < length; }
+		[[nodiscard]] bool IsValidIndex(TIndex index) const noexcept { return index >= 0 && index < length; }
 
-		void Clear() { Swap(Array()); }
+		void Clear() noexcept { Swap(Array()); }
 
-		void Swap(Array&& rhs)
+		void Swap(Array&& rhs) noexcept
 		{
 			auto tmpLength = length;
 			auto tmpData = data;
@@ -128,7 +128,7 @@ namespace hbe
 			rhs.data = tmpData;
 		}
 
-		TIndex GetIndex(const Element& element) const
+		TIndex GetIndex(const Element& element) const noexcept
 		{
 			if (unlikely(data == nullptr))
 			{
@@ -156,7 +156,7 @@ namespace hbe
 		ArrayTest() : TestCollection("ArrayTest") {}
 
 	protected:
-		virtual void Prepare() override;
+		void Prepare() override;
 	};
 
 } // namespace hbe

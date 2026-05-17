@@ -13,7 +13,7 @@ namespace hbe
 	/// @brief Allocator that uses the system heap (malloc/free).
 	/// @details Wraps OS-level memory allocation functions.
 	template<class T>
-	struct SystemAllocator
+	class SystemAllocator
 	{
 	public:
 		using value_type = T;
@@ -24,9 +24,8 @@ namespace hbe
 			using other = SystemAllocator<U>;
 		};
 
-	public:
 		SystemAllocator() = default;
-		virtual ~SystemAllocator() = default;
+		~SystemAllocator() = default;
 
 #ifdef _MSC_VER
 		template<class U>
@@ -34,33 +33,33 @@ namespace hbe
 		{}
 #endif // _MSC_VER
 
-		constexpr auto GetID() const { return MemoryManager::SystemAllocatorID; }
+		[[nodiscard]] constexpr auto GetID() const { return MemoryManager::SystemAllocatorID; }
 
-		T* allocate(std::size_t n) { return reinterpret_cast<T*>(AllocateBytes(n * sizeof(T))); }
+		[[nodiscard]] T* allocate(std::size_t n) noexcept { return reinterpret_cast<T*>(AllocateBytes(n * sizeof(T))); }
 
-		void deallocate(T* ptr, std::size_t n) { 
+		void deallocate(T* ptr, std::size_t n) noexcept {
 			Assert(ptr != nullptr);
-			DeallocateBytes(ptr, n * sizeof(T)); 
+			DeallocateBytes(ptr, n * sizeof(T));
 		}
 
 		template<class U>
-		bool operator==(const SystemAllocator<U>&)
+		bool operator==(const SystemAllocator<U>&) noexcept
 		{
 			return true;
 		}
 
 		template<class U>
-		bool operator!=(const SystemAllocator<U>&)
+		bool operator!=(const SystemAllocator<U>&) noexcept
 		{
 			return false;
 		}
 
-		auto GetName() const { return "SystemAllocator"; }
+		[[nodiscard]] auto GetName() const { return "SystemAllocator"; }
 
 	private:
 		void* AllocateBytes(std::size_t nBytes)
 		{
-#if __MEMORY_INVESTIGATION__
+#if MEMORY_INVESTIGATION_ENABLED
 			if (unlikely(nBytes == 1))
 			{
 				nBytes = 1;
@@ -71,34 +70,34 @@ namespace hbe
 			const size_t allocSize = pageCount * pageSize;
 			auto rawPtr = OS::VirtualAlloc(allocSize);
 
-#if __MEMORY_BUFFER_UNDERRUN_CHECK__
+#if MEMORY_BUFFER_UNDERRUN_CHECK_ENABLED
 			T* ptr = reinterpret_cast<T*>(rawPtr);
-#else // __MEMORY_BUFFER_UNDERRUN_CHECK__
+#else // MEMORY_BUFFER_UNDERRUN_CHECK_ENABLED
 			auto bytePtr = static_cast<uint8_t*>(rawPtr);
 			bytePtr = bytePtr + allocSize - nBytes;
 			T* ptr = reinterpret_cast<T*>(bytePtr);
-#endif // __MEMORY_BUFFER_UNDERRUN_CHECK__
+#endif // MEMORY_BUFFER_UNDERRUN_CHECK_ENABLED
 
-#if __MEMORY_LOGGING__
+#if MEMORY_LOGGING_ENABLED
 			{
 				auto& engine = Engine::Get();
 				engine.Log(ELogLevel::Info, [this, rawPtr, ptr](auto& ls)
 				{ ls << '[' << GetName() << "][Investigator] RawPtr = " << rawPtr << ", ptr = " << (void*) ptr; });
 			}
-#endif // __MEMORY_LOGGING__
+#endif // MEMORY_LOGGING_ENABLED
 
-#else // __MEMORY_INVESTIGATION__
+#else // MEMORY_INVESTIGATION_ENABLED
 			auto ptr = (T*) malloc(nBytes);
-#endif // __MEMORY_INVESTIGATION__
+#endif // MEMORY_INVESTIGATION_ENABLED
 
 #if PROFILE_ENABLED
 			auto& mmgr = MemoryManager::GetInstance();
 
-#if __MEMORY_INVESTIGATION__
+#if MEMORY_INVESTIGATION_ENABLED
 			const auto allocated = allocSize;
-#else // __MEMORY_INVESTIGATION__
+#else // MEMORY_INVESTIGATION_ENABLED
 			const auto allocated = OS::GetAllocSize(ptr);
-#endif // __MEMORY_INVESTIGATION__
+#endif // MEMORY_INVESTIGATION_ENABLED
 
 			mmgr.ReportAllocation(GetID(), ptr, nBytes, allocated);
 #endif // PROFILE_ENABLED
@@ -110,48 +109,48 @@ namespace hbe
 		{
 			Assert(ptr != nullptr, "[SysAlloc][Dealloc] Null Pointer Error");
 
-#if __MEMORY_INVESTIGATION__
+#if MEMORY_INVESTIGATION_ENABLED
 			const auto pageSize = OS::GetPageSize();
 			const size_t pageCount = (nBytes + pageSize - 1) / pageSize;
 			const size_t allocSize = pageCount * pageSize;
 
-#if __MEMORY_BUFFER_UNDERRUN_CHECK__
+#if MEMORY_BUFFER_UNDERRUN_CHECK_ENABLED
 			auto rawPtr = ptr;
-#else // __MEMORY_BUFFER_UNDERRUN_CHECK__
+#else // MEMORY_BUFFER_UNDERRUN_CHECK_ENABLED
 			auto bytePtr = reinterpret_cast<uint8_t*>(ptr);
 			bytePtr = bytePtr + nBytes - allocSize;
 			auto rawPtr = (void*) bytePtr;
-#endif // __MEMORY_BUFFER_UNDERRUN_CHECK__
+#endif // MEMORY_BUFFER_UNDERRUN_CHECK_ENABLED
 			const auto allocated = allocSize;
-#endif // __MEMORY_INVESTIGATION__
+#endif // MEMORY_INVESTIGATION_ENABLED
 
 #if PROFILE_ENABLED
 
-#ifndef __MEMORY_INVESTIGATION__
+#ifndef MEMORY_INVESTIGATION_ENABLED
 			auto allocated = OS::GetAllocSize(ptr);
 #else
 			const std::size_t allocated = nBytes;
-#endif // __MEMORY_INVESTIGATION__
+#endif // MEMORY_INVESTIGATION_ENABLED
 
-#if __MEMORY_VERIFICATION__
+#if MEMORY_VERIFICATION_ENABLED
 			Assert(nBytes <= allocated);
-#endif // __MEMORY_VERIFICATION__
+#endif // MEMORY_VERIFICATION_ENABLED
 
 			auto& mmgr = MemoryManager::GetInstance();
 			mmgr.ReportDeallocation(GetID(), ptr, nBytes, allocated);
 #endif // PROFILE_ENABLED
 
-#if __MEMORY_INVESTIGATION__
+#if MEMORY_INVESTIGATION_ENABLED
 
-#if __MEMORY_DANGLING_POINTER_CHECK__
+#if MEMORY_DANGLING_POINTER_CHECK_ENABLED
 			OS::ProtectMemory(rawPtr, allocated);
-#else // __MEMORY_DANGLING_POINTER_CHECK__
+#else // MEMORY_DANGLING_POINTER_CHECK_ENABLED
 			OS::VirtualFree(rawPtr, allocated);
-#endif // __MEMORY_DANGLING_POINTER_CHECK__
+#endif // MEMORY_DANGLING_POINTER_CHECK_ENABLED
 
-#else // __MEMORY_INVESTIGATION__
+#else // MEMORY_INVESTIGATION_ENABLED
 			free(ptr);
-#endif // __MEMORY_INVESTIGATION__
+#endif // MEMORY_INVESTIGATION_ENABLED
 		}
 	};
 } // namespace hbe

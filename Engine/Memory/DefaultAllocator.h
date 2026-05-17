@@ -19,10 +19,10 @@ namespace hbe
 	public:
 		using value_type = T;
 
-		template<class U>
+		template<class TOther>
 		struct rebind
 		{
-			using other = DefaultAllocator<U>;
+			using other = DefaultAllocator<TOther>;
 		};
 
 	private:
@@ -31,11 +31,11 @@ namespace hbe
 	public:
 		DefaultAllocator() : allocatorID(MemoryManager::GetCurrentAllocatorID()) {}
 
-		template<class U>
-		explicit DefaultAllocator(const DefaultAllocator<U>& rhs) : allocatorID(rhs.GetSourceAllocatorID())
+		template<class TOther>
+		explicit DefaultAllocator(const DefaultAllocator<TOther>& rhs) noexcept : allocatorID(rhs.GetSourceAllocatorID())
 		{}
 
-		T* allocate(std::size_t n)
+		[[nodiscard]] T* allocate(std::size_t n) noexcept
 		{
 			AllocatorScope scope(allocatorID);
 			auto& mmgr = MemoryManager::GetInstance();
@@ -44,7 +44,7 @@ namespace hbe
 			return ptr;
 		}
 
-		void deallocate(T* ptr, std::size_t n)
+		void deallocate(T* ptr, std::size_t n) noexcept
 		{
 			Assert(ptr != nullptr);
 			AllocatorScope scope(allocatorID);
@@ -52,21 +52,21 @@ namespace hbe
 			mmgr.DeallocateTypes(ptr, n);
 		}
 
-		template<class U>
-		bool operator==(const DefaultAllocator<U>& rhs) const
+		template<class TOther>
+		bool operator==(const DefaultAllocator<TOther>& rhs) const noexcept
 		{
 			return allocatorID == rhs.allocatorID;
 		}
 
-		template<class U>
-		bool operator!=(const DefaultAllocator<U>& rhs) const
+		template<class TOther>
+		bool operator!=(const DefaultAllocator<TOther>& rhs) const noexcept
 		{
 			return allocatorID != rhs.allocatorID;
 		}
 
-		auto GetID() const { return allocatorID; }
-		auto GetSourceAllocatorID() const { return allocatorID; }
-		static constexpr size_t GetFallbackCount() { return 0; }
+		[[nodiscard]] auto GetID() const { return allocatorID; }
+		[[nodiscard]] auto GetSourceAllocatorID() const { return allocatorID; }
+		[[nodiscard]] static constexpr size_t GetFallbackCount() { return 0; }
 	};
 
 } // namespace hbe
@@ -83,7 +83,7 @@ namespace hbe
 		BaseAllocatorTest() : TestCollection("BaseAllocatorTest") {}
 
 	protected:
-		void Prepare() override;
+		void Prepare() noexcept override;
 	};
 
 } // namespace hbe

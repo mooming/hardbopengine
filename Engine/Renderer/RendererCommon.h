@@ -34,8 +34,9 @@ struct Vertex
 	{}
 };
 
-struct RenderCapabilities
+class RenderCapabilities
 {
+public:
 	APIType apiType;
 	bool supportsGeometryShader;
 	bool supportsTessellation;

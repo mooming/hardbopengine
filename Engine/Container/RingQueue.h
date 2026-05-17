@@ -63,19 +63,19 @@ namespace hbe
 			return *this;
 		}
 
-		TElement& operator[](TIndex index)
+		TElement& operator[](TIndex index) noexcept
 		{
 			FatalAssert(IsValidIndex(index));
 			return data[WrapIndex(head + index)];
 		}
 
-		const TElement& operator[](TIndex index) const
+		const TElement& operator[](TIndex index) const noexcept
 		{
 			FatalAssert(IsValidIndex(index));
 			return data[WrapIndex(head + index)];
 		}
 
-		void Push(const TElement& value)
+		void Push(const TElement& value) noexcept
 		{
 			FatalAssert(!IsFull(), "RingQueue is full");
 			new (&data[tail]) TElement(value);
@@ -83,7 +83,7 @@ namespace hbe
 			++count;
 		}
 
-		void Push(TElement&& value)
+		void Push(TElement&& value) noexcept
 		{
 			FatalAssert(!IsFull(), "RingQueue is full");
 			new (&data[tail]) TElement(std::move(value));
@@ -92,7 +92,7 @@ namespace hbe
 		}
 
 		template<typename... Types>
-		TElement& Emplace(Types&&... args)
+		TElement& Emplace(Types&&... args) noexcept
 		{
 			FatalAssert(!IsFull(), "RingQueue is full");
 			auto* ptr = new (&data[tail]) TElement(std::forward<Types>(args)...);
@@ -101,47 +101,48 @@ namespace hbe
 			return *ptr;
 		}
 
-		TElement Pop()
+		TElement Pop() noexcept
 		{
 			FatalAssert(!IsEmpty(), "RingQueue is empty");
 			auto item = std::move(data[head]);
 			data[head].~TElement();
 			head = WrapIndex(head + 1);
 			--count;
+
 			return item;
 		}
 
-		TElement& Front()
+		TElement& Front() noexcept
 		{
 			FatalAssert(!IsEmpty());
 			return data[head];
 		}
 
-		const TElement& Front() const
+		const TElement& Front() const noexcept
 		{
 			FatalAssert(!IsEmpty());
 			return data[head];
 		}
 
-		TElement& Back()
+		TElement& Back() noexcept
 		{
 			FatalAssert(!IsEmpty());
 			return data[WrapIndex(tail - 1)];
 		}
 
-		const TElement& Back() const
+		const TElement& Back() const noexcept
 		{
 			FatalAssert(!IsEmpty());
 			return data[WrapIndex(tail - 1)];
 		}
 
-		[[nodiscard]] TIndex Size() const { return count; }
-		[[nodiscard]] TIndex Capacity() const { return cap; }
-		[[nodiscard]] bool IsEmpty() const { return count == 0; }
-		[[nodiscard]] bool IsFull() const { return count == cap; }
-		[[nodiscard]] bool IsValidIndex(TIndex index) const { return index >= 0 && index < Size(); }
+		[[nodiscard]] TIndex Size() const noexcept { return count; }
+		[[nodiscard]] TIndex Capacity() const noexcept { return cap; }
+		[[nodiscard]] bool IsEmpty() const noexcept { return count == 0; }
+		[[nodiscard]] bool IsFull() const noexcept { return count == cap; }
+		[[nodiscard]] bool IsValidIndex(TIndex index) const noexcept { return index >= 0 && index < Size(); }
 
-		void Clear()
+		void Clear() noexcept
 		{
 			DestroyAll();
 			head = 0;
@@ -165,9 +166,9 @@ namespace hbe
 		TIndex count;
 		TElement* data;
 
-		TIndex WrapIndex(TIndex index) const { return index % cap; }
+		TIndex WrapIndex(TIndex index) const noexcept { return index % cap; }
 
-		void DestroyAll()
+		void DestroyAll() noexcept
 		{
 			for (TIndex i = 0; i < count; ++i)
 			{

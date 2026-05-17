@@ -40,13 +40,13 @@ namespace hbe
 		public:
 			explicit Iterator(Pair* ptr) noexcept : ptr(ptr) {}
 
-			Iterator& operator++() { ++ptr; return *this; }
-			bool operator==(const Iterator& rhs) const { return ptr == rhs.ptr; }
-			bool operator!=(const Iterator& rhs) const { return ptr != rhs.ptr; }
-			Pair& operator*() { return *ptr; }
-			const Pair& operator*() const { return *ptr; }
-			Pair* operator->() { return ptr; }
-			const Pair* operator->() const { return ptr; }
+			Iterator& operator++() noexcept { ++ptr; return *this; }
+			bool operator==(const Iterator& rhs) const noexcept { return ptr == rhs.ptr; }
+			bool operator!=(const Iterator& rhs) const noexcept { return ptr != rhs.ptr; }
+			Pair& operator*() noexcept { return *ptr; }
+			const Pair& operator*() const noexcept { return *ptr; }
+			Pair* operator->() noexcept { return ptr; }
+			const Pair* operator->() const noexcept { return ptr; }
 		};
 
 		using ConstIterator = Iterator;
@@ -95,10 +95,10 @@ namespace hbe
 			return *this;
 		}
 
-		Iterator begin() { return Iterator(entries); }
-		Iterator end() { return Iterator(entries + count); }
-		ConstIterator begin() const { return ConstIterator(entries); }
-		ConstIterator end() const { return ConstIterator(entries + count); }
+		Iterator begin() noexcept { return Iterator(entries); }
+		Iterator end() noexcept { return Iterator(entries + count); }
+		ConstIterator begin() const noexcept { return ConstIterator(entries); }
+		ConstIterator end() const noexcept { return ConstIterator(entries + count); }
 
 		TValue& operator[](const TKey& key)
 		{
@@ -124,7 +124,7 @@ namespace hbe
 			return entries[idx].value;
 		}
 
-		Iterator Find(const TKey& key)
+		[[nodiscard]] Iterator Find(const TKey& key) noexcept
 		{
 			auto idx = FindIndex(key);
 			if (idx < 0)
@@ -133,7 +133,7 @@ namespace hbe
 			return Iterator(entries + idx);
 		}
 
-		ConstIterator Find(const TKey& key) const
+		[[nodiscard]] ConstIterator Find(const TKey& key) const noexcept
 		{
 			auto idx = FindIndex(key);
 			if (idx < 0)
@@ -150,6 +150,7 @@ namespace hbe
 
 			idx = InsertSorted(key);
 			entries[idx].value = value;
+
 			return true;
 		}
 
@@ -161,6 +162,7 @@ namespace hbe
 
 			idx = InsertSorted(key);
 			entries[idx].value = std::move(value);
+
 			return true;
 		}
 
@@ -172,6 +174,7 @@ namespace hbe
 
 			idx = InsertSorted(std::move(key));
 			entries[idx].value = std::move(value);
+
 			return true;
 		}
 
@@ -190,18 +193,19 @@ namespace hbe
 			}
 
 			--count;
+
 			return true;
 		}
 
-		bool Contains(const TKey& key) const
+		[[nodiscard]] bool Contains(const TKey& key) const noexcept
 		{
 			return FindIndex(key) >= 0;
 		}
 
-		[[nodiscard]] TIndex Size() const { return count; }
-		[[nodiscard]] bool IsEmpty() const { return count == 0; }
+		[[nodiscard]] TIndex Size() const noexcept { return count; }
+		[[nodiscard]] bool IsEmpty() const noexcept { return count == 0; }
 
-		void Clear()
+		void Clear() noexcept
 		{
 			for (TIndex i = 0; i < count; ++i)
 			{
@@ -218,7 +222,7 @@ namespace hbe
 		TCompare compare;
 		TAllocator allocator;
 
-		TIndex FindIndex(const TKey& key) const
+		[[nodiscard]] TIndex FindIndex(const TKey& key) const noexcept
 		{
 			if (count == 0)
 				return -1;
@@ -247,7 +251,7 @@ namespace hbe
 			return -1;
 		}
 
-		TIndex LowerBound(const TKey& key) const
+		[[nodiscard]] TIndex LowerBound(const TKey& key) const noexcept
 		{
 			TIndex lo = 0;
 			TIndex hi = count;
@@ -269,7 +273,7 @@ namespace hbe
 			return lo;
 		}
 
-		TIndex InsertSorted(const TKey& key)
+		TIndex InsertSorted(const TKey& key) noexcept
 		{
 			if (count == cap)
 			{
@@ -290,7 +294,7 @@ namespace hbe
 			return idx;
 		}
 
-		TIndex InsertSorted(TKey&& key)
+		TIndex InsertSorted(TKey&& key) noexcept
 		{
 			if (count == cap)
 			{
@@ -311,7 +315,7 @@ namespace hbe
 			return idx;
 		}
 
-		void Grow()
+		void Grow() noexcept
 		{
 			auto newCap = std::max(DefaultCapacity, cap * 2);
 			auto allocSize = sizeof(Pair) * newCap;
@@ -334,7 +338,7 @@ namespace hbe
 			cap = newCap;
 		}
 
-		void Release()
+		void Release() noexcept
 		{
 			if (entries == nullptr)
 				return;

@@ -7,24 +7,24 @@
 
 namespace hbe
 {
-	/// @brief Parses and stores command line arguments passed to the application.
-	class CommandLineArguments final
-	{
-	private:
-		String executablePath;
-		String executableFilename;
-		Array<String> arguments;
+/// @brief Parses and stores command line arguments passed to the application.
+class CommandLineArguments final
+{
+private:
+	String executablePath;
+	String executableFilename;
+	Array<String> arguments;
 
-	public:
-		CommandLineArguments() = delete;
-		CommandLineArguments(int argc, const char* argv[]);
-		~CommandLineArguments() = default;
+public:
+	CommandLineArguments() = delete;
+	CommandLineArguments(int argc, const char* argv[]);
+	~CommandLineArguments() = default;
 
-		auto& GetArguments() const { return arguments; }
+	[[nodiscard]] auto& GetArguments() const noexcept { return arguments; }
 
-		void Print();
+	void Print();
 
-	private:
-		void Parse(int argc, const char* argv[]);
-	};
+private:
+	void Parse(int argc, const char* argv[]);
+};
 } // namespace hbe

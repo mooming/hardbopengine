@@ -35,29 +35,29 @@ namespace hbe
 			return *this;
 		}
 
-		void Push(const TElement& value) { container.PushBack(value); }
-		void Push(TElement&& value) { container.PushBack(std::move(value)); }
+		void Push(const TElement& value) noexcept { container.PushBack(value); }
+		void Push(TElement&& value) noexcept { container.PushBack(std::move(value)); }
 
 		template<typename... Types>
-		TElement& Emplace(Types&&... args)
+		TElement& Emplace(Types&&... args) noexcept
 		{
 			return container.EmplaceBack(std::forward<Types>(args)...);
 		}
 
-		void Pop()
+		void Pop() noexcept
 		{
 			FatalAssert(!container.IsEmpty());
 			container.PopFront();
 		}
 
-		TElement& Front() { return container.Front(); }
-		const TElement& Front() const { return container.Front(); }
-		TElement& Back() { return container.Back(); }
-		const TElement& Back() const { return container.Back(); }
+		TElement& Front() noexcept { return container.Front(); }
+		const TElement& Front() const noexcept { return container.Front(); }
+		TElement& Back() noexcept { return container.Back(); }
+		const TElement& Back() const noexcept { return container.Back(); }
 
-		[[nodiscard]] auto Size() const { return container.Size(); }
-		[[nodiscard]] bool IsEmpty() const { return container.IsEmpty(); }
-		void Clear() { container.Clear(); }
+		[[nodiscard]] auto Size() const noexcept { return container.Size(); }
+		[[nodiscard]] bool IsEmpty() const noexcept { return container.IsEmpty(); }
+		void Clear() noexcept { container.Clear(); }
 
 	private:
 		TContainer container;

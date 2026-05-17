@@ -12,16 +12,16 @@
 namespace hbe
 {
 	/// @brief A hierarchical transform with parent-child relationships and world transform caching.
-	template<typename Number>
+	template<typename TNumber>
 	class Transform final
 	{
 	public:
 		using This = Transform;
-		using Vec3 = Vector3<Number>;
-		using Quat = Quaternion<Number>;
-		using Mat3x3 = Matrix3x3<Number>;
-		using Mat4x4 = Matrix4x4<Number>;
-		using UTransform = UniformTransform<Number>;
+		using TVec3 = Vector3<TNumber>;
+		using TQuat = Quaternion<TNumber>;
+		using TMat3x3 = Matrix3x3<TNumber>;
+		using TMat4x4 = Matrix4x4<TNumber>;
+		using TUTransform = UniformTransform<TNumber>;
 
 		template<class T>
 		using Vector = hbe::HVector<T>;
@@ -29,17 +29,17 @@ namespace hbe
 	public:
 		union
 		{
-			UTransform trs;
+			TUTransform trs;
 			struct
 			{
-				Quat rotation;
-				Number scale;
-				Vec3 translation;
+				TQuat rotation;
+				TNumber scale;
+				TVec3 translation;
 			};
 		};
 
 	private:
-		Optional<UTransform> world;
+		Optional<TUTransform> world;
 
 		Transform* parent;
 		Vector<Transform*> children;
@@ -48,13 +48,13 @@ namespace hbe
 		Transform(const Transform&) = delete;
 		Transform& operator==(const Transform&) = delete;
 
-		Transform() : trs(), parent(nullptr) {}
+		Transform() noexcept : trs(), parent(nullptr) {}
 
-		Transform(std::nullptr_t) : trs(nullptr), parent(nullptr) {}
+		explicit Transform(std::nullptr_t) noexcept : trs(nullptr), parent(nullptr) {}
 
-		Transform(const UTransform& trs) : trs(trs), parent(nullptr) {}
+		explicit Transform(const TUTransform& trs) noexcept : trs(trs), parent(nullptr) {}
 
-		~Transform()
+		~Transform() noexcept
 		{
 			if (parent)
 			{
@@ -64,7 +64,7 @@ namespace hbe
 			DetachAll();
 		}
 
-		void Attach(Transform& transform)
+		void Attach(Transform& transform) noexcept
 		{
 			auto ptr = &transform;
 
@@ -76,6 +76,7 @@ namespace hbe
 			if (std::find(children.begin(), children.end(), ptr) != children.end())
 			{
 				Assert(transform.parent == this, "Parent-Child Inconsistency");
+
 				return;
 			}
 
@@ -83,9 +84,9 @@ namespace hbe
 			transform.parent = this;
 		}
 
-		Transform* GetParent() const { return parent; }
+		[[nodiscard]] Transform* GetParent() const noexcept { return parent; }
 
-		void Detach(Transform& transform)
+		void Detach(Transform& transform) noexcept
 		{
 			if (transform.parent != this)
 			{
@@ -101,7 +102,7 @@ namespace hbe
 			children.erase(it);
 		}
 
-		void DetachAll()
+		void DetachAll() noexcept
 		{
 			for (auto child : children)
 			{
@@ -112,7 +113,7 @@ namespace hbe
 			children.clear();
 		}
 
-		bool HasChild(const Transform& child) const
+		[[nodiscard]] bool HasChild(const Transform& child) const noexcept
 		{
 			auto ptr = &child;
 			bool bHasChild = std::find(children.cbegin(), children.cend(), ptr) != children.cend();
@@ -120,10 +121,10 @@ namespace hbe
 			return bHasChild;
 		}
 
-		Vector<Transform*>& GetChildren() { return children; }
-		const Vector<Transform*>& GetChildren() const { return children; }
+		[[nodiscard]] Vector<Transform*>& GetChildren() noexcept { return children; }
+		[[nodiscard]] const Vector<Transform*>& GetChildren() const noexcept { return children; }
 
-		void Invalidate()
+		void Invalidate() noexcept
 		{
 			if (!world)
 			{
@@ -138,7 +139,7 @@ namespace hbe
 			}
 		}
 
-		const UTransform& GetWorldTransform()
+		[[nodiscard]] const TUTransform& GetWorldTransform() noexcept
 		{
 			if (world)
 			{
@@ -148,13 +149,14 @@ namespace hbe
 			if (parent)
 			{
 				world = parent->GetWorldTransform() * trs;
+
 				return *world;
 			}
 
 			return trs;
 		}
 
-		UTransform GetWorldTransform() const
+		[[nodiscard]] TUTransform GetWorldTransform() const noexcept
 		{
 			if (world)
 			{
@@ -169,9 +171,9 @@ namespace hbe
 			return trs;
 		}
 
-		const UTransform& GetLocalTransform() const { return trs; }
+		[[nodiscard]] const TUTransform& GetLocalTransform() const noexcept { return trs; }
 
-		void Set(const Quat& r, Number s, const Vec3& t)
+		void Set(const TQuat& r, TNumber s, const TVec3& t) noexcept
 		{
 			if (rotation == r && IsEqual(scale, s) && translation == t)
 			{
@@ -185,7 +187,7 @@ namespace hbe
 			Invalidate();
 		}
 
-		void Set(const Quat& r)
+		void Set(const TQuat& r) noexcept
 		{
 			if (rotation == r)
 			{
@@ -197,7 +199,7 @@ namespace hbe
 			Invalidate();
 		}
 
-		void Set(Number s)
+		void Set(TNumber s) noexcept
 		{
 			if (scale == s)
 			{
@@ -209,7 +211,7 @@ namespace hbe
 			Invalidate();
 		}
 
-		void Set(const Vec3& t)
+		void Set(const TVec3& t) noexcept
 		{
 			if (translation == t)
 			{
@@ -222,11 +224,11 @@ namespace hbe
 		}
 	};
 
-	using FTransform = Transform<float>;
-	using DTransform = Transform<double>;
+	using TFTransform = Transform<float>;
+	using TDTransform = Transform<double>;
 
 	template<typename T>
-	std::ostream& operator<<(std::ostream& os, const Transform<T>& t)
+	std::ostream& operator<<(std::ostream& os, const Transform<T>& t) noexcept
 	{
 		using namespace std;
 		os << "Transform" << endl;
@@ -245,7 +247,7 @@ namespace hbe
 	}
 
 	template<typename T>
-	LogStream& operator<<(LogStream& os, const Transform<T>& t)
+	LogStream& operator<<(LogStream& os, const Transform<T>& t) noexcept
 	{
 		os << "Transform" << hendl;
 		os << t.trs << hendl;
@@ -269,13 +271,13 @@ namespace hbe
 
 namespace hbe
 {
-	class TransformTest : public TestCollection
+	class TransformTest final : public TestCollection
 	{
 	public:
 		TransformTest() : TestCollection("TransformTest") {}
 
 	protected:
-		virtual void Prepare() override;
+		void Prepare() noexcept override;
 	};
 } // namespace hbe
 #endif //__UNIT_TEST__

@@ -22,45 +22,41 @@ namespace hbe
 		static constexpr int InlineFloatBufferSize = 64;
 		static constexpr int InlineLongDoubleBufferSize = 512;
 
-		using This = StringBuilder;
+		using TThis = StringBuilder;
 		using TString = std::basic_string<TCh, std::char_traits<TCh>, TAlloc>;
 
-	private:
-		TString buffer;
-
-	public:
 		StringBuilder() = default;
 		~StringBuilder() = default;
 
-		void Reserve(size_t size) { buffer.reserve(size); }
+		void Reserve(size_t size) noexcept { buffer.reserve(size); }
 
-		void Clear() { buffer.clear(); }
+		void Clear() noexcept { buffer.clear(); }
 
-		auto c_str() const { return buffer.c_str(); }
+		[[nodiscard]] auto c_str() const noexcept { return buffer.c_str(); }
 
-		auto Size() const { return buffer.size(); }
+		[[nodiscard]] auto Size() const noexcept { return buffer.size(); }
 
-		operator const TCh*() const { return buffer.c_str(); }
+		[[nodiscard]] operator const TCh*() const noexcept { return buffer.c_str(); }
 
-		This& operator<<(nullptr_t)
+		TThis& operator<<(nullptr_t) noexcept
 		{
 			buffer.append("Null");
 			return *this;
 		}
 
-		This& operator<<(bool value)
+		TThis& operator<<(bool value) noexcept
 		{
 			buffer.append(value ? "True" : "False");
 			return *this;
 		}
 
-		This& operator<<(char ch)
+		TThis& operator<<(char ch) noexcept
 		{
 			buffer.push_back(ch);
 			return *this;
 		}
 
-		This& operator<<(unsigned char value)
+		TThis& operator<<(unsigned char value) noexcept
 		{
 			char temp[InlineBufferSize];
 			snprintf(temp, InlineBufferSize, "%u", value);
@@ -68,7 +64,7 @@ namespace hbe
 			return *this;
 		}
 
-		This& operator<<(const char* str)
+		TThis& operator<<(const char* str) noexcept
 		{
 			if (str == nullptr)
 			{
@@ -80,13 +76,13 @@ namespace hbe
 			return *this;
 		}
 
-		This& operator<<(StaticString str)
+		TThis& operator<<(StaticString str) noexcept
 		{
 			buffer.append(str.c_str());
 			return *this;
 		}
 
-		This& operator<<(const std::string_view& str)
+		TThis& operator<<(const std::string_view& str) noexcept
 		{
 			buffer.append(str);
 
@@ -94,12 +90,12 @@ namespace hbe
 		}
 
 		template<class CharT, class Traits, class Allocator>
-		This& operator<<(const std::basic_string<CharT, Traits, Allocator>& str)
+		TThis& operator<<(const std::basic_string<CharT, Traits, Allocator>& str) noexcept
 		{
 			return *this << static_cast<std::string_view>(str);
 		}
 
-		This& operator<<(short value)
+		TThis& operator<<(short value) noexcept
 		{
 			char temp[InlineBufferSize];
 			snprintf(temp, InlineBufferSize, "%d", value);
@@ -107,7 +103,7 @@ namespace hbe
 			return *this;
 		}
 
-		This& operator<<(unsigned short value)
+		TThis& operator<<(unsigned short value) noexcept
 		{
 			char temp[InlineBufferSize];
 			snprintf(temp, InlineBufferSize, "%u", value);
@@ -115,7 +111,7 @@ namespace hbe
 			return *this;
 		}
 
-		This& operator<<(int value)
+		TThis& operator<<(int value) noexcept
 		{
 			char temp[InlineBufferSize];
 			snprintf(temp, InlineBufferSize, "%d", value);
@@ -123,7 +119,7 @@ namespace hbe
 			return *this;
 		}
 
-		This& operator<<(unsigned int value)
+		TThis& operator<<(unsigned int value) noexcept
 		{
 			char temp[InlineBufferSize];
 			snprintf(temp, InlineBufferSize, "%u", value);
@@ -131,7 +127,7 @@ namespace hbe
 			return *this;
 		}
 
-		This& operator<<(long value)
+		TThis& operator<<(long value) noexcept
 		{
 			char temp[InlineBufferSize];
 			snprintf(temp, InlineBufferSize, "%ld", value);
@@ -139,7 +135,7 @@ namespace hbe
 			return *this;
 		}
 
-		This& operator<<(unsigned long value)
+		TThis& operator<<(unsigned long value) noexcept
 		{
 			char temp[InlineBufferSize];
 			snprintf(temp, InlineBufferSize, "%lu", value);
@@ -147,7 +143,7 @@ namespace hbe
 			return *this;
 		}
 
-		This& operator<<(long long value)
+		TThis& operator<<(long long value) noexcept
 		{
 			char temp[InlineBufferSize];
 			snprintf(temp, InlineBufferSize, "%lld", value);
@@ -155,7 +151,7 @@ namespace hbe
 			return *this;
 		}
 
-		This& operator<<(unsigned long long value)
+		TThis& operator<<(unsigned long long value) noexcept
 		{
 			char temp[InlineBufferSize];
 			snprintf(temp, InlineBufferSize, "%llu", value);
@@ -163,7 +159,7 @@ namespace hbe
 			return *this;
 		}
 
-		This& operator<<(float value)
+		TThis& operator<<(float value) noexcept
 		{
 			char temp[InlineFloatBufferSize];
 			snprintf(temp, InlineFloatBufferSize, "%f", value);
@@ -171,7 +167,7 @@ namespace hbe
 			return *this;
 		}
 
-		This& operator<<(double value)
+		TThis& operator<<(double value) noexcept
 		{
 			char temp[InlineLongDoubleBufferSize];
 			snprintf(temp, InlineLongDoubleBufferSize, "%lf", value);
@@ -179,7 +175,7 @@ namespace hbe
 			return *this;
 		}
 
-		This& operator<<(long double value)
+		TThis& operator<<(long double value) noexcept
 		{
 			char temp[InlineLongDoubleBufferSize];
 			snprintf(temp, InlineLongDoubleBufferSize, "%Le", value);
@@ -187,7 +183,7 @@ namespace hbe
 			return *this;
 		}
 
-		This& operator<<(void* value)
+		TThis& operator<<(void* value) noexcept
 		{
 			char temp[InlineBufferSize];
 			snprintf(temp, InlineBufferSize, "%p", value);
@@ -195,11 +191,14 @@ namespace hbe
 			return *this;
 		}
 
-		This& operator<<(EndLine)
+		TThis& operator<<(EndLine) noexcept
 		{
 			buffer.append("\n");
 			return *this;
 		}
+
+	private:
+		TString buffer;
 	};
 
 } // namespace hbe
@@ -215,7 +214,7 @@ namespace hbe
 		StringBuilderTest() : TestCollection("StringBuilderTest") {}
 
 	protected:
-		virtual void Prepare() override;
+		void Prepare() override;
 	};
 } // namespace hbe
 #endif //__UNIT_TEST__

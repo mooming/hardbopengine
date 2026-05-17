@@ -9,83 +9,83 @@
 
 namespace hbe
 {
-	/// @brief A bitmask template for specifying which task streams a task can execute on.
-	template<unsigned int NumBits>
-	class TaskStreamAffinityBase final
+/// @brief A bitmask template for specifying which task streams a task can execute on.
+template<unsigned int NumBits>
+class TaskStreamAffinityBase final
+{
+private:
+	using TBitArrayUnit = uint64_t;
+	static constexpr size_t BitArrayUnitBytes = sizeof(TBitArrayUnit);
+	static constexpr size_t BitsArraySize = (NumBits + BitArrayUnitBytes - 1) / BitArrayUnitBytes;
+
+	// Bit 0: set
+	// Bit 1: unset
+	TBitArrayUnit bitBuffer[BitsArraySize];
+
+public:
+	TaskStreamAffinityBase() : bitBuffer{0}
 	{
-	private:
-		using TBitArrayUnit = uint64_t;
-		static constexpr size_t BitArrayUnitBytes = sizeof(TBitArrayUnit);
-		static constexpr size_t BitsArraySize = (NumBits + BitArrayUnitBytes - 1) / BitArrayUnitBytes;
+	}
 
-		// Bit 0: set
-		// Bit 1: unset
-		TBitArrayUnit bitBuffer[BitsArraySize];
+	[[nodiscard]] static constexpr auto GetNumBits() noexcept { return NumBits; }
 
-	public:
-		TaskStreamAffinityBase() : bitBuffer{0}
+	void Unset(unsigned int bitIndex) noexcept
+	{
+		if (bitIndex >= NumBits)
 		{
+			return;
 		}
 
-		static constexpr auto GetNumBits() { return NumBits; }
+		const auto index = GetBitsArrayIndexOf(bitIndex);
+		auto& value = bitBuffer[index];
+		const auto numShift = bitIndex - (index * BitArrayUnitBytes);
+		TBitArrayUnit bit = 1;
+		bit = bit << numShift;
 
-		void Unset(unsigned int bitIndex)
+		value = value | bit;
+	}
+
+	void Set(unsigned int bitIndex) noexcept
+	{
+		if (bitIndex >= NumBits)
 		{
-			if (bitIndex >= NumBits)
-			{
-				return;
-			}
-
-			const auto index = GetBitsArrayIndexOf(bitIndex);
-			auto& value = bitBuffer[index];
-			const auto numShift = bitIndex - (index * BitArrayUnitBytes);
-			TBitArrayUnit bit = 1;
-			bit = bit << numShift;
-
-			value = value | bit;
+			return;
 		}
 
-		void Set(unsigned int bitIndex)
+		const auto index = GetBitsArrayIndexOf(bitIndex);
+		auto& value = bitBuffer[index];
+		const auto numShift = bitIndex - (index * BitArrayUnitBytes);
+		TBitArrayUnit mask = 1;
+		mask = mask << numShift;
+		mask = ~mask;
+
+		value = value & mask;
+	}
+
+	[[nodiscard]] bool Get(unsigned int bitIndex) const noexcept
+	{
+		if (bitIndex >= NumBits)
 		{
-			if (bitIndex >= NumBits)
-			{
-				return;
-			}
-
-			const auto index = GetBitsArrayIndexOf(bitIndex);
-			auto& value = bitBuffer[index];
-			const auto numShift = bitIndex - (index * BitArrayUnitBytes);
-			TBitArrayUnit mask = 1;
-			mask = mask << numShift;
-			mask = ~mask;
-
-			value = value & mask;
+			return false;
 		}
 
-		[[nodiscard]] bool Get(unsigned int bitIndex) const
-		{
-			if (bitIndex >= NumBits)
-			{
-				return false;
-			}
+		const auto index = GetBitsArrayIndexOf(bitIndex);
+		auto value = bitBuffer[index];
+		const auto numShift = bitIndex - (index * BitArrayUnitBytes);
+		value = value >> numShift;
 
-			const auto index = GetBitsArrayIndexOf(bitIndex);
-			auto value = bitBuffer[index];
-			const auto numShift = bitIndex - (index * BitArrayUnitBytes);
-			value = value >> numShift;
+		// 0: Set, 1: Unset
+		return (value & 1) == 0;
+	}
 
-			// 0: Set, 1: Unset
-			return (value & 1) == 0;
-		}
+private:
+	[[nodiscard]] unsigned int GetBitsArrayIndexOf(unsigned int bitIndex) const noexcept
+	{
+		return bitIndex / BitsArraySize;
+	}
+};
 
-	private:
-		[[nodiscard]] unsigned int GetBitsArrayIndexOf(unsigned int bitIndex) const
-		{
-			return bitIndex / BitsArraySize;
-		}
-	};
-
-	using TaskStreamAffinity = TaskStreamAffinityBase<64>;
+using TaskStreamAffinity = TaskStreamAffinityBase<64>;
 } // namespace hbe
 
 #ifdef __UNIT_TEST__
@@ -94,14 +94,14 @@ namespace hbe
 namespace hbe
 {
 
-	class TaskStreamAffinityTest : public TestCollection
-	{
-	public:
-		TaskStreamAffinityTest() : TestCollection("TaskStreamAffinityTest") {}
+class TaskStreamAffinityTest : public TestCollection
+{
+public:
+	TaskStreamAffinityTest() : TestCollection("TaskStreamAffinityTest") {}
 
-	protected:
-		void Prepare() override;
-	};
+protected:
+	void Prepare() override;
+};
 
 } // namespace hbe
 #endif //__UNIT_TEST__

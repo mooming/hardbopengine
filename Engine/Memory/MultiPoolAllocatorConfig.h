@@ -10,21 +10,20 @@ namespace hbe
 {
 	/// @brief Configuration for a multi-pool allocator.
 	/// @details Stores name and pool configurations for a multi-pool allocator.
-	struct MultiPoolAllocatorConfig final
+	class MultiPoolAllocatorConfig final
 	{
+	public:
 		template<typename T>
 		using TVector = std::vector<T>;
 		using TPoolConfigs = TVector<PoolConfig>;
 
-	public:
 		StaticStringID uniqueName;
 		TPoolConfigs configs;
 
-	public:
-		MultiPoolAllocatorConfig() = default;
-		MultiPoolAllocatorConfig(StaticStringID id, TPoolConfigs&& configs);
+		MultiPoolAllocatorConfig() noexcept = default;
+		MultiPoolAllocatorConfig(StaticStringID id, TPoolConfigs&& configs) noexcept;
 
-		bool operator<(const MultiPoolAllocatorConfig& rhs) const;
+		bool operator<(const MultiPoolAllocatorConfig& rhs) const noexcept;
 	};
 
 } // namespace hbe
