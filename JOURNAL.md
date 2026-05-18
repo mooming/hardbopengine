@@ -206,3 +206,47 @@
 5. **Platform abstraction**: Factory + platform-conditional compilation
 6. **Data-Oriented Design**: SoA layouts, lock-free storage, cache-friendly access patterns
 
+
+## 2026-05-19 14:30 (Continuation)
+
+### Renderer Design Documentation — Continued
+
+Updated `docs/RendererDesign.md` with comprehensive RHI architecture documentation:
+
+#### New Sections Added:
+1. **Hybrid Pipeline Architecture Overview** - Complete diagram and explanation of all 4 phases:
+   - Phase 1: EXTRACT (lockless SoA extraction from ECS)
+   - Phase 2: PREPARE (compute shaders for culling/LOD/tLAS)
+   - Phase 3: RENDER GRAPH (DAG with barrier injection)
+   - Phase 4: SUBMIT (stateless command buckets with radix sort)
+
+2. **PSO Caching & Management** - Complete implementation of:
+   - `PipelineStateObjectDescriptor` for unified graphics/compute/RT
+   - `PipelineCacheEntry` with version tracking
+   - `PSOCache` class for hash-based lookup and automatic invalidation
+
+3. **HLSL Bindless Resource Layout Matrix** - Cross-platform binding documentation:
+   - DX12 descriptor heap pointers (64-bit aligned)
+   - Vulkan descriptor pools with VK_EXT_descriptor_indexing
+   - Metal argument buffer arrays (MTLStorageMode mappings)
+
+4. **API Mapping Table** - Complete comparison of all features across:
+   - HLSL (SM 6.6+) single source syntax
+   - DirectX 12 native API calls
+   - Vulkan with descriptor indexing
+   - Metal with argument buffers
+
+5. **HLSL Cross-Compilation Flow** - Visual flow showing DXC → SPIR-V → MoltenVk paths plus Metal conversion
+
+#### Critical Edge Cases Expanded:
+- **Bindless Descriptor Exhaustion**: Metal Tier 2 limit handling with page splitting
+- **Temporal History Aliasing Prevention**: TAA/DLSS motion vector tracking structures
+- **Multi-threaded Command Recording Pitfalls**: Fence/memory ordering requirements
+
+#### Code Improvements Made:
+- Fixed `RenderSortKey` struct (corrected DEPTH_BITMASK vs DEPTH_DEPTH naming)
+- Added detailed comments for HLSL cross-platform shader interface
+- Unified SoA/Buffer layouts for graphics and compute phases
+
+**Result:** RendererDesign.md now contains ~930 lines of comprehensive architecture documentation covering C++ code sketches, HLSL source examples, API mappings, and edge case handling strategy.
+

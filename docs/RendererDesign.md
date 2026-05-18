@@ -1,8 +1,91 @@
 # HardBop Engine — RHI Architecture (Data-Oriented Design)
 
-> **Architecture:** Hybrid Pipeline (Extract $\rightarrow$ Prepare $\rightarrow$ Render Graph $\rightarrow$ Submit)  
+> **Architecture:** Hybrid Pipeline (Extract → Prepare → Render Graph → Submit)  
 > **Core Principle:** Bindless, Stateless, and Data-Oriented.  
 > **Shader Philosophy:** HLSL as Single Source of Truth (SM 6.6+), cross-compiled to DXIL/SPIR-V/MSL
+
+---
+
+## Hybrid Pipeline Architecture Overview
+
+The HardBop Engine RHI implements a **4-phase Hybrid Pipeline** that separates rendering concerns into distinct, data-oriented stages:
+
+### Phase 1: EXTRACT
+- **Responsibility:** Lockless extraction of ECS world data to CPU-side SoA buffers
+- **Output:** Contiguous arrays (TransformStack, MeshBuffer, MaterialIndexBuffer)
+- **Pattern:** Copy-on-write from immutable ECS snapshots to lockless extraction buffers
+- **Data Layout:** 128-byte aligned transform stack, 192-byte aligned mesh instances
+
+### Phase 2: PREPARE  
+- **Responsibility:** Compute shaders execute culling, LOD selection, TLAS building
+- **Output:** CullMaskBuffer (visible instances), DepthPrepassBuffer, InstanceSortBuffer
+- **Parallelism:** Multi-threaded worker threads with lockless command recording
+- **Intermediate Buffers:** Frustum culling → BVH build → MeshID generation
+
+### Phase 3: RENDER GRAPH
+- **Responsibility:** DAG construction with dependency resolution and barrier injection
+- **Nodes:** Compute, Graphics, RayTracing, Post-process passes
+- **Barrier Generation:** Automatic VK Pipeline Barrier / DX12 Enhanced Barrier / MTL ResourceBarrier
+- **Temporal Handling:** Livelock tracking for history-critical resources (TAA/Tensor)
+
+### Phase 4: SUBMIT
+- **Responsibility:** Radix-sorted command buckets with zero lock contention
+- **Sort Key Layout:** 63-bit PassID | 59-48 PSOHash | 47-32 MatIdx | 31-0 DepthSort
+- **Stateless Patterns:** Thread-local command buffers, parallel aggregation
+- **Zero Lock Contention:** Direct pointer access via thread-local buckets
+
+```
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ [ GAME WORLD (ECS) ]    ECS World Snapshot                                    │
+│ - ActorTransformComponent          - MeshHandle                               │  
+│ - MaterialInstanceHandle           - VisibilityData                           │
+└─────────────────────────────┬─────────────────────────────────────────────────┘
+                              │
+                              ▼  (PHASE 1: EXTRACT)
+              ┌────────────────── Lockless Copying / SoA Extraction ────────────┐
+              │  TransformStack<MAX_TRANSFORMS>       MeshBuffer<MAX_INDICES>   │  
+              │  MaterialIndexBuffer<MAX_ENTITIES>    VisibilityCullingMask      │
+              └─────────────────────────────────────┬───────────────────────────┘
+                                                    │
+                                                    ▼ (PHASE 2: PREPARE)
+            ┌─────────────────── Compute Shaders / Worker Threads ───────────────┐
+            │  Frustum Culling        → CullMaskBuffer                           │  
+            │  Hi-Z Occlusion         → DepthPrepassBuffer                       │
+            │  LOD Selection          → InstanceSortBuffer                       │
+            │  TLAS Build (DXR/VK/MTL)→ AccelerationStructDesc                   │
+            └───────────────────────────────┬────────────────────────────────────┘
+                                            │
+                                            ▼ (PHASE 3: RENDER GRAPH)
+              ┌─────────────────── Dependency Resolution / Barrier Injection ────┐
+              │  DAG Construction          Alias Detection                        │  
+              │  Resource Livelock Tracking                                       │  
+              │  Barriers Injected (VkPipelineBarrier2/DX12/Metal)                │
+              └─────────────────────┬───────────────────┬────────────────────────┘
+                                    │                   │
+              ┌─────────────────────▼────┐  ┌───────────▼──────────┐            │
+              │ Compute Pass Node        │  │ Graphics Pass Node    │◄ History-Critical         │  
+              │ (Transient GPU Buffers)  │  │ PSO + Bindless Handles│      Flags            │
+              ├────────────◄─────────────┤  └───────────────────────┘                   ▲   │
+              │ Ray Tracing Pass Node    │                                            │   │  
+              │ (TLAS/SBSBR Desc)        │ Temporal History Buffers           ┌───────┴───┴──┐│
+              └─────────────────────────┘                                    │ POST PROCESS ││
+              ┌─────────────────────►◄─── Blending/Tonemap Node             └───────────────┘│
+              │                                                   (Temporal Replay Flag)          │
+              └──────────────────────────────────────────────────────────────────────────────┘
+                                            │
+                                            ▼ (PHASE 4: SUBMIT)
+              ┌────────────────── SortCommandKeys / Radix Sort ──────────────────┐
+              │ SortKey Layout: 63-bit PassID | 59-48 PSOHash |                     │  
+              │ 47-32 MatIdx | 31-0 DepthSort                                     │  
+              │ Buckets[64] = ThreadLocalList<DrawIndirectDesc> (SoA for GPU)     │
+              └───────────────────┬───────────────────── Lock-Free Aggregation ───┘
+                                  ▼
+              ┌────────────────── Hardware Submission (Zero Contention) ─────────┐
+              │ DX12: ID3D12GraphicsCommandList4 + Enhanced Barriers             │  
+              │ Vulkan: VkCommandPool + VkPipelineBarrier2 + descriptor_indexing  │
+              │ Metal: MTLCommandBuffer with MTLArgumentBuffer for bindless       │
+              └──────────────────────────────────────────────────────────────────┘
+```
 
 ---
 
@@ -172,6 +255,82 @@ public:
 } // namespace hbop
 ```
 
+#### PSO Caching & Management (Graphics/Compute/RT Unified via HLSL Source)
+
+Unified pipeline state caching with versioning for automatic recompilation triggers:
+
+```cpp
+struct PipelineStateObjectDescriptor {
+    uint32_t            shaderProgramHash;  // High-16 bits of full hash for quick matching
+    ResourceHandle      vertShaderHandle;   // Bindless vertex/input signature handle
+    ResourceHandle      hullShaderHandle;   // Hull tessellation input
+    ResourceHandle      domShaderHandle;    // Domain tessellation eval
+    ResourceHandle      geoShaderHandle;    // Geometry output
+    ResourceHandle      meshShaderHandle;   // Mesh output
+    ResourceHandle      fragShaderHandle;   // Fragment shader
+    ResourceHandle      computeShaderHandle;// Compute variant
+    uint32_t            rtPipelineVersion;  // Version for TLAS/SBSBR updates
+    
+    struct RTDesc {
+        ResourceHandle tlasBuildBuffer;      // Build buffer for acceleration structures
+        ResourceHandle sbasrHandle;         // Sparse BVH handle (MSAA ray tracing)
+    } rt = {};
+    
+    bool                isRTPipeline = false;  // Graphics vs Compute vs Ray Tracing flag
+    bool                requiresBarrierSwap  = true;  // PSO invalidation signal
+};
+
+struct PipelineCacheEntry {
+    ResourceHandle vertexShader;
+    ResourceHandle fragmentShader;   // Or compute/RT shader variant
+    ResourceHandle bindlessTextureSet;
+    ResourceHandle bindlessBufferSet;
+    
+    PipelineStateObjectDescriptor psoDesc;
+    
+    uint32_t cacheVersion = 0;         // Increment on resource handle changes in set
+    bool      compiled = false;        // PSO successfully compiled for current API
+    
+    void Invalidate() {
+        compiled = false;
+        cacheVersion++;                 // Bump version to force reload from shaders
+    }
+};
+
+class PSOCache : public VirtualDestructor {
+public:
+    std::unordered_map<uint32_t, PipelineCacheEntry> graphicsPSOs;
+    std::unordered_map<uint32_t, PipelineCacheEntry> computePSOs;
+    std::unordered_map<uint32_t, PipelineCacheEntry> rayTracingPSOs;
+    
+    bool GetCachedPSO(
+        const PipelineStateObjectDescriptor& desc, 
+        ResourceHandle textureSet,
+        ResourceHandle bufferSet,
+        PipelineCacheEntry& outPSO
+    ) {
+        // Compute hashkey from shader handles + PSO descriptor
+        uint32_t key = CombineHash(desc.shaderProgramHash, static_cast<uint32_t>(textureSet), static_cast<uint32_t>(bufferSet));
+        
+        auto it = graphicsPSOs.find(key);
+        if (it != graphicsPSOs.end()) {
+            outPSO = it->second;
+            return outPSO.compiled && !desc.requiresBarrierSwap;
+        }
+        return false;
+    }
+    
+    // Check for invalidation due to resource lifetime changes
+    void CheckResourceLifetimeInvalidation(const ResourceHandle* handles, uint32_t count) {
+        // Validate cached PSOs against temporal buffer lifetimes
+        for (auto& [_, entry] : graphicsPSOs) {
+            if (entry.cacheVersion != ComputeCacheVersionFromHandles(handles, count)) {
+                entry.Invalidate();
+            }
+        }
+    }
+};
+
 ### B. Stateless Command Buckets (64-bit Sort Key Design)
 
 Radix-sort friendly 64-bit sort key minimizing pipeline state changes:
@@ -184,7 +343,7 @@ namespace hbop {
 namespace gfx {
 
 // ============================================================================
-// 64-BIT SORT KEY STRUCTURE
+// 64-BIT SORT KEY STRUCTURE - Radix Sort Layout
 // Bit layout: [31-0] Depth/Distance | [32-47] Material Index | [48-59] PSO Hash | [63] PassID Flag
 // ============================================================================
 
@@ -193,7 +352,7 @@ public:
     static const uint64_t PASS_ID_OFFSET      = 63u;                                    // Bit 63 (1 bit)
     static const uint64_t PSO_HASH_OFFSET    = 48u;                                    // Bits 59-48 (12 bits)
     static const uint64_t MATERIAL_INDEX     = 32u;                                    // Bits 47-32 (16 bits)
-    static const uint64_t DEPTH_DEPTH        = 0u;                                      // Bits 31-0 (32 bits)
+    static const uint64_t DEPTH_BITMASK      = 0u;                                      // Bits 31-0 (32 bits), mask applies to raw_key
 
     union {
         struct SortComponents {
@@ -666,3 +825,109 @@ constexpr uint32_t RAY_ACCELERATION_STRUCTURE_HANDLE_OFFSET = 10u; // Specific h
 - **Memory Ordering:** Explicit `memory_fencing` between extraction phase and command submission
 - **Descriptor Cache Coherence:** Invalidate CPU caches when swapping descriptor heaps across threads
 
+
+### HLSL & API Mapping Matrix
+
+| Feature | HLSL (SM 6.6+) | DirectX 12 | Vulkan (Descriptor Indexing) | Metal (Argument Buffers) |
+| :--- | :--- | :--- | :---| :---|
+| **Resource Binding** | Unbounded Descriptor Tables (`register(t0)`)| Descriptor Heap Pointer `ID3D12_CPU_DESCRIPTOR_HEAP` | `VK_DESCRIPTOR_BINDING` + Array Indexing | `MTLArgumentBuffer` + Texture/Buffer Arrays |
+| **Indexing Syntax** | `myTex[index]` | Index into heap: `GetDescriptorHeap().Get()->SetResource(i)` | Index into `VkDescriptorSet` array | Index into texture buffer: `texture(sampler, [index])` |
+| **Ray Tracing Access** | Via Bindless Handles (`rayHitObject`) | `ShaderResourceView` from Descriptor Heap | `DescriptorSet` traversal via `VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR` | `mtl::acceleration_structure` + MTL argument buffers |
+| **UAV Access Pattern** | `RWTexture2D<float4> tex[] : register(t1)` | `ID3D12Resource*` + Enhanced Barriers | `VkDescriptorSet` with `VK_DESCRIPTOR_TYPE_STORAGE_IMAGE` | `MTLReadBuffer/MTLReadWriteBuffer` |
+| **PSO Types** | Unified HLSL source → DXIL/SPIR-V/MSL | `ID3D12PipelineState` (Graphics/Compute/RayTracing unified) | `VkPipeline` + `VkPipelineShaderStageCreateInfo` | `MTLRenderPipelineState` / `MTLComputePipelineState` |
+| **Barrier Injection** | Implicit via descriptor layout transitions | `ID3D12PipelineBarrierDesc` + Enhanced Barriers | `VkPipelineBarrier2` (VK_KHR_pipeline_barrier_2) | `MTLResourceBarrier` auto-generated by RHI compiler |
+
+### HLSL Cross-Compilation Flow
+
+```
+HLSL Source (.hlsl)
+    │
+    ├───► DXC ─────────┐
+    │                   ▼
+    │               DXIL (DX12 Native)
+    │                   │
+    └───────────────────┘
+    │
+    ├───► DXC ─┬────► SPIR-V ───► vkInitializePipelineShaderModule() → VkPipeline 
+    │          │                    VkCreateRenderPass2() with VK_EXT_descriptor_indexing
+    │          ▼
+    │       HLSL-to-SPIR-V (via HLSL-SHADER-CONVERTER)
+    │          │
+    └───────────┴────► SPIR-V (Vulkan Native via MoltenVk / SPIRV-Cross)
+                       VkCreatePipeline() with indirect draw support
+
+
+    │
+    └───► Metal Shader Converter (msbc.exe / mslc.exe) ───► MSL Source (.metal)
+                              │
+                              ▼
+                             MTLCompileLibrary → .metal_binary
+```
+
+---
+
+## 4. Critical Edge Cases
+
+### Bindless Descriptor Exhaustion (Metal Tier 2 Limits)
+
+Metal's hardware limits require descriptor partitioning:
+
+```cpp
+// Split global indices into manageable pages for Metal Argument Buffers
+inline void DescriptorsSplitIntoPages(BindlessDescriptorSet& set, uint32_t maxBindingsPerPass = 16) {
+    // Example: Limit to 64 textures per buffer (Metal Tier 2 limit)
+    const uint32_t MaxTexturesPerPage = 64u;
+    
+    uint32_t currentPageIdx = 0;
+    for (uint32_t i = 0; i < MAX_BINDLESS_TEXTURES; ) {
+        set.textures[currentPageIdx] = SetNextDescriptorBatch(set.textures, i, MaxTexturesPerPage);
+        i += MaxTexturesPerPage;
+        
+        // Metal Tier 2 check (hardware limit validation)
+        if (!IsBelowMetalTier1()) {
+            // Split into additional argument buffers for MTLArgumentBuffers
+            MTLBuffer newBuffer = AllocateMTLArgumentBufferFromPool(MaxTexturesPerPage);
+            currentPageIdx++;
+        }
+    }
+}
+
+// Stale handle detection across frames
+constexpr uint32_t HANDLE_GENERATION_MASK     = 0xFFu; // Low 4 bits for generation tracking
+constexpr uint32_t HANDLE_INDEX_MASK          = ~HANDLE_GENERATION_MASK << 4; 
+inline bool IsHandleStale(ResourceHandle handle, ResourceHandle current) {
+    return (handle & HANDLE_GENERATION_MASK) != Generation();
+}
+```
+
+### Temporal History Aliasing Prevention
+
+TLAS / Motion Vectors / TAA history preservation:
+
+```cpp
+// History-Critical resources must maintain temporal consistency across frames
+struct TemporalTextureMetadata {
+    uint32_t generation;                      // Frame counter for alias detection
+    vec2      motionVector[MAX_HISTORIES];     // For TAA/DLSS motion vectors
+    bool      isHistoryCritical = false;       // Prevents premature reclamation
+    
+    void EnsureTemporalConsistency() const {
+        if (isHistoryCritical && generation != GetCurrentFrameGen()) {
+            // Must copy motion vectors and history data before swap
+            CopyMotionVectorsToHistoryBuffer(motionVector);
+        }
+    }
+};
+
+// TLAS must be rebuilt after mesh updates, but preserve culling results for frames without changes
+const bool RebuildTLASMandatoryAfterMeshUpdate = true; 
+
+// For Ray Tracing Miss/Hit shaders: ensure bindless handles to acceleration structures are history-critical
+constexpr uint32_t RAY_ACCELERATION_STRUCTURE_HANDLE_OFFSET = 10u; // Specific handle slot for RT
+```
+
+### Multi-threaded Command Recording Pitfalls
+
+- **Lock Contention:** Use thread-local buckets (no mutex during recording)
+- **Memory Ordering:** Explicit `memory_fencing` between extraction phase and command submission
+- **Descriptor Cache Coherence:** Invalidate CPU caches when swapping descriptor heaps across threads
