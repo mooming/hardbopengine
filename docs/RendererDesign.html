@@ -1,663 +1,429 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>HardBop Engine — RHI Architecture (Data-Oriented Design)</title>
-<style>
-  :root {
-    --bg: #0d1117;
-    --surface: #161b22;
-    --border: #30363d;
-    --text: #e6edf3;
-    --text-dim: #8b949e;
-    --accent: #58a6ff;
-    --accent2: #3fb950;
-    --accent3: #d29922;
-    --accent4: #f85149;
-    --metal: #f0a030;
-    --vulkan: #ab47bc;
-    --dx12: #42a5f5;
-    --code-bg: #1c2128;
-  }
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-    background: var(--bg);
-    color: var(--text);
-    line-height: 1.6; padding: 2rem 1.5rem; max-width: 1200px; margin: 0 auto;
-  }
-  h1 { font-size: 2rem; font-weight: 700; margin-bottom: 0.3rem; letter-spacing: -0.02em; }
-  .subtitle { color: var(--text-dim); font-size: 1rem; margin-bottom: 1.5rem; }
-  .meta { color: var(--text-dim); font-size: 0.85rem; display: flex; gap: 1.5rem; margin-bottom: 2rem; flex-wrap: wrap; align-items: center; }
-  
-  /* Code blocks */
-  pre {
-    background: var(--code-bg); border: 1px solid var(--border); border-radius: 6px;
-    padding: 1.2rem; overflow-x: auto; font-size: 0.82rem; line-height: 1.5;
-    font-family: 'JetBrains Mono', 'SF Mono', monospace;
-  }
-  code { font-family: 'JetBrains Mono', 'SF Mono', monospace; }
-  
-  .toc { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 1.2rem 1.5rem; margin: 1.5rem 0; }
-  .toc ul { list-style: none; columns: 2; column-gap: 2rem; }
-  .toc li { margin: 0.25rem 0; break-inside: avoid; padding-left: 1.5rem; text-indent: -1.5rem; }
-  .toc a { color: var(--text-dim); font-size: 0.9rem; }
-  .toc a:hover, .toc a.active { color: var(--accent); font-weight: 600; text-decoration: none; }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HardBop Engine — RHI Architecture Documentation</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <style>
+        :root {
+            --bg-color: #0d1117;
+            --text-color: #c9d1d9;
+            --accent-color: #58a6ff;
+            --code-bg: #161b22;
+            --border-color: #30363d;
+            --secondary-bg: #1c2128;
+            --header-bg: #010409;
+            --success: #238636;
+            --warning: #d29922;
+            --error: #f85149;
+        }
 
-  /* Boxed sections */
-  .box {
-    background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
-    padding: 1rem 1.2rem; margin: 1rem 0;
-  }
-  .box-label { font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-dim); margin-bottom: 0.3rem; }
+        body {
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            line-height: 1.6;
+            margin: 0;
+            display: flex;
+        }
 
-  /* Highlights */
-  .hl { color: var(--accent); }
-  .hl2 { color: var(--accent2); }
-  .hl3 { color: var(--accent3); }
-  .dim { color: var(--text-dim); }
-  
-  /* Diagram figure style */
-  .fig {
-    background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
-    padding: 1rem; margin: 1.2rem 0; overflow-x: auto; min-height: 400px;
-  }
-  .fig-caption { 
-    text-align: center; font-size: 0.85rem; color: var(--text-dim); 
-    margin-top: 0.6rem; padding-top: 0.5rem; border-top: 1px solid var(--border);
-  }
+        /* Sidebar Navigation */
+        nav {
+            width: 300px;
+            height: 100vh;
+            position: sticky;
+            top: 0;
+            background-color: var(--header-bg);
+            border-right: 1px solid var(--border-color);
+            padding: 20px;
+            box-sizing: border-box;
+            overflow-y: auto;
+        }
 
-  /* Tables */
-  table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.9rem; min-width: 600px; }
-  th, td { padding: 0.55rem 0.75rem; text-align: left; border: 1px solid var(--border); white-space: nowrap; }
-  th { background: var(--surface); color: var(--accent); font-weight: 600; }
-  td { color: var(--text-dim); word-break: break-all; }
+        nav h2 {
+            font-size: 1.2rem;
+            color: var(--accent-color);
+            margin-top: 0;
+        }
 
-  /* Badges */
-  .badge {
-    display: inline-block; padding: 0.15em 0.5em; border-radius: 4px;
-    font-size: 0.7rem; font-weight: 600; letter-spacing: 0.01em; margin-right: 0.5rem;
-  }
-  .badge-metal { background: rgba(240,160,48,0.2); color: var(--metal); }
-  .badge-vulkan { background: rgba(171,71,188,0.2); color: var(--vulkan); }
-  .badge-dx12 { background: rgba(66,165,245,0.2); color: var(--dx12); }
-  .badge-done { background: rgba(63,185,80,0.2); color: var(--accent2); }
-  .badge-warn { background: rgba(210,153,34,0.2); color: var(--accent3); }
-  .badge-err { background: rgba(248,81,73,0.2); color: var(--accent4); }
+        nav ul {
+            list-style: none;
+            padding: 0;
+        }
 
-  @media (max-width: 700px) {
-    .toc ul { columns: 1; }
-    table { font-size: 0.8rem; }
-    pre { font-size: 0.75rem; }
-  }
-</style>
+        nav li {
+            margin: 10px 0;
+        }
+
+        nav a {
+            text-decoration: none;
+            color: var(--text/color);
+            font-size: 0.9rem;
+            transition: color 0.2s;
+        }
+
+        nav a:hover {
+            color: var_accent_color;
+        }
+
+        /* Main Content Area */
+        main {
+            flex: 1;
+            padding: 40px;
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        h1, h2, h3 {
+            color: var(--accent-color);
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 10px;
+        }
+
+        h1 { font-size: 2.5rem; margin-bottom: 10px; }
+
+        section {
+            margin-bottom: 60px;
+        }
+
+        .intro-card {
+            background: var(--secondary-bg);
+            border: 1px solid var(--border-color);
+            padding: 20px;
+            border-radius: 8px;
+            font-style: italic;
+            margin-bottom: 30px;
+        }
+
+        /* Code Blocks */
+        pre {
+            background-
+            background-color: var(--code-bg);
+            padding: 15px;
+            border-radius: 6px;
+            overflow-x: auto;
+            border: 1px solid var(--border-color);
+            font-family: 'Fira Code', 'Courier New', monospace;
+            font-size: 0.9rem;
+        }
+
+        code {
+            font-family: 'Fira Code', monospace;
+        }
+
+        /* Tables */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+
+        th, td {
+            padding: 12px;
+            border: 1px solid var(--border-color);
+            text-align: left;
+        }
+
+        th {
+            background-color: var(--secondary-bg);
+            color: var(--accent-color);
+        }
+
+        /* Animations & Diagrams */
+        .diagram-container {
+            background: var(--secondary-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            text-align: center;
+            overflow: hidden;
+        }
+
+        /* Pipeline Animation (CSS Keyframes) */
+        .pipeline-anim {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            height: 100px;
+            position: relative;
+        }
+
+        .stage {
+            width: 120px;
+            height: 50px;
+            background: var(--border-color);
+            border: 2px solid var(--accent-color);
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            z-index: 2;
+        }
+
+        .data-packet {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background: var(--success);
+            border-radius: 50%;
+            top: 40px;
+            left: 0;
+            animation: movePacket 5s infinite linear;
+            z-index: 1;
+        }
+
+        @keyframes movePacket {
+            0% { left: 0%; opacity: 1; }
+            25% { left: 25%; opacity: 1; transform: scale(1); }
+            50% { left: 50%; opacity: 1; transform: scale(1.5); background: var(--warning); }
+            75% { left: 75%; opacity: 1; transform: scale(1); }
+            100% { left: 100%; opacity: 0; transform: scale(0.5); }
+        }
+
+        .api-comparison-anim {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            height: 150px;
+        }
+
+        .driver-opacity {
+            animation: opacityShift 4s infinite alternate;
+        }
+
+        @keyframes opacityShift {
+            from { opacity: 1; }
+            to { opacity: 0.3; }
+        }
+
+        /* Utilities */
+        .badge {
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: bold;
+        }
+        .badge-high { background: var(--error); color: white; }
+        .badge-med { background: var-warning; color: black; }
+
+    </style>
 </head>
 <body>
 
-<h1>HardBop Engine — RHI Architecture (Data-Oriented Design)</h1>
-<p class="subtitle">Hybrid Pipeline • HLSL Single Source • Bindless Resources • Cross-Platform (DX12/Vulkan/Metal)</p>
-<div class="meta">
-  <span>📅 May 2026</span>
-  <span>📁 <code>docs/RendererDesign.md & .html</code></span>
-  <span>🔧 HLSL SHM 6.6+ • C++23</span>
-  <span>⚡ SoA Data Layouts</span>
-</div>
+<nav>
+    <h2>HardBop RHI</h2>
+    <ul>
+        <li><a href="#intro">Introduction</a></li>
+        <li><a href="#fundamentals">1. Modern API Fundamentals</a></li>
+        <li><a href="#pipeline">2. Hybrid Pipeline Architecture</a></li>
+        <li><a href="#dataflow">3. High-Level Data Flow</a></li>
+        <li><a href="#interfaces">4. Core Interfaces</a></li>
+        <li><a href="#mapping">5. API Mapping & HLSL</a></li>
+        <li><a href="#edgecases">6. Critical Edge Cases</a></li>
+    </ul>
+</nav>
 
-<div class="toc" id="toc">
-<h3 style="margin:0 0 0.5rem 0; border:none; padding:0; color:var(--text);">Navigation</h3>
-<ul id="toc-list">
-  <li><a href="#arch">1. High-Level Data Flow Architecture</a></li>
-  <li><a href="#bindless">2. HLSL-Centric Bindless Architecture</a></li>
-  <li><a href="#pipeline-orchestrate">3. Hybrid Pipeline Orchestration</a></li>
-  <li><a href="#command-buckets">4. Stateless Command Buckets & Multi-threading</a></li>
-  <li><a href="#psos">5. PSO Management (Graphics/Compute/RT)</a></li>
-  <li><a href="#api-matrix">6. HLSL & API Mapping Matrix</a></li>
-  <li><a href="#edge-cases">7. Critical Edge Cases</a></li>
-  <li><a href="#summary">Summary & Implementation Progress</a></li>
-</ul>
-</div>
+<main>
+    <header id="intro">
+        <h1>HardBop Engine — RHI Architecture</h1>
+        <div class="intro-card">
+            <strong>Architecture:</strong> Hybrid Pipeline (Extract → Prepare → Render Graph → Submit)<br>
+            <strong>Core Principle:</strong> Bindless, Stateless, and Data-Oriented.<br>
+            <strong>Shader Philosophy:</strong> HLSL as Single Source of Truth (SM 6.6+).
+        </div>
+    </header>
 
-<!-- ================================================================== -->
-<h2 id="arch">1. High-Level Data Flow Architecture</h2>
-
-<p>
-  The renderer implements a strictly decoupled, data-oriented hybrid pipeline through four distinct phases:
-  <strong>Extract → Prepare → Render Graph → Submit</strong>.
-</p>
-
-<div class="fig">
-<svg viewBox="0 0 1000 650" xmlns="http://www.w3.org/2000/svg" font-family="system-ui, sans-serif">
-  <defs>
-    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
-      <path d="M0,0 L10,5 L0,10 Z" fill="#58a6ff"/>
-    </marker>
-  </defs>
-
-  <!-- Background -->
-  <rect x="0" y="0" width="1000" height="650" rx="8" fill="#0d1117"/>
-
-  <!-- Phase 1: EXTRACT -->
-  <rect x="20" y="20" width="260" height="95" rx="8" fill="#1c2128" stroke="#f0a030" stroke-width="2"/>
-  <text x="150" y="42" text-anchor="middle" fill="#f0a030" font-size="14" font-weight="700">PHASE 1: EXTRACT</text>
-  <text x="150" y="62" text-anchor="middle" fill="#8b949e" font-size="11">(ECS-Driven, Lockless Copying)</text>
-
-  <!-- ECS -->
-  <rect x="50" y="55" width="200" height="35" rx="6" fill="#0d1117" stroke="#e6edf3"/>
-  <text x="150" y="74" text-anchor="middle" fill="#e6edf3" font-size="10">Game World ECS</text>
-
-  <!-- Extraction -->
-  <line x1="80" y1="90" x2="170" y2="90" stroke="#58a6ff" stroke-width="1.5" marker-end="url(#arrow)"/>
-  
-  <rect x="50" y="100" width="200" height="35" rx="6" fill="#0d1117" stroke="#f0a030"/>
-  <text x="150" y="119" text-anchor="middle" fill="#f0a030" font-size="9">ActorTransform, MeshHandle</text>
-
-  <!-- Outputs -->
-  <rect x="170" y="100" width="85" height="60" rx="4" fill="#1c2128" stroke="#58a6ff"/>
-  <text x="212" y="119" text-anchor="middle" fill="#58a6ff" font-size="10">TransformStack<br/>(128-byte SoA)</text>
-
-  <!-- Arrow -->
-  <line x1="255" y1="130" x2="370" y2="130" stroke="#58a6ff" stroke-width="2" marker-end="url(#arrow)"/>
-
-  <!-- Phase 2: PREPARE -->
-  <rect x="370" y="20" width="250" height="95" rx="8" fill="#1c2128" stroke="#ab47bc" stroke-width="2"/>
-  <text x="495" y="42" text-anchor="middle" fill="#ab47bc" font-size="14" font-weight="700">PHASE 2: PREPARE</text>
-  <text x="495" y="62" text-anchor="middle" fill="#8b949e" font-size="11">(Compute Shaders / Worker Threads)</text>
-
-  <!-- Culling -->
-  <rect x="400" y="55" width="150" height="70" rx="6" fill="#0d1117" stroke="#3fb950"/>
-  <text x="475" y="74" text-anchor="middle" fill="#3fb950" font-size="10">Frustum Culling<br/>Hi-Z Occlusion<br/>LOD Selection</text>
-
-  <!-- TLAS -->
-  <rect x="560" y="55" width="130" height="65" rx="6" fill="#0d1117" stroke="#f0a030"/>
-  <text x="625" y="74" text-anchor="middle" fill="#f0a030" font-size="9">TLAS Build<br/>(DXR/VK/MTL)</text>
-
-  <!-- Output -->
-  <rect x="580" y="130" width="110" height="40" rx="6" fill="#0d1117" stroke="#ab47bc"/>
-  <text x="635" y="149" text-anchor="middle" fill="#ab47bc" font-size="10">CullMask<br/>MeshIDBuf</text>
-
-  <!-- Arrow -->
-  <line x1="690" y1="170" x2="805" y2="170" stroke="#58a6ff" stroke-width="2" marker-end="url(#arrow)"/>
-
-  <!-- Phase 3: RENDER GRAPH -->
-  <rect x="805" y="20" width="175" height="95" rx="8" fill="#1c2128" stroke="#d29922" stroke-width="2"/>
-  <text x="892" y="42" text-anchor="middle" fill="#d29922" font-size="13" font-weight="700">PHASE 3: RENDER GRAPH</text>
-  <text x="892" y="62" text-anchor="middle" fill="#8b949e" font-size="10">(DAG + Barrier Injection)</text>
-
-  <!-- DAG Node -->
-  <rect x="835" y="55" width="110" height="75" rx="6" fill="#0d1117" stroke="#d29922"/>
-  <text x="890" y="74" text-anchor="middle" fill="#d29922" font-size="9">RenderGraph<br/>DAG</text>
-
-  <!-- Barriers -->
-  <rect x="950" y="100" width="60" height="30" rx="6" fill="#0d1117" stroke="#f85149"/>
-  <text x="980" y="132" text-anchor="middle" fill="#f85149" font-size="9">Barriers</text>
-
-  <!-- Output -->
-  <rect x="930" y="145" width="100" height="35" rx="6" fill="#0d1117" stroke="#d29922"/>
-  <text x="980" y="164" text-anchor="middle" fill="#d29922" font-size="9">Ready<br/>Commands</text>
-
-  <!-- Arrow -->
-  <line x1="899" y1="175" x2="30" y2="260" stroke="#58a6ff" stroke-width="2" marker-end="url(#arrow)"/>
-
-  <!-- Phase 4: SUBMIT -->
-  <rect x="20" y="260" width="260" height="95" rx="8" fill="#1c2128" stroke="#58a6ff" stroke-width="2"/>
-  <text x="150" y="282" text-anchor="middle" fill="#58a6ff" font-size="13" font-weight="700">PHASE 4: SUBMIT</text>
-  <text x="150" y="302" text-anchor="middle" fill="#8b949e" font-size="10">(Sorted Buckets, Zero Contention)</text>
-
-  <!-- Sort Key -->
-  <rect x="50" y="295" width="80" height="40" rx="6" fill="#0d1117" stroke="#3fb950"/>
-  <text x="90" y="314" text-anchor="middle" fill="#3fb950" font-size="9">SortKey (64-bit)</text>
-
-  <!-- Buckets -->
-  <rect x="140" y="295" width="70" height="40" rx="6" fill="#0d1117" stroke="#3fb950"/>
-  <text x="175" y="314" text-anchor="middle" fill="#3fb950" font-size="9">Buckets[64]</text>
-
-  <!-- Arrow -->
-  <line x1="290" y1="325" x2="320" y2="325" stroke="#58a6ff" stroke-width="2" marker-end="url(#arrow)"/>
-
-  <rect x="320" y="295" width="90" height="40" rx="6" fill="#0d1117" stroke="#3fb950"/>
-  <text x="365" y="314" text-anchor="middle" fill="#3fb950" font-size="9">Sorted</text>
-
-  <!-- Arrow -->
-  <line x1="395" y1="325" x2="425" y2="325" stroke="#58a6ff" stroke-width="2" marker-end="url(#arrow)"/>
-
-  <rect x="425" y="295" width="70" height="40" rx="6" fill="#0d1117" stroke="#3fb950"/>
-  <text x="460" y="314" text-anchor="middle" fill="#3fb950" font-size="9">Parallel</text>
-
-  <!-- Arrow -->
-  <line x1="525" y1="325" x2="830" y2="325" stroke="#58a6ff" stroke-width="2" marker-end="url(#arrow)"/>
-
-  <!-- Native APIs -->
-  <rect x="540" y="390" width="440" height="240" rx="8" fill="#1c2128" stroke="#f85149"/>
-  <text x="760" y="412" text-anchor="middle" fill="#f85149" font-size="13" font-weight="700">NATIVE API</text>
-
-  <!-- DX12 -->
-  <rect x="560" y="420" width="140" height="35" rx="6" fill="#0d1117" stroke="#42a5f5"/>
-  <text x="630" y="439" text-anchor="middle" fill="#42a5f5" font-size="10">DX12: ID3D12GraphicsCommandList4 + Enhanced</text>
-
-  <!-- Vulkan -->
-  <rect x="710" y="420" width="140" height="35" rx="6" fill="#0d1117" stroke="#ab47bc"/>
-  <text x="780" y="439" text-anchor="middle" fill="#ab47bc" font-size="9">Vulkan: VkPipelineBarrier2 + VK_EXT_descriptor_indexing</text>
-
-  <!-- Metal -->
-  <rect x="860" y="420" width="140" height="35" rx="6" fill="#0d1117" stroke="#f0a030"/>
-  <text x="930" y="439" text-anchor="middle" fill="#f0a030" font-size="9">Metal: MTLArgumentBuffer for bindless</text>
-
-  <!-- Bindless Heaps (dashed) -->
-  <line x1="20" y1="75" x2="140" y2="75" stroke="#d29922" stroke-width="1.5" stroke-dasharray="3,3"/>
-  <rect x="140" y="60" width="140" height="40" rx="6" fill="#1c2128" stroke="#d29922"/>
-  <text x="210" y="79" text-anchor="middle" fill="#d29922" font-size="9">Bindless Heaps</text>
-
-</svg>
-<div class="fig-caption">Figure 1: Four-phase hybrid pipeline — Extract → Prepare → Render Graph → Submit, with HLSL as single source.</div>
-</div>
-
-<!-- ================================================================== -->
-<h2 id="bindless">2. HLSL-Centric Bindless Architecture</h2>
-
-<p>
-  The RHI uses a unified 32-bit handle approach where shaders access textures and buffers via indices into global arrays.
-  HLSL (Shader Model 6.6+) serves as the single source of truth, cross-compiled to DXIL, SPIR-V, and MSL.
-</p>
-
-<div class="box">
-<div class="box-label">HLSL Bindless Structure (SM 6.6+)</div>
-<pre style="white-space: pre-wrap;">struct BindlessResourceTable {
-    StructuredBuffer&lt;uint4&gt;      s_rtvTextures[MAX_BINDLESS_TEXTURES];
-    UnorderedAccessWriter&lt;float4&gt; u_rwDepthBuffer;
-    Textures2D&lt;float&gt;             t_diffuseTextures[MAX_BINDLESS_SAMPLERS];
-    StructuredBuffer&lt;uint32_t&gt;    s_meshIDs[MAX_BINDLESS_MESHS];
-    ConstantBuffer&lt;Mat4x4&gt;        cb_views[MAX_BINDLESS_VIEWS];
-};
-
-struct BindlessMaterialIndices {
-    ConstantBuffer&lt;vec4&gt;          c_matIndices[MAX_MATERIAL_INDICES];
-};
-</pre>
-</div>
-
-<div class="box">
-<div class="box-label">CPU-Side Descriptor Pool</div>
-<pre style="white-space: pre-wrap;">struct BindlessDescriptorPool {
-    std::array&lt;void*, MAX_BINDLESS_TEXTURES&gt; m_rtvTextures;
-    std::array&lt;void*, MAX_BINDLESS_MESHS&gt;    m_meshHandles;
-    std::array&lt;void*, MAX_MATERIAL_INDICES&gt;  m_matIndices;
-    uint32_t                                  m_generation[MAX_BINDLESS_TEXTURES];
-    
-    // API-specific descriptor validation (Metal Tier 2 limits)
-    bool IsWithinMetalTier2Limit() const; 
-    void SplitIntoPages(ResourceHandle handle, uint32_t* outPageIndex);
-};
-</pre>
-</div>
-
-<div class="box">
-<div class="box-label">32-bit Handle Passing to Shaders</div>
-<pre style="white-space: pre-wrap>// HLSL shader interface (cross-compiled)
-// slot 0 = Root, slot 4 = SRVs/UBOs, slot 8 = Sampler/Textures, slot 12 = RayTracing
-register StructuredBuffer&lt;uint32_t&gt; s_meshIDs : register(t0); // Mesh ID array
-register UnorderedAccessWriter&lt;float4&gt; u_rwDepth : register(t1); // Depth/UAV
-register Texture2D&lt;float&gt; t_diffuse[8] : register(t2); // Diffuse atlas
-</pre>
-</div>
-
-<p><strong>Ray Tracing Support:</strong></p>
-<ul>
-  <li>DXR: <code>ShaderResourceView</code> from Descriptor Heap via bindless handles</li>
-  <li>Vulkan: <code>DescriptorSet</code> traversal with <code>VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR</code></li>
-  <li>Metal: <code>mtl::acceleration_structure</code> via Argument Buffers</li>
-</ul>
-
-<!-- ================================================================== -->
-<h2 id="pipeline-orchestrate">3. Hybrid Pipeline Orchestration</h2>
-
-<div class="box">
-<div class="box-label">Phase 1: Extract (ECS → SoA)</div>
-<pre style="white-space: pre-wrap;">// Lockless copying of minimal visibility data
-constexpr size_t MAX_TRANSFORMS = 4096;
-constexpr size_t MAX_MESH_INDICES = 8192;
-
-struct TransformStack { // 128-byte aligned (SIMD-friendly)
-    float3 pos[MAX_TRANSFORMS];   // Position/Transform
-    uint32_t meshHandle[MAX_TRANSFORMS]; // Mesh ID from ECS
-};
-
-constexpr size_t MAX_BINDLESS_TEXTURES = 512;
-struct MaterialIndexBuffer { // Flat array for SoA access
-    uint32_t textureId[MAX_BINDLESS_TEXTURES];   // Texture indices
-};
-</pre>
-</div>
-
-<div class="box">
-<div class="box-label">Phase 2: Prepare (Compute Workers)</div>
-<pre style="white-space: pre-wrap>// Compute Shader inputs (SoA layout for GPU efficiency)
-struct ComputeInput {
-    TransformStack* transforms;   // CPU-side copy
-    size_t c_transforms;          # of active transforms (cullable)
-    MaterialIndexBuffer materials;// Bindless material references
-};
-
-// Outputs after Prepare phase
-struct FrameData {
-    uint32_t cullMask[MAX_TRANSFORMS];  // Culling results
-    MeshInstanceArray instanceBuf[MAX_INDICES];  // Instance data buffers
-    AccelerationStructureDesc tlasDesc; // TLAS for RT passes
-};
-</pre>
-</div>
-
-<div class="box">
-<div class="box-label">Phase 3: Render Graph (DAG + Barriers)</div>
-<pre style="white-space: pre-wrap;">enum class RHIResourceUsage {
-    VK_STORAGE_READ,        // Metal: MTLReadOnlyStorageTexture
-    D3D12_SHADER_RESOURCE,  # DirectX 12 SRV
-    MTL_READ_ONLY           // Metal readonly resource
-};
-
-struct RenderGraphDAG {
-    struct Node {
-        ResourceHandle inputs[4];     // Up to 4 resources read
-        ResourceHandle outputs[2];    // Up to 2 resources written
-        TemporalReplayFlag history = TemporalReplayFlag::Transient;
+    <section id="fundamentals">
+        <h2>1. Fundamentals of Modern Graphics APIs</h2>
+        <p>Modern APIs (Vulkan, DX12, Metal) represent a paradigm shift from the "State Machine" model used in OpenGL/DX11 to an "Explicit Control" model. This shift is driven by the need to reduce driver overhead and utilize the massive parallelism of modern GPUs.</p>
         
-        void* execute(void* cmdPtr) const; // Virtual dispatch
-    };
+        <h3>Key Design Pillars</h3>
+        <ul>
+            <li><strong>Explicit Resource Management:</strong> The application, not the driver, is responsible for allocating, pooling, and managing the lifetime of buffers and textures. This eliminates "hidden" driver-side memory reallocations.</li>
+            <li><strong>Synchronization & Barriers:</strong> In older APIs, the driver implicitly handled dependencies. In modern APIs, the programmer must explicitly define <em>Pipeline Barriers</em> and <em>Memory Barriers</em> to ensure that a write operation (e.g., a Compute Shader) is visible to a subsequent read operation (e.g., a Fragment Shader).</li>
+            <li><strong>Bindless Rendering:</strong> Instead of binding resources to "slots" (e.g., `texture0`, `texture1`), resources reside in massive, globally accessible arrays (Descriptor Heaps/Sets/Argument Buffers). Shaders access them via 32-bit indices, drastically reducing CPU-side driver overhead and state changes.</li>
+            <li><strong>Pipeline State Objects (PSOs):</strong> All shader permutations, blend states, and rasterizer states are pre-baked into immutable PSOs. This prevents the "shader stutter" famously seen in modern title launches when the driver tries to compile a state on-the-fly during a draw call.</li>
+        </ul>
 
-    std::vector<Node> nodes;
-    
-    // Automatic barrier injection for read/write transitions:
-    BarrierCommand CreateBarrier(const Node& src, const Node& dst);
-};
-</pre>
-</div>
+        <div class="diagram-container">
+            <h4>Conceptual Shift: From Opaque to Explicit</h4>
+            <div class="api-comparison-anim">
+                <div class="driver-opacity" style="text-align:center;">
+                    <div style="font-size: 3rem;">📦</div>
+                    <strong>Legacy (OpenGL/DX11)</strong><br>
+                    <small>The "Opaque Box"<br>Driver manages everything<br>High CPU Overhead</small>
+                </div>
+                <div style="font-size: 2rem;">➔</div>
+                <div style="text-align:center;">
+                    <div style="font-size: 3rem;">🛠️</div>
+                    <strong>Modern (Vulkan/DX12/Metal)</strong><br>
+                    <small>The "Manual Workshop"<br>App manages everything<br>Maximum GPU Throughput</small>
+                </div>
+            </div>
+        </div>
+    </section>
 
-<div class="box">
-<div class="box-label">Phase 4: Submit (Sorted Buckets)</div>
-<pre style="white-space: pre-wrap>// 64-bit sort key for radix sort minimization
-struct RenderSortKey {
-    uint8_t pass_id : 1;                 // Graphics/Compute/etc.
-    uint16_t pso_hash : 12;              // PSO program hash
-    uint16_t mat_index : 16;             // Matches bindless table index
-    uint32_t depth_distance : 32;        // For Z-sort stability
-};
-
-struct DrawCommand {
-    RenderSortKey sortKey;
-    uint16_t instanceCount;
-    uint32_t firstMeshIndex;
-    ResourceHandle meshHandle;         // Bindless mesh resource handle
-};
-
-// Thread-local buckets (zero contention)
-ThreadLocal&lt;DrawCommand[64]&gt; cmdBuckets[MAX_THREADS];
-</pre>
-</div>
-
-<!-- ================================================================== -->
-<h2 id="command-buckets">4. Stateless Command Buckets & Multi-threading</h2>
-
-<div class="box">
-<div class="box-label">Thread-Local Command Bucket</div>
-<pre style="white-space: pre-wrap;">struct ThreadLocalCommandBucket {
-    volatile std::atomic&lt;uint32_t&gt; builtCount = 0;  // Atomic counter
-    
-protected:
-    void RecordGraphicsCommand(DrawSortKey&amp; key, DrawCommand&amp; cmd) {
-        // Each thread has its own bucket - no mutex during recording!
-        size_t idx = ++builtCount % NUM_BUCKETS;
-        buckets[idx].sortKey = key;
-        buckets[idx].meshHandle = cmd.meshHandle;
-    }
-};
-
-// At frame end: parallel radix sort across all threads
-void AggregateAndRadixSortParallel(std::vector&lt;DrawCommand&amp;&gt; out) {
-    // Gather from thread-local buckets into flat array
-    // Radix sort by 64-bit key (zero contention!):
-    std::sort(out.begin(), out.end(), 
-      [](const Draw&amp;a, const Draw&amp;b){ return a.sortKey &lt; b.sortKey; });
-}
-</pre>
-</div>
-
-<div class="box">
-<div class="box-label">Platform-Specific Command List Interfaces</div>
-<pre style="white-space: pre-wrap">// DX12: Zero contention multi-threaded command lists
-namespace dx12 {
-struct CommandBucket {
-    ID3D12GraphicsCommandList4* m_threadLocalLists[D3D12_COMMAND_LISTS_PER_THREAD];
-    void BeginSubmit() { /* Each thread owns list - no sync */ }
-    void RecordSortKeyBasedDraw(DrawSortKey&amp; key, DrawCommand&amp; cmd); // inline
-};
-}
-
-// Vulkan: Multiple command buffers per pool with atomic tracking
-namespace vulkan {
-struct CommandBucket {
-    std::array&lt;VkCommandBuffer, 256&gt; m_commandBuffersFlat;
-    void BeginSubmit() { /* Allocate VkCommandBuffer from pool */ }
-    void RecordDraw(DrawSortKey&amp; key, DrawCommand&amp; cmd);
-};
-}
-
-// Metal: MTLCommandQueue with multiple buffers per batch
-namespace metal {
-struct CommandBucket {
-    id&lt;MTLCommandBuffer&gt; m_currentBatch[16]; // Multiple for concurrent recording
-    void BeginSubmit() { /* Create new command buffer */ }
-};
-}
-</pre>
-</div>
-
-<!-- ================================================================== -->
-<h2 id="psos">5. PSO Management (Graphics/Compute/RT)</h2>
-
-<div class="box">
-<div class="box-label">Data-Driven PSO Caching</div>
-<pre style="white-space: pre-wrap;">struct RenderPsoRecord {
-    uint32_t hash;          // 12-bit PSO hash from sort key (64-bit)
-    PipelineLayout layout;
-    ShaderProgram program;      // HLSL shader module (DXIL/SPIR-V/MSL)
-};
-
-struct ComputePsoRecord {
-    uint32_t hash;
-    ShaderModuleCompute computeShader;  // Dispatchable compute entry point
-};
-
-struct RayTracingPipelineRecord {
-    uint32_t gen;             // Generation for cache invalidation
-    RTPipelineDesc desc;      // HLSL ray tracing pipeline (DXC compiled)
-};
-
-// Unified PSO management
-class PsocacheManager {
-public:
-    RenderPsoRecord GetRenderPso(const ShaderProgram&amp; shader, uint32_t matIdx);
-    ComputePsoRecord GetComputePso(const ShaderProgram&amp; program);
-    RayTracingPipelineGetRtpso(uint32_t matIdx);
-    
-private:
-    std::unordered_map&lt;uint64_t, RenderPsoRecord&gt; renderPsoCache;
-    std::unordered_map&lt;uint64_t, ComputePsoRecord&gt; computePsoCache;
-    std::unordered_map&lt;uint64_t, RayTracingPipelineRecord&gt; rtpsoCache;
-};
-</pre>
-</div>
-
-<!-- ================================================================== -->
-<h2 id="api-matrix">6. HLSL & API Mapping Matrix</h2>
-
-<table>
-  <thead>
-    <tr>
-      <th>Feature</th>
-      <th>HLSL (SM 6.6+)</th>
-      <th>DX12</th>
-      <th>Vulkan (Descriptor Indexing)</th>
-      <th>Metal (Argument Buffers)</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td><strong>Resource Binding</strong></td>
-      <td><code>register(t0)</code> Unbounded Descriptor Tables</td>
-      <td>Descriptor Heap Pointer <code>ID3D12_CPU_DESCRIPTOR_HEAP</code></td>
-      <td><code>VK_DESCRIPTOR_BINDING</code> + Array Indexing</td>
-      <td><code>MTLArgumentBuffer</code> + Texture/Buffer Arrays</td>
-    </tr>
-    <tr>
-      <td><strong>Indexing Syntax</strong></td>
-      <td><code>myTex[index]</code></td>
-      <td>Index into heap via SetResource(i)</td>
-      <td>Index into <code>VkDescriptorSet</code> array</td>
-      <td>Index into texture buffer: <code>texture(sampler, [index])</code></td>
-    </tr>
-    <tr>
-      <td><strong>Ray Tracing Access</strong></td>
-      <td>Via Bindless Handles (<code>rayHitObject</code>)</td>
-      <td><code>ShaderResourceView</code> from Descriptor Heap</td>
-      <td><code>DescriptorSet</code> traversal via <code>VK_ACCELERATION_STRUCTURE_KHR</code></td>
-      <td><code>mtl::acceleration_structure</code> + MTL argument buffers</td>
-    </tr>
-    <tr>
-      <td><strong>UAV Access Pattern</strong></td>
-      <td><code>RWTexture2D&lt;float4&gt; tex[] : register(t1)</code></td>
-      <td><code>ID3D12Resource*</code> + Enhanced Barriers</td>
-      <td><code>VkDescriptorSet</code> with <code>VK_STORAGE_IMAGE</code></td>
-      <td><code>MTLReadBuffer</code>/<code>ReadWriteBuffer</code></td>
-    </tr>
-  </tbody>
-</table>
-
-<div class="box">
-<div class="box-label">HLSL Cross-Compilation Flow</div>
-<svg viewBox="0 0 900 320" xmlns="http://www.w3.org/2000/svg" font-family="system-ui, sans-serif">
-  <rect x="0" y="0" width="900" height="320" rx="4" fill="#1c2128"/>
-  
-  <!-- HLSL -->
-  <rect x="50" y="30" width="160" height="60" rx="8" fill="#0d1117" stroke="#f0a030"/>
-  <text x="130" y="52" text-anchor="middle" fill="#f0a030" font-size="14" font-weight="700">HLSL</text>
-  <text x="130" y="68" text-anchor="middle" fill="#8b949e" font-size="10">SM 6.6+ Source</text>
-
-  <!-- Arrows -->
-  <line x1="270" y1="60" x2="520" y2="60" stroke="#58a6ff" stroke-width="1.5" marker-end="url(#arrow)"/>
-  
-  <!-- DXIL -->
-  <rect x="400" y="30" width="160" height="60" rx="8" fill="#0d1117" stroke="#42a5f5"/>
-  <text x="480" y="52" text-anchor="middle" fill="#42a5f5" font-size="12">DXIL (DX12)</text>
-  
-  <!-- SPIR-V -->
-  <rect x="600" y="30" width="160" height="60" rx="8" fill="#0d1117" stroke="#ab47bc"/>
-  <text x="680" y="52" text-anchor="middle" fill="#ab47bc" font-size="12">SPIR-V (Vulkan)</text>
-  
-  <!-- MSL -->
-  <rect x="800" y="30" width="100" height="60" rx="8" fill="#0d1117" stroke="#f0a030"/>
-  <text x="850" y="52" text-anchor="middle" fill="#f0a030" font-size="12">MSL (Metal)</text>
-
-</svg>
-<pre style="white-space: pre-wrap; margin-top: 0.5rem;">HLSL Source (.hlsl)
-    │
-    ├───► DXC → DXIL (DX12 Native)
-    ├────► SPIR-V (Vulkan via MoltenVk/SPIRV-Cross)
-    └────► Metal Shader Converter → MSL</pre>
-</div>
-
-<!-- ================================================================== -->
-<h2 id="edge-cases">7. Critical Edge Cases</h2>
-
-<div class="box">
-<div class="box-label">Metal Tier 2 Limits: Descriptor Partitioning</div>
-<pre style="white-space: pre-wrap;">inline void DescriptorsSplitIntoPages(BindlessDescriptorSet&amp; set, uint32_t maxBindingsPerPass = 16) {
-    const uint32_t MAX_TEXTURES_PER_PAGE = 64u; // Metal hardware limit
-    
-    uint32_t currentPageIdx = 0;
-    for (uint32_t i = 0; i < MAX_BINDLESS纹理; ) {
-        set.textures[currentPageIdx] = SetNextDescriptorBatch(set.textures, i, MAX_TEXTURES_PER_PAGE);
-        i += MAX_TEXTURES_PER_PAGE;
+    <section id="pipeline">
+        <h2>2. Hybrid Pipeline Architecture</h2>
+        <p>The HardBop Engine implements a 4-phase pipeline designed for high-throughput, data-oriented execution.</p>
         
-        // Metal Tier 2 check: split into additional argument buffers
-        if (IsBelowMetalTier1()) {
-            MTLBuffer newBuffer = AllocateMTLArgumentBufferFromPool(MAX_TEXTURES_PER_PAGE);
-            currentPageIdx++;
-        }
-    }
-}
-</pre>
-</div>
+        <div class="diagram-container">
+            <h4>Pipeline Execution Flow</h4>
+            <div class="pipeline-anim">
+                <div class--------class="data-packet"></div>
+                <div class="stage">EXTRACT</div>
+                <div class="stage">PREPARE</div>
+                <div class="stage">GRAPH</div>
+                <div class="stage">SUBMIT</div>
+            </div>
+            <p><small>Data evolves from ECS World $\rightarrow$ SoA Buffers $\rightarrow$ Culled Indices $\rightarrow$ GPU Command Buckets</small></p>
+        </div>
 
-<div class="box">
-<div class="box-label">Temporal History Aliasing Prevention</div>
-<pre style="white-space: pre-wrap;">// Preserve motion vectors and history buffers across frames
-struct TemporalTextureMetadata {
-    uint32_t generation;                  // Frame counter for alias detection
-    vec2 motionVector[MAX_HISTORIES];      // For TAA/DLSS motion vectors
-    bool      isHistoryCritical = false;   // Prevents premature reclamation
-    
-    void EnsureTemporalConsistency() const {
-        if (isHistoryCritical &amp;&amp; generation != GetCurrentFrameGen()) {
-            CopyMotionVectorsToHistoryBuffer(motionVector);
-        }
-    }
-};
+        <h3>Phase 1: EXTRACT</h3>
+        <p>Lockless extraction of ECS world data into CPU-side Structure-of-Arrays (SoA) buffers. This phase transforms fragmented entity data into contiguous, cache-friendly memory blocks.</p>
 
-// TLAS must be rebuilt after mesh updates, but preserve culling results for frames without changes
-const bool RebuildTLASMandatoryAfterMeshUpdate = true;
-</pre>
-</div>
+        <h3>Phase 2: PREPARE</h3>
+        <p>The "Compute-Heavy" phase. Compute shaders execute frustum culling, Hi-Z occlusion rejection, and LOD selection. The output is a highly refined set of visible instance identifiers.</p>
 
-<div class="box">
-<div class="box-label">Multi-threaded Command Recording Pitfalls</div>
-<ul>
-  <li><strong>Lock Contention:</strong> Use thread-local buckets (no mutex during recording)</li>
-  <li><strong>Memory Ordering:</strong> Explicit memory fencing between extraction phase and command submission</li>
-  <li><strong>Descriptor Cache Coherence:</strong> Invalidate CPU caches when swapping descriptor heaps across threads</li>
-</ul>
-</div>
+        <h3>Phase 3: RENDER GRAPH</h3>
+        <p>A Directed Acyclic Graph (DAG) of rendering passes. The engine automatically resolves dependencies and injects the necessary API-specific barriers (VK Pipeline Barriers, DX12 Enhanced Barriers, etc.).</p>
 
-<!-- ================================================================== -->
-<h2 id="summary">Summary & Implementation Progress</h2>
+        <h3>Phase 4: SUBMIT</h3>
+        <p>Command buckets are sorted using a 64-bit radix sort key to minimize pipeline state changes. The final, sorted command stream is submitted to the hardware with zero lock contention.</p>
+    </section>
 
-<div class="box" style="border-color: var(--accent2);">
-<div class="box-label" style="color: var(--accent3);">Architectural Highlights</div>
-<ul>
-  <li><strong>Hybrid Pipeline:</strong> Strict 4-phase decoupling (Extract → Prepare → Render Graph → Submit)</li>
-  <li><strong>HLSL Single Source:</strong> Cross-compiled to DXIL/SPIR-V/MSL with bindless tables</li>
-  <li><strong>Bindless Resources:</strong> Unified 32-bit handles with Metal Tier 2 partitioning</li>
-  <li><strong>Data-Oriented:</strong> SoA layouts throughout, 64-bit sort keys for zero-contention submission</li>
-  <li><strong>Automatic Barriers:</strong> Render Graph DAG injection (VkPipelineBarrier2, Dx12 Enhanced, MTLResourceBarrier)</li>
-</ul>
-</div>
+    <section id="dataflow">
+        <h2>3. High-Level Data Flow</h2>
+        <div class="mermaid">
+graph TD
+    subgraph World[Game World - ECS]
+        ECS[ActorTransformComponent<br>MeshHandle<br>MaterialHandle]
+    end
 
-<div class="box" style="border-color: var(--accent3);">
-<div class="box-label" style="color: var(--accent4);">Known Gaps from Original Implementation</div>
-<ul style="list-style: disc; margin-left: 1.5rem;">
-  <li>Missing Temporal Replay handling section in original docs</li>
-  <li>Lacked detailed UAV/Storage Buffer barrier injection explanations</li>
-  <li>Original had incomplete formatting (missing closing tags)</li>
-  <li>No 64-bit Sort Key structure definition in earlier version</li>
-</ul>
-</div>
+    subgraph Phase1[Phase 1: Extract]
+        Extract[Lockless Copy / SoA Extraction]
+        Buffers[TransformStack<br>MeshBuffer<br>MaterialIndexBuffer]
+    end
 
-<div class="box" style="border-color: var(--text-dim);">
-<div class="box-label" style="color: var(--text-dim);">Next Steps Checklist</div>
-<ul style="list-style: none;">
-  <li><input type="checkbox"> Implement BindlessDescriptorPool with Metal partitioning<br><span class="dim">See: DescriptorsSplitIntoPages()</span></li>
-  <li><input type="checkbox"> Add Render Graph DAG implementation with barrier injection<br><span class="dim">See: CreateResourceBarrier()</span></li>
-  <li><input type="checkbox"> Integrate thread-local command buckets (no mutex)</li>
-  <li><input type="checkbox"> Implement temporal history tracking for TAA/DLSS</li>
-  <li><input type="checkbox"> Complete Vulkan and DX12 backends with PSO caching</li>
-</ul>
-</div>
+    subgraph Phase2[Phase 2: Prepare]
+        Compute[Compute Shaders / Worker Threads]
+        Cull[Frustum Culling<br>Hi-Z Occlusion<br>LOD Selection]
+    end
 
-<style>#arrow{marker-end: url(#arrow);}</style>
+    subgraph Phase3[Phase 3: Render Graph]
+        DAG[DAG Construction]
+        Barriers[Barrier & Dependency Injection]
+    end
 
-<div style="margin-top: 3rem; padding-top: 1.5rem; border-top: 1px solid var(--border); text-align: center; color: var(--text-dim); font-size: 0.85rem;">
-  HardBop Engine — RHI Architecture <br>
-  Data-Oriented Design | HLSL SHM 6.6+ | Cross-Platform (DX12/Vulkan/Metal)
-</div>
+    subgraph Phase4[Phase 4: Submit]
+        Sort[Radix Sort Command Keys]
+        Hardware[Hardware Submission<br>DX12 / Vulkan / Metal]
+    end
 
+    ECS --> Extract
+    Extract --> Buffers
+    Buffers --> Compute
+    Compute --> Cull
+    Cull --> DAG
+    DAG --> Barriers
+    Barriers --> Sort
+    Sort --> Hardware
+        </div>
+    </section>
+
+    <section id="interfaces">
+        <h2>4. Core Interfaces & Data Structures</h2>
+        
+        <h3>Bindless Resource Management</h3>
+        <p>Unified 32-bit handle architecture used across all APIs.</p>
+<pre><code>// HLSL Bindless Structure (SM 6.6+ Source of Truth)
+struct BindlessResourceTable {
+    StructuredBuffer&lt;uint4&gt; s_rtvTextures[MAX_BINDLESS_TEXTURES];
+    Textures2D&lt;float&gt; t_diffuseTextures[MAX_BINDLESS_SAMPLERS];
+    StructuredBuffer&lt;uint32_t&gt; s_meshIDs[MAX_BINDLESS_MESHS];
+};</code></pre>
+
+        <h3>64-bit Sort Key Layout</h3>
+        <p>The 64-bit key is designed for high-performance Radix Sorting:</p>
+        <table>
+            <tr>
+                <th>Bits</th>
+                <th>Component</th>
+                <th>Description</th>
+            </tr>
+            <tr>
+                <td>63</td>
+                <td>PassID</td>
+                <td>Primary grouping (Graphics vs Compute)</td>
+            </tr>
+            <tr>
+                <td>59-48</td>
+                <td>PSO Hash</td>
+                <td>Minimizes Pipeline State changes</td>
+            </tr>
+            <tr>
+                <td>47-32</td>
+                <td>Material Index</td>
+                <td>Group by Material/Texture bindless set</td>
+            </tr>
+            <tr>
+                <td>31-0</td>
+                <td>Depth/Distance</td>
+                <td>Z-sorting for transparency/efficiency</td>
+            </tr>
+        </table>
+    </section>
+
+    <section id="mapping">
+        <h2>5. API Mapping & HLSL Flow</h2>
+        <table>
+            <tr>
+                <th>Feature</th>
+                <th>HLSL (SM 6.6+)</th>
+                <th>DirectX 12</th>
+                <th>Vulkan</th>
+                <th>Metal</th>
+            </tr>
+            <tr>
+                <td><strong>Binding</strong></td>
+                <td>Unbounded Tables</td>
+                <td>Descriptor Heaps</td>
+                <td>Descriptor Sets</td>
+                <td>Argument Buffers</td>
+            </tr>
+            <tr>
+                <td><strong>Syntax</strong></td>
+                <td><code>myTex[index]</code></td>
+                <td>Heap Indexing</td>
+                <td>Descriptor Indexing</td>
+                <td>Texture Arrays</td>
+            </tr>
+        </table>
+    </section>
+
+    <section id="edgecases">
+        <h2>6. Critical Edge Cases</h2>
+        <h3>Metal Tier 2 Limits</h3>
+        <p>Metal hardware has stricter limits on the number of textures per argument buffer. The engine implements <strong>Descriptor Partitioning</strong> to split global indices into manageable pages.</p>
+        
+        <h3>Temporal History Aliasing</h3>
+        <p>To prevent motion artifacts in TAA/DLSS, resources marked as <code>HistoryCritical</code> are protected from aliasing and premature reclamation during the Render Graph execution.</p>
+    </section>
+
+    <footer>
+        <p>&copy; 2026 HardBop Engine Development Team</p>
+    </footer>
+</main>
+
+<script>
+    mermaid.initialize({ 
+        startOnLoad: true,
+        theme: 'dark',
+        securityLevel: 'loose'
+    });
+</script>
 </body>
 </html>
