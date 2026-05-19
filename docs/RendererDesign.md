@@ -6,6 +6,17 @@
 
 ---
 
+## Modern Graphics API Fundamentals
+
+Modern APIs (Vulkan, DX12, Metal) represent a paradigm shift from the "State Machine" model used in OpenGL/DX11 to an "Explicit Control" model. This shift is driven by the need to reduce driver overhead and utilize the massive parallelism of modern GPUs.
+
+### Key Design Pillars
+
+- **Explicit Resource Management:** The application, not the driver, is responsible for allocating, pooling, and managing the lifetime of buffers and textures. This eliminates "hidden" driver-side memory reallocations.
+- **Synchronization & Barriers:** In older APIs, the driver implicitly handled dependencies. In modern APIs, the programmer must explicitly define *Pipeline Barriers* and *Memory Barriers* to ensure that a write operation (e.g., a Compute Shader) is visible to a subsequent read operation (e.g., a Fragment Shader).
+- **Bindless Rendering:** Instead of binding resources to "slots" (e.g., `texture0`, `texture1`), resources reside in massive, globally accessible arrays (Descriptor Heaps/Sets/Argument Buffers). Shaders access them via 32-bit indices, drastically reducing CPU-side driver overhead and state changes.
+- **Pipeline State Objects (PSOs):** All shader permutations, blend states, and rasterizer states are pre-baked into immutable PSOs. This prevents the "shader stutter" seen in modern title launches when the driver tries to compile a state on-the-fly during a draw call.
+
 ## Hybrid Pipeline Architecture Overview
 
 The HardBop Engine RHI implements a **4-phase Hybrid Pipeline** that separates rendering concerns into distinct, data-oriented stages:
@@ -288,17 +299,6 @@ struct PipelineCacheEntry {
     ResourceHandle fragmentShader;   // Or compute/RT shader variant
     ResourceHandle bindlessTextureSet;
     ResourceHandle bindlessBufferSet;
-
-### Transient Resource Management & Descriptor Update Strategy
-
-The RHI utilizes a **Transient Resource Heap** for all render graph intermediate buffers. 
-
-- **Allocation:** Resources are requested from a pool of pre-allocated, aliased memory regions.
-- **Aliasing:** The Render Graph compiler performs overlap analysis to allow multiple transient textures/buffers to share the 
-  the same physical memory if their lifetimes do not intersect.
-- **Descriptor Updates:** To prevent pipeline stalls, descriptor updates are performed in the **EXTRACT** phase. 
-  - **Double Buffering:** The CPU-side descriptor heap is double-buffered to allow the CPU to prepare descriptors for frame $N+1$ while the GPU is still consuming frame $N$.
-  
 
     uint32_t cacheVersion = 0;         // Increment on resource handle changes in set
     bool      compiled = false;        // PSO successfully compiled for current API
