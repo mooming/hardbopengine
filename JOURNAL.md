@@ -17,7 +17,7 @@
 - Committed as 6e19f9c
 
 ### Build & fixes
-- Fixed incomplete `cap`→`capacity` rename in Vector.h (line 249: `std::swap(capacity, rhs.cap)`)
+- Fixed incomplete `cap`→`capacity` rename in Vector.h (line 249: `std::swap(capacity, rhs.cap)`) 
 - Debug build passes 51/51 tests (0 fail, 4 known performance warnings)
 
 ### Log compaction
@@ -43,7 +43,7 @@
 - **CommandLineArguments.h**: Added `[[nodiscard]]`/`noexcept` to `GetArguments`
 - **Debug.h**: Removed all explicit `inline` from function definitions
 - **ScopedTime.h**: Added `noexcept` to constructor/destructor
-- **Namespace indentation (R3)**: Removed 1 tab indent from all lines inside all `namespace hbe` blocks across every `.h`/`.cpp` file
+- **Namespace indentation (R3)**: Removed 1 tab indent from all lines inside `namespace hbe` blocks across every `.h`/`.cpp` file
 - **Two blank lines after includes (R12)**: Fixed all `.cpp` files to have 2 blank lines between last include and code body
 - **TaskSystem.cpp**: Replaced try/catch exception handling with simple join loop; updated `ThreadID`→`TThreadID`
 - **ComponentSystem.cpp**: Removed `virtual` from `override` member functions; fixed `~Test() override`
@@ -52,7 +52,7 @@
 
 ### Coding Standards — Engine/Math (28 files)
 - Renamed template params: `Number`→`TNumber`, `Vec`→`TVec`
-- Renamed type aliases with `T` prefix: `Float2`→`TFloat2`, `Int2`→`TInt2`, `Float3`→`TFloat3`, `Int3`→`TInt3`, `Float4`→`TFloat4`, `Float2x2`→`TFloat2x2`, `Float3x3`→`TFloat3x3`, `Float4x4`→`TFloat4x4`, `Quat`→`TQuat`, `FTransform`→`TFTransform`, `DTransform`→`TDTransform`, `UniformTRS`→`TUniformTRS`, `RigidTR`→`TRigidTR`
+- Renamed type aliases with `T` prefix: `Float2`→`TFloat2`, `Int2`→`TInt2`, `Float3`→`TFloat3`, `Int3`→`TInt3`, `Float4`→`TFloat4`, `Int4`→`TInt4`, `Float2x2`→`TFloat2x2`, `Float3x3`→`TFloat3x3`, `Float4x4`→`TFloat4x4`, `Quat`→`TQuat`, `FTransform`→`TFTransform`, `DTransform`→`TDTransform`, `UniformTRS`→`TUniformTRS`, `RigidTR`→`TRigidTR`
 - Added `final` to all class declarations (Vector*, Matrix*, Quaternion, Transform, UniformTransform, RigidTransform, OBB, AABB, StratifiedSampling, ImportanceResampling, MonteCarloIntegrator, MathUtilTest + all Test classes)
 - Added `[[nodiscard]]` to all value-returning functions
 - Added `noexcept` to every function
@@ -144,7 +144,7 @@
   - Cross-compilation flow matching graphics pipelines
   - File: `Engine/Renderer/RTHitData.h/.cpp`
 
-**Phase 4: Render Graph DAG & Barrier Injection (Week 4)**  
+**Phase 4: Render Graph DAG & Barrier Injection (Week 4)** 
 - [ ] **Task 4.1:** Implement `RenderGraphDAG` class with node types  
   - Compute Pass, Graphics Pass, Ray Tracing Pass, Blending/Tonemap
   - Input/Output resource dependencies for each node type
@@ -158,7 +158,7 @@
   - Temporal history preservation flags  
   - File: `Engine/Renderer/RenderGraphCompiler.h/.cpp`
 
-**Phase 5: PSO Management & Pipeline Caching (Week 5)**  
+**Phase 5: PSO Management & Pipeline Caching (Week 5)** 
 - [ ] **Task 5.1:** Create PSOCacheManager data structures  
   - RenderPsoRecord, ComputePsoRecord, RayTracingPipelineRecord
   - Hash-based lookups for quick access  
@@ -172,7 +172,7 @@
   - Replace inline strings in stub implementations
   - File: `Engine/Renderer/ShadersLoader.h/.cpp`
 
-**Phase 6: Backends Completion (Week 6)**  
+**Phase 6: Backends Completion (Week 6)** 
 - [ ] **Task 6.1:** Complete Vulkan Renderer backend  
   - Full device instance, queue family, swapchain implementation  
   - PSO creation with VK_EXT_descriptor_indexing enabled
@@ -184,7 +184,7 @@
   - PSOs with DXIL ray tracing pipelines
   - File: `Engine/Renderer/DX12Renderer.h/.cpp`
 
-**Phase 7: Temporal & Advanced Features (Week 7-8)**  
+**Phase 7: Temporal & Advanced Features (Week 7-8)** 
 - [ ] **Task 7.1:** Implement temporal reprojection buffer system  
   - Motion vector history buffers per frame
   - TAA-compatible clear and sample stages
@@ -198,55 +198,14 @@
 **Next Immediate Task:** Tasks 1.1 → 1.3 (Core Data Structures)  
 **Estimated Timeline:** 6-8 weeks based on phased approach
 
-#### Design Principles to Follow
-1. **Composition over inheritance**: Future subsystems compose `IRenderer` rather than deriving
-2. **Opaque handles via intptr_t**: Avoid Opaque platform types in C++ headers
-3. **noexcept correctness**: All renderer API methods are noexcept  
-4. **RAII with std::unique_ptr**: Lifecycle management without manual cleanup
-5. **Platform abstraction**: Factory + platform-conditional compilation
-6. **Data-Oriented Design**: SoA layouts, lock-free storage, cache-friendly access patterns
+---
 
+## 2026-05-31
 
-## 2026-05-19 14:30 (Continuation)
+### Build system improvements
+- Embedded Vulkan SDK installation logic directly into `scripts/install_sdk_macos.sh`, removing the separate `InstallVulkanMacOS.sh` script.
+- Updated `Engine/Config/BuildConfig.h` warning to a generic message with platform‑specific install script examples (macOS, Linux, Windows).
+- Deleted obsolete `scripts/InstallVulkanMacOS.sh` and committed the removal.
+- Added a new commit: "Embed Vulkan SDK installer into install_sdk_macos.sh and update warning message with platform‑specific install scripts".
 
-### Renderer Design Documentation — Continued
-
-Updated `docs/RendererDesign.md` with comprehensive RHI architecture documentation:
-
-#### New Sections Added:
-1. **Hybrid Pipeline Architecture Overview** - Complete diagram and explanation of all 4 phases:
-   - Phase 1: EXTRACT (lockless SoA extraction from ECS)
-   - Phase 2: PREPARE (compute shaders for culling/LOD/tLAS)
-   - Phase 3: RENDER GRAPH (DAG with barrier injection)
-   - Phase 4: SUBMIT (stateless command buckets with radix sort)
-
-2. **PSO Caching & Management** - Complete implementation of:
-   - `PipelineStateObjectDescriptor` for unified graphics/compute/RT
-   - `PipelineCacheEntry` with version tracking
-   - `PSOCache` class for hash-based lookup and automatic invalidation
-
-3. **HLSL Bindless Resource Layout Matrix** - Cross-platform binding documentation:
-   - DX12 descriptor heap pointers (64-bit aligned)
-   - Vulkan descriptor pools with VK_EXT_descriptor_indexing
-   - Metal argument buffer arrays (MTLStorageMode mappings)
-
-4. **API Mapping Table** - Complete comparison of all features across:
-   - HLSL (SM 6.6+) single source syntax
-   - DirectX 12 native API calls
-   - Vulkan with descriptor indexing
-   - Metal with argument buffers
-
-5. **HLSL Cross-Compilation Flow** - Visual flow showing DXC → SPIR-V → MoltenVk paths plus Metal conversion
-
-#### Critical Edge Cases Expanded:
-- **Bindless Descriptor Exhaustion**: Metal Tier 2 limit handling with page splitting
-- **Temporal History Aliasing Prevention**: TAA/DLSS motion vector tracking structures
-- **Multi-threaded Command Recording Pitfalls**: Fence/memory ordering requirements
-
-#### Code Improvements Made:
-- Fixed `RenderSortKey` struct (corrected DEPTH_BITMASK vs DEPTH_DEPTH naming)
-- Added detailed comments for HLSL cross-platform shader interface
-- Unified SoA/Buffer layouts for graphics and compute phases
-
-**Result:** RendererDesign.md now contains ~930 lines of comprehensive architecture documentation covering C++ code sketches, HLSL source examples, API mappings, and edge case handling strategy.
-
+These changes streamline SDK setup and provide clear guidance to developers on how to install required dependencies on each platform.
