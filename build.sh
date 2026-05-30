@@ -1,13 +1,14 @@
 #!/usr/bin/env bash
 # build.sh - Build a specified target with optional flags
-# Usage: build.sh <target> [-dev] [-clean] [-notest]
-# Example: build.sh Applications/TriangleExample -dev -clean -notest
+# Usage: build.sh <target> [-dev] [-debug] [-release] [-clean] [-notest]
+# Example: build.sh Applications/TriangleExample -dev -debug -release -clean -notest
 
 set -e
 
 # Default settings
 CLEAN=0
 RUN_TESTS=1
+DISCARD_TESTS=0
 TARGET=""
 
 # Configuration flags (can specify multiple)
@@ -29,6 +30,8 @@ while [[ $# -gt 0 ]]; do
       CLEAN=1
       ;;
     -notest)
+      # Discard test macros and skip test execution
+      DISCARD_TESTS=1
       RUN_TESTS=0
       ;;
     *)
@@ -56,7 +59,11 @@ fi
 # Ensure the build directory is generated (CMake configuration)
 if [[ ! -d build ]]; then
   echo "Generating build files..."
-  cmake -B build -S . -G "Ninja Multi-Config"
+  if [[ $DISCARD_TESTS -eq 1 ]]; then
+    cmake -B build -S . -G "Ninja Multi-Config" -D__TEST__=0 -D__UNIT_TEST__=0
+  else
+    cmake -B build -S . -G "Ninja Multi-Config"
+  fi
 fi
 
 # Iterate over each requested configuration
