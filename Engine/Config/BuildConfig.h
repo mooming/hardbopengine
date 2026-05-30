@@ -103,5 +103,5 @@
     #define VULKAN_SDK 1
 #else
     #define VULKAN_SDK 0
-    #warning "Vulkan SDK not found. Vulkan support will be disabled."
+    #pragma message "Vulkan SDK not found. Please install it using the appropriate script: ./scripts/install_sdk_macos.sh for macOS, ./scripts/install_sdk_linux.sh for Linux, or ./scripts/install_sdk_windows.bat for Windows."
 #endif
