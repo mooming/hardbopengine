@@ -49,9 +49,20 @@ cmake --build build --config Release
 ./build/Applications/EngineTest/Release/EngineTest.app/Contents/MacOS/EngineTest
 ```
 
+### Convenient Build Script
+A helper script `build.sh` is provided for building specific targets with optional flags.
+```bash
+# Basic usage
+./build.sh <target> [-dev] [-debug] [-release] [-clean] [-notest]
+
+# Example: build TriangleExample for Dev, Debug and Release configurations, clean first, skip tests
+./build.sh Applications/TriangleExample -dev -debug -release -clean -notest
+```
+The script defaults to the **Dev** configuration when no explicit config flag is given.
+
 ### Build Types
 - **Debug**: `-g -O0` - Full debug symbols, no optimization
-- **Dev**: `-O1` - Light optimization for development
+- **Dev**: `-O1` - Light optimization for development (default)
 - **Release**: `-O3` - Full optimization for production
 
 ### Running Tests
