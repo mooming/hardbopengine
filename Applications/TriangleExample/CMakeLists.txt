@@ -54,7 +54,7 @@ endif (APPLE)
 install (TARGETS TriangleExample DESTINATION ${CMAKE_SOURCE_DIR}/bin)
 
 
-target_link_libraries (TriangleExample Config Container Core HEngine HSTL Log Math Memory OSAL Resource String Test)
+target_link_libraries (TriangleExample Config Container Core HEngine HSTL Log Math Memory OSAL Resource String)
 
 add_dependencies (TriangleExample Config)
 add_dependencies (TriangleExample Container)
@@ -67,7 +67,7 @@ add_dependencies (TriangleExample Memory)
 add_dependencies (TriangleExample OSAL)
 add_dependencies (TriangleExample Resource)
 add_dependencies (TriangleExample String)
-add_dependencies (TriangleExample Test)
+
 
 
 add_definitions(-D__TEST__ -D__UNIT_TEST__)
