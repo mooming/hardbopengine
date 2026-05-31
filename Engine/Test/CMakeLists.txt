@@ -25,9 +25,10 @@ else (MSVC)
 	add_compile_options (-Wall -Werror)
 endif (MSVC)
 
-add_compile_definitions (__TEST__ __UNIT_TEST__ __UNIT_TEST__ )
+add_compile_definitions (__UNIT_TEST__ )
 include_directories ( ${CMAKE_SOURCE_DIR}
  ${CMAKE_SOURCE_DIR}/include
+ ${CMAKE_SOURCE_DIR}/Applications/TriangleExample
  ${CMAKE_SOURCE_DIR}/External
  ${CMAKE_SOURCE_DIR}/Engine
  ${CMAKE_SOURCE_DIR}/Engine/Renderer

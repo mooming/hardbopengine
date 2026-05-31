@@ -4,6 +4,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <vector>
 #include <mutex>
 #include <string_view>
 #include "Config/EngineConfig.h"

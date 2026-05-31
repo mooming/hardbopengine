@@ -1,6 +1,7 @@
 // Created by Hansol Park (mooming.go@gmail.com)
 // Copyright (c) 2026 Hansol Park (mooming.go@gmail.com). All rights reserved.
 
+#ifdef __UNIT_TEST__
 #include "TaskStreamAffinity.h"
 
 #include <algorithm>
@@ -111,3 +112,4 @@ void hbe::TaskStreamAffinityTest::Prepare()
 		}
 	});
 }
+#endif // __UNIT_TEST__
