@@ -4,8 +4,7 @@
 
 #include "UnitTestCollection.h"
 
-#include <thread>
-
+#include "RendererTest.h"
 #include "Container/Array.h"
 #include "Container/AtomicStackView.h"
 #include "Container/BoundedPriorityQueue.h"
@@ -57,9 +56,7 @@
 #include "TestEnv.h"
 
 
-namespace hbe
-{
-namespace Test
+namespace hbe::Test
 {
 
 void RunTests()
@@ -85,6 +82,7 @@ void RunTests()
 		testEnv.AddTestCollection<OSThreadTest>();
 		testEnv.AddTestCollection<WindowTest>();
 		testEnv.AddTestCollection<OSMemoryTest>();
+		testEnv.AddTestCollection<RendererTest>();
 		testEnv.AddTestCollection<BufferTest>();
 		testEnv.AddTestCollection<BufferInputStreamTest>();
 		testEnv.AddTestCollection<BufferOutputStreamTest>();
@@ -142,7 +140,6 @@ void RunTests()
 	taskSystem.Enqueue(baseStreamIndex, rangedTask);
 }
 
-} // namespace Test
-} // namespace hbe
+} // namespace hbe::Test
 
 #endif // __UNIT_TEST__

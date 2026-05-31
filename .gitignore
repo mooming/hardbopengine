@@ -56,3 +56,5 @@ MinSizeRel
 
 # Generated test output, not source
 /test_output.txt
+
+External

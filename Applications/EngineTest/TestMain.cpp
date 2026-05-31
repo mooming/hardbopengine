@@ -4,12 +4,14 @@
 #include "Test/UnitTestCollection.h"
 
 
-int main(int argc, const char* argv[]) noexcept {
+int main(int argc, const char* argv[]) noexcept
+{
+#ifdef __UNIT_TEST__
 	hbe::Engine hengine;
 	hengine.Initialize(argc, argv);
-
-	hbe::Test::RunTests();
+    hbe::Test::RunTests();
 	hengine.Run();
+#endif // __UNIT_TEST__
 
 	return 0;
 }
