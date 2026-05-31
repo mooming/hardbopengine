@@ -3,16 +3,12 @@
 #pragma once
 
 #include "Config/BuildConfig.h"
-#include "HSTL/HString.h"
 #include "Math/Vector3.h"
 #include "Math/Vector4.h"
-#include <memory>
 
-namespace hbe
-{
-namespace Renderer
-{
 
+namespace hbe::Renderer
+{
 enum class APIType : uint8_t
 {
 	Unknown = 0,
@@ -56,5 +52,4 @@ public:
 	{}
 };
 
-} // namespace Renderer
-} // namespace hbe
+} // namespace hbe::Renderer

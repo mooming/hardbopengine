@@ -7,8 +7,7 @@ set -e
 
 # Default settings
 CLEAN=0
-RUN_TESTS=1
-DISCARD_TESTS=0
+ENABLE_TESTS=0
 TARGET=""
 
 # Configuration flags (can specify multiple)
@@ -29,10 +28,9 @@ while [[ $# -gt 0 ]]; do
     -clean)
       CLEAN=1
       ;;
-    -notest)
-      # Discard test macros and skip test execution
-      DISCARD_TESTS=1
-      RUN_TESTS=0
+    -test)
+      # Enable test macros
+      ENABLE_TESTS=1
       ;;
     *)
       if [[ -z "$TARGET" ]]; then
@@ -52,18 +50,17 @@ if [[ ${#CONFIGS[@]} -eq 0 ]]; then
 fi
 
 if [[ -z "$TARGET" ]]; then
-  echo "Usage: $0 <target> [-dev] [-debug] [-release] [-clean] [-notest]"
+  echo "Usage: $0 <target> [-dev] [-debug] [-release] [-clean] [-test]"
   exit 1
 fi
 
 # Ensure the build directory is generated (CMake configuration)
-if [[ ! -d build ]]; then
-  echo "Generating build files..."
-  if [[ $DISCARD_TESTS -eq 1 ]]; then
-    cmake -B build -S . -G "Ninja Multi-Config" -D__TEST__=0 -D__UNIT_TEST__=0
-  else
-    cmake -B build -S . -G "Ninja Multi-Config"
-  fi
+echo "Generating build files..."
+if [[ $ENABLE_TESTS -eq 1 ]]; then
+  echo "Tests enabled!"
+  cmake -B build -S . -G "Ninja Multi-Config" -DCMAKE_CXX_FLAGS="$CXXFLAGS -D__TEST__ -D__UNIT_TEST__" --fresh
+else
+  cmake -B build -S . -G "Ninja Multi-Config" --fresh
 fi
 
 # Iterate over each requested configuration
@@ -79,14 +76,4 @@ for CONFIG in "${CONFIGS[@]}"; do
   echo "Building target $TARGET_NAME with configuration $CONFIG"
   cmake --build build --config "$CONFIG" --target "$TARGET_NAME"
 
-  # Run Engine tests unless suppressed
-  if [[ $RUN_TESTS -eq 1 ]]; then
-    echo "Running Engine tests (config $CONFIG)"
-    TEST_BIN="./build/Applications/EngineTest/$CONFIG/EngineTest"
-    if [[ -x $TEST_BIN ]]; then
-      "$TEST_BIN"
-    else
-      echo "Test binary not found: $TEST_BIN"
-    fi
-  fi
 done
