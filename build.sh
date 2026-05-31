@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # build.sh - Build a specified target with optional flags
-# Usage: build.sh <target> [-dev] [-debug] [-release] [-clean] [-notest]
-# Example: build.sh Applications/TriangleExample -dev -debug -release -clean -notest
+# Usage: build.sh <target> [-dev] [-debug] [-release] [-clean] [-test]
+# Example: build.sh Applications/TriangleExample -dev -debug -release -clean -test
 
 set -e
 
