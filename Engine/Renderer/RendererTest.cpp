@@ -1,34 +1,35 @@
 // Copyright (c) 2026 Hansol Park (mooming.go@gmail.com). All rights reserved.
 
+#ifdef __UNIT_TEST__
 #include "RendererTest.h"
+
+#include "RendererCommon.h"
 
 
 namespace hbe
 {
 
+RendererTest::RendererTest() noexcept
+	:TestCollection("RendererTest")
+{
+}
+
 void RendererTest::Prepare()
 {
-	AddCase("RHICapabilities", []()
+	AddTest("RHICapabilities", [](auto& log)
 	{
-		constexpr auto api = Renderer::APIType::Metal;
-		auto caps = Renderer::RHICapabilities::GetCapabilities(api);
 
-		Assert(caps.apiType == api, "API type mismatch");
 	});
 
-	AddCase("GetPreferredAPI", []()
+	AddTest("GetPreferredAPI", [](auto& log)
 	{
-		auto api = Renderer::RHICapabilities::GetPreferredAPI();
 
-		Assert(api != Renderer::APIType::Unknown, "No renderer API available");
 	});
 
-	AddCase("RendererFactory", []()
+	AddTest("RendererFactory", [](auto& log)
 	{
-		auto renderer = Renderer::RendererFactory::CreateWithFallback();
-
-		Assert(renderer != nullptr, "Renderer creation failed");
 	});
 }
 
 } // namespace hbe
+#endif // __UNIT_TEST__

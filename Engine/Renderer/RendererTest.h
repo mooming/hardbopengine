@@ -2,10 +2,7 @@
 
 #pragma once
 
-#include "Renderer/IRenderer.h"
-#include "Renderer/RendererCommon.h"
-#include "Renderer/RendererFactory.h"
-#include "Renderer/RHICapabilities.h"
+#ifdef __UNIT_TEST__
 #include "Test/TestCollection.h"
 
 
@@ -22,3 +19,5 @@ protected:
 };
 
 } // namespace hbe
+
+#endif // __UNIT_TEST__
