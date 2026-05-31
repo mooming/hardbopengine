@@ -13,12 +13,6 @@
 
 
 using namespace hbe;
-static std::atomic<bool> running{true};
-
-void signalHandler(int)
-{
-	running = false;
-}
 
 int main(int argc, const char* argv[]) noexcept
 {
@@ -43,10 +37,6 @@ int main(int argc, const char* argv[]) noexcept
 		return 1;
 	}
 
-	// Register signal handler for graceful exit
-	std::signal(SIGINT, signalHandler);
-	std::signal(SIGTERM, signalHandler);
-
 	MinimalVulkanRenderer renderer;
 	if (!renderer.Initialize(window.get()))
 	{
@@ -55,9 +45,10 @@ int main(int argc, const char* argv[]) noexcept
 	}
 
 	// Main loop – render until user closes window or signals
-	while (running && !window->IsClosed())
+	while (!window->IsClosed())
 	{
-		app->PollEvents(); // process OS events
+		app->PollEvents();
+		window->PollEvents();
 
 		renderer.BeginFrame();
 		renderer.Render(0.016f); // simulate ~60 FPS

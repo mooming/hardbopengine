@@ -8,13 +8,14 @@
 #include <iostream>
 #include <thread>
 
-
-int main(int argc, const char* argv[]) noexcept {
+int main(int argc, const char* argv[]) noexcept
+{
 	hbe::Engine hengine;
 	hengine.Initialize(argc, argv);
 
 	auto app = OS::CreateApplication();
-	if (!app) {
+	if (!app)
+	{
 		std::cerr << "Error: Failed to create application" << std::endl;
 		return 1;
 	}
@@ -22,14 +23,23 @@ int main(int argc, const char* argv[]) noexcept {
 	app->Initialize();
 
 	auto window = OS::CreateWindow("Hello? 안녕하세요?", 800, 600);
-	if (!window) {
+	if (!window)
+	{
 		std::cerr << "Error: Failed to create window" << std::endl;
 		return 1;
 	}
 
-	for (int i = 0; i < 3; ++i) {
+	for (int i = 0; i < 10; ++i)
+	{
 		app->PollEvents();
+		window->PollEvents();
+
 		std::this_thread::sleep_for(std::chrono::seconds(1));
+
+		if (window->IsClosed())
+		{
+			break;
+		}
 	}
 
 	window->Close();
