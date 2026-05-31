@@ -2,13 +2,15 @@
 ---
 Language: Cpp
 BasedOnStyle: LLVM
-AccessModifierOffset: 0
+AccessModifierOffset: -4
 AlignConsecutiveAssignments: false
 AlignConsecutiveDeclarations: false
 PointerAlignment: Left
 AlignOperands: true
 AlignTrailingComments: false
 AlwaysBreakTemplateDeclarations: Yes
+MaxEmptyLinesToKeep: 2
+BreakBeforeBraces: Custom
 BraceWrapping:
   AfterCaseLabel: true
   AfterClass: true
@@ -26,39 +28,42 @@ BraceWrapping:
   SplitEmptyFunction: false
   SplitEmptyRecord: false
   SplitEmptyNamespace: false
-  BreakBeforeBraces: Custom
+
 BreakConstructorInitializers: BeforeComma
 ColumnLimit: 120
 ConstructorInitializerAllOnOneLineOrOnePerLine: false
 ContinuationIndentWidth: 8
+IndentPPDirectives: None
+IncludeIsMainRegex: '(.h)?$'
 IncludeCategories:
   - Regex: '^<.*'
-    Priority: 1
-  - Regex: '^".*'
     Priority: 2
-  - Regex: '.*'
+  - Regex: '^".*'
     Priority: 3
-IncludeIsMainRegex: '([-_](test|unittest))?$'
 IndentCaseBlocks: true
 IndentCaseLabels: true
 IndentWidth: 4
 InsertNewlineAtEOF: true
 MacroBlockBegin: ''
 MacroBlockEnd: ''
-NamespaceIndentation: All
+NamespaceIndentation: None
 SpaceAfterCStyleCast: true
-SpaceAfterTemplateKeyword: false
+SpaceAfterTemplateKeyword: true
 SpaceBeforeRangeBasedForLoopColon: true
 SpaceInEmptyParentheses: false
 SpacesInAngles: false
 SpacesInConditionalStatement: false
-SpacesInCStyleCastParentness: false
+
 SpacesInParentheses: false
 TabWidth: 4
 UseTab: Always
 ReferenceAlignment: Left
 LambdaBodyIndentation: OuterScope
-AllowShortFunctionsOnASingleLine: InlineOnly
+AllowShortFunctionsOnASingleLine: Empty
+AllowShortIfStatementsOnASingleLine: false
+AllowShortLoopsOnASingleLine: false
+AllowShortCaseLabelsOnASingleLine: false
+AllowShortBlocksOnASingleLine: false
 SeparateDefinitionBlocks: Always
 EmptyLineBeforeAccessModifier: LogicalBlock
 
