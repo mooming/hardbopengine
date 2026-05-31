@@ -1,0 +1,4 @@
+add_definitions(-D__TEST__ -D__UNIT_TEST__)
+include_directories(/Users/anav/atelier/hardbopengine/External/VulkanSDK/include)
+# Ensure only Test library is linked, overriding previous Vulkan link
+set_target_properties(${PROJECT_NAME} PROPERTIES LINK_LIBRARIES Test)
