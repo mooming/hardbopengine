@@ -2,7 +2,8 @@
 
 #include "OSFileHandle.h"
 
-#include "Config/BuildConfig.h"
+
+
 #include "Intrinsic.h"
 #include "OSInputOutput.h"
 
@@ -24,7 +25,7 @@ FileHandle::~FileHandle()
 	Close(std::move(*this));
 }
 
-size_t FileHandle::GetFileSize() const
+size_t FileHandle::GetFileSize() const noexcept
 {
 	if (unlikely(fd < 0))
 		return 0;
@@ -40,9 +41,9 @@ size_t FileHandle::GetFileSize() const
 	return statValue.st_size;
 }
 
-bool FileHandle::IsValid() const { return fd >= 0; }
+bool FileHandle::IsValid() const noexcept { return fd >= 0; }
 
-void FileHandle::Invalidate() { fd = -1; }
+void FileHandle::Invalidate() noexcept { fd = -1; }
 
 } // namespace OS
 #endif // PLATFORM_LINUX

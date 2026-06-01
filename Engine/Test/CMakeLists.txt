@@ -34,24 +34,6 @@ include_directories ( ${CMAKE_SOURCE_DIR}
  ${CMAKE_SOURCE_DIR}/Engine/Renderer
  )
 
-set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/lib)
-add_library (Test STATIC 
- TestCollection.cpp
- TestEnv.cpp
- UnitTestCollection.cpp
- TestCollection.h
- TestEnv.h
- UnitTestCollection.h
-${PLATFORM_SOURCES}
-)
-
-if (APPLE)
-	include_directories ( /System/Library/Frameworks )
-	set(MACOSX_BUNDLE_TRUE TRUE)
-	set(MACOSX_BUNDLE_INFO_PLIST ${CMAKE_CURRENT_SOURCE_DIR}/Info.plist)
-endif (APPLE)
-
-install (TARGETS Test DESTINATION ${CMAKE_SOURCE_DIR}/lib)
 
 
 

@@ -6,7 +6,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_ROOT="$SCRIPT_DIR"
 
 # Path to the MakeBuild executable (built in Debug configuration)
-MAKEBUILD_BIN="$PROJECT_ROOT/Tools/MakeBuild/build/Application/MakeBuild/Debug/makebuild"
+MAKEBUILD_BIN="$PROJECT_ROOT/Tools/MakeBuild/build/Application/MakeBuild/makebuild"
 
 if [[ ! -x "$MAKEBUILD_BIN" ]]; then
     echo "MakeBuild not built – run install_sdk_* scripts first."

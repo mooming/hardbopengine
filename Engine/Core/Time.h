@@ -9,12 +9,12 @@
 namespace hbe::time
 {
 using TMilliSec = uint64_t;
-using TStopWatch = std::chrono::high_resolution_clock;
+using TStopWatch = std::chrono::steady_clock;
 using TTime = std::chrono::time_point<TStopWatch>;
 using TDuration = TStopWatch::duration;
 using TMilliSecs = std::chrono::milliseconds;
 
-[[nodiscard]] inline TTime GetNow() noexcept { return std::chrono::steady_clock::now(); }
+[[nodiscard]] inline TTime GetNow() noexcept { return TStopWatch::now(); }
 
 [[nodiscard]] inline float ToFloat(TStopWatch::duration duration) noexcept
 {

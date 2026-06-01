@@ -109,6 +109,13 @@ find_library(COCOA_FRAMEWORK Cocoa)
 if (COCOA_FRAMEWORK)
 	target_link_libraries (OSAL ${COCOA_FRAMEWORK})
 endif ()
+# Link X11 on Linux platforms
+if (UNIX AND NOT APPLE)
+	find_package(X11 REQUIRED)
+	if (X11_FOUND)
+		target_link_libraries(OSAL X11::X11)
+	endif ()
+endif ()
 
 install (TARGETS OSAL DESTINATION ${CMAKE_SOURCE_DIR}/lib)
 

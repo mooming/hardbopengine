@@ -3,6 +3,8 @@
 
 #pragma once
 
+#include "Config/BuildConfig.h"
+
 #ifdef PLATFORM_LINUX
 
 #include "Application.h"

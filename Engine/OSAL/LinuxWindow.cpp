@@ -1,6 +1,7 @@
 // Copyright (c) 2026 Hansol Park (mooming.go@gmail.com). All rights reserved.
 
 #include "LinuxWindow.h"
+#include "Config/BuildConfig.h"
 
 #ifdef PLATFORM_LINUX
 
@@ -39,7 +40,7 @@ bool LinuxWindow::CreateWindow(const hbe::HString& title, int width, int height)
 	this->width = width;
 	this->height = height;
 
-	XStoreName(display, window, title.CStr());
+	XStoreName(display, window, title.c_str());
 	XMapWindow(display, window);
 
 	return true;
@@ -49,7 +50,7 @@ void LinuxWindow::SetTitle(const hbe::HString& title)
 {
 	if (display && window)
 	{
-		XStoreName(display, window, title.CStr());
+XStoreName(display, window, title.c_str());
 	}
 }
 
@@ -92,7 +93,7 @@ void LinuxWindow::PollEvents()
 		{
 			// Simplified: check for close message if implemented via XCloseNotify or similar
 		}
-		else if (event.type == ConfigureEvent)
+		else if (event.type == ConfigureNotify)
 		{
 			width = event.xconfigure.width;
 			height = event.xconfigure.height;
