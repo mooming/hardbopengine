@@ -50,7 +50,9 @@ endif (APPLE)
 install (TARGETS WindowExample DESTINATION ${CMAKE_SOURCE_DIR}/bin)
 
 
-target_link_libraries (WindowExample Config Container Core HEngine HSTL Log Math Memory OSAL Resource String Test)
+find_package(X11 REQUIRED)
+
+target_link_libraries (WindowExample -Wl,--start-group HEngine Resource String Memory Math Log OSAL Core Config Container HSTL -Wl,--end-group ${X11_LIBRARIES})
 
 add_dependencies (WindowExample Config)
 add_dependencies (WindowExample Container)
@@ -63,6 +65,5 @@ add_dependencies (WindowExample Memory)
 add_dependencies (WindowExample OSAL)
 add_dependencies (WindowExample Resource)
 add_dependencies (WindowExample String)
-add_dependencies (WindowExample Test)
 
 

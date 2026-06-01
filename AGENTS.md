@@ -42,3 +42,39 @@ Tests in `Engine/Test/UnitTestCollection.cpp`:
 ./build/Applications/EngineTest/<Config>/EngineTest
 # <Config> = Debug|Dev|Release
 ```
+
+## Build Configuration
+
+### Circular Dependency Resolution
+
+The project uses MakeBuild for automatic CMakeLists.txt generation. Static library circular dependencies can be resolved using linker group flags (`--start-group`/`--end-group`).
+
+**Configuration** (in `.module.config` or `.project.config`):
+```cmake
+# Enable linker group for all libraries
+linkerGroup = true
+
+# Or group only specific dependencies
+linkerGroup = true
+linkerGroupDependency = Core, Math, OSAL
+```
+
+**Note**: If neither option is set, circular dependency resolution is disabled.
+
+For more details, see `Tools/MakeBuild/README.md`. 
+
+## MakeBuild Submodule
+
+MakeBuild is maintained as a submodule at `Tools/MakeBuild`. Updates to MakeBuild should be committed in the submodule and the superproject reference should be updated.
+
+To update MakeBuild:
+```bash
+cd Tools/MakeBuild
+git pull origin master
+cd ..
+git add Tools/MakeBuild
+git commit -m "Update MakeBuild submodule"
+git push origin master  # if permission granted
+```
+
+See `Tools/MakeBuild/README.md` for MakeBuild usage documentation.

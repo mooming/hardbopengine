@@ -6,7 +6,13 @@
 
 #ifdef PLATFORM_LINUX
 #include "Window.h"
+#if __has_include(<X11/Xlib.h>)
 #include <X11/Xlib.h>
+#else
+// Minimal stub definitions for X11 types when headers are unavailable
+using Display = void*;
+using Window = unsigned long;
+#endif
 
 namespace OS
 {
@@ -46,7 +52,7 @@ public:
 	void Close() override;
 
 	[[nodiscard]] bool IsClosed() const override;
-	[[nodiscard]] intptr_t GetNativeHandle() const override { return reinterpret_cast<intptr_t>(window); }
+	[[nodiscard]] intptr_t GetNativeHandle() const override { return static_cast<intptr_t>(window); }
 
 private:
 	Display* display;

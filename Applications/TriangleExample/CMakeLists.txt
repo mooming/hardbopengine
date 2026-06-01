@@ -69,7 +69,6 @@ add_dependencies (TriangleExample Resource)
 add_dependencies (TriangleExample String)
 
 
-
 add_definitions(-D__TEST__ -D__UNIT_TEST__)
 include_directories(/Users/anav/atelier/hardbopengine/External/VulkanSDK/include)
 # Ensure only Test library is linked, overriding previous Vulkan link
