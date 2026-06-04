@@ -31,6 +31,8 @@ public:
 	[[nodiscard]] bool IsClosed() const override;
 	[[nodiscard]] intptr_t GetNativeHandle() const override;
 
+	void SetPixels(const uint32_t* pixels, int width, int height) override;
+
 private:
 	static long WindowProc(void* hwnd, unsigned int uMsg, unsigned long long wParam, long lParam);
 

@@ -123,6 +123,51 @@ bool Win32Window::IsClosed() const
 	return closedFlag;
 }
 
+void Win32Window::SetPixels(const uint32_t* pixels, int width, int height)
+{
+	if (hwnd)
+	{
+		// Create a compatible bitmap and copy pixels
+		HDC hdc = GetDC(static_cast<HWND>(hwnd));
+		if (hdc)
+		{
+			HDC hdcMem = CreateCompatibleDC(hdc);
+			if (hdcMem)
+			{
+				BITMAPINFO bmi = {};
+				bmi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+				bmi.bmiHeader.biWidth = width;
+				bmi.bmiHeader.biHeight = -height; // Top-down bitmap
+				bmi.bmiHeader.biPlanes = 1;
+				bmi.bmiHeader.biBitCount = 32;
+				bmi.bmiHeader.biCompression = BI_RGB;
+
+				void* pBits = nullptr;
+				HBITMAP hbm = CreateDIBSection(hdcMem, &bmi, DIB_RGB_COLORS, &pBits, nullptr, 0);
+				if (hbm && pBits)
+				{
+					// Copy pixel data (ARGB to BGRA for Windows)
+					const uint32_t* src = pixels;
+					uint32_t* dst = static_cast<uint32_t*>(pBits);
+					for (int i = 0; i < width * height; ++i)
+					{
+						// Swap A and B for Windows (ABGR -> BGRA)
+						uint32_t pixel = src[i];
+						dst[i] = ((pixel & 0xFF00FF00) | ((pixel << 16) & 0xFF0000) | ((pixel >> 16) & 0xFF));
+					}
+
+					HBITMAP hbmOld = static_cast<HBITMAP>(SelectObject(hdcMem, hbm));
+					BitBlt(hdc, 0, 0, width, height, hdcMem, 0, 0, SRCCOPY);
+					SelectObject(hdcMem, hbmOld);
+					DeleteObject(hbm);
+				}
+				DeleteDC(hdcMem);
+			}
+			ReleaseDC(static_cast<HWND>(hwnd), hdc);
+		}
+	}
+}
+
 long Win32Window::WindowProc(void* hwnd, unsigned int uMsg, unsigned long long wParam, long lParam)
 {
 	Win32Window* pThis = nullptr;

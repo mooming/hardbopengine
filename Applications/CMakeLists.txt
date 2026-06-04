@@ -28,8 +28,8 @@ endif (MSVC)
 include_directories ( ${CMAKE_SOURCE_DIR}
  ${CMAKE_SOURCE_DIR}/include
  ${CMAKE_SOURCE_DIR}/Applications/TriangleExample
+ ${CMAKE_SOURCE_DIR}/Applications/VulkanExample
  ${CMAKE_SOURCE_DIR}/External
- ${CMAKE_SOURCE_DIR}/Engine
  ${CMAKE_SOURCE_DIR}/Engine/Renderer
  )
 add_subdirectory (EngineTest)

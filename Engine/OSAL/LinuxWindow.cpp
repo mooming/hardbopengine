@@ -118,6 +118,41 @@ bool LinuxWindow::IsClosed() const
 	return closedFlag;
 }
 
+void LinuxWindow::SetPixels(const uint32_t* pixels, int width, int height)
+{
+	if (display && window)
+	{
+		XImage* image = XCreateImage(
+			display,
+			DefaultVisual(display, DefaultScreen(display)),
+			32,
+			ZPixmap,
+			0,
+			reinterpret_cast<char*>(const_cast<uint32_t*>(pixels)),
+			width,
+			height,
+			32,
+			width * 4
+		);
+
+		if (image)
+		{
+			XPutImage(
+				display,
+				window,
+				DefaultGC(display, DefaultScreen(display)),
+				image,
+				0, 0,
+				0, 0,
+				width,
+				height
+			);
+
+			XDestroyImage(image);
+		}
+	}
+}
+
 } // namespace OS
 
 #endif // PLATFORM_LINUX

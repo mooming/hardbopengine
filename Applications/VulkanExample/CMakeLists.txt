@@ -28,11 +28,28 @@ endif (MSVC)
 include_directories ( ${CMAKE_SOURCE_DIR}
  ${CMAKE_SOURCE_DIR}/include
  ${CMAKE_SOURCE_DIR}/Applications/TriangleExample
+ ${CMAKE_SOURCE_DIR}/Applications/VulkanExample
  ${CMAKE_SOURCE_DIR}/External
- ${CMAKE_SOURCE_DIR}/Engine
  ${CMAKE_SOURCE_DIR}/Engine/Renderer
+ ${CMAKE_SOURCE_DIR}/Applications/VulkanExample//some/include/path
+ ${CMAKE_SOURCE_DIR}/Applications/VulkanExample/another_include
  )
+link_directories (${CMAKE_SOURCE_DIR}/lib
+)
 
+
+add_executable (VulkanExample
+ Main.cpp
+${PLATFORM_SOURCES}
+)
+
+if (APPLE)
+	include_directories ( /System/Library/Frameworks )
+	set(MACOSX_BUNDLE_TRUE TRUE)
+	set(MACOSX_BUNDLE_INFO_PLIST ${CMAKE_CURRENT_SOURCE_DIR}/Info.plist)
+endif (APPLE)
+
+install (TARGETS VulkanExample DESTINATION ${CMAKE_SOURCE_DIR}/bin)
 
 
 

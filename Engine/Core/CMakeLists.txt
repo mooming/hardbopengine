@@ -28,8 +28,8 @@ endif (MSVC)
 include_directories ( ${CMAKE_SOURCE_DIR}
  ${CMAKE_SOURCE_DIR}/include
  ${CMAKE_SOURCE_DIR}/Applications/TriangleExample
+ ${CMAKE_SOURCE_DIR}/Applications/VulkanExample
  ${CMAKE_SOURCE_DIR}/External
- ${CMAKE_SOURCE_DIR}/Engine
  ${CMAKE_SOURCE_DIR}/Engine/Renderer
  )
 
@@ -79,5 +79,9 @@ endif (APPLE)
 
 install (TARGETS Core DESTINATION ${CMAKE_SOURCE_DIR}/lib)
 
+
+target_link_libraries (Core OSAL)
+
+add_dependencies (Core OSAL)
 
 

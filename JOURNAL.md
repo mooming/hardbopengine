@@ -209,3 +209,13 @@
 - Added a new commit: "Embed Vulkan SDK installer into install_sdk_macos.sh and update warning message with platform‑specific install scripts".
 
 These changes streamline SDK setup and provide clear guidance to developers on how to install required dependencies on each platform.
+
+## 2026-06-03
+
+### TriangleExample Renderer Redesign (DOD)
+- [ ] Implement Data-Oriented Design (DOD) renderer for `TriangleExample` following Extract $\rightarrow$ Prepare $\rightarrow$ Submit flow.
+- [ ] Define GPU-ready data structures (SoA transforms, sort keys, draw commands) in `DODTypes.h`.
+- [ ] Update `SoftwareRenderer` to act as a stateless submission backend.
+- [ ] Refactor `Main.cpp` to implement the DOD pipeline loop.
+- [ ] Verify with build and run.
+- **Constraints**: Local to `Applications/TriangleExample/`, no `Engine/` modifications, no `IRenderer` pattern.

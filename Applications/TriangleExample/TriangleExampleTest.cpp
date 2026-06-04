@@ -2,7 +2,8 @@
 
 
 #include <iostream>
-#include "MinimalVulkanRenderer.h"
+#include "Renderer/RendererFactory.h"
+#include "Renderer/IRenderer.h"
 #include "OSAL/Window.h"
 #include "Test/TestCollection.h"
 #include "Test/TestEnv.h"
@@ -20,11 +21,11 @@ public:
 protected:
 	void Prepare() noexcept override
 	{
-		// Simple test: ensure MinimalVulkanRenderer can be initialized (stub returns true)
+		// Test: ensure the engine's renderer can be created via the factory
 		AddTest("InitializeRenderer", [](TLogOut& log)
 		{
-			MinimalVulkanRenderer renderer;
-			bool ok = renderer.Initialize(nullptr);
+			auto renderer = hbe::Renderer::RendererFactory::Create();
+			bool ok = renderer && renderer->Initialize(nullptr);
 			if (ok)
 			{
 				log << "Renderer initialized successfully";
@@ -32,8 +33,6 @@ protected:
 			else
 			{
 				log << "Renderer initialization failed";
-				// Mark as error by writing to error stream (handled by TestCollection)
-				// For simplicity we just output to log; TestCollection treats any output as pass.
 			}
 		});
 	}

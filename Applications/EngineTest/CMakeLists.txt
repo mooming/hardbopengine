@@ -28,8 +28,8 @@ endif (MSVC)
 include_directories ( ${CMAKE_SOURCE_DIR}
  ${CMAKE_SOURCE_DIR}/include
  ${CMAKE_SOURCE_DIR}/Applications/TriangleExample
+ ${CMAKE_SOURCE_DIR}/Applications/VulkanExample
  ${CMAKE_SOURCE_DIR}/External
- ${CMAKE_SOURCE_DIR}/Engine
  ${CMAKE_SOURCE_DIR}/Engine/Renderer
  )
 link_directories (${CMAKE_SOURCE_DIR}/lib
@@ -50,13 +50,11 @@ endif (APPLE)
 install (TARGETS EngineTest DESTINATION ${CMAKE_SOURCE_DIR}/bin)
 
 
-target_link_libraries (EngineTest Config Container Core External HEngine HSTL Log Math Memory OSAL Renderer Resource String Test)
+target_link_libraries (EngineTest HEngine Config Container HSTL Log Math Memory OSAL Renderer Resource String Core Test External Renderer)
 
+add_dependencies (EngineTest HEngine)
 add_dependencies (EngineTest Config)
 add_dependencies (EngineTest Container)
-add_dependencies (EngineTest Core)
-add_dependencies (EngineTest External)
-add_dependencies (EngineTest HEngine)
 add_dependencies (EngineTest HSTL)
 add_dependencies (EngineTest Log)
 add_dependencies (EngineTest Math)
@@ -65,6 +63,9 @@ add_dependencies (EngineTest OSAL)
 add_dependencies (EngineTest Renderer)
 add_dependencies (EngineTest Resource)
 add_dependencies (EngineTest String)
+add_dependencies (EngineTest Core)
 add_dependencies (EngineTest Test)
+add_dependencies (EngineTest External)
+add_dependencies (EngineTest Renderer)
 
 

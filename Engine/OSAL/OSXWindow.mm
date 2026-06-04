@@ -140,6 +140,88 @@ bool OSXWindow::IsClosed() const
 	return closedFlag;
 }
 
+void OSXWindow::SetPixels(const uint32_t* pixels, int width, int height)
+{
+	if (nsWindow == nullptr)
+		return;
+
+	auto window = static_cast<NSWindow*>(nsWindow);
+	NSView *contentView = [window contentView];
+
+	// Create a bitmap context
+	CGColorSpaceRef colorSpace = CGColorSpaceCreateDeviceRGB();
+	if (!colorSpace)
+		return;
+
+	CGContextRef context = CGBitmapContextCreate(
+		const_cast<uint32_t*>(pixels),
+		width,
+		height,
+		8,
+		width * 4,
+		colorSpace,
+		kCGImageAlphaNoneSkipFirst
+	);
+
+	if (context)
+	{
+		CGImageRef image = CGBitmapContextCreateImage(context);
+		if (image)
+		{
+			// Create an NSImage from the CGImage
+			NSImage *nsImage = [[NSImage alloc] initWithCGImage:image size:NSMakeSize(width, height)];
+			if (nsImage)
+			{
+				// Create a bitmap representation and set it as the window content
+				NSBitmapImageRep *bitmapRep = [[NSBitmapImageRep alloc]
+					initWithBitmapDataPlanes:nullptr
+					pixelsWide:width
+					pixelsHigh:height
+					samplesPerPixel:4
+					hasAlpha:YES
+					planar:NO
+					colorSpaceName:NSDeviceRGBColorSpace
+					bitmapFormat:NSBitmapFormat32LittleEndian
+					bytesPerRow:width * 4
+					bitsPerPixel:32];
+
+				if (bitmapRep)
+				{
+					[bitmapRep getBitmapDataPlanes:nullptr];
+					uint32_t *bitmapData = static_cast<uint32_t*>([bitmapRep bitmapData]);
+					if (bitmapData)
+					{
+						// Copy pixel data (ARGB to BGRA for macOS)
+						const uint32_t* src = pixels;
+						for (int i = 0; i < width * height; ++i)
+						{
+							// Swap A and B for macOS (ABGR -> BGRA)
+							uint32_t pixel = src[i];
+							bitmapData[i] = ((pixel & 0xFF00FF00) | ((pixel << 16) & 0xFF0000) | ((pixel >> 16) & 0xFF));
+						}
+					}
+
+					[bitmapRep unlockFocus];
+
+					// Create an NSImage from the bitmap representation
+					NSImage *windowImage = [[NSImage alloc] initWithSize:NSMakeSize(width, height)];
+					[windowImage addRepresentation:bitmapRep];
+
+					// Set the image as the window content
+					[window setContentImage:windowImage];
+
+					[bitmapRep release];
+				}
+				[nsImage release];
+			}
+			CGImageRelease(image);
+		}
+		CGContextRelease(context);
+	}
+
+	CGColorSpaceRelease(colorSpace);
+}
+
 intptr_t OSXWindow::GetNativeHandle() const
 {
 	return reinterpret_cast<intptr_t>(nsWindow);

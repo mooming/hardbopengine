@@ -85,6 +85,14 @@ public:
 	 * @return The native window handle as a pointer.
 	 */
 	[[nodiscard]] virtual intptr_t GetNativeHandle() const = 0;
+
+	/**
+	 * @brief Updates the window content with a raw pixel buffer.
+	 * @param pixels Pointer to the ARGB pixel data.
+	 * @param width Width of the buffer.
+	 * @param height Height of the buffer.
+	 */
+	virtual void SetPixels(const uint32_t* pixels, int width, int height) = 0;
 };
 
 /**
