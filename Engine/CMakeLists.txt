@@ -30,7 +30,9 @@ include_directories ( ${CMAKE_SOURCE_DIR}
  ${CMAKE_SOURCE_DIR}/Applications/TriangleExample
  ${CMAKE_SOURCE_DIR}/Applications/VulkanExample
  ${CMAKE_SOURCE_DIR}/External
+ ${CMAKE_SOURCE_DIR}/Engine
  ${CMAKE_SOURCE_DIR}/Engine/Renderer
+ ${CMAKE_SOURCE_DIR}/Engine/.
  )
 add_subdirectory (Config)
 add_subdirectory (Container)

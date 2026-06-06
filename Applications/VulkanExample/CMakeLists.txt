@@ -30,6 +30,7 @@ include_directories ( ${CMAKE_SOURCE_DIR}
  ${CMAKE_SOURCE_DIR}/Applications/TriangleExample
  ${CMAKE_SOURCE_DIR}/Applications/VulkanExample
  ${CMAKE_SOURCE_DIR}/External
+ ${CMAKE_SOURCE_DIR}/Engine
  ${CMAKE_SOURCE_DIR}/Engine/Renderer
  ${CMAKE_SOURCE_DIR}/Applications/VulkanExample//some/include/path
  ${CMAKE_SOURCE_DIR}/Applications/VulkanExample/another_include
