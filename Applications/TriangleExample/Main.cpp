@@ -1,18 +1,18 @@
 // Copyright (c) 2026 HardBop Engine. All rights reserved.
 // TriangleExample - minimal DOD triangle demo using OSAL window
 
-#include "DODTypes.h"
-#include "Engine/Core/CommandLineArguments.h"
-#include "Engine/Engine.h"
-#include "Engine/OSAL/Application.h"
-#include "Engine/OSAL/Window.h"
-#include "SoftwareRenderer.h"
 #include <algorithm>
 #include <chrono>
 #include <fstream>
 #include <iostream>
 #include <thread>
 #include <vector>
+#include "DODTypes.h"
+#include "Engine/Core/CommandLineArguments.h"
+#include "Engine/Engine.h"
+#include "Engine/OSAL/Application.h"
+#include "Engine/OSAL/Window.h"
+#include "SoftwareRenderer.h"
 
 
 using namespace hbe;

@@ -2,9 +2,9 @@
 
 
 #include <iostream>
-#include "Renderer/RendererFactory.h"
-#include "Renderer/IRenderer.h"
 #include "OSAL/Window.h"
+#include "Renderer/IRenderer.h"
+#include "Renderer/RendererFactory.h"
 #include "Test/TestCollection.h"
 #include "Test/TestEnv.h"
 
