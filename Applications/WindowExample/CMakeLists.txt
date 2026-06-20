@@ -27,10 +27,11 @@ endif (MSVC)
 
 include_directories ( ${CMAKE_SOURCE_DIR}
  ${CMAKE_SOURCE_DIR}/include
- ${CMAKE_SOURCE_DIR}/Applications/TriangleExample
  ${CMAKE_SOURCE_DIR}/External
- ${CMAKE_SOURCE_DIR}/Engine
- ${CMAKE_SOURCE_DIR}/Engine/Renderer
+ Applications/TriangleExample
+ External
+ Engine
+ Engine/Renderer
  )
 link_directories (${CMAKE_SOURCE_DIR}/lib
 )
@@ -50,12 +51,11 @@ endif (APPLE)
 install (TARGETS WindowExample DESTINATION ${CMAKE_SOURCE_DIR}/bin)
 
 
-target_link_libraries (WindowExample Config Container Core HEngine HSTL Log Math Memory OSAL Resource String Test)
+target_link_libraries (WindowExample HEngine Config Container HSTL Log Math Memory OSAL Resource String Core Test)
 
+add_dependencies (WindowExample HEngine)
 add_dependencies (WindowExample Config)
 add_dependencies (WindowExample Container)
-add_dependencies (WindowExample Core)
-add_dependencies (WindowExample HEngine)
 add_dependencies (WindowExample HSTL)
 add_dependencies (WindowExample Log)
 add_dependencies (WindowExample Math)
@@ -63,6 +63,7 @@ add_dependencies (WindowExample Memory)
 add_dependencies (WindowExample OSAL)
 add_dependencies (WindowExample Resource)
 add_dependencies (WindowExample String)
+add_dependencies (WindowExample Core)
 add_dependencies (WindowExample Test)
 
 

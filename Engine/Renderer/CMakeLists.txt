@@ -27,11 +27,11 @@ endif (MSVC)
 
 include_directories ( ${CMAKE_SOURCE_DIR}
  ${CMAKE_SOURCE_DIR}/include
- ${CMAKE_SOURCE_DIR}/Applications/TriangleExample
  ${CMAKE_SOURCE_DIR}/External
- ${CMAKE_SOURCE_DIR}/Engine
- ${CMAKE_SOURCE_DIR}/Engine/Renderer
- ${CMAKE_SOURCE_DIR}/Engine/Renderer/.
+ Applications/TriangleExample
+ External
+ Engine
+ Engine/Renderer
  )
 
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/lib)
@@ -45,6 +45,10 @@ add_library (Renderer STATIC
  RendererFactory.h
  RendererTest.h
 ${PLATFORM_SOURCES}
+)
+
+target_include_directories (Renderer PUBLIC
+ Engine/Renderer
 )
 
 if (APPLE)

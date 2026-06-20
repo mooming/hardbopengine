@@ -27,11 +27,11 @@ endif (MSVC)
 
 include_directories ( ${CMAKE_SOURCE_DIR}
  ${CMAKE_SOURCE_DIR}/include
- ${CMAKE_SOURCE_DIR}/Applications/TriangleExample
  ${CMAKE_SOURCE_DIR}/External
- ${CMAKE_SOURCE_DIR}/Engine
- ${CMAKE_SOURCE_DIR}/Engine/Renderer
- ${CMAKE_SOURCE_DIR}/Applications/TriangleExample/../External/VulkanSDK/include
+ Applications/TriangleExample
+ External
+ Engine
+ Engine/Renderer
  )
 link_directories (${CMAKE_SOURCE_DIR}/lib
 )
@@ -54,12 +54,11 @@ endif (APPLE)
 install (TARGETS TriangleExample DESTINATION ${CMAKE_SOURCE_DIR}/bin)
 
 
-target_link_libraries (TriangleExample Config Container Core HEngine HSTL Log Math Memory OSAL Resource String)
+target_link_libraries (TriangleExample Config Container Core HSTL Log Math Memory OSAL Resource String HEngine Test)
 
 add_dependencies (TriangleExample Config)
 add_dependencies (TriangleExample Container)
 add_dependencies (TriangleExample Core)
-add_dependencies (TriangleExample HEngine)
 add_dependencies (TriangleExample HSTL)
 add_dependencies (TriangleExample Log)
 add_dependencies (TriangleExample Math)
@@ -67,7 +66,8 @@ add_dependencies (TriangleExample Memory)
 add_dependencies (TriangleExample OSAL)
 add_dependencies (TriangleExample Resource)
 add_dependencies (TriangleExample String)
-
+add_dependencies (TriangleExample HEngine)
+add_dependencies (TriangleExample Test)
 
 
 add_definitions(-D__TEST__ -D__UNIT_TEST__)
