@@ -6,6 +6,30 @@
 #import <Cocoa/Cocoa.h>
 #include <cstdio>
 
+@interface PixelView : NSView {
+    CGImageRef _image;
+}
+- (void)setImage:(CGImageRef)image;
+@end
+
+@implementation PixelView
+- (void)setImage:(CGImageRef)image {
+    if (_image) CGImageRelease(_image);
+    _image = image;
+    if (_image) CGImageRetain(_image);
+    [self setNeedsDisplay:YES];
+}
+- (void)drawRect:(NSRect)dirtyRect {
+    if (!_image) return;
+    CGContextRef ctx = [[NSGraphicsContext currentContext] CGContext];
+    CGContextDrawImage(ctx, NSMakeRect(0, 0, [self bounds].size.width, [self bounds].size.height), _image);
+}
+- (void)dealloc {
+    if (_image) CGImageRelease(_image);
+    [super dealloc];
+}
+@end
+
 namespace OS
 {
 
@@ -44,6 +68,9 @@ bool OSXWindow::CreateWindow(const hbe::HString& title, int width, int height)
 	[window setFrame:frame display:YES animate:NO];
 	[window makeKeyAndOrderFront:nil];
 	[window center];
+
+	PixelView *pixelView = [[PixelView alloc] initWithFrame:frame];
+	[window setContentView:pixelView];
 
 	OSXWindow::width = width;
 	OSXWindow::height = height;
@@ -146,7 +173,7 @@ void OSXWindow::SetPixels(const uint32_t* pixels, int width, int height)
 		return;
 
 	auto window = static_cast<NSWindow*>(nsWindow);
-	NSView *contentView = [window contentView];
+	PixelView *pixelView = static_cast<PixelView*>([window contentView]);
 
 	// Create a bitmap context
 	CGColorSpaceRef colorSpace = CGColorSpaceCreateDeviceRGB();
@@ -168,52 +195,7 @@ void OSXWindow::SetPixels(const uint32_t* pixels, int width, int height)
 		CGImageRef image = CGBitmapContextCreateImage(context);
 		if (image)
 		{
-			// Create an NSImage from the CGImage
-			NSImage *nsImage = [[NSImage alloc] initWithCGImage:image size:NSMakeSize(width, height)];
-			if (nsImage)
-			{
-				// Create a bitmap representation and set it as the window content
-				NSBitmapImageRep *bitmapRep = [[NSBitmapImageRep alloc]
-					initWithBitmapDataPlanes:nullptr
-					pixelsWide:width
-					pixelsHigh:height
-					samplesPerPixel:4
-					hasAlpha:YES
-					planar:NO
-					colorSpaceName:NSDeviceRGBColorSpace
-					bitmapFormat:NSBitmapFormat32LittleEndian
-					bytesPerRow:width * 4
-					bitsPerPixel:32];
-
-				if (bitmapRep)
-				{
-					[bitmapRep getBitmapDataPlanes:nullptr];
-					uint32_t *bitmapData = static_cast<uint32_t*>([bitmapRep bitmapData]);
-					if (bitmapData)
-					{
-						// Copy pixel data (ARGB to BGRA for macOS)
-						const uint32_t* src = pixels;
-						for (int i = 0; i < width * height; ++i)
-						{
-							// Swap A and B for macOS (ABGR -> BGRA)
-							uint32_t pixel = src[i];
-							bitmapData[i] = ((pixel & 0xFF00FF00) | ((pixel << 16) & 0xFF0000) | ((pixel >> 16) & 0xFF));
-						}
-					}
-
-					[bitmapRep unlockFocus];
-
-					// Create an NSImage from the bitmap representation
-					NSImage *windowImage = [[NSImage alloc] initWithSize:NSMakeSize(width, height)];
-					[windowImage addRepresentation:bitmapRep];
-
-					// Set the image as the window content
-					[window setContentImage:windowImage];
-
-					[bitmapRep release];
-				}
-				[nsImage release];
-			}
+			[pixelView setImage:image];
 			CGImageRelease(image);
 		}
 		CGContextRelease(context);

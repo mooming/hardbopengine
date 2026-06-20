@@ -210,12 +210,14 @@
 
 These changes streamline SDK setup and provide clear guidance to developers on how to install required dependencies on each platform.
 
-## 2026-06-03
+## 2026-06-05
 
-### TriangleExample Renderer Redesign (DOD)
-- [ ] Implement Data-Oriented Design (DOD) renderer for `TriangleExample` following Extract $\rightarrow$ Prepare $\rightarrow$ Submit flow.
-- [ ] Define GPU-ready data structures (SoA transforms, sort keys, draw commands) in `DODTypes.h`.
-- [ ] Update `SoftwareRenderer` to act as a stateless submission backend.
-- [ ] Refactor `Main.cpp` to implement the DOD pipeline loop.
-- [ ] Verify with build and run.
-- **Constraints**: Local to `Applications/TriangleExample/`, no `Engine/` modifications, no `IRenderer` pattern.
+### TriangleExample Enhancements
+- Added functional test `TriangleRenderTest.cpp` verifying software renderer output via a mock window.
+- Updated `Main.cpp` to parse optional `--headless` and `--max-fps` flags using `CommandLineArguments`.
+- Implemented frame‑rate limiting based on `maxFps` and headless mode support.
+- Refactored `SoftwareRenderer` members to public for test access.
+- Modified `CMakeLists.txt` to include the new test source and link `Renderer` library.
+- Updated `README.md` with new runtime flag documentation.
+- Adjusted build configuration to remove problematic `RendererFactory` inclusion.
+- All configurations (Dev, Debug, Release) now build successfully.

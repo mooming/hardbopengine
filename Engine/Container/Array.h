@@ -139,6 +139,18 @@ namespace hbe
 
 			return IsValidIndex(delta) ? delta : -1;
 		}
+
+		template <typename U>
+		bool Contains(const U& value) const noexcept
+		{
+			for (auto& element : *this)
+			{
+				if (element == value)
+					return true;
+			}
+
+			return false;
+		}
 	};
 
 } // namespace hbe
