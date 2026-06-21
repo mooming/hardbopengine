@@ -30,7 +30,7 @@ int main(int argc, const char* argv[]) noexcept
 
 	app->Initialize();
 
-	auto window = OS::CreateWindow("Triangle Example", 640, 480);
+	auto window = OS::CreateWindow("Triangle Example", 720, 480);
 	if (!window)
 	{
 		std::cerr << "Failed to create window" << std::endl;
