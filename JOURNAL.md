@@ -209,3 +209,11 @@
 - Added a new commit: "Embed Vulkan SDK installer into install_sdk_macos.sh and update warning message with platform‑specific install scripts".
 
 These changes streamline SDK setup and provide clear guidance to developers on how to install required dependencies on each platform.
+
+## 2026-06-21
+
+### EngineAPIGuide.md created
+- Created comprehensive `docs/EngineAPIGuide.md` — 1753 lines covering all engine modules
+- Documents all 18 major API sections: Core Types, Task System, Component System, Memory, Containers, Math, Strings, Logging, Config, OSAL, Resource, HSTL, Engine Core, Renderer, Test Framework, and Build Config
+- Covers all header-level API surface with class signatures, type aliases, and usage notes
+- Based on systematic review of all `.h`/`.hpp` files across Engine/, Applications/, Tools/MakeBuild/
