@@ -217,3 +217,8 @@ These changes streamline SDK setup and provide clear guidance to developers on h
 - Documents all 18 major API sections: Core Types, Task System, Component System, Memory, Containers, Math, Strings, Logging, Config, OSAL, Resource, HSTL, Engine Core, Renderer, Test Framework, and Build Config
 - Covers all header-level API surface with class signatures, type aliases, and usage notes
 - Based on systematic review of all `.h`/`.hpp` files across Engine/, Applications/, Tools/MakeBuild/
+
+### EngineAPIGuide.html created
+- Created styled HTML version `docs/EngineAPIGuide.html` (1468 lines)
+- Dark theme with sidebar navigation, syntax-highlighted code blocks, tables
+- Responsive design, mobile-friendly with sidebar collapse

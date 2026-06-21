@@ -1,0 +1,1468 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HardBop Engine API Guide</title>
+<style>
+  :root {
+    --bg: #1a1a2e;
+    --bg-alt: #16213e;
+    --bg-code: #0f0f23;
+    --text: #e0e0e0;
+    --text-dim: #a0a0b0;
+    --accent: #7ec8e3;
+    --accent2: #a78bfa;
+    --accent3: #f59e0b;
+    --green: #6ee7b7;
+    --border: #2a2a4a;
+    --code-bg: #1e1e3a;
+    --code-text: #c9d1d9;
+    --heading: #ffffff;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.7;
+    padding: 0;
+    font-size: 15px;
+  }
+
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 280px;
+    height: 100vh;
+    overflow-y: auto;
+    background: var(--bg-alt);
+    border-right: 1px solid var(--border);
+    padding: 20px 16px;
+    z-index: 100;
+  }
+
+  .sidebar h3 {
+    color: var(--accent);
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin: 18px 0 8px 0;
+    padding-bottom: 4px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .sidebar ul { list-style: none; padding: 0; margin: 0 0 6px 0; }
+  .sidebar li { margin: 0; }
+  .sidebar a {
+    display: block;
+    color: var(--text-dim);
+    text-decoration: none;
+    font-size: 13px;
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: all 0.15s;
+  }
+  .sidebar a:hover { color: var(--accent); background: rgba(126,200,227,0.08); }
+  .sidebar a.sub { padding-left: 20px; font-size: 12px; }
+
+  .main {
+    margin-left: 280px;
+    padding: 32px 48px 80px 48px;
+    max-width: 960px;
+  }
+
+  h1 {
+    font-size: 32px;
+    color: var(--heading);
+    margin: 0 0 8px 0;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+
+  .subtitle {
+    color: var(--text-dim);
+    font-size: 14px;
+    margin-bottom: 32px;
+  }
+
+  h2 {
+    font-size: 24px;
+    color: var(--accent);
+    margin: 40px 0 16px 0;
+    padding-bottom: 8px;
+    border-bottom: 2px solid var(--accent);
+    font-weight: 600;
+  }
+
+  h3 {
+    font-size: 18px;
+    color: var(--heading);
+    margin: 28px 0 12px 0;
+    font-weight: 600;
+  }
+
+  h4 {
+    font-size: 15px;
+    color: var(--accent2);
+    margin: 20px 0 8px 0;
+    font-weight: 500;
+  }
+
+  p { margin: 0 0 14px 0; }
+  ul, ol { margin: 0 0 14px 0; padding-left: 20px; }
+  li { margin: 2px 0; }
+
+  a { color: var(--accent3); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  strong { color: var(--heading); font-weight: 600; }
+
+  code {
+    font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', 'JetBrains Mono', monospace;
+    background: var(--code-bg);
+    color: var(--code-text);
+    font-size: 13px;
+    padding: 2px 6px;
+    border-radius: 3px;
+    white-space: nowrap;
+  }
+
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 16px 20px;
+    margin: 12px 0 20px 0;
+    overflow-x: auto;
+    font-size: 13px;
+    line-height: 1.5;
+    font-family: 'SF Mono', 'Fira Code', monospace;
+  }
+
+  pre code {
+    background: none;
+    padding: 0;
+    border-radius: 0;
+    white-space: pre;
+    color: var(--code-text);
+  }
+
+  /* syntax highlighting */
+  .hl kw { color: #c9a0ff; }
+  .hl ty { color: #7ec8e3; }
+  .hl st { color: #6ee7b7; }
+  .hl nu { color: #f59e0b; }
+  .hl cm { color: #6b7280; font-style: italic; }
+  .hl op { color: #f0f0f0; }
+  .hl fn { color: #a78bfa; }
+  .hl sc { color: #93c5fd; }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0 20px 0;
+    font-size: 14px;
+  }
+
+  th {
+    background: var(--bg-alt);
+    color: var(--accent);
+    text-align: left;
+    padding: 10px 14px;
+    border: 1px solid var(--border);
+    font-weight: 600;
+  }
+
+  td {
+    padding: 8px 14px;
+    border: 1px solid var(--border);
+    vertical-align: top;
+  }
+
+  tr:nth-child(even) { background: rgba(255,255,255,0.02); }
+
+  blockquote {
+    background: var(--bg-alt);
+    border-left: 4px solid var(--accent2);
+    padding: 12px 20px;
+    margin: 12px 0;
+    color: var(--text-dim);
+    border-radius: 0 6px 6px 0;
+  }
+
+  .toc {
+    background: var(--bg-alt);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px 28px;
+    margin: 16px 0 32px 0;
+  }
+
+  .toc ol {
+    list-style: none;
+    counter-reset: toc-counter;
+    padding: 0;
+  }
+
+  .toc li { counter-increment: toc-counter; margin: 4px 0; }
+  .toc li::before {
+    content: counter(toc-counter) ". ";
+    color: var(--accent);
+    font-weight: 600;
+  }
+  .toc a { color: var(--text); font-size: 14px; }
+  .toc a:hover { color: var(--accent3); }
+
+  .header-link {
+    color: var(--accent);
+    font-size: 14px;
+    margin-left: 6px;
+    opacity: 0.4;
+    transition: opacity 0.15s;
+  }
+  h2:hover .header-link, h3:hover .header-link { opacity: 1; }
+
+  hr {
+    border: none;
+    height: 1px;
+    background: var(--border);
+    margin: 24px 0;
+  }
+
+  .note {
+    background: rgba(126,200,227,0.06);
+    border: 1px solid rgba(126,200,227,0.15);
+    border-radius: 6px;
+    padding: 12px 16px;
+    margin: 12px 0;
+    font-size: 13px;
+    color: var(--text-dim);
+  }
+
+  .tag {
+    display: inline-block;
+    background: rgba(126,200,227,0.1);
+    color: var(--accent);
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    margin-right: 4px;
+  }
+
+  @media (max-width: 900px) {
+    .sidebar { display: none; }
+    .main { margin-left: 0; padding: 20px; }
+  }
+
+  ::-webkit-scrollbar { width: 8px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+</style>
+</head>
+<body>
+
+<div class="sidebar">
+  <h3 style="font-size:16px;color:#fff;border:none;margin-bottom:16px;">Engine API Guide</h3>
+
+  <h3>Foundation</h3>
+  <ul>
+    <li><a href="#1-core-types--foundation">1. Core Types</a></li>
+    <li><a href="#2-task-system">2. Task System</a></li>
+    <li><a href="#3-component-system">3. Component System</a></li>
+    <li><a href="#4-memory-management">4. Memory Mgmt</a></li>
+  </ul>
+
+  <h3>Data & Math</h3>
+  <ul>
+    <li><a href="#5-containers">5. Containers</a></li>
+    <li><a href="#6-math-library">6. Math Library</a></li>
+    <li><a href="#7-string-utilities">7. String Utils</a></li>
+  </ul>
+
+  <h3>Systems</h3>
+  <ul>
+    <li><a href="#8-logging-system">8. Logging</a></li>
+    <li><a href="#9-configuration-system">9. Config</a></li>
+    <li><a href="#10-os-abstraction-layer-osal">10. OSAL</a></li>
+    <li><a href="#11-resource-management">11. Resource</a></li>
+    <li><a href="#12-hstl--hardbop-stl">12. HSTL</a></li>
+    <li><a href="#13-engine-core">13. Engine Core</a></li>
+    <li><a href="#14-renderer-rhi">14. Renderer</a></li>
+    <li><a href="#15-test-framework">15. Test</a></li>
+    <li><a href="#16-build-configuration">16. Build Config</a></li>
+  </ul>
+</div>
+
+<div class="main">
+
+<h1>HardBop Engine API Guide</h1>
+<p class="subtitle">
+  <span class="tag">2026.06</span>
+  high-performance C++23 engine &mdash; custom memory, task system, OSAL<br>
+  <code>namespace hbe</code> (engine core), <code>namespace OS</code> (OSAL), <code>namespace hbe::Renderer</code> (renderer)
+</p>
+
+<hr>
+
+<div class="toc">
+  <h3 style="border:none;margin:0 0 12px 0;padding:0;font-size:16px;">Table of Contents</h3>
+  <ol>
+    <li><a href="#1-core-types--foundation">Core Types & Foundation</a></li>
+    <li><a href="#2-task-system">Task System</a></li>
+    <li><a href="#3-component-system">Component System</a></li>
+    <li><a href="#4-memory-management">Memory Management</a></li>
+    <li><a href="#5-containers">Containers</a></li>
+    <li><a href="#6-math-library">Math Library</a></li>
+    <li><a href="#7-string-utilities">String Utilities</a></li>
+    <li><a href="#8-logging-system">Logging System</a></li>
+    <li><a href="#9-configuration-system">Configuration System</a></li>
+    <li><a href="#10-os-abstraction-layer-osal">OS Abstraction Layer (OSAL)</a></li>
+    <li><a href="#11-resource-management">Resource Management</a></li>
+    <li><a href="#12-hstl--hardbop-stl">HSTL — HardBop STL</a></li>
+    <li><a href="#13-engine-core">Engine Core</a></li>
+    <li><a href="#14-renderer-rhi">Renderer (RHI)</a></li>
+    <li><a href="#15-test-framework">Test Framework</a></li>
+    <li><a href="#16-build-configuration">Build Configuration</a></li>
+  </ol>
+</div>
+
+<hr>
+
+<!-- ==================== SECTION 1 ==================== -->
+<h2 id="1-core-types--foundation">1. Core Types & Foundation</h2>
+
+<h3>Types (<code>Engine/Core/Types.h</code>)</h3>
+<table>
+  <tr><th>Alias</th><th>Underlying Type</th><th>Purpose</th></tr>
+  <tr><td><code>TByte</code></td><td><code>uint8_t</code></td><td>Byte type</td></tr>
+  <tr><td><code>TPointer</code></td><td><code>void*</code></td><td>Generic pointer</td></tr>
+  <tr><td><code>TIndex</code></td><td><code>size_t</code></td><td>Index type</td></tr>
+  <tr><td><code>TInt</code></td><td><code>int32_t</code></td><td>Signed integer</td></tr>
+  <tr><td><code>TUInt</code></td><td><code>uint32_t</code></td><td>Unsigned integer</td></tr>
+  <tr><td><code>TReal</code></td><td><code>float</code></td><td>Real number</td></tr>
+</table>
+<p>Backward-compatible aliases: <code>Byte</code>, <code>Pointer</code>, <code>Index</code>, <code>Int</code>, <code>UInt</code>, <code>Real</code>.</p>
+
+<h3>Constants (<code>Engine/Core/Constants.h</code>)</h3>
+<pre><code>constexpr size_t KB = 1024;
+constexpr size_t MB = 1024 * 1024;
+constexpr size_t GB = 1024 * 1024 * 1024;
+
+constexpr float Pi     = 3.141592653589793f;
+constexpr float HalfPi = Pi * 0.5f;
+constexpr float TwoPi  = Pi * 2.0f;
+constexpr float EulerNum = 2.718281828459f;
+constexpr float Epsilon = 0.001f;
+constexpr float SqrEpsilon = Epsilon * Epsilon;</code></pre>
+
+<h3>SourceLocation (<code>Engine/OSAL/SourceLocation.h</code>)</h3>
+<pre><code>class SourceLocation final {
+    static constexpr SourceLocation current(
+        const char* fileName = CallerFile(),
+        const char* functionName = CallerFunc(),
+        uint_least32_t lineNumber = CallerLine(),
+        uint_least32_t columnOffset = CallerColumn()
+    ) noexcept;
+    // Accessors: file_name(), function_name(), line(), column()
+};</code></pre>
+
+<h3>Intrinsic Macros (<code>Engine/OSAL/Intrinsic.h</code>)</h3>
+<table>
+  <tr><th>Macro</th><th>Purpose</th></tr>
+  <tr><td><code>likely(x)</code></td><td>Branch prediction hint (true likely)</td></tr>
+  <tr><td><code>unlikely(x)</code></td><td>Branch prediction hint (false likely)</td></tr>
+  <tr><td><code>debugBreak()</code></td><td>Halt execution for debugging</td></tr>
+  <tr><td><code>CallerFile()</code></td><td>Source file path</td></tr>
+  <tr><td><code>CallerFunc()</code></td><td>Function name</td></tr>
+  <tr><td><code>CallerLine()</code></td><td>Line number</td></tr>
+  <tr><td><code>CallerColumn()</code></td><td>Column number</td></tr>
+</table>
+
+<hr>
+
+<!-- ==================== SECTION 2 ==================== -->
+<h2 id="2-task-system">2. Task System</h2>
+
+<h3>Runnable (<code>Engine/Core/Runnable.h</code>)</h3>
+<pre><code>using TRunnable = std::size_t(*)(void* userData,
+                                  std::size_t startIndex,
+                                  std::size_t endIndex);</code></pre>
+
+<h3>RangedTask (<code>Engine/Core/RangedTask.h</code>)</h3>
+<p>A task with a specific index range <code>[start, end)</code> for parallel processing.</p>
+<pre><code>class RangedTask final {
+    uint8_t priority;
+    TaskStreamAffinity affinity;
+    StaticString taskName;
+    std::reference_wrapper<Task> taskRef;
+    TIndex start, end;
+    mutable TIndex currentIndex;
+
+    bool HasFinished() const noexcept;
+    void Run() noexcept;  // Calls task's runnable, reports finish
+};</code></pre>
+
+<h3>Task (<code>Engine/Core/Task.h</code>)</h3>
+<pre><code>class Task final {
+    // Constructors
+    Task() noexcept;
+    Task(StaticString taskName, TRunnable func, void* userData) noexcept;
+
+    // Execution
+    void Start(TIndex numberOfSubTasks, TIndex startIndex,
+               TIndex endIndex, uint8_t priority = 0) noexcept;
+
+    // Synchronization
+    void BusyWait() const noexcept;
+    void Wait(uint32_t intervalMilliSecs = 10) const noexcept;
+
+    // Status
+    bool HasDone() const noexcept;
+    void ReportFinishedSubTask() noexcept;
+
+    // Accessors
+    [[nodiscard]] TRunnable GetRunnable() const noexcept;
+    [[nodiscard]] void* GetUserData() const noexcept;
+
+    // Sub-task generation
+    RangedTask GenerateSubTask(TIndex start, TIndex end,
+                                uint8_t priority = 0) noexcept;
+};</code></pre>
+
+<h3>TaskStream (<code>Engine/Core/TaskStream.h</code>)</h3>
+<pre><code>class TaskStream final {
+    TaskStream();
+    explicit TaskStream(StaticString name, TStreamIndex streamIndex);
+
+    void Enqueue(const RangedTask& task) noexcept;
+    void WakeUp() noexcept;
+    void Join() noexcept;
+    void Start(TaskSystem& taskSys) noexcept;
+    void RunLoop() noexcept;
+
+    [[nodiscard]] StaticString GetName() const noexcept;
+    [[nodiscard]] std::thread::id GetThreadID() const noexcept;
+    [[nodiscard]] TStreamIndex GetStreamIndex() const noexcept;
+    [[nodiscard]] uint64_t GetLoopCount() const noexcept;
+};</code></pre>
+
+<h3>TaskStreamAffinity (<code>Engine/Core/TaskStreamAffinity.h</code>)</h3>
+<pre><code>template<unsigned int NumBits>
+class TaskStreamAffinityBase final {
+    void Set(unsigned int bitIndex) noexcept;   // Exclude stream
+    void Unset(unsigned int bitIndex) noexcept; // Include stream
+    bool Get(unsigned int bitIndex) const noexcept; // Is included?
+};
+
+using TaskStreamAffinity = TaskStreamAffinityBase<64>;</code></pre>
+
+<h3>MainThreadTaskQueue (<code>Engine/Core/MainThreadTaskQueue.h</code>)</h3>
+<pre><code>class MainThreadTaskQueue final {
+    void Enqueue(TTaskFunc taskFunc, void* userData,
+                 uint8_t priority = 128) noexcept;
+    size_t ProcessTasks() noexcept;
+    bool HasPendingTasks() const noexcept;
+    void RequestStop() noexcept;
+    bool IsRunning() const noexcept;
+};</code></pre>
+
+<h3>TaskSystem (<code>Engine/Core/TaskSystem.h</code>)</h3>
+<pre><code>class TaskSystem final {
+    // Static helpers
+    static TIndex GetNumHardwareThreads() noexcept;
+    static void SetThreadName(StaticString name) noexcept;
+    static void SetStreamIndex(TIndex index) noexcept;
+    static StaticString GetCurrentStreamName() noexcept;
+    static StaticString GetCurrentThreadName() noexcept;
+    static TIndex GetCurrentStreamIndex() noexcept;
+    static bool IsBaseThread() noexcept;
+    static bool IsIOThread() noexcept;
+
+    // Lifecycle
+    TaskSystem() noexcept;
+    ~TaskSystem() noexcept;
+    void Initialize() noexcept;
+    void RequestShutDown() noexcept;
+    void JoinAndClear() noexcept;
+
+    // Task queue operations
+    void Enqueue(const RangedTask& task) noexcept;
+    void Dequeue(std::optional<RangedTask>& outTask) noexcept;
+    void Enqueue(TIndex streamIndex, const RangedTask& task) noexcept;
+
+    // Main thread dispatch
+    void DispatchToMainThread(TMainThreadTask task,
+                              void* userData, uint8_t priority = 0) noexcept;
+    size_t ProcessMainThreadTasks() noexcept;
+
+    // Stream access
+    TaskStream& GetStream(int index) noexcept;
+    TaskStream& GetBaseTaskStream() noexcept;
+    TaskStream& GetIOTaskStream() noexcept;
+};</code></pre>
+
+<hr>
+
+<!-- ==================== SECTION 3 ==================== -->
+<h2 id="3-component-system">3. Component System</h2>
+
+<h3>ComponentState (<code>Engine/Core/ComponentState.h</code>)</h3>
+<pre><code>enum class ComponentState : int {
+    NONE, BORN, ALIVE, SLEEP, DEAD
+};</code></pre>
+
+<h3>Component (<code>Engine/Core/Component.h</code>)</h3>
+<pre><code>class Component {
+    // Lifecycle hooks (must override)
+    virtual void Init() = 0;
+    virtual void Update(const float deltaTime) = 0;
+    virtual void Release() = 0;
+    virtual void OnEnable() = 0;
+    virtual void OnDisable() = 0;
+
+    // State management
+    [[nodiscard]] State GetState() const noexcept;
+    void SetState(State inState) noexcept;
+    [[nodiscard]] bool IsEnabled() const noexcept;
+    void SetEnable(bool isEnabled) noexcept;
+    void Destroy() noexcept;
+};</code></pre>
+
+<h3>ComponentSystem (<code>Engine/Core/ComponentSystem.h</code>)</h3>
+<pre><code>template<typename TComponent>
+class ComponentSystem {
+    template<typename... Types>
+    TComponent& Create(Types&&... args);
+
+    void Update(const float deltaTime);
+
+    [[nodiscard]] const char* GetName() const noexcept;
+    explicit operator bool() const noexcept;
+};</code></pre>
+
+<hr>
+
+<!-- ==================== SECTION 4 ==================== -->
+<h2 id="4-memory-management">4. Memory Management</h2>
+
+<h3>MemoryManager (<code>Engine/Memory/MemoryManager.h</code>)</h3>
+<pre><code>class MemoryManager final {
+    static MemoryManager& GetInstance();
+    static TAllocatorID GetCurrentAllocatorID();
+
+    TAllocatorID RegisterAllocator(void* allocator, const char* name,
+                                   bool isInline, size_t capacity, ...);
+    void DeregisterAllocator(TAllocatorID id);
+
+    void* Allocate(TAllocatorID id, size_t nBytes);
+    void Deallocate(TAllocatorID id, void* ptr, size_t nBytes);
+    void* SysAllocate(size_t nBytes);
+    void SysDeallocate(void* ptr, size_t nBytes);
+    void* FallbackAllocate(TAllocatorID id, TAllocatorID parentId,
+                           size_t requested);
+
+    template<typename Type, typename... Types>
+    Type* New(Types&&... args);
+    template<typename Type>
+    void Delete(Type* ptr);
+};</code></pre>
+
+<h3>Allocator Types</h3>
+<table>
+  <tr><th>Allocator</th><th>Description</th><th>File</th></tr>
+  <tr><td><code>SystemAllocator<T></code></td><td>Wraps OS malloc/free</td><td><code>SystemAllocator.h</code></td></tr>
+  <tr><td><code>DefaultAllocator<T></code></td><td>Proxy to current MemoryManager allocator</td><td><code>DefaultAllocator.h</code></td></tr>
+  <tr><td><code>MonotonicAllocator</code></td><td>Linear bump-pointer, no per-block dealloc</td><td><code>MonotonicAllocator.h</code></td></tr>
+  <tr><td><code>StackAllocator</code></td><td>Stack-based linear allocator</td><td><code>StackAllocator.h</code></td></tr>
+  <tr><td><code>PoolAllocator</code></td><td>Fixed-size block pool with free list</td><td><code>PoolAllocator.h</code></td></tr>
+  <tr><td><code>MultiPoolAllocator</code></td><td>Multiple pools for varied block sizes</td><td><code>MultiPoolAllocator.h</code></td></tr>
+  <tr><td><code>ThreadSafeMultiPoolAllocator</code></td><td>Thread-safe version of MultiPool</td><td><code>ThreadSafeMultiPoolAllocator.h</code></td></tr>
+  <tr><td><code>InlineMonotonicAllocator<N></code></td><td>Inline buffer bump allocator</td><td><code>InlineMonotonicAllocator.h</code></td></tr>
+  <tr><td><code>InlinePoolAllocator<T,B,N></code></td><td>Inline fixed-size pool</td><td><code>InlinePoolAllocator.h</code></td></tr>
+</table>
+
+<h3>AllocatorScope (<code>Engine/Memory/AllocatorScope.h</code>)</h3>
+<pre><code>class AllocatorScope final {
+    AllocatorScope() noexcept;
+    AllocatorScope(TAllocatorID id) noexcept;
+    template<typename T>
+    AllocatorScope(const T& allocator) noexcept;
+};</code></pre>
+
+<h3>Shareable (<code>Engine/Memory/Shareable.h</code>)</h3>
+<pre><code>template<typename TType, typename RefCount = uint8_t>
+class Shareable {
+    template<typename... Types>
+    Shareable(Types&&... args);
+
+    [[nodiscard]] RefCount GetReferenceCount() const noexcept;
+    TType& Get() noexcept;
+    TType& operator*() noexcept;
+    TType* operator->() noexcept;
+    void Release() noexcept;
+    void Swap(Shareable& rhs) noexcept;
+};</code></pre>
+
+<h3>Memory Helpers (<code>Engine/Memory/Memory.h</code>)</h3>
+<pre><code>template<typename TType, typename... TTypes, typename TAllocator>
+TType* New(TAllocator& allocator, TTypes&&... args) noexcept;
+
+template<typename TType, typename TAllocator>
+void Delete(TAllocator& allocator, TType* ptr) noexcept;
+
+template<typename TType, typename... TTypes>
+TType* New(TTypes&&... args) noexcept;  // Uses MemoryManager
+
+template<typename TType>
+void Delete(TType* ptr) noexcept;</code></pre>
+
+<hr>
+
+<!-- ==================== SECTION 5 ==================== -->
+<h2 id="5-containers">5. Containers</h2>
+
+<h3>Vector (<code>Engine/Container/Vector.h</code>)</h3>
+<pre><code>template<typename TElement, class TAllocator = DefaultAllocator<TElement>>
+class Vector final {
+    Vector() noexcept;
+    explicit Vector(TIndex initialCapacity);
+    Vector(std::initializer_list<TElement> list);
+    Vector(Vector&& rhs) noexcept;
+
+    TElement& operator[](TIndex index);
+    TElement& Front() noexcept;
+    TElement& Back() noexcept;
+
+    void PushBack(const TElement& value) noexcept;
+    void PushBack(TElement&& value) noexcept;
+    template<typename... Types>
+    TElement& EmplaceBack(Types&&... args) noexcept;
+    void PopBack() noexcept;
+    void Resize(TIndex newSize) noexcept;
+    void Reserve(TIndex newCapacity) noexcept;
+    void Clear() noexcept;
+    void Swap(Vector& rhs) noexcept;
+
+    [[nodiscard]] TIndex Size() const noexcept;
+    [[nodiscard]] TIndex Capacity() const noexcept;
+    [[nodiscard]] bool IsEmpty() const noexcept;
+    [[nodiscard]] TIndex FindIndex(const TElement& element) const noexcept;
+};</code></pre>
+
+<h3>Array (<code>Engine/Container/Array.h</code>)</h3>
+<pre><code>template<typename Element, class TAllocator = DefaultAllocator<Element>>
+class Array final {
+    Array() noexcept;
+    explicit Array(TIndex size);
+    Array(std::initializer_list<Element> list);
+    Array(Array&& rhs) noexcept;
+
+    Element& operator[](TIndex index) noexcept;
+    template<typename... Types>
+    Element& Emplace(TIndex index, Types&&... args) noexcept;
+
+    [[nodiscard]] TIndex Size() const noexcept;
+    Element* ToRawArray() noexcept;
+    TIndex GetIndex(const Element& element) const noexcept;
+    void Swap(Array&& rhs) noexcept;
+};</code></pre>
+
+<h3>HashMap (<code>Engine/Container/HashMap.h</code>)</h3>
+<pre><code>template<typename TKey, typename TValue,
+         class THash = std::hash<TKey>,
+         class TKeyEqual = std::equal_to<TKey>,
+         class TAllocator = DefaultAllocator<uint8_t>>
+class HashMap final {
+    HashMap() noexcept;
+    explicit HashMap(TIndex initialCapacity);
+    HashMap(HashMap&& rhs) noexcept;
+
+    TValue& operator[](const TKey& key);
+    TValue& operator[](TKey&& key);
+
+    Iterator Find(const TKey& key) noexcept;
+    bool Contains(const TKey& key) const noexcept;
+    bool Insert(const TKey& key, const TValue& value);
+    bool Insert(TKey&& key, TValue&& value);
+    bool Remove(const TKey& key);
+    void Clear() noexcept;
+    void Reserve(TIndex newCapacity);
+
+    [[nodiscard]] TIndex Size() const noexcept;
+    [[nodiscard]] TIndex Capacity() const noexcept;
+    [[nodiscard]] bool IsEmpty() const noexcept;
+};</code></pre>
+
+<h3>Map (<code>Engine/Container/Map.h</code>)</h3>
+<p>Sorted map using binary search (array-based).</p>
+
+<h3>LinkedList (<code>Engine/Container/LinkedList.h</code>)</h3>
+<pre><code>template<typename TType, class TAllocator = ...>
+class LinkedList final {
+    TType& AddFirst(const TType& value) noexcept;
+    TType& AddLast(const TType& value) noexcept;
+    TType& AddPrevious(TType& current, const TType& value) noexcept;
+    TType& AddNext(TType& current, const TType& value) noexcept;
+
+    Iterator Remove(const TType& element) noexcept;
+    bool Contains(const TType& value) const noexcept;
+    bool FindAndRemove(const TType& value) noexcept;
+    bool IsEmpty() const noexcept;
+    void Clear() noexcept;
+};</code></pre>
+
+<h3>Deque (<code>Engine/Container/Deque.h</code>)</h3>
+<p>Ring-buffer deque with wrap-around indexing.</p>
+
+<h3>Queue (<code>Engine/Container/Queue.h</code>)</h3>
+<p>FIFO queue wrapping Deque.</p>
+
+<h3>RingQueue (<code>Engine/Container/RingQueue.h</code>)</h3>
+<p>Fixed-capacity ring buffer.</p>
+
+<h3>BoundedPriorityQueue (<code>Engine/Container/BoundedPriorityQueue.h</code>)</h3>
+<pre><code>template<typename T, std::size_t MaxPriority = 256,
+         std::size_t BucketSizeHint = 0>
+class BoundedPriorityQueue final {
+    void Push(const T& item) noexcept;
+    std::optional<T> Pop() noexcept;
+    std::optional<T> Top() const noexcept;
+    std::size_t Remove(TPredicate predicate) noexcept;
+    void Clear() noexcept;
+};</code></pre>
+
+<h3>AtomicStackView (<code>Engine/Container/AtomicStackView.h</code>)</h3>
+<p>Lock-free atomic stack using CAS operations.</p>
+
+<hr>
+
+<!-- ==================== SECTION 6 ==================== -->
+<h2 id="6-math-library">6. Math Library</h2>
+
+<h3>Vector2/3/4</h3>
+<pre><code>template<typename TNumber>
+class Vector3 final {
+    // Static constants: Zero, Unity, X, Y, Z, Right, Up, Forward
+    TNumber x, y, z;
+
+    Vector3 operator+(const Vector3& rhs) const noexcept;
+    Vector3 operator-(const Vector3& rhs) const noexcept;
+    Vector3 operator*(TNumber s) const noexcept;
+    Vector3 operator/(TNumber s) const noexcept;
+
+    [[nodiscard]] TNumber Dot(const Vector3& rhs) const noexcept;
+    [[nodiscard]] TNumber SqrLength() const noexcept;
+    [[nodiscard]] TNumber Length() const noexcept;
+    Vector3 Normalize() noexcept;
+    [[nodiscard]] Vector3 Cross(const Vector3& rhs) const noexcept;
+    [[nodiscard]] float AngleTo(const Vector3& to) const noexcept;
+};</code></pre>
+<p>Type aliases: <code>TFloat2</code>, <code>TInt2</code>, <code>TFloat3</code>, <code>TInt3</code>, <code>TFloat4</code>, <code>TInt4</code>.</p>
+
+<h3>Matrix2x2/3x3/4x4</h3>
+<pre><code>template<typename TNumber>
+class Matrix4x4 final {
+    static const Matrix4x4 Zero, Identity;
+    // Named members: m11-m44
+    void SetRotationX/Y/Z(float radian) noexcept;
+    void EulerAngles(float x, float y, float z) noexcept;
+    [[nodiscard]] Matrix4x4 Inverse() const noexcept;
+    void Transpose() noexcept;
+    [[nodiscard]] TNumber Determinant() const noexcept;
+    [[nodiscard]] bool IsOrthogonal() const noexcept;
+    static Matrix4x4 CreateTranslation(const TVec3& v) noexcept;
+};</code></pre>
+<p>Type aliases: <code>TFloat2x2</code>, <code>TFloat3x3</code>, <code>TFloat4x4</code>.</p>
+
+<h3>Quaternion (<code>Engine/Math/Quaternion.h</code>)</h3>
+<pre><code>template<typename TNumber>
+class Quaternion final {
+    static const Quaternion Zero, Identity;
+    TNumber x, y, z, w;
+
+    static Quaternion CreateRotationX/Y/Z(float angle);
+    static Quaternion LookRotation(const TVec3& forward, const TVec3& up);
+    static Quaternion RotationAround(const TVec3& unitAxis, float radian);
+    static Quaternion RotationFromTo(const TVec3& from, const TVec3& to);
+
+    [[nodiscard]] TMat3x3 ToMat3x3() const noexcept;
+    [[nodiscard]] TMat4x4 ToMat4x4() const noexcept;
+    [[nodiscard]] TVec3 EulerAngles() const noexcept;
+
+    static Quaternion Lerp(const Quaternion& from, const Quaternion& to, float t);
+    static Quaternion Slerp(const Quaternion& from, const Quaternion& to, float t);
+
+    [[nodiscard]] Quaternion Inverse() const noexcept;
+    [[nodiscard]] Quaternion Normalized() const noexcept;
+    [[nodiscard]] TVec3 operator*(const TVec3& rhs) const noexcept;
+};</code></pre>
+<p>Type alias: <code>TQuat</code>.</p>
+
+<h3>UniformTransform (<code>Engine/Math/UniformTransform.h</code>)</h3>
+<pre><code>template<typename TNumber>
+class UniformTransform final {
+    TQuat rotation;
+    TNumber scale;
+    TVec3 translation;
+
+    [[nodiscard]] TVec3 Transform(const TVec3& x) const noexcept;
+    [[nodiscard]] TVec3 InverseTransform(const TVec3& x) const noexcept;
+    UniformTransform Transform(const UniformTransform& rhs) const noexcept;
+    UniformTransform Inverse() const noexcept;
+    [[nodiscard]] TMat4x4 ToMatrix() const noexcept;
+};</code></pre>
+<p>Type alias: <code>TUniformTRS</code>.</p>
+
+<h3>RigidTransform (<code>Engine/Math/RigidTransform.h</code>)</h3>
+<pre><code>template<typename TNumber = float, int PaddingSize = 8>
+class RigidTransform final {
+    TQuat rotation;
+    TVec3 translation;
+
+    [[nodiscard]] TVec3 Transform(const TVec3& x) const noexcept;
+    TQuat Transform(const TQuat& r) const noexcept;
+    RigidTransform Transform(const RigidTransform& rhs) const noexcept;
+    RigidTransform Inverse() const noexcept;
+    [[nodiscard]] TMat4x4 ToMatrix() const noexcept;
+};</code></pre>
+<p>Type alias: <code>TRigidTR</code>.</p>
+
+<h3>Transform (<code>Engine/Math/Transform.h</code>)</h3>
+<p>Hierarchical transform with parent-child relationships and world transform caching.</p>
+<pre><code>template<typename TNumber>
+class Transform final {
+    TQuat rotation;
+    TNumber scale;
+    TVec3 translation;
+
+    void Attach(Transform& transform) noexcept;
+    void Detach(Transform& transform) noexcept;
+    void DetachAll() noexcept;
+    void Invalidate() noexcept;
+
+    const TUniformTRS& GetWorldTransform() noexcept;
+    TUniformTRS GetWorldTransform() const noexcept;
+    const TUniformTRS& GetLocalTransform() const noexcept;
+};</code></pre>
+<p>Type aliases: <code>TFTransform</code>, <code>TDTransform</code>.</p>
+
+<h3>AABB (<code>Engine/Math/AABB.h</code>)</h3>
+<pre><code>template<typename TVec>
+class AABB final {
+    TVec min, max;
+    void Add(const TVec& point) noexcept;
+    void Add(const AABB& aabb) noexcept;
+    void Translate(const TVec& t) noexcept;
+    [[nodiscard]] bool IsContaining(const TVec& point) const noexcept;
+    AABB Intersection(const AABB& aabb) const noexcept;
+    bool HasIntersectionWith(const AABB& aabb) const noexcept;
+    [[nodiscard]] TVec Center() const noexcept;
+    [[nodiscard]] TVec Closest(const TVec& point) const noexcept;
+};</code></pre>
+<p>Type aliases: <code>AABB2</code>, <code>AABB3</code>.</p>
+
+<h3>OBB (<code>Engine/Math/OBB.h</code>)</h3>
+<pre><code>template<typename TNumber>
+class OBB final {
+    TVec3 center, half;
+    TQuat rotation;
+
+    [[nodiscard]] bool IsContaining(const TVec3& objSpacePoint) const noexcept;
+    [[nodiscard]] TVec3 Closest(const TVec3& objSpacePoint) const noexcept;
+};</code></pre>
+
+<h3>MathUtil (<code>Engine/Math/MathUtil.h</code>)</h3>
+<pre><code>template<typename T> T Abs(T value) noexcept;
+template<typename T> T Pow(T value, T n) noexcept;
+template<typename T> T MinFast(T a, T b) noexcept;
+template<typename T> T MaxFast(T a, T b) noexcept;
+template<typename T> T ClampFast(T value, T min, T max) noexcept;
+
+float DegreeToRadian(float deg) noexcept;
+float RadianToDegree(float rad) noexcept;
+bool IsZero(float value) noexcept;
+bool IsUnity(float value) noexcept;
+bool IsEqual(float a, float b) noexcept;</code></pre>
+
+<h3>Sampling & Integration</h3>
+<h4>StratifiedSampling (<code>Engine/Math/StratifiedSampling.h</code>)</h4>
+<pre><code>template<typename TReal = double, typename TInteger = uint32_t>
+class StratifiedSampling final {
+    template<typename TRangeSampler>
+    TReal Sample(const TRangeSampler& sampler) noexcept;
+    void ChangeSubGroup(TInteger delta = 1) noexcept;
+};</code></pre>
+
+<h4>ImportanceResampling (<code>Engine/Math/ImportanceResampling.h</code>)</h4>
+<pre><code>template<typename TInput, typename TOutput,
+         typename TReal, typename TInteger>
+class ImportanceResampling final {
+    bool Resample(const TFunction& f, const TPDF& p,
+                  const TRandomSampler& sampler,
+                  const TOutputNorm& norm, TInteger numSourceSamples) noexcept;
+    bool Integrate(TOutput& result, const TFunction& f,
+                   const TDiscreteSampler& discreteSampler,
+                   const TUniformSampler& uniformSampler,
+                   TInteger numIterations) noexcept;
+};</code></pre>
+
+<h4>MonteCarloIntegrator (<code>Engine/Math/MonteCarloIntegrator.h</code>)</h4>
+<pre><code>template<typename TInput, typename TOutput,
+         typename TReal, typename TInteger>
+class MonteCarloIntegrator final {
+    template<typename TFunction, typename TPDF, typename TRandomGen>
+    bool operator()(TOutput& result, const TFunction& f, const TPDF& p,
+                    const TRandomGen& sample, TInteger numIterations) noexcept;
+};</code></pre>
+
+<hr>
+
+<!-- ==================== SECTION 7 ==================== -->
+<h2 id="7-string-utilities">7. String Utilities</h2>
+
+<h3>String (<code>Engine/String/String.h</code>)</h3>
+<pre><code>class String final {
+    String() noexcept;
+    explicit String(const char* text) noexcept;
+    explicit String(bool, int, float, double, ...) noexcept;
+
+    bool operator==(const String& rhs) const noexcept;
+    bool operator<(const String& rhs) const noexcept;
+
+    [[nodiscard]] Index Length() const noexcept;
+    [[nodiscard]] bool IsEmpty() const noexcept;
+    [[nodiscard]] Index HashCode() const noexcept;
+
+    Index Find(const TChar ch) const noexcept;
+    Index Find(const String& keyword) const noexcept;
+    bool Contains(const String& keyword) const noexcept;
+    bool StartsWith(const String& header) const noexcept;
+    bool EndsWith(const String& tail) const noexcept;
+
+    String Append(const String& string) const noexcept;
+    void AppendSelf(const String& string) noexcept;
+    String Replace(const String& from, const String& to, ...) const noexcept;
+    String Trim() const noexcept;
+    String GetLowerCase() const noexcept;
+    String GetUpperCase() const noexcept;
+
+    [[nodiscard]] int ToInt() const noexcept;
+    [[nodiscard]] float ToFloat() const noexcept;
+    [[nodiscard]] const char* ToCharArray() const noexcept;
+};</code></pre>
+
+<h3>StaticString (<code>Engine/String/StaticString.h</code>)</h3>
+<pre><code>class StaticString final {
+    StaticString() noexcept;
+    StaticString(StaticStringID id) noexcept;
+    StaticString(const char* string) noexcept;
+    StaticString(const std::string_view& str) noexcept;
+
+    [[nodiscard]] const char* c_str() const noexcept;
+    [[nodiscard]] StaticStringID GetID() const noexcept;
+    [[nodiscard]] bool IsNull() const noexcept;
+
+    bool operator==(const StaticString& rhs) const noexcept; // pointer equality
+};</code></pre>
+
+<h3>StringBuilder (<code>Engine/String/StringBuilder.h</code>)</h3>
+<pre><code>template<class TCh = char, class TAlloc = DefaultAllocator<TCh>>
+class StringBuilder final {
+    StringBuilder& operator<<(nullptr_t, bool, char, int, float,
+                               double, const char*, StaticString, ...) noexcept;
+    StringBuilder& operator<<(EndLine) noexcept;
+};</code></pre>
+
+<h3>InlineStringBuilder (<code>Engine/String/InlineStringBuilder.h</code>)</h3>
+<p>Fixed-size inline string builder with static buffer.</p>
+
+<h3>StringUtil (<code>Engine/String/StringUtil.h</code>)</h3>
+<pre><code>namespace StringUtil {
+    TString Trim(const TString& str);
+    TString ToLowerCase(const TString& src);
+    bool EqualsIgnoreCase(const TString& a, const TString& b);
+    bool StartsWith(const TString& src, const TString& startTerm);
+    bool EndsWith(const TString& src, const TString& endTerm);
+    TString PathToName(const TString& path);
+
+    StaticString ToFunctionName(const char* PrettyFunction);
+    StaticString ToClassName(const char* PrettyFunction);
+    StaticString ToCompactClassName(const char* PrettyFunction);
+
+    size_t StrLen(const char* text);
+    const char* StrCopy(char* dst, const char* src, size_t n);
+    size_t CalculateHash(const char* text);
+}</code></pre>
+
+<h3>EndLine (<code>Engine/String/EndLine.h</code>)</h3>
+<pre><code>class EndLine final {};
+static constexpr EndLine hendl;</code></pre>
+
+<hr>
+
+<!-- ==================== SECTION 8 ==================== -->
+<h2 id="8-logging-system">8. Logging System</h2>
+
+<h3>LogLevel (<code>Engine/Log/LogLevel.h</code>)</h3>
+<pre><code>enum class ELogLevel : unsigned char {
+    Verbose, Info, Significant, Warning, Error, FatalError, MAX
+};</code></pre>
+
+<h3>Logger (<code>Engine/Log/Logger.h</code>)</h3>
+<pre><code>class Logger final {
+    static Logger& Get() noexcept;
+    static SimpleLogger Get(StaticString category,
+                            ELogLevel level = ELogLevel::Info) noexcept;
+
+    void AddLog(StaticString category, ELogLevel level,
+                const TLogFunction& logFunc) noexcept;
+    void Flush() noexcept;
+    void SetFilter(StaticString category, TLogFilter&& filter) noexcept;
+
+    class SimpleLogger final {
+        void Out(const TLogFunction& logFunc) const noexcept;
+        void OutWarning(const TLogFunction& logFunc) const noexcept;
+        void OutError(const TLogFunction& logFunc) const noexcept;
+        void Out(const char* text) const noexcept;
+    };
+};</code></pre>
+
+<h3>PrintArgs (<code>Engine/Log/PrintArgs.h</code>)</h3>
+<pre><code>template<typename T, typename... TTypes>
+void PrintArgs(const T& arg, TTypes&&... args) noexcept;</code></pre>
+
+<hr>
+
+<!-- ==================== SECTION 9 ==================== -->
+<h2 id="9-configuration-system">9. Configuration System</h2>
+
+<h3>ConfigSystem (<code>Engine/Config/ConfigSystem.h</code>)</h3>
+<pre><code>class ConfigSystem final {
+    static ConfigSystem& Get() noexcept;
+
+    void Register(TConfigParam<bool>& engineParam);
+    void Register(TConfigParam<int>& engineParam);
+    void Register(TConfigParam<float>& engineParam);
+
+    void SetBool(const StaticString& key, bool value);
+    void SetInt(const StaticString& key, int value);
+    void SetFloat(const StaticString& key, float value);
+
+    [[nodiscard]] bool GetBool(const StaticString& key) const noexcept;
+    [[nodiscard]] int GetInt(const StaticString& key) const noexcept;
+    [[nodiscard]] float GetFloat(const StaticString& key) const noexcept;
+
+    void PrintAllParameters() const;
+};</code></pre>
+
+<h3>EngineConfig (<code>Engine/Config/EngineConfig.h</code>)</h3>
+<pre><code>namespace Config {
+    static constexpr uint8_t EngineLogLevel = 1;
+    static constexpr size_t MemCapacity = 5ULL * 1024 * 1024 * 1024; // 5GB
+    static constexpr size_t DefaultAlign = 16;
+    static constexpr int MaxPathLength = 512;
+    static constexpr int LogLineLength = 1024;
+    static constexpr int MaxConcurrentTasks = 32;
+    static constexpr float DebugTimeOutMultiplier = 2.0f;
+
+    size_t GetMaxSystemMemoryTarget() noexcept;
+}</code></pre>
+
+<hr>
+
+<!-- ==================== SECTION 10 ==================== -->
+<h2 id="10-os-abstraction-layer-osal">10. OS Abstraction Layer (OSAL)</h2>
+
+<h3>Application (<code>Engine/OSAL/Application.h</code>)</h3>
+<pre><code>namespace OS {
+class IApplication {
+    virtual void Initialize() = 0;
+    virtual void PollEvents() = 0;
+};
+std::unique_ptr<IApplication> CreateApplication();
+}</code></pre>
+
+<h3>Window (<code>Engine/OSAL/Window.h</code>)</h3>
+<pre><code>namespace OS {
+class IWindow {
+    bool CreateWindow(const HString& title, int width, int height);
+    void SetTitle(const HString& title);
+    void SetSize(int width, int height);
+    void SetVisible(bool visible);
+    void PollEvents();
+    void Close();
+
+    [[nodiscard]] int GetWidth() const;
+    [[nodiscard]] int GetHeight() const;
+    [[nodiscard]] bool IsVisible() const;
+    [[nodiscard]] bool IsClosed() const;
+    [[nodiscard]] intptr_t GetNativeHandle() const;
+};
+
+std::unique_ptr<IWindow> CreateWindow(const HString& title,
+                                       int width, int height);
+}</code></pre>
+
+<h3>OSMemory (<code>Engine/OSAL/OSMemory.h</code>)</h3>
+<pre><code>namespace OS {
+    bool IsValidAllocation(void* ptr) noexcept;
+    template<typename T>
+    bool CheckAligned(T* ptr, uint32_t alignBytes) noexcept;
+    constexpr size_t GetAligned(size_t size, uint32_t alignBytes) noexcept;
+    size_t GetAllocSize(void* ptr) noexcept;
+    size_t GetPageSize() noexcept;
+    void* VirtualAlloc(size_t size);
+    void VirtualFree(void* address, std::size_t n) noexcept;
+    void ProtectMemory(void* address, std::size_t n) noexcept;
+}</code></pre>
+
+<h3>OSThread (<code>Engine/OSAL/OSThread.h</code>)</h3>
+<pre><code>namespace OS {
+    void Yield() noexcept;
+    void Sleep(uint32_t milliseconds) noexcept;
+    int GetCPUIndex() noexcept;
+    int GetThreadPriority(std::thread& thread) noexcept;
+    void SetThreadAffinity(std::thread& thread, uint64_t mask) noexcept;
+    void SetThreadPriority(std::thread& thread, int priority) noexcept;
+}</code></pre>
+
+<h3>OSInputOutput (<code>Engine/OSAL/OSInputOutput.h</code>)</h3>
+<pre><code>namespace OS {
+    bool Open(FileHandle& outHandle, StaticString filePath,
+              FileOpenMode openMode) noexcept;
+    bool Close(FileHandle&& handle) noexcept;
+    bool Exist(StaticString filePath) noexcept;
+    bool Delete(StaticString filePath) noexcept;
+    size_t Read(const FileHandle& handle, void* buffer, size_t size) noexcept;
+    size_t Write(const FileHandle& handle, void* buffer, size_t size) noexcept;
+    bool Truncate(const FileHandle& handle, size_t size) noexcept;
+    void* MapMemory(FileHandle& fileHandle, size_t size,
+                    ProtectionMode protection, size_t offset) noexcept;
+    bool MapSync(void* ptr, size_t size, MapSyncMode syncMode) noexcept;
+    bool UnmapMemory(void* ptr, size_t size) noexcept;
+}</code></pre>
+
+<h3>OSDebug (<code>Engine/OSAL/OSDebug.h</code>)</h3>
+<pre><code>namespace OS {
+    StaticString GetBackTrace(uint16_t startIndex = 0,
+                              uint16_t maxDepth = 512);
+}</code></pre>
+
+<h3>File & Directory</h3>
+<pre><code>namespace OS {
+class File {
+    [[nodiscard]] const std::string& GetPath() const;
+    bool operator<(const File& rhs) const;
+};
+using Files = std::vector<File>;
+
+class Directory {
+    const std::string path;
+    [[nodiscard]] const Files& FileList() const;
+    [[nodiscard]] const Dirs& DirList() const;
+};
+using Dirs = std::vector<Directory>;
+}</code></pre>
+
+<h3>Platform Implementations</h3>
+<table>
+  <tr><th>Platform</th><th>Window</th><th>Application</th><th>File Handle</th><th>Debug</th><th>Memory</th><th>Thread</th></tr>
+  <tr><td><strong>macOS</strong></td><td><code>OSXWindow.h/.mm</code></td><td><code>OSXApplication.h/.mm</code></td><td><code>OSXFileHandle.cpp</code></td><td><code>OSXDebug.cpp</code></td><td><code>OSXMemory.cpp</code></td><td><code>OSXThread.cpp</code></td></tr>
+  <tr><td><strong>Linux</strong></td><td><code>LinuxWindow.h/.cpp</code></td><td><code>LinuxApplication.h/.cpp</code></td><td><code>LinuxFileHandle.cpp</code></td><td><code>LinuxDebug.cpp</code></td><td><code>LinuxMemory.cpp</code></td><td><code>LinuxThread.cpp</code></td></tr>
+  <tr><td><strong>Windows</strong></td><td><code>Win32Window.h/.cpp</code></td><td><code>Win32Application.h/.cpp</code></td><td><code>Win32Window.cpp</code></td><td><code>WindowsDebug.cpp</code></td><td><code>WindowsMemory.cpp</code></td><td><code>WindowsThread.cpp</code></td></tr>
+</table>
+
+<hr>
+
+<!-- ==================== SECTION 11 ==================== -->
+<h2 id="11-resource-management">11. Resource Management</h2>
+
+<h3>Buffer (<code>Engine/Resource/Buffer.h</code>)</h3>
+<pre><code>class Buffer final {
+    Buffer();
+    Buffer(Buffer&& rhs) noexcept;
+    explicit Buffer(const TGenerateBuffer& genFunc);
+
+    [[nodiscard]] uint8_t* GetData() noexcept;
+    [[nodiscard]] size_t GetSize() const noexcept;
+
+    template<typename T>
+    T* GetDataAs();  // Type-safe access
+    template<typename T>
+    size_t TranslateSizeAs() const noexcept;
+};</code></pre>
+
+<h3>ResourceManager (<code>Engine/Resource/ResourceManager.h</code>)</h3>
+<pre><code>class ResourceManager final {
+    Resource RequestLoad(StaticString path);  // Async
+    Resource Load(StaticString path);         // Sync
+    void PostUpdate(Engine& engine) noexcept;
+};</code></pre>
+
+<hr>
+
+<!-- ==================== SECTION 12 ==================== -->
+<h2 id="12-hstl--hardbop-stl">12. HSTL — HardBop STL</h2>
+
+<pre><code>using HString = std::basic_string<char, std::char_traits<char>,
+                                   DefaultAllocator<char>>;
+using HInlineString<PoolSize = 128> = ...;  // InlinePool-based
+using HInlinePathString = ...;
+
+template<typename T>
+using HVector = std::vector<T, DefaultAllocator<T>>;
+
+template<typename T, size_t PoolSize = 16>
+using HInlineVector = std::vector<T, InlinePoolAllocator<T, PoolSize, 2>>;
+
+template<class TKey, class T, class THash = std::hash<TKey>,
+         class TPred = std::equal_to<TKey>>
+using HUnorderedMap = std::unordered_map<TKey, T, THash, TPred,
+                                          DefaultAllocator<std::pair<const TKey, T>>>;</code></pre>
+
+<hr>
+
+<!-- ==================== SECTION 13 ==================== -->
+<h2 id="13-engine-core">13. Engine Core</h2>
+
+<h3>Engine (<code>Engine/Engine/Engine.h</code>)</h3>
+<pre><code>class Engine final {
+    static Engine& Get();
+
+    void Initialize(int argc, const char* argv[]);
+    void Run();      // Main loop
+    void ShutDown(); // Clean shutdown
+
+    MemoryManager& GetMemoryManager();
+    Logger& GetLogger();
+    TaskSystem& GetTaskSystem();
+    SystemStatistics& GetStatistics();
+    ResourceManager& GetResourceManager();
+    OS::IApplication* GetApplication() const;
+
+    void Log(ELogLevel level, const TLogFunc& func);
+    void ConsoleOutLn(const char* str);
+};</code></pre>
+
+<h3>SystemStatistics (<code>Engine/Core/SystemStatistics.h</code>)</h3>
+<pre><code>class SystemStatistics final {
+    void IncFrameCount() noexcept;
+    void IncSlowFrameCount() noexcept;
+    void Print() noexcept;
+    void PrintAllocatorProfiles() noexcept;
+
+    [[nodiscard]] double GetTimeSinceStart() const noexcept;
+    [[nodiscard]] float GetDeltaTime() const noexcept;
+};</code></pre>
+
+<h3>CommonUtil (<code>Engine/Core/CommonUtil.h</code>)</h3>
+<pre><code>template<typename Type>
+Type GetAs(void* src) noexcept;
+
+template<typename Type>
+void SetAs(void* dst, Type value) noexcept;
+
+template<typename Type>
+void CopyAs(void* dst, void* src) noexcept;
+
+[[nodiscard]] size_t ToAddress(void* ptr) noexcept;
+
+template<typename T, size_t size>
+[[nodiscard]] size_t CountOf(T (&)[size]) noexcept;</code></pre>
+
+<h3>Debug (<code>Engine/Core/Debug.h</code>)</h3>
+<pre><code>void FlushLogs();
+
+void Assert(bool shouldBeTrue);
+template<typename... Types>
+void Assert(bool shouldBeTrue, Types&&... args);
+
+void FatalAssert(bool shouldBeTrue);
+template<typename... Types>
+void FatalAssert(bool shouldBeTrue, Types&&... args);</code></pre>
+
+<h3>Exception (<code>Engine/Core/Exception.h</code>)</h3>
+<pre><code>class Exception final {
+    template<typename... Types>
+    Exception(const char* file, int line, Types&&... args);
+};</code></pre>
+
+<h3>Time (<code>Engine/Core/Time.h</code>)</h3>
+<pre><code>namespace hbe::time {
+    using TMilliSec = uint64_t;
+    using TStopWatch = std::chrono::high_resolution_clock;
+
+    [[nodiscard]] TTime GetNow() noexcept;
+    [[nodiscard]] float ToFloat(TStopWatch::duration duration) noexcept;
+    [[nodiscard]] double ToDouble(TStopWatch::duration duration) noexcept;
+    [[nodiscard]] TMilliSecs::rep ToMilliSeconds(TStopWatch::duration) noexcept;
+    void Sleep(TMilliSec milli) noexcept;
+}</code></pre>
+
+<h3>ScopedTime (<code>Engine/Core/ScopedTime.h</code>)</h3>
+<pre><code>namespace hbe::time {
+class ScopedTime final {
+    explicit ScopedTime(TDuration& outDeltaTime) noexcept;
+    ~ScopedTime() noexcept;
+};
+}</code></pre>
+
+<h3>ScopedLock (<code>Engine/Core/ScopedLock.h</code>)</h3>
+<pre><code>template<CLockable TLockable>
+class ScopedLock final {
+    // Acquires lock on construction, releases on destruction
+    // Profiles wait time if PROFILE_ENABLED
+};</code></pre>
+
+<h3>CommandLineArguments (<code>Engine/Core/CommandLineArguments.h</code>)</h3>
+<pre><code>class CommandLineArguments final {
+    CommandLineArguments(int argc, const char* argv[]);
+    [[nodiscard]] const Array<String>& GetArguments() const noexcept;
+    void Print();
+};</code></pre>
+
+<hr>
+
+<!-- ==================== SECTION 14 ==================== -->
+<h2 id="14-renderer-rhi">14. Renderer (RHI)</h2>
+
+<h3>IRenderer (<code>Engine/Renderer/IRenderer.h</code>)</h3>
+<pre><code>namespace hbe::Renderer {
+class IRenderer {
+    virtual bool Initialize(OS::IWindow* window) noexcept = 0;
+    virtual void Shutdown() noexcept = 0;
+    virtual void BeginFrame() noexcept = 0;
+    virtual void EndFrame() noexcept = 0;
+    virtual void Render(float deltaTime) noexcept = 0;
+    virtual APIType GetAPIType() const noexcept = 0;
+    virtual RenderCapabilities GetCapabilities() const noexcept = 0;
+};
+}</code></pre>
+
+<h3>RendererCommon (<code>Engine/Renderer/RendererCommon.h</code>)</h3>
+<pre><code>namespace hbe::Renderer {
+enum class APIType : uint8_t { Unknown, Vulkan, Metal, DX12 };
+
+struct Vertex {
+    Vector3<float> position;
+    Vector4<float> color;
+};
+
+class RenderCapabilities {
+    APIType apiType;
+    bool supportsGeometryShader;
+    bool supportsTessellation;
+    bool supportsComputeShader;
+    uint32_t maxTextureSize;
+    uint32_t maxUniformBuffers;
+    uint32_t maxVertexAttribs;
+};
+}</code></pre>
+
+<h3>RendererFactory (<code>Engine/Renderer/RendererFactory.h</code>)</h3>
+<pre><code>namespace hbe::Renderer {
+class RendererFactory final {
+    static std::unique_ptr<IRenderer> Create(
+        APIType preferredAPI = APIType::Unknown) noexcept;
+    static std::unique_ptr<IRenderer> CreateWithFallback() noexcept;
+};
+}</code></pre>
+
+<h3>RHICapabilities (<code>Engine/Renderer/RHICapabilities.h</code>)</h3>
+<pre><code>namespace hbe::Renderer {
+class RHICapabilities final {
+    static bool IsVulkanSupported() noexcept;
+    static bool IsMetalSupported() noexcept;
+    static bool IsDX12Supported() noexcept;
+    static APIType GetPreferredAPI() noexcept;
+    static RenderCapabilities GetCapabilities(APIType api) noexcept;
+};
+}</code></pre>
+
+<hr>
+
+<!-- ==================== SECTION 15 ==================== -->
+<h2 id="15-test-framework">15. Test Framework</h2>
+
+<h3>TestCollection (<code>Engine/Test/TestCollection.h</code>)</h3>
+<pre><code>class TestCollection {
+    using TTestFunc = std::function<void(TLogOut&)>;
+
+    explicit TestCollection(const char* title);
+    void AddTest(const char* testName, const TTestFunc& testCase);
+    void Start();
+
+    [[nodiscard]] const char* GetName() const noexcept;
+    [[nodiscard]] bool IsDone() const noexcept;
+    [[nodiscard]] bool IsSuccess() const noexcept;
+
+protected:
+    virtual void Prepare() = 0;  // Override to add tests
+};</code></pre>
+
+<h3>UnitTestCollection (<code>Engine/Test/UnitTestCollection.h</code>)</h3>
+<pre><code>namespace hbe::Test {
+    void RunTests();  // Entry point for unit tests
+}</code></pre>
+
+<hr>
+
+<!-- ==================== SECTION 16 ==================== -->
+<h2 id="16-build-configuration">16. Build Configuration</h2>
+
+<h3>Key Build Defines (<code>Engine/Config/BuildConfig.h</code>)</h3>
+<table>
+  <tr><th>Category</th><th>Define</th><th>Default</th></tr>
+  <tr><td>Platform</td><td><code>PLATFORM_LINUX</code></td><td>auto-detected</td></tr>
+  <tr><td>Platform</td><td><code>PLATFORM_OSX</code></td><td>auto-detected</td></tr>
+  <tr><td>Platform</td><td><code>PLATFORM_WINDOWS</code></td><td>auto-detected</td></tr>
+  <tr><td>Engine</td><td><code>MAX_NUM_TASK_STREAMS</code></td><td>64</td></tr>
+  <tr><td>Memory</td><td><code>MEMORY_VERIFICATION_ENABLED</code></td><td>0</td></tr>
+  <tr><td>Memory</td><td><code>MEMORY_LOGGING_ENABLED</code></td><td>0</td></tr>
+  <tr><td>Memory</td><td><code>MEMORY_INVESTIGATION_ENABLED</code></td><td>0</td></tr>
+  <tr><td>Log</td><td><code>LOG_ENABLED</code></td><td>1</td></tr>
+  <tr><td>Log</td><td><code>LOG_BREAK_IF_WARNING</code></td><td>0</td></tr>
+  <tr><td>Profile</td><td><code>PROFILE_ENABLED</code></td><td>0</td></tr>
+  <tr><td>Math</td><td><code>RIGHT_HANDED_COORDINATE</code></td><td>1</td></tr>
+  <tr><td>Vulkan</td><td><code>VULKAN_SDK</code></td><td>auto-detected</td></tr>
+</table>
+
+<h3>Build System</h3>
+<pre><code>./build.sh <target> [-dev] [-debug] [-release] [-clean] [-notest]
+# Example: ./build.sh Applications/TriangleExample -dev -debug -release -clean -notest</code></pre>
+<p>Tests: <code>./build/Applications/EngineTest/<Config>/EngineTest</code></p>
+
+<h3>Coding Standards</h3>
+<div class="note">
+  <strong>Naming Conventions:</strong>
+  <ul>
+    <li>Type aliases: <code>T</code>-prefix (<code>TByte</code>, <code>TInt</code>, <code>TFloat3</code>)</li>
+    <li>Template parameters: <code>T</code>-prefix (<code>TNumber</code>, <code>TVec</code>)</li>
+    <li>Concepts: <code>C</code>-prefix (<code>CLockable</code>, <code>CNext</code>)</li>
+    <li>Enum classes: <code>E</code>-prefix (<code>ELogLevel</code>)</li>
+  </ul>
+  <strong>API Conventions:</strong>
+  <ul>
+    <li>Non-throwing functions: <code>noexcept</code></li>
+    <li>Value-returning getters: <code>[[nodiscard]]</code></li>
+    <li>Single-arg constructors: <code>explicit</code></li>
+    <li>RAII for resource management (ScopedLock, ScopedTime, AllocatorScope)</li>
+    <li>Assertions in debug builds; FatalAssert always active</li>
+  </ul>
+</div>
+
+<hr>
+
+<p style="text-align:center;color:var(--text-dim);font-size:13px;margin-top:48px;">
+  HardBop Engine API Guide &mdash; Generated from <code>docs/EngineAPIGuide.md</code>
+</p>
+
+</div>
+</body>
+</html>
