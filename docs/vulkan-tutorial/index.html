@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vulkan Tutorial</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            line-height: 1.8;
+            color: #333;
+            background: #f5f5f5;
+        }
+        
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px 20px;
+            text-align: center;
+            margin-bottom: 30px;
+            border-radius: 8px;
+        }
+        
+        h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+        
+        .intro {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .intro h2 {
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+        
+        .lesson-list {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .lesson-list h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #667eea;
+        }
+        
+        .lesson-item {
+            display: flex;
+            align-items: center;
+            padding: 15px;
+            margin-bottom: 10px;
+            background: #f8f9fa;
+            border-radius: 6px;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            color: #333;
+        }
+        
+        .lesson-item:hover {
+            background: #667eea;
+            color: white;
+            transform: translateX(5px);
+        }
+        
+        .lesson-number {
+            background: #667eea;
+            color: white;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            margin-right: 15px;
+            flex-shrink: 0;
+        }
+        
+        .lesson-item:hover .lesson-number {
+            background: white;
+            color: #667eea;
+        }
+        
+        .lesson-content {
+            flex: 1;
+        }
+        
+        .lesson-title {
+            font-size: 1.1em;
+            font-weight: 600;
+            margin-bottom: 3px;
+        }
+        
+        .lesson-desc {
+            font-size: 0.9em;
+            opacity: 0.8;
+        }
+        
+        .prerequisites {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        
+        .prerequisites h3 {
+            color: #856404;
+            margin-bottom: 10px;
+        }
+        
+        .prerequisites ul {
+            margin-left: 20px;
+        }
+        
+        .prerequisites li {
+            margin-bottom: 5px;
+        }
+        
+        .lang-switch {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(255,255,255,0.2);
+            padding: 8px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        
+        .lang-switch:hover {
+            background: rgba(255,255,255,0.3);
+        }
+        
+        footer {
+            text-align: center;
+            padding: 30px;
+            color: #666;
+            font-size: 0.9em;
+        }
+        
+        code {
+            background: #f4f4f4;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="lang-switch" onclick="toggleLanguage()">
+                <span id="lang-label">🇰🇷 한국어</span>
+            </div>
+            <h1 class="lang-en">Vulkan Tutorial</h1>
+            <h1 class="lang-ko" style="display:none">Vulkan 튜토리얼</h1>
+            <div class="subtitle">
+                <span class="lang-en">Step-by-step learning guide</span>
+                <span class="lang-ko" style="display:none">단계별 학습 가이드</span>
+            </div>
+        </header>
+        
+        <div class="intro">
+            <h2>
+                <span class="lang-en">Introduction</span>
+                <span class="lang-ko" style="display:none">소개</span>
+            </h2>
+            <p class="lang-en">
+                This tutorial is a step-by-step guide for learning the <strong>Vulkan</strong> API from scratch.<br>
+                This tutorial was written to redesign the Render module of the <strong>HardBop Engine</strong> project.
+            </p>
+            <p class="lang-ko" style="display:none">
+                이 튜토리얼은 <strong>Vulkan</strong> API를 처음 배우는 분들을 위한 단계별 가이드입니다.<br>
+                이 튜토리얼은 <strong>HardBop Engine</strong> 프로젝트의 Render 모듈을 재설계하기 위해 작성되었습니다.
+            </p>
+            
+            <div class="prerequisites">
+                <h3>
+                    <span class="lang-en">Prerequisites</span>
+                    <span class="lang-ko" style="display:none">선행 지식</span>
+                </h3>
+                <ul>
+                    <li class="lang-en">C++23 programming language basics</li>
+                    <li class="lang-ko" style="display:none">C++23 프로그래밍 언어 기본기</li>
+                    
+                    <li class="lang-en">Graphics programming fundamentals (optional)</li>
+                    <li class="lang-ko" style="display:none">그래픽스 프로그래밍 기본 개념 (선택 사항)</li>
+                    
+                    <li class="lang-en">Vulkan SDK installed</li>
+                    <li class="lang-ko" style="display:none">Vulkan SDK 설치 완료</li>
+                </ul>
+            </div>
+        </div>
+        
+        <div class="lesson-list">
+            <h2>
+                <span class="lang-en">Lesson List</span>
+                <span class="lang-ko" style="display:none">레슨 목록</span>
+            </h2>
+            
+            <a href="01-getting-started.html" class="lesson-item">
+                <div class="lesson-number">01</div>
+                <div class="lesson-content">
+                    <div class="lesson-title">
+                        <span class="lang-en">Getting Started</span>
+                        <span class="lang-ko" style="display:none">소개 및 준비</span>
+                    </div>
+                    <div class="lesson-desc">
+                        <span class="lang-en">Vulkan SDK installation, project setup, basic structure</span>
+                        <span class="lang-ko" style="display:none">Vulkan SDK 설치, 프로젝트 설정, 기본 구조 이해</span>
+                    </div>
+                </div>
+            </a>
+            
+            <a href="02-instance-creation.html" class="lesson-item">
+                <div class="lesson-number">02</div>
+                <div class="lesson-content">
+                    <div class="lesson-title">
+                        <span class="lang-en">Instance Creation</span>
+                        <span class="lang-ko" style="display:none">Instance 생성</span>
+                    </div>
+                    <div class="lesson-desc">
+                        <span class="lang-en">Vulkan instance creation, extensions, validation layers</span>
+                        <span class="lang-ko" style="display:none">Vulkan 인스턴스 생성, 확장 기능, 검증 레이어</span>
+                    </div>
+                </div>
+            </a>
+            
+            <a href="03-surface-creation.html" class="lesson-item">
+                <div class="lesson-number">03</div>
+                <div class="lesson-content">
+                    <div class="lesson-title">
+                        <span class="lang-en">Surface Creation</span>
+                        <span class="lang-ko" style="display:none">Surface 생성</span>
+                    </div>
+                    <div class="lesson-desc">
+                        <span class="lang-en">Platform-specific surface creation, OSAL integration</span>
+                        <span class="lang-ko" style="display:none">플랫폼별 Surface 생성, OSAL 통합</span>
+                    </div>
+                </div>
+            </a>
+            
+            <a href="04-device-selection.html" class="lesson-item">
+                <div class="lesson-number">04</div>
+                <div class="lesson-content">
+                    <div class="lesson-title">
+                        <span class="lang-en">Device Selection</span>
+                        <span class="lang-ko" style="display:none">물리 장치 선택</span>
+                    </div>
+                    <div class="lesson-desc">
+                        <span class="lang-en">GPU enumeration, device selection criteria</span>
+                        <span class="lang-ko" style="display:none">GPU 열거, 장치 선택 기준</span>
+                    </div>
+                </div>
+            </a>
+            
+            <a href="05-logical-device.html" class="lesson-item">
+                <div class="lesson-number">05</div>
+                <div class="lesson-content">
+                    <div class="lesson-title">
+                        <span class="lang-en">Logical Device Creation</span>
+                        <span class="lang-ko" style="display:none">로직 장치 생성</span>
+                    </div>
+                    <div class="lesson-desc">
+                        <span class="lang-en">Queue family, device creation, queue handles</span>
+                        <span class="lang-ko" style="display:none">Queue family, 장치 생성, 큐 핸들</span>
+                    </div>
+                </div>
+            </a>
+            
+            <a href="06-swapchain.html" class="lesson-item">
+                <div class="lesson-number">06</div>
+                <div class="lesson-content">
+                    <div class="lesson-title">
+                        <span class="lang-en">Swapchain Creation</span>
+                        <span class="lang-ko" style="display:none">Swapchain 생성</span>
+                    </div>
+                    <div class="lesson-desc">
+                        <span class="lang-en">Swapchain setup, image management</span>
+                        <span class="lang-ko" style="display:none">스왑체인 설정, 이미지 관리</span>
+                    </div>
+                </div>
+            </a>
+            
+            <a href="07-render-pass.html" class="lesson-item">
+                <div class="lesson-number">07</div>
+                <div class="lesson-content">
+                    <div class="lesson-title">Render Pass</div>
+                    <div class="lesson-desc">
+                        <span class="lang-en">Render pass definition, attachment, subpass</span>
+                        <span class="lang-ko" style="display:none">렌더 패스 정의, attachment, subpass</span>
+                    </div>
+                </div>
+            </a>
+            
+            <a href="08-pipeline.html" class="lesson-item">
+                <div class="lesson-number">08</div>
+                <div class="lesson-content">
+                    <div class="lesson-title">Graphics Pipeline</div>
+                    <div class="lesson-desc">
+                        <span class="lang-en">Shader module, pipeline layout, pipeline creation</span>
+                        <span class="lang-ko" style="display:none">쉐이더 모듈, 파이프라인 레이아웃, 파이프라인 생성</span>
+                    </div>
+                </div>
+            </a>
+            
+            <a href="09-vertex-buffer.html" class="lesson-item">
+                <div class="lesson-number">09</div>
+                <div class="lesson-content">
+                    <div class="lesson-title">Vertex Buffer</div>
+                    <div class="lesson-desc">
+                        <span class="lang-en">Vertex data, buffer creation, memory allocation</span>
+                        <span class="lang-ko" style="display:none">정점 데이터, 버퍼 생성, 메모리 할당</span>
+                    </div>
+                </div>
+            </a>
+            
+            <a href="10-framebuffer.html" class="lesson-item">
+                <div class="lesson-number">10</div>
+                <div class="lesson-content">
+                    <div class="lesson-title">Framebuffer</div>
+                    <div class="lesson-desc">
+                        <span class="lang-en">Framebuffer creation, image view</span>
+                        <span class="lang-ko" style="display:none">프레임버퍼 생성, 이미지 뷰</span>
+                    </div>
+                </div>
+            </a>
+            
+            <a href="11-command-buffer.html" class="lesson-item">
+                <div class="lesson-number">11</div>
+                <div class="lesson-content">
+                    <div class="lesson-title">Command Buffer</div>
+                    <div class="lesson-desc">
+                        <span class="lang-en">Command buffer recording, render begin</span>
+                        <span class="lang-ko" style="display:none">명령 버퍼 기록, 렌더링 시작</span>
+                    </div>
+                </div>
+            </a>
+            
+            <a href="12-drawing.html" class="lesson-item">
+                <div class="lesson-number">12</div>
+                <div class="lesson-content">
+                    <div class="lesson-title">
+                        <span class="lang-en">Drawing and Presentation</span>
+                        <span class="lang-ko" style="display:none">그리기 및 프레젠테이션</span>
+                    </div>
+                    <div class="lesson-desc">
+                        <span class="lang-en">Triangle rendering, presentation</span>
+                        <span class="lang-ko" style="display:none">삼각형 그리기, 프레젠테이션</span>
+                    </div>
+                </div>
+            </a>
+        </div>
+        
+        <footer>
+            <p>HardBop Engine Vulkan Tutorial © 2026</p>
+        </footer>
+    </div>
+    
+    <script>
+        let currentLang = 'en';
+        
+        function toggleLanguage() {
+            currentLang = currentLang === 'en' ? 'ko' : 'en';
+            updateLanguage();
+        }
+        
+        function updateLanguage() {
+            // Update language label
+            document.getElementById('lang-label').textContent = 
+                currentLang === 'en' ? '🇰🇷 한국어' : '🇺🇸 English';
+            
+            // Toggle all language-specific elements
+            document.querySelectorAll('.lang-en').forEach(el => {
+                el.style.display = currentLang === 'en' ? '' : 'none';
+            });
+            document.querySelectorAll('.lang-ko').forEach(el => {
+                el.style.display = currentLang === 'ko' ? '' : 'none';
+            });
+        }
+        
+        // Initialize
+        updateLanguage();
+    </script>
+</body>
+</html>

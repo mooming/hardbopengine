@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Logical Device Creation</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            line-height: 1.8;
+            color: #333;
+            background: #f5f5f5;
+        }
+        
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px 20px;
+            text-align: center;
+            margin-bottom: 30px;
+            border-radius: 8px;
+        }
+        
+        h1 {
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+        
+        h2 {
+            color: #667eea;
+            margin: 30px 0 15px 0;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #667eea;
+        }
+        
+        h3 {
+            color: #555;
+            margin: 25px 0 10px 0;
+        }
+        
+        p {
+            margin-bottom: 15px;
+            text-align: justify;
+        }
+        
+        .lesson-nav {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+        
+        .nav-btn {
+            background: #667eea;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 6px;
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        
+        .nav-btn:hover {
+            background: #5a6fd6;
+            transform: translateY(-2px);
+        }
+        
+        .content-box {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .code-block {
+            background: #2d2d2d;
+            color: #f8f8f2;
+            padding: 20px;
+            border-radius: 6px;
+            overflow-x: auto;
+            margin: 15px 0;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.9em;
+            line-height: 1.6;
+        }
+        
+        .code-comment {
+            color: #75715e;
+        }
+        
+        .code-keyword {
+            color: #66d9ef;
+        }
+        
+        .code-string {
+            color: #e6db74;
+        }
+        
+        .code-function {
+            color: #a6e22e;
+        }
+        
+        .note {
+            background: #e7f3ff;
+            border-left: 4px solid #2196F3;
+            padding: 15px 20px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        
+        .warning {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px 20px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        
+        .tip {
+            background: #d4edda;
+            border-left: 4px solid #28a745;
+            padding: 15px 20px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        
+        .step {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 6px;
+            margin: 15px 0;
+            border-left: 4px solid #667eea;
+        }
+        
+        .step-number {
+            background: #667eea;
+            color: white;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+        
+        ul, ol {
+            margin: 15px 0 15px 30px;
+        }
+        
+        li {
+            margin-bottom: 8px;
+        }
+        
+        code {
+            background: #f4f4f4;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.9em;
+        }
+        
+        .diagram {
+            background: #f8f9fa;
+            border: 2px dashed #ddd;
+            padding: 20px;
+            text-align: center;
+            margin: 20px 0;
+            border-radius: 6px;
+        }
+        
+        .diagram pre {
+            text-align: left;
+            display: inline-block;
+            margin: 0;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+        }
+        
+        th, td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+        
+        th {
+            background: #667eea;
+            color: white;
+        }
+        
+        tr:nth-child(even) {
+            background: #f8f9fa;
+        }
+        
+        footer {
+            text-align: center;
+            padding: 30px;
+            color: #666;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="lang-switch" onclick="toggleLanguage()">
+                <span id="lang-label">🇰🇷 한국어</span>
+            </div>
+
+            <h1>레슨 05: 로직 장치 생성</h1>
+            <p>Lesson 05: Logical Device Creation</p>
+        </header>
+        
+        <div class="lesson-nav">
+            <a href="04-device-selection.html" class="nav-btn">← Device Selection</a>
+            <a href="06-swapchain.html" class="nav-btn">Swapchain →</a>
+        </div>
+        
+        <div class="content-box">
+            <h2>VkDevice란？ | What is VkDevice？</h2>
+            <p>
+                <strong>VkDevice</strong>는 물리 장치에서 생성되는 로직 장치입니다. 
+                실제 GPU 작업 (렌더링, 컴퓨트) 은 이 장치를 통해 수행됩니다.
+            </p>
+            <br>
+            <p>
+                <strong>VkDevice</strong> is the logical device created from a physical device. 
+                Actual GPU operations (rendering, compute) are performed through this device.
+            </p>
+            
+            <div class="diagram"><svg width="400" height="260" viewBox="0 0 400 260"><defs><marker id="arrow5" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="#667eea"/></marker></defs><rect x="100" y="20" width="200" height="50" rx="8" fill="#764ba2" opacity="0.3"/><text x="200" y="42" text-anchor="middle" fill="#fff" font-size="14" font-weight="bold">VkPhysicalDevice</text><text x="200" y="60" text-anchor="middle" fill="#fff" font-size="11">실제 GPU</text><line x1="200" y1="70" x2="200" y2="90" stroke="#667eea" stroke-width="2" marker-end="url(#arrow5)"/><rect x="100" y="90" width="200" height="50" rx="8" fill="#667eea" opacity="0.3"/><text x="200" y="112" text-anchor="middle" fill="#fff" font-size="14" font-weight="bold">VkDevice</text><text x="200" y="130" text-anchor="middle" fill="#fff" font-size="11">로직 장치</text><line x1="150" y1="140" x2="150" y2="160" stroke="#667eea" stroke-width="2" marker-end="url(#arrow5)"/><line x1="250" y1="140" x2="250" y2="160" stroke="#667eea" stroke-width="2" marker-end="url(#arrow5)"/><rect x="50" y="160" width="200" height="50" rx="8" fill="#667eea" opacity="0.2"/><text x="150" y="182" text-anchor="middle" fill="#333" font-size="12">Queue Family #1</text><text x="150" y="200" text-anchor="middle" fill="#666" font-size="11">Graphics Queue</text><rect x="150" y="160" width="200" height="50" rx="8" fill="#764ba2" opacity="0.2"/><text x="250" y="182" text-anchor="middle" fill="#333" font-size="12">Queue Family #2</text><text x="250" y="200" text-anchor="middle" fill="#666" font-size="11">Compute Queue</text></svg></div>
+        </div>
+        
+        <div class="content-box">
+            <h2>Queue Family 이해 | Understanding Queue Families</h2>
+            <p>
+                GPU는 여러 개의 Queue Family을 가질 수 있습니다. 
+                각 Queue Family은 특정 작업 (그리기, 컴퓨트, 전송) 을 처리합니다.
+            </p>
+            
+            <table>
+                <tr>
+                    <th>Queue Flag</th>
+                    <th>설명 | Description</th>
+                    <th>사용 | Usage</th>
+                </tr>
+                <tr>
+                    <td><code>VK_QUEUE_GRAPHICS_BIT</code></td>
+                    <td>그래픽스 작업 처리</td>
+                    <td>렌더링</td>
+                </tr>
+                <tr>
+                    <td><code>VK_QUEUE_COMPUTE_BIT</code></td>
+                    <td>컴퓨트 작업 처리</td>
+                    <td>컴퓨트 셰이더</td>
+                </tr>
+                <tr>
+                    <td><code>VK_QUEUE_TRANSFER_BIT</code></td>
+                    <td>데이터 전송 처리</td>
+                    <td>메모리 복사</td>
+                </tr>
+                <tr>
+                    <td><code>VK_QUEUE_SPARSE_BINDING_BIT</code></td>
+                    <td>스패스 바인딩 처리</td>
+                    <td>스패스 메모리</td>
+                </tr>
+            </table>
+        </div>
+        
+        <div class="content-box">
+            <h2>구현 단계 | Implementation Steps</h2>
+            
+            <h3>Step 1: Queue Family 조회 | Query Queue Families</h3>
+            <div class="step">
+                <span class="step-number">1</span>
+                <strong>사용 가능한 Queue Family 확인</strong>
+                <div class="code-block">
+uint32_t queueFamilyCount = <span class="code-string">0</span>;
+vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyCount, <span class="code-keyword">nullptr</span>);
+
+std::vector&lt;VkQueueFamilyProperties&gt; queueFamilies(queueFamilyCount);
+vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyCount, queueFamilies.data());
+                </div>
+            </div>
+            
+            <h3>Step 2: Graphics Queue Family 찾기 | Find Graphics Queue</h3>
+            <div class="step">
+                <span class="step-number">2</span>
+                <strong>그래픽스 작업을 처리할 Queue Family 식별</strong>
+                <div class="code-block">
+uint32_t graphicsQueueFamily = UINT32_MAX;
+
+<span class="code-keyword">for</span> (uint32_t i = <span class="code-string">0</span>; i &lt; queueFamilyCount; i++) {
+    <span class="code-keyword">if</span> (queueFamilies[i].queueFlags &amp; VK_QUEUE_GRAPHICS_BIT) {
+        graphicsQueueFamily = i;
+        <span class="code-keyword">break</span>;
+    }
+}
+
+<span class="code-keyword">if</span> (graphicsQueueFamily == UINT32_MAX) {
+    std::cerr &lt;&lt; <span class="code-string">"No graphics queue family found"</span> &lt;&lt; std::endl;
+    <span class="code-keyword">return</span> false;
+}
+                </div>
+            </div>
+            
+            <h3>Step 3: Present Queue Family 확인 | Check Present Support</h3>
+            <div class="step">
+                <span class="step-number">3</span>
+                <strong>Surface 프레젠테이션 지원 Queue Family 확인</strong>
+                <div class="code-block">
+uint32_t presentQueueFamily = UINT32_MAX;
+
+<span class="code-keyword">for</span> (uint32_t i = <span class="code-string">0</span>; i &lt; queueFamilyCount; i++) {
+    VkBool32 presentSupport = <span class="code-keyword">false</span>;
+    vkGetPhysicalDeviceSurfaceSupportKHR(physicalDevice, i, surface, &presentSupport);
+    
+    <span class="code-keyword">if</span> (presentSupport) {
+        presentQueueFamily = i;
+        <span class="code-keyword">break</span>;
+    }
+}
+
+<span class="code-keyword">if</span> (presentQueueFamily == UINT32_MAX) {
+    std::cerr &lt;&lt; <span class="code-string">"No presentable queue family found"</span> &lt;&lt; std::endl;
+    <span class="code-keyword">return</span> false;
+}
+                </div>
+            </div>
+            
+            <h3>Step 4: Queue Create Info 생성 | Create Queue Info</h3>
+            <div class="step">
+                <span class="step-number">4</span>
+                <strong>Queue 생성 정보 구성</strong>
+                <div class="code-block">
+std::vector&lt;VkDeviceQueueCreateInfo&gt; queueCreateInfos;
+std::set&lt;uint32_t&gt; uniqueQueueFamilies = {graphicsQueueFamily, presentQueueFamily};
+
+<span class="code-keyword">float</span> queuePriority = <span class="code-string">1.0f</span>;
+<span class="code-keyword">for</span> (uint32_t queueFamily : uniqueQueueFamilies) {
+    VkDeviceQueueCreateInfo queueCreateInfo{};
+    queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+    queueCreateInfo.queueFamilyIndex = queueFamily;
+    queueCreateInfo.queueCount = <span class="code-string">1</span>;
+    queueCreateInfo.pQueuePriorities = &queuePriority;
+    queueCreateInfos.push_back(queueCreateInfo);
+}
+                </div>
+            </div>
+            
+            <h3>Step 5: Device Create Info 생성 | Create Device Info</h3>
+            <div class="step">
+                <span class="step-number">5</span>
+                <strong>VkDeviceCreateInfo 구조체 초기화</strong>
+                <div class="code-block">
+VkDeviceCreateInfo deviceCreateInfo{};
+deviceCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+
+<span class="code-comment">// Queue 정보 설정</span>
+deviceCreateInfo.queueCreateInfoCount = static_cast&lt;uint32_t&gt;(queueCreateInfos.size());
+deviceCreateInfo.pQueueCreateInfos = queueCreateInfos.data();
+
+<span class="code-comment">// 검증 레이어 설정</span>
+deviceCreateInfo.enabledLayerCount = static_cast&lt;uint32_t&gt;(validationLayers.size());
+deviceCreateInfo.ppEnabledLayerNames = validationLayers.data();
+
+<span class="code-comment">// 디바이스 확장 기능 설정</span>
+<span class="code-keyword">const</span> std::vector&lt;const char*&gt; deviceExtensions = {
+    VK_KHR_SWAPCHAIN_EXTENSION_NAME
+};
+deviceCreateInfo.enabledExtensionCount = static_cast&lt;uint32_t&gt;(deviceExtensions.size());
+deviceCreateInfo.ppEnabledExtensionNames = deviceExtensions.data();
+
+<span class="code-comment">// 디바이스 기능 설정</span>
+deviceCreateInfo.pEnabledFeatures = &deviceFeatures;
+                </div>
+            </div>
+            
+            <h3>Step 6: Device 생성 | Create Device</h3>
+            <div class="step">
+                <span class="step-number">6</span>
+                <strong>vkCreateDevice 호출</strong>
+                <div class="code-block">
+VkDevice device;
+VkResult result = vkCreateDevice(physicalDevice, &deviceCreateInfo, <span class="code-keyword">nullptr</span>, &device);
+<span class="code-keyword">if</span> (result != VK_SUCCESS) {
+    std::cerr &lt;&lt; <span class="code-string">"Failed to create logical device: "</span> &lt;&lt; result &lt;&lt; std::endl;
+    <span class="code-keyword">return</span> false;
+}
+
+<span class="code-keyword">this</span>->device = device;
+                </div>
+            </div>
+            
+            <h3>Step 7: Queue Handle 가져오기 | Get Queue Handles</h3>
+            <div class="step">
+                <span class="step-number">7</span>
+                <strong>그래픽스 및 프레젠테이션 큐 핸들 가져오기</strong>
+                <div class="code-block">
+vkGetDeviceQueue(device, graphicsQueueFamily, <span class="code-string">0</span>, &graphicsQueue);
+vkGetDeviceQueue(device, presentQueueFamily

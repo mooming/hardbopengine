@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Drawing and Presentation</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            line-height: 1.8;
+            color: #333;
+            background: #f5f5f5;
+        }
+        
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px 20px;
+            text-align: center;
+            margin-bottom: 30px;
+            border-radius: 8px;
+        }
+        
+        h1 {
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+        
+        h2 {
+            color: #667eea;
+            margin: 30px 0 15px 0;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #667eea;
+        }
+        
+        h3 {
+            color: #555;
+            margin: 25px 0 10px 0;
+        }
+        
+        p {
+            margin-bottom: 15px;
+            text-align: justify;
+        }
+        
+        .lesson-nav {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+        
+        .nav-btn {
+            background: #667eea;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 6px;
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        
+        .nav-btn:hover {
+            background: #5a6fd6;
+            transform: translateY(-2px);
+        }
+        
+        .content-box {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .code-block {
+            background: #2d2d2d;
+            color: #f8f8f2;
+            padding: 20px;
+            border-radius: 6px;
+            overflow-x: auto;
+            margin: 15px 0;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.9em;
+            line-height: 1.6;
+        }
+        
+        .code-comment {
+            color: #75715e;
+        }
+        
+        .code-keyword {
+            color: #66d9ef;
+        }
+        
+        .code-string {
+            color: #e6db74;
+        }
+        
+        .code-function {
+            color: #a6e22e;
+        }
+        
+        .note {
+            background: #e7f3ff;
+            border-left: 4px solid #2196F3;
+            padding: 15px 20px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        
+        .warning {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px 20px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        
+        .tip {
+            background: #d4edda;
+            border-left: 4px solid #28a745;
+            padding: 15px 20px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        
+        .step {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 6px;
+            margin: 15px 0;
+            border-left: 4px solid #667eea;
+        }
+        
+        .step-number {
+            background: #667eea;
+            color: white;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+        
+        ul, ol {
+            margin: 15px 0 15px 30px;
+        }
+        
+        li {
+            margin-bottom: 8px;
+        }
+        
+        code {
+            background: #f4f4f4;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.9em;
+        }
+        
+        .diagram {
+            background: #f8f9fa;
+            border: 2px dashed #ddd;
+            padding: 20px;
+            text-align: center;
+            margin: 20px 0;
+            border-radius: 6px;
+        }
+        
+        .diagram pre {
+            text-align: left;
+            display: inline-block;
+            margin: 0;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+        }
+        
+        th, td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+        
+        th {
+            background: #667eea;
+            color: white;
+        }
+        
+        tr:nth-child(even) {
+            background: #f8f9fa;
+        }
+        
+        footer {
+            text-align: center;
+            padding: 30px;
+            color: #666;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="lang-switch" onclick="toggleLanguage()">
+                <span id="lang-label">🇰🇷 한국어</span>
+            </div>
+
+            <h1>레슨 12: 그리기 및 프레젠테이션</h1>
+            <p>Lesson 12: Drawing and Presentation</p>
+        </header>
+        
+        <div class="lesson-nav">
+            <a href="11-command-buffer.html" class="nav-btn">← Command Buffer</a>
+            <a href="index.html" class="nav-btn">Index →</a>
+        </div>
+        
+        <div class="content-box">
+            <h2>그리기 및 프레젠테이션 | Drawing and Presentation</h2>
+            <p>
+                이제 모든 설정이 완료되었습니다. 이제 Command Buffer을 제출하고 
+                결과를 화면에 프레젠테이션할 수 있습니다.
+            </p>
+            <br>
+            <p>
+                All setup is complete. Now we can submit the Command Buffer and present the result to the screen.
+            </p>
+        </div>
+        
+        <div class="content-box">
+            <h2>Sync Objects 생성 | Create Sync Objects</h2>
+            
+            <div class="step">
+                <span class="step-number">1</span>
+                <strong>Semaphore 및 Fence 생성</strong>
+                <div class="code-block">
+<span class="code-comment">// Semaphore: GPU 작업 완료 시 신호</span>
+<span class="code-keyword">for</span> (uint32_t i = <span class="code-string">0</span>; i &lt; frameCount; i++) {
+    VkSemaphoreCreateInfo semaphoreInfo{};
+    semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+    
+    VkResult result = vkCreateSemaphore(device, &semaphoreInfo, <span class="code-keyword">nullptr</span>, &imageAvailableSemaphores[i]);
+    result = vkCreateSemaphore(device, &semaphoreInfo, <span class="code-keyword">nullptr</span>, &renderFinishedSemaphores[i]);
+    
+    VkFenceCreateInfo fenceInfo{};
+    fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+    fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;  <span class="code-comment">// 초기에 신호 상태</span>
+    result = vkCreateFence(device, &fenceInfo, <span class="code-keyword">nullptr</span>, &inFlightFences[i]);
+}
+                </div>
+            </div>
+        </div>
+        
+        <div class="content-box">
+            <h2>Frame Begin | Frame Begin</h2>
+            
+            <div class="step">
+                <span class="step-number">2</span>
+                <strong>다음 이미지 대기</strong>
+                <div class="code-block">
+<span class="code-keyword">void</span> beginFrame() {
+    <span class="code-comment">// 이전 프레임의 펜스 대기</span>
+    vkWaitForFences(device, <span class="code-string">1</span>, &inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
+    
+    <span class="code-comment">// 다음 스왑체인 이미지 가져오기</span>
+    uint32_t imageIndex;
+    VkResult result = vkAcquireNextImageKHR(device, swapchain, UINT64_MAX, 
+                                            imageAvailableSemaphores[currentFrame], 
+                                            VK_NULL_HANDLE, &imageIndex);
+    
+    <span class="code-keyword">if</span> (result == VK_ERROR_OUT_OF_DATE_KHR) {
+        <span class="code-comment">// Swapchain이 만료됨, 재생성 필요</span>
+        recreateSwapchain();
+        <span class="code-keyword">return</span>;
+    } <span class="code-keyword">else</span> <span class="code-keyword">if</span> (result != VK_SUCCESS &amp;&amp; result != VK_SUBOPTIMAL_KHR) {
+        <span class="code-keyword">throw</span> std::runtime_error(<span class="code-string">"Failed to acquire swapchain image"</span>);
+    }
+    
+    <span class="code-comment">// 펜스 리셋</span>
+    vkResetFences(device, <span class="code-string">1</span>, &inFlightFences[currentFrame]);
+}
+                </div>
+            </div>
+        </div>
+        
+        <div class="content-box">
+            <h2>Frame End | Frame End</h2>
+            
+            <div class="step">
+                <span class="step-number">3</span>
+                <strong>그리기 및 프레젠테이션</strong>
+                <div class="code-block">
+<span class="code-keyword">void</span> endFrame() {
+    <span class="code-comment">// Command Buffer 제출</span>
+    VkSubmitInfo submitInfo{};
+    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    
+    VkSemaphore waitSemaphores[] = {imageAvailableSemaphores[currentFrame]};
+    VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
+    submitInfo.waitSemaphoreCount = <span class="code-string">1</span>;
+    submitInfo.pWaitSemaphores = waitSemaphores;
+    submitInfo.pWaitDstStageMask = waitStages;
+    
+    submitInfo.commandBufferCount = <span class="code-string">1</span>;
+    submitInfo.pCommandBuffers = &commandBuffers[currentFrame];
+    
+    VkSemaphore signalSemaphores[] = {renderFinishedSemaphores[currentFrame]};
+    submitInfo.signalSemaphoreCount = <span class="code-string">1</span>;
+    submitInfo.pSignalSemaphores = signalSemaphores;
+    
+    VkResult result = vkQueueSubmit(graphicsQueue, <span class="code-string">1</span>, &submitInfo, inFlightFences[currentFrame]);
+    <span class="code-keyword">if</span> (result != VK_SUCCESS) {
+        <span class="code-keyword">throw</span> std::runtime_error(<span class="code-string">"Failed to submit draw command buffer"</span>);
+    }
+    
+    <span class="code-comment">// 프레젠테이션</span>
+    VkPresentInfoKHR presentInfo{};
+    presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+    
+    presentInfo.waitSemaphoreCount = <span class="code-string">1</span>;
+    presentInfo.pWaitSemaphores = signalSemaphores;
+    
+    VkSwapchainKHR swapchains[] = {swapchain};
+    presentInfo.swapchainCount = <span class="code-string">1</span>;
+    presentInfo.pSwapchains = swapchains;
+    presentInfo.pImageIndices = &currentFrame;
+    
+    result = vkQueuePresentKHR(presentQueue, &presentInfo);
+    <span class="code-keyword">if</span> (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
+        <span class="code-comment">// Swapchain이 만료됨, 재생성 필요</span>
+        recreateSwapchain();
+    } <span class="code-keyword">else</span> <span class="code-keyword">if</span> (result != VK_SUCCESS) {
+        <span class="code-keyword">throw</span> std::runtime_error(<span class="code-string">"Failed to present swapchain image"</span>);
+    }
+    
+    <span class="code-comment">// 다음 프레임으로 이동</span>
+    currentFrame = (currentFrame + <span class="code-string">1</span>) % frameCount;
+}
+                </div>
+            </div>
+        </div>
+        
+        <div class="content-box">
+            <h2>메인 루프 | Main Loop</h2>
+            
+            <div class="step">
+                <span class="step-number">4</span>
+                <strong>메인 렌더링 루프</strong>
+                <div class="code-block">
+<span class="code-comment">// MinimalVulkanRenderer.cpp</span>
+<span class="code-keyword">void</span> MinimalVulkanRenderer::Render(<span class="code-keyword">float</span> deltaTime) {
+    beginFrame();
+    
+    <span class="code-comment">// 이전 레슨에서 기록한 Command Buffer 사용</span>
+    recordCommandBuffer(commandBuffers[currentFrame], currentFrame);
+    
+    endFrame();
+}
+
+<span class="code-keyword">void</span> MinimalVulkanRenderer::BeginFrame() {
+    beginFrame();
+}
+
+<span class="code-keyword">void</span> MinimalVulkanRenderer::EndFrame() {
+    endFrame();
+}
+                </div>
+            </div>
+        </div>
+        
+        <div class="diagram">
+    <svg width="500" height="200" viewBox="0 0 500 200">
+        <defs>
+            <marker id="a12" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                <polygon points="0 0, 10 3.5, 0 7" fill="#667eea"/>
+            </marker>
+        </defs>
+        <rect x="20" y="20" width="200" height="50" rx="8" fill="#667eea" opacity="0.3"/>
+        <text x="120" y="42" text-anchor="middle" fill="#fff" font-size="14" font-weight="bold">CPU</text>
+        <line x1="220" y1="45" x2="280" y2="45" stroke="#667eea" stroke-width="2" marker-end="url(#a12)"/>
+        <rect x="280" y="20" width="200" height="50" rx="8" fill="#764ba2" opacity="0.3"/>
+        <text x="380" y="42" text-anchor="middle" fill="#fff" font-size="14" font-weight="bold">GPU</text>
+        <line x1="120" y1="70" x2="120" y2="90" stroke="#667eea" stroke-width="2" marker-end="url(#a12)"/>
+        <rect x="20" y="100" width="200" height="80" rx="8" fill="#f8f9fa"/>
+        <text x="120" y="125" text-anchor="middle" fill="#333" font-size="12" font-weight="bold">Frame Loop</text>
+        <text x="120" y="145" text-anchor="middle" fill="#666" font-size="11">Begin → Record → End</text>
+        <text x="120" y="165" text-anchor="middle" fill="#666" font-size="11">Submit → Present</text>
+        <line x1="120" y1="180" x2="380" y2="180" stroke="#667eea" stroke-width="2" marker-end="url(#a12)"/>
+        <rect x="280" y="180" width="200" height="40" rx="6" fill="#667eea" opacity="0.3"/>
+        <text x="380" y="198" text-anchor="middle" fill="#fff" font-size="12">Display</text>
+    </svg>
+</div>
+
+<div class="content-box">
+            <h2>체크리스트 | Checklist</h2>
+            <ul>
+                <li>☐ Semaphore 생성 (image available, render finished)</li>
+                <li>☐ Fence 생성 (in-flight)</li>
+                <li>☐ <code>vkAcquireNextImageKHR</code> 호출</li>
+                <li>☐ Fence 리셋</li>
+                <li>☐ <code>vkQueueSubmit</code>로 Command Buffer 제출</li>
+                <li>☐ <code>vkQueuePresentKHR</code>로 결과 프레젠테이션</li>
+                <li>☐ <code>VK_ERROR_OUT_OF_DATE_KHR</code> 처리 (Swapchain 재생성)</li>
+                <li>☐ <code>currentFrame</code> 인덱스 관리</li>
+            </ul>
+        </div>
+        
+        <div class="content-box">
+            <h2>완료！| Complete！</h2>
+            <p>
+                이 튜토리얼의 모든 단계를 완료하면 다음이 작동해야 합니다:
+            </p>
+            <ul>
+                <li>✅ Black 배경에 빨강/초록/파랑 삼각형 렌더링</li>
+                <li>✅ 60 FPS 또는 VSync에 동기화된 프레젠테이션</li>
+                <li>✅ Window 리사이즈 처리</li>
+                <li>✅ Cleanup (Shutdown)</li>
+            </ul>
+            
+            <div class="tip">
+                <strong>다음 단계 | Next Steps:</strong>
+                <ul>
+                    <li>Uniform Buffer 추가 (변형 행렬)</li>
+                    <li>인덱스 버퍼 추가</li>
+                    <li>텍스처 매핑</li>
+                    <li>Depth Testing</li>
+                    <li>Multiple Draw Calls</li>
+                    <li>Engine 모듈로 이동</li>
