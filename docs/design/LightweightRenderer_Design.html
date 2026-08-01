@@ -1,0 +1,996 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lightweight Data-Oriented Renderer — Design Document</title>
+<style>
+  :root {
+    --sidebar-width: 260px;
+    --bg: #0d1117;
+    --bg-sidebar: #161b22;
+    --bg-content: #0d1117;
+    --bg-card: #161b22;
+    --bg-code: #1c2128;
+    --border: #30363d;
+    --text: #c9d1d9;
+    --text-heading: #f0f6fc;
+    --text-muted: #8b949e;
+    --accent: #58a6ff;
+    --accent-dim: #1f3a5f;
+    --green: #3fb950;
+    --orange: #d29922;
+    --red: #f85149;
+    --purple: #bc8cff;
+    --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    --font-mono: 'SF Mono', 'Fira Code', 'Fira Mono', Menlo, Consolas, monospace;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: var(--font-sans);
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.7;
+    font-size: 15px;
+  }
+
+  /* Layout */
+  .layout {
+    display: flex;
+    min-height: 100vh;
+  }
+
+  /* Sidebar */
+  .sidebar {
+    width: var(--sidebar-width);
+    background: var(--bg-sidebar);
+    border-right: 1px solid var(--border);
+    padding: 24px 0;
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    overflow-y: auto;
+    z-index: 100;
+  }
+
+  .sidebar-title {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--text-muted);
+    padding: 0 20px;
+    margin-bottom: 16px;
+  }
+
+  .sidebar-section {
+    margin-bottom: 8px;
+  }
+
+  .sidebar-section-title {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-muted);
+    padding: 8px 20px 4px;
+  }
+
+  .sidebar a {
+    display: block;
+    padding: 5px 20px;
+    color: var(--text-muted);
+    text-decoration: none;
+    font-size: 13px;
+    transition: color 0.15s, background 0.15s;
+    border-left: 2px solid transparent;
+  }
+
+  .sidebar a:hover {
+    color: var(--text-heading);
+    background: rgba(88, 166, 255, 0.05);
+  }
+
+  .sidebar a.active {
+    color: var(--accent);
+    border-left-color: var(--accent);
+    background: var(--accent-dim);
+  }
+
+  /* Main content */
+  .main {
+    flex: 1;
+    margin-left: var(--sidebar-width);
+    padding: 48px 64px 96px;
+    max-width: 960px;
+  }
+
+  /* Typography */
+  h1 {
+    font-size: 2em;
+    color: var(--text-heading);
+    font-weight: 700;
+    margin-bottom: 8px;
+    line-height: 1.2;
+  }
+
+  .subtitle {
+    color: var(--text-muted);
+    font-size: 14px;
+    margin-bottom: 40px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .subtitle strong { color: var(--text); }
+
+  h2 {
+    font-size: 1.5em;
+    color: var(--text-heading);
+    font-weight: 600;
+    margin-top: 56px;
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  h3 {
+    font-size: 1.15em;
+    color: var(--text-heading);
+    font-weight: 600;
+    margin-top: 32px;
+    margin-bottom: 12px;
+  }
+
+  h4 {
+    font-size: 1em;
+    color: var(--text-heading);
+    font-weight: 600;
+    margin-top: 24px;
+    margin-bottom: 8px;
+  }
+
+  p { margin-bottom: 16px; }
+
+  strong { color: var(--text-heading); }
+
+  /* Code blocks */
+  pre {
+    background: var(--bg-code);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 16px 20px;
+    overflow-x: auto;
+    margin: 16px 0 24px;
+    font-family: var(--font-mono);
+    font-size: 13px;
+    line-height: 1.55;
+    color: var(--text);
+  }
+
+  code {
+    font-family: var(--font-mono);
+    font-size: 0.9em;
+  }
+
+  p code, li code, td code {
+    background: var(--bg-code);
+    border: 1px solid var(--border);
+    padding: 1px 6px;
+    border-radius: 3px;
+  }
+
+  /* Architecture diagram (ASCII art) */
+  .arch-diagram {
+    background: var(--bg-code);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 20px 24px;
+    margin: 16px 0 24px;
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+    line-height: 1.45;
+    color: var(--text-muted);
+    overflow-x: auto;
+    white-space: pre;
+  }
+
+  .arch-diagram .highlight { color: var(--accent); font-weight: 600; }
+  .arch-diagram .green { color: var(--green); }
+  .arch-diagram .orange { color: var(--orange); }
+  .arch-diagram .purple { color: var(--purple); }
+
+  /* Tables */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 16px 0 24px;
+    font-size: 14px;
+  }
+
+  th {
+    text-align: left;
+    color: var(--text-heading);
+    font-weight: 600;
+    padding: 10px 14px;
+    border-bottom: 2px solid var(--border);
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  td {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+
+  tr:hover td {
+    background: rgba(88, 166, 255, 0.03);
+  }
+
+  /* Cards / callouts */
+  .callout {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    border-radius: 4px;
+    padding: 16px 20px;
+    margin: 16px 0 24px;
+  }
+
+  .callout-green { border-left-color: var(--green); }
+  .callout-orange { border-left-color: var(--orange); }
+  .callout-red { border-left-color: var(--red); }
+  .callout-purple { border-left-color: var(--purple); }
+
+  .callout-title {
+    font-weight: 600;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 8px;
+  }
+
+  .callout-green .callout-title { color: var(--green); }
+  .callout-orange .callout-title { color: var(--orange); }
+  .callout-red .callout-title { color: var(--red); }
+  .callout-purple .callout-title { color: var(--purple); }
+
+  /* Lists */
+  ul, ol {
+    margin: 8px 0 16px 20px;
+  }
+
+  li { margin-bottom: 6px; }
+
+  /* Phase boxes */
+  .phase-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin: 16px 0 24px;
+  }
+
+  .phase-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 16px 20px;
+  }
+
+  .phase-card h4 {
+    margin-top: 0;
+    color: var(--accent);
+    font-size: 14px;
+  }
+
+  .phase-card .effort {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+  }
+
+  .phase-card ul {
+    margin: 0;
+    padding-left: 16px;
+    font-size: 13px;
+  }
+
+  .phase-card li { margin-bottom: 4px; }
+
+  /* Divider */
+  hr {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 48px 0;
+  }
+
+  /* File tree */
+  .file-tree {
+    background: var(--bg-code);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 16px 20px;
+    margin: 16px 0 24px;
+    font-family: var(--font-mono);
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--text-muted);
+    overflow-x: auto;
+  }
+
+  .file-tree .dir { color: var(--accent); }
+  .file-tree .file { color: var(--text); }
+  .file-tree .comment { color: var(--text-muted); font-style: italic; }
+
+  /* Map table */
+  .map-table td:first-child {
+    white-space: nowrap;
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--accent);
+  }
+
+  /* Status badge */
+  .status {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .status-draft { background: var(--accent-dim); color: var(--accent); }
+
+  /* Responsive */
+  @media (max-width: 1024px) {
+    .sidebar { display: none; }
+    .main { margin-left: 0; padding: 32px 24px 64px; }
+    .phase-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="layout">
+  <!-- Sidebar -->
+  <nav class="sidebar">
+    <div class="sidebar-title">Design Document</div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-section-title">Overview</div>
+      <a href="#vision">1. Vision & Goals</a>
+      <a href="#architecture">2. Architecture</a>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-section-title">Data-Oriented Design</div>
+      <a href="#entity">3.1 Entity Registry</a>
+      <a href="#components">3.2 Component Arrays</a>
+      <a href="#instances">3.3 Instance Pool</a>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-section-title">Rendering</div>
+      <a href="#graph">4. Render Graph</a>
+      <a href="#rhi">5. Cross-Platform RHI</a>
+      <a href="#shaders">6. Shader Management</a>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-section-title">Implementation</div>
+      <a href="#structure">7. File Structure</a>
+      <a href="#performance">8. Performance</a>
+      <a href="#phases">9. Implementation Phases</a>
+      <a href="#verification">10. Verification</a>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-section-title">Decisions</div>
+      <a href="#decisions">11. Design Decisions</a>
+      <a href="#open">12. Open Questions</a>
+    </div>
+  </nav>
+
+  <!-- Main Content -->
+  <main class="main">
+
+    <h1>Lightweight Data-Oriented Renderer</h1>
+    <div class="subtitle">
+      <span class="status status-draft">Draft</span>
+      <span style="margin-left: 12px;">Author: HardBop Engine Team &nbsp;|&nbsp; Date: 2026-06-21</span>
+    </div>
+
+    <!-- ==================== SECTION 1 ==================== -->
+    <h2 id="vision">1. Vision &amp; Goals</h2>
+
+    <p>A lightweight, data-oriented renderer targeting <strong>Vulkan</strong> and <strong>Metal</strong>. Built on cache-friendly data layouts, explicit dependency management, and a minimal cross-platform abstraction layer.</p>
+
+    <h3>Goals</h3>
+    <table>
+      <thead>
+        <tr><th>#</th><th>Goal</th><th>Metric</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>G1</td><td>Data-oriented scene representation</td><td>SoA layouts for all hot-path data</td></tr>
+        <tr><td>G2</td><td>Cross-platform: Vulkan + Metal</td><td>Single render graph, two RHI backends</td></tr>
+        <tr><td>G3</td><td>Lightweight scope</td><td>Forward rendering, no deferred/skinning/particles</td></tr>
+        <tr><td>G4</td><td>Cache-friendly performance</td><td>Batching, parallel recording, minimal state changes</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Out of Scope</h3>
+    <ul>
+      <li>Deferred rendering</li>
+      <li>Skinned mesh animation</li>
+      <li>Particle systems</li>
+      <li>UI rendering</li>
+      <li>Physics integration</li>
+    </ul>
+
+    <!-- ==================== SECTION 2 ==================== -->
+    <h2 id="architecture">2. Architecture Overview</h2>
+
+    <div class="arch-diagram"><span class="highlight">┌──────────────────────────────────────────────────────────────┐</span>
+<span class="highlight">│                        Application                            │</span>
+<span class="highlight">├──────────────────────────────────────────────────────────────┤</span>
+<span class="highlight">│                       Render Graph                            │</span>
+<span class="highlight">│  (Explicit pass dependency graph → topological execution)     │</span>
+<span class="highlight">├──────────────────────────────────────────────────────────────┤</span>
+<span class="green">│                   Scene Processing (CPU)                      │</span>
+<span class="green">│  ┌────────────┐  ┌────────────┐  ┌───────────────────────┐   │</span>
+<span class="green">│  │ Frustum    │  │ Transform  │  │ LOD Selection         │   │</span>
+<span class="green">│  │ Culling    │  │ Update     │  │                       │   │</span>
+<span class="green">│  └────────────┘  └────────────┘  └───────────────────────┘   │</span>
+<span class="highlight">├──────────────────────────────────────────────────────────────┤</span>
+<span class="orange">│              Command Recording (CPU, Parallel)                │</span>
+<span class="orange">│  ┌─────────────────┐  ┌────────────────┐  ┌──────────────┐   │</span>
+<span class="orange">│  │ Batch Assembly  │  │ Uniform Upload │  │ Draw Call    │   │</span>
+<span class="orange">│  │ (group by pipe) │  │ (per-frame)    │  │ Recording    │   │</span>
+<span class="orange">│  └─────────────────┘  └────────────────┘  └──────────────┘   │</span>
+<span class="highlight">├──────────────────────────────────────────────────────────────┤</span>
+<span class="purple">│                   Cross-Platform RHI                          │</span>
+<span class="purple">│              Vulkan Backend  │  Metal Backend                 │</span>
+<span class="highlight">├──────────────────────────────────────────────────────────────┤</span>
+<span class="highlight">│                      OSAL (Platform)                          │</span>
+<span class="highlight">└──────────────────────────────────────────────────────────────┘</span></div>
+
+    <div class="callout">
+      <div class="callout-title">Three-Layer Separation</div>
+      <p>1. <strong>Scene Processing (CPU, parallel):</strong> Read SoA arrays → filter, transform, cull. No GPU interaction.<br>
+      2. <strong>Command Recording (CPU, parallel):</strong> Assemble batches → record commands. No GPU interaction.<br>
+      3. <strong>RHI (GPU):</strong> Submit pre-recorded command buffers to Vulkan/Metal. Single threaded, deterministic.</p>
+      <p style="margin-bottom:0;">This separation lets CPU-side work (steps 1 &amp; 2) be parallelized freely without synchronization with GPU submission.</p>
+    </div>
+
+    <!-- ==================== SECTION 3 ==================== -->
+    <h2 id="entity">3. Data-Oriented Design</h2>
+
+    <h3 id="entity">3.1 Entity Registry — Sparse Set</h3>
+
+    <p>Entities are lightweight IDs backed by a sparse-set index for O(1) existence checks and cache-friendly iteration.</p>
+
+    <pre>EntityRegistry
+├── packedToSparse : uint32_t[]   // packed index → sparse index (-1 = dead)
+├── sparseToPacked : uint32_t[]   // sparse index → packed index
+├── entities     : Entity[]       // sparse set of alive entities
+├── capacity     : uint32_t
+├── count        : uint32_t
+└── nextID       : uint32_t</pre>
+
+    <ul>
+      <li><code>packedToSparse[i] = -1</code> means entity at packed index <code>i</code> is dead.</li>
+      <li>Iteration over alive entities = iterate <code>entities[0..count)</code>.</li>
+      <li><code>Contains(entity)</code> = <code>packedToSparse[entity.ID]</code> → single array lookup.</li>
+    </ul>
+
+    <h3 id="components">3.2 Component Arrays — Struct of Arrays (SoA)</h3>
+
+    <p>Every component type lives in its own contiguous array. Hot-path iteration touches only the components it needs.</p>
+
+    <pre>// Transform components (iterated during culling + uniform upload)
+TransformComponent
+├── positions    : float3[]    // all positions contiguous
+├── rotations    : float4[]    // all rotations contiguous
+└── scales       : float3[]    // all scales contiguous
+
+// Mesh components (read once, batched)
+MeshComponent
+├── vertexPositions : float3[]
+├── vertexNormals   : float3[]
+├── vertexUVs       : float2[]
+├── vertexCounts    : uint32[]
+├── indexBuffers    : uint32[]  // GPU handle per mesh
+├── indexCounts     : uint32[]
+└── bounds          : AABBox[]
+
+// Material components (grouped by shader ID for batching)
+MaterialComponent
+├── shaderID        : uint32[]
+├── albedo          : float4[]
+├── roughness       : float[]
+├── metalness       : float[]
+└── emissive        : float4[]
+
+// Light components
+LightComponent
+├── positions       : float4[]  // w = type: 0=point, 1=spot, 2=directional
+├── intensities     : float[]
+├── colors          : float4[]
+└── directions      : float3[]  // for spot/directional</pre>
+
+    <div class="callout callout-green">
+      <div class="callout-title">Key Property</div>
+      If you only need positions and rotations for culling, you iterate two float arrays — not the whole entity struct. Memory bandwidth scales with data actually used.
+    </div>
+
+    <h3 id="instances">3.3 Instance Pool</h3>
+
+    <p>Bridges entity IDs to their GPU representation. Stores the per-instance data needed for draw call assembly.</p>
+
+    <pre>InstancePool
+├── entityRef      : uint32[]    // backing entity ID (for reverse lookup)
+├── transformIndex : uint32[]    // index into TransformComponent arrays
+├── meshIndex      : uint32[]    // index into MeshComponent arrays
+├── materialIndex  : uint32[]    // index into MaterialComponent arrays
+├── visible        : bool[]      // per-frame culling result
+└── capacity       : uint32</pre>
+
+    <p>During culling: iterate <code>visible</code> array, mark instances as visible or not.
+    During batching: iterate visible instances, group by <code>materialIndex → shaderID</code>.</p>
+
+    <!-- ==================== SECTION 4 ==================== -->
+    <h2 id="graph">4. Render Graph</h2>
+
+    <p>Explicit dependency graph replaces implicit render loop. Each pass declares its inputs/outputs and dependencies.</p>
+
+    <h3>4.1 Pass Types</h3>
+    <table>
+      <thead>
+        <tr><th>Pass</th><th>Purpose</th><th>Parallelism</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><strong>Init</strong></td><td>Create swapchain, RTVs, command pool</td><td>Once</td></tr>
+        <tr><td><strong>Cull</strong></td><td>Frustum culling, visibility flags</td><td>CPU, parallel</td></tr>
+        <tr><td><strong>Record</strong></td><td>Pipeline binding, uniform upload, draw batching</td><td>CPU, parallel</td></tr>
+        <tr><td><strong>Shadow</strong></td><td>Render shadow map</td><td>GPU</td></tr>
+        <tr><td><strong>Forward</strong></td><td>Main scene rendering</td><td>GPU</td></tr>
+        <tr><td><strong>PostProcess</strong></td><td>Tone mapping, VRS</td><td>GPU</td></tr>
+        <tr><td><strong>Present</strong></td><td>Submit and present</td><td>GPU</td></tr>
+      </tbody>
+    </table>
+
+    <h3>4.2 Dependency Graph</h3>
+
+    <div class="arch-diagram"><span class="green">Init ────────────────────────────────────────────────────────┐</span>
+  │                                                     │
+  ▼                                                     │
+<span class="green">Cull ───────────────────────────────────────────────────►│</span>
+  │                                                     │
+  ▼                                                     │
+<span class="orange">Record ────────────────────────────────────────────────►│</span>
+  │                                                     │
+  ├─────────────┐                                       │
+  ▼             ▼                                       │
+<span class="orange">Shadow    Forward ──────────────────────────────────────►│</span>
+  │                                                         │
+  ▼                                                         │
+<span class="purple">PostProcess ──────────────────────────────────────────────►│</span>
+  │                                                         │
+  ▼                                                         │
+Present ──────────────────────────────────────────────────►│</span></div>
+
+    <p>Each pass declares which other passes it depends on. The graph executor topologically sorts and executes in correct order.</p>
+
+    <h3>4.3 Render Pass Descriptor</h3>
+
+    <pre>RenderPassDescriptor
+├── name        : const char*
+├── dependencies : const char*[N]  // pass names this pass depends on
+├── colorTargets : RenderTarget[N]
+├── depthTarget  : RenderTarget?
+└── execute      : function(RenderContext&, FrameData&)</pre>
+
+    <!-- ==================== SECTION 5 ==================== -->
+    <h2 id="rhi">5. Cross-Platform RHI</h2>
+
+    <p>Thin abstraction between render graph and platform APIs.</p>
+
+    <h3>5.1 Abstraction Layer</h3>
+
+    <pre>IRenderer (abstract)
+├── CreateBuffer()     → IBuffer*
+├── CreateTexture()    → ITexture*
+├── CreatePipeline()   → IPipeline*
+├── CreateCommandBuf() → ICommandBuffer*
+├── CreateRenderPass() → IRenderPass*
+
+IBuffer (abstract)
+├── BindToVertex()
+├── BindToIndex()
+├── BindToUniform()
+└── UpdateData()
+
+ITexture (abstract)
+├── BindToColor()
+├── BindToDepth()
+├── TransitionLayout()
+└── CopyFrom()
+
+IPipeline (abstract)
+├── Bind()
+├── SetPushConstants()
+└── SetDescriptorSets()
+
+ICommandBuffer (abstract)
+├── Begin()
+├── End()
+├── SetRenderPass()
+├── SetPipeline()
+├── BindVertexBuffers()
+├── DrawIndexed()
+└── Dispatch()</pre>
+
+    <h3>5.2 Backend Separation</h3>
+
+    <div class="file-tree"><span class="dir">RHI/</span>
+├── <span class="dir">Vulkan/</span>
+│   ├── VulkanRenderer.h/cpp       <span class="comment">— IRenderer implementation</span>
+│   ├── VulkanBuffer.h/cpp         <span class="comment">— IBuffer implementation</span>
+│   ├── VulkanTexture.h/cpp        <span class="comment">— ITexture implementation</span>
+│   ├── VulkanPipeline.h/cpp       <span class="comment">— IPipeline implementation</span>
+│   └── VulkanCommandBuffer.h/cpp  <span class="comment">— ICommandBuffer implementation</span>
+│
+└── <span class="dir">Metal/</span>
+    ├── MetalRenderer.h/cpp        <span class="comment">— IRenderer implementation</span>
+    ├── MetalBuffer.h/cpp          <span class="comment">— IBuffer implementation</span>
+    ├── MetalTexture.h/cpp         <span class="comment">— ITexture implementation</span>
+    ├── MetalPipeline.h/cpp        <span class="comment">— IPipeline implementation</span>
+    └── MetalCommandBuffer.h/cpp   <span class="comment">— ICommandBuffer implementation</span></div>
+
+    <p>Each backend wraps only platform-specific API calls. The render graph and scene processing code never touches Vulkan/Metal directly.</p>
+
+    <h3>5.3 Vulkan vs Metal Mapping</h3>
+
+    <table class="map-table">
+      <thead>
+        <tr><th>Concept</th><th>Vulkan</th><th>Metal</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Command recording</td><td><code>vkCmdBegin/EndRendering</code></td><td><code>MTLRenderCommandEncoder</code></td></tr>
+        <tr><td>Render pass</td><td><code>VkRenderPass</code></td><td><code>MTLRenderPassDescriptor</code></td></tr>
+        <tr><td>Pipeline</td><td><code>VkPipeline</code></td><td><code>MTLRenderPipelineState</code></td></tr>
+        <tr><td>Descriptor sets</td><td><code>VkDescriptorSet</code></td><td><code>MTLCommandEncoder setBuffer:at:</code></td></tr>
+        <tr><td>Push constants</td><td><code>vkCmdPushConstants</code></td><td><code>MTLCommandEncoder setBytes:length:atIndex:</code></td></tr>
+        <tr><td>Shader module</td><td>SPIR-V</td><td>MSL (Metal Shading Language)</td></tr>
+        <tr><td>Synchronization</td><td>Semaphores + Fences</td><td><code>MTLBuffer</code> lifetime + completion handler</td></tr>
+      </tbody>
+    </table>
+
+    <div class="callout callout-orange">
+      <div class="callout-title">Key Difference to Handle</div>
+      Vulkan uses explicit descriptor sets with layouts; Metal uses direct buffer binding in command encoders. The <code>IPipeline</code> abstraction must handle this transparently. Push constants map to <code>vkCmdPushConstants</code> (Vulkan) vs <code>setBytes:length:atIndex:</code> (Metal) — same concept, different API.
+    </div>
+
+    <!-- ==================== SECTION 6 ==================== -->
+    <h2 id="shaders">6. Shader Management</h2>
+
+    <h3>6.1 Shader Library</h3>
+
+    <p>Shaders are compiled offline and baked as platform-native bytecode:</p>
+    <ul>
+      <li><strong>Vulkan:</strong> SPIR-V (<code>.spv</code> files)</li>
+      <li><strong>Metal:</strong> Compiled MSL (<code>.metallib</code> or function name lookup)</li>
+    </ul>
+    <p>A runtime shader library loads the correct format and creates pipeline handles.</p>
+
+    <h3>6.2 Core Shaders (In Scope)</h3>
+
+    <table>
+      <thead>
+        <tr><th>Shader</th><th>Type</th><th>Purpose</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>core.vert</code></td><td>Vertex</td><td>Position + normal + UV transform</td></tr>
+        <tr><td><code>core.frag</code></td><td>Fragment</td><td>PBR lighting (direct + shadow)</td></tr>
+        <tr><td><code>shadow.vert</code></td><td>Vertex</td><td>Shadow space transform</td></tr>
+        <tr><td><code>shadow.frag</code></td><td>Fragment</td><td>Depth only</td></tr>
+        <tr><td><code>post.vert</code></td><td>Vertex</td><td>Fullscreen quad</td></tr>
+        <tr><td><code>post.frag</code></td><td>Fragment</td><td>Tone mapping + bloom</td></tr>
+      </tbody>
+    </table>
+
+    <h3>6.3 Shader Type Definition</h3>
+
+    <pre>ShaderType
+├── name         : const char*
+├── vertexSPV    : uint8[]   // Vulkan vertex shader bytecode
+├── fragmentSPV  : uint8[]   // Vulkan fragment shader bytecode
+├── vertexMSL    : const char*  // Metal vertex shader source/function
+├── fragmentMSL  : const char*  // Metal fragment shader source/function
+└── pushConstant : PushConstantBlock</pre>
+
+    <p>Push constants carry per-material / per-frame data (matrices, albedo, roughness, etc.) to avoid descriptor set churn.</p>
+
+    <!-- ==================== SECTION 7 ==================== -->
+    <h2 id="structure">7. File Structure</h2>
+
+    <div class="file-tree"><span class="dir">Engine/Renderer/</span>
+├── <span class="dir">Core/</span>                          <span class="comment"># Data-oriented scene data</span>
+│   ├── EntityRegistry.h/cpp       <span class="comment"># Sparse-set entity management</span>
+│   ├── ComponentArray.h           <span class="comment"># SoA template for component arrays</span>
+│   └── InstancePool.h/cpp         <span class="comment"># Per-instance data bridging</span>
+│
+├── <span class="dir">Graph/</span>                         <span class="comment"># Render graph</span>
+│   ├── RenderGraph.h/cpp          <span class="comment"># Graph executor</span>
+│   ├── RenderPass.h/cpp           <span class="comment"># Pass definition + execution</span>
+│   └── RenderNode.h               <span class="comment"># Node in dependency graph</span>
+│
+├── <span class="dir">Resources/</span>                     <span class="comment"># RHI abstraction</span>
+│   ├── IBuffer.h/cpp              <span class="comment"># Vertex/index/uniform buffers</span>
+│   ├── ITexture.h/cpp             <span class="comment"># Color/depth textures</span>
+│   ├── IPipeline.h/cpp            <span class="comment"># Graphics pipelines</span>
+│   └── IResourceFactory.h/cpp     <span class="comment"># Factory interface</span>
+│
+├── <span class="dir">Commands/</span>                      <span class="comment"># Command recording</span>
+│   ├── ICommandBuffer.h/cpp       <span class="comment"># Command buffer abstraction</span>
+│   ├── CommandRecorder.h/cpp      <span class="comment"># High-level command assembly</span>
+│   └── DrawBatch.h                <span class="comment"># Batched draw call descriptor</span>
+│
+├── <span class="dir">Shaders/</span>                       <span class="comment"># Shader assets</span>
+│   ├── ShaderLibrary.h/cpp        <span class="comment"># Runtime shader loading</span>
+│   └── Shaders/                   <span class="comment"># Source shaders</span>
+│       ├── core.vert
+│       ├── core.frag
+│       ├── shadow.vert
+│       ├── shadow.frag
+│       ├── post.vert
+│       └── post.frag
+│
+├── <span class="dir">Backends/</span>                      <span class="comment"># Platform implementations</span>
+│   ├── <span class="dir">Vulkan/</span>
+│   │   ├── VulkanRenderer.cpp/h
+│   │   ├── VulkanBuffer.cpp/h
+│   │   ├── VulkanTexture.cpp/h
+│   │   ├── VulkanPipeline.cpp/h
+│   │   ├── VulkanCommandBuffer.cpp/h
+│   │   └── <span class="dir">Shaders/spv/</span>           <span class="comment"># Compiled SPIR-V</span>
+│   └── <span class="dir">Metal/</span>
+│       ├── MetalRenderer.cpp/h
+│       ├── MetalBuffer.cpp/h
+│       ├── MetalTexture.cpp/h
+│       ├── MetalPipeline.cpp/h
+│       ├── MetalCommandBuffer.cpp/h
+│       └── Shaders.metal            <span class="comment"># MSL shaders</span>
+│
+└── CMakeLists.txt</div>
+
+    <div class="callout callout-purple">
+      <div class="callout-title">Key Principle</div>
+      <code>Core/</code>, <code>Graph/</code>, <code>Resources/</code>, <code>Commands/</code>, and <code>Shaders/</code> are <strong>platform-agnostic</strong>. Only <code>Backends/Vulkan/</code> and <code>Backends/Metal/</code> contain platform-specific code.
+    </div>
+
+    <!-- ==================== SECTION 8 ==================== -->
+    <h2 id="performance">8. Performance Strategy</h2>
+
+    <h3>8.1 Cache Efficiency</h3>
+    <table>
+      <thead>
+        <tr><th>Technique</th><th>Mechanism</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>SoA data layout</td><td>Hot components iterate contiguous arrays</td></tr>
+        <tr><td>Batch assembly</td><td>Group by pipeline/material → sequential memory access</td></tr>
+        <tr><td>Uniform buffer batching</td><td>Single buffer upload per frame, not per draw call</td></tr>
+      </tbody>
+    </table>
+
+    <h3>8.2 Parallelism</h3>
+    <table>
+      <thead>
+        <tr><th>Stage</th><th>Parallelism</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Transform update</td><td>Thread pool (write to SoA arrays)</td></tr>
+        <tr><td>Frustum culling</td><td>Thread pool (read SoA, write <code>visible[]</code>)</td></tr>
+        <tr><td>Command recording</td><td>Thread pool (each thread records a batch's commands)</td></tr>
+        <tr><td>GPU submission</td><td>Single thread (deterministic)</td></tr>
+      </tbody>
+    </table>
+
+    <h3>8.3 Minimized State Changes</h3>
+    <ul>
+      <li>Draw calls are grouped by <code>shaderID</code> first, then <code>materialIndex</code>.</li>
+      <li>Pipeline binding changes only when shader changes.</li>
+      <li>Uniform buffer changes only when material values change.</li>
+      <li>Result: ~10-20 state changes for thousands of draw calls.</li>
+    </ul>
+
+    <!-- ==================== SECTION 9 ==================== -->
+    <h2 id="phases">9. Implementation Phases</h2>
+
+    <div class="phase-grid">
+      <div class="phase-card">
+        <h4>Phase 1 — Core Data Structures</h4>
+        <div class="effort">~3 days</div>
+        <ul>
+          <li><code>EntityRegistry</code> with sparse-set add/remove/contains/iterate</li>
+          <li><code>ComponentArray&lt;T&gt;</code> template (SoA storage)</li>
+          <li><code>InstancePool</code> for per-instance data</li>
+        </ul>
+      </div>
+
+      <div class="phase-card">
+        <h4>Phase 2 — Render Graph</h4>
+        <div class="effort">~3 days</div>
+        <ul>
+          <li><code>RenderGraph</code> with dependency resolution (topological sort)</li>
+          <li><code>RenderPass</code> base class + execution framework</li>
+          <li>Basic forward rendering pass</li>
+        </ul>
+      </div>
+
+      <div class="phase-card">
+        <h4>Phase 3 — RHI Abstraction</h4>
+        <div class="effort">~5 days</div>
+        <ul>
+          <li><code>IRenderer</code>, <code>IBuffer</code>, <code>ITexture</code>, <code>IPipeline</code> interfaces</li>
+          <li>Vulkan backend for all four</li>
+          <li>Resource lifecycle (create, use, destroy)</li>
+        </ul>
+      </div>
+
+      <div class="phase-card">
+        <h4>Phase 4 — Metal Backend</h4>
+        <div class="effort">~5 days</div>
+        <ul>
+          <li><code>MetalRenderer</code>, <code>MetalBuffer</code>, <code>MetalTexture</code>, <code>MetalPipeline</code></li>
+          <li>Cross-compile verification (Vulkan + Metal both build)</li>
+        </ul>
+      </div>
+
+      <div class="phase-card">
+        <h4>Phase 5 — Command Recording</h4>
+        <div class="effort">~4 days</div>
+        <ul>
+          <li><code>ICommandBuffer</code> interface + Vulkan/Metal implementations</li>
+          <li><code>CommandRecorder</code> for batch assembly</li>
+          <li><code>DrawBatch</code> descriptor</li>
+        </ul>
+      </div>
+
+      <div class="phase-card">
+        <h4>Phase 6 — Shaders &amp; Integration</h4>
+        <div class="effort">~4 days</div>
+        <ul>
+          <li>6 core shaders (vertex/fragment for core, shadow, post)</li>
+          <li><code>ShaderLibrary</code> runtime loader</li>
+          <li>End-to-end: scene → render graph → GPU → present</li>
+        </ul>
+      </div>
+
+      <div class="phase-card" style="grid-column: span 2;">
+        <h4>Phase 7 — Post-Processing</h4>
+        <div class="effort">~3 days</div>
+        <ul>
+          <li>Post-process render pass with fullscreen quad rendering</li>
+          <li>Tone mapping + bloom filters</li>
+          <li>Variable Rate Shading (VRS) support</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- ==================== SECTION 10 ==================== -->
+    <h2 id="verification">10. Verification Plan</h2>
+
+    <h3>10.1 Unit Tests</h3>
+    <table>
+      <thead>
+        <tr><th>Test</th><th>Target</th><th>Pass Criteria</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>EntitySparseSet</td><td><code>EntityRegistry</code></td><td>Add/Remove/Contains correct for 1000 entities</td></tr>
+        <tr><td>ComponentArraySoA</td><td><code>ComponentArray&lt;T&gt;</code></td><td>Write/read roundtrip for float3/float4 arrays</td></tr>
+        <tr><td>InstancePool</td><td><code>InstancePool</code></td><td>Add/remove/iterate visible instances</td></tr>
+        <tr><td>RenderGraphDAG</td><td><code>RenderGraph</code></td><td>Topological sort produces valid execution order</td></tr>
+        <tr><td>BatchAssembly</td><td><code>CommandRecorder</code></td><td>Draw calls grouped correctly by shader/material</td></tr>
+      </tbody>
+    </table>
+
+    <h3>10.2 Integration Tests</h3>
+    <table>
+      <thead>
+        <tr><th>Test</th><th>Target</th><th>Pass Criteria</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>VulkanRenderTriangle</td><td>End-to-end</td><td>Triangle rendered, screenshot matches</td></tr>
+        <tr><td>MetalRenderTriangle</td><td>End-to-end</td><td>Triangle rendered, screenshot matches</td></tr>
+        <tr><td>VulkanRenderCube</td><td>End-to-end</td><td>Colored cube rendered with PBR material</td></tr>
+        <tr><td>MetalRenderCube</td><td>End-to-end</td><td>Colored cube rendered with PBR material</td></tr>
+        <tr><td>Performance10KInstances</td><td>Both backends</td><td>10,000 instanced cubes &lt; 1ms GPU time</td></tr>
+      </tbody>
+    </table>
+
+    <h3>10.3 Build Verification</h3>
+    <ul>
+      <li><code>build.sh Renderer/Vulkan -dev</code> succeeds</li>
+      <li><code>build.sh Renderer/Metal -dev</code> succeeds</li>
+      <li><code>build.sh Applications/TriangleExample -dev</code> succeeds</li>
+      <li>Unit tests in <code>Engine/Test/UnitTestCollection.cpp</code> pass</li>
+    </ul>
+
+    <!-- ==================== SECTION 11 ==================== -->
+    <h2 id="decisions">11. Design Decisions</h2>
+
+    <table>
+      <thead>
+        <tr><th>Decision</th><th>Choice</th><th>Rationale</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Data layout</td><td>SoA</td><td>Cache efficiency on hot paths (position iteration for culling)</td></tr>
+        <tr><td>Entity system</td><td>Sparse set</td><td>O(1) existence check, contiguous iteration</td></tr>
+        <tr><td>Render approach</td><td>Forward</td><td>Simpler than deferred; sufficient for lightweight scope</td></tr>
+        <tr><td>Shader format</td><td>Platform-native (SPIR-V / MSL)</td><td>No runtime translation layer needed</td></tr>
+        <tr><td>RHI depth</td><td>Thin abstraction</td><td>Vulkan and Metal are similar enough; deep abstraction adds cost</td></tr>
+        <tr><td>Uniforms</td><td>Push constants + UBO</td><td>Per-material data in push constants, per-frame data in UBO</td></tr>
+        <tr><td>Parallelism scope</td><td>CPU-side only</td><td>GPU handles parallelism internally; CPU recording parallelized</td></tr>
+      </tbody>
+    </table>
+
+    <!-- ==================== SECTION 12 ==================== -->
+    <h2 id="open">12. Open Questions</h2>
+
+    <table>
+      <thead>
+        <tr><th>#</th><th>Question</th><th>Impact</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Q1</td><td>Should shadow maps use PCF or VSM?</td><td>Affects shadow shader complexity</td></tr>
+        <tr><td>Q2</td><td>Should materials support transparency (alpha test)?</td><td>Adds blend state handling</td></tr>
+        <tr><td>Q3</td><td>How many lights max? Fixed per-material or dynamic?</td><td>Affects push constant size</td></tr>
+        <tr><td>Q4</td><td>Should we use Vulkan dynamic rendering or render passes?</td><td>Affects Vulkan command recording API</td></tr>
+        <tr><td>Q5</td><td>Metal backend: compile MSL at runtime or pre-compile to <code>.metallib</code>?</td><td>Affects shader loading pipeline</td></tr>
+      </tbody>
+    </table>
+
+    <hr>
+    <p style="color: var(--text-muted); font-size: 13px;">— End of Design Document —</p>
+
+  </main>
+</div>
+
+<script>
+  // Smooth scroll and active sidebar highlight
+  document.querySelectorAll('.sidebar a').forEach(link => {
+    link.addEventListener('click', function(e) {
+      document.querySelectorAll('.sidebar a').forEach(a => a.classList.remove('active'));
+      this.classList.add('active');
+    });
+  });
+
+  // Scroll spy: highlight current section
+  const sections = document.querySelectorAll('h2[id], h3[id]');
+  const navLinks = document.querySelectorAll('.sidebar a[href^="#"]');
+
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        const id = entry.target.getAttribute('id');
+        navLinks.forEach(link => {
+          link.classList.toggle('active', link.getAttribute('href') === '#' + id);
+        });
+      }
+    });
+  }, { rootMargin: '-20% 0px -60% 0px' });
+
+  sections.forEach(s => observer.observe(s));
+</script>
+
+</body>
+</html>
