@@ -8,6 +8,7 @@
 #include <cstring>
 #include <iostream>
 
+
 // 8x12 bitmap font: 96 printable ASCII characters (32..127), 12 rows each, 8 bits per row.
 // Each byte's MSB (0x80) = leftmost pixel in the character cell.
 // Generated from a standard 8x12 terminal font layout.
