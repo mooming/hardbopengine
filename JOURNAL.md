@@ -222,3 +222,18 @@ These changes streamline SDK setup and provide clear guidance to developers on h
 - Created styled HTML version `docs/EngineAPIGuide.html` (1468 lines)
 - Dark theme with sidebar navigation, syntax-highlighted code blocks, tables
 - Responsive design, mobile-friendly with sidebar collapse
+
+---
+
+## 2026-06-21 (MacOSApp)
+
+### New Example Project: MacOSApp
+- Created `Examples/MacOSApp/` — standalone C++23 window application example using Cocoa
+- Implements custom window/application layer (NOT using engine's IWindow/IApplication)
+- Features: Full screen / windowed modes, text panel with scrollbars, close button
+- Custom software framebuffer rendering (GetPixel, SetPixel, FillRect, BitBlt, DrawLine, DrawText)
+- 8x12 bitmap font with 96 printable ASCII characters
+- UI components: UIComponent (base), TextPanel, ScrollBar, Button
+- CMake build system with Debug/Dev/Release configurations
+- Created detailed HTML design document: `Design/WindowAppDesign.html`
+- Both Debug and Release builds compile successfully with `-Wall -Werror`

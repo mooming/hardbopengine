@@ -1,0 +1,1892 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MacOSApp - Detailed Window Application Design Document</title>
+    <style>
+        :root {
+            --bg: #0d1117;
+            --surface: #161b22;
+            --surface-2: #1c2330;
+            --surface-3: #222a3c;
+            --border: #30363d;
+            --text: #c9d1d9;
+            --text-muted: #8b949e;
+            --accent: #58a6ff;
+            --accent-hover: #75b7ff;
+            --green: #3fb950;
+            --yellow: #d29922;
+            --red: #f85149;
+            --blue: #58a6ff;
+            --purple: #bc8cff;
+            --orange: #ff7b72;
+            --code-bg: #1f2428;
+            --code-border: #30363d;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        /* Header */
+        header {
+            background: linear-gradient(135deg, #161b22 0%, #0d1117 100%);
+            border-bottom: 1px solid var(--border);
+            padding: 2rem 3rem;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        header h1 {
+            color: var(--accent);
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        header .subtitle {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+        }
+
+        header .meta {
+            display: flex;
+            gap: 2rem;
+            margin-top: 1rem;
+            flex-wrap: wrap;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        .meta span {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+        }
+
+        /* Container */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem 3rem;
+        }
+
+        /* Sidebar Navigation */
+        .sidebar {
+            position: fixed;
+            left: 0;
+            top: 80px;
+            height: calc(100vh - 80px);
+            width: 260px;
+            background: var(--surface);
+            border-right: 1px solid var(--border);
+            padding: 1.5rem 0;
+            overflow-y: auto;
+        }
+
+        .sidebar h2 {
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-muted);
+            padding: 0 1rem 0.75rem;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 0.75rem;
+        }
+
+        .sidebar nav {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+
+        .sidebar a {
+            display: block;
+            padding: 0.6rem 1rem;
+            color: var(--text);
+            text-decoration: none;
+            border-radius: 4px;
+            margin: 0 0.5rem;
+            transition: all 0.2s ease;
+            font-size: 0.85rem;
+        }
+
+        .sidebar a:hover {
+            background: var(--surface-2);
+            color: var(--accent);
+        }
+
+        .sidebar a.active {
+            background: var(--accent);
+            color: var(--bg);
+            font-weight: 600;
+        }
+
+        .main {
+            margin-left: 280px;
+            padding: 2rem 3rem;
+        }
+
+        @media (max-width: 900px) {
+            .sidebar { position: relative; height: auto; width: 100%; margin-bottom: 1rem; }
+            .main { margin-left: 0; }
+        }
+
+        /* Sections */
+        section {
+            margin-bottom: 3rem;
+            scroll-margin-top: 2rem;
+        }
+
+        section h2 {
+            color: var(--accent);
+            font-size: 1.5rem;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 0.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        section h3 {
+            color: var(--text);
+            font-size: 1.2rem;
+            margin: 1.5rem 0 0.75rem;
+            padding-bottom: 0.25rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        section h4 {
+            color: var(--text-muted);
+            font-size: 1rem;
+            margin: 1.2rem 0 0.5rem;
+        }
+
+        section h5 {
+            color: var(--text);
+            font-size: 0.9rem;
+            margin: 1rem 0 0.3rem;
+            font-weight: 600;
+        }
+
+        /* Tables */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1rem 0;
+            font-size: 0.9rem;
+            overflow: hidden;
+        }
+
+        th, td {
+            padding: 0.5rem 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+            vertical-align: top;
+        }
+
+        th {
+            background: var(--surface-2);
+            color: var(--text);
+            font-weight: 600;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        tr:hover td {
+            background: var(--surface-2);
+        }
+
+        /* Code Blocks */
+        pre {
+            background: var(--code-bg);
+            border: 1px solid var(--code-border);
+            border-radius: 8px;
+            padding: 1rem;
+            overflow-x: auto;
+            margin: 0.75rem 0;
+            font-family: 'SF Mono', Monaco, Consolas, monospace;
+            font-size: 0.78rem;
+            line-height: 1.5;
+            tab-size: 4;
+        }
+
+        code {
+            font-family: 'SF Mono', Monaco, Consolas, monospace;
+            font-size: 0.82rem;
+        }
+
+        code.inline {
+            background: var(--code-bg);
+            padding: 0.1rem 0.35rem;
+            border-radius: 3px;
+            border: 1px solid var(--code-border);
+        }
+
+        /* Syntax highlighting */
+        .kw { color: var(--purple); font-weight: 600; }
+        .type { color: var(--blue); }
+        .func { color: var(--green); }
+        .str { color: var(--orange); }
+        .comment { color: var(--text-muted); font-style: italic; }
+        .num { color: var(--yellow); }
+        .attr { color: #ff79c6; }
+
+        /* Class Diagram */
+        .class-diagram {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin: 1rem 0;
+            overflow-x: auto;
+        }
+
+        .class-box {
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            background: var(--surface-2);
+            margin-bottom: 1rem;
+        }
+
+        .class-header {
+            background: var(--surface-3);
+            padding: 0.5rem 1rem;
+            font-weight: 700;
+            color: var(--accent);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .class-header .visibility {
+            color: var(--text-muted);
+            font-weight: 400;
+        }
+
+        .class-body {
+            padding: 0.5rem 1rem;
+            font-family: 'SF Mono', Monaco, Consolas, monospace;
+            font-size: 0.8rem;
+        }
+
+        .class-body .attr { color: var(--text); }
+        .class-body .method { color: var(--green); }
+        .class-body .param { color: var(--text-muted); }
+
+        .inheritance-line {
+            display: flex;
+            align-items: center;
+            margin: 0.5rem 0;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        /* Feature Cards */
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+            margin: 2rem 0;
+        }
+
+        .feature-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1.5rem;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            border-color: var(--accent);
+        }
+
+        .feature-card .feature-title {
+            color: var(--accent);
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .feature-card .feature-desc {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .feature-card pre {
+            margin: 0.5rem 0;
+            font-size: 0.72rem;
+            padding: 0.6rem;
+        }
+
+        /* Sequence Diagram */
+        .sequence-diagram {
+            background: var(--code-bg);
+            border: 1px solid var(--code-border);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin: 1rem 0;
+            font-family: 'SF Mono', Monaco, Consolas, monospace;
+            font-size: 0.8rem;
+            line-height: 1.8;
+            overflow-x: auto;
+        }
+
+        .seq-lifeline {
+            display: inline-block;
+            min-width: 100px;
+            text-align: center;
+            color: var(--accent);
+            font-weight: 600;
+            position: relative;
+        }
+
+        .seq-lifeline::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            left: 50%;
+            width: 1px;
+            background: var(--border);
+        }
+
+        .seq-step {
+            padding-left: 20px;
+            border-left: 2px solid var(--border);
+            margin: 0.3rem 0;
+            position: relative;
+        }
+
+        .seq-step::before {
+            content: '';
+            position: absolute;
+            left: -8px;
+            top: 0.2rem;
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--blue);
+        }
+
+        /* Badge */
+        .badge {
+            display: inline-block;
+            padding: 0.15rem 0.6rem;
+            border-radius: 12px;
+            font-size: 0.72rem;
+            font-weight: 600;
+        }
+
+        .badge-planned { background: var(--yellow); color: var(--bg); }
+        .badge-inprogress { background: var(--blue); color: var(--bg); }
+        .badge-done { background: var(--green); color: var(--bg); }
+
+        /* File Tree */
+        .file-tree {
+            background: var(--code-bg);
+            border: 1px solid var(--code-border);
+            border-radius: 8px;
+            padding: 1.25rem;
+            font-family: 'SF Mono', Monaco, Consolas, monospace;
+            font-size: 0.78px;
+            line-height: 1.6;
+            overflow-x: auto;
+        }
+
+        .folder { color: var(--accent); }
+        .file-h { color: var(--purple); }
+        .file-cpp { color: var(--blue); }
+        .file-mm { color: var(--orange); }
+        .file-txt { color: var(--green); }
+        .file-cmake { color: var(--red); }
+
+        /* Test Case Table */
+        .test-case {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 1rem;
+            margin: 0.75rem 0;
+        }
+
+        .test-case .test-id {
+            color: var(--accent);
+            font-weight: 700;
+            margin-bottom: 0.25rem;
+        }
+
+        /* AppKit API Reference */
+        .api-ref {
+            background: var(--surface-2);
+            border-left: 3px solid var(--accent);
+            border-radius: 4px;
+            padding: 1rem;
+            margin: 0.5rem 0;
+            font-family: 'SF Mono', Monaco, Consolas, monospace;
+            font-size: 0.8rem;
+        }
+
+        .api-ref .api-name { color: var(--blue); font-weight: 600; }
+        .api-ref .api-desc { color: var(--text-muted); font-size: 0.85rem; }
+        .api-ref .api-param { color: var(--orange); }
+
+        /* Stat box */
+        .stat-box {
+            display: flex;
+            gap: 1.5rem;
+            margin: 1rem 0;
+            flex-wrap: wrap;
+        }
+
+        .stat {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1rem 1.5rem;
+            text-align: center;
+            min-width: 120px;
+        }
+
+        .stat .value {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--accent);
+        }
+
+        .stat .label {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-top: 0.25rem;
+        }
+
+        /* Horizontal rule */
+        hr {
+            border: none;
+            border-top: 1px solid var(--border);
+            margin: 2rem 0;
+        }
+
+        .text-center { text-align: center; }
+        .text-muted { color: var(--text-muted); }
+        .text-accent { color: var(--accent); }
+
+        ul.tight li { margin-bottom: 0.3rem; }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>MacOSApp — Detailed Window Application Design</h1>
+        <div class="subtitle">Custom software-rendered window application with full-screen/windowed modes, text panel with scrollbars, and close button — built on HardBop Engine conventions</div>
+        <div class="meta">
+            <span>📅 2026-06-21</span>
+            <span>🎯 C++23 / Objective-C++</span>
+            <span>🍎 macOS 11+ / AppKit Cocoa</span>
+            <span>🔧 CMake</span>
+            <span>📍 Examples/MacOSApp/</span>
+            <span>📖 Status: Detailed Design</span>
+        </div>
+    </header>
+
+    <div class="sidebar">
+        <h2>Contents</h2>
+        <nav>
+            <a href="#overview">1. Overview</a>
+            <a href="#appkit">2. macOS AppKit Technology Reference</a>
+            <a href="#ui-components">3. UI Component Design</a>
+            <a href="#class-design">4. Class / Module Design</a>
+            <a href="#use-cases">5. Use Case Design</a>
+            <a href="#data-flows">6. Data Flow Architecture</a>
+            <a href="#build">7. Build System</a>
+            <a href="#file-structure">8. File Structure</a>
+            <a href="#test-plan">9. Test Plan</a>
+            <a href="#coding-standards">10. Coding Standards Compliance</a>
+        </nav>
+    </div>
+
+    <div class="main">
+
+        <!-- 1. Overview -->
+        <section id="overview">
+            <h2>1. Project Overview</h2>
+
+            <p>
+                MacOSApp is a standalone C++23 example application that demonstrates how to build a complete
+                window-based graphical application from scratch on macOS using the Cocoa framework. Unlike
+                the HardBop Engine's existing <code>OS::IWindow</code>/<code>OS::IApplication</code>
+                abstractions, this project implements its own window and application layer as a <strong>learning
+                exercise</strong> to understand the underlying macOS APIs and eventually replace the engine's
+                current OSAL implementation.
+            </p>
+
+            <h3>Core Principles</h3>
+
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <div class="feature-title">🖥️ Software Rendering</div>
+                    <div class="feature-desc">All UI is rendered pixel-by-pixel onto a software framebuffer, then presented to the screen via Cocoa's <code>CGImage</code>/<code>NSImage</code> APIs. No GPU or Metal required.</div>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-title">🍎 Objective-C++ Bridge</div>
+                    <div class="feature-desc">Platform-specific Cocoa code is isolated in <code>.mm</code> files, bridged to C++ via opaque <code>void*</code> handles. The C++ API remains platform-agnostic.</div>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-title">🎨 Custom UI Toolkit</div>
+                    <div class="feature-desc">A minimal immediate-mode-inspired UI toolkit with TextPanel, ScrollBar, and Button. All components draw onto the framebuffer using primitive operations.</div>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-title">🔧 Engine Conventions</div>
+                    <div class="feature-desc">Follows HardBop Engine coding standards: PascalCase, camelCase, tabs, <code>noexcept</code>, <code>[[nodiscard]]</code>, <code>final</code>, exception-free.</div>
+                </div>
+            </div>
+
+            <h3>Design Goals vs. Constraints</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Goal</th>
+                        <th>Description</th>
+                        <th>Constraint</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Full Screen / Windowed</td>
+                        <td>Toggle between native full-screen and standard window</td>
+                        <td>macOS only; uses NSWindow toggleFullScreen</td>
+                    </tr>
+                    <tr>
+                        <td>Text Panel + Scrollbars</td>
+                        <td>Display scrollable multi-line text</td>
+                        <td>Must render on software framebuffer</td>
+                    </tr>
+                    <tr>
+                        <td>Close Button</td>
+                        <td>UI button that terminates the app</td>
+                        <td>Self-contained; not the traffic light button</td>
+                    </tr>
+                    <tr>
+                        <td>Custom Implementation</td>
+                        <td>No engine IWindow/IApplication usage</td>
+                        <td>Independent of Engine/OSAL headers</td>
+                    </tr>
+                    <tr>
+                        <td>C++23 Compliance</td>
+                        <td>Modern C++ with standard library only</td>
+                        <td>No external GUI libraries (ImGui, etc.)</td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <!-- 2. AppKit Reference -->
+        <section id="appkit">
+            <h2>2. macOS AppKit Technology Reference</h2>
+
+            <p>
+                This section provides detailed reference for the macOS AppKit APIs that will be used in
+                the Objective-C++ bridge files (<code>.mm</code>). Each class, function, variable,
+                parameter, and constant is documented with its purpose and usage in this project.
+            </p>
+
+            <h3>Core Foundation &amp; AppKit Classes</h3>
+
+            <div class="class-diagram">
+                <div class="class-box">
+                    <div class="class-header"><span style="color: var(--red);">●</span> NSApplication</div>
+                    <div class="class-body">
+                        <div class="api-desc"><strong>Purpose:</strong> Manages the application lifecycle, event loop, and coordination between windows and menus.</div>
+                        <div class="api-param"><strong>Key Methods Used:</strong></div>
+                        <div class="attr">+ <code>sharedApplication</code> — Returns the singleton NSApplication instance (static method).</div>
+                        <div class="attr">+ <code>setActivationPolicy:</code> — Sets how the app appears in the dock (Regular = shown, Prohibited = background-only).</div>
+                        <div class="attr">+ <code>finishLaunching</code> — Completes app startup (creates menu bar, processes launch events).</div>
+                        <div class="attr">+ <code>nextEventMatchingMask:untilDate:inMode:dequeue:</code> — Retrieves next event from queue. Parameters:
+                            <ul style="margin-top: 0.3rem; font-size: 0.8em; color: var(--text-muted);">
+                                <li><code>mask</code>: Event type mask (NSEventMaskAny = all types)</li>
+                                <li><code>untilDate</code>: When to stop (distantPast = process all queued immediately)</li>
+                                <li><code>inMode</code>: Run loop mode (NSDefaultRunLoopMode)</li>
+                                <li><code>dequeue</code>: Whether to remove from queue (YES = remove)</li>
+                            </ul>
+                        </div>
+                        <div class="attr">+ <code>sendEvent:</code> — Dispatches an NSEvent to the appropriate target.</div>
+                        <div class="attr">+ <code>terminate:</code> — Cleanly shuts down the application.</div>
+                        <div class="api-param"><strong>Variables:</strong> <code>appHandle</code> (void* storing NSApplication* pointer)</div>
+                    </div>
+                </div>
+
+                <div class="class-box">
+                    <div class="class-header"><span style="color: var(--red);">●</span> NSWindow</div>
+                    <div class="class-body">
+                        <div class="api-desc"><strong>Purpose:</strong> Manages a window's content, appearance, position, and event routing on screen.</div>
+                        <div class="api-param"><strong>Constructor / Initialization:</strong></div>
+                        <div class="attr"><code>[[NSWindow alloc] initWithContentRect:frame styleMask:style backing:backingStore defer:isDeferred]</code>
+                            <ul style="margin-top: 0.3rem; font-size: 0.8em; color: var(--text-muted);">
+                                <li><code>contentRect</code> (NSRect): Initial position and size (origin + size)</li>
+                                <li><code>styleMask</code> (NSWindowStyleMask): Window decorations (titled, closable, miniaturizable, resizable)</li>
+                                <li><code>backingStore</code> (NSBackingStoreType): Backing store type (NSBackingStoreBuffered = buffered)</li>
+                                <li><code>isDeferred</code> (BOOL): Whether to defer drawing (NO = immediate)</li>
+                            </ul>
+                        </div>
+                        <div class="api-param"><strong>Key Methods Used:</strong></div>
+                        <div class="attr">+ <code>setReleasedWhenClosed:</code> — Controls whether window is auto-released when closed.</div>
+                        <div class="attr">+ <code>setTitle:</code> — Sets the window's title string.</div>
+                        <div class="attr">+ <code>setFrame:display:animate:</code> — Sets window position/size with optional display and animation.</div>
+                        <div class="attr">+ <code>makeKeyAndOrderFront:</code> — Makes window the key window and puts it in front.</div>
+                        <div class="attr">+ <code>center</code> — Centers window on screen.</div>
+                        <div class="attr">+ <code>orderOut:</code> — Hides the window (orderOut:nil).</div>
+                        <div class="attr">+ <code>toggleFullScreen:</code> — Toggles full-screen mode. Argument is sender (can be nil).</div>
+                        <div class="attr">+ <code>setCollectionBehavior:</code> — Sets window behavior flags (NSWindowCollectionBehaviorFullScreenPrimary enables full-screen).</div>
+                        <div class="attr">+ <code>close</code> — Closes the window and performs cleanup.</div>
+                        <div class="attr">+ <code>release</code> — Decrements reference count (manual memory management).</div>
+                        <div class="api-param"><strong>Properties Accessed:</strong></div>
+                        <div class="attr"><code>frame</code> (NSRect): Current position and size.</div>
+                        <div class="attr"><code>isVisible</code> (BOOL): Whether window is currently visible.</div>
+                        <div class="attr"><code>title</code> (NSString*): Current title.</div>
+                        <div class="api-param"><strong>Variables:</strong> <code>nsWindowHandle</code> (void* storing NSWindow* pointer), <code>width</code>, <code>height</code>, <code>fullScreenFlag</code>, <code>closedFlag</code></div>
+                        <div class="api-param"><strong>Constants Used:</strong>
+                            <ul style="margin-top: 0.3rem; font-size: 0.8em; color: var(--text-muted);">
+                                <li><code>NSWindowStyleMaskTitled</code> — Window has a title bar</li>
+                                <li><code>NSWindowStyleMaskClosable</code> — Has close button (red)</li>
+                                <li><code>NSWindowStyleMaskMiniaturizable</code> — Can minimize to dock</li>
+                                <li><code>NSWindowStyleMaskResizable</code> — Has resize handles</li>
+                                <li><code>NSBackingStoreBuffered</code> — Buffered backing store</li>
+                                <li><code>NSWindowCollectionBehaviorFullScreenPrimary</code> — Window can enter full-screen</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="class-box">
+                    <div class="class-header"><span style="color: var(--red);">●</span> NSView (FramebufferView)</div>
+                    <div class="class-body">
+                        <div class="api-desc"><strong>Purpose:</strong> Base class for custom drawing. A subclass will be created to draw the framebuffer to the screen.</div>
+                        <div class="api-param"><strong>Key Method to Override:</strong></div>
+                        <div class="attr">+ <code>drawRect:(NSRect)dirtyRect</code> — Called by the system when the view needs redrawing. In our subclass, this method will:
+                            <ul style="margin-top: 0.3rem; font-size: 0.8em; color: var(--text-muted);">
+                                <li>Create a CGImage from the framebuffer's raw pixel data</li>
+                                <li>Obtain the current CGContext via <code>UIGraphicsGetCurrentContext()</code> or <code>[NSGraphicsContext currentContext]</code></li>
+                                <li>Draw the image into the context with <code>CGContextDrawImage(context, rect, image)</code></li>
+                            </ul>
+                        </div>
+                        <div class="api-param"><strong>Constructor/Properties:</strong>
+                            <ul style="margin-top: 0.3rem; font-size: 0.8em; color: var(--text-muted);">
+                                <li><code>initWithFrame:</code> — Initialize view with a frame rectangle</li>
+                                <li><code>setAutoresizingMask:</code> — Set how the view resizes with its parent (NSViewWidthSizable | NSViewHeightSizable = stretch)</li>
+                            </ul>
+                        </div>
+                        <div class="api-param"><strong>Variables:</strong> <code>framebufferPtr</code> (reference to our Framebuffer object for pixel data)</div>
+                    </div>
+                </div>
+
+                <div class="class-box">
+                    <div class="class-header"><span style="color: var(--red);">●</span> NSEvent</div>
+                    <div class="class-body">
+                        <div class="api-desc"><strong>Purpose:</strong> Represents a single input event (mouse, keyboard, etc.) from the OS.</div>
+                        <div class="api-param"><strong>Properties Accessed:</strong></div>
+                        <div class="attr"><code>type</code> (NSEventType): The event type.
+                            <ul style="margin-top: 0.3rem; font-size: 0.8em; color: var(--text-muted);">
+                                <li><code>NSLeftMouseDown</code> / <code>NSLeftMouseUp</code> — Mouse button events</li>
+                                <li><code>NSLeftMouseDragged</code> — Mouse drag with left button</li>
+                                <li><code>NSMouseMoved</code> — Mouse movement (no button)</li>
+                                <li><code>NSKeyDown</code> / <code>NSKeyUp</code> — Keyboard events</li>
+                                <li><code>NSScrollWheel</code> — Mouse wheel events</li>
+                            </ul>
+                        </div>
+                        <div class="attr"><code>locationInWindow</code> (NSPoint): Mouse position as a point with x,y coordinates.</div>
+                        <div class="attr"><code>keyCode</code> (unsigned short): Hardware scan code of the key pressed.</div>
+                        <div class="attr"><code>characters</code> (NSString*): Unicode string of the key pressed.</div>
+                        <div class="attr"><code>modifierFlags</code> (NSEventModifierFlags): Modifier keys (Command, Shift, etc.)</div>
+                        <div class="api-param"><strong>Variables:</strong> <code>mouseX</code>, <code>mouseY</code>, <code>leftMousePressed</code>, <code>lastKeyDown</code>, <code>wheelDeltaY</code></div>
+                    </div>
+                </div>
+
+                <div class="class-box">
+                    <div class="class-header"><span style="color: var(--red);">●</span> NSBitmapImageRep / CGImage / CGContext</div>
+                    <div class="class-body">
+                        <div class="api-desc"><strong>Purpose:</strong> Core Graphics classes for creating and manipulating pixel data.</div>
+                        <div class="api-param"><strong>NSBitmapImageRep:</strong> Stores raw pixel data. Initialized with:
+                            <ul style="margin-top: 0.3rem; font-size: 0.8em; color: var(--text-muted);">
+                                <li><code>bitmapFormat</code>: NSBitmapFormat (NSBitmapFormatAlphaFirst or NSBitmapFormatAlphaNonpremultiplied)</li>
+                                <li><code>bytesPerRow</code>: Stride (typically width * 4 bytes for RGBA)</li>
+                                <li><code>bitsPerPixel</code>: 32 (8 bits per channel)</li>
+                                <li><code>representation</code>: Pointer to pixel data</li>
+                            </ul>
+                        </div>
+                        <div class="api-param"><strong>CGImage:</strong> Created via <code>CGBitmapImageCreate(data, width, height, bitsPerComponent, bytesPerRow, colorSpace, bitmapInfo, provider, NULL, NO, kCGRenderingIntentDefault)</code>
+                            <ul style="margin-top: 0.3rem; font-size: 0.8em; color: var(--text-muted);">
+                                <li><code>data</code>: Raw RGBA pixel buffer</li>
+                                <li><code>bitsPerComponent</code>: 8</li>
+                                <li><code>colorSpace</code>: <code>CGColorSpaceCreateDeviceRGB()</code></li>
+                                <li><code>bitmapInfo</code>: <code>kCGImageAlphaPremultipliedLast | kCGBitmapByteOrder32Big</code></li>
+                            </ul>
+                        </div>
+                        <div class="api-param"><strong>CGContext:</strong> Obtained via <code>[NSGraphicsContext currentContext]</code>, then <code>CGContextDrawImage(context, rect, image)</code> to draw.</div>
+                    </div>
+                </div>
+
+                <div class="class-box">
+                    <div class="class-header"><span style="color: var(--red);">●</span> AppDelegate (Custom)</div>
+                    <div class="class-body">
+                        <div class="api-desc"><strong>Purpose:</strong> Custom NSObject implementing <code>NSApplicationDelegate</code> to handle app lifecycle events.</div>
+                        <div class="api-param"><strong>Key Methods Implemented:</strong></div>
+                        <div class="attr">+ <code>applicationShouldTerminateAfterLastWindowClosed:</code> — Returns NO to prevent app from quitting when last window closes (we manage shutdown manually).</div>
+                        <div class="api-param"><strong>Variables:</strong> None needed — serves as lifecycle handler only.</div>
+                    </div>
+                </div>
+            </div>
+
+            <h3>Coordinate Systems</h3>
+            <div class="api-ref">
+                <div class="api-name">Screen Coordinates vs. Framebuffer Coordinates</div>
+                <div class="api-desc">macOS uses a bottom-left origin for screen coordinates, while our framebuffer uses top-left origin. The Y coordinate must be flipped when converting mouse events from NSEvent to framebuffer coordinates:</div>
+                <pre><span class="comment">// NSEvent gives locationInWindow (bottom-left origin)
+// Our framebuffer uses (top-left origin)</span>
+NSPoint nsPoint = [event locationInWindow];
+<span class="type">int</span> framebufferX = (<span class="type">int</span>)nsPoint.x;
+<span class="type">int</span> framebufferY = windowHeight - (<span class="type">int</span>)nsPoint.y;  <span class="comment">// Flip Y</span></pre>
+            </div>
+
+            <h3>Memory Management</h3>
+            <div class="api-ref">
+                <div class="api-name">Manual Reference Counting (MRC)</div>
+                <div class="api-desc">The engine's OSX code uses MRC (no ARC). Objects must be balanced with <code>alloc</code>/<code>release</code> calls. Each <code>[[Class alloc] init]</code> must be paired with <code>[object release]</code> when done. <code>autorelease</code> is used for temporary objects returned from functions.</div>
+            </div>
+
+            <h3>Existing Engine Patterns (Learning Reference)</h3>
+            <p style="margin-top: 1rem;">The existing engine's OSXWindow.mm provides the following patterns that we will adapt:</p>
+            <pre><span class="comment">// Pattern 1: Store NSWindow as void* in C++ class</span>
+OSXWindow::OSXWindow() : nsWindow(nullptr), width(0), height(0) {}
+
+<span class="comment">// Pattern 2: Create NSWindow in C++ method (Objective-C++ file)</span>
+NSRect frame = NSMakeRect(100, 100, width, height);
+NSUInteger styleMask = NSWindowStyleMaskTitled | NSWindowStyleMaskClosable | NSWindowStyleMaskMiniaturizable;
+NSWindow *window = [[NSWindow alloc] initWithContentRect:frame
+                                              styleMask:styleMask
+                                                backing:NSBackingStoreBuffered
+                                                  defer:NO];
+
+<span class="comment">// Pattern 3: Cast void* back to NSWindow* when needed</span>
+auto window = static_cast&lt;NSWindow*&gt;(nsWindow);
+[window setTitle:[NSString stringWithUTF8String:title.c_str()]];
+
+<span class="comment">// Pattern 4: Clean up in Close()</span>
+[window close];
+[window release];
+nsWindow = nullptr;</pre>
+
+            <!-- Original AppKit Reference (expanded below) -->
+            <h3>Additional AppKit Concepts Used</h3>
+
+            <div class="api-ref">
+                <div class="api-name">NSMakeRect() and NSRect</div>
+                <div class="api-desc">Creates an NSRect (rectangle with origin x,y and size width,height). Used for window frame specification. Parameters:
+                    <ul style="margin-top: 0.3rem; font-size: 0.8em; color: var(--text-muted);">
+                        <li><code>x</code>: X origin (left)</li>
+                        <li><code>y</code>: Y origin (bottom-left in macOS screen coords)</li>
+                        <li><code>width</code>: Rectangle width in pixels</li>
+                        <li><code>height</code>: Rectangle height in pixels</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="api-ref">
+                <div class="api-name">NSString stringWithUTF8String:</div>
+                <div class="api-desc">Creates an NSString from a C string (const char*). Used to bridge HString/c_str() to NSString for setTitle: calls. The created NSString is autoreleased.</div>
+            </div>
+
+            <div class="api-ref">
+                <div class="api-name">NSRunLoop and NSDefaultRunLoopMode</div>
+                <div class="api-desc">The run loop mode for processing non-urgent events. Used in the event polling loop to prevent blocking.</div>
+            </div>
+
+            <div class="api-ref">
+                <div class="api-name">NSView Autoresizing Mask</div>
+                <div class="api-desc">Bitmask constants controlling how a view resizes with its parent:
+                    <ul style="margin-top: 0.3rem; font-size: 0.8em; color: var(--text-muted);">
+                        <li><code>NSViewWidthSizable</code> (1 << 2): Width stretches with parent</li>
+                        <li><code>NSViewHeightSizable</code> (1 << 3): Height stretches with parent</li>
+                        <li>Combined: view fills its parent's bounds</li>
+                    </ul>
+                </div>
+            </div>
+
+            <h3>Key AppKit Classes Summary Table</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>API</th>
+                        <th>Type</th>
+                        <th>Usage in MacOSApp</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>NSApplication</code></td>
+                        <td>Singleton</td>
+                        <td>Manages the app event loop, delegates, activation policy. Accessed via <code>[NSApplication sharedApplication]</code>.</td>
+                    </tr>
+                    <tr>
+                        <td><code>NSWindow</code></td>
+                        <td>Class</td>
+                        <td>Primary window container. Created with <code>setStyleMask:</code>, <code>backing:</code>, <code>defer:</code>. Supports <code>toggleFullScreen:</code> for full-screen switching.</td>
+                    </tr>
+                    <tr>
+                        <td><code>NSView</code></td>
+                        <td>Class</td>
+                        <td>Content view of the window. A custom subclass (<code>FramebufferView</code>) will override <code>drawRect:</code> to blit the framebuffer pixels.</td>
+                    </tr>
+                    <tr>
+                        <td><code>NSEvent</code></td>
+                        <td>Class</td>
+                        <td>Event objects for mouse clicks, scrolls, keyboard input. Polled via <code>nextEventMatchingMask:untilDate:inMode:dequeue:</code>.</td>
+                    </tr>
+                    <tr>
+                        <td><code>NSBitmapImageRep</code></td>
+                        <td>Class</td>
+                        <td>Holds the raw pixel data from our <code>Framebuffer</code>. Used to create <code>CGImage</code> for display.</td>
+                    </tr>
+                    <tr>
+                        <td><code>CGImageCreate</code></td>
+                        <td>C API</td>
+                        <td>Wraps the raw pixel buffer into a Core Graphics image for <code>NSImage</code> / <code>NSView</code> drawing.</td>
+                    </tr>
+                    <tr>
+                        <td><code>NSApplicationDelegate</code></td>
+                        <td>Protocol</td>
+                        <td>Delegates for handling <code>applicationDidFinishLaunching:</code> and <code>applicationShouldTerminateAfterLastWindowClosed:</code>.</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>Critical API Calls</h3>
+            <div class="api-ref">
+                <div class="api-name">NSWindowStyleMask</div>
+                <div class="api-desc">Window style flags used to configure the window appearance:</div>
+                <pre><span class="str">NSWindowStyleMaskTitled</span>     | Window title bar
+<span class="str">NSWindowStyleMaskClosable</span>   | Has close button (red traffic light)
+<span class="str">NSWindowStyleMaskMiniaturizable</span> | Can minimize
+<span class="str">NSWindowStyleMaskResizable</span>   | Resizable edges
+<span class="str">NSWindowStyleMaskFullScreen</span>  | Full-screen mode</pre>
+            </div>
+
+            <div class="api-ref">
+                <div class="api-name">-[NSWindow toggleFullScreen:]</div>
+                <div class="api-desc">Toggles the window between normal and full-screen mode. Requires:</div>
+                <ul style="margin: 0.5rem 0; color: var(--text-muted); font-size: 0.85rem;">
+                    <li>The window must have been added to the application's window list</li>
+                    <li>Either <code>NSWindowStyleMaskFullScreen</code> style or the <code>collectionBehavior</code> set to <code>NSWindowCollectionBehaviorFullScreenPrimary</code></li>
+                </ul>
+            </div>
+
+            <div class="api-ref">
+                <div class="api-name">-[NSWindow setCollectionBehavior:]</div>
+                <div class="api-desc">Sets the window's collection behavior, e.g., <code>NSWindowCollectionBehaviorFullScreenPrimary</code> to enable full-screen support.</div>
+            </div>
+
+            <div class="api-ref">
+                <div class="api-name">-[NSView drawRect:]</div>
+                <div class="api-desc">Called by the system when the view needs redrawing. We will draw the framebuffer contents here using <code>CGContextDrawImage</code>.</div>
+            </div>
+
+            <p>
+                This section documents the specific macOS APIs that will be used, drawn from the existing
+                HardBop Engine's <code>OSXWindow.mm</code> and <code>OSXApplication.mm</code> implementations,
+                plus new APIs required for full-screen support and event handling.
+            </p>
+
+            <h3>Key AppKit Classes</h3>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>API</th>
+                        <th>Type</th>
+                        <th>Usage in MacOSApp</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>NSApplication</code></td>
+                        <td>Singleton</td>
+                        <td>Manages the app event loop, delegates, activation policy. Accessed via <code>[NSApplication sharedApplication]</code>.</td>
+                    </tr>
+                    <tr>
+                        <td><code>NSWindow</code></td>
+                        <td>Class</td>
+                        <td>Primary window container. Created with <code>setStyleMask:</code>, <code>backing:</code>, <code>defer:</code>. Supports <code>toggleFullScreen:</code> for full-screen switching.</td>
+                    </tr>
+                    <tr>
+                        <td><code>NSView</code></td>
+                        <td>Class</td>
+                        <td>Content view of the window. A custom subclass (<code>FramebufferView</code>) will override <code>drawRect:</code> to blit the framebuffer pixels.</td>
+                    </tr>
+                    <tr>
+                        <td><code>NSEvent</code></td>
+                        <td>Class</td>
+                        <td>Event objects for mouse clicks, scrolls, keyboard input. Polled via <code>nextEventMatchingMask:untilDate:inMode:dequeue:</code>.</td>
+                    </tr>
+                    <tr>
+                        <td><code>NSBitmapImageRep</code></td>
+                        <td>Class</td>
+                        <td>Holds the raw pixel data from our <code>Framebuffer</code>. Used to create <code>CGImage</code> for display.</td>
+                    </tr>
+                    <tr>
+                        <td><code>CGImageCreate</code></td>
+                        <td>C API</td>
+                        <td>Wraps the raw pixel buffer into a Core Graphics image for <code>NSImage</code> / <code>NSView</code> drawing.</td>
+                    </tr>
+                    <tr>
+                        <td><code>NSApplicationDelegate</code></td>
+                        <td>Protocol</td>
+                        <td>Delegates for handling <code>applicationDidFinishLaunching:</code> and <code>applicationShouldTerminateAfterLastWindowClosed:</code>.</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>Critical API Calls</h3>
+
+            <div class="api-ref">
+                <div class="api-name">NSWindowStyleMask</div>
+                <div class="api-desc">Window style flags used to configure the window appearance:</div>
+                <pre><span class="str">NSWindowStyleMaskTitled</span>     | Window title bar
+<span class="str">NSWindowStyleMaskClosable</span>   | Has close button (red traffic light)
+<span class="str">NSWindowStyleMaskMiniaturizable</span> | Can minimize
+<span class="str">NSWindowStyleMaskResizable</span>   | Resizable edges
+<span class="str">NSWindowStyleMaskFullScreen</span>  | Full-screen mode</pre>
+            </div>
+
+            <div class="api-ref">
+                <div class="api-name">-[NSWindow toggleFullScreen:]</div>
+                <div class="api-desc">Toggles the window between normal and full-screen mode. Requires:</div>
+                <ul style="margin: 0.5rem 0; color: var(--text-muted); font-size: 0.85rem;">
+                    <li>The window must have been added to the application's window list</li>
+                    <li>Either <code>NSWindowStyleMaskFullScreen</code> style or the <code>collectionBehavior</code> set to <code>NSWindowCollectionBehaviorFullScreenPrimary</code></li>
+                </ul>
+            </div>
+
+            <div class="api-ref">
+                <div class="api-name">-[NSWindow setCollectionBehavior:]</div>
+                <div class="api-desc">Sets the window's collection behavior, e.g., <code>NSWindowCollectionBehaviorFullScreenPrimary</code> to enable full-screen support.</div>
+            </div>
+
+            <div class="api-ref">
+                <div class="api-name">-[NSView drawRect:]</div>
+                <div class="api-desc">Called by the system when the view needs redrawing. We will draw the framebuffer contents here using <code>CGContextDrawImage</code>.</div>
+            </div>
+
+            <h3>Event Handling APIs</h3>
+            <div class="api-ref">
+                <div class="api-name">NSEventType /NSEventModifierFlags</div>
+                <div class="api-desc">Event types (<code>NSLeftMouseDown</code>, <code>NSLeftMouseUp</code>, <code>NSMouseMoved</code>, <code>NSLeftMouseDragged</code>, <code>NSKeyDown</code>) and modifier flags (<code>NSCommandKeyMask</code>, <code>NSAlphaShiftKeyMask</code>) for interpreting input events.</div>
+            </div>
+
+            <div class="api-ref">
+                <div class="api-name">-[NSEvent keyCode] / characters]</div>
+                <div class="api-param">Used to detect specific key presses: F11 = keycode 111, Escape = keycode 53.</div>
+            </div>
+        </section>
+
+        <!-- 3. UI Components -->
+        <section id="ui-components">
+            <h2>3. UI Component Design</h2>
+
+            <p>
+                All UI components inherit from a common <code>UIComponent</code> base class and are rendered
+                onto the software framebuffer. Each component handles its own drawing and input hit-testing.
+            </p>
+
+            <h3>UIComponent Base Class</h3>
+            <div class="class-diagram">
+                <div class="class-box">
+                    <div class="class-header">
+                        <span class="visibility">+</span> UIComponent (abstract base)
+                    </div>
+                    <div class="class-body">
+                        <div class="attr">protected: int x, y, width, height</div>
+                        <div class="attr">protected: bool visibleFlag</div>
+                        <div class="attr">protected: bool hoveredFlag</div>
+                        <div class="method">+ [[nodiscard]] bool Contains(int px, int py) const noexcept</div>
+                        <div class="method">+ [[nodiscard]] bool IsHovered() const noexcept</div>
+                        <div class="method">+ void SetPosition(int x, int y) noexcept</div>
+                        <div class="method">+ void SetSize(int w, int h) noexcept</div>
+                        <div class="method">+ void SetVisible(bool v) noexcept</div>
+                        <div class="method">+ virtual void OnUpdate(const InputState&amp;) = 0</div>
+                        <div class="method">+ virtual void Draw(class Framebuffer&amp;) = 0</div>
+                    </div>
+                </div>
+            </div>
+
+            <h3>TextPanel Component</h3>
+            <p><strong>Purpose:</strong> Renders multi-line text with a scrollbar. Content is drawn onto the framebuffer using the bitmap font.</p>
+
+            <div class="class-diagram">
+                <div class="class-box">
+                    <div class="class-header">
+                        <span class="visibility">+</span> TextPanel : UIComponent
+                    </div>
+                    <div class="class-body">
+                        <div class="attr">private: std::vector&lt;std::string&gt; lines</div>
+                        <div class="attr">private: int scrollOffset</div>
+                        <div class="attr">private: int fontSize (fixed 8x12 px)</div>
+                        <div class="attr">private: ScrollBar* linkedScrollBar</div>
+                        <div class="method">+ void SetText(const std::string&amp;) noexcept</div>
+                        <div class="method">+ void SetScrollBar(ScrollBar*&amp;) noexcept</div>
+                        <div class="method">+ void ScrollBy(int delta) noexcept</div>
+                        <div class="method">+ [[nodiscard]] int GetVisibleLineCount() const noexcept</div>
+                        <div class="method">+ [[nodiscard]] int GetTotalLines() const noexcept</div>
+                        <div class="method">+ OnUpdate(const InputState&amp;) override</div>
+                        <div class="method">+ Draw(Framebuffer&amp;) override</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="inheritance-line">
+                TextPanel ──uses──→ ScrollBar (scroll synchronization via observer/callback)
+            </div>
+
+            <h4>TextPanel Layout</h4>
+            <pre>┌──────────────────────────────────────┐  ← Panel top (y = panelY)
+│ Line 1 text content rendered         │  ← Font: 8x12 px per character
+│ Line 2 text content rendered         │  ← Each line: 12 px height
+│ Line 3 text content rendered         │
+│ ...                                  │
+│ Line N text content rendered         │  ← Bottom visible line
+└──────────────────────────────────────┘
+ ↓ ScrollBar on the right edge (width: 16px)</pre>
+
+            <h4>Text Rendering Details</h4>
+            <ul class="tight">
+                <li><strong>Font:</strong> Custom 8×12 bitmap font (each character is 8px wide, 12px tall), stored as a <code>BitmapFont</code> class with a lookup table of 96 ASCII characters (32-127).</li>
+                <li><strong>Character spacing:</strong> 1px between characters, 2px left/right padding inside panel.</li>
+                <li><strong>Line height:</strong> 14px (12px font + 2px gap).</li>
+                <li><strong>Cursor:</strong> Text starts at (panelX + 4, panelY + 4) relative to the panel's top-left corner.</li>
+                <li><strong>Clipping:</strong> Only characters within the panel bounds are rendered; scroll offset determines which lines are visible.</li>
+            </ul>
+
+            <h3>ScrollBar Component</h3>
+            <p><strong>Purpose:</strong> Vertical scrollbar with draggable thumb, track-click page scrolling, and value-range synchronization.</p>
+
+            <div class="class-diagram">
+                <div class="class-box">
+                    <div class="class-header">
+                        <span class="visibility">+</span> ScrollBar : UIComponent
+                    </div>
+                    <div class="class-body">
+                        <div class="attr">private: float minValue, maxValue</div>
+                        <div class="attr">private: float currentValue</div>
+                        <div class="attr">private: float pageSize</div>
+                        <div class="attr">private: bool draggingThumb</div>
+                        <div class="attr">private: int thumbDragStartY</div>
+                        <div class="method">+ void SetRange(float min, float max) noexcept</div>
+                        <div class="method">+ void SetPageSize(float size) noexcept</div>
+                        <div class="method">+ void SetValue(float val) noexcept</div>
+                        <div class="method">+ [[nodiscard]] float GetValue() const noexcept</div>
+                        <div class="method">+ void OnUpdate(const InputState&amp;) override</div>
+                        <div class="method">+ Draw(Framebuffer&amp;) override</div>
+                        <div class="method">+ std::function&lt;void(float)&gt; onValueChanged</div>
+                    </div>
+                </div>
+            </div>
+
+            <h4>ScrollBar Layout</h4>
+            <pre> ┌────────────────┐
+ │  ScrollBar     │  ← Total height: panelHeight
+ │  Track         │  ← Track height: panelHeight - 16px (padding)
+ │  ┌───────┐     │  ← Thumb: proportional to pageSize / (max-min)
+ │  │ Thumb │     │  ← Thumb position: proportional to currentValue
+ │  └───────┘     │  ← Track width: 16px
+ └────────────────┘</pre>
+
+            <h4>ScrollBar Behavior</h4>
+            <ul class="tight">
+                <li><strong>Thumb dragging:</strong> When the user clicks and drags the thumb, the scroll position updates proportionally. The thumb's position maps linearly from <code>minValue</code> to <code>maxValue</code>.</li>
+                <li><strong>Track click:</strong> Clicking above the thumb scrolls up by one page; clicking below scrolls down by one page. Page size = number of visible lines.</li>
+                <li><strong>Mouse wheel:</strong> Scrolling the mouse wheel over the scrollbar (or the text panel) adjusts the value by one line per tick.</li>
+                <li><strong>Callback:</strong> When the value changes, the <code>onValueChanged</code> callback notifies the linked TextPanel to update its scroll offset.</li>
+            </ul>
+
+            <h3>Button Component</h3>
+            <p><strong>Purpose:</strong> Clickable rectangular button with label text, hover feedback, and click callback. Used for "Close" and "Full Screen" buttons.</p>
+
+            <div class="class-diagram">
+                <div class="class-box">
+                    <div class="class-header">
+                        <span class="visibility">+</span> Button : UIComponent
+                    </div>
+                    <div class="class-body">
+                        <div class="attr">private: std::string label</div>
+                        <div class="attr">private: bool pressedFlag</div>
+                        <div class="method">+ void SetLabel(const std::string&amp;) noexcept</div>
+                        <div class="method">+ void OnUpdate(const InputState&amp;) override</div>
+                        <div class="method">+ Draw(Framebuffer&amp;) override</div>
+                        <div class="method">+ std::function&lt;void()&gt; onClicked</div>
+                    </div>
+                </div>
+            </div>
+
+            <h4>Button States</h4>
+            <table>
+                <thead>
+                    <tr>
+                        <th>State</th>
+                        <th>Background</th>
+                        <th>Label Color</th>
+                        <th>Border</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Normal</td>
+                        <td><code>#2d3139</code> (surface-2)</td>
+                        <td><code>#c9d1d9</code> (text)</td>
+                        <td><code>#30363d</code> (border)</td>
+                    </tr>
+                    <tr>
+                        <td>Hovered</td>
+                        <td><code>#2d3139</code> (surface-2)</td>
+                        <td><code>#ffffff</code> (white)</td>
+                        <td><code>#58a6ff</code> (accent)</td>
+                    </tr>
+                    <tr>
+                        <td>Pressed</td>
+                        <td><code>#1f2428</code> (code-bg)</td>
+                        <td><code>#ffffff</code> (white)</td>
+                        <td><code>#58a6ff</code> (accent, 2px)</td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <!-- 4. Class Design -->
+        <section id="class-design">
+            <h2>4. Class / Module Design</h2>
+
+            <h3>Module Overview</h3>
+            <pre>MacOSApp/
+├── [Core]          Framebuffer.cpp/h       (pixel buffer operations)
+├── [Platform]      Window.mm/h             (NSWindow wrapper)
+├── [Platform]      Application.mm/h        (NSApplication wrapper)
+├── [Platform]      BitmapFont.cpp/h        (8x12 pixel font)
+└── [UI]            UI/                     (UIComponent, TextPanel, ScrollBar, Button)</pre>
+
+            <h3>Class Diagram</h3>
+
+            <div class="class-diagram">
+                <div class="class-box">
+                    <div class="class-header"><span class="visibility">+</span> Framebuffer (final)</div>
+                    <div class="class-body">
+                        <div class="attr">private: uint32_t* data</div>
+                        <div class="attr">private: int width, height</div>
+                        <div class="method">+ Initialize(int w, int h) → bool</div>
+                        <div class="method">+ Clear(uint32_t) noexcept</div>
+                        <div class="method">+ SetPixel(int, int, uint32_t) noexcept</div>
+                        <div class="method">+ GetPixel(int, int) const → uint32_t noexcept</div>
+                        <div class="method">+ FillRect(int, int, int, int, uint32_t) noexcept</div>
+                        <div class="method">+ DrawLine(int, int, int, int, uint32_t) noexcept</div>
+                        <div class="method">+ DrawText(int, int, const HString&, uint32_t) noexcept</div>
+                        <div class="method">+ BitBlt(const Framebuffer*, int, int) noexcept</div>
+                        <div class="method">+ GetData() → uint32_t* noexcept</div>
+                        <div class="method">+ GetWidth/getHeight() → int noexcept</div>
+                    </div>
+                </div>
+
+                <div class="class-box">
+                    <div class="class-header"><span class="visibility">+</span> Window (final)</div>
+                    <div class="class-body">
+                        <div class="attr">private: void* nsWindowHandle</div>
+                        <div class="attr">private: Framebuffer* targetFramebuffer</div>
+                        <div class="attr">private: int width, height</div>
+                        <div class="attr">private: bool fullScreenFlag</div>
+                        <div class="attr">private: bool closedFlag</div>
+                        <div class="attr">private: int lastKeyPressed</div>
+                        <div class="method">static Create(title, w, h) → unique_ptr&lt;Window&gt;</div>
+                        <div class="method">+ PollEvents() noexcept</div>
+                        <div class="method">+ Present(const Framebuffer&amp;) noexcept</div>
+                        <div class="method">+ Close() noexcept</div>
+                        <div class="method">+ ToggleFullScreen() noexcept</div>
+                        <div class="method">+ SetSize(int, int) noexcept</div>
+                        <div class="method">+ SetTitle(const HString&amp;) noexcept</div>
+                        <div class="method">+ GetWidth/getHeight() → int const noexcept</div>
+                        <div class="method">+ IsClosed/IsFullScreen/IsVisible() → bool const noexcept</div>
+                        <div class="method">+ WasKeyPressed(int) → bool noexcept</div>
+                        <div class="method">+ GetMouseState() → MouseState const noexcept</div>
+                    </div>
+                </div>
+
+                <div class="class-box">
+                    <div class="class-header"><span class="visibility">+</span> Application (final)</div>
+                    <div class="class-body">
+                        <div class="attr">private: void* nsAppHandle</div>
+                        <div class="attr">private: bool initializedFlag</div>
+                        <div class="method">static Create(name) → unique_ptr&lt;Application&gt;</div>
+                        <div class="method">+ Initialize() noexcept</div>
+                        <div class="method">+ PollEvents() noexcept</div>
+                        <div class="method">+ ShutDown() noexcept</div>
+                        <div class="method">+ IsRunning() → bool const noexcept</div>
+                    </div>
+                </div>
+
+                <div class="class-box">
+                    <div class="class-header"><span class="visibility">+</span> BitmapFont (final)</div>
+                    <div class="class-body">
+                        <div class="attr">private: static const uint8_t fontData[96][12]</div>
+                        <div class="method">+ static GetChar(char, int& outW, int& outH) → const uint8_t*</div>
+                        <div class="method">+ DrawChar(Framebuffer&amp;, int, int, char, uint32_t) noexcept</div>
+                        <div class="method">+ DrawString(Framebuffer&amp;, int, int, const char*, uint32_t) noexcept</div>
+                    </div>
+                </div>
+
+                <div class="class-box">
+                    <div class="class-header"><span class="visibility">+</span> UIComponent (abstract)</div>
+                    <div class="class-body">
+                        <div class="attr">protected: int x, y, width, height</div>
+                        <div class="attr">protected: bool visible, hovered</div>
+                        <div class="method">+ Contains(int, int) → bool const noexcept</div>
+                        <div class="method">+ virtual OnUpdate(const InputState&amp;) = 0</div>
+                        <div class="method">+ virtual Draw(Framebuffer&amp;) = 0</div>
+                    </div>
+                </div>
+
+                <div class="class-box">
+                    <div class="class-header"><span class="visibility">+ ── inherits</span></div>
+                    <div class="class-body">
+                        <div>TextPanel : UIComponent</div>
+                        <div>ScrollBar : UIComponent</div>
+                        <div>Button : UIComponent</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="inheritance-line">
+                Main.cpp ──creates──→ Application → Window → Framebuffer → UI Components (TextPanel, ScrollBar, Button)
+            </div>
+
+            <h3>Relationship Matrix</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Class</th>
+                        <th>Uses</th>
+                        <th>Notifies</th>
+                        <th>Managed By</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Window</td>
+                        <td>Framebuffer (presents to screen)</td>
+                        <td>InputState (mouse/key info)</td>
+                        <td>Main</td>
+                    </tr>
+                    <tr>
+                        <td>TextPanel</td>
+                        <td>BitmapFont, ScrollBar</td>
+                        <td>ScrollBar (value change)</td>
+                        <td>Main</td>
+                    </tr>
+                    <tr>
+                        <td>ScrollBar</td>
+                        <td>InputState</td>
+                        <td>TextPanel (via callback)</td>
+                        <td>TextPanel</td>
+                    </tr>
+                    <tr>
+                        <td>Button</td>
+                        <td>BitmapFont, Framebuffer</td>
+                        <td>onClick callback (Main)</td>
+                        <td>Main</td>
+                    </tr>
+                    <tr>
+                        <td>Application</td>
+                        <td>Window (via event polling)</td>
+                        <td>None</td>
+                        <td>Main</td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <!-- 5. Use Cases -->
+        <section id="use-cases">
+            <h2>5. Use Case Design</h2>
+
+            <h3>Use Case Diagram (Textual)</h3>
+            <pre>
+                        ┌────────────┐
+                        │   User     │
+                        └──────┬─────┘
+                               │
+                    ┌─────────┼──────────┐
+                    │         │          │
+              Launch App  Toggle FS   Close App
+                    │         │          │
+              Create Win    F11 / Btn   Click
+                    │         │          │
+                    └─────────┼──────────┘
+                              │
+                        ┌─────┴─────┐
+                        │  TextPanel│
+                        │  +Scroll  │
+                        └───────────┘
+            </pre>
+
+            <h3>Use Case Table</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Actor</th>
+                        <th>Use Case</th>
+                        <th>Precondition</th>
+                        <th>Main Flow</th>
+                        <th>Postcondition</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>UC-01</td>
+                        <td>User</td>
+                        <td>Launch Application</td>
+                        <td>User runs the binary</td>
+                        <td>1. Application initializes NSApplication → 2. Creates Window (1024×768, windowed) → 3. Creates Framebuffer → 4. Creates UI components → 5. Enters main loop</td>
+                        <td>Window visible with TextPanel, ScrollBar, and two buttons</td>
+                    </tr>
+                    <tr>
+                        <td>UC-02</td>
+                        <td>User</td>
+                        <td>Toggle Full Screen (F11)</td>
+                        <td>Application running, window in windowed mode</td>
+                        <td>1. User presses F11 → 2. Application detects key press → 3. Window calls <code>toggleFullScreen:</code> → 4. System transitions to full-screen space → 5. Window fires resize event → 6. Framebuffer resized → 7. UI re-layouts for new dimensions</td>
+                        <td>Window in full-screen mode, UI adjusted</td>
+                    </tr>
+                    <tr>
+                        <td>UC-03</td>
+                        <td>User</td>
+                        <td>Toggle Full Screen (UI Button)</td>
+                        <td>Application running</td>
+                        <td>1. User clicks "Full Screen" button → 2. Button's onClick callback fires → 3. Window.ToggleFullScreen() → 4. Same as UC-02 steps 3-7</td>
+                        <td>Window in full-screen mode</td>
+                    </tr>
+                    <tr>
+                        <td>UC-04</td>
+                        <td>User</td>
+                        <td>Scroll Text (Drag Thumb)</td>
+                        <td>TextPanel with content exceeding visible area</td>
+                        <td>1. User clicks on scrollbar thumb → 2. ScrollBar begins drag → 3. User drags thumb vertically → 4. ScrollBar updates currentValue → 5. onValueChanged callback fires → 6. TextPanel updates scrollOffset → 7. TextPanel redraws with new offset</td>
+                        <td>Text scrolled to new position</td>
+                    </tr>
+                    <tr>
+                        <td>UC-05</td>
+                        <td>User</td>
+                        <td>Scroll Text (Track Click)</td>
+                        <td>Scrollbar visible</td>
+                        <td>1. User clicks above/below thumb on track → 2. ScrollBar scrolls by pageSize → 3. Callback fires → 4. TextPanel redraws</td>
+                        <td>Text scrolled by one page</td>
+                    </tr>
+                    <tr>
+                        <td>UC-06</td>
+                        <td>User</td>
+                        <td>Close Application (UI Button)</td>
+                        <td>Application running</td>
+                        <td>1. User clicks "✕ Close" button → 2. Button's onClick callback fires → 3. Callback sets appShouldExit = true → 4. Main loop detects flag → 5. Window.Close() → 6. Application.ShutDown() → 7. Process exits with code 0</td>
+                        <td>Application terminates cleanly</td>
+                    </tr>
+                    <tr>
+                        <td>UC-07</td>
+                        <td>User</td>
+                        <td>Close Application (Window Close)</td>
+                        <td>Application running</td>
+                        <td>1. User clicks red traffic light button → 2. NSWindow sends close event → 3. Window's PollEvents detects IsClosed → 4. Main loop exits → 5. Clean shutdown</td>
+                        <td>Application terminates cleanly</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>Sequence: Full-Screen Toggle via F11</h3>
+            <div class="sequence-diagram">
+<span class="seq-lifeline">User</span>
+<span class="seq-lifeline">Main</span>
+<span class="seq-lifeline">Application</span>
+<span class="seq-lifeline">Window</span>
+<span class="seq-lifeline">Framebuffer</span>
+
+<span class="comment">1. User presses F11</span>
+<div class="seq-step">KeyEvent(F11, pressed=true) ← NSEvent polling</div>
+<div class="seq-step">Application.PollEvents() → forwards to Window</div>
+<div class="seq-step">Window: lastKeyPressed = F11_KEYCODE</div>
+
+<span class="comment">2. Main loop detects key</span>
+<div class="seq-step">Window.WasKeyPressed(F11_KEYCODE) → true</div>
+<div class="seq-step">Window.ToggleFullScreen() → calls [NSWindow toggleFullScreen:nil]</div>
+<div class="seq-step">NSWindow fires NSWindowDidEnterFullScreenNotification</div>
+<div class="seq-step">Window.PollEvents() → detects size change → GetWidth/GetHeight updated</div>
+
+<span class="comment">3. Re-layout UI for new dimensions</span>
+<div class="seq-step">Main: framebuffer.Resize(newWidth, newHeight)</div>
+<div class="seq-step">Main: textPanel.SetSize(newW, newH)</div>
+<div class="seq-step">Main: scrollbar.SetSize(newH)</div>
+<div class="seq-step">Window.Present(framebuffer) → draws updated UI</div>
+            </div>
+
+            <h3>Sequence: Close Button Click</h3>
+            <div class="sequence-diagram">
+<span class="seq-lifeline">User</span>
+<span class="seq-lifeline">Main</span>
+<span class="seq-lifeline">Button</span>
+<span class="seq-lifeline">Window</span>
+
+<span class="comment">1. User clicks Close button</span>
+<div class="seq-step">MouseEvent(x, y, left, pressed) ← NSEvent polling</div>
+<div class="seq-step">Button.OnUpdate(inputState):</div>
+<div class="seq-step">  → Contains(x, y) → true</div>
+<div class="seq-step">  → pressed == true → onClicked callback fires</div>
+
+<span class="comment">2. Callback sets exit flag</span>
+<div class="seq-step">onClicked: *exitFlag = true</div>
+
+<span class="comment">3. Main loop detects exit</span>
+<div class="seq-step">while (!exitFlag) → false → breaks loop</div>
+<div class="seq-step">Window.Close() → [NSWindow close]</div>
+<div class="seq-step">Application.ShutDown() → process exits</div>
+            </div>
+
+            <h3>Sequence: Text Scrolling</h3>
+            <div class="sequence-diagram">
+<span class="seq-lifeline">User</span>
+<span class="seq-lifeline">Main</span>
+<span class="seq-lifeline">ScrollBar</span>
+<span class="seq-lifeline">TextPanel</span>
+
+<span class="comment">1. User drags scrollbar thumb</span>
+<div class="seq-step">MouseEvent(x, y, left, pressed) ← polling</div>
+<div class="seq-step">ScrollBar.OnUpdate:</div>
+<div class="seq-step">  → Contains(x, y) → true → draggingThumb = true</div>
+<div class="seq-step">  → Mouse dragged → currentValue = map(y to scroll range)</div>
+<div class="seq-step">  → onValueChanged(currentValue) fires</div>
+
+<span class="comment">2. TextPanel updates</span>
+<div class="seq-step">TextPanel.onScrollChanged(scrollValue):</div>
+<div class="seq-step">  → scrollOffset = (int)scrollValue</div>
+<div class="seq-step">  → Draw(framebuffer): renders lines at new offset</div>
+            </div>
+        </section>
+
+        <!-- 6. Data Flow -->
+        <section id="data-flows">
+            <h2>6. Data Flow Architecture</h2>
+
+            <h3>Framebuffer Pipeline</h3>
+            <pre>
+┌──────────────────────────────────────────────────────────────┐
+│                    FRAMEBUFFER PIPELINE                       │
+├──────────────────────────────────────────────────────────────┤
+│                                                              │
+│   [Clear]  →  Clear entire buffer to bg color               │
+│      │                                                        │
+│   [UI Draw]  →  TextPanel.Draw() → writes text pixels        │
+│      │  →  ScrollBar.Draw() → writes thumb/track pixels      │
+│      │  →  Button.Draw() → writes label + border pixels     │
+│      │                                                        │
+│   [Present]  →  Copy raw RGBA buffer to NSView's CGImage     │
+│      │  →  [NSView setNeedsDisplay] → triggers drawRect:      │
+│      │  →  CGContextDrawImage(framebufferCGImage)           │
+│      │                                                        │
+└──────────────────────────────────────────────────────────────┘</pre>
+
+            <h3>Input Event Pipeline</h3>
+            <pre>
+┌──────────────────────────────────────────────────────────────┐
+│                    INPUT EVENT PIPELINE                      │
+├──────────────────────────────────────────────────────────────┤
+│                                                              │
+│   [Cocoa]  →  [NSEvent nextEventMatchingMask]                │
+│      │                                                        │
+│   [Application.PollEvents()]  →  dispatches NSEvent          │
+│      │                                                        │
+│   [Window.PollEvents()]  →  interprets NSEvent              │
+│      │  →  NSMouseMoved → MouseState.mouseX/mouseY          │
+│      │  →  NSLeftMouseDown → MouseState.leftPressed         │
+│      │  →  NSKeyDown → lastKeyPressed (F11=111, Esc=53)     │
+│      │                                                        │
+│   [Main Loop]  →  Window.GetMouseState()                     │
+│      │                                                        │
+│   [UI Update]  →  Button.OnUpdate(input) → hit-test         │
+│      │  →  ScrollBar.OnUpdate(input) → hit-test + drag      │
+│      │  →  TextPanel.OnUpdate(input) → wheel scroll         │
+│      │                                                        │
+└──────────────────────────────────────────────────────────────┘</pre>
+
+            <h3>Key Code Mappings</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Key</th>
+                        <th>HID Usage Code / KeyCode</th>
+                        <th>Constant Name</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>F11</td>
+                        <td>111</td>
+                        <td>Reserved for fullscreen toggle</td>
+                    </tr>
+                    <tr>
+                        <td>Escape</td>
+                        <td>53</td>
+                        <td>Exit fullscreen (when in fullscreen)</td>
+                    </tr>
+                    <tr>
+                        <td>Left Arrow</td>
+                        <td>123</td>
+                        <td>Scrollbar page-left (optional)</td>
+                    </tr>
+                    <tr>
+                        <td>Right Arrow</td>
+                        <td>124</td>
+                        <td>Scrollbar page-right (optional)</td>
+                    </tr>
+                    <tr>
+                        <td>Up Arrow</td>
+                        <td>126</td>
+                        <td>Scrollbar scroll up</td>
+                    </tr>
+                    <tr>
+                        <td>Down Arrow</td>
+                        <td>125</td>
+                        <td>Scrollbar scroll down</td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <!-- 7. Build System -->
+        <section id="build">
+            <h2>7. Build System</h2>
+
+            <h3>CMakeLists.txt</h3>
+            <pre><span class="kw">cmake_minimum_required</span>(VERSION 3.12)
+<span class="kw">project</span>(MacOSApp)
+
+<span class="kw">set</span>(CMAKE_CXX_STANDARD 23)
+<span class="kw">set</span>(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+<span class="comment"># Build configurations</span>
+<span class="kw">set</span>(CMAKE_CONFIGURATION_TYPES <span class="str">"Debug;Dev;Release"</span> CACHE STRING <span class="str">""</span> FORCE)
+<span class="kw">if</span> (NOT CMAKE_BUILD_TYPE)
+    <span class="kw">set</span>(CMAKE_BUILD_TYPE <span class="str">"Release"</span> CACHE STRING <span class="str">"Build type"</span> FORCE)
+<span class="kw">endif</span>()
+
+<span class="comment"># Compiler flags</span>
+<span class="kw">set</span>(CMAKE_CXX_FLAGS_DEBUG <span class="str">"-g -O0"</span>)
+<span class="kw">set</span>(CMAKE_CXX_FLAGS_DEV <span class="str">"-O1"</span>)
+<span class="kw">set</span>(CMAKE_CXX_FLAGS_RELEASE <span class="str">"-O3"</span>)
+
+<span class="comment"># Treat warnings as errors</span>
+<span class="kw">add_compile_options</span>(-Wall -Werror)
+
+<span class="comment"># Find macOS frameworks</span>
+<span class="kw">find_library</span>(COCOA_LIBRARY Cocoa)
+<span class="kw">find_library</span>(FOUNDATION_LIBRARY Foundation)
+
+<span class="comment"># Source files</span>
+<span class="kw">add_executable</span>(MacOSApp
+    Source/Main.cpp
+    Source/Framebuffer.cpp
+    Source/BitmapFont.cpp
+    Source/Window.mm
+    Source/Application.mm
+    Source/UI/TextPanel.cpp
+    Source/UI/ScrollBar.cpp
+    Source/UI/Button.cpp
+)
+
+<span class="kw">target_link_libraries</span>(MacOSApp
+    ${COCOA_LIBRARY}
+    ${FOUNDATION_LIBRARY}
+)
+
+<span class="comment"># Include paths</span>
+<span class="kw">target_include_directories</span>(MacOSApp PRIVATE
+    ${CMAKE_SOURCE_DIR}
+    Include
+    Engine
+    Engine/OSAL
+    Engine/Config
+    Engine/HSTL
+)</pre>
+
+            <h3>Build Commands</h3>
+            <pre><span class="comment"># Configure (from project root)</span>
+cmake --fresh -B build -G <span class="str">"Ninja Multi-Config"</span> -S .
+
+<span class="comment"># Build</span>
+cmake --build build --config Debug
+cmake --build build --config Release
+
+<span class="comment"># Run</span>
+./build/MacOSApp</pre>
+
+            <div class="stat-box">
+                <div class="stat">
+                    <div class="value">3</div>
+                    <div class="label">Build Configurations</div>
+                </div>
+                <div class="stat">
+                    <div class="value">8</div>
+                    <div class="label">Source Files</div>
+                </div>
+                <div class="stat">
+                    <div class="value">5</div>
+                    <div class="label">Classes</div>
+                </div>
+                <div class="stat">
+                    <div class="value">4</div>
+                    <div class="label">UI Components</div>
+                </div>
+                <div class="stat">
+                    <div class="value">7</div>
+                    <div class="label">Use Cases</div>
+                </div>
+                <div class="stat">
+                    <div class="value">10</div>
+                    <div class="label">Test Cases</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 8. File Structure -->
+        <section id="file-structure">
+            <h2>8. Project File Structure</h2>
+
+            <div class="file-tree">
+<span class="folder">Examples/MacOSApp/</span><br>
+├── <span class="file-cmake">CMakeLists.txt</span> <span style="color: var(--text-muted);"># Build configuration</span><br>
+├── <span class="file-txt">README.md</span> <span style="color: var(--text-muted);"># Usage instructions</span><br>
+├── <span class="folder">Design/</span><br>
+│   └── <span class="file-html">WindowAppDesign.html</span> <span style="color: var(--text-muted);"># This design document</span><br>
+├── <span class="folder">Include/</span><br>
+│   ├── <span class="file-h">Framebuffer.h</span> <span style="color: var(--text-muted);"># Software framebuffer</span><br>
+│   ├── <span class="file-h">Window.h</span> <span style="color: var(--text-muted);"># Window abstraction (C++ API)</span><br>
+│   ├── <span class="file-h">Application.h</span> <span style="color: var(--text-muted);"># Application wrapper (C++ API)</span><br>
+│   ├── <span class="file-h">BitmapFont.h</span> <span style="color: var(--text-muted);"># 8x12 bitmap font</span><br>
+│   └── <span class="folder">UI/</span><br>
+│       ├── <span class="file-h">UIComponent.h</span> <span style="color: var(--text-muted);"># Abstract base</span><br>
+│       ├── <span class="file-h">TextPanel.h</span> <span style="color: var(--text-muted);"># Scrollable text</span><br>
+│       ├── <span class="file-h">ScrollBar.h</span> <span style="color: var(--text-muted);"># Vertical scrollbar</span><br>
+│       └── <span class="file-h">Button.h</span> <span style="color: var(--text-muted);"># Clickable button</span><br>
+├── <span class="folder">Source/</span><br>
+│   ├── <span class="file-cpp">Main.cpp</span> <span style="color: var(--text-muted);"># Entry point</span><br>
+│   ├── <span class="file-cpp">Framebuffer.cpp</span> <span style="color: var(--text-muted);"># Pixel operations</span><br>
+│   ├── <span class="file-cpp">BitmapFont.cpp</span> <span style="color: var(--text-muted);"># Font implementation</span><br>
+│   ├── <span class="file-mm">Window.mm</span> <span style="color: var(--text-muted);"># NSWindow bridge (ObjC++)</span><br>
+│   ├── <span class="file-mm">Application.mm</span> <span style="color: var(--text-muted);"># NSApplication bridge</span><br>
+│   └── <span class="folder">UI/</span><br>
+│       ├── <span class="file-cpp">TextPanel.cpp</span> <br>
+│       ├── <span class="file-cpp">ScrollBar.cpp</span> <br>
+│       └── <span class="file-cpp">Button.cpp</span> <br>
+└── <span class="folder">Resources/</span><br>
+    └── <span class="file-txt">sample_text.txt</span> <span style="color: var(--text-muted);"># Demo content</span>
+            </div>
+        </section>
+
+        <!-- 9. Test Plan -->
+        <section id="test-plan">
+            <h2>9. Test Plan</h2>
+
+            <p>
+                The test plan is organized into functional tests (verifying each feature) and
+                code-quality tests (verifying standards compliance). All tests are designed to
+                be verified manually during development.
+            </p>
+
+            <h3>Functional Test Cases</h3>
+
+            <div class="test-case">
+                <div class="test-id">TC-01: Application Startup</div>
+                <div class="text-muted">Verify that the application launches and displays a window.</div>
+                <div style="margin-top: 0.5rem;"><strong>Steps:</strong> Run the binary from terminal. Observe window appearance.</div>
+                <div style="margin-top: 0.5rem;"><strong>Expected:</strong> Window titled "MacOSApp" appears at 1024×768, centered on screen. Background is dark (#0D1117). TextPanel, ScrollBar, Close button, and Full Screen button are visible.</div>
+                <div style="margin-top: 0.5rem;"><strong>Pass Criteria:</strong> Window appears within 2 seconds, no crash, no console errors.</div>
+            </div>
+
+            <div class="test-case">
+                <div class="test-id">TC-02: Full Screen via F11</div>
+                <div class="text-muted">Verify full-screen toggle using the F11 key.</div>
+                <div style="margin-top: 0.5rem;"><strong>Steps:</strong> Press F11. Press Esc (or F11 again) to exit.</div>
+                <div style="margin-top: 0.5rem;"><strong>Expected:</strong> Window transitions to full-screen (no title bar, covers entire display). UI elements reposition to fit new dimensions. Pressing Esc or F11 returns to windowed mode.</div>
+                <div style="margin-top: 0.5rem;"><strong>Pass Criteria:</strong> Transition takes < 1 second, UI re-renders without artifacts.</div>
+            </div>
+
+            <div class="test-case">
+                <div class="test-id">TC-03: Full Screen via UI Button</div>
+                <div class="text-muted">Verify full-screen toggle using the Full Screen button in the UI.</div>
+                <div style="margin-top: 0.5rem;"><strong>Steps:</strong> Click the "⛶ Full Screen" button in the bottom-left of the window.</div>
+                <div style="margin-top: 0.5rem;"><strong>Expected:</strong> Window enters full-screen mode. Button label changes to "⛶ Windowed". Clicking it again returns to windowed mode.</div>
+                <div style="margin-top: 0.5rem;"><strong>Pass Criteria:</strong> Same as TC-02, plus button state toggles correctly.</div>
+            </div>
+
+            <div class="test-case">
+                <div class="test-id">TC-04: Text Panel Rendering</div>
+                <div class="text-muted">Verify the text panel displays sample text correctly.</div>
+                <div style="margin-top: 0.5rem;"><strong>Steps:</strong> Observe the text panel area on launch.</div>
+                <div style="margin-top: 0.5rem;"><strong>Expected:</strong> Multi-line text from <code>sample_text.txt</code> is rendered in a monospace bitmap font. Text is left-aligned within the panel. Lines that don't fit vertically are clipped.</div>
+                <div style="margin-top: 0.5rem;"><strong>Pass Criteria:</strong> All characters render correctly, no garbled pixels, text is readable.</div>
+            </div>
+
+            <div class="test-case">
+                <div class="test-id">TC-05: Scrollbar - Drag Thumb</div>
+                <div class="text-muted">Verify scrollbar thumb dragging scrolls text.</div>
+                <div style="margin-top: 0.5rem;"><strong>Steps:</strong> Click and drag the scrollbar thumb. Observe text movement.</div>
+                <div style="margin-top: 0.5rem;"><strong>Expected:</strong> Text scrolls smoothly as the thumb is dragged. The thumb position visually corresponds to the scroll offset. When released, text stays at new position.</div>
+                <div style="margin-top: 0.5rem;"><strong>Pass Criteria:</strong> No jitter, text moves proportionally to thumb position.</div>
+            </div>
+
+            <div class="test-case">
+                <div class="test-id">TC-06: Scrollbar - Track Click</div>
+                <div class="text-muted">Verify clicking the scrollbar track scrolls a page.</div>
+                <div style="margin-top: 0.5rem;"><strong>Steps:</strong> Click above the thumb (scrolls up one page) and below the thumb (scrolls down one page).</div>
+                <div style="margin-top: 0.5rem;"><strong>Expected:</strong> Text jumps by one page (panel height in lines) per click. Thumb position updates.</div>
+                <div style="margin-top: 0.5rem;"><strong>Pass Criteria:</strong> Page scroll amount matches visible content height.</div>
+            </div>
+
+            <div class="test-case">
+                <div class="test-id">TC-07: Close Button Click</div>
+                <div class="text-muted">Verify clicking the Close button terminates the application.</div>
+                <div style="margin-top: 0.5rem;"><strong>Steps:</strong> Click the "✕ Close" button (bottom-right of window).</div>
+                <div style="margin-top: 0.5rem;"><strong>Expected:</strong> Application terminates cleanly with exit code 0. No crash, no error messages in console.</div>
+                <div style="margin-top: 0.5rem;"><strong>Pass Criteria:</strong> Process exits within 1 second, exit code is 0.</div>
+            </div>
+
+            <div class="test-case">
+                <div class="test-id">TC-08: Window Close (Traffic Light)</div>
+                <div class="text-muted">Verify closing via the macOS traffic light button.</div>
+                <div style="margin-top: 0.5rem;"><strong>Steps:</strong> Click the red traffic light button in the window's title bar.</div>
+                <div style="margin-top: 0.5rem;"><strong>Expected:</strong> Window closes, application terminates with exit code 0.</div>
+                <div style="margin-top: 0.5rem;"><strong>Pass Criteria:</strong> Same as TC-07.</div>
+            </div>
+
+            <div class="test-case">
+                <div class="test-id">TC-09: Full-Screen Exit via Escape</div>
+                <div class="text-muted">Verify Esc key exits full-screen mode.</div>
+                <div style="margin-top: 0.5rem;"><strong>Steps:</strong> Enter full-screen (via F11 or button), then press Esc.</div>
+                <div style="margin-top: 0.5rem;"><strong>Expected:</strong> Window returns to windowed mode.</div>
+                <div style="margin-top: 0.5rem;"><strong>Pass Criteria:</strong> Exit is immediate, UI re-layouts correctly.</div>
+            </div>
+
+            <div class="test-case">
+                <div class="test-id">TC-10: Coding Standards Compliance</div>
+                <div class="text-muted">Verify all code follows HardBop Engine coding standards.</div>
+                <div style="margin-top: 0.5rem;"><strong>Checks:</strong>
+                    <ul>
+                        <li>PascalCase for classes, functions, types</li>
+                        <li>camelCase for variables (no m_ prefix)</li>
+                        <li>Tab indentation (not spaces)</li>
+                        <li>[[nodiscard]] on getters</li>
+                        <li>noexcept on non-throwing methods</li>
+                        <li>final on non-inheritable classes</li>
+                        <li>Explicit access specifiers (public/protected/private)</li>
+                        <li>2 blank lines after includes in .cpp/.mm files</li>
+                        <li>Exception-free (no try/catch, no throw)</li>
+                        <li>Error logging via std::cerr before failure return</li>
+                    </ul>
+                </div>
+                <div style="margin-top: 0.5rem;"><strong>Pass Criteria:</strong> All checks pass. Compiles with <code>-Wall -Werror</code> with zero warnings.</div>
+            </div>
+
+            <h3>Verification Methods</h3>
+            <ul class="tight">
+                <li><strong>Manual:</strong> Run the application, interact with all UI elements, verify visual correctness.</li>
+                <li><strong>Compiler:</strong> <code>-Wall -Werror</code> catches coding standards violations at build time.</li>
+                <li><strong>Visual inspection:</strong> Pixel-level verification of text rendering, scrollbar position, button states.</li>
+                <li><strong>Exit code:</strong> Verify clean exit (code 0) after close button and traffic light clicks.</li>
+            </ul>
+        </section>
+
+        <!-- 10. Coding Standards -->
+        <section id="coding-standards">
+            <h2>10. Coding Standards Compliance</h2>
+
+            <p>
+                This project adheres to the HardBop Engine's <code>docs/CodingStandards.md</code>.
+                The key conventions are summarized below:
+            </p>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Rule</th>
+                        <th>Standard</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><td>Naming - Classes/Types</td><td>PascalCase</td><td><span class="badge badge-done">Enforced</span></td></tr>
+                    <tr><td>Naming - Variables</td><td>camelCase</td><td><span class="badge badge-done">Enforced</span></td></tr>
+                    <tr><td>Naming - Member Variables</td><td>camelCase (no m_ prefix)</td><td><span class="badge badge-done">Enforced</span></td></tr>
+                    <tr><td>Naming - Constants</td><td>PascalCase with prefix</td><td><span class="badge badge-done">Enforced</span></td></tr>
+                    <tr><td>Naming - Macros</td><td>SCREAMING_SNAKE_CASE</td><td><span class="badge badge-done">Enforced</span></td></tr>
+                    <tr><td>Naming - Namespace</td><td><code>hbe</code></td><td><span class="badge badge-done">Enforced</span></td></tr>
+                    <tr><td>Naming - Template Types</td><td>T-prefix</td><td><span class="badge badge-done">Enforced</span></td></tr>
+                    <tr><td>Indentation</td><td>Tab (not spaces)</td><td><span class="badge badge-done">Enforced</span></td></tr>
+                    <tr><td>Column Limit</td><td>120 chars</td><td><span class="badge badge-done">Enforced</span></td></tr>
+                    <tr><td>Brace Style</td><td>K&R (same line)</td><td><span class="badge badge-done">Enforced</span></td></tr>
+                    <tr><td>noexcept</td><td>On non-throwing methods</td><td><span class="badge badge-done">Enforced</span></td></tr>
+                    <tr><td>[[nodiscard]]</td><td>On getters/returning funcs</td><td><span class="badge badge-done">Enforced</span></td></tr>
+                    <tr><td>final</td><td>On non-inheritable classes</td><td><span class="badge badge-done">Enforced</span></td></tr>
+                    <tr><td>explicit</td><td>Single-arg constructors</td><td><span class="badge badge-done">Enforced</span></td></tr>
+                    <tr><td>inline keyword</td><td>Not used explicitly</td><td><span class="badge badge-done">Enforced</span></td></tr>
+                    <tr><td>Exceptions</td><td>Exception-free (no throw/try/catch)</td><td><span class="badge badge-done">Enforced</span></td></tr>
+                    <tr><td>Error Logging</td><td>std::cerr with prefix before failure</td><td><span class="badge badge-done">Enforced</span></td></tr>
+                    <tr><td>Member Ordering</td><td>static first, then public/protected/private</td><td><span class="badge badge-done">Enforced</span></td></tr>
+                    <tr><td>Namespace Indent</td><td>No indentation inside namespace</td><td><span class="badge badge-done">Enforced</span></td></tr>
+                    <tr><td>Blank Lines</td><td>2 after includes in .cpp/.mm</td><td><span class="badge badge-done">Enforced</span></td></tr>
+                    <tr><td>File End</td><td>Newline at EOF</td><td><span class="badge badge-done">Enforced</span></td></tr>
+                </tbody>
+            </table>
+        </section>
+
+        <section style="text-align: center; padding: 3rem; color: var(--text-muted);">
+            <p>End of Design Document</p>
+            <p style="font-size: 0.85rem; margin-top: 1rem;">
+                Created: 2026-06-21 · HardBop Engine · C++23 / Objective-C++ · macOS 11+ · AppKit Cocoa · CMake<br>
+                Status: Detailed Design Complete — Pending Implementation Approval
+            </p>
+        </section>
+
+    </div>
+
+    <script>
+        // Sidebar active link highlighting
+        const sections = document.querySelectorAll('section[id]');
+        const sidebarLinks = document.querySelectorAll('.sidebar a');
+        window.addEventListener('scroll', () => {
+            let current = '';
+            sections.forEach(section => {
+                const sectionTop = section.offsetTop - 120;
+                if (pageYOffset >= sectionTop) current = section.getAttribute('id');
+            });
+            sidebarLinks.forEach(link => {
+                link.classList.remove('active');
+                if (link.getAttribute('href') === `#${current}`) link.classList.add('active');
+            });
+        });
+    </script>
+</body>
+</html>
