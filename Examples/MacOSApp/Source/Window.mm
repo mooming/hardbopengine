@@ -7,6 +7,7 @@
 #include <iostream>
 #include <string>
 
+#include "Core/CommonMacros.h"
 #include "Window.h"
 #include "Framebuffer.h"
 
@@ -151,11 +152,10 @@ Window::~Window()
 	Close();
 }
 
-std::unique_ptr<Window> Window::Create(const std::string& title, int inWidth, int inHeight)
+bool Window::CreateWindow(const std::string& title, int inWidth, int inHeight)
 {
-	auto window = std::make_unique<Window>();
-	window->width = inWidth;
-	window->height = inHeight;
+	width = inWidth;
+	height = inHeight;
 
 	// Calculate initial window position.
 	// macOS screen coordinates: (0,0) is bottom-left.
@@ -175,12 +175,13 @@ std::unique_ptr<Window> Window::Create(const std::string& title, int inWidth, in
 
 	if (nsWindow == nil)
 	{
-		std::cerr << "Error: Window::Create - failed to create NSWindow" << std::endl;
-		return nullptr;
+		std::cerr << "Error: Window::CreateWindow - failed to create NSWindow" << std::endl;
+		return false;
 	}
 
 	[nsWindow setReleasedWhenClosed:NO];
 	[nsWindow setTitle:[NSString stringWithUTF8String:title.c_str()]];
+	[nsWindow setAcceptsMouseMovedEvents:YES];
 
 	// Enable full-screen support via collection behavior
 	[nsWindow setCollectionBehavior:NSWindowCollectionBehaviorFullScreenPrimary];
@@ -190,25 +191,22 @@ std::unique_ptr<Window> Window::Create(const std::string& title, int inWidth, in
 	[view setAutoresizingMask:NSViewWidthSizable | NSViewHeightSizable];
 	[nsWindow setContentView:view];
 
-	window->nsWindowHandle = static_cast<void*>(nsWindow);
-	window->nsViewHandle = static_cast<void*>(view);
+	nsWindowHandle = static_cast<void*>(nsWindow);
+	nsViewHandle = static_cast<void*>(view);
 
 	[nsWindow makeKeyAndOrderFront:nil];
 	[nsWindow center];
 
-	window->visibleFlag = true;
-	window->closedFlag = false;
-	window->fullScreenFlag = false;
+	visibleFlag = true;
+	closedFlag = false;
+	fullScreenFlag = false;
 
-	return window;
+	return true;
 }
 
 void Window::SetTitle(const std::string& title) noexcept
 {
-	if (nsWindowHandle == nullptr)
-	{
-		return;
-	}
+	returnIf(nsWindowHandle == nullptr);
 
 	NSWindow* nsWindow = static_cast<NSWindow*>(nsWindowHandle);
 	[nsWindow setTitle:[NSString stringWithUTF8String:title.c_str()]];
@@ -216,10 +214,7 @@ void Window::SetTitle(const std::string& title) noexcept
 
 void Window::SetSize(int inWidth, int inHeight) noexcept
 {
-	if (nsWindowHandle == nullptr)
-	{
-		return;
-	}
+	returnIf(nsWindowHandle == nullptr);
 
 	width = inWidth;
 	height = inHeight;
@@ -232,10 +227,7 @@ void Window::SetSize(int inWidth, int inHeight) noexcept
 
 void Window::ToggleFullScreen() noexcept
 {
-	if (nsWindowHandle == nullptr)
-	{
-		return;
-	}
+	returnIf(nsWindowHandle == nullptr);
 
 	NSWindow* nsWindow = static_cast<NSWindow*>(nsWindowHandle);
 	[nsWindow toggleFullScreen:nil];
@@ -245,10 +237,7 @@ void Window::ToggleFullScreen() noexcept
 
 void Window::PollEvents() noexcept
 {
-	if (nsWindowHandle == nullptr)
-	{
-		return;
-	}
+	returnIf(nsWindowHandle == nullptr);
 
 	NSWindow* nsWindow = static_cast<NSWindow*>(nsWindowHandle);
 
@@ -267,14 +256,16 @@ void Window::PollEvents() noexcept
 	// Swap key state arrays for next-frame edge detection
 	std::memcpy(lastFrameKeyStates, currentKeyStates, sizeof(lastFrameKeyStates));
 
-	// Poll keyboard events from the application's event queue
+	// Poll ALL events from the application's event queue (keyboard + mouse)
 	NSApplication* app = [NSApplication sharedApplication];
-	while (NSEvent* event = [app nextEventMatchingMask:NSEventMaskKeyDown | NSEventMaskKeyUp
+	bool mouseUpThisFrame = false;
+
+	while (NSEvent* event = [app nextEventMatchingMask:NSEventMaskAny
 	                                          untilDate:[NSDate distantPast]
 	                                             inMode:NSDefaultRunLoopMode
 	                                          dequeue:YES])
 	{
-		NSInteger eventType = [event type];
+		NSEventType eventType = [event type];
 
 		if (eventType == NSEventTypeKeyDown)
 		{
@@ -292,11 +283,51 @@ void Window::PollEvents() noexcept
 				currentKeyStates[keyCode] = false;
 			}
 		}
+		else if (eventType == NSEventTypeLeftMouseDown)
+		{
+			NSPoint nsPoint = [event locationInWindow];
+			// Flip Y for framebuffer coords (macOS uses bottom-left origin)
+			mouseState.x = static_cast<int>(nsPoint.x);
+			mouseState.y = height - static_cast<int>(nsPoint.y);
+			mouseState.leftButtonPressed = true;
+			mouseState.leftButtonReleased = false;
+		}
+		else if (eventType == NSEventTypeLeftMouseUp)
+		{
+			NSPoint nsPoint = [event locationInWindow];
+			mouseState.x = static_cast<int>(nsPoint.x);
+			mouseState.y = height - static_cast<int>(nsPoint.y);
+			mouseState.leftButtonPressed = false;
+			mouseState.leftButtonReleased = true;
+			mouseUpThisFrame = true;
+		}
+		else if (eventType == NSEventTypeLeftMouseDragged)
+		{
+			NSPoint nsPoint = [event locationInWindow];
+			mouseState.x = static_cast<int>(nsPoint.x);
+			mouseState.y = height - static_cast<int>(nsPoint.y);
+		}
+		else if (eventType == NSEventTypeMouseMoved)
+		{
+			NSPoint nsPoint = [event locationInWindow];
+			mouseState.x = static_cast<int>(nsPoint.x);
+			mouseState.y = height - static_cast<int>(nsPoint.y);
+		}
+		else if (eventType == NSEventTypeScrollWheel)
+		{
+			mouseState.wheelDeltaY = static_cast<float>([event deltaY]);
+		}
 		else
 		{
-			// Forward non-keyboard events (mouse, etc.) to the application
+			// Forward other events to the application
 			[app sendEvent:event];
 		}
+	}
+
+	// Reset one-shot release flag after processing (edge-triggered)
+	if (!mouseUpThisFrame)
+	{
+		mouseState.leftButtonReleased = false;
 	}
 }
 

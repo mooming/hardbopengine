@@ -68,6 +68,8 @@ private:
 	bool draggingThumb;
 	int thumbDragStartY;
 	int thumbDragStartValue;
+	int thumbTopCache;
+	int thumbHeightCache;
 
 	// Colors (ARGB format)
 	static constexpr uint32_t TrackColor = 0xFF30363Du;

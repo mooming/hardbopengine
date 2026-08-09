@@ -2,6 +2,8 @@
 
 #include "Application.h"
 
+#include "Core/CommonMacros.h"
+
 #include <Cocoa/Cocoa.h>
 
 #include <iostream>
@@ -87,10 +89,7 @@ bool Application::Initialize()
 
 void Application::PollEvents() noexcept
 {
-	if (nsAppHandle == nullptr)
-	{
-		return;
-	}
+	returnIf(nsAppHandle == nullptr);
 
 	NSApplication* app = static_cast<NSApplication*>(nsAppHandle);
 
@@ -107,13 +106,11 @@ void Application::PollEvents() noexcept
 
 void Application::ShutDown() noexcept
 {
-	if (nsAppHandle != nullptr)
-	{
-		NSApplication* app = static_cast<NSApplication*>(nsAppHandle);
-		[app terminate:nil];
-		nsAppHandle = nullptr;
-	}
+	returnIf(nsAppHandle == nullptr);
 
+	NSApplication* app = static_cast<NSApplication*>(nsAppHandle);
+	[app terminate:nil];
+	nsAppHandle = nullptr;
 	initializedFlag = false;
 }
 

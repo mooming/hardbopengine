@@ -43,11 +43,6 @@ void UIComponent::SetVisible(bool visible) noexcept
 
 bool UIComponent::Contains(int px, int py) const noexcept
 {
-	if (!visibleFlag)
-	{
-		return false;
-	}
-
 	return px >= x && px < x + width && py >= y && py < y + height;
 }
 

@@ -2,6 +2,8 @@
 
 #include "Framebuffer.h"
 
+#include "Core/CommonMacros.h"
+
 #include <algorithm>
 #include <cstdint>
 #include <cstdlib>
@@ -277,6 +279,8 @@ void Framebuffer::Clear(uint32_t color) noexcept
 	}
 
 	const size_t numPixels = pitch * static_cast<size_t>(height) / 4;
+	std::memset(data, 0, numPixels * sizeof(uint32_t));
+
 	for (size_t i = 0; i < numPixels; ++i)
 	{
 		data[i] = color;
@@ -423,7 +427,7 @@ void Framebuffer::DrawChar(int x, int y, char ch, uint32_t color) noexcept
 
 void Framebuffer::DrawText(int x, int y, const char* text, uint32_t color) noexcept
 {
-	if (text == nullptr || data == nullptr)
+	if (text == nullptr)
 	{
 		return;
 	}

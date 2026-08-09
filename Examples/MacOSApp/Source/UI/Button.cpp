@@ -54,10 +54,17 @@ void Button::OnUpdate(const InputState& input)
 
 	hoveredFlag = Contains(input.mouseX, input.mouseY);
 
-	if (hoveredFlag && input.leftMousePressed)
+	if (input.leftMousePressed)
 	{
-		pressedFlag = true;
-		wasPressedOutside = false;
+		if (hoveredFlag)
+		{
+			pressedFlag = true;
+			wasPressedOutside = false;
+		}
+		else
+		{
+			wasPressedOutside = true;
+		}
 	}
 
 	if (pressedFlag && input.leftMouseReleased)
@@ -74,15 +81,6 @@ void Button::OnUpdate(const InputState& input)
 		{
 			pressedFlag = false;
 		}
-	}
-
-	if (!hoveredFlag && input.leftMousePressed)
-	{
-		wasPressedOutside = true;
-	}
-
-	if (input.leftMouseReleased)
-	{
 		wasPressedOutside = false;
 	}
 }

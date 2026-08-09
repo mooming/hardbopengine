@@ -37,9 +37,11 @@ add_executable(MacOSApp
 )
 
 # Include directories
+# Include engine root for Core/CommonMacros.h access
 target_include_directories(MacOSApp PRIVATE
     ${CMAKE_SOURCE_DIR}
     Include
+    ${CMAKE_SOURCE_DIR}/../../Engine
 )
 
 # Link against macOS frameworks

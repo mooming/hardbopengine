@@ -2,6 +2,7 @@
 
 #include "UI/TextPanel.h"
 
+#include "Core/CommonMacros.h"
 #include <algorithm>
 
 #include "Framebuffer.h"
@@ -13,7 +14,7 @@ namespace hbe
 namespace
 {
 
-constexpr int CharWidth = 9;  // 8px font + 1px spacing
+constexpr int CharWidth = 9;   // 8px font + 1px spacing
 constexpr int FontHeight = 12;
 constexpr int LineGap = 2;
 
@@ -98,6 +99,20 @@ void TextPanel::OnUpdate(const InputState& input)
 	}
 
 	hoveredFlag = Contains(input.mouseX, input.mouseY);
+
+	if (!hoveredFlag)
+	{
+		return;
+	}
+
+	// Handle mouse wheel scrolling
+	returnIf(input.mouseWheelDeltaY == 0.0f);
+
+	ScrollBy(-static_cast<int>(input.mouseWheelDeltaY));
+	if (scrollCallback)
+	{
+		scrollCallback(static_cast<float>(scrollOffset));
+	}
 }
 
 void TextPanel::Draw(Framebuffer& framebuffer)
@@ -107,45 +122,33 @@ void TextPanel::Draw(Framebuffer& framebuffer)
 		return;
 	}
 
-	const int panelX = x;
-	const int panelY = y;
-	const int panelW = width;
-	const int panelH = height;
-
-	// Draw background
-	framebuffer.FillRect(panelX, panelY, panelW, panelH, BgColor);
-
 	// Draw border
-	framebuffer.DrawLine(panelX, panelY, panelX + panelW - 1, panelY, BorderColor);
-	framebuffer.DrawLine(panelX, panelY + panelH - 1, panelX + panelW - 1, panelY + panelH - 1, BorderColor);
-	framebuffer.DrawLine(panelX, panelY, panelX, panelY + panelH - 1, BorderColor);
-	framebuffer.DrawLine(panelX + panelW - 1, panelY, panelX + panelW - 1, panelY + panelH - 1, BorderColor);
+	const int right = x + width - 1;
+	const int bottom = y + height - 1;
+	framebuffer.DrawLine(x, y, right, y, BorderColor);
+	framebuffer.DrawLine(x, bottom, right, bottom, BorderColor);
+	framebuffer.DrawLine(x, y, x, bottom, BorderColor);
+	framebuffer.DrawLine(right, y, right, bottom, BorderColor);
 
 	// Draw text content
-	const int textX = panelX + 4;
-	const int textY = panelY + 4;
+	const int textX = x + 4;
+	const int textYStart = y + 4;
 	const int visibleLines = GetVisibleLineCount();
-	const int maxVisibleX = textX + panelW - 8;
+	const int maxVisibleX = x + width - 8;
 
 	for (int i = 0; i < visibleLines; ++i)
 	{
 		const int lineIndex = scrollOffset + i;
-		if (lineIndex >= GetTotalLines())
-		{
-			break;
-		}
+		continueIf(lineIndex >= GetTotalLines());
 
 		const std::string& line = lines[lineIndex];
 		int currentX = textX;
 
 		for (char ch : line)
 		{
-			if (currentX + CharWidth > maxVisibleX)
-			{
-				break;
-			}
+			continueIf(currentX + CharWidth > maxVisibleX);
 
-			framebuffer.DrawChar(currentX, textY + i * lineHeight, ch, TextColor);
+			framebuffer.DrawChar(currentX, textYStart + i * lineHeight, ch, TextColor);
 			currentX += CharWidth;
 		}
 	}

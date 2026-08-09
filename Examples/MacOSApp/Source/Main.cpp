@@ -105,7 +105,7 @@ const char SampleText[] =
     "  Line 63: This ensures no visual artifacts from previous frames.\n"
     "  Line 64: The Present() method triggers the NSView to redraw.\n"
     "  Line 65: CGImageCreate wraps the raw pixel data for display.\n"
-    "  Line 66: This sample text has more than enough lines to scroll.\n";
+    "  Line 66: This sample text has more than enough lines to scroll.";
 
 void RunMainLoop(Application& app, Window& window, Framebuffer& framebuffer,
                  TextPanel& textPanel, ScrollBar& scrollbar,
@@ -236,9 +236,9 @@ int main(int argc, const char* argv[])
         return 1;
     }
 
-    // Create window
-    auto window = hbe::Window::Create(std::string("MacOSApp"), hbe::WindowWidth, hbe::WindowHeight);
-    if (!window)
+    // Create window (stack-based, no dynamic allocation)
+    hbe::Window window;
+    if (!window.CreateWindow(std::string("MacOSApp"), hbe::WindowWidth, hbe::WindowHeight))
     {
         std::cerr << "Error: Failed to create Window" << std::endl;
         app->ShutDown();
@@ -247,15 +247,15 @@ int main(int argc, const char* argv[])
 
     // Create framebuffer
     hbe::Framebuffer framebuffer;
-    if (!framebuffer.Initialize(window->GetWidth(), window->GetHeight()))
+    if (!framebuffer.Initialize(window.GetWidth(), window.GetHeight()))
     {
         std::cerr << "Error: Failed to initialize Framebuffer" << std::endl;
-        window->Close();
+        window.Close();
         app->ShutDown();
         return 1;
     }
 
-    // Create UI components
+    // Create UI components (stack-based)
     hbe::TextPanel textPanel;
     textPanel.SetText(hbe::SampleText);
 
@@ -281,20 +281,19 @@ int main(int argc, const char* argv[])
     // Fullscreen button callback
     fullscreenButton.SetOnClick([&window]()
     {
-        window->ToggleFullScreen();
+        window.ToggleFullScreen();
     });
 
     // Main application loop
-    while (!appShouldExit && !window->IsClosed())
+    while (!appShouldExit && !window.IsClosed())
     {
-        hbe::RunMainLoop(*app, *window, framebuffer,
+        RunMainLoop(*app, window, framebuffer,
                     textPanel, scrollbar,
                     closeButton, fullscreenButton,
                     appShouldExit);
     }
 
     // Cleanup
-    window->Close();
     framebuffer.Clear(0);
     app->ShutDown();
 

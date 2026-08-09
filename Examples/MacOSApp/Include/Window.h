@@ -3,7 +3,6 @@
 #pragma once
 
 #include <cstdint>
-#include <memory>
 #include <string>
 
 namespace hbe
@@ -38,6 +37,19 @@ public:
 	static const int KeyF11 = 111;
 	static const int KeyEscape = 53;
 
+private:
+	void* nsWindowHandle;
+	void* nsViewHandle;
+	int width;
+	int height;
+	bool visibleFlag;
+	bool closedFlag;
+	bool fullScreenFlag;
+	bool lastFrameKeyStates[256];
+	bool currentKeyStates[256];
+	MouseState mouseState;
+
+public:
 	Window();
 	~Window();
 
@@ -47,13 +59,13 @@ public:
 	Window& operator=(Window&&) noexcept = delete;
 
 	/**
-	 * @brief Factory method to create a window with the given title and dimensions.
+	 * @brief Creates the native window with the given title and dimensions.
 	 * @param title Window title text.
-	 * @param width Initial width in pixels.
-	 * @param height Initial height in pixels.
-	 * @return Unique pointer to the created window, or nullptr on failure.
+	 * @param inWidth Initial width in pixels.
+	 * @param inHeight Initial height in pixels.
+	 * @return True if the window was created successfully.
 	 */
-	[[nodiscard]] static std::unique_ptr<Window> Create(const std::string& title, int width, int height);
+	bool CreateWindow(const std::string& title, int inWidth, int inHeight);
 
 	/**
 	 * @brief Sets the window title.
@@ -110,18 +122,6 @@ public:
 	[[nodiscard]] bool IsClosed() const noexcept;
 	[[nodiscard]] bool IsFullScreen() const noexcept;
 	[[nodiscard]] void* GetNativeHandle() const noexcept;
-
-private:
-	void* nsWindowHandle;
-	void* nsViewHandle;
-	int width;
-	int height;
-	bool visibleFlag;
-	bool closedFlag;
-	bool fullScreenFlag;
-	bool lastFrameKeyStates[256];
-	bool currentKeyStates[256];
-	MouseState mouseState;
 };
 
 } // namespace hbe
