@@ -1,6 +1,7 @@
 // Copyright (c) 2026 Hansol Park (mooming.go@gmail.com). All rights reserved.
 
 #include "OSXWindow.h"
+#include "Core/CommonMacros.h"
 
 #ifdef PLATFORM_OSX
 #import <Cocoa/Cocoa.h>
@@ -25,8 +26,7 @@ OSXWindow::~OSXWindow()
 
 bool OSXWindow::CreateWindow(const hbe::HString& title, int width, int height)
 {
-	if (nsWindow != nullptr)
-		return false;
+	returnValueIf(false, nsWindow != nullptr);
 
 	NSRect frame = NSMakeRect(100, 100, width, height);
 	NSUInteger styleMask = NSWindowStyleMaskTitled | NSWindowStyleMaskClosable | NSWindowStyleMaskMiniaturizable;
@@ -36,8 +36,7 @@ bool OSXWindow::CreateWindow(const hbe::HString& title, int width, int height)
 													backing:NSBackingStoreBuffered
 													  defer:NO];
 
-	if (window == nullptr)
-		return false;
+	returnValueIf(false, window == nullptr);
 
 	[window setReleasedWhenClosed:NO];
 	[window setTitle:[NSString stringWithUTF8String:title.c_str()]];
@@ -55,8 +54,7 @@ bool OSXWindow::CreateWindow(const hbe::HString& title, int width, int height)
 
 void OSXWindow::SetTitle(const hbe::HString& title)
 {
-	if (nsWindow == nullptr)
-		return;
+	returnIf(nsWindow == nullptr);
 
 	auto window = static_cast<NSWindow*>(nsWindow);
 	[window setTitle:[NSString stringWithUTF8String:title.c_str()]];
@@ -64,8 +62,7 @@ void OSXWindow::SetTitle(const hbe::HString& title)
 
 void OSXWindow::SetSize(int width, int height)
 {
-	if (nsWindow == nullptr)
-		return;
+	returnIf(nsWindow == nullptr);
 
 	auto window = static_cast<NSWindow*>(nsWindow);
 	NSRect frame = [window frame];

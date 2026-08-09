@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <thread>
 
+#include "Core/CommonMacros.h"
 #include "Buffer.h"
 #include "Core/Debug.h"
 #include "HSTL/HString.h"
@@ -73,7 +74,7 @@ namespace hbe
 		{
 			Assert(std::this_thread::get_id() == threadID);
 			const size_t size = buffer.GetSize();
-			if (cursor >= size) return;
+			returnIf(cursor >= size);
 
 			constexpr size_t tSize = sizeof(T);
 			static_assert(tSize > 0);

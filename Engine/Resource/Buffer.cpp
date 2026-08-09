@@ -3,6 +3,7 @@
 #include "Buffer.h"
 
 #include "Config/BuildConfig.h"
+#include "Core/CommonMacros.h"
 #include "Log/Logger.h"
 #include "OSAL/Intrinsic.h"
 #include "String/StringUtil.h"
@@ -30,7 +31,7 @@ namespace hbe
 
 	Buffer::~Buffer()
 	{
-	if (data == nullptr) return;
+		returnIf(data == nullptr);
 
 		if (unlikely(releaser == nullptr))
 		{

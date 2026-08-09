@@ -2,6 +2,7 @@
 
 #include "OSMemory.h"
 
+#include "Core/CommonMacros.h"
 #ifdef PLATFORM_WINDOWS
 #include <errhandlingapi.h>
 #include <malloc.h>
@@ -53,8 +54,7 @@ void OS::ProtectMemory(void* address, size_t n) noexcept
 	DWORD oldProtect = 0;
 	auto result = VirtualProtect(address, n, PAGE_NOACCESS, &oldProtect);
 
-	if (likely(result))
-		return;
+	returnIf(likely(result));
 
 	using namespace std;
 	auto errorId = GetLastError();

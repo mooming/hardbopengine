@@ -3,6 +3,7 @@
 #include "Directory.h"
 
 #include "OSAbstractLayer.h"
+#include "Core/CommonMacros.h"
 #include "String/StringUtil.h"
 
 using namespace std;
@@ -18,8 +19,7 @@ Directory::Directory(const char* path) : path(hbe::StringUtil::TrimPath(path))
 	{
 		const char* name = element.c_str();
 
-		if (name[0] == '.')
-			continue;
+		continueIf(name[0] == '.');
 
 		string childPath(path);
 		childPath.append("/");

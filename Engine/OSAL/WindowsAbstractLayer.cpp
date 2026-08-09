@@ -1,6 +1,7 @@
 // Copyright (c) 2026 Hansol Park (mooming.go@gmail.com). All rights reserved.
 
 #include "OSAbstractLayer.h"
+#include "Core/CommonMacros.h"
 
 #ifdef PLATFORM_WINDOWS
 #include <cstdio>
@@ -26,12 +27,9 @@ HString GetFullPath(const HString& path)
 
 bool IsDirectory(const char* path)
 {
-	DWORD fileType = GetFileAttributesA(path);
-	if (fileType == INVALID_FILE_ATTRIBUTES)
-		return false;
+	returnValueIf(false, GetFileAttributesA(path) == INVALID_FILE_ATTRIBUTES);
 
-	if ((fileType & FILE_ATTRIBUTE_DIRECTORY) == 0)
-		return false;
+	returnValueIf(false, (GetFileAttributesA(path) & FILE_ATTRIBUTE_DIRECTORY) == 0);
 
 	return true;
 }

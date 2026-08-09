@@ -3,6 +3,7 @@
 #pragma once
 
 #include <array>
+#include "Core/CommonMacros.h"
 #include "Core/Debug.h"
 #include "Vector2.h"
 

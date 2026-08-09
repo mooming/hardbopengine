@@ -6,6 +6,7 @@
 #include <initializer_list>
 #include <utility>
 
+#include "Core/CommonMacros.h"
 #include "Core/Debug.h"
 #include "Memory/DefaultAllocator.h"
 #include "Memory/Memory.h"
@@ -65,8 +66,7 @@ namespace hbe
 
 		~Vector()
 		{
-			if (data == nullptr)
-				return;
+			returnIf(data == nullptr);
 
 			DestroyAll();
 			allocator.deallocate(data, capacity);
@@ -203,8 +203,7 @@ namespace hbe
 
 		void Reserve(TIndex newCapacity) noexcept
 		{
-			if (newCapacity <= capacity)
-				return;
+			returnIf(newCapacity <= capacity);
 
 			auto* newData = allocator.allocate(newCapacity);
 

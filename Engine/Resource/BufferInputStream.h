@@ -5,6 +5,7 @@
 #include <cstddef>
 #include <cstdint>
 
+#include "Core/CommonMacros.h"
 #include "Buffer.h"
 #include "Core/Debug.h"
 #include "HSTL/HString.h"

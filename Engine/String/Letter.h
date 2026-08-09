@@ -2,6 +2,8 @@
 
 #pragma once
 
+#include "Core/CommonMacros.h"
+
 namespace hbe
 {
 	/// @brief Utility class for character classification and validation.
@@ -12,28 +14,23 @@ namespace hbe
 
 		static bool IsLowerCase(TChar letter)
 		{
-			if (letter < 'a')
-				return false;
-			if (letter > 'z')
-				return false;
+			returnValueIf(false, letter < 'a');
+			returnValueIf(false, letter > 'z');
 
 			return true;
 		}
 
 		static bool IsUpperCase(TChar letter)
 		{
-			if (letter < 'A')
-				return false;
-			if (letter > 'Z')
-				return false;
+			returnValueIf(false, letter < 'A');
+			returnValueIf(false, letter > 'Z');
 
 			return true;
 		}
 
 		static bool IsGenuineLetter(TChar letter)
 		{
-			if (letter == ' ' || letter == '\t' || letter == '\n' || letter == '\r')
-				return false;
+			returnValueIf(false, letter == ' ' || letter == '\t' || letter == '\n' || letter == '\r');
 
 			return true;
 		}

@@ -3,6 +3,7 @@
 #include "OSFileHandle.h"
 
 #include "Config/BuildConfig.h"
+#include "Core/CommonMacros.h"
 #include "Intrinsic.h"
 #include "OSInputOutput.h"
 
@@ -18,8 +19,7 @@ FileHandle::FileHandle(FileHandle&& rhs) : data(rhs.data) { rhs.Invalidate(); }
 
 FileHandle::~FileHandle()
 {
-	if (fd < 0)
-		return;
+	returnIf(fd < 0);
 
 	Close(std::move(*this));
 }

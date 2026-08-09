@@ -1,6 +1,7 @@
 // Copyright (c) 2026 Hansol Park (mooming.go@gmail.com). All rights reserved.
 
 #include "OSAbstractLayer.h"
+#include "Core/CommonMacros.h"
 
 #ifdef PLATFORM_LINUX
 #include <cstdio>
@@ -51,14 +52,9 @@ HVector<HString> ListFilesInDirectory(const char* path)
 	{
 		while (struct dirent* element = readdir(dir))
 		{
-			if (strcmp(element->d_name, ".") == 0)
-				continue;
-
-			if (strcmp(element->d_name, "..") == 0)
-				continue;
-
-			if (element->d_name[0] == '.' || element->d_name[0] == '\0')
-				continue;
+			continueIf(strcmp(element->d_name, ".") == 0);
+			continueIf(strcmp(element->d_name, "..") == 0);
+			continueIf(element->d_name[0] == '.' || element->d_name[0] == '\0');
 
 			fileList.push_back(HString(element->d_name));
 		}

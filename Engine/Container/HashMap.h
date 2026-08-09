@@ -7,6 +7,7 @@
 #include <functional>
 #include <utility>
 
+#include "Core/CommonMacros.h"
 #include "Core/Debug.h"
 #include "Memory/DefaultAllocator.h"
 #include "Memory/Memory.h"
@@ -370,8 +371,7 @@ namespace hbe
 
 		void Reserve(TIndex newCapacity)
 		{
-			if (newCapacity <= cap)
-				return;
+			returnIf(newCapacity <= cap);
 
 			auto newCap = std::max(MinCapacity, cap);
 			while (newCap < newCapacity)
@@ -564,8 +564,7 @@ namespace hbe
 
 		void Release() noexcept
 		{
-			if (entries == nullptr)
-				return;
+			returnIf(entries == nullptr);
 
 			for (TIndex i = 0; i < cap; ++i)
 			{

@@ -1,5 +1,6 @@
 // Copyright (c) 2026 Hansol Park (mooming.go@gmail.com). All rights reserved.
 
+#include "Core/CommonMacros.h"
 #include "Config/BuildConfig.h"
 
 #ifdef PLATFORM_OSX
@@ -27,8 +28,7 @@ OSXApplication::OSXApplication()
 
 OSXApplication::~OSXApplication()
 {
-	if (appHandle == nullptr)
-		return;
+	returnIf(appHandle == nullptr);
 
 	auto app = static_cast<NSApplication*>(appHandle);
 	[app terminate:nil];

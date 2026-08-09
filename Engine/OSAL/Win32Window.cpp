@@ -1,6 +1,7 @@
 // Copyright (c) 2026 Hansol Park (mooming.go@gmail.com). All rights reserved.
 
 #include "Win32Window.h"
+#include "Core/CommonMacros.h"
 
 #ifdef PLATFORM_WINDOWS
 #include <windows.h>
@@ -40,8 +41,7 @@ bool Win32Window::CreateWindow(const hbe::HString& title, int width, int height)
 		nullptr, nullptr, hInstance, this
 	);
 
-	if (hwnd == nullptr)
-		return false;
+	returnValueIf(false, hwnd == nullptr);
 
 	ShowWindow(static_cast<HWND>(hwnd), SW_SHOW);
 	UpdateWindow(static_cast<HWND>(hwnd));

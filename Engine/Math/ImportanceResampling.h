@@ -5,6 +5,7 @@
 
 #pragma once
 
+#include "Core/CommonMacros.h"
 #include "HSTL/HVector.h"
 
 #include <random>
@@ -66,8 +67,7 @@ namespace hbe
 		[[nodiscard]] bool Resample(const TFunction& f, const TPDF& p, const TRandomSampler& sampler,
 									 const TOutputNorm& norm, const TInteger numSourceSamples) noexcept
 		{
-			if (numSourceSamples <= 0)
-				return false;
+			returnValueIf(false, numSourceSamples <= 0);
 
 			weights.reserve(weights.size() + numSourceSamples);
 			samples.reserve(samples.size() + numSourceSamples);
@@ -77,15 +77,13 @@ namespace hbe
 			{
 				const TInput x = sampler();
 				const TReal p_x = p(x);
-				if (p_x <= 0)
-					return false;
+				returnValueIf(false, p_x <= 0);
 
 				const TOutput f_x = f(x);
 				const TOutput fx_over_px = f_x / p_x;
 				const TReal weight = norm(fx_over_px);
 
-				if (weight <= 0)
-					continue;
+				continueIf(weight <= 0);
 
 				sumWeights += weight;
 				weights.emplace_back(weight);
@@ -136,11 +134,8 @@ namespace hbe
 		{
 			result = 0;
 
-			if (numIterations <= 0 || f == nullptr)
-				return false;
-
-			if (samples.empty() || weights.empty())
-				return false;
+			returnValueIf(false, numIterations <= 0 || f == nullptr);
+			returnValueIf(false, samples.empty() || weights.empty());
 
 			// Now we have importance resamples
 			for (TInteger i = 0; i < numIterations; ++i)

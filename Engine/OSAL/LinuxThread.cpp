@@ -2,6 +2,7 @@
 
 #include "OSThread.h"
 
+#include "Core/CommonMacros.h"
 #include "Log/Logger.h"
 
 #ifdef PLATFORM_LINUX

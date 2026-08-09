@@ -1,6 +1,7 @@
 // Copyright (c) 2026 Hansol Park (mooming.go@gmail.com). All rights reserved.
 
 #include "LinuxWindow.h"
+#include "Core/CommonMacros.h"
 
 #ifdef PLATFORM_LINUX
 
@@ -21,8 +22,7 @@ bool LinuxWindow::CreateWindow(const hbe::HString& title, int width, int height)
 {
 	display = XOpenDisplay(nullptr);
 
-	if (!display)
-		return false;
+	returnValueIf(false, !display);
 
 	window = XCreateSimpleWindow(
 		display,
@@ -33,8 +33,7 @@ bool LinuxWindow::CreateWindow(const hbe::HString& title, int width, int height)
 		WhitePixel(display, DefaultScreen(display))
 	);
 
-	if (!window)
-		return false;
+	returnValueIf(false, !window);
 
 	this->width = width;
 	this->height = height;
@@ -80,8 +79,7 @@ bool LinuxWindow::IsVisible() const
 
 void LinuxWindow::PollEvents()
 {
-	if (!display)
-		return;
+	returnIf(!display);
 
 	while (XPending(display))
 	{

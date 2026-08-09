@@ -6,6 +6,7 @@
 #include <functional>
 #include <utility>
 
+#include "Core/CommonMacros.h"
 #include "Core/Debug.h"
 #include "Memory/DefaultAllocator.h"
 #include "Memory/Memory.h"
@@ -340,8 +341,7 @@ namespace hbe
 
 		void Release() noexcept
 		{
-			if (entries == nullptr)
-				return;
+			returnIf(entries == nullptr);
 
 			for (TIndex i = 0; i < count; ++i)
 			{

@@ -4,8 +4,6 @@
 
 #include "Debug.h"
 
-#define ONCE while (false)
-
 namespace hbe
 {
 class True_t final

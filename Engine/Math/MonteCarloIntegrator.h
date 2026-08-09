@@ -8,6 +8,8 @@
 #include <cstdint>
 #include <type_traits>
 
+#include "Core/CommonMacros.h"
+
 namespace hbe
 {
 	/// @brief A Monte Carlo integrator for numerical integration using importance sampling.
@@ -31,15 +33,13 @@ namespace hbe
 		{
 			result = 0;
 
-			if (numIterations <= 0)
-				return false;
+			returnValueIf(false, numIterations <= 0);
 
 			for (TInteger i = 0; i < numIterations; ++i)
 			{
 				const TInput x = sample();
 				const TReal p_x = p(x);
-				if (p_x <= 0)
-					return false;
+				returnValueIf(false, p_x <= 0);
 
 				const TOutput f_x = f(x);
 				const TOutput fx_over_px = f_x / p_x;

@@ -3,6 +3,7 @@
 #include "OSMemory.h"
 
 #include "../Engine/Engine.h"
+#include "Core/CommonMacros.h"
 #include "Core/Debug.h"
 #include "Intrinsic.h"
 
@@ -147,8 +148,7 @@ void OS::ProtectMemory(void* address, size_t n) noexcept
 	DWORD oldProtect = 0;
 	auto result = VirtualProtect(address, n, PAGE_NOACCESS, &oldProtect);
 
-	if (likely(result))
-		return;
+	returnIf(likely(result));
 
 	using namespace std;
 	auto errorId = GetLastError();
