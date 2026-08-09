@@ -2,6 +2,7 @@
 
 #include "UI/UIComponent.h"
 
+#include "Core/CommonMacros.h"
 
 namespace hbe
 {

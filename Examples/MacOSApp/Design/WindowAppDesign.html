@@ -722,7 +722,7 @@ Window::Present(framebuffer) → CGImage → NSView::drawRect() → Screen</pre>
                         <td>User</td>
                         <td>Launch Application</td>
                         <td>Binary exists</td>
-                        <td>1. Application.Initialize() creates NSApplication → 2. Window::Create() creates NSWindow → 3. Framebuffer.Initialize() allocates pixels → 4. UI components created → 5. Main loop starts</td>
+                        <td>1. Application.Initialize() creates NSApplication → 2. Window.CreateWindow() creates NSWindow → 3. Framebuffer.Initialize() allocates pixels → 4. UI components created → 5. Main loop starts</td>
                         <td>Window visible with TextPanel, ScrollBar, Close button. Background dark (#0D1117). Panel area slightly lighter (#161B22).</td>
                     </tr>
                     <tr>
