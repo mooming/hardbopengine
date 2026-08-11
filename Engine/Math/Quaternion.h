@@ -339,11 +339,10 @@ namespace hbe
 		[[nodiscard]] TVec3 Multiply(const TVec3& rhs) const noexcept
 		{
 			Quaternion qv(nullptr);
-
-			qv.x = w * rhs.x + x + y * rhs.z - z * rhs.y;
-			qv.y = w * rhs.y - x * rhs.z + y + z * rhs.x;
-			qv.z = w * rhs.z + x * rhs.y - y * rhs.x + z;
-			qv.w = w - x * rhs.x - y * rhs.y - z * rhs.z;
+			qv.x =  w * rhs.x + y * rhs.z - z * rhs.y;
+			qv.y =  w * rhs.y - x * rhs.z + z * rhs.x;
+			qv.z =  w * rhs.z + x * rhs.y - y * rhs.x;
+			qv.w = -x * rhs.x - y * rhs.y - z * rhs.z;
 
 			TVec3 result(nullptr);
 			result.x = -qv.w * x + qv.x * w - qv.y * z + qv.z * y;

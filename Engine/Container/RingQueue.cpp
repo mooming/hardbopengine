@@ -76,10 +76,11 @@ namespace hbe
 
 		AddTest("Full Detection", [this](auto& ls)
 		{
-			RingQueue<int> q(3);
+			RingQueue<int> q(4);  // Power of 2 capacity
 			q.Push(1);
 			q.Push(2);
 			q.Push(3);
+			q.Push(4);
 
 			if (!q.IsFull())
 			{

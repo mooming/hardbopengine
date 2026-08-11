@@ -28,3 +28,14 @@ Applied the new macros from `Engine/Core/CommonMacros.h` across the codebase:
 
 - Built and ran EngineTest in Debug configuration: all tests pass.
 - No regressions introduced.
+
+## RingQueue Performance Optimization & Quaternion Test Fix
+
+### Changes Made
+
+1. **Engine/Container/RingQueue.h**:
+   - Added `#include <bit>` for `std::bit_ceil()`
+   - Modified constructor to round capacity to next power of 2 using `std::bit_ceil()`
+   - Changed `WrapIndex` from modulo (`% cap`) to bitmask (`& (cap - 1)`)
+3. **Engine/Math/Quaternion.cpp**:
+   - Previous expectation was mathematically invalid (rotating vector parallel to axis of rotation)

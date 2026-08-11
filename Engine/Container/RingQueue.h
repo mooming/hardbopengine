@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include <bit>
 #include <cstddef>
 #include <utility>
 
@@ -31,9 +32,12 @@ namespace hbe
 		{
 			FatalAssert(fixedCapacity > 0, "RingQueue capacity must be positive");
 
+			// Round up to power of 2 for efficient bitmasking
+			TIndex pow2Capacity = static_cast<TIndex>(std::bit_ceil(static_cast<unsigned int>(fixedCapacity)));
+
 			TAllocator alloc;
-			data = alloc.allocate(fixedCapacity);
-			cap = fixedCapacity;
+			data = alloc.allocate(pow2Capacity);
+			cap = pow2Capacity;
 		}
 
 		RingQueue(RingQueue&& rhs) noexcept
@@ -166,7 +170,7 @@ namespace hbe
 		TIndex count;
 		TElement* data;
 
-		TIndex WrapIndex(TIndex index) const noexcept { return index % cap; }
+		TIndex WrapIndex(TIndex index) const noexcept { return index & (cap - 1); }
 
 		void DestroyAll() noexcept
 		{

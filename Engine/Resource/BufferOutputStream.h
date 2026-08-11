@@ -74,7 +74,6 @@ namespace hbe
 		{
 			Assert(std::this_thread::get_id() == threadID);
 			const size_t size = buffer.GetSize();
-			returnIf(cursor >= size);
 
 			constexpr size_t tSize = sizeof(T);
 			static_assert(tSize > 0);
@@ -88,6 +87,10 @@ namespace hbe
 				if (newIndex <= size)
 				{
 					cursor = newIndex;
+				}
+				else
+				{
+					++errorCount;
 				}
 
 				return;
@@ -117,7 +120,6 @@ namespace hbe
 			Assert(std::this_thread::get_id() == threadID);
 
 			const size_t size = buffer.GetSize();
-			if (cursor >= size) return;
 
 			Put<size_t>(length);
 
@@ -131,6 +133,10 @@ namespace hbe
 				if (newIndex <= size)
 				{
 					cursor = newIndex;
+				}
+				else
+				{
+					++errorCount;
 				}
 
 				return;

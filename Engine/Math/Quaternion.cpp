@@ -37,9 +37,9 @@ namespace hbe
 #endif
 
 #ifdef RIGHT_HANDED_COORDINATE
-			if (y * TFloat3::Forward != TFloat3::Right)
+			if (y * TFloat3::Right != -TFloat3::Up)
 			{
-				ls << "Quat rotation failed. " << (y * TFloat3::Forward) << ", but " << TFloat3::Right << " expected."
+				ls << "Quat rotation failed. " << (y * TFloat3::Right) << ", but " << -TFloat3::Up << " expected."
 				   << lferr;
 			}
 #endif
