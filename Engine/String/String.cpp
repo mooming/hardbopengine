@@ -571,9 +571,15 @@ namespace hbe
 
 	void String::AppendSelf(const TChar letter) noexcept
 	{
-		const auto index = Length();
-		buffer->push_back('\0');
-		buffer.Get()[index] = letter;
+		// Optimized single-pass append: obtain a reference to the buffer once,
+		// resize to accommodate the letter + trailing null, and write both
+		// directly. This halves the Shareable dereferencing overhead versus
+		// the previous push_back('\0') + assign-at-index pattern.
+		auto& buf = buffer.Get();
+		const auto index = buf.size();
+		buf.resize(index + 2); // room for the letter + trailing null terminator
+		buf.data()[index] = letter;
+		buf.data()[index + 1] = '\0';
 	}
 
 	void String::AppendSelf(const int value) noexcept
