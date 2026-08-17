@@ -39,3 +39,29 @@ Applied the new macros from `Engine/Core/CommonMacros.h` across the codebase:
    - Changed `WrapIndex` from modulo (`% cap`) to bitmask (`& (cap - 1)`)
 3. **Engine/Math/Quaternion.cpp**:
    - Previous expectation was mathematically invalid (rotating vector parallel to axis of rotation)
+
+## EngineTest Performance Analysis and Improvement Solutions
+
+### Summary
+Built and ran Applications/EngineTest in Debug configuration with tests enabled. Identified performance warnings where custom implementations underperform STL equivalents.
+
+### Key Findings
+- InlinePoolAllocator: 1.27x slower than system malloc for variable-sized allocations (due to fallback overhead)
+- MultiPoolAllocator: 7.7x slower than std::malloc
+- ThreadSafeMultiPoolAllocator: 8.0x slower than std::malloc
+- LinkedList: 2.1x slower than std::list
+- String: 14x slower than std::string (due to lack of Small String Optimization)
+
+### Recommended Solutions
+1. **InlinePoolAllocator**: Document as fixed-size only; use segregated allocators for variable sizes.
+2. **MultiPoolAllocator**: Optimize block management (power-of-two sizes, per-CPU caching); reduce lock contention.
+3. **LinkedList**: Integrate node pooling; cache size; use sentinel node.
+4. **String**: Implement Small String Optimization (SSO); exponential growth; optimize operations.
+
+### Next Steps
+- Start with String SSO for highest impact.
+- Proceed to LinkedList node pooling.
+- Address allocators last due to complexity.
+- Create microbenchmarks to validate improvements.
+
+Full analysis available in PerformanceAnalysis.md.
