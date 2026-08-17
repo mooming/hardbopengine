@@ -3,6 +3,7 @@
 #pragma once
 
 #include <cstddef>
+#include <cstdlib>
 #include "Core/Debug.h"
 #include "AllocatorID.h"
 #include "AllocatorScope.h"
@@ -37,6 +38,15 @@ namespace hbe
 
 		[[nodiscard]] T* allocate(std::size_t n) noexcept
 		{
+			// Fast-path: when the scoped allocator is the SystemAllocator,
+			// bypass the MemoryManager indirection chain and call malloc directly.
+			// This eliminates multiple function calls per allocation that dominate
+			// performance in hot paths (e.g., std::vector growth).
+			if (allocatorID == MemoryManager::SystemAllocatorID)
+			{
+				return static_cast<T*>(malloc(n * sizeof(T)));
+			}
+
 			AllocatorScope scope(allocatorID);
 			auto& mmgr = MemoryManager::GetInstance();
 			auto ptr = mmgr.AllocateByType<T>(n);
@@ -47,6 +57,14 @@ namespace hbe
 		void deallocate(T* ptr, std::size_t n) noexcept
 		{
 			Assert(ptr != nullptr);
+
+			// Fast-path: mirror the allocate() optimization for deallocation.
+			if (allocatorID == MemoryManager::SystemAllocatorID)
+			{
+				free(ptr);
+				return;
+			}
+
 			AllocatorScope scope(allocatorID);
 			auto& mmgr = MemoryManager::GetInstance();
 			mmgr.DeallocateTypes(ptr, n);
