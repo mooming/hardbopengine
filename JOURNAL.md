@@ -65,3 +65,65 @@ Built and ran Applications/EngineTest in Debug configuration with tests enabled.
 - Create microbenchmarks to validate improvements.
 
 Full analysis available in PerformanceAnalysis.md.
+
+## Follow-up: Clarifications on Performance Analysis
+
+### Questions Addressed
+
+1. **What is String SSO?**
+   Small String Optimization (SSO) stores small strings (typically ≤15-22 chars) directly in the string object instead of allocating heap memory. This avoids allocation overhead for common cases and improves cache locality. Standard `std::string` implement SSO.
+
+2. **LinkedList Node Pooling Check**
+   Yes, verified: LinkedList uses a template allocator parameter (`TAllocator = DefaultAllocator<LinkedListNode<TType>>`). Unit tests specifically configure it with PoolAllocator:
+   ```cpp
+   PoolAllocator alloc("LinkedListTest::Allocator", NodeSize, COUNT + 10);
+   AllocatorScope allocScope(alloc);
+   ```
+   Despite node pooling, performance issues may stem from:
+   - Pointer chasing causing poor cache locality
+   - Algorithm inefficiencies beyond allocation
+   - Test configuration or measurement overhead
+
+3. **MultiPoolAllocator Locking**
+   Correct: 
+   - `MultiPoolAllocator` (single-threaded): No mutex locks
+   - `ThreadSafeMultiPoolAllocator`: Contains `std::mutex lock` for thread safety
+
+4. **HString and SSO**
+   Verified: `HString = std::basic_string<char, ..., hbe::DefaultAllocator<char>>` 
+   As a typedef of `std::basic_string`, it inherits the standard library's SSO implementation (when available on the platform).
+   The poor-performing string in tests was the custom `String` class (Engine/String/String.h), not HString.
+
+### Key Clarification
+The StringTest warning referred to the custom `String` class (always heap-allocated via `Shareable<Vector<TChar>>`), not HString which does benefit from std::string's SSO.
+
+## Follow-up: Clarifications on Performance Analysis
+
+### Questions Addressed
+
+1. **What is String SSO?**
+   Small String Optimization (SSO) stores small strings (typically ≤15-22 chars) directly in the string object instead of allocating heap memory. This avoids allocation overhead for common cases and improves cache locality. Standard `std::string` implement SSO.
+
+2. **LinkedList Node Pooling Check**
+   Yes, verified: LinkedList uses a template allocator parameter (`TAllocator = DefaultAllocator<LinkedListNode<TType>>`). Unit tests specifically configure it with PoolAllocator:
+   ```cpp
+   PoolAllocator alloc("LinkedListTest::Allocator", NodeSize, COUNT + 10);
+   AllocatorScope allocScope(alloc);
+   ```
+   Despite node pooling, performance issues may stem from:
+   - Pointer chasing causing poor cache locality
+   - Algorithm inefficiencies beyond allocation
+   - Test configuration or measurement overhead
+
+3. **MultiPoolAllocator Locking**
+   Correct: 
+   - `MultiPoolAllocator` (single-threaded): No mutex locks
+   - `ThreadSafeMultiPoolAllocator`: Contains `std::mutex lock` for thread safety
+
+4. **HString and SSO**
+   Verified: `HString = std::basic_string<char, ..., hbe::DefaultAllocator<char>>` 
+   As a typedef of `std::basic_string`, it inherits the standard library's SSO implementation (when available on the platform).
+   The poor-performing string in tests was the custom `String` class (Engine/String/String.h), not HString.
+
+### Key Clarification
+The StringTest warning referred to the custom `String` class (always heap-allocated via `Shareable<Vector<TChar>>`), not HString which does benefit from std::string's SSO.

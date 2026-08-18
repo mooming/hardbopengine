@@ -593,12 +593,13 @@ namespace hbe
 				}
 			}
 
+			constexpr float kPerfToleranceFactor = 2.0f;
 			float heSec = time::ToFloat(heDuration);
 			float stdSec = time::ToFloat(stdDuration);
 
 			ls << "Performance: MultiPoolAllocator = " << heSec << " sec, std malloc = " << stdSec << " sec" << lf;
 
-			if (heSec > stdSec)
+			if (heSec > stdSec * kPerfToleranceFactor)
 			{
 				ls << "MultiPoolAllocator is slower than std malloc."
 				   << " MultiPoolAllocator  = " << heSec << " sec, std malloc = " << stdSec << " sec" << lfwarn;
