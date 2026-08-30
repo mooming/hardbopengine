@@ -1,6 +1,6 @@
 // Copyright (c) 2026 Hansol Park (mooming.go@gmail.com). All rights reserved.
 
-#include "LinuxWindow.h"
+#include "Window.h"
 #include "Core/CommonMacros.h"
 
 #ifdef PLATFORM_LINUX
@@ -8,17 +8,17 @@
 namespace OS
 {
 
-LinuxWindow::LinuxWindow()
+Window::Window()
 	: display(nullptr), window(0), width(0), height(0), visibleFlag(true), closedFlag(false)
 {
 }
 
-LinuxWindow::~LinuxWindow()
+Window::~Window()
 {
 	Close();
 }
 
-bool LinuxWindow::CreateWindow(const hbe::HString& title, int width, int height)
+bool Window::CreateWindow(const hbe::HString& title, int width, int height)
 {
 	display = XOpenDisplay(nullptr);
 
@@ -35,49 +35,54 @@ bool LinuxWindow::CreateWindow(const hbe::HString& title, int width, int height)
 
 	returnValueIf(false, !window);
 
-	this->width = width;
-	this->height = height;
+	Window::width = width;
+	Window::height = height;
 
-	XStoreName(display, window, title.CStr());
+	XStoreName(display, window, title.c_str());
 	XMapWindow(display, window);
 
 	return true;
 }
 
-void LinuxWindow::SetTitle(const hbe::HString& title)
+void Window::SetTitle(const hbe::HString& title)
 {
 	if (display && window)
 	{
-		XStoreName(display, window, title.CStr());
+		XStoreName(display, window, title.c_str());
 	}
 }
 
-void LinuxWindow::SetSize(int width, int height)
+void Window::SetSize(int width, int height)
 {
 	if (display && window)
 	{
-		this->width = width;
-		this->height = height;
+		Window::width = width;
+		Window::height = height;
 		XResizeWindow(display, window, width, height);
 	}
 }
 
-int LinuxWindow::GetWidth() const
+int Window::GetWidth() const
 {
 	return width;
 }
 
-int LinuxWindow::GetHeight() const
+int Window::GetHeight() const
 {
 	return height;
 }
 
-bool LinuxWindow::IsVisible() const
+bool Window::IsVisible() const
 {
 	return visibleFlag;
 }
 
-void LinuxWindow::PollEvents()
+intptr_t Window::GetNativeHandle() const
+{
+	return reinterpret_cast<intptr_t>(window);
+}
+
+void Window::PollEvents()
 {
 	returnIf(!display);
 
@@ -98,7 +103,7 @@ void LinuxWindow::PollEvents()
 	}
 }
 
-void LinuxWindow::Close()
+void Window::Close()
 {
 	if (display && window)
 	{
@@ -111,7 +116,7 @@ void LinuxWindow::Close()
 	closedFlag = true;
 }
 
-bool LinuxWindow::IsClosed() const
+bool Window::IsClosed() const
 {
 	return closedFlag;
 }

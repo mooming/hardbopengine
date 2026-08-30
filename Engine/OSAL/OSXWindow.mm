@@ -1,7 +1,8 @@
 // Copyright (c) 2026 Hansol Park (mooming.go@gmail.com). All rights reserved.
 
-#include "OSXWindow.h"
+#include "Window.h"
 #include "Core/CommonMacros.h"
+#include "Config/BuildConfig.h"
 
 #ifdef PLATFORM_OSX
 #import <Cocoa/Cocoa.h>
@@ -10,23 +11,23 @@
 namespace OS
 {
 
-OSXWindow::OSXWindow()
-	: nsWindow(nullptr)
-	, width(0)
+Window::Window() noexcept
+	: width(0)
 	, height(0)
 	, visibleFlag(false)
 	, closedFlag(false)
+	, osHandle(nullptr)
 {
 }
 
-OSXWindow::~OSXWindow()
+Window::~Window()
 {
 	Close();
 }
 
-bool OSXWindow::CreateWindow(const hbe::HString& title, int width, int height)
+bool Window::CreateWindow(const hbe::HString& title, int width, int height)
 {
-	returnValueIf(false, nsWindow != nullptr);
+	returnValueIf(false, osHandle != nullptr);
 
 	NSRect frame = NSMakeRect(100, 100, width, height);
 	NSUInteger styleMask = NSWindowStyleMaskTitled | NSWindowStyleMaskClosable | NSWindowStyleMaskMiniaturizable;
@@ -44,56 +45,58 @@ bool OSXWindow::CreateWindow(const hbe::HString& title, int width, int height)
 	[window makeKeyAndOrderFront:nil];
 	[window center];
 
-	OSXWindow::width = width;
-	OSXWindow::height = height;
+	Window::width = width;
+	Window::height = height;
 	visibleFlag = true;
-	nsWindow = window;
+	osHandle = window;
 
 	return true;
 }
 
-void OSXWindow::SetTitle(const hbe::HString& title)
+void Window::SetTitle(const hbe::HString& title)
 {
-	returnIf(nsWindow == nullptr);
+	returnIf(osHandle == nullptr);
 
-	auto window = static_cast<NSWindow*>(nsWindow);
+	auto window = static_cast<NSWindow*>(osHandle);
 	[window setTitle:[NSString stringWithUTF8String:title.c_str()]];
 }
 
-void OSXWindow::SetSize(int width, int height)
+void Window::SetSize(int width, int height)
 {
-	returnIf(nsWindow == nullptr);
+	returnIf(osHandle == nullptr);
 
-	auto window = static_cast<NSWindow*>(nsWindow);
+	auto window = static_cast<NSWindow*>(osHandle);
 	NSRect frame = [window frame];
 	frame.size.width = width;
 	frame.size.height = height;
 	[window setFrame:frame display:YES animate:NO];
-	OSXWindow::width = width;
-	OSXWindow::height = height;
+	Window::width = width;
+	Window::height = height;
 }
 
-int OSXWindow::GetWidth() const
+int Window::GetWidth() const
 {
 	return width;
 }
 
-int OSXWindow::GetHeight() const
+int Window::GetHeight() const
 {
 	return height;
 }
 
-bool OSXWindow::IsVisible() const
+bool Window::IsVisible() const
 {
 	return visibleFlag;
 }
 
-void OSXWindow::SetVisible(bool visible)
+void Window::SetVisible(bool visible)
 {
-	if (nsWindow == nullptr)
+	if (osHandle == nullptr)
+	{
 		return;
+	}
 
-	auto window = static_cast<NSWindow*>(nsWindow);
+	auto window = static_cast<NSWindow*>(osHandle);
 
 	if (visible)
 	{
@@ -107,11 +110,11 @@ void OSXWindow::SetVisible(bool visible)
 	visibleFlag = visible;
 }
 
-void OSXWindow::PollEvents()
+void Window::PollEvents()
 {
-	if (nsWindow != nullptr)
+	if (osHandle != nullptr)
 	{
-		auto window = static_cast<NSWindow*>(nsWindow);
+		auto window = static_cast<NSWindow*>(osHandle);
 		if (![window isVisible])
 		{
 			closedFlag = true;
@@ -119,27 +122,27 @@ void OSXWindow::PollEvents()
 	}
 }
 
-void OSXWindow::Close()
+void Window::Close()
 {
-	if (nsWindow != nullptr)
+	if (osHandle != nullptr)
 	{
-		auto window = static_cast<NSWindow*>(nsWindow);
+		auto window = static_cast<NSWindow*>(osHandle);
 		[window close];
 		[window release];
-		nsWindow = nullptr;
+		osHandle = nullptr;
 	}
 
 	closedFlag = true;
 }
 
-bool OSXWindow::IsClosed() const
+bool Window::IsClosed() const
 {
 	return closedFlag;
 }
 
-intptr_t OSXWindow::GetNativeHandle() const
+intptr_t Window::GetNativeHandle() const
 {
-	return reinterpret_cast<intptr_t>(nsWindow);
+	return reinterpret_cast<intptr_t>(osHandle);
 }
 
 } // namespace OS

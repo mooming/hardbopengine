@@ -14,7 +14,7 @@ MinimalVulkanRenderer::~MinimalVulkanRenderer()
 	Shutdown();
 }
 
-bool MinimalVulkanRenderer::Initialize(OS::IWindow* /*window*/) noexcept
+bool MinimalVulkanRenderer::Initialize(OS::Window* /*window*/) noexcept
 {
 	// Allocate framebuffer
 	framebuffer.resize(width * height);

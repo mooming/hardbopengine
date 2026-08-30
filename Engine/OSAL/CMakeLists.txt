@@ -78,7 +78,6 @@ add_library (OSAL STATIC
  File.h
  Intrinsic.h
  LinuxIntrinsic.h
- LinuxWindow.h
  OSAbstractLayer.h
  OSDebug.h
  OSFileHandle.h
@@ -89,9 +88,7 @@ add_library (OSAL STATIC
  OSProtectionMode.h
  OSThread.h
  OSXIntrinsic.h
- OSXWindow.h
  SourceLocation.h
- Win32Window.h
  Window.h
  WindowsIntrinsic.h
 ${PLATFORM_SOURCES}

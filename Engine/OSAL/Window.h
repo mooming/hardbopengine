@@ -10,91 +10,48 @@
 namespace OS
 {
 
-/**
- * @brief Interface for a platform-independent window.
- */
-class IWindow
+/// @brief Platform-independent window facade.
+/// @details Concrete behaviour differs per OS and is implemented in the per-platform
+///          units (LinuxWindow.cpp, OSXWindow.mm, Win32Window.cpp), selected at build
+///          time via `#if defined(PLATFORM_*)`. The public interface is identical.
+class Window
 {
 public:
-	virtual ~IWindow() = default;
+	Window() noexcept;
+	~Window();
 
-	/**
-	 * @brief Creates the window with specified title and dimensions.
-	 * @param title The title of the window.
-	 * @param width The initial width of the window in pixels.
-	 * @param height The initial height of the window in pixels.
-	 * @return True if the window was created successfully, false otherwise.
-	 */
-	virtual bool CreateWindow(const hbe::HString& title, int width, int height) = 0;
+	[[nodiscard]] bool CreateWindow(const hbe::HString& title, int width, int height);
+	void SetTitle(const hbe::HString& title);
+	void SetSize(int width, int height);
+	void SetVisible(bool visible);
+	void PollEvents();
+	void Close();
 
-	/**
-	 * @brief Sets the title of the window.
-	 * @param title The new title for the window.
-	 */
-	virtual void SetTitle(const hbe::HString& title) = 0;
+	[[nodiscard]] int GetWidth() const;
+	[[nodiscard]] int GetHeight() const;
+	[[nodiscard]] bool IsVisible() const;
+	[[nodiscard]] bool IsClosed() const;
+	[[nodiscard]] intptr_t GetNativeHandle() const;
 
-	/**
-	 * @brief Resizes the window to specified dimensions.
-	 * @param width The new width in pixels.
-	 * @param height The new height in pixels.
-	 */
-	virtual void SetSize(int width, int height) = 0;
+private:
+	int width;
+	int height;
+	bool visibleFlag;
+	bool closedFlag;
 
-	/**
-	 * @brief Sets whether the window is visible or hidden.
-	 * @param visible True to show the window, false to hide it.
-	 */
-	virtual void SetVisible(bool visible) = 0;
-
-	/**
-	 * @brief Processes pending OS events (e.g., input, resizing).
-	 */
-	virtual void PollEvents() = 0;
-
-	/**
-	 * @brief Closes the window and cleans up its resources.
-	 */
-	virtual void Close() = 0;
-
-	/**
-	 * @brief Gets the current width of the window in pixels.
-	 * @return The width of the window.
-	 */
-	[[nodiscard]] virtual int GetWidth() const = 0;
-
-	/**
-	 * @brief Gets the current height of the window in pixels.
-	 * @return The height of the window.
-	 */
-	[[nodiscard]] virtual int GetHeight() const = 0;
-
-	/**
-	 * @brief Checks if the window is currently visible.
-	 * @return True if the window is visible, false otherwise.
-	 */
-	[[nodiscard]] virtual bool IsVisible() const = 0;
-
-	/**
-	 * @brief Checks if the window has been closed.
-	 * @return True if the window is closed, false otherwise.
-	 */
-	[[nodiscard]] virtual bool IsClosed() const = 0;
-
-	/**
-	 * @brief Gets the native window handle (e.g., HWND on Windows, NSWindow* on macOS, Window on Linux).
-	 * @return The native window handle as a pointer.
-	 */
-	[[nodiscard]] virtual intptr_t GetNativeHandle() const = 0;
+#if defined(PLATFORM_LINUX)
+	void* display;
+	intptr_t window;
+#elif defined(PLATFORM_WINDOWS)
+	void* hwnd;
+	bool shouldCloseFlag;
+#elif defined(PLATFORM_OSX)
+	void* osHandle;
+#endif
 };
 
-/**
- * @brief Factory function to create a window for the current platform.
- * @param title The title of the window.
- * @param width The initial width of the window in pixels.
- * @param height The initial height of the window in pixels.
- * @return Unique pointer to the created window, or nullptr if creation failed.
- */
-std::unique_ptr<IWindow> CreateWindow(const hbe::HString& title, int width, int height);
+/// @brief Creates a Window owned by the caller.
+[[nodiscard]] std::unique_ptr<Window> CreateWindow(const hbe::HString& title, int width, int height);
 
 } // namespace OS
 

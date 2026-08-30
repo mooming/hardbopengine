@@ -1,6 +1,6 @@
 // Copyright (c) 2026 Hansol Park (mooming.go@gmail.com). All rights reserved.
 
-#include "Win32Window.h"
+#include "Window.h"
 #include "Core/CommonMacros.h"
 
 #ifdef PLATFORM_WINDOWS
@@ -9,20 +9,20 @@
 namespace OS
 {
 
-Win32Window::Win32Window()
+Window::Window()
 	: hwnd(nullptr), width(0), height(0), visibleFlag(true), closedFlag(false), shouldCloseFlag(false)
 {
 }
 
-Win32Window::~Win32Window()
+Window::~Window()
 {
 	Close();
 }
 
-bool Win32Window::CreateWindow(const hbe::HString& title, int width, int height)
+bool Window::CreateWindow(const hbe::HString& title, int width, int height)
 {
-	this->width = width;
-	this->height = height;
+	Window::width = width;
+	Window::height = height;
 
 	HINSTANCE hInstance = GetModuleHandle(nullptr);
 	WNDCLASS wc = {};
@@ -35,7 +35,7 @@ bool Win32Window::CreateWindow(const hbe::HString& title, int width, int height)
 	hwnd = CreateWindowEx(
 		0,
 		"HardbopEngineWindowClass",
-		title.CStr(),
+		title.c_str(),
 		WS_OVERLAPPEDWINDOW,
 		CW_USEDEFAULT, CW_USEDEFAULT, width, height,
 		nullptr, nullptr, hInstance, this
@@ -49,35 +49,35 @@ bool Win32Window::CreateWindow(const hbe::HString& title, int width, int height)
 	return true;
 }
 
-void Win32Window::SetTitle(const hbe::HString& title)
+void Window::SetTitle(const hbe::HString& title)
 {
 	if (hwnd)
 	{
-		SetWindowText(static_cast<HWND>(hwnd), title.CStr());
+		SetWindowText(static_cast<HWND>(hwnd), title.c_str());
 	}
 }
 
-void Win32Window::SetSize(int width, int height)
+void Window::SetSize(int width, int height)
 {
 	if (hwnd)
 	{
-		this->width = width;
-		this->height = height;
+		Window::width = width;
+		Window::height = height;
 		SetWindowPos(static_cast<HWND>(hwnd), nullptr, 0, 0, width, height, SWP_NOMOVE | SWP_NOZORDER);
 	}
 }
 
-int Win32Window::GetWidth() const
+int Window::GetWidth() const
 {
 	return width;
 }
 
-int Win32Window::GetHeight() const
+int Window::GetHeight() const
 {
 	return height;
 }
 
-bool Win32Window::IsVisible() const
+bool Window::IsVisible() const
 {
 	if (hwnd)
 	{
@@ -87,7 +87,7 @@ bool Win32Window::IsVisible() const
 	return false;
 }
 
-void Win32Window::SetVisible(bool visible)
+void Window::SetVisible(bool visible)
 {
 	if (hwnd)
 	{
@@ -96,7 +96,7 @@ void Win32Window::SetVisible(bool visible)
 	}
 }
 
-void Win32Window::PollEvents()
+void Window::PollEvents()
 {
 	MSG msg;
 
@@ -107,7 +107,12 @@ void Win32Window::PollEvents()
 	}
 }
 
-void Win32Window::Close()
+intptr_t Window::GetNativeHandle() const
+{
+	return reinterpret_cast<intptr_t>(hwnd);
+}
+
+void Window::Close()
 {
 	if (hwnd)
 	{
@@ -118,24 +123,24 @@ void Win32Window::Close()
 	closedFlag = true;
 }
 
-bool Win32Window::IsClosed() const
+bool Window::IsClosed() const
 {
 	return closedFlag;
 }
 
-long Win32Window::WindowProc(void* hwnd, unsigned int uMsg, unsigned long long wParam, long lParam)
+long Window::WindowProc(void* hwnd, unsigned int uMsg, unsigned long long wParam, long lParam)
 {
-	Win32Window* pThis = nullptr;
+	Window* pThis = nullptr;
 
 	if (uMsg == WM_NCCREATE)
 	{
 		CREATESTRUCT* pCreate = reinterpret_cast<CREATESTRUCT*>(lParam);
-		pThis = reinterpret_cast<Win32Window*>(pCreate->lpCreateParams);
+		pThis = reinterpret_cast<Window*>(pCreate->lpCreateParams);
 		SetWindowLongPtr(static_cast<HWND>(hwnd), GWLP_DLPTR, reinterpret_cast<LONG_PTR>(pThis));
 	}
 	else
 	{
-		pThis = reinterpret_cast<Win32Window*>(GetWindowLongPtr(static_cast<HWND>(hwnd), GWLP_DLPTR));
+		pThis = reinterpret_cast<Window*>(GetWindowLongPtr(static_cast<HWND>(hwnd), GWLP_DLPTR));
 	}
 
 	if (pThis)

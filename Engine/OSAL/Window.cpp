@@ -5,28 +5,12 @@
 #include "Application.h"
 #include "Config/BuildConfig.h"
 
-#ifdef PLATFORM_WINDOWS
-#include "Win32Window.h"
-#elif defined(PLATFORM_LINUX)
-#include "LinuxWindow.h"
-#elif defined(PLATFORM_OSX)
-#include "OSXWindow.h"
-#endif
-
 namespace OS
 {
 
-std::unique_ptr<IWindow> CreateWindow(const hbe::HString& title, int width, int height)
+std::unique_ptr<Window> CreateWindow(const hbe::HString& title, int width, int height)
 {
-#ifdef PLATFORM_WINDOWS
-	auto window = std::make_unique<Win32Window>();
-#elif defined(PLATFORM_LINUX)
-	auto window = std::make_unique<LinuxWindow>();
-#elif defined(PLATFORM_OSX)
-	auto window = std::make_unique<OSXWindow>();
-#else
-	return nullptr;
-#endif
+	auto window = std::make_unique<Window>();
 
 	if (window->CreateWindow(title, width, height))
 	{
@@ -54,7 +38,7 @@ void WindowTest::Prepare()
 	AddTest("Create Window", [this](auto& ls)
 	{
 		auto& taskSystem = Engine::Get().GetTaskSystem();
-		std::promise<std::unique_ptr<OS::IWindow>> windowPromise;
+		std::promise<std::unique_ptr<OS::Window>> windowPromise;
 		auto windowFuture = windowPromise.get_future();
 
 		using TThis = decltype(this);
@@ -140,7 +124,7 @@ void WindowTest::Prepare()
 	AddTest("Set and Get Title", [this](auto& ls)
 	{
 		auto& taskSystem = Engine::Get().GetTaskSystem();
-		std::promise<std::unique_ptr<OS::IWindow>> windowPromise;
+		std::promise<std::unique_ptr<OS::Window>> windowPromise;
 		auto windowFuture = windowPromise.get_future();
 
 		using TThis = decltype(this);
@@ -241,7 +225,7 @@ void WindowTest::Prepare()
 	AddTest("Set and Get Size", [this](auto& ls)
 	{
 		auto& taskSystem = Engine::Get().GetTaskSystem();
-		std::promise<std::unique_ptr<OS::IWindow>> windowPromise;
+		std::promise<std::unique_ptr<OS::Window>> windowPromise;
 		auto windowFuture = windowPromise.get_future();
 
 		using TThis = decltype(this);
@@ -341,7 +325,7 @@ void WindowTest::Prepare()
 	AddTest("Visibility", [this](auto& ls)
 	{
 		auto& taskSystem = Engine::Get().GetTaskSystem();
-		std::promise<std::unique_ptr<OS::IWindow>> windowPromise;
+		std::promise<std::unique_ptr<OS::Window>> windowPromise;
 		auto windowFuture = windowPromise.get_future();
 
 		using TThis = decltype(this);
@@ -443,7 +427,7 @@ void WindowTest::Prepare()
 	AddTest("Poll Events", [this](auto& ls)
 	{
 		auto& taskSystem = Engine::Get().GetTaskSystem();
-		std::promise<std::unique_ptr<OS::IWindow>> windowPromise;
+		std::promise<std::unique_ptr<OS::Window>> windowPromise;
 		auto windowFuture = windowPromise.get_future();
 
 		using TThis = decltype(this);
@@ -537,7 +521,7 @@ void WindowTest::Prepare()
 	AddTest("Close Window", [this](auto& ls)
 	{
 		auto& taskSystem = Engine::Get().GetTaskSystem();
-		std::promise<std::unique_ptr<OS::IWindow>> windowPromise;
+		std::promise<std::unique_ptr<OS::Window>> windowPromise;
 		auto windowFuture = windowPromise.get_future();
 
 		using TThis = decltype(this);

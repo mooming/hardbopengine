@@ -14,7 +14,7 @@ public:
 	MinimalVulkanRenderer() noexcept = default;
 	~MinimalVulkanRenderer();
 
-	bool Initialize(OS::IWindow* window) noexcept;
+	bool Initialize(OS::Window* window) noexcept;
 	void Shutdown() noexcept;
 
 	void BeginFrame() noexcept;
