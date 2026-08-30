@@ -1,25 +1,26 @@
 // Copyright (c) 2026 Hansol Park (mooming.go@gmail.com). All rights reserved.
 
-#include "LinuxApplication.h"
+#include "Application.h"
 
 #ifdef PLATFORM_LINUX
 
 namespace OS
 {
 
-LinuxApplication::LinuxApplication()
+Application::Application() noexcept
+	: m_platformHandle(nullptr)
 {
 }
 
-LinuxApplication::~LinuxApplication()
+Application::~Application()
 {
 }
 
-void LinuxApplication::Initialize()
+void Application::Initialize()
 {
 }
 
-void LinuxApplication::PollEvents()
+void Application::PollEvents()
 {
 }
 

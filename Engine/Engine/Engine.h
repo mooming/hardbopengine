@@ -48,7 +48,7 @@ namespace hbe
 		Logger logger;
 		TaskSystem taskSystem;
 		ResourceManager resourceManager;
-		std::unique_ptr<OS::IApplication> application;
+		std::unique_ptr<OS::Application> application;
 
 	public:
 		static Engine& Get();
@@ -87,7 +87,7 @@ namespace hbe
 		bool IsTaskSystemReady() const { return isTaskSystemReady; }
 		bool IsResourceManagerReady() const { return isResourceManagerReady; }
 
-		OS::IApplication* GetApplication() const { return application.get(); }
+		OS::Application* GetApplication() const { return application.get(); }
 
 		void Log(ELogLevel level, const TLogFunc& func);
 		void LogError(const TLogFunc& func) { Log(ELogLevel::Error, func); }

@@ -1,11 +1,11 @@
 // Copyright (c) 2026 Hansol Park (mooming.go@gmail.com). All rights reserved.
 
+#include "Application.h"
 #include "Core/CommonMacros.h"
 #include "Config/BuildConfig.h"
 
 #ifdef PLATFORM_OSX
 
-#import "OSXApplication.h"
 #import <Cocoa/Cocoa.h>
 
 @interface AppDelegate : NSObject <NSApplicationDelegate>
@@ -21,56 +21,57 @@
 namespace OS
 {
 
-OSXApplication::OSXApplication()
-	: appHandle(nullptr)
+Application::Application() noexcept
+	: m_platformHandle(nullptr)
 {
 }
 
-OSXApplication::~OSXApplication()
+Application::~Application()
 {
-	returnIf(appHandle == nullptr);
+	returnIf(m_platformHandle == nullptr);
 
-	auto app = static_cast<NSApplication*>(appHandle);
+	auto app = static_cast<NSApplication*>(m_platformHandle);
 	[app terminate:nil];
 
-	appHandle = nullptr;
+	m_platformHandle = nullptr;
 }
 
-void OSXApplication::Initialize()
+void Application::Initialize()
 {
-	if (appHandle != nullptr)
+	if (m_platformHandle != nullptr)
 	{
-		// Already initialised
+		// Already initialised.
 		return;
 	}
 
 	NSApplication *app = [NSApplication sharedApplication];
 	[app setActivationPolicy:NSApplicationActivationPolicyRegular];
+
 	auto delegate = [app delegate];
 	if (delegate == nil)
 	{
-		AppDelegate* appDelegate = [[AppDelegate alloc] init];
+		AppDelegate *appDelegate = [[AppDelegate alloc] init];
 		[app setDelegate:appDelegate];
 	}
 
 	[app finishLaunching];
-	appHandle = app;
+	m_platformHandle = app;
 }
 
-void OSXApplication::PollEvents()
+void Application::PollEvents()
 {
-	if (appHandle == nullptr)
+	if (m_platformHandle == nullptr)
 	{
-		// It hasn't be initialised.
+		// It hasn't been initialised.
 		return;
 	}
 
-	auto app = static_cast<NSApplication*>(appHandle);
+	auto app = static_cast<NSApplication*>(m_platformHandle);
 
-	// Clear all the queued events
+	// Clear all the queued events.
 	while (NSEvent *event = [app nextEventMatchingMask:NSEventMaskAny
-									   untilDate:[NSDate distantPast]
-										  inMode:NSDefaultRunLoopMode
+										 untilDate:[NSDate distantPast]
+											inMode:NSDefaultRunLoopMode
 										 dequeue:YES])
 	{
 		[app sendEvent:event];

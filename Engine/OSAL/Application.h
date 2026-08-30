@@ -7,15 +7,26 @@
 namespace OS
 {
 
-class IApplication
+/// @brief Platform-independent application facade.
+/// @details Public interface is identical on every OS; the behaviour differs per
+///          platform and lives in the per-platform implementation units
+///          (LinuxApplication.cpp, OSXApplication.mm, Win32Application.cpp),
+///          selected at build time via `#if defined(PLATFORM_*)`.
+class Application
 {
 public:
-	virtual ~IApplication() = default;
+	Application() noexcept;
+	~Application();
 
-	virtual void Initialize() = 0;
-	virtual void PollEvents() = 0;
+	void Initialize();
+	void PollEvents();
+
+private:
+	// Opaque per-platform handle (e.g. NSApplication*, HINSTANCE, ...).
+	void* m_platformHandle;
 };
 
-std::unique_ptr<IApplication> CreateApplication();
+/// @brief Creates an Application owned by the caller.
+[[nodiscard]] std::unique_ptr<Application> CreateApplication() noexcept;
 
 } // namespace OS
