@@ -14,6 +14,7 @@ set (CMAKE_CXX_STANDARD 23)
 
 if (APPLE)
     set(PLATFORM_SOURCES
+        Vulkan/VulkanRenderer.mm
     )
 else()
     set(PLATFORM_SOURCES "")
@@ -37,12 +38,10 @@ include_directories ( ${CMAKE_SOURCE_DIR}
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/lib)
 add_library (Renderer STATIC 
  RHICapabilities.cpp
- RendererFactory.cpp
  RendererTest.cpp
- IRenderer.h
+ Vulkan/VulkanRenderer.cpp
  RHICapabilities.h
  RendererCommon.h
- RendererFactory.h
  RendererTest.h
 ${PLATFORM_SOURCES}
 )
@@ -58,8 +57,4 @@ if (APPLE)
 endif (APPLE)
 
 install (TARGETS Renderer DESTINATION ${CMAKE_SOURCE_DIR}/lib)
-
-
-
-set_source_files_properties(RendererFactory.cpp PROPERTIES HEADER_FILE_ONLY TRUE)
 

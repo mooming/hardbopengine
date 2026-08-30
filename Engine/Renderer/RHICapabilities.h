@@ -29,27 +29,14 @@ namespace hbe
 namespace Renderer
 {
 
+/// @brief Static queries about the single supported RHI (Vulkan).
 class RHICapabilities final
 {
 public:
 	[[nodiscard]] static bool IsVulkanSupported() noexcept;
-	[[nodiscard]] static bool IsMetalSupported() noexcept;
-	[[nodiscard]] static bool IsDX12Supported() noexcept;
 
 	[[nodiscard]] static APIType GetPreferredAPI() noexcept;
-	[[nodiscard]] static RenderCapabilities GetCapabilities(APIType api) noexcept;
-
-private:
-	static bool CheckVulkanSupport() noexcept;
-	static bool CheckMetalSupport() noexcept;
-	static bool CheckDX12Support() noexcept;
-
-	static bool vulkanChecked;
-	static bool metalChecked;
-	static bool dx12Checked;
-	static bool vulkanSupported;
-	static bool metalSupported;
-	static bool dx12Supported;
+	[[nodiscard]] static RenderCapabilities GetCapabilities() noexcept;
 };
 
 } // namespace Renderer

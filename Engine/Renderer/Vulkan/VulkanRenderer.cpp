@@ -1,6 +1,6 @@
 // Copyright (c) 2026 Hansol Park (mooming.go@gmail.com). All rights reserved.
 
-#include "VulkanRenderer.h"
+#include "Vulkan/VulkanRenderer.h"
 
 #include <cmath>
 #include <cstring>
@@ -14,7 +14,6 @@
 #include <vulkan/vulkan.h>
 #include <vulkan/vulkan_xlib.h>
 #endif
-
 
 namespace hbe
 {
@@ -35,7 +34,7 @@ VulkanRenderer::~VulkanRenderer()
     Shutdown();
 }
 
-bool VulkanRenderer::Initialize(OS::IWindow* window) noexcept
+bool VulkanRenderer::Initialize(OS::Window* window) noexcept
 {
     if (initialized) return true;
 
@@ -97,17 +96,6 @@ APIType VulkanRenderer::GetAPIType() const noexcept
 RenderCapabilities VulkanRenderer::GetCapabilities() const noexcept
 {
     return capabilities;
-}
-
-void VulkanRenderer::InitPlatformLayers() noexcept
-{
-}
-
-void VulkanRenderer::SetMetalLayer(void* layer) noexcept
-{
-#if defined(PLATFORM_OSX)
-    metalLayer = layer;
-#endif
 }
 
 } // namespace Renderer

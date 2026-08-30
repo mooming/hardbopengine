@@ -2,13 +2,16 @@
 
 #pragma once
 
-#if defined(PLATFORM_OSX) && defined(VULKAN_SDK)
+#if defined(VULKAN_SDK) && __has_include(<vulkan/vulkan.h>)
 #include <vulkan/vulkan.h>
+#if defined(PLATFORM_OSX)
 #include <vulkan/vulkan_metal.h>
+#endif
 #endif
 
 #include "Config/BuildConfig.h"
-#include "IRenderer.h"
+#include "OSAL/Window.h"
+#include "RendererCommon.h"
 
 namespace hbe
 {
@@ -20,29 +23,34 @@ struct QuadVertex {
     float r, g, b, a;
 };
 
-class VulkanRenderer final : public IRenderer
+/// @brief Concrete Vulkan renderer.
+/// @details No inheritance and no factory: the renderer is constructed directly.
+///          Platform-specific plumbing is split like the OSAL Window module -
+///          the core lives in VulkanRenderer.cpp (Linux/Windows) and the macOS
+///          metal-layer bridge lives in VulkanRenderer.mm.
+class VulkanRenderer
 {
 public:
     VulkanRenderer() noexcept;
-    ~VulkanRenderer() override;
+    ~VulkanRenderer();
 
-    [[nodiscard]] bool Initialize(OS::IWindow* window) noexcept override;
-    void Shutdown() noexcept override;
+    [[nodiscard]] bool Initialize(OS::Window* window) noexcept;
+    void Shutdown() noexcept;
 
-    void BeginFrame() noexcept override;
-    void EndFrame() noexcept override;
+    void BeginFrame() noexcept;
+    void EndFrame() noexcept;
 
-    void Render(float deltaTime) noexcept override;
+    void Render(float deltaTime) noexcept;
 
-    [[nodiscard]] APIType GetAPIType() const noexcept override;
-    [[nodiscard]] RenderCapabilities GetCapabilities() const noexcept override;
+    [[nodiscard]] APIType GetAPIType() const noexcept;
+    [[nodiscard]] RenderCapabilities GetCapabilities() const noexcept;
 
     void SetMetalLayer(void* layer) noexcept;
 
 private:
     void InitPlatformLayers() noexcept;
 
-    OS::IWindow* window;
+    OS::Window* window;
     APIType apiType;
     RenderCapabilities capabilities;
 

@@ -11,10 +11,7 @@ namespace hbe::Renderer
 {
 enum class APIType : uint8_t
 {
-	Unknown = 0,
-	Vulkan,
-	Metal,
-	DX12
+	Vulkan = 0
 };
 
 struct Vertex
@@ -42,7 +39,7 @@ public:
 	uint32_t maxVertexAttribs;
 
 	RenderCapabilities()
-		: apiType(APIType::Unknown)
+		: apiType(APIType::Vulkan)
 		, supportsGeometryShader(false)
 		, supportsTessellation(false)
 		, supportsComputeShader(false)
