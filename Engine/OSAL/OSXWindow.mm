@@ -8,6 +8,28 @@
 #import <Cocoa/Cocoa.h>
 #include <cstdio>
 
+@interface HBWindowDelegate : NSObject <NSWindowDelegate>
+{
+@public
+	bool* closedFlag;
+}
+@end
+
+@implementation HBWindowDelegate
+// Event-driven close detection: the red button lands here, so the owning Window is
+// marked closed immediately. Relying on Window::PollEvents to notice an invisible
+// window does not work, because applications pump OS::Application::PollEvents instead.
+- (BOOL)windowShouldClose:(NSWindow*)sender
+{
+	if (closedFlag != nullptr)
+	{
+		*closedFlag = true;
+	}
+
+	return YES;
+}
+@end
+
 namespace OS
 {
 
@@ -17,6 +39,7 @@ Window::Window() noexcept
 	, visibleFlag(false)
 	, closedFlag(false)
 	, osHandle(nullptr)
+	, osDelegate(nullptr)
 {
 }
 
@@ -44,6 +67,12 @@ bool Window::CreateWindow(const hbe::HString& title, int width, int height)
 	[window setFrame:frame display:YES animate:NO];
 	[window makeKeyAndOrderFront:nil];
 	[window center];
+
+	// NSWindow's delegate is unretained, so this +1 is ours and is released in Close().
+	HBWindowDelegate* windowDelegate = [[HBWindowDelegate alloc] init];
+	windowDelegate->closedFlag = &closedFlag; // this Window's member, not a pointer-to-member
+	[window setDelegate:windowDelegate];
+	osDelegate = windowDelegate;
 
 	Window::width = width;
 	Window::height = height;

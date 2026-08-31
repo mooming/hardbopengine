@@ -252,3 +252,46 @@ portability-guaranteed maximum, so a model matrix had nowhere to go.
 proves geometry reached the pipeline - with zero loader or validation output, and a
 warning-free `-Wall -Werror` build. Pixel-level confirmation is the user's, because
 `screencapture` is blocked in this environment.
+
+## OSAL: the window close button was never observed (2026-08-31)
+
+### Symptom
+Closing the window left `VulkanExample` running forever.
+
+### Root cause (macOS)
+`Window::PollEvents()` is the only code that ever sets `closedFlag` (via
+`![window isVisible]`), and **nothing calls it** - applications pump
+`OS::Application::PollEvents()`, which drains and dispatches the event queue but has no
+path back to a `Window`. So `IsClosed()` stayed false and every example loop ran forever.
+`applicationShouldTerminateAfterLastWindowClosed` also returns NO, and there is no
+`NSApp run` loop to consult it.
+
+The same gap exists on the other platforms (not fixed here, see below).
+
+### Fix
+An `HBWindowDelegate` implementing `windowShouldClose:` marks the owning `Window` closed
+the moment the button is pressed, and returns YES so AppKit proceeds. This is event-driven
+rather than "poll until the window looks hidden", so it no longer depends on somebody
+remembering to call `Window::PollEvents()`. `Window` owns the delegate reference (new
+per-platform `osDelegate` member) because `NSWindow.delegate` is unretained; it is
+released in `Close()` next to the window's own release.
+
+### Verification (with control)
+An ad-hoc ObjC++ harness created a real `OS::Window` and invoked `performClose:` - the
+same path the red button takes:
+
+| Build | `IsClosed()` before | after | |
+|-------|--------------------:|------:|---|
+| Without `[window setDelegate:]` (control) | 0 | **0** | reproduces the reported bug |
+| With the delegate | 0 | **1** | fixed |
+
+A synthetic UI click was not possible here: `osascript`/System Events is denied
+Accessibility permission (-1719), and `screencapture` is likewise blocked.
+
+### Same defect, not addressed (unverifiable on this machine)
+- **Win32**: `WM_DESTROY` sets `shouldCloseFlag`, but `IsClosed()` returns `closedFlag`, so
+  the information is recorded and then dropped. One-line fix: return
+  `closedFlag || shouldCloseFlag`.
+- **Linux**: `Window::PollEvents()`'s `ClientMessage` branch is an empty placeholder, so
+  `WM_DELETE_WINDOW` is never handled and `WM_PROTOCOLS` is never registered. Needs a real
+  atom handler (~8 lines).

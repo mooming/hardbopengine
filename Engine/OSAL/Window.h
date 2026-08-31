@@ -47,6 +47,9 @@ private:
 	bool shouldCloseFlag;
 #elif defined(PLATFORM_OSX)
 	void* osHandle;
+	/// @brief NSWindowDelegate observing the close button (see OSXWindow.mm).
+	/// @details NSWindow holds its delegate unretained, so the Window owns the reference.
+	void* osDelegate;
 #endif
 };
 
