@@ -79,5 +79,19 @@ Approved 2026-08-30. Scope is *build wiring + compile/link green* only; no MC wo
 `shouldCloseFlag` but `IsClosed()` returns `closedFlag` (one-line fix); Linux has an empty
 `ClientMessage` placeholder, so `WM_DELETE_WINDOW`/`WM_PROTOCOLS` is unimplemented (~8 lines).
 
+# Checklist C — Lighting audit (2026-08-31, decision: keep as-is)
+
+Lambert only: `0.25 + max(dot(n,L),0) * 0.95`, `n = mat3(model)*aNormal`. For the demo quad
+this solves to `0.337 sin t + 0.421 cos t` (amplitude 0.539, peak at 38.7 deg, range
+0.250..0.762, ambient-only for 50% of the turn) - which fully explains the flat look.
+
+| Cause | Fix if ever wanted | Decision |
+|-------|--------------------|----------|
+| Single flat normal over the quad | nothing to fix; terrain has real normals | keep |
+| Light is 84% +Y, normal sweeps XZ | tilt `model`, or aim the light | keep |
+| `CULL_NONE` without a `gl_FrontFacing` flip | flip normal on back faces (~3 lines) | deferred |
+| No sRGB path (`B8G8R8A8_UNORM`, raw values) | `_SRGB` format **and** `MTLPixelFormatBGRA8Unorm_sRGB` together | deferred |
+| `kLightDir` hard-coded (push budget full) | descriptor set + UBO - also frees the 128 B ceiling | fold into MC phase |
+
 ### Out of scope for A (recorded, not fixed)
 `Applications/MarchingCubes/` (Phases 6–7), swapchain-recreate on resize, staging-buffer upload, fence `SIGNALED_BIT` first-frame deadlock, dynamic viewport/scissor not set, push-constant layout mismatch (`model`/`lightDir` never pushed), orphaned `Engine/Renderer/Vulkan/CMakeLists.txt`, generated `ShadersSpv.h` + `*.spv` not gitignored.

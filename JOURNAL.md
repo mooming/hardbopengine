@@ -295,3 +295,43 @@ Accessibility permission (-1719), and `screencapture` is likewise blocked.
 - **Linux**: `Window::PollEvents()`'s `ClientMessage` branch is an empty placeholder, so
   `WM_DELETE_WINDOW` is never handled and `WM_PROTOCOLS` is never registered. Needs a real
   atom handler (~8 lines).
+
+## Lighting reviewed and deliberately left as-is (2026-08-31)
+
+The rotating quad looked under-lit, so the shader was audited before changing anything.
+The model is a single Lambert term - `ambient 0.25 + max(dot(n, L), 0) * albedo 0.95` -
+with `n = mat3(model) * aNormal`, i.e. rotation is correctly applied to the normal.
+
+Solving it for this geometry (all four vertices share normal (0,0,1), so the world normal
+is `(sin t, 0, cos t)` and `L = (0.337, 0.842, 0.421)`):
+
+`dot(t) = 0.337 sin t + 0.421 cos t` -> amplitude **0.539**, peak at **t = 38.7°**, output
+range **0.250 .. 0.762**, and pure ambient for **50%** of the turn.
+
+That explains the flat look completely, and the four causes are:
+
+1. One flat normal across the whole quad -> identical colour in every fragment; lighting
+   reads through spatial variation, which a lone quad cannot express.
+2. The light points 84% along +Y while the normal sweeps only the XZ plane, so at most
+   0.539 of it is ever usable.
+3. `cullMode = VK_CULL_MODE_NONE` with no `gl_FrontFacing` normal flip -> the back half is
+   drawn with a normal facing away and clamps to ambient.
+4. No colour management: `VK_FORMAT_B8G8R8A8_UNORM` is chosen and values are written raw,
+   so darks read lifted relative to a gamma-managed render. (Switching to the `_SRGB`
+   format requires `CAMetalLayer.pixelFormat = MTLPixelFormatBGRA8Unorm_sRGB` to match,
+   or MoltenVK rejects the mismatch.)
+
+**Decision: leave it unchanged.** Every item above is either a property of the demo
+geometry (1, 2) or a deliberate improvement better made together with the work that needs
+it (3, 4). Marching Cubes terrain has per-vertex normals in every direction, so Lambert
+will finally have something to express, and the same phase wants app-controlled lighting -
+which is the descriptor-set/uniform-buffer change that also frees the 128-byte push budget
+holding `kLightDir` in the shader. Deferred options are recorded in
+.PlanS/PLAN_real_vulkan_renderer.md rather than silently dropped.
+
+**Known-deferred backlog:** back-face normal flip · sRGB swapchain + matching CAMetalLayer
+pixel format · descriptor set + UBO for light direction · swapchain recreation on resize ·
+device-local + staging mesh upload · VK_EXT_debug_utils messenger · Win32 `IsClosed()`
+ignores `shouldCloseFlag` · Linux `WM_DELETE_WINDOW` unhandled · generated `ShadersSpv.h`
+and `*.spv` not gitignored · orphaned `Engine/Renderer/Vulkan/CMakeLists.txt` ·
+`__DEBUG__` undefined so `Assert()` never fires.
