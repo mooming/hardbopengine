@@ -37,13 +37,15 @@ struct Mesh
 };
 
 /// @brief Push constants consumed per frame by Shaders/MC.vert.
-/// @details Must mirror the GLSL push block exactly: `mat4 view; mat4 proj;`
+/// @details Must mirror the GLSL push block exactly: `mat4 model; mat4 viewProj;`
 ///          = 128 bytes, which is the portability-guaranteed maxPushConstantsSize.
+///          viewProj is combined on the CPU once per frame, which is what leaves room
+///          for a model matrix; the light direction moves to a uniform buffer later.
 ///          Column-major (GL/Vulkan convention).
 struct PushConstants
 {
-	float view[16];
-	float proj[16];
+	float model[16];
+	float viewProj[16];
 };
 
 inline void IdentityMatrix(float m[16]) noexcept
@@ -77,9 +79,17 @@ public:
 	/// @brief Upload (or replace) the mesh to render.
 	void SetMesh(const Mesh& mesh) noexcept;
 
-	/// @brief Set the view / projection matrices (column-major, 16 floats each).
+	/// @brief Set the model / view / projection matrices (column-major, 16 floats each).
+	/// @details view and proj are multiplied on the CPU before being pushed, so the
+	///          push block can also carry the model matrix.
+	void SetModel(const float* m) noexcept;
 	void SetView(const float* m) noexcept;
 	void SetProj(const float* m) noexcept;
+
+	/// @brief Current swapchain extent in pixels - the aspect ratio examples must use
+	/// @details The drawable follows the window's content rect, so it is not generally
+	///          the size the window was requested with.
+	[[nodiscard]] VkExtent2D GetExtent() const noexcept;
 
 private:
 	static constexpr size_t MAX_FRAMES_IN_FLIGHT = 2;
@@ -149,6 +159,7 @@ private:
 	bool firstFramePresented;
 
 	// Scene state (set by the example, pushed to the vertex shader each frame).
+	float modelMat[16];
 	float viewMat[16];
 	float projMat[16];
 };

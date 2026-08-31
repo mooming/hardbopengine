@@ -211,3 +211,44 @@ Swapchain recreation on resize · device-local + staging mesh upload · VK_EXT_d
 messenger · `ShadersSpv.h`/`*.spv` are generated but not gitignored and `gen_spv_header.py`
 is run by hand · orphaned `Engine/Renderer/Vulkan/CMakeLists.txt` (no `add_subdirectory`)
 still claims to build `VulkanRenderer.mm` · Linux surface needs `Display*` from OSAL.
+
+## VulkanExample: rotating quad made real (2026-08-31)
+
+### Problem
+The window was titled "Rotating Quad" but showed a flat navy field. `Main.cpp` never
+called `SetMesh`, `SetView` or `SetProj`, so `indexCount == 0` and `RecordFrame()`
+correctly drew nothing. The stub-era example expected the renderer to supply geometry.
+
+### Decision: where to put the rotation (user chose option B)
+`MC.vert`'s push block was `{ mat4 view; mat4 proj; }` = 128 bytes, already the
+portability-guaranteed maximum, so a model matrix had nowhere to go.
+
+| Option | Assessment |
+|--------|------------|
+| A. Rotate inside the view matrix | cheapest, but the world-space normal never moves, so Lambert shading cannot respond - the demo would look static in lighting |
+| **B. `mat4 model` + CPU-combined `mat4 viewProj` (chosen)** | still exactly 128 bytes, restores a meaningful `SetModel`, and the quad's shading visibly pulses as its normal sweeps the light |
+| C. Descriptor set + uniform buffer | the real fix for the 128-byte ceiling and for app-controlled lighting; deferred to the Marching Cubes phase |
+
+### Changes
+- `MC.vert`: push block is now `{ mat4 model; mat4 viewProj; }`; normal uses
+  `mat3(model) * aNormal`, with a comment that this is valid only while `model` carries
+  rotation/translation (switch to `transpose(inverse(model))` once scaling appears).
+- `MC.frag`: removed dead code (`vWorldPos` varying and a `depth` value that was
+  computed and never read); light/ambient/albedo named as constants. The light direction
+  stays compile-time fixed because model+viewProj consume the whole push range - stated
+  in the file rather than implied by a dead setter.
+- `PushConstants { model, viewProj }`; `MultiplyColumnMajor()` in the renderer does the
+  one `proj * view` multiply per frame; `SetModel()` restored.
+- `GetExtent()` added: the drawable follows the window *content* rect (800x568 for an
+  800x600 titled window), so examples must not assume the requested size for aspect ratio.
+- SPIR-V regenerated with glslangValidator; `MC.spv` renamed to `MC.vert.spv` so vertex
+  and fragment outputs are named consistently; regeneration commands now documented in
+  both shader files.
+- `Main.cpp`: quad mesh (XY plane, normal +Z) uploaded once, RH perspective with the
+  Vulkan depth/Y convention, camera at z=-3, `model = rotationY(t)` each frame.
+
+### Verification
+`first frame presented (800x568, swapchain images=3, index count=6)` - the index count
+proves geometry reached the pipeline - with zero loader or validation output, and a
+warning-free `-Wall -Werror` build. Pixel-level confirmation is the user's, because
+`screencapture` is blocked in this environment.

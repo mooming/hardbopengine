@@ -1,17 +1,23 @@
 #version 450
 // Fragment shader: one directional light + Lambert shading.
+//
+// Regenerate with:
+//   glslangValidator -V MC.frag -o MC.frag.spv
+//   python3 ../gen_spv_header.py MC.vert.spv MC.frag.spv ../ShadersSpv.h
+
 layout(location = 0) out vec4 outColor;
 
 layout(location = 0) in vec3 vNormal;
-layout(location = 1) in vec3 vWorldPos;
+
+// Directional light is still compile-time fixed: model + viewProj already consume
+// the whole 128-byte push range. It becomes app-controlled when uniforms move to a
+// descriptor-buffer uniform buffer (see PLAN_real_vulkan_renderer.md).
+const vec3 kLightDir = normalize(vec3(0.4, 1.0, 0.5));
+const vec3 kAmbient = vec3(0.25);
+const vec3 kAlbedo = vec3(0.95);
 
 void main() {
     vec3 n = normalize(vNormal);
-    vec3 lightDir = normalize(vec3(0.4, 1.0, 0.5));
-    float diff = max(dot(n, lightDir), 0.0);
-    vec3 ambient = vec3(0.25);
-    vec3 color = ambient + diff * vec3(0.95);
-    // simple distance fade so distant terrain reads as depth
-    float depth = clamp(vWorldPos.y * 0.0 + gl_FragCoord.z, 0.0, 1.0);
-    outColor = vec4(color, 1.0);
+    float diff = max(dot(n, kLightDir), 0.0);
+    outColor = vec4(kAmbient + diff * kAlbedo, 1.0);
 }

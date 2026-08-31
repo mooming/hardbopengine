@@ -67,6 +67,27 @@ bool FindMemoryType(VkPhysicalDevice physicalDevice, uint32_t typeFilter, VkMemo
 	return false;
 }
 
+/// @brief out = lhs * rhs for column-major 4x4 matrices (element col*4+row).
+/// @details The shader takes a pre-combined viewProj so that the 128-byte push range can
+///          also carry the model matrix; this is the one multiply that buys us that room.
+void MultiplyColumnMajor(float out[16], const float lhs[16], const float rhs[16]) noexcept
+{
+	float tmp[16];
+	for (int col = 0; col < 4; ++col)
+	{
+		for (int row = 0; row < 4; ++row)
+		{
+			float sum = 0.0f;
+			for (int k = 0; k < 4; ++k)
+			{
+				sum += lhs[k * 4 + row] * rhs[col * 4 + k];
+			}
+			tmp[col * 4 + row] = sum;
+		}
+	}
+	std::memcpy(out, tmp, sizeof(tmp));
+}
+
 bool HasDepthSupport(VkPhysicalDevice physicalDevice, VkFormat format) noexcept
 {
 	VkFormatProperties props{};
@@ -112,6 +133,7 @@ VulkanRenderer::VulkanRenderer() noexcept
 	, frameActive(false)
 	, firstFramePresented(false)
 {
+	IdentityMatrix(modelMat);
 	IdentityMatrix(viewMat);
 	IdentityMatrix(projMat);
 }
@@ -919,8 +941,8 @@ void VulkanRenderer::RecordFrame() noexcept
 	if (indexCount > 0 && vertexCount > 0)
 	{
 		PushConstants push{};
-		std::memcpy(push.view, viewMat, sizeof(push.view));
-		std::memcpy(push.proj, projMat, sizeof(push.proj));
+		std::memcpy(push.model, modelMat, sizeof(push.model));
+		MultiplyColumnMajor(push.viewProj, projMat, viewMat);
 		vkCmdPushConstants(commandBuffers[currentFrame], pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(push),
 			&push);
 
@@ -1046,6 +1068,11 @@ void VulkanRenderer::SetMesh(const Mesh& mesh) noexcept
 	}
 }
 
+void VulkanRenderer::SetModel(const float* m) noexcept
+{
+	std::memcpy(modelMat, m, sizeof(modelMat));
+}
+
 void VulkanRenderer::SetView(const float* m) noexcept
 {
 	std::memcpy(viewMat, m, sizeof(viewMat));
@@ -1054,6 +1081,11 @@ void VulkanRenderer::SetView(const float* m) noexcept
 void VulkanRenderer::SetProj(const float* m) noexcept
 {
 	std::memcpy(projMat, m, sizeof(projMat));
+}
+
+VkExtent2D VulkanRenderer::GetExtent() const noexcept
+{
+	return extent;
 }
 
 APIType VulkanRenderer::GetAPIType() const noexcept
