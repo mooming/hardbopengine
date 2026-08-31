@@ -144,3 +144,70 @@ The StringTest warning referred to the custom `String` class (always heap-alloca
 
 ### Key Clarification
 The StringTest warning referred to the custom `String` class (always heap-allocated via `Shareable<Vector<TChar>>`), not HString which does benefit from std::string's SSO.
+
+## Vulkan Renderer: Build Wiring + First Running Frame (2026-08-31)
+
+### Problem
+The Vulkan renderer written on 2026-08-30 had **never been compiled**. `libRenderer.a`
+held only `RHICapabilities.cpp.o` + `RendererTest.cpp.o`, and `VulkanExample` had no
+build target at all, so the plan's per-phase "it compiles / it runs" claims were
+unverified rather than true.
+
+### Root causes (build system)
+| ID | Cause | Fix |
+|----|-------|-----|
+| B1 | `Engine/Renderer/.module.config: ignoreSubdirectories = DX12 Metal Vulkan`. MakeBuild collects sources only from a module's own directory (`Module::CollectFiles`) and skips ignored subdirs entirely (`ProjectBuilder::TraverseDirectoryTree`), so `Vulkan/*` could never reach the Renderer target | `customCMake.txt`: `target_sources (Renderer PRIVATE Vulkan/VulkanRenderer.cpp)` (+ `.mm` under `if(APPLE)`) |
+| B2 | `Applications/VulkanExample/` had **no `.module.config`** → `buildType = None` → the generator's `switch` emitted no `add_executable` | added `Applications/VulkanExample/.module.config` (Executable, deps incl. Renderer) |
+| B3 | No one linked the Vulkan loader; `.mm` needs `VK_USE_PLATFORM_METAL_EXT` or `vkCreateMetalSurfaceEXT` is `#ifdef`'d out of `vulkan_metal.h` | `find_path`/`find_library` with `FATAL_ERROR` guards + `target_compile_definitions` |
+
+**Decision:** fix through `.module.config` / `customCMake.txt` instead of hand-editing
+generated `CMakeLists.txt` files, so the generated files stay machine-owned.
+
+### Decisions and why
+- **Plain `target_link_libraries`** in `customCMake.txt`: MakeBuild emits the plain form
+  for module dependencies (`target_link_libraries (Renderer Log)`), and CMake forbids
+  mixing plain and keyword signatures on one target. Plain items still propagate, so
+  consumers get `libvulkan` + the Apple frameworks transitively.
+- **`Renderer` now declares `dependency = Log`** and reports every Vulkan failure through
+  `Logger` with the `VkResult`. Per AGENTS.md, graphics code must log; a silent `return
+  false` cost hours of guessing. (`VulkanRenderer` logs a single "first frame presented"
+  milestone and errors otherwise - no per-frame chatter.)
+- **Dead setters removed** (`SetModel`, `SetLightDir`): `MC.vert`'s push block is
+  `{ mat4 view; mat4 proj; }` (exactly the 128-byte portable maximum), so model/light
+  direction had no path to the GPU. Re-introduce them in the MC phase together with the
+  shader + uniform layout, not as no-ops.
+- **Linux/Windows surfaces not faked.** Linux cannot create a surface from the current
+  OSAL API (`Window::GetNativeHandle()` returns only the X11 `Window`, no `Display*`);
+  Win32 is wired behind `VK_USE_PLATFORM_WIN32_KHR` but is **compile-unverified** here.
+- **Mesh memory is host-visible/host-coherent** and mapped directly. Device-local +
+  staging upload is the right long-term shape; recorded as a follow-up rather than
+  half-built now.
+
+### Runtime defects found only after it finally compiled
+| # | Defect | Symptom |
+|---|--------|---------|
+| 1 | `CreateMetalSurface()` was defined in **both** `.cpp` (unguarded stub) and `.mm` | `VulkanRenderer.cpp.o` satisfied the symbol first, so `VulkanRenderer.mm.o` was **never pulled from the archive** - the real Metal surface never ran. Stub now guarded `#if !defined(PLATFORM_OSX)` |
+| 2 | `VK_KHR_swapchain` never enabled on the device | loader: "Driver's function pointer was NULL" |
+| 3 | `attachmentCount = 2` with `pAttachments = &colorAttach` (two separate locals) | Vulkan read attachment #1 out of adjacent stack memory → MoltenVK SIGSEGV in `getMTLPixelFormat`. Now one contiguous `VkAttachmentDescription[2]` |
+| 4 | AppKit ignores `+layerClass` and installs `NSViewBackingLayer` | `setDevice:` → `doesNotRecognizeSelector` NSException. The `CAMetalLayer` is now created explicitly and adopted by the layer-backed view (measured: `view.layer class = CAMetalLayer`) |
+| 5 | Fences created unsigned, 1 shared command buffer, no dynamic viewport/scissor, `vkCmdBindIndexBuffer` missing | would have deadlocked frame 0 and drawn nothing; fixed with the rewrite |
+
+### Verification
+- `Renderer` + `VulkanExample` build clean under `-Wall -Werror`, Dev config, no warnings.
+- `libRenderer.a` = `RHICapabilities`, `RendererTest`, `VulkanRenderer.cpp.o`, `VulkanRenderer.mm.o`.
+- Run: `first frame presented (800x568, swapchain images=3, index count=0)`; loop stable, zero loader/validation errors. Extent is 800x568 (content rect of an 800x600 titled window) and is taken from `currentExtent`, not assumed.
+- `EngineTest` builds and exits 0.
+
+### Important caveat found (pre-existing, NOT fixed)
+`Assert()` in `Engine/Core/Debug.h` is live only under `__DEBUG__`, and **`__DEBUG__` is
+defined nowhere in the project**. In every configuration `Assert` compiles to a no-op, so
+the suite's "280 tests PASS / Fail = 0" is vacuous. Consequently `RendererTest`'s stale
+stub-era expectations (`Initialize(nullptr) == true`, `supportsComputeShader == true`)
+pass while actually being false. Needs a decision: define `__DEBUG__` for Debug builds
+(likely lights up pre-existing failures) and rework `RendererTest`.
+
+### Follow-ups recorded
+Swapchain recreation on resize · device-local + staging mesh upload · VK_EXT_debug_utils
+messenger · `ShadersSpv.h`/`*.spv` are generated but not gitignored and `gen_spv_header.py`
+is run by hand · orphaned `Engine/Renderer/Vulkan/CMakeLists.txt` (no `add_subdirectory`)
+still claims to build `VulkanRenderer.mm` · Linux surface needs `Display*` from OSAL.

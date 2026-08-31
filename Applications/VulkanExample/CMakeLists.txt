@@ -27,13 +27,42 @@ endif (MSVC)
 
 include_directories ( ${CMAKE_SOURCE_DIR}
  ${CMAKE_SOURCE_DIR}/include
+ ${CMAKE_SOURCE_DIR}/Applications/TriangleExample
  ${CMAKE_SOURCE_DIR}/External
- Applications/TriangleExample
- External
- Engine
- Engine/Renderer
+ ${CMAKE_SOURCE_DIR}/Engine
+ ${CMAKE_SOURCE_DIR}/Engine/Renderer
  )
+link_directories (${CMAKE_SOURCE_DIR}/lib
+)
 
 
+add_executable (VulkanExample
+ Main.cpp
+${PLATFORM_SOURCES}
+)
+
+if (APPLE)
+	include_directories ( /System/Library/Frameworks )
+	set(MACOSX_BUNDLE_TRUE TRUE)
+	set(MACOSX_BUNDLE_INFO_PLIST ${CMAKE_CURRENT_SOURCE_DIR}/Info.plist)
+endif (APPLE)
+
+install (TARGETS VulkanExample DESTINATION ${CMAKE_SOURCE_DIR}/bin)
+
+
+target_link_libraries (VulkanExample HEngine Config Container HSTL Math Memory OSAL Renderer Resource String Core Test)
+
+add_dependencies (VulkanExample HEngine)
+add_dependencies (VulkanExample Config)
+add_dependencies (VulkanExample Container)
+add_dependencies (VulkanExample HSTL)
+add_dependencies (VulkanExample Math)
+add_dependencies (VulkanExample Memory)
+add_dependencies (VulkanExample OSAL)
+add_dependencies (VulkanExample Renderer)
+add_dependencies (VulkanExample Resource)
+add_dependencies (VulkanExample String)
+add_dependencies (VulkanExample Core)
+add_dependencies (VulkanExample Test)
 
 

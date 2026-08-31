@@ -28,11 +28,10 @@ endif (MSVC)
 add_compile_definitions (__UNIT_TEST__ )
 include_directories ( ${CMAKE_SOURCE_DIR}
  ${CMAKE_SOURCE_DIR}/include
+ ${CMAKE_SOURCE_DIR}/Applications/TriangleExample
  ${CMAKE_SOURCE_DIR}/External
- Applications/TriangleExample
- External
- Engine
- Engine/Renderer
+ ${CMAKE_SOURCE_DIR}/Engine
+ ${CMAKE_SOURCE_DIR}/Engine/Renderer
  )
 
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/lib)

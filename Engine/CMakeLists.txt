@@ -27,11 +27,10 @@ endif (MSVC)
 
 include_directories ( ${CMAKE_SOURCE_DIR}
  ${CMAKE_SOURCE_DIR}/include
+ ${CMAKE_SOURCE_DIR}/Applications/TriangleExample
  ${CMAKE_SOURCE_DIR}/External
- Applications/TriangleExample
- External
- Engine
- Engine/Renderer
+ ${CMAKE_SOURCE_DIR}/Engine
+ ${CMAKE_SOURCE_DIR}/Engine/Renderer
  )
 add_subdirectory (Config)
 add_subdirectory (Container)

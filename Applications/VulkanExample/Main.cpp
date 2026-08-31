@@ -1,6 +1,7 @@
 // Copyright (c) 2026 Hansol Park (mooming.go@gmail.com). All rights reserved.
 
 #include "Engine/Engine.h"
+#include "Log/Logger.h"
 #include "OSAL/Application.h"
 #include "OSAL/Window.h"
 #include "Renderer/Vulkan/VulkanRenderer.h"
@@ -42,6 +43,8 @@ int main(int argc, char* argv[]) noexcept {
 	// Vulkan-only: construct the concrete renderer directly (no factory, no inheritance).
 	VulkanRenderer renderer;
 	if (!renderer.Initialize(window.get())) {
+		// The logger is asynchronous: flush so its diagnostics survive this exit.
+		Logger::Get().Flush();
 		std::cerr << "Error: Failed to initialize Vulkan renderer" << std::endl;
 		return 1;
 	}
