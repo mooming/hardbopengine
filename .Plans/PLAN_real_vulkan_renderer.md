@@ -65,5 +65,19 @@ Approved 2026-08-30. Scope is *build wiring + compile/link green* only; no MC wo
 | A10 | **Found:** `__DEBUG__` is defined nowhere → `Assert()` is a no-op → the whole suite reports PASS vacuously | report to owner, do not fix here | ☑ |
 | A11 | **Found:** `RendererTest` expects stub semantics (`Initialize(nullptr)==true`, `supportsComputeShader`) | rework with MC phase | ☑ |
 
+# Checklist B — Rotating quad + close button (2026-08-31)
+
+| # | Item | Verify | Done |
+|---|------|--------|------|
+| B1 | Push block -> `{ mat4 model; mat4 viewProj; }` (still 128 B) + regenerate SPIR-V/`ShadersSpv.h` | `index count=6` at runtime | ☑ |
+| B2 | CPU `proj*view` multiply, `SetModel()` restored, `GetExtent()` for true aspect | warning-free build | ☑ |
+| B3 | `Main.cpp` feeds quad + perspective + `rotationY(t)` | pipeline reports 6 indices | ☑ |
+| B4 | Window close button must terminate the app | control test: `IsClosed()` 0 without delegate, 1 with | ☑ |
+| B5 | Pixel-level confirmation | blocked here (no Screen Recording / Accessibility) | ⬜ user |
+
+**Same close defect still open elsewhere (unverifiable on macOS):** Win32 records the close in
+`shouldCloseFlag` but `IsClosed()` returns `closedFlag` (one-line fix); Linux has an empty
+`ClientMessage` placeholder, so `WM_DELETE_WINDOW`/`WM_PROTOCOLS` is unimplemented (~8 lines).
+
 ### Out of scope for A (recorded, not fixed)
 `Applications/MarchingCubes/` (Phases 6–7), swapchain-recreate on resize, staging-buffer upload, fence `SIGNALED_BIT` first-frame deadlock, dynamic viewport/scissor not set, push-constant layout mismatch (`model`/`lightDir` never pushed), orphaned `Engine/Renderer/Vulkan/CMakeLists.txt`, generated `ShadersSpv.h` + `*.spv` not gitignored.
