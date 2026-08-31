@@ -3,7 +3,7 @@ setlocal enabledelayedexpansion
 
 :: build.bat - Build a specified target with optional flags
 :: Usage: build.bat <target> [-dev] [-debug] [-release] [-clean] [-test]
-:: Example: build.bat Applications/TriangleExample -dev -debug -release -clean -test
+:: Example: build.bat Applications/VulkanExample -dev -debug -release -clean -test
 
 set CLEAN=0
 set ENABLE_TESTS=0

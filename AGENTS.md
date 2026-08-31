@@ -33,7 +33,7 @@ See [docs/BuildSystem.md](docs/BuildSystem.md).
 ```bash
 ./build.sh <target> [-dev] [-debug] [-release] [-clean] [-notest]
 # Example:
-./build.sh Applications/TriangleExample -dev -debug -release -clean -notest
+./build.sh Applications/VulkanExample -dev -debug -release -clean -notest
 ```
 
 ## Running Tests

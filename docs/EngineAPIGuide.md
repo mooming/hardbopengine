@@ -1725,7 +1725,7 @@ See [BuildSystem.md](BuildSystem.md) for full documentation.
 
 ```bash
 ./build.sh <target> [-dev] [-debug] [-release] [-clean] [-notest]
-# Example: ./build.sh Applications/TriangleExample -dev -debug -release -clean -notest
+# Example: ./build.sh Applications/VulkanExample -dev -debug -release -clean -notest
 ```
 
 Tests: `./build/Applications/EngineTest/<Config>/EngineTest`

@@ -6,7 +6,7 @@
 ```bash
 ./build.sh <target> [-dev] [-debug] [-release] [-clean] [-notest]
 ```
-- `<target>` – path to the target (e.g., `Applications/TriangleExample`).
+- `<target>` – path to the target (e.g., `Applications/VulkanExample`).
 - `-dev` – build with Dev configuration (default if no config flag is given).
 - `-debug` – also build Debug configuration.
 - `-release` – also build Release configuration.
@@ -15,6 +15,6 @@
 
 ### Example
 ```bash
-./build.sh Applications/TriangleExample -dev -debug -release -clean -notest
+./build.sh Applications/VulkanExample -dev -debug -release -clean -notest
 ```
-This builds the TriangleExample target for Dev, Debug, and Release, cleans first, and skips tests.
+This builds the VulkanExample target for Dev, Debug, and Release, cleans first, and skips tests.

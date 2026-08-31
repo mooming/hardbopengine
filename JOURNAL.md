@@ -335,3 +335,44 @@ device-local + staging mesh upload · VK_EXT_debug_utils messenger · Win32 `IsC
 ignores `shouldCloseFlag` · Linux `WM_DELETE_WINDOW` unhandled · generated `ShadersSpv.h`
 and `*.spv` not gitignored · orphaned `Engine/Renderer/Vulkan/CMakeLists.txt` ·
 `__DEBUG__` undefined so `Assert()` never fires.
+
+## TriangleExample removed (2026-08-31)
+
+### Why
+It was superseded by `VulkanExample` + the real `VulkanRenderer`, and it was the one target
+that could not link: its `customCMake.txt` carried
+
+```
+include_directories(.../External/VulkanSDK/include)          # path does not exist
+set_target_properties(${PROJECT_NAME} PROPERTIES LINK_LIBRARIES Test)   # wipes the link line
+```
+
+The second line replaces the whole link line with `libTest.a`, so every `MemoryManager` and
+`TestCollection` symbol goes missing. This was not repairable inside the rules that keep
+generated `CMakeLists.txt` files machine-owned - the hack exists precisely to fight the
+generator - and both the Vulkan linking and the sample geometry it existed to demonstrate
+now live in `VulkanExample`.
+
+### Changes
+- Deleted `Applications/TriangleExample/` (8 files, incl. `MinimalVulkanRenderer.*`,
+  `TriangleExampleTest.cpp`, and the offending `customCMake.txt`).
+- Regenerated all `CMakeLists.txt` via `generate_cmake_files.sh`; the
+  `add_subdirectory (TriangleExample)` entry and the global
+  `${CMAKE_SOURCE_DIR}/Applications/TriangleExample` include path disappeared with it, so
+  no generated file was hand-edited.
+- Repointed instructional references at a target that exists: `AGENTS.md`, `README.md`,
+  `build.sh`, `build.bat`, `run.sh`, `run.bat`, `docs/HelperScript.md`,
+  `docs/EngineAPIGuide.md`, `docs/EngineAPIGuide.html`.
+
+### Deliberately left alone
+- `.Plans/PLAN_ApplyCommonMacros.md`, `.Plans/PLAN_renderer_application_window_refactor.md`
+  - dated records of past work; rewriting them would falsify history.
+- `docs/design/LightweightRenderer_Design.{md,html}` - a superseded design document whose
+  acceptance checklist still names the old target. Retiring that document is a separate
+  call, so it is flagged rather than silently edited.
+
+### Verification
+`cmake --build build --config Dev` - the build-everything command the generator itself
+prints - now exits **0** with no errors; it failed on this link error before. `EngineTest`
+exits 0, and `VulkanExample` still logs
+`first frame presented (800x568, swapchain images=3, index count=6)`.

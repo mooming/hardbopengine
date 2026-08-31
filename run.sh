@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # run.sh - Run a built target with optional configuration flags
 # Usage: run.sh <target> [-dev] [-debug] [-release]
-# Example: run.sh Applications/TriangleExample -dev -debug -release
+# Example: run.sh Applications/VulkanExample -dev -debug -release
 
 set -e
 

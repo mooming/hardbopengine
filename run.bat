@@ -3,7 +3,7 @@ setlocal enabledelayedexpansion
 
 :: run.bat - Run a built target with optional configuration flags
 :: Usage: run.bat <target> [-dev] [-debug] [-release]
-:: Example: run.bat Applications/TriangleExample -dev -debug -release
+:: Example: run.bat Applications/VulkanExample -dev -debug -release
 
 set TARGET=
 set CONFIG_DEV=0

@@ -55,8 +55,8 @@ A helper script `build.sh` is provided for building specific targets with option
 # Basic usage
 ./build.sh <target> [-dev] [-debug] [-release] [-clean] [-notest]
 
-# Example: build TriangleExample for Dev, Debug and Release configurations, clean first, skip tests
-./build.sh Applications/TriangleExample -dev -debug -release -clean -notest
+# Example: build VulkanExample for Dev, Debug and Release configurations, clean first, skip tests
+./build.sh Applications/VulkanExample -dev -debug -release -clean -notest
 ```
 The script defaults to the **Dev** configuration when no explicit config flag is given.
 
