@@ -347,6 +347,7 @@
   }
 
   .status-draft { background: var(--accent-dim); color: var(--accent); }
+  .status-superseded { background: rgba(210, 153, 34, 0.18); color: var(--orange); }
 
   /* Responsive */
   @media (max-width: 1024px) {
@@ -365,6 +366,7 @@
 
     <div class="sidebar-section">
       <div class="sidebar-section-title">Overview</div>
+      <a href="#status">0. Implementation Status</a>
       <a href="#vision">1. Vision & Goals</a>
       <a href="#architecture">2. Architecture</a>
     </div>
@@ -404,8 +406,67 @@
     <h1>Lightweight Data-Oriented Renderer</h1>
     <div class="subtitle">
       <span class="status status-draft">Draft</span>
-      <span style="margin-left: 12px;">Author: HardBop Engine Team &nbsp;|&nbsp; Date: 2026-06-21</span>
+      <span class="status status-superseded">Partially superseded</span>
+      <span style="margin-left: 12px;">Author: HardBop Engine Team &nbsp;|&nbsp; Date: 2026-06-21
+      &nbsp;|&nbsp; Updated: 2026-09-01, reconciled against the renderer that actually shipped</span>
     </div>
+
+    <!-- ==================== SECTION 0 ==================== -->
+    <h2 id="status">0. Implementation Status (read first)</h2>
+
+    <div class="callout callout-red">
+      <div class="callout-title">This design was not the path taken</div>
+      <p>The original proposal is preserved below as a record. This section states what became of
+      each part of it, so nobody implements against a superseded design by accident.</p>
+    </div>
+
+    <table>
+      <thead>
+        <tr><th>Design section</th><th>Status</th><th>What exists instead</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>&sect;3 Data-oriented scene data (sparse set, SoA, instance pool)</td><td>Not built</td><td>No scene layer. The example hands the renderer a single <code>Mesh</code> (vertices + indices) directly.</td></tr>
+        <tr><td>&sect;4 Render graph</td><td>Not built</td><td>One hard-coded <code>VkRenderPass</code> plus its framebuffer set, recorded inline once per frame.</td></tr>
+        <tr><td>&sect;5.1/5.2 RHI abstraction (<code>IRenderer</code>, <code>IBuffer</code>, <code>ITexture</code>, <code>IPipeline</code>, <code>ICommandBuffer</code>)</td><td>Superseded, deliberately</td><td>Commit <code>e1b5efb</code> removed <code>IRenderer</code> and the factory. The engine is Vulkan-only and constructs <code>hbe::Renderer::VulkanRenderer</code> directly.</td></tr>
+        <tr><td>&sect;5.2/9 Vulkan <em>and</em> Metal backends</td><td>Metal backend not planned</td><td>macOS presents through <strong>MoltenVK</strong>: <code>vkCreateMetalSurfaceEXT</code> over a <code>CAMetalLayer</code> installed by <code>VulkanRenderer.mm</code>.</td></tr>
+        <tr><td>&sect;6 Shader library, 6 core shaders, runtime loading</td><td>Not built</td><td>Two GLSL shaders compiled by <code>glslangValidator</code> and embedded as byte arrays. No loader, no materials, no shadows, no post-processing.</td></tr>
+        <tr><td>&sect;7 <code>Core/ Graph/ Resources/ Commands/ Backends/</code> tree</td><td>Not adopted</td><td>Actual layout below.</td></tr>
+        <tr><td>&sect;9 Phases 1&ndash;7</td><td>Not followed</td><td>Delivered path: real Vulkan pipeline first, Marching Cubes example second &mdash; <code>.Plans/PLAN_real_vulkan_renderer.md</code>.</td></tr>
+        <tr><td>&sect;10 Verification plan</td><td>Largely moot</td><td>10.3 rewritten to the commands that exist today.</td></tr>
+      </tbody>
+    </table>
+
+    <h3>What actually shipped</h3>
+<pre>Engine/Renderer/
+├── RendererCommon.h              # APIType, Vertex, RenderCapabilities
+├── RHICapabilities.h/cpp         # supported-API probe
+├── RendererTest.h/cpp            # unit tests, compiled only under __UNIT_TEST__
+├── customCMake.txt               # Vulkan source + link wiring for MakeBuild
+└── Vulkan/
+    ├── VulkanRenderer.h          # concrete class, no base class, no factory
+    ├── VulkanRenderer.cpp        # instance → surface → device → swapchain → pass
+    │                             #   → pipeline → sync → record → present
+    ├── VulkanRenderer.mm         # macOS CAMetalLayer surface (Objective-C++)
+    ├── Shaders/MC.vert, MC.frag  # GLSL sources
+    ├── Shaders/*.spv             # glslangValidator output
+    ├── gen_spv_header.py         # SPIR-V -> C++ byte arrays
+    └── ShadersSpv.h              # generated, embedded SPIR-V</pre>
+
+    <table>
+      <thead>
+        <tr><th>Property</th><th>Current implementation</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Backends</td><td>Vulkan only; Metal reached through MoltenVK</td></tr>
+        <tr><td>Scene input</td><td>one <code>Mesh</code> uploaded per <code>SetMesh()</code> call</td></tr>
+        <tr><td>Uniform path</td><td>push constants only: <code>{ mat4 model; mat4 viewProj; }</code>, exactly the 128-byte portable maximum</td></tr>
+        <tr><td>Mesh memory</td><td>host-visible + host-coherent, mapped directly (no staging)</td></tr>
+        <tr><td>Framing</td><td>2 frames in flight, one command buffer each, signalled by fences</td></tr>
+        <tr><td>Culling</td><td>disabled (<code>VK_CULL_MODE_NONE</code>)</td></tr>
+        <tr><td>Resize</td><td>swapchain is <strong>not</strong> recreated; extent comes from <code>currentExtent</code> at init</td></tr>
+        <tr><td>Example</td><td><code>Applications/VulkanExample</code> &mdash; a single Lambert-shaded rotating quad</td></tr>
+      </tbody>
+    </table>
 
     <!-- ==================== SECTION 1 ==================== -->
     <h2 id="vision">1. Vision &amp; Goals</h2>
@@ -600,6 +661,16 @@ Present ────────────────────────
     <!-- ==================== SECTION 5 ==================== -->
     <h2 id="rhi">5. Cross-Platform RHI</h2>
 
+    <div class="callout callout-orange">
+      <div class="callout-title">Superseded (2026-09-01)</div>
+      <p>The engine went further than "thin abstraction": there is none. <code>e1b5efb</code>
+      deleted <code>IRenderer</code> and the renderer factory, and <code>VulkanRenderer</code> is
+      now a concrete class the application instantiates directly. None of the interface lists or
+      <code>RHI/Vulkan/</code> + <code>RHI/Metal/</code> files below exist.</p>
+      <p>The mapping table in 5.3 is kept only as notes for a hypothetical second backend &mdash;
+      macOS is served by MoltenVK today, so no Metal backend is planned.</p>
+    </div>
+
     <p>Thin abstraction between render graph and platform APIs.</p>
 
     <h3>5.1 Abstraction Layer</h3>
@@ -721,6 +792,16 @@ ICommandBuffer (abstract)
     <!-- ==================== SECTION 7 ==================== -->
     <h2 id="structure">7. File Structure</h2>
 
+    <div class="callout callout-orange">
+      <div class="callout-title">Not adopted (2026-09-01)</div>
+      <p>The tree below is the original plan and does not match the repository; the real layout is
+      in &sect;0. The differences that matter: there is no <code>Core/</code>, <code>Graph/</code>,
+      <code>Resources/</code>, <code>Commands/</code> or <code>Backends/</code> directory, and the
+      Vulkan implementation sits directly in <code>Engine/Renderer/Vulkan/</code> with its platform
+      split done by file extension (<code>.cpp</code> cross-platform, <code>.mm</code> macOS) rather
+      than by directory.</p>
+    </div>
+
     <div class="file-tree"><span class="dir">Engine/Renderer/</span>
 ├── <span class="dir">Core/</span>                          <span class="comment"># Data-oriented scene data</span>
 │   ├── EntityRegistry.h/cpp       <span class="comment"># Sparse-set entity management</span>
@@ -815,6 +896,22 @@ ICommandBuffer (abstract)
     <!-- ==================== SECTION 9 ==================== -->
     <h2 id="phases">9. Implementation Phases</h2>
 
+    <div class="callout callout-orange">
+      <div class="callout-title">Outcome of the phases as written (2026-09-01)</div>
+      <table>
+        <thead><tr><th>Phase</th><th>As designed</th><th>Outcome</th></tr></thead>
+        <tbody>
+          <tr><td>1 Core data structures</td><td>sparse set, SoA, instance pool</td><td>Not built &mdash; no scene layer exists</td></tr>
+          <tr><td>2 Render graph</td><td>dependency graph, pass executor</td><td>Not built &mdash; one fixed render pass</td></tr>
+          <tr><td>3 RHI abstraction</td><td>four interfaces + Vulkan backend</td><td>Superseded &mdash; a Vulkan pipeline exists, with no abstraction layer by design</td></tr>
+          <tr><td>4 Metal backend</td><td>native Metal implementation</td><td>Replaced by MoltenVK &mdash; not planned as a backend</td></tr>
+          <tr><td>5 Command recording</td><td>parallel recording, batching</td><td>Not built &mdash; single-threaded inline recording, one draw</td></tr>
+          <tr><td>6 Shaders &amp; integration</td><td>6 shaders, shader library, PBR</td><td>Partial &mdash; 2 shaders, embedded SPIR-V, Lambert only, no loader</td></tr>
+          <tr><td>7 Post-processing</td><td>tone mapping, bloom, VRS</td><td>Not built</td></tr>
+        </tbody>
+      </table>
+    </div>
+
     <div class="phase-grid">
       <div class="phase-card">
         <h4>Phase 1 — Core Data Structures</h4>
@@ -889,6 +986,15 @@ ICommandBuffer (abstract)
     <!-- ==================== SECTION 10 ==================== -->
     <h2 id="verification">10. Verification Plan</h2>
 
+    <div class="callout callout-red">
+      <div class="callout-title">Blocking caveat (2026-09-01)</div>
+      <p><code>Assert()</code> in <code>Engine/Core/Debug.h</code> is live only under
+      <code>__DEBUG__</code>, and <code>__DEBUG__</code> is defined nowhere in the project, so
+      <code>Assert()</code> compiles to a no-op in every configuration. Any test written against
+      this plan reports PASS while asserting nothing. Fix that before treating a green suite as
+      evidence.</p>
+    </div>
+
     <h3>10.1 Unit Tests</h3>
     <table>
       <thead>
@@ -919,11 +1025,18 @@ ICommandBuffer (abstract)
 
     <h3>10.3 Build Verification</h3>
     <ul>
-      <li><code>build.sh Renderer/Vulkan -dev</code> succeeds</li>
-      <li><code>build.sh Renderer/Metal -dev</code> succeeds</li>
-      <li><code>build.sh Applications/TriangleExample -dev</code> succeeds</li>
-      <li>Unit tests in <code>Engine/Test/UnitTestCollection.cpp</code> pass</li>
+      <li><code>./build.sh Applications/VulkanExample -dev</code> succeeds</li>
+      <li><code>cmake --build build --config Dev</code> builds every target with no warnings (<code>-Wall -Werror</code>)</li>
+      <li><code>./build/Applications/VulkanExample/Dev/VulkanExample</code> logs
+          <code>first frame presented (800x568, swapchain images=3, index count=6)</code> and exits
+          when the window close button is pressed</li>
+      <li>Unit tests in <code>Engine/Test/UnitTestCollection.cpp</code> assert nothing until
+          <code>__DEBUG__</code> is defined for debug builds &mdash; see the caveat above</li>
     </ul>
+    <p style="color: var(--text-muted); font-size: 13px;">There is no <code>Renderer/Vulkan</code>
+    or <code>Renderer/Metal</code> build target, and <code>Applications/TriangleExample</code> was
+    deleted in <code>bae3128</code>; the renderer is built as part of the <code>Engine/Renderer</code>
+    module.</p>
 
     <!-- ==================== SECTION 11 ==================== -->
     <h2 id="decisions">11. Design Decisions</h2>
@@ -937,7 +1050,7 @@ ICommandBuffer (abstract)
         <tr><td>Entity system</td><td>Sparse set</td><td>O(1) existence check, contiguous iteration</td></tr>
         <tr><td>Render approach</td><td>Forward</td><td>Simpler than deferred; sufficient for lightweight scope</td></tr>
         <tr><td>Shader format</td><td>Platform-native (SPIR-V / MSL)</td><td>No runtime translation layer needed</td></tr>
-        <tr><td>RHI depth</td><td>Thin abstraction</td><td>Vulkan and Metal are similar enough; deep abstraction adds cost</td></tr>
+        <tr><td>RHI depth</td><td>Thin abstraction</td><td>Vulkan and Metal are similar enough; deep abstraction adds cost. <strong>Reversed in practice:</strong> with Metal reached through MoltenVK there is only one backend, so the abstraction was deleted rather than thinned (<code>e1b5efb</code>).</td></tr>
         <tr><td>Uniforms</td><td>Push constants + UBO</td><td>Per-material data in push constants, per-frame data in UBO</td></tr>
         <tr><td>Parallelism scope</td><td>CPU-side only</td><td>GPU handles parallelism internally; CPU recording parallelized</td></tr>
       </tbody>
@@ -953,8 +1066,8 @@ ICommandBuffer (abstract)
       <tbody>
         <tr><td>Q1</td><td>Should shadow maps use PCF or VSM?</td><td>Affects shadow shader complexity</td></tr>
         <tr><td>Q2</td><td>Should materials support transparency (alpha test)?</td><td>Adds blend state handling</td></tr>
-        <tr><td>Q3</td><td>How many lights max? Fixed per-material or dynamic?</td><td>Affects push constant size</td></tr>
-        <tr><td>Q4</td><td>Should we use Vulkan dynamic rendering or render passes?</td><td>Affects Vulkan command recording API</td></tr>
+        <tr><td>Q3</td><td>How many lights max? Fixed per-material or dynamic?</td><td><strong>Constrained by reality:</strong> the 128-byte push budget is already full with <code>model</code> + <code>viewProj</code>, so the light direction is a compile-time constant in the fragment shader. App-controlled lighting requires a descriptor-set uniform buffer.</td></tr>
+        <tr><td>Q4</td><td>Should we use Vulkan dynamic rendering or render passes?</td><td><strong>Answered:</strong> <code>VkRenderPass</code> + framebuffers. Dynamic rendering (<code>vkCmdBeginRendering</code>) is not used.</td></tr>
         <tr><td>Q5</td><td>Metal backend: compile MSL at runtime or pre-compile to <code>.metallib</code>?</td><td>Affects shader loading pipeline</td></tr>
       </tbody>
     </table>

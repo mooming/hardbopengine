@@ -2,7 +2,57 @@
 
 **Author:** HardBop Engine Team
 **Date:** 2026-06-21
-**Status:** Draft — Awaiting Review
+**Status:** Draft design — **partially superseded.** Read §0 before acting on anything here.
+**Updated:** 2026-09-01, reconciled against the renderer that actually shipped.
+
+---
+
+## 0. Implementation Status (read first)
+
+The renderer that shipped took a different path from this proposal. The original design text
+is preserved below as a record; this section says what became of each part of it, so nobody
+implements against a superseded design by accident.
+
+| Design section | Status | What exists instead |
+|----------------|--------|---------------------|
+| §3 Data-oriented scene data (sparse set, SoA, instance pool) | **Not built** | No scene layer. The example hands the renderer a single `Mesh` (vertices + indices) directly. |
+| §4 Render graph | **Not built** | One hard-coded `VkRenderPass` plus its framebuffer set, recorded inline once per frame. |
+| §5.1/§5.2 RHI abstraction (`IRenderer`, `IBuffer`, `ITexture`, `IPipeline`, `ICommandBuffer`) | **Superseded, deliberately** | Commit `e1b5efb` removed `IRenderer` and the factory. The engine is Vulkan-only and constructs `hbe::Renderer::VulkanRenderer` directly. |
+| §5.2/§9 Vulkan **and** Metal backends | **Metal backend not planned** | macOS presents through **MoltenVK**: `vkCreateMetalSurfaceEXT` over a `CAMetalLayer` installed by `VulkanRenderer.mm`. |
+| §6 Shader library, 6 core shaders, runtime loading | **Not built** | Two GLSL shaders compiled by `glslangValidator` and embedded as byte arrays. No loader, no materials, no shadows, no post-processing. |
+| §7 `Core/ Graph/ Resources/ Commands/ Backends/` tree | **Not adopted** | Actual layout below. |
+| §9 Phases 1–7 | **Not followed** | Delivered path: real Vulkan pipeline first, Marching Cubes example second — `.Plans/PLAN_real_vulkan_renderer.md`. |
+| §10 Verification plan | **Largely moot** | §10.3 rewritten to the commands that exist today. |
+
+### What actually shipped
+
+```
+Engine/Renderer/
+├── RendererCommon.h              # APIType, Vertex, RenderCapabilities
+├── RHICapabilities.h/cpp         # supported-API probe
+├── RendererTest.h/cpp            # unit tests, compiled only under __UNIT_TEST__
+├── customCMake.txt               # Vulkan source + link wiring for MakeBuild
+└── Vulkan/
+    ├── VulkanRenderer.h          # concrete class, no base class, no factory
+    ├── VulkanRenderer.cpp        # instance → surface → device → swapchain → pass
+    │                             #   → pipeline → sync → record → present
+    ├── VulkanRenderer.mm         # macOS CAMetalLayer surface (Objective-C++)
+    ├── Shaders/MC.vert, MC.frag  # GLSL sources
+    ├── Shaders/*.spv             # glslangValidator output
+    ├── gen_spv_header.py         # SPIR-V -> C++ byte arrays
+    └── ShadersSpv.h              # generated, embedded SPIR-V
+```
+
+| Property | Current implementation |
+|----------|------------------------|
+| Backends | Vulkan only; Metal reached through MoltenVK |
+| Scene input | one `Mesh` uploaded per `SetMesh()` call |
+| Uniform path | push constants only: `{ mat4 model; mat4 viewProj; }`, exactly the 128-byte portable maximum |
+| Mesh memory | host-visible + host-coherent, mapped directly (no staging) |
+| Framing | 2 frames in flight, one command buffer each, signalled by fences |
+| Culling | disabled (`VK_CULL_MODE_NONE`) |
+| Resize | swapchain is **not** recreated; extent comes from `currentExtent` at init |
+| Example | `Applications/VulkanExample` — a single Lambert-shaded rotating quad |
 
 ---
 
@@ -200,7 +250,12 @@ RenderPassDescriptor
 
 ## 5. Cross-Platform RHI
 
-Thin abstraction between render graph and platform APIs.
+> **Superseded (2026-09-01).** The engine went further than "thin abstraction": there is
+> none. `e1b5efb` deleted `IRenderer` and the renderer factory, and `VulkanRenderer` is now a
+> concrete class that the application instantiates directly. The interface lists below were
+> never implemented and none of the `RHI/Vulkan/` + `RHI/Metal/` files exists.
+> The mapping table in §5.3 is still worth keeping, but only as notes for a hypothetical
+> second backend — macOS is served by MoltenVK today, so no Metal backend is planned.
 
 ### 5.1 Abstraction Layer
 
@@ -317,7 +372,11 @@ Push constants carry per-material / per-frame data (matrices, albedo, roughness,
 
 ## 7. File Structure
 
-```
+> **Not adopted (2026-09-01).** The tree below is the original plan and does not match the
+> repository. The real layout is in §0; the closest differences that matter are that there is
+> no `Core/`, `Graph/`, `Resources/`, `Commands/` or `Backends/` directory, and the Vulkan
+> implementation sits directly in `Engine/Renderer/Vulkan/` with its platform split done by
+> file extension (`.cpp` cross-platform, `.mm` macOS) rather than by directory.
 Engine/Renderer/
 ├── Core/                          # Data-oriented scene data
 │   ├── EntityRegistry.h/cpp       # Sparse-set entity management
@@ -403,6 +462,18 @@ Engine/Renderer/
 
 ## 9. Implementation Phases
 
+> **Status (2026-09-01), against the phases as written:**
+
+| Phase | As designed | Outcome |
+|-------|-------------|---------|
+| 1 Core data structures | sparse set, SoA, instance pool | **Not built** — no scene layer exists |
+| 2 Render graph | dependency graph, pass executor | **Not built** — one fixed render pass |
+| 3 RHI abstraction | four interfaces + Vulkan backend | **Superseded** — a Vulkan pipeline exists, but with no abstraction layer by design |
+| 4 Metal backend | native Metal implementation | **Replaced by MoltenVK** — not planned as a backend |
+| 5 Command recording | parallel recording, batching | **Not built** — single-threaded inline recording, one draw |
+| 6 Shaders & integration | 6 shaders, shader library, PBR | **Partial** — 2 shaders, embedded SPIR-V, Lambert only, no loader |
+| 7 Post-processing | tone mapping, bloom, VRS | **Not built** |
+
 ### Phase 1 — Core Data Structures
 **Scope:** Entity registry, SoA component arrays, instance pool.
 **Effort:** ~3 days
@@ -469,6 +540,11 @@ Engine/Renderer/
 
 ## 10. Verification Plan
 
+> **Blocking caveat (2026-09-01).** `Assert()` in `Engine/Core/Debug.h` is live only under
+> `__DEBUG__`, and `__DEBUG__` is defined nowhere in the project, so `Assert()` compiles to a
+> no-op in every configuration. Any test written against this plan reports PASS while
+> asserting nothing. Fix that before treating a green suite as evidence.
+
 ### 10.1 Unit Tests
 
 | Test | Target | Pass Criteria |
@@ -491,10 +567,16 @@ Engine/Renderer/
 
 ### 10.3 Build Verification
 
-- [ ] `build.sh Renderer/Vulkan -dev` succeeds
-- [ ] `build.sh Renderer/Metal -dev` succeeds
-- [ ] `build.sh Applications/TriangleExample -dev` succeeds
-- [ ] Unit tests in `Engine/Test/UnitTestCollection.cpp` pass
+- [x] `./build.sh Applications/VulkanExample -dev` succeeds
+- [x] `cmake --build build --config Dev` builds every target with no warnings (`-Wall -Werror`)
+- [x] `./build/Applications/VulkanExample/Dev/VulkanExample` logs
+      `first frame presented (800x568, swapchain images=3, index count=6)` and exits when the
+      window close button is pressed
+- [ ] Unit tests in `Engine/Test/UnitTestCollection.cpp` **assert nothing** until `__DEBUG__`
+      is defined for debug builds — see the caveat above
+
+There is no `Renderer/Vulkan` or `Renderer/Metal` build target, and `Applications/TriangleExample`
+was deleted in `bae3128`; the renderer is built as part of the `Engine/Renderer` module.
 
 ---
 
@@ -506,7 +588,7 @@ Engine/Renderer/
 | Entity system | Sparse set | O(1) existence check, contiguous iteration |
 | Render approach | Forward | Simpler than deferred; sufficient for lightweight scope |
 | Shader format | Platform-native (SPIR-V / MSL) | No runtime translation layer needed |
-| RHI depth | Thin abstraction | Vulkan and Metal are similar enough; deep abstraction adds cost |
+| RHI depth | Thin abstraction | Vulkan and Metal are similar enough; deep abstraction adds cost. **Reversed in practice:** with Metal reached through MoltenVK there is only one backend, so the abstraction was deleted rather than thinned (`e1b5efb`). |
 | Uniforms | Push constants + UBO | Per-material data in push constants, per-frame data in UBO |
 | Parallelism scope | CPU-side only | GPU handles parallelism internally; CPU recording parallelized |
 
@@ -518,8 +600,8 @@ Engine/Renderer/
 |---|----------|--------|
 | Q1 | Should shadow maps use PCF or VSM? | Affects shadow shader complexity |
 | Q2 | Should materials support transparency (alpha test)? | Adds blend state handling |
-| Q3 | How many lights max? Fixed per-material or dynamic? | Affects push constant size |
-| Q4 | Should we use Vulkan dynamic rendering or render passes? | Affects Vulkan command recording API |
+| Q3 | How many lights max? Fixed per-material or dynamic? | **Constrained by reality:** the 128-byte push budget is already full with `model` + `viewProj`, so the light direction is a compile-time constant in the fragment shader. App-controlled lighting requires a descriptor-set uniform buffer. |
+| Q4 | Should we use Vulkan dynamic rendering or render passes? | **Answered:** `VkRenderPass` + framebuffers. Dynamic rendering (`vkCmdBeginRendering`) is not used. |
 | Q5 | Metal backend: compile MSL at runtime or pre-compile to `.metallib`? | Affects shader loading pipeline |
 
 ---

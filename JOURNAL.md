@@ -376,3 +376,39 @@ now live in `VulkanExample`.
 prints - now exits **0** with no errors; it failed on this link error before. `EngineTest`
 exits 0, and `VulkanExample` still logs
 `first frame presented (800x568, swapchain images=3, index count=6)`.
+
+## LightweightRenderer design document reconciled (2026-09-01)
+
+`docs/design/LightweightRenderer_Design.{md,html}` (dated 2026-06-21, "Draft - Awaiting
+Review") still described a renderer that was never built, and parts of it had been actively
+reversed. Rather than delete it, the document was updated so it can no longer mislead:
+
+- **Header** keeps the original author/date and adds an explicit *partially superseded*
+  status plus an update line.
+- **New §0 "Implementation Status (read first)"**: section-by-section verdict (not built /
+  superseded / not adopted / partial), the file tree that actually exists, and a table of the
+  shipped renderer's real properties (backend, uniform path, mesh memory, framing, culling,
+  resize behaviour, example).
+- **§5 RHI** banner: the abstraction was not merely thinned but removed (`e1b5efb`), and no
+  `RHI/Vulkan` + `RHI/Metal` files exist; §5.3 kept only as notes for a hypothetical second
+  backend, since macOS is served by MoltenVK.
+- **§7 File structure** banner: `Core/ Graph/ Resources/ Commands/ Backends/` was not adopted;
+  the platform split is by file extension (`.cpp` / `.mm`), not directory.
+- **§9** phase-outcome table: 1,2,5,7 not built · 3 superseded · 4 replaced by MoltenVK ·
+  6 partial.
+- **§10** opens with the blocking caveat that `Assert()` is a no-op because `__DEBUG__` is
+  defined nowhere, so a green suite proves nothing yet.
+- **§10.3** replaced with commands that exist (`Applications/VulkanExample`, full-tree build)
+  and a note that `Renderer/Vulkan`, `Renderer/Metal` and `Applications/TriangleExample` are
+  not targets at all.
+- **§11** marks the "thin abstraction" decision as reversed in practice; **§12** answers Q4
+  (render passes, not dynamic rendering) and records Q3 as already constrained by the 128-byte
+  push budget.
+
+Both mirrors were edited (527-line Markdown, 996-line styled HTML) and the HTML re-checked for
+tag balance; the one unbalanced `</span>` found predates this change (old line 587, inside the
+architecture diagram) and was left alone.
+
+**Every factual claim was verified against the tree**, including `sizeof(PushConstants) == 128`,
+`MAX_FRAMES_IN_FLIGHT == 2` with one command buffer per frame, `VK_CULL_MODE_NONE`, host-visible
+mesh memory, and the absence of `Core/ Graph/ Resources/ Commands/ Backends/`.
