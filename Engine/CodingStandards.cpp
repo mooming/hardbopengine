@@ -12,7 +12,9 @@ namespace hbe
 namespace examples
 {
 
-CodingStandardsBase::CodingStandardsBase() noexcept {}
+CodingStandardsBase::CodingStandardsBase() noexcept
+{
+}
 
 bool CodingStandardsBase::TryParse(const char* text, int& outResult) noexcept
 {
@@ -54,7 +56,8 @@ InlinedData::InlinedData(int value) noexcept
 
 DataProcessor::DataProcessor(int initialValue) noexcept
 	: value(initialValue)
-{}
+{
+}
 
 void DataProcessor::Process() noexcept
 {
@@ -190,17 +193,21 @@ bool CodingStandardsBase::ValidateLength(size_t length, size_t maxLength) noexce
 
 CodingStandards::CodingStandards() noexcept
 	: data{DefaultVersion, MaxNameLength, false}
-{}
+{
+}
 
 CodingStandards::~CodingStandards() = default;
 
 /*
- * Empty-body exemption to the Allman rule: a function with no statements
- * keeps its braces attached on the declaration line instead of breaking
- * before them. This is the one case where the brace does not go on its own
- * line; see CodingStandardsBase::ProcessBraced in the header for the rule.
+ * Empty-body form of the Allman rule: a function with no statements still puts
+ * each brace on its own line. `CodingStandardsBase::CodingStandardsBase` above
+ * and `TextBuffer` below demonstrate the same form for constructors and for
+ * bodies holding statements; nothing in this codebase joins them onto the
+ * declaration line.
  */
-void CodingStandards::ProcessBraced() noexcept {}
+void CodingStandards::ProcessBraced() noexcept
+{
+}
 
 void CodingStandards::SetData(const CodingStandardsData& newData) noexcept
 {
@@ -217,7 +224,9 @@ int CodingStandards::GetVersion() const noexcept
 	return data.version;
 }
 
-void CodingStandards::Validate() const noexcept {}
+void CodingStandards::Validate() const noexcept
+{
+}
 
 void CodingStandards::Initialize() noexcept
 {
@@ -293,7 +302,8 @@ void CodingStandards::ProcessWithStackBuffer() noexcept
 TextBuffer::TextBuffer() noexcept
 	: data(nullptr)
 	, length(0)
-{}
+{
+}
 
 TextBuffer::TextBuffer(const char* text)
 	: data(nullptr)

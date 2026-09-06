@@ -1,5 +1,48 @@
 # Journal
 
+## Empty bodies now break their braces onto separate lines (2026-09-06)
+
+Owner preference: no brace exemptions at all. `void Foo() noexcept\n{\n}` and
+`struct Empty\n{\n};`, never joined forms.
+
+**The non-obvious part, and the reason a naive fix fails:** `SplitEmptyFunction`
+is NOT sufficient on its own. With `AllowShortFunctionsOnASingleLine: Empty`
+inherited from LLVM, setting `SplitEmptyFunction: true` changes **nothing** —
+`Empty` collapses `void Foo() {}` back onto the declaration line and wins. Both
+options must move together. Measured matrix:
+
+| SplitEmptyFunction | AllowShortFunctions... | Result |
+|---|---|---|
+| true | Empty | `void Foo() noexcept {}` — rule silently lost |
+| true | **None** | `void Foo() noexcept` + `{` + `}` — correct |
+| false | None | `void Foo() noexcept` + `{}` |
+
+Set: `SplitEmpty{Function,Record,Namespace}: true` +
+`AllowShortFunctionsOnASingleLine: None`.
+
+**Consequence recorded in `.clang-format`:** with all three `SplitEmpty*` true,
+the style is now *pure* Allman, and `BreakBeforeBraces: Allman` was verified
+byte-identical to the explicit `BraceWrapping` table (40 real sources + a probe
+covering every brace-bearing construct). `Custom` is still kept, but the reason
+changed: it is now version portability (an unrecognised enum value makes the
+whole file refuse to load, and CLion bundles its own older clang-format), not an
+inexpressible exemption. The reverse hazard is documented where it will be hit:
+a `BraceWrapping` override under a *named* style is silently ignored.
+
+**Changes:** `.clang-format`, and the rule text plus bodies in
+`Engine/CodingStandards.{h,cpp}` — which had to be rewritten because they
+documented the now-reversed exemption. Verified: resolved-config delta is exactly
+the 4 intended keys and nothing else; both exemplars clang-format clean and
+`-fsyntax-only` clean; all 9 build configurations pass
+(EngineTest/VulkanExample/WindowExample x Dev/Debug/Release) with a `touch`
+control proving the builds really recompile.
+
+**Not done — needs approval:** this reformats **107 files / 650 lines** across
+`Engine`, `Examples`, `Applications` (measured as candidate-vs-current config
+output, so it isolates this change from the separate `NamespaceIndentation` debt).
+Largest: `Engine/Math/Vector4.h`, `Vector3.h`, `OSAL/Window.cpp`,
+`Math/Quaternion.h`.
+
 ## Allman Established as the Declared Brace Style (2026-09-06)
 
 **Trigger:** `Applications/VulkanExample/Main.cpp` flagged as off-standard; scope

@@ -14,15 +14,29 @@
 #   which keeps `if (x) {` and `namespace x {` attached and breaks only for
 #   functions. Measured against Engine/CodingStandards.h/.cpp, the number of
 #   constructs each named style gets wrong:
-#       Allman 1 (empty records only)   Linux/BSD 28   Stroustrup 35
-#       WebKit 36                       GNU 41         Attach/K&R 45
+#       Allman 0   Linux/BSD 28   Stroustrup 35   WebKit 36   GNU 41   K&R 45
 #
-# WHY "Custom" AND NOT "Allman":
-#   clang-format consults the BraceWrapping table only when
-#   BreakBeforeBraces is Custom — a BraceWrapping override under a named
-#   style is silently ignored. Because we need the empty-body exemption
-#   below, the Allman flag set must be spelled out explicitly.
-#   `BreakBeforeBraces: Allman` is therefore not a valid shortcut here.
+# THERE ARE NO BRACE EXEMPTIONS. An empty body still gets its braces on their
+# own lines:
+#
+#       void Foo() noexcept      struct Empty
+#       {                        {
+#       }                        };
+#
+# WHY "Custom" EVEN THOUGH THE STYLE IS PURE ALLMAN:
+#   With every SplitEmpty* flag below set to true, `BreakBeforeBraces: Allman`
+#   was verified byte-identical to this explicit table (40 real sources plus a
+#   probe covering every brace-bearing construct). So Allman *would* work here.
+#   The explicit table is kept anyway because it loads on every clang-format
+#   that has BraceWrapping at all, whereas the Allman value is newer and its
+#   exact version floor is not pinned down; CLion bundles its own older
+#   clang-format, and an unrecognised enum value makes the whole file fail to
+#   load rather than degrading gracefully.
+#   Note the reverse hazard, which bites more often: a BraceWrapping override
+#   placed under a *named* style is silently ignored. Any new brace rule must be
+#   added here, with BreakBeforeBraces staying Custom.
+#
+# AllowShortFunctionsOnASingleLine is NOT orthogonal to this — see its entry.
 #
 # Option spellings are deliberately kept in their long-standing scalar forms
 # so this file loads identically in CLion's bundled clang-format and current
@@ -30,8 +44,6 @@
 # clang-format 19-22 and the modern spellings break older versions outright.
 #
 # Generated from CLion C/C++ Code Style settings, then hand-curated.
-# Verified behaviour-neutral: `clang-format --dump-config` output is identical
-# to the previous revision of this file.
 ---
 Language: Cpp
 # Measured optimal base: zero residual deviation against
@@ -79,16 +91,26 @@ BraceWrapping:
     # The 'while' of a do/while stays attached (shared by Allman and KNF).
     BeforeWhile: false
 
-    # EXEMPTION: an empty body keeps its braces attached, so
-    # `void Foo() noexcept {}` and `struct Empty {};` stay on one line.
-    # Repo-wide this attached form appears 144 times; the split form 0 times.
-    SplitEmptyFunction: false
-    SplitEmptyRecord: false
-    SplitEmptyNamespace: false
+    # No exemptions: an empty body still breaks before its braces and closes on
+    # its own line. Verified against the pure Allman preset, which produces the
+    # same output — these four lines exist to make the rule explicit locally.
+    SplitEmptyFunction: true
+    SplitEmptyRecord: true
+    SplitEmptyNamespace: true
     IndentBraces: false
 
 # --------------------------------------------- single-line statement sizing --
-AllowShortFunctionsOnASingleLine: Empty
+# Must stay None for the empty-brace rule to hold. Setting SplitEmptyFunction:
+# true while this is Empty changes nothing: Empty collapses `void Foo() {}` back
+# onto one line and wins. Both options have to agree; None is the correct pair.
+# Measured matrix (SplitEmptyFunction x this option):
+#     true  x Empty -> `void Foo() noexcept {}`      (exemption survives)
+#     false x Empty -> `void Foo() noexcept {}`
+#     true  x None  -> `void Foo() noexcept` + `{` + `}`   <- what we want
+#     false x None  -> `void Foo() noexcept` + `{}`        (half split, invalid
+#                                                          intent: brace pairs
+#                                                          stay joined)
+AllowShortFunctionsOnASingleLine: None
 AllowShortIfStatementsOnASingleLine: false
 AllowShortLoopsOnASingleLine: false
 AllowShortCaseLabelsOnASingleLine: false

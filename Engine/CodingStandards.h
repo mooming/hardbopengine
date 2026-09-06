@@ -22,10 +22,10 @@
  * - 120-character column limit.
  * - Files end with a trailing newline.
  * - Namespace bodies are NOT indented.
- * - Brace style is Allman: the line always breaks before an opening brace.
- *   See CodingStandardsBase::ProcessBraced for the rule and its one
- *   exemption. The machine-readable form is .clang-format, which encodes
- *   Allman as BreakBeforeBraces: Custom plus an explicit BraceWrapping set.
+ * - Brace style is Allman: the line always breaks before an opening brace, and
+ *   an empty body still gets its braces on separate lines. There are no
+ *   exemptions. See CodingStandardsBase::ProcessBraced for the rule, and
+ *   .clang-format for the machine-readable form.
  */
 
 
@@ -168,7 +168,8 @@ class TemplateExample final
 public:
 	explicit TemplateExample(const TEntry& initial) noexcept
 		: value(initial)
-	{}
+	{
+	}
 
 	[[nodiscard]] const TEntry& GetValue() const
 	{
@@ -200,7 +201,8 @@ class BadProcessor final : private DataProcessor
 public:
 	explicit BadProcessor(int initialValue) noexcept
 		: DataProcessor(initialValue)
-	{}
+	{
+	}
 
 	void ProcessMore() noexcept
 	{
@@ -229,7 +231,8 @@ class Processor final
 public:
 	explicit Processor(int initialValue) noexcept
 		: processor(initialValue)
-	{}
+	{
+	}
 
 	void ProcessMore() noexcept
 	{
@@ -360,13 +363,23 @@ public:
 	 * `if (condition) {` and `namespace x {` attached. This codebase breaks
 	 * for control statements and namespaces too, which makes it Allman.
 	 *
-	 * The single exemption is an empty body, which keeps its braces attached:
+	 * There are no exemptions. An empty body still puts each brace on its own
+	 * line — this is required, not merely permitted:
 	 *
-	 *     void FunctionName() noexcept {}
+	 *     void FunctionName() noexcept
+	 *     {
+	 *     }
 	 *
-	 * That exemption is also what forces .clang-format to spell Allman out as
-	 * BreakBeforeBraces: Custom with an explicit BraceWrapping table; a named
-	 * BreakBeforeBraces: Allman cannot express it.
+	 *     struct EmptyType
+	 *     {
+	 *     };
+	 *
+	 * Two clang-format options have to agree to enforce this, which is the usual
+	 * source of confusion when the rule seems not to take effect:
+	 *   - BraceWrapping/SplitEmpty{Function,Record,Namespace}: true
+	 *   - AllowShortFunctionsOnASingleLine: None
+	 * Leaving the second one on `Empty` silently collapses `void Foo() {}` back
+	 * onto one line no matter what SplitEmptyFunction says.
 	 */
 	virtual void ProcessBraced() noexcept
 	{
