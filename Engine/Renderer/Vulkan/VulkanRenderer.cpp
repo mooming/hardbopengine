@@ -2,13 +2,14 @@
 
 #include "Vulkan/VulkanRenderer.h"
 
-#include "Core/CommonMacros.h"
-#include "Log/Logger.h"
-#include "ShadersSpv.h"
-
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
+
+#include "Core/CommonMacros.h"
+#include "Log/Logger.h"
+#include "ShadersSpv.h"
+#include "VulkanCapabilities.h"
 
 #if defined(PLATFORM_WINDOWS) && defined(VK_USE_PLATFORM_WIN32_KHR)
 #include <vulkan/vulkan_win32.h>
@@ -100,7 +101,6 @@ bool HasDepthSupport(VkPhysicalDevice physicalDevice, VkFormat format) noexcept
 VulkanRenderer::VulkanRenderer() noexcept
 	: window(nullptr)
 	, initialized(false)
-	, apiType(APIType::Vulkan)
 	, capabilities()
 	, instance(VK_NULL_HANDLE)
 	, physicalDevice(VK_NULL_HANDLE)
@@ -309,7 +309,16 @@ bool VulkanRenderer::CreateDevice() noexcept
 	}
 
 	vkGetDeviceQueue(device, queueFamilyIndex, 0, &graphicsQueue);
+
+	// The physical device is valid from here on, so this is the first point where real
+	// capability data exists. Querying once here keeps GetCapabilities() a cheap copy.
+	QueryCapabilities();
 	return true;
+}
+
+void VulkanRenderer::QueryCapabilities() noexcept
+{
+	FillRenderCapabilities(physicalDevice, capabilities);
 }
 
 bool VulkanRenderer::CreateSwapchain() noexcept
@@ -1086,11 +1095,6 @@ void VulkanRenderer::SetProj(const float* m) noexcept
 VkExtent2D VulkanRenderer::GetExtent() const noexcept
 {
 	return extent;
-}
-
-APIType VulkanRenderer::GetAPIType() const noexcept
-{
-	return apiType;
 }
 
 RenderCapabilities VulkanRenderer::GetCapabilities() const noexcept

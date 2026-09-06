@@ -2,14 +2,13 @@
 
 #pragma once
 
-#include "Config/BuildConfig.h"
-#include "OSAL/Window.h"
-#include "RendererCommon.h"
-
-#include <vulkan/vulkan.h>
-
 #include <cstdint>
 #include <vector>
+#include <vulkan/vulkan.h>
+
+#include "Config/BuildConfig.h"
+#include "OSAL/Window.h"
+#include "RenderCapabilities.h"
 
 namespace hbe
 {
@@ -73,7 +72,6 @@ public:
 	void Render(float deltaTime) noexcept;
 	void EndFrame() noexcept;
 
-	[[nodiscard]] APIType GetAPIType() const noexcept;
 	[[nodiscard]] RenderCapabilities GetCapabilities() const noexcept;
 
 	/// @brief Upload (or replace) the mesh to render.
@@ -98,6 +96,11 @@ private:
 	bool CreateSurface() noexcept;
 	bool PickDevice() noexcept;
 	bool CreateDevice() noexcept;
+
+	/// @brief Read the selected physical device into capabilities, so GetCapabilities reports
+	///        what the hardware actually supports rather than a guess.
+	void QueryCapabilities() noexcept;
+
 	bool CreateSwapchain() noexcept;
 	bool CreateRenderPass() noexcept;
 	bool CreateDepthResource() noexcept;
@@ -117,7 +120,6 @@ private:
 
 	OS::Window* window;
 	bool initialized;
-	APIType apiType;
 	RenderCapabilities capabilities;
 
 	VkInstance instance;

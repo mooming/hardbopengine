@@ -671,3 +671,76 @@ has a member that exists only under `__DEBUG__` — a `Debug.h`-level definition
 translation units different class layouts (ODR violation). MakeBuild's `precompileDefinitions` is a
 single config-blind string, so the options are the submodule (`CMakeLists.cpp:128-130`, 2 lines,
 recommended) or a `build.sh` stopgap. Awaiting a decision, since the submodule is a separate repo.
+
+## Render capabilities are queried, not guessed (2026-09-06)
+
+**Trigger:** owner asked whether `RHICapabilities::GetCapabilities()` could reflect real
+hardware, then extended it: use API-neutral property names for a future Vulkan/DX12/Metal
+split, delete the dead `APIType`, delete `RendererCommon.h`, and do not omit useful fields
+such as device name and API version. See `.Plans/PLAN_device_capability_query.md`.
+
+**The hardcoded values were wrong, and this is measured, not argued.** A probe against the
+loader (`VK_KHR_portability_enumeration` + `VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR`
+are required, because the MoltenVK ICD json sets `is_portability_driver: true`) reports an
+Apple M4 Pro at Vulkan 1.1.334 / driver 10401:
+
+| field | old hardcode | real | |
+|---|---|---|---|
+| `maxTextureDimension2D` | 4096 | 16384 | 4x understated |
+| `maxVertexAttributes` | 16 | 31 | wrong |
+| `maxUniformBufferBindings` | 16 | 155 | ~10x understated |
+| `supportsTessellation` | false | **true** | **inverted** |
+| `supportsGeometryShader` | false | false | right by luck |
+| `supportsComputeShader` | true in one path, false in the other | core-mandatory | self-contradictory |
+
+Two of the old field names were not even Vulkan: `maxVertexAttribs` and `shaderCompute` are
+OpenGL-era. Vulkan says `maxVertexInputAttributes`, and compute has no feature bit at all
+because it is mandatory in core 1.0 — so "does this device support compute" is not a question
+Vulkan answers; it is true by definition.
+
+**Design.** `RenderCapabilities` is an API-neutral descriptor — identity, 20 feature bits,
+18 limits — with the expected Vulkan/D3D12/Metal mapping documented per field in the header.
+The translation lives in `Vulkan/VulkanCapabilities.{h,cpp}`, which is the only place that
+knows Vulkan's spelling of anything; a DX12 or Metal backend adds its own translator writing
+the same struct rather than extending this one. Selection is by macros at compile time in the
+OSAL style (owner's direction), so no runtime API-kind enum is needed and `APIType` is gone —
+it had one enumerator, no `switch` anywhere, and nine uses that were all `== Vulkan`, i.e.
+assertions that could not fail. `Engine/Renderer/DX12` and `Engine/Renderer/Metal` do not
+exist, though `.module.config` still names them in `ignoreSubdirectories`.
+
+**The root cause was the type, not the numbers.** A default-constructed descriptor used to
+carry 4096/16/16, indistinguishable from a real query. It now zero-initialises and
+`isDeviceQueried == false` means "nobody asked", so an unqueried snapshot can never pose as
+data again. Two query paths disagreed on `supportsComputeShader`; there is one adapter now.
+The 21 flags are bit fields (`: 1`), measured at 236 -> 220 bytes — a modest win because
+`deviceName[128]` and the limit fields dominate. Bit-field caveats are documented in the
+header: no address-of, and never serialise or upload this struct.
+
+**Two latent defects found while getting here.**
+
+1. `Core/Debug.h` opens `namespace hbe {` at line 21 in its `__DEBUG__` branch and never
+   closes it before `#else`. Any `__DEBUG__` build therefore swallows every later header into
+   `namespace hbe` and cannot compile — and `__DEBUG__` is defined nowhere in the build system
+   (`BuildConfig.h` line 41 still claims it tracks `NDEBUG`/`_DEBUG`/`DEBUG`, which is stale).
+   So **every `Assert()` in the engine is a no-op in every configuration**, and the suite's
+   "285 PASS" means "did not crash", not "held". That is exactly how
+   `Assert(caps.supportsComputeShader)` — asserting `true` against a `false` default — survived
+   review, and how `Assert(renderer.Initialize(nullptr), "should succeed")` survived even though
+   `Initialize` returns false on line 149. I corrected that test to assert what the code does.
+   Fixing `Debug.h` is a one-line close-brace but would light up assertions engine-wide, so it
+   is left for the owner rather than smuggled in here.
+2. `hb_standards.sh` include-layout cannot accept a `#ifdef`-guarded `#include`: `#endif`
+   counts as the first body line, and any later `#include` resets its blank-line counter. Since
+   50 engine headers declare their test class through exactly that idiom, `RHICapabilities.h`
+   and the pre-existing conditional `<vulkan/vulkan_win32.h>` in `VulkanRenderer.cpp` stay red.
+   Proven pre-existing by running the checker's own logic over the `HEAD` revision. My own files
+   pass; I did not deviate from a 50-file convention to appease a linter blind spot.
+
+**Verification.** Build `-Wall -Werror` clean; `EngineTest` 285 PASS / 0 FAIL across 53
+collections; `VulkanExample` links. End-to-end through the engine's own code (not the throwaway
+probe): descriptor reports "Apple M4 Pro", api 1.1, driver 10401, vendor 0x106b, 16384 2D
+texels, 31 vertex attributes, 155 uniform bindings, tessellation true — matching the independent
+probe field for field. Assertion liveness proven out-of-tree, since the suite cannot show it:
+20 predicates pass with `__DEBUG__` active, and a negative control wearing the retired
+4096/16/16 numbers does trip the regression assert. `RenderCapabilities` is asserted
+`is_trivially_copyable`; the fresh-vs-queried split is unit-tested both ways.

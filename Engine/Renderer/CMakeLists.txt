@@ -35,10 +35,13 @@ include_directories ( ${CMAKE_SOURCE_DIR}
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/lib)
 add_library (Renderer STATIC 
  RHICapabilities.cpp
+ RenderCapabilities.cpp
+ Vertex.cpp
  RendererTest.cpp
  RHICapabilities.h
- RendererCommon.h
+ RenderCapabilities.h
  RendererTest.h
+ Vertex.h
 ${PLATFORM_SOURCES}
 )
 
@@ -69,6 +72,8 @@ add_dependencies (Renderer Log)
 # Engine/Renderer/.module.config lists Vulkan in ignoreSubdirectories, so MakeBuild
 # cannot emit these sources into the target - wire them in explicitly.
 target_sources (Renderer PRIVATE Vulkan/VulkanRenderer.cpp)
+# Device capability translation. Same ignoreSubdirectories reason as above.
+target_sources (Renderer PRIVATE Vulkan/VulkanCapabilities.cpp)
 # Locate the Vulkan headers via common macOS / homebrew / standard locations.
 find_path (VULKAN_INCLUDE_DIR vulkan/vulkan.h PATHS /opt/homebrew/include /usr/local/include /usr/include $ENV{VULKAN_SDK}/include)
 if (NOT VULKAN_INCLUDE_DIR)

@@ -28,11 +28,13 @@ implements against a superseded design by accident.
 
 ```
 Engine/Renderer/
-├── RendererCommon.h              # APIType, Vertex, RenderCapabilities
-├── RHICapabilities.h/cpp         # supported-API probe
+├── RenderCapabilities.h/cpp      # API-neutral device descriptor: identity, features, limits
+├── Vertex.h/cpp                  # position + color vertex
+├── RHICapabilities.h/cpp         # pre-device probe, before a renderer exists
 ├── RendererTest.h/cpp            # unit tests, compiled only under __UNIT_TEST__
 ├── customCMake.txt               # Vulkan source + link wiring for MakeBuild
 └── Vulkan/
+    ├── VulkanCapabilities.h/cpp  # VkPhysicalDevice -> RenderCapabilities translation
     ├── VulkanRenderer.h          # concrete class, no base class, no factory
     ├── VulkanRenderer.cpp        # instance → surface → device → swapchain → pass
     │                             #   → pipeline → sync → record → present

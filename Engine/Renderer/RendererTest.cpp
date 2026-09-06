@@ -3,8 +3,7 @@
 #ifdef __UNIT_TEST__
 #include "RendererTest.h"
 
-#include "RendererCommon.h"
-#include "RHICapabilities.h"
+#include "RenderCapabilities.h"
 #include "Vulkan/VulkanRenderer.h"
 
 namespace hbe
@@ -12,29 +11,41 @@ namespace hbe
 using namespace Renderer;
 
 RendererTest::RendererTest() noexcept
-	:TestCollection("RendererTest")
+	: TestCollection("RendererTest")
 {
 }
 
 void RendererTest::Prepare()
 {
-	AddTest("VulkanRenderer API Type", [](auto& log)
+	AddTest("VulkanRenderer capabilities are unqueried before Initialize", [](auto& log)
 	{
 		VulkanRenderer renderer;
+		const RenderCapabilities caps = renderer.GetCapabilities();
 
-		log << "API Type: " << static_cast<int>(renderer.GetAPIType());
-		Assert(renderer.GetAPIType() == APIType::Vulkan, "VulkanRenderer should report Vulkan");
+		log << "isDeviceQueried=" << caps.isDeviceQueried << " maxTextureDimension2D=" << caps.maxTextureDimension2D;
+
+		// No device exists yet, so the only honest answer is "unknown". An uninitialised
+		// renderer used to answer 4096/16/16 as if it had asked the hardware.
+		Assert(!caps.isDeviceQueried, "A renderer without a device must not claim queried capabilities");
+		Assert(caps.maxTextureDimension2D == 0, "A renderer without a device must not report a texture limit");
+		Assert(caps.deviceName[0] == '\0', "A renderer without a device must not report a device name");
 	});
 
-	AddTest("VulkanRenderer Capabilities", [](auto& log)
+	AddTest("VulkanRenderer capabilities match an unknown descriptor", [](auto& log)
 	{
 		VulkanRenderer renderer;
-		RenderCapabilities caps = renderer.GetCapabilities();
+		const RenderCapabilities caps = renderer.GetCapabilities();
+		const RenderCapabilities unknown;
 
-		log << "maxTextureSize: " << caps.maxTextureSize
-		    << ", supportsComputeShader: " << caps.supportsComputeShader;
-		Assert(caps.apiType == APIType::Vulkan, "Capabilities API type should be Vulkan");
-		Assert(caps.supportsComputeShader, "Vulkan should support compute shaders");
+		log << "sizeof(RenderCapabilities)=" << sizeof(RenderCapabilities);
+
+		// Field-by-field, because the descriptor is a bit-field struct and holds a fixed array,
+		// so memcmp would compare padding and could report a difference that is not one.
+		Assert(caps.isDeviceQueried == unknown.isDeviceQueried, "Unqueried flag must match");
+		Assert(caps.deviceType == unknown.deviceType, "Unqueried device type must match");
+		Assert(caps.maxTextureDimension2D == unknown.maxTextureDimension2D, "Unqueried 2D limit must match");
+		Assert(caps.maxVertexAttributes == unknown.maxVertexAttributes, "Unqueried vertex limit must match");
+		Assert(caps.supportsComputeShader == unknown.supportsComputeShader, "Unqueried compute flag must match");
 	});
 
 	AddTest("VulkanRenderer Round Trip", [](auto& log)
@@ -42,18 +53,15 @@ void RendererTest::Prepare()
 		VulkanRenderer renderer;
 		OS::Window* window = nullptr;
 
-		Assert(renderer.Initialize(window), "Initialize should succeed with a null window");
+		// Initialize rejects a null window on purpose - the surface is built from the window,
+		// and queue family support is queried against that surface. The assertion said the
+		// opposite; it survived only because Assert() is compiled out outside __DEBUG__ builds.
+		Assert(!renderer.Initialize(window), "Initialize must reject a null window");
 		renderer.Render(0.016f);
-		Assert(renderer.Initialize(window), "Second Initialize should return true (no-op)");
+		Assert(!renderer.GetCapabilities().isDeviceQueried, "A rejected Initialize must leave capabilities unqueried");
 		renderer.Shutdown();
-	});
 
-	AddTest("RHICapabilities Preferred API", [](auto& log)
-	{
-		auto api = RHICapabilities::GetPreferredAPI();
-
-		log << "Preferred: " << static_cast<int>(api);
-		Assert(api == APIType::Vulkan, "Preferred API should be Vulkan");
+		log << "null-window round trip is a safe no-op";
 	});
 }
 

@@ -1606,31 +1606,78 @@ class IRenderer {
     virtual void BeginFrame() noexcept = 0;
     virtual void EndFrame() noexcept = 0;
     virtual void Render(float deltaTime) noexcept = 0;
-    virtual APIType GetAPIType() const noexcept = 0;
     virtual RenderCapabilities GetCapabilities() const noexcept = 0;
 };
 }
 ```
 
-### RendererCommon (`Engine/Renderer/RendererCommon.h`)
+> The guide once listed `virtual APIType GetAPIType()` here. `APIType` has been removed: it
+> had a single enumerator, nothing ever branched on it, and every use was an assertion that
+> could not fail. Backend identity is carried by the descriptor's `deviceName` and
+> `apiVersionMajor/Minor` instead. Backends are picked by macros at compile time, the way
+> OSAL does, so a compile-time-selected renderer needs no runtime API-kind enum at all.
+
+### RenderCapabilities (`Engine/Renderer/RenderCapabilities.h`)
+
+API-neutral description of one device: identity, feature support, limits. Field names are
+chosen to be expressible by Vulkan, Direct3D 12 and Metal, and the header documents the
+mapping each backend is expected to use. Values come from the device - nothing is guessed,
+and `isDeviceQueried == false` means "nobody asked", never "supported".
 
 ```cpp
 namespace hbe::Renderer {
-enum class APIType : uint8_t { Unknown, Vulkan, Metal, DX12 };
+enum class DeviceType : uint8_t { Unknown, DiscreteGpu, IntegratedGpu, VirtualGpu, CpuSoftware };
 
+class RenderCapabilities {
+    static constexpr size_t MaxDeviceNameLength = 128;
+
+    char deviceName[MaxDeviceNameLength];
+    DeviceType deviceType;
+    uint32_t vendorId;
+    uint32_t deviceId;
+    uint32_t driverVersion;
+    uint8_t apiVersionMajor;
+    uint8_t apiVersionMinor;
+
+    // One bit each: compute, tessellation, geometry, multi-draw, 32-bit indices, cube
+    // arrays, independent blend, dual-source blend, logic ops, depth clamp/bias-clamp/
+    // bounds, wireframe, wide lines, anisotropy, precise occlusion, texture gather,
+    // BC and ASTC compression, robust buffer access.
+    bool isDeviceQueried : 1;
+    bool supportsComputeShader : 1;
+    // ... remaining supports* flags, all : 1
+
+    uint32_t maxTextureDimension1D;
+    uint32_t maxTextureDimension2D;      // was maxTextureSize
+    uint32_t maxTextureDimension3D;
+    uint32_t maxTextureDimensionCube;
+    uint32_t maxTextureArrayLayers;
+    uint32_t maxColorAttachments;
+    uint32_t maxVertexAttributes;        // was maxVertexAttribs
+    uint32_t maxVertexBufferBindings;
+    uint32_t maxVertexOutputComponents;
+    uint32_t maxUniformBufferBindings;   // was maxUniformBuffers
+    uint32_t maxTextureBindings;
+    uint32_t maxPushConstantBytes;
+    uint32_t maxDrawIndirectCount;
+    uint32_t maxComputeWorkGroupInvocations;
+    uint32_t uniformBufferOffsetAlignment;
+    float maxSamplerAnisotropy;
+    float maxSamplerLodBias;
+    float timestampPeriodNanoseconds;
+
+    RenderCapabilities();   // all-zero: an explicitly unqueried descriptor
+};
+}
+```
+
+### Vertex (`Engine/Renderer/Vertex.h`)
+
+```cpp
+namespace hbe::Renderer {
 struct Vertex {
     Vector3<float> position;
     Vector4<float> color;
-};
-
-class RenderCapabilities {
-    APIType apiType;
-    bool supportsGeometryShader;
-    bool supportsTessellation;
-    bool supportsComputeShader;
-    uint32_t maxTextureSize;
-    uint32_t maxUniformBuffers;
-    uint32_t maxVertexAttribs;
 };
 }
 ```
@@ -1640,26 +1687,41 @@ class RenderCapabilities {
 ```cpp
 namespace hbe::Renderer {
 class RendererFactory final {
-    static std::unique_ptr<IRenderer> Create(
-        APIType preferredAPI = APIType::Unknown) noexcept;
+    static std::unique_ptr<IRenderer> Create() noexcept;
     static std::unique_ptr<IRenderer> CreateWithFallback() noexcept;
 };
 }
 ```
 
+> Aspirational. Backends are not expected to be chosen at runtime: like OSAL, a renderer
+> implementation is selected by macros at compile time (`OSAL/Window.h` switches its handle
+> members on `PLATFORM_LINUX` / `PLATFORM_WINDOWS` / `PLATFORM_OSX`, and the per-platform
+> units `OSXWindow.mm`, `LinuxWindow.cpp`, `Win32Window.cpp` sit side by side in one module).
+> The same shape applies here: one neutral `RenderCapabilities` contract, one adapter per
+> backend directory, and a macro deciding which one is compiled. So no `APIType` enum and no
+> runtime factory argument are needed - the factory sketch above predates that decision.
+
 ### RHICapabilities (`Engine/Renderer/RHICapabilities.h`)
+
+Answers RHI questions before a renderer exists. `GetCapabilities()` really probes: it creates
+a throwaway Vulkan instance, reads the first physical device through the same adapter the
+renderer uses, and tears the instance down. Once a renderer owns a device, prefer
+`VulkanRenderer::GetCapabilities()` - it is cached and describes the device actually chosen.
 
 ```cpp
 namespace hbe::Renderer {
 class RHICapabilities final {
     static bool IsVulkanSupported() noexcept;
-    static bool IsMetalSupported() noexcept;
-    static bool IsDX12Supported() noexcept;
-    static APIType GetPreferredAPI() noexcept;
-    static RenderCapabilities GetCapabilities(APIType api) noexcept;
+    static RenderCapabilities GetCapabilities() noexcept;
 };
 }
 ```
+
+The guide also lists `IsMetalSupported`, `IsDX12Supported` and a `GetPreferredAPI()` that took
+or returned an `APIType`; none of those exist, and the `APIType` variants are gone with the
+enum. Translating a device into the neutral descriptor lives in
+`Engine/Renderer/Vulkan/VulkanCapabilities.h`, which is the seam a DX12 or Metal backend
+would copy rather than extend.
 
 ### Vulkan Renderer (`Engine/Renderer/Vulkan/VulkanRenderer.h`)
 
