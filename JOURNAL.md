@@ -124,16 +124,32 @@ pre-existing at `HEAD` (459 + 147 non-conformant lines already; line 88's joined
 body is verbatim at `HEAD`) - the indented-namespace-body debt the gate itself marks
 `[DEBT] ... not gated on purpose`. Not reformatted, per standing instruction.
 
+### Decision: a sub-`TSize` block is a caller error (option A)
+
+Presented with three options - reject (fix the test), accept (drop the assert), accept
+observably (clamp + warning). Owner chose **reject**, so the precondition stays and the
+test stopped probing illegal inputs: `for (size_t blockSize = sizeof(size_t); blockSize < 100; ++blockSize)`.
+Named via `size_t` because `TSize` is declared above `private:` inside a `class`, so it is
+private and `PoolAllocatorTest` cannot reach it.
+
+Sizing the choice first: with **only** that assert removed and `-D__DEBUG__` live, the suite
+ran **285 PASS / 0 FAIL** - it was the sole assert in the engine that failed, hence the last
+blocker to enabling `__DEBUG__`. With the loop corrected instead, `-D__DEBUG__` also gives
+**285 PASS / 0 FAIL / exit 0**, verified with `-D__DEBUG__` confirmed present in
+`CMAKE_CXX_FLAGS`. The suite is clean under live asserts for the first time.
+
 ### Still open
 
-- `PoolAllocatorTest` "Construction" loops `blockSize` 1..99, i.e. it deliberately builds
-  pools below the `sizeof(TSize)` precondition. Harmless while asserts are compiled out,
-  but it *will* fire once `__DEBUG__` is live. That is the test being wrong, not the
-  allocator. Needs a decision: start the loop at `sizeof(TSize)`, or keep the sub-8 range
-  as an explicit negative case.
+- No test allocates from a pool whose `blockSize` needed clamping. TC1 uses 4096, already
+  16-aligned, so the clamp path - the one that was broken - has zero engine coverage. My
+  transcription covered it (100/100 distinct at 24 and 100) but the suite does not.
+- TC1's failure string is stale: it tests `size != 4096` but prints "but 100 expected".
+- `__DEBUG__` is now safe to turn on for Debug/Dev but is still not defined by default -
+  a build-configuration decision, not a code one.
 - One SIGSEGV observed at `WindowTest TC3.Visibility` (52 PASS), unreproducible in the 5
-  runs after it. Unrelated to `Memory/`; logged as a flake to keep an eye on, not a
-  finding.
+  runs after it, and again unreproducible in the runs since. Unrelated to `Memory/`; kept
+  as a flake to watch, not a finding. Note my first "control" for it was one run each way
+  and so proved nothing - the crash was noise, not a regression.
 
 ## Docs corrected, `NamespaceIndentation: None` decided, exemplars compiled (2026-09-06)
 

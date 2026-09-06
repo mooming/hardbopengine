@@ -312,9 +312,13 @@ namespace hbe
 	{
 		AddTest("Construction", [](auto&)
 		{
-			for (int i = 1; i < 100; ++i)
+			// Each free block has to hold the pool's next-index link, so a block cannot be
+			// narrower than sizeof(size_t) - that is the constructor's precondition, an input
+			// error rather than a size worth probing. The range still covers every size above
+			// it, including the ones alignment rounds up.
+			for (size_t blockSize = sizeof(size_t); blockSize < 100; ++blockSize)
 			{
-				PoolAllocator pool("TestPoolAllocator", i, 100);
+				PoolAllocator pool("TestPoolAllocator", blockSize, 100);
 			}
 		});
 
