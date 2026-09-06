@@ -33,19 +33,54 @@ To maintain high code quality and consistency, please adhere to the following gu
 ### Code Formatting
 - **Indentation**: Use tabs (not spaces) for indentation.
 - **Column Limit**: 120 characters.
-- **Brace Style**: K&R variant — opening brace on the same line as the declaration/statement.
-    - Example: `type FunctionName(args) {`.
+- **Brace Style**: Allman — the line **always breaks before** an opening brace, for
+  functions, classes, structs, namespaces, enums and control statements alike.
+    - Example:
+      ```cpp
+      void FunctionName(args)
+      {
+          if (condition)
+          {
+              DoWork();
+          }
+      }
+      ```
+    - This is **not** K&R, which attaches the brace (`void FunctionName(args) {`),
+      and **not** BSD/KNF, which breaks only for functions while keeping
+      `if (condition) {` and `namespace x {` attached. This codebase breaks for
+      control statements and namespaces too, which makes it Allman.
+    - **There are no exemptions.** An empty body still puts each brace on its own
+      line — `void FunctionName() noexcept` followed by `{` and `}` on separate
+      lines — and the same holds for an empty `struct`/`class`/`enum`.
+    - Machine-readable form: `.clang-format`. It spells the rule as
+      `BreakBeforeBraces: Custom` with an explicit `BraceWrapping` table. Note that
+      `AllowShortFunctionsOnASingleLine` must stay `None` alongside
+      `SplitEmptyFunction: true`, or the empty-body rule silently disappears.
 - **Readability**:
     - Place an empty line before `return` statements, unless the `return` is the only statement within its scope.
     - Place an empty line after close brackets `}`.
     - Place an empty line between member variables and methods for readability.
     - Prefer range-based for loops unless inevitable.
-    - Include the file's own header first, followed by a blank line,
-      then the remaining includes sorted alphabetically.
+    - Include blocks are grouped and sorted, own header first:
+      ```cpp
+      #include "OwnHeader.h"            // the file's own header, when one exists
+
+      #include <atomic>                 // standard headers, alphabetical
+      #include <cstring>
+
+      #include "Config/ConfigParam.h"   // project headers, alphabetical
+      #include "Log/Logger.h"
+      ```
     - After all include and define directives at the top of source files,
-      place two empty lines before the first code body.
+      place **exactly one** empty line before the first code body.
+      This is not a style preference: clang-format collapses any larger count to
+      one, and exposes no option to opt out, so writing two makes every formatted
+      file rewrite on every run.
 - **System Compatibility**: Ensure every file ends with a newline character.
-- **Namespaces**: Do not indent code blocks contained within namespaces.
+- **Namespaces**: Do not indent code blocks contained within namespaces
+  (`NamespaceIndentation: None`). This is a deliberate owner decision on record,
+  not a default — the engine body predates it and is largely indented, so expect
+  legacy files to disagree until they are reformatted.
 - **Single-line Statements**: Avoid using braces for single-line `continue` or `return` statements.
 
 ### Error Handling, Logging & Memory Management

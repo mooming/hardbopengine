@@ -31,10 +31,15 @@ See [docs/BuildSystem.md](docs/BuildSystem.md).
 ## Helper Script
 `build.sh` builds specific targets with optional flags (default Dev):
 ```bash
-./build.sh <target> [-dev] [-debug] [-release] [-clean] [-notest]
+./build.sh <target> [-dev] [-debug] [-release] [-clean] [-test]
 # Example:
-./build.sh Applications/VulkanExample -dev -debug -release -clean -notest
+./build.sh Applications/VulkanExample -dev -debug -release -clean
 ```
+There is no `-notest`: `build.sh` only builds and never runs tests. `-test` is the
+opposite of what it sounds like — it reconfigures with `-D__TEST__ -D__UNIT_TEST__`
+so the unit-test sources compile at all. Targets that are not an application
+directory cannot be reached through this script (the basename becomes the target
+name); build those with `cmake --build build --config <Config> --target <Name>`.
 
 ## Running Tests
 Tests in `Engine/Test/UnitTestCollection.cpp`:
