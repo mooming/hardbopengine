@@ -30,8 +30,16 @@ Application::~Application()
 {
 	returnIf(m_platformHandle == nullptr);
 
+	// Deliberately not [app terminate:]: that call ends in exit(), which tears the process
+	// down from inside a destructor. The consequences are silent and severe - main()'s return
+	// value is discarded, so no application can ever report a status (EngineTest could not
+	// signal a failing suite), and static destructors never run. NSApplication is a
+	// process-wide singleton that outlives this wrapper, and the engine owns its own shutdown
+	// sequence, so stopping the run loop is all that belongs here.
+	// Quitting on the close button is unaffected: that path is windowShouldClose: ->
+	// shouldClose flag -> the application loop exits on its own.
 	auto app = static_cast<NSApplication*>(m_platformHandle);
-	[app terminate:nil];
+	[app stop:nil];
 
 	m_platformHandle = nullptr;
 }

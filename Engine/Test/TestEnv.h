@@ -20,6 +20,16 @@ public:
 	[[nodiscard]] static TestEnv& GetEnv();
 	void Start();
 
+	/// @brief Collections that completed successfully.
+	[[nodiscard]] unsigned int GetPassCount() const noexcept { return passCount; }
+
+	/// @brief Collections that ran and failed, plus any that never completed.
+	/// @details Valid after Start(); Start() clears both lists on entry.
+	[[nodiscard]] unsigned int GetFailureCount() const noexcept
+	{
+		return static_cast<unsigned int>(failedTests.size() + invalidTests.size());
+	}
+
 	template<typename T, typename... Types>
 	void AddTestCollection(Types&&... args)
 	{
