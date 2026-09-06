@@ -1,5 +1,78 @@
 # Journal
 
+## `hb-standards`: four holes in the helper script, and one rule I had wrong (2026-09-07)
+
+Four defects in `.pi/skills/hb-standards/scripts/check.sh` were reported by the owner as
+measured behaviour. All four are now fixed, and chasing them exposed a fifth of the same
+shape plus a rule that I had previously documented incorrectly.
+
+| # | Symptom | Root cause | Fix |
+|---|---|---|---|
+| 1 | `EngineTest` reported `[FAIL]` although the binary was fine | `timeout 120` called unconditionally; **neither `timeout` nor `gtimeout` exists on this machine**, so the call exited 127 | probe `timeout` then `gtimeout`, run uncapped if neither exists. A missing helper is an environment gap, never a code failure |
+| 2 | Test gate passed with `PASS=0` | built without `-test`, so `#ifdef __UNIT_TEST__` left `main()` **empty**: exit 0 having run nothing. And `grep -c PASS` counted log lines, not tests | build with `-test`, parse the `TestEnv::Report()` tallies, and treat 0 tests, a missing report block, and a timeout as failures. Reconfigure without the defines afterwards |
+| 3 | `Engine/Config/BuildConfig.h`: "block 2: not alphabetical" while having no includes at all | awk matched `/^#(include\|define)/`, so `HB_PROJECT_*` macros became fake include blocks | match `#include` only |
+| 4 | ~50 guarded files reported "found 0" empty lines | any non-include line set `bodyline`, which froze the blank counter; and `blank` measured the gap *before the last include*, not after the region | conditionals made transparent; preamble closes exactly once, at the first body line |
+
+### Why hole 4 was deeper than it looked
+
+The dominant idiom in this tree puts further `#include` directives inside a
+`#ifdef __UNIT_TEST__` test block far below the first code body, so treating the whole
+file as one include region was simply the wrong model. A conditional that *hugs* the
+includes is part of the preamble; a conditional preceded by a blank line opens a new
+region. That distinction is what made `ImportanceSampling.cpp`, `DefaultAllocator.cpp`
+and `WindowsDebug.cpp` stop being false positives.
+
+Measured over 256 files of `Engine/` + `Applications/`: findings **100 -> 55**, and the
+awk now contradicts clang-format **nowhere** (0 "not alphabetical" findings on files the
+formatter leaves untouched, which is the expected correlation under `IncludeBlocks:
+Preserve`). Eleven synthetic probes cover the exempt and failing shapes.
+
+### The rule I had documented wrong
+
+I had written into `.clang-format` and `docs/CodingStandards.md` that clang-format
+collapses *any* blank-line count after the includes to exactly one. That measurement was
+buggy. Re-measured with `MaxBlankLines` at its default:
+
+| Body starts with | survives | collapses |
+|---|---|---|
+| `using namespace` | 1 **or 2** | 3+ -> 2 |
+| `namespace` declaration | 1 only | 2+ -> 1 |
+| a function | 1 only | 2+ -> 1 |
+| a comment | 1 only | 2+ -> 1 |
+
+So two blanks is legal in exactly one position. Both documents now say that, and the
+blank-line rule is left to clang-format entirely rather than being copied badly in awk.
+
+### Hole 5, same shape as hole 2
+
+`HEAD` at the time touched no C++, so "0 violations" meant the lint had examined nothing
+- a vacuous pass, indistinguishable from a real one. An empty scope now says so on its
+own line, including on the `--no-build` early exit, which was silently skipping the notice.
+
+### Decision: `__UNIT_TEST__` stays driven by `-test`
+
+`MakeBuild` already emits `.project.config`'s `precompileDefinitions` into **every**
+generated `CMakeLists.txt`, so a `precompileGlobalDefinitions` key would have duplicated
+an existing mechanism. The owner declined it anyway for the right reason: `.project.config`
+is project-wide and would push the macro into `VulkanExample` and `WindowExample` too.
+Module-scoped injection from `EngineTest/.module.config` cannot work either, because the
+test bodies live in the *library* sources that `EngineTest` links. `-test`, which turns the
+macro on for the whole build tree, is the arrangement that keeps `__UNIT_TEST__`-dependent
+code from ever being linked across a mismatch. `__TEST__` is referenced nowhere in
+`Engine/` or `Applications/` and is dead weight in that flag.
+
+Two things this exposed and did not fix, both deferred: only `Engine/Test` and
+`Engine/Renderer/Vulkan` declare `__UNIT_TEST__`, so **108 modules compile with their test
+bodies silently removed** unless `-test` is passed; and `Engine/CMakeLists.txt` is generated
+by `MakeBuild`, so the hand-added `CodingStandards` target from `1e6a46e` will not survive
+the next `generate_cmake_files.sh`.
+
+### Controls
+
+`566e139` -> exit 1 (still catches `Main.cpp` placing the `<...>` block after the project
+block), `1e6a46e` -> 0, `ea0f157` -> 0, `bash -n` clean. `HEAD` (`PoolAllocator`) -> exit 1
+on two genuine violations, which is a correct verdict rather than a script fault.
+
 ## `PoolAllocator`: `in`-prefixed parameters, which also repaired a live defect (2026-09-06)
 
 Owner asked for `in`-prefixed parameters on `PoolAllocator` to stop member/parameter

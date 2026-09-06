@@ -29,6 +29,20 @@
 #   * The build gate must not trust "ninja: no work to do". The touched files are
 #     touched before building so a real recompile is forced and the gate cannot
 #     pass vacuously.
+#   * --test must build EngineTest with "build.sh ... -test". The body of main() and
+#     every module's test bodies sit behind #ifdef __UNIT_TEST__, so without the flag
+#     the executable has an empty main and exits zero having run nothing (measured on
+#     this tree: 0 tests without -test, 285 with it). Zero tests is a failure.
+#   * Neither timeout(1) nor gtimeout(1) is guaranteed to exist, and on this machine
+#     neither does. Calling one unconditionally exits 127 and the gate then blames the
+#     code for a missing helper binary, so probe for both and run uncapped if absent.
+#   * The blank-line-after-includes rule is enforced by clang-format alone, never by
+#     awk. It is position-dependent (two blanks survive before a using-directive, one
+#     elsewhere) and a hand-written copy of it reported 85 findings that the formatter
+#     itself disagreed with in 7 of them.
+#   * Empty scope is announced, not hidden. A commit touching no C++ yields zero
+#     violations without proving anything, so the verdict states that the lint
+#     examined nothing rather than falling silent.
 
 set -uo pipefail
 
@@ -61,6 +75,30 @@ cd "$REPO_ROOT" || exit 3
 command -v clang-format >/dev/null 2>&1 || { echo "clang-format not on PATH" >&2; exit 3; }
 
 CLANG_FORMAT_VERSION=$(clang-format --version 2>&1 | head -1)
+
+# A hung test binary must not hang the gate, but coreutils is not part of this
+# project's toolchain. Probe for timeout(1) then gtimeout(1); if neither exists,
+# run the binary uncapped. A missing helper binary is an environment gap, not a
+# code violation, and must never be reported as a gate failure.
+if command -v timeout >/dev/null 2>&1; then
+	TIMEOUT_CMD=(timeout)
+elif command -v gtimeout >/dev/null 2>&1; then
+	TIMEOUT_CMD=(gtimeout)
+else
+	TIMEOUT_CMD=()
+fi
+
+# run_capped <seconds> <command...> — the command runs without a limit when no
+# timeout helper was found above.
+run_capped() {
+	local secs="$1"
+	shift
+	if [[ ${#TIMEOUT_CMD[@]} -gt 0 ]]; then
+		"${TIMEOUT_CMD[@]}" "$secs" "$@"
+	else
+		"$@"
+	fi
+}
 
 # ------------------------------------------------------------- file selection --
 INCLUDE_EXT='h|hpp|cpp|cc'
@@ -108,7 +146,13 @@ echo "==========================================================================
 for f in "${SKIPPED[@]:-}"; do [[ -n "$f" ]] && echo "  excluded : $f"; done
 if [[ ${#FILES[@]} -eq 0 ]]; then
 	echo "no formattable C/C++ sources in scope"
-	[[ $BUILD -eq 1 ]] || exit 0
+	if [[ $BUILD -eq 0 ]]; then
+		# Exiting zero right here is exactly the vacuous pass this notice exists to
+		# prevent, so it must be printed before leaving, not only in the verdict block.
+		printf ' %s\n' 'lint scope: NONE — the lint checks above examined nothing, so this exit'
+		printf ' %s\n' '                 status carries no information about style conformance.'
+		exit 0
+	fi
 	FILES=()
 fi
 
@@ -213,34 +257,68 @@ if [[ ${#FILES[@]} -gt 0 ]]; then
 		# includes it both as "foo.h" and as "Dir/foo.h".
 		own=$(basename "$f"); own="${own%.*}.h"
 		out=$(awk -v F="$f" -v OWN="$own" '
-			/^#(include|define)/ {
-				if (gap && count) { block++ ; gap = 0 }                     # a blank line opens a new block
-				if (block == "") block = 1
-				if ($0 ~ /^#include </) kind[block] = "std"
-				else                    kind[block] = "proj"
+			# phase tracks whether the top-of-file include preamble is still open. The
+			# dominant repo idiom puts further #include directives inside a
+			# "#ifdef __UNIT_TEST__" test block far below the first code body, so the
+			# preamble must close exactly once, at the first body line, or those later
+			# includes get folded into block 1 and every counter is wrong.
+			BEGIN { phase = "pre" }
+
+			# Track whether this line is a preprocessor conditional, and reset the flag on
+			# a plain line so a blank after "#endif" counts normally again.
+			/^#/ { guard = ($0 ~ /^[ \t]*#[ \t]*(if|ifdef|ifndef|else|elif|endif)/) ? 1 : 0 }
+			!/^#/ { guard = 0 }
+
+			# Conditionals are transparent while they hug the include region: an #ifdef that
+			# directly wraps includes belongs to it, opens no block, and never ends it.
+			# A blank line before the #ifdef is the tell that this is a NEW region instead -
+			# in this repo that is almost always the "#ifdef __UNIT_TEST__" test block or a
+			# "#ifdef PLATFORM_x" block far below the preamble. Folding those includes into
+			# the preamble invents mixed <...>/"..." blocks and reports them as unsorted
+			# (measured: ImportanceSampling.cpp, DefaultAllocator.cpp, WindowsDebug.cpp).
+			guard == 1 { if (gap && count) phase = "body"; next }
+			/^[ \t]*$/ { gap = 1; next }
+
+			# Only "#include" opens a block. "#define" does NOT: a config header made of
+			# HB_PROJECT_* macros has no includes at all, and reading its defines as
+			# includes invents blocks that do not exist, which is how such a file came to
+			# be reported as "block 2: not alphabetical".
+			# The own header of foo.cpp is "foo.h" - matched by basename, since the repo
+			# includes it both as "foo.h" and as "Dir/foo.h".
+			/^[ \t]*#[ \t]*include/ {
+				if (phase != "pre") next                              # a #include below the preamble belongs to a test guard
+				if (count && gap) block++                             # a blank line opens a new block
+				gap = 0
+				if (block == 0) block = 1
+				kind[block] = ($0 ~ /^[ \t]*#[ \t]*include[ \t]*</) ? "std" : "proj"
 				path = $0
-				sub(/^[ \t]*#[ \t]*(include|define)[ \t]*/, "", path)
+				sub(/^[ \t]*#[ \t]*include([ \t]*_next)?[ \t]*/, "", path)
 				sub(/^["<]/, "", path)
-				sub(/[">].*$/, "", path)          # cut at the FIRST closer, not the last
+				sub(/[">].*$/, "", path)                              # cut at the FIRST closer, not the last
 				list[block] = list[block] path "\n"
 				if (block == 1 && firstinc == "") firstinc = path
 				count++
-				blank=0
 				next
 			}
-			/^$/ { if (count && !bodyline) { gap = 1; blank++ } ; next }
-			{ if (count) { bodyline = NR } ; next }
+
+			# Any other line is the code body, and it closes the preamble for good. Until an
+			# include has been seen there is no preamble to close: a copyright comment or a
+			# "#pragma once" is ordinary prologue, not body.
+			{ if (phase == "pre" && count) phase = "body"; next }
+
 			END {
 				nb = 0; for (b in kind) nb++
 				start = 1
 				# Only a genuine own header may lead. A .cpp may not use some unrelated
 				# project header as an excuse to put the whole project block first.
 				if (nb > 1 && kind[1] == "proj" && (firstinc == OWN || firstinc ~ ("/" OWN "$"))) start = 2
+
 				seenProj = 0
 				for (b = start; b <= nb; b++) {
 					if (kind[b] == "proj") seenProj = 1
 					else if (kind[b] == "std" && seenProj) { print "standard <...> block must precede the \"project\" block"; break }
 				}
+
 				for (b = 1; b <= nb; b++) {
 					m = split(list[b], L, "\n"); last = ""; unsorted = 0
 					for (i = 1; i <= m; i++) {
@@ -250,7 +328,15 @@ if [[ ${#FILES[@]} -gt 0 ]]; then
 					}
 					if (unsorted) print "block " b ": not alphabetical"
 				}
-				if (bodyline && nb > 0 && blank != 1) print "expected exactly one empty line before the first code body (found " blank ") — clang-format collapses any other count"
+
+				# The "blank lines after the include region" rule is deliberately NOT
+				# reproduced here. clang-format owns it and it is position-dependent, so a
+				# hand-written copy is wrong more often than right. Measured against this
+				# .clang-format (MaxBlankLines unset): before a "using namespace" both 1 and
+				# 2 blanks survive and 3+ collapse to 2, while before a namespace
+				# declaration, a function or a comment only 1 survives. The clang-format
+				# section above already reports every one of those differences, so checking
+				# it twice here would only add false positives.
 			}
 		' "$f")
 		if [[ -n "$out" ]]; then printf '[FAIL] include layout — %s\n' "$f"; echo "$out" | sed 's/^/    /'; inc=$((inc+1)); fi
@@ -331,19 +417,69 @@ if [[ $BUILD -eq 1 ]]; then
 	done
 
 	if [[ $RUNTEST -eq 1 && $BUILD_STATUS -eq 0 ]]; then
-		hdr "unit tests"
-		for cfg in Dev Debug Release; do
-			bin="./build/Applications/EngineTest/$cfg/EngineTest"
-			if [[ -x "$bin" ]]; then
-				if timeout 120 "$bin" >/tmp/hb_test.$cfg 2>&1; then
-					printf '[PASS] EngineTest %-8s %s\n' "$cfg" "$(grep -c 'PASS' /tmp/hb_test.$cfg) pass lines"
-				else
-					printf '[FAIL] EngineTest %s\n' "$cfg"; tail -20 /tmp/hb_test.$cfg | sed 's/^/    /'; BUILD_STATUS=1
+		hdr "unit tests — EngineTest, built with -test"
+		# -test is not optional here, and not for the reason it looks like. Both the body
+		# of TestMain.cpp's main() and every module's test bodies sit behind
+		# #ifdef __UNIT_TEST__, so a binary built without the flag has an EMPTY main: it
+		# exits zero having executed nothing at all. Measured on this tree: 0 tests run
+		# without -test, 285 with it. build.sh reconfigures with --fresh on every run, so
+		# the defines never go sticky into a shared tree; they are configured back off at
+		# the end of this block.
+		if ! out=$(./build.sh Applications/EngineTest -dev -debug -release -test 2>&1); then
+			printf '[FAIL] %-21s %s\n' "EngineTest" "test build (-test)"
+			grep -E 'error:|FAILED' <<<"$out" | head -15 | sed 's/^/    /'
+			BUILD_STATUS=1
+		else
+			for cfg in Dev Debug Release; do
+				bin="./build/Applications/EngineTest/$cfg/EngineTest"
+				log="/tmp/hb_test.$cfg"
+				if [[ ! -x "$bin" ]]; then
+					printf '[FAIL] %-21s %s%s\n' "EngineTest $cfg" "binary not built: " "$bin"
+					BUILD_STATUS=1
+					continue
 				fi
-			else
-				printf '[WARN] EngineTest %-8s binary not built: %s\n' "$cfg" "$bin"
-			fi
-		done
+				run_capped 300 "$bin" >"$log" 2>&1
+				rc=$?
+				# TestEnv::Report() prints the authoritative tallies. Counting lines that
+				# contain PASS counted log output, not tests, so an empty suite and a suite
+				# of 285 collections were both reportable as a healthy pass.
+				#
+				# LC_ALL=C is load-bearing, not cosmetic: the engine log is not clean UTF-8
+				# (measured: an undecodable 0x80 at byte 51772 of a 229550-byte log) and BSD
+				# sed aborts the whole file with "illegal byte sequence" on it. That swallowed
+				# every tally and the gate then reported a suite that had in fact passed 53 of
+				# 53 as never having reached Report(). Note the tallies count collections.
+				total=$(LC_ALL=C sed -n 's/^# Total Count = //p' "$log" | tail -1)
+				pass=$(LC_ALL=C sed -n 's/^# Pass = //p' "$log" | tail -1)
+				fail=$(LC_ALL=C sed -n 's/^# Fail = //p' "$log" | tail -1)
+				invalid=$(LC_ALL=C sed -n 's/^# Invalid Test = //p' "$log" | tail -1)
+				if [[ $rc -eq 124 || $rc -eq 137 ]]; then
+					printf '[FAIL] %-21s %s\n' "EngineTest $cfg" "timed out after 300s"
+					BUILD_STATUS=1
+				elif [[ -z "$pass" || -z "$total" ]]; then
+					printf '[FAIL] %-21s %s\n' "EngineTest $cfg" "no report block: the suite never reached Report()"
+					tail -20 "$log" | LC_ALL=C sed 's/^/    /'
+					BUILD_STATUS=1
+				elif [[ "$total" -eq 0 || "$pass" -eq 0 ]]; then
+					printf '[FAIL] %-21s ran %s of %s collections: vacuous, so a failure\n' "EngineTest $cfg" "$pass" "$total"
+					echo "         a suite that executes nothing proves nothing — built without -test?"
+					BUILD_STATUS=1
+				elif [[ "${fail:-0}" -ne 0 || "${invalid:-0}" -ne 0 ]]; then
+					printf '[FAIL] %-21s pass=%s fail=%s invalid=%s\n' "EngineTest $cfg" "$pass" "$fail" "$invalid"
+					LC_ALL=C grep -n 'FAIL' "$log" | head -15 | LC_ALL=C sed 's/^/    /'
+					BUILD_STATUS=1
+				else
+					printf '[PASS] %-21s pass=%s fail=%s invalid=%s total=%s (collections)\n' "EngineTest $cfg" "$pass" "$fail" "$invalid" "$total"
+				fi
+				echo "         full log: $log"
+			done
+		fi
+
+		# Leave the tree as it was found. build.sh configures --fresh every time, so a
+		# plain reconfigure is all that is needed to drop -D__TEST__ -D__UNIT_TEST__.
+		if ! ./build.sh Applications/VulkanExample -dev >/dev/null 2>&1; then
+			echo "  note: could not reconfigure without -test; run ./build.sh <target> -dev to restore"
+		fi
 	fi
 fi
 
@@ -352,6 +488,13 @@ echo
 echo "=========================================================================="
 printf " mechanical violations : %d\n" "$VIOL"
 printf " warnings / advisory   : %d\n" "$WARN"
+if [[ ${#FILES[@]} -eq 0 ]]; then
+	# Vacuity guard. With zero files in scope the lint checks above examined nothing
+	# and a violation count of zero is meaningless — the same trap that let the
+	# unit-test gate pass while running no tests. Say it plainly rather than let a
+	# clean exit status be read as a style verdict.
+	printf ' lint scope           : %s\n' 'NONE — no C/C++ sources in scope, so the lint checks above examined nothing and this exit status says nothing about style conformance.'
+fi
 printf " build gate            : %s\n" "$([[ $BUILD -eq 0 ]] && echo 'skipped (--no-build)' || ([[ $BUILD_STATUS -eq 0 ]] && echo "PASS ${BUILD_PASS}/${BUILD_TOTAL}" || echo 'FAIL'))"
 echo "=========================================================================="
 if [[ $BUILD_STATUS -ne 0 ]]; then exit 2; fi

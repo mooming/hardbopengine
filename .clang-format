@@ -135,11 +135,14 @@ AllowShortBlocksOnASingleLine: false
 #
 #     <first code body>
 #
-# Exactly one empty line sits between the last include and the first code body.
-# clang-format enforces this: it collapses any other count (measured for 1, 2,
-# 3 and 4 blank lines) to one, and this build offers no BreakAfterIncludes to
-# opt out. Writing two, as some older files and docs/CodingStandards.md still
-# say, makes clang-format rewrite the file on every run.
+# One empty line sits between the last include and the first code body.
+# clang-format enforces this, but position-dependently, and the distinction is
+# easy to get wrong (measured against this file, MaxBlankLines left at its
+# default): before a "using namespace" both 1 and 2 blanks survive and 3+ collapse
+# to 2, while before a namespace declaration, a function or a comment only 1
+# survives and 2+ collapse to 1. Two is therefore legal in exactly one position and
+# wrong everywhere else, so always write one. There is no BreakAfterIncludes in
+# this build with which to opt out of the collapse.
 #
 # Preserve sorts inside each block but never reorders across blank lines, so the
 # own-header / standard / project separation stays author-controlled.

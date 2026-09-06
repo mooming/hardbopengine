@@ -72,10 +72,13 @@ To maintain high code quality and consistency, please adhere to the following gu
       #include "Log/Logger.h"
       ```
     - After all include and define directives at the top of source files,
-      place **exactly one** empty line before the first code body.
-      This is not a style preference: clang-format collapses any larger count to
-      one, and exposes no option to opt out, so writing two makes every formatted
-      file rewrite on every run.
+      place **one** empty line before the first code body.
+      clang-format enforces this, and the rule is position-dependent, which is easy to
+      get wrong: before a `using namespace` both one and two blank lines survive (three
+      or more collapse to two), while before a namespace declaration, a function or a
+      comment only one survives (two or more collapse to one). Two is therefore legal
+      in exactly one position and wrong everywhere else, so always write one. This
+      clang-format offers no option with which to opt out of the collapse.
 - **System Compatibility**: Ensure every file ends with a newline character.
 - **Namespaces**: Do not indent code blocks contained within namespaces
   (`NamespaceIndentation: None`). This is a deliberate owner decision on record,
