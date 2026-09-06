@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# hb_standards.sh — format + strictly lint HardBop Engine sources touched by a commit,
+# check.sh — format + strictly lint HardBop Engine sources touched by a commit,
 # then prove the tree still builds in Debug, Dev and Release.
 #
 # Usage:
-#   hb_standards.sh [--staged | <rev>] [--apply] [--no-build] [--test] [--all]
+#   scripts/check.sh [--staged | <rev>] [--apply] [--no-build] [--test] [--all]
 #
 #   --staged     lint files staged for the next commit
 #   <rev>        lint files touched by a revision (default: HEAD)
@@ -85,7 +85,7 @@ for f in "${CANDIDATES[@]:-}"; do
 	if [[ ! -f "$f" ]]; then continue; fi                 # deleted in this rev
 	ext="${f##*.}"
 	if [[ "$ext" =~ ^($EXCLUDE_EXT)$ ]]; then
-		SKIPPED+=("$f ($ext — excluded: see hb_standards.sh header)")
+		SKIPPED+=("$f ($ext — excluded: see check.sh header)")
 		continue
 	fi
 	if head -3 "$f" 2>/dev/null | grep -qiE 'auto-?generated|do not edit'; then

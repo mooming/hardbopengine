@@ -20,12 +20,12 @@ the standard's own exemplar files were **clang-format-clean but rule-non-clean**
 ## Run it
 
 ```bash
-.pi/skills/hb-standards/scripts/hb_standards.sh                 # files in HEAD
-.pi/skills/hb-standards/scripts/hb_standards.sh --staged        # files about to be committed
-.pi/skills/hb-standards/scripts/hb_standards.sh <rev>           # files in a given commit
-.pi/skills/hb-standards/scripts/hb_standards.sh --staged --apply  # rewrite, then lint
-.pi/skills/hb-standards/scripts/hb_standards.sh --all --no-build  # whole tree, no compile
-.pi/skills/hb-standards/scripts/hb_standards.sh --test          # also run EngineTest
+.pi/skills/hb-standards/scripts/check.sh                 # files in HEAD
+.pi/skills/hb-standards/scripts/check.sh --staged        # files about to be committed
+.pi/skills/hb-standards/scripts/check.sh <rev>           # files in a given commit
+.pi/skills/hb-standards/scripts/check.sh --staged --apply  # rewrite, then lint
+.pi/skills/hb-standards/scripts/check.sh --all --no-build  # whole tree, no compile
+.pi/skills/hb-standards/scripts/check.sh --test          # also run EngineTest
 ```
 
 Exit status: `0` clean, `1` violations, `2` build failed, `3` usage error.
