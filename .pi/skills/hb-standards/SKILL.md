@@ -58,7 +58,13 @@ checks still apply to them. To silence a specific line elsewhere, end it with
 ## Layer 3 — build gate (mandatory, last)
 
 Builds `EngineTest`, `VulkanExample` and `WindowExample` across **Dev, Debug and
-Release**. Lint passing means nothing if the reformat broke compilation.
+Release**, plus the `CodingStandards` target. Lint passing means nothing if the
+reformat broke compilation.
+
+`CodingStandards` is compiled as a real engine target (see `Engine/CMakeLists.txt`)
+precisely so the standard cannot drift from itself again — it belonged to no target
+and quietly rotted. `build.sh` cannot reach it (it derives the CMake target from the
+basename of an application directory), so the gate invokes `cmake --build` directly.
 
 The touched files are `touch`ed first so ninja genuinely recompiles: without this,
 "ninja: no work to do" would report a pass that exercised nothing. Treat a
@@ -129,10 +135,15 @@ spending time on a gate failure they caused.
 
 ## Known debt surfaced, not gated
 
-`NamespaceIndentation` is contradicted tree-wide: the rule and the exemplars say
-`None`, ~218 engine files are written indented. The script reports this as `[DEBT]`
-and does not fail on it. Flipping it is a ~14 000-line decision for the owner, not
-something to slip into a formatting pass.
+`NamespaceIndentation` is **confirmed `None`** by the owner (2026-09-06) — this is
+no longer an open question. ~218 engine files are written indented and are legacy
+debt awaiting a sweep. The script reports them as `[DEBT]` and does not fail on
+them: failing every commit that happens to touch one of those files would block
+unrelated work. When you `--apply` to such a file, expect its namespace body to be
+de-indented to column 0 as part of bringing that file into conformance — that is
+the rule working, not collateral damage.
+
+The bulk sweep is a separate, owner-scheduled operation.
 
 ## Reporting
 

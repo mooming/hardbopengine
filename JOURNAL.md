@@ -1,5 +1,66 @@
 # Journal
 
+## Docs corrected, `NamespaceIndentation: None` decided, exemplars compiled (2026-09-06)
+
+Three owner instructions executed: fix the wrong things in the docs, confirm
+`NamespaceIndentation: None`, and make the engine build `CodingStandards.*`.
+
+### 1. Documentation corrections
+
+| File | Was wrong | Now |
+|---|---|---|
+| `docs/CodingStandards.md` | "K&R variant — opening brace **on the same line**", example `type FunctionName(args) {` | Allman with a real example, plus the explicit "not K&R / not BSD" distinction and the no-exemption empty-body rule with its `AllowShortFunctionsOnASingleLine: None` coupling |
+| same | "remaining includes sorted alphabetically" + "two empty lines" | 3 blocks (own header / `<standard>` / `"project"`), **exactly one** blank line, with the reason stated |
+| same | namespace rule stated as a bare preference | marked a confirmed owner decision |
+| `docs/HelperScript.md` + `AGENTS.md` | `-notest` "skip running Engine tests after build" | **`-notest` does not exist.** `build.sh` only builds and never runs tests; the real flag is `-test`, and it does the opposite of what the doc implied — it adds `-D__TEST__ -D__UNIT_TEST__` so the test sources compile at all |
+
+The `-test` discovery matters for build integrity: without it `TestMain.cpp`
+compiles to an empty `main`, so **`EngineTest` builds green while testing nothing.**
+
+While auditing I also found the exemplar header itself asserted "Macros (e.g.
+Assert)" — `Assert()` and `FatalAssert()` are ordinary inline functions in
+`Core/Debug.h`, not macros. Corrected.
+
+### 2. `NamespaceIndentation: None` confirmed
+
+Not a default — a decision, now recorded in `.clang-format`, `docs/CodingStandards.md`
+and SKILL.md. ~218 indented engine files are legacy debt awaiting a sweep rather than
+an open question. Kept as `[DEBT]` and not gated: failing every commit that happens to
+touch one of those files would block unrelated work. `--apply` de-indenting such a body
+is the rule working, not collateral damage.
+
+### 3. `CodingStandards.{h,cpp}` is now a real target — the root cause is closed
+
+It belonged to **no** CMake target, which is exactly why it could drift into
+4-space indentation in a tabs-only tree, a backwards brace rule, and an include
+layout its own formatter rejects. `Engine/CMakeLists.txt` now defines a
+`CodingStandards` STATIC target, compiled with the project's own `-Wall -Werror`.
+Verified in the default `all` build (steps 128/141 and 141/145 of a ninja dry-run),
+so a plain engine build compiles it. Not linked into HEngine and not installed into
+`lib/` — it is a documentation artefact and must not reach a shipping binary.
+
+Adding it to a `-Werror` build immediately caught a latent defect: `Processor::extraData`
+was declared, never initialised and never used → `-Wunused-private-field`. Fixed by
+giving it a purpose, which incidentally made the composition exemplar demonstrate two
+rules it previously only described: a member initializer list and an `in`-prefixed
+colliding parameter (`inExtraData`). Clean under `-Wall -Werror` and `-Wextra`.
+
+### Verification
+
+Gate extended to 12 checks (9 application builds + `CodingStandards` × 3 configs).
+The hardcoded verdict said "9/9" and was made dynamic.
+
+`[PASS]` all 12 · lint controls: positive exit 0, negative exit 1 reporting the
+originally reported include inversion.
+
+Note the gate went from FAIL to PASS unaided — the earlier failure was the owner's
+in-flight device-capability refactor, correctly left untouched.
+
+### Still open
+
+107-file / 650-line sweep for the no-exemption brace rule (owner deferred it while
+finishing concurrent work) and the `NamespaceIndentation` legacy sweep.
+
 ## `hb-standards` skill + the two-blank-line convention is unsatisfiable (2026-09-06)
 
 Added `.pi/skills/hb-standards/` (project-local, per owner instruction). It lints

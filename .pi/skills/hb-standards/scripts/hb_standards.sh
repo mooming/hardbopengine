@@ -273,8 +273,10 @@ if [[ ${#FILES[@]} -gt 0 ]]; then
 		[[ -n "$bad" ]] && { echo "  $f: namespace body is indented"; echo "$bad" | sed 's/^/    /'; nsi=$((nsi+1)); }
 	done
 	if [[ $nsi -gt 0 ]]; then
-		printf '[DEBT] %d file%s indent%s namespace bodies; the standard says NamespaceIndentation: None\n' "$nsi" "$([[ $nsi -eq 1 ]] && echo '' || echo 's')" "$([[ $nsi -eq 1 ]] && echo 's' || echo '')"
-		echo "         left as-is on purpose: flipping this is a ~14k-line repository decision"
+		printf '[DEBT] %d file%s indent%s namespace bodies. Rule confirmed None (owner, 2026-09-06): these are legacy files awaiting a sweep, not an open question.\n' "$nsi" "$([[ $nsi -eq 1 ]] && echo '' || echo 's')" "$([[ $nsi -eq 1 ]] && echo 's' || echo '')"
+		echo "         not gated on purpose: failing every commit that touches an engine file would block"
+		echo "         unrelated work. Expect --apply to de-indent such a body as part of bringing that"
+		echo "         file into conformance."
 	else
 		echo "[PASS] namespace bodies not indented"
 	fi
@@ -284,6 +286,8 @@ fi
 # Runs last and is mandatory unless --no-build. Proves the reformat did not break
 # compilation in any of the three project configurations.
 BUILD_STATUS=0
+BUILD_PASS=0
+BUILD_TOTAL=0
 if [[ $BUILD -eq 1 ]]; then
 	echo
 	hdr "build gate — Debug, Dev, Release"
@@ -298,8 +302,10 @@ if [[ $BUILD -eq 1 ]]; then
 		for cfg in -dev -debug -release; do
 			name=${cfg#-}; name="$(tr '[:lower:]' '[:upper:]' <<< "${name:0:1}")${name:1}"
 			if out=$(./build.sh "Applications/$t" "$cfg" 2>&1); then
+				BUILD_TOTAL=$((BUILD_TOTAL+1))
 				vacuous=""
 				grep -q "no work to do" <<<"$out" && vacuous="  (up to date — no recompile exercised)"
+				BUILD_PASS=$((BUILD_PASS+1))
 				printf '[PASS] %-12s %-8s%s\n' "$t" "$name" "$vacuous"
 			else
 				printf '[FAIL] %-12s %-8s\n' "$t" "$name"
@@ -307,6 +313,21 @@ if [[ $BUILD -eq 1 ]]; then
 				BUILD_STATUS=1
 			fi
 		done
+	done
+
+	# The coding-standards exemplar is a real engine target now (see
+	# Engine/CMakeLists.txt), so a drift in it fails the gate instead of drifting
+	# quietly. It is not an application directory, so build.sh cannot reach it —
+	# that script derives the CMake target name from the basename of the path.
+	for cfg in Dev Debug Release; do
+		if out=$(cmake --build build --config "$cfg" --target CodingStandards 2>&1); then
+			BUILD_TOTAL=$((BUILD_TOTAL+1)); BUILD_PASS=$((BUILD_PASS+1))
+			printf '[PASS] %-16s %-8s\n' "CodingStandards" "$cfg"
+		else
+			printf '[FAIL] %-16s %-8s\n' "CodingStandards" "$cfg"
+			grep -E 'error:|FAILED' <<<"$out" | head -15 | sed 's/^/    /'
+			BUILD_STATUS=1
+		fi
 	done
 
 	if [[ $RUNTEST -eq 1 && $BUILD_STATUS -eq 0 ]]; then
@@ -331,7 +352,7 @@ echo
 echo "=========================================================================="
 printf " mechanical violations : %d\n" "$VIOL"
 printf " warnings / advisory   : %d\n" "$WARN"
-printf " build gate            : %s\n" "$([[ $BUILD -eq 0 ]] && echo 'skipped (--no-build)' || ([[ $BUILD_STATUS -eq 0 ]] && echo 'PASS 9/9' || echo 'FAIL'))"
+printf " build gate            : %s\n" "$([[ $BUILD -eq 0 ]] && echo 'skipped (--no-build)' || ([[ $BUILD_STATUS -eq 0 ]] && echo "PASS ${BUILD_PASS}/${BUILD_TOTAL}" || echo 'FAIL'))"
 echo "=========================================================================="
 if [[ $BUILD_STATUS -ne 0 ]]; then exit 2; fi
 if [[ $VIOL -ne 0 ]]; then exit 1; fi

@@ -57,6 +57,10 @@ IndentWidth: 4
 TabWidth: 4
 AccessModifierOffset: -4    # public/protected/private sit at the class brace column
 NamespaceIndentation: None  # namespace bodies start at column 0
+                            # Owner decision on record 2026-09-06, not a default.
+                            # The engine body predates it and is largely indented
+                            # (~218 files), so expect legacy disagreements until a
+                            # sweep is scheduled. Docs: docs/CodingStandards.md.
 IndentCaseLabels: true
 IndentCaseBlocks: true
 IndentPPDirectives: None
