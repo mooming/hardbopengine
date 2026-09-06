@@ -23,6 +23,7 @@
 #include "Math/MathUtil.h"
 #include "Math/Matrix3x3.h"
 #include "Math/MonteCarloIntegrator.h"
+#include "Math/PerlinNoise.h"
 #include "Math/Quaternion.h"
 #include "Math/RigidTransform.h"
 #include "Math/StratifiedSampling.h"
@@ -118,6 +119,7 @@ void RunTests()
 		testEnv.AddTestCollection<RigidTransformTest>();
 		testEnv.AddTestCollection<AABBTest>();
 		testEnv.AddTestCollection<TransformTest>();
+		testEnv.AddTestCollection<PerlinNoiseTest>();
 
 		testEnv.AddTestCollection<ComponentSystemTest>();
 		testEnv.AddTestCollection<TaskStreamAffinityTest>();

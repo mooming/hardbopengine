@@ -42,6 +42,7 @@ add_library (Math STATIC
  Matrix4x4.cpp
  MonteCarloIntegrator.cpp
  OBB.cpp
+ PerlinNoise.cpp
  Quaternion.cpp
  RigidTransform.cpp
  StratifiedSampling.cpp
@@ -60,6 +61,7 @@ add_library (Math STATIC
  MatrixCommonImpl.inl
  MonteCarloIntegrator.h
  OBB.h
+ PerlinNoise.h
  Quaternion.h
  RigidTransform.h
  StratifiedSampling.h
