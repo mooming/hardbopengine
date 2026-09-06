@@ -11,23 +11,28 @@
 namespace hbe
 {
 #if PROFILE_ENABLED
-	PoolAllocator::PoolAllocator(const char* name, TSize blockSize, TSize numberOfBlocks,
+	PoolAllocator::PoolAllocator(const char* inName, TSize inBlockSize, TSize inNumberOfBlocks,
 								 const hbe::source_location location)
 #else // PROFILE_ENABLED
-	PoolAllocator::PoolAllocator(const char* name, TSize blockSize, TSize numberOfBlocks)
+	PoolAllocator::PoolAllocator(const char* inName, TSize inBlockSize, TSize inNumberOfBlocks)
 #endif // PROFILE_ENABLED
 		:
-		id(InvalidAllocatorID), parentID(InvalidAllocatorID), name(name),
-		blockSize(OS::GetAligned(std::max(blockSize, sizeof(TSize)), sizeof(TSize))), numberOfBlocks(numberOfBlocks),
-		numberOfFreeBlocks(numberOfBlocks), buffer(nullptr)
+		id(InvalidAllocatorID), parentID(InvalidAllocatorID), name(inName),
+		blockSize(OS::GetAligned(std::max(inBlockSize, sizeof(TSize)), sizeof(TSize))), numberOfBlocks(inNumberOfBlocks),
+		numberOfFreeBlocks(inNumberOfBlocks), buffer(nullptr)
 #if PROFILE_ENABLED
 		,
 		maxUsedBlocks(0), srcLocation(location)
 #endif // PROFILE_ENABLED
 	{
-		Assert(blockSize >= sizeof(TSize));
+		// A free block has to hold the next-index link written below, so a block smaller than
+		// TSize cannot be supported at all - hence a precondition, not something to clamp away.
+		Assert(inBlockSize >= sizeof(TSize));
 
 		parentID = hbe::MemoryManager::GetCurrentAllocatorID();
+		// Both operands are members here: blockSize is the aligned size every later path uses too
+		// (AllocateBlock, Deallocate, GetCapacity). Parameters carry the in prefix precisely so no
+		// unqualified name here can silently resolve to the unaligned request instead.
 		const TSize totalSize = blockSize * numberOfBlocks;
 		if (totalSize <= 0)
 		{
@@ -56,7 +61,7 @@ namespace hbe
 			allocator->Deallocate(ptr, n);
 		};
 
-		id = mmgr.RegisterAllocator(this, name, false, totalSize, allocFunc, deallocFunc);
+		id = mmgr.RegisterAllocator(this, inName, false, totalSize, allocFunc, deallocFunc);
 		Assert(id != InvalidAllocatorID);
 	}
 

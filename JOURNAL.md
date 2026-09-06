@@ -1,5 +1,67 @@
 # Journal
 
+## `PoolAllocator`: `in`-prefixed parameters, which also repaired a live defect (2026-09-06)
+
+Owner asked for `in`-prefixed parameters on `PoolAllocator` to stop member/parameter
+shadowing. Doing it exposed that the shadowing was not cosmetic: it was corrupting the
+free list. `Engine/Memory/PoolAllocator.{h,cpp}`.
+
+### The mechanism
+
+The ctor took `blockSize`/`numberOfBlocks`, shadowing the members of the same name. A
+ctor parameter is scoped inside the class, so the initialiser used the parameter while
+the body used the parameter too - and the *member* was the only thing ever clamped.
+
+| Site | Before | After |
+|---|---|---|
+| member init (line 21) | `align_up(max(raw, 8), 16)` | unchanged |
+| buffer size + free-list link stride (ctor body) | **raw parameter** | **member (aligned)** |
+| `AllocateBlock` / `Deallocate` / `GetCapacity` | member (aligned) | member (aligned) |
+
+So the pool wrote its links with one stride and walked them with another. Only a
+`blockSize` already a multiple of `DefaultAlign` (16) escaped, because then raw == member.
+
+### Measured, by transcription of the real code paths
+
+100 allocations from a 100-block pool, counting *distinct* addresses returned:
+
+| `blockSize` | member | distinct before | distinct after |
+|---|---|---|---|
+| 16, 32 (aligned) | equal | 100 | 100 |
+| 24 = `sizeof(LinkedListNode<int>)` | 32 | **2** | 100 |
+| 100 | 112 | **2** | 100 |
+
+`sizeof(LinkedListNode<int>)` measured at 24, so `LinkedList.cpp`'s pools were in the
+broken class. The failure mode is silent aliasing - two live objects sharing one block -
+not an overflow.
+
+### Two of my own earlier conclusions, corrected
+
+- I first predicted a heap write past the buffer. It does not happen: fresh `mmap` pages
+  read back as zero, so the walk re-serves the same two blocks instead. Superseded.
+- Earlier I framed line 28 as "either the clamp is dead or the assert is wrong". Neither:
+  **the assert is correct and load-bearing** (a free block must hold the `TSize` link),
+  the clamp was the defect. `Assert(inBlockSize >= sizeof(TSize))` is now labelled a
+  precondition so nobody clamps it away again.
+
+### Verification
+
+Build clean, 285 PASS / 0 FAIL, 5/5 runs. The gate's 3 findings on these files are all
+pre-existing at `HEAD` (459 + 147 non-conformant lines already; line 88's joined empty
+body is verbatim at `HEAD`) - the indented-namespace-body debt the gate itself marks
+`[DEBT] ... not gated on purpose`. Not reformatted, per standing instruction.
+
+### Still open
+
+- `PoolAllocatorTest` "Construction" loops `blockSize` 1..99, i.e. it deliberately builds
+  pools below the `sizeof(TSize)` precondition. Harmless while asserts are compiled out,
+  but it *will* fire once `__DEBUG__` is live. That is the test being wrong, not the
+  allocator. Needs a decision: start the loop at `sizeof(TSize)`, or keep the sub-8 range
+  as an explicit negative case.
+- One SIGSEGV observed at `WindowTest TC3.Visibility` (52 PASS), unreproducible in the 5
+  runs after it. Unrelated to `Memory/`; logged as a flake to keep an eye on, not a
+  finding.
+
 ## Docs corrected, `NamespaceIndentation: None` decided, exemplars compiled (2026-09-06)
 
 Three owner instructions executed: fix the wrong things in the docs, confirm

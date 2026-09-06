@@ -36,10 +36,10 @@ namespace hbe
 
 	public:
 #if PROFILE_ENABLED
-		PoolAllocator(const char* name, TSize blockSize, TSize numberOfBlocks,
+		PoolAllocator(const char* inName, TSize inBlockSize, TSize inNumberOfBlocks,
 					  hbe::source_location location = hbe::source_location::current());
 #else // PROFILE_ENABLED
-		PoolAllocator(const char* name, TSize blockSize, TSize numberOfBlocks);
+		PoolAllocator(const char* inName, TSize inBlockSize, TSize inNumberOfBlocks);
 #endif // PROFILE_ENABLED
 
 		PoolAllocator(PoolAllocator&& rhs) noexcept;
