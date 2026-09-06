@@ -129,14 +129,18 @@ AllowShortBlocksOnASingleLine: false
 #     #include "Config/ConfigParam.h"   <- project headers, alphabetical
 #     #include "Log/Logger.h"
 #
-#
-#
 #     <first code body>
 #
-# Preserve sorts inside each block but never reorders across blank lines, so
-# the own-header / standard / project separation stays author-controlled.
-# Consequence: a source file that puts project headers before standard headers
-# is NOT caught by the tool — it must be caught in review.
+# Exactly one empty line sits between the last include and the first code body.
+# clang-format enforces this: it collapses any other count (measured for 1, 2,
+# 3 and 4 blank lines) to one, and this build offers no BreakAfterIncludes to
+# opt out. Writing two, as some older files and docs/CodingStandards.md still
+# say, makes clang-format rewrite the file on every run.
+#
+# Preserve sorts inside each block but never reorders across blank lines, so the
+# own-header / standard / project separation stays author-controlled.
+# Consequence: a source file that puts project headers before standard headers is
+# NOT caught by the tool — hb-standards checks that separately.
 IncludeBlocks: Preserve
 IncludeCategories:
   - Regex: '^<.*'
@@ -168,8 +172,6 @@ MaxEmptyLinesToKeep: 2
 EmptyLineBeforeAccessModifier: LogicalBlock
 SeparateDefinitionBlocks: Always
 InsertNewlineAtEOF: true
-# Convention, not machine-enforceable: two empty lines between the last
-# #include / #define and the first code body.
 
 # --------------------------------------------------------------------- misc --
 MacroBlockBegin: ''

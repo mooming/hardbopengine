@@ -1,5 +1,60 @@
 # Journal
 
+## `hb-standards` skill + the two-blank-line convention is unsatisfiable (2026-09-06)
+
+Added `.pi/skills/hb-standards/` (project-local, per owner instruction). It lints
+the files **a commit touched** in two independent layers, then gates on builds.
+
+**The two layers are both necessary, and this is now proven rather than assumed:**
+the standard's own exemplar files were clang-format-clean but rule-non-clean, so
+formatter-green is not standards-green.
+
+**Convention retired — `Engine/CodingStandards.h` now says ONE empty line after the
+include block, not two.** This is not a taste change: clang-format collapses any
+count of blank lines after the include block to exactly one — measured for 1, 2, 3
+and 4 — and this build exposes no `BreakAfterIncludes` to opt out. Keeping "two"
+would mean every formatted file is rewritten on every run. I had actually hand-edited
+the exemplars to two blank lines to satisfy my own new check before noticing the
+conflict; the check was wrong, not the files. `docs/CodingStandards.md` still says
+two and remains stale.
+
+**Validated with controls, because an unvalidated linter is worse than none.**
+- Positive control, HEAD → exit 0, 0 violations.
+- Negative control, the commit that shipped `Main.cpp` → exit 1, and it reports
+  the *original* complaint: "standard <...> block must precede the project block".
+- A third commit surfaced real defects in unrelated in-flight files.
+
+Controls caught four of my own bugs: `set -u` aborting on `VIOL` before
+initialisation; blank lines never opening a new include block, which hid the very
+violation the skill exists to catch; a greedy `sub(/.*[<"]/,...)` that extracted an
+**empty** path for every quoted include, silently disabling both the alphabetical
+check and own-header detection; and a brace pattern that false-matched
+`, extent{}` value-initialisers as empty bodies.
+
+**Exclusions, each with measured evidence, in the skill header and SKILL.md:**
+`.mm`/`.m` (clang-format calls them Objective-C, aborts with exit 1 and writes
+nothing — and from a directory where the config is not found it silently rewrites
+them with LLVM defaults, 2249 → 2400 bytes, exit 0); `.inl` (`MatrixCommonImpl.inl`
+is `#include`d inside a class body inside a namespace, so standalone formatting
+de-indents it); generated headers such as `ShadersSpv.h`.
+
+**Gate behaviour verified:** the gate `touch`es touched files so "ninja: no work to
+do" cannot fake a pass. Running it end to end it correctly reported FAIL — the
+failure is the owner's uncommitted device-capability refactor (`RenderCapabilities.{h,cpp}`
+and `Vertex.{h,cpp}` are new, `RendererCommon.h` on disk has dropped `apiType`,
+`maxTextureSize`, `maxVertexAttribs` which `RHICapabilities.cpp` still references;
+all three are still present at HEAD). Left untouched. Added an "Attributing a gate
+failure" section so this misread is not repeated.
+
+**Also self-inflicted and caught by verification:** while editing `.clang-format`
+comments I accidentally commented out `IncludeBlocks: Preserve`. The
+resolved-config diff against HEAD exposed it immediately; repaired and re-verified
+to an empty delta, i.e. behaviour-identical.
+
+**Still open:** `docs/CodingStandards.md` (brace style + blank lines + `-notest`);
+the 107-file / 650-line sweep for the no-exemption brace rule; the
+`NamespaceIndentation` owner decision.
+
 ## Empty bodies now break their braces onto separate lines (2026-09-06)
 
 Owner preference: no brace exemptions at all. `void Foo() noexcept\n{\n}` and

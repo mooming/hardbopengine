@@ -8,9 +8,16 @@
 #include "Core/Debug.h"
 
 /*
- * Include and define directives are grouped at the top of the file.
- * After the last include / define directive, place two empty lines
- * before the first code body.
+ * Include and define directives are grouped at the top of the file. After the
+ * last include / define directive, place exactly ONE empty line before the
+ * first code body.
+ *
+ * Note this deliberately contradicts the older "two empty lines" wording still
+ * found in docs/CodingStandards.md, and it is not a style choice: clang-format
+ * collapses any count of blank lines after the include block down to exactly
+ * one, measured for 1, 2, 3 and 4 blank lines. The configured build has no
+ * BreakAfterIncludes option to opt out. Writing two therefore produces a file
+ * that clang-format rewrites on every run, so the standard follows the tool.
  *
  * Include ordering — three blocks, each sorted alphabetically:
  *   1. the file's own header, then a blank line (omitted when none exists)
