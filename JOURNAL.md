@@ -1,5 +1,84 @@
 # Journal
 
+## `__DEBUG__` on by default, clamp-path coverage, and a correction to my own numbers (2026-09-06)
+
+### 1. `__DEBUG__` is now defined for Debug and Dev
+
+One line in the root `CMakeLists.txt`:
+
+```cmake
+set (CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g -O0 -D__DEBUG__")
+```
+
+That is the whole change, and the reason it is one line is worth knowing: these `set()` calls
+are copy-pasted into **26** `CMakeLists.txt` files, but every one of them *appends to the value
+it inherits* rather than replacing it, so a define added at the root reaches every target. The
+`DEV` flags are derived from `DEBUG` on the next line, so Dev inherits the define; `RELEASE` is
+a separate variable and stays without it. Checked against real compile commands, not the
+CMakeLists: 146 targets carry `-D__DEBUG__` in Debug and Dev, **0** in Release.
+
+`PROFILE_ENABLED` is a hardcoded `0` in `BuildConfig.h`, so this does *not* drag the profiling
+machinery along with it - that was the main risk and it is not one.
+
+Cost, accepted knowingly: `LinkedList.cpp` sizes its case at `CountBase * 2` under `__DEBUG__`
+vs `* 16` otherwise, so those tests now exercise an **8x smaller** list.
+
+### 2. Clamp path gained real coverage, which is how my earlier numbers died
+
+New `PoolAllocatorTest` case "Allocation With A Clamped Block Size": builds pools at requested
+sizes 24, 26 and 100, checks the block size the pool settled on, then allocates the whole pool
+and fails if any two allocations share an address, deallocates, and does it again. A second
+round is the point - a mis-linked free list often survives the first pass.
+
+It passed with expectations **24 -> 24, 26 -> 32, 100 -> 104**, and those values came from the
+real allocator, not from me.
+
+### 3. Correction: my two previous commits got the alignment wrong
+
+I wrote that `blockSize` is rounded to `Config::DefaultAlign` (16) and that
+`sizeof(LinkedListNode<int>) == 24` therefore sat in the broken class, rounding to 32. **Wrong.**
+The constructor is:
+
+```cpp
+OS::GetAligned(std::max(inBlockSize, sizeof(TSize)), sizeof(TSize))   // align = 8, not DefaultAlign
+```
+
+`OS::GetAligned(size, alignBytes)` rounds up to `alignBytes`, and the argument passed is
+`sizeof(TSize)` = **8**. So 24 is already aligned, stays 24, and **`LinkedList` was never
+affected**. The real broken set is any size that is not a multiple of 8: 9 -> 16, 26 -> 32,
+100 -> 104. Measured with the transcription re-run at align 8, 100 allocations from a 100-block
+pool: 26 and 100 gave **2** distinct addresses before the fix, 100 after.
+
+The fix itself stands unchanged - it made the body use the member whatever the member is - but
+the diagnosis that justified it, and the `24 -> 32` figure in commit `9fd2cf7` and in my earlier
+journal entry here, were wrong. Not rewritten: `47ac54e` landed between those commits and this
+one, so rebasing would rewrite someone else's history to fix my prose.
+
+### 4. New finding, deliberately not touched
+
+`PoolAllocator` aligns blocks to `sizeof(TSize)` = 8, while `InlineMonotonicAllocator` aligns to
+`Config::DefaultAlign` = 16. Pool blocks can therefore start on an 8-byte boundary while the
+rest of the engine assumes 16. Whether that is a real hazard depends on what gets placed in
+pools; it is an owner call, not something to change as a side effect.
+
+### 5. Verification
+
+| Config | `-D__DEBUG__` targets | Suite |
+|---|---|---|
+| Debug | 146 | 286 PASS / 0 FAIL |
+| Dev | 146 | 286 PASS / 0 FAIL |
+| Release | **0** (correct) | 286 PASS / 0 FAIL |
+
+`VulkanExample` still links at 140/140 with asserts live. TC1's failure string said "100
+expected" while testing against 4096; corrected.
+
+**Does the new test have teeth?** Tested, and the honest answer is partly. Re-injecting the old
+raw-stride bug makes the run trap at case 25 inside `PoolAllocatorTest TC0` - the destructor
+frees `aligned * n` for a `raw * n` allocation - which is fatal long before TC2 executes, so I
+could **not** observe TC2 itself firing. TC2's real job is pinning the documented rounding
+values and giving the clamp path allocate/deallocate coverage; the loud failure is covered by
+TC0 plus live asserts.
+
 ## `hb-standards`: four holes in the helper script, and one rule I had wrong (2026-09-07)
 
 Four defects in `.pi/skills/hb-standards/scripts/check.sh` were reported by the owner as

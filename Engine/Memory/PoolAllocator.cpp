@@ -334,12 +334,77 @@ namespace hbe
 
 				if (size != 4096)
 				{
-					ls << "The size is incorrect. " << size << ", but 100 expected." << lferr;
+					ls << "The size is incorrect. " << size << ", but 4096 expected." << lferr;
 					break;
 				}
 
 				pool.Deallocate(ptr, allocSize);
 			}
+		});
+
+		AddTest("Allocation With A Clamped Block Size", [this](auto& ls)
+		{
+			// The constructor rounds blockSize up to a multiple of sizeof(size_t), so a request
+			// that is not already a multiple is the case that matters: the pool used to lay its
+			// free list out with the requested stride while walking it with the aligned one,
+			// which quietly handed the same block to two callers. The 4096 case above can never
+			// catch that, since 4096 needs no rounding. 24 is included because it is what
+			// LinkedList nodes ask for, and it must stay unclamped.
+			struct Case
+			{
+				size_t requested;
+				size_t aligned;
+			};
+
+			const Case cases[] = {{24, 24}, {26, 32}, {100, 104}};
+			constexpr size_t blockCount = 64;
+			constexpr size_t allocSize = 16; // fits every aligned size here, so no fallback path
+
+			for (const Case& testCase : cases)
+			{
+				PoolAllocator pool("TestPoolAllocatorClamped", testCase.requested, blockCount);
+
+				if (pool.GetBlockSize() != testCase.aligned)
+				{
+					ls << "blockSize " << testCase.requested << " should round up to " << testCase.aligned
+					   << ", but " << pool.GetBlockSize() << " was used." << lferr;
+					return;
+				}
+
+				// Twice over. A mis-linked free list survives the first pass and only shows
+				// itself once the released blocks are walked again.
+				for (size_t round = 0; round < 2; ++round)
+				{
+					Pointer blocks[blockCount] = {};
+					for (size_t i = 0; i < blockCount; ++i)
+					{
+						blocks[i] = pool.Allocate(allocSize);
+						if (blocks[i] == nullptr)
+						{
+							ls << "blockSize " << testCase.requested << ": round " << round
+							   << " found no free block at " << i << "." << lferr;
+							return;
+						}
+
+						for (size_t j = 0; j < i; ++j)
+						{
+							if (blocks[j] == blocks[i])
+							{
+								ls << "blockSize " << testCase.requested << ": round " << round << " handed block "
+								   << i << " the same address as block " << j << "." << lferr;
+								return;
+							}
+						}
+					}
+
+					for (size_t i = 0; i < blockCount; ++i)
+					{
+						pool.Deallocate(blocks[i], allocSize);
+					}
+				}
+			}
+
+			ls << "Clamped block sizes keep one stride: no block was handed out twice." << lf;
 		});
 	}
 
