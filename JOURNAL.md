@@ -462,3 +462,53 @@ architecture diagram) and was left alone.
 **Every factual claim was verified against the tree**, including `sizeof(PushConstants) == 128`,
 `MAX_FRAMES_IN_FLIGHT == 2` with one command buffer per frame, `VK_CULL_MODE_NONE`, host-visible
 mesh memory, and the absence of `Core/ Graph/ Resources/ Commands/ Backends/`.
+
+## Marching Cubes kickoff: decisions, noise, and a shutdown-path defect (2026-09-01)
+
+**Decisions taken (`.Plans/PLAN_marching_cubes.md` §4):** D1 = A full cross-platform OSAL input
+(written to documented APIs for Win32/X11, **compile-unverified** — this machine builds macOS
+only); D2 = relative motion + cursor warp; D3 = 64³ field with full re-mesh per dig; D4 = noise in
+`Engine/Math`; D5 = yes, fix the dead `Assert()`; D6 = module name `Engine/Voxel`.
+
+**Recon corrections to the plan.** `OSInputOutput.h` is a file-I/O test collection, not an input
+API — OSAL has **no** key or mouse surface at all, so Phase 7 is "input layer + example", not just
+an example. `Math::Matrix4x4` is row-major (`m[row][column]`) while the push path wants
+column-major, so the app-local column-major helpers stay. Unit tests fail through **Error-level
+log lines** (`isSuccess = errorMessages.empty()`), not through `Assert()`.
+
+**Perlin noise landed first (`Engine/Math/PerlinNoise.{h,cpp}`, 5 tests).** The permutation table is
+shuffled by a hand-written Fisher-Yates driven by a golden-ratio counter plus the Murmur3 finalizer,
+**not** `std::shuffle`: the standard leaves that algorithm unspecified, and a seeded voxel terrain
+must be byte-identical across compilers. Measured, not assumed: 729/729 integer lattice points
+exactly zero, peak |value| 0.739 (improved-Perlin bound is about 0.866), largest single-step jump
+0.0376 at step 0.02 (C1 continuity holds), and all 256 samples differ between two seeds.
+A negative control — injecting a deliberate failure — confirmed the suite reports FAIL, so the
+PASS results mean something.
+
+**That control exposed a far bigger problem, and its root cause was in the platform layer.** The
+failing suite still exited with status 0, so the suite could never gate anything. `lldb` showed
+why: `OS::Application::~Application()` called `[NSApp terminate:]`, which calls `exit(0)`.
+`Engine::Run()` finishes with `application.reset()`, so the process died inside a destructor and
+`main` never resumed — **every statement after `Run()` in every macOS application was dead code**,
+including `TestMain`'s return value. Swapping the call for `[NSApp stop:]` fixes it: NSApplication
+is a process-wide singleton that outlives the wrapper, and the engine owns its own shutdown, while
+the close-button flow is untouched because it goes `windowShouldClose:` → `closedFlag` → loop exit.
+
+Verification went further than a green build, because `exit()` had been *masking* whatever happens
+after the frame loop: a temporary hook drove the real button path (`performClose:` is exactly what
+the close button sends), and the run then went `Shutting down...` → static destructors → `main`
+returns → **exit 0, no hang**. The hook was removed afterwards; `git diff` on that file is the
+intended change only. Suite: 53 collections / 285 test cases, exit 0 green, exit 1 injected-failure,
+full-tree build clean in Dev and Release (the one remaining warning is the pre-existing duplicate
+`libLog.a` link line).
+
+**Side finding worth acting on later:** `Window::PollEvents()` is the only code mapping
+"window is not visible" to `closedFlag`, but applications pump `OS::Application::PollEvents()` —
+my first hook, placed in `Window::PollEvents`, never ran, while the one in `Application::PollEvents`
+fired immediately. So that visibility check is dead for real applications.
+
+**Still open on D5:** `__DEBUG__` must be defined *globally and per-config*, because `ConfigParam`
+has a member that exists only under `__DEBUG__` — a `Debug.h`-level definition would give different
+translation units different class layouts (ODR violation). MakeBuild's `precompileDefinitions` is a
+single config-blind string, so the options are the submodule (`CMakeLists.cpp:128-130`, 2 lines,
+recommended) or a `build.sh` stopgap. Awaiting a decision, since the submodule is a separate repo.
