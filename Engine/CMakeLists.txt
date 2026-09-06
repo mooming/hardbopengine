@@ -45,6 +45,24 @@ add_subdirectory (Resource)
 add_subdirectory (String)
 add_subdirectory (Test)
 
+# CodingStandards.{h,cpp} is the executable statement of this project's style; every
+# other file derives its rules from it. It belonged to no target, so it silently
+# drifted out of agreement with the standard it documents — 4-space indentation in a
+# tabs-only tree, a brace rule described backwards, and an include layout that its
+# own formatter rejects. Compiling it here makes that drift loud instead of quiet:
+# it is built with the same -Wall -Werror flags as the engine, in Debug, Dev and
+# Release.
+#
+# Deliberately NOT linked into HEngine. This is a documentation artefact, not runtime
+# code, and it must not reach a shipping binary; it is therefore neither installed
+# into lib/ the way the sibling modules are, nor redirected there via
+# CMAKE_ARCHIVE_OUTPUT_DIRECTORY — the .a stays inside the build tree.
+add_library (CodingStandards STATIC
+ CodingStandards.cpp
+ CodingStandards.h
+${PLATFORM_SOURCES}
+)
+
 
 
 

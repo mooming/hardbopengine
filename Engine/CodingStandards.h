@@ -236,14 +236,25 @@ public:
 class Processor final
 {
 public:
-	explicit Processor(int initialValue) noexcept
+	/*
+	 * `inExtraData` is a name-colliding parameter for the member `extraData`,
+	 * and both members arrive through the initializer list rather than by
+	 * assignment in the body.
+	 */
+	explicit Processor(int initialValue, int inExtraData) noexcept
 		: processor(initialValue)
+		, extraData(inExtraData)
 	{
 	}
 
 	void ProcessMore() noexcept
 	{
 		processor.Process();
+	}
+
+	[[nodiscard]] int GetExtraData() const noexcept
+	{
+		return extraData;
 	}
 
 private:
@@ -317,8 +328,10 @@ public:
 	 * intentionally omits noexcept, while move construction (no
 	 * allocation) correctly marks noexcept.
 	 *
-	 * Macros (e.g. Assert) use SCREAMING_SNAKE_CASE and are used
-	 * only where a function call cannot be substituted.
+	 * Assert() and FatalAssert() live in Core/Debug.h and are ordinary
+	 * functions, not macros — the engine prefers a function call wherever one
+	 * can be substituted, and reserves SCREAMING_SNAKE_CASE for the macros that
+	 * genuinely need one.
 	 *
 	 * Assert() requires pointer validation before dereference
 	 * (see ProcessWithAssertion in .cpp). The engine is exception-
