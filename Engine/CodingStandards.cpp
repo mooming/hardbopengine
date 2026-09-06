@@ -7,7 +7,6 @@
 #include <iostream>
 #include <utility>
 
-
 namespace hbe
 {
 namespace examples
@@ -17,67 +16,66 @@ CodingStandardsBase::CodingStandardsBase() noexcept {}
 
 bool CodingStandardsBase::TryParse(const char* text, int& outResult) noexcept
 {
-    /*
-     * out-prefix: `outResult` is written to but never read — the
-     * caller receives the parsed value through this reference.
-     */
-    if (text == nullptr)
-        return false;
+	/*
+	 * out-prefix: `outResult` is written to but never read — the
+	 * caller receives the parsed value through this reference.
+	 */
+	if (text == nullptr)
+		return false;
 
-    char* end = nullptr;
-    long parsed = std::strtol(text, &end, 10);
-    if (end == text || *end != '\0')
-        return false;
+	char* end = nullptr;
+	long parsed = std::strtol(text, &end, 10);
+	if (end == text || *end != '\0')
+		return false;
 
-    outResult = static_cast<int>(parsed);
-    return true;
+	outResult = static_cast<int>(parsed);
+	return true;
 }
 
 void CodingStandardsBase::ClampToRange(int& inOutValue, int min, int max) noexcept
 {
-    /*
-     * inOut-prefix: `inOutValue` is both read and written, making
-     * it an in-out parameter.
-     */
-    if (inOutValue < min)
-        inOutValue = min;
-    else if (inOutValue > max)
-        inOutValue = max;
+	/*
+	 * inOut-prefix: `inOutValue` is both read and written, making
+	 * it an in-out parameter.
+	 */
+	if (inOutValue < min)
+		inOutValue = min;
+	else if (inOutValue > max)
+		inOutValue = max;
 }
 
 InlinedData::InlinedData(int value) noexcept
 {
-    for (auto& v : buffer)
-    {
-        v = value;
-    }
+	for (auto& v : buffer)
+	{
+		v = value;
+	}
 }
 
 DataProcessor::DataProcessor(int initialValue) noexcept
-    : value(initialValue)
-{
-}
+	: value(initialValue)
+{}
 
 void DataProcessor::Process() noexcept
 {
-    for (auto& v : workBuffer)
-    {
-        v = value;
-    }
+	for (auto& v : workBuffer)
+	{
+		v = value;
+	}
 }
 
 int DataProcessor::GetValue() const noexcept
 {
-    return value;
+	return value;
 }
 
 void DataProcessor::SetValue(int inValue) noexcept
 {
-    /*
-     * in-prefix avoids name collision with the member `value`,
-     * making the assignment clear and unambiguous.
-     */
-    value = inValue;
+	/*
+	 * in-prefix avoids name collision with the member `value`,
+	 * making the assignment clear and unambiguous.
+	 */
+	value = inValue;
 }
 
 /*
@@ -87,7 +85,7 @@ void DataProcessor::SetValue(int inValue) noexcept
  */
 InlinedData CodingStandardsBase::Compute() noexcept
 {
-    return InlinedData(42);
+	return InlinedData(42);
 }
 
 /*
@@ -98,9 +96,9 @@ InlinedData CodingStandardsBase::Compute() noexcept
  */
 InlinedData CodingStandardsBase::Create() noexcept
 {
-    InlinedData result(42);
+	InlinedData result(42);
 
-    return result;
+	return result;
 }
 
 /*
@@ -110,11 +108,11 @@ InlinedData CodingStandardsBase::Create() noexcept
  */
 InlinedData CodingStandardsBase::CreateWithMove() noexcept
 {
-    InlinedData result(42);
+	InlinedData result(42);
 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wpessimizing-move"
-    return std::move(result);
+	return std::move(result);
 #pragma clang diagnostic pop
 }
 
@@ -131,9 +129,9 @@ InlinedData CodingStandardsBase::CreateWithMove() noexcept
  */
 TextBuffer CodingStandardsBase::UseMoveCorrectly(TextBuffer&& source) noexcept
 {
-    TextBuffer result(std::move(source));
+	TextBuffer result(std::move(source));
 
-    return result;
+	return result;
 }
 
 /*
@@ -160,17 +158,16 @@ TextBuffer CodingStandardsBase::UseMoveCorrectly(TextBuffer&& source) noexcept
  */
 void CodingStandards::ProcessWithErrorLogging() noexcept
 {
-    int inputSize = 200;
+	int inputSize = 200;
 
-    if (inputSize > static_cast<int>(MaxNameLength))
-    {
-        std::cerr << "Warning: inputSize (" << inputSize
-                  << ") exceeds MaxNameLength (" << MaxNameLength
-                  << "). Clamping to MaxNameLength." << std::endl;
-        inputSize = MaxNameLength;
-    }
+	if (inputSize > static_cast<int>(MaxNameLength))
+	{
+		std::cerr << "Warning: inputSize (" << inputSize << ") exceeds MaxNameLength (" << MaxNameLength
+				  << "). Clamping to MaxNameLength." << std::endl;
+		inputSize = MaxNameLength;
+	}
 
-    Assert(inputSize >= 0);
+	Assert(inputSize >= 0);
 }
 
 /*
@@ -183,48 +180,53 @@ void CodingStandards::ProcessWithErrorLogging() noexcept
  */
 void CodingStandardsBase::LogValidationError(const char* message) noexcept
 {
-    std::cerr << "Validation Error: " << message << std::endl;
+	std::cerr << "Validation Error: " << message << std::endl;
 }
 
 bool CodingStandardsBase::ValidateLength(size_t length, size_t maxLength) noexcept
 {
-    return length <= maxLength;
+	return length <= maxLength;
 }
 
 CodingStandards::CodingStandards() noexcept
-    : data{DefaultVersion, MaxNameLength, false}
-{
-}
+	: data{DefaultVersion, MaxNameLength, false}
+{}
 
 CodingStandards::~CodingStandards() = default;
 
+/*
+ * Empty-body exemption to the Allman rule: a function with no statements
+ * keeps its braces attached on the declaration line instead of breaking
+ * before them. This is the one case where the brace does not go on its own
+ * line; see CodingStandardsBase::ProcessBraced in the header for the rule.
+ */
 void CodingStandards::ProcessBraced() noexcept {}
 
 void CodingStandards::SetData(const CodingStandardsData& newData) noexcept
 {
-    data = newData;
+	data = newData;
 }
 
 const CodingStandardsData& CodingStandards::GetData() const noexcept
 {
-    return data;
+	return data;
 }
 
 int CodingStandards::GetVersion() const noexcept
 {
-    return data.version;
+	return data.version;
 }
 
 void CodingStandards::Validate() const noexcept {}
 
 void CodingStandards::Initialize() noexcept
 {
-    data.isInitialized = true;
+	data.isInitialized = true;
 }
 
 bool CodingStandards::IsValid() const noexcept
 {
-    return data.isInitialized;
+	return data.isInitialized;
 }
 
 /*
@@ -234,8 +236,8 @@ bool CodingStandards::IsValid() const noexcept
  */
 void CodingStandards::ProcessWithAssertion(const int* ptr) noexcept
 {
-    Assert(ptr != nullptr);
-    Assert(*ptr > 0);
+	Assert(ptr != nullptr);
+	Assert(*ptr > 0);
 }
 
 /*
@@ -245,10 +247,10 @@ void CodingStandards::ProcessWithAssertion(const int* ptr) noexcept
  */
 void CodingStandards::ProcessWithRangeFor(std::vector<int>& values) noexcept
 {
-    for (const auto& v : values)
-    {
-        Assert(v >= 0);
-    }
+	for (const auto& v : values)
+	{
+		Assert(v >= 0);
+	}
 }
 
 /*
@@ -258,16 +260,16 @@ void CodingStandards::ProcessWithRangeFor(std::vector<int>& values) noexcept
  */
 int CodingStandards::ComputeWithValidation() noexcept
 {
-    {
-        int temp = DefaultVersion;
-        if (temp < 0)
-        {
-            Assert(false && "Invalid default version");
-            return -1;
-        }
-    }
+	{
+		int temp = DefaultVersion;
+		if (temp < 0)
+		{
+			Assert(false && "Invalid default version");
+			return -1;
+		}
+	}
 
-    return MaxNameLength;
+	return MaxNameLength;
 }
 
 /*
@@ -276,92 +278,96 @@ int CodingStandards::ComputeWithValidation() noexcept
  */
 void CodingStandards::ProcessWithStackBuffer() noexcept
 {
-    int buffer[256];
-    for (int i = 0; i < 256; ++i)
-    {
-        buffer[i] = i * i;
-    }
+	int buffer[256];
+	for (int i = 0; i < 256; ++i)
+	{
+		buffer[i] = i * i;
+	}
 }
 
+/*
+ * TextBuffer demonstrates the allocation-sensitive special members.
+ * Bodies below are deliberately NOT marked noexcept where they call `new`,
+ * per the noexcept guidance in CodingStandardsBase::ProcessNoExcept.
+ */
 TextBuffer::TextBuffer() noexcept
-    : data(nullptr)
-    , length(0)
-{
-}
+	: data(nullptr)
+	, length(0)
+{}
 
 TextBuffer::TextBuffer(const char* text)
-    : data(nullptr)
-    , length(0)
+	: data(nullptr)
+	, length(0)
 {
-    if (text != nullptr)
-    {
-        length = std::strlen(text);
-        data = new char[length + 1];
-        std::memcpy(data, text, length + 1);
-    }
+	if (text != nullptr)
+	{
+		length = std::strlen(text);
+		data = new char[length + 1];
+		std::memcpy(data, text, length + 1);
+	}
 }
 
 TextBuffer::TextBuffer(const TextBuffer& other)
-    : data(nullptr)
-    , length(other.length)
+	: data(nullptr)
+	, length(other.length)
 {
-    if (other.data != nullptr)
-    {
-        data = new char[length + 1];
-        std::memcpy(data, other.data, length + 1);
-    }
+	if (other.data != nullptr)
+	{
+		data = new char[length + 1];
+		std::memcpy(data, other.data, length + 1);
+	}
 }
 
 TextBuffer::TextBuffer(TextBuffer&& other) noexcept
-    : data(other.data)
-    , length(other.length)
+	: data(other.data)
+	, length(other.length)
 {
-    other.data = nullptr;
-    other.length = 0;
+	other.data = nullptr;
+	other.length = 0;
 }
 
 TextBuffer& TextBuffer::operator=(const TextBuffer& other)
 {
-    if (this != &other)
-    {
-        delete[] data;
-        length = other.length;
-        if (other.data != nullptr)
-        {
-            data = new char[length + 1];
-            std::memcpy(data, other.data, length + 1);
-        }
-        else
-        {
-            data = nullptr;
-        }
-    }
+	if (this != &other)
+	{
+		delete[] data;
+		length = other.length;
+		if (other.data != nullptr)
+		{
+			data = new char[length + 1];
+			std::memcpy(data, other.data, length + 1);
+		}
+		else
+		{
+			data = nullptr;
+		}
+	}
 
-    return *this;
+	return *this;
 }
 
 TextBuffer& TextBuffer::operator=(TextBuffer&& other) noexcept
 {
-    if (this != &other)
-    {
-        delete[] data;
-        data = other.data;
-        length = other.length;
-        other.data = nullptr;
-        other.length = 0;
-    }
+	if (this != &other)
+	{
+		delete[] data;
+		data = other.data;
+		length = other.length;
+		other.data = nullptr;
+		other.length = 0;
+	}
 
-    return *this;
+	return *this;
 }
 
 TextBuffer::~TextBuffer()
 {
-    delete[] data;
+	delete[] data;
 }
 
 const char* TextBuffer::GetText() const noexcept
 {
-    return data != nullptr ? data : "";
+	return data != nullptr ? data : "";
 }
 
 } // namespace examples

@@ -12,14 +12,20 @@
  * After the last include / define directive, place two empty lines
  * before the first code body.
  *
- * Include ordering: own header first, then standard headers in
- * alphabetical order, then project headers in alphabetical order.
+ * Include ordering — three blocks, each sorted alphabetically:
+ *   1. the file's own header, then a blank line (omitted when none exists)
+ *   2. standard headers, then a blank line
+ *   3. project headers
  *
  * Formatting conventions used throughout this file:
  * - Tabs for indentation (not spaces).
  * - 120-character column limit.
  * - Files end with a trailing newline.
  * - Namespace bodies are NOT indented.
+ * - Brace style is Allman: the line always breaks before an opening brace.
+ *   See CodingStandardsBase::ProcessBraced for the rule and its one
+ *   exemption. The machine-readable form is .clang-format, which encodes
+ *   Allman as BreakBeforeBraces: Custom plus an explicit BraceWrapping set.
  */
 
 
@@ -49,14 +55,14 @@ namespace examples
 // ========================================================================
 struct CodingStandardsData
 {
-    int version;
-    size_t maxNameLength;
-    bool isInitialized;
+	int version;
+	size_t maxNameLength;
+	bool isInitialized;
 };
 
 /* Validate struct layout / size assumptions at compile time */
 static_assert(sizeof(CodingStandardsData) >= sizeof(int) + sizeof(size_t) + sizeof(bool),
-    "CodingStandardsData is unexpectedly small");
+			  "CodingStandardsData is unexpectedly small");
 
 // ========================================================================
 // INTERFACE: ICodingStandards
@@ -83,11 +89,11 @@ static_assert(sizeof(CodingStandardsData) >= sizeof(int) + sizeof(size_t) + size
 class ICodingStandards
 {
 public:
-    virtual ~ICodingStandards() = default;
+	virtual ~ICodingStandards() = default;
 
-    virtual void Validate() const = 0;
-    virtual void Initialize() = 0;
-    [[nodiscard]] virtual bool IsValid() const = 0;
+	virtual void Validate() const = 0;
+	virtual void Initialize() = 0;
+	[[nodiscard]] virtual bool IsValid() const = 0;
 };
 
 // ========================================================================
@@ -99,9 +105,9 @@ public:
 class InlinedData final
 {
 public:
-    explicit InlinedData(int value = 0) noexcept;
+	explicit InlinedData(int value = 0) noexcept;
 
-    int buffer[1024];
+	int buffer[1024];
 };
 
 /*
@@ -113,38 +119,38 @@ public:
 class DataProcessor
 {
 public:
-    explicit DataProcessor(int initialValue) noexcept;
-    void Process() noexcept;
-    [[nodiscard]] int GetValue() const noexcept;
+	explicit DataProcessor(int initialValue) noexcept;
+	void Process() noexcept;
+	[[nodiscard]] int GetValue() const noexcept;
 
-    /*
-     * in-prefix parameter: When a function parameter would collide
-     * with a member variable name, prefix it with `in`.
-     * Here `inValue` avoids colliding with the member `value`.
-     */
-    void SetValue(int inValue) noexcept;
+	/*
+	 * in-prefix parameter: When a function parameter would collide
+	 * with a member variable name, prefix it with `in`.
+	 * Here `inValue` avoids colliding with the member `value`.
+	 */
+	void SetValue(int inValue) noexcept;
 
 private:
-    int value;
-    int workBuffer[256];
+	int value;
+	int workBuffer[256];
 };
 
 class TextBuffer final
 {
 public:
-    TextBuffer() noexcept;
-    explicit TextBuffer(const char* text); // Deliberately noexcept-free: uses new (can throw std::bad_alloc)
-    TextBuffer(const TextBuffer& other);   // Deliberately noexcept-free: copy allocates
-    TextBuffer(TextBuffer&& other) noexcept;
-    TextBuffer& operator=(const TextBuffer& other);
-    TextBuffer& operator=(TextBuffer&& other) noexcept;
-    ~TextBuffer();
+	TextBuffer() noexcept;
+	explicit TextBuffer(const char* text); // Deliberately noexcept-free: uses new (can throw std::bad_alloc)
+	TextBuffer(const TextBuffer& other); // Deliberately noexcept-free: copy allocates
+	TextBuffer(TextBuffer&& other) noexcept;
+	TextBuffer& operator=(const TextBuffer& other);
+	TextBuffer& operator=(TextBuffer&& other) noexcept;
+	~TextBuffer();
 
-    [[nodiscard]] const char* GetText() const noexcept;
+	[[nodiscard]] const char* GetText() const noexcept;
 
 private:
-    char* data;
-    size_t length;
+	char* data;
+	size_t length;
 };
 
 /* Type aliases and template type parameters use T prefix */
@@ -156,26 +162,22 @@ using TAllocFunc = void (*)(void*, size_t);
 template <typename TEntry>
 class TemplateExample final
 {
-    /* Validate template parameter constraints at compile time */
-    static_assert(std::is_integral_v<TEntry>,
-        "TemplateExample requires an integral type");
+	/* Validate template parameter constraints at compile time */
+	static_assert(std::is_integral_v<TEntry>, "TemplateExample requires an integral type");
 
 public:
-    explicit TemplateExample(const TEntry& initial) noexcept
-        : value(initial)
-    {
-    }
+	explicit TemplateExample(const TEntry& initial) noexcept
+		: value(initial)
+	{}
 
-    [[nodiscard]] const TEntry& GetValue() const
-    {
-        return value;
-    }
+	[[nodiscard]] const TEntry& GetValue() const
+	{
+		return value;
+	}
 
 private:
-    TEntry value;
+	TEntry value;
 };
-
-
 
 /*
  * BAD EXAMPLE: Inheritance for component reuse.
@@ -196,15 +198,14 @@ private:
 class BadProcessor final : private DataProcessor
 {
 public:
-    explicit BadProcessor(int initialValue) noexcept
-        : DataProcessor(initialValue)
-    {
-    }
+	explicit BadProcessor(int initialValue) noexcept
+		: DataProcessor(initialValue)
+	{}
 
-    void ProcessMore() noexcept
-    {
-        Process();
-    }
+	void ProcessMore() noexcept
+	{
+		Process();
+	}
 };
 
 /*
@@ -226,21 +227,19 @@ public:
 class Processor final
 {
 public:
-    explicit Processor(int initialValue) noexcept
-        : processor(initialValue)
-    {
-    }
+	explicit Processor(int initialValue) noexcept
+		: processor(initialValue)
+	{}
 
-    void ProcessMore() noexcept
-    {
-        processor.Process();
-    }
+	void ProcessMore() noexcept
+	{
+		processor.Process();
+	}
 
 private:
-    DataProcessor processor;
-    int extraData;
+	DataProcessor processor;
+	int extraData;
 };
-
 
 // ========================================================================
 // BASE CLASS: CodingStandardsBase
@@ -266,109 +265,129 @@ private:
 class CodingStandardsBase
 {
 public:
+	/*
+	 * Use static constexpr for compile-time constant values.
+	 * Constants use PascalCase with a descriptive prefix
+	 * (e.g. MaxValue, ArraySize, DefaultVersion, MaxNameLength).
+	 */
+	static constexpr int MaxValue = 100;
+	static constexpr int ArraySize = 64;
 
-    /*
-     * Use static constexpr for compile-time constant values.
-     * Constants use PascalCase with a descriptive prefix
-     * (e.g. MaxValue, ArraySize, DefaultVersion, MaxNameLength).
-     */
-    static constexpr int MaxValue = 100;
-    static constexpr int ArraySize = 64;
+	/* Validate constant ranges at compile time */
+	static_assert(MaxValue > 0, "MaxValue must be positive");
 
-    /* Validate constant ranges at compile time */
-    static_assert(MaxValue > 0, "MaxValue must be positive");
+	CodingStandardsBase() noexcept;
+	virtual ~CodingStandardsBase() = default;
 
-    CodingStandardsBase() noexcept;
-    virtual ~CodingStandardsBase() = default;
+	InlinedData Compute() noexcept;
+	InlinedData Create() noexcept;
+	InlinedData CreateWithMove() noexcept;
+	static TextBuffer UseMoveCorrectly(TextBuffer&& source) noexcept;
 
-    InlinedData Compute() noexcept;
-    InlinedData Create() noexcept;
-    InlinedData CreateWithMove() noexcept;
-    static TextBuffer UseMoveCorrectly(TextBuffer&& source) noexcept;
+	/* Use consteval (C++20) for functions that must evaluate at compile time */
+	static consteval int Square(int x)
+	{
+		return x * x;
+	}
 
-    /* Use consteval (C++20) for functions that must evaluate at compile time */
-    static consteval int Square(int x)
-    {
-        return x * x;
-    }
+	/*
+	 * noexcept for non-throwing functions: Mark functions that
+	 * cannot throw with noexcept to enable compiler optimizations
+	 * and document intent.
+	 *
+	 * WARNING: Do NOT add noexcept to complex functions whose
+	 * implementation cannot be guaranteed exception-free. A
+	 * noexcept contract broken at runtime terminates the process,
+	 * making it worse than no annotation at all. When in doubt
+	 * about a non-trivial function, leave noexcept off.
+	 *
+	 * In this exception-free engine, use of `new`, dynamic
+	 * allocation, or external calls are signals to omit noexcept.
+	 * See TextBuffer for examples: copy construction (uses `new`)
+	 * intentionally omits noexcept, while move construction (no
+	 * allocation) correctly marks noexcept.
+	 *
+	 * Macros (e.g. Assert) use SCREAMING_SNAKE_CASE and are used
+	 * only where a function call cannot be substituted.
+	 *
+	 * Assert() requires pointer validation before dereference
+	 * (see ProcessWithAssertion in .cpp). The engine is exception-
+	 * free — no try/catch/throw is used anywhere.
+	 */
+	static void ProcessNoExcept() noexcept
+	{
+		Assert(true);
+	}
 
-    /*
-     * noexcept for non-throwing functions: Mark functions that
-     * cannot throw with noexcept to enable compiler optimizations
-     * and document intent.
-     *
-     * WARNING: Do NOT add noexcept to complex functions whose
-     * implementation cannot be guaranteed exception-free. A
-     * noexcept contract broken at runtime terminates the process,
-     * making it worse than no annotation at all. When in doubt
-     * about a non-trivial function, leave noexcept off.
-     *
-     * In this exception-free engine, use of `new`, dynamic
-     * allocation, or external calls are signals to omit noexcept.
-     * See TextBuffer for examples: copy construction (uses `new`)
-     * intentionally omits noexcept, while move construction (no
-     * allocation) correctly marks noexcept.
-     *
-     * Macros (e.g. Assert) use SCREAMING_SNAKE_CASE and are used
-     * only where a function call cannot be substituted.
-     *
-     * Assert() requires pointer validation before dereference
-     * (see ProcessWithAssertion in .cpp). The engine is exception-
-     * free — no try/catch/throw is used anywhere.
-     */
-    static void ProcessNoExcept() noexcept
-    {
-        Assert(true);
-    }
+	/*
+	 * out-prefix parameter: Prefix write-only reference
+	 * parameters with `out` to distinguish them from inputs.
+	 */
+	static bool TryParse(const char* text, int& outResult) noexcept;
 
-    /*
-     * out-prefix parameter: Prefix write-only reference
-     * parameters with `out` to distinguish them from inputs.
-     */
-    static bool TryParse(const char* text, int& outResult) noexcept;
+	/*
+	 * inOut-prefix parameter: Prefix read-write reference
+	 * parameters with `inOut` to signal modification intent.
+	 */
+	static void ClampToRange(int& inOutValue, int min, int max) noexcept;
 
-    /*
-     * inOut-prefix parameter: Prefix read-write reference
-     * parameters with `inOut` to signal modification intent.
-     */
-    static void ClampToRange(int& inOutValue, int min, int max) noexcept;
+	/*
+	 * Single-line Statements: Avoid unnecessary braces for
+	 * single-line continue or return statements to improve
+	 * readability.
+	 */
+	int EvaluateFlag(bool flag) noexcept
+	{
+		if (flag)
+			return 42;
+		return 0;
+	}
 
-    /*
-     * Single-line Statements: Avoid unnecessary braces for
-     * single-line continue or return statements to improve
-     * readability.
-     */
-    int EvaluateFlag(bool flag) noexcept
-    {
-        if (flag)
-            return 42;
-        return 0;
-    }
+	/*
+	 * Brace Style: Allman. The line always breaks before the opening brace,
+	 * for functions, classes, namespaces and control statements alike:
+	 *
+	 *     void FunctionName(args)
+	 *     {
+	 *         if (condition)
+	 *         {
+	 *             DoWork();
+	 *         }
+	 *     }
+	 *
+	 * Allman is not K&R, which attaches the brace (`void FunctionName(args) {`),
+	 * and not BSD/KNF, which breaks only for functions while keeping
+	 * `if (condition) {` and `namespace x {` attached. This codebase breaks
+	 * for control statements and namespaces too, which makes it Allman.
+	 *
+	 * The single exemption is an empty body, which keeps its braces attached:
+	 *
+	 *     void FunctionName() noexcept {}
+	 *
+	 * That exemption is also what forces .clang-format to spell Allman out as
+	 * BreakBeforeBraces: Custom with an explicit BraceWrapping table; a named
+	 * BreakBeforeBraces: Allman cannot express it.
+	 */
+	virtual void ProcessBraced() noexcept
+	{
+		int value = 0;
+		if (value > 0)
+		{
+			value++;
+		}
+	}
 
-    /*
-     * Brace Style: K&R variant. Always break the line before
-     * the opening brace: type FunctionName(args) {
-     */
-    virtual void ProcessBraced() noexcept
-    {
-        int value = 0;
-        if (value > 0)
-        {
-            value++;
-        }
-    }
-
-    /*
-     * Readability whitespace rules (applied throughout both .h and .cpp):
-     *   - Place an empty line before return statements, unless the
-     *     return is the only statement within its scope.
-     *   - Place an empty line after close brackets }.
-     *   - Place an empty line between member variables and methods.
-     */
+	/*
+	 * Readability whitespace rules (applied throughout both .h and .cpp):
+	 *   - Place an empty line before return statements, unless the
+	 *     return is the only statement within its scope.
+	 *   - Place an empty line after close brackets }.
+	 *   - Place an empty line between member variables and methods.
+	 */
 
 protected:
-    static void LogValidationError(const char* message) noexcept;
-    [[nodiscard]] static bool ValidateLength(size_t length, size_t maxLength) noexcept;
+	static void LogValidationError(const char* message) noexcept;
+	[[nodiscard]] static bool ValidateLength(size_t length, size_t maxLength) noexcept;
 };
 
 // ========================================================================
@@ -389,49 +408,49 @@ protected:
 class CodingStandards final : public CodingStandardsBase, public ICodingStandards
 {
 public:
-    static constexpr int DefaultVersion = 1;
-    static constexpr size_t MaxNameLength = 128;
+	static constexpr int DefaultVersion = 1;
+	static constexpr size_t MaxNameLength = 128;
 
-    /* Validate constant ranges at compile time */
-    static_assert(DefaultVersion > 0, "DefaultVersion must be positive");
-    static_assert(MaxNameLength > 0, "MaxNameLength must be positive");
+	/* Validate constant ranges at compile time */
+	static_assert(DefaultVersion > 0, "DefaultVersion must be positive");
+	static_assert(MaxNameLength > 0, "MaxNameLength must be positive");
 
-    CodingStandards() noexcept;
-    ~CodingStandards() override;
+	CodingStandards() noexcept;
+	~CodingStandards() override;
 
-    // ICodingStandards implementation — override without virtual
-    void Validate() const noexcept override;
-    void Initialize() noexcept override;
-    [[nodiscard]] bool IsValid() const noexcept override;
+	// ICodingStandards implementation — override without virtual
+	void Validate() const noexcept override;
+	void Initialize() noexcept override;
+	[[nodiscard]] bool IsValid() const noexcept override;
 
-    // Public methods
-    void ProcessBraced() noexcept override;
-    void SetData(const CodingStandardsData& newData) noexcept;
-    [[nodiscard]] const CodingStandardsData& GetData() const noexcept;
-    [[nodiscard]] int GetVersion() const noexcept;
+	// Public methods
+	void ProcessBraced() noexcept override;
+	void SetData(const CodingStandardsData& newData) noexcept;
+	[[nodiscard]] const CodingStandardsData& GetData() const noexcept;
+	[[nodiscard]] int GetVersion() const noexcept;
 
-    // Convention demonstration methods (bodies in .cpp)
-    /*
-     * Prefer passing by reference over raw pointers. When a pointer
-     * is required, always validate it before dereference.
-     */
-    void ProcessWithAssertion(const int* ptr) noexcept;
-    void ProcessWithRangeFor(std::vector<int>& values) noexcept;
-    [[nodiscard]] int ComputeWithValidation() noexcept;
-    void ProcessWithStackBuffer() noexcept;
+	// Convention demonstration methods (bodies in .cpp)
+	/*
+	 * Prefer passing by reference over raw pointers. When a pointer
+	 * is required, always validate it before dereference.
+	 */
+	void ProcessWithAssertion(const int* ptr) noexcept;
+	void ProcessWithRangeFor(std::vector<int>& values) noexcept;
+	[[nodiscard]] int ComputeWithValidation() noexcept;
+	void ProcessWithStackBuffer() noexcept;
 
-    /*
-     * Error and warning logging: Always output a descriptive log
-     * message in error or warning conditions before returning,
-     * asserting, or taking corrective action. This provides essential
-     * diagnostic information for debugging and post-mortem analysis.
-     * See .cpp for the comprehensive rule explanation.
-     */
-    void ProcessWithErrorLogging() noexcept;
+	/*
+	 * Error and warning logging: Always output a descriptive log
+	 * message in error or warning conditions before returning,
+	 * asserting, or taking corrective action. This provides essential
+	 * diagnostic information for debugging and post-mortem analysis.
+	 * See .cpp for the comprehensive rule explanation.
+	 */
+	void ProcessWithErrorLogging() noexcept;
 
 private:
-    // Has-a relationship: CodingStandards owns CodingStandardsData
-    CodingStandardsData data;
+	// Has-a relationship: CodingStandards owns CodingStandardsData
+	CodingStandardsData data;
 };
 
 } // namespace examples

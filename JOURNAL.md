@@ -1,5 +1,55 @@
 # Journal
 
+## Allman Established as the Declared Brace Style (2026-09-06)
+
+**Trigger:** `Applications/VulkanExample/Main.cpp` flagged as off-standard; scope
+redirected to the standard itself. See `.Plans/PLAN_allman_style_baseline.md`.
+
+**Decision:** the codebase brace family is **Allman** — break the line before
+every opening brace. Ruled out with measurements, not opinion: against
+`Engine/CodingStandards.{h,cpp}`, `BreakBeforeBraces: Allman` misses 1
+construct, `Linux`/BSD 28, `Stroustrup` 35, `WebKit` 36, `GNU` 41, `Attach`/K&R 45.
+BSD/KNF is specifically wrong because it keeps `if (x) {` and `namespace x {`
+attached. `BasedOnStyle: LLVM` is optimal (0 residual deviation; Microsoft ties,
+Chromium 12, Google 16, WebKit 22, Mozilla 110, GNU 291).
+
+**Non-obvious constraint recorded in `.clang-format`:** `BraceWrapping` is only
+consulted when `BreakBeforeBraces` is `Custom` — an override under a named style
+is silently ignored (proven: `SplitEmptyRecord: true` and `false` produce
+byte-identical output). So `BreakBeforeBraces: Allman` cannot express the
+empty-body exemption, and `Custom` carrying the Allman flag set is mandatory.
+
+**Changes:**
+1. `.clang-format` — names the style Allman, documents why `Custom` is required,
+   groups options by concern, records the 3-block include layout. Proven
+   behaviour-neutral: `clang-format --dump-config` is byte-identical to the
+   previous revision. Legacy scalar spellings kept on purpose — several options
+   became mappings/enums in clang-format 19-22 and modern spellings would make
+   CLion's bundled formatter refuse to load the file.
+2. `Engine/CodingStandards.h` — the rule text claimed "K&R variant" and gave the
+   self-contradicting example `type FunctionName(args) {`. Corrected to Allman
+   with a real example, the BSD/K&R distinction, and the empty-body exemption.
+   Include-order note made explicit (own header / standard / project).
+3. `Engine/CodingStandards.{h,cpp}` — converted from 4-space to tab indentation.
+   These were the only 2 of 251 files using spaces, contradicting their own
+   header comment; they belong to no CMakeLists target, so nothing ever
+   formatted them.
+
+**Verification:** `clang-format --dry-run -Werror` clean on both exemplars;
+resolved config byte-identical; whitespace-stripped token diff shows only 6
+empty-body merges and 2 line joins (zero semantic change);
+`clang++ -std=c++23 -fsyntax-only -Wall -Wextra` exits 0.
+
+**Open issue, deliberately not decided:** `NamespaceIndentation` is contradicted
+repo-wide and is not a brace-style question. `None` (current; matches the rule
+text, both exemplars and `Main.cpp`) leaves 218 files / 32 163 lines dirty;
+`All` (what the engine body is actually written as) leaves 219 / 18 271. Kept at
+`None`; needs an explicit owner decision before 14 000 lines are churned.
+
+**Still pending:** `docs/CodingStandards.md` says "K&R variant — opening brace on
+the same line" and now contradicts everything above; `Main.cpp` fixes await
+approval.
+
 ## Summary of Macro Application Task
 
 Applied the new macros from `Engine/Core/CommonMacros.h` across the codebase:

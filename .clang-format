@@ -1,70 +1,154 @@
-# Generated from CLion C/C++ Code Style settings
+# HardBop Engine — C++ formatting rules
+#
+# STYLE FAMILY: Allman, base LLVM.
+#
+#   The defining rule of this codebase: ALWAYS break the line before an
+#   opening brace.
+#
+#       class Foo              void Bar()             if (condition)
+#       {                      {                      {
+#           int a;                 DoWork();              DoWork();
+#       }                      }                      }
+#
+#   This is Allman — NOT K&R/Attach (`class Foo {`), and NOT BSD/KNF proper,
+#   which keeps `if (x) {` and `namespace x {` attached and breaks only for
+#   functions. Measured against Engine/CodingStandards.h/.cpp, the number of
+#   constructs each named style gets wrong:
+#       Allman 1 (empty records only)   Linux/BSD 28   Stroustrup 35
+#       WebKit 36                       GNU 41         Attach/K&R 45
+#
+# WHY "Custom" AND NOT "Allman":
+#   clang-format consults the BraceWrapping table only when
+#   BreakBeforeBraces is Custom — a BraceWrapping override under a named
+#   style is silently ignored. Because we need the empty-body exemption
+#   below, the Allman flag set must be spelled out explicitly.
+#   `BreakBeforeBraces: Allman` is therefore not a valid shortcut here.
+#
+# Option spellings are deliberately kept in their long-standing scalar forms
+# so this file loads identically in CLion's bundled clang-format and current
+# Homebrew clang-format; several of these options became mappings/enums in
+# clang-format 19-22 and the modern spellings break older versions outright.
+#
+# Generated from CLion C/C++ Code Style settings, then hand-curated.
+# Verified behaviour-neutral: `clang-format --dump-config` output is identical
+# to the previous revision of this file.
 ---
 Language: Cpp
+# Measured optimal base: zero residual deviation against
+# Engine/CodingStandards.h/.cpp. Google and Chromium diverge on trailing-comment
+# padding and `}  // namespace`; Mozilla and GNU diverge heavily.
 BasedOnStyle: LLVM
-AccessModifierOffset: -4
-AlignConsecutiveAssignments: false
-AlignConsecutiveDeclarations: false
-PointerAlignment: Left
-AlignOperands: true
-AlignTrailingComments: false
+
+# -------------------------------------------------------------- indentation --
+UseTab: Always              # tabs, never spaces
+IndentWidth: 4
+TabWidth: 4
+AccessModifierOffset: -4    # public/protected/private sit at the class brace column
+NamespaceIndentation: None  # namespace bodies start at column 0
+IndentCaseLabels: true
+IndentCaseBlocks: true
+IndentPPDirectives: None
+
+# ------------------------------------------------------------------ columns --
+ColumnLimit: 120
+ContinuationIndentWidth: 8
+ConstructorInitializerAllOnOneLineOrOnePerLine: false
+BreakConstructorInitializers: BeforeComma
 AlwaysBreakTemplateDeclarations: Yes
-MaxEmptyLinesToKeep: 2
+LambdaBodyIndentation: OuterScope
+IndentWrappedFunctionNames: false
+
+# ------------------------------------------------------------------- braces --
+# Allman, plus the one empty-body exemption noted below.
 BreakBeforeBraces: Custom
 BraceWrapping:
-  AfterCaseLabel: true
-  AfterClass: true
-  AfterControlStatement: true
-  AfterEnum: true
-  AfterFunction: true
-  AfterNamespace: true
-  AfterStruct: true
-  AfterUnion: true
-  AfterExternBlock: true
-  BeforeCatch: true
-  BeforeElse: true
-  BeforeLambdaBody: true
-  BeforeWhile: false
-  SplitEmptyFunction: false
-  SplitEmptyRecord: false
-  SplitEmptyNamespace: false
+    # Allman: break before every opening brace.
+    AfterNamespace: true
+    AfterClass: true
+    AfterStruct: true
+    AfterUnion: true
+    AfterEnum: true
+    AfterFunction: true
+    AfterControlStatement: true
+    AfterCaseLabel: true
+    AfterExternBlock: true
+    BeforeElse: true
+    BeforeCatch: true
+    BeforeLambdaBody: true
 
-BreakConstructorInitializers: BeforeComma
-ColumnLimit: 120
-ConstructorInitializerAllOnOneLineOrOnePerLine: false
-ContinuationIndentWidth: 8
-IndentPPDirectives: None
-IncludeIsMainRegex: '(.h)?$'
-IncludeCategories:
-  - Regex: '^<.*'
-    Priority: 2
-  - Regex: '^".*'
-    Priority: 3
-IndentCaseBlocks: true
-IndentCaseLabels: true
-IndentWidth: 4
-InsertNewlineAtEOF: true
-MacroBlockBegin: ''
-MacroBlockEnd: ''
-NamespaceIndentation: None
-SpaceAfterCStyleCast: true
-SpaceAfterTemplateKeyword: true
-SpaceBeforeRangeBasedForLoopColon: true
-SpaceInEmptyParentheses: false
-SpacesInAngles: false
-SpacesInConditionalStatement: false
+    # The 'while' of a do/while stays attached (shared by Allman and KNF).
+    BeforeWhile: false
 
-SpacesInParentheses: false
-TabWidth: 4
-UseTab: Always
-ReferenceAlignment: Left
-LambdaBodyIndentation: OuterScope
+    # EXEMPTION: an empty body keeps its braces attached, so
+    # `void Foo() noexcept {}` and `struct Empty {};` stay on one line.
+    # Repo-wide this attached form appears 144 times; the split form 0 times.
+    SplitEmptyFunction: false
+    SplitEmptyRecord: false
+    SplitEmptyNamespace: false
+    IndentBraces: false
+
+# --------------------------------------------- single-line statement sizing --
 AllowShortFunctionsOnASingleLine: Empty
 AllowShortIfStatementsOnASingleLine: false
 AllowShortLoopsOnASingleLine: false
 AllowShortCaseLabelsOnASingleLine: false
 AllowShortBlocksOnASingleLine: false
-SeparateDefinitionBlocks: Always
-EmptyLineBeforeAccessModifier: LogicalBlock
+# Short lambdas stay inline:
+#   std::signal(SIGINT, [](int) { running = false; });
 
-...
+# ----------------------------------------------------------------- includes --
+# Layout convention — three blocks, alphabetical inside each, own header first:
+#
+#     #include "OwnHeader.h"            <- own header, when one exists
+#
+#     #include <atomic>                 <- standard headers, alphabetical
+#     #include <cstring>
+#
+#     #include "Config/ConfigParam.h"   <- project headers, alphabetical
+#     #include "Log/Logger.h"
+#
+#
+#
+#     <first code body>
+#
+# Preserve sorts inside each block but never reorders across blank lines, so
+# the own-header / standard / project separation stays author-controlled.
+# Consequence: a source file that puts project headers before standard headers
+# is NOT caught by the tool — it must be caught in review.
+IncludeBlocks: Preserve
+IncludeCategories:
+  - Regex: '^<.*'
+    Priority: 2
+  - Regex: '^".*'
+    Priority: 3
+# Lets Main.cpp match Main.h as its own header.
+IncludeIsMainRegex: '(.h)?$'
+
+# --------------------------------------------------------------- whitespace --
+PointerAlignment: Left      # int* p, not int *p
+ReferenceAlignment: Left
+SpaceAfterCStyleCast: true
+SpaceAfterTemplateKeyword: true
+SpaceBeforeRangeBasedForLoopColon: true
+SpaceInEmptyParentheses: false
+SpacesInParentheses: false
+SpacesInAngles: false
+SpacesInConditionalStatement: false
+AlignOperands: true
+AlignTrailingComments: false
+AlignConsecutiveAssignments: false
+AlignConsecutiveDeclarations: false
+# The three Align* rules above stay off: no tab-padded pseudo-alignment of
+# adjacent statements or trailing comments.
+
+# ------------------------------------------------------------- blank lines --
+MaxEmptyLinesToKeep: 2
+EmptyLineBeforeAccessModifier: LogicalBlock
+SeparateDefinitionBlocks: Always
+InsertNewlineAtEOF: true
+# Convention, not machine-enforceable: two empty lines between the last
+# #include / #define and the first code body.
+
+# --------------------------------------------------------------------- misc --
+MacroBlockBegin: ''
+MacroBlockEnd: ''
