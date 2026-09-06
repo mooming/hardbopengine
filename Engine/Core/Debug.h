@@ -2,8 +2,16 @@
 
 #pragma once
 
+#include <cstdio>
+#include <cstdlib>
+#include <memory>
+
 #include "Log/PrintArgs.h"
 #include "OSAL/Intrinsic.h"
+
+// The three standard headers above are used only by the __DEBUG__ branch below, but they are
+// included unconditionally on purpose: the project's include layout puts every include in one
+// block at the top of the file, and a guarded #include cannot satisfy it (see JOURNAL.md).
 
 namespace hbe
 {
@@ -14,10 +22,6 @@ void FlushLogs();
 } // namespace hbe
 
 #ifdef __DEBUG__
-#include <cstdio>
-#include <cstdlib>
-#include <memory>
-
 namespace hbe
 {
 
@@ -49,6 +53,8 @@ void Assert(bool shouldBeTrue, Types&&... args)
 	debugBreak();
 	std::abort();
 }
+
+} // namespace hbe
 
 #else // __DEBUG__
 

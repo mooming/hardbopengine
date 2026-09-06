@@ -38,8 +38,16 @@
 // =============================================================================
 // Debug Control
 // =============================================================================
-// Enables debug mode when NDEBUG, _DEBUG, or DEBUG is not defined
-// Set to 0 to disable debug assertions in release builds
+// Assertions are compiled in only when __DEBUG__ is defined. Nothing in the build
+// system defines it, so Assert() is a no-op in Debug, Dev and Release alike.
+// FatalAssert() is outside the guard and is therefore always live.
+//
+// Turn assertions on per build with a compiler flag:
+//     CXXFLAGS="-D__DEBUG__" ./build.sh Applications/EngineTest -dev -test
+// Do not define it unconditionally here: the suite does not survive it yet. With
+// assertions live, EngineTest aborts in PoolAllocatorTest on a pre-existing
+// contradiction (Memory/PoolAllocator.cpp asserts on the raw blockSize parameter
+// while its own initialiser clamps that same parameter). See JOURNAL.md.
 
 // =============================================================================
 // System Requirements

@@ -744,3 +744,61 @@ probe field for field. Assertion liveness proven out-of-tree, since the suite ca
 20 predicates pass with `__DEBUG__` active, and a negative control wearing the retired
 4096/16/16 numbers does trip the regression assert. `RenderCapabilities` is asserted
 `is_trivially_copyable`; the fresh-vs-queried split is unit-tested both ways.
+
+## `__DEBUG__` made buildable; what `hb_standards.sh` does and does not prove (2026-09-06)
+
+**Trigger:** owner asked to fix the `__DEBUG__` issue, and separately doubted that
+`hb_standards.sh` can enforce the coding standards. `Renderer::Vertex` stays as it is.
+
+**The fix is one closing brace.** `Core/Debug.h` opened `namespace hbe {` in its `__DEBUG__`
+branch and never closed it before `#else`, so any `__DEBUG__` build swallowed every later
+header into `hbe` — `hbe::hbe`, and libc++ failing inside `<sstream>`/`<mutex>`. The whole
+engine now compiles with `-D__DEBUG__` (140/140; it failed to compile at all before). The
+three standard headers moved out of the guard to file scope, which is also what makes the
+file pass the include-layout check.
+
+**Turning assertions on is deliberately NOT part of this commit.** With `__DEBUG__` defined,
+`EngineTest` aborts after 25 of 285 cases, inside `PoolAllocatorTest` TC0 "Construction". The
+cause is a pre-existing contradiction in `Memory/PoolAllocator.cpp`: line 28 asserts
+`blockSize >= sizeof(TSize)` on the raw parameter while line 21 clamps that very parameter
+with `std::max(blockSize, sizeof(TSize))` — either the clamp is dead code or the assert is
+wrong — and the test constructs pools with `blockSize` 1..99, so `i < sizeof(TSize)` trips it.
+`Assert()` is also divergent across branches: the debug overload is variadic on any type and
+not `noexcept`, the release overload demands `const char*` second and is `noexcept`. Note
+`FatalAssert()` has always been live, since it sits outside the guard. `BuildConfig.h`'s
+"Debug Control" comment claimed `NDEBUG`/`_DEBUG`/`DEBUG` drove this; nothing did, so the
+comment now states what is actually true and how to opt in.
+
+**What `hb_standards.sh` actually runs**, in order: clang-format check-or-apply over the
+in-scope files; 8 grep/awk rules (space indentation, joined empty bodies, joined empty
+records, exceptions, `m_` prefix, `return std::move`, `virtual` + `override`, `inline`); file
+hygiene (copyright line 1, trailing newline, trailing whitespace); an include-layout awk; and
+a build gate over EngineTest/VulkanExample/WindowExample x Debug/Dev/Release plus the
+CodingStandards target. It excludes `.mm`/`.m` and `.inl` on documented grounds. It checks
+only staged/committed files, so the ~220 non-conforming files are never flagged unless touched.
+
+**Four measured holes, which is why it cannot be treated as proof of conformance:**
+
+1. `--test` cannot pass on macOS: it calls GNU `timeout`, which is absent here. All 12 builds
+   passed and it still reported `build gate : FAIL`, exit 2.
+2. Worse, `--test` is vacuous by construction: it builds via `build.sh <target> <cfg>` with no
+   `-test` flag, so `__UNIT_TEST__` is undefined and the binary contains **zero** test
+   collections — observed directly as `PASS=0` after the gate ran, versus 285 with `-test`.
+   A fixed `timeout` would report `[PASS] ... 0 pass lines`. Its metric is
+   `grep -c 'PASS'`, counting log lines, not outcomes.
+3. The include-layout awk matches `/^#(include|define)/`, so it treats `#define` as an include:
+   `Config/BuildConfig.h` — which contains no `#include` at all — fails "block 2: not
+   alphabetical" because its configuration `#define`s are grouped by concern, not sorted. It
+   cannot pass without shredding the file's structure.
+4. The same awk cannot accept a guarded `#include`: `#endif` registers as the first body line
+   and any later `#include` resets its blank-line counter, so "exactly one empty line before
+   the first code body (found 0)" is unavoidable. 50 engine headers declare their test class
+   through exactly this idiom. `Core/Debug.h` was made to pass by un-guarding its includes;
+   `RHICapabilities.h` and `VulkanRenderer.cpp`'s conditional `<vulkan/vulkan_win32.h>` stay
+   red, proven pre-existing by running the checker's own awk against `HEAD`.
+
+Nothing in it detects dead assertions — the exact class of defect fixed today. Rules needing
+judgement (single-arg `explicit`, `[[nodiscard]]` getters, log-before-return, `constexpr` over
+magic numbers) are listed in `SKILL.md` for manual review, which is honest rather than faked.
+Use the tool as a fast mechanical filter plus build gate; conformance of behaviour still needs
+a reader.
