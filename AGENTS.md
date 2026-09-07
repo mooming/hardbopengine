@@ -5,6 +5,21 @@
 ## Project Overview
 HardBop Engine: high‑performance C++23 engine with custom memory, task system, and OSAL for cross‑platform use.
 
+## Coding Standards
+
+- **No comments in `.cpp` files.** Implementation files are self-documented: names, types
+  and structure carry the intent. Do not explain code in the implementation — put the
+  explanation where a reader forms intent instead:
+    - Material useful to **users of the engine** (contract, preconditions, ownership,
+      lifetime, thread-safety, complexity a caller depends on) goes in the paired `.h`.
+    - Material useful for **implementation or system design** (invariants, algorithms,
+      allocation strategy, locking protocol, platform quirks) goes in an HTML design
+      document under `docs/`.
+    - Exemptions: the line-1 `// Copyright (c) … Hansol Park` notice is a legal notice,
+      not documentation, and `check.sh` requires it; `Engine/CodingStandards.cpp` is the
+      rule's own teaching exemplar and carries deliberate BAD EXAMPLE commentary, so it
+      is exempt for the same reason `check.sh` already exempts it from behavioural checks.
+
 ## Work Policy (must be strictly followed)
 
 **All agents must adhere to the following policies without exception.**

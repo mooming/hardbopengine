@@ -86,6 +86,26 @@ To maintain high code quality and consistency, please adhere to the following gu
   legacy files to disagree until they are reformatted.
 - **Single-line Statements**: Avoid using braces for single-line `continue` or `return` statements.
 
+### Comments
+- **No comments in `.cpp` files.** Implementation files are self-documented — names, types
+  and structure carry the intent, so a comment is either redundant or a sign that a name
+  should have carried it. Do not explain code inside the implementation.
+- **Where prose goes instead.** A header is where a reader forms intent, so that is where
+  explanation belongs:
+    - Useful to **users of the engine** — contract, preconditions, ownership, lifetime,
+      thread-safety, complexity a caller depends on → the paired **`.h`** declaration.
+    - Useful for **implementation or system design** — invariants, algorithms, allocation
+      strategy, locking protocol, platform quirks → an **HTML design document under `docs/`**
+      (see `docs/RendererDesign.html` for the house style and `docs/design/*_Design.html`
+      for the naming convention).
+- **Exemptions.**
+    - The line-1 `// Copyright (c) … Hansol Park` notice: a legal notice, not documentation,
+      and required by the standards lint. Where an IDE banner wraps it (`//`, then the
+      copyright, then `// Created by …`), keep the copyright line and drop the banner.
+    - `Engine/CodingStandards.cpp`: the rule's own teaching exemplar, which carries
+      deliberate BAD EXAMPLE commentary. `check.sh` already exempts
+      `Engine/CodingStandards.*` from behavioural checks for the same reason.
+
 ### Error Handling, Logging & Memory Management
 - **Error and Warning Logging**: Always output a descriptive log
   message (via `std::cerr` or a dedicated logger) in error or

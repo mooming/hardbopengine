@@ -1,5 +1,27 @@
 // Copyright (c) 2026 Hansol Park (mooming.go@gmail.com). All rights reserved.
 
+/*
+ * RULE: no comments in .cpp files.
+ *
+ * Implementation files are self-documented - names, types and structure carry the
+ * intent, so a comment here is either redundant or evidence that a name failed to do
+ * its job. Explanation belongs where a reader forms it:
+ *
+ *   - Useful to users of the engine (contract, preconditions, ownership, lifetime,
+ *     thread-safety, complexity a caller depends on) -> the paired .h declaration.
+ *   - Useful for implementation or system design (invariants, algorithms, allocation
+ *     strategy, locking protocol, platform quirks) -> an HTML design document under
+ *     docs/. See docs/RendererDesign.html for house style and the naming convention
+ *     in docs/design/.
+ *
+ * This file is a deliberate exemption, as is the line-1 copyright notice. It is this
+ * rule's own teaching exemplar and carries the BAD EXAMPLE commentary that makes the
+ * anti-patterns below recognizable: without those markers a reader would see an
+ * ordinary function whose -Wpessimizing-move warning is silently silenced, and copy
+ * it. check.sh already exempts Engine/CodingStandards.* from behavioural checks for
+ * the same reason - see the skip_behavioural case in that script.
+ */
+
 #include "CodingStandards.h"
 
 #include <cstdlib>
