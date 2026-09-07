@@ -18,12 +18,10 @@ namespace hbe
 void LinkedListTest::Prepare()
 {
 	constexpr int CountBase = 1024;
-
-#ifdef __DEBUG__
-	constexpr int COUNT = CountBase * 2;
-#else // !__DEBUG__
+	// One size in every configuration. It used to be CountBase * 2 under __DEBUG__, which meant
+	// the suite a developer ran tested an eighth of what CI ran, and this was the only place
+	// where __DEBUG__ changed *what* got tested rather than how loudly a failure reported.
 	constexpr int COUNT = CountBase * 16;
-#endif // __DEBUG__
 	constexpr int COUNT2 = CountBase;
 
 	AddTest("Iteration on the empty list", [this](auto& ls)

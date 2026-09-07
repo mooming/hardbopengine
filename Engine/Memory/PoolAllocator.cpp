@@ -18,7 +18,7 @@ namespace hbe
 #endif // PROFILE_ENABLED
 		:
 		id(InvalidAllocatorID), parentID(InvalidAllocatorID), name(inName),
-		blockSize(OS::GetAligned(std::max(inBlockSize, sizeof(TSize)), sizeof(TSize))), numberOfBlocks(inNumberOfBlocks),
+		blockSize(OS::GetAligned(std::max(inBlockSize, sizeof(TSize)), Config::DefaultAlign)), numberOfBlocks(inNumberOfBlocks),
 		numberOfFreeBlocks(inNumberOfBlocks), buffer(nullptr)
 #if PROFILE_ENABLED
 		,
@@ -344,19 +344,19 @@ namespace hbe
 
 		AddTest("Allocation With A Clamped Block Size", [this](auto& ls)
 		{
-			// The constructor rounds blockSize up to a multiple of sizeof(size_t), so a request
-			// that is not already a multiple is the case that matters: the pool used to lay its
-			// free list out with the requested stride while walking it with the aligned one,
-			// which quietly handed the same block to two callers. The 4096 case above can never
-			// catch that, since 4096 needs no rounding. 24 is included because it is what
-			// LinkedList nodes ask for, and it must stay unclamped.
+			// The constructor rounds blockSize up to Config::DefaultAlign, so a request that is
+			// not already aligned is the case that matters: the pool used to lay its free list out
+			// with the requested stride while walking it with the aligned one, which quietly handed
+			// the same block to two callers. 32 is here because it needs no rounding and so proves
+			// the rounding is not over-reaching; 24 is what LinkedList nodes ask for, and 100 lands
+			// mid-way between two multiples.
 			struct Case
 			{
 				size_t requested;
 				size_t aligned;
 			};
 
-			const Case cases[] = {{24, 24}, {26, 32}, {100, 104}};
+			const Case cases[] = {{32, 32}, {24, 32}, {100, 112}};
 			constexpr size_t blockCount = 64;
 			constexpr size_t allocSize = 16; // fits every aligned size here, so no fallback path
 
@@ -394,6 +394,15 @@ namespace hbe
 								   << i << " the same address as block " << j << "." << lferr;
 								return;
 							}
+						}
+
+						// Rounding the stride to Config::DefaultAlign only buys 16-byte addresses if
+						// the pool buffer itself is aligned, so check the address, not the stride.
+						if (!OS::CheckAligned(blocks[i]))
+						{
+							ls << "blockSize " << testCase.requested << ": block " << i
+							   << " is not aligned to Config::DefaultAlign." << lferr;
+							return;
 						}
 					}
 

@@ -1,5 +1,85 @@
 # Journal
 
+## `Assert` made config-independent, pool blocks aligned to 16, one LinkedList size (2026-09-06)
+
+Owner picked three of the four open items; `Renderer::Vertex` stays as dead code by decision.
+
+### 1. `Engine/Core/Debug.h` — both branches now declare the same thing
+
+The release branch had `Assert(bool, const char*, Types&&...)`; debug had `Assert(bool, Types&&...)`.
+Verified on the old header rather than assumed:
+
+```cpp
+hbe::Assert(value > limit, value, " exceeds ", limit);   // message starts with an int
+```
+
+compiles under `__DEBUG__`, and on the previous header gives **`error: no matching function for call
+to 'Assert'`** in Release. Both branches now declare the plain variadic pair, and both say
+`noexcept`: a `noexcept` difference alone is enough to flip `std::is_nothrow_*` traits between
+configurations, which is a second, subtler way for Release to disagree.
+
+Two honest qualifications:
+
+- **Scope correction.** I had described the old trap as "a message built from other types". Too
+  broad — the old overload demanded a `const char*` only as the *first* message argument, so
+  `Assert(c, "value ", value, " bad")` was always fine. Only messages *beginning* with a
+  non-string broke.
+- **Preventive, not a bug fix.** Release built clean at `HEAD`, so no existing call site trips
+  it. This closes a trap that was armed by `__DEBUG__` becoming the default experience.
+- Arguments with side effects are still evaluated in Debug and dropped in Release. Inherent to
+  any assert; noted in the header rather than papered over.
+
+### 2. `PoolAllocator` now aligns blocks to `Config::DefaultAlign` (16)
+
+`OS::GetAligned(std::max(inBlockSize, sizeof(TSize)), sizeof(TSize))` became
+`..., Config::DefaultAlign)`, matching `InlineMonotonicAllocator` and the engine-wide assumption.
+
+Aligning the *stride* is not the same as aligning the *blocks*, so the new test case checks the
+address with `OS::CheckAligned` over 384 blocks. Proven to have teeth: reverting just that one
+argument to 8 reports `blockSize 24: block 1 is not aligned to Config::DefaultAlign`, with the
+rounding expectations adjusted to match align-8 truth so the address check is the thing that
+fires. So the change moves real addresses, and the guarantee is now pinned by a test.
+
+Side effect: `LinkedList` nodes are 24 bytes and now occupy 32-byte blocks, so its pools are
+~33% larger — and, for the first time, correctly aligned.
+
+### 3. `LinkedListTest` runs the same size everywhere
+
+The `#ifdef __DEBUG__ CountBase * 2 #else * 16 #endif` is gone; one `CountBase * 16`. The smaller
+development build was testing an eighth of what the shipped build tested.
+
+I first wrote that this was the last place where `__DEBUG__` changed *what* got tested. It was
+not — `ComponentSystem.cpp:17` does the same thing more aggressively, 1024 components and 60
+updates under `__DEBUG__` against 20480 and 600 otherwise, a 20x gap. Left alone because the
+instruction was about the `* 16`, but with `__DEBUG__` now the default that test runs a twentieth
+of its work in every development build. Flagged, not fixed.
+
+Measured cost of running 8x more work under live asserts: Dev 11.0s, Release 10.7s, Debug 22.9s.
+
+### 4. Verification
+
+| Config | `-D__DEBUG__` targets | Suite |
+|---|---|---|
+| Debug | 146 | 286 PASS / 0 FAIL / exit 0 |
+| Dev | 146 | 286 PASS / 0 FAIL / exit 0 |
+| Release | 0 | 286 PASS / 0 FAIL / exit 0 |
+
+Also caught mid-verification: an `echo "... exit=$? ..."` that reported my own `grep -c` status
+rather than the test binary's, briefly making Release look like it failed. Measured properly, all
+three exit 0 with 53 collections green.
+
+### 5. Process failure during this commit, and the repair
+
+`git status` showed the other worker's `Applications/EngineTest/TestMain.cpp` guard with `M` in
+the **first** column, which means *staged by them*. Plain `git commit` commits the whole index,
+not just the files named in the message, so their work landed in my commit — while my commit
+message asserted it was not included. Nothing was pushed, so: `git reset --soft HEAD~1`, then
+`git commit -- <four paths>` to commit only my paths, which leaves the rest of the index
+untouched. Their file is staged again exactly as it was, for them to commit themselves.
+
+The trap is that staging looks like someone else's business right up until your own commit acts
+on it. Pathspec on the commit is the fix, not care in `git add`.
+
 ## `__DEBUG__` on by default, clamp-path coverage, and a correction to my own numbers (2026-09-06)
 
 ### 1. `__DEBUG__` is now defined for Debug and Dev

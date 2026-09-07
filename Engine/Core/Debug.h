@@ -25,7 +25,12 @@ void FlushLogs();
 namespace hbe
 {
 
-inline void Assert(bool shouldBeTrue)
+// Both sides of the __DEBUG__ guard below must declare exactly these two overloads, with the
+// same exception specification. They used to differ: the release branch demanded a const char*
+// as the second argument, so a message built from any other type compiled under __DEBUG__, ran
+// for days, then broke the Release build. A noexcept mismatch alone is enough to flip
+// std::is_nothrow_* traits between configurations, so both branches say noexcept.
+inline void Assert(bool shouldBeTrue) noexcept
 {
 	if (likely(shouldBeTrue))
 	{
@@ -40,7 +45,7 @@ inline void Assert(bool shouldBeTrue)
 }
 
 template<typename... Types>
-void Assert(bool shouldBeTrue, Types&&... args)
+void Assert(bool shouldBeTrue, Types&&... args) noexcept
 {
 	if (likely(shouldBeTrue))
 	{
@@ -60,10 +65,12 @@ void Assert(bool shouldBeTrue, Types&&... args)
 
 namespace hbe
 {
+// The arguments are unnamed and unused on purpose: the call inlines away, which also means an
+// argument with a side effect is evaluated in Debug and dropped here. Same trap as any assert.
 inline void Assert(bool) noexcept {}
 
 template<typename... Types>
-void Assert(bool, const char*, Types&&...) noexcept
+void Assert(bool, Types&&...) noexcept
 {}
 } // namespace hbe
 #endif // __DEBUG__
