@@ -98,6 +98,24 @@ To maintain high code quality and consistency, please adhere to the following gu
       strategy, locking protocol, platform quirks → an **HTML design document under `docs/`**
       (see `docs/RendererDesign.html` for the house style and `docs/design/*_Design.html`
       for the naming convention).
+- **Structural labels are not documentation.** A trailing comment whose entire content is
+  the name of the construct its own line closes may remain:
+    ```cpp
+    #endif // MEMORY_VERIFICATION_ENABLED
+    #else  // !__DEBUG__
+    }      // namespace hbe
+    }}     // namespace hbe::StringUtil
+    ```
+  A bare `#endif` is not self-documenting: it cannot state which `#if` it closes, so the
+  label advances the rule instead of evading it. Naming the guard in negated form
+  (`!__DEBUG__`) and qualifying a namespace (`hbe::StringUtil`) still count as naming the
+  construct. The permission is deliberately narrow:
+    - the comment must name **only** the closed construct — no sentence, no TODO, no
+      reasoning. `} // namespace hbe  // TODO: rename` is prose in a label's clothes.
+    - it must sit on the closing line itself. A label on the line *above* is a comment.
+    - data-table indices are **not** structural labels. `// 'A' (65)` above a glyph row
+      restates the array index, which position already encodes; write the index rule once
+      in the design document instead.
 - **Exemptions.**
     - The line-1 `// Copyright (c) … Hansol Park` notice: a legal notice, not documentation,
       and required by the standards lint. Where an IDE banner wraps it (`//`, then the

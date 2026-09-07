@@ -19,6 +19,14 @@ HardBop Engine: high‑performance C++23 engine with custom memory, task system,
       not documentation, and `check.sh` requires it; `Engine/CodingStandards.cpp` is the
       rule's own teaching exemplar and carries deliberate BAD EXAMPLE commentary, so it
       is exempt for the same reason `check.sh` already exempts it from behavioural checks.
+    - **Structural labels are not documentation.** A trailing comment that does nothing
+      but name the construct its own line closes may stay: `#endif // PROFILE_ENABLED`,
+      `#else // PROFILE_ENABLED`, `} // namespace hbe`. A bare `#endif` is not
+      self-documenting — it cannot say which `#if` it closes — so the label serves the
+      rule rather than evading it. The permission is strict: the comment must contain
+      only the name of the closed construct. `} // namespace hbe  // TODO: rename` is
+      prose wearing a label's clothes and must go. Labels on data tables (`// 'A' (65)`
+      indexing a glyph array) are not structural labels — position already encodes them.
 
 ## Work Policy (must be strictly followed)
 
