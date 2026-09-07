@@ -1,5 +1,30 @@
 # Journal
 
+## `EngineTest` now says so when it was built without `-test` (2026-09-07)
+
+`Applications/EngineTest/TestMain.cpp` compiled to an empty `main()` when `__UNIT_TEST__`
+was off: it exited 0 having verified nothing, which is indistinguishable from a passing
+suite and is precisely what let the standards gate once report success over zero tests.
+Added an `#else` branch that prints how to get the macro on (`build.sh ... -test`, the
+binary paths, and `check.sh --test`) and returns 1. Verified both halves: built without
+`-test` the guide prints and `rc=1`; built with it, 53/53 collections pass and `rc=0`.
+Gate green: 12/12 builds, 53/53 in Dev/Debug/Release. Also dropped the stray second blank
+line after the includes, which clang-format had been rewriting on every run.
+
+The `#else` branch cannot alter the tested path, and that was checked rather than assumed:
+the two versions of the file produce **byte-identical objects** under `-D__UNIT_TEST__`.
+That mattered, because a `Fail=2` then `Fail=1` result appeared immediately after the edit.
+Same binary, two different tallies, so at least one test is nondeterministic - `BufferTest`
+TC3 (File Buffer) is the one that came and went without a rebuild in between. 25 consecutive
+runs at current HEAD are clean, so it is rare rather than constant, but a suite that can
+report differently from the same binary is a suite that cannot be gated on yet.
+`PoolAllocatorTest` TC2 also moved between builds and runs and has since been worked on
+separately in `9bcecab`.
+
+One operational lesson: the gate builds whatever the shared `build/` tree holds at that
+moment, so a run that overlaps someone else's editing can compile code that was never
+committed. Two of the results above changed for exactly that reason.
+
 ## `Assert` made config-independent, pool blocks aligned to 16, one LinkedList size (2026-09-06)
 
 Owner picked three of the four open items; `Renderer::Vertex` stays as dead code by decision.
