@@ -86,6 +86,19 @@ To maintain high code quality and consistency, please adhere to the following gu
   legacy files to disagree until they are reformatted.
 - **Single-line Statements**: Avoid using braces for single-line `continue` or `return` statements.
 
+- **Unit-test blocks go at the end of the file.** A `#ifdef __UNIT_TEST__` region — a test
+  class declaration, or test-only API — is always the last thing in the file, after the
+  production declarations it relates to. One such region per file; a file that seems to need
+  two belongs merged.
+    - Why: the reader opens a header for its API. Test-only surface parked above the class
+      pushes that API down and makes the top of the file about something they did not come
+      for. Test-only code also depends on everything in the file, so it reads correctly at
+      the bottom and nowhere else.
+    - Scope: applies to `.h` and `.cpp` alike.
+    - Exemption: an in-function conditional is not a trailing block. `main()` in
+      `Applications/EngineTest/TestMain.cpp` wraps its own body with an `#else` branch, so
+      its guard already terminates the file's logic and cannot be relocated.
+
 ### Comments
 - **No comments in `.cpp` files.** Implementation files are self-documented — names, types
   and structure carry the intent, so a comment is either redundant or a sign that a name
