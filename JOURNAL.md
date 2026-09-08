@@ -1,5 +1,77 @@
 # Journal
 
+## Rule adopted: no comments in `.cpp` files — and the sweep that has not run yet (2026-09-08)
+
+`AGENTS.md` and `docs/CodingStandards.md` now forbid comments in `.cpp` files: implementation
+files are self-documented, and explanation moves to where a reader forms intent — engine-user
+material to the paired `.h`, implementation and system-design material to a design document
+under `docs/`. Three exemptions, each argued rather than assumed. The line-1 copyright notice
+stays: it is a legal notice, not documentation, and `check.sh:246` requires it on line 1, so
+forbidding it would fail every file in the tree. `Engine/CodingStandards.cpp` stays commented:
+it is the rule's own teaching exemplar and carries the BAD EXAMPLE commentary that keeps its
+anti-patterns recognisable, which is the same reasoning `check.sh:205` already uses to exempt
+it from behavioural checks. And structural labels stay — `#endif // PROFILE_ENABLED`,
+`} // namespace hbe`, `}} // namespace hbe::StringUtil`, `#else // !__DEBUG__` — because a bare
+`#endif` is not self-documenting, it cannot say which `#if` it closes, so the label serves the
+rule instead of evading it. The permission is deliberately narrow: the comment must name only
+the closed construct, so `} // namespace hbe  // TODO: rename` is deleted, and so are the 94
+`// 'A' (65)` glyph labels in `Framebuffer.cpp`, whose index position already encodes.
+
+Measured scope before any edit: 753 comment lines across 122 of 132 tracked `.cpp` files, of
+which 344 are closing labels and 94 glyph indices. With those two exempt, the actual sweep is
+**40 files and 607 comment spans** — 82 files turned out to hold nothing but a copyright line
+and labels. It has **not** been applied. It will not be applied until the content worth keeping
+has landed in headers and `docs/`, because deleting first is the one ordering that cannot be
+undone.
+
+The removal itself is a character state machine, not a regex — `//` and `/*` occur inside
+string literals, and rewriting one byte of program output under the banner of a style change is
+a behavioural edit. Its neutrality was proved rather than asserted: the tree was copied to two
+mirrors, one swept, and every file preprocessed inside its own tree with the real flags from
+`cmake-build-debug/compile_commands.json`, then compared with whitespace stripped. The
+preprocessor deletes comments, so identical token streams means no code changed. **131 of 131
+files identical, 0 changed, 0 unverified.** Three traps had to be fixed before that number meant
+anything: sharing one include environment between the two copies sends identical files down
+different header chains (a false 33-file failure), leaving `argv[0]` in a compile-DB command
+makes clang read its own path as an input, and raw `-E -P` output differs by whitespace so the
+comparison must be normalised.
+
+Auditing what would be lost inverted one premise and found live documentation lies. The highest
+value allocator knowledge is **not** commented at all: free-list links are block indices stored
+inside the free blocks with `numberOfBlocks` as the end sentinel rather than null, the
+`ThreadSafeMultiPoolAllocator` deliberately reports statistics *outside* its lock to avoid an
+ordering inversion with `statsLock`, and allocator IDs are captured at construction not at
+allocation — all of it carried today only by identifier choice and brace nesting. Meanwhile
+`StackAllocator.h` claimed deallocations are unsupported while `StackAllocator.cpp:91` implements
+them as strict LIFO (fixed in this change); `MonotonicAllocator.h` claims individual
+deallocations are ignored while `MonotonicAllocator.cpp:93` forwards foreign pointers to the
+parent; and `VulkanCapabilities.h:20` says a null handle leaves the descriptor untouched while
+`VulkanCapabilities.cpp:82` resets it before the null check. Those last two are verified and
+still unfixed.
+
+Reviewing `docs/` before writing into it changed the plan. `docs/RendererDesign.md` and its
+`.html` describe HLSL-single-source, bindless and render-graph architecture that was never
+built — zero mentions of `VulkanRenderer`, `RenderCapabilities` or `PushConstants` — and carry no
+banner saying so, while the md (881 lines) and html (430) have different section titles, so they
+are parallel rewrites rather than a rendered pair. `docs/design/LightweightRenderer_Design.md`
+handles this correctly with a §0 status table reconciling each unshipped section, which makes it
+the pattern to copy; its weakness is that the shipped renderer's only home is a status note
+inside a superseded proposal, so the renderer that exists still has no design document.
+`docs/EngineAPIGuide.md:1806` tells readers "All other identifiers: camelCase", contradicting
+both `docs/CodingStandards.md` and the code (`Allocate`, `FallbackAllocate`,
+`DeregisterSystemAllocator`), and its §Coding Standards is a fourth copy of the standard that
+already omits the rule added today. Design documents are to be maintained as coincident
+`.md` + `.html` pairs; there is no generator, the HTML is hand-authored, and that is why these
+pairs drift.
+
+Still outstanding: the documentation restructure, roughly 19 header blocks and 36 design blocks
+to place, then the 40-file sweep and the Dev/Debug/Release gate. The classification inventory
+lived only in analysis output and is not in the repo, so expect to re-derive it. Unrelated bugs
+surfaced by the same reading are logged separately in `ReviewNote` form rather than fixed here:
+a first-seen block size dereferences `end()` in `MultiPoolAllocator.cpp:283-291`,
+`ThreadSafeMultiPoolAllocator`'s destructor reads `banks` before taking its lock, and
+`Task.cpp:52` may divide by the `numSubTasks` member rather than the parameter.
+
 ## `EngineTest` now says so when it was built without `-test` (2026-09-07)
 
 `Applications/EngineTest/TestMain.cpp` compiled to an empty `main()` when `__UNIT_TEST__`
