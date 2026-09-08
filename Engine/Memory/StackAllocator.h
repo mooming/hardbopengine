@@ -10,8 +10,14 @@
 namespace hbe
 {
 	/// @brief Stack-based allocator for temporary allocations.
-	/// @details Linear allocator that allocates from a fixed-size buffer.
-	/// Deallocations are not supported (memory is released on destruction).
+	/// @details Bump-pointer allocator over a fixed-size buffer. Deallocate IS supported, but
+	///          strictly LIFO: the most recently allocated block must be released first, with the
+	///          same byte count it was allocated with (the size is rounded up to
+	///          `Config::DefaultAlign` on both paths). A release that does not match the current
+	///          top of stack is logged and asserted rather than silently rewinding the cursor.
+	///          A pointer belonging to another allocator is forwarded to the parent allocator
+	///          instead of failing. Whatever is still allocated when the stack is destroyed is
+	///          released as a group.
 	class StackAllocator final
 	{
 	public:
