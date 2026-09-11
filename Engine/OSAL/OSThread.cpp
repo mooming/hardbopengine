@@ -14,15 +14,15 @@ void OS::Sleep(uint32_t milliseconds) noexcept { std::this_thread::sleep_for(std
 
 #ifdef __UNIT_TEST__
 
-void hbe::OSThreadTest::Prepare()
+void hbe::OSThreadTest::prepare()
 {
-	AddTest("Yield", [this](auto& ls)
+	addTest("Yield", [this](auto& ls)
 	{
 		OS::Yield();
 		ls << "Yield succeeded" << lf;
 	});
 
-	AddTest("Sleep", [this](auto& ls)
+	addTest("Sleep", [this](auto& ls)
 	{
 		auto start = std::chrono::high_resolution_clock::now();
 		OS::Sleep(10);
@@ -37,9 +37,9 @@ void hbe::OSThreadTest::Prepare()
 		}
 	});
 
-	AddTest("GetCPUIndex", [this](auto& ls)
+	addTest("GetCPUIndex", [this](auto& ls)
 	{
-		auto cpuIndex = OS::GetCPUIndex();
+		auto cpuIndex = OS::getCPUIndex();
 		ls << "CPU Index: " << cpuIndex << lf;
 
 		if (cpuIndex < 0)
@@ -51,9 +51,9 @@ void hbe::OSThreadTest::Prepare()
 		ls << "GetCPUIndex passed" << lf;
 	});
 
-	AddTest("GetPageSize", [this](auto& ls)
+	addTest("GetPageSize", [this](auto& ls)
 	{
-		auto pageSize = OS::GetPageSize();
+		auto pageSize = OS::getPageSize();
 		ls << "Page Size: " << pageSize << lf;
 
 		if (pageSize == 0)
@@ -70,7 +70,7 @@ void hbe::OSThreadTest::Prepare()
 		ls << "GetPageSize passed" << lf;
 	});
 
-	AddTest("Thread Priority Get/Set", [this](auto& ls)
+	addTest("Thread Priority Get/Set", [this](auto& ls)
 	{
 		std::thread testThread([]() { OS::Sleep(5); });
 
@@ -94,23 +94,23 @@ void hbe::OSThreadTest::Prepare()
 		ls << "Thread priority test passed" << lf;
 	});
 
-	AddTest("Thread Affinity", [this](auto& ls)
+	addTest("Thread Affinity", [this](auto& ls)
 	{
 		std::thread testThread([]() { OS::Sleep(5); });
 
-		OS::SetThreadAffinity(testThread, 1);
+		OS::setThreadAffinity(testThread, 1);
 		ls << "Thread affinity set to CPU 1" << lf;
 
-		auto cpuIndex = OS::GetCPUIndex();
+		auto cpuIndex = OS::getCPUIndex();
 		ls << "Current CPU: " << cpuIndex << lf;
 
 		testThread.join();
 
-		OS::SetThreadAffinity(testThread, 0xF);
+		OS::setThreadAffinity(testThread, 0xF);
 		ls << "Thread affinity updated to CPU 0-3" << lf;
 	});
 
-	AddTest("Multiple Sleep Cycles", [this](auto& ls)
+	addTest("Multiple Sleep Cycles", [this](auto& ls)
 	{
 		constexpr int cycles = 5;
 		bool allOk = true;

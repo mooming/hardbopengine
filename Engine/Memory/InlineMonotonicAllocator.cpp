@@ -11,35 +11,35 @@
 namespace hbe
 {
 
-void InlineMonotonicAllocatorTest::Prepare() noexcept
+void InlineMonotonicAllocatorTest::prepare() noexcept
 {
 	using namespace std;
 	using Allocator = InlineMonotonicAllocator<2048>;
 
-	AddTest("Vector Allocation", [this](auto& ls)
+	addTest("Vector Allocation", [this](auto& ls)
 	{
 		Allocator alloc("InlineMonotonicAllocator");
 
 		{
-			AllocatorScope scope(alloc.GetID());
+			AllocatorScope scope(alloc.getID());
 
 			HVector<int> a;
 			a.push_back(0);
 		}
 
-		if (alloc.GetUsage() == 0)
+		if (alloc.getUsage() == 0)
 		{
 			ls << "Monotonic Allocator doesn't provide deallocation."
-			   << " Usage should not be zero, but " << alloc.GetUsage() << lferr;
+			   << " Usage should not be zero, but " << alloc.getUsage() << lferr;
 		}
 	});
 
-	AddTest("Allocation (2)", [this](auto& ls)
+	addTest("Allocation (2)", [this](auto& ls)
 	{
 		Allocator alloc("InlineMonotonicAllocator");
 
 		{
-			AllocatorScope scope(alloc.GetID());
+			AllocatorScope scope(alloc.getID());
 
 			HVector<int> a;
 			a.push_back(0);
@@ -48,43 +48,43 @@ void InlineMonotonicAllocatorTest::Prepare() noexcept
 			b.push_back(1);
 		}
 
-		if (alloc.GetUsage() == 0)
+		if (alloc.getUsage() == 0)
 		{
 			ls << "Monotonic Allocator doesn't provide deallocation."
-			   << " Usage should not be zero, but " << alloc.GetUsage() << lferr;
+			   << " Usage should not be zero, but " << alloc.getUsage() << lferr;
 		}
 	});
 
-	AddTest("Deallocation", [this](auto& ls)
+	addTest("Deallocation", [this](auto& ls)
 	{
 		Allocator alloc("InlineMonotonicAllocator");
-		AllocatorScope scope(alloc.GetID());
+		AllocatorScope scope(alloc.getID());
 
 		{
 			String a = "0";
 		}
 
-		if (alloc.GetUsage() == 0)
+		if (alloc.getUsage() == 0)
 		{
 			ls << "Monotonic Allocator doesn't provide deallocation."
-			   << " Usage should not be zero, but " << alloc.GetUsage() << lferr;
+			   << " Usage should not be zero, but " << alloc.getUsage() << lferr;
 		}
 	});
 
-	AddTest("Deallocation (2)", [this](auto& ls)
+	addTest("Deallocation (2)", [this](auto& ls)
 	{
 		Allocator alloc("InlineMonotonicAllocator");
-		AllocatorScope scope(alloc.GetID());
+		AllocatorScope scope(alloc.getID());
 
 		{
 			String a = "0";
 			String b = "1";
 		}
 
-		if (alloc.GetUsage() == 0)
+		if (alloc.getUsage() == 0)
 		{
 			ls << "Monotonic Allocator doesn't provide deallocation."
-			   << " Usage should not be zero, but " << alloc.GetUsage() << lferr;
+			   << " Usage should not be zero, but " << alloc.getUsage() << lferr;
 		}
 	});
 }

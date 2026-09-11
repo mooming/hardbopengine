@@ -22,21 +22,21 @@ namespace Renderer
 
 namespace
 {
-void LogSurfaceFailure(const char* reason) noexcept
+void logSurfaceFailure(const char* reason) noexcept
 {
-	static const auto log = Logger::Get("VulkanRenderer", ELogLevel::Error);
-	log.OutError(reason);
+	static const auto log = Logger::get("VulkanRenderer", ELogLevel::Error);
+	log.outError(reason);
 }
 } // namespace
 
-bool VulkanRenderer::CreateMetalSurface() noexcept
+bool VulkanRenderer::createMetalSurface() noexcept
 {
 	if (window == nullptr || instance == VK_NULL_HANDLE) return false;
 
-	NSWindow* nsWindow = static_cast<NSWindow*>(reinterpret_cast<void*>(window->GetNativeHandle()));
+	NSWindow* nsWindow = static_cast<NSWindow*>(reinterpret_cast<void*>(window->getNativeHandle()));
 	if (nsWindow == nil)
 	{
-		LogSurfaceFailure("window native handle is not an NSWindow");
+		logSurfaceFailure("window native handle is not an NSWindow");
 		return false;
 	}
 
@@ -45,14 +45,14 @@ bool VulkanRenderer::CreateMetalSurface() noexcept
 	id<MTLDevice> metalDevice = MTLCreateSystemDefaultDevice();
 	if (metalDevice == nil)
 	{
-		LogSurfaceFailure("MTLCreateSystemDefaultDevice returned no Metal device");
+		logSurfaceFailure("MTLCreateSystemDefaultDevice returned no Metal device");
 		return false;
 	}
 
 	NSView* contentView = [[NSView alloc] initWithFrame:[nsWindow contentRectForFrameRect:[nsWindow frame]]];
 	if (contentView == nil)
 	{
-		LogSurfaceFailure("failed to allocate the presentation content view");
+		logSurfaceFailure("failed to allocate the presentation content view");
 		[metalDevice release];
 		return false;
 	}
@@ -60,7 +60,7 @@ bool VulkanRenderer::CreateMetalSurface() noexcept
 	CAMetalLayer* layer = [CAMetalLayer layer];
 	if (layer == nil)
 	{
-		LogSurfaceFailure("failed to create the CAMetalLayer");
+		logSurfaceFailure("failed to create the CAMetalLayer");
 		[metalDevice release];
 		[contentView release];
 		return false;
@@ -93,8 +93,8 @@ bool VulkanRenderer::CreateMetalSurface() noexcept
 	const VkResult result = vkCreateMetalSurfaceEXT(instance, &info, nullptr, &surface);
 	if (result != VK_SUCCESS)
 	{
-		static const auto log = Logger::Get("VulkanRenderer", ELogLevel::Error);
-		log.OutError([&](auto& ls)
+		static const auto log = Logger::get("VulkanRenderer", ELogLevel::Error);
+		log.outError([&](auto& ls)
 		{
 			ls << "vkCreateMetalSurfaceEXT failed (VkResult=" << static_cast<int>(result) << ")";
 		});

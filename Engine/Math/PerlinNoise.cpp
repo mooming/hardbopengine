@@ -17,11 +17,11 @@ PerlinNoise::PerlinNoise(TUInt inSeed) noexcept
 		p[i] = static_cast<TByte>(i);
 	}
 
-	// Fisher-Yates over the low half; At() indexes the doubled table, so only the first
+	// Fisher-Yates over the low half; at() indexes the doubled table, so only the first
 	// 256 entries need to be a permutation.
 	for (TUInt i = permutationMask; i > 0; --i)
 	{
-		const TUInt j = NextRandom() % (i + 1);
+		const TUInt j = nextRandom() % (i + 1);
 		const TByte swap = p[i];
 		p[i] = p[j];
 		p[j] = swap;
@@ -33,7 +33,7 @@ PerlinNoise::PerlinNoise(TUInt inSeed) noexcept
 	}
 }
 
-TReal PerlinNoise::Noise(TReal x, TReal y, TReal z) const noexcept
+TReal PerlinNoise::noise(TReal x, TReal y, TReal z) const noexcept
 {
 	const TReal cellX = std::floor(x);
 	const TReal cellY = std::floor(y);
@@ -49,25 +49,25 @@ TReal PerlinNoise::Noise(TReal x, TReal y, TReal z) const noexcept
 	const TReal fy = y - cellY;
 	const TReal fz = z - cellZ;
 
-	const TReal u = Fade(fx);
-	const TReal v = Fade(fy);
-	const TReal w = Fade(fz);
+	const TReal u = fade(fx);
+	const TReal v = fade(fy);
+	const TReal w = fade(fz);
 
-	const TReal n000 = Grad(At(X    , Y    , Z    ), fx      , fy      , fz      );
-	const TReal n100 = Grad(At(X + 1, Y    , Z    ), fx - 1.0, fy      , fz      );
-	const TReal n010 = Grad(At(X    , Y + 1, Z    ), fx      , fy - 1.0, fz      );
-	const TReal n110 = Grad(At(X + 1, Y + 1, Z    ), fx - 1.0, fy - 1.0, fz      );
-	const TReal n001 = Grad(At(X    , Y    , Z + 1), fx      , fy      , fz - 1.0);
-	const TReal n101 = Grad(At(X + 1, Y    , Z + 1), fx - 1.0, fy      , fz - 1.0);
-	const TReal n011 = Grad(At(X    , Y + 1, Z + 1), fx      , fy - 1.0, fz - 1.0);
-	const TReal n111 = Grad(At(X + 1, Y + 1, Z + 1), fx - 1.0, fy - 1.0, fz - 1.0);
+	const TReal n000 = grad(at(X    , Y    , Z    ), fx      , fy      , fz      );
+	const TReal n100 = grad(at(X + 1, Y    , Z    ), fx - 1.0, fy      , fz      );
+	const TReal n010 = grad(at(X    , Y + 1, Z    ), fx      , fy - 1.0, fz      );
+	const TReal n110 = grad(at(X + 1, Y + 1, Z    ), fx - 1.0, fy - 1.0, fz      );
+	const TReal n001 = grad(at(X    , Y    , Z + 1), fx      , fy      , fz - 1.0);
+	const TReal n101 = grad(at(X + 1, Y    , Z + 1), fx - 1.0, fy      , fz - 1.0);
+	const TReal n011 = grad(at(X    , Y + 1, Z + 1), fx      , fy - 1.0, fz - 1.0);
+	const TReal n111 = grad(at(X + 1, Y + 1, Z + 1), fx - 1.0, fy - 1.0, fz - 1.0);
 
-	const TReal y0z0 = Lerp(u, n000, n100);
-	const TReal y1z0 = Lerp(u, n010, n110);
-	const TReal y0z1 = Lerp(u, n001, n101);
-	const TReal y1z1 = Lerp(u, n011, n111);
+	const TReal y0z0 = lerp(u, n000, n100);
+	const TReal y1z0 = lerp(u, n010, n110);
+	const TReal y0z1 = lerp(u, n001, n101);
+	const TReal y1z1 = lerp(u, n011, n111);
 
-	return Lerp(w, Lerp(v, y0z0, y1z0), Lerp(v, y0z1, y1z1));
+	return lerp(w, lerp(v, y0z0, y1z0), lerp(v, y0z1, y1z1));
 }
 
 TReal PerlinNoise::Fbm(TReal x, TReal y, TReal z, TUInt octaves
@@ -80,7 +80,7 @@ TReal PerlinNoise::Fbm(TReal x, TReal y, TReal z, TUInt octaves
 
 	for (TUInt octave = 0; octave < octaves; ++octave)
 	{
-		sum += amplitude * Noise(x * freq, y * freq, z * freq);
+		sum += amplitude * noise(x * freq, y * freq, z * freq);
 		normalisation += amplitude;
 		freq *= lacunarity;
 		amplitude *= gain;
@@ -89,7 +89,7 @@ TReal PerlinNoise::Fbm(TReal x, TReal y, TReal z, TUInt octaves
 	return normalisation > 0.0f ? sum / normalisation : 0.0f;
 }
 
-TUInt PerlinNoise::NextRandom() noexcept
+TUInt PerlinNoise::nextRandom() noexcept
 {
 	// Golden-ratio counter plus the Murmur3 finalizer. Everything here is specified by
 	// arithmetic rather than by a library implementation detail, which is the whole point:
@@ -103,7 +103,7 @@ TUInt PerlinNoise::NextRandom() noexcept
 	return mixed ^ (mixed >> 16);
 }
 
-TReal PerlinNoise::Grad(TUInt hash, TReal x, TReal y, TReal z) noexcept
+TReal PerlinNoise::grad(TUInt hash, TReal x, TReal y, TReal z) noexcept
 {
 	// Ken Perlin's reference gradient selection for "improved noise".
 	switch (hash & 15)
@@ -136,9 +136,9 @@ TReal PerlinNoise::Grad(TUInt hash, TReal x, TReal y, TReal z) noexcept
 // holds so far to the logger, at the level of the LogFlush handed to it (lf = Info,
 // lferr = Error). It does not clear the stream, so each test flushes exactly once - at Error
 // level when a check failed, since that carries the measured numbers along with the reason.
-void hbe::PerlinNoiseTest::Prepare() noexcept
+void hbe::PerlinNoiseTest::prepare() noexcept
 {
-	AddTest("Noise Determinism", [this](auto& ls)
+	addTest("Noise Determinism", [this](auto& ls)
 	{
 		PerlinNoise a(12345);
 		PerlinNoise b(12345);
@@ -156,11 +156,11 @@ void hbe::PerlinNoiseTest::Prepare() noexcept
 				const float y = static_cast<float>(j) * 0.41f + 1.25f;
 				const float z = static_cast<float>(i + j) * 0.13f;
 
-				if (a.Noise(x, y, z) != b.Noise(x, y, z))
+				if (a.noise(x, y, z) != b.noise(x, y, z))
 				{
 					++sameSeed;
 				}
-				if (a.Noise(x, y, z) != c.Noise(x, y, z))
+				if (a.noise(x, y, z) != c.noise(x, y, z))
 				{
 					++otherSeed;
 				}
@@ -185,7 +185,7 @@ void hbe::PerlinNoiseTest::Prepare() noexcept
 		}
 	});
 
-	AddTest("Lattice Zeros", [this](auto& ls)
+	addTest("Lattice Zeros", [this](auto& ls)
 	{
 		PerlinNoise noise(7);
 		TInt nonZero = 0;
@@ -197,7 +197,7 @@ void hbe::PerlinNoiseTest::Prepare() noexcept
 			{
 				for (int k = -4; k <= 4; ++k)
 				{
-					const float value = noise.Noise(static_cast<float>(i), static_cast<float>(j)
+					const float value = noise.noise(static_cast<float>(i), static_cast<float>(j)
 						, static_cast<float>(k));
 					if (value != 0.0f)
 					{
@@ -221,7 +221,7 @@ void hbe::PerlinNoiseTest::Prepare() noexcept
 		}
 	});
 
-	AddTest("Range Bounds", [this](auto& ls)
+	addTest("Range Bounds", [this](auto& ls)
 	{
 		PerlinNoise noise(2024);
 		float largest = 0.0f;
@@ -238,7 +238,7 @@ void hbe::PerlinNoiseTest::Prepare() noexcept
 				const float y = static_cast<float>(j) * 0.17f - 3.0f;
 				const float z = 257.5f + static_cast<float>(i - j) * 0.05f;
 
-				const float basic = noise.Noise(x, y, z);
+				const float basic = noise.noise(x, y, z);
 				const float fbm = noise.Fbm(x, y, z, 5);
 
 				for (const float value : { basic, fbm })
@@ -273,17 +273,17 @@ void hbe::PerlinNoiseTest::Prepare() noexcept
 		}
 	});
 
-	AddTest("Continuity", [this](auto& ls)
+	addTest("Continuity", [this](auto& ls)
 	{
 		PerlinNoise noise(31);
 		float largestStep = 0.0f;
 		const float step = 0.02f;
-		float previous = noise.Noise(0.1f, 0.7f, 0.3f);
+		float previous = noise.noise(0.1f, 0.7f, 0.3f);
 
 		for (int i = 1; i < 2000; ++i)
 		{
 			const float x = 0.1f + static_cast<float>(i) * step;
-			const float current = noise.Noise(x, 0.7f, 0.3f);
+			const float current = noise.noise(x, 0.7f, 0.3f);
 			largestStep = std::max(largestStep, std::abs(current - previous));
 			previous = current;
 		}
@@ -303,7 +303,7 @@ void hbe::PerlinNoiseTest::Prepare() noexcept
 		}
 	});
 
-	AddTest("Fbm Normalisation", [this](auto& ls)
+	addTest("Fbm Normalisation", [this](auto& ls)
 	{
 		PerlinNoise noise(88);
 		TInt failures = 0;

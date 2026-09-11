@@ -8,15 +8,15 @@
 
 namespace hbe
 {
-HUnorderedMapTest::HUnorderedMapTest() : TestCollection(StringUtil::ToCompactClassName(__PRETTY_FUNCTION__)) {}
+HUnorderedMapTest::HUnorderedMapTest() : TestCollection(StringUtil::toCompactClassName(__PRETTY_FUNCTION__)) {}
 
-void HUnorderedMapTest::Prepare()
+void HUnorderedMapTest::prepare()
 {
 	using namespace hbe;
 
-	AddTest("Default Construction", [](auto&) { HUnorderedMap<int, int> map; });
+	addTest("Default Construction", [](auto&) { HUnorderedMap<int, int> map; });
 
-	AddTest("Insert Item", [this](auto& ls)
+	addTest("Insert Item", [this](auto& ls)
 	{
 		HUnorderedMap<int, int> map;
 		map[1] = 2;

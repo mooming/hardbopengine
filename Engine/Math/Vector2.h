@@ -85,7 +85,7 @@ namespace hbe
 		Vector2Test() : TestCollection("Vector2Test") {}
 
 	protected:
-		void Prepare() noexcept override;
+		void prepare() noexcept override;
 	};
 } // namespace hbe
 

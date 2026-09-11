@@ -30,7 +30,7 @@ namespace hbe
 			, count(0)
 			, data(nullptr)
 		{
-			FatalAssert(fixedCapacity > 0, "RingQueue capacity must be positive");
+			fatalAssert(fixedCapacity > 0, "RingQueue capacity must be positive");
 
 			// Round up to power of 2 for efficient bitmasking
 			TIndex pow2Capacity = static_cast<TIndex>(std::bit_ceil(static_cast<unsigned int>(fixedCapacity)));
@@ -54,7 +54,7 @@ namespace hbe
 		{
 			returnIf(data == nullptr);
 
-			DestroyAll();
+			destroyAll();
 			TAllocator alloc;
 			alloc.deallocate(data, cap);
 		}
@@ -69,86 +69,86 @@ namespace hbe
 
 		TElement& operator[](TIndex index) noexcept
 		{
-			FatalAssert(IsValidIndex(index));
-			return data[WrapIndex(head + index)];
+			fatalAssert(isValidIndex(index));
+			return data[wrapIndex(head + index)];
 		}
 
 		const TElement& operator[](TIndex index) const noexcept
 		{
-			FatalAssert(IsValidIndex(index));
-			return data[WrapIndex(head + index)];
+			fatalAssert(isValidIndex(index));
+			return data[wrapIndex(head + index)];
 		}
 
-		void Push(const TElement& value) noexcept
+		void push(const TElement& value) noexcept
 		{
-			FatalAssert(!IsFull(), "RingQueue is full");
+			fatalAssert(!isFull(), "RingQueue is full");
 			new (&data[tail]) TElement(value);
-			tail = WrapIndex(tail + 1);
+			tail = wrapIndex(tail + 1);
 			++count;
 		}
 
-		void Push(TElement&& value) noexcept
+		void push(TElement&& value) noexcept
 		{
-			FatalAssert(!IsFull(), "RingQueue is full");
+			fatalAssert(!isFull(), "RingQueue is full");
 			new (&data[tail]) TElement(std::move(value));
-			tail = WrapIndex(tail + 1);
+			tail = wrapIndex(tail + 1);
 			++count;
 		}
 
 		template<typename... Types>
-		TElement& Emplace(Types&&... args) noexcept
+		TElement& emplace(Types&&... args) noexcept
 		{
-			FatalAssert(!IsFull(), "RingQueue is full");
+			fatalAssert(!isFull(), "RingQueue is full");
 			auto* ptr = new (&data[tail]) TElement(std::forward<Types>(args)...);
-			tail = WrapIndex(tail + 1);
+			tail = wrapIndex(tail + 1);
 			++count;
 			return *ptr;
 		}
 
-		TElement Pop() noexcept
+		TElement pop() noexcept
 		{
-			FatalAssert(!IsEmpty(), "RingQueue is empty");
+			fatalAssert(!IsEmpty(), "RingQueue is empty");
 			auto item = std::move(data[head]);
 			data[head].~TElement();
-			head = WrapIndex(head + 1);
+			head = wrapIndex(head + 1);
 			--count;
 
 			return item;
 		}
 
-		TElement& Front() noexcept
+		TElement& front() noexcept
 		{
-			FatalAssert(!IsEmpty());
+			fatalAssert(!IsEmpty());
 			return data[head];
 		}
 
-		const TElement& Front() const noexcept
+		const TElement& front() const noexcept
 		{
-			FatalAssert(!IsEmpty());
+			fatalAssert(!IsEmpty());
 			return data[head];
 		}
 
-		TElement& Back() noexcept
+		TElement& back() noexcept
 		{
-			FatalAssert(!IsEmpty());
-			return data[WrapIndex(tail - 1)];
+			fatalAssert(!IsEmpty());
+			return data[wrapIndex(tail - 1)];
 		}
 
-		const TElement& Back() const noexcept
+		const TElement& back() const noexcept
 		{
-			FatalAssert(!IsEmpty());
-			return data[WrapIndex(tail - 1)];
+			fatalAssert(!IsEmpty());
+			return data[wrapIndex(tail - 1)];
 		}
 
 		[[nodiscard]] TIndex Size() const noexcept { return count; }
 		[[nodiscard]] TIndex Capacity() const noexcept { return cap; }
 		[[nodiscard]] bool IsEmpty() const noexcept { return count == 0; }
-		[[nodiscard]] bool IsFull() const noexcept { return count == cap; }
-		[[nodiscard]] bool IsValidIndex(TIndex index) const noexcept { return index >= 0 && index < Size(); }
+		[[nodiscard]] bool isFull() const noexcept { return count == cap; }
+		[[nodiscard]] bool isValidIndex(TIndex index) const noexcept { return index >= 0 && index < Size(); }
 
-		void Clear() noexcept
+		void clear() noexcept
 		{
-			DestroyAll();
+			destroyAll();
 			head = 0;
 			tail = 0;
 			count = 0;
@@ -170,13 +170,13 @@ namespace hbe
 		TIndex count;
 		TElement* data;
 
-		TIndex WrapIndex(TIndex index) const noexcept { return index & (cap - 1); }
+		TIndex wrapIndex(TIndex index) const noexcept { return index & (cap - 1); }
 
-		void DestroyAll() noexcept
+		void destroyAll() noexcept
 		{
 			for (TIndex i = 0; i < count; ++i)
 			{
-				auto idx = WrapIndex(head + i);
+				auto idx = wrapIndex(head + i);
 				data[idx].~TElement();
 			}
 		}
@@ -196,7 +196,7 @@ namespace hbe
 		RingQueueTest() : TestCollection("RingQueueTest") {}
 
 	protected:
-		void Prepare() override;
+		void prepare() override;
 	};
 
 } // namespace hbe

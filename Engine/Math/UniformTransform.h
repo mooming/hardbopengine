@@ -37,17 +37,17 @@ namespace hbe
 
 		explicit UniformTransform(const TMat4x4& mat) noexcept
 		{
-			Assert(mat.IsOrthogonal(), "UniformTransform::UniformTransform(Mat4x4) - matrix not orthogonal");
+			Assert(mat.isOrthogonal(), "UniformTransform::UniformTransform(Mat4x4) - matrix not orthogonal");
 
 			TVec3 c1 = TVec3(mat.m11, mat.m21, mat.m31);
 			TVec3 c2 = TVec3(mat.m12, mat.m22, mat.m32);
 			TVec3 c3 = TVec3(mat.m13, mat.m23, mat.m33);
 
 			constexpr float oneThird = 1.0f / 3.0f;
-			scale = (c1.Normalize() + c2.Normalize() + c3.Normalize()) * oneThird;
+			scale = (c1.normalize() + c2.normalize() + c3.normalize()) * oneThird;
 
-			Assert(IsEqual(scale, c2.Normalize()), "UniformTransform - scale mismatch");
-			Assert(IsEqual(scale, c3.Normalize()), "UniformTransform - scale mismatch");
+			Assert(isEqual(scale, c2.normalize()), "UniformTransform - scale mismatch");
+			Assert(isEqual(scale, c3.normalize()), "UniformTransform - scale mismatch");
 
 			TMat3x3 rotMat(nullptr);
 
@@ -81,9 +81,9 @@ namespace hbe
 
 		[[nodiscard]] TVec3 Transform(const TVec3& x) const noexcept { return rotation * (scale * x) + translation; }
 
-		[[nodiscard]] TVec3 InverseTransform(const TVec3& x) const noexcept
+		[[nodiscard]] TVec3 inverseTransform(const TVec3& x) const noexcept
 		{
-			return (rotation.Inverse() * (x - translation) / scale);
+			return (rotation.inverse() * (x - translation) / scale);
 		}
 
 		[[nodiscard]] This Transform(const This& rhs) const noexcept
@@ -97,21 +97,21 @@ namespace hbe
 			return result;
 		}
 
-		[[nodiscard]] This Inverse() const noexcept
+		[[nodiscard]] This inverse() const noexcept
 		{
 			This inverse(nullptr);
 
 			scale = 1.0f / scale;
-			rotation.Invert();
+			rotation.invert();
 			translation = rotation * translation * (-scale);
 
 			return inverse;
 		}
 
-		[[nodiscard]] TMat4x4 ToMatrix() const noexcept
+		[[nodiscard]] TMat4x4 toMatrix() const noexcept
 		{
-			TMat4x4 mat = rotation.ToMat4x4() * TMat4x4::CreateDiagonal(TFloat4(scale, scale, scale, 1.0f));
-			mat.SetTranslation(translation);
+			TMat4x4 mat = rotation.toMat4x4() * TMat4x4::createDiagonal(TFloat4(scale, scale, scale, 1.0f));
+			mat.setTranslation(translation);
 
 			return mat;
 		}
@@ -129,7 +129,7 @@ namespace hbe
 		os << "Position: (" << local.translation.x << ", " << local.translation.y << ", " << local.translation.z << ")"
 		   << endl;
 
-		auto r = local.rotation.EulerAngles();
+		auto r = local.rotation.eulerAngles();
 		os << "Rotation: (" << r.x << ", " << r.y << ", " << r.z << ")" << endl;
 		os << "Scale: (" << local.scale << ")" << endl;
 
@@ -144,7 +144,7 @@ namespace hbe
 		os << "Position: (" << local.translation.x << ", " << local.translation.y << ", " << local.translation.z << ")"
 		   << hendl;
 
-		auto r = local.rotation.EulerAngles();
+		auto r = local.rotation.eulerAngles();
 		os << "Rotation: (" << r.x << ", " << r.y << ", " << r.z << ")" << hendl;
 		os << "Scale: (" << local.scale << ")" << hendl;
 
@@ -163,7 +163,7 @@ namespace hbe
 		UniformTransformTest() : TestCollection("UniformTransformTest") {}
 
 	protected:
-		void Prepare() noexcept override;
+		void prepare() noexcept override;
 	};
 } // namespace hbe
 #endif //__UNIT_TEST__

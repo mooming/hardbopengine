@@ -26,9 +26,9 @@ namespace hbe
 
 	} // namespace
 
-	void AtomicStackViewTest::Prepare()
+	void AtomicStackViewTest::prepare()
 	{
-		AddTest("Default Constructor", [this](auto& ls)
+		addTest("Default Constructor", [this](auto& ls)
 		{
 			{
 				AtomicStackView<TNode<bool>> stack;
@@ -56,7 +56,7 @@ namespace hbe
 			}
 		});
 
-		AddTest("Push", [this](auto& ls)
+		addTest("Push", [this](auto& ls)
 		{
 			AtomicStackView<TNode<bool>> stack;
 
@@ -67,10 +67,10 @@ namespace hbe
 				auto& value = node.value;
 
 				ls << "Push Input = " << value << lf;
-				stack.Push(node);
+				stack.push(node);
 			}
 
-			while (auto node = stack.Pop())
+			while (auto node = stack.pop())
 			{
 				if (node == nullptr)
 				{
@@ -83,7 +83,7 @@ namespace hbe
 			}
 		});
 
-		AddTest("Thread-Safety", [this](auto& ls)
+		addTest("Thread-Safety", [this](auto& ls)
 		{
 			constexpr int NumItem = 1000;
 			constexpr int NumLoop = 500;
@@ -103,7 +103,7 @@ namespace hbe
 			{
 				for (auto& node : values)
 				{
-					stack.Push(node);
+					stack.push(node);
 					pushCount.fetch_add(1, std::memory_order_relaxed);
 				}
 			};
@@ -114,7 +114,7 @@ namespace hbe
 				int count = 0;
 				while (!stack.IsEmpty())
 				{
-					if (stack.Pop())
+					if (stack.pop())
 					{
 						++count;
 					}

@@ -20,11 +20,11 @@ public:
 	CommandLineArguments(int argc, const char* argv[]);
 	~CommandLineArguments() = default;
 
-	[[nodiscard]] auto& GetArguments() const noexcept { return arguments; }
+	[[nodiscard]] auto& getArguments() const noexcept { return arguments; }
 
-	void Print();
+	void print();
 
 private:
-	void Parse(int argc, const char* argv[]);
+	void parse(int argc, const char* argv[]);
 };
 } // namespace hbe

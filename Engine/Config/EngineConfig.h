@@ -56,7 +56,7 @@ namespace hbe
 		// Profile
 		static constexpr float DebugTimeOutMultiplier = 2.0f;
 
-		[[nodiscard]] size_t GetMaxSystemMemoryTarget() noexcept;
+		[[nodiscard]] size_t getMaxSystemMemoryTarget() noexcept;
 
 	} // namespace Config
 

@@ -34,20 +34,20 @@ constexpr const char* kInstanceExtensions[] = {
 };
 
 /// @brief Report a Vulkan call failure - engine logging rule: errors are always on.
-void LogFailure(const char* step, VkResult result) noexcept
+void logFailure(const char* step, VkResult result) noexcept
 {
-	static const auto log = Logger::Get("VulkanRenderer", ELogLevel::Error);
-	log.OutError([step, result](auto& ls)
+	static const auto log = Logger::get("VulkanRenderer", ELogLevel::Error);
+	log.outError([step, result](auto& ls)
 	{
 		ls << step << " failed (VkResult=" << static_cast<int>(result) << ")";
 	});
 }
 
 /// @brief Report a VulkanRenderer step that failed without a VkResult to report.
-void LogFailure(const char* step) noexcept
+void logFailure(const char* step) noexcept
 {
-	static const auto log = Logger::Get("VulkanRenderer", ELogLevel::Error);
-	log.OutError(step);
+	static const auto log = Logger::get("VulkanRenderer", ELogLevel::Error);
+	log.outError(step);
 }
 
 constexpr uint32_t kInstanceExtensionCount = static_cast<uint32_t>(sizeof(kInstanceExtensions) / sizeof(const char*));
@@ -71,7 +71,7 @@ bool FindMemoryType(VkPhysicalDevice physicalDevice, uint32_t typeFilter, VkMemo
 /// @brief out = lhs * rhs for column-major 4x4 matrices (element col*4+row).
 /// @details The shader takes a pre-combined viewProj so that the 128-byte push range can
 ///          also carry the model matrix; this is the one multiply that buys us that room.
-void MultiplyColumnMajor(float out[16], const float lhs[16], const float rhs[16]) noexcept
+void multiplyColumnMajor(float out[16], const float lhs[16], const float rhs[16]) noexcept
 {
 	float tmp[16];
 	for (int col = 0; col < 4; ++col)
@@ -89,7 +89,7 @@ void MultiplyColumnMajor(float out[16], const float lhs[16], const float rhs[16]
 	std::memcpy(out, tmp, sizeof(tmp));
 }
 
-bool HasDepthSupport(VkPhysicalDevice physicalDevice, VkFormat format) noexcept
+bool hasDepthSupport(VkPhysicalDevice physicalDevice, VkFormat format) noexcept
 {
 	VkFormatProperties props{};
 	vkGetPhysicalDeviceFormatProperties(physicalDevice, format, &props);
@@ -133,17 +133,17 @@ VulkanRenderer::VulkanRenderer() noexcept
 	, frameActive(false)
 	, firstFramePresented(false)
 {
-	IdentityMatrix(modelMat);
-	IdentityMatrix(viewMat);
-	IdentityMatrix(projMat);
+	identityMatrix(modelMat);
+	identityMatrix(viewMat);
+	identityMatrix(projMat);
 }
 
 VulkanRenderer::~VulkanRenderer()
 {
-	Shutdown();
+	shutdown();
 }
 
-bool VulkanRenderer::Initialize(OS::Window* inWindow) noexcept
+bool VulkanRenderer::initialize(OS::Window* inWindow) noexcept
 {
 	if (initialized) return true;
 	if (inWindow == nullptr) return false;
@@ -152,31 +152,31 @@ bool VulkanRenderer::Initialize(OS::Window* inWindow) noexcept
 
 	// The surface must exist before device picking: queue family support is
 	// queried against the surface itself.
-	if (!CreateInstance()) return false;
-	if (!CreateSurface()) return false;
-	if (!PickDevice()) return false;
-	if (!CreateDevice()) return false;
-	if (!CreateSwapchain()) return false;
-	if (!CreateRenderPass()) return false;
-	if (!CreateDepthResource()) return false;
-	if (!CreateFramebuffers()) return false;
-	if (!CreateCommandBuffers()) return false;
-	if (!CreatePipeline()) return false;
-	if (!CreateSyncObjects()) return false;
+	if (!createInstance()) return false;
+	if (!createSurface()) return false;
+	if (!pickDevice()) return false;
+	if (!createDevice()) return false;
+	if (!createSwapchain()) return false;
+	if (!createRenderPass()) return false;
+	if (!createDepthResource()) return false;
+	if (!createFramebuffers()) return false;
+	if (!createCommandBuffers()) return false;
+	if (!createPipeline()) return false;
+	if (!createSyncObjects()) return false;
 
 	initialized = true;
 	return true;
 }
 
-void VulkanRenderer::Shutdown() noexcept
+void VulkanRenderer::shutdown() noexcept
 {
 	returnIf(!initialized);
 
-	Destroy();
+	destroy();
 	initialized = false;
 }
 
-bool VulkanRenderer::CreateInstance() noexcept
+bool VulkanRenderer::createInstance() noexcept
 {
 	VkApplicationInfo app{};
 	app.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
@@ -194,22 +194,22 @@ bool VulkanRenderer::CreateInstance() noexcept
 	const VkResult result = vkCreateInstance(&ci, nullptr, &instance);
 	if (result != VK_SUCCESS)
 	{
-		LogFailure("vkCreateInstance", result);
+		logFailure("vkCreateInstance", result);
 		return false;
 	}
 
 	return true;
 }
 
-bool VulkanRenderer::CreateSurface() noexcept
+bool VulkanRenderer::createSurface() noexcept
 {
 #if defined(PLATFORM_OSX)
-	return CreateMetalSurface();
+	return createMetalSurface();
 #elif defined(PLATFORM_WINDOWS) && defined(VK_USE_PLATFORM_WIN32_KHR)
 	// NOTE: compile-unverified on this machine (macOS only environment).
 	VkWin32SurfaceCreateInfoKHR info{};
 	info.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
-	info.hwnd = reinterpret_cast<HWND>(window->GetNativeHandle());
+	info.hwnd = reinterpret_cast<HWND>(window->getNativeHandle());
 	return vkCreateWin32SurfaceKHR(instance, &info, nullptr, &surface) == VK_SUCCESS;
 #else
 	// No surface backend for this platform yet. Linux needs OS::Window to expose its
@@ -223,26 +223,26 @@ bool VulkanRenderer::CreateSurface() noexcept
 // macOS: a second definition here would satisfy the symbol from VulkanRenderer.cpp.o, so
 // VulkanRenderer.mm.o would never be pulled out of the static archive and the real Metal
 // surface would silently never run.
-bool VulkanRenderer::CreateMetalSurface() noexcept
+bool VulkanRenderer::createMetalSurface() noexcept
 {
 	return false;
 }
 #endif // !PLATFORM_OSX
 
-bool VulkanRenderer::PickDevice() noexcept
+bool VulkanRenderer::pickDevice() noexcept
 {
 	uint32_t count = 0;
 	const VkResult enumResult = vkEnumeratePhysicalDevices(instance, &count, nullptr);
 	if (enumResult != VK_SUCCESS)
 	{
-		LogFailure("vkEnumeratePhysicalDevices", enumResult);
+		logFailure("vkEnumeratePhysicalDevices", enumResult);
 		return false;
 	}
 
 	if (count == 0)
 	{
 		// Usually means the portability enumeration flag is missing or no ICD is installed.
-		LogFailure("no Vulkan physical device found (check VK_ICD_FILENAMES / MoltenVK install)");
+		logFailure("no Vulkan physical device found (check VK_ICD_FILENAMES / MoltenVK install)");
 		return false;
 	}
 
@@ -250,7 +250,7 @@ bool VulkanRenderer::PickDevice() noexcept
 	const VkResult fetchResult = vkEnumeratePhysicalDevices(instance, &count, devices.data());
 	if (fetchResult != VK_SUCCESS)
 	{
-		LogFailure("vkEnumeratePhysicalDevices (fetch)", fetchResult);
+		logFailure("vkEnumeratePhysicalDevices (fetch)", fetchResult);
 		return false;
 	}
 
@@ -275,11 +275,11 @@ bool VulkanRenderer::PickDevice() noexcept
 		}
 	}
 
-	LogFailure("no queue family supports graphics + presentation for this surface");
+	logFailure("no queue family supports graphics + presentation for this surface");
 	return false;
 }
 
-bool VulkanRenderer::CreateDevice() noexcept
+bool VulkanRenderer::createDevice() noexcept
 {
 	float priority = 1.0f;
 	VkDeviceQueueCreateInfo queueCI{};
@@ -304,38 +304,38 @@ bool VulkanRenderer::CreateDevice() noexcept
 	const VkResult result = vkCreateDevice(physicalDevice, &ci, nullptr, &device);
 	if (result != VK_SUCCESS)
 	{
-		LogFailure("vkCreateDevice", result);
+		logFailure("vkCreateDevice", result);
 		return false;
 	}
 
 	vkGetDeviceQueue(device, queueFamilyIndex, 0, &graphicsQueue);
 
 	// The physical device is valid from here on, so this is the first point where real
-	// capability data exists. Querying once here keeps GetCapabilities() a cheap copy.
-	QueryCapabilities();
+	// capability data exists. Querying once here keeps getCapabilities() a cheap copy.
+	queryCapabilities();
 	return true;
 }
 
-void VulkanRenderer::QueryCapabilities() noexcept
+void VulkanRenderer::queryCapabilities() noexcept
 {
-	FillRenderCapabilities(physicalDevice, capabilities);
+	fillRenderCapabilities(physicalDevice, capabilities);
 }
 
-bool VulkanRenderer::CreateSwapchain() noexcept
+bool VulkanRenderer::createSwapchain() noexcept
 {
 	VkSurfaceCapabilitiesKHR caps{};
 	const VkResult capsResult = vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice, surface, &caps);
 	if (capsResult != VK_SUCCESS)
 	{
-		LogFailure("vkGetPhysicalDeviceSurfaceCapabilitiesKHR", capsResult);
+		logFailure("vkGetPhysicalDeviceSurfaceCapabilitiesKHR", capsResult);
 		return false;
 	}
 
 	// currentExtent is 0xFFFFFFFF when the surface sizes itself from the window.
 	if (caps.currentExtent.width == 0xFFFFFFFFu)
 	{
-		extent.width = static_cast<uint32_t>(window->GetWidth());
-		extent.height = static_cast<uint32_t>(window->GetHeight());
+		extent.width = static_cast<uint32_t>(window->getWidth());
+		extent.height = static_cast<uint32_t>(window->getHeight());
 		extent.width = (extent.width < caps.minImageExtent.width ? caps.minImageExtent.width : extent.width);
 		extent.width = (extent.width > caps.maxImageExtent.width ? caps.maxImageExtent.width : extent.width);
 		extent.height = (extent.height < caps.minImageExtent.height ? caps.minImageExtent.height : extent.height);
@@ -352,7 +352,7 @@ bool VulkanRenderer::CreateSwapchain() noexcept
 	if (formatCount > 0) vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, surface, &formatCount, formats.data());
 	if (formats.empty())
 	{
-		LogFailure("surface reports no supported formats");
+		logFailure("surface reports no supported formats");
 		return false;
 	}
 
@@ -405,7 +405,7 @@ bool VulkanRenderer::CreateSwapchain() noexcept
 	const VkResult createResult = vkCreateSwapchainKHR(device, &ci, nullptr, &swapchain);
 	if (createResult != VK_SUCCESS)
 	{
-		LogFailure("vkCreateSwapchainKHR", createResult);
+		logFailure("vkCreateSwapchainKHR", createResult);
 		return false;
 	}
 
@@ -430,7 +430,7 @@ bool VulkanRenderer::CreateSwapchain() noexcept
 		const VkResult viewResult = vkCreateImageView(device, &vci, nullptr, &swapchainImageViews[i]);
 		if (viewResult != VK_SUCCESS)
 		{
-			LogFailure("vkCreateImageView (swapchain)", viewResult);
+			logFailure("vkCreateImageView (swapchain)", viewResult);
 			return false;
 		}
 	}
@@ -438,7 +438,7 @@ bool VulkanRenderer::CreateSwapchain() noexcept
 	return true;
 }
 
-bool VulkanRenderer::CreateRenderPass() noexcept
+bool VulkanRenderer::createRenderPass() noexcept
 {
 	// Both descriptions must be contiguous: pAttachments is indexed, not per-element bound.
 	VkAttachmentDescription attachments[2] = {};
@@ -453,8 +453,8 @@ bool VulkanRenderer::CreateRenderPass() noexcept
 	attachments[0].finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 
 	depthFormat = VK_FORMAT_D32_SFLOAT;
-	if (!HasDepthSupport(physicalDevice, depthFormat)) depthFormat = VK_FORMAT_D24_UNORM_S8_UINT;
-	if (!HasDepthSupport(physicalDevice, depthFormat)) depthFormat = VK_FORMAT_D16_UNORM;
+	if (!hasDepthSupport(physicalDevice, depthFormat)) depthFormat = VK_FORMAT_D24_UNORM_S8_UINT;
+	if (!hasDepthSupport(physicalDevice, depthFormat)) depthFormat = VK_FORMAT_D16_UNORM;
 
 	attachments[1].format = depthFormat;
 	attachments[1].samples = VK_SAMPLE_COUNT_1_BIT;
@@ -501,14 +501,14 @@ bool VulkanRenderer::CreateRenderPass() noexcept
 	const VkResult result = vkCreateRenderPass(device, &ci, nullptr, &renderPass);
 	if (result != VK_SUCCESS)
 	{
-		LogFailure("vkCreateRenderPass", result);
+		logFailure("vkCreateRenderPass", result);
 		return false;
 	}
 
 	return true;
 }
 
-bool VulkanRenderer::CreateDepthResource() noexcept
+bool VulkanRenderer::createDepthResource() noexcept
 {
 	VkImageCreateInfo ici{};
 	ici.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
@@ -525,7 +525,7 @@ bool VulkanRenderer::CreateDepthResource() noexcept
 	const VkResult imageResult = vkCreateImage(device, &ici, nullptr, &depthImage);
 	if (imageResult != VK_SUCCESS)
 	{
-		LogFailure("vkCreateImage (depth)", imageResult);
+		logFailure("vkCreateImage (depth)", imageResult);
 		return false;
 	}
 
@@ -537,7 +537,7 @@ bool VulkanRenderer::CreateDepthResource() noexcept
 	ami.allocationSize = req.size;
 	if (!FindMemoryType(physicalDevice, req.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, ami.memoryTypeIndex))
 	{
-		LogFailure("no device local memory type for the depth image");
+		logFailure("no device local memory type for the depth image");
 		vkDestroyImage(device, depthImage, nullptr);
 		depthImage = VK_NULL_HANDLE;
 		return false;
@@ -545,13 +545,13 @@ bool VulkanRenderer::CreateDepthResource() noexcept
 	const VkResult allocResult = vkAllocateMemory(device, &ami, nullptr, &depthMemory);
 	if (allocResult != VK_SUCCESS)
 	{
-		LogFailure("vkAllocateMemory (depth)", allocResult);
+		logFailure("vkAllocateMemory (depth)", allocResult);
 		return false;
 	}
 	const VkResult bindResult = vkBindImageMemory(device, depthImage, depthMemory, 0);
 	if (bindResult != VK_SUCCESS)
 	{
-		LogFailure("vkBindImageMemory (depth)", bindResult);
+		logFailure("vkBindImageMemory (depth)", bindResult);
 		return false;
 	}
 
@@ -568,14 +568,14 @@ bool VulkanRenderer::CreateDepthResource() noexcept
 	const VkResult viewResult = vkCreateImageView(device, &vci, nullptr, &depthImageView);
 	if (viewResult != VK_SUCCESS)
 	{
-		LogFailure("vkCreateImageView (depth)", viewResult);
+		logFailure("vkCreateImageView (depth)", viewResult);
 		return false;
 	}
 
 	return true;
 }
 
-bool VulkanRenderer::CreateFramebuffers() noexcept
+bool VulkanRenderer::createFramebuffers() noexcept
 {
 	framebuffers.assign(swapchainImageViews.size(), VK_NULL_HANDLE);
 	for (size_t i = 0; i < swapchainImageViews.size(); ++i)
@@ -592,14 +592,14 @@ bool VulkanRenderer::CreateFramebuffers() noexcept
 		const VkResult result = vkCreateFramebuffer(device, &ci, nullptr, &framebuffers[i]);
 		if (result != VK_SUCCESS)
 		{
-			LogFailure("vkCreateFramebuffer", result);
+			logFailure("vkCreateFramebuffer", result);
 			return false;
 		}
 	}
 	return true;
 }
 
-bool VulkanRenderer::CreateCommandBuffers() noexcept
+bool VulkanRenderer::createCommandBuffers() noexcept
 {
 	VkCommandPoolCreateInfo ci{};
 	ci.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
@@ -608,7 +608,7 @@ bool VulkanRenderer::CreateCommandBuffers() noexcept
 	const VkResult poolResult = vkCreateCommandPool(device, &ci, nullptr, &commandPool);
 	if (poolResult != VK_SUCCESS)
 	{
-		LogFailure("vkCreateCommandPool", poolResult);
+		logFailure("vkCreateCommandPool", poolResult);
 		return false;
 	}
 
@@ -622,14 +622,14 @@ bool VulkanRenderer::CreateCommandBuffers() noexcept
 	const VkResult result = vkAllocateCommandBuffers(device, &ai, commandBuffers.data());
 	if (result != VK_SUCCESS)
 	{
-		LogFailure("vkAllocateCommandBuffers", result);
+		logFailure("vkAllocateCommandBuffers", result);
 		return false;
 	}
 
 	return true;
 }
 
-bool VulkanRenderer::CreateBuffer(VkBuffer& buffer, VkDeviceMemory& memory, size_t size,
+bool VulkanRenderer::createBuffer(VkBuffer& buffer, VkDeviceMemory& memory, size_t size,
 	VkBufferUsageFlags usage) noexcept
 {
 	if (size == 0) return false;
@@ -642,7 +642,7 @@ bool VulkanRenderer::CreateBuffer(VkBuffer& buffer, VkDeviceMemory& memory, size
 	const VkResult createResult = vkCreateBuffer(device, &bci, nullptr, &buffer);
 	if (createResult != VK_SUCCESS)
 	{
-		LogFailure("vkCreateBuffer", createResult);
+		logFailure("vkCreateBuffer", createResult);
 		return false;
 	}
 
@@ -659,7 +659,7 @@ bool VulkanRenderer::CreateBuffer(VkBuffer& buffer, VkDeviceMemory& memory, size
 		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 	if (!FindMemoryType(physicalDevice, req.memoryTypeBits, properties, ami.memoryTypeIndex))
 	{
-		LogFailure("no host visible memory type for the mesh buffer");
+		logFailure("no host visible memory type for the mesh buffer");
 		vkDestroyBuffer(device, buffer, nullptr);
 		buffer = VK_NULL_HANDLE;
 		return false;
@@ -667,16 +667,16 @@ bool VulkanRenderer::CreateBuffer(VkBuffer& buffer, VkDeviceMemory& memory, size
 	const VkResult result = vkAllocateMemory(device, &ami, nullptr, &memory);
 	if (result != VK_SUCCESS)
 	{
-		LogFailure("vkAllocateMemory (buffer)", result);
+		logFailure("vkAllocateMemory (buffer)", result);
 		return false;
 	}
 
 	return true;
 }
 
-bool VulkanRenderer::CreateVertexBuffers(const Mesh& mesh) noexcept
+bool VulkanRenderer::createVertexBuffers(const Mesh& mesh) noexcept
 {
-	ReleaseVertexBuffers();
+	releaseVertexBuffers();
 
 	vertexCount = mesh.vertices.size();
 	indexCount = mesh.indices.size();
@@ -685,17 +685,17 @@ bool VulkanRenderer::CreateVertexBuffers(const Mesh& mesh) noexcept
 	const auto vertexBytes = vertexCount * sizeof(MeshVertex);
 	const auto indexBytes = indexCount * sizeof(uint32_t);
 
-	if (!CreateBuffer(vertexBuffer, vertexMemory, vertexBytes, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT)) return false;
-	if (!CreateBuffer(indexBuffer, indexMemory, indexBytes, VK_BUFFER_USAGE_INDEX_BUFFER_BIT)) return false;
+	if (!createBuffer(vertexBuffer, vertexMemory, vertexBytes, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT)) return false;
+	if (!createBuffer(indexBuffer, indexMemory, indexBytes, VK_BUFFER_USAGE_INDEX_BUFFER_BIT)) return false;
 
 	if (vkBindBufferMemory(device, vertexBuffer, vertexMemory, 0) != VK_SUCCESS)
 	{
-		LogFailure("vkBindBufferMemory (vertex)");
+		logFailure("vkBindBufferMemory (vertex)");
 		return false;
 	}
 	if (vkBindBufferMemory(device, indexBuffer, indexMemory, 0) != VK_SUCCESS)
 	{
-		LogFailure("vkBindBufferMemory (index)");
+		logFailure("vkBindBufferMemory (index)");
 		return false;
 	}
 
@@ -705,7 +705,7 @@ bool VulkanRenderer::CreateVertexBuffers(const Mesh& mesh) noexcept
 		const VkResult mapResult = vkMapMemory(device, mem, 0, static_cast<VkDeviceSize>(size), 0, &dst);
 		if (mapResult != VK_SUCCESS)
 		{
-			LogFailure("vkMapMemory", mapResult);
+			logFailure("vkMapMemory", mapResult);
 			return false;
 		}
 		std::memcpy(dst, data, size);
@@ -719,7 +719,7 @@ bool VulkanRenderer::CreateVertexBuffers(const Mesh& mesh) noexcept
 	return true;
 }
 
-void VulkanRenderer::ReleaseVertexBuffers() noexcept
+void VulkanRenderer::releaseVertexBuffers() noexcept
 {
 	if (indexBuffer != VK_NULL_HANDLE) vkDestroyBuffer(device, indexBuffer, nullptr);
 	if (indexMemory != VK_NULL_HANDLE) vkFreeMemory(device, indexMemory, nullptr);
@@ -734,7 +734,7 @@ void VulkanRenderer::ReleaseVertexBuffers() noexcept
 	indexCount = 0;
 }
 
-bool VulkanRenderer::CreatePipeline() noexcept
+bool VulkanRenderer::createPipeline() noexcept
 {
 	auto loadModule = [&](const unsigned char* spv, size_t size, VkShaderModule& out) noexcept -> bool
 	{
@@ -745,7 +745,7 @@ bool VulkanRenderer::CreatePipeline() noexcept
 		const VkResult result = vkCreateShaderModule(device, &ci, nullptr, &out);
 		if (result != VK_SUCCESS)
 		{
-			LogFailure("vkCreateShaderModule", result);
+			logFailure("vkCreateShaderModule", result);
 			return false;
 		}
 
@@ -838,7 +838,7 @@ bool VulkanRenderer::CreatePipeline() noexcept
 	const VkResult layoutResult = vkCreatePipelineLayout(device, &plci, nullptr, &pipelineLayout);
 	if (layoutResult != VK_SUCCESS)
 	{
-		LogFailure("vkCreatePipelineLayout", layoutResult);
+		logFailure("vkCreatePipelineLayout", layoutResult);
 		return false;
 	}
 
@@ -861,14 +861,14 @@ bool VulkanRenderer::CreatePipeline() noexcept
 	const VkResult result = vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &ci, nullptr, &graphicsPipeline);
 	if (result != VK_SUCCESS)
 	{
-		LogFailure("vkCreateGraphicsPipelines", result);
+		logFailure("vkCreateGraphicsPipelines", result);
 		return false;
 	}
 
 	return true;
 }
 
-bool VulkanRenderer::CreateSyncObjects() noexcept
+bool VulkanRenderer::createSyncObjects() noexcept
 {
 	semaphoresImageAvailable.assign(MAX_FRAMES_IN_FLIGHT, VK_NULL_HANDLE);
 	semaphoresRenderFinished.assign(MAX_FRAMES_IN_FLIGHT, VK_NULL_HANDLE);
@@ -886,17 +886,17 @@ bool VulkanRenderer::CreateSyncObjects() noexcept
 	{
 		if (vkCreateSemaphore(device, &si, nullptr, &semaphoresImageAvailable[i]) != VK_SUCCESS)
 		{
-			LogFailure("vkCreateSemaphore (image available)");
+			logFailure("vkCreateSemaphore (image available)");
 			return false;
 		}
 		if (vkCreateSemaphore(device, &si, nullptr, &semaphoresRenderFinished[i]) != VK_SUCCESS)
 		{
-			LogFailure("vkCreateSemaphore (render finished)");
+			logFailure("vkCreateSemaphore (render finished)");
 			return false;
 		}
 		if (vkCreateFence(device, &fi, nullptr, &fences[i]) != VK_SUCCESS)
 		{
-			LogFailure("vkCreateFence");
+			logFailure("vkCreateFence");
 			return false;
 		}
 	}
@@ -904,7 +904,7 @@ bool VulkanRenderer::CreateSyncObjects() noexcept
 	return true;
 }
 
-void VulkanRenderer::RecordFrame() noexcept
+void VulkanRenderer::recordFrame() noexcept
 {
 	VkCommandBufferBeginInfo bi{};
 	bi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -912,7 +912,7 @@ void VulkanRenderer::RecordFrame() noexcept
 	const VkResult beginResult = vkBeginCommandBuffer(commandBuffers[currentFrame], &bi);
 	if (beginResult != VK_SUCCESS)
 	{
-		LogFailure("vkBeginCommandBuffer", beginResult);
+		logFailure("vkBeginCommandBuffer", beginResult);
 		return;
 	}
 
@@ -951,7 +951,7 @@ void VulkanRenderer::RecordFrame() noexcept
 	{
 		PushConstants push{};
 		std::memcpy(push.model, modelMat, sizeof(push.model));
-		MultiplyColumnMajor(push.viewProj, projMat, viewMat);
+		multiplyColumnMajor(push.viewProj, projMat, viewMat);
 		vkCmdPushConstants(commandBuffers[currentFrame], pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(push),
 			&push);
 
@@ -965,7 +965,7 @@ void VulkanRenderer::RecordFrame() noexcept
 	vkEndCommandBuffer(commandBuffers[currentFrame]);
 }
 
-void VulkanRenderer::BeginFrame() noexcept
+void VulkanRenderer::beginFrame() noexcept
 {
 	returnIf(!initialized);
 
@@ -987,14 +987,14 @@ void VulkanRenderer::BeginFrame() noexcept
 	frameActive = imageIndex < static_cast<uint32_t>(framebuffers.size());
 }
 
-void VulkanRenderer::Render(float /*deltaTime*/) noexcept
+void VulkanRenderer::render(float /*deltaTime*/) noexcept
 {
 	returnIf(!(initialized && frameActive));
 
-	RecordFrame();
+	recordFrame();
 }
 
-void VulkanRenderer::EndFrame() noexcept
+void VulkanRenderer::endFrame() noexcept
 {
 	returnIf(!initialized);
 
@@ -1016,7 +1016,7 @@ void VulkanRenderer::EndFrame() noexcept
 
 		if (vkQueueSubmit(graphicsQueue, 1, &submit, fences[currentFrame]) != VK_SUCCESS)
 		{
-			LogFailure("vkQueueSubmit");
+			logFailure("vkQueueSubmit");
 			// The fence was reset in BeginFrame: release it even though the submit failed.
 			const VkSubmitInfo release{};
 			vkQueueSubmit(graphicsQueue, 0, &release, fences[currentFrame]);
@@ -1034,14 +1034,14 @@ void VulkanRenderer::EndFrame() noexcept
 		const VkResult presentResult = vkQueuePresentKHR(graphicsQueue, &present);
 		if (presentResult != VK_SUCCESS && presentResult != VK_SUBOPTIMAL_KHR)
 		{
-			LogFailure("vkQueuePresentKHR", presentResult);
+			logFailure("vkQueuePresentKHR", presentResult);
 		}
 		else if (!firstFramePresented)
 		{
 			// One milestone line: proof that the whole pipeline reached presentation.
 			firstFramePresented = true;
-			static const auto log = Logger::Get("VulkanRenderer");
-			log.Out([&](auto& ls)
+			static const auto log = Logger::get("VulkanRenderer");
+			log.out([&](auto& ls)
 			{
 				ls << "first frame presented (" << extent.width << "x" << extent.height
 					<< ", swapchain images=" << framebuffers.size()
@@ -1057,7 +1057,7 @@ void VulkanRenderer::EndFrame() noexcept
 		submit.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 		if (vkQueueSubmit(graphicsQueue, 0, &submit, fences[currentFrame]) != VK_SUCCESS)
 		{
-			LogFailure("vkQueueSubmit (fence release)");
+			logFailure("vkQueueSubmit (fence release)");
 			return;
 		}
 	}
@@ -1065,44 +1065,44 @@ void VulkanRenderer::EndFrame() noexcept
 	currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 }
 
-void VulkanRenderer::SetMesh(const Mesh& mesh) noexcept
+void VulkanRenderer::setMesh(const Mesh& mesh) noexcept
 {
 	returnIf(!initialized);
 
-	if (!CreateVertexBuffers(mesh))
+	if (!createVertexBuffers(mesh))
 	{
-		LogFailure("mesh upload failed - drawing clear colour only");
+		logFailure("mesh upload failed - drawing clear colour only");
 		vertexCount = 0;
 		indexCount = 0;
 	}
 }
 
-void VulkanRenderer::SetModel(const float* m) noexcept
+void VulkanRenderer::setModel(const float* m) noexcept
 {
 	std::memcpy(modelMat, m, sizeof(modelMat));
 }
 
-void VulkanRenderer::SetView(const float* m) noexcept
+void VulkanRenderer::setView(const float* m) noexcept
 {
 	std::memcpy(viewMat, m, sizeof(viewMat));
 }
 
-void VulkanRenderer::SetProj(const float* m) noexcept
+void VulkanRenderer::setProj(const float* m) noexcept
 {
 	std::memcpy(projMat, m, sizeof(projMat));
 }
 
-VkExtent2D VulkanRenderer::GetExtent() const noexcept
+VkExtent2D VulkanRenderer::getExtent() const noexcept
 {
 	return extent;
 }
 
-RenderCapabilities VulkanRenderer::GetCapabilities() const noexcept
+RenderCapabilities VulkanRenderer::getCapabilities() const noexcept
 {
 	return capabilities;
 }
 
-void VulkanRenderer::Destroy() noexcept
+void VulkanRenderer::destroy() noexcept
 {
 	if (device != VK_NULL_HANDLE) vkDeviceWaitIdle(device);
 
@@ -1116,7 +1116,7 @@ void VulkanRenderer::Destroy() noexcept
 	semaphoresRenderFinished.clear();
 	fences.clear();
 
-	ReleaseVertexBuffers();
+	releaseVertexBuffers();
 
 	// The command pool frees its command buffers when destroyed.
 	if (commandPool != VK_NULL_HANDLE) vkDestroyCommandPool(device, commandPool, nullptr);

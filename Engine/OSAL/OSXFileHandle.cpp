@@ -16,13 +16,13 @@ namespace OS
 namespace
 {
 
-int GetHandle(const FileHandle& handle)
+int getHandle(const FileHandle& handle)
 {
 	auto& fd = reinterpret_cast<const int&>(handle.data);
 	return fd;
 }
 
-void SetHandle(FileHandle& outHandle, int fd)
+void setHandle(FileHandle& outHandle, int fd)
 {
 	int& data = reinterpret_cast<int&>(outHandle.data);
 	data = fd;
@@ -30,20 +30,20 @@ void SetHandle(FileHandle& outHandle, int fd)
 
 } // namespace
 
-FileHandle::FileHandle() { Invalidate(); }
+FileHandle::FileHandle() { invalidate(); }
 
-FileHandle::FileHandle(FileHandle&& rhs) : data(rhs.data) { rhs.Invalidate(); }
+FileHandle::FileHandle(FileHandle&& rhs) : data(rhs.data) { rhs.invalidate(); }
 
 FileHandle::~FileHandle()
 {
-	returnIf(GetHandle(*this) < 0);
+	returnIf(getHandle(*this) < 0);
 
 	Close(std::move(*this));
 }
 
-size_t FileHandle::GetFileSize() const noexcept
+size_t FileHandle::getFileSize() const noexcept
 {
-	auto fd = GetHandle(*this);
+	auto fd = getHandle(*this);
 	if (unlikely(fd < 0))
 		return 0;
 
@@ -60,11 +60,11 @@ size_t FileHandle::GetFileSize() const noexcept
 
 bool FileHandle::IsValid() const noexcept
 {
-	auto fd = GetHandle(*this);
+	auto fd = getHandle(*this);
 	return fd >= 0;
 }
 
-void FileHandle::Invalidate() noexcept { SetHandle(*this, -1); }
+void FileHandle::invalidate() noexcept { setHandle(*this, -1); }
 
 } // namespace OS
 #endif // PLATFORM_OSX

@@ -1,5 +1,65 @@
 # Journal
 
+## Functions become camelCase — 567 renames, and what the macOS build could not see (2026-09-08)
+
+The owner ruled that functions use camelCase, and that the **code** changes while the
+Markdown stays as it was. `docs/CodingStandards.md` therefore still tells readers that
+functions are `PascalCase`, and `docs/EngineAPIGuide.md` — which always said camelCase —
+is now the only document that agrees with the tree. That contradiction is the instructed
+outcome, not an oversight, and it is the first thing to settle when the docs are opened.
+
+567 identifiers moved across 222 files, ~4518 occurrences, all of `Engine/` and
+`Applications/`. `Examples/MacOSApp` was left alone deliberately: it includes no engine
+header at all, so it is a standalone sample that no build target compiles, and renaming
+inside it would have been unverifiable churn.
+
+Nothing was trusted to the rename script alone. Five structural checks run against the
+committed blobs: string and char literals unchanged, declared type names unchanged,
+macro names unchanged, no un-renamed occurrence left, and total word-token count equal
+(91187 before and after). Then 12/12 builds and 53/53 test collections in Debug, Dev and
+Release. One literal is a declared exception to the literal check, and the check *proves*
+it rather than skipping the file: `StringUtil.cpp` compares `__PRETTY_FUNCTION__` against
+a hardcoded expectation, so `"Prepare()"` had to follow `Prepare` → `prepare` or the name
+conversion tests would fail for the right reason.
+
+The hold-backs are the substance of this change, because each one is a place where a
+textual rename is simply not sound. **31 accessors cannot become camelCase as long as
+their members are camelCase too**: `IsRunning()` returns `isRunning`, `NumberOfFreeBlocks()`
+returns `numberOfFreeBlocks`, `Length()`, `Size()`, `Count()`, `Capacity()`, `IsValid()`,
+`Value()`, `Swap()`, `Column()` and twenty more — renaming one collides with the field it
+reads, and the standard forbids the `m_` prefix that would separate them. Resolving these
+needs a member-naming decision, not a script. Then **`New`, `Delete`, `Register`, `Yield`**
+are C++ keywords and **`Assert`, `Min`, `Max`** are standard macros, so their camel forms
+cannot exist. Then the OSAL layer names functions exactly like the operating system does:
+`OS::VirtualAlloc` is a real engine symbol, and so is Win32 `VirtualAlloc`, in the same
+argument lists — `VirtualAlloc`, `VirtualFree`, `SetThreadPriority`, `SetThreadAffinityMask`,
+`GetSystemInfo` and friends are held back because no textual rule can tell them apart.
+Same for the POSIX set: `Open`, `Read`, `Write`, `Close`, `Truncate`, `Sleep`, `Pow`, `Abs`,
+`Remove`, `Unlink`. Finally, no name was renamed on the strength of code this machine
+cannot compile: declarations under `#ifdef PLATFORM_WINDOWS`, `PLATFORM_LINUX` or
+`#if PROFILE_ENABLED` (which is `0` in every configuration) never entered the map.
+
+Three defects in the tooling were caught by checks rather than seen in review, and one was
+caught only by a subagent. The first version rewrote `#include "Log/Logger.h"` to
+`"log/Logger.h"` — its include guard had inverted logic and *unprotected* those lines; the
+macOS filesystem is case-insensitive, so the build stayed green while Linux would have
+died. A lookbehind that excluded `.` skipped every member access `obj.GetID()`, and the
+residue check used the same pattern, so both were blind together — the classic way a green
+verification means nothing. The third was the expensive one: a shape test accepted
+statement-level calls such as `XStoreName(display, window, title);` as declarations, which
+put Win32 and X11 APIs into the map and renamed 29 real call sites inside
+`Win32Window.cpp`, `LinuxWindow.cpp`, `WindowsMemory.cpp`, `WindowsThread.cpp`,
+`WindowsAbstractLayer.cpp` and `WindowsDebug.cpp`. Every one of those files is excluded
+from the macOS build, so **zero** local signal existed: builds passed 12/12 and all tests
+passed the whole time it was broken. It is the reviewer's report that named them, and the
+map is now built so those symbols cannot enter it.
+
+Unfixed, and worth knowing before anyone trusts a Windows build: `Win32Window.cpp` cannot
+compile for reasons the rename did not cause — `Window::windowProc` is defined and called
+but declared in no header, and `GWLP_DLPTR` is not a Win32 constant (`GWLP_USERDATA` is).
+Log strings and `addTest("…")` titles still name functions that no longer exist, because
+literals were protected by policy. Both are follow-ups, not regressions.
+
 ## Rule adopted: no comments in `.cpp` files — and the sweep that has not run yet (2026-09-08)
 
 `AGENTS.md` and `docs/CodingStandards.md` now forbid comments in `.cpp` files: implementation

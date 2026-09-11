@@ -35,9 +35,9 @@ namespace hbe
 		AllocatorProxy() : id(InvalidAllocatorID), next(nullptr), allocator(nullptr), allocate(nullptr), deallocate(nullptr) {}
 
 #if PROFILE_ENABLED
-		[[nodiscard]] const char* GetName() const { return stats.name; }
+		[[nodiscard]] const char* getName() const { return stats.name; }
 #else // PROFILE_ENABLED
-		[[nodiscard]] const char* GetName() const { return "NoName"; }
+		[[nodiscard]] const char* getName() const { return "NoName"; }
 #endif // PROFILE_ENABLED
 	};
 

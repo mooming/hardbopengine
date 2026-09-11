@@ -58,22 +58,22 @@ public:
 	explicit TaskStream(StaticString name, TStreamIndex streamIndex);
 	~TaskStream() = default;
 
-	void Enqueue(const RangedTask& task) noexcept;
-	void WakeUp() noexcept;
-	void Join() noexcept { thread.join(); }
+	void enqueue(const RangedTask& task) noexcept;
+	void wakeUp() noexcept;
+	void join() noexcept { thread.join(); }
 
-	[[nodiscard]] auto GetName() const noexcept { return name; }
-	[[nodiscard]] auto GetThreadID() const noexcept { return threadID; }
-	[[nodiscard]] auto& GetThread() noexcept { return thread; }
-	[[nodiscard]] auto& GetThread() const noexcept { return thread; }
-	[[nodiscard]] auto GetStreamIndex() const noexcept { return streamIndex; }
-	[[nodiscard]] auto GetLoopCount() const noexcept { return loopCount; }
+	[[nodiscard]] auto getName() const noexcept { return name; }
+	[[nodiscard]] auto getThreadID() const noexcept { return threadID; }
+	[[nodiscard]] auto& getThread() noexcept { return thread; }
+	[[nodiscard]] auto& getThread() const noexcept { return thread; }
+	[[nodiscard]] auto getStreamIndex() const noexcept { return streamIndex; }
+	[[nodiscard]] auto getLoopCount() const noexcept { return loopCount; }
 
-	void Start(TaskSystem& taskSys) noexcept;
-	void RunLoop() noexcept;
+	void start(TaskSystem& taskSys) noexcept;
+	void runLoop() noexcept;
 
 private:
-	void Dequeue(std::optional<RangedTask>& outTask);
+	void dequeue(std::optional<RangedTask>& outTask);
 };
 
 } // namespace hbe

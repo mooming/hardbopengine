@@ -10,15 +10,15 @@ int main(int argc, const char* argv[]) noexcept
 {
 #ifdef __UNIT_TEST__
 	hbe::Engine hengine;
-	hengine.Initialize(argc, argv);
-	hbe::Test::RunTests();
-	hengine.Run();
+	hengine.initialize(argc, argv);
+	hbe::Test::runTests();
+	hengine.run();
 
 	// The suite runs as a task that shuts the engine down when it finishes, so the tallies
-	// are only complete once Run() returns. A failing suite has to leave a non-zero exit
+	// are only complete once run() returns. A failing suite has to leave a non-zero exit
 	// status behind: until now it always returned 0, which made the run impossible to gate on.
-	const hbe::TestEnv& testEnv = hbe::TestEnv::GetEnv();
-	const unsigned int failures = testEnv.GetFailureCount();
+	const hbe::TestEnv& testEnv = hbe::TestEnv::getEnv();
+	const unsigned int failures = testEnv.getFailureCount();
 
 	if (failures > 0)
 	{
@@ -26,7 +26,7 @@ int main(int argc, const char* argv[]) noexcept
 		return 1;
 	}
 
-	std::cout << "EngineTest: all " << testEnv.GetPassCount() << " collections passed" << std::endl;
+	std::cout << "EngineTest: all " << testEnv.getPassCount() << " collections passed" << std::endl;
 #else
 	// Every test body in the engine sits behind #ifdef __UNIT_TEST__, including the ones this
 	// executable links from the library modules. Built without the macro there is nothing left

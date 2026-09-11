@@ -48,31 +48,31 @@ namespace hbe
 		PoolAllocator& operator=(PoolAllocator&& rhs) noexcept;
 		bool operator<(const PoolAllocator& rhs) const noexcept;
 
-		Pointer Allocate(size_t size);
+		Pointer allocate(size_t size);
 		void Deallocate(Pointer ptr, size_t size);
-		bool IsMine(Pointer ptr) const;
+		bool isMine(Pointer ptr) const;
 
-		[[nodiscard]] auto GetID() const { return id; }
-		[[nodiscard]] auto GetName() const { return name; }
-		[[nodiscard]] size_t GetSize(Pointer) const { return blockSize; }
-		[[nodiscard]] size_t GetUsage() const { return (numberOfBlocks - numberOfFreeBlocks) * blockSize; }
-		[[nodiscard]] TSize GetAvailableBlocks() const { return numberOfFreeBlocks; }
-		[[nodiscard]] size_t GetAvailableMemory() const { return numberOfFreeBlocks * blockSize; }
-		[[nodiscard]] size_t GetCapacity() const { return numberOfBlocks * blockSize; }
-		[[nodiscard]] auto GetBlockSize() const { return blockSize; }
+		[[nodiscard]] auto getID() const { return id; }
+		[[nodiscard]] auto getName() const { return name; }
+		[[nodiscard]] size_t getSize(Pointer) const { return blockSize; }
+		[[nodiscard]] size_t getUsage() const { return (numberOfBlocks - numberOfFreeBlocks) * blockSize; }
+		[[nodiscard]] TSize getAvailableBlocks() const { return numberOfFreeBlocks; }
+		[[nodiscard]] size_t getAvailableMemory() const { return numberOfFreeBlocks * blockSize; }
+		[[nodiscard]] size_t getCapacity() const { return numberOfBlocks * blockSize; }
+		[[nodiscard]] auto getBlockSize() const { return blockSize; }
 		[[nodiscard]] auto NumberOfFreeBlocks() const { return numberOfFreeBlocks; }
-		[[nodiscard]] auto GetBuffer() const { return buffer; }
+		[[nodiscard]] auto getBuffer() const { return buffer; }
 
 #if PROFILE_ENABLED
-		[[nodiscard]] auto GetUsedBlocksMax() const { return maxUsedBlocks; }
+		[[nodiscard]] auto getUsedBlocksMax() const { return maxUsedBlocks; }
 #endif // PROFILE_ENABLED
 
 	private:
-		TSize GetIndex(Pointer ptr) const;
-		TSize ReadNextIndex(Pointer ptr) const;
-		void WriteNextIndex(Pointer ptr, TSize index);
+		TSize getIndex(Pointer ptr) const;
+		TSize readNextIndex(Pointer ptr) const;
+		void writeNextIndex(Pointer ptr, TSize index);
 
-		Pointer AllocateBlock();
+		Pointer allocateBlock();
 	};
 
 } // namespace hbe
@@ -88,7 +88,7 @@ namespace hbe
 		PoolAllocatorTest() : TestCollection("PoolAllocatorTest") {}
 
 	protected:
-		void Prepare() override;
+		void prepare() override;
 	};
 } // namespace hbe
 #endif //__UNIT_TEST__

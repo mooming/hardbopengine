@@ -13,11 +13,11 @@ namespace hbe
 
 #ifdef __UNIT_TEST__
 
-void hbe::AABBTest::Prepare() noexcept
+void hbe::AABBTest::prepare() noexcept
 {
 	static AABB3 bbox;
 
-	AddTest("Default Constructor", [&, this](auto& ls)
+	addTest("Default Constructor", [&, this](auto& ls)
 	{
 		ls << bbox << lf;
 
@@ -29,30 +29,30 @@ void hbe::AABBTest::Prepare() noexcept
 		ls << "AABB created with default constructor should be empty." << lferr;
 	});
 
-	AddTest("Add Points", [&, this](auto& ls)
+	addTest("Add Points", [&, this](auto& ls)
 	{
-		bbox.Add(TFloat3::Zero);
-		bbox.Add(TFloat3::Forward);
-		bbox.Add(TFloat3::Right);
-		bbox.Add(TFloat3::Up);
+		bbox.add(TFloat3::Zero);
+		bbox.add(TFloat3::Forward);
+		bbox.add(TFloat3::Right);
+		bbox.add(TFloat3::Up);
 
 		ls << bbox << lf;
 
-		if (bbox.Diagonal() != TFloat3::Unity)
+		if (bbox.diagonal() != TFloat3::Unity)
 		{
-			ls << "AABB dianoal error. " << bbox.Diagonal() << ", but expected " << TFloat3::Unity << lferr;
+			ls << "AABB dianoal error. " << bbox.diagonal() << ", but expected " << TFloat3::Unity << lferr;
 		}
 	});
 
-	AddTest("Self Containing", [&, this](auto& ls)
+	addTest("Self Containing", [&, this](auto& ls)
 	{
-		if (!bbox.IsContaining(bbox))
+		if (!bbox.isContaining(bbox))
 		{
 			ls << "AABB should contain itself! " << bbox << lferr;
 		}
 	});
 
-	AddTest("Self Equality", [&, this](auto& ls)
+	addTest("Self Equality", [&, this](auto& ls)
 	{
 		if (bbox != bbox)
 		{
@@ -60,9 +60,9 @@ void hbe::AABBTest::Prepare() noexcept
 		}
 	});
 
-	AddTest("Self Intersection", [&, this](auto& ls)
+	addTest("Self Intersection", [&, this](auto& ls)
 	{
-		if (bbox.Intersection(bbox) != bbox)
+		if (bbox.intersection(bbox) != bbox)
 		{
 			ls << "Self intersection of AABB should match itself! " << bbox << lferr;
 		}
@@ -70,7 +70,7 @@ void hbe::AABBTest::Prepare() noexcept
 
 	static AABB3 bbox2;
 
-	AddTest("Clone", [&, this](auto& ls)
+	addTest("Clone", [&, this](auto& ls)
 	{
 		bbox2 = bbox;
 
@@ -80,15 +80,15 @@ void hbe::AABBTest::Prepare() noexcept
 		}
 	});
 
-	AddTest("Containing", [&, this](auto& ls)
+	addTest("Containing", [&, this](auto& ls)
 	{
 		bbox2.max *= 2.0f;
 		ls << "bbox2 = " << bbox2;
 
-		if (bbox2.Intersection(bbox) != bbox)
+		if (bbox2.intersection(bbox) != bbox)
 		{
 			ls << "Invalid Intersection of AABB. Intersection of " << bbox2 << " and " << bbox << " = "
-			   << bbox2.Intersection(bbox) << hendl << lferr;
+			   << bbox2.intersection(bbox) << hendl << lferr;
 		}
 
 		if ((bbox + bbox2) != bbox2)
@@ -99,25 +99,25 @@ void hbe::AABBTest::Prepare() noexcept
 
 	static AABB3 bbox3;
 
-	AddTest("Intersection", [&, this](auto& ls)
+	addTest("Intersection", [&, this](auto& ls)
 	{
 		bbox3 = bbox2;
 		ls << "bbox3 = " << bbox3 << lf;
 
-		bbox3.Translate(-TFloat3::Unity);
+		bbox3.translate(-TFloat3::Unity);
 		ls << "bbox3 = " << bbox3 << lf;
 
-		if (bbox2.Intersection(bbox3) != bbox)
+		if (bbox2.intersection(bbox3) != bbox)
 		{
 			ls << "Invalid Intersection of AABB. Intersection of " << bbox2 << " and " << bbox3 << " = "
-			   << bbox2.Intersection(bbox3) << ", but expecting " << bbox << lferr;
+			   << bbox2.intersection(bbox3) << ", but expecting " << bbox << lferr;
 		}
 
-		bbox2.Translate(TFloat3::Unity);
-		if (!bbox2.Intersection(bbox3).IsEmpty())
+		bbox2.translate(TFloat3::Unity);
+		if (!bbox2.intersection(bbox3).IsEmpty())
 		{
 			ls << "Invalid Intersection of AABB. " << hendl << "Intersection of " << hendl << bbox2 << hendl << " and "
-			   << hendl << bbox3 << hendl << "is " << bbox2.Intersection(bbox3) << hendl << "But expecting the empty."
+			   << hendl << bbox3 << hendl << "is " << bbox2.intersection(bbox3) << hendl << "But expecting the empty."
 			   << lferr;
 		}
 	});

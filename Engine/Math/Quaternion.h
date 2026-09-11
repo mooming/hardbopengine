@@ -49,74 +49,74 @@ namespace hbe
 		};
 
 	public:
-		[[nodiscard]] static Quaternion CreateRotationX(const float x) noexcept
+		[[nodiscard]] static Quaternion createRotationX(const float x) noexcept
 		{
 			Quaternion result(nullptr);
-			result.SetEulerX(x);
+			result.setEulerX(x);
 
 			return result;
 		}
 
-		[[nodiscard]] static Quaternion CreateRotationY(const float y) noexcept
+		[[nodiscard]] static Quaternion createRotationY(const float y) noexcept
 		{
 			Quaternion result(nullptr);
-			result.SetEulerY(y);
+			result.setEulerY(y);
 
 			return result;
 		}
 
-		[[nodiscard]] static Quaternion CreateRotationZ(const float z) noexcept
+		[[nodiscard]] static Quaternion createRotationZ(const float z) noexcept
 		{
 			Quaternion result(nullptr);
-			result.SetEulerZ(z);
+			result.setEulerZ(z);
 
 			return result;
 		}
 
-		[[nodiscard]] static Quaternion CreateRotationXY(float x, float y) noexcept
+		[[nodiscard]] static Quaternion createRotationXY(float x, float y) noexcept
 		{
 			Quaternion result(nullptr);
-			result.SetEulerXY(x, y);
+			result.setEulerXY(x, y);
 
 			return result;
 		}
 
-		[[nodiscard]] static Quaternion CreateRotationYZ(float y, float z) noexcept
+		[[nodiscard]] static Quaternion createRotationYZ(float y, float z) noexcept
 		{
 			Quaternion result(nullptr);
-			result.SetEulerYZ(y, z);
+			result.setEulerYZ(y, z);
 
 			return result;
 		}
 
-		[[nodiscard]] static Quaternion CreateRotationXZ(float x, float z) noexcept
+		[[nodiscard]] static Quaternion createRotationXZ(float x, float z) noexcept
 		{
 			Quaternion result(nullptr);
-			result.SetEulerXZ(x, z);
+			result.setEulerXZ(x, z);
 
 			return result;
 		}
 
-		[[nodiscard]] static Quaternion LookRotation(const TVec3& forward, const TVec3& up) noexcept
+		[[nodiscard]] static Quaternion lookRotation(const TVec3& forward, const TVec3& up) noexcept
 		{
 			Quaternion result(nullptr);
-			result.LookAt(forward, up);
+			result.lookAt(forward, up);
 
 			return result;
 		}
 
-		[[nodiscard]] static Quaternion RotationAround(const TVec3& unitAxis, float radian) noexcept
+		[[nodiscard]] static Quaternion rotationAround(const TVec3& unitAxis, float radian) noexcept
 		{
 			Quaternion result(nullptr);
-			result.SetRotationAround(unitAxis, radian);
+			result.setRotationAround(unitAxis, radian);
 
 			return result;
 		}
 
-		[[nodiscard]] static Quaternion RotationFromTo(const TVec3& from, const TVec3& to) noexcept
+		[[nodiscard]] static Quaternion rotationFromTo(const TVec3& from, const TVec3& to) noexcept
 		{
 			Quaternion result(nullptr);
-			result.SetRotationFromTo(from, to);
+			result.setRotationFromTo(from, to);
 
 			return result;
 		}
@@ -125,10 +125,10 @@ namespace hbe
 
 		Quaternion(const TVec3& eulerAngles) noexcept : Quaternion(nullptr)
 		{
-			SetEulerAngles(eulerAngles.x, eulerAngles.y, eulerAngles.z);
+			setEulerAngles(eulerAngles.x, eulerAngles.y, eulerAngles.z);
 		}
 
-		Quaternion(float x, float y, float z) noexcept : Quaternion(nullptr) { SetEulerAngles(x, y, z); }
+		Quaternion(float x, float y, float z) noexcept : Quaternion(nullptr) { setEulerAngles(x, y, z); }
 
 		Quaternion(float x, float y, float z, float w) noexcept : vector(x, y, z, w) {}
 
@@ -136,9 +136,9 @@ namespace hbe
 
 		Quaternion(const TMat3x3& mat) noexcept
 		{
-			Assert(mat.IsOrthogonal(), "[Quaternion] Given matrix is not orthogonal!", mat);
-			Assert(IsEqual(mat.Determinant(), 1.0f), "[Quaternion] Matrix Determinant should be 1, but ",
-				   mat.Determinant());
+			Assert(mat.isOrthogonal(), "[Quaternion] Given matrix is not orthogonal!", mat);
+			Assert(isEqual(mat.determinant(), 1.0f), "[Quaternion] Matrix Determinant should be 1, but ",
+				   mat.determinant());
 
 			const float trace = mat.m11 + mat.m22 + mat.m33;
 			if (trace > -1.0f)
@@ -179,12 +179,12 @@ namespace hbe
 				w = (mat.m21 - mat.m12) * reciprocal;
 			}
 
-			Normalize();
+			normalize();
 		}
 
 		explicit Quaternion(std::nullptr_t) noexcept {}
 
-		[[nodiscard]] TMat3x3 ToMat3x3() const noexcept
+		[[nodiscard]] TMat3x3 toMat3x3() const noexcept
 		{
 			TMat3x3 mat(nullptr);
 
@@ -215,7 +215,7 @@ namespace hbe
 			return mat;
 		}
 
-		[[nodiscard]] TMat4x4 ToMat4x4() const noexcept
+		[[nodiscard]] TMat4x4 toMat4x4() const noexcept
 		{
 			TMat4x4 mat(nullptr);
 
@@ -254,26 +254,26 @@ namespace hbe
 			return mat;
 		}
 
-		operator TMat3x3() const noexcept { return ToMat3x3(); }
+		operator TMat3x3() const noexcept { return toMat3x3(); }
 
-		operator TMat4x4() const noexcept { return ToMat4x4(); }
+		operator TMat4x4() const noexcept { return toMat4x4(); }
 
-		[[nodiscard]] TVec3 operator*(const TVec3& rhs) const noexcept { return Multiply(rhs); }
+		[[nodiscard]] TVec3 operator*(const TVec3& rhs) const noexcept { return multiply(rhs); }
 
-		[[nodiscard]] Quaternion operator*(const Quaternion& rhs) const noexcept { return Multiply(rhs); }
+		[[nodiscard]] Quaternion operator*(const Quaternion& rhs) const noexcept { return multiply(rhs); }
 
-		[[nodiscard]] Quaternion operator/(const Quaternion& rhs) const noexcept { return Multiply(rhs.Inverse()); }
+		[[nodiscard]] Quaternion operator/(const Quaternion& rhs) const noexcept { return multiply(rhs.inverse()); }
 
 		Quaternion& operator*=(const Quaternion& rhs) noexcept
 		{
-			*this = Multiply(rhs);
+			*this = multiply(rhs);
 
 			return *this;
 		}
 
 		Quaternion& operator/=(const Quaternion& rhs) noexcept
 		{
-			*this = Multiply(rhs.Inverse());
+			*this = multiply(rhs.inverse());
 
 			return *this;
 		}
@@ -282,49 +282,49 @@ namespace hbe
 
 		[[nodiscard]] bool operator!=(const Quaternion& rhs) const noexcept { return vector != rhs.vector; }
 
-		void Conjugate() noexcept { v.Negate(); }
+		void conjugate() noexcept { v.negate(); }
 
-		[[nodiscard]] Quaternion Conjugated() const noexcept
+		[[nodiscard]] Quaternion conjugated() const noexcept
 		{
 			Quaternion result(*this);
-			result.Conjugate();
+			result.conjugate();
 
 			return result;
 		}
 
 		// Invert itself
 
-		void Invert() noexcept
+		void invert() noexcept
 		{
-			Assert(!vector.IsZero(), "Quaternion::Invert - vector is zero");
-			Assert(IsEqual(vector.SqrLength(), 1.0f), "Quaternion::Invert - not unit length");
+			Assert(!vector.isZero(), "Quaternion::Invert - vector is zero");
+			Assert(isEqual(vector.sqrLength(), 1.0f), "Quaternion::Invert - not unit length");
 
-			Conjugate();
+			conjugate();
 		}
 
 		// Return the inverse of it
 
-		[[nodiscard]] Quaternion Inverse() const noexcept
+		[[nodiscard]] Quaternion inverse() const noexcept
 		{
 			Quaternion result(*this);
-			result.Invert();
+			result.invert();
 
 			return result;
 		}
 
-		void Normalize() noexcept { vector.Normalize(); }
+		void normalize() noexcept { vector.normalize(); }
 
-		[[nodiscard]] Quaternion Normalized() const noexcept
+		[[nodiscard]] Quaternion normalized() const noexcept
 		{
 			Quaternion result(*this);
-			result.vector.Normalize();
+			result.vector.normalize();
 
 			return result;
 		}
 
-		[[nodiscard]] bool IsUnity() const noexcept { return vector.IsUnity(); }
+		[[nodiscard]] bool isUnity() const noexcept { return vector.isUnity(); }
 
-		[[nodiscard]] Quaternion Multiply(const Quaternion& rhs) const noexcept
+		[[nodiscard]] Quaternion multiply(const Quaternion& rhs) const noexcept
 		{
 			Quaternion result(nullptr);
 
@@ -336,7 +336,7 @@ namespace hbe
 			return result;
 		}
 
-		[[nodiscard]] TVec3 Multiply(const TVec3& rhs) const noexcept
+		[[nodiscard]] TVec3 multiply(const TVec3& rhs) const noexcept
 		{
 			Quaternion qv(nullptr);
 			qv.x =  w * rhs.x + y * rhs.z - z * rhs.y;
@@ -352,15 +352,15 @@ namespace hbe
 			return result;
 		}
 
-		void SetEulerAngles(float x, float y, float z) noexcept
+		void setEulerAngles(float x, float y, float z) noexcept
 		{
-			float sx = RotationSin(DegreeToRadian(x) * 0.5f);
-			float sy = RotationSin(DegreeToRadian(y) * 0.5f);
-			float sz = RotationSin(DegreeToRadian(z) * 0.5f);
+			float sx = rotationSin(degreeToRadian(x) * 0.5f);
+			float sy = rotationSin(degreeToRadian(y) * 0.5f);
+			float sz = rotationSin(degreeToRadian(z) * 0.5f);
 
-			float cx = RotationCos(DegreeToRadian(x) * 0.5f);
-			float cy = RotationCos(DegreeToRadian(y) * 0.5f);
-			float cz = RotationCos(DegreeToRadian(z) * 0.5f);
+			float cx = rotationCos(degreeToRadian(x) * 0.5f);
+			float cy = rotationCos(degreeToRadian(y) * 0.5f);
+			float cz = rotationCos(degreeToRadian(z) * 0.5f);
 
 			This::w = cx * cy * cz + sx * sy * sz;
 			This::x = sx * cy * cz - cx * sy * sz;
@@ -368,37 +368,37 @@ namespace hbe
 			This::z = cx * cy * sz - sx * sy * cz;
 		}
 
-		void SetEulerX(float x) noexcept
+		void setEulerX(float x) noexcept
 		{
-			This::w = RotationCos(DegreeToRadian(x) * 0.5f);
-			This::x = RotationSin(DegreeToRadian(x) * 0.5f);
+			This::w = rotationCos(degreeToRadian(x) * 0.5f);
+			This::x = rotationSin(degreeToRadian(x) * 0.5f);
 			This::y = 0.0f;
 			This::z = 0.0f;
 		}
 
-		void SetEulerY(float y) noexcept
+		void setEulerY(float y) noexcept
 		{
-			This::w = RotationCos(DegreeToRadian(y) * 0.5f);
+			This::w = rotationCos(degreeToRadian(y) * 0.5f);
 			This::x = 0.0f;
-			This::y = RotationSin(DegreeToRadian(y) * 0.5f);
+			This::y = rotationSin(degreeToRadian(y) * 0.5f);
 			This::z = 0.0f;
 		}
 
-		void SetEulerZ(float z) noexcept
+		void setEulerZ(float z) noexcept
 		{
-			This::w = RotationCos(DegreeToRadian(z) * 0.5f);
+			This::w = rotationCos(degreeToRadian(z) * 0.5f);
 			This::x = 0.0f;
 			This::y = 0.0f;
-			This::z = RotationSin(DegreeToRadian(z) * 0.5f);
+			This::z = rotationSin(degreeToRadian(z) * 0.5f);
 		}
 
-		void SetEulerXY(float x, float y) noexcept
+		void setEulerXY(float x, float y) noexcept
 		{
-			float sx = RotationSin(DegreeToRadian(x) * 0.5f);
-			float sy = RotationSin(DegreeToRadian(y) * 0.5f);
+			float sx = rotationSin(degreeToRadian(x) * 0.5f);
+			float sy = rotationSin(degreeToRadian(y) * 0.5f);
 
-			float cx = RotationCos(DegreeToRadian(x) * 0.5f);
-			float cy = RotationCos(DegreeToRadian(y) * 0.5f);
+			float cx = rotationCos(degreeToRadian(x) * 0.5f);
+			float cy = rotationCos(degreeToRadian(y) * 0.5f);
 
 			This::w = cx * cy;
 			This::x = sx * cy;
@@ -406,13 +406,13 @@ namespace hbe
 			This::z = -sx * sy;
 		}
 
-		void SetEulerXZ(float x, float z) noexcept
+		void setEulerXZ(float x, float z) noexcept
 		{
-			float sx = RotationSin(DegreeToRadian(x) * 0.5f);
-			float sz = RotationSin(DegreeToRadian(z) * 0.5f);
+			float sx = rotationSin(degreeToRadian(x) * 0.5f);
+			float sz = rotationSin(degreeToRadian(z) * 0.5f);
 
-			float cx = RotationCos(DegreeToRadian(x) * 0.5f);
-			float cz = RotationCos(DegreeToRadian(z) * 0.5f);
+			float cx = rotationCos(degreeToRadian(x) * 0.5f);
+			float cz = rotationCos(degreeToRadian(z) * 0.5f);
 
 			This::w = cx * cz;
 			This::x = sx * cz;
@@ -420,13 +420,13 @@ namespace hbe
 			This::z = cx * sz;
 		}
 
-		void SetEulerYZ(float y, float z) noexcept
+		void setEulerYZ(float y, float z) noexcept
 		{
-			float sy = RotationSin(DegreeToRadian(y) * 0.5f);
-			float sz = RotationSin(DegreeToRadian(z) * 0.5f);
+			float sy = rotationSin(degreeToRadian(y) * 0.5f);
+			float sz = rotationSin(degreeToRadian(z) * 0.5f);
 
-			float cy = RotationCos(DegreeToRadian(y) * 0.5f);
-			float cz = RotationCos(DegreeToRadian(z) * 0.5f);
+			float cy = rotationCos(degreeToRadian(y) * 0.5f);
+			float cz = rotationCos(degreeToRadian(z) * 0.5f);
 
 			This::w = cy * cz;
 			This::x = -sy * sz;
@@ -434,42 +434,42 @@ namespace hbe
 			This::z = cy * sz;
 		}
 
-		[[nodiscard]] TVec3 EulerAngles() const noexcept
+		[[nodiscard]] TVec3 eulerAngles() const noexcept
 		{
 			TVec3 angle(nullptr);
 
 			const float yy = y * y;
-			angle.x = RadianToDegree(RotationAtan2(2.0f * (w * x + y * z), 1.0f - 2.0f * (x * x + yy)));
+			angle.x = radianToDegree(rotationAtan2(2.0f * (w * x + y * z), 1.0f - 2.0f * (x * x + yy)));
 
 			const auto sinp = 2.0f * (w * y - x * z);
-			angle.y = std::abs(sinp) >= 1 ? std::copysign(HalfPi, sinp) : RadianToDegree(RotationAsin(sinp));
-			angle.z = RadianToDegree(RotationAtan2(2.0f * (w * z + x * y), 1.0f - 2.0f * (yy + z * z)));
+			angle.y = std::abs(sinp) >= 1 ? std::copysign(HalfPi, sinp) : radianToDegree(rotationAsin(sinp));
+			angle.z = radianToDegree(rotationAtan2(2.0f * (w * z + x * y), 1.0f - 2.0f * (yy + z * z)));
 
 			return angle;
 		}
 
-		[[nodiscard]] Quaternion LerpTo(Quaternion to, float t) noexcept { return Lerp(*this, to, t); }
+		[[nodiscard]] Quaternion lerpTo(Quaternion to, float t) noexcept { return lerp(*this, to, t); }
 
-		[[nodiscard]] static This Lerp(const This& from, const This& to, float t) noexcept
+		[[nodiscard]] static This lerp(const This& from, const This& to, float t) noexcept
 		{
 			This result = from.vector * (1.0f - t) + to.vector * t;
-			result.Normalize();
+			result.normalize();
 
 			return result;
 		}
 
-		[[nodiscard]] Quaternion SlerpTo(Quaternion to, float t) noexcept { return Slerp(*this, to, t); }
+		[[nodiscard]] Quaternion slerpTo(Quaternion to, float t) noexcept { return slerp(*this, to, t); }
 
-		[[nodiscard]] static This Slerp(const This& from, const This& to, float t) noexcept
+		[[nodiscard]] static This slerp(const This& from, const This& to, float t) noexcept
 		{
-			AssertMessage(from.IsUnity(), "Quaternion slerp should have unit length", ", but ", from.vector.Length());
-			AssertMessage(to.IsUnity(), "Quaternion slerp should have unit length", ", but ", to.vector.Length());
+			AssertMessage(from.isUnity(), "Quaternion slerp should have unit length", ", but ", from.vector.Length());
+			AssertMessage(to.isUnity(), "Quaternion slerp should have unit length", ", but ", to.vector.Length());
 
-			auto angle = std::acos(from.vector.Dot(to.vector));
+			auto angle = std::acos(from.vector.dot(to.vector));
 
 			if (angle < Epsilon)
 			{
-				return Lerp(from, to, t);
+				return lerp(from, to, t);
 			}
 
 			const auto nt = 1.0f - t;
@@ -479,21 +479,21 @@ namespace hbe
 			return (from.vector * sinA + to.vector * sinB) / std::sin(angle);
 		}
 
-		void LookAt(const TVec3& forward, const TVec3& up) noexcept
+		void lookAt(const TVec3& forward, const TVec3& up) noexcept
 		{
 			TMat3x3 lookMat(nullptr);
-			lookMat.LookAt(forward, up);
+			lookMat.lookAt(forward, up);
 			*this = Quaternion(lookMat);
 		}
 
-		void SetRotationAround(const TVec3& unitAxis, float radian) noexcept
+		void setRotationAround(const TVec3& unitAxis, float radian) noexcept
 		{
-			Assert(unitAxis.IsUnity(), "Quaternion Length = ", unitAxis.Length());
-			w = RotationCos(radian * 0.5f);
-			v = unitAxis * RotationSin(radian * 0.5f);
+			Assert(unitAxis.isUnity(), "Quaternion Length = ", unitAxis.Length());
+			w = rotationCos(radian * 0.5f);
+			v = unitAxis * rotationSin(radian * 0.5f);
 		}
 
-		void SetRotationFromTo(const TVec3& from, const TVec3& to) noexcept
+		void setRotationFromTo(const TVec3& from, const TVec3& to) noexcept
 		{
 			if (from == to)
 			{
@@ -502,10 +502,10 @@ namespace hbe
 				return;
 			}
 
-			auto axis = from.Cross(to);
-			axis.Normalize();
+			auto axis = from.cross(to);
+			axis.normalize();
 
-			SetRotationAround(axis, from.AngleTo(to));
+			setRotationAround(axis, from.angleTo(to));
 		}
 	};
 
@@ -519,9 +519,9 @@ namespace hbe
 	template<typename T>
 	std::ostream& operator<<(std::ostream& os, const Quaternion<T>& q) noexcept
 	{
-		Assert(q.IsUnity(), "Quaternion is not a unit. length = ", q.vector.Length());
+		Assert(q.isUnity(), "Quaternion is not a unit. length = ", q.vector.Length());
 
-		Vector3<T> e = q.EulerAngles();
+		Vector3<T> e = q.eulerAngles();
 		os << "Quat (" << e.x << ", " << e.y << ", " << e.z << ")";
 
 		return os;
@@ -540,7 +540,7 @@ namespace hbe
 		QuaternionTest() : TestCollection("Quaternion Test") {}
 
 	protected:
-		void Prepare() noexcept override;
+		void prepare() noexcept override;
 	};
 } // namespace hbe
 #endif //__UNIT_TEST__

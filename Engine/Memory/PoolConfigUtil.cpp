@@ -11,7 +11,7 @@ namespace hbe
 	namespace PoolConfigUtil
 	{
 
-		void Normalize(TPoolConfigs& configs)
+		void normalize(TPoolConfigs& configs)
 		{
 			std::sort(configs.begin(), configs.end());
 
@@ -70,16 +70,16 @@ namespace hbe
 			Assert(configs.size() == numUniqueBlocks);
 		}
 
-		void MergeMax(TPoolConfigs& dst, TPoolConfigs& src)
+		void mergeMax(TPoolConfigs& dst, TPoolConfigs& src)
 		{
-			Normalize(dst);
+			normalize(dst);
 
 			if (src.size() == 0)
 			{
 				return;
 			}
 
-			Normalize(src);
+			normalize(src);
 
 			size_t srcIndex = 0;
 			const size_t srcLen = src.size();

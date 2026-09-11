@@ -20,22 +20,22 @@ namespace hbe
 		TestItem() : priority(0), finished(false) {}
 		TestItem(uint8_t p, bool f = false) : priority(p), finished(f) {}
 
-		bool HasFinished() const { return finished; }
+		bool hasFinished() const { return finished; }
 
 		bool operator<(const TestItem& other) const { return priority < other.priority; }
 	};
 
-	void BoundedPriorityQueueTest::Prepare()
+	void BoundedPriorityQueueTest::prepare()
 	{
-		AddTest("Push and Pop basic", [](TLogOut& ls)
+		addTest("Push and Pop basic", [](TLogOut& ls)
 		{
 			BoundedPriorityQueue<TestItem> queue;
 
-			queue.Push(TestItem(10));
-			queue.Push(TestItem(5));
-			queue.Push(TestItem(15));
+			queue.push(TestItem(10));
+			queue.push(TestItem(5));
+			queue.push(TestItem(15));
 
-			auto item = queue.Pop();
+			auto item = queue.pop();
 			if (!item.has_value())
 			{
 				ls << "Pop returned nullopt";
@@ -57,37 +57,37 @@ namespace hbe
 			ls << "Pass";
 		});
 
-		AddTest("Pop priority order", [](TLogOut& ls)
+		addTest("Pop priority order", [](TLogOut& ls)
 		{
 			BoundedPriorityQueue<TestItem, 256> queue;
 
-			queue.Push(TestItem(200));
-			queue.Push(TestItem(50));
-			queue.Push(TestItem(100));
-			queue.Push(TestItem(10));
+			queue.push(TestItem(200));
+			queue.push(TestItem(50));
+			queue.push(TestItem(100));
+			queue.push(TestItem(10));
 
-			auto item1 = queue.Pop();
+			auto item1 = queue.pop();
 			if (!item1.has_value() || item1->priority != 10)
 			{
 				ls << "First pop should be priority 10";
 				return;
 			}
 
-			auto item2 = queue.Pop();
+			auto item2 = queue.pop();
 			if (!item2.has_value() || item2->priority != 50)
 			{
 				ls << "Second pop should be priority 50";
 				return;
 			}
 
-			auto item3 = queue.Pop();
+			auto item3 = queue.pop();
 			if (!item3.has_value() || item3->priority != 100)
 			{
 				ls << "Third pop should be priority 100";
 				return;
 			}
 
-			auto item4 = queue.Pop();
+			auto item4 = queue.pop();
 			if (!item4.has_value() || item4->priority != 200)
 			{
 				ls << "Fourth pop should be priority 200";
@@ -103,11 +103,11 @@ namespace hbe
 			ls << "Pass";
 		});
 
-		AddTest("Pop from empty returns nullopt", [](TLogOut& ls)
+		addTest("Pop from empty returns nullopt", [](TLogOut& ls)
 		{
 			BoundedPriorityQueue<TestItem> queue;
 
-			auto item = queue.Pop();
+			auto item = queue.pop();
 			if (item.has_value())
 			{
 				ls << "Expected nullopt from empty queue";
@@ -117,22 +117,22 @@ namespace hbe
 			ls << "Pass";
 		});
 
-		AddTest("Top returns highest priority without removing", [](TLogOut& ls)
+		addTest("Top returns highest priority without removing", [](TLogOut& ls)
 		{
 			BoundedPriorityQueue<TestItem> queue;
 
-			queue.Push(TestItem(100));
-			queue.Push(TestItem(50));
-			queue.Push(TestItem(75));
+			queue.push(TestItem(100));
+			queue.push(TestItem(50));
+			queue.push(TestItem(75));
 
-			auto top1 = queue.Top();
+			auto top1 = queue.top();
 			if (!top1.has_value() || top1->priority != 50)
 			{
 				ls << "First top should be 50";
 				return;
 			}
 
-			auto top2 = queue.Top();
+			auto top2 = queue.top();
 			if (!top2.has_value() || top2->priority != 50)
 			{
 				ls << "Second top should also be 50";
@@ -148,7 +148,7 @@ namespace hbe
 			ls << "Pass";
 		});
 
-		AddTest("PushRange", [](TLogOut& ls)
+		addTest("PushRange", [](TLogOut& ls)
 		{
 			BoundedPriorityQueue<TestItem> queue;
 
@@ -157,7 +157,7 @@ namespace hbe
 			items.push_back(TestItem(10));
 			items.push_back(TestItem(20));
 
-			queue.PushRange(items);
+			queue.pushRange(items);
 
 			if (queue.Size() != 3)
 			{
@@ -165,7 +165,7 @@ namespace hbe
 				return;
 			}
 
-			auto item = queue.Pop();
+			auto item = queue.pop();
 			if (!item.has_value() || item->priority != 10)
 			{
 				ls << "First item should be priority 10";
@@ -175,14 +175,14 @@ namespace hbe
 			ls << "Pass";
 		});
 
-		AddTest("Remove finished items", [](TLogOut& ls)
+		addTest("Remove finished items", [](TLogOut& ls)
 		{
 			BoundedPriorityQueue<TestItem> queue;
 
-			queue.Push(TestItem(10, true));   // finished
-			queue.Push(TestItem(20, false));
-			queue.Push(TestItem(15, true));   // finished
-			queue.Push(TestItem(25, false));
+			queue.push(TestItem(10, true));   // finished
+			queue.push(TestItem(20, false));
+			queue.push(TestItem(15, true));   // finished
+			queue.push(TestItem(25, false));
 
 			if (queue.Size() != 4)
 			{
@@ -192,7 +192,7 @@ namespace hbe
 
 			auto removed = queue.Remove([](const TestItem& item)
 			{
-				return item.HasFinished();
+				return item.hasFinished();
 			});
 
 			if (removed != 2)
@@ -207,14 +207,14 @@ namespace hbe
 				return;
 			}
 
-			auto item = queue.Pop();
+			auto item = queue.pop();
 			if (!item.has_value() || item->priority != 20)
 			{
 				ls << "First remaining should be priority 20";
 				return;
 			}
 
-			item = queue.Pop();
+			item = queue.pop();
 			if (!item.has_value() || item->priority != 25)
 			{
 				ls << "Second remaining should be priority 25";
@@ -224,14 +224,14 @@ namespace hbe
 			ls << "Pass";
 		});
 
-		AddTest("Clear", [](TLogOut& ls)
+		addTest("Clear", [](TLogOut& ls)
 		{
 			BoundedPriorityQueue<TestItem> queue;
 
-			queue.Push(TestItem(10));
-			queue.Push(TestItem(20));
+			queue.push(TestItem(10));
+			queue.push(TestItem(20));
 
-			queue.Clear();
+			queue.clear();
 
 			if (!queue.IsEmpty())
 			{
@@ -248,14 +248,14 @@ namespace hbe
 			ls << "Pass";
 		});
 
-		AddTest("Move semantics", [](TLogOut& ls)
+		addTest("Move semantics", [](TLogOut& ls)
 		{
 			BoundedPriorityQueue<TestItem> queue;
 
 			TestItem item(42);
-			queue.Push(std::move(item));
+			queue.push(std::move(item));
 
-			auto popped = queue.Pop();
+			auto popped = queue.pop();
 			if (!popped.has_value() || popped->priority != 42)
 			{
 				ls << "Move semantics failed";
@@ -265,7 +265,7 @@ namespace hbe
 			ls << "Pass";
 		});
 
-		AddTest("Performance comparison with std::priority_queue", [this](TLogOut& ls)
+		addTest("Performance comparison with std::priority_queue", [this](TLogOut& ls)
 		{
 			constexpr int NumItems = 10000;
 			constexpr int NumIterations = 100;
@@ -282,12 +282,12 @@ namespace hbe
 				{
 					for (int i = 0; i < NumItems; ++i)
 					{
-						queue.Push(TestItem(static_cast<uint8_t>(i % 256)));
+						queue.push(TestItem(static_cast<uint8_t>(i % 256)));
 					}
 
 					while (!queue.IsEmpty())
 					{
-						(void)queue.Pop();
+						(void)queue.pop();
 					}
 				}
 			}

@@ -10,11 +10,11 @@
 namespace OS
 {
 
-void MapSyncMode::SetAsync() noexcept { value |= MS_ASYNC; }
+void MapSyncMode::setAsync() noexcept { value |= MS_ASYNC; }
 
-void MapSyncMode::SetSync() noexcept { value |= MS_SYNC; }
+void MapSyncMode::setSync() noexcept { value |= MS_SYNC; }
 
-void MapSyncMode::Invalidate() noexcept { value |= MS_INVALIDATE; }
+void MapSyncMode::invalidate() noexcept { value |= MS_INVALIDATE; }
 
 } // namespace OS
 

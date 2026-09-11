@@ -27,16 +27,16 @@ public:
 	{
 	}
 
-	[[nodiscard]] static constexpr auto GetNumBits() noexcept { return NumBits; }
+	[[nodiscard]] static constexpr auto getNumBits() noexcept { return NumBits; }
 
-	void Unset(unsigned int bitIndex) noexcept
+	void unset(unsigned int bitIndex) noexcept
 	{
 		if (bitIndex >= NumBits)
 		{
 			return;
 		}
 
-		const auto index = GetBitsArrayIndexOf(bitIndex);
+		const auto index = getBitsArrayIndexOf(bitIndex);
 		auto& value = bitBuffer[index];
 		const auto numShift = bitIndex - (index * BitArrayUnitBytes);
 		TBitArrayUnit bit = 1;
@@ -45,14 +45,14 @@ public:
 		value = value | bit;
 	}
 
-	void Set(unsigned int bitIndex) noexcept
+	void set(unsigned int bitIndex) noexcept
 	{
 		if (bitIndex >= NumBits)
 		{
 			return;
 		}
 
-		const auto index = GetBitsArrayIndexOf(bitIndex);
+		const auto index = getBitsArrayIndexOf(bitIndex);
 		auto& value = bitBuffer[index];
 		const auto numShift = bitIndex - (index * BitArrayUnitBytes);
 		TBitArrayUnit mask = 1;
@@ -62,14 +62,14 @@ public:
 		value = value & mask;
 	}
 
-	[[nodiscard]] bool Get(unsigned int bitIndex) const noexcept
+	[[nodiscard]] bool get(unsigned int bitIndex) const noexcept
 	{
 		if (bitIndex >= NumBits)
 		{
 			return false;
 		}
 
-		const auto index = GetBitsArrayIndexOf(bitIndex);
+		const auto index = getBitsArrayIndexOf(bitIndex);
 		auto value = bitBuffer[index];
 		const auto numShift = bitIndex - (index * BitArrayUnitBytes);
 		value = value >> numShift;
@@ -79,7 +79,7 @@ public:
 	}
 
 private:
-	[[nodiscard]] unsigned int GetBitsArrayIndexOf(unsigned int bitIndex) const noexcept
+	[[nodiscard]] unsigned int getBitsArrayIndexOf(unsigned int bitIndex) const noexcept
 	{
 		return bitIndex / BitsArraySize;
 	}
@@ -100,7 +100,7 @@ public:
 	TaskStreamAffinityTest() : TestCollection("TaskStreamAffinityTest") {}
 
 protected:
-	void Prepare() override;
+	void prepare() override;
 };
 
 } // namespace hbe

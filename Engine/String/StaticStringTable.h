@@ -38,7 +38,7 @@ namespace hbe
 			Allocator() = default;
 			~Allocator() = default;
 
-			T* allocate(std::size_t n) { return (T*) Allocate(n * sizeof(T)); }
+			T* allocate(std::size_t n) { return (T*) allocate(n * sizeof(T)); }
 			void deallocate(T*, std::size_t) {}
 
 			template<class U>
@@ -61,29 +61,29 @@ namespace hbe
 		TTable tables[NumTables];
 
 	public:
-		static StaticStringTable& GetInstance();
+		static StaticStringTable& getInstance();
 
 	public:
 		StaticStringTable();
 		~StaticStringTable();
 
-		[[nodiscard]] StaticString GetName() const;
+		[[nodiscard]] StaticString getName() const;
 
 		[[nodiscard]] StaticStringID Register(const char* str);
 		[[nodiscard]] StaticStringID Register(const std::string_view& str);
-		[[nodiscard]] const char* Get(StaticStringID id) const;
+		[[nodiscard]] const char* get(StaticStringID id) const;
 
-		void PrintStringTable() const;
+		void printStringTable() const;
 
 	private:
-		void RegisterPredefinedStrings();
-		TIndex GetTableID(const char* text) const;
-		TIndex GetTableID(const std::string_view& str) const;
+		void registerPredefinedStrings();
+		TIndex getTableID(const char* text) const;
+		TIndex getTableID(const std::string_view& str) const;
 
-		std::string_view Store(const char* text);
-		std::string_view Store(const std::string_view& str);
+		std::string_view store(const char* text);
+		std::string_view store(const std::string_view& str);
 
-		static void* Allocate(size_t n);
+		static void* allocate(size_t n);
 	};
 
 } // namespace hbe

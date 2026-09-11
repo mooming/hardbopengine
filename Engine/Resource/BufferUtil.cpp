@@ -14,7 +14,7 @@ namespace hbe
 	namespace BufferUtil
 	{
 
-		Buffer GenerateDummyBuffer(size_t size) noexcept
+		Buffer generateDummyBuffer(size_t size) noexcept
 		{
 			auto generator = [size](TSize& outSize, TBufferData& outData)
 			{
@@ -31,7 +31,7 @@ namespace hbe
 			using namespace OS;
 			using namespace StringUtil;
 
-			static auto log = Logger::Get(ToFunctionName(__PRETTY_FUNCTION__));
+			static auto log = Logger::get(toFunctionName(__PRETTY_FUNCTION__));
 
 			FileHandle fh;
 
@@ -42,18 +42,18 @@ namespace hbe
 
 				if (!Open(fh, path, openMode))
 				{
-					log.OutError([path](auto& ls) { ls << "Failed to open " << path; });
+					log.outError([path](auto& ls) { ls << "Failed to open " << path; });
 
 					return;
 				}
 
-				auto fileSize = fh.GetFileSize();
+				auto fileSize = fh.getFileSize();
 				if (size != 0)
 				{
 					fileSize = size;
 					if (!Truncate(fh, fileSize))
 					{
-						log.OutWarning([path, size](auto& ls)
+						log.outWarning([path, size](auto& ls)
 						{ ls << "Failed to resize the file " << path << " to the given size " << size; });
 
 						return;
@@ -62,15 +62,15 @@ namespace hbe
 
 				if (fileSize <= 0)
 				{
-					log.OutWarning([path](auto& ls) { ls << "Nothing to map. File size is zero. path = " << path; });
+					log.outWarning([path](auto& ls) { ls << "Nothing to map. File size is zero. path = " << path; });
 
 					return;
 				}
 
-				auto ptr = MapMemory(fh, fileSize, protection, 0);
+				auto ptr = mapMemory(fh, fileSize, protection, 0);
 				if (unlikely(ptr == nullptr))
 				{
-					log.OutError([path](auto& ls) { ls << "Failed to map " << path; });
+					log.outError([path](auto& ls) { ls << "Failed to map " << path; });
 
 					return;
 				}
@@ -80,15 +80,15 @@ namespace hbe
 			};
 
 			Buffer buffer(generator);
-			if (buffer.GetData() == nullptr)
+			if (buffer.getData() == nullptr)
 			{
 				return buffer;
 			}
 
 			auto handleData = fh.data;
-			fh.Invalidate();
+			fh.invalidate();
 
-			buffer.SetReleaser([handleData](TSize size, TBufferData data) mutable
+			buffer.setReleaser([handleData](TSize size, TBufferData data) mutable
 			{
 				if (unlikely(data == nullptr))
 				{
@@ -102,10 +102,10 @@ namespace hbe
 				auto ptr = static_cast<void*>(data);
 
 				MapSyncMode syncMode;
-				syncMode.SetSync();
+				syncMode.setSync();
 
-				MapSync(ptr, size, syncMode);
-				UnmapMemory((void*) data, size);
+				mapSync(ptr, size, syncMode);
+				unmapMemory((void*) data, size);
 
 				OS::Close(std::move(fh));
 			});
@@ -113,51 +113,51 @@ namespace hbe
 			return buffer;
 		}
 
-		Buffer GetFileBuffer(StaticString path)
+		Buffer getFileBuffer(StaticString path)
 		{
 			using namespace OS;
 
 			FileOpenMode openMode;
-			openMode.SetReadWrite();
+			openMode.setReadWrite();
 
 			ProtectionMode protection;
-			protection.SetReadable();
-			protection.SetWritable();
+			protection.setReadable();
+			protection.setWritable();
 
 			return GenerateFileBuffer(path, openMode, protection);
 		}
 
-		Buffer GetReadOnlyFileBuffer(StaticString path)
+		Buffer getReadOnlyFileBuffer(StaticString path)
 		{
 			using namespace OS;
 
 			FileOpenMode openMode;
-			openMode.SetReadWrite();
+			openMode.setReadWrite();
 
 			ProtectionMode protection;
-			protection.SetReadable();
+			protection.setReadable();
 
 			return GenerateFileBuffer(path, openMode, protection);
 		}
 
-		Buffer GetWriteOnlyFileBuffer(StaticString path, size_t size)
+		Buffer getWriteOnlyFileBuffer(StaticString path, size_t size)
 		{
 			using namespace OS;
 
 			FileOpenMode openMode;
-			openMode.SetReadWrite();
+			openMode.setReadWrite();
 
-			if (Exist(path))
+			if (exist(path))
 			{
-				openMode.SetTruncate();
+				openMode.setTruncate();
 			}
 			else
 			{
-				openMode.SetCreate();
+				openMode.setCreate();
 			}
 
 			ProtectionMode protection;
-			protection.SetWritable();
+			protection.setWritable();
 
 			return GenerateFileBuffer(path, openMode, protection, size);
 		}

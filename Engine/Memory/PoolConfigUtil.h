@@ -12,8 +12,8 @@ namespace hbe
 
 		using TPoolConfigs = std::vector<PoolConfig>;
 
-		void Normalize(TPoolConfigs& configs);
-		void MergeMax(TPoolConfigs& dst, TPoolConfigs& src);
+		void normalize(TPoolConfigs& configs);
+		void mergeMax(TPoolConfigs& dst, TPoolConfigs& src);
 
 	} // namespace PoolConfigUtil
 

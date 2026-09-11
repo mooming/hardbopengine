@@ -7,11 +7,11 @@
 namespace hbe
 {
 
-void OSDebugTest::Prepare()
+void OSDebugTest::prepare()
 {
-	AddTest("Print CallStack", [this](auto& ls)
+	addTest("Print CallStack", [this](auto& ls)
 	{
-		auto callstack = OS::GetBackTrace();
+		auto callstack = OS::getBackTrace();
 		ls << callstack.c_str() << lf;
 	});
 }

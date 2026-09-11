@@ -17,21 +17,21 @@ protected:
 	String name;
 
 public:
-	virtual void Init() = 0;
-	virtual void Update(const float deltaTime) = 0;
-	virtual void Release() = 0;
+	virtual void init() = 0;
+	virtual void update(const float deltaTime) = 0;
+	virtual void release() = 0;
 
-	virtual void OnEnable() = 0;
-	virtual void OnDisable() = 0;
+	virtual void onEnable() = 0;
+	virtual void onDisable() = 0;
 
 public:
 	Component(const char* name) : state(State::NONE), name(name) {}
 	virtual ~Component() = default;
-	[[nodiscard]] State GetState() const noexcept { return state; }
-	void SetState(State inState) noexcept { Component::state = inState; }
-	[[nodiscard]] const String& GetName() const noexcept { return name; }
-	[[nodiscard]] bool IsEnabled() const noexcept { return state == State::ALIVE; }
-	void SetEnable(bool isEnabled) noexcept { SetState(isEnabled ? State::ALIVE : State::SLEEP); }
-	void Destroy() noexcept { SetState(State::DEAD); }
+	[[nodiscard]] State getState() const noexcept { return state; }
+	void setState(State inState) noexcept { Component::state = inState; }
+	[[nodiscard]] const String& getName() const noexcept { return name; }
+	[[nodiscard]] bool isEnabled() const noexcept { return state == State::ALIVE; }
+	void setEnable(bool isEnabled) noexcept { setState(isEnabled ? State::ALIVE : State::SLEEP); }
+	void destroy() noexcept { setState(State::DEAD); }
 };
 } // namespace hbe

@@ -9,7 +9,7 @@ namespace OS
 {
 
 /// @brief Get a stack backtrace for debugging purposes.
-hbe::StaticString GetBackTrace(uint16_t startIndex = 0, uint16_t maxDepth = 512);
+hbe::StaticString getBackTrace(uint16_t startIndex = 0, uint16_t maxDepth = 512);
 
 } // namespace OS
 
@@ -26,7 +26,7 @@ public:
 	OSDebugTest() : TestCollection("OSDebugTest") {}
 
 protected:
-	void Prepare() override;
+	void prepare() override;
 };
 
 } // namespace hbe

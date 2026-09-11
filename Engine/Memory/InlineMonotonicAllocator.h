@@ -29,13 +29,13 @@ namespace hbe
 		explicit InlineMonotonicAllocator(const char* name) :
 			id(InvalidAllocatorID), parentID(InvalidAllocatorID), cursor(0), buffer{}
 		{
-			Assert(OS::CheckAligned(buffer));
+			Assert(OS::checkAligned(buffer));
 			buffer[0] = 0;
 
 			auto allocFunc = [](void* allocatorPtr, size_t n) -> void*
 			{
 				auto allocator = static_cast<InlineMonotonicAllocator*>(allocatorPtr);
-				return allocator->Allocate(n);
+				return allocator->allocate(n);
 			};
 
 			auto deallocFunc = [](void* allocatorPtr, void* ptr, size_t size)
@@ -44,34 +44,34 @@ namespace hbe
 				allocator->Deallocate(ptr, size);
 			};
 
-			parentID = hbe::MemoryManager::GetCurrentAllocatorID();
-			auto& mmgr = MemoryManager::GetInstance();
-			id = mmgr.RegisterAllocator(this, name, true, Capacity, allocFunc, deallocFunc);
+			parentID = hbe::MemoryManager::getCurrentAllocatorID();
+			auto& mmgr = MemoryManager::getInstance();
+			id = mmgr.registerAllocator(this, name, true, Capacity, allocFunc, deallocFunc);
 		}
 
 		~InlineMonotonicAllocator()
 		{
-			auto& mmgr = MemoryManager::GetInstance();
+			auto& mmgr = MemoryManager::getInstance();
 
 #ifdef __MEMOR_STATISTICS__
-			mmgr.ReportDeallocation(id, buffer, cursor, cursor);
+			mmgr.reportDeallocation(id, buffer, cursor, cursor);
 #endif // __MEMOR_STATISTICS__
 
-			mmgr.DeregisterAllocator(GetID());
+			mmgr.deregisterAllocator(getID());
 		}
 
-		[[nodiscard]] TPointer Allocate(size_t requested)
+		[[nodiscard]] TPointer allocate(size_t requested)
 		{
-			auto size = OS::GetAligned(requested, Config::DefaultAlign);
+			auto size = OS::getAligned(requested, Config::DefaultAlign);
 
-			const auto freeSize = GetAvailable();
+			const auto freeSize = getAvailable();
 			if (unlikely(size > freeSize))
 			{
-				auto& mmgr = MemoryManager::GetInstance();
-				mmgr.LogWarning([size, freeSize](auto& ls)
+				auto& mmgr = MemoryManager::getInstance();
+				mmgr.logWarning([size, freeSize](auto& ls)
 				{ ls << "The requested size " << size << " is exceeding its limit, " << freeSize << '.'; });
 
-				auto ptr = mmgr.Allocate(parentID, requested);
+				auto ptr = mmgr.allocate(parentID, requested);
 
 				return ptr;
 			}
@@ -81,17 +81,17 @@ namespace hbe
 
 #ifdef __MEMOR_STATISTICS__
 			{
-				auto& mmgr = MemoryManager::GetInstance();
-				mmgr.ReportAllocation(id, ptr, size, size);
+				auto& mmgr = MemoryManager::getInstance();
+				mmgr.reportAllocation(id, ptr, size, size);
 			}
 #endif // __MEMOR_STATISTICS__
 
 #if MEMORY_LOGGING_ENABLED
 			{
-				auto& mmgr = MemoryManager::GetInstance();
-				mmgr.Log(ELogLevel::Info, [this, &mmgr, ptr, size](auto& ls)
+				auto& mmgr = MemoryManager::getInstance();
+				mmgr.log(ELogLevel::Info, [this, &mmgr, ptr, size](auto& ls)
 				{
-					ls << mmgr.GetAllocatorName(id) << '[' << static_cast<int>(GetID()) << "]: Allocate "
+					ls << mmgr.getAllocatorName(id) << '[' << static_cast<int>(getID()) << "]: Allocate "
 					   << static_cast<void*>(ptr) << ", size = " << size;
 				});
 			}
@@ -102,44 +102,44 @@ namespace hbe
 
 		void Deallocate(TPointer ptr, TSize requested) noexcept
 		{
-			auto& mmgr = MemoryManager::GetInstance();
+			auto& mmgr = MemoryManager::getInstance();
 
-			if (unlikely(!IsMine(ptr)))
+			if (unlikely(!isMine(ptr)))
 			{
 				mmgr.Deallocate(parentID, ptr, requested);
 				return;
 			}
 
 #if MEMORY_LOGGING_ENABLED
-			mmgr.Log(ELogLevel::Info, [this, &mmgr, ptr, requested](auto& ls)
+			mmgr.log(ELogLevel::Info, [this, &mmgr, ptr, requested](auto& ls)
 			{
-				ls << mmgr.GetAllocatorName(id) << '[' << static_cast<int>(GetID())
+				ls << mmgr.getAllocatorName(id) << '[' << static_cast<int>(getID())
 				   << "] Deallocate call shall be ignored. ptr = " << static_cast<void*>(ptr)
 				   << ", size = " << requested;
 			});
 #endif // MEMORY_LOGGING_ENABLED
 
 #if PROFILE_ENABLED
-			mmgr.ReportDeallocation(id, ptr, requested, 0);
+			mmgr.reportDeallocation(id, ptr, requested, 0);
 #endif // PROFILE_ENABLED
 		}
 
-		[[nodiscard]] size_t GetAvailable() const
+		[[nodiscard]] size_t getAvailable() const
 		{
 			Assert(Capacity >= cursor);
 			return Capacity - cursor;
 		}
 
-		[[nodiscard]] size_t GetUsage() const
+		[[nodiscard]] size_t getUsage() const
 		{
 			Assert(cursor < Capacity);
 			return cursor;
 		}
 
-		[[nodiscard]] auto GetID() const { return id; }
+		[[nodiscard]] auto getID() const { return id; }
 
 	private:
-		[[nodiscard]] bool IsMine(TPointer ptr) const
+		[[nodiscard]] bool isMine(TPointer ptr) const
 		{
 			auto bytePtr = reinterpret_cast<const uint8_t*>(ptr);
 			if (bytePtr < buffer)
@@ -169,7 +169,7 @@ namespace hbe
 		InlineMonotonicAllocatorTest() : TestCollection("InlineMonotonicAllocatorTest") {}
 
 	protected:
-		void Prepare() noexcept override;
+		void prepare() noexcept override;
 	};
 
 } // namespace hbe

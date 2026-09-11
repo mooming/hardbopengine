@@ -11,7 +11,7 @@
 #include <random>
 #include "Core/Constants.h"
 
-void hbe::ImportanceResamplingTest::Prepare() noexcept
+void hbe::ImportanceResamplingTest::prepare() noexcept
 {
 	constexpr uint32_t numSrcSamples = 200;
 	constexpr uint32_t numResamplingIterations = 50;
@@ -56,8 +56,8 @@ void hbe::ImportanceResamplingTest::Prepare() noexcept
 			return;
 		}
 
-		auto& weights = integrator.GetWeights();
-		auto& samples = integrator.GetSamples();
+		auto& weights = integrator.getWeights();
+		auto& samples = integrator.getSamples();
 
 		if (weights.size() != samples.size())
 		{
@@ -69,7 +69,7 @@ void hbe::ImportanceResamplingTest::Prepare() noexcept
 		double results[numRepeat];
 		const uint32_t numSamples = samples.size();
 
-		auto& normalizedWeights = integrator.GetNormalizedWeights();
+		auto& normalizedWeights = integrator.getNormalizedWeights();
 		const double halfStep = 0.5 / numSamples;
 
 		std::discrete_distribution<uint32_t> discreteDist(normalizedWeights.begin(), normalizedWeights.end());
@@ -103,7 +103,7 @@ void hbe::ImportanceResamplingTest::Prepare() noexcept
 		   << ", Error = " << (abs(average - Pi) * 100 / Pi) << lf;
 	};
 
-	AddTest("Calculate Pi", calculatePi);
+	addTest("Calculate Pi", calculatePi);
 
 	auto calculatePi_Stratified = [&](auto& ls) -> void
 	{
@@ -117,8 +117,8 @@ void hbe::ImportanceResamplingTest::Prepare() noexcept
 
 		auto randomGen = [&]() -> double
 		{
-			auto x = stratifiedSampler.Sample(randomGenInRange);
-			stratifiedSampler.ChangeSubGroup();
+			auto x = stratifiedSampler.sample(randomGenInRange);
+			stratifiedSampler.changeSubGroup();
 			return x;
 		};
 
@@ -132,8 +132,8 @@ void hbe::ImportanceResamplingTest::Prepare() noexcept
 			return;
 		}
 
-		auto& weights = integrator.GetWeights();
-		auto& samples = integrator.GetSamples();
+		auto& weights = integrator.getWeights();
+		auto& samples = integrator.getSamples();
 
 		if (weights.size() != samples.size())
 		{
@@ -145,7 +145,7 @@ void hbe::ImportanceResamplingTest::Prepare() noexcept
 		double results[numRepeat];
 		const uint32_t numSamples = samples.size();
 
-		auto& normalizedWeights = integrator.GetNormalizedWeights();
+		auto& normalizedWeights = integrator.getNormalizedWeights();
 		const double halfStep = 0.5 / numSamples;
 
 		std::discrete_distribution<uint32_t> discreteDist(normalizedWeights.begin(), normalizedWeights.end());
@@ -179,7 +179,7 @@ void hbe::ImportanceResamplingTest::Prepare() noexcept
 		   << ", Error = " << (abs(average - Pi) * 100 / Pi) << lf;
 	};
 
-	AddTest("Calculate Pi(Stratified)", calculatePi_Stratified);
+	addTest("Calculate Pi(Stratified)", calculatePi_Stratified);
 
 	auto sampleGrowthTest = [&](auto& ls) -> void
 	{
@@ -193,8 +193,8 @@ void hbe::ImportanceResamplingTest::Prepare() noexcept
 
 		auto randomGen = [&]() -> double
 		{
-			auto x = stratifiedSampler.Sample(randomGenInRange);
-			stratifiedSampler.ChangeSubGroup();
+			auto x = stratifiedSampler.sample(randomGenInRange);
+			stratifiedSampler.changeSubGroup();
 			return x;
 		};
 
@@ -209,8 +209,8 @@ void hbe::ImportanceResamplingTest::Prepare() noexcept
 			return;
 		}
 
-		auto& weights = integrator.GetWeights();
-		auto& samples = integrator.GetSamples();
+		auto& weights = integrator.getWeights();
+		auto& samples = integrator.getSamples();
 		uint32_t numSamples = samples.size();
 
 		if (weights.size() != samples.size())
@@ -225,7 +225,7 @@ void hbe::ImportanceResamplingTest::Prepare() noexcept
 			return;
 		}
 
-		auto& normalizedWeights = integrator.GetNormalizedWeights();
+		auto& normalizedWeights = integrator.getNormalizedWeights();
 		const double halfStep = 0.5 / numSamples;
 
 		std::discrete_distribution<uint32_t> discreteDist(normalizedWeights.begin(), normalizedWeights.end());
@@ -275,7 +275,7 @@ void hbe::ImportanceResamplingTest::Prepare() noexcept
 		}
 	};
 
-	AddTest("Calculate Pi (Growth)", sampleGrowthTest);
+	addTest("Calculate Pi (Growth)", sampleGrowthTest);
 
 	auto sampleRebuildGrowthTest = [&](auto& ls) -> void
 	{
@@ -289,8 +289,8 @@ void hbe::ImportanceResamplingTest::Prepare() noexcept
 
 		auto randomGen = [&]() -> double
 		{
-			auto x = stratifiedSampler.Sample(randomGenInRange);
-			stratifiedSampler.ChangeSubGroup();
+			auto x = stratifiedSampler.sample(randomGenInRange);
+			stratifiedSampler.changeSubGroup();
 			return x;
 		};
 
@@ -305,8 +305,8 @@ void hbe::ImportanceResamplingTest::Prepare() noexcept
 			return;
 		}
 
-		auto& weights = integrator.GetWeights();
-		auto& samples = integrator.GetSamples();
+		auto& weights = integrator.getWeights();
+		auto& samples = integrator.getSamples();
 		uint32_t numSamples = samples.size();
 
 		if (weights.size() != samples.size())
@@ -321,7 +321,7 @@ void hbe::ImportanceResamplingTest::Prepare() noexcept
 			return;
 		}
 
-		auto& normalizedWeights = integrator.GetNormalizedWeights();
+		auto& normalizedWeights = integrator.getNormalizedWeights();
 		const double halfStep = 0.5 / numSamples;
 
 		std::discrete_distribution<uint32_t> discreteDist(normalizedWeights.begin(), normalizedWeights.end());
@@ -348,7 +348,7 @@ void hbe::ImportanceResamplingTest::Prepare() noexcept
 				// per-iteration result log omitted
 			}
 
-			integrator.ClearResampledData();
+			integrator.clearResampledData();
 
 			if (!integrator.Resample(func, pdf, randomGen, norm, numSrcSamples * (i + 1)))
 			{
@@ -373,6 +373,6 @@ void hbe::ImportanceResamplingTest::Prepare() noexcept
 		}
 	};
 
-	AddTest("Calculate Pi (Rebuild Growth)", sampleRebuildGrowthTest);
+	addTest("Calculate Pi (Rebuild Growth)", sampleRebuildGrowthTest);
 }
 #endif // __UNIT_TEST__

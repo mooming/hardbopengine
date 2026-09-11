@@ -18,7 +18,7 @@ namespace hbe
 template<typename T>
 using TDebugVariable = const T;
 
-void FlushLogs();
+void flushLogs();
 } // namespace hbe
 
 #ifdef __DEBUG__
@@ -37,8 +37,8 @@ inline void Assert(bool shouldBeTrue) noexcept
 		return;
 	}
 
-	FlushLogs();
-	PrintArgs("[Assert] Please check it.");
+	flushLogs();
+	printArgs("[Assert] Please check it.");
 
 	debugBreak();
 	std::abort();
@@ -52,8 +52,8 @@ void Assert(bool shouldBeTrue, Types&&... args) noexcept
 		return;
 	}
 
-	FlushLogs();
-	PrintArgs("[Assert] ", std::forward<Types>(args)...);
+	flushLogs();
+	printArgs("[Assert] ", std::forward<Types>(args)...);
 
 	debugBreak();
 	std::abort();
@@ -77,29 +77,29 @@ void Assert(bool, Types&&...) noexcept
 
 namespace hbe
 {
-inline void FatalAssert(bool shouldBeTrue)
+inline void fatalAssert(bool shouldBeTrue)
 {
 	if (likely(shouldBeTrue))
 	{
 		return;
 	}
 
-	FlushLogs();
-	PrintArgs("[FatalAssert] Please check it.");
+	flushLogs();
+	printArgs("[FatalAssert] Please check it.");
 	debugBreak();
 	std::abort();
 }
 
 template<typename... Types>
-void FatalAssert(bool shouldBeTrue, Types&&... args)
+void fatalAssert(bool shouldBeTrue, Types&&... args)
 {
 	if (likely(shouldBeTrue))
 	{
 		return;
 	}
 
-	FlushLogs();
-	PrintArgs("[FatalAssert] ", std::forward<Types>(args)...);
+	flushLogs();
+	printArgs("[FatalAssert] ", std::forward<Types>(args)...);
 	debugBreak();
 	std::abort();
 }

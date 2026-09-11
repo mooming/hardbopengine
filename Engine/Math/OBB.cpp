@@ -13,7 +13,7 @@ namespace hbe
 namespace hbe
 {
 
-	void OBBTest::Prepare() noexcept {}
+	void OBBTest::prepare() noexcept {}
 
 } // namespace hbe
 

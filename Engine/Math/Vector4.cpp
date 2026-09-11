@@ -12,9 +12,9 @@ namespace hbe
 #include "Core/ScopedTime.h"
 #include "HSTL/HVector.h"
 
-void hbe::Vector4Test::Prepare() noexcept
+void hbe::Vector4Test::prepare() noexcept
 {
-	AddTest("Vector4 Constants", [this](auto& ls)
+	addTest("Vector4 Constants", [this](auto& ls)
 	{
 		ls << "Forward = " << TFloat4::Forward << lf;
 		ls << "Right = " << TFloat4::Right << lf;
@@ -30,7 +30,7 @@ void hbe::Vector4Test::Prepare() noexcept
 		}
 	});
 
-	AddTest("Vector4 Constructors & Operator", [this](auto& ls)
+	addTest("Vector4 Constructors & Operator", [this](auto& ls)
 	{
 		hbe::HVector<TFloat4> vertices;
 
@@ -55,12 +55,12 @@ void hbe::Vector4Test::Prepare() noexcept
 
 			for (auto& vertex : vertices)
 			{
-				dotResult += tmp.Dot(vertex);
+				dotResult += tmp.dot(vertex);
 				tmp = vertex;
 			}
 		}
 
-		ls << "Float4 Dot Time = " << time::ToFloat(heTime) << ", Result = " << dotResult << lf;
+		ls << "Float4 Dot Time = " << time::toFloat(heTime) << ", Result = " << dotResult << lf;
 	});
 }
 

@@ -12,34 +12,34 @@
 
 namespace hbe
 {
-	StaticString MultiPoolConfigCache::GetClassName()
+	StaticString MultiPoolConfigCache::getClassName()
 	{
 		using namespace StringUtil;
-		static StaticString className(ToCompactClassName(__PRETTY_FUNCTION__));
+		static StaticString className(toCompactClassName(__PRETTY_FUNCTION__));
 
 		return className;
 	}
 
-	size_t MultiPoolConfigCache::Serialize(Buffer& outBuffer)
+	size_t MultiPoolConfigCache::serialize(Buffer& outBuffer)
 	{
 		using namespace StringUtil;
-		auto log = Logger::Get(ToCompactMethodName(__PRETTY_FUNCTION__));
+		auto log = Logger::get(toCompactMethodName(__PRETTY_FUNCTION__));
 
 		BufferOutputStream bos(outBuffer);
 
-		StaticString className = GetClassName();
+		StaticString className = getClassName();
 		const char* classNameStr = className.c_str();
 		bos << classNameStr;
-		bos << GetVersion();
+		bos << getVersion();
 
-		Normalize();
+		normalize();
 
 		size_t cacheSize = data.size();
 		bos << cacheSize;
 
-		if (unlikely(bos.HasError()))
+		if (unlikely(bos.hasError()))
 		{
-			log.OutError([](auto& ls) { ls << "An error occured while streaming out header data."; });
+			log.outError([](auto& ls) { ls << "An error occured while streaming out header data."; });
 
 			return 0;
 		}
@@ -60,9 +60,9 @@ namespace hbe
 				bos << config.numberOfBlocks;
 			}
 
-			if (unlikely(bos.HasError()))
+			if (unlikely(bos.hasError()))
 			{
-				log.OutError([](auto& ls)
+				log.outError([](auto& ls)
 				{
 					ls << "An error occured while streaming out pool config "
 						  "data";
@@ -72,24 +72,24 @@ namespace hbe
 			}
 		}
 
-		return bos.GetCursor();
+		return bos.getCursor();
 	}
 
-	bool MultiPoolConfigCache::Deserialize(const Buffer& buffer)
+	bool MultiPoolConfigCache::deserialize(const Buffer& buffer)
 	{
 		using namespace StringUtil;
-		static StaticString logName(ToCompactMethodName(__PRETTY_FUNCTION__));
-		auto log = Logger::Get(logName);
+		static StaticString logName(toCompactMethodName(__PRETTY_FUNCTION__));
+		auto log = Logger::get(logName);
 
 		BufferInputStream bis(buffer);
 
 		StaticString className;
 		bis >> className;
 
-		if (unlikely(className != GetClassName()))
+		if (unlikely(className != getClassName()))
 		{
-			log.OutError([className](auto& ls)
-			{ ls << "Invalid class name " << className << ", " << GetClassName() << " is expected."; });
+			log.outError([className](auto& ls)
+			{ ls << "Invalid class name " << className << ", " << getClassName() << " is expected."; });
 
 			return false;
 		}
@@ -99,7 +99,7 @@ namespace hbe
 
 		if (unlikely(version != inVersion))
 		{
-			log.OutError([inVersion](auto& ls)
+			log.outError([inVersion](auto& ls)
 			{ ls << "Version mismatched! Read version = " << inVersion << ", " << version << " is expected."; });
 
 			return false;
@@ -108,9 +108,9 @@ namespace hbe
 		size_t size = 0;
 		bis >> size;
 
-		if (unlikely(bis.HasError()))
+		if (unlikely(bis.hasError()))
 		{
-			log.OutError("Input stream failure.");
+			log.outError("Input stream failure.");
 			return false;
 		}
 
@@ -138,13 +138,13 @@ namespace hbe
 				configs.emplace_back(blockSize, numberOfBlocks);
 			}
 
-			if (unlikely(bis.HasError()))
+			if (unlikely(bis.hasError()))
 			{
-				log.OutError("Input stream failure.");
+				log.outError("Input stream failure.");
 				return false;
 			}
 
-			data.emplace_back(key.GetID(), std::move(configs));
+			data.emplace_back(key.getID(), std::move(configs));
 		}
 
 #ifdef __DEBUG__
@@ -159,7 +159,7 @@ namespace hbe
 
 				if (unlikely(!(a < b)))
 				{
-					log.OutFatalError([&item, &a, &b](auto& ls)
+					log.outFatalError([&item, &a, &b](auto& ls)
 					{
 						StaticString name(item.uniqueName);
 						ls << name << " : configs should be well-orddered. " << a.blockSize << " < " << b.blockSize
@@ -173,13 +173,13 @@ namespace hbe
 		return true;
 	}
 
-	void MultiPoolConfigCache::Normalize()
+	void MultiPoolConfigCache::normalize()
 	{
 		std::sort(data.begin(), data.end());
 
 		for (auto& item : data)
 		{
-			PoolConfigUtil::Normalize(item.configs);
+			PoolConfigUtil::normalize(item.configs);
 		}
 
 		auto CountUniqueAllocators = [this]() -> size_t
@@ -231,7 +231,7 @@ namespace hbe
 				tempConfigs.clear();
 			}
 
-			PoolConfigUtil::MergeMax(tempConfigs, item.configs);
+			PoolConfigUtil::mergeMax(tempConfigs, item.configs);
 		}
 
 		if (!tempConfigs.empty())

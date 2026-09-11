@@ -67,7 +67,7 @@ namespace hbe
 		MonteCarloIntegrationTest() : TestCollection("Monte Carlo Integration Test") {}
 
 	protected:
-		void Prepare() noexcept override;
+		void prepare() noexcept override;
 	};
 } // namespace hbe
 #endif //__UNIT_TEST__

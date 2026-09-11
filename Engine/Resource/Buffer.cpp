@@ -35,8 +35,8 @@ namespace hbe
 
 		if (unlikely(releaser == nullptr))
 		{
-			auto log = Logger::Get(GetClassName());
-			log.OutWarning([this, func = __func__](auto& ls)
+			auto log = Logger::get(getClassName());
+			log.outWarning([this, func = __func__](auto& ls)
 			{ ls << '[' << func << "] Releaser func is null, in spite of data is " << data; });
 
 #ifdef __DEBUG__
@@ -55,14 +55,14 @@ namespace hbe
 #endif // __DEBUG__
 	}
 
-	StaticString Buffer::GetClassName() const noexcept
+	StaticString Buffer::getClassName() const noexcept
 	{
 		using namespace StringUtil;
-		static auto className = ToCompactClassName(__PRETTY_FUNCTION__);
+		static auto className = toCompactClassName(__PRETTY_FUNCTION__);
 		return className;
 	}
 
-	void Buffer::SetReleaser(TReleaseBuffer&& releaseFunc)
+	void Buffer::setReleaser(TReleaseBuffer&& releaseFunc)
 	{
 		releaser = std::move(releaseFunc);
 		releaseFunc = nullptr;
@@ -78,37 +78,37 @@ namespace hbe
 
 namespace hbe
 {
-	BufferTest::BufferTest() : TestCollection(StringUtil::ToCompactClassName(__PRETTY_FUNCTION__)) {}
+	BufferTest::BufferTest() : TestCollection(StringUtil::toCompactClassName(__PRETTY_FUNCTION__)) {}
 
-	void BufferTest::Prepare()
+	void BufferTest::prepare()
 	{
-		AddTest("Default Construction", [this](auto& ls)
+		addTest("Default Construction", [this](auto& ls)
 		{
 			Buffer buffer;
 
-			if (buffer.GetSize() != 0)
+			if (buffer.getSize() != 0)
 			{
-				ls << "Invalid buffer size = " << buffer.GetSize() << lferr;
+				ls << "Invalid buffer size = " << buffer.getSize() << lferr;
 			}
 
-			if (buffer.GetData() != nullptr)
+			if (buffer.getData() != nullptr)
 			{
-				ls << "Invalid buffer data = " << (void*) buffer.GetData() << lferr;
+				ls << "Invalid buffer data = " << (void*) buffer.getData() << lferr;
 			}
 		});
 
-		AddTest("Generation & Release", [this](auto& ls)
+		addTest("Generation & Release", [this](auto& ls)
 		{
 			constexpr size_t TestSize = 10;
 			constexpr size_t BufferSize = TestSize * sizeof(int);
 
-			auto& mmgr = MemoryManager::GetInstance();
+			auto& mmgr = MemoryManager::getInstance();
 
 			auto gen = [&mmgr](auto& size, auto& data)
 			{
 				size = BufferSize;
 
-				auto ptr = mmgr.NewArray<int>(TestSize, -1);
+				auto ptr = mmgr.newArray<int>(TestSize, -1);
 				data = reinterpret_cast<Buffer::TBufferData>(ptr);
 			};
 
@@ -126,33 +126,33 @@ namespace hbe
 					return;
 				}
 
-				mmgr.DeleteArray<int>((int*) (data), TestSize);
+				mmgr.deleteArray<int>((int*) (data), TestSize);
 			};
 
 			{
 				Buffer buffer(gen, rel);
 
-				if (buffer.GetSize() != BufferSize)
+				if (buffer.getSize() != BufferSize)
 				{
-					ls << "Invalid buffer size = " << buffer.GetSize() << lferr;
+					ls << "Invalid buffer size = " << buffer.getSize() << lferr;
 				}
 
-				if (buffer.GetData() == nullptr)
+				if (buffer.getData() == nullptr)
 				{
-					ls << "Invalid buffer data = " << (void*) buffer.GetData() << lferr;
+					ls << "Invalid buffer data = " << (void*) buffer.getData() << lferr;
 				}
 			}
 		});
 
-		AddTest("Memory Buffer", [this](auto& ls)
+		addTest("Memory Buffer", [this](auto& ls)
 		{
 			using namespace BufferUtil;
 
 			constexpr int TestSize = 16;
 			constexpr int InitialValue = 3;
 
-			auto buffer = GetMemoryBuffer<int>(TestSize, InitialValue);
-			int* ptr = reinterpret_cast<int*>(buffer.GetData());
+			auto buffer = getMemoryBuffer<int>(TestSize, InitialValue);
+			int* ptr = reinterpret_cast<int*>(buffer.getData());
 			if (ptr == nullptr)
 			{
 				ls << "Failed to create a memory buffer" << lferr;
@@ -169,7 +169,7 @@ namespace hbe
 			}
 		});
 
-		AddTest("File Buffer", [this](auto& ls)
+		addTest("File Buffer", [this](auto& ls)
 		{
 			using namespace BufferUtil;
 
@@ -185,9 +185,9 @@ namespace hbe
 				FileHandle fh;
 				FileOpenMode openMode;
 
-				openMode.SetWriteOnly();
-				openMode.SetTruncate();
-				openMode.SetCreate();
+				openMode.setWriteOnly();
+				openMode.setTruncate();
+				openMode.setCreate();
 
 				if (!Open(fh, path, openMode))
 				{
@@ -217,9 +217,9 @@ namespace hbe
 			{
 				ls << lf << "Map read/write test." << lf;
 
-				auto buffer = GetFileBuffer(path);
+				auto buffer = getFileBuffer(path);
 
-				char* ptr = reinterpret_cast<char*>(buffer.GetData());
+				char* ptr = reinterpret_cast<char*>(buffer.getData());
 				if (ptr == nullptr)
 				{
 					ls << "Failed to create a memory buffer" << lferr;
@@ -239,8 +239,8 @@ namespace hbe
 				}
 
 				//            OS::MapSyncMode syncMode;
-				//            syncMode.SetSync();
-				//            OS::MapSync(ptr, buffer.GetSize(), syncMode);
+				//            syncMode.setSync();
+				//            OS::mapSync(ptr, buffer.getSize(), syncMode);
 			}
 
 			{
@@ -248,7 +248,7 @@ namespace hbe
 				using namespace OS;
 				FileHandle fh;
 				FileOpenMode openMode;
-				openMode.SetReadOnly();
+				openMode.setReadOnly();
 
 				ls << "Open: " << path << lf;
 
@@ -287,7 +287,7 @@ namespace hbe
 				}
 			}
 
-			if (!OS::Exist(path))
+			if (!OS::exist(path))
 			{
 				ls << "File doesn't exist at path = " << path << lferr;
 			}

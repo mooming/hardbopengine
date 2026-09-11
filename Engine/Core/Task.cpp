@@ -26,14 +26,14 @@ Task::Task(StaticString taskName, TRunnable func, void* userData) noexcept
 	, userData(userData)
 {}
 
-void Task::Start(TIndex numberOfSubTasks, TIndex startIndex, TIndex endIndex, uint8_t priority) noexcept
+void Task::start(TIndex numberOfSubTasks, TIndex startIndex, TIndex endIndex, uint8_t priority) noexcept
 {
-	auto& taskSystem = Engine::Get().GetTaskSystem();
+	auto& taskSystem = Engine::get().getTaskSystem();
 
 	if (endIndex <= startIndex)
 	{
-		auto rangedTask = GenerateSubTask(startIndex, endIndex, priority);
-		taskSystem.Enqueue(rangedTask);
+		auto rangedTask = generateSubTask(startIndex, endIndex, priority);
+		taskSystem.enqueue(rangedTask);
 		return;
 	}
 
@@ -41,8 +41,8 @@ void Task::Start(TIndex numberOfSubTasks, TIndex startIndex, TIndex endIndex, ui
 	if (numberOfSubTasks < 2)
 	{
 		// Single Thread Task
-		const auto rangedTask = GenerateSubTask(startIndex, endIndex, priority);
-		taskSystem.Enqueue(rangedTask);
+		const auto rangedTask = generateSubTask(startIndex, endIndex, priority);
+		taskSystem.enqueue(rangedTask);
 
 		return;
 	}
@@ -56,23 +56,23 @@ void Task::Start(TIndex numberOfSubTasks, TIndex startIndex, TIndex endIndex, ui
 
 	while (iEnd < endIndex)
 	{
-		auto rangedTask = GenerateSubTask(iStart, iEnd, priority);
-		taskSystem.Enqueue(rangedTask);
+		auto rangedTask = generateSubTask(iStart, iEnd, priority);
+		taskSystem.enqueue(rangedTask);
 
 		iStart = iEnd;
 		iEnd += interval;
 	}
 
-	auto rangedTask = GenerateSubTask(iStart, endIndex, priority);
-	taskSystem.Enqueue(rangedTask);
+	auto rangedTask = generateSubTask(iStart, endIndex, priority);
+	taskSystem.enqueue(rangedTask);
 }
 
-void Task::BusyWait() const noexcept
+void Task::busyWait() const noexcept
 {
 	while (!HasDone());
 }
 
-void Task::Wait(uint32_t intervalMilliSecs) const noexcept
+void Task::wait(uint32_t intervalMilliSecs) const noexcept
 {
 	const auto interval = std::chrono::milliseconds(intervalMilliSecs);
 
@@ -82,7 +82,7 @@ void Task::Wait(uint32_t intervalMilliSecs) const noexcept
 	}
 }
 
-RangedTask Task::GenerateSubTask(TIndex start, TIndex end, uint8_t priority) noexcept
+RangedTask Task::generateSubTask(TIndex start, TIndex end, uint8_t priority) noexcept
 {
 	++numSubTasks;
 	return {*this, start, end, priority};

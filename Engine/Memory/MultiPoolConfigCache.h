@@ -25,17 +25,17 @@ namespace hbe
 		TMultiPoolConfigs data;
 
 	public:
-		static StaticString GetClassName();
+		static StaticString getClassName();
 
-		size_t Serialize(Buffer& outBuffer);
-		bool Deserialize(const Buffer& buffer);
+		size_t serialize(Buffer& outBuffer);
+		bool deserialize(const Buffer& buffer);
 
-		[[nodiscard]] static auto GetVersion() { return version; }
-		[[nodiscard]] auto& GetData() { return data; }
-		[[nodiscard]] auto& GetData() const { return data; }
+		[[nodiscard]] static auto getVersion() { return version; }
+		[[nodiscard]] auto& getData() { return data; }
+		[[nodiscard]] auto& getData() const { return data; }
 
 	private:
-		void Normalize();
+		void normalize();
 	};
 
 } // namespace hbe

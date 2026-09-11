@@ -41,12 +41,12 @@ public:
 	explicit TestCollection(const char* title);
 	virtual ~TestCollection() = default;
 
-	void Start();
-	void AddTest(const char* testName, const TTestFunc& testCase);
+	void start();
+	void addTest(const char* testName, const TTestFunc& testCase);
 
-	[[nodiscard]] const char* GetName() const noexcept;
-	[[nodiscard]] const std::vector<std::string>& GetWarningMessages() const noexcept;
-	[[nodiscard]] const std::vector<std::string>& GetErrorMessages() const noexcept;
+	[[nodiscard]] const char* getName() const noexcept;
+	[[nodiscard]] const std::vector<std::string>& getWarningMessages() const noexcept;
+	[[nodiscard]] const std::vector<std::string>& getErrorMessages() const noexcept;
 	[[nodiscard]] bool IsDone() const noexcept;
 	[[nodiscard]] bool IsSuccess() const noexcept;
 
@@ -57,15 +57,15 @@ protected:
 
 	friend std::ostream& operator<<(std::ostream& os, const LogFlush& lf);
 
-	virtual void Prepare() = 0;
+	virtual void prepare() = 0;
 
 private:
 	std::string title;
 	bool isDone;
 	bool isSuccess;
 
-	void ExecuteTests();
-	void Report() const;
+	void executeTests();
+	void report() const;
 };
 
 } // namespace hbe

@@ -51,7 +51,7 @@ namespace hbe
 		std::unique_ptr<OS::Application> application;
 
 	public:
-		static Engine& Get();
+		static Engine& get();
 
 		Engine(const Engine&) = delete;
 		Engine& operator=(const Engine&) = delete;
@@ -59,27 +59,27 @@ namespace hbe
 		Engine();
 		~Engine();
 
-		void Initialize(int argc, const char* argv[]);
+		void initialize(int argc, const char* argv[]);
 
 		// Should call on main thread.
-		void Run();
+		void run();
 
 		// Shut down engine. It'll shut down its task system.
-		void ShutDown();
+		void shutDown();
 
-		static StaticString GetClassName();
+		static StaticString getClassName();
 
-		auto& GetMemoryManager() { return memoryManager; }
-		auto& GetLogger() { return logger; }
-		auto& GetTaskSystem() { return taskSystem; }
-		auto& GetStatistics() { return statistics; }
-		auto& GetResourceManager() { return resourceManager; }
+		auto& getMemoryManager() { return memoryManager; }
+		auto& getLogger() { return logger; }
+		auto& getTaskSystem() { return taskSystem; }
+		auto& getStatistics() { return statistics; }
+		auto& getResourceManager() { return resourceManager; }
 
-		void SetMemoryManagerReady() { isMemoryManagerReady = true; }
-		void SetSystemStatisticsReady() { isSystemStatisticsReady = true; }
-		void SetLoggerReady() { isLoggerReady = true; }
-		void SetTaskSystemReady() { isTaskSystemReady = true; }
-		void SetResourceManagerReady() { isResourceManagerReady = true; }
+		void setMemoryManagerReady() { isMemoryManagerReady = true; }
+		void setSystemStatisticsReady() { isSystemStatisticsReady = true; }
+		void setLoggerReady() { isLoggerReady = true; }
+		void setTaskSystemReady() { isTaskSystemReady = true; }
+		void setResourceManagerReady() { isResourceManagerReady = true; }
 
 		bool IsMemoryManagerReady() const { return isMemoryManagerReady; }
 		bool IsSystemStatisticsReady() const { return isSystemStatisticsReady; }
@@ -87,17 +87,17 @@ namespace hbe
 		bool IsTaskSystemReady() const { return isTaskSystemReady; }
 		bool IsResourceManagerReady() const { return isResourceManagerReady; }
 
-		OS::Application* GetApplication() const { return application.get(); }
+		OS::Application* getApplication() const { return application.get(); }
 
-		void Log(ELogLevel level, const TLogFunc& func);
-		void LogError(const TLogFunc& func) { Log(ELogLevel::Error, func); }
-		void CloseLog();
-		void FlushLog();
+		void log(ELogLevel level, const TLogFunc& func);
+		void logError(const TLogFunc& func) { log(ELogLevel::Error, func); }
+		void closeLog();
+		void flushLog();
 
-		void ConsoleOutLn(const char* str);
+		void consoleOutLn(const char* str);
 
 	private:
-		void PostInitialize();
-		void PreShutdown();
+		void postInitialize();
+		void preShutdown();
 	};
 } // namespace hbe

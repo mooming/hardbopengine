@@ -7,15 +7,15 @@
 #include <algorithm>
 
 
-void hbe::TaskStreamAffinityTest::Prepare()
+void hbe::TaskStreamAffinityTest::prepare()
 {
-	AddTest("Default Constructor", [this](TLogOut& ls)
+	addTest("Default Constructor", [this](TLogOut& ls)
 	{
 		TaskStreamAffinityBase<517> affinity;
 
-		for (unsigned int i = 0; i < affinity.GetNumBits(); ++i)
+		for (unsigned int i = 0; i < affinity.getNumBits(); ++i)
 		{
-			const bool affinityValue = affinity.Get(i);
+			const bool affinityValue = affinity.get(i);
 			if (!affinityValue)
 			{
 				ls << "Default constructed affinity shouldn't be false at index " << i << lferr;
@@ -23,21 +23,21 @@ void hbe::TaskStreamAffinityTest::Prepare()
 		}
 	});
 
-	AddTest("Affinity Unset", [this](TLogOut& ls)
+	addTest("Affinity Unset", [this](TLogOut& ls)
 	{
 		TaskStreamAffinityBase<517> affinity;
 
-		for (unsigned int i = 0; i < affinity.GetNumBits(); ++i)
+		for (unsigned int i = 0; i < affinity.getNumBits(); ++i)
 		{
-			affinity.Unset(i);
+			affinity.unset(i);
 		}
 
 		{
 			constexpr unsigned int PrintCount = 3;
-			const auto numBits = affinity.GetNumBits();
+			const auto numBits = affinity.getNumBits();
 			for (unsigned int i = 0; i < std::min(PrintCount, numBits); ++i)
 			{
-				ls << i << ": affinity " << affinity.Get(i) << lf;
+				ls << i << ": affinity " << affinity.get(i) << lf;
 			}
 			if (numBits > PrintCount * 2)
 			{
@@ -45,13 +45,13 @@ void hbe::TaskStreamAffinityTest::Prepare()
 			}
 			for (unsigned int i = std::max(PrintCount, numBits - PrintCount); i < numBits; ++i)
 			{
-				ls << i << ": affinity " << affinity.Get(i) << lf;
+				ls << i << ": affinity " << affinity.get(i) << lf;
 			}
 		}
 
-		for (unsigned int i = 0; i < affinity.GetNumBits(); ++i)
+		for (unsigned int i = 0; i < affinity.getNumBits(); ++i)
 		{
-			const bool affinityValue = affinity.Get(i);
+			const bool affinityValue = affinity.get(i);
 			if (affinityValue)
 			{
 				ls << "Unset failed at " << i << lferr;
@@ -59,28 +59,28 @@ void hbe::TaskStreamAffinityTest::Prepare()
 		}
 	});
 
-	AddTest("Affinity Set/Unset", [this](TLogOut& ls)
+	addTest("Affinity Set/Unset", [this](TLogOut& ls)
 	{
 		TaskStreamAffinityBase<517> affinity;
 
-		for (unsigned int i = 0; i < affinity.GetNumBits(); ++i)
+		for (unsigned int i = 0; i < affinity.getNumBits(); ++i)
 		{
 			if ( (i%2) == 0)
 			{
-				affinity.Unset(i);
+				affinity.unset(i);
 			}
 			else
 			{
-				affinity.Set(i);
+				affinity.set(i);
 			}
 		}
 
 		{
 			constexpr unsigned int PrintCount = 3;
-			const auto numBits = affinity.GetNumBits();
+			const auto numBits = affinity.getNumBits();
 			for (unsigned int i = 0; i < std::min(PrintCount, numBits); ++i)
 			{
-				ls << i << ": affinity " << affinity.Get(i) << lf;
+				ls << i << ": affinity " << affinity.get(i) << lf;
 			}
 			if (numBits > PrintCount * 2)
 			{
@@ -88,13 +88,13 @@ void hbe::TaskStreamAffinityTest::Prepare()
 			}
 			for (unsigned int i = std::max(PrintCount, numBits - PrintCount); i < numBits; ++i)
 			{
-				ls << i << ": affinity " << affinity.Get(i) << lf;
+				ls << i << ": affinity " << affinity.get(i) << lf;
 			}
 		}
 
-		for (unsigned int i = 0; i < affinity.GetNumBits(); ++i)
+		for (unsigned int i = 0; i < affinity.getNumBits(); ++i)
 		{
-			const bool affinityValue = affinity.Get(i);
+			const bool affinityValue = affinity.get(i);
 			if ( (i%2) == 0)
 			{
 				if (affinityValue)

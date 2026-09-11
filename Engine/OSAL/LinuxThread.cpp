@@ -9,9 +9,9 @@
 #include <sched.h>
 #include <sys/resource.h>
 
-int OS::GetCPUIndex() noexcept { return sched_getcpu(); }
+int OS::getCPUIndex() noexcept { return sched_getcpu(); }
 
-void OS::SetThreadAffinity(std::thread& thread, uint64_t mask) noexcept
+void OS::setThreadAffinity(std::thread& thread, uint64_t mask) noexcept
 {
 	cpu_set_t set;
 	CPU_ZERO(&set);
@@ -25,8 +25,8 @@ void OS::SetThreadAffinity(std::thread& thread, uint64_t mask) noexcept
 
 	if (sched_setaffinity(thread.native_handle(), sizeof(set), &set) != 0)
 	{
-		const auto log = hbe::Logger::Get("OS::Thread");
-		log.OutError([](auto& ls) { ls << "failed to set cpu affinity"; });
+		const auto log = hbe::Logger::get("OS::Thread");
+		log.outError([](auto& ls) { ls << "failed to set cpu affinity"; });
 	}
 }
 
@@ -34,8 +34,8 @@ void OS::SetThreadPriority(std::thread& thread, int priority) noexcept
 {
 	if (setpriority(PRIO_PROCESS, thread.native_handle(), priority) != 0)
 	{
-		const auto log = hbe::Logger::Get("OS::Thread");
-		log.OutError([](auto& ls) { ls << "failed to set thread affinity"; });
+		const auto log = hbe::Logger::get("OS::Thread");
+		log.outError([](auto& ls) { ls << "failed to set thread affinity"; });
 	}
 }
 

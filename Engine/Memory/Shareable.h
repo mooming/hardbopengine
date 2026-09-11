@@ -25,24 +25,24 @@ namespace hbe
 
 		public:
 			template<typename... Types>
-			static Body* Create(Types&&... args)
+			static Body* create(Types&&... args)
 			{
-				auto& mmgr = MemoryManager::GetInstance();
+				auto& mmgr = MemoryManager::getInstance();
 				auto newBody = mmgr.New<Body>(std::forward<Types>(args)...);
-				return newBody->Reference();
+				return newBody->reference();
 			}
 
-			TType& GetBody() { return data; }
+			TType& getBody() { return data; }
 
-			Body* Reference()
+			Body* reference()
 			{
 				++count;
 				return this;
 			}
 
-			RefCount GetRefCount() const { return count; }
+			RefCount getRefCount() const { return count; }
 
-			void Dereference()
+			void dereference()
 			{
 				if (count > 0)
 				{
@@ -50,7 +50,7 @@ namespace hbe
 
 					if (count == 0)
 					{
-						auto& mmgr = MemoryManager::GetInstance();
+						auto& mmgr = MemoryManager::getInstance();
 						mmgr.Delete<Body>(this);
 					}
 				}
@@ -66,14 +66,14 @@ namespace hbe
 
 	public:
 		template<typename... Types>
-		Shareable(Types&&... args) : body(Body::Create(std::forward<Types>(args)...))
+		Shareable(Types&&... args) : body(Body::create(std::forward<Types>(args)...))
 		{}
 
 		Shareable(Shareable& rhs)
 		{
 			if (rhs)
 			{
-				body = rhs.body->Reference();
+				body = rhs.body->reference();
 			}
 			else
 			{
@@ -91,42 +91,42 @@ namespace hbe
 		{
 			if (body != nullptr)
 			{
-				body->Dereference();
+				body->dereference();
 				body = nullptr;
 			}
 		}
 
 		Shareable& operator=(Shareable& rhs)
 		{
-			Release();
+			release();
 
 			if (rhs)
 			{
-				body = rhs.body->Reference();
+				body = rhs.body->reference();
 			}
 		}
 
-		[[nodiscard]] RefCount GetReferenceCount() const { return body != nullptr ? body->GetRefCount() : 0; }
+		[[nodiscard]] RefCount getReferenceCount() const { return body != nullptr ? body->getRefCount() : 0; }
 
 		operator bool() const { return body != nullptr; }
 
-		[[nodiscard]] TType& Get() { return body->GetBody(); }
+		[[nodiscard]] TType& get() { return body->getBody(); }
 
-		[[nodiscard]] const TType& Get() const { return body->GetBody(); }
+		[[nodiscard]] const TType& get() const { return body->getBody(); }
 
-		[[nodiscard]] TType& operator*() { return body->GetBody(); }
+		[[nodiscard]] TType& operator*() { return body->getBody(); }
 
-		[[nodiscard]] const TType& operator*() const { return body->GetBody(); }
+		[[nodiscard]] const TType& operator*() const { return body->getBody(); }
 
-		[[nodiscard]] TType* operator->() { return &body->GetBody(); }
+		[[nodiscard]] TType* operator->() { return &body->getBody(); }
 
-		[[nodiscard]] const TType* operator->() const { return &body->GetBody(); }
+		[[nodiscard]] const TType* operator->() const { return &body->getBody(); }
 
-		void Release()
+		void release()
 		{
 			if (body != nullptr)
 			{
-				body->Dereference();
+				body->dereference();
 				body = nullptr;
 			}
 		}

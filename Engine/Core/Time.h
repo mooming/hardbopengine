@@ -14,21 +14,21 @@ using TTime = std::chrono::time_point<TStopWatch>;
 using TDuration = TStopWatch::duration;
 using TMilliSecs = std::chrono::milliseconds;
 
-[[nodiscard]] inline TTime GetNow() noexcept { return std::chrono::steady_clock::now(); }
+[[nodiscard]] inline TTime getNow() noexcept { return std::chrono::steady_clock::now(); }
 
-[[nodiscard]] inline float ToFloat(TStopWatch::duration duration) noexcept
+[[nodiscard]] inline float toFloat(TStopWatch::duration duration) noexcept
 {
 std::chrono::duration<float> delta = duration;
 return delta.count();
 }
 
-[[nodiscard]] inline double ToDouble(TStopWatch::duration duration) noexcept
+[[nodiscard]] inline double toDouble(TStopWatch::duration duration) noexcept
 {
 std::chrono::duration<double> delta = duration;
 return delta.count();
 }
 
-[[nodiscard]] inline TMilliSecs::rep ToMilliSeconds(TStopWatch::duration duration) noexcept
+[[nodiscard]] inline TMilliSecs::rep toMilliSeconds(TStopWatch::duration duration) noexcept
 {
 auto delta = std::chrono::duration_cast<TMilliSecs>(duration);
 return delta.count();

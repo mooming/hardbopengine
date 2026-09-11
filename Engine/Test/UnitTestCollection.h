@@ -7,7 +7,7 @@ namespace hbe
 {
 namespace Test
 {
-void RunTests();
+void runTests();
 }
 } // namespace hbe
 #endif // __UNIT_TEST__

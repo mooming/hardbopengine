@@ -35,14 +35,14 @@ namespace hbe
 	template<typename TType, typename... TTypes>
 	TType* New(TTypes&&... args) noexcept
 	{
-		auto& mmgr = MemoryManager::GetInstance();
+		auto& mmgr = MemoryManager::getInstance();
 		return mmgr.New<TType>(std::forward<TTypes>(args)...);
 	}
 
 	template<typename TType>
 	void Delete(TType* ptr) noexcept
 	{
-		auto& mmgr = MemoryManager::GetInstance();
+		auto& mmgr = MemoryManager::getInstance();
 		mmgr.Delete<TType>(ptr);
 	}
 

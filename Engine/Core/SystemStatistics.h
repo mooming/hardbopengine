@@ -46,29 +46,29 @@ public:
 	explicit SystemStatistics(Engine& engine);
 	~SystemStatistics() = default;
 
-	[[nodiscard]] const StaticString& GetName() const noexcept;
-	void UpdateCurrentTime() noexcept;
+	[[nodiscard]] const StaticString& getName() const noexcept;
+	void updateCurrentTime() noexcept;
 
 #if PROFILE_ENABLED
-	void Report(const AllocStats& allocStats) noexcept;
-	void ReportSysMemAlloc(size_t usage) noexcept;
-	void ReportSysMemDealloc(size_t usage) noexcept;
+	void report(const AllocStats& allocStats) noexcept;
+	void reportSysMemAlloc(size_t usage) noexcept;
+	void reportSysMemDealloc(size_t usage) noexcept;
 #endif // PROFILE_ENABLED
 
-	void Print() noexcept;
-	void PrintAllocatorProfiles() noexcept;
+	void print() noexcept;
+	void printAllocatorProfiles() noexcept;
 
-	void IncFrameCount() noexcept { frameCount.fetch_add(1, std::memory_order_relaxed); }
-	void IncSlowFrameCount() noexcept { slowFrameCount.fetch_add(1, std::memory_order_relaxed); }
-	void IncEngineLogCount() noexcept { engineLogCount.fetch_add(1, std::memory_order_relaxed); }
-	void IncLogCount() noexcept { logCount.fetch_add(1, std::memory_order_relaxed); }
-	void IncLongLogCount() noexcept { longLogCount.fetch_add(1, std::memory_order_relaxed); }
-	void IncFallbackAllocCount() noexcept { fallbackAllocCount.fetch_add(1, std::memory_order_relaxed); }
+	void incFrameCount() noexcept { frameCount.fetch_add(1, std::memory_order_relaxed); }
+	void incSlowFrameCount() noexcept { slowFrameCount.fetch_add(1, std::memory_order_relaxed); }
+	void incEngineLogCount() noexcept { engineLogCount.fetch_add(1, std::memory_order_relaxed); }
+	void incLogCount() noexcept { logCount.fetch_add(1, std::memory_order_relaxed); }
+	void incLongLogCount() noexcept { longLogCount.fetch_add(1, std::memory_order_relaxed); }
+	void incFallbackAllocCount() noexcept { fallbackAllocCount.fetch_add(1, std::memory_order_relaxed); }
 
-	[[nodiscard]] auto GetStartTime() const noexcept { return startTime; }
-	[[nodiscard]] auto GetCurrentTime() const noexcept { return currentTime; }
-	[[nodiscard]] auto GetTimeSinceStart() const noexcept { return timeSinceStart; }
-	[[nodiscard]] auto GetDeltaTime() const noexcept { return deltaTime; }
+	[[nodiscard]] auto getStartTime() const noexcept { return startTime; }
+	[[nodiscard]] auto getCurrentTime() const noexcept { return currentTime; }
+	[[nodiscard]] auto getTimeSinceStart() const noexcept { return timeSinceStart; }
+	[[nodiscard]] auto getDeltaTime() const noexcept { return deltaTime; }
 };
 
 } // namespace hbe

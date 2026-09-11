@@ -23,12 +23,12 @@ namespace hbe
 		ResourceManager() noexcept;
 		~ResourceManager() noexcept;
 
-		void PostUpdate(Engine& engine) noexcept;
-		[[nodiscard]] Resource RequestLoad(StaticString path);
+		void postUpdate(Engine& engine) noexcept;
+		[[nodiscard]] Resource requestLoad(StaticString path);
 		[[nodiscard]] Resource Load(StaticString path);
 
 	private:
-		void RequestTasks(TaskSystem& taskSys) noexcept;
+		void requestTasks(TaskSystem& taskSys) noexcept;
 
 		/// @brief Internal storage for a loaded resource with reference counting.
 		class ResourceItem final

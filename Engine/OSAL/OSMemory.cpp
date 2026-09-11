@@ -27,9 +27,9 @@
 #include <sys/mman.h>
 #include <unistd.h>
 
-size_t OS::GetAllocSize(void* ptr) noexcept { return malloc_usable_size(ptr); }
+size_t OS::getAllocSize(void* ptr) noexcept { return malloc_usable_size(ptr); }
 
-size_t OS::GetPageSize() noexcept { return sysconf(_SC_PAGESIZE); }
+size_t OS::getPageSize() noexcept { return sysconf(_SC_PAGESIZE); }
 
 void* OS::VirtualAlloc(size_t size)
 {
@@ -42,7 +42,7 @@ void* OS::VirtualAlloc(size_t size)
 // Added parameter name to fix undefined variable error
 void OS::VirtualFree(void* address, std::size_t size) noexcept { munmap(address, size); }
 
-void OS::ProtectMemory(void* address, size_t n) noexcept
+void OS::protectMemory(void* address, size_t n) noexcept
 {
 	auto result = mprotect(address, n, PROT_NONE);
 
@@ -62,9 +62,9 @@ void OS::ProtectMemory(void* address, size_t n) noexcept
 #include <sys/mman.h>
 #include <unistd.h>
 
-size_t OS::GetAllocSize(void* ptr) noexcept { return malloc_size(ptr); }
+size_t OS::getAllocSize(void* ptr) noexcept { return malloc_size(ptr); }
 
-size_t OS::GetPageSize() noexcept
+size_t OS::getPageSize() noexcept
 {
 	static size_t pageSize = sysconf(_SC_PAGESIZE);
 	return pageSize;
@@ -79,12 +79,12 @@ void* OS::VirtualAlloc(size_t size)
 
 void OS::VirtualFree(void* address, std::size_t size) noexcept { munmap(address, size); }
 
-bool OS::IsValidAllocation(void* ptr) noexcept
+bool OS::isValidAllocation(void* ptr) noexcept
 {
 	return ptr != nullptr && ptr != reinterpret_cast<void*>(-1);
 }
 
-void OS::ProtectMemory(void* address, size_t n) noexcept
+void OS::protectMemory(void* address, size_t n) noexcept
 {
 	auto result = mprotect(address, n, PROT_NONE);
 
@@ -104,13 +104,13 @@ void OS::ProtectMemory(void* address, size_t n) noexcept
 #include <sysinfoapi.h>
 #include <windows.h>
 
-size_t OS::GetAllocSize(void* ptr) noexcept
+size_t OS::getAllocSize(void* ptr) noexcept
 {
 	const auto allocSize = _msize(ptr);
 	return allocSize;
 }
 
-size_t OS::GetPageSize() noexcept
+size_t OS::getPageSize() noexcept
 {
 	auto GetPageSizeWindows = []()
 	{
@@ -138,12 +138,12 @@ void OS::VirtualFree(void* address, std::size_t n) noexcept
 	}
 }
 
-bool OS::IsValidAllocation(void* ptr) noexcept
+bool OS::isValidAllocation(void* ptr) noexcept
 {
 	return ptr != nullptr;
 }
 
-void OS::ProtectMemory(void* address, size_t n) noexcept
+void OS::protectMemory(void* address, size_t n) noexcept
 {
 	DWORD oldProtect = 0;
 	auto result = VirtualProtect(address, n, PAGE_NOACCESS, &oldProtect);
@@ -153,8 +153,8 @@ void OS::ProtectMemory(void* address, size_t n) noexcept
 	using namespace std;
 	auto errorId = GetLastError();
 
-	auto& engine = hbe::Engine::Get();
-	engine.LogError([address, n, errorId](auto& log)
+	auto& engine = hbe::Engine::get();
+	engine.logError([address, n, errorId](auto& log)
 	{ log << "[OS::ProtectMemory] address = " << address << ", n = " << n << " : error code = " << errorId << endl; });
 
 	hbe::Assert(false);
@@ -171,16 +171,16 @@ static_assert(false, "System is not specified.");
 namespace hbe
 {
 
-void OSMemoryTest::Prepare()
+void OSMemoryTest::prepare()
 {
 	// BUG FIX TEST: VirtualFree on Linux/macOS was using free() instead of munmap()
 	// This test verifies VirtualAlloc/VirtualFree round-trip works correctly
-	AddTest("VirtualAlloc VirtualFree Round Trip", [this](auto& ls)
+	addTest("VirtualAlloc VirtualFree Round Trip", [this](auto& ls)
 	{
 		constexpr size_t allocSize = 4096;
 		void* ptr = OS::VirtualAlloc(allocSize);
 
-		if (!OS::IsValidAllocation(ptr))
+		if (!OS::isValidAllocation(ptr))
 		{
 			ls << "VirtualAlloc failed" << lferr;
 			return;
@@ -213,7 +213,7 @@ void OSMemoryTest::Prepare()
 
 	// BUG FIX TEST: VirtualFree Windows error check was inverted
 	// This test verifies freeing valid memory doesn't trigger false asserts
-	AddTest("VirtualFree Valid Memory", [this](auto& ls)
+	addTest("VirtualFree Valid Memory", [this](auto& ls)
 	{
 		constexpr size_t allocSize = 8192;
 		void* ptr = OS::VirtualAlloc(allocSize);
@@ -231,9 +231,9 @@ void OSMemoryTest::Prepare()
 
 	// BUG FIX TEST: VirtualFree on Linux had undefined 'size' variable
 	// This test verifies the parameter is properly passed through
-	AddTest("VirtualFree With Size Parameter", [this](auto& ls)
+	addTest("VirtualFree With Size Parameter", [this](auto& ls)
 	{
-		size_t pageSize = OS::GetPageSize();
+		size_t pageSize = OS::getPageSize();
 		void* ptr = OS::VirtualAlloc(pageSize);
 		Assert(ptr != nullptr && "VirtualAlloc should succeed");
 
@@ -246,17 +246,17 @@ void OSMemoryTest::Prepare()
 	});
 
 	// Test multiple alloc/free cycles to catch memory corruption
-	AddTest("VirtualAlloc VirtualFree Multiple Cycles", [this](auto& ls)
+	addTest("VirtualAlloc VirtualFree Multiple Cycles", [this](auto& ls)
 	{
 		constexpr int cycles = 10;
 		bool allOk = true;
 
 		for (int i = 0; i < cycles; ++i)
 		{
-			size_t size = (i + 1) * OS::GetPageSize();
+			size_t size = (i + 1) * OS::getPageSize();
 			void* ptr = OS::VirtualAlloc(size);
 
-			if (!OS::IsValidAllocation(ptr))
+			if (!OS::isValidAllocation(ptr))
 			{
 				ls << "VirtualAlloc failed at cycle " << i << lferr;
 				allOk = false;
@@ -275,9 +275,9 @@ void OSMemoryTest::Prepare()
 	});
 
 	// Test page size retrieval
-	AddTest("GetPageSize", [this](auto& ls)
+	addTest("GetPageSize", [this](auto& ls)
 	{
-		size_t pageSize = OS::GetPageSize();
+		size_t pageSize = OS::getPageSize();
 		ls << "Page size: " << pageSize << lf;
 
 		if (pageSize == 0)

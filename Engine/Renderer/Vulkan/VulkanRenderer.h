@@ -47,7 +47,7 @@ struct PushConstants
 	float viewProj[16];
 };
 
-inline void IdentityMatrix(float m[16]) noexcept
+inline void identityMatrix(float m[16]) noexcept
 {
 	for (int i = 0; i < 16; ++i) m[i] = 0.0f;
 	m[0] = m[5] = m[10] = m[15] = 1.0f;
@@ -65,58 +65,58 @@ public:
 	VulkanRenderer(const VulkanRenderer&) = delete;
 	VulkanRenderer& operator=(const VulkanRenderer&) = delete;
 
-	[[nodiscard]] bool Initialize(OS::Window* window) noexcept;
-	void Shutdown() noexcept;
+	[[nodiscard]] bool initialize(OS::Window* window) noexcept;
+	void shutdown() noexcept;
 
-	void BeginFrame() noexcept;
-	void Render(float deltaTime) noexcept;
-	void EndFrame() noexcept;
+	void beginFrame() noexcept;
+	void render(float deltaTime) noexcept;
+	void endFrame() noexcept;
 
-	[[nodiscard]] RenderCapabilities GetCapabilities() const noexcept;
+	[[nodiscard]] RenderCapabilities getCapabilities() const noexcept;
 
 	/// @brief Upload (or replace) the mesh to render.
-	void SetMesh(const Mesh& mesh) noexcept;
+	void setMesh(const Mesh& mesh) noexcept;
 
 	/// @brief Set the model / view / projection matrices (column-major, 16 floats each).
 	/// @details view and proj are multiplied on the CPU before being pushed, so the
 	///          push block can also carry the model matrix.
-	void SetModel(const float* m) noexcept;
-	void SetView(const float* m) noexcept;
-	void SetProj(const float* m) noexcept;
+	void setModel(const float* m) noexcept;
+	void setView(const float* m) noexcept;
+	void setProj(const float* m) noexcept;
 
 	/// @brief Current swapchain extent in pixels - the aspect ratio examples must use
 	/// @details The drawable follows the window's content rect, so it is not generally
 	///          the size the window was requested with.
-	[[nodiscard]] VkExtent2D GetExtent() const noexcept;
+	[[nodiscard]] VkExtent2D getExtent() const noexcept;
 
 private:
 	static constexpr size_t MAX_FRAMES_IN_FLIGHT = 2;
 
-	bool CreateInstance() noexcept;
-	bool CreateSurface() noexcept;
-	bool PickDevice() noexcept;
-	bool CreateDevice() noexcept;
+	bool createInstance() noexcept;
+	bool createSurface() noexcept;
+	bool pickDevice() noexcept;
+	bool createDevice() noexcept;
 
 	/// @brief Read the selected physical device into capabilities, so GetCapabilities reports
 	///        what the hardware actually supports rather than a guess.
-	void QueryCapabilities() noexcept;
+	void queryCapabilities() noexcept;
 
-	bool CreateSwapchain() noexcept;
-	bool CreateRenderPass() noexcept;
-	bool CreateDepthResource() noexcept;
-	bool CreateFramebuffers() noexcept;
-	bool CreateCommandBuffers() noexcept;
-	bool CreateVertexBuffers(const Mesh& mesh) noexcept;
-	void ReleaseVertexBuffers() noexcept;
-	bool CreatePipeline() noexcept;
-	bool CreateSyncObjects() noexcept;
+	bool createSwapchain() noexcept;
+	bool createRenderPass() noexcept;
+	bool createDepthResource() noexcept;
+	bool createFramebuffers() noexcept;
+	bool createCommandBuffers() noexcept;
+	bool createVertexBuffers(const Mesh& mesh) noexcept;
+	void releaseVertexBuffers() noexcept;
+	bool createPipeline() noexcept;
+	bool createSyncObjects() noexcept;
 
 	/// @brief Platform window surface - implemented per platform (see .cpp / .mm).
-	bool CreateMetalSurface() noexcept;
+	bool createMetalSurface() noexcept;
 
-	bool CreateBuffer(VkBuffer& buffer, VkDeviceMemory& memory, size_t size, VkBufferUsageFlags usage) noexcept;
-	void RecordFrame() noexcept;
-	void Destroy() noexcept;
+	bool createBuffer(VkBuffer& buffer, VkDeviceMemory& memory, size_t size, VkBufferUsageFlags usage) noexcept;
+	void recordFrame() noexcept;
+	void destroy() noexcept;
 
 	OS::Window* window;
 	bool initialized;

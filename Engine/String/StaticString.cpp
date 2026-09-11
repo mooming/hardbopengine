@@ -18,20 +18,20 @@ namespace hbe
 
 	StaticString::StaticString(const char* string) noexcept
 	{
-		auto& ssTable = StaticStringTable::GetInstance();
+		auto& ssTable = StaticStringTable::getInstance();
 		id = ssTable.Register(string);
 	}
 
 	StaticString::StaticString(const std::string_view& str) noexcept
 	{
-		auto& ssTable = StaticStringTable::GetInstance();
+		auto& ssTable = StaticStringTable::getInstance();
 		id = ssTable.Register(str);
 	}
 
 	const char* StaticString::c_str() const noexcept
 	{
-		auto& ssTable = StaticStringTable::GetInstance();
-		return ssTable.Get(id);
+		auto& ssTable = StaticStringTable::getInstance();
+		return ssTable.get(id);
 	}
 
 } // namespace hbe
@@ -45,17 +45,17 @@ namespace hbe
 namespace hbe
 {
 
-	void StaticStringTest::Prepare()
+	void StaticStringTest::prepare()
 	{
-		AddTest("Default Construct", [](auto&) { StaticString str; });
+		addTest("Default Construct", [](auto&) { StaticString str; });
 
-		AddTest("StaticStic Print", [this](TLogOut& ls)
+		addTest("StaticStic Print", [this](TLogOut& ls)
 		{
 			StaticString str("Hello?");
 			ls << str.c_str() << lf;
 		});
 
-		AddTest("Hetero String Comparison", [this](TLogOut& ls)
+		addTest("Hetero String Comparison", [this](TLogOut& ls)
 		{
 			hbe::HString hello("Hello?");
 			hbe::HInlineString<> helloInline("Hello?");
@@ -74,7 +74,7 @@ namespace hbe
 			}
 		});
 
-		AddTest("Self-Comparison", [this](auto& ls)
+		addTest("Self-Comparison", [this](auto& ls)
 		{
 			StaticString str("Hello?");
 
@@ -84,7 +84,7 @@ namespace hbe
 			}
 		});
 
-		AddTest("Two Strings Comparison", [this](auto& ls)
+		addTest("Two Strings Comparison", [this](auto& ls)
 		{
 			StaticString strA("Hello?");
 			StaticString strB("Hello?");
@@ -95,7 +95,7 @@ namespace hbe
 			}
 		});
 
-		AddTest("Inequality", [this](auto& ls)
+		addTest("Inequality", [this](auto& ls)
 		{
 			StaticString strA("Hello?");
 			StaticString strB("Ha");

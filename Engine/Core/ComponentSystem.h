@@ -33,46 +33,46 @@ public:
 
 	[[nodiscard]] explicit operator bool() const noexcept { return !initList.empty() || !updateList.empty() || !sleepList.empty(); }
 
-	[[nodiscard]] inline const char* GetName() const noexcept { return name.ToCharArray(); }
+	[[nodiscard]] inline const char* getName() const noexcept { return name.toCharArray(); }
 
 	template<typename... Types>
-		TComponent& Create(Types&&... args)
+		TComponent& create(Types&&... args)
 		{
 			initList.emplace_back(std::forward<Types>(args)...);
 			auto& compo = initList.back();
-		compo.SetState(ComponentState::BORN);
+		compo.setState(ComponentState::BORN);
 
 		return compo;
 	}
 
-	void Update(const float deltaTime)
+	void update(const float deltaTime)
 	{
-		ProcessInit();
-		ProcessUpdate(deltaTime);
-		ProcessTransition();
+		processInit();
+		processUpdate(deltaTime);
+		processTransition();
 	}
 
 private:
-	void ProcessInit()
+	void processInit()
 	{
 		for (auto& compo : initList)
 		{
-			compo.Init();
-			compo.SetState(ComponentState::ALIVE);
-			compo.OnEnable();
+			compo.init();
+			compo.setState(ComponentState::ALIVE);
+			compo.onEnable();
 			updateList.push_back(std::move(compo));
 		}
 
 		initList.clear();
 	}
 
-	void ProcessUpdate(const float deltaTime)
+	void processUpdate(const float deltaTime)
 	{
 		for (auto& compo : updateList)
 		{
-			compo.Update(deltaTime);
+			compo.update(deltaTime);
 
-			if (!compo.IsEnabled())
+			if (!compo.isEnabled())
 			{
 				transitionList.push_back(std::move(compo));
 			}
@@ -86,34 +86,34 @@ private:
 		swapUpdateList.clear();
 	}
 
-	void ProcessTransition()
+	void processTransition()
 	{
 		for (auto& compo : transitionList)
 		{
-			switch (compo.GetState())
+			switch (compo.getState())
 			{
 				case ComponentState::ALIVE:
-					compo.OnEnable();
+					compo.onEnable();
 					updateList.push_back(std::move(compo));
 					break;
 
 				case ComponentState::SLEEP:
-					compo.OnDisable();
+					compo.onDisable();
 					sleepList.push_back(std::move(compo));
 					break;
 
 				case ComponentState::DEAD:
-					compo.SetState(ComponentState::SLEEP);
-					compo.OnDisable();
-					compo.SetState(ComponentState::DEAD);
-					compo.Release();
+					compo.setState(ComponentState::SLEEP);
+					compo.onDisable();
+					compo.setState(ComponentState::DEAD);
+					compo.release();
 					break;
 
 				default:
 					Assert(false,
 						   "Unexpected component state %d on processing "
 						   "transition.\n",
-						   compo.GetState());
+						   compo.getState());
 					break;
 			}
 		}
@@ -134,7 +134,7 @@ public:
 	ComponentSystemTest() : TestCollection("ComponentSystemTest") {}
 
 protected:
-	void Prepare() override;
+	void prepare() override;
 };
 } // namespace hbe
 #endif //__UNIT_TEST__

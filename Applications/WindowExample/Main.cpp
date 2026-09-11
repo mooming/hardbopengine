@@ -11,18 +11,18 @@
 int main(int argc, const char* argv[]) noexcept
 {
 	hbe::Engine hengine;
-	hengine.Initialize(argc, argv);
+	hengine.initialize(argc, argv);
 
-	auto app = OS::CreateApplication();
+	auto app = OS::createApplication();
 	if (!app)
 	{
 		std::cerr << "Error: Failed to create application" << std::endl;
 		return 1;
 	}
 
-	app->Initialize();
+	app->initialize();
 
-	auto window = OS::CreateWindow("Hello? 안녕하세요?", 800, 600);
+	auto window = OS::createWindow("Hello? 안녕하세요?", 800, 600);
 	if (!window)
 	{
 		std::cerr << "Error: Failed to create window" << std::endl;
@@ -31,19 +31,19 @@ int main(int argc, const char* argv[]) noexcept
 
 	for (int i = 0; i < 10; ++i)
 	{
-		app->PollEvents();
-		window->PollEvents();
+		app->pollEvents();
+		window->pollEvents();
 
 		std::this_thread::sleep_for(std::chrono::seconds(1));
 
-		if (window->IsClosed())
+		if (window->isClosed())
 		{
 			break;
 		}
 	}
 
 	window->Close();
-	hengine.ShutDown();
+	hengine.shutDown();
 
 	return 0;
 }

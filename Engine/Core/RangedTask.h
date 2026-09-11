@@ -41,10 +41,10 @@ public:
 	RangedTask& operator=(const RangedTask& other) = default;
 
 	bool operator<(const RangedTask& other) const noexcept { return priority < other.priority; }
-	[[nodiscard]] bool HasFinished() const noexcept { return currentIndex >= end; }
+	[[nodiscard]] bool hasFinished() const noexcept { return currentIndex >= end; }
 
 	// Run the runnable of the task. It'll call ReportFinishedSubTask when it's finished or been cancelled.
-	void Run() noexcept;
+	void run() noexcept;
 
 private:
 	RangedTask(Task& task, TIndex start, TIndex end, uint8_t priority) noexcept;

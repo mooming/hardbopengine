@@ -41,26 +41,26 @@ namespace hbe
 									 size_t allocationUnit = DefaultBankUnit, size_t minBlockSize = DefaultMinBlock);
 		~ThreadSafeMultiPoolAllocator();
 
-		void* Allocate(size_t size);
+		void* allocate(size_t size);
 		void Deallocate(void* ptr, size_t size);
 
-		[[nodiscard]] auto GetName() const { return name; }
-		[[nodiscard]] auto GetID() const { return id; }
+		[[nodiscard]] auto getName() const { return name; }
+		[[nodiscard]] auto getID() const { return id; }
 
-		void PrintUsage();
+		void printUsage();
 
 #if PROFILE_ENABLED
-		void ReportConfiguration();
+		void reportConfiguration();
 #endif // PROFILE_ENABLED
 
 	private:
-		void* NewBankAllocate(size_t size);
-		bool GenerateBanksByCache(const class MemoryManager& mmgr);
-		[[nodiscard]] size_t GetBankIndex(size_t nBytes) const;
-		[[nodiscard]] size_t GetBankIndex(void* ptr) const;
-		[[nodiscard]] size_t CalculateBlockSize(size_t requested) const;
-		static size_t CalculateNumberOfBlocks(size_t bankSize, size_t blockSize);
-		void GenerateBank(size_t blockSize, size_t numberOfBlocks);
+		void* newBankAllocate(size_t size);
+		bool generateBanksByCache(const class MemoryManager& mmgr);
+		[[nodiscard]] size_t getBankIndex(size_t nBytes) const;
+		[[nodiscard]] size_t getBankIndex(void* ptr) const;
+		[[nodiscard]] size_t calculateBlockSize(size_t requested) const;
+		static size_t calculateNumberOfBlocks(size_t bankSize, size_t blockSize);
+		void generateBank(size_t blockSize, size_t numberOfBlocks);
 	};
 } // namespace hbe
 
@@ -77,7 +77,7 @@ namespace hbe
 		ThreadSafeMultiPoolAllocatorTest() : TestCollection("ThreadSafeMultiPoolAllocatorTest") {}
 
 	protected:
-		void Prepare() override;
+		void prepare() override;
 	};
 } // namespace hbe
 #endif //__UNIT_TEST__

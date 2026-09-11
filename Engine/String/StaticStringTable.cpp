@@ -45,9 +45,9 @@ namespace hbe
 				free(buffer);
 			}
 
-			bool IsAvailable(size_t n) const { return (cursor + n) < capacity; }
+			bool isAvailable(size_t n) const { return (cursor + n) < capacity; }
 
-			uint8_t* Allocate(size_t n)
+			uint8_t* allocate(size_t n)
 			{
 				auto ptr = &buffer[cursor];
 				cursor += n;
@@ -63,13 +63,13 @@ namespace hbe
 
 	} // namespace
 
-	StaticStringTable& StaticStringTable::GetInstance()
+	StaticStringTable& StaticStringTable::getInstance()
 	{
 		static StaticStringTable instance;
 		return instance;
 	}
 
-	StaticStringTable::StaticStringTable() { RegisterPredefinedStrings(); }
+	StaticStringTable::StaticStringTable() { registerPredefinedStrings(); }
 
 	StaticStringTable::~StaticStringTable()
 	{
@@ -77,9 +77,9 @@ namespace hbe
 		banks.shrink_to_fit();
 	}
 
-	StaticString StaticStringTable::GetName() const
+	StaticString StaticStringTable::getName() const
 	{
-		static StaticString className = StringUtil::ToCompactClassName(__PRETTY_FUNCTION__);
+		static StaticString className = StringUtil::toCompactClassName(__PRETTY_FUNCTION__);
 
 		return className;
 	}
@@ -88,7 +88,7 @@ namespace hbe
 	{
 		StaticStringID id;
 
-		auto tableID = GetTableID(text);
+		auto tableID = getTableID(text);
 
 		static_assert(!std::is_signed<decltype(tableID)>());
 		Assert(tableID < NumTables);
@@ -106,7 +106,7 @@ namespace hbe
 				return id;
 			}
 
-			std::string_view sv = Store(tmp);
+			std::string_view sv = store(tmp);
 			table.emplace_back(sv);
 
 			id.ptr = reinterpret_cast<const uint8_t*>(sv.data());
@@ -119,7 +119,7 @@ namespace hbe
 	{
 		StaticStringID id;
 
-		auto tableID = GetTableID(str);
+		auto tableID = getTableID(str);
 
 		static_assert(!std::is_signed<decltype(tableID)>());
 		Assert(tableID < NumTables);
@@ -135,7 +135,7 @@ namespace hbe
 				return id;
 			}
 
-			auto sv = Store(str);
+			auto sv = store(str);
 			table.emplace_back(sv);
 
 			id.ptr = reinterpret_cast<const uint8_t*>(sv.data());
@@ -144,7 +144,7 @@ namespace hbe
 		return id;
 	}
 
-	const char* StaticStringTable::Get(StaticStringID id) const
+	const char* StaticStringTable::get(StaticStringID id) const
 	{
 		if (id.ptr == nullptr)
 		{
@@ -154,18 +154,18 @@ namespace hbe
 		return reinterpret_cast<const char*>(id.ptr);
 	}
 
-	void StaticStringTable::PrintStringTable() const
+	void StaticStringTable::printStringTable() const
 	{
-		auto log = Logger::Get(GetName(), ELogLevel::Verbose);
+		auto log = Logger::get(getName(), ELogLevel::Verbose);
 
-		log.Out("= StringTable ==============================");
-		log.Out([](auto& ls) { ls << "Number of Banks = " << banks.size(); });
+		log.out("= StringTable ==============================");
+		log.out([](auto& ls) { ls << "Number of Banks = " << banks.size(); });
 
 		{
 			size_t index = 0;
 			for (auto& bank : banks)
 			{
-				log.Out([index, &bank](auto& ls) { ls << index << " : " << bank.cursor << " / " << bank.capacity; });
+				log.out([index, &bank](auto& ls) { ls << index << " : " << bank.cursor << " / " << bank.capacity; });
 
 				++index;
 			}
@@ -180,7 +180,7 @@ namespace hbe
 				continue;
 			}
 
-			log.Out([&](auto& ls)
+			log.out([&](auto& ls)
 			{ ls << "Table ID = " << tableID << "/" << NumTables << ", Number of Elements = " << table.size(); });
 
 			++tableID;
@@ -194,18 +194,18 @@ namespace hbe
 			for (auto& item : table)
 			{
 				StaticStringID id;
-				log.Out([&](auto& ls) { ls << count++ << " : [" << item << "] 0x" << (void*) id.ptr; });
+				log.out([&](auto& ls) { ls << count++ << " : [" << item << "] 0x" << (void*) id.ptr; });
 			}
 
 			++tableID;
 		}
 
-		log.Out([count](auto& ls) { ls << "Number of elements = " << count; });
+		log.out([count](auto& ls) { ls << "Number of elements = " << count; });
 
-		log.Out("============================================\n");
+		log.out("============================================\n");
 	}
 
-	void StaticStringTable::RegisterPredefinedStrings()
+	void StaticStringTable::registerPredefinedStrings()
 	{
 		(void) Register("");
 		(void) Register("None");
@@ -219,40 +219,40 @@ namespace hbe
 		(void) Register("HardbopEngine");
 	}
 
-	StaticStringTable::TIndex StaticStringTable::GetTableID(const char* text) const
+	StaticStringTable::TIndex StaticStringTable::getTableID(const char* text) const
 	{
-		auto hashValue = StringUtil::CalculateHash(text);
+		auto hashValue = StringUtil::calculateHash(text);
 		auto tableId = static_cast<TIndex>(hashValue % NumTables);
 
 		return tableId;
 	}
 
-	StaticStringTable::TIndex StaticStringTable::GetTableID(const std::string_view& str) const
+	StaticStringTable::TIndex StaticStringTable::getTableID(const std::string_view& str) const
 	{
-		auto hashValue = StringUtil::CalculateHash(str);
+		auto hashValue = StringUtil::calculateHash(str);
 		auto tableId = static_cast<TIndex>(hashValue % NumTables);
 
 		return tableId;
 	}
 
-	std::string_view StaticStringTable::Store(const char* text)
+	std::string_view StaticStringTable::store(const char* text)
 	{
 		std::string_view sv(text);
-		return Store(sv);
+		return store(sv);
 	}
 
-	std::string_view StaticStringTable::Store(const std::string_view& str)
+	std::string_view StaticStringTable::store(const std::string_view& str)
 	{
 		const auto strLen = str.length();
 
-		auto ptr = (char*) Allocate(strLen + 1);
+		auto ptr = (char*) allocate(strLen + 1);
 		std::copy(str.begin(), str.end(), ptr);
 		ptr[strLen] = '\0';
 
 		return std::string_view(ptr, strLen);
 	}
 
-	void* StaticStringTable::Allocate(size_t n)
+	void* StaticStringTable::allocate(size_t n)
 	{
 		constexpr size_t capacity = 1024UL * 1024;
 
@@ -262,14 +262,14 @@ namespace hbe
 			banks.emplace_back(capacity);
 		}
 
-		if (!banks[bankIndex].IsAvailable(n))
+		if (!banks[bankIndex].isAvailable(n))
 		{
 			banks.emplace_back(std::max(n, capacity));
 			++bankIndex;
 		}
 
 		auto& bank = banks[bankIndex];
-		auto ptr = bank.Allocate(n);
+		auto ptr = bank.allocate(n);
 
 		return ptr;
 	}

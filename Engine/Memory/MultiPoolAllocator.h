@@ -42,28 +42,28 @@ namespace hbe
 						   size_t allocationUnit = DefaultBankUnit, size_t minBlockSize = DefaultMinBlock);
 		~MultiPoolAllocator();
 
-		void* Allocate(size_t size);
+		void* allocate(size_t size);
 		void Deallocate(void* ptr, size_t size);
 
-		[[nodiscard]] auto GetName() const { return name; }
-		[[nodiscard]] auto GetID() const { return id; }
+		[[nodiscard]] auto getName() const { return name; }
+		[[nodiscard]] auto getID() const { return id; }
 
-		void PrintUsage() const;
+		void printUsage() const;
 
 #if PROFILE_ENABLED
-		void ReportConfiguration() const;
+		void reportConfiguration() const;
 #endif // PROFILE_ENABLED
 
 	private:
 		// Generate a new bank to allocae
-		void* NewBankAllocate(size_t size);
+		void* newBankAllocate(size_t size);
 
-		bool GenerateBanksByCache(MemoryManager& mmgr);
-		[[nodiscard]] size_t GetBankIndex(size_t nBytes) const;
-		[[nodiscard]] size_t GetBankIndex(void* ptr) const;
-		[[nodiscard]] size_t CalculateBlockSize(size_t requested) const;
-		static size_t CalculateNumberOfBlocks(size_t bankSize, size_t blockSize);
-		void GenerateBank(size_t blockSize, size_t numberOfBlocks);
+		bool generateBanksByCache(MemoryManager& mmgr);
+		[[nodiscard]] size_t getBankIndex(size_t nBytes) const;
+		[[nodiscard]] size_t getBankIndex(void* ptr) const;
+		[[nodiscard]] size_t calculateBlockSize(size_t requested) const;
+		static size_t calculateNumberOfBlocks(size_t bankSize, size_t blockSize);
+		void generateBank(size_t blockSize, size_t numberOfBlocks);
 	};
 } // namespace hbe
 
@@ -80,7 +80,7 @@ namespace hbe
 		MultiPoolAllocatorTest() : TestCollection("MultiPoolAllocatorTest") {}
 
 	protected:
-		void Prepare() override;
+		void prepare() override;
 	};
 } // namespace hbe
 #endif //__UNIT_TEST__

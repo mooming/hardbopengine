@@ -13,8 +13,8 @@ namespace hbe
 
 	ResourceManager::~ResourceManager() noexcept = default;
 
-	void ResourceManager::PostUpdate(Engine& engine) noexcept {}
+	void ResourceManager::postUpdate(Engine& engine) noexcept {}
 
-	void ResourceManager::RequestTasks(TaskSystem& taskSys) noexcept {}
+	void ResourceManager::requestTasks(TaskSystem& taskSys) noexcept {}
 
 } // namespace hbe

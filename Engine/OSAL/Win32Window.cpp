@@ -19,14 +19,14 @@ Window::~Window()
 	Close();
 }
 
-bool Window::CreateWindow(const hbe::HString& title, int width, int height)
+bool Window::createWindow(const hbe::HString& title, int width, int height)
 {
 	Window::width = width;
 	Window::height = height;
 
 	HINSTANCE hInstance = GetModuleHandle(nullptr);
 	WNDCLASS wc = {};
-	wc.lpfnWndProc = WindowProc;
+	wc.lpfnWndProc = windowProc;
 	wc.hInstance = hInstance;
 	wc.lpszClassName = "HardbopEngineWindowClass";
 
@@ -49,7 +49,7 @@ bool Window::CreateWindow(const hbe::HString& title, int width, int height)
 	return true;
 }
 
-void Window::SetTitle(const hbe::HString& title)
+void Window::setTitle(const hbe::HString& title)
 {
 	if (hwnd)
 	{
@@ -57,7 +57,7 @@ void Window::SetTitle(const hbe::HString& title)
 	}
 }
 
-void Window::SetSize(int width, int height)
+void Window::setSize(int width, int height)
 {
 	if (hwnd)
 	{
@@ -67,17 +67,17 @@ void Window::SetSize(int width, int height)
 	}
 }
 
-int Window::GetWidth() const
+int Window::getWidth() const
 {
 	return width;
 }
 
-int Window::GetHeight() const
+int Window::getHeight() const
 {
 	return height;
 }
 
-bool Window::IsVisible() const
+bool Window::isVisible() const
 {
 	if (hwnd)
 	{
@@ -87,7 +87,7 @@ bool Window::IsVisible() const
 	return false;
 }
 
-void Window::SetVisible(bool visible)
+void Window::setVisible(bool visible)
 {
 	if (hwnd)
 	{
@@ -96,7 +96,7 @@ void Window::SetVisible(bool visible)
 	}
 }
 
-void Window::PollEvents()
+void Window::pollEvents()
 {
 	MSG msg;
 
@@ -107,7 +107,7 @@ void Window::PollEvents()
 	}
 }
 
-intptr_t Window::GetNativeHandle() const
+intptr_t Window::getNativeHandle() const
 {
 	return reinterpret_cast<intptr_t>(hwnd);
 }
@@ -123,12 +123,12 @@ void Window::Close()
 	closedFlag = true;
 }
 
-bool Window::IsClosed() const
+bool Window::isClosed() const
 {
 	return closedFlag;
 }
 
-long Window::WindowProc(void* hwnd, unsigned int uMsg, unsigned long long wParam, long lParam)
+long Window::windowProc(void* hwnd, unsigned int uMsg, unsigned long long wParam, long lParam)
 {
 	Window* pThis = nullptr;
 

@@ -17,7 +17,7 @@ namespace hbe
 	/// Provides O(1) insertion and O(1) extraction of highest priority task.
 	/// Tracks lowest non-empty bucket for O(1) pop operations.
 	/// Ideal when priority range is known and bounded.
-	/// @tparam T Task type must have uint8_t priority and HasFinished() method.
+	/// @tparam T Task type must have uint8_t priority and hasFinished() method.
 	template<typename T, std::size_t MaxPriority = 256, std::size_t BucketSizeHint = 0>
 	class BoundedPriorityQueue final
 	{
@@ -48,7 +48,7 @@ namespace hbe
 		[[nodiscard]] bool IsEmpty() const noexcept { return totalSize == 0; }
 		[[nodiscard]] std::size_t Size() const noexcept { return totalSize; }
 
-		void Push(const T& item) noexcept
+		void push(const T& item) noexcept
 		{
 			const auto priority = static_cast<std::size_t>(item.priority);
 			buckets[priority].push_back(item);
@@ -58,7 +58,7 @@ namespace hbe
 				lowestBucket = priority;
 		}
 
-		void Push(T&& item) noexcept
+		void push(T&& item) noexcept
 		{
 			const auto priority = static_cast<std::size_t>(item.priority);
 			buckets[priority].emplace_back(std::move(item));
@@ -68,7 +68,7 @@ namespace hbe
 				lowestBucket = priority;
 		}
 
-		[[nodiscard]] std::optional<T> Pop() noexcept
+		[[nodiscard]] std::optional<T> pop() noexcept
 		{
 			if (totalSize == 0)
 				return std::nullopt;
@@ -87,7 +87,7 @@ namespace hbe
 			return item;
 		}
 
-		[[nodiscard]] std::optional<T> Top() const noexcept
+		[[nodiscard]] std::optional<T> top() const noexcept
 		{
 			if (totalSize == 0)
 				return std::nullopt;
@@ -122,21 +122,21 @@ namespace hbe
 		}
 
 		template<typename Iterator>
-		void PushRange(Iterator begin, Iterator end) noexcept
+		void pushRange(Iterator begin, Iterator end) noexcept
 		{
 			for (auto it = begin; it != end; ++it)
 			{
-				Push(*it);
+				push(*it);
 			}
 		}
 
 		template<typename TContainer>
-		void PushRange(const TContainer& container) noexcept
+		void pushRange(const TContainer& container) noexcept
 		{
-			PushRange(container.begin(), container.end());
+			pushRange(container.begin(), container.end());
 		}
 
-		void Clear() noexcept
+		void clear() noexcept
 		{
 			for (auto& bucket : buckets)
 			{
@@ -161,7 +161,7 @@ namespace hbe
 		BoundedPriorityQueueTest() : TestCollection("BoundedPriorityQueueTest") {}
 
 	protected:
-		void Prepare() override;
+		void prepare() override;
 	};
 
 } // namespace hbe

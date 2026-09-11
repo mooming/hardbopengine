@@ -15,7 +15,7 @@ using namespace hbe;
 namespace hbe
 {
 
-	ConfigFile::ConfigFile(const char* path) : isValid(false) { Parse(path); }
+	ConfigFile::ConfigFile(const char* path) : isValid(false) { parse(path); }
 
 	ConfigFile::ConfigFile(const char* path, const char* fileName) : isValid(false)
 	{
@@ -29,7 +29,7 @@ namespace hbe
 
 		filePath.append(fileName);
 
-		Parse(filePath.c_str());
+		parse(filePath.c_str());
 	}
 
 	ConfigFile::TValue ConfigFile::GetValue(const TString& key) const noexcept
@@ -54,7 +54,7 @@ namespace hbe
 		return found->second;
 	}
 
-	void ConfigFile::Parse(const char* filePath)
+	void ConfigFile::parse(const char* filePath)
 	{
 		using namespace std;
 
@@ -90,8 +90,8 @@ namespace hbe
 
 				auto key = line.substr(0, separator);
 				auto value = line.substr(separator + 1);
-				keyValue.first = StringUtil::Trim(key);
-				keyValue.second = StringUtil::Trim(value);
+				keyValue.first = StringUtil::trim(key);
+				keyValue.second = StringUtil::trim(value);
 
 				return keyValue;
 			};
@@ -106,7 +106,7 @@ namespace hbe
 		isValid = true;
 	}
 
-	void ConfigFile::ForEach(std::function<void(const TMap::value_type&)> func) const noexcept
+	void ConfigFile::forEach(std::function<void(const TMap::value_type&)> func) const noexcept
 	{
 		if (func == nullptr)
 		{

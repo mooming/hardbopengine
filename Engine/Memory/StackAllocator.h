@@ -47,7 +47,7 @@ private:
 
 public:
 	// Not Supported
-	static size_t GetSize(Pointer)
+	static size_t getSize(Pointer)
 	{
 		return 0;
 	}
@@ -60,19 +60,19 @@ public:
 
 	~StackAllocator();
 
-	[[nodiscard]] Pointer Allocate(size_t size);
+	[[nodiscard]] Pointer allocate(size_t size);
 	void Deallocate(Pointer ptr, SizeType size) noexcept;
 
-	[[nodiscard]] size_t GetAvailable() const;
-	[[nodiscard]] size_t GetUsage() const;
+	[[nodiscard]] size_t getAvailable() const;
+	[[nodiscard]] size_t getUsage() const;
 
-	[[nodiscard]] auto GetID() const
+	[[nodiscard]] auto getID() const
 	{
 		return id;
 	}
 
 private:
-	bool IsMine(Pointer ptr) const;
+	bool isMine(Pointer ptr) const;
 };
 } // namespace hbe
 
@@ -92,7 +92,7 @@ public:
 	}
 
 protected:
-	void Prepare() override;
+	void prepare() override;
 };
 
 } // namespace hbe

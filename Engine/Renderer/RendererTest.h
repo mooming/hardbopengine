@@ -15,7 +15,7 @@ public:
 	RendererTest() noexcept;
 
 protected:
-	void Prepare() override;
+	void prepare() override;
 };
 
 } // namespace hbe

@@ -98,8 +98,8 @@ class ICodingStandards
 public:
 	virtual ~ICodingStandards() = default;
 
-	virtual void Validate() const = 0;
-	virtual void Initialize() = 0;
+	virtual void validate() const = 0;
+	virtual void initialize() = 0;
 	[[nodiscard]] virtual bool IsValid() const = 0;
 };
 
@@ -127,7 +127,7 @@ class DataProcessor
 {
 public:
 	explicit DataProcessor(int initialValue) noexcept;
-	void Process() noexcept;
+	void process() noexcept;
 	[[nodiscard]] int GetValue() const noexcept;
 
 	/*
@@ -135,7 +135,7 @@ public:
 	 * with a member variable name, prefix it with `in`.
 	 * Here `inValue` avoids colliding with the member `value`.
 	 */
-	void SetValue(int inValue) noexcept;
+	void setValue(int inValue) noexcept;
 
 private:
 	int value;
@@ -153,7 +153,7 @@ public:
 	TextBuffer& operator=(TextBuffer&& other) noexcept;
 	~TextBuffer();
 
-	[[nodiscard]] const char* GetText() const noexcept;
+	[[nodiscard]] const char* getText() const noexcept;
 
 private:
 	char* data;
@@ -189,7 +189,7 @@ private:
 
 /*
  * BAD EXAMPLE: Inheritance for component reuse.
- * Inheriting from DataProcessor just to use its Process()
+ * Inheriting from DataProcessor just to use its process()
  * and work buffer creates an is-a relationship that is
  * semantically incorrect. The base's full interface leaks
  * including GetValue() which may not make sense for this type.
@@ -199,7 +199,7 @@ private:
  * whether this type needs its own processing strategy.
  *
  * Why (flexibility): BadProcessor exposes GetValue() and
- * Process() as public methods even though only Process() is
+ * process() as public methods even though only process() is
  * relevant. There is no way to restrict the inherited
  * interface or swap the processing strategy.
  */
@@ -211,9 +211,9 @@ public:
 	{
 	}
 
-	void ProcessMore() noexcept
+	void processMore() noexcept
 	{
-		Process();
+		process();
 	}
 };
 
@@ -247,12 +247,12 @@ public:
 	{
 	}
 
-	void ProcessMore() noexcept
+	void processMore() noexcept
 	{
-		processor.Process();
+		processor.process();
 	}
 
-	[[nodiscard]] int GetExtraData() const noexcept
+	[[nodiscard]] int getExtraData() const noexcept
 	{
 		return extraData;
 	}
@@ -300,13 +300,13 @@ public:
 	CodingStandardsBase() noexcept;
 	virtual ~CodingStandardsBase() = default;
 
-	InlinedData Compute() noexcept;
-	InlinedData Create() noexcept;
-	InlinedData CreateWithMove() noexcept;
-	static TextBuffer UseMoveCorrectly(TextBuffer&& source) noexcept;
+	InlinedData compute() noexcept;
+	InlinedData create() noexcept;
+	InlinedData createWithMove() noexcept;
+	static TextBuffer useMoveCorrectly(TextBuffer&& source) noexcept;
 
 	/* Use consteval (C++20) for functions that must evaluate at compile time */
-	static consteval int Square(int x)
+	static consteval int square(int x)
 	{
 		return x * x;
 	}
@@ -328,7 +328,7 @@ public:
 	 * intentionally omits noexcept, while move construction (no
 	 * allocation) correctly marks noexcept.
 	 *
-	 * Assert() and FatalAssert() live in Core/Debug.h and are ordinary
+	 * Assert() and fatalAssert() live in Core/Debug.h and are ordinary
 	 * functions, not macros — the engine prefers a function call wherever one
 	 * can be substituted, and reserves SCREAMING_SNAKE_CASE for the macros that
 	 * genuinely need one.
@@ -337,7 +337,7 @@ public:
 	 * (see ProcessWithAssertion in .cpp). The engine is exception-
 	 * free — no try/catch/throw is used anywhere.
 	 */
-	static void ProcessNoExcept() noexcept
+	static void processNoExcept() noexcept
 	{
 		Assert(true);
 	}
@@ -346,20 +346,20 @@ public:
 	 * out-prefix parameter: Prefix write-only reference
 	 * parameters with `out` to distinguish them from inputs.
 	 */
-	static bool TryParse(const char* text, int& outResult) noexcept;
+	static bool tryParse(const char* text, int& outResult) noexcept;
 
 	/*
 	 * inOut-prefix parameter: Prefix read-write reference
 	 * parameters with `inOut` to signal modification intent.
 	 */
-	static void ClampToRange(int& inOutValue, int min, int max) noexcept;
+	static void clampToRange(int& inOutValue, int min, int max) noexcept;
 
 	/*
 	 * Single-line Statements: Avoid unnecessary braces for
 	 * single-line continue or return statements to improve
 	 * readability.
 	 */
-	int EvaluateFlag(bool flag) noexcept
+	int evaluateFlag(bool flag) noexcept
 	{
 		if (flag)
 			return 42;
@@ -370,7 +370,7 @@ public:
 	 * Brace Style: Allman. The line always breaks before the opening brace,
 	 * for functions, classes, namespaces and control statements alike:
 	 *
-	 *     void FunctionName(args)
+	 *     void functionName(args)
 	 *     {
 	 *         if (condition)
 	 *         {
@@ -378,7 +378,7 @@ public:
 	 *         }
 	 *     }
 	 *
-	 * Allman is not K&R, which attaches the brace (`void FunctionName(args) {`),
+	 * Allman is not K&R, which attaches the brace (`void functionName(args) {`),
 	 * and not BSD/KNF, which breaks only for functions while keeping
 	 * `if (condition) {` and `namespace x {` attached. This codebase breaks
 	 * for control statements and namespaces too, which makes it Allman.
@@ -386,7 +386,7 @@ public:
 	 * There are no exemptions. An empty body still puts each brace on its own
 	 * line — this is required, not merely permitted:
 	 *
-	 *     void FunctionName() noexcept
+	 *     void functionName() noexcept
 	 *     {
 	 *     }
 	 *
@@ -398,10 +398,10 @@ public:
 	 * source of confusion when the rule seems not to take effect:
 	 *   - BraceWrapping/SplitEmpty{Function,Record,Namespace}: true
 	 *   - AllowShortFunctionsOnASingleLine: None
-	 * Leaving the second one on `Empty` silently collapses `void Foo() {}` back
+	 * Leaving the second one on `Empty` silently collapses `void foo() {}` back
 	 * onto one line no matter what SplitEmptyFunction says.
 	 */
-	virtual void ProcessBraced() noexcept
+	virtual void processBraced() noexcept
 	{
 		int value = 0;
 		if (value > 0)
@@ -419,8 +419,8 @@ public:
 	 */
 
 protected:
-	static void LogValidationError(const char* message) noexcept;
-	[[nodiscard]] static bool ValidateLength(size_t length, size_t maxLength) noexcept;
+	static void logValidationError(const char* message) noexcept;
+	[[nodiscard]] static bool validateLength(size_t length, size_t maxLength) noexcept;
 };
 
 // ========================================================================
@@ -452,25 +452,25 @@ public:
 	~CodingStandards() override;
 
 	// ICodingStandards implementation — override without virtual
-	void Validate() const noexcept override;
-	void Initialize() noexcept override;
+	void validate() const noexcept override;
+	void initialize() noexcept override;
 	[[nodiscard]] bool IsValid() const noexcept override;
 
 	// Public methods
-	void ProcessBraced() noexcept override;
-	void SetData(const CodingStandardsData& newData) noexcept;
-	[[nodiscard]] const CodingStandardsData& GetData() const noexcept;
-	[[nodiscard]] int GetVersion() const noexcept;
+	void processBraced() noexcept override;
+	void setData(const CodingStandardsData& newData) noexcept;
+	[[nodiscard]] const CodingStandardsData& getData() const noexcept;
+	[[nodiscard]] int getVersion() const noexcept;
 
 	// Convention demonstration methods (bodies in .cpp)
 	/*
 	 * Prefer passing by reference over raw pointers. When a pointer
 	 * is required, always validate it before dereference.
 	 */
-	void ProcessWithAssertion(const int* ptr) noexcept;
-	void ProcessWithRangeFor(std::vector<int>& values) noexcept;
-	[[nodiscard]] int ComputeWithValidation() noexcept;
-	void ProcessWithStackBuffer() noexcept;
+	void processWithAssertion(const int* ptr) noexcept;
+	void processWithRangeFor(std::vector<int>& values) noexcept;
+	[[nodiscard]] int computeWithValidation() noexcept;
+	void processWithStackBuffer() noexcept;
 
 	/*
 	 * Error and warning logging: Always output a descriptive log
@@ -479,7 +479,7 @@ public:
 	 * diagnostic information for debugging and post-mortem analysis.
 	 * See .cpp for the comprehensive rule explanation.
 	 */
-	void ProcessWithErrorLogging() noexcept;
+	void processWithErrorLogging() noexcept;
 
 private:
 	// Has-a relationship: CodingStandards owns CodingStandardsData

@@ -15,12 +15,12 @@ RendererTest::RendererTest() noexcept
 {
 }
 
-void RendererTest::Prepare()
+void RendererTest::prepare()
 {
-	AddTest("VulkanRenderer capabilities are unqueried before Initialize", [](auto& log)
+	addTest("VulkanRenderer capabilities are unqueried before Initialize", [](auto& log)
 	{
 		VulkanRenderer renderer;
-		const RenderCapabilities caps = renderer.GetCapabilities();
+		const RenderCapabilities caps = renderer.getCapabilities();
 
 		log << "isDeviceQueried=" << caps.isDeviceQueried << " maxTextureDimension2D=" << caps.maxTextureDimension2D;
 
@@ -31,10 +31,10 @@ void RendererTest::Prepare()
 		Assert(caps.deviceName[0] == '\0', "A renderer without a device must not report a device name");
 	});
 
-	AddTest("VulkanRenderer capabilities match an unknown descriptor", [](auto& log)
+	addTest("VulkanRenderer capabilities match an unknown descriptor", [](auto& log)
 	{
 		VulkanRenderer renderer;
-		const RenderCapabilities caps = renderer.GetCapabilities();
+		const RenderCapabilities caps = renderer.getCapabilities();
 		const RenderCapabilities unknown;
 
 		log << "sizeof(RenderCapabilities)=" << sizeof(RenderCapabilities);
@@ -48,7 +48,7 @@ void RendererTest::Prepare()
 		Assert(caps.supportsComputeShader == unknown.supportsComputeShader, "Unqueried compute flag must match");
 	});
 
-	AddTest("VulkanRenderer Round Trip", [](auto& log)
+	addTest("VulkanRenderer Round Trip", [](auto& log)
 	{
 		VulkanRenderer renderer;
 		OS::Window* window = nullptr;
@@ -56,10 +56,10 @@ void RendererTest::Prepare()
 		// Initialize rejects a null window on purpose - the surface is built from the window,
 		// and queue family support is queried against that surface. The assertion said the
 		// opposite; it survived only because Assert() is compiled out outside __DEBUG__ builds.
-		Assert(!renderer.Initialize(window), "Initialize must reject a null window");
-		renderer.Render(0.016f);
-		Assert(!renderer.GetCapabilities().isDeviceQueried, "A rejected Initialize must leave capabilities unqueried");
-		renderer.Shutdown();
+		Assert(!renderer.initialize(window), "Initialize must reject a null window");
+		renderer.render(0.016f);
+		Assert(!renderer.getCapabilities().isDeviceQueried, "A rejected Initialize must leave capabilities unqueried");
+		renderer.shutdown();
 
 		log << "null-window round trip is a safe no-op";
 	});

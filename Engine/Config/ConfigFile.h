@@ -32,10 +32,10 @@ namespace hbe
 		[[nodiscard]] TString GetValue(const TString& key, const TString& defaultValue) const noexcept;
 		[[nodiscard]] auto IsValid() const noexcept { return isValid; }
 
-		void ForEach(std::function<void(const TMap::value_type&)> func) const noexcept;
+		void forEach(std::function<void(const TMap::value_type&)> func) const noexcept;
 
 	private:
-		void Parse(const char* fileName);
+		void parse(const char* fileName);
 	};
 
 } // namespace hbe

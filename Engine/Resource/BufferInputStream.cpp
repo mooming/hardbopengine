@@ -14,63 +14,63 @@ namespace hbe
 
 	This& BufferInputStream::operator>>(char& value) noexcept
 	{
-		Get<char>(value, '\0');
+		get<char>(value, '\0');
 
 		return *this;
 	}
 
 	This& BufferInputStream::operator>>(int8_t& value) noexcept
 	{
-		Get<int8_t>(value, 0);
+		get<int8_t>(value, 0);
 
 		return *this;
 	}
 
 	This& BufferInputStream::operator>>(uint8_t& value) noexcept
 	{
-		Get<uint8_t>(value, 0);
+		get<uint8_t>(value, 0);
 
 		return *this;
 	}
 
 	This& BufferInputStream::operator>>(int16_t& value) noexcept
 	{
-		Get<int16_t>(value, 0);
+		get<int16_t>(value, 0);
 
 		return *this;
 	}
 
 	This& BufferInputStream::operator>>(uint16_t& value) noexcept
 	{
-		Get<uint16_t>(value, 0);
+		get<uint16_t>(value, 0);
 
 		return *this;
 	}
 
 	This& BufferInputStream::operator>>(int32_t& value) noexcept
 	{
-		Get<int32_t>(value, 0);
+		get<int32_t>(value, 0);
 
 		return *this;
 	}
 
 	This& BufferInputStream::operator>>(uint32_t& value) noexcept
 	{
-		Get<uint32_t>(value, 0);
+		get<uint32_t>(value, 0);
 
 		return *this;
 	}
 
 	This& BufferInputStream::operator>>(int64_t& value) noexcept
 	{
-		Get<int64_t>(value, 0);
+		get<int64_t>(value, 0);
 
 		return *this;
 	}
 
 	This& BufferInputStream::operator>>(uint64_t& value) noexcept
 	{
-		Get<uint64_t>(value, 0);
+		get<uint64_t>(value, 0);
 
 		return *this;
 	}
@@ -78,7 +78,7 @@ namespace hbe
 #ifndef PLATFORM_LINUX
 	This& BufferInputStream::operator>>(size_t& value) noexcept
 	{
-		Get<size_t>(value, 0);
+		get<size_t>(value, 0);
 
 		return *this;
 	}
@@ -86,21 +86,21 @@ namespace hbe
 
 	This& BufferInputStream::operator>>(float& value) noexcept
 	{
-		Get<float>(value, 0.0f);
+		get<float>(value, 0.0f);
 
 		return *this;
 	}
 
 	This& BufferInputStream::operator>>(double& value) noexcept
 	{
-		Get<double>(value, 0.0);
+		get<double>(value, 0.0);
 
 		return *this;
 	}
 
 	This& BufferInputStream::operator>>(long double& value) noexcept
 	{
-		Get<long double>(value, 0);
+		get<long double>(value, 0);
 
 		return *this;
 	}
@@ -108,7 +108,7 @@ namespace hbe
 	This& BufferInputStream::operator>>(StaticString& str) noexcept
 	{
 		size_t length = 0;
-		Get<size_t>(length, 0);
+		get<size_t>(length, 0);
 
 		if (length <= 0)
 		{
@@ -127,7 +127,7 @@ namespace hbe
 
 		for (size_t i = 0; i < length; ++i)
 		{
-			Get<char>(ch, '\0');
+			get<char>(ch, '\0');
 			tmpStr.push_back(ch);
 		}
 
@@ -149,12 +149,12 @@ namespace hbe
 namespace hbe
 {
 
-	BufferInputStreamTest::BufferInputStreamTest() : TestCollection(StringUtil::ToCompactClassName(__PRETTY_FUNCTION__))
+	BufferInputStreamTest::BufferInputStreamTest() : TestCollection(StringUtil::toCompactClassName(__PRETTY_FUNCTION__))
 	{}
 
-	void BufferInputStreamTest::Prepare()
+	void BufferInputStreamTest::prepare()
 	{
-		AddTest("Empty Buffer", [this](auto& ls)
+		addTest("Empty Buffer", [this](auto& ls)
 		{
 			Buffer buffer;
 			BufferInputStream bis(buffer);
@@ -162,24 +162,24 @@ namespace hbe
 			int value = 0;
 			bis >> value;
 
-			if (!bis.HasError())
+			if (!bis.hasError())
 			{
 				ls << "The error should be occured when trying to"
 				   << " get something from the empty buffer" << lferr;
 			}
 		});
 
-		AddTest("Memory Buffer", [this](auto& ls)
+		addTest("Memory Buffer", [this](auto& ls)
 		{
 			constexpr size_t TestCount = 128;
 			constexpr size_t BufferSize = TestCount * sizeof(int);
 
-			auto& mmgr = MemoryManager::GetInstance();
+			auto& mmgr = MemoryManager::getInstance();
 
 			auto genFunc = [&](auto& size, auto& data)
 			{
 				size = BufferSize;
-				auto intBuffer = mmgr.NewArray<int>(TestCount);
+				auto intBuffer = mmgr.newArray<int>(TestCount);
 				for (size_t i = 0; i < TestCount; ++i)
 				{
 					intBuffer[i] = i;
@@ -202,7 +202,7 @@ namespace hbe
 					return;
 				}
 
-				mmgr.DeleteArray<int>((int*) data, TestCount);
+				mmgr.deleteArray<int>((int*) data, TestCount);
 			};
 
 			Buffer buffer(genFunc, relFunc);
@@ -221,12 +221,12 @@ namespace hbe
 				}
 			}
 
-			if (bis.HasError())
+			if (bis.hasError())
 			{
-				ls << "Unexpected error occured! Error Count = " << bis.GetErrorCount() << lferr;
+				ls << "Unexpected error occured! Error Count = " << bis.getErrorCount() << lferr;
 			}
 
-			bis.ClearErrorCount();
+			bis.clearErrorCount();
 
 			{
 				int value = 0;
@@ -235,21 +235,21 @@ namespace hbe
 				bis >> value;
 			}
 
-			if (!bis.HasError())
+			if (!bis.hasError())
 			{
 				ls << "An error is not occured when exceeding its limit." << lferr;
 			}
 
-			if (bis.GetErrorCount() != 3)
+			if (bis.getErrorCount() != 3)
 			{
-				ls << "Invalid error count " << bis.GetErrorCount() << ", 3 is expected." << lferr;
+				ls << "Invalid error count " << bis.getErrorCount() << ", 3 is expected." << lferr;
 			}
 
-			bis.ClearErrorCount();
+			bis.clearErrorCount();
 
-			if (bis.GetErrorCount() != 0)
+			if (bis.getErrorCount() != 0)
 			{
-				ls << "Invalid error count " << bis.GetErrorCount() << ", 0 is expected." << lferr;
+				ls << "Invalid error count " << bis.getErrorCount() << ", 0 is expected." << lferr;
 			}
 		});
 	}

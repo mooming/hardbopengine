@@ -6,9 +6,9 @@
 #ifdef __UNIT_TEST__
 #include <vector>
 
-void hbe::SystemAllocatorTest::Prepare()
+void hbe::SystemAllocatorTest::prepare()
 {
-	AddTest("Vector Growth", [](auto&)
+	addTest("Vector Growth", [](auto&)
 	{
 		for (int j = 0; j < 100; ++j)
 		{
@@ -25,7 +25,7 @@ void hbe::SystemAllocatorTest::Prepare()
 #if MEMORY_INVESTIGATION_ENABLED
 #if MEMORY_BUFFER_UNDERRUN_CHECK_ENABLED
 
-	AddTest("Buffer Under-run Detection", [this](auto& ls)
+	addTest("Buffer Under-run Detection", [this](auto& ls)
 	{
 		SystemAllocator<uint8_t> allocator;
 
@@ -48,7 +48,7 @@ void hbe::SystemAllocatorTest::Prepare()
 		allocator.deallocate(buffer, requestedSize);
 	});
 #else // MEMORY_BUFFER_UNDERRUN_CHECK_ENABLED
-	AddTest("Buffer Over-run Detection", [this](auto& ls)
+	addTest("Buffer Over-run Detection", [this](auto& ls)
 	{
 		SystemAllocator<uint8_t> allocator;
 
@@ -72,7 +72,7 @@ void hbe::SystemAllocatorTest::Prepare()
 #endif // MEMORY_BUFFER_UNDERRUN_CHECK_ENABLED
 
 #if MEMORY_DANGLING_POINTER_CHECK_ENABLED
-	AddTest("Dangling Pointer Detection", [this](auto& ls)
+	addTest("Dangling Pointer Detection", [this](auto& ls)
 	{
 		SystemAllocator<uint8_t> allocator;
 

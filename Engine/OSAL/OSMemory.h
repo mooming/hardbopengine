@@ -15,26 +15,26 @@ namespace OS
 
 /// @brief Provides low-level memory management operations for platform-independent memory allocation,
 /// alignment, and protection.
-[[nodiscard]] bool IsValidAllocation(void* ptr) noexcept;
+[[nodiscard]] bool isValidAllocation(void* ptr) noexcept;
 
 template<typename T>
-[[nodiscard]] bool CheckAligned(T* ptr, uint32_t alignBytes = hbe::Config::DefaultAlign) noexcept
+[[nodiscard]] bool checkAligned(T* ptr, uint32_t alignBytes = hbe::Config::DefaultAlign) noexcept
 {
 	const size_t address = reinterpret_cast<size_t>(ptr);
 	return (address % alignBytes) == 0;
 }
 
-[[nodiscard]] constexpr size_t GetAligned(size_t size, uint32_t alignBytes = hbe::Config::DefaultAlign) noexcept
+[[nodiscard]] constexpr size_t getAligned(size_t size, uint32_t alignBytes = hbe::Config::DefaultAlign) noexcept
 {
 	const auto multiplier = (size + alignBytes - 1) / alignBytes;
 	return multiplier * alignBytes;
 }
 
-[[nodiscard]] size_t GetAllocSize(void* ptr) noexcept;
-[[nodiscard]] size_t GetPageSize() noexcept;
+[[nodiscard]] size_t getAllocSize(void* ptr) noexcept;
+[[nodiscard]] size_t getPageSize() noexcept;
 void* VirtualAlloc(size_t size);
 void VirtualFree(void* address, std::size_t n) noexcept;
-void ProtectMemory(void* address, std::size_t n) noexcept;
+void protectMemory(void* address, std::size_t n) noexcept;
 
 } // namespace OS
 
@@ -51,7 +51,7 @@ public:
 	OSMemoryTest() : TestCollection("OSMemoryTest") {}
 
 protected:
-	void Prepare() override;
+	void prepare() override;
 };
 
 } // namespace hbe

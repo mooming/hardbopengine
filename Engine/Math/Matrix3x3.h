@@ -45,18 +45,18 @@ namespace hbe
 		};
 
 	public:
-		[[nodiscard]] static This CreateRotation(float x, float y, float z) noexcept
+		[[nodiscard]] static This createRotation(float x, float y, float z) noexcept
 		{
 			Matrix3x3 mat(nullptr);
-			mat.SetEulerAngles(x, y, z);
+			mat.setEulerAngles(x, y, z);
 
 			return mat;
 		}
 
-		[[nodiscard]] static This CreateRotation(const TVec euler) noexcept
+		[[nodiscard]] static This createRotation(const TVec euler) noexcept
 		{
 			Matrix3x3 mat(nullptr);
-			mat.SetEulerAngles(euler);
+			mat.setEulerAngles(euler);
 
 			return mat;
 		}
@@ -104,11 +104,11 @@ namespace hbe
 			return mat;
 		}
 
-		[[nodiscard]] This Inverse() const noexcept
+		[[nodiscard]] This inverse() const noexcept
 		{
 			This temp;
 
-			const TNumber det = Determinant();
+			const TNumber det = determinant();
 			Assert(row == column && det != 0, "The matrix is not invertible.");
 
 			const TNumber invDet = static_cast<TNumber>(1) / det;
@@ -125,41 +125,41 @@ namespace hbe
 			temp.m32 = invDet * (m12 * m31 - m11 * m32);
 			temp.m33 = invDet * (m11 * m22 - m12 * m21);
 
-			return temp.Multiply(invDet);
+			return temp.multiply(invDet);
 		}
 
-		void Transpose() noexcept
+		void transpose() noexcept
 		{
 			std::swap(m12, m21);
 			std::swap(m13, m31);
 			std::swap(m23, m32);
 		}
 
-		[[nodiscard]] TNumber Determinant() const noexcept
+		[[nodiscard]] TNumber determinant() const noexcept
 		{
 			return m11 * m22 * m33 + m12 * m23 * m31 + m13 * m21 * m32 - m11 * m23 * m32 - m12 * m21 * m33 -
 				   m13 * m22 * m31;
 		}
 
-		[[nodiscard]] bool IsOrthogonal() const noexcept
+		[[nodiscard]] bool isOrthogonal() const noexcept
 		{
-			return IsZero(rows[0].Dot(rows[1])) && IsZero(rows[1].Dot(rows[2])) && IsZero(rows[2].Dot(rows[0])) &&
-				   rows[0].IsUnity() && rows[1].IsUnity() && rows[2].IsUnity();
+			return isZero(rows[0].dot(rows[1])) && isZero(rows[1].dot(rows[2])) && isZero(rows[2].dot(rows[0])) &&
+				   rows[0].isUnity() && rows[1].isUnity() && rows[2].isUnity();
 		}
 
-		void LookAt(const TVec& forward, TVec up) noexcept
+		void lookAt(const TVec& forward, TVec up) noexcept
 		{
-			Assert(forward.IsUnity(), "Matrix3x3::LookAt - forward must be unit");
-			Assert(up.IsUnity(), "Matrix3x3::LookAt - up must be unit");
+			Assert(forward.isUnity(), "Matrix3x3::LookAt - forward must be unit");
+			Assert(up.isUnity(), "Matrix3x3::LookAt - up must be unit");
 
-			const float cosAngle = forward.Dot(up);
+			const float cosAngle = forward.dot(up);
 			Assert((cosAngle * cosAngle) < 1.0f, "Matrix3x3::LookAt - forward and up are parallel");
 
 #ifndef RIGHT_HANDED_COORDINATE
-			TVec right = up.Cross(forward);
-			if (!IsZero(cosAngle))
+			TVec right = up.cross(forward);
+			if (!isZero(cosAngle))
 			{
-				up = forward.Cross(right);
+				up = forward.cross(right);
 			}
 
 			raws[0] = right;
@@ -168,10 +168,10 @@ namespace hbe
 #endif
 
 #ifdef RIGHT_HANDED_COORDINATE
-			TFloat3 right = forward.Cross(up);
-			if (!IsZero(cosAngle))
+			TFloat3 right = forward.cross(up);
+			if (!isZero(cosAngle))
 			{
-				up = forward.Cross(right);
+				up = forward.cross(right);
 			}
 
 			rows[0] = right;
@@ -179,13 +179,13 @@ namespace hbe
 			rows[2] = up;
 #endif
 
-			Transpose();
+			transpose();
 		}
 
-		void SetEulerX(float radian) noexcept
+		void setEulerX(float radian) noexcept
 		{
-			const float c = RotationCos(radian);
-			const float s = RotationSin(radian);
+			const float c = rotationCos(radian);
+			const float s = rotationSin(radian);
 
 			m11 = 1.0f;
 			m12 = 0.0f;
@@ -198,10 +198,10 @@ namespace hbe
 			m33 = c;
 		}
 
-		void SetEulerY(float radian) noexcept
+		void setEulerY(float radian) noexcept
 		{
-			const float c = RotationCos(radian);
-			const float s = RotationSin(radian);
+			const float c = rotationCos(radian);
+			const float s = rotationSin(radian);
 
 			m11 = c;
 			m12 = 0.0f;
@@ -214,10 +214,10 @@ namespace hbe
 			m33 = c;
 		}
 
-		void SetEulerZ(float radian) noexcept
+		void setEulerZ(float radian) noexcept
 		{
-			const float c = RotationCos(radian);
-			const float s = RotationSin(radian);
+			const float c = rotationCos(radian);
+			const float s = rotationSin(radian);
 
 			m11 = c;
 			m12 = -s;
@@ -230,17 +230,17 @@ namespace hbe
 			m33 = 0.0f;
 		}
 
-		void SetEulerAngles(const TVec& euler) noexcept { SetEulerAngles(euler.x, euler.y, euler.z); }
+		void setEulerAngles(const TVec& euler) noexcept { setEulerAngles(euler.x, euler.y, euler.z); }
 
-		void SetEulerAngles(float x, float y, float z) noexcept
+		void setEulerAngles(float x, float y, float z) noexcept
 		{
-			const float cx = RotationCos(DegreeToRadian(x));
-			const float cy = RotationCos(DegreeToRadian(y));
-			const float cz = RotationCos(DegreeToRadian(z));
+			const float cx = rotationCos(degreeToRadian(x));
+			const float cy = rotationCos(degreeToRadian(y));
+			const float cz = rotationCos(degreeToRadian(z));
 
-			const float sx = RotationSin(DegreeToRadian(x));
-			const float sy = RotationSin(DegreeToRadian(y));
-			const float sz = RotationSin(DegreeToRadian(z));
+			const float sx = rotationSin(degreeToRadian(x));
+			const float sy = rotationSin(degreeToRadian(y));
+			const float sz = rotationSin(degreeToRadian(z));
 
 			m11 = cy * cz;
 			m12 = sx * sy * cz - cx * sz;
@@ -298,7 +298,7 @@ namespace hbe
 		Matrix3x3Test() : TestCollection("Matrix3x3Test") {}
 
 	protected:
-		void Prepare() noexcept override;
+		void prepare() noexcept override;
 	};
 } // namespace hbe
 #endif //__UNIT_TEST__

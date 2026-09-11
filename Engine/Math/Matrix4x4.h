@@ -51,7 +51,7 @@ namespace hbe
 		};
 
 	public:
-		[[nodiscard]] static This CreateTranslation(const TVec3& v) noexcept
+		[[nodiscard]] static This createTranslation(const TVec3& v) noexcept
 		{
 			This mat(nullptr);
 
@@ -192,12 +192,12 @@ namespace hbe
 			return mat;
 		}
 
-		[[nodiscard]] This Inverse() const noexcept
+		[[nodiscard]] This inverse() const noexcept
 		{
 			This result;
 
-			const TNumber det = Determinant();
-			FatalAssert(row == column && det != 0, "The matrix is not invertible.");
+			const TNumber det = determinant();
+			fatalAssert(row == column && det != 0, "The matrix is not invertible.");
 
 			const TNumber invDet = static_cast<TNumber>(1) / det;
 
@@ -237,7 +237,7 @@ namespace hbe
 			return result;
 		}
 
-		void Transpose() noexcept
+		void transpose() noexcept
 		{
 			std::swap(m12, m21);
 			std::swap(m13, m31);
@@ -247,7 +247,7 @@ namespace hbe
 			std::swap(m34, m43);
 		}
 
-		[[nodiscard]] TNumber Determinant() const noexcept
+		[[nodiscard]] TNumber determinant() const noexcept
 		{
 			return m11 * m22 * m33 * m44 + m11 * m23 * m34 * m42 + m11 * m24 * m32 * m43 + m12 * m21 * m34 * m43 +
 				   m12 * m23 * m31 * m44 + m12 * m24 * m33 * m41 + m13 * m21 * m32 * m44 + m13 * m22 * m34 * m41 +
@@ -258,24 +258,24 @@ namespace hbe
 				   m13 * m24 * m32 * m41 - m14 * m21 * m32 * m43 - m14 * m22 * m33 * m41 - m14 * m23 * m31 * m42;
 		}
 
-		[[nodiscard]] bool IsOrthogonal() const noexcept
+		[[nodiscard]] bool isOrthogonal() const noexcept
 		{
-			return IsZero(rows[0].Dot(rows[1])) && IsZero(rows[1].Dot(rows[2])) && IsZero(rows[2].Dot(rows[3])) &&
-				   IsZero(rows[3].Dot(rows[0])) && rows[0].IsUnity() && rows[1].IsUnity() && rows[2].IsUnity() &&
-				   rows[3].IsUnity();
+			return isZero(rows[0].dot(rows[1])) && isZero(rows[1].dot(rows[2])) && isZero(rows[2].dot(rows[3])) &&
+				   isZero(rows[3].dot(rows[0])) && rows[0].isUnity() && rows[1].isUnity() && rows[2].isUnity() &&
+				   rows[3].isUnity();
 		}
 
-		void SetTranslation(const TVec3& translation) noexcept
+		void setTranslation(const TVec3& translation) noexcept
 		{
 			m14 = translation.x;
 			m24 = translation.y;
 			m34 = translation.z;
 		}
 
-		void SetRotationX(float radian) noexcept
+		void setRotationX(float radian) noexcept
 		{
-			const float c = RotationCos(radian);
-			const float s = RotationSin(radian);
+			const float c = rotationCos(radian);
+			const float s = rotationSin(radian);
 
 			m11 = 1.0f;
 			m12 = 0.0f;
@@ -288,10 +288,10 @@ namespace hbe
 			m33 = c;
 		}
 
-		void SetRotationY(float radian) noexcept
+		void setRotationY(float radian) noexcept
 		{
-			const float c = RotationCos(radian);
-			const float s = RotationSin(radian);
+			const float c = rotationCos(radian);
+			const float s = rotationSin(radian);
 
 			m11 = c;
 			m12 = 0.0f;
@@ -304,10 +304,10 @@ namespace hbe
 			m33 = c;
 		}
 
-		void SetRotationZ(float radian) noexcept
+		void setRotationZ(float radian) noexcept
 		{
-			const float c = RotationCos(radian);
-			const float s = RotationSin(radian);
+			const float c = rotationCos(radian);
+			const float s = rotationSin(radian);
 
 			m11 = c;
 			m12 = -s;
@@ -320,15 +320,15 @@ namespace hbe
 			m33 = 0.0f;
 		}
 
-		void EulerAngles(float x, float y, float z) noexcept
+		void eulerAngles(float x, float y, float z) noexcept
 		{
-			const float cx = RotationCos(x);
-			const float cy = RotationCos(y);
-			const float cz = RotationCos(z);
+			const float cx = rotationCos(x);
+			const float cy = rotationCos(y);
+			const float cz = rotationCos(z);
 
-			const float sx = RotationSin(x);
-			const float sy = RotationSin(y);
-			const float sz = RotationSin(z);
+			const float sx = rotationSin(x);
+			const float sy = rotationSin(y);
+			const float sz = rotationSin(z);
 
 			m11 = cy * cz;
 			m12 = sx * sy * cz - cx * sz;

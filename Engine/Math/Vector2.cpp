@@ -10,9 +10,9 @@ namespace hbe
 
 #ifdef __UNIT_TEST__
 
-void hbe::Vector2Test::Prepare() noexcept
+void hbe::Vector2Test::prepare() noexcept
 {
-	AddTest("Vector2 Constants & Operations", [this](auto& ls)
+	addTest("Vector2 Constants & Operations", [this](auto& ls)
 	{
 		ls << "Zero = " << TFloat2::Zero << lf;
 		ls << "X = " << TFloat2::X << lf;
@@ -23,7 +23,7 @@ void hbe::Vector2Test::Prepare() noexcept
 			ls << "Float2 addition failed. X + Y = " << (TFloat2::X + TFloat2::Y) << lferr;
 		}
 
-		if (!TFloat2::Zero.IsZero())
+		if (!TFloat2::Zero.isZero())
 		{
 			ls << "Float2 zero test failed. zero = " << TFloat2::Zero << lferr;
 		}

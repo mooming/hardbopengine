@@ -10,13 +10,13 @@
 namespace hbe
 {
 
-	void InlineStringBuilderTest::Prepare()
+	void InlineStringBuilderTest::prepare()
 	{
 		constexpr size_t MaxLength = 1024;
 		using TString = hbe::HInlineString<MaxLength>;
 		using TStrBuild = InlineStringBuilder<MaxLength>;
 
-		AddTest("Default Construct", [this](auto& ls)
+		addTest("Default Construct", [this](auto& ls)
 		{
 			TStrBuild strBuild;
 			auto str = strBuild.c_str();
@@ -28,7 +28,7 @@ namespace hbe
 				   << lferr;
 			}
 
-			strBuild.Clear();
+			strBuild.clear();
 			str = strBuild.c_str();
 
 			if (str[0] != '\0')
@@ -37,7 +37,7 @@ namespace hbe
 			}
 		});
 
-		AddTest("Add Nullptr", [this](auto& ls)
+		addTest("Add Nullptr", [this](auto& ls)
 		{
 			TStrBuild strBuild;
 			strBuild << nullptr;
@@ -53,7 +53,7 @@ namespace hbe
 			}
 		});
 
-		AddTest("Add Boolean(true)", [this](auto& ls)
+		addTest("Add Boolean(true)", [this](auto& ls)
 		{
 			TStrBuild strBuild;
 			strBuild << true;
@@ -69,7 +69,7 @@ namespace hbe
 			}
 		});
 
-		AddTest("Add Boolean(false)", [this](auto& ls)
+		addTest("Add Boolean(false)", [this](auto& ls)
 		{
 			TStrBuild strBuild;
 			strBuild << false;
@@ -85,7 +85,7 @@ namespace hbe
 			}
 		});
 
-		AddTest("Add Boolean(true, false)", [this](auto& ls)
+		addTest("Add Boolean(true, false)", [this](auto& ls)
 		{
 			TStrBuild strBuild;
 			strBuild << true << ", " << false;
@@ -101,7 +101,7 @@ namespace hbe
 			}
 		});
 
-		AddTest("Add Char", [this](auto& ls)
+		addTest("Add Char", [this](auto& ls)
 		{
 			TStrBuild strBuild;
 			strBuild << 'a';
@@ -117,7 +117,7 @@ namespace hbe
 			}
 		});
 
-		AddTest("Add Chars", [this](auto& ls)
+		addTest("Add Chars", [this](auto& ls)
 		{
 			TStrBuild strBuild;
 			strBuild << 'a' << 'b' << 'c';
@@ -133,7 +133,7 @@ namespace hbe
 			}
 		});
 
-		AddTest("uint8_t", [this](auto& ls)
+		addTest("uint8_t", [this](auto& ls)
 		{
 			TStrBuild strBuild;
 
@@ -152,7 +152,7 @@ namespace hbe
 			}
 		});
 
-		AddTest("int16_t", [this](auto& ls)
+		addTest("int16_t", [this](auto& ls)
 		{
 			TStrBuild strBuild;
 
@@ -171,7 +171,7 @@ namespace hbe
 			}
 		});
 
-		AddTest("uint16_t", [this](auto& ls)
+		addTest("uint16_t", [this](auto& ls)
 		{
 			TStrBuild strBuild;
 
@@ -190,7 +190,7 @@ namespace hbe
 			}
 		});
 
-		AddTest("int32_t", [this](auto& ls)
+		addTest("int32_t", [this](auto& ls)
 		{
 			TStrBuild strBuild;
 
@@ -209,7 +209,7 @@ namespace hbe
 			}
 		});
 
-		AddTest("uint32_t", [this](auto& ls)
+		addTest("uint32_t", [this](auto& ls)
 		{
 			TStrBuild strBuild;
 
@@ -228,7 +228,7 @@ namespace hbe
 			}
 		});
 
-		AddTest("int64_t", [this](auto& ls)
+		addTest("int64_t", [this](auto& ls)
 		{
 			TStrBuild strBuild;
 
@@ -247,7 +247,7 @@ namespace hbe
 			}
 		});
 
-		AddTest("uint64_t", [this](auto& ls)
+		addTest("uint64_t", [this](auto& ls)
 		{
 			TStrBuild strBuild;
 
@@ -266,7 +266,7 @@ namespace hbe
 			}
 		});
 
-		AddTest("float", [this](auto& ls)
+		addTest("float", [this](auto& ls)
 		{
 			TStrBuild strBuild;
 
@@ -285,7 +285,7 @@ namespace hbe
 			}
 		});
 
-		AddTest("double", [this](auto& ls)
+		addTest("double", [this](auto& ls)
 		{
 			TStrBuild strBuild;
 
@@ -304,7 +304,7 @@ namespace hbe
 			}
 		});
 
-		AddTest("long double", [this](auto& ls)
+		addTest("long double", [this](auto& ls)
 		{
 			TStrBuild strBuild;
 

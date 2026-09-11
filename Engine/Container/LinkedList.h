@@ -25,8 +25,8 @@ namespace hbe
 		bool operator!=(const This& rhs) const noexcept { return this != &rhs; }
 		TType& operator*() noexcept { return value; }
 		const TType& operator*() const noexcept { return value; }
-		bool IsHead() const noexcept { return previous == nullptr; }
-		bool IsTail() const noexcept { return next == nullptr; }
+		bool isHead() const noexcept { return previous == nullptr; }
+		bool isTail() const noexcept { return next == nullptr; }
 	};
 
 	/// @brief Doubly-linked list implementation with custom allocator support
@@ -84,7 +84,7 @@ namespace hbe
 			return *this;
 		}
 
-		~LinkedList() noexcept { Clear(); }
+		~LinkedList() noexcept { clear(); }
 
 	public:
 		Iterator begin() noexcept { return Iterator(head); }
@@ -99,25 +99,25 @@ namespace hbe
 			return head == nullptr;
 		}
 
-		void Clear() noexcept
+		void clear() noexcept
 		{
 			while (head != nullptr)
 			{
-				RemoveNode(head);
+				removeNode(head);
 			}
 		}
 
 		Iterator Remove(const TType& element) noexcept
 		{
 			Assert(ContainsElement(element));
-			return Iterator(RemoveNode(GetNodeOf(element)));
+			return Iterator(removeNode(getNodeOf(element)));
 		}
 
-		TType& Add(const TType& value) noexcept { return AddLast(value); }
+		TType& add(const TType& value) noexcept { return addLast(value); }
 
-		TType& Add(TType&& value) noexcept { return AddLast(std::move(value)); }
+		TType& add(TType&& value) noexcept { return addLast(std::move(value)); }
 
-		[[nodiscard]] bool Contains(const TType& value) const noexcept
+		[[nodiscard]] bool contains(const TType& value) const noexcept
 		{
 			for (auto& element : *this)
 			{
@@ -128,7 +128,7 @@ namespace hbe
 			return false;
 		}
 
-		[[nodiscard]] bool Contains(const TType* ptr) const noexcept
+		[[nodiscard]] bool contains(const TType* ptr) const noexcept
 		{
 			for (auto& element : *this)
 			{
@@ -139,7 +139,7 @@ namespace hbe
 			return false;
 		}
 
-		[[nodiscard]] TType* Find(const TType& value) noexcept
+		[[nodiscard]] TType* find(const TType& value) noexcept
 		{
 			for (auto& element : *this)
 			{
@@ -150,7 +150,7 @@ namespace hbe
 			return nullptr;
 		}
 
-		[[nodiscard]] const TType* Find(const TType& value) const noexcept
+		[[nodiscard]] const TType* find(const TType& value) const noexcept
 		{
 			for (auto& element : *this)
 			{
@@ -174,9 +174,9 @@ namespace hbe
 			return count;
 		}
 
-		bool FindAndRemove(const TType& value) noexcept
+		bool findAndRemove(const TType& value) noexcept
 		{
-			if (auto found = Find(value))
+			if (auto found = find(value))
 			{
 				Remove(*found);
 				return true;
@@ -186,42 +186,42 @@ namespace hbe
 		}
 
 	public:
-		TType& AddFirst(const TType& value) noexcept { return AddPrevious(head, New<Node>(allocator, value))->value; }
+		TType& addFirst(const TType& value) noexcept { return addPrevious(head, New<Node>(allocator, value))->value; }
 
-		TType& AddFirst(TType&& value) noexcept
+		TType& addFirst(TType&& value) noexcept
 		{
-			return AddPrevious(head, New<Node>(allocator, std::forward<TType&&>(value)))->value;
+			return addPrevious(head, New<Node>(allocator, std::forward<TType&&>(value)))->value;
 		}
 
-		TType& AddLast(const TType& value) noexcept { return AddNext(tail, New<Node>(allocator, value))->value; }
+		TType& addLast(const TType& value) noexcept { return addNext(tail, New<Node>(allocator, value))->value; }
 
-		TType& AddLast(TType&& value) noexcept
+		TType& addLast(TType&& value) noexcept
 		{
-			return AddNext(tail, New<Node>(allocator, std::forward<TType&&>(value)))->value;
+			return addNext(tail, New<Node>(allocator, std::forward<TType&&>(value)))->value;
 		}
 
-		TType& AddPrevious(TType& current, const TType& value) noexcept
+		TType& addPrevious(TType& current, const TType& value) noexcept
 		{
-			return AddPrevious(GetNodeOf(current), New<Node>(allocator, value))->value;
+			return addPrevious(getNodeOf(current), New<Node>(allocator, value))->value;
 		}
 
-		TType& AddPrevious(TType& current, TType&& value) noexcept
+		TType& addPrevious(TType& current, TType&& value) noexcept
 		{
-			return AddPrevious(GetNodeOf(current), New<Node>(allocator, std::forward<TType&&>(value)))->value;
+			return addPrevious(getNodeOf(current), New<Node>(allocator, std::forward<TType&&>(value)))->value;
 		}
 
-		TType& AddNext(TType& current, const TType& value) noexcept
+		TType& addNext(TType& current, const TType& value) noexcept
 		{
-			return AddNext(GetNodeOf(current), New<Node>(allocator, value))->value;
+			return addNext(getNodeOf(current), New<Node>(allocator, value))->value;
 		}
 
-		TType& AddNext(TType& current, TType&& value) noexcept
+		TType& addNext(TType& current, TType&& value) noexcept
 		{
-			return AddNext(GetNodeOf(current), New<Node>(allocator, std::forward(value)))->value;
+			return addNext(getNodeOf(current), New<Node>(allocator, std::forward(value)))->value;
 		}
 
 	private:
-		Node* RemoveNode(Node* node) noexcept
+		Node* removeNode(Node* node) noexcept
 		{
 			auto next = node->next;
 
@@ -239,13 +239,13 @@ namespace hbe
 			return next;
 		}
 
-		Node* GetNodeOf(TType& element) noexcept
+		Node* getNodeOf(TType& element) noexcept
 		{
 			Assert(ContainsElement(element));
 			return reinterpret_cast<Node*>(&element);
 		}
 
-		Node* AddPrevious(Node* current, Node* node) noexcept
+		Node* addPrevious(Node* current, Node* node) noexcept
 		{
 			Assert((current != nullptr || IsEmpty()) && node != nullptr);
 
@@ -256,7 +256,7 @@ namespace hbe
 			}
 			else
 			{
-				LinkPrevious(current, node);
+				linkPrevious(current, node);
 				if (current == head)
 				{
 					head = node;
@@ -266,7 +266,7 @@ namespace hbe
 			return node;
 		}
 
-		Node* AddNext(Node* current, Node* node) noexcept
+		Node* addNext(Node* current, Node* node) noexcept
 		{
 			Assert((current != nullptr || IsEmpty()) && node != nullptr);
 
@@ -277,7 +277,7 @@ namespace hbe
 			}
 			else
 			{
-				LinkNext(current, node);
+				linkNext(current, node);
 				if (current == tail)
 				{
 					tail = node;
@@ -288,7 +288,7 @@ namespace hbe
 		}
 
 	private:
-		void LinkPrevious(Node* node, Node* newNode) noexcept
+		void linkPrevious(Node* node, Node* newNode) noexcept
 		{
 			Assert(node != nullptr);
 			Assert(newNode != nullptr);
@@ -305,7 +305,7 @@ namespace hbe
 			}
 		}
 
-		void LinkNext(Node* node, Node* newNode) noexcept
+		void linkNext(Node* node, Node* newNode) noexcept
 		{
 			Assert(node != nullptr);
 			Assert(newNode != nullptr);
@@ -355,7 +355,7 @@ namespace hbe
 		LinkedListTest() : TestCollection("LinkedListTest") {}
 
 	protected:
-		void Prepare() override;
+		void prepare() override;
 	};
 } // namespace hbe
 #endif //__UNIT_TEST__

@@ -31,7 +31,7 @@ namespace hbe
 
 		~InlineStringBuilder() = default;
 
-		void Clear() noexcept
+		void clear() noexcept
 		{
 			length = 0;
 			buffer[0] = '\0';
@@ -44,7 +44,7 @@ namespace hbe
 
 		[[nodiscard]] operator const TChar*() const noexcept { return c_str(); }
 
-		TThis& Hex(uint8_t value) noexcept
+		TThis& hex(uint8_t value) noexcept
 		{
 			auto print = [&]()
 			{
@@ -111,7 +111,7 @@ namespace hbe
 				return *this << nullptr;
 			}
 
-			auto len = StringUtil::StrLen(str);
+			auto len = StringUtil::strLen(str);
 			size_t newLength = length + len;
 
 			if (unlikely(newLength >= LastIndex))
@@ -141,7 +141,7 @@ namespace hbe
 				return *this;
 			}
 
-			auto len = StringUtil::StrLen(str, N);
+			auto len = StringUtil::strLen(str, N);
 			size_t newLength = length + len;
 
 			if (unlikely(newLength >= LastIndex))
@@ -360,7 +360,7 @@ namespace hbe
 		InlineStringBuilderTest() : TestCollection("InlineStringBuilderTest") {}
 
 	protected:
-		void Prepare() override;
+		void prepare() override;
 	};
 } // namespace hbe
 

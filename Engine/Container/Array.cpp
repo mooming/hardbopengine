@@ -9,9 +9,9 @@
 namespace hbe
 {
 
-	void ArrayTest::Prepare()
+	void ArrayTest::prepare()
 	{
-		AddTest("Default Constructor", [this](auto& ls)
+		addTest("Default Constructor", [this](auto& ls)
 		{
 			const Array<int> array;
 			if (array.Size() != 0)
@@ -20,7 +20,7 @@ namespace hbe
 			}
 		});
 
-		AddTest("Initializer List", [this](auto& ls)
+		addTest("Initializer List", [this](auto& ls)
 		{
 			Array<int> array({0, 1, 2, 3, 4, 5, 6, 7, 8, 9});
 
@@ -42,7 +42,7 @@ namespace hbe
 			}
 		});
 
-		AddTest("Initializer List (2)", [this](auto& ls)
+		addTest("Initializer List (2)", [this](auto& ls)
 		{
 			const Array<int> array({0, 1, 2, 3, 4, 5, 6, 7, 8, 9});
 			int i = 0;

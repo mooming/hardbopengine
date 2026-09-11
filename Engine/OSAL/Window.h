@@ -20,18 +20,18 @@ public:
 	Window() noexcept;
 	~Window();
 
-	[[nodiscard]] bool CreateWindow(const hbe::HString& title, int width, int height);
-	void SetTitle(const hbe::HString& title);
-	void SetSize(int width, int height);
-	void SetVisible(bool visible);
-	void PollEvents();
+	[[nodiscard]] bool createWindow(const hbe::HString& title, int width, int height);
+	void setTitle(const hbe::HString& title);
+	void setSize(int width, int height);
+	void setVisible(bool visible);
+	void pollEvents();
 	void Close();
 
-	[[nodiscard]] int GetWidth() const;
-	[[nodiscard]] int GetHeight() const;
-	[[nodiscard]] bool IsVisible() const;
-	[[nodiscard]] bool IsClosed() const;
-	[[nodiscard]] intptr_t GetNativeHandle() const;
+	[[nodiscard]] int getWidth() const;
+	[[nodiscard]] int getHeight() const;
+	[[nodiscard]] bool isVisible() const;
+	[[nodiscard]] bool isClosed() const;
+	[[nodiscard]] intptr_t getNativeHandle() const;
 
 private:
 	int width;
@@ -54,7 +54,7 @@ private:
 };
 
 /// @brief Creates a Window owned by the caller.
-[[nodiscard]] std::unique_ptr<Window> CreateWindow(const hbe::HString& title, int width, int height);
+[[nodiscard]] std::unique_ptr<Window> createWindow(const hbe::HString& title, int width, int height);
 
 } // namespace OS
 
@@ -70,7 +70,7 @@ public:
 	WindowTest() : TestCollection("WindowTest") {}
 
 protected:
-	void Prepare() override;
+	void prepare() override;
 };
 
 } // namespace hbe

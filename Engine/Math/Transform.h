@@ -58,19 +58,19 @@ namespace hbe
 		{
 			if (parent)
 			{
-				parent->Detach(*this);
+				parent->detach(*this);
 			}
 
-			DetachAll();
+			detachAll();
 		}
 
-		void Attach(Transform& transform) noexcept
+		void attach(Transform& transform) noexcept
 		{
 			auto ptr = &transform;
 
 			if (ptr == parent)
 			{
-				parent->Detach(*this);
+				parent->detach(*this);
 			}
 
 			if (std::find(children.begin(), children.end(), ptr) != children.end())
@@ -84,9 +84,9 @@ namespace hbe
 			transform.parent = this;
 		}
 
-		[[nodiscard]] Transform* GetParent() const noexcept { return parent; }
+		[[nodiscard]] Transform* getParent() const noexcept { return parent; }
 
-		void Detach(Transform& transform) noexcept
+		void detach(Transform& transform) noexcept
 		{
 			if (transform.parent != this)
 			{
@@ -102,7 +102,7 @@ namespace hbe
 			children.erase(it);
 		}
 
-		void DetachAll() noexcept
+		void detachAll() noexcept
 		{
 			for (auto child : children)
 			{
@@ -113,7 +113,7 @@ namespace hbe
 			children.clear();
 		}
 
-		[[nodiscard]] bool HasChild(const Transform& child) const noexcept
+		[[nodiscard]] bool hasChild(const Transform& child) const noexcept
 		{
 			auto ptr = &child;
 			bool bHasChild = std::find(children.cbegin(), children.cend(), ptr) != children.cend();
@@ -121,10 +121,10 @@ namespace hbe
 			return bHasChild;
 		}
 
-		[[nodiscard]] Vector<Transform*>& GetChildren() noexcept { return children; }
-		[[nodiscard]] const Vector<Transform*>& GetChildren() const noexcept { return children; }
+		[[nodiscard]] Vector<Transform*>& getChildren() noexcept { return children; }
+		[[nodiscard]] const Vector<Transform*>& getChildren() const noexcept { return children; }
 
-		void Invalidate() noexcept
+		void invalidate() noexcept
 		{
 			if (!world)
 			{
@@ -135,11 +135,11 @@ namespace hbe
 			for (auto child : children)
 			{
 				Assert(child);
-				child->Invalidate();
+				child->invalidate();
 			}
 		}
 
-		[[nodiscard]] const TUTransform& GetWorldTransform() noexcept
+		[[nodiscard]] const TUTransform& getWorldTransform() noexcept
 		{
 			if (world)
 			{
@@ -148,7 +148,7 @@ namespace hbe
 
 			if (parent)
 			{
-				world = parent->GetWorldTransform() * trs;
+				world = parent->getWorldTransform() * trs;
 
 				return *world;
 			}
@@ -156,7 +156,7 @@ namespace hbe
 			return trs;
 		}
 
-		[[nodiscard]] TUTransform GetWorldTransform() const noexcept
+		[[nodiscard]] TUTransform getWorldTransform() const noexcept
 		{
 			if (world)
 			{
@@ -165,17 +165,17 @@ namespace hbe
 
 			if (parent)
 			{
-				return parent->GetWorldTransform() * trs;
+				return parent->getWorldTransform() * trs;
 			}
 
 			return trs;
 		}
 
-		[[nodiscard]] const TUTransform& GetLocalTransform() const noexcept { return trs; }
+		[[nodiscard]] const TUTransform& getLocalTransform() const noexcept { return trs; }
 
-		void Set(const TQuat& r, TNumber s, const TVec3& t) noexcept
+		void set(const TQuat& r, TNumber s, const TVec3& t) noexcept
 		{
-			if (rotation == r && IsEqual(scale, s) && translation == t)
+			if (rotation == r && isEqual(scale, s) && translation == t)
 			{
 				return;
 			}
@@ -184,10 +184,10 @@ namespace hbe
 			scale = s;
 			translation = t;
 
-			Invalidate();
+			invalidate();
 		}
 
-		void Set(const TQuat& r) noexcept
+		void set(const TQuat& r) noexcept
 		{
 			if (rotation == r)
 			{
@@ -196,10 +196,10 @@ namespace hbe
 
 			rotation = r;
 
-			Invalidate();
+			invalidate();
 		}
 
-		void Set(TNumber s) noexcept
+		void set(TNumber s) noexcept
 		{
 			if (scale == s)
 			{
@@ -208,10 +208,10 @@ namespace hbe
 
 			scale = s;
 
-			Invalidate();
+			invalidate();
 		}
 
-		void Set(const TVec3& t) noexcept
+		void set(const TVec3& t) noexcept
 		{
 			if (translation == t)
 			{
@@ -220,7 +220,7 @@ namespace hbe
 
 			translation = t;
 
-			Invalidate();
+			invalidate();
 		}
 	};
 
@@ -234,13 +234,13 @@ namespace hbe
 		os << "Transform" << endl;
 		os << t.trs << endl;
 
-		auto parent = t.GetParent();
+		auto parent = t.getParent();
 		os << "Parent: " << parent << endl;
 
 		if (parent)
 		{
 			os << "World Transform" << endl;
-			os << t.GetWorldTransform() << endl;
+			os << t.getWorldTransform() << endl;
 		}
 
 		return os;
@@ -252,13 +252,13 @@ namespace hbe
 		os << "Transform" << hendl;
 		os << t.trs << hendl;
 
-		auto parent = t.GetParent();
+		auto parent = t.getParent();
 		os << "Parent: " << parent << hendl;
 
 		if (parent)
 		{
 			os << "World Transform" << hendl;
-			os << t.GetWorldTransform() << hendl;
+			os << t.getWorldTransform() << hendl;
 		}
 
 		return os;
@@ -277,7 +277,7 @@ namespace hbe
 		TransformTest() : TestCollection("TransformTest") {}
 
 	protected:
-		void Prepare() noexcept override;
+		void prepare() noexcept override;
 	};
 } // namespace hbe
 #endif //__UNIT_TEST__

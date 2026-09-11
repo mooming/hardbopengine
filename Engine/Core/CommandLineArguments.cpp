@@ -8,9 +8,9 @@
 
 namespace hbe
 {
-CommandLineArguments::CommandLineArguments(int argc, const char* argv[]) { Parse(argc, argv); }
+CommandLineArguments::CommandLineArguments(int argc, const char* argv[]) { parse(argc, argv); }
 
-void CommandLineArguments::Print()
+void CommandLineArguments::print()
 {
 	using namespace std;
 
@@ -26,7 +26,7 @@ void CommandLineArguments::Print()
 	}
 }
 
-void CommandLineArguments::Parse(int argc, const char* argv[])
+void CommandLineArguments::parse(int argc, const char* argv[])
 {
 	using namespace std;
 

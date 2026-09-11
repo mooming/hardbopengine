@@ -12,17 +12,17 @@ namespace hbe
 
 	AllocatorScope::AllocatorScope(TAllocatorID id) noexcept
 	{
-		auto& mmgr = MemoryManager::GetInstance();
-		previous = mmgr.GetScopedAllocatorID();
+		auto& mmgr = MemoryManager::getInstance();
+		previous = mmgr.getScopedAllocatorID();
 		current = id;
 
-		mmgr.SetScopedAllocatorID(current);
+		mmgr.setScopedAllocatorID(current);
 	}
 
 	AllocatorScope::~AllocatorScope() noexcept
 	{
-		auto& mmgr = MemoryManager::GetInstance();
-		mmgr.SetScopedAllocatorID(previous);
+		auto& mmgr = MemoryManager::getInstance();
+		mmgr.setScopedAllocatorID(previous);
 	}
 
 } // namespace hbe
@@ -33,19 +33,19 @@ namespace hbe
 namespace hbe
 {
 
-	void AllocatorScopeTest::Prepare()
+	void AllocatorScopeTest::prepare()
 	{
-		AddTest("Alloc Scope Test", [this](auto& ls)
+		addTest("Alloc Scope Test", [this](auto& ls)
 		{
 			InlinePoolAllocator<int, 100, 2> allocator;
 			AllocatorScope scope(allocator);
 
-			auto& mmgr = MemoryManager::GetInstance();
-			auto ptr = mmgr.Allocate(100);
+			auto& mmgr = MemoryManager::getInstance();
+			auto ptr = mmgr.allocate(100);
 
-			if (mmgr.GetCurrentAllocatorID() != allocator.GetID())
+			if (mmgr.getCurrentAllocatorID() != allocator.getID())
 			{
-				ls << "Current allocator ID is not the given allocator id(" << allocator.GetID() << ')' << lferr;
+				ls << "Current allocator ID is not the given allocator id(" << allocator.getID() << ')' << lferr;
 			}
 
 			mmgr.Deallocate(ptr, 100);

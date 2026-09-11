@@ -12,19 +12,19 @@ MainThreadTaskQueue::MainThreadTaskQueue()
 {
 }
 
-void MainThreadTaskQueue::Enqueue(TTaskFunc taskFunc, void* userData, uint8_t priority) noexcept
+void MainThreadTaskQueue::enqueue(TTaskFunc taskFunc, void* userData, uint8_t priority) noexcept
 {
 TaskItem item(priority, taskFunc, userData);
-queue.Push(item);
+queue.push(item);
 }
 
-size_t MainThreadTaskQueue::ProcessTasks() noexcept
+size_t MainThreadTaskQueue::processTasks() noexcept
 {
 size_t processed = 0;
 
 while (!queue.IsEmpty())
 {
-	auto itemOpt = queue.Pop();
+	auto itemOpt = queue.pop();
 	if (!itemOpt.has_value())
 	{
 		break;
@@ -46,7 +46,7 @@ bool MainThreadTaskQueue::HasPendingTasks() const noexcept
 return !queue.IsEmpty();
 }
 
-void MainThreadTaskQueue::RequestStop() noexcept
+void MainThreadTaskQueue::requestStop() noexcept
 {
 isRunning = false;
 }

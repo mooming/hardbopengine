@@ -15,7 +15,7 @@ using namespace hbe;
 namespace OS
 {
 
-HString GetFullPath(const HString& path)
+HString getFullPath(const HString& path)
 {
 	using namespace StringUtil;
 
@@ -25,13 +25,13 @@ HString GetFullPath(const HString& path)
 	{
 		std::cerr << "[OS::GetFullPath] Failed to get the full path of " << path << std::endl;
 
-		return TrimPath(path);
+		return trimPath(path);
 	}
 
-	return TrimPath(fullPath);
+	return trimPath(fullPath);
 }
 
-bool IsDirectory(const char* path)
+bool isDirectory(const char* path)
 {
 	DIR* dir = opendir(path);
 
@@ -44,7 +44,7 @@ bool IsDirectory(const char* path)
 	return false;
 }
 
-HVector<HString> ListFilesInDirectory(const char* path)
+HVector<HString> listFilesInDirectory(const char* path)
 {
 	HVector<HString> fileList;
 

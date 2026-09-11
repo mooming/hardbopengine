@@ -43,7 +43,7 @@ public:
 		return os;
 	}
 
-	[[nodiscard]] const auto& GetPath() const { return path; }
+	[[nodiscard]] const auto& getPath() const { return path; }
 
 private:
 	std::string path;

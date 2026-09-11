@@ -8,11 +8,11 @@
 namespace OS
 {
 
-std::unique_ptr<Window> CreateWindow(const hbe::HString& title, int width, int height)
+std::unique_ptr<Window> createWindow(const hbe::HString& title, int width, int height)
 {
 	auto window = std::make_unique<Window>();
 
-	if (window->CreateWindow(title, width, height))
+	if (window->createWindow(title, width, height))
 	{
 		return window;
 	}
@@ -33,11 +33,11 @@ std::unique_ptr<Window> CreateWindow(const hbe::HString& title, int width, int h
 namespace hbe
 {
 
-void WindowTest::Prepare()
+void WindowTest::prepare()
 {
-	AddTest("Create Window", [this](auto& ls)
+	addTest("Create Window", [this](auto& ls)
 	{
-		auto& taskSystem = Engine::Get().GetTaskSystem();
+		auto& taskSystem = Engine::get().getTaskSystem();
 		std::promise<std::unique_ptr<OS::Window>> windowPromise;
 		auto windowFuture = windowPromise.get_future();
 
@@ -59,17 +59,17 @@ void WindowTest::Prepare()
 
 		Data userData{this, ls, windowPromise};
 
-		taskSystem.DispatchToMainThread([](void* userData) mutable
+		taskSystem.dispatchToMainThread([](void* userData) mutable
 		{
 			auto data = static_cast<Data*>(userData);
-			FatalAssert(data != nullptr);
+			fatalAssert(data != nullptr);
 
 			auto& ls = data->ls;
 			auto& lf = data->thisObject->lf;
 			auto& lferr = data->thisObject->lferr;
 			auto& windowPromise = data->windowPromise;
 
-			auto app = Engine::Get().GetApplication();
+			auto app = Engine::get().getApplication();
 			if (!app)
 			{
 				ls << "Failed to get an application instance" << lf;
@@ -77,7 +77,7 @@ void WindowTest::Prepare()
 				return;
 			}
 
-			auto window = OS::CreateWindow("Test Window", 800, 600);
+			auto window = OS::createWindow("Test Window", 800, 600);
 			if (!window)
 			{
 				ls << "Failed to create a window" << lferr;
@@ -85,8 +85,8 @@ void WindowTest::Prepare()
 				return;
 			}
 
-			const int width = window->GetWidth();
-			const int height = window->GetHeight();
+			const int width = window->getWidth();
+			const int height = window->getHeight();
 			ls << "Width: " << width << lf;
 			ls << "Height: " << height << lf;
 
@@ -100,7 +100,7 @@ void WindowTest::Prepare()
 				ls << "Invalid height: " << height << ", expected 600" << lferr;
 			}
 
-			if (!window->IsVisible())
+			if (!window->isVisible())
 			{
 				ls << "Window should be visible" << lferr;
 			}
@@ -109,8 +109,8 @@ void WindowTest::Prepare()
 
 			for (int i = 0; i < 100; ++i)
 			{
-				app->PollEvents();
-				window->PollEvents();
+				app->pollEvents();
+				window->pollEvents();
 				std::this_thread::sleep_for(std::chrono::milliseconds(10));
 			}
 
@@ -121,9 +121,9 @@ void WindowTest::Prepare()
 		windowFuture.get();
 	});
 
-	AddTest("Set and Get Title", [this](auto& ls)
+	addTest("Set and Get Title", [this](auto& ls)
 	{
-		auto& taskSystem = Engine::Get().GetTaskSystem();
+		auto& taskSystem = Engine::get().getTaskSystem();
 		std::promise<std::unique_ptr<OS::Window>> windowPromise;
 		auto windowFuture = windowPromise.get_future();
 
@@ -145,17 +145,17 @@ void WindowTest::Prepare()
 
 		Data userData{this, ls, windowPromise};
 
-		taskSystem.DispatchToMainThread([](void* userData) mutable
+		taskSystem.dispatchToMainThread([](void* userData) mutable
 		{
 			auto data = static_cast<Data*>(userData);
-			FatalAssert(data != nullptr);
+			fatalAssert(data != nullptr);
 
 			auto& ls = data->ls;
 			auto& lf = data->thisObject->lf;
 			auto& lferr = data->thisObject->lferr;
 			auto& windowPromise = data->windowPromise;
 
-			auto app = Engine::Get().GetApplication();
+			auto app = Engine::get().getApplication();
 			if (!app)
 			{
 				ls << "Failed to get an application instance" << lf;
@@ -163,7 +163,7 @@ void WindowTest::Prepare()
 				return;
 			}
 
-			auto window = OS::CreateWindow("Initial Title", 800, 600);
+			auto window = OS::createWindow("Initial Title", 800, 600);
 			if (!window)
 			{
 				ls << "Failed to create a window" << lferr;
@@ -171,8 +171,8 @@ void WindowTest::Prepare()
 				return;
 			}
 
-			const int width = window->GetWidth();
-			const int height = window->GetHeight();
+			const int width = window->getWidth();
+			const int height = window->getHeight();
 			ls << "Width: " << width << lf;
 			ls << "Height: " << height << lf;
 
@@ -186,7 +186,7 @@ void WindowTest::Prepare()
 				ls << "Invalid height: " << height << ", expected 600" << lferr;
 			}
 
-			if (!window->IsVisible())
+			if (!window->isVisible())
 			{
 				ls << "Window should be visible" << lferr;
 			}
@@ -196,13 +196,13 @@ void WindowTest::Prepare()
 			bool titleSet = false;
 			for (int i = 0; i < 100; ++i)
 			{
-				app->PollEvents();
-				window->PollEvents();
+				app->pollEvents();
+				window->pollEvents();
 
 				if (i == 50)
 				{
 					hbe::HString newTitle = "New Title";
-					window->SetTitle(newTitle);
+					window->setTitle(newTitle);
 					ls << "Title set to: " << newTitle.c_str() << lf;
 					titleSet = true;
 				}
@@ -222,9 +222,9 @@ void WindowTest::Prepare()
 		windowFuture.get();
 	});
 
-	AddTest("Set and Get Size", [this](auto& ls)
+	addTest("Set and Get Size", [this](auto& ls)
 	{
-		auto& taskSystem = Engine::Get().GetTaskSystem();
+		auto& taskSystem = Engine::get().getTaskSystem();
 		std::promise<std::unique_ptr<OS::Window>> windowPromise;
 		auto windowFuture = windowPromise.get_future();
 
@@ -246,17 +246,17 @@ void WindowTest::Prepare()
 
 		Data userData{this, ls, windowPromise};
 
-		taskSystem.DispatchToMainThread([](void* userData) mutable
+		taskSystem.dispatchToMainThread([](void* userData) mutable
 		{
 			auto data = static_cast<Data*>(userData);
-			FatalAssert(data != nullptr);
+			fatalAssert(data != nullptr);
 
 			auto& ls = data->ls;
 			auto& lf = data->thisObject->lf;
 			auto& lferr = data->thisObject->lferr;
 			auto& windowPromise = data->windowPromise;
 
-			auto app = Engine::Get().GetApplication();
+			auto app = Engine::get().getApplication();
 			if (!app)
 			{
 				ls << "Failed to get an application instance" << lf;
@@ -264,7 +264,7 @@ void WindowTest::Prepare()
 				return;
 			}
 
-			auto window = OS::CreateWindow("Resize Test", 800, 600);
+			auto window = OS::createWindow("Resize Test", 800, 600);
 			if (!window)
 			{
 				ls << "Failed to create a window" << lferr;
@@ -272,8 +272,8 @@ void WindowTest::Prepare()
 				return;
 			}
 
-			const int initialWidth = window->GetWidth();
-			const int initialHeight = window->GetHeight();
+			const int initialWidth = window->getWidth();
+			const int initialHeight = window->getHeight();
 			ls << "Initial Size: " << initialWidth << "x" << initialHeight << lf;
 
 			if (initialWidth != 800)
@@ -288,22 +288,22 @@ void WindowTest::Prepare()
 
 			for (int i = 0; i < 100; ++i)
 			{
-				app->PollEvents();
-				window->PollEvents();
+				app->pollEvents();
+				window->pollEvents();
 
 				if (i == 50)
 				{
 					const int newWidth = 1024;
 					const int newHeight = 768;
-					window->SetSize(newWidth, newHeight);
+					window->setSize(newWidth, newHeight);
 					ls << "Resizing to: " << newWidth << "x" << newHeight << lf;
 				}
 
 				std::this_thread::sleep_for(std::chrono::milliseconds(10));
 			}
 
-			const int finalWidth = window->GetWidth();
-			const int finalHeight = window->GetHeight();
+			const int finalWidth = window->getWidth();
+			const int finalHeight = window->getHeight();
 			ls << "Final Size: " << finalWidth << "x" << finalHeight << lf;
 
 			if (finalWidth != 1024)
@@ -322,9 +322,9 @@ void WindowTest::Prepare()
 		windowFuture.get();
 	});
 
-	AddTest("Visibility", [this](auto& ls)
+	addTest("Visibility", [this](auto& ls)
 	{
-		auto& taskSystem = Engine::Get().GetTaskSystem();
+		auto& taskSystem = Engine::get().getTaskSystem();
 		std::promise<std::unique_ptr<OS::Window>> windowPromise;
 		auto windowFuture = windowPromise.get_future();
 
@@ -346,17 +346,17 @@ void WindowTest::Prepare()
 
 		Data userData{this, ls, windowPromise};
 
-		taskSystem.DispatchToMainThread([](void* userData) mutable
+		taskSystem.dispatchToMainThread([](void* userData) mutable
 		{
 			auto data = static_cast<Data*>(userData);
-			FatalAssert(data != nullptr);
+			fatalAssert(data != nullptr);
 
 			auto& ls = data->ls;
 			auto& lf = data->thisObject->lf;
 			auto& lferr = data->thisObject->lferr;
 			auto& windowPromise = data->windowPromise;
 
-			auto app = Engine::Get().GetApplication();
+			auto app = Engine::get().getApplication();
 			if (!app)
 			{
 				ls << "Failed to get an application instance" << lf;
@@ -364,7 +364,7 @@ void WindowTest::Prepare()
 				return;
 			}
 
-			auto window = OS::CreateWindow("Visibility Test", 800, 600);
+			auto window = OS::createWindow("Visibility Test", 800, 600);
 			if (!window)
 			{
 				ls << "Failed to create a window" << lferr;
@@ -372,7 +372,7 @@ void WindowTest::Prepare()
 				return;
 			}
 
-			const bool initiallyVisible = window->IsVisible();
+			const bool initiallyVisible = window->isVisible();
 			ls << "Initially visible: " << (initiallyVisible ? "true" : "false") << lf;
 
 			if (!initiallyVisible)
@@ -382,34 +382,34 @@ void WindowTest::Prepare()
 
 			for (int i = 0; i < 100; ++i)
 			{
-				app->PollEvents();
-				window->PollEvents();
+				app->pollEvents();
+				window->pollEvents();
 
 				if (i == 25)
 				{
-					window->SetVisible(false);
+					window->setVisible(false);
 					ls << "Set visible: false" << lf;
 				}
 				else if (i == 50)
 				{
-					const bool isHidden = !window->IsVisible();
+					const bool isHidden = !window->isVisible();
 					ls << "Is visible after hide: " << (isHidden ? "false" : "true") << lf;
 
-					if (window->IsVisible())
+					if (window->isVisible())
 					{
 						ls << "Window should be hidden after SetVisible(false)" << lferr;
 					}
 				}
 				else if (i == 75)
 				{
-					window->SetVisible(true);
+					window->setVisible(true);
 					ls << "Set visible: true" << lf;
 				}
 
 				std::this_thread::sleep_for(std::chrono::milliseconds(10));
 			}
 
-			const bool finalVisible = window->IsVisible();
+			const bool finalVisible = window->isVisible();
 			ls << "Final visible: " << (finalVisible ? "true" : "false") << lf;
 
 			if (!finalVisible)
@@ -424,9 +424,9 @@ void WindowTest::Prepare()
 		windowFuture.get();
 	});
 
-	AddTest("Poll Events", [this](auto& ls)
+	addTest("Poll Events", [this](auto& ls)
 	{
-		auto& taskSystem = Engine::Get().GetTaskSystem();
+		auto& taskSystem = Engine::get().getTaskSystem();
 		std::promise<std::unique_ptr<OS::Window>> windowPromise;
 		auto windowFuture = windowPromise.get_future();
 
@@ -448,17 +448,17 @@ void WindowTest::Prepare()
 
 		Data userData{this, ls, windowPromise};
 
-		taskSystem.DispatchToMainThread([](void* userData) mutable
+		taskSystem.dispatchToMainThread([](void* userData) mutable
 		{
 			auto data = static_cast<Data*>(userData);
-			FatalAssert(data != nullptr);
+			fatalAssert(data != nullptr);
 
 			auto& ls = data->ls;
 			auto& lf = data->thisObject->lf;
 			auto& lferr = data->thisObject->lferr;
 			auto& windowPromise = data->windowPromise;
 
-			auto app = Engine::Get().GetApplication();
+			auto app = Engine::get().getApplication();
 			if (!app)
 			{
 				ls << "Failed to get an application instance" << lferr;
@@ -466,7 +466,7 @@ void WindowTest::Prepare()
 				return;
 			}
 
-			auto window = OS::CreateWindow("Poll Events Test", 800, 600);
+			auto window = OS::createWindow("Poll Events Test", 800, 600);
 			if (!window)
 			{
 				ls << "Failed to create a window" << lferr;
@@ -478,22 +478,22 @@ void WindowTest::Prepare()
 
 			for (int i = 0; i < 50; ++i)
 			{
-				app->PollEvents();
-				window->PollEvents();
+				app->pollEvents();
+				window->pollEvents();
 
 				if (i % 10 == 0)
 				{
 					ls << "Poll iteration: " << i << lf;
 				}
 
-				if (window->GetWidth() != 800)
+				if (window->getWidth() != 800)
 				{
-					ls << "Invalid width during poll: " << window->GetWidth() << ", expected 800" << lferr;
+					ls << "Invalid width during poll: " << window->getWidth() << ", expected 800" << lferr;
 				}
 
-				if (window->GetHeight() != 600)
+				if (window->getHeight() != 600)
 				{
-					ls << "Invalid height during poll: " << window->GetHeight() << ", expected 600" << lferr;
+					ls << "Invalid height during poll: " << window->getHeight() << ", expected 600" << lferr;
 				}
 
 				std::this_thread::sleep_for(std::chrono::milliseconds(10));
@@ -501,14 +501,14 @@ void WindowTest::Prepare()
 
 			ls << "Poll events completed successfully" << lf;
 
-			if (window->GetWidth() != 800)
+			if (window->getWidth() != 800)
 			{
-				ls << "Invalid width after poll: " << window->GetWidth() << ", expected 800" << lferr;
+				ls << "Invalid width after poll: " << window->getWidth() << ", expected 800" << lferr;
 			}
 
-			if (window->GetHeight() != 600)
+			if (window->getHeight() != 600)
 			{
-				ls << "Invalid height after poll: " << window->GetHeight() << ", expected 600" << lferr;
+				ls << "Invalid height after poll: " << window->getHeight() << ", expected 600" << lferr;
 			}
 
 			window.reset();
@@ -518,9 +518,9 @@ void WindowTest::Prepare()
 		windowFuture.get();
 	});
 
-	AddTest("Close Window", [this](auto& ls)
+	addTest("Close Window", [this](auto& ls)
 	{
-		auto& taskSystem = Engine::Get().GetTaskSystem();
+		auto& taskSystem = Engine::get().getTaskSystem();
 		std::promise<std::unique_ptr<OS::Window>> windowPromise;
 		auto windowFuture = windowPromise.get_future();
 
@@ -542,17 +542,17 @@ void WindowTest::Prepare()
 
 		Data userData{this, ls, windowPromise};
 
-		taskSystem.DispatchToMainThread([](void* userData) mutable
+		taskSystem.dispatchToMainThread([](void* userData) mutable
 		{
 			auto data = static_cast<Data*>(userData);
-			FatalAssert(data != nullptr);
+			fatalAssert(data != nullptr);
 
 			auto& ls = data->ls;
 			auto& lf = data->thisObject->lf;
 			auto& lferr = data->thisObject->lferr;
 			auto& windowPromise = data->windowPromise;
 
-			auto app = Engine::Get().GetApplication();
+			auto app = Engine::get().getApplication();
 			if (!app)
 			{
 				ls << "Failed to get an application instance" << lf;
@@ -560,7 +560,7 @@ void WindowTest::Prepare()
 				return;
 			}
 
-			auto window = OS::CreateWindow("Close Test", 800, 600);
+			auto window = OS::createWindow("Close Test", 800, 600);
 			if (!window)
 			{
 				ls << "Failed to create a window" << lferr;
@@ -570,37 +570,37 @@ void WindowTest::Prepare()
 
 			ls << "Window created, verifying initial state..." << lf;
 
-			if (window->GetWidth() != 800)
+			if (window->getWidth() != 800)
 			{
-				ls << "Invalid width: " << window->GetWidth() << ", expected 800" << lferr;
+				ls << "Invalid width: " << window->getWidth() << ", expected 800" << lferr;
 			}
 
-			if (window->GetHeight() != 600)
+			if (window->getHeight() != 600)
 			{
-				ls << "Invalid height: " << window->GetHeight() << ", expected 600" << lferr;
+				ls << "Invalid height: " << window->getHeight() << ", expected 600" << lferr;
 			}
 
-			if (!window->IsVisible())
+			if (!window->isVisible())
 			{
 				ls << "Window should be visible" << lferr;
 			}
 
-			if (window->IsClosed())
+			if (window->isClosed())
 			{
 				ls << "Window should not be closed initially" << lferr;
 			}
 
 			for (int i = 0; i < 20; ++i)
 			{
-				app->PollEvents();
-				window->PollEvents();
+				app->pollEvents();
+				window->pollEvents();
 				std::this_thread::sleep_for(std::chrono::milliseconds(10));
 			}
 
 			window->Close();
 			ls << "Window closed, verifying IsClosed()..." << lf;
 
-			if (!window->IsClosed())
+			if (!window->isClosed())
 			{
 				ls << "Window should be closed after Close()" << lferr;
 			}

@@ -26,11 +26,11 @@ namespace hbe
 		explicit BufferOutputStream(Buffer& buffer) noexcept;
 		~BufferOutputStream() = default;
 
-		[[nodiscard]] auto GetCursor() const noexcept { return cursor; }
-		[[nodiscard]] auto GetErrorCount() const noexcept { return errorCount; }
-		[[nodiscard]] bool HasError() const noexcept { return errorCount > 0; }
-		void ClearErrorCount() noexcept { errorCount = 0; }
-		[[nodiscard]] bool IsDone() const noexcept { return cursor >= buffer.GetSize(); }
+		[[nodiscard]] auto getCursor() const noexcept { return cursor; }
+		[[nodiscard]] auto getErrorCount() const noexcept { return errorCount; }
+		[[nodiscard]] bool hasError() const noexcept { return errorCount > 0; }
+		void clearErrorCount() noexcept { errorCount = 0; }
+		[[nodiscard]] bool IsDone() const noexcept { return cursor >= buffer.getSize(); }
 
 		This& operator<<(char value) noexcept;
 		This& operator<<(int8_t value) noexcept;
@@ -52,7 +52,7 @@ namespace hbe
 		template<typename T, size_t N>
 		This& operator<<(T (&array)[N]) noexcept
 		{
-			Put<T>(array, N);
+			put<T>(array, N);
 			return *this;
 		}
 
@@ -67,13 +67,13 @@ namespace hbe
 		This& operator<<(StaticString str) noexcept { return *this << str.c_str(); }
 
 	private:
-		[[nodiscard]] bool IsValidIndex(size_t index) const noexcept { return cursor < buffer.GetSize(); }
+		[[nodiscard]] bool isValidIndex(size_t index) const noexcept { return cursor < buffer.getSize(); }
 
 		template<typename T>
-		void Put(T value) noexcept
+		void put(T value) noexcept
 		{
 			Assert(std::this_thread::get_id() == threadID);
-			const size_t size = buffer.GetSize();
+			const size_t size = buffer.getSize();
 
 			constexpr size_t tSize = sizeof(T);
 			static_assert(tSize > 0);
@@ -81,7 +81,7 @@ namespace hbe
 			const size_t startIndex = ((cursor + tSize - 1) / tSize) * tSize;
 			const auto newIndex = startIndex + tSize;
 
-			auto bufferBase = buffer.GetData();
+			auto bufferBase = buffer.getData();
 			if (bufferBase == nullptr)
 			{
 				if (newIndex <= size)
@@ -115,19 +115,19 @@ namespace hbe
 		}
 
 		template<typename T>
-		void Put(const T* value, size_t length) noexcept
+		void put(const T* value, size_t length) noexcept
 		{
 			Assert(std::this_thread::get_id() == threadID);
 
-			const size_t size = buffer.GetSize();
+			const size_t size = buffer.getSize();
 
-			Put<size_t>(length);
+			put<size_t>(length);
 
 			constexpr size_t tSize = sizeof(T);
 			const size_t startIndex = ((cursor + tSize - 1) / tSize) * tSize;
 			const auto newIndex = startIndex + (tSize * length);
 
-			auto bufferBase = buffer.GetData();
+			auto bufferBase = buffer.getData();
 			if (bufferBase == nullptr)
 			{
 				if (newIndex <= size)
@@ -183,7 +183,7 @@ namespace hbe
 		~BufferOutputStreamTest() override = default;
 
 	protected:
-		void Prepare() override;
+		void prepare() override;
 	};
 } // namespace hbe
 #endif //__UNIT_TEST__

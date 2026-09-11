@@ -10,9 +10,9 @@
 #include <random>
 #include "Core/Constants.h"
 
-void hbe::MonteCarloIntegrationTest::Prepare() noexcept
+void hbe::MonteCarloIntegrationTest::prepare() noexcept
 {
-	AddTest("Calculate Pi", [this](auto& ls) -> void
+	addTest("Calculate Pi", [this](auto& ls) -> void
 	{
 		struct Vec2 final
 		{
@@ -83,7 +83,7 @@ void hbe::MonteCarloIntegrationTest::Prepare() noexcept
 		ls << "MC Samples = " << numIterations << ", Average = " << average << ", Std. Deviation = " << sqrt(variance) << lf;
 	});
 
-	AddTest("Calculate Pi (2)", [this](auto& ls) -> void
+	addTest("Calculate Pi (2)", [this](auto& ls) -> void
 	{
 		auto func = [](const double& x) -> double
 		{

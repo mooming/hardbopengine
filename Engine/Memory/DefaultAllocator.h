@@ -30,10 +30,10 @@ namespace hbe
 		TAllocatorID allocatorID;
 
 	public:
-		DefaultAllocator() : allocatorID(MemoryManager::GetCurrentAllocatorID()) {}
+		DefaultAllocator() : allocatorID(MemoryManager::getCurrentAllocatorID()) {}
 
 		template<class TOther>
-		explicit DefaultAllocator(const DefaultAllocator<TOther>& rhs) noexcept : allocatorID(rhs.GetSourceAllocatorID())
+		explicit DefaultAllocator(const DefaultAllocator<TOther>& rhs) noexcept : allocatorID(rhs.getSourceAllocatorID())
 		{}
 
 		[[nodiscard]] T* allocate(std::size_t n) noexcept
@@ -48,8 +48,8 @@ namespace hbe
 			}
 
 			AllocatorScope scope(allocatorID);
-			auto& mmgr = MemoryManager::GetInstance();
-			auto ptr = mmgr.AllocateByType<T>(n);
+			auto& mmgr = MemoryManager::getInstance();
+			auto ptr = mmgr.allocateByType<T>(n);
 
 			return ptr;
 		}
@@ -66,8 +66,8 @@ namespace hbe
 			}
 
 			AllocatorScope scope(allocatorID);
-			auto& mmgr = MemoryManager::GetInstance();
-			mmgr.DeallocateTypes(ptr, n);
+			auto& mmgr = MemoryManager::getInstance();
+			mmgr.deallocateTypes(ptr, n);
 		}
 
 		template<class TOther>
@@ -82,9 +82,9 @@ namespace hbe
 			return allocatorID != rhs.allocatorID;
 		}
 
-		[[nodiscard]] auto GetID() const { return allocatorID; }
-		[[nodiscard]] auto GetSourceAllocatorID() const { return allocatorID; }
-		[[nodiscard]] static constexpr size_t GetFallbackCount() { return 0; }
+		[[nodiscard]] auto getID() const { return allocatorID; }
+		[[nodiscard]] auto getSourceAllocatorID() const { return allocatorID; }
+		[[nodiscard]] static constexpr size_t getFallbackCount() { return 0; }
 	};
 
 } // namespace hbe
@@ -101,7 +101,7 @@ namespace hbe
 		BaseAllocatorTest() : TestCollection("BaseAllocatorTest") {}
 
 	protected:
-		void Prepare() noexcept override;
+		void prepare() noexcept override;
 	};
 
 } // namespace hbe

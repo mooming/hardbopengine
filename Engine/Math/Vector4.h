@@ -143,7 +143,7 @@ namespace hbe
 		Vector4Test() : TestCollection("Vector4Test") {}
 
 	protected:
-		void Prepare() noexcept override;
+		void prepare() noexcept override;
 	};
 } // namespace hbe
 #endif //__UNIT_TEST__

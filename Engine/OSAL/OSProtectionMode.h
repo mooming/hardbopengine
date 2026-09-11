@@ -12,10 +12,10 @@ public:
 
 	ProtectionMode() noexcept : value(0) {}
 
-	void SetForbidden() noexcept;
-	void SetReadable() noexcept;
-	void SetWritable() noexcept;
-	void SetExecutable() noexcept;
+	void setForbidden() noexcept;
+	void setReadable() noexcept;
+	void setWritable() noexcept;
+	void setExecutable() noexcept;
 };
 
 } // namespace OS

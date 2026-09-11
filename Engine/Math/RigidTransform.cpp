@@ -8,9 +8,9 @@ using namespace hbe;
 #ifdef __UNIT_TEST__
 #include "Matrix4x4.h"
 
-void RigidTransformTest::Prepare() noexcept
+void RigidTransformTest::prepare() noexcept
 {
-	AddTest("Default RigidTransform & Constants", [this](auto& ls)
+	addTest("Default RigidTransform & Constants", [this](auto& ls)
 	{
 		TRigidTR tm;
 		ls << tm << lf;
@@ -32,7 +32,7 @@ void RigidTransformTest::Prepare() noexcept
 			   << "the zero translation." << lferr;
 		}
 
-		TFloat4x4 mat = tm.ToMatrix();
+		TFloat4x4 mat = tm.toMatrix();
 		if (mat != TFloat4x4::Identity)
 		{
 			ls << "The default constructor of RigidTR should be "
@@ -46,7 +46,7 @@ void RigidTransformTest::Prepare() noexcept
 		}
 	});
 
-	AddTest("RigidTransform Operations", [this](auto& ls)
+	addTest("RigidTransform Operations", [this](auto& ls)
 	{
 		TRigidTR tm(TFloat3(4, 5, 6), TQuat(0, 47, 0));
 		TRigidTR tm2(TFloat3(3, 4, 5), TQuat(41, 0, 25));
@@ -64,26 +64,26 @@ void RigidTransformTest::Prepare() noexcept
 			   << lferr;
 		}
 
-		if (!tm3.ToMatrix().IsInvertible())
+		if (!tm3.toMatrix().isInvertible())
 		{
 			ls << "Transform matrix should be invertible." << tm3 << lferr;
 		}
 
-		TFloat3 result = tm3.Inverse() * result1;
+		TFloat3 result = tm3.inverse() * result1;
 		if (result != TFloat3::Forward)
 		{
 			ls << "Transform matrix inverse failed. " << result << ", but " << TFloat3::Forward << " expected." << lferr;
 		}
 
-		result = tm2.InverseTransform(tm.InverseTransform(result2));
+		result = tm2.inverseTransform(tm.inverseTransform(result2));
 		if (result != TFloat3::Forward)
 		{
 			ls << "Inverse transform failed. " << result << ", but " << TFloat3::Forward << " expected." << lferr;
 		}
 
-		if (tm3.Inverse().Inverse() != tm3)
+		if (tm3.inverse().inverse() != tm3)
 		{
-			ls << "Inverse of inverse transform failed. " << tm3.Inverse().Inverse() << ", but " << tm3 << " expected."
+			ls << "Inverse of inverse transform failed. " << tm3.inverse().inverse() << ", but " << tm3 << " expected."
 			   << lferr;
 		}
 	});

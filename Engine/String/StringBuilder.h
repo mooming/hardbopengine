@@ -28,9 +28,9 @@ namespace hbe
 		StringBuilder() = default;
 		~StringBuilder() = default;
 
-		void Reserve(size_t size) noexcept { buffer.reserve(size); }
+		void reserve(size_t size) noexcept { buffer.reserve(size); }
 
-		void Clear() noexcept { buffer.clear(); }
+		void clear() noexcept { buffer.clear(); }
 
 		[[nodiscard]] auto c_str() const noexcept { return buffer.c_str(); }
 
@@ -214,7 +214,7 @@ namespace hbe
 		StringBuilderTest() : TestCollection("StringBuilderTest") {}
 
 	protected:
-		void Prepare() override;
+		void prepare() override;
 	};
 } // namespace hbe
 #endif //__UNIT_TEST__

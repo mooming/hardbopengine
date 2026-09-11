@@ -17,21 +17,21 @@ class TestEnv final
 public:
 	TestEnv() noexcept : testedCount(0), passCount(0) {}
 
-	[[nodiscard]] static TestEnv& GetEnv();
-	void Start();
+	[[nodiscard]] static TestEnv& getEnv();
+	void start();
 
 	/// @brief Collections that completed successfully.
-	[[nodiscard]] unsigned int GetPassCount() const noexcept { return passCount; }
+	[[nodiscard]] unsigned int getPassCount() const noexcept { return passCount; }
 
 	/// @brief Collections that ran and failed, plus any that never completed.
-	/// @details Valid after Start(); Start() clears both lists on entry.
-	[[nodiscard]] unsigned int GetFailureCount() const noexcept
+	/// @details Valid after start(); start() clears both lists on entry.
+	[[nodiscard]] unsigned int getFailureCount() const noexcept
 	{
 		return static_cast<unsigned int>(failedTests.size() + invalidTests.size());
 	}
 
 	template<typename T, typename... Types>
-	void AddTestCollection(Types&&... args)
+	void addTestCollection(Types&&... args)
 	{
 		tests.push_back(std::make_unique<T>(std::forward(args)...));
 	}
@@ -48,8 +48,8 @@ private:
 	unsigned int testedCount;
 	unsigned int passCount;
 
-	bool ExecuteTest(TestCollection& testCollection);
-	void Report();
+	bool executeTest(TestCollection& testCollection);
+	void report();
 };
 
 } // namespace hbe
