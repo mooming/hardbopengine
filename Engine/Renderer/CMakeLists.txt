@@ -6,7 +6,7 @@ if (NOT CMAKE_BUILD_TYPE)
     set (CMAKE_BUILD_TYPE "Release" CACHE STRING "Build type" FORCE)
 endif ()
 
-set (CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g -O0")
+set (CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g -O0 -D__DEBUG__")
 set (CMAKE_CXX_FLAGS_DEV "${CMAKE_CXX_FLAGS_DEBUG} -O1")
 set (CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3")
 
@@ -36,8 +36,8 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/lib)
 add_library (Renderer STATIC 
  RHICapabilities.cpp
  RenderCapabilities.cpp
- Vertex.cpp
  RendererTest.cpp
+ Vertex.cpp
  RHICapabilities.h
  RenderCapabilities.h
  RendererTest.h
@@ -72,7 +72,8 @@ add_dependencies (Renderer Log)
 # Engine/Renderer/.module.config lists Vulkan in ignoreSubdirectories, so MakeBuild
 # cannot emit these sources into the target - wire them in explicitly.
 target_sources (Renderer PRIVATE Vulkan/VulkanRenderer.cpp)
-# Device capability translation. Same ignoreSubdirectories reason as above.
+# Device capability translation: VkPhysicalDevice -> API-neutral RenderCapabilities.
+# Same ignoreSubdirectories reason as above.
 target_sources (Renderer PRIVATE Vulkan/VulkanCapabilities.cpp)
 # Locate the Vulkan headers via common macOS / homebrew / standard locations.
 find_path (VULKAN_INCLUDE_DIR vulkan/vulkan.h PATHS /opt/homebrew/include /usr/local/include /usr/include $ENV{VULKAN_SDK}/include)

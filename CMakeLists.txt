@@ -6,11 +6,6 @@ if (NOT CMAKE_BUILD_TYPE)
     set (CMAKE_BUILD_TYPE "Release" CACHE STRING "Build type" FORCE)
 endif ()
 
-# __DEBUG__ keeps Assert/FatalAssert diagnostics live. Dev is derived from the Debug flags
-# on the next line, so it inherits the define; Release is a separate variable and stays
-# without it. Every subdirectory appends to the value it inherits rather than replacing it,
-# so this one line reaches the whole tree - there is no need to touch the per-directory
-# copies of these set() calls.
 set (CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g -O0 -D__DEBUG__")
 set (CMAKE_CXX_FLAGS_DEV "${CMAKE_CXX_FLAGS_DEBUG} -O1")
 set (CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3")
