@@ -199,6 +199,91 @@ void LinkedListTest::Prepare()
 			ls << "Lower Performance than STL list." << lfwarn;
 		}
 	});
+
+	AddTest("Element-Reference Mutation", [this](auto& ls)
+	{
+		const auto NodeSize = sizeof(LinkedList<int>::Node);
+
+		PoolAllocator alloc("LinkedListTest::Allocator", NodeSize, COUNT2 + 10);
+		AllocatorScope allocScope(alloc);
+
+		LinkedList<int> intList;
+		for (int i = 0; i < 8; ++i)
+		{
+			intList.Add(i * 10);
+		}
+
+		int* const middle = intList.Find(30);
+		if (middle == nullptr)
+		{
+			ls << "Find(30) could not locate the element to mutate around." << lferr;
+
+			return;
+		}
+
+		if (intList.AddNext(*middle, 35) != 35)
+		{
+			ls << "AddNext did not return the value it inserted." << lferr;
+
+			return;
+		}
+
+		int* const inserted = intList.Find(35);
+		if (inserted == nullptr)
+		{
+			ls << "AddNext did not link the new element into the list." << lferr;
+
+			return;
+		}
+
+		if (intList.AddPrevious(*inserted, 25) != 25)
+		{
+			ls << "AddPrevious did not return the value it inserted." << lferr;
+
+			return;
+		}
+
+		int* const removable = intList.Find(25);
+		if (removable == nullptr)
+		{
+			ls << "AddPrevious did not link the new element into the list." << lferr;
+
+			return;
+		}
+
+		intList.Remove(*removable);
+
+		if (intList.Find(25) != nullptr)
+		{
+			ls << "Remove left the element reachable after removal." << lferr;
+
+			return;
+		}
+
+		int count = 0;
+		int previous = -10;
+		for (const int value : intList)
+		{
+			if (value <= previous)
+			{
+				ls << "Order Broken : " << value << " follows " << previous << '.' << lferr;
+
+				return;
+			}
+
+			previous = value;
+			++count;
+		}
+
+		if (count != 9)
+		{
+			ls << "Size Mismatched : count = " << count << ", expected 9." << lferr;
+
+			return;
+		}
+
+		ls << "Remove, AddNext and AddPrevious work on list-owned references." << lf;
+	});
 }
 
 } // namespace hbe

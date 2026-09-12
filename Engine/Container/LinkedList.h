@@ -107,7 +107,14 @@ namespace hbe
 			}
 		}
 
-		Iterator Remove(const TType& element) noexcept
+		/// @brief Removes the node that holds `element`. The element is located by **address**, not
+		///        by value: it must be an lvalue owned by this list (from an iterator, `Find`, `Add`
+		///        or `AddNext`), so a temporary or a foreign object that merely compares equal is
+		///        rejected by the parameter type before the precondition is ever reached. Taking a
+		///        non-const reference is what makes that contract mechanical - `GetNodeOf` recovers a
+		///        node from the element's address, which is only meaningful for an element this list
+		///        allocated.
+		Iterator Remove(TType& element) noexcept
 		{
 			Assert(ContainsElement(element));
 			return Iterator(RemoveNode(GetNodeOf(element)));
@@ -217,7 +224,7 @@ namespace hbe
 
 		TType& AddNext(TType& current, TType&& value) noexcept
 		{
-			return AddNext(GetNodeOf(current), New<Node>(allocator, std::forward(value)))->value;
+			return AddNext(GetNodeOf(current), New<Node>(allocator, std::forward<TType&&>(value)))->value;
 		}
 
 	private:
@@ -237,6 +244,16 @@ namespace hbe
 			Unlink(node);
 
 			return next;
+		}
+
+		/// @brief True when `element` is the payload of one of this list's own nodes. This is the
+		///        identity test that `Contains(const TType*)` performs, and it is the precondition
+		///        `GetNodeOf` needs: that function recovers a node from the element's address, which
+		///        is only meaningful for an element this list actually allocated. Value equality
+		///        (`Contains(const TType&)`) is deliberately *not* sufficient here.
+		[[nodiscard]] bool ContainsElement(const TType& element) const noexcept
+		{
+			return Contains(&element);
 		}
 
 		Node* GetNodeOf(TType& element) noexcept

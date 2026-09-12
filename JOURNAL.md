@@ -1,5 +1,51 @@
 # Journal
 
+## LinkedList's undefined `ContainsElement`, and the templates nothing ever instantiated (2026-09-13)
+
+**What was asked, and what it turned out to be.** Implement the undefined function `LinkedList` calls.
+The name is undefined since before this repo's first engine layout: `744ec75` ("Refactoring; Source ->
+Engine") is a pure file move with **0 changed lines**, and the name was already missing there — so it
+has never once compiled in the project's history. It survives because a template's member bodies are
+compiled only when instantiated, and no test anywhere called `Remove`, `AddNext` or `AddPrevious`.
+Confirmed by grep: zero call sites instantiate them.
+
+**Deciding the semantics from the code, not from the name.** The two call sites assert
+`ContainsElement(element)` where `GetNodeOf` then does `reinterpret_cast<Node*>(&element)`. That cast
+only means anything if the element is a payload this list allocated — and `LinkedListNode`'s **first
+member is `TType value`**, so the payload address is the node address. The precondition is therefore
+*identity*, not value equality, and the class already had exactly that test: `Contains(const TType*)`
+walks the list comparing `&element == ptr`. `ContainsElement` is thus a named precondition helper that
+delegates to that overload — one implementation, no second walk. `FindAndRemove` corroborates it: its
+`Remove(*found)` passes a reference obtained from `Find()`, i.e. a list-owned element.
+
+**Instantiating the bodies found two more defects that could never have compiled.** (1) `Remove(const
+TType& element)` passed a const reference to `GetNodeOf(TType&)`. Fixed by taking `TType&`, which does
+more than compile: it makes the identity contract mechanical, since a temporary or a foreign object
+can no longer bind, so the assert guards what is left. (2) `AddNext(TType&, TType&&)` called bare
+`std::forward(value)`, but `remove_reference_t<T>` is a **non-deduced context**, so `T` can never be
+deduced and the call is ill-formed in every instantiation — its sibling `AddPrevious` had it right as
+`std::forward<TType&&>(value)`, and `AddNext` now matches.
+
+**A fix that is not instantiated is not a fix.** Added test case `Element-Reference Mutation`, which
+finds an element, splices with `AddNext`/`AddPrevious` using list-owned references, removes by
+reference, then re-checks reachability, ordering and count. It selects the rvalue overloads
+deliberately (passing `35` prefers `TType&&` over `const TType&`), which is what exposed defect (2).
+
+**Verification.** Whole-tree gate detached: build **12/12** across Debug/Dev/Release, unit tests
+`fail=0` in all three configurations, new case logs `[TC4.Element-Reference Mutation] Result [PASS]`,
+standards debt unchanged at 80 mechanical / 27 advisory.
+
+**Limit, stated.** The negative path — a foreign element failing the assert — is deliberately
+untested, because `Assert` aborts rather than returning, so a test would crash the suite instead of
+reporting. The non-const parameter is what guards that case now.
+
+**Found, deliberately not fixed:** two test cases in `LinkedList.cpp` share the name "Growth and
+Iteration" (confirmed by `uniq -d`), so one can mask the other in suite output. Renaming someone
+else's test title is their call, not a formatting task's.
+
+**Generalisable lesson.** A template API is untested code until something instantiates it. Grepping
+for a symbol is not evidence it works — the only evidence is a translation unit that names it.
+
 ## A subagent review invented 36 defects, so findings are now machine-gated (2026-09-08)
 
 **What happened.** The whole-tree judgement sweep came back with 36 findings, 140 files "reviewed",
