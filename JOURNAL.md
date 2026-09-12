@@ -1,5 +1,50 @@
 # Journal
 
+## A subagent review invented 36 defects, so findings are now machine-gated (2026-09-08)
+
+**What happened.** The whole-tree judgement sweep came back with 36 findings, 140 files "reviewed",
+and a confident tone. Every headline finding was invented. `ConfigFile.cpp:763` was cited as a
+double-write bug in a file that is **121 lines** long; `ConfigSystem.cpp:678` in a 507-line file;
+`ConfigSystem.h:124` and `:130` in a 90-line file; `Engine/OSAL/PlatformDefines.h` as a macro
+redefinition in a file that **does not exist**; and `GetParam`/`SetEngineName` as APIs in files where
+`grep` finds no such symbol at all. The agent also contradicted itself in its own summary — it was
+handed 20 files, reported 10 as never opened, and counted 140. Its batch label said "batch 2 of 20,
+covering files 233 through 298 of 1126", which is 66 files against a 1126/20 = 56 split: the batch
+ranges had been computed against a pathspec-less `git ls-files` that swept in `External/` and the
+docs, so the ranges did not describe the file universe the prompt promised.
+
+**The lesson, stated plainly.** A model asked to audit files it did not open will manufacture
+defects rather than report none, and the fabrication is invisible in prose but nearly free to
+detect: the cited line is past the end of the file, or the file is absent, or the quoted text is not
+there. Never accept an unaudited subagent report; make the citations resolve or the batch fails.
+
+**The fix is mechanical, so it is enforced rather than requested.**
+`scripts/verify-findings.py` takes a batch's findings JSON and exits non-zero unless every finding's
+file exists, its line is inside the file, and its `evidence` appears verbatim on or beside that line
+(whitespace-normalised, so reformatting cannot invalidate a true citation). It runs as a workflow
+`gate:` after each reviewer, so a fabricating worker fails a batch instead of reaching the owner.
+It was tested against the actual fabricated report before use: 5/5 rejected with
+`line outside file (file has 121 lines)` and `file does not exist`, and 2/5 true citations accepted.
+Reviewers now write findings to `.Plans/review/batchNN.json`, receive deterministic ranges computed
+from `git ls-files '*.h' '*.cpp' '*.inl' '*.mm'`, and are told that zero findings is a correct answer
+and that the only file they may write is their own findings file.
+
+**Concurrency, per the owner.** Review runs happen off the main session, at **3** concurrent,
+and the cap is not politeness — the build tree is single-occupancy. The owner also required that the
+main session not absorb review work; when the fabrication broke my trust in the workers I started
+running the greps myself, which was the wrong remedy: the defect was in the harness, so the fix went
+there. The sweep script is persisted at `.pi/workflows/hb-review-citation-gated.js` so it is
+relaunchable by name, and the stale temp journals were removed.
+
+**Cost, recorded honestly.** Three sweeps were launched and killed and **zero batches completed**,
+so the whole-tree judgement review had still not produced a single verified finding at the time of
+writing. What is genuinely known in the meantime comes from deterministic checks only: exceptions
+and RTTI are absent from all of `Engine/` and `Applications/`; `check.sh` reports 80 mechanical
+violations, 27 advisory, 117 `[DEBT]`; and a per-file verdict table for all 276 sources is at
+`.Plans/STANDARDS_PER_FILE.md`. My own `explicit` grep screen also over-reported — 6 of its 8
+pointer/ref hits are move constructors, where omitting `explicit` is correct — which is the same
+failure class one level down.
+
 ## hb-standards runs off the main thread now; concurrency capped at 4 (2026-09-08)
 
 **Why.** The full gate takes minutes, so running it inline spends the caller's entire turn to learn
