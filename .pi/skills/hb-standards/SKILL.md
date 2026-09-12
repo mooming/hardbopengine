@@ -37,6 +37,68 @@ bulk sweep is a separate owner decision, not something to fold into a feature co
 Always run it **after** `--apply` and **before** committing. If `--apply` changed
 files, re-run the lint from scratch rather than trusting the formatter's exit code.
 
+## Running it off the main thread
+
+The full gate takes minutes. Running it inline costs the caller its whole turn and
+buys nothing, so run it as a separate process and read the verdict afterwards.
+
+```bash
+# one line, no wrapper — the model MUST be pinned (see the trap below)
+.pi/skills/hb-standards/scripts/gate.sh spawn --all --test
+.pi/skills/hb-standards/scripts/gate.sh wait                      # blocks, exits with the gate's code
+```
+
+`gate.sh spawn` launches `pi -p` detached, which loads this skill, runs `check.sh`
+with the arguments it was given, and reports per the Reporting section. Under
+`.pi/logs/gate/<job>/` you get `cmd`, `pi.log`, and `done`; `gate.sh status [job]`
+reads the verdict, `wait` blocks on it, `list` shows jobs and slot occupancy,
+`release` frees slots left behind by a killed job. Logs live under `.pi/logs/`,
+which is gitignored.
+
+**The verdict is the `GATE_EXIT=<n>` line inside `pi.log`, not the process exit code.**
+`done` holds whether that assistant survived; `GATE_EXIT` holds whether the tree is
+clean. Confusing the two reports a pass that never happened. `wait` re-exits with
+`GATE_EXIT`, so scripts can treat it exactly like `check.sh`.
+
+Raw form, if you want to see it without the wrapper:
+
+```bash
+pi -p --offline --no-session --approve --skill .pi/skills/hb-standards \
+   --provider "$PI_PROVIDER" --model "$PI_MODEL" --tools read,bash,grep,find,ls \
+   "Run .pi/skills/hb-standards/scripts/check.sh --all; echo GATE_EXIT=\$?; report per the skill's Reporting section; edit nothing."
+```
+
+Whole-tree fan-out also runs detached, in one command — note the `=` form, because
+the space form swallows the prompt that follows it:
+
+```bash
+pi -p --offline --no-session --approve --subagents-workflow-file=<sweep>.js
+```
+
+### Concurrency: 4, and ask first
+
+**Never run more than 4 concurrent subagents or detached gates without asking the
+owner.** `PI_GATE_SLOTS` overrides the cap for `gate.sh`. This is not politeness:
+the build tree is single-occupancy, so two gates race on `cmake-build-*` and each
+reports a pass the other invalidated. `gate.sh` enforces it with `mkdir` slots
+(macOS ships no `flock`) and refuses the fifth job with exit 3.
+
+### Traps already paid for here
+
+- **A detached `pi` must have its provider and model pinned.** Without
+  `--provider`/`--model` it picks its own default and dies at startup with
+  `401 Invalid bearer token`. `--offline` alone does **not** fix this — measured.
+  Inside a pi session, inherit `PI_PROVIDER` and `PI_MODEL`; `gate.sh` does, and
+  fails fast with a one-call preflight instead of burying the 401 in a log.
+- **`pi auth check` can report `ready` while the token is dead**, so it is not a
+  usable preflight. Ask the model to reply `OK` with `--no-tools` instead.
+- **`--tools` is the safety belt.** A lint-only run gets `read,bash,grep,find,ls`
+  so it cannot edit anything; `edit,write` are added only when `--apply` was asked for.
+- **Never let a detached job push.** It is stated in the prompt and must stay there.
+- `batch_ai_prompt.sh` is the older convention and is broken in two quiet ways: `local`
+  is used outside a function, and its counters increment inside a piped `while`
+  subshell, so its closing tally always prints `0 files processed, 0 failures`.
+
 ## Layer 1 — clang-format
 
 Enforces things that need real C++ parsing: Allman braces (break before every `{`,

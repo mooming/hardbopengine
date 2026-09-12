@@ -1,5 +1,46 @@
 # Journal
 
+## hb-standards runs off the main thread now; concurrency capped at 4 (2026-09-08)
+
+**Why.** The full gate takes minutes, so running it inline spends the caller's entire turn to learn
+something a background process could have reported. `scripts/gate.sh` was added with
+`spawn | status | wait | list | release`: it launches a detached `pi -p` that loads the skill, runs
+`check.sh` with the arguments it was handed, and reports per the skill's own Reporting section.
+Jobs live under `.pi/logs/gate/` (gitignored) holding `cmd`, `pi.log`, `done`.
+
+**The verdict is `GATE_EXIT=<n>` inside `pi.log`, not the process exit code.** `done` records
+whether that assistant survived; conflating the two reports a pass that never happened. `wait`
+re-exits with `GATE_EXIT` so callers treat it exactly like `check.sh`.
+
+**Owner policy, recorded so it survives the session:** at most **4** concurrent subagents or
+detached gates, and *ask the owner before exceeding that*. Enforced by 4 `mkdir` slots (macOS ships
+no `flock`), overridable with `PI_GATE_SLOTS`. The cap is not courtesy — the build tree is
+single-occupancy, and two gates racing on `cmake-build-*` each report a pass the other invalidated.
+
+**Two measured findings about headless `pi`, each costing a failed job to learn.** A detached `pi`
+with no pinned provider/model dies at startup with `401 Invalid bearer token`; `--offline` alone
+does not fix it — the fix is `--provider`/`--model`, inherited from `PI_PROVIDER`/`PI_MODEL`.
+And `pi auth check --provider anthropic --json` answered `{"status":"ready"}` the whole time that
+token was dead, so it is not a usable preflight; `gate.sh` instead spends one `--no-tools` "reply
+OK" roundtrip, which fails in a second rather than burying a 401 in a log nobody opens until the end.
+
+**Verification of the mechanism, not just the happy path.** With 4 synthetic slots held, the fifth
+`spawn` was refused with exit 3; `release` kept the three live slots and freed the one whose job had
+finished. A real detached run then reproduced an independent whole-tree lint exactly — 80
+mechanical, 27 advisory, 117 `[DEBT]` — released its slot, and declined to claim the build gate
+under `--no-build`, which is the skill's own trap list functioning.
+
+**Three defects found while testing my own script, each fixed:** `${APPLY:+…}` expanded even when
+`APPLY=0` because 0 is a non-empty string in bash, so the `--apply` permission note appeared on
+every run; `resolve_job`'s `exit 3` died inside a command-substitution subshell, so `status` with no
+jobs printed a fabricated `RUNNING` row and returned success; and `release` freed slots whose jobs
+were still *running* while keeping stale ones — exactly inverted. All three were caught by running
+the thing, not by reading it.
+
+**Reported, not fixed:** `batch_ai_prompt.sh` uses `local` outside a function and increments its
+counters inside a piped `while` subshell, so its closing tally always prints
+`0 files processed, 0 failures`. Left alone as out of scope.
+
 ## Function naming returns to PascalCase — the camelCase sweep is reverted (2026-09-08)
 
 This supersedes the entry below, which records the sweep being applied. Read both: the reasoning

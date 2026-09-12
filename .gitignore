@@ -58,3 +58,5 @@ MinSizeRel
 /test_output.txt
 
 External
+
+.pi/logs/
