@@ -20,14 +20,14 @@ MonotonicAllocator::MonotonicAllocator(const char* name, TSize inCapacity) :
 		capacity = multiplier * AlignUnit;
 	}
 
-	auto& mmgr = MemoryManager::getInstance();
-	parentID = hbe::MemoryManager::getCurrentAllocatorID();
-	bufferPtr = mmgr.allocate(capacity);
+	auto& mmgr = MemoryManager::GetInstance();
+	parentID = hbe::MemoryManager::GetCurrentAllocatorID();
+	bufferPtr = mmgr.Allocate(capacity);
 
 	auto allocFunc = [](void* allocatorPtr, size_t n) -> void*
 	{
 		auto allocator = static_cast<MonotonicAllocator*>(allocatorPtr);
-		return allocator->allocate(n);
+		return allocator->Allocate(n);
 	};
 
 	auto deallocFunc = [](void* allocatorPtr, void* ptr, size_t size)
@@ -36,22 +36,22 @@ MonotonicAllocator::MonotonicAllocator(const char* name, TSize inCapacity) :
 		allocator->Deallocate(ptr, size);
 	};
 
-	id = mmgr.registerAllocator(this, name, false, capacity, allocFunc, deallocFunc);
+	id = mmgr.RegisterAllocator(this, name, false, capacity, allocFunc, deallocFunc);
 }
 
 MonotonicAllocator::~MonotonicAllocator()
 {
-	auto& mmgr = MemoryManager::getInstance();
+	auto& mmgr = MemoryManager::GetInstance();
 
 #if PROFILE_ENABLED
-	mmgr.reportDeallocation(id, bufferPtr, 0, cursor);
+	mmgr.ReportDeallocation(id, bufferPtr, 0, cursor);
 #endif // PROFILE_ENABLED
 
 	mmgr.Deallocate(bufferPtr, capacity);
-	mmgr.deregisterAllocator(getID());
+	mmgr.DeregisterAllocator(GetID());
 }
 
-void* MonotonicAllocator::allocate(const size_t requested)
+void* MonotonicAllocator::Allocate(const size_t requested)
 {
 	size_t size = requested;
 
@@ -61,14 +61,14 @@ void* MonotonicAllocator::allocate(const size_t requested)
 		size = multiplier * AlignUnit;
 	}
 
-	const auto freeSize = getAvailable();
+	const auto freeSize = GetAvailable();
 	if (unlikely(size > freeSize))
 	{
-		auto& mmgr = MemoryManager::getInstance();
-		mmgr.logWarning([size, freeSize](auto& ls)
+		auto& mmgr = MemoryManager::GetInstance();
+		mmgr.LogWarning([size, freeSize](auto& ls)
 		{ ls << "The requested size " << size << " is exceeding its limit, " << freeSize << '.'; });
 
-		auto ptr = mmgr.allocate(parentID, requested);
+		auto ptr = mmgr.Allocate(parentID, requested);
 
 		return ptr;
 	}
@@ -78,8 +78,8 @@ void* MonotonicAllocator::allocate(const size_t requested)
 
 #if PROFILE_ENABLED
 	{
-		auto& mmgr = MemoryManager::getInstance();
-		mmgr.reportAllocation(id, ptr, requested, size);
+		auto& mmgr = MemoryManager::GetInstance();
+		mmgr.ReportAllocation(id, ptr, requested, size);
 	}
 #endif // PROFILE_ENABLED
 
@@ -88,41 +88,41 @@ void* MonotonicAllocator::allocate(const size_t requested)
 
 void MonotonicAllocator::Deallocate(Pointer ptr, TSize requested) noexcept
 {
-	auto& mmgr = MemoryManager::getInstance();
+	auto& mmgr = MemoryManager::GetInstance();
 
-	if (unlikely(!isMine(ptr)))
+	if (unlikely(!IsMine(ptr)))
 	{
 		mmgr.Deallocate(parentID, ptr, requested);
 		return;
 	}
 
 #if MEMORY_LOGGING_ENABLED
-	mmgr.log(ELogLevel::Verbose, [this, &mmgr, ptr, requested](auto& lout)
+	mmgr.Log(ELogLevel::Verbose, [this, &mmgr, ptr, requested](auto& lout)
 	{
-		lout << mmgr.getAllocatorName(id) << '[' << static_cast<int>(getID())
+		lout << mmgr.GetAllocatorName(id) << '[' << static_cast<int>(GetID())
 			 << "] Deallocate call shall be ignored. ptr = " << static_cast<void*>(ptr)
 			 << ", requested size = " << requested;
 	});
 #endif // MEMORY_LOGGING_ENABLED
 
 #if PROFILE_ENABLED
-	mmgr.reportDeallocation(id, ptr, requested, 0);
+	mmgr.ReportDeallocation(id, ptr, requested, 0);
 #endif // PROFILE_ENABLED
 }
 
-size_t MonotonicAllocator::getAvailable() const
+size_t MonotonicAllocator::GetAvailable() const
 {
 	Assert(capacity >= cursor);
 	return capacity - cursor;
 }
 
-size_t MonotonicAllocator::getUsage() const
+size_t MonotonicAllocator::GetUsage() const
 {
 	Assert(cursor < capacity);
 	return cursor;
 }
 
-	bool MonotonicAllocator::isMine(TPointer ptr) const
+	bool MonotonicAllocator::IsMine(TPointer ptr) const
 	{
 		auto bytePtr = static_cast<uint8_t*>(ptr);
 		if (bytePtr < buffer)
@@ -147,35 +147,35 @@ size_t MonotonicAllocator::getUsage() const
 namespace hbe
 {
 
-void MonotonicAllocatorTest::prepare()
+void MonotonicAllocatorTest::Prepare()
 {
 	using namespace std;
 	using namespace hbe;
 
-	addTest("Vector Allocation", [this](auto& ls)
+	AddTest("Vector Allocation", [this](auto& ls)
 	{
 		MonotonicAllocator alloc("Test::MonotonicAllocator", 1024 * 1024);
 
 		{
-			AllocatorScope scope(alloc.getID());
+			AllocatorScope scope(alloc.GetID());
 
 			HVector<int> a;
 			a.push_back(0);
 		}
 
-		if (alloc.getUsage() == 0)
+		if (alloc.GetUsage() == 0)
 		{
 			ls << "Monotonic Allocator doesn't provide deallocation."
-			   << " Usage should not be zero, but " << alloc.getUsage() << lferr;
+			   << " Usage should not be zero, but " << alloc.GetUsage() << lferr;
 		}
 	});
 
-	addTest("Allocation (2)", [this](auto& ls)
+	AddTest("Allocation (2)", [this](auto& ls)
 	{
 		MonotonicAllocator alloc("Test::MonotonicAllocator", 1024 * 1024);
 
 		{
-			AllocatorScope scope(alloc.getID());
+			AllocatorScope scope(alloc.GetID());
 
 			HVector<int> a;
 			a.push_back(0);
@@ -184,43 +184,43 @@ void MonotonicAllocatorTest::prepare()
 			b.push_back(1);
 		}
 
-		if (alloc.getUsage() == 0)
+		if (alloc.GetUsage() == 0)
 		{
 			ls << "Monotonic Allocator doesn't provide deallocation."
-			   << " Usage should not be zero, but " << alloc.getUsage() << lferr;
+			   << " Usage should not be zero, but " << alloc.GetUsage() << lferr;
 		}
 	});
 
-	addTest("Deallocation", [this](auto& ls)
+	AddTest("Deallocation", [this](auto& ls)
 	{
 		MonotonicAllocator alloc("Test::MonotonicAllocator", 1024);
-		AllocatorScope scope(alloc.getID());
+		AllocatorScope scope(alloc.GetID());
 
 		{
 			String a = "0";
 		}
 
-		if (alloc.getUsage() == 0)
+		if (alloc.GetUsage() == 0)
 		{
 			ls << "Monotonic Allocator doesn't provide deallocation."
-			   << " Usage should not be zero, but " << alloc.getUsage() << lferr;
+			   << " Usage should not be zero, but " << alloc.GetUsage() << lferr;
 		}
 	});
 
-	addTest("Deallocation (2)", [this](auto& ls)
+	AddTest("Deallocation (2)", [this](auto& ls)
 	{
 		MonotonicAllocator alloc("Test::MonotonicAllocator", 1024);
-		AllocatorScope scope(alloc.getID());
+		AllocatorScope scope(alloc.GetID());
 
 		{
 			String a = "0";
 			String b = "1";
 		}
 
-		if (alloc.getUsage() == 0)
+		if (alloc.GetUsage() == 0)
 		{
 			ls << "Monotonic Allocator doesn't provide deallocation."
-			   << " Usage should not be zero, but " << alloc.getUsage() << lferr;
+			   << " Usage should not be zero, but " << alloc.GetUsage() << lferr;
 		}
 	});
 }

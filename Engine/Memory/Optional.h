@@ -29,11 +29,11 @@ namespace hbe
 		{
 			if (rhs.hasValue)
 			{
-				copyValue(typename IsReferenceType<TType>::Result(), rhs);
+				CopyValue(typename IsReferenceType<TType>::Result(), rhs);
 			}
 			else if (hasValue)
 			{
-				destroy(typename IsReferenceType<TType>::Result());
+				Destroy(typename IsReferenceType<TType>::Result());
 			}
 		}
 
@@ -41,17 +41,17 @@ namespace hbe
 		{
 			if (rhs.hasValue)
 			{
-				moveValue(typename IsReferenceType<TType>::Result(), rhs);
+				MoveValue(typename IsReferenceType<TType>::Result(), rhs);
 			}
 			else
 			{
-				destroy(typename IsReferenceType<TType>::Result());
+				Destroy(typename IsReferenceType<TType>::Result());
 			}
 		}
 
 		Optional(std::nullptr_t) : hasValue(false) {}
 
-		~Optional() { destroy(typename IsReferenceType<TType>::Result()); }
+		~Optional() { Destroy(typename IsReferenceType<TType>::Result()); }
 
 		Optional& operator=(TType& value)
 		{
@@ -61,7 +61,7 @@ namespace hbe
 				return *this;
 			}
 
-			emplace(value);
+			Emplace(value);
 
 			return *this;
 		}
@@ -70,12 +70,12 @@ namespace hbe
 		{
 			if (hasValue)
 			{
-				destroy(typename IsReferenceType<TType>::Result());
+				Destroy(typename IsReferenceType<TType>::Result());
 			}
 
 			if (rhs.hasValue)
 			{
-				copyValue(typename IsReferenceType<TType>::Result(), rhs);
+				CopyValue(typename IsReferenceType<TType>::Result(), rhs);
 			}
 
 			return *this;
@@ -85,12 +85,12 @@ namespace hbe
 		{
 			if (hasValue)
 			{
-				destroy(typename IsReferenceType<TType>::Result());
+				Destroy(typename IsReferenceType<TType>::Result());
 			}
 
 			if (rhs.hasValue)
 			{
-				moveValue(typename IsReferenceType<TType>::Result(), rhs);
+				MoveValue(typename IsReferenceType<TType>::Result(), rhs);
 			}
 
 			return *this;
@@ -98,7 +98,7 @@ namespace hbe
 
 		Optional& operator=(std::nullptr_t)
 		{
-			reset();
+			Reset();
 
 			return *this;
 		}
@@ -108,13 +108,13 @@ namespace hbe
 
 		TType& operator*()
 		{
-			fatalAssert(hasValue);
+			FatalAssert(hasValue);
 			return Value();
 		}
 
 		const TType& operator*() const
 		{
-			fatalAssert(hasValue);
+			FatalAssert(hasValue);
 			return Value();
 		}
 
@@ -122,39 +122,39 @@ namespace hbe
 
 		[[nodiscard]] const TType& Value() const { return GetValue(typename IsReferenceType<TType>::Result()); }
 
-		void reset()
+		void Reset()
 		{
 			if (!hasValue)
 			{
 				return;
 			}
 
-			destroy(typename IsReferenceType<TType>::Result());
+			Destroy(typename IsReferenceType<TType>::Result());
 		}
 
-		void emplace(TType& value)
+		void Emplace(TType& value)
 		{
 			if (hasValue)
 			{
-				destroy(typename IsReferenceType<TType>::Result());
+				Destroy(typename IsReferenceType<TType>::Result());
 			}
 
-			constructAt(typename IsReferenceType<TType>::Result(), value);
+			ConstructAt(typename IsReferenceType<TType>::Result(), value);
 		}
 
 		template<typename... Types>
-		void emplace(Types&&... args)
+		void Emplace(Types&&... args)
 		{
 			if (hasValue)
 			{
-				destroy(typename IsReferenceType<TType>::Result());
+				Destroy(typename IsReferenceType<TType>::Result());
 			}
 
-			constructAt(typename IsReferenceType<TType>::Result(), std::forward<Types>(args)...);
+			ConstructAt(typename IsReferenceType<TType>::Result(), std::forward<Types>(args)...);
 		}
 
 	private:
-		void constructAt(True_t, TType& inValue)
+		void ConstructAt(True_t, TType& inValue)
 		{
 			using TValue = typename std::decay<TType>::type;
 			using TPtr = void*;
@@ -173,32 +173,32 @@ namespace hbe
 		}
 
 		template<typename... Types>
-		void constructAt(False_t, Types&&... args)
+		void ConstructAt(False_t, Types&&... args)
 		{
 			hasValue = true;
 			new (value) TType(std::forward<Types>(args)...);
 		}
 
-		void copyValue(True_t, const Optional& rhs)
+		void CopyValue(True_t, const Optional& rhs)
 		{
 			hasValue = rhs.hasValue;
 			memcpy(value, rhs.value, sizeof(TType));
 		}
 
-		void copyValue(False_t, const Optional& rhs)
+		void CopyValue(False_t, const Optional& rhs)
 		{
 			hasValue = rhs.hasValue;
 			Value() = rhs.Value();
 		}
 
-		void moveValue(True_t, Optional& rhs)
+		void MoveValue(True_t, Optional& rhs)
 		{
 			hasValue = rhs.hasValue;
 			memcpy(value, rhs.value, sizeof(TType));
 			rhs.hasValue = false;
 		}
 
-		void moveValue(False_t, Optional& rhs)
+		void MoveValue(False_t, Optional& rhs)
 		{
 			hasValue = rhs.hasValue;
 			Value() = std::move(rhs.Value());
@@ -229,9 +229,9 @@ namespace hbe
 
 		const TType& GetValue(False_t) const { return reinterpret_cast<const TType&>(value[0]); }
 
-		void destroy(True_t) { hasValue = false; }
+		void Destroy(True_t) { hasValue = false; }
 
-		void destroy(False_t)
+		void Destroy(False_t)
 		{
 			if (hasValue)
 			{
@@ -254,7 +254,7 @@ namespace hbe
 		OptionalTest() : TestCollection("OptionalTest") {}
 
 	protected:
-		void prepare() override;
+		void Prepare() override;
 	};
 
 } // namespace hbe

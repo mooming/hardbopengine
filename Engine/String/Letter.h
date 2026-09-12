@@ -12,7 +12,7 @@ namespace hbe
 	public:
 		using TChar = char;
 
-		static bool isLowerCase(TChar letter)
+		static bool IsLowerCase(TChar letter)
 		{
 			returnValueIf(false, letter < 'a');
 			returnValueIf(false, letter > 'z');
@@ -20,7 +20,7 @@ namespace hbe
 			return true;
 		}
 
-		static bool isUpperCase(TChar letter)
+		static bool IsUpperCase(TChar letter)
 		{
 			returnValueIf(false, letter < 'A');
 			returnValueIf(false, letter > 'Z');
@@ -28,7 +28,7 @@ namespace hbe
 			return true;
 		}
 
-		static bool isGenuineLetter(TChar letter)
+		static bool IsGenuineLetter(TChar letter)
 		{
 			returnValueIf(false, letter == ' ' || letter == '\t' || letter == '\n' || letter == '\r');
 

@@ -1,5 +1,5 @@
 public:
-	[[nodiscard]] static This createDiagonal(const TNumber diagonal) noexcept
+	[[nodiscard]] static This CreateDiagonal(const TNumber diagonal) noexcept
 	{
 		This result;
 
@@ -11,7 +11,7 @@ public:
 		return result;
 	}
 
-	[[nodiscard]] static This createDiagonal(const TVec& diagonal) noexcept
+	[[nodiscard]] static This CreateDiagonal(const TVec& diagonal) noexcept
 	{
 		This result;
 
@@ -25,12 +25,12 @@ public:
 
 	[[nodiscard]] This operator* (const This& rhs) const noexcept
 	{
-		return multiply(rhs);
+		return Multiply(rhs);
 	}
 
 	[[nodiscard]] TVec operator* (const TVec& rhs) const noexcept
 	{
-		return multiply(rhs);
+		return Multiply(rhs);
 	}
 
 	[[nodiscard]] bool operator== (const This& rhs) const noexcept
@@ -48,14 +48,14 @@ public:
 		return !(*this == rhs);
 	}
 
-	[[nodiscard]] bool isInvertible() const noexcept
+	[[nodiscard]] bool IsInvertible() const noexcept
 	{
 		constexpr bool isSquare = row == column;
 
-		return isSquare && determinant() != 0;
+		return isSquare && Determinant() != 0;
 	}
 
-	[[nodiscard]] bool isIdentity() const noexcept
+	[[nodiscard]] bool IsIdentity() const noexcept
 	{
 		for (int i = 0; i < row; ++i)
 		{
@@ -63,10 +63,10 @@ public:
 			{
 				if (i != j)
 				{
-					if (!isZero(m[i][j]))
+					if (!IsZero(m[i][j]))
 						return false;
 				}
-				else if (!isEqual(m[i][j], 1.0f))
+				else if (!IsEqual(m[i][j], 1.0f))
 				{
 					return false;
 				}
@@ -76,7 +76,7 @@ public:
 		return true;
 	}
 
-	[[nodiscard]] This transposed() const noexcept
+	[[nodiscard]] This Transposed() const noexcept
 	{
 		This result;
 
@@ -91,7 +91,7 @@ public:
 		return result;
 	}
 
-	[[nodiscard]] This multiply(const TNumber value) const noexcept
+	[[nodiscard]] This Multiply(const TNumber value) const noexcept
 	{
 		Assert(value == value);
 
@@ -105,28 +105,28 @@ public:
 		return result;
 	}
 
-	[[nodiscard]] This multiply(const This& rhs) const noexcept
+	[[nodiscard]] This Multiply(const This& rhs) const noexcept
 	{
 		This result;
-		This tRhs = rhs.transposed();
+		This tRhs = rhs.Transposed();
 
 		for (int i = 0; i < row; ++i)
 		{
 			for (int j = 0; j < column; ++j)
 			{
-				result.m[i][j] = rows[i].dot(tRhs.rows[j]);
+				result.m[i][j] = rows[i].Dot(tRhs.rows[j]);
 			}
 		}
 
 		return result;
 	}
 
-	[[nodiscard]] TVec multiply(const TVec& rhs) const noexcept
+	[[nodiscard]] TVec Multiply(const TVec& rhs) const noexcept
 	{
 		TVec result;
 		for (int i = 0; i < row; ++i)
 		{
-			result.a[i] = rows[i].dot(rhs);
+			result.a[i] = rows[i].Dot(rhs);
 		}
 
 		return result;

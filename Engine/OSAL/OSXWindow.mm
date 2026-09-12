@@ -48,7 +48,7 @@ Window::~Window()
 	Close();
 }
 
-bool Window::createWindow(const hbe::HString& title, int width, int height)
+bool Window::CreateWindow(const hbe::HString& title, int width, int height)
 {
 	returnValueIf(false, osHandle != nullptr);
 
@@ -82,7 +82,7 @@ bool Window::createWindow(const hbe::HString& title, int width, int height)
 	return true;
 }
 
-void Window::setTitle(const hbe::HString& title)
+void Window::SetTitle(const hbe::HString& title)
 {
 	returnIf(osHandle == nullptr);
 
@@ -90,7 +90,7 @@ void Window::setTitle(const hbe::HString& title)
 	[window setTitle:[NSString stringWithUTF8String:title.c_str()]];
 }
 
-void Window::setSize(int width, int height)
+void Window::SetSize(int width, int height)
 {
 	returnIf(osHandle == nullptr);
 
@@ -103,22 +103,22 @@ void Window::setSize(int width, int height)
 	Window::height = height;
 }
 
-int Window::getWidth() const
+int Window::GetWidth() const
 {
 	return width;
 }
 
-int Window::getHeight() const
+int Window::GetHeight() const
 {
 	return height;
 }
 
-bool Window::isVisible() const
+bool Window::IsVisible() const
 {
 	return visibleFlag;
 }
 
-void Window::setVisible(bool visible)
+void Window::SetVisible(bool visible)
 {
 	if (osHandle == nullptr)
 	{
@@ -139,7 +139,7 @@ void Window::setVisible(bool visible)
 	visibleFlag = visible;
 }
 
-void Window::pollEvents()
+void Window::PollEvents()
 {
 	if (osHandle != nullptr)
 	{
@@ -164,12 +164,12 @@ void Window::Close()
 	closedFlag = true;
 }
 
-bool Window::isClosed() const
+bool Window::IsClosed() const
 {
 	return closedFlag;
 }
 
-intptr_t Window::getNativeHandle() const
+intptr_t Window::GetNativeHandle() const
 {
 	return reinterpret_cast<intptr_t>(osHandle);
 }

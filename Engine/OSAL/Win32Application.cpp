@@ -16,11 +16,11 @@ Application::~Application()
 {
 }
 
-void Application::initialize()
+void Application::Initialize()
 {
 }
 
-void Application::pollEvents()
+void Application::PollEvents()
 {
 }
 

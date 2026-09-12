@@ -14,26 +14,26 @@ namespace hbe
 {
 
 OSInputOutputTest::OSInputOutputTest() noexcept
-	: TestCollection(StringUtil::toCompactClassName(__PRETTY_FUNCTION__))
+	: TestCollection(StringUtil::ToCompactClassName(__PRETTY_FUNCTION__))
 {
 }
 
-void OSInputOutputTest::prepare()
+void OSInputOutputTest::Prepare()
 {
 	using namespace OS;
 	static const StaticString path("Test.data");
 
-	addTest("Open/Close/Delete", [&, this](auto& ls)
+	AddTest("Open/Close/Delete", [&, this](auto& ls)
 	{
 		FileHandle fh;
 		FileOpenMode openMode;
 
-		openMode.setReadWrite();
-		openMode.setTruncate();
+		openMode.SetReadWrite();
+		openMode.SetTruncate();
 
-		if (!exist(path))
+		if (!Exist(path))
 		{
-			openMode.setCreate();
+			openMode.SetCreate();
 		}
 
 		ls << "Try to open " << path << lf;
@@ -47,7 +47,7 @@ void OSInputOutputTest::prepare()
 			return;
 		}
 
-		if (exist(path))
+		if (Exist(path))
 		{
 			ls << "The file found! path = " << path << lf;
 		}
@@ -75,7 +75,7 @@ void OSInputOutputTest::prepare()
 		}
 	});
 
-	addTest("MapMemory", [&, this](auto& ls)
+	AddTest("MapMemory", [&, this](auto& ls)
 	{
 		constexpr int TestSize = 256;
 
@@ -83,12 +83,12 @@ void OSInputOutputTest::prepare()
 			FileHandle fh;
 			FileOpenMode openMode;
 
-			openMode.setReadWrite();
-			openMode.setTruncate();
+			openMode.SetReadWrite();
+			openMode.SetTruncate();
 
-			if (!exist(path))
+			if (!Exist(path))
 			{
-				openMode.setCreate();
+				openMode.SetCreate();
 			}
 
 			if (!Open(fh, path, openMode))
@@ -103,10 +103,10 @@ void OSInputOutputTest::prepare()
 			}
 
 			ProtectionMode protection;
-			protection.setReadable();
-			protection.setWritable();
+			protection.SetReadable();
+			protection.SetWritable();
 
-			auto ptr = mapMemory(fh, TestSize, protection, 0);
+			auto ptr = MapMemory(fh, TestSize, protection, 0);
 			if (ptr == nullptr)
 			{
 				Close(std::move(fh));
@@ -123,8 +123,8 @@ void OSInputOutputTest::prepare()
 			}
 
 			MapSyncMode syncMode;
-			syncMode.setSync();
-			mapSync(ptr, TestSize, syncMode);
+			syncMode.SetSync();
+			MapSync(ptr, TestSize, syncMode);
 
 			for (int i = 0; i < TestSize; ++i)
 			{
@@ -137,14 +137,14 @@ void OSInputOutputTest::prepare()
 				}
 			}
 
-			unmapMemory(ptr, TestSize);
+			UnmapMemory(ptr, TestSize);
 			Close(std::move(fh));
 		}
 
 		{
 			FileHandle fh;
 			FileOpenMode openMode;
-			openMode.setReadOnly();
+			openMode.SetReadOnly();
 
 			if (!Open(fh, path, openMode))
 			{
@@ -153,7 +153,7 @@ void OSInputOutputTest::prepare()
 				return;
 			}
 
-			auto fileSize = fh.getFileSize();
+			auto fileSize = fh.GetFileSize();
 			if (fileSize != TestSize)
 			{
 				ls << "File size(" << fileSize << ") is not valid. " << TestSize << " is expected." << lferr;

@@ -14,16 +14,16 @@ class MapSyncMode;
 
 bool Open(FileHandle& outHandle, hbe::StaticString filePath, FileOpenMode openMode) noexcept;
 bool Close(FileHandle&& handle) noexcept;
-bool exist(hbe::StaticString filePath) noexcept;
+bool Exist(hbe::StaticString filePath) noexcept;
 bool Delete(hbe::StaticString filePath) noexcept;
 
 size_t Read(const FileHandle& handle, void* buffer, size_t size) noexcept;
 size_t Write(const FileHandle& handle, void* buffer, size_t size) noexcept;
 bool Truncate(const FileHandle& handle, size_t size) noexcept;
 
-void* mapMemory(FileHandle& fileHandle, size_t size, ProtectionMode protection, size_t offset) noexcept;
-bool mapSync(void* ptr, size_t size, MapSyncMode syncMode) noexcept;
-bool unmapMemory(void* ptr, size_t size) noexcept;
+void* MapMemory(FileHandle& fileHandle, size_t size, ProtectionMode protection, size_t offset) noexcept;
+bool MapSync(void* ptr, size_t size, MapSyncMode syncMode) noexcept;
+bool UnmapMemory(void* ptr, size_t size) noexcept;
 
 } // namespace OS
 
@@ -40,7 +40,7 @@ public:
 	OSInputOutputTest() noexcept;
 
 protected:
-	void prepare() override;
+	void Prepare() override;
 };
 
 } // namespace hbe

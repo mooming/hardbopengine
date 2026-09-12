@@ -8,16 +8,16 @@ namespace
 {
 
 	template<typename T>
-	static void printArgs(const T& arg) noexcept
+	static void PrintArgs(const T& arg) noexcept
 	{
 		std::cout << arg << std::endl;
 	}
 
 	template<typename T, typename... TTypes>
-	static void printArgs(const T& arg, TTypes&&... args) noexcept
+	static void PrintArgs(const T& arg, TTypes&&... args) noexcept
 	{
 		std::cout << arg;
-		printArgs(std::forward<TTypes>(args)...);
+		PrintArgs(std::forward<TTypes>(args)...);
 	}
 
 } // namespace

@@ -35,9 +35,9 @@ namespace hbe
 			center((aabb.min + aabb.max) * 0.5f), half((aabb.max - aabb.min) * 0.5f), rotation(rotation)
 		{}
 
-		[[nodiscard]] bool isContaining(const TVec3& objSpacePoint) const noexcept
+		[[nodiscard]] bool IsContaining(const TVec3& objSpacePoint) const noexcept
 		{
-			auto point = toOBBSpace(objSpacePoint);
+			auto point = ToOBBSpace(objSpacePoint);
 
 			if (Abs(point.x) > half.x)
 			{
@@ -57,33 +57,33 @@ namespace hbe
 			return true;
 		}
 
-		[[nodiscard]] TVec3 closest(const TVec3& objSpacePoint) const noexcept
+		[[nodiscard]] TVec3 Closest(const TVec3& objSpacePoint) const noexcept
 		{
-			auto point = toOBBSpace(objSpacePoint);
+			auto point = ToOBBSpace(objSpacePoint);
 
 			auto length = TVec3::order;
 			for (int i = 0; i < length; ++i)
 			{
 				float h = half.a[i];
-				point.a[i] = clampFast(point.a[i], -h, h);
+				point.a[i] = ClampFast(point.a[i], -h, h);
 			}
 
-			return toObjectSpace(point);
+			return ToObjectSpace(point);
 		}
 
-		[[nodiscard]] bool hasIntersection(const OBB& obb, const TVec3& objPosition, const TQuat& objRot) noexcept { return false; }
+		[[nodiscard]] bool HasIntersection(const OBB& obb, const TVec3& objPosition, const TQuat& objRot) noexcept { return false; }
 
 
 	private:
-		[[nodiscard]] TVec3 toOBBSpace(const TVec3& objSpacePoint) const noexcept
+		[[nodiscard]] TVec3 ToOBBSpace(const TVec3& objSpacePoint) const noexcept
 		{
 			auto point = objSpacePoint - center;
-			point = rotation.inverse() * point;
+			point = rotation.Inverse() * point;
 
 			return point;
 		}
 
-		[[nodiscard]] TVec3 toObjectSpace(const TVec3& obbSpacePoint) const noexcept
+		[[nodiscard]] TVec3 ToObjectSpace(const TVec3& obbSpacePoint) const noexcept
 		{
 			auto point = rotation * obbSpacePoint;
 			point -= center;
@@ -105,7 +105,7 @@ namespace hbe
 		OBBTest() : TestCollection("OBBTest") {}
 
 	protected:
-		void prepare() noexcept override;
+		void Prepare() noexcept override;
 	};
 } // namespace hbe
 #endif //__UNIT_TEST__

@@ -15,7 +15,7 @@
 namespace hbe
 {
 
-void LinkedListTest::prepare()
+void LinkedListTest::Prepare()
 {
 	constexpr int CountBase = 1024;
 	// One size in every configuration. It used to be CountBase * 2 under __DEBUG__, which meant
@@ -24,7 +24,7 @@ void LinkedListTest::prepare()
 	constexpr int COUNT = CountBase * 16;
 	constexpr int COUNT2 = CountBase;
 
-	addTest("Iteration on the empty list", [this](auto& ls)
+	AddTest("Iteration on the empty list", [this](auto& ls)
 	{
 		LinkedList<int> intList;
 
@@ -36,7 +36,7 @@ void LinkedListTest::prepare()
 		}
 	});
 
-	addTest("Simple Construction & Destruction", [this](auto& ls)
+	AddTest("Simple Construction & Destruction", [this](auto& ls)
 	{
 		const auto NodeSize = sizeof(LinkedList<int>::Node);
 
@@ -48,7 +48,7 @@ void LinkedListTest::prepare()
 
 			for (int i = 0; i < COUNT; ++i)
 			{
-				intList.add(i);
+				intList.Add(i);
 			}
 
 			ls << "A list is constructed." << lf;
@@ -70,7 +70,7 @@ void LinkedListTest::prepare()
 		ls << "The list is destructed." << lf;
 	});
 
-	addTest("Growth and Iteration", [this](auto& ls)
+	AddTest("Growth and Iteration", [this](auto& ls)
 	{
 		const auto NodeSize = sizeof(LinkedList<int>::Node);
 
@@ -86,7 +86,7 @@ void LinkedListTest::prepare()
 			LinkedList<int> intList;
 			for (int i = 0; i < COUNT; ++i)
 			{
-				intList.add(i);
+				intList.Add(i);
 			}
 
 			int i = 0;
@@ -126,20 +126,20 @@ void LinkedListTest::prepare()
 			}
 		}
 
-		ls << "Insert Time Compare : HE = " << time::toFloat(heTime) << ", STL = " << time::toFloat(stlTime) << lf;
+		ls << "Insert Time Compare : HE = " << time::ToFloat(heTime) << ", STL = " << time::ToFloat(stlTime) << lf;
 
 		if (heTime > stlTime)
 		{
 			ls << "LinkedList is slower than the STL list" << std::endl
-			   << "HE = " << time::toFloat(heTime) << ", STL = " << time::toFloat(stlTime) << lfwarn;
+			   << "HE = " << time::ToFloat(heTime) << ", STL = " << time::ToFloat(stlTime) << lfwarn;
 		}
 	});
 
-	addTest("Growth and Iteration", [this](auto& ls)
+	AddTest("Growth and Iteration", [this](auto& ls)
 	{
 		const auto NodeSize = sizeof(LinkedList<int>::Node);
 		PoolAllocator alloc("LinkedListTest::Allocator", NodeSize, COUNT + 10);
-		AllocatorScope allocScope(alloc.getID());
+		AllocatorScope allocScope(alloc.GetID());
 
 		time::TDuration heTime;
 		time::TDuration stlTime;
@@ -170,7 +170,7 @@ void LinkedListTest::prepare()
 			LinkedList<int> intList;
 			for (int i = 0; i < COUNT; ++i)
 			{
-				intList.add(i);
+				intList.Add(i);
 			}
 
 			{
@@ -192,7 +192,7 @@ void LinkedListTest::prepare()
 			return;
 		}
 
-		ls << "Loop Time Compare : HE = " << time::toFloat(heTime) << ", STL = " << time::toFloat(stlTime) << lf;
+		ls << "Loop Time Compare : HE = " << time::ToFloat(heTime) << ", STL = " << time::ToFloat(stlTime) << lf;
 
 		if (heTime > stlTime)
 		{

@@ -12,7 +12,7 @@
 #include "Log/Logger.h"
 #include "String/StringUtil.h"
 
-int OS::getCPUIndex() noexcept
+int OS::GetCPUIndex() noexcept
 {
 	size_t cpuNumber = 0;
 	auto result = pthread_cpu_number_np(&cpuNumber);
@@ -20,10 +20,10 @@ int OS::getCPUIndex() noexcept
 	{
 		using namespace hbe;
 		using namespace StringUtil;
-		auto funcName = toFunctionName(__PRETTY_FUNCTION__);
-		auto log = Logger::get(funcName);
+		auto funcName = ToFunctionName(__PRETTY_FUNCTION__);
+		auto log = Logger::Get(funcName);
 
-		log.outError([](auto& ls) { ls << "failed to get cpu number"; });
+		log.OutError([](auto& ls) { ls << "failed to get cpu number"; });
 
 		return -1;
 	}
@@ -43,17 +43,17 @@ int OS::GetThreadPriority(std::thread& thread) noexcept
 	{
 		using namespace hbe;
 		using namespace StringUtil;
-		auto funcName = toFunctionName(__PRETTY_FUNCTION__);
-		auto log = Logger::get(funcName);
+		auto funcName = ToFunctionName(__PRETTY_FUNCTION__);
+		auto log = Logger::Get(funcName);
 
 		switch (result)
 		{
 			case ESRCH:
-				log.outError([](auto& ls) { ls << "Non-existent thread."; });
+				log.OutError([](auto& ls) { ls << "Non-existent thread."; });
 				break;
 
 			default:
-				log.outError([result](auto& ls) { ls << "Unexpected error code = " << result; });
+				log.OutError([result](auto& ls) { ls << "Unexpected error code = " << result; });
 				break;
 		}
 
@@ -63,7 +63,7 @@ int OS::GetThreadPriority(std::thread& thread) noexcept
 	return sp.sched_priority;
 }
 
-void OS::setThreadAffinity(std::thread& thread, uint64_t mask) noexcept
+void OS::SetThreadAffinity(std::thread& thread, uint64_t mask) noexcept
 {
 	// Not supported on Apple Silicon
 }
@@ -81,24 +81,24 @@ void OS::SetThreadPriority(std::thread& thread, int priority) noexcept
 	if (unlikely(result != 0))
 	{
 		using namespace hbe;
-		auto log = Logger::get("OS::Thread");
+		auto log = Logger::Get("OS::Thread");
 
 		switch (result)
 		{
 			case EINVAL:
-				log.outError([policy](auto& ls) { ls << "Invalid value for policy. Input policy = " << policy; });
+				log.OutError([policy](auto& ls) { ls << "Invalid value for policy. Input policy = " << policy; });
 				break;
 
 			case ENOTSUP:
-				log.outError([](auto& ls) { ls << "Invalid value for scheduling parameters."; });
+				log.OutError([](auto& ls) { ls << "Invalid value for scheduling parameters."; });
 				break;
 
 			case ESRCH:
-				log.outError([](auto& ls) { ls << "Non-existent thread."; });
+				log.OutError([](auto& ls) { ls << "Non-existent thread."; });
 				break;
 
 			default:
-				log.outError([result](auto& ls) { ls << "Unexpected error code = " << result; });
+				log.OutError([result](auto& ls) { ls << "Unexpected error code = " << result; });
 				break;
 		}
 	}

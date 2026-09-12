@@ -43,7 +43,7 @@ namespace hbe
 			, mask(DefaultCapacity - 1)
 			, data(nullptr)
 		{
-			reserve(initialCapacity > DefaultCapacity ? initialCapacity : DefaultCapacity);
+			Reserve(initialCapacity > DefaultCapacity ? initialCapacity : DefaultCapacity);
 		}
 
 		Deque(Deque&& rhs) noexcept
@@ -56,7 +56,7 @@ namespace hbe
 		{
 			returnIf(data == nullptr);
 
-			destroyAll();
+			DestroyAll();
 			allocator.deallocate(data, Capacity());
 		}
 
@@ -75,146 +75,146 @@ namespace hbe
 
 		TElement& operator[](TIndex index)
 		{
-			fatalAssert(isValidIndex(index));
-			return data[wrapIndex(head + index)];
+			FatalAssert(IsValidIndex(index));
+			return data[WrapIndex(head + index)];
 		}
 
 		const TElement& operator[](TIndex index) const
 		{
-			fatalAssert(isValidIndex(index));
-			return data[wrapIndex(head + index)];
+			FatalAssert(IsValidIndex(index));
+			return data[WrapIndex(head + index)];
 		}
 
-		void pushFront(const TElement& value) noexcept
+		void PushFront(const TElement& value) noexcept
 		{
 			if (count == Capacity())
 			{
-				grow();
+				Grow();
 			}
 
-			head = wrapIndex(head - 1);
+			head = WrapIndex(head - 1);
 			new (&data[head]) TElement(value);
 			++count;
 		}
 
-		void pushFront(TElement&& value) noexcept
+		void PushFront(TElement&& value) noexcept
 		{
 			if (count == Capacity())
 			{
-				grow();
+				Grow();
 			}
 
-			head = wrapIndex(head - 1);
+			head = WrapIndex(head - 1);
 			new (&data[head]) TElement(std::move(value));
 			++count;
 		}
 
 		template<typename... Types>
-		TElement& emplaceFront(Types&&... args) noexcept
+		TElement& EmplaceFront(Types&&... args) noexcept
 		{
 			if (count == Capacity())
 			{
-				grow();
+				Grow();
 			}
 
-			head = wrapIndex(head - 1);
+			head = WrapIndex(head - 1);
 			auto* ptr = new (&data[head]) TElement(std::forward<Types>(args)...);
 			++count;
 			return *ptr;
 		}
 
-		void pushBack(const TElement& value) noexcept
+		void PushBack(const TElement& value) noexcept
 		{
 			if (count == Capacity())
 			{
-				grow();
+				Grow();
 			}
 
 			new (&data[tail]) TElement(value);
-			tail = wrapIndex(tail + 1);
+			tail = WrapIndex(tail + 1);
 			++count;
 		}
 
-		void pushBack(TElement&& value) noexcept
+		void PushBack(TElement&& value) noexcept
 		{
 			if (count == Capacity())
 			{
-				grow();
+				Grow();
 			}
 
 			new (&data[tail]) TElement(std::move(value));
-			tail = wrapIndex(tail + 1);
+			tail = WrapIndex(tail + 1);
 			++count;
 		}
 
 		template<typename... Types>
-		TElement& emplaceBack(Types&&... args) noexcept
+		TElement& EmplaceBack(Types&&... args) noexcept
 		{
 			if (count == Capacity())
 			{
-				grow();
+				Grow();
 			}
 
 			auto* ptr = new (&data[tail]) TElement(std::forward<Types>(args)...);
-			tail = wrapIndex(tail + 1);
+			tail = WrapIndex(tail + 1);
 			++count;
 			return *ptr;
 		}
 
-		void popFront() noexcept
+		void PopFront() noexcept
 		{
-			fatalAssert(!IsEmpty());
+			FatalAssert(!IsEmpty());
 			data[head].~TElement();
-			head = wrapIndex(head + 1);
+			head = WrapIndex(head + 1);
 			--count;
 		}
 
-		void popBack() noexcept
+		void PopBack() noexcept
 		{
-			fatalAssert(!IsEmpty());
-			tail = wrapIndex(tail - 1);
+			FatalAssert(!IsEmpty());
+			tail = WrapIndex(tail - 1);
 			data[tail].~TElement();
 			--count;
 		}
 
-		TElement& front() noexcept
+		TElement& Front() noexcept
 		{
-			fatalAssert(!IsEmpty());
+			FatalAssert(!IsEmpty());
 			return data[head];
 		}
 
-		const TElement& front() const noexcept
+		const TElement& Front() const noexcept
 		{
-			fatalAssert(!IsEmpty());
+			FatalAssert(!IsEmpty());
 			return data[head];
 		}
 
-		TElement& back() noexcept
+		TElement& Back() noexcept
 		{
-			fatalAssert(!IsEmpty());
-			return data[wrapIndex(tail - 1)];
+			FatalAssert(!IsEmpty());
+			return data[WrapIndex(tail - 1)];
 		}
 
-		const TElement& back() const noexcept
+		const TElement& Back() const noexcept
 		{
-			fatalAssert(!IsEmpty());
-			return data[wrapIndex(tail - 1)];
+			FatalAssert(!IsEmpty());
+			return data[WrapIndex(tail - 1)];
 		}
 
 		[[nodiscard]] TIndex Size() const noexcept { return count; }
 		[[nodiscard]] TIndex Capacity() const noexcept { return mask + 1; }
 		[[nodiscard]] bool IsEmpty() const noexcept { return count == 0; }
-		[[nodiscard]] bool isValidIndex(TIndex index) const noexcept { return index >= 0 && index < count; }
+		[[nodiscard]] bool IsValidIndex(TIndex index) const noexcept { return index >= 0 && index < count; }
 
-		void clear() noexcept
+		void Clear() noexcept
 		{
-			destroyAll();
+			DestroyAll();
 			head = 0;
 			tail = 0;
 			count = 0;
 		}
 
-		void reserve(TIndex newCapacity) noexcept
+		void Reserve(TIndex newCapacity) noexcept
 		{
 			if (newCapacity <= Capacity())
 				return;
@@ -230,7 +230,7 @@ namespace hbe
 
 			for (TIndex i = 0; i < count; ++i)
 			{
-				auto srcIdx = wrapIndex(head + i);
+				auto srcIdx = WrapIndex(head + i);
 				new (&newData[i]) TElement(std::move(data[srcIdx]));
 				data[srcIdx].~TElement();
 			}
@@ -263,19 +263,19 @@ namespace hbe
 		TIndex mask;
 		TElement* data;
 
-		TIndex wrapIndex(TIndex index) const noexcept { return index & mask; }
+		TIndex WrapIndex(TIndex index) const noexcept { return index & mask; }
 
-		void grow() noexcept
+		void Grow() noexcept
 		{
 			auto newCapacity = std::max(DefaultCapacity, Capacity() * 2);
-			reserve(newCapacity);
+			Reserve(newCapacity);
 		}
 
-		void destroyAll() noexcept
+		void DestroyAll() noexcept
 		{
 			for (TIndex i = 0; i < count; ++i)
 			{
-				auto idx = wrapIndex(head + i);
+				auto idx = WrapIndex(head + i);
 				data[idx].~TElement();
 			}
 		}
@@ -295,7 +295,7 @@ namespace hbe
 		DequeTest() : TestCollection("DequeTest") {}
 
 	protected:
-		void prepare() override;
+		void Prepare() override;
 	};
 
 } // namespace hbe

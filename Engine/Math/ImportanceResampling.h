@@ -31,11 +31,11 @@ namespace hbe
 		ImportanceResampling() = default;
 		~ImportanceResampling() = default;
 
-		[[nodiscard]] auto& getWeights() const noexcept { return weights; }
-		[[nodiscard]] auto& getSamples() const noexcept { return samples; }
-		[[nodiscard]] auto& getNormalizedWeights() const noexcept { return normalizedWeights; }
+		[[nodiscard]] auto& GetWeights() const noexcept { return weights; }
+		[[nodiscard]] auto& GetSamples() const noexcept { return samples; }
+		[[nodiscard]] auto& GetNormalizedWeights() const noexcept { return normalizedWeights; }
 
-		void reset() noexcept
+		void Reset() noexcept
 		{
 			totalWeight = 0;
 			std::swap(weights, hbe::HVector<TReal>());
@@ -43,7 +43,7 @@ namespace hbe
 			std::swap(samples, hbe::HVector<TInput>());
 		}
 
-		void clearResampledData() noexcept
+		void ClearResampledData() noexcept
 		{
 			totalWeight = 0;
 			weights.clear();
@@ -174,7 +174,7 @@ namespace hbe
 		ImportanceResamplingTest() : TestCollection("Importance Resampling Test") {}
 
 	protected:
-		void prepare() noexcept override;
+		void Prepare() noexcept override;
 	};
 } // namespace hbe
 #endif //__UNIT_TEST__

@@ -9,13 +9,13 @@
 namespace hbe
 {
 
-	void QuaternionTest::prepare() noexcept
+	void QuaternionTest::Prepare() noexcept
 	{
 		static const TQuat x(90.0f, 0.0f, 0.0f);
 		static const TQuat y(0.0f, 90.0f, 0.0f);
 		static const TQuat z(0.0f, 0.0f, 90.0f);
 
-		addTest("Constructors & Rotate Forward Vector", [&, this](auto& ls)
+		AddTest("Constructors & Rotate Forward Vector", [&, this](auto& ls)
 		{
 			ls << "Quat rotate 90 around X = " << x << lf;
 			ls << "Quat rotate 90 around Y = " << y << lf;
@@ -26,7 +26,7 @@ namespace hbe
 			ls << "Quat: Qz x Forward = " << z * TFloat3::Forward << lf;
 		});
 
-		addTest("90 degrees Rotation Test", [&](auto& ls)
+		AddTest("90 degrees Rotation Test", [&](auto& ls)
 		{
 #ifndef RIGHT_HANDED_COORDINATE
 			if (y * TFloat3::Right != TFloat3::Forward)
@@ -45,10 +45,10 @@ namespace hbe
 #endif
 		});
 
-		addTest("RotationFromTo", [&, this](auto& ls)
+		AddTest("RotationFromTo", [&, this](auto& ls)
 		{
 			TQuat xToY(nullptr);
-			xToY.setRotationFromTo(TFloat3::X, TFloat3::Y);
+			xToY.SetRotationFromTo(TFloat3::X, TFloat3::Y);
 
 			if (xToY * TFloat3::X != TFloat3::Y)
 			{
@@ -57,7 +57,7 @@ namespace hbe
 			}
 		});
 
-		addTest("Composition", [&, this](auto& ls)
+		AddTest("Composition", [&, this](auto& ls)
 		{
 			TQuat yx(90.0f, 90.0f, 0.0f);
 
@@ -81,7 +81,7 @@ namespace hbe
 			}
 		});
 
-		addTest("Cast to Rotation Matrix", [&, this](auto& ls)
+		AddTest("Cast to Rotation Matrix", [&, this](auto& ls)
 		{
 			TQuat zyx(90.0f, 90.0f, 90.0f);
 			TFloat3x3 matZyx = zyx;
@@ -92,29 +92,29 @@ namespace hbe
 			}
 		});
 
-		addTest("Create rotations", [&, this](auto& ls)
+		AddTest("Create rotations", [&, this](auto& ls)
 		{
-			if (TQuat() != TQuat::createRotationX(0.0f))
+			if (TQuat() != TQuat::CreateRotationX(0.0f))
 			{
 				ls << "Quat: CreateRotationX(0) failed." << lferr;
 			}
 
-			if (TQuat() != TQuat::createRotationY(0.0f))
+			if (TQuat() != TQuat::CreateRotationY(0.0f))
 			{
 				ls << "Quat: CreateRotationY(0) failed." << lferr;
 			}
 
-			if (TQuat() != TQuat::createRotationXY(0.0f, 0.0f))
+			if (TQuat() != TQuat::CreateRotationXY(0.0f, 0.0f))
 			{
 				ls << "Quat: CreateRotationXY(0) failed." << lferr;
 			}
 
-			if (TQuat() != TQuat::createRotationYZ(0.0f, 0.0f))
+			if (TQuat() != TQuat::CreateRotationYZ(0.0f, 0.0f))
 			{
 				ls << "Quat: CreateRotationYZ(0) failed." << lferr;
 			}
 
-			if (TQuat() != TQuat::createRotationXZ(0.0f, 0.0f))
+			if (TQuat() != TQuat::CreateRotationXZ(0.0f, 0.0f))
 			{
 				ls << "Quat: CreateRotationXZ(0) failed." << lferr;
 			}
@@ -125,9 +125,9 @@ namespace hbe
 			}
 		});
 
-		addTest("Look Rotation", [&, this](auto& ls)
+		AddTest("Look Rotation", [&, this](auto& ls)
 		{
-			TQuat look = TQuat::lookRotation(TFloat3::Forward, TFloat3::Up);
+			TQuat look = TQuat::LookRotation(TFloat3::Forward, TFloat3::Up);
 
 			ls << "Look = " << look << lf;
 
@@ -136,7 +136,7 @@ namespace hbe
 				ls << "Quat: LookRotation failed." << lferr;
 			}
 
-			TQuat lookBack = TQuat::lookRotation(-TFloat3::Forward, TFloat3::Up);
+			TQuat lookBack = TQuat::LookRotation(-TFloat3::Forward, TFloat3::Up);
 			ls << "Look Backward = " << lookBack << lf;
 
 			if ((lookBack * TFloat3::Forward) != (-TFloat3::Forward))
@@ -145,7 +145,7 @@ namespace hbe
 			}
 		});
 
-		addTest("Rotation Matrix Comparison", [&, this](auto& ls)
+		AddTest("Rotation Matrix Comparison", [&, this](auto& ls)
 		{
 			if ((y * TFloat3::Forward) != (TFloat3x3(y) * TFloat3::Forward))
 			{

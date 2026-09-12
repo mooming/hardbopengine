@@ -30,8 +30,8 @@ namespace hbe
 
 		[[nodiscard]] const char* c_str() const noexcept;
 
-		[[nodiscard]] auto getID() const noexcept { return id; }
-		[[nodiscard]] bool isNull() const noexcept { return id.ptr == nullptr; }
+		[[nodiscard]] auto GetID() const noexcept { return id; }
+		[[nodiscard]] bool IsNull() const noexcept { return id.ptr == nullptr; }
 		[[nodiscard]] operator const char*() const noexcept { return c_str(); }
 		bool operator<(const StaticString& rhs) const noexcept { return id.ptr < rhs.id.ptr; }
 		bool operator==(const StaticString& rhs) const noexcept { return id.ptr == rhs.id.ptr; }
@@ -55,7 +55,7 @@ namespace std
 	{
 		std::size_t operator()(const hbe::StaticString& obj) const
 		{
-			return reinterpret_cast<std::size_t>(obj.getID().ptr);
+			return reinterpret_cast<std::size_t>(obj.GetID().ptr);
 		}
 	};
 } // namespace std
@@ -72,7 +72,7 @@ namespace hbe
 		StaticStringTest() : TestCollection("StaticStringTest") {}
 
 	protected:
-		void prepare() override;
+		void Prepare() override;
 	};
 
 } // namespace hbe

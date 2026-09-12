@@ -18,32 +18,32 @@ SystemStatistics::SystemStatistics(Engine& engine) :
 	currentTime(startTime)
 {
 	Assert(engine.IsMemoryManagerReady());
-	engine.setSystemStatisticsReady();
+	engine.SetSystemStatisticsReady();
 }
 
-const StaticString& SystemStatistics::getName() const noexcept
+const StaticString& SystemStatistics::GetName() const noexcept
 {
 	static StaticString name("SystemStatistics");
 	return name;
 }
 
-void SystemStatistics::updateCurrentTime() noexcept
+void SystemStatistics::UpdateCurrentTime() noexcept
 {
 	{
 		auto newTime = time::TStopWatch::now();
 		const auto delta = newTime - currentTime;
-		deltaTime = time::toFloat(delta);
+		deltaTime = time::ToFloat(delta);
 		currentTime = newTime;
 	}
 
 	const auto fromStart = currentTime - startTime;
-	timeSinceStart = time::toDouble(fromStart);
+	timeSinceStart = time::ToDouble(fromStart);
 }
 
 #if PROFILE_ENABLED
-void SystemStatistics::report(const AllocStats& stats) { allocStats.emplace_back(stats); }
+void SystemStatistics::Report(const AllocStats& stats) { allocStats.emplace_back(stats); }
 
-void SystemStatistics::reportSysMemAlloc(size_t usage)
+void SystemStatistics::ReportSysMemAlloc(size_t usage)
 {
 	size_t localTotalUsage = 0;
 
@@ -58,14 +58,14 @@ void SystemStatistics::reportSysMemAlloc(size_t usage)
 	if (unlikely(localTotalUsage > Config::MemCapacity))
 	{
 		using namespace StringUtil;
-		static auto log = Logger::get(toCompactMethodName(__PRETTY_FUNCTION__));
+		static auto log = Logger::Get(ToCompactMethodName(__PRETTY_FUNCTION__));
 
-		log.outWarning([localTotalUsage](auto& ls)
+		log.OutWarning([localTotalUsage](auto& ls)
 		{ ls << "System Memory Usage " << localTotalUsage << " exceeds its limit " << Config::MemCapacity; });
 	}
 }
 
-void SystemStatistics::reportSysMemDealloc(size_t usage)
+void SystemStatistics::ReportSysMemDealloc(size_t usage)
 {
 	std::lock_guard lock(sysMemReportLock);
 	++deallocCount;
@@ -75,55 +75,55 @@ void SystemStatistics::reportSysMemDealloc(size_t usage)
 }
 #endif // PROFILE_ENABLED
 
-void SystemStatistics::print() noexcept
+void SystemStatistics::Print() noexcept
 {
 	auto curLogCount = logCount.load(std::memory_order_relaxed);
 	auto curLongLogCount = longLogCount.load(std::memory_order_relaxed);
 
-	auto log = Logger::get(getName());
+	auto log = Logger::Get(GetName());
 
-	log.out("= System Statistics ==========================");
-	log.out([this](auto& ls) { ls << "Frame Count = " << frameCount.load(std::memory_order_relaxed); });
+	log.Out("= System Statistics ==========================");
+	log.Out([this](auto& ls) { ls << "Frame Count = " << frameCount.load(std::memory_order_relaxed); });
 
-	log.out([this](auto& ls) { ls << "Slow Frame Count = " << slowFrameCount.load(std::memory_order_relaxed); });
+	log.Out([this](auto& ls) { ls << "Slow Frame Count = " << slowFrameCount.load(std::memory_order_relaxed); });
 
-	log.out([this](auto& ls) { ls << "Engine Log Count = " << engineLogCount.load(std::memory_order_relaxed); });
+	log.Out([this](auto& ls) { ls << "Engine Log Count = " << engineLogCount.load(std::memory_order_relaxed); });
 
-	log.out([curLogCount](auto& ls) { ls << "Log Count = " << curLogCount; });
+	log.Out([curLogCount](auto& ls) { ls << "Log Count = " << curLogCount; });
 
-	log.out([curLongLogCount, curLogCount](auto& ls)
+	log.Out([curLongLogCount, curLogCount](auto& ls)
 	{ ls << "Long Log Count = " << curLongLogCount << " / " << curLogCount; });
 
-	log.out([this](auto& ls) { ls << "Running Time = " << timeSinceStart << " sec"; });
+	log.Out([this](auto& ls) { ls << "Running Time = " << timeSinceStart << " sec"; });
 
-	log.out([this](auto& ls)
+	log.Out([this](auto& ls)
 	{ ls << "Allocation Count = " << allocCount << " (Alloc), " << deallocCount << " (Dealloc)"; });
 
-	log.out([this](auto& ls)
+	log.Out([this](auto& ls)
 	{
 		constexpr size_t MegaBytes = 1024UL * 1024;
 		ls << "System Memory Usage = " << totalUsage << " (" << (totalUsage / MegaBytes) << " MB) / " << maxUsage
 		   << " (" << (maxUsage / MegaBytes) << " MB)";
 	});
 
-	log.out([this](auto& ls)
+	log.Out([this](auto& ls)
 	{ ls << "Fallback Allocation Count = " << fallbackAllocCount.load(std::memory_order_relaxed); });
 
-	log.out("==============================================");
+	log.Out("==============================================");
 }
 
-void SystemStatistics::printAllocatorProfiles() noexcept
+void SystemStatistics::PrintAllocatorProfiles() noexcept
 {
 #if PROFILE_ENABLED
-	auto log = Logger::get(getName(), ELogLevel::Verbose);
-	log.out("= System Statistics: Allocator Profiles ========================");
+	auto log = Logger::Get(GetName(), ELogLevel::Verbose);
+	log.Out("= System Statistics: Allocator Profiles ========================");
 
 	for (auto& stats : allocStats)
 	{
-		stats.print();
+		stats.Print();
 	}
 
-	log.out("================================================================");
+	log.Out("================================================================");
 #endif // PROFILE_ENABLED
 }
 

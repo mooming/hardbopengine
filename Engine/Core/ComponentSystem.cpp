@@ -11,9 +11,9 @@
 namespace hbe
 {
 
-void ComponentSystemTest::prepare()
+void ComponentSystemTest::Prepare()
 {
-	addTest("Update Component Test", [this](auto& ls)
+	AddTest("Update Component Test", [this](auto& ls)
 	{
 #ifdef __DEBUG__
 		constexpr int componentNum = 1024;
@@ -76,11 +76,11 @@ void ComponentSystemTest::prepare()
 				}
 			}
 
-			void init() override
+			void Init() override
 			{
-				if (getState() != ComponentState::BORN)
+				if (GetState() != ComponentState::BORN)
 				{
-					ls << "State failure, state = " << getState() << ", but expected " << ComponentState::BORN
+					ls << "State failure, state = " << GetState() << ", but expected " << ComponentState::BORN
 					   << lferr;
 
 					testResult = false;
@@ -89,11 +89,11 @@ void ComponentSystemTest::prepare()
 				isInit = true;
 			}
 
-			void update(const float deltaTime) override
+			void Update(const float deltaTime) override
 			{
-				if (getState() != ComponentState::ALIVE)
+				if (GetState() != ComponentState::ALIVE)
 				{
-					ls << "State failure, state = " << getState() << ", but expected " << ComponentState::ALIVE
+					ls << "State failure, state = " << GetState() << ", but expected " << ComponentState::ALIVE
 					   << lferr;
 					testResult = false;
 				}
@@ -102,15 +102,15 @@ void ComponentSystemTest::prepare()
 
 				if (updateCount > updateNum)
 				{
-					destroy();
+					Destroy();
 				}
 			}
 
-			void release() override
+			void Release() override
 			{
-				if (getState() != ComponentState::DEAD)
+				if (GetState() != ComponentState::DEAD)
 				{
-					ls << "State failure, state = " << getState() << ", but expected " << ComponentState::DEAD
+					ls << "State failure, state = " << GetState() << ", but expected " << ComponentState::DEAD
 					   << lferr;
 
 					testResult = false;
@@ -119,11 +119,11 @@ void ComponentSystemTest::prepare()
 				isReleased = true;
 			}
 
-			void onEnable() override
+			void OnEnable() override
 			{
-				if (getState() != ComponentState::ALIVE)
+				if (GetState() != ComponentState::ALIVE)
 				{
-					ls << "State failure, state = " << getState() << ", but expected " << ComponentState::ALIVE
+					ls << "State failure, state = " << GetState() << ", but expected " << ComponentState::ALIVE
 					   << lferr;
 
 					testResult = false;
@@ -132,11 +132,11 @@ void ComponentSystemTest::prepare()
 				isOnEnableCalled = true;
 			}
 
-			void onDisable() override
+			void OnDisable() override
 			{
-				if (getState() != ComponentState::SLEEP)
+				if (GetState() != ComponentState::SLEEP)
 				{
-					ls << "State failure, state = " << getState() << ", but expected " << ComponentState::SLEEP
+					ls << "State failure, state = " << GetState() << ", but expected " << ComponentState::SLEEP
 					   << lferr;
 
 					testResult = false;
@@ -151,7 +151,7 @@ void ComponentSystemTest::prepare()
 		bool testResult = true;
 		for (int i = 0; i < componentNum; ++i)
 		{
-			testSystem.create(testResult, ls, lferr);
+			testSystem.Create(testResult, ls, lferr);
 		}
 
 		time::TDuration loopTime;
@@ -160,14 +160,14 @@ void ComponentSystemTest::prepare()
 			time::ScopedTime measure(loopTime);
 			while (testSystem)
 			{
-				testSystem.update(0.033f);
+				testSystem.Update(0.033f);
 
 				if (!testResult)
 					return;
 			}
 		}
 
-		ls << "Total Loop Time = " << time::toFloat(loopTime) << lf;
+		ls << "Total Loop Time = " << time::ToFloat(loopTime) << lf;
 	});
 }
 

@@ -58,8 +58,8 @@ namespace
 				}
 			}
 
-			auto inlineTimeSec = time::toFloat(inlineTime);
-			auto stdTimeSec = time::toFloat(stdTime);
+			auto inlineTimeSec = time::ToFloat(inlineTime);
+			auto stdTimeSec = time::ToFloat(stdTime);
 			auto rate = inlineTimeSec / stdTimeSec;
 
 			ls << "Vector Growth Performance : InlineAlloc: " << inlineTimeSec << " msec vs STL: " << stdTimeSec
@@ -70,9 +70,9 @@ namespace
 	};
 } // namespace
 
-void hbe::InlinePoolAllocatorTest::prepare()
+void hbe::InlinePoolAllocatorTest::Prepare()
 {
-	addTest("Zero-sized Allocation & Deallocation", [](auto&)
+	AddTest("Zero-sized Allocation & Deallocation", [](auto&)
 	{
 		InlinePoolAllocator<int, 16, 2> allocator;
 
@@ -84,7 +84,7 @@ void hbe::InlinePoolAllocatorTest::prepare()
 	{
 		constexpr int testCount = 1024;
 
-		ls << '[' << allocator.getBlockSize() << "] Num Iterations = " << testCount
+		ls << '[' << allocator.GetBlockSize() << "] Num Iterations = " << testCount
 		   << ", maxAllocSize = " << maxAllocSize << lf;
 
 		std::allocator<int> stdAlloc;
@@ -113,7 +113,7 @@ void hbe::InlinePoolAllocatorTest::prepare()
 				}
 			}
 
-			inlineTimeDuration += time::toFloat(inlineTime);
+			inlineTimeDuration += time::ToFloat(inlineTime);
 		}
 
 		double stdTimeDuration = 0;
@@ -135,14 +135,14 @@ void hbe::InlinePoolAllocatorTest::prepare()
 				}
 			}
 
-			stdTimeDuration += time::toFloat(stdTime);
+			stdTimeDuration += time::ToFloat(stdTime);
 		}
 
 		auto rate = static_cast<float>(inlineTimeDuration / stdTimeDuration);
 
 #if PROFILE_ENABLED
-		auto& mmgr = MemoryManager::getInstance();
-		auto stat = mmgr.getAllocatorStat(allocator.getID());
+		auto& mmgr = MemoryManager::GetInstance();
+		auto stat = mmgr.GetAllocatorStat(allocator.GetID());
 
 		ls << "Performance: " << inlineTimeAvg << " msec vs STL: " << stdTimeAvg << " msec, rate = [" << rate
 		   << "], fallback count = " << stat.fallbackCount << " / " << (testCount * loopLength) << lf;
@@ -155,7 +155,7 @@ void hbe::InlinePoolAllocatorTest::prepare()
 	};
 
 	constexpr int NumBlocks = 32;
-	addTest("Perf. & Stress, Size(1)", [&, this](auto& ls)
+	AddTest("Perf. & Stress, Size(1)", [&, this](auto& ls)
 	{
 		constexpr int inlineSize = 64;
 		InlinePoolAllocator<int, inlineSize, NumBlocks> inlineAlloc;
@@ -167,7 +167,7 @@ void hbe::InlinePoolAllocatorTest::prepare()
 		}
 	});
 
-	addTest("Perf. & Stress, Size(16)", [&, this](auto& ls)
+	AddTest("Perf. & Stress, Size(16)", [&, this](auto& ls)
 	{
 		constexpr int inlineSize = 64;
 		InlinePoolAllocator<int, inlineSize, NumBlocks> inlineAlloc;
@@ -179,7 +179,7 @@ void hbe::InlinePoolAllocatorTest::prepare()
 		}
 	});
 
-	addTest("Perf. & Stress, Size(32)", [&, this](auto& ls)
+	AddTest("Perf. & Stress, Size(32)", [&, this](auto& ls)
 	{
 		constexpr int inlineSize = 64;
 		InlinePoolAllocator<int, inlineSize, NumBlocks> inlineAlloc;
@@ -191,7 +191,7 @@ void hbe::InlinePoolAllocatorTest::prepare()
 		}
 	});
 
-	addTest("Perf. & Stress, Size(64)", [&, this](auto& ls)
+	AddTest("Perf. & Stress, Size(64)", [&, this](auto& ls)
 	{
 		constexpr int inlineSize = 64;
 		InlinePoolAllocator<int, inlineSize, NumBlocks> inlineAlloc;
@@ -203,7 +203,7 @@ void hbe::InlinePoolAllocatorTest::prepare()
 		}
 	});
 
-	addTest("Perf. & Stress, Size(128)", [&, this](auto& ls)
+	AddTest("Perf. & Stress, Size(128)", [&, this](auto& ls)
 	{
 		constexpr int inlineSize = 128;
 		InlinePoolAllocator<int, inlineSize, NumBlocks> inlineAlloc;
@@ -215,7 +215,7 @@ void hbe::InlinePoolAllocatorTest::prepare()
 		}
 	});
 
-	addTest("Perf. & Stress, Size(256)", [&, this](auto& ls)
+	AddTest("Perf. & Stress, Size(256)", [&, this](auto& ls)
 	{
 		constexpr int inlineSize = 256;
 		InlinePoolAllocator<int, inlineSize, NumBlocks> inlineAlloc;
@@ -227,7 +227,7 @@ void hbe::InlinePoolAllocatorTest::prepare()
 		}
 	});
 
-	addTest("Perf. & Stress, Size(512)", [&, this](auto& ls)
+	AddTest("Perf. & Stress, Size(512)", [&, this](auto& ls)
 	{
 		constexpr int inlineSize = 512;
 		InlinePoolAllocator<int, inlineSize, NumBlocks> inlineAlloc;
@@ -239,7 +239,7 @@ void hbe::InlinePoolAllocatorTest::prepare()
 		}
 	});
 
-	addTest("Perf. & Stress, Size(1024)", [&, this](auto& ls)
+	AddTest("Perf. & Stress, Size(1024)", [&, this](auto& ls)
 	{
 		constexpr int inlineSize = 1024;
 		InlinePoolAllocator<int, inlineSize, NumBlocks> inlineAlloc;
@@ -251,39 +251,39 @@ void hbe::InlinePoolAllocatorTest::prepare()
 		}
 	});
 
-	addTest("Vector Growth, size(32)", [&, this](auto& ls)
+	AddTest("Vector Growth, size(32)", [&, this](auto& ls)
 	{
 		constexpr int inlineSize = 64;
 		ls << "==========================================" << lf;
 		ls << "Inline Alloc Size = " << inlineSize << lf;
 
-		auto rate = VectorGrowthTest<inlineSize>()(getName(), ls, lf, 32);
+		auto rate = VectorGrowthTest<inlineSize>()(GetName(), ls, lf, 32);
 		if (rate > 1.0f)
 		{
 			ls << "It's slower than system malloc. rate = " << rate << lfwarn;
 		}
 	});
 
-	addTest("Vector Growth, size(128)", [&, this](auto& ls)
+	AddTest("Vector Growth, size(128)", [&, this](auto& ls)
 	{
 		constexpr int inlineSize = 128;
 		ls << "==========================================" << lf;
 		ls << "Inline Alloc Size = " << inlineSize << lf;
 
-		auto rate = VectorGrowthTest<inlineSize>()(getName(), ls, lf, inlineSize);
+		auto rate = VectorGrowthTest<inlineSize>()(GetName(), ls, lf, inlineSize);
 		if (rate > 1.0f)
 		{
 			ls << "It's slower than system malloc. rate = " << rate << lfwarn;
 		}
 	});
 
-	addTest("Vector Growth, size(512)", [&, this](auto& ls)
+	AddTest("Vector Growth, size(512)", [&, this](auto& ls)
 	{
 		constexpr int inlineSize = 512;
 		ls << "==========================================" << lf;
 		ls << "Inline Alloc Size = " << inlineSize << lf;
 
-		auto rate = VectorGrowthTest<inlineSize>()(getName(), ls, lf, inlineSize);
+		auto rate = VectorGrowthTest<inlineSize>()(GetName(), ls, lf, inlineSize);
 		if (rate > 1.0f)
 		{
 			ls << "It's slower than system malloc. rate = " << rate << lfwarn;

@@ -11,7 +11,7 @@
 
 using namespace hbe;
 
-StaticString OS::getBackTrace(uint16_t startIndex, uint16_t maxDepth)
+StaticString OS::GetBackTrace(uint16_t startIndex, uint16_t maxDepth)
 {
 	constexpr size_t BufferSize = 8192;
 	constexpr size_t LineBufferSize = 2048;
@@ -41,7 +41,7 @@ StaticString OS::getBackTrace(uint16_t startIndex, uint16_t maxDepth)
 			++tokenIndex;
 		};
 
-		StringUtil::forEachToken(strs[i], PerToken, " \t\n\r+");
+		StringUtil::ForEachToken(strs[i], PerToken, " \t\n\r+");
 
 		if (tokenIndex == 5)
 		{

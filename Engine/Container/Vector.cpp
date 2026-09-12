@@ -10,16 +10,16 @@
 namespace hbe
 {
 
-	void VectorTest::prepare()
+	void VectorTest::Prepare()
 	{
-		addTest("Default Construction", [](auto&) { Vector<int> v; });
+		AddTest("Default Construction", [](auto&) { Vector<int> v; });
 
-		addTest("PushBack and Access", [this](auto& ls)
+		AddTest("PushBack and Access", [this](auto& ls)
 		{
 			Vector<int> v;
-			v.pushBack(10);
-			v.pushBack(20);
-			v.pushBack(30);
+			v.PushBack(10);
+			v.PushBack(20);
+			v.PushBack(30);
 
 			if (v.Size() != 3)
 			{
@@ -36,15 +36,15 @@ namespace hbe
 			ls << "Pass";
 		});
 
-		addTest("PopBack", [this](auto& ls)
+		AddTest("PopBack", [this](auto& ls)
 		{
 			Vector<int> v;
-			v.pushBack(1);
-			v.pushBack(2);
-			v.pushBack(3);
-			v.popBack();
+			v.PushBack(1);
+			v.PushBack(2);
+			v.PushBack(3);
+			v.PopBack();
 
-			if (v.Size() != 2 || v.back() != 2)
+			if (v.Size() != 2 || v.Back() != 2)
 			{
 				ls << "PopBack failed" << lferr;
 				return;
@@ -53,13 +53,13 @@ namespace hbe
 			ls << "Pass";
 		});
 
-		addTest("Front and Back", [this](auto& ls)
+		AddTest("Front and Back", [this](auto& ls)
 		{
 			Vector<int> v;
-			v.pushBack(10);
-			v.pushBack(20);
+			v.PushBack(10);
+			v.PushBack(20);
 
-			if (v.front() != 10 || v.back() != 20)
+			if (v.Front() != 10 || v.Back() != 20)
 			{
 				ls << "Front/Back mismatch" << lferr;
 				return;
@@ -68,7 +68,7 @@ namespace hbe
 			ls << "Pass";
 		});
 
-		addTest("Initializer List", [this](auto& ls)
+		AddTest("Initializer List", [this](auto& ls)
 		{
 			Vector<int> v = {1, 2, 3, 4, 5};
 
@@ -90,14 +90,14 @@ namespace hbe
 			ls << "Pass";
 		});
 
-		addTest("Growth", [this](auto& ls)
+		AddTest("Growth", [this](auto& ls)
 		{
 			Vector<int> v;
 			int count = 1000;
 
 			for (int i = 0; i < count; ++i)
 			{
-				v.pushBack(i);
+				v.PushBack(i);
 			}
 
 			if (v.Size() != count)
@@ -118,10 +118,10 @@ namespace hbe
 			ls << "Pass";
 		});
 
-		addTest("Reserve", [this](auto& ls)
+		AddTest("Reserve", [this](auto& ls)
 		{
 			Vector<int> v;
-			v.reserve(64);
+			v.Reserve(64);
 
 			if (v.Capacity() < 64)
 			{
@@ -129,7 +129,7 @@ namespace hbe
 				return;
 			}
 
-			v.pushBack(42);
+			v.PushBack(42);
 			if (v[0] != 42)
 			{
 				ls << "Data corrupted after Reserve" << lferr;
@@ -139,11 +139,11 @@ namespace hbe
 			ls << "Pass";
 		});
 
-		addTest("EmplaceBack", [this](auto& ls)
+		AddTest("EmplaceBack", [this](auto& ls)
 		{
 			Vector<std::pair<int, int>> v;
-			v.emplaceBack(1, 2);
-			v.emplaceBack(3, 4);
+			v.EmplaceBack(1, 2);
+			v.EmplaceBack(3, 4);
 
 			if (v.Size() != 2)
 			{
@@ -160,12 +160,12 @@ namespace hbe
 			ls << "Pass";
 		});
 
-		addTest("Clear", [this](auto& ls)
+		AddTest("Clear", [this](auto& ls)
 		{
 			Vector<int> v;
-			v.pushBack(1);
-			v.pushBack(2);
-			v.clear();
+			v.PushBack(1);
+			v.PushBack(2);
+			v.Clear();
 
 			if (!v.IsEmpty())
 			{
@@ -173,7 +173,7 @@ namespace hbe
 				return;
 			}
 
-			v.pushBack(10);
+			v.PushBack(10);
 			if (v.Size() != 1 || v[0] != 10)
 			{
 				ls << "Reuse after Clear failed" << lferr;
@@ -183,11 +183,11 @@ namespace hbe
 			ls << "Pass";
 		});
 
-		addTest("Move Semantics", [this](auto& ls)
+		AddTest("Move Semantics", [this](auto& ls)
 		{
 			Vector<int> v1;
-			v1.pushBack(1);
-			v1.pushBack(2);
+			v1.PushBack(1);
+			v1.PushBack(2);
 
 			Vector<int> v2(std::move(v1));
 			if (v2.Size() != 2 || v2[0] != 1)
@@ -207,20 +207,20 @@ namespace hbe
 			ls << "Pass";
 		});
 
-		addTest("FindIndex", [this](auto& ls)
+		AddTest("FindIndex", [this](auto& ls)
 		{
 			Vector<int> v;
-			v.pushBack(10);
-			v.pushBack(20);
-			v.pushBack(30);
+			v.PushBack(10);
+			v.PushBack(20);
+			v.PushBack(30);
 
-			if (v.findIndex(20) != 1)
+			if (v.FindIndex(20) != 1)
 			{
 				ls << "FindIndex(20) should be 1" << lferr;
 				return;
 			}
 
-			if (v.findIndex(99) != -1)
+			if (v.FindIndex(99) != -1)
 			{
 				ls << "FindIndex(99) should be -1" << lferr;
 				return;
@@ -229,7 +229,7 @@ namespace hbe
 			ls << "Pass";
 		});
 
-		addTest("Performance vs std::vector", [this](auto& ls)
+		AddTest("Performance vs std::vector", [this](auto& ls)
 		{
 			constexpr int NumItems = 100000;
 			constexpr int NumIterations = 30;
@@ -244,7 +244,7 @@ namespace hbe
 					Vector<int> v;
 					for (int i = 0; i < NumItems; ++i)
 					{
-						v.pushBack(i);
+						v.PushBack(i);
 					}
 				}
 			}

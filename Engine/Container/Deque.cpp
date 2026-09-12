@@ -10,16 +10,16 @@
 namespace hbe
 {
 
-	void DequeTest::prepare()
+	void DequeTest::Prepare()
 	{
-		addTest("Default Construction", [](auto&) { Deque<int> d; });
+		AddTest("Default Construction", [](auto&) { Deque<int> d; });
 
-		addTest("PushBack and PopBack", [this](auto& ls)
+		AddTest("PushBack and PopBack", [this](auto& ls)
 		{
 			Deque<int> d;
-			d.pushBack(1);
-			d.pushBack(2);
-			d.pushBack(3);
+			d.PushBack(1);
+			d.PushBack(2);
+			d.PushBack(3);
 
 			if (d.Size() != 3 || d[0] != 1 || d[1] != 2 || d[2] != 3)
 			{
@@ -27,8 +27,8 @@ namespace hbe
 				return;
 			}
 
-			d.popBack();
-			if (d.Size() != 2 || d.back() != 2)
+			d.PopBack();
+			if (d.Size() != 2 || d.Back() != 2)
 			{
 				ls << "PopBack failed" << lferr;
 				return;
@@ -37,12 +37,12 @@ namespace hbe
 			ls << "Pass";
 		});
 
-		addTest("PushFront and PopFront", [this](auto& ls)
+		AddTest("PushFront and PopFront", [this](auto& ls)
 		{
 			Deque<int> d;
-			d.pushFront(10);
-			d.pushFront(20);
-			d.pushFront(30);
+			d.PushFront(10);
+			d.PushFront(20);
+			d.PushFront(30);
 
 			if (d.Size() != 3 || d[0] != 30 || d[1] != 20 || d[2] != 10)
 			{
@@ -50,8 +50,8 @@ namespace hbe
 				return;
 			}
 
-			d.popFront();
-			if (d.Size() != 2 || d.front() != 20)
+			d.PopFront();
+			if (d.Size() != 2 || d.Front() != 20)
 			{
 				ls << "PopFront failed" << lferr;
 				return;
@@ -60,12 +60,12 @@ namespace hbe
 			ls << "Pass";
 		});
 
-		addTest("Mixed Push", [this](auto& ls)
+		AddTest("Mixed Push", [this](auto& ls)
 		{
 			Deque<int> d;
-			d.pushBack(2);
-			d.pushFront(1);
-			d.pushBack(3);
+			d.PushBack(2);
+			d.PushFront(1);
+			d.PushBack(3);
 
 			if (d.Size() != 3 || d[0] != 1 || d[1] != 2 || d[2] != 3)
 			{
@@ -76,16 +76,16 @@ namespace hbe
 			ls << "Pass";
 		});
 
-		addTest("Wrap Around", [this](auto& ls)
+		AddTest("Wrap Around", [this](auto& ls)
 		{
 			Deque<int> d;
-			d.pushBack(1);
-			d.pushBack(2);
-			d.pushBack(3);
-			d.popFront();
-			d.popFront();
-			d.pushBack(4);
-			d.pushBack(5);
+			d.PushBack(1);
+			d.PushBack(2);
+			d.PushBack(3);
+			d.PopFront();
+			d.PopFront();
+			d.PushBack(4);
+			d.PushBack(5);
 
 			if (d.Size() != 3 || d[0] != 3 || d[1] != 4 || d[2] != 5)
 			{
@@ -96,14 +96,14 @@ namespace hbe
 			ls << "Pass";
 		});
 
-		addTest("Growth", [this](auto& ls)
+		AddTest("Growth", [this](auto& ls)
 		{
 			Deque<int> d;
 			int count = 100;
 
 			for (int i = 0; i < count; ++i)
 			{
-				d.pushBack(i);
+				d.PushBack(i);
 			}
 
 			if (d.Size() != count)
@@ -124,11 +124,11 @@ namespace hbe
 			ls << "Pass";
 		});
 
-		addTest("EmplaceBack", [this](auto& ls)
+		AddTest("EmplaceBack", [this](auto& ls)
 		{
 			Deque<std::pair<int, int>> d;
-			d.emplaceBack(1, 2);
-			d.emplaceBack(3, 4);
+			d.EmplaceBack(1, 2);
+			d.EmplaceBack(3, 4);
 
 			if (d.Size() != 2 || d[0].first != 1)
 			{
@@ -139,12 +139,12 @@ namespace hbe
 			ls << "Pass";
 		});
 
-		addTest("Clear", [this](auto& ls)
+		AddTest("Clear", [this](auto& ls)
 		{
 			Deque<int> d;
-			d.pushBack(1);
-			d.pushBack(2);
-			d.clear();
+			d.PushBack(1);
+			d.PushBack(2);
+			d.Clear();
 
 			if (!d.IsEmpty() || d.Size() != 0)
 			{
@@ -152,7 +152,7 @@ namespace hbe
 				return;
 			}
 
-			d.pushBack(10);
+			d.PushBack(10);
 			if (d.Size() != 1 || d[0] != 10)
 			{
 				ls << "Reuse after Clear failed" << lferr;
@@ -162,11 +162,11 @@ namespace hbe
 			ls << "Pass";
 		});
 
-		addTest("Move Semantics", [this](auto& ls)
+		AddTest("Move Semantics", [this](auto& ls)
 		{
 			Deque<int> d1;
-			d1.pushBack(1);
-			d1.pushBack(2);
+			d1.PushBack(1);
+			d1.PushBack(2);
 
 			Deque<int> d2(std::move(d1));
 			if (d2.Size() != 2 || d2[0] != 1)
@@ -186,22 +186,22 @@ namespace hbe
 			ls << "Pass";
 		});
 
-		addTest("Front and Back", [this](auto& ls)
+		AddTest("Front and Back", [this](auto& ls)
 		{
 			Deque<int> d;
-			d.pushBack(10);
-			d.pushBack(20);
-			d.pushBack(30);
+			d.PushBack(10);
+			d.PushBack(20);
+			d.PushBack(30);
 
-			if (d.front() != 10 || d.back() != 30)
+			if (d.Front() != 10 || d.Back() != 30)
 			{
 				ls << "Front/Back mismatch" << lferr;
 				return;
 			}
 
-			d.popFront();
-			d.popBack();
-			if (d.front() != 20 || d.back() != 20)
+			d.PopFront();
+			d.PopBack();
+			if (d.Front() != 20 || d.Back() != 20)
 			{
 				ls << "After pop Front/Back mismatch" << lferr;
 				return;
@@ -210,12 +210,12 @@ namespace hbe
 			ls << "Pass";
 		});
 
-		addTest("Reserve", [this](auto& ls)
+		AddTest("Reserve", [this](auto& ls)
 		{
 			Deque<int> d;
-			d.pushBack(1);
-			d.pushBack(2);
-			d.reserve(64);
+			d.PushBack(1);
+			d.PushBack(2);
+			d.Reserve(64);
 
 			if (d.Capacity() < 64)
 			{
@@ -232,7 +232,7 @@ namespace hbe
 			ls << "Pass";
 		});
 
-		addTest("Performance vs std::deque", [this](auto& ls)
+		AddTest("Performance vs std::deque", [this](auto& ls)
 		{
 			constexpr int NumItems = 50000;
 			constexpr int NumIterations = 50;
@@ -249,7 +249,7 @@ namespace hbe
 					Deque<int> d;
 					for (int i = 0; i < NumItems; ++i)
 					{
-						d.pushBack(i);
+						d.PushBack(i);
 					}
 				}
 			}
@@ -270,7 +270,7 @@ namespace hbe
 				Deque<int> d;
 				for (int i = 0; i < NumItems * NumIterations; ++i)
 				{
-					d.pushBack(i);
+					d.PushBack(i);
 				}
 
 				time::ScopedTime measure(hePopTime);
@@ -278,7 +278,7 @@ namespace hbe
 				{
 					for (int i = 0; i < NumItems; ++i)
 					{
-						d.popFront();
+						d.PopFront();
 					}
 				}
 			}

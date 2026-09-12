@@ -10,11 +10,11 @@
 namespace hbe
 {
 
-	void HashMapTest::prepare()
+	void HashMapTest::Prepare()
 	{
-		addTest("Default Construction", [](auto&) { HashMap<int, int> m; });
+		AddTest("Default Construction", [](auto&) { HashMap<int, int> m; });
 
-		addTest("Insert and Access", [this](auto& ls)
+		AddTest("Insert and Access", [this](auto& ls)
 		{
 			HashMap<int, int> m;
 			m[1] = 10;
@@ -36,11 +36,11 @@ namespace hbe
 			ls << "Pass";
 		});
 
-		addTest("Insert Return Value", [this](auto& ls)
+		AddTest("Insert Return Value", [this](auto& ls)
 		{
 			HashMap<int, int> m;
-			fatalAssert(m.insert(1, 10));
-			fatalAssert(!m.insert(1, 20));
+			FatalAssert(m.Insert(1, 10));
+			FatalAssert(!m.Insert(1, 20));
 
 			if (m[1] != 10)
 			{
@@ -51,17 +51,17 @@ namespace hbe
 			ls << "Pass";
 		});
 
-		addTest("Remove", [this](auto& ls)
+		AddTest("Remove", [this](auto& ls)
 		{
 			HashMap<int, int> m;
 			m[1] = 10;
 			m[2] = 20;
 			m[3] = 30;
 
-			fatalAssert(m.Remove(2));
-			fatalAssert(!m.Remove(99));
+			FatalAssert(m.Remove(2));
+			FatalAssert(!m.Remove(99));
 
-			if (m.Size() != 2 || m.contains(2))
+			if (m.Size() != 2 || m.Contains(2))
 			{
 				ls << "Remove failed" << lferr;
 				return;
@@ -70,12 +70,12 @@ namespace hbe
 			ls << "Pass";
 		});
 
-		addTest("Contains", [this](auto& ls)
+		AddTest("Contains", [this](auto& ls)
 		{
 			HashMap<int, int> m;
 			m[5] = 50;
 
-			if (!m.contains(5) || m.contains(99))
+			if (!m.Contains(5) || m.Contains(99))
 			{
 				ls << "Contains check failed" << lferr;
 				return;
@@ -84,20 +84,20 @@ namespace hbe
 			ls << "Pass";
 		});
 
-		addTest("Find", [this](auto& ls)
+		AddTest("Find", [this](auto& ls)
 		{
 			HashMap<int, int> m;
 			m[10] = 100;
 			m[20] = 200;
 
-			auto it = m.find(10);
+			auto it = m.Find(10);
 			if (it == m.end() || it->value != 100)
 			{
 				ls << "Find(10) failed" << lferr;
 				return;
 			}
 
-			it = m.find(99);
+			it = m.Find(99);
 			if (it != m.end())
 			{
 				ls << "Find(99) should return end()" << lferr;
@@ -107,7 +107,7 @@ namespace hbe
 			ls << "Pass";
 		});
 
-		addTest("Growth and Rehash", [this](auto& ls)
+		AddTest("Growth and Rehash", [this](auto& ls)
 		{
 			HashMap<int, int> m;
 			int count = 1000;
@@ -135,7 +135,7 @@ namespace hbe
 			ls << "Pass";
 		});
 
-		addTest("Tombstone Reuse", [this](auto& ls)
+		AddTest("Tombstone Reuse", [this](auto& ls)
 		{
 			HashMap<int, int> m;
 			m[1] = 10;
@@ -144,7 +144,7 @@ namespace hbe
 			m.Remove(2);
 			m[2] = 200;
 
-			if (!m.contains(2) || m[2] != 200)
+			if (!m.Contains(2) || m[2] != 200)
 			{
 				ls << "Tombstone reuse failed" << lferr;
 				return;
@@ -159,7 +159,7 @@ namespace hbe
 			ls << "Pass";
 		});
 
-		addTest("Iteration", [this](auto& ls)
+		AddTest("Iteration", [this](auto& ls)
 		{
 			HashMap<int, int> m;
 			m[1] = 10;
@@ -183,12 +183,12 @@ namespace hbe
 			ls << "Pass";
 		});
 
-		addTest("Clear", [this](auto& ls)
+		AddTest("Clear", [this](auto& ls)
 		{
 			HashMap<int, int> m;
 			m[1] = 10;
 			m[2] = 20;
-			m.clear();
+			m.Clear();
 
 			if (!m.IsEmpty() || m.Size() != 0)
 			{
@@ -206,7 +206,7 @@ namespace hbe
 			ls << "Pass";
 		});
 
-		addTest("Move Semantics", [this](auto& ls)
+		AddTest("Move Semantics", [this](auto& ls)
 		{
 			HashMap<int, int> m1;
 			m1[1] = 10;
@@ -230,7 +230,7 @@ namespace hbe
 			ls << "Pass";
 		});
 
-		addTest("Performance vs std::unordered_map", [this](auto& ls)
+		AddTest("Performance vs std::unordered_map", [this](auto& ls)
 		{
 			constexpr int NumItems = 50000;
 
@@ -268,7 +268,7 @@ namespace hbe
 				time::ScopedTime measure(heFindTime);
 				for (int i = 0; i < NumItems; ++i)
 				{
-					auto it = m.find(i);
+					auto it = m.Find(i);
 					if (it != m.end())
 					{
 						sum += it->value;

@@ -11,39 +11,39 @@
 
 namespace hbe
 {
-void RangedTask::run() noexcept
+void RangedTask::Run() noexcept
 {
 	auto& task = taskRef.get();
-	auto runnable = task.getRunnable();
+	auto runnable = task.GetRunnable();
 	if (runnable == nullptr)
 	{
 		currentIndex = end;
 
-		auto logger = Logger::get(task.getName());
-		logger.outError([](auto& ls) { ls << "Null Runnable."; });
+		auto logger = Logger::Get(task.GetName());
+		logger.OutError([](auto& ls) { ls << "Null Runnable."; });
 
 		return;
 	}
 
-	auto userData = task.getUserData();
+	auto userData = task.GetUserData();
 	auto delta = runnable(userData, currentIndex, end);
 	currentIndex += delta;
 
-	if (hasFinished())
+	if (HasFinished())
 	{
-		task.reportFinishedSubTask();
+		task.ReportFinishedSubTask();
 	}
 }
 
 RangedTask::RangedTask(Task& task, TIndex start, TIndex end, uint8_t priority) noexcept
 	: priority(priority)
-	, taskName(task.getName())
+	, taskName(task.GetName())
 	, taskRef(task)
 	, start(start)
 	, end(end)
 	, currentIndex(start)
 {
-	affinity.unset(TaskSystem::getBaseTaskStreamIndex());
-	affinity.unset(TaskSystem::getIOTaskStreamIndex());
+	affinity.Unset(TaskSystem::GetBaseTaskStreamIndex());
+	affinity.Unset(TaskSystem::GetIOTaskStreamIndex());
 }
 } // namespace hbe

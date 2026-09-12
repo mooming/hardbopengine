@@ -40,7 +40,7 @@
 // =============================================================================
 // Assertions are compiled in only when __DEBUG__ is defined. Nothing in the build
 // system defines it, so Assert() is a no-op in Debug, Dev and Release alike.
-// fatalAssert() is outside the guard and is therefore always live.
+// FatalAssert() is outside the guard and is therefore always live.
 //
 // Turn assertions on per build with a compiler flag:
 //     CXXFLAGS="-D__DEBUG__" ./build.sh Applications/EngineTest -dev -test

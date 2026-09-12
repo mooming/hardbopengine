@@ -24,19 +24,19 @@ namespace hbe
 
 	static MemoryManager* mmgrInstance = nullptr;
 
-	StaticStringID MemoryManager::getMultiPoolConfigCacheFilePath()
+	StaticStringID MemoryManager::GetMultiPoolConfigCacheFilePath()
 	{
 		static const StaticString path(MULTIPOOL_ALLOC_LOG);
-		return path.getID();
+		return path.GetID();
 	}
 
-	MemoryManager& MemoryManager::getInstance()
+	MemoryManager& MemoryManager::GetInstance()
 	{
-		fatalAssert(mmgrInstance != nullptr);
+		FatalAssert(mmgrInstance != nullptr);
 		return *mmgrInstance;
 	}
 
-	MemoryManager::TId MemoryManager::getCurrentAllocatorID() { return scopedAllocatorID; }
+	MemoryManager::TId MemoryManager::GetCurrentAllocatorID() { return scopedAllocatorID; }
 
 	MemoryManager::MemoryManager(Engine& engine) : allocCount(0), deallocCount(0)
 	{
@@ -47,13 +47,13 @@ namespace hbe
 		{
 			auto& proxy = allocators[i];
 			proxy.id = i;
-			proxyPool.push(proxy);
+			proxyPool.Push(proxy);
 		}
 
-		registerSystemAllocator();
-		loadMultiPoolConfigs();
+		RegisterSystemAllocator();
+		LoadMultiPoolConfigs();
 
-		engine.setMemoryManagerReady();
+		engine.SetMemoryManagerReady();
 	}
 
 	MemoryManager::~MemoryManager()
@@ -63,24 +63,24 @@ namespace hbe
 			return;
 		}
 
-		deregisterSystemAllocator();
+		DeregisterSystemAllocator();
 		mmgrInstance = nullptr;
 	}
 
-	void MemoryManager::postEngineInit() noexcept {}
+	void MemoryManager::PostEngineInit() noexcept {}
 
-	void MemoryManager::preEngineShutdown() noexcept
+	void MemoryManager::PreEngineShutdown() noexcept
 	{
 #if PROFILE_ENABLED
-		saveMultiPoolConfigs();
+		SaveMultiPoolConfigs();
 #endif // PROFILE_ENABLED
 	}
 
-	const char* MemoryManager::getName() { return "MemoryManager"; }
+	const char* MemoryManager::GetName() { return "MemoryManager"; }
 
 	// Return name of an allocator with the given allocator ID.
 	// It returns a valid name if "PROFILE_ENABLED" is on.
-	const char* MemoryManager::getAllocatorName(TAllocatorID id) const
+	const char* MemoryManager::GetAllocatorName(TAllocatorID id) const
 	{
 		if (unlikely(!IsValid(id)))
 		{
@@ -100,7 +100,7 @@ namespace hbe
 	}
 
 	// Register a allocator
-	MemoryManager::TId MemoryManager::registerAllocator(void* allocator, const char* name, bool isInline,
+	MemoryManager::TId MemoryManager::RegisterAllocator(void* allocator, const char* name, bool isInline,
 														size_t capacity, TAllocBytes allocFunc,
 														TDeallocBytes deallocFunc)
 	{
@@ -124,7 +124,7 @@ namespace hbe
 				std::lock_guard lockScope(statsLock);
 
 				auto& stats = allocProxy.stats;
-				stats.onRegister(name, isInline, capacity);
+				stats.OnRegister(name, isInline, capacity);
 
 				auto& rec = isInline ? inlineUsage : usage;
 				rec.totalCapacity += capacity;
@@ -137,10 +137,10 @@ namespace hbe
 #endif // MEMORY_VERIFICATION_ENABLED
 		};
 
-		auto allocatorProxyPtr = proxyPool.pop();
+		auto allocatorProxyPtr = proxyPool.Pop();
 		if (unlikely(allocatorProxyPtr == nullptr))
 		{
-			log(ELogLevel::FatalError, [funcName = __func__, name](auto& ls)
+			Log(ELogLevel::FatalError, [funcName = __func__, name](auto& ls)
 			{ ls << "[" << funcName << "][" << name << "] failed to register an allocator."; });
 
 			return InvalidAllocatorID;
@@ -152,17 +152,17 @@ namespace hbe
 		AddAllocator(allocatorProxy);
 		Assert(id != InvalidAllocatorID);
 
-		log(ELogLevel::Info,
+		Log(ELogLevel::Info,
 			[funcName = __func__, name, id](auto& ls) { ls << "[" << funcName << "] " << name << "(" << id << ')'; });
 
 		return id;
 	}
 
-	AllocatorProxy& MemoryManager::getAllocatorProxy(TId id)
+	AllocatorProxy& MemoryManager::GetAllocatorProxy(TId id)
 	{
 		if (unlikely(!IsValid(id)))
 		{
-			log(ELogLevel::Error, [funcName = __func__, id](auto& ls)
+			Log(ELogLevel::Error, [funcName = __func__, id](auto& ls)
 			{ ls << "[" << funcName << "] Invalid allocator id(" << id << ") is provided."; });
 
 			// Return a dummy proxy
@@ -175,11 +175,11 @@ namespace hbe
 		return allocators[id];
 	}
 
-	void MemoryManager::deregisterAllocator(TId id)
+	void MemoryManager::DeregisterAllocator(TId id)
 	{
 		if (unlikely(!IsValid(id)))
 		{
-			log(ELogLevel::Error, [funcName = __func__, id](auto& ls)
+			Log(ELogLevel::Error, [funcName = __func__, id](auto& ls)
 			{ ls << "[" << funcName << "] Invalid allocator id(" << id << ") is provided."; });
 
 			return;
@@ -189,11 +189,11 @@ namespace hbe
 
 #if PROFILE_ENABLED
 		auto& stats = allocator.stats;
-		log(ELogLevel::Info, [funcName = __func__, id, &stats](auto& ls)
+		Log(ELogLevel::Info, [funcName = __func__, id, &stats](auto& ls)
 		{ ls << "[" << funcName << "] " << stats.name << "(" << id << ')'; });
 
 #else // PROFILE_ENABLED
-		log(ELogLevel::Info, [funcName = __func__, id](auto& ls) { ls << "[" << funcName << "] ID(" << id << ')'; });
+		Log(ELogLevel::Info, [funcName = __func__, id](auto& ls) { ls << "[" << funcName << "] ID(" << id << ')'; });
 #endif // PROFILE_ENABLED
 
 		allocator.allocate = nullptr;
@@ -202,7 +202,7 @@ namespace hbe
 #if MEMORY_VERIFICATION_ENABLED
 		if (unlikely(allocator.threadId != std::this_thread::get_id()))
 		{
-			log(ELogLevel::Error, [funcName = __func__, id](auto& ls)
+			Log(ELogLevel::Error, [funcName = __func__, id](auto& ls)
 			{ ls << "[" << funcName << "] Allocator(" << id << ") Thread id is mismatched."; });
 
 #ifdef __DEBUG__
@@ -216,7 +216,7 @@ namespace hbe
 #if PROFILE_ENABLED
 		if (unlikely(stats.usage > 0))
 		{
-			log(ELogLevel::Warning, [funcName = __func__, &stats, id](auto& ls)
+			Log(ELogLevel::Warning, [funcName = __func__, &stats, id](auto& ls)
 			{
 				ls << "[" << funcName << "] Allocator [" << stats.name << "](" << id << ") Memory leak is detected! "
 				   << stats.usage << " / " << stats.capacity << " bytes";
@@ -231,7 +231,7 @@ namespace hbe
 
 		if (unlikely(stats.usage > 0))
 		{
-			log(ELogLevel::Warning, [funcName = __func__, &stats, id](auto& ls)
+			Log(ELogLevel::Warning, [funcName = __func__, &stats, id](auto& ls)
 			{ ls << "[" << funcName << "] Allocator [" << stats.name << "](" << id << ") Memory leak is detected!"; });
 
 			return;
@@ -243,7 +243,7 @@ namespace hbe
 			auto& rec = stats.isInline ? inlineUsage : usage;
 			rec.totalUsage -= stats.usage;
 			rec.maxCapacity -= stats.capacity;
-			stats.reset();
+			stats.Reset();
 		}
 
 #endif // PROFILE_ENABLED
@@ -252,15 +252,15 @@ namespace hbe
 		allocator.threadId = std::thread::id();
 #endif // MEMORY_VERIFICATION_ENABLED
 
-		proxyPool.push(allocator);
+		proxyPool.Push(allocator);
 	}
 
 #if PROFILE_ENABLED
-	AllocStats MemoryManager::getAllocatorStat(TAllocatorID id)
+	AllocStats MemoryManager::GetAllocatorStat(TAllocatorID id)
 	{
 		if (unlikely(!IsValid(id)))
 		{
-			log(ELogLevel::Error, [funcName = __func__, id](auto& ls)
+			Log(ELogLevel::Error, [funcName = __func__, id](auto& ls)
 			{ ls << "[" << funcName << "] Invalid allocator id(" << id << ") is provided."; });
 
 			static const AllocStats stats;
@@ -279,11 +279,11 @@ namespace hbe
 		return stats;
 	}
 
-	void MemoryManager::deregisterAllocator(TId id, const hbe::source_location& srcLoc)
+	void MemoryManager::DeregisterAllocator(TId id, const hbe::source_location& srcLoc)
 	{
 		if (unlikely(!IsValid(id)))
 		{
-			log(ELogLevel::Error, [funcName = __func__, id](auto& ls)
+			Log(ELogLevel::Error, [funcName = __func__, id](auto& ls)
 			{ ls << "[" << funcName << "] Invalid allocator id(" << id << ") is provided."; });
 
 			return;
@@ -293,27 +293,27 @@ namespace hbe
 			std::lock_guard lockGuard(statsLock);
 			auto& allocator = allocators[id];
 			auto& stats = allocator.stats;
-			stats.report();
+			stats.Report();
 		}
 
-		deregisterAllocator(id);
+		DeregisterAllocator(id);
 	}
 
-	void MemoryManager::reportMultiPoolConfigutation(StaticStringID uniqueName, TPoolConfigs&& poolConfigs)
+	void MemoryManager::ReportMultiPoolConfigutation(StaticStringID uniqueName, TPoolConfigs&& poolConfigs)
 	{
-		auto& data = multiPoolConfigLog.getData();
+		auto& data = multiPoolConfigLog.GetData();
 		data.emplace_back(uniqueName, std::move(poolConfigs));
 	}
 #endif // PROFILE_ENABLED
 
-	void MemoryManager::reportAllocation(TId id, void* ptr, size_t requested, size_t allocated)
+	void MemoryManager::ReportAllocation(TId id, void* ptr, size_t requested, size_t allocated)
 	{
 #if PROFILE_ENABLED
 		using namespace std;
 
 		if (unlikely(!IsValid(id)))
 		{
-			log(ELogLevel::Error, [func = __func__, id, ptr, requested, allocated](auto& ls)
+			Log(ELogLevel::Error, [func = __func__, id, ptr, requested, allocated](auto& ls)
 			{
 				ls << '[' << func << "] Invalid allocator id(" << id << ") is provided. ptr = " << ptr
 				   << ", requested = " << requested << ", allocated = " << allocated;
@@ -356,7 +356,7 @@ namespace hbe
 
 		if (unlikely(stats.usage > stats.capacity))
 		{
-			log(ELogLevel::FatalError, [func = __func__, &stats, ptr, requested, allocated](auto& ls)
+			Log(ELogLevel::FatalError, [func = __func__, &stats, ptr, requested, allocated](auto& ls)
 			{
 				ls << '[' << func << "][" << stats.name << "] Memory usage overflow. " << stats.usage << " > "
 				   << stats.capacity << ", ptr = " << ptr << ", requested = " << requested
@@ -372,7 +372,7 @@ namespace hbe
 
 		if (unlikely(rec.totalUsage > rec.totalCapacity))
 		{
-			log(ELogLevel::FatalError, [func = __func__, &stats, &rec, ptr, requested, allocated](auto& ls)
+			Log(ELogLevel::FatalError, [func = __func__, &stats, &rec, ptr, requested, allocated](auto& ls)
 			{
 				ls << "[MemoryManager][" << func << "][" << stats.name << "] Usage overflow. " << rec.totalUsage
 				   << " exceedes its limit " << rec.totalCapacity << ", ptr = " << ptr << ", requested = " << requested
@@ -384,7 +384,7 @@ namespace hbe
 #endif // __DEBUG__
 		}
 
-		log(ELogLevel::Info, [this, &stats, &rec, id, ptr, requested, allocated](auto& ls)
+		Log(ELogLevel::Info, [this, &stats, &rec, id, ptr, requested, allocated](auto& ls)
 		{
 			ls << "[Alloc:" << allocCount << "][Allocator: " << stats.name << '(' << id << ")], PTR = " << ptr
 			   << ", Requested = " << requested << ", Allocated = " << allocated;
@@ -417,21 +417,21 @@ namespace hbe
 
 		if (id == SystemAllocatorID)
 		{
-			auto& engine = Engine::get();
-			auto& statistics = engine.getStatistics();
-			statistics.reportSysMemAlloc(allocated);
+			auto& engine = Engine::Get();
+			auto& statistics = engine.GetStatistics();
+			statistics.ReportSysMemAlloc(allocated);
 		}
 #endif // PROFILE_ENABLED
 	}
 
-	void MemoryManager::reportDeallocation(TId id, void* ptr, size_t requested, size_t allocated)
+	void MemoryManager::ReportDeallocation(TId id, void* ptr, size_t requested, size_t allocated)
 	{
 #if PROFILE_ENABLED
 		using namespace std;
 
 		if (unlikely(!IsValid(id)))
 		{
-			log(ELogLevel::Error, [func = __func__, id](auto& ls)
+			Log(ELogLevel::Error, [func = __func__, id](auto& ls)
 			{ ls << '[' << func << "] Invalid allocator id(" << id << ") is provided."; });
 
 			return;
@@ -445,7 +445,7 @@ namespace hbe
 
 		if (unlikely(stats.usage < allocated))
 		{
-			log(ELogLevel::Error, [func = __func__, &stats, ptr, requested, allocated](auto& ls)
+			Log(ELogLevel::Error, [func = __func__, &stats, ptr, requested, allocated](auto& ls)
 			{
 				ls << '[' << func << "][" << stats.name << "] Incorrect Memory usage. " << " ptr = " << ptr
 				   << ", requested = " << requested << ", allocated = " << allocated << ", usage = " << stats.usage;
@@ -462,7 +462,7 @@ namespace hbe
 		auto& rec = stats.isInline ? inlineUsage : usage;
 		if (unlikely(rec.totalUsage < allocated))
 		{
-			log(ELogLevel::Error, [func = __func__, &stats, &rec, ptr, requested, allocated](auto& ls)
+			Log(ELogLevel::Error, [func = __func__, &stats, &rec, ptr, requested, allocated](auto& ls)
 			{
 				ls << '[' << func << "][" << stats.name << "] Incorrect memory usage." << " ptr = " << ptr
 				   << ", requested = " << requested << ", allocated = " << allocated << " > " << rec.totalUsage;
@@ -480,12 +480,12 @@ namespace hbe
 
 		if (id == SystemAllocatorID)
 		{
-			auto& engine = Engine::get();
-			auto& statistics = engine.getStatistics();
-			statistics.reportSysMemDealloc(allocated);
+			auto& engine = Engine::Get();
+			auto& statistics = engine.GetStatistics();
+			statistics.ReportSysMemDealloc(allocated);
 		}
 
-		log(ELogLevel::Info, [this, &stats, &rec, id, ptr, requested, allocated](auto& ls)
+		Log(ELogLevel::Info, [this, &stats, &rec, id, ptr, requested, allocated](auto& ls)
 		{
 			ls << "[Dealloc(" << deallocCount << ")][" << stats.name << '(' << id << ")] " << ptr
 			   << ", req = " << requested << '(' << allocated;
@@ -518,12 +518,12 @@ namespace hbe
 #endif // PROFILE_ENABLED
 	}
 
-	void MemoryManager::reportFallback(TId id, void* ptr, size_t requested)
+	void MemoryManager::ReportFallback(TId id, void* ptr, size_t requested)
 	{
 #if PROFILE_ENABLED
 		if (unlikely(!IsValid(id)))
 		{
-			log(ELogLevel::Error, [funcName = __func__, id](auto& ls)
+			Log(ELogLevel::Error, [funcName = __func__, id](auto& ls)
 			{ ls << '[' << funcName << "] Invalid allocator id(" << id << ") is provided."; });
 
 #ifdef __DEBUG__
@@ -542,7 +542,7 @@ namespace hbe
 		stats.totalFallback += requested;
 		stats.maxFallback = std::max(requested, stats.maxFallback);
 
-		log(ELogLevel::Verbose, [&stats, id, ptr, requested](auto& ls)
+		Log(ELogLevel::Verbose, [&stats, id, ptr, requested](auto& ls)
 		{
 			ls << "[FallbackAlloc][" << stats.name << "][" << id << "] "
 			   << " PTR = " << ptr << ", Count = " << stats.fallbackCount << ", Requested = " << requested;
@@ -550,12 +550,12 @@ namespace hbe
 #endif // PROFILE_ENABLED
 	}
 
-	void* MemoryManager::sysAllocate(size_t nBytes)
+	void* MemoryManager::SysAllocate(size_t nBytes)
 	{
 		auto& allocator = allocators[SystemAllocatorID];
 		if (unlikely(allocator.allocate == nullptr))
 		{
-			log(ELogLevel::FatalError, [funcName = __func__](auto& ls)
+			Log(ELogLevel::FatalError, [funcName = __func__](auto& ls)
 			{
 				ls << '[' << funcName << "] "
 				   << "SystemAllocator has no allocate function.";
@@ -567,12 +567,12 @@ namespace hbe
 		return allocator.allocate(&allocator, nBytes);
 	}
 
-	void MemoryManager::sysDeallocate(void* ptr, size_t nBytes)
+	void MemoryManager::SysDeallocate(void* ptr, size_t nBytes)
 	{
 		auto& allocator = allocators[SystemAllocatorID];
 		if (unlikely(allocator.deallocate == nullptr))
 		{
-			log(ELogLevel::FatalError, [funcName = __func__](auto& ls)
+			Log(ELogLevel::FatalError, [funcName = __func__](auto& ls)
 			{
 				ls << '[' << funcName << "] "
 				   << "SystemAllocator has no deallocate function.";
@@ -583,18 +583,18 @@ namespace hbe
 
 		allocator.deallocate(&allocator, ptr, nBytes);
 	}
-	void* MemoryManager::fallbackAllocate(TId id, TId parentId, size_t requestedSize)
+	void* MemoryManager::FallbackAllocate(TId id, TId parentId, size_t requestedSize)
 	{
-		auto ptr = allocate(parentId, requestedSize);
+		auto ptr = Allocate(parentId, requestedSize);
 
 #if PROFILE_ENABLED
-		reportFallback(id, ptr, requestedSize);
+		ReportFallback(id, ptr, requestedSize);
 #endif // PROFILE_ENABLED
 
 		return ptr;
 	}
 
-	void* MemoryManager::allocate(TId id, size_t nBytes)
+	void* MemoryManager::Allocate(TId id, size_t nBytes)
 	{
 		if (unlikely(nBytes == 0))
 		{
@@ -611,7 +611,7 @@ namespace hbe
 
 		if (unlikely(!IsValid(id)))
 		{
-			log(ELogLevel::Error, [funcName = __func__, id](auto& ls)
+			Log(ELogLevel::Error, [funcName = __func__, id](auto& ls)
 			{
 				ls << '[' << funcName << "] Invalid Scoped Allocator ID = " << id
 				   << ", the default allocator shall be used.";
@@ -621,7 +621,7 @@ namespace hbe
 		}
 
 		AllocatorProxy& allocProxy = allocators[id];
-		Assert(allocProxy.allocate != nullptr, "[", getName(), "::", __func__, "][Error] ",
+		Assert(allocProxy.allocate != nullptr, "[", GetName(), "::", __func__, "][Error] ",
 			   "No allocate function, ID = ", id);
 
 		auto ptr = allocProxy.allocate(allocProxy.allocator, nBytes);
@@ -648,7 +648,7 @@ namespace hbe
 
 		if (unlikely(!IsValid(id)))
 		{
-			log(ELogLevel::Error, [funcName = __func__, id](auto& ls)
+			Log(ELogLevel::Error, [funcName = __func__, id](auto& ls)
 			{
 				ls << '[' << funcName << "] Invalid Scoped Allocator ID = " << id
 				   << ", the default deallocate shall be used.";
@@ -663,16 +663,16 @@ namespace hbe
 		allocProxy.deallocate(allocProxy.allocator, ptr, nBytes);
 	}
 
-	void* MemoryManager::allocate(size_t nBytes) { return allocate(getScopedAllocatorID(), nBytes); }
-	void MemoryManager::Deallocate(void* ptr, size_t nBytes) { Deallocate(getScopedAllocatorID(), ptr, nBytes); }
+	void* MemoryManager::Allocate(size_t nBytes) { return Allocate(GetScopedAllocatorID(), nBytes); }
+	void MemoryManager::Deallocate(void* ptr, size_t nBytes) { Deallocate(GetScopedAllocatorID(), ptr, nBytes); }
 
-	bool MemoryManager::isLogEnabled(ELogLevel level) const
+	bool MemoryManager::IsLogEnabled(ELogLevel level) const
 	{
 #if MEMORY_LOGGING_ENABLED
 		static TAtomicConfigParam<uint8_t> CPLogLevel("Log.Memory", "The Memory System Log Level",
 													  static_cast<uint8_t>(Config::MemLogLevel));
 
-		if (static_cast<uint8_t>(level) < CPLogLevel.get())
+		if (static_cast<uint8_t>(level) < CPLogLevel.Get())
 		{
 			return false;
 		}
@@ -683,24 +683,24 @@ namespace hbe
 #endif // MEMORY_LOGGING_ENABLED
 	}
 
-	void MemoryManager::log(ELogLevel level, TLogFunc func) const
+	void MemoryManager::Log(ELogLevel level, TLogFunc func) const
 	{
 #if MEMORY_LOGGING_ENABLED
-		if (!isLogEnabled(level))
+		if (!IsLogEnabled(level))
 		{
 			return;
 		}
 
-		auto& engine = Engine::get();
-		engine.log(level, func);
+		auto& engine = Engine::Get();
+		engine.Log(level, func);
 #endif // MEMORY_LOGGING_ENABLED
 	}
 
-	const MultiPoolAllocatorConfig& MemoryManager::lookUpMultiPoolConfig(StaticStringID uniqueName) const
+	const MultiPoolAllocatorConfig& MemoryManager::LookUpMultiPoolConfig(StaticStringID uniqueName) const
 	{
 		static const MultiPoolAllocatorConfig null;
 
-		auto& data = multiPoolConfigCache.getData();
+		auto& data = multiPoolConfigCache.GetData();
 		const auto len = data.size();
 		if (len <= 0)
 		{
@@ -718,7 +718,7 @@ namespace hbe
 			auto& item = data[mid];
 			if (uniqueName == item.uniqueName)
 			{
-				log(ELogLevel::Warning, [&item](auto& ls)
+				Log(ELogLevel::Warning, [&item](auto& ls)
 				{
 					StaticString name(item.uniqueName);
 					for (auto& config : item.configs)
@@ -744,7 +744,7 @@ namespace hbe
 		return null;
 	}
 
-	void MemoryManager::registerSystemAllocator()
+	void MemoryManager::RegisterSystemAllocator()
 	{
 		using TSysAlloc = SystemAllocator<uint8_t>;
 		static TSysAlloc systemAllocator;
@@ -761,8 +761,8 @@ namespace hbe
 		Assert(usage.maxCapacity == 0);
 		usage.totalCapacity = Config::MemCapacity;
 		usage.maxCapacity = Config::MemCapacity;
-		Assert(systemAllocator.getID() == SystemAllocatorID);
-		setScopedAllocatorID(SystemAllocatorID);
+		Assert(systemAllocator.GetID() == SystemAllocatorID);
+		SetScopedAllocatorID(SystemAllocatorID);
 
 #if PROFILE_ENABLED
 		{
@@ -770,7 +770,7 @@ namespace hbe
 
 			auto& stats = allocator.stats;
 
-			stats.onRegister("SystemAllocator", false, Config::MemCapacity);
+			stats.OnRegister("SystemAllocator", false, Config::MemCapacity);
 			auto& rec = usage;
 			rec.totalCapacity += Config::MemCapacity;
 			rec.maxCapacity = std::max(rec.maxCapacity, rec.totalCapacity);
@@ -782,34 +782,34 @@ namespace hbe
 #endif // MEMORY_VERIFICATION_ENABLED
 	}
 
-	void MemoryManager::deregisterSystemAllocator() { deregisterAllocator(SystemAllocatorID); }
+	void MemoryManager::DeregisterSystemAllocator() { DeregisterAllocator(SystemAllocatorID); }
 
-	void MemoryManager::loadMultiPoolConfigs()
+	void MemoryManager::LoadMultiPoolConfigs()
 	{
 		using namespace StringUtil;
-		static const StaticString func(toCompactMethodName(__PRETTY_FUNCTION__));
+		static const StaticString func(ToCompactMethodName(__PRETTY_FUNCTION__));
 
-		StaticString path(getMultiPoolConfigCacheFilePath());
-		if (!OS::exist(path))
+		StaticString path(GetMultiPoolConfigCacheFilePath());
+		if (!OS::Exist(path))
 		{
-			log(ELogLevel::Significant, [path](auto& ls) { ls << "Load MultiPoolConfig: Failed to find " << path; });
+			Log(ELogLevel::Significant, [path](auto& ls) { ls << "Load MultiPoolConfig: Failed to find " << path; });
 
 			return;
 		}
 
-		log(ELogLevel::Significant, [path](auto& ls) { ls << "Load MultiPoolConfig: " << path; });
+		Log(ELogLevel::Significant, [path](auto& ls) { ls << "Load MultiPoolConfig: " << path; });
 
-		auto buffer = BufferUtil::getReadOnlyFileBuffer(path);
-		if (buffer.getData() == nullptr)
+		auto buffer = BufferUtil::GetReadOnlyFileBuffer(path);
+		if (buffer.GetData() == nullptr)
 		{
-			log(ELogLevel::Error, [path](auto& ls) { ls << '[' << func << "] Failed to open the file " << path; });
+			Log(ELogLevel::Error, [path](auto& ls) { ls << '[' << func << "] Failed to open the file " << path; });
 
 			return;
 		}
 
-		if (!multiPoolConfigCache.deserialize(buffer))
+		if (!multiPoolConfigCache.Deserialize(buffer))
 		{
-			log(ELogLevel::Error,
+			Log(ELogLevel::Error,
 				[path](auto& ls) { ls << '[' << func << "] Failed to deserialize the file " << path; });
 
 			return;
@@ -817,12 +817,12 @@ namespace hbe
 
 #ifdef __DEBUG__
 		constexpr auto logLevel = ELogLevel::Verbose;
-		if (!isLogEnabled(logLevel))
+		if (!IsLogEnabled(logLevel))
 		{
 			return;
 		}
 
-		auto& data = multiPoolConfigCache.getData();
+		auto& data = multiPoolConfigCache.GetData();
 		size_t index = 0;
 
 		for (auto& item : data)
@@ -832,7 +832,7 @@ namespace hbe
 
 			for (auto& config : configs)
 			{
-				log(logLevel, [&index, itemName, &config](auto& ls)
+				Log(logLevel, [&index, itemName, &config](auto& ls)
 				{
 					ls << index++ << " : " << itemName << " (" << config.blockSize << ", " << config.numberOfBlocks
 					   << ')';
@@ -842,31 +842,31 @@ namespace hbe
 #endif // __DEBUG__
 	}
 
-	void MemoryManager::saveMultiPoolConfigs()
+	void MemoryManager::SaveMultiPoolConfigs()
 	{
 #if PROFILE_ENABLED
 		using namespace StringUtil;
-		static const StaticString func(toCompactMethodName(__PRETTY_FUNCTION__));
+		static const StaticString func(ToCompactMethodName(__PRETTY_FUNCTION__));
 
 		auto GetOutputSize = [this]() -> size_t
 		{
-			auto buffer = BufferUtil::generateDummyBuffer();
-			return multiPoolConfigLog.serialize(buffer);
+			auto buffer = BufferUtil::GenerateDummyBuffer();
+			return multiPoolConfigLog.Serialize(buffer);
 		};
 
 		const size_t size = GetOutputSize();
-		auto pathStrID = getMultiPoolConfigCacheFilePath();
+		auto pathStrID = GetMultiPoolConfigCacheFilePath();
 		StaticString path(pathStrID);
 
-		log(ELogLevel::Info, [size, path](auto& ls)
+		Log(ELogLevel::Info, [size, path](auto& ls)
 		{ ls << '[' << func << "] MultiPoolConfig cache data(" << size << " bytes) shall be saved in " << path; });
 
-		auto buffer = BufferUtil::getWriteOnlyFileBuffer(path, size);
-		auto result = multiPoolConfigLog.serialize(buffer);
+		auto buffer = BufferUtil::GetWriteOnlyFileBuffer(path, size);
+		auto result = multiPoolConfigLog.Serialize(buffer);
 
 		if (result != size)
 		{
-			log(ELogLevel::Error,
+			Log(ELogLevel::Error,
 				[path](auto& ls) { ls << '[' << func << "] Failed to deserialize the file " << path; });
 
 			return;
@@ -874,12 +874,12 @@ namespace hbe
 
 #ifdef __DEBUG__
 		constexpr auto logLevel = ELogLevel::Verbose;
-		if (!isLogEnabled(logLevel))
+		if (!IsLogEnabled(logLevel))
 		{
 			return;
 		}
 
-		auto& data = multiPoolConfigLog.getData();
+		auto& data = multiPoolConfigLog.GetData();
 		size_t index = 0;
 
 		for (auto& item : data)
@@ -889,7 +889,7 @@ namespace hbe
 
 			for (auto& config : configs)
 			{
-				log(logLevel, [&index, itemName, &config](auto& ls)
+				Log(logLevel, [&index, itemName, &config](auto& ls)
 				{
 					ls << index++ << " : " << itemName << " (" << config.blockSize << ", " << config.numberOfBlocks
 					   << ')';
@@ -900,13 +900,13 @@ namespace hbe
 #endif // PROFILE_ENABLED
 	}
 
-	void MemoryManager::setScopedAllocatorID(TId id)
+	void MemoryManager::SetScopedAllocatorID(TId id)
 	{
 		using namespace std;
 
 		if (unlikely(id != InvalidAllocatorID && !IsValid(id)))
 		{
-			log(ELogLevel::Error, [funcName = __func__, id](auto& ls)
+			Log(ELogLevel::Error, [funcName = __func__, id](auto& ls)
 			{
 				ls << '[' << funcName << "] Invalid Scoped Allocator ID = " << id
 				   << ", the default deallocate shall be used.";
@@ -917,7 +917,7 @@ namespace hbe
 
 		if (unlikely(dVarScopedAllocLogging))
 		{
-			log(ELogLevel::Error, [funcName = __func__, id](auto& ls)
+			Log(ELogLevel::Error, [funcName = __func__, id](auto& ls)
 			{ ls << '[' << funcName << "] Previous ID = " << id << ", New ID = " << id; });
 		}
 

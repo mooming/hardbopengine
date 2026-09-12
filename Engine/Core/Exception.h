@@ -16,7 +16,7 @@ public:
 	inline Exception(const char* file, int line, Types&&... args)
 	{
 		using namespace std;
-		printArgs(file, ":", line, forward<Types>(args)...);
+		PrintArgs(file, ":", line, forward<Types>(args)...);
 	}
 };
 } // namespace hbe

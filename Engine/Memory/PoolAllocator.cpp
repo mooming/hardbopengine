@@ -18,7 +18,7 @@ namespace hbe
 #endif // PROFILE_ENABLED
 		:
 		id(InvalidAllocatorID), parentID(InvalidAllocatorID), name(inName),
-		blockSize(OS::getAligned(std::max(inBlockSize, sizeof(TSize)), Config::DefaultAlign)), numberOfBlocks(inNumberOfBlocks),
+		blockSize(OS::GetAligned(std::max(inBlockSize, sizeof(TSize)), Config::DefaultAlign)), numberOfBlocks(inNumberOfBlocks),
 		numberOfFreeBlocks(inNumberOfBlocks), buffer(nullptr)
 #if PROFILE_ENABLED
 		,
@@ -29,7 +29,7 @@ namespace hbe
 		// TSize cannot be supported at all - hence a precondition, not something to clamp away.
 		Assert(inBlockSize >= sizeof(TSize));
 
-		parentID = hbe::MemoryManager::getCurrentAllocatorID();
+		parentID = hbe::MemoryManager::GetCurrentAllocatorID();
 		// Both operands are members here: blockSize is the aligned size every later path uses too
 		// (AllocateBlock, Deallocate, GetCapacity). Parameters carry the in prefix precisely so no
 		// unqualified name here can silently resolve to the unaligned request instead.
@@ -39,20 +39,20 @@ namespace hbe
 			return;
 		}
 
-		auto& mmgr = MemoryManager::getInstance();
-		buffer = static_cast<Byte*>(mmgr.allocate(totalSize));
+		auto& mmgr = MemoryManager::GetInstance();
+		buffer = static_cast<Byte*>(mmgr.Allocate(totalSize));
 		availables = &buffer[0];
 
 		for (TSize i = 0; i < numberOfBlocks; ++i)
 		{
 			auto cursor = &buffer[i * blockSize];
-			setAs<TSize>(cursor, i + 1);
+			SetAs<TSize>(cursor, i + 1);
 		}
 
 		auto allocFunc = [](void* allocatorPtr, size_t n)
 		{
 			auto allocator = static_cast<PoolAllocator*>(allocatorPtr);
-			return allocator->allocate(n);
+			return allocator->Allocate(n);
 		};
 
 		auto deallocFunc = [](void* allocatorPtr, void* ptr, size_t n)
@@ -61,7 +61,7 @@ namespace hbe
 			allocator->Deallocate(ptr, n);
 		};
 
-		id = mmgr.registerAllocator(this, inName, false, totalSize, allocFunc, deallocFunc);
+		id = mmgr.RegisterAllocator(this, inName, false, totalSize, allocFunc, deallocFunc);
 		Assert(id != InvalidAllocatorID);
 	}
 
@@ -89,12 +89,12 @@ namespace hbe
 		rhs.maxUsedBlocks = 0;
 #endif // PROFILE_ENABLED
 
-		auto& mmgr = MemoryManager::getInstance();
+		auto& mmgr = MemoryManager::GetInstance();
 
 		auto allocFunc = [](void* allocatorPtr, size_t n)
 		{
 			auto allocator = static_cast<PoolAllocator*>(allocatorPtr);
-			return allocator->allocate(n);
+			return allocator->Allocate(n);
 		};
 
 		auto deallocFunc = [](void* allocatorPtr, void* ptr, size_t n)
@@ -103,7 +103,7 @@ namespace hbe
 			allocator->Deallocate(ptr, n);
 		};
 
-		auto& allocProxy = mmgr.getAllocatorProxy(getID());
+		auto& allocProxy = mmgr.GetAllocatorProxy(GetID());
 
 #if PROFILE_ENABLED
 		auto& stats = allocProxy.stats;
@@ -125,13 +125,13 @@ namespace hbe
 		const size_t totalSize = blockSize * numberOfBlocks;
 		Assert(buffer != nullptr);
 
-		auto& mmgr = MemoryManager::getInstance();
+		auto& mmgr = MemoryManager::GetInstance();
 		mmgr.Deallocate(buffer, totalSize);
 
 #if PROFILE_ENABLED
-		mmgr.deregisterAllocator(getID(), srcLocation);
+		mmgr.DeregisterAllocator(GetID(), srcLocation);
 #else // PROFILE_ENABLED
-		mmgr.deregisterAllocator(getID());
+		mmgr.DeregisterAllocator(GetID());
 #endif // PROFILE_ENABLED
 
 		buffer = nullptr;
@@ -155,7 +155,7 @@ namespace hbe
 
 		if (blockSize == rhs.blockSize)
 		{
-			if (getAvailableBlocks() > rhs.getAvailableBlocks())
+			if (GetAvailableBlocks() > rhs.GetAvailableBlocks())
 			{
 				return true;
 			}
@@ -164,19 +164,19 @@ namespace hbe
 		return false;
 	}
 
-	Pointer PoolAllocator::allocate(size_t size)
+	Pointer PoolAllocator::Allocate(size_t size)
 	{
 		if (unlikely(size > blockSize))
 		{
-			auto& mmgr = MemoryManager::getInstance();
-			return mmgr.fallbackAllocate(getID(), parentID, size);
+			auto& mmgr = MemoryManager::GetInstance();
+			return mmgr.FallbackAllocate(GetID(), parentID, size);
 		}
 
-		auto ptr = allocateBlock();
+		auto ptr = AllocateBlock();
 #if PROFILE_ENABLED
 		{
-			auto& mmgr = MemoryManager::getInstance();
-			mmgr.reportAllocation(id, ptr, size, blockSize);
+			auto& mmgr = MemoryManager::GetInstance();
+			mmgr.ReportAllocation(id, ptr, size, blockSize);
 		}
 #endif // PROFILE_ENABLED
 
@@ -190,9 +190,9 @@ namespace hbe
 			return;
 		}
 
-		if (unlikely(!isMine(ptr)))
+		if (unlikely(!IsMine(ptr)))
 		{
-			auto& mmgr = MemoryManager::getInstance();
+			auto& mmgr = MemoryManager::GetInstance();
 			mmgr.Deallocate(parentID, ptr, size);
 			return;
 		}
@@ -200,27 +200,27 @@ namespace hbe
 #if PROFILE_ENABLED
 		{
 			Assert(size <= blockSize);
-			auto& mmgr = MemoryManager::getInstance();
-			mmgr.reportDeallocation(id, ptr, size, blockSize);
+			auto& mmgr = MemoryManager::GetInstance();
+			mmgr.ReportDeallocation(id, ptr, size, blockSize);
 		}
 #endif // PROFILE_ENABLED
 
 		if (availables)
 		{
-			const auto index = getIndex(availables);
+			const auto index = GetIndex(availables);
 			if (unlikely(index > numberOfBlocks))
 			{
-				auto& mmgr = MemoryManager::getInstance();
-				mmgr.logError([ptr](auto& logStream) { logStream << ptr << " is not alloacted by this."; });
+				auto& mmgr = MemoryManager::GetInstance();
+				mmgr.LogError([ptr](auto& logStream) { logStream << ptr << " is not alloacted by this."; });
 
 				return;
 			}
 
-			writeNextIndex(ptr, index);
+			WriteNextIndex(ptr, index);
 		}
 		else
 		{
-			writeNextIndex(ptr, numberOfBlocks - 1);
+			WriteNextIndex(ptr, numberOfBlocks - 1);
 		}
 
 		availables = ptr;
@@ -230,7 +230,7 @@ namespace hbe
 		Assert(numberOfFreeBlocks <= numberOfBlocks);
 	}
 
-	bool PoolAllocator::isMine(Pointer ptr) const
+	bool PoolAllocator::IsMine(Pointer ptr) const
 	{
 		auto bytePtr = static_cast<Byte*>(ptr);
 		auto offset = static_cast<size_t>(bytePtr - buffer);
@@ -239,7 +239,7 @@ namespace hbe
 		return buffer <= bytePtr && offset < totalSize;
 	}
 
-	PoolAllocator::TSize PoolAllocator::getIndex(Pointer ptr) const
+	PoolAllocator::TSize PoolAllocator::GetIndex(Pointer ptr) const
 	{
 		auto bytePtr = reinterpret_cast<Byte*>(ptr);
 		auto delta = bytePtr - buffer;
@@ -248,28 +248,28 @@ namespace hbe
 		return index;
 	}
 
-	PoolAllocator::TSize PoolAllocator::readNextIndex(Pointer ptr) const
+	PoolAllocator::TSize PoolAllocator::ReadNextIndex(Pointer ptr) const
 	{
-		auto index = getAs<TSize>(ptr);
+		auto index = GetAs<TSize>(ptr);
 		Assert(index <= numberOfBlocks, "PoolAllocator: out of bounds index = %zu / %zu", index, numberOfBlocks);
 
 		return index;
 	}
 
-	void PoolAllocator::writeNextIndex(Pointer ptr, TSize index)
+	void PoolAllocator::WriteNextIndex(Pointer ptr, TSize index)
 	{
 		Assert(index < numberOfBlocks, "PoolAllocator: out of bounds index. The index ", index, " should be less than ",
 			   numberOfBlocks);
 
-		setAs<TSize>(ptr, index);
+		SetAs<TSize>(ptr, index);
 	}
 
-	Pointer PoolAllocator::allocateBlock()
+	Pointer PoolAllocator::AllocateBlock()
 	{
 		if (!availables)
 		{
-			auto& mmgr = MemoryManager::getInstance();
-			mmgr.logError([this](auto& ls)
+			auto& mmgr = MemoryManager::GetInstance();
+			mmgr.LogError([this](auto& ls)
 			{
 				ls << "No available memory blocks. Usage = " << (numberOfBlocks - numberOfFreeBlocks) << " / "
 				   << numberOfBlocks;
@@ -279,7 +279,7 @@ namespace hbe
 		}
 
 		void* ptr = availables;
-		size_t index = readNextIndex(ptr);
+		size_t index = ReadNextIndex(ptr);
 
 		if (index < numberOfBlocks)
 		{
@@ -308,9 +308,9 @@ namespace hbe
 namespace hbe
 {
 
-	void PoolAllocatorTest::prepare()
+	void PoolAllocatorTest::Prepare()
 	{
-		addTest("Construction", [](auto&)
+		AddTest("Construction", [](auto&)
 		{
 			// Each free block has to hold the pool's next-index link, so a block cannot be
 			// narrower than sizeof(size_t) - that is the constructor's precondition, an input
@@ -322,15 +322,15 @@ namespace hbe
 			}
 		});
 
-		addTest("Allocation & Deallocation", [this](auto& ls)
+		AddTest("Allocation & Deallocation", [this](auto& ls)
 		{
 			PoolAllocator pool("TestPoolAllocator", 4096, 100);
 
 			for (int i = 0; i < 100; ++i)
 			{
 				constexpr size_t allocSize = 50;
-				auto ptr = pool.allocate(allocSize);
-				auto size = pool.getSize(ptr);
+				auto ptr = pool.Allocate(allocSize);
+				auto size = pool.GetSize(ptr);
 
 				if (size != 4096)
 				{
@@ -342,7 +342,7 @@ namespace hbe
 			}
 		});
 
-		addTest("Allocation With A Clamped Block Size", [this](auto& ls)
+		AddTest("Allocation With A Clamped Block Size", [this](auto& ls)
 		{
 			// The constructor rounds blockSize up to Config::DefaultAlign, so a request that is
 			// not already aligned is the case that matters: the pool used to lay its free list out
@@ -364,10 +364,10 @@ namespace hbe
 			{
 				PoolAllocator pool("TestPoolAllocatorClamped", testCase.requested, blockCount);
 
-				if (pool.getBlockSize() != testCase.aligned)
+				if (pool.GetBlockSize() != testCase.aligned)
 				{
 					ls << "blockSize " << testCase.requested << " should round up to " << testCase.aligned
-					   << ", but " << pool.getBlockSize() << " was used." << lferr;
+					   << ", but " << pool.GetBlockSize() << " was used." << lferr;
 					return;
 				}
 
@@ -378,7 +378,7 @@ namespace hbe
 					Pointer blocks[blockCount] = {};
 					for (size_t i = 0; i < blockCount; ++i)
 					{
-						blocks[i] = pool.allocate(allocSize);
+						blocks[i] = pool.Allocate(allocSize);
 						if (blocks[i] == nullptr)
 						{
 							ls << "blockSize " << testCase.requested << ": round " << round
@@ -398,7 +398,7 @@ namespace hbe
 
 						// Rounding the stride to Config::DefaultAlign only buys 16-byte addresses if
 						// the pool buffer itself is aligned, so check the address, not the stride.
-						if (!OS::checkAligned(blocks[i]))
+						if (!OS::CheckAligned(blocks[i]))
 						{
 							ls << "blockSize " << testCase.requested << ": block " << i
 							   << " is not aligned to Config::DefaultAlign." << lferr;

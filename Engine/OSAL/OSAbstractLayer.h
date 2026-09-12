@@ -27,10 +27,10 @@
 namespace OS
 {
 
-hbe::HString getFullPath(const hbe::HString& path);
+hbe::HString GetFullPath(const hbe::HString& path);
 
-bool isDirectory(const char* path);
+bool IsDirectory(const char* path);
 
-hbe::HVector<hbe::HString> listFilesInDirectory(const char* path);
+hbe::HVector<hbe::HString> ListFilesInDirectory(const char* path);
 
 } // namespace OS

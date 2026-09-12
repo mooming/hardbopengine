@@ -58,8 +58,8 @@ namespace hbe
 
 			Iterator& operator++() noexcept
 			{
-				fatalAssert(map != nullptr);
-				fatalAssert(index >= 0);
+				FatalAssert(map != nullptr);
+				FatalAssert(index >= 0);
 				++index;
 
 				while (index < map->cap && map->states[index] != EHashEntryState::Occupied)
@@ -82,13 +82,13 @@ namespace hbe
 
 			Pair& operator*() noexcept
 			{
-				fatalAssert(map != nullptr && map->isValidSlot(index));
+				FatalAssert(map != nullptr && map->IsValidSlot(index));
 				return map->entries[index];
 			}
 
 			const Pair& operator*() const noexcept
 			{
-				fatalAssert(map != nullptr && map->isValidSlot(index));
+				FatalAssert(map != nullptr && map->IsValidSlot(index));
 				return map->entries[index];
 			}
 
@@ -115,8 +115,8 @@ namespace hbe
 
 			ConstIterator& operator++() noexcept
 			{
-				fatalAssert(map != nullptr);
-				fatalAssert(index >= 0);
+				FatalAssert(map != nullptr);
+				FatalAssert(index >= 0);
 				++index;
 
 				while (index < map->cap && map->states[index] != EHashEntryState::Occupied)
@@ -139,7 +139,7 @@ namespace hbe
 
 			const Pair& operator*() const noexcept
 			{
-				fatalAssert(map != nullptr && map->isValidSlot(index));
+				FatalAssert(map != nullptr && map->IsValidSlot(index));
 				return map->entries[index];
 			}
 
@@ -166,7 +166,7 @@ namespace hbe
 		{
 			if (initialCapacity > 0)
 			{
-				reserve(initialCapacity);
+				Reserve(initialCapacity);
 			}
 		}
 
@@ -186,7 +186,7 @@ namespace hbe
 			rhs.states = nullptr;
 		}
 
-		~HashMap() noexcept { release(); }
+		~HashMap() noexcept { Release(); }
 
 		HashMap& operator=(const HashMap&) = delete;
 
@@ -194,7 +194,7 @@ namespace hbe
 		{
 			if (this != &rhs)
 			{
-				release();
+				Release();
 
 				cap = rhs.cap;
 				count = rhs.count;
@@ -242,55 +242,55 @@ namespace hbe
 
 		TValue& operator[](const TKey& key)
 		{
-			auto idx = findSlot(key);
+			auto idx = FindSlot(key);
 			if (idx >= 0 && states[idx] == EHashEntryState::Occupied)
 			{
 				return entries[idx].value;
 			}
 
-			auto [inserted, slot] = insertInternal(key);
-			fatalAssert(inserted);
+			auto [inserted, slot] = InsertInternal(key);
+			FatalAssert(inserted);
 			return entries[slot].value;
 		}
 
 		TValue& operator[](TKey&& key)
 		{
-			auto idx = findSlot(key);
+			auto idx = FindSlot(key);
 			if (idx >= 0 && states[idx] == EHashEntryState::Occupied)
 			{
 				return entries[idx].value;
 			}
 
-			auto [inserted, slot] = insertInternal(std::move(key));
-			fatalAssert(inserted);
+			auto [inserted, slot] = InsertInternal(std::move(key));
+			FatalAssert(inserted);
 			return entries[slot].value;
 		}
 
-		[[nodiscard]] Iterator find(const TKey& key) noexcept
+		[[nodiscard]] Iterator Find(const TKey& key) noexcept
 		{
-			auto idx = findSlot(key);
+			auto idx = FindSlot(key);
 			if (idx < 0 || states[idx] != EHashEntryState::Occupied)
 				return end();
 
 			return Iterator(this, idx);
 		}
 
-		[[nodiscard]] ConstIterator find(const TKey& key) const noexcept
+		[[nodiscard]] ConstIterator Find(const TKey& key) const noexcept
 		{
-			auto idx = findSlot(key);
+			auto idx = FindSlot(key);
 			if (idx < 0 || states[idx] != EHashEntryState::Occupied)
 				return end();
 
 			return ConstIterator(this, idx);
 		}
 
-		bool insert(const TKey& key, const TValue& value)
+		bool Insert(const TKey& key, const TValue& value)
 		{
-			auto idx = findSlot(key);
+			auto idx = FindSlot(key);
 			if (idx >= 0 && states[idx] == EHashEntryState::Occupied)
 				return false;
 
-			auto [inserted, slot] = insertInternal(key);
+			auto [inserted, slot] = InsertInternal(key);
 			if (inserted)
 			{
 				entries[slot].value = value;
@@ -299,13 +299,13 @@ namespace hbe
 			return inserted;
 		}
 
-		bool insert(const TKey& key, TValue&& value)
+		bool Insert(const TKey& key, TValue&& value)
 		{
-			auto idx = findSlot(key);
+			auto idx = FindSlot(key);
 			if (idx >= 0 && states[idx] == EHashEntryState::Occupied)
 				return false;
 
-			auto [inserted, slot] = insertInternal(key);
+			auto [inserted, slot] = InsertInternal(key);
 			if (inserted)
 			{
 				entries[slot].value = std::move(value);
@@ -314,13 +314,13 @@ namespace hbe
 			return inserted;
 		}
 
-		bool insert(TKey&& key, TValue&& value)
+		bool Insert(TKey&& key, TValue&& value)
 		{
-			auto idx = findSlot(key);
+			auto idx = FindSlot(key);
 			if (idx >= 0 && states[idx] == EHashEntryState::Occupied)
 				return false;
 
-			auto [inserted, slot] = insertInternal(std::move(key));
+			auto [inserted, slot] = InsertInternal(std::move(key));
 			if (inserted)
 			{
 				entries[slot].value = std::move(value);
@@ -331,7 +331,7 @@ namespace hbe
 
 		bool Remove(const TKey& key)
 		{
-			auto idx = findSlot(key);
+			auto idx = FindSlot(key);
 			if (idx < 0 || states[idx] != EHashEntryState::Occupied)
 				return false;
 
@@ -343,9 +343,9 @@ namespace hbe
 			return true;
 		}
 
-		[[nodiscard]] bool contains(const TKey& key) const noexcept
+		[[nodiscard]] bool Contains(const TKey& key) const noexcept
 		{
-			auto idx = findSlot(key);
+			auto idx = FindSlot(key);
 			return idx >= 0 && states[idx] == EHashEntryState::Occupied;
 		}
 
@@ -353,7 +353,7 @@ namespace hbe
 		[[nodiscard]] TIndex Capacity() const noexcept { return cap; }
 		[[nodiscard]] bool IsEmpty() const noexcept { return count == 0; }
 
-		void clear() noexcept
+		void Clear() noexcept
 		{
 			for (TIndex i = 0; i < cap; ++i)
 			{
@@ -369,7 +369,7 @@ namespace hbe
 			tombstoneCount = 0;
 		}
 
-		void reserve(TIndex newCapacity)
+		void Reserve(TIndex newCapacity)
 		{
 			returnIf(newCapacity <= cap);
 
@@ -379,7 +379,7 @@ namespace hbe
 				newCap *= 2;
 			}
 
-			rehash(newCap);
+			Rehash(newCap);
 		}
 
 	private:
@@ -392,12 +392,12 @@ namespace hbe
 		TKeyEqual keyEqual;
 		TAllocator allocator;
 
-		[[nodiscard]] bool isValidSlot(TIndex index) const noexcept
+		[[nodiscard]] bool IsValidSlot(TIndex index) const noexcept
 		{
 			return index >= 0 && index < cap && states[index] == EHashEntryState::Occupied;
 		}
 
-		TIndex findSlot(const TKey& key) const noexcept
+		TIndex FindSlot(const TKey& key) const noexcept
 		{
 			if (cap == 0)
 				return -1;
@@ -419,11 +419,11 @@ namespace hbe
 			return -1;
 		}
 
-		std::pair<bool, TIndex> insertInternal(const TKey& key) noexcept
+		std::pair<bool, TIndex> InsertInternal(const TKey& key) noexcept
 		{
-			if (shouldGrow())
+			if (ShouldGrow())
 			{
-				grow();
+				Grow();
 			}
 
 			auto h = hash(key) & static_cast<std::size_t>(cap - 1);
@@ -453,16 +453,16 @@ namespace hbe
 				}
 			}
 
-			fatalAssert(false, "HashMap should have grown before reaching full capacity");
+			FatalAssert(false, "HashMap should have grown before reaching full capacity");
 
 			return {false, -1};
 		}
 
-		std::pair<bool, TIndex> insertInternal(TKey&& key) noexcept
+		std::pair<bool, TIndex> InsertInternal(TKey&& key) noexcept
 		{
-			if (shouldGrow())
+			if (ShouldGrow())
 			{
-				grow();
+				Grow();
 			}
 
 			auto h = hash(key) & static_cast<std::size_t>(cap - 1);
@@ -492,24 +492,24 @@ namespace hbe
 				}
 			}
 
-			fatalAssert(false, "HashMap should have grown before reaching full capacity");
+			FatalAssert(false, "HashMap should have grown before reaching full capacity");
 
 			return {false, -1};
 		}
 
-		[[nodiscard]] bool shouldGrow() const noexcept
+		[[nodiscard]] bool ShouldGrow() const noexcept
 		{
 			auto totalUsed = count + tombstoneCount;
 			return cap == 0 || static_cast<double>(totalUsed) >= static_cast<double>(cap) * MaxLoadFactor;
 		}
 
-		void grow() noexcept
+		void Grow() noexcept
 		{
 			auto newCap = std::max(MinCapacity, cap * 2);
-			rehash(newCap);
+			Rehash(newCap);
 		}
 
-		void rehash(TIndex newCapacity) noexcept
+		void Rehash(TIndex newCapacity) noexcept
 		{
 			auto allocSize = sizeof(Pair) * newCapacity + sizeof(EHashEntryState) * newCapacity;
 			auto* raw = allocator.allocate(allocSize);
@@ -562,7 +562,7 @@ namespace hbe
 			}
 		}
 
-		void release() noexcept
+		void Release() noexcept
 		{
 			returnIf(entries == nullptr);
 
@@ -599,7 +599,7 @@ namespace hbe
 		HashMapTest() : TestCollection("HashMapTest") {}
 
 	protected:
-		void prepare() override;
+		void Prepare() override;
 	};
 
 } // namespace hbe

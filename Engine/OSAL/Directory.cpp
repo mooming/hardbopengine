@@ -11,9 +11,9 @@ using namespace std;
 namespace OS
 {
 
-Directory::Directory(const char* path) : path(hbe::StringUtil::trimPath(path))
+Directory::Directory(const char* path) : path(hbe::StringUtil::TrimPath(path))
 {
-	auto list = listFilesInDirectory(path);
+	auto list = ListFilesInDirectory(path);
 
 	for (const auto& element : list)
 	{
@@ -25,7 +25,7 @@ Directory::Directory(const char* path) : path(hbe::StringUtil::trimPath(path))
 		childPath.append("/");
 		childPath.append(name);
 
-		if (isDirectory(childPath.c_str()))
+		if (IsDirectory(childPath.c_str()))
 		{
 			dirList.push_back(Directory(childPath.c_str()));
 		}

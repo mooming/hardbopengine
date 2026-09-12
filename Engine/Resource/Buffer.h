@@ -24,30 +24,30 @@ namespace hbe
 		Buffer(const TGenerateBuffer& genFunc, const TReleaseBuffer& releaseFunc);
 		~Buffer();
 
-		[[nodiscard]] StaticString getClassName() const noexcept;
-		void setReleaser(TReleaseBuffer&& releaseFunc);
+		[[nodiscard]] StaticString GetClassName() const noexcept;
+		void SetReleaser(TReleaseBuffer&& releaseFunc);
 
 		template<typename T>
-		T* getDataAs()
+		T* GetDataAs()
 		{
 			return reinterpret_cast<T*>(data);
 		}
 
 		template<typename T>
-		const T* getDataAs() const
+		const T* GetDataAs() const
 		{
 			return reinterpret_cast<T*>(data);
 		}
 
 		template<typename T>
-		[[nodiscard]] size_t translateSizeAs() const noexcept
+		[[nodiscard]] size_t TranslateSizeAs() const noexcept
 		{
 			return size / sizeof(T);
 		}
 
-		[[nodiscard]] uint8_t* getData() noexcept { return data; }
-		[[nodiscard]] const uint8_t* getData() const noexcept { return data; }
-		[[nodiscard]] auto getSize() const noexcept { return size; }
+		[[nodiscard]] uint8_t* GetData() noexcept { return data; }
+		[[nodiscard]] const uint8_t* GetData() const noexcept { return data; }
+		[[nodiscard]] auto GetSize() const noexcept { return size; }
 
 	private:
 		TSize size;
@@ -69,7 +69,7 @@ namespace hbe
 		~BufferTest() override = default;
 
 	protected:
-		void prepare() override;
+		void Prepare() override;
 	};
 } // namespace hbe
 #endif //__UNIT_TEST__

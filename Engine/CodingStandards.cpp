@@ -38,7 +38,7 @@ CodingStandardsBase::CodingStandardsBase() noexcept
 {
 }
 
-bool CodingStandardsBase::tryParse(const char* text, int& outResult) noexcept
+bool CodingStandardsBase::TryParse(const char* text, int& outResult) noexcept
 {
 	/*
 	 * out-prefix: `outResult` is written to but never read — the
@@ -56,7 +56,7 @@ bool CodingStandardsBase::tryParse(const char* text, int& outResult) noexcept
 	return true;
 }
 
-void CodingStandardsBase::clampToRange(int& inOutValue, int min, int max) noexcept
+void CodingStandardsBase::ClampToRange(int& inOutValue, int min, int max) noexcept
 {
 	/*
 	 * inOut-prefix: `inOutValue` is both read and written, making
@@ -81,7 +81,7 @@ DataProcessor::DataProcessor(int initialValue) noexcept
 {
 }
 
-void DataProcessor::process() noexcept
+void DataProcessor::Process() noexcept
 {
 	for (auto& v : workBuffer)
 	{
@@ -94,7 +94,7 @@ int DataProcessor::GetValue() const noexcept
 	return value;
 }
 
-void DataProcessor::setValue(int inValue) noexcept
+void DataProcessor::SetValue(int inValue) noexcept
 {
 	/*
 	 * in-prefix avoids name collision with the member `value`,
@@ -108,7 +108,7 @@ void DataProcessor::setValue(int inValue) noexcept
  * to enable Return Value Optimization (RVO) and Named Return
  * Value Optimization (NRVO).
  */
-InlinedData CodingStandardsBase::compute() noexcept
+InlinedData CodingStandardsBase::Compute() noexcept
 {
 	return InlinedData(42);
 }
@@ -119,7 +119,7 @@ InlinedData CodingStandardsBase::compute() noexcept
  * constructing the 4 KB InlinedData directly in the caller's
  * stack frame — no copy or move occurs.
  */
-InlinedData CodingStandardsBase::create() noexcept
+InlinedData CodingStandardsBase::Create() noexcept
 {
 	InlinedData result(42);
 
@@ -131,7 +131,7 @@ InlinedData CodingStandardsBase::create() noexcept
  * std::move converts the local into an rvalue, making it ineligible
  * for NRVO. The compiler falls back to a real 4 KB move.
  */
-InlinedData CodingStandardsBase::createWithMove() noexcept
+InlinedData CodingStandardsBase::CreateWithMove() noexcept
 {
 	InlinedData result(42);
 
@@ -152,7 +152,7 @@ InlinedData CodingStandardsBase::createWithMove() noexcept
  * - DO use std::move when passing to a T&& sink parameter.
  * - DO use std::move in move constructors and move assignments.
  */
-TextBuffer CodingStandardsBase::useMoveCorrectly(TextBuffer&& source) noexcept
+TextBuffer CodingStandardsBase::UseMoveCorrectly(TextBuffer&& source) noexcept
 {
 	TextBuffer result(std::move(source));
 
@@ -181,7 +181,7 @@ TextBuffer CodingStandardsBase::useMoveCorrectly(TextBuffer&& source) noexcept
  * triggers a warning log before corrective action (clamping).
  * The critical invariant is still asserted at the end.
  */
-void CodingStandards::processWithErrorLogging() noexcept
+void CodingStandards::ProcessWithErrorLogging() noexcept
 {
 	int inputSize = 200;
 
@@ -203,12 +203,12 @@ void CodingStandards::processWithErrorLogging() noexcept
  * Distinct prefix ("Validation Error:") makes the message
  * identifiable and filterable by severity.
  */
-void CodingStandardsBase::logValidationError(const char* message) noexcept
+void CodingStandardsBase::LogValidationError(const char* message) noexcept
 {
 	std::cerr << "Validation Error: " << message << std::endl;
 }
 
-bool CodingStandardsBase::validateLength(size_t length, size_t maxLength) noexcept
+bool CodingStandardsBase::ValidateLength(size_t length, size_t maxLength) noexcept
 {
 	return length <= maxLength;
 }
@@ -227,30 +227,30 @@ CodingStandards::~CodingStandards() = default;
  * bodies holding statements; nothing in this codebase joins them onto the
  * declaration line.
  */
-void CodingStandards::processBraced() noexcept
+void CodingStandards::ProcessBraced() noexcept
 {
 }
 
-void CodingStandards::setData(const CodingStandardsData& newData) noexcept
+void CodingStandards::SetData(const CodingStandardsData& newData) noexcept
 {
 	data = newData;
 }
 
-const CodingStandardsData& CodingStandards::getData() const noexcept
+const CodingStandardsData& CodingStandards::GetData() const noexcept
 {
 	return data;
 }
 
-int CodingStandards::getVersion() const noexcept
+int CodingStandards::GetVersion() const noexcept
 {
 	return data.version;
 }
 
-void CodingStandards::validate() const noexcept
+void CodingStandards::Validate() const noexcept
 {
 }
 
-void CodingStandards::initialize() noexcept
+void CodingStandards::Initialize() noexcept
 {
 	data.isInitialized = true;
 }
@@ -265,7 +265,7 @@ bool CodingStandards::IsValid() const noexcept
  * validates pointers before dereference — demonstrating
  * assertion-based defensive programming.
  */
-void CodingStandards::processWithAssertion(const int* ptr) noexcept
+void CodingStandards::ProcessWithAssertion(const int* ptr) noexcept
 {
 	Assert(ptr != nullptr);
 	Assert(*ptr > 0);
@@ -276,7 +276,7 @@ void CodingStandards::processWithAssertion(const int* ptr) noexcept
  * when iterating over containers, combined with Assert()
  * for invariant checking.
  */
-void CodingStandards::processWithRangeFor(std::vector<int>& values) noexcept
+void CodingStandards::ProcessWithRangeFor(std::vector<int>& values) noexcept
 {
 	for (const auto& v : values)
 	{
@@ -289,7 +289,7 @@ void CodingStandards::processWithRangeFor(std::vector<int>& values) noexcept
  * braces to narrow variable lifetime and validates return
  * values before using them.
  */
-int CodingStandards::computeWithValidation() noexcept
+int CodingStandards::ComputeWithValidation() noexcept
 {
 	{
 		int temp = DefaultVersion;
@@ -307,7 +307,7 @@ int CodingStandards::computeWithValidation() noexcept
  * Stack allocation: Prefer fixed-size stack buffers over
  * dynamic allocation.
  */
-void CodingStandards::processWithStackBuffer() noexcept
+void CodingStandards::ProcessWithStackBuffer() noexcept
 {
 	int buffer[256];
 	for (int i = 0; i < 256; ++i)
@@ -397,7 +397,7 @@ TextBuffer::~TextBuffer()
 	delete[] data;
 }
 
-const char* TextBuffer::getText() const noexcept
+const char* TextBuffer::GetText() const noexcept
 {
 	return data != nullptr ? data : "";
 }

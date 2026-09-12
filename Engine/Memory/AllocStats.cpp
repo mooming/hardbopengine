@@ -16,7 +16,7 @@ namespace hbe
 		totalFallback(0), maxFallback(0), allocCount(0), deallocCount(0), fallbackCount(0)
 	{}
 
-	void AllocStats::onRegister(const char* inName, bool inIsInline, size_t inCapacity) noexcept
+	void AllocStats::OnRegister(const char* inName, bool inIsInline, size_t inCapacity) noexcept
 	{
 		name = StaticString(inName);
 
@@ -35,45 +35,45 @@ namespace hbe
 		fallbackCount = 0;
 	}
 
-	void AllocStats::reset() noexcept
+	void AllocStats::Reset() noexcept
 	{
 		this->~AllocStats();
 		new (this) AllocStats();
 	}
 
-	void AllocStats::report() noexcept
+	void AllocStats::Report() noexcept
 	{
 #if PROFILE_ENABLED
-		auto& engine = Engine::get();
-		auto& stats = engine.getStatistics();
-		stats.report(*this);
+		auto& engine = Engine::Get();
+		auto& stats = engine.GetStatistics();
+		stats.Report(*this);
 #endif // PROFILE_ENABLED
 	}
 
-	void AllocStats::print() noexcept
+	void AllocStats::Print() noexcept
 	{
 		static const StaticString moduleName("AllocStats");
-		auto log = Logger::get(moduleName, ELogLevel::Verbose);
+		auto log = Logger::Get(moduleName, ELogLevel::Verbose);
 
-		log.out([this](auto& ls) { ls << "name = " << name; });
+		log.Out([this](auto& ls) { ls << "name = " << name; });
 
-		log.out([this](auto& ls) { ls << "inline = " << isInline; });
+		log.Out([this](auto& ls) { ls << "inline = " << isInline; });
 
-		log.out([this](auto& ls) { ls << "usage = " << usage << " / " << maxUsage << " / " << capacity; });
+		log.Out([this](auto& ls) { ls << "usage = " << usage << " / " << maxUsage << " / " << capacity; });
 
-		log.out([this](auto& ls)
+		log.Out([this](auto& ls)
 		{
 			ls << "requested = " << (allocCount > 0 ? totalRequested / allocCount : totalRequested) << " / "
 			   << maxRequested << " / " << totalRequested;
 		});
 
-		log.out([this](auto& ls)
+		log.Out([this](auto& ls)
 		{
 			ls << "fallback = " << (fallbackCount > 0 ? totalFallback / fallbackCount : totalFallback) << " / "
 			   << maxFallback << " / " << totalFallback;
 		});
 
-		log.out([this](auto& ls)
+		log.Out([this](auto& ls)
 		{
 			ls << "alloc/dealloc/fallback = " << allocCount << " / " << deallocCount << " / " << fallbackCount << '('
 			   << (allocCount > 0 ? fallbackCount * 100 / allocCount : 0) << ')';

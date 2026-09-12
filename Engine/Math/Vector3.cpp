@@ -12,9 +12,9 @@ namespace hbe
 #include "Core/ScopedTime.h"
 #include "HSTL/HVector.h"
 
-void hbe::Vector3Test::prepare() noexcept
+void hbe::Vector3Test::Prepare() noexcept
 {
-	addTest("Constants", [this](auto& ls)
+	AddTest("Constants", [this](auto& ls)
 	{
 		ls << "Forward = " << TFloat3::Forward << lf;
 		ls << "Right = " << TFloat3::Right << lf;
@@ -24,9 +24,9 @@ void hbe::Vector3Test::prepare() noexcept
 		ls << "Unity = " << TFloat3::Unity << lf;
 	});
 
-	addTest("Cross Product", [this](auto& ls)
+	AddTest("Cross Product", [this](auto& ls)
 	{
-		auto xCrossY = TFloat3::X.cross(TFloat3::Y);
+		auto xCrossY = TFloat3::X.Cross(TFloat3::Y);
 		ls << "X x Y = " << xCrossY << lf;
 
 		if (xCrossY != TFloat3::Z)
@@ -36,11 +36,11 @@ void hbe::Vector3Test::prepare() noexcept
 		}
 
 #ifndef RIGHT_HANDED_COORDINATE
-		addTest("Left-Handed Coordinate Test", [this](auto& ls)
+		AddTest("Left-Handed Coordinate Test", [this](auto& ls)
 		{
 			TFloat3 right = TFloat3::Right;
 			TFloat3 up = TFloat3::Up;
-			if (right.cross(up) != TFloat3::Forward)
+			if (right.Cross(up) != TFloat3::Forward)
 			{
 				ls << "Cross Right x Up should be Forward..." << lferr;
 			}
@@ -48,11 +48,11 @@ void hbe::Vector3Test::prepare() noexcept
 #endif
 
 #ifdef RIGHT_HANDED_COORDINATE
-		addTest("Right-Handed Coordinate Test", [this](auto& ls)
+		AddTest("Right-Handed Coordinate Test", [this](auto& ls)
 		{
 			TFloat3 right = TFloat3::Right;
 			TFloat3 up = TFloat3::Up;
-			if (right.cross(up) != -TFloat3::Forward)
+			if (right.Cross(up) != -TFloat3::Forward)
 			{
 				ls << "Cross Right x Up should be -Forward..." << lferr;
 			}
@@ -60,7 +60,7 @@ void hbe::Vector3Test::prepare() noexcept
 #endif
 	});
 
-	addTest("Default Constructor", [this](auto& ls)
+	AddTest("Default Constructor", [this](auto& ls)
 	{
 		TFloat3 tmp;
 
@@ -72,7 +72,7 @@ void hbe::Vector3Test::prepare() noexcept
 
 	using namespace hbe;
 
-	addTest("Constructors and Operators", [this](auto& ls)
+	AddTest("Constructors and Operators", [this](auto& ls)
 	{
 		HVector<TFloat3> vertices;
 
@@ -98,34 +98,34 @@ void hbe::Vector3Test::prepare() noexcept
 
 				for (auto& vertex : vertices)
 				{
-					dotResult += tmp.dot(vertex);
+					dotResult += tmp.Dot(vertex);
 					tmp = vertex;
 				}
 			}
 
-			ls << "Float3 Dot Time = " << time::toFloat(heTime) << ", Result = " << dotResult << lf;
+			ls << "Float3 Dot Time = " << time::ToFloat(heTime) << ", Result = " << dotResult << lf;
 		}
 	});
 
-	addTest("Interpolation", [this](auto& ls)
+	AddTest("Interpolation", [this](auto& ls)
 	{
 		auto x = TFloat3::X;
 		auto y = TFloat3::Y;
 
-		if (x != TFloat3::slerp(x, y, 0.0f))
+		if (x != TFloat3::Slerp(x, y, 0.0f))
 		{
-			ls << "Float3 slerp 1 should match its origin " << x << ", but " << TFloat3::slerp(x, y, 0.0f) << lferr;
+			ls << "Float3 slerp 1 should match its origin " << x << ", but " << TFloat3::Slerp(x, y, 0.0f) << lferr;
 		}
 
-		if (y != TFloat3::slerp(x, y, 1.0f))
+		if (y != TFloat3::Slerp(x, y, 1.0f))
 		{
-			ls << "Float3 slerp 1 should match its destination " << y << ", but " << TFloat3::slerp(x, y, 1.0f) << lferr;
+			ls << "Float3 slerp 1 should match its destination " << y << ", but " << TFloat3::Slerp(x, y, 1.0f) << lferr;
 		}
 
-		TFloat3 half = TFloat3::slerp(x, y, 0.5f);
+		TFloat3 half = TFloat3::Slerp(x, y, 0.5f);
 		ls << "Float3, Slerp half = " << half << lf;
 
-		if (!isEqual(half.Length(), 1.0f))
+		if (!IsEqual(half.Length(), 1.0f))
 		{
 			ls << "Float3 slerp of X and Y with 0.5f should have length 1 "
 			   << ", but " << half.Length() << lferr;

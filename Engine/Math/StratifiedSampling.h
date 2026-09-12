@@ -34,12 +34,12 @@ namespace hbe
 
 		~StratifiedSampling() = default;
 
-		[[nodiscard]] TInteger getSubGroupIndex() const noexcept { return subGroupIndex; }
+		[[nodiscard]] TInteger GetSubGroupIndex() const noexcept { return subGroupIndex; }
 
 		// TRangeSampler - TReal sampler(TReal rangeStart, TReal rangeEnd), return a random number within the given
 		// range
 		template<typename TRangeSampler>
-		[[nodiscard]] TReal sample(const TRangeSampler& sampler) noexcept
+		[[nodiscard]] TReal Sample(const TRangeSampler& sampler) noexcept
 		{
 			const TReal rangeStart = start + (interval * subGroupIndex);
 			const TReal rangeEnd = rangeStart + interval;
@@ -47,7 +47,7 @@ namespace hbe
 			return sampler(rangeStart, rangeEnd);
 		}
 
-		void changeSubGroup(TInteger delta = 1) noexcept
+		void ChangeSubGroup(TInteger delta = 1) noexcept
 		{
 			subGroupIndex += delta;
 
@@ -68,7 +68,7 @@ namespace hbe
 		StratifiedSamplingTest() : TestCollection("Stratified Sampling Test") {}
 
 	protected:
-		void prepare() noexcept override;
+		void Prepare() noexcept override;
 	};
 } // namespace hbe
 #endif //__UNIT_TEST__

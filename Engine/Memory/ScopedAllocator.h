@@ -29,8 +29,8 @@ namespace hbe
 
 		~ScopedAllocator() = default;
 
-		[[nodiscard]] auto& getAllocator() { return allocator; }
-		[[nodiscard]] auto& getAllocator() const { return allocator; }
+		[[nodiscard]] auto& GetAllocator() { return allocator; }
+		[[nodiscard]] auto& GetAllocator() const { return allocator; }
 	};
 
 } // namespace hbe

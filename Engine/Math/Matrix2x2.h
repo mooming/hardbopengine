@@ -48,12 +48,12 @@ namespace hbe
 
 		explicit Matrix2x2(std::array<TNumber, numberOfElements>&& values) noexcept : element(std::move(values)) {}
 
-		[[nodiscard]] This inverse() const noexcept
+		[[nodiscard]] This Inverse() const noexcept
 		{
 			This result;
 
-			const TNumber det = determinant();
-			fatalAssert(row == column && det != 0, "The matrix is not invertible.");
+			const TNumber det = Determinant();
+			FatalAssert(row == column && det != 0, "The matrix is not invertible.");
 
 			const TNumber invDet = static_cast<TNumber>(1) / det;
 			result.m11 = invDet * m22;
@@ -64,13 +64,13 @@ namespace hbe
 			return result;
 		}
 
-		void transpse() noexcept { std::swap(m12, m21); }
+		void Transpse() noexcept { std::swap(m12, m21); }
 
-		[[nodiscard]] TNumber determinant() const noexcept { return (m11 * m22) - (m12 * m21); }
+		[[nodiscard]] TNumber Determinant() const noexcept { return (m11 * m22) - (m12 * m21); }
 
-		[[nodiscard]] bool isOrthogonal() const noexcept
+		[[nodiscard]] bool IsOrthogonal() const noexcept
 		{
-			return isZero(rows[0].dot(rows[1])) && rows[0].isUnity() && rows[1].isUnity();
+			return IsZero(rows[0].Dot(rows[1])) && rows[0].IsUnity() && rows[1].IsUnity();
 		}
 
 #include "MatrixCommonImpl.inl"

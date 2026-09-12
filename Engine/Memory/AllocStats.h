@@ -30,11 +30,11 @@ namespace hbe
 		AllocStats();
 		~AllocStats() = default;
 
-		void onRegister(const char* name, bool isInline, size_t inCapacity) noexcept;
-		void reset() noexcept;
-		void report() noexcept;
+		void OnRegister(const char* name, bool isInline, size_t inCapacity) noexcept;
+		void Reset() noexcept;
+		void Report() noexcept;
 
-		void print() noexcept;
+		void Print() noexcept;
 	};
 
 } // namespace hbe

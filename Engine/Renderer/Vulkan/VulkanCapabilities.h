@@ -19,7 +19,7 @@ namespace hbe::Renderer
 ///          runtime API-kind enum.
 /// @param physicalDevice Device to query. VK_NULL_HANDLE leaves outCapabilities untouched.
 /// @param outCapabilities Filled in; on success isDeviceQueried is set true.
-void fillRenderCapabilities(VkPhysicalDevice physicalDevice, RenderCapabilities& outCapabilities) noexcept;
+void FillRenderCapabilities(VkPhysicalDevice physicalDevice, RenderCapabilities& outCapabilities) noexcept;
 
 /// @brief Query the first usable Vulkan device without owning an instance, surface or device.
 /// @details For the before-Initialize question "what is this machine capable of" - it creates a
@@ -28,6 +28,6 @@ void fillRenderCapabilities(VkPhysicalDevice physicalDevice, RenderCapabilities&
 ///          which costs one call and no instance churn.
 /// @param outCapabilities Filled in; isDeviceQueried stays false when nothing could be probed.
 /// @return True when a device answered, false when Vulkan is unavailable here.
-bool queryDefaultDeviceCapabilities(RenderCapabilities& outCapabilities) noexcept;
+bool QueryDefaultDeviceCapabilities(RenderCapabilities& outCapabilities) noexcept;
 
 } // namespace hbe::Renderer

@@ -38,7 +38,7 @@ public:
 	LogLine(ELogLevel level, StaticString threadName, StaticString category, const char* inText, size_t size) noexcept;
 	~LogLine() noexcept;
 
-	[[nodiscard]] const char* getText() const noexcept;
+	[[nodiscard]] const char* GetText() const noexcept;
 };
 
 } // namespace hbe

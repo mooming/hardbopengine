@@ -58,37 +58,37 @@ namespace hbe
 			return result;
 		}
 
-		[[nodiscard]] TVec3 inverseTransform(const TVec3& x) const noexcept
+		[[nodiscard]] TVec3 InverseTransform(const TVec3& x) const noexcept
 		{
-			return (rotation.inverse() * (x - translation));
+			return (rotation.Inverse() * (x - translation));
 		}
 
-		[[nodiscard]] TQuat inverseTransform(const TQuat& r) const noexcept { return rotation.inverse() * r; }
+		[[nodiscard]] TQuat InverseTransform(const TQuat& r) const noexcept { return rotation.Inverse() * r; }
 
-		[[nodiscard]] This inverseTransform(const This& rhs) const noexcept
+		[[nodiscard]] This InverseTransform(const This& rhs) const noexcept
 		{
 			This result(nullptr);
 
-			result.rotation = inverseTransform(rhs.rotation);
-			result.translation = inverseTransform(rhs.translation);
+			result.rotation = InverseTransform(rhs.rotation);
+			result.translation = InverseTransform(rhs.translation);
 
 			return result;
 		}
 
-		[[nodiscard]] This inverse() const noexcept
+		[[nodiscard]] This Inverse() const noexcept
 		{
 			This inverse(nullptr);
 
-			inverse.rotation = rotation.inverse();
+			inverse.rotation = rotation.Inverse();
 			inverse.translation = inverse.rotation * -translation;
 
 			return inverse;
 		}
 
-		[[nodiscard]] TMat4x4 toMatrix() const noexcept
+		[[nodiscard]] TMat4x4 ToMatrix() const noexcept
 		{
-			TMat4x4 mat = rotation.toMat4x4();
-			mat.setTranslation(translation);
+			TMat4x4 mat = rotation.ToMat4x4();
+			mat.SetTranslation(translation);
 
 			return mat;
 		}
@@ -104,7 +104,7 @@ namespace hbe
 		os << "Rigid Transform" << endl;
 		os << "Position: (" << local.translation.x << ", " << local.translation.y << ", " << local.translation.z << ")"
 		   << endl;
-		auto r = local.rotation.eulerAngles();
+		auto r = local.rotation.EulerAngles();
 		os << "Rotation: (" << r.x << ", " << r.y << ", " << r.z << ")" << endl;
 
 		return os;
@@ -126,7 +126,7 @@ namespace hbe
 	RigidTransform<T, N>::RigidTransform(const TMat4x4& mat) noexcept :
 		rotation(mat), translation(mat.m14, mat.m24, mat.m34)
 	{
-		Assert(mat.isOrthogonal(), "RigidTransform::RigidTransform(Mat4x4) - matrix not orthogonal");
+		Assert(mat.IsOrthogonal(), "RigidTransform::RigidTransform(Mat4x4) - matrix not orthogonal");
 	}
 
 } // namespace hbe
@@ -142,7 +142,7 @@ namespace hbe
 		RigidTransformTest() : TestCollection("RigidTransformTest") {}
 
 	protected:
-		void prepare() noexcept override;
+		void Prepare() noexcept override;
 	};
 } // namespace hbe
 #endif //__UNIT_TEST__

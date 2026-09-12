@@ -56,11 +56,11 @@ namespace hbe
 		ConfigSystem& operator=(ConfigSystem&&) = delete;
 
 	public:
-		[[nodiscard]] static ConfigSystem& get() noexcept;
+		[[nodiscard]] static ConfigSystem& Get() noexcept;
 		ConfigSystem() noexcept = default;
 		~ConfigSystem() = default;
 
-		[[nodiscard]] const char* getName() const noexcept;
+		[[nodiscard]] const char* GetName() const noexcept;
 
 		void Register(TConfigParam<bool>& engineParam);
 		void Register(TAtomicConfigParam<bool>& engineParam);
@@ -73,18 +73,18 @@ namespace hbe
 		void Register(TConfigParam<float>& engineParam);
 		void Register(TAtomicConfigParam<float>& engineParam);
 
-		void setBool(const StaticString& key, bool value);
-		void setByte(const StaticString& key, uint8_t value);
-		void setInt(const StaticString& key, int value);
-		void setSize(const StaticString& key, size_t value);
-		void setFloat(const StaticString& key, float value);
+		void SetBool(const StaticString& key, bool value);
+		void SetByte(const StaticString& key, uint8_t value);
+		void SetInt(const StaticString& key, int value);
+		void SetSize(const StaticString& key, size_t value);
+		void SetFloat(const StaticString& key, float value);
 
-		[[nodiscard]] bool getBool(const StaticString& key) const noexcept;
-		[[nodiscard]] uint8_t getByte(const StaticString& key) const noexcept;
-		[[nodiscard]] int getInt(const StaticString& key) const noexcept;
-		[[nodiscard]] size_t getSize(const StaticString& key) const noexcept;
-		[[nodiscard]] float getFloat(const StaticString& key) const noexcept;
+		[[nodiscard]] bool GetBool(const StaticString& key) const noexcept;
+		[[nodiscard]] uint8_t GetByte(const StaticString& key) const noexcept;
+		[[nodiscard]] int GetInt(const StaticString& key) const noexcept;
+		[[nodiscard]] size_t GetSize(const StaticString& key) const noexcept;
+		[[nodiscard]] float GetFloat(const StaticString& key) const noexcept;
 
-		void printAllParameters() const;
+		void PrintAllParameters() const;
 	};
 } // namespace hbe

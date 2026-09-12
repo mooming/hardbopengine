@@ -11,9 +11,9 @@ public:
 
 	MapSyncMode() noexcept : value(0) {}
 
-	void setAsync() noexcept;
-	void setSync() noexcept;
-	void invalidate() noexcept;
+	void SetAsync() noexcept;
+	void SetSync() noexcept;
+	void Invalidate() noexcept;
 };
 
 } // namespace OS

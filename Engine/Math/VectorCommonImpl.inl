@@ -3,7 +3,7 @@ public:
 	[[nodiscard]] This operator+(const This& rhs) const noexcept
 	{
 		This result(*this);
-		result.add(rhs);
+		result.Add(rhs);
 
 		return result;
 	}
@@ -23,14 +23,14 @@ public:
 	[[nodiscard]] This operator-(const This& rhs) const noexcept
 	{
 		This result(*this);
-		result.sub(rhs);
+		result.Sub(rhs);
 
 		return result;
 	}
 
 	[[nodiscard]] bool operator==(const This& rhs) const noexcept
 	{
-		return (*this - rhs).isZero();
+		return (*this - rhs).IsZero();
 	}
 
 	[[nodiscard]] bool operator!=(const This& rhs) const noexcept
@@ -77,7 +77,7 @@ public:
 
 		for (int i = 0; i < order; ++i)
 		{
-			Assert(!hbe::isZero(static_cast<float>(rhs.a[i])));
+			Assert(!hbe::IsZero(static_cast<float>(rhs.a[i])));
 			result.a[i] = a[i] / rhs.a[i];
 		}
 
@@ -86,28 +86,28 @@ public:
 
 	This& operator+=(const This& rhs) noexcept
 	{
-		add(rhs);
+		Add(rhs);
 
 		return *this;
 	}
 
 	This& operator-=(const This& rhs) noexcept
 	{
-		sub(rhs);
+		Sub(rhs);
 
 		return *this;
 	}
 
 	This& operator*=(const TNumber rhs) noexcept
 	{
-		multiply(rhs);
+		Multiply(rhs);
 
 		return *this;
 	}
 
 	This& operator*=(const This& rhs) noexcept
 	{
-		multiply(rhs);
+		Multiply(rhs);
 
 		return *this;
 	}
@@ -116,12 +116,12 @@ public:
 	{
 		Assert(rhs != 0.0f);
 
-		multiply(static_cast<TNumber>(1) / rhs);
+		Multiply(static_cast<TNumber>(1) / rhs);
 
 		return *this;
 	}
 
-	This& toAbsolute() noexcept
+	This& ToAbsolute() noexcept
 	{
 		for (int i = 0; i < order; ++i)
 			a[i] = Abs(a[i]);
@@ -129,7 +129,7 @@ public:
 		return *this;
 	}
 
-	[[nodiscard]] This getAbsolute() const noexcept
+	[[nodiscard]] This GetAbsolute() const noexcept
 	{
 		This v(nullptr);
 		for (int i = 0; i < order; ++i)
@@ -138,7 +138,7 @@ public:
 		return v;
 	}
 
-	[[nodiscard]] bool isZero() const noexcept
+	[[nodiscard]] bool IsZero() const noexcept
 	{
 		TNumber total(0);
 
@@ -148,46 +148,46 @@ public:
 		return total < Epsilon;
 	}
 
-	void multiply(TNumber value) noexcept
+	void Multiply(TNumber value) noexcept
 	{
 		for (int i = 0; i < order; ++i)
 			a[i] *= value;
 	}
 
-	void multiply(const This& rhs) noexcept
+	void Multiply(const This& rhs) noexcept
 	{
 		for (int i = 0; i < order; ++i)
 			a[i] *= rhs.a[i];
 	}
 
-	void divide(const This& rhs) noexcept
+	void Divide(const This& rhs) noexcept
 	{
 		for (int i = 0; i < order; ++i)
 		{
-			Assert(!hbe::isZero(static_cast<float>(rhs.a[i])));
+			Assert(!hbe::IsZero(static_cast<float>(rhs.a[i])));
 			a[i] /= rhs.a[i];
 		}
 	}
 
-	void add(const This& rhs) noexcept
+	void Add(const This& rhs) noexcept
 	{
 		for (int i = 0; i < order; ++i)
 			a[i] += rhs.a[i];
 	}
 
-	void sub(const This& rhs) noexcept
+	void Sub(const This& rhs) noexcept
 	{
 		for (int i = 0; i < order; ++i)
 			a[i] -= rhs.a[i];
 	}
 
-	void negate() noexcept
+	void Negate() noexcept
 	{
 		for (int i = 0; i < order; ++i)
 			a[i] = -a[i];
 	}
 
-	[[nodiscard]] TNumber dot(const This& rhs) const noexcept
+	[[nodiscard]] TNumber Dot(const This& rhs) const noexcept
 	{
 		TNumber value = 0;
 		for (int i = 0; i < order; ++i)
@@ -196,68 +196,68 @@ public:
 		return value;
 	}
 
-	[[nodiscard]] TNumber sqrLength() const noexcept
+	[[nodiscard]] TNumber SqrLength() const noexcept
 	{
-		return dot(*this);
+		return Dot(*this);
 	}
 
 	[[nodiscard]] float Length() const noexcept
 	{
-		return sqrtf(sqrLength());
+		return sqrtf(SqrLength());
 	}
 
-	float normalize() noexcept
+	float Normalize() noexcept
 	{
 		auto length = Length();
-		if (hbe::isZero(length))
+		if (hbe::IsZero(length))
 		{
 			*this = This::Forward;
 
 			return length;
 		}
 
-		multiply(static_cast<TNumber>(1) / length);
+		Multiply(static_cast<TNumber>(1) / length);
 
 		return length;
 	}
 
-	[[nodiscard]] This normalized() const noexcept
+	[[nodiscard]] This Normalized() const noexcept
 	{
 		This result(*this);
-		result.normalize();
+		result.Normalize();
 
 		return result;
 	}
 
-	[[nodiscard]] bool isUnity() const noexcept
+	[[nodiscard]] bool IsUnity() const noexcept
 	{
-		return Abs(sqrLength() - static_cast<TNumber>(1)) < SqrEpsilon;
+		return Abs(SqrLength() - static_cast<TNumber>(1)) < SqrEpsilon;
 	}
 
-	[[nodiscard]] This lerp(const This& to, float t) const noexcept
+	[[nodiscard]] This Lerp(const This& to, float t) const noexcept
 	{
-		return lerp(*this, to, t);
+		return Lerp(*this, to, t);
 	}
 
-	[[nodiscard]] static This lerp(const This& from, const This& to, float t) noexcept
+	[[nodiscard]] static This Lerp(const This& from, const This& to, float t) noexcept
 	{
 		return from * (1.0f - t) + to * t;
 	}
 
-	[[nodiscard]] This slerp(const This& to, float t) const noexcept
+	[[nodiscard]] This Slerp(const This& to, float t) const noexcept
 	{
-		return slerp(*this, to, t);
+		return Slerp(*this, to, t);
 	}
 
-	[[nodiscard]] static This slerp(const This& from, const This& to, float t) noexcept
+	[[nodiscard]] static This Slerp(const This& from, const This& to, float t) noexcept
 	{
-		auto a = from.normalized();
-		auto b = to.normalized();
+		auto a = from.Normalized();
+		auto b = to.Normalized();
 
-		auto angle = acosf(static_cast<float>(a.dot(b)));
+		auto angle = acosf(static_cast<float>(a.Dot(b)));
 
 		if (angle < Epsilon)
-			return lerp(from, to, t).normalized();
+			return Lerp(from, to, t).Normalized();
 
 		const auto nt = 1.0f - t;
 		const auto sinA = sin(nt * angle);

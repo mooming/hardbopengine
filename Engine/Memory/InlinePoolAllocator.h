@@ -71,27 +71,27 @@ namespace hbe
 		InlinePoolAllocator() :
 			id(InvalidAllocatorID), parentID(InvalidAllocatorID), availableBlock(&block[0][0]), immediateBlock(nullptr)
 		{
-			Assert(OS::checkAligned(block[0]));
-			parentID = MemoryManager::getCurrentAllocatorID();
+			Assert(OS::CheckAligned(block[0]));
+			parentID = MemoryManager::GetCurrentAllocatorID();
 
 			// Place a pointer to the next block at the beginning of blocks.
 			for (size_t i = 1; i < ActualNumBlocks; i++)
 			{
-				writePointerToNext(block[i-1], block[i]);
+				WritePointerToNext(block[i-1], block[i]);
 			}
 
-			writePointerToNext(block[ActualNumBlocks-1], nullptr);
+			WritePointerToNext(block[ActualNumBlocks-1], nullptr);
 
 #if MEMORY_VERIFICATION_ENABLED
 			constexpr size_t length = sizeof(T) * ActualBlockSize * ActualNumBlocks;
 			std::memset(buffer, 0, length);
 #endif // MEMORY_VERIFICATION_ENABLED
 
-			registerAllocator();
+			RegisterAllocator();
 		}
 
 		InlinePoolAllocator(const InlinePoolAllocator&) : InlinePoolAllocator() { Assert(false); }
-		virtual ~InlinePoolAllocator() { deregisterAllocator(); }
+		virtual ~InlinePoolAllocator() { DeregisterAllocator(); }
 
 		template<typename TOther>
 		explicit operator InlinePoolAllocator<TOther, ActualBlockSize, ActualNumBlocks>() noexcept
@@ -103,10 +103,10 @@ namespace hbe
 				return TCastedAlloc(parentID);
 			}
 
-			return TCastedAlloc(getID());
+			return TCastedAlloc(GetID());
 		}
 
-		[[nodiscard]] static StaticString getName()
+		[[nodiscard]] static StaticString GetName()
 		{
 			static StaticString name("InlinePoolAllocator");
 			return name;
@@ -116,7 +116,7 @@ namespace hbe
 		[[nodiscard]] T* allocate(std::size_t n) noexcept
 		{
 			const auto nBytes = n * sizeof(T);
-			auto ptr = allocateBytes(nBytes);
+			auto ptr = AllocateBytes(nBytes);
 
 			return static_cast<T*>(ptr);
 		}
@@ -124,18 +124,18 @@ namespace hbe
 		// This function name is enforced by STL
 		void deallocate(T* ptr, std::size_t n) noexcept
 		{
-			return deallocateBytes(ptr, n);
+			return DeallocateBytes(ptr, n);
 		}
 
-		[[nodiscard]] auto getID() const { return id; }
-		[[nodiscard]] static auto getBlockSize() { return ActualBlockSize; }
-		[[nodiscard]] static auto getNumBlocks() { return ActualNumBlocks; }
+		[[nodiscard]] auto GetID() const { return id; }
+		[[nodiscard]] static auto GetBlockSize() { return ActualBlockSize; }
+		[[nodiscard]] static auto GetNumBlocks() { return ActualNumBlocks; }
 
 		bool operator==(const InlinePoolAllocator&) const { return false; }
 		bool operator!=(const InlinePoolAllocator&) const { return true; }
 
 	private:
-		void* allocateBytes(size_t nBytes) noexcept
+		void* AllocateBytes(size_t nBytes) noexcept
 		{
 			if (nBytes <= BlockSizeInBytes)
 			{
@@ -150,25 +150,25 @@ namespace hbe
 				if (availableBlock != nullptr)
 				{
 					T* ptr = static_cast<T*>(availableBlock);
-					auto nextPtr = getPointerToNext(availableBlock);
+					auto nextPtr = GetPointerToNext(availableBlock);
 					availableBlock = nextPtr;
 
 #if PROFILE_ENABLED
-					auto& mmgr = MemoryManager::getInstance();
-					mmgr.reportAllocation(id, ptr, nBytes, BlockSizeInBytes);
+					auto& mmgr = MemoryManager::GetInstance();
+					mmgr.ReportAllocation(id, ptr, nBytes, BlockSizeInBytes);
 #endif // PROFILE_ENABLED
 
 					return ptr;
 				}
 			}
 
-			auto& mmgr = MemoryManager::getInstance();
-			auto ptr = mmgr.fallbackAllocate(getID(), parentID, nBytes);
+			auto& mmgr = MemoryManager::GetInstance();
+			auto ptr = mmgr.FallbackAllocate(GetID(), parentID, nBytes);
 
 			return ptr;
 		}
 
-		void deallocateBytes(void* ptr, size_t nBytes) noexcept
+		void DeallocateBytes(void* ptr, size_t nBytes) noexcept
 		{
 			if (immediateBlock == nullptr && nBytes <= BlockSizeInBytes)
 			{
@@ -176,72 +176,72 @@ namespace hbe
 				return;
 			}
 
-			if (!isValidPointer(ptr))
+			if (!IsValidPointer(ptr))
 			{
 				// Fallback Deallocation
-				auto& mmgr = MemoryManager::getInstance();
+				auto& mmgr = MemoryManager::GetInstance();
 				mmgr.Deallocate(parentID, ptr, nBytes);
 				return;
 			}
 
 			// Return a block
-			writePointerToNext(ptr, availableBlock);
+			WritePointerToNext(ptr, availableBlock);
 			availableBlock = ptr;
 
 #if PROFILE_ENABLED
-			auto& mmgr = MemoryManager::getInstance();
-			mmgr.reportDeallocation(id, ptr, nBytes, BlockSizeInBytes);
+			auto& mmgr = MemoryManager::GetInstance();
+			mmgr.ReportDeallocation(id, ptr, nBytes, BlockSizeInBytes);
 #endif // PROFILE_ENABLED
 		}
 
-		void registerAllocator() noexcept
+		void RegisterAllocator() noexcept
 		{
-			auto& mmgr = MemoryManager::getInstance();
+			auto& mmgr = MemoryManager::GetInstance();
 			auto allocFunc = [](void* allocatorPtr, size_t nBytes) -> void*
 			{
 				auto allocator = static_cast<InlinePoolAllocator*>(allocatorPtr);
-				return static_cast<void*>(allocator->allocateBytes(nBytes));
+				return static_cast<void*>(allocator->AllocateBytes(nBytes));
 			};
 
 			auto deallocFunc = [](void* allocatorPtr, void* ptr, size_t nBytes)
 			{
 				auto allocator = static_cast<InlinePoolAllocator*>(allocatorPtr);
-				allocator->deallocateBytes(ptr, nBytes);
+				allocator->DeallocateBytes(ptr, nBytes);
 			};
 
 			const auto capacity = ActualBlockSize * ActualNumBlocks * sizeof(T);
-			id = mmgr.registerAllocator(this, "InlinePoolAllocator", true, capacity, allocFunc, deallocFunc);
+			id = mmgr.RegisterAllocator(this, "InlinePoolAllocator", true, capacity, allocFunc, deallocFunc);
 
-			fatalAssert(id != InvalidAllocatorID);
-			fatalAssert(id != 0);
+			FatalAssert(id != InvalidAllocatorID);
+			FatalAssert(id != 0);
 		}
 
-		void deregisterAllocator() noexcept
+		void DeregisterAllocator() noexcept
 		{
 			if (id == InvalidAllocatorID)
 			{
 				return;
 			}
 
-			auto& mmgr = MemoryManager::getInstance();
-			mmgr.deregisterAllocator(id);
+			auto& mmgr = MemoryManager::GetInstance();
+			mmgr.DeregisterAllocator(id);
 			id = InvalidAllocatorID;
 		}
 
-		[[nodiscard]] bool isValidPointer(void* ptr) const
+		[[nodiscard]] bool IsValidPointer(void* ptr) const
 		{
 			constexpr size_t LastBlockIndex = ActualNumBlocks - 1;
 			return block[0] <= ptr && ptr <= block[LastBlockIndex];
 		}
 
-		static void writePointerToNext(void* ptr, void* nextPtr)
+		static void WritePointerToNext(void* ptr, void* nextPtr)
 		{
 			void** ptrArray = static_cast<void**>(ptr);
 			auto& pointerToNext = reinterpret_cast<void*&>(ptrArray[0]);
 			pointerToNext = nextPtr;
 		}
 
-		static void* getPointerToNext(void* ptr)
+		static void* GetPointerToNext(void* ptr)
 		{
 			void** ptrArray = static_cast<void**>(ptr);
 			auto& pointerToNext = reinterpret_cast<void*&>(ptrArray[0]);
@@ -263,7 +263,7 @@ namespace hbe
 		InlinePoolAllocatorTest() : TestCollection("InlinePoolAllocatorTest") {}
 
 	protected:
-		void prepare() override;
+		void Prepare() override;
 	};
 
 } // namespace hbe

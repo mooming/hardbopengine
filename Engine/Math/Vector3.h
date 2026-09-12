@@ -66,7 +66,7 @@ namespace hbe
 #include "VectorCommonImpl.inl"
 
 	public:
-		[[nodiscard]] Vector3 cross(const Vector3& rhs) const noexcept
+		[[nodiscard]] Vector3 Cross(const Vector3& rhs) const noexcept
 		{
 			Vector3 result(nullptr);
 
@@ -77,13 +77,13 @@ namespace hbe
 			return result;
 		}
 
-		[[nodiscard]] float angleTo(const Vector3& to) const noexcept
+		[[nodiscard]] float AngleTo(const Vector3& to) const noexcept
 		{
-			Assert(!isZero());
-			Assert(!to.isZero());
-			float r = sqrtf(static_cast<float>(sqrLength() * to.sqrLength()));
+			Assert(!IsZero());
+			Assert(!to.IsZero());
+			float r = sqrtf(static_cast<float>(SqrLength() * to.SqrLength()));
 
-			return std::acos(static_cast<float>(dot(to)) / r);
+			return std::acos(static_cast<float>(Dot(to)) / r);
 		}
 	};
 
@@ -145,7 +145,7 @@ namespace hbe
 		Vector3Test() : TestCollection("Vector3Test") {}
 
 	protected:
-		void prepare() noexcept override;
+		void Prepare() noexcept override;
 	};
 } // namespace hbe
 #endif //__UNIT_TEST__

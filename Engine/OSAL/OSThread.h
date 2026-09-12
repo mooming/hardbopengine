@@ -14,11 +14,11 @@ void Yield() noexcept;
 void Sleep(uint32_t milliseconds) noexcept;
 
 /// @brief Get the current CPU core index.
-[[nodiscard]] int getCPUIndex() noexcept;
+[[nodiscard]] int GetCPUIndex() noexcept;
 /// @brief Get the priority of a thread.
 [[nodiscard]] int GetThreadPriority(std::thread& thread) noexcept;
 /// @brief Set CPU affinity mask for a thread.
-void setThreadAffinity(std::thread& thread, uint64_t mask) noexcept;
+void SetThreadAffinity(std::thread& thread, uint64_t mask) noexcept;
 /// @brief Set priority for a thread.
 void SetThreadPriority(std::thread& thread, int priority) noexcept;
 } // namespace OS
@@ -36,7 +36,7 @@ public:
 	OSThreadTest() : TestCollection("OSThreadTest") {}
 
 protected:
-	void prepare() override;
+	void Prepare() override;
 };
 
 } // namespace hbe

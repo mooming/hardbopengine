@@ -5,9 +5,9 @@
 
 #ifdef __UNIT_TEST__
 
-void hbe::OptionalTest::prepare()
+void hbe::OptionalTest::Prepare()
 {
-	addTest("Optional<int>", [this](auto& ls)
+	AddTest("Optional<int>", [this](auto& ls)
 	{
 		Optional<int> a;
 		if (a)
@@ -28,7 +28,7 @@ void hbe::OptionalTest::prepare()
 		}
 	});
 
-	addTest("Optional<int&>", [this](auto& ls)
+	AddTest("Optional<int&>", [this](auto& ls)
 	{
 		Optional<int&> a;
 		if (a)
@@ -57,7 +57,7 @@ void hbe::OptionalTest::prepare()
 		}
 	});
 
-	addTest("Optional<Class&>", [this](auto& ls)
+	AddTest("Optional<Class&>", [this](auto& ls)
 	{
 		static int conCount = 0;
 		static int desCount = 0;

@@ -11,12 +11,12 @@ public:
 
 	FileOpenMode() noexcept : value(0) {}
 
-	void setReadOnly() noexcept;
-	void setWriteOnly() noexcept;
-	void setReadWrite() noexcept;
-	void setCreate() noexcept;
-	void setTruncate() noexcept;
-	void setAppend() noexcept;
+	void SetReadOnly() noexcept;
+	void SetWriteOnly() noexcept;
+	void SetReadWrite() noexcept;
+	void SetCreate() noexcept;
+	void SetTruncate() noexcept;
+	void SetAppend() noexcept;
 };
 
 } // namespace OS

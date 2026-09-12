@@ -18,8 +18,8 @@ public:
 	Application() noexcept;
 	~Application();
 
-	void initialize();
-	void pollEvents();
+	void Initialize();
+	void PollEvents();
 
 private:
 	// Opaque per-platform handle (e.g. NSApplication*, HINSTANCE, ...).
@@ -27,6 +27,6 @@ private:
 };
 
 /// @brief Creates an Application owned by the caller.
-[[nodiscard]] std::unique_ptr<Application> createApplication() noexcept;
+[[nodiscard]] std::unique_ptr<Application> CreateApplication() noexcept;
 
 } // namespace OS

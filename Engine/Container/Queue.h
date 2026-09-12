@@ -35,29 +35,29 @@ namespace hbe
 			return *this;
 		}
 
-		void push(const TElement& value) noexcept { container.pushBack(value); }
-		void push(TElement&& value) noexcept { container.pushBack(std::move(value)); }
+		void Push(const TElement& value) noexcept { container.PushBack(value); }
+		void Push(TElement&& value) noexcept { container.PushBack(std::move(value)); }
 
 		template<typename... Types>
-		TElement& emplace(Types&&... args) noexcept
+		TElement& Emplace(Types&&... args) noexcept
 		{
-			return container.emplaceBack(std::forward<Types>(args)...);
+			return container.EmplaceBack(std::forward<Types>(args)...);
 		}
 
-		void pop() noexcept
+		void Pop() noexcept
 		{
-			fatalAssert(!container.IsEmpty());
-			container.popFront();
+			FatalAssert(!container.IsEmpty());
+			container.PopFront();
 		}
 
-		TElement& front() noexcept { return container.front(); }
-		const TElement& front() const noexcept { return container.front(); }
-		TElement& back() noexcept { return container.back(); }
-		const TElement& back() const noexcept { return container.back(); }
+		TElement& Front() noexcept { return container.Front(); }
+		const TElement& Front() const noexcept { return container.Front(); }
+		TElement& Back() noexcept { return container.Back(); }
+		const TElement& Back() const noexcept { return container.Back(); }
 
 		[[nodiscard]] auto Size() const noexcept { return container.Size(); }
 		[[nodiscard]] bool IsEmpty() const noexcept { return container.IsEmpty(); }
-		void clear() noexcept { container.clear(); }
+		void Clear() noexcept { container.Clear(); }
 
 	private:
 		TContainer container;
@@ -77,7 +77,7 @@ namespace hbe
 		QueueTest() : TestCollection("QueueTest") {}
 
 	protected:
-		void prepare() override;
+		void Prepare() override;
 	};
 
 } // namespace hbe

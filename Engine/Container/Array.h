@@ -83,20 +83,20 @@ namespace hbe
 
 		Element& operator[](TIndex index) noexcept
 		{
-			fatalAssert(isValidIndex(index));
+			FatalAssert(IsValidIndex(index));
 			return data[index];
 		}
 
 		const Element& operator[](TIndex index) const noexcept
 		{
-			fatalAssert(isValidIndex(index));
+			FatalAssert(IsValidIndex(index));
 			return data[index];
 		}
 
 		template<typename... Types>
-		Element& emplace(TIndex index, Types&&... args) noexcept
+		Element& Emplace(TIndex index, Types&&... args) noexcept
 		{
-			fatalAssert(isValidIndex(index));
+			FatalAssert(IsValidIndex(index));
 
 			auto& item = data[index];
 			item.~Element();
@@ -106,15 +106,15 @@ namespace hbe
 			return item;
 		}
 
-		[[nodiscard]] Element* toRawArray() noexcept { return data; }
+		[[nodiscard]] Element* ToRawArray() noexcept { return data; }
 
-		[[nodiscard]] const Element* const toRawArray() const noexcept { return data; }
+		[[nodiscard]] const Element* const ToRawArray() const noexcept { return data; }
 
 		[[nodiscard]] TIndex Size() const noexcept { return length; }
 
-		[[nodiscard]] bool isValidIndex(TIndex index) const noexcept { return index >= 0 && index < length; }
+		[[nodiscard]] bool IsValidIndex(TIndex index) const noexcept { return index >= 0 && index < length; }
 
-		void clear() noexcept { Swap(Array()); }
+		void Clear() noexcept { Swap(Array()); }
 
 		void Swap(Array&& rhs) noexcept
 		{
@@ -128,7 +128,7 @@ namespace hbe
 			rhs.data = tmpData;
 		}
 
-		TIndex getIndex(const Element& element) const noexcept
+		TIndex GetIndex(const Element& element) const noexcept
 		{
 			if (unlikely(data == nullptr))
 			{
@@ -137,7 +137,7 @@ namespace hbe
 
 			auto delta = static_cast<TIndex>(&element - &data[0]);
 
-			return isValidIndex(delta) ? delta : -1;
+			return IsValidIndex(delta) ? delta : -1;
 		}
 	};
 
@@ -156,7 +156,7 @@ namespace hbe
 		ArrayTest() : TestCollection("ArrayTest") {}
 
 	protected:
-		void prepare() override;
+		void Prepare() override;
 	};
 
 } // namespace hbe

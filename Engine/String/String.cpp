@@ -37,7 +37,7 @@ namespace hbe
 			text[5] = '\0';
 		}
 
-		calculateHashCode();
+		CalculateHashCode();
 	}
 
 	String::String(const Pointer ptr) noexcept : hashCode(0)
@@ -45,7 +45,7 @@ namespace hbe
 		buffer->resize(32);
 		auto& text = *buffer;
 		snprintf(text.data(), text.size(), "%p", ptr);
-		calculateHashCode();
+		CalculateHashCode();
 	}
 
 	String::String(const char letter) noexcept : hashCode(0)
@@ -55,7 +55,7 @@ namespace hbe
 		text[0] = letter;
 		text[1] = '\0';
 
-		calculateHashCode();
+		CalculateHashCode();
 	}
 
 	String::String(const unsigned char value) noexcept : hashCode(0)
@@ -65,7 +65,7 @@ namespace hbe
 		snprintf(text.data(), text.size(), "0x%02X", value);
 		buffer->resize(strlen(text.data()) + 1);
 
-		calculateHashCode();
+		CalculateHashCode();
 	}
 
 	String::String(const short value) noexcept : hashCode(0)
@@ -73,9 +73,9 @@ namespace hbe
 		buffer->resize(16);
 		auto& text = *buffer;
 		snprintf(text.data(), text.size(), "%d", value);
-		buffer->resize(StringUtil::strLen(text.data()) + 1);
+		buffer->resize(StringUtil::StrLen(text.data()) + 1);
 
-		calculateHashCode();
+		CalculateHashCode();
 	}
 
 	String::String(const unsigned short value) noexcept : hashCode(0)
@@ -83,9 +83,9 @@ namespace hbe
 		buffer->resize(16);
 		auto& text = *buffer;
 		snprintf(text.data(), text.size(), "%u", value);
-		buffer->resize(StringUtil::strLen(text.data()) + 1);
+		buffer->resize(StringUtil::StrLen(text.data()) + 1);
 
-		calculateHashCode();
+		CalculateHashCode();
 	}
 
 	String::String(const int value) noexcept : hashCode(0)
@@ -93,9 +93,9 @@ namespace hbe
 		buffer->resize(16);
 		auto& text = *buffer;
 		snprintf(text.data(), text.capacity(), "%d", value);
-		buffer->resize(StringUtil::strLen(text.data()) + 1);
+		buffer->resize(StringUtil::StrLen(text.data()) + 1);
 
-		calculateHashCode();
+		CalculateHashCode();
 	}
 
 	String::String(const unsigned int value) noexcept : hashCode(0)
@@ -103,9 +103,9 @@ namespace hbe
 		buffer->resize(16);
 		auto& text = *buffer;
 		snprintf(text.data(), text.size(), "%u", value);
-		buffer->resize(StringUtil::strLen(text.data()) + 1);
+		buffer->resize(StringUtil::StrLen(text.data()) + 1);
 
-		calculateHashCode();
+		CalculateHashCode();
 	}
 
 	String::String(const long value) noexcept : hashCode(0)
@@ -113,9 +113,9 @@ namespace hbe
 		buffer->resize(16);
 		auto& text = *buffer;
 		snprintf(text.data(), text.size(), "%ld", value);
-		buffer->resize(StringUtil::strLen(text.data()) + 1);
+		buffer->resize(StringUtil::StrLen(text.data()) + 1);
 
-		calculateHashCode();
+		CalculateHashCode();
 	}
 
 	String::String(const unsigned long value) noexcept : hashCode(0)
@@ -123,9 +123,9 @@ namespace hbe
 		buffer->resize(16);
 		auto& text = *buffer;
 		snprintf(text.data(), text.size(), "%lu", value);
-		buffer->resize(StringUtil::strLen(text.data()) + 1);
+		buffer->resize(StringUtil::StrLen(text.data()) + 1);
 
-		calculateHashCode();
+		CalculateHashCode();
 	}
 
 	String::String(const long long value) noexcept : hashCode(0)
@@ -133,9 +133,9 @@ namespace hbe
 		buffer->resize(16);
 		auto& text = *buffer;
 		snprintf(text.data(), text.size(), "%lld", value);
-		buffer->resize(StringUtil::strLen(text.data()) + 1);
+		buffer->resize(StringUtil::StrLen(text.data()) + 1);
 
-		calculateHashCode();
+		CalculateHashCode();
 	}
 
 	String::String(const unsigned long long value) noexcept : hashCode(0)
@@ -143,9 +143,9 @@ namespace hbe
 		buffer->resize(16);
 		auto& text = *buffer;
 		snprintf(text.data(), text.size(), "%llu", value);
-		buffer->resize(StringUtil::strLen(text.data()) + 1);
+		buffer->resize(StringUtil::StrLen(text.data()) + 1);
 
-		calculateHashCode();
+		CalculateHashCode();
 	}
 
 	String::String(const float value) noexcept : hashCode(0)
@@ -153,9 +153,9 @@ namespace hbe
 		buffer->resize(16);
 		auto& text = *buffer;
 		snprintf(text.data(), text.size(), "%f", value);
-		buffer->resize(StringUtil::strLen(text.data()) + 1);
+		buffer->resize(StringUtil::StrLen(text.data()) + 1);
 
-		calculateHashCode();
+		CalculateHashCode();
 	}
 
 	String::String(const double value) noexcept : hashCode(0)
@@ -163,9 +163,9 @@ namespace hbe
 		buffer->resize(16);
 		auto& text = *buffer;
 		snprintf(text.data(), text.size(), "%f", value);
-		buffer->resize(StringUtil::strLen(text.data()) + 1);
+		buffer->resize(StringUtil::StrLen(text.data()) + 1);
 
-		calculateHashCode();
+		CalculateHashCode();
 	}
 
 	String::String(const long double value) noexcept : hashCode(0)
@@ -173,9 +173,9 @@ namespace hbe
 		buffer->resize(16);
 		auto& text = *buffer;
 		snprintf(text.data(), text.size(), "%Lf", value);
-		buffer->resize(StringUtil::strLen(text.data()) + 1);
+		buffer->resize(StringUtil::StrLen(text.data()) + 1);
 
-		calculateHashCode();
+		CalculateHashCode();
 	}
 
 	String::String(const char* text) noexcept : hashCode(0)
@@ -190,7 +190,7 @@ namespace hbe
 		Vector<char>& textVec = *buffer;
 		memcpy(textVec.data(), text, totalLength);
 
-		calculateHashCode();
+		CalculateHashCode();
 	}
 
 	String::String(const String& string, Index startIndex, Index endIndex) noexcept : buffer()
@@ -220,7 +220,7 @@ namespace hbe
 			memcpy(ptr, string.buffer->data() + startIndex, length);
 			ptr[length] = '\0';
 
-			calculateHashCode();
+			CalculateHashCode();
 		}
 		else
 		{
@@ -235,7 +235,7 @@ namespace hbe
 			text = "";
 		}
 
-		if (buffer.getReferenceCount() > 1)
+		if (buffer.GetReferenceCount() > 1)
 		{
 			Swap(String(text));
 		}
@@ -251,9 +251,9 @@ namespace hbe
 
 	String& String::operator=(const String& rhs) noexcept
 	{
-		if (buffer.getReferenceCount() > 1)
+		if (buffer.GetReferenceCount() > 1)
 		{
-			Swap(String(rhs.toCharArray()));
+			Swap(String(rhs.ToCharArray()));
 		}
 		else
 		{
@@ -344,9 +344,9 @@ namespace hbe
 		return rhs[length] == '\0';
 	}
 
-	const char* String::toCharArray() const noexcept { return buffer ? buffer.get().data() : ""; }
+	const char* String::ToCharArray() const noexcept { return buffer ? buffer.Get().data() : ""; }
 
-	String String::clone() const noexcept
+	String String::Clone() const noexcept
 	{
 		String str;
 		Assert(str.buffer);
@@ -356,7 +356,7 @@ namespace hbe
 		return str;
 	}
 
-	bool String::containsAt(const String& keyword, Index startIndex) const noexcept
+	bool String::ContainsAt(const String& keyword, Index startIndex) const noexcept
 	{
 		const Index endIndex = startIndex + keyword.Length();
 
@@ -378,7 +378,7 @@ namespace hbe
 		return true;
 	}
 
-	Index String::find(const TChar ch) const noexcept
+	Index String::Find(const TChar ch) const noexcept
 	{
 		const auto length = Length();
 
@@ -393,7 +393,7 @@ namespace hbe
 		return length;
 	}
 
-	Index String::find(const Array<TChar>& chs) const noexcept
+	Index String::Find(const Array<TChar>& chs) const noexcept
 	{
 		const auto length = Length();
 		auto chsLen = chs.Size();
@@ -412,7 +412,7 @@ namespace hbe
 		return length;
 	}
 
-	Index String::find(const String& keyword) const noexcept
+	Index String::Find(const String& keyword) const noexcept
 	{
 		const auto length = Length();
 		const auto keywordLength = keyword.Length();
@@ -425,7 +425,7 @@ namespace hbe
 		const Index lastIndex = length - keywordLength + 1;
 		for (Index i = 0; i < lastIndex; ++i)
 		{
-			if (containsAt(keyword, i))
+			if (ContainsAt(keyword, i))
 			{
 				return i;
 			}
@@ -434,7 +434,7 @@ namespace hbe
 		return length;
 	}
 
-	Index String::find(const String& keyword, Index startIndex, Index endIndex) const noexcept
+	Index String::Find(const String& keyword, Index startIndex, Index endIndex) const noexcept
 	{
 		const auto length = Length();
 		const auto keywordLength = keyword.Length();
@@ -465,7 +465,7 @@ namespace hbe
 		const Index lastIndex = endIndex - keywordLength + 1;
 		for (Index i = startIndex; i < lastIndex; ++i)
 		{
-			if (containsAt(keyword, i))
+			if (ContainsAt(keyword, i))
 			{
 				return i;
 			}
@@ -474,7 +474,7 @@ namespace hbe
 		return length;
 	}
 
-	Index String::findLast(const TChar ch) const noexcept
+	Index String::FindLast(const TChar ch) const noexcept
 	{
 		const auto length = Length();
 		for (Index i = length; i > 0;)
@@ -488,7 +488,7 @@ namespace hbe
 		return length;
 	}
 
-	String String::append(const TChar letter) const noexcept
+	String String::Append(const TChar letter) const noexcept
 	{
 		String str;
 		const auto length = Length();
@@ -502,7 +502,7 @@ namespace hbe
 		return str;
 	}
 
-	String String::append(const int value) const noexcept
+	String String::Append(const int value) const noexcept
 	{
 		char tmp[16];
 		snprintf(tmp, sizeof(tmp), "%d", value);
@@ -519,7 +519,7 @@ namespace hbe
 		return str;
 	}
 
-	String String::append(const float value) const noexcept
+	String String::Append(const float value) const noexcept
 	{
 		char tmp[16];
 		snprintf(tmp, sizeof(tmp), "%f", value);
@@ -536,7 +536,7 @@ namespace hbe
 		return str;
 	}
 
-	String String::append(const TChar* text) const noexcept
+	String String::Append(const TChar* text) const noexcept
 	{
 		const auto length = Length();
 		const Index textLength = static_cast<Index>(strlen(text));
@@ -550,11 +550,11 @@ namespace hbe
 		return str;
 	}
 
-	String String::append(const String& string) const noexcept
+	String String::Append(const String& string) const noexcept
 	{
 		if (string.IsEmpty())
 		{
-			return clone();
+			return Clone();
 		}
 
 		const auto length = Length();
@@ -569,20 +569,20 @@ namespace hbe
 		return str;
 	}
 
-	void String::appendSelf(const TChar letter) noexcept
+	void String::AppendSelf(const TChar letter) noexcept
 	{
 		// Optimized single-pass append: obtain a reference to the buffer once,
 		// resize to accommodate the letter + trailing null, and write both
 		// directly. This halves the Shareable dereferencing overhead versus
 		// the previous push_back('\0') + assign-at-index pattern.
-		auto& buf = buffer.get();
+		auto& buf = buffer.Get();
 		const auto index = buf.size();
 		buf.resize(index + 2); // room for the letter + trailing null terminator
 		buf.data()[index] = letter;
 		buf.data()[index + 1] = '\0';
 	}
 
-	void String::appendSelf(const int value) noexcept
+	void String::AppendSelf(const int value) noexcept
 	{
 		char tmp[16];
 		snprintf(tmp, sizeof(tmp), "%d", value);
@@ -600,7 +600,7 @@ namespace hbe
 		memcpy(buffer->data() + length, tmp, tmpLength + 1);
 	}
 
-	void String::appendSelf(const float value) noexcept
+	void String::AppendSelf(const float value) noexcept
 	{
 		char tmp[16];
 		snprintf(tmp, sizeof(tmp), "%f", value);
@@ -618,7 +618,7 @@ namespace hbe
 		memcpy(buffer->data() + length, tmp, tmpLength + 1);
 	}
 
-	void String::appendSelf(const TChar* text) noexcept
+	void String::AppendSelf(const TChar* text) noexcept
 	{
 		const auto length = Length();
 		const Index textLength = static_cast<Index>(strlen(text));
@@ -633,7 +633,7 @@ namespace hbe
 		memcpy(buffer->data() + length, text, textLength + 1);
 	}
 
-	void String::appendSelf(const String& string) noexcept
+	void String::AppendSelf(const String& string) noexcept
 	{
 		if (string.IsEmpty())
 		{
@@ -653,19 +653,19 @@ namespace hbe
 		memcpy(buffer->data() + length, string.buffer->data(), textLength + 1);
 	}
 
-	String String::replace(const String& from, const String& to, Index offset, Index endIndex) const noexcept
+	String String::Replace(const String& from, const String& to, Index offset, Index endIndex) const noexcept
 	{
 		if (!buffer || from.IsEmpty())
 		{
-			return clone();
+			return Clone();
 		}
 
 		const Index strLength = Length();
-		const Index actualEndIndex =  !isValidIndex(endIndex) ? strLength : endIndex;
-		const Index actualOffset = !isValidIndex(offset) ? 0 : offset;
+		const Index actualEndIndex =  !IsValidIndex(endIndex) ? strLength : endIndex;
+		const Index actualOffset = !IsValidIndex(offset) ? 0 : offset;
 		if (actualOffset >= actualEndIndex)
 		{
-			return clone();
+			return Clone();
 		}
 
 		const Index searchLength = from.Length();
@@ -690,9 +690,9 @@ namespace hbe
 			}
 		}
 
-		if (!isValidIndex(foundIndex))
+		if (!IsValidIndex(foundIndex))
 		{
-			return clone();
+			return Clone();
 		}
 
 		String result;
@@ -714,19 +714,19 @@ namespace hbe
 		}
 
 		result.buffer->push_back('\0');
-		result.calculateHashCode();
+		result.CalculateHashCode();
 
 		return result;
 	}
 
-	String String::replaceAll(char from, char to) const noexcept
+	String String::ReplaceAll(char from, char to) const noexcept
 	{
 		if (!buffer)
 		{
 			return {};
 		}
 
-		String str = clone();
+		String str = Clone();
 		TChar* data = str.buffer->data();
 		Assert(data != nullptr);
 
@@ -739,16 +739,16 @@ namespace hbe
 			}
 		}
 
-		str.calculateHashCode();
+		str.CalculateHashCode();
 
 		return str;
 	}
 
-	String String::replaceAll(String from, String to) const noexcept
+	String String::ReplaceAll(String from, String to) const noexcept
 	{
 		if (!buffer || from.IsEmpty())
 		{
-			return clone();
+			return Clone();
 		}
 
 		const Index strLength = Length();
@@ -757,7 +757,7 @@ namespace hbe
 
 		if (searchLength > strLength)
 		{
-			return clone();
+			return Clone();
 		}
 
 		String result;
@@ -800,19 +800,19 @@ namespace hbe
 		}
 
 		result.buffer->push_back('\0');
-		result.calculateHashCode();
+		result.CalculateHashCode();
 
 		return result;
 	}
 
-	void String::parseKeyValue(String& key, String& value) noexcept
+	void String::ParseKeyValue(String& key, String& value) noexcept
 	{
-		auto index = find('=');
-		key = subString(0, index).trim();
-		value = subString(index + 1).trim();
+		auto index = Find('=');
+		key = SubString(0, index).Trim();
+		value = SubString(index + 1).Trim();
 	}
 
-	void String::calculateHashCode() noexcept
+	void String::CalculateHashCode() noexcept
 	{
 		hashCode = 5381;
 
@@ -828,7 +828,7 @@ namespace hbe
 		}
 	}
 
-	void String::resetBuffer(size_t size) noexcept
+	void String::ResetBuffer(size_t size) noexcept
 	{
 		buffer->reserve(static_cast<Index>(size + 1));
 		buffer->clear();
@@ -843,9 +843,9 @@ namespace hbe
 namespace hbe
 {
 
-	void StringTest::prepare()
+	void StringTest::Prepare()
 	{
-		addTest("Comparison with Zero-Terminated String", [this](auto& ls)
+		AddTest("Comparison with Zero-Terminated String", [this](auto& ls)
 		{
 			String str("Hello? World!");
 			ls << str.c_str() << lf;
@@ -856,11 +856,11 @@ namespace hbe
 			}
 		});
 
-		addTest("To Lower Case", [this](auto& ls)
+		AddTest("To Lower Case", [this](auto& ls)
 		{
 			String str("Hello? World!");
 
-			auto lower = str.getLowerCase();
+			auto lower = str.GetLowerCase();
 			ls << lower.c_str() << lf;
 
 			if (lower != "hello? world!")
@@ -869,11 +869,11 @@ namespace hbe
 			}
 		});
 
-		addTest("To Upper Case", [this](auto& ls)
+		AddTest("To Upper Case", [this](auto& ls)
 		{
 			String str("Hello? World!");
 
-			auto upper = str.getUpperCase();
+			auto upper = str.GetUpperCase();
 			ls << upper.c_str() << lf;
 
 			if (upper != "HELLO? WORLD!")
@@ -882,11 +882,11 @@ namespace hbe
 			}
 		});
 
-		addTest("Move Semantics", [this](auto& ls)
+		AddTest("Move Semantics", [this](auto& ls)
 		{
 			String str("Hello? World!");
 
-			auto upper = str.getUpperCase();
+			auto upper = str.GetUpperCase();
 			auto tmpString = std::move(upper);
 			ls << tmpString.c_str() << lf;
 
@@ -896,21 +896,21 @@ namespace hbe
 			}
 		});
 
-		addTest("Find Last", [this](auto& ls)
+		AddTest("Find Last", [this](auto& ls)
 		{
 			String str("Hello? World!");
-			auto lastL = str.findLast('l');
+			auto lastL = str.FindLast('l');
 			if (lastL != 10)
 			{
 				ls << "Failed to find the last 'l', index = " << lastL << ", but expected 10." << lferr;
 			}
 		});
 
-		addTest("SubString", [this](auto& ls)
+		AddTest("SubString", [this](auto& ls)
 		{
 			String str("Hello? World!");
-			auto lastL = str.findLast('l');
-			auto afterL = str.subString(lastL);
+			auto lastL = str.FindLast('l');
+			auto afterL = str.SubString(lastL);
 			ls << afterL.c_str() << lf;
 
 			if (afterL != "ld!")
@@ -919,7 +919,7 @@ namespace hbe
 			}
 		});
 
-		addTest("Unsigned Short Constructor", [this](auto& ls)
+		AddTest("Unsigned Short Constructor", [this](auto& ls)
 		{
 			unsigned short value = 42;
 			String str(value);
@@ -945,10 +945,10 @@ namespace hbe
 			}
 		});
 
-		addTest("Replace Single", [this](auto& ls)
+		AddTest("Replace Single", [this](auto& ls)
 		{
 			String str("Hello World");
-			auto result = str.replace(String("World"), String("Engine"));
+			auto result = str.Replace(String("World"), String("Engine"));
 			ls << "Replace: " << result.c_str() << lf;
 
 			if (result != "Hello Engine")
@@ -957,10 +957,10 @@ namespace hbe
 			}
 		});
 
-		addTest("Replace Not Found", [this](auto& ls)
+		AddTest("Replace Not Found", [this](auto& ls)
 		{
 			String str("Hello World");
-			auto result = str.replace(String("Foo"), String("Bar"));
+			auto result = str.Replace(String("Foo"), String("Bar"));
 			ls << "Replace not found: " << result.c_str() << lf;
 
 			if (result != "Hello World")
@@ -969,10 +969,10 @@ namespace hbe
 			}
 		});
 
-		addTest("Replace With Offset", [this](auto& ls)
+		AddTest("Replace With Offset", [this](auto& ls)
 		{
 			String str("foo bar foo baz");
-			auto result = str.replace(String("foo"), String("XXX"), 5);
+			auto result = str.Replace(String("foo"), String("XXX"), 5);
 			ls << "Replace with offset: " << result.c_str() << lf;
 
 			if (result != "foo bar XXX baz")
@@ -981,10 +981,10 @@ namespace hbe
 			}
 		});
 
-		addTest("Replace Empty From", [this](auto& ls)
+		AddTest("Replace Empty From", [this](auto& ls)
 		{
 			String str("Hello");
-			auto result = str.replace(String(""), String("X"));
+			auto result = str.Replace(String(""), String("X"));
 			ls << "Replace empty from: " << result.c_str() << lf;
 
 			if (result != "Hello")
@@ -993,10 +993,10 @@ namespace hbe
 			}
 		});
 
-		addTest("Replace Longer To", [this](auto& ls)
+		AddTest("Replace Longer To", [this](auto& ls)
 		{
 			String str("abc");
-			auto result = str.replace(String("b"), String("XYZ"));
+			auto result = str.Replace(String("b"), String("XYZ"));
 			ls << "Replace longer to: " << result.c_str() << lf;
 
 			if (result != "aXYZc")
@@ -1005,10 +1005,10 @@ namespace hbe
 			}
 		});
 
-		addTest("Replace Shorter To", [this](auto& ls)
+		AddTest("Replace Shorter To", [this](auto& ls)
 		{
 			String str("Hello World");
-			auto result = str.replace(String(" World"), String(""));
+			auto result = str.Replace(String(" World"), String(""));
 			ls << "Replace shorter to: " << result.c_str() << lf;
 
 			if (result != "Hello")
@@ -1017,10 +1017,10 @@ namespace hbe
 			}
 		});
 
-		addTest("ReplaceAll Single Char Pattern", [this](auto& ls)
+		AddTest("ReplaceAll Single Char Pattern", [this](auto& ls)
 		{
 			String str("a.b.c.d");
-			auto result = str.replaceAll(String("."), String("-"));
+			auto result = str.ReplaceAll(String("."), String("-"));
 			ls << "ReplaceAll: " << result.c_str() << lf;
 
 			if (result != "a-b-c-d")
@@ -1029,10 +1029,10 @@ namespace hbe
 			}
 		});
 
-		addTest("ReplaceAll Multi Char Pattern", [this](auto& ls)
+		AddTest("ReplaceAll Multi Char Pattern", [this](auto& ls)
 		{
 			String str("foo bar foo baz foo");
-			auto result = str.replaceAll(String("foo"), String("XXX"));
+			auto result = str.ReplaceAll(String("foo"), String("XXX"));
 			ls << "ReplaceAll multi: " << result.c_str() << lf;
 
 			if (result != "XXX bar XXX baz XXX")
@@ -1041,10 +1041,10 @@ namespace hbe
 			}
 		});
 
-		addTest("ReplaceAll Not Found", [this](auto& ls)
+		AddTest("ReplaceAll Not Found", [this](auto& ls)
 		{
 			String str("Hello World");
-			auto result = str.replaceAll(String("Foo"), String("Bar"));
+			auto result = str.ReplaceAll(String("Foo"), String("Bar"));
 			ls << "ReplaceAll not found: " << result.c_str() << lf;
 
 			if (result != "Hello World")
@@ -1053,10 +1053,10 @@ namespace hbe
 			}
 		});
 
-		addTest("ReplaceAll Empty From", [this](auto& ls)
+		AddTest("ReplaceAll Empty From", [this](auto& ls)
 		{
 			String str("Hello");
-			auto result = str.replaceAll(String(""), String("X"));
+			auto result = str.ReplaceAll(String(""), String("X"));
 			ls << "ReplaceAll empty from: " << result.c_str() << lf;
 
 			if (result != "Hello")
@@ -1065,10 +1065,10 @@ namespace hbe
 			}
 		});
 
-		addTest("ReplaceAll Longer Replacement", [this](auto& ls)
+		AddTest("ReplaceAll Longer Replacement", [this](auto& ls)
 		{
 			String str("abc");
-			auto result = str.replaceAll(String("b"), String("XYZ"));
+			auto result = str.ReplaceAll(String("b"), String("XYZ"));
 			ls << "ReplaceAll longer: " << result.c_str() << lf;
 
 			if (result != "aXYZc")
@@ -1077,10 +1077,10 @@ namespace hbe
 			}
 		});
 
-		addTest("ReplaceAll Shorter Replacement", [this](auto& ls)
+		AddTest("ReplaceAll Shorter Replacement", [this](auto& ls)
 		{
 			String str("Hello World");
-			auto result = str.replaceAll(String("o"), String(""));
+			auto result = str.ReplaceAll(String("o"), String(""));
 			ls << "ReplaceAll shorter: " << result.c_str() << lf;
 
 			if (result != "Hell Wrld")
@@ -1089,10 +1089,10 @@ namespace hbe
 			}
 		});
 
-		addTest("ReplaceAll Adjacent Matches", [this](auto& ls)
+		AddTest("ReplaceAll Adjacent Matches", [this](auto& ls)
 		{
 			String str("aabbcc");
-			auto result = str.replaceAll(String("ab"), String("X"));
+			auto result = str.ReplaceAll(String("ab"), String("X"));
 			ls << "ReplaceAll adjacent: " << result.c_str() << lf;
 
 			if (result != "aXbcc")
@@ -1101,7 +1101,7 @@ namespace hbe
 			}
 		});
 
-		addTest("Performance", [this](auto& ls)
+		AddTest("Performance", [this](auto& ls)
 		{
 			constexpr int COUNT = 100000;
 
@@ -1137,12 +1137,12 @@ namespace hbe
 				}
 			}
 
-			ls << "Time: he = " << time::toFloat(heTime) << ", stl = " << time::toFloat(stlTime) << lf;
+			ls << "Time: he = " << time::ToFloat(heTime) << ", stl = " << time::ToFloat(stlTime) << lf;
 
 			if (heTime > stlTime)
 			{
 				ls << "HE String is slower than STL string." << std::endl
-				   << "Time: he = " << time::toFloat(heTime) << ", stl = " << time::toFloat(stlTime) << lfwarn;
+				   << "Time: he = " << time::ToFloat(heTime) << ", stl = " << time::ToFloat(stlTime) << lfwarn;
 			}
 		});
 	}

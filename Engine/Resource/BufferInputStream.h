@@ -26,10 +26,10 @@ namespace hbe
 		explicit BufferInputStream(const Buffer& buffer) noexcept;
 		~BufferInputStream() = default;
 
-		[[nodiscard]] auto getErrorCount() const noexcept { return errorCount; }
-		[[nodiscard]] bool hasError() const noexcept { return errorCount > 0; }
-		void clearErrorCount() noexcept { errorCount = 0; }
-		[[nodiscard]] bool IsDone() const noexcept { return cursor >= buffer.getSize(); }
+		[[nodiscard]] auto GetErrorCount() const noexcept { return errorCount; }
+		[[nodiscard]] bool HasError() const noexcept { return errorCount > 0; }
+		void ClearErrorCount() noexcept { errorCount = 0; }
+		[[nodiscard]] bool IsDone() const noexcept { return cursor >= buffer.GetSize(); }
 
 		This& operator>>(char& value) noexcept;
 		This& operator>>(int8_t& value) noexcept;
@@ -53,28 +53,28 @@ namespace hbe
 		template<typename T, size_t N>
 		This& operator>>(T (&array)[N]) noexcept
 		{
-			get<T>(array, N);
+			Get<T>(array, N);
 			return *this;
 		}
 
 		template<typename T, class TContainer = TVector<T>>
 		This& operator>>(TContainer& container) noexcept
 		{
-			get<T>(container);
+			Get<T>(container);
 			return *this;
 		}
 
 	private:
-		[[nodiscard]] bool isValidIndex(size_t index) const noexcept { return cursor < buffer.getSize(); }
+		[[nodiscard]] bool IsValidIndex(size_t index) const noexcept { return cursor < buffer.GetSize(); }
 
 		template<typename T>
-		void get(T& value, const T& defaultValue) noexcept
+		void Get(T& value, const T& defaultValue) noexcept
 		{
 			constexpr size_t tSize = sizeof(T);
 			const size_t startIndex = ((cursor + tSize - 1) / tSize) * tSize;
 			const size_t newIndex = startIndex + tSize;
 
-			if (unlikely(!isValidIndex(newIndex)))
+			if (unlikely(!IsValidIndex(newIndex)))
 			{
 				++errorCount;
 				value = defaultValue;
@@ -83,7 +83,7 @@ namespace hbe
 
 			cursor = startIndex;
 
-			auto bufferBase = buffer.getData();
+			auto bufferBase = buffer.GetData();
 			auto data = reinterpret_cast<const T*>(&bufferBase[cursor]);
 			value = *data;
 
@@ -91,10 +91,10 @@ namespace hbe
 		}
 
 		template<typename T>
-		void get(T* arrayBuffer, size_t size) noexcept
+		void Get(T* arrayBuffer, size_t size) noexcept
 		{
 			size_t length = 0;
-			get<size_t>(length, 0);
+			Get<size_t>(length, 0);
 
 			if (unlikely(length != size))
 			{
@@ -106,13 +106,13 @@ namespace hbe
 			const size_t startIndex = ((cursor + tSize - 1) / tSize) * tSize;
 			const size_t newIndex = startIndex + (tSize * length);
 
-			if (unlikely(!isValidIndex(newIndex)))
+			if (unlikely(!IsValidIndex(newIndex)))
 			{
 				++errorCount;
 				return;
 			}
 
-			auto bufferBase = buffer.getData();
+			auto bufferBase = buffer.GetData();
 			auto dataBegin = reinterpret_cast<const T*>(&bufferBase[cursor]);
 			auto dataEnd = dataBegin + length;
 			std::copy(dataBegin, dataEnd, arrayBuffer);
@@ -121,14 +121,14 @@ namespace hbe
 		}
 
 		template<typename T, class TContainer = TVector<T>>
-		void get(TContainer& array) noexcept
+		void Get(TContainer& array) noexcept
 		{
 			static_assert(std::is_same<T, typename TContainer::value_type>::value);
 
 			array.clear();
 
 			size_t length = 0;
-			get<size_t>(length, 0);
+			Get<size_t>(length, 0);
 
 			if (length <= 0) return;
 
@@ -136,7 +136,7 @@ namespace hbe
 			const size_t startIndex = ((cursor + tSize - 1) / tSize) * tSize;
 			const size_t newIndex = startIndex + (tSize * length);
 
-			if (unlikely(!isValidIndex(newIndex)))
+			if (unlikely(!IsValidIndex(newIndex)))
 			{
 				++errorCount;
 				return;
@@ -144,7 +144,7 @@ namespace hbe
 
 			array.reserve(length);
 
-			auto bufferBase = buffer.getData();
+			auto bufferBase = buffer.GetData();
 			auto dataBegin = reinterpret_cast<const T*>(&bufferBase[cursor]);
 			auto dataEnd = dataBegin + length;
 			std::copy(dataBegin, dataEnd, std::back_inserter(array));
@@ -171,7 +171,7 @@ namespace hbe
 		~BufferInputStreamTest() override = default;
 
 	protected:
-		void prepare() override;
+		void Prepare() override;
 	};
 } // namespace hbe
 #endif //__UNIT_TEST__

@@ -26,7 +26,7 @@ struct IsReferenceType<T&>
 };
 
 template<typename Type>
-Type getAs(void* src) noexcept
+Type GetAs(void* src) noexcept
 {
 	Assert((((size_t) (src)) % sizeof(Type)) == 0, "Misaligned Address(", src,
 		   ") is provided. Required alignment is ", sizeof(Type), ".");
@@ -34,7 +34,7 @@ Type getAs(void* src) noexcept
 }
 
 template<typename Type>
-void setAs(void* dst, Type value) noexcept
+void SetAs(void* dst, Type value) noexcept
 {
 	Assert((((size_t) (dst)) % sizeof(Type)) == 0, "Misaligned Address(", dst,
 		   ") is provided. Required alignment is ", sizeof(Type), ".");
@@ -43,17 +43,17 @@ void setAs(void* dst, Type value) noexcept
 }
 
 template<typename Type>
-void copyAs(void* dst, void* src) noexcept
+void CopyAs(void* dst, void* src) noexcept
 {
 	Type* _src = reinterpret_cast<Type*>(src);
 	Type* _dst = reinterpret_cast<Type*>(dst);
 	*_dst = *_src;
 }
 
-[[nodiscard]] inline size_t toAddress(void* ptr) noexcept { return reinterpret_cast<size_t>(ptr); }
+[[nodiscard]] inline size_t ToAddress(void* ptr) noexcept { return reinterpret_cast<size_t>(ptr); }
 
 template<typename T, size_t size>
-[[nodiscard]] size_t countOf(T (&)[size]) noexcept
+[[nodiscard]] size_t CountOf(T (&)[size]) noexcept
 {
 	return size;
 }

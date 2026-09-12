@@ -22,29 +22,29 @@ namespace hbe
 namespace
 {
 #if LOG_FORCE_PRINT_IMMEDIATELY || LOG_BREAK_IF_WARNING || LOG_BREAK_IF_ERROR
-	void immediateLog(ELogLevel level, StaticString category, const char* logStr)
+	void ImmediateLog(ELogLevel level, StaticString category, const char* logStr)
 	{
 		AllocatorScope scope(MemoryManager::SystemAllocatorID);
 
 		using namespace std;
 		InlineStringBuilder<64> timeStampStr;
-		LogUtil::getTimeStampString(timeStampStr);
-		auto levelStr = LogUtil::getLogLevelString(level);
+		LogUtil::GetTimeStampString(timeStampStr);
+		auto levelStr = LogUtil::GetLogLevelString(level);
 
 		cout << '[' << timeStampStr << "][" << std::this_thread::get_id() << "][" << category << "][" << levelStr
 			 << "] " << logStr << endl;
 	}
 #endif // LOG_FORCE_IMMEDIATE
 
-	void fallbackLog(StaticString category, ELogLevel level, const Logger::TLogFunction& logFunc)
+	void FallbackLog(StaticString category, ELogLevel level, const Logger::TLogFunction& logFunc)
 	{
-		auto& engine = Engine::get();
+		auto& engine = Engine::Get();
 
 		Logger::TLogStream str;
 		str << '[' << category << "] ";
 		logFunc(str);
 
-		engine.log(level, [&str](auto& ls) { ls << str.c_str(); });
+		engine.Log(level, [&str](auto& ls) { ls << str.c_str(); });
 	}
 
 } // anonymous namespace
@@ -53,38 +53,38 @@ Logger* Logger::instance = nullptr;
 
 Logger::SimpleLogger::SimpleLogger(StaticString category, ELogLevel level) noexcept : category(category), level(level) {}
 
-void Logger::SimpleLogger::out(const TLogFunction& logFunc) const noexcept
+void Logger::SimpleLogger::Out(const TLogFunction& logFunc) const noexcept
 {
 	if (unlikely(instance == nullptr))
 	{
-		fallbackLog(category, level, logFunc);
+		FallbackLog(category, level, logFunc);
 
 		return;
 	}
 
-	instance->addLog(category, level, logFunc);
+	instance->AddLog(category, level, logFunc);
 }
 
-void Logger::SimpleLogger::out(ELogLevel inLevel, const TLogFunction& logFunc) const noexcept
+void Logger::SimpleLogger::Out(ELogLevel inLevel, const TLogFunction& logFunc) const noexcept
 {
 	if (unlikely(instance == nullptr))
 	{
-		fallbackLog(category, inLevel, logFunc);
+		FallbackLog(category, inLevel, logFunc);
 
 		return;
 	}
 
-	instance->addLog(category, inLevel, logFunc);
+	instance->AddLog(category, inLevel, logFunc);
 }
 
-Logger& Logger::get() noexcept
+Logger& Logger::Get() noexcept
 {
-	fatalAssert(instance != nullptr);
+	FatalAssert(instance != nullptr);
 
 	return *instance;
 }
 
-Logger::SimpleLogger Logger::get(StaticString category, ELogLevel level) noexcept
+Logger::SimpleLogger Logger::Get(StaticString category, ELogLevel level) noexcept
 {
 	SimpleLogger log(category, level);
 	return log;
@@ -100,7 +100,7 @@ Logger::Logger(Engine& engine, const char* path, const char* filename) noexcept
 	Assert(engine.IsMemoryManagerReady());
 
 	instance = this;
-	LogUtil::getStartTime();
+	LogUtil::GetStartTime();
 
 	AllocatorScope scope(allocator);
 
@@ -120,7 +120,7 @@ Logger::Logger(Engine& engine, const char* path, const char* filename) noexcept
 		std::ranges::replace_if(logPath, predicate, '/');
 	}
 
-	auto fileNameSize = StringUtil::strLen(filename, Config::MaxPathLength);
+	auto fileNameSize = StringUtil::StrLen(filename, Config::MaxPathLength);
 	if (endChar == '/')
 	{
 		logPath.reserve(logPath.size() + fileNameSize);
@@ -137,33 +137,33 @@ Logger::Logger(Engine& engine, const char* path, const char* filename) noexcept
 	outFileStream.open(logPath.c_str());
 
 	flushFuncs.reserve(2);
-	flushFuncs.emplace_back([this](const TTextBuffer& buffer) { writeLog(buffer); });
-	flushFuncs.emplace_back([](const TTextBuffer& buffer) { printStdIO(buffer); });
+	flushFuncs.emplace_back([this](const TTextBuffer& buffer) { WriteLog(buffer); });
+	flushFuncs.emplace_back([](const TTextBuffer& buffer) { PrintStdIO(buffer); });
 
-	engine.setLoggerReady();
+	engine.SetLoggerReady();
 }
 
 Logger::~Logger() noexcept
 {
 	instance = nullptr;
 
-	processBuffer();
+	ProcessBuffer();
 
 	outFileStream.flush();
 	outFileStream.close();
 }
 
-StaticString Logger::getName() noexcept
+StaticString Logger::GetName() noexcept
 {
-	static auto className = StringUtil::toCompactClassName(__PRETTY_FUNCTION__);
+	static auto className = StringUtil::ToCompactClassName(__PRETTY_FUNCTION__);
 	return className;
 }
 
-void Logger::startTask(TaskSystem& taskSys)
+void Logger::StartTask(TaskSystem& taskSys)
 {
-	addLog(getName(), ELogLevel::Info, [](auto& logStream) { logStream << "Logger started."; });
+	AddLog(GetName(), ELogLevel::Info, [](auto& logStream) { logStream << "Logger started."; });
 
-	auto ioStreamIndex = TaskSystem::getIOTaskStreamIndex();
+	auto ioStreamIndex = TaskSystem::GetIOTaskStreamIndex();
 
 	auto runnable = [](void* userData,  std::size_t startIndex,  std::size_t endIndex) ->  std::size_t
 	{
@@ -180,55 +180,55 @@ void Logger::startTask(TaskSystem& taskSys)
 			return 1;
 		}
 
-		self->processBuffer();
+		self->ProcessBuffer();
 
 		return 0;
 	};
 
 	isRunning.store(true, std::memory_order_release);
 
-	task.setRunnable(runnable);
-	auto rangedTask = task.generateSubTask(0, 1, 0);
-	taskSys.enqueue(ioStreamIndex, rangedTask);
+	task.SetRunnable(runnable);
+	auto rangedTask = task.GenerateSubTask(0, 1, 0);
+	taskSys.Enqueue(ioStreamIndex, rangedTask);
 
-	auto& ioTaskStream = taskSys.getIOTaskStream();
-	threadID = ioTaskStream.getThreadID();
+	auto& ioTaskStream = taskSys.GetIOTaskStream();
+	threadID = ioTaskStream.GetThreadID();
 
 #if MEMORY_VERIFICATION_ENABLED
 	{
-		auto& mmgr = MemoryManager::getInstance();
-		auto& allocatorProxy = mmgr.getAllocatorProxy(allocator.getID());
+		auto& mmgr = MemoryManager::GetInstance();
+		auto& allocatorProxy = mmgr.GetAllocatorProxy(allocator.GetID());
 		allocatorProxy.threadId = threadID;
 	}
 #endif // MEMORY_VERIFICATION_ENABLED
 }
 
-void Logger::stopTask(TaskSystem& taskSys)
+void Logger::StopTask(TaskSystem& taskSys)
 {
 	isRunning.store(false, std::memory_order_release);
 
 	if (task.HasDone()) return;
 
-	task.wait();
+	task.Wait();
 	threadID = std::thread::id();
 
 #if MEMORY_VERIFICATION_ENABLED
 	{
-		auto& mmgr = MemoryManager::getInstance();
-		auto& allocatorProxy = mmgr.getAllocatorProxy(allocator.getID());
+		auto& mmgr = MemoryManager::GetInstance();
+		auto& allocatorProxy = mmgr.GetAllocatorProxy(allocator.GetID());
 		allocatorProxy.threadId = std::this_thread::get_id();
 	}
 #endif // MEMORY_VERIFICATION_ENABLED
 
-	addLog(getName(), ELogLevel::Info, [](auto& ls) { ls << "Logger shall be terminated." << hendl; });
+	AddLog(GetName(), ELogLevel::Info, [](auto& ls) { ls << "Logger shall be terminated." << hendl; });
 
-	processBuffer();
+	ProcessBuffer();
 
 	outFileStream.flush();
 	outFileStream.close();
 }
 
-void Logger::addLog(StaticString category, ELogLevel level, const TLogFunction& logFunc) noexcept
+void Logger::AddLog(StaticString category, ELogLevel level, const TLogFunction& logFunc) noexcept
 {
 	Assert(this == instance);
 
@@ -240,7 +240,7 @@ void Logger::addLog(StaticString category, ELogLevel level, const TLogFunction& 
 
 	if (unlikely(logFunc == nullptr))
 	{
-		addLog(getName(), ELogLevel::Warning, [](auto& ls) { ls << "Null log function!"; });
+		AddLog(GetName(), ELogLevel::Warning, [](auto& ls) { ls << "Null log function!"; });
 
 		return;
 	}
@@ -248,7 +248,7 @@ void Logger::addLog(StaticString category, ELogLevel level, const TLogFunction& 
 	static TAtomicConfigParam<uint8_t> CPLogLevel("Log.Level", "The Default Log Level",
 												  static_cast<uint8_t>(ELogLevel::Info));
 
-	if (level < static_cast<ELogLevel>(CPLogLevel.get()))
+	if (level < static_cast<ELogLevel>(CPLogLevel.Get()))
 	{
 		return;
 	}
@@ -263,9 +263,9 @@ void Logger::addLog(StaticString category, ELogLevel level, const TLogFunction& 
 		}
 	}
 
-	auto& engine = Engine::get();
-	auto& taskSystem = engine.getTaskSystem();
-	auto threadName = TaskSystem::getCurrentStreamName();
+	auto& engine = Engine::Get();
+	auto& taskSystem = engine.GetTaskSystem();
+	auto threadName = TaskSystem::GetCurrentStreamName();
 
 	TLogStream ls;
 	logFunc(ls);
@@ -273,7 +273,7 @@ void Logger::addLog(StaticString category, ELogLevel level, const TLogFunction& 
 #if LOG_BREAK_IF_WARNING
 	if (unlikely(level >= ELogLevel::Warning))
 	{
-		immediateLog(level, category, ls.c_str());
+		ImmediateLog(level, category, ls.c_str());
 		debugBreak();
 		return;
 	}
@@ -282,14 +282,14 @@ void Logger::addLog(StaticString category, ELogLevel level, const TLogFunction& 
 #if LOG_BREAK_IF_ERROR
 	if (unlikely(level >= ELogLevel::Error))
 	{
-		immediateLog(level, category, ls.c_str());
+		ImmediateLog(level, category, ls.c_str());
 		debugBreak();
 		return;
 	}
 #endif // LOG_BREAK_IF_ERROR
 
 #if LOG_FORCE_PRINT_IMMEDIATELY
-	immediateLog(level, category, ls.c_str());
+	ImmediateLog(level, category, ls.c_str());
 	return;
 #endif // LOG_FORCE_IMMEDIATE
 
@@ -302,9 +302,9 @@ void Logger::addLog(StaticString category, ELogLevel level, const TLogFunction& 
 
 		using namespace std;
 		InlineStringBuilder<64> timeStampStr;
-		LogUtil::getTimeStampString(timeStampStr);
+		LogUtil::GetTimeStampString(timeStampStr);
 
-		auto levelStr = LogUtil::getLogLevelString(level);
+		auto levelStr = LogUtil::GetLogLevelString(level);
 
 		InlineStringBuilder<Config::LogOutputBuffer + 128> text;
 		text << '[' << timeStampStr.c_str() << "][" << threadName << "][" << category << "][" << levelStr << "] "
@@ -312,7 +312,7 @@ void Logger::addLog(StaticString category, ELogLevel level, const TLogFunction& 
 
 		tmpTextBuffer.emplace_back(text.c_str());
 
-		flushBuffer(tmpTextBuffer);
+		FlushBuffer(tmpTextBuffer);
 		tmpTextBuffer.clear();
 
 		if (unlikely(level >= ELogLevel::FatalError))
@@ -337,33 +337,33 @@ void Logger::addLog(StaticString category, ELogLevel level, const TLogFunction& 
 
 	if (unlikely(level >= ELogLevel::FatalError))
 	{
-		flush();
+		Flush();
 		debugBreak();
 		Assert(false);
 
 		return;
 	}
 
-	auto& ioStream = taskSystem.getIOTaskStream();
-	ioStream.wakeUp();
+	auto& ioStream = taskSystem.GetIOTaskStream();
+	ioStream.WakeUp();
 
 	if (bufferSize >= Config::LogForceFlushThreshold)
 	{
-		flush();
+		Flush();
 	}
 }
 
-void Logger::setFilter(StaticString category, TLogFilter&& filter) noexcept
+void Logger::SetFilter(StaticString category, TLogFilter&& filter) noexcept
 {
 	std::lock_guard lock(filterLock);
 	filters[category] = std::move(filter);
 }
 
-void Logger::flush() noexcept
+void Logger::Flush() noexcept
 {
 	if (std::this_thread::get_id() == threadID)
 	{
-		processBuffer();
+		ProcessBuffer();
 
 		return;
 	}
@@ -376,10 +376,10 @@ void Logger::flush() noexcept
 }
 
 #if PROFILE_ENABLED
-void Logger::reportMemoryConfiguration() { allocator.reportConfiguration(); }
+void Logger::ReportMemoryConfiguration() { allocator.ReportConfiguration(); }
 #endif // PROFILE_ENABLED
 
-void Logger::processBuffer() noexcept
+void Logger::ProcessBuffer() noexcept
 {
 	if (!hasInput.load(std::memory_order_acquire)) return;
 
@@ -404,22 +404,22 @@ void Logger::processBuffer() noexcept
 		}
 
 		InlineStringBuilder<64> timeStampStr;
-		LogUtil::getTimeStampString(timeStampStr, log.timeStamp);
-		auto levelStr = LogUtil::getLogLevelString(log.level);
+		LogUtil::GetTimeStampString(timeStampStr, log.timeStamp);
+		auto levelStr = LogUtil::GetLogLevelString(log.level);
 
 		using namespace hbe;
 		InlineStringBuilder<Config::LogLineLength * 2> text;
 
 		text << '[' << timeStampStr.c_str() << "][" << log.threadName << "][";
 		text << log.category << "][" << levelStr << "] ";
-		text << log.getText();
+		text << log.GetText();
 
 		textBuffer.emplace_back(text.c_str());
 	}
 
 	swapBuffer.clear();
 
-	flushBuffer(textBuffer);
+	FlushBuffer(textBuffer);
 	textBuffer.clear();
 
 	if (needIOFlush)
@@ -430,7 +430,7 @@ void Logger::processBuffer() noexcept
 	needFlush.store(false, std::memory_order_release);
 }
 
-void Logger::flushBuffer(const TTextBuffer& buffer) const noexcept
+void Logger::FlushBuffer(const TTextBuffer& buffer) const noexcept
 {
 	for (auto& func : flushFuncs)
 	{
@@ -439,7 +439,7 @@ void Logger::flushBuffer(const TTextBuffer& buffer) const noexcept
 	}
 }
 
-void Logger::writeLog(const TTextBuffer& buffer) noexcept
+void Logger::WriteLog(const TTextBuffer& buffer) noexcept
 {
 	auto& ofs = outFileStream;
 
@@ -451,13 +451,13 @@ void Logger::writeLog(const TTextBuffer& buffer) noexcept
 	ofs.flush();
 }
 
-void Logger::printStdIO(const TTextBuffer& buffer) noexcept
+void Logger::PrintStdIO(const TTextBuffer& buffer) noexcept
 {
-	auto& engine = Engine::get();
+	auto& engine = Engine::Get();
 
 	for (auto& logText : buffer)
 	{
-		engine.consoleOutLn(logText.c_str());
+		engine.ConsoleOutLn(logText.c_str());
 	}
 }
 

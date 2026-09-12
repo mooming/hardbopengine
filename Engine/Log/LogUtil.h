@@ -16,10 +16,10 @@ namespace LogUtil
 
 	using TTimePoint = std::chrono::time_point<std::chrono::steady_clock>;
 
-	const TTimePoint& getStartTime() noexcept;
-	void getTimeStampString(InlineStringBuilder<64>& outStr,
+	const TTimePoint& GetStartTime() noexcept;
+	void GetTimeStampString(InlineStringBuilder<64>& outStr,
 							const TTimePoint& currentTime = std::chrono::steady_clock::now()) noexcept;
-	[[nodiscard]] StaticString getLogLevelString(ELogLevel level) noexcept;
+	[[nodiscard]] StaticString GetLogLevelString(ELogLevel level) noexcept;
 
 } // namespace LogUtil
 

@@ -30,7 +30,7 @@ namespace hbe
 
 		~AtomicStackView() = default;
 
-		void push(T& newItem) noexcept
+		void Push(T& newItem) noexcept
 		{
 			newItem.next = top.load(std::memory_order_relaxed);
 
@@ -39,7 +39,7 @@ namespace hbe
 				;
 		}
 
-		T* pop() noexcept
+		T* Pop() noexcept
 		{
 			T* node = top.load(std::memory_order_relaxed);
 			if (unlikely(node == nullptr))
@@ -77,7 +77,7 @@ namespace hbe
 		AtomicStackViewTest() : TestCollection("AtomicStackViewTest") {}
 
 	protected:
-		void prepare() override;
+		void Prepare() override;
 	};
 
 } // namespace hbe

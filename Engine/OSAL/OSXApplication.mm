@@ -44,7 +44,7 @@ Application::~Application()
 	m_platformHandle = nullptr;
 }
 
-void Application::initialize()
+void Application::Initialize()
 {
 	if (m_platformHandle != nullptr)
 	{
@@ -66,7 +66,7 @@ void Application::initialize()
 	m_platformHandle = app;
 }
 
-void Application::pollEvents()
+void Application::PollEvents()
 {
 	if (m_platformHandle == nullptr)
 	{

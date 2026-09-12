@@ -27,14 +27,14 @@ StackAllocator::StackAllocator(const char* name, SizeType inCapacity) :
 		capacity = multiplier * AlignUnit;
 	}
 
-	auto& mmgr = MemoryManager::getInstance();
-	parentID = hbe::MemoryManager::getCurrentAllocatorID();
-	bufferPtr = mmgr.allocate(capacity);
+	auto& mmgr = MemoryManager::GetInstance();
+	parentID = hbe::MemoryManager::GetCurrentAllocatorID();
+	bufferPtr = mmgr.Allocate(capacity);
 
 	auto allocFunc = [](void* allocatorPtr, size_t n) -> void*
 	{
 		auto allocator = static_cast<StackAllocator*>(allocatorPtr);
-		return allocator->allocate(n);
+		return allocator->Allocate(n);
 	};
 
 	auto deallocFunc = [](void* allocatorPtr, void* ptr, size_t size)
@@ -43,22 +43,22 @@ StackAllocator::StackAllocator(const char* name, SizeType inCapacity) :
 		allocator->Deallocate(ptr, size);
 	};
 
-	id = mmgr.registerAllocator(this, name, false, capacity, allocFunc, deallocFunc);
+	id = mmgr.RegisterAllocator(this, name, false, capacity, allocFunc, deallocFunc);
 }
 
 StackAllocator::~StackAllocator()
 {
-	auto& mmgr = MemoryManager::getInstance();
+	auto& mmgr = MemoryManager::GetInstance();
 	mmgr.Deallocate(bufferPtr, capacity);
 
 #if PROFILE_ENABLED
-	mmgr.deregisterAllocator(getID(), srcLocation);
+	mmgr.DeregisterAllocator(GetID(), srcLocation);
 #else // PROFILE_ENABLED
-	mmgr.deregisterAllocator(getID());
+	mmgr.DeregisterAllocator(GetID());
 #endif // PROFILE_ENABLED
 }
 
-void* StackAllocator::allocate(const size_t requested)
+void* StackAllocator::Allocate(const size_t requested)
 {
 	size_t size = requested;
 
@@ -68,11 +68,11 @@ void* StackAllocator::allocate(const size_t requested)
 		size = multiplier * AlignUnit;
 	}
 
-	const auto freeSize = getAvailable();
+	const auto freeSize = GetAvailable();
 	if (unlikely(size > freeSize))
 	{
-		auto& mmgr = MemoryManager::getInstance();
-		return mmgr.fallbackAllocate(getID(), parentID, requested);
+		auto& mmgr = MemoryManager::GetInstance();
+		return mmgr.FallbackAllocate(GetID(), parentID, requested);
 	}
 
 	auto ptr = reinterpret_cast<void*>(buffer + cursor);
@@ -80,8 +80,8 @@ void* StackAllocator::allocate(const size_t requested)
 
 #if PROFILE_ENABLED
 	{
-		auto& mmgr = MemoryManager::getInstance();
-		mmgr.reportAllocation(id, ptr, size, size);
+		auto& mmgr = MemoryManager::GetInstance();
+		mmgr.ReportAllocation(id, ptr, size, size);
 	}
 #endif // PROFILE_ENABLED
 
@@ -90,9 +90,9 @@ void* StackAllocator::allocate(const size_t requested)
 
 void StackAllocator::Deallocate(Pointer ptr, const SizeType requested) noexcept
 {
-	auto& mmgr = MemoryManager::getInstance();
+	auto& mmgr = MemoryManager::GetInstance();
 
-	if (unlikely(!isMine(ptr)))
+	if (unlikely(!IsMine(ptr)))
 	{
 		mmgr.Deallocate(parentID, ptr, requested);
 		return;
@@ -112,9 +112,9 @@ void StackAllocator::Deallocate(Pointer ptr, const SizeType requested) noexcept
 	auto provided = static_cast<Byte*>(ptr) + size;
 	if (unlikely(expected != provided))
 	{
-		mmgr.logError([this, ptr, expected, provided](auto& lout)
+		mmgr.LogError([this, ptr, expected, provided](auto& lout)
 		{
-			lout << "StackAllocator[" << static_cast<int>(getID()) << "]: Pointer mismatched! ptr = " << ptr << ", "
+			lout << "StackAllocator[" << static_cast<int>(GetID()) << "]: Pointer mismatched! ptr = " << ptr << ", "
 				 << static_cast<void*>(expected) << " is expected. But " << static_cast<void*>(provided)
 				 << " is provided.";
 		});
@@ -126,23 +126,23 @@ void StackAllocator::Deallocate(Pointer ptr, const SizeType requested) noexcept
 	cursor -= size;
 
 #if PROFILE_ENABLED
-	mmgr.reportDeallocation(id, ptr, size, size);
+	mmgr.ReportDeallocation(id, ptr, size, size);
 #endif // PROFILE_ENABLED
 }
 
-size_t StackAllocator::getAvailable() const
+size_t StackAllocator::GetAvailable() const
 {
 	Assert(capacity >= cursor);
 	return capacity - cursor;
 }
 
-size_t StackAllocator::getUsage() const
+size_t StackAllocator::GetUsage() const
 {
 	Assert(cursor < capacity);
 	return cursor;
 }
 
-bool StackAllocator::isMine(Pointer ptr) const
+bool StackAllocator::IsMine(Pointer ptr) const
 {
 	if (ptr < static_cast<void*>(buffer))
 	{
@@ -167,25 +167,25 @@ bool StackAllocator::isMine(Pointer ptr) const
 namespace hbe
 {
 
-void StackAllocatorTest::prepare()
+void StackAllocatorTest::Prepare()
 {
 	using namespace std;
 	using namespace hbe;
 
-	addTest("Vector Allocation", [this](auto& ls)
+	AddTest("Vector Allocation", [this](auto& ls)
 	{
 		StackAllocator stack("Test::StackAllocator", 1024 * 1024);
 
 		{
-			AllocatorScope scope(stack.getID());
+			AllocatorScope scope(stack.GetID());
 
 			HVector<int> a;
 			a.push_back(0);
 
 #if PROFILE_ENABLED
-			if (stack.getUsage() > 0)
+			if (stack.GetUsage() > 0)
 			{
-				ls << "Allocation Failed. Usage should not be zero, but " << stack.getUsage() << lferr;
+				ls << "Allocation Failed. Usage should not be zero, but " << stack.GetUsage() << lferr;
 			}
 #else
 			ls << "Profile Disabled" << lf;
@@ -193,19 +193,19 @@ void StackAllocatorTest::prepare()
 		}
 
 #if PROFILE_ENABLED
-		if (stack.getUsage() != 0)
+		if (stack.GetUsage() != 0)
 		{
-			ls << "Deallocation Failed. Usage should be zero, but " << stack.getUsage() << lferr;
+			ls << "Deallocation Failed. Usage should be zero, but " << stack.GetUsage() << lferr;
 		}
 #endif // PROFILE_ENABLED
 	});
 
-	addTest("Allocation (2)", [this](auto& ls)
+	AddTest("Allocation (2)", [this](auto& ls)
 	{
 		StackAllocator stack("Test::StackAllocator::Allocation (2)", 1024 * 1024);
 
 		{
-			AllocatorScope scope(stack.getID());
+			AllocatorScope scope(stack.GetID());
 
 			HVector<int> a;
 			a.push_back(0);
@@ -214,9 +214,9 @@ void StackAllocatorTest::prepare()
 			b.push_back(1);
 
 #if PROFILE_ENABLED
-			if (stack.getUsage() > 0)
+			if (stack.GetUsage() > 0)
 			{
-				ls << "Allocation Failed. Usage should not be zero, but " << stack.getUsage() << lferr;
+				ls << "Allocation Failed. Usage should not be zero, but " << stack.GetUsage() << lferr;
 			}
 #else
 			ls << "Profile Disabled" << lf;
@@ -224,55 +224,55 @@ void StackAllocatorTest::prepare()
 		}
 
 #if PROFILE_ENABLED
-		if (stack.getUsage() != 0)
+		if (stack.GetUsage() != 0)
 		{
-			ls << "Deallocation Failed. Usage should be zero, but " << stack.getUsage() << lferr;
+			ls << "Deallocation Failed. Usage should be zero, but " << stack.GetUsage() << lferr;
 		}
 #endif // PROFILE_ENABLED
 	});
 
-	addTest("Deallocation", [this](auto& ls)
+	AddTest("Deallocation", [this](auto& ls)
 	{
 		StackAllocator stack("Test::StackAllocator::Deallocation", 1024 * 1024);
-		AllocatorScope scope(stack.getID());
+		AllocatorScope scope(stack.GetID());
 
 		{
 			String a = "0";
 
-			if (stack.getUsage() <= 0)
+			if (stack.GetUsage() <= 0)
 			{
-				ls << "Allocation Failed. Usage should not be zero, but " << stack.getUsage() << lferr;
+				ls << "Allocation Failed. Usage should not be zero, but " << stack.GetUsage() << lferr;
 			}
 		}
 
-		if (stack.getUsage() != 0)
+		if (stack.GetUsage() != 0)
 		{
-			ls << "Deallocation Failed. Usage should be zero, but " << stack.getUsage() << lferr;
+			ls << "Deallocation Failed. Usage should be zero, but " << stack.GetUsage() << lferr;
 		}
 	});
 
-	addTest("Deallocation (2)", [this](auto& ls)
+	AddTest("Deallocation (2)", [this](auto& ls)
 	{
 		StackAllocator stack("Test::StackAllocator", 1024 * 1024);
-		AllocatorScope scope(stack.getID());
+		AllocatorScope scope(stack.GetID());
 
 		{
 			String a = "0";
 			String b = "1";
 
-			if (stack.getUsage() <= 0)
+			if (stack.GetUsage() <= 0)
 			{
-				ls << "Allocation Failed. Usage should not be zero, but " << stack.getUsage() << lferr;
+				ls << "Allocation Failed. Usage should not be zero, but " << stack.GetUsage() << lferr;
 			}
 		}
 
-		if (stack.getUsage() != 0)
+		if (stack.GetUsage() != 0)
 		{
-			ls << "Deallocation Failed. Usage should be zero, but " << stack.getUsage() << lferr;
+			ls << "Deallocation Failed. Usage should be zero, but " << stack.GetUsage() << lferr;
 		}
 	});
 
-	addTest("Nested Usage", [this](auto& ls)
+	AddTest("Nested Usage", [this](auto& ls)
 	{
 		using TAlloc = StackAllocator;
 		int depthSeed = 0;
@@ -280,7 +280,7 @@ void StackAllocatorTest::prepare()
 		ScopedAllocator<TAlloc> scope0("NestedStack0", 1024);
 
 		const auto depth = depthSeed++;
-		ls << "Neted Level " << depth << ", free size = " << scope0.getAllocator().getAvailable() << lf;
+		ls << "Neted Level " << depth << ", free size = " << scope0.GetAllocator().GetAvailable() << lf;
 
 		{
 			ScopedAllocator<TAlloc> scope1("NestedStack1", 512);
@@ -288,8 +288,8 @@ void StackAllocatorTest::prepare()
 			auto ptr = New<long double>(0);
 
 			const auto depth = depthSeed++;
-			ls << "Neted Level " << depth << ", free size = " << scope1.getAllocator().getAvailable() << " / "
-			   << scope0.getAllocator().getAvailable() << lf;
+			ls << "Neted Level " << depth << ", free size = " << scope1.GetAllocator().GetAvailable() << " / "
+			   << scope0.GetAllocator().GetAvailable() << lf;
 
 			{
 				ScopedAllocator<TAlloc> scope2("NestedStack2", 256);
@@ -297,8 +297,8 @@ void StackAllocatorTest::prepare()
 				auto ptr = New<long double>(0);
 
 				const auto depth = depthSeed++;
-				ls << "Neted Level " << depth << ", free size = " << scope2.getAllocator().getAvailable() << " / "
-				   << scope1.getAllocator().getAvailable() << " / " << scope0.getAllocator().getAvailable() << lf;
+				ls << "Neted Level " << depth << ", free size = " << scope2.GetAllocator().GetAvailable() << " / "
+				   << scope1.GetAllocator().GetAvailable() << " / " << scope0.GetAllocator().GetAvailable() << lf;
 
 				{
 					ScopedAllocator<TAlloc> scope3("NestedStack3", 128);
@@ -306,9 +306,9 @@ void StackAllocatorTest::prepare()
 					auto ptr = New<long double>(0);
 
 					const auto depth = depthSeed++;
-					ls << "Neted Level " << depth << ", free size = " << scope3.getAllocator().getAvailable() << " / "
-					   << scope2.getAllocator().getAvailable() << " / " << scope1.getAllocator().getAvailable() << " / "
-					   << scope0.getAllocator().getAvailable() << lf;
+					ls << "Neted Level " << depth << ", free size = " << scope3.GetAllocator().GetAvailable() << " / "
+					   << scope2.GetAllocator().GetAvailable() << " / " << scope1.GetAllocator().GetAvailable() << " / "
+					   << scope0.GetAllocator().GetAvailable() << lf;
 
 					{
 						ScopedAllocator<TAlloc> scope4("NestedStack4", 64);
@@ -316,10 +316,10 @@ void StackAllocatorTest::prepare()
 						auto ptr = New<long double>(0);
 
 						const auto depth = depthSeed++;
-						ls << "Neted Level " << depth << ", free size = " << scope4.getAllocator().getAvailable()
-						   << " / " << scope3.getAllocator().getAvailable() << " / "
-						   << scope2.getAllocator().getAvailable() << " / " << scope1.getAllocator().getAvailable()
-						   << " / " << scope0.getAllocator().getAvailable() << lf;
+						ls << "Neted Level " << depth << ", free size = " << scope4.GetAllocator().GetAvailable()
+						   << " / " << scope3.GetAllocator().GetAvailable() << " / "
+						   << scope2.GetAllocator().GetAvailable() << " / " << scope1.GetAllocator().GetAvailable()
+						   << " / " << scope0.GetAllocator().GetAvailable() << lf;
 
 						{
 							ScopedAllocator<TAlloc> scope5("NestedStack05", 32);
@@ -327,43 +327,43 @@ void StackAllocatorTest::prepare()
 							auto ptr = New<long double>(0);
 
 							const auto depth = depthSeed++;
-							ls << "Neted Level " << depth << ", free size = " << scope5.getAllocator().getAvailable()
-							   << " / " << scope4.getAllocator().getAvailable() << " / "
-							   << scope3.getAllocator().getAvailable() << " / " << scope2.getAllocator().getAvailable()
-							   << " / " << scope1.getAllocator().getAvailable() << " / "
-							   << scope0.getAllocator().getAvailable() << lf;
+							ls << "Neted Level " << depth << ", free size = " << scope5.GetAllocator().GetAvailable()
+							   << " / " << scope4.GetAllocator().GetAvailable() << " / "
+							   << scope3.GetAllocator().GetAvailable() << " / " << scope2.GetAllocator().GetAvailable()
+							   << " / " << scope1.GetAllocator().GetAvailable() << " / "
+							   << scope0.GetAllocator().GetAvailable() << lf;
 
 							Delete(ptr);
 						}
 
 						Delete(ptr);
 
-						ls << "Neted Level " << depth << ", free size = " << scope4.getAllocator().getAvailable()
-						   << " / " << scope3.getAllocator().getAvailable() << " / "
-						   << scope2.getAllocator().getAvailable() << " / " << scope1.getAllocator().getAvailable()
-						   << " / " << scope0.getAllocator().getAvailable() << lf;
+						ls << "Neted Level " << depth << ", free size = " << scope4.GetAllocator().GetAvailable()
+						   << " / " << scope3.GetAllocator().GetAvailable() << " / "
+						   << scope2.GetAllocator().GetAvailable() << " / " << scope1.GetAllocator().GetAvailable()
+						   << " / " << scope0.GetAllocator().GetAvailable() << lf;
 					}
 
 					Delete(ptr);
 
-					ls << "Neted Level " << depth << ", free size = " << scope3.getAllocator().getAvailable() << " / "
-					   << scope2.getAllocator().getAvailable() << " / " << scope1.getAllocator().getAvailable() << " / "
-					   << scope0.getAllocator().getAvailable() << lf;
+					ls << "Neted Level " << depth << ", free size = " << scope3.GetAllocator().GetAvailable() << " / "
+					   << scope2.GetAllocator().GetAvailable() << " / " << scope1.GetAllocator().GetAvailable() << " / "
+					   << scope0.GetAllocator().GetAvailable() << lf;
 				}
 
 				Delete(ptr);
 
-				ls << "Neted Level " << depth << ", free size = " << scope2.getAllocator().getAvailable() << " / "
-				   << scope1.getAllocator().getAvailable() << " / " << scope0.getAllocator().getAvailable() << lf;
+				ls << "Neted Level " << depth << ", free size = " << scope2.GetAllocator().GetAvailable() << " / "
+				   << scope1.GetAllocator().GetAvailable() << " / " << scope0.GetAllocator().GetAvailable() << lf;
 			}
 
 			Delete(ptr);
 
-			ls << "Neted Level " << depth << ", free size = " << scope1.getAllocator().getAvailable() << " / "
-			   << scope0.getAllocator().getAvailable() << lf;
+			ls << "Neted Level " << depth << ", free size = " << scope1.GetAllocator().GetAvailable() << " / "
+			   << scope0.GetAllocator().GetAvailable() << lf;
 		}
 
-		ls << "Neted Level " << depth << ", free size = " << scope0.getAllocator().getAvailable() << lf;
+		ls << "Neted Level " << depth << ", free size = " << scope0.GetAllocator().GetAvailable() << lf;
 	});
 }
 

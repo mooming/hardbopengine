@@ -10,17 +10,17 @@ namespace hbe
 namespace LogUtil
 {
 
-	const TTimePoint& getStartTime() noexcept
+	const TTimePoint& GetStartTime() noexcept
 	{
 		static TTimePoint startTime;
 		return startTime;
 	}
 
-	void getTimeStampString(InlineStringBuilder<64>& outStr, const TTimePoint& currentTime) noexcept
+	void GetTimeStampString(InlineStringBuilder<64>& outStr, const TTimePoint& currentTime) noexcept
 	{
 		using namespace std;
 
-		auto diff = currentTime - getStartTime();
+		auto diff = currentTime - GetStartTime();
 
 		auto hours = chrono::duration_cast<chrono::hours>(diff);
 		auto minutes = chrono::duration_cast<chrono::minutes>(diff);
@@ -41,7 +41,7 @@ namespace LogUtil
 		outStr << std::to_string(intMSecs);
 	}
 
-	StaticString getLogLevelString(ELogLevel level) noexcept
+	StaticString GetLogLevelString(ELogLevel level) noexcept
 	{
 		static StaticString none("None");
 		static StaticString verbose("Verbose");

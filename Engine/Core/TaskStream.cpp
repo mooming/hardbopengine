@@ -41,18 +41,18 @@ TaskStream::TaskStream(StaticString name, TStreamIndex streamIndex)
 	, loopCount(0)
 	, allocator(name)
 {
-	auto log = Logger::get(name);
-	log.out([name = name](auto& ls) { ls << name.c_str() << " is created."; });
+	auto log = Logger::Get(name);
+	log.Out([name = name](auto& ls) { ls << name.c_str() << " is created."; });
 }
 
-void TaskStream::enqueue(const RangedTask& task) noexcept
+void TaskStream::Enqueue(const RangedTask& task) noexcept
 {
 	std::scoped_lock<std::mutex> lock(queueLock);
-	taskQueue.push(task);
+	taskQueue.Push(task);
 	cv.notify_one();
 }
 
-void TaskStream::dequeue(std::optional<RangedTask>& outTask)
+void TaskStream::Dequeue(std::optional<RangedTask>& outTask)
 {
 	std::scoped_lock<std::mutex> lock(queueLock);
 	if (taskQueue.IsEmpty())
@@ -61,39 +61,39 @@ void TaskStream::dequeue(std::optional<RangedTask>& outTask)
 		return;
 	}
 
-	outTask = taskQueue.pop();
+	outTask = taskQueue.Pop();
 }
 
-void TaskStream::wakeUp() noexcept { cv.notify_one(); }
+void TaskStream::WakeUp() noexcept { cv.notify_one(); }
 
-void TaskStream::start(TaskSystem& taskSys) noexcept
+void TaskStream::Start(TaskSystem& taskSys) noexcept
 {
 	auto func = [this]()
 	{
-		runLoop();
+		RunLoop();
 	};
 
 	thread = std::thread(func);
 	OS::SetThreadPriority(thread, 0);
 }
 
-void TaskStream::runLoop() noexcept
+void TaskStream::RunLoop() noexcept
 {
 	AllocatorScope scope(allocator);
 
-	TaskSystem::setThreadName(name);
-	TaskSystem::setStreamIndex(streamIndex);
+	TaskSystem::SetThreadName(name);
+	TaskSystem::SetStreamIndex(streamIndex);
 
-	const auto log = Logger::get(name);
-	log.out([name = name](auto& ls) { ls << name.c_str() << " has begun."; });
+	const auto log = Logger::Get(name);
+	log.Out([name = name](auto& ls) { ls << name.c_str() << " has begun."; });
 
 	threadID = std::this_thread::get_id();
 
 	static ConfigParam<float, true> thresholdDuration("TaskStreamDurationThreshold",
 		"Print a warning log if it detects slower task. (seconds)", 0.16f);
 
-	auto& engine = Engine::get();
-	auto& taskSys = engine.getTaskSystem();
+	auto& engine = Engine::Get();
+	auto& taskSys = engine.GetTaskSystem();
 
 	HVector<RangedTask> readdingBuffer;
 
@@ -104,20 +104,20 @@ void TaskStream::runLoop() noexcept
 		{
 			// Remove finished tasks
 			std::unique_lock lock(queueLock);
-			taskQueue.Remove([](const RangedTask& task) { return task.hasFinished(); });
+			taskQueue.Remove([](const RangedTask& task) { return task.HasFinished(); });
 
-			taskQueue.pushRange(readdingBuffer);
+			taskQueue.PushRange(readdingBuffer);
 			readdingBuffer.clear();
 
 			if (!taskQueue.IsEmpty())
 			{
-				rangedTask = taskQueue.pop();
+				rangedTask = taskQueue.Pop();
 			}
 		}
 
 		if (!rangedTask.has_value())
 		{
-			taskSys.dequeue(rangedTask);
+			taskSys.Dequeue(rangedTask);
 		}
 
 		if (!rangedTask.has_value())
@@ -133,21 +133,21 @@ void TaskStream::runLoop() noexcept
 		time::TDuration duration;
 		{
 			time::ScopedTime timer(duration);
-			rangedTask->run();
+			rangedTask->Run();
 		}
 
-		const float deltaTime = time::toFloat(duration);
-		if (deltaTime > thresholdDuration.get())
+		const float deltaTime = time::ToFloat(duration);
+		if (deltaTime > thresholdDuration.Get())
 		{
-			log.outWarning([dt = deltaTime](auto& ls) { ls << "Slow DeltaTime = " << dt; });
+			log.OutWarning([dt = deltaTime](auto& ls) { ls << "Slow DeltaTime = " << dt; });
 		}
 
-		if (!rangedTask->hasFinished())
+		if (!rangedTask->HasFinished())
 		{
 			readdingBuffer.push_back(*rangedTask);
 		}
 	}
 
-	log.out([name = name](auto& ls) { ls << name.c_str() << " has been terminated."; });
+	log.Out([name = name](auto& ls) { ls << name.c_str() << " has been terminated."; });
 }
 } // namespace hbe

@@ -57,13 +57,13 @@ public:
 		lockable.unlock();
 
 #if PROFILE_ENABLED
-		const auto duration = time::toFloat(time::TStopWatch::now() - startTime);
+		const auto duration = time::ToFloat(time::TStopWatch::now() - startTime);
 		if (unlikely(timeOutSec > 0.0f && duration > timeOutSec))
 		{
 			using namespace StringUtil;
-			static const auto name = toCompactClassName(__PRETTY_FUNCTION__);
-			auto log = Logger::get(name);
-			log.outWarning([&, this](auto& ls)
+			static const auto name = ToCompactClassName(__PRETTY_FUNCTION__);
+			auto log = Logger::Get(name);
+			log.OutWarning([&, this](auto& ls)
 			{
 				ls << "[file: " << srcLoc.file_name() << '(' << srcLoc.line() << ':' << srcLoc.column() << ") "
 				   << srcLoc.function_name() << ": TimedOut! " << duration << " sec exceeds its timelimt "

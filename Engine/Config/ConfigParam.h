@@ -51,11 +51,11 @@ namespace hbe
 			threadID(id)
 #endif // __DEBUG__
 		{
-			auto& settings = ConfigSystem::get();
+			auto& settings = ConfigSystem::Get();
 			settings.Register(*this);
 		}
 
-		[[nodiscard]] StaticString getName() const
+		[[nodiscard]] StaticString GetName() const
 		{
 #if ENGINE_PARAM_DESC_ENABLED
 			return name;
@@ -64,7 +64,7 @@ namespace hbe
 #endif // ENGINE_PARAM_DESC_ENABLED
 		}
 
-		[[nodiscard]] StaticString getDescription() const
+		[[nodiscard]] StaticString GetDescription() const
 		{
 #if ENGINE_PARAM_DESC_ENABLED
 			return desc;
@@ -73,7 +73,7 @@ namespace hbe
 #endif // ENGINE_PARAM_DESC_ENABLED
 		}
 
-		[[nodiscard]] T get() const noexcept
+		[[nodiscard]] T Get() const noexcept
 		{
 #ifdef __DEBUG__
 			Assert(IsAtomic || std::this_thread::get_id() == threadID);
@@ -82,7 +82,7 @@ namespace hbe
 			return value;
 		}
 
-		void set(const T& inValue) noexcept
+		void Set(const T& inValue) noexcept
 		{
 #ifdef __DEBUG__
 			Assert(IsAtomic || std::this_thread::get_id() == threadID);

@@ -14,20 +14,20 @@
 
 namespace
 {
-	void signalHandler(int sigNum)
+	void SignalHandler(int sigNum)
 	{
 		using namespace hbe;
 
-		auto& engine = Engine::get();
-		engine.getLogger().stopTask(engine.getTaskSystem());
-		engine.logError([sigNum](auto& ls) { ls << "ERROR: signal(" << sigNum << ") received. The application shall be terminated."; });
-		engine.logError([](auto& ls) {
-			auto stackTrace = OS::getBackTrace();
+		auto& engine = Engine::Get();
+		engine.GetLogger().StopTask(engine.GetTaskSystem());
+		engine.LogError([sigNum](auto& ls) { ls << "ERROR: signal(" << sigNum << ") received. The application shall be terminated."; });
+		engine.LogError([](auto& ls) {
+			auto stackTrace = OS::GetBackTrace();
 			ls << stackTrace << std::endl;
 		});
 
-		engine.logError([](auto& ls) { ls << "Thank you for playing. Have a great day! :)" << std::endl; });
-		engine.closeLog();
+		engine.LogError([](auto& ls) { ls << "Thank you for playing. Have a great day! :)" << std::endl; });
+		engine.CloseLog();
 
 		exit(128 + sigNum);
 	}
@@ -38,7 +38,7 @@ namespace hbe
 {
 	static Engine* engineInstance = nullptr;
 
-	Engine& Engine::get()
+	Engine& Engine::Get()
 	{
 		Assert(engineInstance != nullptr);
 		return *engineInstance;
@@ -58,98 +58,98 @@ namespace hbe
 		, statistics(*this)
 		, logger(*this, "./", "hardbop.log")
 	{
-		std::signal(SIGABRT, signalHandler);
+		std::signal(SIGABRT, SignalHandler);
 #ifdef SIGBUS
-		std::signal(SIGBUS, signalHandler);
+		std::signal(SIGBUS, SignalHandler);
 #endif // SIGBUS
-		std::signal(SIGFPE, signalHandler);
-		std::signal(SIGILL, signalHandler);
-		std::signal(SIGINT, signalHandler);
-		std::signal(SIGSEGV, signalHandler);
-		std::signal(SIGTERM, signalHandler);
+		std::signal(SIGFPE, SignalHandler);
+		std::signal(SIGILL, SignalHandler);
+		std::signal(SIGINT, SignalHandler);
+		std::signal(SIGSEGV, SignalHandler);
+		std::signal(SIGTERM, SignalHandler);
 	}
 
 	Engine::~Engine()
 	{
-		closeLog();
+		CloseLog();
 	}
 
-	void Engine::initialize(int argc, const char* argv[])
+	void Engine::Initialize(int argc, const char* argv[])
 	{
-		taskSystem.initialize();
+		taskSystem.Initialize();
 		isTaskSystemReady = true;
 
-		logger.startTask(taskSystem);
+		logger.StartTask(taskSystem);
 		isLoggerReady = true;
 
-		auto log = Logger::get(getClassName());
+		auto log = Logger::Get(GetClassName());
 
-		log.out("Command Line Arguments");
+		log.Out("Command Line Arguments");
 
 		for (int i = 0; i < argc; ++i)
 		{
-			log.out([i, argv](auto& ls) { ls << i << " : " << argv[i]; });
+			log.Out([i, argv](auto& ls) { ls << i << " : " << argv[i]; });
 		}
 
-		log.out("Engine has been initialized.");
+		log.Out("Engine has been initialized.");
 
-		application = OS::createApplication();
-		fatalAssert(application != nullptr);
-		application->initialize();
+		application = OS::CreateApplication();
+		FatalAssert(application != nullptr);
+		application->Initialize();
 
-		postInitialize();
+		PostInitialize();
 	}
 
-	void Engine::run()
+	void Engine::Run()
 	{
 		while (taskSystem.GetMainThreadTaskQueue().HasPendingTasks() || taskSystem.IsRunning())
 		{
-			taskSystem.processMainThreadTasks();
+			taskSystem.ProcessMainThreadTasks();
 			std::this_thread::yield();
 		}
 
-		taskSystem.joinAndClear();
-		taskSystem.processMainThreadTasks();
+		taskSystem.JoinAndClear();
+		taskSystem.ProcessMainThreadTasks();
 
 		// It may terminate the application immediately.
-		fatalAssert(application != nullptr);
+		FatalAssert(application != nullptr);
 		application.reset();
 	}
 
-	void Engine::shutDown()
+	void Engine::ShutDown()
 	{
 		// Print final statistics
 		{
-			auto& configSys = ConfigSystem::get();
+			auto& configSys = ConfigSystem::Get();
 
 #ifdef __DEBUG__
 			//        const auto logLevel = static_cast<uint8_t>(ELogLevel::Verbose);
-			//        configSys.setByte("Log.Engine", logLevel);
-			//        configSys.setByte("Log.Level", logLevel);
+			//        configSys.SetByte("Log.Engine", logLevel);
+			//        configSys.SetByte("Log.Level", logLevel);
 #endif // __DEBUG__
 
-			auto& staticStrTable = StaticStringTable::getInstance();
-			staticStrTable.printStringTable();
-			configSys.printAllParameters();
-			statistics.print();
-			statistics.printAllocatorProfiles();
+			auto& staticStrTable = StaticStringTable::GetInstance();
+			staticStrTable.PrintStringTable();
+			configSys.PrintAllParameters();
+			statistics.Print();
+			statistics.PrintAllocatorProfiles();
 		}
 
-		preShutdown();
+		PreShutdown();
 
-		auto log = Logger::get(getClassName(), ELogLevel::Info);
-		log.out("Shutting down...");
+		auto log = Logger::Get(GetClassName(), ELogLevel::Info);
+		log.Out("Shutting down...");
 
-		taskSystem.requestShutDown();
+		taskSystem.RequestShutDown();
 	}
 
-	StaticString Engine::getClassName()
+	StaticString Engine::GetClassName()
 	{
 		static StaticString name("Engine");
 		return name;
 	}
 
-	void Engine::log(ELogLevel level, const TLogFunc& func)
+	void Engine::Log(ELogLevel level, const TLogFunc& func)
 	{
 #if ENGINE_LOG_ENABLED
 		static TAtomicConfigParam<uint8_t> CPEngineLogLevel("Log.Engine", "The Engine Log Level",
@@ -160,14 +160,14 @@ namespace hbe
 																 static_cast<uint8_t>(Config::EngineLogLevelPrint));
 
 		auto levelAsValue = static_cast<uint8_t>(level);
-		if (levelAsValue < CPEngineLogLevel.get())
+		if (levelAsValue < CPEngineLogLevel.Get())
 		{
 			return;
 		}
 
 		using namespace std;
 
-		const auto diff = chrono::steady_clock::now() - statistics.getStartTime();
+		const auto diff = chrono::steady_clock::now() - statistics.GetStartTime();
 		auto hours = chrono::duration_cast<chrono::hours>(diff);
 		auto minutes = chrono::duration_cast<chrono::minutes>(diff);
 		auto seconds = chrono::duration_cast<chrono::seconds>(diff);
@@ -178,19 +178,19 @@ namespace hbe
 		auto intSecs = seconds.count() % 60;
 		auto intMSecs = milliSeconds.count() % 1000;
 
-		statistics.incEngineLogCount();
+		statistics.IncEngineLogCount();
 
 		{
 			std::lock_guard lock(logLock);
 
-			if (levelAsValue >= CPEnginePrintLogLevel.get())
+			if (levelAsValue >= CPEnginePrintLogLevel.Get())
 			{
 				std::stringstream ss;
 				ss << '[' << intHours << ':' << intMins << ':' << intSecs << '.' << intMSecs << "] ";
 
 				func(ss);
 
-				consoleOutLn(ss.str().c_str());
+				ConsoleOutLn(ss.str().c_str());
 				ss.str("");
 			}
 
@@ -205,7 +205,7 @@ namespace hbe
 #endif // ENGINE_LOG_ENABLED
 	}
 
-	void Engine::closeLog()
+	void Engine::CloseLog()
 	{
 		if (!logFile.is_open())
 		{
@@ -215,9 +215,9 @@ namespace hbe
 		logFile.flush();
 	}
 
-	void Engine::flushLog()
+	void Engine::FlushLog()
 	{
-		logger.flush();
+		logger.Flush();
 
 		if (!logFile.is_open())
 		{
@@ -227,38 +227,38 @@ namespace hbe
 		logFile.flush();
 	}
 
-	void Engine::consoleOutLn(const char* str)
+	void Engine::ConsoleOutLn(const char* str)
 	{
 		std::lock_guard lock(consoleOutLock);
 		std::cout << str << std::endl;
 	}
 
-	void Engine::postInitialize()
+	void Engine::PostInitialize()
 	{
 		using namespace StringUtil;
-		auto log = Logger::get(toCompactMethodName(__PRETTY_FUNCTION__));
+		auto log = Logger::Get(ToCompactMethodName(__PRETTY_FUNCTION__));
 
-		log.out("Engine PostInitialize [Start]");
+		log.Out("Engine PostInitialize [Start]");
 
-		memoryManager.postEngineInit();
+		memoryManager.PostEngineInit();
 
-		log.out("Engine PostInitialize [Done]");
+		log.Out("Engine PostInitialize [Done]");
 	}
 
-	void Engine::preShutdown()
+	void Engine::PreShutdown()
 	{
 		using namespace StringUtil;
-		auto log = Logger::get(toCompactMethodName(__PRETTY_FUNCTION__));
+		auto log = Logger::Get(ToCompactMethodName(__PRETTY_FUNCTION__));
 
-		log.out("Engine PreShutdown [Start]");
+		log.Out("Engine PreShutdown [Start]");
 
 #if PROFILE_ENABLED
-		logger.reportMemoryConfiguration();
+		logger.ReportMemoryConfiguration();
 #endif // PROFILE_ENABLED
 
-		memoryManager.preEngineShutdown();
+		memoryManager.PreEngineShutdown();
 
-		log.out("Engine PreShutdown [Done]");
+		log.Out("Engine PreShutdown [Done]");
 	}
 
 } // namespace hbe

@@ -10,13 +10,13 @@
 namespace OS
 {
 
-void ProtectionMode::setForbidden() noexcept { value |= PROT_NONE; }
+void ProtectionMode::SetForbidden() noexcept { value |= PROT_NONE; }
 
-void ProtectionMode::setReadable() noexcept { value |= PROT_READ; }
+void ProtectionMode::SetReadable() noexcept { value |= PROT_READ; }
 
-void ProtectionMode::setWritable() noexcept { value |= PROT_WRITE; }
+void ProtectionMode::SetWritable() noexcept { value |= PROT_WRITE; }
 
-void ProtectionMode::setExecutable() noexcept { value |= PROT_EXEC; }
+void ProtectionMode::SetExecutable() noexcept { value |= PROT_EXEC; }
 
 } // namespace OS
 

@@ -27,7 +27,7 @@ public:
 	~HUnorderedMapTest() override = default;
 
 protected:
-	void prepare() override;
+	void Prepare() override;
 };
 } // namespace hbe
 #endif //__UNIT_TEST__

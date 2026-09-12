@@ -15,7 +15,7 @@ namespace
 
 constexpr uint32_t MaxInstanceExtensionProbe = 64;
 
-DeviceType toDeviceType(VkPhysicalDeviceType type) noexcept
+DeviceType ToDeviceType(VkPhysicalDeviceType type) noexcept
 {
 	switch (type)
 	{
@@ -36,7 +36,7 @@ DeviceType toDeviceType(VkPhysicalDeviceType type) noexcept
 /// @brief Copy a Vulkan fixed-size, null-terminated string into our shorter fixed buffer.
 /// @details Truncated with the terminator always written, because a device name we later
 ///          print must never run past MaxDeviceNameLength.
-void copyDeviceName(const char* source, char (&destination)[RenderCapabilities::MaxDeviceNameLength]) noexcept
+void CopyDeviceName(const char* source, char (&destination)[RenderCapabilities::MaxDeviceNameLength]) noexcept
 {
 	constexpr size_t MaxCopyLength = RenderCapabilities::MaxDeviceNameLength - 1;
 	const size_t copyLength = std::min<std::size_t>(std::strlen(source), MaxCopyLength);
@@ -46,7 +46,7 @@ void copyDeviceName(const char* source, char (&destination)[RenderCapabilities::
 }
 
 /// @brief Whether the Vulkan loader advertises an instance-level extension.
-bool hasInstanceExtension(const char* extensionName) noexcept
+bool HasInstanceExtension(const char* extensionName) noexcept
 {
 	uint32_t availableCount = 0;
 	if (vkEnumerateInstanceExtensionProperties(nullptr, &availableCount, nullptr) != VK_SUCCESS || availableCount == 0)
@@ -75,16 +75,16 @@ bool hasInstanceExtension(const char* extensionName) noexcept
 
 } // namespace
 
-void fillRenderCapabilities(VkPhysicalDevice physicalDevice, RenderCapabilities& outCapabilities) noexcept
+void FillRenderCapabilities(VkPhysicalDevice physicalDevice, RenderCapabilities& outCapabilities) noexcept
 {
-	static const auto log = Logger::get("VulkanCapabilities", ELogLevel::Error);
+	static const auto log = Logger::Get("VulkanCapabilities", ELogLevel::Error);
 
 	// Start from "unknown" so a failed query can never leave stale or invented values behind.
 	outCapabilities = RenderCapabilities();
 
 	if (physicalDevice == VK_NULL_HANDLE)
 	{
-		log.outError("Error: cannot query capabilities from a null physical device; leaving capabilities unqueried");
+		log.OutError("Error: cannot query capabilities from a null physical device; leaving capabilities unqueried");
 		return;
 	}
 
@@ -97,8 +97,8 @@ void fillRenderCapabilities(VkPhysicalDevice physicalDevice, RenderCapabilities&
 	vkGetPhysicalDeviceFeatures(physicalDevice, &features);
 
 	// Identity.
-	copyDeviceName(properties.deviceName, outCapabilities.deviceName);
-	outCapabilities.deviceType = toDeviceType(properties.deviceType);
+	CopyDeviceName(properties.deviceName, outCapabilities.deviceName);
+	outCapabilities.deviceType = ToDeviceType(properties.deviceType);
 	outCapabilities.vendorId = properties.vendorID;
 	outCapabilities.deviceId = properties.deviceID;
 	outCapabilities.driverVersion = properties.driverVersion;
@@ -154,9 +154,9 @@ void fillRenderCapabilities(VkPhysicalDevice physicalDevice, RenderCapabilities&
 	outCapabilities.isDeviceQueried = true;
 }
 
-bool queryDefaultDeviceCapabilities(RenderCapabilities& outCapabilities) noexcept
+bool QueryDefaultDeviceCapabilities(RenderCapabilities& outCapabilities) noexcept
 {
-	static const auto log = Logger::get("VulkanCapabilities", ELogLevel::Warning);
+	static const auto log = Logger::Get("VulkanCapabilities", ELogLevel::Warning);
 
 	outCapabilities = RenderCapabilities();
 
@@ -170,7 +170,7 @@ bool queryDefaultDeviceCapabilities(RenderCapabilities& outCapabilities) noexcep
 	// required to offer it, and enabling an extension the loader does not have fails instance
 	// creation outright, so it is enabled conditionally - unlike VulkanRenderer::CreateInstance,
 	// which can assume a portability driver on macOS and asks for it unconditionally.
-	const bool enablePortabilityEnumeration = hasInstanceExtension(VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME);
+	const bool enablePortabilityEnumeration = HasInstanceExtension(VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME);
 	const char* enabledExtensions[] = {VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME};
 
 	VkInstanceCreateInfo instanceInfo{};
@@ -189,7 +189,7 @@ bool queryDefaultDeviceCapabilities(RenderCapabilities& outCapabilities) noexcep
 	{
 		// No loader, no ICD, or an incompatible driver. That is a legitimate answer rather than
 		// a fault, so it is a warning and the caller keeps an explicitly unqueried descriptor.
-		log.outWarning([&createResult](auto& ls)
+		log.OutWarning([&createResult](auto& ls)
 		{
 			ls << "Warning: no Vulkan instance for the capability probe (VkResult=" << static_cast<int>(createResult)
 			   << "); capabilities stay unqueried";
@@ -201,7 +201,7 @@ bool queryDefaultDeviceCapabilities(RenderCapabilities& outCapabilities) noexcep
 	const VkResult countResult = vkEnumeratePhysicalDevices(instance, &deviceCount, nullptr);
 	if (countResult != VK_SUCCESS || deviceCount == 0)
 	{
-		log.outWarning([&countResult, &deviceCount](auto& ls)
+		log.OutWarning([&countResult, &deviceCount](auto& ls)
 		{
 			ls << "Warning: Vulkan exposed no physical device (VkResult=" << static_cast<int>(countResult)
 			   << ", count=" << deviceCount << "); capabilities stay unqueried";
@@ -218,7 +218,7 @@ bool queryDefaultDeviceCapabilities(RenderCapabilities& outCapabilities) noexcep
 	const VkResult fetchResult = vkEnumeratePhysicalDevices(instance, &deviceCount, &physicalDevice);
 	if (fetchResult != VK_SUCCESS)
 	{
-		log.outWarning([&fetchResult](auto& ls)
+		log.OutWarning([&fetchResult](auto& ls)
 		{
 			ls << "Warning: vkEnumeratePhysicalDevices (fetch) failed (VkResult=" << static_cast<int>(fetchResult)
 			   << "); capabilities stay unqueried";
@@ -226,7 +226,7 @@ bool queryDefaultDeviceCapabilities(RenderCapabilities& outCapabilities) noexcep
 	}
 	else
 	{
-		fillRenderCapabilities(physicalDevice, outCapabilities);
+		FillRenderCapabilities(physicalDevice, outCapabilities);
 	}
 
 	vkDestroyInstance(instance, nullptr);

@@ -13,7 +13,7 @@ namespace hbe
 namespace Renderer
 {
 
-bool RHICapabilities::isVulkanSupported() noexcept
+bool RHICapabilities::IsVulkanSupported() noexcept
 {
 #if VULKAN_SDK
 	return true;
@@ -22,13 +22,13 @@ bool RHICapabilities::isVulkanSupported() noexcept
 #endif
 }
 
-RenderCapabilities RHICapabilities::getCapabilities() noexcept
+RenderCapabilities RHICapabilities::GetCapabilities() noexcept
 {
 	// Real values, read from the driver - see VulkanCapabilities for the translation. The
 	// descriptor self-reports as unqueried when no device answers, so callers can tell the
 	// difference between "this machine has nothing" and "nobody asked".
 	RenderCapabilities capabilities;
-	queryDefaultDeviceCapabilities(capabilities);
+	QueryDefaultDeviceCapabilities(capabilities);
 
 	return capabilities;
 }
@@ -41,15 +41,15 @@ RenderCapabilities RHICapabilities::getCapabilities() noexcept
 namespace hbe
 {
 
-void RHICapabilitiesTest::prepare()
+void RHICapabilitiesTest::Prepare()
 {
-	addTest("IsVulkanSupported", [](auto& ls)
+	AddTest("IsVulkanSupported", [](auto& ls)
 	{
-		auto supported = Renderer::RHICapabilities::isVulkanSupported();
+		auto supported = Renderer::RHICapabilities::IsVulkanSupported();
 		ls << (supported ? "true" : "false");
 	});
 
-	addTest("RenderCapabilities starts explicitly unknown", [](auto& ls)
+	AddTest("RenderCapabilities starts explicitly unknown", [](auto& ls)
 	{
 		const Renderer::RenderCapabilities caps;
 
@@ -67,9 +67,9 @@ void RHICapabilitiesTest::prepare()
 		Assert(caps.deviceType == Renderer::DeviceType::Unknown, "Unqueried device type must be Unknown");
 	});
 
-	addTest("GetCapabilities reports what the device supports", [](auto& ls)
+	AddTest("GetCapabilities reports what the device supports", [](auto& ls)
 	{
-		const Renderer::RenderCapabilities caps = Renderer::RHICapabilities::getCapabilities();
+		const Renderer::RenderCapabilities caps = Renderer::RHICapabilities::GetCapabilities();
 
 		if (!caps.isDeviceQueried)
 		{
@@ -104,10 +104,10 @@ void RHICapabilitiesTest::prepare()
 		Assert(caps.supportsComputeShader, "Vulkan always supports compute shaders");
 	});
 
-	addTest("Repeated probes are stable", [](auto& ls)
+	AddTest("Repeated probes are stable", [](auto& ls)
 	{
-		const Renderer::RenderCapabilities first = Renderer::RHICapabilities::getCapabilities();
-		const Renderer::RenderCapabilities second = Renderer::RHICapabilities::getCapabilities();
+		const Renderer::RenderCapabilities first = Renderer::RHICapabilities::GetCapabilities();
+		const Renderer::RenderCapabilities second = Renderer::RHICapabilities::GetCapabilities();
 
 		ls << "queried=" << first.isDeviceQueried;
 		Assert(first.isDeviceQueried == second.isDeviceQueried, "Two probes must agree on availability");

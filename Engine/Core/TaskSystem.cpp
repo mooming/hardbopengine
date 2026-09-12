@@ -20,7 +20,7 @@ namespace
 	thread_local TaskSystem::TIndex StreamIndex = 0;
 	} // namespace
 
-	TaskSystem::TIndex TaskSystem::getNumHardwareThreads() noexcept
+	TaskSystem::TIndex TaskSystem::GetNumHardwareThreads() noexcept
 	{
 		const auto hardwareConcurrency = std::thread::hardware_concurrency();
 		const auto numAvaibleHardwareThreads = static_cast<TIndex>(hardwareConcurrency);
@@ -28,37 +28,37 @@ namespace
 		return numAvaibleHardwareThreads;
 	}
 
-	void TaskSystem::setThreadName(StaticString name) noexcept
+	void TaskSystem::SetThreadName(StaticString name) noexcept
 	{
 		ThreadName = name;
 	}
 
-	void TaskSystem::setStreamIndex(TIndex index) noexcept
+	void TaskSystem::SetStreamIndex(TIndex index) noexcept
 	{
 		StreamIndex = index;
 	}
 
-	StaticString TaskSystem::getCurrentStreamName() noexcept
+	StaticString TaskSystem::GetCurrentStreamName() noexcept
 	{
 		return ThreadName;
 	}
 
-	StaticString TaskSystem::getCurrentThreadName() noexcept
+	StaticString TaskSystem::GetCurrentThreadName() noexcept
 	{
 		return ThreadName;
 	}
 
-	TaskSystem::TIndex TaskSystem::getCurrentStreamIndex() noexcept
+	TaskSystem::TIndex TaskSystem::GetCurrentStreamIndex() noexcept
 	{
 		return StreamIndex;
 	}
 
-	bool TaskSystem::isBaseThread() noexcept
+	bool TaskSystem::IsBaseThread() noexcept
 	{
 		return StreamIndex == BaseStreamIndex;
 	}
 
-	bool TaskSystem::isIOThread() noexcept
+	bool TaskSystem::IsIOThread() noexcept
 	{
 		return StreamIndex == IOStreamIndex;
 	}
@@ -66,42 +66,42 @@ namespace
 	TaskSystem::TaskSystem() noexcept
 		: isRunning(false)
 		, name("TaskSystem")
-		, numHardwareThreads(getNumHardwareThreads())
+		, numHardwareThreads(GetNumHardwareThreads())
 		, baseTaskThreadID(std::this_thread::get_id())
 	{
-		fatalAssert(numHardwareThreads > 0, "It should have at least one hardware thread.");
+		FatalAssert(numHardwareThreads > 0, "It should have at least one hardware thread.");
 	}
 
 	TaskSystem::~TaskSystem() noexcept
 	{
-		joinAndClear();
+		JoinAndClear();
 	}
 
-	void TaskSystem::initialize() noexcept
+	void TaskSystem::Initialize() noexcept
 	{
-		auto& logger = Logger::get();
+		auto& logger = Logger::Get();
 		auto logFilter = [](auto level)
 		{
 			static TAtomicConfigParam<uint8_t> logLevel("Log.TaskSystem", "The TaskSystem Log Level",
 													static_cast<uint8_t>(ELogLevel::Warning));
 
-			return level > static_cast<ELogLevel>(logLevel.get());
+			return level > static_cast<ELogLevel>(logLevel.Get());
 		};
 
-		logger.setFilter(getName(), logFilter);
+		logger.SetFilter(GetName(), logFilter);
 
-		auto log = Logger::get(getName());
-		log.out([this](auto& ls) { ls << "Hardware Concurrency = " << numHardwareThreads; });
+		auto log = Logger::Get(GetName());
+		log.Out([this](auto& ls) { ls << "Hardware Concurrency = " << numHardwareThreads; });
 
-		buildStreams();
+		BuildStreams();
 	}
 
-	void TaskSystem::requestShutDown() noexcept
+	void TaskSystem::RequestShutDown() noexcept
 	{
 		isRunning = false;
 	}
 
-	void TaskSystem::joinAndClear() noexcept
+	void TaskSystem::JoinAndClear() noexcept
 	{
 		const bool isBaseThread = std::this_thread::get_id() == baseTaskThreadID;
 
@@ -109,14 +109,14 @@ namespace
 		{
 			while (isRunning || mainThreadTaskQueue.HasPendingTasks())
 			{
-				processMainThreadTasks();
+				ProcessMainThreadTasks();
 				std::this_thread::sleep_for(std::chrono::milliseconds(1));
 			}
 		}
 
 		for (auto& stream : streams)
 		{
-			auto& thread = stream.getThread();
+			auto& thread = stream.GetThread();
 			if (unlikely(!thread.joinable()))
 			{
 				continue;
@@ -125,16 +125,16 @@ namespace
 			thread.join();
 		}
 
-		streams.clear();
+		streams.Clear();
 	}
 
-	void TaskSystem::enqueue(const RangedTask& task) noexcept
+	void TaskSystem::Enqueue(const RangedTask& task) noexcept
 	{
 		std::scoped_lock<std::mutex> lock(taskQueueMutex);
-		taskQueue.push(task);
+		taskQueue.Push(task);
 	}
 
-	void TaskSystem::dequeue(std::optional<RangedTask>& outTask) noexcept
+	void TaskSystem::Dequeue(std::optional<RangedTask>& outTask) noexcept
 	{
 		std::scoped_lock<std::mutex> lock(taskQueueMutex);
 		if (taskQueue.IsEmpty())
@@ -143,7 +143,7 @@ namespace
 			return;
 		}
 
-		auto rangedTaskOpt = taskQueue.top();
+		auto rangedTaskOpt = taskQueue.Top();
 		if (!rangedTaskOpt.has_value())
 		{
 			outTask.reset();
@@ -151,22 +151,22 @@ namespace
 		}
 
 		const RangedTask& rangedTask = rangedTaskOpt.value();
-		const unsigned int streamIndex = getCurrentStreamIndex();
+		const unsigned int streamIndex = GetCurrentStreamIndex();
 
 		auto& affinity = rangedTask.affinity;
-		if (!affinity.get(streamIndex))
+		if (!affinity.Get(streamIndex))
 		{
-			affinity.set(streamIndex);
+			affinity.Set(streamIndex);
 			return;
 		}
 
 		outTask = rangedTask;
-		(void)taskQueue.pop();
+		(void)taskQueue.Pop();
 	}
 
-	void TaskSystem::enqueue(const TIndex streamIndex, const RangedTask& task) noexcept
+	void TaskSystem::Enqueue(const TIndex streamIndex, const RangedTask& task) noexcept
 	{
-		if (!streams.isValidIndex(streamIndex))
+		if (!streams.IsValidIndex(streamIndex))
 		{
 			Assert(false, "Invalid stream index %d", streamIndex);
 
@@ -174,38 +174,38 @@ namespace
 		}
 
 		auto& stream = streams[streamIndex];
-		stream.enqueue(task);
+		stream.Enqueue(task);
 	}
 
-	void TaskSystem::dispatchToMainThread(TMainThreadTask taskFunc, void* userData, uint8_t priority) noexcept
+	void TaskSystem::DispatchToMainThread(TMainThreadTask taskFunc, void* userData, uint8_t priority) noexcept
 	{
-		mainThreadTaskQueue.enqueue(taskFunc, userData, priority);
+		mainThreadTaskQueue.Enqueue(taskFunc, userData, priority);
 	}
 
-	size_t TaskSystem::processMainThreadTasks() noexcept
+	size_t TaskSystem::ProcessMainThreadTasks() noexcept
 	{
-		return mainThreadTaskQueue.processTasks();
+		return mainThreadTaskQueue.ProcessTasks();
 	}
 
-	StaticString TaskSystem::getStreamName(int index) const noexcept
+	StaticString TaskSystem::GetStreamName(int index) const noexcept
 	{
-		if (unlikely(!streams.isValidIndex(index)))
+		if (unlikely(!streams.IsValidIndex(index)))
 		{
 			static StaticString unknown("Unknown");
 			return unknown;
 		}
 
-		return streams[index].getName();
+		return streams[index].GetName();
 	}
 
-	TaskSystem::TIndex TaskSystem::getStreamIndex(TThreadID id) const noexcept
+	TaskSystem::TIndex TaskSystem::GetStreamIndex(TThreadID id) const noexcept
 	{
 		TIndex index = -1;
 
 		auto size = streams.Size();
 		for (decltype(size) i = 0; i < size; ++i)
 		{
-			if (auto& stream = streams[i]; stream.getThreadID() != id)
+			if (auto& stream = streams[i]; stream.GetThreadID() != id)
 			{
 				continue;
 			}
@@ -217,7 +217,7 @@ namespace
 		return index;
 	}
 
-	TaskStream& TaskSystem::getStream(int index) noexcept
+	TaskStream& TaskSystem::GetStream(int index) noexcept
 	{
 		if (index < 0 || index >= streams.Size())
 		{
@@ -227,32 +227,32 @@ namespace
 		return streams[index];
 	}
 
-	void TaskSystem::buildStreams()
+	void TaskSystem::BuildStreams()
 	{
-		Assert(isBaseThread());
-		fatalAssert(numHardwareThreads >= ENGINE_MIN_HARDWARE_THREADS,
+		Assert(IsBaseThread());
+		FatalAssert(numHardwareThreads >= ENGINE_MIN_HARDWARE_THREADS,
 			"Number of hardware threads are less than the minimum requirement");
 
-		setThreadName("Base");
-		setStreamIndex(-1);
+		SetThreadName("Base");
+		SetStreamIndex(-1);
 
 		TIndex workerIndexStart = 0;
 
-		auto log = Logger::get(getName());
-		log.out("# Creating TaskStreams ======================");
+		auto log = Logger::Get(GetName());
+		log.Out("# Creating TaskStreams ======================");
 
 		streams.Swap(Array<TaskStream>(numHardwareThreads));
 
 		// Pre-defined Engine Task Streams
 		{
-			auto index = getBaseTaskStreamIndex();
-			streams.emplace(index, "Main", index);
+			auto index = GetBaseTaskStreamIndex();
+			streams.Emplace(index, "Main", index);
 
-			index = getIOTaskStreamIndex();
-			streams.emplace(index, "IO", index);
+			index = GetIOTaskStreamIndex();
+			streams.Emplace(index, "IO", index);
 		}
 
-		workerIndexStart = getIOTaskStreamIndex() + 1;
+		workerIndexStart = GetIOTaskStreamIndex() + 1;
 
 		TIndex numWorkers = 0;
 
@@ -262,17 +262,17 @@ namespace
 			++numWorkers;
 			streamName << "Worker" << numWorkers;
 
-			streams.emplace(i, streamName.c_str(), i);
-			streamName.clear();
+			streams.Emplace(i, streamName.c_str(), i);
+			streamName.Clear();
 		}
 
-		log.out("# Starting TaskStreams ======================");
+		log.Out("# Starting TaskStreams ======================");
 
 		isRunning = true;
 
 		for (auto& stream : streams)
 		{
-			stream.start(*this);
+			stream.Start(*this);
 		}
 	}
 } // namespace hbe
@@ -286,9 +286,9 @@ namespace
 namespace hbe
 {
 
-void TaskSystemTest::prepare()
+void TaskSystemTest::Prepare()
 {
-	addTest("Empty Task", [this](TLogOut& ls)
+	AddTest("Empty Task", [this](TLogOut& ls)
 	{
 		Task task;
 		if (task.HasDone())
@@ -297,12 +297,12 @@ void TaskSystemTest::prepare()
 		}
 	});
 
-	addTest("Task of size 0", [this](TLogOut& ls)
+	AddTest("Task of size 0", [this](TLogOut& ls)
 	{
 		auto func = [](void*, std::size_t start, std::size_t end) -> std::size_t
 		{
-			auto log = Logger::get("Size 0 Task");
-			log.out([&](auto& ls) { ls << "Range[" << (start + 1) << ", " << end << ')'; });
+			auto log = Logger::Get("Size 0 Task");
+			log.Out([&](auto& ls) { ls << "Range[" << (start + 1) << ", " << end << ')'; });
 
 			return 1;
 		};
@@ -313,10 +313,10 @@ void TaskSystemTest::prepare()
 			ls << "The task should not be marked done before running." << lferr;
 		}
 
-		auto& engine = Engine::get();
-		auto& taskSys = engine.getTaskSystem();
-		taskSys.enqueue(task.generateSubTask(0, 0));
-		task.busyWait();
+		auto& engine = Engine::Get();
+		auto& taskSys = engine.GetTaskSystem();
+		taskSys.Enqueue(task.GenerateSubTask(0, 0));
+		task.BusyWait();
 
 		if (!task.HasDone())
 		{
@@ -324,7 +324,7 @@ void TaskSystemTest::prepare()
 		}
 	});
 
-	addTest("Bagel Problem", [this](TLogOut& ls)
+	AddTest("Bagel Problem", [this](TLogOut& ls)
 	{
 		constexpr std::size_t Count = 1000000;
 		constexpr std::size_t NumSubtasks = 10;
@@ -356,15 +356,15 @@ void TaskSystemTest::prepare()
 			ls << "The task should not be marked done before running." << lferr;
 		}
 
-		auto& engine = Engine::get();
-		auto& taskSys = engine.getTaskSystem();
+		auto& engine = Engine::Get();
+		auto& taskSys = engine.GetTaskSystem();
 
 		for (std::size_t i = 0; i < Count; i += Increment)
 		{
-			taskSys.enqueue(task.generateSubTask(i , i + Increment));
+			taskSys.Enqueue(task.GenerateSubTask(i , i + Increment));
 		}
 
-		task.busyWait();
+		task.BusyWait();
 
 		if (!task.HasDone())
 		{
@@ -381,7 +381,7 @@ void TaskSystemTest::prepare()
 		}
 	});
 
-	addTest("Bagel Problem (Incremental Task)", [this](TLogOut& ls)
+	AddTest("Bagel Problem (Incremental Task)", [this](TLogOut& ls)
 	{
 		constexpr std::size_t Count = 1000000;
 		constexpr std::size_t NumSubtasks = 5;
@@ -414,15 +414,15 @@ void TaskSystemTest::prepare()
 			ls << "The task should not be marked done before running." << lferr;
 		}
 
-		auto& engine = Engine::get();
-		auto& taskSys = engine.getTaskSystem();
+		auto& engine = Engine::Get();
+		auto& taskSys = engine.GetTaskSystem();
 
 		for (std::size_t i = 0; i < Count; i += Increment)
 		{
-			taskSys.enqueue(task.generateSubTask(i , i + Increment));
+			taskSys.Enqueue(task.GenerateSubTask(i , i + Increment));
 		}
 
-		task.busyWait();
+		task.BusyWait();
 
 		if (!task.HasDone())
 		{

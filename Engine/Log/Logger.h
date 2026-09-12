@@ -52,36 +52,36 @@ public:
 		const ELogLevel level;
 
 		explicit SimpleLogger(StaticString category, ELogLevel level = ELogLevel::Info) noexcept;
-		void out(const TLogFunction& logFunc) const noexcept;
-		void out(ELogLevel level, const TLogFunction& logFunc) const noexcept;
+		void Out(const TLogFunction& logFunc) const noexcept;
+		void Out(ELogLevel level, const TLogFunction& logFunc) const noexcept;
 
-		void outWarning(const TLogFunction& logFunc) const noexcept { out(ELogLevel::Warning, logFunc); }
-		void outError(const TLogFunction& logFunc) const noexcept { out(ELogLevel::Error, logFunc); }
-		void outFatalError(const TLogFunction& logFunc) const noexcept { out(ELogLevel::FatalError, logFunc); }
+		void OutWarning(const TLogFunction& logFunc) const noexcept { Out(ELogLevel::Warning, logFunc); }
+		void OutError(const TLogFunction& logFunc) const noexcept { Out(ELogLevel::Error, logFunc); }
+		void OutFatalError(const TLogFunction& logFunc) const noexcept { Out(ELogLevel::FatalError, logFunc); }
 
-		void out(const char* text) const noexcept
+		void Out(const char* text) const noexcept
 		{
-			out([text](auto& ls) { ls << text; });
+			Out([text](auto& ls) { ls << text; });
 		}
 
-		void out(ELogLevel level, const char* text) const noexcept
+		void Out(ELogLevel level, const char* text) const noexcept
 		{
-			out(level, [text](auto& ls) { ls << text; });
+			Out(level, [text](auto& ls) { ls << text; });
 		}
 
-		void outWarning(const char* text) const noexcept
+		void OutWarning(const char* text) const noexcept
 		{
-			outWarning([text](auto& ls) { ls << text; });
+			OutWarning([text](auto& ls) { ls << text; });
 		}
 
-		void outError(const char* text) const noexcept
+		void OutError(const char* text) const noexcept
 		{
-			outError([text](auto& ls) { ls << text; });
+			OutError([text](auto& ls) { ls << text; });
 		}
 
-		void outFatalError(const char* text) const noexcept
+		void OutFatalError(const char* text) const noexcept
 		{
-			outFatalError([text](auto& ls) { ls << text; });
+			OutFatalError([text](auto& ls) { ls << text; });
 		}
 	};
 
@@ -108,8 +108,8 @@ private:
 	std::mutex inputLock;
 
 public:
-	static Logger& get() noexcept;
-	static SimpleLogger get(StaticString category, ELogLevel level = ELogLevel::Info) noexcept;
+	static Logger& Get() noexcept;
+	static SimpleLogger Get(StaticString category, ELogLevel level = ELogLevel::Info) noexcept;
 
 public:
 	Logger(const Logger&) = delete;
@@ -121,24 +121,24 @@ public:
 	Logger(Engine& engine, const char* path, const char* filename) noexcept;
 	~Logger() noexcept;
 
-	[[nodiscard]] static StaticString getName() noexcept;
-	void startTask(TaskSystem& taskSys);
-	void stopTask(TaskSystem& taskSys);
+	[[nodiscard]] static StaticString GetName() noexcept;
+	void StartTask(TaskSystem& taskSys);
+	void StopTask(TaskSystem& taskSys);
 
-	void setFilter(StaticString category, TLogFilter&& filter) noexcept;
-	void addLog(StaticString category, ELogLevel level, const TLogFunction& logFunc) noexcept;
-	void flush() noexcept;
+	void SetFilter(StaticString category, TLogFilter&& filter) noexcept;
+	void AddLog(StaticString category, ELogLevel level, const TLogFunction& logFunc) noexcept;
+	void Flush() noexcept;
 
 #if PROFILE_ENABLED
-	void reportMemoryConfiguration();
+	void ReportMemoryConfiguration();
 #endif // PROFILE_ENABLED
 
 private:
-	void processBuffer() noexcept;
-	void flushBuffer(const TTextBuffer& buffer) const noexcept;
+	void ProcessBuffer() noexcept;
+	void FlushBuffer(const TTextBuffer& buffer) const noexcept;
 
-	void writeLog(const TTextBuffer& buffer) noexcept;
-	static void printStdIO(const TTextBuffer& buffer) noexcept;
+	void WriteLog(const TTextBuffer& buffer) noexcept;
+	static void PrintStdIO(const TTextBuffer& buffer) noexcept;
 };
 
 using TLog = Logger::SimpleLogger;

@@ -29,7 +29,7 @@ namespace hbe
 
 		AABB(const TVec& min, const TVec& max) noexcept : min(min), max(max) {}
 
-		void reset() noexcept
+		void Reset() noexcept
 		{
 			min = TVec::Unity * MAX;
 			max = -TVec::Unity * MAX;
@@ -51,33 +51,33 @@ namespace hbe
 			return result;
 		}
 
-		void operator+=(const TVec& rhs) noexcept { add(rhs); }
+		void operator+=(const TVec& rhs) noexcept { Add(rhs); }
 
-		void operator+=(const This& rhs) noexcept { add(rhs); }
+		void operator+=(const This& rhs) noexcept { Add(rhs); }
 
 		[[nodiscard]] bool operator==(const This& rhs) const noexcept
 		{
-			return isContaining(rhs) && rhs.isContaining(*this);
+			return IsContaining(rhs) && rhs.IsContaining(*this);
 		}
 
 		[[nodiscard]] bool operator!=(const This& rhs) const noexcept { return !(*this == rhs); }
 
-		void add(const TVec& point) noexcept
+		void Add(const TVec& point) noexcept
 		{
 			for (int i = 0; i < TVec::order; ++i)
 			{
-				min.a[i] = minFast(point.a[i], min.a[i]);
-				max.a[i] = maxFast(point.a[i], max.a[i]);
+				min.a[i] = MinFast(point.a[i], min.a[i]);
+				max.a[i] = MaxFast(point.a[i], max.a[i]);
 			}
 		}
 
-		void add(const This& aabb) noexcept
+		void Add(const This& aabb) noexcept
 		{
-			add(aabb.min);
-			add(aabb.max);
+			Add(aabb.min);
+			Add(aabb.max);
 		}
 
-		void translate(const TVec& t) noexcept
+		void Translate(const TVec& t) noexcept
 		{
 			Assert(!IsEmpty(), "Do not translate an empty AABB! ", *this);
 			min += t;
@@ -97,7 +97,7 @@ namespace hbe
 			return false;
 		}
 
-		[[nodiscard]] bool isContaining(const TVec& point) const noexcept
+		[[nodiscard]] bool IsContaining(const TVec& point) const noexcept
 		{
 			if (IsEmpty())
 			{
@@ -120,42 +120,42 @@ namespace hbe
 			return true;
 		}
 
-		[[nodiscard]] bool isContaining(const This& aabb) const noexcept
+		[[nodiscard]] bool IsContaining(const This& aabb) const noexcept
 		{
-			return isContaining(aabb.min) && isContaining(aabb.max);
+			return IsContaining(aabb.min) && IsContaining(aabb.max);
 		}
 
-		[[nodiscard]] AABB intersection(const AABB& aabb) const noexcept
+		[[nodiscard]] AABB Intersection(const AABB& aabb) const noexcept
 		{
 			This result(nullptr);
 
 			for (int i = 0; i < TVec::order; ++i)
 			{
-				result.min.a[i] = maxFast(aabb.min.a[i], min.a[i]);
-				result.max.a[i] = minFast(aabb.max.a[i], max.a[i]);
+				result.min.a[i] = MaxFast(aabb.min.a[i], min.a[i]);
+				result.max.a[i] = MinFast(aabb.max.a[i], max.a[i]);
 			}
 
 			return result;
 		}
 
-		[[nodiscard]] bool hasIntersectionWith(const AABB& aabb) const noexcept
+		[[nodiscard]] bool HasIntersectionWith(const AABB& aabb) const noexcept
 		{
-			return !intersection(aabb).IsEmpty();
+			return !Intersection(aabb).IsEmpty();
 		}
 
-		[[nodiscard]] TVec center() const noexcept { return (min + max) * 0.5f; }
+		[[nodiscard]] TVec Center() const noexcept { return (min + max) * 0.5f; }
 
-		[[nodiscard]] TVec diagonal() const noexcept { return max - min; }
+		[[nodiscard]] TVec Diagonal() const noexcept { return max - min; }
 
-		[[nodiscard]] TVec half() const noexcept { return diagonal() * 0.5f; }
+		[[nodiscard]] TVec Half() const noexcept { return Diagonal() * 0.5f; }
 
-		[[nodiscard]] TVec closest(const TVec& point) const noexcept
+		[[nodiscard]] TVec Closest(const TVec& point) const noexcept
 		{
 			TVec closePt = point;
 
 			for (int i = 0; i < TVec::order; ++i)
 			{
-				closePt.a[i] = clampFast(point.a[i], min.a[i], max.a[i]);
+				closePt.a[i] = ClampFast(point.a[i], min.a[i], max.a[i]);
 			}
 
 			return closePt;
@@ -197,7 +197,7 @@ namespace hbe
 		AABBTest() : TestCollection("AABBTest") {}
 
 	protected:
-		void prepare() noexcept override;
+		void Prepare() noexcept override;
 	};
 
 } // namespace hbe

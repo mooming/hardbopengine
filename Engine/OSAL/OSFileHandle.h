@@ -22,9 +22,9 @@ public:
 	FileHandle(FileHandle&& rhs);
 	~FileHandle();
 
-	[[nodiscard]] size_t getFileSize() const noexcept;
+	[[nodiscard]] size_t GetFileSize() const noexcept;
 	[[nodiscard]] bool IsValid() const noexcept;
-	void invalidate() noexcept;
+	void Invalidate() noexcept;
 };
 
 } // namespace OS

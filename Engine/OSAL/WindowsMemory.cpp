@@ -10,13 +10,13 @@
 #include <sysinfoapi.h>
 #include <windows.h>
 
-size_t OS::getAllocSize(void* ptr) noexcept
+size_t OS::GetAllocSize(void* ptr) noexcept
 {
 	const auto allocSize = _msize(ptr);
 	return allocSize;
 }
 
-size_t OS::getPageSize() noexcept
+size_t OS::GetPageSize() noexcept
 {
 	auto GetPageSizeWindows = []()
 	{
@@ -44,12 +44,12 @@ void OS::VirtualFree(void* address, std::size_t n) noexcept
 	}
 }
 
-bool OS::isValidAllocation(void* ptr) noexcept
+bool OS::IsValidAllocation(void* ptr) noexcept
 {
 	return ptr != nullptr;
 }
 
-void OS::protectMemory(void* address, size_t n) noexcept
+void OS::ProtectMemory(void* address, size_t n) noexcept
 {
 	DWORD oldProtect = 0;
 	auto result = VirtualProtect(address, n, PAGE_NOACCESS, &oldProtect);
@@ -59,8 +59,8 @@ void OS::protectMemory(void* address, size_t n) noexcept
 	using namespace std;
 	auto errorId = GetLastError();
 
-	auto& engine = hbe::Engine::get();
-	engine.logError([address, n, errorId](auto& log)
+	auto& engine = hbe::Engine::Get();
+	engine.LogError([address, n, errorId](auto& log)
 	{ log << "[OS::ProtectMemory] address = " << address << ", n = " << n << " : error code = " << errorId << endl; });
 
 	hbe::Assert(false);

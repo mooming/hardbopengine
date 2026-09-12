@@ -6,9 +6,9 @@
 #ifdef __UNIT_TEST__
 #include "Matrix4x4.h"
 
-void hbe::UniformTransformTest::prepare() noexcept
+void hbe::UniformTransformTest::Prepare() noexcept
 {
-	addTest("Constants", [this](auto& ls)
+	AddTest("Constants", [this](auto& ls)
 	{
 		TUniformTRS tm;
 		ls << tm << lf;
@@ -36,7 +36,7 @@ void hbe::UniformTransformTest::prepare() noexcept
 			   << "the zero translation." << lferr;
 		}
 
-		TFloat4x4 mat = tm.toMatrix();
+		TFloat4x4 mat = tm.ToMatrix();
 		if (mat != TFloat4x4::Identity)
 		{
 			ls << "The default constructor of UniformTrs should be "
@@ -51,11 +51,11 @@ void hbe::UniformTransformTest::prepare() noexcept
 		}
 	});
 
-	addTest("Inverse Matrix", [this](auto& ls)
+	AddTest("Inverse Matrix", [this](auto& ls)
 	{
 		TUniformTRS tm(TFloat3(4, 5, 6), TQuat(0, 47, 0), 2);
 		TUniformTRS tm2(TFloat3(3, 4, 5), TQuat(41, 0, 25), 3);
-		TFloat4x4 tm3 = (tm * tm2).toMatrix();
+		TFloat4x4 tm3 = (tm * tm2).ToMatrix();
 
 		TFloat3 result1 = tm3 * TFloat4(TFloat3::Forward, 1.0f);
 		TFloat3 result2 = tm * (tm2 * TFloat3::Forward);
@@ -66,26 +66,26 @@ void hbe::UniformTransformTest::prepare() noexcept
 			   << lferr;
 		}
 
-		if (!tm3.isInvertible())
+		if (!tm3.IsInvertible())
 		{
 			ls << "Transform matrix should be invertible." << std::endl << tm3 << lferr;
 		}
 
-		TFloat3 result = tm3.inverse() * TFloat4(result1, 1.0f);
+		TFloat3 result = tm3.Inverse() * TFloat4(result1, 1.0f);
 		if (result != TFloat3::Forward)
 		{
 			ls << "Transform matrix inverse failed. " << result << ", but " << TFloat3::Forward << " expected." << lferr;
 		}
 
-		result = tm2.inverseTransform(tm.inverseTransform(result2));
+		result = tm2.InverseTransform(tm.InverseTransform(result2));
 		if (result != TFloat3::Forward)
 		{
 			ls << "Inverse transform failed. " << result << ", but " << TFloat3::Forward << " expected." << lferr;
 		}
 
-		if (tm3.inverse().inverse() != tm3)
+		if (tm3.Inverse().Inverse() != tm3)
 		{
-			ls << "Inverse of inverse transform failed. " << tm3.inverse().inverse() << ", but " << tm3 << " expected."
+			ls << "Inverse of inverse transform failed. " << tm3.Inverse().Inverse() << ", but " << tm3 << " expected."
 			   << lferr;
 		}
 	});

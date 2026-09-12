@@ -25,23 +25,23 @@ std::atomic<bool> running{true};
 
 // All matrices are column-major (element [col * 4 + row]), matching the GLSL mat4
 // layout that VulkanRenderer pushes to the shader.
-void setIdentity(float m[16]) noexcept
+void SetIdentity(float m[16]) noexcept
 {
 	std::memset(m, 0, sizeof(float) * 16);
 	m[0] = m[5] = m[10] = m[15] = 1.0f;
 }
 
-void setTranslation(float m[16], float x, float y, float z) noexcept
+void SetTranslation(float m[16], float x, float y, float z) noexcept
 {
-	setIdentity(m);
+	SetIdentity(m);
 	m[12] = x;
 	m[13] = y;
 	m[14] = z;
 }
 
-void setRotationY(float m[16], float radians) noexcept
+void SetRotationY(float m[16], float radians) noexcept
 {
-	setIdentity(m);
+	SetIdentity(m);
 	const float c = std::cos(radians);
 	const float s = std::sin(radians);
 	m[0] = c;	 m[2] = -s;
@@ -49,7 +49,7 @@ void setRotationY(float m[16], float radians) noexcept
 }
 
 /// @brief Right-handed perspective mapped into Vulkan's [0, 1] depth and Y-down framebuffer.
-void setPerspective(float m[16], float fovRadians, float aspect, float nearZ, float farZ) noexcept
+void SetPerspective(float m[16], float fovRadians, float aspect, float nearZ, float farZ) noexcept
 {
 	std::memset(m, 0, sizeof(float) * 16);
 	const float f = 1.0f / std::tan(fovRadians * 0.5f);
@@ -62,7 +62,7 @@ void setPerspective(float m[16], float fovRadians, float aspect, float nearZ, fl
 
 /// @brief A unit-ish quad in the XY plane facing +Z, so the fixed directional light
 ///        sweeps across it as it rotates about Y.
-Mesh makeQuad() noexcept
+Mesh MakeQuad() noexcept
 {
 	Mesh mesh;
 	mesh.vertices = {
@@ -81,55 +81,55 @@ int main(int argc, char* argv[]) noexcept {
 	std::signal(SIGTERM, [](int) { running = false; });
 
 	Engine hengine;
-	hengine.initialize(argc, (const char**)argv);
+	hengine.Initialize(argc, (const char**)argv);
 
-	auto app = OS::createApplication();
+	auto app = OS::CreateApplication();
 	if (!app) {
 		std::cerr << "Error: Failed to create application" << std::endl;
 		return 1;
 	}
 
-	app->initialize();
+	app->Initialize();
 
-	auto window = OS::createWindow("VulkanExample - Rotating Quad (Vulkan)", 800, 600);
+	auto window = OS::CreateWindow("VulkanExample - Rotating Quad (Vulkan)", 800, 600);
 	if (!window) {
 		std::cerr << "Error: Failed to create window" << std::endl;
 		return 1;
 	}
 
-	window->setVisible(true);
+	window->SetVisible(true);
 
 	// Vulkan-only: construct the concrete renderer directly (no factory, no inheritance).
 	VulkanRenderer renderer;
-	if (!renderer.initialize(window.get())) {
+	if (!renderer.Initialize(window.get())) {
 		// The logger is asynchronous: flush so its diagnostics survive this exit.
-		Logger::get().flush();
+		Logger::Get().Flush();
 		std::cerr << "Error: Failed to initialize Vulkan renderer" << std::endl;
 		return 1;
 	}
 
-	const Mesh quad = makeQuad();
-	renderer.setMesh(quad);
+	const Mesh quad = MakeQuad();
+	renderer.SetMesh(quad);
 
 	printf("Rendering with: Vulkan\n");
 
 	// The drawable follows the window content rect, so the aspect ratio comes from the
 	// renderer rather than the 800x600 we asked the window for.
-	const VkExtent2D extent = renderer.getExtent();
+	const VkExtent2D extent = renderer.GetExtent();
 
 	float view[16];
 	float proj[16];
 	float model[16];
-	setPerspective(proj, degreeToRadian(60.0f), static_cast<float>(extent.width) / static_cast<float>(extent.height),
+	SetPerspective(proj, DegreeToRadian(60.0f), static_cast<float>(extent.width) / static_cast<float>(extent.height),
 		0.1f, 100.0f);
-	setTranslation(view, 0.0f, 0.0f, -3.0f);
-	renderer.setView(view);
-	renderer.setProj(proj);
+	SetTranslation(view, 0.0f, 0.0f, -3.0f);
+	renderer.SetView(view);
+	renderer.SetProj(proj);
 
 	float angle = 0.0f;
 
-	while (running && !window->isClosed()) {
-		app->pollEvents();
+	while (running && !window->IsClosed()) {
+		app->PollEvents();
 
 		static auto lastTime = std::chrono::high_resolution_clock::now();
 		auto currentTime = std::chrono::high_resolution_clock::now();
@@ -139,19 +139,19 @@ int main(int argc, char* argv[]) noexcept {
 		angle += deltaTime * 1.2f;
 		if (angle > 2.0f * Pi) angle -= 2.0f * Pi;
 
-		setRotationY(model, angle);
-		renderer.setModel(model);
+		SetRotationY(model, angle);
+		renderer.SetModel(model);
 
-		renderer.beginFrame();
-		renderer.render(deltaTime);
-		renderer.endFrame();
+		renderer.BeginFrame();
+		renderer.Render(deltaTime);
+		renderer.EndFrame();
 
 		std::this_thread::sleep_for(std::chrono::milliseconds(16));
 	}
 
-	renderer.shutdown();
+	renderer.Shutdown();
 	window->Close();
-	hengine.shutDown();
+	hengine.ShutDown();
 
 	return 0;
 }

@@ -33,13 +33,13 @@ namespace hbe
 		{}
 #endif // _MSC_VER
 
-		[[nodiscard]] constexpr auto getID() const { return MemoryManager::SystemAllocatorID; }
+		[[nodiscard]] constexpr auto GetID() const { return MemoryManager::SystemAllocatorID; }
 
-		[[nodiscard]] T* allocate(std::size_t n) noexcept { return reinterpret_cast<T*>(allocateBytes(n * sizeof(T))); }
+		[[nodiscard]] T* allocate(std::size_t n) noexcept { return reinterpret_cast<T*>(AllocateBytes(n * sizeof(T))); }
 
 		void deallocate(T* ptr, std::size_t n) noexcept {
 			Assert(ptr != nullptr);
-			deallocateBytes(ptr, n * sizeof(T));
+			DeallocateBytes(ptr, n * sizeof(T));
 		}
 
 		template<class U>
@@ -54,10 +54,10 @@ namespace hbe
 			return false;
 		}
 
-		[[nodiscard]] auto getName() const { return "SystemAllocator"; }
+		[[nodiscard]] auto GetName() const { return "SystemAllocator"; }
 
 	private:
-		void* allocateBytes(std::size_t nBytes)
+		void* AllocateBytes(std::size_t nBytes)
 		{
 #if MEMORY_INVESTIGATION_ENABLED
 			if (unlikely(nBytes == 1))
@@ -65,7 +65,7 @@ namespace hbe
 				nBytes = 1;
 			}
 
-			const auto pageSize = OS::getPageSize();
+			const auto pageSize = OS::GetPageSize();
 			const size_t pageCount = (nBytes + pageSize - 1) / pageSize;
 			const size_t allocSize = pageCount * pageSize;
 			auto rawPtr = OS::VirtualAlloc(allocSize);
@@ -80,9 +80,9 @@ namespace hbe
 
 #if MEMORY_LOGGING_ENABLED
 			{
-				auto& engine = Engine::get();
-				engine.log(ELogLevel::Info, [this, rawPtr, ptr](auto& ls)
-				{ ls << '[' << getName() << "][Investigator] RawPtr = " << rawPtr << ", ptr = " << (void*) ptr; });
+				auto& engine = Engine::Get();
+				engine.Log(ELogLevel::Info, [this, rawPtr, ptr](auto& ls)
+				{ ls << '[' << GetName() << "][Investigator] RawPtr = " << rawPtr << ", ptr = " << (void*) ptr; });
 			}
 #endif // MEMORY_LOGGING_ENABLED
 
@@ -91,26 +91,26 @@ namespace hbe
 #endif // MEMORY_INVESTIGATION_ENABLED
 
 #if PROFILE_ENABLED
-			auto& mmgr = MemoryManager::getInstance();
+			auto& mmgr = MemoryManager::GetInstance();
 
 #if MEMORY_INVESTIGATION_ENABLED
 			const auto allocated = allocSize;
 #else // MEMORY_INVESTIGATION_ENABLED
-			const auto allocated = OS::getAllocSize(ptr);
+			const auto allocated = OS::GetAllocSize(ptr);
 #endif // MEMORY_INVESTIGATION_ENABLED
 
-			mmgr.reportAllocation(getID(), ptr, nBytes, allocated);
+			mmgr.ReportAllocation(GetID(), ptr, nBytes, allocated);
 #endif // PROFILE_ENABLED
 
 			return ptr;
 		}
 
-		void deallocateBytes(void* ptr, std::size_t nBytes)
+		void DeallocateBytes(void* ptr, std::size_t nBytes)
 		{
 			Assert(ptr != nullptr, "[SysAlloc][Dealloc] Null Pointer Error");
 
 #if MEMORY_INVESTIGATION_ENABLED
-			const auto pageSize = OS::getPageSize();
+			const auto pageSize = OS::GetPageSize();
 			const size_t pageCount = (nBytes + pageSize - 1) / pageSize;
 			const size_t allocSize = pageCount * pageSize;
 
@@ -127,7 +127,7 @@ namespace hbe
 #if PROFILE_ENABLED
 
 #ifndef MEMORY_INVESTIGATION_ENABLED
-			auto allocated = OS::getAllocSize(ptr);
+			auto allocated = OS::GetAllocSize(ptr);
 #else
 			const std::size_t allocated = nBytes;
 #endif // MEMORY_INVESTIGATION_ENABLED
@@ -136,14 +136,14 @@ namespace hbe
 			Assert(nBytes <= allocated);
 #endif // MEMORY_VERIFICATION_ENABLED
 
-			auto& mmgr = MemoryManager::getInstance();
-			mmgr.reportDeallocation(getID(), ptr, nBytes, allocated);
+			auto& mmgr = MemoryManager::GetInstance();
+			mmgr.ReportDeallocation(GetID(), ptr, nBytes, allocated);
 #endif // PROFILE_ENABLED
 
 #if MEMORY_INVESTIGATION_ENABLED
 
 #if MEMORY_DANGLING_POINTER_CHECK_ENABLED
-			OS::protectMemory(rawPtr, allocated);
+			OS::ProtectMemory(rawPtr, allocated);
 #else // MEMORY_DANGLING_POINTER_CHECK_ENABLED
 			OS::VirtualFree(rawPtr, allocated);
 #endif // MEMORY_DANGLING_POINTER_CHECK_ENABLED
@@ -166,7 +166,7 @@ namespace hbe
 		SystemAllocatorTest() : TestCollection("SystemAllocatorTest") {}
 
 	protected:
-		void prepare() override;
+		void Prepare() override;
 	};
 } // namespace hbe
 #endif //__UNIT_TEST__

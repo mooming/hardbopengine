@@ -13,7 +13,7 @@
 
 using namespace hbe;
 
-StaticString OS::getBackTrace(uint16_t startIndex, uint16_t maxDepth)
+StaticString OS::GetBackTrace(uint16_t startIndex, uint16_t maxDepth)
 {
 	constexpr size_t BufferSize = 8192;
 	constexpr size_t LineBufferSize = 2048;

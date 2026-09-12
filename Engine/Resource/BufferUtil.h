@@ -24,21 +24,21 @@ namespace hbe
 	{
 		using namespace BufferTypes;
 
-		[[nodiscard]] Buffer generateDummyBuffer(size_t size = std::numeric_limits<size_t>::max()) noexcept;
+		[[nodiscard]] Buffer GenerateDummyBuffer(size_t size = std::numeric_limits<size_t>::max()) noexcept;
 		[[nodiscard]] Buffer GenerateFileBuffer(StaticString path, OS::FileOpenMode openMode, OS::ProtectionMode protection,
 								  size_t size = 0);
-		[[nodiscard]] Buffer getFileBuffer(StaticString path);
-		[[nodiscard]] Buffer getReadOnlyFileBuffer(StaticString path);
-		[[nodiscard]] Buffer getWriteOnlyFileBuffer(StaticString path, size_t size);
+		[[nodiscard]] Buffer GetFileBuffer(StaticString path);
+		[[nodiscard]] Buffer GetReadOnlyFileBuffer(StaticString path);
+		[[nodiscard]] Buffer GetWriteOnlyFileBuffer(StaticString path, size_t size);
 
 		template<typename T>
-		[[nodiscard]] Buffer getMemoryBuffer(TSize numElements, const T& defaultValue)
+		[[nodiscard]] Buffer GetMemoryBuffer(TSize numElements, const T& defaultValue)
 		{
-			auto& mmgr = MemoryManager::getInstance();
+			auto& mmgr = MemoryManager::GetInstance();
 			auto generator = [&mmgr, numElements, defaultValue](TSize& outSize, TBufferData& outData)
 			{
 				outSize = numElements * sizeof(T);
-				auto ptr = mmgr.newArray<T>(numElements, defaultValue);
+				auto ptr = mmgr.NewArray<T>(numElements, defaultValue);
 				outData = reinterpret_cast<TBufferData>(ptr);
 			};
 
@@ -48,7 +48,7 @@ namespace hbe
 				Assert((numElements * sizeof(T)) == size);
 
 				auto ptr = reinterpret_cast<T*>(data);
-				mmgr.deleteArray<T>(ptr, numElements);
+				mmgr.DeleteArray<T>(ptr, numElements);
 			};
 
 			return Buffer(generator, releaser);

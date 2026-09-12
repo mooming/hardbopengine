@@ -73,7 +73,7 @@ namespace hbe
 
 		~Map()
 		{
-			release();
+			Release();
 		}
 
 		Map& operator=(const Map&) = delete;
@@ -82,7 +82,7 @@ namespace hbe
 		{
 			if (this != &rhs)
 			{
-				release();
+				Release();
 
 				entries = rhs.entries;
 				count = rhs.count;
@@ -103,77 +103,77 @@ namespace hbe
 
 		TValue& operator[](const TKey& key)
 		{
-			auto idx = findIndex(key);
+			auto idx = FindIndex(key);
 			if (idx >= 0)
 			{
 				return entries[idx].value;
 			}
 
-			idx = insertSorted(key);
+			idx = InsertSorted(key);
 			return entries[idx].value;
 		}
 
 		TValue& operator[](TKey&& key)
 		{
-			auto idx = findIndex(key);
+			auto idx = FindIndex(key);
 			if (idx >= 0)
 			{
 				return entries[idx].value;
 			}
 
-			idx = insertSorted(std::move(key));
+			idx = InsertSorted(std::move(key));
 			return entries[idx].value;
 		}
 
-		[[nodiscard]] Iterator find(const TKey& key) noexcept
+		[[nodiscard]] Iterator Find(const TKey& key) noexcept
 		{
-			auto idx = findIndex(key);
+			auto idx = FindIndex(key);
 			if (idx < 0)
 				return end();
 
 			return Iterator(entries + idx);
 		}
 
-		[[nodiscard]] ConstIterator find(const TKey& key) const noexcept
+		[[nodiscard]] ConstIterator Find(const TKey& key) const noexcept
 		{
-			auto idx = findIndex(key);
+			auto idx = FindIndex(key);
 			if (idx < 0)
 				return end();
 
 			return ConstIterator(entries + idx);
 		}
 
-		bool insert(const TKey& key, const TValue& value)
+		bool Insert(const TKey& key, const TValue& value)
 		{
-			auto idx = findIndex(key);
+			auto idx = FindIndex(key);
 			if (idx >= 0)
 				return false;
 
-			idx = insertSorted(key);
+			idx = InsertSorted(key);
 			entries[idx].value = value;
 
 			return true;
 		}
 
-		bool insert(const TKey& key, TValue&& value)
+		bool Insert(const TKey& key, TValue&& value)
 		{
-			auto idx = findIndex(key);
+			auto idx = FindIndex(key);
 			if (idx >= 0)
 				return false;
 
-			idx = insertSorted(key);
+			idx = InsertSorted(key);
 			entries[idx].value = std::move(value);
 
 			return true;
 		}
 
-		bool insert(TKey&& key, TValue&& value)
+		bool Insert(TKey&& key, TValue&& value)
 		{
-			auto idx = findIndex(key);
+			auto idx = FindIndex(key);
 			if (idx >= 0)
 				return false;
 
-			idx = insertSorted(std::move(key));
+			idx = InsertSorted(std::move(key));
 			entries[idx].value = std::move(value);
 
 			return true;
@@ -181,7 +181,7 @@ namespace hbe
 
 		bool Remove(const TKey& key)
 		{
-			auto idx = findIndex(key);
+			auto idx = FindIndex(key);
 			if (idx < 0)
 				return false;
 
@@ -198,15 +198,15 @@ namespace hbe
 			return true;
 		}
 
-		[[nodiscard]] bool contains(const TKey& key) const noexcept
+		[[nodiscard]] bool Contains(const TKey& key) const noexcept
 		{
-			return findIndex(key) >= 0;
+			return FindIndex(key) >= 0;
 		}
 
 		[[nodiscard]] TIndex Size() const noexcept { return count; }
 		[[nodiscard]] bool IsEmpty() const noexcept { return count == 0; }
 
-		void clear() noexcept
+		void Clear() noexcept
 		{
 			for (TIndex i = 0; i < count; ++i)
 			{
@@ -223,7 +223,7 @@ namespace hbe
 		TCompare compare;
 		TAllocator allocator;
 
-		[[nodiscard]] TIndex findIndex(const TKey& key) const noexcept
+		[[nodiscard]] TIndex FindIndex(const TKey& key) const noexcept
 		{
 			if (count == 0)
 				return -1;
@@ -252,7 +252,7 @@ namespace hbe
 			return -1;
 		}
 
-		[[nodiscard]] TIndex lowerBound(const TKey& key) const noexcept
+		[[nodiscard]] TIndex LowerBound(const TKey& key) const noexcept
 		{
 			TIndex lo = 0;
 			TIndex hi = count;
@@ -274,14 +274,14 @@ namespace hbe
 			return lo;
 		}
 
-		TIndex insertSorted(const TKey& key) noexcept
+		TIndex InsertSorted(const TKey& key) noexcept
 		{
 			if (count == cap)
 			{
-				grow();
+				Grow();
 			}
 
-			auto idx = lowerBound(key);
+			auto idx = LowerBound(key);
 
 			for (TIndex i = count; i > idx; --i)
 			{
@@ -295,14 +295,14 @@ namespace hbe
 			return idx;
 		}
 
-		TIndex insertSorted(TKey&& key) noexcept
+		TIndex InsertSorted(TKey&& key) noexcept
 		{
 			if (count == cap)
 			{
-				grow();
+				Grow();
 			}
 
-			auto idx = lowerBound(key);
+			auto idx = LowerBound(key);
 
 			for (TIndex i = count; i > idx; --i)
 			{
@@ -316,7 +316,7 @@ namespace hbe
 			return idx;
 		}
 
-		void grow() noexcept
+		void Grow() noexcept
 		{
 			auto newCap = std::max(DefaultCapacity, cap * 2);
 			auto allocSize = sizeof(Pair) * newCap;
@@ -339,7 +339,7 @@ namespace hbe
 			cap = newCap;
 		}
 
-		void release() noexcept
+		void Release() noexcept
 		{
 			returnIf(entries == nullptr);
 
@@ -371,7 +371,7 @@ namespace hbe
 		MapTest() : TestCollection("MapTest") {}
 
 	protected:
-		void prepare() override;
+		void Prepare() override;
 	};
 
 } // namespace hbe

@@ -10,17 +10,17 @@
 namespace OS
 {
 
-void FileOpenMode::setReadOnly() noexcept { value |= O_RDONLY; }
+void FileOpenMode::SetReadOnly() noexcept { value |= O_RDONLY; }
 
-void FileOpenMode::setWriteOnly() noexcept { value |= O_WRONLY; }
+void FileOpenMode::SetWriteOnly() noexcept { value |= O_WRONLY; }
 
-void FileOpenMode::setReadWrite() noexcept { value |= O_RDWR; }
+void FileOpenMode::SetReadWrite() noexcept { value |= O_RDWR; }
 
-void FileOpenMode::setCreate() noexcept { value |= O_CREAT; }
+void FileOpenMode::SetCreate() noexcept { value |= O_CREAT; }
 
-void FileOpenMode::setTruncate() noexcept { value |= O_TRUNC; }
+void FileOpenMode::SetTruncate() noexcept { value |= O_TRUNC; }
 
-void FileOpenMode::setAppend() noexcept { value |= O_APPEND; }
+void FileOpenMode::SetAppend() noexcept { value |= O_APPEND; }
 
 } // namespace OS
 

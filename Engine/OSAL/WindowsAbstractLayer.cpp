@@ -15,17 +15,17 @@ using namespace hbe;
 namespace OS
 {
 
-HString getFullPath(const HString& path)
+HString GetFullPath(const HString& path)
 {
 	using namespace StringUtil;
 
 	char fullPath[MAX_PATH];
 	GetFullPathNameA(path.c_str(), MAX_PATH, fullPath, NULL);
 
-	return trimPath(fullPath);
+	return TrimPath(fullPath);
 }
 
-bool isDirectory(const char* path)
+bool IsDirectory(const char* path)
 {
 	returnValueIf(false, GetFileAttributesA(path) == INVALID_FILE_ATTRIBUTES);
 
@@ -34,14 +34,14 @@ bool isDirectory(const char* path)
 	return true;
 }
 
-HVector<HString> listFilesInDirectory(const char* path)
+HVector<HString> ListFilesInDirectory(const char* path)
 {
 	HVector<HString> fileList;
 
 	WIN32_FIND_DATAA fileData;
 	memset(&fileData, 0, sizeof(WIN32_FIND_DATAA));
 
-	auto filesPath = StringUtil::trimPath(path);
+	auto filesPath = StringUtil::TrimPath(path);
 	filesPath.append("/*");
 
 	auto handle = FindFirstFileA(filesPath.c_str(), &fileData);

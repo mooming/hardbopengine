@@ -8,9 +8,9 @@
 
 namespace hbe
 {
-void flushLogs()
+void FlushLogs()
 {
-	auto& engine = Engine::get();
-	engine.flushLog();
+	auto& engine = Engine::Get();
+	engine.FlushLog();
 }
 } // namespace hbe

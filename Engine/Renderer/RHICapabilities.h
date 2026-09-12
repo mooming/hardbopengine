@@ -19,11 +19,11 @@ namespace Renderer
 class RHICapabilities final
 {
 public:
-	[[nodiscard]] static bool isVulkanSupported() noexcept;
+	[[nodiscard]] static bool IsVulkanSupported() noexcept;
 
 	/// @brief Probe the first available device, creating and discarding a Vulkan instance.
 	/// @return A descriptor whose isDeviceQueried is false when nothing could be probed.
-	[[nodiscard]] static RenderCapabilities getCapabilities() noexcept;
+	[[nodiscard]] static RenderCapabilities GetCapabilities() noexcept;
 };
 
 } // namespace Renderer
@@ -45,7 +45,7 @@ public:
 	}
 
 protected:
-	void prepare() override;
+	void Prepare() override;
 };
 
 } // namespace hbe

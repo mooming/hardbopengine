@@ -10,16 +10,16 @@
 namespace hbe
 {
 
-	void QueueTest::prepare()
+	void QueueTest::Prepare()
 	{
-		addTest("Default Construction", [](auto&) { Queue<int> q; });
+		AddTest("Default Construction", [](auto&) { Queue<int> q; });
 
-		addTest("Push and Pop", [this](auto& ls)
+		AddTest("Push and Pop", [this](auto& ls)
 		{
 			Queue<int> q;
-			q.push(10);
-			q.push(20);
-			q.push(30);
+			q.Push(10);
+			q.Push(20);
+			q.Push(30);
 
 			if (q.Size() != 3)
 			{
@@ -27,21 +27,21 @@ namespace hbe
 				return;
 			}
 
-			if (q.front() != 10 || q.back() != 30)
+			if (q.Front() != 10 || q.Back() != 30)
 			{
 				ls << "Front/Back mismatch" << lferr;
 				return;
 			}
 
-			q.pop();
-			if (q.front() != 20 || q.Size() != 2)
+			q.Pop();
+			if (q.Front() != 20 || q.Size() != 2)
 			{
 				ls << "Pop failed" << lferr;
 				return;
 			}
 
-			q.pop();
-			q.pop();
+			q.Pop();
+			q.Pop();
 			if (!q.IsEmpty())
 			{
 				ls << "Queue should be empty" << lferr;
@@ -51,36 +51,36 @@ namespace hbe
 			ls << "Pass";
 		});
 
-		addTest("FIFO Ordering", [this](auto& ls)
+		AddTest("FIFO Ordering", [this](auto& ls)
 		{
 			Queue<int> q;
 
 			for (int i = 0; i < 100; ++i)
 			{
-				q.push(i);
+				q.Push(i);
 			}
 
 			for (int i = 0; i < 100; ++i)
 			{
-				if (q.front() != i)
+				if (q.Front() != i)
 				{
-					ls << "Expected " << i << ", got " << q.front() << lferr;
+					ls << "Expected " << i << ", got " << q.Front() << lferr;
 					return;
 				}
 
-				q.pop();
+				q.Pop();
 			}
 
 			ls << "Pass";
 		});
 
-		addTest("Emplace", [this](auto& ls)
+		AddTest("Emplace", [this](auto& ls)
 		{
 			Queue<std::pair<int, int>> q;
-			q.emplace(1, 2);
-			q.emplace(3, 4);
+			q.Emplace(1, 2);
+			q.Emplace(3, 4);
 
-			if (q.Size() != 2 || q.front().first != 1)
+			if (q.Size() != 2 || q.Front().first != 1)
 			{
 				ls << "Emplace failed" << lferr;
 				return;
@@ -89,14 +89,14 @@ namespace hbe
 			ls << "Pass";
 		});
 
-		addTest("Move Semantics", [this](auto& ls)
+		AddTest("Move Semantics", [this](auto& ls)
 		{
 			Queue<int> q1;
-			q1.push(1);
-			q1.push(2);
+			q1.Push(1);
+			q1.Push(2);
 
 			Queue<int> q2(std::move(q1));
-			if (q2.Size() != 2 || q2.front() != 1)
+			if (q2.Size() != 2 || q2.Front() != 1)
 			{
 				ls << "Move constructor failed" << lferr;
 				return;
@@ -104,7 +104,7 @@ namespace hbe
 
 			Queue<int> q3;
 			q3 = std::move(q2);
-			if (q3.Size() != 2 || q3.front() != 1)
+			if (q3.Size() != 2 || q3.Front() != 1)
 			{
 				ls << "Move assignment failed" << lferr;
 				return;
@@ -113,12 +113,12 @@ namespace hbe
 			ls << "Pass";
 		});
 
-		addTest("Clear", [this](auto& ls)
+		AddTest("Clear", [this](auto& ls)
 		{
 			Queue<int> q;
-			q.push(1);
-			q.push(2);
-			q.clear();
+			q.Push(1);
+			q.Push(2);
+			q.Clear();
 
 			if (!q.IsEmpty())
 			{
@@ -126,8 +126,8 @@ namespace hbe
 				return;
 			}
 
-			q.push(10);
-			if (q.Size() != 1 || q.front() != 10)
+			q.Push(10);
+			if (q.Size() != 1 || q.Front() != 10)
 			{
 				ls << "Reuse after Clear failed" << lferr;
 				return;
@@ -136,7 +136,7 @@ namespace hbe
 			ls << "Pass";
 		});
 
-		addTest("Performance vs std::queue", [this](auto& ls)
+		AddTest("Performance vs std::queue", [this](auto& ls)
 		{
 			constexpr int NumItems = 100000;
 			constexpr int NumIterations = 20;
@@ -153,7 +153,7 @@ namespace hbe
 					Queue<int> q;
 					for (int i = 0; i < NumItems; ++i)
 					{
-						q.push(i);
+						q.Push(i);
 					}
 				}
 			}
@@ -174,7 +174,7 @@ namespace hbe
 				Queue<int> q;
 				for (int i = 0; i < NumItems * NumIterations; ++i)
 				{
-					q.push(i);
+					q.Push(i);
 				}
 
 				time::ScopedTime measure(hePopTime);
@@ -182,7 +182,7 @@ namespace hbe
 				{
 					for (int i = 0; i < NumItems; ++i)
 					{
-						q.pop();
+						q.Pop();
 					}
 				}
 			}

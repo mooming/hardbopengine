@@ -39,7 +39,7 @@ struct TaskItem
 		return priority < other.priority;
 	}
 
-	[[nodiscard]] bool hasFinished() const noexcept
+	[[nodiscard]] bool HasFinished() const noexcept
 	{
 		return isDone;
 	}
@@ -58,10 +58,10 @@ MainThreadTaskQueue();
 /// @brief Enqueue a task to be executed on the main thread.
 /// @param task The task function to execute.
 /// @param priority The priority of the task (0 = highest, 255 = lowest). Default is 128.
-void enqueue(TTaskFunc taskFunc, void* userData, uint8_t priority = 128) noexcept;
-size_t processTasks() noexcept;
+void Enqueue(TTaskFunc taskFunc, void* userData, uint8_t priority = 128) noexcept;
+size_t ProcessTasks() noexcept;
 [[nodiscard]] bool HasPendingTasks() const noexcept;
-void requestStop() noexcept;
+void RequestStop() noexcept;
 [[nodiscard]] bool IsRunning() const noexcept;
 };
 

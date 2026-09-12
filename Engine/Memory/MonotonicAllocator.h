@@ -34,16 +34,16 @@ namespace hbe
 		MonotonicAllocator(const char* name, TSize capacity);
 		~MonotonicAllocator();
 
-		[[nodiscard]] TPointer allocate(size_t size);
+		[[nodiscard]] TPointer Allocate(size_t size);
 		void Deallocate(const TPointer ptr, TSize size) noexcept;
 
-		[[nodiscard]] size_t getAvailable() const;
-		[[nodiscard]] size_t getUsage() const;
+		[[nodiscard]] size_t GetAvailable() const;
+		[[nodiscard]] size_t GetUsage() const;
 
-		[[nodiscard]] auto getID() const { return id; }
+		[[nodiscard]] auto GetID() const { return id; }
 
 	private:
-		[[nodiscard]] bool isMine(const TPointer ptr) const;
+		[[nodiscard]] bool IsMine(const TPointer ptr) const;
 	};
 } // namespace hbe
 
@@ -59,7 +59,7 @@ namespace hbe
 		MonotonicAllocatorTest() : TestCollection("MonotonicAllocatorTest") {}
 
 	protected:
-		void prepare() override;
+		void Prepare() override;
 	};
 
 } // namespace hbe

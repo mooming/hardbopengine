@@ -14,7 +14,7 @@
 #include "Memory/MultiPoolAllocator.h"
 #include "MonteCarloIntegrator.h"
 
-void hbe::StratifiedSamplingTest::prepare() noexcept
+void hbe::StratifiedSamplingTest::Prepare() noexcept
 {
 	auto calculatePi = [this](auto& ls) -> void
 	{
@@ -54,12 +54,12 @@ void hbe::StratifiedSamplingTest::prepare() noexcept
 				return value;
 			};
 
-			Vec2 v(samplerForX.sample(randomGenInRange), samplerForY.sample(randomGenInRange));
-			samplerForX.changeSubGroup();
+			Vec2 v(samplerForX.Sample(randomGenInRange), samplerForY.Sample(randomGenInRange));
+			samplerForX.ChangeSubGroup();
 
-			if (samplerForX.getSubGroupIndex() == 0)
+			if (samplerForX.GetSubGroupIndex() == 0)
 			{
-				samplerForY.changeSubGroup();
+				samplerForY.ChangeSubGroup();
 			}
 
 			return v;
@@ -142,6 +142,6 @@ void hbe::StratifiedSamplingTest::prepare() noexcept
 		}
 	};
 
-	addTest("Calculate Pi Comparison", calculatePi);
+	AddTest("Calculate Pi Comparison", calculatePi);
 }
 #endif // __UNIT_TEST__

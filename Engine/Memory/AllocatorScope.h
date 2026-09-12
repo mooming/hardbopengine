@@ -23,7 +23,7 @@ namespace hbe
 		AllocatorScope(TAllocatorID id) noexcept;
 
 		template<typename T>
-		AllocatorScope(const T& allocator) noexcept : AllocatorScope(allocator.getID())
+		AllocatorScope(const T& allocator) noexcept : AllocatorScope(allocator.GetID())
 		{}
 
 		~AllocatorScope() noexcept;
@@ -47,7 +47,7 @@ namespace hbe
 		AllocatorScopeTest() : TestCollection("AllocatorScopeTest") {}
 
 	protected:
-		void prepare() override;
+		void Prepare() override;
 	};
 
 } // namespace hbe

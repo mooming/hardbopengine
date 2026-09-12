@@ -13,13 +13,13 @@
 namespace hbe
 {
 
-TestEnv& TestEnv::getEnv()
+TestEnv& TestEnv::GetEnv()
 {
 	static TestEnv instance;
 	return instance;
 }
 
-void TestEnv::start()
+void TestEnv::Start()
 {
 	invalidTests.clear();
 	failedTests.clear();
@@ -31,19 +31,19 @@ void TestEnv::start()
 			std::cerr << "Error: testCase is null" << std::endl;
 		}
 		Assert(testCase != nullptr);
-		executeTest(*testCase);
+		ExecuteTest(*testCase);
 	}
 
-	report();
+	Report();
 }
 
-bool TestEnv::executeTest(TestCollection& testCollection)
+bool TestEnv::ExecuteTest(TestCollection& testCollection)
 {
-	testCollection.start();
+	testCollection.Start();
 
 	if (!testCollection.IsDone())
 	{
-		invalidTests.push_back(testCollection.getName());
+		invalidTests.push_back(testCollection.GetName());
 	}
 	else
 	{
@@ -56,32 +56,32 @@ bool TestEnv::executeTest(TestCollection& testCollection)
 		{
 			++passCount;
 
-			auto& warnMessages = testCollection.getWarningMessages();
+			auto& warnMessages = testCollection.GetWarningMessages();
 			for (auto& msg : warnMessages)
 			{
-				ss << '[' << testCollection.getName() << "] " << msg;
+				ss << '[' << testCollection.GetName() << "] " << msg;
 				warningMessages.push_back(ss.str());
 				ss.str("");
 			}
 		}
 		else
 		{
-			ss << testCollection.getName() << " : [FAIL]";
+			ss << testCollection.GetName() << " : [FAIL]";
 			failedTests.push_back(ss.str());
 			ss.str("");
 
-			auto& warnMessages = testCollection.getWarningMessages();
+			auto& warnMessages = testCollection.GetWarningMessages();
 			for (auto& msg : warnMessages)
 			{
-				ss << '[' << testCollection.getName() << "]" << msg;
+				ss << '[' << testCollection.GetName() << "]" << msg;
 				warningMessages.push_back(ss.str());
 				ss.str("");
 			}
 
-			auto& errMessages = testCollection.getErrorMessages();
+			auto& errMessages = testCollection.GetErrorMessages();
 			for (auto& msg : errMessages)
 			{
-				ss << '[' << testCollection.getName() << "]" << msg;
+				ss << '[' << testCollection.GetName() << "]" << msg;
 				errorMessages.push_back(ss.str());
 				ss.str("");
 			}
@@ -91,12 +91,12 @@ bool TestEnv::executeTest(TestCollection& testCollection)
 	return testCollection.IsSuccess();
 }
 
-void TestEnv::report()
+void TestEnv::Report()
 {
 	using namespace std;
-	auto log = Logger::get("TestEnv");
+	auto log = Logger::Get("TestEnv");
 
-	log.out([this](auto& ls)
+	log.Out([this](auto& ls)
 	{
 		ls << hendl;
 		ls << "##### TEST COMPLETED #####" << hendl;
@@ -110,57 +110,57 @@ void TestEnv::report()
 
 	if (!invalidTests.empty())
 	{
-		log.outError("= Invalid Tests =============================");
+		log.OutError("= Invalid Tests =============================");
 
 		for (auto& item : invalidTests)
 		{
-			log.outError([&item](auto& ls) { ls << item; });
+			log.OutError([&item](auto& ls) { ls << item; });
 		}
 
-		log.outError("=============================================");
+		log.OutError("=============================================");
 	}
 
 	if (!failedTests.empty())
 	{
-		log.outError("= Failed Tests ==============================");
+		log.OutError("= Failed Tests ==============================");
 
 		int index = 1;
 		for (auto& item : failedTests)
 		{
-			log.outError([index, &item](auto& ls) { ls << index << ": " << item; });
+			log.OutError([index, &item](auto& ls) { ls << index << ": " << item; });
 
 			++index;
 		}
 
-		log.outError("=============================================\n");
+		log.OutError("=============================================\n");
 	}
 
 	if (!errorMessages.empty())
 	{
-		log.outError("= Errors ====================================");
+		log.OutError("= Errors ====================================");
 
 		for (auto& item : errorMessages)
 		{
-			log.outError([&item](auto& ls) { ls << item; });
+			log.OutError([&item](auto& ls) { ls << item; });
 		}
 
-		log.outError("=============================================\n");
+		log.OutError("=============================================\n");
 	}
 
 	if (!warningMessages.empty())
 	{
-		log.outWarning("= Warnings ==================================");
+		log.OutWarning("= Warnings ==================================");
 
 		for (auto& item : warningMessages)
 		{
-			log.outWarning([&item](auto& ls) { ls << item; });
+			log.OutWarning([&item](auto& ls) { ls << item; });
 		}
 
-		log.outWarning("=============================================\n");
+		log.OutWarning("=============================================\n");
 	}
 
-	auto& logger = Logger::get();
-	logger.flush();
+	auto& logger = Logger::Get();
+	logger.Flush();
 }
 
 } // namespace hbe

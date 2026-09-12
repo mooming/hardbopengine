@@ -1,5 +1,69 @@
 # Journal
 
+## Function naming returns to PascalCase — the camelCase sweep is reverted (2026-09-08)
+
+This supersedes the entry below, which records the sweep being applied. Read both: the reasoning
+below still explains what the macOS build cannot see.
+
+**Why it went back.** The owner found the case pair `IsRunning()` / `isRunning` more intuitive than
+any member-side alternative, and asked for PascalCase functions throughout. That is the coherent
+choice rather than a reversal: PascalCase functions keep two registers available, so the question
+and the storage can share a word and still be told apart. Under camelCase functions that free
+distinction disappears and every collision needs a new noun — which is how `running`,
+`isRunningFlag`, `runningState` and an `isRunningBit : 1` bit field all came to be proposed for one
+`std::atomic<bool>`, three of them unusable.
+
+**How it was undone: an exact inverse diff, not a reverse map.** `git diff 4e9e373 481f3d2 -- Engine
+Applications | git apply` restored 222 files with symmetric 4,164/4,164 line counts, and the source
+files are now byte-identical to `481f3d2` (`git diff 481f3d2 -- '*.h' '*.cpp' '*.inl' '*.mm'` is
+empty) — the exact state that built 12/12 and passed 53 collections. A textual reverse map
+(`allocate` -> `Allocate`) would have been far worse than the forward direction: 567 of the names
+introduced are camelCase, and 12 of them (`get`, `set`, `size`, `data`, `count`, `find`, `clear`,
+`insert`, `pop`, `push`, `release`, `reserve`, `reset`, `resize`, `store`) are also spellings that
+std and third-party code use as member names, so `.get()` and `.count()` would be rewritten and the
+compiler would only catch it by breaking loudly. It also would have silently mangled placement `new`
+and `operator delete`. Reverting a diff has no such problem: it inverts the change, not the spelling.
+
+**Consequences that fixed themselves.** The `"Prepare()"` -> `"prepare()"` string-literal change and
+the OS-API calls the rename damaged inside Windows/Linux-gated regions (`OS::VirtualAlloc`,
+`SetThreadPriority`) are restored by the same diff — which is the practical argument for the exact
+inverse: gated code is repaired without ever being compiled here. The three header comments naming
+renamed compounds also needed no correction, because the names they cite are correct again.
+
+**Audit for functions that were camelCase before the sweep, so none survive.** The compiler is the
+only honest oracle here. `clang -Xclang -ast-dump -ast-dump-filter=^[a-z]` over all 129 compile-DB
+translation units reports **zero** lowercase-named functions declared in engine or application
+sources, and a textual pass restricted to `PLATFORM_WINDOWS` / `PLATFORM_LINUX` /
+`PROFILE_ENABLED` regions reports zero as well. A regex sweep had flagged 11 candidates; 10 were
+`std::abort`, `std::copy`, `std::sort`, `signal`, `memcpy` and friends — call sites, not
+declarations. That is why the AST was worth the minutes.
+
+**Two exceptions that must stay lowercase, by requirement rather than taste.** `main()` is
+mandated by the language. `Allocator::allocate` / `Allocator::deallocate` in
+`Engine/String/StaticStringTable.h:41` are the C++ allocator protocol — renaming them to
+`Allocate`/`Deallocate` breaks any standard container instantiated with that allocator. They are
+exemptions, not leftovers.
+
+**Lesson worth keeping.** `HasDone` and `HasPendingTasks` had been kept PascalCase because a
+compiler diagnostic on the same line was attributed to them; no `hasDone`/`hasPendingTasks`
+identifier existed anywhere, so the deferral was collateral, not evidence. A deferral justified by a
+compiler message is only as good as that message's attribution — harvest offenders by the
+identifier the message names, not by the line it appeared on.
+
+**Verification.** Build gate 12/12 (EngineTest, VulkanExample, WindowExample, CodingStandards ×
+Debug/Dev/Release). Unit tests `# Fail = 0`, `all 53 collections passed`, exit 0 in all three
+configurations. Standards debt unchanged in kind and slightly better in count: 82 -> 80 mechanical,
+27 advisory, same five categories.
+
+**Documentation state after the reversal.** `docs/CodingStandards.md` was never edited for the
+camelCase rule, so its "Classes, Functions, and Types: PascalCase" bullet is correct again. The
+stale one is now `docs/EngineAPIGuide.md`, which documents camelCase — it needs the same
+reversal, left undone pending the owner's word because the standing instruction was not to revise
+`.md` files. `Applications/EngineTest/TestMain.cpp:52` prints a hint instead of running when
+`__UNIT_TEST__` is undefined, so `check.sh --all` reconfiguring without `-D__TEST__` silently turns
+`EngineTest` into a stub; rebuild with `./build.sh Applications/EngineTest -test` before trusting a
+test run.
+
 ## Functions become camelCase — 567 renames, and what the macOS build could not see (2026-09-08)
 
 The owner ruled that functions use camelCase, and that the **code** changes while the

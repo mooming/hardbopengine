@@ -19,24 +19,24 @@ namespace hbe
 		using TMap = ConfigSystem::TMap<T>;
 
 		template<typename T>
-		TItem<T>& findGetSet(TMap<T>& map, const char* func, const StaticString& key)
+		TItem<T>& FindGetSet(TMap<T>& map, const char* func, const StaticString& key)
 		{
 			const auto name = "EngineSettings";
 			static TItem<T> nullPair;
 
-			if (unlikely(key.isNull()))
+			if (unlikely(key.IsNull()))
 			{
-				auto log = Logger::get(name);
-				log.outWarning([func](auto& ls) { ls << func << " : key is null."; });
+				auto log = Logger::Get(name);
+				log.OutWarning([func](auto& ls) { ls << func << " : key is null."; });
 
 				return nullPair;
 			}
 
-			auto it = map.find(key.getID());
+			auto it = map.find(key.GetID());
 			if (unlikely(it == map.end()))
 			{
-				auto log = Logger::get(name);
-				log.out([func, key](auto& ls) { ls << func << " : " << key << " is not found."; });
+				auto log = Logger::Get(name);
+				log.Out([func, key](auto& ls) { ls << func << " : " << key << " is not found."; });
 
 				return nullPair;
 			}
@@ -45,24 +45,24 @@ namespace hbe
 		}
 
 		template<typename T>
-		const TItem<T>& findGetSet(const TMap<T>& map, const char* func, const StaticString& key)
+		const TItem<T>& FindGetSet(const TMap<T>& map, const char* func, const StaticString& key)
 		{
 			const auto name = "EngineSettings";
 			static TItem<T> nullPair;
 
-			if (unlikely(key.isNull()))
+			if (unlikely(key.IsNull()))
 			{
-				auto log = Logger::get(name);
-				log.outWarning([func](auto& ls) { ls << func << " : key is null."; });
+				auto log = Logger::Get(name);
+				log.OutWarning([func](auto& ls) { ls << func << " : key is null."; });
 
 				return nullPair;
 			}
 
-			auto it = map.find(key.getID());
+			auto it = map.find(key.GetID());
 			if (unlikely(it == map.end()))
 			{
-				auto log = Logger::get(name);
-				log.out([func, key](auto& ls) { ls << func << " : " << key << " is not found."; });
+				auto log = Logger::Get(name);
+				log.Out([func, key](auto& ls) { ls << func << " : " << key << " is not found."; });
 
 				return nullPair;
 			}
@@ -72,33 +72,33 @@ namespace hbe
 
 	} // namespace
 
-	ConfigSystem& ConfigSystem::get() noexcept
+	ConfigSystem& ConfigSystem::Get() noexcept
 	{
 		static ConfigSystem instance;
 		return instance;
 	}
 
-	const char* ConfigSystem::getName() const noexcept { return "EngineSettings"; }
+	const char* ConfigSystem::GetName() const noexcept { return "EngineSettings"; }
 
 	void ConfigSystem::Register(TConfigParam<bool>& param)
 	{
 		using TValue = uint8_t;
-		auto name = param.getName().getID();
+		auto name = param.GetName().GetID();
 
 		if (unlikely(byteParams.find(name) != byteParams.end()))
 		{
-			auto log = Logger::get(getName());
-			log.outFatalError([name](auto& ls)
+			auto log = Logger::Get(GetName());
+			log.OutFatalError([name](auto& ls)
 			{ ls << "The key " << name << " is duplicated. It's not allowed strictly."; });
 
 			return;
 		}
 
 		ParamItem<TValue> item;
-		item.desc = param.getDescription().getID();
-		item.getter = [&param]() -> TValue { return param.get(); };
+		item.desc = param.GetDescription().GetID();
+		item.getter = [&param]() -> TValue { return param.Get(); };
 
-		item.setter = [&param](TValue value) { param.set(value); };
+		item.setter = [&param](TValue value) { param.Set(value); };
 
 		byteParams.emplace(std::make_pair(name, item));
 	}
@@ -106,22 +106,22 @@ namespace hbe
 	void ConfigSystem::Register(TAtomicConfigParam<bool>& param)
 	{
 		using TValue = uint8_t;
-		auto name = param.getName().getID();
+		auto name = param.GetName().GetID();
 
 		if (unlikely(byteParams.find(name) != byteParams.end()))
 		{
-			auto log = Logger::get(getName());
-			log.outFatalError([name](auto& ls)
+			auto log = Logger::Get(GetName());
+			log.OutFatalError([name](auto& ls)
 			{ ls << "The key " << name << " is duplicated. It's not allowed strictly."; });
 
 			return;
 		}
 
 		ParamItem<TValue> item;
-		item.desc = param.getDescription().getID();
-		item.getter = [&param]() -> TValue { return param.get(); };
+		item.desc = param.GetDescription().GetID();
+		item.getter = [&param]() -> TValue { return param.Get(); };
 
-		item.setter = [&param](TValue value) { param.set(value); };
+		item.setter = [&param](TValue value) { param.Set(value); };
 
 		byteParams.emplace(std::make_pair(name, item));
 	}
@@ -129,22 +129,22 @@ namespace hbe
 	void ConfigSystem::Register(TConfigParam<uint8_t>& param)
 	{
 		using TValue = uint8_t;
-		auto name = param.getName().getID();
+		auto name = param.GetName().GetID();
 
 		if (unlikely(byteParams.find(name) != byteParams.end()))
 		{
-			auto log = Logger::get(getName());
-			log.outFatalError([name](auto& ls)
+			auto log = Logger::Get(GetName());
+			log.OutFatalError([name](auto& ls)
 			{ ls << "The key " << name << " is duplicated. It's not allowed strictly."; });
 
 			return;
 		}
 
 		ParamItem<TValue> item;
-		item.desc = param.getDescription().getID();
-		item.getter = [&param]() -> TValue { return param.get(); };
+		item.desc = param.GetDescription().GetID();
+		item.getter = [&param]() -> TValue { return param.Get(); };
 
-		item.setter = [&param](TValue value) { param.set(value); };
+		item.setter = [&param](TValue value) { param.Set(value); };
 
 		byteParams.emplace(std::make_pair(name, item));
 	}
@@ -152,22 +152,22 @@ namespace hbe
 	void ConfigSystem::Register(TAtomicConfigParam<uint8_t>& param)
 	{
 		using TValue = uint8_t;
-		auto name = param.getName().getID();
+		auto name = param.GetName().GetID();
 
 		if (unlikely(byteParams.find(name) != byteParams.end()))
 		{
-			auto log = Logger::get(getName());
-			log.outFatalError([name](auto& ls)
+			auto log = Logger::Get(GetName());
+			log.OutFatalError([name](auto& ls)
 			{ ls << "The key " << name << " is duplicated. It's not allowed strictly."; });
 
 			return;
 		}
 
 		ParamItem<TValue> item;
-		item.desc = param.getDescription().getID();
-		item.getter = [&param]() -> TValue { return param.get(); };
+		item.desc = param.GetDescription().GetID();
+		item.getter = [&param]() -> TValue { return param.Get(); };
 
-		item.setter = [&param](TValue value) { param.set(value); };
+		item.setter = [&param](TValue value) { param.Set(value); };
 
 		byteParams.emplace(std::make_pair(name, item));
 	}
@@ -175,22 +175,22 @@ namespace hbe
 	void ConfigSystem::Register(TConfigParam<int>& param)
 	{
 		using TValue = int;
-		auto name = param.getName().getID();
+		auto name = param.GetName().GetID();
 
 		if (unlikely(intParams.find(name) != intParams.end()))
 		{
-			auto log = Logger::get(getName());
-			log.outFatalError([name](auto& ls)
+			auto log = Logger::Get(GetName());
+			log.OutFatalError([name](auto& ls)
 			{ ls << "The key " << name << " is duplicated. It's not allowed strictly."; });
 
 			return;
 		}
 
 		ParamItem<TValue> item;
-		item.desc = param.getDescription().getID();
-		item.getter = [&param]() -> TValue { return param.get(); };
+		item.desc = param.GetDescription().GetID();
+		item.getter = [&param]() -> TValue { return param.Get(); };
 
-		item.setter = [&param](TValue value) { param.set(value); };
+		item.setter = [&param](TValue value) { param.Set(value); };
 
 		intParams.emplace(std::make_pair(name, item));
 	}
@@ -198,22 +198,22 @@ namespace hbe
 	void ConfigSystem::Register(TAtomicConfigParam<int>& param)
 	{
 		using TValue = int;
-		auto name = param.getName().getID();
+		auto name = param.GetName().GetID();
 
 		if (unlikely(intParams.find(name) != intParams.end()))
 		{
-			auto log = Logger::get(getName());
-			log.outFatalError([name](auto& ls)
+			auto log = Logger::Get(GetName());
+			log.OutFatalError([name](auto& ls)
 			{ ls << "The key " << name << " is duplicated. It's not allowed strictly."; });
 
 			return;
 		}
 
 		ParamItem<TValue> item;
-		item.desc = param.getDescription().getID();
-		item.getter = [&param]() -> TValue { return param.get(); };
+		item.desc = param.GetDescription().GetID();
+		item.getter = [&param]() -> TValue { return param.Get(); };
 
-		item.setter = [&param](TValue value) { param.set(value); };
+		item.setter = [&param](TValue value) { param.Set(value); };
 
 		intParams.emplace(std::make_pair(name, item));
 	}
@@ -221,22 +221,22 @@ namespace hbe
 	void ConfigSystem::Register(TConfigParam<size_t>& param)
 	{
 		using TValue = size_t;
-		auto name = param.getName().getID();
+		auto name = param.GetName().GetID();
 
 		if (unlikely(sizeParams.find(name) != sizeParams.end()))
 		{
-			auto log = Logger::get(getName());
-			log.outFatalError([name](auto& ls)
+			auto log = Logger::Get(GetName());
+			log.OutFatalError([name](auto& ls)
 			{ ls << "The key " << name << " is duplicated. It's not allowed strictly."; });
 
 			return;
 		}
 
 		ParamItem<TValue> item;
-		item.desc = param.getDescription().getID();
-		item.getter = [&param]() -> TValue { return param.get(); };
+		item.desc = param.GetDescription().GetID();
+		item.getter = [&param]() -> TValue { return param.Get(); };
 
-		item.setter = [&param](TValue value) { param.set(value); };
+		item.setter = [&param](TValue value) { param.Set(value); };
 
 		sizeParams.emplace(std::make_pair(name, item));
 	}
@@ -244,22 +244,22 @@ namespace hbe
 	void ConfigSystem::Register(TAtomicConfigParam<size_t>& param)
 	{
 		using TValue = size_t;
-		auto name = param.getName().getID();
+		auto name = param.GetName().GetID();
 
 		if (unlikely(sizeParams.find(name) != sizeParams.end()))
 		{
-			auto log = Logger::get(getName());
-			log.outFatalError([name](auto& ls)
+			auto log = Logger::Get(GetName());
+			log.OutFatalError([name](auto& ls)
 			{ ls << "The key " << name << " is duplicated. It's not allowed strictly."; });
 
 			return;
 		}
 
 		ParamItem<TValue> item;
-		item.desc = param.getDescription().getID();
-		item.getter = [&param]() -> TValue { return param.get(); };
+		item.desc = param.GetDescription().GetID();
+		item.getter = [&param]() -> TValue { return param.Get(); };
 
-		item.setter = [&param](TValue value) { param.set(value); };
+		item.setter = [&param](TValue value) { param.Set(value); };
 
 		sizeParams.emplace(std::make_pair(name, item));
 	}
@@ -267,22 +267,22 @@ namespace hbe
 	void ConfigSystem::Register(TConfigParam<float>& param)
 	{
 		using TValue = float;
-		auto name = param.getName().getID();
+		auto name = param.GetName().GetID();
 
 		if (unlikely(floatParams.find(name) != floatParams.end()))
 		{
-			auto log = Logger::get(getName());
-			log.outFatalError([name](auto& ls)
+			auto log = Logger::Get(GetName());
+			log.OutFatalError([name](auto& ls)
 			{ ls << "The key " << name << " is duplicated. It's not allowed strictly."; });
 
 			return;
 		}
 
 		ParamItem<TValue> item;
-		item.desc = param.getDescription().getID();
-		item.getter = [&param]() -> TValue { return param.get(); };
+		item.desc = param.GetDescription().GetID();
+		item.getter = [&param]() -> TValue { return param.Get(); };
 
-		item.setter = [&param](TValue value) { param.set(value); };
+		item.setter = [&param](TValue value) { param.Set(value); };
 
 		floatParams.emplace(std::make_pair(name, item));
 	}
@@ -290,35 +290,35 @@ namespace hbe
 	void ConfigSystem::Register(TAtomicConfigParam<float>& param)
 	{
 		using TValue = float;
-		auto name = param.getName().getID();
+		auto name = param.GetName().GetID();
 
 		if (unlikely(floatParams.find(name) != floatParams.end()))
 		{
-			auto log = Logger::get(getName());
-			log.outFatalError([name](auto& ls)
+			auto log = Logger::Get(GetName());
+			log.OutFatalError([name](auto& ls)
 			{ ls << "The key " << name << " is duplicated. It's not allowed strictly."; });
 
 			return;
 		}
 
 		ParamItem<TValue> item;
-		item.desc = param.getDescription().getID();
-		item.getter = [&param]() -> TValue { return param.get(); };
+		item.desc = param.GetDescription().GetID();
+		item.getter = [&param]() -> TValue { return param.Get(); };
 
-		item.setter = [&param](TValue value) { param.set(value); };
+		item.setter = [&param](TValue value) { param.Set(value); };
 
 		floatParams.emplace(std::make_pair(name, item));
 	}
 
-	void ConfigSystem::setBool(const StaticString& key, bool value)
+	void ConfigSystem::SetBool(const StaticString& key, bool value)
 	{
-		auto& item = findGetSet(byteParams, __func__, key);
+		auto& item = FindGetSet(byteParams, __func__, key);
 		auto& setter = item.setter;
 
 		if (unlikely(setter == nullptr))
 		{
-			auto log = Logger::get(getName());
-			log.out([func = __func__, key](auto& ls) { ls << func << " : " << key << " has no setter."; });
+			auto log = Logger::Get(GetName());
+			log.Out([func = __func__, key](auto& ls) { ls << func << " : " << key << " has no setter."; });
 
 			return;
 		}
@@ -326,15 +326,15 @@ namespace hbe
 		setter(value);
 	}
 
-	void ConfigSystem::setByte(const StaticString& key, uint8_t value)
+	void ConfigSystem::SetByte(const StaticString& key, uint8_t value)
 	{
-		auto& item = findGetSet(byteParams, __func__, key);
+		auto& item = FindGetSet(byteParams, __func__, key);
 		auto& setter = item.setter;
 
 		if (unlikely(setter == nullptr))
 		{
-			auto log = Logger::get(getName());
-			log.out([func = __func__, key](auto& ls) { ls << func << " : " << key << " has no setter."; });
+			auto log = Logger::Get(GetName());
+			log.Out([func = __func__, key](auto& ls) { ls << func << " : " << key << " has no setter."; });
 
 			return;
 		}
@@ -342,15 +342,15 @@ namespace hbe
 		setter(value);
 	}
 
-	void ConfigSystem::setInt(const StaticString& key, int value)
+	void ConfigSystem::SetInt(const StaticString& key, int value)
 	{
-		auto& item = findGetSet(intParams, __func__, key);
+		auto& item = FindGetSet(intParams, __func__, key);
 		auto& setter = item.setter;
 
 		if (unlikely(setter == nullptr))
 		{
-			auto log = Logger::get(getName());
-			log.out([func = __func__, key](auto& ls) { ls << func << " : " << key << " has no setter."; });
+			auto log = Logger::Get(GetName());
+			log.Out([func = __func__, key](auto& ls) { ls << func << " : " << key << " has no setter."; });
 
 			return;
 		}
@@ -358,15 +358,15 @@ namespace hbe
 		setter(value);
 	}
 
-	void ConfigSystem::setSize(const StaticString& key, size_t value)
+	void ConfigSystem::SetSize(const StaticString& key, size_t value)
 	{
-		auto& item = findGetSet(sizeParams, __func__, key);
+		auto& item = FindGetSet(sizeParams, __func__, key);
 		auto& setter = item.setter;
 
 		if (unlikely(setter == nullptr))
 		{
-			auto log = Logger::get(getName());
-			log.out([func = __func__, key](auto& ls) { ls << func << " : " << key << " has no setter."; });
+			auto log = Logger::Get(GetName());
+			log.Out([func = __func__, key](auto& ls) { ls << func << " : " << key << " has no setter."; });
 
 			return;
 		}
@@ -374,15 +374,15 @@ namespace hbe
 		setter(value);
 	}
 
-	void ConfigSystem::setFloat(const StaticString& key, float value)
+	void ConfigSystem::SetFloat(const StaticString& key, float value)
 	{
-		auto& item = findGetSet(floatParams, __func__, key);
+		auto& item = FindGetSet(floatParams, __func__, key);
 		auto& setter = item.setter;
 
 		if (unlikely(setter == nullptr))
 		{
-			auto log = Logger::get(getName());
-			log.out([func = __func__, key](auto& ls) { ls << func << " : " << key << " has no setter."; });
+			auto log = Logger::Get(GetName());
+			log.Out([func = __func__, key](auto& ls) { ls << func << " : " << key << " has no setter."; });
 
 			return;
 		}
@@ -390,15 +390,15 @@ namespace hbe
 		setter(value);
 	}
 
-	bool ConfigSystem::getBool(const StaticString& key) const noexcept
+	bool ConfigSystem::GetBool(const StaticString& key) const noexcept
 	{
-		auto& item = findGetSet(byteParams, __func__, key);
+		auto& item = FindGetSet(byteParams, __func__, key);
 		auto& getter = item.getter;
 
 		if (unlikely(getter == nullptr))
 		{
-			auto log = Logger::get(getName());
-			log.out([func = __func__, key](auto& ls) { ls << func << " : " << key << " has no getter."; });
+			auto log = Logger::Get(GetName());
+			log.Out([func = __func__, key](auto& ls) { ls << func << " : " << key << " has no getter."; });
 
 			return false;
 		}
@@ -406,15 +406,15 @@ namespace hbe
 		return getter();
 	}
 
-	uint8_t ConfigSystem::getByte(const StaticString& key) const noexcept
+	uint8_t ConfigSystem::GetByte(const StaticString& key) const noexcept
 	{
-		auto& item = findGetSet(byteParams, __func__, key);
+		auto& item = FindGetSet(byteParams, __func__, key);
 		auto& getter = item.getter;
 
 		if (unlikely(getter == nullptr))
 		{
-			auto log = Logger::get(getName());
-			log.out([func = __func__, key](auto& ls) { ls << func << " : " << key << " has no getter."; });
+			auto log = Logger::Get(GetName());
+			log.Out([func = __func__, key](auto& ls) { ls << func << " : " << key << " has no getter."; });
 
 			return false;
 		}
@@ -422,15 +422,15 @@ namespace hbe
 		return getter();
 	}
 
-	int ConfigSystem::getInt(const StaticString& key) const noexcept
+	int ConfigSystem::GetInt(const StaticString& key) const noexcept
 	{
-		auto& item = findGetSet(intParams, __func__, key);
+		auto& item = FindGetSet(intParams, __func__, key);
 		auto& getter = item.getter;
 
 		if (unlikely(getter == nullptr))
 		{
-			auto log = Logger::get(getName());
-			log.out([func = __func__, key](auto& ls) { ls << func << " : " << key << " has no getter."; });
+			auto log = Logger::Get(GetName());
+			log.Out([func = __func__, key](auto& ls) { ls << func << " : " << key << " has no getter."; });
 
 			return -1;
 		}
@@ -438,15 +438,15 @@ namespace hbe
 		return getter();
 	}
 
-	size_t ConfigSystem::getSize(const StaticString& key) const noexcept
+	size_t ConfigSystem::GetSize(const StaticString& key) const noexcept
 	{
-		auto& item = findGetSet(sizeParams, __func__, key);
+		auto& item = FindGetSet(sizeParams, __func__, key);
 		auto& getter = item.getter;
 
 		if (unlikely(getter == nullptr))
 		{
-			auto log = Logger::get(getName());
-			log.out([func = __func__, key](auto& ls) { ls << func << " : " << key << " has no getter."; });
+			auto log = Logger::Get(GetName());
+			log.Out([func = __func__, key](auto& ls) { ls << func << " : " << key << " has no getter."; });
 
 			return 0;
 		}
@@ -454,15 +454,15 @@ namespace hbe
 		return getter();
 	}
 
-	float ConfigSystem::getFloat(const StaticString& key) const noexcept
+	float ConfigSystem::GetFloat(const StaticString& key) const noexcept
 	{
-		auto& item = findGetSet(floatParams, __func__, key);
+		auto& item = FindGetSet(floatParams, __func__, key);
 		auto& getter = item.getter;
 
 		if (unlikely(getter == nullptr))
 		{
-			auto log = Logger::get(getName());
-			log.out([func = __func__, key](auto& ls) { ls << func << " : " << key << " has no getter."; });
+			auto log = Logger::Get(GetName());
+			log.Out([func = __func__, key](auto& ls) { ls << func << " : " << key << " has no getter."; });
 
 			return 0.0f;
 		}
@@ -470,10 +470,10 @@ namespace hbe
 		return getter();
 	}
 
-	void ConfigSystem::printAllParameters() const
+	void ConfigSystem::PrintAllParameters() const
 	{
-		auto log = Logger::get(getName(), ELogLevel::Verbose);
-		log.out("= Engine Parameters ====================================");
+		auto log = Logger::Get(GetName(), ELogLevel::Verbose);
+		log.Out("= Engine Parameters ====================================");
 
 		auto PrintMap = [&log](auto& map)
 		{
@@ -484,7 +484,7 @@ namespace hbe
 
 				if (getter == nullptr)
 				{
-					log.outError([&name](auto& ls) { ls << name << " : null getter"; });
+					log.OutError([&name](auto& ls) { ls << name << " : null getter"; });
 
 					continue;
 				}
@@ -492,7 +492,7 @@ namespace hbe
 				auto& desc = pair.second.desc;
 				auto value = getter();
 
-				log.out([name, desc, value](auto& ls) { ls << name << " = " << value << " (" << desc << ')'; });
+				log.Out([name, desc, value](auto& ls) { ls << name << " = " << value << " (" << desc << ')'; });
 			}
 		};
 
@@ -501,7 +501,7 @@ namespace hbe
 		PrintMap(sizeParams);
 		PrintMap(floatParams);
 
-		log.out("========================================================\n");
+		log.Out("========================================================\n");
 	}
 
 } // namespace hbe
