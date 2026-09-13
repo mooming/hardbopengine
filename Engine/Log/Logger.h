@@ -17,7 +17,6 @@
 #include "String/InlineStringBuilder.h"
 #include "String/StaticString.h"
 
-
 namespace hbe
 {
 
@@ -55,9 +54,20 @@ public:
 		void Out(const TLogFunction& logFunc) const noexcept;
 		void Out(ELogLevel level, const TLogFunction& logFunc) const noexcept;
 
-		void OutWarning(const TLogFunction& logFunc) const noexcept { Out(ELogLevel::Warning, logFunc); }
-		void OutError(const TLogFunction& logFunc) const noexcept { Out(ELogLevel::Error, logFunc); }
-		void OutFatalError(const TLogFunction& logFunc) const noexcept { Out(ELogLevel::FatalError, logFunc); }
+		void OutWarning(const TLogFunction& logFunc) const noexcept
+		{
+			Out(ELogLevel::Warning, logFunc);
+		}
+
+		void OutError(const TLogFunction& logFunc) const noexcept
+		{
+			Out(ELogLevel::Error, logFunc);
+		}
+
+		void OutFatalError(const TLogFunction& logFunc) const noexcept
+		{
+			Out(ELogLevel::FatalError, logFunc);
+		}
 
 		void Out(const char* text) const noexcept
 		{
