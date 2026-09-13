@@ -6,6 +6,7 @@
 #include <fstream>
 #include <functional>
 #include <thread>
+
 #include "Core/Task.h"
 #include "HSTL/HString.h"
 #include "HSTL/HUnorderedMap.h"
@@ -103,6 +104,10 @@ private:
 	std::atomic<bool> isRunning;
 	std::atomic<bool> hasInput;
 	std::atomic<bool> needFlush;
+	/// @brief True while a thread is inside ProcessBuffer. The swap and text buffers are members, so
+	///        exactly one thread may drain at a time - which is what makes an inline drain by a
+	///        waiting thread safe rather than a race on member state.
+	std::atomic<bool> isDraining;
 
 	TString logPath;
 	TLogBuffer inputBuffer;
@@ -137,6 +142,16 @@ public:
 
 	void SetFilter(StaticString category, TLogFilter&& filter) noexcept;
 	void AddLog(StaticString category, ELogLevel level, const TLogFunction& logFunc) noexcept;
+
+	/// @brief Block until everything already queued has been written out.
+	/// @details Drains inline when the caller is the drain thread, and also when no drain task can
+	///          run - never started, or already stopped - because then the caller is the only thread
+	///          left that could write the queue. Otherwise it waits for the drain task, but only for
+	///          a bounded time: a starved or blocked IO thread must not swallow the report that made
+	///          the caller flush. On giving up it reports without draining, because draining here while
+	///          a drain task is live would race on that task's buffers.
+	/// @note Guarantees an empty queue at some instant, not the caller's own prefix: another thread
+	///       enqueueing after the queue empties can satisfy the wait first.
 	void Flush() noexcept;
 
 #if PROFILE_ENABLED
@@ -144,6 +159,10 @@ public:
 #endif // PROFILE_ENABLED
 
 private:
+	/// @brief Wait for the drain task to report an empty queue, or drain inline if none can run.
+	void WaitForFlush() noexcept;
+
+	/// @brief Write everything currently queued. One thread at a time - see isDraining.
 	void ProcessBuffer() noexcept;
 	void FlushBuffer(const TTextBuffer& buffer) const noexcept;
 

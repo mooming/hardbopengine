@@ -3,6 +3,7 @@
 #include "Logger.h"
 
 #include <algorithm>
+#include <atomic>
 #include <cstdio>
 
 #include "../Engine/Engine.h"
@@ -36,6 +37,9 @@ void ImmediateLog(ELogLevel level, StaticString category, const char* logStr)
 }
 #endif // LOG_FORCE_IMMEDIATE
 
+constexpr int64_t MaxFlushWaitMs = 1000;
+constexpr int64_t FlushPollPeriodMs = 10;
+
 void EmergencyLog(StaticString category, ELogLevel level, const Logger::TLogFunction& logFunc)
 {
 	Logger::TLogStream str;
@@ -47,6 +51,38 @@ void EmergencyLog(StaticString category, ELogLevel level, const Logger::TLogFunc
 	fputc('\n', out);
 	fflush(out);
 }
+
+class DrainGuard final
+{
+public:
+	explicit DrainGuard(std::atomic<bool>& inProgress) noexcept
+		: guard(inProgress)
+		, acquired(!inProgress.exchange(true, std::memory_order_acq_rel))
+	{
+	}
+
+	~DrainGuard() noexcept
+	{
+		if (acquired)
+		{
+			guard.store(false, std::memory_order_release);
+		}
+	}
+
+	DrainGuard(const DrainGuard&) = delete;
+	DrainGuard(DrainGuard&&) = delete;
+	DrainGuard& operator=(const DrainGuard&) = delete;
+	DrainGuard& operator=(DrainGuard&&) = delete;
+
+	[[nodiscard]] bool IsAcquired() const noexcept
+	{
+		return acquired;
+	}
+
+private:
+	std::atomic<bool>& guard;
+	bool acquired;
+};
 
 } // anonymous namespace
 
@@ -101,6 +137,7 @@ Logger::Logger(Engine& engine, const char* path, const char* filename) noexcept
 	, task("Logger", nullptr, this)
 	, hasInput(false)
 	, needFlush(false)
+	, isDraining(false)
 	, logPath(path)
 {
 	Assert(engine.IsMemoryManagerReady());
@@ -376,10 +413,50 @@ void Logger::Flush() noexcept
 		return;
 	}
 
-	constexpr auto period = std::chrono::milliseconds(10);
+	WaitForFlush();
+}
+
+void Logger::WaitForFlush() noexcept
+{
+	const auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(MaxFlushWaitMs);
+
 	while (needFlush.load(std::memory_order_relaxed))
 	{
-		std::this_thread::sleep_for(period);
+		const bool hasDrainTask = isRunning.load(std::memory_order_acquire);
+
+		if (!hasDrainTask)
+		{
+			ProcessBuffer();
+		}
+
+		if (std::chrono::steady_clock::now() >= deadline)
+		{
+			if (hasDrainTask)
+			{
+				EmergencyLog(GetName(), ELogLevel::Error, [](auto& ls)
+				{
+					ls << "Flush gave up after " << MaxFlushWaitMs
+					   << "ms: the drain task is alive but has not written the queue. The entries stay "
+					   << "buffered, and this report was written straight to standard error.";
+				});
+			}
+			else
+			{
+				EmergencyLog(GetName(), ELogLevel::Error, [](auto& ls)
+				{
+					ls << "Flush gave up after " << MaxFlushWaitMs
+					   << "ms with no drain task to write the queue. The entries stay buffered, and this "
+					   << "report was written straight to standard error.";
+				});
+			}
+
+			return;
+		}
+
+		if (needFlush.load(std::memory_order_relaxed))
+		{
+			std::this_thread::sleep_for(std::chrono::milliseconds(FlushPollPeriodMs));
+		}
 	}
 }
 
@@ -392,8 +469,16 @@ void Logger::ReportMemoryConfiguration()
 
 void Logger::ProcessBuffer() noexcept
 {
-	if (!hasInput.load(std::memory_order_acquire))
+	const DrainGuard drain(isDraining);
+	if (!drain.IsAcquired())
 		return;
+
+	if (!hasInput.load(std::memory_order_acquire))
+	{
+		needFlush.store(false, std::memory_order_release);
+
+		return;
+	}
 
 	AllocatorScope scope(allocator);
 
@@ -404,7 +489,11 @@ void Logger::ProcessBuffer() noexcept
 	}
 
 	if (swapBuffer.empty())
+	{
+		needFlush.store(false, std::memory_order_release);
+
 		return;
+	}
 
 	bool needIOFlush = false;
 	textBuffer.reserve(swapBuffer.size());
