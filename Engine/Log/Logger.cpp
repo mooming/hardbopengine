@@ -3,6 +3,7 @@
 #include "Logger.h"
 
 #include <algorithm>
+#include <cstdio>
 
 #include "../Engine/Engine.h"
 #include "Config/BuildConfig.h"
@@ -35,15 +36,16 @@ void ImmediateLog(ELogLevel level, StaticString category, const char* logStr)
 }
 #endif // LOG_FORCE_IMMEDIATE
 
-void FallbackLog(StaticString category, ELogLevel level, const Logger::TLogFunction& logFunc)
+void EmergencyLog(StaticString category, ELogLevel level, const Logger::TLogFunction& logFunc)
 {
-	auto& engine = Engine::Get();
-
 	Logger::TLogStream str;
-	str << '[' << category << "] ";
+	str << '[' << category << "][" << LogUtil::GetLogLevelString(level) << "] ";
 	logFunc(str);
 
-	engine.Log(level, [&str](auto& ls) { ls << str.c_str(); });
+	auto* out = level >= ELogLevel::Error ? stderr : stdout;
+	fputs(str.c_str(), out);
+	fputc('\n', out);
+	fflush(out);
 }
 
 } // anonymous namespace
@@ -60,7 +62,7 @@ void Logger::SimpleLogger::Out(const TLogFunction& logFunc) const noexcept
 {
 	if (unlikely(instance == nullptr))
 	{
-		FallbackLog(category, level, logFunc);
+		EmergencyLog(category, level, logFunc);
 
 		return;
 	}
@@ -72,7 +74,7 @@ void Logger::SimpleLogger::Out(ELogLevel inLevel, const TLogFunction& logFunc) c
 {
 	if (unlikely(instance == nullptr))
 	{
-		FallbackLog(category, inLevel, logFunc);
+		EmergencyLog(category, inLevel, logFunc);
 
 		return;
 	}
