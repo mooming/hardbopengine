@@ -49,6 +49,14 @@ Addition: `TaskSystem::IsBaseThread()` — `baseTaskThreadID` already exists and
 construction (`TaskSystem.cpp:70`); exposing it lets `Engine::Run()` refuse to pump off the base
 thread, so two pumps cannot exist.
 
+**Step 1 also carries D5 and D6** (owner decision, 2026-09-13: both ride with `EInitLevel`, so the
+defect board is closed by the step that needs the contract rather than by two isolated patches).
+
+| Defect | What step 1 must do |
+|---|---|
+| **D6** — `Logger::AddLog` ends with `taskSystem.GetIOTaskStream().WakeUp()` (`Logger.cpp:382`), `GetIOTaskStream()` is `streams[1]` (`TaskSystem.h:87`) and `Array::operator[]` FatalAsserts with no message (`Array.h:86`), so logging before `Engine::Initialize` aborts | Do not wake a stream that does not exist. This is the same guard `EInitLevel` needs, which is why they belong together - and it is the concrete reason "Logger implies TaskSystem" is **enforced in `Initialize`**, not documented |
+| **D5** - every log timestamp is machine uptime, not engine uptime: `steady_clock::now().time_since_epoch()` measured 1222 h 28 m against `uptime` 50 days 22:28. `LogUtil.cpp:13` returns a function-local static nobody assigns, `LogUtil.h:19` returns it `const&` so it cannot be assigned through, and `Logger.cpp:103` calls it and drops the result | Give the timestamp a real zero point - value that static on first use, or take the baseline from `SystemStatistics::GetStartTime()`, which already records one - and decide there whether the formatter should zero-pad, since it currently prints `1:2:3.45`. Changes the first field of every log line, so it is a decision and not a repair |
+
 ## 2. Step 2 — make logging legal at every level (two live defects)
 
 | Defect | Evidence | Fix |
@@ -66,12 +74,11 @@ not the assert previously assumed), and `WaitForFlush` is now one bounded loop w
 guard, because two waiting threads with no drain task both reach the inline path. The 1000 ms give-up
 branch is **not covered by execution** — it needs a live drain task that stops making progress.
 
-Two more defects surfaced, and neither is fixed:
-
-| # | Defect | Where it belongs |
-|---|---|---|
-| D5 | `LogUtil::GetStartTime()` hands back a function-local static nobody assigns, and `Logger.cpp:103` calls it and drops the result — timestamps measure the clock epoch, not engine start (`1215:12:38` on a one-second run). `GetTimeStampString` also zero-pads nothing | independent one-line fix; not in this plan's path |
-| D6 | `Logger::AddLog` ends with `taskSystem.GetIOTaskStream().WakeUp()`, and that indexes an empty array before `Engine::Initialize` — logging that early FatalAsserts | **step 1**, and it is the concrete reason `EInitLevel` must *enforce* "Logger implies TaskSystem" rather than document it |
+Two more defects surfaced while reproducing these — **D5**, log timestamps counting from the clock
+epoch rather than engine start, and **D6**, `AddLog` FatalAsserting when it wakes an IO stream that
+`Engine::Initialize` has not created yet. Neither is fixed here: by owner decision on 2026-09-13 both
+ride with **step 1**, whose contract D6 is the reason for. They are specified once, in §1, rather than
+copied here as well.
 
 ## 3. Step 3 — new engine module `Engine/Application/`
 
