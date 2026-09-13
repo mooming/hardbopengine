@@ -80,4 +80,8 @@ endif (APPLE)
 install (TARGETS Core DESTINATION ${CMAKE_SOURCE_DIR}/lib)
 
 
+target_link_libraries (Core OSAL)
+
+add_dependencies (Core OSAL)
+
 
