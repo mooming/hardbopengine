@@ -16,42 +16,45 @@
 #include "OSAL/Intrinsic.h"
 #include "String/StringUtil.h"
 
-
 namespace hbe
 {
 namespace
 {
 #if LOG_FORCE_PRINT_IMMEDIATELY || LOG_BREAK_IF_WARNING || LOG_BREAK_IF_ERROR
-	void ImmediateLog(ELogLevel level, StaticString category, const char* logStr)
-	{
-		AllocatorScope scope(MemoryManager::SystemAllocatorID);
+void ImmediateLog(ELogLevel level, StaticString category, const char* logStr)
+{
+	AllocatorScope scope(MemoryManager::SystemAllocatorID);
 
-		using namespace std;
-		InlineStringBuilder<64> timeStampStr;
-		LogUtil::GetTimeStampString(timeStampStr);
-		auto levelStr = LogUtil::GetLogLevelString(level);
+	using namespace std;
+	InlineStringBuilder<64> timeStampStr;
+	LogUtil::GetTimeStampString(timeStampStr);
+	auto levelStr = LogUtil::GetLogLevelString(level);
 
-		cout << '[' << timeStampStr << "][" << std::this_thread::get_id() << "][" << category << "][" << levelStr
-			 << "] " << logStr << endl;
-	}
+	cout << '[' << timeStampStr << "][" << std::this_thread::get_id() << "][" << category << "][" << levelStr << "] "
+		 << logStr << endl;
+}
 #endif // LOG_FORCE_IMMEDIATE
 
-	void FallbackLog(StaticString category, ELogLevel level, const Logger::TLogFunction& logFunc)
-	{
-		auto& engine = Engine::Get();
+void FallbackLog(StaticString category, ELogLevel level, const Logger::TLogFunction& logFunc)
+{
+	auto& engine = Engine::Get();
 
-		Logger::TLogStream str;
-		str << '[' << category << "] ";
-		logFunc(str);
+	Logger::TLogStream str;
+	str << '[' << category << "] ";
+	logFunc(str);
 
-		engine.Log(level, [&str](auto& ls) { ls << str.c_str(); });
-	}
+	engine.Log(level, [&str](auto& ls) { ls << str.c_str(); });
+}
 
 } // anonymous namespace
 
 Logger* Logger::instance = nullptr;
 
-Logger::SimpleLogger::SimpleLogger(StaticString category, ELogLevel level) noexcept : category(category), level(level) {}
+Logger::SimpleLogger::SimpleLogger(StaticString category, ELogLevel level) noexcept
+	: category(category)
+	, level(level)
+{
+}
 
 void Logger::SimpleLogger::Out(const TLogFunction& logFunc) const noexcept
 {
@@ -91,7 +94,8 @@ Logger::SimpleLogger Logger::Get(StaticString category, ELogLevel level) noexcep
 }
 
 Logger::Logger(Engine& engine, const char* path, const char* filename) noexcept
-	: allocator("LoggerMemoryPool"), inputAlloc("LoggerInputPool")
+	: allocator("LoggerMemoryPool")
+	, inputAlloc("LoggerInputPool")
 	, task("Logger", nullptr, this)
 	, hasInput(false)
 	, needFlush(false)
@@ -165,7 +169,7 @@ void Logger::StartTask(TaskSystem& taskSys)
 
 	auto ioStreamIndex = TaskSystem::GetIOTaskStreamIndex();
 
-	auto runnable = [](void* userData,  std::size_t startIndex,  std::size_t endIndex) ->  std::size_t
+	auto runnable = [](void* userData, std::size_t startIndex, std::size_t endIndex) -> std::size_t
 	{
 		auto self = static_cast<Logger*>(userData);
 		if (self == nullptr)
@@ -207,7 +211,8 @@ void Logger::StopTask(TaskSystem& taskSys)
 {
 	isRunning.store(false, std::memory_order_release);
 
-	if (task.HasDone()) return;
+	if (task.HasDone())
+		return;
 
 	task.Wait();
 	threadID = std::thread::id();
@@ -259,7 +264,8 @@ void Logger::AddLog(StaticString category, ELogLevel level, const TLogFunction& 
 		if (found != filters.end())
 		{
 			auto& filter = found->second;
-			if (filter != nullptr && !filter(level)) return;
+			if (filter != nullptr && !filter(level))
+				return;
 		}
 	}
 
@@ -376,12 +382,16 @@ void Logger::Flush() noexcept
 }
 
 #if PROFILE_ENABLED
-void Logger::ReportMemoryConfiguration() { allocator.ReportConfiguration(); }
+void Logger::ReportMemoryConfiguration()
+{
+	allocator.ReportConfiguration();
+}
 #endif // PROFILE_ENABLED
 
 void Logger::ProcessBuffer() noexcept
 {
-	if (!hasInput.load(std::memory_order_acquire)) return;
+	if (!hasInput.load(std::memory_order_acquire))
+		return;
 
 	AllocatorScope scope(allocator);
 
@@ -391,7 +401,8 @@ void Logger::ProcessBuffer() noexcept
 		hasInput.store(false, std::memory_order_release);
 	}
 
-	if (swapBuffer.empty()) return;
+	if (swapBuffer.empty())
+		return;
 
 	bool needIOFlush = false;
 	textBuffer.reserve(swapBuffer.size());
