@@ -57,6 +57,9 @@ MinSizeRel
 # Generated test output, not source
 /test_output.txt
 
+# hb-standards review-gate scratch: batch/findings JSON, rewritten by every gate run
+.Plans/review/
+
 External
 
 .pi/logs/

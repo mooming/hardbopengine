@@ -1,4 +1,14 @@
-# Plan — `gen_spv_header.py` → C++ tool application under `Tools/`
+# Plan — `gen_spv_header.py` → C++ tool application
+
+> **Partially superseded.** The owner has since decided on a single `hbengine` executable with a
+> runtime application registry (`.Plans/PLAN_single_executable_app_registry.md`). §1 (engine init
+> levels) is now step 1-2 of that plan; §2 (making `Tools/` an engine-application home) and §3
+> (placement as an `Executable` module) are **replaced** — the tool becomes a registered application
+> in `Applications/SpvHeaderGen`. §4 (per-platform scripts, manual invocation) and §5 (verification,
+> including the byte-identical `ShadersSpv.h` gate) still stand, with the tool's CLI reached as
+> `hbengine run SpvHeaderGen …`.
+
+# Original plan text (kept for the decisions that still stand)
 
 Confirmed goal (owner statements, in order):
 
@@ -112,7 +122,7 @@ committed header **byte-for-byte except the banner line** (banner names the tool
 This is the acceptance test, not a smoke test.
 
 Standards constraints honoured: line-1 copyright, no comments in `.cpp`, Allman braces, tabs,
-camelCase functions (post-`4e9e373`), `[[nodiscard]]` getters, `out`/`in` parameter prefixes,
+PascalCase functions (owner reverted the camelCase sweep in `a783a45`), `[[nodiscard]]` getters, `out`/`in` parameter prefixes,
 `explicit` single-arg ctors, `final` classes.
 
 ---

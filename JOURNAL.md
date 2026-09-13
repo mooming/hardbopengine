@@ -1,5 +1,63 @@
 # Journal
 
+## One executable, many applications: why registration is a call and not an initialiser (2026-09-13)
+
+**What was asked, and what it turned out to be.** Port `Engine/Renderer/Vulkan/gen_spv_header.py` to a
+C++ engine module. Asked twice — "is it worth it?" and "what do I lose?" — and answered with
+measurements rather than opinion, which is what surfaced the larger finding. The port is still owed;
+what landed first is the architecture it forced. `486649a` carries the build-system half.
+
+**The landmine under the port.** `Applications/VulkanExample/CMakeLists.txt:98` ran
+`add_custom_target(GenerateShadersSpv DEPENDS VulkanShaderCompile)` — a hand-written line inside a file
+headered `GENERATED FILE - DO NOT EDIT`, with no `find_package(Vulkan)` and no `VulkanShaderCompile`
+target generated anywhere in the tree. So regeneration deleted the target that produced the committed
+`ShadersSpv.h`, and nothing was broken until someone re-ran `generate_cmake_files.sh`. Fixed by moving
+both hand-written blocks into `Engine/customCMake.txt`, the sanctioned channel — and the migration
+itself misfired twice: `customCMake.txt` is appended *after* `add_subdirectory`, so it cannot set an
+inherited variable (build failure 3), and `Module::ParseList` de-duplicates identical lines, so four
+bare `#` separators collapsed silently and the comment separator printed as a CMake command (build
+failure 4). Verified as the fix's own gate: regenerate twice, `git diff --exit-code` clean, and
+`-D__DEBUG__` present on 146 compile lines in Debug and Dev and 0 in Release.
+
+**The measurement that decided the architecture.** The tool as an engine application needs applications
+registered inside one binary. Static-archive self-registration was built and run, not argued: an
+application behind an archive member yielded registry count **0 with no diagnostic**, because the linker
+drops unreferenced members and `--force-load` only makes them *available*. `[basic.start.dynamic]` says
+running a dynamic initialiser before `main` is implementation-defined or **deferred**, and deferral
+fires on an odr-use in the same TU — which a registrar TU does not have. So registration is an
+explicit call chain, guaranteed by `[expr.call]`. Costs came out second-order and are in the plan:
+100 apps static **1.83 ms** launch vs eager-plugin **50.4 ms**; descriptors as **data** 1424 KB vs as
+**code** 1408 KB RSS, so startup was made to execute no application code; and static linking does not
+commit dead application code — 850 KB of the 100-app image stayed non-resident until run.
+
+**Decided with the owner, in the plan.** One `hbengine` executable; `EInitLevel` so a tool skips
+`Engine::Initialize`'s unconditional window-server touch; lifecycle gains `Initialize`/`Shutdown`,
+states and `Pause`/`Resume` as requests (the host owns requests, the application owns state — two
+atomics, deliberately); `ERunMode` per application; a generated catalogue from one `application =`
+key, bare names so the compiler checks them; and per-application arenas under a **containment
+contract** rather than owner-tagged allocations, which the owner declined. That last one leaves a
+named hole: frees route by *current* scope (`MemoryManager::Deallocate` uses `GetScopedAllocatorID()`),
+so an arena pointer freed under a wider scope reaches `free()`. `PoolAllocator.cpp:193` forwards
+foreign pointers to its parent and `MultiPoolAllocator` reports Fatal and declines to free, so the
+remaining direction is closed by construction — the host holds the scope across the instance's
+destruction — plus a Debug tripwire on live blocks at arena teardown.
+
+**Found, and not yet fixed.** `Logger::Flush()` spins on a flag only its IO task clears, so a
+`FatalError` with no logger task hangs forever; `FallbackLog()` calls `Engine::Get()`, which asserts a
+non-null instance — reachable exactly when no `Engine` exists; both example applications create a
+second `OS::Application` although `Engine::Initialize` already creates one; `Engine/dependencies.txt`
+is the filename MakeBuild reads, so the `Engine/Core` and `Engine/Resource` `dependencies.txt` are
+inert and neither currently links `Log` that way; `Component` is a poor base (mandatory `Update`,
+engine-allocated `String` name, public non-atomic `SetState`) though its state vocabulary is reused.
+
+**Harness lesson worth keeping:** capturing `EngineTest` output with `2>/dev/null` produced blank runs
+that looked like hangs until a control run proved the harness. The test binary prints results to
+stderr.
+
+**Where it stands.** Nothing of the restructure is implemented. `.Plans/PLAN_single_executable_app_registry.md`
+holds the final plan with a verification matrix and a nine-step commit sequence; the tool port is
+re-scoped into it as step 9. Baseline on the current tree remains 53/53 in all three configurations.
+
 ## LinkedList's undefined `ContainsElement`, and the templates nothing ever instantiated (2026-09-13)
 
 **What was asked, and what it turned out to be.** Implement the undefined function `LinkedList` calls.
