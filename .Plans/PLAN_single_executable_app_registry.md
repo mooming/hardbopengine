@@ -60,6 +60,19 @@ Step 2 lands **before** step 5 because `MultiPoolAllocator::Deallocate` raises `
 foreign pointer, and that path flushes — an arena misroute under a worker-thread application would
 otherwise hang instead of reporting.
 
+**Done: `95053e5` and `5677fce`, with `a499508` and `bc16916` carrying the formatting.** Both defects
+reproduced against HEAD before being fixed (D1 killed at 25 s; D2 died of SIGSEGV with no diagnostic,
+not the assert previously assumed), and `WaitForFlush` is now one bounded loop with a single-drainer
+guard, because two waiting threads with no drain task both reach the inline path. The 1000 ms give-up
+branch is **not covered by execution** — it needs a live drain task that stops making progress.
+
+Two more defects surfaced, and neither is fixed:
+
+| # | Defect | Where it belongs |
+|---|---|---|
+| D5 | `LogUtil::GetStartTime()` hands back a function-local static nobody assigns, and `Logger.cpp:103` calls it and drops the result — timestamps measure the clock epoch, not engine start (`1215:12:38` on a one-second run). `GetTimeStampString` also zero-pads nothing | independent one-line fix; not in this plan's path |
+| D6 | `Logger::AddLog` ends with `taskSystem.GetIOTaskStream().WakeUp()`, and that indexes an empty array before `Engine::Initialize` — logging that early FatalAsserts | **step 1**, and it is the concrete reason `EInitLevel` must *enforce* "Logger implies TaskSystem" rather than document it |
+
 ## 3. Step 3 — new engine module `Engine/Application/`
 
 `hbe::Component` is deliberately **not** the base: it mandates `Update(float deltaTime)` (no frame
@@ -241,7 +254,7 @@ corruption direction in §4 is closed by construction and by a Debug tripwire, n
 ## 12. Commit sequence
 
 1. `feat(engine): EInitLevel with level-safe teardown; expose TaskSystem base thread`
-2. `fix(log): inline drain without a drain task; fallback log independent of Engine`
+2. `fix(log): inline drain without a drain task; fallback log independent of Engine` — **done** (`5677fce`, `95053e5`, plus two style commits split and hash-proved whitespace-only); `build(core,resource): declare the OSAL dependency` done as `18f05e0`
 3. `feat(application): lifecycle, control, registry and tests`
 4. `feat(memory): per-application arenas under a containment contract`
 5. `build(makebuild): application = key emits the host catalogue` *(submodule + gitlink)*

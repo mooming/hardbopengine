@@ -1,5 +1,66 @@
 # Journal
 
+## Three recorded defects, closed by running them (2026-09-13)
+
+**What was asked.** "Fix recorded defects" — the ones the entry below listed as found and not yet
+fixed. Re-verified against the current tree first, because the tree had moved (`fb791cb`, and the
+renderer/application refactor rewrote the example mains): **D3 was already gone** — `CreateNewApplication`
+exists nowhere in `Applications/` or `Engine/`, `Engine.cpp:96` creates the one `OS::Application`, and
+`WindowExample` only creates a window. The entry below claims it is unfixed; that claim is now wrong and
+this paragraph is the correction.
+
+**Two severity claims of mine were also wrong, and measurement corrected them.** D2 was recorded as
+"assert in Debug/Dev, null deref in Release"; the repro died of **SIGSEGV with no diagnostic** — the
+`Assert` inside `Engine::Get()` produced nothing, so the crash looked like an unrelated fault. D1's
+reachability was understated: the everyday trigger is not a hypothetical partial-init tool but
+`StopTask`, which sets `isRunning = false` and resets `threadID`, then **logs afterwards** — and
+`FatalAssert` itself calls `FlushLogs()` (`Debug.h:87`), so a fatal report became a hang.
+
+**Both demonstrated before being fixed**, on a watchdog: D1's process printed "entering Flush" and was
+killed at 25 s against HEAD; after `95053e5` it exits 0 with the queued line written by the caller. D2
+died with signal 11 against HEAD; after `5677fce` it prints `[Repro][Info] logged with no Engine in
+existence`. Two assumptions were also wrong in the *fix's* favour: `TLogStream` is
+`InlineStringBuilder<Config::LogOutputBuffer>` — a fixed stack buffer — so the fallback needs no
+allocator at all, and `TLogBuffer`/`TTextBuffer` are allocator-aware `HVector`s, so an inline drain does
+not misroute frees. `ImmediateLog`, the helper that exists for "print now", opens
+`AllocatorScope(SystemAllocatorID)`, and `MemoryManager::GetInstance()` FatalAsserts — so the same trap
+as a `StaticString` built before the manager. The emergency write uses C stdio for that reason.
+
+**Two findings from the process, both latent, neither fixed.** **D5:** `LogUtil::GetStartTime()` returns
+a reference to a function-local static that nobody assigns (`LogUtil.cpp:13`, and `LogUtil.h:19` returns
+it `const`, so it cannot be assigned through), while `Logger.cpp:103` calls it and drops the result — so
+every log timestamp is measured from the clock epoch, not engine start: `1215:12:38` on a one-second run.
+`GetTimeStampString` also pads nothing, so it would print `1:2:3.45`. **D6:** `Logger::AddLog` ends with
+`taskSystem.GetIOTaskStream().WakeUp()` (`Logger.cpp:382`), and that indexing of an empty array
+FatalAsserts — logging before `Engine::Initialize` aborts. This is the concrete reason `EInitLevel`
+must enforce "Logger implies TaskSystem" rather than document it, and it belongs in plan step 1.
+
+**Not covered by execution:** the 1000 ms give-up branch of `WaitForFlush`. Reaching it needs a live
+drain task that stops making progress, i.e. blocking the IO stream — the tests cover the no-drain branch
+and the two-waiter race instead (15 runs, queued entry always ordered before both waiters returned).
+
+**Method worth keeping.** Style separated from semantics, and *proved* separated: strip every whitespace
+byte and hash — `e855c0de` both sides for `Logger.cpp`, `85e6a516` for `Logger.h`, so no behaviour can
+hide in the format commits. Also worth keeping: `check.sh` judges only *staged* files, so staging
+`Logger.h` surfaced a pre-existing include-layout failure (standard and project blocks merged, no blank
+between) that had never been seen because the file had never been staged — expect the same on other
+long-unstaged headers. Owner extracted `WaitForFlush()` before this change, and that seam is where the
+fix landed.
+
+**D4, and its honest size.** `Engine/Core` and `Engine/Resource` carried `dependencies.txt` — plural —
+which MakeBuild never reads: the config key is `dependency`, the legacy file is `dependency.txt`. The
+modules do call OSAL (`TaskStream.cpp:77`, `Buffer.cpp:205`), so the build files understated the graph;
+nothing could break, because `Engine` is a global include directory and every application links every
+module. Fixed in `18f05e0`; the duplicate-library link warning now names `libOSAL.a`, which is the
+dependency taking effect.
+
+**State.** EngineTest **53/53 in all three configurations** and `check.sh` clean at every commit
+(`a499508` `5677fce` `bc16916` `95053e5` `18f05e0`). Plan step 2 is done; step 1 (`EInitLevel`, now also
+carrying D6) is next. Standalone repros live in `/tmp/spv_repro/` and are rebuilt from
+`repro_d1.cpp`, `repro_d1b.cpp`, `repro_d2.cpp` against `lib/Debug/*.a` — throwaway, deliberately not
+committed, because the defects they gate are fixed and the guard belongs in the suite once a lifecycle
+that can host them exists.
+
 ## One executable, many applications: why registration is a call and not an initialiser (2026-09-13)
 
 **What was asked, and what it turned out to be.** Port `Engine/Renderer/Vulkan/gen_spv_header.py` to a
@@ -45,7 +106,9 @@ destruction — plus a Debug tripwire on live blocks at arena teardown.
 **Found, and not yet fixed.** `Logger::Flush()` spins on a flag only its IO task clears, so a
 `FatalError` with no logger task hangs forever; `FallbackLog()` calls `Engine::Get()`, which asserts a
 non-null instance — reachable exactly when no `Engine` exists; both example applications create a
-second `OS::Application` although `Engine::Initialize` already creates one; `Engine/dependencies.txt`
+second `OS::Application` although `Engine::Initialize` already creates one **[superseded same day: that had
+already been fixed upstream by the renderer/application refactor; the entry above records the
+correction]**; `Engine/dependencies.txt`
 is the filename MakeBuild reads, so the `Engine/Core` and `Engine/Resource` `dependencies.txt` are
 inert and neither currently links `Log` that way; `Component` is a poor base (mandatory `Update`,
 engine-allocated `String` name, public non-atomic `SetState`) though its state vocabulary is reused.
