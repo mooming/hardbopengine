@@ -1,5 +1,72 @@
 # Journal
 
+## Plan split, D6 closed, D7 found — and three errors of my own (2026-09-16)
+
+**What was asked.** Review and correct `PLAN_single_executable_app_registry.md` with the smallest edits
+that stop it overshooting, split the work into a bug-fixing task and a task-system refactor task, and
+write the task-system redesign as a design doc: a provider/stream job graph with `Engine::Run()` as the
+tick pump for the major systems. Planning went to `ec50284` and `f505165`, the design to
+`docs/TaskSystemRedesign.md`; the split produced `.Plans/PLAN_defect_board_partial_init.md` (Task A) and
+`.Plans/PLAN_task_system_refactor.md` (Task B). Execution then went commit-by-commit with a gate on each.
+
+**Five corrections to the plan, all from reading the tree rather than trusting the summary.** `Engine::Run()`
+does not return between frames — it spins on `taskSystem.IsRunning()` (`TaskSystem.cpp:271`, cleared at
+`:101`), which is what makes an applet with its own loop deadlock, and the plan described it as a pump that
+returns. `IsBaseThread()` already exists, so a step that was going to add it was redundant. The
+`std::vector` rationale was inverted: `DefaultAllocator` fast-paths to `malloc`, so an `HVector` there buys
+nothing and only loses the `std` interop `MacOSApplication` needs. The dependency list omitted `HEngine`
+and `External`. `EngineTest`'s entry is `TestMain.cpp`, not `Main.cpp`. The first two were the ones that
+would have caused real overshoot.
+
+**D6 closed (`d75e7bc`).** `Logger::AddLog` woke the IO stream by index without asking whether that stream
+exists; in a process that never initialised the task system the index is out of range and
+`GetTaskStream` asserts. Guarded on `HasStream`, the precondition of index access, and stated in the `.h`
+that an index without that check is unsafe. Repro went exit 133 to exit 0; suite 53/53 in Debug, Dev and
+Release. The guard is on stream *existence*, not on the `isRunning` proxy I first reached for: `streams.Clear()`
+runs in `JoinAndClear` and `Logger::StopTask` is only called from `SignalHandler`, so "drain task still
+alive" misses the shutdown window entirely.
+
+**D7 found and closed as A0 (`ccc05ec`, with `176e8f1` behind it).** The `-test` configuration **did not
+compile at HEAD**: `Engine/OSAL/Window.cpp` raises 12 `-Wunused-result` errors under `-Werror` because six
+`windowFuture.get()` calls in the `WindowTest` bodies discard a `[[nodiscard]]` result. Reproduced on a
+clean HEAD tree with my work reverted, so it is pre-existing. Fixed with the discard convention the tree
+already uses (`TaskSystem.cpp:164`, `StaticStringTable.cpp:210`). **Why it hid, which matters more than the
+fix:** `check.sh` builds without `__UNIT_TEST__`, so the gate never compiles the test bodies at all — a
+`-test`-only break can sit at HEAD indefinitely. Corollary, and a correction to my own earlier claim: the
+"53/53 ×3" I reported after A1 was a genuine run of a real suite, but that build had reused an
+`OSAL/Window.cpp.o` compiled *without* `__UNIT_TEST__`, so `WindowTest`'s bodies had not been compiled, let
+alone executed. They are now, and `TC0.Create Window` runs.
+
+**The include-layout comparator was locale-dependent, which made two lint layers demand opposite orders of
+the same block.** `awk`'s `L[i] < last` followed the ambient collation, where case folds first and
+`Logger.h` precedes `LogLevel.h`; clang-format sorts case-sensitively and wants the reverse. That is why
+`Engine.h` had no order that could pass both. **My premise for the fix was wrong and measurement caught
+it:** I claimed pinning the comparison to byte order would make the layers agree, and `LC_ALL=C` alone
+removed 2 findings while **adding 14**, because comparing across the `<...>`/`"..."` boundary compares
+`chrono` against `LogLevel.h` — a merged block is a missing blank line, which is layer 1's finding, not an
+ordering one. Byte order *plus* comparing only within a category is the actual standard. Whole tree: 54
+flagged files → 18, zero added, `Engine.h` clean, and a negative test that puts the pair back shows both
+layers rejecting it together. The check was not weakened.
+
+**Three errors, recorded because that is what this log is for.** (1) `git checkout -- <path>` restores from
+the **index**, not HEAD, so the "revert" I ran before reformatting `Window.cpp` was a no-op and the
+behavioural `(void)` fix rode inside a commit that claimed to be formatting only — which is also why the
+whitespace proof said FAIL and the commit still happened: I had chained it with `&&` after printing the
+proof instead of gating on it. (2) That commit's message asserted a hash, `67a2f06608`, **that I never
+computed**. It was destroyed by `git reset --mixed HEAD~1` and rebuilt as `176e8f1` with measured values
+(`6b2743da92` body, `fbd4b093c8` include set, equal on both sides); nothing was pushed and no other commit
+depends on it, but a fabricated verification number is the worst kind of thing to put in a record whose
+whole purpose is verification. (3) The amended commit initially carried `(void)windowFuture.get();`, the
+form clang-format rejects, because `--apply` had written the worktree while the index kept the old bytes —
+amended, and re-checked in `HEAD` scope so the number quoted covers the committed bytes rather than an
+empty index. The habit that caused all three is the same: running the check and the action in one chain,
+so the check cannot stop the action.
+
+**Open.** Task A's A2 (D5, log zero point), A3 (D3, one OS application per process) and A4 (`EInitLevel`
+wiring, header written and compiling but in no target yet) are not started; the gate gaining a `-test`
+compile is recorded but not done, deliberately left out of A0 rather than folded in; Task B's gates
+G1–G5 are undecided. Nothing pushed.
+
 ## Three recorded defects, closed by running them (2026-09-13)
 
 **What was asked.** "Fix recorded defects" — the ones the entry below listed as found and not yet
