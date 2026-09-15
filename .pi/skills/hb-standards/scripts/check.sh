@@ -256,7 +256,16 @@ if [[ ${#FILES[@]} -gt 0 ]]; then
 		# The own header of foo.cpp is "foo.h" — matched by basename, since the repo
 		# includes it both as "foo.h" and as "Dir/foo.h".
 		own=$(basename "$f"); own="${own%.*}.h"
-		out=$(awk -v F="$f" -v OWN="$own" '
+		# LC_ALL=C pins the collation of the string compares below to byte order.
+		# Without it `L[i] < last` follows the ambient locale, so the verdict depends on
+		# the developer's machine: under a en_US-style collation "Logger.h" sorts before
+		# "LogLevel.h" (case folded, then 'g' < 'l'), while clang-format sorts
+		# case-sensitively and puts "LogLevel.h" first — the two lint layers then demand
+		# opposite orders of the same include block and no ordering can satisfy both
+		# (measured on Engine/Engine/Engine.h). Byte order is what clang-format uses, so
+		# this makes layer 2 agree with layer 1 AND makes the check reproducible. Scoped to
+		# this awk program rather than the script, so no other check changes behaviour.
+		out=$(LC_ALL=C awk -v F="$f" -v OWN="$own" '
 			# phase tracks whether the top-of-file include preamble is still open. The
 			# dominant repo idiom puts further #include directives inside a
 			# "#ifdef __UNIT_TEST__" test block far below the first code body, so the
@@ -296,6 +305,12 @@ if [[ ${#FILES[@]} -gt 0 ]]; then
 				sub(/^["<]/, "", path)
 				sub(/[">].*$/, "", path)                              # cut at the FIRST closer, not the last
 				list[block] = list[block] path "\n"
+				# Category per line, kept alongside the path: ordering is only meaningful
+				# inside a category. A block that jams <...> and "..." together has a missing
+				# blank line, which is a defect clang-format already reports by name, and
+				# comparing "chrono" against "LogLevel.h" on top of it reports the same file
+				# twice for reasons that read as unrelated.
+				listk[block] = listk[block] (($0 ~ /^[ \t]*#[ \t]*include[ \t]*</) ? "std" : "proj") "\n"
 				if (block == 1 && firstinc == "") firstinc = path
 				count++
 				next
@@ -319,12 +334,22 @@ if [[ ${#FILES[@]} -gt 0 ]]; then
 					else if (kind[b] == "std" && seenProj) { print "standard <...> block must precede the \"project\" block"; break }
 				}
 
+				# Alphabetical within each category of each block. Comparing across the
+				# <...>/"..." boundary is meaningless - they are separate categories, and a
+				# block containing both is a blank-line defect, not an ordering defect - so the
+				# last item of each kind is tracked on its own.
 				for (b = 1; b <= nb; b++) {
-					m = split(list[b], L, "\n"); last = ""; unsorted = 0
+					m = split(list[b], L, "\n"); split(listk[b], K, "\n")
+					laststd = ""; lastproj = ""; unsorted = 0
 					for (i = 1; i <= m; i++) {
 						if (L[i] == "") continue
-						if (last != "" && L[i] < last) unsorted = 1
-						last = L[i]
+						if (K[i] == "std") {
+							if (laststd != "" && L[i] < laststd) unsorted = 1
+							laststd = L[i]
+						} else {
+							if (lastproj != "" && L[i] < lastproj) unsorted = 1
+							lastproj = L[i]
+						}
 					}
 					if (unsorted) print "block " b ": not alphabetical"
 				}
