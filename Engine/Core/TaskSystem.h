@@ -5,6 +5,7 @@
 
 #include <atomic>
 #include <thread>
+
 #include "Container/Array.h"
 #include "Container/BoundedPriorityQueue.h"
 #include "MainThreadTaskQueue.h"
@@ -50,8 +51,16 @@ public:
 
 	static bool IsBaseThread() noexcept;
 	static bool IsIOThread() noexcept;
-	static TIndex GetBaseTaskStreamIndex() noexcept { return BaseStreamIndex; }
-	static TIndex GetIOTaskStreamIndex() noexcept { return IOStreamIndex; }
+
+	static TIndex GetBaseTaskStreamIndex() noexcept
+	{
+		return BaseStreamIndex;
+	}
+
+	static TIndex GetIOTaskStreamIndex() noexcept
+	{
+		return IOStreamIndex;
+	}
 
 public:
 	TaskSystem() noexcept;
@@ -79,15 +88,40 @@ public:
 	// Process all pending main thread tasks.
 	size_t ProcessMainThreadTasks() noexcept;
 
-	[[nodiscard]] StaticString GetName() const noexcept { return name; }
-	[[nodiscard]] auto& IsRunning() const noexcept { return isRunning; }
+	[[nodiscard]] StaticString GetName() const noexcept
+	{
+		return name;
+	}
 
-	auto& GetBaseTaskStream() noexcept { return streams[GetBaseTaskStreamIndex()]; }
-	auto& GetBaseTaskStream() const noexcept { return streams[GetBaseTaskStreamIndex()]; }
-	auto& GetIOTaskStream() noexcept { return streams[GetIOTaskStreamIndex()]; }
-	auto& GetIOTaskStream() const noexcept { return streams[GetIOTaskStreamIndex()]; }
+	[[nodiscard]] auto& IsRunning() const noexcept
+	{
+		return isRunning;
+	}
 
-	auto& GetMainThreadTaskQueue() noexcept { return mainThreadTaskQueue; }
+	auto& GetBaseTaskStream() noexcept
+	{
+		return streams[GetBaseTaskStreamIndex()];
+	}
+
+	auto& GetBaseTaskStream() const noexcept
+	{
+		return streams[GetBaseTaskStreamIndex()];
+	}
+
+	auto& GetIOTaskStream() noexcept
+	{
+		return streams[GetIOTaskStreamIndex()];
+	}
+
+	auto& GetIOTaskStream() const noexcept
+	{
+		return streams[GetIOTaskStreamIndex()];
+	}
+
+	auto& GetMainThreadTaskQueue() noexcept
+	{
+		return mainThreadTaskQueue;
+	}
 
 	[[nodiscard]] StaticString GetStreamName(int index) const noexcept;
 	[[nodiscard]] TIndex GetStreamIndex(TThreadID id) const noexcept;
@@ -108,7 +142,10 @@ namespace hbe
 class TaskSystemTest : public TestCollection
 {
 public:
-	TaskSystemTest() : TestCollection("TaskSystemTest") {}
+	TaskSystemTest()
+		: TestCollection("TaskSystemTest")
+	{
+	}
 
 protected:
 	void Prepare() override;
