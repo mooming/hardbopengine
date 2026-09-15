@@ -120,7 +120,7 @@ void WindowTest::Prepare()
 			windowPromise.set_value(nullptr);
 		}, &userData);
 
-		windowFuture.get();
+		(void) windowFuture.get();
 	});
 
 	AddTest("Set and Get Title", [this](auto& ls)
@@ -223,7 +223,7 @@ void WindowTest::Prepare()
 			windowPromise.set_value(nullptr);
 		}, &userData);
 
-		windowFuture.get();
+		(void) windowFuture.get();
 	});
 
 	AddTest("Set and Get Size", [this](auto& ls)
@@ -325,7 +325,7 @@ void WindowTest::Prepare()
 			windowPromise.set_value(nullptr);
 		}, &userData);
 
-		windowFuture.get();
+		(void) windowFuture.get();
 	});
 
 	AddTest("Visibility", [this](auto& ls)
@@ -429,7 +429,7 @@ void WindowTest::Prepare()
 			windowPromise.set_value(nullptr);
 		}, &userData);
 
-		windowFuture.get();
+		(void) windowFuture.get();
 	});
 
 	AddTest("Poll Events", [this](auto& ls)
@@ -525,7 +525,7 @@ void WindowTest::Prepare()
 			windowPromise.set_value(nullptr);
 		}, &userData);
 
-		windowFuture.get();
+		(void) windowFuture.get();
 	});
 
 	AddTest("Close Window", [this](auto& ls)
@@ -621,7 +621,7 @@ void WindowTest::Prepare()
 			windowPromise.set_value(nullptr);
 		}, &userData);
 
-		windowFuture.get();
+		(void) windowFuture.get();
 	});
 }
 
