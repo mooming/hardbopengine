@@ -127,6 +127,19 @@ public:
 	[[nodiscard]] TIndex GetStreamIndex(TThreadID id) const noexcept;
 	TaskStream& GetStream(int index) noexcept;
 
+	/// @brief Whether the stream at `index` exists at this instant.
+	/// @details Streams are built by `Initialize` and cleared by `JoinAndClear`, so the array is empty
+	///          before startup and again once the pump has joined; indexing either way aborts with a
+	///          bare `FatalAssert`. Anything that reaches a stream by index instead of holding one must
+	///          ask first - this is the precondition of `GetStream` and `GetIOTaskStream`, not a policy.
+	/// @note Answers "can I index this now", nothing more. It is not a lifetime guarantee across the
+	///       call: a concurrent `JoinAndClear` can retire the stream between the test and the use, so a
+	///       caller logging while another thread tears the pump down still needs its own ordering.
+	[[nodiscard]] bool HasStream(TIndex index) const noexcept
+	{
+		return streams.IsValidIndex(index);
+	}
+
 private:
 	void BuildStreams();
 };
