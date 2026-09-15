@@ -21,7 +21,16 @@ Follow-on owner decisions, each recorded where it was made:
 
 Naming follows the tree as it stands after `a783a45` (PascalCase functions).
 
+**Split into two executable tasks (2026-09-14).** §1 is executed by
+[`PLAN_defect_board_partial_init.md`](PLAN_defect_board_partial_init.md) (Task A — bug fixing, owns the
+authoritative `EInitLevel`/D5/D6 spec). Task scheduling and `Engine::Run()` semantics are owned by
+[`PLAN_task_system_refactor.md`](PLAN_task_system_refactor.md) (Task B). What remains here — steps 3–9 —
+does not depend on either, and the seam between them is documented in Task B §1.
+
 ## 1. Step 1 — `EInitLevel`, and teardown that respects it
+
+> **Spec moved.** Task A owns this section now; treat the text below as a summary and implement from
+> there. Two citations here were stale after the `a499508` style commit and are corrected below.
 
 `EInitLevel` goes in its own header, `Engine/Engine/EngineInitLevel.h`, included by `Engine.h`
 (`Engine.h` pulls `MemoryManager.h`, `TaskSystem.h`, `Logger.h`, `ResourceManager.h`; a descriptor
@@ -45,16 +54,19 @@ and `application != nullptr` already say what started, so the level cannot drift
 | `Engine::ShutDown()` → `taskSystem.RequestShutDown()` | guarded by `isTaskSystemReady` |
 | `SignalHandler()` → `logger.StopTask(taskSystem)` | guarded by `isLoggerReady`; otherwise synchronous flush |
 
-Addition: `TaskSystem::IsBaseThread()` — `baseTaskThreadID` already exists and is captured at
-construction (`TaskSystem.cpp:70`); exposing it lets `Engine::Run()` refuse to pump off the base
-thread, so two pumps cannot exist.
+`TaskSystem::IsBaseThread()` **already exists** and is public (`TaskSystem.h:51`, impl
+`TaskSystem.cpp:56`, already called at `:232`) — there is nothing to expose, and `baseTaskThreadID` is
+captured at construction (`TaskSystem.cpp:70`). The intended guard on `Engine::Run()` is **dropped**:
+`Engine::Run()` blocks until shutdown rather than pumping per frame (§6), and the meaning of "base
+thread" is replaced by named streams in Task B. Adding a guard on an identity about to be removed
+would be work done twice.
 
 **Step 1 also carries D5 and D6** (owner decision, 2026-09-13: both ride with `EInitLevel`, so the
 defect board is closed by the step that needs the contract rather than by two isolated patches).
 
 | Defect | What step 1 must do |
 |---|---|
-| **D6** — `Logger::AddLog` ends with `taskSystem.GetIOTaskStream().WakeUp()` (`Logger.cpp:382`), `GetIOTaskStream()` is `streams[1]` (`TaskSystem.h:87`) and `Array::operator[]` FatalAsserts with no message (`Array.h:86`), so logging before `Engine::Initialize` aborts | Do not wake a stream that does not exist. This is the same guard `EInitLevel` needs, which is why they belong together - and it is the concrete reason "Logger implies TaskSystem" is **enforced in `Initialize`**, not documented |
+| **D6** — `Logger::AddLog` ends with `taskSystem.GetIOTaskStream().WakeUp()` (`Logger.cpp:392-393`), `GetIOTaskStream()` is `streams[1]` (`TaskSystem.h:27`, `IOStreamIndex = 1`) and `Array::operator[]` FatalAsserts with no message (`Container/Array.h:84-86`), so logging before `Engine::Initialize` aborts | Do not wake a stream that does not exist. This is the same guard `EInitLevel` needs, which is why they belong together - and it is the concrete reason "Logger implies TaskSystem" is **enforced in `Initialize`**, not documented |
 | **D5** - every log timestamp is machine uptime, not engine uptime: `steady_clock::now().time_since_epoch()` measured 1222 h 28 m against `uptime` 50 days 22:28. `LogUtil.cpp:13` returns a function-local static nobody assigns, `LogUtil.h:19` returns it `const&` so it cannot be assigned through, and `Logger.cpp:103` calls it and drops the result | Give the timestamp a real zero point - value that static on first use, or take the baseline from `SystemStatistics::GetStartTime()`, which already records one - and decide there whether the formatter should zero-pad, since it currently prints `1:2:3.45`. Changes the first field of every log line, so it is a decision and not a repair |
 
 ## 2. Step 2 — make logging legal at every level (two live defects)
@@ -93,7 +105,7 @@ Created↔BORN, Running↔ALIVE, Paused↔SLEEP, Stopped/ShutDown↔DEAD.
 | `ApplicationControl.h` | **Two atomics, deliberately**: the host owns *requests*, the application owns *state*; collapsing them is how "who set my state" bugs are born. `Transition(from,to)` is compare-and-set; `WaitForChange()` parks on a condition variable so no application ever polls. Pause therefore reads truthfully as `state=Running, request=Pause` until the application parks |
 | `EngineApplication.h` | `virtual bool Initialize(Engine&, const CommandLineArguments&)` (default true) · `virtual int Run() = 0` · `virtual void Shutdown()` — called exactly once, on the host thread, after the instance's thread is joined, **including after failure**. `GetState()`, `GetStatus()`, `IsFailed()`; host→app `RequestPause/RequestResume/RequestShutdown`; app-side protected `IsPauseRequested/IsShutdownRequested/WaitWhilePaused/TryTransition`, `GetEngine()`, `GetArguments()`. Not `noexcept`. Non-copyable, non-movable. The name lives only in the descriptor |
 | `ApplicationDescriptor.h` | `{ name, description, requiredLevels, runMode, memoryCapacity, factory }`, `TFactory = EngineApplication* (*)()` — `const char*` and a plain function pointer so a descriptor needs no dynamic initialisation and no engine allocator. `ERunMode { HostThread, WorkerThread }` |
-| `ApplicationRegistry.h` | `Get()` function-local static; `Register()` false on null **or duplicate name**; `Find`, `GetItems`, `IsEmpty`, `PrintList`. `std::vector` storage because `Register` runs before any `Engine` exists and `hbe::HVector` routes to `MemoryManager::GetInstance()`, which `FatalAssert`s |
+| `ApplicationRegistry.h` | `Get()` function-local static; `Register()` false on null **or duplicate name**; `Find`, `GetItems`, `IsEmpty`, `PrintList`. `std::vector` storage: `Register` runs before any `Engine` exists. `hbe::HVector` would *not* assert there — `DefaultAllocator` captures `GetScopedAllocatorID()`, which starts at `0` == `SystemAllocatorID` (`MemoryManager.cpp:22`, `MemoryManager.h:49`), so `allocate()` fast-paths straight to `malloc` (`DefaultAllocator.h:44-47`). The decision is unchanged, the reason is allocator **invisibility**, not a crash: registry memory allocated that way is untracked and would not appear in `hbengine memory` |
 
 Tests (the module is a static library precisely so `EngineTest` can link it): duplicate rejection,
 find, registration order, legal/illegal transitions, request acknowledge, wait-then-wake, and logging
@@ -148,7 +160,7 @@ allocations, and `docs/MemoryManagement_Guide.md` will state it next to the `All
 ```
 name = hbengine
 buildType = Executable
-dependency = Application;Config;Container;Core;HSTL;Log;Math;Memory;OSAL;Renderer;Resource;String;Test
+dependency = Application;Config;Container;Core;External;HEngine;HSTL;Log;Math;Memory;OSAL;Renderer;Resource;String;Test
 application = EngineTest;SpvHeaderGen;VulkanExample;WindowExample
 ```
 
@@ -187,11 +199,26 @@ CLI: `hbengine list [--memory]` · `hbengine run <App> [args…]` · `hbengine m
 no args → TUI picker with pause/resume/stop on running applications. Interactivity is detected by
 attempting the read: a non-tty gives EOF → usage, exit `2`, so CI can never block on a prompt.
 
+**`Engine::Run()` is not a pump.** It blocks until shutdown is requested — it spins on
+`taskSystem.IsRunning()` (set at `TaskSystem.cpp:271`, cleared by `RequestShutDown()` at `:101`), then
+joins and resets the OS application. Only `EngineTest/TestMain.cpp:15` calls it today; the two windowed
+examples never do, running their own event loops before `ShutDown()`. So "pump `Engine::Run()`, *then*
+`RequestShutdown()`" on one thread **deadlocks**, and a `HostThread` applet that owns its loop cannot
+share that thread with the pump. The host must pick one of the two **before** `Initialize`:
+
+| Selected apps | Host behaviour |
+|---|---|
+| any `HostThread` app | the applet owns the host base thread and runs its own loop; the host does **not** call `Engine::Run()` for it |
+| all `WorkerThread` | host starts each on its dedicated thread, then calls `Engine::Run()`, with `RequestShutdown()` arriving from the TUI or signal path |
+
 Launch order: `RegisterBundledApplications()` → `levels = OR of selected requiredLevels` →
-`Initialize()` × N **sequentially on the host thread** → start (`HostThread` inline, `WorkerThread`
-on a dedicated thread inside its allocator scope) → host pumps `Engine::Run()` on the base thread →
-`RequestShutdown()` → join → `Shutdown()` × N sequentially → instance deletion **under the
-application's scope** → arena teardown with the live-block tripwire → `Engine::ShutDown()`.
+`Initialize()` × N **sequentially on the host thread** → start (`HostThread` inline on the host base
+thread, `WorkerThread` on a dedicated thread inside its allocator scope) → *either* the applet's own
+loop *or* `Engine::Run()` per the table → `RequestShutdown()` → join → `Shutdown()` × N sequentially →
+instance deletion **under the application's scope** → arena teardown with the live-block tripwire →
+`Engine::ShutDown()`.
+
+**Transitional — not the target design.** Both rows describe `Engine::Run()`'s *current* blocking semantics. When Task B lands **B6b** the pump owns the frame and applets are ticked `TaskProvider`s rather than loop-owners, which makes this table obsolete. The interim target for steps 6/7 is **B6a**, where an applet's loop calls the frame tick. See [`PLAN_task_system_refactor.md`](PLAN_task_system_refactor.md) §2.1–2.2.
 
 Refused before anything is created, with a message: `WorkerThread` + `EInitLevel::Application` (Cocoa
 requires the main thread for `NSApplication`/windows); two `HostThread` applications at once; a
@@ -200,7 +227,8 @@ non-zero.
 
 ## 7. Step 7 — convert the three applications
 
-`Applications/<Name>/.module.config` `Executable` → `StaticLibrary`; `Main.cpp` → `<Name>Application.h/.cpp`;
+`Applications/<Name>/.module.config` `Executable` → `StaticLibrary`; entry point →
+`<Name>Application.h/.cpp` (`Main.cpp` for the two examples, **`TestMain.cpp` for `EngineTest`**);
 `main()` body → `Initialize`/`Run`; descriptor with `memoryCapacity = 0` initially.
 
 | Application | levels | runMode |
@@ -211,9 +239,15 @@ non-zero.
 **Two commits per application** — reformat in place, then convert — because the post-revert app mains
 are back in pre-Allman style and the formatter would otherwise bury the semantic change. Verified
 during conversion, not assumed: whether `EngineTest` truly runs without the `Application` level;
+**whether `EngineTest` still needs `Engine::Run()`** — its `TestMain.cpp:15` calls it today, but as a
+`HostThread` applet it owns the host base thread and the host does not pump it (§6), so check whether
+`ProcessMainThreadTasks` still gets serviced or the queued work is stranded;
 `Engine::Initialize` **already** creates an `OS::Application` that both app mains duplicate, so apps
 switch to `engine.GetApplication()`; `VulkanExample`'s `SIGINT`/`SIGTERM` handlers vs the ones
 `Engine`'s constructor installs, with one owner and the ordering recorded in the app header;
+`VulkanExample/Main.cpp:106` flushes logs by hand every frame (`Logger::Get().Flush()`) — carry it over
+only if it is still needed after B6a makes flush an engine-ticked system, and record the reason either
+way;
 `(const char**)argv` becomes one `const_cast` in the host with the contract on `Initialize`.
 
 ## 8. Step 8 — tooling, scripts, docs
