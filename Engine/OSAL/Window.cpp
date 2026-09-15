@@ -23,9 +23,9 @@ std::unique_ptr<Window> CreateWindow(const hbe::HString& title, int width, int h
 } // namespace OS
 
 #ifdef __UNIT_TEST__
-#include <thread>
 #include <chrono>
 #include <future>
+#include <thread>
 
 #include "Core/TaskSystem.h"
 #include "Engine/Engine.h"
@@ -52,7 +52,9 @@ void WindowTest::Prepare()
 			TPromise& windowPromise;
 
 			Data(TThis thisObj, TLs& ls, TPromise& promise)
-				: thisObject(thisObj), ls(ls), windowPromise(promise)
+				: thisObject(thisObj)
+				, ls(ls)
+				, windowPromise(promise)
 			{
 			}
 		};
@@ -138,7 +140,9 @@ void WindowTest::Prepare()
 			TPromise& windowPromise;
 
 			Data(TThis thisObj, TLs& ls, TPromise& promise)
-				: thisObject(thisObj), ls(ls), windowPromise(promise)
+				: thisObject(thisObj)
+				, ls(ls)
+				, windowPromise(promise)
 			{
 			}
 		};
@@ -239,7 +243,9 @@ void WindowTest::Prepare()
 			TPromise& windowPromise;
 
 			Data(TThis thisObj, TLs& ls, TPromise& promise)
-				: thisObject(thisObj), ls(ls), windowPromise(promise)
+				: thisObject(thisObj)
+				, ls(ls)
+				, windowPromise(promise)
 			{
 			}
 		};
@@ -339,7 +345,9 @@ void WindowTest::Prepare()
 			TPromise& windowPromise;
 
 			Data(TThis thisObj, TLs& ls, TPromise& promise)
-				: thisObject(thisObj), ls(ls), windowPromise(promise)
+				: thisObject(thisObj)
+				, ls(ls)
+				, windowPromise(promise)
 			{
 			}
 		};
@@ -441,7 +449,9 @@ void WindowTest::Prepare()
 			TPromise& windowPromise;
 
 			Data(TThis thisObj, TLs& ls, TPromise& promise)
-				: thisObject(thisObj), ls(ls), windowPromise(promise)
+				: thisObject(thisObj)
+				, ls(ls)
+				, windowPromise(promise)
 			{
 			}
 		};
@@ -535,7 +545,9 @@ void WindowTest::Prepare()
 			TPromise& windowPromise;
 
 			Data(TThis thisObj, TLs& ls, TPromise& promise)
-				: thisObject(thisObj), ls(ls), windowPromise(promise)
+				: thisObject(thisObj)
+				, ls(ls)
+				, windowPromise(promise)
 			{
 			}
 		};
