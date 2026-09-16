@@ -6,6 +6,7 @@
 
 #include "Core/SystemStatistics.h"
 #include "Core/TaskSystem.h"
+#include "EngineInitLevel.h"
 #include "Log/LogLevel.h"
 #include "Log/Logger.h"
 #include "Memory/MemoryManager.h"
@@ -60,7 +61,19 @@ public:
 	Engine();
 	~Engine();
 
-	void Initialize(int argc, const char* argv[]);
+	/// @brief Start the subsystems selected by \p levels, and nothing else.
+	/// @param argc Argument count, for the command line parser.
+	/// @param argv Argument vector, for the command line parser.
+	/// @param levels Which subsystems to start. Defaulted to EInitLevel::All, so a caller that
+	///        states nothing keeps exactly the behaviour it has today.
+	/// @note EInitLevel::Logger implies EInitLevel::TaskSystem and Initialize adds that dependency
+	///       itself, rather than trusting the caller to spell it out: the logger writes through the
+	///       task system's IO stream, so a logger started without one is the D6 abort.
+	/// @note The ready flags and the application pointer - not the level - are the record of what
+	///       started. Teardown reads those, so a level cannot drift from what actually exists.
+	/// @note A headless or CI context can pass EInitLevel::TaskSystem | EInitLevel::Logger and never
+	///       reach the window server, which the Application level connects to.
+	void Initialize(int argc, const char* argv[], EInitLevel levels = EInitLevel::All);
 
 	// Should call on main thread.
 	void Run();

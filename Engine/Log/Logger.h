@@ -140,6 +140,23 @@ public:
 	void StartTask(TaskSystem& taskSys);
 	void StopTask(TaskSystem& taskSys);
 
+	/// @brief Whether the drain task exists right now - as opposed to whether this object exists.
+	/// @details StopTask waits for the drain task to acknowledge the request, so it may only be called
+	///          while one is running; called without a task it waits for something that was never
+	///          started, and blocks forever. Any caller weighing StopTask against an inline Flush has to
+	///          ask this, which is why the answer lives here rather than in a flag elsewhere.
+	/// @note Engine::IsLoggerReady is not a substitute: the Logger constructor raises that flag, so it
+	///       reports construction and stays true whether or not a task was ever started.
+	/// @note Deliberately not the same question AddLog asks before waking the IO stream. That guard asks
+	///       whether a stream may be woken and goes false during shutdown, while this task still exists
+	///       and still has to be stopped.
+	/// @threadsafe May be read from any thread, including a signal handler, because it is a single
+	///             acquire load and nothing else.
+	[[nodiscard]] bool IsDrainTaskRunning() const noexcept
+	{
+		return isRunning.load(std::memory_order_acquire);
+	}
+
 	void SetFilter(StaticString category, TLogFilter&& filter) noexcept;
 	void AddLog(StaticString category, ELogLevel level, const TLogFunction& logFunc) noexcept;
 

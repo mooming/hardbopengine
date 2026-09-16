@@ -10,6 +10,7 @@
 #include "Config/ConfigSystem.h"
 #include "Core/Debug.h"
 #include "Core/ScopedLock.h"
+#include "EngineInitLevel.h"
 #include "Log/LogUtil.h"
 #include "OSAL/OSDebug.h"
 #include "String/StaticStringTable.h"
@@ -21,7 +22,14 @@ void SignalHandler(int sigNum)
 	using namespace hbe;
 
 	auto& engine = Engine::Get();
-	engine.GetLogger().StopTask(engine.GetTaskSystem());
+	if (engine.GetLogger().IsDrainTaskRunning())
+	{
+		engine.GetLogger().StopTask(engine.GetTaskSystem());
+	}
+	else
+	{
+		engine.GetLogger().Flush();
+	}
 	engine.LogError([sigNum](auto& ls)
 	{ ls << "ERROR: signal(" << sigNum << ") received. The application shall be terminated."; });
 	engine.LogError([](auto& ls)
@@ -82,13 +90,24 @@ Engine::~Engine()
 	CloseLog();
 }
 
-void Engine::Initialize(int argc, const char* argv[])
+void Engine::Initialize(int argc, const char* argv[], EInitLevel levels)
 {
-	taskSystem.Initialize();
-	isTaskSystemReady = true;
+	if (HasFlag(levels, EInitLevel::Logger))
+	{
+		levels = levels | EInitLevel::TaskSystem;
+	}
 
-	logger.StartTask(taskSystem);
-	isLoggerReady = true;
+	if (HasFlag(levels, EInitLevel::TaskSystem))
+	{
+		taskSystem.Initialize();
+		isTaskSystemReady = true;
+	}
+
+	if (HasFlag(levels, EInitLevel::Logger))
+	{
+		logger.StartTask(taskSystem);
+		isLoggerReady = true;
+	}
 
 	auto log = Logger::Get(GetClassName());
 
@@ -101,15 +120,20 @@ void Engine::Initialize(int argc, const char* argv[])
 
 	log.Out("Engine has been initialized.");
 
-	application = OS::CreateApplication();
-	FatalAssert(application != nullptr);
-	application->Initialize();
+	if (HasFlag(levels, EInitLevel::Application))
+	{
+		application = OS::CreateApplication();
+		FatalAssert(application != nullptr, "Application level requested, no OS application created");
+		application->Initialize();
+	}
 
 	PostInitialize();
 }
 
 void Engine::Run()
 {
+	FatalAssert(isTaskSystemReady, "Engine::Run needs EInitLevel::TaskSystem");
+
 	while (taskSystem.GetMainThreadTaskQueue().HasPendingTasks() || taskSystem.IsRunning())
 	{
 		taskSystem.ProcessMainThreadTasks();
@@ -120,8 +144,10 @@ void Engine::Run()
 	taskSystem.ProcessMainThreadTasks();
 
 	// It may terminate the application immediately.
-	FatalAssert(application != nullptr);
-	application.reset();
+	if (application != nullptr)
+	{
+		application.reset();
+	}
 }
 
 void Engine::ShutDown()
@@ -148,7 +174,10 @@ void Engine::ShutDown()
 	auto log = Logger::Get(GetClassName(), ELogLevel::Info);
 	log.Out("Shutting down...");
 
-	taskSystem.RequestShutDown();
+	if (isTaskSystemReady)
+	{
+		taskSystem.RequestShutDown();
+	}
 }
 
 StaticString Engine::GetClassName()
