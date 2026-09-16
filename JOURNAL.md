@@ -30,9 +30,10 @@ alive" misses the shutdown window entirely.
 compile at HEAD**: `Engine/OSAL/Window.cpp` raises 12 `-Wunused-result` errors under `-Werror` because six
 `windowFuture.get()` calls in the `WindowTest` bodies discard a `[[nodiscard]]` result. Reproduced on a
 clean HEAD tree with my work reverted, so it is pre-existing. Fixed with the discard convention the tree
-already uses (`TaskSystem.cpp:164`, `StaticStringTable.cpp:210`). **Why it hid, which matters more than the
-fix:** `check.sh` builds without `__UNIT_TEST__`, so the gate never compiles the test bodies at all — a
-`-test`-only break can sit at HEAD indefinitely. Corollary, and a correction to my own earlier claim: the
+already uses (`TaskSystem.cpp:164`, `StaticStringTable.cpp:210`). **Why it hid:** the default gate builds without `__UNIT_TEST__`, so it never compiles the test bodies. Said like that it is incomplete,
+and the correction matters: `check.sh --test` already exists, builds `EngineTest` with `-test`, and **would have failed on this**. The
+capability was present and the routine simply never passes the flag, so the gap is the default gate and the documented workflow — not a
+missing feature. That is a smaller and less interesting claim than the one I first wrote here, and it is the true one. Corollary, and a correction to my own earlier claim: the
 "53/53 ×3" I reported after A1 was a genuine run of a real suite, but that build had reused an
 `OSAL/Window.cpp.o` compiled *without* `__UNIT_TEST__`, so `WindowTest`'s bodies had not been compiled, let
 alone executed. They are now, and `TC0.Create Window` runs.
@@ -59,12 +60,16 @@ depends on it, but a fabricated verification number is the worst kind of thing t
 whole purpose is verification. (3) The amended commit initially carried `(void)windowFuture.get();`, the
 form clang-format rejects, because `--apply` had written the worktree while the index kept the old bytes —
 amended, and re-checked in `HEAD` scope so the number quoted covers the committed bytes rather than an
-empty index. The habit that caused all three is the same: running the check and the action in one chain,
+empty index. The tool now re-stages what `--apply` rewrites (`4e562a5`), so the trap is gone for the next caller. It was reproduced
+before being fixed: a malformed line staged into `EngineInitLevel.h`, every check reporting PASS, and `git show :file` still holding the
+rejected bytes. After the fix the same probe leaves the index matching the worktree. `--all` and `<rev>` scopes still leave the index
+alone on purpose — staging there would sweep unrelated work into the commit, which is what the script exists to prevent. The habit that caused all three is the same: running the check and the action in one chain,
 so the check cannot stop the action.
 
 **Open.** Task A's A2 (D5, log zero point), A3 (D3, one OS application per process) and A4 (`EInitLevel`
-wiring, header written and compiling but in no target yet) are not started; the gate gaining a `-test`
-compile is recorded but not done, deliberately left out of A0 rather than folded in; Task B's gates
+wiring; the header itself is committed as `8f10d80`, but nothing references it yet) are not started; making `--test` part of the documented
+default gate is recorded but not done — `check.sh --test` exists and would have caught D7, so that is a change to the routine in
+`SKILL.md`, not new machinery; Task B's gates
 G1–G5 are undecided. Nothing pushed.
 
 ## Three recorded defects, closed by running them (2026-09-13)
