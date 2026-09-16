@@ -9,10 +9,23 @@ namespace hbe
 namespace LogUtil
 {
 
+namespace
+{
+TTimePoint& MutableStartTime() noexcept
+{
+	static TTimePoint startTime = std::chrono::steady_clock::now();
+	return startTime;
+}
+} // namespace
+
 const TTimePoint& GetStartTime() noexcept
 {
-	static TTimePoint startTime;
-	return startTime;
+	return MutableStartTime();
+}
+
+void ResetStartTime() noexcept
+{
+	MutableStartTime() = std::chrono::steady_clock::now();
 }
 
 void GetTimeStampString(InlineStringBuilder<64>& outStr, const TTimePoint& currentTime) noexcept
