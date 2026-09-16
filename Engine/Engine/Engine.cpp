@@ -10,6 +10,7 @@
 #include "Config/ConfigSystem.h"
 #include "Core/Debug.h"
 #include "Core/ScopedLock.h"
+#include "Log/LogUtil.h"
 #include "OSAL/OSDebug.h"
 #include "String/StaticStringTable.h"
 
@@ -64,6 +65,7 @@ Engine::Engine()
 	, statistics(*this)
 	, logger(*this, "./", "hardbop.log")
 {
+	LogUtil::ResetStartTime();
 	std::signal(SIGABRT, SignalHandler);
 #ifdef SIGBUS
 	std::signal(SIGBUS, SignalHandler);
