@@ -86,14 +86,12 @@ int main(int argc, char* argv[]) noexcept
 	Engine hengine;
 	hengine.Initialize(argc, (const char**) argv);
 
-	auto app = OS::CreateApplication();
-	if (!app)
+	auto* app = hengine.GetApplication();
+	if (app == nullptr)
 	{
 		std::cerr << "Error: Failed to create application" << std::endl;
 		return 1;
 	}
-
-	app->Initialize();
 
 	auto window = OS::CreateWindow("VulkanExample - Rotating Quad (Vulkan)", 800, 600);
 	if (!window)

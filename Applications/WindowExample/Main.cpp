@@ -13,14 +13,12 @@ int main(int argc, const char* argv[]) noexcept
 	hbe::Engine hengine;
 	hengine.Initialize(argc, argv);
 
-	auto app = OS::CreateApplication();
-	if (!app)
+	auto* app = hengine.GetApplication();
+	if (app == nullptr)
 	{
 		std::cerr << "Error: Failed to create application" << std::endl;
 		return 1;
 	}
-
-	app->Initialize();
 
 	auto window = OS::CreateWindow("Hello? 안녕하세요?", 800, 600);
 	if (!window)
