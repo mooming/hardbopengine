@@ -79,7 +79,7 @@ These are open in the design doc (§10). Do not silently pick one; each is recor
 |---|---|---|
 | G1 ✅ | B1 | **Decided 2026-09-16** — see G1 below for the semantics |
 | G2 ✅ | B1 | **Decided 2026-09-16** — one `steady_clock` epoch owned by `Engine`, read by all; see the G2 section below |
-| G3 ✅ | B2 | **Decided 2026-09-16** — context struct: stream handle + engine clock reading, no budget; see below. Sub-gate **G3b** opened by the owner's follow-up |
+| G3 ✅ | B2 | **Decided 2026-09-16**, with sub-gate **G3b** also decided — context struct (stream handle + engine clock reading, no budget); `Produce` returns whether it produced anything. See below. |
 | G4 | B5 | Enqueue: SPSC lock-free per stream where one producer, mutex otherwise. **MPMC lock-free is not the default** |
 | G5 | B7 | Is range-splitting retired or bridged? `EngineTest` and any data-parallel caller decide this — find the call sites before choosing |
 
@@ -159,9 +159,12 @@ Consequences, all binding:
   caller obligation and the budget's meaning depends on it — recorded as **R8**.
 - Nothing may assume "budget exhausted ⇒ nothing in flight". Any teardown, detach or abandon path that assumes it is wrong in precisely the way
   the design's abandonment rules are careful not to be.
-- **G3b, opened and not decided:** if a drain runs until the budget is spent, what ends it early when a provider has nothing left this tick —
-  `Produce` returning whether it produced anything, or a `HasWork()` the stream asks first? Same pull-versus-push trade-off as the budget itself,
-  and one of them has to be authoritative.
+- **G3b — decided:** `Produce` returns whether it produced anything, and `false` ends the drain for this tick. The budget says *may I take more
+  work*; the return says *is there work*. Two different questions, so unlike remaining budget there is no second layer gating on one quantity.
+  The rejected alternative was a `HasWork()` the stream asks first: that is two calls where the first answer is already advisory by the time the
+  second runs, since provider state can change between them — the stream would be steering on a reading it cannot trust. Idle providers therefore
+  pay one call per drain, which is the honest price of not maintaining a second source of truth about a provider's intent; if that cost ever
+  matters, guardrail 5's "no preemption" means the fix is a registration surface measured against a real stall, not a guess now.
 
 ---
 

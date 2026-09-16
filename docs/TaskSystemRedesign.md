@@ -153,10 +153,17 @@ public:
 	// possibly more than once per tick: the stream drains a provider until its budget is spent (G1),
 	// and the task system cannot stop a task once taken - so the drain, not the task, is the unit of
 	// control, and a task already running overshoots the budget rather than being truncated.
+	// Returns whether anything was produced. The stream drains a provider while the budget allows AND
+	// this returns true, so an idle provider costs one call per drain rather than a spin (G1, G3b).
+	// Deliberately not a HasWork() the stream asks first: by the time Produce runs, a HasWork answer is
+	// advisory, since provider state can change in between and the stream would be steering on a
+	// reading it cannot trust.
 	// The context carries the stream being produced into and a reading of the engine epoch (G2, G3).
 	// It carries no remaining budget: the stream alone decides whether to call this at all, and a
 	// provider that also gates on the same number makes two layers look authoritative where one is.
-	virtual void Produce(const TaskProduceContext& context) = 0;
+	// The task system cannot stop a task once taken, so a task already running overshoots the budget
+	// rather than being truncated - guardrail 5.
+	virtual bool Produce(const TaskProduceContext& context) = 0;
 
 	// Self-stop, or stop via the handle. Either detaches all streams and stops Producing.
 	void Stop() noexcept;
