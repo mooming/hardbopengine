@@ -79,7 +79,7 @@ These are open in the design doc (§10). Do not silently pick one; each is recor
 |---|---|---|
 | G1 ✅ | B1 | **Decided 2026-09-16** — see G1 below for the semantics |
 | G2 ✅ | B1 | **Decided 2026-09-16** — one `steady_clock` epoch owned by `Engine`, read by all; see the G2 section below |
-| G3 | B2 | `TaskProvider::Produce()` signature — what it is handed per call (stream handle, frame epoch, budget remaining?) |
+| G3 ✅ | B2 | **Decided 2026-09-16** — context struct: stream handle + engine clock reading, no budget; see below. Sub-gate **G3b** opened by the owner's follow-up |
 | G4 | B5 | Enqueue: SPSC lock-free per stream where one producer, mutex otherwise. **MPMC lock-free is not the default** |
 | G5 | B7 | Is range-splitting retired or bridged? `EngineTest` and any data-parallel caller decide this — find the call sites before choosing |
 
@@ -135,6 +135,34 @@ Consequences B1 has to carry:
 - Distinct from G1 by design: the epoch is a monotonic clock for deadlines and deltas, budgets accumulate **CPU cycles**. Reading a deadline off
   the same counter as a budget is the mistake this separation exists to prevent.
 
+### G3 — decided: `Produce` is handed a context struct, and nothing about the budget
+
+`Produce` takes one context value per call carrying two things: a handle identifying the stream it produces into, and a reading of the engine
+epoch from G2. Deliberately **not** handed: remaining budget.
+
+- The stream already decides whether to call `Produce` at all — that is G1's stop-dequeueing rule. Handing the provider a remaining-budget figure
+  invites a second layer to self-limit with the same number, and when two layers gate on one quantity only one is the truth while both look
+  authoritative.
+- The stream handle is what B5 needs: an outcome must know the stream it is delivered back to, and a provider that cannot name its origin cannot
+  enqueue a cross-stream successor.
+- The clock reading is passed rather than pulled so a provider never reaches for `Engine::Get()`. G2 records that constraint for logging; it
+  applies with more force to providers, which run on stream threads.
+- One struct rather than loose parameters, so B2 can add a field without rewriting every provider. The struct's name is B2's to choose — naming it
+  here would be deciding an interface twice.
+
+**Owner's follow-up constraint, load-bearing:** the task system **cannot stop a single task**. Once taken, a task runs to completion; there is no
+per-task cancel or preemption. The unit of control is therefore the **provider drain**, and a provider is drained until it reaches its budget.
+Consequences, all binding:
+
+- Budget is checked **between** tasks, never during one. A task already running overshoots rather than being truncated.
+- Overshoot is bounded by the longest single task, not by the budget: 2 ms of budget attached to a 50 ms task buys nothing. Task granularity is a
+  caller obligation and the budget's meaning depends on it — recorded as **R8**.
+- Nothing may assume "budget exhausted ⇒ nothing in flight". Any teardown, detach or abandon path that assumes it is wrong in precisely the way
+  the design's abandonment rules are careful not to be.
+- **G3b, opened and not decided:** if a drain runs until the budget is spent, what ends it early when a provider has nothing left this tick —
+  `Produce` returning whether it produced anything, or a `HasWork()` the stream asks first? Same pull-versus-push trade-off as the budget itself,
+  and one of them has to be authoritative.
+
 ---
 
 ## 4. Steps
@@ -182,6 +210,7 @@ Additional: budget enforcement over many frames; cancellation safety — stoppin
 | R5 | Build tree is single-occupancy (see `JOURNAL.md`), so this cannot be parallelised with other build-heavy work | schedule serially |
 | R6 | Flush ends up driven twice per frame — the new tick *and* the self-rescheduling IO runnable | one owner only (§2.1): move flush to the tick, or keep the IO runnable — not both |
 | R7 | Deleting the step-2 inline drain once flush is ticked re-introduces the hang on fatal-with-no-pump | §2.1 constraint is binding; keep the `repro_d1.cpp` scenario in the suite |
+| R8 | G1's budget cannot bound a task already running — the system cannot stop one — so overshoot is bounded only by the longest single task | budget gates *taking* work between tasks; task granularity becomes a caller obligation stated in the provider contract (G3) |
 
 ---
 

@@ -149,8 +149,14 @@ public:
 	void AttachTo(TStreamIndex stream) noexcept;
 	void AttachTo(const Array<TStreamIndex>& streams) noexcept;
 
-	// Produce tasks into attached streams (called per the owning stream's schedule).
-	virtual void Produce() = 0;
+	// Produce tasks into the stream named by the context. Called on that stream's schedule and
+	// possibly more than once per tick: the stream drains a provider until its budget is spent (G1),
+	// and the task system cannot stop a task once taken - so the drain, not the task, is the unit of
+	// control, and a task already running overshoots the budget rather than being truncated.
+	// The context carries the stream being produced into and a reading of the engine epoch (G2, G3).
+	// It carries no remaining budget: the stream alone decides whether to call this at all, and a
+	// provider that also gates on the same number makes two layers look authoritative where one is.
+	virtual void Produce(const TaskProduceContext& context) = 0;
 
 	// Self-stop, or stop via the handle. Either detaches all streams and stops Producing.
 	void Stop() noexcept;
@@ -228,7 +234,7 @@ Ordering policy (reference): enqueue priority, then FIFO, then deadline. Documen
 
 ## 9. Guardrails (correctness invariants)
 
-These four must hold for the model to be correct. They are the design's contract.
+These five must hold for the model to be correct. They are the design's contract.
 
 | # | Guardrail | Why |
 |---|---|---|
@@ -236,6 +242,7 @@ These four must hold for the model to be correct. They are the design's contract
 | 2 | **Deadlines are engine-clock relative**, stream-independent. | A task on a fast custom stream is abandoned by the same common clock as one on the engine stream. |
 | 3 | **Enqueue: SPSC lock-free or mutex, never MPMC lock-free** unless profiling justifies it behind a seam. | Correctness first; lock-free is an optimization. |
 | 4 | **Cross-stream isolation:** communicate only via outcome delivery. No shared mutable state across streams. | Keeps the barrier-less model race-free. |
+| 5 | **No per-task preemption.** The task system cannot stop a task once taken; a budget gates *taking* work between tasks and never interrupts one in flight. | Everything that reasons about budgets, teardown or abandonment must treat "budget spent" as compatible with work still running. Assuming otherwise is a teardown race, and a provider cannot be asked to cooperate around a cancellation primitive that does not exist. |
 
 ---
 
