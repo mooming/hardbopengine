@@ -166,7 +166,21 @@ WARN=0
 if [[ ${#FILES[@]} -gt 0 ]]; then
 	if [[ $APPLY -eq 1 ]]; then
 		clang-format --style=file -i "${FILES[@]}" || { echo "clang-format --apply failed" >&2; exit 1; }
-		echo "[PASS] clang-format applied to ${#FILES[@]} file(s)"
+		# clang-format -i writes the worktree and does not touch the index, so with --staged
+		# scope the index keeps the bytes the formatter just rejected while every check below
+		# reads the formatted worktree and calls them clean. The commit then records the
+		# unformatted file under a green lint. Measured before this line existed: lint
+		# reported all-PASS while the index still held
+		# "namespace hbe {<tab>constexpr int reformatProbe=1+2;}".
+		# Re-stage exactly the files rewritten here. --all and <rev> scopes must not reach
+		# the index: staging there sweeps unrelated work into the commit, which is the
+		# failure mode this script exists to prevent.
+		if [[ $STAGED -eq 1 ]]; then
+			git add -- "${FILES[@]}" || { echo "git add failed after --apply" >&2; exit 1; }
+			echo "[PASS] clang-format applied to ${#FILES[@]} file(s), re-staged"
+		else
+			echo "[PASS] clang-format applied to ${#FILES[@]} file(s)"
+		fi
 	else
 		cfbad=0
 		cffail=""
