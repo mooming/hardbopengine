@@ -1,12 +1,12 @@
 // Copyright (c) 2026 Hansol Park (mooming.go@gmail.com). All rights reserved.
 
-#include "Engine/Engine.h"
-#include "Engine/OSAL/Application.h"
-#include "Engine/OSAL/Window.h"
-
 #include <chrono>
 #include <iostream>
 #include <thread>
+
+#include "Engine/Engine.h"
+#include "Engine/OSAL/Application.h"
+#include "Engine/OSAL/Window.h"
 
 int main(int argc, const char* argv[]) noexcept
 {
