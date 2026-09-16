@@ -245,7 +245,7 @@ These four must hold for the model to be correct. They are the design's contract
 |---|---|---|
 | Abandoned-task container | A holder that escapes destruction leaks. | Define the abandon/destroy funnel (§6.2). |
 | Deadline clock source | A common engine clock must be exposed to providers. | Reuse `SystemStatistics::GetStartTime()` / existing clock; expose an epoch accessor. |
-| Budget vs wall clock | Budget must be measured (wall or CPU cycles) consistently across streams. | Define budget units; document per-stream budget ownership. |
+| Budget vs wall clock | Budget must be measured (wall or CPU cycles) consistently across streams. | **Resolved — G1, 2026-09-16.** Configured in seconds, consumed in CPU cycles; budgets decoupled from frames; each stream accumulates the *measured* CPU duration of the tasks it ran and stops dequeueing once that accumulation exceeds the base stream's target frame period. Full semantics and consequences in `.Plans/PLAN_task_system_refactor.md` §G1. |
 | Cancellation safety | Stopping a provider must safely abandon in-flight tasks across **all** its streams without corrupting tasks executing mid-frame. | Handle must distinguish *not-yet-run* (drop) from *running* (finish or force-terminate). |
 | Provider attached to multiple streams | Ordering between its tasks on different streams is undefined except via delivered outcomes. | Document; require outcome delivery for cross-stream dependencies. |
 | Range-splitting tasks | The current `Task`/`RangedTask` model is data-parallel and is being retired. | Decide: retire, or bridge range tasks into the job graph as a provider. |

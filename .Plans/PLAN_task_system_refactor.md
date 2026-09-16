@@ -77,11 +77,36 @@ These are open in the design doc (§10). Do not silently pick one; each is recor
 
 | # | Must be decided before | Options / note |
 |---|---|---|
-| G1 | B1 | Budget unit: wall-clock vs CPU cycles; and whether one budget is one engine frame |
+| G1 ✅ | B1 | **Decided 2026-09-16** — see G1 below for the semantics |
 | G2 | B1 | Deadline clock: the engine epoch must be readable from any thread. `SystemStatistics::GetStartTime()` exists (`SystemStatistics.h:68`) — likely the baseline, shared with Task A's A2 |
 | G3 | B2 | `TaskProvider::Produce()` signature — what it is handed per call (stream handle, frame epoch, budget remaining?) |
 | G4 | B5 | Enqueue: SPSC lock-free per stream where one producer, mutex otherwise. **MPMC lock-free is not the default** |
 | G5 | B7 | Is range-splitting retired or bridged? `EngineTest` and any data-parallel caller decide this — find the call sites before choosing |
+
+### G1 — decided: measured CPU duration, accumulated per stream, budgeted against the base stream's frame period
+
+Four parts, each load-bearing:
+
+1. **Configured in seconds, consumed in CPU cycles.** A caller states a budget as a duration - a wall-clock-shaped quantity people can reason
+   about and put in a config file - and the scheduler translates it into CPU cycles at the point of use. No one configures cycles, and nothing
+   compares a cycle count against a wall-clock deadline.
+2. **Budgets are decoupled from frames.** A budget is not "this frame's allowance", so missing a budget does not drop a frame's work; the stream
+   simply stops taking more until its accumulation falls back inside the window.
+3. **Each `TaskStream` measures the duration of the tasks it runs.** The accounting is measured, not estimated from task count or a static cost
+   table - which is the only version that stays honest when task costs vary.
+4. **The stop-dequeueing rule:** when a stream's accumulated measured duration exceeds the target frame period of the **base stream**, it stops
+   dequeueing. The yardstick is one engine-wide number derived from the base stream's target framerate; the accumulation is per stream.
+
+Consequences B1 has to carry, recorded so they are not discovered later:
+
+- Measuring a task's CPU duration needs per-thread CPU time, not `steady_clock`: `clock_gettime(CLOCK_THREAD_CPUTIME_ID)` on macOS/Linux, and the
+  Windows equivalent belongs behind an OSAL wrapper rather than a call site `#ifdef`.
+- Measured duration is only meaningful when the thread that ran the task is the thread being measured, so the measurement and the dequeue live on
+  the same stream thread. A task that blocks does not accumulate cycles - which is the point of choosing cycles over wall-clock.
+- The base stream's target frame period becomes a first-class value the other streams read. Where it lives, and who may change it, is a B1 design
+  question; it is the same epoch/clock surface as G2.
+- "Stops dequeueing" must still leave already-produced outcomes flowing: guard on *taking new work*, never on *delivering results*, or a stalled
+  stream becomes the deadlock the design rules exist to prevent.
 
 ---
 
