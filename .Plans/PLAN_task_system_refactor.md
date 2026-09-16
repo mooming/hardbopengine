@@ -78,7 +78,7 @@ These are open in the design doc (§10). Do not silently pick one; each is recor
 | # | Must be decided before | Options / note |
 |---|---|---|
 | G1 ✅ | B1 | **Decided 2026-09-16** — see G1 below for the semantics |
-| G2 | B1 | Deadline clock: the engine epoch must be readable from any thread. `SystemStatistics::GetStartTime()` exists (`SystemStatistics.h:68`) — likely the baseline, shared with Task A's A2 |
+| G2 ✅ | B1 | **Decided 2026-09-16** — one `steady_clock` epoch owned by `Engine`, read by all; see the G2 section below |
 | G3 | B2 | `TaskProvider::Produce()` signature — what it is handed per call (stream handle, frame epoch, budget remaining?) |
 | G4 | B5 | Enqueue: SPSC lock-free per stream where one producer, mutex otherwise. **MPMC lock-free is not the default** |
 | G5 | B7 | Is range-splitting retired or bridged? `EngineTest` and any data-parallel caller decide this — find the call sites before choosing |
@@ -107,6 +107,33 @@ Consequences B1 has to carry, recorded so they are not discovered later:
   question; it is the same epoch/clock surface as G2.
 - "Stops dequeueing" must still leave already-produced outcomes flowing: guard on *taking new work*, never on *delivering results*, or a stalled
   stream becomes the deadlock the design rules exist to prevent.
+
+### G2 — decided: one `steady_clock` epoch, owned by `Engine`, read by everyone
+
+One engine epoch, expressed over `std::chrono::steady_clock`, and every consumer reads that same value: task deadlines, `Render`'s `deltaTime`,
+and the log-timestamp baseline A2 introduced. No module keeps a private epoch and no caller converts between clocks.
+
+Why not the alternatives, so the reason outlives the person who chose it:
+
+- *Keep `SystemStatistics` as the source* — it stores its start as `time::TTime` over `high_resolution_clock`, which is `system_clock` on some
+  standard libraries, while the log module is uniformly `steady_clock`. Converting across the two is a unit error that compiles and is silently
+  correct on whichever toolchain wrote it; that is precisely why A4 took the instant from the log's own clock instead of converting.
+- *`high_resolution_clock` everywhere* — would retype the log module onto a clock that is not monotonic on every standard library, trading a real
+  correctness property for one fewer alias.
+- *A Core singleton independent of `Engine`* — a second thing that gets to decide when the engine began.
+
+Consequences B1 has to carry:
+
+- **Ownership is `Engine`; storage must be reachable without it.** `Engine::Get()` asserts an instance exists, and logging has to keep working when
+  none does — the D1/D2 constraint. So the epoch is reachable without `Engine::Get()`, is set once by `Engine`, and falls back to "captured on
+  first use" when nothing set it, which is already the shape `LogUtil`'s A2 default has.
+- `SystemStatistics::startTime` derives from the epoch instead of sampling `high_resolution_clock` in its constructor. `time::TStopWatch` stays as
+  the elapsed-time clock; it simply stops being the origin of the engine epoch.
+- **This makes D8 fixable rather than merely noted:** with one readable epoch, `Engine::Log`'s private re-derivation of the timestamp has nothing
+  left to be private about and folds onto `LogUtil`.
+- `deltaTime` for `Render` is the difference between successive pump ticks on this clock, not a number a stream invents.
+- Distinct from G1 by design: the epoch is a monotonic clock for deadlines and deltas, budgets accumulate **CPU cycles**. Reading a deadline off
+  the same counter as a budget is the mistake this separation exists to prevent.
 
 ---
 
