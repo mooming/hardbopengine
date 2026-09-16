@@ -31,7 +31,24 @@ Parent record (uncorrected architecture decisions): [`PLAN_single_executable_app
 
 ## 2. Fix list
 
-### A1 — D6: logging before `Engine::Initialize` aborts
+### A0 — D7: the `-test` configuration did not compile at HEAD ✅ `176e8f1` (format), `ccc05ec` (fix)
+
+Discovered while verifying A1, not listed here when this plan was written. Six `windowFuture.get()` calls in the `WindowTest` bodies
+(`Window.cpp`) discard a `[[nodiscard]]` `std::future<void *>::get()`, and `-Werror` turns that into 12 errors — but only under
+`__UNIT_TEST__`, which the default gate does not define.
+
+**Fix.** Explicit discard, following the tree's own convention (`TaskSystem.cpp:164`). Verified by building with `__UNIT_TEST__` in all
+three configurations and running the suite: 53/53, with `WindowTest` executing bodies that had not been compiled in a passing build.
+
+**Routine change this plan now requires:** the gate for any commit touching a test body is `check.sh --staged --test`, not the default.
+`--test` already builds with `-test` and would have caught this; the default gate cannot see `-test`-only breaks.
+
+### A1 — D6: logging before `Engine::Initialize` aborts ✅ `d75e7bc`
+
+*Done as written, with one correction to the fix text above:* the guard is `TaskSystem::HasStream(index)`, not `isTaskSystemReady`. The
+latter is a proxy for "the drain task is alive", and it misses the shutdown window — `streams.Clear()` runs in `JoinAndClear`, and
+`Logger::StopTask` is only reached from `SignalHandler`. Guarding stream *existence* is the actual precondition of the indexing that
+follows. Repro went exit 133 → exit 0.
 
 `Logger::AddLog` ends by waking the IO stream:
 
@@ -44,7 +61,19 @@ ioStream.WakeUp();                               // Logger.cpp:393
 
 **Fix.** Do not wake a stream that does not exist: guard on `isTaskSystemReady`, and on the ungated path flush synchronously. This is the same guard `EInitLevel` needs — one mechanism, not two.
 
-### A2 — D5: every log timestamp counts from the clock epoch, not from engine start
+### A2 — D5: every log timestamp counts from the clock epoch, not from engine start ✅ `5f7b853`, format `69267b8`
+
+*Decided and implemented, and the recommendation above was not followed — for a reason worth keeping.* Option (2) does not fit as
+written: `SystemStatistics::GetStartTime()` returns `time::TTime` over `high_resolution_clock`, while `LogLine`, `Logger` and `LogUtil`
+are all uniformly `steady_clock`, and `high_resolution_clock` is `system_clock` on some standard libraries. Passing the value across is a
+clock-domain conversion that is silently correct here and wrong elsewhere. What ships is option (1) as the default, plus an explicit
+`LogUtil::ResetStartTime()` called from `Engine`'s constructor — the same instant `SystemStatistics` records (its ctor is the member just
+before), taken from the log's own clock, with no `Log → Core` dependency.
+
+*Zero padding:* left alone, so `37.004 s` prints `0:0:37.4`. Open if the owner wants fixed-width columns; it is cosmetic and would widen
+this commit for no correctness gain.
+
+Measured before: `[48:47:47.257]`. After: `0:0:0.0` to end of run, hour field `0` in every line, 53/53 in all three configs.
 
 `LogUtil::GetStartTime()` returns a function-local static that nothing ever assigns (`LogUtil.cpp:13-17`); `LogUtil.h:19` returns it `const&`, so it cannot be assigned through; and `Logger.cpp` calls `LogUtil::GetTimeStampString(timeStampStr)` and discards the result. Measured: `1222 h 28 m` against `uptime` 50 d 22 h — i.e. machine uptime.
 
