@@ -1,5 +1,44 @@
 # Journal
 
+## A4 and A3: levels, one application, and two verification errors that nearly lied (2026-09-16)
+
+**What was done.** `EInitLevel` is wired (`7e62dcf`): `Engine::Initialize` takes a level set defaulted to `All`, so one code path keeps every
+caller's behaviour while a headless context can pass `TaskSystem|Logger` and never touch the window server; `Logger` implies `TaskSystem`,
+enforced in `Initialize` rather than in prose. `Run`, `ShutDown` and the signal handler now respect what actually started, and `Run` asserts
+with a message naming the level it needs, which retires a message-less `FatalAssert` a legal no-Application level would have tripped. D3 is
+closed (`ba42dd4`): both example mains read `Engine::GetApplication()` and a grep for `CreateApplication` under `Applications/` is empty.
+Two style commits precede them (`673f00b`, `6913d8c`), one of them only moving include lines.
+
+**A4 shipped a hang and the plan's own verification row caught it.** The row said "SIGINT at each level", so I ran it; at level `None` the
+handler blocked forever, `SignalHandler -> Logger::StopTask -> Task::Wait -> __semwait_signal`, captured by sampling the process. Root cause:
+the guard asked `Engine::IsLoggerReady`, and **`Logger`'s constructor calls `engine.SetLoggerReady()`** (`Logger.cpp:186`). That flag therefore
+reports that the Logger object was *constructed* — true before any `Initialize`, true with no drain task — so `StopTask` waited for a task that
+had never been started. The plan's premise that the ready flags "already say what started" is false for this flag and my code inherited it.
+`isTaskSystemReady` is genuinely truthful (nothing sets it outside `Initialize`), so `Run` and `ShutDown` were right as written. The guard now
+asks the object that owns the state, `Logger::IsDrainTaskRunning`. This is not a reversal of the A1 decision, where `isRunning` was rejected as
+a proxy: A1 asked *"may this stream be woken"*, which goes false during shutdown while the task still has to be stopped; this asks *"is there a
+task to stop and wait for"*, for which it is exactly the fact. The distinction is written into `Logger.h` so the two guards do not read as an
+inconsistency. `isLoggerReady` is left alone — public surface someone else chose — but it now has no readers and is recorded below.
+
+**Two verification errors, both of which nearly produced a false conclusion.** (1) I reported that SIGINT hung `VulkanExample`. It did not:
+the test backgrounded `cd dir && ./app`, so `$!` was the subshell and the signal went to **bash** — the giveaway was a sample whose every frame
+was in bash. The nasty part is that my regression check was valid and my headline result was not: the pre-`A4` build in a throwaway worktree
+backgrounded the bare binary, so it correctly exited 130, while the current-tree test did not, and I nearly reported "I broke shutdown" on the
+strength of an asymmetry in my own harness. Re-measured with the binary's real pid: exit 130 in about a second, identical to pre-`A4`. (2) A
+scripted edit asserted each half of its pattern *separately*, so a replacement that never matched still asserted, ran, and printed success — the
+file kept the old include order and only reading it back showed that. Both habits are the same one already logged: a check that cannot fail is
+not a check.
+
+**Two findings recorded, deliberately not fixed.** **D8:** `Engine::Log` formats its own timestamp inline against `statistics.GetStartTime()`
+(`Engine.cpp`, ~line 178) while every other path goes through `LogUtil::GetTimeStampString`. One rule, two implementations; they agree today
+only because A2's baseline and `SystemStatistics`' are the same instant, and nothing keeps them agreeing. **D9:** `Engine::IsLoggerReady` reports
+construction, not readiness, and after A4 has no readers — rename it or redefine it when lifecycle next moves, before someone trusts the name.
+
+**State.** 53/53 in Debug, Dev and Release after each commit; gate 12/12 and 0 violations each time; `WindowExample` runs its full loop and
+exits 0; `VulkanExample` presents a frame and comes down either through its own shutdown path or on SIGINT with 130, depending on whether the
+window survives in this session — both recorded rather than the tidy one alone. Task A is complete. Task B cannot start until gates G1–G5 are
+decided; those are owner decisions, not engineering choices I can make on someone's behalf.
+
 ## Plan split, D6 closed, D7 found — and three errors of my own (2026-09-16)
 
 **What was asked.** Review and correct `PLAN_single_executable_app_registry.md` with the smallest edits
@@ -80,6 +119,14 @@ renderer/application refactor rewrote the example mains): **D3 was already gone*
 exists nowhere in `Applications/` or `Engine/`, `Engine.cpp:96` creates the one `OS::Application`, and
 `WindowExample` only creates a window. The entry below claims it is unfixed; that claim is now wrong and
 this paragraph is the correction.
+
+> **Superseded 2026-09-16 — the paragraph above is the error, and this is the restoration.** D3 was never gone. The search was for
+> `CreateNewApplication`, a name that has never existed anywhere in this tree; the function is `OS::CreateApplication`, and both
+> `Applications/WindowExample/Main.cpp` and `Applications/VulkanExample/Main.cpp` called it *after* `Engine::Initialize` had created one, and
+> called `Initialize()` on the result. The duplicate was live rather than shadowed, because `CreateApplication` returns
+> `std::make_unique<Application>` on every call and is not a singleton. The parent plan's claim was right and I overturned it on a
+> name-match, which should have been the reason to keep looking rather than the reason to close the item. Fixed in `ba42dd4`: both mains
+> read `Engine::GetApplication()` now, and the engine is the only creator.
 
 **Two severity claims of mine were also wrong, and measurement corrected them.** D2 was recorded as
 "assert in Debug/Dev, null deref in Release"; the repro died of **SIGSEGV with no diagnostic** — the
