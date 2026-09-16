@@ -1,8 +1,8 @@
 // Copyright (c) 2026 Hansol Park (mooming.go@gmail.com). All rights reserved.
 
 #include "Engine/Engine.h"
-#include "Math/MathUtil.h"
 #include "Log/Logger.h"
+#include "Math/MathUtil.h"
 #include "OSAL/Application.h"
 #include "OSAL/Window.h"
 #include "Renderer/Vulkan/VulkanRenderer.h"
@@ -44,8 +44,10 @@ void SetRotationY(float m[16], float radians) noexcept
 	SetIdentity(m);
 	const float c = std::cos(radians);
 	const float s = std::sin(radians);
-	m[0] = c;	 m[2] = -s;
-	m[8] = s;	 m[10] = c;
+	m[0] = c;
+	m[2] = -s;
+	m[8] = s;
+	m[10] = c;
 }
 
 /// @brief Right-handed perspective mapped into Vulkan's [0, 1] depth and Y-down framebuffer.
@@ -66,25 +68,27 @@ Mesh MakeQuad() noexcept
 {
 	Mesh mesh;
 	mesh.vertices = {
-		MeshVertex(-1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 1.0f),
-		MeshVertex( 1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 1.0f),
-		MeshVertex( 1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 1.0f),
-		MeshVertex(-1.0f,  1.0f, 0.0f, 0.0f, 0.0f, 1.0f),
+			MeshVertex(-1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 1.0f),
+			MeshVertex(1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 1.0f),
+			MeshVertex(1.0f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f),
+			MeshVertex(-1.0f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f),
 	};
 	mesh.indices = {0, 1, 2, 0, 2, 3};
 	return mesh;
 }
 } // namespace
 
-int main(int argc, char* argv[]) noexcept {
+int main(int argc, char* argv[]) noexcept
+{
 	std::signal(SIGINT, [](int) { running = false; });
 	std::signal(SIGTERM, [](int) { running = false; });
 
 	Engine hengine;
-	hengine.Initialize(argc, (const char**)argv);
+	hengine.Initialize(argc, (const char**) argv);
 
 	auto app = OS::CreateApplication();
-	if (!app) {
+	if (!app)
+	{
 		std::cerr << "Error: Failed to create application" << std::endl;
 		return 1;
 	}
@@ -92,7 +96,8 @@ int main(int argc, char* argv[]) noexcept {
 	app->Initialize();
 
 	auto window = OS::CreateWindow("VulkanExample - Rotating Quad (Vulkan)", 800, 600);
-	if (!window) {
+	if (!window)
+	{
 		std::cerr << "Error: Failed to create window" << std::endl;
 		return 1;
 	}
@@ -101,7 +106,8 @@ int main(int argc, char* argv[]) noexcept {
 
 	// Vulkan-only: construct the concrete renderer directly (no factory, no inheritance).
 	VulkanRenderer renderer;
-	if (!renderer.Initialize(window.get())) {
+	if (!renderer.Initialize(window.get()))
+	{
 		// The logger is asynchronous: flush so its diagnostics survive this exit.
 		Logger::Get().Flush();
 		std::cerr << "Error: Failed to initialize Vulkan renderer" << std::endl;
@@ -121,14 +127,15 @@ int main(int argc, char* argv[]) noexcept {
 	float proj[16];
 	float model[16];
 	SetPerspective(proj, DegreeToRadian(60.0f), static_cast<float>(extent.width) / static_cast<float>(extent.height),
-		0.1f, 100.0f);
+				   0.1f, 100.0f);
 	SetTranslation(view, 0.0f, 0.0f, -3.0f);
 	renderer.SetView(view);
 	renderer.SetProj(proj);
 
 	float angle = 0.0f;
 
-	while (running && !window->IsClosed()) {
+	while (running && !window->IsClosed())
+	{
 		app->PollEvents();
 
 		static auto lastTime = std::chrono::high_resolution_clock::now();
@@ -137,7 +144,8 @@ int main(int argc, char* argv[]) noexcept {
 		lastTime = currentTime;
 
 		angle += deltaTime * 1.2f;
-		if (angle > 2.0f * Pi) angle -= 2.0f * Pi;
+		if (angle > 2.0f * Pi)
+			angle -= 2.0f * Pi;
 
 		SetRotationY(model, angle);
 		renderer.SetModel(model);
