@@ -85,7 +85,11 @@ Recommend **(2)** — it reuses an existing zero point instead of minting a seco
 
 **This changes the first field of every log line.** It is a user-visible decision, not a repair — say so in the commit message.
 
-### A3 — D3: two `OS::Application` objects per process
+### A3 — D3: two `OS::Application` objects per process ✅ `6913d8c` (style), `ba42dd4` (fix)
+
+*Done as specified, and the correction of record below was carried out — the journal entry that declared D3 "already gone" is now marked
+superseded with the reason.* The duplicate was live, not shadowed: `CreateApplication` returns a fresh `make_unique` per call. Both mains read
+`Engine::GetApplication()` and a grep for `CreateApplication` under `Applications/` is empty. No construction counter, as planned.
 
 `Engine::Initialize` creates one, and **both** example mains create a second one and call `Initialize()` on it:
 
@@ -101,7 +105,12 @@ Recommend **(2)** — it reuses an existing zero point instead of minting a seco
 
 **Fix.** Gate creation under the `Application` level (A4) and have the apps read the host-owned instance via `Engine::GetApplication()` (`Engine/Engine/Engine.h:148`), which `OSAL/Window.cpp` already consumes. **Do not** add an `OS::Application` construction counter yet — while the mains are unconverted, that assert would fire on every direct run. It belongs with the app conversions.
 
-### A4 — `EInitLevel`, and teardown that respects it
+### A4 — `EInitLevel`, and teardown that respects it ✅ `7e62dcf`
+
+*Wired as specified, with one premise of this plan proven false by running it.* "No new state: `isLoggerReady` … already say[s] what started" is
+wrong for that flag — `Logger`'s constructor raises it, so it reports construction and was true at every level. A `SIGINT`-at-level-`None` test
+hung on it (`StopTask` → `Task::Wait` forever) and the guard now asks `Logger::IsDrainTaskRunning` instead. See `JOURNAL.md` for the stack and
+for why that predicate is right here and was wrong for A1.
 
 Spec lives here (the parent plan §1 is now a summary of this section).
 
@@ -136,6 +145,13 @@ void Initialize(int argc, const char* argv[], EInitLevel levels = EInitLevel::Al
 | D3 single app object | both examples run; second `CreateApplication` gone from sources | one construction per process |
 | Signal before `Initialize` | `SIGINT` at each level | no hang, no assert; CI-safe |
 | Style + build | `check.sh --staged --apply` then `--staged`, 3 configs | exit 0 |
+
+**Harness requirement, learned the hard way.** A signal test must background the *bare binary*, not a `cd dir && ./app` list — otherwise `$!` is
+the subshell, the signal goes to bash, and the app looks like it hung. Confirm `$!` names the executable before believing any signal result.
+
+**Found while doing this, deliberately not fixed here.** **D8:** `Engine::Log` formats its own timestamp inline against `statistics.GetStartTime()`
+while everything else uses `LogUtil::GetTimeStampString` — one rule, two implementations that agree today only because the two instants coincide.
+**D9:** `Engine::IsLoggerReady` reports construction, not readiness, and has no readers since A4.
 
 `EngineInitLevel.h` must be **named by a translation unit** to be build-verified — a header nothing includes is unchecked. A `TaskSystem`-style unit test naming `EInitLevel`, `operator|`, `HasFlag` is the cheapest guarantee, and matches the `LinkedList` lesson in `JOURNAL.md`.
 
