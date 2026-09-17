@@ -81,7 +81,7 @@ These are open in the design doc (§10). Do not silently pick one; each is recor
 | G2 ✅ | B1 | **Decided 2026-09-16** — one `steady_clock` epoch owned by `Engine`, read by all; see the G2 section below |
 | G3 ✅ | B2 | **Decided 2026-09-16**, with sub-gate **G3b** also decided — context struct (stream handle + engine clock reading, no budget); `Produce` returns whether it produced anything. See below. |
 | G4 ✅ | B5 | **Decided and acted 2026-09-16** — mutex where there really are several producers (D10 fixed now), SPSC lock-free only where one producer is provable; see below |
-| G5 | B7 | Is range-splitting retired or bridged? `EngineTest` and any data-parallel caller decide this — find the call sites before choosing |
+| G5 ✅ | B7 | **Decided 2026-09-16** — not retired as a capability: `TaskSystem` gains `ParallelFor`; see below |
 
 ### G1 — decided: measured CPU duration, accumulated per stream, budgeted against the base stream's frame period
 
@@ -182,6 +182,34 @@ Consequences, all binding:
   is a per-stream intake that only the owning thread drains from a structure written by one thread. B5 must pick one deliberately; stumbling into
   whichever one is convenient mid-implementation is how D10 happened.
 
+### G5 — decided: `TaskSystem::ParallelFor`, which waits asynchronously and collates
+
+The call sites were found before choosing, as this gate required, and they separated two things the gate's wording had lumped together:
+
+| Measured | Evidence | Consequence |
+|---|---|---|
+| Every range-splitting call site is test-only | `GenerateSubTask(i, i + Increment)` at `TaskSystem.cpp:318, 364, 422`, all inside `#ifdef __UNIT_TEST__` | zero production users of data-parallel splitting |
+| `RangedTask` is load-bearing as a *carrier* | `Logger.cpp:234` enqueues `GenerateSubTask(0, 1, 0)` — a one-unit range holding the drain runnable | retiring the **type** would break the logger; retiring **splitting** would not |
+
+Decision: splitting stops being a property of the task container and becomes a **primitive on `TaskSystem`** — `ParallelFor`, which creates a task
+that waits asynchronously for all of its subtasks, collates their results, and presents one final result. In the provider/stream model
+data-parallel work is a provider producing N tasks, so this relocates the capability rather than deleting it.
+
+What that requires, recorded so B7 builds it rather than discovers it:
+
+- **The wait is asynchronous, not a spin.** Today's tests use `task.BusyWait()`, which occupies a thread. The collator is a successor that fires
+  when the last child completes — a completion count plus one enqueue — so no stream thread is parked waiting for its own children.
+- **It depends on B5.** "Collate their results" means children must carry results, which is exactly B5's outcome-delivery shape. B7 cannot land
+  `ParallelFor` before B5 defines what a result is; the step order below is now wrong about that and must be read with this dependency.
+- **Abandonment must not strand the collator.** Guardrails 1 and 2 mean a child can be abandoned on deadline while never having run. An abandoned
+  child still counts as completed-for-joining, or a single deadline miss hangs the parent forever — which is a worse failure than the one the
+  deadline was for.
+- **Collation order is not the completion order.** Children finish in whatever order their streams get there, so results are collated into indexed
+  slots, and any combine the caller supplies has to be order-independent or explicitly ordered by index.
+- **Ordering constraint on B7, unchanged:** `ParallelFor` has to exist and be tested before the two splitting tests stop using `GenerateSubTask`, or
+  the coverage is silently lost instead of migrated. That is R3, and it is the reason B7 is a step rather than a cleanup.
+- **Unchanged by this decision:** `RangedTask` as a carrier survives until B5/B7 moves `Logger` off it. `ParallelFor` does not address that use.
+
 ---
 
 ## 4. Steps
@@ -197,7 +225,7 @@ Ordered so the `EngineTest` 53/53 baseline holds at **every** commit; each step 
 | **B5** | Outcome delivery: size-class payload (inline copy vs heap `unique_ptr` via a thread-safe allocator), ownership following the holder, cross-stream successor enqueue. | G4 |
 | **B6a** | `Engine::Run()` pumps a frame tick to the major systems (task system, renderer, log flush) while applets still own their loops and call the tick. Early — parent-plan steps 6/7 target this. | G1, G2 |
 | **B6b** | Frame ownership moves to the pump; applets become `TaskProvider`s; applet-owned loops removed. **Parent-plan §6 is re-derived here.** | G3 |
-| **B7** | Retire or bridge `Task`/`RangedTask` range splitting; migrate every remaining call site. | G5 |
+| **B7** | Replace `Task`/`RangedTask` range splitting with `TaskSystem::ParallelFor` (asynchronous join, indexed collation, one final result); migrate the two test call sites. `RangedTask`-as-carrier is retired only once `Logger` has moved. | G5, **and blocked by B5** — collation needs results, which B5 defines |
 | **B8** | Land the four guardrails as tests, not prose (below). | — |
 | **B9** | Docs: update `docs/TaskSystemGuide.md` to describe the new model (it currently documents the range-splitting one), and mark `docs/TaskSystemRedesign.md` as implemented. | — |
 
