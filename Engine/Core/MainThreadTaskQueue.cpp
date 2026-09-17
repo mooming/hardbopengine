@@ -3,6 +3,9 @@
 
 #include "MainThreadTaskQueue.h"
 
+#include <mutex>
+#include <optional>
+
 namespace hbe
 {
 
@@ -14,6 +17,7 @@ MainThreadTaskQueue::MainThreadTaskQueue()
 void MainThreadTaskQueue::Enqueue(TTaskFunc taskFunc, void* userData, uint8_t priority) noexcept
 {
 	TaskItem item(priority, taskFunc, userData);
+	std::lock_guard lock(queueLock);
 	queue.Push(item);
 }
 
@@ -21,9 +25,14 @@ size_t MainThreadTaskQueue::ProcessTasks() noexcept
 {
 	size_t processed = 0;
 
-	while (!queue.IsEmpty())
+	for (;;)
 	{
-		auto itemOpt = queue.Pop();
+		std::optional<TaskItem> itemOpt;
+		{
+			std::lock_guard lock(queueLock);
+			itemOpt = queue.Pop();
+		}
+
 		if (!itemOpt.has_value())
 		{
 			break;
@@ -42,6 +51,7 @@ size_t MainThreadTaskQueue::ProcessTasks() noexcept
 
 bool MainThreadTaskQueue::HasPendingTasks() const noexcept
 {
+	std::lock_guard lock(queueLock);
 	return !queue.IsEmpty();
 }
 
