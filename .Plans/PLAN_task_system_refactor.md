@@ -214,11 +214,13 @@ What that requires, recorded so B7 builds it rather than discovers it:
 
 ## 4. Steps
 
-Ordered so the `EngineTest` 53/53 baseline holds at **every** commit; each step is independently revertable.
+Ordered so the `EngineTest` baseline holds at **every** commit; each step is independently revertable. The baseline is 53/53 up to B1, and
+**54/54 from B1 onward**, because B1 adds `TimeTest` — the number moves from coverage growing, not from anything regressing. If a later step
+drops it below 54, that is a regression.
 
 | Step | Work | Gate |
 |---|---|---|
-| **B1** | Expose the engine epoch and a per-stream budget primitive. No behaviour change. | G1, G2 |
+| **B1** | ⏳ **partly done 2026-09-18**: engine epoch landed (`57336b2`, `TimeTest` 3 cases, suite 54/54 ×3, mutation-proven). Remaining: the per-stream budget primitive. | G1 ✅, G2 ✅ |
 | **B2** | Introduce `TaskProvider` + `TaskHandle` alongside the existing `Task`/`RangedTask`. Both models coexist. | G3 |
 | **B3** | Add the FIFO queue and budget enforcement to `TaskStream`; keep its thread and `MultiPoolAllocator`. | — |
 | **B4** | Named streams: Engine / IO / Render / Base Application (`UserThread[0]`) / Custom (`UserThread[1..N]`). Replace `BaseStreamIndex = 0` / `IOStreamIndex = 1` constants and `baseTaskThreadID`-captured-at-construction identity (`TaskSystem.cpp:70`). Update its users, incl. the `Assert(IsBaseThread())` at `TaskSystem.cpp:232`. | — |

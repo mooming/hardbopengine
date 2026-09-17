@@ -1,5 +1,58 @@
 # Journal
 
+## G5 closed, B1 epoch landed, and a green lint that meant nothing (2026-09-18)
+
+**G5 is decided (`97e6561`), which closes the last open gate.** Range splitting is not retired as a capability; `TaskSystem` gains
+`ParallelFor` — a task that waits asynchronously for all its subtasks, collates their results, and yields one final result. The call sites were
+counted before choosing, which is what the gate required, and they split the question in two: every range-splitting call is inside
+`#ifdef __UNIT_TEST__` (`TaskSystem.cpp:318,364,422`), so production splits nothing, while `RangedTask` is load-bearing as a *carrier* —
+`Logger.cpp:234` enqueues `GenerateSubTask(0, 1, 0)`, a one-unit range holding the drain runnable. Retiring the type would break the logger;
+retiring splitting would not. Consequences written down instead of left to be found: the join is a completion count plus one enqueue, not the
+`BusyWait` the current tests use, because parking a stream thread on its own children is the failure the model exists to avoid; an abandoned
+child must still count as completed or a single deadline miss hangs the parent forever; collation goes into indexed slots because children
+finish in stream order, not issue order. It also corrects the step table — **B7 is blocked by B5**, since "collate their results" needs children
+to carry results, and results are B5's to define.
+
+**B1's epoch half is in (`57336b2`).** One `steady_clock` epoch for the engine — `GetEngineEpoch`, `ResetEngineEpoch`,
+`ElapsedSinceEngineEpoch` on `hbe::time`, contract in `Time.h`, storage one atomic nanosecond count because it is read per deadline check and
+written once. It lives in `hbe::time` rather than on `Engine` because G2 requires it to be readable without `Engine::Get`, which asserts an
+instance exists — the same reason A2 exists. `Engine`'s constructor sets it. Nothing consumes it yet, so behaviour is unchanged; `LogUtil` keeps
+its own baseline until the D8 consolidation. `TimeTest` joins the suite, so the count is **54 collections, not 53**; all 54 pass in Debug, Dev and
+Release. The test has teeth: neutralising `ResetEngineEpoch` turns TC2 red with "Elapsed was not reset: 36 ms measured immediately after
+resetting the epoch" and exit 1.
+
+**Two of my own errors, recorded because both were silent.** (1) I committed a message quoting a hash — `7f2b0e1a94` — that I had never
+measured, with a self-correction left in the prose. Amended on the spot (`34abff3`); the real values were `801bf64a39` and `b00f83381b`. A hash in
+a message is a claim about a run, and inventing one is indistinguishable from lying about one. (2) Far more serious: my chain was
+`clang-format -i f && clang-format f | diff f - | grep -c '^[<>]' && git add f`. **`grep -c` prints 0 and exits 1 when nothing matches**, the chain
+stopped dead, `git add` never ran, and the epoch commit captured the *unformatted* file while `check.sh --staged` reported violations 0. The
+commit was non-conformant under a green lint, and it is why the epoch commit's hash moved on amend. The script already guards that grep with
+`|| true` in its own loop; the lesson had not left the file. Fixed as a tool rule, not a resolution (`b629166`): under `--staged`, a disagreement
+between index and worktree is now a `[FAIL]` naming the files, reproduced before and after — the same tree state that reported violations 0 now
+reports violations 1, and re-staging silences it. One guard covers every check, and it also catches a half-saved edit or an editor reformatting
+after staging.
+
+**The proof standard got stronger, because a weaker one was caught out.** The whitespace-only hash for `Time.h` *failed*, and the cause was good:
+clang-format also corrected a stale label, `} // namespace Time` is really `} // namespace hbe::time`. Comment text is not whitespace, so the hash
+was right to move. From here the comparison strips comments as well as whitespace and includes, which separates "the code moved" from "a comment
+was wrong". Three files were reformatted and proven code-identical before their semantic edits: `Time.h` (`0504444`), `Time.cpp` (`34abff3`), and
+`UnitTestCollection.cpp` (`7420dd4`), which alone was 148 lines behind. `Time.cpp` needed `NamespaceIndentation: None` respected — namespace bodies
+are not indented in this house style, which my new code got wrong until the formatter said so.
+
+**One test design error worth keeping.** The first advance test spun on a `volatile` counter and would not compile: incrementing a volatile object
+is deprecated in C++20 and the tree is `-Werror`. The instrument was wrong before the qualifier was — the epoch measures steady wall time, and the
+CPU-time probe below shows a spin and a sleep differ entirely in CPU time while being identical here. A 5 ms sleep is deterministic and survives
+`-O2`, so the same test means the same thing in Release.
+
+**Measured for B1's second half, not assumed.** `clock_gettime(CLOCK_THREAD_CPUTIME_ID)` works on this platform (arm64 macOS, `rc=0`, ns-valued),
+and after a 50 ms sleep the value moved 13 µs — blocking does not accumulate, which is exactly G1's requirement. `thread_info(THREAD_BASIC_INFO)`
+also works but only reports microseconds. So the per-stream budget is realisable as thread CPU time; the "cycles" in G1's wording will be recorded
+as a deviation with this evidence, since a portable user-space cycle counter does not exist across the targets and the budget rule compares against
+a *frame period*, which is a duration.
+
+**Next.** B1's budget primitive on `TaskStream` (accumulator + configured budget + a dequeue gate that stops taking work rather than preempting,
+per guardrail 5), then B2's `TaskProvider`/`TaskHandle` per G3/G3b.
+
 ## A4 and A3: levels, one application, and two verification errors that nearly lied (2026-09-16)
 
 **What was done.** `EInitLevel` is wired (`7e62dcf`): `Engine::Initialize` takes a level set defaulted to `All`, so one code path keeps every
