@@ -37,6 +37,7 @@ add_library (Core STATIC
  CommandLineArguments.cpp
  Component.cpp
  ComponentSystem.cpp
+ CPUBudget.cpp
  Debug.cpp
  MainThreadTaskQueue.cpp
  RangedTask.cpp

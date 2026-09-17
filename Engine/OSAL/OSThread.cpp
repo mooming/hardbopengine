@@ -8,9 +8,15 @@
 #include "../Engine/Engine.h"
 #include "OSMemory.h"
 
-void OS::Yield() noexcept { std::this_thread::yield(); }
+void OS::Yield() noexcept
+{
+	std::this_thread::yield();
+}
 
-void OS::Sleep(uint32_t milliseconds) noexcept { std::this_thread::sleep_for(std::chrono::milliseconds(milliseconds)); }
+void OS::Sleep(uint32_t milliseconds) noexcept
+{
+	std::this_thread::sleep_for(std::chrono::milliseconds(milliseconds));
+}
 
 #ifdef __UNIT_TEST__
 
@@ -34,6 +40,44 @@ void hbe::OSThreadTest::Prepare()
 		if (elapsed < 5)
 		{
 			ls << "Sleep completed too quickly" << lferr;
+		}
+	});
+
+	AddTest("Thread CPU Time Advances When Busy", [this](auto& ls)
+	{
+		const auto start = OS::GetThreadCPUTime();
+		const auto wallStart = std::chrono::steady_clock::now();
+		unsigned long long sink = 0;
+
+		while (sink < 400000000ULL && std::chrono::steady_clock::now() - wallStart < std::chrono::milliseconds(20))
+		{
+			++sink;
+		}
+
+		const auto charged = OS::GetThreadCPUTime() - start;
+		ls << "20 ms of busy work consumed " << std::chrono::duration_cast<std::chrono::microseconds>(charged).count()
+		   << " us of CPU time" << lf;
+
+		if (charged <= std::chrono::nanoseconds::zero())
+		{
+			ls << "Thread CPU time did not advance across busy work" << lferr;
+		}
+	});
+
+	AddTest("Thread CPU Time Ignores Sleeping", [this](auto& ls)
+	{
+		const auto start = OS::GetThreadCPUTime();
+		std::this_thread::sleep_for(std::chrono::milliseconds(80));
+		const auto charged = OS::GetThreadCPUTime() - start;
+
+		ls << "80 ms of sleep consumed " << std::chrono::duration_cast<std::chrono::microseconds>(charged).count()
+		   << " us of CPU time" << lf;
+
+		if (charged > std::chrono::milliseconds(20))
+		{
+			ls << "Sleeping advanced thread CPU time by "
+			   << std::chrono::duration_cast<std::chrono::milliseconds>(charged).count()
+			   << " ms - the counter is reporting wall time, which would bill a stream for blocked work" << lferr;
 		}
 	});
 

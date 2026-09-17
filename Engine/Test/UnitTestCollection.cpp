@@ -14,6 +14,7 @@
 #include "Container/Queue.h"
 #include "Container/RingQueue.h"
 #include "Container/Vector.h"
+#include "Core/CPUBudget.h"
 #include "Core/ComponentSystem.h"
 #include "Core/TaskSystem.h"
 #include "Core/Time.h"
@@ -82,6 +83,7 @@ void RunTests()
 		testEnv.AddTestCollection<OSInputOutputTest>();
 		testEnv.AddTestCollection<OSThreadTest>();
 		testEnv.AddTestCollection<TimeTest>();
+		testEnv.AddTestCollection<CPUBudgetTest>();
 		testEnv.AddTestCollection<WindowTest>();
 		testEnv.AddTestCollection<OSMemoryTest>();
 		testEnv.AddTestCollection<RendererTest>();

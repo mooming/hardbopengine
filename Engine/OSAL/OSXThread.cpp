@@ -7,6 +7,7 @@
 /* See feature_test_macros(7) */
 #define _GNU_SOURCE
 
+#include <ctime>
 #include <pthread.h>
 
 #include "Log/Logger.h"
@@ -102,6 +103,17 @@ void OS::SetThreadPriority(std::thread& thread, int priority) noexcept
 				break;
 		}
 	}
+}
+
+std::chrono::nanoseconds OS::GetThreadCPUTime() noexcept
+{
+	struct timespec timeValue{};
+	if (clock_gettime(CLOCK_THREAD_CPUTIME_ID, &timeValue) != 0)
+	{
+		return std::chrono::nanoseconds::zero();
+	}
+
+	return std::chrono::seconds(timeValue.tv_sec) + std::chrono::nanoseconds(timeValue.tv_nsec);
 }
 
 #endif // PLATFORM_OSX

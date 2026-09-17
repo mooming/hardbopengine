@@ -65,6 +65,29 @@ void ResetEngineEpoch() noexcept;
 /// @brief Time elapsed since the epoch, for frame deltas and deadline checks.
 [[nodiscard]] TEngineDuration ElapsedSinceEngineEpoch() noexcept;
 
+/// @brief Target frame rate of the base stream, in hertz.
+/// @details The engine-wide yardstick for CPU budgets: a stream compares the CPU time it has accumulated
+///          against this period to decide whether to take more work, so one number governs every stream
+///          and they cannot drift apart. Read it with GetBaseFramePeriod - the rate is what a config
+///          holds, the period is what a deadline wants.
+/// @note Until something sets it, the engine's default target rate applies. A stream must never read this
+///       as "the frame rate I am actually achieving"; it is the target, and nothing here measures frames.
+[[nodiscard]] double GetBaseFrameRate() noexcept;
+
+/// @brief Target frame period of the base stream, derived from GetBaseFrameRate.
+/// @details This is the number budgets are measured against, which is why it is exposed as a duration
+///          rather than as a rate: comparing an accumulated CPU span to a rate invites an inverted
+///          comparison that still compiles and silently inverts every budget in the engine.
+[[nodiscard]] std::chrono::duration<double> GetBaseFramePeriod() noexcept;
+
+/// @brief Set the base stream's target frame rate, which moves the budget yardstick with it.
+/// @note The base stream's owner calls this during its configuration; everything else reads. Callers that
+///       are not that owner setting it per frame would make every budget in the engine chase a moving
+///       target, which reads as work randomly being accepted and refused.
+/// @note A rate that is zero or negative is ignored, because a period of infinity silently disables every
+///       budget while looking like a normal configuration value.
+void SetBaseFrameRate(double hertz) noexcept;
+
 } // namespace hbe::time
 
 #ifdef __UNIT_TEST__

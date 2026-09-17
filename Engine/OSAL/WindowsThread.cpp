@@ -26,4 +26,26 @@ void OS::SetThreadPriority(std::thread& thread, int priority) noexcept
 	}
 }
 
+std::chrono::nanoseconds OS::GetThreadCPUTime() noexcept
+{
+	FILETIME creationTime{};
+	FILETIME exitTime{};
+	FILETIME kernelTime{};
+	FILETIME userTime{};
+	if (GetThreadTimes(GetCurrentThread(), &creationTime, &exitTime, &kernelTime, &userTime) == 0)
+	{
+		return std::chrono::nanoseconds::zero();
+	}
+
+	auto ToNanoseconds = [](const FILETIME& fileTime) noexcept -> uint64_t
+	{
+		ULARGE_INTEGER ticks{};
+		ticks.LowPart = fileTime.dwLowDateTime;
+		ticks.HighPart = fileTime.dwHighDateTime;
+		return ticks.QuadPart * 100U;
+	};
+
+	return std::chrono::nanoseconds{ToNanoseconds(kernelTime) + ToNanoseconds(userTime)};
+}
+
 #endif // PLATFORM_WINDOWS

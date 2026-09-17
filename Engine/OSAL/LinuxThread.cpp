@@ -6,10 +6,14 @@
 #include "Log/Logger.h"
 
 #ifdef PLATFORM_LINUX
+#include <ctime>
 #include <sched.h>
 #include <sys/resource.h>
 
-int OS::GetCPUIndex() noexcept { return sched_getcpu(); }
+int OS::GetCPUIndex() noexcept
+{
+	return sched_getcpu();
+}
 
 void OS::SetThreadAffinity(std::thread& thread, uint64_t mask) noexcept
 {
@@ -37,6 +41,17 @@ void OS::SetThreadPriority(std::thread& thread, int priority) noexcept
 		const auto log = hbe::Logger::Get("OS::Thread");
 		log.OutError([](auto& ls) { ls << "failed to set thread affinity"; });
 	}
+}
+
+std::chrono::nanoseconds OS::GetThreadCPUTime() noexcept
+{
+	struct timespec timeValue{};
+	if (clock_gettime(CLOCK_THREAD_CPUTIME_ID, &timeValue) != 0)
+	{
+		return std::chrono::nanoseconds::zero();
+	}
+
+	return std::chrono::seconds(timeValue.tv_sec) + std::chrono::nanoseconds(timeValue.tv_nsec);
 }
 
 #endif // PLATFORM_LINUX
