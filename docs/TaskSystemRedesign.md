@@ -247,7 +247,7 @@ These five must hold for the model to be correct. They are the design's contract
 |---|---|---|
 | 1 | **Abandonment always destroys.** A dropped task still runs RAII; abandoned tasks funnel into a container that is drained and destroyed. | No leak on abandoned in-flight outcomes. |
 | 2 | **Deadlines are engine-clock relative**, stream-independent. | A task on a fast custom stream is abandoned by the same common clock as one on the engine stream. |
-| 3 | **Enqueue: SPSC lock-free or mutex, never MPMC lock-free** unless profiling justifies it behind a seam. | Correctness first; lock-free is an optimization. |
+| 3 | **Enqueue: SPSC lock-free or mutex, never MPMC lock-free** unless profiling justifies it behind a seam. SPSC is permitted only where the single producer is *provable by construction* and stated where the queue is declared — not inferred from a run that happened to look single-producer. | Correctness first; lock-free is an optimization. The failure mode is real: `MainThreadTaskQueue` claimed thread safety in its header with no synchronisation at all, while a task-stream thread produced and the main thread consumed (D10, fixed `567a987`). |
 | 4 | **Cross-stream isolation:** communicate only via outcome delivery. No shared mutable state across streams. | Keeps the barrier-less model race-free. |
 | 5 | **No per-task preemption.** The task system cannot stop a task once taken; a budget gates *taking* work between tasks and never interrupts one in flight. | Everything that reasons about budgets, teardown or abandonment must treat "budget spent" as compatible with work still running. Assuming otherwise is a teardown race, and a provider cannot be asked to cooperate around a cancellation primitive that does not exist. |
 

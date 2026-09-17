@@ -92,6 +92,16 @@ epoch rather than engine start, and **D6**, `AddLog` FatalAsserting when it wake
 ride with **step 1**, whose contract D6 is the reason for. They are specified once, in §1, rather than
 copied here as well.
 
+**Board index for defects found after this plan was written (2026-09-16).** The two task plans and
+`JOURNAL.md` own the detail; this is the index, so the board has one place to consult.
+
+| ID | Defect | Status |
+|---|---|---|
+| **D7** | the `-test` configuration did not compile at HEAD: six `windowFuture.get()` calls in the `WindowTest` bodies discard a `[[nodiscard]]` result under `-Werror` | **fixed** `ccc05ec`. Invisible to the default gate because that builds without `__UNIT_TEST__`, so a commit touching a test body is gated with `check.sh --staged --test` |
+| **D8** | `Engine::Log` re-derives the log timestamp privately against `statistics.GetStartTime()` while every other path goes through `LogUtil::GetTimeStampString` — one rule, two implementations | **open.** G2's single readable epoch removes the only reason the private copy exists |
+| **D9** | `Engine::IsLoggerReady` reports *construction*, not readiness — `Logger`'s constructor raises it (`Logger.cpp:186`) — and has had no readers since A4 | **open.** Rename or redefine when lifecycle next moves; the name is currently a trap |
+| **D10** | `MainThreadTaskQueue` was unsynchronised while its header claimed thread safety, with a real task-stream producer and a main-thread consumer | **fixed** `567a987`, proven with ThreadSanitizer before and clean after. G4 records the policy for the queues Task B introduces |
+
 ## 3. Step 3 — new engine module `Engine/Application/`
 
 `hbe::Component` is deliberately **not** the base: it mandates `Update(float deltaTime)` (no frame

@@ -80,7 +80,7 @@ These are open in the design doc (§10). Do not silently pick one; each is recor
 | G1 ✅ | B1 | **Decided 2026-09-16** — see G1 below for the semantics |
 | G2 ✅ | B1 | **Decided 2026-09-16** — one `steady_clock` epoch owned by `Engine`, read by all; see the G2 section below |
 | G3 ✅ | B2 | **Decided 2026-09-16**, with sub-gate **G3b** also decided — context struct (stream handle + engine clock reading, no budget); `Produce` returns whether it produced anything. See below. |
-| G4 | B5 | Enqueue: SPSC lock-free per stream where one producer, mutex otherwise. **MPMC lock-free is not the default** |
+| G4 ✅ | B5 | **Decided and acted 2026-09-16** — mutex where there really are several producers (D10 fixed now), SPSC lock-free only where one producer is provable; see below |
 | G5 | B7 | Is range-splitting retired or bridged? `EngineTest` and any data-parallel caller decide this — find the call sites before choosing |
 
 ### G1 — decided: measured CPU duration, accumulated per stream, budgeted against the base stream's frame period
@@ -165,6 +165,22 @@ Consequences, all binding:
   second runs, since provider state can change between them — the stream would be steering on a reading it cannot trust. Idle providers therefore
   pay one call per drain, which is the honest price of not maintaining a second source of truth about a provider's intent; if that cost ever
   matters, guardrail 5's "no preemption" means the fix is a registration surface measured against a real stall, not a guess now.
+
+### G4 — decided: mutex where producers are several, lock-free SPSC only where one is provable
+
+- **Policy for what Task B introduces:** a stream's enqueue path is lock-free single-producer/single-consumer **only when the single producer is
+  provable**, and a mutex otherwise. MPMC lock-free is not the default in either case.
+- *Provable* means provable by construction and stated where the queue is declared — "only the owning stream thread enqueues here", or "exactly one
+  named producer thread, by design". It does not mean "it looked single-producer in the run I did". That distinction is the whole content of D10:
+  `MainThreadTaskQueue` claimed thread safety in its header and had no synchronisation, and the producer really was a task-stream thread while the
+  main thread drained it.
+- **The live race was fixed immediately (`567a987`) rather than left for B5**, because it is reachable today and B5 does not remove it. Proven with
+  ThreadSanitizer on a two-thread repro before the change (`Push` racing `IsEmpty`/`Pop` on the same object) and clean after; the fix keeps the
+  container under the lock but invokes task functions outside it, since queued work may itself schedule more main-thread work.
+- **The fork this forces on B5, recorded so it is not rediscovered there:** an outcome delivered across streams is an enqueue into a queue whose
+  producer set is then *owner plus deliverer* — at least two producers, so not SPSC, so a mutex unless B5 changes the shape. The alternative shape
+  is a per-stream intake that only the owning thread drains from a structure written by one thread. B5 must pick one deliberately; stumbling into
+  whichever one is convenient mid-implementation is how D10 happened.
 
 ---
 
