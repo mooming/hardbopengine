@@ -4,17 +4,16 @@
 
 #include "UnitTestCollection.h"
 
-#include "RendererTest.h"
 #include "Container/Array.h"
 #include "Container/AtomicStackView.h"
 #include "Container/BoundedPriorityQueue.h"
-#include "Container/LinkedList.h"
-#include "Container/Vector.h"
-#include "Container/Map.h"
-#include "Container/HashMap.h"
 #include "Container/Deque.h"
+#include "Container/HashMap.h"
+#include "Container/LinkedList.h"
+#include "Container/Map.h"
 #include "Container/Queue.h"
 #include "Container/RingQueue.h"
+#include "Container/Vector.h"
 #include "Core/ComponentSystem.h"
 #include "Core/TaskSystem.h"
 #include "HSTL/HUnorderedMap.h"
@@ -47,6 +46,7 @@
 #include "OSAL/OSThread.h"
 #include "OSAL/Window.h"
 #include "Renderer/RHICapabilities.h"
+#include "RendererTest.h"
 #include "Resource/Buffer.h"
 #include "Resource/BufferInputStream.h"
 #include "Resource/BufferOutputStream.h"
@@ -55,7 +55,6 @@
 #include "String/StringBuilder.h"
 #include "String/StringUtil.h"
 #include "TestEnv.h"
-
 
 namespace hbe::Test
 {
