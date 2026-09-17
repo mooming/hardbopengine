@@ -10,20 +10,20 @@ namespace hbe
 {
 namespace
 {
-	/// @brief The epoch, held as nanoseconds since the steady clock's own epoch.
-	/// @details An atomic counter rather than a time_point so a read from another thread is a single
-	///          acquire load: the epoch is read on every deadline check and every frame delta, while
-	///          it is written at most once, by whoever constructs the engine.
-	/// @note Initialised on first use, which is what keeps the clock meaningful in a process that never
-	///       builds an Engine. A zero-initialised epoch reads as decades since 1970 - the D5 defect.
-	std::atomic<long long>& EpochNanosStorage() noexcept
-	{
-		const auto sinceEpoch = std::chrono::steady_clock::now().time_since_epoch();
-		const auto nanos = static_cast<long long>(std::chrono::duration_cast<std::chrono::nanoseconds>(sinceEpoch).count());
+/// @brief The epoch, held as nanoseconds since the steady clock's own epoch.
+/// @details An atomic counter rather than a time_point so a read from another thread is a single
+///          acquire load: the epoch is read on every deadline check and every frame delta, while
+///          it is written at most once, by whoever constructs the engine.
+/// @note Initialised on first use, which is what keeps the clock meaningful in a process that never
+///       builds an Engine. A zero-initialised epoch reads as decades since 1970 - the D5 defect.
+std::atomic<long long>& EpochNanosStorage() noexcept
+{
+	const auto sinceEpoch = std::chrono::steady_clock::now().time_since_epoch();
+	const auto nanos = static_cast<long long>(std::chrono::duration_cast<std::chrono::nanoseconds>(sinceEpoch).count());
 
-		static std::atomic<long long> epochNanos{nanos};
-		return epochNanos;
-	}
+	static std::atomic<long long> epochNanos{nanos};
+	return epochNanos;
+}
 } // namespace
 
 void time::Sleep(time::TMilliSec milli) noexcept
@@ -76,8 +76,10 @@ void TimeTest::Prepare()
 		const auto elapsed = time::ElapsedSinceEngineEpoch();
 		if (elapsed > std::chrono::hours(1))
 		{
-			ls << "Elapsed since the engine epoch is " << std::chrono::duration_cast<std::chrono::hours>(elapsed).count()
-			   << " hours; the epoch is reading a zero value rather than engine start - this is the D5 defect." << lferr;
+			ls << "Elapsed since the engine epoch is "
+			   << std::chrono::duration_cast<std::chrono::hours>(elapsed).count()
+			   << " hours; the epoch is reading a zero value rather than engine start - this is the D5 defect."
+			   << lferr;
 		}
 	});
 
@@ -92,7 +94,8 @@ void TimeTest::Prepare()
 
 		if (beforeReset < std::chrono::milliseconds(20))
 		{
-			ls << "Elapsed did not accumulate while the epoch stood still: " << std::chrono::duration_cast<std::chrono::milliseconds>(beforeReset).count()
+			ls << "Elapsed did not accumulate while the epoch stood still: "
+			   << std::chrono::duration_cast<std::chrono::milliseconds>(beforeReset).count()
 			   << " ms after a 30 ms sleep." << lferr;
 		}
 

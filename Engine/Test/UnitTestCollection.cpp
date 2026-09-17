@@ -16,6 +16,7 @@
 #include "Container/Vector.h"
 #include "Core/ComponentSystem.h"
 #include "Core/TaskSystem.h"
+#include "Core/Time.h"
 #include "HSTL/HUnorderedMap.h"
 #include "Math/AABB.h"
 #include "Math/ImportanceResampling.h"
@@ -80,6 +81,7 @@ void RunTests()
 		testEnv.AddTestCollection<OSDebugTest>();
 		testEnv.AddTestCollection<OSInputOutputTest>();
 		testEnv.AddTestCollection<OSThreadTest>();
+		testEnv.AddTestCollection<TimeTest>();
 		testEnv.AddTestCollection<WindowTest>();
 		testEnv.AddTestCollection<OSMemoryTest>();
 		testEnv.AddTestCollection<RendererTest>();
