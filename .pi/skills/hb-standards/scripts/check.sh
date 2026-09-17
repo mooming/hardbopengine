@@ -160,6 +160,23 @@ fi
 VIOL=0
 WARN=0
 
+# A --staged run is a promise about a commit, and a commit takes its bytes from the index.
+# Every check below reads worktree files instead, so when the two differ the verdict does not
+# describe the thing being committed. Observed directly: clang-format -i fixed the worktree, the
+# shell chain that should have re-staged it died on a counting grep (grep -c prints 0 and exits
+# 1, which breaks &&), and the commit recorded the unformatted file under an all-PASS lint.
+# The divergence is the whole failure; detecting it here makes it impossible to miss.
+if [[ $STAGED -eq 1 && ${#FILES[@]} -gt 0 ]]; then
+	if ! git diff --quiet -- "${FILES[@]}" 2>/dev/null; then
+		echo "[FAIL] index and worktree disagree on ${#FILES[@]} scoped file(s); the checks below read the worktree"
+		git diff --name-only -- "${FILES[@]}" | sed 's/^/         differ: /'
+		printf ' %s\n' '         A --staged commit takes bytes from the index, so a green verdict here would'
+		printf ' %s\n' '         describe worktree content the commit never contains. Re-stage with'
+		printf ' %s\n' '         git add -- <files>, then re-run this check.'
+		VIOL=$((VIOL + 1))
+	fi
+fi
+
 # Belt and braces: clang-format enforces the Allman brace rule, the 120 column
 # limit, tabs, and the blank-line conventions. Everything after this section
 # covers rules clang-format structurally cannot check.
