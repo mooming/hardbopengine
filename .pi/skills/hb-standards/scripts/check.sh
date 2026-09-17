@@ -258,7 +258,7 @@ if [[ ${#FILES[@]} -gt 0 ]]; then
 	hdr "formatting that clang-format cannot enforce"
 	check "no space-indented lines"            '^[ ]+[^ ]'                                     FAIL "${FILES[@]}"
 	check "joined empty function/ctor body — braces must break" '\)[[:space:]]*((const|noexcept|override|constexpr)[[:space:]]+)*\{\}[[:space:]]*$' FAIL "${FILES[@]}"
-	check "joined empty record"                '(struct|class|union|enum)\s+\w+[^;]*\{\s*\}\s*;' FAIL "${FILES[@]}"
+	check "joined empty record"                '(struct|class|union|enum)[[:space:]]+[[:alnum:]_]+[[:space:]]*\{[[:space:]]*\}[[:space:]]*;' FAIL "${FILES[@]}"
 	check "no exceptions (engine is exception-free)" '\b(throw\s+[A-Za-z_(]|try\s*\{|catch\s*\()' FAIL "${FILES[@]}"
 	check "no m_ member prefix"                '\b(m_[a-z]|[a-z]+_[a-z]+\s*;)'                  WARN "${FILES[@]}"
 	check "std::move on return kills NRVO"     'return\s+std::move'                              FAIL "${FILES[@]}"
