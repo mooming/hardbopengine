@@ -83,7 +83,11 @@ public:
 
 	// Dispatch a task to be executed on the main thread.
 	// The task will be queued and executed when the main thread processes its queue.
-	void DispatchToMainThread(TMainThreadTask task, void* userData, uint8_t priority = 0) noexcept;
+	// priority: 0 = least urgent, 255 = most urgent. The default is 128 to match MainThreadTaskQueue's own
+	// default; it used to be 0, which under the old "0 = highest" convention meant every caller of this
+	// function was silently enqueuing at top priority. With the direction inverted, leaving 0 here would
+	// have flipped those same callers to the bottom of the queue instead.
+	void DispatchToMainThread(TMainThreadTask task, void* userData, uint8_t priority = 128) noexcept;
 
 	// Process all pending main thread tasks.
 	size_t ProcessMainThreadTasks() noexcept;

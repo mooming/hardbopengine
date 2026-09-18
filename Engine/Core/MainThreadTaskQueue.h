@@ -69,7 +69,11 @@ public:
 
 	/// @brief Enqueue a task to be executed on the main thread.
 	/// @param task The task function to execute.
-	/// @param priority The priority of the task (0 = highest, 255 = lowest). Default is 128.
+	/// @param priority The priority of the task (0 = lowest, 255 = most urgent). Default is 128, the middle
+	///        of the range, so a caller that states nothing sits between urgent work and background work
+	///        rather than silently joining one end. Note this direction was inverted on 2026-09-18 along
+	///        with BoundedPriorityQueue itself, which now drains the highest number first; anything that
+	///        previously passed a small number expecting urgency now reads as low urgency.
 	/// @threadsafe Callable from any thread. Window callbacks reach it through
 	///             TaskSystem::DispatchToMainThread on a task-stream thread while the process main
 	///             thread is draining the same queue.
