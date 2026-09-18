@@ -304,3 +304,37 @@ The existing model (still present today) is a data-parallel range splitter:
 - `TaskStream` (`TaskStream.h`) is a thread over a `BoundedPriorityQueue<RangedTask>` with a `MultiPoolAllocator`.
 
 This redesign replaces that paradigm with the job-graph model of §4–§6. If any caller relies on range-splitting semantics, those usages must be converted to a provider or a bridge before retirement (§10).
+
+---
+
+## 13. Owner decisions 2026-09-18 — dual lanes, budget shares, max age
+
+Decided in answer to explicit owner direction, each with the consequence that follows from it. Where a
+decision reverses something documented, that is stated rather than left for the next reader to trip over.
+
+| # | Decision | Consequence accepted with it |
+|---|---|---|
+| L1 | A stream holds **two queues**: a FIFO lane and a priority lane. | A drain policy between them is now mandatory, and it is the only thing standing between a busy lane and the starvation of the other. |
+| L2 | Each stream carries a **FIFO : priority rate**, given at construction and set per stream class in `BuildStreams`; default **1:1**. | One place states what every stream does. Runtime tuning would need a rebuild, which is honest for a ratio nothing has measured yet. |
+| L3 | **Two enqueue functions**, one per lane. | Every existing call site must name a lane. The routing decision is at the call site, not derived from a number. |
+| O1 | Priority lane drains **highest number = most urgent**, and **oldest first within a tie**; buckets become `hbe::Deque`. | **Reverses a documented contract.** `MainThreadTaskQueue.h` states "0 = highest, 255 = lowest. Default is 128", so inverting the direction makes that false and makes 128 a mid-range value rather than an urgent one. Updated in the same commit as the container. Cheapest moment it will ever be: no caller in the tree sets a non-zero priority. |
+| O2 | Within-tie order becomes oldest-first. | Today `Pop` takes `bucket.back()` — newest first — so two equally urgent tasks currently run in reverse arrival order. This is the actual defect the ordering decision was reaching for. |
+| P1 | Priority lives on the **`Task`**, and the **existing per-loop sweep re-buckets** entries whose priority changed. | No search, no handle, no id allocator, and the walk is already paid for. An update takes effect at the next sweep, not instantly — one loop iteration of the stream holding it. |
+| P2 | A re-bucket keeps **age** (front of the destination group), and **raising and lowering are both allowed**. | Escalation feels like escalation. A lowered task keeps its seniority in its new group, so demotion is not a reward. |
+| B1 | Each lane gets a **budget share** = stream allowance x rate share, with its own accumulation. | The rate is now a share of CPU budget, not a take-count quota — this revises the original reading of L2. |
+| B2 | **Borrowing is free each round**: a lane may keep taking while the stream total is inside budget and either share remains. | Long-run ratio is not preserved under sustained back-pressure from both lanes; whoever has work gets the CPU. Deficit accounting was the rejected alternative that would have preserved it. |
+| B3 | The **round ends when the stream allowance is exhausted**, which resets the stream total and both lane accumulators. | A stream that never reaches its allowance never refreshes, so a lane that borrowed early stays borrowed while the engine is quiet. Accepted: the alternative tied shares to a clock that G1 keeps deliberately decoupled from frames. |
+| A1 | A task may carry a **max age** (timeout duration). Per task, the caller chooses **abandon** or **escalate** at expiry. | Two behaviours, one field, and a default meaning "never expires" — absent must not be a large number, or a default-constructed task times out by accident. |
+| A2 | Age is **plain wall time from enqueue**, stamped on the queued entry with the steady clock. | A stream that stalls or is budget-blocked ages its backlog: a pause costs you the backlog. The alternative (an age clock the stream advances only while its loop runs) was declined. |
+| A3 | Abandoning a task **must report its subtask finished-cancelled**. | Non-negotiable: `Task::HasDone()` is `numSubTasks > 0 && finished >= numSubTasks`, so an abandoned subtask that reports nothing hangs anyone waiting on the parent — the same silent-hang class as waiting on a task nobody enqueued. |
+
+### What this costs in code, stated before writing it
+
+- `BoundedPriorityQueue` changes direction *and* within-tie order, so its own test must assert the new
+  contract, and `MainThreadTaskQueue`'s header comment plus its default priority move with it.
+- `TaskStream` gains a lane pair, a rate, lane-aware sweeping and re-adding (a re-added task must return to
+  the lane it came from, so unfinished work does not silently change lanes between frames), and two lane
+  accumulators.
+- The sweep grows from "remove finished" to "remove finished, re-bucket changed priorities, expire aged
+  tasks" — one walk, three decisions, and it is the step where an O(n) mistake would be invisible until the
+  queue is deep.
