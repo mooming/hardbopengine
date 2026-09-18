@@ -184,6 +184,21 @@ create provider → AttachTo(streams) → Produce() per attached stream → Stop
 - **Stopping** (self or via handle) detaches the provider from all streams and halts `Produce()`. In-flight tasks on each stream are handled as abandoned tasks (§6).
 - A **handle** is the control token a stream uses to stop a provider.
 
+### B2 as built — where the sketch met the codebase
+
+Implemented in `Engine/Core/TaskProvider.h` / `.cpp`, both models now coexisting. Four places where the sketch above could not stand as drawn:
+
+| Sketch | As built | Why |
+|---|---|---|
+| `Array<TStreamIndex> attached` + an `AttachTo(Array)` overload | Bounded inline set, `MaxAttachedStreams = 8`, single-stream `AttachTo` only | The engine's `Array` has **no growth API** — it is fixed at construction and non-copyable, so a member `Array` could not accumulate attachments at all. Attachments are a lifecycle event whose realistic figure is one or two, so an inline set removes the allocator question entirely: a provider that cannot allocate still gets to exist. The array overload existed only to seed that container. |
+| Overflow behaviour unstated | Asserts, and is dropped in a release build | Silent truncation would read as a stream that never hears from the provider. The cap is stated, and raising it is a one-line change. |
+| `Stop()` "detaches all streams" immediately | `Stop()` sets an atomic request; the owning stream applies it when it next looks | Streams iterate the attachment list on their own threads. Detaching from the caller's thread would edit a container while another thread iterates it — the exact class of defect D10 was. Mutation on the list now happens only on the thread that owns the list. |
+| Context "carries the stream and a reading of the epoch" | `TaskProduceContext::ForStream(stream)` builds `{stream, now}`, where `now` is an instant in the epoch's time base | A factory shared by the drain and the tests, so a test cannot pass while production hands out something else. It also fixes one reading per drain: if each provider read the clock itself, two providers in one drain would reason about two different times. |
+
+`TaskHandle` is a plain token: a raw provider pointer, `RequestStop() const` (stopping does not alter the token, so copies are equivalent), and an **empty handle that is inert** — a registry slot never filled can be stopped on a teardown path without every caller writing a guard. It does not own the provider, and no check can detect a handle outliving it; the owner's lifetime rule is stated in the header instead.
+
+Two contracts pinned by tests, because both are the kind of thing that reads as obvious and breaks silently: a repeated `AttachTo` of the same stream must not produce two entries (a duplicate silently doubles that provider's output rate), and `Stop()` must leave the attachment list intact. Verified by mutation — deleting the dedup scan turns the test red with "Attaching stream 2 twice left 3 attachments".
+
 ---
 
 ## 6. Outcome delivery, abandonment, and ownership

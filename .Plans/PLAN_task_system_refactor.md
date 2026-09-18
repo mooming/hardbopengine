@@ -221,7 +221,7 @@ drops it below 54, that is a regression.
 | Step | Work | Gate |
 |---|---|---|
 | **B1** | ✅ **done 2026-09-18** — epoch (`57336b2`) + budget primitive (`f751a8f`): `OS::GetThreadCPUTime` on all three platforms, `hbe::CPUBudget`, `time::Set/GetBaseFrameRate` and `GetBaseFramePeriod`. Suite 55/55 ×3, mutation-proven both ways, build gate 12/12. Nothing consumes them yet; wiring is B3. | G1 ✅, G2 ✅ |
-| **B2** | Introduce `TaskProvider` + `TaskHandle` alongside the existing `Task`/`RangedTask`. Both models coexist. | G3 |
+| **B2** | ✅ **done 2026-09-18** (`e5fb359`): `TaskProvider`, `TaskHandle`, `TaskProduceContext` + `ForStream`, `TStreamIndex` its own header. 7 tests, suite 56/56 ×3, mutation-proven. Two forced deviations from the sketch (bounded attach set because engine `Array` cannot grow; `Stop` is a request the stream applies) recorded in the design doc. | G3 ✅ |
 | **B3** | Add the FIFO queue and budget enforcement to `TaskStream`; keep its thread and `MultiPoolAllocator`. | — |
 | **B4** | Named streams: Engine / IO / Render / Base Application (`UserThread[0]`) / Custom (`UserThread[1..N]`). Replace `BaseStreamIndex = 0` / `IOStreamIndex = 1` constants and `baseTaskThreadID`-captured-at-construction identity (`TaskSystem.cpp:70`). Update its users, incl. the `Assert(IsBaseThread())` at `TaskSystem.cpp:232`. | — |
 | **B5** | Outcome delivery: size-class payload (inline copy vs heap `unique_ptr` via a thread-safe allocator), ownership following the holder, cross-stream successor enqueue. | G4 |
