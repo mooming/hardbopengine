@@ -4,8 +4,8 @@
 
 #include <condition_variable>
 #include <mutex>
-#include <thread>
 #include <queue>
+#include <thread>
 #include "Container/Array.h"
 #include "Container/BoundedPriorityQueue.h"
 #include "HSTL/HVector.h"
@@ -13,6 +13,7 @@
 #include "RangedTask.h"
 #include "String/StaticString.h"
 #include "Task.h"
+#include "TaskStreamIndex.h"
 
 namespace hbe
 {
@@ -22,10 +23,10 @@ class TaskSystem;
 /// @brief Represents a thread that processes a series of tasks from a priority queue.
 class TaskStream final
 {
-	template<typename T>
+	template <typename T>
 	using TVector = hbe::HVector<T>;
 	using TIndex = Task::TIndex;
-	using TStreamIndex = Array<RangedTask>::TIndex;
+	using TStreamIndex = hbe::TStreamIndex;
 	using TThreadID = std::thread::id;
 	using TRangedTasks = TVector<RangedTask>;
 
@@ -38,8 +39,8 @@ private:
 
 		TaskQueueItem(uint8_t priority, const RangedTask& task);
 
-		TaskQueueItem& operator= (const TaskQueueItem& other) = default;
-		bool operator< (const TaskQueueItem& other) const;
+		TaskQueueItem& operator=(const TaskQueueItem& other) = default;
+		bool operator<(const TaskQueueItem& other) const;
 	};
 
 	StaticString name;
@@ -60,14 +61,41 @@ public:
 
 	void Enqueue(const RangedTask& task) noexcept;
 	void WakeUp() noexcept;
-	void Join() noexcept { thread.join(); }
 
-	[[nodiscard]] auto GetName() const noexcept { return name; }
-	[[nodiscard]] auto GetThreadID() const noexcept { return threadID; }
-	[[nodiscard]] auto& GetThread() noexcept { return thread; }
-	[[nodiscard]] auto& GetThread() const noexcept { return thread; }
-	[[nodiscard]] auto GetStreamIndex() const noexcept { return streamIndex; }
-	[[nodiscard]] auto GetLoopCount() const noexcept { return loopCount; }
+	void Join() noexcept
+	{
+		thread.join();
+	}
+
+	[[nodiscard]] auto GetName() const noexcept
+	{
+		return name;
+	}
+
+	[[nodiscard]] auto GetThreadID() const noexcept
+	{
+		return threadID;
+	}
+
+	[[nodiscard]] auto& GetThread() noexcept
+	{
+		return thread;
+	}
+
+	[[nodiscard]] auto& GetThread() const noexcept
+	{
+		return thread;
+	}
+
+	[[nodiscard]] auto GetStreamIndex() const noexcept
+	{
+		return streamIndex;
+	}
+
+	[[nodiscard]] auto GetLoopCount() const noexcept
+	{
+		return loopCount;
+	}
 
 	void Start(TaskSystem& taskSys) noexcept;
 	void RunLoop() noexcept;

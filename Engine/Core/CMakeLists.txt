@@ -44,6 +44,7 @@ add_library (Core STATIC
  ScopedLock.cpp
  SystemStatistics.cpp
  Task.cpp
+ TaskProvider.cpp
  TaskStream.cpp
  TaskStreamAffinity.cpp
  TaskSystem.cpp
@@ -64,8 +65,10 @@ add_library (Core STATIC
  ScopedTime.h
  SystemStatistics.h
  Task.h
+ TaskProvider.h
  TaskStream.h
  TaskStreamAffinity.h
+ TaskStreamIndex.h
  TaskSystem.h
  Time.h
  Types.h

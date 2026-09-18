@@ -16,6 +16,7 @@
 #include "Container/Vector.h"
 #include "Core/CPUBudget.h"
 #include "Core/ComponentSystem.h"
+#include "Core/TaskProvider.h"
 #include "Core/TaskSystem.h"
 #include "Core/Time.h"
 #include "HSTL/HUnorderedMap.h"
@@ -84,6 +85,7 @@ void RunTests()
 		testEnv.AddTestCollection<OSThreadTest>();
 		testEnv.AddTestCollection<TimeTest>();
 		testEnv.AddTestCollection<CPUBudgetTest>();
+		testEnv.AddTestCollection<TaskProviderTest>();
 		testEnv.AddTestCollection<WindowTest>();
 		testEnv.AddTestCollection<OSMemoryTest>();
 		testEnv.AddTestCollection<RendererTest>();
