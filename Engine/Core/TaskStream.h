@@ -8,7 +8,9 @@
 #include <thread>
 #include "Container/Array.h"
 #include "Container/BoundedPriorityQueue.h"
+#include "Container/Deque.h"
 #include "Core/CPUBudget.h"
+#include "Core/StreamDrainPolicy.h"
 #include "HSTL/HVector.h"
 #include "Memory/MultiPoolAllocator.h"
 #include "RangedTask.h"
@@ -54,14 +56,23 @@ private:
 	std::mutex queueLock;
 	std::condition_variable cv;
 	std::thread thread;
-	BoundedPriorityQueue<RangedTask> taskQueue;
+	Deque<RangedTask> fifoQueue;
+	BoundedPriorityQueue<RangedTask> priorityQueue;
+	StreamDrainPolicy drainPolicy;
 
 public:
 	TaskStream();
 	explicit TaskStream(StaticString name, TStreamIndex streamIndex);
 	~TaskStream() = default;
 
-	void Enqueue(const RangedTask& task) noexcept;
+	/// @brief Queue a task on the FIFO lane, which runs them in arrival order.
+	void EnqueueFifo(const RangedTask& task) noexcept;
+	/// @brief Queue a task on the priority lane, which runs the highest priority number first and the
+	///        oldest first within a tie.
+	void EnqueuePriority(const RangedTask& task) noexcept;
+	/// @brief Set this stream's FIFO:priority rate, which is a share of its CPU allowance. Zero weights are
+	///        treated as one, not as "never serve this lane".
+	void ConfigureRate(uint32_t fifoWeight, uint32_t priorityWeight) noexcept;
 	void WakeUp() noexcept;
 
 	/// @brief Set this stream's CPU allowance, expressed as a duration. Zero means unlimited.

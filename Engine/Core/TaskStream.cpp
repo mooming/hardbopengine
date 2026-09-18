@@ -45,23 +45,47 @@ TaskStream::TaskStream(StaticString name, TStreamIndex streamIndex)
 	log.Out([name = name](auto& ls) { ls << name.c_str() << " is created."; });
 }
 
-void TaskStream::Enqueue(const RangedTask& task) noexcept
+void TaskStream::EnqueueFifo(const RangedTask& task) noexcept
 {
 	std::scoped_lock<std::mutex> lock(queueLock);
-	taskQueue.Push(task);
+	fifoQueue.PushBack(task);
 	cv.notify_one();
+}
+
+void TaskStream::EnqueuePriority(const RangedTask& task) noexcept
+{
+	std::scoped_lock<std::mutex> lock(queueLock);
+	priorityQueue.Push(task);
+	cv.notify_one();
+}
+
+void TaskStream::ConfigureRate(uint32_t fifoWeight, uint32_t priorityWeight) noexcept
+{
+	drainPolicy.ConfigureRate(fifoWeight, priorityWeight);
 }
 
 void TaskStream::Dequeue(std::optional<RangedTask>& outTask)
 {
 	std::scoped_lock<std::mutex> lock(queueLock);
-	if (taskQueue.IsEmpty())
+
+	// Serves work whenever there is any, without consulting the drain policy: the rate and the budget gate
+	// the stream's own loop, and gating here would let a caller's refill stall on an exhausted allowance.
+	if (!priorityQueue.IsEmpty())
 	{
-		outTask.reset();
+		outTask = priorityQueue.Pop();
+		drainPolicy.CommitTake(StreamDrainPolicy::ELane::Priority);
 		return;
 	}
 
-	outTask = taskQueue.Pop();
+	if (!fifoQueue.IsEmpty())
+	{
+		outTask = fifoQueue.Front();
+		fifoQueue.PopFront();
+		drainPolicy.CommitTake(StreamDrainPolicy::ELane::Fifo);
+		return;
+	}
+
+	outTask.reset();
 }
 
 void TaskStream::WakeUp() noexcept
@@ -72,6 +96,7 @@ void TaskStream::WakeUp() noexcept
 void TaskStream::ConfigureBudget(std::chrono::duration<double> allowance) noexcept
 {
 	budget.Configure(allowance);
+	drainPolicy.ConfigureAllowance(allowance);
 }
 
 bool TaskStream::MayTakeNewWork() const noexcept
@@ -110,23 +135,63 @@ void TaskStream::RunLoop() noexcept
 	auto& engine = Engine::Get();
 	auto& taskSys = engine.GetTaskSystem();
 
-	HVector<RangedTask> readdingBuffer;
+	HVector<RangedTask> readdingFifo;
+	HVector<RangedTask> readdingPriority;
 
 	for (; likely(taskSys.IsRunning()); ++loopCount)
 	{
 		std::optional<RangedTask> rangedTask;
+		StreamDrainPolicy::ELane lane = StreamDrainPolicy::ELane::None;
 
 		{
-			// Remove finished tasks
 			std::unique_lock lock(queueLock);
-			taskQueue.Remove([](const RangedTask& task) { return task.HasFinished(); });
 
-			taskQueue.PushRange(readdingBuffer);
-			readdingBuffer.clear();
+			// A task that finished elsewhere is released from its lane and put back on that same lane, so the
+			// sweep and the re-add are per lane and no task changes lane on the way.
+			priorityQueue.Remove([](const RangedTask& task) { return task.HasFinished(); });
+			priorityQueue.PushRange(readdingPriority);
+			readdingPriority.clear();
 
-			if (!taskQueue.IsEmpty())
+			for (auto& task : readdingFifo)
 			{
-				rangedTask = taskQueue.Pop();
+				fifoQueue.PushBack(task);
+			}
+
+			readdingFifo.clear();
+
+			// Rotating the lane drops finished tasks in place and preserves arrival order for the rest, which
+			// is the same O(n)-per-loop price BoundedPriorityQueue::Remove already pays.
+			const size_t fifoCount = fifoQueue.Size();
+			for (size_t i = 0; i < fifoCount; ++i)
+			{
+				auto entry = fifoQueue.Front();
+				fifoQueue.PopFront();
+
+				if (!entry.HasFinished())
+				{
+					fifoQueue.PushBack(entry);
+				}
+			}
+
+			lane = drainPolicy.ChooseLane(!fifoQueue.IsEmpty(), !priorityQueue.IsEmpty());
+			switch (lane)
+			{
+				case StreamDrainPolicy::ELane::Fifo:
+					rangedTask = fifoQueue.Front();
+					fifoQueue.PopFront();
+					drainPolicy.CommitTake(lane);
+					break;
+				case StreamDrainPolicy::ELane::Priority:
+					rangedTask = priorityQueue.Pop();
+					drainPolicy.CommitTake(lane);
+					break;
+				case StreamDrainPolicy::ELane::None:
+					break;
+			}
+
+			if (!rangedTask.has_value())
+			{
+				lane = StreamDrainPolicy::ELane::None;
 			}
 		}
 
@@ -147,6 +212,7 @@ void TaskStream::RunLoop() noexcept
 
 		time::TDuration duration;
 		const bool chargingBudget = budget.GetAllowance().count() > 0.0;
+		const auto chargedBefore = chargingBudget ? budget.GetAccumulated() : std::chrono::nanoseconds::zero();
 		if (chargingBudget)
 		{
 			budget.BeginTask();
@@ -160,6 +226,16 @@ void TaskStream::RunLoop() noexcept
 		if (chargingBudget)
 		{
 			budget.EndTask();
+
+			const auto spent = budget.GetAccumulated() - chargedBefore;
+			if (lane == StreamDrainPolicy::ELane::Priority)
+			{
+				drainPolicy.ChargePriority(spent);
+			}
+			else
+			{
+				drainPolicy.ChargeFifo(spent);
+			}
 		}
 
 		const float deltaTime = time::ToFloat(duration);
@@ -170,7 +246,14 @@ void TaskStream::RunLoop() noexcept
 
 		if (!rangedTask->HasFinished())
 		{
-			readdingBuffer.push_back(*rangedTask);
+			if (lane == StreamDrainPolicy::ELane::Priority)
+			{
+				readdingPriority.push_back(*rangedTask);
+			}
+			else
+			{
+				readdingFifo.push_back(*rangedTask);
+			}
 		}
 	}
 

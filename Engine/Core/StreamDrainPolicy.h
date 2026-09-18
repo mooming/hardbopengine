@@ -51,7 +51,13 @@ public:
 	///          actually run.
 	[[nodiscard]] ELane ChooseLane(bool fifoHasWork, bool priorityHasWork) const noexcept;
 
-	/// @brief Record the CPU time a task on a lane consumed, and decrement that lane's rotation credit.
+	/// @brief Record that a lane was actually taken from, spending one unit of its rotation credit.
+	/// @details Credit is spent on the take, not on the charge, because a stream with no allowance configured
+	///          never charges anything: spending credit in the charge path would starve the lighter lane for
+	///          the rest of the stream's life once its opening credit ran out.
+	void CommitTake(ELane lane) noexcept;
+
+	/// @brief Record the CPU time a task on a lane consumed.
 	void ChargeFifo(std::chrono::nanoseconds spent) noexcept;
 	/// @brief Record the CPU time a task on the priority lane consumed.
 	void ChargePriority(std::chrono::nanoseconds spent) noexcept;

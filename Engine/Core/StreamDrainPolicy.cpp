@@ -80,19 +80,23 @@ StreamDrainPolicy::ELane StreamDrainPolicy::ChooseLane(bool fifoHasWork, bool pr
 void StreamDrainPolicy::ChargeFifo(std::chrono::nanoseconds spent) noexcept
 {
 	fifoUsed += spent;
-	--fifoCredit;
-
-	if (fifoCredit <= 0 && priorityCredit <= 0)
-	{
-		fifoCredit += static_cast<int64_t>(fifoWeight);
-		priorityCredit += static_cast<int64_t>(priorityWeight);
-	}
 }
 
 void StreamDrainPolicy::ChargePriority(std::chrono::nanoseconds spent) noexcept
 {
 	priorityUsed += spent;
-	--priorityCredit;
+}
+
+void StreamDrainPolicy::CommitTake(ELane lane) noexcept
+{
+	if (lane == ELane::Fifo)
+	{
+		--fifoCredit;
+	}
+	else if (lane == ELane::Priority)
+	{
+		--priorityCredit;
+	}
 
 	if (fifoCredit <= 0 && priorityCredit <= 0)
 	{
@@ -186,10 +190,12 @@ LaneCounts DriveTakes(hbe::StreamDrainPolicy& policy, int takes)
 		{
 			case Lane::Fifo:
 				++counts.fifo;
+				policy.CommitTake(lane);
 				policy.ChargeFifo(std::chrono::nanoseconds{1});
 				break;
 			case Lane::Priority:
 				++counts.priority;
+				policy.CommitTake(lane);
 				policy.ChargePriority(std::chrono::nanoseconds{1});
 				break;
 			case Lane::None:

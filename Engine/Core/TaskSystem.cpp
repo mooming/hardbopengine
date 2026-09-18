@@ -173,7 +173,7 @@ void TaskSystem::Enqueue(const TIndex streamIndex, const RangedTask& task) noexc
 	}
 
 	auto& stream = streams[streamIndex];
-	stream.Enqueue(task);
+	stream.EnqueueFifo(task);
 }
 
 void TaskSystem::DispatchToMainThread(TMainThreadTask taskFunc, void* userData, uint8_t priority) noexcept

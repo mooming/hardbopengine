@@ -309,16 +309,26 @@ Additional: budget enforcement over many frames; cancellation safety — stoppin
 Worked out against the code at `246794a`, so the next session does not re-derive it. This is one
 coherent change - two lanes, per-lane re-add, lane-aware sweep - and should not be split.
 
-`hbe::Deque` supports `it = lane.Erase(it)` (verified by compiling it), so the FIFO lane can be swept
-in place at the same O(n)-per-loop cost `BoundedPriorityQueue::Remove` costs today. Draining the whole
-lane and re-pushing it every iteration would be O(n^2) against a queue that legitimately holds dozens
-of split tasks, and is not acceptable.
+CORRECTION: `hbe::Deque` does **not** support `Erase`, and neither does `hbe::Queue` - the compiling I
+remembered had been done on a different container, and `hbe::Queue` is a ring buffer with no iteration at
+all. What the FIFO lane actually has is `PushBack`, `PopFront`, `Front`, `Back`, `IsEmpty`, `Size`, `begin`,
+`end`, so the sweep ROTATES the lane: pop `Size()` entries, push the unfinished ones back, drop the finished
+ones. That preserves arrival order and costs the same O(n)-per-loop `BoundedPriorityQueue::Remove` already
+pays, so there is no asymptotic regression - which is the point the false claim was reaching for.
 
 1. `RangedTask` gains `StreamDrainPolicy::ELane lane` plus a constructor parameter, so a re-added task
    returns to the lane it came from instead of guessing.
 2. Members: `Queue<RangedTask> fifoQueue;`, the existing `taskQueue` renamed `priorityQueue;`, and
    `StreamDrainPolicy drainPolicy;`. `ConfigureBudget` configures the allowance into BOTH: `CPUBudget`
    measures, the policy decides. Two independent gates would double-account and then disagree.
+
+   AS BUILT THIS DOES NOT HOLD, and the cause is a missing decision rather than a bug: closing a round at
+   exhaustion needs a rule for when the next round OPENS. Resetting instantly in the charge path was built,
+   and it reopened the gate the instant it shut - `TaskSystemTest`'s budget test failed with "A stream that
+   has spent its allowance still reported that it may take more work", which is that test doing its job. So
+   `MayTakeNewWork()` is back to `CPUBudget::CanTakeWork()` and `StreamDrainPolicy` selects lanes only.
+   OPEN QUESTION FOR THE OWNER: what reopens a round - a period of some kind, or an explicit engine tick?
+   Until that is answered the policy cannot own the take decision.
 3. `Enqueue(const RangedTask&)` splits into `EnqueueFifo` and `EnqueuePriority`, each taking `queueLock`
    and notifying. Existing callers (`Logger`, `UnitTestCollection`, `TaskSystem::Enqueue`) name FIFO
    explicitly - none of them sets a priority today, so that is the faithful mapping: a call-site change,
