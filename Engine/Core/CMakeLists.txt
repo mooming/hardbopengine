@@ -42,6 +42,7 @@ add_library (Core STATIC
  MainThreadTaskQueue.cpp
  RangedTask.cpp
  ScopedLock.cpp
+ StreamDrainPolicy.cpp
  SystemStatistics.cpp
  Task.cpp
  TaskProvider.cpp
@@ -63,6 +64,7 @@ add_library (Core STATIC
  Runnable.h
  ScopedLock.h
  ScopedTime.h
+ StreamDrainPolicy.h
  SystemStatistics.h
  Task.h
  TaskProvider.h
