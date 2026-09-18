@@ -438,6 +438,59 @@ void TaskSystemTest::Prepare()
 		}
 	});
 
+	AddTest("Both lanes serve their tasks", [this](TLogOut& ls)
+	{
+		auto& engine = Engine::Get();
+		auto& taskSys = engine.GetTaskSystem();
+
+		const auto workerIndex = TaskSystem::GetIOTaskStreamIndex() + 1;
+		if (!taskSys.HasStream(workerIndex))
+		{
+			ls << "No worker stream at index " << workerIndex << ", so no lane could be observed." << lferr;
+			return;
+		}
+
+		auto& stream = taskSys.GetStream(workerIndex);
+
+		// Polling with a deadline rather than waiting on the task: a task that never gets served must produce
+		// a failed test, not a suite that stalls, which is the failure mode this test exists to detect.
+		static std::atomic<unsigned> laneRuns{0};
+		laneRuns.store(0, std::memory_order_relaxed);
+
+		auto countRun = [](void*, std::size_t, std::size_t) -> std::size_t
+		{
+			laneRuns.fetch_add(1, std::memory_order_relaxed);
+			return 1;
+		};
+
+		Task laneTask("LaneTask", countRun, nullptr);
+
+		constexpr unsigned fifoTasks = 3;
+		for (unsigned index = 0; index < fifoTasks; ++index)
+		{
+			stream.EnqueueFifo(laneTask.GenerateSubTask(index, index + 1));
+		}
+
+		stream.EnqueuePriority(laneTask.GenerateSubTask(fifoTasks, fifoTasks + 1));
+
+		const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
+		while (!laneTask.HasDone() && std::chrono::steady_clock::now() < deadline)
+		{
+			std::this_thread::sleep_for(std::chrono::milliseconds(1));
+		}
+
+		const auto runs = laneRuns.load(std::memory_order_relaxed);
+		ls << stream.GetName().c_str() << " served " << runs << " of " << fifoTasks + 1
+		   << " tasks across its two lanes." << lf;
+
+		if (!laneTask.HasDone())
+		{
+			ls << "Only " << runs << " of " << fifoTasks + 1
+			   << " tasks completed, so a lane is not draining or an unfinished task was dropped instead of"
+			   << " returned to its lane." << lferr;
+		}
+	});
+
 	AddTest("Stream charges a configured budget", [this](TLogOut& ls)
 	{
 		auto& engine = Engine::Get();
