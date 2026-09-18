@@ -216,13 +216,28 @@ What that requires, recorded so B7 builds it rather than discovers it:
 
 Ordered so the `EngineTest` baseline holds at **every** commit; each step is independently revertable. The baseline is 53/53 up to B1, and
 **54/54 from B1 onward**, because B1 adds `TimeTest` — the number moves from coverage growing, not from anything regressing. If a later step
-drops it below 54, that is a regression.
+drops it below 54, that is a regression. **As of B3a the count is 56** (`TimeTest`, `CPUBudgetTest`, `TaskProviderTest` added; each step that adds a
+collection states so in its commit message).
+
+### Measured facts that constrain these steps
+
+Established by running things, not by reading interfaces. Each one invalidates a plausible guess:
+
+| Fact | Evidence | Constrains |
+|---|---|---|
+| Task priority is unused. Every caller passes 0 — the default at `Task.h:43`/`RangedTask.h:50` — and the only explicit production argument is `Logger.cpp:234` passing 0 | grep of all `GenerateSubTask`/`Start` call sites | **B3b**: replacing the priority queue with FIFO breaks no promise, because nothing sets a priority. It replaces an *unspecified* order with a deterministic one |
+| `BoundedPriorityQueue` has no tie-break — no sequence or insertion field | `Container/BoundedPriorityQueue.h` | **B3b**: today's ordering among the all-equal-priority tasks is whatever the heap shape happens to yield, so a test that appeared to depend on priority order was depending on heap layout |
+| The entire `EngineTest` suite runs **inside a task on the base stream** | `UnitTestCollection.cpp:147` enqueues the `TestEnv` subtask to `BaseStreamIndex`; a 20-minute hang was sampled with the base stream's `RunLoop` parked in `TestEnv::Start` | **any test needing a stream**: the base stream is occupied for the whole suite, so target a worker (`GetIOTaskStreamIndex() + 1`) |
+| `TaskSystem::Enqueue(task)` is a **general** queue that whichever stream asks first claims | `TaskSystem.cpp:130` pushes to `taskQueue`; `TaskSystem::Dequeue` serves any asking stream, with affinity | **any measurement test**: assert on a specific stream only after `Enqueue(streamIndex, task)` |
+| A `Task` whose subtasks were never enqueued never satisfies `HasDone`, and `BusyWait` is `while (!HasDone());` | `Task.h:53` requires `numSubTasks > 0`; `Task.cpp` `BusyWait` spins | **B7/B8 tests**: waiting on a task nobody will run hangs the suite with no diagnostic. Use `Wait(interval)` and a bounded body |
 
 | Step | Work | Gate |
 |---|---|---|
 | **B1** | ✅ **done 2026-09-18** — epoch (`57336b2`) + budget primitive (`f751a8f`): `OS::GetThreadCPUTime` on all three platforms, `hbe::CPUBudget`, `time::Set/GetBaseFrameRate` and `GetBaseFramePeriod`. Suite 55/55 ×3, mutation-proven both ways, build gate 12/12. Nothing consumes them yet; wiring is B3. | G1 ✅, G2 ✅ |
 | **B2** | ✅ **done 2026-09-18** (`e5fb359`): `TaskProvider`, `TaskHandle`, `TaskProduceContext` + `ForStream`, `TStreamIndex` its own header. 7 tests, suite 56/56 ×3, mutation-proven. Two forced deviations from the sketch (bounded attach set because engine `Array` cannot grow; `Stop` is a request the stream applies) recorded in the design doc. | G3 ✅ |
-| **B3** | Add the FIFO queue and budget enforcement to `TaskStream`; keep its thread and `MultiPoolAllocator`. | — |
+| **B3a** | ✅ **done 2026-09-18** (`65944f1`): `TaskStream` holds a `CPUBudget`, charges each task it runs, and answers `MayTakeNewWork`. Nothing gates on it yet — deliberately not the existing pop, which holds already-accepted work. | G1 ✅ |
+| **B3b** | Convert the stream's queue from `BoundedPriorityQueue<RangedTask>` to FIFO (`hbe::Queue`), preserving the finished-task sweep, the re-add of unfinished tasks, and the wake-up path. | — |
+| **B3c** | Register providers per stream and drain them, gated on `MayTakeNewWork()` before taking work and on `Produce` returning false to end the drain. | G1, G3b |
 | **B4** | Named streams: Engine / IO / Render / Base Application (`UserThread[0]`) / Custom (`UserThread[1..N]`). Replace `BaseStreamIndex = 0` / `IOStreamIndex = 1` constants and `baseTaskThreadID`-captured-at-construction identity (`TaskSystem.cpp:70`). Update its users, incl. the `Assert(IsBaseThread())` at `TaskSystem.cpp:232`. | — |
 | **B5** | Outcome delivery: size-class payload (inline copy vs heap `unique_ptr` via a thread-safe allocator), ownership following the holder, cross-stream successor enqueue. | G4 |
 | **B6a** | `Engine::Run()` pumps a frame tick to the major systems (task system, renderer, log flush) while applets still own their loops and call the tick. Early — parent-plan steps 6/7 target this. | G1, G2 |

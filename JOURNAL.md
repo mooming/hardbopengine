@@ -1,5 +1,51 @@
 # Journal
 
+## B1b, B2, B3a: budget primitive, provider model, stream accounting — and a 20-minute hang that taught more than the feature (2026-09-18)
+
+**What landed.** Three commits, each gated: `f751a8f` adds `OS::GetThreadCPUTime` on all three platforms plus `hbe::CPUBudget` and the
+engine-wide frame-period yardstick (`time::Set/GetBaseFrameRate`, `GetBaseFramePeriod`); `e5fb359` adds `TaskProvider`, `TaskHandle`,
+`TaskProduceContext` and moves `TStreamIndex` into its own header; `65944f1` wires a budget into `TaskStream` so each stream charges the CPU time
+of tasks it runs and answers `MayTakeNewWork`. Suite grew 54 → 55 → 56 collections, 56/56 in Debug, Dev and Release throughout, `check.sh
+--staged` at violations 0 on every commit. B1 is complete; B2 is complete; B3 is split into B3a (done), B3b (FIFO conversion), B3c (provider drain).
+
+**The measured numbers that justify the design.** 20 ms of busy work charged **19987 µs** of thread CPU; **80 ms of sleep charged 20 µs**. That
+second figure is G1's whole argument for CPU time over a wall clock, and it is now asserted by a test rather than argued in a document. Mutation-
+checked both ways: substituting `steady_clock` for `clock_gettime` turns two tests red ("waiting is being billed as work"); deleting the provider
+duplicate-attachment scan turns one red ("Attaching stream 2 twice left 3 attachments").
+
+**A tool false-green, caused by my own shell.** My chain was `clang-format -i f && clang-format f | diff f - | grep -c '^[<>]' && git add f`.
+`grep -c` prints `0` **and exits 1** when nothing matches, so the chain stopped, `git add` never ran, the index kept the unformatted file, and
+`check.sh --staged` reported violations 0 — because every check reads the **worktree** while a `--staged` commit takes bytes from the **index**. The
+epoch commit shipped non-conformant under a green lint, and its hash moved on amend (`57336b2`, not the `0154db0` reported mid-flight). `b629166`
+makes index/worktree disagreement a `[FAIL]` naming the files, reproduced before and after. Two lessons: a counting grep is not a safe link in a
+chain, and a lint whose input differs from the artifact under review proves nothing. Also fixed a rule that punished correct code — the
+joined-empty-record pattern matched `struct timespec timeValue{};`, a declaration, because `[^;]*` spans a second identifier; narrowed and verified
+in both directions (`3696baf`). One advisory left unfixed and recorded: "no m_ member prefix" cannot distinguish a member declaration from reading
+POSIX's own `sched_priority` field.
+
+**Two design deviations the codebase forced, recorded rather than absorbed.** The provider sketch held an `Array<TStreamIndex>`; the engine's
+`Array` has **no growth API** — fixed at construction, non-copyable — so the sketch was unimplementable as drawn, and attachments became a bounded
+inline set (cap 8) which also means a provider needs no allocator to exist. And `Stop()` detaching immediately would edit a container another
+thread iterates — the D10 defect class — so it is an atomic request the owning stream applies. Both are in `docs/TaskSystemRedesign.md` under "B2
+as built".
+
+**The hang, and what it cost to guess.** First version of the stream-accounting test charged 0 µs, because `TaskSystem::Enqueue(task)` is a **general
+queue that whichever stream asks first claims** — a worker had run my task. Pointing it at the base stream instead produced a 20-minute hang, and
+`sample` showed why: **the entire EngineTest suite executes inside a task on the base stream** (`UnitTestCollection.cpp:147` → `TestEnv::Start`),
+so the base stream is occupied for the whole suite and will never run a second task. My test premise was wrong twice over, and a third flaw made it
+silent: the busy loop's only real bound was a CPU guard with a 400M-iteration cap and a clock read per iteration, so it ran far longer than the
+guard implied. Both the general-queue routing and the suite-host fact are now recorded in the plan's new "Measured facts" table, together with
+`HasDone` requiring `numSubTasks > 0` against a `BusyWait` that is a bare spin — the recipe for a silent suite hang. Also fixed my own stale log
+text: it still said "Base stream charged" after the test moved to a worker.
+
+**One honesty fix worth stating plainly.** `GetAccumulatedCPUTime` was written to be read from a diagnosing thread while the stream thread wrote
+it, which is a data race with a doc comment on it — the same shape as D10. The counter is now atomic; the `BeginTask`/`EndTask` pairing stays
+single-thread-owned because measuring across two threads does not measure a task. A stream with no allowance does not measure at all: two clock
+reads per task for a number nothing can read is a tax with no beneficiary, and that clarification of G1 is written into the header.
+
+**Next.** B3b — convert the stream queue to FIFO, now known to break no ordering promise since nothing sets a priority and the current queue has no
+tie-break — then B3c's provider drain gated on `MayTakeNewWork`, then B4's named streams.
+
 ## G5 closed, B1 epoch landed, and a green lint that meant nothing (2026-09-18)
 
 **G5 is decided (`97e6561`), which closes the last open gate.** Range splitting is not retired as a capability; `TaskSystem` gains
