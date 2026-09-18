@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include <atomic>
 #include <chrono>
 
 namespace hbe
@@ -19,9 +20,12 @@ namespace hbe
 ///          ever blocked.
 /// @details An allowance of zero means unlimited, which is what a stream that has not been given a budget
 ///          gets, so the primitive is inert until something configures it.
-/// @note Not thread-safe, and deliberately not made so. A budget belongs to exactly one stream thread,
-///       which is also the thread whose CPU time is charged; sharing one across threads would measure the
-///       wrong thread rather than a shared total.
+/// @note Not thread-safe for the things that matter, and does not pretend to be. A budget belongs to
+///       exactly one stream thread, which is the thread whose CPU time is charged; sharing the pairing
+///       across threads would measure the span between two unrelated threads and call it a task.
+/// @note The accumulated figure is a separate case and is atomic, because it is read for diagnosis from
+///       threads that do not own the budget. That makes the read well-defined; it does not make BeginTask
+///       and EndTask portable to another thread, and the total is only ever written by the owner.
 class CPUBudget
 {
 public:
@@ -53,7 +57,7 @@ public:
 
 private:
 	std::chrono::duration<double> allowance{};
-	std::chrono::nanoseconds accumulated{};
+	std::atomic<long long> accumulatedNanos{0};
 	std::chrono::nanoseconds taskStart{};
 	bool isMeasuring = false;
 };

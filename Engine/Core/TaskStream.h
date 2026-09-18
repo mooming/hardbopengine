@@ -8,6 +8,7 @@
 #include <thread>
 #include "Container/Array.h"
 #include "Container/BoundedPriorityQueue.h"
+#include "Core/CPUBudget.h"
 #include "HSTL/HVector.h"
 #include "Memory/MultiPoolAllocator.h"
 #include "RangedTask.h"
@@ -48,6 +49,7 @@ private:
 	TStreamIndex streamIndex;
 	std::uint64_t loopCount;
 	MultiPoolAllocator allocator;
+	CPUBudget budget;
 
 	std::mutex queueLock;
 	std::condition_variable cv;
@@ -61,6 +63,36 @@ public:
 
 	void Enqueue(const RangedTask& task) noexcept;
 	void WakeUp() noexcept;
+
+	/// @brief Set this stream's CPU allowance, expressed as a duration. Zero means unlimited.
+	/// @details The yardstick it is measured against is time::GetBaseFramePeriod, engine-wide, so a caller
+	///          states how much CPU this stream may spend per frame period of the base stream and leaves the
+	///          arithmetic alone.
+	/// @note A stream with no allowance does not measure its tasks at all. A measurement that cannot change a
+	///       decision is a syscall billed to every task for nothing, and an unlimited budget cannot change a
+	///       decision. Consequently GetAccumulatedCPUTime stays zero until an allowance is set - that is the
+	///       absence of accounting, not a task that cost nothing.
+	/// @note Configure before the streams start, or from the stream's own thread. The allowance is not
+	///       synchronised against the stream thread, which reads it once per task to decide whether to
+	///       measure at all; a mid-run change from elsewhere is a data race, not merely a late one.
+	void ConfigureBudget(std::chrono::duration<double> allowance) noexcept;
+
+	/// @brief Whether this stream may take on another task.
+	/// @details The gate belongs in front of work being ACQUIRED - draining a provider, dequeuing from a
+	///          feeder - and never in front of running a task already held or delivering a result. Refusing
+	///          to dequeue is the mechanism; refusing to finish work that is in flight would turn a budget
+	///          into a way to strand results, which is the failure this whole design is careful not to have.
+	/// @details True while the allowance is unspent, and always true for an unlimited stream. A task already
+	///          running overshoots rather than being truncated, because a task cannot be stopped once taken:
+	///          the overshoot is bounded by the longest task, not by the allowance.
+	/// @threadsafe Readable from any thread. Enquiry does not act on the answer, so a reader that acts must
+	///             accept that another thread may have spent the budget in between.
+	[[nodiscard]] bool MayTakeNewWork() const noexcept;
+
+	/// @brief CPU time this stream has charged to its budget so far.
+	/// @threadsafe Readable from any thread, though it is written only by the stream's own thread; reading
+	///             it elsewhere sees the value as of the last task that thread finished.
+	[[nodiscard]] std::chrono::nanoseconds GetAccumulatedCPUTime() const noexcept;
 
 	void Join() noexcept
 	{

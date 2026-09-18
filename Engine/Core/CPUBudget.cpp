@@ -29,18 +29,19 @@ void hbe::CPUBudget::EndTask() noexcept
 		return;
 	}
 
-	accumulated += OS::GetThreadCPUTime() - taskStart;
+	const auto span = OS::GetThreadCPUTime() - taskStart;
+	accumulatedNanos.fetch_add(span.count(), std::memory_order_relaxed);
 	isMeasuring = false;
 }
 
 std::chrono::nanoseconds hbe::CPUBudget::GetAccumulated() const noexcept
 {
-	return accumulated;
+	return std::chrono::nanoseconds{accumulatedNanos.load(std::memory_order_relaxed)};
 }
 
 void hbe::CPUBudget::Reset() noexcept
 {
-	accumulated = std::chrono::nanoseconds::zero();
+	accumulatedNanos.store(0, std::memory_order_relaxed);
 	isMeasuring = false;
 }
 
@@ -51,7 +52,7 @@ bool hbe::CPUBudget::CanTakeWork() const noexcept
 		return true;
 	}
 
-	return accumulated < std::chrono::duration_cast<std::chrono::nanoseconds>(allowance);
+	return GetAccumulated() < std::chrono::duration_cast<std::chrono::nanoseconds>(allowance);
 }
 
 #ifdef __UNIT_TEST__

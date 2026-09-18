@@ -12,7 +12,6 @@
 #include "ScopedTime.h"
 #include "TaskSystem.h"
 
-
 namespace hbe
 {
 
@@ -20,7 +19,8 @@ TaskStream::TaskQueueItem::TaskQueueItem(uint8_t priority, const RangedTask& tas
 	: priority(priority)
 	, task(task)
 	, duration(0)
-{}
+{
+}
 
 bool TaskStream::TaskQueueItem::operator<(const TaskQueueItem& other) const
 {
@@ -64,14 +64,29 @@ void TaskStream::Dequeue(std::optional<RangedTask>& outTask)
 	outTask = taskQueue.Pop();
 }
 
-void TaskStream::WakeUp() noexcept { cv.notify_one(); }
+void TaskStream::WakeUp() noexcept
+{
+	cv.notify_one();
+}
+
+void TaskStream::ConfigureBudget(std::chrono::duration<double> allowance) noexcept
+{
+	budget.Configure(allowance);
+}
+
+bool TaskStream::MayTakeNewWork() const noexcept
+{
+	return budget.CanTakeWork();
+}
+
+std::chrono::nanoseconds TaskStream::GetAccumulatedCPUTime() const noexcept
+{
+	return budget.GetAccumulated();
+}
 
 void TaskStream::Start(TaskSystem& taskSys) noexcept
 {
-	auto func = [this]()
-	{
-		RunLoop();
-	};
+	auto func = [this]() { RunLoop(); };
 
 	thread = std::thread(func);
 	OS::SetThreadPriority(thread, 0);
@@ -89,15 +104,15 @@ void TaskStream::RunLoop() noexcept
 
 	threadID = std::this_thread::get_id();
 
-	static ConfigParam<float, true> thresholdDuration("TaskStreamDurationThreshold",
-		"Print a warning log if it detects slower task. (seconds)", 0.16f);
+	static ConfigParam<float, true> thresholdDuration(
+			"TaskStreamDurationThreshold", "Print a warning log if it detects slower task. (seconds)", 0.16f);
 
 	auto& engine = Engine::Get();
 	auto& taskSys = engine.GetTaskSystem();
 
 	HVector<RangedTask> readdingBuffer;
 
-	for (;likely(taskSys.IsRunning()); ++loopCount)
+	for (; likely(taskSys.IsRunning()); ++loopCount)
 	{
 		std::optional<RangedTask> rangedTask;
 
@@ -131,9 +146,20 @@ void TaskStream::RunLoop() noexcept
 		}
 
 		time::TDuration duration;
+		const bool chargingBudget = budget.GetAllowance().count() > 0.0;
+		if (chargingBudget)
+		{
+			budget.BeginTask();
+		}
+
 		{
 			time::ScopedTime timer(duration);
 			rangedTask->Run();
+		}
+
+		if (chargingBudget)
+		{
+			budget.EndTask();
 		}
 
 		const float deltaTime = time::ToFloat(duration);
