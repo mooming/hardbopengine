@@ -303,3 +303,38 @@ Additional: budget enforcement over many frames; cancellation safety — stoppin
 | Redesigning `EngineApplication` before the registry lands | would design the same interface twice (§1) |
 | MPMC lock-free enqueue | correctness first; only under a profiling requirement, behind a seam |
 | A hard per-frame barrier | the model deliberately has none; correctness comes from explicit outcome delivery |
+
+## B3c migration steps
+
+Worked out against the code at `246794a`, so the next session does not re-derive it. This is one
+coherent change - two lanes, per-lane re-add, lane-aware sweep - and should not be split.
+
+`hbe::Deque` supports `it = lane.Erase(it)` (verified by compiling it), so the FIFO lane can be swept
+in place at the same O(n)-per-loop cost `BoundedPriorityQueue::Remove` costs today. Draining the whole
+lane and re-pushing it every iteration would be O(n^2) against a queue that legitimately holds dozens
+of split tasks, and is not acceptable.
+
+1. `RangedTask` gains `StreamDrainPolicy::ELane lane` plus a constructor parameter, so a re-added task
+   returns to the lane it came from instead of guessing.
+2. Members: `Queue<RangedTask> fifoQueue;`, the existing `taskQueue` renamed `priorityQueue;`, and
+   `StreamDrainPolicy drainPolicy;`. `ConfigureBudget` configures the allowance into BOTH: `CPUBudget`
+   measures, the policy decides. Two independent gates would double-account and then disagree.
+3. `Enqueue(const RangedTask&)` splits into `EnqueueFifo` and `EnqueuePriority`, each taking `queueLock`
+   and notifying. Existing callers (`Logger`, `UnitTestCollection`, `TaskSystem::Enqueue`) name FIFO
+   explicitly - none of them sets a priority today, so that is the faithful mapping: a call-site change,
+   not a behaviour change.
+4. `Dequeue` asks `drainPolicy.ChooseLane(!fifoQueue.IsEmpty(), !priorityQueue.IsEmpty())` and pops the
+   chosen lane. `ChooseLane` is const and mutates nothing, which is what makes it safe to consult under
+   the lock without committing to a take.
+5. On completion the measured nanoseconds go to `ChargeFifo`/`ChargePriority` for the lane that ran, and
+   `IsRoundExhausted()` -> `EndRound()` replaces the single `budget.EndFrame()`.
+6. The sweep becomes per lane: `priorityQueue.Remove(HasFinished)` as today, FIFO swept with `Erase`.
+   Finished tasks land in `reAddFifo` or `reAddPriority` by their `lane`, and each buffer returns to its
+   own lane.
+7. `MayTakeNewWork()` becomes `ChooseLane(true, true) != ELane::None`, keeping the "estimate, not
+   reservation" wording. `TaskStreamTest`'s existing budget assertions still hold: the stream total is
+   still enforced.
+8. The rate arrives as a `BuildStreams` argument. Both streams stay 1:1 until a caller needs otherwise.
+9. Verification gate: 57 collections in three configs, plus a new assertion that a task enqueued on the
+   priority lane is taken before an earlier FIFO task when the rate favours priority, and that a re-added
+   task returns to its own lane.
