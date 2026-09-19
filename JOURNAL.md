@@ -1,5 +1,65 @@
 # Journal
 
+## The API reference becomes an HTML site with one folder per module (2026-09-19)
+
+**What landed.** `docs/index.html` as the Module Index start page, `docs/<Module>/index.html` for all 13
+`Engine/` module directories, and one shared `docs/assets/hbe-docs.css` extracted from the stylesheet that was
+inlined in the old single page. 14 pages, 291,519 bytes. `docs/EngineAPIGuide.md` and
+`docs/EngineAPIGuide.html` are deleted; **the HTML is now the source of truth**, with no markdown twin and no
+generator between them — the practice that had already let the old HTML rot. `AGENTS.md` and `README.md` now
+name `docs/index.html` and the per-module paths. Plan: `.Plans/PLAN_api_reference_html_site.md`.
+
+**The taxonomy came from the code, not from the guide's numbering.** Every `###` heading in the markdown cited
+its header (`Engine/Memory/MemoryManager.h`), so the mapping was derived mechanically, and it moved work that
+splitting by section would have misfiled: `SourceLocation` and `Intrinsic` from "Core Types" to **OSAL**, and
+eight blocks from "Engine Core" to **Core** while only the `Engine` class stayed in **Engine**. Three guide
+sections split, four merged, and the docs tree now agrees with `Engine/`.
+
+**I did not reuse the old HTML, and that was the right call.** Measured against the markdown it was missing
+Containers (~2,000 chars), String Utilities, Configuration, 64% of Renderer, and the entire Coding Standards
+chapter. Re-authoring from the markdown also forced header checks that turned up claims in the reference that
+the code contradicts — each corrected on the page, usually with the wrong spelling named so a reader searching
+for it finds the right one:
+
+| Claim in the old reference | What the header says |
+|---|---|
+| `OS::IApplication`, `OS::IWindow` interfaces | `OS::Application`, `OS::Window` facades; no interface exists |
+| `IRenderer`, `RendererFactory::CreateWithFallback`, DX12 and Metal backends, `APIType` | none of them exist; one `VulkanRenderer`, backend chosen by macro |
+| `PoolConfig` is a `struct` with `numBlocks` | `class` with `numberOfBlocks` and `operator<` by block size |
+| `Array` is "fixed-size, no resizing" | `Array::Resize` exists, with a documented move-every-element contract; `Array::TIndex` is `int`, not the engine's `size_t` |
+| `LogUtil::GetLogLevelName`, `GetCurrentTimeString` | `GetLogLevelString`, `GetTimeStampString`, `GetStartTime`, `ResetStartTime` |
+| `BufferTypes::TGenerateBuffer = std::function<TBufferData()>` | `std::function<void(TSize&, TBufferData&)>`, and `TResizeBuffer` was missing entirely |
+| Naming chapter: "All other identifiers: camelCase" | dropped, not migrated — `JOURNAL.md:640/651/764` already recorded it contradicting `docs/CodingStandards.md` |
+| `build.sh ... [-notest]` | the flag removed from README.md the same day; `-test` is real |
+
+Two of these were traps rather than typos. `String::ToLowerCase()` mutates and `GetLowerCase()` copies, and
+both compile at the call site. `RHICapabilities::GetCapabilities()` creates and discards a Vulkan instance, and
+`isDeviceQueried == false` means nobody asked — never "not supported". Both are on the page as warnings, and the
+`<Task>`-shaped template arguments (101 of them in the source) are escaped, because a converter that missed them
+would silently delete every signature in the document.
+
+**Verification.** No pandoc, no Python `markdown` module and no Python precedent in this repo, so the 14 pages
+were authored, not generated — and the check is mechanical: tag balance via `html.parser`, every `href`
+resolved on disk including cross-page `#fragment` targets, every CSS class used found in the stylesheet, no
+markdown leftovers outside code blocks, `<pre><code>` counts balanced against their closers.
+Result: 14 pages, dead links 0, structural errors 0, bad anchors 0, markdown leftovers 0, unbalanced code
+blocks 0. Four dead links and one bad anchor were my own path errors (`../README.md` from a module page is
+`../../README.md`) and the check caught all five. What this does **not** prove: that the pages look right — I
+cannot render them, so that gate is `open docs/index.html` on your machine.
+
+**Gaps are printed, not hidden.** Every page ends with a Coverage section naming what it does not document —
+6 undocumented Core headers (`CPUBudget.h`, `TaskProvider.h`, `StreamDrainPolicy.h`, `ResultContainer.h`,
+`TaskStreamIndex.h`, `CommonMacros.h`), 8 in Memory, the four opaque types `OSInputOutput.h` only
+forward-declares, and every constructor list I declined to invent. Examples are written only where a real one
+exists — the `Engine` page's is transcribed from `Applications/WindowExample/Main.cpp`.
+
+**Defects found outside this task's scope, recorded not fixed.** README's configuration table still prints five
+retired macro names (`__MEMORY_VERIFICATION__`, `__MEMORY_LOGGING__`, `__FORCE_USE_SYSTEM_MALLOC__`,
+`__MEMORY_DANGLING_POINTER_CHECK__`, `__RIGHT_HANDED__`) where `BuildConfig.h` spells them
+`MEMORY_VERIFICATION_ENABLED` … `RIGHT_HANDED_COORDINATE`; README's "Basic Engine Initialization" example calls
+`engine.WaitForEnd()`, a member that exists nowhere in `Engine/` or `Applications/`; and `OS::Application` holds
+`m_platformHandle`, the `m_` prefix the standard forbids.
+
 ## The R21 ceiling, and a guard that can finally be written (2026-09-19)
 
 **What landed.** `2e087a0`, after R21 turned the ceiling question from an open decision into a constant.

@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Container module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../Config/index.html">Config</a></li>
+    <li><a class="current" href="../Container/index.html">Container</a></li>
+    <li><a href="../Core/index.html">Core</a></li>
+    <li><a href="../Engine/index.html">Engine</a></li>
+    <li><a href="../HSTL/index.html">HSTL</a></li>
+    <li><a href="../Log/index.html">Log</a></li>
+    <li><a href="../Math/index.html">Math</a></li>
+    <li><a href="../Memory/index.html">Memory</a></li>
+    <li><a href="../OSAL/index.html">OSAL</a></li>
+    <li><a href="../Renderer/index.html">Renderer</a></li>
+    <li><a href="../Resource/index.html">Resource</a></li>
+    <li><a href="../String/index.html">String</a></li>
+    <li><a href="../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This module</h3>
+  <ul>
+    <li><a href="#description">Module description</a></li>
+    <li><a href="#classes">Module classes</a></li>
+    <li><a href="#variables">Module variables</a></li>
+    <li><a href="#functions">Module functions</a></li>
+    <li><a href="#vector">Vector</a></li>
+    <li><a href="#array">Array</a></li>
+    <li><a href="#hashmap">HashMap</a></li>
+    <li><a href="#map">Map</a></li>
+    <li><a href="#linkedlist">LinkedList</a></li>
+    <li><a href="#deque">Deque</a></li>
+    <li><a href="#queue">Queue</a></li>
+    <li><a href="#ringqueue">RingQueue</a></li>
+    <li><a href="#boundedpriorityqueue">BoundedPriorityQueue</a></li>
+    <li><a href="#atomicstackview">AtomicStackView</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+
+  <h3>Design documents</h3>
+  <ul>
+    <li><a href="../AllocatorGuide.md">Allocator guide</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb"><a href="../index.html">Module Index</a> / Container</p>
+
+<h1>Container</h1>
+<p class="subtitle">
+  <span class="tag">namespace hbe</span>
+  <span class="tag">Engine/Container</span>
+  10 headers, 10 sources — the engine's own containers, every one templated on an allocator
+</p>
+
+<h2 id="description">Module description</h2>
+
+<p>
+  The engine's own data structures. Every container here takes its allocator as a template parameter and
+  defaults to <a href="../Memory/index.html"><code>DefaultAllocator&lt;T&gt;</code></a>, so memory accounting
+  follows the container rather than the call site, and a container placed in a frame-scoped arena frees with
+  the arena. For the standard containers rebound the same way, see
+  <a href="../HSTL/index.html">HSTL</a>; the rule of thumb is that engine internals use this module and
+  interoperating code uses HSTL.
+</p>
+
+<h2 id="classes">Module classes</h2>
+
+<table>
+  <tr><th>Name</th><th>Kind</th><th>Header</th><th>Role</th></tr>
+  <tr><td><a href="#vector">Vector</a></td><td>Class template</td><td>Vector.h</td><td>Dynamic array, doubling growth from capacity 4</td></tr>
+  <tr><td><a href="#array">Array</a></td><td>Class template</td><td>Array.h</td><td>Contiguous array with explicit size control and no silent growth</td></tr>
+  <tr><td><a href="#hashmap">HashMap</a></td><td>Class template</td><td>HashMap.h</td><td>Open addressing with tombstones, load factor 0.7</td></tr>
+  <tr><td><a href="#map">Map</a></td><td>Class template</td><td>Map.h</td><td>Sorted array-backed map, binary search</td></tr>
+  <tr><td><a href="#linkedlist">LinkedList</a></td><td>Class template</td><td>LinkedList.h</td><td>Doubly-linked list</td></tr>
+  <tr><td><a href="#deque">Deque</a></td><td>Class template</td><td>Deque.h</td><td>Ring-buffer deque with wrap-around indexing</td></tr>
+  <tr><td><a href="#queue">Queue</a></td><td>Class template</td><td>Queue.h</td><td>FIFO adapter over <a href="#deque">Deque</a></td></tr>
+  <tr><td><a href="#ringqueue">RingQueue</a></td><td>Class template</td><td>RingQueue.h</td><td>Fixed-capacity ring buffer, never resizes</td></tr>
+  <tr><td><a href="#boundedpriorityqueue">BoundedPriorityQueue</a></td><td>Class template</td><td>BoundedPriorityQueue.h</td><td>Bucket queue over priorities 0–255, O(1) push and pop</td></tr>
+  <tr><td><a href="#atomicstackview">AtomicStackView</a></td><td>Class template</td><td>AtomicStackView.h</td><td>Lock-free stack built on compare-and-swap</td></tr>
+</table>
+
+<h2 id="variables">Module variables</h2>
+
+<p>
+  None at module scope. Tunables live with the container they belong to —
+  <a href="#vector"><code>Vector::DefaultCapacity</code></a> is <code>4</code>,
+  <a href="#hashmap"><code>HashMap</code></a>'s load factor is 0.7,
+  <a href="#boundedpriorityqueue"><code>BoundedPriorityQueue</code></a>'s priority ceiling is a template
+  argument. A container that sized itself from a global would couple every user of the module to one choice.
+</p>
+
+<h2 id="functions">Module functions</h2>
+
+<p>None — every name this module exports is a template.</p>
+
+<h2 id="vector">Vector (<code>Engine/Container/Vector.h</code>)</h2>
+
+<h3>Class description</h3>
+<p>
+  Dynamic array with geometric growth. <code>PushBack</code>, <code>EmplaceBack</code> and
+  <code>Insert</code>-style paths call an internal <code>Grow</code> when full, which reserves
+  <code>max(DefaultCapacity, capacity * 2)</code> — so the first buffer is 4 elements and every later one
+  doubles. Iterators and references are invalidated by any growth.
+</p>
+
+<h3>Template parameters</h3>
+<table>
+  <tr><th>Parameter</th><th>Default</th><th>Meaning</th></tr>
+  <tr><td><code>TElement</code></td><td>—</td><td>Element type</td></tr>
+  <tr><td><code>TAllocator</code></td><td><code>DefaultAllocator&lt;TElement&gt;</code></td><td>Where storage comes from</td></tr>
+</table>
+
+<h3>Class properties</h3>
+<p>Storage pointer, element count and capacity; header-private. <code>DefaultCapacity = 4</code> is the one exposed constant.</p>
+
+<h3>Class methods</h3>
+
+<pre><code><span class="kw">template</span>&lt;<span class="kw">typename</span> TElement, <span class="kw">class</span> TAllocator = <span class="ty">DefaultAllocator</span>&lt;TElement&gt;&gt;
+<span class="kw">class</span> <span class="ty">Vector</span> final
+{
+    <span class="ty">Vector</span>() <span class="kw">noexcept</span>;
+    <span class="kw">explicit</span> <span class="ty">Vector</span>(<span class="ty">TIndex</span> initialCapacity);
+    <span class="ty">Vector</span>(std::initializer_list&lt;TElement&gt; list);
+    <span class="ty">Vector</span>(<span class="ty">Vector</span>&amp;&amp; rhs) <span class="kw">noexcept</span>;
+
+    [[nodiscard]] TElement&amp; operator[](<span class="ty">TIndex</span> index);
+    [[nodiscard]] TElement&amp; Front() <span class="kw">noexcept</span>;
+    [[nodiscard]] TElement&amp; Back() <span class="kw">noexcept</span>;
+
+    <span class="kw">void</span> PushBack(<span class="kw">const</span> TElement&amp; value) <span class="kw">noexcept</span>;
+    <span class="kw">void</span> PushBack(TElement&amp;&amp; value) <span class="kw">noexcept</span>;
+    <span class="kw">template</span>&lt;<span class="kw">typename</span>... Types&gt;
+    [[nodiscard]] TElement&amp; EmplaceBack(Types&amp;&amp;... args) <span class="kw">noexcept</span>;
+    <span class="kw">void</span> PopBack() <span class="kw">noexcept</span>;
+    <span class="kw">void</span> Resize(<span class="ty">TIndex</span> newSize) <span class="kw">noexcept</span>;
+    <span class="kw">void</span> Reserve(<span class="ty">TIndex</span> newCapacity) <span class="kw">noexcept</span>;
+    <span class="kw">void</span> Clear() <span class="kw">noexcept</span>;
+    <span class="kw">void</span> Swap(<span class="ty">Vector</span>&amp; rhs) <span class="kw">noexcept</span>;
+
+    [[nodiscard]] <span class="ty">TIndex</span> Size() <span class="kw">const</span> <span class="kw">noexcept</span>;
+    [[nodiscard]] <span class="ty">TIndex</span> Capacity() <span class="kw">const</span> <span class="kw">noexcept</span>;
+    [[nodiscard]] <span class="kw">bool</span> IsEmpty() <span class="kw">const</span> <span class="kw">noexcept</span>;
+    [[nodiscard]] <span class="ty">TIndex</span> FindIndex(<span class="kw">const</span> TElement&amp; element) <span class="kw">const</span> <span class="kw">noexcept</span>;
+
+    [[nodiscard]] Iterator begin() <span class="kw">noexcept</span>;
+    [[nodiscard]] Iterator end() <span class="kw">noexcept</span>;
+};</code></pre>
+
+<h3>Non-member helper functions</h3>
+<p>None.</p>
+
+<h2 id="array">Array (<code>Engine/Container/Array.h</code>)</h2>
+
+<h3>Class description</h3>
+<p>
+  Contiguous array whose size is a decision you make: construction sizes it, and it changes only when you
+  call <code>Resize</code>. It is non-copyable, so a size chosen to fit a memory layout cannot be duplicated
+  behind your back.
+</p>
+
+<div class="gap">
+  <strong>Correcting the old guide.</strong> This module used to be described as "fixed-size, no resizing".
+  <code>Array::Resize</code> exists now, so that sentence is no longer true — but the reason it was written
+  that way is worth keeping: an <a href="#array"><code>Array</code></a> was the container you reached for
+  precisely because it never grew on its own. It still does not grow implicitly.
+</div>
+
+<h3>Template parameters</h3>
+<table>
+  <tr><th>Parameter</th><th>Default</th><th>Meaning</th></tr>
+  <tr><td><code>Element</code></td><td>—</td><td>Element type</td></tr>
+  <tr><td><code>TAllocator</code></td><td><code>DefaultAllocator&lt;Element&gt;</code></td><td>Where storage comes from</td></tr>
+</table>
+
+<h3>Class properties</h3>
+<p>Storage pointer and length; header-private. The member aliases are the ones a caller types: <code>TIndex = int</code>, <code>Iterator = Element*</code>, <code>ConstIterator = const Element*</code>.</p>
+
+<div class="gap">
+  <strong><code>Array::TIndex</code> is <code>int</code>.</strong> The engine-wide
+  <a href="../Core/index.html#types"><code>hbe::TIndex</code></a> is <code>size_t</code>. Inside an
+  <a href="#array"><code>Array</code></a> scope the name resolves to the member alias, so an index computed
+  from a <code>size_t</code> narrows without a diagnostic. Write the type you mean at the call site.
+</div>
+
+<h3>Class methods</h3>
+
+<pre><code><span class="kw">template</span>&lt;<span class="kw">typename</span> Element, <span class="kw">class</span> TAllocator = <span class="ty">DefaultAllocator</span>&lt;Element&gt;&gt;
+<span class="kw">class</span> <span class="ty">Array</span> final
+{
+    <span class="ty">Array</span>() <span class="kw">noexcept</span>;
+    <span class="kw">explicit</span> <span class="ty">Array</span>(<span class="ty">TIndex</span> size);          <span class="cm">// allocates and default-constructs</span>
+    <span class="ty">Array</span>(std::initializer_list&lt;Element&gt; list);
+    <span class="ty">Array</span>(<span class="ty">Array</span>&amp;&amp; rhs) <span class="kw">noexcept</span>;
+
+    [[nodiscard]] Element&amp; operator[](<span class="ty">TIndex</span> index) <span class="kw">noexcept</span>;
+    <span class="kw">template</span>&lt;<span class="kw">typename</span>... Types&gt;
+    [[nodiscard]] Element&amp; Emplace(<span class="ty">TIndex</span> index, Types&amp;&amp;... args) <span class="kw">noexcept</span>;
+
+    [[nodiscard]] <span class="ty">TIndex</span> Size() <span class="kw">const</span> <span class="kw">noexcept</span>;
+    [[nodiscard]] Element* ToRawArray() <span class="kw">noexcept</span>;
+    [[nodiscard]] <span class="ty">TIndex</span> GetIndex(<span class="kw">const</span> Element&amp; element) <span class="kw">const</span> <span class="kw">noexcept</span>;
+    <span class="kw">void</span> Swap(<span class="ty">Array</span>&amp;&amp; rhs) <span class="kw">noexcept</span>;
+
+    <span class="kw">void</span> Resize(<span class="ty">TIndex</span> newSize) <span class="kw">noexcept</span>;
+};</code></pre>
+
+<table>
+  <tr><th><code>Resize</code> behaviour</th><th>Contract, from the header</th></tr>
+  <tr><td>Growing</td><td>Every element below the old <code>Size()</code> keeps its value, moved into the new buffer; the new tail is default-constructed</td></tr>
+  <tr><td>Shrinking</td><td>Elements from <code>newSize</code> up are destroyed and their memory returned</td></tr>
+  <tr><td>Same size</td><td>Returns immediately — nothing is touched</td></tr>
+  <tr><td>Zero</td><td>Not a failure: empties the array and gives the buffer back</td></tr>
+  <tr><td>Allocation failure</td><td>Asserts and leaves the array exactly as it was, at its old size with its old buffer, so a caller can ask again later</td></tr>
+  <tr><td>What must not live here</td><td>An element that is expensive to move, or one whose address someone else holds: every element is moved on resize, so a pointer into a resized array points into a freed buffer</td></tr>
+</table>
+
+<h3>Non-member helper functions</h3>
+<p>None.</p>
+
+<h2 id="hashmap">HashMap (<code>Engine/Container/HashMap.h</code>)</h2>
+
+<h3>Class description</h3>
+<p>
+  Open-addressing hash map with tombstones and a 0.7 load factor. Storage is one byte-typed allocation, so
+  the map's own metadata and its slots share a buffer.
+</p>
+
+<h3>Template parameters</h3>
+<table>
+  <tr><th>Parameter</th><th>Default</th><th>Meaning</th></tr>
+  <tr><td><code>TKey</code>, <code>TValue</code></td><td>—</td><td>Key and value types</td></tr>
+  <tr><td><code>THash</code></td><td><code>std::hash&lt;TKey&gt;</code></td><td>Hash function</td></tr>
+  <tr><td><code>TKeyEqual</code></td><td><code>std::equal_to&lt;TKey&gt;</code></td><td>Equality on collision</td></tr>
+  <tr><td><code>TAllocator</code></td><td><code>DefaultAllocator&lt;uint8_t&gt;</code></td><td>Backing store, allocated as raw bytes</td></tr>
+</table>
+
+<h3>Class properties</h3>
+<p>Slot storage, live count and capacity; header-private.</p>
+
+<h3>Class methods</h3>
+
+<pre><code>[[nodiscard]] TValue&amp; operator[](<span class="kw">const</span> TKey&amp; key);
+[[nodiscard]] TValue&amp; operator[](TKey&amp;&amp; key);
+
+[[nodiscard]] Iterator Find(<span class="kw">const</span> TKey&amp; key) <span class="kw">noexcept</span>;
+[[nodiscard]] <span class="kw">bool</span> Contains(<span class="kw">const</span> TKey&amp; key) <span class="kw">const</span> <span class="kw">noexcept</span>;
+
+<span class="kw">bool</span> Insert(<span class="kw">const</span> TKey&amp; key, <span class="kw">const</span> TValue&amp; value);
+<span class="kw">bool</span> Insert(TKey&amp;&amp; key, TValue&amp;&amp; value);
+<span class="kw">bool</span> Remove(<span class="kw">const</span> TKey&amp; key);
+<span class="kw">void</span> Clear() <span class="kw">noexcept</span>;
+<span class="kw">void</span> Reserve(<span class="ty">TIndex</span> newCapacity);
+
+[[nodiscard]] <span class="ty">TIndex</span> Size() <span class="kw">const</span> <span class="kw">noexcept</span>;
+[[nodiscard]] <span class="ty">TIndex</span> Capacity() <span class="kw">const</span> <span class="kw">noexcept</span>;
+[[nodiscard]] <span class="kw">bool</span> IsEmpty() <span class="kw">const</span> <span class="kw">noexcept</span>;
+
+[[nodiscard]] Iterator begin() <span class="kw">noexcept</span>;
+[[nodiscard]] Iterator end() <span class="kw">noexcept</span>;</code></pre>
+
+<h3>Non-member helper functions</h3>
+<p>None.</p>
+
+<h2 id="map">Map (<code>Engine/Container/Map.h</code>)</h2>
+
+<h3>Class description</h3>
+<p>
+  Sorted map kept in an array and searched by binary search — not a tree. Ordered iteration and cache-linear
+  lookup, at the cost of inserting into the middle of the array.
+</p>
+
+<h3>Template parameters</h3>
+<table>
+  <tr><th>Parameter</th><th>Default</th><th>Meaning</th></tr>
+  <tr><td><code>TKey</code>, <code>TValue</code></td><td>—</td><td>Key and value types</td></tr>
+  <tr><td><code>TCompare</code></td><td><code>std::less&lt;TKey&gt;</code></td><td>Ordering that the array is kept in</td></tr>
+  <tr><td><code>TAllocator</code></td><td><code>DefaultAllocator&lt;uint8_t&gt;</code></td><td>Backing store</td></tr>
+</table>
+
+<h3>Class properties</h3>
+<p>The ordered pair storage and count; header-private.</p>
+
+<h3>Class methods</h3>
+<p>The same interface pattern as <a href="#hashmap"><code>HashMap</code></a>: subscript, <code>Find</code>, <code>Contains</code>, <code>Insert</code>, <code>Remove</code>, <code>Clear</code>, <code>Size</code>, iterators — with lookups O(log n) rather than amortised O(1).</p>
+
+<h3>Non-member helper functions</h3>
+<p>None.</p>
+
+<h2 id="linkedlist">LinkedList (<code>Engine/Container/LinkedList.h</code>)</h2>
+
+<h3>Class description</h3>
+<p>Doubly-linked list, nodes allocated through the container's own allocator.</p>
+
+<h3>Template parameters</h3>
+<table>
+  <tr><th>Parameter</th><th>Default</th><th>Meaning</th></tr>
+  <tr><td><code>TType</code></td><td>—</td><td>Element type</td></tr>
+  <tr><td><code>TAllocator</code></td><td><code>DefaultAllocator&lt;LinkedListNode&lt;TType&gt;&gt;</code></td><td>Node allocator, not an element allocator — the node carries the links</td></tr>
+</table>
+
+<h3>Class properties</h3>
+<p>Head and tail links and the count; header-private.</p>
+
+<h3>Class methods</h3>
+
+<pre><code>[[nodiscard]] TType&amp; AddFirst(<span class="kw">const</span> TType&amp; value) <span class="kw">noexcept</span>;
+[[nodiscard]] TType&amp; AddLast(<span class="kw">const</span> TType&amp; value) <span class="kw">noexcept</span>;
+[[nodiscard]] TType&amp; AddPrevious(TType&amp; current, <span class="kw">const</span> TType&amp; value) <span class="kw">noexcept</span>;
+[[nodiscard]] TType&amp; AddNext(TType&amp; current, <span class="kw">const</span> TType&amp; value) <span class="kw">noexcept</span>;
+
+[[nodiscard]] Iterator Remove(<span class="kw">const</span> TType&amp; element) <span class="kw">noexcept</span>;
+
+[[nodiscard]] <span class="kw">bool</span> Contains(<span class="kw">const</span> TType&amp; value) <span class="kw">const</span> <span class="kw">noexcept</span>;
+[[nodiscard]] <span class="kw">bool</span> FindAndRemove(<span class="kw">const</span> TType&amp; value) <span class="kw">noexcept</span>;
+[[nodiscard]] <span class="kw">bool</span> IsEmpty() <span class="kw">const</span> <span class="kw">noexcept</span>;
+<span class="kw">void</span> Clear() <span class="kw">noexcept</span>;</code></pre>
+
+<h3>Non-member helper functions</h3>
+<p>None.</p>
+
+<h2 id="deque">Deque (<code>Engine/Container/Deque.h</code>)</h2>
+
+<h3>Class description</h3>
+<p>Ring-buffer deque: push and pop at both ends, with wrap-around indexing into one buffer.</p>
+
+<h3>Template parameters</h3>
+<table>
+  <tr><th>Parameter</th><th>Default</th><th>Meaning</th></tr>
+  <tr><td><code>TElement</code></td><td>—</td><td>Element type</td></tr>
+  <tr><td><code>TAllocator</code></td><td><code>DefaultAllocator&lt;TElement&gt;</code></td><td>Backing buffer</td></tr>
+</table>
+
+<h3>Class properties</h3>
+<p>Buffer, head and tail cursors and count; header-private.</p>
+
+<h3>Class methods</h3>
+
+<pre><code><span class="kw">void</span> PushFront(<span class="kw">const</span> TElement&amp; value) <span class="kw">noexcept</span>;
+<span class="kw">void</span> PushBack(<span class="kw">const</span> TElement&amp; value) <span class="kw">noexcept</span>;
+<span class="kw">template</span>&lt;<span class="kw">typename</span>... Types&gt;
+[[nodiscard]] TElement&amp; EmplaceFront(Types&amp;&amp;... args) <span class="kw">noexcept</span>;
+<span class="kw">template</span>&lt;<span class="kw">typename</span>... Types&gt;
+[[nodiscard]] TElement&amp; EmplaceBack(Types&amp;&amp;... args) <span class="kw">noexcept</span>;
+<span class="kw">void</span> PopFront() <span class="kw">noexcept</span>;
+<span class="kw">void</span> PopBack() <span class="kw">noexcept</span>;
+<span class="kw">void</span> Reserve(<span class="ty">TIndex</span> newCapacity) <span class="kw">noexcept</span>;</code></pre>
+
+<h3>Non-member helper functions</h3>
+<p>None.</p>
+
+<h2 id="queue">Queue (<code>Engine/Container/Queue.h</code>)</h2>
+
+<h3>Class description</h3>
+<p>FIFO adapter over <a href="#deque"><code>Deque</code></a>: the interface is the point, so a caller cannot reach around it.</p>
+
+<h3>Template parameters</h3>
+<table>
+  <tr><th>Parameter</th><th>Default</th><th>Meaning</th></tr>
+  <tr><td><code>TElement</code></td><td>—</td><td>Element type</td></tr>
+  <tr><td><code>TContainer</code></td><td><code>Deque&lt;TElement&gt;</code></td><td>The container adapted</td></tr>
+</table>
+
+<h3>Class properties</h3>
+<p>The adapted container; header-private.</p>
+
+<h3>Class methods</h3>
+
+<pre><code><span class="kw">void</span> Push(<span class="kw">const</span> TElement&amp; value) <span class="kw">noexcept</span>;
+<span class="kw">void</span> Pop() <span class="kw">noexcept</span>;
+[[nodiscard]] TElement&amp; Front() <span class="kw">noexcept</span>;
+[[nodiscard]] TElement&amp; Back() <span class="kw">noexcept</span>;</code></pre>
+
+<h3>Non-member helper functions</h3>
+<p>None.</p>
+
+<h2 id="ringqueue">RingQueue (<code>Engine/Container/RingQueue.h</code>)</h2>
+
+<h3>Class description</h3>
+<p>
+  Fixed-capacity ring buffer. Capacity is set at construction and never changes, which is what makes it safe
+  where an allocation mid-frame would not be.
+</p>
+
+<h3>Template parameters</h3>
+<table>
+  <tr><th>Parameter</th><th>Default</th><th>Meaning</th></tr>
+  <tr><td><code>TElement</code></td><td>—</td><td>Element type</td></tr>
+  <tr><td><code>TAllocator</code></td><td><code>DefaultAllocator&lt;TElement&gt;</code></td><td>Backing buffer, allocated once at construction</td></tr>
+</table>
+
+<h3>Class properties</h3>
+<p>Buffer, read and write cursors, and the fixed capacity; header-private.</p>
+
+<h3>Class methods</h3>
+
+<pre><code><span class="kw">explicit</span> <span class="ty">RingQueue</span>(<span class="ty">TIndex</span> fixedCapacity);
+<span class="kw">void</span> Push(<span class="kw">const</span> TElement&amp; value) <span class="kw">noexcept</span>;
+[[nodiscard]] TElement Pop() <span class="kw">noexcept</span>;
+[[nodiscard]] <span class="kw">bool</span> IsFull() <span class="kw">const</span> <span class="kw">noexcept</span>;
+[[nodiscard]] <span class="kw">bool</span> IsEmpty() <span class="kw">const</span> <span class="kw">noexcept</span>;</code></pre>
+
+<h3>Non-member helper functions</h3>
+<p>None.</p>
+
+<h2 id="boundedpriorityqueue">BoundedPriorityQueue (<code>Engine/Container/BoundedPriorityQueue.h</code>)</h2>
+
+<h3>Class description</h3>
+<p>
+  Bucket-based priority queue for items tagged with a priority in 0–255: one bucket per priority, so push and
+  pop are O(1) and the ordering is only as fine as the priority you tag with. This is the queue
+  <a href="../Core/index.html#taskstream">TaskStream</a> drains.
+</p>
+
+<h3>Template parameters</h3>
+<table>
+  <tr><th>Parameter</th><th>Default</th><th>Meaning</th></tr>
+  <tr><td><code>T</code></td><td>—</td><td>Item type; the item itself carries its priority</td></tr>
+  <tr><td><code>MaxPriority</code></td><td>256</td><td>Bucket count, i.e. the priority range</td></tr>
+  <tr><td><code>BucketSizeHint</code></td><td>0</td><td>Initial bucket capacity; 0 lets the container choose</td></tr>
+</table>
+
+<h3>Class properties</h3>
+<p>The buckets and the total count; header-private. The engaged-bucket-means-non-empty invariant is maintained in one place only, which is what lets <code>Pop</code> and <code>Remove</code> skip re-checking it.</p>
+
+<h3>Class methods</h3>
+
+<pre><code><span class="kw">void</span> Push(<span class="kw">const</span> T&amp; item) <span class="kw">noexcept</span>;
+<span class="kw">void</span> Push(T&amp;&amp; item) <span class="kw">noexcept</span>;
+[[nodiscard]] std::optional&lt;T&gt; Pop() <span class="kw">noexcept</span>;
+[[nodiscard]] std::optional&lt;T&gt; Top() <span class="kw">const</span> <span class="kw">noexcept</span>;
+[[nodiscard]] std::size_t Remove(TPredicate predicate) <span class="kw">noexcept</span>;
+<span class="kw">void</span> Clear() <span class="kw">noexcept</span>;
+
+<span class="kw">template</span>&lt;<span class="kw">typename</span> Iterator&gt;
+<span class="kw">void</span> PushRange(Iterator begin, Iterator end) <span class="kw">noexcept</span>;
+<span class="kw">template</span>&lt;<span class="kw">typename</span> TContainer&gt;
+<span class="kw">void</span> PushRange(<span class="kw">const</span> TContainer&amp; container) <span class="kw">noexcept</span>;</code></pre>
+
+<table>
+  <tr><th>Method</th><th>Purpose</th></tr>
+  <tr><td><code>Pop</code>, <code>Top</code></td><td>Highest-priority item, as <code>std::optional</code> — empty means the queue was empty, which is why neither returns a reference</td></tr>
+  <tr><td><code>Remove</code></td><td>Drop every item the predicate accepts, re-bucketing what stays; returns how many went</td></tr>
+  <tr><td><code>PushRange</code></td><td>Push a span or any container with <code>begin</code> and <code>end</code></td></tr>
+</table>
+
+<h3>Non-member helper functions</h3>
+<p>
+  The member alias <code>TPredicate = bool (*)(const T&amp;)</code> — a plain function pointer, not a functor,
+  so a lambda passed to <code>Remove</code> must be captureless.
+</p>
+
+<h2 id="atomicstackview">AtomicStackView (<code>Engine/Container/AtomicStackView.h</code>)</h2>
+
+<h3>Class description</h3>
+<p>
+  Lock-free LIFO stack built on compare-and-swap. It is a <em>view</em>: the nodes it links are owned
+  elsewhere, which is what the constraint on the element type is for.
+</p>
+
+<h3>Template parameters</h3>
+<table>
+  <tr><th>Parameter</th><th>Constraint</th><th>Meaning</th></tr>
+  <tr><td><code>T</code></td><td><code>CNext</code></td><td>Element type that carries its own next pointer, which the stack re-links</td></tr>
+</table>
+
+<h3>Class properties</h3>
+<p>The atomic head pointer; header-private.</p>
+
+<h3>Class methods</h3>
+
+<pre><code><span class="kw">void</span> Push(T&amp; newItem) <span class="kw">noexcept</span>;   <span class="cm">// compare-and-swap push</span>
+[[nodiscard]] T* Pop() <span class="kw">noexcept</span>;          <span class="cm">// compare-and-swap pop, nullptr when empty</span>
+[[nodiscard]] <span class="kw">bool</span> IsEmpty() <span class="kw">const</span> <span class="kw">noexcept</span>;</code></pre>
+
+<h3>Non-member helper functions</h3>
+<p>None.</p>
+
+<h2 id="coverage">Coverage</h2>
+
+<table>
+  <tr><th>Gap</th><th>Detail</th></tr>
+  <tr>
+    <td><a href="#map"><code>Map</code></a> method signatures</td>
+    <td>Stated as the same interface pattern as <a href="#hashmap"><code>HashMap</code></a> rather than
+        duplicated line by line. If a caller depends on a specific <code>Map</code> signature, the header is
+        the text to read and this page should carry it.</td>
+  </tr>
+  <tr>
+    <td>Growth and rehashing</td>
+    <td><a href="#hashmap"><code>HashMap</code></a>'s 0.7 load factor is documented; the rehash path and what
+        it does to tombstones is design behaviour and belongs in a design document, not here.</td>
+  </tr>
+  <tr>
+    <td>Examples</td>
+    <td>None written. The <a href="#array"><code>Array::Resize</code></a> table is a contract, not an example.</td>
+  </tr>
+</table>
+
+<footer class="prevnext">
+  <span><a href="../Config/index.html">← Config</a></span>
+  <span><a href="../index.html">Module Index</a></span>
+  <span><a href="../Core/index.html">Core →</a></span>
+</footer>
+
+</main>
+</body>
+</html>

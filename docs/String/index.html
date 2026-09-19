@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>String module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../Config/index.html">Config</a></li>
+    <li><a href="../Container/index.html">Container</a></li>
+    <li><a href="../Core/index.html">Core</a></li>
+    <li><a href="../Engine/index.html">Engine</a></li>
+    <li><a href="../HSTL/index.html">HSTL</a></li>
+    <li><a href="../Log/index.html">Log</a></li>
+    <li><a href="../Math/index.html">Math</a></li>
+    <li><a href="../Memory/index.html">Memory</a></li>
+    <li><a href="../OSAL/index.html">OSAL</a></li>
+    <li><a href="../Renderer/index.html">Renderer</a></li>
+    <li><a href="../Resource/index.html">Resource</a></li>
+    <li><a class="current" href="../String/index.html">String</a></li>
+    <li><a href="../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This module</h3>
+  <ul>
+    <li><a href="#description">Module description</a></li>
+    <li><a href="#classes">Module classes</a></li>
+    <li><a href="#variables">Module variables</a></li>
+    <li><a href="#functions">Module functions</a></li>
+    <li><a href="#string">String</a></li>
+    <li><a href="#staticstring">StaticString</a></li>
+    <li><a href="#staticstringid">StaticStringID</a></li>
+    <li><a href="#stringbuilder">StringBuilder</a></li>
+    <li><a href="#inlinestringbuilder">InlineStringBuilder</a></li>
+    <li><a href="#endline">EndLine</a></li>
+    <li><a href="#letter">Letter</a></li>
+    <li><a href="#stringutil">StringUtil</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+
+  <h3>Design documents</h3>
+  <ul>
+    <li><a href="../AllocatorGuide.md">Allocator guide</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb"><a href="../index.html">Module Index</a> / String</p>
+
+<h1>String</h1>
+<p class="subtitle">
+  <span class="tag">namespace hbe</span>
+  <span class="tag">Engine/String</span>
+  9 headers, 6 sources — the mutable string, the interned string, builders, and character utilities
+</p>
+
+<h2 id="description">Module description</h2>
+
+<p>
+  Two string types with different jobs. <a href="#string"><code>String</code></a> is the ordinary one: a
+  shareable buffer plus the operations you expect, where the transforming operations return a new value and the
+  <code>To…</code> forms mutate in place. <a href="#staticstring"><code>StaticString</code></a> is interned
+  into one global table, so comparing two of them is comparing pointers — which is why engine identifiers, log
+  categories and task names are <code>StaticString</code> and not <code>String</code>. The builders exist so
+  formatting text does not allocate per piece, and <a href="#stringutil"><code>StringUtil</code></a> holds the
+  operations that do not need an object at all.
+</p>
+
+<h2 id="classes">Module classes</h2>
+
+<table>
+  <tr><th>Name</th><th>Kind</th><th>Header</th><th>Role</th></tr>
+  <tr><td><a href="#string">String</a></td><td>Class</td><td>String.h</td><td>Shareable-buffer string with search, transform and conversion</td></tr>
+  <tr><td><a href="#staticstring">StaticString</a></td><td>Class</td><td>StaticString.h</td><td>Interned string; pointer-equality comparison</td></tr>
+  <tr><td><a href="#staticstringid">StaticStringID</a></td><td>Struct</td><td>StaticStringID.h</td><td>The pointer into the intern table, on its own</td></tr>
+  <tr><td><a href="#stringbuilder">StringBuilder</a></td><td>Class template</td><td>StringBuilder.h</td><td>Stream-style <code>&lt;&lt;</code> formatting into a growing buffer</td></tr>
+  <tr><td><a href="#inlinestringbuilder">InlineStringBuilder</a></td><td>Class template</td><td>InlineStringBuilder.h</td><td>The same interface in a fixed inline buffer — no heap at all</td></tr>
+  <tr><td><a href="#endline">EndLine</a></td><td>Class</td><td>EndLine.h</td><td>Marker that a builder turns into a newline</td></tr>
+  <tr><td><a href="#letter">Letter</a></td><td>Class of statics</td><td>Letter.h</td><td>Character classification</td></tr>
+  <tr><td><a href="#stringutil">StringUtil</a></td><td>Namespace</td><td>StringUtil.h</td><td>Trim, case, prefix and suffix, path names, hashes, reflection names</td></tr>
+</table>
+
+<h2 id="variables">Module variables</h2>
+
+<table>
+  <tr><th>Name</th><th>Type</th><th>Header</th><th>Purpose</th></tr>
+  <tr><td><code>hendl</code></td><td><code>static constexpr EndLine</code></td><td>EndLine.h</td><td>The newline marker every call site shares — see <a href="#endline">EndLine</a></td></tr>
+  <tr><td><code>StaticStringID::Default</code></td><td><code>static constexpr uint8_t*</code></td><td>StaticStringID.h</td><td>The null intern entry, which is <code>nullptr</code></td></tr>
+</table>
+
+<p>Interning table sizing is <a href="../Config/index.html#variables"><code>Config::StaticStringBufferSize</code></a> (8 MB) and <code>StaticStringNumHashBuckets</code> (256).</p>
+
+<h2 id="functions">Module functions</h2>
+
+<p>See <a href="#stringutil">StringUtil</a>.</p>
+
+<h2 id="string">String (<code>Engine/String/String.h</code>)</h2>
+
+<h3>Class description</h3>
+<p>
+  The engine's text type. It holds a shareable buffer and a cached hash, so copying a <code>String</code> is
+  cheap and <a href="#stringutil"><code>StringUtil::CalculateHash</code></a> is not repeated on every use.
+  Naming carries the contract here: a method beginning <code>Get</code> or <code>Sub</code> returns a new
+  string, one beginning <code>To</code> mutates this one.
+</p>
+
+<h3>Template parameters</h3>
+<p>None — String is not a template. The element type is <code>TChar</code>.</p>
+
+<h3>Class properties</h3>
+<p>The shareable character buffer and the cached hash code; both private, read through <code>Length</code>, <code>HashCode</code> and <code>c_str</code>.</p>
+
+<h3>Class methods</h3>
+
+<pre><code><span class="cm">// construction, comparison, conversion</span>
+<span class="ty">String</span>() <span class="kw">noexcept</span>;
+<span class="kw">explicit</span> <span class="ty">String</span>(<span class="kw">const char</span>* text) <span class="kw">noexcept</span>;
+[[nodiscard]] <span class="kw">operator const char</span>*() <span class="kw">const</span> <span class="kw">noexcept</span>;   <span class="cm">// == ToCharArray()</span>
+[[nodiscard]] <span class="kw">const char</span>* c_str() <span class="kw">const</span> <span class="kw">noexcept</span>;
+[[nodiscard]] <span class="kw">int</span> ToInt() <span class="kw">const</span> <span class="kw">noexcept</span>;
+[[nodiscard]] <span class="kw">const char</span>* ToCharArray() <span class="kw">const</span> <span class="kw">noexcept</span>;
+[[nodiscard]] <span class="ty">String</span> operator+(<span class="kw">const</span> <span class="ty">String</span>&amp; str) <span class="kw">const</span> <span class="kw">noexcept</span>;
+
+<span class="cm">// query</span>
+[[nodiscard]] <span class="ty">Index</span> Length() <span class="kw">const</span> <span class="kw">noexcept</span>;         <span class="cm">// characters, excluding the terminator</span>
+[[nodiscard]] <span class="kw">bool</span> IsEmpty() <span class="kw">const</span> <span class="kw">noexcept</span>;
+[[nodiscard]] <span class="ty">Index</span> HashCode() <span class="kw">const</span> <span class="kw">noexcept</span>;      <span class="cm">// cached, not recomputed</span>
+[[nodiscard]] <span class="kw">bool</span> IsValidIndex(<span class="ty">Index</span> index) <span class="kw">const</span> <span class="kw">noexcept</span>;
+
+<span class="cm">// search — every form returns an index, or a length-or-greater value when absent</span>
+[[nodiscard]] <span class="ty">Index</span> Find(<span class="kw">const</span> <span class="ty">TChar</span> ch) <span class="kw">const</span> <span class="kw">noexcept</span>;
+[[nodiscard]] <span class="ty">Index</span> Find(<span class="kw">const</span> <span class="ty">Array</span>&lt;<span class="ty">TChar</span>&gt;&amp; chs) <span class="kw">const</span> <span class="kw">noexcept</span>;
+[[nodiscard]] <span class="ty">Index</span> Find(<span class="kw">const</span> <span class="ty">String</span>&amp; keyword) <span class="kw">const</span> <span class="kw">noexcept</span>;
+[[nodiscard]] <span class="ty">Index</span> Find(<span class="kw">const</span> <span class="ty">String</span>&amp; keyword, <span class="ty">Index</span> startIndex,
+                          <span class="ty">Index</span> endIndex = InvalidIndex) <span class="kw">const</span> <span class="kw">noexcept</span>;
+[[nodiscard]] <span class="kw">bool</span> Contains(<span class="kw">const</span> <span class="ty">String</span>&amp; keyword) <span class="kw">const</span> <span class="kw">noexcept</span>;
+[[nodiscard]] <span class="kw">bool</span> ContainsAt(<span class="kw">const</span> <span class="ty">String</span>&amp; keyword, <span class="ty">Index</span> startIndex) <span class="kw">const</span> <span class="kw">noexcept</span>;
+[[nodiscard]] <span class="kw">bool</span> StartsWith(<span class="kw">const</span> <span class="ty">String</span>&amp; header) <span class="kw">const</span> <span class="kw">noexcept</span>;
+[[nodiscard]] <span class="kw">bool</span> EndsWith(<span class="kw">const</span> <span class="ty">String</span>&amp; tail) <span class="kw">const</span> <span class="kw">noexcept</span>;
+
+<span class="cm">// transform — these return a new String, leaving the receiver alone</span>
+[[nodiscard]] <span class="ty">String</span> Append(<span class="kw">const</span> <span class="ty">String</span>&amp; string) <span class="kw">const</span> <span class="kw">noexcept</span>;
+[[nodiscard]] <span class="ty">String</span> Clone() <span class="kw">const</span> <span class="kw">noexcept</span>;
+[[nodiscard]] <span class="ty">String</span> SubString(<span class="ty">Index</span> startIndex,
+                                <span class="ty">Index</span> endIndex = InvalidIndex) <span class="kw">const</span> <span class="kw">noexcept</span>;
+[[nodiscard]] <span class="ty">String</span> Replace(<span class="kw">const</span> <span class="ty">String</span>&amp; from, <span class="kw">const</span> <span class="ty">String</span>&amp; to,
+                               <span class="ty">Index</span> offset = <span class="nu">0</span>,
+                               <span class="ty">Index</span> endIndex = InvalidIndex) <span class="kw">const</span> <span class="kw">noexcept</span>;
+[[nodiscard]] <span class="ty">String</span> ReplaceAll(<span class="kw">char</span> from, <span class="kw">char</span> to) <span class="kw">const</span> <span class="kw">noexcept</span>;
+[[nodiscard]] <span class="ty">String</span> Trim() <span class="kw">const</span> <span class="kw">noexcept</span>;
+[[nodiscard]] <span class="ty">String</span> GetLowerCase() <span class="kw">const</span> <span class="kw">noexcept</span>;
+[[nodiscard]] <span class="ty">String</span> GetUpperCase() <span class="kw">const</span> <span class="kw">noexcept</span>;
+
+<span class="cm">// mutate — the To… and AppendSelf forms change this string</span>
+<span class="kw">void</span> AppendSelf(<span class="kw">const</span> <span class="ty">String</span>&amp; string) <span class="kw">noexcept</span>;   <span class="cm">// also char, int, float, const char*</span>
+<span class="kw">void</span> ToLowerCase() <span class="kw">noexcept</span>;
+<span class="kw">void</span> ToUpperCase() <span class="kw">noexcept</span>;
+<span class="kw">void</span> Swap(<span class="ty">String</span>&amp; rhs) <span class="kw">noexcept</span>;
+
+<span class="cm">// parsing helper</span>
+<span class="kw">void</span> ParseKeyValue(...);</code></pre>
+
+<div class="gap">
+  <strong>Two families, one letter apart.</strong> <code>GetLowerCase()</code> returns a new string;
+  <code>ToLowerCase()</code> returns nothing and changes the receiver. <code>Append</code> returns a new
+  string; <code>AppendSelf</code> mutates. The pair is easy to type wrong and both spellings compile, so the
+  rule worth remembering is the first letter: <strong>Get builds, To changes</strong>.
+</div>
+
+<div class="note">
+  <code>Contains</code> is <code>Find(keyword) &lt; Length()</code>, so the "not found" value of a search is a
+  length-or-greater index rather than a negative number. Comparing a <code>Find</code> result against
+  <code>-1</code> is the classic bug, and here it silently reads as "found".
+</div>
+
+<h3>Non-member helper functions</h3>
+<p>None; the free operations on text are in <a href="#stringutil">StringUtil</a>.</p>
+
+<h2 id="staticstring">StaticString (<code>Engine/String/StaticString.h</code>)</h2>
+
+<h3>Class description</h3>
+<p>
+  A string interned in one global table, so its identity is a pointer. Two <code>StaticString</code> values
+  naming the same text compare with one pointer equality, which is why log categories, task names and component
+  keys are this type rather than <a href="#string"><code>String</code></a>. Interning costs a table lookup at
+  construction and pays it back on every comparison.
+</p>
+
+<h3>Template parameters</h3>
+<p>None — StaticString is not a template.</p>
+
+<h3>Class properties</h3>
+<p>The interned <a href="#staticstringid"><code>StaticStringID</code></a>; private, exposed by <code>GetID()</code>.</p>
+
+<h3>Class methods</h3>
+
+<pre><code><span class="ty">StaticString</span>() <span class="kw">noexcept</span>;
+<span class="ty">StaticString</span>(<span class="ty">StaticStringID</span> id) <span class="kw">noexcept</span>;
+<span class="ty">StaticString</span>(<span class="kw">const char</span>* string) <span class="kw">noexcept</span>;            <span class="cm">// interns, or finds the existing entry</span>
+<span class="ty">StaticString</span>(<span class="kw">const</span> std::string_view&amp; str) <span class="kw">noexcept</span>;
+
+[[nodiscard]] <span class="kw">const char</span>* c_str() <span class="kw">const</span> <span class="kw">noexcept</span>;
+[[nodiscard]] <span class="ty">StaticStringID</span> GetID() <span class="kw">const</span> <span class="kw">noexcept</span>;
+[[nodiscard]] <span class="kw">bool</span> IsNull() <span class="kw">const</span> <span class="kw">noexcept</span>;
+
+[[nodiscard]] <span class="kw">bool</span> operator==(<span class="kw">const</span> <span class="ty">StaticString</span>&amp; rhs) <span class="kw">const</span> <span class="kw">noexcept</span>;  <span class="cm">// pointer equality</span></code></pre>
+
+<div class="gap">
+  <strong>Comparison is identity, not content.</strong> <code>operator==</code> compares interned pointers. Two
+  separately built buffers naming the same text are equal <em>after</em> both have gone through interning — which
+  a value reaching you as raw characters from a file has not. Convert first, compare second.
+</div>
+
+<h3>Non-member helper functions</h3>
+<p>None.</p>
+
+<h2 id="staticstringid">StaticStringID (<code>Engine/String/StaticStringID.h</code>)</h2>
+
+<h3>Class description</h3>
+<p>The interned pointer on its own, for when you want the identity without the string wrapper — and it is hashable, which is what lets it key a map.</p>
+
+<h3>Template parameters</h3>
+<p>None — StaticStringID is not a template.</p>
+
+<h3>Class properties</h3>
+<table>
+  <tr><th>Property</th><th>Type</th><th>Purpose</th></tr>
+  <tr><td><code>Default</code></td><td><code>static constexpr uint8_t*</code> = <code>nullptr</code></td><td>The null entry a default-constructed id holds</td></tr>
+  <tr><td><code>ptr</code></td><td><code>const uint8_t*</code></td><td>Position in the intern table; the identity</td></tr>
+</table>
+
+<h3>Class methods</h3>
+
+<pre><code><span class="ty">StaticStringID</span>() : ptr(Default) {}
+[[nodiscard]] <span class="kw">bool</span> operator==(<span class="kw">const</span> <span class="ty">StaticStringID</span>&amp; rhs) <span class="kw">const</span>;   <span class="cm">// ptr == rhs.ptr</span>
+[[nodiscard]] <span class="kw">bool</span> operator&lt;(<span class="kw">const</span> <span class="ty">StaticStringID</span>&amp; rhs) <span class="kw">const</span>;   <span class="cm">// ptr &lt; rhs.ptr</span></code></pre>
+
+<p>
+  Ordering by <code>ptr</code> is ordering by table position, not alphabetically — useful for a deterministic
+  container order, never for user-facing sorting.
+</p>
+
+<h3>Non-member helper functions</h3>
+<p>
+  <code>std::hash&lt;hbe::StaticStringID&gt;</code> is specialised in this header as the reinterpreted pointer, so
+  an id works as an unordered key. That specialisation lives in <code>namespace std</code>, which is why this
+  header has to be included for the hash to exist at all.
+</p>
+
+<h2 id="stringbuilder">StringBuilder (<code>Engine/String/StringBuilder.h</code>)</h2>
+
+<h3>Class description</h3>
+<p>
+  Stream-style formatting: <code>builder &lt;&lt; "score " &lt;&lt; score &lt;&lt; hendl;</code>. Each <code>&lt;&lt;</code> appends
+  to one buffer, so a multi-part line is one allocation strategy rather than one string per piece.
+</p>
+
+<h3>Template parameters</h3>
+<table>
+  <tr><th>Parameter</th><th>Default</th><th>Meaning</th></tr>
+  <tr><td><code>TCh</code></td><td><code>char</code></td><td>Character type</td></tr>
+  <tr><td><code>TAlloc</code></td><td><code>DefaultAllocator&lt;TCh&gt;</code></td><td>Where the growing buffer comes from</td></tr>
+</table>
+
+<h3>Class properties</h3>
+<p>The buffer and its length; private, read through the result accessor in the header.</p>
+
+<h3>Class methods</h3>
+
+<pre><code><span class="ty">StringBuilder</span>&amp; operator&lt;&lt;(<span class="kw">nullptr_t</span>) <span class="kw">noexcept</span>;
+<span class="ty">StringBuilder</span>&amp; operator&lt;&lt;(<span class="kw">bool</span>) <span class="kw">noexcept</span>;
+<span class="ty">StringBuilder</span>&amp; operator&lt;&lt;(<span class="kw">char</span>) <span class="kw">noexcept</span>;
+<span class="ty">StringBuilder</span>&amp; operator&lt;&lt;(<span class="kw">int</span>) <span class="kw">noexcept</span>;
+<span class="ty">StringBuilder</span>&amp; operator&lt;&lt;(<span class="kw">float</span>) <span class="kw">noexcept</span>;
+<span class="ty">StringBuilder</span>&amp; operator&lt;&lt;(<span class="kw">double</span>) <span class="kw">noexcept</span>;
+<span class="ty">StringBuilder</span>&amp; operator&lt;&lt;(<span class="kw">const char</span>*) <span class="kw">noexcept</span>;
+<span class="ty">StringBuilder</span>&amp; operator&lt;&lt;(<span class="kw">const</span> <span class="ty">StaticString</span>&amp;) <span class="kw">noexcept</span>;
+<span class="ty">StringBuilder</span>&amp; operator&lt;&lt;(<span class="ty">EndLine</span>) <span class="kw">noexcept</span>;      <span class="cm">// the hendl marker</span></code></pre>
+
+<h3>Non-member helper functions</h3>
+<p>None.</p>
+
+<h2 id="inlinestringbuilder">InlineStringBuilder (<code>Engine/String/InlineStringBuilder.h</code>)</h2>
+
+<h3>Class description</h3>
+<p>
+  The same <code>&lt;&lt;</code> interface writing into a fixed inline buffer, so a formatter inside a frame or a
+  logger pays no allocation. This is what <a href="#stringutil"><code>StringUtil</code></a> writes into
+  (<code>InlineStringBuilder&lt;64&gt;</code> for a timestamp), and what the log line's inline text exists to receive.
+</p>
+
+<h3>Template parameters</h3>
+<table>
+  <tr><th>Parameter</th><th>Default</th><th>Meaning</th></tr>
+  <tr><td><code>BufferSize</code></td><td>1024</td><td>Bytes inline in the object — a hard ceiling, not a starting size</td></tr>
+  <tr><td><code>TChar</code></td><td><code>char</code></td><td>Character type</td></tr>
+</table>
+
+<h3>Class properties</h3>
+<p>The inline buffer and the write cursor; private.</p>
+
+<h3>Class methods</h3>
+<p>The <code>&lt;&lt;</code> set of <a href="#stringbuilder"><code>StringBuilder</code></a>, plus <code>Clear()</code> to reuse one builder without releasing the buffer.</p>
+
+<div class="gap">
+  <strong>There is no growth.</strong> Writing past <code>BufferSize</code> cannot be answered by allocating, so
+  a caller choosing 64 for a value it did not measure is choosing truncation. Pick the size from the largest
+  thing that will be written, not from what is usually written.
+</div>
+
+<h3>Non-member helper functions</h3>
+<p>None.</p>
+
+<h2 id="endline">EndLine (<code>Engine/String/EndLine.h</code>)</h2>
+
+<h3>Class description</h3>
+<p>
+  A marker type rather than a string constant: it converts to <code>"\n"</code> when a builder takes it. Making
+  it a type means a builder can give it its own overload, and the call site reads as intent instead of an escape
+  sequence at the end of a line where it is invisible.
+</p>
+
+<pre><code><span class="kw">class</span> <span class="ty">EndLine</span> final
+{
+<span class="kw">public</span>:
+    [[nodiscard]] <span class="kw">operator const char</span>*() <span class="kw">const</span> { <span class="kw">return</span> <span class="st">"\n"</span>; }
+};
+
+<span class="kw">static constexpr</span> <span class="ty">EndLine</span> hendl;</code></pre>
+
+<h3>Template parameters</h3>
+<p>None — EndLine is not a template.</p>
+
+<h3>Class properties</h3>
+<p>None; the conversion is the whole class.</p>
+
+<h3>Class methods</h3>
+<p>The conversion operator above, and nothing else.</p>
+
+<h3>Non-member helper functions</h3>
+<p>
+  The single instance <code>hendl</code>, declared <code>static constexpr</code> in the header so every
+  translation unit shares the value without a link-time definition.
+</p>
+
+<h2 id="letter">Letter (<code>Engine/String/Letter.h</code>)</h2>
+
+<h3>Class description</h3>
+<p>Character classification, used by the tokenizer and the identifier checks in <a href="#stringutil"><code>StringUtil</code></a>.</p>
+
+<h3>Template parameters</h3>
+<p>None — the methods take <code>TChar</code>, the module's character type.</p>
+
+<h3>Class properties</h3>
+<p>None.</p>
+
+<h3>Class methods</h3>
+
+<pre><code>[[nodiscard]] <span class="kw">static bool</span> IsLowerCase(TChar letter);
+[[nodiscard]] <span class="kw">static bool</span> IsUpperCase(TChar letter);
+[[nodiscard]] <span class="kw">static bool</span> IsGenuineLetter(TChar letter);   <span class="cm">// an alphabetic character</span></code></pre>
+
+<h3>Non-member helper functions</h3>
+<p>None.</p>
+
+<h2 id="stringutil">StringUtil (<code>Engine/String/StringUtil.h</code>, <code>namespace hbe::StringUtil</code>)</h2>
+
+<h3>Class description</h3>
+<p>
+  Operations on text that need no object of their own, in two groups: the ones that trim, compare and reshape a
+  <code>TString</code>, and the ones that read a name out of the compiler's own
+  <code>__PRETTY_FUNCTION__</code> — which is how engine code logs a type without writing its name twice.
+</p>
+
+<h3>Template parameters</h3>
+<p>None — a namespace of functions over <code>TString</code>.</p>
+
+<h3>Class properties</h3>
+<p>None.</p>
+
+<h3>Class methods</h3>
+<p>Not applicable.</p>
+
+<h3>Non-member helper functions</h3>
+
+<table>
+  <tr><th>Function</th><th>Parameters</th><th>Returns</th><th>Purpose</th></tr>
+  <tr><td><code>Trim</code></td><td><code>const TString&amp;</code></td><td><code>TString</code></td><td>Whitespace stripped both ends</td></tr>
+  <tr><td><code>TrimPath</code></td><td><code>const TString&amp;</code></td><td><code>TString</code></td><td>Path separators stripped, which plain <code>Trim</code> does not do</td></tr>
+  <tr><td><code>ToLowerCase</code></td><td><code>const TString&amp;</code></td><td><code>TString</code></td><td>Copy, lowercased</td></tr>
+  <tr><td><code>EqualsIgnoreCase</code></td><td>two <code>const TString&amp;</code></td><td><code>bool</code></td><td>Case-insensitive equality</td></tr>
+  <tr><td><code>StartsWith</code>, <code>EndsWith</code></td><td>source and term</td><td><code>bool</code></td><td>Prefix and suffix tests</td></tr>
+  <tr><td><code>StartsWithIgnoreCase</code>, <code>EndsWithIgnoreCase</code></td><td>source and term</td><td><code>bool</code></td><td>The same, ignoring case — the extensions the older summary omitted</td></tr>
+  <tr><td><code>PathToName</code></td><td><code>const TString&amp; path</code></td><td><code>TString</code></td><td>File name without its directory</td></tr>
+  <tr><td><code>ForEachToken</code></td><td><code>const char* str</code>, a callback over <code>std::string_view</code>, a separator</td><td><code>void</code></td><td>Split by walking, handing each token as a view — no substring copies</td></tr>
+  <tr><td><code>ToFunctionName</code>, <code>ToClassName</code>, <code>ToMethodName</code></td><td><code>const char* PrettyFunction</code></td><td><code>StaticString</code></td><td>Names read out of <code>__PRETTY_FUNCTION__</code>; <code>ToMethodName</code> was missing from the older summary</td></tr>
+  <tr><td><code>ToCompactClassName</code>, <code>ToCompactMethodName</code></td><td><code>const char* PrettyFunction</code></td><td><code>StaticString</code></td><td>The same without the surrounding noise, for a log column</td></tr>
+  <tr><td><code>StrLen</code></td><td><code>const char* text</code>, optionally a buffer size</td><td><code>size_t</code></td><td>The bounded overload is the safe one for a buffer you did not fill yourself</td></tr>
+  <tr><td><code>StrCopy</code></td><td><code>char* dst</code>, <code>const char* src</code>, <code>size_t n</code></td><td><code>const char*</code></td><td>Copy bounded by <code>n</code></td></tr>
+  <tr><td><code>CalculateHash</code></td><td><code>const char*</code>, or <code>const std::string_view&amp;</code></td><td><code>size_t</code></td><td>Hash of text; the view overload is what a non-NUL-terminated span uses</td></tr>
+</table>
+
+<h2 id="coverage">Coverage</h2>
+
+<table>
+  <tr><th>Gap</th><th>Detail</th></tr>
+  <tr>
+    <td><a href="#string"><code>String</code></a> constructor set</td>
+    <td>The formatted-construction overloads exist but their exact parameter lists are not tabulated here, and
+        <code>ParseKeyValue</code>'s argument list is left as written in the header rather than guessed.</td>
+  </tr>
+  <tr>
+    <td><a href="#stringbuilder"><code>StringBuilder</code></a> result accessor</td>
+    <td>How a built string is read back out is named in the header and not restated here.</td>
+  </tr>
+  <tr>
+    <td>The intern table itself</td>
+    <td>Where <a href="#staticstring"><code>StaticString</code></a>'s global table is written, and what happens
+        when 8 MB is exhausted, is design behaviour with no document yet — the one real hole in this module's
+        documentation.</td>
+  </tr>
+</table>
+
+<footer class="prevnext">
+  <span><a href="../Resource/index.html">← Resource</a></span>
+  <span><a href="../index.html">Module Index</a></span>
+  <span><a href="../Test/index.html">Test →</a></span>
+</footer>
+
+</main>
+</body>
+</html>

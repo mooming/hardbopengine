@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Memory module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../Config/index.html">Config</a></li>
+    <li><a href="../Container/index.html">Container</a></li>
+    <li><a href="../Core/index.html">Core</a></li>
+    <li><a href="../Engine/index.html">Engine</a></li>
+    <li><a href="../HSTL/index.html">HSTL</a></li>
+    <li><a href="../Log/index.html">Log</a></li>
+    <li><a href="../Math/index.html">Math</a></li>
+    <li><a class="current" href="../Memory/index.html">Memory</a></li>
+    <li><a href="../OSAL/index.html">OSAL</a></li>
+    <li><a href="../Renderer/index.html">Renderer</a></li>
+    <li><a href="../Resource/index.html">Resource</a></li>
+    <li><a href="../String/index.html">String</a></li>
+    <li><a href="../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This module</h3>
+  <ul>
+    <li><a href="#description">Module description</a></li>
+    <li><a href="#classes">Module classes</a></li>
+    <li><a href="#variables">Module variables</a></li>
+    <li><a href="#functions">Module functions</a></li>
+    <li><a href="#memorymanager">MemoryManager</a></li>
+    <li><a href="#allocators">Allocator catalogue</a></li>
+    <li><a href="#allocatorscope">AllocatorScope</a></li>
+    <li><a href="#allocatorproxy">AllocatorProxy</a></li>
+    <li><a href="#poolconfig">PoolConfig</a></li>
+    <li><a href="#shareable">Shareable</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+
+  <h3>Design documents</h3>
+  <ul>
+    <li><a href="../AllocatorGuide.md">Allocator guide</a></li>
+    <li><a href="../MemoryManagement_Guide.md">Memory management</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb"><a href="../index.html">Module Index</a> / Memory</p>
+
+<h1>Memory</h1>
+<p class="subtitle">
+  <span class="tag">namespace hbe</span>
+  <span class="tag">Engine/Memory</span>
+  23 headers, 16 sources — allocators, the manager that registers them, and the typed helpers over both
+</p>
+
+<h2 id="description">Module description</h2>
+
+<p>
+  The engine does not call <code>malloc</code> directly. An allocator is an object with a strategy — bump a
+  pointer, carve fixed blocks, recycle from a free list, keep one pool per block size — and the
+  <a href="#memorymanager"><code>MemoryManager</code></a> registers those objects under an id so any
+  subsystem can allocate against the right strategy without owning one. Every
+  <a href="../Container/index.html">container</a> and <a href="../HSTL/index.html">HSTL</a> alias in the engine
+  routes through this module, which is what makes memory accounting mean anything.
+</p>
+
+<p>
+  Which strategy to use, and why, is the subject of
+  <a href="../AllocatorGuide.md">docs/AllocatorGuide.md</a> and
+  <a href="../MemoryManagement_Guide.md">docs/MemoryManagement_Guide.md</a>. This page is what you call.
+</p>
+
+<h2 id="classes">Module classes</h2>
+
+<table>
+  <tr><th>Name</th><th>Kind</th><th>Header</th><th>Role</th></tr>
+  <tr><td><a href="#memorymanager">MemoryManager</a></td><td>Class, singleton</td><td>MemoryManager.h</td><td>Registers allocators, routes allocation, owns typed New and Delete</td></tr>
+  <tr><td><a href="#allocators">Nine allocators</a></td><td>Classes and class templates</td><td>one each</td><td>The strategies a manager can register</td></tr>
+  <tr><td><a href="#allocatorscope">AllocatorScope</a></td><td>Class, RAII</td><td>AllocatorScope.h</td><td>Temporarily change which allocator is current</td></tr>
+  <tr><td><a href="#allocatorproxy">AllocatorProxy</a></td><td>Class</td><td>AllocatorProxy.h</td><td>Adapt any allocator to the manager's calling convention</td></tr>
+  <tr><td><a href="#poolconfig">PoolConfig</a></td><td>Class</td><td>PoolConfig.h</td><td>Block size and count, ordered by block size</td></tr>
+  <tr><td><a href="#shareable">Shareable</a></td><td>Class template</td><td>Shareable.h</td><td>Reference-counted handle to one object</td></tr>
+</table>
+
+<h2 id="variables">Module variables</h2>
+
+<p>
+  None exposed here. The sizing constants are
+  <a href="../Config/index.html#variables"><code>Config::MemCapacity</code></a> (5 GB) and
+  <code>Config::DefaultAlign</code> (16 bytes), and the switches that change what this module compiles to are
+  <a href="../Config/index.html#buildconfig"><code>MEMORY_VERIFICATION_ENABLED</code></a>,
+  <code>MEMORY_LOGGING_ENABLED</code>, <code>MEMORY_INVESTIGATION_ENABLED</code>,
+  <code>MEMORY_DANGLING_POINTER_CHECK_ENABLED</code>, <code>MEMORY_BUFFER_UNDERRUN_CHECK_ENABLED</code> and
+  <code>FORCE_USE_SYSTEM_MALLOC</code>.
+</p>
+
+<h2 id="functions">Module functions</h2>
+
+<h3>Memory helpers (<code>Engine/Memory/Memory.h</code>)</h3>
+
+<p>
+  Typed construction and destruction over any allocator. These are the functions engine code uses instead of
+  <code>new</code> and <code>delete</code>.
+</p>
+
+<table>
+  <tr><th>Function</th><th>Parameters</th><th>Returns</th><th>Notes</th></tr>
+  <tr><td><code>New&lt;TType&gt;(allocator, args...)</code></td><td>an allocator by reference, then constructor arguments</td><td><code>TType*</code></td><td>Allocates from that allocator and constructs in place</td></tr>
+  <tr><td><code>Delete&lt;TType&gt;(allocator, ptr)</code></td><td>the same allocator, then the pointer</td><td><code>void</code></td><td>Destroys and returns the block to the allocator it came from</td></tr>
+  <tr><td><code>New&lt;TType&gt;(args...)</code></td><td>constructor arguments</td><td><code>TType*</code></td><td>The no-allocator form: allocates from the current allocator, which is why a stray call silently follows whatever scope it happens to sit in</td></tr>
+  <tr><td><code>Delete&lt;TType&gt;(ptr)</code></td><td>the pointer</td><td><code>void</code></td><td>The matching form — pair an allocation and a release from the same allocator, or corrupt the heap</td></tr>
+</table>
+
+<pre><code><span class="kw">using</span> <span class="ty">TAllocFunc</span>    = std::function&lt;<span class="kw">void</span>*(size_t)&gt;;
+<span class="kw">using</span> <span class="ty">TDeallocFunc</span> = std::function&lt;<span class="kw">void</span>(<span class="kw">void</span>*, size_t)&gt;;
+
+<span class="kw">template</span>&lt;<span class="kw">typename</span> TType, <span class="kw">typename</span>... TTypes, <span class="kw">typename</span> TAllocator&gt;
+[[nodiscard]] TType* New(TAllocator&amp; allocator, TTypes&amp;&amp;... args) <span class="kw">noexcept</span>;
+
+<span class="kw">template</span>&lt;<span class="kw">typename</span> TType, <span class="kw">typename</span> TAllocator&gt;
+<span class="kw">void</span> Delete(TAllocator&amp; allocator, TType* ptr) <span class="kw">noexcept</span>;
+
+<span class="kw">template</span>&lt;<span class="kw">typename</span> TType, <span class="kw">typename</span>... TTypes&gt;
+[[nodiscard]] TType* New(TTypes&amp;&amp;... args) <span class="kw">noexcept</span>;   <span class="cm">// current allocator</span>
+
+<span class="kw">template</span>&lt;<span class="kw">typename</span> TType&gt;
+<span class="kw">void</span> Delete(TType* ptr) <span class="kw">noexcept</span>;</code></pre>
+
+<h2 id="memorymanager">MemoryManager (<code>Engine/Memory/MemoryManager.h</code>)</h2>
+
+<h3>Class description</h3>
+<p>
+  Registers allocator objects under ids and routes allocation to them. One instance belongs to the
+  <a href="../Engine/index.html#engine">Engine</a>, and it must be the first thing alive — every other
+  subsystem allocates through it, and the memory level cannot be
+  <a href="../Engine/index.html#einitlevel">switched off</a>.
+</p>
+
+<h3>Template parameters</h3>
+<p>None — MemoryManager is not a template.</p>
+
+<h3>Class properties</h3>
+<p>The registered allocator table and the current-allocator stack; header-private.</p>
+
+<h3>Class methods</h3>
+
+<pre><code><span class="kw">class</span> <span class="ty">MemoryManager</span> final
+{
+    [[nodiscard]] <span class="kw">static</span> <span class="ty">MemoryManager</span>&amp; GetInstance();
+    [[nodiscard]] <span class="kw">static</span> <span class="ty">TAllocatorID</span> GetCurrentAllocatorID();
+
+    <span class="cm">// registration</span>
+    <span class="ty">TAllocatorID</span> RegisterAllocator(<span class="kw">void</span>* allocator, <span class="kw">const char</span>* name,
+                                   <span class="kw">bool</span> isInline, size_t capacity, ...);
+    <span class="kw">void</span> DeregisterAllocator(<span class="ty">TAllocatorID</span> id);
+
+    <span class="cm">// raw allocation</span>
+    [[nodiscard]] <span class="kw">void</span>* Allocate(<span class="ty">TAllocatorID</span> id, size_t nBytes);
+    <span class="kw">void</span> Deallocate(<span class="ty">TAllocatorID</span> id, <span class="kw">void</span>* ptr, size_t nBytes);
+    [[nodiscard]] <span class="kw">void</span>* SysAllocate(size_t nBytes);
+    <span class="kw">void</span> SysDeallocate(<span class="kw">void</span>* ptr, size_t nBytes);
+    [[nodiscard]] <span class="kw">void</span>* FallbackAllocate(<span class="ty">TAllocatorID</span> id, <span class="ty">TAllocatorID</span> parentId,
+                                          size_t requested);
+
+    <span class="cm">// typed allocation</span>
+    <span class="kw">template</span>&lt;<span class="kw">typename</span> Type, <span class="kw">typename</span>... Types&gt;
+    [[nodiscard]] Type* New(Types&amp;&amp;... args);
+    <span class="kw">template</span>&lt;<span class="kw">typename</span> Type&gt;
+    <span class="kw">void</span> Delete(Type* ptr);
+    <span class="kw">template</span>&lt;<span class="kw">typename</span> Type, <span class="kw">typename</span>... Types&gt;
+    [[nodiscard]] Type* NewArray(Index size, Types&amp;&amp;... args);
+    <span class="kw">template</span>&lt;<span class="kw">typename</span> Type&gt;
+    <span class="kw">void</span> DeleteArray(Type* ptr, size_t n);
+};</code></pre>
+
+<table>
+  <tr><th>Method</th><th>Contract a caller depends on</th></tr>
+  <tr><td><code>RegisterAllocator</code></td><td>The allocator object is passed as <code>void*</code> and must outlive the registration; <code>isInline</code> says whether storage lives inside the object, which is what decides who frees what</td></tr>
+  <tr><td><code>Allocate</code>, <code>Deallocate</code></td><td>Both take the id, and the size must match between them — a pool returns a block to the size class it came from, so a mismatched size is a corrupted free list, not a leak</td></tr>
+  <tr><td><code>SysAllocate</code>, <code>SysDeallocate</code></td><td>The system allocator, for the cases where a custom pool is wrong: oversized or long-lived blocks</td></tr>
+  <tr><td><code>FallbackAllocate</code></td><td>Try one allocator, then a parent — the shape behind an allocator that degrades instead of failing</td></tr>
+  <tr><td><code>New</code>, <code>Delete</code>, <code>NewArray</code>, <code>DeleteArray</code></td><td>Typed wrappers: construct after allocating, destroy before releasing. <code>DeleteArray</code> takes the element count, because the engine cannot recover it from a pointer</td></tr>
+</table>
+
+<h3>Non-member helper functions</h3>
+<p>The <a href="#functions">Memory helpers</a> above are the free-function equivalent, for code holding an allocator object rather than an id.</p>
+
+<h2 id="allocators">Allocator catalogue</h2>
+
+<p>Nine strategies, one header each. Selection between them is design work — read <a href="../AllocatorGuide.md">docs/AllocatorGuide.md</a> before choosing.</p>
+
+<table>
+  <tr><th>Allocator</th><th>Strategy</th><th>Header</th><th>Releases a block on its own?</th></tr>
+  <tr><td><code>SystemAllocator&lt;T&gt;</code></td><td>Wraps the OS allocator</td><td>SystemAllocator.h</td><td>Yes</td></tr>
+  <tr><td><code>DefaultAllocator&lt;T&gt;</code></td><td>Proxy to the current <a href="#memorymanager"><code>MemoryManager</code></a> allocator — the default of every engine container</td><td>DefaultAllocator.h</td><td>Yes</td></tr>
+  <tr><td><code>MonotonicAllocator</code></td><td>Linear bump pointer</td><td>MonotonicAllocator.h</td><td>No — reset only</td></tr>
+  <tr><td><code>StackAllocator</code></td><td>Stack-like linear allocation, LIFO release</td><td>StackAllocator.h</td><td>Only in reverse order</td></tr>
+  <tr><td><code>PoolAllocator</code></td><td>Fixed-size blocks with a free list</td><td>PoolAllocator.h</td><td>Yes, same size class</td></tr>
+  <tr><td><code>MultiPoolAllocator</code></td><td>Several pools covering different size classes</td><td>MultiPoolAllocator.h</td><td>Yes</td></tr>
+  <tr><td><code>ThreadSafeMultiPoolAllocator</code></td><td>The same with internal synchronisation</td><td>ThreadSafeMultiPoolAllocator.h</td><td>Yes, from any thread</td></tr>
+  <tr><td><code>InlineMonotonicAllocator&lt;Capacity&gt;</code></td><td>Bump allocation inside a fixed inline buffer</td><td>InlineMonotonicAllocator.h</td><td>No</td></tr>
+  <tr><td><code>InlinePoolAllocator&lt;T, BlockSize, NumBlocks&gt;</code></td><td>Fixed-size pool inside the object — what <a href="../HSTL/index.html#hstring"><code>HInlineString</code></a> and <a href="../HSTL/index.html#hvector"><code>HInlineVector</code></a> are built on</td><td>InlinePoolAllocator.h</td><td>Yes</td></tr>
+</table>
+
+<h3>Template parameters</h3>
+<table>
+  <tr><th>Allocator</th><th>Parameters</th></tr>
+  <tr><td><code>SystemAllocator</code>, <code>DefaultAllocator</code></td><td><code>T</code> — the element type the allocator is rebound to</td></tr>
+  <tr><td><code>InlineMonotonicAllocator</code></td><td><code>Capacity</code> — bytes reserved inline</td></tr>
+  <tr><td><code>InlinePoolAllocator</code></td><td><code>T</code>, <code>BlockSize</code>, <code>NumBlocks</code></td></tr>
+  <tr><td>the rest</td><td>none — they hand out raw bytes and are configured at construction</td></tr>
+</table>
+
+<h3>Class properties, Class methods, Non-member helper functions</h3>
+<p>
+  Every allocator here implements the same pair — allocate bytes, deallocate bytes — under the
+  <a href="#allocatorproxy"><code>TAllocBytes</code></a> and <code>TDeallocBytes</code> shapes the manager calls
+  through. The per-allocator state (cursor, free list, pool table) is header-private, and the semantics that
+  separate them are in <a href="../AllocatorGuide.md">docs/AllocatorGuide.md</a>.
+</p>
+
+<h2 id="allocatorscope">AllocatorScope (<code>Engine/Memory/AllocatorScope.h</code>)</h2>
+
+<h3>Class description</h3>
+<p>
+  RAII: saves the current allocator on construction, installs another, restores on destruction. This is how a
+  subsystem says "everything allocated in this block of code belongs to this pool" without threading an
+  allocator through every call.
+</p>
+
+<h3>Template parameters</h3>
+<p>None — AllocatorScope is not a template; one constructor is, taking anything that answers <code>GetID()</code>.</p>
+
+<h3>Class properties</h3>
+<p>The saved allocator id and the scope's depth; header-private.</p>
+
+<h3>Class methods</h3>
+
+<pre><code><span class="kw">class</span> <span class="ty">AllocatorScope</span> final
+{
+<span class="kw">public</span>:
+    <span class="ty">AllocatorScope</span>(<span class="kw">const</span> <span class="ty">AllocatorScope</span>&amp;) = <span class="kw">delete</span>;
+    <span class="ty">AllocatorScope</span>(<span class="ty">AllocatorScope</span>&amp;&amp;) = <span class="kw">delete</span>;
+
+    <span class="ty">AllocatorScope</span>() <span class="kw">noexcept</span>;                          <span class="cm">// current allocator, saved and restored</span>
+    <span class="ty">AllocatorScope</span>(<span class="ty">TAllocatorID</span> id) <span class="kw">noexcept</span>;
+    <span class="kw">template</span>&lt;<span class="kw">typename</span> T&gt;
+    <span class="ty">AllocatorScope</span>(<span class="kw">const</span> T&amp; allocator) <span class="kw">noexcept</span> : <span class="ty">AllocatorScope</span>(allocator.GetID()) {}
+    ~<span class="ty">AllocatorScope</span>() <span class="kw">noexcept</span>;
+};</code></pre>
+
+<p>
+  Copying and moving are both deleted on purpose: a scope that could be copied to another stack frame would
+  restore the allocator in the wrong order, which is the failure this type makes uncompilable instead of
+  rare-and-fatal. The default constructor is not "do nothing" — it saves and restores too, which is what you
+  want when a callee changes the current allocator internally.
+</p>
+
+<h3>Non-member helper functions</h3>
+<p>None.</p>
+
+<h2 id="allocatorproxy">AllocatorProxy (<code>Engine/Memory/AllocatorProxy.h</code>)</h2>
+
+<h3>Class description</h3>
+<p>
+  The record the manager keeps for a registered allocator: its id, the object, and the two plain function
+  pointers it calls. Any allocator can be registered by filling one in, which is why the manager holds
+  <code>void*</code> rather than a virtual base.
+</p>
+
+<h3>Template parameters</h3>
+<p>None — AllocatorProxy is not a template.</p>
+
+<h3>Class properties</h3>
+
+<table>
+  <tr><th>Property</th><th>Type</th><th>Purpose</th></tr>
+  <tr><td><code>id</code></td><td><code>TAllocatorID</code></td><td>The handle callers allocate against</td></tr>
+  <tr><td><code>allocator</code></td><td><code>void*</code></td><td>The allocator object, untyped by design</td></tr>
+  <tr><td><code>allocate</code></td><td><code>TAllocBytes</code> = <code>void* (*)(void* userData, size_t allocSize)</code></td><td>Entry point for allocation</td></tr>
+  <tr><td><code>deallocate</code></td><td><code>TDeallocBytes</code> = <code>void (*)(void* userData, void* pointer, size_t allocSize)</code></td><td>Entry point for release</td></tr>
+</table>
+
+<p>Both function-pointer types take the allocator object as their first argument — <code>userData</code> — because a free function cannot capture. That is the convention a third-party allocator must follow to be registrable.</p>
+
+<h3>Class methods</h3>
+<p>None beyond construction; the proxy is a plain record.</p>
+
+<h3>Non-member helper functions</h3>
+<p>None.</p>
+
+<h2 id="poolconfig">PoolConfig (<code>Engine/Memory/PoolConfig.h</code>)</h2>
+
+<h3>Class description</h3>
+<p>One pool's shape — block size and count — ordered by block size so a set of them sorts into a size-class ladder.</p>
+
+<h3>Template parameters</h3>
+<p>None — PoolConfig is not a template.</p>
+
+<h3>Class properties</h3>
+
+<table>
+  <tr><th>Property</th><th>Type</th><th>Default</th><th>Purpose</th></tr>
+  <tr><td><code>blockSize</code></td><td><code>size_t</code></td><td>0</td><td>Bytes per block</td></tr>
+  <tr><td><code>numberOfBlocks</code></td><td><code>size_t</code></td><td>0</td><td>How many blocks the pool holds</td></tr>
+</table>
+
+<p>
+  The spelling is <code>numberOfBlocks</code>, not the shorter name the older guide printed. It is a
+  <code>class</code> with public data, not a <code>struct</code>, which is what
+  <a href="../CodingStandards.md">docs/CodingStandards.md</a> asks for.
+</p>
+
+<h3>Class methods</h3>
+
+<pre><code><span class="ty">PoolConfig</span>() <span class="kw">noexcept</span>;                                  <span class="cm">// 0, 0</span>
+<span class="ty">PoolConfig</span>(size_t blockSize, size_t nBlocks) <span class="kw">noexcept</span>;
+[[nodiscard]] <span class="kw">bool</span> operator&lt;(<span class="kw">const</span> <span class="ty">PoolConfig</span>&amp; rhs) <span class="kw">const</span> <span class="kw">noexcept</span>;</code></pre>
+
+<h3>Non-member helper functions</h3>
+<p>None.</p>
+
+<h2 id="shareable">Shareable (<code>Engine/Memory/Shareable.h</code>)</h2>
+
+<h3>Class description</h3>
+<p>
+  A reference-counted handle to one object, allocated through the engine rather than through
+  <code>std::shared_ptr</code>, so the control block and the object are placed by the allocator you chose.
+</p>
+
+<h3>Template parameters</h3>
+<table>
+  <tr><th>Parameter</th><th>Default</th><th>Meaning</th></tr>
+  <tr><td><code>TType</code></td><td>—</td><td>The shared object's type</td></tr>
+  <tr><td><code>RefCount</code></td><td><code>uint8_t</code></td><td>Counter width. The default is one byte, so an object shared more than 254 ways overflows — pick a wider type before you need to</td></tr>
+</table>
+
+<h3>Class properties</h3>
+<p>A single pointer to the reference-counted body; the object lives inside that body, not in the handle.</p>
+
+<h3>Class methods</h3>
+
+<pre><code><span class="kw">template</span>&lt;<span class="kw">typename</span>... Types&gt;
+<span class="ty">Shareable</span>(Types&amp;&amp;... args);              <span class="cm">// forwards to the body's constructor</span>
+
+[[nodiscard]] <span class="ty">RefCount</span> GetReferenceCount() <span class="kw">const</span>;   <span class="cm">// 0 when the handle is empty</span>
+[[nodiscard]] <span class="kw">operator bool</span>() <span class="kw">const</span>;                <span class="cm">// non-null body?</span>
+
+[[nodiscard]] TType&amp; operator*();                     <span class="cm">// plus a const overload</span>
+[[nodiscard]] TType* operator-&gt;();
+
+<span class="kw">void</span> Release();
+<span class="kw">void</span> Swap(<span class="ty">Shareable</span>&amp; rhs);
+<span class="ty">Shareable</span>&amp; operator=(<span class="ty">Shareable</span>&amp; rhs);      <span class="cm">// releases the old body first</span></code></pre>
+
+<p>
+  Copy-assignment releases what the handle held before taking the new body, so the common
+  <code>a = b</code> cannot strand a reference.
+</p>
+
+<h3>Non-member helper functions</h3>
+<p>None.</p>
+
+<h2 id="coverage">Coverage</h2>
+
+<table>
+  <tr><th>Gap</th><th>Detail</th></tr>
+  <tr>
+    <td>Headers with no entry</td>
+    <td><code>AllocatorID.h</code>, <code>AllocStats.h</code>, <code>MultiPoolAllocatorConfig.h</code>,
+        <code>MultiPoolConfigCache.h</code>, <code>Optional.h</code>, <code>PoolConfigUtil.h</code>,
+        <code>ScopedAllocator.h</code>. The first two are types every signature here mentions —
+        <code>TAllocatorID</code> and the statistics record — and they are the first two worth documenting.</td>
+  </tr>
+  <tr>
+    <td>Per-allocator API</td>
+    <td>The <a href="#allocators">catalogue</a> says what each strategy is and which header holds it, not each
+        class's constructor arguments and reset semantics. That is nine classes' worth of reading, and a
+        constructor guessed wrongly is worse than a gap stated plainly.</td>
+  </tr>
+  <tr>
+    <td>Allocation failure</td>
+    <td>Whether <a href="#memorymanager"><code>Allocate</code></a> returns null or asserts on exhaustion is not
+        stated here, because the answer differs by allocator and is design, not surface.</td>
+  </tr>
+</table>
+
+<footer class="prevnext">
+  <span><a href="../Math/index.html">← Math</a></span>
+  <span><a href="../index.html">Module Index</a></span>
+  <span><a href="../OSAL/index.html">OSAL →</a></span>
+</footer>
+
+</main>
+</body>
+</html>

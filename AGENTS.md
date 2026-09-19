@@ -7,9 +7,12 @@ HardBop Engine: high‑performance C++23 engine with custom memory, task system,
 
 ## Self Documented Code and API Reference Documents
 The engine codebase avoid comments. It allows brief comments in header files only.
-Create or revise APIReferenceDocuments in "docs". The API documents provides these information.
+API reference documents are HTML files under "docs", one folder per module directory of "Engine/":
+the Module Index page is "docs/index.html" and is the start page, and a module's reference is
+"docs/<Module>/index.html", so the documentation tree matches the source tree. Create or revise
+those files. The API documents provides these information.
 
-Module Index page will be the start page.
+Module Index page links every module page and every design document of that module.
 
 # Module
 1. Module Description

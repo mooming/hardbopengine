@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HSTL module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../Config/index.html">Config</a></li>
+    <li><a href="../Container/index.html">Container</a></li>
+    <li><a href="../Core/index.html">Core</a></li>
+    <li><a href="../Engine/index.html">Engine</a></li>
+    <li><a class="current" href="../HSTL/index.html">HSTL</a></li>
+    <li><a href="../Log/index.html">Log</a></li>
+    <li><a href="../Math/index.html">Math</a></li>
+    <li><a href="../Memory/index.html">Memory</a></li>
+    <li><a href="../OSAL/index.html">OSAL</a></li>
+    <li><a href="../Renderer/index.html">Renderer</a></li>
+    <li><a href="../Resource/index.html">Resource</a></li>
+    <li><a href="../String/index.html">String</a></li>
+    <li><a href="../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This module</h3>
+  <ul>
+    <li><a href="#description">Module description</a></li>
+    <li><a href="#classes">Module classes</a></li>
+    <li><a href="#variables">Module variables</a></li>
+    <li><a href="#functions">Module functions</a></li>
+    <li><a href="#hstring">HString</a></li>
+    <li><a href="#hvector">HVector</a></li>
+    <li><a href="#hunorderedmap">HUnorderedMap</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+
+  <h3>Design documents</h3>
+  <ul>
+    <li><a href="../AllocatorGuide.md">Allocator guide</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb"><a href="../index.html">Module Index</a> / HSTL</p>
+
+<h1>HSTL</h1>
+<p class="subtitle">
+  <span class="tag">namespace hbe</span>
+  <span class="tag">Engine/HSTL</span>
+  3 headers, 2 sources — standard containers rebound to engine allocators, and nothing else
+</p>
+
+<h2 id="description">Module description</h2>
+
+<p>
+  HardBop STL is a thin layer: each header declares aliases that plug an engine allocator into a standard
+  container. There is no wrapper class, no reimplementation, and therefore no second behaviour to learn — you
+  get <code>std::vector</code>'s guarantees with the engine's accounting. Where the engine's own
+  <a href="../Container/index.html">Container</a> module exists, prefer it for engine internals; use these
+  where a standard container is needed, which is mostly at boundaries with code that expects one.
+</p>
+
+<h2 id="classes">Module classes</h2>
+
+<table>
+  <tr><th>Name</th><th>Kind</th><th>Header</th><th>Role</th></tr>
+  <tr><td><a href="#hstring">HString</a></td><td>Alias family</td><td>HString.h</td><td><code>std::basic_string</code> on the default allocator, plus two inline-pool variants</td></tr>
+  <tr><td><a href="#hvector">HVector</a></td><td>Alias family</td><td>HVector.h</td><td><code>std::vector</code> on the default allocator, plus an inline-pool variant</td></tr>
+  <tr><td><a href="#hunorderedmap">HUnorderedMap</a></td><td>Alias</td><td>HUnorderedMap.h</td><td><code>std::unordered_map</code> on the default allocator</td></tr>
+</table>
+
+<h2 id="variables">Module variables</h2>
+
+<p>None — an alias declares no entity. The inline pool sizes are template arguments, listed with each alias.</p>
+
+<h2 id="functions">Module functions</h2>
+
+<p>None.</p>
+
+<h2 id="hstring">HString (<code>Engine/HSTL/HString.h</code>)</h2>
+
+<h3>Class description</h3>
+<p>
+  The engine's string type at interfaces — <a href="../OSAL/index.html#window">OSAL</a> window titles and
+  <a href="../Resource/index.html">resource</a> paths travel as <code>HString</code>. Three aliases, differing
+  only in where the characters live.
+</p>
+
+<h3>Template parameters</h3>
+<table>
+  <tr><th>Alias</th><th>Template parameters</th><th>Allocator</th></tr>
+  <tr><td><code>HString</code></td><td>none</td><td><code>hbe::DefaultAllocator&lt;char&gt;</code></td></tr>
+  <tr><td><code>HInlineString&lt;PoolSize = 128&gt;</code></td><td><code>PoolSize</code></td><td><code>hbe::InlinePoolAllocator&lt;char, PoolSize, 2&gt;</code></td></tr>
+  <tr><td><code>HInlinePathString</code></td><td>none</td><td>inline pool sized for paths</td></tr>
+</table>
+
+<h3>Class properties</h3>
+<p>Not applicable — these are aliases, so the storage is the standard container's own.</p>
+
+<pre><code><span class="kw">using</span> <span class="ty">HString</span> = std::basic_string&lt;<span class="kw">char</span>, std::char_traits&lt;<span class="kw">char</span>&gt;,
+                                   <span class="ty">hbe::DefaultAllocator</span>&lt;<span class="kw">char</span>&gt;&gt;;
+
+<span class="kw">template</span>&lt;std::size_t PoolSize = <span class="nu">128</span>&gt;
+<span class="kw">using</span> <span class="ty">HInlineString</span> = std::basic_string&lt;<span class="kw">char</span>, std::char_traits&lt;<span class="kw">char</span>&gt;,
+                                         <span class="ty">hbe::InlinePoolAllocator</span>&lt;<span class="kw">char</span>, PoolSize, <span class="nu">2</span>&gt;&gt;;
+
+<span class="kw">using</span> <span class="ty">HInlinePathString</span> = <span class="cm">// inline pool sized for a path</span></code></pre>
+
+<h3>Class methods</h3>
+<p>Every <code>std::basic_string</code> member, unchanged.</p>
+
+<h3>Non-member helper functions</h3>
+<p>None.</p>
+
+<h2 id="hvector">HVector (<code>Engine/HSTL/HVector.h</code>)</h2>
+
+<h3>Class description</h3>
+<p>A standard vector whose allocations are engine allocations, and an inline-pool variant for small vectors that should not touch the general allocator.</p>
+
+<h3>Template parameters</h3>
+<table>
+  <tr><th>Alias</th><th>Template parameters</th><th>Allocator</th></tr>
+  <tr><td><code>HVector&lt;T&gt;</code></td><td><code>T</code></td><td><code>hbe::DefaultAllocator&lt;T&gt;</code></td></tr>
+  <tr><td><code>HInlineVector&lt;T, PoolSize = 16&gt;</code></td><td><code>T</code>, <code>PoolSize</code></td><td><code>hbe::InlinePoolAllocator&lt;T, PoolSize, 2&gt;</code> — pool block count 2</td></tr>
+</table>
+
+<h3>Class properties</h3>
+<p>Not applicable — aliases.</p>
+
+<pre><code><span class="kw">template</span>&lt;<span class="kw">typename</span> T&gt;
+<span class="kw">using</span> <span class="ty">HVector</span> = std::vector&lt;T, <span class="ty">hbe::DefaultAllocator</span>&lt;T&gt;&gt;;
+
+<span class="kw">template</span>&lt;<span class="kw">typename</span> T, std::size_t PoolSize = <span class="nu">16</span>&gt;
+<span class="kw">using</span> <span class="ty">HInlineVector</span> = std::vector&lt;T, <span class="ty">hbe::InlinePoolAllocator</span>&lt;T, PoolSize, <span class="nu">2</span>&gt;&gt;;</code></pre>
+
+<h3>Class methods</h3>
+<p>Every <code>std::vector</code> member, unchanged.</p>
+
+<h3>Non-member helper functions</h3>
+<p>None.</p>
+
+<h2 id="hunorderedmap">HUnorderedMap (<code>Engine/HSTL/HUnorderedMap.h</code>)</h2>
+
+<h3>Class description</h3>
+<p>Standard hash map on the default allocator. Reach for <a href="../Container/index.html#hashmap"><code>HashMap</code></a> first inside the engine; this exists for code that needs the standard container's interface and iterator stability rules.</p>
+
+<h3>Template parameters</h3>
+<table>
+  <tr><th>Parameter</th><th>Default</th><th>Meaning</th></tr>
+  <tr><td><code>TKey</code>, <code>T</code></td><td>—</td><td>Key and value types</td></tr>
+  <tr><td><code>THash</code></td><td><code>std::hash&lt;TKey&gt;</code></td><td>Hash function</td></tr>
+  <tr><td><code>TPred</code></td><td><code>std::equal_to&lt;TKey&gt;</code></td><td>Key equality</td></tr>
+</table>
+
+<h3>Class properties</h3>
+<p>Not applicable — an alias. The allocator it is bound to is <code>DefaultAllocator&lt;std::pair&lt;const TKey, T&gt;&gt;</code>, which is the value type the map actually allocates, not <code>T</code>.</p>
+
+<h3>Class methods</h3>
+<p>Every <code>std::unordered_map</code> member, unchanged.</p>
+
+<h3>Non-member helper functions</h3>
+<p>None.</p>
+
+<h2 id="coverage">Coverage</h2>
+
+<table>
+  <tr><th>Gap</th><th>Detail</th></tr>
+  <tr>
+    <td><code>HInlinePathString</code> pool size</td>
+    <td>The alias is bound to an inline pool sized for paths; the exact expression is in the header. Naming
+        <a href="../Config/index.html#variables"><code>Config::MaxPathLength</code></a> here without reading it
+        would be a guess, so the header stays the text.</td>
+  </tr>
+  <tr>
+    <td>Inline pool semantics</td>
+    <td>What <code>InlinePoolAllocator&lt;T, PoolSize, 2&gt;</code> does when the pool is exhausted is allocator
+        design and belongs in <a href="../AllocatorGuide.md">docs/AllocatorGuide.md</a>, not on an alias page.</td>
+  </tr>
+</table>
+
+<footer class="prevnext">
+  <span><a href="../Engine/index.html">← Engine</a></span>
+  <span><a href="../index.html">Module Index</a></span>
+  <span><a href="../Log/index.html">Log →</a></span>
+</footer>
+
+</main>
+</body>
+</html>

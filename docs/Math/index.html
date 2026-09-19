@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Math module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../Config/index.html">Config</a></li>
+    <li><a href="../Container/index.html">Container</a></li>
+    <li><a href="../Core/index.html">Core</a></li>
+    <li><a href="../Engine/index.html">Engine</a></li>
+    <li><a href="../HSTL/index.html">HSTL</a></li>
+    <li><a href="../Log/index.html">Log</a></li>
+    <li><a class="current" href="../Math/index.html">Math</a></li>
+    <li><a href="../Memory/index.html">Memory</a></li>
+    <li><a href="../OSAL/index.html">OSAL</a></li>
+    <li><a href="../Renderer/index.html">Renderer</a></li>
+    <li><a href="../Resource/index.html">Resource</a></li>
+    <li><a href="../String/index.html">String</a></li>
+    <li><a href="../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This module</h3>
+  <ul>
+    <li><a href="#description">Module description</a></li>
+    <li><a href="#classes">Module classes</a></li>
+    <li><a href="#variables">Module variables</a></li>
+    <li><a href="#functions">Module functions</a></li>
+    <li><a href="#vectors">Vector2, Vector3, Vector4</a></li>
+    <li><a href="#matrices">Matrix2x2, 3x3, 4x4</a></li>
+    <li><a href="#quaternion">Quaternion</a></li>
+    <li><a href="#uniformtransform">UniformTransform</a></li>
+    <li><a href="#rigidtransform">RigidTransform</a></li>
+    <li><a href="#transform">Transform</a></li>
+    <li><a href="#aabb">AABB</a></li>
+    <li><a href="#obb">OBB</a></li>
+    <li><a href="#sampling">Sampling and integration</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+
+  <h3>Design documents</h3>
+  <ul>
+    <li><a href="../RendererDesign.html">Renderer design</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb"><a href="../index.html">Module Index</a> / Math</p>
+
+<h1>Math</h1>
+<p class="subtitle">
+  <span class="tag">namespace hbe</span>
+  <span class="tag">Engine/Math</span>
+  18 headers, 17 sources — vectors, matrices, quaternions, transforms, bounding volumes, sampling
+</p>
+
+<h2 id="description">Module description</h2>
+
+<p>
+  Value types, all templated on the scalar type, so the same geometry exists in <code>float</code> and
+  <code>double</code> without a second implementation. Three transform types rather than one, because they
+  answer different questions: <a href="#uniformtransform"><code>UniformTransform</code></a> for uniform scale,
+  <a href="#rigidtransform"><code>RigidTransform</code></a> for rotation and translation only, and
+  <a href="#transform"><code>Transform</code></a> when a hierarchy and a cached world matrix are needed.
+  Bounding volumes come in both aligned (<a href="#aabb"><code>AABB</code></a>) and oriented
+  (<a href="#obb"><code>OBB</code></a>) forms, and the sampling headers carry stratified sampling and Monte
+  Carlo integration.
+</p>
+
+<p>
+  Handedness is not a per-object choice: <a href="#functions"><code>CoordinateOrientation</code></a> decides it
+  for the whole build from <a href="../Config/index.html#buildconfig"><code>RIGHT_HANDED_COORDINATE</code></a>,
+  and every rotation trig call in the module goes through it.
+</p>
+
+<h2 id="classes">Module classes</h2>
+
+<table>
+  <tr><th>Name</th><th>Kind</th><th>Header</th><th>Role</th></tr>
+  <tr><td><a href="#vectors">Vector2 / Vector3 / Vector4</a></td><td>Class templates</td><td>Vector2.h, Vector3.h, Vector4.h</td><td>N-dimensional vectors and their arithmetic</td></tr>
+  <tr><td><a href="#matrices">Matrix2x2 / 3x3 / 4x4</a></td><td>Class templates</td><td>Matrix2x2.h, Matrix3x3.h, Matrix4x4.h</td><td>Determinant, inverse, transpose, rotation</td></tr>
+  <tr><td><a href="#quaternion">Quaternion</a></td><td>Class template</td><td>Quaternion.h</td><td>Unit-quaternion rotation, conversion, interpolation</td></tr>
+  <tr><td><a href="#uniformtransform">UniformTransform</a></td><td>Class template</td><td>UniformTransform.h</td><td>Rotation, uniform scale, translation</td></tr>
+  <tr><td><a href="#rigidtransform">RigidTransform</a></td><td>Class template</td><td>RigidTransform.h</td><td>Rotation and translation, no scale</td></tr>
+  <tr><td><a href="#transform">Transform</a></td><td>Class template</td><td>Transform.h</td><td>Parent-child hierarchy with a cached world transform</td></tr>
+  <tr><td><a href="#aabb">AABB</a></td><td>Class template</td><td>AABB.h</td><td>Axis-aligned bounds</td></tr>
+  <tr><td><a href="#obb">OBB</a></td><td>Class template</td><td>OBB.h</td><td>Oriented bounds</td></tr>
+  <tr><td><a href="#sampling">StratifiedSampling</a></td><td>Class template</td><td>StratifiedSampling.h</td><td>Samples within strata</td></tr>
+  <tr><td><a href="#sampling">ImportanceResampling</a></td><td>Class template</td><td>ImportanceResampling.h</td><td>Resampling and integration by importance</td></tr>
+  <tr><td><a href="#sampling">MonteCarloIntegrator</a></td><td>Class template</td><td>MonteCarloIntegrator.h</td><td>Monte Carlo integration with importance sampling</td></tr>
+  <tr><td>MathUtil</td><td>Free function templates</td><td>MathUtil.h</td><td>Abs, Pow, clamping, degree and radian conversion, near-equality</td></tr>
+  <tr><td>CoordinateOrientation</td><td>Free functions</td><td>CoordinateOrientation.h</td><td>Rotation trig that follows the build's handedness</td></tr>
+</table>
+
+<h2 id="variables">Module variables</h2>
+
+<p>
+  Nothing at module scope. The numeric constants the module leans on — <code>Pi</code>, <code>HalfPi</code>,
+  <code>TwoPi</code>, <code>Epsilon</code>, <code>SqrEpsilon</code> — are in
+  <a href="../Core/index.html#variables">Core § Module variables</a>, and the named values on a type
+  (<code>Vector3::Zero</code>, <code>Matrix4x4::Identity</code>) are class-static, listed with each class below.
+  Keeping the constants in one header is what stops two files disagreeing about what π is to eight digits.
+</p>
+
+<h2 id="functions">Module functions</h2>
+
+<h3>MathUtil (<code>Engine/Math/MathUtil.h</code>)</h3>
+
+<table>
+  <tr><th>Function</th><th>Parameters</th><th>Returns</th><th>Notes</th></tr>
+  <tr><td><code>Abs&lt;T&gt;</code></td><td><code>T value</code></td><td><code>T</code></td><td>Magnitude of a scalar</td></tr>
+  <tr><td><code>Pow&lt;T&gt;</code></td><td><code>T value</code>, <code>T n</code></td><td><code>T</code></td><td>Integer-exponent power</td></tr>
+  <tr><td><code>MinFast</code>, <code>MaxFast</code></td><td>two <code>T</code></td><td><code>T</code></td><td>Branchless where the platform allows; not NaN-safe, which is what "Fast" costs</td></tr>
+  <tr><td><code>ClampFast</code>, <code>Clamp</code></td><td><code>T value</code>, <code>T min</code>, <code>T max</code></td><td><code>T</code></td><td>Same clamp, two cost profiles</td></tr>
+  <tr><td><code>DegreeToRadian</code>, <code>RadianToDegree</code></td><td><code>float</code></td><td><code>float</code></td><td>Conversion by the constants, not by a division</td></tr>
+  <tr><td><code>IsZero</code>, <code>IsUnity</code>, <code>IsEqual</code></td><td>one or two <code>float</code></td><td><code>bool</code></td><td>Tolerance tests. Use these, not <code>==</code>: a float that has been through arithmetic is almost never exactly zero</td></tr>
+</table>
+
+<h3>CoordinateOrientation (<code>Engine/Math/CoordinateOrientation.h</code>)</h3>
+
+<p>
+  The six rotation trig calls, routed through one header so handedness is decided once. Every rotation in
+  <a href="#quaternion">Quaternion</a> and <a href="#matrices">the matrices</a> uses these rather than
+  <code>sinf</code> and <code>cosf</code> directly.
+</p>
+
+<table>
+  <tr><th>Function</th><th>Parameters</th><th>Returns</th></tr>
+  <tr><td><code>RotationSin</code>, <code>RotationCos</code>, <code>RotationTan</code></td><td><code>float radian</code></td><td><code>float</code></td></tr>
+  <tr><td><code>RotationAsin</code>, <code>RotationAcos</code></td><td><code>float value</code></td><td><code>float</code></td></tr>
+  <tr><td><code>RotationAtan2</code></td><td><code>float y</code>, <code>float x</code></td><td><code>float</code></td></tr>
+</table>
+
+<h2 id="vectors">Vector2, Vector3, Vector4 (<code>Engine/Math/Vector2.h</code>, <code>Vector3.h</code>, <code>Vector4.h</code>)</h2>
+
+<h3>Class description</h3>
+<p>
+  N-dimensional vectors with arithmetic, dot and length, and cross product on
+  <a href="#vectors"><code>Vector3</code></a>. Each declares its dimension as a compile-time constant
+  (<code>order</code>) so generic code can branch on arity without a traits class.
+</p>
+
+<h3>Template parameters</h3>
+<table>
+  <tr><th>Parameter</th><th>Meaning</th></tr>
+  <tr><td><code>TNumber</code></td><td>Scalar type — <code>float</code> or <code>double</code></td></tr>
+</table>
+
+<h3>Class properties</h3>
+
+<table>
+  <tr><th>Property</th><th>Type</th><th>Purpose</th></tr>
+  <tr><td><code>order</code></td><td><code>static constexpr int</code></td><td>Dimension: 2, 3 or 4</td></tr>
+  <tr><td><code>x</code>, <code>y</code>, <code>z</code>, <code>w</code></td><td><code>TNumber</code></td><td>Components, present per arity</td></tr>
+  <tr><td><code>Zero</code>, <code>Unity</code>, <code>X</code>, <code>Y</code>, <code>Z</code>, <code>Right</code>, <code>Up</code>, <code>Forward</code></td><td><code>static const</code> of the same type</td><td>Named vectors, so an axis has one spelling in engine code rather than several</td></tr>
+</table>
+
+<h3>Class methods</h3>
+
+<pre><code><span class="kw">template</span>&lt;<span class="kw">typename</span> TNumber&gt;
+<span class="kw">class</span> <span class="ty">Vector3</span> final
+{
+    [[nodiscard]] <span class="ty">Vector3</span> operator+(<span class="kw">const</span> <span class="ty">Vector3</span>&amp; rhs) <span class="kw">const</span> <span class="kw">noexcept</span>;
+    [[nodiscard]] <span class="ty">Vector3</span> operator-(<span class="kw">const</span> <span class="ty">Vector3</span>&amp; rhs) <span class="kw">const</span> <span class="kw">noexcept</span>;
+    [[nodiscard]] <span class="ty">Vector3</span> operator*(TNumber s) <span class="kw">const</span> <span class="kw">noexcept</span>;
+    [[nodiscard]] <span class="ty">Vector3</span> operator/(TNumber s) <span class="kw">const</span> <span class="kw">noexcept</span>;
+
+    [[nodiscard]] TNumber Dot(<span class="kw">const</span> <span class="ty">Vector3</span>&amp; rhs) <span class="kw">const</span> <span class="kw">noexcept</span>;
+    [[nodiscard]] TNumber SqrLength() <span class="kw">const</span> <span class="kw">noexcept</span>;
+    [[nodiscard]] TNumber Length() <span class="kw">const</span> <span class="kw">noexcept</span>;
+    [[nodiscard]] <span class="ty">Vector3</span> Normalize() <span class="kw">noexcept</span>;
+    [[nodiscard]] <span class="ty">Vector3</span> Cross(<span class="kw">const</span> <span class="ty">Vector3</span>&amp; rhs) <span class="kw">const</span> <span class="kw">noexcept</span>;
+    [[nodiscard]] <span class="kw">float</span> AngleTo(<span class="kw">const</span> <span class="ty">Vector3</span>&amp; to) <span class="kw">const</span> <span class="kw">noexcept</span>;
+};</code></pre>
+
+<p>
+  Prefer <code>SqrLength()</code> when you are comparing magnitudes: <code>Length()</code> takes a square root
+  that a comparison does not need. <code>Normalize()</code> is not <code>const</code> — it rewrites the vector it
+  is called on.
+</p>
+
+<h3>Non-member helper functions</h3>
+<p>
+  Scalar-times-vector is defined with the scalar on the left as well, so <code>2.0f * v</code> and
+  <code>v * 2.0f</code> both compile:
+</p>
+
+<pre><code><span class="kw">template</span>&lt;<span class="kw">typename</span> TNumber&gt;
+[[nodiscard]] <span class="ty">Vector3</span>&lt;TNumber&gt; operator*(TNumber value, <span class="ty">Vector3</span>&lt;TNumber&gt; vector) <span class="kw">noexcept</span>;</code></pre>
+
+<p>The aliases that engine code writes: <code>TFloat2</code>, <code>TInt2</code>, <code>TFloat3</code>, <code>TInt3</code>, <code>TFloat4</code>, <code>TInt4</code>.</p>
+
+<h2 id="matrices">Matrix2x2, Matrix3x3, Matrix4x4 (<code>Engine/Math/Matrix2x2.h</code>, <code>Matrix3x3.h</code>, <code>Matrix4x4.h</code>)</h2>
+
+<h3>Class description</h3>
+<p>Matrices with determinant, inverse, transpose and rotation, and named elements rather than a subscript.</p>
+
+<h3>Template parameters</h3>
+<p><code>TNumber</code> — the scalar type.</p>
+
+<h3>Class properties</h3>
+<table>
+  <tr><th>Property</th><th>Type</th><th>Purpose</th></tr>
+  <tr><td><code>m11</code> … <code>m44</code></td><td><code>TNumber</code></td><td>Named elements, so a hand-written matrix cannot transpose itself by an off-by-one subscript</td></tr>
+  <tr><td><code>Zero</code>, <code>Identity</code></td><td><code>static const</code></td><td>The two matrices worth naming</td></tr>
+</table>
+
+<h3>Class methods</h3>
+
+<pre><code><span class="cm">// Matrix4x4 — the surface engine code uses</span>
+[[nodiscard]] <span class="ty">Matrix4x4</span> Inverse() <span class="kw">const</span> <span class="kw">noexcept</span>;
+[[nodiscard]] <span class="ty">Matrix4x4</span> Transpose() <span class="kw">const</span> <span class="kw">noexcept</span>;
+[[nodiscard]] TNumber Determinant() <span class="kw">const</span> <span class="kw">noexcept</span>;
+[[nodiscard]] <span class="kw">bool</span> IsOrthogonal() <span class="kw">const</span> <span class="kw">noexcept</span>;
+
+<span class="kw">void</span> SetRotationX(TNumber radian) <span class="kw">noexcept</span>;
+<span class="kw">void</span> SetRotationY(TNumber radian) <span class="kw">noexcept</span>;
+<span class="kw">void</span> SetRotationZ(TNumber radian) <span class="kw">noexcept</span>;
+<span class="kw">void</span> EulerAngles(<span class="kw">const</span> <span class="ty">TVec3</span>&amp; angles) <span class="kw">noexcept</span>;
+
+[[nodiscard]] <span class="kw">static</span> <span class="ty">Matrix4x4</span> CreateTranslation(<span class="kw">const</span> <span class="ty">TVec3</span>&amp; translation) <span class="kw">noexcept</span>;</code></pre>
+
+<h3>Non-member helper functions</h3>
+<p>None.</p>
+
+<p>The aliases: <code>TFloat2x2</code>, <code>TFloat3x3</code>, <code>TFloat4x4</code>.</p>
+
+<h2 id="quaternion">Quaternion (<code>Engine/Math/Quaternion.h</code>)</h2>
+
+<h3>Class description</h3>
+<p>Unit quaternion for rotations: factories from axes and angles, conversion to matrices and Euler angles, and both linear and spherical interpolation.</p>
+
+<h3>Template parameters</h3>
+<p><code>TNumber</code> — the scalar type. Aliases inside the class name the companion types it converts to: <code>TQuat</code>, <code>TVec3</code>, <code>TMat3x3</code>, <code>TMat4x4</code>.</p>
+
+<h3>Class properties</h3>
+<table>
+  <tr><th>Property</th><th>Type</th><th>Purpose</th></tr>
+  <tr><td><code>x</code>, <code>y</code>, <code>z</code>, <code>w</code></td><td><code>TNumber</code></td><td>Imaginary and real parts</td></tr>
+  <tr><td><code>Zero</code>, <code>Identity</code></td><td><code>static const</code></td><td>The two worth naming; <code>Identity</code> is the one to start from</td></tr>
+</table>
+
+<h3>Class methods</h3>
+
+<pre><code><span class="cm">// factories</span>
+[[nodiscard]] <span class="kw">static</span> <span class="ty">Quaternion</span> CreateRotationX(<span class="kw">float</span> angle) <span class="kw">noexcept</span>;
+[[nodiscard]] <span class="kw">static</span> <span class="ty">Quaternion</span> CreateRotationY(<span class="kw">float</span> angle) <span class="kw">noexcept</span>;
+[[nodiscard]] <span class="kw">static</span> <span class="ty">Quaternion</span> CreateRotationZ(<span class="kw">float</span> angle) <span class="kw">noexcept</span>;
+[[nodiscard]] <span class="kw">static</span> <span class="ty">Quaternion</span> LookRotation(<span class="kw">const</span> <span class="ty">TVec3</span>&amp; forward, <span class="kw">const</span> <span class="ty">TVec3</span>&amp; up) <span class="kw">noexcept</span>;
+[[nodiscard]] <span class="kw">static</span> <span class="ty">Quaternion</span> RotationAround(<span class="kw">const</span> <span class="ty">TVec3</span>&amp; unitAxis, <span class="kw">float</span> radian) <span class="kw">noexcept</span>;
+[[nodiscard]] <span class="kw">static</span> <span class="ty">Quaternion</span> RotationFromTo(<span class="kw">const</span> <span class="ty">TVec3</span>&amp; from, <span class="kw">const</span> <span class="ty">TVec3</span>&amp; to) <span class="kw">noexcept</span>;
+
+<span class="cm">// conversions</span>
+[[nodiscard]] <span class="ty">TMat3x3</span> ToMat3x3() <span class="kw">const</span> <span class="kw">noexcept</span>;
+[[nodiscard]] <span class="ty">TMat4x4</span> ToMat4x4() <span class="kw">const</span> <span class="kw">noexcept</span>;
+[[nodiscard]] <span class="ty">TVec3</span> EulerAngles() <span class="kw">const</span> <span class="kw">noexcept</span>;
+
+<span class="cm">// interpolation</span>
+[[nodiscard]] <span class="kw">static</span> <span class="ty">Quaternion</span> Lerp(<span class="kw">const</span> <span class="ty">Quaternion</span>&amp; from, <span class="kw">const</span> <span class="ty">Quaternion</span>&amp; to, <span class="kw">float</span> t) <span class="kw">noexcept</span>;
+[[nodiscard]] <span class="kw">static</span> <span class="ty">Quaternion</span> Slerp(<span class="kw">const</span> <span class="ty">Quaternion</span>&amp; from, <span class="kw">const</span> <span class="ty">Quaternion</span>&amp; to, <span class="kw">float</span> t) <span class="kw">noexcept</span>;
+
+<span class="cm">// operations</span>
+[[nodiscard]] <span class="ty">Quaternion</span> Inverse() <span class="kw">const</span> <span class="kw">noexcept</span>;
+[[nodiscard]] <span class="ty">Quaternion</span> Normalized() <span class="kw">const</span> <span class="kw">noexcept</span>;
+[[nodiscard]] <span class="ty">TVec3</span> operator*(<span class="kw">const</span> <span class="ty">TVec3</span>&amp; rhs) <span class="kw">const</span> <span class="kw">noexcept</span>;</code></pre>
+
+<p>
+  <code>Lerp</code> is cheaper and stops being a rotation at the poles; <code>Slerp</code> keeps constant angular
+  speed and costs a trig call. Multiplying a quaternion by a vector rotates that vector — the result is a
+  <code>TVec3</code>, not a quaternion, which is why the operator is declared with the vector on the right.
+</p>
+
+<h3>Non-member helper functions</h3>
+<p>None. The module-wide alias <code>TQuat</code> is <code>Quaternion&lt;float&gt;</code>.</p>
+
+<h2 id="uniformtransform">UniformTransform (<code>Engine/Math/UniformTransform.h</code>)</h2>
+
+<h3>Class description</h3>
+<p>Rotation, one scale factor and translation — the shape most game objects actually have, and half the size of a matrix.</p>
+
+<h3>Template parameters</h3>
+<p><code>TNumber</code> — scalar type. Member aliases <code>TQuat</code>, <code>TVec3</code>, <code>TMat4x4</code> name the types it works with.</p>
+
+<h3>Class properties</h3>
+<table>
+  <tr><th>Property</th><th>Type</th><th>Purpose</th></tr>
+  <tr><td><code>rotation</code></td><td><code>TQuat</code></td><td>Orientation</td></tr>
+  <tr><td><code>scale</code></td><td><code>TNumber</code></td><td>One factor for all three axes</td></tr>
+  <tr><td><code>translation</code></td><td><code>TVec3</code></td><td>Position</td></tr>
+</table>
+
+<h3>Class methods</h3>
+
+<pre><code>[[nodiscard]] <span class="ty">TVec3</span> Transform(<span class="kw">const</span> <span class="ty">TVec3</span>&amp; x) <span class="kw">const</span> <span class="kw">noexcept</span>;
+[[nodiscard]] <span class="ty">TVec3</span> InverseTransform(<span class="kw">const</span> <span class="ty">TVec3</span>&amp; x) <span class="kw">const</span> <span class="kw">noexcept</span>;
+[[nodiscard]] <span class="ty">UniformTransform</span> Transform(<span class="kw">const</span> <span class="ty">UniformTransform</span>&amp; rhs) <span class="kw">const</span> <span class="kw">noexcept</span>;
+[[nodiscard]] <span class="ty">UniformTransform</span> Inverse() <span class="kw">const</span> <span class="kw">noexcept</span>;
+[[nodiscard]] <span class="ty">TMat4x4</span> ToMatrix() <span class="kw">const</span> <span class="kw">noexcept</span>;</code></pre>
+
+<p>Two overloads of <code>Transform</code> do different jobs: a vector becomes a point, a transform composes with this one. The alias is <code>TUniformTRS</code>.</p>
+
+<h3>Non-member helper functions</h3>
+<p>None.</p>
+
+<h2 id="rigidtransform">RigidTransform (<code>Engine/Math/RigidTransform.h</code>)</h2>
+
+<h3>Class description</h3>
+<p>Rotation and translation with no scale — the type for cameras, physics bodies, and anywhere a scale factor would be a bug.</p>
+
+<h3>Template parameters</h3>
+<table>
+  <tr><th>Parameter</th><th>Default</th><th>Meaning</th></tr>
+  <tr><td><code>TNumber</code></td><td><code>float</code></td><td>Scalar type</td></tr>
+  <tr><td><code>PaddingSize</code></td><td>8</td><td>Bytes of padding, so the type can be placed in a fixed-size structure such as a per-frame constant buffer without a layout surprise</td></tr>
+</table>
+
+<h3>Class properties</h3>
+<p><code>rotation</code> as <code>TQuat</code> and <code>translation</code> as <code>TVec3</code>.</p>
+
+<h3>Class methods</h3>
+
+<pre><code>[[nodiscard]] <span class="ty">TVec3</span> Transform(<span class="kw">const</span> <span class="ty">TVec3</span>&amp; x) <span class="kw">const</span> <span class="kw">noexcept</span>;
+[[nodiscard]] <span class="ty">TQuat</span> Transform(<span class="kw">const</span> <span class="ty">TQuat</span>&amp; r) <span class="kw">const</span> <span class="kw">noexcept</span>;
+[[nodiscard]] <span class="ty">RigidTransform</span> Transform(<span class="kw">const</span> <span class="ty">RigidTransform</span>&amp; rhs) <span class="kw">const</span> <span class="kw">noexcept</span>;
+[[nodiscard]] <span class="ty">RigidTransform</span> Inverse() <span class="kw">const</span> <span class="kw">noexcept</span>;
+[[nodiscard]] <span class="ty">TMat4x4</span> ToMatrix() <span class="kw">const</span> <span class="kw">noexcept</span>;</code></pre>
+
+<h3>Non-member helper functions</h3>
+<p>None. The alias is <code>TRigidTR</code>.</p>
+
+<h2 id="transform">Transform (<code>Engine/Math/Transform.h</code>)</h2>
+
+<h3>Class description</h3>
+<p>
+  A scene-graph node's transform: local rotation, scale and translation, plus children. Reading the world
+  transform is where the design shows — the non-const form returns a cached value and rebuilds only when
+  something invalidated it, while the const form computes without caching, because a const reader must not be
+  able to mutate a cache from a shared reference.
+</p>
+
+<h3>Template parameters</h3>
+<p><code>TNumber</code> — scalar type. Aliases: <code>TFTransform</code> for <code>float</code>, <code>TDTransform</code> for <code>double</code>.</p>
+
+<h3>Class properties</h3>
+<p><code>rotation</code>, <code>scale</code>, <code>translation</code>, plus the child list and the cached world transform — all reached through the methods below.</p>
+
+<h3>Class methods</h3>
+
+<pre><code><span class="kw">void</span> Attach(<span class="ty">Transform</span>&amp; transform) <span class="kw">noexcept</span>;
+<span class="kw">void</span> Detach(<span class="ty">Transform</span>&amp; transform) <span class="kw">noexcept</span>;
+<span class="kw">void</span> DetachAll() <span class="kw">noexcept</span>;
+<span class="kw">void</span> Invalidate() <span class="kw">noexcept</span>;      <span class="cm">// drop the cached world transform</span>
+
+[[nodiscard]] <span class="kw">const</span> <span class="ty">TUniformTRS</span>&amp; GetWorldTransform() <span class="kw">noexcept</span>;        <span class="cm">// cached</span>
+[[nodiscard]] <span class="ty">TUniformTRS</span> GetWorldTransform() <span class="kw">const</span> <span class="kw">noexcept</span>;          <span class="cm">// computed, not cached</span>
+[[nodiscard]] <span class="kw">const</span> <span class="ty">TUniformTRS</span>&amp; GetLocalTransform() <span class="kw">const</span> <span class="kw">noexcept</span>;</code></pre>
+
+<div class="gap">
+  <strong>Move a node and the cache is stale.</strong> Writing local rotation, scale or translation does not
+  know it was written: call <code>Invalidate()</code> after mutating a node that others read, or their world
+  transforms keep the old value. This is the single most common way this type is used wrong, and the const
+  overload exists precisely so a read-only path cannot make the same mistake in the other direction.
+</div>
+
+<h3>Non-member helper functions</h3>
+<p>None.</p>
+
+<h2 id="aabb">AABB (<code>Engine/Math/AABB.h</code>)</h2>
+
+<h3>Class description</h3>
+<p>Axis-aligned bounding box, stored as two corners. Cheap to grow, cheap to test, and the standard broad-phase volume.</p>
+
+<h3>Template parameters</h3>
+<p><code>TVec</code> — the vector type, which sets the dimension. Aliases: <code>AABB2</code>, <code>AABB3</code>.</p>
+
+<h3>Class properties</h3>
+<p><code>min</code> and <code>max</code>, both <code>TVec</code>.</p>
+
+<h3>Class methods</h3>
+
+<pre><code><span class="kw">void</span> Add(<span class="kw">const</span> TVec&amp; point) <span class="kw">noexcept</span>;
+<span class="kw">void</span> Add(<span class="kw">const</span> <span class="ty">AABB</span>&amp; aabb) <span class="kw">noexcept</span>;
+<span class="kw">void</span> Translate(<span class="kw">const</span> TVec&amp; t) <span class="kw">noexcept</span>;
+
+[[nodiscard]] <span class="kw">bool</span> IsContaining(<span class="kw">const</span> TVec&amp; point) <span class="kw">const</span> <span class="kw">noexcept</span>;
+[[nodiscard]] <span class="ty">TVec</span> Center() <span class="kw">const</span> <span class="kw">noexcept</span>;
+[[nodiscard]] <span class="ty">TVec</span> Diagonal() <span class="kw">const</span> <span class="kw">noexcept</span>;
+[[nodiscard]] <span class="ty">TVec</span> Closest(<span class="kw">const</span> TVec&amp; point) <span class="kw">const</span> <span class="kw">noexcept</span>;
+
+[[nodiscard]] <span class="ty">AABB</span> Intersection(<span class="kw">const</span> <span class="ty">AABB</span>&amp; aabb) <span class="kw">const</span> <span class="kw">noexcept</span>;
+[[nodiscard]] <span class="kw">bool</span> HasIntersectionWith(<span class="kw">const</span> <span class="ty">AABB</span>&amp; aabb) <span class="kw">const</span> <span class="kw">noexcept</span>;</code></pre>
+
+<p>Ask <code>HasIntersectionWith</code> when you only need a decision; <code>Intersection</code> builds a box you may not need. <code>Closest</code> is the point on or in the box nearest a query point, which is what a distance-to-bounds test wants.</p>
+
+<h3>Non-member helper functions</h3>
+<p>None.</p>
+
+<h2 id="obb">OBB (<code>Engine/Math/OBB.h</code>)</h2>
+
+<h3>Class description</h3>
+<p>Oriented bounding box: centre, half-extents and a rotation. Tighter than an <a href="#aabb"><code>AABB</code></a> for anything that turns, at the cost of carrying a quaternion.</p>
+
+<h3>Template parameters</h3>
+<p><code>TNumber</code> — scalar type, with member aliases <code>TVec3</code> and <code>TQuat</code>.</p>
+
+<h3>Class properties</h3>
+<table>
+  <tr><th>Property</th><th>Type</th><th>Purpose</th></tr>
+  <tr><td><code>center</code></td><td><code>TVec3</code></td><td>Centre point</td></tr>
+  <tr><td><code>half</code></td><td><code>TVec3</code></td><td>Half-extents along the local axes</td></tr>
+  <tr><td><code>rotation</code></td><td><code>TQuat</code></td><td>Orientation of those axes</td></tr>
+</table>
+
+<h3>Class methods</h3>
+
+<pre><code>[[nodiscard]] <span class="kw">bool</span> IsContaining(<span class="kw">const</span> <span class="ty">TVec3</span>&amp; objSpacePoint) <span class="kw">const</span> <span class="kw">noexcept</span>;
+[[nodiscard]] <span class="ty">TVec3</span> Closest(<span class="kw">const</span> <span class="ty">TVec3</span>&amp; objSpacePoint) <span class="kw">const</span> <span class="kw">noexcept</span>;</code></pre>
+
+<p>Both take a point already in object space — the caller applies the inverse transform. Passing a world-space point is a wrong answer, not a crash, which is the kind of argument name worth reading twice.</p>
+
+<h3>Non-member helper functions</h3>
+<p>None.</p>
+
+<h2 id="sampling">Sampling and integration</h2>
+
+<p>Three class templates, used by the renderer's shading work. They are grouped in one section because their contract is shared: they take the sampler, the function and the probability density as template parameters, so a caller's lambdas cost nothing at the call.</p>
+
+<h3>Class descriptions</h3>
+
+<table>
+  <tr><th>Type</th><th>Header</th><th>What it does</th></tr>
+  <tr><td><code>StratifiedSampling&lt;TReal = double, TInteger = uint32_t&gt;</code></td><td>StratifiedSampling.h</td><td>Draws one sample per stratum from a range sampler; <code>ChangeSubGroup(delta)</code> moves to the next subgroup</td></tr>
+  <tr><td><code>ImportanceResampling&lt;TInput, TOutput, TReal, TInteger&gt;</code></td><td>ImportanceResampling.h</td><td><code>Resample</code> redraws samples against a density; <code>Integrate</code> accumulates an integral over iterations from a discrete and a uniform sampler</td></tr>
+  <tr><td><code>MonteCarloIntegrator&lt;TInput, TOutput, TReal, TInteger&gt;</code></td><td>MonteCarloIntegrator.h</td><td>Usable as a callable: <code>operator()(result, f, p, sample, numIterations)</code>, returning whether the estimate completed</td></tr>
+</table>
+
+<h3>Template parameters, properties, methods</h3>
+<p>
+  The parameter lists above are the whole story on the types; the exact method signatures take the function,
+  density and sampler objects as arguments and write their result through an out-parameter, following
+  <a href="../CodingStandards.md">docs/CodingStandards.md</a>'s <code>out</code> prefix rule. The headers carry
+  them, and this page does not invent overloads.
+</p>
+
+<h2 id="coverage">Coverage</h2>
+
+<table>
+  <tr><th>Gap</th><th>Detail</th></tr>
+  <tr>
+    <td>Method-level detail of the sampling headers</td>
+    <td>Grouped rather than tabulated. The three classes take a different set of callable template parameters,
+        and a summary that got one of them the wrong way round would be worse than the pointer to the header.</td>
+  </tr>
+  <tr>
+    <td>Matrix element order and the sampling out-parameter names</td>
+    <td>Named where verified, left to the header otherwise.</td>
+  </tr>
+  <tr>
+    <td>Handedness</td>
+    <td>The <a href="#functions"><code>CoordinateOrientation</code></a> functions are documented; the
+        <code>RIGHT_HANDED_COORDINATE</code> flip's exact effect on each rotation is design behaviour that no
+        document states yet.</td>
+  </tr>
+</table>
+
+<footer class="prevnext">
+  <span><a href="../Log/index.html">← Log</a></span>
+  <span><a href="../index.html">Module Index</a></span>
+  <span><a href="../Memory/index.html">Memory →</a></span>
+</footer>
+
+</main>
+</body>
+</html>

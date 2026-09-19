@@ -277,7 +277,7 @@ material lives in `docs/`, not in the sources.
 |-------|-------------|
 | What a caller of the engine depends on — contract, preconditions, ownership, lifetime, thread-safety, complexity | The paired `.h` declaration |
 | What implementation or system design needs — invariants, algorithms, allocation strategy, locking protocol, platform quirks | A design document under `docs/` |
-| What exists and how to call it | An API reference document under `docs/` |
+| What exists and how to call it | The module page of the API reference site: `docs/<Module>/index.html` |
 
 **Comments in `.cpp` files are forbidden.** Three things are exempt because none of them is documentation:
 
@@ -297,6 +297,21 @@ start page. Every such document follows these fixed outlines:
 | Function | Function description, Parameters, Return value, Examples |
 
 Rules in full: [AGENTS.md](AGENTS.md) and [docs/CodingStandards.md](docs/CodingStandards.md).
+
+### API Reference Site
+Start at [docs/index.html](docs/index.html) — the Module Index page. It links one page per module,
+named after the directories under `Engine/`, and each of those pages links the design documents that
+belong to its module.
+
+| | |
+|---|---|
+| Start page | [docs/index.html](docs/index.html) |
+| One module | `docs/<Module>/index.html` — Config, Container, Core, Engine, HSTL, Log, Math, Memory, OSAL, Renderer, Resource, String, Test |
+| Shared style | [docs/assets/hbe-docs.css](docs/assets/hbe-docs.css) — one stylesheet, linked by every page |
+| Page structure | Fixed by [AGENTS.md](AGENTS.md): Module description, classes, variables, functions — then per class: description, template parameters, properties, methods, non-member helpers |
+
+These pages are HTML and are the source of truth: there is no markdown twin to keep in step, and no
+generator between the two. Editing a module page means editing that HTML.
 
 ### Allocator Guide
 Detailed guide for using custom memory allocators:

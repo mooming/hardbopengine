@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Log module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../Config/index.html">Config</a></li>
+    <li><a href="../Container/index.html">Container</a></li>
+    <li><a href="../Core/index.html">Core</a></li>
+    <li><a href="../Engine/index.html">Engine</a></li>
+    <li><a href="../HSTL/index.html">HSTL</a></li>
+    <li><a class="current" href="../Log/index.html">Log</a></li>
+    <li><a href="../Math/index.html">Math</a></li>
+    <li><a href="../Memory/index.html">Memory</a></li>
+    <li><a href="../OSAL/index.html">OSAL</a></li>
+    <li><a href="../Renderer/index.html">Renderer</a></li>
+    <li><a href="../Resource/index.html">Resource</a></li>
+    <li><a href="../String/index.html">String</a></li>
+    <li><a href="../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This module</h3>
+  <ul>
+    <li><a href="#description">Module description</a></li>
+    <li><a href="#classes">Module classes</a></li>
+    <li><a href="#variables">Module variables</a></li>
+    <li><a href="#functions">Module functions</a></li>
+    <li><a href="#eloglevel">ELogLevel</a></li>
+    <li><a href="#logger">Logger</a></li>
+    <li><a href="#simplelogger">SimpleLogger</a></li>
+    <li><a href="#logline">LogLine</a></li>
+    <li><a href="#printargs">PrintArgs</a></li>
+    <li><a href="#logutil">LogUtil</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+
+  <h3>Design documents</h3>
+  <ul>
+    <li><a href="../LoggerGuide.md">Logger guide</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb"><a href="../index.html">Module Index</a> / Log</p>
+
+<h1>Log</h1>
+<p class="subtitle">
+  <span class="tag">namespace hbe</span>
+  <span class="tag">Engine/Log</span>
+  5 headers, 3 sources — asynchronous logging on the task system's IO stream
+</p>
+
+<h2 id="description">Module description</h2>
+
+<p>
+  Logging is asynchronous and runs on the <a href="../Core/index.html#tasksystem">TaskSystem</a>'s IO stream,
+  so a log call formats into a buffer and returns rather than blocking a frame on a console. Lines carry a
+  category and a level, which is how a caller filters without editing call sites. The behaviour — double
+  buffering, category rules, output destinations — is
+  <a href="../LoggerGuide.md">docs/LoggerGuide.md</a>; this page is the surface you call.
+</p>
+
+<div class="note">
+  Logging keeps working in a process that never constructed an
+  <a href="../Engine/index.html">Engine</a>. That is deliberate, and it is why the logger and the clock do not
+  reach the engine through <code>Engine::Get</code>, which asserts that an instance exists.
+</div>
+
+<h2 id="classes">Module classes</h2>
+
+<table>
+  <tr><th>Name</th><th>Kind</th><th>Header</th><th>Role</th></tr>
+  <tr><td><a href="#eloglevel">ELogLevel</a></td><td>Enum class</td><td>LogLevel.h</td><td>Severity of one line</td></tr>
+  <tr><td><a href="#logger">Logger</a></td><td>Class</td><td>Logger.h</td><td>The asynchronous sink, and the drain task that empties it</td></tr>
+  <tr><td><a href="#simplelogger">SimpleLogger</a></td><td>Nested class</td><td>Logger.h</td><td>Category and level bound once, so a call site stays short</td></tr>
+  <tr><td><a href="#logline">LogLine</a></td><td>Class</td><td>LogLine.h</td><td>One entry: timestamp, thread, category, level, text</td></tr>
+  <tr><td><a href="#printargs">PrintArgs</a></td><td>Variadic templates</td><td>PrintArgs.h</td><td>The print used by assertions and debugging</td></tr>
+  <tr><td><a href="#logutil">LogUtil</a></td><td>Namespace</td><td>LogUtil.h</td><td>Level names, the log clock, timestamp formatting</td></tr>
+</table>
+
+<h2 id="variables">Module variables</h2>
+
+<p>
+  None exposed. Buffer and line sizing comes from
+  <a href="../Config/index.html#variables"><code>Config::LogLineLength</code></a>,
+  <code>LogOutputBuffer</code>, <code>LogMemoryBlockSize</code>, <code>LogNumMemoryBlocks</code> and
+  <code>LogForceFlushThreshold</code>, and the master switch is
+  <a href="../Config/index.html#buildconfig"><code>LOG_ENABLED</code></a>.
+</p>
+
+<h2 id="functions">Module functions</h2>
+
+<p>See <a href="#logutil">LogUtil</a> and <a href="#printargs">PrintArgs</a> — this module's free functions are those two.</p>
+
+<h2 id="eloglevel">ELogLevel (<code>Engine/Log/LogLevel.h</code>)</h2>
+
+<h3>Class description</h3>
+<p>Severity of one log line, ordered from chatty to fatal.</p>
+
+<pre><code><span class="kw">enum class</span> <span class="ty">ELogLevel</span> : <span class="kw">unsigned char</span>
+{
+    Verbose, Info, Significant, Warning, Error, FatalError, MAX
+};</code></pre>
+
+<h3>Template parameters</h3>
+<p>None — ELogLevel is not a template.</p>
+
+<h3>Class properties</h3>
+<p>Not applicable to an enumeration; the underlying type is <code>unsigned char</code>. <code>MAX</code> is a sentinel, not a level you log at.</p>
+
+<h3>Class methods</h3>
+<p>None — an <code>enum class</code> declares no members.</p>
+
+<h3>Non-member helper functions</h3>
+<p><a href="#logutil"><code>LogUtil::GetLogLevelString</code></a> turns one into text.</p>
+
+<h2 id="logger">Logger (<code>Engine/Log/Logger.h</code>)</h2>
+
+<h3>Class description</h3>
+<p>
+  The single asynchronous sink. Callers append a line through <code>AddLog</code> or through a
+  <a href="#simplelogger"><code>SimpleLogger</code></a>; a drain task on the IO stream empties the buffers.
+</p>
+
+<h3>Template parameters</h3>
+<p>None — Logger is not a template.</p>
+
+<h3>Class properties</h3>
+<p>A process-wide <code>instance</code> pointer plus the double buffers and their bookkeeping; header-private.</p>
+
+<h3>Class methods</h3>
+
+<pre><code>[[nodiscard]] <span class="kw">static</span> <span class="ty">Logger</span>&amp; Get() <span class="kw">noexcept</span>;
+[[nodiscard]] <span class="kw">static</span> <span class="ty">SimpleLogger</span> Get(<span class="ty">StaticString</span> category,
+                                      <span class="ty">ELogLevel</span> level = <span class="ty">ELogLevel</span>::Info) <span class="kw">noexcept</span>;
+[[nodiscard]] <span class="kw">static</span> <span class="ty">StaticString</span> GetName() <span class="kw">noexcept</span>;
+
+<span class="kw">void</span> StartTask(<span class="ty">TaskSystem</span>&amp; taskSys);
+<span class="kw">void</span> StopTask(<span class="ty">TaskSystem</span>&amp; taskSys);
+
+<span class="kw">void</span> AddLog(<span class="ty">StaticString</span> category, <span class="ty">ELogLevel</span> level,
+            <span class="kw">const</span> <span class="ty">TLogFunction</span>&amp; logFunc) <span class="kw">noexcept</span>;
+<span class="kw">void</span> SetFilter(<span class="ty">StaticString</span> category, <span class="ty">TLogFilter</span>&amp;&amp; filter) <span class="kw">noexcept</span>;
+
+<span class="kw">void</span> Flush() <span class="kw">noexcept</span>;
+<span class="kw">void</span> WaitForFlush() <span class="kw">noexcept</span>;
+<span class="kw">void</span> ProcessBuffer() <span class="kw">noexcept</span>;
+[[nodiscard]] <span class="kw">bool</span> IsDrainTaskRunning() <span class="kw">const</span> <span class="kw">noexcept</span>;
+<span class="kw">void</span> ReportMemoryConfiguration();</code></pre>
+
+<table>
+  <tr><th>Method</th><th>Contract a caller depends on</th></tr>
+  <tr><td><code>Get</code> (no argument)</td><td>The one sink. The overload taking a category and level returns a <a href="#simplelogger"><code>SimpleLogger</code></a> by value instead — the two are chosen by argument list</td></tr>
+  <tr><td><code>StartTask</code>, <code>StopTask</code></td><td>Attach and detach the drain task to a task system; this is the wiring <a href="../Engine/index.html#engine">Engine::Initialize</a> performs for <a href="../Engine/index.html#einitlevel"><code>EInitLevel::Logger</code></a></td></tr>
+  <tr><td><code>AddLog</code></td><td>Enqueue a formatted line; the callback writes into the line's buffer, so it runs while the buffer is owned, not later</td></tr>
+  <tr><td><code>SetFilter</code></td><td>Install a predicate per category, which is how one subsystem's spam is silenced without touching its call sites</td></tr>
+  <tr><td><code>Flush</code> vs <code>WaitForFlush</code></td><td>One requests the drain, the other blocks until it has happened. Only the second guarantees a line is on disk when it returns — which is what a crash handler needs</td></tr>
+  <tr><td><code>IsDrainTaskRunning</code></td><td>Whether the IO stream is draining; false explains lines that accumulate unread</td></tr>
+</table>
+
+<h3>Non-member helper functions</h3>
+<p>None.</p>
+
+<h2 id="simplelogger">SimpleLogger (<code>Engine/Log/Logger.h</code>, nested)</h2>
+
+<h3>Class description</h3>
+<p>
+  A category and a level bound into one small value, so a call site reads as
+  <code>log.OutError([](auto&amp; out){ ... })</code> instead of repeating both arguments on every line. Obtained
+  from <a href="#logger"><code>Logger::Get(category, level)</code></a>.
+</p>
+
+<h3>Template parameters</h3>
+<p>None — SimpleLogger is not a template.</p>
+
+<h3>Class properties</h3>
+<table>
+  <tr><th>Property</th><th>Type</th><th>Purpose</th></tr>
+  <tr><td><code>category</code></td><td><code>const StaticString</code></td><td>Which filter and which prefix this logger uses</td></tr>
+  <tr><td><code>level</code></td><td><code>const ELogLevel</code></td><td>Severity a plain <code>Out</code> logs at</td></tr>
+</table>
+
+<h3>Class methods</h3>
+
+<pre><code><span class="kw">explicit</span> <span class="ty">SimpleLogger</span>(<span class="ty">StaticString</span> category,
+                      <span class="ty">ELogLevel</span> level = <span class="ty">ELogLevel</span>::Info) <span class="kw">noexcept</span>;
+
+<span class="kw">void</span> Out(<span class="kw">const</span> <span class="ty">TLogFunction</span>&amp; logFunc) <span class="kw">const</span> <span class="kw">noexcept</span>;
+<span class="kw">void</span> Out(<span class="ty">ELogLevel</span> level, <span class="kw">const</span> <span class="ty">TLogFunction</span>&amp; logFunc) <span class="kw">const</span> <span class="kw">noexcept</span>;
+<span class="kw">void</span> OutWarning(<span class="kw">const</span> <span class="ty">TLogFunction</span>&amp; logFunc) <span class="kw">const</span> <span class="kw">noexcept</span>;   <span class="cm">// Out(Warning, …)</span>
+<span class="kw">void</span> OutError(<span class="kw">const</span> <span class="ty">TLogFunction</span>&amp; logFunc) <span class="kw">const</span> <span class="kw">noexcept</span>;     <span class="cm">// Out(Error, …)</span>
+<span class="kw">void</span> OutFatalError(<span class="kw">const</span> <span class="ty">TLogFunction</span>&amp; logFunc) <span class="kw">const</span> <span class="kw">noexcept</span>; <span class="cm">// Out(FatalError, …)</span></code></pre>
+
+<h3>Non-member helper functions</h3>
+<p>None.</p>
+
+<h2 id="logline">LogLine (<code>Engine/Log/LogLine.h</code>)</h2>
+
+<h3>Class description</h3>
+<p>
+  One entry, and the layout is the interesting part: a <code>union</code> stores short messages inline and
+  long messages as a pointer plus a size, so an ordinary line costs no allocation while an oversized one still
+  survives whole.
+</p>
+
+<h3>Template parameters</h3>
+<p>None — LogLine is not a template.</p>
+
+<h3>Class properties</h3>
+
+<table>
+  <tr><th>Property</th><th>Type</th><th>Purpose</th></tr>
+  <tr><td><code>timeStamp</code></td><td><code>TTimePoint</code></td><td>When the line was produced, measured against <a href="#logutil"><code>LogUtil::GetStartTime</code></a></td></tr>
+  <tr><td><code>threadName</code></td><td><code>StaticString</code></td><td>Producer thread, interned so it costs a pointer</td></tr>
+  <tr><td><code>category</code></td><td><code>StaticString</code></td><td>Filter key and display prefix</td></tr>
+  <tr><td><code>level</code></td><td><code>ELogLevel</code></td><td>Severity</td></tr>
+  <tr><td><code>isLong</code></td><td><code>bool</code></td><td>Which union member holds the text — the flag every reader must consult before touching <code>text</code></td></tr>
+  <tr><td><code>text</code> / <code>longText</code>, <code>longTextSize</code></td><td><code>char[Config::LogLineLength]</code> / <code>char*</code>, <code>size_t</code></td><td>Inline body, or the allocated body and its length</td></tr>
+</table>
+
+<h3>Class methods</h3>
+
+<pre><code><span class="ty">LogLine</span>() <span class="kw">noexcept</span>;
+<span class="ty">LogLine</span>(<span class="ty">LogLine</span>&amp;&amp; rhs) <span class="kw">noexcept</span>;
+<span class="ty">LogLine</span>(<span class="ty">ELogLevel</span> level, <span class="ty">StaticString</span> threadName, <span class="ty">StaticString</span> category,
+       <span class="kw">const char</span>* inText, size_t size) <span class="kw">noexcept</span>;
+~<span class="ty">LogLine</span>() <span class="kw">noexcept</span>;
+
+[[nodiscard]] <span class="kw">const char</span>* GetText() <span class="kw">const</span> <span class="kw">noexcept</span>;</code></pre>
+
+<p>
+  <code>GetText</code> is the only safe way to read the body: it resolves the union on <code>isLong</code> for
+  you. Moving a line is <code>noexcept</code>, which is what lets the buffers hold lines by value.
+</p>
+
+<h3>Non-member helper functions</h3>
+<p>None.</p>
+
+<h2 id="printargs">PrintArgs (<code>Engine/Log/PrintArgs.h</code>)</h2>
+
+<h3>Class description</h3>
+<p>
+  Variadic print to <code>std::cout</code>: the first argument ends the line, every earlier one is separated
+  by nothing. It is what <a href="../Core/index.html#exception"><code>Exception</code></a> and the
+  <a href="../Core/index.html#functions"><code>Assert</code> family</a> call.
+</p>
+
+<h3>Template parameters</h3>
+<table>
+  <tr><th>Parameter</th><th>Meaning</th></tr>
+  <tr><td><code>T</code></td><td>Type of the first argument</td></tr>
+  <tr><td><code>TTypes</code></td><td>Types of the remaining arguments, forwarded</td></tr>
+</table>
+
+<h3>Class properties</h3>
+<p>Not applicable — these are functions, not a class.</p>
+
+<h3>Class methods</h3>
+<p>Not applicable.</p>
+
+<h3>Non-member helper functions</h3>
+
+<pre><code><span class="kw">namespace</span>   <span class="cm">// anonymous</span>
+{
+<span class="kw">template</span>&lt;<span class="kw">typename</span> T&gt;
+<span class="kw">static void</span> PrintArgs(<span class="kw">const</span> T&amp; arg) <span class="kw">noexcept</span>;                    <span class="cm">// prints, then endl</span>
+
+<span class="kw">template</span>&lt;<span class="kw">typename</span> T, <span class="kw">typename</span>... TTypes&gt;
+<span class="kw">static void</span> PrintArgs(<span class="kw">const</span> T&amp; arg, TTypes&amp;&amp;... args) <span class="kw">noexcept</span>; <span class="cm">// recurses</span>
+}</code></pre>
+
+<div class="gap">
+  <strong>Read the linkage before you include this header for convenience.</strong> Both overloads are declared
+  in an <em>anonymous namespace</em> in the header, so each translation unit that includes
+  <code>PrintArgs.h</code> gets its own copy rather than one shared function. That is harmless for a print and
+  is not the same as a normal engine API; a caller wanting a shared formatter should not reach for it.
+</div>
+
+<h2 id="logutil">LogUtil (<code>Engine/Log/LogUtil.h</code>, <code>namespace hbe::LogUtil</code>)</h2>
+
+<h3>Class description</h3>
+<p>The log's own clock and the small formatting helpers that turn a level and an instant into text.</p>
+
+<h3>Template parameters</h3>
+<p>None — LogUtil is a namespace.</p>
+
+<h3>Class properties</h3>
+<p>
+  The alias <code>TTimePoint = std::chrono::time_point&lt;std::chrono::steady_clock&gt;</code> and, behind
+  <code>GetStartTime()</code>, the instant timestamps are measured against — so a log reads as elapsed time
+  rather than as a wall-clock value.
+</p>
+
+<h3>Class methods</h3>
+<p>Not applicable.</p>
+
+<h3>Non-member helper functions</h3>
+
+<table>
+  <tr><th>Function</th><th>Parameters</th><th>Returns</th><th>Purpose</th></tr>
+  <tr><td><code>GetStartTime</code></td><td>none</td><td><code>const TTimePoint&amp;</code></td><td>The zero point every line's timestamp is measured from</td></tr>
+  <tr><td><code>ResetStartTime</code></td><td>none</td><td><code>void</code></td><td>Move the zero point to now. Call it once, where the process decides it started — <a href="../Engine/index.html#engine">Engine's constructor</a> does exactly that, in the constructor rather than <code>Initialize</code></td></tr>
+  <tr><td><code>GetTimeStampString</code></td><td><code>InlineStringBuilder&lt;64&gt;&amp; outStr</code>, an instant</td><td>—</td><td>Format elapsed time into a fixed inline buffer, so a line needs no allocation</td></tr>
+  <tr><td><code>GetLogLevelString</code></td><td><code>ELogLevel level</code></td><td><code>StaticString</code></td><td>Level name, interned</td></tr>
+</table>
+
+<div class="note">
+  Moving the zero point after lines have been written shifts every later line against the ones already out,
+  which reads as log lines running backwards. That is the reason the engine sets it in one place and no
+  subsystem calls <code>ResetStartTime</code> on its own.
+</div>
+
+<h2 id="coverage">Coverage</h2>
+
+<table>
+  <tr><th>Gap</th><th>Detail</th></tr>
+  <tr>
+    <td><code>TLogFunction</code> and <code>TLogFilter</code></td>
+    <td>Named by every signature above without being expanded. Their exact <code>std::function</code> shapes are
+        in the header, and an invented signature would be worse than none.</td>
+  </tr>
+  <tr>
+    <td>Async machinery</td>
+    <td>Double buffering, the drain task's scheduling, and the flush threshold behaviour are design, and
+        <a href="../LoggerGuide.md">docs/LoggerGuide.md</a> is where they belong.</td>
+  </tr>
+  <tr>
+    <td>Examples</td>
+    <td>None written. The <a href="#simplelogger">SimpleLogger</a> example worth having is one that shows the
+        formatting callback, since that is the part a first-time caller gets wrong.</td>
+  </tr>
+</table>
+
+<footer class="prevnext">
+  <span><a href="../HSTL/index.html">← HSTL</a></span>
+  <span><a href="../index.html">Module Index</a></span>
+  <span><a href="../Math/index.html">Math →</a></span>
+</footer>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,758 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../Config/index.html">Config</a></li>
+    <li><a href="../Container/index.html">Container</a></li>
+    <li><a class="current" href="../Core/index.html">Core</a></li>
+    <li><a href="../Engine/index.html">Engine</a></li>
+    <li><a href="../HSTL/index.html">HSTL</a></li>
+    <li><a href="../Log/index.html">Log</a></li>
+    <li><a href="../Math/index.html">Math</a></li>
+    <li><a href="../Memory/index.html">Memory</a></li>
+    <li><a href="../OSAL/index.html">OSAL</a></li>
+    <li><a href="../Renderer/index.html">Renderer</a></li>
+    <li><a href="../Resource/index.html">Resource</a></li>
+    <li><a href="../String/index.html">String</a></li>
+    <li><a href="../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This module</h3>
+  <ul>
+    <li><a href="#description">Module description</a></li>
+    <li><a href="#classes">Module classes</a></li>
+    <li><a href="#variables">Module variables</a></li>
+    <li><a href="#functions">Module functions</a></li>
+    <li><a href="#types">Types</a></li>
+    <li><a href="#runnable">Runnable</a></li>
+    <li><a href="#task">Task</a></li>
+    <li><a href="#rangedtask">RangedTask</a></li>
+    <li><a href="#taskstream">TaskStream</a></li>
+    <li><a href="#taskstreamaffinity">TaskStreamAffinity</a></li>
+    <li><a href="#tasksystem">TaskSystem</a></li>
+    <li><a href="#mainthreadtaskqueue">MainThreadTaskQueue</a></li>
+    <li><a href="#componentstate">ComponentState</a></li>
+    <li><a href="#component">Component</a></li>
+    <li><a href="#componentsystem">ComponentSystem</a></li>
+    <li><a href="#systemstatistics">SystemStatistics</a></li>
+    <li><a href="#exception">Exception</a></li>
+    <li><a href="#scopedtime">ScopedTime</a></li>
+    <li><a href="#scopedlock">ScopedLock</a></li>
+    <li><a href="#commandlinearguments">CommandLineArguments</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+
+  <h3>Design documents</h3>
+  <ul>
+    <li><a href="../TaskSystemGuide.md">Task system guide</a></li>
+    <li><a href="../TaskSystemRedesign.md">Task system redesign</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb"><a href="../index.html">Module Index</a> / Core</p>
+
+<h1>Core</h1>
+<p class="subtitle">
+  <span class="tag">namespace hbe</span>
+  <span class="tag">Engine/Core</span>
+  26 headers, 17 sources — types, constants, the task system, the component system, time, assertions and statistics
+</p>
+
+<h2 id="description">Module description</h2>
+
+<p>
+  Core is the foundation the rest of the engine is built on. It fixes the scalar vocabulary
+  (<code>TByte</code>, <code>TIndex</code>, <code>TReal</code> and their aliases), the compile-time
+  constants, the task system that every parallel subsystem submits through, and the component system
+  that owns component lifetimes. It also holds the utilities that every module reaches for: assertions,
+  the clock, scoped timers and locks, command-line parsing, and the statistics counters the engine prints.
+</p>
+<p>
+  The task system is the backbone of parallel execution, built on <a href="#task">Task</a>,
+  <a href="#rangedtask">RangedTask</a>, <a href="#taskstream">TaskStream</a> and
+  <a href="#tasksystem">TaskSystem</a>. How it is designed — stream accounting, budget windows, provider
+  drain — is in <a href="../TaskSystemGuide.md">docs/TaskSystemGuide.md</a> and
+  <a href="../TaskSystemRedesign.md">docs/TaskSystemRedesign.md</a>, not on this page: this page says
+  what you call, those say why it works that way.
+</p>
+
+<h2 id="classes">Module classes</h2>
+
+<table>
+  <tr><th>Name</th><th>Kind</th><th>Header</th><th>Role</th></tr>
+  <tr><td><a href="#types">Types</a></td><td>Alias set</td><td>Types.h</td><td>Engine-wide scalar and pointer aliases</td></tr>
+  <tr><td>Constants</td><td>Constant set</td><td>Constants.h</td><td>Byte multiples and mathematical constants — see <a href="#variables">Module variables</a></td></tr>
+  <tr><td><a href="#runnable">Runnable</a></td><td>Alias</td><td>Runnable.h</td><td>Signature of a function a task executes</td></tr>
+  <tr><td><a href="#task">Task</a></td><td>Class</td><td>Task.h</td><td>Unit of work, splittable into sub-tasks</td></tr>
+  <tr><td><a href="#rangedtask">RangedTask</a></td><td>Class</td><td>RangedTask.h</td><td>One index range <code>[start, end)</code> of a Task</td></tr>
+  <tr><td><a href="#taskstream">TaskStream</a></td><td>Class</td><td>TaskStream.h</td><td>Thread that processes tasks taken from a stream</td></tr>
+  <tr><td><a href="#taskstreamaffinity">TaskStreamAffinity</a></td><td>Class template</td><td>TaskStreamAffinity.h</td><td>Bitmask of streams a task may run on</td></tr>
+  <tr><td><a href="#tasksystem">TaskSystem</a></td><td>Class</td><td>TaskSystem.h</td><td>Owns the streams and the general queue</td></tr>
+  <tr><td><a href="#mainthreadtaskqueue">MainThreadTaskQueue</a></td><td>Class</td><td>MainThreadTaskQueue.h</td><td>Thread-safe queue feeding the main thread</td></tr>
+  <tr><td><a href="#componentstate">ComponentState</a></td><td>Enum class</td><td>ComponentState.h</td><td>Lifecycle states of a component</td></tr>
+  <tr><td><a href="#component">Component</a></td><td>Abstract class</td><td>Component.h</td><td>Base of every engine component</td></tr>
+  <tr><td><a href="#componentsystem">ComponentSystem</a></td><td>Class template</td><td>ComponentSystem.h</td><td>Drives a component type through its lifecycle</td></tr>
+  <tr><td><a href="#systemstatistics">SystemStatistics</a></td><td>Class</td><td>SystemStatistics.h</td><td>Frame, log and allocator counters and deltas</td></tr>
+  <tr><td><a href="#exception">Exception</a></td><td>Class</td><td>Exception.h</td><td>Carries a formatted message with file and line</td></tr>
+  <tr><td><a href="#scopedtime">ScopedTime</a></td><td>Class</td><td>ScopedTime.h</td><td>RAII timer writing a duration on scope exit</td></tr>
+  <tr><td><a href="#scopedlock">ScopedLock</a></td><td>Class template</td><td>ScopedLock.h</td><td>RAII lock with optional wait profiling</td></tr>
+  <tr><td><a href="#commandlinearguments">CommandLineArguments</a></td><td>Class</td><td>CommandLineArguments.h</td><td>Parsed command line held as strings</td></tr>
+  <tr><td>CommonUtil</td><td>Free functions</td><td>CommonUtil.h</td><td>See <a href="#functions">Module functions</a></td></tr>
+  <tr><td>Debug</td><td>Free functions</td><td>Debug.h</td><td>See <a href="#functions">Module functions</a></td></tr>
+  <tr><td>time</td><td>Namespace</td><td>Time.h</td><td>See <a href="#functions">Module functions</a></td></tr>
+</table>
+
+<h2 id="variables">Module variables</h2>
+
+<p>
+  <code>Engine/Core/Constants.h</code> exposes compile-time constants only — there is no mutable module
+  state in Core. Everything below is <code>constexpr</code>, so a translation unit pays no storage and no
+  initialisation order.
+</p>
+
+<table>
+  <tr><th>Constant</th><th>Type</th><th>Value</th><th>Purpose</th></tr>
+  <tr><td><code>KB</code></td><td><code>size_t</code></td><td>1024</td><td>Kilobyte</td></tr>
+  <tr><td><code>MB</code></td><td><code>size_t</code></td><td>1048576</td><td>Megabyte</td></tr>
+  <tr><td><code>GB</code></td><td><code>size_t</code></td><td>1073741824</td><td>Gigabyte</td></tr>
+  <tr><td><code>Pi</code></td><td><code>float</code></td><td>3.141592653589793f</td><td>π</td></tr>
+  <tr><td><code>HalfPi</code></td><td><code>float</code></td><td>Pi * 0.5f</td><td>Half π</td></tr>
+  <tr><td><code>TwoPi</code></td><td><code>float</code></td><td>Pi * 2.0f</td><td>Twice π</td></tr>
+  <tr><td><code>EulerNum</code></td><td><code>float</code></td><td>2.718281828459f</td><td>Euler's number</td></tr>
+  <tr><td><code>Epsilon</code></td><td><code>float</code></td><td>0.001f</td><td>Comparison tolerance</td></tr>
+  <tr><td><code>SqrEpsilon</code></td><td><code>float</code></td><td>Epsilon * Epsilon</td><td>Squared tolerance, for squared-distance tests</td></tr>
+</table>
+
+<h2 id="functions">Module functions</h2>
+
+<h3>CommonUtil (<code>Engine/Core/CommonUtil.h</code>)</h3>
+
+<p>Untyped memory read, write and copy, each reinterpreted as the type you name.</p>
+
+<table>
+  <tr><th>Function</th><th>Parameters</th><th>Returns</th><th>Notes</th></tr>
+  <tr><td><code>GetAs&lt;Type&gt;</code></td><td><code>void* src</code></td><td><code>Type</code></td><td>Type-safe read from memory</td></tr>
+  <tr><td><code>SetAs&lt;Type&gt;</code></td><td><code>void* dst</code>, <code>Type value</code></td><td><code>void</code></td><td>Type-safe write to memory</td></tr>
+  <tr><td><code>CopyAs&lt;Type&gt;</code></td><td><code>void* dst</code>, <code>void* src</code></td><td><code>void</code></td><td>Type-safe copy of one <code>Type</code></td></tr>
+  <tr><td><code>ToAddress</code></td><td><code>void* ptr</code></td><td><code>size_t</code></td><td>Pointer as an integer</td></tr>
+  <tr><td><code>CountOf</code></td><td><code>T (&amp;)[size]</code></td><td><code>size_t</code></td><td>Element count of a C array; the size is deduced, so a pointer decays to a compile error</td></tr>
+</table>
+
+<h3>Debug (<code>Engine/Core/Debug.h</code>)</h3>
+
+<p>
+  The engine is exception-free, so these are the failure tools. <code>Assert</code> is active in Debug and
+  Dev builds; <code>FatalAssert</code> is active in every configuration.
+</p>
+
+<table>
+  <tr><th>Function</th><th>Parameters</th><th>Returns</th><th>Notes</th></tr>
+  <tr><td><code>FlushLogs</code></td><td>none</td><td><code>void</code></td><td>Drains the asynchronous logger</td></tr>
+  <tr><td><code>Assert</code></td><td><code>bool shouldBeTrue</code>, optional variadic args</td><td><code>void</code></td><td>Debug builds only, aborts on failure</td></tr>
+  <tr><td><code>FatalAssert</code></td><td><code>bool shouldBeTrue</code>, optional variadic args</td><td><code>void</code></td><td>Always active</td></tr>
+</table>
+
+<div class="note">
+  Log before asserting. <a href="../CodingStandards.md">docs/CodingStandards.md</a> requires a descriptive
+  message ahead of any <code>Assert</code> or early return, so the reason survives a process that dies on
+  the assertion.
+</div>
+
+<h3>Time (<code>Engine/Core/Time.h</code>, <code>namespace hbe::time</code>)</h3>
+
+<pre><code><span class="kw">namespace</span> hbe::time
+{
+<span class="kw">using</span> <span class="ty">TMilliSec</span>  = uint64_t;
+<span class="kw">using</span> <span class="ty">TStopWatch</span> = std::chrono::high_resolution_clock;
+<span class="kw">using</span> <span class="ty">TTime</span>      = std::chrono::time_point&lt;<span class="ty">TStopWatch</span>&gt;;
+<span class="kw">using</span> <span class="ty">TDuration</span>  = <span class="ty">TStopWatch</span>::duration;
+<span class="kw">using</span> <span class="ty">TMilliSecs</span> = std::chrono::milliseconds;
+}</code></pre>
+
+<table>
+  <tr><th>Function</th><th>Parameters</th><th>Returns</th><th>Notes</th></tr>
+  <tr><td><code>GetNow</code></td><td>none</td><td><code>TTime</code></td><td>Current steady-clock instant</td></tr>
+  <tr><td><code>ToFloat</code></td><td><code>TStopWatch::duration</code></td><td><code>float</code></td><td>Duration in seconds</td></tr>
+  <tr><td><code>ToDouble</code></td><td><code>TStopWatch::duration</code></td><td><code>double</code></td><td>Duration in seconds, wider</td></tr>
+  <tr><td><code>ToMilliSeconds</code></td><td><code>TStopWatch::duration</code></td><td><code>TMilliSecs::rep</code></td><td>Duration cast to milliseconds, then counted</td></tr>
+  <tr><td><code>Sleep</code></td><td><code>TMilliSec milli</code></td><td><code>void</code></td><td>Blocks the calling thread</td></tr>
+</table>
+
+<p>
+  Time also carries the engine-wide epoch and the base frame rate that task budgets are measured against —
+  <code>GetEngineEpoch</code>, <code>ResetEngineEpoch</code>, <code>ElapsedSinceEngineEpoch</code>,
+  <code>GetBaseFrameRate</code>, <code>GetBaseFramePeriod</code>. Their contract is in the header; the
+  reasoning for a single shared epoch and a duration rather than a rate is in
+  <a href="../TaskSystemRedesign.md">docs/TaskSystemRedesign.md</a>. They are listed here and not
+  summarised below, so this page does not become a second place to keep the same story right.
+</p>
+
+<h2 id="types">Types (<code>Engine/Core/Types.h</code>)</h2>
+
+<p>The scalar vocabulary of the engine. Prefer these over the underlying standard types in engine code.</p>
+
+<table>
+  <tr><th>Alias</th><th>Underlying type</th><th>Purpose</th></tr>
+  <tr><td><code>TByte</code></td><td><code>uint8_t</code></td><td>Byte type</td></tr>
+  <tr><td><code>TPointer</code></td><td><code>void*</code></td><td>Generic pointer</td></tr>
+  <tr><td><code>TIndex</code></td><td><code>size_t</code></td><td>Index type</td></tr>
+  <tr><td><code>TInt</code></td><td><code>int32_t</code></td><td>Signed integer</td></tr>
+  <tr><td><code>TUInt</code></td><td><code>uint32_t</code></td><td>Unsigned integer</td></tr>
+  <tr><td><code>TReal</code></td><td><code>float</code></td><td>Real number</td></tr>
+</table>
+
+<p>
+  Backward-compatible aliases without the <code>T</code> prefix: <code>Byte</code>, <code>Pointer</code>,
+  <code>Index</code>, <code>Int</code>, <code>UInt</code>, <code>Real</code>.
+</p>
+
+<h2 id="runnable">Runnable (<code>Engine/Core/Runnable.h</code>)</h2>
+
+<p>The function signature a <a href="#task">Task</a> executes, and the unit a stream dispatches work in.</p>
+
+<pre><code><span class="kw">using</span> <span class="ty">TRunnable</span> = std::size_t(*)(<span class="kw">void</span>* userData,
+                                 std::size_t startIndex,
+                                 std::size_t endIndex);</code></pre>
+
+<h3>Function description</h3>
+<p>
+  Receives the task's user data and the index range it was asked to process, and returns the number of
+  items it handled.
+</p>
+
+<h3>Parameters</h3>
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Meaning</th></tr>
+  <tr><td><code>userData</code></td><td><code>void*</code></td><td>Opaque pointer supplied when the task was built; the engine never reads it</td></tr>
+  <tr><td><code>startIndex</code></td><td><code>std::size_t</code></td><td>First index of the range, inclusive</td></tr>
+  <tr><td><code>endIndex</code></td><td><code>std::size_t</code></td><td>One past the last index, exclusive</td></tr>
+</table>
+
+<h3>Return value</h3>
+<p>Count of items processed in the range.</p>
+
+<h3>Example</h3>
+<pre><code><span class="kw">static</span> <span class="ty">TIndex</span> ClearFloats(<span class="kw">void</span>* userData, <span class="ty">TIndex</span> startIndex, <span class="ty">TIndex</span> endIndex) <span class="kw">noexcept</span>
+{
+    <span class="kw">auto</span> values = <span class="kw">static_cast</span>&lt;<span class="ty">float</span>*&gt;(userData);
+
+    <span class="kw">for</span> (<span class="ty">TIndex</span> i = startIndex; i &lt; endIndex; ++i)
+        values[i] = <span class="nu">0.0f</span>;
+
+    <span class="kw">return</span> endIndex - startIndex;
+}</code></pre>
+
+<h2 id="task">Task (<code>Engine/Core/Task.h</code>)</h2>
+
+<h3>Class description</h3>
+<p>
+  A unit of work composed of multiple <a href="#rangedtask">RangedTask</a> sub-tasks, so one Task can be
+  split across threads and finished when every sub-task has reported.
+</p>
+
+<h3>Template parameters</h3>
+<p>None — Task is not a template.</p>
+
+<h3>Class properties</h3>
+<p>
+  Name, runnable, user data, sub-task accounting and completion state. The layout is header-private; the
+  accessors below are the documented surface.
+</p>
+
+<h3>Class methods</h3>
+
+<pre><code><span class="kw">class</span> <span class="ty">Task</span> final
+{
+    <span class="ty">Task</span>() <span class="kw">noexcept</span>;
+    <span class="ty">Task</span>(<span class="ty">StaticString</span> taskName, <span class="ty">TRunnable</span> func, <span class="kw">void</span>* userData) <span class="kw">noexcept</span>;
+
+    <span class="kw">void</span> Start(<span class="ty">TIndex</span> numberOfSubTasks, <span class="ty">TIndex</span> startIndex,
+               <span class="ty">TIndex</span> endIndex, <span class="kw">uint8_t</span> priority = <span class="nu">0</span>) <span class="kw">noexcept</span>;
+
+    <span class="kw">void</span> BusyWait() <span class="kw">const</span> <span class="kw">noexcept</span>;
+    <span class="kw">void</span> Wait(<span class="kw">uint32_t</span> intervalMilliSecs = <span class="nu">10</span>) <span class="kw">const</span> <span class="kw">noexcept</span>;
+
+    [[nodiscard]] <span class="kw">bool</span> HasDone() <span class="kw">const</span> <span class="kw">noexcept</span>;
+    <span class="kw">void</span> ReportFinishedSubTask() <span class="kw">noexcept</span>;
+
+    [[nodiscard]] <span class="ty">TRunnable</span> GetRunnable() <span class="kw">const</span> <span class="kw">noexcept</span>;
+    [[nodiscard]] <span class="kw">void</span>* GetUserData() <span class="kw">const</span> <span class="kw">noexcept</span>;
+
+    [[nodiscard]] <span class="ty">RangedTask</span> GenerateSubTask(<span class="ty">TIndex</span> start, <span class="ty">TIndex</span> end,
+                                             <span class="kw">uint8_t</span> priority = <span class="nu">0</span>) <span class="kw">noexcept</span>;
+};</code></pre>
+
+<table>
+  <tr><th>Method</th><th>Purpose</th></tr>
+  <tr><td><code>Start</code></td><td>Begin work split into <code>numberOfSubTasks</code> sub-tasks over <code>[startIndex, endIndex)</code></td></tr>
+  <tr><td><code>BusyWait</code></td><td>Spin until every sub-task has reported</td></tr>
+  <tr><td><code>Wait</code></td><td>Poll for completion at an interval instead of spinning</td></tr>
+  <tr><td><code>HasDone</code></td><td>True when the task is complete</td></tr>
+  <tr><td><code>ReportFinishedSubTask</code></td><td>One sub-task announcing it is finished</td></tr>
+  <tr><td><code>GetRunnable</code>, <code>GetUserData</code></td><td>Read back what the Task was built with</td></tr>
+  <tr><td><code>GenerateSubTask</code></td><td>Build one <a href="#rangedtask">RangedTask</a> covering a range, for the caller to enqueue</td></tr>
+</table>
+
+<h3>Non-member helper functions</h3>
+<p>None.</p>
+
+<div class="gap">
+  <strong>Read this before waiting.</strong> <code>HasDone</code> requires the sub-task count to have been
+  declared by <code>Start</code>: a Task started with a bare <code>BusyWait</code> and no sub-task accounting
+  is how a suite hangs without printing anything. The measured facts behind that are recorded in
+  <a href="../TaskSystemRedesign.md">docs/TaskSystemRedesign.md</a>.
+</div>
+
+<h2 id="rangedtask">RangedTask (<code>Engine/Core/RangedTask.h</code>)</h2>
+
+<h3>Class description</h3>
+<p>A task carrying a specific index range <code>[start, end)</code>, which is the unit of parallel splitting.</p>
+
+<h3>Template parameters</h3>
+<p>None — RangedTask is not a template.</p>
+
+<h3>Class properties</h3>
+
+<table>
+  <tr><th>Property</th><th>Type</th><th>Purpose</th></tr>
+  <tr><td><code>priority</code></td><td><code>uint8_t</code></td><td>Order within the stream that takes it</td></tr>
+  <tr><td><code>affinity</code></td><td><a href="#taskstreamaffinity"><code>TaskStreamAffinity</code></a></td><td>Streams this range may execute on</td></tr>
+  <tr><td><code>taskName</code></td><td><code>StaticString</code></td><td>Name for profiling and logs</td></tr>
+  <tr><td><code>taskRef</code></td><td><code>std::reference_wrapper&lt;<a href="#task">Task</a>&gt;</code></td><td>The parent Task, which it reports completion to</td></tr>
+  <tr><td><code>start</code>, <code>end</code></td><td><code>TIndex</code></td><td>Index range, end exclusive</td></tr>
+  <tr><td><code>currentIndex</code></td><td><code>mutable TIndex</code></td><td>Progress cursor inside the range</td></tr>
+</table>
+
+<h3>Class methods</h3>
+
+<pre><code>[[nodiscard]] <span class="kw">bool</span> HasFinished() <span class="kw">const</span> <span class="kw">noexcept</span>;
+<span class="kw">void</span> Run() <span class="kw">noexcept</span>;   <span class="cm">// calls the task's runnable, then reports the range finished</span></code></pre>
+
+<h3>Non-member helper functions</h3>
+<p>None.</p>
+
+<h2 id="taskstream">TaskStream (<code>Engine/Core/TaskStream.h</code>)</h2>
+
+<h3>Class description</h3>
+<p>
+  A dedicated thread that processes tasks taken from its stream. Each stream has a name, a stream index and
+  a loop counter that profiling reads. How a stream decides to take work, and how it charges the CPU time of
+  what it runs, is in <a href="../TaskSystemGuide.md">docs/TaskSystemGuide.md</a>.
+</p>
+
+<h3>Template parameters</h3>
+<p>None — TaskStream is not a template.</p>
+
+<h3>Class properties</h3>
+<p>Name, stream index, owning task system, thread handle and loop counter; all header-private.</p>
+
+<h3>Class methods</h3>
+
+<pre><code><span class="kw">class</span> <span class="ty">TaskStream</span> final
+{
+    <span class="ty">TaskStream</span>();
+    <span class="kw">explicit</span> <span class="ty">TaskStream</span>(<span class="ty">StaticString</span> name, <span class="ty">TStreamIndex</span> streamIndex);
+
+    <span class="kw">void</span> Enqueue(<span class="kw">const</span> <span class="ty">RangedTask</span>&amp; task) <span class="kw">noexcept</span>;
+    <span class="kw">void</span> WakeUp() <span class="kw">noexcept</span>;
+    <span class="kw">void</span> Join() <span class="kw">noexcept</span>;
+    <span class="kw">void</span> Start(<span class="ty">TaskSystem</span>&amp; taskSys) <span class="kw">noexcept</span>;
+    <span class="kw">void</span> RunLoop() <span class="kw">noexcept</span>;
+
+    [[nodiscard]] <span class="ty">StaticString</span> GetName() <span class="kw">const</span> <span class="kw">noexcept</span>;
+    [[nodiscard]] std::thread::id GetThreadID() <span class="kw">const</span> <span class="kw">noexcept</span>;
+    [[nodiscard]] <span class="ty">TStreamIndex</span> GetStreamIndex() <span class="kw">const</span> <span class="kw">noexcept</span>;
+    [[nodiscard]] <span class="kw">uint64_t</span> GetLoopCount() <span class="kw">const</span> <span class="kw">noexcept</span>;
+};</code></pre>
+
+<h3>Non-member helper functions</h3>
+<p>None.</p>
+
+<h2 id="taskstreamaffinity">TaskStreamAffinity (<code>Engine/Core/TaskStreamAffinity.h</code>)</h2>
+
+<h3>Class description</h3>
+<p>
+  Bitmask selecting which task streams a task is allowed to execute on. Note the polarity: setting a bit
+  <em>excludes</em> that stream.
+</p>
+
+<h3>Template parameters</h3>
+<table>
+  <tr><th>Parameter</th><th>Meaning</th></tr>
+  <tr><td><code>NumBits</code></td><td>Width of the mask, one bit per stream index</td></tr>
+</table>
+
+<h3>Class properties</h3>
+<p>The mask word, sized from <code>NumBits</code>; header-private.</p>
+
+<h3>Class methods</h3>
+
+<pre><code><span class="kw">template</span>&lt;<span class="kw">unsigned int</span> NumBits&gt;
+<span class="kw">class</span> <span class="ty">TaskStreamAffinityBase</span> final
+{
+    <span class="kw">void</span> Set(<span class="kw">unsigned int</span> bitIndex) <span class="kw">noexcept</span>;      <span class="cm">// exclude this stream</span>
+    <span class="kw">void</span> Unset(<span class="kw">unsigned int</span> bitIndex) <span class="kw">noexcept</span>;    <span class="cm">// include this stream again</span>
+    [[nodiscard]] <span class="kw">bool</span> Get(<span class="kw">unsigned int</span> bitIndex) <span class="kw">const</span> <span class="kw">noexcept</span>;  <span class="cm">// is it included?</span>
+};
+
+<span class="kw">using</span> <span class="ty">TaskStreamAffinity</span> = <span class="ty">TaskStreamAffinityBase</span>&lt;<span class="nu">64</span>&gt;;</code></pre>
+
+<h3>Non-member helper functions</h3>
+<p>The alias <code>TaskStreamAffinity</code> is the 64-bit instantiation the engine uses throughout.</p>
+
+<h2 id="tasksystem">TaskSystem (<code>Engine/Core/TaskSystem.h</code>)</h2>
+
+<h3>Class description</h3>
+<p>
+  Central manager for every task stream, the general queue, and main-thread dispatch. One instance lives
+  inside <a href="../Engine/index.html"><code>Engine</code></a> and is reached through
+  <code>Engine::Get().GetTaskSystem()</code>.
+</p>
+
+<h3>Template parameters</h3>
+<p>None — TaskSystem is not a template.</p>
+
+<h3>Class properties</h3>
+<p>Streams, the general queue and the main-thread queue; all header-private, reached through the accessors below.</p>
+
+<h3>Class methods</h3>
+
+<p>Summarised from <code>Engine/Core/TaskSystem.h</code> on 2026-09-19.</p>
+
+<pre><code><span class="kw">class</span> <span class="ty">TaskSystem</span> final
+{
+    <span class="cm">// static helpers — query the calling thread's identity</span>
+    <span class="kw">static</span> [[nodiscard]] <span class="ty">TIndex</span> GetNumHardwareThreads() <span class="kw">noexcept</span>;
+    <span class="kw">static</span> <span class="kw">void</span> SetThreadName(<span class="ty">StaticString</span> name) <span class="kw">noexcept</span>;
+    <span class="kw">static</span> <span class="kw">void</span> SetStreamIndex(<span class="ty">TIndex</span> index) <span class="kw">noexcept</span>;
+    <span class="kw">static</span> [[nodiscard]] <span class="ty">StaticString</span> GetCurrentStreamName() <span class="kw">noexcept</span>;
+    <span class="kw">static</span> [[nodiscard]] <span class="ty">StaticString</span> GetCurrentThreadName() <span class="kw">noexcept</span>;
+    <span class="kw">static</span> [[nodiscard]] <span class="ty">TIndex</span> GetCurrentStreamIndex() <span class="kw">noexcept</span>;
+    <span class="kw">static</span> [[nodiscard]] <span class="kw">bool</span> IsBaseThread() <span class="kw">noexcept</span>;
+    <span class="kw">static</span> [[nodiscard]] <span class="kw">bool</span> IsIOThread() <span class="kw">noexcept</span>;
+    <span class="kw">static</span> [[nodiscard]] <span class="ty">TIndex</span> GetBaseTaskStreamIndex() <span class="kw">noexcept</span>;
+    <span class="kw">static</span> [[nodiscard]] <span class="ty">TIndex</span> GetIOTaskStreamIndex() <span class="kw">noexcept</span>;
+
+    <span class="cm">// lifecycle</span>
+    <span class="ty">TaskSystem</span>() <span class="kw">noexcept</span>;
+    ~<span class="ty">TaskSystem</span>() <span class="kw">noexcept</span>;
+    <span class="kw">void</span> Initialize() <span class="kw">noexcept</span>;
+    <span class="kw">void</span> RequestShutDown() <span class="kw">noexcept</span>;
+    <span class="kw">void</span> JoinAndClear() <span class="kw">noexcept</span>;
+
+    <span class="cm">// general queue — low priority, whichever stream asks first claims the task</span>
+    <span class="kw">void</span> Enqueue(<span class="kw">const</span> <span class="ty">RangedTask</span>&amp; task) <span class="kw">noexcept</span>;
+    <span class="kw">void</span> Dequeue(std::optional&lt;<span class="ty">RangedTask</span>&gt;&amp; outTask) <span class="kw">noexcept</span>;
+    <span class="kw">void</span> Enqueue(<span class="ty">TIndex</span> streamIndex, <span class="kw">const</span> <span class="ty">RangedTask</span>&amp; task) <span class="kw">noexcept</span>;
+
+    <span class="cm">// main-thread dispatch</span>
+    <span class="kw">void</span> DispatchToMainThread(<span class="ty">TMainThreadTask</span> task, <span class="kw">void</span>* userData,
+                              <span class="kw">uint8_t</span> priority = <span class="nu">128</span>) <span class="kw">noexcept</span>;
+    [[nodiscard]] <span class="kw">size_t</span> ProcessMainThreadTasks() <span class="kw">noexcept</span>;
+
+    <span class="cm">// stream access</span>
+    [[nodiscard]] <span class="ty">StaticString</span> GetName() <span class="kw">const</span> <span class="kw">noexcept</span>;
+    [[nodiscard]] <span class="kw">bool</span> IsRunning() <span class="kw">const</span> <span class="kw">noexcept</span>;
+    [[nodiscard]] <span class="ty">TaskStream</span>&amp; GetBaseTaskStream();
+    [[nodiscard]] <span class="ty">TaskStream</span>&amp; GetIOTaskStream();
+    [[nodiscard]] <span class="ty">MainThreadTaskQueue</span>&amp; GetMainThreadTaskQueue();
+    [[nodiscard]] <span class="ty">StaticString</span> GetStreamName(<span class="kw">int</span> index) <span class="kw">const</span> <span class="kw">noexcept</span>;
+    [[nodiscard]] <span class="ty">TIndex</span> GetStreamIndex(<span class="ty">TThreadID</span> id) <span class="kw">const</span> <span class="kw">noexcept</span>;
+    [[nodiscard]] <span class="ty">TaskStream</span>&amp; GetStream(<span class="kw">int</span> index) <span class="kw">noexcept</span>;
+    [[nodiscard]] <span class="kw">bool</span> HasStream(<span class="ty">TIndex</span> index) <span class="kw">const</span> <span class="kw">noexcept</span>;
+};</code></pre>
+
+<div class="gap">
+  <strong>The general queue is not the stream you expect.</strong> <code>Enqueue(task)</code> puts work where
+  <em>whichever stream asks first</em> claims it, so a test that assumes a specific stream ran a task can be
+  wrong twice over. The base stream is occupied for the whole run of the EngineTest suite, which is the same
+  trap recorded in <a href="../TaskSystemRedesign.md">docs/TaskSystemRedesign.md</a>. Target a stream with
+  <code>Enqueue(streamIndex, task)</code> when the stream matters.
+</div>
+
+<h3>Non-member helper functions</h3>
+<p>None.</p>
+
+<h2 id="mainthreadtaskqueue">MainThreadTaskQueue (<code>Engine/Core/MainThreadTaskQueue.h</code>)</h2>
+
+<h3>Class description</h3>
+<p>Thread-safe queue for work dispatched to the main thread, drained by the main loop each frame.</p>
+
+<h3>Template parameters</h3>
+<p>None — MainThreadTaskQueue is not a template.</p>
+
+<h3>Class properties</h3>
+<p>The pending queue, its lock, and the running flag; all header-private.</p>
+
+<h3>Class methods</h3>
+
+<pre><code><span class="kw">class</span> <span class="ty">MainThreadTaskQueue</span> final
+{
+    <span class="kw">void</span> Enqueue(<span class="ty">TTaskFunc</span> taskFunc, <span class="kw">void</span>* userData,
+                 <span class="kw">uint8_t</span> priority = <span class="nu">128</span>) <span class="kw">noexcept</span>;
+    [[nodiscard]] <span class="kw">size_t</span> ProcessTasks() <span class="kw">noexcept</span>;
+    [[nodiscard]] <span class="kw">bool</span> HasPendingTasks() <span class="kw">const</span> <span class="kw">noexcept</span>;
+    <span class="kw">void</span> RequestStop() <span class="kw">noexcept</span>;
+    [[nodiscard]] <span class="kw">bool</span> IsRunning() <span class="kw">const</span> <span class="kw">noexcept</span>;
+};</code></pre>
+
+<h3>Non-member helper functions</h3>
+<p>None.</p>
+
+<h2 id="componentstate">ComponentState (<code>Engine/Core/ComponentState.h</code>)</h2>
+
+<h3>Class description</h3>
+<p>Every lifecycle state a component passes through.</p>
+
+<pre><code><span class="kw">enum class</span> <span class="ty">ComponentState</span> : <span class="kw">int</span>
+{
+    NONE, BORN, ALIVE, SLEEP, DEAD
+};</code></pre>
+
+<h3>Template parameters</h3>
+<p>None — ComponentState is not a template.</p>
+
+<h3>Class properties</h3>
+<p>Not applicable to an enumeration. The fixed underlying type is <code>int</code>, so the state crosses a
+thread boundary at its own width with no layout question.</p>
+
+<h3>Class methods</h3>
+<p>None — an <code>enum class</code> declares no members, and conversion to <code>int</code> is explicit.</p>
+
+<h3>Non-member helper functions</h3>
+<p>None.</p>
+
+<h2 id="component">Component (<code>Engine/Core/Component.h</code>)</h2>
+
+<h3>Class description</h3>
+<p>Base class for engine components, with lifecycle and enable state managed by <a href="#componentsystem">ComponentSystem</a>.</p>
+
+<h3>Template parameters</h3>
+<p>None — Component is not a template.</p>
+
+<h3>Class properties</h3>
+<p>The component's state and enable flag; header-private, read and written through the methods below.</p>
+
+<h3>Class methods</h3>
+
+<pre><code><span class="kw">class</span> <span class="ty">Component</span>
+{
+    <span class="cm">// lifecycle hooks — every concrete component must override these</span>
+    <span class="kw">virtual</span> <span class="kw">void</span> Init() = <span class="nu">0</span>;
+    <span class="kw">virtual</span> <span class="kw">void</span> Update(<span class="kw">const float</span> deltaTime) = <span class="nu">0</span>;
+    <span class="kw">virtual</span> <span class="kw">void</span> Release() = <span class="nu">0</span>;
+    <span class="kw">virtual</span> <span class="kw">void</span> OnEnable() = <span class="nu">0</span>;
+    <span class="kw">virtual</span> <span class="kw">void</span> OnDisable() = <span class="nu">0</span>;
+
+    [[nodiscard]] <span class="ty">ComponentState</span> GetState() <span class="kw">const</span> <span class="kw">noexcept</span>;
+    <span class="kw">void</span> SetState(<span class="ty">ComponentState</span> inState) <span class="kw">noexcept</span>;
+    [[nodiscard]] <span class="kw">bool</span> IsEnabled() <span class="kw">const</span> <span class="kw">noexcept</span>;
+    <span class="kw">void</span> SetEnable(<span class="kw">bool</span> isEnabled) <span class="kw">noexcept</span>;
+    <span class="kw">void</span> Destroy() <span class="kw">noexcept</span>;
+};</code></pre>
+
+<h3>Non-member helper functions</h3>
+<p>None.</p>
+
+<h2 id="componentsystem">ComponentSystem (<code>Engine/Core/ComponentSystem.h</code>)</h2>
+
+<h3>Class description</h3>
+<p>Manages every instance of one component type through its lifecycle states.</p>
+
+<h3>Template parameters</h3>
+<table>
+  <tr><th>Parameter</th><th>Meaning</th></tr>
+  <tr><td><code>TComponent</code></td><td>The component class this system owns instances of</td></tr>
+</table>
+
+<h3>Class properties</h3>
+<p>The storage for live components and the system name; header-private.</p>
+
+<h3>Class methods</h3>
+
+<pre><code><span class="kw">template</span>&lt;<span class="kw">typename</span> TComponent&gt;
+<span class="kw">class</span> <span class="ty">ComponentSystem</span>
+{
+    <span class="kw">template</span>&lt;<span class="kw">typename</span>... Types&gt;
+    [[nodiscard]] <span class="ty">TComponent</span>&amp; Create(Types&amp;&amp;... args);
+
+    <span class="cm">// main update loop — processes init, update and state transitions</span>
+    <span class="kw">void</span> Update(<span class="kw">const float</span> deltaTime);
+
+    [[nodiscard]] <span class="kw">const char</span>* GetName() <span class="kw">const</span> <span class="kw">noexcept</span>;
+    [[nodiscard]] <span class="kw">explicit operator bool</span>() <span class="kw">const</span> <span class="kw">noexcept</span>;
+};</code></pre>
+
+<h3>Non-member helper functions</h3>
+<p>None.</p>
+
+<h2 id="systemstatistics">SystemStatistics (<code>Engine/Core/SystemStatistics.h</code>)</h2>
+
+<h3>Class description</h3>
+<p>Engine counters and frame timing, printed at shutdown and by the allocator profile dump.</p>
+
+<h3>Template parameters</h3>
+<p>None — SystemStatistics is not a template.</p>
+
+<h3>Class properties</h3>
+<p>Frame, slow-frame and log counts plus the timing base; header-private.</p>
+
+<h3>Class methods</h3>
+
+<pre><code>[[nodiscard]] <span class="kw">double</span> GetTimeSinceStart() <span class="kw">const</span> <span class="kw">noexcept</span>;
+[[nodiscard]] <span class="kw">float</span>  GetDeltaTime() <span class="kw">const</span> <span class="kw">noexcept</span>;
+<span class="kw">void</span> IncFrameCount() <span class="kw">noexcept</span>;
+<span class="kw">void</span> IncSlowFrameCount() <span class="kw">noexcept</span>;
+<span class="kw">void</span> IncEngineLogCount() <span class="kw">noexcept</span>;
+<span class="kw">void</span> Print() <span class="kw">noexcept</span>;
+<span class="kw">void</span> PrintAllocatorProfiles() <span class="kw">noexcept</span>;</code></pre>
+
+<h3>Non-member helper functions</h3>
+<p>None.</p>
+
+<h2 id="exception">Exception (<code>Engine/Core/Exception.h</code>)</h2>
+
+<h3>Class description</h3>
+<p>
+  Carries a formatted message with the file and line that produced it. The engine is exception-free, so this
+  type exists for reporting a failure, not for unwinding the stack — see
+  <a href="../CodingStandards.md">docs/CodingStandards.md</a>.
+</p>
+
+<pre><code><span class="kw">class</span> <span class="ty">Exception</span> final
+{
+    <span class="kw">template</span>&lt;<span class="kw">typename</span>... Types&gt;
+    <span class="kw">inline</span> <span class="ty">Exception</span>(<span class="kw">const char</span>* file, <span class="kw">int</span> line, Types&amp;&amp;... args);
+};</code></pre>
+
+<h3>Template parameters</h3>
+<p>None — Exception is not a template; only its constructor is variadic.</p>
+
+<h3>Class properties</h3>
+<p>None. Constructing the object <em>is</em> the report: the constructor forwards the file, the line and
+the arguments to <code>PrintArgs</code> and stores nothing, which is why there is no message to read back.</p>
+
+<h3>Class methods</h3>
+<p>The constructor above and nothing else.</p>
+
+<h3>Non-member helper functions</h3>
+<p>None.</p>
+
+<h2 id="scopedtime">ScopedTime (<code>Engine/Core/ScopedTime.h</code>)</h2>
+
+<h3>Class description</h3>
+<p>RAII scoped timer that writes the elapsed duration into the value you hand it, on scope exit.</p>
+
+<h3>Template parameters</h3>
+<p>None — ScopedTime is not a template.</p>
+
+<h3>Class properties</h3>
+<p>The start instant and the destination duration reference; header-private.</p>
+
+<h3>Class methods</h3>
+
+<pre><code><span class="kw">namespace</span> hbe::time
+{
+<span class="kw">class</span> <span class="ty">ScopedTime</span> final
+{
+    <span class="kw">explicit</span> <span class="ty">ScopedTime</span>(<span class="ty">TDuration</span>&amp; outDeltaTime) <span class="kw">noexcept</span>;
+    ~<span class="ty">ScopedTime</span>() <span class="kw">noexcept</span>;
+};
+}</code></pre>
+
+<h3>Non-member helper functions</h3>
+<p>None.</p>
+
+<h2 id="scopedlock">ScopedLock (<code>Engine/Core/ScopedLock.h</code>)</h2>
+
+<h3>Class description</h3>
+<p>RAII lock wrapper: acquires on construction, releases on destruction, and profiles the wait when profiling is built in.</p>
+
+<h3>Template parameters</h3>
+<table>
+  <tr><th>Parameter</th><th>Constraint</th><th>Meaning</th></tr>
+  <tr><td><code>TLockable</code></td><td><code>CLockable</code></td><td>Any type that can be locked and unlocked</td></tr>
+</table>
+
+<h3>Class properties</h3>
+<p>The lock reference, and the wait measurement when <code>PROFILE_ENABLED</code>; header-private.</p>
+
+<h3>Class methods</h3>
+<p>Constructor acquires, destructor releases. No other surface.</p>
+
+<h3>Non-member helper functions</h3>
+<p>None.</p>
+
+<h2 id="commandlinearguments">CommandLineArguments (<code>Engine/Core/CommandLineArguments.h</code>)</h2>
+
+<h3>Class description</h3>
+<p>The process command line, parsed into engine strings at construction.</p>
+
+<h3>Template parameters</h3>
+<p>None — CommandLineArguments is not a template.</p>
+
+<h3>Class properties</h3>
+<p>The argument array; header-private.</p>
+
+<h3>Class methods</h3>
+
+<pre><code><span class="ty">CommandLineArguments</span>(<span class="kw">int</span> argc, <span class="kw">const char</span>* argv[]);
+[[nodiscard]] <span class="kw">const</span> <span class="ty">Array</span>&lt;<span class="ty">String</span>&gt;&amp; GetArguments() <span class="kw">const</span> <span class="kw">noexcept</span>;
+<span class="kw">void</span> Print();</code></pre>
+
+<h3>Non-member helper functions</h3>
+<p>None.</p>
+
+<h2 id="coverage">Coverage</h2>
+
+<p>What this page does not yet document, recorded rather than quietly omitted.</p>
+
+<table>
+  <tr><th>Gap</th><th>Detail</th></tr>
+  <tr>
+    <td>Headers with no entry</td>
+    <td><code>CommonMacros.h</code>, <code>CPUBudget.h</code>, <code>ResultContainer.h</code>,
+        <code>StreamDrainPolicy.h</code>, <code>TaskProvider.h</code>, <code>TaskStreamIndex.h</code> —
+        six of the 26 Core headers. All but <code>CommonMacros.h</code> came from the task-system work that
+        post-dates the reference this page was migrated from.</td>
+  </tr>
+  <tr>
+    <td>Time functions not summarised</td>
+    <td><code>GetEngineEpoch</code>, <code>ResetEngineEpoch</code>, <code>ElapsedSinceEngineEpoch</code>,
+        <code>GetBaseFrameRate</code>, <code>GetBaseFramePeriod</code> are named above but not tabulated;
+        the header carries their contract.</td>
+  </tr>
+  <tr>
+    <td>Class properties</td>
+    <td>Given where the declaration summary exposes them, otherwise stated as header-private. A full
+        property table per class means reading all 26 headers, which is a separate task.</td>
+  </tr>
+  <tr>
+    <td>Examples</td>
+    <td>Written for <a href="#runnable">Runnable</a> only. The function outline asks for an example per
+        function; the rest await one you have actually run, not an invented one.</td>
+  </tr>
+</table>
+
+<footer class="prevnext">
+  <span><a href="../Container/index.html">← Container</a></span>
+  <span><a href="../index.html">Module Index</a></span>
+  <span><a href="../Engine/index.html">Engine →</a></span>
+</footer>
+
+</main>
+</body>
+</html>

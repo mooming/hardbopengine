@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OSAL module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../Config/index.html">Config</a></li>
+    <li><a href="../Container/index.html">Container</a></li>
+    <li><a href="../Core/index.html">Core</a></li>
+    <li><a href="../Engine/index.html">Engine</a></li>
+    <li><a href="../HSTL/index.html">HSTL</a></li>
+    <li><a href="../Log/index.html">Log</a></li>
+    <li><a href="../Math/index.html">Math</a></li>
+    <li><a href="../Memory/index.html">Memory</a></li>
+    <li><a class="current" href="../OSAL/index.html">OSAL</a></li>
+    <li><a href="../Renderer/index.html">Renderer</a></li>
+    <li><a href="../Resource/index.html">Resource</a></li>
+    <li><a href="../String/index.html">String</a></li>
+    <li><a href="../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This module</h3>
+  <ul>
+    <li><a href="#description">Module description</a></li>
+    <li><a href="#classes">Module classes</a></li>
+    <li><a href="#variables">Module variables</a></li>
+    <li><a href="#functions">Module functions</a></li>
+    <li><a href="#application">Application</a></li>
+    <li><a href="#window">Window</a></li>
+    <li><a href="#file">File and Directory</a></li>
+    <li><a href="#source_location">SourceLocation</a></li>
+    <li><a href="#intrinsic">Intrinsic macros</a></li>
+    <li><a href="#platforms">Platform-specific units</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+
+  <h3>Design documents</h3>
+  <ul>
+    <li><a href="../BuildSystem.md">Build system</a></li>
+    <li><a href="../RendererDesign.html">Renderer design</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb"><a href="../index.html">Module Index</a> / OSAL</p>
+
+<h1>OSAL</h1>
+<p class="subtitle">
+  <span class="tag">namespace OS</span>
+  <span class="tag">Engine/OSAL</span>
+  18 headers, 35 sources — the operating-system boundary: application, window, files, threads, memory, backtrace
+</p>
+
+<h2 id="description">Module description</h2>
+
+<p>
+  The OS abstraction layer is where platform difference is allowed to exist. The public interface of a class
+  here is identical on every operating system; what differs is the implementation unit behind it, chosen at
+  build time by <a href="../Config/index.html#buildconfig"><code>PLATFORM_LINUX</code> /
+  <code>PLATFORM_OSX</code> / <code>PLATFORM_WINDOWS</code></a>. The <code>OS</code> namespace, not
+  <code>hbe</code>, marks this as the boundary.
+</p>
+
+<p>
+  This is also the module the older guide described least accurately — it documented
+  <code>OS::IApplication</code> and <code>OS::IWindow</code> interfaces that no longer exist. Everything below
+  is read from the headers, and <a href="#platforms">the platform table</a> names the actual per-platform units.
+</p>
+
+<h2 id="classes">Module classes</h2>
+
+<table>
+  <tr><th>Name</th><th>Kind</th><th>Header</th><th>Role</th></tr>
+  <tr><td><a href="#application">Application</a></td><td>Class, facade</td><td>Application.h</td><td>The OS application object, and its event pump</td></tr>
+  <tr><td><a href="#window">Window</a></td><td>Class, facade</td><td>Window.h</td><td>A window, its native handle and its events</td></tr>
+  <tr><td><a href="#file">File</a></td><td>Class</td><td>File.h</td><td>A path that can be sorted and printed</td></tr>
+  <tr><td><a href="#file">Directory</a></td><td>Class</td><td>Directory.h</td><td>A path with its child files and directories loaded</td></tr>
+  <tr><td><a href="#source_location">SourceLocation</a></td><td>Class</td><td>SourceLocation.h</td><td>File, function, line and column captured at the call site</td></tr>
+  <tr><td><a href="#intrinsic">Intrinsic macros</a></td><td>Preprocessor</td><td>Intrinsic.h</td><td>Branch hints, breakpoint, and the caller-info macros</td></tr>
+  <tr><td>OSAbstractLayer</td><td>Free functions</td><td>OSAbstractLayer.h</td><td>Full paths, directory tests and listings</td></tr>
+  <tr><td>OSDebug</td><td>Free function</td><td>OSDebug.h</td><td>Backtrace as an interned string</td></tr>
+  <tr><td>OSMemory</td><td>Free functions</td><td>OSMemory.h</td><td>Allocation validation, alignment, page size, virtual reservation</td></tr>
+  <tr><td>OSThread</td><td>Free functions</td><td>OSThread.h</td><td>Yield, sleep, CPU index, affinity, priority, thread CPU time</td></tr>
+  <tr><td>OSInputOutput</td><td>Free functions</td><td>OSInputOutput.h</td><td>Open, read, write, and file mapping</td></tr>
+</table>
+
+<h2 id="variables">Module variables</h2>
+
+<p>
+  None exposed. Two constants are leaned on instead:
+  <a href="../Config/index.html#variables"><code>Config::DefaultAlign</code></a>, the default for every
+  alignment argument in <a href="#functions">OSMemory</a>, and <code>PATH_MAX</code>, which
+  <code>OSAbstractLayer.h</code> defines per platform — <code>MAX_PATH</code> from the Windows SDK, the system
+  value elsewhere.
+</p>
+
+<h2 id="functions">Module functions</h2>
+
+<p>All in <code>namespace OS</code>. Grouped by the header that declares them.</p>
+
+<h3>OSAbstractLayer (<code>OSAbstractLayer.h</code>)</h3>
+
+<table>
+  <tr><th>Function</th><th>Parameters</th><th>Returns</th><th>Notes</th></tr>
+  <tr><td><code>GetFullPath</code></td><td><code>const hbe::HString&amp; path</code></td><td><code>hbe::HString</code></td><td>Relative in, absolute out</td></tr>
+  <tr><td><code>IsDirectory</code></td><td><code>const char* path</code></td><td><code>bool</code></td><td>A path that is a file answers false, as does one that does not exist</td></tr>
+  <tr><td><code>ListFilesInDirectory</code></td><td><code>const char* path</code></td><td><code>hbe::HVector&lt;hbe::HString&gt;</code></td><td>Names only; for a recursive walk use <a href="#file"><code>Directory</code></a></td></tr>
+</table>
+
+<h3>OSDebug (<code>OSDebug.h</code>)</h3>
+
+<table>
+  <tr><th>Function</th><th>Parameters</th><th>Returns</th><th>Notes</th></tr>
+  <tr><td><code>GetBackTrace</code></td><td><code>uint16_t startIndex = 0</code>, <code>uint16_t maxDepth = 512</code></td><td><code>hbe::StaticString</code></td><td>Walks the stack from <code>startIndex</code> so the capture call itself can be skipped. On Linux this uses <code>backtrace()</code> from <code>&lt;execinfo.h&gt;</code> with symbols demangled through <code>cxxabi</code></td></tr>
+</table>
+
+<h3>OSMemory (<code>OSMemory.h</code>)</h3>
+
+<table>
+  <tr><th>Function</th><th>Parameters</th><th>Returns</th><th>Notes</th></tr>
+  <tr><td><code>IsValidAllocation</code></td><td><code>void* ptr</code></td><td><code>bool</code></td><td>Is this a live allocation of ours</td></tr>
+  <tr><td><code>CheckAligned&lt;T&gt;</code></td><td><code>T* ptr</code>, <code>uint32_t alignBytes = Config::DefaultAlign</code></td><td><code>bool</code></td><td>Address modulo the alignment, computed inline</td></tr>
+  <tr><td><code>GetAligned</code></td><td><code>size_t size</code>, <code>uint32_t alignBytes = Config::DefaultAlign</code></td><td><code>constexpr size_t</code></td><td>Round up to the next multiple — usable at compile time</td></tr>
+  <tr><td><code>GetAllocSize</code></td><td><code>void* ptr</code></td><td><code>size_t</code></td><td>The size a pointer was allocated with</td></tr>
+  <tr><td><code>GetPageSize</code></td><td>none</td><td><code>size_t</code></td><td>OS page size, which is the granularity <code>VirtualAlloc</code> needs</td></tr>
+  <tr><td><code>VirtualAlloc</code></td><td><code>size_t size</code></td><td><code>void*</code></td><td>Reserve address space; the name matches the Windows call, so it is the OS API rather than the engine's <a href="../Memory/index.html#memorymanager">MemoryManager</a></td></tr>
+  <tr><td><code>VirtualFree</code></td><td><code>void* address</code>, <code>std::size_t n</code></td><td><code>void</code></td><td>Release a reservation</td></tr>
+  <tr><td><code>ProtectMemory</code></td><td><code>void* address</code>, <code>std::size_t n</code></td><td><code>void</code></td><td>Change page protection — the mechanism behind guard pages and the write-once checks</td></tr>
+</table>
+
+<p>
+  The header also defines <code>HE_ALIGN</code>, expanding to <code>alignas(Config::DefaultAlign)</code>, which is
+  how engine structures ask for the engine's alignment rather than a magic number.
+</p>
+
+<h3>OSThread (<code>OSThread.h</code>)</h3>
+
+<table>
+  <tr><th>Function</th><th>Parameters</th><th>Returns</th><th>Notes</th></tr>
+  <tr><td><code>Yield</code></td><td>none</td><td><code>void</code></td><td>Hand the core to another thread</td></tr>
+  <tr><td><code>Sleep</code></td><td><code>uint32_t milliseconds</code></td><td><code>void</code></td><td>Block this thread. Distinct from <a href="../Core/index.html#functions"><code>hbe::time::Sleep</code></a>, which sits on the clock side of the boundary</td></tr>
+  <tr><td><code>GetCPUIndex</code></td><td>none</td><td><code>int</code></td><td>Which core this thread is on right now</td></tr>
+  <tr><td><code>GetThreadPriority</code>, <code>SetThreadPriority</code></td><td><code>std::thread&amp;</code>, and an <code>int</code> priority to set</td><td><code>int</code> / <code>void</code></td><td>Priority is an OS number, not an engine one</td></tr>
+  <tr><td><code>SetThreadAffinity</code></td><td><code>std::thread&amp;</code>, <code>uint64_t mask</code></td><td><code>void</code></td><td>One bit per core</td></tr>
+  <tr><td><code>GetThreadCPUTime</code></td><td>none</td><td><code>std::chrono::nanoseconds</code></td><td>CPU time this thread has consumed, not wall time. This is the measurement the task system's CPU budgets are charged from — and the reason a stream that waits 80 ms is not charged 80 ms is exactly this distinction, argued in <a href="../TaskSystemRedesign.md">docs/TaskSystemRedesign.md</a></td></tr>
+</table>
+
+<h3>OSInputOutput (<code>OSInputOutput.h</code>)</h3>
+
+<table>
+  <tr><th>Function</th><th>Parameters</th><th>Returns</th><th>Notes</th></tr>
+  <tr><td><code>Open</code></td><td><code>FileHandle&amp; outHandle</code>, <code>StaticString filePath</code>, <code>FileOpenMode openMode</code></td><td><code>bool</code></td><td>The handle is an out-parameter, and follows the <code>out</code> prefix rule</td></tr>
+  <tr><td><code>Close</code></td><td><code>FileHandle&amp;&amp; handle</code></td><td><code>bool</code></td><td>Takes the handle by rvalue reference — once closed you cannot use it, which the signature enforces</td></tr>
+  <tr><td><code>Exist</code>, <code>Delete</code></td><td><code>StaticString filePath</code></td><td><code>bool</code></td><td>Presence test and removal</td></tr>
+  <tr><td><code>Read</code>, <code>Write</code></td><td>handle, <code>void* buffer</code>, <code>size_t size</code></td><td><code>size_t</code></td><td>Bytes actually transferred, which may be fewer than asked — the short-count is the reason a loop is usually needed</td></tr>
+  <tr><td><code>Truncate</code></td><td>handle, <code>size_t size</code></td><td><code>bool</code></td><td>Resize the file</td></tr>
+  <tr><td><code>MapMemory</code></td><td><code>FileHandle&amp;</code>, <code>size_t size</code>, <code>ProtectionMode</code>, <code>size_t offset</code></td><td><code>void*</code></td><td>Map a file into the address space — how a large resource is read without a staging buffer</td></tr>
+  <tr><td><code>MapSync</code></td><td><code>void* ptr</code>, <code>size_t size</code>, <code>MapSyncMode</code></td><td><code>bool</code></td><td>Flush a writable mapping back to the file</td></tr>
+  <tr><td><code>UnmapMemory</code></td><td><code>void* ptr</code>, <code>size_t size</code></td><td><code>bool</code></td><td>Release a mapping</td></tr>
+</table>
+
+<h2 id="application">Application (<code>Engine/OSAL/Application.h</code>)</h2>
+
+<h3>Class description</h3>
+<p>
+  The platform-independent application facade: it creates the OS application object and pumps its events. On
+  macOS that is the <code>NSApplication</code> the window server requires, on Windows an <code>HINSTANCE</code>,
+  on Linux whatever the display server needs — and none of that reaches a caller.
+</p>
+
+<h3>Template parameters</h3>
+<p>None — Application is not a template.</p>
+
+<h3>Class properties</h3>
+<p><code>m_platformHandle</code>, an opaque per-platform handle, private. Note the member name: it carries the <code>m_</code> prefix that <a href="../CodingStandards.md">docs/CodingStandards.md</a> tells engine code not to use, which is a local inconsistency in this module rather than a rule change.</p>
+
+<h3>Class methods</h3>
+
+<pre><code><span class="kw">class</span> <span class="ty">Application</span>
+{
+<span class="kw">public</span>:
+    <span class="ty">Application</span>() <span class="kw">noexcept</span>;
+    ~<span class="ty">Application</span>();
+
+    <span class="kw">void</span> Initialize();
+    <span class="kw">void</span> PollEvents();
+};
+
+[[nodiscard]] std::unique_ptr&lt;<span class="ty">Application</span>&gt; CreateApplication() <span class="kw">noexcept</span>;</code></pre>
+
+<p>The <a href="../Engine/index.html#engine">Engine</a> creates and owns the application when
+<a href="../Engine/index.html#einitlevel"><code>EInitLevel::Application</code></a> is requested, and hands out the
+pointer through <code>GetApplication()</code> — a real application checks it for null before using it, as
+<a href="../Engine/index.html#engine">the example</a> shows.</p>
+
+<h3>Non-member helper functions</h3>
+<p><code>CreateApplication()</code> returns a <code>std::unique_ptr</code>, so the caller owns it; it is <code>[[nodiscard]]</code>, so ignoring the result does not compile quietly.</p>
+
+<h2 id="window">Window (<code>Engine/OSAL/Window.h</code>)</h2>
+
+<h3>Class description</h3>
+<p>A window on whichever toolkit the platform chose, created with a size and title, polled for events, and closed explicitly.</p>
+
+<h3>Template parameters</h3>
+<p>None — Window is not a template.</p>
+
+<h3>Class properties</h3>
+
+<p>Size and flags are the same everywhere; the native handle is what the <code>#if defined(PLATFORM_*)</code> block selects:</p>
+
+<table>
+  <tr><th>Property</th><th>Type</th><th>Present on</th></tr>
+  <tr><td><code>width</code>, <code>height</code></td><td><code>int</code></td><td>every platform</td></tr>
+  <tr><td><code>visibleFlag</code>, <code>closedFlag</code></td><td><code>bool</code></td><td>every platform</td></tr>
+  <tr><td><code>display</code>, <code>window</code></td><td><code>void*</code>, <code>intptr_t</code></td><td>Linux only</td></tr>
+  <tr><td><code>hwnd</code>, <code>shouldCloseFlag</code></td><td><code>void*</code>, <code>bool</code></td><td>Windows only — it tracks close separately from the shared flag</td></tr>
+  <tr><td><code>osHandle</code>, <code>osDelegate</code></td><td><code>void*</code>, <code>void*</code></td><td>macOS only — the delegate observes the close button, and because <code>NSWindow</code> holds its delegate unretained, the <code>Window</code> owns the reference</td></tr>
+</table>
+
+<h3>Class methods</h3>
+
+<pre><code>[[nodiscard]] <span class="kw">bool</span> CreateWindow(<span class="kw">const</span> <span class="ty">hbe::HString</span>&amp; title, <span class="kw">int</span> width, <span class="kw">int</span> height);
+<span class="kw">void</span> SetTitle(<span class="kw">const</span> <span class="ty">hbe::HString</span>&amp; title);
+<span class="kw">void</span> SetSize(<span class="kw">int</span> width, <span class="kw">int</span> height);
+<span class="kw">void</span> SetVisible(<span class="kw">bool</span> visible);
+<span class="kw">void</span> PollEvents();
+<span class="kw">void</span> Close();
+
+[[nodiscard]] <span class="kw">int</span> GetWidth() <span class="kw">const</span>;
+[[nodiscard]] <span class="kw">int</span> GetHeight() <span class="kw">const</span>;
+[[nodiscard]] <span class="kw">bool</span> IsVisible() <span class="kw">const</span>;
+[[nodiscard]] <span class="kw">bool</span> IsClosed() <span class="kw">const</span>;
+[[nodiscard]] <span class="kw">intptr_t</span> GetNativeHandle() <span class="kw">const</span>;</code></pre>
+
+<p>
+  <code>GetNativeHandle</code> is the deliberate leak: it is what the <a href="../Renderer/index.html">renderer</a>
+  passes to the graphics API to attach a surface to. Every other method is portable; anything using the handle is
+  not, which is why the renderer is where that call happens.
+</p>
+
+<h3>Non-member helper functions</h3>
+<p><code>CreateWindow(title, width, height)</code> — a <code>[[nodiscard]] std::unique_ptr&lt;Window&gt;</code>, caller-owned.</p>
+
+<h2 id="file">File and Directory (<code>Engine/OSAL/File.h</code>, <code>Directory.h</code>)</h2>
+
+<h3>Class description</h3>
+<p>
+  A <code>File</code> is a path that knows how to order and print itself; <code>Files</code> is the vector the
+  engine passes around. A <code>Directory</code> reads itself at construction and then exposes its child files
+  and subdirectories, so a tree walk is a recursion over <code>DirList()</code>.
+</p>
+
+<h3>Template parameters</h3>
+<p>None — neither is a template.</p>
+
+<h3>Class properties</h3>
+
+<table>
+  <tr><th>Class</th><th>Property</th><th>Type</th><th>Purpose</th></tr>
+  <tr><td><code>File</code></td><td><code>path</code></td><td><code>const std::string</code></td><td>The path, and the only state</td></tr>
+  <tr><td><code>File</code></td><td><code>Files</code></td><td><code>using</code> = <code>std::vector&lt;File&gt;</code></td><td>The list type the engine passes around</td></tr>
+  <tr><td><code>Directory</code></td><td><code>path</code></td><td><code>const std::string</code></td><td>The directory's own path</td></tr>
+  <tr><td><code>Directory</code></td><td><code>fileList</code>, <code>dirList</code></td><td><code>Files</code>, <code>Dirs</code></td><td>Children read at construction</td></tr>
+  <tr><td><code>Directory</code></td><td><code>Dirs</code></td><td><code>using</code> = <code>std::vector&lt;Directory&gt;</code></td><td>Declared both as a member alias and at namespace scope</td></tr>
+</table>
+
+<h3>Class methods</h3>
+
+<pre><code><span class="cm">// File</span>
+<span class="kw">explicit</span> <span class="ty">File</span>(<span class="kw">const char</span>* path);
+<span class="ty">File</span>(<span class="kw">const</span> <span class="ty">File</span>&amp; src);
+<span class="ty">File</span>(<span class="ty">File</span>&amp;&amp; src) <span class="kw">noexcept</span>;
+<span class="ty">File</span>&amp; operator=(<span class="kw">const</span> <span class="ty">File</span>&amp; src);
+<span class="ty">File</span>&amp; operator=(<span class="ty">File</span>&amp;&amp; src) <span class="kw">noexcept</span>;
+[[nodiscard]] <span class="kw">bool</span> operator&lt;(<span class="kw">const</span> <span class="ty">File</span>&amp; rhs) <span class="kw">const</span>;   <span class="cm">// lexicographic on path</span>
+[[nodiscard]] <span class="kw">const</span> std::string&amp; GetPath() <span class="kw">const</span>;
+
+<span class="cm">// Directory</span>
+<span class="ty">Directory</span>(<span class="kw">const char</span>* path);           <span class="cm">// reads the directory</span>
+<span class="kw">virtual</span> ~<span class="ty">Directory</span>() = <span class="kw">default</span>;
+[[nodiscard]] <span class="kw">const</span> <span class="ty">Files</span>&amp; FileList() <span class="kw">const</span>;
+[[nodiscard]] <span class="kw">const</span> <span class="ty">Dirs</span>&amp; DirList() <span class="kw">const</span>;</code></pre>
+
+<h3>Non-member helper functions</h3>
+<p>
+  <code>operator&lt;&lt;(std::ostream&amp;, const File&amp;)</code> is a friend of <code>File</code> printing its path,
+  which is what lets a test log a whole <code>Files</code> vector through
+  <a href="../String/index.html#stringbuilder">StringBuilder</a>-style output.
+</p>
+
+<h2 id="source_location">SourceLocation (<code>Engine/OSAL/SourceLocation.h</code>)</h2>
+
+<h3>Class description</h3>
+<p>
+  Where a call came from, captured by default arguments so the caller writes nothing. It is the OSAL's
+  contribution to <a href="../Core/index.html#functions">the assertion family</a>.
+</p>
+
+<h3>Template parameters</h3>
+<p>None — SourceLocation is not a template.</p>
+
+<h3>Class properties</h3>
+<p>File name, function name, line number and column offset, each filled from the corresponding caller macro.</p>
+
+<h3>Class methods</h3>
+
+<pre><code><span class="kw">class</span> <span class="ty">SourceLocation</span> final
+{
+    <span class="kw">static constexpr</span> <span class="ty">SourceLocation</span> current(
+        <span class="kw">const char</span>* fileName      = <span class="ty">CallerFile</span>(),
+        <span class="kw">const char</span>* functionName  = <span class="ty">CallerFunc</span>(),
+        <span class="kw">uint_least32_t</span> lineNumber = <span class="ty">CallerLine</span>(),
+        <span class="kw">uint_least32_t</span> column     = <span class="ty">CallerColumn</span>()) <span class="kw">noexcept</span>;
+
+    <span class="cm">// accessors: file_name(), function_name(), line(), column()</span>
+};</code></pre>
+
+<p>The defaults are what make it usable: <code>SourceLocation::current()</code> written at a call site reports that call site, and a parameter of this type with a default can be left out of a signature entirely.</p>
+
+<h3>Non-member helper functions</h3>
+<p>The <a href="#intrinsic">caller macros</a> supply every default argument.</p>
+
+<h2 id="intrinsic">Intrinsic macros (<code>Engine/OSAL/Intrinsic.h</code>)</h2>
+
+<h3>Class description</h3>
+<p>Compiler-facing primitives. They are macros because the operations are not callable: branch prediction hints and a breakpoint are instructions, and caller information only exists at the expansion site.</p>
+
+<table>
+  <tr><th>Macro</th><th>Purpose</th></tr>
+  <tr><td><code>likely(x)</code></td><td>Tell the compiler the condition is usually true — the error path goes the other way</td></tr>
+  <tr><td><code>unlikely(x)</code></td><td>The reverse, and the one worth putting on a failure branch in a hot loop</td></tr>
+  <tr><td><code>debugBreak()</code></td><td>Halt for the debugger</td></tr>
+  <tr><td><code>CallerFile()</code>, <code>CallerFunc()</code>, <code>CallerLine()</code>, <code>CallerColumn()</code></td><td>Expansion-site identity; the four defaults of <a href="#source_location"><code>SourceLocation::current</code></a></td></tr>
+</table>
+
+<p>The names are lower-case, unlike the <code>SCREAMING_SNAKE_CASE</code> that <a href="../CodingStandards.md">docs/CodingStandards.md</a> asks macros for — these are used as function-call shapes and read as such.</p>
+
+<h2 id="platforms">Platform-specific units</h2>
+
+<p>Same interface, different implementation file, selected by <code>#if defined(PLATFORM_*)</code>. This is the pattern the <a href="../Renderer/index.html">Renderer</a> copies for its backends.</p>
+
+<table>
+  <tr><th>Platform</th><th>Window</th><th>Application</th><th>File handle</th><th>Debug</th><th>Memory</th><th>Thread</th></tr>
+  <tr><td><strong>macOS</strong></td><td>OSXWindow.h / .mm</td><td>OSXApplication.h / .mm</td><td>OSXFileHandle.cpp</td><td>OSXDebug.cpp</td><td>OSXMemory.cpp</td><td>OSXThread.cpp</td></tr>
+  <tr><td><strong>Linux</strong></td><td>LinuxWindow.h / .cpp</td><td>LinuxApplication.h / .cpp</td><td>LinuxFileHandle.cpp</td><td>LinuxDebug.cpp</td><td>LinuxMemory.cpp</td><td>LinuxThread.cpp</td></tr>
+  <tr><td><strong>Windows</strong></td><td>Win32Window.h / .cpp</td><td>Win32Application.h / .cpp</td><td>Win32Window.cpp</td><td>WindowsDebug.cpp</td><td>WindowsMemory.cpp</td><td>WindowsThread.cpp</td></tr>
+</table>
+
+<div class="gap">
+  <strong>One implementation unit per platform, per concern.</strong> Because both the generic and the
+  per-platform units define some of the same functions, the build must compile exactly one of them for a given
+  platform — the risk recorded in the repository's own review notes as an ODR hazard. If you add a platform unit,
+  check how the source list selects it before the linker or the reader of the code finds out.
+</div>
+
+<h2 id="coverage">Coverage</h2>
+
+<table>
+  <tr><th>Gap</th><th>Detail</th></tr>
+  <tr>
+    <td><code>FileHandle</code>, <code>FileOpenMode</code>, <code>ProtectionMode</code>, <code>MapSyncMode</code></td>
+    <td><code>OSInputOutput.h</code> forward-declares all four; the enumerations and the handle's definition are
+        elsewhere, and their members are not documented here.</td>
+  </tr>
+  <tr>
+    <td>The other 8 headers</td>
+    <td>This page names the classes and free functions above; the remaining headers of the 18 are the per-platform
+        units from <a href="#platforms">the table</a>, whose content is by definition platform detail rather than
+        engine API.</td>
+  </tr>
+  <tr>
+    <td>What a facade guarantees per platform</td>
+    <td>For example whether <code>PollEvents</code> drains or peeks, and how a resized window reports its new
+        size, is behaviour the facade hides and no document states yet.</td>
+  </tr>
+</table>
+
+<footer class="prevnext">
+  <span><a href="../Memory/index.html">← Memory</a></span>
+  <span><a href="../index.html">Module Index</a></span>
+  <span><a href="../Renderer/index.html">Renderer →</a></span>
+</footer>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HardBop Engine — Module Index</title>
+<link rel="stylesheet" href="assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="Config/index.html">Config</a></li>
+    <li><a href="Container/index.html">Container</a></li>
+    <li><a href="Core/index.html">Core</a></li>
+    <li><a href="Engine/index.html">Engine</a></li>
+    <li><a href="HSTL/index.html">HSTL</a></li>
+    <li><a href="Log/index.html">Log</a></li>
+    <li><a href="Math/index.html">Math</a></li>
+    <li><a href="Memory/index.html">Memory</a></li>
+    <li><a href="OSAL/index.html">OSAL</a></li>
+    <li><a href="Renderer/index.html">Renderer</a></li>
+    <li><a href="Resource/index.html">Resource</a></li>
+    <li><a href="String/index.html">String</a></li>
+    <li><a href="Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>Guides</h3>
+  <ul>
+    <li><a href="AllocatorGuide.md">Allocator guide</a></li>
+    <li><a href="LoggerGuide.md">Logger guide</a></li>
+    <li><a href="MemoryManagement_Guide.md">Memory management</a></li>
+    <li><a href="TaskSystemGuide.md">Task system guide</a></li>
+    <li><a href="RendererDesign.html">Renderer design</a></li>
+    <li><a href="BuildSystem.md">Build system</a></li>
+    <li><a href="RunningTests.md">Running tests</a></li>
+  </ul>
+
+  <h3>Policy</h3>
+  <ul>
+    <li><a href="CodingStandards.md">Coding standards</a></li>
+    <li><a href="../AGENTS.md">Agent rules</a></li>
+    <li><a href="../README.md">README</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<h1>Module Index</h1>
+<p class="subtitle">
+  <span class="tag">2026.09</span>
+  <span class="tag">C++23</span>
+  HardBop Engine — high-performance C++23 engine with custom memory, task system and OSAL<br>
+  <code>namespace hbe</code> (engine core), <code>namespace OS</code> (OS abstraction layer),
+  <code>namespace hbe::Renderer</code> (renderer)
+</p>
+
+<p>
+  One page per module, one module per directory under <code>Engine/</code>. The page for a module is
+  <code>docs/&lt;Module&gt;/index.html</code>, so the documentation tree and the source tree agree: a class
+  documented on the Memory page lives under <code>Engine/Memory/</code>.
+</p>
+
+<h2 id="how-to-read">How to read these pages</h2>
+
+<p>
+  Every page follows the outlines <a href="../AGENTS.md">AGENTS.md</a> fixes for API reference documents.
+  A module page opens with the module's own four sections, then repeats the class outline once per class.
+</p>
+
+<table>
+  <tr><th>Level</th><th>Sections, in order</th></tr>
+  <tr><td>Module</td><td>Module description, Module classes, Module variables, Module functions</td></tr>
+  <tr><td>Class</td><td>Class description, Template parameters, Class properties, Class methods, Non-member helper functions</td></tr>
+  <tr><td>Function</td><td>Function description, Parameters, Return value, Examples</td></tr>
+</table>
+
+<p>
+  Code shown on these pages is a declaration summary, not a definition. The header named under each
+  heading is the authority: the engine is exception-free and self-documented, so the paired
+  <code>.h</code> carries the contract — preconditions, ownership, lifetime, thread-safety — and
+  <code>docs/</code> carries the design reasoning.
+</p>
+
+<h2 id="modules">Modules</h2>
+
+<p>
+  Header and source counts are counted from the module's directory on the day this site was built. A
+  <em>documented entry</em> is one named entity a module page carries a section for — a class, an enumeration,
+  an alias family or a group of free functions — which is why the number is smaller than the header count: a
+  header holding implementation detail is listed, not documented.
+</p>
+
+<div class="module-grid">
+
+  <div class="module-card">
+    <h3><a href="Config/index.html">Config</a></h3>
+    <p>Thread-safe configuration parameters, engine settings, and the build-time defines the engine compiles against.</p>
+    <p class="meta">5 headers · 5 documented entries · <a href="BuildSystem.md">Build system</a>, <a href="HelperScript.md">Helper script</a></p>
+  </div>
+
+  <div class="module-card">
+    <h3><a href="Container/index.html">Container</a></h3>
+    <p>Core containers on engine allocators: fixed array, vector, map, hash map, linked list, deque, queues, bounded priority queue, lock-free stack view.</p>
+    <p class="meta">10 headers · 10 documented entries</p>
+  </div>
+
+  <div class="module-card">
+    <h3><a href="Core/index.html">Core</a></h3>
+    <p>Foundation everything else stands on: types and constants, the task system, the component system, timing, assertions, statistics.</p>
+    <p class="meta">26 headers · 20 documented entries · <a href="TaskSystemGuide.md">Task system</a>, <a href="TaskSystemRedesign.md">Task system redesign</a></p>
+  </div>
+
+  <div class="module-card">
+    <h3><a href="Engine/index.html">Engine</a></h3>
+    <p>The <code>Engine</code> singleton: owns every subsystem, wires them, and drives the main loop.</p>
+    <p class="meta">2 headers · 2 documented entries</p>
+  </div>
+
+  <div class="module-card">
+    <h3><a href="HSTL/index.html">HSTL</a></h3>
+    <p>HardBop STL — standard containers rebound to engine allocators: <code>HVector</code>, <code>HString</code>, <code>HUnorderedMap</code>.</p>
+    <p class="meta">3 headers · 3 documented entries</p>
+  </div>
+
+  <div class="module-card">
+    <h3><a href="Log/index.html">Log</a></h3>
+    <p>Asynchronous logging: double-buffered lock-free writes, category filtering, multiple output destinations.</p>
+    <p class="meta">5 headers · 6 documented entries · <a href="LoggerGuide.md">Logger guide</a></p>
+  </div>
+
+  <div class="module-card">
+    <h3><a href="Math/index.html">Math</a></h3>
+    <p>Vectors, matrices, quaternions, transforms, bounding volumes, coordinate orientation, sampling and integration.</p>
+    <p class="meta">18 headers · 13 documented entries</p>
+  </div>
+
+  <div class="module-card">
+    <h3><a href="Memory/index.html">Memory</a></h3>
+    <p>Custom allocators and the <code>MemoryManager</code> that owns them: pool, stack, monotonic and multi-pool variants.</p>
+    <p class="meta">23 headers · 14 documented entries, nine of them allocators · <a href="AllocatorGuide.md">Allocator guide</a>, <a href="MemoryManagement_Guide.md">Memory management</a></p>
+  </div>
+
+  <div class="module-card">
+    <h3><a href="OSAL/index.html">OSAL</a></h3>
+    <p>The platform boundary: application, window, files and directories, threads, memory primitives, and their per-platform implementations.</p>
+    <p class="meta">18 headers · 11 documented entries</p>
+  </div>
+
+  <div class="module-card">
+    <h3><a href="Renderer/index.html">Renderer</a></h3>
+    <p>The render hardware interface, capability queries, vertex formats, the factory, and the Vulkan, DX12 and Metal backends.</p>
+    <p class="meta">7 headers · 9 documented entries · <a href="RendererDesign.html">Renderer design</a>, <a href="design/LightweightRenderer_Design.html">Lightweight renderer design</a></p>
+  </div>
+
+  <div class="module-card">
+    <h3><a href="Resource/index.html">Resource</a></h3>
+    <p>Resource lifecycle, binary buffers, and the input and output streams that read and write them.</p>
+    <p class="meta">7 headers · 4 documented entries</p>
+  </div>
+
+  <div class="module-card">
+    <h3><a href="String/index.html">String</a></h3>
+    <p><code>String</code>, interned <code>StaticString</code> and <code>StaticStringID</code>, builders, and character utilities.</p>
+    <p class="meta">9 headers · 8 documented entries</p>
+  </div>
+
+  <div class="module-card">
+    <h3><a href="Test/index.html">Test</a></h3>
+    <p>The unit test framework: <code>TestCollection</code>, <code>UnitTestCollection</code>, and the test environment the suite runs in.</p>
+    <p class="meta">3 headers · 3 documented entries · <a href="RunningTests.md">Running tests</a></p>
+  </div>
+
+</div>
+
+<h2 id="documenting-policy">Documenting policy</h2>
+
+<p>
+  The engine is <strong>self-documented</strong>: names, types and structure carry the intent, so the
+  codebase avoids comments and only brief comments are allowed in header files. Prose goes where a reader
+  forms intent instead.
+</p>
+
+<table>
+  <tr><th>Prose</th><th>Destination</th></tr>
+  <tr><td>What a caller of the engine depends on — contract, preconditions, ownership, lifetime, thread-safety, complexity</td><td>The paired <code>.h</code> declaration</td></tr>
+  <tr><td>What implementation or system design needs — invariants, algorithms, allocation strategy, locking protocol, platform quirks</td><td>An HTML design document under <code>docs/</code></td></tr>
+  <tr><td>What exists and how to call it</td><td>The module pages of this site</td></tr>
+</table>
+
+<p>
+  Rules in full: <a href="../AGENTS.md">AGENTS.md</a>,
+  <a href="CodingStandards.md">docs/CodingStandards.md</a>, and
+  <a href="../README.md#documentation-policy">README.md § Documentation Policy</a>.
+  Identifier conventions — <code>PascalCase</code> for types and functions, <code>T</code>-prefixed type
+  aliases and template parameters — belong to <a href="CodingStandards.md">docs/CodingStandards.md</a>
+  and are not restated here, because a second copy of a standard is a second thing to keep correct.
+</p>
+
+<footer class="prevnext">
+  <span>HardBop Engine API reference</span>
+  <span>Start here, then choose a module on the left.</span>
+</footer>
+
+</main>
+</body>
+</html>
