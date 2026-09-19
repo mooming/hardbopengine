@@ -410,3 +410,12 @@ that opted into completion. A fire-and-forget job that expires is simply gone, a
 
 R17 slightly retracts R12 as written: growth was described as coming from the task object. It comes from
 the stream instead. R18 collapses R13 and R16 onto one integer.
+
+## Owner decisions, 2026-09-19 (sizes)
+
+| # | Decision | Consequence |
+|---|---|---|
+| R20 | **Initial result container holds 1024 slots; `growBy` is 1024 slots.** | Arithmetic that follows: a slot is 128 bytes, so one container starts at 131,072 bytes and each grow adds the same. Two containers per stream means 256 KiB per stream before any growth. A 1 MB bank fits 8192 slots, so an initial container is one eighth of a bank. |
+
+This answers the open item that asked for a ceiling number, and it is one capacity for every stream rather
+than a per-stream tuning value - consistent with R17, which moved `growBy` onto the stream.

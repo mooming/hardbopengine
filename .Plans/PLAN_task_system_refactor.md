@@ -390,3 +390,9 @@ a public `HasDone` coherent, since there is no engine-wide completion promise le
 `NumResults > 0` is what makes a task report completion - no separate flag, so the contradictory combination
 cannot be written. The first implementation carries only `NumResults`, capacity admission, two bump
 containers, swap, fold, rewind. No `TaskDescriptor` object exists until a second field needs one.
+
+## Sizes fixed (R20)
+
+Initial result container is 1024 slots and `growBy` is 1024 slots, one number for every stream. At 128 bytes
+per slot that is 131,072 bytes per container, so 256 KiB per stream for the swap pair before any growth, and
+one eighth of a 1 MB bank.

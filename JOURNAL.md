@@ -1291,6 +1291,8 @@ Full analysis available in PerformanceAnalysis.md.
 
 | 2026-09-19 00:10 | (docs) | docs(design): growBy is a stream property, NumResults replaces ResultCapacity | R17-R19. growBy belongs to the stream, not the task, so a stream's ceiling is decided where it is built and tasks inherit it; a task wanting more waits for repeated grows. There is no reportsCompletion field - NumResults decides it, so the contradiction of a zero-output task asking to report completion cannot be expressed, and R15's capacity-free population is exactly NumResults == 0. Start simple: first implementation is NumResults, capacity admission, two containers, swap, fold, rewind, with no TaskDescriptor object invented to carry a single integer. | R17 partially retracts R12, which I had recorded as growth coming from the task object; it comes from the stream. Corrected in the doc rather than left contradictory. No code written, so nothing built - the suite is still 57/57 from 2d9b5d3 and untested since, because nothing has compiled. |
 
+| 2026-09-19 00:20 | (docs) | docs(design): initial container 1024 slots, growBy 1024 | R20 closes the capacity ceiling open item with one number for every stream rather than per-stream tuning, consistent with R17 putting growBy on the stream. Stated the arithmetic rather than leaving it to be discovered: slot is 128 bytes so a container starts at 131,072 bytes and each grow is the same size; two containers per stream is 256 KiB per stream before any growth; a 1 MB MultiPoolAllocator bank fits 8192 slots so an initial container is one eighth of a bank. | No code written and nothing built. Suite remains 57/57 from 2d9b5d3, untested since because nothing has compiled. |
+
 
 ---
 
