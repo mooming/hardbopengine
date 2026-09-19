@@ -5,6 +5,31 @@
 ## Project Overview
 HardBop Engine: high‑performance C++23 engine with custom memory, task system, and OSAL for cross‑platform use.
 
+## Self Documented Code and API Reference Documents
+The engine codebase avoid comments. It allows brief comments in header files only.
+Create or revise APIReferenceDocuments in "docs". The API documents provides these information.
+
+Module Index page will be the start page.
+
+# Module
+1. Module Description
+2. Module Classes
+2. Module Variables
+3. Module Functions
+
+# Class
+1. Class Description
+2. Template Parameters
+3. Class Properties
+4. Class Methods
+5. Non-member methods(util or helper functions)
+
+# Functions
+1. Function Description
+2. Parameters
+3. Return Value
+4. Examples
+
 ## Coding Standards
 
 - **No comments in `.cpp` files.** Implementation files are self-documented: names, types
