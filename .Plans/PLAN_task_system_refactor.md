@@ -365,3 +365,13 @@ New work this creates, in order, because R7 and R8 are prerequisites rather than
 4. Successor and join counter on the registry record; then remove `Wait`, `BusyWait` and public
    `HasDone`, which rewrites five test call sites that currently wait or poll on the base stream.
 5. Then `ParallelFor` overloads, which is where the blocked B7 finally unblocks.
+
+## Result container, final shape (R11-R14)
+
+Not a pool allocator. Each stream owns two bump-allocated containers of fixed 128-byte slots; the base
+stream swaps them and a worker rewinds the rewound one by zeroing its slot count. Growth happens only in
+the `Reset()` pass from a rate carried by a `TaskDescriptor`, and a task declares how many packets it can
+produce - the stream refuses to run a task it has no room for, and an oversized head closes its own lane
+until the next `Reset`. Consequences for implementation, in `docs/TaskSystemRedesign.md`: allocation never
+touches the hot path, overproduction is an assert, and three guards are recorded as my additions - refuse
+at enqueue what can never fit, log a closed lane, and stamp a container epoch into every handle.

@@ -366,3 +366,25 @@ before choosing it.
 * result pool bank growth policy and behaviour on exhaustion
 * which allocator the pool's banks come from, given per-stream pools cannot be freed cross-thread
 * how stage-to-stage payload binding works when two of a caller's sequential jobs want the same slot
+
+## Owner decisions, 2026-09-18 (third round: the result container is a stack allocator)
+
+| # | Decision | Consequence accepted |
+|---|---|---|
+| R11 | **The per-stream result container is a stack (bump) allocator over fixed 128-byte slots, not a pool.** The base stream only swaps the two containers; a worker never deallocates to reuse the buffer - reuse is rewinding the slot count. | With every slot 128 bytes, allocation is `index = count++` and release is `count = 0`: one store, no free list, no atomics, no lock inside the allocator. Memory stays owned by the thread that grew it. |
+| R12 | **`Reset()` may grow the buffer by a rate or size declared in the task object, supplied by a `TaskDescriptor`.** | Growth happens only on the base stream's reset pass, so no allocation ever lands on the hot path. Cost: buffer size is set by descriptors, so a badly declared descriptor shows up as waiting rather than as an error. |
+| R13 | **Capacity is declared per task. A stream does not proceed with a task whose declared result capacity is not available.** | Admission control moves into the stream. A task that produces more packets than it declared becomes an assert, because admission already guaranteed the room, so a shortfall is a programming error and not a runtime condition. |
+| R14 | **Admission is checked at dequeue, and when the head task does not fit, that lane stops taking work until the next `Reset`, with the head left in place.** | Arrival order from B3b survives untouched - nothing overtakes the head. Cost, stated before choosing: a lane idles behind one oversized task while queued tasks that would fit wait behind it, and if a grow policy is never set the lane closes permanently. |
+
+### Guards I am adding under R14, flagged as mine rather than the owner's
+
+1. **Refuse at enqueue anything that can never fit.** R14 stops a lane at dequeue, so a task whose declared
+   capacity exceeds the maximum reachable capacity would close that lane forever. That must be rejected where
+   the caller can still hear about it, which is the dispatch call, not the worker thread.
+2. **A closed lane says so.** The stream logs the refused task, its declared need and the room remaining,
+   rate-limited to once per closure. Without this, a configuration mistake is indistinguishable from the
+   dropped-task hang that has already happened once in this subsystem today.
+3. **Handles carry a container epoch**: `{streamIndex, containerEpoch, slotIndex}`, with the epoch advanced
+   on every rewind. A bump allocator cannot detect a use-after-rewind on its own - a stale slot index reads
+   whichever packet landed there next - so the epoch is what keeps R7's "recognise a recycled task, do not
+   follow it" promise true against the container as well.
