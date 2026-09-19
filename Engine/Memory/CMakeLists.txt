@@ -63,6 +63,7 @@ add_library (Memory STATIC
  MultiPoolAllocator.h
  MultiPoolAllocatorConfig.h
  MultiPoolConfigCache.h
+ NamedPoolAllocator.h
  Optional.h
  PoolAllocator.h
  PoolConfig.h

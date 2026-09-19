@@ -10,6 +10,7 @@
 #include "Container/BoundedPriorityQueue.h"
 #include "Container/Deque.h"
 #include "Core/CPUBudget.h"
+#include "Core/ResultContainer.h"
 #include "Core/StreamDrainPolicy.h"
 #include "HSTL/HVector.h"
 #include "Memory/MultiPoolAllocator.h"
@@ -26,6 +27,22 @@ class TaskSystem;
 /// @brief Represents a thread that processes a series of tasks from a priority queue.
 class TaskStream final
 {
+public:
+	/// @brief Result containers per stream: two, so one can be filled while the other is consumed.
+	static constexpr std::size_t NumResultContainers = 2;
+
+	/// @brief Slots each result container starts with: 1024, the same number for every stream.
+	/// @details The arithmetic that follows from the slot width is worth stating: a slot is 128 bytes, so a
+	///          container starts at 131,072 bytes and two of them cost one stream 256 KiB before any growth.
+	static constexpr std::size_t InitialResultCapacitySlots = 1024;
+
+	/// @brief Slots each result container adds when it is grown: 1024, the same number for every stream.
+	/// @details Growth belongs to the stream rather than to a task, so a stream's memory ceiling is decided
+	///          where the stream is built and every task running on it inherits it. A task that needs more room
+	///          waits for further grows instead of asking for its own size.
+	static constexpr std::size_t DefaultGrowBySlots = InitialResultCapacitySlots;
+
+private:
 	template <typename T>
 	using TVector = hbe::HVector<T>;
 	using TIndex = Task::TIndex;
@@ -51,6 +68,9 @@ private:
 	TStreamIndex streamIndex;
 	std::uint64_t loopCount;
 	MultiPoolAllocator allocator;
+	ResultContainer firstResultContainer;
+	ResultContainer secondResultContainer;
+	std::size_t growBySlots;
 	CPUBudget budget;
 
 	std::mutex queueLock;
@@ -138,6 +158,22 @@ public:
 	[[nodiscard]] auto GetLoopCount() const noexcept
 	{
 		return loopCount;
+	}
+
+	/// @brief One of this stream's two result containers, by index below NumResultContainers.
+	/// @details The pair exists so that filling and consuming do not have to overlap: a stream appends results
+	///          to one while the other waits to be consumed. Which of the two is which is decided by the
+	///          base-stream pass that swaps them, so a caller that wants a stream's results asks for the pair by
+	///          index and not for a role it cannot know from outside.
+	/// @note Asserts if index is not a container of this stream.
+	[[nodiscard]] const ResultContainer& GetResultContainer(std::size_t index) const noexcept;
+
+	/// @brief How many slots each of this stream's result containers adds when it is grown.
+	/// @details Fixed at DefaultGrowBySlots for every stream today; a stream that needs a different figure is
+	///          given one where it is built, which is also the only place its capacity could differ.
+	[[nodiscard]] std::size_t GetResultGrowBy() const noexcept
+	{
+		return growBySlots;
 	}
 
 	void Start(TaskSystem& taskSys) noexcept;

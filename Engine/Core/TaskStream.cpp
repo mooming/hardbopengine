@@ -5,6 +5,7 @@
 #include <thread>
 
 #include "Config/ConfigParam.h"
+#include "Core/Debug.h"
 #include "Engine/Engine.h"
 #include "Log/Logger.h"
 #include "OSAL/Intrinsic.h"
@@ -31,6 +32,9 @@ TaskStream::TaskStream()
 	: streamIndex(0)
 	, loopCount(0)
 	, allocator("None")
+	, firstResultContainer(allocator, 0)
+	, secondResultContainer(allocator, 0)
+	, growBySlots(DefaultGrowBySlots)
 {
 	Assert(threadID == std::thread::id());
 }
@@ -40,6 +44,9 @@ TaskStream::TaskStream(StaticString name, TStreamIndex streamIndex)
 	, streamIndex(streamIndex)
 	, loopCount(0)
 	, allocator(name)
+	, firstResultContainer(allocator, InitialResultCapacitySlots)
+	, secondResultContainer(allocator, InitialResultCapacitySlots)
+	, growBySlots(DefaultGrowBySlots)
 {
 	auto log = Logger::Get(name);
 	log.Out([name = name](auto& ls) { ls << name.c_str() << " is created."; });
@@ -107,6 +114,12 @@ bool TaskStream::MayTakeNewWork() const noexcept
 std::chrono::nanoseconds TaskStream::GetAccumulatedCPUTime() const noexcept
 {
 	return budget.GetAccumulated();
+}
+
+const ResultContainer& TaskStream::GetResultContainer(std::size_t index) const noexcept
+{
+	Assert(index < NumResultContainers, "Stream", name.c_str(), "has no result container at index", index, ".");
+	return index == 0 ? firstResultContainer : secondResultContainer;
 }
 
 void TaskStream::Start(TaskSystem& taskSys) noexcept

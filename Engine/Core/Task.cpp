@@ -10,7 +10,8 @@ namespace hbe
 {
 
 Task::Task() noexcept
-	: numSubTasks(0)
+	: numResults(0)
+	, numSubTasks(0)
 	, numFinishedSubTasks(0)
 	, func(nullptr)
 	, userData(nullptr)
@@ -19,6 +20,7 @@ Task::Task() noexcept
 
 Task::Task(StaticString taskName, TRunnable func, void* userData) noexcept
 	: name(taskName)
+	, numResults(0)
 	, numSubTasks(0)
 	, numFinishedSubTasks(0)
 	, func(func)

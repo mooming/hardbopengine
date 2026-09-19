@@ -3,6 +3,8 @@
 #pragma once
 
 #include <initializer_list>
+#include <utility>
+#include "Core/CommonMacros.h"
 #include "Core/Debug.h"
 #include "Memory/DefaultAllocator.h"
 #include "Memory/Memory.h"
@@ -60,6 +62,32 @@ public:
 	explicit Array(TIndex size)
 		: length(size)
 	{
+		data = allocator.allocate(length);
+		for (TIndex i = 0; i < length; ++i)
+		{
+			new (&data[i]) Element();
+		}
+	}
+
+	/// @brief Build an array of `size` elements drawing from a specific allocator instance.
+	/// @details The other constructors default-construct the allocator, which for `DefaultAllocator` means
+	///          capturing whatever allocator scope happens to be open at this moment - so the memory of the
+	///          array is decided by where in the program the construction happened. This constructor states
+	///          the allocator instead, so an array can be given an owner and stays in that owner's memory
+	///          however it is reached later.
+	/// @note The allocator is chosen before the first allocation and is what the destructor frees with, so
+	///       allocating and freeing cannot end up split across two different pools.
+	/// @note An allocator held here has to outlive the array. An adapter holding a reference to a pool
+	///       inherits that pool's lifetime rule rather than a softer one.
+	/// @note A non-positive size takes no memory at all, which is the state an array that has not been given
+	///       its capacity lives in.
+	Array(const TAllocator& inAllocator, TIndex size)
+		: length(size)
+		, data(nullptr)
+		, allocator(inAllocator)
+	{
+		returnIf(length <= 0);
+
 		data = allocator.allocate(length);
 		for (TIndex i = 0; i < length; ++i)
 		{
@@ -154,6 +182,57 @@ public:
 	void Clear() noexcept
 	{
 		Swap(Array());
+	}
+
+	/// @brief Change the element count to exactly `newSize`, keeping the elements already present.
+	/// @details The allocation is exact: the array ends up holding `newSize` elements, never a larger figure
+	///          picked by a growth policy. A caller that has decided a ceiling therefore gets that ceiling and
+	///          can keep reasoning with it, which is what a size chosen to fit a memory layout depends on.
+	///          Growing keeps every element below the old `Size()` with its value intact and default-constructs
+	///          the new tail; shrinking destroys the elements from `newSize` up and returns their memory.
+	/// @note Every element is moved into the new buffer, so an element that is expensive to move, or one whose
+	///       address someone else is holding, does not belong in an array that gets resized. A pointer into a
+	///       resized array is a pointer into a freed buffer.
+	/// @note Allocation failure leaves the array exactly as it was, at its old size with its old buffer, so a
+	///       caller can ask again later. A resize to zero is not a failure: it empties the array and gives the
+	///       buffer back.
+	void Resize(TIndex newSize) noexcept
+	{
+		returnIf(newSize == length);
+
+		auto newData = allocator.allocate(newSize);
+		if (newData == nullptr && newSize > 0)
+		{
+			Assert(false, "Could not resize an array to", newSize, "elements; it keeps its old size of", length, ".");
+			return;
+		}
+
+		auto oldData = data;
+		auto oldLength = length;
+
+		for (TIndex i = 0; i < newSize; ++i)
+		{
+			if (i < oldLength)
+			{
+				new (&newData[i]) Element(std::move(oldData[i]));
+				continue;
+			}
+
+			new (&newData[i]) Element();
+		}
+
+		for (TIndex i = 0; i < oldLength; ++i)
+		{
+			oldData[i].~Element();
+		}
+
+		if (oldData != nullptr)
+		{
+			allocator.deallocate(oldData, oldLength);
+		}
+
+		data = newData;
+		length = newSize;
 	}
 
 	void Swap(Array&& rhs) noexcept

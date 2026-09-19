@@ -3,6 +3,7 @@
 #pragma once
 
 #include <atomic>
+#include <cstdint>
 #include <thread>
 #include "RangedTask.h"
 #include "Runnable.h"
@@ -18,10 +19,14 @@ public:
 	using TIndex = std::size_t;
 	using TThreadID = std::thread::id;
 	using TNumSubTasks = uint8_t;
+	using TNumResults = std::uint32_t;
 
 private:
 	// Task Name
 	StaticString name;
+
+	/// @brief Result packets this task declares it can produce. See GetNumResults.
+	TNumResults numResults;
 
 	// Number of RangedTasks
 	TNumSubTasks numSubTasks;
@@ -55,6 +60,33 @@ public:
 	[[nodiscard]] auto NumSubTasks() const noexcept
 	{
 		return numSubTasks;
+	}
+
+	/// @brief How many result packets this task declares it can produce. Zero is fire-and-forget.
+	/// @details The declaration is what a stream admits work against: room for the declared count is meant to
+	///          be secured before the task is taken on, so a task producing more than it declared is a
+	///          programming error rather than a runtime condition anyone handles. This integer is also the whole
+	///          of completion - above zero the task reports completion, at zero it produces nothing at the end
+	///          of its run - which is why there is no separate "reports completion" flag for a caller to
+	///          contradict by setting both halves at once.
+	/// @note Independent of the subtask accounting in this class: NumSubTasks, NumFinishedSubTasks and HasDone
+	///       describe ranged subtasks and are unchanged by anything here. A task declaring zero results still
+	///       reports finished subtasks exactly as it does today.
+	/// @note Nothing admits or refuses on this count yet. A stream checks declared capacity against its result
+	///       containers when the capacity-admission step lands; until then the declaration is stored and read
+	///       back, and no task is blocked by it.
+	[[nodiscard]] TNumResults GetNumResults() const noexcept
+	{
+		return numResults;
+	}
+
+	/// @brief Declare how many result packets this task can produce. Zero, which is the default, is
+	///        fire-and-forget.
+	/// @note Declare it before dispatching the task. A stream reads the count when it decides whether to take
+	///       the task on, so a later change is a different answer to a question that has already been asked.
+	void SetNumResults(TNumResults inNumResults) noexcept
+	{
+		numResults = inNumResults;
 	}
 
 	[[nodiscard]] auto NumFinishedSubTasks() const noexcept

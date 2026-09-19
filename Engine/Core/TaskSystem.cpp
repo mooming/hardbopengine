@@ -4,6 +4,7 @@
 
 #include <exception>
 #include <future>
+#include <limits>
 #include <thread>
 
 #include "Config/ConfigParam.h"
@@ -279,6 +280,7 @@ void TaskSystem::BuildStreams()
 #ifdef __UNIT_TEST__
 #include <memory>
 #include "../Engine/Engine.h"
+#include "Core/ResultContainer.h"
 #include "OSAL/Intrinsic.h"
 #include "Test/TestCollection.h"
 
@@ -435,6 +437,114 @@ void TaskSystemTest::Prepare()
 		if (error > Epsilon)
 		{
 			ls << "The error exceeds limit. Error = " << error << lferr;
+		}
+	});
+
+	AddTest("A task declares zero results until it says otherwise", [this](TLogOut& ls)
+	{
+		static_assert(std::numeric_limits<Task::TNumResults>::max() >= TaskStream::InitialResultCapacitySlots,
+					  "A task must be able to declare as many results as a container can hold.");
+
+		auto func = [](void*, std::size_t, std::size_t) -> std::size_t { return 1; };
+
+		Task implicitTask;
+		Task declaredTask("ResultTask", func, nullptr);
+
+		if (implicitTask.GetNumResults() != 0)
+		{
+			ls << "A default-constructed task declares " << implicitTask.GetNumResults()
+			   << " results; zero is fire-and-forget and anything else makes a task that never delivers report"
+			   << " completion it does not have." << lferr;
+		}
+
+		if (declaredTask.GetNumResults() != 0)
+		{
+			ls << "A task built with a runnable declares " << declaredTask.GetNumResults()
+			   << " results by default. The default has to be the fire-and-forget answer, because a task built"
+			   << " without thinking about results is one." << lferr;
+		}
+
+		constexpr Task::TNumResults declaredResults = 3;
+		declaredTask.SetNumResults(declaredResults);
+		if (declaredTask.GetNumResults() != declaredResults)
+		{
+			ls << "Declared " << declaredResults << " results and read back " << declaredTask.GetNumResults() << '.'
+			   << lferr;
+		}
+
+		// A stream admits the work it dequeues, and what it dequeues is a subtask, so the declaration has to be
+		// reachable from the subtask rather than only from the task it was written on.
+		const auto subtask = declaredTask.GenerateSubTask(0, 1);
+		if (subtask.taskRef.get().GetNumResults() != declaredResults)
+		{
+			ls << "A subtask of a task declaring " << declaredResults << " results sees "
+			   << subtask.taskRef.get().GetNumResults() << " through its task reference." << lferr;
+		}
+
+		// The count has to be able to say a whole container, or the initial capacity is a ceiling no caller can
+		// state and admission would be refusing a number that was never expressible.
+		declaredTask.SetNumResults(static_cast<Task::TNumResults>(TaskStream::InitialResultCapacitySlots));
+		if (declaredTask.GetNumResults() != TaskStream::InitialResultCapacitySlots)
+		{
+			ls << "A task could not declare the " << TaskStream::InitialResultCapacitySlots << " results a fresh"
+			   << " container holds; it read back " << declaredTask.GetNumResults() << '.' << lferr;
+		}
+
+		ls << "Declared " << TaskStream::InitialResultCapacitySlots << " results and read back "
+		   << declaredTask.GetNumResults() << '.' << lf;
+	});
+
+	AddTest("Every stream is built with two result containers of 1024 slots", [this](TLogOut& ls)
+	{
+		// The decided figures are written out here instead of being read back from the constants that produced
+		// them. A test comparing a value against the same constant it came from cannot disagree with it, which
+		// makes that comparison decorative rather than wrong - measured, after changing the initial capacity to 512
+		// and watching every assertion below stay green. The static_asserts are what tie these numbers to the
+		// engine's, so changing a decision means changing it in two places deliberately.
+		constexpr std::size_t decidedContainers = 2;
+		constexpr std::size_t decidedCapacitySlots = 1024;
+		constexpr std::size_t decidedGrowBySlots = 1024;
+
+		static_assert(TaskStream::NumResultContainers == decidedContainers,
+					  "A stream has two result containers, so filling and consuming do not have to overlap.");
+		static_assert(TaskStream::InitialResultCapacitySlots == decidedCapacitySlots,
+					  "A result container starts at 1024 slots, which is 131,072 bytes and one eighth of a megabyte.");
+		static_assert(TaskStream::DefaultGrowBySlots == decidedGrowBySlots,
+					  "A stream grows its result containers by 1024 slots, one number for every stream.");
+
+		auto& engine = Engine::Get();
+		auto& taskSys = engine.GetTaskSystem();
+
+		if (TaskStream::DefaultGrowBySlots != TaskStream::InitialResultCapacitySlots)
+		{
+			ls << "A stream grows its result containers by " << TaskStream::DefaultGrowBySlots << " slots while a"
+			   << " container starts at " << TaskStream::InitialResultCapacitySlots << "; the decided figure is one"
+			   << " number for both, which is what makes a container one eighth of a megabyte." << lferr;
+		}
+
+		for (int index = 0; taskSys.HasStream(index); ++index)
+		{
+			const auto& stream = taskSys.GetStream(index);
+
+			if (stream.GetResultGrowBy() != decidedGrowBySlots)
+			{
+				ls << stream.GetName().c_str() << " grows its result containers by " << stream.GetResultGrowBy()
+				   << " slots, not " << decidedGrowBySlots << ", so this stream was built to a ceiling nobody stated."
+				   << lferr;
+			}
+
+			for (std::size_t containerIndex = 0; containerIndex < decidedContainers; ++containerIndex)
+			{
+				const auto& container = stream.GetResultContainer(containerIndex);
+				if (container.GetCapacity() != decidedCapacitySlots)
+				{
+					ls << stream.GetName().c_str() << " result container " << containerIndex << " holds "
+					   << container.GetCapacity() << " slots, not " << decidedCapacitySlots << '.' << lferr;
+				}
+			}
+
+			ls << stream.GetName().c_str() << ": " << decidedContainers << " containers of " << decidedCapacitySlots
+			   << " slots, growing by " << stream.GetResultGrowBy() << '.' << lf;
 		}
 	});
 
