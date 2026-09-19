@@ -388,3 +388,14 @@ before choosing it.
    on every rewind. A bump allocator cannot detect a use-after-rewind on its own - a stale slot index reads
    whichever packet landed there next - so the epoch is what keeps R7's "recognise a recycled task, do not
    follow it" promise true against the container as well.
+
+## Owner decisions, 2026-09-18 (fourth round: capacity fallback and optional completion)
+
+| # | Decision | Consequence accepted |
+|---|---|---|
+| R15 | **When a lane is closed by capacity, the stream takes from the other lane** if that task needs no result slots. | A capacity-closed lane no longer idles the stream. Arrival order still holds, because nothing overtakes a head - the other lane is a different queue, not a jump the queue. |
+| R16 | **Task completion is optional.** A fire-and-forget job reports nothing; a caller that needs results collated brings its own mechanism. | The engine's contract reduces to: dispatch, admit by declared capacity, swap and deliver packets. A task that declares zero outputs is therefore real and can never be blocked by capacity, which is the population R15 falls back to. It also completes the removal of `Wait` and a public `HasDone` (R8): there is no engine-wide completion promise left to wait on, and a join is a caller-side stage as R9 already ruled. |
+
+R16 has one consequence worth naming before anyone writes code against it: the earlier rule that an
+abandoned task still counts as completed for a join (the max-age decision in B3d) now applies only to tasks
+that opted into completion. A fire-and-forget job that expires is simply gone, and nothing is waiting for it.

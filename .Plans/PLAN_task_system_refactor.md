@@ -375,3 +375,11 @@ produce - the stream refuses to run a task it has no room for, and an oversized 
 until the next `Reset`. Consequences for implementation, in `docs/TaskSystemRedesign.md`: allocation never
 touches the hot path, overproduction is an assert, and three guards are recorded as my additions - refuse
 at enqueue what can never fit, log a closed lane, and stamp a container epoch into every handle.
+
+## Completion is optional, and a closed lane falls back (R15, R16)
+
+A lane closed by declared capacity takes from the other lane when that task needs no slots, and completion
+is opt-in: fire-and-forget jobs emit nothing, callers needing a join bring their own collation. The engine
+contract is now dispatch, admit by capacity, swap, deliver - which is what makes R8's removal of `Wait` and
+a public `HasDone` coherent, since there is no engine-wide completion promise left to spin on. Note for B3d:
+"an abandoned task still counts as completed" now binds only tasks that opted into completion.
