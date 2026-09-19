@@ -1,5 +1,35 @@
 # Journal
 
+## The README now states the documenting policy that only AGENTS.md carried (2026-09-19)
+
+**What landed.** `README.md` § Documentation opens with a new **Documentation Policy** subsection: the
+self-documented rule (no comments in `.cpp`, brief comments in headers only), where each kind of prose
+goes — caller contract to the paired `.h`, implementation or system design to a document under
+`docs/`, API surface to an API reference under `docs/` — the three exemptions (line-1 copyright notice,
+structural labels, `Engine/CodingStandards.cpp`), and the fixed Module / Class / Function outlines an
+API reference document must follow. Source of truth is `AGENTS.md` § Self Documented Code and API
+Reference Documents, which since `37ba98e` bound agents only; a human reading the README was never
+told. Plan: `.Plans/PLAN_readme_documentation_policy.md`.
+
+**Two stale references repaired under explicit user approval, both inside the same section.**
+`### Code Standard` linked `docs/CodeStandard.md`, a file that has never existed, and now links
+`docs/CodingStandards.md`. `### Convenient Build Script` advertised `[-notest]` and an example ending
+`-clean -notest`; `build.sh` has no such flag — its usage line and case block carry `-test`, which
+reconfigures with `-D__TEST__ -D__UNIT_TEST__`. The README was teaching a flag whose whole absence is
+why `EngineTest` can build green while testing nothing.
+
+**Verified, not assumed.** `check.sh` lints C++ sources, so the three-configuration build gate cannot
+cover a Markdown change; the gate here is that `git diff --stat` names `README.md` alone, that both new
+relative links resolve on disk, and that the assertion "the standards lint requires the copyright
+notice" was read at its source — `check.sh:277` fails any file whose line 1 is not
+`Copyright (c) ... Hansol Park`.
+
+**Recorded, deliberately not fixed** (user picked the narrow scope): `### Running Tests` still says to
+run `./Applications/EngineTest/EngineTest` from inside `build/`, a path a Ninja Multi-Config tree does
+not emit — `AGENTS.md` gives the per-configuration path; `### Platform-Specific`, `### Code Quality`
+and `### Unfinished Features` sit under `## Documentation` but are code notes, not documentation links;
+the file ends with a stray duplicate `## Build` configure command.
+
 ## B1b, B2, B3a: budget primitive, provider model, stream accounting — and a 20-minute hang that taught more than the feature (2026-09-18)
 
 **What landed.** Three commits, each gated: `f751a8f` adds `OS::GetThreadCPUTime` on all three platforms plus `hbe::CPUBudget` and the

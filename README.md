@@ -53,12 +53,14 @@ cmake --build build --config Release
 A helper script `build.sh` is provided for building specific targets with optional flags.
 ```bash
 # Basic usage
-./build.sh <target> [-dev] [-debug] [-release] [-clean] [-notest]
+./build.sh <target> [-dev] [-debug] [-release] [-clean] [-test]
 
-# Example: build VulkanExample for Dev, Debug and Release configurations, clean first, skip tests
-./build.sh Applications/VulkanExample -dev -debug -release -clean -notest
+# Example: build VulkanExample for Dev, Debug and Release configurations, clean first
+./build.sh Applications/VulkanExample -dev -debug -release -clean
 ```
 The script defaults to the **Dev** configuration when no explicit config flag is given.
+`-test` reconfigures with `-D__TEST__ -D__UNIT_TEST__` so the unit-test sources compile at all;
+without it `EngineTest` builds green while testing nothing. The script only builds — it never runs tests.
 
 ### Build Types
 - **Debug**: `-g -O0` - Full debug symbols, no optimization
@@ -264,12 +266,44 @@ void Example()
 
 ## Documentation
 
+### Documentation Policy
+The engine is **self-documented**: names, types and structure carry the intent. Comments are
+therefore avoided in the codebase, and only brief comments are allowed in header files. Reference
+material lives in `docs/`, not in the sources.
+
+**Where each kind of prose belongs**
+
+| Prose | Destination |
+|-------|-------------|
+| What a caller of the engine depends on — contract, preconditions, ownership, lifetime, thread-safety, complexity | The paired `.h` declaration |
+| What implementation or system design needs — invariants, algorithms, allocation strategy, locking protocol, platform quirks | A design document under `docs/` |
+| What exists and how to call it | An API reference document under `docs/` |
+
+**Comments in `.cpp` files are forbidden.** Three things are exempt because none of them is documentation:
+
+- the line-1 `// Copyright (c) ... Hansol Park` notice, which the standards lint requires;
+- a structural label whose entire content is the name of the construct its line closes —
+  `#endif // PROFILE_ENABLED`, `} // namespace hbe`; a bare `#endif` cannot say which `#if` it
+  closes, so the label serves the rule rather than evading it;
+- `Engine/CodingStandards.cpp`, the rule's own teaching exemplar, which carries deliberate bad examples.
+
+**API reference documents** are created and revised in `docs/`, and the Module Index page is the
+start page. Every such document follows these fixed outlines:
+
+| Level | Required sections |
+|-------|-----------------|
+| Module | Module description, Module classes, Module variables, Module functions |
+| Class | Class description, Template parameters, Class properties, Class methods, Non-member helper functions |
+| Function | Function description, Parameters, Return value, Examples |
+
+Rules in full: [AGENTS.md](AGENTS.md) and [docs/CodingStandards.md](docs/CodingStandards.md).
+
 ### Allocator Guide
 Detailed guide for using custom memory allocators:
 - `docs/AllocatorGuide.md`
 
 ### Code Standard
-Refer to [CodeStandard.md](docs/CodeStandard.md) for coding guidelines and conventions.
+Refer to [docs/CodingStandards.md](docs/CodingStandards.md) for coding guidelines and conventions.
 
 ### AI Prompt Automation Scripts
 Automate code review with these scripts that iterate over source files and execute prompts one-by-one:
