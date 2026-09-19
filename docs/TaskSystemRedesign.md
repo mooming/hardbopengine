@@ -338,3 +338,31 @@ decision reverses something documented, that is stated rather than left for the 
 - The sweep grows from "remove finished" to "remove finished, re-bucket changed priorities, expire aged
   tasks" — one walk, three decisions, and it is the step where an O(n) mistake would be invisible until the
   queue is deep.
+
+---
+
+## Owner decisions, 2026-09-18 (second round: budget windows and result delivery)
+
+Asked and answered one at a time. Each row states the decision and the consequence the owner was shown
+before choosing it.
+
+| # | Decision | Consequence accepted |
+|---|---|---|
+| R1 | **The base stream resets each stream's budget by calling into it.** The base stream is the sync point, and one base-stream pass reopens every window. | `CPUBudget`'s "belongs to exactly one thread" note is amended: `isMeasuring` becomes atomic. A reset landing between a worker's `BeginTask` and `EndTask` drops that task's charge, which is fail-open and already the documented behaviour for an unpaired `EndTask`. |
+| R2 | There was **no reopen rule at all before this.** `CanTakeWork()` is `accumulated < allowance` and `Reset()` had no caller, so a stream with a configured allowance stopped dequeuing permanently after spending it. | Pre-existing defect, inherited rather than introduced. The test that appeared to cover it only proved the latch is permanent. |
+| R3 | **Result delivery is two containers per stream.** The worker appends results to its own; the base stream swaps the pair under a short lock and then drains what it took without holding the lock. | The worker's blocking window is one swap, not the whole drain. A result is not delivered until the base stream next pumps: stall the base thread and results accumulate, they do not get lost. |
+| R4 | **Payloads are fixed 128-byte packets from a thread-safe pool allocator**, populated on worker streams and released on the base stream. A delivered packet stays valid **for one frame**. | `MultiPoolAllocator` is not thread-safe - no mutex, no atomic, no thread_local anywhere in its header or implementation - so results get their own pool. The free list is deliberately a mutex over pre-allocated banks rather than an atomic Treiber stack, which has an ABA defect; this path sees one push per completed task, far cheaper than the CPU-time syscall already paid per task, so lock-free buys nothing measurable. |
+| R5 | **The 8-byte header sits inside the 128**, leaving a 120-byte payload. | Power-of-two slot: index to address is a shift by 7, one `DefaultBankUnit` bank of 1 MB holds exactly 8192 packets, every slot is 8-byte aligned. |
+| R6 | **`kind` is split**: 0-63 engine, 64-255 application, boundary a named constant. | The app owns the top of the range and the engine can never allocate an app's kind by accident. |
+| R7 | **Task identity is an index plus generation in a task registry, and Tasks stop being stack objects.** | API break. Measured blast radius: 6 construction sites - 5 in test code and one `static Task task("TestEnv", ...)` in `UnitTestCollection.cpp:143`, which is static and so already outlives frames. Files: `Task.h`, `Task.cpp`, `TaskSystem.cpp`, `UnitTestCollection.cpp`, `Logger.cpp`. A packet naming a dead task is recognised by generation and dropped rather than followed. |
+| R8 | **`Task::Wait`, `BusyWait` and a public `HasDone` are removed. A continuation job is the only way to observe completion.** | Because completions fold on the base thread, waiting there is illegal - and the suite runs inside a task on the base stream, so every wait in it stands on the folding thread. The five test call sites that wait or poll, including the lane test added today, must be rewritten. |
+| R9 | **A pipeline is a series of sequential jobs managed by its caller. TaskSystem does not know pipelines exist.** | TaskSystem supports only: dispatch a job, an optional successor recorded on the registry record, and a join counter on that record. Routing therefore lives in the registry, which is why the 8-byte packet header did not have to grow. |
+| R10 | **`ParallelFor` is a splitter for a heavy job, spreading sub-jobs across requested streams, offered as several functions**: one taking an explicit stream list plus lane plus sub-job count, one asking for N streams and letting TaskSystem choose. | Explicit placement keeps "not the IO stream" expressible; the N-streams variant reads better but the same call can behave differently frame to frame, which makes a performance regression harder to reproduce. Both are provided rather than picking one. |
+
+### Still open
+
+* semantics of the header's `flags` byte (named rather than left as padding, but not yet defined)
+* task registry capacity and what happens when it is full
+* result pool bank growth policy and behaviour on exhaustion
+* which allocator the pool's banks come from, given per-stream pools cannot be freed cross-thread
+* how stage-to-stage payload binding works when two of a caller's sequential jobs want the same slot

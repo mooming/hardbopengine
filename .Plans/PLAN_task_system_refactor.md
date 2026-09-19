@@ -348,3 +348,20 @@ pays, so there is no asymptotic regression - which is the point the false claim 
 9. Verification gate: 57 collections in three configs, plus a new assertion that a task enqueued on the
    priority lane is taken before an earlier FIFO task when the rate favours priority, and that a re-added
    task returns to its own lane.
+
+## B3c reopen rule, and what result delivery became (2026-09-18 second round)
+
+The open question "what reopens a round" is answered: the base stream calls into each stream to reset
+its budget (decision R1) and the pre-existing hole is that nothing ever reopened it before (R2). That
+makes `isMeasuring` atomic and amends `CPUBudget`'s single-owner note. All ten decisions, their
+consequences and the still-open list are in `docs/TaskSystemRedesign.md`; B5 is now specified rather
+than sketched, and B7 ships as several `ParallelFor` functions.
+
+New work this creates, in order, because R7 and R8 are prerequisites rather than details:
+
+1. `TaskRegistry` with index plus generation - Tasks stop being stack objects (6 call sites).
+2. Thread-safe 128-byte packet pool, header as decided, banks from a cross-thread-safe allocator.
+3. Two result containers per stream plus the base-stream swap, fold, and budget reset in one pass.
+4. Successor and join counter on the registry record; then remove `Wait`, `BusyWait` and public
+   `HasDone`, which rewrites five test call sites that currently wait or poll on the base stream.
+5. Then `ParallelFor` overloads, which is where the blocked B7 finally unblocks.
