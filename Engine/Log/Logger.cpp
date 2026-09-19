@@ -134,7 +134,6 @@ Logger::SimpleLogger Logger::Get(StaticString category, ELogLevel level) noexcep
 Logger::Logger(Engine& engine, const char* path, const char* filename) noexcept
 	: allocator("LoggerMemoryPool")
 	, inputAlloc("LoggerInputPool")
-	, task("Logger", nullptr, this)
 	, hasInput(false)
 	, needFlush(false)
 	, isDraining(false)
@@ -230,8 +229,20 @@ void Logger::StartTask(TaskSystem& taskSys)
 
 	isRunning.store(true, std::memory_order_release);
 
-	task.SetRunnable(runnable);
-	auto rangedTask = task.GenerateSubTask(0, 1, 0);
+	taskID = taskSys.CreateTask("Logger", runnable, this);
+
+	auto* drainTask = taskSys.FindTask(taskID);
+	if (drainTask == nullptr)
+	{
+		AddLog(GetName(), ELogLevel::Error, [](auto& logStream)
+		{
+			logStream << "The task registry could not track the logger's drain task, so log lines are flushed"
+					  << " inline by whoever produces them.";
+		});
+		return;
+	}
+
+	const auto rangedTask = drainTask->GenerateSubTask(0, 1, 0);
 	(void) taskSys.Enqueue(ioStreamIndex, rangedTask);
 
 	auto& ioTaskStream = taskSys.GetIOTaskStream();
@@ -250,10 +261,15 @@ void Logger::StopTask(TaskSystem& taskSys)
 {
 	isRunning.store(false, std::memory_order_release);
 
-	if (task.HasDone())
+	auto* drainTask = taskSys.FindTask(taskID);
+	if (drainTask == nullptr || drainTask->HasDone())
+	{
+		taskSys.ReleaseTask(taskID);
 		return;
+	}
 
-	task.Wait();
+	drainTask->Wait();
+	taskSys.ReleaseTask(taskID);
 	threadID = std::thread::id();
 
 #if MEMORY_VERIFICATION_ENABLED

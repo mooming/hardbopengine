@@ -47,6 +47,7 @@ add_library (Core STATIC
  SystemStatistics.cpp
  Task.cpp
  TaskProvider.cpp
+ TaskRegistry.cpp
  TaskStream.cpp
  TaskStreamAffinity.cpp
  TaskSystem.cpp
@@ -69,7 +70,9 @@ add_library (Core STATIC
  StreamDrainPolicy.h
  SystemStatistics.h
  Task.h
+ TaskID.h
  TaskProvider.h
+ TaskRegistry.h
  TaskStream.h
  TaskStreamAffinity.h
  TaskStreamIndex.h

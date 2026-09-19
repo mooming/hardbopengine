@@ -1,19 +1,15 @@
-//
 // Copyright (c) 2026 Hansol Park (mooming.go@gmail.com). All rights reserved.
 // Created by mooming on 11/10/2025.
-//
 
 #include "RangedTask.h"
 
 #include "Log/Logger.h"
 #include "TaskSystem.h"
 
-
 namespace hbe
 {
-void RangedTask::Run() noexcept
+void RangedTask::Run(Task& task) noexcept
 {
-	auto& task = taskRef.get();
 	auto runnable = task.GetRunnable();
 	if (runnable == nullptr)
 	{
@@ -38,7 +34,8 @@ void RangedTask::Run() noexcept
 RangedTask::RangedTask(Task& task, TIndex start, TIndex end, uint8_t priority) noexcept
 	: priority(priority)
 	, taskName(task.GetName())
-	, taskRef(task)
+	, taskID(task.GetID())
+	, declaredResults(task.GetNumResults())
 	, start(start)
 	, end(end)
 	, currentIndex(start)

@@ -8,9 +8,12 @@
 #include "RangedTask.h"
 #include "Runnable.h"
 #include "String/StaticString.h"
+#include "TaskID.h"
 
 namespace hbe
 {
+class TaskRegistry;
+
 /// @brief Represents a unit of work to be executed by the task system. It consists of multiple
 /// RangedTasks and can be split across threads.
 class Task final
@@ -22,6 +25,11 @@ public:
 	using TNumResults = std::uint32_t;
 
 private:
+	/// @brief Where this task lives in the registry, and the identity every work item derived from it carries.
+	/// @details Set once, when the registry issues the record. A task that was not created through a registry
+	///          keeps a null ID, which no stream can resolve, so its work items are dropped rather than run.
+	TaskID id;
+
 	// Task Name
 	StaticString name;
 
@@ -55,6 +63,12 @@ public:
 	[[nodiscard]] auto GetName() const noexcept
 	{
 		return name;
+	}
+
+	/// @brief This task's identity. Null until a registry issues the record that holds it.
+	[[nodiscard]] TaskID GetID() const noexcept
+	{
+		return id;
 	}
 
 	[[nodiscard]] auto NumSubTasks() const noexcept
@@ -99,6 +113,17 @@ public:
 		return numSubTasks > 0 && NumFinishedSubTasks() >= numSubTasks;
 	}
 
+private:
+	friend class TaskRegistry;
+
+	/// @brief Fill this task in place, as the record that holds it issues it.
+	/// @details The registry owns record storage and cannot assign one task over another - the finished-subtask
+	///          counter is atomic, which leaves this class without a copy or move assignment to lean on. Setting the
+	///          fields is also what a recycled record needs: the previous task's identity, name, runnable and
+	///          accounting must all be replaced together, before the record is published as in use.
+	void LoadIntoRecord(TaskID newID, StaticString taskName, TRunnable newFunc, void* newUserData) noexcept;
+
+public:
 	// Increase numFinishedSubTasks.  It guarantees all other global memory values are synced properly.
 	void ReportFinishedSubTask() noexcept
 	{

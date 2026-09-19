@@ -85,6 +85,17 @@ void Task::Wait(uint32_t intervalMilliSecs) const noexcept
 	}
 }
 
+void Task::LoadIntoRecord(TaskID newID, StaticString taskName, TRunnable newFunc, void* newUserData) noexcept
+{
+	id = newID;
+	name = taskName;
+	numResults = 0;
+	numSubTasks = 0;
+	numFinishedSubTasks.store(0, std::memory_order::relaxed);
+	func = newFunc;
+	userData = newUserData;
+}
+
 RangedTask Task::GenerateSubTask(TIndex start, TIndex end, uint8_t priority) noexcept
 {
 	++numSubTasks;

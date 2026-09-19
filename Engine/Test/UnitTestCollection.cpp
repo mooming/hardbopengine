@@ -16,9 +16,11 @@
 #include "Container/Vector.h"
 #include "Core/CPUBudget.h"
 #include "Core/ComponentSystem.h"
+#include "Core/Debug.h"
 #include "Core/ResultContainer.h"
 #include "Core/StreamDrainPolicy.h"
 #include "Core/TaskProvider.h"
+#include "Core/TaskRegistry.h"
 #include "Core/TaskSystem.h"
 #include "Core/Time.h"
 #include "HSTL/HUnorderedMap.h"
@@ -89,6 +91,7 @@ void RunTests()
 		testEnv.AddTestCollection<CPUBudgetTest>();
 		testEnv.AddTestCollection<TaskProviderTest>();
 		testEnv.AddTestCollection<ResultContainerTest>();
+		testEnv.AddTestCollection<TaskRegistryTest>();
 		testEnv.AddTestCollection<StreamDrainPolicyTest>();
 		testEnv.AddTestCollection<WindowTest>();
 		testEnv.AddTestCollection<OSMemoryTest>();
@@ -142,10 +145,22 @@ void RunTests()
 		return 1;
 	};
 
-	static Task task("TestEnv", testFunc, nullptr);
+	static TaskID taskID;
 
-	auto rangedTask = task.GenerateSubTask(0, 1, 0);
 	auto& taskSystem = Engine::Get().GetTaskSystem();
+	if (taskID.IsNull())
+	{
+		taskID = taskSystem.CreateTask("TestEnv", testFunc, nullptr);
+	}
+
+	auto* testTask = taskSystem.FindTask(taskID);
+	FatalAssert(testTask != nullptr, "The task registry could not track the suite's own task, so no test can run.");
+	if (testTask == nullptr)
+	{
+		return;
+	}
+
+	const auto rangedTask = testTask->GenerateSubTask(0, 1, 0);
 
 	const auto baseStreamIndex = TaskSystem::GetBaseTaskStreamIndex();
 	(void) taskSystem.Enqueue(baseStreamIndex, rangedTask);

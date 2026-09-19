@@ -56,7 +56,7 @@ TaskStream::TaskStream(StaticString name, TStreamIndex streamIndex)
 
 bool TaskStream::EnqueueFifo(const RangedTask& task) noexcept
 {
-	const auto numResults = task.taskRef.get().GetNumResults();
+	const auto numResults = task.declaredResults;
 	if (!CanAdmitResults(numResults))
 	{
 		ReportRefusal(task, numResults);
@@ -71,7 +71,7 @@ bool TaskStream::EnqueueFifo(const RangedTask& task) noexcept
 
 bool TaskStream::EnqueuePriority(const RangedTask& task) noexcept
 {
-	const auto numResults = task.taskRef.get().GetNumResults();
+	const auto numResults = task.declaredResults;
 	if (!CanAdmitResults(numResults))
 	{
 		ReportRefusal(task, numResults);
@@ -89,9 +89,20 @@ bool TaskStream::CanAdmitResults(Task::TNumResults numResults) const noexcept
 	return maxResultCapacitySlots == 0 || static_cast<std::size_t>(numResults) <= maxResultCapacitySlots;
 }
 
+void TaskStream::ReportReleasedTask(const RangedTask& task) const noexcept
+{
+	auto log = Logger::Get(name);
+	log.OutWarning([name = name, taskName = task.taskName, index = task.taskID.index,
+					generation = task.taskID.generation](auto& ls)
+	{
+		ls << name.c_str() << " dropped a work item of " << taskName.c_str() << ", record " << index << " generation "
+		   << generation << ", because that task had already been released. Nothing was run. ";
+	});
+}
+
 void TaskStream::ReportRefusal(const RangedTask& task, Task::TNumResults numResults) const noexcept
 {
-	const auto taskName = task.taskRef.get().GetName();
+	const auto taskName = task.taskName;
 	auto log = Logger::Get(name);
 	log.OutError([name = name, taskName, numResults, maxCapacitySlots = maxResultCapacitySlots](auto& ls)
 	{
@@ -258,6 +269,13 @@ void TaskStream::RunLoop() noexcept
 			continue;
 		}
 
+		auto* task = taskSys.FindTask(rangedTask->taskID);
+		if (task == nullptr)
+		{
+			ReportReleasedTask(*rangedTask);
+			continue;
+		}
+
 		time::TDuration duration;
 		const bool chargingBudget = budget.GetAllowance().count() > 0.0;
 		const auto chargedBefore = chargingBudget ? budget.GetAccumulated() : std::chrono::nanoseconds::zero();
@@ -268,7 +286,7 @@ void TaskStream::RunLoop() noexcept
 
 		{
 			time::ScopedTime timer(duration);
-			rangedTask->Run();
+			rangedTask->Run(*task);
 		}
 
 		if (chargingBudget)

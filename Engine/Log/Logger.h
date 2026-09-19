@@ -7,7 +7,7 @@
 #include <functional>
 #include <thread>
 
-#include "Core/Task.h"
+#include "Core/TaskID.h"
 #include "HSTL/HString.h"
 #include "HSTL/HUnorderedMap.h"
 #include "HSTL/HVector.h"
@@ -100,7 +100,13 @@ private:
 	static Logger* instance;
 	MultiPoolAllocator allocator;
 	ThreadSafeMultiPoolAllocator inputAlloc;
-	Task task;
+
+	/// @brief Identity of the periodic drain task, as issued by the task registry.
+	/// @details Not the task itself. The drain task outlives whatever the logger is doing when it is created, and
+	///          an ID is what lets the stream notice at run time that the logger has already stopped it rather than
+	///          running a subtask for a task nobody owns any more. Null when the logger was started without a task
+	///          system, which is a logger that flushes inline.
+	TaskID taskID;
 	std::atomic<bool> isRunning;
 	std::atomic<bool> hasInput;
 	std::atomic<bool> needFlush;

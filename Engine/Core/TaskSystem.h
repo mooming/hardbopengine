@@ -9,6 +9,7 @@
 #include "Container/Array.h"
 #include "Container/BoundedPriorityQueue.h"
 #include "MainThreadTaskQueue.h"
+#include "TaskRegistry.h"
 #include "TaskStream.h"
 
 namespace hbe
@@ -35,6 +36,7 @@ private:
 	const TThreadID baseTaskThreadID;
 	TThreadID ioTaskThreadID;
 	TStreamArray streams;
+	TaskRegistry taskRegistry;
 
 	std::mutex taskQueueMutex;
 	BoundedPriorityQueue<RangedTask> taskQueue;
@@ -78,6 +80,24 @@ public:
 	// It'll add an task-stream affinity once it fails to take the top priority task due to its task-stream affinity
 	// to prevent blocking the entire task streams by a task with null-affinity
 	void Dequeue(std::optional<RangedTask>& outTask) noexcept;
+
+	/// @brief Track a task and return the identity that names it.
+	/// @return The identity, or a null TaskID when the registry has no free record - see TaskRegistry::Create. A
+	///         task that is not tracked cannot be dispatched: its work items carry an identity no stream can
+	///         resolve, so they are dropped.
+	[[nodiscard]] TaskID CreateTask(StaticString taskName, TRunnable func, void* userData) noexcept;
+
+	/// @brief The tracked task an identity names, or nullptr. See TaskRegistry::Find.
+	[[nodiscard]] Task* FindTask(TaskID id) noexcept;
+
+	/// @brief Stop tracking a task and give its record back to the registry. See TaskRegistry::Release.
+	void ReleaseTask(TaskID id) noexcept;
+
+	/// @brief The registry itself, for capacity and growth. See TaskRegistry.
+	[[nodiscard]] TaskRegistry& GetRegistry() noexcept
+	{
+		return taskRegistry;
+	}
 
 	/// @brief Queue a task on one stream by index.
 	/// @return False if that stream refused the task because it declares more results than the stream could ever

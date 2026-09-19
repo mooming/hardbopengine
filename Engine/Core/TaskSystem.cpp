@@ -95,6 +95,19 @@ void TaskSystem::Initialize() noexcept
 	auto log = Logger::Get(GetName());
 	log.Out([this](auto& ls) { ls << "Hardware Concurrency = " << numHardwareThreads; });
 
+	static TAtomicConfigParam<std::size_t> initialRecords(
+			"Task.RegistryInitialRecords", "Task records the registry starts with, in banks of the grow-by figure",
+			TaskRegistry::DefaultInitialCapacityRecords);
+	static TAtomicConfigParam<std::size_t> growByRecords("Task.RegistryGrowByRecords",
+														 "Task records each growth of the task record table",
+														 TaskRegistry::DefaultGrowByRecords);
+	static TAtomicConfigParam<std::size_t> maxRecords("Task.RegistryMaxRecords",
+													  "Largest the task record table may grow. 0 means no ceiling",
+													  TaskRegistry::DefaultMaxCapacityRecords);
+
+	taskRegistry.Initialize("TaskRegistry", initialRecords.Get(), growByRecords.Get());
+	taskRegistry.SetMaxCapacity(maxRecords.Get());
+
 	BuildStreams();
 }
 
@@ -164,6 +177,21 @@ void TaskSystem::Dequeue(std::optional<RangedTask>& outTask) noexcept
 
 	outTask = rangedTask;
 	(void) taskQueue.Pop();
+}
+
+TaskID TaskSystem::CreateTask(StaticString taskName, TRunnable func, void* userData) noexcept
+{
+	return taskRegistry.Create(taskName, func, userData);
+}
+
+Task* TaskSystem::FindTask(TaskID id) noexcept
+{
+	return taskRegistry.Find(id);
+}
+
+void TaskSystem::ReleaseTask(TaskID id) noexcept
+{
+	taskRegistry.Release(id);
 }
 
 bool TaskSystem::Enqueue(const TIndex streamIndex, const RangedTask& task) noexcept
@@ -292,6 +320,35 @@ namespace hbe
 namespace
 {
 
+class TrackedTask final
+{
+public:
+	TaskSystem& taskSystem;
+	TaskID id;
+	Task* task;
+
+	TrackedTask(StaticString taskName, TRunnable func, void* userData) noexcept
+		: taskSystem(Engine::Get().GetTaskSystem())
+		, id(taskSystem.CreateTask(taskName, func, userData))
+		, task(taskSystem.FindTask(id))
+	{
+		FatalAssert(task != nullptr, "The task registry could not track a test task, so that test cannot run.");
+	}
+
+	TrackedTask(const TrackedTask& other) = delete;
+	TrackedTask& operator=(const TrackedTask& other) = delete;
+
+	~TrackedTask() noexcept
+	{
+		taskSystem.ReleaseTask(id);
+	}
+
+	[[nodiscard]] Task& operator*() const noexcept
+	{
+		return *task;
+	}
+};
+
 bool WaitForRunCount(const std::atomic<unsigned>& runs, unsigned expected,
 					 std::chrono::milliseconds patience = std::chrono::seconds(5)) noexcept
 {
@@ -327,7 +384,8 @@ void TaskSystemTest::Prepare()
 			return 1;
 		};
 
-		Task task("TestTask", func, nullptr);
+		const TrackedTask trackedTask("TestTask", func, nullptr);
+		auto& task = *trackedTask;
 		if (task.HasDone())
 		{
 			ls << "The task should not be marked done before running." << lferr;
@@ -370,7 +428,8 @@ void TaskSystemTest::Prepare()
 			return end - start;
 		};
 
-		Task task("TestTask", func, &result);
+		const TrackedTask trackedTask("TestTask", func, &result);
+		auto& task = *trackedTask;
 		if (task.HasDone())
 		{
 			ls << "The task should not be marked done before running." << lferr;
@@ -428,7 +487,8 @@ void TaskSystemTest::Prepare()
 			return incEnd - start;
 		};
 
-		Task task("TestTask", func, &result);
+		const TrackedTask trackedTask("TestTask", func, &result);
+		auto& task = *trackedTask;
 		if (task.HasDone())
 		{
 			ls << "The task should not be marked done before running." << lferr;
@@ -467,7 +527,8 @@ void TaskSystemTest::Prepare()
 		auto func = [](void*, std::size_t, std::size_t) -> std::size_t { return 1; };
 
 		Task implicitTask;
-		Task declaredTask("ResultTask", func, nullptr);
+		const TrackedTask trackedDeclared("ResultTask", func, nullptr);
+		auto& declaredTask = *trackedDeclared;
 
 		if (implicitTask.GetNumResults() != 0)
 		{
@@ -494,10 +555,10 @@ void TaskSystemTest::Prepare()
 		// A stream admits the work it dequeues, and what it dequeues is a subtask, so the declaration has to be
 		// reachable from the subtask rather than only from the task it was written on.
 		const auto subtask = declaredTask.GenerateSubTask(0, 1);
-		if (subtask.taskRef.get().GetNumResults() != declaredResults)
+		if (subtask.declaredResults != declaredResults)
 		{
-			ls << "A subtask of a task declaring " << declaredResults << " results sees "
-			   << subtask.taskRef.get().GetNumResults() << " through its task reference." << lferr;
+			ls << "A subtask of a task declaring " << declaredResults << " results sees " << subtask.declaredResults
+			   << " on the subtask it generated." << lferr;
 		}
 
 		// The count has to be able to say a whole container, or the initial capacity is a ceiling no caller can
@@ -592,7 +653,8 @@ void TaskSystemTest::Prepare()
 			return 1;
 		};
 
-		Task laneTask("LaneTask", countRun, nullptr);
+		const TrackedTask trackedLane("LaneTask", countRun, nullptr);
+		auto& laneTask = *trackedLane;
 
 		constexpr unsigned fifoTasks = 3;
 		for (unsigned index = 0; index < fifoTasks; ++index)
@@ -663,7 +725,8 @@ void TaskSystemTest::Prepare()
 			return static_cast<std::size_t>(sink & 0xFFFFU);
 		};
 
-		Task busyTask("BudgetTask", busyFunc, nullptr);
+		const TrackedTask trackedBusy("BudgetTask", busyFunc, nullptr);
+		auto& busyTask = *trackedBusy;
 		(void) taskSys.Enqueue(workerIndex, busyTask.GenerateSubTask(0, 1));
 		busyTask.Wait(1);
 
@@ -730,7 +793,8 @@ void TaskSystemTest::Prepare()
 			return 1;
 		};
 
-		Task bigDeclaration("BigDeclaration", countRun, nullptr);
+		const TrackedTask trackedBig("BigDeclaration", countRun, nullptr);
+		auto& bigDeclaration = *trackedBig;
 		bigDeclaration.SetNumResults(beyondEveryContainer);
 
 		if (!taskSys.Enqueue(workerIndex, bigDeclaration.GenerateSubTask(0, 1)))
@@ -783,11 +847,13 @@ void TaskSystemTest::Prepare()
 		};
 
 		// Both boundaries: a declaration exactly at the ceiling is admissible, and one past it is not.
-		Task atCeiling("AtCeiling", countAdmitted, nullptr);
+		const TrackedTask trackedAtCeiling("AtCeiling", countAdmitted, nullptr);
+		auto& atCeiling = *trackedAtCeiling;
 		atCeiling.SetNumResults(ceiling);
 		const bool atCeilingAdmitted = taskSys.Enqueue(workerIndex, atCeiling.GenerateSubTask(0, 1));
 
-		Task pastCeiling("PastCeiling", countRefused, nullptr);
+		const TrackedTask trackedPastCeiling("PastCeiling", countRefused, nullptr);
+		auto& pastCeiling = *trackedPastCeiling;
 		pastCeiling.SetNumResults(ceiling + 1);
 		const bool pastCeilingAdmitted = taskSys.Enqueue(workerIndex, pastCeiling.GenerateSubTask(0, 1));
 
@@ -847,7 +913,8 @@ void TaskSystemTest::Prepare()
 
 		// Zero results declared is fire-and-forget, the commonest task on a stream, and the tightest ceiling in
 		// the engine still has to run it.
-		Task noResults("FireAndForget", countRun, nullptr);
+		const TrackedTask trackedNoResults("FireAndForget", countRun, nullptr);
+		auto& noResults = *trackedNoResults;
 
 		const bool admitted = stream.EnqueueFifo(noResults.GenerateSubTask(0, 1));
 		const bool ran = WaitForRunCount(runs, 1);
@@ -889,7 +956,8 @@ void TaskSystemTest::Prepare()
 			return 1;
 		};
 
-		Task pastCeiling("PriorityPastCeiling", countRun, nullptr);
+		const TrackedTask trackedPriorityPast("PriorityPastCeiling", countRun, nullptr);
+		auto& pastCeiling = *trackedPriorityPast;
 		pastCeiling.SetNumResults(ceiling + 1);
 		const bool admitted = stream.EnqueuePriority(pastCeiling.GenerateSubTask(0, 1));
 

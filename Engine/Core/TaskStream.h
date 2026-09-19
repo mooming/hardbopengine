@@ -231,6 +231,13 @@ private:
 	///          stall. Naming the task, its declaration and the ceiling is what makes a configuration mistake
 	///          readable from a log instead of from a hang.
 	void ReportRefusal(const RangedTask& task, Task::TNumResults numResults) const noexcept;
+
+	/// @brief Say that a queued work item was dropped because its task had been released.
+	/// @details This is R7's rule in action - a reference to a task that no longer exists is recognised and dropped
+	///          rather than followed - and it is warned rather than left silent because work that vanishes is the
+	///          single hardest thing to diagnose in this subsystem. A caller that releases a task while its subtasks
+	///          are still queued will see one line per dropped subtask.
+	void ReportReleasedTask(const RangedTask& task) const noexcept;
 };
 
 } // namespace hbe

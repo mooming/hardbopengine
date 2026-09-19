@@ -1,14 +1,11 @@
-//
 // Copyright (c) 2026 Hansol Park (mooming.go@gmail.com). All rights reserved.
 // Created by mooming on 11/10/2025.
-//
 
 #pragma once
 #include <cstddef>
-#include <functional>
 #include "String/StaticString.h"
+#include "TaskID.h"
 #include "TaskStreamAffinity.h"
-
 
 namespace hbe
 {
@@ -24,8 +21,19 @@ public:
 	mutable TaskStreamAffinity affinity;
 	StaticString taskName;
 
-	// Shared Task
-	std::reference_wrapper<Task> taskRef;
+	/// @brief Which task this work item belongs to, as the task registry issued it.
+	/// @details Not a reference to the task. A work item can sit in a queue long after the object it was made from
+	///          has stopped meaning anything, and an ID is what lets the stream notice that and drop the work
+	///          rather than run it through a dead task's fields.
+	TaskID taskID;
+
+	/// @brief Result packets the owning task declared when this work item was generated.
+	/// @details The same type as Task::TNumResults; spelled out because RangedTask.h cannot include Task.h, which
+	///          includes this file.
+	/// @details A snapshot rather than a live read, and deliberately so: a stream admits work against what was
+	///          promised when the work was made, so declaring more results afterwards cannot enlarge a promise that
+	///          has already been checked and queued.
+	std::uint32_t declaredResults;
 
 	// RangedTask Start Index
 	TIndex start;
@@ -40,11 +48,21 @@ public:
 	~RangedTask() = default;
 	RangedTask& operator=(const RangedTask& other) = default;
 
-	bool operator<(const RangedTask& other) const noexcept { return priority < other.priority; }
-	[[nodiscard]] bool HasFinished() const noexcept { return currentIndex >= end; }
+	bool operator<(const RangedTask& other) const noexcept
+	{
+		return priority < other.priority;
+	}
 
-	// Run the runnable of the task. It'll call ReportFinishedSubTask when it's finished or been cancelled.
-	void Run() noexcept;
+	[[nodiscard]] bool HasFinished() const noexcept
+	{
+		return currentIndex >= end;
+	}
+
+	/// @brief Run this range of the task's work.
+	/// @param task The task this item was issued for, resolved by the stream from TaskID before calling.
+	/// @note The caller has already checked that the ID names a live task. A work item whose task has been released
+	///       is dropped by whoever dequeued it; nothing here reaches for a task by itself.
+	void Run(Task& task) noexcept;
 
 private:
 	RangedTask(Task& task, TIndex start, TIndex end, uint8_t priority) noexcept;
