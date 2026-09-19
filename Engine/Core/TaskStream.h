@@ -42,6 +42,18 @@ public:
 	///          waits for further grows instead of asking for its own size.
 	static constexpr std::size_t DefaultGrowBySlots = InitialResultCapacitySlots;
 
+	/// @brief Most results any one task on this stream may declare: 0, which means no ceiling.
+	/// @details A task declares its result count before a stream takes it on, and a declaration the stream can
+	///          never satisfy must be refused while there is still a caller who can act on the refusal. This is
+	///          the number it is compared against. Zero states that no declaration is too large, so nothing is
+	///          ever refused for capacity and the stream grows on demand instead.
+	/// @details The ceiling is not a reservation. A stream that is given one only becomes able to grow its
+	///          containers that far; the memory is taken when it does. Growing is not free at this slot width -
+	///          a pool serves a 131,072-byte block out of a bank of sixteen of them, 2 MiB, so a stream grown
+	///          toward a high ceiling reserves in steps of 2 MiB rather than 128 KiB. That is the reason the
+	///          default is the inert value rather than a conservative number.
+	static constexpr std::size_t DefaultMaxResultCapacitySlots = 0;
+
 private:
 	template <typename T>
 	using TVector = hbe::HVector<T>;
@@ -71,6 +83,7 @@ private:
 	ResultContainer firstResultContainer;
 	ResultContainer secondResultContainer;
 	std::size_t growBySlots;
+	std::size_t maxResultCapacitySlots;
 	CPUBudget budget;
 
 	std::mutex queueLock;
@@ -86,10 +99,15 @@ public:
 	~TaskStream() = default;
 
 	/// @brief Queue a task on the FIFO lane, which runs them in arrival order.
-	void EnqueueFifo(const RangedTask& task) noexcept;
+	/// @return False if the task declared more results than this stream could ever admit, in which case it is
+	///         not queued and will not run. See CanAdmitResults.
+	/// @note A refused task is not re-queued, not retried and not run here. Until a closed lane grows a
+	///       capacity-free fallback, honouring a refusal is the caller's job.
+	[[nodiscard]] bool EnqueueFifo(const RangedTask& task) noexcept;
 	/// @brief Queue a task on the priority lane, which runs the highest priority number first and the
 	///        oldest first within a tie.
-	void EnqueuePriority(const RangedTask& task) noexcept;
+	/// @return False if the task declared more results than this stream could ever admit. See EnqueueFifo.
+	[[nodiscard]] bool EnqueuePriority(const RangedTask& task) noexcept;
 	/// @brief Set this stream's FIFO:priority rate, which is a share of its CPU allowance. Zero weights are
 	///        treated as one, not as "never serve this lane".
 	void ConfigureRate(uint32_t fifoWeight, uint32_t priorityWeight) noexcept;
@@ -176,11 +194,43 @@ public:
 		return growBySlots;
 	}
 
+	/// @brief Most results any one task on this stream may declare. Zero means no ceiling.
+	[[nodiscard]] std::size_t GetResultMaxCapacity() const noexcept
+	{
+		return maxResultCapacitySlots;
+	}
+
+	/// @brief Cap the results one task may declare on this stream. Zero lifts the cap.
+	/// @note Configure before this stream is dispatched to, or from the stream's own thread. The ceiling is read
+	///       by whoever enqueues, so changing it from another thread while an enqueue is in flight is a data
+	///       race. It is deliberately not synchronised: the stream's own pool is not thread-safe either, so an
+	///       atomic ceiling here would imply a safety the rest of the stream does not have.
+	void SetResultMaxCapacity(std::size_t maxCapacitySlots) noexcept
+	{
+		maxResultCapacitySlots = maxCapacitySlots;
+	}
+
+	/// @brief Whether a task declaring numResults results could ever be admitted by this stream.
+	/// @details A ceiling test, not an availability test: it asks whether the number is reachable at all, not
+	///          whether room is free right now. A task that passes may still have to wait for the container to
+	///          be grown, and a task that fails is refused now rather than accepted into a lane that would
+	///          later close on it and stop serving that lane for every task on it.
+	/// @note Under the default ceiling of zero every count passes, so the answer is always true and no task can
+	///       be refused for capacity. That is R21's configured state, not an unimplemented check.
+	[[nodiscard]] bool CanAdmitResults(Task::TNumResults numResults) const noexcept;
+
 	void Start(TaskSystem& taskSys) noexcept;
 	void RunLoop() noexcept;
 
 private:
 	void Dequeue(std::optional<RangedTask>& outTask);
+
+	/// @brief Say that a task was refused for declaring more results than this stream could ever admit.
+	/// @details Refusal is silent otherwise, and a task that never runs is indistinguishable from a task that is
+	///          still waiting - the failure mode this engine has already been debugged for by watching a test
+	///          stall. Naming the task, its declaration and the ceiling is what makes a configuration mistake
+	///          readable from a log instead of from a hang.
+	void ReportRefusal(const RangedTask& task, Task::TNumResults numResults) const noexcept;
 };
 
 } // namespace hbe

@@ -148,7 +148,7 @@ void RunTests()
 	auto& taskSystem = Engine::Get().GetTaskSystem();
 
 	const auto baseStreamIndex = TaskSystem::GetBaseTaskStreamIndex();
-	taskSystem.Enqueue(baseStreamIndex, rangedTask);
+	(void) taskSystem.Enqueue(baseStreamIndex, rangedTask);
 }
 
 } // namespace hbe::Test

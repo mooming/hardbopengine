@@ -232,7 +232,7 @@ void Logger::StartTask(TaskSystem& taskSys)
 
 	task.SetRunnable(runnable);
 	auto rangedTask = task.GenerateSubTask(0, 1, 0);
-	taskSys.Enqueue(ioStreamIndex, rangedTask);
+	(void) taskSys.Enqueue(ioStreamIndex, rangedTask);
 
 	auto& ioTaskStream = taskSys.GetIOTaskStream();
 	threadID = ioTaskStream.GetThreadID();

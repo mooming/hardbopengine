@@ -35,6 +35,7 @@ TaskStream::TaskStream()
 	, firstResultContainer(allocator, 0)
 	, secondResultContainer(allocator, 0)
 	, growBySlots(DefaultGrowBySlots)
+	, maxResultCapacitySlots(DefaultMaxResultCapacitySlots)
 {
 	Assert(threadID == std::thread::id());
 }
@@ -47,23 +48,57 @@ TaskStream::TaskStream(StaticString name, TStreamIndex streamIndex)
 	, firstResultContainer(allocator, InitialResultCapacitySlots)
 	, secondResultContainer(allocator, InitialResultCapacitySlots)
 	, growBySlots(DefaultGrowBySlots)
+	, maxResultCapacitySlots(DefaultMaxResultCapacitySlots)
 {
 	auto log = Logger::Get(name);
 	log.Out([name = name](auto& ls) { ls << name.c_str() << " is created."; });
 }
 
-void TaskStream::EnqueueFifo(const RangedTask& task) noexcept
+bool TaskStream::EnqueueFifo(const RangedTask& task) noexcept
 {
+	const auto numResults = task.taskRef.get().GetNumResults();
+	if (!CanAdmitResults(numResults))
+	{
+		ReportRefusal(task, numResults);
+		return false;
+	}
+
 	std::scoped_lock<std::mutex> lock(queueLock);
 	fifoQueue.PushBack(task);
 	cv.notify_one();
+	return true;
 }
 
-void TaskStream::EnqueuePriority(const RangedTask& task) noexcept
+bool TaskStream::EnqueuePriority(const RangedTask& task) noexcept
 {
+	const auto numResults = task.taskRef.get().GetNumResults();
+	if (!CanAdmitResults(numResults))
+	{
+		ReportRefusal(task, numResults);
+		return false;
+	}
+
 	std::scoped_lock<std::mutex> lock(queueLock);
 	priorityQueue.Push(task);
 	cv.notify_one();
+	return true;
+}
+
+bool TaskStream::CanAdmitResults(Task::TNumResults numResults) const noexcept
+{
+	return maxResultCapacitySlots == 0 || static_cast<std::size_t>(numResults) <= maxResultCapacitySlots;
+}
+
+void TaskStream::ReportRefusal(const RangedTask& task, Task::TNumResults numResults) const noexcept
+{
+	const auto taskName = task.taskRef.get().GetName();
+	auto log = Logger::Get(name);
+	log.OutError([name = name, taskName, numResults, maxCapacitySlots = maxResultCapacitySlots](auto& ls)
+	{
+		ls << name.c_str() << " refused " << taskName.c_str() << ", which declares " << numResults
+		   << " results against a ceiling of " << maxCapacitySlots
+		   << " slots. It was not queued and will not run, so the caller has to honour the refusal. ";
+	});
 }
 
 void TaskStream::ConfigureRate(uint32_t fifoWeight, uint32_t priorityWeight) noexcept

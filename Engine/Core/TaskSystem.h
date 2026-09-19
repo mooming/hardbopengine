@@ -79,7 +79,13 @@ public:
 	// to prevent blocking the entire task streams by a task with null-affinity
 	void Dequeue(std::optional<RangedTask>& outTask) noexcept;
 
-	void Enqueue(TIndex streamIndex, const RangedTask& task) noexcept;
+	/// @brief Queue a task on one stream by index.
+	/// @return False if that stream refused the task because it declares more results than the stream could ever
+	///         admit. The task is not queued and will not run, and the stream has already said so in the log; a
+	///         caller that can do something better than let it not run should do that here.
+	/// @note The general-queue overload above cannot refuse anything: no stream is chosen at that point, so there
+	///       is no ceiling to test a declaration against. Refusal becomes possible when the task reaches a stream.
+	[[nodiscard]] bool Enqueue(TIndex streamIndex, const RangedTask& task) noexcept;
 
 	// Dispatch a task to be executed on the main thread.
 	// The task will be queued and executed when the main thread processes its queue.
