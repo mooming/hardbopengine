@@ -419,3 +419,33 @@ the stream instead. R18 collapses R13 and R16 onto one integer.
 
 This answers the open item that asked for a ceiling number, and it is one capacity for every stream rather
 than a per-stream tuning value - consistent with R17, which moved `growBy` onto the stream.
+
+## Owner decisions, 2026-09-19 (second round: the ceiling on declared results)
+
+| # | Decision | Consequence |
+|---|---|---|
+| R21 | **The ceiling on declared results is a per-stream constant, and `0` means no ceiling.** | A stream refuses at dispatch any task whose `NumResults` exceeds its ceiling, and refuses to grow past it. The default of `0` is unlimited, so on a default-configured stream no task can ever be refused for capacity and the guard stays dormant; opting a stream in is one line where the stream is built, which is the place R17 already put `growBy`. |
+
+R20 named an initial size and a `growBy`, and its own note claimed that answered the open item asking for a
+ceiling. It did not: with growth available and nothing capping it, no declared count is unreachable, so a
+dispatch-time refusal could never fire and would be decoration. R21 supplies the missing bound and makes the
+guard writable at last, with the default deliberately being the inert value.
+
+**What opting a stream in costs, measured rather than estimated.** Reserved memory per stream is not the
+ceiling in bytes. `MultiPoolAllocator::Allocate` rounds the request to a block size, then sizes a bank as
+`blockSize * numberOfBlocks` where `numberOfBlocks` is `ceil(bankSize / blockSize)` raised to
+`MinNumberOfBlocks = 16` for any block under 1 MB (`MultiPoolAllocator.cpp:306-307`, `:397-421`, bank created at
+`:424`). So a 128-byte slot ceiling of 1024 reserves a 2 MiB bank, 2048 reserves 4 MiB, 4096 reserves 8 MiB:
+above the 16-block floor the ceiling multiplies reserved memory roughly one-for-one, and the slots actually
+in use are a small fraction of what is reserved. A ceiling is therefore not a free safety knob, and the
+inert default is the right default for streams that will never declare much.
+
+**Correction to R20's arithmetic, which this section inherited.** "A 1 MB bank fits 8192 slots, so an initial
+container is one eighth of a bank" is true of a bank that is exactly 1 MB. No bank for this block size is:
+the 16-block floor makes a 131,072-byte block produce a 2 MiB bank holding 16,384 slots, so an initial
+1024-slot container is one sixteenth of a bank, and the second container per stream lands in the same bank
+rather than buying another. The per-stream reservation on this engine is 2 MiB per stream, 24 MiB across the
+12 streams built here, not the 512 KiB a naive reading of R20 suggests. That figure is computed from the
+constants and the call path above; `PROFILE_ENABLED` is 0, so no run log carries allocator statistics to
+observe it directly.
+

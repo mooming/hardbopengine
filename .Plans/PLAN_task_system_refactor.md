@@ -513,8 +513,13 @@ exposure is whichever files are still indented-namespace legacy (`grep` before a
   so an unreachable capacity closes it forever on a configuration value. **Still unimplemented after `1f7e777`,
   and it cannot be written yet**: it needs a maximum reachable capacity, R20 fixes an initial size and a
   `growBy` and no ceiling, growth is therefore unbounded, and no declared count is unreachable — so the check
-  could never fire. The ceiling is an owner decision, not a number to invent. The second guard needs a lane
-  closure to log and so has the same dependency.
+  could never fire. **Resolved by R21 (2026-09-19 second round): the ceiling is a per-stream constant and `0`
+  means no ceiling.** The guard is now writable, but it belongs in the capacity-admission commit, not here -
+  with the default `0` it is dormant, and refusing at dispatch means nothing until a stream can also close a
+  lane at dequeue (R14), which is what makes refusal consequential rather than cosmetic. Cost of opting a
+  stream in is measured and is not zero: see R21's note - a ceiling of 1024 slots reserves a 2 MiB bank,
+  because `numberOfBlocks` is floored at 16. The second guard still needs a lane closure to log, and lane
+  closure does not exist yet.
 * **Log a capacity-closed lane** with the declared need and the room remaining, rate-limited per closure.
   Without it, a config mistake is indistinguishable from the dropped-task hang that reached a human by
   watching the close test stall.

@@ -70,12 +70,22 @@ against, so that regression surfaces as the pool's own "is not allocated by this
 rather than as a red test. Instrumenting it needs `PROFILE_ENABLED` or a new accessor - a separate
 decision, not something to slip into a feature commit.
 
-**Open question for the owner, blocking the guard I added under R14.** Refusing at dispatch any task
-whose `NumResults` can never be admitted needs a maximum reachable capacity. R20 gives an initial
-capacity and a `growBy`, both 1024, and no ceiling, so growth is unbounded, no capacity is unreachable,
-and the guard has nothing it could refuse. It is unimplemented rather than weakened, and I did not invent
-a number to make it fire. Same for the second guard (log a capacity-closed lane with the need and the
-room remaining): there is no lane closure to log until admission exists.
+**The question I asked, the answer, and what the answer cost.** Refusing at dispatch any task whose
+`NumResults` can never be admitted needs a maximum reachable capacity, and R20 gives an initial capacity and a
+`growBy` - both 1024 - but no ceiling, so growth is unbounded, no capacity is unreachable, and the guard had
+nothing it could refuse. I left it unimplemented rather than inventing a threshold to make it fire, and asked
+where the ceiling should come from. The owner answered: a per-stream constant, **default `0` meaning no
+ceiling**, recorded as R21. The default is the inert value, which is the honest choice - the guard exists, is
+opt-in per stream, and a default-configured stream still permits unbounded growth. Measured cost of opting in,
+which is what the recommendation understated: reserved memory is `blockSize * max(16, ceil(1 MB / blockSize))`,
+so a ceiling of 1024 slots reserves a 2 MiB bank and 4096 reserves 8 MiB. A ceiling is not a free knob.
+
+**That measurement also contradicts a figure already in the design record.** R20 says a 1 MB bank fits 8192
+slots, making an initial container one eighth of a bank. No bank of this block size is 1 MB: the 16-block floor
+makes a 131,072-byte block produce a 2 MiB bank of 16,384 slots, so the initial container is one sixteenth and
+the per-stream reservation is 2 MiB - 24 MiB across the 12 streams here, not the 512 KiB R20 implies. Corrected
+in `docs/TaskSystemRedesign.md` alongside R21. The second guard - log a capacity-closed lane with the need and
+the room remaining - still has nothing to log, because no lane closes on capacity yet.
 
 **Next.** Handoff item 1: `TaskRegistry` with index plus generation, and `Task` stops being a stack
 object - 6 construction sites, five of them test code.
