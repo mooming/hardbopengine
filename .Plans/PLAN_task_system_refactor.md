@@ -383,3 +383,10 @@ is opt-in: fire-and-forget jobs emit nothing, callers needing a join bring their
 contract is now dispatch, admit by capacity, swap, deliver - which is what makes R8's removal of `Wait` and
 a public `HasDone` coherent, since there is no engine-wide completion promise left to spin on. Note for B3d:
 "an abandoned task still counts as completed" now binds only tasks that opted into completion.
+
+## First cut, sized down (R17-R19)
+
+`growBy` is a stream property set where the stream is built. `ResultCapacity` is now `NumResults`, and
+`NumResults > 0` is what makes a task report completion - no separate flag, so the contradictory combination
+cannot be written. The first implementation carries only `NumResults`, capacity admission, two bump
+containers, swap, fold, rewind. No `TaskDescriptor` object exists until a second field needs one.

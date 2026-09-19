@@ -399,3 +399,14 @@ before choosing it.
 R16 has one consequence worth naming before anyone writes code against it: the earlier rule that an
 abandoned task still counts as completed for a join (the max-age decision in B3d) now applies only to tasks
 that opted into completion. A fire-and-forget job that expires is simply gone, and nothing is waiting for it.
+
+## Owner decisions, 2026-09-18 (fifth round: what each field is called, and where it belongs)
+
+| # | Decision | Consequence |
+|---|---|---|
+| R17 | **`growBy` is a task stream property**, not a per-task descriptor field. | One growth number per stream, so a stream's memory ceiling is decided where the stream is built and every task on it inherits it. A task needing more waits for repeated grows rather than asking for its own size. |
+| R18 | **No `reportsCompletion` field. `ResultCapacity` becomes `NumResults`, and `NumResults` is what decides whether completion is reported.** | One field instead of two, so the contradiction where a task declares zero outputs but asks to report completion cannot be written down. `NumResults > 0` reports; zero is fire-and-forget. R15's capacity-free fallback population is therefore exactly the tasks with `NumResults == 0`. |
+| R19 | **Start simple and let it grow.** | The first implementation carries the minimum that works: `NumResults`, capacity admission, two containers, swap, fold, rewind. No `TaskDescriptor` object until something actually needs a second field, since inventing a descriptor to hold one integer is the kind of layer this project's standards reject. |
+
+R17 slightly retracts R12 as written: growth was described as coming from the task object. It comes from
+the stream instead. R18 collapses R13 and R16 onto one integer.
