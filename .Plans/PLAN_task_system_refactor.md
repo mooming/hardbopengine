@@ -408,6 +408,9 @@ one eighth of a 1 MB bank.
    conflict, the higher R number wins.
 2. `JOURNAL.md` top entries — records WHY, plus every error made, including several of mine.
 3. `AGENTS.md` — no comments in `.cpp`; contracts go in `.h` Doxygen; commit each task; never push.
+4. `README.md` § Documentation → **Documentation Policy** — the same self-documented rule for whoever is
+   writing rather than an agent bound by `AGENTS.md`, plus the fixed Module / Class / Function outline an API
+   reference under `docs/` must follow. Added in `358d7f6`.
 
 Everything below that is not in those three files is **superseded**, including parts of this plan. Two known
 stale spots: the "B3c migration steps" section's opening claim about `hbe::Deque` supporting `Erase` (false,
@@ -417,7 +420,9 @@ corrected below it), and step 2's "the policy decides" (does not hold — see R1
 
 Suite: **57 collections passing in Debug, Dev and Release** as of `2d9b5d3`. Everything committed since then
 is documentation only, so nothing has compiled in the last several commits — run the gate before trusting
-that number.
+that number. **It is 58 as of `1f7e777`**, which registered `ResultContainerTest`; every gate line below that
+says `all 57 collections passed` now expects 58, and a run printing 57 means the new collection was not
+registered rather than that the tree regressed.
 
 Already built and working:
 
@@ -441,20 +446,50 @@ gate dequeuing, because R1's reopen rule is not implemented yet.
   cannot be freed from another thread.
 * Test lambdas calling `lferr` need `[this]`; `lferr` is a `TestCollection` member.
 
-## First commit to make — do only this, then verify
+## Commit 1 landed as `1f7e777` — what is true now
 
-Sized down by R17–R20 and behaviour-preserving, because nothing declares results yet.
+`NumResults` on `Task`, two fixed-slot containers per `TaskStream`, nothing consuming either. Behaviour
+preserving because nothing declares results yet. Preceded by `2dca103`, a formatting-only commit on the three
+legacy files it had to touch (`Array.h` 243 lines, `Task.h` 45, `Task.cpp` 7 off the house format at HEAD),
+proven code-identical by a digest taken after stripping comments, `#include` lines and whitespace.
 
-1. `NumResults` on `Task`, one integer, default `0`. `0` means fire-and-forget and reports no completion (R18).
-2. `growBy` on `TaskStream`, initial container capacity **1024 slots** and `growBy` **1024 slots** (R20).
-3. A bump container of fixed **128-byte** slots: `Push` is `slots[count++]`, `Rewind` is `count = 0`, with an
-   epoch counter advanced on rewind (R11). Two per stream, swapped by the base pass.
-4. Nothing gates on capacity yet, no registry, no `Wait` removal. Those break call sites and each needs its
-   own verified commit.
+| Name as built | Where |
+|---|---|
+| `TNumResults GetNumResults()`, `SetNumResults()`, default `0` | `Task.h` — `TNumResults` is `uint32_t`, not `uint8_t`: the count must be able to state a whole container |
+| `ResultContainer` — `Append`, `GetSlot`, `Count`, `Capacity`, `Rewind`, `Epoch`, `Grow` | `Core/ResultContainer.h`. `Append` is `slots[count++]` and never grows; `Rewind` is `count = 0` plus `++epoch` |
+| `TResultSlot`, `SizeBytes = 128`, 8-byte aligned | `Core/ResultContainer.h`. Stride 128 is asserted from `GetSlot(1) - GetSlot(0)`, not assumed from `sizeof` |
+| Two containers per stream, `GetResultContainer(index)`, `InitialResultCapacitySlots = 1024`, `DefaultGrowBySlots = 1024` | `TaskStream.h` — R20 sizes are stream properties, and R17's `growBy` is one stream property, not a per-container argument |
+| `Array::Resize(newSize)`, exact, no growth policy | `Container/Array.h`. This is the growth API `Array` never had |
+| `Array(const TAllocator&, TIndex)` and `NamedPoolAllocator<T>` | `Container/Array.h`, `Memory/NamedPoolAllocator.h` — the only way a `TaskStream` member can name the stream's own pool, since `DefaultAllocator` captures the allocator scope open at construction |
 
-Verification gate for that commit, all three: `./build.sh Applications/EngineTest -test -debug`, then `-dev`,
-then `-release`; run `./build/Applications/EngineTest/<Config>/EngineTest` and expect
-`all 57 collections passed` with exit status `0`; then `.pi/skills/hb-standards/scripts/check.sh --staged`.
+Facts a later commit depends on, all measured:
+
+* A container's buffer is **2 MiB, not 131,072 bytes**. `CalculateNumberOfBlocks` takes `ceil(1 MB / 131072) = 8`
+  and floors it at `MinNumberOfBlocks = 16`. Twelve streams on this machine, so about 24 MiB reserved for 3 MiB
+  of slots; blocks 2–16 absorb later same-size allocations, so growth is free until the seventeenth block.
+  Computed, not observed — `PROFILE_ENABLED` is 0, so no allocator stats reach the run logs.
+* `Grow` asserts the capacity moved by exactly what it was asked, so a container that ever doubles would be
+  caught rather than guessed. It does **not** grow the way `hbe::Vector` does (`max(4, capacity * 2)`,
+  `Container/Vector.h`) and that is the point — which is why the test capacities are small and
+  non-power-of-two (8 initial, grow by 3): a doubling bug cannot hide behind a 1024/1024 pair, where doubling
+  and `growBy` give the same number.
+* **Overproduction aborts; it is not a value a caller can ignore.** `Append` asserts `count < capacity` (R13),
+  and `Array::operator[]` `FatalAssert`s its index in every configuration (`Container/Array.h:139`), so a task
+  producing more than it declared stops the run in Release as well as Debug — in Debug the container's own
+  assert names the cause first. Consequence for tests: nothing may append past capacity, and a zero-capacity
+  container can only be checked for capacity/count/epoch, never appended to.
+* Nothing proves a container's buffer came from the pool named in its constructor. `MultiPoolAllocator` exposes
+  no usage or address-range query, so that regression surfaces as the pool's own "is not allocated by this
+  allocator" fatal log, not a red test. Needs `PROFILE_ENABLED` or an accessor — a separate decision.
+
+## Next commit to make — do only this, then verify
+
+Item 1 of the ordered list below: **`TaskRegistry` with index plus generation; `Task` stops being a stack
+object.** Same gate as commit 1: Debug, Dev and Release builds each with zero `error:` in the log, then the
+runner printing `all 58 collections passed` with exit status `0` (not 57 — see the suite note above), then
+`.pi/skills/hb-standards/scripts/check.sh --staged`. Touching legacy files again means another proven
+code-identical formatting commit first; `TaskSystem.cpp` and `UnitTestCollection.cpp` are conformant, so the
+exposure is whichever files are still indented-namespace legacy (`grep` before assuming).
 
 ## Then, in this order — each is its own commit with the same gate
 
@@ -475,7 +510,11 @@ then `-release`; run `./build/Applications/EngineTest/<Config>/EngineTest` and e
 ## Two guards that are MINE, not the owner's — do not silently drop either
 
 * **Refuse at dispatch** any task whose `NumResults` could never be admitted. R14 closes a lane at dequeue,
-  so an unreachable capacity closes it forever on a configuration value.
+  so an unreachable capacity closes it forever on a configuration value. **Still unimplemented after `1f7e777`,
+  and it cannot be written yet**: it needs a maximum reachable capacity, R20 fixes an initial size and a
+  `growBy` and no ceiling, growth is therefore unbounded, and no declared count is unreachable — so the check
+  could never fire. The ceiling is an owner decision, not a number to invent. The second guard needs a lane
+  closure to log and so has the same dependency.
 * **Log a capacity-closed lane** with the declared need and the room remaining, rate-limited per closure.
   Without it, a config mistake is indistinguishable from the dropped-task hang that reached a human by
   watching the close test stall.
@@ -494,10 +533,25 @@ then `-release`; run `./build/Applications/EngineTest/<Config>/EngineTest` and e
 * macOS has no `timeout`/`gtimeout`. For a possibly-hanging run: launch, `sleep`, `kill -0`, `kill -9`.
 * Proving a check works means mutating the implementation and watching the test go red. Several "passing"
   results in this subsystem were only ever proven that way.
+* **A comparison against the constant that produced the value cannot fail.** My first per-stream test checked
+  each stream against `TaskStream`'s own `InitialResultCapacitySlots`/`DefaultGrowBySlots`; changing the
+  decided 1024 to 512 left all of it green. Found only by running the mutation. State decided numbers as
+  literals and tie them to the engine's with `static_assert`, which covers both directions: changing the
+  decision breaks the build and names it, building it differently turns the test red.
+* **Run clang-format inside the repo.** With no `.clang-format` above the file it silently applies LLVM
+  defaults — the fallback `check.sh`'s own header warns about. Measuring a copy in `/tmp` reported
+  213/85/107/763/147 differing lines where the real figures were 243/45/7/0/0, which is a wrong answer rather
+  than a noisy one.
+* A `git add` naming one nonexistent path adds **nothing**, and `clang-format -i` then leaves the worktree
+  conformant while the index still holds the old bytes. `check.sh --staged` fails on content you no longer
+  have; its index/worktree guard (`b629166`) is what surfaced it here.
 
 ## Commits
 
-Newest first, documentation after `2d9b5d3` where the suite last went green in all three configs:
-`7b7f172` sizes · `70e5878` growBy and NumResults · `4db7d93` optional completion · `a8c3d0c` stack allocator
-· `bde79e9` registry and continuation · `2d9b5d3` both-lane test (last green build) · `dbfb181`, `4ecd68d`
-dual lanes · `246794a` priority ordering.
+Newest first. `1f7e777` is the last commit green in all three configurations (58 collections), and the commit
+whose message carries this handoff update and the JOURNAL entry follows it immediately:
+`2dca103` formatting-only, proven code-identical · `1f7e777` NumResults and result containers ·
+`358d7f6` README documentation policy · `202d4b8` the lint trap · `b629166` the index guard · `1b376b0` the
+stale plan sentences · `7b7f172` sizes · `70e5878` growBy and NumResults · `4db7d93` optional completion ·
+`a8c3d0c` stack allocator · `bde79e9` registry and continuation · `2d9b5d3` both-lane test (last green build
+before the rewrite) · `dbfb181`, `4ecd68d` dual lanes · `246794a` priority ordering.

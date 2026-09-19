@@ -1,5 +1,86 @@
 # Journal
 
+## NumResults, and result containers built on Array instead of a new container (2026-09-19)
+
+**What landed.** `1f7e777` after a proven-code-identical `2dca103`. `Task` gains `NumResults`, one
+integer defaulting to zero (R18); `TaskStream` owns two `ResultContainer`s with an initial capacity of
+1024 slots and `growBy` of 1024 (R17, R20); a slot is 128 bytes (R5), `Append` is `slots[count++]`,
+`Rewind` is `count = 0` plus an epoch advance (R11). Suite **57 → 58 collections**, green in Debug, Dev
+and Release with exit status 0 and zero `error:` in every build log. Nothing consumes any of it: no
+capacity admission, no registry, no swap/fold pass, and `Wait` and `HasDone` are untouched.
+
+**The container is not a new container.** Three shapes were measured before choosing, and two of them
+were mine. `HVector` is `std::vector<T, DefaultAllocator<T>>` (HSTL/HVector.h:15): `push_back` doubles
+and reallocates, so a slot already handed to a running task becomes a dangling pointer precisely when a
+capacity bug appears, and `DefaultAllocator` captures `GetCurrentAllocatorID()` at construction
+(DefaultAllocator.h:33) - a `TaskStream` member built in `BuildStreams` would therefore take the base
+thread's allocator, not the stream's. `RingQueue` already refuses to grow on `Push`
+(RingQueue.h:82) and has no production users, but it masks every access, rounds capacity to a power of
+two, and has no grow path. A general `SlotBatch` template was actually written before the owner asked
+the better question: `Array` with `Resize(newSize)` and a constructor taking an allocator instance
+covers the requirements, and the reusable remainder is two integers - the used count and the epoch.
+Naming it `HSlotBatch` would also have been wrong on the facts: `Engine/HSTL/` contains nothing but
+aliases over `std::` types, so the prefix claims an STL stand-in.
+
+**Two additions to a shared container, both additive.** `Array::Resize` is the growth API it never had -
+the missing API is what forced B2's bounded attachment set - and it allocates exactly, which is the
+property that makes an eighth-of-a-megabyte container arithmetic meaningful. `Array(const TAllocator&,
+TIndex)` states an owner instead of inheriting a scope. `NamedPoolAllocator<T>` is the 12-line adapter
+that lets any engine container draw from a named `MultiPoolAllocator`, which nothing could express
+before. Blast radius measured: 10 files reference `Array<` - the figure of 6 I first wrote came from a grep that
+missed half of them - and no existing behaviour changed, which the three-configuration run confirms.
+
+**A consequence of R20 the owner should see.** A 131,072-byte request to a `MultiPoolAllocator` does not
+reserve 131,072 bytes. `CalculateBlockSize` returns 131072, `CalculateNumberOfBlocks` takes
+ceil(1 MB / 131072) = 8 and floors it at `MinNumberOfBlocks` = 16, so the first container triggers a
+2 MiB bank per stream. This machine builds 12 streams, so roughly 24 MiB is reserved at startup for
+3 MiB of slots; the other 14 blocks absorb later same-size allocations, so growth is free until the
+seventeenth block. Computed from `MultiPoolAllocator.h:25,26` and `MultiPoolAllocator.cpp:397-422` (the floor is the
+`std::max` at line 414), not
+observed - `PROFILE_ENABLED` is 0, so no allocator statistics reach the run logs.
+
+**A decorative check of my own, caught by mutating the implementation.** My first per-stream test
+compared each stream against `TaskStream`'s own constants, so changing the decided 1024 to 512 left every
+assertion green - the same false-green class this subsystem has now hit four times. The test now states
+the decided figures as literals with `static_asserts` tying them to the engine's, which splits the
+coverage in two: changing the decision breaks the build and names the decision, building a stream
+differently turns the test red. Both halves were proven by mutation, and the second one produced red
+output for all twelve streams. Other mutations, each watched going red: dropping the epoch advance from
+`Rewind` (3 assertions), an `Append` that stops advancing the cursor (4), `NumResults` defaulting to 1
+(2), and `Resize` rounding up to a power of two (1, and only in Release - in Debug the assert inside
+`Grow` fires first, so that check is shadowed in a debug build).
+
+**Errors, including one that made a measurement lie.** My first `Array` constructor delegated to
+`Array(size)` and assigned the allocator afterwards, allocating from the ambient pool and freeing with
+the named one - the exact cross-pool free this change exists to prevent; caught reviewing my own edit
+before it was compiled. My first preservation test read a slot through a pointer kept across a `Grow`,
+which is a freed buffer. A python slice truncated `ResultContainer.cpp` by the closing
+`} // namespace hbe`, so the test block nested `hbe::hbe`, and two builds went to the symptom before the
+cause was read - untracked files have no `git diff` to catch a truncation. Far worse: I asked whether the
+touched files were already non-conformant by pointing clang-format at copies in `/tmp`, where no
+`.clang-format` exists, so LLVM defaults gave 213/85/107/763/147 differing lines against a real
+243/45/7/0/0. check.sh's header documents that exact fallback and I still fell for it. Corrected, and
+the legacy reformat went into `2dca103` with a per-file digest taken after stripping comments, `#include`
+lines and whitespace - identical in all three files - plus a separate multiset check on the includes so a
+reordered one could not hide inside the first.
+
+**Still unproven, stated rather than glossed.** Nothing checks that a container's buffer really came from
+the pool named in its constructor: `MultiPoolAllocator` exposes no usage or address-range query to assert
+against, so that regression surfaces as the pool's own "is not allocated by this allocator" fatal log
+rather than as a red test. Instrumenting it needs `PROFILE_ENABLED` or a new accessor - a separate
+decision, not something to slip into a feature commit.
+
+**Open question for the owner, blocking the guard I added under R14.** Refusing at dispatch any task
+whose `NumResults` can never be admitted needs a maximum reachable capacity. R20 gives an initial
+capacity and a `growBy`, both 1024, and no ceiling, so growth is unbounded, no capacity is unreachable,
+and the guard has nothing it could refuse. It is unimplemented rather than weakened, and I did not invent
+a number to make it fire. Same for the second guard (log a capacity-closed lane with the need and the
+room remaining): there is no lane closure to log until admission exists.
+
+**Next.** Handoff item 1: `TaskRegistry` with index plus generation, and `Task` stops being a stack
+object - 6 construction sites, five of them test code.
+
+
 ## The README now states the documenting policy that only AGENTS.md carried (2026-09-19)
 
 **What landed.** `README.md` § Documentation opens with a new **Documentation Policy** subsection: the
