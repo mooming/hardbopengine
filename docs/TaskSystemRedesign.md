@@ -354,7 +354,7 @@ before choosing it.
 | R4 | **Payloads are fixed 128-byte packets from a thread-safe pool allocator**, populated on worker streams and released on the base stream. A delivered packet stays valid **for one frame**. | `MultiPoolAllocator` is not thread-safe - no mutex, no atomic, no thread_local anywhere in its header or implementation - so results get their own pool. The free list is deliberately a mutex over pre-allocated banks rather than an atomic Treiber stack, which has an ABA defect; this path sees one push per completed task, far cheaper than the CPU-time syscall already paid per task, so lock-free buys nothing measurable. |
 | R5 | **The 8-byte header sits inside the 128**, leaving a 120-byte payload. | Power-of-two slot: index to address is a shift by 7, one `DefaultBankUnit` bank of 1 MB holds exactly 8192 packets, every slot is 8-byte aligned. |
 | R6 | **`kind` is split**: 0-63 engine, 64-255 application, boundary a named constant. | The app owns the top of the range and the engine can never allocate an app's kind by accident. |
-| R7 | **Task identity is an index plus generation in a task registry, and Tasks stop being stack objects.** | API break. Measured blast radius: 6 construction sites - 5 in test code and one `static Task task("TestEnv", ...)` in `UnitTestCollection.cpp:143`, which is static and so already outlives frames. Files: `Task.h`, `Task.cpp`, `TaskSystem.cpp`, `UnitTestCollection.cpp`, `Logger.cpp`. A packet naming a dead task is recognised by generation and dropped rather than followed. |
+| R7 | **Task identity is an index plus generation in a task registry, and Tasks stop being stack objects.** | API break. Blast radius measured at the time: 6 construction sites. Re-measured before implementation, still incomplete: `grep -rnE "(^|[^a-zA-Z:])Task +[a-zA-Z_][a-zA-Z0-9_]*\("` gives **11** function-local constructions in `TaskSystem.cpp`'s `__UNIT_TEST__` section plus `static Task task("TestEnv", ...)` at `UnitTestCollection.cpp:145` - 12 sites - and the grep cannot see `Logger.h:103`'s `Task task` **member** at all, which is the one that lives for the engine's whole life. Files: `Task.h`, `Task.cpp`, `TaskSystem.cpp`, `UnitTestCollection.cpp`, `Logger.h` (not `Logger.cpp` - the member is in the header), and now also `RangedTask.h/.cpp` and `TaskStream.cpp`, which hold the references that identity replaces. Test count: 57 collections with 208 tests at the time of this decision, 59 after the result-container and registry collections. A packet naming a dead task is recognised by generation and dropped rather than followed. |
 | R8 | **`Task::Wait`, `BusyWait` and a public `HasDone` are removed. A continuation job is the only way to observe completion.** | Because completions fold on the base thread, waiting there is illegal - and the suite runs inside a task on the base stream, so every wait in it stands on the folding thread. The five test call sites that wait or poll, including the lane test added today, must be rewritten. |
 | R9 | **A pipeline is a series of sequential jobs managed by its caller. TaskSystem does not know pipelines exist.** | TaskSystem supports only: dispatch a job, an optional successor recorded on the registry record, and a join counter on that record. Routing therefore lives in the registry, which is why the 8-byte packet header did not have to grow. |
 | R10 | **`ParallelFor` is a splitter for a heavy job, spreading sub-jobs across requested streams, offered as several functions**: one taking an explicit stream list plus lane plus sub-job count, one asking for N streams and letting TaskSystem choose. | Explicit placement keeps "not the IO stream" expressible; the N-streams variant reads better but the same call can behave differently frame to frame, which makes a performance regression harder to reproduce. Both are provided rather than picking one. |
@@ -448,4 +448,42 @@ rather than buying another. The per-stream reservation on this engine is 2 MiB p
 12 streams built here, not the 512 KiB a naive reading of R20 suggests. That figure is computed from the
 constants and the call path above; `PROFILE_ENABLED` is 0, so no run log carries allocator statistics to
 observe it directly.
+
+## Owner decisions, 2026-09-19 (third round: the registry's identity table is sized like a container)
+
+| # | Decision | Consequence accepted |
+|---|---|---|
+| R22 | **The task registry's capacity is tunable, adjustable and growable exactly like a result container's: initial capacity 4096 records, `growBy` 4096 records, ceiling defaulting to `0` = no ceiling.** | Answers the open item asking what happens when the registry is full. Same three knobs as R20 and R21, so there is one shape to reason about: a record is 64 bytes as the class is built, so a registry starts at 256 KiB and every explicit grow adds another 256 KiB, and with the default ceiling growth is unbounded. All three are settable where the registry is built rather than baked in as a constant. |
+| R22a | **`Create` never grows the table.** Growth is its own call, as it is for a result container. | A creation that finds no free record returns an invalid ID and says so in the log, instead of reallocating on whichever thread happened to dispatch first. That keeps R12's rule - no allocation on the hot path - true for identity as well as for results, and it makes exhaustion a size to tune rather than a rare race. |
+
+Measured demand the sizing was chosen against, not assumed: **one** task record is alive in engine code today -
+`Logger.h:103` holds a `Task` as a member for the engine's whole life, and nothing else outside tests constructs
+one. The suite has twelve sites: one `static` living for the suite, and eleven function locals, at most two
+concurrent. So 4096 is on the order of four thousand times this tree's current demand, chosen for the game rather
+than for the engine as it stands. `sizeof(Task)` measured 32 bytes by template instantiation, and `StaticString`
+is an interned 8-byte ID rather than a buffer, which is why a record - the task, a `uint32` generation and an
+in-use flag - does not come close to a name-sized object. The record as built measures **64 bytes**, published as
+`TaskRegistry::RecordSizeBytes` and printed by the sizing test rather than computed by hand: identity added a
+16-byte `TaskID` to the task, and the record adds that ID's generation, an in-use flag and the free-list link. The
+40 bytes quoted above was the record as *designed*, before the identity was added to `Task` - an estimate written
+before the class existed, and wrong by exactly the width of the thing R7 exists to add.
+
+The three figures are `TAtomicConfigParam`, not `TConfigParam`: `initialize()` runs on the booting thread and the
+first test that reads a figure runs on a task, so `ConfigParam::Get`'s cross-thread assert fires immediately - and
+every other parameter in this engine is already atomic for the same reason.
+
+**Why the table lives in banks rather than one array or one pool.** Two obvious shapes were measured out before
+this one was built. `Array<Record>` with a grow-by cannot work at all: `Array::Resize` memmoves when its allocator
+answers `AllocateAligned`, and `std::atomic_is_always_lock_free` is true on this toolchain, so a table of records -
+each embedding a non-trivially-destructible `Task`, which embeds three `std::atomic` - would compile, run, and
+silently dangle every reference handed out before a growth. Handing the records to `MultiPoolAllocator` works but
+is wasteful and wrong in its teardown: 4096 records of 64 bytes is 256 KiB, which becomes a 2 MiB bank plus a second
+block to split, so 4 MiB is reserved for a 256 KiB table; and the registry would free through the pool while the
+blocks it took came from `AllocateBlock`, a teardown bug by construction. Banks from the engine allocator give the
+same grow-by-exactly-N semantics with neither problem, at the cost of a bank that cannot be returned before
+`Shutdown`.
+
+Why the generation is 32 bits: a stale ID aliases only after the same record is reused four billion times, which
+is not a window anyone reaches; a 16-bit generation makes aliasing an everyday hazard in a table this size, and
+the whole point of R7's identity is that a recycled record is recognised rather than followed.
 

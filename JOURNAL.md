@@ -1,5 +1,57 @@
 # Journal
 
+## Tasks become things the registry owns, addressed by identity (2026-09-19)
+
+**What landed**, as `3be27c3`: R7 with R22's sizing. `Engine/Core/TaskID.h` (`{index, generation}`) and
+`Engine/Core/TaskRegistry.h/.cpp` are new; `Task` carries the identity it was issued; `RangedTask` holds a `TaskID`
+plus the declared result count instead of `std::reference_wrapper<Task>`; a stream resolves the task at dispatch and
+drops the work item with a warning when the generation does not match; `Logger`'s drain task, the suite's task and
+the 11 test tasks in `TaskSystem.cpp` are created and released through the registry instead of living on the stack.
+Test count **58 -> 59** with the new `TaskRegistryTest`. Gate green: Debug/Dev/Release build 0 errors, runner exit 0,
+`all 59 collections passed`, `check.sh --staged` 0 violations.
+
+**Two shapes measured out before the one that was built.** `Array<Record>` cannot work: `Array::Resize` memmoves
+when its allocator answers `AllocateAligned`, `std::atomic_is_always_lock_free` is true here, and `Record` embeds a
+`Task` that embeds three `std::atomic` - it would compile, run, and dangle every reference handed out before a
+growth. `MultiPoolAllocator` for the banks reserves **4 MiB for a 256 KiB table** (the 2 MiB bank floor, plus a
+second block to split a 256 KiB request) and would free through `MultiPoolAllocator::Deallocate` blocks taken from
+`AllocateBlock`. Banks from the engine allocator give grow-by-exactly-N with neither flaw.
+
+**Three of my own errors, each found by the suite rather than by reading.**
+1. `Create` computed the next generation and never stored it, so every `Find` failed - the suite died at the
+   `FatalAssert` on its own task. Diagnosed with temporary unbuffered probes at each step (init, create, find),
+   because buffered log lines die with an aborted process.
+2. The three sizing figures were `TConfigParam`, and `ConfigParam::Get`'s cross-thread assert fired the moment a
+   test read them: `initialize()` runs on Main, tests run on a task. They are `TAtomicConfigParam` now - and these
+   three were the **only** non-atomic parameters in the tree, which is the answer to "which is the house pattern".
+3. My own assertion in the double-release test was wrong: I asserted a further creation must be refused when three
+   free records remained. Replaced with the invariant that actually matters - create until refusal and require
+   exactly 3 admissions, so a record pushed on the free list twice shows up as a fifth admission.
+
+**An estimate of mine that measurement corrected.** R22 first quoted a 40-byte record and a 160 KiB table, written
+before the class existed. The record as built is **64 bytes** and the table **256 KiB**, because identity added a
+16-byte `TaskID` to `Task` - the width of the thing R7 exists to add. `TaskRegistry::RecordSizeBytes` publishes it
+and the sizing test prints it, so the next reader gets a measured figure instead of my arithmetic.
+
+**Eight mutations, each attributed to the test that catches it.** Generation not stored -> engine aborts at the
+suite's own task (identity is load-bearing: with it broken the suite cannot start). `Find` ignores the generation ->
+the recycling test. `Release` keeps the record in use -> resolution + free-list integrity. `Create` grows implicitly
+-> refusal-at-full + free-list integrity. Exclusive ceiling -> the ceiling test. `Find` bounded to one bank ->
+resolution, recycling, bank-stability. Bank sized at double the grow-by -> the precondition assert fires naming the
+registry, the requested records and the bank size. Losing a subtask's identity cannot be reddened while the suite
+*is* that subtask - it hangs with no output, since dropped work is dropped effectively; a surgical variant that
+drops it for one task reddens exactly the identity test.
+
+**Also.** `RangedTask.h/.cpp` carried a banner whose line 1 was an empty comment; file hygiene requires the
+copyright there, so the copyright moved to line 1 and the `Created by mooming` attribution line stayed. 8 other
+files still carry the old banner and are untouched. The three `m_`-prefix advisories are `using TIndex =
+std::size_t;` in three headers - the same false positive `Array.h` already reports.
+
+**A process observation worth keeping.** A concurrent agent reformatted `docs/TaskSystemRedesign.md` between my
+edit and my commit, which silently dropped a correction I had made to R7's row (its blast-radius measurement). My
+R22 section survived in condensed form; I re-applied the R7 correction against the new text and verified the diff
+before committing. Edits to shared docs must be re-read immediately before committing, not just after writing.
+
 ## The API reference becomes an HTML site with one folder per module (2026-09-19)
 
 **What landed.** `docs/index.html` as the Module Index start page, `docs/<Module>/index.html` for all 13

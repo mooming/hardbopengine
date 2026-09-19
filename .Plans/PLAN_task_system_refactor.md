@@ -482,12 +482,33 @@ Facts a later commit depends on, all measured:
   no usage or address-range query, so that regression surfaces as the pool's own "is not allocated by this
   allocator" fatal log, not a red test. Needs `PROFILE_ENABLED` or an accessor — a separate decision.
 
+## Registry landed as `3be27c3` — what is true now
+
+`Task` is no longer a stack object: `Engine/Core/TaskID.h` and `Engine/Core/TaskRegistry.h/.cpp` are new, every
+task is a registry record addressed by `{index, generation}`, `RangedTask` carries a `TaskID` plus the declared
+result count instead of `std::reference_wrapper<Task>`, and a stream resolves the task at dispatch and drops the
+work item with a warning when the generation does not match. `Logger`'s drain task and the suite's task are
+registry-tracked. **The suite is 59 collections now**, not 58: `TaskRegistryTest` joined. Gate was green in all
+three configurations with 0 `error:` and runner exit 0.
+
+Two things the next commit inherits from this one:
+* Records never move, because `Record` embeds `Task`, which embeds three `std::atomic` and cannot be moved. The
+  table is banks, grown one bank per `Grow`. Any future container holding a `Task` has the same constraint, and
+  `Array` cannot satisfy it.
+* `TaskSystem::CreateTask` / `FindTask` / `ReleaseTask` are the only ways a `Task&` may be obtained. A raw
+  `Task task(...)` on the stack no longer compiles usefully — the default-constructed task has no registry record,
+  so `TaskStream` will drop it with a warning rather than run it. That is deliberate; do not "fix" it by making
+  the drop quiet.
+
 ## Next commit to make — do only this, then verify
 
-Item 1 of the ordered list below: **`TaskRegistry` with index plus generation; `Task` stops being a stack
-object.** Same gate as commit 1: Debug, Dev and Release builds each with zero `error:` in the log, then the
-runner printing `all 58 collections passed` with exit status `0` (not 57 — see the suite note above), then
-`.pi/skills/hb-standards/scripts/check.sh --staged`.
+Item 2 of the ordered list below: the **base-stream pass in `Engine::Run()` → `TaskSystem::BeginFrame()`** — reset
+each stream's budget (R1, which makes `CPUBudget::isMeasuring` atomic and amends its single-owner note), swap
+containers, fold. Gate: Debug, Dev and Release each with zero `error:`, then the runner printing
+`all 59 collections passed` with exit status `0`, then `.pi/skills/hb-standards/scripts/check.sh --staged`.
+
+Item 3 (`Wait` / `BusyWait` / public `HasDone` removal) stayed blocked by this handoff's own ordering, not by the
+registry: the successor and join counter must land on the registry record first, and that record now exists.
 
 `2e087a0` landed the R21 ceiling and the dispatch guard since this handoff was written. It changed the enqueue
 signatures - `TaskStream::EnqueueFifo`, `EnqueuePriority` and `TaskSystem::Enqueue(TIndex, task)` return
@@ -501,9 +522,9 @@ exposure is whichever files are still indented-namespace legacy (`grep` before a
 
 ## Then, in this order — each is its own commit with the same gate
 
-1. `TaskRegistry` with index plus generation. `Task` stops being a stack object: **6** construction sites,
-   five in test code plus `static Task task("TestEnv", ...)` at `Engine/Test/UnitTestCollection.cpp:143`.
-   Files: `Task.h`, `Task.cpp`, `TaskSystem.cpp`, `UnitTestCollection.cpp`, `Logger.cpp`.
+1. ~~`TaskRegistry` with index plus generation.~~ **Landed as `3be27c3`.** The blast radius this list
+   carried was wrong twice over: 12 construction call sites, not 6, and `Logger.h:103`'s `Task task` **member**
+   is invisible to the grep that counted them.
 2. Base-stream pass in `Engine::Run()` → `TaskSystem::BeginFrame()`: reset each stream's budget (R1, which
    makes `CPUBudget::isMeasuring` atomic and amends its single-owner note), swap containers, fold.
 3. Successor and join counter on the registry record; **then** remove `Task::Wait`, `BusyWait` and a public
@@ -562,8 +583,9 @@ exposure is whichever files are still indented-namespace legacy (`grep` before a
 
 ## Commits
 
-Newest first. `1f7e777` is the last commit green in all three configurations (58 collections), and the commit
+Newest first. `3be27c3` is the last commit green in all three configurations (59 collections), and the commit
 whose message carries this handoff update and the JOURNAL entry follows it immediately:
+`9e4b69e` ceiling checklist closed · `2e087a0` the R21 ceiling and dispatch guard ·
 `2dca103` formatting-only, proven code-identical · `1f7e777` NumResults and result containers ·
 `358d7f6` README documentation policy · `202d4b8` the lint trap · `b629166` the index guard · `1b376b0` the
 stale plan sentences · `7b7f172` sizes · `70e5878` growBy and NumResults · `4db7d93` optional completion ·

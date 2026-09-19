@@ -67,3 +67,21 @@ and a pointer from `Find` cannot be invalidated by another thread growing the ta
   directly on one thread, which is the documented rule rather than a pretence of thread safety.
 - `Wait`, `BusyWait` and a public `HasDone` survive this commit. Their removal is a later item and rewrites
   five test call sites.
+
+
+## Result, and where this plan was wrong
+
+Landed as `3be27c3`, gate green in Debug/Dev/Release, 59 collections, `check.sh --staged` 0 violations.
+
+* The plan's storage shape survived implementation only because `Task` is immovable. If `Task` ever becomes
+  movable, the bank design does not become optional — it becomes wrong in the same way `Array` was, and the
+  reason is `std::atomic` being its own address, not a style preference.
+* The plan's cost figures were mine, written before the class existed, and were wrong: 64 bytes per record and
+  256 KiB per table, not 40 bytes and 160 KiB. Corrected in R22, and the figure is now a published constant that
+  a test prints.
+* Two plan steps I had not written and had to add mid-flight: the sizing parameters must be atomic (the
+  cross-thread assert is the engine telling you), and legacy banners whose line 1 is not the copyright fail file
+  hygiene the moment a commit touches the file.
+* One test assertion of mine was wrong and passed nothing: I asserted a creation must be refused when three free
+  records remained. The suite caught it on the first run. The replacement asserts the invariant — fill the table
+  and require exactly the records it owns.
