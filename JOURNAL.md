@@ -1,5 +1,53 @@
 # Journal
 
+## The R21 ceiling, and a guard that can finally be written (2026-09-19)
+
+**What landed.** `2e087a0`, after R21 turned the ceiling question from an open decision into a constant.
+`TaskStream` gets `DefaultMaxResultCapacitySlots = 0` with `Get`/`SetResultMaxCapacity` and `CanAdmitResults`,
+which is the only place the ceiling is interpreted; `EnqueueFifo`, `EnqueuePriority` and
+`TaskSystem::Enqueue(streamIndex, task)` return `[[nodiscard]] bool` and refuse before a queue is touched,
+logging the task name, its declaration and the ceiling. 58 collections green in Debug, Dev and Release, runner
+exit 0 in each, `check.sh --staged` exit 0 with 0 violations and 0 advisories. The refusal behaves identically
+in Release - verified from that run's log, not assumed, since `Assert` is a no-op there and a guard built on
+assertions would have vanished.
+
+**The design fork worth recording is the refusal channel, not the ceiling.** A guard with nowhere to report is
+decoration, and every enqueue today returns `void`, so the only way to refuse was to widen a signature. Measured
+blast radius before choosing: 3 call sites reach the stream methods through `TaskSystem::Enqueue(TIndex, ...)`,
+9 reach `TaskSystem::Enqueue` in total, and 6 needed to say something explicit. `[[nodiscard]]` was chosen over
+a plain `bool` because a caller that ignores this drops work, and this engine has a documented history of
+dropped-task work surfacing as a hang a human watched. The honest cost is in the diff: six `(void)` casts -
+`Logger.cpp`'s IO enqueue, the suite's base-stream dispatch, four in `TaskSystem.cpp`'s test section - are the
+present shape of "no fallback exists yet", and the header says a refused task is not queued, not retried and not
+run here. The general-queue overload still returns `void`, and deliberately: no stream is chosen at that point,
+so there is no ceiling to test against.
+
+**Seven mutations, each attributed to the test that caught it, each restored byte-identically.** Default ceiling
+1024 instead of 0 -> TC8 only. `<=` to `<` -> TC9 only. `CanAdmitResults` always true -> TC9 and TC11. Priority
+lane ignoring the declaration -> TC11 with FIFO green, which is what proves the two lanes are each guarded
+rather than one. Refusal logged but the task still queued -> TC9 only. `0` treated as a real ceiling of zero ->
+TC8 only. A ceiling of 1 refusing a zero declaration -> TC10 only. My first grep for red tests printed nothing
+and I nearly reported "all mutations produced a red suite" as the finding; the format is
+`# TCn.Name Result [FAIL] #` and without it there is no attribution, which is the whole point of mutating.
+
+**Where that proof is weaker than it looks.** TC10's mutation is contrived - it fires only when the ceiling is
+exactly 1 and a task declares 0, a state no production config reaches. The mutation that would really test the
+claim is refusing every zero declaration, and that starves the suite before TC10 runs: production tasks declare
+zero results, so the base stream's own dispatch gets refused and the evidence is a hang, not a red assertion.
+Recorded in the plan file rather than smoothed over.
+
+**Not implemented, and not pretending otherwise.** `Grow` does not refuse to cross the ceiling: nothing in
+production grows a container yet, so a check there could be neither reached nor proven red; it lands with the
+growth call site. Room is still not reserved at admission (R13/R18 in full), and R15's fallback - and with it
+guard (b) - is still absent.
+
+**A process error of my own, of the accusing-my-own-work kind.** After writing a Doxygen block I announced that
+I had put stray non-English text into it and moved to fix it. The file was clean ASCII; the scan proved it, and
+the correction I attempted found nothing because nothing was there. The false report was the defect. Announcing
+a defect before reading the file costs the reader the same trust as hiding one, which is the standard this
+project holds itself to for the opposite mistake.
+
+
 ## NumResults, and result containers built on Array instead of a new container (2026-09-19)
 
 **What landed.** `1f7e777` after a proven-code-identical `2dca103`. `Task` gains `NumResults`, one

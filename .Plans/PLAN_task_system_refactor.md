@@ -487,7 +487,15 @@ Facts a later commit depends on, all measured:
 Item 1 of the ordered list below: **`TaskRegistry` with index plus generation; `Task` stops being a stack
 object.** Same gate as commit 1: Debug, Dev and Release builds each with zero `error:` in the log, then the
 runner printing `all 58 collections passed` with exit status `0` (not 57 — see the suite note above), then
-`.pi/skills/hb-standards/scripts/check.sh --staged`. Touching legacy files again means another proven
+`.pi/skills/hb-standards/scripts/check.sh --staged`.
+
+`2e087a0` landed the R21 ceiling and the dispatch guard since this handoff was written. It changed the enqueue
+signatures - `TaskStream::EnqueueFifo`, `EnqueuePriority` and `TaskSystem::Enqueue(TIndex, task)` return
+`[[nodiscard]] bool` - so any path the registry adds that enqueues must decide what a refusal means rather than
+drift past the compiler. The six `(void)` casts in `Logger.cpp`, `Test/UnitTestCollection.cpp` and the test
+section of `TaskSystem.cpp` mark those decisions still outstanding.
+
+Touching legacy files again means another proven
 code-identical formatting commit first; `TaskSystem.cpp` and `UnitTestCollection.cpp` are conformant, so the
 exposure is whichever files are still indented-namespace legacy (`grep` before assuming).
 
@@ -513,13 +521,14 @@ exposure is whichever files are still indented-namespace legacy (`grep` before a
   so an unreachable capacity closes it forever on a configuration value. **Still unimplemented after `1f7e777`,
   and it cannot be written yet**: it needs a maximum reachable capacity, R20 fixes an initial size and a
   `growBy` and no ceiling, growth is therefore unbounded, and no declared count is unreachable — so the check
-  could never fire. **Resolved by R21 (2026-09-19 second round): the ceiling is a per-stream constant and `0`
-  means no ceiling.** The guard is now writable, but it belongs in the capacity-admission commit, not here -
-  with the default `0` it is dormant, and refusing at dispatch means nothing until a stream can also close a
-  lane at dequeue (R14), which is what makes refusal consequential rather than cosmetic. Cost of opting a
-  stream in is measured and is not zero: see R21's note - a ceiling of 1024 slots reserves a 2 MiB bank,
-  because `numberOfBlocks` is floored at 16. The second guard still needs a lane closure to log, and lane
-  closure does not exist yet.
+  could never fire. **Resolved by R21 and implemented in `2e087a0`: `TaskStream::CanAdmitResults` against a
+  per-stream ceiling, default `0` meaning unlimited, and `EnqueueFifo` / `EnqueuePriority` /
+  `TaskSystem::Enqueue(streamIndex, task)` returning `[[nodiscard]] bool`, refusing before the queue is touched
+  and logging the task, its declaration and the ceiling.** With the default the guard is dormant, exactly as R21
+  decides; opting a stream in is one call. What is still missing is R15's side: a refused task is not queued,
+  not retried and not run, and the six `(void)` casts left at the existing call sites are the current shape of
+  "no fallback exists yet" - each should become real handling when the capacity-free fallback lands. Cost of
+  opting in is measured and is not zero: see R21.
 * **Log a capacity-closed lane** with the declared need and the room remaining, rate-limited per closure.
   Without it, a config mistake is indistinguishable from the dropped-task hang that reached a human by
   watching the close test stall.
