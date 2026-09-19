@@ -6,7 +6,6 @@
 #include "Log/Logger.h"
 #include "TaskSystem.h"
 
-
 namespace hbe
 {
 
@@ -24,7 +23,8 @@ Task::Task(StaticString taskName, TRunnable func, void* userData) noexcept
 	, numFinishedSubTasks(0)
 	, func(func)
 	, userData(userData)
-{}
+{
+}
 
 void Task::Start(TIndex numberOfSubTasks, TIndex startIndex, TIndex endIndex, uint8_t priority) noexcept
 {
@@ -69,7 +69,8 @@ void Task::Start(TIndex numberOfSubTasks, TIndex startIndex, TIndex endIndex, ui
 
 void Task::BusyWait() const noexcept
 {
-	while (!HasDone());
+	while (!HasDone())
+		;
 }
 
 void Task::Wait(uint32_t intervalMilliSecs) const noexcept

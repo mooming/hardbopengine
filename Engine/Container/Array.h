@@ -10,136 +10,176 @@
 namespace hbe
 {
 
-	// Static array supporting custom allocators
-	/// @brief A dynamic array template supporting custom memory allocators
-	template<typename Element, class TAllocator = DefaultAllocator<Element>>
-	class Array final
+// Static array supporting custom allocators
+/// @brief A dynamic array template supporting custom memory allocators
+template <typename Element, class TAllocator = DefaultAllocator<Element>>
+class Array final
+{
+public:
+	using TIndex = int;
+	using Iterator = Element*;
+	using ConstIterator = const Element*;
+
+private:
+	TIndex length;
+	Element* data;
+	TAllocator allocator;
+
+public:
+	Iterator begin()
 	{
-	public:
-		using TIndex = int;
-		using Iterator = Element*;
-		using ConstIterator = const Element*;
+		return &data[0];
+	}
 
-	private:
-		TIndex length;
-		Element* data;
-		TAllocator allocator;
+	Iterator end()
+	{
+		return &data[length];
+	}
 
-	public:
-		Iterator begin() { return &data[0]; }
-		Iterator end() { return &data[length]; }
-		ConstIterator begin() const { return &data[0]; }
-		ConstIterator end() const { return &data[length]; }
+	ConstIterator begin() const
+	{
+		return &data[0];
+	}
 
-	public:
-		Array(const Array&) = delete;
-		Array& operator=(const Array&) = delete;
+	ConstIterator end() const
+	{
+		return &data[length];
+	}
 
-	public:
-		Array() noexcept : length(0), data(nullptr) {}
+public:
+	Array(const Array&) = delete;
+	Array& operator=(const Array&) = delete;
 
-		explicit Array(TIndex size) : length(size)
+public:
+	Array() noexcept
+		: length(0)
+		, data(nullptr)
+	{
+	}
+
+	explicit Array(TIndex size)
+		: length(size)
+	{
+		data = allocator.allocate(length);
+		for (TIndex i = 0; i < length; ++i)
 		{
-			data = allocator.allocate(length);
-			for (TIndex i = 0; i < length; ++i)
-			{
-				new (&data[i]) Element();
-			}
+			new (&data[i]) Element();
+		}
+	}
+
+	Array(std::initializer_list<Element> list)
+		: Array(static_cast<TIndex>(list.size()))
+	{
+		TIndex index = 0;
+
+		for (auto element : list)
+		{
+			data[index] = element;
+			++index;
+		}
+	}
+
+	Array(Array&& rhs) noexcept
+		: Array()
+	{
+		Swap(rhs);
+	}
+
+	~Array()
+	{
+		if (data == nullptr)
+		{
+			return;
 		}
 
-		Array(std::initializer_list<Element> list) : Array(static_cast<TIndex>(list.size()))
+		for (auto& item : *this)
 		{
-			TIndex index = 0;
-
-			for (auto element : list)
-			{
-				data[index] = element;
-				++index;
-			}
-		}
-
-		Array(Array&& rhs) noexcept : Array() { Swap(rhs); }
-
-		~Array()
-		{
-			if (data == nullptr)
-			{
-				return;
-			}
-
-			for (auto& item : *this)
-			{
-				item.~Element();
-			}
-
-			allocator.deallocate(data, length);
-		}
-
-		Array& operator=(Array&& rhs) noexcept
-		{
-			Swap(rhs);
-			return *this;
-		}
-
-		Element& operator[](TIndex index) noexcept
-		{
-			FatalAssert(IsValidIndex(index));
-			return data[index];
-		}
-
-		const Element& operator[](TIndex index) const noexcept
-		{
-			FatalAssert(IsValidIndex(index));
-			return data[index];
-		}
-
-		template<typename... Types>
-		Element& Emplace(TIndex index, Types&&... args) noexcept
-		{
-			FatalAssert(IsValidIndex(index));
-
-			auto& item = data[index];
 			item.~Element();
-
-			new (&item) Element(std::forward<Types>(args)...);
-
-			return item;
 		}
 
-		[[nodiscard]] Element* ToRawArray() noexcept { return data; }
+		allocator.deallocate(data, length);
+	}
 
-		[[nodiscard]] const Element* const ToRawArray() const noexcept { return data; }
+	Array& operator=(Array&& rhs) noexcept
+	{
+		Swap(rhs);
+		return *this;
+	}
 
-		[[nodiscard]] TIndex Size() const noexcept { return length; }
+	Element& operator[](TIndex index) noexcept
+	{
+		FatalAssert(IsValidIndex(index));
+		return data[index];
+	}
 
-		[[nodiscard]] bool IsValidIndex(TIndex index) const noexcept { return index >= 0 && index < length; }
+	const Element& operator[](TIndex index) const noexcept
+	{
+		FatalAssert(IsValidIndex(index));
+		return data[index];
+	}
 
-		void Clear() noexcept { Swap(Array()); }
+	template <typename... Types>
+	Element& Emplace(TIndex index, Types&&... args) noexcept
+	{
+		FatalAssert(IsValidIndex(index));
 
-		void Swap(Array&& rhs) noexcept
+		auto& item = data[index];
+		item.~Element();
+
+		new (&item) Element(std::forward<Types>(args)...);
+
+		return item;
+	}
+
+	[[nodiscard]] Element* ToRawArray() noexcept
+	{
+		return data;
+	}
+
+	[[nodiscard]] const Element* const ToRawArray() const noexcept
+	{
+		return data;
+	}
+
+	[[nodiscard]] TIndex Size() const noexcept
+	{
+		return length;
+	}
+
+	[[nodiscard]] bool IsValidIndex(TIndex index) const noexcept
+	{
+		return index >= 0 && index < length;
+	}
+
+	void Clear() noexcept
+	{
+		Swap(Array());
+	}
+
+	void Swap(Array&& rhs) noexcept
+	{
+		auto tmpLength = length;
+		auto tmpData = data;
+
+		length = rhs.length;
+		data = rhs.data;
+
+		rhs.length = tmpLength;
+		rhs.data = tmpData;
+	}
+
+	TIndex GetIndex(const Element& element) const noexcept
+	{
+		if (unlikely(data == nullptr))
 		{
-			auto tmpLength = length;
-			auto tmpData = data;
-
-			length = rhs.length;
-			data = rhs.data;
-
-			rhs.length = tmpLength;
-			rhs.data = tmpData;
+			return -1;
 		}
 
-		TIndex GetIndex(const Element& element) const noexcept
-		{
-			if (unlikely(data == nullptr))
-			{
-				return -1;
-			}
+		auto delta = static_cast<TIndex>(&element - &data[0]);
 
-			auto delta = static_cast<TIndex>(&element - &data[0]);
-
-			return IsValidIndex(delta) ? delta : -1;
-		}
-	};
+		return IsValidIndex(delta) ? delta : -1;
+	}
+};
 
 } // namespace hbe
 
@@ -150,14 +190,17 @@ namespace hbe
 namespace hbe
 {
 
-	class ArrayTest : public TestCollection
+class ArrayTest : public TestCollection
+{
+public:
+	ArrayTest()
+		: TestCollection("ArrayTest")
 	{
-	public:
-		ArrayTest() : TestCollection("ArrayTest") {}
+	}
 
-	protected:
-		void Prepare() override;
-	};
+protected:
+	void Prepare() override;
+};
 
 } // namespace hbe
 

@@ -47,17 +47,46 @@ public:
 	void Wait(uint32_t intervalMilliSecs = 10) const noexcept;
 
 public:
-	[[nodiscard]] auto GetName() const noexcept { return name; }
-	[[nodiscard]] auto NumSubTasks() const noexcept { return numSubTasks; }
-	[[nodiscard]] auto NumFinishedSubTasks() const noexcept { return numFinishedSubTasks.load(std::memory_order::relaxed); }
-	[[nodiscard]] bool HasDone() const noexcept { return numSubTasks > 0 && NumFinishedSubTasks() >= numSubTasks; }
+	[[nodiscard]] auto GetName() const noexcept
+	{
+		return name;
+	}
+
+	[[nodiscard]] auto NumSubTasks() const noexcept
+	{
+		return numSubTasks;
+	}
+
+	[[nodiscard]] auto NumFinishedSubTasks() const noexcept
+	{
+		return numFinishedSubTasks.load(std::memory_order::relaxed);
+	}
+
+	[[nodiscard]] bool HasDone() const noexcept
+	{
+		return numSubTasks > 0 && NumFinishedSubTasks() >= numSubTasks;
+	}
 
 	// Increase numFinishedSubTasks.  It guarantees all other global memory values are synced properly.
-	void ReportFinishedSubTask() noexcept { numFinishedSubTasks.fetch_add(1, std::memory_order::seq_cst); }
+	void ReportFinishedSubTask() noexcept
+	{
+		numFinishedSubTasks.fetch_add(1, std::memory_order::seq_cst);
+	}
 
-	[[nodiscard]] TRunnable GetRunnable() const noexcept { return func;}
-	void SetRunnable(TRunnable runnable) noexcept { func = runnable; }
-	[[nodiscard]] void* GetUserData() const noexcept { return userData; }
+	[[nodiscard]] TRunnable GetRunnable() const noexcept
+	{
+		return func;
+	}
+
+	void SetRunnable(TRunnable runnable) noexcept
+	{
+		func = runnable;
+	}
+
+	[[nodiscard]] void* GetUserData() const noexcept
+	{
+		return userData;
+	}
 
 	// Generate a RangedTask with the given range [start, end)
 	RangedTask GenerateSubTask(TIndex start, TIndex end, uint8_t priority = 0) noexcept;
