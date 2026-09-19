@@ -396,3 +396,108 @@ containers, swap, fold, rewind. No `TaskDescriptor` object exists until a second
 Initial result container is 1024 slots and `growBy` is 1024 slots, one number for every stream. At 128 bytes
 per slot that is 131,072 bytes per container, so 256 KiB per stream for the swap pair before any growth, and
 one eighth of a 1 MB bank.
+
+---
+
+# HANDOFF — read this first on a fresh session
+
+## Authoritative sources, in the order to read them
+
+1. `docs/TaskSystemRedesign.md` — decisions **R1 through R20** are the design. They are binding and are not
+   re-derived here. Sections before "Owner decisions, 2026-09-18 (second round)" are older; where they
+   conflict, the higher R number wins.
+2. `JOURNAL.md` top entries — records WHY, plus every error made, including several of mine.
+3. `AGENTS.md` — no comments in `.cpp`; contracts go in `.h` Doxygen; commit each task; never push.
+
+Everything below that is not in those three files is **superseded**, including parts of this plan. Two known
+stale spots: the "B3c migration steps" section's opening claim about `hbe::Deque` supporting `Erase` (false,
+corrected below it), and step 2's "the policy decides" (does not hold — see R1).
+
+## Verified state of the tree
+
+Suite: **57 collections passing in Debug, Dev and Release** as of `2d9b5d3`. Everything committed since then
+is documentation only, so nothing has compiled in the last several commits — run the gate before trusting
+that number.
+
+Already built and working:
+
+| Piece | Where |
+|---|---|
+| Engine epoch, CPU budget primitive, base frame rate | `Core/Time.h`, `Core/CPUBudget.h`, `OS::GetThreadCPUTime` |
+| Providers and handles | `Core/TaskProvider.h` |
+| Priority queue: highest number first, oldest first within a tie, buckets created lazily | `Container/BoundedPriorityQueue.h` |
+| Drain policy: lane selection only, tested | `Core/StreamDrainPolicy.h` |
+| Two lanes on a stream | `Core/TaskStream.h`: `fifoQueue` (`Deque`), `priorityQueue`, `drainPolicy`, `EnqueueFifo`, `EnqueuePriority`, `ConfigureRate` |
+
+Not true, despite how it may read: `MayTakeNewWork()` is still `budget.CanTakeWork()`. The policy does **not**
+gate dequeuing, because R1's reopen rule is not implemented yet.
+
+## Measured container facts (all of these cost me a build to learn)
+
+* `hbe::Queue` is a ring buffer: no `begin`/`end`, no `PopFront`, no `Erase`.
+* `hbe::Deque` has `PushBack`, `PopFront`, `Front`, `Back`, `IsEmpty`, `Size`, `begin`, `end` — and **no
+  `Erase`**. Sweeping it means rotating: pop `Size()` entries, push the survivors back, drop the rest.
+* `MultiPoolAllocator` contains **no mutex, no atomic, no thread_local** — not thread-safe. Per-stream pools
+  cannot be freed from another thread.
+* Test lambdas calling `lferr` need `[this]`; `lferr` is a `TestCollection` member.
+
+## First commit to make — do only this, then verify
+
+Sized down by R17–R20 and behaviour-preserving, because nothing declares results yet.
+
+1. `NumResults` on `Task`, one integer, default `0`. `0` means fire-and-forget and reports no completion (R18).
+2. `growBy` on `TaskStream`, initial container capacity **1024 slots** and `growBy` **1024 slots** (R20).
+3. A bump container of fixed **128-byte** slots: `Push` is `slots[count++]`, `Rewind` is `count = 0`, with an
+   epoch counter advanced on rewind (R11). Two per stream, swapped by the base pass.
+4. Nothing gates on capacity yet, no registry, no `Wait` removal. Those break call sites and each needs its
+   own verified commit.
+
+Verification gate for that commit, all three: `./build.sh Applications/EngineTest -test -debug`, then `-dev`,
+then `-release`; run `./build/Applications/EngineTest/<Config>/EngineTest` and expect
+`all 57 collections passed` with exit status `0`; then `.pi/skills/hb-standards/scripts/check.sh --staged`.
+
+## Then, in this order — each is its own commit with the same gate
+
+1. `TaskRegistry` with index plus generation. `Task` stops being a stack object: **6** construction sites,
+   five in test code plus `static Task task("TestEnv", ...)` at `Engine/Test/UnitTestCollection.cpp:143`.
+   Files: `Task.h`, `Task.cpp`, `TaskSystem.cpp`, `UnitTestCollection.cpp`, `Logger.cpp`.
+2. Base-stream pass in `Engine::Run()` → `TaskSystem::BeginFrame()`: reset each stream's budget (R1, which
+   makes `CPUBudget::isMeasuring` atomic and amends its single-owner note), swap containers, fold.
+3. Successor and join counter on the registry record; **then** remove `Task::Wait`, `BusyWait` and a public
+   `HasDone` (R8). That rewrite touches **5** test call sites that wait or poll on the base stream — the
+   suite runs inside a task on that stream, so waiting there becomes illegal once folding moves there.
+4. `ParallelFor` as several functions: explicit stream list plus lane plus sub-job count, and an N-streams
+   variant (R10). Unblocks B7.
+5. B3d task max age (abandon or escalate per task; wall time from enqueue; no max age means never expires;
+   an abandoned task still counts as completed **only** for tasks that opted into completion, per R16).
+6. B3e provider drain, B4 named streams replacing `BaseStreamIndex` and `IOStreamIndex`.
+
+## Two guards that are MINE, not the owner's — do not silently drop either
+
+* **Refuse at dispatch** any task whose `NumResults` could never be admitted. R14 closes a lane at dequeue,
+  so an unreachable capacity closes it forever on a configuration value.
+* **Log a capacity-closed lane** with the declared need and the room remaining, rate-limited per closure.
+  Without it, a config mistake is indistinguishable from the dropped-task hang that reached a human by
+  watching the close test stall.
+
+## Verification traps that already bit once each
+
+* Grep build output for **`error:`** — `grep -c " error "` cannot match clang's format and reported success
+  through a failed build. A failed build leaves the **previous binary on disk**, which then runs and passes.
+  Always check the runner's exit status separately.
+* **Assert the count of every scripted replacement.** Two edits "succeeded" silently because guessed
+  indentation did not match; one shipped as a hang.
+* `grep -c` prints `0` and exits `1` on no match — it breaks `&&` chains.
+* `BoundedPriorityQueue.cpp`'s collection could not fail until 2026-09-18: 27 assertions logged without
+  `lferr`. Audit other collections for the same pattern; some earlier green runs are weaker than claimed.
+* `hbe::Assert` calls `std::abort()`, so a test must not deliberately trip a bound.
+* macOS has no `timeout`/`gtimeout`. For a possibly-hanging run: launch, `sleep`, `kill -0`, `kill -9`.
+* Proving a check works means mutating the implementation and watching the test go red. Several "passing"
+  results in this subsystem were only ever proven that way.
+
+## Commits
+
+Newest first, documentation after `2d9b5d3` where the suite last went green in all three configs:
+`7b7f172` sizes · `70e5878` growBy and NumResults · `4db7d93` optional completion · `a8c3d0c` stack allocator
+· `bde79e9` registry and continuation · `2d9b5d3` both-lane test (last green build) · `dbfb181`, `4ecd68d`
+dual lanes · `246794a` priority ordering.
