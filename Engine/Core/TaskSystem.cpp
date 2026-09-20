@@ -19,7 +19,7 @@ namespace hbe
 namespace
 {
 thread_local StaticString ThreadName;
-thread_local TaskSystem::TIndex StreamIndex = 0;
+thread_local TaskSystem::TIndex StreamIndex = TaskSystem::NonStreamIndex;
 } // namespace
 
 TaskSystem::TIndex TaskSystem::GetNumHardwareThreads() noexcept
@@ -69,7 +69,7 @@ TaskSystem::TaskSystem() noexcept
 	: isRunning(false)
 	, name("TaskSystem")
 	, numHardwareThreads(GetNumHardwareThreads())
-	, baseTaskThreadID(std::this_thread::get_id())
+	, engineLoopThreadID(std::this_thread::get_id())
 {
 	FatalAssert(numHardwareThreads > 0, "It should have at least one hardware thread.");
 }
@@ -118,9 +118,9 @@ void TaskSystem::RequestShutDown() noexcept
 
 void TaskSystem::JoinAndClear() noexcept
 {
-	const bool isBaseThread = std::this_thread::get_id() == baseTaskThreadID;
+	const bool isEngineLoopThread = std::this_thread::get_id() == engineLoopThreadID;
 
-	if (isBaseThread)
+	if (isEngineLoopThread)
 	{
 		while (isRunning || mainThreadTaskQueue.HasPendingTasks())
 		{
@@ -230,7 +230,7 @@ StaticString TaskSystem::GetStreamName(int index) const noexcept
 
 TaskSystem::TIndex TaskSystem::GetStreamIndex(TThreadID id) const noexcept
 {
-	TIndex index = -1;
+	TIndex index = NonStreamIndex;
 
 	auto size = streams.Size();
 	for (decltype(size) i = 0; i < size; ++i)
@@ -259,12 +259,13 @@ TaskStream& TaskSystem::GetStream(int index) noexcept
 
 void TaskSystem::BuildStreams()
 {
-	Assert(IsBaseThread());
+	// The old check here was IsBaseThread, which every thread passed until it was given a stream - it could not
+	// have failed. What this function actually requires is to run on the thread that will drive the engine.
+	Assert(std::this_thread::get_id() == engineLoopThreadID);
 	FatalAssert(numHardwareThreads >= ENGINE_MIN_HARDWARE_THREADS,
 				"Number of hardware threads are less than the minimum requirement");
 
-	SetThreadName("Base");
-	SetStreamIndex(-1);
+	SetThreadName(TaskSystem::EngineLoopThreadName);
 
 	TIndex workerIndexStart = 0;
 
@@ -276,7 +277,7 @@ void TaskSystem::BuildStreams()
 	// Pre-defined Engine Task Streams
 	{
 		auto index = GetBaseTaskStreamIndex();
-		streams.Emplace(index, "Main", index);
+		streams.Emplace(index, "Base", index);
 
 		index = GetIOTaskStreamIndex();
 		streams.Emplace(index, "IO", index);
@@ -976,6 +977,89 @@ void TaskSystemTest::Prepare()
 		if (ran)
 		{
 			ls << "A task refused on the priority lane ran anyway." << lferr;
+		}
+	});
+
+	AddTest("The base stream is named Base, and the thread driving the engine is not called that", [this](TLogOut& ls)
+	{
+		auto& taskSys = Engine::Get().GetTaskSystem();
+
+		const auto baseName = taskSys.GetStreamName(TaskSystem::GetBaseTaskStreamIndex());
+		const auto ioName = taskSys.GetStreamName(TaskSystem::GetIOTaskStreamIndex());
+
+		// This test runs inside a task, and the suite's task is a work item on the base stream, so the thread
+		// running it is that stream's thread and must report exactly that.
+		ls << "Stream 0 is named \"" << baseName.c_str() << "\", stream 1 is \"" << ioName.c_str()
+		   << "\", this thread reports stream index " << TaskSystem::GetCurrentStreamIndex() << " named \""
+		   << TaskSystem::GetCurrentThreadName().c_str() << "\" and IsBaseThread = " << TaskSystem::IsBaseThread()
+		   << '.' << lf;
+
+		if (baseName != StaticString("Base"))
+		{
+			ls << "Stream 0 is named \"" << baseName.c_str() << "\". It is the base stream, so the name that says"
+			   << " so belongs to it and to nothing else." << lferr;
+		}
+		if (ioName != StaticString("IO"))
+		{
+			ls << "Stream 1 is named \"" << ioName.c_str() << "\", which is what the rename was done next to." << lferr;
+		}
+		if (StaticString(TaskSystem::EngineLoopThreadName) != StaticString("EngineLoop"))
+		{
+			ls << "The thread driving Engine::Run is named \"" << TaskSystem::EngineLoopThreadName << "\" rather"
+			   << " than its own name, so two threads would log under one name again." << lferr;
+		}
+		if (!TaskSystem::IsBaseThread())
+		{
+			ls << "A test runs inside a task on the base stream, and that thread does not report itself as such -"
+			   << " so the predicate cannot be trusted to mean what it says anywhere." << lferr;
+		}
+		if (TaskSystem::GetCurrentStreamIndex() != TaskSystem::GetBaseTaskStreamIndex())
+		{
+			ls << "The base stream's thread reports stream index " << TaskSystem::GetCurrentStreamIndex() << '.'
+			   << lferr;
+		}
+	});
+
+	AddTest("A thread that was never given a stream does not claim to have one", [this](TLogOut& ls)
+	{
+		static_assert(TaskSystem::NonStreamIndex >= TaskStreamAffinity::GetNumBits());
+
+		std::atomic<TaskSystem::TIndex> foreignIndex{0};
+		std::atomic<bool> foreignClaimsBase{true};
+		std::atomic<bool> foreignClaimsIO{true};
+
+		std::thread probe([&]()
+		{
+			foreignIndex = TaskSystem::GetCurrentStreamIndex();
+			foreignClaimsBase = TaskSystem::IsBaseThread();
+			foreignClaimsIO = TaskSystem::IsIOThread();
+		});
+		probe.join();
+
+		ls << "A thread nobody created as a stream reports index " << foreignIndex.load()
+		   << ", IsBaseThread = " << foreignClaimsBase.load() << ", IsIOThread = " << foreignClaimsIO.load()
+		   << ", and the affinity mask"
+		   << " holds " << TaskStreamAffinity::GetNumBits() << " bits." << lf;
+
+		if (foreignIndex.load() != TaskSystem::NonStreamIndex)
+		{
+			ls << "A thread that has no stream reports index " << foreignIndex.load() << ". With index 0 as the"
+			   << " default every thread the application creates claimed to be the base stream." << lferr;
+		}
+		if (foreignClaimsBase.load())
+		{
+			ls << "A thread that has no stream claimed to be the base thread, so that predicate cannot gate"
+			   << " anything - including the assert in BuildStreams, which passed on every thread." << lferr;
+		}
+		if (foreignClaimsIO.load())
+		{
+			ls << "A thread that has no stream claimed to be the IO thread." << lferr;
+		}
+		if (foreignIndex.load() < TaskStreamAffinity::GetNumBits())
+		{
+			ls << "The no-stream index " << foreignIndex.load() << " is inside the " << TaskStreamAffinity::GetNumBits()
+			   << "-bit affinity mask, so a thread that is not a stream would be recorded as one - and the general"
+			   << " queue would charge its sightings to whichever stream shares the value." << lferr;
 		}
 	});
 }

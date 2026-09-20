@@ -25,6 +25,22 @@ public:
 	using TIndex = TStreamArray::TIndex;
 	using TMainThreadTask = void (*)(void* /*userData*/);
 
+	/// @brief Stream index of a thread that has not been given a stream, which is what every thread reports
+	///        until a TaskStream loop claims it.
+	/// @details Not zero: stream 0 is a real stream, so a default of zero made every thread in the process -
+	///          including any the application creates, and the thread that drives Engine::Run before it claims a
+	///          stream - report itself the base stream. That made IsBaseThread useless as a check, made the assert
+	///          in BuildStreams pass on any thread at all, and made the general queue charge a non-stream
+	///          thread's contact with a task to stream 0's affinity.
+	/// @note TaskStreamAffinity drops bit indices at or above its width, so an index with this value is not
+	///       recorded anywhere: a thread that is not a stream takes nothing from the general queue.
+	static constexpr TIndex NonStreamIndex = static_cast<TIndex>(-1);
+
+	/// @brief The OS thread name of the thread that drives Engine::Run and shuts the engine down.
+	/// @note Distinct from the base stream, which is stream 0 and runs on its own thread. The two were both
+	///       called "base" and both named "Base", so a log line or a debugger could not tell them apart.
+	static constexpr const char* EngineLoopThreadName = "EngineLoop";
+
 	static constexpr TIndex BaseStreamIndex = 0;
 	static constexpr TIndex IOStreamIndex = 1;
 
@@ -33,7 +49,10 @@ private:
 
 	const StaticString name;
 	const TIndex numHardwareThreads;
-	const TThreadID baseTaskThreadID;
+	/// @brief The thread that constructed this task system, which is the one expected to drive Engine::Run.
+	/// @details Named for what it records. IsBaseThread answers a different question - whether the caller is
+	///          running as stream 0 - and the two used to share the word "base".
+	const TThreadID engineLoopThreadID;
 	TThreadID ioTaskThreadID;
 	TStreamArray streams;
 	TaskRegistry taskRegistry;
@@ -51,7 +70,11 @@ public:
 	static StaticString GetCurrentThreadName() noexcept;
 	static TIndex GetCurrentStreamIndex() noexcept;
 
+	/// @brief Whether the caller is running as stream 0. True only inside a task on that stream's thread.
+	/// @return False on the thread driving Engine::Run and on any thread the application created, since neither
+	///         has been given a stream - see NonStreamIndex.
 	static bool IsBaseThread() noexcept;
+	/// @brief Whether the caller is running as the IO stream.
 	static bool IsIOThread() noexcept;
 
 	static TIndex GetBaseTaskStreamIndex() noexcept
@@ -79,6 +102,9 @@ public:
 	// Take the top priority task from the general task queue if task stream affinity has been set.
 	// It'll add an task-stream affinity once it fails to take the top priority task due to its task-stream affinity
 	// to prevent blocking the entire task streams by a task with null-affinity
+	// @note A thread that has not been given a stream never takes from here, and is not recorded as having seen
+	//       anything: its index is NonStreamIndex, which is out of range for the affinity mask and therefore
+	//       dropped. Before that index had a distinct value such a thread was treated as stream 0.
 	void Dequeue(std::optional<RangedTask>& outTask) noexcept;
 
 	/// @brief Track a task and return the identity that names it.

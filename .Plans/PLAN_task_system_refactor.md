@@ -577,6 +577,16 @@ exposure is whichever files are still indented-namespace legacy (`grep` before a
   defaults — the fallback `check.sh`'s own header warns about. Measuring a copy in `/tmp` reported
   213/85/107/763/147 differing lines where the real figures were 243/45/7/0/0, which is a wrong answer rather
   than a noisy one.
+* **A test must not consume the general task queue.** A test that calls `TaskSystem::Dequeue` to inspect
+  behaviour pops the queue's top item, and that queue is shared with every other collection - it took another
+  collection's work item, never ran it, and `RHICapabilities` aborted with "is not allocated by this allocator"
+  one log line later. The failure looked like a memory bug in a subsystem the test had nothing to do with. The
+  queue has no test seam and no "is it empty" accessor, so this behaviour cannot be asserted from a test at all;
+  assert the predicate at its point of use instead.
+* **Something else in this checkout runs `EngineTest`.** A Debug run took SIGTERM (exit `143`) after the suite
+  printed its farewell without the summary line, while a second `EngineTest` process was alive. The identical
+  binary re-ran green. Do not read a `143` as a defect in the change under test - check for another instance
+  and rerun.
 * A `git add` naming one nonexistent path adds **nothing**, and `clang-format -i` then leaves the worktree
   conformant while the index still holds the old bytes. `check.sh --staged` fails on content you no longer
   have; its index/worktree guard (`b629166`) is what surfaced it here.
