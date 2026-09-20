@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PushConstants — Renderer — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="#description">Class description</a></li>
+    <li><a href="#template">Template parameters</a></li>
+    <li><a href="#properties">Class properties</a></li>
+    <li><a href="#methods">Class methods</a></li>
+    <li><a href="#non-member">Non-member helpers</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+
+  <h3>Methods</h3>
+  <ul class="methods">
+    <li>None — data members only</li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Renderer</a> / PushConstants
+</p>
+
+<h1>PushConstants</h1>
+<p class="subtitle">
+  <span class="tag">Engine/Renderer/Vulkan/VulkanRenderer.h</span>
+  <span class="tag">namespace hbe::Renderer</span>
+  <span class="tag">128 bytes</span>
+  the two matrices pushed inline with the draw — <code>model</code> and a CPU-combined <code>viewProj</code>, and not three matrices
+</p>
+
+<h2 id="description">Class description</h2>
+
+<p>
+  One hundred twenty-eight bytes of raw floats: two <code>float[16]</code> side by side, column-major by the
+  GL/Vulkan convention. The header states its one rule — it "must mirror the GLSL push block exactly" — and the shader
+  agrees: <code>layout(push_constant) uniform Push { mat4 model; mat4 viewProj; } uMat;</code> in
+  <code>Engine/Renderer/Vulkan/Shaders/MC.vert</code>. The renderer's pipeline layout declares one push-constant range:
+  vertex stage only, offset <code>0</code>, size <code>sizeof(PushConstants)</code>.
+</p>
+
+<p>
+  The struct holds two matrices, not three, and the reason is arithmetic rather than taste. Vulkan guarantees a device
+  supports at least 128 bytes of push constants —
+  <a href="../RenderCapabilities/index.html"><code>maxPushConstantBytes</code></a> reports the real figure — so a block
+  carrying model, view and projection separately would be 192 bytes and would not be portable at all. Combining
+  <code>viewProj = projMat * viewMat</code> once per frame on the CPU is what leaves room for a model matrix inside the
+  guaranteed 128, and the header says so: "viewProj is combined on the CPU once per frame, which is what leaves room for
+  a model matrix."
+</p>
+
+<div class="gap">
+  <strong>Two independent declarations must keep agreeing with a third file.</strong> The struct here, the push-constant
+  range built in <code>CreatePipeline</code>, and the <code>Push</code> block compiled into
+  <code>Vulkan/ShadersSpv.h</code> have to describe the same bytes in the same order. Add a field — the header names the
+  light direction as the thing "that moves to a uniform buffer later", which is precisely the change that would push this
+  block past 128 — and the failure is a graphics-pipeline or layout creation error surfacing as a false from
+  <a href="../VulkanRenderer/initialize.html"><code>Initialize</code></a>, or, if the GLSL block shrank instead, wrong
+  transforms silently read from the wrong offsets. The API cannot catch this; the size check happens in the driver.
+</div>
+
+<div class="note">
+  <strong>Vertex stage only.</strong> The range is declared with
+  <code>VK_SHADER_STAGE_VERTEX_BIT</code>, so only the vertex shader may read these bytes; the fragment stage receives
+  interpolated outputs (<code>vNormal</code>) and nothing else. Per-frame data the fragment stage needs cannot be added to
+  this struct even if it fitted — it needs a buffer and a descriptor set, which this pipeline has none of.
+</div>
+
+<h2 id="template">Template parameters</h2>
+
+<p>None — <code>PushConstants</code> is not a template.</p>
+
+<h2 id="properties">Class properties</h2>
+
+<table>
+  <tr><th>Name</th><th>Declaration</th><th>What it means</th></tr>
+  <tr>
+    <td><code>model</code></td>
+    <td><code>float model[16];</code></td>
+    <td><span class="badge">public data</span> Offset 0, 64 bytes. A verbatim copy of the last value passed to
+        <a href="../VulkanRenderer/set-model.html"><code>SetModel</code></a>, with no processing at all</td>
+  </tr>
+  <tr>
+    <td><code>viewProj</code></td>
+    <td><code>float viewProj[16];</code></td>
+    <td><span class="badge">public data</span> Offset 64, 64 bytes. <code>projMat * viewMat</code>, multiplied on the CPU
+        during recording — the product of
+        <a href="../VulkanRenderer/set-proj.html"><code>SetProj</code></a> and
+        <a href="../VulkanRenderer/set-view.html"><code>SetView</code></a>. There is no field for the view or the
+        projection alone; neither reaches the shader separately</td>
+  </tr>
+</table>
+
+<h2 id="methods">Class methods</h2>
+
+<p>
+  None declared, and none needed: it is filled by <code>memcpy</code> and multiplication into a stack local, then handed
+  to <code>vkCmdPushConstants</code> by address. Being an aggregate, <code>PushConstants push{};</code> zero-fills it.
+</p>
+
+<table>
+  <tr><th>Method</th><th>Signature</th><th>What a caller depends on</th></tr>
+  <tr><td colspan="3">None.</td></tr>
+</table>
+
+<h2 id="non-member">Non-member helper functions</h2>
+
+<p>
+  <a href="../index.html#functions"><code>IdentityMatrix</code></a>, declared in the same header at namespace scope, fills
+  a <code>float[16]</code> in place — the natural way to build the <code>model</code> half when no transform is wanted. The
+  matrix multiply that produces <code>viewProj</code> is <em>not</em> public: <code>MultiplyColumnMajor</code> lives in an
+  anonymous namespace inside <code>VulkanRenderer.cpp</code>, so a caller combining its own matrices has to use
+  <a href="../../Math/index.html#matrices"><code>Matrix4x4</code></a> or write the loop.
+</p>
+
+<h2 id="coverage">Coverage</h2>
+
+<table>
+  <tr><th>Gap</th><th>Detail</th></tr>
+  <tr>
+    <td>No size or layout assertion</td>
+    <td>Unlike <a href="../RenderCapabilities/index.html"><code>RenderCapabilities</code></a>, which carries a
+        <code>static_assert</code> in its header, this struct states its 128-byte contract in a comment only. A field
+        inserted before <code>viewProj</code> would move it to offset 64+ while the compiled shader still read it at 64</td>
+  </tr>
+  <tr>
+    <td>No time, light or material data</td>
+    <td>There is no slot for any of it and no descriptor set to hold it. The header flags the light direction as
+        something to move to a uniform buffer "later"; until that exists, anything animated beyond the model matrix has to
+        ride inside <code>model</code></td>
+  </tr>
+  <tr>
+    <td>The device limit is never checked</td>
+    <td><code>maxPushConstantBytes</code> is queried and reported, but nothing compares it against
+        <code>sizeof(PushConstants)</code>; the driver decides whether
+        <code>vkCreatePipelineLayout</code> accepts the range. In practice every Vulkan 1.0 device allows 128, which is why
+        this gap has not bitten yet — see <a href="../VulkanRenderer/initialize.html">Initialize</a></td>
+  </tr>
+  <tr>
+    <td>Only one pipeline consumes it</td>
+    <td>The struct is bound to one push-constant range in one pipeline layout. A second pipeline with a different block is
+        a different struct, not a different field set in this one</td>
+  </tr>
+</table>
+
+<footer class="prevnext">
+  <span><a href="../index.html">← Renderer</a></span>
+  <span><a href="../index.html#pushconstants">PushConstants in the Renderer class list</a></span>
+</footer>
+
+</main>
+</body>
+</html>

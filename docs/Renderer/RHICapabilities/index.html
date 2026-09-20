@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RHICapabilities — Renderer — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="#description">Class description</a></li>
+    <li><a href="#template">Template parameters</a></li>
+    <li><a href="#properties">Class properties</a></li>
+    <li><a href="#methods">Class methods</a></li>
+    <li><a href="#non-member">Non-member helpers</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+
+  <h3>Methods</h3>
+  <ul class="methods">
+    <li><a href="is-vulkan-supported.html">IsVulkanSupported</a></li>
+    <li><a href="get-capabilities.html">GetCapabilities</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Renderer</a> / RHICapabilities
+</p>
+
+<h1>RHICapabilities</h1>
+<p class="subtitle">
+  <span class="tag">Engine/Renderer/RHICapabilities.h</span>
+  <span class="tag">namespace hbe::Renderer</span>
+  <span class="tag">final</span>
+  <span class="tag">static members only</span>
+  the two render-hardware-interface questions that arrive before a renderer exists
+</p>
+
+<h2 id="description">Class description</h2>
+
+<p>
+  Two static functions, no state. They answer the questions an installer, a test runner or a startup log asks when
+  nothing has been created yet: is this build able to talk to Vulkan at all, and roughly what can this machine do.
+  The header's own instruction is that the renderer is the authority once it owns a device —
+  <a href="../VulkanRenderer/get-capabilities.html"><code>VulkanRenderer::GetCapabilities</code></a> reports the
+  device that was actually picked and costs a copy — so this class is for the before-<code>Initialize</code> window
+  and nothing else.
+</p>
+
+<p>
+  The two members are not equally expensive, and the difference is the first thing a caller needs to know:
+  <a href="is-vulkan-supported.html"><code>IsVulkanSupported</code></a> reads a build-time flag and touches no
+  driver, while <a href="get-capabilities.html"><code>GetCapabilities</code></a> creates a throwaway Vulkan instance,
+  reads one physical device through it and destroys the instance.
+</p>
+
+<div class="gap">
+  <strong>An availability question is not a capability answer, and vice versa.</strong>
+  <code>IsVulkanSupported()</code> returns whether <em>this binary</em> was compiled against a reachable Vulkan SDK;
+  it stays <code>true</code> on a machine with no loader, no installable client driver and no GPU.
+  <code>GetCapabilities()</code> returns a descriptor whose <code>isDeviceQueried</code> is <code>false</code> when
+  nothing could be probed — that flag, not the bool, is the signal that a device exists. A caller that checks only
+  the bool will decide the machine can render and then be surprised by a descriptor of zeroes.
+</div>
+
+<h2 id="template">Template parameters</h2>
+
+<p>None — <code>RHICapabilities</code> is not a template.</p>
+
+<h2 id="properties">Class properties</h2>
+
+<p>
+  None. The class declares no data member, no nested type and no constructor — nothing is stored between calls, and
+  nothing can be configured. Since no constructor is declared or deleted, the implicit ones still exist:
+  <code>RHICapabilities probe;</code> compiles, and constructing one buys an empty object.
+</p>
+
+<table>
+  <tr><th>Name</th><th>Declaration</th><th>What it means</th></tr>
+  <tr><td colspan="3">None — there is no alias, no constant and no field in this class.</td></tr>
+</table>
+
+<h2 id="methods">Class methods</h2>
+
+<p>
+  Both members are <code>static</code>, <code>noexcept</code> and <code>[[nodiscard]]</code>: the engine is built
+  without exceptions, so the only failure channel is the value you get back, and discarding it is a compile error.
+</p>
+
+<table>
+  <tr><th>Method</th><th>Signature</th><th>What a caller depends on</th></tr>
+  <tr>
+    <td><a href="is-vulkan-supported.html">IsVulkanSupported</a></td>
+    <td class="sig">static bool IsVulkanSupported() noexcept</td>
+    <td>Compiles to a read of the <a href="../../Config/index.html#buildconfig"><code>VULKAN_SDK</code></a> flag —
+        no driver, no loader, no enumeration. True means this build can compile and link a Vulkan path</td>
+  </tr>
+  <tr>
+    <td><a href="get-capabilities.html">GetCapabilities</a><span class="badge">creates an instance</span></td>
+    <td class="sig">static RenderCapabilities GetCapabilities() noexcept</td>
+    <td>Creates and discards a Vulkan instance to read the first enumerated device; returns an unqueried descriptor
+        when nothing answers. Not cached, so each call pays for it again</td>
+  </tr>
+</table>
+
+<h2 id="non-member">Non-member helper functions</h2>
+
+<p>
+  None in <code>RHICapabilities.h</code>. The work these two delegate to sits in
+  <code>Engine/Renderer/Vulkan/VulkanCapabilities.h</code> as the free functions
+  <code>QueryDefaultDeviceCapabilities</code> and <code>FillRenderCapabilities</code>, listed under
+  <a href="../index.html#functions">module functions</a>.
+</p>
+
+<p>
+  The deleted guide also documented <code>IsMetalSupported</code>, <code>IsDX12Supported</code> and a
+  <code>GetPreferredAPI</code> returning an <code>APIType</code> enumerator. None of the four exist anywhere in this
+  tree — grep <code>Engine/</code> for those names and there is no declaration, no definition and no use. Backends
+  are chosen by macros at compile time, the way <a href="../../OSAL/index.html#platforms">OSAL</a> picks a window
+  implementation, so there is no runtime API-kind value to prefer. That reasoning is
+  <a href="../../RendererDesign.html">docs/RendererDesign.html</a>'s, not repeated here.
+</p>
+
+<h2 id="coverage">Coverage</h2>
+
+<table>
+  <tr><th>Gap</th><th>Detail</th></tr>
+  <tr>
+    <td><code>RHICapabilitiesTest</code></td>
+    <td>The header declares this test collection under <code>__UNIT_TEST__</code> with a <code>Prepare</code>
+        override defined in <code>RHICapabilities.cpp</code>. It is a fixture, not engine API — the surface it
+        exercises is <a href="../../Test/index.html#unittestcollection">the Test module's</a> subject. Its four cases
+        are quoted as call sites on <a href="get-capabilities.html">the probe page</a></td>
+  </tr>
+  <tr>
+    <td>No multi-device or ranked answer</td>
+    <td>The probe reads <em>the first</em> enumerated device. It has no surface, so it cannot ask the question
+        <a href="../VulkanRenderer/index.html"><code>VulkanRenderer</code></a> asks — whether a queue family can
+        present — and on a two-GPU system it may describe the one the renderer will not pick. Recorded on
+        <a href="get-capabilities.html">GetCapabilities</a></td>
+  </tr>
+  <tr>
+    <td>Nothing about a second backend</td>
+    <td>There is no equivalent "is Metal available" query because there is no Metal backend directory. Adding one is
+        a new class or a new free function, not an enumerator on a type that does not exist</td>
+  </tr>
+  <tr>
+    <td>Thread-safety is undocumented</td>
+    <td>Neither member declares a thread requirement and the class holds nothing, so there is no shared state to
+        race on inside this class. What it calls into — the Vulkan loader's instance creation and enumeration —
+        carries the loader's own rules; see <a href="../index.html#coverage">the module Coverage</a></td>
+  </tr>
+</table>
+
+<footer class="prevnext">
+  <span><a href="../index.html">← Renderer</a></span>
+  <span><a href="../index.html#rhicapabilities">RHICapabilities in the Renderer class list</a></span>
+</footer>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VulkanRenderer::SetView — Renderer — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">VulkanRenderer</a> methods</h3>
+  <ul class="methods">
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+    <li><a href="initialize.html">Initialize</a></li>
+    <li><a href="shutdown.html">Shutdown</a></li>
+    <li><a href="begin-frame.html">BeginFrame</a></li>
+    <li><a href="render.html">Render</a></li>
+    <li><a href="end-frame.html">EndFrame</a></li>
+    <li><a href="get-capabilities.html">GetCapabilities</a></li>
+    <li><a href="set-mesh.html">SetMesh</a></li>
+    <li><a href="set-model.html">SetModel</a></li>
+    <li><a class="current" href="set-view.html">SetView</a></li>
+    <li><a href="set-proj.html">SetProj</a></li>
+    <li><a href="get-extent.html">GetExtent</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Renderer</a> /
+  <a href="index.html">VulkanRenderer</a> / SetView
+</p>
+
+<h1><span class="fn">SetView</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Renderer::VulkanRenderer</span>
+  <span class="tag">Engine/Renderer/Vulkan/VulkanRenderer.h</span>
+  <span class="tag">noexcept</span>
+  copy sixteen column-major floats into the view slot — never sent to the shader on its own, always multiplied first
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code><span class="kw">void</span> <span class="fn">SetView</span>(<span class="kw">const float</span>* m) <span class="kw">noexcept</span>;</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  The body is <code>std::memcpy(viewMat, m, sizeof(viewMat));</code>. What makes this setter different from
+  <a href="set-model.html"><code>SetModel</code></a> is what happens to those sixteen floats afterwards: they are never
+  pushed. During <a href="render.html"><code>Render</code></a> the renderer computes
+  <code>viewProj = projMat * viewMat</code> on the CPU — column-major, projection on the left — and pushes the result as
+  <a href="../PushConstants/index.html"><code>PushConstants</code>::viewProj</a>.
+</p>
+
+<p>
+  That single multiply is what makes the push block fit. The header says so directly: combining view and projection once
+  per frame "is what leaves room for a model matrix" inside the 128 bytes Vulkan guarantees. Three matrices would be 192
+  bytes, which no device is required to support, and the GLSL push block mirrors the two-matrix decision —
+  <code>Push { mat4 model; mat4 viewProj; }</code>.
+</p>
+
+<div class="note">
+  <strong>The combine runs every frame, from whatever is in the two slots.</strong> There is no cached
+  <code>viewProj</code> and no dirty flag, so this setter and
+  <a href="set-proj.html"><code>SetProj</code></a> are interchangeable in cost: whichever one you changed, the multiply
+  happens again at record time. Set both, or neither, before <a href="render.html"><code>Render</code></a> — a frame
+  recorded between two half-updates renders with a mismatched pair, and nothing warns you.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr>
+    <td><code>m</code></td>
+    <td><code>const float*</code></td>
+    <td>
+      Sixteen readable <code>float</code>, column-major (element <code>[col * 4 + row]</code>). Not null-checked and not
+      length-checked; a short or null argument is undefined behaviour in the copy. The values are copied during the call,
+      so the caller's array may be reused straight away. Valid before
+      <a href="initialize.html"><code>Initialize</code></a> — the constructor leaves identity in this slot, and a view
+      set before initialization is still there for the first frame
+    </td>
+  </tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p><code>void</code>. Nothing is validated, allocated or submitted, so there is no failure to report.</p>
+
+<h2 id="example">Examples</h2>
+
+<p>
+  The example has a static camera, so it sets the view once — before the loop, after
+  <a href="initialize.html"><code>Initialize</code></a> and after the projection it will be multiplied with:
+</p>
+
+<p class="meta">From Applications/VulkanExample/Main.cpp</p>
+
+<pre><code><span class="kw">void</span> <span class="fn">SetTranslation</span>(<span class="kw">float</span> m[<span class="nu">16</span>], <span class="kw">float</span> x, <span class="kw">float</span> y, <span class="kw">float</span> z) <span class="kw">noexcept</span>
+{
+        <span class="fn">SetIdentity</span>(m);
+        m[<span class="nu">12</span>] = x;
+        m[<span class="nu">13</span>] = y;
+        m[<span class="nu">14</span>] = z;
+}
+
+<span class="cm">// in main(), once, after Initialize returned true and GetExtent supplied the size:</span>
+<span class="kw">float</span> view[<span class="nu">16</span>];
+<span class="kw">float</span> proj[<span class="nu">16</span>];
+<span class="fn">SetPerspective</span>(proj, DegreeToRadian(<span class="nu">60.0f</span>), <span class="kw">static_cast</span>&lt;<span class="kw">float</span>&gt;(extent.width) / <span class="kw">static_cast</span>&lt;<span class="kw">float</span>&gt;(extent.height),
+               <span class="nu">0.1f</span>, <span class="nu">100.0f</span>);
+<span class="fn">SetTranslation</span>(view, <span class="nu">0.0f</span>, <span class="nu">0.0f</span>, -<span class="nu">3.0f</span>);
+renderer.<span class="fn">SetView</span>(view);
+renderer.<span class="fn">SetProj</span>(proj);</code></pre>
+
+<p>
+  A moving camera is the same call moved into the loop, ahead of
+  <a href="render.html"><code>Render</code></a>. A camera that changes every frame costs one 4×4 multiply per frame on the
+  CPU — which is the trade this API made deliberately to keep the push block at 128 bytes.
+</p>
+
+<footer class="prevnext">
+  <span><a href="index.html">← VulkanRenderer</a></span>
+  <span><a href="index.html#methods">All VulkanRenderer methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

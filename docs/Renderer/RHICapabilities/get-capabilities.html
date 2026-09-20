@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RHICapabilities::GetCapabilities — Renderer — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">RHICapabilities</a> methods</h3>
+  <ul class="methods">
+    <li><a href="is-vulkan-supported.html">IsVulkanSupported</a></li>
+    <li><a class="current" href="get-capabilities.html">GetCapabilities</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Renderer</a> /
+  <a href="index.html">RHICapabilities</a> / GetCapabilities
+</p>
+
+<h1><span class="fn">GetCapabilities</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Renderer::RHICapabilities</span>
+  <span class="tag">Engine/Renderer/RHICapabilities.h</span>
+  <span class="tag">[[nodiscard]] noexcept</span>
+  <span class="tag">creates and discards a Vulkan instance</span>
+  what this machine can do, probed before any renderer exists
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] <span class="kw">static</span> <span class="ty">RenderCapabilities</span> <span class="fn">GetCapabilities</span>() <span class="kw">noexcept</span>;</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Builds a throwaway Vulkan instance, enumerates physical devices, hands the <strong>first</strong> one to
+  <code>FillRenderCapabilities</code> — the same translator the renderer uses, so the field values are real driver
+  answers — and destroys the instance before returning. The descriptor arrives by value; nothing is cached, so a
+  second call does the whole thing again.
+</p>
+
+<p>
+  The instance it creates asks for <code>VK_KHR_portability_enumeration</code> only when the loader advertises it.
+  That conditional is deliberate and is the one behavioural difference from
+  <a href="../VulkanRenderer/initialize.html"><code>VulkanRenderer::CreateInstance</code></a>, which requests the
+  extension unconditionally: conforming drivers need not offer it, and enabling an extension the loader does not
+  know fails instance creation outright, which for a probe would mean reporting "no device" on a machine that has
+  one.
+</p>
+
+<div class="gap">
+  <strong>This is not a cheap query, and once a device exists it is the wrong one.</strong> Every call pays for
+  instance creation, device enumeration and instance destruction. Worse, it describes the first device the driver
+  enumerates, whereas <a href="../VulkanRenderer/initialize.html"><code>VulkanRenderer::Initialize</code></a> picks
+  the first device whose queue family can also <em>present to the real surface</em> — on a machine with more than
+  one adapter, these can be different devices. After a renderer exists, call
+  <a href="../VulkanRenderer/get-capabilities.html"><code>VulkanRenderer::GetCapabilities</code></a>: it returns the
+  cached descriptor of the device actually chosen, and costs a copy.
+</div>
+
+<p>
+  Nothing about a failed probe is fatal. When instance creation fails, or no physical device is enumerated, or the
+  fetch fails, the failure is logged at <strong>warning</strong> level — no loader, no installable client driver or
+  an incompatible driver is a legitimate environment such as headless continuous integration — and the caller keeps
+  a descriptor whose <code>isDeviceQueried</code> is <code>false</code>. That flag is the branch a caller must write;
+  there is no error code and no exception, because the engine builds without exceptions.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr>
+    <td><a href="../RenderCapabilities/index.html"><code>RenderCapabilities</code></a> (by value)</td>
+    <td>
+      A real descriptor with <code>isDeviceQueried == true</code> when a device answered — name, class, ids,
+      feature bits and limits, all read from the driver. Or a copy of the zero-filled
+      <a href="../RenderCapabilities/constructors.html">unknown descriptor</a> when nothing could be probed, which
+      is a valid answer rather than a failure to handle. <code>[[nodiscard]]</code>, so throwing either away is a
+      compile error
+    </td>
+  </tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p>
+  The branch every caller needs: test the flag before reading a number, and treat an unqueried result as "this
+  machine has nothing to compare against" rather than "this feature is missing".
+</p>
+
+<p class="meta">From Engine/Renderer/RHICapabilities.cpp</p>
+
+<pre><code><span class="fn">AddTest</span>(<span class="st">"GetCapabilities reports what the device supports"</span>, [](<span class="kw">auto</span>&amp; ls)
+{
+        <span class="kw">const</span> <span class="ty">Renderer</span>::<span class="ty">RenderCapabilities</span> caps = <span class="ty">Renderer</span>::<span class="ty">RHICapabilities</span>::<span class="fn">GetCapabilities</span>();
+
+        <span class="kw">if</span> (!caps.isDeviceQueried)
+        {
+                <span class="cm">// No loader, no ICD, or an incompatible driver - a legitimate environment (headless</span>
+                <span class="cm">// CI, a machine without MoltenVK), so there is nothing to compare against.</span>
+                ls &lt;&lt; <span class="st">"no Vulkan device available; query skipped"</span>;
+                <span class="kw">return</span>;
+        }
+
+        <span class="cm">// Identity has to survive the fixed-size copy, and the API version has to be real.</span>
+        <span class="kw">Assert</span>(caps.deviceName[<span class="nu">0</span>] != <span class="st">'\0'</span>, <span class="st">"A queried device must report a name"</span>);
+        <span class="kw">Assert</span>(caps.apiVersionMajor &gt;= <span class="nu">1</span>, <span class="st">"A Vulkan device must report API version 1 or newer"</span>);
+        <span class="kw">Assert</span>(caps.maxTextureDimension2D &gt;= <span class="nu">2048</span>, <span class="st">"A Vulkan device supports at least 2048 texels"</span>);
+});</code></pre>
+
+<p>
+  Two properties the same file asserts are worth copying into any caller: repeated probes must agree on the flag,
+  on the limits and on the name, and a queried device must classify itself as something other than
+  <a href="../DeviceType/index.html"><code>DeviceType::Unknown</code></a> — the second of those is the one that will
+  fire on a driver reporting <code>VK_PHYSICAL_DEVICE_TYPE_OTHER</code>, which the adapter also maps to
+  <code>Unknown</code>.
+</p>
+
+<footer class="prevnext">
+  <span><a href="index.html">← RHICapabilities</a></span>
+  <span><a href="index.html#methods">All RHICapabilities methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RenderCapabilities::RenderCapabilities — Renderer — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">RenderCapabilities</a> methods</h3>
+  <ul class="methods">
+    <li><a class="current" href="constructors.html">constructors</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Renderer</a> /
+  <a href="index.html">RenderCapabilities</a> / constructors
+</p>
+
+<h1><span class="fn">RenderCapabilities</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Renderer::RenderCapabilities</span>
+  <span class="tag">Engine/Renderer/RenderCapabilities.h</span>
+  <span class="tag">1 overload</span>
+  build an "unknown" descriptor: nothing queried, nothing supported, no limits
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code><span class="fn">RenderCapabilities</span>();</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Initializes every one of the forty-six data members to zero — <code>deviceName</code> to an empty string,
+  <code>deviceType</code> to <a href="../DeviceType/index.html"><code>DeviceType::Unknown</code></a>, every flag to
+  <code>false</code>, every limit to <code>0</code>, <code>isDeviceQueried</code> to <code>false</code>. It takes no
+  argument because there is no sensible partial state: the type's only two states are "nobody asked" and "a backend
+  answered", and this constructor can only produce the first.
+</p>
+
+<p>
+  The explicit member-initializer list in <code>RenderCapabilities.cpp</code> carries the warning that a new field
+  must be added to it too. That is not ceremony — a field left out of the list would keep an indeterminate value
+  while the descriptor still self-reported as unqueried, which is the exact bug this constructor exists to prevent.
+</p>
+
+<div class="gap">
+  <strong>Zeroing is the fix for a bug this type actually shipped.</strong> The previous revision defaulted to
+  <code>maxTextureDimension2D = 4096</code>, <code>maxVertexAttributes = 16</code>,
+  <code>maxUniformBufferBindings = 16</code> and <code>supportsTessellation = false</code>. Real hardware the code
+  was tested on answered 16384, 31 and 155 with tessellation <em>supported</em>, so a caller could not tell a
+  measurement from a guess, and a wrong guess in the safe direction still silently disabled a feature the GPU had.
+  Every zero you see here is a deliberate "unknown", so read <code>isDeviceQueried</code> before reading any of
+  them.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  There is no return value to inspect: the constructor is the report. An object it built describes no device, and
+  the only way to learn whether a later object describes one is
+  <code>isDeviceQueried</code>. Because the type is trivially copyable — asserted at the bottom of the header — a
+  descriptor is also cheap to hand back by value, which is how both
+  <a href="../RHICapabilities/get-capabilities.html"><code>RHICapabilities::GetCapabilities</code></a> and
+  <a href="../VulkanRenderer/get-capabilities.html"><code>VulkanRenderer::GetCapabilities</code></a> return it.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<p>
+  The pattern both producers use: construct an unknown descriptor first, then let a backend fill it, so a failure
+  halfway through the query leaves "unknown" rather than a half-written device.
+</p>
+
+<p class="meta">From Engine/Renderer/RHICapabilities.cpp</p>
+
+<pre><code><span class="cm">// Real values, read from the driver - see VulkanCapabilities for the translation. The</span>
+<span class="cm">// descriptor self-reports as unqueried when no device answers, so callers can tell the</span>
+<span class="cm">// difference between "this machine has nothing" and "nobody asked".</span>
+<span class="ty">RenderCapabilities</span> capabilities;
+<span class="fn">QueryDefaultDeviceCapabilities</span>(capabilities);
+
+<span class="kw">return</span> capabilities;</code></pre>
+
+<p>
+  The same reset-then-fill is what makes the adapter idempotent: it starts from a fresh unknown descriptor before
+  touching the driver, so a call on a null <code>VkPhysicalDevice</code> leaves the caller's object explicitly
+  unqueried instead of stale.
+</p>
+
+<p class="meta">From Engine/Renderer/Vulkan/VulkanCapabilities.cpp</p>
+
+<pre><code><span class="cm">// Start from "unknown" so a failed query can never leave stale or invented values behind.</span>
+outCapabilities = <span class="ty">RenderCapabilities</span>();
+
+<span class="kw">if</span> (physicalDevice == VK_NULL_HANDLE)
+{
+        log.<span class="fn">OutError</span>(<span class="st">"Error: cannot query capabilities from a null physical device; leaving capabilities unqueried"</span>);
+        <span class="kw">return</span>;
+}</code></pre>
+
+<p>
+  What a fresh descriptor must never do is assert a limit. The unit test for this constructor asserts exactly that,
+  and is the only executable statement of the contract.
+</p>
+
+<p class="meta">From Engine/Renderer/RendererTest.cpp</p>
+
+<pre><code><span class="fn">AddTest</span>(<span class="st">"RenderCapabilities starts explicitly unknown"</span>, [](<span class="kw">auto</span>&amp; ls)
+{
+        <span class="kw">const</span> <span class="ty">Renderer</span>::<span class="ty">RenderCapabilities</span> caps;
+
+        ls &lt;&lt; <span class="st">"isDeviceQueried="</span> &lt;&lt; caps.isDeviceQueried &lt;&lt; <span class="st">" maxTextureDimension2D="</span> &lt;&lt; caps.maxTextureDimension2D;
+
+        <span class="kw">Assert</span>(!caps.isDeviceQueried, <span class="st">"A fresh descriptor must not claim to describe a device"</span>);
+        <span class="kw">Assert</span>(caps.maxTextureDimension2D == <span class="nu">0</span>, <span class="st">"Unqueried limit must be zero, not a guessed default"</span>);
+        <span class="kw">Assert</span>(caps.deviceName[<span class="nu">0</span>] == <span class="st">'\0'</span>, <span class="st">"Unqueried device name must be empty"</span>);
+        <span class="kw">Assert</span>(caps.deviceType == <span class="ty">Renderer</span>::<span class="ty">DeviceType</span>::Unknown, <span class="st">"Unqueried device type must be Unknown"</span>);
+});</code></pre>
+
+<footer class="prevnext">
+  <span><a href="index.html">← RenderCapabilities</a></span>
+  <span><a href="index.html#methods">All RenderCapabilities methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

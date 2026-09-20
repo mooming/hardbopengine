@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VulkanRenderer::Render — Renderer — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">VulkanRenderer</a> methods</h3>
+  <ul class="methods">
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+    <li><a href="initialize.html">Initialize</a></li>
+    <li><a href="shutdown.html">Shutdown</a></li>
+    <li><a href="begin-frame.html">BeginFrame</a></li>
+    <li><a class="current" href="render.html">Render</a></li>
+    <li><a href="end-frame.html">EndFrame</a></li>
+    <li><a href="get-capabilities.html">GetCapabilities</a></li>
+    <li><a href="set-mesh.html">SetMesh</a></li>
+    <li><a href="set-model.html">SetModel</a></li>
+    <li><a href="set-view.html">SetView</a></li>
+    <li><a href="set-proj.html">SetProj</a></li>
+    <li><a href="get-extent.html">GetExtent</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Renderer</a> /
+  <a href="index.html">VulkanRenderer</a> / Render
+</p>
+
+<h1><span class="fn">Render</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Renderer::VulkanRenderer</span>
+  <span class="tag">Engine/Renderer/Vulkan/VulkanRenderer.h</span>
+  <span class="tag">noexcept</span>
+  records this frame's command buffer — nothing is submitted or presented here, and the delta you pass is not read
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code><span class="kw">void</span> <span class="fn">Render</span>(<span class="kw">float</span> deltaTime) <span class="kw">noexcept</span>;</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  One guard, then one private call: <code>returnIf(!(initialized &amp;&amp; frameActive)); RecordFrame();</code>. Despite the
+  name, nothing is executed by this function — it fills
+  <code>commandBuffers[currentFrame]</code>, and <a href="end-frame.html"><code>EndFrame</code></a> is what submits and
+  presents it.
+</p>
+
+<p>Recording is one pass and one draw, in this shape:</p>
+
+<pre><code><span class="fn">vkBeginCommandBuffer</span>(commandBuffers[currentFrame], ONE_TIME_SUBMIT)
+        <span class="cm">// framebuffer = framebuffers[imageIndex], renderArea = extent</span>
+        <span class="cm">// clear colour (0.06, 0.08, 0.12, 1) and depth 1.0, stencil 0</span>
+        <span class="fn">vkCmdBeginRenderPass</span> → <span class="fn">vkCmdBindPipeline</span>
+        <span class="fn">vkCmdSetViewport</span> / <span class="fn">vkCmdSetScissor</span>   <span class="cm">// dynamic state, taken from `extent`</span>
+        <span class="kw">if</span> (indexCount &gt; <span class="nu">0</span> &amp;&amp; vertexCount &gt; <span class="nu">0</span>)
+        {
+                PushConstants push{};
+                push.model    = modelMat;                     <span class="cm">// copied</span>
+                push.viewProj = projMat * viewMat;            <span class="cm">// multiplied here, on the CPU</span>
+                <span class="fn">vkCmdPushConstants</span>(vertex stage, offset <span class="nu">0</span>, sizeof(PushConstants))
+                <span class="fn">vkCmdBindVertexBuffers</span> → <span class="fn">vkCmdBindIndexBuffer</span>(UINT32)
+                <span class="fn">vkCmdDrawIndexed</span>(indexCount, <span class="nu">1</span>, <span class="nu">0</span>, <span class="nu">0</span>, <span class="nu">0</span>)
+        }
+        <span class="fn">vkCmdEndRenderPass</span>()
+<span class="fn">vkEndCommandBuffer</span>()</code></pre>
+
+<p>
+  The multiplication is the reason <a href="../PushConstants/index.html"><code>PushConstants</code></a> is only two
+  matrices wide: view and projection are combined once per frame on the CPU so that a 128-byte push block can carry
+  both a combined <code>viewProj</code> and a <code>model</code> matrix. The multiply is <code>projMat * viewMat</code>,
+  column-major, so a shader evaluating <code>viewProj * model * position</code> sees the order it expects.
+</p>
+
+<p>
+  Because the matrices are read at record time, the position of the setters in your loop decides which frame they land
+  in: <a href="set-model.html"><code>SetModel</code></a> before this call affects this frame, after it affects the next.
+  And because the draw is conditional on both counts being non-zero, a renderer with no mesh, or one whose upload
+  failed, records a clear and a present with no draw — the background colour without a shape.
+</p>
+
+<div class="gap">
+  <strong><code>deltaTime</code> is accepted and discarded.</strong> The definition spells the parameter out as
+  <code>float /*deltaTime*/</code>, and the body never mentions it: nothing in the recorded frame depends on elapsed
+  time, because the animation in the example is driven by the caller's own angle accumulator. The previous module page
+  presented this argument as the frame delta feeding the render; it does not feed anything. Pass the real delta if you
+  want the call site to be future-proof, but do not assume animation, motion blur or time-based uniforms will follow
+  from it.
+</div>
+
+<div class="gap">
+  <strong>Calling <code>Render</code> twice before <a href="begin-frame.html"><code>BeginFrame</code></a> re-records a
+  command buffer that may still be running.</strong> The guard tests <code>frameActive</code>, and
+  <a href="end-frame.html"><code>EndFrame</code></a> does not clear that flag — it stays set after a successful frame.
+  A second <code>Render</code> in the same slot therefore calls <code>vkBeginCommandBuffer</code> on a buffer whose
+  previous submission has not been waited on, which is invalid use of a <code>ONE_TIME_SUBMIT</code> buffer, and the
+  matching second <code>EndFrame</code> submits it again. A <code>Render</code> with no <code>BeginFrame</code> <em>at
+  all</em> in this cycle is exactly as wrong, and is the one case the module's test asserts is harmless on a renderer
+  that never initialized. Keep the three calls one-for-one.
+</div>
+
+<div class="note">
+  <strong>A failed <code>vkBeginCommandBuffer</code> still ends in a submit.</strong> <code>RecordFrame</code> logs and
+  returns early when begin fails, but <a href="end-frame.html"><code>EndFrame</code></a> submits
+  <code>commandBuffers[currentFrame]</code> whenever <code>frameActive</code> is set — so a command buffer that was never
+  begun, and never ended, goes to <code>vkQueueSubmit</code>. The observable result is a submit error on top of the
+  begin error, not a skipped frame; there is no state flag separating "recorded" from "attempted".
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr>
+    <td><code>deltaTime</code></td>
+    <td><code>float</code></td>
+    <td>
+      Seconds since the previous frame by convention — the example measures it with
+      <code>std::chrono::duration&lt;float&gt;</code>, and <a href="../../Core/index.html#systemstatistics"><code>SystemStatistics::GetDeltaTime</code></a>
+      is the engine's equivalent. <strong>The implementation discards it</strong>; any value, including <code>0</code>,
+      produces the same command buffer today
+    </td>
+  </tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  <code>void</code>, with no status channel: a frame that recorded nothing because <code>frameActive</code> was false is
+  indistinguishable from one that recorded a full pass, and a failed <code>vkBeginCommandBuffer</code> is reported only
+  through the error logger. If your code needs to know, the observable proxies are the counts — no mesh means no draw —
+  or the log.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<p>
+  The example measures a real delta, uses it for its own animation, and passes it in anyway:
+</p>
+
+<p class="meta">From Applications/VulkanExample/Main.cpp</p>
+
+<pre><code>        <span class="kw">static</span> <span class="kw">auto</span> lastTime = std::chrono::high_resolution_clock::now();
+        <span class="kw">auto</span> currentTime = std::chrono::high_resolution_clock::now();
+        <span class="kw">float</span> deltaTime = std::chrono::duration&lt;<span class="kw">float</span>&gt;(currentTime - lastTime).count();
+        lastTime = currentTime;
+
+        angle += deltaTime * <span class="nu">1.2f</span>;
+        <span class="kw">if</span> (angle &gt; <span class="nu">2.0f</span> * Pi)
+                angle -= <span class="nu">2.0f</span> * Pi;
+
+        <span class="fn">SetRotationY</span>(model, angle);
+        renderer.<span class="fn">SetModel</span>(model);
+
+        renderer.<span class="fn">BeginFrame</span>();
+        renderer.<span class="fn">Render</span>(deltaTime);
+        renderer.<span class="fn">EndFrame</span>();</code></pre>
+
+<p>
+  The no-frame case, asserted by the module's own test on a renderer that was never initialized — this call must record
+  nothing and must not crash:
+</p>
+
+<p class="meta">From Engine/Renderer/RendererTest.cpp</p>
+
+<pre><code>renderer.<span class="fn">Render</span>(<span class="nu">0.016f</span>);
+<span class="kw">Assert</span>(!renderer.<span class="fn">GetCapabilities</span>().isDeviceQueried, <span class="st">"A rejected Initialize must leave capabilities unqueried"</span>);</code></pre>
+
+<footer class="prevnext">
+  <span><a href="index.html">← VulkanRenderer</a></span>
+  <span><a href="index.html#methods">All VulkanRenderer methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

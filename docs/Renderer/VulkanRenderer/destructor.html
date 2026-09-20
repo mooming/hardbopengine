@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VulkanRenderer::~VulkanRenderer — Renderer — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">VulkanRenderer</a> methods</h3>
+  <ul class="methods">
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a class="current" href="destructor.html">destructor</a></li>
+    <li><a href="initialize.html">Initialize</a></li>
+    <li><a href="shutdown.html">Shutdown</a></li>
+    <li><a href="begin-frame.html">BeginFrame</a></li>
+    <li><a href="render.html">Render</a></li>
+    <li><a href="end-frame.html">EndFrame</a></li>
+    <li><a href="get-capabilities.html">GetCapabilities</a></li>
+    <li><a href="set-mesh.html">SetMesh</a></li>
+    <li><a href="set-model.html">SetModel</a></li>
+    <li><a href="set-view.html">SetView</a></li>
+    <li><a href="set-proj.html">SetProj</a></li>
+    <li><a href="get-extent.html">GetExtent</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Renderer</a> /
+  <a href="index.html">VulkanRenderer</a> / destructor
+</p>
+
+<h1><span class="fn">~VulkanRenderer</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Renderer::VulkanRenderer</span>
+  <span class="tag">Engine/Renderer/Vulkan/VulkanRenderer.h</span>
+  <span class="tag">defined in VulkanRenderer.cpp</span>
+  destroys the renderer by calling <code>Shutdown</code> — which is a no-op unless initialization fully succeeded
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code><span class="fn">~VulkanRenderer</span>();</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Its whole body is <a href="shutdown.html"><code>Shutdown</code></a>(), so the destructor inherits that function's
+  rule: destroy nothing unless <code>initialized</code> is true, and otherwise return. Letting a renderer go out of
+  scope is therefore always safe — including the case the test exercises, a renderer that was constructed and never
+  successfully initialized.
+</p>
+
+<p>
+  When it does run, teardown follows dependency order rather than creation order reversed at random: wait the device
+  idle, then both semaphore arrays and the fences, then the mesh's vertex and index buffers, then the command pool —
+  which frees its command buffers with it — then the pipeline, pipeline layout and both shader modules, then the
+  framebuffers, then the depth view before the depth image and its memory, then the swapchain image views before the
+  swapchain, then the logical device, and finally the surface before the instance. Every handle is nulled afterwards,
+  so a second destruction finds nothing to act on.
+</p>
+
+<div class="gap">
+  <strong>A failed <code>Initialize</code> leaks what it managed to create, and the destructor cannot help.</strong>
+  <a href="initialize.html"><code>Initialize</code></a> returns false at the first failing step without calling
+  <code>Destroy</code>, and <code>initialized</code> — the flag <a href="shutdown.html"><code>Shutdown</code></a> and this
+  destructor gate on — is set only after the last step succeeds. So if instance creation, surface creation, device
+  picking, device creation or anything after them fails, the objects already built stay alive with no owner: nothing
+  in the public interface frees them, and destroying the renderer returns at the first line. The example exits the
+  process on that path, which is the only recovery available today.
+</div>
+
+<div class="note">
+  <strong>Teardown clears handles, not answers.</strong> <code>Destroy</code> resets <code>frameActive</code>,
+  <code>currentFrame</code> and <code>imageIndex</code>, but it leaves <code>capabilities</code>,
+  <code>extent</code>, <code>window</code> and the three matrices exactly as they were. After the destructor or an
+  explicit <a href="shutdown.html"><code>Shutdown</code></a>,
+  <a href="get-capabilities.html"><code>GetCapabilities</code></a> still reports
+  <code>isDeviceQueried == true</code> with the name of a device that no longer exists, and
+  <a href="get-extent.html"><code>GetExtent</code></a> still reports the old size. Both are safe to call — they touch
+  no Vulkan object — but neither describes live hardware any more.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  None, and nothing to check: <a href="shutdown.html"><code>Shutdown</code></a> returns <code>void</code> and
+  the Vulkan destroy entry points it calls report no result. The header does not write <code>noexcept</code> here, but
+  destructors are implicitly <code>noexcept</code> and every function this one reaches is declared
+  <code>noexcept</code>, so the difference is cosmetic.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<p>
+  The test round trip is the clearest statement of what the destructor guarantees: a null-window
+  <a href="initialize.html"><code>Initialize</code></a> is rejected, a <a href="render.html"><code>Render</code></a>
+  with no frame does nothing, capabilities stay unqueried, <a href="shutdown.html"><code>Shutdown</code></a> is called
+  explicitly, and then the destructor runs on the same object without anything being double-freed.
+</p>
+
+<p class="meta">From Engine/Renderer/RendererTest.cpp</p>
+
+<pre><code><span class="fn">AddTest</span>(<span class="st">"VulkanRenderer Round Trip"</span>, [](<span class="kw">auto</span>&amp; log)
+{
+        <span class="ty">VulkanRenderer</span> renderer;
+        <span class="ty">OS</span>::<span class="ty">Window</span>* window = <span class="kw">nullptr</span>;
+
+        <span class="cm">// Initialize rejects a null window on purpose - the surface is built from the window,</span>
+        <span class="cm">// and queue family support is queried against that surface.</span>
+        <span class="kw">Assert</span>(!renderer.<span class="fn">Initialize</span>(window), <span class="st">"Initialize must reject a null window"</span>);
+        renderer.<span class="fn">Render</span>(<span class="nu">0.016f</span>);
+        <span class="kw">Assert</span>(!renderer.<span class="fn">GetCapabilities</span>().isDeviceQueried, <span class="st">"A rejected Initialize must leave capabilities unqueried"</span>);
+        renderer.<span class="fn">Shutdown</span>();
+
+        log &lt;&lt; <span class="st">"null-window round trip is a safe no-op"</span>;
+});</code></pre>
+
+<p>
+  The application reaches the same function the ordinary way, after closing down the loop — and note that it closes
+  the window only <em>after</em> the renderer has shut down, which is the correct order for a borrowed
+  <a href="../../OSAL/index.html#window"><code>OS::Window</code></a>:
+</p>
+
+<p class="meta">From Applications/VulkanExample/Main.cpp</p>
+
+<pre><code>renderer.<span class="fn">Shutdown</span>();
+window-&gt;<span class="fn">Close</span>();
+hengine.<span class="fn">ShutDown</span>();</code></pre>
+
+<footer class="prevnext">
+  <span><a href="index.html">← VulkanRenderer</a></span>
+  <span><a href="index.html#methods">All VulkanRenderer methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

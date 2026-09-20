@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VulkanRenderer::GetCapabilities — Renderer — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">VulkanRenderer</a> methods</h3>
+  <ul class="methods">
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+    <li><a href="initialize.html">Initialize</a></li>
+    <li><a href="shutdown.html">Shutdown</a></li>
+    <li><a href="begin-frame.html">BeginFrame</a></li>
+    <li><a href="render.html">Render</a></li>
+    <li><a href="end-frame.html">EndFrame</a></li>
+    <li><a class="current" href="get-capabilities.html">GetCapabilities</a></li>
+    <li><a href="set-mesh.html">SetMesh</a></li>
+    <li><a href="set-model.html">SetModel</a></li>
+    <li><a href="set-view.html">SetView</a></li>
+    <li><a href="set-proj.html">SetProj</a></li>
+    <li><a href="get-extent.html">GetExtent</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Renderer</a> /
+  <a href="index.html">VulkanRenderer</a> / GetCapabilities
+</p>
+
+<h1><span class="fn">GetCapabilities</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Renderer::VulkanRenderer</span>
+  <span class="tag">Engine/Renderer/Vulkan/VulkanRenderer.h</span>
+  <span class="tag">const noexcept</span>
+  <span class="tag">[[nodiscard]]</span>
+  <span class="tag">returns by value</span>
+  the cached descriptor of the device this renderer picked — one copy, no driver call
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] <span class="ty">RenderCapabilities</span> <span class="fn">GetCapabilities</span>() <span class="kw">const</span> <span class="kw">noexcept</span>;</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  <code>return capabilities;</code>. That field was written once, by <code>QueryCapabilities</code> at the end of
+  <code>CreateDevice</code>, which forwards the chosen <code>VkPhysicalDevice</code> to
+  <code>FillRenderCapabilities</code> — the same adapter
+  <a href="../RHICapabilities/get-capabilities.html"><code>RHICapabilities::GetCapabilities</code></a> uses. So the call
+  is a struct copy, safe at any point in the frame loop, and it describes the device this renderer actually selected:
+  the first adapter with a graphics queue that can present to this surface, not merely the first the driver enumerates.
+</p>
+
+<p>
+  The three states a caller can find it in are worth naming. Before
+  <a href="initialize.html"><code>Initialize</code></a> — or after one that failed before <code>CreateDevice</code> — it
+  is the zero-filled <a href="../RenderCapabilities/constructors.html">unknown descriptor</a>, with
+  <code>isDeviceQueried == false</code>. After a successful <code>Initialize</code> it is real: name, class, ids, the
+  twenty-one flags and the eighteen limits, read from the driver. After <a href="shutdown.html"><code>Shutdown</code></a>
+  it is <em>still</em> the real one, because <code>Destroy</code> resets handles and frame counters but not this field —
+  so a queried result after teardown describes a device that no longer exists.
+</p>
+
+<div class="gap">
+  <strong>It returns a copy, not a reference — and the previous module page said otherwise.</strong> The header declares
+  <code>RenderCapabilities GetCapabilities() const noexcept</code>; the old page documented
+  <code>const RenderCapabilities&amp;</code>. Binding the result to a const reference
+  (<code>const auto&amp; caps = renderer.GetCapabilities();</code>) is still safe, because the temporary's lifetime is
+  extended by that binding — but caching the address of the result
+  (<code>const RenderCapabilities* p = &amp;renderer.GetCapabilities();</code>) leaves a dangling pointer to a destroyed
+  temporary. Copy it: the type is trivially copyable by an assertion in its own header, and that is the intended way to
+  move it.
+</div>
+
+<div class="note">
+  <strong>Once a device exists, this is the answer to prefer.</strong>
+  <a href="../RHICapabilities/get-capabilities.html"><code>RHICapabilities::GetCapabilities</code></a> creates and
+  discards a Vulkan instance to read the first enumerated device, and may describe a different adapter than the one
+  running your frames. Prefer this call for anything after <code>Initialize</code>, and prefer
+  <code>RHICapabilities</code> only for the genuine before-a-window questions. Either way,
+  <code>isDeviceQueried</code> has to be checked before any limit is read: see
+  <a href="../RenderCapabilities/index.html">RenderCapabilities</a>.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr>
+    <td><a href="../RenderCapabilities/index.html"><code>RenderCapabilities</code></a> (by value)</td>
+    <td>
+      A copy of the cached descriptor. <code>isDeviceQueried == true</code> only after a
+      <a href="initialize.html"><code>Initialize</code></a> that reached <code>CreateDevice</code>, and the
+      <code>supportsComputeShader</code> bit inside it is <code>true</code> by definition on Vulkan — Vulkan makes
+      compute mandatory in core, so that bit is not a measurement. <code>[[nodiscard]]</code>, so dropping the copy is a
+      compile error
+    </td>
+  </tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p>
+  The module's own test, which pins the state that matters most — a renderer without a device must not claim one — and
+  in doing so documents why the descriptor is never compared with <code>memcmp</code>:
+</p>
+
+<p class="meta">From Engine/Renderer/RendererTest.cpp</p>
+
+<pre><code><span class="fn">AddTest</span>(<span class="st">"VulkanRenderer capabilities are unqueried before Initialize"</span>, [](<span class="kw">auto</span>&amp; log)
+{
+        <span class="ty">VulkanRenderer</span> renderer;
+        <span class="kw">const</span> <span class="ty">RenderCapabilities</span> caps = renderer.<span class="fn">GetCapabilities</span>();
+
+        log &lt;&lt; <span class="st">"isDeviceQueried="</span> &lt;&lt; caps.isDeviceQueried &lt;&lt; <span class="st">" maxTextureDimension2D="</span> &lt;&lt; caps.maxTextureDimension2D;
+
+        <span class="cm">// No device exists yet, so the only honest answer is "unknown". An uninitialised</span>
+        <span class="cm">// renderer used to answer 4096/16/16 as if it had asked the hardware.</span>
+        <span class="kw">Assert</span>(!caps.isDeviceQueried, <span class="st">"A renderer without a device must not claim queried capabilities"</span>);
+        <span class="kw">Assert</span>(caps.maxTextureDimension2D == <span class="nu">0</span>, <span class="st">"A renderer without a device must not report a texture limit"</span>);
+});
+
+<span class="fn">AddTest</span>(<span class="st">"VulkanRenderer capabilities match an unknown descriptor"</span>, [](<span class="kw">auto</span>&amp; log)
+{
+        <span class="ty">VulkanRenderer</span> renderer;
+        <span class="kw">const</span> <span class="ty">RenderCapabilities</span> caps = renderer.<span class="fn">GetCapabilities</span>();
+        <span class="kw">const</span> <span class="ty">RenderCapabilities</span> unknown;
+
+        <span class="cm">// Field-by-field, because the descriptor is a bit-field struct and holds a fixed array,</span>
+        <span class="cm">// so memcmp would compare padding and could report a difference that is not one.</span>
+        <span class="kw">Assert</span>(caps.isDeviceQueried == unknown.isDeviceQueried, <span class="st">"Unqueried flag must match"</span>);
+        <span class="kw">Assert</span>(caps.maxTextureDimension2D == unknown.maxTextureDimension2D, <span class="st">"Unqueried 2D limit must match"</span>);
+});</code></pre>
+
+<p>
+  The same shape works in an application: copy it out once after
+  <a href="initialize.html"><code>Initialize</code></a> succeeded, then read
+  <a href="../RenderCapabilities/index.html"><code>maxTextureDimension2D</code></a>,
+  <a href="../RenderCapabilities/index.html"><code>maxPushConstantBytes</code></a> or
+  <a href="../DeviceType/index.html"><code>deviceType</code></a> from your own copy without touching the renderer again.
+</p>
+
+<footer class="prevnext">
+  <span><a href="index.html">← VulkanRenderer</a></span>
+  <span><a href="index.html#methods">All VulkanRenderer methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

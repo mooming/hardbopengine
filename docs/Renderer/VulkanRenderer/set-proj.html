@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VulkanRenderer::SetProj — Renderer — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">VulkanRenderer</a> methods</h3>
+  <ul class="methods">
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+    <li><a href="initialize.html">Initialize</a></li>
+    <li><a href="shutdown.html">Shutdown</a></li>
+    <li><a href="begin-frame.html">BeginFrame</a></li>
+    <li><a href="render.html">Render</a></li>
+    <li><a href="end-frame.html">EndFrame</a></li>
+    <li><a href="get-capabilities.html">GetCapabilities</a></li>
+    <li><a href="set-mesh.html">SetMesh</a></li>
+    <li><a href="set-model.html">SetModel</a></li>
+    <li><a href="set-view.html">SetView</a></li>
+    <li><a class="current" href="set-proj.html">SetProj</a></li>
+    <li><a href="get-extent.html">GetExtent</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Renderer</a> /
+  <a href="index.html">VulkanRenderer</a> / SetProj
+</p>
+
+<h1><span class="fn">SetProj</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Renderer::VulkanRenderer</span>
+  <span class="tag">Engine/Renderer/Vulkan/VulkanRenderer.h</span>
+  <span class="tag">noexcept</span>
+  copy sixteen column-major floats into the projection slot — the left half of the combined <code>viewProj</code> the shader receives
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code><span class="kw">void</span> <span class="fn">SetProj</span>(<span class="kw">const float</span>* m) <span class="kw">noexcept</span>;</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  The body is <code>std::memcpy(projMat, m, sizeof(projMat));</code>. At record time this slot becomes the left operand
+  of <code>viewProj = projMat * viewMat</code>, so the numbers you supply here are the ones that decide the depth range
+  and the vertical direction of the image — the two places Vulkan differs from OpenGL, and the two this function silently
+  inherits.
+</p>
+
+<p>
+  Vulkan's clip-space depth is <code>[0, 1]</code>, not <code>[-1, 1]</code>, and its framebuffer Y axis points down while
+  a right-handed camera's points up. A matrix built for the other convention produces geometry clipped away at the near
+  plane, or an image upside down, or both. The example's own helper carries that comment on its first line, and the
+  renderer does nothing about it: no convention is enforced, no flag exists, and the pipeline compares depth with
+  <code>VK_COMPARE_OP_LESS</code> against a clear value of <code>1.0</code>.
+</p>
+
+<div class="note">
+  <strong>Ask <a href="get-extent.html"><code>GetExtent</code></a> for the aspect ratio, and expect to ask once.</strong>
+  The example derives it from the swapchain extent rather than from the 800×600 it requested, because the drawable follows
+  the window's content rect — and it derives it <em>before the loop</em>, which is the only correct placement while
+  <code>extent</code> is fixed at <a href="initialize.html"><code>Initialize</code></a>. Recomputing the projection from
+  a live window size every frame would stretch the image instead of widening the view, because the render pass, viewport
+  and depth image stay at the startup extent.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr>
+    <td><code>m</code></td>
+    <td><code>const float*</code></td>
+    <td>
+      Sixteen readable <code>float</code>, column-major (element <code>[col * 4 + row]</code>), built for Vulkan's
+      <code>[0, 1]</code> depth and Y-down framebuffer. Not null-checked and not length-checked — a bad pointer is
+      undefined behaviour in the copy, not a rejected call. Values are copied during the call, so a stack array may be
+      reused immediately. Usable before <a href="initialize.html"><code>Initialize</code></a>; the constructor's identity
+      stays until this is called, which renders in raw object coordinates with no perspective at all
+    </td>
+  </tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p><code>void</code>. The numbers are never inspected, so a degenerate matrix is only discoverable on screen.</p>
+
+<h2 id="example">Examples</h2>
+
+<p>The example builds a Vulkan-correct perspective, sizes it from the renderer rather than the window, and sets it once:</p>
+
+<p class="meta">From Applications/VulkanExample/Main.cpp</p>
+
+<pre><code><span class="cm">/// @brief Right-handed perspective mapped into Vulkan's [0, 1] depth and Y-down framebuffer.</span>
+<span class="kw">void</span> <span class="fn">SetPerspective</span>(<span class="kw">float</span> m[<span class="nu">16</span>], <span class="kw">float</span> fovRadians, <span class="kw">float</span> aspect, <span class="kw">float</span> nearZ, <span class="kw">float</span> farZ) <span class="kw">noexcept</span>
+{
+        std::memset(m, <span class="nu">0</span>, <span class="kw">sizeof</span>(<span class="kw">float</span>) * <span class="nu">16</span>);
+        <span class="kw">const float</span> f = <span class="nu">1.0f</span> / std::tan(fovRadians * <span class="nu">0.5f</span>);
+        m[<span class="nu">0</span>] = f / aspect;
+        m[<span class="nu">5</span>] = -f; <span class="cm">// Y flip: world +Y is screen up</span>
+        m[<span class="nu">10</span>] = farZ / (nearZ - farZ);
+        m[<span class="nu">11</span>] = -<span class="nu">1.0f</span>;
+        m[<span class="nu">14</span>] = farZ * nearZ / (nearZ - farZ);
+}
+
+<span class="cm">// in main(), after Initialize returned true:</span>
+<span class="kw">const</span> VkExtent2D extent = renderer.<span class="fn">GetExtent</span>();
+<span class="fn">SetPerspective</span>(proj, DegreeToRadian(<span class="nu">60.0f</span>),
+               <span class="kw">static_cast</span>&lt;<span class="kw">float</span>&gt;(extent.width) / <span class="kw">static_cast</span>&lt;<span class="kw">float</span>&gt;(extent.height),
+               <span class="nu">0.1f</span>, <span class="nu">100.0f</span>);
+renderer.<span class="fn">SetProj</span>(proj);</code></pre>
+
+<p>
+  The engine's own matrix builders are in <a href="../../Math/index.html#matrices">Math</a>; whichever one is used, the
+  sixteen floats handed to this function are the sixteen the shader multiplies with.
+</p>
+
+<footer class="prevnext">
+  <span><a href="index.html">← VulkanRenderer</a></span>
+  <span><a href="index.html#methods">All VulkanRenderer methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vertex::Vertex — Renderer — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signatures</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">Vertex</a> methods</h3>
+  <ul class="methods">
+    <li><a class="current" href="constructors.html">constructors</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Renderer</a> /
+  <a href="index.html">Vertex</a> / constructors
+</p>
+
+<h1><span class="fn">Vertex</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Renderer::Vertex</span>
+  <span class="tag">Engine/Renderer/Vertex.h</span>
+  <span class="tag">2 overloads</span>
+  seven scalars into a position and a colour — declared in the header, defined in <code>Vertex.cpp</code>
+</p>
+
+<h2 id="signature">Signatures</h2>
+
+<pre><code><span class="fn">Vertex</span>() = <span class="kw">default</span>;
+
+<span class="fn">Vertex</span>(<span class="kw">float</span> x, <span class="kw">float</span> y, <span class="kw">float</span> z, <span class="kw">float</span> r, <span class="kw">float</span> g, <span class="kw">float</span> b, <span class="kw">float</span> a);</code></pre>
+
+<p>The definition, in full:</p>
+
+<p class="meta">From Engine/Renderer/Vertex.cpp</p>
+
+<pre><code><span class="ty">Vertex</span>::<span class="fn">Vertex</span>(<span class="kw">float</span> x, <span class="kw">float</span> y, <span class="kw">float</span> z, <span class="kw">float</span> r, <span class="kw">float</span> g, <span class="kw">float</span> b, <span class="kw">float</span> a)
+        : position(x, y, z)
+        , color(r, g, b, a)
+{
+}</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Three floats into <a href="../../Math/index.html#functions"><code>Vector3&lt;float&gt; position</code></a>, four into
+  <code>Vector4&lt;float&gt; color</code>, both by their own constructors, both taking component order. Alpha is the last
+  argument and is not defaulted, so an opaque vertex still has to say <code>1.0f</code> — the contrast with
+  <a href="../../Math/index.html#functions"><code>Vector4</code></a>'s own constructor, which defaults <code>w</code> to
+  <code>1</code>, is a consequence of this signature passing all four positionally.
+</p>
+
+<p>
+  The defaulted overload is not the trap the raw-float vertex is. <code>MeshVertex v;</code> leaves six floats
+  indeterminate; <code>Vertex v;</code> is all zeros, because both math types have user-provided default constructors that
+  initialise their components, and default-initialising this struct runs them. Zero here means position at the origin and
+  colour fully transparent black, which is a defined state rather than a garbage one.
+</p>
+
+<div class="note">
+  <strong>This constructor links; the type it builds has no user.</strong> Unlike the two loaders in the Resource module,
+  nothing here is declared-without-a-definition — <code>Vertex.cpp</code> compiles into the Renderer library and a call
+  resolves. What is missing is a caller: no engine or application code constructs a <code>Vertex</code>, and the only
+  pipeline in the tree consumes <a href="../MeshVertex/index.html"><code>MeshVertex</code></a>. See
+  <a href="index.html#coverage">the class Coverage</a>.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr>
+    <td><code>x</code>, <code>y</code>, <code>z</code></td>
+    <td><code>float</code></td>
+    <td>Position components, forwarded to <code>Vector3&lt;float&gt;</code>. No unit, no space is implied</td>
+  </tr>
+  <tr>
+    <td><code>r</code>, <code>g</code>, <code>b</code>, <code>a</code></td>
+    <td><code>float</code></td>
+    <td>Colour components, forwarded to <code>Vector4&lt;float&gt;</code>. No range check and no linear-versus-sRGB
+        decision anywhere in this module; <code>a</code> is required, not defaulted</td>
+  </tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  Constructors return nothing. The result is a 28-byte value with no resource attached, so it cannot fail and costs
+  seven stores.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<p class="note">Illustrative — no call site for this exists in the repository.</p>
+
+<p>
+  Grepping <code>Engine/</code> and <code>Applications/</code> finds no construction of this type, so there is no real
+  snippet to quote. This is what the signature accepts:
+</p>
+
+<pre><code><span class="ty">hbe</span>::<span class="ty">Renderer</span>::<span class="ty">Vertex</span> corner(<span class="nu">0.0f</span>, <span class="nu">0.0f</span>, <span class="nu">0.0f</span>, <span class="nu">1.0f</span>, <span class="nu">0.5f</span>, <span class="nu">0.2f</span>, <span class="nu">1.0f</span>);
+
+<span class="kw">auto</span> origin = corner.position;   <span class="cm">// Vector3&lt;float&gt;(0, 0, 0)</span>
+<span class="kw">auto</span> tint   = corner.color;      <span class="cm">// Vector4&lt;float&gt;(1, 0.5, 0.2, 1)</span></code></pre>
+
+<p>
+  To render something with a per-vertex colour you would need the vertex format the existing pipeline was built for, which
+  is <a href="../MeshVertex/index.html"><code>MeshVertex</code></a> — position and normal, no colour — plus a new pipeline;
+  see <a href="../VulkanRenderer/set-mesh.html"><code>SetMesh</code></a> for what geometry upload accepts today.
+</p>
+
+<footer class="prevnext">
+  <span><a href="index.html">← Vertex</a></span>
+  <span><a href="index.html#methods">All Vertex methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

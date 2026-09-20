@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MeshVertex — Renderer — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="#description">Class description</a></li>
+    <li><a href="#template">Template parameters</a></li>
+    <li><a href="#properties">Class properties</a></li>
+    <li><a href="#methods">Class methods</a></li>
+    <li><a href="#non-member">Non-member helpers</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+
+  <h3>Methods</h3>
+  <ul class="methods">
+    <li><a href="constructors.html">constructors</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Renderer</a> / MeshVertex
+</p>
+
+<h1>MeshVertex</h1>
+<p class="subtitle">
+  <span class="tag">Engine/Renderer/Vulkan/VulkanRenderer.h</span>
+  <span class="tag">namespace hbe::Renderer</span>
+  <span class="tag">24 bytes, tightly packed</span>
+  position and normal as two raw <code>float[3]</code> arrays — the only vertex layout the built pipeline can draw
+</p>
+
+<h2 id="description">Class description</h2>
+
+<p>
+  Six <code>float</code> in a row, named in two groups of three. It exists because the example vertex format,
+  <a href="../Vertex/index.html"><code>Vertex</code></a>, carries a colour and no normal, and lit geometry needs the
+  other way round. The header describes it as "Single vertex: position (vec3) + normal (vec3), 24 bytes, tightly
+  packed", and that packing is load-bearing rather than tidy: <a href="../VulkanRenderer/index.html"><code>VulkanRenderer</code></a>
+  builds its pipeline's vertex input from <code>sizeof(MeshVertex)</code> as the stride and from
+  <code>offsetof(MeshVertex, position)</code> and <code>offsetof(MeshVertex, normal)</code> as the two attribute
+  offsets.
+</p>
+
+<table>
+  <tr><th>Attribute</th><th>Location</th><th>Format</th><th>Shader input</th></tr>
+  <tr>
+    <td><code>position</code></td><td><code>0</code></td><td><code>VK_FORMAT_R32G32B32_SFLOAT</code></td>
+    <td><code>layout(location = 0) in vec3 aPosition;</code></td>
+  </tr>
+  <tr>
+    <td><code>normal</code></td><td><code>1</code></td><td><code>VK_FORMAT_R32G32B32_SFLOAT</code></td>
+    <td><code>layout(location = 1) in vec3 aNormal;</code></td>
+  </tr>
+</table>
+
+<p>
+  Those two rows and the shader declarations are a single promise split across four files: the struct, the pipeline
+  creation, <code>Shaders/MC.vert</code>, and the compiled copy embedded in <code>ShadersSpv.h</code>. Change the struct
+  and nothing fails to compile — the offsets are read at run time — so the mismatch appears as wrong geometry.
+</p>
+
+<div class="note">
+  <strong>Two vertex formats in one module is a fact, not a mistake.</strong>
+  <a href="../Vertex/index.html"><code>Vertex</code></a> is position plus colour — the unlit example layout.
+  <code>MeshVertex</code> is position plus normal — what lit geometry needs. A pipeline is created against exactly one
+  stride and one pair of offsets, and this engine builds one pipeline, so the type a mesh is built from has to be this
+  one; <a href="../VulkanRenderer/set-mesh.html"><code>SetMesh</code></a> would otherwise read colours as normals.
+</div>
+
+<h2 id="template">Template parameters</h2>
+
+<p>None — <code>MeshVertex</code> is not a template.</p>
+
+<h2 id="properties">Class properties</h2>
+
+<table>
+  <tr><th>Name</th><th>Declaration</th><th>What it means</th></tr>
+  <tr>
+    <td><code>position</code></td>
+    <td><code>float position[3];</code></td>
+    <td><span class="badge">public data</span> Offset 0, twelve bytes. Object-space position; the vertex shader
+        multiplies it by <code>viewProj * model</code>. A raw array, not <code>Vector3&lt;float&gt;</code> — the layout
+        is meant to be memcpy'd into a buffer, and this keeps the math module out of a GPU-facing struct</td>
+  </tr>
+  <tr>
+    <td><code>normal</code></td>
+    <td><code>float normal[3];</code></td>
+    <td><span class="badge">public data</span> Offset 12, twelve bytes. Surface normal; the vertex shader forwards it as
+        <code>vNormal</code>. Nothing here or in <a href="../VulkanRenderer/set-mesh.html"><code>SetMesh</code></a>
+        normalises it, so unit length is the generator's job</td>
+  </tr>
+</table>
+
+<h2 id="methods">Class methods</h2>
+
+<table>
+  <tr><th>Method</th><th>Signature</th><th>What a caller depends on</th></tr>
+  <tr>
+    <td><a href="constructors.html">constructors</a><span class="badge">2 overloads</span></td>
+    <td class="sig">MeshVertex() = default<br>MeshVertex(float x, float y, float z, float nx, float ny, float nz)</td>
+    <td>The defaulted one initialises nothing; the six-argument one fills both triples in field order and is the form
+        every call site uses</td>
+  </tr>
+</table>
+
+<h2 id="non-member">Non-member helper functions</h2>
+
+<p>
+  None that touch this type. The header's only namespace-scope function is
+  <a href="../index.html#functions"><code>IdentityMatrix</code></a>, which fills a <code>float[16]</code> matrix and has
+  nothing to do with vertices.
+</p>
+
+<h2 id="coverage">Coverage</h2>
+
+<table>
+  <tr><th>Gap</th><th>Detail</th></tr>
+  <tr>
+    <td>No layout assertion</td>
+    <td><a href="../RenderCapabilities/index.html"><code>RenderCapabilities</code></a> asserts its copyability in its own
+        header; this struct asserts nothing. The 24-byte claim is a comment plus arithmetic (six <code>float</code>,
+        alignment 4, so no padding), and the offsets the pipeline uses are taken from the compiler at run time. A field
+        inserted between <code>position</code> and <code>normal</code> would silently move the normal to offset 16 while
+        the shader still read three floats at 12</td>
+  </tr>
+  <tr>
+    <td>No tangents, bitangents, texture coordinates or colour</td>
+    <td>There is no field for them and no attribute slot for them. Adding one means changing this struct, the pipeline's
+        attribute array, <code>MC.vert</code> and <code>ShadersSpv.h</code> together</td>
+  </tr>
+  <tr>
+    <td>Normalisation and handedness</td>
+    <td>Neither is checked anywhere in this module; the renderer also disables back-face culling
+        (<code>VK_CULL_MODE_NONE</code>) because generated marching-cubes winding is not guaranteed, so a flipped normal
+        shows up as wrong shading rather than as a culled triangle</td>
+  </tr>
+  <tr>
+    <td>Comparison and hashing</td>
+    <td>None declared, and none used — vertices go into a <code>std::vector</code> and are copied out by pointer</td>
+  </tr>
+</table>
+
+<footer class="prevnext">
+  <span><a href="../index.html">← Renderer</a></span>
+  <span><a href="../index.html#meshvertex">MeshVertex in the Renderer class list</a></span>
+</footer>
+
+</main>
+</body>
+</html>

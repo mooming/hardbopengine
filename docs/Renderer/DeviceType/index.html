@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DeviceType — Renderer — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="#description">Class description</a></li>
+    <li><a href="#template">Template parameters</a></li>
+    <li><a href="#properties">Class properties</a></li>
+    <li><a href="#methods">Class methods</a></li>
+    <li><a href="#non-member">Non-member helpers</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+
+  <h3>Methods</h3>
+  <ul class="methods">
+    <li>None — an enum class declares no members</li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Renderer</a> / DeviceType
+</p>
+
+<h1>DeviceType</h1>
+<p class="subtitle">
+  <span class="tag">Engine/Renderer/RenderCapabilities.h</span>
+  <span class="tag">namespace hbe::Renderer</span>
+  <span class="tag">enum class : uint8_t</span>
+  the class of device that answered, in the API's own terms
+</p>
+
+<h2 id="description">Class description</h2>
+
+<p>
+  Five names for what kind of thing is behind the driver. It is the classification the API itself gives — Vulkan's
+  <code>VkPhysicalDeviceType</code> — translated name for name, not a ranking the engine invented. One enumerator is
+  special: <code>Unknown</code> is both the value of an unqueried descriptor and the value the Vulkan adapter gives
+  a device the driver classifies as "other".
+</p>
+
+<pre><code><span class="kw">enum class</span> <span class="ty">DeviceType</span> : <span class="kw">uint8_t</span>
+{
+        Unknown = <span class="nu">0</span>,
+        DiscreteGpu,
+        IntegratedGpu,
+        VirtualGpu,
+        CpuSoftware
+};</code></pre>
+
+<h2 id="template">Template parameters</h2>
+
+<p>None — <code>DeviceType</code> is not a template.</p>
+
+<h2 id="properties">Class properties</h2>
+
+<table>
+  <tr><th>Name</th><th>Declaration</th><th>What it means</th></tr>
+  <tr>
+    <td><code>Unknown</code></td>
+    <td><code>Unknown = 0</code></td>
+    <td><span class="badge">enumerator</span> The value of a fresh descriptor, and also the value the Vulkan adapter
+        writes for <code>VK_PHYSICAL_DEVICE_TYPE_OTHER</code> and for anything it does not recognise — so this
+        enumerator is reached by real devices too, and only <code>isDeviceQueried</code> says which case you are in</td>
+  </tr>
+  <tr>
+    <td><code>DiscreteGpu</code></td>
+    <td><code>DiscreteGpu</code> (1)</td>
+    <td><span class="badge">enumerator</span> Separate GPU with its own memory. The answer a workstation gives, and
+        the reason picking "the first device" is not the same as picking the fast one</td>
+  </tr>
+  <tr>
+    <td><code>IntegratedGpu</code></td>
+    <td><code>IntegratedGpu</code> (2)</td>
+    <td><span class="badge">enumerator</span> GPU sharing system memory with the CPU</td>
+  </tr>
+  <tr>
+    <td><code>VirtualGpu</code></td>
+    <td><code>VirtualGpu</code> (3)</td>
+    <td><span class="badge">enumerator</span> Paravirtual or remote adapter. Capability answers from one are the
+        driver's, not the physical hardware's</td>
+  </tr>
+  <tr>
+    <td><code>CpuSoftware</code></td>
+    <td><code>CpuSoftware</code> (4)</td>
+    <td><span class="badge">enumerator</span> Software rasteriser — Vulkan <code>VK_PHYSICAL_DEVICE_TYPE_CPU</code>,
+        which is what a driver-less CI machine exposes when it exposes anything at all</td>
+  </tr>
+</table>
+
+<h2 id="methods">Class methods</h2>
+
+<p>None — an <code>enum class</code> declares no members, and the header adds no free function beside it either.</p>
+
+<table>
+  <tr><th>Method</th><th>Signature</th><th>What a caller depends on</th></tr>
+  <tr><td colspan="3">None.</td></tr>
+</table>
+
+<h2 id="non-member">Non-member helper functions</h2>
+
+<p>
+  None declared. There is no <code>ToString</code> and no stream operator for this enum anywhere in the module, so
+  logging one prints the underlying integer; the engine's test cases report
+  <code>deviceType != DeviceType::Unknown</code> rather than a name.
+</p>
+
+<div class="note">
+  <strong>Ignoring <code>deviceType</code> is how a capability check passes on a CI machine and fails on real
+  hardware.</strong> <code>VirtualGpu</code> and <code>CpuSoftware</code> are the answers a headless runner gives,
+  and both will happily report the features their API mandates — Vulkan makes compute mandatory in core, so
+  <a href="../RenderCapabilities/index.html"><code>supportsComputeShader</code></a> is <code>true</code> even for a
+  software device. Branch on the type when a feature is about performance rather than correctness.
+</div>
+
+<h2 id="coverage">Coverage</h2>
+
+<table>
+  <tr><th>Gap</th><th>Detail</th></tr>
+  <tr>
+    <td>No device-selection policy</td>
+    <td>Nothing in this module picks a device <em>because</em> of its type.
+        <a href="../VulkanRenderer/index.html"><code>VulkanRenderer</code></a> takes the first device offering a
+        graphics queue that can present to the surface, so a system with an integrated and a discrete GPU gets
+        whichever the driver enumerates first. Recorded on the renderer page as well</td>
+  </tr>
+  <tr>
+    <td>The Vulkan mapping table</td>
+    <td><code>VulkanCapabilities.cpp</code> translates five <code>VkPhysicalDeviceType</code> values; two of them
+        (<code>OTHER</code> and the unmatched default) collapse onto <code>Unknown</code>, which is the one
+        ambiguity this enum carries</td>
+  </tr>
+  <tr>
+    <td>No Metal or Direct3D 12 translation exists</td>
+    <td>The header's mapping comment names <code>MTLGPUFamily</code> / <code>isLowPower</code> and
+        <code>DXGI_GPU_DESCRIPTOR</code> as what a future adapter would read, but no such backend is in this tree</td>
+  </tr>
+</table>
+
+<footer class="prevnext">
+  <span><a href="../index.html">← Renderer</a></span>
+  <span><a href="../index.html#devicetype">DeviceType in the Renderer class list</a></span>
+</footer>
+
+</main>
+</body>
+</html>

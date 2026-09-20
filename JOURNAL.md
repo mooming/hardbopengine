@@ -116,6 +116,32 @@ scan is negative-controlled before shipping: deleting one `id="buildconfig"` in 
 `BROKEN` lines across Renderer, Memory, OSAL, Math, Log and Engine. A scan that reports "all resolve" without
 proving it can report otherwise is not a check, and I nearly shipped one.
 
+**Renderer landed — 27 pages — and every one of its corrections was aimed at me.** Four sentences in the module
+page I wrote the previous session were wrong, and I re-verified all four myself before repeating them.
+`GetCapabilities()` returns `RenderCapabilities` **by value** (`VulkanRenderer.h:75`, `.cpp:1100`), not the
+`const RenderCapabilities&` I published — and a caller who wrote `&GetCapabilities()` on my signature takes the
+address of a temporary. `PushConstants` is `float model[16]; float viewProj[16];` — two matrices, 128 bytes, with
+`projMat * viewMat` folded on the CPU in `RecordFrame` — not the "three matrices inline" I copied from the old
+guide. `Render(float /*deltaTime*/)` names no parameter: the delta is accepted and discarded, so my prose about it
+"matching `SystemStatistics::GetDeltaTime`" described an argument that is thrown away. The worst one was
+operational, not descriptive: I wrote that a missing SDK means the renderer "compiles out rather than failing the
+build", and `Engine/Renderer/CMakeLists.txt:81,89` says `message (FATAL_ERROR ...)` twice — configure stops.
+Someone trusting my sentence would expect a soft failure and get a broken build. All four now say what the source
+says, with the absence named as an absence.
+
+**Which is the same failure that deleted `EngineAPIGuide`, one round later, in my own prose.** I built this site to
+stop the guide lying, then rewrote the guide's Renderer claims into the new format without re-deriving them from
+headers — the exact mistake the last journal entry was written to prevent. Transcribing a claim is inheriting its
+staleness; the format changed and the trust did not. The exemplar rule "the header is the only source of truth"
+was written by me and applied to everyone except me.
+
+**Renderer's four contract complaints, all valid:** no badge for a `: 1` member, so a capabilities descriptor of
+thirty bit-fields had no honest row kind — added `bit-field`; no sanctioned phrasing for an `enum class` or a
+plain struct writing "no methods", so `DeviceType`, `Mesh` and `PushConstants` would each invent one — four
+phrasings are now the whole vocabulary; the exemplars disagreed about the class-page footer (`#array` versus
+`#classes`) — now `#classes`, because per-class row ids exist for *other modules'* inbound links, not for
+footers; and the validator's `open()`-without-existence bug, fixed and negative-controlled earlier.
+
 ## Tasks become things the registry owns, addressed by identity (2026-09-19)
 
 **What landed**, as `3be27c3`: R7 with R22's sizing. `Engine/Core/TaskID.h` (`{index, generation}`) and

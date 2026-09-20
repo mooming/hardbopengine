@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VulkanRenderer::Initialize — Renderer — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">VulkanRenderer</a> methods</h3>
+  <ul class="methods">
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+    <li><a class="current" href="initialize.html">Initialize</a></li>
+    <li><a href="shutdown.html">Shutdown</a></li>
+    <li><a href="begin-frame.html">BeginFrame</a></li>
+    <li><a href="render.html">Render</a></li>
+    <li><a href="end-frame.html">EndFrame</a></li>
+    <li><a href="get-capabilities.html">GetCapabilities</a></li>
+    <li><a href="set-mesh.html">SetMesh</a></li>
+    <li><a href="set-model.html">SetModel</a></li>
+    <li><a href="set-view.html">SetView</a></li>
+    <li><a href="set-proj.html">SetProj</a></li>
+    <li><a href="get-extent.html">GetExtent</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Renderer</a> /
+  <a href="index.html">VulkanRenderer</a> / Initialize
+</p>
+
+<h1><span class="fn">Initialize</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Renderer::VulkanRenderer</span>
+  <span class="tag">Engine/Renderer/Vulkan/VulkanRenderer.h</span>
+  <span class="tag">[[nodiscard]] noexcept</span>
+  the only public route through eleven creation steps, and the only one that can fail
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] <span class="kw">bool</span> <span class="fn">Initialize</span>(<span class="ty">OS</span>::<span class="ty">Window</span>* window) <span class="kw">noexcept</span>;</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Two guards first: if the renderer is already initialized it returns <code>true</code> without doing anything, and a
+  null <code>window</code> returns <code>false</code> immediately. Then eleven private steps run in a fixed order, each
+  one returning <code>false</code> the moment it fails:
+</p>
+
+<pre><code><span class="fn">CreateInstance</span>       <span class="cm">// asks for the surface, portability-enumeration and platform surface extensions</span>
+<span class="fn">CreateSurface</span>        <span class="cm">// macOS: Metal layer via CreateMetalSurface — Windows: window handle — Linux: fails</span>
+<span class="fn">PickDevice</span>           <span class="cm">// first adapter with a graphics queue that can present to this surface</span>
+<span class="fn">CreateDevice</span>         <span class="cm">// one queue, VK_KHR_swapchain enabled; calls QueryCapabilities on success</span>
+<span class="fn">CreateSwapchain</span>      <span class="cm">// chooses format, present mode, image count and `extent` — once, ever</span>
+<span class="fn">CreateRenderPass</span>     <span class="cm">// colour + depth attachments, one subpass, one external dependency</span>
+<span class="fn">CreateDepthResource</span>  <span class="cm">// depth image at `extent`, device local</span>
+<span class="fn">CreateFramebuffers</span>   <span class="cm">// one per swapchain image</span>
+<span class="fn">CreateCommandBuffers</span> <span class="cm">// one per frame in flight (2)</span>
+<span class="fn">CreatePipeline</span>       <span class="cm">// shader modules from ShadersSpv.h, MeshVertex input, 128-byte push range</span>
+<span class="fn">CreateSyncObjects</span>    <span class="cm">// two semaphores per slot plus a fence, fences created already-signalled</span></code></pre>
+
+<p>
+  The order is not arbitrary and is not offered as a menu: the surface has to exist before a device can be picked,
+  because queue-family presentation support is queried against that surface, and the render pass has to exist before
+  framebuffers and before the pipeline that is created against it. <code>QueryCapabilities</code> runs inside
+  <code>CreateDevice</code>, which is the first moment a real physical device exists — that is why
+  <a href="get-capabilities.html"><code>GetCapabilities</code></a> costs nothing afterwards, and why a renderer whose
+  <code>Initialize</code> failed before that step reports an unqueried descriptor.
+</p>
+
+<p>
+  Geometry is deliberately not part of this: vertex and index buffers are created by
+  <a href="set-mesh.html"><code>SetMesh</code></a>, not here, so a renderer can be initialized before any mesh exists
+  and will present a cleared frame until one arrives.
+</p>
+
+<div class="gap">
+  <strong>Failure is final for this object, and it leaks what it built.</strong> A false return means the first step
+  that failed — reported through the always-on error logger with its <code>VkResult</code> — and it leaves
+  <code>initialized</code> false. Because <a href="shutdown.html"><code>Shutdown</code></a> returns early when
+  <code>initialized</code> is false, the instance, surface or device already created are never destroyed: there is no
+  partial-cleanup path and no public way to force one. Retrying <code>Initialize</code> on the same object would build
+  a second set on top of the first. Treat a false return as "this object is finished" — which is what the example does,
+  by exiting.
+</div>
+
+<div class="note">
+  <strong>On macOS this call touches AppKit, and the header never says so.</strong>
+  <code>CreateSurface</code> is <code>CreateMetalSurface</code> there, and that function reads the window's native
+  handle, builds a layer-backed content view and calls <code>[nsWindow setContentView:]</code> — AppKit work, which
+  AppKit itself expects on the main thread. Nothing here checks the thread, records it, or documents the requirement;
+  the example happens to call <code>Initialize</code> from <code>main</code>. See
+  <a href="../../OSAL/index.html#window">OSAL: Window</a> for the facade that hands out the handle.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr>
+    <td><code>window</code></td>
+    <td><a href="../../OSAL/index.html#window"><code>OS::Window*</code></a></td>
+    <td>
+      The concrete facade — a class, not an interface; there is no <code>IWindow</code> in this tree. Must be
+      non-null, must already have a native handle, and must <strong>outlive the renderer</strong>: the pointer is
+      stored, used again for the fallback extent inside <code>CreateSwapchain</code>, and never closed or freed by this
+      class. It is read during <code>Initialize</code> only — after that the renderer never asks the window for
+      anything, which is why <a href="get-extent.html">GetExtent</a> cannot follow a resize. The example shows
+      <code>window.get()</code> from the <code>std::unique_ptr</code> that owns it
+    </td>
+  </tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr>
+    <td><code>bool</code></td>
+    <td>
+      <code>true</code> only when all eleven steps succeeded and the renderer is ready for the frame protocol.
+      Also <code>true</code> when it was already initialized, which makes a repeated call harmless but tells you
+      nothing new. <code>false</code> means a step failed: the engine builds without exceptions, so this bool is the
+      entire failure channel, and <code>[[nodiscard]]</code> makes ignoring it a compile error. Two things callers
+      tend to forget: <a href="set-mesh.html"><code>SetMesh</code></a> before a successful <code>Initialize</code>
+      silently uploads nothing, and <a href="get-capabilities.html"><code>GetCapabilities</code></a> may still report
+      an unqueried descriptor
+    </td>
+  </tr>
+</table>
+
+<div class="note">
+  <strong>One device limit can fail this at the pipeline step.</strong> The pipeline layout requests a push-constant
+  range of <code>sizeof(PushConstants)</code> — 128 bytes — for the vertex stage. Vulkan guarantees at least 128, so in
+  practice this passes everywhere; on a device reporting a smaller
+  <a href="../RenderCapabilities/index.html"><code>maxPushConstantBytes</code></a>,
+  <code>vkCreatePipelineLayout</code> fails and <code>Initialize</code> returns false rather than trimming the block.
+  <a href="../PushConstants/index.html"><code>PushConstants</code></a> carries the mirror rule: the struct, the range
+  and the GLSL push block have to agree.
+</div>
+
+<h2 id="example">Examples</h2>
+
+<p>
+  The real caller: create the window, make it visible, construct the renderer, and honour the bool — with the logger
+  flushed first because an initialization failure is diagnosed asynchronously.
+</p>
+
+<p class="meta">From Applications/VulkanExample/Main.cpp</p>
+
+<pre><code>auto window = <span class="ty">OS</span>::<span class="fn">CreateWindow</span>(<span class="st">"VulkanExample - Rotating Quad (Vulkan)"</span>, <span class="nu">800</span>, <span class="nu">600</span>);
+<span class="kw">if</span> (!window)
+{
+        std::cerr &lt;&lt; <span class="st">"Error: Failed to create window"</span> &lt;&lt; std::endl;
+        <span class="kw">return</span> <span class="nu">1</span>;
+}
+
+window-&gt;<span class="fn">SetVisible</span>(<span class="kw">true</span>);
+
+<span class="cm">// Vulkan-only: construct the concrete renderer directly (no factory, no inheritance).</span>
+<span class="ty">VulkanRenderer</span> renderer;
+<span class="kw">if</span> (!renderer.<span class="fn">Initialize</span>(window.<span class="fn">get</span>()))
+{
+        <span class="cm">// The logger is asynchronous: flush so its diagnostics survive this exit.</span>
+        <span class="ty">Logger</span>::<span class="fn">Get</span>().<span class="fn">Flush</span>();
+        std::cerr &lt;&lt; <span class="st">"Error: Failed to initialize Vulkan renderer"</span> &lt;&lt; std::endl;
+        <span class="kw">return</span> <span class="nu">1</span>;
+}
+
+<span class="kw">const</span> <span class="ty">Mesh</span> quad = <span class="fn">MakeQuad</span>();
+renderer.<span class="fn">SetMesh</span>(quad);</code></pre>
+
+<p>
+  Note the order of the last two lines: <code>SetMesh</code> comes <em>after</em> a successful
+  <code>Initialize</code>, which is not a style preference — <code>SetMesh</code> returns at its first line when the
+  renderer is not initialized, so geometry handed over earlier is dropped without a word.
+</p>
+
+<p>The null-window contract, asserted by the module's own test:</p>
+
+<p class="meta">From Engine/Renderer/RendererTest.cpp</p>
+
+<pre><code><span class="cm">// Initialize rejects a null window on purpose - the surface is built from the window,</span>
+<span class="cm">// and queue family support is queried against that surface. The assertion said the</span>
+<span class="cm">// opposite; it survived only because Assert() is compiled out outside __DEBUG__ builds.</span>
+<span class="kw">Assert</span>(!renderer.<span class="fn">Initialize</span>(window), <span class="st">"Initialize must reject a null window"</span>);</code></pre>
+
+<footer class="prevnext">
+  <span><a href="index.html">← VulkanRenderer</a></span>
+  <span><a href="index.html#methods">All VulkanRenderer methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

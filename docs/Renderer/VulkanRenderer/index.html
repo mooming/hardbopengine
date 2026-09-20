@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VulkanRenderer — Renderer — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="#description">Class description</a></li>
+    <li><a href="#template">Template parameters</a></li>
+    <li><a href="#properties">Class properties</a></li>
+    <li><a href="#methods">Class methods</a></li>
+    <li><a href="#non-member">Non-member helpers</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+
+  <h3>Methods</h3>
+  <ul class="methods">
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+    <li><a href="initialize.html">Initialize</a></li>
+    <li><a href="shutdown.html">Shutdown</a></li>
+    <li><a href="begin-frame.html">BeginFrame</a></li>
+    <li><a href="render.html">Render</a></li>
+    <li><a href="end-frame.html">EndFrame</a></li>
+    <li><a href="get-capabilities.html">GetCapabilities</a></li>
+    <li><a href="set-mesh.html">SetMesh</a></li>
+    <li><a href="set-model.html">SetModel</a></li>
+    <li><a href="set-view.html">SetView</a></li>
+    <li><a href="set-proj.html">SetProj</a></li>
+    <li><a href="get-extent.html">GetExtent</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Renderer</a> / VulkanRenderer
+</p>
+
+<h1>VulkanRenderer</h1>
+<p class="subtitle">
+  <span class="tag">Engine/Renderer/Vulkan/VulkanRenderer.h</span>
+  <span class="tag">namespace hbe::Renderer</span>
+  <span class="tag">no base class</span>
+  <span class="tag">non-copyable</span>
+  the Vulkan backend: instance, surface, device, swapchain, pipeline and two frames in flight, reached by constructing it directly
+</p>
+
+<h2 id="description">Class description</h2>
+
+<p>
+  A concrete class with no interface behind it. There is no <code>IRenderer</code> to hold it through and no factory
+  to ask for it — the example constructs it on the stack and calls it by name, which is the only pattern in this
+  tree: "Vulkan-only: construct the concrete renderer directly (no factory, no inheritance)" says the comment in
+  <code>Applications/VulkanExample/Main.cpp</code>. The header's own wording is "Concrete Vulkan renderer (no
+  inheritance)". Backend choice is a compile-time and link-time decision, the way
+  <a href="../../OSAL/index.html#platforms">OSAL</a> picks a window implementation, and the argument for it lives in
+  <a href="../../RendererDesign.html">docs/RendererDesign.html</a>.
+</p>
+
+<p>
+  It owns every Vulkan object the frame needs — instance, surface, logical device, one queue, swapchain with its
+  images and views, a depth image, one render pass, one framebuffer per image, a command pool with one command buffer
+  per frame in flight, a pipeline layout with a single push-constant range, one graphics pipeline, two shader modules,
+  the mesh's vertex and index buffers, and the semaphores and fences that pace two frames. All of that is private, and
+  the destructor calls <a href="shutdown.html"><code>Shutdown</code></a>, so an object going out of scope tears the
+  whole set down in dependency order.
+</p>
+
+<p>
+  Two files implement one class: <code>VulkanRenderer.cpp</code> holds the portable pipeline and the frame loop, and
+  <code>VulkanRenderer.mm</code> holds the macOS surface — a <code>CAMetalLayer</code> adopted by a layer-backed
+  content view, wrapped by <code>vkCreateMetalSurfaceEXT</code>. On Windows the surface comes from the window handle
+  inside <code>VulkanRenderer.cpp</code>; on Linux <code>CreateSurface</code> has no implementation and returns false,
+  so <a href="initialize.html"><code>Initialize</code></a> fails there.
+</p>
+
+<div class="note">
+  <strong>Copy is deleted, and move is simply absent.</strong> The header declares
+  <code>VulkanRenderer(const VulkanRenderer&amp;) = delete</code> and the matching assignment as deleted; it declares no
+  move operation either, and since it declares a destructor the compiler would not synthesise one. The object
+  therefore lives in exactly one place — a
+  member of your class, a static, a stack local — and neither the Vulkan handles nor the
+  <a href="../../OSAL/index.html#window"><code>OS::Window*</code></a> it borrows can be relocated by a container.
+  See <a href="constructors.html">the constructors</a>.
+</div>
+
+<div class="gap">
+  <strong>This header drags Vulkan into everything that includes it.</strong>
+  <code>VulkanRenderer.h</code> does <code>#include &lt;vulkan/vulkan.h&gt;</code> with no guard, its private section is
+  made of Vulkan types, and <a href="get-extent.html"><code>GetExtent</code></a> returns
+  <code>VkExtent2D</code> by value. Any translation unit that wants to render is therefore compiling against the SDK
+  headers, which is why this module cannot compile out when the SDK is absent — see
+  <a href="../index.html#variables">module variables</a>. Code that only needs a window size can read
+  <a href="../../OSAL/index.html#window"><code>OS::Window::GetWidth</code></a> instead of including this header — the
+  two numbers are not the same thing, as <a href="get-extent.html">GetExtent</a> explains.
+</div>
+
+<h2 id="template">Template parameters</h2>
+
+<p>None — <code>VulkanRenderer</code> is not a template.</p>
+
+<h2 id="properties">Class properties</h2>
+
+<p>
+  One constant and forty-five data members, every one of them private; there are no public aliases or nested types.
+  The Vulkan handles are listed with what they are for, not how they are created — the creation order is private and
+  belongs to <a href="initialize.html"><code>Initialize</code></a>.
+</p>
+
+<table>
+  <tr><th>Name</th><th>Declaration</th><th>What it means</th></tr>
+  <tr>
+    <td><code>MAX_FRAMES_IN_FLIGHT</code></td>
+    <td><code>static constexpr size_t MAX_FRAMES_IN_FLIGHT = 2;</code></td>
+    <td><span class="badge">private constant</span> Command buffers, fences and both semaphore arrays are sized to
+        this, and <code>currentFrame</code> wraps on it. Two means the frame you are recording overlaps the one being
+        presented — the reason <a href="set-mesh.html"><code>SetMesh</code></a> has to think about in-flight work</td>
+  </tr>
+  <tr>
+    <td><code>window</code></td>
+    <td><code>OS::Window* window;</code></td>
+    <td><span class="badge">private</span> The window whose native handle becomes the surface and whose
+        <code>GetWidth</code> / <code>GetHeight</code> are a fallback for the swapchain extent. <strong>Borrowed, not
+        owned</strong> — nothing here closes it, so it must outlive the renderer</td>
+  </tr>
+  <tr>
+    <td><code>initialized</code></td>
+    <td><code>bool initialized;</code></td>
+    <td><span class="badge">private</span> Set only after every creation step in <code>Initialize</code> succeeded.
+        <code>BeginFrame</code>, <code>Render</code>, <code>EndFrame</code>, <code>Shutdown</code> and
+        <code>SetMesh</code> each return early when it is false</td>
+  </tr>
+  <tr>
+    <td><code>capabilities</code></td>
+    <td><code>RenderCapabilities capabilities;</code></td>
+    <td><span class="badge">private</span> The cached descriptor of the device this renderer picked, filled once
+        inside <code>CreateDevice</code>. Returned by value by
+        <a href="get-capabilities.html"><code>GetCapabilities</code></a>; unqueried until <code>Initialize</code>
+        reaches that step</td>
+  </tr>
+  <tr>
+    <td><code>instance</code></td>
+    <td><code>VkInstance instance;</code></td>
+    <td><span class="badge">private</span> The Vulkan instance, created asking for
+        <code>VK_KHR_portability_enumeration</code> unconditionally so MoltenVK appears in the device list</td>
+  </tr>
+  <tr>
+    <td><code>physicalDevice</code></td>
+    <td><code>VkPhysicalDevice physicalDevice;</code></td>
+    <td><span class="badge">private</span> The chosen adapter: the first one offering a graphics queue that can
+        present to the surface. No preference for discrete over integrated</td>
+  </tr>
+  <tr>
+    <td><code>queueFamilyIndex</code></td>
+    <td><code>uint32_t queueFamilyIndex;</code></td>
+    <td><span class="badge">private</span> The family that satisfied both requirements, reused for the one queue the
+        device creates</td>
+  </tr>
+  <tr>
+    <td><code>device</code></td>
+    <td><code>VkDevice device;</code></td>
+    <td><span class="badge">private</span> The logical device, created with <code>VK_KHR_swapchain</code> enabled —
+        without that extension the loader leaves the swapchain entry points null</td>
+  </tr>
+  <tr>
+    <td><code>graphicsQueue</code></td>
+    <td><code>VkQueue graphicsQueue;</code></td>
+    <td><span class="badge">private</span> The single queue, used for both submission and presentation</td>
+  </tr>
+  <tr>
+    <td><code>surface</code></td>
+    <td><code>VkSurfaceKHR surface;</code></td>
+    <td><span class="badge">private</span> The window surface — Metal layer on macOS, window handle on Windows, no
+        implementation on Linux</td>
+  </tr>
+  <tr>
+    <td><code>surfaceFormat</code></td>
+    <td><code>VkSurfaceFormatKHR surfaceFormat;</code></td>
+    <td><span class="badge">private</span> Chosen format: <code>VK_FORMAT_B8G8R8A8_UNORM</code> when offered, to
+        match the <code>CAMetalLayer</code>, otherwise the first the surface lists</td>
+  </tr>
+  <tr>
+    <td><code>presentMode</code></td>
+    <td><code>VkPresentModeKHR presentMode;</code></td>
+    <td><span class="badge">private</span> <code>VK_PRESENT_MODE_MAILBOX_KHR</code> when available, otherwise
+        <code>VK_PRESENT_MODE_FIFO_KHR</code>, the only mode guaranteed to exist</td>
+  </tr>
+  <tr>
+    <td><code>extent</code></td>
+    <td><code>VkExtent2D extent;</code></td>
+    <td><span class="badge">private</span> Swapchain size, written once in <code>CreateSwapchain</code> and used by
+        the depth image, every framebuffer, the render area and the viewport. <strong>Never rewritten</strong> — see
+        the resize hazard under <a href="get-extent.html"><code>GetExtent</code></a></td>
+  </tr>
+  <tr>
+    <td><code>swapchain</code></td>
+    <td><code>VkSwapchainKHR swapchain;</code></td>
+    <td><span class="badge">private</span> Created once with <code>oldSwapchain</code> null; there is no recreation
+        path anywhere in the class</td>
+  </tr>
+  <tr>
+    <td><code>swapchainImages</code></td>
+    <td><code>std::vector&lt;VkImage&gt; swapchainImages;</code></td>
+    <td><span class="badge">private</span> The presentation images, owned by the swapchain — fetched, never created</td>
+  </tr>
+  <tr>
+    <td><code>swapchainImageViews</code></td>
+    <td><code>std::vector&lt;VkImageView&gt; swapchainImageViews;</code></td>
+    <td><span class="badge">private</span> One colour view per image. Views are destroyed before the images they
+        alias</td>
+  </tr>
+  <tr>
+    <td><code>depthFormat</code></td>
+    <td><code>VkFormat depthFormat;</code></td>
+    <td><span class="badge">private</span> First of <code>D32_SFLOAT</code>, <code>D24_UNORM_S8_UINT</code>,
+        <code>D16_UNORM</code> that this device can use as a depth attachment</td>
+  </tr>
+  <tr>
+    <td><code>depthImage</code></td>
+    <td><code>VkImage depthImage;</code></td>
+    <td><span class="badge">private</span> The depth attachment, allocated at <code>extent</code> in device-local
+        memory</td>
+  </tr>
+  <tr>
+    <td><code>depthMemory</code></td>
+    <td><code>VkDeviceMemory depthMemory;</code></td>
+    <td><span class="badge">private</span> Backing allocation for <code>depthImage</code></td>
+  </tr>
+  <tr>
+    <td><code>depthImageView</code></td>
+    <td><code>VkImageView depthImageView;</code></td>
+    <td><span class="badge">private</span> Depth view attached to every framebuffer</td>
+  </tr>
+  <tr>
+    <td><code>renderPass</code></td>
+    <td><code>VkRenderPass renderPass;</code></td>
+    <td><span class="badge">private</span> One subpass: colour cleared then stored for presentation, depth cleared
+        then discarded, with the external dependency that keeps writes behind the acquire semaphore</td>
+  </tr>
+  <tr>
+    <td><code>framebuffers</code></td>
+    <td><code>std::vector&lt;VkFramebuffer&gt; framebuffers;</code></td>
+    <td><span class="badge">private</span> One per swapchain image. <code>Render</code> indexes it by
+        <code>imageIndex</code>, and <code>BeginFrame</code> uses its size to reject an out-of-range image</td>
+  </tr>
+  <tr>
+    <td><code>commandPool</code></td>
+    <td><code>VkCommandPool commandPool;</code></td>
+    <td><span class="badge">private</span> One pool for the family; destroying it frees the command buffers with it</td>
+  </tr>
+  <tr>
+    <td><code>commandBuffers</code></td>
+    <td><code>std::vector&lt;VkCommandBuffer&gt; commandBuffers;</code></td>
+    <td><span class="badge">private</span> One per frame in flight, re-recorded every frame with
+        <code>VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT</code></td>
+  </tr>
+  <tr>
+    <td><code>pipelineLayout</code></td>
+    <td><code>VkPipelineLayout pipelineLayout;</code></td>
+    <td><span class="badge">private</span> No descriptor sets at all: one push-constant range for the vertex stage,
+        <code>sizeof(PushConstants)</code> bytes at offset 0</td>
+  </tr>
+  <tr>
+    <td><code>graphicsPipeline</code></td>
+    <td><code>VkPipeline graphicsPipeline;</code></td>
+    <td><span class="badge">private</span> Fixed-function state baked once: triangle list, no culling, depth test
+        <code>LESS</code>, no blend, dynamic viewport and scissor, vertex input in
+        <a href="../MeshVertex/index.html"><code>MeshVertex</code></a></td>
+  </tr>
+  <tr>
+    <td><code>vertModule</code></td>
+    <td><code>VkShaderModule vertModule;</code></td>
+    <td><span class="badge">private</span> Vertex stage, compiled from <code>gMCVertexSpv</code> in
+        <code>Vulkan/ShadersSpv.h</code></td>
+  </tr>
+  <tr>
+    <td><code>fragModule</code></td>
+    <td><code>VkShaderModule fragModule;</code></td>
+    <td><span class="badge">private</span> Fragment stage from <code>gMCFragmentSpv</code>, same generated header</td>
+  </tr>
+  <tr>
+    <td><code>vertexBuffer</code></td>
+    <td><code>VkBuffer vertexBuffer;</code></td>
+    <td><span class="badge">private</span> The current mesh's vertices in host-visible, host-coherent memory — no
+        device-local copy or staging transfer yet</td>
+  </tr>
+  <tr>
+    <td><code>vertexMemory</code></td>
+    <td><code>VkDeviceMemory vertexMemory;</code></td>
+    <td><span class="badge">private</span> Backing allocation for <code>vertexBuffer</code></td>
+  </tr>
+  <tr>
+    <td><code>indexBuffer</code></td>
+    <td><code>VkBuffer indexBuffer;</code></td>
+    <td><span class="badge">private</span> The current mesh's <code>uint32_t</code> indices, same memory class</td>
+  </tr>
+  <tr>
+    <td><code>indexMemory</code></td>
+    <td><code>VkDeviceMemory indexMemory;</code></td>
+    <td><span class="badge">private</span> Backing allocation for <code>indexBuffer</code></td>
+  </tr>
+  <tr>
+    <td><code>vertexCount</code></td>
+    <td><code>size_t vertexCount;</code></td>
+    <td><span class="badge">private</span> Vertices uploaded. Zero together with <code>indexCount</code> means the
+        frame clears and presents without drawing</td>
+  </tr>
+  <tr>
+    <td><code>indexCount</code></td>
+    <td><code>size_t indexCount;</code></td>
+    <td><span class="badge">private</span> Indices uploaded, and the draw count passed to
+        <code>vkCmdDrawIndexed</code></td>
+  </tr>
+  <tr>
+    <td><code>semaphoresImageAvailable</code></td>
+    <td><code>std::vector&lt;VkSemaphore&gt; semaphoresImageAvailable;</code></td>
+    <td><span class="badge">private</span> Signalled by acquire, waited by submit before colour-output writes</td>
+  </tr>
+  <tr>
+    <td><code>semaphoresRenderFinished</code></td>
+    <td><code>std::vector&lt;VkSemaphore&gt; semaphoresRenderFinished;</code></td>
+    <td><span class="badge">private</span> Signalled by submit, waited by present</td>
+  </tr>
+  <tr>
+    <td><code>fences</code></td>
+    <td><code>std::vector&lt;VkFence&gt; fences;</code></td>
+    <td><span class="badge">private</span> One per frame slot, created already-signalled so the first frame does not
+        wait on work that was never submitted. This is the CPU-side pacing of the whole loop</td>
+  </tr>
+  <tr>
+    <td><code>currentFrame</code></td>
+    <td><code>size_t currentFrame;</code></td>
+    <td><span class="badge">private</span> Which slot is being recorded; advanced by
+        <a href="end-frame.html"><code>EndFrame</code></a>, and <em>not</em> advanced when a submit fails</td>
+  </tr>
+  <tr>
+    <td><code>imageIndex</code></td>
+    <td><code>uint32_t imageIndex;</code></td>
+    <td><span class="badge">private</span> The swapchain image this frame acquired, used for the framebuffer and the
+        present</td>
+  </tr>
+  <tr>
+    <td><code>frameActive</code></td>
+    <td><code>bool frameActive;</code></td>
+    <td><span class="badge">private</span> "This frame has an image and a framebuffer". Set by
+        <a href="begin-frame.html"><code>BeginFrame</code></a>, tested by <a href="render.html"><code>Render</code></a>
+        and <a href="end-frame.html"><code>EndFrame</code></a>, cleared at the start of <code>BeginFrame</code> and by
+        <code>Destroy</code> — but <strong>not</strong> by <code>EndFrame</code>, which is the double-submit hazard
+        described below</td>
+  </tr>
+  <tr>
+    <td><code>firstFramePresented</code></td>
+    <td><code>bool firstFramePresented;</code></td>
+    <td><span class="badge">private</span> Latches one log line proving the pipeline reached presentation</td>
+  </tr>
+  <tr>
+    <td><code>modelMat</code></td>
+    <td><code>float modelMat[16];</code></td>
+    <td><span class="badge">private</span> Written wholesale by <a href="set-model.html"><code>SetModel</code></a>;
+        pushed as <a href="../PushConstants/index.html"><code>PushConstants</code>::model</a></td>
+  </tr>
+  <tr>
+    <td><code>viewMat</code></td>
+    <td><code>float viewMat[16];</code></td>
+    <td><span class="badge">private</span> Written by <a href="set-view.html"><code>SetView</code></a>; never pushed
+        on its own — multiplied into <code>viewProj</code> during recording</td>
+  </tr>
+  <tr>
+    <td><code>projMat</code></td>
+    <td><code>float projMat[16];</code></td>
+    <td><span class="badge">private</span> Written by <a href="set-proj.html"><code>SetProj</code></a>; the left
+        operand of that multiply</td>
+  </tr>
+</table>
+
+<h2 id="methods">Class methods</h2>
+
+<p>
+  Thirteen documented names. The lifecycle pair is <a href="initialize.html"><code>Initialize</code></a> /
+  <a href="shutdown.html"><code>Shutdown</code></a>; the frame trio must run in the order its name spells; the three
+  setters are plain copies that can run any time.
+</p>
+
+<table>
+  <tr><th>Method</th><th>Signature</th><th>What a caller depends on</th></tr>
+  <tr>
+    <td><a href="constructors.html">constructors</a><span class="badge">2 overloads</span></td>
+    <td class="sig">VulkanRenderer() noexcept<br>VulkanRenderer(const VulkanRenderer&amp;) = delete</td>
+    <td>The default constructor creates no Vulkan object and cannot fail; it only zeroes handles and sets the three
+        matrices to identity. Copy is deleted and move is suppressed</td>
+  </tr>
+  <tr>
+    <td><a href="destructor.html">destructor</a></td>
+    <td class="sig">~VulkanRenderer()</td>
+    <td>Calls <a href="shutdown.html"><code>Shutdown</code></a>, so a renderer that never initialized is destroyed
+        by an early return rather than by touching null handles</td>
+  </tr>
+  <tr>
+    <td><a href="initialize.html">Initialize</a></td>
+    <td class="sig">bool Initialize(OS::Window* window) noexcept</td>
+    <td>The only way in: eleven creation steps in a fixed order, <code>false</code> on the first failure, and a
+        no-op returning <code>true</code> if it already succeeded. The window is borrowed, not owned</td>
+  </tr>
+  <tr>
+    <td><a href="shutdown.html">Shutdown</a></td>
+    <td class="sig">void Shutdown() noexcept</td>
+    <td>Waits the device idle, destroys everything in dependency order, and returns early when not initialized — so
+        it is safe twice and safe before <code>Initialize</code></td>
+  </tr>
+  <tr>
+    <td><a href="begin-frame.html">BeginFrame</a></td>
+    <td class="sig">void BeginFrame() noexcept</td>
+    <td>Waits and resets this slot's fence, then acquires the next image. A lost swapchain is reported and skipped,
+        not repaired, so this frame draws nothing</td>
+  </tr>
+  <tr>
+    <td><a href="render.html">Render</a></td>
+    <td class="sig">void Render(float deltaTime) noexcept</td>
+    <td>Records the frame — clear, bind, viewport, push constants, one indexed draw — and does nothing at all unless
+        <code>BeginFrame</code> acquired an image this cycle. <code>deltaTime</code> is accepted and not used</td>
+  </tr>
+  <tr>
+    <td><a href="end-frame.html">EndFrame</a></td>
+    <td class="sig">void EndFrame() noexcept</td>
+    <td>Submits and presents, or submits nothing to release the fence a skipped frame still reset. Advances the frame
+        slot, which is why it must run once per <code>BeginFrame</code></td>
+  </tr>
+  <tr>
+    <td><a href="get-capabilities.html">GetCapabilities</a></td>
+    <td class="sig">RenderCapabilities GetCapabilities() const noexcept</td>
+    <td>Returns the cached descriptor <strong>by value</strong>, describing the device this renderer picked. Costs a
+        copy, no driver call; unqueried until <code>Initialize</code> reaches <code>CreateDevice</code></td>
+  </tr>
+  <tr>
+    <td><a href="set-mesh.html">SetMesh</a></td>
+    <td class="sig">void SetMesh(const Mesh&amp; mesh) noexcept</td>
+    <td>Uploads geometry, freeing the previous buffers immediately with no wait — safe between
+        <code>Shutdown</code>-style idle points or before the loop, not while a frame that binds them is in flight</td>
+  </tr>
+  <tr>
+    <td><a href="set-model.html">SetModel</a></td>
+    <td class="sig">void SetModel(const float* m) noexcept</td>
+    <td> memcpy of 16 column-major floats, unchecked for null, valid before <code>Initialize</code></td>
+  </tr>
+  <tr>
+    <td><a href="set-view.html">SetView</a></td>
+    <td class="sig">void SetView(const float* m) noexcept</td>
+    <td>The same copy into the view slot; combined with projection on the CPU during recording, never pushed alone</td>
+  </tr>
+  <tr>
+    <td><a href="set-proj.html">SetProj</a></td>
+    <td class="sig">void SetProj(const float* m) noexcept</td>
+    <td>The same copy into the projection slot; the aspect ratio baked into it should come from
+        <a href="get-extent.html"><code>GetExtent</code></a>, not from the window's requested size</td>
+  </tr>
+  <tr>
+    <td><a href="get-extent.html">GetExtent</a></td>
+    <td class="sig">VkExtent2D GetExtent() const noexcept</td>
+    <td>The swapchain extent captured at <code>Initialize</code> — {0,0} before it, and never updated for a resized
+        window afterwards</td>
+  </tr>
+</table>
+
+<h3>Frame contract</h3>
+
+<p>
+  The three frame calls are one protocol with a shared flag between them, and each one behaves differently when that
+  flag says "no frame". This is the order the example uses and the only order the code supports:
+</p>
+
+<table>
+  <tr><th>Call</th><th>Requires</th><th>Produces for the next call</th></tr>
+  <tr>
+    <td><a href="begin-frame.html">BeginFrame</a></td>
+    <td><code>initialized</code></td>
+    <td>A fence reset for this slot, an acquired <code>imageIndex</code>, and <code>frameActive</code> set only if
+        that index has a framebuffer</td>
+  </tr>
+  <tr>
+    <td><a href="render.html">Render</a></td>
+    <td><code>initialized</code> <em>and</em> <code>frameActive</code></td>
+    <td>A recorded, ended command buffer for <code>currentFrame</code>. Records nothing when either is false</td>
+  </tr>
+  <tr>
+    <td><a href="end-frame.html">EndFrame</a></td>
+    <td><code>initialized</code> — it runs even when there is no frame, to release the fence</td>
+    <td>A submit and a present, or an empty submit; then <code>currentFrame</code> advances</td>
+  </tr>
+</table>
+
+<div class="gap">
+  <strong><code>Render</code> without <code>BeginFrame</code> is a no-op the first time and a double submit the
+  second.</strong> <code>frameActive</code> starts false, so a <code>Render</code> before any
+  <a href="begin-frame.html"><code>BeginFrame</code></a> records nothing — the module's own test
+  <code>renderer.Render(0.016f);</code> on a renderer that was never initialized relies on exactly that. But
+  <a href="end-frame.html"><code>EndFrame</code></a> never clears <code>frameActive</code>: it stays true after a
+  successful frame. Calling <a href="render.html"><code>Render</code></a> twice before the next
+  <code>BeginFrame</code> therefore re-records the same command buffer, and the second
+  <code>EndFrame</code> submits a command buffer whose previous submission may still be running, with no fence waited
+  in between. Keep the calls one-for-one.
+</div>
+
+<div class="gap">
+  <strong>A resize has no effect on what is rendered.</strong> <code>extent</code> is written once inside
+  <code>CreateSwapchain</code>, which <a href="initialize.html"><code>Initialize</code></a> calls exactly once, and
+  the depth image, framebuffers, render area and viewport are all built from it. When the window changes size the
+  layer's drawable changes with it, but the swapchain image stays the same, and the only signal the code takes from
+  that is <code>VK_ERROR_OUT_OF_DATE_KHR</code> or <code>VK_SUBOPTIMAL_KHR</code> on acquire — out-of-date ends the
+  frame (draws nothing), suboptimal is ignored and keeps drawing at the old extent. Recreating the swapchain is
+  called out in <code>BeginFrame</code>'s comment as "the real fix (tracked as a follow-up)" and does not exist, so
+  aspect ratio comes from <a href="get-extent.html"><code>GetExtent</code></a> taken once, at startup.
+</div>
+
+<h2 id="non-member">Non-member helper functions</h2>
+
+<pre><code><span class="cm">// Engine/Renderer/Vulkan/VulkanRenderer.h — a column-major identity on the stack</span>
+<span class="kw">inline void</span> <span class="fn">IdentityMatrix</span>(<span class="kw">float</span> m[<span class="nu">16</span>]) <span class="kw">noexcept</span>;</code></pre>
+
+<p>
+  Declared at namespace scope in this header and documented under
+  <a href="../index.html#functions">module functions</a>. The renderer's own constructor uses it to fill
+  <code>modelMat</code>, <code>viewMat</code> and <code>projMat</code> before any caller sets them.
+</p>
+
+<h2 id="coverage">Coverage</h2>
+
+<table>
+  <tr><th>Gap</th><th>Detail</th></tr>
+  <tr>
+    <td>The private creation sequence</td>
+    <td>Thirteen private steps — <code>CreateInstance</code>, <code>CreateSurface</code>, <code>CreateMetalSurface</code>,
+        <code>PickDevice</code>, <code>CreateDevice</code>, <code>QueryCapabilities</code>,
+        <code>CreateSwapchain</code>, <code>CreateRenderPass</code>, <code>CreateDepthResource</code>,
+        <code>CreateFramebuffers</code>, <code>CreateCommandBuffers</code>, <code>CreatePipeline</code>,
+        <code>CreateSyncObjects</code> — plus <code>CreateBuffer</code>, <code>RecordFrame</code>,
+        <code>ReleaseVertexBuffers</code> and <code>Destroy</code>. Their per-field Vulkan detail is implementation
+        and belongs in a design document; there is none for this backend yet, which is why the frame and lifetime
+        contracts above are stated from the code rather than from a document</td>
+  </tr>
+  <tr>
+    <td>Swapchain recreation</td>
+    <td>Not a documentation omission: no such code exists. The class cannot recover from
+        <code>VK_ERROR_OUT_OF_DATE_KHR</code>, and there is no public way to ask for one — no
+        <code>Resize</code>, no <code>RecreateSwapchain</code>. See the hazard under
+        <a href="get-extent.html"><code>GetExtent</code></a></td>
+  </tr>
+  <tr>
+    <td>Thread-safety is asserted nowhere</td>
+    <td>The header documents no thread requirement and the class holds no mutex, atomic or thread-local; every
+        guard is a plain <code>bool</code>. What the code does establish is that one thread must drive the whole
+        protocol, because <code>currentFrame</code>, <code>imageIndex</code> and <code>frameActive</code> are shared
+        by all three frame calls. On macOS <a href="initialize.html"><code>Initialize</code></a> additionally calls
+        AppKit (<code>[nsWindow setContentView:]</code>) through the borrowed window, and AppKit's own rule is that
+        this happens on the main thread — a rule this class neither checks nor states. Recorded here because the
+        header is silent, not because the code supports a claim</td>
+  </tr>
+  <tr>
+    <td>The mesh buffer lifetime rule is not stated in the header</td>
+    <td><a href="set-mesh.html"><code>SetMesh</code></a>'s comment says "Upload (or replace) the mesh to render" and
+        nothing about in-flight work, yet the first thing its implementation does is free the old buffers with no
+        <code>vkDeviceWaitIdle</code>. The page for it states what the code does and what that costs</td>
+  </tr>
+  <tr>
+    <td>One vertex format, baked in</td>
+    <td>The pipeline's vertex input is <code>sizeof(MeshVertex)</code> with positions and normals at
+        <code>offsetof</code>, so <a href="../Vertex/index.html"><code>Vertex</code></a> — position and colour — can
+        only be rendered by a different pipeline this class does not build</td>
+  </tr>
+  <tr>
+    <td><code>RendererTest</code></td>
+    <td><code>Engine/Renderer/RendererTest.h</code> declares the fixture under <code>__UNIT_TEST__</code> and
+        <code>RendererTest.cpp</code> exercises null-window initialization, unqueried capabilities and a
+        <code>Render</code> with no frame — quoted as a call site on
+        <a href="initialize.html"><code>Initialize</code></a> and
+        <a href="render.html"><code>Render</code></a>. It is a fixture, not API: the runner is
+        <a href="../../Test/index.html#unittestcollection">the Test module's</a> subject</td>
+  </tr>
+  <tr>
+    <td>Shader content</td>
+    <td>The push block the pipeline matches is declared in
+        <code>Engine/Renderer/Vulkan/Shaders/MC.vert</code> as <code>Push { mat4 model; mat4 viewProj; }</code> and
+        shipped as generated data in <code>Vulkan/ShadersSpv.h</code>; how that header is regenerated is documented
+        nowhere on this site. <a href="../PushConstants/index.html"><code>PushConstants</code></a> carries the
+        mirror-image rule</td>
+  </tr>
+</table>
+
+<footer class="prevnext">
+  <span><a href="../index.html">← Renderer</a></span>
+  <span><a href="../index.html#vulkanrenderer">VulkanRenderer in the Renderer class list</a></span>
+</footer>
+
+</main>
+</body>
+</html>

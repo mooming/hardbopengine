@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VulkanRenderer::BeginFrame — Renderer — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">VulkanRenderer</a> methods</h3>
+  <ul class="methods">
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+    <li><a href="initialize.html">Initialize</a></li>
+    <li><a href="shutdown.html">Shutdown</a></li>
+    <li><a class="current" href="begin-frame.html">BeginFrame</a></li>
+    <li><a href="render.html">Render</a></li>
+    <li><a href="end-frame.html">EndFrame</a></li>
+    <li><a href="get-capabilities.html">GetCapabilities</a></li>
+    <li><a href="set-mesh.html">SetMesh</a></li>
+    <li><a href="set-model.html">SetModel</a></li>
+    <li><a href="set-view.html">SetView</a></li>
+    <li><a href="set-proj.html">SetProj</a></li>
+    <li><a href="get-extent.html">GetExtent</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Renderer</a> /
+  <a href="index.html">VulkanRenderer</a> / BeginFrame
+</p>
+
+<h1><span class="fn">BeginFrame</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Renderer::VulkanRenderer</span>
+  <span class="tag">Engine/Renderer/Vulkan/VulkanRenderer.h</span>
+  <span class="tag">noexcept</span>
+  wait this slot's fence, reset it, and acquire the next swapchain image — the call that decides whether this frame
+  will draw at all
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code><span class="kw">void</span> <span class="fn">BeginFrame</span>() <span class="kw">noexcept</span>;</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>Five things happen, in this order, once the <code>initialized</code> guard passes:</p>
+
+<pre><code><span class="fn">vkWaitForFences</span>(device, fences[currentFrame], <span class="kw">UINT64_MAX</span>)   <span class="cm">// block until this slot's previous work is done</span>
+<span class="fn">vkResetFences</span>(device, fences[currentFrame])                  <span class="cm">// now this slot may be recorded again</span>
+frameActive = <span class="kw">false</span>;                                          <span class="cm">// nothing is a frame until the acquire succeeds</span>
+<span class="fn">vkAcquireNextImageKHR</span>(..., <span class="kw">UINT64_MAX</span>, imageAvailable[currentFrame], imageIndex)
+frameActive = imageIndex &lt; framebuffers.size()               <span class="cm">// the acquired image must have a framebuffer</span></code></pre>
+
+<p>
+  The fence wait is the CPU-side pacing of the whole loop: with
+  <code>MAX_FRAMES_IN_FLIGHT = 2</code>, waiting on the current slot's fence guarantees that the work submitted for
+  this slot two frames ago has finished, which is what makes re-recording its command buffer legal. The fences are
+  created already-signalled so the very first frame does not wait on work that was never submitted.
+</p>
+
+<p>
+  If the acquire returns anything other than <code>VK_SUCCESS</code> or <code>VK_SUBOPTIMAL_KHR</code> — in practice
+  <code>VK_ERROR_OUT_OF_DATE_KHR</code> — the function returns there, leaving <code>frameActive</code> false. This
+  round draws nothing: <a href="render.html"><code>Render</code></a> will refuse to record and
+  <a href="end-frame.html"><code>EndFrame</code></a> will present nothing. Suboptimal is treated as usable, so a window
+  that changed size keeps drawing at the old extent.
+</p>
+
+<div class="gap">
+  <strong>The fence is reset before the acquire, so <code>EndFrame</code> is owed even on a frame that drew
+  nothing.</strong> This is the load-bearing rule of the protocol. If you call <code>BeginFrame</code> and then skip
+  <a href="end-frame.html"><code>EndFrame</code></a> because nothing was drawn, the fence you just reset is never
+  signalled again, <code>currentFrame</code> never advances, and the <em>next</em> <code>BeginFrame</code> waits on
+  that same unsignalled fence with an infinite timeout — a hang with no diagnostic. <code>EndFrame</code> exists to cover
+  exactly this: when there is no frame it issues an empty submit whose only job is to release the fence.
+</div>
+
+<div class="gap">
+  <strong>A lost swapchain is reported and survived, never repaired.</strong> There is no swapchain recreation anywhere
+  in the class; the in-code comment calls it "the real fix (tracked as a follow-up)". So once the surface goes out of
+  date — resized away, minimized, monitor moved — every subsequent frame takes the early return and presents nothing,
+  forever. <a href="shutdown.html"><code>Shutdown</code></a> followed by
+  <a href="initialize.html"><code>Initialize</code></a> would build a fresh swapchain at the current size, but nothing in
+  this module detects the condition for you, and there is no public query that reports it.
+</div>
+
+<div class="note">
+  <strong>Both waits are unbounded, and nothing tells the caller which one is blocking.</strong> The fence wait and the
+  image acquire each pass <code>UINT64_MAX</code>, so a GPU that never finishes, or an acquire that never returns on a
+  hidden surface, stops the calling thread rather than skipping a frame. There is no timeout branch, and no way to ask
+  afterwards whether this <code>BeginFrame</code> actually got an image — <code>frameActive</code> is private. The only
+  observable is that <a href="render.html"><code>Render</code></a> then records nothing.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  <code>void</code>, and deliberately no status: a skipped frame is not an error the caller can act on, since the only
+  available action — recreate the swapchain — does not exist. Treat the return as "the frame protocol advanced", not as
+  "an image was acquired".
+</p>
+
+<h2 id="example">Examples</h2>
+
+<p>
+  The example calls all three in the order that names them, once per loop iteration, with nothing conditional in
+  between:
+</p>
+
+<p class="meta">From Applications/VulkanExample/Main.cpp</p>
+
+<pre><code>        <span class="fn">SetRotationY</span>(model, angle);
+        renderer.<span class="fn">SetModel</span>(model);
+
+        renderer.<span class="fn">BeginFrame</span>();
+        renderer.<span class="fn">Render</span>(deltaTime);
+        renderer.<span class="fn">EndFrame</span>();
+
+        std::this_thread::<span class="fn">sleep_for</span>(std::chrono::milliseconds(<span class="nu">16</span>));</code></pre>
+
+<p>
+  The frame-rate cap here is a <code>sleep_for</code>, not the renderer: presentation mode is mailbox-or-FIFO and the
+  fence wait is what actually bounds how far ahead the CPU runs.
+</p>
+
+<footer class="prevnext">
+  <span><a href="index.html">← VulkanRenderer</a></span>
+  <span><a href="index.html#methods">All VulkanRenderer methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

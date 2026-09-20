@@ -34,12 +34,21 @@
     <li><a href="#classes">Module classes</a></li>
     <li><a href="#variables">Module variables</a></li>
     <li><a href="#functions">Module functions</a></li>
-    <li><a href="#rendercapabilities">RenderCapabilities</a></li>
-    <li><a href="#devicetype">DeviceType</a></li>
-    <li><a href="#rhicapabilities">RHICapabilities</a></li>
-    <li><a href="#vulkanrenderer">VulkanRenderer</a></li>
-    <li><a href="#meshdata">Vertex, MeshVertex, Mesh, PushConstants</a></li>
+    <li><a href="#meshdata">Data layouts</a></li>
+    <li><a href="#contracts">Frame and lifetime contracts</a></li>
     <li><a href="#coverage">Coverage</a></li>
+  </ul>
+
+  <h3>Classes</h3>
+  <ul>
+    <li><a href="RenderCapabilities/index.html">RenderCapabilities</a></li>
+    <li><a href="DeviceType/index.html">DeviceType</a></li>
+    <li><a href="RHICapabilities/index.html">RHICapabilities</a></li>
+    <li><a href="VulkanRenderer/index.html">VulkanRenderer</a></li>
+    <li><a href="Vertex/index.html">Vertex</a></li>
+    <li><a href="MeshVertex/index.html">MeshVertex</a></li>
+    <li><a href="Mesh/index.html">Mesh</a></li>
+    <li><a href="PushConstants/index.html">PushConstants</a></li>
   </ul>
 
   <h3>Design documents</h3>
@@ -58,281 +67,308 @@
 <p class="subtitle">
   <span class="tag">namespace hbe::Renderer</span>
   <span class="tag">Engine/Renderer</span>
-  7 headers, 6 sources — a Vulkan renderer today, one API-neutral device descriptor, and the seam a second backend would copy
+  <span class="tag">7 headers, 7 sources</span>
+  one API-neutral device descriptor, one Vulkan backend built on it, and the seam a second backend would copy
 </p>
 
 <h2 id="description">Module description</h2>
 
 <p>
-  The renderer's durable idea is <a href="#rendercapabilities"><code>RenderCapabilities</code></a>: one
-  descriptor whose field names are chosen so Vulkan, Direct3D 12 and Metal can all answer them, filled from a
-  real device rather than assumed. The architecture document for the whole
-  render-hardware-interface design is
-  <a href="../RendererDesign.html">docs/RendererDesign.html</a>, and
+  The renderer's durable idea is <a href="RenderCapabilities/index.html"><code>RenderCapabilities</code></a>: one
+  descriptor whose field names are chosen so Vulkan, Direct3D 12 and Metal can all answer them, filled from a real device
+  rather than assumed, and asserted trivially copyable so it crosses the backend seam by value. Everything else in the
+  module either answers questions about that descriptor or is one backend's use of it. The architecture argument for the
+  whole render-hardware-interface design is <a href="../RendererDesign.html">docs/RendererDesign.html</a>, and
   <a href="../design/LightweightRenderer_Design.html">docs/design/LightweightRenderer_Design.html</a> covers the
-  lightweight path.
+  lightweight path; this page and the pages below stay on what the headers declare.
+</p>
+
+<p>
+  The one backend is Vulkan, split across two files for one class: <code>VulkanRenderer.cpp</code> holds the portable
+  pipeline and the frame protocol, and <code>VulkanRenderer.mm</code> creates the macOS surface — a
+  <code>CAMetalLayer</code> adopted by a layer-backed content view, wrapped by <code>vkCreateMetalSurfaceEXT</code>. The
+  same class has a Windows surface path marked compile-unverified in its own comment, and no Linux path at all:
+  <code>CreateSurface</code> returns false there, so <a href="VulkanRenderer/initialize.html"><code>Initialize</code></a>
+  fails on Linux. Backend selection is compile-time and link-time, the way
+  <a href="../OSAL/index.html#platforms">OSAL</a> selects a window implementation.
 </p>
 
 <div class="gap">
   <strong>What the previous guide described that is not in this tree.</strong> There is no
   <code>Engine/Renderer/IRenderer.h</code>, no <code>RendererFactory.h</code>, and no <code>DX12/</code> or
-  <code>Metal/</code> backend directory — the old document's own marginal notes already called the factory
-  sketch aspirational, and the code never grew the interface. The backend is selected by macros at compile time,
-  the way <a href="../OSAL/index.html#platforms">OSAL</a> selects a window implementation, which is exactly why
-  an <code>APIType</code> runtime enum was removed: it had one enumerator, nothing branched on it, and every use
-  was an assertion that could not fail. Backend identity now travels in the descriptor's
-  <code>deviceName</code> and <code>apiVersionMajor</code> / <code>apiVersionMinor</code>.
+  <code>Metal/</code> backend directory — <code>Engine/Renderer/</code> contains one subdirectory,
+  <code>Vulkan/</code>. Grepping <code>Engine/</code> and <code>Applications/</code> for <code>IRenderer</code>,
+  <code>RendererFactory</code>, <code>APIType</code>, <code>IsMetalSupported</code>, <code>IsDX12Supported</code> and
+  <code>GetPreferredAPI</code> returns nothing at all: no declaration, no definition, no use. The old document's own
+  marginal notes already called the factory sketch aspirational, and the code never grew the interface. Backend identity
+  now travels in the descriptor's <code>deviceName</code> and
+  <code>apiVersionMajor</code> / <code>apiVersionMinor</code>, and the reasoning for removing a runtime API-kind enum is
+  <a href="../RendererDesign.html">the design document's</a>.
 </div>
 
 <h2 id="classes">Module classes</h2>
 
 <table>
   <tr><th>Name</th><th>Kind</th><th>Header</th><th>Role</th></tr>
-  <tr><td><a href="#rendercapabilities">RenderCapabilities</a></td><td>Class</td><td>RenderCapabilities.h</td><td>API-neutral description of one device: identity, features, limits</td></tr>
-  <tr><td><a href="#devicetype">DeviceType</a></td><td>Enum class</td><td>RenderCapabilities.h</td><td>What kind of device answered</td></tr>
-  <tr><td><a href="#rhicapabilities">RHICapabilities</a></td><td>Class, statics only</td><td>RHICapabilities.h</td><td>Answers capability questions before a renderer exists</td></tr>
-  <tr><td><a href="#vulkanrenderer">VulkanRenderer</a></td><td>Class</td><td>Vulkan/VulkanRenderer.h</td><td>The Vulkan backend: instance, device, frames, draw state</td></tr>
-  <tr><td><a href="#meshdata">Vertex</a></td><td>Struct</td><td>Vertex.h</td><td>Position and colour — the example vertex format</td></tr>
-  <tr><td><a href="#meshdata">MeshVertex, Mesh, PushConstants</a></td><td>Structs</td><td>Vulkan/VulkanRenderer.h</td><td>Position and normal, a mesh, and the shader's inline constants</td></tr>
-  <tr><td>ShadersSpv</td><td>Generated header</td><td>Vulkan/ShadersSpv.h</td><td>Compiled SPIR-V embedded as data</td></tr>
-  <tr><td>RendererTest</td><td>Test collection</td><td>RendererTest.h</td><td>Module's unit tests, under <code>__UNIT_TEST__</code></td></tr>
+  <tr id="rendercapabilities">
+    <td><a href="RenderCapabilities/index.html">RenderCapabilities</a><span class="badge">1 method page</span></td>
+    <td>Class, trivially copyable</td>
+    <td>RenderCapabilities.h</td>
+    <td>API-neutral description of one device: identity, twenty-one one-bit flags, eighteen limits. An all-zero instance
+        means explicitly unqueried</td>
+  </tr>
+  <tr id="devicetype">
+    <td><a href="DeviceType/index.html">DeviceType</a><span class="badge">no methods</span></td>
+    <td>Enum class, <code>uint8_t</code></td>
+    <td>RenderCapabilities.h</td>
+    <td>What kind of device answered: <code>Unknown</code>, <code>DiscreteGpu</code>, <code>IntegratedGpu</code>,
+        <code>VirtualGpu</code>, <code>CpuSoftware</code></td>
+  </tr>
+  <tr id="rhicapabilities">
+    <td><a href="RHICapabilities/index.html">RHICapabilities</a><span class="badge">2 method pages</span></td>
+    <td>Class, statics only, <code>final</code></td>
+    <td>RHICapabilities.h</td>
+    <td>Answers capability questions before a renderer exists — one compile-time bool, one probe that creates and discards
+        a Vulkan instance</td>
+  </tr>
+  <tr id="vulkanrenderer">
+    <td><a href="VulkanRenderer/index.html">VulkanRenderer</a><span class="badge">13 method pages</span></td>
+    <td>Class, no base, non-copyable</td>
+    <td>Vulkan/VulkanRenderer.h</td>
+    <td>The Vulkan backend: instance, surface, device, swapchain, pipeline, two frames in flight. Constructed directly —
+        there is no interface to hold it through</td>
+  </tr>
+  <tr id="vertex">
+    <td><a href="Vertex/index.html">Vertex</a><span class="badge">1 method page</span></td>
+    <td>Struct</td>
+    <td>Vertex.h</td>
+    <td><code>Vector3&lt;float&gt; position</code> + <code>Vector4&lt;float&gt; color</code>. The example vertex format —
+        and the one no pipeline in this tree draws</td>
+  </tr>
+  <tr id="meshvertex">
+    <td><a href="MeshVertex/index.html">MeshVertex</a><span class="badge">1 method page</span></td>
+    <td>Struct, 24 bytes packed</td>
+    <td>Vulkan/VulkanRenderer.h</td>
+    <td>Position and normal as two <code>float[3]</code> — the only vertex layout the built pipeline accepts</td>
+  </tr>
+  <tr id="mesh">
+    <td><a href="Mesh/index.html">Mesh</a><span class="badge">no methods</span></td>
+    <td>Struct, aggregate</td>
+    <td>Vulkan/VulkanRenderer.h</td>
+    <td><code>std::vector&lt;MeshVertex&gt; vertices</code> and <code>std::vector&lt;uint32_t&gt; indices</code>: the host-side
+        carrier handed to <a href="VulkanRenderer/set-mesh.html"><code>SetMesh</code></a></td>
+  </tr>
+  <tr id="pushconstants">
+    <td><a href="PushConstants/index.html">PushConstants</a><span class="badge">no methods</span></td>
+    <td>Struct, 128 bytes</td>
+    <td>Vulkan/VulkanRenderer.h</td>
+    <td><code>model</code> and a CPU-combined <code>viewProj</code> — two matrices, not three, because three would be 192
+        bytes and only 128 are guaranteed</td>
+  </tr>
+  <tr id="shaderspv">
+    <td>ShadersSpv</td>
+    <td>Generated header</td>
+    <td>Vulkan/ShadersSpv.h</td>
+    <td>Compiled SPIR-V embedded as data: <code>gMCVertexSpv</code> (1716 bytes) and <code>gMCFragmentSpv</code> (924).
+        No page — see <a href="#coverage">Coverage</a></td>
+  </tr>
+  <tr id="renderertest">
+    <td>RendererTest</td>
+    <td>Test collection</td>
+    <td>RendererTest.h</td>
+    <td>Module's unit tests under <code>__UNIT_TEST__</code>: unqueried capabilities before initialization, and a
+        null-window round trip. Registered through
+        <a href="../Test/index.html#unittestcollection">Test</a></td>
+  </tr>
 </table>
 
 <h2 id="variables">Module variables</h2>
 
+<p>
+  No header in this module declares an object at namespace scope. The two constants that exist are class members, and both
+  are ceilings a caller has to respect:
+</p>
+
 <table>
   <tr><th>Name</th><th>Type</th><th>Where</th><th>Purpose</th></tr>
-  <tr><td><code>RenderCapabilities::MaxDeviceNameLength</code></td><td><code>static constexpr size_t</code> = 128</td><td>RenderCapabilities.h</td><td>Length of the inline <code>deviceName</code> buffer, so an identity needs no allocation</td></tr>
+  <tr>
+    <td><code>RenderCapabilities::MaxDeviceNameLength</code></td>
+    <td><code>static constexpr size_t</code> = 128</td>
+    <td>RenderCapabilities.h</td>
+    <td>Length of the inline <code>deviceName</code> buffer, so an identity needs no allocation. The Vulkan adapter copies
+        at most 127 characters and always writes the terminator</td>
+  </tr>
+  <tr>
+    <td><code>VulkanRenderer::MAX_FRAMES_IN_FLIGHT</code></td>
+    <td><code>static constexpr size_t</code> = 2 (private)</td>
+    <td>Vulkan/VulkanRenderer.h</td>
+    <td>Command buffers, fences and semaphores per frame slot. It is the reason
+        <a href="VulkanRenderer/set-mesh.html"><code>SetMesh</code></a> cannot free buffers safely mid-loop</td>
+  </tr>
 </table>
 
 <p>
-  Availability of the whole module is a compile-time question:
-  <a href="../Config/index.html#buildconfig"><code>VULKAN_SDK</code></a> is 1 only when the SDK headers are
-  reachable, and 0 otherwise with a warning — the renderer compiles out rather than failing the build. See
-  <a href="../index.html">the index</a> for the installation scripts.
+  Availability is decided twice, and the two decisions disagree.
+  <a href="../Config/index.html#buildconfig"><code>VULKAN_SDK</code></a> is 1 when <code>__has_include</code> finds
+  <code>vulkan/vulkan.h</code> and 0 otherwise with a <code>#pragma message</code> naming the install script — a tolerant,
+  header-level answer. The build is not tolerant: <code>Engine/Renderer/CMakeLists.txt</code> runs
+  <code>find_path(vulkan/vulkan.h …)</code> and <code>find_library(vulkan …)</code> and both
+  <code>FATAL_ERROR</code>, with the comment "The engine is Vulkan-only, so a missing loader is a hard error, not a silent
+  skip." No header here guards its <code>#include &lt;vulkan/vulkan.h&gt;</code> on the macro. So in this tree the renderer
+  does <strong>not</strong> compile out when the SDK is missing — configure stops. Installation scripts are linked from
+  <a href="../index.html">the index</a>.
+</p>
+
+<p>
+  <code>Engine/Renderer/.module.config</code> carries <code>ignoreSubdirectories = DX12 Metal Vulkan</code>: the two absent
+  backends are reserved directory names in the generator's configuration, and the <code>Vulkan/</code> sources are wired
+  into the target explicitly by <code>customCMake.txt</code> instead of being discovered — which is how a second backend
+  directory would join, without an API-kind enum deciding at run time.
 </p>
 
 <h2 id="functions">Module functions</h2>
 
-<p>None at namespace scope; the queries are static members of <a href="#rhicapabilities">RHICapabilities</a>.</p>
-
-<h2 id="rendercapabilities">RenderCapabilities (<code>Engine/Renderer/RenderCapabilities.h</code>)</h2>
-
-<h3>Class description</h3>
 <p>
-  One device, described in words every backend can answer. Field names are deliberately neutral, and the header
-  documents the mapping each backend is expected to use. Nothing in here is a default the engine hopes for:
-  values come from the device, and the default-constructed object means <em>nothing was asked</em>.
+  Three free functions live at namespace scope in <code>hbe::Renderer</code>. The previous version of this page said
+  "None at namespace scope" while quoting one of them in prose; all three are real, and none has a page of its own in this
+  batch — they are named here and detailed in their headers.
 </p>
-
-<h3>Template parameters</h3>
-<p>None — RenderCapabilities is not a template.</p>
-
-<h3>Class properties</h3>
-
-<h4>Identity</h4>
-<table>
-  <tr><th>Property</th><th>Type</th><th>Meaning</th></tr>
-  <tr><td><code>deviceName</code></td><td><code>char[MaxDeviceNameLength]</code></td><td>Backend and device identity — where you tell Vulkan from a second backend today</td></tr>
-  <tr><td><code>deviceType</code></td><td><a href="#devicetype"><code>DeviceType</code></a></td><td>Class of device</td></tr>
-  <tr><td><code>vendorId</code>, <code>deviceId</code></td><td><code>uint32_t</code></td><td>Purchasing ids from the API</td></tr>
-  <tr><td><code>driverVersion</code></td><td><code>uint32_t</code></td><td>Driver reported version</td></tr>
-  <tr><td><code>apiVersionMajor</code>, <code>apiVersionMinor</code></td><td><code>uint8_t</code></td><td>API version of the device that answered</td></tr>
-</table>
-
-<h4>Feature support — one bit each</h4>
-<p>Every flag is a single-bit field, which is what lets the whole descriptor sit in a constant buffer-sized span.</p>
 
 <table>
-  <tr><th>Bit</th><th>Meaning</th></tr>
-  <tr><td><code>isDeviceQueried</code></td><td>Whether anybody asked in the first place — see the note below; this is not a feature</td></tr>
-  <tr><td><code>supportsComputeShader</code>, <code>supportsTessellation</code>, <code>supportsGeometryShader</code></td><td>Programmable stages beyond vertex and fragment</td></tr>
-  <tr><td><code>supportsMultiDrawIndirect</code>, <code>supports32BitIndices</code></td><td>Drawing shapes and index ranges</td></tr>
-  <tr><td><code>supportsCubeTextureArrays</code>, <code>supportsTextureGather</code>, <code>supportsTextureCompressionBC</code>, <code>supportsTextureCompressionASTC</code></td><td>Texture capabilities, including which compression the hardware decodes</td></tr>
-  <tr><td><code>supportsIndependentBlend</code>, <code>supportsDualSourceBlend</code>, <code>supportsLogicOperations</code></td><td>Output merging, per-attachment</td></tr>
-  <tr><td><code>supportsDepthClamp</code>, <code>supportsDepthBiasClamp</code>, <code>supportsDepthBounds</code></td><td>Depth control beyond the near and far planes</td></tr>
-  <tr><td><code>supportsWireframeFill</code>, <code>supportsWideLines</code></td><td>Debug-drawing conveniences that modern APIs often lack</td></tr>
-  <tr><td><code>supportsSamplerAnisotropy</code>, <code>supportsPreciseOcclusionQueries</code>, <code>supportsRobustBufferAccess</code></td><td>Quality, query precision and out-of-bounds safety</td></tr>
+  <tr><th>Name</th><th>Header</th><th>What it does, and who calls it</th></tr>
+  <tr>
+    <td><code>IdentityMatrix</code></td>
+    <td>Vulkan/VulkanRenderer.h</td>
+    <td><code>inline void IdentityMatrix(float m[16]) noexcept</code> — zeroes sixteen floats, then sets
+        <code>m[0] = m[5] = m[10] = m[15] = 1.0f</code>. Column-major identity written in place, no return value. The only
+        caller is <a href="VulkanRenderer/constructors.html">the renderer's constructor</a>, which uses it on its three
+        matrix slots before any caller sets them</td>
+  </tr>
+  <tr>
+    <td><code>FillRenderCapabilities</code></td>
+    <td>Vulkan/VulkanCapabilities.h</td>
+    <td><code>void FillRenderCapabilities(VkPhysicalDevice physicalDevice, RenderCapabilities&amp; outCapabilities) noexcept</code>
+        — resets the descriptor to "unknown", then reads the physical device's properties and features into it and sets
+        <code>isDeviceQueried</code> last. A null handle logs an error and leaves the output untouched. Called by
+        <code>VulkanRenderer::QueryCapabilities</code> inside <code>CreateDevice</code>. This is the seam a second backend
+        copies rather than extends</td>
+  </tr>
+  <tr>
+    <td><code>QueryDefaultDeviceCapabilities</code></td>
+    <td>Vulkan/VulkanCapabilities.h</td>
+    <td><code>bool QueryDefaultDeviceCapabilities(RenderCapabilities&amp; outCapabilities) noexcept</code> — creates a
+        throwaway instance, enables <code>VK_KHR_portability_enumeration</code> only if the loader advertises it, takes the
+        first physical device, fills the descriptor and destroys the instance. Returns whether a device answered; failures
+        are warnings, not errors. The sole caller is
+        <a href="RHICapabilities/get-capabilities.html"><code>RHICapabilities::GetCapabilities</code></a></td>
+  </tr>
 </table>
 
-<h4>Limits</h4>
-<table>
-  <tr><th>Property</th><th>Type</th><th>Meaning</th></tr>
-  <tr><td><code>maxTextureDimension1D</code>, <code>maxTextureDimension2D</code>, <code>maxTextureDimension3D</code>, <code>maxTextureDimensionCube</code></td><td><code>uint32_t</code></td><td>Largest extent per texture kind. The 2D one replaces the older single <code>maxTextureSize</code> name, which hid that a 1D and a 3D limit are different numbers</td></tr>
-  <tr><td><code>maxTextureArrayLayers</code></td><td><code>uint32_t</code></td><td>Layers in an array texture</td></tr>
-  <tr><td><code>maxColorAttachments</code></td><td><code>uint32_t</code></td><td>Render targets at once</td></tr>
-  <tr><td><code>maxVertexAttributes</code>, <code>maxVertexOutputComponents</code></td><td><code>uint32_t</code></td><td>Vertex input and output slots — the first is what a vertex layout is bounded by</td></tr>
-  <tr><td><code>maxVertexBufferBindings</code></td><td><code>uint32_t</code></td><td>Binding points for vertex buffers</td></tr>
-  <tr><td><code>maxUniformBufferBindings</code>, <code>maxTextureBindings</code>, <code>maxPushConstantBytes</code></td><td><code>uint32_t</code></td><td>Descriptor budget, including how much a backend can pass inline — see <a href="#meshdata"><code>PushConstants</code></a></td></tr>
-  <tr><td><code>maxDrawIndirectCount</code></td><td><code>uint32_t</code></td><td>Draws one indirect call may describe</td></tr>
-  <tr><td><code>maxComputeWorkGroupInvocations</code></td><td><code>uint32_t</code></td><td>Workgroup ceiling</td></tr>
-  <tr><td><code>uniformBufferOffsetAlignment</code></td><td><code>uint32_t</code></td><td>Offset alignment a binding must satisfy — a violation is silent on some backends</td></tr>
-  <tr><td><code>maxSamplerAnisotropy</code>, <code>maxSamplerLodBias</code></td><td><code>float</code></td><td>Sampling quality ceilings</td></tr>
-  <tr><td><code>timestampPeriodNanoseconds</code></td><td><code>float</code></td><td>Nanoseconds per GPU timestamp tick — without this a GPU timestamp is a unitless number</td></tr>
-</table>
+<h2 id="meshdata">Data layouts</h2>
 
-<h3>Class methods</h3>
-<p>One constructor, which zero-fills: an all-zero descriptor is an explicitly unqueried one.</p>
-
-<h3>Non-member helper functions</h3>
-<p>None. Translating a real device into this descriptor is backend work — see <a href="#coverage">Coverage</a> for where the Vulkan translation lives.</p>
-
-<div class="gap">
-  <strong><code>isDeviceQueried == false</code> means nobody asked, never "not supported".</strong> Treating an
-  unqueried descriptor as a feature list is how code quietly disables a capability the hardware has, or — worse —
-  how a test that never probed passes. Check this flag before reading any <code>supports…</code> bit.
-</div>
-
-<h2 id="devicetype">DeviceType (<code>Engine/Renderer/RenderCapabilities.h</code>)</h2>
-
-<h3>Class description</h3>
-<p>The class of device that answered, from the API's own classification.</p>
-
-<pre><code><span class="kw">enum class</span> <span class="ty">DeviceType</span> : <span class="kw">uint8_t</span>
-{
-    Unknown, DiscreteGpu, IntegratedGpu, VirtualGpu, CpuSoftware
-};</code></pre>
-
-<h3>Template parameters</h3>
-<p>None — DeviceType is not a template.</p>
-
-<h3>Class properties</h3>
-<p>Not applicable to an enumeration; fixed underlying type <code>uint8_t</code>.</p>
-
-<h3>Class methods</h3>
-<p>None — an <code>enum class</code> declares no members.</p>
-
-<h3>Non-member helper functions</h3>
 <p>
-  None. <code>VirtualGpu</code> and <code>CpuSoftware</code> are the answers a CI machine gives, which is why a
-  capability check that ignores <code>deviceType</code> can pass there and fail on a real GPU.
+  Four plain structs define what goes to the GPU. Each has a page; what belongs at module level is the set of promises that
+  span files, because none of it is checked by the compiler.
 </p>
-
-<h2 id="rhicapabilities">RHICapabilities (<code>Engine/Renderer/RHICapabilities.h</code>)</h2>
-
-<h3>Class description</h3>
-<p>
-  Answers the capability questions that arrive <em>before</em> a renderer does — the installer and the test suite
-  being the two that must ask without a window.
-</p>
-
-<h3>Template parameters</h3>
-<p>None — RHICapabilities is not a template.</p>
-
-<h3>Class properties</h3>
-<p>None. There is no instance and no cache: every answer is a fresh probe.</p>
-
-<h3>Class methods</h3>
-
-<pre><code>[[nodiscard]] <span class="kw">static bool</span> IsVulkanSupported() <span class="kw">noexcept</span>;
-
-<span class="cm">/// Probe the first available device, creating and discarding a Vulkan instance.</span>
-<span class="cm">/// @return a descriptor whose isDeviceQueried is false when nothing could be probed</span>
-[[nodiscard]] <span class="kw">static</span> <span class="ty">RenderCapabilities</span> GetCapabilities() <span class="kw">noexcept</span>;</code></pre>
-
-<div class="gap">
-  <strong>This call is not cheap, and the return value says so rather than hiding it.</strong>
-  <code>GetCapabilities</code> creates a throwaway Vulkan instance, reads the first physical device through the
-  same adapter the renderer uses, and tears the instance down. Once a renderer owns a device, call
-  <a href="#vulkanrenderer"><code>VulkanRenderer::GetCapabilities</code></a> instead: it is cached, and it
-  describes the device that was actually <em>chosen</em>, which may not be the first one enumerated. A false
-  <code>isDeviceQueried</code> in the result means the probe failed, and that is the case a caller must branch on.
-</div>
-
-<h3>Non-member helper functions</h3>
-<p>
-  None. The older guide also listed <code>IsMetalSupported</code>, <code>IsDX12Supported</code> and a
-  <code>GetPreferredAPI</code> returning an <code>APIType</code>; none of those exist, and neither does the enum
-  they were built around.
-</p>
-
-<h2 id="vulkanrenderer">VulkanRenderer (<code>Engine/Renderer/Vulkan/VulkanRenderer.h</code>)</h2>
-
-<h3>Class description</h3>
-<p>
-  The Vulkan backend, and today the only renderer built. It owns instance, surface, device, swapchain and
-  command buffers, and takes the OS window through the portable
-  <a href="../OSAL/index.html#window"><code>OS::Window</code></a> facade — reaching the native handle only where
-  Vulkan requires it.
-</p>
-
-<h3>Template parameters</h3>
-<p>None — VulkanRenderer is not a template.</p>
-
-<h3>Class properties</h3>
-<p>
-  The Vulkan objects it creates — instance, surface, device, queues, swapchain, command buffers and
-  descriptors — all private, plus the cached <a href="#rendercapabilities"><code>RenderCapabilities</code></a>
-  filled by <code>QueryCapabilities</code>.
-</p>
-
-<h3>Class methods</h3>
-
-<pre><code>[[nodiscard]] <span class="kw">bool</span> Initialize(<span class="ty">OS::Window</span>* window) <span class="kw">noexcept</span>;
-<span class="kw">void</span> Shutdown() <span class="kw">noexcept</span>;
-
-<span class="kw">void</span> BeginFrame() <span class="kw">noexcept</span>;
-<span class="kw">void</span> Render(<span class="kw">float</span> deltaTime) <span class="kw">noexcept</span>;
-<span class="kw">void</span> EndFrame() <span class="kw">noexcept</span>;
-
-[[nodiscard]] <span class="kw">const</span> <span class="ty">RenderCapabilities</span>&amp; GetCapabilities() <span class="kw">const</span> <span class="kw">noexcept</span>;
-[[nodiscard]] VkExtent2D GetExtent() <span class="kw">const</span> <span class="kw">noexcept</span>;
-
-<span class="kw">void</span> SetMesh(<span class="kw">const</span> <span class="ty">Mesh</span>&amp; mesh) <span class="kw">noexcept</span>;
-<span class="kw">void</span> SetModel(<span class="kw">const float</span>* m) <span class="kw">noexcept</span>;
-<span class="kw">void</span> SetView(<span class="kw">const float</span>* m) <span class="kw">noexcept</span>;
-<span class="kw">void</span> SetProj(<span class="kw">const float</span>* m) <span class="kw">noexcept</span>;</code></pre>
 
 <table>
-  <tr><th>Method</th><th>Contract a caller depends on</th></tr>
-  <tr><td><code>Initialize</code></td><td>Returns false rather than throwing — the engine is exception-free, so every Vulkan creation step is a bool the caller has to honour. It takes the <a href="../OSAL/index.html#application">application</a>'s window and nothing else</td></tr>
-  <tr><td><code>BeginFrame</code>, <code>Render</code>, <code>EndFrame</code></td><td>The frame contract, in that order. <code>Render</code> takes the frame delta in seconds, matching <a href="../Core/index.html#systemstatistics"><code>SystemStatistics::GetDeltaTime</code></a></td></tr>
-  <tr><td><code>GetCapabilities</code></td><td>Cached, and it describes the device this renderer picked — the answer to prefer once a device exists</td></tr>
-  <tr><td><code>SetModel</code>, <code>SetView</code>, <code>SetProj</code></td><td>Matrices as 16 <code>float</code>; see <a href="#meshdata"><code>PushConstants</code></a> for where they land, and <a href="../Math/index.html#matrices"><code>Matrix4x4</code></a> for producing them</td></tr>
-  <tr><td><code>SetMesh</code></td><td>Installs geometry and rebuilds its vertex buffers — a per-mesh change, not a per-frame one</td></tr>
-  <tr><td><code>GetExtent</code></td><td>The swapchain's actual extent, which can differ from the <a href="../OSAL/index.html#window">window's</a> requested size</td></tr>
+  <tr><th>Type</th><th>Bytes</th><th>Layout</th><th>Bound to</th></tr>
+  <tr>
+    <td><a href="Vertex/index.html"><code>Vertex</code></a></td>
+    <td>28</td>
+    <td><code>Vector3&lt;float&gt; position</code> then <code>Vector4&lt;float&gt; color</code></td>
+    <td>Nothing today — no pipeline in this tree declares this layout</td>
+  </tr>
+  <tr>
+    <td><a href="MeshVertex/index.html"><code>MeshVertex</code></a></td>
+    <td>24</td>
+    <td><code>float position[3]</code> at offset 0, <code>float normal[3]</code> at offset 12</td>
+    <td>The pipeline's vertex input, and <code>MC.vert</code>'s <code>aPosition</code> / <code>aNormal</code></td>
+  </tr>
+  <tr>
+    <td><a href="Mesh/index.html"><code>Mesh</code></a></td>
+    <td>host only</td>
+    <td>Two <code>std::vector</code>: <code>MeshVertex</code> vertices, <code>uint32_t</code> indices</td>
+    <td><a href="VulkanRenderer/set-mesh.html"><code>SetMesh</code></a>, which copies both blocks out and holds no
+        reference</td>
+  </tr>
+  <tr>
+    <td><a href="PushConstants/index.html"><code>PushConstants</code></a></td>
+    <td>128</td>
+    <td><code>float model[16]</code> at 0, <code>float viewProj[16]</code> at 64, column-major</td>
+    <td>One push-constant range (vertex stage, offset 0, 128 bytes) and <code>MC.vert</code>'s
+        <code>Push { mat4 model; mat4 viewProj; }</code></td>
+  </tr>
 </table>
-
-<p>
-  The creation steps — <code>CreateInstance</code>, <code>CreateSurface</code>, <code>PickDevice</code>,
-  <code>CreateDevice</code>, <code>QueryCapabilities</code>, <code>CreateVertexBuffers</code> — are private: the
-  order is the backend's business, and <code>Initialize</code> is the only legal way through it.
-</p>
-
-<h3>Non-member helper functions</h3>
-
-<pre><code><span class="cm">// Vulkan/VulkanRenderer.h — a column-major identity on the stack</span>
-<span class="kw">inline void</span> IdentityMatrix(<span class="kw">float</span> m[<span class="nu">16</span>]) <span class="kw">noexcept</span>;</code></pre>
-
-<h2 id="meshdata">Vertex, MeshVertex, Mesh, PushConstants</h2>
-
-<h3>Class descriptions</h3>
-
-<table>
-  <tr><th>Type</th><th>Header</th><th>Fields</th><th>Role</th></tr>
-  <tr><td><code>Vertex</code></td><td>Vertex.h</td><td><code>Vector3&lt;float&gt; position</code>, <code>Vector4&lt;float&gt; color</code></td><td>The example vertex format, and the one <a href="#meshdata"><code>Vertex.h</code></a> exists for</td></tr>
-  <tr><td><code>MeshVertex</code></td><td>Vulkan/VulkanRenderer.h</td><td>position and a normal, six floats</td><td>What a lit mesh actually needs, beyond the example format</td></tr>
-  <tr><td><code>Mesh</code></td><td>Vulkan/VulkanRenderer.h</td><td><code>std::vector&lt;MeshVertex&gt; vertices</code> and an index list</td><td>Geometry handed to <code>SetMesh</code></td></tr>
-  <tr><td><code>PushConstants</code></td><td>Vulkan/VulkanRenderer.h</td><td>the model, view and projection matrices</td><td>The three matrices passed inline, bounded by <code>maxPushConstantBytes</code></td></tr>
-</table>
-
-<h3>Template parameters</h3>
-<p>None — all four are plain structs.</p>
-
-<h3>Class properties</h3>
-<p>Listed above. Both vertex types are public data with constructors that take components in order: <code>Vertex(x, y, z, r, g, b, a)</code> and <code>MeshVertex(x, y, z, nx, ny, nz)</code>.</p>
-
-<h3>Class methods</h3>
-<p>Constructors only, including <code>= default</code> so an array of them can be built without initialising every field twice.</p>
-
-<h3>Non-member helper functions</h3>
-<p><a href="#vulkanrenderer"><code>IdentityMatrix</code></a>, which fills a matrix argument in place.</p>
 
 <div class="note">
-  Two vertex formats in one module is a fact, not a mistake: <a href="#meshdata"><code>Vertex</code></a> is the
-  unlit example layout, <a href="#meshdata"><code>MeshVertex</code></a> the lit one. A pipeline is created against
-  one of them, so the type you build a mesh from has to be the type the pipeline was told about.
+  <strong>Two vertex formats in one module is a fact, not a mistake.</strong>
+  <a href="Vertex/index.html"><code>Vertex</code></a> is the unlit example layout — position and colour;
+  <a href="MeshVertex/index.html"><code>MeshVertex</code></a> is the lit one — position and normal. A pipeline is created
+  against one stride and one pair of offsets, and this backend creates exactly one pipeline, so the type a mesh is built
+  from has to be the type that pipeline was told about.
 </div>
+
+<div class="note">
+  <strong>Three matrices become two before they reach the shader.</strong> The renderer keeps
+  <code>modelMat</code>, <code>viewMat</code> and <code>projMat</code> as separate slots, and
+  <a href="VulkanRenderer/render.html"><code>Render</code></a> multiplies <code>viewProj = projMat * viewMat</code> on the
+  CPU once per frame so the guaranteed 128-byte push range can also carry a model matrix. Anything the fragment stage needs
+  cannot ride here at all: the range is vertex-stage only.
+</div>
+
+<h2 id="contracts">Frame and lifetime contracts</h2>
+
+<p>
+  Five rules that a caller has to honour regardless of which page they are reading. Each is stated with its reasoning on
+  the method page that owns it.
+</p>
+
+<table>
+  <tr><th>Rule</th><th>What it costs to ignore</th><th>Full contract</th></tr>
+  <tr>
+    <td><code>isDeviceQueried == false</code> means nobody asked, never "not supported"</td>
+    <td>Reading an unqueried descriptor as a feature list quietly disables capabilities the hardware has — and the previous
+        revision of the type hid this behind guessed defaults of 4096 / 16 / 16</td>
+    <td><a href="RenderCapabilities/index.html">RenderCapabilities</a></td>
+  </tr>
+  <tr>
+    <td>Before a device exists, probe; afterwards, read the cache</td>
+    <td><a href="RHICapabilities/get-capabilities.html"><code>RHICapabilities::GetCapabilities</code></a> creates and
+        discards a Vulkan instance every call and describes the <em>first</em> enumerated device;
+        <a href="VulkanRenderer/get-capabilities.html"><code>VulkanRenderer::GetCapabilities</code></a> is a copy of the
+        device actually chosen. Note that the renderer's returns a copy, not a reference</td>
+    <td><a href="RHICapabilities/index.html">RHICapabilities</a></td>
+  </tr>
+  <tr>
+    <td>One <code>EndFrame</code> per <code>BeginFrame</code>, even when nothing drew</td>
+    <td><code>BeginFrame</code> resets the slot's fence before acquiring; skipping <code>EndFrame</code> leaves that fence
+        unsignalled and the next <code>BeginFrame</code> waits on it forever</td>
+    <td><a href="VulkanRenderer/begin-frame.html">BeginFrame</a>,
+        <a href="VulkanRenderer/end-frame.html">EndFrame</a></td>
+  </tr>
+  <tr>
+    <td><code>Render</code> is recording, and needs this cycle's <code>BeginFrame</code></td>
+    <td>Its guard is <code>initialized &amp;&amp; frameActive</code>, and <code>EndFrame</code> does not clear
+        <code>frameActive</code> — a second <code>Render</code> re-records a command buffer that may still be running</td>
+    <td><a href="VulkanRenderer/render.html">Render</a></td>
+  </tr>
+  <tr>
+    <td>The swapchain extent is fixed at <code>Initialize</code></td>
+    <td>No swapchain recreation exists, so a resized window keeps rendering at the old extent;
+        <a href="VulkanRenderer/get-extent.html"><code>GetExtent</code></a> reports that fixed size and is the number to build
+        an aspect ratio from</td>
+    <td><a href="VulkanRenderer/get-extent.html">GetExtent</a></td>
+  </tr>
+</table>
+
+<p>
+  The creation order inside <a href="VulkanRenderer/initialize.html"><code>Initialize</code></a> — instance, surface,
+  device pick, device, swapchain, render pass, depth, framebuffers, command buffers, pipeline, sync objects — is private:
+  the surface must exist before a device is picked, because queue-family presentation support is queried against that
+  surface, and <code>Initialize</code> is the only legal way through it. Geometry is not part of it; vertex and index
+  buffers come from <a href="VulkanRenderer/set-mesh.html"><code>SetMesh</code></a>.
+</p>
 
 <h2 id="coverage">Coverage</h2>
 
@@ -341,27 +377,60 @@
   <tr>
     <td>Names the previous guide documented that do not exist</td>
     <td><code>IRenderer</code>, <code>RendererFactory::Create</code> and <code>CreateWithFallback</code>,
-        <code>Vulkan</code>/<code>DX12</code>/<code>Metal</code> renderer classes, <code>APIType</code>,
-        <code>IsMetalSupported</code>, <code>IsDX12Supported</code>, <code>GetPreferredAPI</code>. Recorded here
-        so the absence is findable; the reasoning for removing the runtime API-kind enum is in
-        <a href="../RendererDesign.html">docs/RendererDesign.html</a>.</td>
+        <code>Vulkan</code> / <code>DX12</code> / <code>Metal</code> renderer classes, <code>APIType</code>,
+        <code>IsMetalSupported</code>, <code>IsDX12Supported</code>, <code>GetPreferredAPI</code>, and the
+        <code>IsVulkanSupported</code>-style "runtime availability" reading those implied. Recorded so the absence is
+        findable; the reasoning for compile-time backend selection is in
+        <a href="../RendererDesign.html">docs/RendererDesign.html</a></td>
   </tr>
   <tr>
-    <td>The capability translation seam</td>
-    <td><code>Vulkan/VulkanCapabilities.h</code> turns a physical device into a
-        <a href="#rendercapabilities"><code>RenderCapabilities</code></a>, and it is the shape a second backend
-        would copy rather than extend. Its per-field mapping is documented in that header and in
-        <a href="../RendererDesign.html">the design document</a>, not here.</td>
+    <td>The capability translation seam has no page</td>
+    <td><code>Vulkan/VulkanCapabilities.h</code> holds the two free functions under
+        <a href="#functions">Module functions</a>. Its per-field Vulkan-to-descriptor mapping — which
+        <code>VkPhysicalDeviceFeatures</code> member feeds which bit, and which limits are cast — is documented in that
+        header and in the design document, not restated here. Two of its behaviours do appear on class pages:
+        <code>supportsComputeShader</code> is set <code>true</code> without a query because Vulkan makes compute mandatory,
+        and <code>uniformBufferOffsetAlignment</code> comes from the <em>minimum</em> alignment</td>
   </tr>
   <tr>
-    <td><a href="#vulkanrenderer"><code>VulkanRenderer</code></a> internals</td>
-    <td>Swapchain recreation, synchronisation objects and descriptor layout are implementation, and belong in a
-        design document under <code>docs/design/</code> — there is none for the Vulkan backend yet.</td>
+    <td><a href="VulkanRenderer/index.html"><code>VulkanRenderer</code></a> internals</td>
+    <td>Swapchain recreation, synchronisation objects, descriptor and pipeline construction are implementation and belong in
+        a design document under <code>docs/design/</code> — there is none for the Vulkan backend yet, which is why the frame
+        and lifetime rules on this page are stated from the source. The private step list is named there too</td>
+  </tr>
+  <tr>
+    <td>Thread-safety is asserted nowhere</td>
+    <td>No header in this module states a thread requirement, and no class here holds a mutex or an atomic. What the code
+        supports is narrower: one thread must drive the frame protocol, because <code>currentFrame</code>,
+        <code>imageIndex</code> and <code>frameActive</code> are shared by all three calls, and on macOS
+        <a href="VulkanRenderer/initialize.html"><code>Initialize</code></a> calls AppKit (<code>[nsWindow setContentView:]</code>)
+        which AppKit wants on the main thread. Recorded as a gap, not as a rule — the headers do not say it</td>
   </tr>
   <tr>
     <td><code>ShadersSpv.h</code></td>
-    <td>Generated SPIR-V held as data. Its content is a build artefact; how it is regenerated is not documented
-        anywhere on this site.</td>
+    <td>Generated SPIR-V held as data, consumed by <code>CreatePipeline</code>. Its content is a build artefact and how it is
+        regenerated — <code>Vulkan/gen_spv_header.py</code> over <code>Shaders/MC.vert</code> and <code>MC.frag</code> — is
+        documented nowhere on this site</td>
+  </tr>
+  <tr>
+    <td><a href="Vertex/index.html"><code>Vertex</code></a> has no user</td>
+    <td>Compiled into the library, never constructed: no pipeline, mesh, test or application names it. Stated on its own page
+        rather than presented as a working format</td>
+  </tr>
+  <tr>
+    <td><code>RendererTest</code> and the fixture pattern</td>
+    <td>Declared under <code>__UNIT_TEST__</code> in <code>RendererTest.h</code> and registered with the runner documented in
+        <a href="../Test/index.html#unittestcollection">Test</a>. Its cases are quoted as call sites on
+        <a href="VulkanRenderer/render.html">Render</a>,
+        <a href="VulkanRenderer/get-capabilities.html">GetCapabilities</a> and
+        <a href="VulkanRenderer/initialize.html">Initialize</a>; the fixture itself is not engine API</td>
+  </tr>
+  <tr>
+    <td>Contracts that belong to another module</td>
+    <td>What <a href="../OSAL/index.html#window"><code>OS::Window</code></a> means by its width and height, and who owns the
+        native handle, is OSAL; the assert family used by the test cases is
+        <a href="../Core/index.html#functions">Core: Debug</a>; matrix builders are <a href="../Math/index.html#matrices">Math</a>.
+        None of it is restated here</td>
   </tr>
 </table>
 

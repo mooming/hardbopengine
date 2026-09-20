@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mesh — Renderer — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="#description">Class description</a></li>
+    <li><a href="#template">Template parameters</a></li>
+    <li><a href="#properties">Class properties</a></li>
+    <li><a href="#methods">Class methods</a></li>
+    <li><a href="#non-member">Non-member helpers</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+
+  <h3>Methods</h3>
+  <ul class="methods">
+    <li>None — data members only</li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Renderer</a> / Mesh
+</p>
+
+<h1>Mesh</h1>
+<p class="subtitle">
+  <span class="tag">Engine/Renderer/Vulkan/VulkanRenderer.h</span>
+  <span class="tag">namespace hbe::Renderer</span>
+  <span class="tag">aggregate</span>
+  two host-side vectors — vertices and 32-bit indices — handed to <a href="../VulkanRenderer/set-mesh.html"><code>SetMesh</code></a> and copied out
+</p>
+
+<h2 id="description">Class description</h2>
+
+<p>
+  The header describes it as "A triangle mesh to upload to the GPU", and that is exactly its role: a carrier from a
+  generator to <a href="../VulkanRenderer/set-mesh.html"><code>SetMesh</code></a>. It declares no constructors, no
+  methods and no invariants, so it is an aggregate — <code>Mesh mesh;</code> then two brace lists, as the example does —
+  and copy, move and assignment are all implicit. Nothing in the module caches it, compares it or keeps a collection of
+  them.
+</p>
+
+<p>
+  Nothing here survives the call either. <code>SetMesh</code> maps device memory and <code>memcpy</code>s
+  <code>vertices.data()</code> and <code>indices.data()</code> into it, so the renderer holds no reference to this object
+  and the mesh may be a local that dies on the next line. Geometry is then fixed until the next
+  <a href="../VulkanRenderer/set-mesh.html"><code>SetMesh</code></a>, which makes this the type that decides how often
+  geometry can change — and, given what that call frees, when it is safe to.
+</p>
+
+<h2 id="template">Template parameters</h2>
+
+<p>None — <code>Mesh</code> is not a template.</p>
+
+<h2 id="properties">Class properties</h2>
+
+<table>
+  <tr><th>Name</th><th>Declaration</th><th>What it means</th></tr>
+  <tr>
+    <td><code>vertices</code></td>
+    <td><code>std::vector&lt;MeshVertex&gt; vertices;</code></td>
+    <td><span class="badge">public data</span> The vertices, uploaded as one block of
+        <code>vertices.size() * sizeof(MeshVertex)</code> bytes. Empty means no draw this frame — not an error. A
+        <code>std::vector</code> rather than the engine's own
+        <a href="../../Container/Array/index.html"><code>Array</code></a>, so this host-side carrier allocates through the
+        default allocator and nothing else</td>
+  </tr>
+  <tr>
+    <td><code>indices</code></td>
+    <td><code>std::vector&lt;uint32_t&gt; indices;</code></td>
+    <td><span class="badge">public data</span> Triangle-list indices, three per triangle, uploaded as
+        <code>indices.size() * sizeof(uint32_t)</code> bytes and drawn by
+        <code>vkCmdDrawIndexed(indices.size(), 1, 0, 0, 0)</code>. Empty means no draw</td>
+  </tr>
+</table>
+
+<div class="note">
+  <strong>Indices are 32-bit, unconditionally.</strong> The bind is hard-coded
+  <code>VK_INDEX_TYPE_UINT32</code> and the element type is <code>uint32_t</code>, so a mesh over 65 535 vertices is
+  representable here — and the renderer never asks
+  <a href="../RenderCapabilities/index.html"><code>supports32BitIndices</code></a>, which is the capability that says the
+  device allows it. Vulkan 1.0 makes <code>fullDrawIndexUint32</code> mandatory so this is safe in practice, but the
+  check that would prove it is not performed.
+</div>
+
+<h2 id="methods">Class methods</h2>
+
+<p>
+  None declared: no constructor, no validation, no accessor. Being an aggregate, all construction and assignment forms
+  are implicit — which is the useful part, since it is what lets the example fill both vectors with brace lists.
+</p>
+
+<table>
+  <tr><th>Method</th><th>Signature</th><th>What a caller depends on</th></tr>
+  <tr><td colspan="3">None.</td></tr>
+</table>
+
+<h2 id="non-member">Non-member helper functions</h2>
+
+<p>
+  None in this module. The generator in the example is file-local to <code>Applications/VulkanExample/Main.cpp</code>
+  (<code>MakeQuad</code>) rather than a shared helper, so there is no engine function that produces a
+  <code>Mesh</code>.
+</p>
+
+<h2 id="coverage">Coverage</h2>
+
+<table>
+  <tr><th>Gap</th><th>Detail</th></tr>
+  <tr>
+    <td>No sub-mesh, no multiple draw targets</td>
+    <td>One vertex vector, one index vector, one indexed draw per frame. There is no material, subrange or instance
+        field, and <code>vertexCount</code> / <code>indexCount</code> in the renderer are single values — so batching
+        several meshes is not expressible in this type</td>
+  </tr>
+  <tr>
+    <td>One vertex format</td>
+    <td>The element type is <a href="../MeshVertex/index.html"><code>MeshVertex</code></a>, matching the only pipeline
+        built. <a href="../Vertex/index.html"><code>Vertex</code></a> cannot be submitted through this type</td>
+  </tr>
+  <tr>
+    <td>Geometry changes mid-loop</td>
+    <td>Not this struct's contract but the reader's: re-uploading while a frame that binds the old buffers is in flight
+        is unsafe today. The rule and its reasoning are on
+        <a href="../VulkanRenderer/set-mesh.html"><code>SetMesh</code></a></td>
+  </tr>
+  <tr>
+    <td>No mesh loading</td>
+    <td>Nothing in the engine reads a mesh file into this type, and the <a href="../../Resource/index.html">Resource</a>
+        module's loaders are themselves unimplemented — the only <code>Mesh</code> in this tree is built in code</td>
+  </tr>
+</table>
+
+<footer class="prevnext">
+  <span><a href="../index.html">← Renderer</a></span>
+  <span><a href="../index.html#mesh">Mesh in the Renderer class list</a></span>
+</footer>
+
+</main>
+</body>
+</html>

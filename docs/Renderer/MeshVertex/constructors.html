@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MeshVertex::MeshVertex — Renderer — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signatures</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">MeshVertex</a> methods</h3>
+  <ul class="methods">
+    <li><a class="current" href="constructors.html">constructors</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Renderer</a> /
+  <a href="index.html">MeshVertex</a> / constructors
+</p>
+
+<h1><span class="fn">MeshVertex</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Renderer::MeshVertex</span>
+  <span class="tag">Engine/Renderer/Vulkan/VulkanRenderer.h</span>
+  <span class="tag">2 overloads</span>
+  write the six floats in field order, or declare one and get nothing written at all
+</p>
+
+<h2 id="signature">Signatures</h2>
+
+<pre><code><span class="fn">MeshVertex</span>() = <span class="kw">default</span>;
+
+<span class="fn">MeshVertex</span>(<span class="kw">float</span> x, <span class="kw">float</span> y, <span class="kw">float</span> z, <span class="kw">float</span> nx, <span class="kw">float</span> ny, <span class="kw">float</span> nz)
+        : position{x, y, z}, normal{nx, ny, nz}
+{}</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  The six-argument constructor is the whole API of this type: three floats into <code>position</code>, three into
+  <code>normal</code>, in that order, with no scaling, no normalisation and no conversion from
+  <a href="../../Math/index.html#functions"><code>Vector3&lt;float&gt;</code></a> — a mesh generator that works in engine
+  vectors has to write the six scalars itself.
+</p>
+
+<p>
+  The defaulted constructor is not decoration. Declaring <em>any</em> constructor removes the implicit default
+  constructor, and without a default-constructible element type <a href="../Mesh/index.html"><code>Mesh</code></a>'s
+  <code>std::vector&lt;MeshVertex&gt;</code> could not be sized or resized. <code>= default</code> writes it back, and
+  because it is explicitly defaulted on its declaration it stays trivial.
+</p>
+
+<div class="note">
+  <strong>Which of the two runs decides whether the floats mean anything.</strong>
+  <code>MeshVertex v;</code> default-initialises through that trivial constructor and writes nothing: all six floats are
+  indeterminate. <code>MeshVertex v{};</code> value-initialises, and since the defaulted constructor is not
+  user-provided, the object is zero-initialised first — six zeros. The same distinction covers containers:
+  <code>std::vector&lt;MeshVertex&gt; verts(64);</code> yields zero-filled vertices, because vector value-inserts. A vertex
+  array filled by index afterwards is fine either way; a vertex array read before being written is not.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr>
+    <td><code>x</code>, <code>y</code>, <code>z</code></td>
+    <td><code>float</code></td>
+    <td>Object-space position, written to <code>position[0..2]</code>. No unit is imposed — the example's quad spans
+        -1 to 1 and the camera sits at <code>z = -3</code></td>
+  </tr>
+  <tr>
+    <td><code>nx</code>, <code>ny</code>, <code>nz</code></td>
+    <td><code>float</code></td>
+    <td>Surface normal, written to <code>normal[0..2]</code>. Expected to be unit length by the shader; nothing in this
+        module checks or normalises it</td>
+  </tr>
+</table>
+
+<p>
+  The defaulted overload takes nothing — see the note above about what it therefore leaves behind.
+</p>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  Constructors return nothing, and neither can fail: this is twenty-four bytes of floats with no resource attached. The
+  result is a value ready to be copied into <a href="../Mesh/index.html"><code>Mesh</code>::vertices</a> and, one
+  <a href="../VulkanRenderer/set-mesh.html"><code>SetMesh</code></a> later, into a buffer by <code>memcpy</code>.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<p>
+  The one call site in the repository builds a brace-initialised list of six-argument vertices straight into the
+  vector:
+</p>
+
+<p class="meta">From Applications/VulkanExample/Main.cpp</p>
+
+<pre><code>        mesh.vertices = {
+                        <span class="ty">MeshVertex</span>(-<span class="nu">1.0f</span>, -<span class="nu">1.0f</span>, <span class="nu">0.0f</span>, <span class="nu">0.0f</span>, <span class="nu">0.0f</span>, <span class="nu">1.0f</span>),
+                        <span class="ty">MeshVertex</span>(<span class="nu">1.0f</span>, -<span class="nu">1.0f</span>, <span class="nu">0.0f</span>, <span class="nu">0.0f</span>, <span class="nu">0.0f</span>, <span class="nu">1.0f</span>),
+                        <span class="ty">MeshVertex</span>(<span class="nu">1.0f</span>, <span class="nu">1.0f</span>, <span class="nu">0.0f</span>, <span class="nu">0.0f</span>, <span class="nu">0.0f</span>, <span class="nu">1.0f</span>),
+                        <span class="ty">MeshVertex</span>(-<span class="nu">1.0f</span>, <span class="nu">1.0f</span>, <span class="nu">0.0f</span>, <span class="nu">0.0f</span>, <span class="nu">0.0f</span>, <span class="nu">1.0f</span>),
+        };</code></pre>
+
+<p>
+  All four normals are <code>(0, 0, 1)</code>: a quad in the XY plane facing +Z, so a fixed light direction sweeps
+  across it as the model matrix rotates about Y. Note that the class is not an aggregate — a user-provided constructor
+  rules that out — so this list-initialisation is selecting the six-argument constructor, not aggregate initialisation.
+</p>
+
+<footer class="prevnext">
+  <span><a href="index.html">← MeshVertex</a></span>
+  <span><a href="index.html#methods">All MeshVertex methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

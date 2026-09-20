@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RenderCapabilities — Renderer — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="#description">Class description</a></li>
+    <li><a href="#template">Template parameters</a></li>
+    <li><a href="#properties">Class properties</a></li>
+    <li><a href="#methods">Class methods</a></li>
+    <li><a href="#non-member">Non-member helpers</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+
+  <h3>Methods</h3>
+  <ul class="methods">
+    <li><a href="constructors.html">constructors</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Renderer</a> / RenderCapabilities
+</p>
+
+<h1>RenderCapabilities</h1>
+<p class="subtitle">
+  <span class="tag">Engine/Renderer/RenderCapabilities.h</span>
+  <span class="tag">namespace hbe::Renderer</span>
+  <span class="tag">trivially copyable</span>
+  one graphics device described in words every backend can answer — identity, twenty-one one-bit flags, eighteen limits
+</p>
+
+<h2 id="description">Class description</h2>
+
+<p>
+  A plain aggregate of numbers: which device answered, what it can do, how far each thing may go. Field names are
+  chosen to be expressible by Vulkan, Direct3D 12 and Metal alike, so a backend adapter only translates names and
+  never reshapes the struct; the mapping the Vulkan adapter uses is written out per field in the header and quoted
+  on <a href="../index.html#rendercapabilities">the module page</a>. Nothing in the type is a default the engine
+  hopes for — a real value arrives only from a query, and the
+  <a href="constructors.html">constructor</a> zeroes everything so an unqueried descriptor cannot be mistaken for
+  a queried one.
+</p>
+
+<p>
+  The file closes with <code>static_assert(std::is_trivially_copyable_v&lt;RenderCapabilities&gt;)</code>, because
+  the descriptor is passed and returned by value across the backend seam. Adding a member with a non-trivial
+  constructor, a reference or an owning pointer turns that assertion into a compile error at the definition, not a
+  silent change of calling convention later.
+</p>
+
+<div class="gap">
+  <strong><code>isDeviceQueried == false</code> means nobody asked, never "not supported".</strong> Every limit of
+  a fresh descriptor is <code>0</code> and every bit is <code>false</code>, so reading a limit before checking this
+  flag gives you a device that supports nothing and draws to a 0×0 texture. The previous revision of this type
+  shipped <code>4096 / 16 / 16</code> and <code>supportsTessellation = false</code> as defaults; real hardware
+  contradicted all four numbers and a caller had no way to tell the guess from a measurement. Check the flag first
+  — that is the only contract in this header a caller must not skip.
+</div>
+
+<div class="note">
+  <strong>A runtime-only description: never copy these bytes anywhere.</strong> The feature flags are twenty-one
+  <code>bool : 1</code> bit-fields in one contiguous run, and the header states two consequences. You cannot take
+  the address of one — <code>&amp;caps.supportsComputeShader</code> does not compile — and bit order within a
+  storage unit is implementation-defined, so the struct must never be serialised, <code>memcpy</code>d between
+  processes, or uploaded to a shader. Read and write the fields by name.
+</div>
+
+<h2 id="template">Template parameters</h2>
+
+<p>None — <code>RenderCapabilities</code> is not a template.</p>
+
+<h2 id="properties">Class properties</h2>
+
+<p>
+  There is no <code>private:</code> section: every name below is public data, read directly by callers in this
+  module and its tests. The badges say which kind of declaration each row is.
+</p>
+
+<h4>Identity — which device answered</h4>
+
+<table>
+  <tr><th>Name</th><th>Declaration</th><th>What it means</th></tr>
+  <tr>
+    <td><code>MaxDeviceNameLength</code></td>
+    <td><code>static constexpr size_t MaxDeviceNameLength = 128;</code></td>
+    <td><span class="badge">member constant</span> Size of the inline <code>deviceName</code> buffer, so an
+        identity needs no allocation. The Vulkan adapter copies at most <code>MaxDeviceNameLength - 1</code>
+        characters and always writes the terminator, so a long driver name is truncated rather than overflowing</td>
+  </tr>
+  <tr>
+    <td><code>deviceName</code></td>
+    <td><code>char deviceName[MaxDeviceNameLength];</code></td>
+    <td><span class="badge">public data</span> Null-terminated device name as the driver reports it. With one
+        backend in the tree, this is where you tell Vulkan from a second backend. Empty for an unqueried
+        descriptor</td>
+  </tr>
+  <tr>
+    <td><code>deviceType</code></td>
+    <td><code>DeviceType deviceType;</code></td>
+    <td><span class="badge">public data</span> <a href="../DeviceType/index.html"><code>DeviceType</code></a> — the
+        driver's own classification of the device. <code>Unknown</code> for an unqueried one</td>
+  </tr>
+  <tr>
+    <td><code>vendorId</code></td>
+    <td><code>uint32_t vendorId;</code></td>
+    <td><span class="badge">public data</span> Vendor id from the API — <code>vendorID</code> in Vulkan, the PCI
+        vendor id in Metal</td>
+  </tr>
+  <tr>
+    <td><code>deviceId</code></td>
+    <td><code>uint32_t deviceId;</code></td>
+    <td><span class="badge">public data</span> Device id from the API, paired with <code>vendorId</code> as a
+        pci-style pairing rather than a globally unique key</td>
+  </tr>
+  <tr>
+    <td><code>driverVersion</code></td>
+    <td><code>uint32_t driverVersion;</code></td>
+    <td><span class="badge">public data</span> Driver-reported version, in the API's own packing rather than a
+        decoded triple. The header notes Metal exposes nothing here, so that backend leaves it <code>0</code></td>
+  </tr>
+  <tr>
+    <td><code>apiVersionMajor</code></td>
+    <td><code>uint8_t apiVersionMajor;</code></td>
+    <td><span class="badge">public data</span> Major version of the API the device answers to — Vulkan reports
+        <code>1</code>. <code>0</code> means unqueried</td>
+  </tr>
+  <tr>
+    <td><code>apiVersionMinor</code></td>
+    <td><code>uint8_t apiVersionMinor;</code></td>
+    <td><span class="badge">public data</span> Minor version alongside it. There is no patch field: the descriptor
+        deliberately has no room for a driver-build number, which belongs to <code>driverVersion</code></td>
+  </tr>
+</table>
+
+<h4>Feature support — twenty-one bits, one storage run</h4>
+
+<p>
+  Each is <code>bool : 1</code>. They are one run so they share storage units instead of burning a byte apiece;
+  see the note above about what that also forbids.
+</p>
+
+<table>
+  <tr><th>Name</th><th>Declaration</th><th>What it means</th></tr>
+  <tr>
+    <td><code>isDeviceQueried</code></td>
+    <td><code>bool isDeviceQueried : 1;</code></td>
+    <td><span class="badge">public bit field</span> <strong>Not a feature.</strong> True only when an adapter
+        completed a real query — the Vulkan adapter writes it last, after every other field. An adapter must set it
+        on success only</td>
+  </tr>
+  <tr>
+    <td><code>supportsComputeShader</code></td>
+    <td><code>bool supportsComputeShader : 1;</code></td>
+    <td><span class="badge">public bit field</span> Programmable compute stage. Vulkan makes compute mandatory in
+        core 1.0, so there is no feature bit to read and the Vulkan adapter sets this to <code>true</code> by
+        definition — on this backend it is not evidence of anything</td>
+  </tr>
+  <tr>
+    <td><code>supportsTessellation</code></td>
+    <td><code>bool supportsTessellation : 1;</code></td>
+    <td><span class="badge">public bit field</span> Hull and domain equivalent — Vulkan <code>tessellationShader</code></td>
+  </tr>
+  <tr>
+    <td><code>supportsGeometryShader</code></td>
+    <td><code>bool supportsGeometryShader : 1;</code></td>
+    <td><span class="badge">public bit field</span> Geometry stage. Always present on Direct3D 12, and Metal has no
+        such stage at all, so this bit is where the three backends genuinely disagree</td>
+  </tr>
+  <tr>
+    <td><code>supportsMultiDrawIndirect</code></td>
+    <td><code>bool supportsMultiDrawIndirect : 1;</code></td>
+    <td><span class="badge">public bit field</span> One indirect call drawing several ranges, bounded by
+        <code>maxDrawIndirectCount</code></td>
+  </tr>
+  <tr>
+    <td><code>supports32BitIndices</code></td>
+    <td><code>bool supports32BitIndices : 1;</code></td>
+    <td><span class="badge">public bit field</span> Index buffers of <code>uint32_t</code> — Vulkan
+        <code>fullDrawIndexUint32</code>. The renderer's own index path uses them unconditionally</td>
+  </tr>
+  <tr>
+    <td><code>supportsCubeTextureArrays</code></td>
+    <td><code>bool supportsCubeTextureArrays : 1;</code></td>
+    <td><span class="badge">public bit field</span> Cube maps as array layers — Vulkan <code>imageCubeArray</code></td>
+  </tr>
+  <tr>
+    <td><code>supportsIndependentBlend</code></td>
+    <td><code>bool supportsIndependentBlend : 1;</code></td>
+    <td><span class="badge">public bit field</span> Different blend state per colour attachment</td>
+  </tr>
+  <tr>
+    <td><code>supportsDualSourceBlend</code></td>
+    <td><code>bool supportsDualSourceBlend : 1;</code></td>
+    <td><span class="badge">public bit field</span> Two source colours per blend</td>
+  </tr>
+  <tr>
+    <td><code>supportsLogicOperations</code></td>
+    <td><code>bool supportsLogicOperations : 1;</code></td>
+    <td><span class="badge">public bit field</span> Logic ops on the merged output; Metal never supports them</td>
+  </tr>
+  <tr>
+    <td><code>supportsDepthClamp</code></td>
+    <td><code>bool supportsDepthClamp : 1;</code></td>
+    <td><span class="badge">public bit field</span> Clamp instead of discarding past the far plane</td>
+  </tr>
+  <tr>
+    <td><code>supportsDepthBiasClamp</code></td>
+    <td><code>bool supportsDepthBiasClamp : 1;</code></td>
+    <td><span class="badge">public bit field</span> Bound on depth bias, so bias cannot walk a polygon off the
+        surface it sits on</td>
+  </tr>
+  <tr>
+    <td><code>supportsDepthBounds</code></td>
+    <td><code>bool supportsDepthBounds : 1;</code></td>
+    <td><span class="badge">public bit field</span> Depth bounds test — an accepted way to restrict writes to a
+        slab of depth</td>
+  </tr>
+  <tr>
+    <td><code>supportsWireframeFill</code></td>
+    <td><code>bool supportsWireframeFill : 1;</code></td>
+    <td><span class="badge">public bit field</span> Non-solid fill. A debug-drawing convenience modern APIs tend
+        to omit</td>
+  </tr>
+  <tr>
+    <td><code>supportsWideLines</code></td>
+    <td><code>bool supportsWideLines : 1;</code></td>
+    <td><span class="badge">public bit field</span> Lines wider than one pixel — Vulkan <code>wideLines</code>.
+        Apple GPUs answer <code>1.0f</code> whatever this bit says</td>
+  </tr>
+  <tr>
+    <td><code>supportsSamplerAnisotropy</code></td>
+    <td><code>bool supportsSamplerAnisotropy : 1;</code></td>
+    <td><span class="badge">public bit field</span> Anisotropic filtering may be enabled at all; the ceiling is
+        <code>maxSamplerAnisotropy</code></td>
+  </tr>
+  <tr>
+    <td><code>supportsPreciseOcclusionQueries</code></td>
+    <td><code>bool supportsPreciseOcclusionQueries : 1;</code></td>
+    <td><span class="badge">public bit field</span> Occlusion results exact rather than conservative</td>
+  </tr>
+  <tr>
+    <td><code>supportsTextureGather</code></td>
+    <td><code>bool supportsTextureGather : 1;</code></td>
+    <td><span class="badge">public bit field</span> Gathering four taps around a coordinate — Vulkan
+        <code>shaderImageGatherExtended</code></td>
+  </tr>
+  <tr>
+    <td><code>supportsTextureCompressionBC</code></td>
+    <td><code>bool supportsTextureCompressionBC : 1;</code></td>
+    <td><span class="badge">public bit field</span> Hardware decodes BC. Decide asset format from this, not from
+        the platform name</td>
+  </tr>
+  <tr>
+    <td><code>supportsTextureCompressionASTC</code></td>
+    <td><code>bool supportsTextureCompressionASTC : 1;</code></td>
+    <td><span class="badge">public bit field</span> Hardware decodes ASTC — Vulkan
+        <code>textureCompressionASTC_LDR</code>. Absent on macOS GPUs</td>
+  </tr>
+  <tr>
+    <td><code>supportsRobustBufferAccess</code></td>
+    <td><code>bool supportsRobustBufferAccess : 1;</code></td>
+    <td><span class="badge">public bit field</span> Out-of-range buffer reads are defined (zeroed) instead of
+        undefined; both Direct3D 12 and Metal are always robust</td>
+  </tr>
+</table>
+
+<h4>Limits — how far each thing may go</h4>
+
+<table>
+  <tr><th>Name</th><th>Declaration</th><th>What it means</th></tr>
+  <tr>
+    <td><code>maxTextureDimension1D</code></td>
+    <td><code>uint32_t maxTextureDimension1D;</code></td>
+    <td><span class="badge">public data</span> Largest texels in a 1D texture</td>
+  </tr>
+  <tr>
+    <td><code>maxTextureDimension2D</code></td>
+    <td><code>uint32_t maxTextureDimension2D;</code></td>
+    <td><span class="badge">public data</span> Largest texels per side of a 2D texture. Split out per dimension
+        deliberately: a 1D, 2D, 3D and cube limit are four different numbers, and the retired single
+        <code>maxTextureSize</code> name hid that</td>
+  </tr>
+  <tr>
+    <td><code>maxTextureDimension3D</code></td>
+    <td><code>uint32_t maxTextureDimension3D;</code></td>
+    <td><span class="badge">public data</span> Largest voxels per edge of a volume texture — usually far below the
+        2D figure</td>
+  </tr>
+  <tr>
+    <td><code>maxTextureDimensionCube</code></td>
+    <td><code>uint32_t maxTextureDimensionCube;</code></td>
+    <td><span class="badge">public data</span> Largest texels per cube face</td>
+  </tr>
+  <tr>
+    <td><code>maxTextureArrayLayers</code></td>
+    <td><code>uint32_t maxTextureArrayLayers;</code></td>
+    <td><span class="badge">public data</span> Layers in an array texture</td>
+  </tr>
+  <tr>
+    <td><code>maxColorAttachments</code></td>
+    <td><code>uint32_t maxColorAttachments;</code></td>
+    <td><span class="badge">public data</span> Colour attachments in one render pass — the ceiling on deferred
+        G-buffer width</td>
+  </tr>
+  <tr>
+    <td><code>maxVertexAttributes</code></td>
+    <td><code>uint32_t maxVertexAttributes;</code></td>
+    <td><span class="badge">public data</span> Vertex input slots, which is what a vertex layout is bounded by.
+        Vulkan's <code>maxVertexInputAttributes</code> can be as low as 16</td>
+  </tr>
+  <tr>
+    <td><code>maxVertexBufferBindings</code></td>
+    <td><code>uint32_t maxVertexBufferBindings;</code></td>
+    <td><span class="badge">public data</span> Binding points for vertex buffers — separate from the attribute
+        count, so interleaved versus separated layouts trade different limits</td>
+  </tr>
+  <tr>
+    <td><code>maxVertexOutputComponents</code></td>
+    <td><code>uint32_t maxVertexOutputComponents;</code></td>
+    <td><span class="badge">public data</span> Components the vertex stage may write for the fragment stage to
+        read</td>
+  </tr>
+  <tr>
+    <td><code>maxUniformBufferBindings</code></td>
+    <td><code>uint32_t maxUniformBufferBindings;</code></td>
+    <td><span class="badge">public data</span> Uniform buffers per descriptor set — Vulkan
+        <code>maxDescriptorSetUniformBuffers</code></td>
+  </tr>
+  <tr>
+    <td><code>maxTextureBindings</code></td>
+    <td><code>uint32_t maxTextureBindings;</code></td>
+    <td><span class="badge">public data</span> Sampled images per descriptor set — Vulkan
+        <code>maxDescriptorSetSampledImages</code></td>
+  </tr>
+  <tr>
+    <td><code>maxPushConstantBytes</code></td>
+    <td><code>uint32_t maxPushConstantBytes;</code></td>
+    <td><span class="badge">public data</span> How much a backend may pass inline with a draw instead of through a
+        buffer. Vulkan guarantees 128 and the Vulkan adapter reports the device's real number, which is what bounds
+        <a href="../PushConstants/index.html"><code>PushConstants</code></a></td>
+  </tr>
+  <tr>
+    <td><code>maxDrawIndirectCount</code></td>
+    <td><code>uint32_t maxDrawIndirectCount;</code></td>
+    <td><span class="badge">public data</span> Draws one indirect call may describe — the multiplier for
+        <code>supportsMultiDrawIndirect</code></td>
+  </tr>
+  <tr>
+    <td><code>maxComputeWorkGroupInvocations</code></td>
+    <td><code>uint32_t maxComputeWorkGroupInvocations;</code></td>
+    <td><span class="badge">public data</span> Invocations per workgroup; a local size above it fails pipeline
+        creation rather than running partially</td>
+  </tr>
+  <tr>
+    <td><code>uniformBufferOffsetAlignment</code></td>
+    <td><code>uint32_t uniformBufferOffsetAlignment;</code></td>
+    <td><span class="badge">public data</span> Alignment a uniform buffer offset must satisfy — Vulkan's
+        <code>minUniformBufferOffsetAlignment</code>. A violation is silently wrong on some hardware, so round up
+        to this before binding</td>
+  </tr>
+  <tr>
+    <td><code>maxSamplerAnisotropy</code></td>
+    <td><code>float maxSamplerAnisotropy;</code></td>
+    <td><span class="badge">public data</span> Highest anisotropic ratio accepted, <code>1.0f</code> meaning none</td>
+  </tr>
+  <tr>
+    <td><code>maxSamplerLodBias</code></td>
+    <td><code>float maxSamplerLodBias;</code></td>
+    <td><span class="badge">public data</span> Largest level-of-detail bias a sampler may request</td>
+  </tr>
+  <tr>
+    <td><code>timestampPeriodNanoseconds</code></td>
+    <td><code>float timestampPeriodNanoseconds;</code></td>
+    <td><span class="badge">public data</span> Nanoseconds per GPU timestamp tick. Without this a GPU timestamp is
+        a unitless counter; multiply to get milliseconds of GPU time</td>
+  </tr>
+</table>
+
+<h2 id="methods">Class methods</h2>
+
+<p>
+  Exactly one: the default constructor. There is no destructor, no assignment operator and no accessor — the class
+  is data plus a rule for what "no data" looks like, which is the point of keeping it trivially copyable.
+</p>
+
+<table>
+  <tr><th>Method</th><th>Signature</th><th>What a caller depends on</th></tr>
+  <tr>
+    <td><a href="constructors.html">constructors</a></td>
+    <td class="sig">RenderCapabilities()</td>
+    <td>Zero-fills all forty-six data members and sets <code>isDeviceQueried</code> to false, so an all-zero descriptor is
+        an explicitly unqueried one rather than a device that supports nothing</td>
+  </tr>
+</table>
+
+<h2 id="non-member">Non-member helper functions</h2>
+
+<p>
+  None. <code>RenderCapabilities.h</code> declares no free function — translating a real device into this
+  descriptor is backend work, and the Vulkan translators sit in
+  <code>Engine/Renderer/Vulkan/VulkanCapabilities.h</code> as <code>FillRenderCapabilities</code> and
+  <code>QueryDefaultDeviceCapabilities</code>. They are listed under
+  <a href="../index.html#functions">module functions</a> and explained per field in that header and in
+  <a href="../../RendererDesign.html">docs/RendererDesign.html</a>.
+</p>
+
+<h2 id="coverage">Coverage</h2>
+
+<table>
+  <tr><th>Gap</th><th>Detail</th></tr>
+  <tr>
+    <td>The per-backend field mapping</td>
+    <td>The header carries a Vulkan / Direct3D 12 / Metal mapping comment for every field, and the Direct3D 12 and
+        Metal columns are targets, not facts: no such backend exists in this tree. Quoting them as engine behaviour
+        would repeat the mistake that deleted the previous guide, so this page states only what the Vulkan adapter
+        actually does</td>
+  </tr>
+  <tr>
+    <td>Exact Vulkan source of each value</td>
+    <td>Which <code>VkPhysicalDeviceFeatures</code> member or <code>VkPhysicalDeviceLimits</code> field feeds each
+        row is <code>VulkanCapabilities.cpp</code>'s business, and it is deliberately not restated field by field
+        here; the two cases a caller can be surprised by — <code>supportsComputeShader</code> being set without a
+        query, and <code>uniformBufferOffsetAlignment</code> coming from the <em>minimum</em> alignment — are noted
+        in their rows above</td>
+  </tr>
+  <tr>
+    <td>Who fills this descriptor</td>
+    <td>Two producers: <a href="../VulkanRenderer/index.html"><code>VulkanRenderer</code></a> caches one filled from
+        the device it picked, and <a href="../RHICapabilities/index.html"><code>RHICapabilities</code></a> returns a
+        throwaway one. Their costs differ; documented on those pages, not here</td>
+  </tr>
+  <tr>
+    <td>Which fields a backend may leave at zero</td>
+    <td>The header says Metal exposes no <code>driverVersion</code>; with only a Vulkan backend built, no engine code
+        depends on that yet. Treat a zero limit as "ask this backend" rather than "unsupported", which is the same
+        rule <code>isDeviceQueried</code> encodes for the whole struct</td>
+  </tr>
+</table>
+
+<footer class="prevnext">
+  <span><a href="../index.html">← Renderer</a></span>
+  <span><a href="../index.html#rendercapabilities">RenderCapabilities in the Renderer class list</a></span>
+</footer>
+
+</main>
+</body>
+</html>

@@ -73,9 +73,11 @@ Class properties — one row per alias **and** per data member:
 
 Badge vocabulary, so one page's row kind is the next page's row kind: `member type` for a `using` **declared
 inside a class**, `alias` for an alias at namespace scope, `public` for a data member in the interface, `private`
-for one that is not, `public nested` and `private nested` for nested classes and structs, `alias template` for a
-member `template` alias, and `deleted` for a special member that exists only to be removed. The public and private
-variants are not interchangeable: a `private` badge on a public nested guard states a falsehood about the
+for one that is not, `public nested` and `private nested` for nested classes and structs, `bit-field` for a
+`: 1`-style member, `alias template` for a member `template` alias, and `deleted` for a special member that exists
+only to be removed. `bit-field` exists because a capabilities descriptor is thirty of them and `public` says
+nothing about the storage that is the entire point of the row. The public and private variants are not
+interchangeable: a `private` badge on a public nested guard states a falsehood about the
 interface, which is the one thing a property table exists to get right. `member type` on a namespace-scope alias
 is a false statement about scope, which is why the two are separate. Anything else needs a sentence in the cell —
 the badge is a label, not an explanation.
@@ -166,7 +168,10 @@ on a class page marks **no** entry current; on a method page it also marks none.
 
 A class whose members are aliases only has no method pages: replace the list with
 `<li>None — aliases only</li>` and keep the "Methods" heading, so the sidebar does not look half-written. Same
-for a macro set (`None — macros only`) and a namespace entry (`None — see the module functions`). **Every class
+for a macro set (`None — macros only`) and a namespace entry (`None — see the module functions`). An
+`enum class` writes `None — an enumeration declares no members`; a plain data struct writes `None — data only`.
+Those four phrasings are the whole vocabulary — inventing a fifth per module is how thirty pages end up saying
+the same absence thirty different ways. **Every class
 page carries the heading**, even when the honest content is a two-word absence: a missing heading cannot be told
 apart from an unfinished page. **An orchestrator brief does not override this file** — one brief told an alias
 family to write `None — see the module functions`, which §9 reserves for namespaces and which pointed at a
@@ -180,7 +185,10 @@ section reading "None." If a brief and this file disagree, this file wins and th
   <span><a href="index.html#methods">All Array methods</a></span>
 </footer>
 ```
-Class pages: `← <Module>` and `<Class> in the <Module> class list`.
+Class pages: `← <Module>` and `<Class> in the <Module> class list`, the second pointing at
+**`../index.html#classes`** — the classes table. Not `../index.html#<class>`: the per-class row ids exist so that
+*other modules'* inbound links keep resolving after a rewrite, and a footer pointing at one works but teaches the
+wrong reason for it. Method pages: `← <Class>` and `All <Class> methods` at `index.html#methods`.
 
 ## 11. Coverage section
 
