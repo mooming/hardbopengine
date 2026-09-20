@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AtomicStackView::Push — Container — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">AtomicStackView</a> methods</h3>
+  <ul class="methods">
+    <li><a class="current" href="push.html">Push</a></li>
+    <li><a href="pop.html">Pop</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Container</a> /
+  <a href="index.html">AtomicStackView</a> / Push
+</p>
+
+<h1><span class="fn">Push</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::AtomicStackView</span>
+  <span class="tag">Engine/Container/AtomicStackView.h</span>
+  <span class="tag">noexcept</span>
+  compare-and-swap an object you already own onto the head of an intrusive lock-free list
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code><span class="kw">void</span> <span class="fn">Push</span>(T&amp; newItem) <span class="kw">noexcept</span>;</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Three lines. The object's own <code>next</code> field is loaded with the current head
+  (<code>top.load(std::memory_order_relaxed)</code>), then a compare-and-swap-weak loop tries to install
+  <code>&amp;newItem</code> as the new head, expecting the old head it just read. On failure the CAS has written the
+  head it actually saw back into <code>newItem.next</code> — which is why the loop needs no re-load, and why
+  <code>compare_exchange_weak</code> is acceptable despite its spurious failures: each retry simply re-reads the head into
+  the same field. Success publishes with <code>std::memory_order_release</code>, so a thread that later loads the head
+  with acquire sees the link field this thread wrote.
+</p>
+
+<p>
+  Nothing is allocated. The stack is a single <code>std::atomic&lt;T*&gt;</code> and the link is a field of the element
+  itself — that is what the "View" in the class name means, and it is the reason the parameter is a non-const
+  <code>T&amp;</code>: the call has to write into your object.
+</p>
+
+<div class="gap">
+  <strong><code>Push</code> overwrites <code>newItem.next</code>, so an object belongs to at most one such stack and must
+  not be pushed twice.</strong> After the call, that member is the stack's bookkeeping, not yours. Two consequences with no
+  diagnostic anywhere: pushing an object that is <em>already</em> in this stack makes it point at itself or forms a cycle
+  and corrupts the list for every thread using it, and keeping the same object linked in a second
+  <code>AtomicStackView</code> (or in a hand-rolled intrusive list using the same field) means the two structures overwrite
+  each other. Nothing checks for either. The engine's only user keeps the discipline by state: an
+  <code>AllocatorProxy</code> is either in the free pool or handed out to a registered allocator, never both
+  — <code>Engine/Memory/MemoryManager.cpp:50</code> and <code>:255</code> are the two transitions.
+</div>
+
+<div class="gap">
+  <strong>The stack does not own what you push, and it never frees it.</strong> There is no destructor logic, no allocator,
+  no count: dropping the last reference to the stack leaves whatever is still linked on it exactly where it was. Objects
+  have to outlive every pop that will ever return them, which in practice means static or pool-resident nodes — see
+  <a href="pop.html"><code>Pop</code></a> for who does eventually release them.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr>
+    <td><code>newItem</code></td>
+    <td><code>T&amp;</code></td>
+    <td>
+      A modifiable lvalue of a type satisfying <a href="index.html#non-member"><code>CNext</code></a> — it must have a
+      member <code>next</code> assignable from <code>T*</code>, as
+      <code>AllocatorProxy</code> does with <code>AllocatorProxy* next;</code> at
+      <code>Engine/Memory/AllocatorProxy.h:21</code>. A temporary or a const object cannot bind, which is deliberate: the
+      call mutates the argument. The object must be alive until it is popped and, under contention, must not be destroyed
+      while any thread's CAS may still be reading its link
+    </td>
+  </tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  <code>void</code>. Pushing cannot fail — there is no capacity and no allocation — and cannot report anything: the loop
+  retries until the install succeeds. <code>IsEmpty()</code> is false once the call returns, and a concurrent
+  <a href="pop.html"><code>Pop</code></a> may already have taken the object again by then.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<p class="note">Real call site — <code>Engine/Memory/MemoryManager</code>, which keeps its allocator proxies in one of these
+and hands them out to threads without a lock.</p>
+
+<pre><code><span class="cm">// Engine/Memory/MemoryManager.h:172-173 — the nodes are a fixed array the manager owns</span>
+<span class="ty">AllocatorProxy</span> allocators[MaxNumAllocators];
+<span class="ty">AtomicStackView</span>&lt;<span class="ty">AllocatorProxy</span>&gt; proxyPool;
+
+<span class="cm">// Engine/Memory/MemoryManager.cpp:46-50 — every proxy but the system allocator starts in the pool</span>
+<span class="kw">for</span> (<span class="kw">int</span> i = <span class="nu">1</span>; i &lt; MaxNumAllocators; ++i)
+{
+        <span class="kw">auto</span>&amp; proxy = allocators[i];
+        proxy.id = i;
+        proxyPool.<span class="fn">Push</span>(proxy);
+}
+
+<span class="cm">// Engine/Memory/MemoryManager.cpp:255 — released back when the allocator is unregistered</span>
+proxyPool.<span class="fn">Push</span>(allocator);</code></pre>
+
+<p>
+  Note what the array buys: the pushed objects are never freed, so the pointers the stack hands out stay valid for the whole
+  process, and a proxy is only ever pushed by whoever currently owns it. That arrangement — static nodes, single-owner state
+  machine — is what makes this class safe in the engine, and it is not something the class enforces for you.
+</p>
+
+<footer class="prevnext">
+  <span><a href="index.html">← AtomicStackView</a></span>
+  <span><a href="index.html#methods">All AtomicStackView methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

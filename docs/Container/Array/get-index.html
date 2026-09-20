@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Array::GetIndex — Container — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">Array</a> methods</h3>
+  <ul class="methods">
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+    <li><a href="begin.html">begin</a></li>
+    <li><a href="end.html">end</a></li>
+    <li><a href="operator-assign.html">operator=</a></li>
+    <li><a href="operator-index.html">operator[]</a></li>
+    <li><a href="emplace.html">Emplace</a></li>
+    <li><a href="to-raw-array.html">ToRawArray</a></li>
+    <li><a href="size.html">Size</a></li>
+    <li><a href="is-valid-index.html">IsValidIndex</a></li>
+    <li><a href="clear.html">Clear</a></li>
+    <li><a href="resize.html">Resize</a></li>
+    <li><a href="swap.html">Swap</a></li>
+    <li><a class="current" href="get-index.html">GetIndex</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Container</a> /
+  <a href="index.html">Array</a> / GetIndex
+</p>
+
+<h1><span class="fn">GetIndex</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Array</span>
+  <span class="tag">Engine/Container/Array.h</span>
+  <span class="tag">const noexcept</span>
+  which slot is this element in — answered by address arithmetic, not by a search
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code><span class="ty">TIndex</span> <span class="fn">GetIndex</span>(<span class="kw">const</span> <span class="ty">Element</span>&amp; element) <span class="kw">const</span> <span class="kw">noexcept</span>;</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  The body is three lines: return <code>-1</code> if <code>data</code> is null; compute
+  <code>static_cast&lt;TIndex&gt;(&amp;element - &amp;data[0])</code>; return that difference if
+  <a href="is-valid-index.html"><code>IsValidIndex</code></a> accepts it, and <code>-1</code> otherwise. No element
+  is read, no comparison is made, and <code>Element</code> needs no <code>operator==</code> for this to compile.
+  The cost is one subtraction divided by <code>sizeof(Element)</code> — the same arithmetic the compiler already
+  performs inside <code>operator[]</code>, run in reverse.
+</p>
+
+<p>
+  It answers "where is this object", not "where is a value equal to this one". That is the useful half of the
+  contract: an element obtained from <a href="operator-index.html"><code>operator[]</code></a>,
+  <a href="begin.html"><code>begin()</code></a> or an <a href="emplace.html"><code>Emplace</code></a> result is
+  recognised by identity even when the element compares equal to several others, or does not support comparison at
+  all. <code>Vector</code> in this same module offers the other question — its <code>FindIndex</code> walks the
+  buffer comparing with <code>operator==</code> — and the two are not interchangeable.
+</p>
+
+<div class="gap">
+  <strong>What it does to a foreign object is the part to understand.</strong> The subtraction is performed on two
+  pointers before anything is known about them, and subtracting pointers into unrelated allocations is not
+  something the standard defines; in practice the result is the byte distance divided by
+  <code>sizeof(Element)</code>. The range check that follows turns most foreign objects into <code>-1</code> — one
+  at a lower address always gives a negative difference — but an object in another allocation <em>above</em> this
+  buffer can produce a difference that lands inside <code>[0, Size())</code>, and the function then returns it as
+  a confident, wrong index. There is no way to tell that case from a correct answer. Treat a non-negative result
+  as meaningful only for a reference you took out of this array, and remember that an
+  <a href="resize.html">resize</a> or a <a href="swap.html">swap</a> leaves the address you are holding in a buffer
+  that no longer belongs to the array.
+</div>
+
+<div class="note">
+  <strong>Two small consequences of how it is written.</strong> The null-buffer test is marked
+  <code>unlikely</code>, so the compiled path assumes a live buffer — an empty array still answers
+  <code>-1</code>, just along the cold branch. And the function is not <code>[[nodiscard]]</code>, so
+  <code>array.GetIndex(item);</code> as a statement compiles and does nothing; every other query on this class
+  carries the attribute.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr>
+    <td><code>element</code></td>
+    <td><code>const Element&amp;</code></td>
+    <td>
+      Ideally an lvalue the array owns — something you read back out of it. Taken by const reference so the
+      address survives: passing a temporary that merely <em>looks like</em> an element is exactly the foreign-object
+      case above, and it is not prevented by the type. A const reference to a non-const array's element is fine;
+      the function reads nothing
+    </td>
+  </tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr>
+    <td><a href="index.html#properties"><code>TIndex</code></a> (<code>int</code>)</td>
+    <td>
+      The slot the element occupies, usable straight as an <a
+      href="operator-index.html"><code>operator[]</code></a> index, or <code>-1</code> for "not answered": an empty
+      array, an object below this buffer, or an object far enough above it to fall outside
+      <code>[0, Size())</code>. <code>-1</code> is a sentinel, not an index — test it before indexing
+    </td>
+  </tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p class="note">Illustrative — no call site for this exists in the repository. Grepping
+<code>Engine/</code> and <code>Applications/</code> for <code>GetIndex(</code> finds only the declaration in
+<code>Engine/Container/Array.h</code>; the engine keeps its own index alongside the element instead, as
+<code>TaskSystem::GetStreamName</code> and <code>ResultContainer</code>'s slot count do.</p>
+
+<pre><code><span class="kw">auto</span>&amp; hit = slots[probeIndex];                <span class="cm">// a reference taken out of the array</span>
+<span class="kw">const auto</span> slot = slots.<span class="fn">GetIndex</span>(hit);        <span class="cm">// probeIndex, recovered from the address alone</span>
+
+<span class="kw">if</span> (slot == <span class="nu">-1</span>)
+{
+        <span class="cm">// The reference is not an element of this array — most often because the array was</span>
+        <span class="cm">// resized or swapped since it was taken. Do not index with it.</span>
+        <span class="kw">return</span>;
+}
+
+<span class="fn">RemoveSlot</span>(slot);</code></pre>
+
+<p>
+  The realistic use is therefore a round trip: take a reference out, hand it around, and recover its slot when it
+  comes back. The reference has to have arrived untouched, because the recovery is arithmetic on its address and
+  nothing else — a copy of an element, however faithful, is a different object and gets a different answer.
+</p>
+
+<footer class="prevnext">
+  <span><a href="index.html">← Array</a></span>
+  <span><a href="index.html#methods">All Array methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

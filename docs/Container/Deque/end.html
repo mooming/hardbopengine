@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Deque::end — Container — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">Deque</a> methods</h3>
+  <ul class="methods">
+    <li><a href="push-back.html">PushBack</a></li>
+    <li><a href="begin.html">begin</a></li>
+    <li><a class="current" href="end.html">end</a></li>
+    <li><a href="reserve.html">Reserve</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Container</a> /
+  <a href="index.html">Deque</a> / end
+</p>
+
+<h1><span class="fn">end</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Deque</span>
+  <span class="tag">Engine/Container/Deque.h</span>
+  <span class="tag">2 overloads</span>
+  <span class="tag">noexcept</span>
+  <code>head + count</code>, unmasked — the half of the range that breaks first
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code><span class="ty">Iterator</span> <span class="fn">end</span>() <span class="kw">noexcept</span>;              <span class="cm">// TElement*</span>
+<span class="ty">ConstIterator</span> <span class="fn">end</span>() <span class="kw">const</span> <span class="kw">noexcept</span>;   <span class="cm">// const TElement*</span></code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Returns <code>&amp;data[head + count]</code>. In a ring buffer whose slot numbers are produced by
+  <code>index &amp; mask</code> everywhere else in the class, this expression is deliberately unmasked, and the
+  consequence is that it names a slot number that may not exist.
+</p>
+
+<p>
+  When the live elements sit contiguously — <code>head + count &lt;= Capacity()</code>, which is the state after
+  construction, after a <a href="reserve.html"><code>Reserve</code></a>, or after any run of pushes that never wrapped —
+  this is the ordinary one-past-the-end pointer, <code>begin()</code> to <code>end()</code> walks exactly the elements,
+  and range-for is as correct here as it is on <a href="../Vector/index.html"><code>Vector</code></a>.
+</p>
+
+<div class="gap">
+  <strong>Once the ring wraps, this pointer is past the allocation and the range is longer than the container.</strong>
+  <code>PushFront</code> moves <code>head</code> backwards through the mask (<code>WrapIndex(head - 1)</code>), so on a
+  four-slot deque <code>PushFront(1)</code> followed by <code>PushBack(2)</code> leaves <code>head</code> at 3 with
+  <code>count</code> 2 and this function returns <code>&amp;data[5]</code> — two slots beyond a buffer whose
+  one-past-the-end is <code>&amp;data[4]</code>. A loop written against the pair
+  then reads slot 4, which belongs to the allocator, and a loop that writes writes there. Compare
+  <a href="../Array/end.html"><code>Array::end</code></a>, whose <code>data + length</code> is always exactly one past a
+  buffer of that many elements.
+  <p>
+    It is worth being precise about what is and is not wrong here, because the failure looks like a simple off-by-one and
+    invites a simple wrong fix. <code>end()</code> is not "one short": wrapping it to <code>WrapIndex(head + count)</code>
+    would make it <em>equal to</em> an interior slot, and a pointer loop <code>for (; it != d.end(); ++it)</code> would
+    then run off the other end instead. The range protocol and a circular buffer do not meet at the pointer level, so the
+    correct answer is not to use the range on this container: use <code>Size()</code> with
+    <code>operator[]</code>, or drain with <code>Front()</code> and <code>PopFront()</code> the way
+    <code>Engine/Core/TaskStream.cpp</code> does.
+  </p>
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr>
+    <td><code>TElement*</code> / <code>const TElement*</code></td>
+    <td>
+      A pointer one slot past the newest element <em>in linear index space</em>, never dereferenced by the range
+      protocol itself. On a deque that never allocated, <code>data</code> is null and the value is null, equal to
+      <a href="begin.html"><code>begin()</code></a> — an honest empty range. On one that has wrapped, the value is not a
+      valid address at all, which is the case the box above is about
+    </td>
+  </tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p>The two states, side by side:</p>
+
+<p class="note">Illustrative — no call site for this exists in the repository.</p>
+
+<pre><code><span class="ty">hbe</span>::<span class="ty">Deque</span>&lt;<span class="kw">int</span>&gt; a;                  <span class="cm">// capacity 4, head 0</span>
+a.<span class="fn">PushBack</span>(<span class="nu">1</span>); a.<span class="fn">PushBack</span>(<span class="nu">2</span>);         <span class="cm">// head 0, count 2 → begin=&amp;data[0], end=&amp;data[2]</span>
+<span class="kw">for</span> (<span class="kw">auto</span> v : a) { <span class="fn">Use</span>(v); }        <span class="cm">// fine: 1 then 2</span>
+
+<span class="ty">hbe</span>::<span class="ty">Deque</span>&lt;<span class="kw">int</span>&gt; b;
+b.<span class="fn">PushFront</span>(<span class="nu">1</span>); b.<span class="fn">PushBack</span>(<span class="nu">2</span>);      <span class="cm">// elements land in slots 3 and 0; head 3, count 2</span>
+                                       <span class="cm">// → begin=&amp;data[3], end=&amp;data[5]</span>
+<span class="kw">for</span> (<span class="kw">auto</span> v : b) { <span class="fn">Use</span>(v); }        <span class="cm">// wrong: reads data[3] then data[4], never sees data[0]</span>
+
+<span class="kw">for</span> (<span class="kw">auto</span> i = <span class="nu">0</span>; i &lt; b.<span class="fn">Size</span>(); ++i)
+{
+        <span class="fn">Use</span>(b[i]);                   <span class="cm">// right in both states: 1 then 2</span>
+}</code></pre>
+
+<p>
+  Note what the last loop also fixes: the range version of the second case walks two slots but the second one is not the
+  second element, so the bug shows up as a wrong value before it shows up as a bad address — and
+  <code>Size()</code> still says two, which is why the count mismatch alone will not catch it either.
+</p>
+
+<footer class="prevnext">
+  <span><a href="index.html">← Deque</a></span>
+  <span><a href="index.html#methods">All Deque methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

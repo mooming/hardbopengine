@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Array::Swap — Container — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">Array</a> methods</h3>
+  <ul class="methods">
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+    <li><a href="begin.html">begin</a></li>
+    <li><a href="end.html">end</a></li>
+    <li><a href="operator-assign.html">operator=</a></li>
+    <li><a href="operator-index.html">operator[]</a></li>
+    <li><a href="emplace.html">Emplace</a></li>
+    <li><a href="to-raw-array.html">ToRawArray</a></li>
+    <li><a href="size.html">Size</a></li>
+    <li><a href="is-valid-index.html">IsValidIndex</a></li>
+    <li><a href="clear.html">Clear</a></li>
+    <li><a href="resize.html">Resize</a></li>
+    <li><a class="current" href="swap.html">Swap</a></li>
+    <li><a href="get-index.html">GetIndex</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Container</a> /
+  <a href="index.html">Array</a> / Swap
+</p>
+
+<h1><span class="fn">Swap</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Array</span>
+  <span class="tag">Engine/Container/Array.h</span>
+  <span class="tag">noexcept</span>
+  exchange <code>length</code> and <code>data</code> and nothing else — every move, assignment and clear in this
+  container is built on it
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code><span class="kw">void</span> <span class="fn">Swap</span>(<span class="ty">Array</span>&amp;&amp; rhs) <span class="kw">noexcept</span>;</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Two fields change hands: <code>length</code> and <code>data</code>. No element is constructed, destroyed, moved
+  or copied, which is what makes the operation <code>O(1)</code>, allocation-free and <code>noexcept</code>. The
+  third member, <code>allocator</code>, is deliberately not touched — see the hazard below.
+</p>
+
+<p>
+  It is the primitive the rest of the class is written in. <a href="constructors.html">The move
+  constructor</a> is <code>Array() { Swap(rhs); }</code>, <a href="operator-assign.html">move assignment</a> is
+  <code>Swap(rhs); return *this;</code>, and <a href="clear.html"><code>Clear</code></a> is
+  <code>Swap(Array())</code>. Reading this function is therefore the shortest route to the semantics of all three.
+</p>
+
+<p>
+  The parameter is an rvalue reference, so the other side must be a temporary or explicitly moved. That is
+  stricter than it needs to be and it is worth knowing before you write the call: <code>a.Swap(b);</code> with two
+  named arrays does not compile, <code>a.Swap(std::move(b));</code> does. Compare
+  <code>Vector::Swap(Vector&amp;)</code> and <code>Deque::Swap(Deque&amp;)</code> elsewhere in this module, which
+  take an lvalue reference — the spelling that works for one of these containers is not the spelling that works
+  for the other.
+</p>
+
+<div class="gap">
+  <strong>Only two of the three members move, so each array ends up freeing memory it did not allocate.</strong>
+  The <code>allocator</code> member stays where it was while the buffer it is paired with does not, so after a
+  swap between two arrays built in different memory scopes each will hand its adopted buffer to the wrong
+  allocator at destruction. <code>DefaultAllocator</code> captures the allocator id that was current when it was
+  constructed, so the mismatch is real even with no custom allocator in sight; with a pool adapter such as
+  <code>NamedPoolAllocator&lt;T&gt;</code> it is a cross-pool free. Safe in the common case — both arrays use
+  <code>DefaultAllocator</code> and were built while the same scope was open, which is the situation in every call
+  site the engine has — and silently unsafe in the others. The
+  <a href="../../Memory/index.html#allocators">allocator contract in Memory</a> is the place that rule belongs;
+  this is where it bites.
+</div>
+
+<div class="note">
+  <strong>Iterators survive a swap in the arithmetic sense and die in the ownership sense.</strong> A pointer
+  obtained before the swap still points at the same bytes and still compares equal to itself, but those bytes are
+  now elements of the <em>other</em> array, sized by the other array's <code>length</code>. A range you were
+  iterating does not become invalid — it becomes somebody else's range. Use
+  <a href="to-raw-array.html"><code>ToRawArray</code></a> and <a href="size.html"><code>Size</code></a> freshly
+  after any swap rather than carrying a range across one.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr>
+    <td><code>rhs</code></td>
+    <td><code>Array&amp;&amp;</code></td>
+    <td>
+      A temporary, or a named array with <code>std::move</code> applied. Same <code>Element</code> and same
+      <code>TAllocator</code> type, since the two are different types otherwise. An array swapped against a
+      default-constructed temporary — the <a href="clear.html"><code>Clear</code></a> pattern — receives a null
+      buffer and a zero length, which is what makes that idiom work
+    </td>
+  </tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  <code>void</code>. There is nothing to report and no way to fail: the body is four assignments. Swapping an
+  array with itself is not a special case that needs guarding — the assignments write each field with its own
+  value, and the array is unchanged.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<p>The engine's real use — give an array a new buffer and let the temporary take the old one away:</p>
+
+<pre><code><span class="cm">// streams is Array&lt;TaskStream&gt;, a member of TaskSystem, default-constructed so far.</span>
+streams.<span class="fn">Swap</span>(<span class="ty">Array</span>&lt;<span class="ty">TaskStream</span>&gt;(numHardwareThreads));
+
+<span class="cm">// streams now owns numHardwareThreads default-constructed TaskStreams.</span>
+<span class="cm">// The temporary holds the buffer streams used to have (none, here) and releases it at the</span>
+<span class="cm">// semicolon, through its own freshly constructed allocator.</span></code></pre>
+
+<p class="meta">From Engine/Core/TaskSystem.cpp, in the task system's stream construction. The sized temporary is
+the two-argument-less <a href="constructors.html">size constructor</a>, so the allocation happens on the
+temporary's allocator, not on one captured earlier.</p>
+
+<p>The two-array form, which needs the explicit move:</p>
+
+<p class="note">Illustrative — no call site for this exists in the repository.</p>
+
+<pre><code>a.<span class="fn">Swap</span>(std::<span class="fn">move</span>(b));        <span class="cm">// a holds b's old buffer; b holds a's; neither element moved</span>
+a.<span class="fn">Swap</span>(b);                  <span class="cm">// does not compile: Swap takes Array&amp;&amp;</span></code></pre>
+
+<footer class="prevnext">
+  <span><a href="index.html">← Array</a></span>
+  <span><a href="index.html#methods">All Array methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

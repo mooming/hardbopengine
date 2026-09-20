@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Array constructors — Container — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">Array</a> methods</h3>
+  <ul class="methods">
+    <li><a class="current" href="constructors.html">constructors</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+    <li><a href="begin.html">begin</a></li>
+    <li><a href="end.html">end</a></li>
+    <li><a href="operator-assign.html">operator=</a></li>
+    <li><a href="operator-index.html">operator[]</a></li>
+    <li><a href="emplace.html">Emplace</a></li>
+    <li><a href="to-raw-array.html">ToRawArray</a></li>
+    <li><a href="size.html">Size</a></li>
+    <li><a href="is-valid-index.html">IsValidIndex</a></li>
+    <li><a href="clear.html">Clear</a></li>
+    <li><a href="resize.html">Resize</a></li>
+    <li><a href="swap.html">Swap</a></li>
+    <li><a href="get-index.html">GetIndex</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Container</a> /
+  <a href="index.html">Array</a> / constructors
+</p>
+
+<h1><span class="fn">constructors</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Array</span>
+  <span class="tag">Engine/Container/Array.h</span>
+  <span class="tag">5 overloads + 1 deleted</span>
+  where the buffer comes from, and how big it is — decided once, here, and never again
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code><span class="fn">Array</span>(<span class="kw">const</span> <span class="ty">Array</span>&amp;) = <span class="kw">delete</span>;                              <span class="cm">// no copy — see below</span>
+
+<span class="fn">Array</span>() <span class="kw">noexcept</span>;                                             <span class="cm">// empty; allocates nothing</span>
+<span class="kw">explicit</span> <span class="fn">Array</span>(<span class="ty">TIndex</span> size);                                  <span class="cm">// allocates, then value-initialises</span>
+<span class="fn">Array</span>(<span class="kw">const</span> <span class="ty">TAllocator</span>&amp; inAllocator, <span class="ty">TIndex</span> size);           <span class="cm">// the one that names its memory</span>
+<span class="fn">Array</span>(std::initializer_list&lt;<span class="ty">Element</span>&gt; list);                   <span class="cm">// delegates to Array(size)</span>
+<span class="fn">Array</span>(<span class="ty">Array</span>&amp;&amp; rhs) <span class="kw">noexcept</span>;                                  <span class="cm">// delegates to Array() then Swap</span></code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  All five leave the array at its stated size and with an allocator it holds by value; they differ in who pays
+  for the buffer and in what has to be true of <code>Element</code>. The sized forms construct each element with
+  <code>new (&amp;data[i]) Element()</code> — value-initialisation, not a copy of a prototype — so
+  <code>Element</code> must be default-constructible for those to compile. The
+  <code>std::initializer_list</code> form additionally copy-assigns each value into a slot it just
+  default-constructed, so it needs <code>Element</code> to be copy-assignable as well, and that is the only
+  constructor that never moves or copies the <em>array</em>'s elements twice.
+</p>
+
+<p>
+  The copy constructor is <code>= delete</code>, deliberately: an <code>Array</code>'s size is a decision with a
+  cost attached, and a container that silently duplicates a caller's buffer at the size of whatever layout was
+  reasoned about is how that reasoning stops being true. Movement is the only transfer — see the rvalue overload
+  and <a href="swap.html"><code>Swap</code></a>.
+</p>
+
+<p>
+  Only <code>Array(const TAllocator&amp;, TIndex)</code> states where memory comes from. Every other overload
+  default-constructs the <code>TAllocator</code>, and <code>DefaultAllocator&lt;T&gt;</code> is not a stateless
+  tag — it stores the allocator id that <code>MemoryManager::GetCurrentAllocatorID()</code> returns at the moment
+  of construction. So an <code>Array</code> built inside a frame-scoped allocator scope draws from that frame for
+  the rest of its life, including from the <a href="destructor.html">destructor</a>, and the same statement built
+  one line outside that scope draws from somewhere else. That is the whole reason the two-argument form exists.
+</p>
+
+<div class="gap">
+  <strong>A move does not move the allocator.</strong> <code>Array(Array&amp;&amp; rhs)</code> delegates to
+  <code>Array()</code> — which default-constructs a fresh allocator, capturing whatever scope is open
+  <em>right now</em> — and then <a href="swap.html"><code>Swap</code></a> exchanges <code>length</code> and
+  <code>data</code> only. The new array therefore owns a buffer that <code>rhs</code>'s allocator allocated, and
+  will free it through its own. With the default <code>DefaultAllocator</code> that means an array allocated
+  inside a frame can be freed by the scope open where the move happened; with a stateful pool adapter it is a
+  cross-pool free. The moved-from array keeps its allocator and receives a null buffer, so it frees nothing.
+</div>
+
+<div class="gap">
+  <strong>A failed allocation in the sized constructor leaves the array inconsistent, and nothing checks for
+  it.</strong> <code>Array(TIndex size)</code> assigns <code>length = size</code> in its member list and then
+  assigns <code>data = allocator.allocate(length)</code> with no null test. If the allocation fails you get an
+  array that reports <code>size</code> elements through <a href="size.html"><code>Size</code></a> while
+  <code>data</code> is null: <a href="operator-index.html"><code>operator[]</code></a> passes
+  <a href="is-valid-index.html"><code>IsValidIndex</code></a> and then subscript a null pointer. Contrast
+  <a href="resize.html"><code>Resize</code></a>, which tests the pointer and keeps the old state, and
+  <code>Array(const TAllocator&amp;, TIndex)</code>, which at least short-circuits a non-positive size.
+</div>
+
+<div class="note">
+  <strong>A negative <code>size</code> is accepted by every sized path.</strong> The two-argument form's
+  <code>returnIf(length &lt;= 0)</code> means no memory is taken, which is the documented "capacity not yet given"
+  state; the one-argument form has no such guard, so the negative value reaches
+  <code>allocate</code>, is converted to an enormous <code>size_t</code>, and the array ends up with a negative
+  length — the corrupt state described on <a href="resize.html"><code>Resize</code></a>.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr>
+    <td><code>size</code></td>
+    <td><a href="index.html#properties"><code>TIndex</code></a> (<code>int</code>)</td>
+    <td>Exact element count wanted. Zero is a valid request; a negative value is not diagnosed — see the note
+      above. Not <code>explicit</code> on the two-argument form, and <code>explicit</code> on the one-argument
+      form, so <code>Array&lt;int&gt; a = 8;</code> does not compile while <code>Array&lt;int&gt; a(8);</code> does</td>
+  </tr>
+  <tr>
+    <td><code>inAllocator</code></td>
+    <td><code>const TAllocator&amp;</code></td>
+    <td>Copy-constructed into the array's own member. It must outlive the array: the array holds a copy of it,
+      and if it references a pool then that pool is what has to outlive the array. See
+      <a href="../../Memory/index.html#allocators">Memory: allocators</a></td>
+  </tr>
+  <tr>
+    <td><code>list</code></td>
+    <td><code>std::initializer_list&lt;Element&gt;</code></td>
+    <td>The initial values, copied in order. <code>Element</code> must be default-constructible
+      <em>and</em> copy-assignable, because the implementation default-constructs each slot and then assigns the
+      list's value into it</td>
+  </tr>
+  <tr>
+    <td><code>rhs</code></td>
+    <td><code>Array&amp;&amp;</code></td>
+    <td>The array to take the buffer from. After the call it is empty — <code>Size()</code> is <code>0</code>,
+      <code>ToRawArray()</code> is null — and still holds its own allocator</td>
+  </tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  A constructor has no return value. The observable result is the pair
+  (<a href="size.html"><code>Size</code></a>, <a href="to-raw-array.html"><code>ToRawArray</code></a>): an empty
+  array is <code>(0, nullptr)</code>, an array built with a positive size is <code>(size, pointer)</code> unless
+  the allocation failed, which is not reported.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<p>The two forms the module's own fixture actually uses — an empty array, and a list-initialised one:</p>
+
+<pre><code><span class="kw">const</span> <span class="ty">hbe</span>::<span class="ty">Array</span>&lt;<span class="kw">int</span>&gt; array;              <span class="cm">// Size() == 0, no allocation at all</span>
+<span class="kw">if</span> (array.<span class="fn">Size</span>() != <span class="nu">0</span>)
+{
+        <span class="cm">// ...</span>
+}
+
+<span class="ty">hbe</span>::<span class="ty">Array</span>&lt;<span class="kw">int</span>&gt; values({<span class="nu">0</span>, <span class="nu">1</span>, <span class="nu">2</span>, <span class="nu">3</span>, <span class="nu">4</span>, <span class="nu">5</span>, <span class="nu">6</span>, <span class="nu">7</span>, <span class="nu">8</span>, <span class="nu">9</span>});   <span class="cm">// initializer_list overload, 10 elements</span></code></pre>
+
+<p class="meta">From Engine/Container/Array.cpp, the <code>ArrayTest</code> fixture compiled under
+<code>__UNIT_TEST__</code>.</p>
+
+<p>Naming the memory explicitly is the part no fixture exercises:</p>
+
+<p class="note">Illustrative — no call site for this exists in the repository.</p>
+
+<pre><code><span class="cm">// Both elements and count are stated; the allocator is copied, not referenced.</span>
+<span class="ty">hbe</span>::<span class="ty">Array</span>&lt;<span class="ty">MeshVertex</span>, <span class="ty">FrameAllocator</span>&gt; batch(frameAllocator, <span class="nu">1024</span>);
+
+<span class="cm">// A move re-homes the buffer but keeps the destination's allocator — see the hazard above.</span>
+<span class="kw">auto</span> taken = std::<span class="fn">move</span>(batch);</code></pre>
+
+<p>
+  <code>FrameAllocator</code> and <code>frameAllocator</code> stand for whichever allocator you use;
+  <a href="../../Memory/index.html#allocators">Memory: allocators</a> says what they draw from, and
+  <a href="resize.html"><code>Resize</code></a> is where the choice made here gets reused.
+</p>
+
+<footer class="prevnext">
+  <span><a href="index.html">← Array</a></span>
+  <span><a href="index.html#methods">All Array methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

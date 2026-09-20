@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vector — Container — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="#description">Class description</a></li>
+    <li><a href="#template">Template parameters</a></li>
+    <li><a href="#properties">Class properties</a></li>
+    <li><a href="#methods">Class methods</a></li>
+    <li><a href="#non-member">Non-member helpers</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+
+  <h3>Methods</h3>
+  <ul class="methods">
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="push-back.html">PushBack</a></li>
+    <li><a href="emplace-back.html">EmplaceBack</a></li>
+    <li><a href="resize.html">Resize</a></li>
+    <li><a href="reserve.html">Reserve</a></li>
+    <li><a href="swap.html">Swap</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Container</a> / Vector
+</p>
+
+<h1>Vector</h1>
+<p class="subtitle">
+  <span class="tag">Engine/Container/Vector.h</span>
+  <span class="tag">namespace hbe</span>
+  <span class="tag">template &lt;typename TElement, class TAllocator = DefaultAllocator&lt;TElement&gt;&gt;</span>
+  <span class="tag">final</span>
+  a growing array with a capacity of its own — append freely, and the buffer doubles when it fills
+</p>
+
+<h2 id="description">Class description</h2>
+
+<p>
+  <code>Vector</code> stores <code>count</code> elements in a buffer of <code>capacity</code> elements and grows
+  that buffer itself: whenever an append finds <code>count == capacity</code>, the private <code>Grow</code>
+  requests <code>max(DefaultCapacity, capacity * 2)</code> from
+  <a href="reserve.html"><code>Reserve</code></a>, so the first allocation is 4 elements and every later one is
+  double. That is the whole difference from its sibling <a href="../Array/index.html"><code>Array</code></a>, which
+  keeps one number for both and reallocates whenever you change the size. Append-heavy code wants this one; code
+  with a size someone decided wants <code>Array</code>.
+</p>
+
+<p>
+  Capacity is visible and separately controllable — <code>Capacity()</code>,
+  <a href="reserve.html"><code>Reserve</code></a>, and a shrinking
+  <a href="resize.html"><code>Resize</code></a> that leaves the buffer standing. A vector can therefore be given
+  its working set once and then pushed to without a single further allocation, which is the only way its address
+  stability can be relied on.
+</p>
+
+<p>
+  Copy construction and copy assignment are deleted; the move constructor steals three fields and zeroes the
+  source. The class is <code>final</code>, so no derived container can turn its destructor into a slicing bug.
+</p>
+
+<div class="note">
+  <strong>Two facts a caller cannot see from the type.</strong> Every growth moves all the elements, so pointers,
+  references and iterators into a vector are valid only until the append that crosses the capacity boundary — see
+  <a href="push-back.html"><code>PushBack</code></a>. And no path in this class checks the allocator's return
+  value: a failed allocation is not a declined append or a failed resize, it is a null buffer behind a plausible
+  <code>Capacity()</code>. That is a deliberate difference from <a href="../Array/resize.html"><code>Array</code></a>,
+  and the reason <a href="../../Memory/index.html#allocators">which allocator you bind</a> is a decision here.
+</div>
+
+<h2 id="template">Template parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Kind</th><th>What it must satisfy</th></tr>
+  <tr>
+    <td><code>TElement</code></td>
+    <td><code>typename</code></td>
+    <td>
+      The stored type. <strong>Move-constructible</strong> — every reallocation moves each element, and the moves
+      happen inside a <code>noexcept</code> function, so a throwing move constructor terminates rather than
+      unwinding. <strong>Default-constructible</strong> if the vector is ever grown with
+      <a href="resize.html"><code>Resize</code></a> or <a href="emplace-back.html"><code>EmplaceBack()</code></a>
+      with no arguments. <strong>Copy-constructible</strong> for <a href="push-back.html"><code>PushBack</code></a>
+      with an lvalue and for the <code>std::initializer_list</code> constructor. No assignment, comparison or hash is
+      required by anything here — <code>FindIndex</code> is the one member that asks for <code>operator==</code>
+    </td>
+  </tr>
+  <tr>
+    <td><code>TAllocator</code></td>
+    <td><code>class</code>, defaults to <a href="../../Memory/index.html#allocators"><code>DefaultAllocator&lt;TElement&gt;</code></a></td>
+    <td>
+      Anything with <code>allocate(count)</code> returning <code>TElement*</code> and
+      <code>deallocate(pointer, count)</code>, where <em>count is in elements of the allocator's own value
+      type</em> — <code>DefaultAllocator&lt;T&gt;::allocate</code> multiplies it by <code>sizeof(T)</code>, which is
+      why this container can pass a bare element count while <a href="../HashMap/index.html"><code>HashMap</code></a>
+      passes a byte count against <code>DefaultAllocator&lt;uint8_t&gt;</code>. Held by value, so it is copied in and
+      must outlive the vector. Nothing in this class ever exchanges it: neither
+      <a href="swap.html"><code>Swap</code></a> nor either move operation touches it
+    </td>
+  </tr>
+</table>
+
+<h2 id="properties">Class properties</h2>
+
+<table>
+  <tr><th>Name</th><th>Declaration</th><th>What it means</th></tr>
+  <tr>
+    <td><code>DefaultCapacity</code></td>
+    <td><code>static constexpr int DefaultCapacity = 4;</code></td>
+    <td><span class="badge">constant</span> The capacity of a first growth, and the floor under every later one:
+      <code>Grow</code> asks for <code>max(DefaultCapacity, capacity * 2)</code>. It is the only member a caller can
+      read without an object</td>
+  </tr>
+  <tr>
+    <td><code>TIndex</code></td>
+    <td><code>using TIndex = int;</code></td>
+    <td><span class="badge">member type</span> Count, capacity and every index — <code>int</code> again, as in
+      <a href="../Array/index.html"><code>Array</code></a>, and for the same reason:
+      <code>IsValidIndex</code> tests <code>index &gt;= 0</code>, which only means something against a signed type.
+      The engine-wide <code>hbe::TIndex</code> from <code>Core/Types.h</code> is <code>size_t</code>; inside a
+      <code>Vector</code> scope the member alias wins</td>
+  </tr>
+  <tr>
+    <td><code>Iterator</code></td>
+    <td><code>using Iterator = TElement*;</code></td>
+    <td><span class="badge">member type</span> A raw pointer, so range-for and <code>&lt;algorithm&gt;</code> work
+      with no adapter and nothing detects a stale one. <code>begin()</code> and <code>end()</code> return it</td>
+  </tr>
+  <tr>
+    <td><code>ConstIterator</code></td>
+    <td><code>using ConstIterator = const TElement*;</code></td>
+    <td><span class="badge">member type</span> The const counterpart, returned by the <code>const</code>
+      <code>begin</code>/<code>end</code></td>
+  </tr>
+  <tr>
+    <td><code>allocator</code></td>
+    <td><code>TAllocator allocator;</code></td>
+    <td><span class="badge">private</span> Held by value and default-constructed unless a constructor is given one —
+      and none of this class's constructors take an allocator argument, unlike
+      <a href="../Array/constructors.html"><code>Array</code></a>'s two-argument form. To bind a vector to a named
+      pool you have to give it a pool-holding <code>TAllocator</code> type that is default-constructible, which is
+      the constraint that decides which allocators can be used here at all</td>
+  </tr>
+  <tr>
+    <td><code>count</code></td>
+    <td><code>TIndex count;</code></td>
+    <td><span class="badge">private</span> Live elements; what <code>Size()</code> returns and what
+      <code>IsValidIndex</code> compares against</td>
+  </tr>
+  <tr>
+    <td><code>capacity</code></td>
+    <td><code>TIndex capacity;</code></td>
+    <td><span class="badge">private</span> Slots allocated. The gap between it and <code>count</code> is the number of
+      appends that will not reallocate, and <code>deallocate</code> is called with this value, not with the count</td>
+  </tr>
+  <tr>
+    <td><code>data</code></td>
+    <td><code>TElement* data;</code></td>
+    <td><span class="badge">private</span> The buffer, or <code>nullptr</code> before the first allocation.
+      <code>Data()</code> hands it out; the destructor returns it to the allocator with <code>capacity</code> as its
+      count argument</td>
+  </tr>
+</table>
+
+<h2 id="methods">Class methods</h2>
+
+<p>
+  A name set as a link has its own page. The others are documented here and nowhere else in this batch, and
+  <a href="#coverage">Coverage</a> lists them by name so nobody mistakes a short list for a complete one.
+</p>
+
+<table>
+  <tr><th>Method</th><th>Signature</th><th>What a caller depends on</th></tr>
+  <tr>
+    <td><a href="constructors.html">constructors</a><span class="badge">4 overloads + 1 deleted</span></td>
+    <td class="sig">Vector() noexcept<br>explicit Vector(TIndex initialCapacity)<br>Vector(std::initializer_list&lt;TElement&gt; list)<br>Vector(Vector&amp;&amp; rhs) noexcept</td>
+    <td>Only the sized form allocates, and it allocates exactly what you asked for; the default form allocates nothing and leaves growth to the first push</td>
+  </tr>
+  <tr>
+    <td><code>destructor</code></td>
+    <td class="sig">~Vector()</td>
+    <td>Returns early when <code>data</code> is null; otherwise destroys every element, then
+      <code>allocator.deallocate(data, capacity)</code> — so the allocator must still be alive</td>
+  </tr>
+  <tr>
+    <td><code>operator=</code><span class="badge">2 overloads, one deleted</span></td>
+    <td class="sig">Vector&amp; operator=(Vector&amp;&amp; rhs) noexcept<br>Vector&amp; operator=(const Vector&amp;) = delete</td>
+    <td>Move assignment destroys and frees the destination first (guarded by <code>this != &amp;rhs</code>) and then
+      steals the source; unlike <a href="../Array/operator-assign.html"><code>Array</code></a>'s swap-based move, the
+      source really is emptied</td>
+  </tr>
+  <tr>
+    <td><code>begin</code>, <code>end</code><span class="badge">2 overloads each</span></td>
+    <td class="sig">Iterator begin() noexcept<br>Iterator end() noexcept<br>ConstIterator begin() const noexcept<br>ConstIterator end() const noexcept</td>
+    <td><code>data</code> and <code>data + count</code> — a contiguous range, unlike <a href="../Deque/begin.html"><code>Deque</code></a>, whose same-looking pair is wrong once the buffer wraps</td>
+  </tr>
+  <tr>
+    <td><code>operator[]</code><span class="badge">2 overloads</span></td>
+    <td class="sig">TElement&amp; operator[](TIndex index)<br>const TElement&amp; operator[](TIndex index) const</td>
+    <td>Asserts <code>IsValidIndex(index)</code> with <code>FatalAssert</code>. Not marked <code>noexcept</code>, so a
+      call through a <code>noexcept</code> boundary is treated as potentially throwing — a real difference from
+      <a href="../Array/operator-index.html"><code>Array::operator[]</code></a>, which is</td>
+  </tr>
+  <tr>
+    <td><code>Front</code>, <code>Back</code><span class="badge">2 overloads each</span></td>
+    <td class="sig">TElement&amp; Front()<br>TElement&amp; Back()<br>… const counterparts</td>
+    <td>Each asserts <code>!IsEmpty()</code> with <code>FatalAssert</code>; <code>Back()</code> is
+      <code>data[count - 1]</code>, so on an empty vector the assert fires before the arithmetic matters</td>
+  </tr>
+  <tr>
+    <td><a href="push-back.html">PushBack</a><span class="badge">2 overloads</span></td>
+    <td class="sig">void PushBack(const TElement&amp; value) noexcept<br>void PushBack(TElement&amp;&amp; value) noexcept</td>
+    <td>Appends, growing by doubling first if the buffer is full; returns nothing, so reach the element through
+      <code>Size() - 1</code></td>
+  </tr>
+  <tr>
+    <td><a href="emplace-back.html">EmplaceBack</a></td>
+    <td class="sig">template &lt;typename... Types&gt;<br>TElement&amp; EmplaceBack(Types&amp;&amp;... args) noexcept</td>
+    <td>Same growth rule, but constructs in place and returns a reference to the new element; arguments that refer
+      into this vector are read after a growth has invalidated them</td>
+  </tr>
+  <tr>
+    <td><code>PopBack</code></td>
+    <td class="sig">void PopBack() noexcept</td>
+    <td>Asserts non-empty, decrements <code>count</code>, destroys that element. Capacity is untouched — popping does
+      not shrink the allocation</td>
+  </tr>
+  <tr>
+    <td><a href="resize.html">Resize</a></td>
+    <td class="sig">void Resize(TIndex newSize) noexcept</td>
+    <td>Destroys on shrink and keeps the buffer; default-constructs on growth, reallocating only if capacity runs
+      out. A negative <code>newSize</code> destroys out of range and stores a negative count</td>
+  </tr>
+  <tr>
+    <td><a href="reserve.html">Reserve</a></td>
+    <td class="sig">void Reserve(TIndex newCapacity) noexcept</td>
+    <td>Grows capacity to exactly the number asked, moves every element, and does nothing when the request is at or
+      below the current capacity. Allocation failure is not checked</td>
+  </tr>
+  <tr>
+    <td><code>Clear</code></td>
+    <td class="sig">void Clear() noexcept</td>
+    <td>Destroys all elements and sets <code>count = 0</code>, keeping the buffer and capacity — the opposite of
+      <a href="../Array/clear.html"><code>Array::Clear</code></a>, which releases the allocation</td>
+  </tr>
+  <tr>
+    <td><code>Size</code>, <code>Capacity</code>, <code>IsEmpty</code>, <code>IsValidIndex</code></td>
+    <td class="sig">[[nodiscard]] TIndex Size() const noexcept<br>[[nodiscard]] TIndex Capacity() const noexcept<br>[[nodiscard]] bool IsEmpty() const noexcept<br>[[nodiscard]] bool IsValidIndex(TIndex index) const noexcept</td>
+    <td>Field reads, all four <code>[[nodiscard]]</code>. <code>IsEmpty()</code> is <code>count == 0</code>, so a
+      vector resized to a negative count reports <em>not empty</em></td>
+  </tr>
+  <tr>
+    <td><code>Data</code><span class="badge">2 overloads</span></td>
+    <td class="sig">[[nodiscard]] TElement* Data() noexcept<br>[[nodiscard]] const TElement* Data() const noexcept</td>
+    <td>The buffer for a pointer-plus-count API — the <a href="../Array/to-raw-array.html"><code>Array</code> counterpart</a>
+      is <code>ToRawArray</code>. Valid until anything reallocates</td>
+  </tr>
+  <tr>
+    <td><a href="swap.html">Swap</a></td>
+    <td class="sig">void Swap(Vector&amp; rhs) noexcept</td>
+    <td>Three <code>std::swap</code> calls; takes an lvalue reference where <code>Array::Swap</code> needs an rvalue,
+      and leaves <code>allocator</code> where it was</td>
+  </tr>
+  <tr>
+    <td><code>FindIndex</code></td>
+    <td class="sig">[[nodiscard]] TIndex FindIndex(const TElement&amp; element) const noexcept</td>
+    <td>Linear search comparing with <code>operator==</code>, returning the first match or <code>-1</code>. This is
+      the value lookup that <a href="../Array/get-index.html"><code>Array::GetIndex</code></a> is not: it finds an
+      equal value anywhere, and it is <code>O(n)</code></td>
+  </tr>
+</table>
+
+<h2 id="non-member">Non-member helper functions</h2>
+
+<p>None. <code>Vector.h</code> declares the class and, under <code>__UNIT_TEST__</code>, the test collection — nothing
+at namespace scope in between.</p>
+
+<h2 id="coverage">Coverage</h2>
+
+<table>
+  <tr><th>Gap</th><th>Detail</th></tr>
+  <tr>
+    <td>Method names without their own page</td>
+    <td><code>destructor</code>, <code>operator=</code>, <code>begin</code>, <code>end</code>,
+      <code>operator[]</code>, <code>Front</code>, <code>Back</code>, <code>PopBack</code>, <code>Clear</code>,
+      <code>Size</code>, <code>Capacity</code>, <code>IsEmpty</code>, <code>IsValidIndex</code>,
+      <code>Data</code>, <code>FindIndex</code>. Their contracts are in the rows above; the detail an overload family
+      page would carry — parameter-by-parameter requirements, the invalidation table, worked examples — is not</td>
+  </tr>
+  <tr>
+    <td>No call site in the engine</td>
+    <td><code>Container/Vector.h</code> is included by <code>Engine/Test/UnitTestCollection.cpp</code> and by nothing
+      else in <code>Engine/</code> or <code>Applications/</code>. The <code>Vector&lt;…&gt;</code> members in
+      <code>Engine/Math/Transform.h</code> and <code>Engine/String/String.h</code> are
+      <code>std::vector</code>. Every example in this batch is therefore labelled illustrative, and
+      <code>Engine/Container/Vector.cpp</code> — the <code>VectorTest</code> fixture — is the only code that
+      exercises the class</td>
+  </tr>
+  <tr>
+    <td><code>VectorTest</code></td>
+    <td>Declared in the header under <code>__UNIT_TEST__</code>, defined in <code>Vector.cpp</code>. It is a test
+      fixture, not engine API; the surface it exercises belongs to
+      <a href="../../Test/index.html">the Test module</a></td>
+  </tr>
+  <tr>
+    <td>The allocator's own behaviour</td>
+    <td>What <code>DefaultAllocator&lt;TElement&gt;</code> does about alignment, which pool it draws from, and what
+      its <code>rebind</code> is for — all documented in
+      <a href="../../Memory/index.html#allocators">Memory</a>, not repeated here</td>
+  </tr>
+  <tr>
+    <td>Which assert each guard uses</td>
+    <td><code>operator[]</code>, <code>Front</code>, <code>Back</code> and <code>PopBack</code> use
+      <code>FatalAssert</code>, active in every configuration; nothing in this class uses the Debug-and-Dev-only
+      <code>Assert</code>, because nothing here reports a failure at all. The family is documented in
+      <a href="../../Core/index.html#functions">Core: Debug</a></td>
+  </tr>
+</table>
+
+<footer class="prevnext">
+  <span><a href="../index.html">← Container</a></span>
+  <span><a href="../index.html#vector">Vector in the Container class list</a></span>
+</footer>
+
+</main>
+</body>
+</html>

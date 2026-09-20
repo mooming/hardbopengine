@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vector::Swap — Container — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">Vector</a> methods</h3>
+  <ul class="methods">
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="push-back.html">PushBack</a></li>
+    <li><a href="emplace-back.html">EmplaceBack</a></li>
+    <li><a href="resize.html">Resize</a></li>
+    <li><a href="reserve.html">Reserve</a></li>
+    <li><a class="current" href="swap.html">Swap</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Container</a> /
+  <a href="index.html">Vector</a> / Swap
+</p>
+
+<h1><span class="fn">Swap</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Vector</span>
+  <span class="tag">Engine/Container/Vector.h</span>
+  <span class="tag">noexcept</span>
+  three <code>std::swap</code> calls over count, capacity and the pointer — the only way this container gives
+  memory back early
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code><span class="kw">void</span> <span class="fn">Swap</span>(<span class="ty">Vector</span>&amp; rhs) <span class="kw">noexcept</span>;</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  <code>std::swap</code> is applied to <code>count</code>, to <code>capacity</code> and to <code>data</code>. No
+  element is constructed, moved or destroyed, so the operation is constant time, allocation-free and
+  <code>noexcept</code>. Afterwards each vector holds the other's buffer, element count and capacity.
+</p>
+
+<p>
+  The parameter is a plain lvalue reference, so two named vectors swap directly — <code>a.Swap(b);</code> compiles
+  here. Contrast <a href="../Array/swap.html"><code>Array::Swap</code></a>, whose parameter is
+  <code>Array&amp;&amp;</code> and which therefore requires <code>std::move</code> on the argument. Same intent, two
+  spellings inside one module — the kind of divergence that makes a copied call site fail to compile rather than
+  fail to work.
+</p>
+
+<p>
+  There is no self-swap guard and none is needed: swapping a field with itself leaves it equal. Swapping with a
+  vector of a different capacity is normal and costs nothing — that is the idiom this function is most useful for,
+  since a vector never releases capacity by itself (see <a href="resize.html"><code>Resize</code></a>).
+</p>
+
+<div class="gap">
+  <strong>The allocator is not swapped, so each side frees the buffer it adopted with the allocator it already
+  had.</strong> <code>allocator</code> is not in the list of exchanged fields, and <code>DefaultAllocator</code>
+  carries the allocator id captured when it was constructed — so a vector built inside one memory scope and swapped
+  with one built inside another ends up releasing memory into a scope that did not allocate it. With one allocator
+  scope in play (the common case, and every configuration the engine actually builds) this costs nothing and changes
+  nothing; with a pool adapter it is a cross-pool free. The same property makes
+  <a href="constructors.html">the move constructor</a> and move assignment allocator-blind. See
+  <a href="../../Memory/index.html#allocators">Memory: allocators</a>.
+</div>
+
+<div class="note">
+  <strong>Iterators keep their addresses and change their owner.</strong> A pointer into a swapped buffer still
+  points at the same bytes and the same live object, but those bytes are now elements of the other vector, addressed
+  by its <code>count</code>. Nothing is invalidated by <code>Swap</code> in the memory sense — a range iterated
+  across a swap simply stops belonging to the vector you are asking about.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr>
+    <td><code>rhs</code></td>
+    <td><code>Vector&amp;</code></td>
+    <td>
+      A modifiable vector of the same <code>TElement</code> and <code>TAllocator</code> types; a named lvalue is
+      fine. After the call it holds this vector's former buffer, count and capacity — it is not emptied unless it
+      started empty, which is what makes the release pattern below work
+    </td>
+  </tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  <code>void</code>. Nothing can fail and nothing is reported: four swaps and no allocation, so there is no status
+  to check and no state that can come out wrong.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<p class="note">Illustrative — no call site for this exists in the repository; see the note on
+<a href="constructors.html">the constructors</a>.</p>
+
+<p>Release a buffer while keeping the vector — the shrink-to-fit this class does not provide otherwise:</p>
+
+<pre><code>{
+        <span class="ty">hbe</span>::<span class="ty">Vector</span>&lt;<span class="ty">Light</span>&gt; empty;        <span class="cm">// no buffer, no capacity</span>
+        lights.<span class="fn">Swap</span>(empty);          <span class="cm">// lights: Size() == 0, Capacity() == 0</span>
+}                                     <span class="cm">// `empty` is destroyed here and releases the buffer</span></code></pre>
+
+<p>Exchange contents without touching an element:</p>
+
+<pre><code>current.<span class="fn">Swap</span>(next);                  <span class="cm">// O(1); no element constructed, moved or destroyed</span>
+current.<span class="fn">Swap</span>(current);               <span class="cm">// legal, and a no-op</span></code></pre>
+
+<footer class="prevnext">
+  <span><a href="index.html">← Vector</a></span>
+  <span><a href="index.html#methods">All Vector methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

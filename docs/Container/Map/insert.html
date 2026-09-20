@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Map::Insert — Container — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">Map</a> methods</h3>
+  <ul class="methods">
+    <li><a class="current" href="insert.html">Insert</a></li>
+    <li><a href="remove.html">Remove</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Container</a> /
+  <a href="index.html">Map</a> / Insert
+</p>
+
+<h1><span class="fn">Insert</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Map</span>
+  <span class="tag">Engine/Container/Map.h</span>
+  <span class="tag">3 overloads</span>
+  put one entry in sorted position — which means moving every entry above it down one slot
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code><span class="kw">bool</span> <span class="fn">Insert</span>(<span class="kw">const</span> <span class="ty">TKey</span>&amp; key, <span class="kw">const</span> <span class="ty">TValue</span>&amp; value);
+<span class="kw">bool</span> <span class="fn">Insert</span>(<span class="kw">const</span> <span class="ty">TKey</span>&amp; key, <span class="ty">TValue</span>&amp;&amp; value);
+<span class="kw">bool</span> <span class="fn">Insert</span>(<span class="ty">TKey</span>&amp;&amp; key, <span class="ty">TValue</span>&amp;&amp; value);</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  A binary search (<code>FindIndex</code>) decides whether the key is already there; if it is, the insert is dropped
+  and the answer is <code>false</code>. Otherwise <code>InsertSorted</code> finds the insertion point with
+  <code>LowerBound</code>, grows the buffer if it is full, shifts every entry from that point to the end up by one
+  slot, and constructs <code>Pair{key, TValue{}}</code> in the hole. The caller then assigns
+  <code>value</code> into <code>entries[idx].value</code>.
+</p>
+
+<p>
+  That last pair of steps is why <code>TValue</code> must be <strong>default-constructible and assignable</strong>:
+  the value you pass is never a constructor argument. The same shape appears in
+  <a href="../HashMap/insert.html"><code>HashMap::Insert</code></a>, so it is a module convention rather than an
+  accident of this class — and the consequence is the same: a value type that can be constructed but not assigned
+  cannot live here.
+</p>
+
+<p>
+  Cost. The search is <code>O(log n)</code>, but the shift is <code>O(n)</code> move-construct-and-destroy pairs, and
+  a full buffer adds a reallocation that moves all of them again. Inserting into a <code>Map</code> in sorted order is
+  cheap (the insertion point is the end, so nothing shifts); inserting into the front of a populated map moves the whole
+  array. For a workload whose keys arrive in order — a build table, a resource manifest read from disk — this container
+  is the right choice, and its ordered iteration and cache-linear lookups come free. For random insertion into a large
+  map, it is the wrong one.
+</p>
+
+<div class="gap">
+  <strong>Every insert moves elements, so every iterator, pointer and reference into the map is invalidated by an
+  insert that is not appended at the end.</strong> Even when no reallocation happens, the shift re-homes the entries
+  above the insertion point by move-constructing each into the next slot and destroying the source, so a reference you
+  held to an unrelated entry now points at a slot holding a different pair. Growth invalidates everything as well, and
+  a growth here is not reported: <code>Grow</code> uses
+  <code>allocator.allocate(sizeof(Pair) * newCap)</code> without testing the result before writing through it.
+</div>
+
+<div class="note">
+  <strong>Order is whatever <code>TCompare</code> says it is, and the default is <code>std::less&lt;TKey&gt;</code>.</strong>
+  The comparison is used asymmetrically — <code>compare(stored, sought)</code> and <code>compare(sought, stored)</code>
+  — which is how equality is derived from ordering: neither one less than the other. A comparator that is not a strict
+  weak ordering does not produce a compile error; it produces a sorted array that binary search cannot trust, and the
+  symptom is an <code>Insert</code> that returns <code>true</code> for a key that is already in the map.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr>
+    <td><code>key</code></td>
+    <td><code>const TKey&amp;</code> (first two) / <code>TKey&amp;&amp;</code> (third)</td>
+    <td>Copy- or move-constructible as the overload requires, and comparable under this map's
+      <a href="index.html#template"><code>TCompare</code></a>. Duplicate keys are rejected rather than replaced, so the
+      <code>bool</code> is the only report of the collision</td>
+  </tr>
+  <tr>
+    <td><code>value</code></td>
+    <td><code>const TValue&amp;</code> / <code>TValue&amp;&amp;</code></td>
+    <td>Default-constructible, and assignable from the argument. Assigned only when the key was new — and note the order
+      of events: the shift of other entries has already happened before the value arrives, so a value type whose
+      assignment throws leaves the map one entry longer with a default-constructed hole in it</td>
+  </tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr>
+    <td><code>bool</code></td>
+    <td>
+      <code>true</code> when a new entry was created (and the argument value then assigned), <code>false</code> when the
+      key was present and the argument value discarded. Not <code>[[nodiscard]]</code>. There is no path that reports an
+      allocation failure, so a <code>true</code> here does not prove the memory was validly obtained
+    </td>
+  </tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p class="note">Illustrative — no call site for this exists in the repository.
+<code>Container/Map.h</code> is included by <code>Engine/Test/UnitTestCollection.cpp</code> and by nothing else in
+<code>Engine/</code> or <code>Applications/</code>; the <code>MapTest</code> fixture in
+<code>Engine/Container/Map.cpp</code> is the only code that exercises it.</p>
+
+<pre><code><span class="ty">hbe</span>::<span class="ty">Map</span>&lt;<span class="kw">int</span>, <span class="ty">MeshHandle</span>&gt; byId;
+
+byId.<span class="fn">Insert</span>(<span class="nu">10</span>, a);                        <span class="cm">// first entry: no shift at all</span>
+byId.<span class="fn">Insert</span>(<span class="nu">20</span>, b);                        <span class="cm">// appended after 10: still nothing to shift</span>
+<span class="kw">if</span> (!byId.<span class="fn">Insert</span>(<span class="nu">10</span>, c))
+{
+        <span class="cm">// key present — `c` discarded, a still stands</span>
+        <span class="cm">// overwrite instead: byId[10] = c;</span>
+}
+
+byId.<span class="fn">Insert</span>(<span class="nu">5</span>, d);                         <span class="cm">// both existing pairs move up one slot</span>
+
+<span class="kw">for</span> (<span class="kw">const auto</span>&amp; entry : byId)
+{
+        <span class="cm">// visited in TCompare order: 5, 10, 20 — ordered iteration is the reason for this type</span>
+}</code></pre>
+
+<p>
+  The loop is the payoff, and it is what <a href="../HashMap/index.html"><code>HashMap</code></a> cannot offer: its
+  iteration order is slot order and changes on every rehash.
+</p>
+
+<footer class="prevnext">
+  <span><a href="index.html">← Map</a></span>
+  <span><a href="index.html#methods">All Map methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

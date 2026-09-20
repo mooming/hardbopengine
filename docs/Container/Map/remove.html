@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Map::Remove — Container — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">Map</a> methods</h3>
+  <ul class="methods">
+    <li><a href="insert.html">Insert</a></li>
+    <li><a class="current" href="remove.html">Remove</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Container</a> /
+  <a href="index.html">Map</a> / Remove
+</p>
+
+<h1><span class="fn">Remove</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Map</span>
+  <span class="tag">Engine/Container/Map.h</span>
+  destroy one entry and close the gap — every entry above the hole moves down a slot
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code><span class="kw">bool</span> <span class="fn">Remove</span>(<span class="kw">const</span> <span class="ty">TKey</span>&amp; key);</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Binary-search for the key; return <code>false</code> if it is absent. Otherwise destroy the pair in place with
+  <code>entries[idx].~Pair()</code>, then walk the remaining entries down one slot each —
+  <code>new (&amp;entries[i - 1]) Pair(std::move(entries[i])); entries[i].~Pair();</code> — decrement
+  <code>count</code>, and return <code>true</code>.
+</p>
+
+<p>
+  There is no tombstone here and no gap left behind: this is a sorted array, so closing the hole is the only way to keep
+  the ordering meaningful. The cost is the mirror image of <a href="insert.html"><code>Insert</code></a>'s —
+  <code>O(n)</code> moves below the removed entry, free if the entry was the last one. The capacity is not reduced, and
+  nothing in this class releases memory short of the destructor, so removal never gives room back.
+</p>
+
+<div class="gap">
+  <strong>Every iterator, pointer and reference at or above the removed slot is now wrong, and this container will not
+  catch you using it.</strong> The entries that moved down changed address; the slot they left holds a destroyed
+  object. <code>Map</code>'s <code>Iterator::operator*</code> is a bare <code>return *ptr;</code> with no state check —
+  unlike <a href="../HashMap/remove.html"><code>HashMap</code></a>'s iterator, which asserts that the slot is still
+  <code>Occupied</code> — so reading through a stale one here is a silent read of destroyed memory, not a stop. And the
+  forward-iteration trap is specific: after removing the entry the iterator sits on, the entry that was next has moved
+  <em>back</em> into the slot the iterator already passed, so a plain <code>++</code> skips it.
+</div>
+
+<div class="note">
+  <strong>There is no removal by iterator and none by predicate.</strong> The only key this function accepts is a key;
+  selective removal means collecting keys first. <code>Clear</code> is the bulk path, and unlike removal one by one it
+  costs <code>O(n)</code> once rather than <code>O(n)</code> per entry — a map being emptied in pieces is quadratic
+  movement for no reason.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr>
+    <td><code>key</code></td>
+    <td><code>const TKey&amp;</code></td>
+    <td>
+      Comparable under this map's <a href="index.html#template"><code>TCompare</code></a>, and ordering-stable since
+      position, not hash, is what locates it: a key whose comparison result changes after insertion is unreachable, and
+      an unreachable key can be neither read nor removed — its memory is only reclaimed by
+      <code>Clear</code> or the destructor
+    </td>
+  </tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr>
+    <td><code>bool</code></td>
+    <td>
+      <code>true</code> when an entry was destroyed, <code>false</code> when no key compared equal. Not
+      <code>[[nodiscard]]</code>. <code>Size()</code> drops by one on the <code>true</code> path;
+      <code>Capacity()</code> never changes
+    </td>
+  </tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p class="note">Illustrative — no call site for this exists in the repository; see the note on
+<a href="insert.html"><code>Insert</code></a>.</p>
+
+<pre><code><span class="kw">if</span> (byId.<span class="fn">Remove</span>(staleId))
+{
+        <span class="cm">// every entry above the one removed now lives one slot earlier</span>
+}
+
+<span class="cm">// Selective removal done the only safe way: decide first, erase after.</span>
+<span class="ty">hbe</span>::<span class="ty">Vector</span>&lt;<span class="kw">int</span>&gt; doomed;                       <span class="cm">// see ../Vector/index.html for this container</span>
+
+<span class="kw">for</span> (<span class="kw">const auto</span>&amp; entry : byId)
+{
+        <span class="kw">if</span> (entry.value.IsStale())
+        {
+                doomed.<span class="fn">PushBack</span>(entry.key);
+        }
+}
+
+<span class="kw">for</span> (<span class="kw">const auto</span> key : doomed)
+{
+        byId.<span class="fn">Remove</span>(key);
+}
+
+<span class="cm">// Or, when the whole map is going anyway — one pass instead of n of them:</span>
+byId.<span class="fn">Clear</span>();                              <span class="cm">// destroys every pair, keeps the buffer and capacity</span></code></pre>
+
+<p>
+  Two notes on that shape. The keys are gathered while iterating and erased afterwards, because erasing mid-walk invalidates
+  the iterator the loop is standing on; and each erase inside the second loop is another <code>O(n)</code> shift, which is
+  acceptable for a handful of doomed keys and is the wrong tool for a map being halved.
+</p>
+
+<footer class="prevnext">
+  <span><a href="index.html">← Map</a></span>
+  <span><a href="index.html#methods">All Map methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

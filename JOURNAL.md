@@ -190,6 +190,35 @@ to the page they are on; §8 had no case for a sibling class in the same module,
 need on nearly every page. Its two other complaints (validator crash, no badge for a public data member) had
 already been fixed while it ran — stale reports are not defects, and it says so itself.
 
+**Container landed — 49 pages — and wave A closed with the whole site at 231 API pages, zero dead links.** Its
+corrections are the ones a container user actually steps on: `LinkedList` has no `Size` and no count member at all,
+and `Remove` takes `TType&` and locates by address, not by value; `Vector` has no `Insert` or `Erase` despite the
+page implying insertion paths; `RingQueue` neither overwrites nor refuses politely — `Push` runs
+`FatalAssert(!IsFull())`, so a full queue aborts; `BoundedPriorityQueue`'s "bounded" bounds *priority levels*, not
+item count, and its priority is used as an unchecked array index; `TPredicate` is a function pointer, so capture
+lambdas do not compile; a `Deque`'s iterators are unmasked pointers that die on wrap; and no container's allocator
+is exchanged by any move, which means a moved container still frees into the pool it was born in.
+
+**Its most useful complaint was about my validator, and it was right in a way I could not see on my own.** Twelve
+of its pages carried `class=\"kw\"` backslash contamination — markup an HTML parser accepts silently, because the
+escaped quotes just become part of an attribute value — and all twelve passed `ALL CLEAN`. My checks test
+structure, links and class names; none looks for escaped-quote debris, so a page can render literal `class="kw"`
+inside a signature while every gate stays green. §12 now carries a contamination check, negative-controlled
+before I trusted it: one injected `class=\"fn\"` in a copy of the tree, flagged, 1 of 49. The agent had already
+repaired the twelve itself.
+
+**My checker produced its fourth false positive of the day**, and the most instructive: `get-index.html`,
+`is-valid-index.html` and `operator-index.html` are method pages, but they *end in* `index.html`, so my class-page
+test — an `endswith("index.html")` suffix match — bucketed them as class pages and reported five missing sections.
+The collision is mine, created when I named `operator[]`'s page `operator-index.html`. Match path shape with a
+pattern anchored on `/index.html`, not a suffix.
+
+**It also proved the exemplars underdetermined the three hardest page types**, since all four Array exemplars are
+about a non-growing contiguous type: no invalidation, no allocator ownership across a move, no concurrency.
+`Deque/begin` and `AtomicStackView/pop` are now exemplars for exactly those. And its §14 lesson — *derive* the file
+list from links and declarations rather than copying a brief's enumeration — came from my own list being one file
+short of what the site required.
+
 ## Tasks become things the registry owns, addressed by identity (2026-09-19)
 
 **What landed**, as `3be27c3`: R7 with R22's sizing. `Engine/Core/TaskID.h` (`{index, generation}`) and

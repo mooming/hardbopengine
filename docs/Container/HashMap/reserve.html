@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HashMap::Reserve — Container — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">HashMap</a> methods</h3>
+  <ul class="methods">
+    <li><a href="insert.html">Insert</a></li>
+    <li><a href="remove.html">Remove</a></li>
+    <li><a class="current" href="reserve.html">Reserve</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Container</a> /
+  <a href="index.html">HashMap</a> / Reserve
+</p>
+
+<h1><span class="fn">Reserve</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::HashMap</span>
+  <span class="tag">Engine/Container/HashMap.h</span>
+  <span class="tag">not noexcept</span>
+  force the table to a size before inserting — which also wipes every tombstone and moves every entry
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code><span class="kw">void</span> <span class="fn">Reserve</span>(<span class="ty">TIndex</span> newCapacity);</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Returns immediately when <code>newCapacity &lt;= cap</code>. Otherwise it takes
+  <code>newCap = max(MinCapacity, cap)</code> and doubles it until it reaches <code>newCapacity</code>, then rehashes
+  into a table of that size: one allocation of <code>sizeof(Pair) * newCap + sizeof(EHashEntryState) * newCap</code>
+  bytes, all state bytes written as <code>Empty</code>, every occupied pair moved into the new table by move, the old
+  pairs destroyed, and the old byte buffer returned to the allocator.
+</p>
+
+<p>
+  The capacity you get is never the capacity you asked for. Every slot index in this map is computed as
+  <code>hash &amp; (cap - 1)</code>, so <code>cap</code> must be a power of two — which is what the doubling loop is for.
+  The result is the smallest power of two that is at least <code>max(MinCapacity, cap)</code> and at least
+  <code>newCapacity</code>. <a href="index.html#properties"><code>MinCapacity</code></a> is 4, so a fresh map cannot be
+  given a three-slot table, and asking for 1000 on an empty map gets you 1024.
+</p>
+
+<p>
+  Because the rehash writes a brand-new state array, it is also the only routine that forgets tombstones: the new
+  <code>tombstoneCount</code> starts at zero, and the dead slots of the old table are simply not carried over.
+  <a href="remove.html"><code>Remove</code></a> explains why that matters for a churn workload — and the asymmetry to
+  notice is that a reserve large enough to trigger a rehash clears the tombstone debt, while a reserve that is refused
+  (<code>newCapacity &lt;= cap</code>) leaves it in place.
+</p>
+
+<div class="gap">
+  <strong>It cannot shrink, so it cannot release memory.</strong> The early return covers every request at or below
+  the current capacity, and there is no other path out of the allocation: a map's buffer is returned only by its
+  destructor. Combined with tombstones counting toward the load factor, the practical consequence is that a map which
+  once held a large working set holds that table for life. A map that has finished with a workload is a map to destroy
+  and rebuild, not a map to empty.
+</div>
+
+<div class="gap">
+  <strong>All iterators, pointers and references die, and a failed allocation is not reported.</strong> Both keys and
+  values are moved into the new buffer, so every address inside the map changes — and unlike
+  <a href="../Vector/reserve.html"><code>Vector::Reserve</code></a>, which at least asserts when the allocator
+  returns null, <code>Rehash</code> tests nothing: the state bytes are written through the returned pointer before
+  anything looks at it. This member is not marked <code>noexcept</code> either, which does not help: a throw from a
+  key or value move constructor inside a <code>noexcept</code> rehash terminates anyway.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr>
+    <td><code>newCapacity</code></td>
+    <td><a href="index.html#properties"><code>TIndex</code></a> (<code>int</code>)</td>
+    <td>
+      Entries you intend to hold — a slot count, not a byte count, even though this map's default allocator is
+      <code>DefaultAllocator&lt;uint8_t&gt;</code> and the allocation it performs is in bytes: the conversion from
+      slots to bytes happens inside <code>Rehash</code>, never at the call. The number is a floor, not a target; it is
+      rounded up to a power of two, and a request of <code>MinCapacity</code> or less on an empty map still builds a
+      four-slot table
+    </td>
+  </tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  <code>void</code>. Read <a href="index.html#methods"><code>Capacity</code></a> afterwards for the table you
+  actually got, and remember that <code>Size()</code> stays exactly as it was — this is a rehash of the contents, not a
+  change to them. A rehash is also what an <a href="insert.html"><code>Insert</code></a> can trigger by itself, so
+  reserving enough up front is the only way to keep the insert path free of reallocation.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<p class="note">Illustrative — no call site for this exists in the repository; see the note on
+<a href="insert.html"><code>Insert</code></a>.</p>
+
+<pre><code><span class="ty">hbe</span>::<span class="ty">HashMap</span>&lt;<span class="ty">StaticStringID</span>, <span class="ty">TextureHandle</span>&gt; textures;
+textures.<span class="fn">Reserve</span>(<span class="nu">1000</span>);
+textures.<span class="fn">Capacity</span>();                        <span class="cm">// 1024 — the next power of two, and not the number asked for</span>
+textures.<span class="fn">Reserve</span>(<span class="nu">8</span>);                         <span class="cm">// refused: 8 is below the capacity, nothing happens</span>
+
+<span class="kw">for</span> (<span class="kw">const auto</span>&amp; entry : manifest)
+{
+        textures.<span class="fn">Insert</span>(entry.id, entry.handle);   <span class="cm">// 1000 inserts here would still rehash — see below</span>
+}</code></pre>
+
+<p>
+  The last comment is the reason for the whole call, and the arithmetic has to include the load factor rather than
+  the capacity: <a href="index.html#properties"><code>MaxLoadFactor</code></a> is <code>0.7</code>, so a 1024-slot
+  table grows as soon as 717 slots are used, counting tombstones. Reserving for 1000 entries means reserving for
+  <code>1000 / 0.7</code> slots — <code>Reserve(1500)</code> takes the capacity to 2048 and the inserts stop
+  reallocating. A reserve that only covers the entry count is a reserve that pays for one more rehash later.
+</p>
+
+<footer class="prevnext">
+  <span><a href="index.html">← HashMap</a></span>
+  <span><a href="index.html#methods">All HashMap methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Deque::PushBack — Container — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">Deque</a> methods</h3>
+  <ul class="methods">
+    <li><a class="current" href="push-back.html">PushBack</a></li>
+    <li><a href="begin.html">begin</a></li>
+    <li><a href="end.html">end</a></li>
+    <li><a href="reserve.html">Reserve</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Container</a> /
+  <a href="index.html">Deque</a> / PushBack
+</p>
+
+<h1><span class="fn">PushBack</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Deque</span>
+  <span class="tag">Engine/Container/Deque.h</span>
+  <span class="tag">2 overloads</span>
+  <span class="tag">noexcept</span>
+  construct at the tail cursor, advance it with the wrap mask, count one more
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code><span class="kw">void</span> <span class="fn">PushBack</span>(<span class="kw">const</span> <span class="ty">TElement</span>&amp; value) <span class="kw">noexcept</span>;
+<span class="kw">void</span> <span class="fn">PushBack</span>(<span class="ty">TElement</span>&amp;&amp; value) <span class="kw">noexcept</span>;</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  If the deque is full — <code>count == Capacity()</code>, where <code>Capacity()</code> is
+  <code>mask + 1</code> — the private <code>Grow</code> runs first and calls
+  <a href="reserve.html"><code>Reserve</code></a> with <code>max(DefaultCapacity, Capacity() * 2)</code>, which moves
+  every live element into a bigger buffer and unwraps them in the process. Then the element is constructed at
+  <code>data[tail]</code>, <code>tail</code> advances through <code>WrapIndex(tail + 1)</code>, and
+  <code>count</code> is incremented. Constant time in the ordinary case.
+</p>
+
+<p>
+  Both ends cost the same here: unlike <a href="../Vector/push-back.html"><code>Vector::PushBack</code></a>, appending
+  at the front is not a shift of everything, and unlike <a href="../Array/index.html"><code>Array</code></a> nothing is
+  full-size-allocated. That symmetry is the reason this container is the one the task system queues with.
+</p>
+
+<p>
+  There are two overloads, one taking the value by const reference and one by rvalue reference, chosen by the argument
+  exactly as you would expect. Both return <code>void</code>, so reach the appended element through
+  <code>Back()</code> or <code>operator[]</code> with <code>Size() - 1</code>.
+</p>
+
+<div class="gap">
+  <strong>A push that triggers a growth moves every element and unwraps the ring.</strong> All pointers, references and
+  iterators into the deque are invalidated — the same rule the other containers carry, with the extra twist that after a
+  growth the elements sit at different slot numbers than they did before (a growth rewrites them contiguously from index
+  0). And the allocation result is not tested: <code>Reserve</code> writes through it, so a failed growth is a crash
+  rather than a refusal.
+</div>
+
+<div class="note">
+  <strong>Nothing in a deque serialises access.</strong> The two overloads mutate <code>tail</code> and
+  <code>count</code> with no atomic operation and no lock, so a queue shared between threads has to be guarded by its
+  owner. Every call site in the engine does exactly that, and the example below shows the guard as part of the pattern
+  rather than as decoration.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr>
+    <td><code>value</code></td>
+    <td><code>const TElement&amp;</code></td>
+    <td>Copy-constructible <code>TElement</code>; the copy is made into the ring's buffer</td>
+  </tr>
+  <tr>
+    <td><code>value</code></td>
+    <td><code>TElement&amp;&amp;</code></td>
+    <td>Move-constructible <code>TElement</code>. If the argument refers into this same deque and the push grows, the
+      source is destroyed by the growth before the move reads it — the same aliasing trap as
+      <a href="../Vector/emplace-back.html"><code>EmplaceBack</code></a></td>
+  </tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  <code>void</code> on both overloads, with no signal that a growth happened. A caller that cares compares
+  <code>Capacity()</code> before and after; a caller that cares about element addresses should have reserved first.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<p>The engine's real use, from the task stream's FIFO admission path:</p>
+
+<pre><code><span class="kw">bool</span> TaskStream::<span class="fn">EnqueueFifo</span>(<span class="kw">const</span> <span class="ty">RangedTask</span>&amp; task) noexcept
+{
+        <span class="cm">// ... capacity and admission checks ...</span>
+
+        std::scoped_lock&lt;std::mutex&gt; lock(queueLock);
+        fifoQueue.<span class="fn">PushBack</span>(task);               <span class="cm">// Deque&lt;RangedTask&gt;, copied in under the lock</span>
+        cv.<span class="fn">notify_one</span>();
+        <span class="kw">return</span> <span class="kw">true</span>;
+}</code></pre>
+
+<p class="meta">Condensed from Engine/Core/TaskStream.cpp. <code>fifoQueue</code> is declared as
+<code>Deque&lt;RangedTask&gt; fifoQueue;</code> in <code>Engine/Core/TaskStream.h</code>, next to
+<code>BoundedPriorityQueue&lt;RangedTask&gt; priorityQueue;</code>, and the mutex guards both.</p>
+
+<p>
+  The copy is the const overload at work: <code>task</code> is a const reference the caller keeps, so the deque builds
+  its own element. A producer that can give up its task would pass <code>std::move(task)</code> and take the rvalue
+  overload instead.
+</p>
+
+<footer class="prevnext">
+  <span><a href="index.html">← Deque</a></span>
+  <span><a href="index.html#methods">All Deque methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

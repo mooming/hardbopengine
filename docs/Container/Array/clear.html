@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Array::Clear — Container — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">Array</a> methods</h3>
+  <ul class="methods">
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+    <li><a href="begin.html">begin</a></li>
+    <li><a href="end.html">end</a></li>
+    <li><a href="operator-assign.html">operator=</a></li>
+    <li><a href="operator-index.html">operator[]</a></li>
+    <li><a href="emplace.html">Emplace</a></li>
+    <li><a href="to-raw-array.html">ToRawArray</a></li>
+    <li><a href="size.html">Size</a></li>
+    <li><a href="is-valid-index.html">IsValidIndex</a></li>
+    <li><a class="current" href="clear.html">Clear</a></li>
+    <li><a href="resize.html">Resize</a></li>
+    <li><a href="swap.html">Swap</a></li>
+    <li><a href="get-index.html">GetIndex</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Container</a> /
+  <a href="index.html">Array</a> / Clear
+</p>
+
+<h1><span class="fn">Clear</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Array</span>
+  <span class="tag">Engine/Container/Array.h</span>
+  <span class="tag">noexcept</span>
+  empty the array and hand the buffer back — the whole body is <code>Swap(Array())</code>
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code><span class="kw">void</span> <span class="fn">Clear</span>() <span class="kw">noexcept</span>;</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  One statement: construct a temporary empty <code>Array</code> and <a href="swap.html">swap</a> with it. The
+  temporary arrives as <code>(length = 0, data = nullptr)</code>, the two arrays exchange those two fields, and
+  the temporary — now holding the only pointer to the buffer — is destroyed at the end of the full-expression,
+  destroying every element and releasing the memory.
+</p>
+
+<p>
+  The result is a genuinely empty array: <a href="size.html"><code>Size</code></a> is <code>0</code> and
+  <a href="to-raw-array.html"><code>ToRawArray</code></a> is <code>nullptr</code>. Nothing is kept for reuse. That
+  is the deliberate difference from the other containers in this module, which destroy their elements and keep
+  their buffer: <code>Vector::Clear</code>, <code>Deque::Clear</code> and <code>HashMap::Clear</code> all leave
+  <code>Capacity()</code> unchanged, while <code>Array::Clear</code> drops the allocation entirely, because for
+  this container the allocation and the element count are the same number. Refilling an array after a clear
+  therefore costs a fresh allocation plus a full construction pass; if the intent is "empty it but keep the room",
+  the container that wants that job is <code>Vector</code>, or an <a href="resize.html">explicit resize</a> back
+  up to the size you still want.
+</p>
+
+<div class="gap">
+  <strong>The buffer is freed by the temporary's allocator, not by this array's.</strong>
+  <code>Array()</code> default-constructs its own <code>TAllocator</code>, and the temporary — not <code>this</code>
+  — runs the destructor that calls <code>deallocate</code>. A <code>DefaultAllocator</code> records the allocator id
+  current at construction, so the memory is released through <em>the scope open where you called
+  <code>Clear</code></em>, not the scope that allocated it. A stateful adapter such as
+  <code>NamedPoolAllocator&lt;T&gt;</code>, which is constructed from a specific pool, makes this a free into the
+  wrong pool or into nothing. This is the same property that makes
+  <a href="operator-assign.html">move assignment</a> and <a href="swap.html"><code>Swap</code></a>
+  allocator-blind; <code>Clear</code> is simply the case that happens on every call, and the one a caller cannot
+  see coming.
+</div>
+
+<div class="note">
+  <strong>Everything pointing into the array dies here.</strong> Every pointer, reference and iterator obtained
+  from the array — from <a href="begin.html"><code>begin</code></a>,
+  <a href="operator-index.html"><code>operator[]</code></a> or
+  <a href="to-raw-array.html"><code>ToRawArray</code></a> — refers to memory that is freed before
+  <code>Clear</code> returns. The elements are destroyed in ascending order, by the temporary, using the same
+  explicit <code>~Element()</code> walk described on the <a href="destructor.html">destructor</a> page.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  <code>void</code>. There is no status and nothing can fail: <code>Clear</code> asserts nothing, allocates
+  nothing, and is <code>noexcept</code>. It is safe on an array that is already empty — the swap exchanges two
+  null-state pairs and the temporary frees nothing.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<p>The one call site in the engine, during shutdown:</p>
+
+<pre><code><span class="kw">void</span> TaskSystem::<span class="fn">JoinAndClear</span>() <span class="kw">noexcept</span>
+{
+        <span class="kw">for</span> (<span class="kw">auto</span>&amp; stream : streams)
+        {
+                <span class="cm">// ... request shutdown of each stream, then join its worker thread ...</span>
+                thread.<span class="fn">join</span>();
+        }
+
+        streams.<span class="fn">Clear</span>();          <span class="cm">// Array&lt;TaskStream&gt;: every TaskStream destroyed, buffer released</span>
+}</code></pre>
+
+<p class="meta">From Engine/Core/TaskSystem.cpp, in <code>TaskSystem::JoinAndClear</code>. Note the
+<a href="begin.html">range-for immediately before it</a>: the buffer that loop walked is the buffer this call
+frees.</p>
+
+<p>The refill cost, which is the reason to think twice before putting this in a loop:</p>
+
+<p class="note">Illustrative — no call site for this exists in the repository.</p>
+
+<pre><code><span class="kw">for</span> (<span class="kw">const auto</span> frame : frames)
+{
+        batch.<span class="fn">Clear</span>();                       <span class="cm">// allocation released</span>
+        batch.<span class="fn">Resize</span>(frame.count);           <span class="cm">// allocation taken again, every element reconstructed</span>
+        <span class="fn">Fill</span>(batch, frame);
+}</code></pre>
+
+<footer class="prevnext">
+  <span><a href="index.html">← Array</a></span>
+  <span><a href="index.html#methods">All Array methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

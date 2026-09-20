@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Array destructor — Container — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">Array</a> methods</h3>
+  <ul class="methods">
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a class="current" href="destructor.html">destructor</a></li>
+    <li><a href="begin.html">begin</a></li>
+    <li><a href="end.html">end</a></li>
+    <li><a href="operator-assign.html">operator=</a></li>
+    <li><a href="operator-index.html">operator[]</a></li>
+    <li><a href="emplace.html">Emplace</a></li>
+    <li><a href="to-raw-array.html">ToRawArray</a></li>
+    <li><a href="size.html">Size</a></li>
+    <li><a href="is-valid-index.html">IsValidIndex</a></li>
+    <li><a href="clear.html">Clear</a></li>
+    <li><a href="resize.html">Resize</a></li>
+    <li><a href="swap.html">Swap</a></li>
+    <li><a href="get-index.html">GetIndex</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Container</a> /
+  <a href="index.html">Array</a> / destructor
+</p>
+
+<h1><span class="fn">~Array</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Array</span>
+  <span class="tag">Engine/Container/Array.h</span>
+  destroys every element explicitly, then frees through the allocator the array already holds
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>~<span class="fn">Array</span>();</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Three steps, in this order: return immediately if <code>data</code> is null; call <code>item.~Element()</code>
+  on each element by walking the range <a href="begin.html"><code>begin()</code></a> to
+  <a href="end.html"><code>end()</code></a>; then hand the buffer back with
+  <code>allocator.deallocate(data, length)</code>. Elements are destroyed before the memory goes, which is the
+  only order that is safe, and the count passed to <code>deallocate</code> is the same element count that was
+  passed to <code>allocate</code> — the allocator is asked for the same thing twice.
+</p>
+
+<p>
+  Destruction is <em>explicit</em> rather than a <code>std::destroy</code>-style loop because the buffer holds
+  constructed objects the array itself placed there; the array never assigns through the elements on this path,
+  so an element with a deleted assignment operator still lives in an <code>Array</code> that is only ever
+  constructed, moved and destroyed.
+</p>
+
+<p>
+  The destructor is the reason the allocator is a member at all. Allocation and deallocation cannot end up split
+  across two pools, because both use the one copy stored in <code>allocator</code> — chosen by whichever
+  <a href="constructors.html">constructor</a> built the array.
+</p>
+
+<div class="gap">
+  <strong>The array's own lifetime must end inside the memory scope its allocator refers to.</strong> A
+  <code>DefaultAllocator</code> records the allocator id that was current when the array was constructed, and the
+  destructor replays it; an adapter that holds a reference to a pool inherits that pool's lifetime rule instead
+  of a softer one. So an <code>Array</code> built from a frame allocator that outlives the frame — a member of a
+  longer-lived object, or a static — frees into memory that has already gone. This is the ordering rule for any
+  container placed in an arena: the container is destroyed first, or it must not be in the arena.
+</div>
+
+<div class="note">
+  <strong>Elements are destroyed in ascending index order — the same direction they were constructed in.</strong>
+  The loop is <code>for (auto&amp; item : *this)</code>, so element 0 dies first. That is not the
+  reverse-of-construction order a stack-like destruction would give, and it matters only for elements whose
+  destructor touches a sibling element through a stored reference or pointer: such an element can be destroyed
+  before the thing it refers to. An element that stores an index instead of an address is unaffected, and
+  <a href="get-index.html"><code>GetIndex</code></a> works during destruction only in the trivial case.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  A destructor has no return value and cannot fail in a way you can observe: it is implicitly
+  <code>noexcept</code>, so an element destructor that throws propagates out of a <code>noexcept</code> function
+  and terminates the process. The null-buffer early return also means an array whose buffer was never obtained —
+  the state <a href="constructors.html">a failed sized construction</a> leaves behind — releases nothing and
+  reports nothing.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<p>
+  A destructor is only ever observed by leaving scope, which is exactly what the module's fixture does — every
+  test constructs a local <code>Array</code> and lets it go at the closing brace:
+</p>
+
+<pre><code>AddTest(<span class="st">&quot;Default Constructor&quot;</span>, [<span class="kw">this</span>](<span class="kw">auto</span>&amp; ls)
+{
+        <span class="kw">const</span> <span class="ty">Array</span>&lt;<span class="kw">int</span>&gt; array;        <span class="cm">// no buffer, so the early return fires</span>
+        <span class="kw">if</span> (array.<span class="fn">Size</span>() != <span class="nu">0</span>)
+        {
+                ls &lt;&lt; <span class="st">&quot;Null Array Size is not zero.&quot;</span> &lt;&lt; lferr;
+        }
+});                                        <span class="cm">// array is destroyed here, releasing nothing</span></code></pre>
+
+<p class="meta">From Engine/Container/Array.cpp, the <code>ArrayTest</code> fixture compiled under
+<code>__UNIT_TEST__</code>.</p>
+
+<p>Where the ordering rule bites, in the shape that breaks:</p>
+
+<p class="note">Illustrative — no call site for this exists in the repository.</p>
+
+<pre><code><span class="cm">// Wrong: the array outlives the allocator scope its buffer came from.</span>
+<span class="ty">Array</span>&lt;<span class="ty">MeshVertex</span>, <span class="ty">FrameAllocator</span>&gt; vertices(frameAllocator, <span class="nu">1024</span>);
+<span class="cm">// ... returned or stored somewhere that lives past this frame ...</span>
+
+<span class="cm">// Right: declared inside the scope, destroyed before it closes.</span>
+{
+        <span class="ty">Array</span>&lt;<span class="ty">MeshVertex</span>, <span class="ty">FrameAllocator</span>&gt; scratch(frameAllocator, <span class="nu">1024</span>);
+        <span class="fn">FillScratch</span>(scratch);
+}</code></pre>
+
+<footer class="prevnext">
+  <span><a href="index.html">← Array</a></span>
+  <span><a href="index.html#methods">All Array methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

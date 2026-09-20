@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Deque::begin — Container — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">Deque</a> methods</h3>
+  <ul class="methods">
+    <li><a href="push-back.html">PushBack</a></li>
+    <li><a class="current" href="begin.html">begin</a></li>
+    <li><a href="end.html">end</a></li>
+    <li><a href="reserve.html">Reserve</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Container</a> /
+  <a href="index.html">Deque</a> / begin
+</p>
+
+<h1><span class="fn">begin</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Deque</span>
+  <span class="tag">Engine/Container/Deque.h</span>
+  <span class="tag">2 overloads</span>
+  address of the oldest element — correct on its own, and only paired with
+  <a href="end.html"><code>end</code></a> until the ring wraps
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code><span class="ty">Iterator</span> <span class="fn">begin</span>() <span class="kw">noexcept</span>;              <span class="cm">// TElement*</span>
+<span class="ty">ConstIterator</span> <span class="fn">begin</span>() <span class="kw">const</span> <span class="kw">noexcept</span>;   <span class="cm">// const TElement*</span></code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Returns <code>&amp;data[head]</code> — the slot holding the oldest live element. It is the address of a real element
+  whenever the deque is non-empty, and it is the right answer by itself: <code>*begin()</code> is
+  <code>Front()</code>, and the slot is the one <code>PopFront</code> will destroy.
+</p>
+
+<p>
+  Nothing wraps inside this function, and that is not an oversight on its own — a pointer to one element needs no
+  modulus. The problem is only what it means as the <em>start of a range</em>, because
+  <a href="end.html"><code>end()</code></a> is computed as <code>&amp;data[head + count]</code> with the same absence of
+  a modulus.
+</p>
+
+<div class="gap">
+  <strong><code>begin()</code> to <code>end()</code> is not a valid range once the ring has wrapped, and range-for uses
+  it.</strong> Every other member of this class resolves slot numbers through the private
+  <code>WrapIndex(index) { return index &amp; mask; }</code> — <code>operator[]</code>, <code>Front</code>,
+  <code>Back</code>, <code>DestroyAll</code>, <code>Reserve</code>'s copy loop — but the range pair does not. As soon as
+  <code>head + count</code> exceeds the capacity, <code>end()</code> points past the end of the allocation and the range
+  is longer than the element count. Two calls demonstrate it on a fresh deque, whose capacity is 4:
+  <code>PushFront(1)</code> then <code>PushBack(2)</code> leaves the elements in slots 3 and 0 with
+  <code>head = 3</code>, <code>tail = 1</code> and <code>count = 2</code>, so <code>begin()</code> is
+  <code>&amp;data[3]</code> and <code>end()</code> is <code>&amp;data[5]</code>. The walk yields the element in slot 3,
+  then reads slot 4 — outside a buffer whose indices run 0 to 3 — and never reaches the element that wrapped around to
+  slot 0. Reading a wrapped deque with a range-for therefore touches memory the
+  deque never allocated, and writing through it corrupts whatever is next to it.
+  <p>
+    The consequence in practice: iterate a deque with an index —
+    <code>for (auto i = 0; i &lt; d.Size(); ++i) Use(d[i]);</code> — which routes every access through
+    <code>WrapIndex</code> and is correct in every state. <code>Engine/Core/TaskStream.cpp</code> does exactly this, and
+    never uses a range-for over <code>fifoQueue</code>. The wrap state cannot be tested from outside either:
+    <code>head</code> and <code>mask</code> are private, and <code>Size()</code> plus <code>Capacity()</code> are not
+    enough to tell whether <code>head + count</code> has run off the end.
+  </p>
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr>
+    <td><code>TElement*</code> / <code>const TElement*</code></td>
+    <td>
+      The oldest element's address — <code>data + head</code>, and <code>nullptr</code> on a default-constructed or
+      cleared deque that never allocated, where <code>head</code> is 0 and the expression forms the address of a null
+      base. Valid until a growth, a <a href="reserve.html"><code>Reserve</code></a> that moves the buffer, a
+      <code>Clear</code> or destruction. A <em>non</em>-growing push at either end leaves it pointing at the same slot,
+      which may no longer hold the element it used to
+    </td>
+  </tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p>The correct shape, and the one the engine uses — index arithmetic through <code>operator[]</code>:</p>
+
+<pre><code><span class="cm">// Where the whole queue has to be inspected, this is the form that stays correct across a wrap:</span>
+<span class="kw">for</span> (<span class="ty">hbe</span>::<span class="ty">Deque</span>&lt;<span class="ty">RangedTask</span>&gt;::<span class="ty">TIndex</span> i = <span class="nu">0</span>; i &lt; fifoQueue.<span class="fn">Size</span>(); ++i)
+{
+        <span class="fn">Inspect</span>(fifoQueue[i]);              <span class="cm">// WrapIndex inside, every time</span>
+}</code></pre>
+
+<p class="meta">Index-walk form; the surrounding drain loop is
+<code>Engine/Core/TaskStream.cpp</code>'s <code>fifoQueue.Front()</code> / <code>fifoQueue.PopFront()</code>
+pair. Nothing in <code>Engine/</code> range-iterates a deque.</p>
+
+<p>What the pair is safe for:</p>
+
+<p class="note">Illustrative — no call site for this exists in the repository.</p>
+
+<pre><code><span class="kw">if</span> (queue.<span class="fn">Size</span>() &gt; <span class="nu">0</span>)
+{
+        <span class="fn">TakeFirst</span>(queue.<span class="fn">begin</span>(), queue.<span class="fn">Size</span>());   <span class="cm">// a single pointer, not a range: fine</span>
+}
+
+<span class="kw">for</span> (<span class="kw">auto</span>&amp; item : queue)   <span class="cm">// do not: begin/end do not wrap — see the hazard above</span>
+{
+        <span class="fn">Use</span>(item);
+}</code></pre>
+
+<footer class="prevnext">
+  <span><a href="index.html">← Deque</a></span>
+  <span><a href="index.html#methods">All Deque methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

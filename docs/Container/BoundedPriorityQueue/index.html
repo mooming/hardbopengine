@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BoundedPriorityQueue — Container — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="#description">Class description</a></li>
+    <li><a href="#template">Template parameters</a></li>
+    <li><a href="#properties">Class properties</a></li>
+    <li><a href="#methods">Class methods</a></li>
+    <li><a href="#non-member">Non-member helpers</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+
+  <h3>Methods</h3>
+  <ul class="methods">
+    <li><a href="push.html">Push</a></li>
+    <li><a href="push-range.html">PushRange</a></li>
+    <li><a href="remove.html">Remove</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Container</a> / BoundedPriorityQueue
+</p>
+
+<h1>BoundedPriorityQueue</h1>
+<p class="subtitle">
+  <span class="tag">Engine/Container/BoundedPriorityQueue.h</span>
+  <span class="tag">namespace hbe</span>
+  <span class="tag">template &lt;typename T, std::size_t MaxPriority = 256, std::size_t BucketSizeHint = 0&gt;</span>
+  <span class="tag">final</span>
+  one <a href="../Deque/index.html"><code>Deque</code></a> per priority level, drained highest-first and oldest-first within
+  a level
+</p>
+
+<h2 id="description">Class description</h2>
+
+<p>
+  The queue is a fixed array of optional deques, indexed by priority. A level's deque is created by the first
+  <a href="push.html"><code>Push</code></a> that names it and released the moment it drains, so an idle level costs nothing
+  beyond its slot in the array and a queue with 256 declared levels can hold a single item. Selection is one variable:
+  <code>highestBucket</code> tracks the largest priority that currently holds something, and
+  <a href="#methods"><code>Pop</code></a> takes the front of that deque. Within a level, items append at the back and leave
+  from the front, so equal priorities run in arrival order.
+</p>
+
+<p>
+  This is the most-used container in the module. <code>Engine/Core/TaskSystem.h</code> holds
+  <code>BoundedPriorityQueue&lt;RangedTask&gt; taskQueue;</code>, <code>Engine/Core/TaskStream.h</code> holds
+  <code>BoundedPriorityQueue&lt;RangedTask&gt; priorityQueue;</code> beside its FIFO deque, and
+  <code>Engine/Core/MainThreadTaskQueue.h</code> aliases
+  <code>BoundedPriorityQueue&lt;TaskItem, 256, MaxQueueSize&gt;</code>.
+</p>
+
+<div class="gap">
+  <strong>"Bounded" bounds the priority range, not the number of items.</strong> There is no maximum size, no full state and
+  no refusal anywhere in this class: <code>totalSize</code> is a plain counter that goes up for ever, and each level's
+  deque grows by doubling the way <a href="../Deque/push-back.html"><code>Deque</code></a> does. A producer that outruns
+  the consumer makes this queue larger without limit — the bound in the name is the <code>MaxPriority</code> array, which is
+  about how many <em>levels</em> exist. Nothing named "bounded" should be trusted to bound a backlog, and this one does not.
+</div>
+
+<div class="gap">
+  <strong>The priority value is an unchecked array index.</strong> <a href="push.html"><code>Push</code></a> computes
+  <code>static_cast&lt;std::size_t&gt;(item.priority)</code> and indexes <code>std::array</code> with it — no assert, no
+  clamp, in any configuration. It is correct only while the convention holds: an eight-bit priority field against
+  <code>MaxPriority = 256</code>. Lower <code>MaxPriority</code> below the range of the element's priority field, or widen
+  that field, and pushes corrupt memory outside the array in every build.
+</div>
+
+<div class="note">
+  <strong>Urgency runs upward.</strong> The largest priority number is the most urgent — the opposite of the convention in
+  most schedulers, and invisible in a test that only ever uses one level. Combined with oldest-first within a level, the
+  full ordering rule is: highest number wins, ties broken by arrival.
+</div>
+
+<div class="note">
+  <strong>The object cannot be moved, copied, or relocated after construction.</strong> Both copy and move constructors and
+  both assignment operators are explicitly deleted and the destructor is defaulted, so a queue lives where it is declared —
+  as a member of <code>TaskSystem</code>, <code>TaskStream</code> or <code>MainThreadTaskQueue</code>, which is how every
+  real use does it. There is no allocator parameter of any kind either: the buckets are
+  <a href="../Deque/index.html"><code>Deque</code></a> objects and each takes
+  <a href="../../Memory/index.html#allocators"><code>DefaultAllocator</code></a> on its own, which is the memory-scope rule
+  that applies to every container in this module.
+</div>
+
+<h2 id="template">Template parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Kind</th><th>What it must satisfy</th></tr>
+  <tr>
+    <td><code>T</code></td>
+    <td><code>typename</code></td>
+    <td>
+      Copy-constructible (the const <code>Push</code>, and <code>Top()</code>, which returns a copy out of a const method)
+      and move-constructible (the rvalue <code>Push</code>, and <code>Pop</code>, which moves the element out of its bucket
+      before returning it). Must expose a readable <code>priority</code> member convertible to
+      <code>std::size_t</code> and holding values below <code>MaxPriority</code> — a <code>uint8_t</code> is what the header's
+      note specifies. The note adds <code>HasFinished()</code> to the requirements, but no method of this class calls it: it
+      exists because callers' predicates use it, see <a href="remove.html"><code>Remove</code></a>
+    </td>
+  </tr>
+  <tr>
+    <td><code>MaxPriority</code></td>
+    <td><code>std::size_t</code>, defaults to <code>256</code></td>
+    <td>
+      Number of levels, and therefore the array size and the largest usable priority value minus one. It is a compile-time
+      constant, not a capacity: nothing about it limits how many items the queue holds. It also fixes the object's footprint
+      — one <code>std::optional&lt;Deque&lt;T&gt;&gt;</code> per level is inline storage in the owning object, empty or not, so
+      256 levels cost 256 handles whether or not they are used
+    </td>
+  </tr>
+  <tr>
+    <td><code>BucketSizeHint</code></td>
+    <td><code>std::size_t</code>, defaults to <code>0</code></td>
+    <td>
+      Capacity a bucket is created with, applied through <code>if constexpr</code>: above zero the deque is constructed with
+      that many slots, rounded up to a power of two of at least 4; zero leaves the deque its own default of 4. Only levels that
+      are actually used pay this — which is what makes
+      <code>BoundedPriorityQueue&lt;TaskItem, 256, MaxQueueSize&gt;</code> in <code>MainThreadTaskQueue</code> affordable
+    </td>
+  </tr>
+</table>
+
+<h2 id="properties">Class properties</h2>
+
+<p>Every member and every nested type of this class is private — the class has no public nested type and no public constant,
+and its access section opens only at the constructor.</p>
+
+<table>
+  <tr><th>Name</th><th>Declaration</th><th>What it means</th></tr>
+  <tr>
+    <td><code>TBucket</code></td>
+    <td><code>using TBucket = Deque&lt;T&gt;;</code></td>
+    <td><span class="badge">private</span> One level's storage: a full ring deque, with its own growth, its own allocation and
+      its own <a href="../Deque/begin.html">iteration caveat</a> — unreachable from outside, because the queue exposes no
+      accessor for a bucket</td>
+  </tr>
+  <tr>
+    <td><code>TBuckets</code></td>
+    <td><code>using TBuckets = std::array&lt;std::optional&lt;TBucket&gt;, MaxPriority&gt;;</code></td>
+    <td><span class="badge">private</span> The level table. The <code>std::optional</code> is the "does this level exist" flag,
+      and the class relies on a stated invariant: engaged means non-empty, maintained in one place by
+      <code>ReleaseEmptyBucket</code></td>
+  </tr>
+  <tr>
+    <td><code>buckets</code></td>
+    <td><code>TBuckets buckets;</code></td>
+    <td><span class="badge">private</span> Indexed by priority value. Written by <code>Push</code>, read by
+      <code>Pop</code>/<code>Top</code>/<code>Remove</code>/<code>Clear</code>, never bounds-checked</td>
+  </tr>
+  <tr>
+    <td><code>totalSize</code></td>
+    <td><code>std::size_t totalSize;</code></td>
+    <td><span class="badge">private</span> Item count across all levels — what <code>Size()</code> answers in constant time and
+      what every emptiness decision tests. Updated by push, pop, remove and clear</td>
+  </tr>
+  <tr>
+    <td><code>highestBucket</code></td>
+    <td><code>std::size_t highestBucket;</code></td>
+    <td><span class="badge">private</span> The most urgent populated level. Raised by <code>Push</code>, walked downward by
+      <code>RetrackHighestBucket</code> — which is why the cost of emptying a level is paid at that moment rather than on every
+      pop. When the queue is empty it may sit at a level that holds nothing; every reader checks <code>totalSize</code> first,
+      which is what makes that harmless</td>
+  </tr>
+</table>
+
+<h2 id="methods">Class methods</h2>
+
+<p>
+  A name set as a link has its own page; the rest are documented here and named in
+  <a href="#coverage">Coverage</a>.
+</p>
+
+<table>
+  <tr><th>Method</th><th>Signature</th><th>What a caller depends on</th></tr>
+  <tr>
+    <td><code>constructors</code><span class="badge">1 + 2 deleted</span></td>
+    <td class="sig">BoundedPriorityQueue() noexcept<br>BoundedPriorityQueue(const BoundedPriorityQueue&amp;) = delete<br>BoundedPriorityQueue(BoundedPriorityQueue&amp;&amp;) = delete</td>
+    <td>The default constructor zeroes two counters and allocates nothing — no matter how many levels are declared. The deletions
+      mean the object is lifetime-bound to where it is declared</td>
+  </tr>
+  <tr>
+    <td><code>destructor</code></td>
+    <td class="sig">~BoundedPriorityQueue() = default</td>
+    <td>Compiler-generated: destroys the array, which destroys each engaged deque, which frees each bucket's buffer through that
+      deque's own allocator. Items still in the queue are destroyed, not handed anywhere</td>
+  </tr>
+  <tr>
+    <td><code>operator=</code><span class="badge">2, both deleted</span></td>
+    <td class="sig">BoundedPriorityQueue&amp; operator=(const BoundedPriorityQueue&amp;) = delete<br>BoundedPriorityQueue&amp; operator=(BoundedPriorityQueue&amp;&amp;) = delete</td>
+    <td>No assignment in any form. To hand a queue's contents over, drain it with <code>Pop()</code> into wherever they belong</td>
+  </tr>
+  <tr>
+    <td><code>IsEmpty</code>, <code>Size</code></td>
+    <td class="sig">[[nodiscard]] bool IsEmpty() const noexcept<br>[[nodiscard]] std::size_t Size() const noexcept</td>
+    <td>Both read <code>totalSize</code>; note the type — <code>std::size_t</code>, not the <code>TIndex = int</code> of the
+      contiguous containers, so a loop written with <code>int</code> against this <code>Size()</code> is a signedness mismatch</td>
+  </tr>
+  <tr>
+    <td><a href="push.html">Push</a><span class="badge">2 overloads</span></td>
+    <td class="sig">void Push(const T&amp; item) noexcept<br>void Push(T&amp;&amp; item) noexcept</td>
+    <td>Routes by <code>item.priority</code> into that level's deque, creating the deque if needed; highest number is most urgent,
+      priority is read once and never re-read</td>
+  </tr>
+  <tr>
+    <td><a href="push-range.html">PushRange</a><span class="badge">2 template overloads</span></td>
+    <td class="sig">template &lt;typename Iterator&gt;<br>void PushRange(Iterator begin, Iterator end) noexcept<br>template &lt;typename TContainer&gt;<br>void PushRange(const TContainer&amp; container) noexcept</td>
+    <td>One <code>Push</code> per element, no batch pre-allocation; the container overload copies rather than moves because it sees
+      a const range</td>
+  </tr>
+  <tr>
+    <td><code>Pop</code></td>
+    <td class="sig">[[nodiscard]] std::optional&lt;T&gt; Pop() noexcept</td>
+    <td>
+      Empty answers <code>std::nullopt</code> — no assert, no crash, unlike
+      <a href="../Queue/pop.html"><code>Queue::Pop</code></a> and
+      <a href="../RingQueue/index.html"><code>RingQueue::Pop</code></a>, which is why <code>Engine/Core/TaskSystem.cpp:155</code>
+      can test <code>IsEmpty()</code> and still handle a missing value. Takes the front of the most urgent level, releases the level
+      if it drained, and walks the tracked maximum down
+    </td>
+  </tr>
+  <tr>
+    <td><code>Top</code></td>
+    <td class="sig">[[nodiscard]] std::optional&lt;T&gt; Top() const noexcept</td>
+    <td>The same element without removing it — and because the method is const and returns <code>std::optional&lt;T&gt;</code> by
+      value, it <em>copies</em> the element rather than referring to it. <code>Engine/Core/TaskSystem.cpp:161</code> uses exactly
+      that pair: <code>Top()</code> to inspect, then a separate <code>Pop()</code> to remove, which means the item is copied once and
+      inspected in between — and the queue could have changed in between if another thread drains it</td>
+  </tr>
+  <tr>
+    <td><a href="remove.html">Remove</a></td>
+    <td class="sig">std::size_t Remove(TPredicate predicate) noexcept</td>
+    <td>Rotate-filters every populated level with a captureless predicate; returns the number dropped; moves every element in the queue
+      whether or not anything matched</td>
+  </tr>
+  <tr>
+    <td><code>Clear</code></td>
+    <td class="sig">void Clear() noexcept</td>
+    <td>Resets every optional, so every bucket's buffer is freed — the opposite of <a href="../Deque/index.html"><code>Deque::Clear</code></a>,
+      which keeps its capacity. Counters are zeroed and the tracked maximum returns to 0. O(number of levels)</td>
+  </tr>
+</table>
+
+<h2 id="non-member">Non-member helper functions</h2>
+
+<p>
+  None. The header declares nothing at namespace scope besides the class and its test collection, and it exposes no type of the
+  kind <a href="../LinkedList/index.html#non-member"><code>LinkedList</code></a> and
+  <a href="../HashMap/index.html#non-member"><code>HashMap</code></a> document on their pages. Everything it needs from outside is
+  <a href="../Deque/index.html"><code>Deque</code></a> plus the standard headers <code>&lt;array&gt;</code>,
+  <code>&lt;optional&gt;</code>, <code>&lt;cstddef&gt;</code> and <code>&lt;utility&gt;</code> — the only container in this module
+  whose storage type comes from the standard library, which is worth knowing when comparing it to the hand-written containers around
+  it.
+</p>
+
+<h2 id="coverage">Coverage</h2>
+
+<table>
+  <tr><th>Gap</th><th>Detail</th></tr>
+  <tr>
+    <td>Method names without their own page</td>
+    <td><code>constructors</code>, <code>destructor</code>, <code>operator=</code>, <code>IsEmpty</code>,
+      <code>Size</code>, <code>Pop</code>, <code>Top</code>, <code>Clear</code>. Their contracts are the rows above</td>
+  </tr>
+  <tr>
+    <td>No way to inspect the queue's contents</td>
+    <td>No <code>begin</code>/<code>end</code>, no bucket accessor, no "for each item" operation. The only reads are
+      <code>Top()</code> — one copy of the most urgent item — and <code>Remove()</code> with a predicate that always rotates
+      everything. Nothing here documents that limitation as intentional</td>
+  </tr>
+  <tr>
+    <td>No thread safety, and the callers supply it</td>
+    <td>Nothing in this class synchronises: <code>totalSize</code> and <code>highestBucket</code> are plain fields updated in
+      several steps. <code>Engine/Core/MainThreadTaskQueue.h:17</code> states the arrangement plainly — "queueLock guards the
+      container, which has no synchronisation of its own." The locking itself belongs to
+      <a href="../../Core/index.html">Core</a></td>
+  </tr>
+  <tr>
+    <td>Priority range versus priority field width</td>
+    <td>The unchecked index is documented under the gap above and on
+      <a href="push.html"><code>Push</code></a>; no compile-time check ties <code>MaxPriority</code> to the width of
+      <code>T::priority</code>, and writing one is not part of this page's scope</td>
+  </tr>
+  <tr>
+    <td><code>BoundedPriorityQueueTest</code></td>
+    <td>Declared under <code>__UNIT_TEST__</code>, registered by <code>Engine/Test/UnitTestCollection.cpp</code>; a fixture, not
+      API — <a href="../../Test/index.html">the Test module</a></td>
+  </tr>
+</table>
+
+<footer class="prevnext">
+  <span><a href="../index.html">← Container</a></span>
+  <span><a href="../index.html#boundedpriorityqueue">BoundedPriorityQueue in the Container class list</a></span>
+</footer>
+
+</main>
+</body>
+</html>

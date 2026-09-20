@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BoundedPriorityQueue::Remove — Container — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">BoundedPriorityQueue</a> methods</h3>
+  <ul class="methods">
+    <li><a href="push.html">Push</a></li>
+    <li><a href="push-range.html">PushRange</a></li>
+    <li><a class="current" href="remove.html">Remove</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Container</a> /
+  <a href="index.html">BoundedPriorityQueue</a> / Remove
+</p>
+
+<h1><span class="fn">Remove</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::BoundedPriorityQueue</span>
+  <span class="tag">Engine/Container/BoundedPriorityQueue.h</span>
+  <span class="tag">noexcept</span>
+  drop every item a predicate claims — by rotating every bucket, whatever the answer is
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code><span class="kw">using</span> <span class="ty">TPredicate</span> = <span class="kw">bool</span> (*)(<span class="kw">const</span> T&amp;);
+
+std::<span class="ty">size_t</span> <span class="fn">Remove</span>(<span class="ty">TPredicate</span> predicate) <span class="kw">noexcept</span>;</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  A null predicate returns <code>0</code> at once. Otherwise every priority from <code>0</code> to
+  <code>MaxPriority - 1</code> is visited; an unengaged bucket is skipped, and an engaged one is rotate-filtered. The
+  bucket's length is captured first, then that many times: take the front item out by move, drop it if the predicate
+  claims it, otherwise append it to the back. After a full rotation the survivors are in the same arrival order they
+  started in, the claimed ones are gone, and the bucket is released if it drained. Finally
+  <code>totalSize</code> is reduced by the count and <code>highestBucket</code> is walked down to the next level that
+  still holds anything.
+</p>
+
+<div class="gap">
+  <strong><code>TPredicate</code> is a function pointer, so a capturing lambda does not compile.</strong>
+  <code>bool (*)(const T&amp;)</code> accepts a function, a captureless lambda and a static member function — nothing else.
+  <code>[&amp;](const T&amp; item) { return item.id == wanted; }</code> is a hard error at the call, and the diagnostic points
+  at the call site rather than at this typedef. The workarounds are a captureless lambda plus a lookup the lambda itself
+  performs, or a free function taking the state through a global — neither is recorded in the header, so this constraint
+  tends to be discovered by the compiler.
+</div>
+
+<div class="gap">
+  <strong>The argument your predicate receives is not in the queue any more.</strong> Each item is moved out of the bucket
+  and the slot is destroyed (<code>PopFront</code>) <em>before</em> the predicate is consulted, so the reference is to a
+  local in this function's frame. Two consequences: writing through it changes nothing the queue can see, and comparing
+  its address against a pointer you took earlier from <code>Top()</code> or a previous traversal will not match —
+  <code>Remove</code> cannot be used to locate an element by identity.
+</div>
+
+<div class="gap">
+  <strong>The cost is everything in the queue, not everything that matched.</strong> Every element of every engaged bucket
+  is moved out and, if it survives, moved back in. So a queue of ten thousand items with one finished task at the bottom
+  still pays ten thousand move-and-destroy pairs, and every element address in the queue is invalidated even when
+  <code>Remove</code> returns <code>0</code>. Any pointer, reference or iterator obtained before the call is dead after
+  it. The engine's own comment about this price is at <code>Engine/Core/TaskStream.cpp:222</code>: the surrounding sweep
+  "is the same O(n)-per-loop price BoundedPriorityQueue::Remove already pays."
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr>
+    <td><code>predicate</code></td>
+    <td><a href="#signature"><code>TPredicate</code></a> — <code>bool (*)(const T&amp;)</code></td>
+    <td>
+      <code>nullptr</code> is legal and means "remove nothing". Must not throw in practice — the function is
+      <code>noexcept</code>. Must not call back into the queue: it runs while the rotation holds a bucket mid-flight, so a
+      nested <code>Push</code>, <code>Pop</code> or <code>Remove</code> from inside it corrupts the rotation. Must be
+      captureless
+    </td>
+  </tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr>
+    <td><code>std::size_t</code></td>
+    <td>How many items were dropped — <code>0</code> when nothing matched or the predicate was null. Not
+      <code>[[nodiscard]]</code>; the engine's real caller discards it. <code>Size()</code> afterwards is the previous value
+      minus this one, and buckets that drained have already released their buffers</td>
+  </tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p class="note">Real call site — <code>Engine/Core/TaskStream.cpp:210</code>, inside the worker loop's lock scope. The
+lambda is captureless precisely because <code>TPredicate</code> demands it, and it reads the state out of the item.</p>
+
+<pre><code><span class="cm">// Engine/Core/TaskStream.cpp</span>
+priorityQueue.<span class="fn">Remove</span>([](<span class="kw">const</span> <span class="ty">RangedTask</span>&amp; task) { <span class="kw">return</span> task.<span class="fn">HasFinished</span>(); });
+
+<span class="cm">// This is also where the header's type requirement on T comes from: HasFinished() is not called</span>
+<span class="cm">// by BoundedPriorityQueue, it is called by the predicates its callers write.</span></code></pre>
+
+<p>
+  The same sweep appears in <a href="../../Engine/Engine/get-task-system.html">the task system's</a> documentation as the
+  maintenance pass of the stream. What it buys is that a finished task is never handed out again; what it costs is a full
+  rotation of every populated level, every iteration of the loop, which is why the surrounding code runs it once per wake
+  rather than per task.
+</p>
+
+<footer class="prevnext">
+  <span><a href="push-range.html">PushRange</a></span>
+  <span><a href="index.html#methods">All BoundedPriorityQueue methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

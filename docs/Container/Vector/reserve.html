@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vector::Reserve — Container — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">Vector</a> methods</h3>
+  <ul class="methods">
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="push-back.html">PushBack</a></li>
+    <li><a href="emplace-back.html">EmplaceBack</a></li>
+    <li><a href="resize.html">Resize</a></li>
+    <li><a class="current" href="reserve.html">Reserve</a></li>
+    <li><a href="swap.html">Swap</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Container</a> /
+  <a href="index.html">Vector</a> / Reserve
+</p>
+
+<h1><span class="fn">Reserve</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Vector</span>
+  <span class="tag">Engine/Container/Vector.h</span>
+  <span class="tag">noexcept</span>
+  buy room up front so nothing reallocates later — and the one way this container can take memory
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code><span class="kw">void</span> <span class="fn">Reserve</span>(<span class="ty">TIndex</span> newCapacity) <span class="kw">noexcept</span>;</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Returns immediately when <code>newCapacity &lt;= capacity</code>. Otherwise it allocates a buffer of exactly
+  <code>newCapacity</code> elements, move-constructs each live element into the same slot number of the new buffer
+  and destroys the source right after its move, returns the old buffer to the allocator, then adopts the new
+  pointer and capacity.
+</p>
+
+<p>
+  The capacity you ask for is the capacity you get. There is no rounding to a power of two as in
+  <a href="../Deque/reserve.html"><code>Deque::Reserve</code></a> and no minimum as in
+  <a href="../HashMap/index.html"><code>HashMap</code></a>'s — <code>Capacity()</code> reports the number you
+  passed. That makes this the function to call when a caller has already worked out the room it needs, which is
+  also what stops the next <a href="push-back.html"><code>PushBack</code></a> from deciding anything: a vector at
+  capacity grows by <code>max(DefaultCapacity, capacity * 2)</code>, so stating a ceiling here is the difference
+  between one allocation you chose and several that chose themselves.
+</p>
+
+<p>
+  It only ever grows. A request at or below the current capacity is a no-op, and there is no counterpart that
+  releases unused capacity — <code>Resize</code> to a smaller count destroys elements but keeps the buffer, so the
+  memory comes back only when the vector is destroyed or
+  <a href="swap.html">swapped</a> against an empty one.
+</p>
+
+<div class="gap">
+  <strong>A failed allocation is not checked, and the failure is a crash rather than a no-op.</strong> The
+  returned pointer is used unconditionally: the very next statement is
+  <code>new (&amp;newData[i]) TElement(...)</code>, and for an empty vector — where the copy loop is skipped —
+  <code>data</code> becomes the null pointer while <code>capacity</code> becomes the requested size, so
+  <code>Capacity()</code> reports room that does not exist and the next push writes to address zero. Contrast
+  <a href="../Array/resize.html"><code>Array::Resize</code></a>, which tests the pointer, asserts and keeps its old
+  state. Nothing in this function can tell you it failed, so a caller that cannot afford this either reserves
+  early enough that the allocator has not fragmented, or uses <a href="../Array/index.html"><code>Array</code></a>
+  and checks <a href="../Array/size.html"><code>Size</code></a> after every resize.
+</div>
+
+<div class="gap">
+  <strong>Every iterator, pointer and reference into the vector is invalidated by a real reserve.</strong> The
+  elements keep their values — they are moved, not copied — but they live at new addresses, and the buffer they
+  were in is returned to the allocator before the function returns. This includes pointers to elements you did not
+  touch, which is the part that surprises: <a
+  href="../Array/resize.html"><code>Array::Resize</code></a> carries the same rule, and the reason both state it
+  is that neither can help it. An element whose address escapes the container does not belong in a container that
+  reallocates.
+</div>
+
+<div class="note">
+  <strong><code>noexcept</code> plus a move that can throw is a terminate, not an exception.</strong> The element
+  loop is <code>new (&amp;newData[i]) TElement(std::move(data[i]))</code> inside a function that promises not to
+  throw. An element type with a throwing move constructor cannot be held by this container safely; the type trait
+  <code>std::is_nothrow_move_constructible</code> is the one to consult before you find out at runtime.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr>
+    <td><code>newCapacity</code></td>
+    <td><a href="index.html#properties"><code>TIndex</code></a> (<code>int</code>)</td>
+    <td>
+      Element slots wanted, counted in elements rather than bytes — <code>allocate</code> is called with this
+      number directly against the allocator's own value type. Anything at or below the current
+      <code>Capacity()</code>, including a negative number, is accepted and ignored. There is no upper bound and no
+      check that the allocation succeeded
+    </td>
+  </tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  <code>void</code>, with nothing to inspect in the failure case: the only honest post-condition is
+  <code>Capacity()</code>, and after a failed allocation it reports a capacity that the buffer does not have. If
+  the call did nothing — the request was at or below the current capacity — no reallocation happened and every
+  address in the vector is still good; comparing against <code>Capacity()</code> before and after tells you which
+  case you are in.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<p class="note">Illustrative — no call site for this exists in the repository; see the note on
+<a href="constructors.html">the constructors</a> for why the engine's <code>Vector</code>-shaped members are not
+this class.</p>
+
+<pre><code><span class="ty">hbe</span>::<span class="ty">Vector</span>&lt;<span class="ty">Light</span>&gt; lights;
+lights.<span class="fn">Reserve</span>(<span class="nu">256</span>);                     <span class="cm">// one allocation, Capacity() == 256</span>
+lights.<span class="fn">PushBack</span>(a);                       <span class="cm">// no reallocation: the reserved room is used</span>
+
+<span class="kw">auto</span>* first = &amp;lights[<span class="nu">0</span>];                <span class="cm">// a pointer into the buffer, taken while Size() == 1</span>
+lights.<span class="fn">PushBack</span>(b);                       <span class="cm">// fine: capacity is not reached, nothing moved</span>
+
+lights.<span class="fn">Reserve</span>(<span class="nu">512</span>);                     <span class="cm">// first is now dangling; Capacity() == 512</span>
+lights.<span class="fn">Reserve</span>(<span class="nu">64</span>);                      <span class="cm">// no-op: smaller than the capacity, buffer untouched</span></code></pre>
+
+<p>
+  The pair at the end is the two behaviours worth remembering: a larger request moves everything, a smaller one is
+  ignored. Neither can be observed from the return value, because there is none.
+</p>
+
+<footer class="prevnext">
+  <span><a href="index.html">← Vector</a></span>
+  <span><a href="index.html#methods">All Vector methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

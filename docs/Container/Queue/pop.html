@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Queue::Pop — Container — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">Queue</a> methods</h3>
+  <ul class="methods">
+    <li><a class="current" href="pop.html">Pop</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Container</a> /
+  <a href="index.html">Queue</a> / Pop
+</p>
+
+<h1><span class="fn">Pop</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Queue</span>
+  <span class="tag">Engine/Container/Queue.h</span>
+  <span class="tag">noexcept</span>
+  destroy the oldest element and move on — the value is not yours unless you took it first
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code><span class="kw">void</span> <span class="fn">Pop</span>() <span class="kw">noexcept</span>;</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Two lines: <code>FatalAssert(!container.IsEmpty())</code>, then <code>container.PopFront();</code>. Everything real
+  about this call happens inside the underlying container — for the default
+  <a href="../Deque/index.html"><code>Deque</code></a> that means destroying the element at <code>head</code> and
+  advancing the cursor, leaving capacity untouched. Nothing is returned, so the element is gone the moment the call
+  returns.
+</p>
+
+<div class="gap">
+  <strong>Take the element before you pop it, and take it by value.</strong> Removal and retrieval are two separate calls,
+  and the one that hands you the element (<code>Front()</code>) returns a reference to storage the next one destroys. The
+  ordering that looks natural is the broken one:
+</div>
+
+<pre><code><span class="kw">auto</span>&amp; pending = q.<span class="fn">Front</span>();   <span class="cm">// reference into the queue's buffer</span>
+q.<span class="fn">Pop</span>();                       <span class="cm">// the element it referred to is destroyed here</span>
+<span class="fn">Handle</span>(pending);                 <span class="cm">// reads a destroyed element</span></code></pre>
+
+<pre><code><span class="kw">auto</span> pending = q.<span class="fn">Front</span>();    <span class="cm">// copy or move out first — `auto`, not `auto&amp;`</span>
+q.<span class="fn">Pop</span>();
+<span class="fn">Handle</span>(pending);                 <span class="cm">// correct</span></code></pre>
+
+<p>
+  The alternative when copying or moving the element is too expensive is
+  <a href="index.html#methods"><code>Emplace</code></a>-ing it elsewhere by reference, or dropping down to the underlying
+  container and using <code>Front()</code> plus <code>PopFront()</code> directly — but the value-before-removal rule does
+  not change with the spelling, because it is the destroy call that ends the reference's lifetime.
+</p>
+
+<div class="note">
+  <strong>An empty queue stops the process, in Release included.</strong> The guard is <code>FatalAssert</code>, live in
+  every configuration (<a href="../../Core/index.html#functions">Core: Debug</a>), and there is no
+  <code>TryPop</code>-style variant to branch on. <code>IsEmpty()</code> is the check to run first if the producer is not
+  guaranteed to have supplied something.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  <code>void</code>. <code>Size()</code> is one smaller and, for the default container, <code>Capacity()</code> is
+  unchanged — <a href="../Deque/index.html">the ring keeps the buffer it grew to</a>; only
+  <a href="index.html#methods"><code>Clear()</code></a> and destruction release anything. Compare
+  <a href="../RingQueue/index.html"><code>RingQueue::Pop</code></a>, which returns the element by value and makes this
+  whole ordering question disappear.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<p class="note">Illustrative — no call site for this exists in the repository.
+<code>Container/Queue.h</code> is included by <code>Engine/Test/UnitTestCollection.cpp</code> and by nothing else in
+<code>Engine/</code> or <code>Applications/</code>. The engine's real FIFO consumer,
+<code>Engine/Core/TaskStream.cpp</code>, drives a <a href="../Deque/index.html"><code>Deque</code></a> directly with
+<code>Front()</code> and <code>PopFront()</code> instead of going through this adapter.</p>
+
+<pre><code><span class="ty">hbe</span>::<span class="ty">Queue</span>&lt;<span class="ty">Job</span>&gt; jobs;
+
+<span class="kw">while</span> (!jobs.<span class="fn">IsEmpty</span>())                <span class="cm">// the guard that keeps Pop out of the assert</span>
+{
+        <span class="kw">auto</span> job = jobs.<span class="fn">Front</span>();       <span class="cm">// by value, before the destroy</span>
+        jobs.<span class="fn">Pop</span>();
+
+        job.<span class="fn">Run</span>();
+}</code></pre>
+
+<footer class="prevnext">
+  <span><a href="index.html">← Queue</a></span>
+  <span><a href="index.html#methods">All Queue methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

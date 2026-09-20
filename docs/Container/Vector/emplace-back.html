@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vector::EmplaceBack — Container — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">Vector</a> methods</h3>
+  <ul class="methods">
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="push-back.html">PushBack</a></li>
+    <li><a class="current" href="emplace-back.html">EmplaceBack</a></li>
+    <li><a href="resize.html">Resize</a></li>
+    <li><a href="reserve.html">Reserve</a></li>
+    <li><a href="swap.html">Swap</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Container</a> /
+  <a href="index.html">Vector</a> / EmplaceBack
+</p>
+
+<h1><span class="fn">EmplaceBack</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Vector</span>
+  <span class="tag">Engine/Container/Vector.h</span>
+  <span class="tag">noexcept</span>
+  build the element inside the buffer from its constructor arguments, and get a reference to it back
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code><span class="kw">template</span>&lt;<span class="kw">typename</span>... Types&gt;
+<span class="ty">TElement</span>&amp; <span class="fn">EmplaceBack</span>(Types&amp;&amp;... args) <span class="kw">noexcept</span>;</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Grows the buffer first if <code>count == capacity</code>, exactly as
+  <a href="push-back.html"><code>PushBack</code></a> does, then constructs
+  <code>TElement(std::forward&lt;Types&gt;(args)...)</code> in the slot at <code>data[count]</code>, increments
+  <code>count</code> and returns a reference to the new object. Nothing is copied or moved into place: the
+  arguments go straight into the element's own constructor, so a type with no available copy or move — or one whose
+  copy you would rather not pay for — is appendable here and nowhere else in this class.
+</p>
+
+<p>
+  The distinction from <a href="../Array/emplace.html"><code>Array::Emplace</code></a> matters, because the names
+  are the same and the operations are not. <code>Array::Emplace(index, ...)</code> requires a slot that already
+  exists, destroys whatever is in it and changes no size; <code>EmplaceBack</code> adds a slot, changes the size and
+  may reallocate. Both leave the element at a stable address — one because nothing moved, the other because it was
+  constructed after any move had already finished.
+</p>
+
+<p>
+  The reference returned points into the vector's buffer, so it is good until the next growth,
+  <a href="resize.html"><code>Resize</code></a>, <code>Clear</code> or destruction. It is not
+  <code>[[nodiscard]]</code>; ignoring it is normal.
+</p>
+
+<div class="gap">
+  <strong>An argument that refers into this vector is read after the reallocation that destroys it.</strong> The
+  arguments are references bound at the call, but the growth runs before the constructor does. So
+  <code>v.EmplaceBack(v.Back());</code> or <code>v.EmplaceBack(v[0].name);</code> is sound while there is spare
+  capacity and a use-after-free the moment the push crosses the capacity boundary — the version that passes a test
+  with three elements and corrupts memory with four. Copy the argument to a local first, or reserve enough room that
+  no growth can happen.
+</div>
+
+<div class="gap">
+  <strong>The same two hazards the append path always carries.</strong> A growth moves every live element, so all
+  other pointers, references and iterators into the vector die here even though their values survived; and the
+  growth goes through <a href="reserve.html"><code>Reserve</code></a>, which does not test the allocator's return
+  value, so an allocation failure is not reported as anything. <code>noexcept</code> means a throwing constructor
+  terminates rather than unwinding.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr>
+    <td><code>args</code></td>
+    <td><code>Types...</code></td>
+    <td>
+      Zero or more arguments forming a valid <code>TElement</code> constructor call. Empty is legal and
+      value-initialises the new element — the same result as <code>Resize(Size() + 1)</code>, with a reference
+      handed back
+    </td>
+  </tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr>
+    <td><code>TElement&amp;</code></td>
+    <td>
+      The element just constructed, in the vector's buffer. Mutable even when the arguments were all const, because
+      it is a fresh object rather than a copy of one — which is the point: fill it in through the reference instead
+      of constructing a temporary and appending it. Valid until the next operation that reallocates
+    </td>
+  </tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p class="note">Illustrative — no call site for this exists in the repository; see the note on
+<a href="constructors.html">the constructors</a>.</p>
+
+<pre><code><span class="ty">hbe</span>::<span class="ty">Vector</span>&lt;<span class="ty">Light</span>&gt; lights;
+lights.<span class="fn">Reserve</span>(<span class="nu">64</span>);                          <span class="cm">// buy the room first, then the reference is stable</span>
+
+<span class="kw">auto</span>&amp; flare = lights.<span class="fn">EmplaceBack</span>(<span class="st">&quot;flare&quot;</span>);   <span class="cm">// Light(&quot;flare&quot;) built in place</span>
+flare.intensity = <span class="nu">4.f</span>;                       <span class="cm">// written through the returned reference</span>
+
+<span class="kw">auto</span>&amp; fill = lights.<span class="fn">EmplaceBack</span>();           <span class="cm">// value-initialised element, slot 1</span>
+fill = flare;                                <span class="cm">// both are elements of the same buffer</span></code></pre>
+
+<p>
+  The first line is the whole discipline this page teaches: the reference returned is only as durable as the buffer
+  it lives in, and a <code>Reserve</code> is what makes "hold the reference" a statement that stays true.
+</p>
+
+<footer class="prevnext">
+  <span><a href="index.html">← Vector</a></span>
+  <span><a href="index.html#methods">All Vector methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

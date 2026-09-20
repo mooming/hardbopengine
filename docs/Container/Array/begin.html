@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Array::begin — Container — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">Array</a> methods</h3>
+  <ul class="methods">
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+    <li><a class="current" href="begin.html">begin</a></li>
+    <li><a href="end.html">end</a></li>
+    <li><a href="operator-assign.html">operator=</a></li>
+    <li><a href="operator-index.html">operator[]</a></li>
+    <li><a href="emplace.html">Emplace</a></li>
+    <li><a href="to-raw-array.html">ToRawArray</a></li>
+    <li><a href="size.html">Size</a></li>
+    <li><a href="is-valid-index.html">IsValidIndex</a></li>
+    <li><a href="clear.html">Clear</a></li>
+    <li><a href="resize.html">Resize</a></li>
+    <li><a href="swap.html">Swap</a></li>
+    <li><a href="get-index.html">GetIndex</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Container</a> /
+  <a href="index.html">Array</a> / begin
+</p>
+
+<h1><span class="fn">begin</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Array</span>
+  <span class="tag">Engine/Container/Array.h</span>
+  <span class="tag">2 overloads</span>
+  the address of the first element, and the reason range-for compiles against an <code>Array</code>
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<p>One page for the name; the pair differs only in const-ness, and overload resolution picks one:</p>
+
+<pre><code><span class="ty">Iterator</span> <span class="fn">begin</span>();                       <span class="cm">// Element*</span>
+<span class="ty">ConstIterator</span> <span class="fn">begin</span>() <span class="kw">const</span>;        <span class="cm">// const Element*</span></code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Returns <code>&amp;data[0]</code> — the first element's address, which for a contiguous buffer is also the
+  buffer's address. Because <a href="index.html#properties"><code>Iterator</code></a> is a raw
+  <code>Element*</code>, the result is an ordinary pointer: it supports <code>++</code>, <code>-</code>, and
+  subscript, and it feeds <code>std::</code> algorithms without an adapter.
+</p>
+
+<p>
+  Together with <a href="end.html"><code>end</code></a> it is the whole range protocol. That is what lets
+  <code>for (auto value : array)</code> work, and what makes an <code>Array</code> argument acceptable to
+  anything written against a <code>[first, last)</code> pair.
+</p>
+
+<p>
+  Neither overload is <code>noexcept</code> or <code>[[nodiscard]]</code>. Both are one field read and an
+  address-of, so the absence of <code>noexcept</code> costs nothing in practice; the absence of
+  <code>[[nodiscard]]</code> means a statement whose value you throw away is not diagnosed.
+</p>
+
+<div class="gap">
+  <strong>Both overloads compute <code>&amp;data[0]</code> with no empty check, and an empty
+  <code>Array</code>'s <code>data</code> is <code>nullptr</code>.</strong> Formally that expression forms a
+  reference to what a null pointer "points at" before taking its address; in practice every compiler you will
+  meet produces a null iterator, and the empty range <code>[nullptr, nullptr)</code> is harmless because nothing
+  dereferences it. What is not harmless is an empty range that is <em>assumed</em> non-empty: test
+  <a href="size.html"><code>Size</code></a> before dereferencing what you get back, and read
+  <a href="resize.html"><code>Resize</code></a>'s note about a negative length, which turns this into an iterator
+  arithmetic past a null base.
+</div>
+
+<div class="note">
+  <strong>Iterators are invalidated by anything that changes the buffer, and by nothing else.</strong> A
+  <a href="resize.html">resize</a> or a <a href="clear.html">clear</a> frees the buffer these point into; a
+  <a href="swap.html"><code>Swap</code></a> leaves the addresses alone but moves them into the other array, so an
+  iterator you kept across a swap is now pointing at somebody else's elements. There is no debug iterator layer
+  to catch either case, because the iterator is a pointer.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr>
+    <td><code>Element*</code> / <code>const Element*</code></td>
+    <td>
+      The first element's address, and the value of
+      <a href="to-raw-array.html"><code>ToRawArray</code></a> for any non-empty array — two names for the same
+      field. On an array that holds nothing, the pointer is <code>nullptr</code>
+    </td>
+  </tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p>
+  The module's own fixture walks a filled array with range-for, on a mutable object and then on a
+  <code>const</code> one, which is the pair of overloads above exercised back to back:
+</p>
+
+<pre><code><span class="ty">hbe</span>::<span class="ty">Array</span>&lt;<span class="kw">int</span>&gt; array({<span class="nu">0</span>, <span class="nu">1</span>, <span class="nu">2</span>, <span class="nu">3</span>, <span class="nu">4</span>, <span class="nu">5</span>, <span class="nu">6</span>, <span class="nu">7</span>, <span class="nu">8</span>, <span class="nu">9</span>});
+
+<span class="kw">int</span> i = <span class="nu">0</span>;
+<span class="kw">for</span> (<span class="kw">auto</span> value : array)          <span class="cm">// begin() / end() on the mutable array</span>
+{
+        <span class="kw">if</span> (value != i)
+        {
+                <span class="kw">break</span>;
+        }
+
+        ++i;
+}</code></pre>
+
+<p class="meta">From Engine/Container/Array.cpp, the <code>ArrayTest</code> fixture compiled under
+<code>__UNIT_TEST__</code>; the second test in the same file repeats the loop over
+<code>const Array&lt;int&gt; array</code>, which selects the const overload.</p>
+
+<p>Outside the fixture, the pointer form is what a C-style API wants:</p>
+
+<p class="note">Illustrative — no call site for this exists in the repository.</p>
+
+<pre><code><span class="kw">if</span> (batch.<span class="fn">Size</span>() &gt; <span class="nu">0</span>)
+{
+        <span class="fn">UploadVertices</span>(batch.<span class="fn">begin</span>(), batch.<span class="fn">Size</span>());   <span class="cm">// pointer plus count</span>
+}</code></pre>
+
+<footer class="prevnext">
+  <span><a href="index.html">← Array</a></span>
+  <span><a href="index.html#methods">All Array methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

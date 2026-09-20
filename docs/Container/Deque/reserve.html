@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Deque::Reserve — Container — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">Deque</a> methods</h3>
+  <ul class="methods">
+    <li><a href="push-back.html">PushBack</a></li>
+    <li><a href="begin.html">begin</a></li>
+    <li><a href="end.html">end</a></li>
+    <li><a class="current" href="reserve.html">Reserve</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Container</a> /
+  <a href="index.html">Deque</a> / Reserve
+</p>
+
+<h1><span class="fn">Reserve</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Deque</span>
+  <span class="tag">Engine/Container/Deque.h</span>
+  <span class="tag">noexcept</span>
+  double the ring until it covers the request, rewriting the elements unwrapped in the process
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code><span class="kw">void</span> <span class="fn">Reserve</span>(<span class="ty">TIndex</span> newCapacity) <span class="kw">noexcept</span>;</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Returns when <code>newCapacity &lt;= Capacity()</code>. Otherwise it starts from the current capacity and doubles —
+  <code>newMask = (newMask + 1) * 2 - 1</code> — until the width covers the request, allocates that many elements, copies
+  the live ones into slots <code>0 .. count - 1</code> by walking them logically
+  (<code>WrapIndex(head + i)</code>, which is why reading through
+  <a href="begin.html"><code>begin</code></a> would have been wrong), destroys the sources, returns the old buffer, and
+  sets <code>head = 0</code>, <code>tail = count</code> and the new mask.
+</p>
+
+<p>
+  Capacity is therefore always a power of two — the mask is what makes
+  <code>WrapIndex</code> a single <code>and</code> — and the number asked for is a floor, not a target, exactly as in
+  <a href="../HashMap/reserve.html"><code>HashMap::Reserve</code></a>. A request of 100 on a fresh deque lands on 128, and
+  the floor under it is <a href="index.html#properties"><code>DefaultCapacity</code></a> = 4.
+</p>
+
+<p>
+  Because the copy leaves the elements unwrapped, this call also repairs
+  <a href="begin.html"><code>begin</code></a> to <a href="end.html"><code>end</code></a>: with <code>head = 0</code> and
+  <code>tail = count</code>, the range is valid again until the next <code>PushFront</code> wraps the cursor. That is an
+  observation about the current state, not a technique — a ring that is pushed at both ends will wrap again, and there is
+  nothing to reserve that keeps it unwrapped.
+</p>
+
+<div class="gap">
+  <strong>It cannot shrink, and a failed allocation is not checked.</strong> A request at or below the current capacity
+  returns without doing anything, so unused capacity can never be handed back except by destroying the deque; and the
+  allocation result is written through immediately, so a null return is a crash rather than a no-op — unlike
+  <a href="../Array/resize.html"><code>Array::Resize</code></a>, which tests the pointer and keeps its old state. Every
+  pointer, reference and iterator into the deque is invalidated by a reserve that does anything, because the elements are
+  moved into a new buffer.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr>
+    <td><code>newCapacity</code></td>
+    <td><a href="index.html#properties"><code>TIndex</code></a> (<code>int</code>)</td>
+    <td>Elements you want the ring to hold before it grows again. Counted in elements, not bytes. Rounded up to the next
+      power of two at or above the current capacity; zero and negative are below any capacity and do nothing</td>
+  </tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  <code>void</code>. <code>Capacity()</code> afterwards reports what the ring actually became, and <code>Size()</code>
+  is unchanged by definition — a reserve moves elements, it does not add them.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<p class="note">Illustrative — no call site for this exists in the repository. The engine's one
+<a href="push-back.html"><code>Deque</code> user</a> lets the queue grow on its own.</p>
+
+<pre><code><span class="ty">hbe</span>::<span class="ty">Deque</span>&lt;<span class="kw">int</span>&gt; queue;            <span class="cm">// the default constructor already allocated 4 slots</span>
+queue.<span class="fn">Capacity</span>();                     <span class="cm">// 4</span>
+
+queue.<span class="fn">Reserve</span>(<span class="nu">100</span>);                    <span class="cm">// Capacity() == 128, not 100</span>
+queue.<span class="fn">Reserve</span>(<span class="nu">8</span>);                       <span class="cm">// below capacity: nothing happens, memory stays allocated</span>
+
+<span class="kw">for</span> (<span class="kw">auto</span> i = <span class="nu">0</span>; i &lt; queue.<span class="fn">Size</span>(); ++i)
+{
+        <span class="fn">Use</span>(queue[i]);               <span class="cm">// always the right loop, reserve or no reserve</span>
+}</code></pre>
+
+<footer class="prevnext">
+  <span><a href="index.html">← Deque</a></span>
+  <span><a href="index.html#methods">All Deque methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

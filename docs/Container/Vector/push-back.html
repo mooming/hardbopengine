@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vector::PushBack — Container — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">Vector</a> methods</h3>
+  <ul class="methods">
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a class="current" href="push-back.html">PushBack</a></li>
+    <li><a href="emplace-back.html">EmplaceBack</a></li>
+    <li><a href="resize.html">Resize</a></li>
+    <li><a href="reserve.html">Reserve</a></li>
+    <li><a href="swap.html">Swap</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Container</a> /
+  <a href="index.html">Vector</a> / PushBack
+</p>
+
+<h1><span class="fn">PushBack</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Vector</span>
+  <span class="tag">Engine/Container/Vector.h</span>
+  <span class="tag">2 overloads</span>
+  <span class="tag">noexcept</span>
+  append one element, growing the buffer by doubling when the current one is full
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code><span class="kw">void</span> <span class="fn">PushBack</span>(<span class="kw">const</span> <span class="ty">TElement</span>&amp; value) <span class="kw">noexcept</span>;
+<span class="kw">void</span> <span class="fn">PushBack</span>(<span class="ty">TElement</span>&amp;&amp; value) <span class="kw">noexcept</span>;</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  If <code>count == capacity</code> the private <code>Grow</code> runs first, which calls
+  <a href="reserve.html"><code>Reserve</code></a> with <code>max(DefaultCapacity, capacity * 2)</code> — so the
+  first buffer is 4 elements and each later one is double the previous. The element is then constructed into
+  <code>data[count]</code> by copy or by move according to which overload matched, and <code>count</code> is
+  incremented.
+</p>
+
+<p>
+  Amortised constant time, with the cost concentrated in the growth: appending <em>n</em> elements to an empty
+  vector allocates on the log₂ <em>n</em> doublings and moves every live element on each of them. Stating a
+  capacity first with <a href="reserve.html"><code>Reserve</code></a> or the sized constructor removes that entirely.
+</p>
+
+<p>
+  Both overloads return <code>void</code>, so the element you added is not handed back; reach it as
+  <code>Size() - 1</code> through <code>operator[]</code>, or through <code>Back()</code>.
+  <a href="emplace-back.html"><code>EmplaceBack</code></a> is the sibling that returns a reference, and it is the
+  one to use when the caller needs the address of what it just created.
+</p>
+
+<div class="gap">
+  <strong>A push that crosses the capacity boundary invalidates every pointer, reference and iterator into the
+  vector — including to elements you did not touch.</strong> They were moved, not copied, so their values survived
+  and their addresses did not. Below the boundary nothing is reallocated and existing addresses stay good, which is
+  the asymmetry that produces the intermittent bug: the same code is correct at size 3 and wrong at size 4. If
+  addresses must hold, reserve up front or store indices instead of pointers — and note that
+  <code>std::find</code> over a vector you then push to has exactly this shape.
+</div>
+
+<div class="note">
+  <strong>A growth failure is not reported, because nothing checks for one.</strong> The growth path is
+  <a href="reserve.html"><code>Reserve</code></a>, which uses the allocator's return value without testing it. A
+  failed allocation therefore does not turn into a declined append: it turns into writes through a null or wrong
+  buffer. Both overloads are <code>noexcept</code> as well, so a copy or move constructor that throws terminates
+  the process instead of unwinding the append.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr>
+    <td><code>value</code></td>
+    <td><code>const TElement&amp;</code></td>
+    <td>Copy-constructible <code>TElement</code>. The copy is made into the vector's buffer; the argument is
+      untouched</td>
+  </tr>
+  <tr>
+    <td><code>value</code></td>
+    <td><code>TElement&amp;&amp;</code></td>
+    <td>
+      Move-constructible <code>TElement</code>. Chosen by an rvalue, including the result of
+      <code>std::move</code>. Caution: if the argument is a reference <em>into this same vector</em> and the push
+      triggers a growth, the reallocation happens before the move — the source has already been destroyed. This is
+      why <code>v.PushBack(std::move(v.Back()));</code> is a use-after-free rather than a duplicate
+    </td>
+  </tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  <code>void</code> on both overloads. There is no status, no reference to the new element and no signal when a
+  growth was needed; <a href="index.html#properties"><code>Capacity</code></a> before and after is the only way to
+  see one happen.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<p class="note">Illustrative — no call site for this exists in the repository; see the note on
+<a href="constructors.html">the constructors</a>.</p>
+
+<pre><code><span class="ty">hbe</span>::<span class="ty">Vector</span>&lt;<span class="ty">Light</span>&gt; lights;
+
+<span class="kw">for</span> (<span class="kw">const auto</span>&amp; source : sceneLights)
+{
+        lights.<span class="fn">PushBack</span>(source);             <span class="cm">// const overload: copy-construct</span>
+}
+
+lights.<span class="fn">PushBack</span>(<span class="ty">Light</span>{<span class="st">&quot;flare&quot;</span>, <span class="nu">1.f</span>});      <span class="cm">// rvalue overload: move-construct</span>
+<span class="kw">const auto</span> appended = lights.<span class="fn">Size</span>() - <span class="nu">1</span>;  <span class="cm">// PushBack returned nothing, so locate it</span>
+lights[appended].intensity = <span class="nu">4.f</span>;</code></pre>
+
+<p>
+  The nearest real use of this method name in the module is on a different container —
+  <code>fifoQueue.PushBack(task);</code> in <code>Engine/Core/TaskStream.cpp</code>, where
+  <code>fifoQueue</code> is <a href="../Deque/push-back.html"><code>Deque&lt;RangedTask&gt;</code></a>. Same
+  append-and-grow shape, different invalidation rules.
+</p>
+
+<footer class="prevnext">
+  <span><a href="index.html">← Vector</a></span>
+  <span><a href="index.html#methods">All Vector methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

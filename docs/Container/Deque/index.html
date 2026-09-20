@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Deque — Container — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="#description">Class description</a></li>
+    <li><a href="#template">Template parameters</a></li>
+    <li><a href="#properties">Class properties</a></li>
+    <li><a href="#methods">Class methods</a></li>
+    <li><a href="#non-member">Non-member helpers</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+
+  <h3>Methods</h3>
+  <ul class="methods">
+    <li><a href="push-back.html">PushBack</a></li>
+    <li><a href="begin.html">begin</a></li>
+    <li><a href="end.html">end</a></li>
+    <li><a href="reserve.html">Reserve</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Container</a> / Deque
+</p>
+
+<h1>Deque</h1>
+<p class="subtitle">
+  <span class="tag">Engine/Container/Deque.h</span>
+  <span class="tag">namespace hbe</span>
+  <span class="tag">template &lt;typename TElement, class TAllocator = DefaultAllocator&lt;TElement&gt;&gt;</span>
+  <span class="tag">final</span>
+  a ring buffer with push and pop at both ends, indexed through a power-of-two mask
+</p>
+
+<h2 id="description">Class description</h2>
+
+<p>
+  <code>Deque</code> keeps one buffer and two cursors. <code>head</code> names the oldest element and moves backwards
+  on a push at the front; <code>tail</code> names the next free slot at the back and moves forwards. Every slot number
+  is produced by <code>WrapIndex(index) { return index &amp; mask; }</code>, so capacity is always a power of two and
+  <a href="reserve.html"><code>Reserve</code></a> doubles until it covers a request. Neither end costs a shift, which is
+  what makes this the container the task system queues FIFO work with —
+  <code>Engine/Core/TaskStream.h</code> declares <code>Deque&lt;RangedTask&gt; fifoQueue;</code> beside its priority
+  queue.
+</p>
+
+<p>
+  Access is by position: <code>operator[]</code> resolves
+  <code>data[WrapIndex(head + index)]</code>, and <code>Front</code> and <code>Back</code> are the two ends. Indexed
+  access is correct in every state of the ring, including a wrapped one; the pointer range
+  <a href="begin.html"><code>begin</code></a> to <a href="end.html"><code>end</code></a> is not, and that difference is
+  the single most important thing on this page.
+</p>
+
+<div class="gap">
+  <strong>A default-constructed deque allocates immediately, and so does moving one.</strong> The default constructor's
+  member list is <code>data(allocator.allocate(DefaultCapacity))</code> — four elements taken before anything is
+  pushed. This is the only container in the module that spends an allocation on an empty object:
+  <a href="../Array/index.html"><code>Array</code></a>, <a href="../Vector/index.html"><code>Vector</code></a>,
+  <a href="../HashMap/index.html"><code>HashMap</code></a> and <a href="../Map/index.html"><code>Map</code></a> all
+  construct to a null buffer. It gets worse through the move constructor, which delegates to that constructor and then
+  swaps: <code>Deque(Deque&amp;&amp; rhs) : Deque() { Swap(rhs); }</code>. Every move of a deque therefore performs an
+  allocation it does not want, and hands the discarded four-element buffer to the moved-from object to free. Put a
+  deque where it will not be moved, or move it once at startup.
+</div>
+
+<div class="note">
+  <strong>The allocator is never exchanged, and here the move makes that observable twice over.</strong> After a move the
+  destination frees the buffer <em>c</em> <code>rhs</code> allocated using its own default-constructed allocator, and
+  <code>rhs</code> frees the freshly allocated buffer it just received using its own. With
+  <code>DefaultAllocator</code> holding the scope id captured at construction, both frees can land in a scope that did
+  not allocate them; with a pool adapter they land in the wrong pool. <a href="reserve.html"><code>Reserve</code></a> and
+  the destructor also use whichever allocator the object holds, so a deque that outlives its memory scope is the same
+  hazard as everywhere else in this module — see
+  <a href="../../Memory/index.html#allocators">Memory: allocators</a>.
+</div>
+
+<h2 id="template">Template parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Kind</th><th>What it must satisfy</th></tr>
+  <tr>
+    <td><code>TElement</code></td>
+    <td><code>typename</code></td>
+    <td>
+      Copy-constructible for the const-reference pushes, move-constructible for the rvalue ones and for every growth
+      (a reserve moves all the elements), and constructible from whatever
+      the <code>EmplaceFront</code> and <code>EmplaceBack</code> calls are given. No default construction is required by anything
+      except a growing <code>Resize</code>-style use, which this class does not offer; no assignment or comparison is
+      required at all. An element whose address is held elsewhere does not belong in a deque that grows
+    </td>
+  </tr>
+  <tr>
+    <td><code>TAllocator</code></td>
+    <td><code>class</code>, defaults to <a href="../../Memory/index.html#allocators"><code>DefaultAllocator&lt;TElement&gt;</code></a></td>
+    <td>
+      <code>allocate(count)</code> returning <code>TElement*</code> and <code>deallocate(pointer, count)</code>, with
+      <em>count in elements</em> — the buffer is one allocation, not per-element. Held by value, never exchanged by a
+      move, and there is no constructor that accepts one: the type is the only choice a caller gets, so a pool has to be
+      reachable from a default-constructed allocator object
+    </td>
+  </tr>
+</table>
+
+<h2 id="properties">Class properties</h2>
+
+<table>
+  <tr><th>Name</th><th>Declaration</th><th>What it means</th></tr>
+  <tr>
+    <td><code>DefaultCapacity</code></td>
+    <td><code>static constexpr int DefaultCapacity = 4;</code></td>
+    <td><span class="badge">constant</span> What the default constructor allocates on the spot, and the floor
+      <code>Grow</code> and <code>Reserve</code> work up from</td>
+  </tr>
+  <tr>
+    <td><code>TIndex</code></td>
+    <td><code>using TIndex = int;</code></td>
+    <td><span class="badge">member type</span> Count, capacity and every index — signed, as in the rest of the module, and
+      the type to write in a loop over <code>Size()</code></td>
+  </tr>
+  <tr>
+    <td><code>Iterator</code></td>
+    <td><code>using Iterator = TElement*;</code></td>
+    <td><span class="badge">member type</span> A raw pointer — fine as a single address, wrong as a range endpoint; see
+      <a href="begin.html"><code>begin</code></a></td>
+  </tr>
+  <tr>
+    <td><code>ConstIterator</code></td>
+    <td><code>using ConstIterator = const TElement*;</code></td>
+    <td><span class="badge">member type</span> The const counterpart, with the same range caveat</td>
+  </tr>
+  <tr>
+    <td><code>allocator</code></td>
+    <td><code>TAllocator allocator;</code></td>
+    <td><span class="badge">private</span> First in the member list, so it is constructed before the buffer it is used to
+      allocate. Never swapped</td>
+  </tr>
+  <tr>
+    <td><code>head</code></td>
+    <td><code>TIndex head;</code></td>
+    <td><span class="badge">private</span> Slot of the oldest element. Private and unreadable from outside, which is why
+      the wrap state of the range pair cannot be tested by a caller</td>
+  </tr>
+  <tr>
+    <td><code>tail</code></td>
+    <td><code>TIndex tail;</code></td>
+    <td><span class="badge">private</span> Next free slot at the back — the write cursor, one past the newest element in
+      ring terms</td>
+  </tr>
+  <tr>
+    <td><code>count</code></td>
+    <td><code>TIndex count;</code></td>
+    <td><span class="badge">private</span> Live elements; <code>Size()</code>, and full when <code>count == Capacity()</code></td>
+  </tr>
+  <tr>
+    <td><code>mask</code></td>
+    <td><code>TIndex mask;</code></td>
+    <td><span class="badge">private</span> <code>capacity - 1</code>, and the reason capacity is a power of two.
+      <code>Capacity()</code> is simply <code>mask + 1</code></td>
+  </tr>
+  <tr>
+    <td><code>data</code></td>
+    <td><code>TElement* data;</code></td>
+    <td><span class="badge">private</span> The ring. Allocated by the default constructor; freed in the destructor with
+      <code>Capacity()</code> as the count argument</td>
+  </tr>
+</table>
+
+<h2 id="methods">Class methods</h2>
+
+<p>
+  A name set as a link has its own page; the rest are documented in this table and named in
+  <a href="#coverage">Coverage</a>.
+</p>
+
+<table>
+  <tr><th>Method</th><th>Signature</th><th>What a caller depends on</th></tr>
+  <tr>
+    <td><code>constructors</code><span class="badge">4 overloads + 1 deleted</span></td>
+    <td class="sig">Deque() noexcept<br>Deque(const Deque&amp;) = delete<br>explicit Deque(TIndex initialCapacity)<br>Deque(Deque&amp;&amp; rhs) noexcept</td>
+    <td>Both non-move forms allocate at least four slots up front; the sized form reserves the larger of its argument and
+      <code>DefaultCapacity</code>, rounded up to a power of two; the move form allocates before it swaps</td>
+  </tr>
+  <tr>
+    <td><code>destructor</code></td>
+    <td class="sig">~Deque()</td>
+    <td>Returns early on a null buffer; otherwise destroys every live element through
+      <code>WrapIndex(head + i)</code> — wrap-aware, unlike <code>end()</code> — and frees with
+      <code>Capacity()</code></td>
+  </tr>
+  <tr>
+    <td><code>operator=</code><span class="badge">2 overloads, one deleted</span></td>
+    <td class="sig">Deque&amp; operator=(const Deque&amp;) = delete<br>Deque&amp; operator=(Deque&amp;&amp; rhs) noexcept</td>
+    <td>Move assignment is <code>Swap(rhs); return *this;</code>, so the source keeps the destination's former contents
+      instead of emptying — the same swap semantics as <a href="../Array/operator-assign.html"><code>Array</code></a></td>
+  </tr>
+  <tr>
+    <td><a href="begin.html">begin</a>, <a href="end.html">end</a><span class="badge">2 overloads each</span></td>
+    <td class="sig">Iterator begin() noexcept<br>ConstIterator begin() const noexcept<br>Iterator end() noexcept<br>ConstIterator end() const noexcept</td>
+    <td><code>&amp;data[head]</code> and <code>&amp;data[head + count]</code>, neither of them masked: correct range only
+      while the ring is unwrapped</td>
+  </tr>
+  <tr>
+    <td><code>operator[]</code><span class="badge">2 overloads</span></td>
+    <td class="sig">TElement&amp; operator[](TIndex index)<br>const TElement&amp; operator[](TIndex index) const</td>
+    <td>Position from the front, resolved through <code>WrapIndex</code> — always correct, guarded by
+      <code>FatalAssert(IsValidIndex(index))</code>, not marked <code>noexcept</code></td>
+  </tr>
+  <tr>
+    <td><code>PushFront</code>, <a href="push-back.html">PushBack</a><span class="badge">2 overloads each</span></td>
+    <td class="sig">void PushFront(const TElement&amp; value) noexcept<br>void PushFront(TElement&amp;&amp; value) noexcept<br>void PushBack(const TElement&amp; value) noexcept<br>void PushBack(TElement&amp;&amp; value) noexcept</td>
+    <td>Grow first if <code>count == Capacity()</code>, then construct at the cursor and advance it. Neither returns the
+      element</td>
+  </tr>
+  <tr>
+    <td><code>EmplaceFront</code>, <code>EmplaceBack</code></td>
+    <td class="sig">template &lt;typename... Types&gt;<br>TElement&amp; EmplaceFront(Types&amp;&amp;... args) noexcept<br>TElement&amp; EmplaceBack(Types&amp;&amp;... args) noexcept</td>
+    <td>Same growth rule, arguments forwarded straight into the element's constructor, and a reference to the new element
+      returned — the way to build an element that cannot be copied or moved cheaply</td>
+  </tr>
+  <tr>
+    <td><code>PopFront</code>, <code>PopBack</code></td>
+    <td class="sig">void PopFront() noexcept<br>void PopBack() noexcept</td>
+    <td>Both <code>FatalAssert(!IsEmpty())</code> first, then destroy the element and move the cursor; capacity is
+      unchanged. <code>Engine/Core/TaskStream.cpp</code> pairs <code>Front()</code> with <code>PopFront()</code> rather
+      than reading and removing in one step, because there is no combined accessor</td>
+  </tr>
+  <tr>
+    <td><code>Front</code>, <code>Back</code><span class="badge">2 overloads each</span></td>
+    <td class="sig">TElement&amp; Front() noexcept<br>TElement&amp; Back() noexcept<br>… const counterparts</td>
+    <td>Both ends assert non-empty; <code>Back()</code> is <code>data[WrapIndex(tail - 1)]</code>, so it is wrap-correct
+      where <code>end()</code> is not</td>
+  </tr>
+  <tr>
+    <td><code>Size</code>, <code>Capacity</code>, <code>IsEmpty</code>, <code>IsValidIndex</code></td>
+    <td class="sig">[[nodiscard]] TIndex Size() const noexcept<br>[[nodiscard]] TIndex Capacity() const noexcept<br>[[nodiscard]] bool IsEmpty() const noexcept<br>[[nodiscard]] bool IsValidIndex(TIndex index) const noexcept</td>
+    <td>Field reads, all four <code>[[nodiscard]]</code>. <code>Capacity()</code> is <code>mask + 1</code>: a power of two,
+      and never smaller than 4</td>
+  </tr>
+  <tr>
+    <td><code>Clear</code></td>
+    <td class="sig">void Clear() noexcept</td>
+    <td>Destroys every live element and resets both cursors and the count, keeping the buffer and its capacity — like
+      <a href="../Vector/index.html"><code>Vector::Clear</code></a>, unlike
+      <a href="../Array/clear.html"><code>Array::Clear</code></a></td>
+  </tr>
+  <tr>
+    <td><a href="reserve.html">Reserve</a></td>
+    <td class="sig">void Reserve(TIndex newCapacity) noexcept</td>
+    <td>Doubles capacity until the request is covered, moves the elements unwrapped, refuses anything at or below the
+      current capacity, and does not test the allocation</td>
+  </tr>
+  <tr>
+    <td><code>Swap</code></td>
+    <td class="sig">void Swap(Deque&amp; rhs) noexcept</td>
+    <td>Five <code>std::swap</code> calls over the cursors, count, mask and buffer; takes an lvalue reference as
+      <code>Vector</code> does, not an rvalue reference as <code>Array</code> does, and leaves each side's allocator where
+      it was</td>
+  </tr>
+</table>
+
+<h2 id="non-member">Non-member helper functions</h2>
+
+<p>None. The private <code>WrapIndex</code>, <code>Grow</code> and <code>DestroyAll</code> are members, and the header
+declares nothing at namespace scope besides the class and its test collection.</p>
+
+<h2 id="coverage">Coverage</h2>
+
+<table>
+  <tr><th>Gap</th><th>Detail</th></tr>
+  <tr>
+    <td>Method names without their own page</td>
+    <td><code>constructors</code>, <code>destructor</code>, <code>operator=</code>, <code>operator[]</code>,
+      <code>PushFront</code>, <code>EmplaceFront</code>, <code>EmplaceBack</code>, <code>PopFront</code>,
+      <code>PopBack</code>, <code>Front</code>, <code>Back</code>, <code>Size</code>, <code>Capacity</code>,
+      <code>IsEmpty</code>, <code>IsValidIndex</code>, <code>Clear</code>, <code>Swap</code>. Their contracts are the rows
+      above; the per-page detail is not written</td>
+  </tr>
+  <tr>
+    <td>The unmasked range pair</td>
+    <td>Documented, not a gap: see <a href="begin.html"><code>begin</code></a> and <a href="end.html"><code>end</code></a>.
+      No workaround exists inside the class — a wrap-aware iterator would have to be a different type, and
+      <code>Iterator</code> is a plain pointer alias</td>
+  </tr>
+  <tr>
+    <td><code>DequeTest</code></td>
+    <td>Declared under <code>__UNIT_TEST__</code>, defined in <code>Engine/Container/Deque.cpp</code>, which also
+      includes <code>&lt;deque&gt;</code> and <code>Core/ScopedTime.h</code>. A fixture, not API — see
+      <a href="../../Test/index.html">the Test module</a></td>
+  </tr>
+  <tr>
+    <td>Thread-safety of the one real user</td>
+    <td>Nothing in this class serialises anything. <code>TaskStream</code> guards <code>fifoQueue</code> with
+      <code>queueLock</code> and a condition variable, and that ordering is
+      <a href="../../Core/index.html">Core</a>'s subject, not this page's</td>
+  </tr>
+  <tr>
+    <td>Assert and allocator contracts</td>
+    <td>The guards are <code>FatalAssert</code> on index and emptiness, active in every configuration —
+      <a href="../../Core/index.html#functions">Core: Debug</a>. What the allocator does with a count of elements is
+      <a href="../../Memory/index.html#allocators">Memory</a>'s subject</td>
+  </tr>
+</table>
+
+<footer class="prevnext">
+  <span><a href="../index.html">← Container</a></span>
+  <span><a href="../index.html#deque">Deque in the Container class list</a></span>
+</footer>
+
+</main>
+</body>
+</html>

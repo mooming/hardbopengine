@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AtomicStackView::Pop — Container — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">AtomicStackView</a> methods</h3>
+  <ul class="methods">
+    <li><a href="push.html">Push</a></li>
+    <li><a class="current" href="pop.html">Pop</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Container</a> /
+  <a href="index.html">AtomicStackView</a> / Pop
+</p>
+
+<h1><span class="fn">Pop</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::AtomicStackView</span>
+  <span class="tag">Engine/Container/AtomicStackView.h</span>
+  <span class="tag">noexcept</span>
+  detach the head by compare-and-swap and hand back the pointer — or <code>nullptr</code>, and not only when empty
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>T* <span class="fn">Pop</span>() <span class="kw">noexcept</span>;</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  The head is loaded relaxed and guarded by <code>unlikely(node == nullptr)</code> — the branch hint from
+  <a href="../../OSAL/index.html"><code>OSAL/Intrinsic.h</code></a> — returning <code>nullptr</code> at once if the stack is
+  empty. Otherwise a compare-and-swap-weak loop tries to replace the head with <code>node-&gt;next</code>, publishing with
+  <code>std::memory_order_release</code> and retrying relaxed on failure, and the loop re-tests <code>node</code> for null on
+  every iteration because a failed CAS loads whatever head it found into <code>node</code>. On success the link field is
+  cleared (<code>node-&gt;next = nullptr;</code>) and the object is returned.
+</p>
+
+<div class="gap">
+  <strong>A null return does not mean the stack was empty — it can mean another thread won the race.</strong> If several
+  threads pop at once, the losers keep re-reading the head until they either succeed or find a stack drained to nothing, and
+  that second path returns <code>nullptr</code> even though the stack was non-empty on entry. So the return value is the whole
+  contract: there is no assert (compare
+  <a href="../Queue/pop.html"><code>Queue::Pop</code></a> and
+  <a href="../RingQueue/index.html"><code>RingQueue::Pop</code></a>, which stop the process), no exception, and no way to
+  distinguish "empty" from "somebody else got there first" — which is exactly why a caller loops on it instead of treating a
+  null as a bug.
+</div>
+
+<div class="gap">
+  <strong>You own the returned object, and nothing will ever give it back.</strong> The stack stores pointers to objects the
+  caller created (<a href="push.html"><code>Push</code></a> explains the ownership rule); <code>Pop</code> only detaches. So
+  the value must be recycled with another <code>Push</code>, or released by whatever owns its storage — and if it is neither,
+  it is simply lost: this class has no destructor logic, and its own destruction does not walk the remaining chain.
+</div>
+
+<div class="gap">
+  <strong>The link field is a plain pointer, and this design has the two standard exposure points of a compare-and-swap
+  stack.</strong> Both are properties of the algorithm as written, not of a particular platform, and neither is defended
+  anywhere in the header:
+  <ul>
+    <li>
+      <em>The ABA window.</em> <code>top</code> is a single-word pointer CAS with no tag, counter or version. A thread that
+      reads head = A, loses the race, and later finds top == A again will succeed its CAS on the strength of the address
+      alone — so freeing a node, reusing its memory as a new node, and re-pushing it can make a stale CAS succeed. That is
+      possible here precisely because node addresses are recycled by design.
+    </li>
+    <li>
+      <em>A race on <code>next</code>.</em> <code>node-&gt;next</code> is read as the desired value of the CAS while a
+      different thread that has just detached that same node writes <code>node-&gt;next = nullptr</code>. Both are plain,
+      non-atomic accesses to the same scalar, so formally this is a data race; in substance the stale value cannot break
+      anything, because the decision is made by the compare against <code>top</code> and a wrong
+      <code>next</code> only produces a failed CAS and a retry.
+    </li>
+  </ul>
+  What keeps the engine's own use out of both traps is the shape of the data, not the code: the nodes are a fixed array of
+  static-lifetime objects (<code>AllocatorProxy allocators[MaxNumAllocators];</code> at
+  <code>Engine/Memory/MemoryManager.h:172</code>) that are never freed, and each one is either in the pool or checked out, so
+  a node's identity never changes while the stack refers to it. Any other use of this class inherits the same requirements.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr>
+    <td><code>T*</code></td>
+    <td>
+      The detached object, with its <code>next</code> field already cleared so it can be inspected or re-pushed safely, or
+      <code>nullptr</code> if the stack was empty or was drained by another thread first. Not <code>[[nodiscard]]</code> —
+      calling <code>Pop()</code> and discarding the pointer loses the object with no warning. The type parameter is not const:
+      a stack of const-usable objects still hands out a mutable pointer
+    </td>
+  </tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p class="note">Real call site — <code>Engine/Memory/MemoryManager.cpp:140</code>, where a null pop is treated as pool
+exhaustion and reported rather than assumed impossible.</p>
+
+<pre><code><span class="kw">auto</span> allocatorProxyPtr = proxyPool.<span class="fn">Pop</span>();
+<span class="kw">if</span> (<span class="fn">unlikely</span>(allocatorProxyPtr == <span class="kw">nullptr</span>))
+{
+        <span class="fn">Log</span>(ELogLevel::FatalError, [funcName = __func__, name](<span class="kw">auto</span>&amp; ls)
+        { ls &lt;&lt; <span class="st">"["</span> &lt;&lt; funcName &lt;&lt; <span class="st">"]["</span> &lt;&lt; name &lt;&lt; <span class="st">"] failed to register an allocator."</span>; });
+
+        <span class="kw">return</span> InvalidAllocatorID;
+}
+
+<span class="kw">auto</span>&amp; allocatorProxy = *allocatorProxyPtr;
+<span class="kw">auto</span> id = allocatorProxy.id;</code></pre>
+
+<p>
+  That is the whole usage pattern: test the pointer, use the object, and return it with
+  <a href="push.html"><code>Push</code></a> when the consumer is finished — the release path at
+  <code>Engine/Memory/MemoryManager.cpp:255</code>. The pool is bounded by the size of the static array, so exhaustion is a
+  real condition with a real diagnostic, not a theoretical one.
+</p>
+
+<footer class="prevnext">
+  <span><a href="push.html">Push</a></span>
+  <span><a href="index.html#methods">All AtomicStackView methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

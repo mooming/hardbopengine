@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BoundedPriorityQueue::PushRange — Container — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">BoundedPriorityQueue</a> methods</h3>
+  <ul class="methods">
+    <li><a href="push.html">Push</a></li>
+    <li><a class="current" href="push-range.html">PushRange</a></li>
+    <li><a href="remove.html">Remove</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Container</a> /
+  <a href="index.html">BoundedPriorityQueue</a> / PushRange
+</p>
+
+<h1><span class="fn">PushRange</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::BoundedPriorityQueue</span>
+  <span class="tag">Engine/Container/BoundedPriorityQueue.h</span>
+  <span class="tag">2 template overloads</span>
+  <span class="tag">noexcept</span>
+  push one item after another — a loop written once, with every property of <code>Push</code> intact
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code><span class="kw">template</span> &lt;<span class="kw">typename</span> Iterator&gt;
+<span class="kw">void</span> <span class="fn">PushRange</span>(Iterator begin, Iterator end) <span class="kw">noexcept</span>;
+
+<span class="kw">template</span> &lt;<span class="kw">typename</span> TContainer&gt;
+<span class="kw">void</span> <span class="fn">PushRange</span>(<span class="kw">const</span> TContainer&amp; container) <span class="kw">noexcept</span>;</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  The container overload is one line — <code>PushRange(container.begin(), container.end());</code> — and the iterator
+  overload is one loop: <code>for (auto it = begin; it != end; ++it) Push(*it);</code>. There is no batch allocation, no
+  size hint, no pre-growth of buckets: each element goes through the ordinary
+  <a href="push.html"><code>Push</code></a>, which means each one is routed by its own <code>priority</code> field, each
+  one may create its bucket, and the sequence may land in a hundred different buckets in an order that has nothing to do
+  with the input order. What the caller saves is the spelling, not the work.
+</p>
+
+<p>
+  Because the routing is per item, the queue does not preserve the range's order at the far end: two items from the same
+  range with the same priority do keep their relative order (the bucket is a back-appending deque), but two items with
+  different priorities are separated into different levels and the more urgent one is drained first regardless of where it
+  sat in the input.
+</p>
+
+<div class="gap">
+  <strong>Pushing a range of the queue's own elements is a deadlock of aliases, not of locks.</strong> Neither overload
+  copies the source first. Feeding a queue from a live view of itself — from a bucket reference you are holding, or from
+  any container that a <a href="remove.html"><code>Remove</code></a> in the same expression may still be rebuilding —
+  means iterating storage while the push moves elements into it, and a bucket that grows relocates the very elements being
+  walked. The real call site below is careful in exactly this way: it <em>first</em> completes a
+  <code>Remove</code> sweep, then re-adds from a <em>separate</em> holding container, then clears that container.
+</div>
+
+<div class="note">
+  <strong>Requirements are on the iterator pair, not on a container concept.</strong> The pair form needs
+  <code>++it</code>, <code>it != end</code> and a <code>*it</code> that binds to <code>Push</code> — so an input iterator
+  over a temporary is fine, and the element type, not the iterator category, is what decides whether the copy or the move
+  <code>Push</code> is selected. Since <code>*it</code> on a <code>const</code> container yields a const reference, the
+  container overload always takes the <em>copy</em> path: a range push moves nothing, it copies everything. Elements too
+  expensive to copy have to be pushed one at a time with <code>std::move</code>.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr>
+    <td><code>begin</code>, <code>end</code></td>
+    <td><code>Iterator</code> (deduced)</td>
+    <td>A half-open range, incrementable and comparable with <code>!=</code>, whose <code>*it</code> is convertible to
+      <code>T</code>. Both are deduced independently, so a mismatched pair — the common <code>(begin, begin)</code> typo —
+      compiles and pushes nothing</td>
+  </tr>
+  <tr>
+    <td><code>container</code></td>
+    <td><code>const TContainer&amp;</code> (deduced)</td>
+    <td>Anything with const <code>begin()</code> and <code>end()</code> returning a comparable pair: an
+      <a href="../Vector/index.html"><code>Vector</code></a>, a <code>HVector</code>, a
+      <a href="../Map/index.html"><code>Map</code></a>, a plain array-based type. A
+      <a href="../LinkedList/index.html"><code>LinkedList</code></a> qualifies too — its iterator's
+      <code>operator++</code> returns <code>void</code>, which is still a valid increment expression in a
+      <code>for</code> statement. What does not qualify is a range whose <code>*it</code> is not readable, since
+      <code>Push</code> needs a value: an output iterator fails to compile</td>
+  </tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  <code>void</code>, with no count of what went in. If the range is empty the call does nothing at all — no bucket is
+  created, no allocation happens. <code>Size()</code> afterwards reflects however many items arrived, and nothing here
+  distinguishes "the range was empty" from "the range had fifty items in forty levels".
+</p>
+
+<h2 id="example">Examples</h2>
+
+<p class="note">Real call site — <code>Engine/Core/TaskStream.cpp</code>, the per-iteration sweep of the worker loop,
+quoted with its surrounding lock scope and its comment.</p>
+
+<pre><code><span class="ty">HVector</span>&lt;<span class="ty">RangedTask</span>&gt; readdingPriority;            <span class="cm">// line 197: a holding container, not the queue</span>
+
+<span class="kw">for</span> (; <span class="fn">likely</span>(taskSys.<span class="fn">IsRunning</span>()); ++loopCount)
+{
+        {
+                std::unique_lock lock(queueLock);
+
+                <span class="cm">// A task that finished elsewhere is released from its lane and put back on that same lane, so the</span>
+                <span class="cm">// sweep and the re-add are per lane and no task changes lane on the way.</span>
+                priorityQueue.<span class="fn">Remove</span>([](<span class="kw">const</span> <span class="ty">RangedTask</span>&amp; task) { <span class="kw">return</span> task.<span class="fn">HasFinished</span>(); });   <span class="cm">// 210</span>
+                priorityQueue.<span class="fn">PushRange</span>(readdingPriority);                                        <span class="cm">// 211</span>
+                readdingPriority.<span class="fn">clear</span>();                                                <span class="cm">// 212</span>
+
+                <span class="cm">// …</span>
+        }
+}</code></pre>
+
+<p>
+  Read the three lines as one transaction: drop the items that no longer belong, re-add the ones whose priority changed,
+  then release the holding container. The order is load-bearing — <a href="remove.html"><code>Remove</code></a> rotates
+  every bucket it touches before <code>PushRange</code> starts appending to it, and the source is a separate container
+  rather than a view into the queue.
+</p>
+
+<footer class="prevnext">
+  <span><a href="push.html">Push</a></span>
+  <span><a href="index.html#methods">All BoundedPriorityQueue methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

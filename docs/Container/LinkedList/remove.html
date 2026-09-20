@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LinkedList::Remove — Container — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">LinkedList</a> methods</h3>
+  <ul class="methods">
+    <li><a href="remove.html">Remove</a></li>
+    <li><a href="operator-assign.html">operator=</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Container</a> /
+  <a href="index.html">LinkedList</a> / Remove
+</p>
+
+<h1><span class="fn">Remove</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::LinkedList</span>
+  <span class="tag">Engine/Container/LinkedList.h</span>
+  <span class="tag">noexcept</span>
+  unlink and free the node that holds this element — found by address, never by value
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code><span class="ty">Iterator</span> <span class="fn">Remove</span>(<span class="ty">TType</span>&amp; element) <span class="kw">noexcept</span>;</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  The parameter is a non-const lvalue reference to the element, and that is the contract rather than a style choice:
+  <code>Remove</code> recovers the node by address with <code>GetNodeOf(element)</code>, which is a
+  <code>reinterpret_cast</code> from the element's address to the node's address. A temporary, or a foreign object that
+  merely compares equal, cannot bind to the parameter — so the requirement that the element belongs to this list is
+  enforced by the type before the precondition is ever tested.
+</p>
+
+<p>
+  The node is then unlinked and destroyed: <code>Unlink</code> takes the neighbour pointers, calls
+  <code>Delete&lt;Node&gt;(allocator, node)</code> — which destroys the element and returns one node to the list's own
+  allocator — and stitches the neighbours together. The head or tail pointer is updated first if the node was either
+  end. The return value is an iterator to the node that followed the one removed, captured before the unlink, which is
+  why removal inside a loop can be written correctly.
+</p>
+
+<div class="gap">
+  <strong>The precondition is an <code>Assert</code>, not a check, and <code>Assert</code> is compiled out of
+  Release.</strong> Both <code>Remove</code> and <code>GetNodeOf</code> run <code>Assert(ContainsElement(element))</code>,
+  where <code>ContainsElement</code> is the address scan against every node the list owns
+  (<a href="../../Core/index.html#functions">Core: Debug</a> documents the family: <code>Assert</code> is live in Debug and
+  Dev, silent in Release). Feed it an element from a different list and Release builds skip the test entirely, then
+  reinterpret that object's address as a node header and free memory through the wrong allocator. The type stops
+  temporaries; only the assert stops a wrong-but-owned-looking reference.
+</div>
+
+<div class="gap">
+  <strong>The element must be the first member of its node, which is a layout assumption about
+  <code>TType</code>.</strong> <code>GetNodeOf</code> assumes the element sits at offset zero of
+  <code>LinkedListNode&lt;TType&gt;</code>, and it is — the struct declares <code>value</code> first. Pointer
+  interconversion between a node and its first member is only guaranteed for standard-layout types, so a
+  <code>TType</code> with a non-static data member in a base class or mixed access control makes that cast undefined
+  before anything else runs. A plain data type is what this container expects; it will not tell you otherwise at
+  compile time.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr>
+    <td><code>element</code></td>
+    <td><code>TType&amp;</code></td>
+    <td>
+      A modifiable lvalue owned by <em>this</em> list: obtained from an iterator's <code>operator*</code>, from
+      <code>Find</code>, or from the return of <code>Add</code> / <code>AddFirst</code> / <code>AddLast</code> /
+      <code>AddNext</code> / <code>AddPrevious</code>. Not const, because a const element would not prove ownership —
+      and note the consequence: an element reached through a <code>const LinkedList</code> cannot be removed without
+      casting the const away, and there is no const-correct removal path here. Value equality is not sufficient: use
+      <a href="index.html#methods"><code>FindAndRemove</code></a> for that
+    </td>
+  </tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr>
+    <td><code>Iterator</code></td>
+    <td>
+      The next node, or <code>end()</code> — which is <code>Iterator(nullptr)</code> — if the removed element was the
+      tail. The element inside the removed node has been destroyed, so the reference you passed in is dead on return, as
+      is any other reference to it. Not <code>[[nodiscard]]</code>, and ignoring it is what turns a removal loop into a
+      walk through a freed pointer: <code>operator++</code> on a list iterator follows <code>node-&gt;next</code> of
+      whatever node it holds
+    </td>
+  </tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p class="note">Illustrative — no call site for this exists in the repository.
+<code>Container/LinkedList.h</code> is included by <code>Engine/Test/UnitTestCollection.cpp</code> and by nothing else in
+<code>Engine/</code> or <code>Applications/</code>; the <code>LinkedListTest</code> fixture in
+<code>Engine/Container/LinkedList.cpp</code> exercises construction, iteration and allocator scoping but never calls
+<code>Remove</code> through a public path a caller could copy.</p>
+
+<pre><code><span class="ty">hbe</span>::<span class="ty">LinkedList</span>&lt;<span class="ty">Component</span>&gt; components;
+
+<span class="kw">auto</span>&amp; added = components.<span class="fn">AddLast</span>(makeComponent);   <span class="cm">// the list owns the node; this is its element</span>
+
+<span class="kw">for</span> (<span class="kw">auto</span> it = components.<span class="fn">begin</span>(); it != components.<span class="fn">end</span>(); )
+{
+        <span class="kw">auto</span> next = components.<span class="fn">Remove</span>(*it);      <span class="cm">// returns the following node: loop-safe</span>
+
+        <span class="kw">if</span> (needsDestroying)
+        {
+                <span class="kw">continue</span>;                        <span class="cm">// `it` is dead — advance only through `next`</span>
+        }
+
+        ++it;
+}</code></pre>
+
+<p>
+  The pattern to keep is the one the return value exists for: take the next node from <code>Remove</code> rather than
+  advancing an iterator that has just lost its node. And when what you have is a value rather than a reference into the
+  list, <code>FindAndRemove(value)</code> does the search and the removal together and answers <code>bool</code>.
+</p>
+
+<footer class="prevnext">
+  <span><a href="index.html">← LinkedList</a></span>
+  <span><a href="index.html#methods">All LinkedList methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

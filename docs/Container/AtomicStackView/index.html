@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AtomicStackView — Container — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="#description">Class description</a></li>
+    <li><a href="#template">Template parameters</a></li>
+    <li><a href="#properties">Class properties</a></li>
+    <li><a href="#methods">Class methods</a></li>
+    <li><a href="#non-member">Non-member helpers</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+
+  <h3>Methods</h3>
+  <ul class="methods">
+    <li><a href="push.html">Push</a></li>
+    <li><a href="pop.html">Pop</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Container</a> / AtomicStackView
+</p>
+
+<h1>AtomicStackView</h1>
+<p class="subtitle">
+  <span class="tag">Engine/Container/AtomicStackView.h</span>
+  <span class="tag">namespace hbe</span>
+  <span class="tag">template &lt;CNext T&gt;</span>
+  <span class="tag">final</span>
+  one atomic pointer, a compare-and-swap loop, and nodes the caller owns — the thread-safe one of this module
+</p>
+
+<h2 id="description">Class description</h2>
+
+<p>
+  This is a lock-free stack in the textbook shape: a single <code>std::atomic&lt;T*&gt; top;</code>, a push that installs a
+  node at the head, and a pop that detaches it, both driven by
+  <code>compare_exchange_weak</code>. The linkage lives inside the elements — the type parameter has to carry a
+  <code>next</code> member, expressed as the <a href="#non-member"><code>CNext</code></a> concept — so the container itself
+  allocates nothing and stores nothing but one pointer.
+</p>
+
+<p>
+  "View" is the word that carries the ownership rule. The stack points at objects somebody else created and keeps alive;
+  <a href="push.html"><code>Push</code></a> writes into one of them,
+  <a href="pop.html"><code>Pop</code></a> hands a pointer back to it, and the stack never constructs, destroys, frees or counts
+  anything. The engine's one user shows the arrangement that makes this sound:
+  <code>Engine/Memory/MemoryManager.h:173</code> declares <code>AtomicStackView&lt;AllocatorProxy&gt; proxyPool;</code> directly
+  beside <code>AllocatorProxy allocators[MaxNumAllocators];</code>, and the two are push and pop in a fixed pool of
+  never-freed nodes.
+</p>
+
+<div class="gap">
+  <strong>The stack owns nothing, so it releases nothing — not even on destruction.</strong> The destructor is
+  <code>= default</code>, and it will happily destroy a stack that still has a chain hanging off it: the nodes survive, the
+  links into them are simply lost. A pool that is torn down while proxies are still checked out leaks them without a word, and
+  nothing in the interface even lets you find out whether anything is left, because there is no count and no head accessor. The
+  owner has to drain it, and no engine code does that today — <code>MemoryManager</code> lives for the process.
+</div>
+
+<div class="gap">
+  <strong>It is neither copyable nor movable, and the header never says so.</strong> No copy or move operation is declared, and
+  the implicit ones are removed by the compiler because <code>std::atomic</code> is not copyable or movable — a deleted-ness you
+  discover at the call site rather than from the interface. That is the right outcome for a shared head pointer (copying one would
+  be aliasing the same chain from two owners), but every other class in this module states its deletions explicitly, so this one's
+  immobility is an inference rather than a declaration.
+</div>
+
+<div class="note">
+  <strong>A platform gate is enforced at compile time.</strong> The class body opens with
+  <code>static_assert(std::atomic&lt;T*&gt;::is_always_lock_free, …)</code>, so a type whose pointer is not lock-free on the target
+  is rejected where the class is instantiated rather than silently taking a locked implementation. The rest of the memory model is
+  fixed rather than configurable: release on success, relaxed on the initial load and on failure — see
+  <a href="pop.html"><code>Pop</code></a> for what that buys and for the two exposure points the algorithm leaves open.
+</div>
+
+<h2 id="template">Template parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Kind</th><th>What it must satisfy</th></tr>
+  <tr>
+    <td><code>T</code></td>
+    <td>constrained by <a href="#non-member"><code>CNext</code></a></td>
+    <td>
+      A type with a member named <code>next</code> — the concept checks only that the name exists. The real requirement is
+      stronger and is enforced later, inside <code>Push</code>: <code>next</code> has to be assignable from a
+      <code>T*</code>, so in practice <code>T*</code> or something convertible from it. <code>AllocatorProxy</code> qualifies with
+      <code>AllocatorProxy* next;</code> (<code>Engine/Memory/AllocatorProxy.h:21</code>). A type whose <code>next</code> is, say, an
+      <code>int</code> satisfies the constraint and then fails to compile in the body of <code>Push</code> — a confusing diagnostic
+      location that is a property of the concept as written, not of your type. The object must also outlive every concurrent
+      compare-and-swap that could touch it, which for a recycled pool means: never free a node another thread may still be reading
+    </td>
+  </tr>
+</table>
+
+<h2 id="properties">Class properties</h2>
+
+<table>
+  <tr><th>Name</th><th>Declaration</th><th>What it means</th></tr>
+  <tr>
+    <td><code>top</code></td>
+    <td><code>std::atomic&lt;T*&gt; top;</code></td>
+    <td><span class="badge">private</span> The entire container: the address of the most recently pushed node, or null.
+      <code>Push</code> and <code>Pop</code> are the only ways to change it, and there is no accessor for reading it — even a
+      non-destructive peek at the head is not offered</td>
+  </tr>
+  <tr>
+    <td><code>Iterator</code></td>
+    <td><code>using Iterator = T*;</code></td>
+    <td><span class="badge">member type</span> Declared, and never usable: the class has no <code>begin()</code> or
+      <code>end()</code>, so nothing can produce or consume one. It exists for symmetry with the other containers' aliases and is
+      dead code as far as this header is concerned</td>
+  </tr>
+  <tr>
+    <td><code>ConstIterator</code></td>
+    <td><code>using ConstIterator = const T*;</code></td>
+    <td><span class="badge">member type</span> Same situation. A walk over a live stack is not merely un-aliased, it is
+      fundamentally unsafe — the chain changes under you — so no such operation is provided</td>
+  </tr>
+</table>
+
+<h2 id="methods">Class methods</h2>
+
+<p>
+  A name set as a link has its own page; the rest are documented here and named in
+  <a href="#coverage">Coverage</a>.
+</p>
+
+<table>
+  <tr><th>Method</th><th>Signature</th><th>What a caller depends on</th></tr>
+  <tr>
+    <td><code>constructor</code></td>
+    <td class="sig">AtomicStackView() noexcept</td>
+    <td>Sets <code>top</code> to <code>nullptr</code>. Allocates nothing, and is the only constructor — there is no
+      range-constructing or pre-sizing form</td>
+  </tr>
+  <tr>
+    <td><code>destructor</code></td>
+    <td class="sig">~AtomicStackView() = default</td>
+    <td>Destroys the pointer only. Nodes still linked on the stack are neither unlinked nor freed nor noticed — see the gap
+      above</td>
+  </tr>
+  <tr>
+    <td><code>copy and move</code><span class="badge">all implicitly removed</span></td>
+    <td class="sig">not declared</td>
+    <td>The atomic member makes every copy and move form unavailable. Nothing can be declared to fix it either: two owners of one
+      head pointer is the bug the deletion prevents</td>
+  </tr>
+  <tr>
+    <td><a href="push.html">Push</a></td>
+    <td class="sig">void Push(T&amp; newItem) noexcept</td>
+    <td>Installs an object the caller owns at the head; cannot fail, cannot report; overwrites <code>newItem.next</code>, so the
+      object may be in exactly one such stack at a time</td>
+  </tr>
+  <tr>
+    <td><a href="pop.html">Pop</a></td>
+    <td class="sig">T* Pop() noexcept</td>
+    <td>Detaches the head and clears its link field, or returns <code>nullptr</code> when the stack is empty <em>or</em> lost the
+      race. No assert, and no <code>[[nodiscard]]</code> either — discarding the pointer is a silent leak</td>
+  </tr>
+  <tr>
+    <td><code>IsEmpty</code></td>
+    <td class="sig">[[nodiscard]] bool IsEmpty() const noexcept</td>
+    <td>
+      One relaxed load compared against null. It is a snapshot, not a guarantee: by the time you act on
+      <code>IsEmpty() == false</code> another thread may have drained the stack, which is why the engine's real caller tests the
+      result of <code>Pop()</code> rather than the result of <code>IsEmpty()</code> before using a proxy
+    </td>
+  </tr>
+</table>
+
+<h2 id="non-member">Non-member helper functions</h2>
+
+<p>
+  One name at namespace scope, and it is a constraint rather than a function:
+</p>
+
+<pre><code><span class="kw">template</span>&lt;<span class="kw">typename</span> T&gt;
+<span class="kw">concept</span> <span class="ty">CNext</span> = <span class="kw">requires</span>(T t) { t.next; };</code></pre>
+
+<p>
+  It is exported from <code>Container/AtomicStackView.h</code> into <code>hbe</code> and used by exactly one class today, but it is
+  visible to every translation unit that includes the header, so any later intrusive atomic container in the engine can reuse it —
+  which makes its weakness a shared property: it tests for a member <em>name</em> only. It is documented here rather than as a
+  separate entry of the module page, and <a href="../index.html#coverage">the module page's Coverage</a> records that choice; the
+  same treatment is applied to <a href="../LinkedList/index.html#non-member"><code>LinkedListNode</code></a> and
+  <a href="../HashMap/index.html#non-member"><code>EHashEntryState</code></a>.
+</p>
+
+<h2 id="coverage">Coverage</h2>
+
+<table>
+  <tr><th>Gap</th><th>Detail</th></tr>
+  <tr>
+    <td>Method names without their own page</td>
+    <td><code>constructor</code>, <code>destructor</code> and <code>IsEmpty</code> — one field each, documented in the table
+      above</td>
+  </tr>
+  <tr>
+    <td>No size, no depth, no head peek</td>
+    <td>Counting a lock-free chain costs a walk that can change under you, so the class offers nothing; the only observable is
+      <code>IsEmpty()</code>. Whether a bounded, tagged variant is planned is not recorded anywhere in the header</td>
+  </tr>
+  <tr>
+    <td>ABA exposure and the plain-link race</td>
+    <td>Both are documented on <a href="pop.html"><code>Pop</code></a> as properties of the algorithm as written. Removing them
+      needs a tagged pointer or a hazard-pointer scheme, which is a different class, not a documentation fix</td>
+  </tr>
+  <tr>
+    <td>The caller-side protocol</td>
+    <td>Which thread may push which proxy, and when a proxy is safely reusable, is
+      <a href="../../Memory/index.html#allocators">Memory</a>'s subject — <code>MemoryManager</code>'s registration and
+      unregistration paths own that rule, and this page only records that the two transitions at
+      <code>Engine/Memory/MemoryManager.cpp:50</code> and <code>:255</code> are the ones that keep the pool consistent</td>
+  </tr>
+  <tr>
+    <td><code>AtomicStackViewTest</code></td>
+    <td>Declared under <code>__UNIT_TEST__</code>, registered by <code>Engine/Test/UnitTestCollection.cpp</code>; a fixture, not
+      API — <a href="../../Test/index.html">the Test module</a></td>
+  </tr>
+</table>
+
+<footer class="prevnext">
+  <span><a href="../index.html">← Container</a></span>
+  <span><a href="../index.html#atomicstackview">AtomicStackView in the Container class list</a></span>
+</footer>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RingQueue — Container — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="#description">Class description</a></li>
+    <li><a href="#template">Template parameters</a></li>
+    <li><a href="#properties">Class properties</a></li>
+    <li><a href="#methods">Class methods</a></li>
+    <li><a href="#non-member">Non-member helpers</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+
+  <h3>Methods</h3>
+  <ul class="methods">
+    <li><a href="push.html">Push</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Container</a> / RingQueue
+</p>
+
+<h1>RingQueue</h1>
+<p class="subtitle">
+  <span class="tag">Engine/Container/RingQueue.h</span>
+  <span class="tag">namespace hbe</span>
+  <span class="tag">template &lt;typename TElement, class TAllocator = DefaultAllocator&lt;TElement&gt;&gt;</span>
+  <span class="tag">final</span>
+  a fixed-capacity ring: one buffer, a power-of-two mask, and a capacity that is chosen once at construction
+</p>
+
+<h2 id="description">Class description</h2>
+
+<p>
+  <code>RingQueue</code> is the bounded sibling of <a href="../Deque/index.html"><code>Deque</code></a>: same idea — one
+  buffer, a <code>head</code> and a <code>tail</code> cursor, everything wrapped by <code>index &amp; (cap - 1)</code> —
+  but the buffer is allocated once by the constructor and never touched again. Push and pop are constant time with no
+  allocation, no deallocation and no element movement, which is exactly what a fixed-size producer/consumer window needs.
+  The trade is that <code>Capacity()</code> is a hard ceiling: <a href="push.html"><code>Push</code></a> into a full ring
+  is a fatal assert.
+</p>
+
+<p>
+  The capacity is rounded up to a power of two — <code>std::bit_ceil</code> on the requested value — because the wrap is a
+  bit <code>and</code> against <code>cap - 1</code> rather than a modulo. Ask for 100 and you get 128, so
+  <code>Capacity()</code> is a fact to read back, never an assumption to make.
+</p>
+
+<div class="gap">
+  <strong>There is no default constructor, and the capacity cannot be re-chosen afterwards.</strong> The only
+  non-move constructor is <code>explicit RingQueue(TIndex fixedCapacity)</code>, guarded by
+  <code>FatalAssert(fixedCapacity &gt; 0, "RingQueue capacity must be positive")</code>. A <code>RingQueue</code> member
+  therefore has to be initialised where it is declared or in the constructor's member list; it cannot be left empty and
+  filled in later, it cannot be a value in a container that default-constructs its elements, and the way to reset one is
+  <a href="#methods"><code>Clear()</code></a> — not "resize it", because nothing here resizes.
+</div>
+
+<div class="gap">
+  <strong><code>TAllocator</code> is a type used twice through two different default-constructed objects, and no instance
+  is ever stored.</strong> The constructor runs <code>TAllocator alloc; data = alloc.allocate(pow2Capacity);</code> and
+  the destructor runs <code>TAllocator alloc; alloc.deallocate(data, cap);</code> — a second, freshly default-constructed
+  object. There is no constructor parameter that accepts an allocator, so an allocator with state cannot be configured at
+  all: whatever <code>DefaultAllocator</code> records at construction
+  (<a href="../../Memory/index.html#allocators">Memory: allocators</a>) is recorded twice, at two different moments, and
+  the free goes through the second recording. This is the strictest allocator contract in the module: the type must be
+  default-constructible and, to be correct, effectively stateless — a pool adapter holding a pointer to a specific pool
+  will free into whichever pool its default constructor happens to find.
+</div>
+
+<div class="note">
+  <strong>Moves are safe here, including against yourself.</strong> The move constructor zero-initialises and then
+  <code>Swap</code>s, so a move allocates nothing — unlike <a href="../Deque/index.html"><code>Deque</code></a>, whose
+  move constructor allocates four slots before swapping. Move assignment is the same <code>Swap</code>, and since a swap
+  with itself changes nothing, <code>q = std::move(q);</code> leaves the queue intact. Both forms still exchange buffers
+  between objects that each hold their own default-constructed allocator, so the allocator caveat above applies to a move
+  as much as to construction.
+</div>
+
+<h2 id="template">Template parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Kind</th><th>What it must satisfy</th></tr>
+  <tr>
+    <td><code>TElement</code></td>
+    <td><code>typename</code></td>
+    <td>
+      Copy-constructible for the const <code>Push</code>, move-constructible for the rvalue <code>Push</code> and for
+      <code>Pop</code> — which moves the element out and returns it by value — and constructible from whatever
+      <code>Emplace</code> is given. Default construction is never required, and nothing here ever moves elements between
+      buffers, so an element whose address you hold can safely live in a ring queue. It must be destructible: the ring
+      destroys elements in place on <code>Pop</code> and <code>Clear</code>
+    </td>
+  </tr>
+  <tr>
+    <td><code>TAllocator</code></td>
+    <td><code>class</code>, defaults to <a href="../../Memory/index.html#allocators"><code>DefaultAllocator&lt;TElement&gt;</code></a></td>
+    <td>
+      <code>allocate(count)</code> returning <code>TElement*</code> and <code>deallocate(pointer, count)</code> with
+      <em>count in elements</em> — one allocation for the whole ring, not per element. Default-constructible, and see the
+      gap above: it is instantiated twice, once to allocate and once to free, and no instance can be supplied
+    </td>
+  </tr>
+</table>
+
+<h2 id="properties">Class properties</h2>
+
+<table>
+  <tr><th>Name</th><th>Declaration</th><th>What it means</th></tr>
+  <tr>
+    <td><code>TIndex</code></td>
+    <td><code>using TIndex = int;</code></td>
+    <td><span class="badge">member type</span> Count, capacity and index — signed <code>int</code>, as in every other
+      contiguous container here. The constructor takes this type, so <code>RingQueue&lt;T&gt; q(100)</code> is an
+      <code>int</code>, not a <code>size_t</code></td>
+  </tr>
+  <tr>
+    <td><code>cap</code></td>
+    <td><code>TIndex cap;</code></td>
+    <td><span class="badge">private</span> The power-of-two capacity and the source of the mask
+      (<code>WrapIndex</code> is <code>index &amp; (cap - 1)</code>). Reported by <code>Capacity()</code>; never
+      changed after construction</td>
+  </tr>
+  <tr>
+    <td><code>head</code></td>
+    <td><code>TIndex head;</code></td>
+    <td><span class="badge">private</span> Slot of the oldest element — read by <code>Front()</code> and
+      <code>Pop()</code>, advanced by both</td>
+  </tr>
+  <tr>
+    <td><code>tail</code></td>
+    <td><code>TIndex tail;</code></td>
+    <td><span class="badge">private</span> Next free slot at the back. Full when <code>count == cap</code>; the ring never
+      distinguishes full from empty by cursor positions alone, which is why <code>count</code> exists</td>
+  </tr>
+  <tr>
+    <td><code>count</code></td>
+    <td><code>TIndex count;</code></td>
+    <td><span class="badge">private</span> Live elements, maintained by push, pop and clear; the only thing that makes
+      <code>IsEmpty()</code> and <code>IsFull()</code> both answerable in constant time</td>
+  </tr>
+  <tr>
+    <td><code>data</code></td>
+    <td><code>TElement* data;</code></td>
+    <td><span class="badge">private</span> The buffer, <code>cap</code> elements, raw memory with elements
+      placement-new-ed into it. <code>nullptr</code> is what the destructor tests to decide whether it owns anything</td>
+  </tr>
+</table>
+
+<h2 id="methods">Class methods</h2>
+
+<p>
+  A name set as a link has its own page; the rest are documented here and named in
+  <a href="#coverage">Coverage</a>.
+</p>
+
+<table>
+  <tr><th>Method</th><th>Signature</th><th>What a caller depends on</th></tr>
+  <tr>
+    <td><code>constructors</code><span class="badge">2 + 1 deleted</span></td>
+    <td class="sig">explicit RingQueue(TIndex fixedCapacity)<br>RingQueue(RingQueue&amp;&amp; rhs) noexcept<br>RingQueue(const RingQueue&amp;) = delete</td>
+    <td>The sizing form asserts positivity, rounds the capacity up with <code>std::bit_ceil</code> and allocates once; the
+      move form steals the buffer by swapping and allocates nothing; no copy and no default constructor exist</td>
+  </tr>
+  <tr>
+    <td><code>destructor</code></td>
+    <td class="sig">~RingQueue()</td>
+    <td>Returns early when <code>data</code> is null; otherwise destroys every live element through
+      <code>WrapIndex(head + i)</code> and frees <code>cap</code> elements through a fresh
+      <code>TAllocator</code></td>
+  </tr>
+  <tr>
+    <td><code>operator=</code><span class="badge">2 overloads, one deleted</span></td>
+    <td class="sig">RingQueue&amp; operator=(RingQueue&amp;&amp; rhs) noexcept<br>RingQueue&amp; operator=(const RingQueue&amp;) = delete</td>
+    <td>Move assignment is <code>Swap(rhs); return *this;</code>, so the source ends up holding the destination's former
+      buffer rather than being emptied; safe on self-assignment because a swap with itself is a no-op</td>
+  </tr>
+  <tr>
+    <td><code>operator[]</code><span class="badge">2 overloads</span></td>
+    <td class="sig">TElement&amp; operator[](TIndex index) noexcept<br>const TElement&amp; operator[](TIndex index) const noexcept</td>
+    <td>Position from the front, resolved through <code>WrapIndex(head + index)</code> so it is correct in a wrapped ring,
+      guarded by <code>FatalAssert(IsValidIndex(index))</code>. This is the only element access: <strong>the class declares
+      no <code>begin()</code> and no <code>end()</code></strong>, so it cannot be range-iterated — which also makes
+      <a href="../Deque/begin.html">the unmasked range pair in <code>Deque</code></a> unreachable from here</td>
+  </tr>
+  <tr>
+    <td><a href="push.html">Push</a><span class="badge">2 overloads</span></td>
+    <td class="sig">void Push(const TElement&amp; value) noexcept<br>void Push(TElement&amp;&amp; value) noexcept</td>
+    <td>Fatal-asserts <code>!IsFull()</code>, constructs in place at the tail cursor, advances it. No return, no overwrite,
+      no growth</td>
+  </tr>
+  <tr>
+    <td><code>Emplace</code></td>
+    <td class="sig">template &lt;typename... Types&gt;<br>TElement&amp; Emplace(Types&amp;&amp;... args) noexcept</td>
+    <td>Same assert and the same placement new, with constructor arguments forwarded and a reference to the new element
+      returned</td>
+  </tr>
+  <tr>
+    <td><code>Pop</code></td>
+    <td class="sig">TElement Pop() noexcept</td>
+    <td>
+      Fatal-asserts <code>!IsEmpty()</code>, moves the head element out, destroys the slot and advances the cursor, then
+      returns the element <em>by value</em>. The only queue in the module that hands back the element in one call —
+      <a href="../Queue/index.html"><code>Queue</code></a> asks for <code>Front()</code> then a separate
+      <code>Pop()</code>, and its <code>Pop()</code> returns nothing
+    </td>
+  </tr>
+  <tr>
+    <td><code>Front</code>, <code>Back</code><span class="badge">2 overloads each</span></td>
+    <td class="sig">TElement&amp; Front() noexcept<br>const TElement&amp; Front() const noexcept<br>TElement&amp; Back() noexcept<br>const TElement&amp; Back() const noexcept</td>
+    <td>Both ends fatal-assert non-empty. <code>Back()</code> is <code>data[WrapIndex(tail - 1)]</code>, so the oldest and
+      newest elements are reachable without the wrap arithmetic the caller would otherwise have to redo</td>
+  </tr>
+  <tr>
+    <td><code>Size</code>, <code>Capacity</code>, <code>IsEmpty</code>, <code>IsFull</code>, <code>IsValidIndex</code></td>
+    <td class="sig">[[nodiscard]] TIndex Size() const noexcept<br>[[nodiscard]] TIndex Capacity() const noexcept<br>[[nodiscard]] bool IsEmpty() const noexcept<br>[[nodiscard]] bool IsFull() const noexcept<br>[[nodiscard]] bool IsValidIndex(TIndex index) const noexcept</td>
+    <td>Field reads, all <code>[[nodiscard]]</code>. <code>IsFull()</code> — <code>count == cap</code> — is the only test
+      that stands between a push and a fatal assert, and it is the one thing a caller must check before
+      <a href="push.html"><code>Push</code></a> if it wants to survive a burst</td>
+  </tr>
+  <tr>
+    <td><code>Clear</code></td>
+    <td class="sig">void Clear() noexcept</td>
+    <td>Destroys every live element and resets both cursors and the count. Buffer and capacity are untouched — the ring
+      keeps the whole budget it was built with</td>
+  </tr>
+  <tr>
+    <td><code>Swap</code></td>
+    <td class="sig">void Swap(RingQueue&amp; rhs) noexcept</td>
+    <td>Five <code>std::swap</code> calls over <code>cap</code>, both cursors, the count and the buffer. Takes an lvalue
+      reference. Since capacity travels with the buffer, a swap exchanges capacities too — the two objects' capacity
+      ceilings can end up swapped</td>
+  </tr>
+</table>
+
+<h2 id="non-member">Non-member helper functions</h2>
+
+<p>
+  None. The private <code>WrapIndex</code> and <code>DestroyAll</code> are members, and the header declares nothing at
+  namespace scope besides the class and its test collection — no helper type of the kind
+  <a href="../LinkedList/index.html#non-member"><code>LinkedList</code> documents</a> or
+  <a href="../HashMap/index.html#non-member"><code>HashMap</code> documents</a>.
+</p>
+
+<h2 id="coverage">Coverage</h2>
+
+<table>
+  <tr><th>Gap</th><th>Detail</th></tr>
+  <tr>
+    <td>Method names without their own page</td>
+    <td><code>constructors</code>, <code>destructor</code>, <code>operator=</code>, <code>operator[]</code>,
+      <code>Emplace</code>, <code>Pop</code>, <code>Front</code>, <code>Back</code>, <code>Size</code>,
+      <code>Capacity</code>, <code>IsEmpty</code>, <code>IsFull</code>, <code>IsValidIndex</code>,
+      <code>Clear</code>, <code>Swap</code>. Their contracts are the rows above</td>
+  </tr>
+  <tr>
+    <td>No call site in the engine</td>
+    <td><code>Container/RingQueue.h</code> is included by <code>Engine/Test/UnitTestCollection.cpp</code> and by nothing
+      else in <code>Engine/</code> or <code>Applications/</code>. Every example on this page is labelled illustrative;
+      <code>RingQueueTest</code> in <code>Engine/Container/RingQueue.cpp</code> is the only code that constructs one</td>
+  </tr>
+  <tr>
+    <td>No iteration, by design or by omission</td>
+    <td>The class offers no <code>begin</code>/<code>end</code>, so a walk over the live elements in order means either
+      popping them or indexing <code>0 .. Size() - 1</code>. Whether that is intentional is not recorded anywhere in the
+      header — this is an absence of evidence, not a documented rule</td>
+  </tr>
+  <tr>
+    <td>Whether "ring queue" implies overwriting anywhere else in the engine</td>
+    <td>This class refuses by asserting. Any code that wants oldest-entry eviction has to implement it — nothing in this
+      header offers it, and no engine caller exists to compare against</td>
+  </tr>
+  <tr>
+    <td>Assert configuration and allocator behaviour</td>
+    <td>Every guard here is <code>FatalAssert</code>, live in Debug, Dev and Release —
+      <a href="../../Core/index.html#functions">Core: Debug</a>. What the default-constructed allocator does with a count
+      of elements is <a href="../../Memory/index.html#allocators">Memory</a>'s subject</td>
+  </tr>
+</table>
+
+<footer class="prevnext">
+  <span><a href="../index.html">← Container</a></span>
+  <span><a href="../index.html#ringqueue">RingQueue in the Container class list</a></span>
+</footer>
+
+</main>
+</body>
+</html>

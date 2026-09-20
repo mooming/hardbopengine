@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HashMap — Container — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="#description">Class description</a></li>
+    <li><a href="#template">Template parameters</a></li>
+    <li><a href="#properties">Class properties</a></li>
+    <li><a href="#methods">Class methods</a></li>
+    <li><a href="#non-member">Non-member helpers</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+
+  <h3>Methods</h3>
+  <ul class="methods">
+    <li><a href="insert.html">Insert</a></li>
+    <li><a href="remove.html">Remove</a></li>
+    <li><a href="reserve.html">Reserve</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Container</a> / HashMap
+</p>
+
+<h1>HashMap</h1>
+<p class="subtitle">
+  <span class="tag">Engine/Container/HashMap.h</span>
+  <span class="tag">namespace hbe</span>
+  <span class="tag">template &lt;typename TKey, typename TValue, class THash = std::hash&lt;TKey&gt;, class TKeyEqual = std::equal_to&lt;TKey&gt;, class TAllocator = DefaultAllocator&lt;uint8_t&gt;&gt;</span>
+  <span class="tag">final</span>
+  open-addressed map with linear probing and tombstones, in one byte-typed allocation
+</p>
+
+<h2 id="description">Class description</h2>
+
+<p>
+  <code>HashMap</code> keeps two parallel arrays in a single allocation: <code>entries</code>, an array of
+  <code>Pair</code>, and <code>states</code>, an array of <a href="#properties"><code>EHashEntryState</code></a> —
+  <code>Empty</code>, <code>Occupied</code> or <code>Tombstone</code> per slot — the enum is described under
+<a href="#non-member">Non-member helper functions</a>, where the header actually puts it. The allocation is requested
+as a byte
+  count from a <code>DefaultAllocator&lt;uint8_t&gt;</code> and then carved up by pointer arithmetic, which is why the
+  allocator parameter on this container is a byte allocator where the other containers take an element allocator.
+</p>
+
+<p>
+  A lookup hashes to <code>hash(key) &amp; (cap - 1)</code> and probes forward, one slot at a time, stopping at the
+  first <code>Empty</code> slot as proof of absence. Capacity is therefore required to be a power of two and is always
+  one: <a href="reserve.html"><code>Reserve</code></a> doubles up to it, and the internal growth starts at
+  <a href="#properties"><code>MinCapacity</code></a> = 4 and doubles from there. The growth point is
+  <code>count + tombstoneCount &gt;= cap * MaxLoadFactor</code> with <code>MaxLoadFactor</code> = 0.7.
+</p>
+
+<p>
+  Deletion is a tombstone write rather than a blank, because blanking a slot in the middle of a probe chain makes
+  everything that probed past it unfindable — <a href="remove.html"><code>Remove</code></a> carries the consequence:
+  tombstones are charged against the load factor, so a churn workload grows this table permanently.
+</p>
+
+<p>
+  The two iterator types are real classes rather than pointer aliases as in
+  <a href="../Vector/index.html"><code>Vector</code></a>: each holds the map and a slot index and skips
+  non-occupied slots on <code>operator++</code>. That is what lets iteration walk over the gaps, and it makes
+  <code>Iterator</code> and <code>ConstIterator</code> distinct types — unlike <a href="../Map/index.html"><code>Map</code></a>,
+  where <code>ConstIterator</code> is a <code>using</code> for <code>Iterator</code>.
+</p>
+
+<p>
+  Copies are deleted; the move constructor and move assignment take every field including <code>hash</code> and
+  <code>keyEqual</code> — and not the allocator, which is the hole described in the row for
+  <code>operator=</code> below.
+</p>
+
+<h2 id="template">Template parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Kind</th><th>What it must satisfy</th></tr>
+  <tr>
+    <td><code>TKey</code></td>
+    <td><code>typename</code></td>
+    <td>
+      Copy-constructible for the <code>Insert</code> overloads that take a const key, move-constructible for the one
+      that takes an rvalue, and it is stored <em>inside</em> the slot, so a key whose hash changes while it is in the
+      map cannot be found, removed or overwritten. The default hasher and equality are <code>std::hash&lt;TKey&gt;</code>
+      and <code>std::equal_to&lt;TKey&gt;</code>, so any type those are not specialised for needs the next two parameters
+    </td>
+  </tr>
+  <tr>
+    <td><code>TValue</code></td>
+    <td><code>typename</code></td>
+    <td>
+      <strong>Default-constructible and assignable</strong>, not merely constructible from something: the slot is built
+      as <code>Pair{key, TValue{}}</code> and the caller's value is assigned into it afterwards, and
+      <code>operator[]</code> hands back a default-constructed value for a key it had to create. Move-constructible as
+      well, because a rehash moves every pair into the new table
+    </td>
+  </tr>
+  <tr>
+    <td><code>THash</code></td>
+    <td><code>class</code>, defaults to <code>std::hash&lt;TKey&gt;</code></td>
+    <td>
+      Callable as <code>hash(key)</code> returning an integral value — the result is masked with
+      <code>static_cast&lt;std::size_t&gt;(cap - 1)</code> and then narrowed to <code>int</code> for the slot index, so a
+      hasher returning a non-integral type does not compile and one returning values above
+      <code>INT_MAX</code> in the low bits is masked before the narrowing anyway. Held by value and copied on move, so a
+      stateful hasher (seeded, counting) keeps working; only its address changes
+    </td>
+  </tr>
+  <tr>
+    <td><code>TKeyEqual</code></td>
+    <td><code>class</code>, defaults to <code>std::equal_to&lt;TKey&gt;</code></td>
+    <td>
+      Callable as <code>keyEqual(stored_key, sought_key)</code> returning something testable — the stored key is the
+      <em>first</em> argument, so an asymmetric comparator reads backwards if you assume the other order. It is consulted
+      only on a hash collision in the same probe sequence; two keys that hash identically and compare unequal sit in
+      consecutive slots
+    </td>
+  </tr>
+  <tr>
+    <td><code>TAllocator</code></td>
+    <td><code>class</code>, defaults to <code>DefaultAllocator&lt;uint8_t&gt;</code></td>
+    <td>
+      Anything with <code>allocate(count)</code> and <code>deallocate(pointer, count)</code> — and here
+      <em>count is a byte total</em>, because the value type is <code>uint8_t</code>: the container computes
+      <code>sizeof(Pair) * cap + sizeof(EHashEntryState) * cap</code> itself. The returned address is then
+      <code>reinterpret_cast</code> to <code>Pair*</code>, so this container has <strong>no alignment guarantee beyond
+      what the allocator gives a byte buffer</strong>; a <code>Pair</code> with a wide alignment requirement is a
+      portability question, not a compile error. Never exchanged by a move, so a moved map frees its adopted buffer with
+      the allocator it default-constructed
+    </td>
+  </tr>
+</table>
+
+<h2 id="properties">Class properties</h2>
+
+<table>
+  <tr><th>Name</th><th>Declaration</th><th>What it means</th></tr>
+  <tr>
+    <td><code>TIndex</code></td>
+    <td><code>using TIndex = int;</code></td>
+    <td><span class="badge">member type</span> Slot index, entry count and capacity, signed as everywhere in this
+      module. <code>IsValidSlot</code> tests <code>index &gt;= 0 &amp;&amp; index &lt; cap</code></td>
+  </tr>
+  <tr>
+    <td><code>MinCapacity</code></td>
+    <td><code>static constexpr TIndex MinCapacity = 4;</code></td>
+    <td><span class="badge">constant</span> Floor under every table: the first growth starts here, and
+      <a href="reserve.html"><code>Reserve</code></a> starts its doubling from
+      <code>max(MinCapacity, cap)</code></td>
+  </tr>
+  <tr>
+    <td><code>MaxLoadFactor</code></td>
+    <td><code>static constexpr double MaxLoadFactor = 0.7;</code></td>
+    <td><span class="badge">constant</span> The growth point, applied to <code>count + tombstoneCount</code> — dead
+      slots count, which is the single most consequential number on this page</td>
+  </tr>
+  <tr>
+    <td><code>Pair</code></td>
+    <td><code>struct Pair final { TKey key; TValue value; };</code></td>
+    <td><span class="badge">member type</span> Public nested type, and what an iterator yields:
+      <code>it-&gt;key</code>, <code>it-&gt;value</code>. It has no constructor of its own, which is what allows the
+      placement-construct forms the map uses</td>
+  </tr>
+  <tr>
+    <td><code>Iterator</code></td>
+    <td><code>class Iterator { TMap* map; TIndex index; … };</code></td>
+    <td><span class="badge">member type</span> Public nested class — a map pointer plus a slot index.
+      <code>operator++</code> skips to the next occupied slot; <code>operator*</code> asserts the slot is
+      occupied before returning it. Prefix <code>++</code> only — there is no post-increment, no
+      <code>operator--</code>, and equality compares both the map and the index</td>
+  </tr>
+  <tr>
+    <td><code>ConstIterator</code></td>
+    <td><code>class ConstIterator { const TMap* map; TIndex index; … };</code></td>
+    <td><span class="badge">member type</span> Public nested class, its own type and not an alias — the const
+      counterpart, with only a const
+      <code>operator*</code> and const <code>operator-&gt;</code>. The <code>const</code> overloads of
+      <code>begin</code>, <code>end</code> and <code>Find</code> return it</td>
+  </tr>
+  <tr>
+    <td><code>cap</code></td>
+    <td><code>TIndex cap;</code></td>
+    <td><span class="badge">private</span> Slot count, always a power of two, and what
+      <code>end()</code> uses as its sentinel index</td>
+  </tr>
+  <tr>
+    <td><code>count</code></td>
+    <td><code>TIndex count;</code></td>
+    <td><span class="badge">private</span> Live entries — the number <code>Size()</code> reports, incremented only by an
+      insert that actually took a slot</td>
+  </tr>
+  <tr>
+    <td><code>tombstoneCount</code></td>
+    <td><code>TIndex tombstoneCount;</code></td>
+    <td><span class="badge">private</span> Slots marked deleted. Increased by <a href="remove.html">Remove</a>, decreased
+      only when a later insert reuses one, and zeroed by a rehash or <code>Clear</code>. It is added to
+      <code>count</code> in the load-factor test</td>
+  </tr>
+  <tr>
+    <td><code>entries</code></td>
+    <td><code>Pair* entries;</code></td>
+    <td><span class="badge">private</span> Start of the carved-up allocation; objects live here between
+      <code>InsertInternal</code> and a removal's explicit <code>~Pair()</code></td>
+  </tr>
+  <tr>
+    <td><code>states</code></td>
+    <td><code>EHashEntryState* states;</code></td>
+    <td><span class="badge">private</span> One byte per slot, sitting immediately after the pair array in the same
+      buffer</td>
+  </tr>
+  <tr>
+    <td><code>hash</code></td>
+    <td><code>THash hash;</code></td>
+    <td><span class="badge">private</span> The hasher object, held by value and moved with the map</td>
+  </tr>
+  <tr>
+    <td><code>keyEqual</code></td>
+    <td><code>TKeyEqual keyEqual;</code></td>
+    <td><span class="badge">private</span> The equality predicate, likewise</td>
+  </tr>
+  <tr>
+    <td><code>allocator</code></td>
+    <td><code>TAllocator allocator;</code></td>
+    <td><span class="badge">private</span> Byte allocator, default-constructed — no constructor of this class accepts one,
+      so the allocator is fixed by the type and by whichever scope is open at construction, and never exchanged by a
+      move</td>
+  </tr>
+</table>
+
+<h2 id="methods">Class methods</h2>
+
+<p>
+  A name set as a link has its own page. The others are documented here and nowhere else in this batch, and
+  <a href="#coverage">Coverage</a> names them.
+</p>
+
+<table>
+  <tr><th>Method</th><th>Signature</th><th>What a caller depends on</th></tr>
+  <tr>
+    <td><code>constructors</code><span class="badge">4 overloads + 1 deleted</span></td>
+    <td class="sig">HashMap() noexcept<br>HashMap(const HashMap&amp;) = delete<br>explicit HashMap(TIndex initialCapacity)<br>HashMap(HashMap&amp;&amp; rhs) noexcept</td>
+    <td>The default form allocates nothing — <code>cap</code> is 0 until the first insert or an explicit reserve; the
+      sized form reserves, and so takes a capacity rounded up to a power of two rather than the number given</td>
+  </tr>
+  <tr>
+    <td><code>destructor</code></td>
+    <td class="sig">~HashMap() noexcept</td>
+    <td>Destroys every occupied pair and returns the byte buffer through the map's own allocator, which therefore has
+      to be alive; returns early when <code>entries</code> is null</td>
+  </tr>
+  <tr>
+    <td><code>operator=</code><span class="badge">2 overloads, one deleted</span></td>
+    <td class="sig">HashMap&amp; operator=(const HashMap&amp;) = delete<br>HashMap&amp; operator=(HashMap&amp;&amp; rhs) noexcept</td>
+    <td>Move assignment releases the destination first, then takes every field but <code>allocator</code> — so the
+      adopted buffer is later freed by the destination's allocator, not the one that allocated it. Self-assignment is
+      guarded</td>
+  </tr>
+  <tr>
+    <td><code>begin</code>, <code>end</code><span class="badge">2 overloads each</span></td>
+    <td class="sig">Iterator begin() noexcept<br>ConstIterator begin() const noexcept<br>Iterator end() noexcept<br>ConstIterator end() const noexcept</td>
+    <td><code>begin()</code> scans forward to the first occupied slot, so an empty map starts already at
+      <code>end()</code>, which is the index <code>cap</code>. Iteration order is slot order — a function of hash,
+      capacity and insertion history, and it changes on every rehash</td>
+  </tr>
+  <tr>
+    <td><code>operator[]</code><span class="badge">2 overloads</span></td>
+    <td class="sig">TValue&amp; operator[](const TKey&amp; key)<br>TValue&amp; operator[](TKey&amp;&amp; key)</td>
+    <td>Insert-or-read: a missing key is inserted with a <strong>default-constructed value</strong> and the reference
+      you get back is where you write the real one. This is the only way to overwrite an existing value, and it may
+      rehash, invalidating every other reference</td>
+  </tr>
+  <tr>
+    <td><code>Find</code><span class="badge">2 overloads</span></td>
+    <td class="sig">[[nodiscard]] Iterator Find(const TKey&amp; key) noexcept<br>[[nodiscard]] ConstIterator Find(const TKey&amp; key) const noexcept</td>
+    <td>Returns an iterator to the entry, or <code>end()</code> when absent — so compare against <code>end()</code>
+      before dereferencing. Faster than <code>Contains</code> then subscript: one probe instead of two</td>
+  </tr>
+  <tr>
+    <td><a href="insert.html">Insert</a><span class="badge">3 overloads</span></td>
+    <td class="sig">bool Insert(const TKey&amp; key, const TValue&amp; value)<br>bool Insert(const TKey&amp; key, TValue&amp;&amp; value)<br>bool Insert(TKey&amp;&amp; key, TValue&amp;&amp; value)</td>
+    <td>Adds only when the key is absent, and then assigns the value into a slot that was built with a default one;
+      the <code>bool</code> is the only evidence of a duplicate</td>
+  </tr>
+  <tr>
+    <td><a href="remove.html">Remove</a></td>
+    <td class="sig">bool Remove(const TKey&amp; key)</td>
+    <td>Destroys the pair, marks the slot <code>Tombstone</code>, and counts it toward the load factor forever after;
+      no iterator overload exists</td>
+  </tr>
+  <tr>
+    <td><code>Contains</code></td>
+    <td class="sig">[[nodiscard]] bool Contains(const TKey&amp; key) const noexcept</td>
+    <td>One probe, answered <code>true</code> only for an <code>Occupied</code> slot — a tombstoned key reads absent,
+      which is what you want and what makes the cost of a churned map invisible from the API</td>
+  </tr>
+  <tr>
+    <td><code>Size</code>, <code>Capacity</code>, <code>IsEmpty</code></td>
+    <td class="sig">[[nodiscard]] TIndex Size() const noexcept<br>[[nodiscard]] TIndex Capacity() const noexcept<br>[[nodiscard]] bool IsEmpty() const noexcept</td>
+    <td>Live entries, slots allocated (a power of two, and zero before the first allocation), and
+      <code>count == 0</code>. <code>Capacity() - Size()</code> is not the free room: tombstones are neither</td>
+  </tr>
+  <tr>
+    <td><code>Clear</code></td>
+    <td class="sig">void Clear() noexcept</td>
+    <td>Destroys occupied pairs, writes <code>Empty</code> to every state — tombstones included, which is the point —
+      and zeroes both counters while keeping the buffer and its capacity. Contrast
+      <a href="../Array/clear.html"><code>Array::Clear</code></a>, which releases memory</td>
+  </tr>
+  <tr>
+    <td><a href="reserve.html">Reserve</a></td>
+    <td class="sig">void Reserve(TIndex newCapacity)</td>
+    <td>Rehashes up to the next power of two at or above the request and at or above
+      <a href="#properties"><code>MinCapacity</code></a>; refuses anything at or below the current capacity, so it cannot
+      shrink. The only non-<code>noexcept</code> growth path here</td>
+  </tr>
+</table>
+
+<h2 id="non-member">Non-member helper functions</h2>
+
+<p>
+  None. The header does declare one more thing at namespace scope:
+  <code>enum class EHashEntryState : uint8_t { Empty, Occupied, Tombstone }</code>, the state byte this map probes
+  against. It is not a member of the class and a caller cannot pass it to anything — every operation that touches it is
+  private — so it is documented in this class page rather than as an entry of its own, and
+  <a href="../index.html#coverage">the module page's Coverage</a> records that choice.
+</p>
+
+<h2 id="coverage">Coverage</h2>
+
+<table>
+  <tr><th>Gap</th><th>Detail</th></tr>
+  <tr>
+    <td>Method names without their own page</td>
+    <td><code>constructors</code>, <code>destructor</code>, <code>operator=</code>, <code>begin</code>,
+      <code>end</code>, <code>operator[]</code>, <code>Find</code>, <code>Contains</code>, <code>Size</code>,
+      <code>Capacity</code>, <code>IsEmpty</code>, <code>Clear</code>. The rows above state their contracts; the
+      overload-family detail a page would carry is not written</td>
+  </tr>
+  <tr>
+    <td>No call site in the engine</td>
+    <td><code>Container/HashMap.h</code> is included by <code>Engine/Test/UnitTestCollection.cpp</code> and by nothing
+      else in <code>Engine/</code> or <code>Applications/</code>. Every example in this batch is labelled illustrative;
+      <code>Engine/Container/HashMap.cpp</code>, the <code>HashMapTest</code> fixture, is the only code that exercises
+      the class</td>
+  </tr>
+  <tr>
+    <td><code>HashMapTest</code></td>
+    <td>Declared under <code>__UNIT_TEST__</code> in the header, defined in the source. A test fixture, not engine API;
+      see <a href="../../Test/index.html">the Test module</a></td>
+  </tr>
+  <tr>
+    <td>Probing quality</td>
+    <td>The header implements linear probing, which clusters on collision. How badly a given key set behaves is a
+      measurement, not a header fact, and nothing here claims a number beyond the 0.7 growth point the code
+      states</td>
+  </tr>
+  <tr>
+    <td>Allocator and assert contracts</td>
+    <td><code>DefaultAllocator&lt;uint8_t&gt;</code>'s behaviour belongs to
+      <a href="../../Memory/index.html#allocators">Memory</a>. Nothing in this class asserts on a failed allocation —
+      there is no assert on the growth path at all; the asserts that do exist, in
+      <code>Iterator::operator++</code> and <code>operator*</code>, are <code>FatalAssert</code>, documented in
+      <a href="../../Core/index.html#functions">Core: Debug</a></td>
+  </tr>
+</table>
+
+<footer class="prevnext">
+  <span><a href="../index.html">← Container</a></span>
+  <span><a href="../index.html#hashmap">HashMap in the Container class list</a></span>
+</footer>
+
+</main>
+</body>
+</html>

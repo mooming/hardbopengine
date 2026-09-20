@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Array::operator= — Container — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">Array</a> methods</h3>
+  <ul class="methods">
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+    <li><a href="begin.html">begin</a></li>
+    <li><a href="end.html">end</a></li>
+    <li><a class="current" href="operator-assign.html">operator=</a></li>
+    <li><a href="operator-index.html">operator[]</a></li>
+    <li><a href="emplace.html">Emplace</a></li>
+    <li><a href="to-raw-array.html">ToRawArray</a></li>
+    <li><a href="size.html">Size</a></li>
+    <li><a href="is-valid-index.html">IsValidIndex</a></li>
+    <li><a href="clear.html">Clear</a></li>
+    <li><a href="resize.html">Resize</a></li>
+    <li><a href="swap.html">Swap</a></li>
+    <li><a href="get-index.html">GetIndex</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Container</a> /
+  <a href="index.html">Array</a> / operator=
+</p>
+
+<h1><span class="fn">operator=</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Array</span>
+  <span class="tag">Engine/Container/Array.h</span>
+  <span class="tag">2 overloads, one deleted</span>
+  move assignment, implemented as a swap — so the source keeps what the destination used to hold
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code><span class="ty">Array</span>&amp; <span class="fn">operator=</span>(<span class="ty">Array</span>&amp;&amp; rhs) <span class="kw">noexcept</span>;
+<span class="ty">Array</span>&amp; <span class="fn">operator=</span>(<span class="kw">const</span> <span class="ty">Array</span>&amp;) = <span class="kw">delete</span>;</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  The moving overload is <code>Swap(rhs); return *this;</code> — no element is copied, moved or destroyed by the
+  assignment itself. After it, this array holds <code>rhs</code>'s length and buffer and <code>rhs</code> holds
+  this array's former length and buffer. It is <code>noexcept</code> because it only reassigns two fields.
+</p>
+
+<p>
+  The copy overload exists solely to be removed, alongside the deleted copy constructor. An
+  <code>Array</code> cannot be duplicated through any interface: if you need a second array with the same
+  contents you build one and fill it, which is a statement about cost rather than a limitation.
+</p>
+
+<p>
+  Self-move-assignment is harmless by construction — <code>Swap</code> exchanges the two fields with themselves,
+  leaving the array exactly as it was. That is why this class carries no <code>this != &amp;rhs</code> guard; the
+  containers in this module that <em>do</em> guard (<code>Vector</code>, <code>HashMap</code>, <code>Map</code>)
+  destroy-then-adopt rather than swap, and for those the guard is load-bearing.
+</p>
+
+<div class="gap">
+  <strong>The source does not become empty.</strong> This is swap semantics, not the
+  <code>std::vector</code> "moved-from is a valid but unspecified empty container" rule: after
+  <code>a = std::move(b);</code>, <code>b.Size()</code> is the size <code>a</code> had, and <code>b</code> owns
+  <code>a</code>'s old buffer. Nothing is freed at the point of assignment either — the elements the destination
+  used to hold are destroyed by <code>b</code>'s <a href="destructor.html">destructor</a>, whenever
+  <code>b</code>'s scope ends. A caller that expected the assignment to release memory immediately will find the
+  memory still held, and a caller that expected <code>b</code> to be empty will find it is not. If you want the
+  contents gone, clear them yourself or let <code>b</code> go out of scope.
+</div>
+
+<div class="gap">
+  <strong>The allocator is not exchanged, so this assignment re-homes a buffer across allocators in both
+  directions.</strong> Each side keeps its own <code>allocator</code> member and will free the buffer it just
+  acquired with it. With <code>DefaultAllocator</code> — which records the allocator id current at construction,
+  not a global — that means a buffer allocated under one memory scope is freed under another; with a pool adapter
+  such as <code>NamedPoolAllocator</code>, a cross-pool free. It is safe only when both arrays draw from the same
+  place, which is the assumption to check before assigning one array to another. See
+  <a href="../../Memory/index.html#allocators">Memory: allocators</a> and
+  <a href="swap.html"><code>Swap</code></a>, which has the same property and no assignment's expectations around
+  it.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr>
+    <td><code>rhs</code></td>
+    <td><code>Array&amp;&amp;</code></td>
+    <td>
+      The array whose length and buffer you are taking. Must be a mutable rvalue —
+      <code>std::move</code> of a live array, or a temporary such as the one in
+      <code>streams.Swap(Array&lt;TaskStream&gt;(n))</code>. After the call it is a valid array holding this
+      array's former contents, not an empty shell
+    </td>
+  </tr>
+  <tr>
+    <td><em>(deleted overload)</em></td>
+    <td><code>const Array&amp;</code></td>
+    <td>Present only to make a copy a compile error. The error names this operator, not the constructor, so a
+      "copy assignment of Array is deleted" diagnostic can mislead a reader into thinking copying is
+      supported in some other form; it is not</td>
+  </tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr>
+    <td><code>Array&amp;</code></td>
+    <td>
+      Reference to <code>*this</code>, now holding the source's former buffer, so chained assignment compiles. Not
+      <code>[[nodiscard]]</code>, so discarding it is not diagnosed. Never a reference to <code>rhs</code> — a
+      common reading of "swap" semantics, and wrong
+    </td>
+  </tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p class="note">Illustrative — no call site for this exists in the repository. The engine's real arrays are given
+their buffer with <a href="swap.html"><code>Swap</code></a> or a
+<a href="constructors.html">constructor</a>; see <code>Engine/Core/TaskSystem.cpp</code> and
+<code>Engine/Core/ResultContainer.cpp</code> for those.</p>
+
+<pre><code><span class="ty">hbe</span>::<span class="ty">Array</span>&lt;<span class="ty">TaskStream</span>&gt; oldStreams(<span class="nu">4</span>);
+<span class="ty">hbe</span>::<span class="ty">Array</span>&lt;<span class="ty">TaskStream</span>&gt; newStreams(<span class="nu">8</span>);
+
+oldStreams = std::<span class="fn">move</span>(newStreams);
+
+oldStreams.<span class="fn">Size</span>();     <span class="cm">// 8: oldStreams now owns the 8-element buffer</span>
+newStreams.<span class="fn">Size</span>();     <span class="cm">// 4, not 0 — newStreams owns what oldStreams held</span></code></pre>
+
+<p>
+  The pattern the engine actually uses, which avoids the second name entirely by assigning into a swap against a
+  temporary — the real line, from <code>Engine/Core/TaskSystem.cpp</code>:
+</p>
+
+<pre><code>streams.<span class="fn">Swap</span>(<span class="ty">Array</span>&lt;<span class="ty">TaskStream</span>&gt;(numHardwareThreads));   <span class="cm">// sized temporary in, old buffer out to the temporary</span></code></pre>
+
+<p class="meta">From Engine/Core/TaskSystem.cpp, where <code>streams</code> is
+<code>Array&lt;TaskStream&gt;</code>. The temporary's destructor is what releases the previous buffer, and because
+both arrays use the default allocator the un-exchanged <code>allocator</code> member costs nothing here.</p>
+
+<footer class="prevnext">
+  <span><a href="index.html">← Array</a></span>
+  <span><a href="index.html#methods">All Array methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

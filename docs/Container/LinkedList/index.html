@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LinkedList — Container — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="#description">Class description</a></li>
+    <li><a href="#template">Template parameters</a></li>
+    <li><a href="#properties">Class properties</a></li>
+    <li><a href="#methods">Class methods</a></li>
+    <li><a href="#non-member">Non-member helpers</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+
+  <h3>Methods</h3>
+  <ul class="methods">
+    <li><a href="remove.html">Remove</a></li>
+    <li><a href="operator-assign.html">operator=</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Container</a> / LinkedList
+</p>
+
+<h1>LinkedList</h1>
+<p class="subtitle">
+  <span class="tag">Engine/Container/LinkedList.h</span>
+  <span class="tag">namespace hbe</span>
+  <span class="tag">template &lt;typename TType, class TAllocator = DefaultAllocator&lt;LinkedListNode&lt;TType&gt;&gt;&gt;</span>
+  <span class="tag">final</span>
+  a doubly-linked list of nodes, each one allocated on its own through the container's allocator
+</p>
+
+<h2 id="description">Class description</h2>
+
+<p>
+  <code>LinkedList</code> holds two pointers — <code>head</code> and <code>tail</code> — and nothing else. Every element
+  lives in a <a href="#properties"><code>LinkedListNode</code></a> allocated one at a time through
+  <code>New&lt;Node&gt;(allocator, value)</code> and released through <code>Delete&lt;Node&gt;(allocator, node)</code>,
+  so insertion and removal are pointer surgery with no element movement at all, and every element address is stable for
+  the life of its node. There is no index, no random access and no size: position costs a walk.
+</p>
+
+<p>
+  Identity is the organising idea. <code>Contains</code> is overloaded — by value (<code>operator==</code> against each
+  element) and by address (<code>Contains(&amp;element)</code>) — and <a href="remove.html"><code>Remove</code></a>,
+  <code>Find</code> and <code>GetNodeOf</code> work on the address side of that pair, because the node is recovered from
+  the element's own address. The module page described this class's removal as taking <code>const TType&amp;</code>; the
+  header takes <code>TType&amp;</code>, and the difference is the mechanism that makes value-equality removal impossible
+  by accident.
+</p>
+
+<div class="gap">
+  <strong>The list keeps no element count, so there is no <code>Size()</code> and length is never free.</strong> The
+  members are <code>head</code>, <code>tail</code> and <code>allocator</code> — no counter is maintained anywhere, and
+  <code>IsEmpty()</code> is the only constant-time query about how much is in it. Anything that needs a length pays an
+  <code>O(n)</code> walk: <code>Count(value)</code> is the one accessor that reports a number, and it counts
+  <em>matches of a value</em>, not entries. That absence is also why the leak described on
+  <a href="operator-assign.html">move assignment</a> is undetectable from the outside.
+</div>
+
+<div class="note">
+  <strong>Guards here are <code>Assert</code>, not <code>FatalAssert</code> — the opposite of the contiguous
+  containers.</strong> <code>IsEmpty()</code> asserts the head/tail consistency rule
+  (<code>head != nullptr || head == tail</code>), and <code>Remove</code> and <code>GetNodeOf</code> assert element
+  ownership the same way. <code>Assert</code> is live in Debug and Dev and compiled out of Release, where
+  <a href="../Array/operator-index.html"><code>Array::operator[]</code></a>'s <code>FatalAssert</code> still fires — so a
+  Release build runs this class's precondition violations through without a word. See
+  <a href="../../Core/index.html#functions">Core: Debug</a>.
+</div>
+
+<h2 id="template">Template parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Kind</th><th>What it must satisfy</th></tr>
+  <tr>
+    <td><code>TType</code></td>
+    <td><code>typename</code></td>
+    <td>
+      Copy-constructible or move-constructible according to the <code>Add</code> overload used — the node's own
+      constructors take <code>const TType&amp;</code> and <code>TType&amp;&amp;</code> and nothing else, so there is no
+      emplace path here. <strong>Standard-layout</strong> in practice, because the node is recovered from the element's
+      address by <code>reinterpret_cast</code> and that interconversion is only guaranteed for standard-layout types.
+      <code>operator==</code> is needed only by the value-based <code>Contains</code>, <code>Find</code>,
+      <code>Count</code> and <code>FindAndRemove</code>; the address-based operations require no comparison at all
+    </td>
+  </tr>
+  <tr>
+    <td><code>TAllocator</code></td>
+    <td><code>class</code>, defaults to <a href="../../Memory/index.html#allocators"><code>DefaultAllocator&lt;LinkedListNode&lt;TType&gt;&gt;</code></a></td>
+    <td>
+      A <strong>node</strong> allocator, not an element allocator — the node carries the two links as well as the value,
+      so a pool sized for the element alone is the wrong pool. The free helpers in
+      <code>Memory/Memory.h</code> that do the work impose three requirements: it must expose
+      <code>value_type</code> (a <code>static_assert</code> on <code>sizeof(value_type) == sizeof(Node)</code> is in the
+      body of both <code>New</code> and <code>Delete</code>), and it must accept a count of <strong>one</strong> —
+      <code>allocate(1)</code> and <code>deallocate(ptr, 1)</code>, one allocation per node. Never exchanged by a move, so
+      the destination of a move frees nodes it did not allocate
+    </td>
+  </tr>
+</table>
+
+<h2 id="properties">Class properties</h2>
+
+<table>
+  <tr><th>Name</th><th>Declaration</th><th>What it means</th></tr>
+  <tr>
+    <td><code>Node</code></td>
+    <td><code>using Node = LinkedListNode&lt;TType&gt;;</code></td>
+    <td><span class="badge">member type</span> Shorthand for the node type; the real definition is at namespace scope in
+      the same header and is described under
+      <a href="#non-member">Non-member helper functions</a></td>
+  </tr>
+  <tr>
+    <td><code>Iterator</code></td>
+    <td><code>class Iterator { Node* node; … };</code></td>
+    <td>
+      <span class="badge">member type</span> Public nested class wrapping a node pointer. <code>operator++</code> is
+      declared <code>void operator++()</code> — it advances <code>node = node-&gt;next</code> and returns nothing, so
+      <code>*++it</code> and <code>it++</code> do not compile. There is no <code>operator-&gt;</code>, so go through
+      <code>(*it)</code>. <code>operator!=</code> is present and <code>operator==</code> is not, which is enough for
+      range-for and not enough for <code>std::</code> algorithms that want the full set
+    </td>
+  </tr>
+  <tr>
+    <td><code>ConstIterator</code></td>
+    <td><code>using ConstIterator = Iterator;</code></td>
+    <td><span class="badge">member type</span> An alias, exactly as in <a href="../Map/index.html"><code>Map</code></a>,
+      with the same consequence: a copy of it is a mutable iterator over a const list's nodes</td>
+  </tr>
+  <tr>
+    <td><code>head</code></td>
+    <td><code>Node* head;</code></td>
+    <td><span class="badge">private</span> First node, <code>nullptr</code> when empty; <code>begin()</code> is
+      <code>Iterator(head)</code></td>
+  </tr>
+  <tr>
+    <td><code>tail</code></td>
+    <td><code>Node* tail;</code></td>
+    <td><span class="badge">private</span> Last node, kept so that <code>AddLast</code> is O(1). Both are null or neither
+      is — that is the invariant <code>IsEmpty</code> asserts</td>
+  </tr>
+  <tr>
+    <td><code>allocator</code></td>
+    <td><code>TAllocator allocator;</code></td>
+    <td><span class="badge">private</span> The node allocator, held by value, used by every <code>Add</code> and by
+      <code>Clear</code>. Default-constructed: no constructor of this class accepts one, so the pool a list draws from has
+      to be reachable from a default-constructed <code>TAllocator</code> — the fixture does that with
+      <code>AllocatorScope</code></td>
+  </tr>
+</table>
+
+<h2 id="methods">Class methods</h2>
+
+<p>
+  A name set as a link has its own page; the rest are documented here and named in
+  <a href="#coverage">Coverage</a>.
+</p>
+
+<table>
+  <tr><th>Method</th><th>Signature</th><th>What a caller depends on</th></tr>
+  <tr>
+    <td><code>constructors</code><span class="badge">3 overloads + 1 deleted</span></td>
+    <td class="sig">LinkedList() noexcept<br>LinkedList(const LinkedList&amp;) = delete<br>LinkedList(LinkedList&amp;&amp; rhs) noexcept</td>
+    <td>Nothing is allocated up front — an empty list is two nulls and an allocator. The move steals both pointers, zeroes
+      the source and leaves the allocator behind</td>
+  </tr>
+  <tr>
+    <td><code>destructor</code></td>
+    <td class="sig">~LinkedList() noexcept</td>
+    <td><code>Clear()</code>: every node destroyed and returned to this list's allocator, which therefore has to outlive
+      the list</td>
+  </tr>
+  <tr>
+    <td><a href="operator-assign.html">operator=</a><span class="badge">2 overloads, one deleted</span></td>
+    <td class="sig">LinkedList&amp; operator=(LinkedList&amp;&amp; rhs) noexcept<br>LinkedList&amp; operator=(const LinkedList&amp;) = delete</td>
+    <td>Move assignment neither releases what the destination held nor guards against self-assignment: it leaks the old chain
+      and, on self-move, empties the list</td>
+  </tr>
+  <tr>
+    <td><code>begin</code>, <code>end</code><span class="badge">2 overloads each</span></td>
+    <td class="sig">Iterator begin() noexcept<br>ConstIterator begin() const noexcept<br>Iterator end() noexcept<br>ConstIterator end() const noexcept</td>
+    <td><code>Iterator(head)</code> and <code>Iterator(nullptr)</code> — a forward-only, one-way range. Unlike
+      <a href="../Deque/begin.html"><code>Deque</code></a>, this pair is correct in every state, because the chain is the
+      truth and the buffer has none</td>
+  </tr>
+  <tr>
+    <td><code>IsEmpty</code></td>
+    <td class="sig">[[nodiscard]] bool IsEmpty() const noexcept</td>
+    <td><code>head == nullptr</code>, after asserting that a null head implies a null tail. There is no
+      <code>Size()</code> to go with it</td>
+  </tr>
+  <tr>
+    <td><code>Clear</code></td>
+    <td class="sig">void Clear() noexcept</td>
+    <td>Unlinks and frees nodes one at a time until empty; O(n) and the only bulk release the class offers. Call it before
+      move-assigning over a populated list</td>
+  </tr>
+  <tr>
+    <td><code>Add</code><span class="badge">2 overloads</span></td>
+    <td class="sig">TType&amp; Add(const TType&amp; value) noexcept<br>TType&amp; Add(TType&amp;&amp; value) noexcept</td>
+    <td>Spelling convenience for <code>AddLast</code>, returning the element reference. If the list is empty either form
+      sets both head and tail</td>
+  </tr>
+  <tr>
+    <td><code>AddFirst</code>, <code>AddLast</code><span class="badge">2 overloads each</span></td>
+    <td class="sig">TType&amp; AddFirst(const TType&amp; value) noexcept<br>TType&amp; AddLast(const TType&amp; value) noexcept<br>… rvalue counterparts</td>
+    <td>Each allocates one node through the list's allocator and returns its element. Both are O(1) — the tail pointer exists
+      precisely so that appending is not a walk</td>
+  </tr>
+  <tr>
+    <td><code>AddPrevious</code>, <code>AddNext</code><span class="badge">2 overloads each</span></td>
+    <td class="sig">TType&amp; AddPrevious(TType&amp; current, const TType&amp; value) noexcept<br>TType&amp; AddNext(TType&amp; current, const TType&amp; value) noexcept<br>… rvalue counterparts</td>
+    <td>Insert beside an element the list already owns — again located by <em>address</em> through
+      <code>GetNodeOf</code>, with the same ownership <code>Assert</code> as <a href="remove.html">Remove</a>. Returns the
+      new element, not the node</td>
+  </tr>
+  <tr>
+    <td><code>Contains</code><span class="badge">2 overloads</span></td>
+    <td class="sig">[[nodiscard]] bool Contains(const TType&amp; value) const noexcept<br>[[nodiscard]] bool Contains(const TType* ptr) const noexcept</td>
+    <td>The value overload compares with <code>operator==</code>; the pointer overload is identity — it is what
+      <code>ContainsElement</code> calls to validate a removal. O(n) either way</td>
+  </tr>
+  <tr>
+    <td><code>Find</code><span class="badge">2 overloads</span></td>
+    <td class="sig">[[nodiscard]] TType* Find(const TType&amp; value) noexcept<br>[[nodiscard]] const TType* Find(const TType&amp; value) const noexcept</td>
+    <td>Returns a pointer to the first equal element or <code>nullptr</code> — an address into the list, stable until that
+      node is removed, and directly usable as the argument to <code>Remove</code></td>
+  </tr>
+  <tr>
+    <td><code>Count</code></td>
+    <td class="sig">[[nodiscard]] Index Count(const TType&amp; value) const noexcept</td>
+    <td>
+      Number of elements equal to <code>value</code> — not the length of the list. Its return type is
+      <code>hbe::Index</code>, the engine-wide <code>size_t</code> alias from <code>Core/Types.h</code>, not the
+      <code>TIndex = int</code> every other container in this module uses for positions: a signedness mismatch waiting in a
+      loop written against <code>int</code>
+    </td>
+  </tr>
+  <tr>
+    <td><a href="remove.html">Remove</a></td>
+    <td class="sig">Iterator Remove(TType&amp; element) noexcept</td>
+    <td>Frees the node holding this element and returns an iterator to the next one; found by address, guarded by an
+      <code>Assert</code> that Release builds do not run</td>
+  </tr>
+  <tr>
+    <td><code>FindAndRemove</code></td>
+    <td class="sig">bool FindAndRemove(const TType&amp; value) noexcept</td>
+    <td>The value-equality path: searches with <code>operator==</code>, removes the first hit, answers whether anything went.
+      Two walks when it succeeds</td>
+  </tr>
+</table>
+
+<h2 id="non-member">Non-member helper functions</h2>
+
+<p>
+  No free functions. The header does declare one name at namespace scope, and this class is its only user:
+</p>
+
+<pre><code><span class="kw">template</span>&lt;<span class="kw">typename</span> TType&gt;
+<span class="kw">struct</span> <span class="ty">LinkedListNode</span> final
+{
+        <span class="kw">using</span> <span class="ty">This</span> = <span class="ty">LinkedListNode</span>;
+
+        TType value;                    <span class="cm">// first member — the address GetNodeOf casts from</span>
+        LinkedListNode* previous;
+        LinkedListNode* next;
+
+        <span class="kw">explicit</span> <span class="fn">LinkedListNode</span>(<span class="kw">const</span> TType&amp; value) <span class="kw">noexcept</span>;
+        <span class="kw">explicit</span> <span class="fn">LinkedListNode</span>(TType&amp;&amp; value) <span class="kw">noexcept</span>;
+
+        <span class="kw">bool</span> <span class="fn">IsHead</span>() <span class="kw">const</span> <span class="kw">noexcept</span>;   <span class="cm">// previous == nullptr</span>
+        <span class="kw">bool</span> <span class="fn">IsTail</span>() <span class="kw">const</span> <span class="kw">noexcept</span>;   <span class="cm">// next == nullptr</span>
+};</code></pre>
+
+<p>
+  It is public, its links are public, and it carries <code>operator*</code> in both const flavours plus
+  <code>operator!=</code> against another node — enough to be iterated over directly. Because the allocator's
+  <code>value_type</code> must be the node and not the element, this type is part of what a caller writes when naming a
+  pool: <code>DefaultAllocator&lt;LinkedListNode&lt;TType&gt;&gt;</code>. It is documented here rather than as a separate
+  entry of the module page, and <a href="../index.html#coverage">the module page's Coverage</a> records that choice — as
+  does <a href="../HashMap/index.html#non-member"><code>HashMap</code></a>'s page for its state enum.
+</p>
+
+<h2 id="coverage">Coverage</h2>
+
+<table>
+  <tr><th>Gap</th><th>Detail</th></tr>
+  <tr>
+    <td>Method names without their own page</td>
+    <td><code>constructors</code>, <code>destructor</code>, <code>begin</code>, <code>end</code>,
+      <code>IsEmpty</code>, <code>Clear</code>, <code>Add</code>, <code>AddFirst</code>, <code>AddLast</code>,
+      <code>AddPrevious</code>, <code>AddNext</code>, <code>Contains</code>, <code>Find</code>, <code>Count</code>,
+      <code>FindAndRemove</code></td>
+  </tr>
+  <tr>
+    <td>No call site in the engine</td>
+    <td><code>Container/LinkedList.h</code> is included by <code>Engine/Test/UnitTestCollection.cpp</code> and by nothing
+      else in <code>Engine/</code> or <code>Applications/</code>. Every example here is labelled illustrative; the
+      <code>LinkedListTest</code> fixture in <code>Engine/Container/LinkedList.cpp</code> is the only code that exercises
+      it — it builds lists of 16 384 elements under <code>PoolAllocator</code> and <code>AllocatorScope</code></td>
+  </tr>
+  <tr>
+    <td>Node-level allocator behaviour</td>
+    <td>What one node costs in the pool you choose, and whether 16 384 separate allocations fragment it, is a
+      <a href="../../Memory/index.html#allocators">Memory</a> question — and the <code>static_assert</code> in
+      <code>Memory/Memory.h</code> that ties <code>value_type</code> to the node size is part of that contract, not of this
+      class</td>
+  </tr>
+  <tr>
+    <td>No thread safety anywhere in the class</td>
+    <td>Links are plain pointers with no atomic operation, so concurrent <code>Add</code> and <code>Remove</code> corrupt the
+      chain. Nothing here documents an intended single-thread rule either — it is an absence, not a guarantee</td>
+  </tr>
+  <tr>
+    <td><code>LinkedListTest</code></td>
+    <td>Declared under <code>__UNIT_TEST__</code>, defined in the source; a fixture, not API —
+      <a href="../../Test/index.html">the Test module</a></td>
+  </tr>
+</table>
+
+<footer class="prevnext">
+  <span><a href="../index.html">← Container</a></span>
+  <span><a href="../index.html#linkedlist">LinkedList in the Container class list</a></span>
+</footer>
+
+</main>
+</body>
+</html>

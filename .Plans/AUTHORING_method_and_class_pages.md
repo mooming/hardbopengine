@@ -127,7 +127,12 @@ Examples section and the rules below.
    `<p class="note">Illustrative — no call site for this exists in the repository.</p>`. Use only types and
    functions that exist. Never invent a type name to make a snippet look real.
 3. **Never** fabricate a call site or attribute code to a file that does not contain it.
-4. **Declared with no definition is its own case.** Where the header declares something no translation unit
+4. **When most of a module has no caller, say so once at module level.** Half the containers in this engine are
+   never instantiated anywhere: writing "Illustrative" on thirty pages tells the reader nothing after the third.
+   Put one table in the module page — **Usage in the engine** — naming which entries are instantiated, where, and
+   which are unused, then let the per-page notes be short. Honesty about reach is information; a per-page apology
+   is noise.
+5. **Declared with no definition is its own case.** Where the header declares something no translation unit
    defines, the example section states that plainly and explains the consequence — a call does not link — instead
    of showing a snippet that could not build. This is not a gap in your work; it is a finding about the module,
    and it belongs on the page, in Coverage, and in your report.
@@ -241,8 +246,9 @@ for p in glob.glob('docs/<your modules here>/**/*.html', recursive=True):
     local=[h for h in c.hrefs if h.startswith('#') and h[1:] not in c.ids]
     badcss=sorted(c.cls-css)
     pre=len(re.findall(r'<pre><code>',src))!=len(re.findall(r'</code></pre>',src))
-    if dead or c.err or c.st or xanchor or local or badcss or pre:
-        bad+=1; print(p,'dead',dead,'err',c.err[:3],'unclosed',c.st[:3],'xanchor',xanchor,'localanchor',local,'css',badcss,'pre' if pre else '')
+    contam=re.findall(r'<[a-zA-Z/][^>]*\\|\\"', src)
+    if dead or c.err or c.st or xanchor or local or badcss or pre or contam:
+        bad+=1; print(p,'dead',dead,'err',c.err[:3],'unclosed',c.st[:3],'xanchor',xanchor,'localanchor',local,'css',badcss,'pre' if pre else '','CONTAMINATED' if contam else '')
 print('ALL CLEAN' if bad==0 else f'{bad} pages with problems')
 PY
 ```
@@ -286,9 +292,17 @@ PY
 - `docs/Container/Array/resize.html` — contract-heavy method
 - `docs/Container/Array/operator-index.html` — overload family
 - `docs/Container/Array/size.html` — trivial accessor, and the proof that a short page is acceptable
+- `docs/Container/Deque/index.html` and `Deque/begin.html` — **iterator and reference invalidation**, the page
+  type Array cannot demonstrate because `Array` never grows in place; `Deque`'s iterators go unmasked and die on
+  wrap
+- `docs/Container/AtomicStackView/pop.html` — **concurrency**: memory ordering, who may call what, and what a
+  returned `nullptr` does and does not prove
 
-Read all four before writing. Match their voice: declarative, no "this function does X", every sentence earning
-its line.
+Read all six before writing. Match their voice: declarative, no "this function does X", every sentence earning
+its line. **All four Array exemplars are pages about a non-growing contiguous type**, so on the three hardest page
+types — invalidation, allocator ownership across a move, concurrency — "match the exemplars" underdetermines the
+answer; the last two exemplars exist to close that gap, and a page of a kind none of them covers is a page where
+you write the section from the header rather than from the shape of the example.
 
 ## 14. Write discipline — learned from an agent that lost a whole module
 
@@ -299,6 +313,11 @@ every page in it was lost. It had written nothing, which is the only reason the 
 So: write each file as you finish thinking about it rather than assembling a batch to emit at once, and run
 section 12 every few pages so a failure costs pages instead of a module. Rewrite the module page in its own
 response — it is the longest single file in a job and the worst place to run out of room.
+
+**Derive your file list; do not copy one from a brief.** An orchestrator's enumerated list is a snapshot of what it
+thought of, and the site requires more files than the list: Array's pages referenced eleven siblings, the brief
+named ten, and the eleventh existed only as a link in files you are forbidden to edit. Derive the set instead —
+every name a page links to, plus every member the header declares — and the list will not be short by one.
 
 ## 15. A module-level function with a real contract still gets a page
 

@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HashMap::Remove — Container — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">HashMap</a> methods</h3>
+  <ul class="methods">
+    <li><a href="insert.html">Insert</a></li>
+    <li><a class="current" href="remove.html">Remove</a></li>
+    <li><a href="reserve.html">Reserve</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Container</a> /
+  <a href="index.html">HashMap</a> / Remove
+</p>
+
+<h1><span class="fn">Remove</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::HashMap</span>
+  <span class="tag">Engine/Container/HashMap.h</span>
+  destroys one entry and leaves a tombstone where it was — the count drops, the capacity does not
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code><span class="kw">bool</span> <span class="fn">Remove</span>(<span class="kw">const</span> <span class="ty">TKey</span>&amp; key);</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Probes for the key. If no occupied slot compares equal, returns <code>false</code> and changes nothing. Otherwise
+  it destroys the <code>Pair</code> in place with <code>entries[idx].~Pair()</code>, writes
+  <code>EHashEntryState::Tombstone</code> into that slot's state byte, decrements <code>count</code>, increments
+  <code>tombstoneCount</code>, and returns <code>true</code>.
+</p>
+
+<p>
+  The tombstone is not tidiness, it is correctness. With linear probing, a key inserted after a collision sits past
+  the slot it hashed to; blanking that slot to <code>Empty</code> would end the probe chain that later keys depend
+  on and make them unfindable. Marking it <code>Tombstone</code> keeps the chain walkable while excluding the slot
+  from lookups — <code>FindSlot</code> skips tombstones and stops only at <code>Empty</code>.
+</p>
+
+<p>
+  Nothing else happens. The buffer stays allocated, the capacity is unchanged, and the destroyed object's memory is
+  not reused until a later <a href="insert.html"><code>Insert</code></a> lands on that exact slot — which is the only
+  thing that decrements <code>tombstoneCount</code> short of a rehash or a
+  <a href="index.html#methods"><code>Clear</code></a>.
+</p>
+
+<div class="gap">
+  <strong>Deleting and re-adding in a loop grows this map forever.</strong> The load-factor test is
+  <code>count + tombstoneCount &gt;= cap * MaxLoadFactor</code>, so tombstones are charged exactly like live entries.
+  A map that inserts <em>n</em> keys, removes them all, and inserts <em>n</em> more has spent its tombstones and will
+  rehash into a larger table even though <code>Size()</code> never exceeded <em>n</em>. Capacity never shrinks —
+  <a href="reserve.html"><code>Reserve</code></a> refuses anything at or below the current capacity — so that growth is
+  permanent for the life of the map. A churn workload is a case for calling <code>Clear</code> between passes, which
+  zeroes both counters while keeping the table, rather than removing entries one by one.
+</div>
+
+<div class="note">
+  <strong>Iterators: one dies loudly, the rest survive.</strong> An iterator that pointed at the removed slot fails
+  its <code>IsValidSlot</code> check in <code>operator*</code> and hits a <code>FatalAssert</code> when
+  dereferenced — a stop, not a read of garbage — and comparing it still works, so
+  <code>it != map.end()</code> tells you nothing about whether it is safe to dereference. Every other iterator is
+  untouched: nothing is rehashed and open addressing moves no slots, so the remaining elements stay at the same index.
+  That is a stronger guarantee than <a href="../Vector/push-back.html"><code>Vector</code></a> can give, and it costs
+  the tombstone accounting above.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr>
+    <td><code>key</code></td>
+    <td><code>const TKey&amp;</code></td>
+    <td>
+      Hashable and comparable under this map's <code>THash</code> and <code>TKeyEqual</code>, and still hashing to the
+      same value it hashed to when inserted. There is no removal by iterator and no removal by predicate: to drop
+      entries selectively you collect the keys first, because erasing while iterating would leave the iterator over the
+      dead slot
+    </td>
+  </tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr>
+    <td><code>bool</code></td>
+    <td>
+      <code>true</code> if an entry was destroyed, <code>false</code> if the key was not present — which is also the
+      answer when the map is empty, so a removal that never finds anything is indistinguishable from a bug in the key
+      unless you check. Not <code>[[nodiscard]]</code>. Size is decremented only on <code>true</code>
+    </td>
+  </tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p class="note">Illustrative — no call site for this exists in the repository; see the note on
+<a href="insert.html"><code>Insert</code></a>.</p>
+
+<pre><code><span class="kw">if</span> (textures.<span class="fn">Remove</span>(path))
+{
+        <span class="cm">// the entry is gone: Contains(path) is now false, Find(path) == end()</span>
+}
+
+<span class="kw">const auto</span> doomed = <span class="nu">4</span>;
+<span class="kw">for</span> (<span class="kw">auto</span> it = textures.<span class="fn">begin</span>(); it != textures.<span class="fn">end</span>(); )
+{
+        <span class="kw">auto</span> next = it;
+        ++next;                              <span class="cm">// advance before the slot dies …</span>
+
+        <span class="kw">if</span> (it-&gt;value.refCount == doomed)
+        {
+                textures.<span class="fn">Remove</span>(it-&gt;key);         <span class="cm">// … `it` is dead from here on</span>
+        }
+
+        it = next;                            <span class="cm">// fine: every other slot kept its index</span>
+}</code></pre>
+
+<p>
+  The copy-then-advance is not defensive style, it is the shape the contract forces: after
+  <code>Remove</code> the slot behind <code>it</code> is a tombstone, and dereferencing it asserts.
+</p>
+
+<footer class="prevnext">
+  <span><a href="index.html">← HashMap</a></span>
+  <span><a href="index.html#methods">All HashMap methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

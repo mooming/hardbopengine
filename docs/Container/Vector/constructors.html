@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vector constructors — Container — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">Vector</a> methods</h3>
+  <ul class="methods">
+    <li><a class="current" href="constructors.html">constructors</a></li>
+    <li><a href="push-back.html">PushBack</a></li>
+    <li><a href="emplace-back.html">EmplaceBack</a></li>
+    <li><a href="resize.html">Resize</a></li>
+    <li><a href="reserve.html">Reserve</a></li>
+    <li><a href="swap.html">Swap</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Container</a> /
+  <a href="index.html">Vector</a> / constructors
+</p>
+
+<h1><span class="fn">constructors</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Vector</span>
+  <span class="tag">Engine/Container/Vector.h</span>
+  <span class="tag">4 overloads + 1 deleted</span>
+  start empty or state a capacity — growth from here on is the container's decision, not yours
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code><span class="fn">Vector</span>(<span class="kw">const</span> <span class="ty">Vector</span>&amp;) = <span class="kw">delete</span>;
+
+<span class="fn">Vector</span>() <span class="kw">noexcept</span>;                                     <span class="cm">// allocates nothing</span>
+<span class="kw">explicit</span> <span class="fn">Vector</span>(<span class="ty">TIndex</span> initialCapacity);              <span class="cm">// capacity exactly this, never rounded up</span>
+<span class="fn">Vector</span>(std::initializer_list&lt;<span class="ty">TElement</span>&gt; list);         <span class="cm">// reserves list.size(), then PushBack</span>
+<span class="fn">Vector</span>(<span class="ty">Vector</span>&amp;&amp; rhs) <span class="kw">noexcept</span>;                         <span class="cm">// steals three fields, zeroes rhs</span></code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Unlike <a href="../Array/constructors.html"><code>Array</code></a>, which sizes itself to a number of
+  <em>elements</em>, these constructors set a <em>capacity</em>. A default-constructed <code>Vector</code> allocates
+  nothing at all — <code>count</code>, <code>capacity</code> and <code>data</code> are zero, null — and the first
+  <a href="push-back.html"><code>PushBack</code></a> is what takes the first buffer, of
+  <a href="index.html#properties"><code>DefaultCapacity</code></a> = 4 elements. The
+  <code>explicit Vector(TIndex)</code> form calls <a href="reserve.html"><code>Reserve</code></a> with your
+  number, and because <code>Reserve</code> only refuses when the request is at or below the current capacity, the
+  capacity you get is the number you passed: not rounded to a power of two, not clamped to a minimum.
+</p>
+
+<p>
+  The <code>std::initializer_list</code> form reserves <code>list.size()</code> and then copy-constructs each value
+  through <code>PushBack</code>, so <code>TElement</code> must be copy-constructible for it, and no growth path runs
+  — capacity already equals the element count when the loop starts. Zero-size lists allocate nothing.
+</p>
+
+<p>
+  Copy construction and copy assignment are both deleted, matching the rest of the module: nothing duplicates a
+  buffer without being told to. The copy deleted here is the one you meet first in a compile error from a
+  <code>std::vector</code>-shaped habit, and there is no substitute member — to copy a <code>Vector</code> you build
+  one and fill it.
+</p>
+
+<div class="gap">
+  <strong>The move constructor steals the buffer and leaves the allocator behind.</strong> Its member list is
+  <code>count</code>, <code>capacity</code>, <code>data</code>; <code>allocator</code> is default-constructed, and a
+  <code>DefaultAllocator</code> records the allocator id current <em>at that moment</em>. So after
+  <code>auto v2 = std::move(v1);</code>, the buffer allocated under <code>v1</code>'s scope is freed under
+  <code>v2</code>'s, and <code>v1</code> keeps its own allocator with nothing left to free. The same applies to
+  move assignment, which additionally guards <code>this != &amp;rhs</code> because it destroys and frees the
+  destination first. Moving a vector whose memory is pinned to a named pool is where this stops being theoretical;
+  see <a href="../../Memory/index.html#allocators">Memory: allocators</a> and
+  <a href="swap.html"><code>Swap</code></a>, which has the same property.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr>
+    <td><code>initialCapacity</code></td>
+    <td><a href="index.html#properties"><code>TIndex</code></a> (<code>int</code>)</td>
+    <td>Elements of room wanted, taken exactly. Zero or negative allocates nothing and leaves the vector to grow
+      on first push — the guard is <code>newCapacity &lt;= capacity</code>, so a negative request is silently a
+      no-op rather than an error</td>
+  </tr>
+  <tr>
+    <td><code>list</code></td>
+    <td><code>std::initializer_list&lt;TElement&gt;</code></td>
+    <td>Initial values in order. Needs <code>TElement</code> copy-constructible; it does not need default
+      construction, assignment or comparison</td>
+  </tr>
+  <tr>
+    <td><code>rhs</code></td>
+    <td><code>Vector&amp;&amp;</code></td>
+    <td>The vector to take storage from. After the call it is empty with zero capacity — unlike
+      <a href="../Array/operator-assign.html"><code>Array</code></a>, whose move is a swap and leaves the source
+      holding the destination's former contents. It keeps its own <code>TAllocator</code> object</td>
+  </tr>
+  <tr>
+    <td><em>(deleted overload)</em></td>
+    <td><code>const Vector&amp;</code></td>
+    <td>Copy construction and copy assignment are both removed; a third type in this module,
+      <code>std::vector</code>, is what a caller who genuinely wants a copy reaches for — see
+      <a href="../../HSTL/index.html">HSTL</a></td>
+  </tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  A constructor has no return value. What you can observe afterwards is
+  <code>Size()</code> — <code>0</code>, or the list's length — and <code>Capacity()</code>, which is
+  <code>0</code> for the default form, the number you passed for the sized form, and the list length for the list
+  form. A failed allocation inside <a href="reserve.html"><code>Reserve</code></a> is not reported: see that page.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<p class="note">Illustrative — no call site for this exists in the repository. <code>Vector.h</code> is included by
+<code>Engine/Test/UnitTestCollection.cpp</code> and by nothing else in <code>Engine/</code> or
+<code>Applications/</code>: the <code>Vector</code> members in <code>Engine/Math/Transform.h</code> and
+<code>Engine/String/String.h</code> are <code>std::vector</code>. Neither header includes
+<code>Container/Vector.h</code>, both include <code>HSTL/HVector.h</code> — which includes
+<code>&lt;vector&gt;</code> — and the methods called on those members are <code>push_back</code>,
+<code>erase</code> and <code>cbegin</code>, none of which <code>hbe::Vector</code> declares. Worth knowing before
+copying an example from either file.</p>
+
+<pre><code><span class="ty">hbe</span>::<span class="ty">Vector</span>&lt;<span class="ty">Light</span>&gt; lights;                    <span class="cm">// nothing allocated yet; Size() == 0, Capacity() == 0</span>
+lights.<span class="fn">PushBack</span>(a);                          <span class="cm">// first buffer: exactly 4 elements (DefaultCapacity)</span>
+
+<span class="ty">hbe</span>::<span class="ty">Vector</span>&lt;<span class="ty">Light</span>&gt; batch(<span class="nu">64</span>);               <span class="cm">// Capacity() == 64, Size() == 0, one allocation</span>
+batch.<span class="fn">PushBack</span>(a);                           <span class="cm">// no allocation: the reserved room is used</span>
+
+<span class="ty">hbe</span>::<span class="ty">Vector</span>&lt;<span class="ty">Light</span>&gt; defaults({a, b, c});     <span class="cm">// Capacity() == 3, Size() == 3, one allocation</span></code></pre>
+
+<p>
+  The last two forms are the point of this container's construction: capacity stated up front, so the pushes that
+  follow do not reallocate and no element address changes underneath a caller who is already holding one.
+</p>
+
+<footer class="prevnext">
+  <span><a href="index.html">← Vector</a></span>
+  <span><a href="index.html#methods">All Vector methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Array::end — Container — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">Array</a> methods</h3>
+  <ul class="methods">
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+    <li><a href="begin.html">begin</a></li>
+    <li><a class="current" href="end.html">end</a></li>
+    <li><a href="operator-assign.html">operator=</a></li>
+    <li><a href="operator-index.html">operator[]</a></li>
+    <li><a href="emplace.html">Emplace</a></li>
+    <li><a href="to-raw-array.html">ToRawArray</a></li>
+    <li><a href="size.html">Size</a></li>
+    <li><a href="is-valid-index.html">IsValidIndex</a></li>
+    <li><a href="clear.html">Clear</a></li>
+    <li><a href="resize.html">Resize</a></li>
+    <li><a href="swap.html">Swap</a></li>
+    <li><a href="get-index.html">GetIndex</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Container</a> /
+  <a href="index.html">Array</a> / end
+</p>
+
+<h1><span class="fn">end</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Array</span>
+  <span class="tag">Engine/Container/Array.h</span>
+  <span class="tag">2 overloads</span>
+  one past the last element — the closing half of every range this container can produce
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<p>One page for the name; the pair differs only in const-ness:</p>
+
+<pre><code><span class="ty">Iterator</span> <span class="fn">end</span>();                     <span class="cm">// Element*</span>
+<span class="ty">ConstIterator</span> <span class="fn">end</span>() <span class="kw">const</span>;          <span class="cm">// const Element*</span></code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Returns <code>&amp;data[length]</code>: the address one element past the final constructed element, which is
+  <code>data + Size()</code> because the buffer is exactly <a href="size.html"><code>Size</code></a> elements long
+  and there is no spare capacity between the end of the elements and the end of the allocation.
+</p>
+
+<p>
+  The sentinel itself is never dereferenced — the protocol only compares against it — and forming a
+  one-past-the-end pointer into a live buffer is well-defined, so <code>end()</code> is the normal, safe call it
+  looks like. It is what makes <code>for (auto value : array)</code> terminate and what the algorithms in
+  <code>&lt;algorithm&gt;</code> take as their range terminator.
+</p>
+
+<p>
+  Neither overload is <code>noexcept</code> or <code>[[nodiscard]]</code>, and neither is a check: the function
+  reads <code>length</code> and does arithmetic on <code>data</code>.
+</p>
+
+<div class="gap">
+  <strong>On an array that holds nothing, the arithmetic runs off a null base.</strong> A default-constructed,
+  cleared or zero-resized <code>Array</code> has <code>data == nullptr</code> and <code>length == 0</code>, so
+  <code>end()</code> forms <code>&amp;nullptr[0]</code>; in practice the answer is a null pointer, and the empty
+  range is safe as long as nothing dereferences it. A <em>negative</em> length is the case that actually hurts:
+  <code>end()</code> then compares <em>before</em> <a href="begin.html"><code>begin()</code></a>, so loops written
+  as <code>while (it != array.end())</code> never terminate instead of finishing immediately. A negative length
+  can only come from <a href="resize.html">resizing to a negative count</a>, which is not diagnosed.
+</div>
+
+<div class="note">
+  <strong>Both halves of the range are invalidated together.</strong> A <a href="resize.html">resize</a> or a
+  <a href="clear.html">clear</a> frees the buffer they point into; a <a href="swap.html">swap</a> keeps the
+  addresses but hands them to the other array. Because <code>end()</code> is derived from
+  <code>length</code> at the moment of the call, holding a stale <code>end()</code> across a growth is the quiet
+  version of the bug: the loop simply stops early, and no assert fires.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr>
+    <td><code>Element*</code> / <code>const Element*</code></td>
+    <td>
+      One past the last constructed element. Never dereference it. For an empty array the value is
+      <code>nullptr</code>, equal to <a href="begin.html"><code>begin()</code></a>, which is the empty range
+    </td>
+  </tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p>
+  The pair is what range-for desugars to, and that is exactly how the module's own fixture consumes it — the
+  loop below is the fixture's loop, not a paraphrase of one:
+</p>
+
+<pre><code><span class="kw">const</span> <span class="ty">hbe</span>::<span class="ty">Array</span>&lt;<span class="kw">int</span>&gt; array({<span class="nu">0</span>, <span class="nu">1</span>, <span class="nu">2</span>, <span class="nu">3</span>, <span class="nu">4</span>, <span class="nu">5</span>, <span class="nu">6</span>, <span class="nu">7</span>, <span class="nu">8</span>, <span class="nu">9</span>});
+<span class="kw">int</span> i = <span class="nu">0</span>;
+
+<span class="kw">for</span> (<span class="kw">auto</span> value : array)            <span class="cm">// array.begin() ... array.end(), const overloads</span>
+{
+        <span class="kw">if</span> (value != i)
+        {
+                <span class="kw">break</span>;
+        }
+
+        ++i;
+}</code></pre>
+
+<p class="meta">From Engine/Container/Array.cpp, the <code>ArrayTest</code> fixture compiled under
+<code>__UNIT_TEST__</code>.</p>
+
+<p>The explicit form, which is what an algorithm needs:</p>
+
+<p class="note">Illustrative — no call site for this exists in the repository.</p>
+
+<pre><code><span class="kw">auto</span> found = std::<span class="fn">find</span>(batch.<span class="fn">begin</span>(), batch.<span class="fn">end</span>(), wanted);
+
+<span class="kw">if</span> (found != batch.<span class="fn">end</span>())
+{
+        <span class="kw">const auto</span> slot = <span class="kw">static_cast</span>&lt;<span class="ty">hbe</span>::<span class="ty">Array</span>&lt;<span class="ty">MeshVertex</span>&gt;::<span class="ty">TIndex</span>&gt;(found - batch.<span class="fn">begin</span>());
+        <span class="cm">// or batch.GetIndex(wanted), which does the same subtraction for you</span>
+}</code></pre>
+
+<footer class="prevnext">
+  <span><a href="index.html">← Array</a></span>
+  <span><a href="index.html#methods">All Array methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

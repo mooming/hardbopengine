@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Queue — Container — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="#description">Class description</a></li>
+    <li><a href="#template">Template parameters</a></li>
+    <li><a href="#properties">Class properties</a></li>
+    <li><a href="#methods">Class methods</a></li>
+    <li><a href="#non-member">Non-member helpers</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+
+  <h3>Methods</h3>
+  <ul class="methods">
+    <li><a href="pop.html">Pop</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Container</a> / Queue
+</p>
+
+<h1>Queue</h1>
+<p class="subtitle">
+  <span class="tag">Engine/Container/Queue.h</span>
+  <span class="tag">namespace hbe</span>
+  <span class="tag">template &lt;typename TElement, class TContainer = Deque&lt;TElement&gt;&gt;</span>
+  <span class="tag">final</span>
+  a first-in-first-out facade: one container member, one forward per operation, nothing of its own
+</p>
+
+<h2 id="description">Class description</h2>
+
+<p>
+  <code>Queue</code> holds exactly one member, <code>TContainer container;</code>, and every method is a forwarding call
+  against it: <code>Push</code> to <code>PushBack</code>, <code>Pop</code> to <code>PopFront</code>,
+  <code>Front</code> and <code>Back</code> to the same names, <code>Size</code>, <code>IsEmpty</code> and
+  <code>Clear</code> likewise, <code>Emplace</code> to <code>EmplaceBack</code>. The class owns no memory, no allocation
+  logic and no invariants of its own — it restricts the interface, it does not change the implementation.
+</p>
+
+<p>
+  That makes this page a pointer rather than a specification: the contracts that matter — when the buffer grows, what
+  invalidates a reference, what an allocator does, what a capacity means — belong to
+  <a href="../Deque/index.html"><code>Deque</code></a> (or to whatever you substitute for it), and the rows below say so
+  per method instead of restating them. The two things this adapter adds on its own are the
+  <code>FatalAssert</code> in <a href="pop.html"><code>Pop</code></a> and the fact that it exposes no iteration at all.
+</p>
+
+<div class="gap">
+  <strong>Construction, moving and the memory budget are all the underlying container's, and the default one allocates
+  immediately.</strong> <code>Queue() = default;</code> with a <code>TContainer container;</code> member means a
+  default-constructed queue default-constructs its container — and <a href="../Deque/index.html"><code>Deque</code></a>
+  allocates <code>DefaultCapacity</code> = 4 elements in that constructor. So an empty queue is not free, and neither is
+  moving one: the move constructor delegates to the container's, which for <code>Deque</code> allocates four slots before
+  it swaps. Move assignment forwards to the container's move assignment, which for <code>Deque</code> is
+  <code>Swap</code> — so the source queue keeps the destination's former contents rather than being emptied.
+</div>
+
+<div class="note">
+  <strong>There is no allocator parameter anywhere in this class.</strong> The second template parameter names a container
+  type, not an allocator, so the only route to a specific pool is through that container's own default-constructed
+  allocator — <a href="../Deque/index.html"><code>Deque</code></a> has no constructor that accepts one either. Everything
+  about which memory scope the buffer lands in, and about what happens when the queue outlives it, is
+  <a href="../../Memory/index.html#allocators">Memory: allocators</a>.
+</div>
+
+<h2 id="template">Template parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Kind</th><th>What it must satisfy</th></tr>
+  <tr>
+    <td><code>TElement</code></td>
+    <td><code>typename</code></td>
+    <td>Whatever the container requires, plus copy-constructible for the const <code>Push</code> and for reading
+      <code>Front()</code> before a <a href="pop.html"><code>Pop</code></a>, since that read has to make a copy rather than
+      keep a reference. No comparison and no default construction of the element is required</td>
+  </tr>
+  <tr>
+    <td><code>TContainer</code></td>
+    <td><code>class</code>, defaults to <a href="../Deque/index.html"><code>Deque&lt;TElement&gt;</code></a></td>
+    <td>
+      The full storage contract, checked at instantiation: default-constructible (the queue's own default constructor needs
+      it), movable, and offering <code>PushBack(const T&amp;)</code>, <code>PushBack(T&amp;&amp;)</code>,
+      <code>EmplaceBack(args...)</code> returning <code>T&amp;</code>, <code>PopFront()</code>, <code>Front()</code> and
+      <code>Back()</code> in const and non-const, <code>Size()</code>, <code>IsEmpty()</code> and
+      <code>Clear()</code>. Substituting <a href="../RingQueue/index.html"><code>RingQueue</code></a> works on that list and
+      changes the growth rule to a fatal assert on full; substituting anything that pushes at the front instead of the back
+      silently reverses the order the queue promises
+    </td>
+  </tr>
+</table>
+
+<h2 id="properties">Class properties</h2>
+
+<table>
+  <tr><th>Name</th><th>Declaration</th><th>What it means</th></tr>
+  <tr>
+    <td><code>TContainerType</code></td>
+    <td><code>using TContainerType = TContainer;</code></td>
+    <td><span class="badge">member type</span> The storage type spelled back out — the only type alias this class
+      declares. There is no <code>TIndex</code>: <code>Size()</code> returns <code>auto</code>, forwarding the container's
+      own index type, which for <code>Deque</code> is <code>int</code></td>
+  </tr>
+  <tr>
+    <td><code>container</code></td>
+    <td><code>TContainer container;</code></td>
+    <td><span class="badge">private</span> The one member. It is private and there is no accessor for it, so the underlying
+      container's extra operations — <code>PushFront</code>, <code>Reserve</code>, <code>Capacity</code>, iteration — are
+      unreachable through a queue. Choose the container type before you need them, or hold the container yourself</td>
+  </tr>
+</table>
+
+<h2 id="methods">Class methods</h2>
+
+<p>
+  A name set as a link has its own page; the rest are documented here and named in
+  <a href="#coverage">Coverage</a>. "Inherited" in the last column means the behaviour, invalidation and cost are the
+  container's, and the container's page is the one to read.
+</p>
+
+<table>
+  <tr><th>Method</th><th>Signature</th><th>What a caller depends on</th></tr>
+  <tr>
+    <td><code>constructors</code><span class="badge">2 + 1 deleted</span></td>
+    <td class="sig">Queue() = default<br>Queue(Queue&amp;&amp; rhs) noexcept<br>Queue(const Queue&amp;) = delete</td>
+    <td>Default construction builds the container, which for <code>Deque</code> means one allocation of 4 elements; the move
+      delegates to the container's move and inherits its cost</td>
+  </tr>
+  <tr>
+    <td><code>destructor</code></td>
+    <td class="sig">implicit, compiler-generated</td>
+    <td>Destroys the container member, which destroys the live elements and returns the buffer through its own allocator. No
+      user-visible destructor is declared — the element type's destructor must therefore be non-throwing in practice, since
+      nothing here marks it <code>noexcept</code></td>
+  </tr>
+  <tr>
+    <td><code>operator=</code><span class="badge">2 overloads, one deleted</span></td>
+    <td class="sig">Queue&amp; operator=(Queue&amp;&amp; rhs) noexcept<br>Queue&amp; operator=(const Queue&amp;) = delete</td>
+    <td>Move assignment forwards to the container's; for <code>Deque</code> that is a swap, so <code>rhs</code> keeps what
+      this queue held instead of ending up empty</td>
+  </tr>
+  <tr>
+    <td><code>Push</code><span class="badge">2 overloads</span></td>
+    <td class="sig">void Push(const TElement&amp; value) noexcept<br>void Push(TElement&amp;&amp; value) noexcept</td>
+    <td><code>container.PushBack(...)</code>. Grows when the container is full, and a growth moves every element — so
+      references and pointers into the queue are invalidated by a push, exactly as in
+      <a href="../Deque/push-back.html"><code>Deque::PushBack</code></a></td>
+  </tr>
+  <tr>
+    <td><code>Emplace</code></td>
+    <td class="sig">template &lt;typename... Types&gt;<br>TElement&amp; Emplace(Types&amp;&amp;... args) noexcept</td>
+    <td><code>container.EmplaceBack(...)</code>, returning the new element by reference — the reference is valid only until
+      the next growth, so do not store it</td>
+  </tr>
+  <tr>
+    <td><a href="pop.html">Pop</a></td>
+    <td class="sig">void Pop() noexcept</td>
+    <td><code>FatalAssert(!container.IsEmpty())</code> then <code>PopFront()</code>. Returns nothing: read
+      <code>Front()</code> by value first</td>
+  </tr>
+  <tr>
+    <td><code>Front</code>, <code>Back</code><span class="badge">2 overloads each</span></td>
+    <td class="sig">TElement&amp; Front() noexcept<br>const TElement&amp; Front() const noexcept<br>TElement&amp; Back() noexcept<br>const TElement&amp; Back() const noexcept</td>
+    <td>Both forward to the container, which for <code>Deque</code> asserts non-empty. The reference is invalidated by
+      <a href="pop.html"><code>Pop</code></a>, by any growth and by <code>Clear</code></td>
+  </tr>
+  <tr>
+    <td><code>Size</code>, <code>IsEmpty</code></td>
+    <td class="sig">[[nodiscard]] auto Size() const noexcept<br>[[nodiscard]] bool IsEmpty() const noexcept</td>
+    <td>Forwarded reads. <code>Size()</code>'s type is the container's — <code>int</code> behind the
+      <code>auto</code> for the default container</td>
+  </tr>
+  <tr>
+    <td><code>Clear</code></td>
+    <td class="sig">void Clear() noexcept</td>
+    <td>Forwarded. For <code>Deque</code> the elements are destroyed and the cursors reset, but the buffer and its capacity
+      are kept — a cleared queue does not hand memory back</td>
+  </tr>
+</table>
+
+<h2 id="non-member">Non-member helper functions</h2>
+
+<p>None. The header declares nothing at namespace scope besides the class and its test collection, and unlike
+<a href="../LinkedList/index.html#non-member"><code>LinkedList</code></a> or
+<a href="../HashMap/index.html#non-member"><code>HashMap</code></a> it brings no supporting type along with it.</p>
+
+<h2 id="coverage">Coverage</h2>
+
+<table>
+  <tr><th>Gap</th><th>Detail</th></tr>
+  <tr>
+    <td>Method names without their own page</td>
+    <td><code>constructors</code>, <code>destructor</code>, <code>operator=</code>, <code>Push</code>,
+      <code>Emplace</code>, <code>Front</code>, <code>Back</code>, <code>Size</code>, <code>IsEmpty</code>,
+      <code>Clear</code> — each of them one forwarding line, documented in the table above rather than one page per
+      line</td>
+  </tr>
+  <tr>
+    <td>No call site in the engine</td>
+    <td><code>Container/Queue.h</code> is included by <code>Engine/Test/UnitTestCollection.cpp</code> and by nothing else in
+      <code>Engine/</code> or <code>Applications/</code>. <code>Engine/Core/TaskStream.h</code> holds a
+      <code>Deque&lt;RangedTask&gt;</code> and calls <code>Front()</code> / <code>PopFront()</code> on it directly — so this
+      adapter has never been exercised by production code, and every example here is labelled illustrative</td>
+  </tr>
+  <tr>
+    <td>No capacity query and no reserve</td>
+    <td><code>Deque</code> offers <code>Capacity()</code> and <code>Reserve()</code>; this facade exposes neither, and the
+      container is private. A queue therefore cannot be pre-sized or its headroom inspected without dropping the adapter —
+      an interface limitation, recorded here rather than guessed at</td>
+  </tr>
+  <tr>
+    <td>No iteration</td>
+    <td>No <code>begin</code>/<code>end</code> is declared, so the <a href="../Deque/begin.html">unmasked range pair in
+      <code>Deque</code></a> is not reachable through a queue — a benefit of the narrow facade, worth knowing if you are
+      tempted to widen it</td>
+  </tr>
+  <tr>
+    <td>Threading</td>
+    <td>Nothing here serialises anything; a queue shared between producer and consumer threads needs external
+      synchronisation, which is what <code>TaskStream</code> does around its <code>Deque</code> — documented under
+      <a href="../../Core/index.html">Core</a></td>
+  </tr>
+</table>
+
+<footer class="prevnext">
+  <span><a href="../index.html">← Container</a></span>
+  <span><a href="../index.html#queue">Queue in the Container class list</a></span>
+</footer>
+
+</main>
+</body>
+</html>
