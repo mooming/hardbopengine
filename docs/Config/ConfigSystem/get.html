@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ConfigSystem::Get — Config — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">ConfigSystem</a> methods</h3>
+  <ul class="methods">
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+    <li><a class="current" href="get.html">Get</a></li>
+    <li><a href="get-name.html">GetName</a></li>
+    <li><a href="register.html">Register</a></li>
+    <li><a href="set-bool.html">SetBool</a></li>
+    <li><a href="set-byte.html">SetByte</a></li>
+    <li><a href="set-int.html">SetInt</a></li>
+    <li><a href="set-size.html">SetSize</a></li>
+    <li><a href="set-float.html">SetFloat</a></li>
+    <li><a href="get-bool.html">GetBool</a></li>
+    <li><a href="get-byte.html">GetByte</a></li>
+    <li><a href="get-int.html">GetInt</a></li>
+    <li><a href="get-size.html">GetSize</a></li>
+    <li><a href="get-float.html">GetFloat</a></li>
+    <li><a href="print-all-parameters.html">PrintAllParameters</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Config</a> /
+  <a href="index.html">ConfigSystem</a> / Get
+</p>
+
+<h1><span class="fn">Get</span></h1>
+<p class="subtitle">
+  <span class="tag">static member of hbe::ConfigSystem</span>
+  <span class="tag">Engine/Config/ConfigSystem.h</span>
+  <span class="tag">[[nodiscard]] noexcept</span>
+  the one registry, built on the call that first needed it
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] <span class="kw">static</span> <span class="ty">ConfigSystem</span>&amp; <span class="fn">Get</span>() <span class="kw">noexcept</span>;</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Returns a reference to a function-local <code>static ConfigSystem instance</code>. Two consequences follow from
+  that one construct, and both matter to a caller. It is built on the first call rather than at load time, so
+  nothing here depends on static-initialisation order — and it is destroyed during exit processing, which is the
+  far end of the lifetime contract described on
+  <a href="destructor.html">the destructor page</a>.
+</p>
+
+<p>
+  The first call is also usually <em>inside</em> a <a href="../ConfigParam/index.html"><code>ConfigParam</code></a>
+  constructor, which calls <code>ConfigSystem::Get()</code> in order to register itself. So in a normal process the
+  registry is older than every parameter in it, and its reference stays valid for the whole run: there is no
+  shutdown call that invalidates it, no reset, and no way to build a competing one that this function would return.
+</p>
+
+<div class="note">
+  <strong>Calling it is free after the first time.</strong> The reference is not cached anywhere in the engine, so
+  call sites do call it repeatedly — but a reference held across a function body is the cheaper habit, and it is
+  what the engine's own call site does. <code>noexcept</code> holds even on the constructing call, because
+  <a href="constructors.html">that constructor</a> allocates nothing.
+</div>
+
+<div class="gap">
+  <strong>Registration is not thread-safe, and this function is where two threads meet.</strong> If two
+  <a href="../ConfigParam/index.html"><code>ConfigParam</code></a> objects are constructed concurrently for the first
+  time, both reach <a href="register.html"><code>Register</code></a> and mutate the same
+  <a href="index.html#properties"><code>unordered_map</code></a> with no lock in between. The singleton's own
+  construction is thread-safe; the maps it hands out are only safe for concurrent <em>lookup</em>. Finish
+  registration before you start threads, or register from one thread.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr>
+    <td><code>ConfigSystem&amp;</code></td>
+    <td>
+      The process-wide registry, never null, never a copy — <code>[[nodiscard]]</code> makes a call whose result is
+      thrown away a compile error, since such a call cannot do anything. The reference is valid until static
+      destruction, and what it can safely do narrows once any owner of a <code>ConfigParam</code> has died: see
+      <a href="destructor.html">the destructor</a>
+    </td>
+  </tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p>The engine's own use: take the reference once at the top of the block, then use it.</p>
+
+<pre><code><span class="kw">auto</span>&amp; configSys = hbe::ConfigSystem::<span class="fn">Get</span>();
+
+<span class="cm">// … a debug-only SetByte pair elided here …</span>
+
+configSys.<span class="fn">PrintAllParameters</span>();</code></pre>
+
+<p class="meta">From Engine/Engine/Engine.cpp, <code>hbe::Engine::ShutDown</code></p>
+
+<p>
+  The same call from inside a parameter constructor is what starts the singleton — see
+  <a href="register.html"><code>Register</code></a> for that snippet, which is the only other place in the engine
+  that names this function.
+</p>
+
+<footer class="prevnext">
+  <span><a href="index.html">← ConfigSystem</a></span>
+  <span><a href="index.html#methods">All ConfigSystem methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

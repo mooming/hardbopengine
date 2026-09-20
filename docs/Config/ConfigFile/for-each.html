@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ConfigFile::ForEach — Config — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">ConfigFile</a> methods</h3>
+  <ul class="methods">
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+    <li><a href="get-value.html">GetValue</a></li>
+    <li><a href="is-valid.html">IsValid</a></li>
+    <li><a class="current" href="for-each.html">ForEach</a></li>
+    <li><a href="parse.html">Parse</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Config</a> /
+  <a href="index.html">ConfigFile</a> / ForEach
+</p>
+
+<h1><span class="fn">ForEach</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::ConfigFile</span>
+  <span class="tag">Engine/Config/ConfigFile.h</span>
+  <span class="tag">const noexcept</span>
+  visit every parsed pair, in hash order, with no way to stop early
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code><span class="kw">void</span> <span class="fn">ForEach</span>(std::function&lt;<span class="kw">void</span>(<span class="kw">const</span> <span class="ty">TMap::value_type</span>&amp;)&gt; func) <span class="kw">const</span> <span class="kw">noexcept</span>;</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Calls <code>func</code> once per entry of <a href="index.html#properties"><code>keymap</code></a>, passing
+  <code>std::pair&lt;const TString, TString&gt;</code> — the key and the value as parsed. Iteration order is the hash order of an
+  <a href="../../HSTL/index.html#hunorderedmap"><code>HUnorderedMap</code></a>, so it is neither file order nor alphabetical, and it can
+  differ between two runs of the same binary on the same file if anything changes the map's bucket count.
+</p>
+
+<p>
+  The callback returns <code>void</code>, so there is no early exit: to find one key this walks the whole file, which is strictly worse
+  than <a href="get-value.html"><code>GetValue</code></a> and than a direct <code>keymap.find</code>. Its place is where every entry is
+  genuinely wanted — a settings screen, a validation pass, a dump at start-up.
+</p>
+
+<p>
+  The function object is taken <em>by value</em>, so a capturing lambda is copied into the parameter; and the method is
+  <code>const noexcept</code>, so the callback sees a const map and must not throw — an exception escaping it reaches
+  <code>std::terminate</code> rather than the caller.
+</p>
+
+<div class="gap">
+  <strong>An empty callback is not an error, it is a silent no-op.</strong> The implementation tests
+  <code>func == nullptr</code>, returns, and reports nothing anywhere. Passing a default-constructed
+  <code>std::function</code> — the result of a <code>std::function</code> you forgot to assign, or a nullable callback forwarded from
+  elsewhere — therefore looks exactly like an empty file. If the callback is optional at your call site, check it before you call;
+  this class will not.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr>
+    <td><code>func</code></td>
+    <td><code>std::function&lt;void(const TMap::value_type&amp;)&gt;</code>, by value</td>
+    <td>
+      Must be non-empty, must accept a const pair reference, and must not throw. It may not modify the pair — the key is
+      <code>const</code> and the value arrives const because the map is const here; writing back means going through the public
+      <code>keymap</code> on a non-const object
+    </td>
+  </tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  <code>void</code>, and it does not report how many entries it visited. A caller that needs the count reads
+  <code>keymap.size()</code> directly, or counts inside the callback.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<p class="note">Illustrative — no call site for this exists in the repository; nothing constructs a
+<code>ConfigFile</code>.</p>
+
+<pre><code><span class="kw">const</span> hbe::ConfigFile settings(<span class="st">"config/engine.cfg"</span>);
+
+<span class="cm">// Validate the keys you expected, and report the ones the file added or lost.</span>
+<span class="kw">int</span> recognised = <span class="nu">0</span>;
+settings.<span class="fn">ForEach</span>([&amp;recognised](<span class="kw">const auto</span>&amp; entry)
+{
+        <span class="kw">if</span> (entry.first == <span class="st">"max_particles"</span> || entry.first == <span class="st">"vsync"</span>)
+        {
+                ++recognised;
+        }
+        <span class="kw">else</span>
+        {
+                <span class="cm">// entry.first / entry.second are HStrings; report them however this</span>
+                <span class="cm">// subsystem reports anything else</span>
+        }
+});</code></pre>
+
+<p>
+  For the dump-style use — printing what the file loaded, since
+  <a href="../../Log/index.html#logger">the logger</a> is not involved in the load itself — the same call with a printing body is the whole
+  implementation, and it is the one place where hash order does not matter.
+</p>
+
+<p>
+  To change a value while walking, do not: this method is <code>const</code>, and inserting through the public map during iteration would
+  invalidate the iterators the loop is using. Read everything you need into your own types inside the callback, then apply it after.
+</p>
+
+<footer class="prevnext">
+  <span><a href="index.html">← ConfigFile</a></span>
+  <span><a href="index.html#methods">All ConfigFile methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

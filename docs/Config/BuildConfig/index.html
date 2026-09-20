@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BuildConfig — Config — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="#description">Class description</a></li>
+    <li><a href="#template">Template parameters</a></li>
+    <li><a href="#properties">Class properties</a></li>
+    <li><a href="#methods">Class methods</a></li>
+    <li><a href="#non-member">Non-member helpers</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+
+  <h3>Methods</h3>
+  <ul class="methods">
+    <li>None — macros only</li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Config</a> / BuildConfig
+</p>
+
+<h1>BuildConfig</h1>
+<p class="subtitle">
+  <span class="tag">Engine/Config/BuildConfig.h</span>
+  <span class="tag">preprocessor</span>
+  <span class="tag">no namespace, no types</span>
+  the defines that decide what gets compiled at all — platform, logging, memory checks, profiling, handedness, Vulkan
+</p>
+
+<h2 id="description">Class description</h2>
+
+<p>
+  There is no class here. <code>BuildConfig.h</code> is the engine's preprocessor surface: one
+  <code>#define</code> per feature, read before any translation unit picks its code path. Nothing in it has
+  storage, linkage or lifetime, and nothing in it can be called — each use expands at its own site. The
+  consequence is that changing one of these means rebuilding, not restarting: a value a running process could
+  alter would belong to <a href="../ConfigSystem/index.html"><code>ConfigSystem</code></a> instead.
+</p>
+
+<p>
+  The header includes nothing and declares nothing besides the macros, so it can be pulled in from anywhere —
+  <a href="../EngineConfig/index.html"><code>EngineConfig.h</code></a> includes it, and
+  <a href="../ConfigParam/index.html"><code>ConfigParam.h</code></a> reads
+  <code>ENGINE_PARAM_DESC_ENABLED</code> straight from it.
+</p>
+
+<div class="note">
+  <strong>These are switches, not settings.</strong> A define set to <code>0</code> removes the code that reads
+  it: <code>PROFILE_ENABLED 0</code> does not make profiling cheap, it compiles the timing out of
+  <code>ScopedLock</code> and the allocator statistics out of <a href="../../Memory/index.html">Memory</a>, so a
+  benchmark run under one build is not comparable to a run under the other.
+</div>
+
+<h2 id="template">Template parameters</h2>
+
+<p>Not applicable — <code>BuildConfig.h</code> declares macros, not templates.</p>
+
+<h2 id="properties">Class properties</h2>
+
+<p>
+  One row per define the header declares, plus <code>__DEBUG__</code>, which it documents without defining. The
+  "Declaration" column is the line as the header spells it; defaults below are the literals in that file, which
+  is where you edit them.
+</p>
+
+<table>
+  <tr><th>Name</th><th>Declaration</th><th>What it means</th></tr>
+  <tr>
+    <td><code>PLATFORM_LINUX</code><br><code>PLATFORM_OSX</code><br><code>PLATFORM_WINDOWS</code></td>
+    <td><code>#define PLATFORM_OSX 1</code></td>
+    <td>
+      <span class="badge">auto-detected</span> Exactly one is defined, from the compiler's own predefined
+      macros: <code>__linux__</code> first, then <code>__APPLE__</code>, then <code>_WIN32</code>, in an
+      <code>#elif</code> chain — so a compiler that predefines more than one takes the first match, not the last.
+      If none matches, the header stops the build with <code>static_assert(false, …)</code> rather than letting a
+      platform-agnostic guess through. Platform code belongs to <a href="../../OSAL/index.html#platforms">OSAL</a>
+    </td>
+  </tr>
+  <tr>
+    <td><code>MAX_NUM_TASK_STREAMS</code></td>
+    <td><code>#define MAX_NUM_TASK_STREAMS 64</code></td>
+    <td>
+      <span class="badge">define</span> Header comment: "Maximum number of task streams in TaskSystem". Nothing
+      in <code>Engine/</code> or <code>Applications/</code> reads it today, so treat the number as intent rather
+      than as an enforced ceiling — see <a href="#coverage">Coverage</a>
+    </td>
+  </tr>
+  <tr>
+    <td><code>ENGINE_MIN_HARDWARE_THREADS</code></td>
+    <td><code>#define ENGINE_MIN_HARDWARE_THREADS 4</code></td>
+    <td>
+      <span class="badge">define</span> Minimum recommended CPU cores, and the number
+      <code>TaskSystem::BuildStreams</code> tests against with <code>FatalAssert</code> — a machine below it aborts at
+      startup rather than running degraded. See
+      <a href="../../Core/index.html#tasksystem">Core: TaskSystem</a>
+    </td>
+  </tr>
+  <tr>
+    <td><code>ENGINE_LOG_ENABLED</code></td>
+    <td><code>#define ENGINE_LOG_ENABLED 1</code></td>
+    <td>
+      <span class="badge">define</span> Whether <code>hbe::Engine::Log</code> formats and dispatches a line at all;
+      <code>0</code> compiles the body out. Distinct from <code>LOG_ENABLED</code>, which is the logger itself
+    </td>
+  </tr>
+  <tr>
+    <td><code>ENGINE_PARAM_DESC_ENABLED</code></td>
+    <td><code>#define ENGINE_PARAM_DESC_ENABLED 1</code></td>
+    <td>
+      <span class="badge">define</span> Whether <a href="../ConfigParam/index.html"><code>ConfigParam</code></a>
+      carries its name and description as members. At <code>0</code> those members do not exist, <code>GetName</code> answers the interned
+      string <code>"None"</code>, and every parameter of one map then registers under that same key — a real loss of function, documented on
+      <a href="../ConfigParam/constructors.html">the constructor page</a>
+    </td>
+  </tr>
+  <tr>
+    <td><code>MEMORY_VERIFICATION_ENABLED</code></td>
+    <td><code>#define MEMORY_VERIFICATION_ENABLED 0</code></td>
+    <td>
+      <span class="badge">define</span> Integrity checks in the allocator layer; read by the pool allocators,
+      <code>MemoryManager</code>, <code>SystemAllocator</code> and <code>AllocatorProxy</code>. See
+      <a href="../../Memory/index.html">Memory</a>
+    </td>
+  </tr>
+  <tr>
+    <td><code>MEMORY_LOGGING_ENABLED</code></td>
+    <td><code>#define MEMORY_LOGGING_ENABLED 0</code></td>
+    <td>
+      <span class="badge">define</span> Compiles the memory subsystem's logging in or out, and is the condition
+      <a href="../EngineConfig/index.html"><code>Config::EngineLogLevel</code></a> and
+      <code>Config::EngineLogLevelPrint</code> are computed from — so turning it on silently moves the engine's
+      log thresholds down a level. See <a href="../EngineConfig/index.html">EngineConfig</a>
+    </td>
+  </tr>
+  <tr>
+    <td><code>MEMORY_INVESTIGATION_ENABLED</code></td>
+    <td><code>#define MEMORY_INVESTIGATION_ENABLED 0</code></td>
+    <td><span class="badge">define</span> Detailed memory investigation, read by <code>SystemAllocator</code></td>
+  </tr>
+  <tr>
+    <td><code>MEMORY_DANGLING_POINTER_CHECK_ENABLED</code></td>
+    <td><code>#define MEMORY_DANGLING_POINTER_CHECK_ENABLED 0</code></td>
+    <td><span class="badge">define</span> Dangling-pointer detection in <code>SystemAllocator</code></td>
+  </tr>
+  <tr>
+    <td><code>MEMORY_BUFFER_UNDERRUN_CHECK_ENABLED</code></td>
+    <td><code>#define MEMORY_BUFFER_UNDERRUN_CHECK_ENABLED 0</code></td>
+    <td><span class="badge">define</span> Buffer-underrun detection in <code>SystemAllocator</code></td>
+  </tr>
+  <tr>
+    <td><code>FORCE_USE_SYSTEM_MALLOC</code></td>
+    <td><code>#define FORCE_USE_SYSTEM_MALLOC 0</code></td>
+    <td>
+      <span class="badge">define</span> Routes <code>MemoryManager</code> to the system allocator instead of the
+      custom ones — the switch to flip when reproducing a suspect under
+      <code>MallocStackLogging</code> or <code>asan</code>
+    </td>
+  </tr>
+  <tr>
+    <td><code>MULTIPOOL_ALLOC_LOG</code></td>
+    <td><code>#define MULTIPOOL_ALLOC_LOG ".multiPoolConfig.dat"</code></td>
+    <td>
+      <span class="badge">define</span> A <code>const char*</code> literal, not a number: the cache file name the
+      multi-pool writes its observed block sizes to. <code>MemoryManager</code> interns it into a
+      <code>StaticString</code>, so it is resolved against the process working directory
+    </td>
+  </tr>
+  <tr>
+    <td><code>LOG_ENABLED</code></td>
+    <td><code>#define LOG_ENABLED 1</code></td>
+    <td><span class="badge">define</span> Master switch for the asynchronous logger itself, read by <code>Logger</code></td>
+  </tr>
+  <tr>
+    <td><code>LOG_BREAK_IF_WARNING</code></td>
+    <td><code>#define LOG_BREAK_IF_WARNING 0</code></td>
+    <td>
+      <span class="badge">define</span> At <code>1</code>, a line at <code>Warning</code> or above is printed
+      inline and reaches <code>debugBreak()</code> instead of going through the async queue. The header comment
+      says "debug only", but the guard is the macro alone — set it to <code>1</code> in a Release build and the
+      Release build breaks
+    </td>
+  </tr>
+  <tr>
+    <td><code>LOG_BREAK_IF_ERROR</code></td>
+    <td><code>#define LOG_BREAK_IF_ERROR 0</code></td>
+    <td>
+      <span class="badge">define</span> The same for <code>Error</code> and above. The two macros are
+      <code>||</code>-combined to decide whether <code>ImmediateLog</code> is compiled at all
+    </td>
+  </tr>
+  <tr>
+    <td><code>LOG_FORCE_PRINT_IMMEDIATELY</code></td>
+    <td><code>#define LOG_FORCE_PRINT_IMMEDIATELY 0</code></td>
+    <td>
+      <span class="badge">define</span> Bypasses the asynchronous logger and prints each line at its call site —
+      the option that keeps log order correct when a crash is about to discard the queue
+    </td>
+  </tr>
+  <tr>
+    <td><code>PROFILE_ENABLED</code></td>
+    <td><code>#define PROFILE_ENABLED 0</code></td>
+    <td>
+      <span class="badge">define</span> Performance profiling: the lock-wait measurement in
+      <a href="../../Core/index.html#scopedlock"><code>ScopedLock</code></a>, the allocator statistics in
+      <a href="../../Memory/index.html">Memory</a>, and the timing fields in
+      <a href="../../Core/index.html#systemstatistics"><code>SystemStatistics</code></a>. Widely read — 25 files branch on it, and
+      <a href="../EngineConfig/index.html"><code>Config::DebugTimeOutMultiplier</code></a> only has an effect
+      inside this branch
+    </td>
+  </tr>
+  <tr>
+    <td><code>RIGHT_HANDED_COORDINATE</code></td>
+    <td><code>#define RIGHT_HANDED_COORDINATE</code></td>
+    <td>
+      <span class="badge">define, no value</span> Coordinate handedness. It expands to nothing, so the only test
+      that works on it is <code>#ifdef</code> / <code>#ifndef</code> — <code>#if RIGHT_HANDED_COORDINATE</code>
+      is a preprocessor error. <a href="../../Math/index.html#functions">Engine/Math/CoordinateOrientation.h</a>
+      and <code>Vector3</code> flip their cross and look-at trig with it
+    </td>
+  </tr>
+  <tr>
+    <td><code>LEFT_HANDED_COORDINATE</code></td>
+    <td><code>// #define LEFT_HANDED_COORDINATE</code></td>
+    <td>
+      <span class="badge">declared only as a comment</span> The alternative handedness, present in the file only
+      as the line you uncomment to switch. Nothing tests <code>#ifdef LEFT_HANDED_COORDINATE</code>: the code
+      asks whether <code>RIGHT_HANDED_COORDINATE</code> is absent, so defining this one as well does not undo the
+      right-handed branch
+    </td>
+  </tr>
+  <tr>
+    <td><code>MEMORY_INVESTIGATOR_TEST_ENABLED</code></td>
+    <td><code>#define MEMORY_INVESTIGATOR_TEST_ENABLED 0</code></td>
+    <td>
+      <span class="badge">define</span> Memory investigation tests, read by <code>SystemAllocator</code>. Test
+      fixtures are covered by <a href="../../Test/index.html">Test</a>
+    </td>
+  </tr>
+  <tr>
+    <td><code>VULKAN_SDK</code></td>
+    <td><code>#define VULKAN_SDK 1</code> or <code>0</code></td>
+    <td>
+      <span class="badge">auto-detected</span> <code>1</code> when <code>vulkan/vulkan.h</code> is reachable
+      through one of four <code>__has_include</code> probes — the bare header, <code>/opt/homebrew/include</code>,
+      <code>/usr/local/include</code>, <code>External/VulkanSDK/include</code>. Otherwise <code>0</code> plus a
+      <code>#pragma message</code> naming the install script for the platform; the code still compiles, and
+      <code>RHICapabilities::IsVulkanSupported</code> answers <code>false</code> as a compile-time constant. See
+      <a href="../../Renderer/index.html#rendercapabilities">Renderer</a>
+    </td>
+  </tr>
+  <tr>
+    <td><code>__DEBUG__</code></td>
+    <td><code>-D__DEBUG__</code> on the Debug flag line in <code>CMakeLists.txt</code></td>
+    <td>
+      <span class="badge">build flag, not defined here</span> Gates <code>Assert</code> and nothing else —
+      <code>FatalAssert</code> sits outside the guard and is live in every configuration. The top-level
+      <code>CMakeLists.txt</code> puts <code>-D__DEBUG__</code> on <code>CMAKE_CXX_FLAGS_DEBUG</code>, and
+      <code>CMAKE_CXX_FLAGS_DEV</code> is defined as <code>${CMAKE_CXX_FLAGS_DEBUG} -O1</code>, so Dev inherits it
+      and Release does not have it. See <a href="../../Core/index.html#functions">Core: Debug</a>
+    </td>
+  </tr>
+</table>
+
+<h2 id="methods">Class methods</h2>
+
+<p>
+  None, and none is possible: a macro has no signature, no overload set and no address, so there is nothing to
+  deep-link. This page therefore has no method pages, which is the correct shape for a header of defines rather
+  than a gap in the reference.
+</p>
+
+<h2 id="non-member">Non-member helper functions</h2>
+
+<p>
+  Naming follows <a href="../../CodingStandards.md">docs/CodingStandards.md</a>: macros are
+  <code>SCREAMING_SNAKE_CASE</code> with no leading underscore, because a leading double underscore or an
+  underscore followed by a capital letter is reserved to the C++ implementation — which is exactly why
+  <code>__DEBUG__</code> is legal while a new engine define must not be spelled that way. The
+  <code>__MEMORY_VERIFICATION__</code> and <code>__FORCE_USE_SYSTEM_MALLOC__</code> spellings are the retired old
+  names of <code>MEMORY_VERIFICATION_ENABLED</code> and <code>FORCE_USE_SYSTEM_MALLOC</code>; only the names in
+  the table above exist in this header.
+</p>
+
+<h2 id="coverage">Coverage</h2>
+
+<table>
+  <tr><th>Gap</th><th>Detail</th></tr>
+  <tr>
+    <td>Every define's consumers</td>
+    <td>The table names the subsystems that branch on a define; what each branch actually does is that
+        subsystem's subject and is documented on its own module page — <a href="../../Memory/index.html">Memory</a>
+        for the six memory macros, <a href="../../Log/index.html">Log</a> for the four logging macros,
+        <a href="../../Core/index.html">Core</a> for <code>PROFILE_ENABLED</code> and
+        <code>ENGINE_MIN_HARDWARE_THREADS</code></td>
+  </tr>
+  <tr>
+    <td><code>MAX_NUM_TASK_STREAMS</code> has no reader</td>
+    <td>No file under <code>Engine/</code> or <code>Applications/</code> uses it, so this page records the header
+        comment and cannot state what enforces 64. The live stream count limit, if any, lives in
+        <a href="../../Core/index.html#tasksystem">TaskSystem</a></td>
+  </tr>
+  <tr>
+    <td>The header's own <code>__DEBUG__</code> comment contradicts the build</td>
+    <td><code>BuildConfig.h</code> states that "Nothing in the build system defines it, so <code>Assert()</code> is
+        a no-op in Debug, Dev and Release alike." <code>CMakeLists.txt</code> line 9 disagrees: it adds
+        <code>-D__DEBUG__</code> to the Debug flags and Dev inherits them. The build script is the authority on a
+        compiler flag, so the table above follows it; the comment is stale and this page does not repeat it</td>
+  </tr>
+  <tr>
+    <td>How to set any of it per build</td>
+    <td>Covered by <a href="../../BuildSystem.md">docs/BuildSystem.md</a> and
+        <a href="../../HelperScript.md">docs/HelperScript.md</a>, not duplicated here. Generated
+        <code>CMakeLists.txt</code> files are never edited by hand</td>
+  </tr>
+  <tr>
+    <td>Related defect, outside this page</td>
+    <td>The configuration table in <a href="../../../README.md">README.md</a> still prints
+        <code>__MEMORY_VERIFICATION__</code>, <code>__MEMORY_LOGGING__</code>,
+        <code>__FORCE_USE_SYSTEM_MALLOC__</code>, <code>__MEMORY_DANGLING_POINTER_CHECK__</code> and
+        <code>__RIGHT_HANDED__</code>. No such define exists; the live names are in the table
+        <a href="#properties">above</a></td>
+  </tr>
+</table>
+
+<footer class="prevnext">
+  <span><a href="../index.html">← Config</a></span>
+  <span><a href="../index.html#buildconfig">BuildConfig in the Config class list</a></span>
+</footer>
+
+</main>
+</body>
+</html>

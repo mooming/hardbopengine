@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EngineConfig — Config — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="#description">Class description</a></li>
+    <li><a href="#template">Template parameters</a></li>
+    <li><a href="#properties">Class properties</a></li>
+    <li><a href="#methods">Class methods</a></li>
+    <li><a href="#non-member">Non-member helpers</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+
+  <h3>Methods</h3>
+  <ul class="methods">
+    <li><a href="get-max-system-memory-target.html">GetMaxSystemMemoryTarget</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Config</a> / EngineConfig
+</p>
+
+<h1>EngineConfig</h1>
+<p class="subtitle">
+  <span class="tag">Engine/Config/EngineConfig.h</span>
+  <span class="tag">namespace hbe::Config</span>
+  <span class="tag">15 static constexpr constants</span>
+  <span class="tag">1 function</span>
+  the compile-time sizes and caps every other module measures itself against
+</p>
+
+<h2 id="description">Class description</h2>
+
+<p>
+  A namespace, not a class: <code>hbe::Config</code> holds the numbers the engine sizes itself with — log line
+  length, allocation alignment, memory ceiling, interning-table buckets. Nothing is constructed, nothing is
+  stored per instance, and every value is fixed when the binary is built. The rule the namespace exists to
+  enforce is that a size appears once: a module that needs 1024 characters of log line reads
+  <a href="#properties"><code>Config::LogLineLength</code></a> rather than writing <code>1024</code>, so the
+  constant can be moved without hunting for literals.
+</p>
+
+<p>
+  It is distinct from the other two Config surfaces in <em>when</em> the value is decided. These are baked in, like
+  <a href="../BuildConfig/index.html"><code>BuildConfig.h</code></a>; only
+  <a href="../ConfigSystem/index.html"><code>ConfigSystem</code></a> values change while the process runs. The two
+  do meet: <code>EngineLogLevel</code> and <code>EngineLogLevelPrint</code> are computed from the
+  <code>MEMORY_LOGGING_ENABLED</code> define, and several of these constants are the <em>default</em> a
+  <a href="../ConfigParam/index.html"><code>ConfigParam</code></a> is constructed with — after that the parameter,
+  not the constant, is what a running engine changes.
+</p>
+
+<div class="note">
+  <strong>Every member is <code>static constexpr</code> at namespace scope, so it has internal linkage.</strong> A
+  translation unit that takes the address of one gets its own object; there is no single address to compare or
+  share. As a value it behaves identically everywhere, which is how these are used — as array bounds, template
+  arguments and initialisers.
+</div>
+
+<div class="gap">
+  <strong>The log level numbers are only meaningful against one legend.</strong> The header writes
+  <code>0: Verbose, 1: Info, 2: Significant, 3: Warning, 4: Error, 5: FatalError</code>, which is exactly
+  <a href="../../Log/index.html#eloglevel"><code>ELogLevel</code></a> — but the constants are typed
+  <code>uint8_t</code>, not <code>ELogLevel</code>, so every consumer casts one way or the other
+  (<code>static_cast&lt;uint8_t&gt;(Config::EngineLogLevel)</code>,
+  <code>static_cast&lt;ELogLevel&gt;(logLevel.Get())</code>). A level that drifts between the enum and these
+  literals is not caught by the type system, and the only guard in the header is
+  <code>static_assert(EngineLogLevel &lt;= EngineLogLevelPrint)</code>.
+</div>
+
+<h2 id="template">Template parameters</h2>
+
+<p>None — <code>hbe::Config</code> is a plain namespace, not a template.</p>
+
+<h2 id="properties">Class properties</h2>
+
+<p>
+  The full member list of <code>Engine/Config/EngineConfig.h</code>. The "What it means" column names the code
+  that actually reads each one, because a constant nobody reads is a wish rather than a setting — see
+  <a href="#coverage">Coverage</a> for the four with no consumer.
+</p>
+
+<table>
+  <tr><th>Name</th><th>Declaration</th><th>What it means</th></tr>
+  <tr>
+    <td><code>EngineLogLevel</code></td>
+    <td><code>static constexpr uint8_t EngineLogLevel = MEMORY_LOGGING_ENABLED ? 0 : 1;</code></td>
+    <td>
+      <span class="badge">constexpr</span> Log level the engine itself emits at, and the default of the
+      <code>Log.Engine</code> parameter — <code>Verbose</code> (0) when memory logging is compiled in, else
+      <code>Info</code> (1). <code>hbe::Engine::Log</code> compares against it before formatting anything. See
+      <a href="../../Engine/index.html#engine">Engine</a>
+    </td>
+  </tr>
+  <tr>
+    <td><code>EngineLogLevelPrint</code></td>
+    <td><code>static constexpr uint8_t EngineLogLevelPrint = MEMORY_LOGGING_ENABLED ? 1 : 2;</code></td>
+    <td>
+      <span class="badge">constexpr</span> Level a line must reach to also go to standard output —
+      <code>Info</code> (1) with memory logging on, <code>Significant</code> (2) otherwise. Default of the
+      <code>Log.Engine.Print</code> parameter
+    </td>
+  </tr>
+  <tr>
+    <td><code>MemCapacity</code></td>
+    <td><code>static constexpr size_t MemCapacity = (5ULL * 1024 * 1024 * 1024);</code></td>
+    <td>
+      <span class="badge">constexpr</span> 5 GiB. <code>SystemStatistics</code> logs a warning the first time
+      cumulative usage passes it, and <code>MemoryManager</code> reports it as both
+      <code>totalCapacity</code> and <code>maxCapacity</code>. It is a reporting ceiling — nothing refuses an
+      allocation because of it
+    </td>
+  </tr>
+  <tr>
+    <td><code>MemLogLevel</code></td>
+    <td><code>static constexpr uint8_t MemLogLevel = 1;</code></td>
+    <td>
+      <span class="badge">constexpr</span> <code>Info</code>. Default of the <code>Log.Memory</code> parameter,
+      which <code>MemoryManager::IsLogEnabled</code> consults — and that whole path is inside
+      <code>#if MEMORY_LOGGING_ENABLED</code>, so with the default build this constant gates nothing
+    </td>
+  </tr>
+  <tr>
+    <td><code>DefaultAlign</code></td>
+    <td><code>static constexpr size_t DefaultAlign = 16;</code></td>
+    <td>
+      <span class="badge">constexpr</span> Allocation alignment in bytes. The pool allocators widen it per type —
+      <code>std::max(sizeof(T), Config::DefaultAlign)</code> — and the monotonic and stack allocators round with
+      it directly. Anything that hand-computes an offset into an engine buffer has to agree with this number; see
+      <a href="../../Memory/index.html">Memory</a>
+    </td>
+  </tr>
+  <tr>
+    <td><code>MaxPathLength</code></td>
+    <td><code>static constexpr int MaxPathLength = 512;</code></td>
+    <td>
+      <span class="badge">constexpr</span> Longest path <em>measured</em>, not longest path stored. It is the pool size of
+      <a href="../../HSTL/index.html#hstring"><code>HInlinePathString</code></a>, and it caps the length
+      <code>Logger::Initialize</code> computes with <code>strnlen</code> when it reserves the log-file path — the path itself is then
+      appended in full, so a longer string is not truncated here, only under-reserved for
+    </td>
+  </tr>
+  <tr>
+    <td><code>StaticStringBufferSize</code></td>
+    <td><code>static constexpr int StaticStringBufferSize = 8 * 1024 * 1024;</code></td>
+    <td>
+      <span class="badge">constexpr</span> Grouped under the header's <code>// String</code> heading next to the
+      bucket count, which is what the old guide read as the interning table's storage. No file in
+      <code>Engine/</code> or <code>Applications/</code> reads it; the interning table sizes its own storage
+      elsewhere. Treat this value as currently inert — <a href="#coverage">Coverage</a>
+    </td>
+  </tr>
+  <tr>
+    <td><code>StaticStringNumHashBuckets</code></td>
+    <td><code>static constexpr int StaticStringNumHashBuckets = 256;</code></td>
+    <td>
+      <span class="badge">constexpr</span> <code>StaticStringTable::NumTables</code>, so it is the bucket count of
+      the table that interns every <a href="../../String/index.html#staticstring">StaticString</a> — and therefore
+      every <a href="../ConfigSystem/index.html">ConfigSystem</a> key. Raising it shortens the chains that look a
+      parameter name up
+    </td>
+  </tr>
+  <tr>
+    <td><code>LogLineLength</code></td>
+    <td><code>static constexpr int LogLineLength = 1024;</code></td>
+    <td>
+      <span class="badge">constexpr</span> Bytes of text in one stored log line, and the threshold above which a
+      line is flagged long (<code>size &gt;= LogLineLength - 1</code>). Longer output is truncated, not
+      heap-allocated. See <a href="../../Log/index.html#logline">Log</a>
+    </td>
+  </tr>
+  <tr>
+    <td><code>LogOutputBuffer</code></td>
+    <td><code>static constexpr int LogOutputBuffer = LogLineLength * 128;</code></td>
+    <td>
+      <span class="badge">constexpr</span> 131072. Not a queue size: it is the capacity of the inline string
+      builder each log statement formats into — <code>Logger::TLogStream</code> is
+      <code>InlineStringBuilder&lt;Config::LogOutputBuffer&gt;</code>. It bounds one formatted statement, which is
+      why it is far larger than <a href="#properties"><code>LogLineLength</code></a>, the size the line is stored at
+    </td>
+  </tr>
+  <tr>
+    <td><code>LogMemoryBlockSize</code></td>
+    <td><code>static constexpr int LogMemoryBlockSize = LogLineLength * 256;</code></td>
+    <td>
+      <span class="badge">constexpr</span> Grouped under <code>// Log</code>. No consumer in the tree — the
+      logger's pools are <code>MultiPoolAllocator</code> instances constructed by name, not from this number.
+      Inert today, see <a href="#coverage">Coverage</a>
+    </td>
+  </tr>
+  <tr>
+    <td><code>LogNumMemoryBlocks</code></td>
+    <td><code>static constexpr int LogNumMemoryBlocks = 1024 * 12;</code></td>
+    <td><span class="badge">constexpr</span> Same as above: declared, grouped under <code>// Log</code>, read by nothing</td>
+  </tr>
+  <tr>
+    <td><code>LogForceFlushThreshold</code></td>
+    <td><code>static constexpr int LogForceFlushThreshold = 1024 * 8;</code></td>
+    <td>
+      <span class="badge">constexpr</span> Pending bytes that make the logger flush instead of waiting for its
+      next tick — the backpressure that keeps a chatty subsystem from holding an unbounded amount of unwritten
+      text
+    </td>
+  </tr>
+  <tr>
+    <td><code>MaxConcurrentTasks</code></td>
+    <td><code>static constexpr int MaxConcurrentTasks = 32;</code></td>
+    <td>
+      <span class="badge">constexpr</span> Grouped under the header's <code>// TaskSystem</code> heading. Nothing
+      reads it, so there is no concurrency ceiling in the engine that this number enforces — the task system's
+      actual limits are its own. See <a href="../../Core/index.html#tasksystem">Core: TaskSystem</a> and
+      <a href="#coverage">Coverage</a>
+    </td>
+  </tr>
+  <tr>
+    <td><code>DebugTimeOutMultiplier</code></td>
+    <td><code>static constexpr float DebugTimeOutMultiplier = 2.0f;</code></td>
+    <td>
+      <span class="badge">constexpr</span> Multiplies <code>ScopedLock::timeOutSec</code> — the wait a lock holds
+      before it reports a slow contention. The multiplication sits inside
+      <code>#if PROFILE_ENABLED</code> <em>and</em> <code>#ifdef __DEBUG__</code>, so with the default
+      <code>PROFILE_ENABLED 0</code> it changes nothing at all
+    </td>
+  </tr>
+</table>
+
+<h2 id="methods">Class methods</h2>
+
+<p>
+  One name. It is declared in the namespace, not attached to a type, and it is the only member of
+  <code>hbe::Config</code> that is a function.
+</p>
+
+<table>
+  <tr><th>Method</th><th>Signature</th><th>What a caller depends on</th></tr>
+  <tr>
+    <td><a href="get-max-system-memory-target.html">GetMaxSystemMemoryTarget</a></td>
+    <td class="sig">[[nodiscard]] size_t GetMaxSystemMemoryTarget() noexcept</td>
+    <td>Declared only — <code>EngineConfig.cpp</code> contains no definition and no code in the tree calls it, so
+        an actual call is a link error today. Read the page before using it</td>
+  </tr>
+</table>
+
+<h2 id="non-member">Non-member helper functions</h2>
+
+<p>
+  None besides <a href="get-max-system-memory-target.html"><code>GetMaxSystemMemoryTarget</code></a>, which is
+  already at namespace scope. <code>EngineConfig.h</code> includes <code>&lt;cstdint&gt;</code>,
+  <code>&lt;cstdio&gt;</code> and <a href="../BuildConfig/index.html"><code>BuildConfig.h</code></a>, and declares
+  nothing else.
+</p>
+
+<h2 id="coverage">Coverage</h2>
+
+<table>
+  <tr><th>Gap</th><th>Detail</th></tr>
+  <tr>
+    <td>Four constants have no consumer</td>
+    <td><code>StaticStringBufferSize</code>, <code>LogMemoryBlockSize</code>, <code>LogNumMemoryBlocks</code> and
+        <code>MaxConcurrentTasks</code> are declared and read by nothing under <code>Engine/</code> or
+        <code>Applications/</code>. Their headers are grouped by comment only — <code>// String</code>,
+        <code>// Log</code>, <code>// TaskSystem</code> — so any purpose beyond that grouping, including the ones
+        the previous guide gave them, cannot be confirmed from the code and is not asserted here</td>
+  </tr>
+  <tr>
+    <td><code>GetMaxSystemMemoryTarget</code> has no definition</td>
+    <td>The declaration in <code>EngineConfig.h</code> is the whole of it; <code>Engine/Config/EngineConfig.cpp</code>
+        is three lines and contains no function body. What it is <em>meant</em> to return is therefore unknown, and
+        the page for it documents the declaration and the absence, not a description of behaviour</td>
+  </tr>
+  <tr>
+    <td>Where each constant is enforced</td>
+    <td>This page names the reader of each number; what the reader does with it — truncation, rounding, flush
+        scheduling — belongs to <a href="../../Log/index.html">Log</a>,
+        <a href="../../Memory/index.html">Memory</a>, <a href="../../String/index.html">String</a> and
+        <a href="../../HSTL/index.html">HSTL</a></td>
+  </tr>
+  <tr>
+    <td>Changing a value</td>
+    <td>Editing one of these rebuilds the engine; <code>MemCapacity</code> and the log figures change process
+        behaviour, <code>DefaultAlign</code> changes the layout of live allocations, so it is a full clean rebuild
+        rather than an incremental one. <a href="../../BuildSystem.md">docs/BuildSystem.md</a> covers the mechanics</td>
+  </tr>
+</table>
+
+<footer class="prevnext">
+  <span><a href="../index.html">← Config</a></span>
+  <span><a href="../index.html#engineconfig">EngineConfig in the Config class list</a></span>
+</footer>
+
+</main>
+</body>
+</html>

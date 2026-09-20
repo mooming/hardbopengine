@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ConfigSystem::ConfigSystem — Config — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signatures</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">ConfigSystem</a> methods</h3>
+  <ul class="methods">
+    <li><a class="current" href="constructors.html">constructors</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+    <li><a href="get.html">Get</a></li>
+    <li><a href="get-name.html">GetName</a></li>
+    <li><a href="register.html">Register</a></li>
+    <li><a href="set-bool.html">SetBool</a></li>
+    <li><a href="set-byte.html">SetByte</a></li>
+    <li><a href="set-int.html">SetInt</a></li>
+    <li><a href="set-size.html">SetSize</a></li>
+    <li><a href="set-float.html">SetFloat</a></li>
+    <li><a href="get-bool.html">GetBool</a></li>
+    <li><a href="get-byte.html">GetByte</a></li>
+    <li><a href="get-int.html">GetInt</a></li>
+    <li><a href="get-size.html">GetSize</a></li>
+    <li><a href="get-float.html">GetFloat</a></li>
+    <li><a href="print-all-parameters.html">PrintAllParameters</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Config</a> /
+  <a href="index.html">ConfigSystem</a> / constructors
+</p>
+
+<h1><span class="fn">ConfigSystem</span> <span class="cm">(constructors)</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::ConfigSystem</span>
+  <span class="tag">Engine/Config/ConfigSystem.h</span>
+  <span class="tag">1 defaulted, 4 deleted</span>
+  one registry per process in practice, because a second one is a registry that knows nothing
+</p>
+
+<h2 id="signature">Signatures</h2>
+
+<pre><code><span class="cm">/// the only constructible form</span>
+<span class="ty">ConfigSystem</span>() <span class="kw">noexcept</span> = <span class="kw">default</span>;
+
+<span class="cm">/// none of these exist</span>
+<span class="ty">ConfigSystem</span>(<span class="kw">const</span> <span class="ty">ConfigSystem</span>&amp;) = <span class="kw">delete</span>;
+<span class="ty">ConfigSystem</span>(<span class="ty">ConfigSystem</span>&amp;&amp;) = <span class="kw">delete</span>;
+<span class="ty">ConfigSystem</span>&amp; <span class="fn">operator=</span>(<span class="kw">const</span> <span class="ty">ConfigSystem</span>&amp;) = <span class="kw">delete</span>;
+<span class="ty">ConfigSystem</span>&amp; <span class="fn">operator=</span>(<span class="ty">ConfigSystem</span>&amp;&amp;) = <span class="kw">delete</span>;</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Construction takes four empty hash maps and nothing else — no allocation is required to build an empty registry,
+  no key is read, and <code>noexcept</code> holds because there is no work that can fail. All the class's state is
+  filled later by <a href="register.html"><code>Register</code></a>.
+</p>
+
+<p>
+  The four deletions are the part with intent. A copy of a registry would be a copy of closures that capture
+  <em>other objects'</em> parameters by reference, so a copied entry would be a live path to parameters the copy has
+  no claim on; deleting copy and move makes a <a href="get.html"><code>ConfigSystem&amp;</code></a> a reference you
+  cannot accidentally duplicate, and it is what stops the registry being embedded by value somewhere and drifting
+  away from the one everything registers into.
+</p>
+
+<div class="gap">
+  <strong>The default constructor is public, so a private registry compiles — and is silently useless.</strong>
+  <code>ConfigSystem local;</code> is legal C++ and is <em>not</em> the engine's registry: no
+  <a href="../ConfigParam/index.html"><code>ConfigParam</code></a> points at it, because a parameter registers itself
+  with <a href="get.html"><code>Get()</code></a> at construction time. Every
+  <a href="get-int.html"><code>GetInt</code></a> on a local instance reports not-found and returns its stand-in value,
+  every <a href="set-int.html"><code>SetInt</code></a> is refused, and no diagnostic names your instance as the wrong
+  one — the "is not found" line looks identical. Obtain the registry through <a href="get.html"><code>Get()</code></a>
+  and there is no way to make this mistake.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None. The defaulted constructor takes no argument, and no other constructor exists — you cannot build a registry
+seeded from something, because there is nothing to seed it from.</p>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  Constructors have no return value. What you get is an object with four empty
+  <a href="index.html#properties"><code>TMap</code></a> members and no entries; if the point is to reach the engine's
+  parameters, the object you want is already built and is what <a href="get.html"><code>Get()</code></a> hands out.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<p class="note">Illustrative — no call site for this exists in the repository, because nothing in the engine constructs a
+second registry.</p>
+
+<pre><code><span class="cm">// What you should write: take the one instance.</span>
+<span class="kw">auto</span>&amp; settings = hbe::ConfigSystem::<span class="fn">Get</span>();
+settings.<span class="fn">SetByte</span>(<span class="st">"Log.Level"</span>, <span class="nu">0</span>);
+
+<span class="cm">// What compiles and does nothing you can observe:</span>
+hbe::ConfigSystem localRegistry;              <span class="cm">// empty, and stays empty</span>
+localRegistry.<span class="fn">SetByte</span>(<span class="st">"Log.Level"</span>, <span class="nu">0</span>);      <span class="cm">// logs "is not found" under EngineSettings</span></code></pre>
+
+<p>
+  The key <code>"Log.Level"</code> and its type are real: that parameter is a <code>uint8_t</code> registered by
+  <code>Logger::AddLog</code> — see <a href="../../Log/index.html#logger">Log: Logger</a> for what setting it does.
+</p>
+
+<footer class="prevnext">
+  <span><a href="index.html">← ConfigSystem</a></span>
+  <span><a href="index.html#methods">All ConfigSystem methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

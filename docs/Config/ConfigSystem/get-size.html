@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ConfigSystem::GetSize — Config — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">ConfigSystem</a> methods</h3>
+  <ul class="methods">
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+    <li><a href="get.html">Get</a></li>
+    <li><a href="get-name.html">GetName</a></li>
+    <li><a href="register.html">Register</a></li>
+    <li><a href="set-bool.html">SetBool</a></li>
+    <li><a href="set-byte.html">SetByte</a></li>
+    <li><a href="set-int.html">SetInt</a></li>
+    <li><a href="set-size.html">SetSize</a></li>
+    <li><a href="set-float.html">SetFloat</a></li>
+    <li><a href="get-bool.html">GetBool</a></li>
+    <li><a href="get-byte.html">GetByte</a></li>
+    <li><a href="get-int.html">GetInt</a></li>
+    <li><a class="current" href="get-size.html">GetSize</a></li>
+    <li><a href="get-float.html">GetFloat</a></li>
+    <li><a href="print-all-parameters.html">PrintAllParameters</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Config</a> /
+  <a href="index.html">ConfigSystem</a> / GetSize
+</p>
+
+<h1><span class="fn">GetSize</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::ConfigSystem</span>
+  <span class="tag">Engine/Config/ConfigSystem.h</span>
+  <span class="tag">const noexcept</span>
+  read a count- or capacity-valued parameter, where "not registered" and "zero" are the same answer
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] <span class="ty">size_t</span> <span class="fn">GetSize</span>(<span class="kw">const</span> <span class="ty">StaticString</span>&amp; key) <span class="kw">const</span> <span class="kw">noexcept</span>;</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Interns <code>key</code>, looks it up in <code>sizeParams</code> and calls the stored getter, which reaches the owning
+  <a href="../ConfigParam/get.html"><code>ConfigParam&lt;size_t&gt;::Get</code></a>. The value arrives at full width — no
+  narrowing happens anywhere on this path, which is the reason the <code>size_t</code> map exists beside the
+  <code>int</code> one.
+</p>
+
+<p>
+  The three names that resolve in a stock engine are the task record table sizes, registered by
+  <code>TaskSystem::Initialize</code>:
+</p>
+
+<table>
+  <tr><th>Key</th><th>Default comes from</th><th>Meaning of its own description</th></tr>
+  <tr><td><code>Task.RegistryInitialRecords</code></td><td><code>TaskRegistry::DefaultInitialCapacityRecords</code></td><td>Records the registry starts with, in banks of the grow-by figure</td></tr>
+  <tr><td><code>Task.RegistryGrowByRecords</code></td><td><code>TaskRegistry::DefaultGrowByRecords</code></td><td>Records added per growth of the record table</td></tr>
+  <tr><td><code>Task.RegistryMaxRecords</code></td><td><code>TaskRegistry::DefaultMaxCapacityRecords</code></td><td>Largest the table may grow; 0 means no ceiling</td></tr>
+</table>
+
+<p class="meta">Names and descriptions from Engine/Core/TaskSystem.cpp</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr>
+    <td><code>key</code></td>
+    <td><a href="../../String/index.html#staticstring"><code>const StaticString&amp;</code></a></td>
+    <td>The registered name of a <code>size_t</code> parameter; a byte- or float-map name of the same spelling is a miss</td>
+  </tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr>
+    <td><code>size_t</code></td>
+    <td>
+      The parameter's current value, or <code>0</code> for a null or absent key — and <code>0</code> is not a sentinel these
+      parameters avoid: for <code>Task.RegistryMaxRecords</code> the value <code>0</code> is documented as "no ceiling". So
+      a typo in that key produces the same number as the most permissive setting that key can hold
+    </td>
+  </tr>
+</table>
+
+<div class="gap">
+  <strong>Zero is a real, load-bearing value in this map — do not use it as your "missing" test.</strong> Written as
+  <code>if (auto ceiling = settings.GetSize("Task.RegistryMaxRecords"); ceiling != 0)</code>, an absent parameter takes the
+  "there is a ceiling, and it is 0 records" branch in every reading of the code except the one you intended. Test the
+  parameter's existence where existence matters — its owner registered it, so the owner's own
+  <a href="../ConfigParam/get.html"><code>Get</code></a> is the trustworthy read — and treat this function as the by-name view
+  it is.
+</div>
+
+<div class="note">
+  <strong>What you read may already be stale in a specific way.</strong> A parameter holds a value; the subsystem that
+  consumed it at start-up holds its own copy. <code>GetSize("Task.RegistryInitialRecords")</code> tells you what a future
+  <code>Initialize</code> would use, not what the live task registry allocated. The relationship between the two is the same
+  one described on <a href="set-size.html"><code>SetSize</code></a> from the writing side.
+</div>
+
+<h2 id="example">Examples</h2>
+
+<p>The registration is real; reading these keys by name has no live call site.</p>
+
+<pre><code><span class="kw">static</span> hbe::TAtomicConfigParam&lt;<span class="kw">std</span>::<span class="ty">size_t</span>&gt; initialRecords(
+        <span class="st">"Task.RegistryInitialRecords"</span>,
+        <span class="st">"Task records the registry starts with, in banks of the grow-by figure"</span>,
+        TaskRegistry::DefaultInitialCapacityRecords);
+<span class="kw">static</span> hbe::TAtomicConfigParam&lt;<span class="kw">std</span>::<span class="ty">size_t</span>&gt; growByRecords(<span class="st">"Task.RegistryGrowByRecords"</span>,
+        <span class="st">"Task records each growth of the task record table"</span>,
+        TaskRegistry::DefaultGrowByRecords);
+
+taskRegistry.<span class="fn">Initialize</span>(<span class="st">"TaskRegistry"</span>, initialRecords.<span class="fn">Get</span>(), growByRecords.<span class="fn">Get</span>());</code></pre>
+
+<p class="meta">From Engine/Core/TaskSystem.cpp, <code>hbe::TaskSystem::Initialize</code> — condensed: the source declares a third parameter between these two, and the reads follow the declarations</p>
+
+<p class="note">Illustrative — the by-name read, e.g. for a start-up report.</p>
+
+<pre><code><span class="kw">auto</span>&amp; settings = hbe::ConfigSystem::<span class="fn">Get</span>();
+
+<span class="kw">const auto</span> initial = settings.<span class="fn">GetSize</span>(<span class="st">"Task.RegistryInitialRecords"</span>);
+<span class="kw">const auto</span> step = settings.<span class="fn">GetSize</span>(<span class="st">"Task.RegistryGrowByRecords"</span>);
+
+<span class="kw">if</span> (step == <span class="nu">0</span>)
+{
+        <span class="kw">return</span>;   <span class="cm">// absent key and a zero step land here together</span>
+}</code></pre>
+
+<footer class="prevnext">
+  <span><a href="index.html">← ConfigSystem</a></span>
+  <span><a href="index.html#methods">All ConfigSystem methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

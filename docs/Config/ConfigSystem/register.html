@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ConfigSystem::Register — Config — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signatures</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">ConfigSystem</a> methods</h3>
+  <ul class="methods">
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+    <li><a href="get.html">Get</a></li>
+    <li><a href="get-name.html">GetName</a></li>
+    <li><a class="current" href="register.html">Register</a></li>
+    <li><a href="set-bool.html">SetBool</a></li>
+    <li><a href="set-byte.html">SetByte</a></li>
+    <li><a href="set-int.html">SetInt</a></li>
+    <li><a href="set-size.html">SetSize</a></li>
+    <li><a href="set-float.html">SetFloat</a></li>
+    <li><a href="get-bool.html">GetBool</a></li>
+    <li><a href="get-byte.html">GetByte</a></li>
+    <li><a href="get-int.html">GetInt</a></li>
+    <li><a href="get-size.html">GetSize</a></li>
+    <li><a href="get-float.html">GetFloat</a></li>
+    <li><a href="print-all-parameters.html">PrintAllParameters</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Config</a> /
+  <a href="index.html">ConfigSystem</a> / Register
+</p>
+
+<h1><span class="fn">Register</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::ConfigSystem</span>
+  <span class="tag">Engine/Config/ConfigSystem.h</span>
+  <span class="tag">10 overloads</span>
+  installs a by-reference path to somebody else's parameter — the only way anything gets into the registry
+</p>
+
+<h2 id="signature">Signatures</h2>
+
+<p>
+  Five value types, each with a non-atomic and an atomic form. The two forms of one type install into the
+  <em>same</em> map, so the pair differs only in which <code>ConfigParam</code> specialization it accepts:
+</p>
+
+<pre><code><span class="kw">void</span> <span class="fn">Register</span>(TConfigParam&lt;<span class="kw">bool</span>&gt;&amp; engineParam);
+<span class="kw">void</span> <span class="fn">Register</span>(TAtomicConfigParam&lt;<span class="kw">bool</span>&gt;&amp; engineParam);
+<span class="kw">void</span> <span class="fn">Register</span>(TConfigParam&lt;<span class="ty">uint8_t</span>&gt;&amp; engineParam);
+<span class="kw">void</span> <span class="fn">Register</span>(TAtomicConfigParam&lt;<span class="ty">uint8_t</span>&gt;&amp; engineParam);
+<span class="kw">void</span> <span class="fn">Register</span>(TConfigParam&lt;<span class="kw">int</span>&gt;&amp; engineParam);
+<span class="kw">void</span> <span class="fn">Register</span>(TAtomicConfigParam&lt;<span class="kw">int</span>&gt;&amp; engineParam);
+<span class="kw">void</span> <span class="fn">Register</span>(TConfigParam&lt;<span class="ty">size_t</span>&gt;&amp; engineParam);
+<span class="kw">void</span> <span class="fn">Register</span>(TAtomicConfigParam&lt;<span class="ty">size_t</span>&gt;&amp; engineParam);
+<span class="kw">void</span> <span class="fn">Register</span>(TConfigParam&lt;<span class="kw">float</span>&gt;&amp; engineParam);
+<span class="kw">void</span> <span class="fn">Register</span>(TAtomicConfigParam&lt;<span class="kw">float</span>&gt;&amp; engineParam);</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Each overload takes the interned identity of the parameter's name, checks that map for it, then stores a
+  <a href="index.html#properties"><code>ParamItem</code></a> holding three things: the interned description, a getter
+  that calls <a href="../ConfigParam/get.html"><code>param.Get()</code></a>, and a setter that calls
+  <a href="../ConfigParam/set.html"><code>param.Set(value)</code></a>. Both closures capture
+  <code>&amp;param</code> — the registry stores no copy of any value, and a name-based read is a call into the owning
+  object.
+</p>
+
+<p>
+  The <code>bool</code> overloads declare their value as <code>uint8_t</code> internally, which is why
+  <code>bool</code> and <code>uint8_t</code> parameters share <code>byteParams</code> and why
+  <a href="get-byte.html"><code>GetByte</code></a> reads a bool parameter as 0 or 1. The <code>int</code>,
+  <code>size_t</code> and <code>float</code> overloads address their own map each.
+</p>
+
+<p>
+  A name already present in that map is refused: one line is logged at <code>FatalError</code> under the
+  <code>EngineSettings</code> category — "The key … is duplicated. It's not allowed strictly." — and the function
+  returns without installing anything. Nothing is overwritten and the existing entry keeps pointing at the
+  parameter it was given, so the second parameter simply does not exist as far as name-based access is concerned.
+  The first registration wins.
+</p>
+
+<div class="gap">
+  <strong>The parameter must outlive the registry, and there is no way to unregister.</strong> A captured reference is
+  not an ownership claim. Every engine parameter is a function-local static, which dies during exit processing while
+  the <a href="get.html"><code>Get()</code></a> singleton is destroyed later still, so from the moment an owner dies
+  its entry is a live path into a destroyed object
+  (<a href="destructor.html">the destructor page</a> traces the order). Since <code>ConfigParam</code> holds a
+  <code>std::mutex</code> it cannot be copied or moved, meaning a parameter that is registered has a stable address —
+  keep it at static or global lifetime, never in a container that reallocates and never as a temporary.
+</div>
+
+<div class="gap">
+  <strong>With <code>ENGINE_PARAM_DESC_ENABLED</code> set to 0 the whole registry collapses onto one key.</strong> That macro removes
+  the <code>name</code> and <code>desc</code> members from <code>ConfigParam</code>, so
+  <a href="../ConfigParam/get-name.html"><code>GetName()</code></a> returns a default-constructed
+  <a href="../../String/index.html#staticstring"><code>StaticString</code></a> — which is the interned string <code>"None"</code>, not an
+  empty one. This function checks for duplicates but never for a missing name, so within each map the first parameter wins the
+  <code>None</code> key and every later parameter of that same map is refused — at most four entries survive a whole engine built that
+  way, one per map, and the dump prints them all as <code>None</code>. It is defined as 1 in
+  <a href="../BuildConfig/index.html"><code>BuildConfig.h</code></a>; turning it off is not a size optimisation you can make casually.
+</div>
+
+<div class="note">
+  <strong>Registration is a mutation and is not synchronised.</strong> Concurrent calls race on the same
+  <code>unordered_map</code>. Build every parameter before starting worker threads — or accept the ordering the
+  engine already has, where a parameter is created the first time its subsystem initialises.
+  <a href="get.html"><code>Get()</code></a> repeats why this matters.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr>
+    <td><code>engineParam</code></td>
+    <td><code>TConfigParam&lt;T&gt;&amp;</code> or <code>TAtomicConfigParam&lt;T&gt;&amp;</code>, i.e.
+        <a href="../ConfigParam/index.html"><code>ConfigParam&lt;T, IsAtomic&gt;</code></a></td>
+    <td>
+      A live parameter whose name is not yet taken in the map its type maps to. It is taken by non-const reference —
+      the parameter is not modified here, but a const object cannot be registered, since the setter the registry stores
+      needs a mutable target. Overload resolution picks the overload from <code>T</code> and <code>IsAtomic</code>;
+      a type outside <code>bool</code>, <code>uint8_t</code>, <code>int</code>, <code>size_t</code>, <code>float</code>
+      has no overload and will not compile
+    </td>
+  </tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  <code>void</code>, and there is no way to ask whether it worked. Refusal is reported by log line only, so a caller
+  that must know reads the parameter back by name afterwards — and must remember that a missing key answers with a
+  stand-in that looks like a value (<a href="get-int.html"><code>GetInt</code></a>).
+</p>
+
+<h2 id="example">Examples</h2>
+
+<p>The only call site in the engine: a parameter registers itself as the last act of its own constructor.</p>
+
+<pre><code>ConfigParam(<span class="kw">const</span> <span class="kw">char</span>* inName, <span class="kw">const</span> <span class="kw">char</span>* inDesc, <span class="ty">T</span> defaultValue,
+            std::thread::id id = std::this_thread::get_id())
+        : value(defaultValue)
+{
+        <span class="kw">auto</span>&amp; settings = ConfigSystem::Get();
+        settings.<span class="fn">Register</span>(*<span class="kw">this</span>);
+}</code></pre>
+
+<p class="meta">From Engine/Config/ConfigParam.h, condensed — the real initialiser list is conditional on <code>ENGINE_PARAM_DESC_ENABLED</code> and <code>__DEBUG__</code></p>
+
+<p>
+  Which overload that line selects is decided by the parameter's own two template arguments. The engine's live
+  parameters are all <code>TAtomicConfigParam&lt;uint8_t&gt;</code> (the log levels) or
+  <code>TAtomicConfigParam&lt;std::size_t&gt;</code> (the task registry sizes), so every registration in a running
+  build goes through an atomic overload — see
+  <a href="../ConfigParam/constructors.html">ConfigParam constructors</a> for the call sites.
+</p>
+
+<footer class="prevnext">
+  <span><a href="index.html">← ConfigSystem</a></span>
+  <span><a href="index.html#methods">All ConfigSystem methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

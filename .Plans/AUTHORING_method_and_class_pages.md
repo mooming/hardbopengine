@@ -16,6 +16,12 @@ families share one page.**
 | Method page | `docs/<Module>/<Class>/<method>.html` | one method name, all its overloads |
 
 Class directory and file names are the **source spelling**: `Array`, `TaskSystem`, `StaticStringID`.
+
+**The unit is a documented entry of the module page, not strictly a class.** Some entries are a macro set
+(`BuildConfig`) or a namespace of free functions (`EngineConfig`). They still get a folder and an `index.html`,
+because a link target and a sidebar entry are worth more than a taxonomically pure tree. Keep the AGENTS.md
+outline — for a macro set, Class description says what the entry actually is, Template parameters says *none*,
+Class properties carries the macros, and Class methods says none.
 Method file names are **lower case, words separated by `-`**, operators spelled out:
 
 | Method | File |
@@ -69,6 +75,11 @@ Badge vocabulary, so one page's row kind is the next page's row kind: `member ty
 a data member, `private nested` for a nested class or struct, `alias template` for a member `template` alias, and
 `deleted` for a special member that exists only to be removed. Anything else needs a sentence in the cell — the
 badge is a label, not an explanation.
+
+For an entry that is macros only, `Name | Declaration | What it means` states the same thing twice, so the
+middle column becomes **where it is read**: `Name | Read by | What it controls`, with `Read by` naming the
+translation unit or "nothing". Naming the consumer is the whole value of such a table — a define nobody reads is
+a define that can rot, which is how `EngineAPIGuide` came to lie.
 
 Class methods — one row per **method name**, the name linking to its page, the overload count as a badge:
 
@@ -145,7 +156,10 @@ identical on every page of a module, and a method page marks itself current in t
 on a class page marks **no** entry current; on a method page it also marks none.
 
 A class whose members are aliases only has no method pages: replace the list with
-`<li>None — aliases only</li>` and keep the "Methods" heading, so the sidebar does not look half-written.
+`<li>None — aliases only</li>` and keep the "Methods" heading, so the sidebar does not look half-written. Same
+for a macro set (`None — macros only`) and a namespace entry (`None — see the module functions`). **Every class
+page carries the heading**, even when the honest content is a two-word absence: a missing heading cannot be told
+apart from an unfinished page.
 
 ## 10. Footer
 
@@ -199,6 +213,11 @@ PY
 ```
 
 Replace the glob with your module names. **Do not report done until it prints `ALL CLEAN`.**
+
+If you run this over the whole site rather than your module: the standalone design documents
+(`docs/RendererDesign.html`, `docs/design/**`) carry their own inlined styles and are not part of this
+stylesheet, so their classes are not ours to check. A link into a `.md` file is likewise not checkable — GitHub
+generates heading fragments that no string search can find. Both read as failures and are not.
 
 ## 13. Exemplar to copy from
 

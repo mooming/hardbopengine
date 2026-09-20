@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ConfigSystem::GetBool — Config — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">ConfigSystem</a> methods</h3>
+  <ul class="methods">
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+    <li><a href="get.html">Get</a></li>
+    <li><a href="get-name.html">GetName</a></li>
+    <li><a href="register.html">Register</a></li>
+    <li><a href="set-bool.html">SetBool</a></li>
+    <li><a href="set-byte.html">SetByte</a></li>
+    <li><a href="set-int.html">SetInt</a></li>
+    <li><a href="set-size.html">SetSize</a></li>
+    <li><a href="set-float.html">SetFloat</a></li>
+    <li><a class="current" href="get-bool.html">GetBool</a></li>
+    <li><a href="get-byte.html">GetByte</a></li>
+    <li><a href="get-int.html">GetInt</a></li>
+    <li><a href="get-size.html">GetSize</a></li>
+    <li><a href="get-float.html">GetFloat</a></li>
+    <li><a href="print-all-parameters.html">PrintAllParameters</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Config</a> /
+  <a href="index.html">ConfigSystem</a> / GetBool
+</p>
+
+<h1><span class="fn">GetBool</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::ConfigSystem</span>
+  <span class="tag">Engine/Config/ConfigSystem.h</span>
+  <span class="tag">const noexcept</span>
+  read a byte-map parameter as a <code>bool</code> — and treat its answer as a value, never as an existence check
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] <span class="kw">bool</span> <span class="fn">GetBool</span>(<span class="kw">const</span> <span class="ty">StaticString</span>&amp; key) <span class="kw">const</span> <span class="kw">noexcept</span>;</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Interns <code>key</code>, finds the entry in <code>byteParams</code>, calls its getter and narrows the
+  <code>uint8_t</code> the map stores to <code>bool</code>. Both <code>bool</code> and <code>uint8_t</code> parameters live in
+  that map, so a byte parameter holding <code>7</code> reads back as <code>true</code> here.
+</p>
+
+<p>
+  Nothing about the failure path is exceptional: a null key or an absent key produces one log line and a default-built
+  entry whose getter is empty, and the function then returns <code>false</code>. It is <code>const noexcept</code>, so
+  "cannot fail" means "will not tell you" — no assert, no status, no exception; the absence is reported in the log and
+  nowhere else.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr>
+    <td><code>key</code></td>
+    <td><a href="../../String/index.html#staticstring"><code>const StaticString&amp;</code></a></td>
+    <td>
+      The registered name; a string literal converts and interns on the way in. The lookup is confined to the byte map,
+      so a parameter of that name registered as <code>int</code>, <code>size_t</code> or <code>float</code> is not found
+      rather than converted
+    </td>
+  </tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr>
+    <td><code>bool</code></td>
+    <td>
+      The parameter's current value, or <code>false</code> if the key is null or absent. Because the two cases are the
+      same answer, <code>GetBool</code> cannot be used to decide whether a parameter exists — and since no
+      <code>bool</code> parameter is registered anywhere in <code>Engine/</code> or <code>Applications/</code>, every call
+      against a stock engine returns this <code>false</code>
+    </td>
+  </tr>
+</table>
+
+<div class="gap">
+  <strong>Default-off is the dangerous reading of a missing flag.</strong> Code written as
+  <code>if (settings.GetBool("Render.UseDilation"))</code> behaves, when the parameter was never registered or was
+  registered under a different type, exactly like a flag that is legitimately switched off: silently, correctly, and with
+  one <code>Info</code>-level line under <a href="get-name.html"><code>EngineSettings</code></a> as the only evidence. If the
+  feature must be on unless something turns it off, invert the name and test for the negation
+  (<code>"Render.DisableDilation"</code>), so that the stand-in answer is the safe one.
+</div>
+
+<h2 id="example">Examples</h2>
+
+<p class="note">Illustrative — no call site for this exists in the repository, and no <code>bool</code> parameter is registered
+for it to find.</p>
+
+<pre><code><span class="kw">auto</span>&amp; settings = hbe::ConfigSystem::<span class="fn">Get</span>();
+
+<span class="cm">// The owning subsystem registers it, in the form Engine/Core/TaskSystem.cpp uses:</span>
+<span class="cm">//   static hbe::TAtomicConfigParam&lt;bool&gt; dilation("Render.DisableDilation", "…", false);</span>
+
+<span class="kw">if</span> (settings.<span class="fn">GetBool</span>(<span class="st">"Render.DisableDilation"</span>))
+{
+        <span class="cm">// a missing key and a flag genuinely set to true differ only in the log</span>
+}
+
+<span class="cm">// A debug overlay that must not lose a value it is about to change:</span>
+<span class="kw">const</span> <span class="kw">bool</span> previous = settings.<span class="fn">GetBool</span>(<span class="st">"Render.DisableDilation"</span>);
+settings.<span class="fn">SetBool</span>(<span class="st">"Render.DisableDilation"</span>, <span class="kw">true</span>);
+<span class="cm">// … take the measurement …</span>
+settings.<span class="fn">SetBool</span>(<span class="st">"Render.DisableDilation"</span>, previous);</code></pre>
+
+<p>
+  For the log-level parameters that <em>do</em> exist, the byte-typed reader is
+  <a href="get-byte.html"><code>GetByte</code></a>; the writers are <a href="set-bool.html"><code>SetBool</code></a> and
+  <a href="set-byte.html"><code>SetByte</code></a>.
+</p>
+
+<footer class="prevnext">
+  <span><a href="index.html">← ConfigSystem</a></span>
+  <span><a href="index.html#methods">All ConfigSystem methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

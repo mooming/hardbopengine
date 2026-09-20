@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ConfigParam::ConfigParam — Config — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">ConfigParam</a> methods</h3>
+  <ul class="methods">
+    <li><a class="current" href="constructors.html">constructors</a></li>
+    <li><a href="get-name.html">GetName</a></li>
+    <li><a href="get-description.html">GetDescription</a></li>
+    <li><a href="get.html">Get</a></li>
+    <li><a href="set.html">Set</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Config</a> /
+  <a href="index.html">ConfigParam</a> / constructors
+</p>
+
+<h1><span class="fn">ConfigParam</span> <span class="cm">(constructors)</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::ConfigParam</span>
+  <span class="tag">Engine/Config/ConfigParam.h</span>
+  <span class="tag">one form, no overloads</span>
+  <span class="tag">registers on construction</span>
+  name, description, default — and the act of building the object is the act of registering it
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>ConfigParam(<span class="kw">const</span> <span class="kw">char</span>* inName, <span class="kw">const</span> <span class="kw">char</span>* inDesc, <span class="ty">T</span> defaultValue,
+            std::thread::id id = std::this_thread::get_id());</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Interns <code>inName</code> and <code>inDesc</code> into <a href="../../String/index.html#staticstring"><code>StaticString</code></a>
+  members, stores <code>defaultValue</code> as the initial value, records the constructing thread, then obtains
+  <a href="../ConfigSystem/get.html"><code>ConfigSystem::Get()</code></a> and calls
+  <a href="../ConfigSystem/register.html"><code>Register(*this)</code></a>. There is no second step, no <code>Init</code> and no way
+  to build an unregistered parameter.
+</p>
+
+<p>
+  Both halves of that are conditional at compile time. Under <code>ENGINE_PARAM_DESC_ENABLED</code> 0 the initialiser list
+  contains only <code>value</code>, because the <code>name</code> and <code>desc</code> members are not declared at all. Under a
+  build without <code>__DEBUG__</code> the <code>id</code> argument is accepted and discarded, since the member it would
+  initialise does not exist — a caller may pass a thread id in Release and it changes nothing.
+</p>
+
+<p>
+  Not <code>explicit</code>, but in practice invisible: the engine builds every one of its parameters as a named static
+  object, never as a conversion.
+</p>
+
+<div class="gap">
+  <strong>Construction can leave the object unregistered, and it will not tell you at the call site.</strong> The
+  constructor returns normally whether or not <code>Register</code> accepted the name. If the name is already taken in the map
+  that <code>T</code> selects, the registry logs one <code>FatalError</code> line under
+  <a href="../ConfigSystem/get-name.html"><code>EngineSettings</code></a> and installs nothing: your parameter works perfectly
+  for its owner and is invisible by name. If <code>ENGINE_PARAM_DESC_ENABLED</code> is 0, every parameter after the first
+  collides that way, because a parameter with no <code>name</code> member registers under the interned string <code>"None"</code> that every
+  other such parameter shares. Both cases look like a working object.
+</div>
+
+<div class="note">
+  <strong>Order of construction is order of registration, and first wins.</strong> Two parameters under the same name in the same
+  map means the one constructed earlier owns the key. In a stock engine this is why the parameters are function-local statics:
+  each is built the first time its subsystem runs, which is deterministic and long before anything reads the key.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr>
+    <td><code>inName</code></td>
+    <td><code>const char*</code></td>
+    <td>
+      The key everything else uses to reach this value. Must outlive nothing — it is interned here, so a literal or a temporary
+      buffer is fine — but must be unique within the map that <code>T</code> selects. The engine's convention, visible in every
+      call site, is a dotted category prefix: <code>Log.Level</code>, <code>Task.RegistryMaxRecords</code>
+    </td>
+  </tr>
+  <tr>
+    <td><code>inDesc</code></td>
+    <td><code>const char*</code></td>
+    <td>
+      Description shown in <a href="../ConfigSystem/print-all-parameters.html"><code>PrintAllParameters</code></a>'s dump, also interned.
+      Not stored at all when <code>ENGINE_PARAM_DESC_ENABLED</code> is 0. Say what a value of 0 means if the setting has one —
+      <code>"… 0 means no ceiling"</code> in Engine/Core/TaskSystem.cpp is the model
+    </td>
+  </tr>
+  <tr>
+    <td><code>defaultValue</code></td>
+    <td><code>T</code></td>
+    <td>
+      The value until something writes it. There is no file, no environment and no command line that supplies it — this argument
+      is the only source of a parameter's initial state
+    </td>
+  </tr>
+  <tr>
+    <td><code>id</code></td>
+    <td><code>std::thread::id</code>, defaults to the constructing thread</td>
+    <td>
+      The thread later allowed to call <a href="get.html"><code>Get</code></a> and <a href="set.html"><code>Set</code></a>, and only
+      meaningful for a non-atomic parameter under <code>__DEBUG__</code>. Passing another thread's id is how you bless a parameter
+      that a specific other thread owns; ignored in a build where the member is compiled out
+    </td>
+  </tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  Constructors have no return value, and nothing here needs one: the two failure modes — duplicate name, and a description
+  build — are reported in the log or not at all, never through the construction itself.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<p>Real call sites, one per value type that the engine registers.</p>
+
+<pre><code><span class="kw">static</span> hbe::TAtomicConfigParam&lt;<span class="ty">uint8_t</span>&gt; CPLogLevel(<span class="st">"Log.Level"</span>, <span class="st">"The Default Log Level"</span>,
+                                                  <span class="kw">static_cast</span>&lt;<span class="ty">uint8_t</span>&gt;(ELogLevel::Info));</code></pre>
+
+<p class="meta">From Engine/Log/Logger.cpp</p>
+
+<pre><code><span class="kw">static</span> hbe::TAtomicConfigParam&lt;<span class="kw">std</span>::<span class="ty">size_t</span>&gt; maxRecords(<span class="st">"Task.RegistryMaxRecords"</span>,
+                                                     <span class="st">"Largest the task record table may grow. 0 means no ceiling"</span>,
+                                                     TaskRegistry::DefaultMaxCapacityRecords);</code></pre>
+
+<p class="meta">From Engine/Core/TaskSystem.cpp</p>
+
+<pre><code><span class="kw">static</span> hbe::ConfigParam&lt;<span class="kw">float</span>, <span class="kw">true</span>&gt; thresholdDuration(
+        <span class="st">"TaskStreamDurationThreshold"</span>, <span class="st">"Print a warning log if it detects slower task. (seconds)"</span>, <span class="nu">0.16f</span>);</code></pre>
+
+<p class="meta">From Engine/Core/TaskStream.cpp</p>
+
+<p>
+  Three things all three share: the object is a function-local static, so it is built once, on the thread that first runs that
+  function, and lives to exit; the type is the atomic form, so a name-based write from anywhere is legal; and the default comes
+  from a named constant or a literal rather than being computed, because the value has to exist before the first
+  <a href="get.html"><code>Get</code></a>.
+</p>
+
+<div class="note">
+  <strong>No engine call site uses the non-atomic form.</strong> <code>TConfigParam&lt;T&gt;</code> and the four-argument form with an
+  explicit thread id are exercised only by parameters a caller adds. Before reaching for them, read
+  <a href="get.html"><code>Get</code></a>: the non-atomic form is a plain field, and its only protection is a Debug-only assertion.
+</div>
+
+<footer class="prevnext">
+  <span><a href="index.html">← ConfigParam</a></span>
+  <span><a href="index.html#methods">All ConfigParam methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

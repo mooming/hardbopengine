@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ConfigFile::GetValue — Config — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signatures</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">ConfigFile</a> methods</h3>
+  <ul class="methods">
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+    <li><a class="current" href="get-value.html">GetValue</a></li>
+    <li><a href="is-valid.html">IsValid</a></li>
+    <li><a href="for-each.html">ForEach</a></li>
+    <li><a href="parse.html">Parse</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Config</a> /
+  <a href="index.html">ConfigFile</a> / GetValue
+</p>
+
+<h1><span class="fn">GetValue</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::ConfigFile</span>
+  <span class="tag">Engine/Config/ConfigFile.h</span>
+  <span class="tag">2 overloads</span>
+  <span class="tag">const noexcept</span>
+  one lookup, two answers: an optional that can say "absent", or a string that never can
+</p>
+
+<h2 id="signature">Signatures</h2>
+
+<p>Both are a single hash lookup in <code>keymap</code>; the difference is entirely what absence becomes:</p>
+
+<pre><code><span class="cm">/// absence as data: an empty optional when the key is not there</span>
+<span class="ty">TValue</span> <span class="fn">GetValue</span>(<span class="kw">const</span> <span class="ty">TString</span>&amp; key) <span class="kw">const</span> <span class="kw">noexcept</span>;
+
+<span class="cm">/// absence as the default you supplied</span>
+<span class="ty">TString</span> <span class="fn">GetValue</span>(<span class="kw">const</span> <span class="ty">TString</span>&amp; key, <span class="kw">const</span> <span class="ty">TString</span>&amp; defaultValue) <span class="kw">const</span> <span class="kw">noexcept</span>;</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Both find <code>key</code> in the map and return a copy of what was stored — the string exactly as
+  <a href="parse.html"><code>Parse</code></a> left it: trimmed at both ends, split on the first <code>=</code>, and otherwise untouched. There
+  is no conversion of any kind: <code>"true"</code>, <code>"1"</code> and <code>"0.16"</code> come back as three strings, and parsing them
+  into a <code>bool</code>, an <code>int</code> or a <code>float</code> is the caller's job.
+</p>
+
+<p>
+  Case matters. The key is an <a href="../../HSTL/index.html#hstring"><code>HString</code></a> hashed as a string, so
+  <code>"MaxParticles"</code> and <code>"maxparticles"</code> are two different lookups, one of which is a miss.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr>
+    <td><code>key</code></td>
+    <td><code>const <a href="../../HSTL/index.html#hstring">TString</a>&amp;</code></td>
+    <td>The name as it appears left of the <code>=</code> in the file. A string literal binds through <code>std::string</code>-style conversion, which allocates a temporary — worth hoisting out of a loop</td>
+  </tr>
+  <tr>
+    <td><code>defaultValue</code></td>
+    <td><code>const TString&amp;</code> (second overload only)</td>
+    <td>Returned when the key is absent. It is <em>not</em> written into the map, so a later lookup of the same key still misses and
+      <a href="for-each.html"><code>ForEach</code></a> still will not see it</td>
+  </tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr>
+    <td><code>TValue</code> = <code>std::optional&lt;TString&gt;</code></td>
+    <td>The stored string, or an empty optional. This is the only member of the class that reports absence as a value rather than hiding
+      it, so it is the right choice wherever "not set" must differ from "set to the empty-ish thing"</td>
+  </tr>
+  <tr>
+    <td><code>TString</code></td>
+    <td>The stored string, or <code>defaultValue</code>. Indistinguishable from a file that literally sets the key to that same text —
+      and, unlike <a href="../ConfigSystem/get-int.html"><code>ConfigSystem::GetInt</code></a>, there is no odd sentinel like
+      <code>-1</code> pretending to be an answer</td>
+  </tr>
+</table>
+
+<div class="gap">
+  <strong>Both overloads are <code>noexcept</code> and both allocate.</strong> The value is returned by copy, and an
+  <code>HString</code> copy goes through <a href="../../Memory/index.html#allocators"><code>DefaultAllocator</code></a> — so an allocation
+  failure inside this call cannot be reported to you: it terminates the process instead of throwing. That is a deliberate engine stance,
+  not an oversight, but it does mean the overload pair is unsuitable for the one situation where a caller wants to keep going after a
+  failure, and the empty-optional form buys you no safety there.
+</div>
+
+<div class="note">
+  <strong>The map is public; <code>GetValue</code> is not the only door.</strong> A direct <code>keymap.find(key)</code> answers the same
+  question with one fewer copy of the string (<a href="index.html#properties">Class properties</a>). Read this function as the
+  convenience form and the map as the one that tells you whether a key exists without copying its value out first.
+</div>
+
+<h2 id="example">Examples</h2>
+
+<p class="note">Illustrative — no call site for this exists in the repository; the class is never instantiated in
+<code>Engine/</code> or <code>Applications/</code>.</p>
+
+<pre><code><span class="kw">const</span> hbe::ConfigFile settings(<span class="st">"config/engine.cfg"</span>);   <span class="cm">// max_particles = 20000</span>
+                                                        <span class="cm">// vsync = false</span>
+
+<span class="cm">// Absence matters: only apply an override when the file actually carries one.</span>
+<span class="kw">if</span> (<span class="kw">const</span> <span class="kw">auto</span> particles = settings.<span class="fn">GetValue</span>(<span class="st">"max_particles"</span>); particles.<span class="fn">has_value</span>())
+{
+        <span class="kw">const auto</span> count = std::stoi(particles-&gt;c_str());
+        <span class="cm">// … and std::stoi throws on junk the file happily contains, e.g. "20k" …</span>
+}
+
+<span class="cm">// Absence does not matter: take the default and move on.</span>
+<span class="kw">const auto</span> present = settings.<span class="fn">GetValue</span>(<span class="st">"vsync"</span>, <span class="st">"true"</span>);   <span class="cm">// "false" — the file's value wins</span>
+<span class="kw">const auto</span> layout = settings.<span class="fn">GetValue</span>(<span class="st">"ui.layout"</span>, <span class="st">"default"</span>);   <span class="cm">// "default" — the key is absent</span></code></pre>
+
+<p>
+  Note what the last two lines have in common with the first: no member of this class converts
+  <code>"false"</code> to <code>false</code>. A file-driven setting needs a comparison or a parse written by the subsystem that reads it,
+  and that is precisely the glue <a href="../ConfigParam/constructors.html"><code>ConfigParam</code></a> does not provide either — the two
+  halves of this module are not joined (<a href="index.html#description">class description</a>).
+</p>
+
+<footer class="prevnext">
+  <span><a href="index.html">← ConfigFile</a></span>
+  <span><a href="index.html#methods">All ConfigFile methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

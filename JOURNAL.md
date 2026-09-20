@@ -51,6 +51,22 @@ became a standing rule — **a module page rewrite keeps `id="<class>"` on the c
 modules link to `../OSAL/index.html#window` and a rewrite that drops it turns their working links into 404s that
 no local build notices. Inbound fragments get grepped before a rewrite, not after.
 
+**Pilot result (Config) — 34 pages clean, and it corrected the pilot's own corrections.** It independently found
+that the old page claimed `__DEBUG__` gates `FatalAssert`, the same error I had made in `Array`'s first draft and
+for the same reason: the guide, not the header. Verified against the code: `ConfigParam::lock` is a `std::mutex`
+declared once and never locked; `EngineConfig::GetMaxSystemMemoryTarget` exists only as a declaration, the third
+API in two modules found callable-in-name-only; and since every config parameter in the repository is `uint8_t`,
+`size_t` or `float`, `GetBool`/`GetInt` can never match a registered parameter. It also found something nobody had
+claimed before: `StaticString()` interns to `"None"` rather than null, so with `ENGINE_PARAM_DESC_ENABLED 0`
+parameters collide on the key `None` instead of keying on nothing.
+
+**It reported a defect in my exemplar that does not exist** — `resize.html`'s markup parses clean. Its sentence
+was genuinely contorted and got rewritten, but a fault report is a claim like any other: 4 of its 5 contract
+complaints were right, the 5th was wrong, and had I acted on all 5 I would have "fixed" a file that was fine.
+The same lesson ran the other way twice in one day: my own checker also flagged `RendererDesign.html` for
+classes it never claimed to use, and `README.md#documentation-policy` for a fragment GitHub generates and no
+string search can see.
+
 ## Tasks become things the registry owns, addressed by identity (2026-09-19)
 
 **What landed**, as `3be27c3`: R7 with R22's sizing. `Engine/Core/TaskID.h` (`{index, generation}`) and

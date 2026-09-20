@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ConfigSystem::SetFloat — Config — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">ConfigSystem</a> methods</h3>
+  <ul class="methods">
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+    <li><a href="get.html">Get</a></li>
+    <li><a href="get-name.html">GetName</a></li>
+    <li><a href="register.html">Register</a></li>
+    <li><a href="set-bool.html">SetBool</a></li>
+    <li><a href="set-byte.html">SetByte</a></li>
+    <li><a href="set-int.html">SetInt</a></li>
+    <li><a href="set-size.html">SetSize</a></li>
+    <li><a class="current" href="set-float.html">SetFloat</a></li>
+    <li><a href="get-bool.html">GetBool</a></li>
+    <li><a href="get-byte.html">GetByte</a></li>
+    <li><a href="get-int.html">GetInt</a></li>
+    <li><a href="get-size.html">GetSize</a></li>
+    <li><a href="get-float.html">GetFloat</a></li>
+    <li><a href="print-all-parameters.html">PrintAllParameters</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Config</a> /
+  <a href="index.html">ConfigSystem</a> / SetFloat
+</p>
+
+<h1><span class="fn">SetFloat</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::ConfigSystem</span>
+  <span class="tag">Engine/Config/ConfigSystem.h</span>
+  <span class="tag">one overload</span>
+  write a duration or threshold parameter by name, in the map where zero is never a neutral value
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code><span class="kw">void</span> <span class="fn">SetFloat</span>(<span class="kw">const</span> <span class="ty">StaticString</span>&amp; key, <span class="kw">float</span> value);</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Looks <code>key</code> up in <code>floatParams</code> and calls the setter stored in that entry, which forwards to
+  <a href="../ConfigParam/set.html"><code>ConfigParam&lt;float&gt;::Set</code></a>. The value goes in as given: no clamp, no
+  range, no rejection of a negative or NaN argument.
+</p>
+
+<p>
+  Exactly one <code>float</code> parameter exists in a stock engine, and it is read on the hot path of every task
+  stream — <code>"TaskStreamDurationThreshold"</code>, default <code>0.16f</code>, defined inside the task stream loop
+  in Engine/Core/TaskStream.cpp. A task that holds a lane longer than it produces a warning, so this is the knob that
+  decides how noisy a frame is, and because the stream re-reads the parameter each iteration rather than caching it, a
+  write here does take effect immediately — the opposite of the size parameters, which one subsystem latches at
+  start-up (<a href="set-size.html"><code>SetSize</code></a>).
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr>
+    <td><code>key</code></td>
+    <td><a href="../../String/index.html#staticstring"><code>const StaticString&amp;</code></a></td>
+    <td>The name of a registered <code>float</code> parameter. Null is logged at <code>Warning</code>; absent is logged at <code>Info</code> under <a href="get-name.html"><code>EngineSettings</code></a></td>
+  </tr>
+  <tr>
+    <td><code>value</code></td>
+    <td><code>float</code></td>
+    <td>
+      The new threshold or quantity. A threshold of <code>0.0f</code> warns on every task that ran at all, and
+      <code>0.0f</code> is also what <a href="get-float.html"><code>GetFloat</code></a> answers for an unknown key — so
+      zero is the value that makes "the setting is off" and "the setting is missing" behave identically
+    </td>
+  </tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  <code>void</code>, with a log line as the only failure report. Read back with
+  <a href="get-float.html"><code>GetFloat</code></a> if the write has to be certain; compare floats rather than treating
+  the answer as exact.
+</p>
+
+<div class="note">
+  <strong>Whether a write is safe from your thread depends on the parameter, not on this function.</strong> The stored
+  setter calls <code>Set</code> on the owning <code>ConfigParam</code>, and only the atomic form is safe off its home
+  thread (<code>Engine/Core/TaskStream.cpp</code> registers its threshold as <code>ConfigParam&lt;float, true&gt;</code>, so
+  that one is). A non-atomic parameter asserts on thread identity under <code>__DEBUG__</code> — Debug and Dev — see
+  <a href="../ConfigParam/set.html"><code>ConfigParam::Set</code></a>.
+</div>
+
+<h2 id="example">Examples</h2>
+
+<p>The registration is real code; the write is illustrative — nothing in the tree writes this key.</p>
+
+<pre><code><span class="kw">static</span> hbe::ConfigParam&lt;<span class="kw">float</span>, <span class="kw">true</span>&gt; thresholdDuration(
+        <span class="st">"TaskStreamDurationThreshold"</span>,
+        <span class="st">"Print a warning log if it detects slower task. (seconds)"</span>,
+        <span class="nu">0.16f</span>);</code></pre>
+
+<p class="meta">From Engine/Core/TaskStream.cpp</p>
+
+<p class="note">Illustrative — no call site for the write exists in the repository.</p>
+
+<pre><code><span class="kw">auto</span>&amp; settings = hbe::ConfigSystem::<span class="fn">Get</span>();
+settings.<span class="fn">SetFloat</span>(<span class="st">"TaskStreamDurationThreshold"</span>, <span class="nu">0.33f</span>);   <span class="cm">// a 30 Hz frame before the stream warns</span></code></pre>
+
+<p>
+  The engine's own log level knobs live in a different map and are written with
+  <a href="set-byte.html"><code>SetByte</code></a>; the sizes with <a href="set-size.html"><code>SetSize</code></a>. Using
+  this function on either reports not-found and changes nothing.
+</p>
+
+<footer class="prevnext">
+  <span><a href="index.html">← ConfigSystem</a></span>
+  <span><a href="index.html#methods">All ConfigSystem methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

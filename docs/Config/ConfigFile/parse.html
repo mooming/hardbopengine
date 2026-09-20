@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ConfigFile::Parse — Config — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">ConfigFile</a> methods</h3>
+  <ul class="methods">
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+    <li><a href="get-value.html">GetValue</a></li>
+    <li><a href="is-valid.html">IsValid</a></li>
+    <li><a href="for-each.html">ForEach</a></li>
+    <li><a class="current" href="parse.html">Parse</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Config</a> /
+  <a href="index.html">ConfigFile</a> / Parse
+</p>
+
+<h1><span class="fn">Parse</span></h1>
+<p class="subtitle">
+  <span class="tag">private member of hbe::ConfigFile</span>
+  <span class="tag">Engine/Config/ConfigFile.cpp</span>
+  <span class="tag">not callable by a caller</span>
+  the file format, defined here — first <code>=</code> splits, both sides trim, empty members drop
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code><span class="kw">void</span> <span class="fn">Parse</span>(<span class="kw">const</span> <span class="kw">char</span>* fileName);   <span class="cm">// declared private in the header</span></code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  This is not an operation a caller performs; it is what a <a href="constructors.html">constructor</a> does, and therefore the definition
+  of the file format every <code>ConfigFile</code> reader depends on. Documenting a private member is justified by exactly that: the rules
+  below are the contract of the whole class, and no public name states them.
+</p>
+
+<p>The sequence, as implemented:</p>
+
+<ol>
+  <li>Open a <code>std::ifstream</code> on the path. If it does not open: print <code>[ConfigFile] Not Found: </code> and the path to
+    <code>std::cout</code>, and return — <a href="index.html#properties"><code>isValid</code></a> stays false and
+    <a href="index.html#properties"><code>keymap</code></a> stays as it was.</li>
+  <li>Otherwise print <code>[ConfigFile] Open </code> and the path, also to <code>std::cout</code>.</li>
+  <li>Read lines until the stream reports end of file. For each line: an empty line is skipped; a line with no <code>=</code> is skipped;
+    otherwise the part before the first <code>=</code> is the key and everything after it is the value.</li>
+  <li>Trim both halves with <a href="../../String/index.html#stringutil"><code>StringUtil::Trim</code></a>.</li>
+  <li>If either the key or the value is empty, skip the pair. Otherwise assign it into the map, overwriting an earlier entry under the
+    same key.</li>
+  <li>Set <code>isValid = true</code>.</li>
+</ol>
+
+<p>What that leaves unsaid, and what it therefore means for a file you write:</p>
+
+<table>
+  <tr><th>Line in the file</th><th>Result</th><th>Why</th></tr>
+  <tr><td><code>vsync = true</code></td><td><code>"vsync" → "true"</code></td><td>Both sides are trimmed, so spaces around the separator are free</td></tr>
+  <tr><td><code>path = C:\tools=bin</code></td><td><code>"path" → "C:\tools=bin"</code></td><td>Only the <em>first</em> <code>=</code> splits; the rest of the line is value</td></tr>
+  <tr><td><code>window = 1280x720 # borderless</code></td><td><code>"window" → "1280x720 # borderless"</code></td><td>No comment syntax exists; a trailing comment becomes part of the value</td></tr>
+  <tr><td><code># a heading</code></td><td>skipped</td><td>No <code>=</code> on the line — skipped by the separator rule, not by comment support</td></tr>
+  <tr><td><code>emptyValue =</code></td><td>dropped entirely</td><td>An empty value member fails the guard, so the key does not exist afterwards rather than holding ""</td></tr>
+  <tr><td><code>= onlyValue</code></td><td>dropped entirely</td><td>An empty key member fails the same guard</td></tr>
+  <tr><td>the same key twice</td><td>the <em>last</em> one wins</td><td>Assignment into the map. Contrast <a href="../ConfigSystem/register.html"><code>ConfigSystem::Register</code></a>, where the first registration wins and the second is refused</td></tr>
+</table>
+
+<div class="gap">
+  <strong>A setting that must be able to hold an empty value cannot be expressed.</strong> The empty-member guard drops
+  <code>key =</code> before it reaches the map, so a file that clears a setting produces "no such key" at
+  <a href="get-value.html"><code>GetValue</code></a> — indistinguishable from never mentioning it. There is no quoting, escaping or
+  sentinel documented in the code that changes this, so a caller that needs empty-means-empty must reserve a literal such as
+  <code>&lt;none&gt;</code> and interpret it itself.
+</div>
+
+<div class="note">
+  <strong>Two behaviours that look like bugs and are not, and one that is only harmless by accident.</strong> The
+  <code>while (!ifs.eof())</code> test runs before the read, so the final iteration performs a failed
+  <code>getline</code>; a failed extraction clears its string, which is then caught by the empty-line skip. The loop is harmless because
+  that guard exists — remove the empty-line check and the last line would be parsed twice. And the whole map lives in the
+  <a href="../../Memory/index.html">engine's default allocator</a> via <a href="../../HSTL/index.html#hunorderedmap"><code>HUnorderedMap</code></a>,
+  so a config file's memory is engine-tracked rather than system-heap, which is the point of the HSTL types here.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr>
+    <td><code>fileName</code></td>
+    <td><code>const char*</code></td>
+    <td>
+      A complete file path — the single-argument constructor passes its whole <code>path</code> straight through, and the
+      two-argument constructor passes the path it joined. The header's parameter name is misleading here: the definition in
+      <code>ConfigFile.cpp</code> calls the same parameter <code>filePath</code>, which is what it holds
+      (<a href="index.html#coverage">noted as a defect</a>)
+    </td>
+  </tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  <code>void</code>. Success is reported through the object, not through the return: <code>isValid</code> says whether the file opened, and
+  the size of <code>keymap</code> says whether anything parsed. The stream is a local, so the file is closed on return and no handle
+  outlives the call.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<p class="note">Illustrative — <code>Parse</code> is private and cannot be called; the file below is what its rules accept, and the read
+that follows is how a caller consumes it. Nothing in the repository constructs a <code>ConfigFile</code>.</p>
+
+<pre><code><span class="cm"># config/engine.cfg — a heading line (skipped: no '=' on it)</span>
+max_particles = 20000
+vsync         = false
+render.scale = 1.35 prefer_wide
+path = assets/models
+= ignored, empty key
+blankvalue =
+max_particles = 40000</code></pre>
+
+<p>
+  Four pairs survive that file: <code>render.scale</code> keeps the trailing word because nothing after the value is stripped, the two
+  malformed lines are dropped by the empty-member guard, and the repeated <code>max_particles</code> is overwritten rather than refused.
+</p>
+
+<pre><code><span class="kw">const</span> hbe::ConfigFile settings(<span class="st">"config/engine.cfg"</span>);
+
+settings.<span class="fn">IsValid</span>();                              <span class="cm">// true — the file opened</span>
+settings.keymap.size();                         <span class="cm">// 4: max_particles, vsync, render.scale, path</span>
+settings.<span class="fn">GetValue</span>(<span class="st">"max_particles"</span>)-&gt;c_str();     <span class="cm">// "40000" — last assignment won</span>
+settings.<span class="fn">GetValue</span>(<span class="st">"blankvalue"</span>).<span class="fn">has_value</span>();     <span class="cm">// false — the empty-value guard dropped it</span></code></pre>
+
+<footer class="prevnext">
+  <span><a href="index.html">← ConfigFile</a></span>
+  <span><a href="index.html#methods">All ConfigFile methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

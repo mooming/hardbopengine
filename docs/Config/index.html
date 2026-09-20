@@ -34,13 +34,17 @@
     <li><a href="#classes">Module classes</a></li>
     <li><a href="#variables">Module variables</a></li>
     <li><a href="#functions">Module functions</a></li>
-    <li><a href="#buildconfig">BuildConfig</a></li>
-    <li><a href="#engineconfig">EngineConfig</a></li>
-    <li><a href="#configsystem">ConfigSystem</a></li>
-    <li><a href="#configparam">ConfigParam</a></li>
-    <li><a href="#configfile">ConfigFile</a></li>
     <li><a href="#build">Build configuration</a></li>
     <li><a href="#coverage">Coverage</a></li>
+  </ul>
+
+  <h3>Classes</h3>
+  <ul class="methods">
+    <li><a href="BuildConfig/index.html">BuildConfig</a></li>
+    <li><a href="EngineConfig/index.html">EngineConfig</a></li>
+    <li><a href="ConfigSystem/index.html">ConfigSystem</a></li>
+    <li><a href="ConfigParam/index.html">ConfigParam</a></li>
+    <li><a href="ConfigFile/index.html">ConfigFile</a></li>
   </ul>
 
   <h3>Design documents</h3>
@@ -59,220 +63,124 @@
   <span class="tag">namespace hbe</span>
   <span class="tag">namespace hbe::Config</span>
   <span class="tag">Engine/Config</span>
-  5 headers, 4 sources — compile-time defines, runtime constants, and a key-value parameter database
+  5 headers, 4 sources — compile-time defines, compile-time sizes, and a key-value parameter database you can change while the process runs
 </p>
 
 <h2 id="description">Module description</h2>
 
 <p>
   Config answers the same question at three different times. <strong>Compile time</strong>:
-  <a href="#buildconfig"><code>BuildConfig.h</code></a> decides what is built at all — platform, logging,
-  memory verification, profiling, coordinate handedness, Vulkan availability. <strong>Load time</strong>:
-  <a href="#engineconfig"><code>EngineConfig.h</code></a> holds the <code>constexpr</code> sizes and caps
-  that other modules size their buffers from. <strong>Runtime</strong>:
-  <a href="#configsystem"><code>ConfigSystem</code></a> stores named parameters an application or a debug
-  menu can change while the process runs, and
-  <a href="#configparam"><code>ConfigParam&lt;T&gt;</code></a> is the thread-safe handle a subsystem holds
-  to one of them.
+  <a href="BuildConfig/index.html"><code>BuildConfig.h</code></a> decides what is built at all — platform, logging, memory
+  verification, profiling, coordinate handedness, Vulkan availability. <strong>Load time</strong>:
+  <a href="EngineConfig/index.html"><code>EngineConfig.h</code></a> holds the <code>constexpr</code> sizes and caps that other
+  modules size their buffers from. <strong>Runtime</strong>:
+  <a href="ConfigSystem/index.html"><code>ConfigSystem</code></a> stores named parameters an application or a debug menu can
+  change while the process runs, and <a href="ConfigParam/index.html"><code>ConfigParam&lt;T&gt;</code></a> is the handle a
+  subsystem holds to one of them.
+</p>
+
+<p>
+  The three do not meet in the way the split suggests. <code>Config::EngineLogLevel</code> is computed from a
+  <code>BuildConfig.h</code> define and becomes the <em>default</em> of a runtime parameter, which is the only wire between
+  compile-time and runtime in this module. There is no wire from files to either:
+  <a href="ConfigFile/index.html"><code>ConfigFile</code></a> is a separate, unrelated facility that
+  <a href="ConfigSystem/index.html"><code>ConfigSystem</code></a> never consults and that nothing in the engine instantiates.
+</p>
+
+<p>
+  Where a value in this module meets a value from another module, the other module owns the meaning: log level numbers are
+  <a href="../Log/index.html#eloglevel">ELogLevel</a>, allocation alignment is consumed by
+  <a href="../Memory/index.html">Memory</a>, the assert family that <code>__DEBUG__</code> gates lives in
+  <a href="../Core/index.html#functions">Core</a>, and the interning that makes a parameter key cheap is
+  <a href="../String/index.html">String</a>.
 </p>
 
 <h2 id="classes">Module classes</h2>
 
+<p>
+  Five entries, two of which are not classes in the C++ sense — those two headers export macros and constants, not types. Each name
+  is a class page with its own properties, methods and Coverage section.
+</p>
+
 <table>
   <tr><th>Name</th><th>Kind</th><th>Header</th><th>Role</th></tr>
-  <tr><td><a href="#buildconfig">BuildConfig</a></td><td>Preprocessor defines</td><td>BuildConfig.h</td><td>What is compiled in, per platform and per feature</td></tr>
-  <tr><td><a href="#engineconfig">EngineConfig</a></td><td>Namespace of constants</td><td>EngineConfig.h</td><td>Sizes and caps other modules allocate against</td></tr>
-  <tr><td><a href="#configsystem">ConfigSystem</a></td><td>Class</td><td>ConfigSystem.h</td><td>Runtime key-value parameter database</td></tr>
-  <tr><td><a href="#configparam">ConfigParam</a></td><td>Class template</td><td>ConfigParam.h</td><td>One thread-safe registered parameter</td></tr>
-  <tr><td><a href="#configfile">ConfigFile</a></td><td>Class</td><td>ConfigFile.h</td><td>Configuration read from and written to a file</td></tr>
+  <tr id="buildconfig">
+    <td><a href="BuildConfig/index.html">BuildConfig</a></td>
+    <td>Preprocessor defines</td>
+    <td>BuildConfig.h</td>
+    <td>What is compiled in, per platform and per feature — 22 defines, and the reason a change here means a rebuild</td>
+  </tr>
+  <tr id="engineconfig">
+    <td><a href="EngineConfig/index.html">EngineConfig</a></td>
+    <td>Namespace of constants</td>
+    <td>EngineConfig.h</td>
+    <td><code>hbe::Config</code>: 15 <code>static constexpr</code> sizes and caps other modules allocate against, plus one function that is declared and never defined</td>
+  </tr>
+  <tr id="configsystem">
+    <td><a href="ConfigSystem/index.html">ConfigSystem</a></td>
+    <td>Class</td>
+    <td>ConfigSystem.h</td>
+    <td>The runtime key-value parameter database: five types in four maps, read and written by interned name</td>
+  </tr>
+  <tr id="configparam">
+    <td><a href="ConfigParam/index.html">ConfigParam</a></td>
+    <td>Class template</td>
+    <td>ConfigParam.h</td>
+    <td>One registered parameter a subsystem owns; thread-safe only when its <code>IsAtomic</code> argument says so</td>
+  </tr>
+  <tr id="configfile">
+    <td><a href="ConfigFile/index.html">ConfigFile</a></td>
+    <td>Class</td>
+    <td>ConfigFile.h</td>
+    <td>A <code>key = value</code> text file parsed into a map of strings. Read-only, untyped, and used by nothing in the engine</td>
+  </tr>
 </table>
 
 <h2 id="variables">Module variables</h2>
 
 <p>
   Every value in <code>Engine/Config/EngineConfig.h</code> is a <code>static constexpr</code> member of
-  <code>namespace Config</code>. A module that sizes a buffer uses these rather than a literal of its own,
-  so the number exists in exactly one place.
+  <code>namespace hbe::Config</code>. A module that sizes a buffer uses these rather than a literal of its own, so the
+  number exists in exactly one place. The consumer column below is the code that actually reads each one, because four of
+  them are read by nothing — <a href="EngineConfig/index.html#properties">EngineConfig: Class properties</a> gives the full
+  evidence per constant.
 </p>
 
 <table>
   <tr><th>Constant</th><th>Type</th><th>Value</th><th>Purpose</th></tr>
-  <tr><td><code>EngineLogLevel</code></td><td><code>uint8_t</code></td><td>0 when memory logging is on, else 1</td><td>Engine log level</td></tr>
-  <tr><td><code>EngineLogLevelPrint</code></td><td><code>uint8_t</code></td><td>1 when memory logging is on, else 2</td><td>Level a line must reach to be printed</td></tr>
-  <tr><td><code>MemCapacity</code></td><td><code>size_t</code></td><td>5 GB</td><td>Memory manager capacity</td></tr>
-  <tr><td><code>MemLogLevel</code></td><td><code>uint8_t</code></td><td>1</td><td>Memory subsystem log level</td></tr>
-  <tr><td><code>DefaultAlign</code></td><td><code>size_t</code></td><td>16</td><td>Allocation alignment the engine aligns to</td></tr>
-  <tr><td><code>MaxPathLength</code></td><td><code>int</code></td><td>512</td><td>Longest path the engine carries</td></tr>
-  <tr><td><code>StaticStringBufferSize</code></td><td><code>int</code></td><td>8 MB</td><td>Interning table storage</td></tr>
-  <tr><td><code>StaticStringNumHashBuckets</code></td><td><code>int</code></td><td>256</td><td>Interning table bucket count</td></tr>
-  <tr><td><code>LogLineLength</code></td><td><code>int</code></td><td>1024</td><td>One log line</td></tr>
-  <tr><td><code>LogOutputBuffer</code></td><td><code>int</code></td><td>LogLineLength * 128</td><td>Output buffer of the async logger</td></tr>
-  <tr><td><code>LogMemoryBlockSize</code></td><td><code>int</code></td><td>LogLineLength * 256</td><td>Block size of the logger's pool</td></tr>
-  <tr><td><code>LogNumMemoryBlocks</code></td><td><code>int</code></td><td>1024 * 12</td><td>Block count of the logger's pool</td></tr>
-  <tr><td><code>LogForceFlushThreshold</code></td><td><code>int</code></td><td>1024 * 8</td><td>Pending bytes that force a flush</td></tr>
-  <tr><td><code>MaxConcurrentTasks</code></td><td><code>int</code></td><td>32</td><td>Concurrent task ceiling</td></tr>
-  <tr><td><code>DebugTimeOutMultiplier</code></td><td><code>float</code></td><td>2.0f</td><td>How much longer a debug build may take before a timeout counts</td></tr>
+  <tr><td><code>EngineLogLevel</code></td><td><code>uint8_t</code></td><td>0 when memory logging is on, else 1</td><td>Engine log level; default of the <code>Log.Engine</code> parameter, read by <code>Engine::Log</code></td></tr>
+  <tr><td><code>EngineLogLevelPrint</code></td><td><code>uint8_t</code></td><td>1 when memory logging is on, else 2</td><td>Level a line must reach to be printed to standard output; default of <code>Log.Engine.Print</code></td></tr>
+  <tr><td><code>MemCapacity</code></td><td><code>size_t</code></td><td>5 GB</td><td>Memory ceiling the engine reports against — <code>SystemStatistics</code> warns above it, <code>MemoryManager</code> reports it as total and max capacity</td></tr>
+  <tr><td><code>MemLogLevel</code></td><td><code>uint8_t</code></td><td>1</td><td>Default of the <code>Log.Memory</code> parameter, itself compiled under <code>MEMORY_LOGGING_ENABLED</code></td></tr>
+  <tr><td><code>DefaultAlign</code></td><td><code>size_t</code></td><td>16</td><td>Allocation alignment the allocators round to</td></tr>
+  <tr><td><code>MaxPathLength</code></td><td><code>int</code></td><td>512</td><td>Longest path <em>measured</em>: the pool size of <code>HInlinePathString</code>, and the cap on the length <code>Logger</code> computes when reserving its log path — it does not truncate a path</td></tr>
+  <tr><td><code>StaticStringBufferSize</code></td><td><code>int</code></td><td>8 MB</td><td>Grouped under <code>// String</code>; <strong>no consumer in the tree</strong>, so its purpose beyond that grouping is unverified</td></tr>
+  <tr><td><code>StaticStringNumHashBuckets</code></td><td><code>int</code></td><td>256</td><td><code>StaticStringTable::NumTables</code> — the buckets every parameter key is interned into</td></tr>
+  <tr><td><code>LogLineLength</code></td><td><code>int</code></td><td>1024</td><td>Characters of text in one stored log line, and the "is long" threshold</td></tr>
+  <tr><td><code>LogOutputBuffer</code></td><td><code>int</code></td><td>LogLineLength * 128</td><td>Capacity of the inline builder each statement formats into (<code>Logger::TLogStream</code>) — not a queue size</td></tr>
+  <tr><td><code>LogMemoryBlockSize</code></td><td><code>int</code></td><td>LogLineLength * 256</td><td>Grouped under <code>// Log</code>; <strong>no consumer in the tree</strong></td></tr>
+  <tr><td><code>LogNumMemoryBlocks</code></td><td><code>int</code></td><td>1024 * 12</td><td>Grouped under <code>// Log</code>; <strong>no consumer in the tree</strong></td></tr>
+  <tr><td><code>LogForceFlushThreshold</code></td><td><code>int</code></td><td>1024 * 8</td><td>Pending bytes that force the logger to flush</td></tr>
+  <tr><td><code>MaxConcurrentTasks</code></td><td><code>int</code></td><td>32</td><td>Grouped under <code>// TaskSystem</code>; <strong>no consumer in the tree</strong>, so nothing enforces 32</td></tr>
+  <tr><td><code>DebugTimeOutMultiplier</code></td><td><code>float</code></td><td>2.0f</td><td>Scales <code>ScopedLock</code>'s lock-wait timeout — and only inside <code>PROFILE_ENABLED</code> and <code>__DEBUG__</code>, so inert by default</td></tr>
 </table>
 
 <h2 id="functions">Module functions</h2>
 
 <table>
   <tr><th>Function</th><th>Parameters</th><th>Returns</th><th>Notes</th></tr>
-  <tr><td><code>Config::GetMaxSystemMemoryTarget</code></td><td>none</td><td><code>size_t</code></td><td>Memory target the engine aims at on this machine, as opposed to the <a href="#variables"><code>MemCapacity</code></a> ceiling</td></tr>
+  <tr>
+    <td><a href="EngineConfig/get-max-system-memory-target.html"><code>Config::GetMaxSystemMemoryTarget</code></a></td>
+    <td>none</td>
+    <td><code>size_t</code></td>
+    <td>
+      The intended counterpart to the <a href="#variables"><code>MemCapacity</code></a> ceiling: a per-machine memory target rather
+      than a compiled-in one. Declared <code>[[nodiscard]] noexcept</code> in <code>EngineConfig.h</code>, and
+      <strong><code>EngineConfig.cpp</code> contains no definition</strong> — no caller exists in the tree, and calling it is a link
+      error
+    </td>
+  </tr>
 </table>
-
-<h2 id="buildconfig">BuildConfig (<code>Engine/Config/BuildConfig.h</code>)</h2>
-
-<h3>Class description</h3>
-<p>
-  Not a class — the preprocessor surface. These defines are read before any translation unit decides what
-  to compile, which is why changing one means rebuilding rather than restarting. Names below are the defines
-  as the header spells them.
-</p>
-
-<table>
-  <tr><th>Define</th><th>Default</th><th>Purpose</th></tr>
-  <tr><td><code>PLATFORM_LINUX</code> / <code>PLATFORM_OSX</code> / <code>PLATFORM_WINDOWS</code></td><td>auto-detected</td><td>Exactly one is set, from the compiler</td></tr>
-  <tr><td><code>MAX_NUM_TASK_STREAMS</code></td><td>64</td><td>Task streams the task system may create</td></tr>
-  <tr><td><code>ENGINE_MIN_HARDWARE_THREADS</code></td><td>4</td><td>Minimum recommended CPU cores</td></tr>
-  <tr><td><code>ENGINE_LOG_ENABLED</code></td><td>1</td><td>Engine logging system on or off</td></tr>
-  <tr><td><code>ENGINE_PARAM_DESC_ENABLED</code></td><td>1</td><td>Parameter descriptions carried by <a href="#configparam"><code>ConfigParam</code></a></td></tr>
-  <tr><td><code>MEMORY_VERIFICATION_ENABLED</code></td><td>0</td><td>Verify memory integrity</td></tr>
-  <tr><td><code>MEMORY_LOGGING_ENABLED</code></td><td>0</td><td>Log memory operations; also shifts <a href="#variables"><code>EngineLogLevel</code></a></td></tr>
-  <tr><td><code>MEMORY_INVESTIGATION_ENABLED</code></td><td>0</td><td>Detailed memory investigation</td></tr>
-  <tr><td><code>MEMORY_DANGLING_POINTER_CHECK_ENABLED</code></td><td>0</td><td>Detect dangling pointers</td></tr>
-  <tr><td><code>MEMORY_BUFFER_UNDERRUN_CHECK_ENABLED</code></td><td>0</td><td>Detect buffer underruns</td></tr>
-  <tr><td><code>FORCE_USE_SYSTEM_MALLOC</code></td><td>0</td><td>Route allocations to the system allocator instead of the custom ones</td></tr>
-  <tr><td><code>MULTIPOOL_ALLOC_LOG</code></td><td><code>".multiPoolConfig.dat"</code></td><td>Cache file the multi-pool writes its observed sizes to</td></tr>
-  <tr><td><code>LOG_ENABLED</code></td><td>1</td><td>Master switch for logging</td></tr>
-  <tr><td><code>LOG_BREAK_IF_WARNING</code></td><td>0</td><td>Break on warnings, debug builds only</td></tr>
-  <tr><td><code>LOG_BREAK_IF_ERROR</code></td><td>0</td><td>Break on errors, debug builds only</td></tr>
-  <tr><td><code>LOG_FORCE_PRINT_IMMEDIATELY</code></td><td>0</td><td>Bypass the asynchronous logger and print inline</td></tr>
-  <tr><td><code>PROFILE_ENABLED</code></td><td>0</td><td>Performance profiling, including <a href="../Core/index.html#scopedlock">ScopedLock</a> wait measurement</td></tr>
-  <tr><td><code>RIGHT_HANDED_COORDINATE</code></td><td>defined, no value</td><td>Right-handed by default; the trig in <a href="../Math/index.html#functions">CoordinateOrientation</a> flips with it</td></tr>
-  <tr><td><code>MEMORY_INVESTIGATOR_TEST_ENABLED</code></td><td>0</td><td>Memory investigation tests</td></tr>
-  <tr><td><code>VULKAN_SDK</code></td><td>auto-detected</td><td>1 when the SDK headers are reachable, else 0 with a compile-time warning</td></tr>
-  <tr><td><code>__DEBUG__</code></td><td>from the build flags</td><td>Gates <code>Assert</code> and <code>FatalAssert</code>; emitted onto the Debug flag line, inherited by Dev, absent from Release — see <a href="../BuildSystem.md">docs/BuildSystem.md</a></td></tr>
-</table>
-
-<h3>Template parameters</h3>
-<p>Not applicable — <code>BuildConfig.h</code> declares macros, not templates.</p>
-
-<h3>Class properties</h3>
-<p>Not applicable. A macro has no storage and no lifetime; each use expands at its own site.</p>
-
-<h3>Class methods</h3>
-<p>Not applicable.</p>
-
-<h3>Non-member helper functions</h3>
-<p>
-  Naming follows <a href="../CodingStandards.md">docs/CodingStandards.md</a>: macros are
-  <code>SCREAMING_SNAKE_CASE</code> with no leading underscore, because a leading double underscore or an
-  underscore followed by a capital is reserved to the C++ implementation. The retired
-  <code>__MEMORY_VERIFICATION__</code> and <code>__FORCE_USE_SYSTEM_MALLOC__</code> spellings are the old
-  names of <code>MEMORY_VERIFICATION_ENABLED</code> and <code>FORCE_USE_SYSTEM_MALLOC</code>.
-</p>
-
-<h2 id="engineconfig">EngineConfig (<code>Engine/Config/EngineConfig.h</code>)</h2>
-
-<h3>Class description</h3>
-<p>
-  A namespace of compile-time constants rather than a class: the sizes other modules allocate against. All
-  members are listed under <a href="#variables">Module variables</a> — there is no instance to construct,
-  so nothing further belongs here.
-</p>
-
-<h3>Template parameters</h3>
-<p>None — this is a namespace, not a template.</p>
-
-<h3>Class properties</h3>
-<p>See <a href="#variables">Module variables</a>.</p>
-
-<h3>Class methods</h3>
-<p>None, except <a href="#functions"><code>GetMaxSystemMemoryTarget</code></a>.</p>
-
-<h3>Non-member helper functions</h3>
-<p>None.</p>
-
-<h2 id="configsystem">ConfigSystem (<code>Engine/Config/ConfigSystem.h</code>)</h2>
-
-<h3>Class description</h3>
-<p>
-  The runtime key-value parameter database. A subsystem registers the <a href="#configparam"><code>ConfigParam</code></a>
-  objects it owns; after that the parameters are readable and writable by name, which is what a debug overlay
-  or a saved configuration needs.
-</p>
-
-<h3>Template parameters</h3>
-<p>None — ConfigSystem is not a template.</p>
-
-<h3>Class properties</h3>
-<p>The registered parameter set; header-private, reached through <code>Get()</code>.</p>
-
-<h3>Class methods</h3>
-
-<pre><code><span class="kw">class</span> <span class="ty">ConfigSystem</span> final
-{
-    [[nodiscard]] <span class="kw">static</span> <span class="ty">ConfigSystem</span>&amp; Get() <span class="kw">noexcept</span>;
-
-    <span class="cm">// registration — one overload per parameter type: bool, int, size_t, float</span>
-    <span class="kw">void</span> Register(<span class="ty">TConfigParam</span>&lt;...&gt;&amp; engineParam);
-
-    <span class="kw">void</span> SetBool(<span class="kw">const</span> <span class="ty">StaticString</span>&amp; key, <span class="kw">bool</span> value);
-    <span class="kw">void</span> SetInt(<span class="kw">const</span> <span class="ty">StaticString</span>&amp; key, <span class="kw">int</span> value);
-    <span class="kw">void</span> SetFloat(<span class="kw">const</span> <span class="ty">StaticString</span>&amp; key, <span class="kw">float</span> value);
-
-    [[nodiscard]] <span class="kw">bool</span> GetBool(<span class="kw">const</span> <span class="ty">StaticString</span>&amp; key) <span class="kw">const</span> <span class="kw">noexcept</span>;
-    [[nodiscard]] <span class="kw">int</span> GetInt(<span class="kw">const</span> <span class="ty">StaticString</span>&amp; key) <span class="kw">const</span> <span class="kw">noexcept</span>;
-    [[nodiscard]] <span class="kw">float</span> GetFloat(<span class="kw">const</span> <span class="ty">StaticString</span>&amp; key) <span class="kw">const</span> <span class="kw">noexcept</span>;
-
-    <span class="kw">void</span> PrintAllParameters() <span class="kw">const</span>;
-};</code></pre>
-
-<h3>Non-member helper functions</h3>
-<p>None.</p>
-
-<h2 id="configparam">ConfigParam (<code>Engine/Config/ConfigParam.h</code>)</h2>
-
-<h3>Class description</h3>
-<p>
-  One registered parameter: a value plus the registration that makes it reachable by name through
-  <a href="#configsystem"><code>ConfigSystem</code></a>. This is the handle a subsystem holds, so it reads
-  its setting without a lookup on the hot path.
-</p>
-
-<h3>Template parameters</h3>
-<table>
-  <tr><th>Parameter</th><th>Meaning</th></tr>
-  <tr><td><code>T</code></td><td>Value type — bool, int, size_t or float</td></tr>
-  <tr><td><code>IsAtomic</code></td><td>Whether the value is stored atomically, which is what makes it safe to write from one thread while another reads it</td></tr>
-</table>
-
-<h3>Class properties</h3>
-<p>The value, its atomic storage when <code>IsAtomic</code>, and its registered identity and description; header-private.</p>
-
-<h3>Class methods</h3>
-<p>Registration with <a href="#configsystem"><code>ConfigSystem::Register</code></a>, then read and write of the held value.</p>
-
-<h3>Non-member helper functions</h3>
-<p>The alias <code>TConfigParam</code> names an instantiation for the <code>Register</code> overloads.</p>
-
-<h2 id="configfile">ConfigFile (<code>Engine/Config/ConfigFile.h</code>)</h2>
-
-<h3>Class description</h3>
-<p>Configuration read from and written to a file; values are strings at the file boundary.</p>
-
-<h3>Template parameters</h3>
-<p>None — ConfigFile is not a template.</p>
-
-<h3>Class properties</h3>
-<p>The loaded key-value pairs and the path they came from; header-private.</p>
-
-<h3>Class methods</h3>
-<p>Load, save, and lookup by key. The header carries the exact signatures.</p>
-
-<h3>Non-member helper functions</h3>
-<p>None.</p>
 
 <h2 id="build">Build configuration</h2>
 
@@ -296,27 +204,65 @@
   <a href="../RunningTests.md">docs/RunningTests.md</a>.
 </p>
 
+<p>
+  The one build flag that changes this module's own behaviour is <code>__DEBUG__</code>. The top-level
+  <code>CMakeLists.txt</code> puts <code>-D__DEBUG__</code> on the Debug flag line and defines Dev as Debug plus
+  <code>-O1</code>, so Debug and Dev have it and Release does not. That is what turns
+  <a href="../Core/index.html#functions"><code>Assert</code></a> into a real check and what enables the thread-affinity assertion
+  inside <a href="ConfigParam/get.html"><code>ConfigParam::Get</code></a>. <code>FatalAssert</code> is outside that gate and is live in
+  all three configurations — see <a href="BuildConfig/index.html">BuildConfig</a>, whose header comment on this point is stale and
+  contradicts <code>CMakeLists.txt</code>.
+</p>
+
 <h2 id="coverage">Coverage</h2>
 
 <table>
   <tr><th>Gap</th><th>Detail</th></tr>
   <tr>
-    <td><code>ConfigFile</code> and <code>ConfigParam</code> signatures</td>
-    <td>Described, not tabulated. The <code>Register</code> overload set is typed on the
-        <code>TConfigParam</code> alias, which this page names without expanding.</td>
+    <td>Nothing in this module reads a file</td>
+    <td><a href="ConfigFile/index.html"><code>ConfigFile</code></a> and
+        <a href="ConfigSystem/index.html"><code>ConfigSystem</code></a> are not connected, and no code under
+        <code>Engine/</code> or <code>Applications/</code> instantiates <code>ConfigFile</code> at all. A parameter's initial value
+        comes from its constructor and from no disk file — the page for that class states the evidence</td>
   </tr>
   <tr>
-    <td>Examples</td>
-    <td>None written. Registering and reading a <a href="#configparam"><code>ConfigParam</code></a> from a
-        subsystem is the example worth having, and it should come from code that actually does it.</td>
+    <td>Five of the fifteen constants have no reader</td>
+    <td><code>StaticStringBufferSize</code>, <code>LogMemoryBlockSize</code>, <code>LogNumMemoryBlocks</code>,
+        <code>MaxConcurrentTasks</code> and — with <code>PROFILE_ENABLED</code> at its default 0 —
+        <code>DebugTimeOutMultiplier</code> are declared and unread in a default build. Their purposes beyond the header's
+        comment grouping are not asserted anywhere in this reference</td>
+  </tr>
+  <tr>
+    <td><code>MAX_NUM_TASK_STREAMS</code> enforces nothing</td>
+    <td>Defined as 64 in <code>BuildConfig.h</code>, read by no file in the tree, so this reference records the header comment and
+        not a limit. See <a href="BuildConfig/index.html#properties">BuildConfig: Class properties</a></td>
+  </tr>
+  <tr>
+    <td><code>GetMaxSystemMemoryTarget</code> is a declaration only</td>
+    <td>No definition in <code>EngineConfig.cpp</code>, no call site, so what it would return is unknown and undocumented — see
+        <a href="EngineConfig/get-max-system-memory-target.html">the function's page</a></td>
+  </tr>
+  <tr>
+    <td>No <code>bool</code> and no <code>int</code> parameter exists yet</td>
+    <td>A default build registers eight parameters: four <code>uint8_t</code>, three <code>size_t</code>, one
+        <code>float</code> — nine and five <code>uint8_t</code> once <code>MEMORY_LOGGING_ENABLED</code> adds
+        <code>Log.Memory</code>. So <a href="ConfigSystem/get-bool.html"><code>GetBool</code></a> and
+        <a href="ConfigSystem/get-int.html"><code>GetInt</code></a> and their writers are documented against parameters an
+        application has to add, and their pages say so rather than implying live keys</td>
+  </tr>
+  <tr>
+    <td>Thread-safety and lifetime rules that span two classes</td>
+    <td>A parameter must outlive the registry that holds references to it, and registration is unsynchronised. Those are stated on
+        <a href="ConfigSystem/destructor.html"><code>ConfigSystem</code>'s destructor</a> and
+        <a href="ConfigSystem/register.html"><code>Register</code></a>, not repeated here</td>
   </tr>
   <tr>
     <td>Related defect, outside this page</td>
     <td>The configuration table in <a href="../../README.md">README.md</a> still prints
         <code>__MEMORY_VERIFICATION__</code>, <code>__MEMORY_LOGGING__</code>,
         <code>__FORCE_USE_SYSTEM_MALLOC__</code>, <code>__MEMORY_DANGLING_POINTER_CHECK__</code> and
-        <code>__RIGHT_HANDED__</code>. No such define exists in <code>BuildConfig.h</code>; the live names
-        are in the table <a href="#buildconfig">above</a>.</td>
+        <code>__RIGHT_HANDED__</code>. No such define exists in <code>BuildConfig.h</code>; the live names are on
+        <a href="BuildConfig/index.html">the BuildConfig page</a></td>
   </tr>
 </table>
 

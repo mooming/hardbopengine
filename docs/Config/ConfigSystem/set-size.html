@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ConfigSystem::SetSize — Config — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">ConfigSystem</a> methods</h3>
+  <ul class="methods">
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+    <li><a href="get.html">Get</a></li>
+    <li><a href="get-name.html">GetName</a></li>
+    <li><a href="register.html">Register</a></li>
+    <li><a href="set-bool.html">SetBool</a></li>
+    <li><a href="set-byte.html">SetByte</a></li>
+    <li><a href="set-int.html">SetInt</a></li>
+    <li><a class="current" href="set-size.html">SetSize</a></li>
+    <li><a href="set-float.html">SetFloat</a></li>
+    <li><a href="get-bool.html">GetBool</a></li>
+    <li><a href="get-byte.html">GetByte</a></li>
+    <li><a href="get-int.html">GetInt</a></li>
+    <li><a href="get-size.html">GetSize</a></li>
+    <li><a href="get-float.html">GetFloat</a></li>
+    <li><a href="print-all-parameters.html">PrintAllParameters</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Config</a> /
+  <a href="index.html">ConfigSystem</a> / SetSize
+</p>
+
+<h1><span class="fn">SetSize</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::ConfigSystem</span>
+  <span class="tag">Engine/Config/ConfigSystem.h</span>
+  <span class="tag">one overload</span>
+  write a count- or capacity-valued parameter — the type that cannot go negative, and cannot be resized by itself
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code><span class="kw">void</span> <span class="fn">SetSize</span>(<span class="kw">const</span> <span class="ty">StaticString</span>&amp; key, <span class="ty">size_t</span> value);</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Looks <code>key</code> up in <code>sizeParams</code> and calls the setter stored there, which forwards to
+  <a href="../ConfigParam/set.html"><code>ConfigParam&lt;size_t&gt;::Set</code></a>. Same shape as every other write here:
+  lookup, null check, call — no entry is created and no value is cached in the registry.
+</p>
+
+<p>
+  The engine's <code>size_t</code> parameters are the task record table sizes, all three registered by
+  <code>TaskSystem::Initialize</code> and all three read exactly once, before the registry is built:
+  <code>Task.RegistryInitialRecords</code>, <code>Task.RegistryGrowByRecords</code> and
+  <code>Task.RegistryMaxRecords</code>. That reading pattern is the contract this page has to state plainly — see the
+  box below.
+</p>
+
+<div class="gap">
+  <strong>Writing a parameter does not reconfigure the subsystem that read it.</strong> A
+  <code>ConfigParam</code> is a value with a name attached, not a subscription: the task registry takes its initial
+  capacity, growth step and ceiling as arguments at <code>Initialize</code> time and never asks again. So
+  <code>SetSize("Task.RegistryMaxRecords", …)</code> changes what a <em>future</em> <code>Initialize</code> would read,
+  and changes nothing about the table that already exists. Look for a <code>Set…</code> or <code>Resize</code>-style call
+  on the owning subsystem if you need the change to take effect now; where none exists, the parameter is effectively
+  start-up-only. <a href="../ConfigParam/set.html"><code>ConfigParam::Set</code></a> is the same story from the other
+  side.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr>
+    <td><code>key</code></td>
+    <td><a href="../../String/index.html#staticstring"><code>const StaticString&amp;</code></a></td>
+    <td>The name of a registered <code>size_t</code> parameter. Null is logged at <code>Warning</code>; absent is logged at <code>Info</code> under <a href="get-name.html"><code>EngineSettings</code></a></td>
+  </tr>
+  <tr>
+    <td><code>value</code></td>
+    <td><code>size_t</code></td>
+    <td>
+      The new count. No validation of any kind: a capacity smaller than the number of things already in flight, or a
+      growth step of <code>0</code>, is stored without comment. For
+      <code>Task.RegistryMaxRecords</code> the header's own description says "0 means no ceiling", which is the one
+      case where a zero is meaningful rather than degenerate
+    </td>
+  </tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  <code>void</code> — one log line if the name is null or missing, nothing otherwise. Confirm through
+  <a href="get-size.html"><code>GetSize</code></a>, noting that its not-found answer is <code>0</code> and that
+  <code>0</code> is a legitimate stored value.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<p>The registration side is real code; the write side is illustrative, since nothing in the tree writes these keys.</p>
+
+<pre><code><span class="kw">static</span> hbe::TAtomicConfigParam&lt;<span class="kw">std</span>::<span class="ty">size_t</span>&gt; maxRecords(<span class="st">"Task.RegistryMaxRecords"</span>,
+                                                     <span class="st">"Largest the task record table may grow. 0 means no ceiling"</span>,
+                                                     TaskRegistry::DefaultMaxCapacityRecords);
+
+taskRegistry.SetMaxCapacity(maxRecords.<span class="fn">Get</span>());</code></pre>
+
+<p class="meta">From Engine/Core/TaskSystem.cpp, <code>hbe::TaskSystem::Initialize</code> — condensed: the registration and the read are separated by two sibling parameters in the source</p>
+
+<p class="note">Illustrative — the write below has no counterpart in the repository.</p>
+
+<pre><code><span class="kw">auto</span>&amp; settings = hbe::ConfigSystem::<span class="fn">Get</span>();
+settings.<span class="fn">SetSize</span>(<span class="st">"Task.RegistryMaxRecords"</span>, <span class="nu">8192</span>);   <span class="cm">// stored; the live registry does not notice</span></code></pre>
+
+<footer class="prevnext">
+  <span><a href="index.html">← ConfigSystem</a></span>
+  <span><a href="index.html#methods">All ConfigSystem methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

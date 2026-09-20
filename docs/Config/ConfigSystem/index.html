@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ConfigSystem — Config — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="#description">Class description</a></li>
+    <li><a href="#template">Template parameters</a></li>
+    <li><a href="#properties">Class properties</a></li>
+    <li><a href="#methods">Class methods</a></li>
+    <li><a href="#non-member">Non-member helpers</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+
+  <h3>Methods</h3>
+  <ul class="methods">
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+    <li><a href="get.html">Get</a></li>
+    <li><a href="get-name.html">GetName</a></li>
+    <li><a href="register.html">Register</a></li>
+    <li><a href="set-bool.html">SetBool</a></li>
+    <li><a href="set-byte.html">SetByte</a></li>
+    <li><a href="set-int.html">SetInt</a></li>
+    <li><a href="set-size.html">SetSize</a></li>
+    <li><a href="set-float.html">SetFloat</a></li>
+    <li><a href="get-bool.html">GetBool</a></li>
+    <li><a href="get-byte.html">GetByte</a></li>
+    <li><a href="get-int.html">GetInt</a></li>
+    <li><a href="get-size.html">GetSize</a></li>
+    <li><a href="get-float.html">GetFloat</a></li>
+    <li><a href="print-all-parameters.html">PrintAllParameters</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Config</a> / ConfigSystem
+</p>
+
+<h1>ConfigSystem</h1>
+<p class="subtitle">
+  <span class="tag">Engine/Config/ConfigSystem.h</span>
+  <span class="tag">namespace hbe</span>
+  <span class="tag">final</span>
+  <span class="tag">not copyable, not movable</span>
+  the runtime parameter database: five types in four maps, reached by interned name, changed while the process runs
+</p>
+
+<h2 id="description">Class description</h2>
+
+<p>
+  A key-value store of <em>accessors</em>, not of values. Each entry holds a getter and a setter closure that read
+  and write somebody else's <a href="../ConfigParam/index.html"><code>ConfigParam</code></a>, so the database never
+  owns a setting and never has to be told a value changed — it just knows how to reach it. That indirection is what
+  makes the two halves of the module fit together: a subsystem holds its parameter and reads it as a direct member
+  access with no lookup, while a debug overlay or a shutdown dump reaches the same number by name through this
+  class.
+</p>
+
+<p>
+  Keys are <a href="../../String/index.html#staticstringid"><code>StaticStringID</code></a> — the interned identity
+  of a <a href="../../String/index.html#staticstring"><code>StaticString</code></a> — so two literals that spell the
+  same name hash to one entry, and every lookup here interns its key first. The interface takes
+  <code>const StaticString&amp;</code>, never a raw string.
+</p>
+
+<p>
+  There is exactly one instance in practice, reached with <a href="get.html"><code>Get()</code></a>, and one way in:
+  <a href="register.html"><code>Register</code></a> is called from the
+  <a href="../ConfigParam/index.html"><code>ConfigParam</code></a> constructor, so a parameter announces itself the
+  moment it is built. Everything else — <a href="set-bool.html">Set…</a>,
+  <a href="get-bool.html">Get…</a>, <a href="print-all-parameters.html"><code>PrintAllParameters</code></a> — only
+  reaches what is already registered.
+</p>
+
+<div class="gap">
+  <strong>A failed lookup is not an error you can detect from the return value.</strong> A key that is absent, or a
+  null key, logs one line and then returns a stand-in: <code>false</code> from
+  <a href="get-bool.html"><code>GetBool</code></a> and <a href="get-byte.html"><code>GetByte</code></a>,
+  <code>-1</code> from <a href="get-int.html"><code>GetInt</code></a>, <code>0</code> from
+  <a href="get-size.html"><code>GetSize</code></a>, <code>0.0f</code> from
+  <a href="get-float.html"><code>GetFloat</code></a>. Each of those is a legitimate value a real parameter can hold,
+  so <code>GetInt("Budget") == -1</code> cannot tell you whether the parameter exists. Nothing here throws and
+  nothing returns a status; the log is the only signal.
+</div>
+
+<div class="note">
+  <strong>bool and byte are one map.</strong> <code>bool</code> parameters are registered into
+  <code>byteParams</code> as <code>uint8_t</code>, so <a href="set-byte.html"><code>SetByte</code></a> writes a bool
+  parameter and <a href="get-byte.html"><code>GetByte</code></a> reads one (as 0 or 1), and the reverse is true of
+  <a href="set-bool.html"><code>SetBool</code></a> against a <code>uint8_t</code> parameter — which clamps it to 0
+  or 1. The duplicate-key test is per map, so a name is only forbidden against the other names in its own map.
+</div>
+
+<h2 id="template">Template parameters</h2>
+
+<p>
+  None — <code>ConfigSystem</code> itself is not a template. The type parameter lives on its nested members
+  (<a href="#properties"><code>ParamItem&lt;T&gt;</code></a>, <code>TGetter&lt;T&gt;</code>,
+  <code>TSetter&lt;T&gt;</code>, <code>TMap&lt;T&gt;</code>) and on the
+  <a href="../ConfigParam/index.html"><code>ConfigParam&lt;T, IsAtomic&gt;</code></a> it registers.
+</p>
+
+<h2 id="properties">Class properties</h2>
+
+<table>
+  <tr><th>Name</th><th>Declaration</th><th>What it means</th></tr>
+  <tr>
+    <td><code>TConfigParam</code></td>
+    <td><code>template&lt;typename T&gt; using TConfigParam = ConfigParam&lt;T, false&gt;;</code></td>
+    <td>
+      <span class="badge">private alias</span> The non-atomic spelling the <a href="register.html"><code>Register</code></a>
+      overloads are declared with. Private, but the same type is reachable from outside as
+      <code>ConfigParam&lt;T, false&gt;</code> — the alias is shorthand in the declarations, not an access gate
+    </td>
+  </tr>
+  <tr>
+    <td><code>TAtomicConfigParam</code></td>
+    <td><code>template&lt;typename T&gt; using TAtomicConfigParam = ConfigParam&lt;T, true&gt;;</code></td>
+    <td>
+      <span class="badge">private alias</span> The atomic counterpart. Atomic and non-atomic parameters of one type
+      take different <code>Register</code> overloads but land in the <em>same</em> map, so the atomicity choice is
+      invisible to name-based readers
+    </td>
+  </tr>
+  <tr>
+    <td><code>TGetter</code></td>
+    <td><code>template&lt;typename T&gt; using TGetter = std::function&lt;T()&gt;;</code></td>
+    <td>
+      <span class="badge">public alias</span> How a value is read through a name. Every getter ever installed came
+      from <a href="register.html"><code>Register</code></a> capturing a parameter by reference
+    </td>
+  </tr>
+  <tr>
+    <td><code>TSetter</code></td>
+    <td><code>template&lt;typename T&gt; using TSetter = std::function&lt;void(T)&gt;;</code></td>
+    <td>
+      <span class="badge">public alias</span> How a value is written through a name. A null <code>TSetter</code> is
+      the internal "not found" marker, tested before every call — see
+      <a href="set-int.html"><code>SetInt</code></a>
+    </td>
+  </tr>
+  <tr>
+    <td><code>ParamItem</code></td>
+    <td><code>template&lt;typename T&gt; struct ParamItem final { StaticStringID desc; TGetter&lt;T&gt; getter; TSetter&lt;T&gt; setter; };</code></td>
+    <td>
+      <span class="badge">public nested type</span> One entry. <code>desc</code> is the interned description taken
+      from the parameter, used only by <a href="print-all-parameters.html"><code>PrintAllParameters</code></a>; a
+      default-constructed item has both callables null, which is how an unknown key is answered
+    </td>
+  </tr>
+  <tr>
+    <td><code>TMap</code></td>
+    <td><code>template&lt;typename T&gt; using TMap = std::unordered_map&lt;StaticStringID, ParamItem&lt;T&gt;&gt;;</code></td>
+    <td>
+      <span class="badge">public alias</span> The container, keyed on interned identity. Note which hash is used:
+      <code>std::hash&lt;StaticStringID&gt;</code> reinterprets the interned pointer as a number, so bucket position
+      depends on where the string table placed the name
+    </td>
+  </tr>
+  <tr>
+    <td><code>byteParams</code></td>
+    <td><code>TMap&lt;uint8_t&gt; byteParams;</code></td>
+    <td>
+      <span class="badge">private</span> Serves <code>bool</code> <em>and</em> <code>uint8_t</code> parameters, which
+      is why one map holds two of the five types
+    </td>
+  </tr>
+  <tr>
+    <td><code>intParams</code></td>
+    <td><code>TMap&lt;int&gt; intParams;</code></td>
+    <td><span class="badge">private</span> Serves <code>int</code> parameters, reached by <a href="set-int.html"><code>SetInt</code></a> and <a href="get-int.html"><code>GetInt</code></a></td>
+  </tr>
+  <tr>
+    <td><code>sizeParams</code></td>
+    <td><code>TMap&lt;size_t&gt; sizeParams;</code></td>
+    <td><span class="badge">private</span> Serves <code>size_t</code> parameters. Every task-registry tuning knob in the engine lives here</td>
+  </tr>
+  <tr>
+    <td><code>floatParams</code></td>
+    <td><code>TMap&lt;float&gt; floatParams;</code></td>
+    <td><span class="badge">private</span> Serves <code>float</code> parameters</td>
+  </tr>
+</table>
+
+<p>
+  Four maps rather than one variant map is what keeps the value types exact at the boundary: a
+  <code>size_t</code> parameter cannot be read through a path that narrows it to <code>int</code>, because the
+  lookup will not find it at all. The cost is that the type is part of a name's identity —
+  <a href="get-int.html"><code>GetInt</code></a> cannot see a parameter registered as <code>float</code> under the
+  same key.
+</p>
+
+<h2 id="methods">Class methods</h2>
+
+<p>
+  Each name is a page; an overloaded name is one page holding every overload. All five <code>Set…</code> and all
+  five <code>Get…</code> names have exactly one overload each and differ only in which map they address, so they
+  keep separate pages instead of collapsing into one.
+</p>
+
+<table>
+  <tr><th>Method</th><th>Signature</th><th>What a caller depends on</th></tr>
+  <tr>
+    <td><a href="constructors.html">constructors</a><span class="badge">1 usable, 4 deleted</span></td>
+    <td class="sig">ConfigSystem() noexcept = default<br>ConfigSystem(const ConfigSystem&amp;) = delete<br>ConfigSystem(ConfigSystem&amp;&amp;) = delete</td>
+    <td>Default construction is public, so a second registry is legal — and it is a registry that knows none of the
+        engine's parameters. Copy and move are gone, which is what makes a <code>ConfigSystem&amp;</code> a safe thing to hold</td>
+  </tr>
+  <tr>
+    <td><a href="destructor.html">destructor</a></td>
+    <td class="sig">~ConfigSystem() = default</td>
+    <td>Destroys the maps and their closures, and nothing else — it never touches the parameters those closures point at</td>
+  </tr>
+  <tr>
+    <td><a href="get.html">Get</a></td>
+    <td class="sig">static ConfigSystem&amp; Get() noexcept</td>
+    <td>The singleton, a function-local static: built on first call, destroyed at exit. Registration inside a
+        constructor therefore builds it first</td>
+  </tr>
+  <tr>
+    <td><a href="get-name.html">GetName</a></td>
+    <td class="sig">const char* GetName() const noexcept</td>
+    <td><code>"EngineSettings"</code> — the logger category every diagnostic in this class reports under, so that is
+        the category to filter to see them</td>
+  </tr>
+  <tr>
+    <td><a href="register.html">Register</a><span class="badge">10 overloads</span></td>
+    <td class="sig">void Register(TConfigParam&lt;bool&gt;&amp;)<br>void Register(TAtomicConfigParam&lt;bool&gt;&amp;)<br>void Register(TConfigParam&lt;uint8_t&gt;&amp;)<br>void Register(TAtomicConfigParam&lt;uint8_t&gt;&amp;)<br>void Register(TConfigParam&lt;int&gt;&amp;)<br>void Register(TAtomicConfigParam&lt;int&gt;&amp;)<br>void Register(TConfigParam&lt;size_t&gt;&amp;)<br>void Register(TAtomicConfigParam&lt;size_t&gt;&amp;)<br>void Register(TConfigParam&lt;float&gt;&amp;)<br>void Register(TAtomicConfigParam&lt;float&gt;&amp;)</td>
+    <td>Installs getter and setter closures that capture the parameter <strong>by reference</strong>, so the
+        parameter must outlive the registry. A name already in that map is refused with a <code>FatalError</code> log line</td>
+  </tr>
+  <tr>
+    <td><a href="set-bool.html">SetBool</a></td>
+    <td class="sig">void SetBool(const StaticString&amp; key, bool value)</td>
+    <td>Writes through the byte map, so it reaches <code>uint8_t</code> parameters too — as 0 or 1</td>
+  </tr>
+  <tr>
+    <td><a href="set-byte.html">SetByte</a></td>
+    <td class="sig">void SetByte(const StaticString&amp; key, uint8_t value)</td>
+    <td>The write path for <code>uint8_t</code> and <code>bool</code> parameters; the engine's log levels are all
+        <code>uint8_t</code> parameters, so this is how you change one at runtime</td>
+  </tr>
+  <tr>
+    <td><a href="set-int.html">SetInt</a></td>
+    <td class="sig">void SetInt(const StaticString&amp; key, int value)</td>
+    <td>int map only. No conversion between maps: a wrong type is a not-found, not a cast</td>
+  </tr>
+  <tr>
+    <td><a href="set-size.html">SetSize</a></td>
+    <td class="sig">void SetSize(const StaticString&amp; key, size_t value)</td>
+    <td><code>size_t</code> map only. A negative literal cannot reach it, which is the point of the type existing separately from <code>int</code></td>
+  </tr>
+  <tr>
+    <td><a href="set-float.html">SetFloat</a></td>
+    <td class="sig">void SetFloat(const StaticString&amp; key, float value)</td>
+    <td>float map only — the path for durations and thresholds such as <code>TaskStreamDurationThreshold</code></td>
+  </tr>
+  <tr>
+    <td><a href="get-bool.html">GetBool</a></td>
+    <td class="sig">bool GetBool(const StaticString&amp; key) const noexcept</td>
+    <td>Missing key answers <code>false</code>, which is also the honest value of a real false parameter</td>
+  </tr>
+  <tr>
+    <td><a href="get-byte.html">GetByte</a></td>
+    <td class="sig">uint8_t GetByte(const StaticString&amp; key) const noexcept</td>
+    <td>Missing key answers <code>0</code>, which is <a href="../../Log/index.html#eloglevel"><code>Verbose</code></a> —
+        so a misspelt <code>Log.*</code> key reads as "log everything", never as a failure</td>
+  </tr>
+  <tr>
+    <td><a href="get-int.html">GetInt</a></td>
+    <td class="sig">int GetInt(const StaticString&amp; key) const noexcept</td>
+    <td>Missing key answers <code>-1</code>, a value no count-sized setting should hold but which a signed parameter may</td>
+  </tr>
+  <tr>
+    <td><a href="get-size.html">GetSize</a></td>
+    <td class="sig">size_t GetSize(const StaticString&amp; key) const noexcept</td>
+    <td>Missing key answers <code>0</code>. Against a parameter where 0 means "no ceiling", a missing key reads as that same meaningful state</td>
+  </tr>
+  <tr>
+    <td><a href="get-float.html">GetFloat</a></td>
+    <td class="sig">float GetFloat(const StaticString&amp; key) const noexcept</td>
+    <td>Missing key answers <code>0.0f</code> — for a duration threshold, a zero that turns every warning on</td>
+  </tr>
+  <tr>
+    <td><a href="print-all-parameters.html">PrintAllParameters</a></td>
+    <td class="sig">void PrintAllParameters() const</td>
+    <td>Walks all four maps at <code>Verbose</code> and calls every getter. It runs on the shutdown path, which is the one moment a stale entry is most likely to be reached</td>
+  </tr>
+</table>
+
+<h2 id="non-member">Non-member helper functions</h2>
+
+<p>
+  None. <code>ConfigSystem.h</code> declares the class and nothing at namespace scope; the lookup helper that
+  decides what a missing key does lives in the anonymous namespace of <code>ConfigSystem.cpp</code> and is not a
+  name you can call.
+</p>
+
+<h2 id="coverage">Coverage</h2>
+
+<table>
+  <tr><th>Gap</th><th>Detail</th></tr>
+  <tr>
+    <td>No removal, no reset, no enumeration by name</td>
+    <td>There is no <code>Unregister</code>, no <code>Clear</code>, and no way to ask how many parameters exist or to
+        list their names without <a href="print-all-parameters.html"><code>PrintAllParameters</code></a>'s log output.
+        The header has no such member, so this page documents the absence rather than a substitute</td>
+  </tr>
+  <tr>
+    <td>No persistence, and no file feeding it</td>
+    <td>Nothing in the engine reads a <a href="../ConfigFile/index.html"><code>ConfigFile</code></a> into these maps,
+        and nothing writes them out. Registering a parameter gives it its compiled-in default and no file changes
+        that — the two halves of the module are not wired together</td>
+  </tr>
+  <tr>
+    <td>Thread safety, stated as what the header guarantees</td>
+    <td>No lock guards the maps. Concurrent lookups are safe once registration is finished, because lookup only
+        reads; concurrent <a href="register.html"><code>Register</code></a> is a data race on the same
+        <code>unordered_map</code>. Whether the value behind a getter is a plain field or an atomic depends entirely
+        on the <code>IsAtomic</code> argument of the parameter that owns it, which is
+        <a href="../ConfigParam/index.html">ConfigParam's</a> contract</td>
+  </tr>
+  <tr>
+    <td>The "not found" stand-in</td>
+    <td>A function-local <code>static ParamItem&lt;T&gt;</code> in <code>ConfigSystem.cpp</code> supplies the empty
+        item a failed lookup returns. It is not API and has no address you can compare against; each page names the
+        value its getter produces instead</td>
+  </tr>
+  <tr>
+    <td>Which log level each diagnostic uses</td>
+    <td>The level family, the category filter and the asynchronous destination are documented in
+        <a href="../../Log/index.html#eloglevel">Log</a>. This page names the level per call, because a message that
+        is filtered out is invisible in a normal build and that changes which failures you can actually see</td>
+  </tr>
+</table>
+
+<footer class="prevnext">
+  <span><a href="../index.html">← Config</a></span>
+  <span><a href="../index.html#configsystem">ConfigSystem in the Config class list</a></span>
+</footer>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ConfigParam::GetDescription — Config — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">ConfigParam</a> methods</h3>
+  <ul class="methods">
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="get-name.html">GetName</a></li>
+    <li><a class="current" href="get-description.html">GetDescription</a></li>
+    <li><a href="get.html">Get</a></li>
+    <li><a href="set.html">Set</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Config</a> /
+  <a href="index.html">ConfigParam</a> / GetDescription
+</p>
+
+<h1><span class="fn">GetDescription</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::ConfigParam</span>
+  <span class="tag">Engine/Config/ConfigParam.h</span>
+  <span class="tag">const, not noexcept</span>
+  the one human-readable sentence a setting carries — paid for by an interned string per parameter
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] <span class="ty">StaticString</span> <span class="fn">GetDescription</span>() <span class="kw">const</span>;</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Returns the interned <code>desc</code> member that the <a href="constructors.html">constructor</a> built from
+  <code>inDesc</code>. Under <code>ENGINE_PARAM_DESC_ENABLED</code> 0 the member is not declared and the body returns a
+  default-constructed <a href="../../String/index.html#staticstring"><code>StaticString</code></a>, which is the interned string
+  <code>"None"</code> — a description that looks present and says nothing.
+</p>
+
+<p>
+  The only consumer in the engine is
+  <a href="../ConfigSystem/print-all-parameters.html"><code>ConfigSystem::PrintAllParameters</code></a>, and it does not call this
+  function at print time: <a href="../ConfigSystem/register.html"><code>Register</code></a> calls it once, interns the result into
+  <code>ParamItem::desc</code>, and the dump prints that stored identity. So the description is captured at registration and can never
+  change afterwards, whatever the owning object does with its own members.
+</p>
+
+<div class="note">
+  <strong>A description is not metadata you can skip.</strong> It is interned like a key — one entry in the string table per distinct
+  sentence, shared by every parameter that repeats it — and it is the only place a unit or a special value is written down. Compare
+  the two styles in the tree: <code>"Largest the task record table may grow. 0 means no ceiling"</code> states what zero means, while
+  <code>"The Default Log Level"</code> leaves the reader to know that the number is an
+  <a href="../../Log/index.html#eloglevel"><code>ELogLevel</code></a>. The dump is a list of bare numbers otherwise.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr>
+    <td><a href="../../String/index.html#staticstring"><code>StaticString</code></a></td>
+    <td>
+      The sentence passed to the constructor, or <code>"None"</code> when descriptions are compiled out. Copying it is copying one
+      interned identity, not a buffer, and the text it resolves to lives as long as the string table
+    </td>
+  </tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p>Where a description is written down, in the form every engine parameter uses:</p>
+
+<pre><code><span class="kw">static</span> hbe::TAtomicConfigParam&lt;<span class="kw">std</span>::<span class="ty">size_t</span>&gt; maxRecords(<span class="st">"Task.RegistryMaxRecords"</span>,
+                                                     <span class="st">"Largest the task record table may grow. 0 means no ceiling"</span>,
+                                                     TaskRegistry::DefaultMaxCapacityRecords);</code></pre>
+
+<p class="meta">From Engine/Core/TaskSystem.cpp</p>
+
+<p class="note">Illustrative — reading a description from outside the owning subsystem, e.g. to build a tooltip.</p>
+
+<pre><code><span class="cm">// param is the ConfigParam this subsystem owns:</span>
+tooltip.<span class="fn">SetText</span>(param.<span class="fn">GetDescription</span>());
+value.<span class="fn">SetText</span>(param.<span class="fn">GetName</span>());</code></pre>
+
+<p>
+  For the by-name path there is no equivalent read: the registry stores the description inside its entry, and the only way to see it
+  is the dump (<a href="../ConfigSystem/print-all-parameters.html"><code>PrintAllParameters</code></a>). A debug UI that wants
+  descriptions for parameters it does not own has to reach the owning objects — a gap recorded on the
+  <a href="../ConfigSystem/index.html#coverage">ConfigSystem Coverage section</a>.
+</p>
+
+<footer class="prevnext">
+  <span><a href="index.html">← ConfigParam</a></span>
+  <span><a href="index.html#methods">All ConfigParam methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

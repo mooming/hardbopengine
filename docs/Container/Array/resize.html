@@ -108,10 +108,10 @@
 
 <p>
   <code>void</code>. There is no status to check: the function reports a failed allocation by asserting and
-  leaving the array exactly as it was. The early return sits outside the assertion, so a configuration where
-  <code>Assert</code> is silent — Release, per
-  <a href="../../Core/index.html#functions">Core: Debug</a> — still keeps the old size and the old buffer; it
-  just stops saying anything. A caller that has to know whether the resize happened compares against
+  leaving the array exactly as it was. The early return sits outside the assertion, so the behaviour does not
+  depend on configuration: even where <code>Assert</code> is silent — Release, per
+  <a href="../../Core/index.html#functions">Core: Debug</a> — the array keeps its old size and its old buffer,
+  and simply stops reporting. A caller that has to know whether the resize happened compares against
   <a href="size.html"><code>Size</code></a> afterwards.
 </p>
 

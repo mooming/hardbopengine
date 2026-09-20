@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ConfigParam — Config — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="#description">Class description</a></li>
+    <li><a href="#template">Template parameters</a></li>
+    <li><a href="#properties">Class properties</a></li>
+    <li><a href="#methods">Class methods</a></li>
+    <li><a href="#non-member">Non-member helpers</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+
+  <h3>Methods</h3>
+  <ul class="methods">
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="get-name.html">GetName</a></li>
+    <li><a href="get-description.html">GetDescription</a></li>
+    <li><a href="get.html">Get</a></li>
+    <li><a href="set.html">Set</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Config</a> / ConfigParam
+</p>
+
+<h1>ConfigParam</h1>
+<p class="subtitle">
+  <span class="tag">Engine/Config/ConfigParam.h</span>
+  <span class="tag">namespace hbe</span>
+  <span class="tag">template &lt;typename T, bool IsAtomic = false&gt;</span>
+  <span class="tag">final</span>
+  one setting a subsystem owns: read it as a member, changed by name through
+  <a href="../ConfigSystem/index.html"><code>ConfigSystem</code></a>
+</p>
+
+<h2 id="description">Class description</h2>
+
+<p>
+  A value, its name and its description, which announces itself to the registry at construction. The point of the
+  class is the split it creates: the owner holds the object and reads the setting with
+  <a href="get.html"><code>Get()</code></a> — a field read, or one atomic load — while a debug overlay, a shutdown dump or
+  a console reaches the identical value by name through
+  <a href="../ConfigSystem/index.html"><code>ConfigSystem</code></a>. Neither half stores the setting, which is why a change
+  made by name is visible to the owner on the next read with no notification mechanism anywhere.
+</p>
+
+<p>
+  The constructor is the only non-trivial part: it stores the default, then calls
+  <a href="../ConfigSystem/register.html"><code>ConfigSystem::Get().Register(*this)</code></a>. Registration is therefore not
+  optional and not deferred — building the object is registering it.
+</p>
+
+<p>
+  Every parameter the engine registers today is a function-local static inside the function that first needs it, and every
+  one of them — eight in a default build, nine with <code>MEMORY_LOGGING_ENABLED</code> compiled in — uses the atomic form; the
+  whole set is listed on
+  <a href="../ConfigSystem/get-size.html">GetSize</a>.
+</p>
+
+<div class="gap">
+  <strong>Once registered, an instance cannot be moved, copied or destroyed quietly.</strong>
+  <a href="../ConfigSystem/register.html"><code>Register</code></a> captures <code>&amp;param</code> inside both closures it
+  stores, and this class holds a <code>std::mutex</code> member — which is neither copyable nor movable — so the compiler
+  refuses a copy or move of a <code>ConfigParam</code> anyway. That is a service rather than a limitation: a parameter that
+  changed address would leave the registry pointing at its old location. Keep one at static or member lifetime in an object
+  that outlives every read of its key.
+</div>
+
+<div class="gap">
+  <strong>The <code>std::mutex lock</code> member locks nothing.</strong> It is declared and never used:
+  <a href="get.html"><code>Get</code></a> and <a href="set.html"><code>Set</code></a> touch <code>value</code> directly with no
+  guard, so the class provides no mutual exclusion of its own. Thread safety comes entirely from
+  <code>std::atomic&lt;T&gt;</code>, which the <code>IsAtomic</code> argument selects. A parameter declared with
+  <code>IsAtomic = false</code> is a plain field: reading it from one thread while another writes it is a data race, guarded
+  only by a debug assertion on thread identity — see <a href="get.html">Get</a>.
+</div>
+
+<h2 id="template">Template parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Kind</th><th>What it must satisfy</th></tr>
+  <tr>
+    <td><code>T</code></td>
+    <td><code>typename</code></td>
+    <td>
+      The value type. Only five are registrable — <code>bool</code>, <code>uint8_t</code>, <code>int</code>,
+      <code>size_t</code>, <code>float</code> — because <a href="../ConfigSystem/register.html"><code>Register</code></a> has
+      an overload per exactly those five and no template fallback, so any other <code>T</code> compiles as a
+      <code>ConfigParam</code> and then fails at the registration call inside its own constructor. With
+      <code>IsAtomic</code> the type additionally has to be usable as <code>std::atomic&lt;T&gt;</code>, which rules out
+      anything non-trivially-copyable. Note there is no <code>double</code> and no <code>uint32_t</code>: a setting that needs
+      one is a <code>float</code> or a <code>size_t</code> here, or it is not a config parameter
+    </td>
+  </tr>
+  <tr>
+    <td><code>IsAtomic</code></td>
+    <td><code>bool</code>, defaults to <code>false</code></td>
+    <td>
+      Selects the storage: <a href="#properties"><code>TValue</code></a> becomes <code>std::atomic&lt;T&gt;</code> or plain
+      <code>T</code>. <code>true</code> is what makes a write from any thread legitimate; <code>false</code> binds the
+      parameter to the thread that constructed it, enforced by an assertion only under <code>__DEBUG__</code> (Debug and Dev,
+      per <a href="../BuildConfig/index.html">BuildConfig</a>). It also picks the <code>Register</code> overload, though not
+      the map — both forms of one type land in the same map, so a name-based reader cannot tell them apart
+    </td>
+  </tr>
+</table>
+
+<h2 id="properties">Class properties</h2>
+
+<table>
+  <tr><th>Name</th><th>Declaration</th><th>What it means</th></tr>
+  <tr>
+    <td><code>MaxNameLength</code></td>
+    <td><code>static constexpr size_t MaxNameLength = 127;</code></td>
+    <td>
+      <span class="badge">public constant</span> Declared and used by nothing — not by this header, not by
+      <code>ConfigParam.cpp</code>, not by <a href="../../String/index.html#staticstring"><code>StaticString</code></a>, which
+      interns whatever it is given. A long name is not truncated to 127 characters by anything in the engine, so treat this
+      as an aspiration the code does not enforce
+    </td>
+  </tr>
+  <tr>
+    <td><code>MaxDescLength</code></td>
+    <td><code>static constexpr size_t MaxDescLength = 127;</code></td>
+    <td><span class="badge">public constant</span> Same: declared, never read, no effect on a description of any length</td>
+  </tr>
+  <tr>
+    <td><code>TValue</code></td>
+    <td><code>using TValue = std::conditional_t&lt;IsAtomic, std::atomic&lt;T&gt;, T&gt;;</code></td>
+    <td>
+      <span class="badge">member type</span> The actual storage type, and the single place <code>IsAtomic</code> has an effect.
+      Every read of <code>value</code> is an atomic load or a field load through this alias
+    </td>
+  </tr>
+  <tr>
+    <td><code>name</code></td>
+    <td><code>StaticString name;</code></td>
+    <td>
+      <span class="badge">private</span> <span class="badge">only under ENGINE_PARAM_DESC_ENABLED</span> The interned name,
+      built from the constructor's <code>inName</code>. With the macro 0 the member does not exist, <a href="get-name.html"><code>GetName</code></a>
+      answers the interned string <code>"None"</code>, and <a href="../ConfigSystem/register.html">registration</a> therefore collides every
+      parameter of one map onto that single key
+    </td>
+  </tr>
+  <tr>
+    <td><code>desc</code></td>
+    <td><code>StaticString desc;</code></td>
+    <td>
+      <span class="badge">private</span> <span class="badge">only under ENGINE_PARAM_DESC_ENABLED</span> The interned
+      description. Its only consumer is <a href="../ConfigSystem/print-all-parameters.html"><code>PrintAllParameters</code></a>,
+      which prints it in parentheses after the value
+    </td>
+  </tr>
+  <tr>
+    <td><code>value</code></td>
+    <td><code>TValue value;</code></td>
+    <td>
+      <span class="badge">private</span> The setting itself, initialised from the constructor's <code>defaultValue</code> and
+      afterwards whatever the last <a href="set.html"><code>Set</code></a> wrote — by the owner or by a name-based write through
+      <a href="../ConfigSystem/index.html"><code>ConfigSystem</code></a>
+    </td>
+  </tr>
+  <tr>
+    <td><code>lock</code></td>
+    <td><code>std::mutex lock;</code></td>
+    <td>
+      <span class="badge">private</span> Never locked. It contributes no thread safety, but it does contribute two real
+      properties: the class becomes non-copyable and non-movable, and every parameter costs a mutex worth of size and
+      construction work whether or not anything uses it
+    </td>
+  </tr>
+  <tr>
+    <td><code>threadID</code></td>
+    <td><code>std::thread::id threadID;</code></td>
+    <td>
+      <span class="badge">private</span> <span class="badge">only under __DEBUG__</span> The constructing thread, used by the
+      assertion in <a href="get.html"><code>Get</code></a> and <a href="set.html"><code>Set</code></a>. Absent in Release, so the
+      thread-affinity rule for non-atomic parameters is not checked there — the assertion and the member vanish together
+    </td>
+  </tr>
+</table>
+
+<h2 id="methods">Class methods</h2>
+
+<table>
+  <tr><th>Method</th><th>Signature</th><th>What a caller depends on</th></tr>
+  <tr>
+    <td><a href="constructors.html">constructors</a></td>
+    <td class="sig">ConfigParam(const char* inName, const char* inDesc, T defaultValue, std::thread::id id = std::this_thread::get_id())</td>
+    <td>One constructor, no overloads. Its final act registers the parameter, so the name must be unique in the map its type
+        belongs to before this returns</td>
+  </tr>
+  <tr>
+    <td><a href="get-name.html">GetName</a></td>
+    <td class="sig">StaticString GetName() const</td>
+    <td>The interned name — or an empty <code>StaticString</code> when <code>ENGINE_PARAM_DESC_ENABLED</code> is 0. Not
+        <code>noexcept</code>, because it constructs a <code>StaticString</code></td>
+  </tr>
+  <tr>
+    <td><a href="get-description.html">GetDescription</a></td>
+    <td class="sig">StaticString GetDescription() const</td>
+    <td>The human string a debug UI shows; empty under the same macro. Only the shutdown dump consumes it today</td>
+  </tr>
+  <tr>
+    <td><a href="get.html">Get</a></td>
+    <td class="sig">T Get() const noexcept</td>
+    <td>The hot-path read: a copy of the value, atomic-loaded when <code>IsAtomic</code>. Asserts thread identity for a
+        non-atomic parameter under <code>__DEBUG__</code></td>
+  </tr>
+  <tr>
+    <td><a href="set.html">Set</a></td>
+    <td class="sig">void Set(const T&amp; inValue) noexcept</td>
+    <td>Writes the value; it does not notify anything, so a subsystem that latched this setting at start-up keeps its old
+        copy until it re-reads. Same thread assertion as <a href="get.html"><code>Get</code></a></td>
+  </tr>
+</table>
+
+<p>
+  There is no destructor to document: the class has none, so the compiler-supplied one destroys <code>value</code>, the
+  mutex and the two interned strings — and says nothing to the registry, which is the fact that matters and is spelled out
+  on <a href="../ConfigSystem/destructor.html">the ConfigSystem destructor page</a>.
+</p>
+
+<h2 id="non-member">Non-member helper functions</h2>
+
+<p>Two aliases at namespace scope, and nothing else:</p>
+
+<table>
+  <tr><th>Alias</th><th>Declaration</th><th>What it means</th></tr>
+  <tr>
+    <td><code>TConfigParam</code></td>
+    <td><code>template&lt;typename T&gt; using TConfigParam = ConfigParam&lt;T, false&gt;;</code></td>
+    <td>The non-atomic spelling. Also declared a second time as a private alias inside
+        <a href="../ConfigSystem/index.html"><code>ConfigSystem</code></a> for its <code>Register</code> declarations — same type,
+        two declarations</td>
+  </tr>
+  <tr>
+    <td><code>TAtomicConfigParam</code></td>
+    <td><code>template&lt;typename T&gt; using TAtomicConfigParam = ConfigParam&lt;T, true&gt;;</code></td>
+    <td>
+      The atomic spelling, and the one every engine parameter uses:
+      <code>TAtomicConfigParam&lt;uint8_t&gt;</code> for the log levels (four of them in a default build, five with memory
+      logging compiled in),
+      <code>TAtomicConfigParam&lt;std::size_t&gt;</code> for the three task-registry sizes. The one float parameter is spelled
+      the long way, <code>ConfigParam&lt;float, true&gt;</code>, in Engine/Core/TaskStream.cpp
+    </td>
+  </tr>
+</table>
+
+<h2 id="coverage">Coverage</h2>
+
+<table>
+  <tr><th>Gap</th><th>Detail</th></tr>
+  <tr>
+    <td>Explicit instantiations in <code>ConfigParam.cpp</code></td>
+    <td>That source instantiates <code>ConfigParam&lt;T, true&gt;</code> and <code>ConfigParam&lt;T, false&gt;</code> for
+        <code>bool</code>, <code>int</code>, <code>size_t</code> and <code>float</code>. <code>uint8_t</code> — the type five engine
+        parameters actually use — is not among them; it works through implicit instantiation from the header definition. The
+        list is a build-time detail, not API, and is recorded here so its absence from the class sections is not read as an
+        unsupported type</td>
+  </tr>
+  <tr>
+    <td>Where a name has to be unique</td>
+    <td>Uniqueness is per map, and the map is chosen by <code>T</code> — the rules, the refusal behaviour and the log level it
+        uses are documented on <a href="../ConfigSystem/register.html"><code>Register</code></a>, not duplicated here</td>
+  </tr>
+  <tr>
+    <td>Ownership and destruction order</td>
+    <td>The lifetime hazard between a parameter, its owner and the registry singleton is a
+        <a href="../ConfigSystem/index.html"><code>ConfigSystem</code></a>-level fact and lives there</td>
+  </tr>
+  <tr>
+    <td>Interning mechanics behind <code>StaticString</code></td>
+    <td><code>name</code> and <code>desc</code> are interned by the string table, which decides storage and bucket counts
+        (<a href="../../String/index.html#staticstring">String</a>). This page states only what the members are, not how the
+        table stores them</td>
+  </tr>
+  <tr>
+    <td>No file, no persistence, no change notification</td>
+    <td>Nothing loads a parameter's value from disk, nothing saves it, and nothing observes a change. A "configuration file"
+        that feeds these values does not exist — see <a href="../ConfigFile/index.html"><code>ConfigFile</code></a>, which is
+        unrelated to this class and unread by the engine</td>
+  </tr>
+</table>
+
+<footer class="prevnext">
+  <span><a href="../index.html">← Config</a></span>
+  <span><a href="../index.html#configparam">ConfigParam in the Config class list</a></span>
+</footer>
+
+</main>
+</body>
+</html>

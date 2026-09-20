@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Config::GetMaxSystemMemoryTarget — Config — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">EngineConfig</a> methods</h3>
+  <ul class="methods">
+    <li><a class="current" href="get-max-system-memory-target.html">GetMaxSystemMemoryTarget</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Config</a> /
+  <a href="index.html">EngineConfig</a> / GetMaxSystemMemoryTarget
+</p>
+
+<h1><span class="fn">GetMaxSystemMemoryTarget</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Config</span>
+  <span class="tag">Engine/Config/EngineConfig.h</span>
+  <span class="tag">[[nodiscard]] noexcept</span>
+  <span class="tag">declared, not defined</span>
+  a declared intent to ask the machine how much memory the engine may target — with no body to answer yet
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] <span class="ty">size_t</span> <span class="fn">GetMaxSystemMemoryTarget</span>() <span class="kw">noexcept</span>;</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  The declaration is the whole of the public surface. <code>Engine/Config/EngineConfig.cpp</code> includes the
+  header and defines nothing, so there is no body: no algorithm, no query to the operating system, no policy for
+  what "target" means. Nothing under <code>Engine/</code> or <code>Applications/</code> calls it either, which is
+  why the missing definition has never surfaced — an unresolved symbol only bites whoever first takes its address.
+</p>
+
+<p>
+  Its intended place is readable from the neighbours it sits next to.
+  <a href="index.html#properties"><code>Config::MemCapacity</code></a> is the fixed 5 GiB ceiling compiled into the
+  binary; a function of this shape, returning <code>size_t</code> and taking nothing, is the per-machine figure a
+  build cannot know — physical memory on the machine actually running the engine. The two questions are different
+  and the pair is the reason both exist: one is "what did we decide to allow", the other is "what could this box
+  support".
+</p>
+
+<div class="gap">
+  <strong>Calling it does not compile-fail — it link-fails.</strong> A declaration is enough for overload
+  resolution and for <code>&amp;Config::GetMaxSystemMemoryTarget</code> to type-check, so the error appears at
+  link time as an undefined symbol, in whichever configuration happens to be built last. Until a definition
+  exists, size your buffers from <a href="index.html#properties"><code>Config::MemCapacity</code></a>, and if you
+  do write the definition, put it in <code>Engine/Config/EngineConfig.cpp</code>, where the declaration already
+  expects it.
+</div>
+
+<div class="note">
+  <code>[[nodiscard]]</code> and <code>noexcept</code> are both load-bearing on a function with no body: the
+  first means a future caller cannot discard the target it asked for, and the second promises the query never
+  throws — so a real implementation has to answer from a <code>noexcept</code> context, which rules out anything
+  that allocates while asking.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr>
+    <td><code>size_t</code></td>
+    <td>
+      Nothing at present — there is no definition to return a value. The declared type is a byte count, in the
+      same unit as <a href="index.html#properties"><code>Config::MemCapacity</code></a>, which is the only
+      comparison a caller could sensibly make against it
+    </td>
+  </tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p class="note">Illustrative — no call site for this exists in the repository, and none can link until a definition is added.</p>
+
+<pre><code><span class="cm">// The shape the declaration implies, written against what does exist.</span>
+<span class="kw">const auto</span> target = hbe::Config::<span class="fn">GetMaxSystemMemoryTarget</span>();   <span class="cm">// undefined symbol at link time</span>
+<span class="kw">const auto</span> ceiling = hbe::Config::MemCapacity;                <span class="cm">// 5 GiB, compiled in: this one works</span>
+
+<span class="kw">if</span> (target != <span class="nu">0</span> &amp;&amp; target &lt; ceiling)
+{
+        <span class="cm">// a machine that cannot reach the compiled-in ceiling</span>
+}</code></pre>
+
+<p>
+  For a memory budget a running engine can actually consult, use the statistics the memory manager reports rather
+  than this declaration — see <a href="../../Memory/index.html#memorymanager">Memory: MemoryManager</a> and
+  <a href="../../Core/index.html#systemstatistics">Core: SystemStatistics</a>, which is where
+  <code>MemCapacity</code> is compared against real usage.
+</p>
+
+<footer class="prevnext">
+  <span><a href="index.html">← EngineConfig</a></span>
+  <span><a href="index.html#methods">All EngineConfig methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

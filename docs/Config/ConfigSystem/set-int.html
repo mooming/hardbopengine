@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ConfigSystem::SetInt — Config — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">ConfigSystem</a> methods</h3>
+  <ul class="methods">
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+    <li><a href="get.html">Get</a></li>
+    <li><a href="get-name.html">GetName</a></li>
+    <li><a href="register.html">Register</a></li>
+    <li><a href="set-bool.html">SetBool</a></li>
+    <li><a href="set-byte.html">SetByte</a></li>
+    <li><a class="current" href="set-int.html">SetInt</a></li>
+    <li><a href="set-size.html">SetSize</a></li>
+    <li><a href="set-float.html">SetFloat</a></li>
+    <li><a href="get-bool.html">GetBool</a></li>
+    <li><a href="get-byte.html">GetByte</a></li>
+    <li><a href="get-int.html">GetInt</a></li>
+    <li><a href="get-size.html">GetSize</a></li>
+    <li><a href="get-float.html">GetFloat</a></li>
+    <li><a href="print-all-parameters.html">PrintAllParameters</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Config</a> /
+  <a href="index.html">ConfigSystem</a> / SetInt
+</p>
+
+<h1><span class="fn">SetInt</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::ConfigSystem</span>
+  <span class="tag">Engine/Config/ConfigSystem.h</span>
+  <span class="tag">one overload</span>
+  write a registered <code>int</code> parameter by name — and the type, not the number, decides whether it lands
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code><span class="kw">void</span> <span class="fn">SetInt</span>(<span class="kw">const</span> <span class="ty">StaticString</span>&amp; key, <span class="kw">int</span> value);</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Looks <code>key</code> up in <code>intParams</code> and calls the setter stored in that entry, which writes the
+  owning <a href="../ConfigParam/set.html"><code>ConfigParam&lt;int&gt;::Set</code></a>. The lookup is confined to the
+  <code>int</code> map: a name that exists as a <code>size_t</code>, <code>float</code> or byte parameter is reported
+  not-found rather than converted, so a type change in a subsystem silently turns every matching write into a no-op
+  log line.
+</p>
+
+<p>
+  Failing to find the key is not exceptional here — it is the common case. Ten <code>Set…</code> and
+  <code>Get…</code> names address five maps, but a stock engine registers nothing as <code>int</code> at all
+  (<a href="set-bool.html">the set of real names</a> is listed on the <code>SetBool</code> page), so every
+  <code>SetInt</code> in a stock build takes the log-and-return path. The function is there for parameters an
+  application adds.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr>
+    <td><code>key</code></td>
+    <td><a href="../../String/index.html#staticstring"><code>const StaticString&amp;</code></a></td>
+    <td>The name of a registered <code>int</code> parameter. Null is logged at <code>Warning</code>; absent is logged at <code>Info</code> under <a href="get-name.html"><code>EngineSettings</code></a></td>
+  </tr>
+  <tr>
+    <td><code>value</code></td>
+    <td><code>int</code></td>
+    <td>The new value. Signed, so negative is storable — and negative is exactly what <a href="get-int.html"><code>GetInt</code></a> answers for a missing key, which makes <code>-1</code> a value to avoid in a parameter you intend to probe</td>
+  </tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  <code>void</code>. There is no distinction in the return channel between "written", "not registered" and "registered
+  under a different type" — only the log line differs. Verify with <a href="get-int.html"><code>GetInt</code></a>.
+</p>
+
+<div class="note">
+  <strong>A null setter is checked before it is called.</strong> The entry a failed lookup returns is a default-built
+  <a href="index.html#properties"><code>ParamItem</code></a> whose <code>std::function</code> members are empty, and the
+  implementation tests for that and logs "has no setter" before invoking. So the stand-in item cannot crash a write; the
+  cost of the design is only that the failure is quiet.
+</div>
+
+<h2 id="example">Examples</h2>
+
+<p class="note">Illustrative — no call site for this exists in the repository, and none could take effect until an
+<code>int</code> parameter is registered.</p>
+
+<pre><code><span class="cm">// Registering first is what makes the write reach anything. The form is from</span>
+<span class="cm">// Engine/Core/TaskSystem.cpp, which registers its parameters as function-local statics.</span>
+<span class="kw">static</span> hbe::TAtomicConfigParam&lt;<span class="kw">int</span>&gt; maxRetries(<span class="st">"Net.MaxRetries"</span>,
+                                                <span class="st">"Connection attempts before giving up"</span>,
+                                                <span class="nu">3</span>);
+
+<span class="kw">auto</span>&amp; settings = hbe::ConfigSystem::<span class="fn">Get</span>();
+settings.<span class="fn">SetInt</span>(<span class="st">"Net.MaxRetries"</span>, <span class="nu">5</span>);        <span class="cm">// now it lands</span>
+settings.<span class="fn">SetSize</span>(<span class="st">"Net.MaxRetries"</span>, <span class="nu">5</span>);       <span class="cm">// wrong map: logs not-found, changes nothing</span></code></pre>
+
+<p>
+  Note the second call: the name is correct, the number is in range, and the write still does nothing — because
+  <code>size_t</code> is a different map. That is the failure mode this page exists to warn about.
+</p>
+
+<footer class="prevnext">
+  <span><a href="index.html">← ConfigSystem</a></span>
+  <span><a href="index.html#methods">All ConfigSystem methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

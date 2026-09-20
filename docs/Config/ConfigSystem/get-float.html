@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ConfigSystem::GetFloat — Config — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">ConfigSystem</a> methods</h3>
+  <ul class="methods">
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+    <li><a href="get.html">Get</a></li>
+    <li><a href="get-name.html">GetName</a></li>
+    <li><a href="register.html">Register</a></li>
+    <li><a href="set-bool.html">SetBool</a></li>
+    <li><a href="set-byte.html">SetByte</a></li>
+    <li><a href="set-int.html">SetInt</a></li>
+    <li><a href="set-size.html">SetSize</a></li>
+    <li><a href="set-float.html">SetFloat</a></li>
+    <li><a href="get-bool.html">GetBool</a></li>
+    <li><a href="get-byte.html">GetByte</a></li>
+    <li><a href="get-int.html">GetInt</a></li>
+    <li><a href="get-size.html">GetSize</a></li>
+    <li><a class="current" href="get-float.html">GetFloat</a></li>
+    <li><a href="print-all-parameters.html">PrintAllParameters</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Config</a> /
+  <a href="index.html">ConfigSystem</a> / GetFloat
+</p>
+
+<h1><span class="fn">GetFloat</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::ConfigSystem</span>
+  <span class="tag">Engine/Config/ConfigSystem.h</span>
+  <span class="tag">const noexcept</span>
+  read a duration or threshold by name, where the answer for a missing key switches every threshold off at once
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] <span class="kw">float</span> <span class="fn">GetFloat</span>(<span class="kw">const</span> <span class="ty">StaticString</span>&amp; key) <span class="kw">const</span> <span class="kw">noexcept</span>;</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Interns <code>key</code>, finds its entry in <code>floatParams</code>, calls the stored getter — a call into
+  <a href="../ConfigParam/get.html"><code>ConfigParam&lt;float&gt;::Get</code></a>, which for the atomic form is an atomic load.
+  No rounding, no unit conversion: the number the parameter holds is the number you get, in whatever unit its description
+  names.
+</p>
+
+<p>
+  One float parameter exists in a stock engine: <code>"TaskStreamDurationThreshold"</code>, default <code>0.16f</code>,
+  seconds, read per task-stream iteration to decide when a task is slow enough to warn about
+  (Engine/Core/TaskStream.cpp).
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr>
+    <td><code>key</code></td>
+    <td><a href="../../String/index.html#staticstring"><code>const StaticString&amp;</code></a></td>
+    <td>The registered name of a <code>float</code> parameter. Names in another map are misses, including the byte-map log levels and the <code>size_t</code> registry sizes</td>
+  </tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr>
+    <td><code>float</code></td>
+    <td>
+      The parameter's value, or <code>0.0f</code> for a null or absent key. There is no NaN and no sentinel: a miss is
+      indistinguishable from a parameter deliberately set to zero
+    </td>
+  </tr>
+</table>
+
+<div class="gap">
+  <strong>A missing threshold reads as zero, and zero is never neutral for a threshold.</strong> The live consumer compares
+  <code>deltaTime &gt; thresholdDuration.Get()</code>, so a threshold of <code>0.0f</code> warns on every task that ran at all.
+  Reach the same key by name through a misspelling and you get the same <code>0.0f</code> — a log stream that suddenly fills
+  with slow-task warnings and a single <code>Info</code> line under
+  <a href="get-name.html"><code>EngineSettings</code></a> to explain it. Compare against a bound you chose rather than testing
+  for non-zero: <code>if (threshold &gt; 0.0f &amp;&amp; threshold &lt; 10.0f)</code> at least rejects the value that a failure produces.
+</div>
+
+<div class="note">
+  <strong>Do not test the result with <code>==</code>.</strong> <code>0.16f</code> is not exactly representable, so a value that
+  was written as a literal and read back through a computation may differ in the last bits; and <code>0.0f</code> as a
+  not-found marker is exact, which makes an equality test against it the one comparison that is misleading here. Use a
+  range, or read the <a href="../ConfigParam/get.html">parameter</a> that owns the value.
+</div>
+
+<h2 id="example">Examples</h2>
+
+<p>The registration is real; the by-name read has no live call site.</p>
+
+<pre><code><span class="kw">static</span> hbe::ConfigParam&lt;<span class="kw">float</span>, <span class="kw">true</span>&gt; thresholdDuration(
+        <span class="st">"TaskStreamDurationThreshold"</span>,
+        <span class="st">"Print a warning log if it detects slower task. (seconds)"</span>,
+        <span class="nu">0.16f</span>);
+
+<span class="cm">// … later, per iteration of that stream:</span>
+<span class="kw">if</span> (deltaTime &gt; thresholdDuration.<span class="fn">Get</span>())</code></pre>
+
+<p class="meta">From Engine/Core/TaskStream.cpp</p>
+
+<p class="note">Illustrative — reading the same setting from outside the stream, e.g. from a debug overlay.</p>
+
+<pre><code><span class="kw">auto</span>&amp; settings = hbe::ConfigSystem::<span class="fn">Get</span>();
+
+<span class="kw">const float</span> threshold = settings.<span class="fn">GetFloat</span>(<span class="st">"TaskStreamDurationThreshold"</span>);
+
+<span class="kw">if</span> (threshold &gt; <span class="nu">0.0f</span> &amp;&amp; threshold &lt; <span class="nu">10.0f</span>)
+{
+        <span class="cm">// a value we can display as a real threshold</span>
+}
+<span class="kw">else</span>
+{
+        <span class="cm">// either absent (0.0f) or set to something that stops the warning working</span>
+}</code></pre>
+
+<p>
+  Writing it goes through <a href="set-float.html"><code>SetFloat</code></a>, and unlike the size parameters this one takes
+  effect on the next iteration because the stream re-reads it each time.
+</p>
+
+<footer class="prevnext">
+  <span><a href="index.html">← ConfigSystem</a></span>
+  <span><a href="index.html#methods">All ConfigSystem methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

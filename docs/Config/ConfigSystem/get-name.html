@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ConfigSystem::GetName — Config — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">ConfigSystem</a> methods</h3>
+  <ul class="methods">
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+    <li><a href="get.html">Get</a></li>
+    <li><a class="current" href="get-name.html">GetName</a></li>
+    <li><a href="register.html">Register</a></li>
+    <li><a href="set-bool.html">SetBool</a></li>
+    <li><a href="set-byte.html">SetByte</a></li>
+    <li><a href="set-int.html">SetInt</a></li>
+    <li><a href="set-size.html">SetSize</a></li>
+    <li><a href="set-float.html">SetFloat</a></li>
+    <li><a href="get-bool.html">GetBool</a></li>
+    <li><a href="get-byte.html">GetByte</a></li>
+    <li><a href="get-int.html">GetInt</a></li>
+    <li><a href="get-size.html">GetSize</a></li>
+    <li><a href="get-float.html">GetFloat</a></li>
+    <li><a href="print-all-parameters.html">PrintAllParameters</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Config</a> /
+  <a href="index.html">ConfigSystem</a> / GetName
+</p>
+
+<h1><span class="fn">GetName</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::ConfigSystem</span>
+  <span class="tag">Engine/Config/ConfigSystem.h</span>
+  <span class="tag">const noexcept</span>
+  the logger category this class reports under: <code>"EngineSettings"</code>
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] <span class="kw">const</span> <span class="kw">char</span>* <span class="fn">GetName</span>() <span class="kw">const</span> <span class="kw">noexcept</span>;</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Returns the fixed string <code>"EngineSettings"</code> — a string literal in
+  <code>Engine/Config/ConfigSystem.cpp</code>, not a field, so it does not depend on the registry's state and cannot
+  be renamed at runtime.
+</p>
+
+<p>
+  Its purpose is one thing: the category passed to <code>Logger::Get</code> by every diagnostic this class emits.
+  The duplicate-key refusal from <a href="register.html"><code>Register</code></a>, the "key is null" and
+  "is not found" lines from the lookup path, and the dump from
+  <a href="print-all-parameters.html"><code>PrintAllParameters</code></a> all appear under this category and nowhere
+  else. That makes it the filter you set when you want to see why a parameter refuses to behave — and, conversely,
+  the reason a misnamed parameter is invisible if you are not looking at this category.
+</p>
+
+<p>
+  It is not a parameter name. There is no key called <code>EngineSettings</code> in the registry, and the class has
+  no per-instance name to distinguish one registry from another — the function is <code>const</code> and returns the
+  same literal for any instance, including the private one from
+  <a href="constructors.html">the public default constructor</a>.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr>
+    <td><code>const char*</code></td>
+    <td>
+      <code>"EngineSettings"</code>, NUL-terminated, with static storage — valid for the whole process, so it may be
+      kept. It is a raw C pointer rather than a <a href="../../String/index.html#staticstring"><code>StaticString</code></a>,
+      so a caller that wants interning has to construct one
+    </td>
+  </tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p class="note">Illustrative — every call to this function in the engine comes from inside <code>ConfigSystem</code> itself
+when it builds a logger; no external caller exists.</p>
+
+<pre><code><span class="kw">auto</span>&amp; settings = hbe::ConfigSystem::<span class="fn">Get</span>();
+
+<span class="cm">// Intern it if you intend to filter on it repeatedly.</span>
+<span class="kw">const</span> hbe::StaticString category(settings.<span class="fn">GetName</span>());
+<span class="kw">auto</span> log = hbe::Logger::Get(category);
+
+log.<span class="fn">OutWarning</span>([](auto&amp; ls) { ls &lt;&lt; <span class="st">"config check failed"</span>; });   <span class="cm">// lands in the EngineSettings category</span></code></pre>
+
+<p>
+  <code>Logger::Get</code> and the category filter are documented in
+  <a href="../../Log/index.html#logger">Log: Logger</a>; the levels these diagnostics use are
+  <a href="../../Log/index.html#eloglevel">ELogLevel</a>.
+</p>
+
+<footer class="prevnext">
+  <span><a href="index.html">← ConfigSystem</a></span>
+  <span><a href="index.html#methods">All ConfigSystem methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

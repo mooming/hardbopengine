@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ConfigSystem::GetByte — Config — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">ConfigSystem</a> methods</h3>
+  <ul class="methods">
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+    <li><a href="get.html">Get</a></li>
+    <li><a href="get-name.html">GetName</a></li>
+    <li><a href="register.html">Register</a></li>
+    <li><a href="set-bool.html">SetBool</a></li>
+    <li><a href="set-byte.html">SetByte</a></li>
+    <li><a href="set-int.html">SetInt</a></li>
+    <li><a href="set-size.html">SetSize</a></li>
+    <li><a href="set-float.html">SetFloat</a></li>
+    <li><a href="get-bool.html">GetBool</a></li>
+    <li><a class="current" href="get-byte.html">GetByte</a></li>
+    <li><a href="get-int.html">GetInt</a></li>
+    <li><a href="get-size.html">GetSize</a></li>
+    <li><a href="get-float.html">GetFloat</a></li>
+    <li><a href="print-all-parameters.html">PrintAllParameters</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Config</a> /
+  <a href="index.html">ConfigSystem</a> / GetByte
+</p>
+
+<h1><span class="fn">GetByte</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::ConfigSystem</span>
+  <span class="tag">Engine/Config/ConfigSystem.h</span>
+  <span class="tag">const noexcept</span>
+  read a byte-map parameter — the way to inspect a log level without touching the subsystem that owns it
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] <span class="ty">uint8_t</span> <span class="fn">GetByte</span>(<span class="kw">const</span> <span class="ty">StaticString</span>&amp; key) <span class="kw">const</span> <span class="kw">noexcept</span>;</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Interns <code>key</code>, finds its entry in <code>byteParams</code> and calls the stored getter. The map is typed
+  <code>uint8_t</code> and both <code>bool</code> and <code>uint8_t</code> parameters register into it, so this single
+  function reads every log level the engine holds — four of them in a default build, five once
+  <code>MEMORY_LOGGING_ENABLED</code> adds <code>Log.Memory</code> — plus any bool parameter as 0 or 1.
+</p>
+
+<p>
+  On a miss the answer is the empty entry's stand-in, written in the source as <code>return false;</code> — a
+  <code>bool</code> literal converted to <code>uint8_t</code>, i.e. <strong>zero</strong>. See what that means below before
+  using the result in a comparison.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr>
+    <td><code>key</code></td>
+    <td><a href="../../String/index.html#staticstring"><code>const StaticString&amp;</code></a></td>
+    <td>
+      The registered name. Byte-map names in a stock engine: <code>Log.Level</code>, <code>Log.Engine</code>,
+      <code>Log.Engine.Print</code> and <code>Log.TaskSystem</code> — <code>Log.Memory</code> is registered only when
+      <code>MEMORY_LOGGING_ENABLED</code> is 1, which it is not by default
+      (<a href="../BuildConfig/index.html">BuildConfig</a>). Anything else, including the task-registry sizes, which are
+      <code>size_t</code>, is a miss
+    </td>
+  </tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr>
+    <td><code>uint8_t</code></td>
+    <td>
+      The parameter's current value, or <code>0</code> for a null or missing key. For the log-level parameters,
+      <code>0</code> is <a href="../../Log/index.html#eloglevel"><code>ELogLevel::Verbose</code></a> — the most permissive
+      level there is, so a misspelled name does not look like an error, it looks like "log everything"
+    </td>
+  </tr>
+</table>
+
+<div class="gap">
+  <strong>A miss and a real value are the same number here, and for these five keys the miss value is the loudest
+  setting.</strong> <code>GetByte("Log.En gine")</code> — one stray space — returns <code>0</code>, and a consumer written
+  as <code>if (level &lt; static_cast&lt;ELogLevel&gt;(threshold)) return;</code> then stops filtering anything out. If the
+  value has to be trusted, confirm the parameter exists first: read it once at start-up, when the log line saying
+  "is not found" is still cheap to notice, rather than inside a per-message path where the same line is emitted over and
+  over and never read.
+</div>
+
+<div class="note">
+  <strong>This is a by-name read of somebody else's hot-path value.</strong> The getter is a
+  <code>std::function</code>, so the call costs an indirection and an interned lookup — fine in a debug overlay or a start-up
+  check, wrong inside a per-log-line filter. The engine's own filters read the
+  <a href="../ConfigParam/get.html"><code>ConfigParam</code></a> directly for exactly that reason, and reach the registry
+  only to list and to change.
+</div>
+
+<h2 id="example">Examples</h2>
+
+<p>Every parameter this can read is registered in the form below; the read itself has no live call site.</p>
+
+<pre><code><span class="kw">static</span> hbe::TAtomicConfigParam&lt;<span class="ty">uint8_t</span>&gt; CPLogLevel(<span class="st">"Log.Level"</span>, <span class="st">"The Default Log Level"</span>,
+                                                  <span class="kw">static_cast</span>&lt;<span class="ty">uint8_t</span>&gt;(ELogLevel::Info));
+
+<span class="kw">if</span> (level &lt; <span class="kw">static_cast</span>&lt;ELogLevel&gt;(CPLogLevel.<span class="fn">Get</span>()))
+{
+        <span class="kw">return</span>;
+}</code></pre>
+
+<p class="meta">From Engine/Log/Logger.cpp, <code>hbe::Logger::AddLog</code></p>
+
+<p class="note">Illustrative — the read by name, for a debug overlay or a start-up report.</p>
+
+<pre><code><span class="kw">auto</span>&amp; settings = hbe::ConfigSystem::<span class="fn">Get</span>();
+
+<span class="kw">const auto</span> globalLevel = settings.<span class="fn">GetByte</span>(<span class="st">"Log.Level"</span>);     <span class="cm">// 1 = Info in a fresh process</span>
+<span class="kw">const auto</span> memoryLevel = settings.<span class="fn">GetByte</span>(<span class="st">"Log.Memory"</span>);   <span class="cm">// only registered if MEMORY_LOGGING_ENABLED</span>
+
+<span class="cm">// The second one is the trap: with memory logging compiled out, that parameter does not exist,</span>
+<span class="cm">// GetByte answers 0, and the report reads as "memory logging is verbose".</span></code></pre>
+
+<p>
+  <code>Log.Memory</code> is registered inside <code>#if MEMORY_LOGGING_ENABLED</code> in
+  Engine/Memory/MemoryManager.cpp, and that define is <code>0</code> by default
+  (<a href="../BuildConfig/index.html">BuildConfig</a>) — so this example is not hypothetical: the parameter is absent in a
+  stock build and the answer you get is the one that looks most like a deliberate setting.
+</p>
+
+<footer class="prevnext">
+  <span><a href="index.html">← ConfigSystem</a></span>
+  <span><a href="index.html#methods">All ConfigSystem methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

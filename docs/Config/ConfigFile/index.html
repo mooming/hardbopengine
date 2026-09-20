@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ConfigFile — Config — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="#description">Class description</a></li>
+    <li><a href="#template">Template parameters</a></li>
+    <li><a href="#properties">Class properties</a></li>
+    <li><a href="#methods">Class methods</a></li>
+    <li><a href="#non-member">Non-member helpers</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+
+  <h3>Methods</h3>
+  <ul class="methods">
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+    <li><a href="get-value.html">GetValue</a></li>
+    <li><a href="is-valid.html">IsValid</a></li>
+    <li><a href="for-each.html">ForEach</a></li>
+    <li><a href="parse.html">Parse</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Config</a> / ConfigFile
+</p>
+
+<h1>ConfigFile</h1>
+<p class="subtitle">
+  <span class="tag">Engine/Config/ConfigFile.h</span>
+  <span class="tag">namespace hbe</span>
+  <span class="tag">final</span>
+  a <code>key = value</code> text file parsed once into a map of strings — read-only, untyped, and not wired to anything
+</p>
+
+<h2 id="description">Class description</h2>
+
+<p>
+  Construct one from a path and it opens the file, splits every line on the first <code>=</code>, trims both sides and keeps
+  non-empty pairs in <a href="#properties"><code>keymap</code></a> (<a href="parse.html"><code>Parse</code></a> holds the format rules).
+  Both key and value stay strings; nothing here converts a value to a number, a bool or a path, and nothing here stores a type.
+  Lookup is by <a href="../../HSTL/index.html#hstring"><code>HString</code></a> key, case-sensitive, with no prefix or section concept —
+  one flat map.
+</p>
+
+<p>
+  There is no second constructor argument that means anything except "join these two into a path", no reload, and — the asymmetry
+  most likely to surprise — <strong>no write path at all</strong>. No member saves, updates or appends, so a configuration edit has to be
+  done by mutating <code>keymap</code> yourself and writing the file out with your own code.
+</p>
+
+<div class="gap">
+  <strong>This class is not connected to the rest of Config, and the engine never uses it.</strong> No file under
+  <code>Engine/</code> or <code>Applications/</code> constructs a <code>ConfigFile</code>, and nothing feeds a
+  <a href="../ConfigParam/index.html"><code>ConfigParam</code></a> from one. A parameter's value therefore comes from the default in its
+  constructor and from no file, whatever a <code>.cfg</code> in the working directory appears to say. Treating this class as "the engine's
+  config file loader" is the single most expensive mistake available here.
+</div>
+
+<div class="note">
+  <strong>Its diagnostics go to standard output, not to the logger.</strong> <code>Parse</code> prints
+  <code>[ConfigFile] Open …</code> and <code>[ConfigFile] Not Found: …</code> with <code>std::cout</code>, so they ignore
+  <a href="../../Log/index.html#eloglevel">log levels</a>, the <code>LOG_ENABLED</code> switch, categories and the asynchronous queue — they
+  appear even in a build with logging off, and cannot be filtered out.
+</div>
+
+<h2 id="template">Template parameters</h2>
+
+<p>None — <code>ConfigFile</code> is not a template. Its string and map types are fixed by the aliases below.</p>
+
+<h2 id="properties">Class properties</h2>
+
+<table>
+  <tr><th>Name</th><th>Declaration</th><th>What it means</th></tr>
+  <tr>
+    <td><code>TString</code></td>
+    <td><code>using TString = HString;</code></td>
+    <td>
+      <span class="badge">public alias</span> Keys and values. <code>HString</code> is a
+      <code>std::basic_string</code> on <a href="../../Memory/index.html#allocators"><code>hbe::DefaultAllocator&lt;char&gt;</code></a>, so
+      a parsed file is accounted to the engine's allocator rather than to the system heap
+    </td>
+  </tr>
+  <tr>
+    <td><code>TValue</code></td>
+    <td><code>using TValue = std::optional&lt;TString&gt;;</code></td>
+    <td>
+      <span class="badge">public alias</span> The result of the one-argument
+      <a href="get-value.html"><code>GetValue</code></a>: an empty optional means "no such key", which is the only way this class reports
+      absence as data instead of as a value
+    </td>
+  </tr>
+  <tr>
+    <td><code>TMap</code></td>
+    <td><code>using TMap = HUnorderedMap&lt;TString, TString&gt;;</code></td>
+    <td>
+      <span class="badge">public alias</span> The container: <code>std::unordered_map</code> on the engine allocator, and
+      <code>TMap::value_type</code> — <code>std::pair&lt;const TString, TString&gt;</code> — is what
+      <a href="for-each.html"><code>ForEach</code></a> hands your callback
+    </td>
+  </tr>
+  <tr>
+    <td><code>isValid</code></td>
+    <td><code>bool isValid;</code></td>
+    <td>
+      <span class="badge">public</span> Set to <code>false</code> by both constructors and to <code>true</code> only after
+      <code>Parse</code> has opened the file and run its loop. It means "the file was readable", never "the contents parsed" — see the
+      box below, and prefer <a href="is-valid.html"><code>IsValid()</code></a>
+    </td>
+  </tr>
+  <tr>
+    <td><code>keymap</code></td>
+    <td><code>TMap keymap;</code></td>
+    <td>
+      <span class="badge">public</span> Every pair the parse accepted, in hash order. Public and writable: it is the only way to
+      change what this object thinks the file said, and inserting here does not touch any file
+    </td>
+  </tr>
+</table>
+
+<p>
+  Those two fields are the entire state, and both being public is load-bearing twice over: it is how a caller inspects a loaded file
+  without <a href="for-each.html"><code>ForEach</code></a>, and it means no invariant is protected — nothing prevents
+  <code>isValid == true</code> alongside a <code>keymap</code> you have cleared.
+</p>
+
+<div class="gap">
+  <strong>A file that opens but parses nothing is a valid, empty configuration.</strong> <code>isValid</code> becomes
+  <code>true</code> as soon as the stream opened, so an empty file, a file of comment-like lines, or one whose lines all have a key but no
+  value gives <code>IsValid() == true</code> with <code>keymap.size() == 0</code>. Every lookup then returns the "not found" answer, which
+  <a href="get-value.html"><code>GetValue</code></a> with a default renders as a normal value. A missing file and an unreadable-content file
+  are distinguishable; a missing file and an empty file are not, unless you also check the map size.
+</div>
+
+<h2 id="methods">Class methods</h2>
+
+<table>
+  <tr><th>Method</th><th>Signature</th><th>What a caller depends on</th></tr>
+  <tr>
+    <td><a href="constructors.html">constructors</a><span class="badge">2 overloads</span></td>
+    <td class="sig">explicit ConfigFile(const char* path)<br>ConfigFile(const char* path, const char* fileName)</td>
+    <td>Both parse immediately — the object is fully loaded before the constructor returns, or it is invalid. The second joins
+        <code>path</code> and <code>fileName</code> with a separator first</td>
+  </tr>
+  <tr>
+    <td><a href="destructor.html">destructor</a></td>
+    <td class="sig">~ConfigFile() = default</td>
+    <td>Destroys the map; the file is already closed, since <code>Parse</code> held its stream as a local. Nothing to flush, because
+        nothing is ever written</td>
+  </tr>
+  <tr>
+    <td><a href="get-value.html">GetValue</a><span class="badge">2 overloads</span></td>
+    <td class="sig">TValue GetValue(const TString&amp; key) const noexcept<br>TString GetValue(const TString&amp; key, const TString&amp; defaultValue) const noexcept</td>
+    <td>The optional form answers absence with an empty optional; the defaulted form cannot distinguish absence from a value equal to
+        the default</td>
+  </tr>
+  <tr>
+    <td><a href="is-valid.html">IsValid</a></td>
+    <td class="sig">bool IsValid() const noexcept</td>
+    <td>Returns <code>isValid</code>: the file opened, not the contents parsed. Its return type is deduced with <code>auto</code> from the
+        field</td>
+  </tr>
+  <tr>
+    <td><a href="for-each.html">ForEach</a></td>
+    <td class="sig">void ForEach(std::function&lt;void(const TMap::value_type&amp;)&gt; func) const noexcept</td>
+    <td>Calls <code>func</code> per pair in hash order, and does nothing at all if <code>func</code> is empty — silently, with no log</td>
+  </tr>
+  <tr>
+    <td><a href="parse.html">Parse</a><span class="badge">private</span></td>
+    <td class="sig">void Parse(const char* fileName)</td>
+    <td>Declared private, but this is where the file format is defined and where <code>isValid</code> is decided, so the page documents it
+        as the format contract a caller depends on even though it cannot be called</td>
+  </tr>
+</table>
+
+<h2 id="non-member">Non-member helper functions</h2>
+
+<p>
+  None. <code>ConfigFile.h</code> declares the class and nothing at namespace scope. Trimming is done by
+  <code>StringUtil::Trim</code> inside <code>Parse</code>, documented under
+  <a href="../../String/index.html#stringutil">String: StringUtil</a>.
+</p>
+
+<h2 id="coverage">Coverage</h2>
+
+<table>
+  <tr><th>Gap</th><th>Detail</th></tr>
+  <tr>
+    <td>No writer, and no round trip</td>
+    <td>There is no <code>Save</code>, <code>Write</code>, <code>SetValue</code> or <code>AddKey</code> in the header, so a documentation page
+        cannot describe one. The previous module page claimed "Load, save, and lookup by key" and "read from and written to a file"; the
+        header has no save path, and this page records the absence rather than repeating the claim</td>
+  </tr>
+  <tr>
+    <td>No stored path</td>
+    <td>Nothing in the class remembers where it loaded from — the two constructors keep no member for it, and there are only the two
+        public fields above. The previous module page listed "the path they came from" among the properties; the header has no such
+        member</td>
+  </tr>
+  <tr>
+    <td>What the parse accepts</td>
+    <td><a href="parse.html"><code>Parse</code></a> states the rules the implementation applies (first <code>=</code> splits, both sides
+        trimmed, empty pair members dropped, later duplicate wins) but not the encoding of the file, the platform line endings it tolerates,
+        or what a byte-order mark does to the first key. None of that is handled by name in the code</td>
+  </tr>
+  <tr>
+    <td>Declaration and definition disagree on one name</td>
+    <td>The header declares <code>Parse(const char* fileName)</code> and
+        <code>ConfigFile.cpp</code> defines the parameter as <code>filePath</code>. The single-argument constructor passes a full path to
+        it, so the definition's name is the accurate one and the header's is stale — noted here rather than silently corrected</td>
+  </tr>
+  <tr>
+    <td>Allocation behaviour of a large file</td>
+    <td>Every key and value is an <code>HString</code> on the engine allocator, so a config file allocates through
+        <a href="../../Memory/index.html">Memory</a> with no reserve and no arena; how much that costs and which scope it lands in is that
+        module's subject</td>
+  </tr>
+</table>
+
+<footer class="prevnext">
+  <span><a href="../index.html">← Config</a></span>
+  <span><a href="../index.html#configfile">ConfigFile in the Config class list</a></span>
+</footer>
+
+</main>
+</body>
+</html>
