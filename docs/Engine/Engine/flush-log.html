@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Engine::FlushLog — Engine — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">Engine</a> methods</h3>
+  <ul class="methods">
+    <li><a href="get.html">Get</a></li>
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="operator-assign.html">operator=</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+    <li><a href="initialize.html">Initialize</a></li>
+    <li><a href="run.html">Run</a></li>
+    <li><a href="shutdown.html">ShutDown</a></li>
+    <li><a href="get-class-name.html">GetClassName</a></li>
+    <li><a href="get-memory-manager.html">GetMemoryManager</a></li>
+    <li><a href="get-logger.html">GetLogger</a></li>
+    <li><a href="get-task-system.html">GetTaskSystem</a></li>
+    <li><a href="get-statistics.html">GetStatistics</a></li>
+    <li><a href="get-resource-manager.html">GetResourceManager</a></li>
+    <li><a href="set-memory-manager-ready.html">SetMemoryManagerReady</a></li>
+    <li><a href="set-system-statistics-ready.html">SetSystemStatisticsReady</a></li>
+    <li><a href="set-logger-ready.html">SetLoggerReady</a></li>
+    <li><a href="set-task-system-ready.html">SetTaskSystemReady</a></li>
+    <li><a href="set-resource-manager-ready.html">SetResourceManagerReady</a></li>
+    <li><a href="is-memory-manager-ready.html">IsMemoryManagerReady</a></li>
+    <li><a href="is-system-statistics-ready.html">IsSystemStatisticsReady</a></li>
+    <li><a href="is-logger-ready.html">IsLoggerReady</a></li>
+    <li><a href="is-task-system-ready.html">IsTaskSystemReady</a></li>
+    <li><a href="is-resource-manager-ready.html">IsResourceManagerReady</a></li>
+    <li><a href="get-application.html">GetApplication</a></li>
+    <li><a href="log.html">Log</a></li>
+    <li><a href="log-error.html">LogError</a></li>
+    <li><a href="close-log.html">CloseLog</a></li>
+    <li><a class="current" href="flush-log.html">FlushLog</a></li>
+    <li><a href="console-out-ln.html">ConsoleOutLn</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Engine</a> /
+  <a href="index.html">Engine</a> / FlushLog
+</p>
+
+<h1><span class="fn">FlushLog</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Engine</span>
+  <span class="tag">Engine/Engine/Engine.h</span>
+  the one call that reaches both logging channels — the asynchronous <code>Logger</code> and the engine's own file
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code><span class="kw">void</span> <span class="fn">FlushLog</span>();</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>The definition is three statements:</p>
+
+<pre><code><span class="kw">void</span> <span class="ty">Engine</span>::<span class="fn">FlushLog</span>()
+{
+        logger.<span class="fn">Flush</span>();
+
+        <span class="kw">if</span> (!logFile.<span class="fn">is_open</span>())
+        {
+                <span class="kw">return</span>;
+        }
+
+        logFile.<span class="fn">flush</span>();
+}</code></pre>
+
+<p>
+  The order matters, and it is the order of the two channels' risk. <code>Logger::Flush()</code> is the asynchronous half: if the calling thread
+  <em>is</em> the thread the drain task was given when the Logger level ran, it processes the buffer directly; otherwise it waits for the drain
+  task to acknowledge, with a deadline, and drains inline if no task is running
+  (<a href="../../Log/index.html#logger">Log: Logger</a> explains the three cases). Only after that does this touch
+  <code>logFile</code>, the <a href="log.html"><code>Log</code></a> destination.
+</p>
+
+<p>
+  No engine code calls this except one: <code>FlushLogs()</code> in <code>Engine/Core/Debug.cpp</code>, the free function that
+  <code>Assert</code> and <code>FatalAssert</code> invoke immediately before they abort
+  (<a href="../../Core/index.html#functions">Core: Debug</a>). That is the reason this function exists — a crash report is worthless if the
+  lines that explain it are still sitting in a buffer owned by a thread that is about to be stopped.
+</p>
+
+<div class="note">
+  <strong><a href="shutdown.html"><code>ShutDown</code></a> does not call it.</strong> The closing report writes through
+  <code>Logger::Get(...).Out(...)</code>, which queues asynchronously, and then asks the task system to stop. Whether those last lines reach
+  <code>hardbop.log</code> depends on the drain task running before <a href="destructor.html"><code>~Logger</code></a> takes over, or on the signal
+  handler's explicit stop-and-flush path. If a shutdown report is missing its tail, this is the gap, and
+  <code>FlushLog</code> is the call that closes it.
+</div>
+
+<div class="gap">
+  <strong>On a foreign thread this blocks, and its deadline is silent.</strong> The wait belongs to <code>Logger::Flush</code>, not to this
+  function; when the deadline passes without the drain task acknowledging, the call returns anyway and reports nothing. So "the logs were
+  flushed" is not a fact this call establishes — at best it is a request with a bounded wait and an unreported timeout. Calling it from the
+  drain task's own thread is the case that never waits, because the buffer is processed inline.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  <code>void</code>. Nothing distinguishes "both channels drained" from "the file was not open" or "the wait expired".
+  <a href="close-log.html"><code>CloseLog</code></a> is the narrower call when only the file matters.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<p>The engine's only caller, and the reason it is there:</p>
+
+<pre><code><span class="kw">void</span> <span class="fn">FlushLogs</span>()
+{
+        <span class="kw">auto</span>&amp; engine = <span class="ty">Engine</span>::<span class="fn">Get</span>();
+        engine.<span class="fn">FlushLog</span>();
+}</code></pre>
+
+<p class="meta">From Engine/Core/Debug.cpp — called by <code>Assert</code> and <code>FatalAssert</code> before
+<code>std::abort()</code>.</p>
+
+<p>
+  From application code the use is the same one an assertion makes: you are about to leave in a hurry, and the buffered lines have to be on disk
+  first. <code>Applications/VulkanExample/Main.cpp</code> makes the same argument with the logger directly when renderer initialisation fails —
+  <code>Logger::Get().Flush();</code>, with the comment "The logger is asynchronous: flush so its diagnostics survive this exit."
+</p>
+
+<footer class="prevnext">
+  <span><a href="index.html">&larr; Engine</a></span>
+  <span><a href="index.html#methods">All Engine methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Engine::CloseLog — Engine — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">Engine</a> methods</h3>
+  <ul class="methods">
+    <li><a href="get.html">Get</a></li>
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="operator-assign.html">operator=</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+    <li><a href="initialize.html">Initialize</a></li>
+    <li><a href="run.html">Run</a></li>
+    <li><a href="shutdown.html">ShutDown</a></li>
+    <li><a href="get-class-name.html">GetClassName</a></li>
+    <li><a href="get-memory-manager.html">GetMemoryManager</a></li>
+    <li><a href="get-logger.html">GetLogger</a></li>
+    <li><a href="get-task-system.html">GetTaskSystem</a></li>
+    <li><a href="get-statistics.html">GetStatistics</a></li>
+    <li><a href="get-resource-manager.html">GetResourceManager</a></li>
+    <li><a href="set-memory-manager-ready.html">SetMemoryManagerReady</a></li>
+    <li><a href="set-system-statistics-ready.html">SetSystemStatisticsReady</a></li>
+    <li><a href="set-logger-ready.html">SetLoggerReady</a></li>
+    <li><a href="set-task-system-ready.html">SetTaskSystemReady</a></li>
+    <li><a href="set-resource-manager-ready.html">SetResourceManagerReady</a></li>
+    <li><a href="is-memory-manager-ready.html">IsMemoryManagerReady</a></li>
+    <li><a href="is-system-statistics-ready.html">IsSystemStatisticsReady</a></li>
+    <li><a href="is-logger-ready.html">IsLoggerReady</a></li>
+    <li><a href="is-task-system-ready.html">IsTaskSystemReady</a></li>
+    <li><a href="is-resource-manager-ready.html">IsResourceManagerReady</a></li>
+    <li><a href="get-application.html">GetApplication</a></li>
+    <li><a href="log.html">Log</a></li>
+    <li><a href="log-error.html">LogError</a></li>
+    <li><a class="current" href="close-log.html">CloseLog</a></li>
+    <li><a href="flush-log.html">FlushLog</a></li>
+    <li><a href="console-out-ln.html">ConsoleOutLn</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Engine</a> /
+  <a href="index.html">Engine</a> / CloseLog
+</p>
+
+<h1><span class="fn">CloseLog</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Engine</span>
+  <span class="tag">Engine/Engine/Engine.h</span>
+  flushes the engine's log file and leaves it open — the name describes the intention, not the effect
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code><span class="kw">void</span> <span class="fn">CloseLog</span>();</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>The whole definition, from <code>Engine/Engine/Engine.cpp</code>:</p>
+
+<pre><code><span class="kw">void</span> <span class="ty">Engine</span>::<span class="fn">CloseLog</span>()
+{
+        <span class="kw">if</span> (!logFile.<span class="fn">is_open</span>())
+        {
+                <span class="kw">return</span>;
+        }
+
+        logFile.<span class="fn">flush</span>();
+}</code></pre>
+
+<p>
+  So: an early return when the stream is not open, otherwise a flush — and no <code>close()</code> call. Afterwards the file is still open,
+  <a href="log.html"><code>Log</code></a> still writes to it, and its <code>Assert(logFile.is_open())</code> still passes. The handle is
+  released later by <code>std::ofstream</code>'s own destructor, which is the seventh member destruction in
+  <a href="destructor.html"><code>~Engine</code></a>.
+</p>
+
+<p>
+  Both call sites in the engine use it as a pre-exit guarantee rather than as a close: the
+  <a href="constructors.html">signal handler</a> calls it immediately before <code>exit(128 + signal number)</code>, and
+  <a href="destructor.html">the destructor</a> calls it as its only statement. A caller finishing a logging session has to look elsewhere:
+  <a href="flush-log.html"><code>FlushLog</code></a> is the one that also drains the <code>Logger</code>.
+</p>
+
+<div class="note">
+  <strong>The flush is defensive rather than necessary.</strong> <a href="log.html"><code>Log</code></a> ends each line with
+  <code>logFile &lt;&lt; endl</code>, and <code>std::endl</code> flushes the stream — so in the ordinary path every engine line is already on disk
+  before this call could run. What <code>CloseLog</code> protects against is a stream left with buffered content by some other writer, and
+  the desire to have <em>something</em> in the destructor. It is also the only statement standing between a destructor and the members' own
+  teardown, which is worth knowing when you read the shutdown story.
+</div>
+
+<div class="gap">
+  <strong>It says nothing about the other log file.</strong> The <code>Logger</code>'s <code>./hardbop.log</code> is a separate stream with a
+  separate buffer and a drain task that owns flushing it. Calling this leaves whatever is in that buffer queued; on the abrupt paths where
+  <code>CloseLog</code> is actually invoked, the handler stops the drain task or flushes it first, and a plain
+  <code>return</code> from <code>main</code> relies on <code>~Logger</code> (<a href="../../Log/index.html#logger">Log: Logger</a>). Do not read
+  "close" as "the logs are done".
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  <code>void</code>, and it does not report whether the stream was open in the first place — the early return and the flush are
+  indistinguishable to the caller.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<p>Where it is used: at the end of the terminating signal handler, with the exit status the shell will see.</p>
+
+<pre><code>        engine.<span class="fn">LogError</span>([](<span class="kw">auto</span>&amp; ls) { ls &lt;&lt; <span class="st">"Thank you for playing. Have a great day! :)"</span> &lt;&lt; std::endl; });
+        engine.<span class="fn">CloseLog</span>();
+
+        exit(<span class="nu">128</span> + sigNum);</code></pre>
+
+<p class="meta">From Engine/Engine/Engine.cpp.</p>
+
+<p>
+  And once more inside the class itself, as the destructor's entire body:
+  <code>Engine::~Engine() { CloseLog(); }</code> — see <a href="destructor.html">the destructor page</a> for what does <em>not</em> appear there.
+</p>
+
+<footer class="prevnext">
+  <span><a href="index.html">&larr; Engine</a></span>
+  <span><a href="index.html#methods">All Engine methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

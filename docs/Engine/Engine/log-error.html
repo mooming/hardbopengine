@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Engine::LogError — Engine — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">Engine</a> methods</h3>
+  <ul class="methods">
+    <li><a href="get.html">Get</a></li>
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="operator-assign.html">operator=</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+    <li><a href="initialize.html">Initialize</a></li>
+    <li><a href="run.html">Run</a></li>
+    <li><a href="shutdown.html">ShutDown</a></li>
+    <li><a href="get-class-name.html">GetClassName</a></li>
+    <li><a href="get-memory-manager.html">GetMemoryManager</a></li>
+    <li><a href="get-logger.html">GetLogger</a></li>
+    <li><a href="get-task-system.html">GetTaskSystem</a></li>
+    <li><a href="get-statistics.html">GetStatistics</a></li>
+    <li><a href="get-resource-manager.html">GetResourceManager</a></li>
+    <li><a href="set-memory-manager-ready.html">SetMemoryManagerReady</a></li>
+    <li><a href="set-system-statistics-ready.html">SetSystemStatisticsReady</a></li>
+    <li><a href="set-logger-ready.html">SetLoggerReady</a></li>
+    <li><a href="set-task-system-ready.html">SetTaskSystemReady</a></li>
+    <li><a href="set-resource-manager-ready.html">SetResourceManagerReady</a></li>
+    <li><a href="is-memory-manager-ready.html">IsMemoryManagerReady</a></li>
+    <li><a href="is-system-statistics-ready.html">IsSystemStatisticsReady</a></li>
+    <li><a href="is-logger-ready.html">IsLoggerReady</a></li>
+    <li><a href="is-task-system-ready.html">IsTaskSystemReady</a></li>
+    <li><a href="is-resource-manager-ready.html">IsResourceManagerReady</a></li>
+    <li><a href="get-application.html">GetApplication</a></li>
+    <li><a href="log.html">Log</a></li>
+    <li><a class="current" href="log-error.html">LogError</a></li>
+    <li><a href="close-log.html">CloseLog</a></li>
+    <li><a href="flush-log.html">FlushLog</a></li>
+    <li><a href="console-out-ln.html">ConsoleOutLn</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Engine</a> /
+  <a href="index.html">Engine</a> / LogError
+</p>
+
+<h1><span class="fn">LogError</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Engine</span>
+  <span class="tag">defined inline in the header</span>
+  <code>Log(ELogLevel::Error, func)</code>, spelled once so that every caller does not have to
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code><span class="kw">void</span> <span class="fn">LogError</span>(<span class="kw">const</span> <span class="ty">TLogFunc</span>&amp; func)
+{
+        <span class="fn">Log</span>(<span class="ty">ELogLevel</span>::Error, func);
+}</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  One statement, defined in the class body, so there is no separate symbol and no separate behaviour to learn: everything
+  <a href="log.html"><code>Log</code></a> documents applies here, including the <code>ENGINE_LOG_ENABLED</code> gate, the two
+  configuration thresholds, the double invocation of the callable, and the mutex.
+</p>
+
+<p>
+  What the fixed level buys is a position on the severity scale. <a href="../../Log/index.html#eloglevel"><code>Error</code></a> is near
+  the top of <code>ELogLevel</code>, and both comparisons in <code>Log</code> are "<code>&gt;=</code> the configured value passes", so an
+  error clears the file floor and the console floor at their defaults
+  (<a href="../../Config/index.html#engineconfig"><code>Config::EngineLogLevel</code></a> and <code>EngineLogLevelPrint</code>) — a line
+  reported through this call is visible on standard output as well as in the file unless somebody raises
+  <code>Log.Engine.Print</code> above it at runtime. It can still be silenced: both parameters are mutable configuration
+  (<a href="../../Config/index.html#configparam">Config: ConfigParam</a>).
+</p>
+
+<div class="note">
+  <strong>Do not confuse it with <code>MemoryManager::LogError</code>.</strong> The memory manager declares a member of the same name, also
+  forwarding a level and a callable, and it is that one the allocator sources call. Both reach <a href="log.html"><code>Engine::Log</code></a>
+  eventually, but through different filters — <code>MemoryManager</code> applies its own <code>IsLogEnabled</code> test first, under
+  <code>MEMORY_LOGGING_ENABLED</code>. Grep results for <code>LogError</code> mix the two.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr>
+    <td><code>func</code></td>
+    <td><a href="index.html#properties"><code>const TLogFunc&amp;</code></a> — <code>std::function&lt;void(std::ostream&amp;)&gt;</code></td>
+    <td>
+      Same contract as <a href="log.html"><code>Log</code></a>'s: writes the text, adds no newline, must be safe to run once per sink, and runs
+      under <code>logLock</code>. Captures are evaluated when the closure runs, not when it is created
+    </td>
+  </tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  <code>void</code> — the same four silent outcomes as <a href="log.html"><code>Log</code></a>. Reporting an error and having it displayed are
+  not the same event, and nothing tells you which happened.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<p>A platform failure path that reports, then asserts:</p>
+
+<pre><code>        <span class="kw">auto</span> errorId = <span class="fn">GetLastError</span>();
+
+        <span class="kw">auto</span>&amp; engine = <span class="ty">hbe::Engine</span>::<span class="fn">Get</span>();
+        engine.<span class="fn">LogError</span>([address, n, errorId](<span class="kw">auto</span>&amp; log)
+        { log &lt;&lt; <span class="st">"[OS::ProtectMemory] address = "</span> &lt;&lt; address &lt;&lt; <span class="st">", n = "</span> &lt;&lt; n &lt;&lt; <span class="st">" : error code = "</span> &lt;&lt; errorId &lt;&lt; endl; });
+
+        <span class="ty">hbe::Assert</span>(<span class="kw">false</span>);</code></pre>
+
+<p class="meta">From Engine/OSAL/OSMemory.cpp.</p>
+
+<p>The pattern used by the engine's own terminating signal handler, three lines in a row:</p>
+
+<pre><code>        engine.<span class="fn">LogError</span>([sigNum](<span class="kw">auto</span>&amp; ls)
+        { ls &lt;&lt; <span class="st">"ERROR: signal("</span> &lt;&lt; sigNum &lt;&lt; <span class="st">") received. The application shall be terminated."</span>; });
+        engine.<span class="fn">LogError</span>([](<span class="kw">auto</span>&amp; ls)
+        {
+                <span class="kw">auto</span> stackTrace = <span class="ty">OS</span>::<span class="fn">GetBackTrace</span>();
+                ls &lt;&lt; stackTrace &lt;&lt; std::endl;
+        });</code></pre>
+
+<p class="meta">From Engine/Engine/Engine.cpp.</p>
+
+<p>
+  The second one shows the convention these lines follow: capture nothing you cannot read at flush time, and put the formatting inside the
+  closure. Note also that the handler's back trace call ends with <code>std::endl</code> while the engine appends its own newline — the
+  doubled break is visible in the file, and it is the only place in the engine where that happens deliberately.
+</p>
+
+<footer class="prevnext">
+  <span><a href="index.html">&larr; Engine</a></span>
+  <span><a href="index.html#methods">All Engine methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

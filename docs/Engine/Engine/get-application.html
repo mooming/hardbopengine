@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Engine::GetApplication — Engine — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">Engine</a> methods</h3>
+  <ul class="methods">
+    <li><a href="get.html">Get</a></li>
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="operator-assign.html">operator=</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+    <li><a href="initialize.html">Initialize</a></li>
+    <li><a href="run.html">Run</a></li>
+    <li><a href="shutdown.html">ShutDown</a></li>
+    <li><a href="get-class-name.html">GetClassName</a></li>
+    <li><a href="get-memory-manager.html">GetMemoryManager</a></li>
+    <li><a href="get-logger.html">GetLogger</a></li>
+    <li><a href="get-task-system.html">GetTaskSystem</a></li>
+    <li><a href="get-statistics.html">GetStatistics</a></li>
+    <li><a href="get-resource-manager.html">GetResourceManager</a></li>
+    <li><a href="set-memory-manager-ready.html">SetMemoryManagerReady</a></li>
+    <li><a href="set-system-statistics-ready.html">SetSystemStatisticsReady</a></li>
+    <li><a href="set-logger-ready.html">SetLoggerReady</a></li>
+    <li><a href="set-task-system-ready.html">SetTaskSystemReady</a></li>
+    <li><a href="set-resource-manager-ready.html">SetResourceManagerReady</a></li>
+    <li><a href="is-memory-manager-ready.html">IsMemoryManagerReady</a></li>
+    <li><a href="is-system-statistics-ready.html">IsSystemStatisticsReady</a></li>
+    <li><a href="is-logger-ready.html">IsLoggerReady</a></li>
+    <li><a href="is-task-system-ready.html">IsTaskSystemReady</a></li>
+    <li><a href="is-resource-manager-ready.html">IsResourceManagerReady</a></li>
+    <li><a class="current" href="get-application.html">GetApplication</a></li>
+    <li><a href="log.html">Log</a></li>
+    <li><a href="log-error.html">LogError</a></li>
+    <li><a href="close-log.html">CloseLog</a></li>
+    <li><a href="flush-log.html">FlushLog</a></li>
+    <li><a href="console-out-ln.html">ConsoleOutLn</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Engine</a> /
+  <a href="index.html">Engine</a> / GetApplication
+</p>
+
+<h1><span class="fn">GetApplication</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Engine</span>
+  <span class="tag">const</span>
+  <span class="tag">Engine/Engine/Engine.h</span>
+  the OS application the engine owns, as a raw pointer that can be null in three different ways
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code><span class="ty">OS::Application</span>* <span class="fn">GetApplication</span>() <span class="kw">const</span>
+{
+        <span class="kw">return</span> application.<span class="fn">get</span>();
+}</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  <code>std::unique_ptr::get()</code> on the member, so the pointer is a borrow: the engine owns the application and destroys it, and a
+  caller that keeps this pointer past that moment keeps nothing. It is declared <code>const</code> because reading a smart pointer's
+  payload does not modify the engine — which makes it one of the few engine accessors callable through a <code>const Engine&amp;</code>,
+  unlike every subsystem accessor beside it.
+</p>
+
+<p>
+  It is set in exactly one place: the Application branch of
+  <a href="initialize.html"><code>Initialize</code></a>, where <code>OS::CreateApplication()</code> is called, the result is checked with
+  <code>FatalAssert</code>, and <code>Initialize()</code> is called on it. It becomes null again in
+  <a href="run.html"><code>Run</code></a>, which resets the pointer before returning, and finally when the engine itself is destroyed —
+  the application is the first member to die.
+</p>
+
+<table>
+  <tr><th>Null when</th><th>Because</th></tr>
+  <tr>
+    <td>The Application level was never requested</td>
+    <td>
+      The creation branch did not run. This is the only case a caller's null check can actually observe: with the level requested,
+      <code>OS::CreateApplication()</code> returning null trips
+      <code>FatalAssert(application != nullptr, "Application level requested, no OS application created")</code> and the process stops
+      before anyone can ask
+    </td>
+  </tr>
+  <tr>
+    <td><a href="run.html"><code>Run</code></a> has returned</td>
+    <td><code>Run</code> calls <code>application.reset()</code> as its last statement, under the comment "It may terminate the application
+        immediately." Windows and event handles obtained earlier are then dangling</td>
+  </tr>
+  <tr>
+    <td>The engine is being destroyed</td>
+    <td>It is the first member destroyed, before the logger even (<a href="destructor.html">destruction order</a>)</td>
+  </tr>
+</table>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr>
+    <td><code>OS::Application*</code></td>
+    <td>
+      The owned application, or null. Non-owning, and <code>OS::Application</code>'s own contract — what <code>PollEvents</code> drains,
+      what <code>Initialize</code> opens — belongs to <a href="../../OSAL/index.html#application">OSAL: Application</a>. Not
+      <code>[[nodiscard]]</code>, and a discarded call is the same mistake as discarding any other null test
+    </td>
+  </tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p>The check every entry point performs before using it:</p>
+
+<pre><code><span class="kw">auto</span>* app = hengine.<span class="fn">GetApplication</span>();
+<span class="kw">if</span> (app == <span class="kw">nullptr</span>)
+{
+        std::cerr &lt;&lt; <span class="st">"Error: Failed to create application"</span> &lt;&lt; std::endl;
+        <span class="kw">return</span> <span class="nu">1</span>;
+}</code></pre>
+
+<p class="meta">From Applications/WindowExample/Main.cpp — the engine was initialised immediately above this with the default
+<a href="initialize.html"><code>EInitLevel::All</code></a>, and the window creation follows immediately after the check.</p>
+
+<p>The same test on a worker stream, where the failure is reported instead of exiting the process:</p>
+
+<pre><code>                        <span class="kw">auto</span> app = <span class="ty">Engine</span>::<span class="fn">Get</span>().<span class="fn">GetApplication</span>();
+                        <span class="kw">if</span> (!app)
+                        {
+                                ls &lt;&lt; <span class="st">"Failed to get an application instance"</span> &lt;&lt; lf;
+                                windowPromise.<span class="fn">set_value</span>(<span class="kw">nullptr</span>);
+                                <span class="kw">return</span>;
+                        }</code></pre>
+
+<p class="meta">From Engine/OSAL/Window.cpp.</p>
+
+<div class="note">
+  <strong>The two examples disagree about whether null is fatal, and only one of them is right about the engine.</strong> In the first,
+  the level was requested, so null means the <code>FatalAssert</code> already fired and this branch is unreachable; in the second, running
+  on a task stream, the caller has no idea which levels the process asked for, and treating null as an ordinary failure is the correct
+  response. Check the pointer anyway — <a href="run.html"><code>Run</code></a> can make one of these pointers null between two uses.
+</div>
+
+<footer class="prevnext">
+  <span><a href="index.html">&larr; Engine</a></span>
+  <span><a href="index.html#methods">All Engine methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

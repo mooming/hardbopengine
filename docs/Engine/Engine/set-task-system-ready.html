@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Engine::SetTaskSystemReady — Engine — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">Engine</a> methods</h3>
+  <ul class="methods">
+    <li><a href="get.html">Get</a></li>
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="operator-assign.html">operator=</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+    <li><a href="initialize.html">Initialize</a></li>
+    <li><a href="run.html">Run</a></li>
+    <li><a href="shutdown.html">ShutDown</a></li>
+    <li><a href="get-class-name.html">GetClassName</a></li>
+    <li><a href="get-memory-manager.html">GetMemoryManager</a></li>
+    <li><a href="get-logger.html">GetLogger</a></li>
+    <li><a href="get-task-system.html">GetTaskSystem</a></li>
+    <li><a href="get-statistics.html">GetStatistics</a></li>
+    <li><a href="get-resource-manager.html">GetResourceManager</a></li>
+    <li><a href="set-memory-manager-ready.html">SetMemoryManagerReady</a></li>
+    <li><a href="set-system-statistics-ready.html">SetSystemStatisticsReady</a></li>
+    <li><a href="set-logger-ready.html">SetLoggerReady</a></li>
+    <li><a class="current" href="set-task-system-ready.html">SetTaskSystemReady</a></li>
+    <li><a href="set-resource-manager-ready.html">SetResourceManagerReady</a></li>
+    <li><a href="is-memory-manager-ready.html">IsMemoryManagerReady</a></li>
+    <li><a href="is-system-statistics-ready.html">IsSystemStatisticsReady</a></li>
+    <li><a href="is-logger-ready.html">IsLoggerReady</a></li>
+    <li><a href="is-task-system-ready.html">IsTaskSystemReady</a></li>
+    <li><a href="is-resource-manager-ready.html">IsResourceManagerReady</a></li>
+    <li><a href="get-application.html">GetApplication</a></li>
+    <li><a href="log.html">Log</a></li>
+    <li><a href="log-error.html">LogError</a></li>
+    <li><a href="close-log.html">CloseLog</a></li>
+    <li><a href="flush-log.html">FlushLog</a></li>
+    <li><a href="console-out-ln.html">ConsoleOutLn</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Engine</a> /
+  <a href="index.html">Engine</a> / SetTaskSystemReady
+</p>
+
+<h1><span class="fn">SetTaskSystemReady</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Engine</span>
+  <span class="tag">defined inline in the header</span>
+  <span class="tag">no caller in the repository</span>
+  public setter for the one flag that <a href="run.html"><code>Run</code></a> aborts on and
+  <a href="shutdown.html"><code>ShutDown</code></a> branches on
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code><span class="kw">void</span> <span class="fn">SetTaskSystemReady</span>()
+{
+        isTaskSystemReady = <span class="kw">true</span>;
+}</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  It sets one boolean and is never called. <a href="initialize.html"><code>Initialize</code></a> writes the member directly, on the line after
+  <code>taskSystem.Initialize()</code> returns, and nothing else in <code>Engine/</code> or <code>Applications/</code> calls this setter. So in every
+  program in the tree the flag means precisely "the TaskSystem level ran to completion" — the faithful meaning, held in place by there being no other
+  writer.
+</p>
+
+<p>
+  The flag it protects is the most consequential of the five. <a href="run.html"><code>Run</code></a> opens with
+  <code>FatalAssert(isTaskSystemReady, "Engine::Run needs EInitLevel::TaskSystem")</code>, which stops the process in every build configuration, and
+  <a href="shutdown.html"><code>ShutDown</code></a> reads it to decide whether to call <code>RequestShutDown()</code> at all — the mechanism by which a
+  level that was skipped is also not torn down.
+</p>
+
+<div class="gap">
+  <strong>Calling this without starting the task system converts a clear abort into a downstream failure.</strong> The setter verifies nothing: no
+  registry, no streams, no hardware-thread check. With the flag true and the level skipped, <a href="run.html"><code>Run</code></a>'s guard passes and
+  it begins pumping a task system whose stream array is empty; the first path that resolves a stream index indexes an empty
+  <code>Array</code>, which is a fatal assert in every configuration
+  (<a href="get-task-system.html"><code>GetTaskSystem</code></a>, <a href="../../Container/index.html#array">Container: Array</a>). The message you get
+  then says nothing about the level you did not pass. Do not call this from outside the engine.
+</div>
+
+<div class="note">
+  <strong>There is no setter in the other direction.</strong> No member clears this flag, so <a href="shutdown.html"><code>ShutDown</code></a> leaves it
+  true after requesting the stop, and a program that shut a task system down and then called <a href="run.html"><code>Run</code></a> again would pass the
+  guard a second time — with the streams already joined and cleared. The flag describes what started, never what is currently running; the task
+  system's own atomic running flag is the live state, and that one belongs to <a href="../../Core/index.html#tasksystem">Core</a>.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<p><code>void</code>, and the previous value is not returned, so a caller cannot even detect that it is changing something already set.</p>
+
+<h2 id="example">Examples</h2>
+
+<p class="note">Illustrative — no call site for this exists in the repository. The assignment below is what
+<code>Initialize</code> does directly, and it is shown to make the pairing explicit; nothing outside the engine should need to write it.</p>
+
+<pre><code><span class="ty">hbe::Engine</span> hengine;
+
+<span class="cm">// What the engine does itself, in the TaskSystem branch of Initialize:</span>
+<span class="cm">//   taskSystem.Initialize();          // registry, streams, running flag</span>
+<span class="cm">//   isTaskSystemReady = true;         // the flag Run and ShutDown read</span>
+
+<span class="cm">// The equivalent from outside — correct only because the call above already happened:</span>
+hengine.<span class="fn">Initialize</span>(argc, argv, <span class="ty">hbe</span>::<span class="ty">EInitLevel</span>::TaskSystem);
+hengine.<span class="fn">SetTaskSystemReady</span>();           <span class="cm">// a no-op: already true</span>
+
+<span class="cm">// The same call after Initialize(argc, argv, EInitLevel::None) is the hazard above:</span>
+<span class="cm">// Run() then aborts somewhere other than where the mistake was made.</span></code></pre>
+
+<p>
+  The honest summary of this member: it exists so the flag has a symmetric interface, and the correct call site for it is the one inside
+  <code>Engine.cpp</code> that does not use it.
+</p>
+
+<footer class="prevnext">
+  <span><a href="index.html">&larr; Engine</a></span>
+  <span><a href="index.html#methods">All Engine methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

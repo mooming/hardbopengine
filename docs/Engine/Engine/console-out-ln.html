@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Engine::ConsoleOutLn — Engine — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">Engine</a> methods</h3>
+  <ul class="methods">
+    <li><a href="get.html">Get</a></li>
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="operator-assign.html">operator=</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+    <li><a href="initialize.html">Initialize</a></li>
+    <li><a href="run.html">Run</a></li>
+    <li><a href="shutdown.html">ShutDown</a></li>
+    <li><a href="get-class-name.html">GetClassName</a></li>
+    <li><a href="get-memory-manager.html">GetMemoryManager</a></li>
+    <li><a href="get-logger.html">GetLogger</a></li>
+    <li><a href="get-task-system.html">GetTaskSystem</a></li>
+    <li><a href="get-statistics.html">GetStatistics</a></li>
+    <li><a href="get-resource-manager.html">GetResourceManager</a></li>
+    <li><a href="set-memory-manager-ready.html">SetMemoryManagerReady</a></li>
+    <li><a href="set-system-statistics-ready.html">SetSystemStatisticsReady</a></li>
+    <li><a href="set-logger-ready.html">SetLoggerReady</a></li>
+    <li><a href="set-task-system-ready.html">SetTaskSystemReady</a></li>
+    <li><a href="set-resource-manager-ready.html">SetResourceManagerReady</a></li>
+    <li><a href="is-memory-manager-ready.html">IsMemoryManagerReady</a></li>
+    <li><a href="is-system-statistics-ready.html">IsSystemStatisticsReady</a></li>
+    <li><a href="is-logger-ready.html">IsLoggerReady</a></li>
+    <li><a href="is-task-system-ready.html">IsTaskSystemReady</a></li>
+    <li><a href="is-resource-manager-ready.html">IsResourceManagerReady</a></li>
+    <li><a href="get-application.html">GetApplication</a></li>
+    <li><a href="log.html">Log</a></li>
+    <li><a href="log-error.html">LogError</a></li>
+    <li><a href="close-log.html">CloseLog</a></li>
+    <li><a href="flush-log.html">FlushLog</a></li>
+    <li><a class="current" href="console-out-ln.html">ConsoleOutLn</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Engine</a> /
+  <a href="index.html">Engine</a> / ConsoleOutLn
+</p>
+
+<h1><span class="fn">ConsoleOutLn</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Engine</span>
+  <span class="tag">Engine/Engine/Engine.h</span>
+  one mutex-guarded line on <code>std::cout</code> — the single serialisation point for the engine's console output
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code><span class="kw">void</span> <span class="fn">ConsoleOutLn</span>(<span class="kw">const char</span>* str);</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<pre><code><span class="kw">void</span> <span class="ty">Engine</span>::<span class="fn">ConsoleOutLn</span>(<span class="kw">const char</span>* str)
+{
+        std::lock_guard lock(consoleOutLock);
+        std::cout &lt;&lt; str &lt;&lt; std::endl;
+}</code></pre>
+
+<p>
+  Two statements, and all of the contract is in them. The lock makes the write atomic against every other call, so two threads' lines cannot
+  interleave character by character. The <code>std::endl</code> appends a newline <em>and flushes</em> the standard stream, so this is an
+  unbuffered write per call — visible immediately, and comparatively expensive in a loop.
+</p>
+
+<p>
+  Both users in the engine are on the logging path rather than the application path. <a href="log.html"><code>Log</code></a> calls it when a line
+  clears the <code>Log.Engine.Print</code> threshold, holding <code>logLock</code> at the time — that is the only lock nesting in the class, always
+  in the same order. The other is <code>Logger::PrintStdIO</code>, the drain task's console sink.
+</p>
+
+<div class="note">
+  <strong>Nothing filters here.</strong> No level, no configuration parameter, no <code>ENGINE_LOG_ENABLED</code> gate: whatever is passed is
+  printed. The filtering belongs to the caller — <a href="log.html"><code>Log</code></a> decides whether to call this at all, and the log
+  module's per-category filters decide what reaches the drain task that ends up here. A direct call is unconditional output.
+</div>
+
+<div class="gap">
+  <strong>It is one call per line, so a multi-line record is not one atomic write.</strong> <code>Logger::PrintStdIO</code> loops over the drained
+  buffer and calls this once per entry, each with its own lock acquisition. Two records produced by different threads can therefore have their
+  lines interleaved at line boundaries, and a caller that needs a block to appear together has to build it into a single string first. It also
+  takes <code>const char*</code>, so a built <code>std::string</code> must be passed as <code>.c_str()</code> — and the pointed-to text has to stay
+  alive for the duration of the call, which is why the engine passes temporaries inside the same full expression.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr>
+    <td><code>str</code></td>
+    <td><code>const char*</code></td>
+    <td>
+      Null-terminated text, readable for the duration of the call. No newline is required — one is appended, and an embedded newline in the
+      string produces a multi-line record with the atomicity caveat above
+    </td>
+  </tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  <code>void</code>. A failed write to standard output — a closed or redirected-and-broken stream — is not reported; <code>std::cout</code> just
+  sets its fail bit.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<p>The asynchronous logger's console sink, one call per drained line:</p>
+
+<pre><code><span class="kw">void</span> <span class="ty">Logger</span>::<span class="fn">PrintStdIO</span>(<span class="kw">const</span> <span class="ty">TTextBuffer</span>&amp; buffer) <span class="kw">noexcept</span>
+{
+        <span class="kw">auto</span>&amp; engine = <span class="ty">Engine</span>::<span class="fn">Get</span>();
+
+        <span class="kw">for</span> (<span class="kw">auto</span>&amp; logText : buffer)
+        {
+                engine.<span class="fn">ConsoleOutLn</span>(logText.<span class="fn">c_str</span>());
+        }
+}</code></pre>
+
+<p class="meta">From Engine/Log/Logger.cpp.</p>
+
+<p>
+  That loop is the reason this member exists as a separate function rather than as a line inside <code>Log</code>: the drain task runs on a worker
+  stream and needs the same serialisation as the engine's own synchronous console writes. It is also the shape to avoid when a record must land as
+  a unit — build one string, call once.
+</p>
+
+<footer class="prevnext">
+  <span><a href="index.html">&larr; Engine</a></span>
+  <span><a href="index.html#methods">All Engine methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

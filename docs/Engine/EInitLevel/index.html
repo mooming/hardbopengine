@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EInitLevel — Engine — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This entry</h3>
+  <ul>
+    <li><a href="#description">Class description</a></li>
+    <li><a href="#template">Template parameters</a></li>
+    <li><a href="#properties">Class properties</a></li>
+    <li><a href="#methods">Class methods</a></li>
+    <li><a href="#non-member">Non-member helpers</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+
+  <h3>Methods</h3>
+  <ul class="methods">
+    <li>None declared by the enumeration — see <a href="has-flag.html">HasFlag</a> and <a href="operator-or.html">operator|</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Engine</a> / EInitLevel
+</p>
+
+<h1>EInitLevel</h1>
+<p class="subtitle">
+  <span class="tag">Engine/Engine/EngineInitLevel.h</span>
+  <span class="tag">namespace hbe</span>
+  <span class="tag">enum class : uint8_t</span>
+  <span class="tag">flag set</span>
+  which subsystems <a href="../Engine/initialize.html"><code>Engine::Initialize</code></a> starts — three bits, one dependency rule, and two
+  <code>static_assert</code>s holding the set together
+</p>
+
+<h2 id="description">Class description</h2>
+
+<p>
+  This entry is not a class: it is a scoped enumeration with <code>uint8_t</code> as its fixed underlying type, used as a bit set. Its purpose is the third
+  parameter of <a href="../Engine/initialize.html"><code>Engine::Initialize</code></a>, and it exists because starting a subsystem can be more than wasted work.
+  The <a href="#properties"><code>Application</code></a> level creates the OS application object and connects to a window server, which a headless tool or a CI
+  runner may refuse outright; a converter that turns one file into another needs neither that nor a resource manager, and a flag set lets it say so exactly.
+</p>
+
+<p>
+  The header is careful about the boundary this type does not control: a level decides what is <em>started</em>, never what <em>exists</em>. The memory manager,
+  the statistics object and the <code>Logger</code> object are members of <code>Engine</code> and are constructed before this type is ever consulted — which is why
+  there is no memory level and why no combination of these bits can produce an engine without an allocator.
+</p>
+
+<p>Two properties of the type are enforced at compile time rather than left to reading:</p>
+
+<pre><code><span class="kw">static_assert</span>(<span class="kw">static_cast</span>&lt;<span class="kw">uint8_t</span>&gt;(<span class="ty">EInitLevel</span>::None) == <span class="nu">0</span>, <span class="st">"None must select nothing at all"</span>);
+<span class="kw">static_assert</span>(<span class="kw">static_cast</span>&lt;<span class="kw">uint8_t</span>&gt;(<span class="ty">EInitLevel</span>::All) ==
+                                          (<span class="kw">static_cast</span>&lt;<span class="kw">uint8_t</span>&gt;(<span class="ty">EInitLevel</span>::TaskSystem) | <span class="kw">static_cast</span>&lt;<span class="kw">uint8_t</span>&gt;(<span class="ty">EInitLevel</span>::Logger) |
+                                           <span class="kw">static_cast</span>&lt;<span class="kw">uint8_t</span>&gt;(<span class="ty">EInitLevel</span>::Application)),
+                                  <span class="st">"All must be exactly the union of the levels, so adding a level cannot leave it out"</span>);</code></pre>
+
+<p class="meta">From Engine/Engine/EngineInitLevel.h.</p>
+
+<p>
+  The second is the one that matters as the module grows: adding a fourth level to the enumeration without adding it to <code>All</code> stops compiling, rather
+  than quietly producing a default that under-starts the engine.
+</p>
+
+<div class="note">
+  <strong><code>Logger</code> implies <code>TaskSystem</code>, and the implication lives in the function, not the type.</strong> The logger's drain task is scheduled
+  on the task system's IO stream, so a logger started without streams is a failure waiting to happen. Nothing in the values encodes that:
+  <code>EInitLevel::Logger</code> is a legal, lone value. What enforces the rule is step 1 of
+  <a href="../Engine/initialize.html"><code>Initialize</code></a>, which ORs <code>TaskSystem</code> into the set whenever the logger bit is present. Any caller that
+  reasons about levels has to know the rule even though the type will not tell it.
+</div>
+
+<h2 id="template">Template parameters</h2>
+
+<p>None — an enumeration is not a template, and this one is not parameterised on anything.</p>
+
+<h2 id="properties">Class properties</h2>
+
+<p>One row per enumerator. The badge is a label; the sentence beside it is the contract.</p>
+
+<table>
+  <tr><th>Name</th><th>Declaration</th><th>What it means</th></tr>
+  <tr>
+    <td><code>None</code></td>
+    <td><code>None = 0</code></td>
+    <td>
+      <span class="badge">enumerator</span> Starts no subsystem. Two steps of <a href="../Engine/initialize.html"><code>Initialize</code></a> are not behind any flag, so
+      even this value prints the command line into <code>hardbop.log</code> and runs the post-initialisation hook. A pinned value, guarded by the first
+      <code>static_assert</code>
+    </td>
+  </tr>
+  <tr>
+    <td><code>TaskSystem</code></td>
+    <td><code>TaskSystem = 1 &lt;&lt; 0</code></td>
+    <td>
+      <span class="badge">enumerator</span> The worker threads. <code>TaskSystem::Initialize()</code> builds the task registry from three configuration parameters and
+      then <code>BuildStreams()</code>: one stream per hardware thread, with a fixed <code>Base</code> and <code>IO</code> stream, plus the running flag that
+      <a href="../Engine/run.html"><code>Run</code></a> waits on. This is the level whose absence turns
+      <a href="../Engine/run.html"><code>Run</code></a> into a fatal abort and leaves
+      <a href="../Engine/get-task-system.html"><code>GetTaskSystem()</code></a> holding an empty object.
+      <a href="../../Core/index.html#tasksystem">Core: TaskSystem</a>
+    </td>
+  </tr>
+  <tr>
+    <td><code>Logger</code></td>
+    <td><code>Logger = 1 &lt;&lt; 1</code></td>
+    <td>
+      <span class="badge">enumerator</span> The log <em>drain task</em>, not the logger: the object, its pools and <code>./hardbop.log</code> are already built by the
+      engine's constructor. Adding this bit schedules the task that flushes buffers on the IO stream. Implies <code>TaskSystem</code> — see the note above. Without
+      it, log lines are still produced and are flushed inline by whoever writes them
+      (<a href="../../Log/index.html#logger">Log: Logger</a>)
+    </td>
+  </tr>
+  <tr>
+    <td><code>Application</code></td>
+    <td><code>Application = 1 &lt;&lt; 2</code></td>
+    <td>
+      <span class="badge">enumerator</span> <code>OS::CreateApplication()</code>, a <code>FatalAssert</code> that it succeeded, then <code>Initialize()</code> on the
+      result. The only level that reaches the window server, and the only one whose absence a caller can observe as a null
+      <a href="../Engine/get-application.html"><code>GetApplication()</code></a>. <a href="../../OSAL/index.html#application">OSAL: Application</a>
+    </td>
+  </tr>
+  <tr>
+    <td><code>All</code></td>
+    <td><code>All = TaskSystem | Logger | Application</code></td>
+    <td>
+      <span class="badge">enumerator</span> Exactly the union of the three, and the default argument of
+      <a href="../Engine/initialize.html"><code>Initialize</code></a> — so a caller that states nothing gets what it got before levels existed. Every application in the
+      repository uses this default
+    </td>
+  </tr>
+</table>
+
+<p>
+  Not present, and not expressible: a level for memory, for statistics, or for the resource manager. The first two are constructed before this type is read; the
+  third is simply not wired (<a href="../../Resource/index.html#coverage">Resource: Coverage</a>), which is why
+  <a href="../Engine/is-resource-manager-ready.html"><code>IsResourceManagerReady()</code></a> never answers true.
+</p>
+
+<h2 id="methods">Class methods</h2>
+
+<p>
+  None — an <code>enum class</code> declares no members, and this one declares no member functions at all. What makes the flag set usable is a pair of
+  namespace-scope functions in the same header, documented below and given their own pages:
+  <a href="operator-or.html"><code>operator|</code></a> to combine and <a href="has-flag.html"><code>HasFlag</code></a> to test. A scoped enumeration gets neither
+  operator implicitly.
+</p>
+
+<h2 id="non-member">Non-member helper functions</h2>
+
+<table>
+  <tr><th>Function</th><th>Signature</th><th>What a caller depends on</th></tr>
+  <tr>
+    <td><a href="operator-or.html">operator|</a></td>
+    <td class="sig">constexpr EInitLevel operator|(EInitLevel lhs, EInitLevel rhs) noexcept</td>
+    <td>Combines levels through the underlying <code>uint8_t</code>, so a set can be built as a compile-time constant. The only combinator declared</td>
+  </tr>
+  <tr>
+    <td><a href="has-flag.html">HasFlag</a></td>
+    <td class="sig">constexpr bool HasFlag(EInitLevel levels, EInitLevel flag) noexcept</td>
+    <td>True when every bit of <code>flag</code> is present in <code>levels</code> — which is what the branches inside <code>Initialize</code> test, and what makes
+        <code>None</code> behave consistently as a query</td>
+  </tr>
+</table>
+
+<h2 id="coverage">Coverage</h2>
+
+<table>
+  <tr><th>Gap</th><th>Detail</th></tr>
+  <tr>
+    <td>No level is used in this build</td>
+    <td>Grepping <code>Engine/</code> and <code>Applications/</code> for <code>EInitLevel</code> finds the type named only in <code>Engine.cpp</code>, its own header and
+        the default argument. Every call site — <code>Applications/WindowExample/Main.cpp</code>, <code>Applications/VulkanExample/Main.cpp</code>,
+        <code>Applications/EngineTest/TestMain.cpp</code> — passes the default <code>All</code>, so the headless sets are supported by the type and untried by the
+        tree. Recorded on <a href="../Engine/initialize.html">the <code>Initialize</code> page</a>, where the one non-default example is labelled illustrative</td>
+  </tr>
+  <tr>
+    <td>Out-of-range values are accepted and silent</td>
+    <td>Nothing validates the argument, so <code>static_cast&lt;EInitLevel&gt;(8)</code> is a value <a href="has-flag.html"><code>HasFlag</code></a> answers false for
+        on every flag: <code>Initialize</code> starts nothing and still prints "Engine has been initialized." There is no assertion on unknown bits, and no bit is
+        reserved for them</td>
+  </tr>
+  <tr>
+    <td>No other operators</td>
+    <td>No <code>operator&amp;</code>, <code>operator~</code>, <code>operator|=</code> or <code>operator^</code> is declared, so set logic is limited to combining with
+        <code>|</code> and testing with <code>HasFlag</code>. Inside <code>Initialize</code> the widened set is produced by reassignment rather than by
+        <code>|=</code>, which is what the absence of the compound operator forces</td>
+  </tr>
+  <tr>
+    <td>No way to print a level set</td>
+    <td>There is no name lookup, streaming operator or flag-to-string helper for this type, so a log line reporting what was requested has to be assembled by hand.
+        Nothing in the engine prints the level set today — <code>Initialize</code> logs the arguments and the fact of initialisation, not the levels</td>
+  </tr>
+  <tr>
+    <td>Which subsystem each level starts</td>
+    <td>Enumerated on <a href="../Engine/initialize.html"><code>Engine::Initialize</code></a>, in the order the source executes them, with what a skipped level breaks. This
+        page states what the flags <em>are</em>; that page states what they <em>do</em></td>
+  </tr>
+  <tr>
+    <td>Whether more levels are planned</td>
+    <td>A renderer or resource level is a design question with a real answer somewhere in
+        <a href="../../Renderer/index.html">Renderer</a> and <a href="../../Resource/index.html">Resource</a>, and no answer in this header. The
+        <code>All</code> assertion means whoever adds one must say so here</td>
+  </tr>
+</table>
+
+<footer class="prevnext">
+  <span><a href="../index.html">&larr; Engine</a></span>
+  <span><a href="../index.html#einitlevel">EInitLevel in the Engine class list</a></span>
+</footer>
+
+</main>
+</body>
+</html>

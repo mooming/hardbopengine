@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Engine destructor — Engine — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">Engine</a> methods</h3>
+  <ul class="methods">
+    <li><a href="get.html">Get</a></li>
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="operator-assign.html">operator=</a></li>
+    <li><a class="current" href="destructor.html">destructor</a></li>
+    <li><a href="initialize.html">Initialize</a></li>
+    <li><a href="run.html">Run</a></li>
+    <li><a href="shutdown.html">ShutDown</a></li>
+    <li><a href="get-class-name.html">GetClassName</a></li>
+    <li><a href="get-memory-manager.html">GetMemoryManager</a></li>
+    <li><a href="get-logger.html">GetLogger</a></li>
+    <li><a href="get-task-system.html">GetTaskSystem</a></li>
+    <li><a href="get-statistics.html">GetStatistics</a></li>
+    <li><a href="get-resource-manager.html">GetResourceManager</a></li>
+    <li><a href="set-memory-manager-ready.html">SetMemoryManagerReady</a></li>
+    <li><a href="set-system-statistics-ready.html">SetSystemStatisticsReady</a></li>
+    <li><a href="set-logger-ready.html">SetLoggerReady</a></li>
+    <li><a href="set-task-system-ready.html">SetTaskSystemReady</a></li>
+    <li><a href="set-resource-manager-ready.html">SetResourceManagerReady</a></li>
+    <li><a href="is-memory-manager-ready.html">IsMemoryManagerReady</a></li>
+    <li><a href="is-system-statistics-ready.html">IsSystemStatisticsReady</a></li>
+    <li><a href="is-logger-ready.html">IsLoggerReady</a></li>
+    <li><a href="is-task-system-ready.html">IsTaskSystemReady</a></li>
+    <li><a href="is-resource-manager-ready.html">IsResourceManagerReady</a></li>
+    <li><a href="get-application.html">GetApplication</a></li>
+    <li><a href="log.html">Log</a></li>
+    <li><a href="log-error.html">LogError</a></li>
+    <li><a href="close-log.html">CloseLog</a></li>
+    <li><a href="flush-log.html">FlushLog</a></li>
+    <li><a href="console-out-ln.html">ConsoleOutLn</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Engine</a> /
+  <a href="index.html">Engine</a> / destructor
+</p>
+
+<h1><span class="fn">~Engine</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Engine</span>
+  <span class="tag">Engine/Engine/Engine.h</span>
+  one statement — <a href="close-log.html"><code>CloseLog()</code></a> — after which C++ destroys the subsystems in reverse
+  declaration order
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code><span class="fn">~Engine</span>();</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  The destructor's own work is a single call: <code>CloseLog()</code>, which flushes the engine's log stream and leaves it open
+  (<a href="close-log.html">that page</a> covers why the name overstates it). Everything else about teardown is the language
+  destroying members, and the engine relies on that entirely: there is no teardown list, no ordered shutdown of subsystems, and
+  no check that <a href="shutdown.html"><code>ShutDown</code></a> ever happened.
+</p>
+
+<table>
+  <tr><th>Destroyed</th><th>Member</th><th>What actually runs</th></tr>
+  <tr>
+    <td>1st</td>
+    <td><code>application</code></td>
+    <td>The <code>std::unique_ptr</code> releases the <code>OS::Application</code>, unless
+        <a href="run.html"><code>Run</code></a> already reset it. Whatever the OS layer closes at that point is its own contract
+        (<a href="../../OSAL/index.html#application">OSAL: Application</a>)</td>
+  </tr>
+  <tr>
+    <td>2nd</td>
+    <td><code>resourceManager</code></td>
+    <td>Its defaulted destructor destroys the loaded items, and each item's <code>Buffer</code> runs its releaser — the one part
+        of the resource module that genuinely works
+        (<a href="../../Resource/index.html#coverage">Resource: Coverage</a>)</td>
+  </tr>
+  <tr>
+    <td>3rd</td>
+    <td><code>taskSystem</code></td>
+    <td><code>JoinAndClear()</code>: on the engine loop thread it waits for the running flag to clear and the main-thread queue to
+        empty, then joins every worker stream and clears the array. See the hazard below</td>
+  </tr>
+  <tr>
+    <td>4th</td>
+    <td><code>logger</code></td>
+    <td>Clears the <code>Logger</code> singleton pointer, processes whatever is still buffered, then flushes and closes
+        <code>./hardbop.log</code>. Because it is destroyed after the task system, the drain task's thread is already joined by
+        now — the ordering is right, and accidental</td>
+  </tr>
+  <tr>
+    <td>5th</td>
+    <td><code>statistics</code></td>
+    <td>Nothing to release. Any report it wants to make had to happen in
+        <a href="shutdown.html"><code>ShutDown</code></a>, which is the only caller of its print functions</td>
+  </tr>
+  <tr>
+    <td>6th</td>
+    <td><code>memoryManager</code></td>
+    <td>Deregisters the system allocator and clears its instance pointer — but only if it is still the instance. Allocations
+        that outlive this point are the leak nobody reports</td>
+  </tr>
+  <tr>
+    <td>7th</td>
+    <td><code>logFile</code>, the mutexes, the flags, <code>preEngineInit</code></td>
+    <td>The stream closes for real here, in <code>std::ofstream</code>'s own destructor. <code>preEngineInit</code> has no
+        destructor at all, so the instance pointer is left pointing at this dying object</td>
+  </tr>
+</table>
+
+<div class="gap">
+  <strong>If <a href="shutdown.html"><code>ShutDown</code></a> was never called, this destructor does not reach its seventh
+  member.</strong> <code>~TaskSystem()</code> calls <code>JoinAndClear()</code>, which on the engine loop thread — the thread
+  <a href="constructors.html">that constructed the engine</a>, which is the thread a local <code>Engine</code> is destroyed on —
+  loops <code>while (isRunning || mainThreadTaskQueue.HasPendingTasks())</code>. Nothing clears <code>isRunning</code> except
+  <code>TaskSystem::RequestShutDown()</code>, and in the engine that is called from exactly one place:
+  <a href="shutdown.html"><code>ShutDown</code></a>. So the sequence "construct, <code>Initialize</code> with the TaskSystem
+  level, leave scope" stops here rather than completing, and it stops without a message. This is reachable through the
+  repository's own error paths: <code>Applications/WindowExample/Main.cpp</code> returns early when window creation fails, and
+  <code>Applications/VulkanExample/Main.cpp</code> returns early when the renderer fails to initialise, both after the task
+  system was started and both before their <code>ShutDown()</code> line.
+</div>
+
+<div class="note">
+  <strong>The instance pointer is live for all seven steps, which is what makes them able to report at all.</strong>
+  <a href="get.html"><code>Engine::Get()</code></a> answers throughout, so a destructor that logs, prints allocator profiles or
+  touches the config system still reaches the engine. Nothing sets the pointer to null afterwards, so the same call made by
+  anything that outlives the <code>Engine</code> — a static object destroyed later in the same translation unit's teardown, a
+  detached thread — gets a reference to memory that is no longer an <code>Engine</code>, and the non-null check inside
+  <code>Get</code> passes.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  A destructor returns nothing and reports nothing. It does not say whether the subsystems it destroyed were shut down in an
+  orderly way, and there is no flag that would tell it: the ready flags are never cleared, so afterwards all five still read as
+  they did while the object was alive.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<p>
+  No source calls this destructor. Every entry point relies on scope, which is the intended use — and it is why the ordering of
+  the last two lines of <code>main</code> matters more than the closing brace:
+</p>
+
+<pre><code>        window-&gt;<span class="fn">Close</span>();
+        hengine.<span class="fn">ShutDown</span>();
+
+        <span class="kw">return</span> <span class="nu">0</span>;
+}</code></pre>
+
+<p class="meta">From Applications/WindowExample/Main.cpp — <code>~Engine</code> runs at the closing brace, after the request to
+stop the task system has already been made.</p>
+
+<p>
+  Read that pairing as the contract: <code>ShutDown</code> clears the flag, and the destructor's join then finds nothing to wait
+  for and the seven destructions proceed. Add a <code>return</code> between them, as the failure paths above do, and the join has
+  no exit.
+</p>
+
+<footer class="prevnext">
+  <span><a href="index.html">&larr; Engine</a></span>
+  <span><a href="index.html#methods">All Engine methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

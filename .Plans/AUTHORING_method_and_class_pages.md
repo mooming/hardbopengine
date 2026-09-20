@@ -57,6 +57,10 @@ Section headings are `<h2 id="…">` with these ids: class pages `description`, 
 `methods`, `non-member`, `coverage`; method pages `signature`, `description`, `parameters`, `return`, `example`.
 The sidebar's "This class" / "This function" list points at exactly those ids — no more, no fewer.
 
+**An entry that is not a class heads that list "This entry"** — a macro set, a namespace of free functions, or an
+`enum class`. "This class" above a list of enumerators is a label that contradicts the page under it, and the
+sidebar is the one place a reader uses to orient before they have read anything.
+
 ## 4. Tables
 
 Class properties — one row per alias **and** per data member:
@@ -76,7 +80,9 @@ inside a class**, `alias` for an alias at namespace scope, `public` for a data m
 for one that is not, `public nested` and `private nested` for nested classes and structs, `bit-field` for a
 `: 1`-style member, `alias template` for a member `template` alias, and `deleted` for a special member that exists
 only to be removed. `bit-field` exists because a capabilities descriptor is thirty of them and `public` says
-nothing about the storage that is the entire point of the row. The public and private variants are not
+nothing about the storage that is the entire point of the row. `enumerator` is the row kind for an `enum class`
+member — an enumerator is neither public nor private nor a data member, and forcing it into one of those labels
+misstates the type. The public and private variants are not
 interchangeable: a `private` badge on a public nested guard states a falsehood about the
 interface, which is the one thing a property table exists to get right. `member type` on a namespace-scope alias
 is a false statement about scope, which is why the two are separate. Anything else needs a sentence in the cell —

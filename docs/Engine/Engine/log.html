@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Engine::Log — Engine — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">Engine</a> methods</h3>
+  <ul class="methods">
+    <li><a href="get.html">Get</a></li>
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="operator-assign.html">operator=</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+    <li><a href="initialize.html">Initialize</a></li>
+    <li><a href="run.html">Run</a></li>
+    <li><a href="shutdown.html">ShutDown</a></li>
+    <li><a href="get-class-name.html">GetClassName</a></li>
+    <li><a href="get-memory-manager.html">GetMemoryManager</a></li>
+    <li><a href="get-logger.html">GetLogger</a></li>
+    <li><a href="get-task-system.html">GetTaskSystem</a></li>
+    <li><a href="get-statistics.html">GetStatistics</a></li>
+    <li><a href="get-resource-manager.html">GetResourceManager</a></li>
+    <li><a href="set-memory-manager-ready.html">SetMemoryManagerReady</a></li>
+    <li><a href="set-system-statistics-ready.html">SetSystemStatisticsReady</a></li>
+    <li><a href="set-logger-ready.html">SetLoggerReady</a></li>
+    <li><a href="set-task-system-ready.html">SetTaskSystemReady</a></li>
+    <li><a href="set-resource-manager-ready.html">SetResourceManagerReady</a></li>
+    <li><a href="is-memory-manager-ready.html">IsMemoryManagerReady</a></li>
+    <li><a href="is-system-statistics-ready.html">IsSystemStatisticsReady</a></li>
+    <li><a href="is-logger-ready.html">IsLoggerReady</a></li>
+    <li><a href="is-task-system-ready.html">IsTaskSystemReady</a></li>
+    <li><a href="is-resource-manager-ready.html">IsResourceManagerReady</a></li>
+    <li><a href="get-application.html">GetApplication</a></li>
+    <li><a class="current" href="log.html">Log</a></li>
+    <li><a href="log-error.html">LogError</a></li>
+    <li><a href="close-log.html">CloseLog</a></li>
+    <li><a href="flush-log.html">FlushLog</a></li>
+    <li><a href="console-out-ln.html">ConsoleOutLn</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Engine</a> /
+  <a href="index.html">Engine</a> / Log
+</p>
+
+<h1><span class="fn">Log</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Engine</span>
+  <span class="tag">Engine/Engine/Engine.h</span>
+  <span class="tag">body guarded by ENGINE_LOG_ENABLED</span>
+  the engine module's own log line: two thresholds, one mutex, one file that is not <code>hardbop.log</code>
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code><span class="kw">void</span> <span class="fn">Log</span>(<span class="ty">ELogLevel</span> level, <span class="kw">const</span> <span class="ty">TLogFunc</span>&amp; func);</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Everything in the definition sits inside <code>#if ENGINE_LOG_ENABLED</code>, a macro
+  <a href="../../Config/index.html#buildconfig">BuildConfig</a> defines to <code>1</code>. Flip it and the function is an empty body:
+  the parameters are still evaluated, the closure is still constructed by the caller, and no line is written anywhere. It is a different
+  program, not a quieter one, and no runtime knob reaches it.
+</p>
+
+<p>The path of one call, in order:</p>
+
+<ol>
+  <li>
+    Two configuration parameters are read — <code>Log.Engine</code>, the floor for writing to the file, and
+    <code>Log.Engine.Print</code>, the floor for also echoing to standard output. Both are function-local
+    <code>static TAtomicConfigParam&lt;uint8_t&gt;</code>, so they are registered on the first call and stay registered for the process,
+    and both appear in the parameter dump <a href="shutdown.html"><code>ShutDown</code></a> prints. Their defaults come from
+    <a href="../../Config/index.html#engineconfig"><code>Config::EngineLogLevel</code></a> and
+    <code>Config::EngineLogLevelPrint</code>, which the config header pins with a
+    <code>static_assert</code> so the console floor can never sit below the file floor.
+  </li>
+  <li>
+    The severity test: <code>if (levelAsValue &lt; CPEngineLogLevel.Get()) return;</code>.
+    <a href="../../Log/index.html#eloglevel"><code>ELogLevel</code></a> runs from <code>Verbose</code> at zero up to
+    <code>FatalError</code>, so a lower configured value means more lines kept. The return happens <em>before</em> <code>func</code> is
+    called, which is the entire reason the argument is a callable rather than a string.
+  </li>
+  <li>
+    The stamp: elapsed time against <a href="get-statistics.html"><code>statistics.GetStartTime()</code></a> is decomposed into
+    <code>hours</code>, <code>minutes % 60</code>, <code>seconds % 60</code> and <code>milliseconds % 1000</code>, and
+    <code>IncEngineLogCount()</code> is bumped. Because the start time is captured by the
+    <a href="constructors.html">constructor</a>, the prefix measures engine lifetime, not process lifetime.
+  </li>
+  <li>
+    Under <code>std::lock_guard lock(logLock)</code>: if the level also clears the print threshold, the stamp and the text are built
+    into a <code>std::stringstream</code> and handed to <a href="console-out-ln.html"><code>ConsoleOutLn</code></a>; then the stamp is
+    written to <code>logFile</code>, <code>func(logFile)</code> writes the text, and an <code>endl</code> closes the line. The lock covers
+    both sinks, so one call's console line and file line cannot be separated by another thread's pair.
+  </li>
+</ol>
+
+<div class="gap">
+  <strong>The callable runs once per sink — up to twice per call.</strong> When a line clears both thresholds the body executes
+  <code>func(ss)</code> for the console and <code>func(logFile)</code> for the file, on two different streams. A functor that builds text is
+  fine; a functor with an observable side effect — a counter, a state change, anything that is not a pure function of the stream — runs
+  twice and reports it twice. Write these closures as pure producers, which is what every caller in the tree does.
+</div>
+
+<div class="note">
+  <strong>Two files, and this is the quieter one.</strong> Lines here go to <code>logFile</code>, the <code>std::ofstream</code> opened as
+  <code>"helowlevel.log"</code> in the working directory, with the stamp written directly by this function. The category-attributed lines the
+  rest of the engine writes go through <code>Logger</code> into <code>./hardbop.log</code>, asynchronously, with the drain task
+  (<a href="../../Log/index.html#logger">Log: Logger</a>). Grepping one file will not show the other's content, and
+  <a href="flush-log.html"><code>FlushLog</code></a> is the only call that lands both.
+</div>
+
+<div class="gap">
+  <strong>An unopenable log file is an assert in Debug and silence in Release.</strong> The write is preceded by
+  <code>Assert(logFile.is_open())</code>, and <code>Assert</code> is the configuration-limited form
+  (<a href="../../Core/index.html#functions">Core: Debug</a>): it aborts under <code>__DEBUG__</code> and compiles away otherwise. In a
+  Release build a stream whose open failed — a read-only working directory is enough — accepts the writes into its fail state and every
+  engine line disappears without a message. There is no retry and no fallback sink.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr>
+    <td><code>level</code></td>
+    <td><a href="../../Log/index.html#eloglevel"><code>ELogLevel</code></a></td>
+    <td>
+      Severity, compared as its numeric value against the two configuration parameters. Anything below <code>Log.Engine</code> is dropped
+      untouched; anything at or above <code>Log.Engine.Print</code> additionally reaches standard output
+    </td>
+  </tr>
+  <tr>
+    <td><code>func</code></td>
+    <td><a href="index.html#properties"><code>const TLogFunc&amp;</code></a> — <code>std::function&lt;void(std::ostream&amp;)&gt;</code></td>
+    <td>
+      Writes the line's text into whatever stream it is handed, without adding a trailing newline (this function appends one). Must be
+      re-runnable: see the two-sink note above. It is invoked while <code>logLock</code> is held, so a functor that blocks blocks other
+      threads' log calls too
+    </td>
+  </tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  <code>void</code>. Nothing distinguishes the four outcomes: filtered by level, written to the file only, written to file and console, or
+  swallowed by a stream in a failed state.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<p>
+  The one call site that reaches this with an explicit level is the memory manager's own logging front door, which does its own filter
+  first and then forwards:
+</p>
+
+<pre><code><span class="kw">void</span> <span class="ty">MemoryManager</span>::<span class="fn">Log</span>(<span class="ty">ELogLevel</span> level, <span class="ty">TLogFunc</span> func) <span class="kw">const</span>
+{
+<span class="cm">#if MEMORY_LOGGING_ENABLED</span>
+        <span class="kw">if</span> (!<span class="fn">IsLogEnabled</span>(level))
+        {
+                <span class="kw">return</span>;
+        }
+
+        <span class="kw">auto</span>&amp; engine = <span class="ty">Engine</span>::<span class="fn">Get</span>();
+        engine.<span class="fn">Log</span>(level, func);
+<span class="cm">#endif // MEMORY_LOGGING_ENABLED</span>
+}</code></pre>
+
+<p class="meta">From Engine/Memory/MemoryManager.cpp.</p>
+
+<p>
+  From the outside, the form in use is <a href="log-error.html"><code>LogError</code></a>, which fixes the level and leaves the closure to
+  the caller — quoted there. Both are the engine's own channel; for a line attributed to a subsystem, the log module's
+  <code>Logger::Get(category, level)</code> is the path, as <a href="get-class-name.html"><code>GetClassName</code></a> shows.
+</p>
+
+<footer class="prevnext">
+  <span><a href="index.html">&larr; Engine</a></span>
+  <span><a href="index.html#methods">All Engine methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

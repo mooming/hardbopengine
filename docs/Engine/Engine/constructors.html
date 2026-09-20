@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Engine constructors — Engine — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">Engine</a> methods</h3>
+  <ul class="methods">
+    <li><a href="get.html">Get</a></li>
+    <li><a class="current" href="constructors.html">constructors</a></li>
+    <li><a href="operator-assign.html">operator=</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+    <li><a href="initialize.html">Initialize</a></li>
+    <li><a href="run.html">Run</a></li>
+    <li><a href="shutdown.html">ShutDown</a></li>
+    <li><a href="get-class-name.html">GetClassName</a></li>
+    <li><a href="get-memory-manager.html">GetMemoryManager</a></li>
+    <li><a href="get-logger.html">GetLogger</a></li>
+    <li><a href="get-task-system.html">GetTaskSystem</a></li>
+    <li><a href="get-statistics.html">GetStatistics</a></li>
+    <li><a href="get-resource-manager.html">GetResourceManager</a></li>
+    <li><a href="set-memory-manager-ready.html">SetMemoryManagerReady</a></li>
+    <li><a href="set-system-statistics-ready.html">SetSystemStatisticsReady</a></li>
+    <li><a href="set-logger-ready.html">SetLoggerReady</a></li>
+    <li><a href="set-task-system-ready.html">SetTaskSystemReady</a></li>
+    <li><a href="set-resource-manager-ready.html">SetResourceManagerReady</a></li>
+    <li><a href="is-memory-manager-ready.html">IsMemoryManagerReady</a></li>
+    <li><a href="is-system-statistics-ready.html">IsSystemStatisticsReady</a></li>
+    <li><a href="is-logger-ready.html">IsLoggerReady</a></li>
+    <li><a href="is-task-system-ready.html">IsTaskSystemReady</a></li>
+    <li><a href="is-resource-manager-ready.html">IsResourceManagerReady</a></li>
+    <li><a href="get-application.html">GetApplication</a></li>
+    <li><a href="log.html">Log</a></li>
+    <li><a href="log-error.html">LogError</a></li>
+    <li><a href="close-log.html">CloseLog</a></li>
+    <li><a href="flush-log.html">FlushLog</a></li>
+    <li><a href="console-out-ln.html">ConsoleOutLn</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Engine</a> /
+  <a href="index.html">Engine</a> / constructors
+</p>
+
+<h1><span class="fn">constructors</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Engine</span>
+  <span class="tag">Engine/Engine/Engine.h</span>
+  <span class="tag">1 real overload, 1 deleted</span>
+  declaring an engine <em>is</em> starting the engine — memory, both log files, the clock and the signal handlers all
+  arrive here, not in <a href="initialize.html"><code>Initialize</code></a>
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code><span class="cm">/// the one constructor an application calls, by declaring an Engine</span>
+<span class="fn">Engine</span>();
+
+<span class="cm">/// removed: an Engine is never copied — see operator=</span>
+<span class="fn">Engine</span>(<span class="kw">const</span> <span class="ty">Engine</span>&amp;) = <span class="kw">delete</span>;</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  There is one way to construct an <code>Engine</code>: take its address. No argument selects a mode, names a
+  configuration file, chooses an allocator or states which subsystems are wanted — the level argument belongs to
+  <a href="initialize.html"><code>Initialize</code></a>, and the difference between the two calls is the difference between
+  what exists and what runs.
+</p>
+
+<p>The member list initialises, in this order, and C++ runs it in exactly that order:</p>
+
+<ol>
+  <li>
+    <code>preEngineInit(this)</code> — stores the address into the file-static instance pointer, so
+    <a href="get.html"><code>Engine::Get</code></a> resolves for everything below.
+  </li>
+  <li>
+    the five ready flags to <code>false</code>, and the two mutexes, which take no work.
+  </li>
+  <li>
+    <code>logFile("helowlevel.log")</code> — an <code>std::ofstream</code> is constructed with a path, so the file is created
+    or truncated here, in the process's current working directory. A failure sets its fail bit rather than throwing, and the
+    first <a href="log.html"><code>Log</code></a> call is where that surfaces, as
+    <code>Assert(logFile.is_open())</code>.
+  </li>
+  <li>
+    <code>memoryManager(*this)</code> — registers the system allocator, loads the multi-pool configuration, and raises
+    <a href="set-memory-manager-ready.html"><code>SetMemoryManagerReady</code></a>. It asserts that no other memory manager
+    exists, which is the only thing standing between a process and a second <code>Engine</code>.
+  </li>
+  <li>
+    <code>statistics(*this)</code> — asserts that memory is ready, captures its start time, and raises
+    <a href="set-system-statistics-ready.html"><code>SetSystemStatisticsReady</code></a>. Every timestamp in every engine log
+    line is measured from this instant.
+  </li>
+  <li>
+    <code>logger(*this, "./", "hardbop.log")</code> — the <code>Logger</code> object, its own two pools, its interned path and
+    its open output file, plus the drain-task machinery ready to be started but not started. It raises
+    <a href="set-logger-ready.html"><code>SetLoggerReady</code></a> itself.
+    <a href="../../Log/index.html#logger">Log: Logger</a>
+  </li>
+  <li>
+    <code>taskSystem</code> and <code>resourceManager</code> default-construct — no worker threads and no streams yet, but the
+    task system records this thread as the engine loop thread — and <code>application</code> is a null
+    <code>std::unique_ptr</code>.
+  </li>
+</ol>
+
+<p>The constructor body then does three things, none of them level-dependent:</p>
+
+<ul>
+  <li><code>time::ResetEngineEpoch()</code> and <code>LogUtil::ResetStartTime()</code> move both clocks' zero point to now —
+      the engine epoch is set in the constructor rather than in <a href="initialize.html"><code>Initialize</code></a>, so a
+      subsystem constructed during member initialisation is already stamping real times (<a href="../../Core/index.html#functions">Core: functions</a>,
+      <a href="../../Log/index.html#logutil">Log: LogUtil</a>).</li>
+  <li><code>std::signal</code> installs the same handler for <code>SIGABRT</code>, <code>SIGFPE</code>,
+      <code>SIGILL</code>, <code>SIGINT</code>, <code>SIGSEGV</code> and <code>SIGTERM</code>, and for <code>SIGBUS</code> where
+      the platform defines it. The handler flushes or stops the logger, reports the signal and a back trace through
+      <a href="log-error.html"><code>LogError</code></a>, calls <a href="close-log.html"><code>CloseLog</code></a> and
+      exits with <code>128 + signal number</code>. Note that <a href="shutdown.html"><code>ShutDown</code></a> is not among
+      its calls: a signalled process gets its logs written, not its subsystems torn down.</li>
+</ul>
+
+<div class="note">
+  <strong>No level can turn any of this off, which is why <a href="../EInitLevel/index.html"><code>EInitLevel</code></a> has no
+  memory level.</strong> Memory, statistics, the logger object and both log files are constructed before the level argument is
+  ever read. The levels decide what gets <em>started</em> — threads, the drain task, the OS application — and nothing that
+  exists. A tool that wants "no logging" has to want "no drain task", and the file is opened regardless.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  A constructor has no return value. What is observable immediately after one:
+  <a href="is-memory-manager-ready.html"><code>IsMemoryManagerReady</code></a>,
+  <a href="is-system-statistics-ready.html"><code>IsSystemStatisticsReady</code></a> and
+  <a href="is-logger-ready.html"><code>IsLoggerReady</code></a> are true — the last because the <code>Logger</code> constructor
+  raises the flag, not because a level ran;
+  <a href="is-task-system-ready.html"><code>IsTaskSystemReady</code></a> and
+  <a href="is-resource-manager-ready.html"><code>IsResourceManagerReady</code></a> are false;
+  <a href="get-application.html"><code>GetApplication()</code></a> is null; and
+  <a href="get.html"><code>Engine::Get()</code></a> already returns this object.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<p>Every entry point in the repository constructs it the same way, as an object whose scope is <code>main</code>:</p>
+
+<pre><code><span class="kw">int</span> <span class="fn">main</span>(<span class="kw">int</span> argc, <span class="kw">const char</span>* argv[]) <span class="kw">noexcept</span>
+{
+        <span class="ty">hbe::Engine</span> hengine;
+        hengine.<span class="fn">Initialize</span>(argc, argv);
+
+        <span class="kw">auto</span>* app = hengine.<span class="fn">GetApplication</span>();
+        <span class="kw">if</span> (app == <span class="kw">nullptr</span>)
+        {
+                std::cerr &lt;&lt; <span class="st">"Error: Failed to create application"</span> &lt;&lt; std::endl;
+                <span class="kw">return</span> <span class="nu">1</span>;
+        }</code></pre>
+
+<p class="meta">From Applications/WindowExample/Main.cpp.</p>
+
+<p>
+  Three consequences of that shape are worth reading off the real code. The scope owns the engine — there is no factory and
+  no destroy call, and the object is gone when <code>main</code> is, which is what makes
+  <a href="destructor.html">the destructor's omissions</a> load-bearing. Declaring it before the failure checks means the log
+  files and the memory manager are already alive when the error message is printed, so a start-up that fails is a start-up
+  that is logged. And the early <code>return 1</code> leaves without calling <a href="shutdown.html"><code>ShutDown</code></a>,
+  which by then has real consequences — see <a href="destructor.html">the destructor</a>.
+</p>
+
+<p>
+  The deleted copy constructor is not decorative: <code>MemoryManager</code> and <code>Logger</code> each record the address
+  of the instance that constructed them, so a copied engine would leave two objects each believing it is the one — and
+  <code>MemoryManager</code>'s constructor asserts that no other one exists. If a function needs the engine, it takes an
+  <code>Engine&amp;</code>, which is exactly what the resource manager's constructor does
+  (<a href="../../Resource/index.html">Resource</a>), or it calls <a href="get.html"><code>Engine::Get()</code></a>.
+</p>
+
+<footer class="prevnext">
+  <span><a href="index.html">&larr; Engine</a></span>
+  <span><a href="index.html#methods">All Engine methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

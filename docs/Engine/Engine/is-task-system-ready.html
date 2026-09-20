@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Engine::IsTaskSystemReady — Engine — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">Engine</a> methods</h3>
+  <ul class="methods">
+    <li><a href="get.html">Get</a></li>
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="operator-assign.html">operator=</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+    <li><a href="initialize.html">Initialize</a></li>
+    <li><a href="run.html">Run</a></li>
+    <li><a href="shutdown.html">ShutDown</a></li>
+    <li><a href="get-class-name.html">GetClassName</a></li>
+    <li><a href="get-memory-manager.html">GetMemoryManager</a></li>
+    <li><a href="get-logger.html">GetLogger</a></li>
+    <li><a href="get-task-system.html">GetTaskSystem</a></li>
+    <li><a href="get-statistics.html">GetStatistics</a></li>
+    <li><a href="get-resource-manager.html">GetResourceManager</a></li>
+    <li><a href="set-memory-manager-ready.html">SetMemoryManagerReady</a></li>
+    <li><a href="set-system-statistics-ready.html">SetSystemStatisticsReady</a></li>
+    <li><a href="set-logger-ready.html">SetLoggerReady</a></li>
+    <li><a href="set-task-system-ready.html">SetTaskSystemReady</a></li>
+    <li><a href="set-resource-manager-ready.html">SetResourceManagerReady</a></li>
+    <li><a href="is-memory-manager-ready.html">IsMemoryManagerReady</a></li>
+    <li><a href="is-system-statistics-ready.html">IsSystemStatisticsReady</a></li>
+    <li><a href="is-logger-ready.html">IsLoggerReady</a></li>
+    <li><a class="current" href="is-task-system-ready.html">IsTaskSystemReady</a></li>
+    <li><a href="is-resource-manager-ready.html">IsResourceManagerReady</a></li>
+    <li><a href="get-application.html">GetApplication</a></li>
+    <li><a href="log.html">Log</a></li>
+    <li><a href="log-error.html">LogError</a></li>
+    <li><a href="close-log.html">CloseLog</a></li>
+    <li><a href="flush-log.html">FlushLog</a></li>
+    <li><a href="console-out-ln.html">ConsoleOutLn</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Engine</a> /
+  <a href="index.html">Engine</a> / IsTaskSystemReady
+</p>
+
+<h1><span class="fn">IsTaskSystemReady</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Engine</span>
+  <span class="tag">const</span>
+  the one flag that faithfully records a level — and the only one whose meaning the engine enforces with a fatal assert
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code><span class="kw">bool</span> <span class="fn">IsTaskSystemReady</span>() <span class="kw">const</span>
+{
+        <span class="kw">return</span> isTaskSystemReady;
+}</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Returns the flag that <a href="initialize.html"><code>Initialize</code></a> raises immediately after <code>taskSystem.Initialize()</code> returns — the
+  only one of the five written solely by a level branch. It therefore answers the question the other four cannot: did this level actually run? The header
+  says as much in a note on <code>Initialize</code>: the ready flags and the application pointer, not the level argument, are the record of what started, and
+  teardown reads those.
+</p>
+
+<p>
+  The engine consults the member itself rather than this accessor, in two places: <a href="run.html"><code>Run</code></a> guards entry with
+  <code>FatalAssert(isTaskSystemReady, "Engine::Run needs EInitLevel::TaskSystem")</code>, and <a href="shutdown.html"><code>ShutDown</code></a> uses it to
+  decide whether to request the stop. Both readings are the same value this function returns.
+</p>
+
+<div class="note">
+  <strong>"Ready" means "was started", never "is running".</strong> Nothing clears this flag, so it is still true after
+  <a href="shutdown.html"><code>ShutDown</code></a> requested the stop and after <a href="run.html"><code>Run</code></a> joined every worker thread. The live
+  state is the task system's own atomic running flag, which <code>RequestShutDown</code> clears and <code>BuildStreams</code> sets — and which
+  <a href="../../Core/index.html#tasksystem">Core</a> documents. A caller polling this accessor for shutdown progress will wait forever, because it only ever goes
+  one way.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr>
+    <td><code>bool</code></td>
+    <td>
+      True if and only if the TaskSystem level ran — directly requested or added by the Logger dependency — and <code>TaskSystem::Initialize()</code>
+      returned. False for <a href="../EInitLevel/index.html"><code>EInitLevel::None</code></a> and for <code>Application</code> alone. Never false again once
+      true. Not <code>[[nodiscard]]</code>
+    </td>
+  </tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p class="note">Illustrative — no call site for this accessor exists in the repository; the engine reads the member directly. This is the check a
+level-aware tool should make before it reaches for the task system.</p>
+
+<pre><code><span class="ty">hbe::Engine</span> hengine;
+hengine.<span class="fn">Initialize</span>(argc, argv, <span class="ty">hbe</span>::<span class="ty">EInitLevel</span>::TaskSystem);
+
+<span class="kw">if</span> (!hengine.<span class="fn">IsTaskSystemReady</span>())
+{
+        <span class="cm">// The only honest branch: the level never ran, so the streams do not exist.</span>
+        <span class="kw">return</span> <span class="nu">1</span>;
+}
+
+hengine.<span class="fn">GetTaskSystem</span>().<span class="fn">Enqueue</span>(task);   <span class="cm">// safe: the registry and streams were built</span>
+hengine.<span class="fn">ShutDown</span>();                       <span class="cm">// clears the running flag, so Run() can return</span>
+hengine.<span class="fn">Run</span>();                            <span class="cm">// would abort without the guard above</span></code></pre>
+
+<p>
+  Compare the failure modes: without the guard, <a href="run.html"><code>Run</code></a> gives an immediate fatal abort naming the missing level, while an
+  enqueue that skips the guard is accepted and fails later at a stream index with a message about a bad array subscript
+  (<a href="get-task-system.html"><code>GetTaskSystem</code></a>). The guard is worth having for the second path.
+</p>
+
+<p>
+  Note the order of the last two lines. <a href="shutdown.html"><code>ShutDown</code></a> is what clears the task system's running flag and
+  <a href="run.html"><code>Run</code></a> returns when that flag is clear, so a pump with nothing to end it waits in place — see
+  <code>Applications/EngineTest/TestMain.cpp</code>, where the end comes from inside the work instead
+  (<a href="../../Test/index.html#unittestcollection">Test: UnitTestCollection</a>).
+</p>
+
+<footer class="prevnext">
+  <span><a href="index.html">&larr; Engine</a></span>
+  <span><a href="index.html#methods">All Engine methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

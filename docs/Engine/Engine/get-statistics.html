@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Engine::GetStatistics — Engine — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">Engine</a> methods</h3>
+  <ul class="methods">
+    <li><a href="get.html">Get</a></li>
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="operator-assign.html">operator=</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+    <li><a href="initialize.html">Initialize</a></li>
+    <li><a href="run.html">Run</a></li>
+    <li><a href="shutdown.html">ShutDown</a></li>
+    <li><a href="get-class-name.html">GetClassName</a></li>
+    <li><a href="get-memory-manager.html">GetMemoryManager</a></li>
+    <li><a href="get-logger.html">GetLogger</a></li>
+    <li><a href="get-task-system.html">GetTaskSystem</a></li>
+    <li><a class="current" href="get-statistics.html">GetStatistics</a></li>
+    <li><a href="get-resource-manager.html">GetResourceManager</a></li>
+    <li><a href="set-memory-manager-ready.html">SetMemoryManagerReady</a></li>
+    <li><a href="set-system-statistics-ready.html">SetSystemStatisticsReady</a></li>
+    <li><a href="set-logger-ready.html">SetLoggerReady</a></li>
+    <li><a href="set-task-system-ready.html">SetTaskSystemReady</a></li>
+    <li><a href="set-resource-manager-ready.html">SetResourceManagerReady</a></li>
+    <li><a href="is-memory-manager-ready.html">IsMemoryManagerReady</a></li>
+    <li><a href="is-system-statistics-ready.html">IsSystemStatisticsReady</a></li>
+    <li><a href="is-logger-ready.html">IsLoggerReady</a></li>
+    <li><a href="is-task-system-ready.html">IsTaskSystemReady</a></li>
+    <li><a href="is-resource-manager-ready.html">IsResourceManagerReady</a></li>
+    <li><a href="get-application.html">GetApplication</a></li>
+    <li><a href="log.html">Log</a></li>
+    <li><a href="log-error.html">LogError</a></li>
+    <li><a href="close-log.html">CloseLog</a></li>
+    <li><a href="flush-log.html">FlushLog</a></li>
+    <li><a href="console-out-ln.html">ConsoleOutLn</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Engine</a> /
+  <a href="index.html">Engine</a> / GetStatistics
+</p>
+
+<h1><span class="fn">GetStatistics</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Engine</span>
+  <span class="tag">Engine/Engine/Engine.h</span>
+  the counters and the start time every timestamp in the log is measured from
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code><span class="kw">auto</span>&amp; <span class="fn">GetStatistics</span>()
+{
+        <span class="kw">return</span> statistics;
+}</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  A field read defined inline; <code>auto&amp;</code> deduces to <a href="../../Core/index.html#systemstatistics"><code>SystemStatistics&amp;</code></a>.
+  The object is constructed by the <a href="constructors.html">engine constructor</a>, which asserts that memory is already up and
+  captures a start time at that instant — so this reference is always live, and its clock starts at construction rather than at
+  <a href="initialize.html"><code>Initialize</code></a>.
+</p>
+
+<p>
+  Two uses inside the class itself make this more than an accessor. <a href="log.html"><code>Log</code></a> reads
+  <code>GetStartTime()</code> to build the <code>[h:m:s.ms]</code> prefix on every line and increments
+  <code>IncEngineLogCount()</code> as it writes, and <a href="shutdown.html"><code>ShutDown</code></a> is the only caller of
+  <code>Print()</code> and <code>PrintAllocatorProfiles()</code> — the closing report. Between those, code in the memory and log modules
+  increments counters through here.
+</p>
+
+<div class="note">
+  <strong>A mutable reference to shared counters, with no lock in sight.</strong> The counters that get touched from more than one
+  thread are atomics — the log counts increment relaxed — but the frame counters and the timing fields are not, and nothing in
+  <code>Engine</code> guards this reference. The rule the existing callers follow is to write counters from whichever thread observed
+  them and to read them only at shutdown; the header states nothing stronger, and nothing enforces it.
+  <a href="../../Core/index.html#systemstatistics">Core: SystemStatistics</a> owns which field is which.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr>
+    <td><a href="../../Core/index.html#systemstatistics"><code>SystemStatistics&amp;</code></a></td>
+    <td>
+      The member, mutable, never null, independent of every level and of
+      <a href="is-system-statistics-ready.html"><code>IsSystemStatisticsReady</code></a>. Not <code>[[nodiscard]]</code>
+    </td>
+  </tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<pre><code><span class="kw">void</span> <span class="ty">AllocStats</span>::<span class="fn">Report</span>() <span class="kw">noexcept</span>
+{
+<span class="cm">#if PROFILE_ENABLED</span>
+        <span class="kw">auto</span>&amp; engine = <span class="ty">Engine</span>::<span class="fn">Get</span>();
+        <span class="kw">auto</span>&amp; stats = engine.<span class="fn">GetStatistics</span>();
+        stats.<span class="fn">Report</span>(*<span class="kw">this</span>);
+<span class="cm">#endif // PROFILE_ENABLED</span>
+}</code></pre>
+
+<p class="meta">From Engine/Memory/AllocStats.cpp — the same pair of lines appears in
+Engine/Memory/MultiPoolAllocator.cpp, Engine/Memory/ThreadSafeMultiPoolAllocator.cpp and
+Engine/Memory/MemoryManager.cpp.</p>
+
+<pre><code>        <span class="kw">auto</span>&amp; engine = <span class="ty">Engine</span>::<span class="fn">Get</span>();
+
+<span class="cm">#if PROFILE_ENABLED</span>
+        <span class="kw">auto</span>&amp; stat = engine.<span class="fn">GetStatistics</span>();
+        stat.<span class="fn">IncLongLogCount</span>();
+<span class="cm">#endif // PROFILE_ENABLED</span></code></pre>
+
+<p class="meta">From Engine/Log/LogLine.cpp.</p>
+
+<p>
+  The second form is the one to copy: the increment is a profiling cost, so it is compiled out with the profiling. Reading values is
+  a different matter — the only read of consequence in the engine is
+  <a href="log.html"><code>Log</code></a>'s timestamp, and every other read happens in the shutdown report.
+</p>
+
+<footer class="prevnext">
+  <span><a href="index.html">&larr; Engine</a></span>
+  <span><a href="index.html#methods">All Engine methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

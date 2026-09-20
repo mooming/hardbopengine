@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Engine::SetMemoryManagerReady — Engine — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">Engine</a> methods</h3>
+  <ul class="methods">
+    <li><a href="get.html">Get</a></li>
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="operator-assign.html">operator=</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+    <li><a href="initialize.html">Initialize</a></li>
+    <li><a href="run.html">Run</a></li>
+    <li><a href="shutdown.html">ShutDown</a></li>
+    <li><a href="get-class-name.html">GetClassName</a></li>
+    <li><a href="get-memory-manager.html">GetMemoryManager</a></li>
+    <li><a href="get-logger.html">GetLogger</a></li>
+    <li><a href="get-task-system.html">GetTaskSystem</a></li>
+    <li><a href="get-statistics.html">GetStatistics</a></li>
+    <li><a href="get-resource-manager.html">GetResourceManager</a></li>
+    <li><a class="current" href="set-memory-manager-ready.html">SetMemoryManagerReady</a></li>
+    <li><a href="set-system-statistics-ready.html">SetSystemStatisticsReady</a></li>
+    <li><a href="set-logger-ready.html">SetLoggerReady</a></li>
+    <li><a href="set-task-system-ready.html">SetTaskSystemReady</a></li>
+    <li><a href="set-resource-manager-ready.html">SetResourceManagerReady</a></li>
+    <li><a href="is-memory-manager-ready.html">IsMemoryManagerReady</a></li>
+    <li><a href="is-system-statistics-ready.html">IsSystemStatisticsReady</a></li>
+    <li><a href="is-logger-ready.html">IsLoggerReady</a></li>
+    <li><a href="is-task-system-ready.html">IsTaskSystemReady</a></li>
+    <li><a href="is-resource-manager-ready.html">IsResourceManagerReady</a></li>
+    <li><a href="get-application.html">GetApplication</a></li>
+    <li><a href="log.html">Log</a></li>
+    <li><a href="log-error.html">LogError</a></li>
+    <li><a href="close-log.html">CloseLog</a></li>
+    <li><a href="flush-log.html">FlushLog</a></li>
+    <li><a href="console-out-ln.html">ConsoleOutLn</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Engine</a> /
+  <a href="index.html">Engine</a> / SetMemoryManagerReady
+</p>
+
+<h1><span class="fn">SetMemoryManagerReady</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Engine</span>
+  <span class="tag">defined inline in the header</span>
+  raises the one flag two other constructors test — a back-channel for the memory manager, public by accident of placement
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code><span class="kw">void</span> <span class="fn">SetMemoryManagerReady</span>()
+{
+        isMemoryManagerReady = <span class="kw">true</span>;
+}</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  One assignment. It starts nothing, checks nothing, takes no lock, and cannot fail; the flag is a plain <code>bool</code> member set to
+  <code>true</code> and never set back.
+</p>
+
+<p>
+  The one caller is <code>MemoryManager</code>'s constructor, on its last line, once the system allocator is registered and the multi-pool
+  configuration has been loaded. Because that constructor runs from the <a href="constructors.html">engine's own member list</a>, the flag is true
+  before <a href="initialize.html"><code>Initialize</code></a> has been mentioned — which is exactly why
+  <a href="../EInitLevel/index.html"><code>EInitLevel</code></a> has no memory level to omit.
+</p>
+
+<p>
+  This is also the only readiness flag other subsystems consult during construction: <code>SystemStatistics</code>'s constructor and
+  <code>Logger</code>'s constructor both begin with <code>Assert(engine.IsMemoryManagerReady())</code>
+  (<a href="is-memory-manager-ready.html"><code>IsMemoryManagerReady</code></a>). The flag's real function is to prove construction order inside the
+  engine, where the order is enforced by nothing but the declaration list.
+</p>
+
+<div class="gap">
+  <strong>Public, unconditional, and load-bearing for two assertions.</strong> Nothing in the header restricts who may call this, and nothing
+  verifies that a memory manager exists. Set the flag from a caller and both constructors that test it start passing on a process whose allocator
+  was never registered — and <code>Assert</code> is the configuration-limited form, so in a Release build even the honest version of that test does
+  not run (<a href="../../Core/index.html#functions">Core: Debug</a>). Treat this as the subsystem's own channel and not as engine API; if it is
+  meant to be callable, the header should say who may call it and when.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  <code>void</code>. There is no previous state to learn and no way to undo it: <a href="destructor.html">destruction</a> does not clear the flag, so
+  after the engine is gone the memory manager's own pointer is null while this flag would still have read true on the object that held it.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<p>The only call site in the repository is the last line of the memory manager's constructor:</p>
+
+<pre><code><span class="ty">MemoryManager</span>::<span class="ty">MemoryManager</span>(<span class="ty">Engine</span>&amp; engine) : allocCount(<span class="nu">0</span>), deallocCount(<span class="nu">0</span>)
+{
+        Assert(mmgrInstance == <span class="kw">nullptr</span>);
+        mmgrInstance = <span class="kw">this</span>;
+
+        <span class="cm">// ... push the allocator proxies, register the system allocator, load the pool configs ...</span>
+
+        engine.<span class="fn">SetMemoryManagerReady</span>();
+}</code></pre>
+
+<p class="meta">From Engine/Memory/MemoryManager.cpp, condensed to the calls that matter here.</p>
+
+<p>
+  Note that the assert one line above is the same pattern pointed the other way: <code>MemoryManager</code> also refuses to be constructed twice,
+  so the engine and the memory manager each guard their own uniqueness, and neither guard is a mutex.
+  <a href="../../Memory/index.html#memorymanager">Memory: MemoryManager</a>.
+</p>
+
+<footer class="prevnext">
+  <span><a href="index.html">&larr; Engine</a></span>
+  <span><a href="index.html#methods">All Engine methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

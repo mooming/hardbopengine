@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Engine — Engine — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="#description">Class description</a></li>
+    <li><a href="#template">Template parameters</a></li>
+    <li><a href="#properties">Class properties</a></li>
+    <li><a href="#methods">Class methods</a></li>
+    <li><a href="#non-member">Non-member helpers</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+
+  <h3>Methods</h3>
+  <ul class="methods">
+    <li><a href="get.html">Get</a></li>
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="operator-assign.html">operator=</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+    <li><a href="initialize.html">Initialize</a></li>
+    <li><a href="run.html">Run</a></li>
+    <li><a href="shutdown.html">ShutDown</a></li>
+    <li><a href="get-class-name.html">GetClassName</a></li>
+    <li><a href="get-memory-manager.html">GetMemoryManager</a></li>
+    <li><a href="get-logger.html">GetLogger</a></li>
+    <li><a href="get-task-system.html">GetTaskSystem</a></li>
+    <li><a href="get-statistics.html">GetStatistics</a></li>
+    <li><a href="get-resource-manager.html">GetResourceManager</a></li>
+    <li><a href="set-memory-manager-ready.html">SetMemoryManagerReady</a></li>
+    <li><a href="set-system-statistics-ready.html">SetSystemStatisticsReady</a></li>
+    <li><a href="set-logger-ready.html">SetLoggerReady</a></li>
+    <li><a href="set-task-system-ready.html">SetTaskSystemReady</a></li>
+    <li><a href="set-resource-manager-ready.html">SetResourceManagerReady</a></li>
+    <li><a href="is-memory-manager-ready.html">IsMemoryManagerReady</a></li>
+    <li><a href="is-system-statistics-ready.html">IsSystemStatisticsReady</a></li>
+    <li><a href="is-logger-ready.html">IsLoggerReady</a></li>
+    <li><a href="is-task-system-ready.html">IsTaskSystemReady</a></li>
+    <li><a href="is-resource-manager-ready.html">IsResourceManagerReady</a></li>
+    <li><a href="get-application.html">GetApplication</a></li>
+    <li><a href="log.html">Log</a></li>
+    <li><a href="log-error.html">LogError</a></li>
+    <li><a href="close-log.html">CloseLog</a></li>
+    <li><a href="flush-log.html">FlushLog</a></li>
+    <li><a href="console-out-ln.html">ConsoleOutLn</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Engine</a> / Engine
+</p>
+
+<h1>Engine</h1>
+<p class="subtitle">
+  <span class="tag">Engine/Engine/Engine.h</span>
+  <span class="tag">namespace hbe</span>
+  <span class="tag">final</span>
+  <span class="tag">non-copyable</span>
+  the object that owns every subsystem by value, publishes itself as the one instance, and has to be told to
+  shut down before it dies
+</p>
+
+<h2 id="description">Class description</h2>
+
+<p>
+  <code>Engine</code> is the aggregate. Five subsystems live inside it as plain members —
+  <a href="../../Memory/index.html#memorymanager"><code>MemoryManager</code></a>,
+  <a href="../../Core/index.html#systemstatistics"><code>SystemStatistics</code></a>,
+  <a href="../../Log/index.html#logger"><code>Logger</code></a>,
+  <a href="../../Core/index.html#tasksystem"><code>TaskSystem</code></a> and
+  <a href="../../Resource/index.html"><code>ResourceManager</code></a> — together with one
+  <code>std::unique_ptr</code> to the OS application, one <code>std::ofstream</code> for the engine's own log lines, and
+  two mutexes. Declaring one is how an application starts the engine: every entry point in the repository declares it as
+  an automatic object in <code>main</code> (<code>Applications/WindowExample/Main.cpp</code>,
+  <code>Applications/VulkanExample/Main.cpp</code>, <code>Applications/EngineTest/TestMain.cpp</code>). Nothing returns a
+  pointer to it, and nothing has to.
+</p>
+
+<p>
+  Declaring it also publishes it. The first member is <a href="#properties"><code>preEngineInit</code></a>, a private
+  nested struct whose constructor stores the address into the file-static <code>engineInstance</code>
+  (<code>Engine/Engine/Engine.cpp</code>). Because a member declared first is constructed first,
+  <a href="get.html"><code>Engine::Get</code></a> already resolves while the remaining members are being built — which is
+  what lets <code>MemoryManager</code>'s constructor raise
+  <a href="set-memory-manager-ready.html"><code>SetMemoryManagerReady</code></a> and <code>Logger</code>'s raise
+  <a href="set-logger-ready.html"><code>SetLoggerReady</code></a> before <a href="initialize.html"><code>Initialize</code></a>
+  has been mentioned by anyone.
+</p>
+
+<p>
+  The lifecycle the header offers is four steps and no more: construct,
+  <a href="initialize.html"><code>Initialize(argc, argv, levels)</code></a>, then drive frames — either by polling the OS
+  layer yourself, which is what the two windowed applications do, or with <a href="run.html"><code>Run</code></a> — and
+  finally <a href="shutdown.html"><code>ShutDown</code></a> before the object goes out of scope. There is no per-frame
+  entry point in the public surface: no tick, no update, no frame function, and no wait-for-end. The engine owns no loop
+  of its own to hand a frame to; <a href="run.html"><code>Run</code></a> is a task-system pump that returns when the task
+  system is switched off, and the application's window loop is the frame loop.
+</p>
+
+<div class="note">
+  <strong>Member declaration order is the shutdown order, and it is the only ordering the engine has.</strong> C++
+  destroys members in reverse declaration order, so an <code>Engine</code> dies application, resource manager, task
+  system, logger, statistics, memory manager, log stream. That happens to be the right order — the task system joins its
+  threads before the logger is destroyed, and the memory manager goes last — but nothing enforces it. Reordering two
+  lines in the header reorders teardown, and no test in the repository covers the difference.
+</div>
+
+<div class="gap">
+  <strong>Letting an <code>Engine</code> die without calling
+  <a href="shutdown.html"><code>ShutDown</code></a> does not clean up; on the engine loop thread it stops there
+  forever.</strong> The destructor's whole body is <a href="close-log.html"><code>CloseLog()</code></a>. Everything else
+  is a member destructor, and <code>~TaskSystem()</code> calls <code>JoinAndClear()</code>, which on the thread that
+  constructed the task system loops <code>while (isRunning || pending main-thread tasks)</code>. <code>isRunning</code>
+  is set true by <code>BuildStreams()</code> during <a href="initialize.html"><code>Initialize</code></a> and set false by
+  exactly one function, <code>TaskSystem::RequestShutDown()</code> — called from one place,
+  <code>Engine::ShutDown()</code>. Skip the call and that loop has no exit. See
+  <a href="../../Core/index.html#tasksystem">Core: TaskSystem</a> for the join itself.
+</div>
+
+<h2 id="template">Template parameters</h2>
+
+<p>None — <code>Engine</code> is not a template, and it takes no allocator or platform policy parameter either.</p>
+
+<h2 id="properties">Class properties</h2>
+
+<table>
+  <tr><th>Name</th><th>Declaration</th><th>What it means</th></tr>
+  <tr>
+    <td><code>TLogFunc</code></td>
+    <td><code>using TLogFunc = std::function&lt;void(std::ostream&amp; out)&gt;;</code></td>
+    <td>
+      <span class="badge">member type</span> How the text of a log line is passed to <a href="log.html"><code>Log</code></a>
+      and <a href="log-error.html"><code>LogError</code></a>: a callable that writes into a stream when the line is emitted.
+      The level filter runs first and returns before the callable is invoked, so a filtered-out line never builds its own
+      text — that is the reason the argument is a function and not a string
+    </td>
+  </tr>
+  <tr>
+    <td><code>PreEngineInit</code></td>
+    <td><code>struct PreEngineInit final { explicit PreEngineInit(Engine* engine); };</code></td>
+    <td>
+      <span class="badge">private nested</span> A type whose only job is to have a constructor: it stores its argument into
+      the file-static <code>engineInstance</code>. It declares no destructor, so nothing ever un-stores it — see
+      <a href="#coverage">Coverage</a>
+    </td>
+  </tr>
+  <tr>
+    <td><code>preEngineInit</code></td>
+    <td><code>PreEngineInit preEngineInit;</code></td>
+    <td>
+      <span class="badge">private</span> Declared first, and initialised first in the constructor's member list, precisely so
+      that <a href="get.html"><code>Get</code></a> works from inside the constructors of every member after it
+    </td>
+  </tr>
+  <tr>
+    <td><code>isMemoryManagerReady</code></td>
+    <td><code>bool isMemoryManagerReady;</code></td>
+    <td>
+      <span class="badge">private</span> Raised by <code>MemoryManager</code>'s own constructor, so it is true before
+      <a href="initialize.html"><code>Initialize</code></a> runs. <code>SystemStatistics</code>'s and <code>Logger</code>'s
+      constructors both assert it — memory really is first
+    </td>
+  </tr>
+  <tr>
+    <td><code>isSystemStatisticsReady</code></td>
+    <td><code>bool isSystemStatisticsReady;</code></td>
+    <td>
+      <span class="badge">private</span> Raised by <code>SystemStatistics</code>'s constructor. Read by nobody in the
+      repository; <a href="get-statistics.html"><code>GetStatistics</code></a> does not consult it
+    </td>
+  </tr>
+  <tr>
+    <td><code>isLoggerReady</code></td>
+    <td><code>bool isLoggerReady;</code></td>
+    <td>
+      <span class="badge">private</span> Raised twice over: by <code>Logger</code>'s constructor, and again by
+      <a href="initialize.html"><code>Initialize</code></a> when the Logger level runs. So it reports the object, not the
+      drain task — <a href="is-logger-ready.html"><code>IsLoggerReady</code></a> spells out what that costs a caller
+    </td>
+  </tr>
+  <tr>
+    <td><code>isTaskSystemReady</code></td>
+    <td><code>bool isTaskSystemReady;</code></td>
+    <td>
+      <span class="badge">private</span> The only one of the five that tracks a level: set by
+      <a href="initialize.html"><code>Initialize</code></a> after <code>TaskSystem::Initialize()</code> returns.
+      <a href="run.html"><code>Run</code></a> and <a href="shutdown.html"><code>ShutDown</code></a> both read it, which is
+      how a skipped level becomes a skipped teardown instead of a teardown of something that never started
+    </td>
+  </tr>
+  <tr>
+    <td><code>isResourceManagerReady</code></td>
+    <td><code>bool isResourceManagerReady;</code></td>
+    <td>
+      <span class="badge">private</span> Never set. No level starts the resource manager and no code calls
+      <a href="set-resource-manager-ready.html"><code>SetResourceManagerReady</code></a>, so
+      <a href="is-resource-manager-ready.html"><code>IsResourceManagerReady</code></a> answers false for the whole process
+    </td>
+  </tr>
+  <tr>
+    <td><code>logLock</code></td>
+    <td><code>std::mutex logLock;</code></td>
+    <td>
+      <span class="badge">private</span> Held across the console line and the file write of one
+      <a href="log.html"><code>Log</code></a> call, so a line is never interleaved with itself. It is not held by
+      <a href="flush-log.html"><code>FlushLog</code></a>
+    </td>
+  </tr>
+  <tr>
+    <td><code>consoleOutLock</code></td>
+    <td><code>std::mutex consoleOutLock;</code></td>
+    <td>
+      <span class="badge">private</span> Guards <code>std::cout</code> inside
+      <a href="console-out-ln.html"><code>ConsoleOutLn</code></a>. The only nesting in the class is
+      <code>logLock</code> then <code>consoleOutLock</code>, and nothing takes them the other way round
+    </td>
+  </tr>
+  <tr>
+    <td><code>logFile</code></td>
+    <td><code>std::ofstream logFile;</code></td>
+    <td>
+      <span class="badge">private</span> The engine module's own log stream, opened by the constructor's member list with the
+      path <code>"helowlevel.log"</code> — a relative path, so the working directory decides where it lands, and a different
+      file from the <code>Logger</code>'s <code>./hardbop.log</code>. <a href="close-log.html"><code>CloseLog</code></a>
+      flushes it and never closes it
+    </td>
+  </tr>
+  <tr>
+    <td><code>memoryManager</code></td>
+    <td><code>MemoryManager memoryManager;</code></td>
+    <td>
+      <span class="badge">private</span> Constructed with <code>*this</code>. Registers the system allocator and loads the
+      multi-pool configuration in its constructor; destroyed last but one.
+      <a href="../../Memory/index.html#memorymanager">Memory: MemoryManager</a>
+    </td>
+  </tr>
+  <tr>
+    <td><code>statistics</code></td>
+    <td><code>SystemStatistics statistics;</code></td>
+    <td>
+      <span class="badge">private</span> Constructed with <code>*this</code>, and captures its start time at that moment —
+      the timestamp on every <a href="log.html"><code>Log</code></a> line is measured from the constructor, not from
+      <a href="initialize.html"><code>Initialize</code></a>
+    </td>
+  </tr>
+  <tr>
+    <td><code>logger</code></td>
+    <td><code>Logger logger;</code></td>
+    <td>
+      <span class="badge">private</span> Constructed as <code>Logger(*this, "./", "hardbop.log")</code>: the object exists and
+      its file is open before any level is considered. What a level adds is the drain task —
+      <a href="../../Log/index.html#logger">Log: Logger</a>
+    </td>
+  </tr>
+  <tr>
+    <td><code>taskSystem</code></td>
+    <td><code>TaskSystem taskSystem;</code></td>
+    <td>
+      <span class="badge">private</span> Takes no <code>Engine</code> reference — the dependency runs the other way, through
+      <a href="get.html"><code>Get</code></a>. Its constructor records the constructing thread as the engine loop thread,
+      which is the thread <a href="run.html"><code>Run</code></a> has to be called from
+    </td>
+  </tr>
+  <tr>
+    <td><code>resourceManager</code></td>
+    <td><code>ResourceManager resourceManager;</code></td>
+    <td>
+      <span class="badge">private</span> Constructed and exposed, never started or pumped. See
+      <a href="../../Resource/index.html#coverage">Resource: Coverage</a>
+    </td>
+  </tr>
+  <tr>
+    <td><code>application</code></td>
+    <td><code>std::unique_ptr&lt;OS::Application&gt; application;</code></td>
+    <td>
+      <span class="badge">private</span> The one subsystem not owned by value, because
+      <code>OS::CreateApplication()</code> hands back a <code>std::unique_ptr</code>. Null until the Application level runs,
+      and null again after <a href="run.html"><code>Run</code></a> returns — <code>Run</code> resets it. Declared last, so
+      destroyed first
+    </td>
+  </tr>
+  <tr>
+    <td><code>Engine(const Engine&amp;)</code></td>
+    <td><code>Engine(const Engine&amp;) = delete;</code></td>
+    <td>
+      <span class="badge">deleted</span> A copied engine would copy five subsystems that each believe they are the only one,
+      and two of them store a singleton pointer. <a href="constructors.html">The constructors page</a> states what a caller
+      does instead
+    </td>
+  </tr>
+  <tr>
+    <td><code>operator=(const Engine&amp;)</code></td>
+    <td><code>Engine&amp; operator=(const Engine&amp;) = delete;</code></td>
+    <td>
+      <span class="badge">deleted</span> Same objection, and worse: assigning over a live engine would destroy the subsystems
+      another part of the process is using. <a href="operator-assign.html">Declared on its own page</a> so the name is not
+      mistaken for an oversight
+    </td>
+  </tr>
+</table>
+
+<h2 id="methods">Class methods</h2>
+
+<p>
+  Each name is one page, and an overloaded name keeps all of its overloads on that page. The names below are the complete
+  public surface of <code>Engine.h</code>; the two private helpers are named under the table rather than documented as API.
+</p>
+
+<table>
+  <tr><th>Method</th><th>Signature</th><th>What a caller depends on</th></tr>
+  <tr>
+    <td><a href="get.html">Get</a></td>
+    <td class="sig">static Engine&amp; Get()</td>
+    <td>The live instance. The existence check is an <code>Assert</code>, so a Release build dereferences null instead of
+        stopping; and the pointer is never cleared, so after destruction it hands back a dangling reference</td>
+  </tr>
+  <tr>
+    <td><a href="constructors.html">constructors</a></td>
+    <td class="sig">Engine()</td>
+    <td>One default constructor, and it does the majority of the engine's real setup: registers the instance, opens both log
+        files, constructs the memory manager, and installs seven signal handlers</td>
+  </tr>
+  <tr>
+    <td><a href="operator-assign.html">operator=</a></td>
+    <td class="sig">Engine&amp; operator=(const Engine&amp;) = delete</td>
+    <td>The only assignment operator, and it is removed. An <code>Engine</code> is never moved or copied; it is declared where
+        it is used and referenced everywhere else</td>
+  </tr>
+  <tr>
+    <td><a href="destructor.html">destructor</a></td>
+    <td class="sig">~Engine()</td>
+    <td>Flushes the engine's own log stream and nothing else. It is not a substitute for
+        <a href="shutdown.html"><code>ShutDown</code></a>, and it does not unregister the instance pointer</td>
+  </tr>
+  <tr>
+    <td><a href="initialize.html">Initialize</a></td>
+    <td class="sig">void Initialize(int argc, const char* argv[],<br>EInitLevel levels = EInitLevel::All)</td>
+    <td>Starts exactly the levels asked for, in dependency order, and adds the task system to any request that names the
+        logger's drain task. The ready flags it sets are what teardown later reads</td>
+  </tr>
+  <tr>
+    <td><a href="run.html">Run</a></td>
+    <td class="sig">void Run()</td>
+    <td>Pumps main-thread tasks until the task system is switched off, then joins the worker streams and destroys the OS
+        application. It is the closest thing the engine has to a wait-for-end, and it belongs on the main thread</td>
+  </tr>
+  <tr>
+    <td><a href="shutdown.html">ShutDown</a></td>
+    <td class="sig">void ShutDown()</td>
+    <td>Prints the closing statistics, runs the pre-shutdown hook, and asks the task system to stop if one was ever started.
+        It is what makes <a href="run.html"><code>Run</code></a> return, and it is not idempotent — the reports print again on
+        a second call</td>
+  </tr>
+  <tr>
+    <td><a href="get-class-name.html">GetClassName</a></td>
+    <td class="sig">static StaticString GetClassName()</td>
+    <td>The name without an object, so a line can be attributed to <code>Engine</code> from a context that has no instance to
+        ask</td>
+  </tr>
+  <tr>
+    <td><a href="get-memory-manager.html">GetMemoryManager</a></td>
+    <td class="sig">auto&amp; GetMemoryManager()</td>
+    <td>Reference to the member, returned whether or not anything is ready</td>
+  </tr>
+  <tr>
+    <td><a href="get-logger.html">GetLogger</a></td>
+    <td class="sig">auto&amp; GetLogger()</td>
+    <td>Reference to the member. The constructor's own singleton pointer is the usual way in; this is the one that does not
+        depend on it</td>
+  </tr>
+  <tr>
+    <td><a href="get-task-system.html">GetTaskSystem</a></td>
+    <td class="sig">auto&amp; GetTaskSystem()</td>
+    <td>Reference to the member — but the task system has no threads until the TaskSystem level has run, so a valid reference
+        is not a usable one</td>
+  </tr>
+  <tr>
+    <td><a href="get-statistics.html">GetStatistics</a></td>
+    <td class="sig">auto&amp; GetStatistics()</td>
+    <td>Reference to the frame, log and allocation counters, and to the start time the log timestamps are measured against</td>
+  </tr>
+  <tr>
+    <td><a href="get-resource-manager.html">GetResourceManager</a></td>
+    <td class="sig">auto&amp; GetResourceManager()</td>
+    <td>Reference to a manager that nothing in the engine starts or advances; the only way it gets driven is by the caller</td>
+  </tr>
+  <tr>
+    <td><a href="set-memory-manager-ready.html">SetMemoryManagerReady</a><br>
+        <a href="set-system-statistics-ready.html">SetSystemStatisticsReady</a><br>
+        <a href="set-logger-ready.html">SetLoggerReady</a><br>
+        <a href="set-task-system-ready.html">SetTaskSystemReady</a><br>
+        <a href="set-resource-manager-ready.html">SetResourceManagerReady</a></td>
+    <td class="sig">void SetMemoryManagerReady()<br>void SetSystemStatisticsReady()<br>void SetLoggerReady()<br>void SetTaskSystemReady()<br>void SetResourceManagerReady()</td>
+    <td>One way to raise each ready flag; public, and each sets its flag unconditionally — nothing checks that the subsystem
+        exists, and nothing clears a flag afterwards. Three of the five have a subsystem calling them today; see each page</td>
+  </tr>
+  <tr>
+    <td><a href="is-memory-manager-ready.html">IsMemoryManagerReady</a><br>
+        <a href="is-system-statistics-ready.html">IsSystemStatisticsReady</a><br>
+        <a href="is-logger-ready.html">IsLoggerReady</a><br>
+        <a href="is-task-system-ready.html">IsTaskSystemReady</a><br>
+        <a href="is-resource-manager-ready.html">IsResourceManagerReady</a></td>
+    <td class="sig">bool IsMemoryManagerReady() const<br>bool IsSystemStatisticsReady() const<br>bool IsLoggerReady() const<br>bool IsTaskSystemReady() const<br>bool IsResourceManagerReady() const</td>
+    <td>Each flag verbatim. Together they are the record of what started that <a href="shutdown.html"><code>ShutDown</code></a>
+        and the signal handler act on — and the flag for the logger means the object, not the drain task</td>
+  </tr>
+  <tr>
+    <td><a href="get-application.html">GetApplication</a></td>
+    <td class="sig">OS::Application* GetApplication() const</td>
+    <td>The raw pointer, null in three different situations: no Application level requested, already
+        <a href="run.html">run</a>, or already destroyed. Every caller in the repository checks for null before using it</td>
+  </tr>
+  <tr>
+    <td><a href="log.html">Log</a></td>
+    <td class="sig">void Log(ELogLevel level, const TLogFunc&amp; func)</td>
+    <td>Two config parameters decide the floor for the file and for the console, the whole body is compiled out when
+        <code>ENGINE_LOG_ENABLED</code> is off, and the line is written under a mutex</td>
+  </tr>
+  <tr>
+    <td><a href="log-error.html">LogError</a></td>
+    <td class="sig">void LogError(const TLogFunc&amp; func)</td>
+    <td><code>Log(ELogLevel::Error, func)</code>, inline in the header. It is what the signal handler uses to report a
+        terminating signal</td>
+  </tr>
+  <tr>
+    <td><a href="close-log.html">CloseLog</a></td>
+    <td class="sig">void CloseLog()</td>
+    <td>Flushes the engine's own log file and leaves it open — the name overstates it, and the destructor calls it as its
+        entire body</td>
+  </tr>
+  <tr>
+    <td><a href="flush-log.html">FlushLog</a></td>
+    <td class="sig">void FlushLog()</td>
+    <td>Drains the <code>Logger</code> first, then flushes the engine's own file. The only place the two logging paths are
+        guaranteed to have both landed</td>
+  </tr>
+  <tr>
+    <td><a href="console-out-ln.html">ConsoleOutLn</a></td>
+    <td class="sig">void ConsoleOutLn(const char* str)</td>
+    <td>One mutex-guarded <code>std::cout</code> line. Takes a <code>const char*</code>, so a built string needs
+        <code>.c_str()</code></td>
+  </tr>
+</table>
+
+<p>
+  The two remaining members are private and are named here because they are the reason the two lifecycle calls do what
+  they do: <code>void PostInitialize()</code> is called at the end of
+  <a href="initialize.html"><code>Initialize</code></a>, whatever levels ran, and <code>void PreShutdown()</code> is called
+  part-way through <a href="shutdown.html"><code>ShutDown</code></a>. Neither is callable by a caller, and neither has a
+  subsystem to notify any more — <code>MemoryManager::PostEngineInit()</code> has an empty body and
+  <code>MemoryManager::PreEngineShutdown()</code> only writes the pool configuration cache when
+  <code>PROFILE_ENABLED</code> is set. <a href="#coverage">Coverage</a> carries the detail.
+</p>
+
+<h2 id="non-member">Non-member helper functions</h2>
+
+<p>
+  None. <code>Engine.h</code> declares one thing at namespace scope besides the class — the forward declaration
+  <code>template &lt;size_t, class&gt; class InlineStringBuilder;</code>, which keeps the header from pulling the builder's
+  definition in — and defines nothing. The <code>Engine::Get</code> instance pointer is a file-static in
+  <code>Engine.cpp</code>, not a global, so no other translation unit can read or redirect it. The two functions that make
+  <a href="../EInitLevel/index.html"><code>EInitLevel</code></a> usable, <code>operator|</code> and <code>HasFlag</code>,
+  belong to that entry: <a href="../EInitLevel/index.html#non-member">EInitLevel: non-member helpers</a>.
+</p>
+
+<h2 id="coverage">Coverage</h2>
+
+<table>
+  <tr><th>Gap</th><th>Detail</th></tr>
+  <tr>
+    <td>The instance pointer is never cleared</td>
+    <td><code>PreEngineInit</code> has no destructor, so nothing sets <code>engineInstance</code> back to null. During
+        member destruction — which is when a log line, a task, or an allocator profile gets printed —
+        <a href="get.html"><code>Get</code></a> still answers, and it answers with an object that is partly gone. After
+        destruction it returns a dangling reference, and the null check inside <code>Get</code> cannot see the difference</td>
+  </tr>
+  <tr>
+    <td><code>PostInitialize</code> and <code>PreShutdown</code></td>
+    <td>Private, and named rather than documented as API. What they do today is one log line each around a hook that has
+        nothing behind it: <code>MemoryManager::PostEngineInit()</code> is an empty function;
+        <code>MemoryManager::PreEngineShutdown()</code> saves the pool configuration only under
+        <code>PROFILE_ENABLED</code>, and <code>PreShutdown</code> reports the memory configuration only under the same
+        macro. Describing them as "where subsystems get started" would describe a call graph that does not exist</td>
+  </tr>
+  <tr>
+    <td>What each level initialises</td>
+    <td>Deliberately not summarised on this page — <a href="initialize.html"><code>Initialize</code></a> owns that table, and
+        the level set itself is documented on <a href="../EInitLevel/index.html">the EInitLevel page</a></td>
+  </tr>
+  <tr>
+    <td>Thread-safety of the lifecycle calls</td>
+    <td><code>Engine.h</code> attaches one comment to this class's lifecycle: <a href="run.html"><code>Run</code></a>
+        "should call on main thread". Nothing is stated for <a href="initialize.html"><code>Initialize</code></a> or
+        <a href="shutdown.html"><code>ShutDown</code></a>, and neither is guarded by a mutex or a once flag. What the code
+        supports is on each of those pages; what it does not guarantee is recorded there rather than inferred here</td>
+  </tr>
+  <tr>
+    <td>Calling <code>Initialize</code> twice</td>
+    <td>No guard and no documented precondition. The TaskSystem branch rebuilds the stream table in place
+        (<code>streams.Swap(Array&lt;TaskStream&gt;(numHardwareThreads))</code>) and <code>TaskStream</code> declares
+        <code>~TaskStream() = default;</code> over a <code>std::thread</code> member, so the consequences belong to
+        <a href="../../Core/index.html#taskstream">Core: TaskStream</a> rather than being asserted from here. Treat the call
+        as once per object</td>
+  </tr>
+  <tr>
+    <td>Contracts that live in other modules</td>
+    <td>Which pool each allocation comes from (<a href="../../Memory/index.html#memorymanager">Memory</a>); what the drain
+        task does and how it stops (<a href="../../Log/index.html#logger">Log</a>); when a worker stream picks a task up
+        (<a href="../../Core/index.html#tasksystem">Core</a>); what <code>OS::Application::Initialize</code> opens
+        (<a href="../../OSAL/index.html#application">OSAL</a>). None of it restated</td>
+  </tr>
+  <tr>
+    <td>The logging design</td>
+    <td><a href="log.html"><code>Log</code></a> documents this class's half — the two config parameters, the mutex, the file.
+        The line format, the drain task and the level vocabulary are in
+        <a href="../../Log/index.html">the Log module page</a> and <a href="../../LoggerGuide.md">docs/LoggerGuide.md</a></td>
+  </tr>
+  <tr>
+    <td>Test-only use</td>
+    <td><code>Engine/Test/UnitTestCollection.cpp</code> calls <a href="shutdown.html"><code>ShutDown</code></a> from inside
+        the suite's own task, which is the mechanism that lets <a href="run.html"><code>Run</code></a> return in
+        <code>Applications/EngineTest/TestMain.cpp</code>. Quoted as a call site on those two pages, not documented as a
+        second lifecycle</td>
+  </tr>
+  <tr>
+    <td>Related defect, outside this page</td>
+    <td><a href="../../../README.md">README.md</a>'s "Basic Engine Initialization" example ends with
+        <code>engine.WaitForEnd();</code>. <code>Engine.h</code> declares no such member, and nothing under
+        <code>Engine/</code> or <code>Applications/</code> names it, so that snippet cannot compile. The lifecycle the header
+        does offer is on <a href="run.html"><code>Run</code></a> and <a href="shutdown.html"><code>ShutDown</code></a></td>
+  </tr>
+</table>
+
+<footer class="prevnext">
+  <span><a href="../index.html">&larr; Engine</a></span>
+  <span><a href="../index.html#engine">Engine in the Engine class list</a></span>
+</footer>
+
+</main>
+</body>
+</html>

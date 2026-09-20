@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Engine::operator= — Engine — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">Engine</a> methods</h3>
+  <ul class="methods">
+    <li><a href="get.html">Get</a></li>
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a class="current" href="operator-assign.html">operator=</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+    <li><a href="initialize.html">Initialize</a></li>
+    <li><a href="run.html">Run</a></li>
+    <li><a href="shutdown.html">ShutDown</a></li>
+    <li><a href="get-class-name.html">GetClassName</a></li>
+    <li><a href="get-memory-manager.html">GetMemoryManager</a></li>
+    <li><a href="get-logger.html">GetLogger</a></li>
+    <li><a href="get-task-system.html">GetTaskSystem</a></li>
+    <li><a href="get-statistics.html">GetStatistics</a></li>
+    <li><a href="get-resource-manager.html">GetResourceManager</a></li>
+    <li><a href="set-memory-manager-ready.html">SetMemoryManagerReady</a></li>
+    <li><a href="set-system-statistics-ready.html">SetSystemStatisticsReady</a></li>
+    <li><a href="set-logger-ready.html">SetLoggerReady</a></li>
+    <li><a href="set-task-system-ready.html">SetTaskSystemReady</a></li>
+    <li><a href="set-resource-manager-ready.html">SetResourceManagerReady</a></li>
+    <li><a href="is-memory-manager-ready.html">IsMemoryManagerReady</a></li>
+    <li><a href="is-system-statistics-ready.html">IsSystemStatisticsReady</a></li>
+    <li><a href="is-logger-ready.html">IsLoggerReady</a></li>
+    <li><a href="is-task-system-ready.html">IsTaskSystemReady</a></li>
+    <li><a href="is-resource-manager-ready.html">IsResourceManagerReady</a></li>
+    <li><a href="get-application.html">GetApplication</a></li>
+    <li><a href="log.html">Log</a></li>
+    <li><a href="log-error.html">LogError</a></li>
+    <li><a href="close-log.html">CloseLog</a></li>
+    <li><a href="flush-log.html">FlushLog</a></li>
+    <li><a href="console-out-ln.html">ConsoleOutLn</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Engine</a> /
+  <a href="index.html">Engine</a> / operator=
+</p>
+
+<h1><span class="fn">operator=</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Engine</span>
+  <span class="tag">Engine/Engine/Engine.h</span>
+  <span class="tag">deleted</span>
+  one overload, removed on purpose — an engine is never assigned over
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code><span class="ty">Engine</span>&amp; <span class="kw">operator=</span>(<span class="kw">const</span> <span class="ty">Engine</span>&amp;) = <span class="kw">delete</span>;</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  This is the only assignment <code>Engine</code> declares, and it declares it in order to take it away. The declaration earns
+  its place by being explicit: a reader of the header learns that assignment was considered, and a reader of a call site gets a
+  compile error naming the deleted function rather than wondering why an obvious operation is missing.
+</p>
+
+<p>
+  The consequence is wider than the one operator. Because the class declares a copy constructor — deleted, but declared — the
+  move constructor and move assignment are not implicitly generated either. So <code>Engine</code> has exactly one way to come
+  into existence, <a href="constructors.html">the default constructor</a>, and no way to be moved, copied or reassigned. It is a
+  location-bound object: the address it was constructed at is the address it lives at for its whole life.
+</p>
+
+<p>
+  The reason is in the members, not in taste. Assigning one engine over another would destroy the
+  <a href="../../Memory/index.html#memorymanager">memory manager</a>, <a href="../../Log/index.html#logger">logger</a> and
+  <a href="../../Core/index.html#tasksystem">task system</a> of a running process while code on other threads was using them, and
+  those two classes each record the address of the instance that constructed them, so the copies would be two objects each
+  claiming to be the singleton. <a href="constructors.html">The deleted copy constructor</a> is the same decision seen from the
+  other side.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr>
+    <td><code>rhs</code></td>
+    <td><code>const Engine&amp;</code></td>
+    <td>Named in the declaration only — the parameter has no name in the header, because nothing can bind to it. Any attempt is a
+        compile error at the call site, not a runtime failure</td>
+  </tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  There is no reachable return value: the declaration exists so that no call can be made. The declared return type
+  <code>Engine&amp;</code> is what a non-deleted form would have produced, and it is the only trace of the signature left in the
+  header.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<p>
+  No example is possible. A call to a deleted function is a compile error, so any snippet here would be a snippet that does not
+  build — instead, this is what the engine's own code does whenever a function needs the engine without owning it. It takes a
+  reference, or it reaches the one instance:
+</p>
+
+<pre><code><span class="cm">// Subsystems are constructed with the engine they belong to — Engine.h members, constructed as</span>
+<span class="cm">// memoryManager(*this), statistics(*this) and logger(*this, "./", "hardbop.log").</span>
+<span class="kw">explicit</span> <span class="fn">MemoryManager</span>(<span class="ty">Engine</span>&amp; engine);
+<span class="kw">explicit</span> <span class="fn">SystemStatistics</span>(<span class="ty">Engine</span>&amp; engine);
+<span class="fn">Logger</span>(<span class="ty">Engine</span>&amp; engine, <span class="kw">const char</span>* path, <span class="kw">const char</span>* filename);
+
+<span class="cm">// A per-frame entry point takes it as an argument rather than assuming a global:</span>
+<span class="kw">void</span> <span class="ty">ResourceManager</span>::<span class="fn">PostUpdate</span>(<span class="ty">Engine</span>&amp; engine) <span class="kw">noexcept</span>;
+
+<span class="cm">// And code that was given nothing reaches the one instance:</span>
+<span class="kw">auto</span>&amp; taskSystem = <span class="ty">Engine</span>::<span class="fn">Get</span>().<span class="fn">GetTaskSystem</span>();</code></pre>
+
+<p class="meta">Signatures from Engine/Memory/MemoryManager.h, Engine/Core/SystemStatistics.h, Engine/Log/Logger.h,
+Engine/Resource/ResourceManager.h and the call in Engine/Core/Task.cpp.</p>
+
+<div class="note">
+  <strong>A container of engines is the shape this deletion forbids.</strong> <code>std::vector&lt;Engine&gt;</code> and
+  <code>Array&lt;Engine&gt;</code> cannot hold it — neither copy nor move is available, and
+  <a href="../../Container/index.html#array">the container module's</a> elements are required to move. The process gets one
+  <code>Engine</code>, at a fixed address, for its lifetime; everything else is a reference to it.
+</div>
+
+<footer class="prevnext">
+  <span><a href="index.html">&larr; Engine</a></span>
+  <span><a href="index.html#methods">All Engine methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

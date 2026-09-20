@@ -142,6 +142,29 @@ phrasings are now the whole vocabulary; the exemplars disagreed about the class-
 `#classes`) — now `#classes`, because per-class row ids exist for *other modules'* inbound links, not for
 footers; and the validator's `open()`-without-existence bug, fixed and negative-controlled earlier.
 
+**Engine landed — 34 pages — and its README finding is worse than the one I had reported.** `README.md:223-236`
+does not merely call `engine.WaitForEnd()`, a member `Engine.h` does not declare; it also never calls
+`ShutDown()`, so the example tears the engine down through a destructor path the README never mentions. I read
+the block myself to confirm both halves. The pages name `WaitForEnd` three times and only as an absence —
+searching the site for it finds the correction, not a phantom API. It corrected the previous page's claims that the
+accessors are `[[nodiscard]]` (none of them are), that `PostInitialize` and `PreShutdown` are public frame-loop
+hooks (private, and `MemoryManager::PostEngineInit()` behind one has an empty body), and that `Run` is the frame
+loop — it is a wait that pumps main-thread tasks, and neither shipped application calls it. Its example correction
+stings most: the old page asserted its snippet was "taken from `Applications/WindowExample/Main.cpp` … rather than a
+sketch" while quoting a window title and loop shape the file does not contain. A cited example that is not the
+cited file is worse than no example, because the citation is what stops a reader checking.
+
+**Its fourth complaint was wrong, and I rejected it after checking** — the second verified rejection today. It
+read `docs/Resource/ResourceManager/constructors.html` as claiming the constructor accepts an `Engine&`; the
+sentence says the class accepts one **in `PostUpdate`**, and `ResourceManager.h:26` declares
+`void PostUpdate(Engine& engine) noexcept`. The page stands. A report about someone else's page is a claim to
+test, not a work queue — the same discipline that caught my own `Renderer` errors runs both directions.
+
+**Contract grew an `enumerator` badge and a "This entry" sidebar label**, because an `enum class` is neither a
+class nor a namespace and had no honest row kind or heading; its free functions already follow §15. All 34 inbound
+links into the rewritten Engine index resolve — `#engine` from Log, Test, Resource, Renderer and Config,
+`#einitlevel` from Memory, OSAL, Log and Resource.
+
 ## Tasks become things the registry owns, addressed by identity (2026-09-19)
 
 **What landed**, as `3be27c3`: R7 with R22's sizing. `Engine/Core/TaskID.h` (`{index, generation}`) and

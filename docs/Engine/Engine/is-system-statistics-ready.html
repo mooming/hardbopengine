@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Engine::IsSystemStatisticsReady — Engine — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">Engine</a> methods</h3>
+  <ul class="methods">
+    <li><a href="get.html">Get</a></li>
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="operator-assign.html">operator=</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+    <li><a href="initialize.html">Initialize</a></li>
+    <li><a href="run.html">Run</a></li>
+    <li><a href="shutdown.html">ShutDown</a></li>
+    <li><a href="get-class-name.html">GetClassName</a></li>
+    <li><a href="get-memory-manager.html">GetMemoryManager</a></li>
+    <li><a href="get-logger.html">GetLogger</a></li>
+    <li><a href="get-task-system.html">GetTaskSystem</a></li>
+    <li><a href="get-statistics.html">GetStatistics</a></li>
+    <li><a href="get-resource-manager.html">GetResourceManager</a></li>
+    <li><a href="set-memory-manager-ready.html">SetMemoryManagerReady</a></li>
+    <li><a href="set-system-statistics-ready.html">SetSystemStatisticsReady</a></li>
+    <li><a href="set-logger-ready.html">SetLoggerReady</a></li>
+    <li><a href="set-task-system-ready.html">SetTaskSystemReady</a></li>
+    <li><a href="set-resource-manager-ready.html">SetResourceManagerReady</a></li>
+    <li><a href="is-memory-manager-ready.html">IsMemoryManagerReady</a></li>
+    <li><a class="current" href="is-system-statistics-ready.html">IsSystemStatisticsReady</a></li>
+    <li><a href="is-logger-ready.html">IsLoggerReady</a></li>
+    <li><a href="is-task-system-ready.html">IsTaskSystemReady</a></li>
+    <li><a href="is-resource-manager-ready.html">IsResourceManagerReady</a></li>
+    <li><a href="get-application.html">GetApplication</a></li>
+    <li><a href="log.html">Log</a></li>
+    <li><a href="log-error.html">LogError</a></li>
+    <li><a href="close-log.html">CloseLog</a></li>
+    <li><a href="flush-log.html">FlushLog</a></li>
+    <li><a href="console-out-ln.html">ConsoleOutLn</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Engine</a> /
+  <a href="index.html">Engine</a> / IsSystemStatisticsReady
+</p>
+
+<h1><span class="fn">IsSystemStatisticsReady</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Engine</span>
+  <span class="tag">const</span>
+  <span class="tag">no readers in the repository</span>
+  a field read of a flag that is raised once and never asked about
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code><span class="kw">bool</span> <span class="fn">IsSystemStatisticsReady</span>() <span class="kw">const</span>
+{
+        <span class="kw">return</span> isSystemStatisticsReady;
+}</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>Returns the flag, nothing else.</p>
+
+<p>
+  It is raised once, by <a href="set-system-statistics-ready.html"><code>SetSystemStatisticsReady</code></a> at the end of the
+  <code>SystemStatistics</code> constructor, so it is true for any engine that exists — with any level set, including
+  <a href="../EInitLevel/index.html"><code>EInitLevel::None</code></a>. Grepping <code>Engine/</code> and <code>Applications/</code> finds no read of it: not in
+  <a href="initialize.html"><code>Initialize</code></a>, not in <a href="shutdown.html"><code>ShutDown</code></a>, not in
+  <a href="get-statistics.html"><code>GetStatistics</code></a>. The flag exists, is written, and gates nothing.
+</p>
+
+<p>
+  What a caller usually wants instead is the object: <a href="get-statistics.html"><code>GetStatistics</code></a> returns a live
+  <code>SystemStatistics</code> for every engine, and its counters say what has actually been measured. The flag cannot distinguish a statistics object with a
+  thousand frames in it from one that was constructed two microseconds ago.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr>
+    <td><code>bool</code></td>
+    <td>False only during the first two member constructors of the engine, true for the rest of the object's existence. Not <code>[[nodiscard]]</code></td>
+  </tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p class="note">Illustrative — no call site for this exists in the repository.</p>
+
+<pre><code><span class="kw">if</span> (!hengine.<span class="fn">IsSystemStatisticsReady</span>())
+{
+        <span class="cm">// Unreachable for a constructed Engine: the flag is raised by the member constructor.</span>
+        <span class="kw">return</span>;
+}
+
+<span class="kw">const auto</span> elapsed = hengine.<span class="fn">GetStatistics</span>().<span class="fn">GetTimeSinceStart</span>();   <span class="cm">// the question worth asking</span></code></pre>
+
+<p>
+  The pair of lines is the honest version of this page: the guard is dead code, and the accessor beside it is what carries information.
+  <a href="../../Core/index.html#systemstatistics">Core: SystemStatistics</a>.
+</p>
+
+<footer class="prevnext">
+  <span><a href="index.html">&larr; Engine</a></span>
+  <span><a href="index.html#methods">All Engine methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

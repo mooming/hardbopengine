@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HasFlag (EInitLevel) — Engine — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">EInitLevel</a> methods</h3>
+  <ul class="methods">
+    <li><a href="operator-or.html">operator|</a></li>
+    <li><a class="current" href="has-flag.html">HasFlag</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Engine</a> /
+  <a href="index.html">EInitLevel</a> / HasFlag
+</p>
+
+<h1><span class="fn">HasFlag</span></h1>
+<p class="subtitle">
+  <span class="tag">namespace hbe</span>
+  <span class="tag">Engine/Engine/EngineInitLevel.h</span>
+  <span class="tag">constexpr noexcept</span>
+  the containment test <a href="../Engine/initialize.html"><code>Engine::Initialize</code></a> uses to decide which subsystems to start
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code><span class="kw">constexpr bool</span> <span class="fn">HasFlag</span>(<span class="ty">EInitLevel</span> levels, <span class="ty">EInitLevel</span> flag) <span class="kw">noexcept</span>;</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<pre><code><span class="kw">constexpr bool</span> <span class="fn">HasFlag</span>(<span class="ty">EInitLevel</span> levels, <span class="ty">EInitLevel</span> flag) <span class="kw">noexcept</span>
+{
+        <span class="kw">return</span> (<span class="kw">static_cast</span>&lt;<span class="kw">uint8_t</span>&gt;(levels) &amp; <span class="kw">static_cast</span>&lt;<span class="kw">uint8_t</span>&gt;(flag)) == <span class="kw">static_cast</span>&lt;<span class="kw">uint8_t</span>&gt;(flag);
+}</code></pre>
+
+<p>
+  A bitwise containment test on the underlying <code>uint8_t</code>: true when every bit of <code>flag</code> is set in <code>levels</code>. Comparing against
+  <code>flag</code> rather than against zero is what makes a multi-bit flag behave as a subset test rather than an overlap test — although every flag in this
+  enumeration is a single bit today, so the two readings agree.
+</p>
+
+<p>
+  It is <code>constexpr</code>, so a level set known at compile time can be tested in a constant expression, and it is the function the engine itself calls:
+  three times in <a href="../Engine/initialize.html"><code>Initialize</code></a>, once per level branch, including the widened set produced by the Logger
+  dependency. A scoped enumeration supplies no such test on its own, which is the reason a free function exists rather than a member.
+</p>
+
+<div class="note">
+  <strong>Asking for <code>None</code> is always true.</strong> With <code>flag == 0</code> the test becomes <code>(x &amp; 0) == 0</code>, which holds for every set
+  including <code>None</code> itself. That is the ordinary algebra of an empty flag set rather than a defect, but it means
+  <code>HasFlag(levels, EInitLevel::None)</code> is not a usable test for "the caller asked for nothing" — compare against
+  <code>EInitLevel::None == levels</code> for that.
+</div>
+
+<div class="gap">
+  <strong>An unknown bit passes for every flag it does not touch, and fails for the ones it does.</strong> Because the test works on raw bits, a value outside the
+  enumerators — <code>static_cast&lt;EInitLevel&gt;(8)</code>, or a set built from one via <a href="operator-or.html"><code>operator|</code></a> — answers false for
+  all three real levels and therefore makes <a href="../Engine/initialize.html"><code>Initialize</code></a> start nothing while still logging that the engine was
+  initialised. Nothing validates the argument anywhere on this path
+  (<a href="index.html#coverage">recorded on the entry page</a>).
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr>
+    <td><code>levels</code></td>
+    <td><a href="index.html"><code>EInitLevel</code></a> (by value)</td>
+    <td>The set to test — any combination produced by <a href="operator-or.html"><code>operator|</code></a>, or one enumerator on its own</td>
+  </tr>
+  <tr>
+    <td><code>flag</code></td>
+    <td><a href="index.html"><code>EInitLevel</code></a> (by value)</td>
+    <td>
+      The bit or bits to look for. Single enumerators are the intended use; <code>None</code> is true for every set, and <code>All</code> is true only when all three
+      bits are present
+    </td>
+  </tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr>
+    <td><code>bool</code></td>
+    <td><code>true</code> when <code>levels</code> contains all of <code>flag</code>. <code>[[nodiscard]]</code> is not declared, so a test whose result is dropped compiles</td>
+  </tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p>The engine's own use, in dependency order:</p>
+
+<pre><code><span class="kw">if</span> (<span class="fn">HasFlag</span>(levels, <span class="ty">EInitLevel</span>::Logger))
+{
+        levels = levels | <span class="ty">EInitLevel</span>::TaskSystem;
+}
+
+<span class="kw">if</span> (<span class="fn">HasFlag</span>(levels, <span class="ty">EInitLevel</span>::TaskSystem))
+{
+        taskSystem.<span class="fn">Initialize</span>();
+        isTaskSystemReady = <span class="kw">true</span>;
+}
+
+<span class="kw">if</span> (<span class="fn">HasFlag</span>(levels, <span class="ty">EInitLevel</span>::Logger))
+{
+        logger.<span class="fn">StartTask</span>(taskSystem);
+        isLoggerReady = <span class="kw">true</span>;
+}</code></pre>
+
+<p class="meta">From Engine/Engine/Engine.cpp, the opening of <code>Initialize</code>.</p>
+
+<p>Note that the Logger test is asked twice, before and after the widening, and the task-system test in between succeeds for a caller who asked only for the logger.</p>
+
+<pre><code><span class="kw">constexpr</span> <span class="ty">EInitLevel</span> headless = <span class="ty">EInitLevel</span>::TaskSystem | <span class="ty">EInitLevel</span>::Logger;
+
+<span class="kw">static_assert</span>(<span class="fn">HasFlag</span>(headless, <span class="ty">EInitLevel</span>::TaskSystem), <span class="st">"the drain task needs the streams"</span>);
+<span class="kw">static_assert</span>(!<span class="fn">HasFlag</span>(headless, <span class="ty">EInitLevel</span>::Application), <span class="st">"no window server contact"</span>);</code></pre>
+
+<p>
+  The second block is illustrative — nothing in the repository performs these tests at compile time — but it is the reason both helpers are
+  <code>constexpr</code>: a tool's level set can be checked before it is ever passed to the engine, which is the one place the Logger-implies-TaskSystem rule can be
+  enforced rather than assumed.
+</p>
+
+<footer class="prevnext">
+  <span><a href="index.html">&larr; EInitLevel</a></span>
+  <span><a href="index.html#methods">All EInitLevel methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

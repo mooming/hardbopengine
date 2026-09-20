@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Engine::SetResourceManagerReady — Engine — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">Engine</a> methods</h3>
+  <ul class="methods">
+    <li><a href="get.html">Get</a></li>
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="operator-assign.html">operator=</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+    <li><a href="initialize.html">Initialize</a></li>
+    <li><a href="run.html">Run</a></li>
+    <li><a href="shutdown.html">ShutDown</a></li>
+    <li><a href="get-class-name.html">GetClassName</a></li>
+    <li><a href="get-memory-manager.html">GetMemoryManager</a></li>
+    <li><a href="get-logger.html">GetLogger</a></li>
+    <li><a href="get-task-system.html">GetTaskSystem</a></li>
+    <li><a href="get-statistics.html">GetStatistics</a></li>
+    <li><a href="get-resource-manager.html">GetResourceManager</a></li>
+    <li><a href="set-memory-manager-ready.html">SetMemoryManagerReady</a></li>
+    <li><a href="set-system-statistics-ready.html">SetSystemStatisticsReady</a></li>
+    <li><a href="set-logger-ready.html">SetLoggerReady</a></li>
+    <li><a href="set-task-system-ready.html">SetTaskSystemReady</a></li>
+    <li><a class="current" href="set-resource-manager-ready.html">SetResourceManagerReady</a></li>
+    <li><a href="is-memory-manager-ready.html">IsMemoryManagerReady</a></li>
+    <li><a href="is-system-statistics-ready.html">IsSystemStatisticsReady</a></li>
+    <li><a href="is-logger-ready.html">IsLoggerReady</a></li>
+    <li><a href="is-task-system-ready.html">IsTaskSystemReady</a></li>
+    <li><a href="is-resource-manager-ready.html">IsResourceManagerReady</a></li>
+    <li><a href="get-application.html">GetApplication</a></li>
+    <li><a href="log.html">Log</a></li>
+    <li><a href="log-error.html">LogError</a></li>
+    <li><a href="close-log.html">CloseLog</a></li>
+    <li><a href="flush-log.html">FlushLog</a></li>
+    <li><a href="console-out-ln.html">ConsoleOutLn</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Engine</a> /
+  <a href="index.html">Engine</a> / SetResourceManagerReady
+</p>
+
+<h1><span class="fn">SetResourceManagerReady</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Engine</span>
+  <span class="tag">defined inline in the header</span>
+  <span class="tag">no caller in the repository</span>
+  the setter nobody calls, for a subsystem no level starts — which is why its flag is false for the whole process
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code><span class="kw">void</span> <span class="fn">SetResourceManagerReady</span>()
+{
+        isResourceManagerReady = <span class="kw">true</span>;
+}</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  One unconditional assignment, with no call site anywhere in <code>Engine/</code> or <code>Applications/</code>. Nothing sets this flag, so
+  <a href="is-resource-manager-ready.html"><code>IsResourceManagerReady()</code></a> answers false from the first moment of the engine's life to the
+  last, whether or not the manager holds anything.
+</p>
+
+<p>
+  The absence is consistent rather than an oversight in one place: <a href="../EInitLevel/index.html"><code>EInitLevel</code></a> declares no resource
+  flag, so <a href="initialize.html"><code>Initialize</code></a> has no branch that could raise it; nothing pumps the manager either, and the manager's own
+  advance hook is an empty body (<a href="../../Resource/index.html#coverage">Resource: Coverage</a>). Every member of this pair — a level that does not
+  exist, a setter with no caller, a getter with no true branch — is a piece of an integration that was laid out and not connected.
+</p>
+
+<div class="note">
+  <strong>Setting it is possible and means nothing to the engine.</strong> No code reads the flag: <a href="initialize.html"><code>Initialize</code></a>,
+  <a href="run.html"><code>Run</code></a> and <a href="shutdown.html"><code>ShutDown</code></a> all ignore it, and
+  <a href="get-resource-manager.html"><code>GetResourceManager</code></a> does not test it. Unlike the task system flag, which gates a fatal assert, and the
+  memory manager flag, which gates two constructor asserts, this one gates nothing. A caller that wants the manager driven has to call it directly;
+  raising the flag first only makes the report read better.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<p><code>void</code>, one-way, and never cleared by anything.</p>
+
+<h2 id="example">Examples</h2>
+
+<p class="note">Illustrative — no call site for this exists in the repository, and there is nothing for it to pair with: the manager has no start
+function to raise the flag after.</p>
+
+<pre><code><span class="ty">hbe::Engine</span> hengine;
+hengine.<span class="fn">Initialize</span>(argc, argv);
+
+<span class="cm">// There is no "resource manager started" event in the engine, so the flag can only be</span>
+<span class="cm">// raised by the code that intends to use the manager itself:</span>
+<span class="kw">auto</span>&amp; resources = hengine.<span class="fn">GetResourceManager</span>();
+hengine.<span class="fn">SetResourceManagerReady</span>();
+
+<span class="cm">// ... and then drive it, because no engine loop will:</span>
+resources.<span class="fn">PostUpdate</span>(hengine);   <span class="cm">// declared public, defined empty</span></code></pre>
+
+<p>
+  The snippet is legal and, at the time of writing, effectless — it exists to show that the flag is decorative until something behind it is implemented.
+  The members that would carry the work, <code>RequestLoad</code> and <code>Load</code>, are declared with no definition, so a program calling them does not link
+  (<a href="../../Resource/index.html">Resource</a>).
+</p>
+
+<footer class="prevnext">
+  <span><a href="index.html">&larr; Engine</a></span>
+  <span><a href="index.html#methods">All Engine methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

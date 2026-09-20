@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Engine::IsMemoryManagerReady — Engine — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">Engine</a> methods</h3>
+  <ul class="methods">
+    <li><a href="get.html">Get</a></li>
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="operator-assign.html">operator=</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+    <li><a href="initialize.html">Initialize</a></li>
+    <li><a href="run.html">Run</a></li>
+    <li><a href="shutdown.html">ShutDown</a></li>
+    <li><a href="get-class-name.html">GetClassName</a></li>
+    <li><a href="get-memory-manager.html">GetMemoryManager</a></li>
+    <li><a href="get-logger.html">GetLogger</a></li>
+    <li><a href="get-task-system.html">GetTaskSystem</a></li>
+    <li><a href="get-statistics.html">GetStatistics</a></li>
+    <li><a href="get-resource-manager.html">GetResourceManager</a></li>
+    <li><a href="set-memory-manager-ready.html">SetMemoryManagerReady</a></li>
+    <li><a href="set-system-statistics-ready.html">SetSystemStatisticsReady</a></li>
+    <li><a href="set-logger-ready.html">SetLoggerReady</a></li>
+    <li><a href="set-task-system-ready.html">SetTaskSystemReady</a></li>
+    <li><a href="set-resource-manager-ready.html">SetResourceManagerReady</a></li>
+    <li><a class="current" href="is-memory-manager-ready.html">IsMemoryManagerReady</a></li>
+    <li><a href="is-system-statistics-ready.html">IsSystemStatisticsReady</a></li>
+    <li><a href="is-logger-ready.html">IsLoggerReady</a></li>
+    <li><a href="is-task-system-ready.html">IsTaskSystemReady</a></li>
+    <li><a href="is-resource-manager-ready.html">IsResourceManagerReady</a></li>
+    <li><a href="get-application.html">GetApplication</a></li>
+    <li><a href="log.html">Log</a></li>
+    <li><a href="log-error.html">LogError</a></li>
+    <li><a href="close-log.html">CloseLog</a></li>
+    <li><a href="flush-log.html">FlushLog</a></li>
+    <li><a href="console-out-ln.html">ConsoleOutLn</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Engine</a> /
+  <a href="index.html">Engine</a> / IsMemoryManagerReady
+</p>
+
+<h1><span class="fn">IsMemoryManagerReady</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Engine</span>
+  <span class="tag">const</span>
+  the only readiness flag anything actually asks — read by two constructors, as proof that memory came first
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code><span class="kw">bool</span> <span class="fn">IsMemoryManagerReady</span>() <span class="kw">const</span>
+{
+        <span class="kw">return</span> isMemoryManagerReady;
+}</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  A field read, <code>const</code>, so it is callable from a constructor running mid-engine-construction — which is the only situation it is used in.
+  <code>SystemStatistics</code>'s constructor and <code>Logger</code>'s constructor each open with
+  <code>Assert(engine.IsMemoryManagerReady())</code>. Both are asserting the engine's member declaration order, because nothing else enforces it: the flag
+  is the only in-code evidence that the memory manager finished before the things that allocate from it started.
+</p>
+
+<p>
+  Raised by <a href="set-memory-manager-ready.html"><code>SetMemoryManagerReady</code></a> on the last line of the memory manager's constructor, and never
+  cleared — not by <a href="shutdown.html"><code>ShutDown</code></a>, and not during
+  <a href="destructor.html">member destruction</a>, where the memory manager is the sixth of seven destructions. So "true" means "was ready at some
+  point", and during teardown that is a statement about the past.
+</p>
+
+<div class="note">
+  <strong>The two asserts that read it are Debug and Dev only.</strong> <code>Assert</code> is the configuration-limited form
+  (<a href="../../Core/index.html#functions">Core: Debug</a>): it aborts under <code>__DEBUG__</code> and compiles away otherwise, arguments and all. In a
+  Release build nothing reads this flag at all, so an engine whose memory manager was somehow not first would proceed silently into its remaining
+  constructors. For the ordering that holds in every configuration, compare <a href="is-task-system-ready.html"><code>IsTaskSystemReady</code></a>'s
+  consumer, which uses <code>FatalAssert</code>.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr>
+    <td><code>bool</code></td>
+    <td>
+      False during the first few member constructors of the engine, true from the end of <code>MemoryManager</code>'s constructor onwards for the rest of the
+      object's life. Not <code>[[nodiscard]]</code>
+    </td>
+  </tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p>The real use, as the first statement of a constructor that is about to depend on memory:</p>
+
+<pre><code><span class="ty">SystemStatistics</span>::<span class="ty">SystemStatistics</span>(<span class="ty">Engine</span>&amp; engine) :
+        frameCount(<span class="nu">0</span>), slowFrameCount(<span class="nu">0</span>), <span class="cm">/* ... */</span>
+        startTime(time::TStopWatch::now()),
+        currentTime(startTime)
+{
+        Assert(engine.<span class="fn">IsMemoryManagerReady</span>());
+        engine.<span class="fn">SetSystemStatisticsReady</span>();
+}</code></pre>
+
+<p class="meta">From Engine/Core/SystemStatistics.cpp; Engine/Log/Logger.cpp opens its constructor with the same assert.</p>
+
+<p>
+  The pattern is worth naming for anyone adding a subsystem to <code>Engine</code>: take the engine reference, assert this flag, then do work that
+  allocates. It is the one documented use of the five flags as a mechanism rather than as a report.
+</p>
+
+<footer class="prevnext">
+  <span><a href="index.html">&larr; Engine</a></span>
+  <span><a href="index.html#methods">All Engine methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

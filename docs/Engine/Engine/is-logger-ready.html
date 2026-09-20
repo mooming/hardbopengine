@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Engine::IsLoggerReady — Engine — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">Engine</a> methods</h3>
+  <ul class="methods">
+    <li><a href="get.html">Get</a></li>
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="operator-assign.html">operator=</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+    <li><a href="initialize.html">Initialize</a></li>
+    <li><a href="run.html">Run</a></li>
+    <li><a href="shutdown.html">ShutDown</a></li>
+    <li><a href="get-class-name.html">GetClassName</a></li>
+    <li><a href="get-memory-manager.html">GetMemoryManager</a></li>
+    <li><a href="get-logger.html">GetLogger</a></li>
+    <li><a href="get-task-system.html">GetTaskSystem</a></li>
+    <li><a href="get-statistics.html">GetStatistics</a></li>
+    <li><a href="get-resource-manager.html">GetResourceManager</a></li>
+    <li><a href="set-memory-manager-ready.html">SetMemoryManagerReady</a></li>
+    <li><a href="set-system-statistics-ready.html">SetSystemStatisticsReady</a></li>
+    <li><a href="set-logger-ready.html">SetLoggerReady</a></li>
+    <li><a href="set-task-system-ready.html">SetTaskSystemReady</a></li>
+    <li><a href="set-resource-manager-ready.html">SetResourceManagerReady</a></li>
+    <li><a href="is-memory-manager-ready.html">IsMemoryManagerReady</a></li>
+    <li><a href="is-system-statistics-ready.html">IsSystemStatisticsReady</a></li>
+    <li><a class="current" href="is-logger-ready.html">IsLoggerReady</a></li>
+    <li><a href="is-task-system-ready.html">IsTaskSystemReady</a></li>
+    <li><a href="is-resource-manager-ready.html">IsResourceManagerReady</a></li>
+    <li><a href="get-application.html">GetApplication</a></li>
+    <li><a href="log.html">Log</a></li>
+    <li><a href="log-error.html">LogError</a></li>
+    <li><a href="close-log.html">CloseLog</a></li>
+    <li><a href="flush-log.html">FlushLog</a></li>
+    <li><a href="console-out-ln.html">ConsoleOutLn</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Engine</a> /
+  <a href="index.html">Engine</a> / IsLoggerReady
+</p>
+
+<h1><span class="fn">IsLoggerReady</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Engine</span>
+  <span class="tag">const</span>
+  true for every engine that has ever existed — it reports the logger object, not the drain task, and the log header says so
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code><span class="kw">bool</span> <span class="fn">IsLoggerReady</span>() <span class="kw">const</span>
+{
+        <span class="kw">return</span> isLoggerReady;
+}</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>Returns the flag and nothing else.</p>
+
+<p>
+  The flag is raised by <code>Logger</code>'s constructor — the last statement in it — so it is true before
+  <a href="initialize.html"><code>Initialize</code></a> is entered and regardless of the levels passed to it.
+  <a href="set-logger-ready.html"><code>SetLoggerReady</code></a> is what the constructor calls;
+  <code>Initialize</code> then sets the same member directly after starting the drain task, which changes nothing observable. There is no clear anywhere: not
+  in <a href="shutdown.html"><code>ShutDown</code></a>, and not in <a href="destructor.html"><code>~Logger</code></a>, which clears the
+  <em>logger's</em> own singleton pointer but leaves this flag set on the engine that is still being destroyed.
+</p>
+
+<div class="gap">
+  <strong>The answer is always "yes", so it cannot answer the question that gets asked.</strong> What a caller wants to know at a flush or a shutdown is
+  whether a drain task exists: <code>Logger::StopTask</code> waits for a task that may never have started and blocks forever, while
+  <code>Logger::Flush</code> behaves differently depending on whether something is draining. The correct test is
+  <code>Logger::IsDrainTaskRunning()</code>, and <code>Logger.h</code> carries an explicit note about this very accessor: the engine flag "is not a
+  substitute", because the constructor raises it and it "stays true whether or not a task was ever started". That is a header correcting a misunderstanding
+  before it is made.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr>
+    <td><code>bool</code></td>
+    <td>
+      True from the end of the <code>Logger</code> member constructor onward — that is, for any engine you can hold a reference to. False only inside the
+      engine's own construction, before that member runs. Not <code>[[nodiscard]]</code>
+    </td>
+  </tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p>The question you actually have, asked the way the engine asks it:</p>
+
+<pre><code><span class="kw">auto</span>&amp; engine = <span class="ty">Engine</span>::<span class="fn">Get</span>();
+
+<span class="cm">// Not: if (engine.IsLoggerReady()) — true either way.</span>
+<span class="kw">if</span> (engine.<span class="fn">GetLogger</span>().<span class="fn">IsDrainTaskRunning</span>())
+{
+        engine.<span class="fn">GetLogger</span>().<span class="fn">StopTask</span>(engine.<span class="fn">GetTaskSystem</span>());
+}
+<span class="kw">else</span>
+{
+        engine.<span class="fn">GetLogger</span>().<span class="fn">Flush</span>();
+}</code></pre>
+
+<p class="meta">From Engine/Engine/Engine.cpp — the signal handler installed by the engine constructor.</p>
+
+<p>
+  Both branches reach the same destination, a log that has been written; the difference is that one of them can block indefinitely if it is chosen by a flag
+  that cannot tell the two states apart. That is why the check is on the object. <a href="../../Log/index.html#logger">Log: Logger</a>.
+</p>
+
+<footer class="prevnext">
+  <span><a href="index.html">&larr; Engine</a></span>
+  <span><a href="index.html#methods">All Engine methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Engine::SetLoggerReady — Engine — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">Engine</a> methods</h3>
+  <ul class="methods">
+    <li><a href="get.html">Get</a></li>
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="operator-assign.html">operator=</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+    <li><a href="initialize.html">Initialize</a></li>
+    <li><a href="run.html">Run</a></li>
+    <li><a href="shutdown.html">ShutDown</a></li>
+    <li><a href="get-class-name.html">GetClassName</a></li>
+    <li><a href="get-memory-manager.html">GetMemoryManager</a></li>
+    <li><a href="get-logger.html">GetLogger</a></li>
+    <li><a href="get-task-system.html">GetTaskSystem</a></li>
+    <li><a href="get-statistics.html">GetStatistics</a></li>
+    <li><a href="get-resource-manager.html">GetResourceManager</a></li>
+    <li><a href="set-memory-manager-ready.html">SetMemoryManagerReady</a></li>
+    <li><a href="set-system-statistics-ready.html">SetSystemStatisticsReady</a></li>
+    <li><a class="current" href="set-logger-ready.html">SetLoggerReady</a></li>
+    <li><a href="set-task-system-ready.html">SetTaskSystemReady</a></li>
+    <li><a href="set-resource-manager-ready.html">SetResourceManagerReady</a></li>
+    <li><a href="is-memory-manager-ready.html">IsMemoryManagerReady</a></li>
+    <li><a href="is-system-statistics-ready.html">IsSystemStatisticsReady</a></li>
+    <li><a href="is-logger-ready.html">IsLoggerReady</a></li>
+    <li><a href="is-task-system-ready.html">IsTaskSystemReady</a></li>
+    <li><a href="is-resource-manager-ready.html">IsResourceManagerReady</a></li>
+    <li><a href="get-application.html">GetApplication</a></li>
+    <li><a href="log.html">Log</a></li>
+    <li><a href="log-error.html">LogError</a></li>
+    <li><a href="close-log.html">CloseLog</a></li>
+    <li><a href="flush-log.html">FlushLog</a></li>
+    <li><a href="console-out-ln.html">ConsoleOutLn</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Engine</a> /
+  <a href="index.html">Engine</a> / SetLoggerReady
+</p>
+
+<h1><span class="fn">SetLoggerReady</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Engine</span>
+  <span class="tag">defined inline in the header</span>
+  raised twice from two different places, which is why the flag it sets cannot answer the question a caller wants to ask
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code><span class="kw">void</span> <span class="fn">SetLoggerReady</span>()
+{
+        isLoggerReady = <span class="kw">true</span>;
+}</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  One unconditional assignment, called from two places that mean different things. The first is <code>Logger</code>'s own constructor — its last
+  statement, after its pools, path and output file are set up — so the flag becomes true while the
+  <a href="constructors.html">engine is still being constructed</a>, with no level consulted and no drain task in existence. The second is
+  <a href="initialize.html"><code>Initialize</code></a>, immediately after <code>logger.StartTask(taskSystem)</code>, which is where the drain task is
+  actually created.
+</p>
+
+<p>
+  Two raises, one boolean: the flag records "a logger object exists", and the second raise adds nothing observable to it. There is no counter and no
+  second flag, so no reader can distinguish the two states. <a href="is-logger-ready.html"><code>IsLoggerReady</code></a> carries the consequence,
+  and the log module documents it too: <code>Logger.h</code> states in a note that this flag "is not a substitute" for asking whether the drain task
+  is running, because the constructor raises it and it "stays true whether or not a task was ever started".
+</p>
+
+<div class="gap">
+  <strong>Do not use this flag to decide whether it is safe to stop the drain task.</strong> <code>Logger::StopTask</code> waits for the task to
+  acknowledge, and called with no task running it waits forever; the supported test is
+  <code>Logger::IsDrainTaskRunning()</code>, a single acquire load that may be read from any thread including a signal handler. The engine's own signal
+  handler asks exactly that question rather than this flag (<a href="get-logger.html">quoted on <code>GetLogger</code></a>).
+  <a href="../../Log/index.html#logger">Log: Logger</a>
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  <code>void</code>. The flag is never cleared — not when the level is skipped, not by <a href="shutdown.html"><code>ShutDown</code></a>, and not when
+  <a href="destructor.html"><code>~Logger</code></a> clears the logger's own singleton pointer — so it is a one-way latch.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<p>The two raises, from the two places that make them:</p>
+
+<pre><code><span class="cm">// Engine/Log/Logger.cpp — end of Logger::Logger(Engine&amp;, const char*, const char*)</span>
+        flushFuncs.<span class="fn">reserve</span>(<span class="nu">2</span>);
+        flushFuncs.<span class="fn">emplace_back</span>([<span class="kw">this</span>](<span class="kw">const</span> <span class="ty">TTextBuffer</span>&amp; buffer) { <span class="fn">WriteLog</span>(buffer); });
+        flushFuncs.<span class="fn">emplace_back</span>([](<span class="kw">const</span> <span class="ty">TTextBuffer</span>&amp; buffer) { <span class="fn">PrintStdIO</span>(buffer); });
+
+        engine.<span class="fn">SetLoggerReady</span>();</code></pre>
+
+<pre><code><span class="cm">// Engine/Engine/Engine.cpp — the Logger branch of Initialize</span>
+        <span class="kw">if</span> (<span class="fn">HasFlag</span>(levels, <span class="ty">EInitLevel</span>::Logger))
+        {
+                logger.<span class="fn">StartTask</span>(taskSystem);
+                isLoggerReady = <span class="kw">true</span>;
+        }</code></pre>
+
+<p class="meta">The first from Engine/Log/Logger.cpp, the second from Engine/Engine/Engine.cpp.</p>
+
+<p>
+  Note that the second site writes the member directly rather than calling this setter, so the setter is not even the single path to the flag — there
+  are two writes plus a constructor raise, and no read that can tell them apart. If the intent was one latch per level, the flag is the wrong shape.
+</p>
+
+<footer class="prevnext">
+  <span><a href="index.html">&larr; Engine</a></span>
+  <span><a href="index.html#methods">All Engine methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

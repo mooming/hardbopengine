@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Engine::Get — Engine — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">Engine</a> methods</h3>
+  <ul class="methods">
+    <li><a class="current" href="get.html">Get</a></li>
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="operator-assign.html">operator=</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+    <li><a href="initialize.html">Initialize</a></li>
+    <li><a href="run.html">Run</a></li>
+    <li><a href="shutdown.html">ShutDown</a></li>
+    <li><a href="get-class-name.html">GetClassName</a></li>
+    <li><a href="get-memory-manager.html">GetMemoryManager</a></li>
+    <li><a href="get-logger.html">GetLogger</a></li>
+    <li><a href="get-task-system.html">GetTaskSystem</a></li>
+    <li><a href="get-statistics.html">GetStatistics</a></li>
+    <li><a href="get-resource-manager.html">GetResourceManager</a></li>
+    <li><a href="set-memory-manager-ready.html">SetMemoryManagerReady</a></li>
+    <li><a href="set-system-statistics-ready.html">SetSystemStatisticsReady</a></li>
+    <li><a href="set-logger-ready.html">SetLoggerReady</a></li>
+    <li><a href="set-task-system-ready.html">SetTaskSystemReady</a></li>
+    <li><a href="set-resource-manager-ready.html">SetResourceManagerReady</a></li>
+    <li><a href="is-memory-manager-ready.html">IsMemoryManagerReady</a></li>
+    <li><a href="is-system-statistics-ready.html">IsSystemStatisticsReady</a></li>
+    <li><a href="is-logger-ready.html">IsLoggerReady</a></li>
+    <li><a href="is-task-system-ready.html">IsTaskSystemReady</a></li>
+    <li><a href="is-resource-manager-ready.html">IsResourceManagerReady</a></li>
+    <li><a href="get-application.html">GetApplication</a></li>
+    <li><a href="log.html">Log</a></li>
+    <li><a href="log-error.html">LogError</a></li>
+    <li><a href="close-log.html">CloseLog</a></li>
+    <li><a href="flush-log.html">FlushLog</a></li>
+    <li><a href="console-out-ln.html">ConsoleOutLn</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Engine</a> /
+  <a href="index.html">Engine</a> / Get
+</p>
+
+<h1><span class="fn">Get</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Engine</span>
+  <span class="tag">static</span>
+  <span class="tag">Engine/Engine/Engine.h</span>
+  the reach-everywhere accessor — one file-static pointer, written by the constructor and cleared by nothing
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code><span class="kw">static</span> <span class="ty">Engine</span>&amp; <span class="fn">Get</span>();</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Returns <code>*engineInstance</code>, where <code>engineInstance</code> is a <code>static Engine*</code> file-scope
+  variable in <code>Engine/Engine/Engine.cpp</code>. There is no lazy construction, no creation function and no release
+  function: the value is the address the last-constructed <code>Engine</code> passed to
+  <a href="index.html#properties"><code>PreEngineInit</code></a>, which is the first member the constructor initialises.
+  That placement is the whole reason the call is usable from inside the engine's own setup — the pointer is live before
+  <a href="../../Memory/index.html#memorymanager"><code>MemoryManager</code></a> finishes constructing.
+</p>
+
+<p>
+  The existence check is <code>Assert(engineInstance != nullptr)</code>, which is the Debug and Dev form: it flushes the
+  logs and aborts. In a build without <code>__DEBUG__</code> the corresponding <code>Assert</code> overload is an empty
+  inline function, so the test is compiled away entirely and a null pointer is dereferenced and the call returns a
+  reference to address zero. Compare the guards a few lines away in the same source file —
+  <a href="initialize.html"><code>Initialize</code></a>'s "no OS application created" and
+  <a href="run.html"><code>Run</code></a>'s "needs EInitLevel::TaskSystem" use <code>FatalAssert</code>, which stops in
+  every configuration. This one does not.
+</p>
+
+<p>
+  Nothing writes the pointer back to null. <code>PreEngineInit</code> declares no destructor and
+  <a href="destructor.html"><code>~Engine</code></a> does not touch it, so the window in which <code>Get</code> answers with
+  a partly-destroyed object — every member destructor, which is exactly when allocators report and logs flush — is joined
+  by a window in which it answers with a reference to memory that is no longer an <code>Engine</code> at all. A non-null
+  test cannot distinguish the two cases because it is only ever testing for null.
+</p>
+
+<div class="note">
+  <strong>The accessors it returns are the point.</strong> <code>Get</code> is how a translation unit that is given no engine
+  reaches one: <code>Task::Start</code>, <code>MemoryManager</code>, the allocator statistics, the OSAL window
+  implementations and the assert helpers all go through it rather than carrying a reference. That is also why the pointer is
+  set in the constructor's <em>first</em> member — those paths are reachable from the constructors of the members that come
+  after it.
+</div>
+
+<div class="gap">
+  <strong>It is called from a signal handler, and everything that path touches takes a mutex.</strong> The handler the
+  <a href="constructors.html">constructor</a> installs starts with <code>Engine::Get()</code> and continues into
+  <a href="get-logger.html"><code>GetLogger()</code></a>, <a href="get-task-system.html"><code>GetTaskSystem()</code></a> and
+  <a href="log-error.html"><code>LogError()</code></a> — the last of which locks <code>logLock</code>, and through it
+  <code>consoleOutLock</code>. Taking a mutex whose previous owner was interrupted by the very signal being handled is not
+  defined to make progress. The behaviour worth knowing is not that the handler exists but that it can block on a lock held
+  by the code that died.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr>
+    <td><code>Engine&amp;</code></td>
+    <td>
+      The live instance, non-const, so any of the engine's methods may be called through it. There is no
+      <code>const</code> overload and no <code>const Engine&amp;</code> form, so this is the only way in — including for
+      callers that only want to write a log line. It is not declared <code>[[nodiscard]]</code>, unlike
+      <a href="get-application.html"><code>GetApplication</code></a>'s callers' checks elsewhere in the class
+    </td>
+  </tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p>A handler that has no handle to the engine and no thread that would supply one:</p>
+
+<pre><code><span class="kw">void</span> <span class="fn">SignalHandler</span>(<span class="kw">int</span> sigNum)
+{
+        <span class="kw">using namespace</span> hbe;
+
+        <span class="kw">auto</span>&amp; engine = <span class="ty">Engine</span>::<span class="fn">Get</span>();
+        <span class="kw">if</span> (engine.<span class="fn">GetLogger</span>().<span class="fn">IsDrainTaskRunning</span>())
+        {
+                engine.<span class="fn">GetLogger</span>().<span class="fn">StopTask</span>(engine.<span class="fn">GetTaskSystem</span>());
+        }
+        <span class="kw">else</span>
+        {
+                engine.<span class="fn">GetLogger</span>().<span class="fn">Flush</span>();
+        }
+        engine.<span class="fn">LogError</span>([sigNum](<span class="kw">auto</span>&amp; ls)
+        { ls &lt;&lt; <span class="st">"ERROR: signal("</span> &lt;&lt; sigNum &lt;&lt; <span class="st">") received. The application shall be terminated."</span>; });
+
+        engine.<span class="fn">CloseLog</span>();
+
+        exit(<span class="nu">128</span> + sigNum);
+}</code></pre>
+
+<p class="meta">From Engine/Engine/Engine.cpp — the handler installed by the engine constructor for
+<code>SIGABRT</code>, <code>SIGFPE</code>, <code>SIGILL</code>, <code>SIGINT</code>, <code>SIGSEGV</code> and
+<code>SIGTERM</code>.</p>
+
+<p>The ordinary case, a subsystem that was never handed an engine:</p>
+
+<pre><code><span class="kw">void</span> <span class="ty">Task</span>::<span class="fn">Start</span>(<span class="ty">TIndex</span> numberOfSubTasks, <span class="ty">TIndex</span> startIndex, <span class="ty">TIndex</span> endIndex, <span class="kw">uint8_t</span> priority) <span class="kw">noexcept</span>
+{
+        <span class="kw">auto</span>&amp; taskSystem = <span class="ty">Engine</span>::<span class="fn">Get</span>().<span class="fn">GetTaskSystem</span>();</code></pre>
+
+<p class="meta">From Engine/Core/Task.cpp.</p>
+
+<p>
+  Note that neither example asks whether anything is ready. The second one enqueues through a task system whose threads
+  exist only if <a href="initialize.html">the TaskSystem level ran</a>; the first one reaches the logger's drain task,
+  which the engine's own flag cannot confirm — <a href="is-logger-ready.html"><code>IsLoggerReady</code></a> explains why
+  <code>IsDrainTaskRunning</code> is asked instead.
+</p>
+
+<footer class="prevnext">
+  <span><a href="index.html">&larr; Engine</a></span>
+  <span><a href="index.html#methods">All Engine methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

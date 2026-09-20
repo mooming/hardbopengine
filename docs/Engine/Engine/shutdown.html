@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Engine::ShutDown — Engine — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">Engine</a> methods</h3>
+  <ul class="methods">
+    <li><a href="get.html">Get</a></li>
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="operator-assign.html">operator=</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+    <li><a href="initialize.html">Initialize</a></li>
+    <li><a href="run.html">Run</a></li>
+    <li><a class="current" href="shutdown.html">ShutDown</a></li>
+    <li><a href="get-class-name.html">GetClassName</a></li>
+    <li><a href="get-memory-manager.html">GetMemoryManager</a></li>
+    <li><a href="get-logger.html">GetLogger</a></li>
+    <li><a href="get-task-system.html">GetTaskSystem</a></li>
+    <li><a href="get-statistics.html">GetStatistics</a></li>
+    <li><a href="get-resource-manager.html">GetResourceManager</a></li>
+    <li><a href="set-memory-manager-ready.html">SetMemoryManagerReady</a></li>
+    <li><a href="set-system-statistics-ready.html">SetSystemStatisticsReady</a></li>
+    <li><a href="set-logger-ready.html">SetLoggerReady</a></li>
+    <li><a href="set-task-system-ready.html">SetTaskSystemReady</a></li>
+    <li><a href="set-resource-manager-ready.html">SetResourceManagerReady</a></li>
+    <li><a href="is-memory-manager-ready.html">IsMemoryManagerReady</a></li>
+    <li><a href="is-system-statistics-ready.html">IsSystemStatisticsReady</a></li>
+    <li><a href="is-logger-ready.html">IsLoggerReady</a></li>
+    <li><a href="is-task-system-ready.html">IsTaskSystemReady</a></li>
+    <li><a href="is-resource-manager-ready.html">IsResourceManagerReady</a></li>
+    <li><a href="get-application.html">GetApplication</a></li>
+    <li><a href="log.html">Log</a></li>
+    <li><a href="log-error.html">LogError</a></li>
+    <li><a href="close-log.html">CloseLog</a></li>
+    <li><a href="flush-log.html">FlushLog</a></li>
+    <li><a href="console-out-ln.html">ConsoleOutLn</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Engine</a> /
+  <a href="index.html">Engine</a> / ShutDown
+</p>
+
+<h1><span class="fn">ShutDown</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Engine</span>
+  <span class="tag">Engine/Engine/Engine.h</span>
+  <span class="tag">header comment: "Shut down engine. It'll shut down its task system."</span>
+  print the closing report and ask the task system to stop — which is the whole of what the class calls teardown
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code><span class="kw">void</span> <span class="fn">ShutDown</span>();</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>The body does four things, in this order:</p>
+
+<ol>
+  <li>
+    <strong>Prints the closing report, whatever was started.</strong> Through <code>ConfigSystem::Get()</code> it prints the
+    interned-string table, then every registered configuration parameter, then
+    <a href="../../Core/index.html#systemstatistics"><code>statistics.Print()</code></a> and
+    <code>statistics.PrintAllocatorProfiles()</code>. None of this is gated on a level or on a ready flag: a run that started
+    nothing still prints the tables, and the numbers it prints are whatever the counters reached.
+    <a href="../../String/index.html">String</a> and <a href="../../Config/index.html#configsystem">Config</a> own what those
+    reports contain.
+  </li>
+  <li>
+    <strong>Calls the private <code>PreShutdown()</code>.</strong> That reports the logger's memory configuration and calls
+    <code>memoryManager.PreEngineShutdown()</code> — and both of those bodies only do anything when
+    <code>PROFILE_ENABLED</code> is set, so in a plain build the hook contributes two log lines.
+  </li>
+  <li><strong>Logs <code>Shutting down...</code></strong> under the <code>Engine</code> category, at Info level.</li>
+  <li>
+    <strong>Requests the task system stop, if one was ever started:</strong>
+    <code>if (isTaskSystemReady) { taskSystem.RequestShutDown(); }</code>. Reading the ready flag rather than the level
+    argument is the deliberate choice the header documents — a level you never passed cannot be torn down, so
+    <code>EInitLevel::TaskSystem</code> absent means this step is skipped and nothing reaches into a task system with no
+    streams. <code>RequestShutDown()</code> clears one atomic flag; that is the mechanism that lets
+    <a href="run.html"><code>Run</code></a> return.
+  </li>
+</ol>
+
+<div class="gap">
+  <strong>It stops nothing it does not name, and it names one thing.</strong> The drain task the Logger level started keeps
+  running — <code>Logger::StopTask</code> is called from exactly one place in the engine, the
+  <a href="constructors.html">signal handler</a>, and not from here. No thread is joined (that is
+  <a href="run.html"><code>Run</code></a> or <a href="destructor.html"><code>~TaskSystem</code></a>), the OS application is not
+  destroyed, the resource manager is not touched, neither log file is closed, and no ready flag is cleared. After this call the
+  engine is alive and its accessors work; the only observable change is that the task system's running flag is now false.
+</div>
+
+<div class="note">
+  <strong>Twice is not an error and not a no-op.</strong> There is no once-flag and no assertion, so a second call repeats step
+  1: the string table, the parameter list, the statistics and the allocator profiles print again, into the console and the log.
+  The fourth step is safe to repeat — writing false to that atomic is idempotent — and step 2 is a hook that re-runs whatever
+  <code>PROFILE_ENABLED</code> made it do. So the correct statement about this call is: re-running it is harmless to state and
+  noisy in output.
+</div>
+
+<p>
+  <strong>From another thread</strong> the source supports the part that matters most and guarantees nothing about the rest.
+  The shutdown request is an atomic store, so a worker thread can use this call to end
+  <a href="run.html"><code>Run</code></a> — which is precisely how <code>Engine/Test/UnitTestCollection.cpp</code> finishes the
+  suite, calling <code>Engine::Get().ShutDown()</code> as the last statement of the suite's own task. What is not synchronised
+  is the report: the string-table print, the parameter print and the statistics print hold no lock, so two threads shutting
+  down at once interleave their reports. The header attaches its thread comment to <a href="run.html"><code>Run</code></a>, not
+  to this function, and no code enforces anything for this one.
+</p>
+
+<p>
+  Where it belongs in an application is last, after the caller's own subsystems are done — the engine owns no renderer and no
+  window, so it cannot be first (<a href="../../Renderer/index.html">Renderer</a>,
+  <a href="../../OSAL/index.html#window">OSAL: Window</a>). Both windowed examples follow that order.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  <code>void</code>, with nothing to check afterwards. In particular it does not report whether a task system was asked to
+  stop; the flag it consulted for that decision is readable directly through
+  <a href="is-task-system-ready.html"><code>IsTaskSystemReady</code></a>.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<p>Ordering in a real application: renderer first, then the window, then the engine.</p>
+
+<pre><code>        renderer.<span class="fn">Shutdown</span>();
+        window-&gt;<span class="fn">Close</span>();
+        hengine.<span class="fn">ShutDown</span>();
+
+        <span class="kw">return</span> <span class="nu">0</span>;
+}</code></pre>
+
+<p class="meta">From Applications/VulkanExample/Main.cpp.</p>
+
+<p>The same call issued from the work itself, which is what makes it a shutdown request rather than a teardown:</p>
+
+<pre><code>        testEnv.<span class="fn">Start</span>();
+
+        <span class="ty">Engine</span>::<span class="fn">Get</span>().<span class="fn">ShutDown</span>();
+
+        <span class="kw">return</span> <span class="nu">1</span>;
+};</code></pre>
+
+<p class="meta">From Engine/Test/UnitTestCollection.cpp — the last statement of the test suite's task, run on a worker
+stream.</p>
+
+<div class="gap">
+  <strong>Omitting the call is not the same as deferring it.</strong> Both applications also contain failure paths that
+  <code>return</code> before reaching their <code>ShutDown()</code> line — a window that could not be created, a renderer that
+  could not initialise — and by then the task system is running. On those paths nothing clears the running flag, and the
+  destructor's join waits for a flag that only this call clears. See
+  <a href="destructor.html">the destructor</a> for what happens in that window.
+</div>
+
+<footer class="prevnext">
+  <span><a href="index.html">&larr; Engine</a></span>
+  <span><a href="index.html#methods">All Engine methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

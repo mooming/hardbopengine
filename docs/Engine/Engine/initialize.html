@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Engine::Initialize — Engine — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">Engine</a> methods</h3>
+  <ul class="methods">
+    <li><a href="get.html">Get</a></li>
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="operator-assign.html">operator=</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+    <li><a class="current" href="initialize.html">Initialize</a></li>
+    <li><a href="run.html">Run</a></li>
+    <li><a href="shutdown.html">ShutDown</a></li>
+    <li><a href="get-class-name.html">GetClassName</a></li>
+    <li><a href="get-memory-manager.html">GetMemoryManager</a></li>
+    <li><a href="get-logger.html">GetLogger</a></li>
+    <li><a href="get-task-system.html">GetTaskSystem</a></li>
+    <li><a href="get-statistics.html">GetStatistics</a></li>
+    <li><a href="get-resource-manager.html">GetResourceManager</a></li>
+    <li><a href="set-memory-manager-ready.html">SetMemoryManagerReady</a></li>
+    <li><a href="set-system-statistics-ready.html">SetSystemStatisticsReady</a></li>
+    <li><a href="set-logger-ready.html">SetLoggerReady</a></li>
+    <li><a href="set-task-system-ready.html">SetTaskSystemReady</a></li>
+    <li><a href="set-resource-manager-ready.html">SetResourceManagerReady</a></li>
+    <li><a href="is-memory-manager-ready.html">IsMemoryManagerReady</a></li>
+    <li><a href="is-system-statistics-ready.html">IsSystemStatisticsReady</a></li>
+    <li><a href="is-logger-ready.html">IsLoggerReady</a></li>
+    <li><a href="is-task-system-ready.html">IsTaskSystemReady</a></li>
+    <li><a href="is-resource-manager-ready.html">IsResourceManagerReady</a></li>
+    <li><a href="get-application.html">GetApplication</a></li>
+    <li><a href="log.html">Log</a></li>
+    <li><a href="log-error.html">LogError</a></li>
+    <li><a href="close-log.html">CloseLog</a></li>
+    <li><a href="flush-log.html">FlushLog</a></li>
+    <li><a href="console-out-ln.html">ConsoleOutLn</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Engine</a> /
+  <a href="index.html">Engine</a> / Initialize
+</p>
+
+<h1><span class="fn">Initialize</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Engine</span>
+  <span class="tag">Engine/Engine/Engine.h</span>
+  <span class="tag">levels defaulted to EInitLevel::All</span>
+  start exactly the subsystems named, in dependency order, and record on the ready flags what actually started
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code><span class="kw">void</span> <span class="fn">Initialize</span>(<span class="kw">int</span> argc, <span class="kw">const char</span>* argv[], <span class="ty">EInitLevel</span> levels = <span class="ty">EInitLevel</span>::All);</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  The body is six steps in a fixed order, three of them behind a level test. The order is not stylistic: the task system's
+  streams have to exist before the logger can be given one to run on, and all of the logging has to be live before the OS
+  application starts producing things worth logging. What the <code>Engine</code> constructor already built — memory,
+  statistics, the <code>Logger</code> object, both log files, the signal handlers — is not re-touched here
+  (<a href="constructors.html">the constructor page</a> lists it), so this function is only ever about threads, the drain
+  task and the OS application.
+</p>
+
+<table>
+  <tr><th>Step</th><th>Runs when</th><th>What the source does</th><th>State left behind</th></tr>
+  <tr>
+    <td>1</td>
+    <td>Always</td>
+    <td>
+      If the Logger bit is set, the TaskSystem bit is set too:
+      <code>levels = levels | EInitLevel::TaskSystem;</code>. The dependency is closed here rather than documented as a
+      caller's obligation, so the combination "drain task, no streams to run it on" is not expressible through this function
+    </td>
+    <td>A widened level set, local to this call</td>
+  </tr>
+  <tr>
+    <td>2</td>
+    <td><code>TaskSystem</code> bit set</td>
+    <td>
+      <code>taskSystem.Initialize()</code>: installs the <code>TaskSystem</code> log filter, registers the configuration
+      parameters <code>Log.TaskSystem</code>, <code>Task.RegistryInitialRecords</code>,
+      <code>Task.RegistryGrowByRecords</code> and <code>Task.RegistryMaxRecords</code>, initialises the task registry from the
+      first and second and caps it with the third, then <code>BuildStreams()</code> — which asserts it is running on the thread
+      that constructed the task system, aborts if the machine has fewer than the minimum hardware threads, names this thread
+      the engine loop thread, and creates the stream array with a fixed <code>Base</code> stream, a fixed <code>IO</code>
+      stream and one worker stream per remaining hardware thread
+    </td>
+    <td><code>isTaskSystemReady = true</code>, worker threads running, registry live</td>
+  </tr>
+  <tr>
+    <td>3</td>
+    <td><code>Logger</code> bit set</td>
+    <td>
+      <code>logger.StartTask(taskSystem)</code>: creates a task named <code>Logger</code> in the registry, enqueues a
+      single-subtask drain onto the <code>IO</code> stream, and records that stream's thread as the thread that owns flushing.
+      If the registry could not track the task, it logs an error and the drain simply is not created — lines then get flushed
+      inline by whichever thread produces them
+    </td>
+    <td>Background drain running, flush thread recorded</td>
+  </tr>
+  <tr>
+    <td>4</td>
+    <td>Always</td>
+    <td>
+      Opens a logger under the category <code>Engine</code> and prints <code>Command Line Arguments</code>, one line per
+      <code>argv[i]</code>, then <code>Engine has been initialized.</code> — through the zero-argument
+      <code>Logger::Get()</code>, which works whatever the levels because the <code>Logger</code> singleton is set by its
+      constructor
+    </td>
+    <td>The argument vector in <code>hardbop.log</code></td>
+  </tr>
+  <tr>
+    <td>5</td>
+    <td><code>Application</code> bit set</td>
+    <td>
+      <code>application = OS::CreateApplication();</code> then
+      <code>FatalAssert(application != nullptr, "Application level requested, no OS application created");</code> then
+      <code>application-&gt;Initialize();</code>. This is the step that reaches the window server
+    </td>
+    <td>The unique pointer holds the application</td>
+  </tr>
+  <tr>
+    <td>6</td>
+    <td>Always</td>
+    <td>
+      <code>PostInitialize()</code>: a start and a done line around <code>memoryManager.PostEngineInit()</code>, which is an
+      empty function
+    </td>
+    <td>Nothing beyond two log lines</td>
+  </tr>
+</table>
+
+<p>
+  The levels therefore select three things and only three: worker streams, the log drain task, and the OS application.
+  <a href="../EInitLevel/index.html"><code>EInitLevel</code></a> is the flag type, its <code>None</code>, and the
+  <code>All</code> the default argument uses.
+</p>
+
+<div class="note">
+  <strong>No level, and no combination of levels, omits memory.</strong> The memory manager is a member constructed by the
+  constructor, and it is asserted-on by the constructors of both statistics and the logger. A headless tool gets a real memory
+  manager and an open <code>hardbop.log</code> either way; what it can avoid is the one step that talks to the window server.
+  Likewise the resource manager: there is no level for it at all, so it is not "left off", it is never started by anyone
+  (<a href="../../Resource/index.html#coverage">Resource: Coverage</a>).
+</div>
+
+<div class="gap">
+  <strong>Skipping the <code>TaskSystem</code> level is not a smaller engine — it is an engine whose
+  <a href="run.html"><code>Run</code></a> aborts.</strong> That call opens with
+  <code>FatalAssert(isTaskSystemReady, "Engine::Run needs EInitLevel::TaskSystem")</code>, and
+  <code>FatalAssert</code> stops the process in every configuration, Release included
+  (<a href="../../Core/index.html#functions">Core: Debug</a>). The same set also leaves every consumer of
+  <a href="get-task-system.html"><code>GetTaskSystem()</code></a> holding a valid reference to a task system with no registry
+  and no streams — the OSAL window implementations post their events through it
+  (<a href="../../OSAL/index.html#window">OSAL: Window</a>), so a window opened without this level has nowhere to send what it
+  receives. Choosing <code>Application</code> without <code>TaskSystem</code> is expressible and is almost certainly not what
+  you meant.
+</div>
+
+<div class="gap">
+  <strong>A second call re-runs every step, and nothing detects the first one.</strong> There is no once-flag, no early
+  return and no assertion against it. Repeating the <code>TaskSystem</code> step re-enters <code>BuildStreams()</code>, which
+  replaces the live stream array in place while its threads are running; repeating the <code>Application</code> step assigns a
+  new unique pointer over the old one, destroying the application the window layer may still be using. Treat
+  <code>Initialize</code> as once per object — the repository's own entry points all do.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr>
+    <td><code>argc</code></td>
+    <td><code>int</code></td>
+    <td>
+      The count <code>main</code> was given. The only use made of it here is as the bound of the loop that prints the
+      arguments; nothing parses them, so a value that over-states <code>argv</code> is read out of bounds by the printing, not
+      by a parser
+    </td>
+  </tr>
+  <tr>
+    <td><code>argv</code></td>
+    <td><code>const char*</code> array of <code>argc</code> entries</td>
+    <td>
+      Each entry is written to the log as its own line, so each must be a null-terminated string that stays alive for the
+      duration of the call. An entry point declared as <code>char** argv</code> needs the cast
+      <code>(<span class="kw">const char</span>**)</code> — which is what <code>Applications/VulkanExample/Main.cpp</code> does
+    </td>
+  </tr>
+  <tr>
+    <td><code>levels</code></td>
+    <td><a href="../EInitLevel/index.html"><code>EInitLevel</code></a>, defaulted to <code>EInitLevel::All</code></td>
+    <td>
+      Any combination of the flags, including <code>None</code>. Bitwise-or of the flags is <code>constexpr</code>, so a set can
+      be a compile-time constant. The <code>Logger</code> bit silently adds <code>TaskSystem</code>; there is no flag that
+      starts the resource manager, and no flag whose absence turns off memory, statistics or the log files
+    </td>
+  </tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  <code>void</code>. Nothing reports which levels ran, whether anything failed, or whether the level set was widened — and a
+  level that was requested but whose step is unconditional (the argument printing, the post-init hook) cannot be distinguished
+  from one that did work. The record of what exists is the state afterwards, not this call:
+  <a href="is-task-system-ready.html"><code>IsTaskSystemReady()</code></a> is the one flag that tracks a level faithfully,
+  because only step 2 raises it; <a href="get-application.html"><code>GetApplication()</code></a> is non-null exactly when step
+  5 completed; and <a href="is-logger-ready.html"><code>IsLoggerReady()</code></a> tells you nothing about step 3, because the
+  flag was already true before this function was entered.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<p>The whole-argument-list, default-level form — every application in the repository uses it:</p>
+
+<pre><code><span class="ty">hbe::Engine</span> hengine;
+hengine.<span class="fn">Initialize</span>(argc, argv);
+
+<span class="kw">auto</span>* app = hengine.<span class="fn">GetApplication</span>();
+<span class="kw">if</span> (app == <span class="kw">nullptr</span>)
+{
+        std::cerr &lt;&lt; <span class="st">"Error: Failed to create application"</span> &lt;&lt; std::endl;
+        <span class="kw">return</span> <span class="nu">1</span>;
+}</code></pre>
+
+<p class="meta">From Applications/WindowExample/Main.cpp.</p>
+
+<pre><code>        <span class="ty">Engine</span> hengine;
+        hengine.<span class="fn">Initialize</span>(argc, (<span class="kw">const char</span>**) argv);</code></pre>
+
+<p class="meta">From Applications/VulkanExample/Main.cpp, whose <code>main</code> takes <code>char** argv</code>.</p>
+
+<p>The headless set the level argument exists for — a converter, a importer, a CI binary:</p>
+
+<p class="note">Illustrative — no call site for this exists in the repository. Grepping <code>Engine/</code> and
+<code>Applications/</code> for <code>EInitLevel</code> finds the type used only inside <code>Engine.cpp</code> and its own
+header: every caller in the tree passes the default.</p>
+
+<pre><code><span class="ty">hbe::Engine</span> hengine;
+
+<span class="cm">// Streams plus the log drain task; no OS application, so no window server contact.</span>
+hengine.<span class="fn">Initialize</span>(argc, argv, <span class="ty">hbe</span>::<span class="ty">EInitLevel</span>::TaskSystem | <span class="ty">hbe</span>::<span class="ty">EInitLevel</span>::Logger);
+
+<span class="cm">// The level set is widened to include TaskSystem by step 1, so this is the same as asking for TaskSystem</span>
+<span class="cm">// alone except that the drain task exists. Memory, statistics and hardbop.log exist either way.</span>
+<span class="kw">auto</span>&amp; taskSystem = hengine.<span class="fn">GetTaskSystem</span>();
+
+<span class="cm">// ... schedule the work, then switch the task system off so Run() can return ...</span>
+hengine.<span class="fn">ShutDown</span>();
+hengine.<span class="fn">Run</span>();</code></pre>
+
+<p>
+  The ordering in that last pair is not interchangeable: <a href="shutdown.html"><code>ShutDown</code></a> is what clears the
+  task system's running flag, and <a href="run.html"><code>Run</code></a> returns when that flag is clear. Reversed, the pump
+  has no way to end. <code>Applications/EngineTest/TestMain.cpp</code> solves the same problem from the other side — it calls
+  <code>Run()</code> first and has the test suite itself call <code>Engine::Get().ShutDown()</code> as its last act, so the pump
+  ends from inside
+  (<a href="../../Test/index.html#unittestcollection">Test: UnitTestCollection</a>).
+</p>
+
+<footer class="prevnext">
+  <span><a href="index.html">&larr; Engine</a></span>
+  <span><a href="index.html#methods">All Engine methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>
