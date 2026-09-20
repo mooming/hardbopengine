@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Buffer::~Buffer — Resource — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">Buffer</a> methods</h3>
+  <ul class="methods">
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a class="current" href="destructor.html">destructor</a></li>
+    <li><a href="get-class-name.html">GetClassName</a></li>
+    <li><a href="set-releaser.html">SetReleaser</a></li>
+    <li><a href="get-data-as.html">GetDataAs</a></li>
+    <li><a href="translate-size-as.html">TranslateSizeAs</a></li>
+    <li><a href="get-data.html">GetData</a></li>
+    <li><a href="get-size.html">GetSize</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Resource</a> /
+  <a href="index.html">Buffer</a> / destructor
+</p>
+
+<h1><span class="fn">~Buffer</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Buffer</span>
+  <span class="tag">Engine/Resource/Buffer.h</span>
+  <span class="tag">Engine/Resource/Buffer.cpp</span>
+  runs the releaser this buffer was built with, or says out loud that it has none
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>~<span class="fn">Buffer</span>();</code></pre>
+
+<p>
+  Declared without <code>noexcept</code>, and implicitly <code>noexcept</code> all the same — every member is a
+  <code>size_t</code>, a pointer and a <code>std::function</code>, none of whose destructors may throw. See the
+  hazard below for what that costs when the <em>releaser</em> throws.
+</p>
+
+<h2 id="description">Function description</h2>
+
+<p>The body in <code>Buffer.cpp</code> has three exits, in this order:</p>
+
+<ol>
+  <li>
+    <code>returnIf(data == nullptr)</code> — a buffer holding no block exits immediately, releaser or not. This is
+    the exit a default-constructed buffer, a generator that failed, and every moved-from buffer all take, which is
+    what makes a move safe to destroy.
+  </li>
+  <li>
+    <strong>Data with no releaser:</strong> a warning is logged through <a href="../../Log/index.html#logger"><code>Logger</code></a>
+    under the name <a href="get-class-name.html"><code>GetClassName()</code></a>, carrying the function name <code>__func__</code>
+    resolves to at that point — <code>~Buffer</code> — and the address being abandoned, and then the destructor returns.
+    Nothing is freed.
+  </li>
+  <li>
+    <strong>Data with a releaser:</strong> <code>releaser(size, data)</code> runs, and the buffer's job is done.
+    Whatever that call does — return an array to a <a href="../../Memory/index.html#memorymanager">MemoryManager</a>
+    pool, <code>MapSync</code> and unmap a file view and close the handle — is the closure's contract, not this
+    class's.
+  </li>
+</ol>
+
+<p>
+  After either of the last two paths, a <code>__DEBUG__</code> build additionally stores <code>0</code> into
+  <code>size</code> and <code>nullptr</code> into <code>data</code>. Reading a destroyed buffer's accessors
+  therefore looks clean in Debug and returns the old, dead values in every other configuration — a difference that
+  only ever matters when something was already reading a destroyed object.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  <code>void</code>. Whether the release succeeded is not reportable from a destructor, and the releaser's own
+  signature returns <code>void</code> — so a closure that fails to unmap or to close is silent unless it logs or
+  asserts itself.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<p>
+  Releasing is a scope event, and the engine's own test for this class is written that way on purpose: the buffer
+  is built inside a block so that the releaser runs while the test can still observe it. From
+  <code>Engine/Resource/Buffer.cpp</code>:
+</p>
+
+<pre><code>{
+        <span class="ty">Buffer</span> buffer(gen, rel);
+
+        <span class="kw">if</span> (buffer.<span class="fn">GetSize</span>() != BufferSize)
+        {
+                ls &lt;&lt; <span class="st">"Invalid buffer size = "</span> &lt;&lt; buffer.<span class="fn">GetSize</span>() &lt;&lt; lferr;
+        }
+
+        <span class="kw">if</span> (buffer.<span class="fn">GetData</span>() == <span class="kw">nullptr</span>)
+        {
+                ls &lt;&lt; <span class="st">"Invalid buffer data = "</span> &lt;&lt; (<span class="kw">void</span>*) buffer.<span class="fn">GetData</span>() &lt;&lt; lferr;
+        }
+}       <span class="cm">// ~Buffer runs here and calls rel(BufferSize, data)</span></code></pre>
+
+<p class="meta">From Engine/Resource/Buffer.cpp, in the BufferTest "Generation &amp; Release" case</p>
+
+<p>
+  The <code>rel</code> closure passed here checks the byte count and the pointer it received and reports a
+  mismatch, which is the only way a caller can verify a release at all: the arguments the destructor hands over
+  are the whole story.
+</p>
+
+<div class="gap">
+  <strong>A throwing releaser ends the process.</strong> The call sits in an implicitly <code>noexcept</code>
+  destructor, so an exception escaping it reaches <code>std::terminate</code> rather than propagating to the scope
+  that ended. A release closure that can fail — a <code>MapSync</code> or a close that may error — has to handle
+  it inside the closure, as the engine's own file releaser does, instead of letting it out.
+</div>
+
+<div class="note">
+  <strong>The warning for a data-holding buffer with no releaser is the only diagnostic this class has.</strong> It
+  names the class and the abandoned address and does not stop anything, so in a long run it is easy to lose. If a
+  buffer you constructed that way is not meant to own its block, make that explicit by keeping the block alive
+  somewhere obvious; if it <em>is</em> meant to, this warning is the leak notification — see
+  <a href="constructors.html">the constructors</a>.
+</div>
+
+<footer class="prevnext">
+  <span><a href="index.html">← Buffer</a></span>
+  <span><a href="index.html#methods">All Buffer methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

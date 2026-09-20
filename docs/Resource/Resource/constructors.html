@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Resource::Resource — Resource — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">Resource</a> methods</h3>
+  <ul class="methods">
+    <li><a class="current" href="constructors.html">constructors</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Resource</a> /
+  <a href="index.html">Resource</a> / constructors
+</p>
+
+<h1><span class="fn">Resource</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Resource</span>
+  <span class="tag">Engine/Resource/Resource.h</span>
+  <span class="tag">noexcept</span>
+  <span class="tag">= default</span>
+  the only constructor, and the only way to make a handle outside a load
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code><span class="fn">Resource</span>() <span class="kw">noexcept</span>;</code></pre>
+
+<p>Defined in <code>Engine/Resource/Resource.cpp</code> as <code>Resource::Resource() noexcept = default;</code>.</p>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Value-initialises an empty class. There is no argument to bind it to a path, an id or a
+  <a href="../Buffer/index.html"><code>Buffer</code></a>, and no field to leave in an invalid state, so the object
+  it produces is exactly as meaningful — which is to say not at all — as one obtained any other way.
+</p>
+
+<p>
+  The overload set is one. A loader hands a handle back by value from
+  <a href="../ResourceManager/request-load.html"><code>RequestLoad</code></a> or
+  <a href="../ResourceManager/load.html"><code>Load</code></a>, and neither of those has a definition, so in the
+  repository as it stands this constructor is the only route to a <code>Resource</code> — and a handle built that
+  way could never be traced to a resource even if the loaders worked.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  Constructors have no return type. What you get is a default-constructed <code>Resource</code> — an empty object
+  holding nothing, distinguishable from no other <code>Resource</code>.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<p class="note">
+  Illustrative — no call site for this exists in the repository. No code constructs a <code>Resource</code>; see
+  <a href="index.html#coverage">Coverage</a>.
+</p>
+
+<pre><code><span class="cm">// A handle in a member that has not been pointed at anything yet.</span>
+<span class="ty">hbe</span>::<span class="ty">Resource</span> pending;</code></pre>
+
+<div class="gap">
+  <strong>Do not treat a default-constructed handle as a "null resource" to compare against.</strong>
+  <code>Resource</code> declares no <code>operator==</code>, no <code>IsNull</code> and no bool conversion, so
+  there is no way to ask whether a handle was filled in. Guarding on a handle needs an API that the class does not
+  have yet; today the only honest check is whether the loader was implemented, and it is not.
+</div>
+
+<footer class="prevnext">
+  <span><a href="index.html">← Resource</a></span>
+  <span><a href="index.html#methods">All Resource methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

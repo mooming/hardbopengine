@@ -34,11 +34,15 @@
     <li><a href="#classes">Module classes</a></li>
     <li><a href="#variables">Module variables</a></li>
     <li><a href="#functions">Module functions</a></li>
-    <li><a href="#resource">Resource</a></li>
-    <li><a href="#buffer">Buffer</a></li>
-    <li><a href="#resourcemanager">ResourceManager</a></li>
-    <li><a href="#buffertypes">BufferTypes</a></li>
     <li><a href="#coverage">Coverage</a></li>
+  </ul>
+
+  <h3>Classes</h3>
+  <ul>
+    <li><a href="Resource/index.html">Resource</a></li>
+    <li><a href="Buffer/index.html">Buffer</a></li>
+    <li><a href="ResourceManager/index.html">ResourceManager</a></li>
+    <li><a href="BufferTypes/index.html">BufferTypes</a></li>
   </ul>
 
   <h3>Design documents</h3>
@@ -55,208 +59,193 @@
 <p class="subtitle">
   <span class="tag">namespace hbe</span>
   <span class="tag">Engine/Resource</span>
-  7 headers, 6 sources — binary buffers and the manager that loads and keeps them
+  <span class="tag">7 headers, 6 sources</span>
+  binary buffers and the manager that is meant to load and keep them
 </p>
 
 <h2 id="description">Module description</h2>
 
 <p>
-  Two ideas. A <a href="#buffer"><code>Buffer</code></a> is bytes plus the callback that releases them, so
-  ownership of a blob does not depend on who allocated it. A
-  <a href="#resourcemanager"><code>ResourceManager</code></a> keys buffers to paths, loads them synchronously
-  or asynchronously, reference-counts them internally, and advances the asynchronous ones from
-  <code>PostUpdate</code>. A <a href="#resource"><code>Resource</code></a> is the handle a caller holds back,
-  and it is deliberately empty.
+  Two ideas and one skeleton. A <a href="Buffer/index.html"><code>Buffer</code></a> is a byte count, an address and the
+  callback that releases them, so ownership of a blob does not depend on who allocated it: memory from a
+  <a href="../Memory/index.html#memorymanager">MemoryManager</a> array, a file view mapped by the OS layer, and no memory at
+  all are all held by the same type, and each one knows how to let go. That idea is complete and in use — the pool
+  configuration cache is written and read through buffers by <code>MemoryManager</code>.
+</p>
+
+<p>
+  A <a href="ResourceManager/index.html"><code>ResourceManager</code></a> is the second idea: buffers keyed to paths, loaded
+  synchronously or asynchronously, kept in one table with a reference count so a path is loaded once. The class is declared
+  with exactly that machinery and almost none of it is implemented —
+  <a href="ResourceManager/request-load.html"><code>RequestLoad</code></a> and
+  <a href="ResourceManager/load.html"><code>Load</code></a> have no definition at all,
+  <a href="ResourceManager/post-update.html"><code>PostUpdate</code></a> has an empty body and no caller, and the reference
+  count is never read. A <a href="Resource/index.html"><code>Resource</code></a> is the handle a caller would hold back, and it
+  is empty: no path, no id, no accessor, so nothing can be asked of it.
+</p>
+
+<p>
+  The third piece is <a href="BufferTypes/index.html"><code>BufferTypes</code></a>, the namespace holding the size type and the
+  three callback shapes a buffer is built from, so a generator and a releaser written anywhere are the same type everywhere.
 </p>
 
 <h2 id="classes">Module classes</h2>
 
 <table>
   <tr><th>Name</th><th>Kind</th><th>Header</th><th>Role</th></tr>
-  <tr><td><a href="#resource">Resource</a></td><td>Class, handle</td><td>Resource.h</td><td>The caller's token for a loaded resource</td></tr>
-  <tr><td><a href="#buffer">Buffer</a></td><td>Class, move-only</td><td>Buffer.h</td><td>Bytes plus a releaser</td></tr>
-  <tr><td><a href="#resourcemanager">ResourceManager</a></td><td>Class</td><td>ResourceManager.h</td><td>Path-keyed loads, reference counting, async advance</td></tr>
-  <tr><td><a href="#buffertypes">BufferTypes</a></td><td>Namespace of aliases</td><td>BufferTypes.h</td><td>The callback and size types a Buffer is built from</td></tr>
+  <tr>
+    <td><a href="Resource/index.html">Resource</a><span class="badge">2 method pages</span></td>
+    <td>Class, handle</td>
+    <td>Resource.h</td>
+    <td>The caller's token for a loaded resource — a complete empty type with a constructor and a destructor, and no way to
+        read anything from it</td>
+  </tr>
+  <tr>
+    <td><a href="Buffer/index.html">Buffer</a><span class="badge">8 method pages</span></td>
+    <td>Class, move-constructible only</td>
+    <td>Buffer.h</td>
+    <td>Bytes plus a releaser; the module's working, used API</td>
+  </tr>
+  <tr>
+    <td><a href="ResourceManager/index.html">ResourceManager</a><span class="badge">5 method pages</span></td>
+    <td>Class</td>
+    <td>ResourceManager.h</td>
+    <td>Path-keyed loads, reference counting, asynchronous advance — declared; construction and destruction are the parts
+        that exist</td>
+  </tr>
+  <tr>
+    <td><a href="BufferTypes/index.html">BufferTypes</a><span class="badge">no methods</span></td>
+    <td>Namespace of aliases</td>
+    <td>BufferTypes.h</td>
+    <td>The callback and size types a <a href="Buffer/index.html"><code>Buffer</code></a> is built from, including
+        <code>TResizeBuffer</code>, which nothing uses</td>
+  </tr>
 </table>
 
 <h2 id="variables">Module variables</h2>
 
-<p>None.</p>
+<p>
+  None. No <code>Resource</code> header declares an object at namespace scope; the only statics in the module are function-local
+  ones — the cached class name inside
+  <a href="Buffer/get-class-name.html"><code>Buffer::GetClassName</code></a> and a logger inside
+  <code>BufferUtil::GenerateFileBuffer</code>.
+</p>
 
 <h2 id="functions">Module functions</h2>
 
-<p>None — everything here is reached through an object.</p>
-
-<h2 id="resource">Resource (<code>Engine/Resource/Resource.h</code>)</h2>
-
-<h3>Class description</h3>
-<p>A handle to a loaded resource managed by <a href="#resourcemanager"><code>ResourceManager</code></a>.</p>
-
-<h3>Template parameters</h3>
-<p>None — Resource is not a template.</p>
-
-<h3>Class properties</h3>
-<p>None.</p>
-
-<h3>Class methods</h3>
-
-<pre><code><span class="kw">class</span> <span class="ty">Resource</span> final
-{
-<span class="kw">public</span>:
-    <span class="ty">Resource</span>() <span class="kw">noexcept</span>;
-    ~<span class="ty">Resource</span>() <span class="kw">noexcept</span>;
-};</code></pre>
-
-<div class="gap">
-  <strong>The public surface is a constructor and a destructor.</strong> There is no accessor to read — no
-  path, no id, no <code>Buffer</code>. So a <code>Resource</code> returned by
-  <code>RequestLoad</code> or <code>Load</code> is currently a lifetime token and nothing more, which means a
-  caller cannot yet ask the handle for the bytes it stands for. If your code needs to, that gap is the work to
-  do; this page records it rather than describing an accessor that does not exist.
-</div>
-
-<h3>Non-member helper functions</h3>
-<p>None.</p>
-
-<h2 id="buffer">Buffer (<code>Engine/Resource/Buffer.h</code>)</h2>
-
-<h3>Class description</h3>
 <p>
-  A byte block plus the function that knows how to release it. Move-only, so a buffer cannot be duplicated
-  into two owners of the same memory.
+  Not reached through an object, and not none either: the nested namespace
+  <code>hbe::BufferUtil</code> in <code>Engine/Resource/BufferUtil.h</code> declares six free functions, all of them returning a
+  <a href="Buffer/index.html"><code>Buffer</code></a> by value, and all of them live code — <code>MemoryManager</code> calls three
+  of them when it loads and saves the pool configuration cache.
 </p>
 
-<h3>Template parameters</h3>
-<p>None — Buffer is not a template; type-safe access is per call, see <code>GetDataAs</code>.</p>
-
-<h3>Class properties</h3>
-<p><code>size</code>, <code>data</code> and <code>releaser</code>; all private, reached through the methods below.</p>
-
-<h3>Class methods</h3>
-
-<pre><code><span class="kw">using</span> <span class="ty">TSize</span>          = <span class="ty">BufferTypes::TSize</span>;
-<span class="kw">using</span> <span class="ty">TBufferData</span>    = <span class="ty">BufferTypes::TBufferData</span>;
-<span class="kw">using</span> <span class="ty">TGenerateBuffer</span> = <span class="ty">BufferTypes::TGenerateBuffer</span>;
-<span class="kw">using</span> <span class="ty">TReleaseBuffer</span>  = <span class="ty">BufferTypes::TReleaseBuffer</span>;
-
-<span class="ty">Buffer</span>();
-<span class="ty">Buffer</span>(<span class="ty">Buffer</span>&amp;&amp; rhs) <span class="kw">noexcept</span>;
-<span class="kw">explicit</span> <span class="ty">Buffer</span>(<span class="kw">const</span> <span class="ty">TGenerateBuffer</span>&amp; genFunc);
-<span class="ty">Buffer</span>(<span class="kw">const</span> <span class="ty">TGenerateBuffer</span>&amp; genFunc, <span class="kw">const</span> <span class="ty">TReleaseBuffer</span>&amp; releaseFunc);
-~<span class="ty">Buffer</span>();
-
-[[nodiscard]] <span class="ty">StaticString</span> GetClassName() <span class="kw">const</span> <span class="kw">noexcept</span>;
-<span class="kw">void</span> SetReleaser(<span class="ty">TReleaseBuffer</span>&amp;&amp; releaseFunc);
-
-[[nodiscard]] <span class="kw">uint8_t</span>* GetData() <span class="kw">noexcept</span>;
-[[nodiscard]] <span class="kw">const uint8_t</span>* GetData() <span class="kw">const</span> <span class="kw">noexcept</span>;
-[[nodiscard]] <span class="kw">auto</span> GetSize() <span class="kw">const</span> <span class="kw">noexcept</span>;
-
-<span class="kw">template</span>&lt;<span class="kw">typename</span> T&gt;
-[[nodiscard]] T* GetDataAs();
-<span class="kw">template</span>&lt;<span class="kw">typename</span> T&gt;
-[[nodiscard]] <span class="kw">const T</span>* GetDataAs() <span class="kw">const</span>;
-
-<span class="kw">template</span>&lt;<span class="kw">typename</span> T&gt;
-[[nodiscard]] size_t TranslateSizeAs() <span class="kw">const</span> <span class="kw">noexcept</span>;  <span class="cm">// size / sizeof(T)</span></code></pre>
-
 <table>
-  <tr><th>Method</th><th>Contract a caller depends on</th></tr>
-  <tr><td><code>Buffer(genFunc)</code></td><td>The generator fills in the size and the pointer by reference; with no releaser the buffer assumes the memory is released another way, so pair a raw allocation with the two-argument constructor</td></tr>
-  <tr><td><code>SetReleaser</code></td><td>Install the release path after construction, which is how a buffer built elsewhere learns who owns its bytes</td></tr>
-  <tr><td><code>GetDataAs&lt;T&gt;</code></td><td>A <code>reinterpret_cast</code> of the raw pointer. The element type is a promise you make, not something checked</td></tr>
-  <tr><td><code>TranslateSizeAs&lt;T&gt;</code></td><td>Byte size divided by <code>sizeof(T)</code> — element count for the type you promised above. It truncates, so a malformed size shows up as a short count rather than an error</td></tr>
+  <tr><th>Name</th><th>Header</th><th>What it produces</th></tr>
+  <tr>
+    <td><code>GenerateDummyBuffer</code></td>
+    <td>BufferUtil.h</td>
+    <td>A byte count and a null pointer — a buffer for measuring an output before allocating one. Its default size argument is
+        <code>std::numeric_limits&lt;size_t&gt;::max()</code></td>
+  </tr>
+  <tr>
+    <td><code>GenerateFileBuffer</code></td>
+    <td>BufferUtil.h</td>
+    <td>A file mapped into memory with the open mode and protection asked for; the only call to
+        <a href="Buffer/set-releaser.html"><code>SetReleaser</code></a> in the engine</td>
+  </tr>
+  <tr>
+    <td><code>GetFileBuffer</code></td>
+    <td>BufferUtil.h</td>
+    <td>The same mapping, read/write</td>
+  </tr>
+  <tr>
+    <td><code>GetReadOnlyFileBuffer</code></td>
+    <td>BufferUtil.h</td>
+    <td>The same mapping with read-only <em>protection</em>. The open mode it passes on is read/write, so the name describes the
+        view, not the handle</td>
+  </tr>
+  <tr>
+    <td><code>GetWriteOnlyFileBuffer</code></td>
+    <td>BufferUtil.h</td>
+    <td>The same mapping, writable only, created or truncated to a requested size</td>
+  </tr>
+  <tr>
+    <td><code>GetMemoryBuffer</code></td>
+    <td>BufferUtil.h</td>
+    <td>A <code>T[]</code> array from <a href="../Memory/index.html#memorymanager"><code>MemoryManager</code></a>, filled with a
+        default value — the one template of the six, and the pair of closures quoted on
+        <a href="Buffer/constructors.html">the buffer constructors</a></td>
+  </tr>
 </table>
 
-<h3>Non-member helper functions</h3>
-<p>None.</p>
-
-<h2 id="resourcemanager">ResourceManager (<code>Engine/Resource/ResourceManager.h</code>)</h2>
-
-<h3>Class description</h3>
 <p>
-  Loads buffers by path, keeps them, and hands out
-  <a href="#resource"><code>Resource</code></a> handles. One instance belongs to the
-  <a href="../Engine/index.html#engine">Engine</a>, which calls <code>PostUpdate</code> each frame.
+  They are listed here and named nowhere else: no class page or method page in this batch documents them. See
+  <a href="#coverage">Coverage</a>.
 </p>
-
-<h3>Template parameters</h3>
-<p>None — ResourceManager is not a template.</p>
-
-<h3>Class properties</h3>
-<p>
-  The table of loaded items and pending requests; all private. An item is a nested
-  <code>ResourceItem</code>: an id, a <code>referenceCount</code>, the interned path and the
-  <a href="#buffer"><code>Buffer</code></a> itself.
-</p>
-
-<h3>Class methods</h3>
-
-<pre><code><span class="kw">template</span>&lt;<span class="kw">typename</span> T&gt;
-<span class="kw">using</span> <span class="ty">TVector</span> = <span class="ty">hbe::HVector</span>&lt;T&gt;;
-
-<span class="ty">ResourceManager</span>() <span class="kw">noexcept</span>;
-~<span class="ty">ResourceManager</span>() <span class="kw">noexcept</span>;
-
-[[nodiscard]] <span class="ty">Resource</span> RequestLoad(<span class="ty">StaticString</span> path);  <span class="cm">// asynchronous</span>
-[[nodiscard]] <span class="ty">Resource</span> Load(<span class="ty">StaticString</span> path);        <span class="cm">// synchronous</span>
-<span class="kw">void</span> PostUpdate(<span class="ty">Engine</span>&amp; engine) <span class="kw">noexcept</span>;</code></pre>
-
-<table>
-  <tr><th>Method</th><th>Contract a caller depends on</th></tr>
-  <tr><td><code>RequestLoad</code></td><td>Queues the load and returns immediately; the work is dispatched to the <a href="../Core/index.html#tasksystem">TaskSystem</a> and completed by later <code>PostUpdate</code> calls. So the handle is valid at once, and what it stands for may not be</td></tr>
-  <tr><td><code>Load</code></td><td>Blocks until the buffer is resident — the right call at startup, the wrong one inside a frame</td></tr>
-  <tr><td><code>PostUpdate</code></td><td>Advances pending requests and retires items whose references reached zero. Called by the engine; calling it yourself from inside a frame would advance the queue twice</td></tr>
-  <tr><td>reference counting</td><td>Internal. Two loads of one path share one <a href="#buffer"><code>Buffer</code></a>, and an item is released when its count reaches zero rather than when one handle dies</td></tr>
-</table>
-
-<h3>Non-member helper functions</h3>
-<p>None.</p>
-
-<h2 id="buffertypes">BufferTypes (<code>Engine/Resource/BufferTypes.h</code>, <code>namespace hbe::BufferTypes</code>)</h2>
-
-<h3>Class description</h3>
-<p>The callback vocabulary a <a href="#buffer"><code>Buffer</code></a> is built from, kept in one namespace so the same shape means the same thing everywhere.</p>
-
-<h3>Template parameters</h3>
-<p>None — a namespace.</p>
-
-<h3>Class properties</h3>
-
-<table>
-  <tr><th>Alias</th><th>Type</th><th>Purpose</th></tr>
-  <tr><td><code>TSize</code></td><td><code>size_t</code></td><td>Byte count</td></tr>
-  <tr><td><code>TIndex</code></td><td><code>TSize</code></td><td>Same type, and pinned to it by <code>static_assert</code> so the two cannot drift apart</td></tr>
-  <tr><td><code>TBufferData</code></td><td><code>uint8_t*</code></td><td>The block itself</td></tr>
-  <tr><td><code>TGenerateBuffer</code></td><td><code>std::function&lt;void(TSize&amp;, TBufferData&amp;)&gt;</code></td><td>Produces a block, writing size and pointer by reference</td></tr>
-  <tr><td><code>TReleaseBuffer</code></td><td><code>std::function&lt;void(TSize, TBufferData)&gt;</code></td><td>Releases a block; takes its arguments by value</td></tr>
-  <tr><td><code>TResizeBuffer</code></td><td><code>std::function&lt;TSize(TSize)&gt;</code></td><td>Proposes a new capacity from a requested one, so a grower can round up</td></tr>
-</table>
-
-<h3>Class methods</h3>
-<p>Not applicable.</p>
-
-<h3>Non-member helper functions</h3>
-<p>None.</p>
 
 <h2 id="coverage">Coverage</h2>
 
 <table>
   <tr><th>Gap</th><th>Detail</th></tr>
   <tr>
-    <td><a href="#resource"><code>Resource</code></a> has no accessor</td>
-    <td>Stated on its own page above. Whether the handle should expose the path, the id or the bytes is a design
-        decision, not a documentation omission.</td>
+    <td><a href="Resource/index.html"><code>Resource</code></a> has no accessor</td>
+    <td>No path, no id, no buffer, no loaded flag — stated plainly on its own class page. Whether the handle should expose the
+        path, the id or the bytes is a design decision, not a documentation omission</td>
   </tr>
   <tr>
     <td><code>BufferInputStream</code> and <code>BufferOutputStream</code></td>
-    <td>The old guide's summary named these two streams. This page does not describe them, because they are not
-        in <code>Buffer.h</code> — if they exist, they belong in their own section here.</td>
+    <td>These are not a legend from the deleted guide: they are real public classes, each in its own header
+        (<code>Engine/Resource/BufferInputStream.h</code>, <code>Engine/Resource/BufferOutputStream.h</code>) with its own source
+        file. Both borrow the buffer they are given — <code>const Buffer&amp;</code> in, <code>Buffer&amp;</code> out — both keep a
+        cursor and an error count, the input stream reads primitives, <code>StaticString</code>, C arrays and containers through
+        <code>operator&gt;&gt;</code>, the output stream writes them through <code>operator&lt;&lt;</code> and pins itself to the
+        thread that constructed it. None of that surface has a page in this batch, and it is the main body of real API in the
+        module: it is what <code>MultiPoolConfigCache</code> serialises with</td>
   </tr>
   <tr>
-    <td>Async load mechanics</td>
-    <td><code>RequestTasks</code> is private, and how a request moves from pending to resident across frames is
-        design behaviour.</td>
+    <td><code>hbe::BufferUtil</code></td>
+    <td>The six factories under <a href="#functions">Module functions</a> have no page of their own here. They are the only
+        producers of <a href="Buffer/index.html"><code>Buffer</code></a> objects in the engine, and the only place the OS file
+        mapping contract lives</td>
+  </tr>
+  <tr>
+    <td>Asynchronous loading, caching and retirement</td>
+    <td>Not merely private mechanics: the two loaders
+        (<a href="ResourceManager/request-load.html"><code>RequestLoad</code></a>,
+        <a href="ResourceManager/load.html"><code>Load</code></a>) are declared with no definition anywhere, so a call does not link;
+        <a href="ResourceManager/post-update.html"><code>PostUpdate</code></a> has an empty body and is never called; and
+        <code>ResourceItem::referenceCount</code> is initialised and never read, so nothing shares a buffer or retires an item. There
+        is no behaviour here to document, only a declared shape — which is why the previous version of this page's claims about
+        queueing, blocking and reference counting are gone</td>
+  </tr>
+  <tr>
+    <td>Engine integration is not wired</td>
+    <td><a href="../Engine/index.html#engine"><code>Engine</code></a> owns a manager and exposes <code>GetResourceManager()</code>, but
+        <a href="../Engine/index.html#einitlevel"><code>EInitLevel</code></a> has no resource level, <code>SetResourceManagerReady()</code>
+        is never called, and nothing pumps the manager. See
+        <a href="ResourceManager/constructors.html">the manager constructors</a></td>
+  </tr>
+  <tr>
+    <td>Declarations with no users</td>
+    <td><code>BufferTypes::TResizeBuffer</code> and <code>BufferTypes::TIndex</code> are used by no code, and the nested
+        <code>ResourceManager::LoadingRequest</code> is never instantiated — the pending list stores
+        <code>ResourceItem*</code> instead. Recorded on <a href="BufferTypes/index.html">BufferTypes</a> and
+        <a href="ResourceManager/index.html">ResourceManager</a></td>
+  </tr>
+  <tr>
+    <td>Test-only code</td>
+    <td><code>__UNIT_TEST__</code> declares <code>BufferTest</code>, <code>BufferInputStreamTest</code> and
+        <code>BufferOutputStreamTest</code> in the module's headers, all three registered with the runner documented in
+        <a href="../Test/index.html#unittestcollection">Test</a>. Their cases are quoted as call sites where a real call site was
+        needed — notably <a href="Buffer/destructor.html">the buffer destructor</a></td>
+  </tr>
+  <tr>
+    <td>Contracts that belong to another module</td>
+    <td>What <code>GetFileBuffer</code> maps and how it fails is OS behaviour
+        (<a href="../OSAL/index.html#file">OSAL: file</a>); which pool <code>GetMemoryBuffer</code> draws from and how long it holds it
+        is <a href="../Memory/index.html#memorymanager">Memory</a>; what a released-but-still-open mapping means for a file is
+        platform-specific. None of it is restated here</td>
   </tr>
 </table>
 

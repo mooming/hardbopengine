@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Buffer::GetDataAs — Resource — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signatures</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">Buffer</a> methods</h3>
+  <ul class="methods">
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+    <li><a href="get-class-name.html">GetClassName</a></li>
+    <li><a href="set-releaser.html">SetReleaser</a></li>
+    <li><a class="current" href="get-data-as.html">GetDataAs</a></li>
+    <li><a href="translate-size-as.html">TranslateSizeAs</a></li>
+    <li><a href="get-data.html">GetData</a></li>
+    <li><a href="get-size.html">GetSize</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Resource</a> /
+  <a href="index.html">Buffer</a> / GetDataAs
+</p>
+
+<h1><span class="fn">GetDataAs</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Buffer</span>
+  <span class="tag">Engine/Resource/Buffer.h</span>
+  <span class="tag">2 overloads</span>
+  <span class="tag">template&lt;typename T&gt;</span>
+  the same address, cast to the element type you assert the block holds
+</p>
+
+<h2 id="signature">Signatures</h2>
+
+<p>Both are defined in the header as <code>return reinterpret_cast&lt;T*&gt;(data);</code>:</p>
+
+<pre><code><span class="kw">template</span>&lt;<span class="kw">typename</span> T&gt;
+<span class="ty">T</span>* <span class="fn">GetDataAs</span>();
+
+<span class="kw">template</span>&lt;<span class="kw">typename</span> T&gt;
+<span class="kw">const</span> <span class="ty">T</span>* <span class="fn">GetDataAs</span>() <span class="kw">const</span>;</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Hands the stored <code>uint8_t*</code> to <code>reinterpret_cast</code> and returns the result. No null check, no
+  size check, no alignment check, no record of what <code>T</code> was used. Subsequent arithmetic on the result is
+  in units of <code>sizeof(T)</code>, so element <code>i</code> is <code>GetDataAs&lt;T&gt;()[i]</code> — and the
+  bound on <code>i</code> is the element count you have to derive yourself from
+  <a href="get-size.html"><code>GetSize()</code></a>, which is what
+  <a href="translate-size-as.html"><code>TranslateSizeAs&lt;T&gt;()</code></a> exists for.
+</p>
+
+<p>
+  The pair is selected by the const-ness of the buffer, and the const overload imposes <code>const T*</code> through
+  its return type. A <code>const Buffer&amp;</code> therefore cannot be talked into a mutable typed view, even though
+  the cast written inside it names <code>T*</code>.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr>
+    <td><code>T</code></td>
+    <td><em>template parameter</em>, <code>typename</code></td>
+    <td>
+      The element type the block is asserted to contain. Nothing verifies the assertion — not the byte count, not
+      the alignment, not whether a generator of that type ever built the buffer. A wrong <code>T</code> is silent
+      misinterpretation of bytes, not a compile error
+    </td>
+  </tr>
+  <tr>
+    <td><em>(function parameters)</em></td>
+    <td>—</td>
+    <td>None. Neither overload takes an argument and neither takes an index</td>
+  </tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr>
+    <td><code>T*</code> / <code>const T*</code></td>
+    <td>
+      <a href="get-data.html"><code>GetData()</code></a> reinterpreted, so the same address and the same lifetime:
+      good until the buffer is destroyed or moved out of. May be <code>nullptr</code>. Neither overload is
+      <code>[[nodiscard]]</code>, so a call whose result is thrown away compiles without a warning
+    </td>
+  </tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p class="note">Illustrative — no call site for this exists in the repository. Grepping <code>Engine/</code> and
+<code>Applications/</code> finds no use of either overload; the code that consumes buffers goes through the streams
+instead, and the code that produces them casts by hand with <code>reinterpret_cast</code>. The types below are real:
+<code>BufferUtil::GetMemoryBuffer</code> is the factory that makes such a buffer, in
+<code>Engine/Resource/BufferUtil.h</code>.</p>
+
+<pre><code><span class="kw">auto</span> buffer = <span class="ty">BufferUtil</span>::<span class="fn">GetMemoryBuffer</span>&lt;<span class="kw">int</span>&gt;(count, <span class="nu">-1</span>);
+
+<span class="kw">auto</span>* values = buffer.<span class="fn">GetDataAs</span>&lt;<span class="kw">int</span>&gt;();        <span class="cm">// int*, same address as GetData()</span>
+<span class="kw">const</span> <span class="kw">auto</span> elementCount = buffer.<span class="fn">TranslateSizeAs</span>&lt;<span class="kw">int</span>&gt;();
+
+<span class="kw">for</span> (<span class="kw">size_t</span> i = <span class="nu">0</span>; i &lt; elementCount; ++i)
+{
+        values[i] = <span class="nu">0</span>;                  <span class="cm">// no bounds check on i; elementCount is the only bound</span>
+}</code></pre>
+
+<div class="gap">
+  <strong>Neither overload is <code>[[nodiscard]]</code>, and this module does not check the cast it performs.</strong>
+  Two consequences. A statement-sized call such as <code>buffer.GetDataAs&lt;int&gt;();</code> compiles and does
+  nothing, with no diagnostic to point at it. And a <code>T</code> whose alignment the block does not satisfy is
+  undefined behaviour reached through the one cast a compiler cannot reason about — the alignment of the block is
+  whatever the producer delivered, whether a <a href="../../Memory/index.html#memorymanager">MemoryManager</a> array
+  or an OS file mapping, and nothing here records it.
+</div>
+
+<div class="note">
+  <strong>Prefer the streams for structured data.</strong> <code>BufferInputStream</code> and
+  <code>BufferOutputStream</code> read and write primitives with cursor arithmetic, an error count and padding
+  handling, rather than trusting the caller's <code>T</code>. They are separate classes in their own headers and
+  have no page in this batch — see <a href="index.html#coverage">Coverage</a>.
+</div>
+
+<footer class="prevnext">
+  <span><a href="index.html">← Buffer</a></span>
+  <span><a href="index.html#methods">All Buffer methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

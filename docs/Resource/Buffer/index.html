@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Buffer — Resource — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="#description">Class description</a></li>
+    <li><a href="#template">Template parameters</a></li>
+    <li><a href="#properties">Class properties</a></li>
+    <li><a href="#methods">Class methods</a></li>
+    <li><a href="#non-member">Non-member helpers</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+
+  <h3>Methods</h3>
+  <ul class="methods">
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+    <li><a href="get-class-name.html">GetClassName</a></li>
+    <li><a href="set-releaser.html">SetReleaser</a></li>
+    <li><a href="get-data-as.html">GetDataAs</a></li>
+    <li><a href="translate-size-as.html">TranslateSizeAs</a></li>
+    <li><a href="get-data.html">GetData</a></li>
+    <li><a href="get-size.html">GetSize</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Resource</a> / Buffer
+</p>
+
+<h1>Buffer</h1>
+<p class="subtitle">
+  <span class="tag">Engine/Resource/Buffer.h</span>
+  <span class="tag">namespace hbe</span>
+  <span class="tag">final</span>
+  <span class="tag">move-only</span>
+  a byte block plus the closure that knows how to release this particular block
+</p>
+
+<h2 id="description">Class description</h2>
+
+<p>
+  Three fields: a byte count, an address, and a <a href="../BufferTypes/index.html"><code>TReleaseBuffer</code></a>
+  naming the code that frees them. Ownership is expressed as a callback rather than as an allocator type or a
+  templated owning pointer, which is what lets one buffer class stand for memory from a
+  <a href="../../Memory/index.html#memorymanager"><code>MemoryManager</code></a> array, for a file mapping made by
+  the OS layer, and for no memory at all — all three of those exist today, produced by the factories in
+  <code>BufferUtil</code>. The buffer does not care where the bytes came from; it holds the instruction for
+  letting them go, and the <a href="destructor.html">destructor</a> runs it.
+</p>
+
+<p>
+  This is the engine's serialisation currency as well as its blob type: a buffer is handed to something that
+  writes into it or read from something that reads out of it, by reference, without transferring ownership.
+  <code>MultiPoolConfigCache::Serialize(Buffer&amp;)</code> and
+  <code>MultiPoolConfigCache::Deserialize(const Buffer&amp;)</code> in <code>Engine/Memory/</code> are the two
+  live users, and <code>MemoryManager</code> calls them when it saves and loads the pool configuration cache.
+</p>
+
+<div class="note">
+  <strong>Move-constructible, and not assignable in any form.</strong> The header declares a move constructor and a
+  destructor; under the language rules that combination removes the move assignment operator and leaves the copy
+  assignment operator deleted, so <code>a = std::move(b);</code> does not compile while
+  <code>Buffer b = std::move(a);</code> does. A buffer therefore cannot be reused by assignment-over — one object,
+  one block, from construction to destruction — and a container of buffers can insert and grow but cannot reorder
+  elements by assignment. See <a href="constructors.html">the constructors</a> for what is declared.
+</div>
+
+<div class="gap">
+  <strong>A buffer with data and no releaser leaks, and only warns.</strong> That state is reachable through the
+  <a href="constructors.html">single-argument constructor</a>, which installs no releaser, and through
+  <a href="set-releaser.html"><code>SetReleaser</code></a> not having been called yet. At destruction the block is
+  left alone and a warning is logged; the process is not stopped and nothing is freed. The engine's own
+  file-mapping factory deliberately constructs in exactly this state and installs the releaser one statement
+  later, so an exit between those two statements is the leak.
+</div>
+
+<h2 id="template">Template parameters</h2>
+
+<p>
+  None — <code>Buffer</code> is not a template, deliberately. It is a byte block, so a typed view of it is taken
+  per call at the point of use: <a href="get-data-as.html"><code>GetDataAs&lt;T&gt;()</code></a> and
+  <a href="translate-size-as.html"><code>TranslateSizeAs&lt;T&gt;()</code></a> are members templated on the element
+  type, not the class. One buffer type therefore moves through the API unchanged no matter what somebody intends
+  to read out of it, and the type promise is made and consumed at the call site with nothing recording it.
+</p>
+
+<h2 id="properties">Class properties</h2>
+
+<table>
+  <tr><th>Name</th><th>Declaration</th><th>What it means</th></tr>
+  <tr>
+    <td><code>TSize</code></td>
+    <td><code>using TSize = BufferTypes::TSize;</code></td>
+    <td><span class="badge">member type</span> <code>size_t</code>. The byte count type, spelled out from
+        <a href="../BufferTypes/index.html">BufferTypes</a> rather than redefined, so a closure written against
+        either name is the same closure</td>
+  </tr>
+  <tr>
+    <td><code>TBufferData</code></td>
+    <td><code>using TBufferData = BufferTypes::TBufferData;</code></td>
+    <td><span class="badge">member type</span> <code>uint8_t*</code>. The block as an address</td>
+  </tr>
+  <tr>
+    <td><code>TGenerateBuffer</code></td>
+    <td><code>using TGenerateBuffer = BufferTypes::TGenerateBuffer;</code></td>
+    <td><span class="badge">member type</span> <code>std::function&lt;void(TSize&amp;, TBufferData&amp;)&gt;</code> —
+        the producer passed to a constructor, called once and <em>not</em> stored</td>
+  </tr>
+  <tr>
+    <td><code>TReleaseBuffer</code></td>
+    <td><code>using TReleaseBuffer = BufferTypes::TReleaseBuffer;</code></td>
+    <td><span class="badge">member type</span> <code>std::function&lt;void(TSize, TBufferData)&gt;</code> — the
+        releaser, and the only member of this class that is stored</td>
+  </tr>
+  <tr>
+    <td><code>size</code></td>
+    <td><code>TSize size;</code></td>
+    <td><span class="badge">private</span> Byte count, reached by <a href="get-size.html"><code>GetSize</code></a>.
+        It is a size, not a capacity — there is no spare room behind it and no way to grow</td>
+  </tr>
+  <tr>
+    <td><code>data</code></td>
+    <td><code>TBufferData data;</code></td>
+    <td><span class="badge">private</span> The block, reached by <a href="get-data.html"><code>GetData</code></a>.
+        <code>nullptr</code> means "holds nothing", and is also the failure marker a generator leaves
+        behind</td>
+  </tr>
+  <tr>
+    <td><code>releaser</code></td>
+    <td><code>TReleaseBuffer releaser;</code></td>
+    <td>
+      <span class="badge">private</span> Empty for a default-constructed buffer and after a move-out. The
+      <a href="destructor.html">destructor</a> calls it with <code>(size, data)</code> when <code>data</code> is
+      not null; <a href="set-releaser.html"><code>SetReleaser</code></a> is the only way to install one after
+      construction
+    </td>
+  </tr>
+</table>
+
+<h2 id="methods">Class methods</h2>
+
+<p>
+  One page per name, all overloads of a name together, in the order the header declares them. The two
+  <code>GetData</code> overloads differ only in const-ness; the two <code>GetDataAs</code> overloads do too, and
+  additionally take an element type.
+</p>
+
+<table>
+  <tr><th>Method</th><th>Signature</th><th>What a caller depends on</th></tr>
+  <tr>
+    <td><a href="constructors.html">constructors</a><span class="badge">4 overloads</span></td>
+    <td class="sig">Buffer()<br>Buffer(Buffer&amp;&amp; rhs) noexcept<br>explicit Buffer(const TGenerateBuffer&amp; genFunc)<br>Buffer(const TGenerateBuffer&amp; genFunc, const TReleaseBuffer&amp; releaseFunc)</td>
+    <td>The generator runs before the constructor returns, writing size and pointer into this object. Only the
+        two-argument form installs a releaser; the one-argument form is the documented way to hold a block nobody
+        will free</td>
+  </tr>
+  <tr>
+    <td><a href="destructor.html">destructor</a></td>
+    <td class="sig">~Buffer()</td>
+    <td>Returns immediately when <code>data</code> is null; otherwise calls the releaser, or logs a warning and
+        frees nothing when there is no releaser</td>
+  </tr>
+  <tr>
+    <td><a href="get-class-name.html">GetClassName</a></td>
+    <td class="sig">StaticString GetClassName() const noexcept</td>
+    <td><code>"Buffer"</code>, interned once in a function-local static. The only caller in the engine is this
+        class's own destructor, which uses it to name the leaked-block warning</td>
+  </tr>
+  <tr>
+    <td><a href="set-releaser.html">SetReleaser</a></td>
+    <td class="sig">void SetReleaser(TReleaseBuffer&amp;&amp; releaseFunc)</td>
+    <td>Moves the callable in and nulls the argument. Overwrites whatever was there without releasing it, so it is
+        for completing a buffer, not for swapping owners</td>
+  </tr>
+  <tr>
+    <td><a href="get-data-as.html">GetDataAs</a><span class="badge">2 overloads</span></td>
+    <td class="sig">template&lt;typename T&gt;<br>T* GetDataAs()<br>template&lt;typename T&gt;<br>const T* GetDataAs() const</td>
+    <td>A <code>reinterpret_cast</code> of <code>data</code>. The element type is a promise the caller makes;
+        nothing checks it, and neither overload is <code>[[nodiscard]]</code></td>
+  </tr>
+  <tr>
+    <td><a href="translate-size-as.html">TranslateSizeAs</a></td>
+    <td class="sig">template&lt;typename T&gt;<br>size_t TranslateSizeAs() const noexcept</td>
+    <td><code>size / sizeof(T)</code> — the element count matching the type promised to
+        <a href="get-data-as.html"><code>GetDataAs</code></a>. Integer division, so a partial trailing element
+        disappears silently</td>
+  </tr>
+  <tr>
+    <td><a href="get-data.html">GetData</a><span class="badge">2 overloads</span></td>
+    <td class="sig">uint8_t* GetData() noexcept<br>const uint8_t* GetData() const noexcept</td>
+    <td>The raw address, or <code>nullptr</code>. Checking this for null is the engine's standing idiom for "did
+        the buffer get built at all"</td>
+  </tr>
+  <tr>
+    <td><a href="get-size.html">GetSize</a></td>
+    <td class="sig">auto GetSize() const noexcept</td>
+    <td>Byte count as <a href="../BufferTypes/index.html"><code>TSize</code></a>. Safe on any buffer including a
+        moved-from one; bounds checks against it are the caller's job</td>
+  </tr>
+</table>
+
+<h2 id="non-member">Non-member helper functions</h2>
+
+<p>
+  None in <code>Buffer.h</code>. The functions that build buffers live in the sibling namespace
+  <code>hbe::BufferUtil</code> (<code>Engine/Resource/BufferUtil.h</code>):
+  <code>GenerateDummyBuffer</code>, <code>GenerateFileBuffer</code>, <code>GetFileBuffer</code>,
+  <code>GetReadOnlyFileBuffer</code>, <code>GetWriteOnlyFileBuffer</code> and the
+  <code>GetMemoryBuffer&lt;T&gt;</code> template. They are not documented by a page in this batch — see
+  <a href="../index.html#coverage">the module Coverage</a> — but they are quoted on the pages below, because they
+  are the real call sites for these constructors and for <a href="set-releaser.html"><code>SetReleaser</code></a>.
+</p>
+
+<h2 id="coverage">Coverage</h2>
+
+<table>
+  <tr><th>Gap</th><th>Detail</th></tr>
+  <tr>
+    <td>The header summary promises lazy initialisation</td>
+    <td><code>Buffer.h</code> describes the class as "A dynamically allocated memory buffer with lazy
+        initialization and release callback." No deferral exists: every constructor that takes a generator calls
+        it before returning, and no generator is stored. This page documents the constructors, not the
+        comment</td>
+  </tr>
+  <tr>
+    <td><code>BufferInputStream</code> and <code>BufferOutputStream</code></td>
+    <td>Both exist, in their own headers <code>Engine/Resource/BufferInputStream.h</code> and
+        <code>Engine/Resource/BufferOutputStream.h</code> — not inside <code>Buffer.h</code>, which is what the
+        previous version of the module page asserted. They are public classes with a wide
+        <code>operator&gt;&gt;</code> / <code>operator&lt;&lt;</code> surface over primitives, strings and
+        containers, and they borrow rather than own: the input stream holds <code>const Buffer&amp;</code>, the
+        output stream holds <code>Buffer&amp;</code> and pins itself to the thread that constructed it. Neither has
+        a page in this batch, so that surface is a named gap on
+        <a href="../index.html#coverage">the module page</a></td>
+  </tr>
+  <tr>
+    <td>Alignment and provenance of <code>data</code></td>
+    <td>Nothing here allocates, so alignment is whatever the producer delivered — a
+        <a href="../../Memory/index.html#memorymanager"><code>MemoryManager</code></a> array for
+        <code>GetMemoryBuffer</code>, an OS mapping for <code>GenerateFileBuffer</code>. Reading a type whose
+        alignment exceeds that through <a href="get-data-as.html"><code>GetDataAs</code></a> is therefore not
+        checked anywhere in this module</td>
+  </tr>
+  <tr>
+    <td>What <code>GetClassName</code> returns exactly</td>
+    <td>It is derived from <code>__PRETTY_FUNCTION__</code> by <code>StringUtil::ToCompactClassName</code>, so the
+        spelling is that helper's business — <a href="../../String/index.html#stringutil">String: StringUtil</a></td>
+  </tr>
+  <tr>
+    <td><code>BufferTest</code></td>
+    <td><code>Buffer.h</code> declares a test collection under <code>__UNIT_TEST__</code>, registered in
+        <a href="../../Test/index.html#unittestcollection">Test</a>. A fixture, not engine API; its
+        "Generation &amp; Release" case is quoted as a call site on
+        <a href="destructor.html">the destructor page</a></td>
+  </tr>
+  <tr>
+    <td>Behaviour of a failed release</td>
+    <td>The releaser is called from the destructor and returns <code>void</code>; a releaser that cannot unmap or
+        close has no channel to report it. What the engine's own releasers do about it lives in
+        <code>BufferUtil.cpp</code> and the OS layer, <a href="../../OSAL/index.html#file">OSAL: file</a></td>
+  </tr>
+</table>
+
+<footer class="prevnext">
+  <span><a href="../index.html">← Resource</a></span>
+  <span><a href="../index.html#classes">Buffer in the Resource class list</a></span>
+</footer>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Buffer::SetReleaser — Resource — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">Buffer</a> methods</h3>
+  <ul class="methods">
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+    <li><a href="get-class-name.html">GetClassName</a></li>
+    <li><a class="current" href="set-releaser.html">SetReleaser</a></li>
+    <li><a href="get-data-as.html">GetDataAs</a></li>
+    <li><a href="translate-size-as.html">TranslateSizeAs</a></li>
+    <li><a href="get-data.html">GetData</a></li>
+    <li><a href="get-size.html">GetSize</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Resource</a> /
+  <a href="index.html">Buffer</a> / SetReleaser
+</p>
+
+<h1><span class="fn">SetReleaser</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Buffer</span>
+  <span class="tag">Engine/Resource/Buffer.h</span>
+  <span class="tag">Engine/Resource/Buffer.cpp</span>
+  tell an existing buffer who owns its bytes
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code><span class="kw">void</span> <span class="fn">SetReleaser</span>(<span class="ty">TReleaseBuffer</span>&amp;&amp; releaseFunc);</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Move-assigns the callable into <code>releaser</code> and then assigns <code>nullptr</code> to the argument, so
+  the caller's <code>std::function</code> is left empty and the buffer is the only holder of the closure. The
+  argument is an rvalue reference, so an lvalue <code>std::function</code> has to be moved by hand at the call
+  site.
+</p>
+
+<p>
+  It exists because a buffer's producer sometimes cannot know the release path when it starts. A file mapping is
+  the case in the repository: the mapping has to succeed before anybody can say that unmapping is the correct
+  release, and the OS handle has to be detached from the local <code>FileHandle</code> before a closure can carry
+  it. So the buffer is created from the generator alone, checked, and given its releaser here.
+</p>
+
+<div class="gap">
+  <strong>This overwrites; it does not release.</strong> If <code>releaser</code> already held a closure and
+  <code>data</code> pointed at a real block, the previous closure is destroyed without ever being called and those
+  bytes are unreachable from then on. It is sound only on a buffer that has no releaser yet — which is what the
+  <a href="constructors.html">single-argument constructor</a> leaves — and it is not a way to change ownership of a
+  block that is already owned.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr>
+    <td><code>releaseFunc</code></td>
+    <td><a href="../BufferTypes/index.html"><code>TReleaseBuffer&amp;&amp;</code></a></td>
+    <td>
+      Callable as <code>void(TSize, TBufferData)</code>, and it will be called with <em>this buffer's</em>
+      <code>size</code> and <code>data</code> at destruction — not with the pair that existed when it was
+      installed, and not with anything the closure itself returns, since the signature hands nothing back. Anything
+      it captures must still be alive at that destruction: an allocator or a pool reached by reference has to
+      outlive the buffer, which is why the file releaser below captures the handle's raw value rather than a
+      reference to a local object
+    </td>
+  </tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p><code>void</code>. There is no report of what was replaced, and no way to ask afterwards whether a releaser is
+present — the buffer exposes no accessor for the field. The only observable feedback is whether
+<a href="destructor.html">the destructor</a> warns.</p>
+
+<h2 id="example">Examples</h2>
+
+<p>
+  Build first, install once the mapping proves real. From <code>Engine/Resource/BufferUtil.cpp</code>, the single
+  call site in the engine:
+</p>
+
+<pre><code><span class="ty">Buffer</span> buffer(generator);
+<span class="kw">if</span> (buffer.<span class="fn">GetData</span>() == <span class="kw">nullptr</span>)
+{
+        <span class="kw">return</span> buffer;
+}
+
+<span class="kw">auto</span> handleData = fh.data;
+fh.<span class="fn">Invalidate</span>();
+
+buffer.<span class="fn">SetReleaser</span>([handleData](<span class="ty">TSize</span> size, <span class="ty">TBufferData</span> data) <span class="kw">mutable</span>
+{
+        <span class="kw">if</span> (<span class="fn">unlikely</span>(data == <span class="kw">nullptr</span>))
+        {
+                <span class="kw">return</span>;
+        }
+
+        <span class="ty">FileHandle</span> fh;
+        fh.data = handleData;
+
+        <span class="fn">Assert</span>(size &gt; <span class="nu">0</span>);
+        <span class="kw">auto</span> ptr = <span class="kw">static_cast</span>&lt;<span class="kw">void</span>*&gt;(data);
+
+        <span class="ty">MapSyncMode</span> syncMode;
+        syncMode.<span class="fn">SetSync</span>();
+
+        <span class="fn">MapSync</span>(ptr, size, syncMode);
+        <span class="fn">UnmapMemory</span>((<span class="kw">void</span>*) data, size);
+
+        <span class="ty">OS</span>::<span class="fn">Close</span>(<span class="kw">std</span>::<span class="fn">move</span>(fh));
+});
+
+<span class="kw">return</span> buffer;</code></pre>
+
+<p class="meta">From Engine/Resource/BufferUtil.cpp, in BufferUtil::GenerateFileBuffer</p>
+
+<p>
+  Three things are worth copying from it. The early return leaves a buffer with no releaser, deliberately, because
+  a failed mapping has nothing to release. <code>fh.Invalidate()</code> detaches the raw handle from the local
+  object so the destructor of that object cannot close it twice — the closure owns the value now. And the closure
+  rebuilds a <code>FileHandle</code> from that value at release time, flushing the mapping before unmapping and
+  closing, all through the OS layer documented in <a href="../../OSAL/index.html#file">OSAL: file</a>.
+</p>
+
+<footer class="prevnext">
+  <span><a href="index.html">← Buffer</a></span>
+  <span><a href="index.html#methods">All Buffer methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

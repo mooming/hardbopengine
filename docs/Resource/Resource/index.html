@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Resource — Resource — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="#description">Class description</a></li>
+    <li><a href="#template">Template parameters</a></li>
+    <li><a href="#properties">Class properties</a></li>
+    <li><a href="#methods">Class methods</a></li>
+    <li><a href="#non-member">Non-member helpers</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+
+  <h3>Methods</h3>
+  <ul class="methods">
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Resource</a> / Resource
+</p>
+
+<h1>Resource</h1>
+<p class="subtitle">
+  <span class="tag">Engine/Resource/Resource.h</span>
+  <span class="tag">namespace hbe</span>
+  <span class="tag">final</span>
+  <span class="tag">0 members</span>
+  the handle a resource loader is meant to hand back — declared as one, implemented as nothing
+</p>
+
+<h2 id="description">Class description</h2>
+
+<p>
+  The header's own summary calls it a "Handle to a loaded resource managed by
+  <a href="../ResourceManager/index.html"><code>ResourceManager</code></a>", and that is the intent the rest of
+  the module is shaped for: a load returns a <code>Resource</code>, the caller stores it, and dropping it is what
+  eventually retires the bytes.
+</p>
+
+<p>
+  What exists is a <code>final</code> class with <a href="constructors.html">one default constructor</a> and
+  <a href="destructor.html">one destructor</a>, both <code>noexcept</code>, both defined <code>= default</code> in
+  <code>Resource.cpp</code>. It declares no data member, no accessor, no conversion, no comparison — an empty class, occupying
+  the single byte that is the smallest any object can.
+</p>
+
+<div class="gap">
+  <strong>A <code>Resource</code> refers to nothing, so it cannot be used for anything.</strong> With no member to
+  hold an id or a path, every instance is indistinguishable from every other; copying it copies nothing, and the
+  <a href="destructor.html">destructor</a> is defaulted, so destroying one does not notify
+  <a href="../ResourceManager/index.html"><code>ResourceManager</code></a> and cannot release a reference count.
+  It is not a lifetime token either — a token has to be observed by somebody, and nothing observes this. A page
+  about an accessor would be documenting API that does not exist, so the absence is recorded here and on
+  <a href="../index.html#coverage">the module page</a> instead.
+</div>
+
+<div class="note">
+  <strong>The header still includes what a real handle would need.</strong> <code>Resource.h</code> includes
+  <code>&lt;cstddef&gt;</code>, <code>&lt;cstdint&gt;</code> and <code>String/StaticString.h</code>, and no
+  declaration in it uses any of the three — the residue of a handle carrying an id or an interned
+  <a href="../../String/index.html#staticstring"><code>StaticString</code></a> path. Treat those includes as the
+  design's open question, not as API: nothing here is a <code>size_t</code> or a <code>StaticString</code> yet.
+</div>
+
+<h2 id="template">Template parameters</h2>
+
+<p>None — <code>Resource</code> is not a template. There is no resource-type parameter to specialise on either;
+a load takes a path and the returned handle records nothing about what was loaded.</p>
+
+<h2 id="properties">Class properties</h2>
+
+<p>
+  None. No member type, no data member, no static member. The class has no state to inspect and no state to
+  compare, so two handles obtained from two loads of two different paths are the same type holding the same
+  nothing.
+</p>
+
+<h2 id="methods">Class methods</h2>
+
+<table>
+  <tr><th>Method</th><th>Signature</th><th>What a caller depends on</th></tr>
+  <tr>
+    <td><a href="constructors.html">constructors</a></td>
+    <td class="sig">Resource() noexcept</td>
+    <td>Default-constructible with no argument, so a handle can sit in a container or a default-initialised
+        member — but nothing can be asked of it afterwards</td>
+  </tr>
+  <tr>
+    <td><a href="destructor.html">destructor</a></td>
+    <td class="sig">~Resource() noexcept</td>
+    <td>Runs, and releases nothing: it owns no handle, no reference and no allocation</td>
+  </tr>
+</table>
+
+<p>
+  No copy, move, comparison, conversion or accessor is declared, so all of those come from the compiler as
+  trivial members of an empty class — a copy is a no-op, <code>==</code> does not exist, and there is no way to
+  test whether a handle stands for a loaded resource or for nothing at all.
+</p>
+
+<h2 id="non-member">Non-member helper functions</h2>
+
+<p>
+  None. <code>Resource.h</code> declares only the class. The two functions in the engine whose declared return
+  type is <code>Resource</code> are
+  <a href="../ResourceManager/request-load.html"><code>ResourceManager::RequestLoad</code></a> and
+  <a href="../ResourceManager/load.html"><code>ResourceManager::Load</code></a>, and neither has a definition in
+  the repository — see their pages.
+</p>
+
+<h2 id="coverage">Coverage</h2>
+
+<table>
+  <tr><th>Gap</th><th>Detail</th></tr>
+  <tr>
+    <td>No accessor exists</td>
+    <td>Path, id, <a href="../Buffer/index.html"><code>Buffer</code></a>, loaded-ness: none of them can be read
+        from a handle. Deciding <em>which</em> of those a handle should expose is an engine design decision, not a
+        documentation omission, so it is recorded as a gap rather than answered. The module page has carried this
+        absence since before these pages existed, and it is still true</td>
+  </tr>
+  <tr>
+    <td>Nothing constructs one from a load</td>
+    <td>Grepping <code>Engine/</code> and <code>Applications/</code> finds no call to
+        <a href="../ResourceManager/request-load.html"><code>RequestLoad</code></a> or
+        <a href="../ResourceManager/load.html"><code>Load</code></a>, and no definition of either, so no
+        <code>Resource</code> object is created anywhere in the repository. There is consequently no real call site
+        to quote on any page here; the examples are labelled illustrative</td>
+  </tr>
+  <tr>
+    <td>Reference-count behaviour</td>
+    <td>The count lives in <a href="../ResourceManager/index.html#properties"><code>ResourceItem::referenceCount</code></a>,
+        not here, and nothing reads or writes it. Documented on
+        <a href="../ResourceManager/index.html">ResourceManager</a></td>
+  </tr>
+  <tr>
+    <td>Thread-safety</td>
+    <td>Not stated by the header. With no state there is nothing to race on, but that is not the same as a
+        guarantee about the resource it is meant to name</td>
+  </tr>
+</table>
+
+<footer class="prevnext">
+  <span><a href="../index.html">← Resource</a></span>
+  <span><a href="../index.html#classes">Resource in the Resource class list</a></span>
+</footer>
+
+</main>
+</body>
+</html>

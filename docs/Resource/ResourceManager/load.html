@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ResourceManager::Load — Resource — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">ResourceManager</a> methods</h3>
+  <ul class="methods">
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+    <li><a href="post-update.html">PostUpdate</a></li>
+    <li><a href="request-load.html">RequestLoad</a></li>
+    <li><a class="current" href="load.html">Load</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Resource</a> /
+  <a href="index.html">ResourceManager</a> / Load
+</p>
+
+<h1><span class="fn">Load</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::ResourceManager</span>
+  <span class="tag">Engine/Resource/ResourceManager.h</span>
+  <span class="tag">[[nodiscard]]</span>
+  <span class="tag">declared, not defined</span>
+  the synchronous counterpart of <a href="request-load.html"><code>RequestLoad</code></a>, in name only
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] <span class="ty">Resource</span> <span class="fn">Load</span>(<span class="ty">StaticString</span> path);</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Same argument, same result, same state as its counterpart: a declaration in <code>ResourceManager.h</code> and no
+  definition in <code>ResourceManager.cpp</code> or anywhere else in the repository. Calling it compiles and does not link.
+</p>
+
+<p>
+  The pairing of the names is the entire documentation of the difference between them — <code>Load</code> does the work and
+  returns something finished, <code>RequestLoad</code> starts work and returns a promise. Nothing else in the header
+  distinguishes them: no comment on either, no different parameter, no completion callback, no status type.
+</p>
+
+<p>
+  If it were implemented, the shape forced by the rest of this module would be: intern or hash <code>path</code>, look it up
+  in <code>resources</code>, build a <a href="../Buffer/index.html"><code>Buffer</code></a> on a miss, return a
+  <a href="../Resource/index.html"><code>Resource</code></a>. The last step is the weak one — the handle has no members, so a
+  caller that receives it has the buffer's address in nothing it can read. Any real use of this function needs the handle
+  class to grow an accessor first.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr>
+    <td><code>path</code></td>
+    <td><a href="../../String/index.html#staticstring"><code>StaticString</code></a> (by value)</td>
+    <td>
+      The resource to load. Interned string, cheap to pass, implicitly convertible from a <code>const char*</code>. Whether a
+      missing or unreadable path is an assert, a log line or an empty handle is unanswered — there is no implementation to
+      read the answer from
+    </td>
+  </tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr>
+    <td><a href="../Resource/index.html"><code>Resource</code></a></td>
+    <td>
+      A handle, <code>[[nodiscard]]</code>. It exposes nothing: no path, no id, no buffer, no loaded flag. "Blocks until the
+      buffer is resident" was the previous module page's description of this return value; the resident buffer is not
+      reachable from the handle, and never was
+    </td>
+  </tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p>
+  No example is given. No call site exists in <code>Engine/</code> or <code>Applications/</code>, and a snippet calling a
+  function with no definition would be a snippet that does not link. The synchronous, blocking, "give me the bytes now" need
+  this name describes is met in this build by <code>BufferUtil::GetFileBuffer</code> and friends, which return a real
+  <a href="../Buffer/index.html"><code>Buffer</code></a> — named on <a href="../index.html#coverage">the module page</a>, and
+  not documented by a page in this batch.
+</p>
+
+<div class="note">
+  <strong>"The right call at startup, the wrong one inside a frame" is advice about a function that does not exist.</strong> It
+  was on the previous module page and it is not supported by any header, so it is not repeated here. Once a blocking load
+  exists, the cost it hides is a file open plus a mapping made on the calling thread — the same work
+  <code>BufferUtil::GenerateFileBuffer</code> performs synchronously today, and which <code>MemoryManager</code> already does
+  at start-up.
+</div>
+
+<footer class="prevnext">
+  <span><a href="index.html">← ResourceManager</a></span>
+  <span><a href="index.html#methods">All ResourceManager methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

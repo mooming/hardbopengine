@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BufferTypes — Resource — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="#description">Class description</a></li>
+    <li><a href="#template">Template parameters</a></li>
+    <li><a href="#properties">Class properties</a></li>
+    <li><a href="#methods">Class methods</a></li>
+    <li><a href="#non-member">Non-member helpers</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+
+  <h3>Methods</h3>
+  <ul class="methods">
+    <li>None — aliases only</li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Resource</a> / BufferTypes
+</p>
+
+<h1>BufferTypes</h1>
+<p class="subtitle">
+  <span class="tag">Engine/Resource/BufferTypes.h</span>
+  <span class="tag">namespace hbe::BufferTypes</span>
+  <span class="tag">6 aliases, 0 functions</span>
+  the size type and the three callback shapes a <a href="../Buffer/index.html"><code>Buffer</code></a> is built from
+</p>
+
+<h2 id="description">Class description</h2>
+
+<p>
+  A namespace, not a class. It holds the vocabulary that <a href="../Buffer/index.html"><code>Buffer</code></a>
+  and the buffer factories in <code>BufferUtil</code> share: how many bytes, what a block of bytes is, who
+  produces one, who frees one, and who proposes a new capacity. Nothing here allocates or computes anything —
+  every entry is a <code>using</code>-declaration, and all six compile to a plain integer or a
+  <code>std::function</code>.
+</p>
+
+<p>
+  Keeping them in one namespace is what makes a callback interchangeable between subsystems. A releaser written
+  against <code>BufferTypes::TReleaseBuffer</code> is the same type as
+  <code>Buffer::TReleaseBuffer</code>, because <a href="../Buffer/index.html#properties"><code>Buffer</code></a>
+  names these very aliases rather than declaring its own, so <code>SetReleaser</code> accepts any callable that
+  fits this signature.
+</p>
+
+<div class="note">
+  <strong>Two of these aliases hide that a buffer's data is a pointer, not a block.</strong>
+  <code>TBufferData</code> is <code>uint8_t*</code>, so a generator that "writes out the data" writes out an
+  address, and a releaser that "receives the data" receives the address and the byte count and must already know
+  what kind of memory it points at. Nothing in the type records the allocator, the file handle, or the mapping a
+  block came from; that is precisely why a <a href="../Buffer/index.html"><code>Buffer</code></a> needs a releaser
+  at all.
+</div>
+
+<h2 id="template">Template parameters</h2>
+
+<p>None — a namespace is not a template, and none of these aliases are.</p>
+
+<h2 id="properties">Class properties</h2>
+
+<p>
+  Verbatim from <code>Engine/Resource/BufferTypes.h</code>, in the order the header declares them. <code>&amp;</code>
+  in a callback's parameter list is part of the contract, not decoration: it says which arguments the callback
+  may hand back.
+</p>
+
+<table>
+  <tr><th>Name</th><th>Declaration</th><th>What it means</th></tr>
+  <tr>
+    <td><code>TSize</code></td>
+    <td><code>using TSize = size_t;</code></td>
+    <td>
+      <span class="badge">alias</span> A byte count, unsigned. Unlike <code>Array::TIndex</code>, which is
+      <code>int</code> — a buffer's size and a container's index are different quantities and are typed
+      differently here; see <a href="../../Container/index.html#array">Container: Array</a>
+    </td>
+  </tr>
+  <tr>
+    <td><code>TIndex</code></td>
+    <td><code>using TIndex = TSize;</code></td>
+    <td>
+      <span class="badge">alias</span> The same <code>size_t</code> under a second name, pinned to it by
+      <code>static_assert(std::is_same&lt;TIndex, TSize&gt;::value);</code> so the two cannot drift apart. No code
+      in the repository uses this name
+    </td>
+  </tr>
+  <tr>
+    <td><code>TBufferData</code></td>
+    <td><code>using TBufferData = uint8_t*;</code></td>
+    <td>
+      <span class="badge">alias</span> The block, as an address. Byte-typed, so arithmetic on it is in units of
+      one byte and every typed view of it is a <code>reinterpret_cast</code> — see
+      <a href="../Buffer/get-data-as.html"><code>GetDataAs</code></a>
+    </td>
+  </tr>
+  <tr>
+    <td><code>TGenerateBuffer</code></td>
+    <td><code>using TGenerateBuffer = std::function&lt;void(TSize&amp;, TBufferData&amp;)&gt;;</code></td>
+    <td>
+      <span class="badge">alias</span> Produces a block. It returns <code>void</code> and writes its two
+      arguments by reference, so the out-parameters <em>are</em> the return channel: leaving them untouched is
+      how a generator says it failed. See
+      <a href="../Buffer/constructors.html">the <code>Buffer</code> constructors</a> for what an untouched pair
+      leaves behind
+    </td>
+  </tr>
+  <tr>
+    <td><code>TReleaseBuffer</code></td>
+    <td><code>using TReleaseBuffer = std::function&lt;void(TSize, TBufferData)&gt;;</code></td>
+    <td>
+      <span class="badge">alias</span> Frees a block. Both arguments are by value, so a releaser cannot hand back
+      a resized or re-pointed block; it is told what to free and must capture whatever it needs to free it
+      correctly — an allocator reference, a file handle, a mapping length
+    </td>
+  </tr>
+  <tr>
+    <td><code>TResizeBuffer</code></td>
+    <td><code>using TResizeBuffer = std::function&lt;TSize(TSize)&gt;;</code></td>
+    <td>
+      <span class="badge">alias</span> Proposes a capacity: takes the requested byte count, returns the count to
+      actually use, which is where a grower rounds up to a page or a pool block. Declared only — no field,
+      parameter or call site in the repository names it
+    </td>
+  </tr>
+</table>
+
+<h2 id="methods">Class methods</h2>
+
+<p>
+  None. Every entry above is a type alias, so there is no method page under this directory: a name that is not a
+  function has nothing to document beyond its declaration, which is the table above.
+</p>
+
+<h2 id="non-member">Non-member helper functions</h2>
+
+<p>
+  None. <code>BufferTypes.h</code> declares nothing but these aliases; the functions that build
+  <a href="../Buffer/index.html"><code>Buffer</code></a> objects live in the sibling namespace
+  <code>hbe::BufferUtil</code> in <code>Engine/Resource/BufferUtil.h</code>, and
+  <code>BufferUtil.h</code> itself pulls this namespace in with <code>using namespace BufferTypes;</code> so its
+  own signatures can spell <code>TSize</code> and <code>TBufferData</code> unqualified.
+</p>
+
+<h2 id="coverage">Coverage</h2>
+
+<table>
+  <tr><th>Gap</th><th>Detail</th></tr>
+  <tr>
+    <td><code>TResizeBuffer</code> has no user</td>
+    <td>Grepping <code>Engine/</code> and <code>Applications/</code> finds the alias declared in
+        <code>BufferTypes.h</code> and named nowhere else. <a href="../Buffer/index.html#properties"><code>Buffer</code></a>
+        stores a generator's <em>result</em> and a releaser, never a resizer, so there is no capacity policy in
+        play to plug it into. It is a hook, not a feature in use</td>
+  </tr>
+  <tr>
+    <td><code>TIndex</code> has no user</td>
+    <td>Same: declared, <code>static_assert</code>-pinned to <code>TSize</code>, and referenced by no other
+        declaration in the repository</td>
+  </tr>
+  <tr>
+    <td><code>std::is_same</code> without <code>&lt;type_traits&gt;</code></td>
+    <td>The <code>static_assert</code> names a trait and this header includes only <code>&lt;cstddef&gt;</code>,
+        <code>&lt;cstdint&gt;</code> and <code>&lt;functional&gt;</code>; it compiles today because
+        <code>&lt;functional&gt;</code> happens to supply the trait. Worth knowing before this header is included
+        somewhere that does not</td>
+  </tr>
+  <tr>
+    <td><code>hbe::BufferUtil</code></td>
+    <td>The six namespace-scope factories in <code>Engine/Resource/BufferUtil.h</code>
+        (<code>GenerateDummyBuffer</code>, <code>GenerateFileBuffer</code>, <code>GetFileBuffer</code>,
+        <code>GetReadOnlyFileBuffer</code>, <code>GetWriteOnlyFileBuffer</code>, <code>GetMemoryBuffer</code>)
+        produce the <code>TGenerateBuffer</code> and <code>TReleaseBuffer</code> objects documented here, but no
+        page in this batch documents them; they are listed as a gap on
+        <a href="../index.html#coverage">the module page</a></td>
+  </tr>
+  <tr>
+    <td>Which allocator each callback is expected to use</td>
+    <td>Nothing in these signatures says so — that is the caller's choice, made in the closure. The engine's own
+        pools are documented in <a href="../../Memory/index.html#memorymanager">Memory</a></td>
+  </tr>
+</table>
+
+<footer class="prevnext">
+  <span><a href="../index.html">← Resource</a></span>
+  <span><a href="../index.html#classes">BufferTypes in the Resource class list</a></span>
+</footer>
+
+</main>
+</body>
+</html>

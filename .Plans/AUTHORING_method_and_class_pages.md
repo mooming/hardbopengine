@@ -65,6 +65,11 @@ Class properties — one row per alias **and** per data member:
 </table>
 ```
 
+Badge vocabulary, so one page's row kind is the next page's row kind: `member type` for a `using`, `private` for
+a data member, `private nested` for a nested class or struct, `alias template` for a member `template` alias, and
+`deleted` for a special member that exists only to be removed. Anything else needs a sentence in the cell — the
+badge is a label, not an explanation.
+
 Class methods — one row per **method name**, the name linking to its page, the overload count as a badge:
 
 ```html
@@ -80,7 +85,10 @@ Class methods — one row per **method name**, the name linking to its page, the
 </tr>
 ```
 
-Parameters — `Parameter | Type | Requirement`, one row per parameter, `<p>None.</p>` when there are none.
+Parameters — `Parameter | Type | Requirement`, one row per parameter, `<p>None.</p>` when there are none. For a
+function template with no ordinary arguments, give one row for each template parameter with Type set to
+`<em>template parameter</em>`, and a final row `<em>(function parameters)</em>` | `—` | what they are — that pair
+is what makes the absence of an argument list an explicit fact rather than an oversight.
 Return value — `<table>` `Type | What you get` when the type carries meaning, a `<p>` when it is `void`.
 
 ## 5. Examples — approved rule
@@ -91,6 +99,10 @@ Return value — `<table>` `Type | What you get` when the type carries meaning, 
    `<p class="note">Illustrative — no call site for this exists in the repository.</p>`. Use only types and
    functions that exist. Never invent a type name to make a snippet look real.
 3. **Never** fabricate a call site or attribute code to a file that does not contain it.
+4. **Declared with no definition is its own case.** Where the header declares something no translation unit
+   defines, the example section states that plainly and explains the consequence — a call does not link — instead
+   of showing a snippet that could not build. This is not a gap in your work; it is a finding about the module,
+   and it belongs on the page, in Coverage, and in your report.
 
 ## 6. Callout boxes
 
@@ -116,6 +128,13 @@ comment, `<span class="nu">` number, `<span class="st">` string. Spans are optio
 
 - **Never link to a class page or method page that is not in your assigned batch.** Cross-module references point
   at module pages, which all exist.
+- **A module page rewrite must preserve every anchor that survives inbound links.** Other modules link to
+  `../<Module>/index.html#window`, `#allocators`, `#buildconfig` and friends. When the deep per-class section
+  moves to a class page, put `id="<class>"` on that class's row in the classes table, so the old address keeps
+  resolving instead of becoming a silent 404 in someone else's page. Find the inbound fragments before you
+  rewrite: `grep -rn "<Module>/index.html#" docs --include=*.html | grep -v "^docs/<Module>/"`.
+- `../README.md#some-heading` is not checkable by string search: GitHub generates that fragment from the heading
+  text. It reads as broken to the validator and is not.
 - CSS classes available: `sidebar`, `main`, `breadcrumb`, `subtitle`, `tag`, `badge`, `note`, `gap`, `prevnext`,
   `module-grid`, `module-card`, `sig`, `methods`, and the syntax spans. Nothing else — `check` with the validator.
 
@@ -124,6 +143,9 @@ comment, `<span class="nu">` number, `<span class="st">` string. Spans are optio
 Copy verbatim from the exemplar and change only the `current` marker and the "Methods" list. The Modules list is
 identical on every page of a module, and a method page marks itself current in the Methods list. The Modules list
 on a class page marks **no** entry current; on a method page it also marks none.
+
+A class whose members are aliases only has no method pages: replace the list with
+`<li>None — aliases only</li>` and keep the "Methods" heading, so the sidebar does not look half-written.
 
 ## 10. Footer
 

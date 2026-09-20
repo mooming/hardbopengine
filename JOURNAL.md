@@ -33,6 +33,24 @@ module against the contract file, piloted on Config and Resource before the rema
 a bad pattern should cost two modules, not twelve. The orchestrator validates and commits; agents write only
 inside their own module directory.
 
+**Pilot result (Resource): the contract, not the output, needed fixing.** 20 pages, validated clean by an
+independent parse, and the voice matches the exemplar. What it actually produced that matters is a set of
+corrections found by reading `ResourceManager.cpp` instead of the previous page: `RequestLoad` and `Load` are
+declared in `ResourceManager.h` with **no definition anywhere in the repository**, so a call is a link error — I
+greped the whole tree to confirm it before believing it. `PostUpdate` and `RequestTasks` have empty bodies and
+zero callers, `referenceCount` is initialised and never read, and `Buffer(genFunc)` calls the generator in its
+constructor despite the comment claiming lazy initialisation. Five claims the old page asserted as behaviour were
+not behaviour. A verbatim-shingle test reported 10 of 14 old sentences missing from the new tree; reading them
+showed 5 deliberate corrections of false claims and 5 paraphrases — which is why the check that matters is
+whether the *concept* survived, not the wording.
+
+**Four contract faults surfaced, all real, all fixed:** no rule for a class whose members are aliases only, no
+row kind for a private nested class or a member alias template, no case for API that is declared but never
+defined, and the footer example linked a per-class anchor a rewritten index would no longer carry. The last one
+became a standing rule — **a module page rewrite keeps `id="<class>"` on the classes-table row**, because other
+modules link to `../OSAL/index.html#window` and a rewrite that drops it turns their working links into 404s that
+no local build notices. Inbound fragments get grepped before a rewrite, not after.
+
 ## Tasks become things the registry owns, addressed by identity (2026-09-19)
 
 **What landed**, as `3be27c3`: R7 with R22's sizing. `Engine/Core/TaskID.h` (`{index, generation}`) and

@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ResourceManager — Resource — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="#description">Class description</a></li>
+    <li><a href="#template">Template parameters</a></li>
+    <li><a href="#properties">Class properties</a></li>
+    <li><a href="#methods">Class methods</a></li>
+    <li><a href="#non-member">Non-member helpers</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+
+  <h3>Methods</h3>
+  <ul class="methods">
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+    <li><a href="post-update.html">PostUpdate</a></li>
+    <li><a href="request-load.html">RequestLoad</a></li>
+    <li><a href="load.html">Load</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Resource</a> / ResourceManager
+</p>
+
+<h1>ResourceManager</h1>
+<p class="subtitle">
+  <span class="tag">Engine/Resource/ResourceManager.h</span>
+  <span class="tag">namespace hbe</span>
+  <span class="tag">final</span>
+  <span class="tag">declared: path-keyed loads, reference counting, async advance</span>
+  <span class="tag">implemented: construction, destruction</span>
+  the intended owner of every loaded <a href="../Buffer/index.html"><code>Buffer</code></a> — a skeleton today
+</p>
+
+<h2 id="description">Class description</h2>
+
+<p>
+  The header's summary says what it is for: "Manages resource loading and lifetime with reference counting." The
+  declarations agree — a table of loaded <a href="#properties"><code>ResourceItem</code></a>s, a list of in-flight
+  requests, a synchronous <a href="load.html"><code>Load</code></a> and an asynchronous
+  <a href="request-load.html"><code>RequestLoad</code></a>, and a <a href="post-update.html"><code>PostUpdate</code></a>
+  taking the <a href="../../Engine/index.html#engine"><code>Engine</code></a> so it can reach the rest of the frame.
+  The <a href="../Resource/index.html"><code>Resource</code></a> handle a load returns is the caller's half of the
+  arrangement.
+</p>
+
+<p>
+  What is written so far is the shape and the ownership, not the behaviour. <code>ResourceManager.cpp</code> defines
+  the constructor and destructor as <code>= default</code> and defines
+  <a href="post-update.html"><code>PostUpdate</code></a> and the private <code>RequestTasks</code> with empty bodies;
+  <a href="request-load.html"><code>RequestLoad</code></a> and <a href="load.html"><code>Load</code></a> are declared
+  and have no definition anywhere in the repository. So a manager can be constructed, can be destroyed, and does
+  nothing in between.
+</p>
+
+<div class="gap">
+  <strong>Calling <a href="request-load.html"><code>RequestLoad</code></a> or
+  <a href="load.html"><code>Load</code></a> does not link.</strong> Both are declarations only; grepping every
+  <code>.h</code> and <code>.cpp</code> under <code>Engine/</code> and <code>Applications/</code> finds the header line
+  and nothing else. A caller therefore compiles and fails at link time, and no code in the engine attempts it. Nothing
+  reads <code>resources</code>, <code>loadingRequests</code> or
+  <code>ResourceItem::referenceCount</code>, so the reference count is initialised to zero by
+  <code>ResourceItem</code>'s constructor and never touched again: no load can share a buffer, and no item can be
+  retired.
+</div>
+
+<div class="note">
+  <strong>One instance exists, and nothing drives it.</strong> <code>Engine/Engine/Engine.h</code> holds
+  <code>ResourceManager resourceManager;</code> as a member and hands it out from <code>GetResourceManager()</code>,
+  so the lifetime claim is true. But <code>PostUpdate</code> is called by nobody — not by <code>Engine</code>, not by any
+  application — <a href="../../Engine/index.html#einitlevel"><code>EInitLevel</code></a> offers no level that starts the
+  resource manager, and <code>SetResourceManagerReady()</code> is never invoked, which makes
+  <code>IsResourceManagerReady()</code> answer false for the whole process. "The engine advances it each frame" is a
+  description of a plan, not of this build.
+</div>
+
+<h2 id="template">Template parameters</h2>
+
+<p>
+  None — <code>ResourceManager</code> is not a template. It declares one member alias <em>template</em>,
+  <a href="#properties"><code>TVector</code></a>, which is what its two containers are built from; there is no
+  resource-type or allocator parameter to specialise on.
+</p>
+
+<h2 id="properties">Class properties</h2>
+
+<table>
+  <tr><th>Name</th><th>Declaration</th><th>What it means</th></tr>
+  <tr>
+    <td><code>TVector</code></td>
+    <td><code>template&lt;typename T&gt;<br>using TVector = hbe::HVector&lt;T&gt;;</code></td>
+    <td>
+      <span class="badge">member type</span> The storage for both containers below. <code>HVector&lt;T&gt;</code> is
+      <code>std::vector</code> over <code>DefaultAllocator&lt;T&gt;</code>, so the tables allocate through the engine's
+      allocator scope rather than the global one — <a href="../../HSTL/index.html#hvector">HSTL: HVector</a> and
+      <a href="../../Memory/index.html#allocators">Memory: allocators</a>
+    </td>
+  </tr>
+  <tr>
+    <td><code>ResourceItem</code></td>
+    <td><code>class ResourceItem final</code> with <code>uint32_t id;</code>, <code>uint32_t referenceCount;</code>,
+        <code>StaticString path;</code>, <code>Buffer buffer;</code></td>
+    <td>
+      <span class="badge">private nested class</span> One loaded thing: a numeric id, the count that is meant to decide
+      when it dies, the path it came from and the <a href="../Buffer/index.html"><code>Buffer</code></a> holding its
+      bytes. The default constructor sets <code>id</code> and <code>referenceCount</code> to <code>0</code> and leaves
+      the path null and the buffer empty. <code>path</code> is a
+      <a href="../../String/index.html#staticstring"><code>StaticString</code></a>, so it is an interned string and two
+      items loaded from one path carry the same pointer — the mechanism a lookup would compare on
+    </td>
+  </tr>
+  <tr>
+    <td><code>LoadingRequest</code></td>
+    <td><code>class LoadingRequest final</code> with <code>uint32_t resourceID;</code>,
+        <code>StaticString path;</code></td>
+    <td>
+      <span class="badge">private nested class</span> A request waiting to be serviced: which id was asked for, at which
+      path. Declared and then not used — the pending list below stores <code>ResourceItem*</code> instead, so nothing in
+      the class has this type
+    </td>
+  </tr>
+  <tr>
+    <td><code>resources</code></td>
+    <td><code>TVector&lt;ResourceItem&gt; resources;</code></td>
+    <td>
+      <span class="badge">private</span> The loaded set, held by value: the manager owns the items, and therefore owns
+      the buffers inside them. Never read or written by any code that exists
+    </td>
+  </tr>
+  <tr>
+    <td><code>loadingRequests</code></td>
+    <td><code>TVector&lt;ResourceItem*&gt; loadingRequests;</code></td>
+    <td>
+      <span class="badge">private</span> Requests in flight, stored as raw pointers into <code>resources</code>.
+      <span class="badge">hazard by construction</span> Those pointers address elements of a vector that grows, so the
+      first reallocation invalidates every entry in this list. Any implementation that fills both containers has to
+      reserve, store indices, or move the items somewhere stable — a defect an implementer will meet immediately, and
+      worth naming now because the declaration is the only place the constraint is visible
+    </td>
+  </tr>
+</table>
+
+<h2 id="methods">Class methods</h2>
+
+<table>
+  <tr><th>Method</th><th>Signature</th><th>What a caller depends on</th></tr>
+  <tr>
+    <td><a href="constructors.html">constructors</a></td>
+    <td class="sig">ResourceManager() noexcept</td>
+    <td>One default constructor, <code>= default</code>: both containers come back empty. No path table, allocator or
+        task system is supplied, because there is nothing yet for them to be used for</td>
+  </tr>
+  <tr>
+    <td><a href="destructor.html">destructor</a></td>
+    <td class="sig">~ResourceManager() noexcept</td>
+    <td><code>= default</code>, and it is the one behaviour here that genuinely works: destroying the manager destroys
+        every <code>ResourceItem</code>, which destroys each <a href="../Buffer/destructor.html"><code>Buffer</code></a>,
+        which runs that buffer's releaser</td>
+  </tr>
+  <tr>
+    <td><a href="post-update.html">PostUpdate</a></td>
+    <td class="sig">void PostUpdate(Engine&amp; engine) noexcept</td>
+    <td>Declared to be the per-frame pump; defined with an empty body, and called by nobody in the repository</td>
+  </tr>
+  <tr>
+    <td><a href="request-load.html">RequestLoad</a></td>
+    <td class="sig">Resource RequestLoad(StaticString path)</td>
+    <td><code>[[nodiscard]]</code>, takes a path, returns a handle. The intended asynchronous path, judging by the name
+        and the private request machinery — no definition, so no behaviour to depend on and no link</td>
+  </tr>
+  <tr>
+    <td><a href="load.html">Load</a></td>
+    <td class="sig">Resource Load(StaticString path)</td>
+    <td><code>[[nodiscard]]</code>, same argument and result. The intended synchronous counterpart; likewise declared
+        only</td>
+  </tr>
+</table>
+
+<p>
+  The remaining member, <code>void RequestTasks(TaskSystem&amp; taskSys) noexcept</code>, is private and its definition
+  is an empty body. It is named here because it is the only declaration in the class that mentions
+  <a href="../../Core/index.html#tasksystem">TaskSystem</a>, which is what an asynchronous load would have to go
+  through; it is not documented as API. See <a href="#coverage">Coverage</a>.
+</p>
+
+<h2 id="non-member">Non-member helper functions</h2>
+
+<p>
+  None. <code>ResourceManager.h</code> forward-declares <code>class Engine;</code> and
+  <code>class TaskSystem;</code> so the two signatures above do not have to include those headers, and declares nothing
+  else at namespace scope.
+</p>
+
+<h2 id="coverage">Coverage</h2>
+
+<table>
+  <tr><th>Gap</th><th>Detail</th></tr>
+  <tr>
+    <td>Loading, caching, deduplication and retirement</td>
+    <td>Every one of these is implied by the members and none is written. There is consequently no documented answer to
+        "what happens when two callers ask for one path", "what does a load do when the file is missing", or "when
+        exactly does a buffer get freed" — those are questions about code that does not exist yet, and guessing them from
+        the summary would be exactly the kind of drift this site exists to prevent</td>
+  </tr>
+  <tr>
+    <td>Reference counting</td>
+    <td>One field, <code>ResourceItem::referenceCount</code>, initialised to <code>0</code> and never modified. The
+        previous module page asserted that two loads of one path share a buffer and that an item is released when the
+        count reaches zero; no declaration or definition supports that, so the assertion is gone from the module page and
+        recorded here as unimplemented</td>
+  </tr>
+  <tr>
+    <td><code>RequestTasks</code></td>
+    <td>Private, empty body. Not documented as API; noted under
+        <a href="#methods">Class methods</a> as the hook a real
+        <a href="request-load.html"><code>RequestLoad</code></a> would use</td>
+  </tr>
+  <tr>
+    <td>How an item is keyed and looked up</td>
+    <td><code>ResourceItem::path</code> and <code>id</code> both exist and no code reads either. Whether the id is a
+        hash of the path, an index into <code>resources</code>, or a slot counter is undetermined by the header —
+        <a href="../../String/index.html#staticstringid">String: StaticStringID</a> is what an interned-path key would
+        most plausibly use, but nothing here names it</td>
+  </tr>
+  <tr>
+    <td>Thread-safety</td>
+    <td>The header states none, and there is no mutex in the class. An asynchronous loader that touches
+        <code>resources</code> from a worker thread would need one, but saying more than that would be describing a design
+        that has not been written</td>
+  </tr>
+  <tr>
+    <td>Engine integration</td>
+    <td>Ownership and the accessor are real; starting, pumping and readiness are not wired. The
+        <a href="../../Engine/index.html#engine">Engine</a> page documents what the engine actually initialises each
+        frame, and this module is not part of it</td>
+  </tr>
+</table>
+
+<footer class="prevnext">
+  <span><a href="../index.html">← Resource</a></span>
+  <span><a href="../index.html#classes">ResourceManager in the Resource class list</a></span>
+</footer>
+
+</main>
+</body>
+</html>

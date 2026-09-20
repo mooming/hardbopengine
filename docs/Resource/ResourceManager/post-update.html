@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ResourceManager::PostUpdate — Resource — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">ResourceManager</a> methods</h3>
+  <ul class="methods">
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+    <li><a class="current" href="post-update.html">PostUpdate</a></li>
+    <li><a href="request-load.html">RequestLoad</a></li>
+    <li><a href="load.html">Load</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Resource</a> /
+  <a href="index.html">ResourceManager</a> / PostUpdate
+</p>
+
+<h1><span class="fn">PostUpdate</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::ResourceManager</span>
+  <span class="tag">Engine/Resource/ResourceManager.h</span>
+  <span class="tag">noexcept</span>
+  <span class="tag">body: { }</span>
+  the per-frame pump the asynchronous design is written around — currently an empty function nobody calls
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code><span class="kw">void</span> <span class="fn">PostUpdate</span>(<span class="ty">Engine</span>&amp; engine) <span class="kw">noexcept</span>;</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  The definition in <code>ResourceManager.cpp</code> is <code>{}</code>. It returns without looking at its argument,
+  without touching <code>loadingRequests</code> or <code>resources</code>, and without logging. So the honest contract
+  today is: cheap, side-effect-free, idempotent, and useless.
+</p>
+
+<p>
+  Its shape says what it is for. Taking the <a href="../../Engine/index.html#engine"><code>Engine</code></a> by reference
+  is how this class reaches the <a href="../../Core/index.html#tasksystem">TaskSystem</a> — <code>Engine</code> exposes
+  <code>GetTaskSystem()</code> — and the private <code>RequestTasks(TaskSystem&amp;)</code> next to it is the half that
+  would dispatch work. Read together, the pair describes a pump that collects finished asynchronous loads and dispatches
+  new ones. Neither half does anything yet.
+</p>
+
+<div class="gap">
+  <strong>Nothing calls this.</strong> Grepping <code>Engine/</code> and <code>Applications/</code> finds the declaration,
+  the empty definition, and no call site: <code>Engine</code> has no update hook of its own that would reach it, and no
+  application calls it. A design in which "the load completes on a later <code>PostUpdate</code>" therefore has no
+  mechanism in this build, and adding your own call is a decision about frame order, not a documentation question — the
+  engine has no defined frame phases to slot it into.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr>
+    <td><code>engine</code></td>
+    <td><a href="../../Engine/index.html#engine"><code>Engine&amp;</code></a></td>
+    <td>
+      A live engine, non-null — the only source of the task system this pump would need. Unused by the current
+      definition, so passing one costs nothing and proves nothing; the type still has to be complete at the call site,
+      which means including <code>Engine/Engine/Engine.h</code>
+    </td>
+  </tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  <code>void</code>. Nothing about progress, completion or failure: a pump with a status to report would need a return
+  type or an out-parameter, and this one has neither. <code>noexcept</code>.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<p class="note">Illustrative — no call site for this exists in the repository.</p>
+
+<pre><code><span class="kw">auto</span>&amp; engine = <span class="ty">hbe</span>::<span class="ty">Engine</span>::<span class="fn">Get</span>();
+
+<span class="kw">while</span> (running)
+{
+        <span class="cm">// ... application frame ...</span>
+        engine.<span class="fn">GetResourceManager</span>().<span class="fn">PostUpdate</span>(engine);
+}</code></pre>
+
+<p>
+  The two calls this snippet makes are both real — <a href="../../Engine/index.html#engine"><code>Engine::Get</code></a>,
+  <code>GetResourceManager()</code> and this function are declared and defined, so the loop compiles and links. It returns
+  having advanced nothing, because <a href="request-load.html"><code>RequestLoad</code></a> never enqueued anything to
+  advance.
+</p>
+
+<div class="note">
+  <strong>Calling it twice per frame is currently harmless, and will not stay that way.</strong> The warning against
+  pumping the queue yourself, which the previous version of the module page carried, was aimed at a future in which the
+  engine also pumps it; there is no engine call to collide with. Keep this function's invocation in exactly one place
+  when the pump gets a body, since a queue advanced twice retires or dispatches twice.
+</div>
+
+<footer class="prevnext">
+  <span><a href="index.html">← ResourceManager</a></span>
+  <span><a href="index.html#methods">All ResourceManager methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

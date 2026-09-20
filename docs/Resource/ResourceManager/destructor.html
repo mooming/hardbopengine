@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ResourceManager::~ResourceManager — Resource — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">ResourceManager</a> methods</h3>
+  <ul class="methods">
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a class="current" href="destructor.html">destructor</a></li>
+    <li><a href="post-update.html">PostUpdate</a></li>
+    <li><a href="request-load.html">RequestLoad</a></li>
+    <li><a href="load.html">Load</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Resource</a> /
+  <a href="index.html">ResourceManager</a> / destructor
+</p>
+
+<h1><span class="fn">~ResourceManager</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::ResourceManager</span>
+  <span class="tag">Engine/Resource/ResourceManager.h</span>
+  <span class="tag">noexcept</span>
+  <span class="tag">= default</span>
+  drops the item table, and with it every buffer the manager was holding
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>~<span class="fn">ResourceManager</span>() <span class="kw">noexcept</span>;</code></pre>
+
+<p>Defined in <code>Engine/Resource/ResourceManager.cpp</code> as <code>ResourceManager::~ResourceManager() noexcept = default;</code>.</p>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defaulted, which for this class is not a noop: the members own real things. Members are destroyed in reverse
+  declaration order, so <code>loadingRequests</code> goes first — a vector of raw pointers, and dropping it releases the
+  pointer values only, never the items — and then <code>resources</code> goes, destroying each
+  <a href="index.html#properties"><code>ResourceItem</code></a> in turn. Each item's <code>path</code> is an interned
+  <a href="../../String/index.html#staticstring"><code>StaticString</code></a> needing no teardown, and each item's
+  <a href="../Buffer/destructor.html"><code>Buffer</code></a> runs its releaser, so an item holding a file mapping gets
+  that mapping synchronised, unmapped and its handle closed here.
+</p>
+
+<p>
+  The byte counts and the count field are plain integers, so nothing is reported at destruction about how much was
+  released or how many items were still resident. The vector's own storage returns through
+  <a href="../../HSTL/index.html#hvector"><code>DefaultAllocator</code></a>, meaning the allocator scope that frees it is
+  the one open when the manager dies — for the engine's member instance, during
+  <a href="../../Engine/index.html#engine"><code>Engine</code></a> teardown.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<p><code>void</code>, and <code>noexcept</code>: nothing about the release is reported to the engine tearing it down.</p>
+
+<h2 id="example">Examples</h2>
+
+<p class="note">
+  Illustrative — no code calls or declares a <code>ResourceManager</code> of its own; the engine's member instance is
+  destroyed as part of <code>Engine</code> teardown, which is quoted on
+  <a href="constructors.html">the constructors page</a>.
+</p>
+
+<pre><code>{
+        <span class="ty">hbe</span>::<span class="ty">ResourceManager</span> resourceManager;
+        <span class="cm">// ... items would have been added by Load / RequestLoad ...</span>
+}       <span class="cm">// ~ResourceManager: loadingRequests dropped, then each ResourceItem, then each Buffer's releaser</span></code></pre>
+
+<div class="gap">
+  <strong>Destroying the manager does not consult <code>referenceCount</code>, and does not care whether a handle is
+  still in use.</strong> The count is never incremented by anything, so there is no "still referenced" state to respect:
+  whatever the table holds is released the moment the manager goes. Combined with
+  <a href="../Resource/destructor.html"><code>Resource</code></a> holding nothing at all, a handle that outlives its
+  manager is not detected, not invalidated and not diagnosable — it simply never referred to anything in the first
+  place. A buffer with no releaser in the table at this moment takes the warning path described on
+  <a href="../Buffer/destructor.html"><code>Buffer</code>'s destructor</a> and leaks quietly at shutdown.
+</div>
+
+<footer class="prevnext">
+  <span><a href="index.html">← ResourceManager</a></span>
+  <span><a href="index.html#methods">All ResourceManager methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

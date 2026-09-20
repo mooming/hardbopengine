@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Buffer::Buffer — Resource — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signatures</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">Buffer</a> methods</h3>
+  <ul class="methods">
+    <li><a class="current" href="constructors.html">constructors</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+    <li><a href="get-class-name.html">GetClassName</a></li>
+    <li><a href="set-releaser.html">SetReleaser</a></li>
+    <li><a href="get-data-as.html">GetDataAs</a></li>
+    <li><a href="translate-size-as.html">TranslateSizeAs</a></li>
+    <li><a href="get-data.html">GetData</a></li>
+    <li><a href="get-size.html">GetSize</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Resource</a> /
+  <a href="index.html">Buffer</a> / constructors
+</p>
+
+<h1><span class="fn">Buffer</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Buffer</span>
+  <span class="tag">Engine/Resource/Buffer.h</span>
+  <span class="tag">4 overloads</span>
+  choose who frees the bytes — the two-argument form names somebody, the others name nobody
+</p>
+
+<h2 id="signature">Signatures</h2>
+
+<pre><code><span class="fn">Buffer</span>();
+<span class="fn">Buffer</span>(<span class="ty">Buffer</span>&amp;&amp; rhs) <span class="kw">noexcept</span>;
+<span class="kw">explicit</span> <span class="fn">Buffer</span>(<span class="kw">const</span> <span class="ty">TGenerateBuffer</span>&amp; genFunc);
+<span class="fn">Buffer</span>(<span class="kw">const</span> <span class="ty">TGenerateBuffer</span>&amp; genFunc, <span class="kw">const</span> <span class="ty">TReleaseBuffer</span>&amp; releaseFunc);</code></pre>
+
+<p>
+  Nothing else is declared, and the absences are load-bearing. There is no copy constructor: declaring the move
+  constructor removes it. There is no assignment operator in either direction: the declared destructor removes the
+  move assignment operator and the declared move constructor leaves the copy assignment operator deleted. A buffer
+  is created empty, created from a generator, or moved into a new object — never assigned.
+</p>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  The two generator forms initialise <code>size</code> to <code>0</code> and <code>data</code> to
+  <code>nullptr</code>, then call <code>genFunc(size, data)</code> on that fresh pair. The generator returns
+  <code>void</code> and reports through its arguments, so the arguments arriving pre-cleared are what make failure
+  detectable: a generator that opens nothing and writes nothing leaves an empty buffer whose
+  <a href="get-data.html"><code>GetData()</code></a> is null, and that is how every caller in the engine tests for
+  a buffer that was never built. Nothing is deferred — the block exists, or does not, by the time the constructor
+  returns.
+</p>
+
+<p>
+  The one-argument form stops there, so the block it produces has no releaser and will not be freed by this
+  object. That is the documented use of it: a caller that keeps ownership elsewhere hands over a view. The
+  two-argument form assigns the releaser afterwards, which is also the order
+  <code>BufferUtil::GenerateFileBuffer</code> uses when it cannot know whether a releaser is needed until it sees
+  whether the mapping succeeded.
+</p>
+
+<p>
+  The move constructor copies <code>size</code> and <code>data</code>, moves the releaser, then writes
+  <code>0</code>, <code>nullptr</code> and an empty function back into the source. A moved-from buffer is therefore
+  not "valid but unspecified" — it is exactly the default-constructed state, and destroying it is a no-op rather
+  than a double free.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr>
+    <td><code>genFunc</code></td>
+    <td><a href="../BufferTypes/index.html"><code>const TGenerateBuffer&amp;</code></a></td>
+    <td>
+      Callable as <code>void(TSize&amp;, TBufferData&amp;)</code>, and <strong>not empty</strong> — an empty
+      <code>std::function</code> called here throws <code>std::bad_function_call</code> out of a constructor that
+      is not <code>noexcept</code>. It is called exactly once, here, and is never stored: the closure and its
+      captures may die as soon as this returns
+    </td>
+  </tr>
+  <tr>
+    <td><code>releaseFunc</code></td>
+    <td><a href="../BufferTypes/index.html"><code>const TReleaseBuffer&amp;</code></a></td>
+    <td>
+      Callable as <code>void(TSize, TBufferData)</code>. Copied into the buffer's own <code>std::function</code>,
+      which is what gets called at destruction — so anything it captures <em>by reference</em> must outlive the
+      buffer, not just this constructor
+    </td>
+  </tr>
+  <tr>
+    <td><code>rhs</code></td>
+    <td><a href="index.html"><code>Buffer&amp;&amp;</code></a></td>
+    <td>The buffer to empty into this one. Left a default-constructed buffer; no requirement beyond being alive,
+        since it is written rather than read</td>
+  </tr>
+</table>
+
+<p>The default constructor takes nothing.</p>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  Constructors have no return value, and these report nothing: not whether the generator succeeded, and not
+  whether a releaser was installed. Both are read back from the object — <a href="get-data.html"><code>GetData()</code></a>
+  for the first, and the silence or noise of the <a href="destructor.html">destructor</a> for the
+  second.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<p>
+  Allocating and freeing belong to one pair of closures, which is exactly what the two-argument form is for. This
+  one is real — a memory-backed buffer of <code>T</code>, from <code>Engine/Resource/BufferUtil.h</code>:
+</p>
+
+<pre><code><span class="kw">auto</span>&amp; mmgr = <span class="ty">MemoryManager</span>::<span class="fn">GetInstance</span>();
+<span class="kw">auto</span> generator = [&amp;mmgr, numElements, defaultValue](<span class="ty">TSize</span>&amp; outSize, <span class="ty">TBufferData</span>&amp; outData)
+{
+        outSize = numElements * <span class="kw">sizeof</span>(T);
+        <span class="kw">auto</span> ptr = mmgr.<span class="fn">NewArray</span>&lt;T&gt;(numElements, defaultValue);
+        outData = <span class="kw">reinterpret_cast</span>&lt;<span class="ty">TBufferData</span>&gt;(ptr);
+};
+
+<span class="kw">auto</span> releaser = [&amp;mmgr](<span class="ty">TSize</span> size, <span class="ty">TBufferData</span> data)
+{
+        <span class="kw">const</span> <span class="ty">TSize</span> numElements = size / <span class="kw">sizeof</span>(T);
+        <span class="fn">Assert</span>((numElements * <span class="kw">sizeof</span>(T)) == size);
+
+        <span class="kw">auto</span> ptr = <span class="kw">reinterpret_cast</span>&lt;T*&gt;(data);
+        mmgr.<span class="fn">DeleteArray</span>&lt;T&gt;(ptr, numElements);
+};
+
+<span class="kw">return</span> <span class="ty">Buffer</span>(generator, releaser);</code></pre>
+
+<p class="meta">From Engine/Resource/BufferUtil.h, in BufferUtil::GetMemoryBuffer</p>
+
+<p>
+  The same releaser needs an argument the buffer already carries — the byte count — which is why
+  <code>DeleteArray</code> can be called correctly without the closure remembering anything but the allocator. The
+  releaser also checks the division round-trips, because a size that is not a whole number of <code>T</code> would
+  otherwise free the wrong extent.
+</p>
+
+<p>
+  The one-argument form, in real use, is a buffer that is never meant to own anything — a size probe, from
+  <code>Engine/Resource/BufferUtil.cpp</code>:
+</p>
+
+<pre><code><span class="kw">auto</span> generator = [size](<span class="ty">TSize</span>&amp; outSize, <span class="ty">TBufferData</span>&amp; outData)
+{
+        outSize = size;
+        outData = <span class="kw">nullptr</span>;
+};
+
+<span class="kw">return</span> <span class="ty">Buffer</span>(generator);</code></pre>
+
+<p class="meta">From Engine/Resource/BufferUtil.cpp, in BufferUtil::GenerateDummyBuffer</p>
+
+<p>
+  A byte count and a null pointer: <a href="get-size.html"><code>GetSize()</code></a> answers a huge number while
+  <a href="get-data.html"><code>GetData()</code></a> answers null, which is the combination a writer treats as
+  "count the bytes, write nothing". <code>MemoryManager::SaveMultiPoolConfigs</code> exploits precisely that to
+  measure a serialisation before allocating a file for it.
+</p>
+
+<div class="gap">
+  <strong>A generator that allocated, combined with no releaser, is a leak the program only mentions once.</strong>
+  The <a href="destructor.html">destructor</a> logs a warning naming the class and the pointer and returns without
+  freeing. Nothing asserts, no error is returned, and in a Release build the pointer fields are not even cleared,
+  so the buffer looks intact after it is gone. Use the two-argument form for anything that really allocated, or
+  install the releaser with <a href="set-releaser.html"><code>SetReleaser</code></a> — but note that the window
+  between the constructor and that call is exactly the window an exception can escape through.
+</div>
+
+<div class="note">
+  <strong>The one-argument generator form is <code>explicit</code>; the two-argument form is not.</strong> So
+  <code>Buffer b = someGenerator;</code> is rejected while a two-argument conversion sequence is permitted. The
+  asymmetry is visible in the header and has no behavioural consequence for a call that names the type, which is
+  what every call site in the repository does.
+</div>
+
+<footer class="prevnext">
+  <span><a href="index.html">← Buffer</a></span>
+  <span><a href="index.html#methods">All Buffer methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

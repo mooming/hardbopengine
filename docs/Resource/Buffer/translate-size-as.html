@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Buffer::TranslateSizeAs — Resource — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">Buffer</a> methods</h3>
+  <ul class="methods">
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+    <li><a href="get-class-name.html">GetClassName</a></li>
+    <li><a href="set-releaser.html">SetReleaser</a></li>
+    <li><a href="get-data-as.html">GetDataAs</a></li>
+    <li><a class="current" href="translate-size-as.html">TranslateSizeAs</a></li>
+    <li><a href="get-data.html">GetData</a></li>
+    <li><a href="get-size.html">GetSize</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Resource</a> /
+  <a href="index.html">Buffer</a> / TranslateSizeAs
+</p>
+
+<h1><span class="fn">TranslateSizeAs</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Buffer</span>
+  <span class="tag">Engine/Resource/Buffer.h</span>
+  <span class="tag">template&lt;typename T&gt;</span>
+  <span class="tag">const noexcept</span>
+  <span class="tag">[[nodiscard]]</span>
+  the byte size divided by <code>sizeof(T)</code> — the element count that matches
+  <a href="get-data-as.html"><code>GetDataAs</code></a>
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code><span class="kw">template</span>&lt;<span class="kw">typename</span> T&gt;
+[[nodiscard]] <span class="kw">size_t</span> <span class="fn">TranslateSizeAs</span>() <span class="kw">const</span> <span class="kw">noexcept</span>;</code></pre>
+
+<p>Defined in the header as <code>return size / sizeof(T);</code>.</p>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  One unsigned division of the byte count by <code>sizeof(T)</code>. It is the counting half of the typed view: the
+  pointer comes from <a href="get-data-as.html"><code>GetDataAs&lt;T&gt;()</code></a> and the extent it is legal to
+  walk comes from here, and both are expressed in the same <code>T</code> so the pair is at least self-consistent.
+</p>
+
+<p>
+  The division truncates, which is the whole of its error behaviour. A block whose byte count is not an exact
+  multiple of <code>sizeof(T)</code> — a truncated file, a header prefix nobody stripped, a <code>T</code> picked
+  one field too wide — reports the smaller count and leaves the leftover bytes unreachable rather than reporting
+  anything wrong.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr>
+    <td><code>T</code></td>
+    <td><em>template parameter</em>, <code>typename</code></td>
+    <td>The element type the count is wanted in. Must be the same <code>T</code> handed to
+        <a href="get-data-as.html"><code>GetDataAs</code></a>, or the count is measured against a layout the pointer
+        does not use. No function parameter</td>
+  </tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr>
+    <td><code>size_t</code></td>
+    <td>
+      <code>GetSize() / sizeof(T)</code>, rounded down. <code>0</code> for an empty buffer <em>and</em> for a
+      non-empty buffer smaller than one <code>T</code>. <code>[[nodiscard]]</code>, so calling it for effect is a
+      compile error
+    </td>
+  </tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p class="note">Illustrative — no call site for this exists in the repository; nothing calls
+<code>TranslateSizeAs</code>. See <a href="get-data-as.html"><code>GetDataAs</code></a>, which is unused for the same
+reason.</p>
+
+<pre><code><span class="kw">auto</span> buffer = <span class="ty">BufferUtil</span>::<span class="fn">GetReadOnlyFileBuffer</span>(path);
+
+<span class="kw">const</span> <span class="kw">auto</span>* verts = buffer.<span class="fn">GetDataAs</span>&lt;<span class="ty">MeshVertex</span>&gt;();
+<span class="kw">const</span> <span class="kw">auto</span> count = buffer.<span class="fn">TranslateSizeAs</span>&lt;<span class="ty">MeshVertex</span>&gt;();
+
+<span class="kw">if</span> (buffer.<span class="fn">GetSize</span>() % <span class="kw">sizeof</span>(<span class="ty">MeshVertex</span>) != <span class="nu">0</span>)
+{
+        <span class="cm">// the only way to learn the block was a partial record: check the remainder yourself</span>
+}</code></pre>
+
+<p>
+  <code>MeshVertex</code> is the real vertex layout declared in <code>Engine/Renderer/Vulkan/VulkanRenderer.h</code>;
+  the snippet is illustrative because no code reads a buffer that way today.</p>
+
+<div class="gap">
+  <strong>A whole-file buffer and a buffer of records look identical here.</strong> The function divides and reports;
+  it cannot tell a byte block that was written as an array of <code>T</code> from one that was written as a header,
+  a string and some padding. Where an exact element count matters, either compare the remainder against zero as above
+  or have the producer record the count itself — which is what the streams do by writing the length ahead of the
+  elements they then copy.
+</div>
+
+<div class="note">
+  <strong>The releaser on a typed buffer has to agree about <code>T</code> too.</strong> The engine's own typed releaser
+  in <code>BufferUtil::GetMemoryBuffer</code> recomputes <code>size / sizeof(T)</code> before
+  <code>DeleteArray</code> and asserts that multiplying it back out reproduces <code>size</code> exactly — the same
+  division, with the check this function does not perform.
+</div>
+
+<footer class="prevnext">
+  <span><a href="index.html">← Buffer</a></span>
+  <span><a href="index.html#methods">All Buffer methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

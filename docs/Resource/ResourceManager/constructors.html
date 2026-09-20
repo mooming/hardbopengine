@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ResourceManager::ResourceManager — Resource — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">ResourceManager</a> methods</h3>
+  <ul class="methods">
+    <li><a class="current" href="constructors.html">constructors</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+    <li><a href="post-update.html">PostUpdate</a></li>
+    <li><a href="request-load.html">RequestLoad</a></li>
+    <li><a href="load.html">Load</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Resource</a> /
+  <a href="index.html">ResourceManager</a> / constructors
+</p>
+
+<h1><span class="fn">ResourceManager</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::ResourceManager</span>
+  <span class="tag">Engine/Resource/ResourceManager.h</span>
+  <span class="tag">noexcept</span>
+  <span class="tag">= default</span>
+  one default constructor, taking nothing — there is still nothing for an argument to configure
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code><span class="fn">ResourceManager</span>() <span class="kw">noexcept</span>;</code></pre>
+
+<p>Defined in <code>Engine/Resource/ResourceManager.cpp</code> as <code>ResourceManager::ResourceManager() noexcept = default;</code>.</p>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Default-constructs the two members, which for <a href="index.html#properties"><code>TVector</code></a> means two
+  empty vectors and no allocation. The nested item types are never touched: an item is created by a load, and the loads
+  <a href="request-load.html">are</a> <a href="load.html">declared only</a>.
+</p>
+
+<p>
+  No overload takes a path table, an <a href="../../Memory/index.html#memorymanager">allocator</a> or a
+  <a href="../../Core/index.html#tasksystem">TaskSystem</a>. That is not an oversight at this size — the manager would
+  have no use for any of them until something implemented loading — but it does mean a caller cannot today decide
+  which allocator scope a resource table should live in, or which task system an asynchronous load would be posted to.
+  Whoever implements the loaders has to answer both, either by adding a constructor here or by reaching through the
+  <a href="../../Engine/index.html#engine"><code>Engine</code></a> reference the class already accepts in
+  <a href="post-update.html"><code>PostUpdate</code></a>.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  Constructors have no return value. The object produced holds zero items and zero pending requests.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<p>
+  There is exactly one construction of a <code>ResourceManager</code> in the engine, and it is implicit: the manager is
+  a by-value member of <code>Engine</code>, so it comes into being with the engine and needs no call of its own. From
+  <code>Engine/Engine/Engine.h</code>:
+</p>
+
+<pre><code><span class="ty">MemoryManager</span> memoryManager;
+<span class="ty">SystemStatistics</span> statistics;
+<span class="ty">Logger</span> logger;
+<span class="ty">TaskSystem</span> taskSystem;
+<span class="ty">ResourceManager</span> resourceManager;
+<span class="kw">std</span>::unique_ptr&lt;<span class="ty">OS</span>::Application&gt; application;</code></pre>
+
+<p class="meta">From Engine/Engine/Engine.h</p>
+
+<p>
+  Being a plain member rather than a pointer or a smart handle, it exists for the whole life of the process and is
+  destroyed with the engine; <code>Engine::GetResourceManager()</code> hands out the same object to anyone who asks, and
+  nothing copies or moves this class — it declares no copy or move operation, and an engine subsystem shared by
+  reference is not meant to be moved anyway.
+</p>
+
+<div class="note">
+  <strong>Construction is not start-up.</strong> <a href="../../Engine/index.html#einitlevel"><code>EInitLevel</code></a>
+  has no resource level, <code>Engine::Initialize</code> never mentions the manager, and
+  <code>SetResourceManagerReady()</code> is never called — so <code>IsResourceManagerReady()</code> reports false even
+  though the object is alive and reachable. Treat the ready flag as unwired rather than as a signal that construction
+  failed.
+</div>
+
+<footer class="prevnext">
+  <span><a href="index.html">← ResourceManager</a></span>
+  <span><a href="index.html#methods">All ResourceManager methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

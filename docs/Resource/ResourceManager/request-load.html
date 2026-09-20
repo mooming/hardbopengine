@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ResourceManager::RequestLoad — Resource — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">ResourceManager</a> methods</h3>
+  <ul class="methods">
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+    <li><a href="post-update.html">PostUpdate</a></li>
+    <li><a class="current" href="request-load.html">RequestLoad</a></li>
+    <li><a href="load.html">Load</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Resource</a> /
+  <a href="index.html">ResourceManager</a> / RequestLoad
+</p>
+
+<h1><span class="fn">RequestLoad</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::ResourceManager</span>
+  <span class="tag">Engine/Resource/ResourceManager.h</span>
+  <span class="tag">[[nodiscard]]</span>
+  <span class="tag">declared, not defined</span>
+  the asynchronous half of resource loading: ask for a path now, take the handle, keep going
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] <span class="ty">Resource</span> <span class="fn">RequestLoad</span>(<span class="ty">StaticString</span> path);</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Declared in the header and defined nowhere: <code>ResourceManager.cpp</code> contains the constructor, the destructor,
+  an empty <a href="post-update.html"><code>PostUpdate</code></a> and an empty <code>RequestTasks</code>, and grepping the
+  whole repository for <code>RequestLoad</code> returns this one line. A call compiles — the declaration is visible — and
+  fails at link time.
+</p>
+
+<p>
+  What the name and the surrounding declarations commit to is a request rather than an acquisition: it hands back a handle
+  immediately, and the class owns the machinery a request would need —
+  <code>loadingRequests</code> holds entries waiting to be serviced, the private <code>RequestTasks(TaskSystem&amp;)</code>
+  is where work would be posted to the <a href="../../Core/index.html#tasksystem">TaskSystem</a>, and
+  <a href="post-update.html"><code>PostUpdate</code></a> is the pump that would notice completion. The contrast with
+  <a href="load.html"><code>Load</code></a> is the only statement of synchronicity anywhere, and it is a naming one.
+</p>
+
+<div class="gap">
+  <strong>The old module page described this as queueing a load and finishing it on later <code>PostUpdate</code> calls. That
+  behaviour does not exist.</strong> No queue is ever appended to, nothing dispatches a task, and the pump is empty. What is
+  worse than absent is unobservable: since <a href="../Resource/index.html"><code>Resource</code></a> has no members and no
+  accessors, a returned handle cannot report "not loaded yet" either. A caller writing against this API today has no way to
+  learn when bytes arrived, and no code to test that against.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr>
+    <td><code>path</code></td>
+    <td><a href="../../String/index.html#staticstring"><code>StaticString</code></a> (by value)</td>
+    <td>
+      The thing to load. Passed by value, and it is one interned pointer, so copying it into the request is cheap and the
+      string outlives the call by construction. A <code>const char*</code> literal converts implicitly, since
+      <code>StaticString</code> has a non-<code>explicit</code> constructor from one. What counts as a valid path, and what
+      happens for one that does not resolve, is undetermined: <a href="index.html#coverage">no implementation exists</a>, so
+      there is no documented error behaviour to promise
+    </td>
+  </tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr>
+    <td><a href="../Resource/index.html"><code>Resource</code></a></td>
+    <td>
+      The handle for the request, marked <code>[[nodiscard]]</code> so dropping it is a compile error. It is an empty
+      class: no id, no path, no buffer, no way to ask whether anything arrived. Even with a definition in place, this return
+      value carries no information today
+    </td>
+  </tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p>
+  No example is given, deliberately. There is no call site anywhere in <code>Engine/</code> or
+  <code>Applications/</code>, and a snippet that called this function would name a symbol the linker cannot find —
+  see <a href="index.html#coverage">the class Coverage</a> for what is missing and
+  <a href="load.html"><code>Load</code></a> for the same situation on the synchronous side.
+</p>
+
+<div class="note">
+  <strong>For a buffer you can actually read right now, the working path in this build is
+  <code>BufferUtil</code>, not this class.</strong> <code>BufferUtil::GetFileBuffer</code>,
+  <code>GetReadOnlyFileBuffer</code> and their relatives return a
+  <a href="../Buffer/index.html"><code>Buffer</code></a> directly, with a releaser attached, and are used by
+  <code>MemoryManager</code>. They have no page in this batch; their names and header are recorded on
+  <a href="../index.html#coverage">the module page</a>.
+</div>
+
+<footer class="prevnext">
+  <span><a href="index.html">← ResourceManager</a></span>
+  <span><a href="index.html#methods">All ResourceManager methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

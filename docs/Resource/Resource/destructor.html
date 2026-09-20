@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Resource::~Resource — Resource — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">Resource</a> methods</h3>
+  <ul class="methods">
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a class="current" href="destructor.html">destructor</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Resource</a> /
+  <a href="index.html">Resource</a> / destructor
+</p>
+
+<h1><span class="fn">~Resource</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Resource</span>
+  <span class="tag">Engine/Resource/Resource.h</span>
+  <span class="tag">noexcept</span>
+  <span class="tag">= default</span>
+  drops the handle; releases nothing
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>~<span class="fn">Resource</span>() <span class="kw">noexcept</span>;</code></pre>
+
+<p>Defined in <code>Engine/Resource/Resource.cpp</code> as <code>Resource::~Resource() noexcept = default;</code>.</p>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defaulted, and the class holds no member, so destroying a handle performs no operation: no
+  <a href="../ResourceManager/index.html"><code>ResourceManager</code></a> call, no decrement of
+  <a href="../ResourceManager/index.html#properties"><code>ResourceItem::referenceCount</code></a>, no
+  <a href="../Buffer/destructor.html"><code>Buffer</code></a> release. Contrast
+  <a href="../Buffer/destructor.html"><code>Buffer</code>'s destructor</a>, which really does free — through the
+  releaser the buffer carries.
+</p>
+
+<p>
+  This is the second half of the same fact stated on
+  <a href="index.html#description">the class page</a>: a handle that stores no reference cannot release one when
+  it dies. Reference-counted retirement would need a pointer or an id here plus a manager to notify, and neither
+  is declared.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<p><code>void</code>. Destructors have no return value and, being <code>noexcept</code>, report no failure.</p>
+
+<h2 id="example">Examples</h2>
+
+<p class="note">
+  Illustrative — no call site for this exists in the repository, since nothing constructs a
+  <code>Resource</code>. See <a href="index.html#coverage">Coverage</a>.
+</p>
+
+<pre><code>{
+        <span class="kw">const auto</span> handle = engine.<span class="fn">GetResourceManager</span>().<span class="fn">Load</span>(path);
+}       <span class="cm">// ~Resource runs here and changes nothing about whatever path named</span></code></pre>
+
+<div class="gap">
+  <strong>Letting a handle go out of scope is not a release operation, so do not design around it.</strong> Code
+  that expects the bytes to be gone once the last handle dies is relying on behaviour that is documented in the
+  manager's summary and implemented nowhere. Nothing in the engine reads
+  <a href="../ResourceManager/index.html#properties"><code>referenceCount</code></a>, so the count cannot reach
+  zero and no item can be retired.
+</div>
+
+<footer class="prevnext">
+  <span><a href="index.html">← Resource</a></span>
+  <span><a href="index.html#methods">All Resource methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>
