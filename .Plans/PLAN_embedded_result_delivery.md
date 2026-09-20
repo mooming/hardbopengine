@@ -38,7 +38,7 @@ The container stops being load-bearing, so the rules that exist to protect it lo
 | R14 | Lane closes at dequeue when the head does not fit | Nothing can fail to fit |
 | R15 | Closed lane falls back to the other lane | No closure |
 | R20/R21 | Container initial 1024 / growBy 1024; per-stream ceiling, `0` = unlimited | Sizing a thing that no longer exists |
-| **Guard (a)** | Refuse at dispatch any task whose `NumResults` could never be admitted | **My own guard** — capacity is now static, so the predicate has no subject. `CanAdmitResults`, the `[[nodiscard]] bool` on the three enqueue paths and the six `(void)` casts go with it |
+| **Guard (a)** | Refuse at dispatch any task whose `NumResults` could never be admitted | **My own guard** — capacity is now static, so the predicate has no subject. `CanAdmitResults`, the `[[nodiscard]] bool` on the three enqueue paths and the five `(void)` casts go with it (`Logger.cpp:246`, `UnitTestCollection.cpp:168`, `TaskSystem.cpp:663,666,731`) |
 | **Guard (b)** | Log a capacity-closed lane | **My own guard** — R14's closure is gone, so there is nothing to log. Never implemented; now it never will be |
 | R8's *stated reason* | "completions fold on the base thread" | Fold is gone. **R8's rule survives** on a new rationale: the pass reopens every stream's budget and performs every delivery, so blocking on that thread stalls the whole engine. Must be re-grounded, not left as a sentence with a false premise |
 

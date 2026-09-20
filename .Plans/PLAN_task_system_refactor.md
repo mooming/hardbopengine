@@ -513,8 +513,10 @@ registry: the successor and join counter must land on the registry record first,
 `2e087a0` landed the R21 ceiling and the dispatch guard since this handoff was written. It changed the enqueue
 signatures - `TaskStream::EnqueueFifo`, `EnqueuePriority` and `TaskSystem::Enqueue(TIndex, task)` return
 `[[nodiscard]] bool` - so any path the registry adds that enqueues must decide what a refusal means rather than
-drift past the compiler. The six `(void)` casts in `Logger.cpp`, `Test/UnitTestCollection.cpp` and the test
-section of `TaskSystem.cpp` mark those decisions still outstanding.
+drift past the compiler. The five `(void)` casts mark those decisions still outstanding - measured: `Logger.cpp:246`,
+`Test/UnitTestCollection.cpp:168` and three in the test section of `TaskSystem.cpp` at `:663`, `:666` and `:731`.
+Earlier notes here, and the message of `2e087a0`, said six; that count was wrong by one and was never re-counted
+before being repeated.
 
 Touching legacy files again means another proven
 code-identical formatting commit first; `TaskSystem.cpp` and `UnitTestCollection.cpp` are conformant, so the
@@ -547,7 +549,7 @@ exposure is whichever files are still indented-namespace legacy (`grep` before a
   `TaskSystem::Enqueue(streamIndex, task)` returning `[[nodiscard]] bool`, refusing before the queue is touched
   and logging the task, its declaration and the ceiling.** With the default the guard is dormant, exactly as R21
   decides; opting a stream in is one call. What is still missing is R15's side: a refused task is not queued,
-  not retried and not run, and the six `(void)` casts left at the existing call sites are the current shape of
+  not retried and not run, and the five `(void)` casts left at the existing call sites are the current shape of
   "no fallback exists yet" - each should become real handling when the capacity-free fallback lands. Cost of
   opting in is measured and is not zero: see R21.
 * **Log a capacity-closed lane** with the declared need and the room remaining, rate-limited per closure.
