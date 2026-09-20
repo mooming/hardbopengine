@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Array::operator[] — Container — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signatures</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">Array</a> methods</h3>
+  <ul class="methods">
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+    <li><a href="begin.html">begin</a></li>
+    <li><a href="end.html">end</a></li>
+    <li><a href="operator-assign.html">operator=</a></li>
+    <li><a class="current" href="operator-index.html">operator[]</a></li>
+    <li><a href="emplace.html">Emplace</a></li>
+    <li><a href="to-raw-array.html">ToRawArray</a></li>
+    <li><a href="size.html">Size</a></li>
+    <li><a href="is-valid-index.html">IsValidIndex</a></li>
+    <li><a href="clear.html">Clear</a></li>
+    <li><a href="resize.html">Resize</a></li>
+    <li><a href="swap.html">Swap</a></li>
+    <li><a href="get-index.html">GetIndex</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Container</a> /
+  <a href="index.html">Array</a> / operator[]
+</p>
+
+<h1><span class="fn">operator[]</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Array</span>
+  <span class="tag">Engine/Container/Array.h</span>
+  <span class="tag">2 overloads</span>
+  <span class="tag">noexcept</span>
+  direct element access, guarded by an assertion rather than by a fallback value
+</p>
+
+<h2 id="signature">Signatures</h2>
+
+<p>One page for the name, because both overloads state one contract and differ only in const-ness:</p>
+
+<pre><code><span class="cm">/// mutable view of the element at `index`</span>
+<span class="ty">Element</span>&amp; <span class="fn">operator[]</span>(<span class="ty">TIndex</span> index) <span class="kw">noexcept</span>;
+
+<span class="cm">/// read-only view of the element at `index`</span>
+<span class="kw">const</span> <span class="ty">Element</span>&amp; <span class="fn">operator[]</span>(<span class="ty">TIndex</span> index) <span class="kw">const</span> <span class="kw">noexcept</span>;</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Returns a reference to the element at <code>index</code>, straight from the buffer: <code>data[index]</code>,
+  with no bounds-clamping and no copy. Overload resolution picks the pair — an <code>const Array</code> gets the
+  read-only one.
+</p>
+
+<p>
+  Both overloads assert <a href="is-valid-index.html"><code>IsValidIndex(index)</code></a> with
+  <code>FatalAssert</code> before touching memory. The absence of a return value for the bad case is the design:
+  an out-of-range index is a bug to be caught where it happened, not a condition to be handled downstream.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr>
+    <td><code>index</code></td>
+    <td><a href="index.html#properties"><code>TIndex</code></a> (<code>int</code>)</td>
+    <td>
+      <code>0</code> to <code>Size() - 1</code> inclusive. Negative is out of range, not wrapped. When the index
+      is computed from external input, test it with
+      <a href="is-valid-index.html"><code>IsValidIndex</code></a> first
+    </td>
+  </tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr>
+    <td><code>Element&amp;</code> / <code>const Element&amp;</code></td>
+    <td>
+      The element itself, so <code>array[i] = value;</code> writes in place and <code>&amp;array[i]</code> is a
+      pointer into the array's buffer. That pointer is good until something
+      <a href="resize.html">resizes</a>, <a href="clear.html">clears</a> or destroys the array — not until the
+      element's value changes
+    </td>
+  </tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<pre><code><span class="kw">for</span> (<span class="ty">hbe</span>::<span class="ty">Array</span>&lt;<span class="kw">int</span>&gt;::<span class="ty">TIndex</span> i = <span class="nu">0</span>; i &lt; sizes.<span class="fn">Size</span>(); ++i)
+{
+        sizes[i] = i * i;            <span class="cm">// writes in place; TIndex keeps the comparison signed</span>
+}</code></pre>
+
+<p>Reading through a const reference, which selects the second overload:</p>
+
+<pre><code><span class="kw">const</span> <span class="ty">hbe</span>::<span class="ty">Array</span>&lt;<span class="ty">MeshVertex</span>&gt;&amp; verts = mesh.<span class="fn">GetVertices</span>();
+<span class="kw">const auto</span>&amp; first = verts[<span class="nu">0</span>];      <span class="cm">// const MeshVertex&amp;</span></code></pre>
+
+<div class="gap">
+  <strong>A loop counter of the wrong integer type is how this assert gets hit.</strong>
+  <a href="index.html#properties"><code>TIndex</code></a> is <code>int</code>; a <code>size_t</code> counter
+  compared against <code>Size()</code> mixes signed and unsigned, and a counter driven below zero reaches
+  <code>operator[]</code> with a negative index. Compare signed against signed, as the first example does.
+</div>
+
+<div class="note">
+  <strong><code>FatalAssert</code> is active in every configuration, Release included.</strong> The bounds check
+  is not compiled out of a shipped build, so an out-of-range index stops the process where it happened rather
+  than reading garbage — see
+  <a href="../../Core/index.html#functions">Core: Debug</a> for the assert family. Contrast
+  <a href="resize.html"><code>Resize</code></a>, whose failed-allocation report uses <code>Assert</code>, which
+  <em>is</em> limited to Debug and Dev builds.
+</div>
+
+<footer class="prevnext">
+  <span><a href="index.html">← Array</a></span>
+  <span><a href="index.html#methods">All Array methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

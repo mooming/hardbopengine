@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Array::Resize — Container — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">Array</a> methods</h3>
+  <ul class="methods">
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+    <li><a href="begin.html">begin</a></li>
+    <li><a href="end.html">end</a></li>
+    <li><a href="operator-assign.html">operator=</a></li>
+    <li><a href="operator-index.html">operator[]</a></li>
+    <li><a href="emplace.html">Emplace</a></li>
+    <li><a href="to-raw-array.html">ToRawArray</a></li>
+    <li><a href="size.html">Size</a></li>
+    <li><a href="is-valid-index.html">IsValidIndex</a></li>
+    <li><a href="clear.html">Clear</a></li>
+    <li><a class="current" href="resize.html">Resize</a></li>
+    <li><a href="swap.html">Swap</a></li>
+    <li><a href="get-index.html">GetIndex</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Container</a> /
+  <a href="index.html">Array</a> / Resize
+</p>
+
+<h1><span class="fn">Resize</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Array</span>
+  <span class="tag">Engine/Container/Array.h</span>
+  <span class="tag">noexcept</span>
+  change the element count to exactly the number you asked for — no growth policy, no spare capacity
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code><span class="kw">void</span> <span class="fn">Resize</span>(<span class="ty">TIndex</span> newSize) <span class="kw">noexcept</span>;</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Allocates a buffer of exactly <code>newSize</code> elements through this array's own allocator, moves every
+  existing element into it, default-constructs the elements past the old count, then destroys the old elements
+  and returns the old buffer.
+</p>
+
+<p>
+  The exactness is the point. There is no capacity figure growing geometrically behind your back, so a count
+  chosen to fit a memory layout stays that number and can be reasoned about afterwards. Shrinking is symmetric:
+  elements from <code>newSize</code> up are destroyed and their memory is handed back rather than held for reuse.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr>
+    <td><code>newSize</code></td>
+    <td><a href="index.html#properties"><code>TIndex</code></a> (<code>int</code>)</td>
+    <td>
+      The exact element count wanted, <strong>zero or greater</strong>. See the hazard below about negative
+      values. Asking for the size the array already has returns immediately, allocating nothing.
+    </td>
+  </tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  <code>void</code>. There is no status to check: the function reports a failed allocation by asserting and
+  leaving the array exactly as it was. The early return sits outside the assertion, so a configuration where
+  <code>Assert</code> is silent — Release, per
+  <a href="../../Core/index.html#functions">Core: Debug</a> — still keeps the old size and the old buffer; it
+  just stops saying anything. A caller that has to know whether the resize happened compares against
+  <a href="size.html"><code>Size</code></a> afterwards.
+</p>
+
+<div class="gap">
+  <strong>A negative <code>newSize</code> is not diagnosed, and it leaves the array in a state no other
+  operation expects.</strong> The allocation-failure branch is guarded by <code>newSize &gt; 0</code>, so a
+  negative count walks past it: every element is destroyed, the old buffer is returned, and the negative number
+  is stored as the length. <a href="size.html"><code>Size</code></a> then reports negative,
+  <a href="is-valid-index.html"><code>IsValidIndex</code></a> rejects every index including <code>0</code>, and
+  the destructor skips the buffer because the pointer is now null — corrupt, but not a crash, which is what makes
+  it slow to find. Validate the count before calling this with a number that came from a file, a network packet
+  or a subtraction.
+</div>
+
+<div class="note">
+  <strong>Two things every caller inherits from moving all the elements.</strong> An element that is expensive to
+  move costs that cost on every resize, and a pointer or reference into the array is invalidated by it —
+  <em>including</em> to elements whose value survived, because they now live at different addresses. If something
+  else holds an address into the buffer, do not resize the array; see
+  <a href="to-raw-array.html"><code>ToRawArray</code></a> for the same invalidation from the other side.
+</div>
+
+<h2 id="example">Examples</h2>
+
+<p>Growing keeps what was there and default-constructs the tail:</p>
+
+<pre><code>hbe::<span class="ty">Array</span>&lt;<span class="kw">int</span>&gt; sizes;
+sizes.<span class="fn">Resize</span>(<span class="nu">4</span>);            <span class="cm">// 4 elements, an allocation of exactly 4</span>
+sizes[<span class="nu">0</span>] = <span class="nu">128</span>;
+
+sizes.<span class="fn">Resize</span>(<span class="nu">2</span>);            <span class="cm">// 128 is moved into a new 2-element buffer;</span>
+                            <span class="cm">// elements 2 and 3 are destroyed and the old buffer is freed</span>
+sizes.<span class="fn">Resize</span>(<span class="nu">4</span>);            <span class="cm">// back to 4: 128 and 0 survive, slots 2 and 3 are default-constructed</span></code></pre>
+
+<p>Resizing to zero is a normal request, not a failure — it empties the array and releases the buffer:</p>
+
+<pre><code>sizes.<span class="fn">Resize</span>(<span class="nu">0</span>);
+<span class="kw">if</span> (sizes.<span class="fn">Size</span>() == <span class="nu">0</span>)
+{
+        <span class="cm">// and sizes.ToRawArray() is now nullptr</span>
+}</code></pre>
+
+<p>Where the memory comes from is decided by the constructor, not by the resize — a resize reuses the allocator the array already holds:</p>
+
+<pre><code><span class="cm">// The allocator argument is what pins an array to a pool; Resize keeps using it.</span>
+hbe::<span class="ty">Array</span>&lt;<span class="ty">MeshVertex</span>, <span class="ty">FrameAllocator</span>&gt; batch(frameAllocator, <span class="nu">1024</span>);
+batch.<span class="fn">Resize</span>(<span class="nu">2048</span>);   <span class="cm">// allocated from frameAllocator, not from the scope open right now</span></code></pre>
+
+<p>
+  The third example's <code>FrameAllocator</code> and <code>frameAllocator</code> stand for whichever allocator
+  you use — see <a href="constructors.html">the constructors</a> for which forms take one, and
+  <a href="../../Memory/index.html#allocators">Memory: allocators</a> for what they draw from.
+</p>
+
+<footer class="prevnext">
+  <span><a href="index.html">← Array</a></span>
+  <span><a href="index.html#methods">All Array methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

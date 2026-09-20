@@ -1,5 +1,38 @@
 # Journal
 
+## The reference goes three levels deep: class pages and a page per method (2026-09-20)
+
+**Decision.** `Array` became `docs/Container/Array/index.html` plus one page per method name, overload families
+sharing a page, and `.Plans/AUTHORING_method_and_class_pages.md` is the contract every page follows. The user
+chose the shape (one page per class, one per method, overloads together) and then chose **hand-authoring over a
+generator** when the measured cost was put in front of them: 435 documented signatures, 381 distinct method
+names, ~490 files. That is a deliberate trade — future style changes cost hundreds of edits instead of one — so
+it is recorded here rather than rediscovered later.
+
+**Two rules fixed before volume, because they are cheap to fix now and ruinous to retrofit.** Examples come from
+real call sites found by grep, with the source file named, and an illustrative snippet is labelled as such;
+fabricating a caller is how a reference starts lying. And a page about a getter is allowed to be six lines — the
+alternative is 130 accessor pages padded into noise, which is the same stub problem that made the old guide
+untrustworthy.
+
+**Reading the header instead of the guide paid for itself inside the first class.** `Array::Resize` with a
+negative count is not diagnosed: the allocation-failure branch is guarded by `newSize > 0`, so a negative value
+walks past it, destroys every element, returns the buffer, and stores the negative length — corrupt but not a
+crash, which is what makes it slow to find. And `operator[]` guards with `FatalAssert`, active in every
+configuration, while `Resize`'s failed allocation uses `Assert`, Debug and Dev only, with its early return
+outside the macro so a Release build stays safe and goes silent. My first draft asserted the opposite about
+`FatalAssert`; the site's own Core page caught it. `DefaultAllocator::allocate` taking `std::size_t` is what
+makes the negative-`Resize` case a landmine rather than a rejection.
+
+**Also decided:** `TIndex = int` is documented as load-bearing rather than a typo — `IsValidIndex` tests
+`>= 0`, so the signedness is the point, and the cost (a `size_t` loop counter comparing signed against unsigned)
+is stated next to it.
+
+**Method of work.** 490 files cannot be typed by one hand in one sitting, so authoring fans out to subagents per
+module against the contract file, piloted on Config and Resource before the remaining ten modules are released —
+a bad pattern should cost two modules, not twelve. The orchestrator validates and commits; agents write only
+inside their own module directory.
+
 ## Tasks become things the registry owns, addressed by identity (2026-09-19)
 
 **What landed**, as `3be27c3`: R7 with R22's sizing. `Engine/Core/TaskID.h` (`{index, generation}`) and
