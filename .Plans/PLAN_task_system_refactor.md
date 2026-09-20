@@ -577,6 +577,11 @@ exposure is whichever files are still indented-namespace legacy (`grep` before a
   defaults — the fallback `check.sh`'s own header warns about. Measuring a copy in `/tmp` reported
   213/85/107/763/147 differing lines where the real figures were 243/45/7/0/0, which is a wrong answer rather
   than a noisy one.
+* **Never run clang-format on `CMakeLists.txt`.** It does not know CMake: it joined line 1 into
+  `cmake_minimum_required(VERSION 3.12) project(Core)`, and CMake then failed to configure with "Parse error.
+  Expected a newline". Caught before any commit by a build that exited 1 with **zero** `error:` lines - which is
+  also the lesson that a failed configure prints nothing clang-shaped, so grep for `FAILED:` and read the tail.
+  22 tracked CMakeLists were checked afterwards; only the file being edited was damaged.
 * **A test must not consume the general task queue.** A test that calls `TaskSystem::Dequeue` to inspect
   behaviour pops the queue's top item, and that queue is shared with every other collection - it took another
   collection's work item, never ran it, and `RHICapabilities` aborted with "is not allocated by this allocator"

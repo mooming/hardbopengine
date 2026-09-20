@@ -86,6 +86,15 @@ public:
 	///          in records is sized in units nobody can price without reading this.
 	static constexpr std::size_t RecordSizeBytes = sizeof(Record);
 
+	/// @brief The record's priced size, asserted rather than quoted, because the table's memory is this figure
+	///        times the capacity and a field that quietly changes it changes every engine's memory budget.
+	/// @details The second assert is not tidiness: the record is 192 bytes, which is three cache lines, so every
+	///        record in a bank starts on a line boundary. Padding the embedded result packet to a line of its own
+	///        was measured and rejected - it makes the record 208 bytes, which is not a multiple of 64, so
+	///        records stop being aligned and neighbours start sharing lines.
+	static_assert(RecordSizeBytes == 192, "The result packet prices a record at 192 bytes; re-measure and re-decide");
+	static_assert(RecordSizeBytes % 64 == 0, "Records must start on cache-line boundaries");
+
 private:
 private:
 	std::mutex registryLock;

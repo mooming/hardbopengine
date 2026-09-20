@@ -18,6 +18,7 @@
 #include "Core/ComponentSystem.h"
 #include "Core/Debug.h"
 #include "Core/ResultContainer.h"
+#include "Core/ResultPacket.h"
 #include "Core/StreamDrainPolicy.h"
 #include "Core/TaskProvider.h"
 #include "Core/TaskRegistry.h"
@@ -92,6 +93,7 @@ void RunTests()
 		testEnv.AddTestCollection<TaskProviderTest>();
 		testEnv.AddTestCollection<ResultContainerTest>();
 		testEnv.AddTestCollection<TaskRegistryTest>();
+		testEnv.AddTestCollection<ResultPacketTest>();
 		testEnv.AddTestCollection<StreamDrainPolicyTest>();
 		testEnv.AddTestCollection<WindowTest>();
 		testEnv.AddTestCollection<OSMemoryTest>();

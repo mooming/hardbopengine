@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <thread>
 #include "RangedTask.h"
+#include "ResultPacket.h"
 #include "Runnable.h"
 #include "String/StaticString.h"
 #include "TaskID.h"
@@ -47,6 +48,9 @@ private:
 
 	// Custom User Data
 	void* userData;
+
+	/// @brief This task's result, written by the task itself. See GetResult.
+	ResultPacket result;
 
 public:
 	Task() noexcept;
@@ -101,6 +105,26 @@ public:
 	void SetNumResults(TNumResults inNumResults) noexcept
 	{
 		numResults = inNumResults;
+	}
+
+	/// @brief The result this task writes for whoever it addressed it to.
+	/// @details One packet, embedded here rather than parked in a buffer owned by a stream. It is cleared when
+	///          the registry issues this record, so a task always starts from "no result" and a reused record
+	///          cannot report the previous occupant's answer.
+	/// @note A reader reaches it through the identity of the declaring task, so naming a task that has been
+	///       released is refused by the registry instead of reading a recycled record. Nothing in the engine
+	///       copies this packet, and nothing in the engine frees it.
+	/// @note A task with more output than one packet holds keeps that output in memory it owns and puts a handle
+	///       to it in the payload. The engine's knowledge of results stops at this packet.
+	[[nodiscard]] ResultPacket& GetResult() noexcept
+	{
+		return result;
+	}
+
+	/// @brief Read-only view of this task's result.
+	[[nodiscard]] const ResultPacket& GetResult() const noexcept
+	{
+		return result;
 	}
 
 	[[nodiscard]] auto NumFinishedSubTasks() const noexcept

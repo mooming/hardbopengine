@@ -91,6 +91,7 @@ void Task::LoadIntoRecord(TaskID newID, StaticString taskName, TRunnable newFunc
 	name = taskName;
 	numResults = 0;
 	numSubTasks = 0;
+	result.Clear();
 	numFinishedSubTasks.store(0, std::memory_order::relaxed);
 	func = newFunc;
 	userData = newUserData;

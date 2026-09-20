@@ -42,6 +42,7 @@ add_library (Core STATIC
  MainThreadTaskQueue.cpp
  RangedTask.cpp
  ResultContainer.cpp
+ ResultPacket.cpp
  ScopedLock.cpp
  StreamDrainPolicy.cpp
  SystemStatistics.cpp
@@ -64,6 +65,7 @@ add_library (Core STATIC
  MainThreadTaskQueue.h
  RangedTask.h
  ResultContainer.h
+ ResultPacket.h
  Runnable.h
  ScopedLock.h
  ScopedTime.h

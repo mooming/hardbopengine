@@ -104,6 +104,21 @@ A finishing task (its last subtask finishing, whichever stream that was) records
 Gate on each: Debug/Dev/Release build with 0 `error:`, runner exit 0, every collection passing, `check.sh --staged`,
 and a mutation with per-test attribution for every new check.
 
+## 7. C3a landed — what is true now
+
+`ResultPacket` is a real type (`Engine/Core/ResultPacket.h`, header-only) and one packet is embedded in `Task`.
+Measured by the suite, not by hand: packet **128** bytes, `Task` **176**, record **192** = 3 cache lines, default
+table **768 KiB**. `ResultPacketTest` joins the suite, which is **60 collections** now. Four proofs: dropping
+`result.Clear()` from `LoadIntoRecord` reddens the reuse test; pointing `SetKind` at the destination byte reddens the
+same test; widening the payload to 128 and dropping `alignas(std::uint64_t)` are caught by `static_assert`, in the
+second case by two of them at once - the packet's own width and the record's price of 192.
+
+Behaviour change: none. Nothing reads a packet yet, and nothing writes one outside these tests. The next commit
+(C3b) is where a producer writes and a reader arrives.
+
+Gate: Debug, Dev and Release each built with 0 `error:` and ran with exit 0 and `all 60 collections passed`.
+`check.sh --staged` 0 violations, 1 advisory - the `using TIndex = std::size_t;` false positive in `Task.h`.
+
 ## 5. Open before C3a starts
 
 1. **Which thread runs the pass.** R1 says "the *base stream* resets each stream's budget by calling into it", and
