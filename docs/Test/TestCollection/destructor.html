@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TestCollection destructor — Test — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">TestCollection</a> methods</h3>
+  <ul class="methods">
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a class="current" href="destructor.html">destructor</a></li>
+    <li><a href="start.html">Start</a></li>
+    <li><a href="add-test.html">AddTest</a></li>
+    <li><a href="prepare.html">Prepare</a></li>
+    <li><a href="get-name.html">GetName</a></li>
+    <li><a href="get-warning-messages.html">GetWarningMessages</a></li>
+    <li><a href="get-error-messages.html">GetErrorMessages</a></li>
+    <li><a href="is-done.html">IsDone</a></li>
+    <li><a href="is-success.html">IsSuccess</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Test</a> /
+  <a href="index.html">TestCollection</a> / destructor
+</p>
+
+<h1><span class="fn">~TestCollection</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::TestCollection</span>
+  <span class="tag">Engine/Test/TestCollection.h</span>
+  <span class="tag">virtual</span>
+  <span class="tag">= default</span>
+  discard the run: the results live on the collection and die with it
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code><span class="kw">virtual</span> <span class="fn">~TestCollection</span>() = <span class="kw">default</span>;</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defaulted, and virtual only because ownership is polymorphic:
+  <a href="../TestEnv/add-test-collection.html"><code>TestEnv::AddTestCollection</code></a> stores each collection as
+  <code>std::unique_ptr&lt;TestCollection&gt;</code>, so the destructor that must run is found through the base
+  class. Without <code>virtual</code>, deleting a subclass through that pointer is undefined and the subclass's own
+  members leak.
+</p>
+
+<p>
+  What it releases is exactly what the members hold: the registered case list with its type-erased callables, the
+  collected warning and error lines, and the title. The three guards need nothing — their
+  <code>messageBuffer</code> pointers point into this same object and are never dereferenced on the way out.
+</p>
+
+<p>
+  What it does not do is the useful half of the description. It does not flush anything to the log, does not report
+  the run if nobody asked, and does not complain that the collection was destroyed before
+  <a href="start.html"><code>Start</code></a> was called on it. A collection constructed and destroyed without being
+  run leaves no trace at all — the tally counts only what
+  <a href="../TestEnv/start.html"><code>TestEnv::Start</code></a> walked.
+</p>
+
+<div class="note">
+  <strong>A log line is formatted synchronously, so nothing writes into these vectors after the object is gone</strong>
+  — provided nothing else is logging at the moment it dies.
+  <a href="../../Log/index.html#logger"><code>Logger::AddLog</code></a> invokes the message callback before it
+  returns, which is why an <code>lferr</code> is counted against the case that emitted it rather than against
+  whatever stream the logger happened to drain later. A background task still running when its collection is
+  destroyed is the exception: it holds a reference into freed memory, not a queued message.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  <code>void</code> — destructors have none. The results are unreadable afterwards, which is the only "return
+  value" that matters here: <a href="is-success.html"><code>IsSuccess</code></a> and
+  <a href="get-error-messages.html"><code>GetErrorMessages</code></a> have to be read before the collection goes,
+  which is precisely what
+  <a href="../TestEnv/start.html"><code>TestEnv::ExecuteTest</code></a> does between calling
+  <a href="start.html"><code>Start</code></a> and printing the tally.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<p>
+  No engine code destroys a collection explicitly. The registered suite owns them through the environment, and they
+  are destroyed when the <a href="../TestEnv/index.html"><code>TestEnv</code></a> singleton is — that is, at static
+  destruction, after <code>main</code> has already read the tallies:
+</p>
+
+<p class="meta">From Engine/Test/TestEnv.cpp</p>
+
+<pre><code><span class="ty">TestEnv</span>&amp; TestEnv::<span class="fn">GetEnv</span>()
+{
+        <span class="kw">static</span> <span class="ty">TestEnv</span> instance;
+        <span class="kw">return</span> instance;
+}</code></pre>
+
+<p class="meta">From Engine/Test/TestEnv.h</p>
+
+<pre><code>        <span class="kw">using</span> <span class="ty">TCPtr</span> = std::unique_ptr&lt;<span class="ty">TestCollection</span>&gt;;
+
+        std::vector&lt;TCPtr&gt; tests;</code></pre>
+
+<p>
+  Because this destructor is <code>virtual</code>, the sixty-odd subclasses registered by
+  <a href="../UnitTestCollection/run-tests.html"><code>RunTests</code></a> are each destroyed through their own type
+  by that one <code>std::vector&lt;TCPtr&gt;</code>.
+</p>
+
+<footer class="prevnext">
+  <span><a href="index.html">← TestCollection</a></span>
+  <span><a href="index.html#methods">All TestCollection methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

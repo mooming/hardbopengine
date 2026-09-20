@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>hbe::Test::RunTests — Test — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">UnitTestCollection</a> methods</h3>
+  <ul class="methods">
+    <li><a class="current" href="run-tests.html">RunTests</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Test</a> /
+  <a href="index.html">UnitTestCollection</a> / RunTests
+</p>
+
+<h1><span class="fn">RunTests</span></h1>
+<p class="subtitle">
+  <span class="tag">hbe::Test</span>
+  <span class="tag">Engine/Test/UnitTestCollection.h</span>
+  <span class="tag">free function</span>
+  <span class="tag">only under __UNIT_TEST__</span>
+  register the engine's suite and enqueue it — and return before any test has run
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code><span class="kw">#ifdef</span> __UNIT_TEST__
+<span class="kw">namespace</span> hbe::Test
+{
+<span class="kw">void</span> <span class="fn">RunTests</span>();
+}
+<span class="kw">#endif</span> <span class="cm">// __UNIT_TEST__</span></code></pre>
+
+<p>
+  No arguments, no return value, no namespace-scope state. Declared in a header whose entire content is inside the
+  guard, and defined in <code>Engine/Test/UnitTestCollection.cpp</code> inside the same guard again.
+</p>
+
+<h2 id="description">Function description</h2>
+
+<p>The definition is one lambda plus the four lines that put it on a task stream:</p>
+
+<ol>
+  <li>
+    It builds a task body that opens one <code>MultiPoolAllocator</code> named <code>"UnitTest"</code> inside an
+    <a href="../../Memory/index.html#allocatorscope"><code>AllocatorScope</code></a>, takes the
+    <a href="../TestEnv/get-env.html"><code>TestEnv::GetEnv</code></a> singleton, calls
+    <a href="../TestEnv/add-test-collection.html"><code>AddTestCollection</code></a> once per collection — sixty of them
+    — calls <a href="../TestEnv/start.html"><code>Start</code></a>, then calls
+    <code>Engine::Get().ShutDown()</code> and returns <code>1</code>.
+  </li>
+  <li>It creates that body as a task named <code>"TestEnv"</code>, through a function-local
+    <code>static TaskID</code> that is only filled in when it still <code>IsNull()</code>.</li>
+  <li>It looks the task back up, <code>FatalAssert</code>s that the registry knows it, and generates a ranged sub-task
+    over <code>(0, 1, 0)</code> — one element, one invocation.</li>
+  <li>It enqueues that sub-task on <code>TaskSystem::GetBaseTaskStreamIndex()</code> and discards the status.</li>
+</ol>
+
+<p>
+  So this function does not run the tests. It arranges for them to be run, on the base task stream, by the task system
+  of an <a href="../../Engine/index.html#engine">Engine</a> that the caller has already initialised and is about to
+  call <code>Run()</code> on. Every number in this module is therefore read <em>after</em> the engine stops — and the
+  engine stops because the suite's own task shuts it down when the last report line has been printed.
+</p>
+
+<div class="gap">
+  <strong>The base task stream is the one stream a test cannot use.</strong> The suite is not merely running near it,
+  it is the task occupying it, so work a test enqueues there cannot run until the suite finishes — which the test is
+  blocking. Engine code that has to hand work to the task system from inside a case picks a worker stream instead, and
+  says why:
+</div>
+
+<pre><code>        <span class="cm">// The whole suite executes inside a task on the base stream - see UnitTestCollection.cpp's TestEnv</span>
+        <span class="cm">// subtask - so the base stream is occupied until the suite ends and can never run anything a test</span>
+        <span class="cm">// enqueues to it. The first worker stream is the nearest one that is genuinely idle.</span>
+        <span class="kw">const auto</span> workerIndex = TaskSystem::GetIOTaskStreamIndex() + <span class="nu">1</span>;</code></pre>
+
+<p class="meta">From Engine/Core/TaskSystem.cpp</p>
+
+<div class="note">
+  <strong>Two failures are possible before a single test runs, and only one is reported.</strong> If the registry cannot
+  find the task back, the function <code>FatalAssert</code>s with "The task registry could not track the suite's own
+  task, so no test can run." and returns — and since <code>FatalAssert</code> is live in every configuration, that path
+  is loud. A refused <em>enqueue</em> is the quiet one: its status is cast to <code>void</code>, so nothing reports it,
+  no report is ever printed, and nothing shuts the engine down. Both <a href="../TestEnv/get-pass-count.html">the pass
+  count</a> and <a href="../TestEnv/get-failure-count.html">the failure count</a> stay zero.
+</div>
+
+<div class="note">
+  <strong>A second call does not build a second suite.</strong> The <code>static TaskID</code> is remembered, so a repeat
+  call skips creation and re-enqueues the same sub-task into the same
+  <a href="../TestEnv/get-env.html"><code>TestEnv</code></a> whose
+  <a href="../TestEnv/constructors.html">counters are never reset</a>. Registration also happens again inside the task
+  body, so the registry ends up holding duplicates — and the report is a mixture of both passes rather than a fresh
+  measurement. What re-enqueuing an already-completed task means in the scheduler belongs to
+  <a href="../../Core/index.html#tasksystem">Core: TaskSystem</a>.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  <code>void</code>, and it is not a report of anything. When <code>RunTests</code> returns, at most one enqueue has
+  been attempted; no collection has been constructed, no case has run, and the tallies on the environment are still
+  whatever they were. Everything a caller wants to know is read afterwards, from
+  <a href="../TestEnv/get-failure-count.html"><code>GetFailureCount</code></a>, once the engine has finished running
+  the task this call queued.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<p>The caller, which is also the only caller:</p>
+
+<p class="meta">From Applications/EngineTest/TestMain.cpp</p>
+
+<pre><code><span class="kw">#ifdef</span> __UNIT_TEST__
+        hbe::<span class="ty">Engine</span> hengine;
+        hengine.<span class="fn">Initialize</span>(argc, argv);
+        hbe::Test::<span class="fn">RunTests</span>();
+        hengine.<span class="fn">Run</span>();
+
+        <span class="cm">// The suite runs as a task that shuts the engine down when it finishes, so the tallies</span>
+        <span class="cm">// are only complete once Run() returns.</span>
+        <span class="kw">const</span> <span class="ty">hbe::TestEnv</span>&amp; testEnv = <span class="ty">hbe::TestEnv</span>::<span class="fn">GetEnv</span>();
+        <span class="kw">const unsigned int</span> failures = testEnv.<span class="fn">GetFailureCount</span>();
+
+        <span class="kw">if</span> (failures &gt; <span class="nu">0</span>)
+        {
+                std::cerr &lt;&lt; <span class="st">"EngineTest: "</span> &lt;&lt; failures &lt;&lt; <span class="st">" test collection(s) FAILED"</span> &lt;&lt; std::endl;
+                <span class="kw">return</span> <span class="nu">1</span>;
+        }
+<span class="kw">#else</span>
+        <span class="cm">// … every test body in the engine sits behind #ifdef __UNIT_TEST__, so built without the</span>
+        <span class="cm">// macro there is nothing left to run; this branch prints what is missing and how to get</span>
+        <span class="cm">// it, then:</span>
+        <span class="kw">return</span> <span class="nu">1</span>;
+<span class="kw">#endif</span> <span class="cm">// __UNIT_TEST__</span></code></pre>
+
+<p>
+  The <code>Run()</code> between the call and the read is not a formality: the suite advances only while the engine is
+  pumping its task streams. Remove it and the tallies stay zero forever.
+</p>
+
+<p>The registration itself, beginning and end of the list:</p>
+
+<p class="meta">From Engine/Test/UnitTestCollection.cpp</p>
+
+<pre><code><span class="kw">void</span> <span class="fn">RunTests</span>()
+{
+        <span class="kw">auto</span> testFunc = [](<span class="kw">void</span>*, std::size_t, std::size_t) -&gt; std::size_t
+        {
+                MultiPoolAllocator allocator(<span class="st">"UnitTest"</span>);
+                AllocatorScope scope(allocator);
+
+                <span class="kw">auto</span>&amp; testEnv = <span class="ty">TestEnv</span>::<span class="fn">GetEnv</span>();
+
+                testEnv.<span class="fn">AddTestCollection</span>&lt;<span class="ty">SystemAllocatorTest</span>&gt;();
+                <span class="cm">// … fifty-eight more …</span>
+                testEnv.<span class="fn">AddTestCollection</span>&lt;<span class="ty">RHICapabilitiesTest</span>&gt;();
+
+                testEnv.<span class="fn">Start</span>();
+
+                <span class="ty">Engine::Get</span>().<span class="fn">ShutDown</span>();
+
+                <span class="kw">return</span> <span class="nu">1</span>;
+        };
+
+        <span class="kw">static</span> <span class="ty">TaskID</span> taskID;
+
+        <span class="kw">auto</span>&amp; taskSystem = <span class="ty">Engine::Get</span>().<span class="fn">GetTaskSystem</span>();
+        <span class="kw">if</span> (taskID.<span class="fn">IsNull</span>())
+        {
+                taskID = taskSystem.<span class="fn">CreateTask</span>(<span class="st">"TestEnv"</span>, testFunc, <span class="kw">nullptr</span>);
+        }
+
+        <span class="kw">auto</span>* testTask = taskSystem.<span class="fn">FindTask</span>(taskID);
+        <span class="fn">FatalAssert</span>(testTask != <span class="kw">nullptr</span>, <span class="st">"The task registry could not track the suite's own task, so no test can run."</span>);
+        <span class="kw">if</span> (testTask == <span class="kw">nullptr</span>)
+        {
+                <span class="kw">return</span>;
+        }
+
+        <span class="kw">const auto</span> rangedTask = testTask-&gt;<span class="fn">GenerateSubTask</span>(<span class="nu">0</span>, <span class="nu">1</span>, <span class="nu">0</span>);
+
+        <span class="kw">const auto</span> baseStreamIndex = <span class="ty">TaskSystem::GetBaseTaskStreamIndex</span>();
+        (<span class="kw">void</span>) taskSystem.<span class="fn">Enqueue</span>(baseStreamIndex, rangedTask);
+}</code></pre>
+
+<p>
+  Adding a module's collection to the suite is one <code>AddTestCollection</code> line in that lambda, plus the fixture
+  in the module's own header. Note the shape of the task body's signature — <code>(void*, size_t, size_t) -&gt; size_t</code>
+  — which is the ranged-task contract from
+  <a href="../../Core/index.html#runnable">Core: Runnable</a>; the body ignores all three arguments and answers
+  <code>1</code> for the one element it covers.
+</p>
+
+<footer class="prevnext">
+  <span><a href="index.html">← UnitTestCollection</a></span>
+  <span><a href="index.html#methods">All UnitTestCollection methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

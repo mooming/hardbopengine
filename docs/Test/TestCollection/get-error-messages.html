@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TestCollection::GetErrorMessages — Test — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">TestCollection</a> methods</h3>
+  <ul class="methods">
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+    <li><a href="start.html">Start</a></li>
+    <li><a href="add-test.html">AddTest</a></li>
+    <li><a href="prepare.html">Prepare</a></li>
+    <li><a href="get-name.html">GetName</a></li>
+    <li><a href="get-warning-messages.html">GetWarningMessages</a></li>
+    <li><a class="current" href="get-error-messages.html">GetErrorMessages</a></li>
+    <li><a href="is-done.html">IsDone</a></li>
+    <li><a href="is-success.html">IsSuccess</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Test</a> /
+  <a href="index.html">TestCollection</a> / GetErrorMessages
+</p>
+
+<h1><span class="fn">GetErrorMessages</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::TestCollection</span>
+  <span class="tag">Engine/Test/TestCollection.h</span>
+  <span class="tag">const noexcept</span>
+  the failure text — and the thing the pass-or-fail verdict is literally computed from
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] <span class="kw">const</span> std::vector&lt;std::string&gt;&amp; <span class="fn">GetErrorMessages</span>() <span class="kw">const</span> <span class="kw">noexcept</span>;</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Returns <code>errorMessages</code> by reference. Every entry is one message that a test case ended with
+  <code>lferr</code>, stored as <code>[TC&lt;index&gt;.&lt;test name&gt;] &lt;text&gt;</code> while the case was still
+  running. This vector is not a report <em>about</em> the run; it is the run's evidence, and
+  <a href="is-success.html"><code>IsSuccess</code></a> is exactly <code>errorMessages.empty()</code> evaluated after
+  the last case.
+</p>
+
+<p>
+  Per-case attribution works by cursor: <code>Start</code>'s loop records the size of this vector before a case,
+  runs it, and compares again. Growth means that case failed. That is why one case cannot cancel another's failure,
+  and why a case that emits three <code>lferr</code> messages contributes three entries and one failure.
+</p>
+
+<div class="gap">
+  <strong>Empty does not prove the cases passed; it proves no error message was recorded.</strong> Entries are
+  appended from inside the logger's message callback, and
+  <a href="../../Log/index.html#logger"><code>Logger::AddLog</code></a> returns without invoking a callback when
+  logging is disabled, when the configured level is above the message's severity, or when a filter rejects the
+  category. Under any of those, a genuinely failing case appends nothing and the collection reports success. Treat a
+  suite that has never printed a single line for a collection as unverified rather than clean.
+</div>
+
+<div class="note">
+  <strong>The text is the framework's, not the logger's.</strong> No timestamp, category or severity word is in
+  these strings; the logger adds its own decoration when it drains the line, and
+  <a href="../TestEnv/index.html"><code>TestEnv</code></a> adds <code>[CollectionName]</code> in front of each one.
+  So these vectors are the cleanest machine-readable record a run produces — and the only place the per-case
+  <code>TC&lt;index&gt;</code> attribution survives after the console output scrolls past.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr>
+    <td><code>const std::vector&lt;std::string&gt;&amp;</code></td>
+    <td>
+      One entry per <code>lferr</code> message of the last run, in emission order, referencing the collection's own
+      buffer. Cleared by the next <a href="start.html"><code>Start</code></a>, destroyed with the collection. It is
+      the same vector <code>lferr</code> writes into, so a subclass holding a reference from here sees later cases
+      append to it live
+    </td>
+  </tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p>The environment keeps a failed collection's error text for the final report:</p>
+
+<p class="meta">From Engine/Test/TestEnv.cpp</p>
+
+<pre><code>        <span class="kw">auto</span>&amp; errMessages = testCollection.<span class="fn">GetErrorMessages</span>();
+        <span class="kw">for</span> (<span class="kw">auto</span>&amp; msg : errMessages)
+        {
+                ss &lt;&lt; <span class="st">'['</span> &lt;&lt; testCollection.<span class="fn">GetName</span>() &lt;&lt; <span class="st">"]"</span> &lt;&lt; msg;
+                errorMessages.<span class="fn">push_back</span>(ss.<span class="fn">str</span>());
+                ss.<span class="fn">str</span>(<span class="st">""</span>);
+        }</code></pre>
+
+<p>
+  Only reached on the failing branch — a passing collection has its warnings folded in and its errors, if any, never
+  queried. Reading the errors directly off a collection is the way to see one collection's failures without the
+  environment's summary at all:
+</p>
+
+<p class="note">Illustrative — no engine code reads a collection's errors outside
+<a href="../TestEnv/start.html"><code>TestEnv::ExecuteTest</code></a>; every registered suite goes through the
+environment.</p>
+
+<pre><code>tests.<span class="fn">Start</span>();
+
+<span class="kw">for</span> (<span class="kw">const auto</span>&amp; failure : tests.<span class="fn">GetErrorMessages</span>())
+{
+        <span class="cm">// each line already says which case said it: [TC3.Resize] …</span>
+        std::cerr &lt;&lt; failure &lt;&lt; <span class="st">'\n'</span>;
+}</code></pre>
+
+<footer class="prevnext">
+  <span><a href="index.html">← TestCollection</a></span>
+  <span><a href="index.html#methods">All TestCollection methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

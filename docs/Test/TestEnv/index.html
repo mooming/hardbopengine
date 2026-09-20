@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TestEnv — Test — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../index.html">Test</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="#description">Class description</a></li>
+    <li><a href="#template">Template parameters</a></li>
+    <li><a href="#properties">Class properties</a></li>
+    <li><a href="#methods">Class methods</a></li>
+    <li><a href="#non-member">Non-member helpers</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+
+  <h3>Methods</h3>
+  <ul class="methods">
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="get-env.html">GetEnv</a></li>
+    <li><a href="start.html">Start</a></li>
+    <li><a href="add-test-collection.html">AddTestCollection</a></li>
+    <li><a href="get-pass-count.html">GetPassCount</a></li>
+    <li><a href="get-failure-count.html">GetFailureCount</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Test</a> / TestEnv
+</p>
+
+<h1>TestEnv</h1>
+<p class="subtitle">
+  <span class="tag">Engine/Test/TestEnv.h</span>
+  <span class="tag">namespace hbe</span>
+  <span class="tag">final</span>
+  <span class="tag">compiled under __UNIT_TEST__</span>
+  the registry and runner for collections — and the object the exit status is read from
+</p>
+
+<div class="gap">
+  <strong>This is test-build API.</strong> <code>TestEnv.h</code> carries no <code>#ifdef</code> of its own, so it is
+  includable anywhere, but it is only useful where the fixtures it runs exist — and every
+  <a href="../TestCollection/index.html"><code>TestCollection</code></a> subclass in the engine sits behind
+  <code>#ifdef __UNIT_TEST__</code> in the header it tests. The Test library defines the macro for itself; the rest of
+  the tree gets it from <code>build.sh -test</code>. See
+  <a href="../index.html#conditional-build">how the Test module is built</a>.
+</div>
+
+<h2 id="description">Class description</h2>
+
+<p>
+  A <a href="add-test-collection.html"><code>TestCollection</code></a> is registered by type into this class, and
+  <a href="start.html"><code>Start</code></a> walks the registrations, calls each collection's own
+  <a href="../TestCollection/start.html"><code>Start</code></a>, sorts the outcomes into a pass count and two name
+  lists, merges the collected message text, and prints the report. That is the whole job: it schedules nothing and
+  owns no thread.
+</p>
+
+<p>
+  Everything the outside world learns about a run comes out of two numbers,
+  <a href="get-pass-count.html"><code>GetPassCount</code></a> and
+  <a href="get-failure-count.html"><code>GetFailureCount</code></a>, and both are counted <strong>per collection, not
+  per test case</strong> — the header's own doc comments say "Collections that completed successfully" and "Collections
+  that ran and failed, plus any that never completed". <code>Applications/EngineTest/TestMain.cpp</code> reads them to
+  choose its exit status. The engine currently registers sixty collections holding roughly three hundred and fifty
+  <a href="../TestCollection/add-test.html"><code>AddTest</code></a> calls, and the process still reports two small
+  numbers.
+</p>
+
+<p>
+  Access is through <a href="get-env.html"><code>GetEnv</code></a>, a function-local static, and the engine's suite
+  registers itself into that singleton. But the constructor is public and the class is not a singleton in the
+  enforcing sense — see the box below, because that combination has a consequence for the exit status.
+</p>
+
+<div class="gap">
+  <strong>A <code>TestEnv</code> you construct yourself is invisible to the build gate.</strong> The constructor is
+  public, so a test can build a private environment, register collections into it and run them.
+  <code>Applications/EngineTest/TestMain.cpp</code> however reads
+  <code>TestEnv::GetEnv().GetFailureCount()</code> — the singleton — so a failure recorded in your own instance never
+  reaches the exit code, and the executable reports success. Only the collections registered into
+  <a href="get-env.html"><code>GetEnv</code></a>'s instance are counted by the process.
+</div>
+
+<div class="note">
+  <strong><code>final</code>, and there is nothing to override anyway.</strong> Every member that does the running is
+  <code>private</code>: <code>ExecuteTest</code> and <code>Report</code>. A subclass could not extend the run even if
+  deriving were allowed, which is why customising the suite means writing a
+  <a href="../TestCollection/prepare.html"><code>TestCollection</code> subclass</a> rather than an environment.
+</div>
+
+<h2 id="template">Template parameters</h2>
+
+<p>
+  None — TestEnv is not a template. The template in this class is the member
+  <a href="add-test-collection.html"><code>AddTestCollection</code></a>, whose own parameter list carries the
+  collection type.
+</p>
+
+<h2 id="properties">Class properties</h2>
+
+<table>
+  <tr><th>Name</th><th>Declaration</th><th>What it means</th></tr>
+  <tr>
+    <td><code>TCPtr</code></td>
+    <td><code>using TCPtr = std::unique_ptr&lt;TestCollection&gt;;</code></td>
+    <td>
+      <span class="badge">member type</span> Owning pointer to the base class. Ownership is what makes the
+      <a href="../TestCollection/destructor.html"><code>virtual</code> destructor</a> of <code>TestCollection</code>
+      load-bearing
+    </td>
+  </tr>
+  <tr>
+    <td><code>tests</code></td>
+    <td><code>std::vector&lt;TCPtr&gt; tests;</code></td>
+    <td>
+      <span class="badge">private</span> The registered collections, in registration order, and the order
+      <a href="start.html"><code>Start</code></a> runs them in. Never erased or reordered — nothing can take a
+      collection back out
+    </td>
+  </tr>
+  <tr>
+    <td><code>invalidTests</code></td>
+    <td><code>std::vector&lt;std::string&gt; invalidTests;</code></td>
+    <td>
+      <span class="badge">private</span> Names of collections whose run never completed. Holds the bare name; counted
+      by <a href="get-failure-count.html"><code>GetFailureCount</code></a> and printed as a block by the report
+    </td>
+  </tr>
+  <tr>
+    <td><code>failedTests</code></td>
+    <td><code>std::vector&lt;std::string&gt; failedTests;</code></td>
+    <td>
+      <span class="badge">private</span> Despite the name, one entry per failed <em>collection</em>, stored as the
+      preformatted string <code>&lt;name&gt; : [FAIL]</code>. Despite the name again, nothing indexes into it
+      numerically — the report prints an index it computes while iterating
+    </td>
+  </tr>
+  <tr>
+    <td><code>warningMessages</code></td>
+    <td><code>std::vector&lt;std::string&gt; warningMessages;</code></td>
+    <td>
+      <span class="badge">private</span> Every collected warning from every collection, each prefixed
+      <code>[CollectionName]</code>. Merged from both branches of the pass/fail decision, so a green suite can still
+      produce this block
+    </td>
+  </tr>
+  <tr>
+    <td><code>errorMessages</code></td>
+    <td><code>std::vector&lt;std::string&gt; errorMessages;</code></td>
+    <td>
+      <span class="badge">private</span> Every collected error, from failed collections only — a passing collection's
+      error buffer is never read. Printed as one block after the failed-collection list
+    </td>
+  </tr>
+  <tr>
+    <td><code>testedCount</code></td>
+    <td><code>unsigned int testedCount;</code></td>
+    <td>
+      <span class="badge">private</span> Collections that completed, whether they passed or failed. Incremented,
+      printed in the report and <strong>read by no accessor</strong> — see <a href="#coverage">Coverage</a>
+    </td>
+  </tr>
+  <tr>
+    <td><code>passCount</code></td>
+    <td><code>unsigned int passCount;</code></td>
+    <td>
+      <span class="badge">private</span> Collections that completed and reported no error; what
+      <a href="get-pass-count.html"><code>GetPassCount</code></a> returns. Initialised by the constructor's
+      <code>noexcept</code> initialiser list and never reset afterwards
+    </td>
+  </tr>
+</table>
+
+<h2 id="methods">Class methods</h2>
+
+<p>
+  Two further members are <code>private</code> and documented here instead of on pages of their own, because no
+  caller can reach them:
+</p>
+
+<ul>
+  <li><code>bool ExecuteTest(TestCollection&amp;)</code> — one collection's run. Calls its
+      <a href="../TestCollection/start.html"><code>Start</code></a>, routes the name into <code>invalidTests</code> if
+      it is not done, else increments <code>testedCount</code> and either <code>passCount</code> or
+      <code>failedTests</code>, then merges that collection's warnings (both branches) and errors (failure only) into
+      the environment's lists. Its <code>bool</code> return — the collection's own verdict — is discarded by the only
+      caller, <a href="start.html"><code>Start</code></a>.</li>
+  <li><code>void Report()</code> — prints the tally under <code>##### TEST COMPLETED #####</code>: total registered,
+      done, invalid, pass, fail; then the invalid, failed, error and warning blocks in that order at error severity
+      except the warning block; then flushes the logger.</li>
+</ul>
+
+<table>
+  <tr><th>Method</th><th>Signature</th><th>What a caller depends on</th></tr>
+  <tr>
+    <td><a href="constructors.html">constructors</a></td>
+    <td class="sig">TestEnv() noexcept</td>
+    <td>Public, and zeroes only the two counters. A separate instance is a separate, uncounted tally</td>
+  </tr>
+  <tr>
+    <td><a href="get-env.html">GetEnv</a></td>
+    <td class="sig">static TestEnv&amp; GetEnv()</td>
+    <td>The one instance whose tallies the executable reads; a function-local static, so first call constructs it</td>
+  </tr>
+  <tr>
+    <td><a href="start.html">Start</a></td>
+    <td class="sig">void Start()</td>
+    <td>Runs every registered collection in order, then prints the report. Clears the two name lists — and only those two</td>
+  </tr>
+  <tr>
+    <td><a href="add-test-collection.html">AddTestCollection</a></td>
+    <td class="sig">template &lt;typename T, typename... Types&gt;<br>void AddTestCollection(Types&amp;&amp;... args)</td>
+    <td>Constructs a <code>T</code> in place into the registry from <code>args</code>. The type is a template argument, not a function argument</td>
+  </tr>
+  <tr>
+    <td><a href="get-pass-count.html">GetPassCount</a></td>
+    <td class="sig">unsigned int GetPassCount() const noexcept</td>
+    <td>Collections that completed without an error message. Never reset, so a second run adds to it</td>
+  </tr>
+  <tr>
+    <td><a href="get-failure-count.html">GetFailureCount</a></td>
+    <td class="sig">unsigned int GetFailureCount() const noexcept</td>
+    <td>Failed collections plus collections that never completed, computed from the two lists on demand</td>
+  </tr>
+</table>
+
+<h2 id="non-member">Non-member helper functions</h2>
+
+<p>
+  None. <code>TestEnv.h</code> declares the class and nothing else at namespace scope; the module's one free function,
+  <a href="../UnitTestCollection/run-tests.html"><code>hbe::Test::RunTests</code></a>, lives in another header.
+</p>
+
+<h2 id="coverage">Coverage</h2>
+
+<table>
+  <tr><th>Gap</th><th>Detail</th></tr>
+  <tr>
+    <td>Three counters, two accessors</td>
+    <td><code>testedCount</code> — how many collections actually finished — is incremented and printed but has no
+        getter, and there is no accessor for <code>tests.size()</code> either. From outside, a run of 60 collections
+        of which 59 finished reads exactly like a run of 59. The numbers are on the console and nowhere else</td>
+  </tr>
+  <tr>
+    <td>No case-level tally</td>
+    <td>Neither this class nor <code>TestCollection</code> counts individual test cases. "Total Count" in the report is
+        the registered collection count; per-case <code>[PASS]</code> and <code>[FAIL]</code> lines are printed by
+        <code>Start</code> and thrown away</td>
+  </tr>
+  <tr>
+    <td>State that outlives a run</td>
+    <td><a href="start.html"><code>Start</code></a> clears <code>invalidTests</code> and <code>failedTests</code> only.
+        <code>passCount</code>, <code>testedCount</code>, <code>warningMessages</code> and <code>errorMessages</code>
+        accumulate across calls, so a second <code>Start</code> reports a cumulative pass count over a per-run failure
+        count. The header's doc comment on <code>GetFailureCount</code> states the clearing rule for the two lists it
+        clears, and says nothing about the counters</td>
+  </tr>
+  <tr>
+    <td>Nothing removes or replaces a registration</td>
+    <td><code>tests</code> is append-only and private. A suite cannot unregister a collection, so there is no supported
+        way to run one collection alone except to build your own <code>TestEnv</code> — which, per the box above, the
+        exit status will not see</td>
+  </tr>
+  <tr>
+    <td>Contracts owned by other modules</td>
+    <td>The suite runs as a task, and what the base task stream means for a test that enqueues work is
+        <a href="../../Core/index.html#tasksystem">Core: TaskSystem</a>; when the report's lines reach the console and
+        what <code>Flush</code> at the end of <code>Report</code> guarantees is
+        <a href="../../Log/index.html#logger">Log</a>; shutting the engine down from inside a task is
+        <a href="../../Engine/index.html#engine">Engine</a>. None of it is restated here</td>
+  </tr>
+  <tr>
+    <td>Which collections are registered</td>
+    <td>Not this class's concern: the list is written by
+        <a href="../UnitTestCollection/run-tests.html"><code>RunTests</code></a>, and it is code, not documentation</td>
+  </tr>
+</table>
+
+<footer class="prevnext">
+  <span><a href="../index.html">← Test</a></span>
+  <span><a href="../index.html#testenv">TestEnv in the Test class list</a></span>
+</footer>
+
+</main>
+</body>
+</html>

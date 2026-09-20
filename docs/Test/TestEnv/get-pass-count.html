@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TestEnv::GetPassCount — Test — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">TestEnv</a> methods</h3>
+  <ul class="methods">
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="get-env.html">GetEnv</a></li>
+    <li><a href="start.html">Start</a></li>
+    <li><a href="add-test-collection.html">AddTestCollection</a></li>
+    <li><a class="current" href="get-pass-count.html">GetPassCount</a></li>
+    <li><a href="get-failure-count.html">GetFailureCount</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Test</a> /
+  <a href="index.html">TestEnv</a> / GetPassCount
+</p>
+
+<h1><span class="fn">GetPassCount</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::TestEnv</span>
+  <span class="tag">Engine/Test/TestEnv.h</span>
+  <span class="tag">const noexcept</span>
+  <span class="tag">inline</span>
+  how many collections completed without an error message — never reset, never a case count
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code><span class="cm">/// @brief Collections that completed successfully.</span>
+[[nodiscard]] <span class="kw">unsigned int</span> <span class="fn">GetPassCount</span>() <span class="kw">const</span> <span class="kw">noexcept</span> { <span class="kw">return</span> passCount; }</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Returns <code>passCount</code>, incremented once for each collection that
+  <a href="../TestCollection/is-done.html">completed</a> and reported
+  <a href="../TestCollection/is-success.html">no error message</a>. The unit is the collection, and the header's own
+  doc comment says so: "Collections that completed successfully." A collection with ten failures contributes one to
+  <a href="get-failure-count.html"><code>GetFailureCount</code></a> and nothing here.
+</p>
+
+<p>
+  This is the number the executable prints on success —
+  <code>Applications/EngineTest/TestMain.cpp</code> writes "all N collections passed" from it.
+</p>
+
+<div class="gap">
+  <strong>It is a lifetime total, not a run total.</strong> <a href="start.html"><code>Start</code></a> clears the two
+  name lists and leaves <code>passCount</code> alone, so calling <code>Start</code> twice reports a pass count summed
+  over both runs beside a failure count from the second one alone. Nothing resets it — no accessor writes it, no
+  <code>Reset</code> exists — so a harness that runs the suite more than once inside one process has to subtract the
+  value it read before.
+</div>
+
+<div class="note">
+  <strong>Nothing here tells you whether anything ran.</strong> A pass count of zero is also what a suite registers
+  nothing into: the counters start at zero, so "no work" and "everything failed" are distinguishable only by
+  comparing against the registration count — which has no accessor at all. Read together with
+  <a href="get-failure-count.html"><code>GetFailureCount</code></a>, a green run over zero collections is two zeros,
+  and the report line "Total Count = 0" is the only other clue.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr>
+    <td><code>unsigned int</code></td>
+    <td>
+      Collections completed without error, since the environment was constructed. Never negative, never reset;
+      <code>[[nodiscard]]</code>
+    </td>
+  </tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p>
+  One consumer, and it is the line that decides whether a human being is told the suite is green — note that this is
+  the success message only; the failure path uses
+  <a href="get-failure-count.html"><code>GetFailureCount</code></a> instead:
+</p>
+
+<p class="meta">From Applications/EngineTest/TestMain.cpp</p>
+
+<pre><code><span class="kw">const</span> <span class="ty">hbe::TestEnv</span>&amp; testEnv = <span class="ty">hbe::TestEnv</span>::<span class="fn">GetEnv</span>();
+<span class="kw">const unsigned int</span> failures = testEnv.<span class="fn">GetFailureCount</span>();
+
+<span class="kw">if</span> (failures &gt; <span class="nu">0</span>)
+{
+        std::cerr &lt;&lt; <span class="st">"EngineTest: "</span> &lt;&lt; failures &lt;&lt; <span class="st">" test collection(s) FAILED"</span> &lt;&lt; std::endl;
+        <span class="kw">return</span> <span class="nu">1</span>;
+}
+
+std::cout &lt;&lt; <span class="st">"EngineTest: all "</span> &lt;&lt; testEnv.<span class="fn">GetPassCount</span>() &lt;&lt; <span class="st">" collections passed"</span> &lt;&lt; std::endl;</code></pre>
+
+<p>
+  The read happens after <code>hengine.Run()</code> returns, because the suite is a task rather than a call: the tallies
+  are incomplete while <code>Run()</code> is in progress. That ordering is the reason the same
+  <a href="get-env.html"><code>GetEnv</code></a> instance can be read from <code>main</code> at all.
+</p>
+
+<p>
+  The header's <code>/// @brief</code> comment on this method is the only place in the module where the per-collection
+  unit is written down; everything else in the source says "Test" where it means "collection".
+</p>
+
+<footer class="prevnext">
+  <span><a href="index.html">← TestEnv</a></span>
+  <span><a href="index.html#methods">All TestEnv methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

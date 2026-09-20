@@ -85,6 +85,37 @@ read once. And my site-wide check flagged a module page for missing a sidebar he
 carry: the third false positive today, all three the same error, applying a rule past the scope it was written
 for. Scope the check, then run it.
 
+**Test landed — 21 pages, and it corrected its own module page on ten points.** `LogFlush` is not the RAII guard the
+page described: `TestCollection.h:24` makes it a public class with five public fields and `~LogFlush() = default`,
+so nothing flushes at destruction — it is a routing token consumed by an `operator<<`. `RunTests` returns before a
+single test runs; it enqueues a ranged subtask, and that task is what calls `Engine::Get().ShutDown()`. The
+collections live in `namespace hbe`, not `hbe::Test`. `ExecuteTest` and `Report` are private. `GetPassCount` is
+never reset and `Start` clears two of five message lists, so "counts" are per-collection and cumulative. And
+**my brief was wrong**: I asserted the whole surface is compiled under `__UNIT_TEST__`, when only
+`UnitTestCollection.h` and `.cpp` carry the guard — the agent checked, wrote a conditional-build section, and my
+instruction would have made the page lie. Brief #2 today that contradicted reality; briefs are the weak link, not
+the agents.
+
+**A claim about what compiles was wrong, and a three-line program settled it.** `TestEnv.h:36` reads
+`std::make_unique<T>(std::forward(args)...)`, missing the `<Types>`. The page explained this as lvalue arguments
+being silently consumed — a plausible-sounding mechanism that is not what happens. `std::forward`'s parameter type
+is `remove_reference_t<T>&`, a non-deduced context, so `T` is never inferred: `c++ -std=c++2b -fsyntax-only` says
+*no matching function for call to 'forward' / couldn't infer template argument '_Tp'*. The argument-taking form
+does not compile at all, and an empty pack expands to no call, which is the only reason sixty call sites — every
+one `AddTestCollection<SomeTest>()`, every collection default-constructible — have never tripped it. The defect is
+latent, not silent, and the page now says so with the diagnostic quoted. The error was wrong in the reassuring
+direction: "silently consumed" invites a workaround, "does not compile" tells the truth.
+
+**So the contract grew section 16: a claim about what compiles needs a compiler.** Grep proves a name exists;
+only a compiler proves what it does. Also added: public and private property badges are not interchangeable — a
+`private` badge on a public nested guard misstates the interface, the one job a property table has; a module
+function carrying a real contract gets a page inside the folder of the entry declaring it, because "see the module
+functions" points at a table and the table cannot hold "this returns before any test runs"; and §12 gained an
+inbound-link scan, since the outbound check is structurally blind to the one failure §8 warns about. The inbound
+scan is negative-controlled before shipping: deleting one `id="buildconfig"` in a copy of the tree produced twelve
+`BROKEN` lines across Renderer, Memory, OSAL, Math, Log and Engine. A scan that reports "all resolve" without
+proving it can report otherwise is not a check, and I nearly shipped one.
+
 ## Tasks become things the registry owns, addressed by identity (2026-09-19)
 
 **What landed**, as `3be27c3`: R7 with R22's sizing. `Engine/Core/TaskID.h` (`{index, generation}`) and

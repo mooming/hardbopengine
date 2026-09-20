@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UnitTestCollection — Test — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../index.html">Test</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="#description">Class description</a></li>
+    <li><a href="#template">Template parameters</a></li>
+    <li><a href="#properties">Class properties</a></li>
+    <li><a href="#methods">Class methods</a></li>
+    <li><a href="#non-member">Non-member helpers</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+
+  <h3>Methods</h3>
+  <ul class="methods">
+    <li><a href="run-tests.html">RunTests</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Test</a> / UnitTestCollection
+</p>
+
+<h1>UnitTestCollection</h1>
+<p class="subtitle">
+  <span class="tag">Engine/Test/UnitTestCollection.h</span>
+  <span class="tag">namespace hbe::Test</span>
+  <span class="tag">not a class</span>
+  <span class="tag">entire header inside #ifdef __UNIT_TEST__</span>
+  the engine's suite entry point — one free function, and the registration list it owns
+</p>
+
+<h2 id="description">Class description</h2>
+
+<p>
+  There is no class. The name is the header's, and the header's whole content is a single declaration inside an
+  <code>#ifdef __UNIT_TEST__</code> guard:
+</p>
+
+<pre><code><span class="kw">#ifdef</span> __UNIT_TEST__
+<span class="kw">namespace</span> hbe
+{
+<span class="kw">namespace</span> Test
+{
+<span class="kw">void</span> <span class="fn">RunTests</span>();
+}
+} <span class="cm">// namespace hbe</span>
+<span class="kw">#endif</span> <span class="cm">// __UNIT_TEST__</span></code></pre>
+
+<p>
+  <a href="run-tests.html"><code>hbe::Test::RunTests</code></a> is what
+  <code>Applications/EngineTest/TestMain.cpp</code> calls, and it is the only place in the engine that decides which
+  collections are tested: its definition registers sixty of them into
+  <a href="../TestEnv/get-env.html"><code>TestEnv::GetEnv</code></a>, then enqueues the run as a task. Add a module to
+  the suite by editing that definition; nothing discovers tests on its own.
+</p>
+
+<div class="gap">
+  <strong>This is the one header in the module that is genuinely conditional.</strong> <code>TestCollection.h</code> and
+  <code>TestEnv.h</code> carry no guard and are includable from any build; this one declares nothing unless
+  <code>__UNIT_TEST__</code> is defined, so <code>RunTests</code> does not exist to link against in a normal build —
+  which is the same switch <code>build.sh -test</code> passes as <code>-D__TEST__ -D__UNIT_TEST__</code>. The
+  consequences for an <code>EngineTest</code> built without it are recorded on
+  <a href="../index.html#conditional-build">the module page</a>.
+</div>
+
+<p>
+  It is also the only entry in this module in <code>hbe::Test</code>. The framework's two types are in
+  <code>hbe</code> proper; the namespace here exists to hold the engine's own suite, as a per-module suite would
+  live in <code>hbe::RendererTest</code> or anywhere else the author chose.
+</p>
+
+<h2 id="template">Template parameters</h2>
+
+<p>None — there is no template here, and no class for one to belong to.</p>
+
+<h2 id="properties">Class properties</h2>
+
+<p>
+  None. No type, no alias, no data. The only state anywhere near this entry is the function-local
+  <code>static TaskID taskID</code> in its definition, which remembers the suite's task across calls so a second call
+  re-enqueues rather than creating a second task — see
+  <a href="run-tests.html">the <code>RunTests</code> page</a>.
+</p>
+
+<h2 id="methods">Class methods</h2>
+
+<p>
+  The entry has no members. Its one callable is a free function in <code>hbe::Test</code>, and it carries a page
+  because there is a real contract to read before calling it — this function returns before the tests have run.
+</p>
+
+<table>
+  <tr><th>Method</th><th>Signature</th><th>What a caller depends on</th></tr>
+  <tr>
+    <td><a href="run-tests.html">RunTests</a></td>
+    <td class="sig">void RunTests()</td>
+    <td>
+      Registers the suite and enqueues it on the base task stream; returns as soon as the enqueue is issued. The
+      engine is shut down by the suite's own task when the last report is printed
+    </td>
+  </tr>
+</table>
+
+<h2 id="non-member">Non-member helper functions</h2>
+
+<p>
+  <a href="run-tests.html"><code>hbe::Test::RunTests</code></a> is itself the non-member function this entry declares —
+  it is shown under <a href="#methods">Class methods</a> above so the page has a working navigation target rather than
+  an empty table. Nothing else in <code>UnitTestCollection.h</code> is declared.
+</p>
+
+<h2 id="coverage">Coverage</h2>
+
+<table>
+  <tr><th>Gap</th><th>Detail</th></tr>
+  <tr>
+    <td>Which collections are in the suite</td>
+    <td>Sixty <a href="../TestEnv/add-test-collection.html"><code>AddTestCollection</code></a> calls, listed by type in
+        <code>Engine/Test/UnitTestCollection.cpp</code>. They are enumerated on
+        <a href="run-tests.html">the <code>RunTests</code> page</a> only as a sample — the authoritative list is that
+        source file, and it is the kind of list documentation cannot keep current</td>
+  </tr>
+  <tr>
+    <td>What a real suite needs before it can run</td>
+    <td>The caller must have an <a href="../../Engine/index.html#engine">Engine</a> initialised and must then call
+        <code>Run()</code>: the suite is a task, and the task system has to be running for it to be executed at all.
+        <code>TestMain.cpp</code> does both around this call; the ordering is not enforced or checked here</td>
+  </tr>
+  <tr>
+    <td>Engine shutdown as a side effect</td>
+    <td>The suite's task calls <code>Engine::Get().ShutDown()</code> as its last act, which is what ends
+        <code>Run()</code> and lets <code>main</code> read the tallies. It means "run the tests" also means "end this
+        process's engine" — there is no way to run the suite and carry on using the engine afterwards. Attributed to
+        <a href="../../Engine/index.html#engine">Engine</a>, documented here because it is set up here</td>
+  </tr>
+  <tr>
+    <td>A second call</td>
+    <td>The function-local <code>static TaskID</code> means a repeat call reuses and re-enqueues the same task rather
+        than creating another. What that does to the tallies is a
+        <a href="../TestEnv/start.html"><code>TestEnv::Start</code></a> matter — its counters accumulate, and
+        <a href="run-tests.html">the page</a> explains why a re-run is not a clean second measurement</td>
+  </tr>
+  <tr>
+    <td>Memory the suite allocates outlives its own allocator</td>
+    <td>The task body opens a <code>MultiPoolAllocator</code> named <code>"UnitTest"</code> inside an
+        <a href="../../Memory/index.html#allocatorscope"><code>AllocatorScope</code></a>, and inside that scope the
+        collections are constructed — while being owned afterwards by a
+        <a href="../TestEnv/get-env.html"><code>TestEnv</code> static</a> that is destroyed long after the scope closes.
+        Whether anything is then freed through the closed pool is a Memory question
+        (<a href="../../Memory/index.html#memorymanager">MemoryManager</a>) that this page cannot answer, and it is
+        flagged rather than asserted</td>
+  </tr>
+  <tr>
+    <td>Renderer and Vulkan example coverage</td>
+    <td>The suite registers <code>RendererTest</code> (declared in <code>Engine/Renderer/RendererTest.h</code>) and
+        <code>RHICapabilitiesTest</code>. What those assert is
+        <a href="../../Renderer/index.html">Renderer</a>'s subject, not this module's</td>
+  </tr>
+</table>
+
+<footer class="prevnext">
+  <span><a href="../index.html">← Test</a></span>
+  <span><a href="../index.html#unittestcollection">UnitTestCollection in the Test class list</a></span>
+</footer>
+
+</main>
+</body>
+</html>

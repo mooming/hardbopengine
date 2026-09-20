@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TestEnv constructors — Test — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">TestEnv</a> methods</h3>
+  <ul class="methods">
+    <li><a class="current" href="constructors.html">constructors</a></li>
+    <li><a href="get-env.html">GetEnv</a></li>
+    <li><a href="start.html">Start</a></li>
+    <li><a href="add-test-collection.html">AddTestCollection</a></li>
+    <li><a href="get-pass-count.html">GetPassCount</a></li>
+    <li><a href="get-failure-count.html">GetFailureCount</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Test</a> /
+  <a href="index.html">TestEnv</a> / constructors
+</p>
+
+<h1><span class="fn">constructors</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::TestEnv</span>
+  <span class="tag">Engine/Test/TestEnv.h</span>
+  <span class="tag">1 overload</span>
+  <span class="tag">public, inline, noexcept</span>
+  an empty registry and two zeroed counters
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code><span class="fn">TestEnv</span>() <span class="kw">noexcept</span> : testedCount(<span class="nu">0</span>), passCount(<span class="nu">0</span>) {}</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  One default constructor, written out in the class body rather than defaulted. It initialises the two counters and
+  leaves the five vectors to their own default constructors, so what you get is an environment with nothing
+  registered, nothing collected and nothing counted. It does not register any collection, does not subscribe to
+  anything and cannot fail — hence <code>noexcept</code>.
+</p>
+
+<p>
+  It is <strong>public</strong>. In the engine this runs exactly twice as a matter of fact: once for the
+  <a href="get-env.html"><code>GetEnv</code></a> singleton, and once more if any code writes <code>TestEnv</code> as a
+  local. That is a supported thing to want — running one collection alone — but the tallies that decide the process
+  exit status are read from the singleton, so a private environment's results are reported by nobody. See the box on
+  <a href="index.html#description">the class page</a>.
+</p>
+
+<div class="gap">
+  <strong>There is no way back to zero.</strong> No constructor is called again on a live environment, no
+  <code>Reset</code> exists, and <a href="start.html"><code>Start</code></a> clears only the two name lists — not
+  <code>passCount</code>, not <code>testedCount</code>, not the merged message vectors. So a single environment cannot
+  be re-used for a fresh measurement: a second <a href="start.html"><code>Start</code></a> yields a per-run failure
+  count and a cumulative pass count at the same time. If you need two independent runs, use two environments and
+  remember that only one of them is the one the executable reads.
+</div>
+
+<div class="note">
+  <strong>The registry is append-only for the process's whole life.</strong> Collections built through
+  <a href="add-test-collection.html"><code>AddTestCollection</code></a> are owned by this environment as
+  <code>std::unique_ptr</code> and destroyed with it. Since the engine's environment is the function-local static
+  inside <a href="get-env.html"><code>GetEnv</code></a>, the collections — and each one's full text of warnings and
+  errors — are still allocated after <code>main</code> returns.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  Constructors have no return value. The observable state afterwards is an empty <code>tests</code> vector, so
+  <a href="start.html"><code>Start</code></a> on a freshly built environment prints a completed report with a total of
+  zero and both counters at zero — a run that is entirely green because there was nothing in it.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<p>
+  No engine code constructs a <code>TestEnv</code>. Both call sites go through the singleton, one to fill it and one
+  to read it:
+</p>
+
+<p class="meta">From Engine/Test/UnitTestCollection.cpp</p>
+
+<pre><code>        <span class="kw">auto</span>&amp; testEnv = <span class="ty">TestEnv</span>::<span class="fn">GetEnv</span>();
+
+        testEnv.<span class="fn">AddTestCollection</span>&lt;<span class="ty">SystemAllocatorTest</span>&gt;();
+        <span class="cm">// … fifty-nine more …</span>
+        testEnv.<span class="fn">Start</span>();</code></pre>
+
+<p class="meta">From Applications/EngineTest/TestMain.cpp</p>
+
+<pre><code><span class="cm">// The suite runs as a task that shuts the engine down when it finishes, so the tallies</span>
+<span class="cm">// are only complete once Run() returns.</span>
+<span class="kw">const</span> <span class="ty">hbe::TestEnv</span>&amp; testEnv = <span class="ty">hbe::TestEnv</span>::<span class="fn">GetEnv</span>();
+<span class="kw">const unsigned int</span> failures = testEnv.<span class="fn">GetFailureCount</span>();</code></pre>
+
+<p>
+  The second of those binds a reference to a <code>const</code> environment, which is the whole public read surface:
+  the two counters. Everything else on the object is <code>private</code>.
+</p>
+
+<footer class="prevnext">
+  <span><a href="index.html">← TestEnv</a></span>
+  <span><a href="index.html#methods">All TestEnv methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

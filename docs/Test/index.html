@@ -34,10 +34,15 @@
     <li><a href="#classes">Module classes</a></li>
     <li><a href="#variables">Module variables</a></li>
     <li><a href="#functions">Module functions</a></li>
-    <li><a href="#testcollection">TestCollection</a></li>
-    <li><a href="#testenv">TestEnv</a></li>
-    <li><a href="#unittestcollection">UnitTestCollection</a></li>
+    <li><a href="#conditional-build">Conditional build</a></li>
     <li><a href="#coverage">Coverage</a></li>
+  </ul>
+
+  <h3>Classes</h3>
+  <ul>
+    <li><a href="TestCollection/index.html">TestCollection</a></li>
+    <li><a href="TestEnv/index.html">TestEnv</a></li>
+    <li><a href="UnitTestCollection/index.html">UnitTestCollection</a></li>
   </ul>
 
   <h3>Design documents</h3>
@@ -62,190 +67,230 @@
 <h2 id="description">Module description</h2>
 
 <p>
-  A test is a function taking a log sink; tests group into a
-  <a href="#testcollection"><code>TestCollection</code></a>; collections run inside a
-  <a href="#testenv"><code>TestEnv</code></a> that counts passes and failures and reports them. Almost every
-  engine header carries its own <code>*Test</code> class inside an <code>#ifdef __UNIT_TEST__</code> region at
-  the bottom of the file, which is the convention
-  <a href="../CodingStandards.md">docs/CodingStandards.md</a> fixes.
+  A test is a lambda taking a log stream; tests group into a
+  <a href="TestCollection/index.html"><code>TestCollection</code></a> subclass that names them one by one; collections
+  are registered by type into a <a href="TestEnv/index.html"><code>TestEnv</code></a> which runs them, counts them and
+  prints the result; and <a href="UnitTestCollection/run-tests.html"><code>hbe::Test::RunTests</code></a> is the entry
+  point <code>Applications/EngineTest</code> calls to put all of that on a task stream. Almost every engine header
+  carries its own <code>*Test</code> class inside an <code>#ifdef __UNIT_TEST__</code> region at the bottom of the file,
+  which is the convention <a href="../CodingStandards.md">docs/CodingStandards.md</a> fixes.
+</p>
+
+<p>
+  The lifecycle is the whole API. A subclass supplies <em>one</em> function —
+  <a href="TestCollection/prepare.html"><code>Prepare</code></a> — and inside it calls
+  <a href="TestCollection/add-test.html"><code>AddTest</code></a> once per case. The framework then clears its state,
+  calls <code>Prepare</code>, runs the cases in registration order each inside its own allocator scope, and decides the
+  verdict from a single fact: whether any error message was recorded. There is no assertion macro and no exception —
+  the engine is exception-free — so a case reports by streaming text and <strong>ends the message with a guard
+  object</strong>: <code>ls &lt;&lt; "Size is 3, not 4." &lt;&lt; lferr;</code>. That one idiom is the reason a test body is
+  written the way it is, and it is documented on
+  <a href="TestCollection/index.html#non-member">the <code>TestCollection</code> streaming operator</a>.
 </p>
 
 <div class="gap">
-  <strong>The whole surface is conditional.</strong> <code>UnitTestCollection.h</code> is wrapped in
-  <code>#ifdef __UNIT_TEST__</code>, so <code>RunTests</code> does not exist unless the build defined it. That is
-  the same switch <code>build.sh -test</code> passes as <code>-D__TEST__ -D__UNIT_TEST__</code>, and it is why a
-  build without that flag reports a green <code>EngineTest</code> that compiled no test at all. See
-  <a href="../RunningTests.md">docs/RunningTests.md</a>.
+  <strong>Success means "no error message was recorded", which is weaker than "the assertions held".</strong> The error
+  text is appended from inside the logger's message callback, and
+  <a href="../Log/index.html#logger">the logger</a> may decline to run a callback at all — logging compiled out, the
+  <code>Log.Level</code> parameter above that severity, or a filter on the collection's category. Decline it, and a
+  failing case records nothing and passes. The same weakness runs the other way: a collection whose
+  <a href="TestCollection/prepare.html"><code>Prepare</code></a> registered nothing also passes.
 </div>
 
 <h2 id="classes">Module classes</h2>
 
 <table>
   <tr><th>Name</th><th>Kind</th><th>Header</th><th>Role</th></tr>
-  <tr><td><a href="#testcollection">TestCollection</a></td><td>Abstract class</td><td>TestCollection.h</td><td>Named group of tests, with the results of one run</td></tr>
-  <tr><td><a href="#testenv">TestEnv</a></td><td>Class</td><td>TestEnv.h</td><td>Runs collections and counts outcomes</td></tr>
-  <tr><td><a href="#unittestcollection">UnitTestCollection</a></td><td>Entry-point function</td><td>UnitTestCollection.h</td><td>Registers and runs the engine's whole suite</td></tr>
+  <tr id="testcollection">
+    <td><a href="TestCollection/index.html">TestCollection</a><span class="badge">10 method pages</span></td>
+    <td>Abstract class, <code>hbe</code></td>
+    <td>TestCollection.h</td>
+    <td>
+      Named group of tests plus the results of one run. Subclassed once per engine header; supplies
+      <code>lf</code> / <code>lfwarn</code> / <code>lferr</code>, the three guards every message ends with. Pure virtual
+      <a href="TestCollection/prepare.html"><code>Prepare</code></a> is the only member a subclass writes
+    </td>
+  </tr>
+  <tr id="testenv">
+    <td><a href="TestEnv/index.html">TestEnv</a><span class="badge">6 method pages</span></td>
+    <td>Class, <code>final</code>, <code>hbe</code></td>
+    <td>TestEnv.h</td>
+    <td>
+      Registers collections by type, runs them, and counts <em>collections</em> passed and failed — the two numbers
+      <code>EngineTest</code> prints and exits on
+    </td>
+  </tr>
+  <tr id="unittestcollection">
+    <td><a href="UnitTestCollection/index.html">UnitTestCollection</a><span class="badge">1 method page</span></td>
+    <td>Entry-point function, <code>hbe::Test</code></td>
+    <td>UnitTestCollection.h</td>
+    <td>
+      Not a class: the header is one declaration, <a href="UnitTestCollection/run-tests.html"><code>RunTests</code></a>,
+      which registers the engine's sixty collections and enqueues the run. Present only under
+      <code>__UNIT_TEST__</code>
+    </td>
+  </tr>
 </table>
 
 <h2 id="variables">Module variables</h2>
 
-<p>None.</p>
+<p>
+  None. No header in the module declares an object at namespace scope. The only statics are function-local ones that
+  hold the module's whole mutable state: the <code>static TestEnv instance</code> inside
+  <a href="TestEnv/get-env.html"><code>TestEnv::GetEnv</code></a>, and the <code>static TaskID</code> inside
+  <a href="UnitTestCollection/run-tests.html"><code>RunTests</code></a> that keeps the suite's own task identity across
+  calls.
+</p>
 
 <h2 id="functions">Module functions</h2>
 
 <table>
   <tr><th>Function</th><th>Parameters</th><th>Returns</th><th>Purpose</th></tr>
-  <tr><td><code>hbe::Test::RunTests</code></td><td>none</td><td><code>void</code></td><td>The suite entry point, present only under <code>__UNIT_TEST__</code> — see <a href="#unittestcollection">UnitTestCollection</a></td></tr>
+  <tr>
+    <td><a href="UnitTestCollection/run-tests.html"><code>hbe::Test::RunTests</code></a></td>
+    <td>none</td>
+    <td><code>void</code></td>
+    <td>
+      The suite entry point: registers every collection into <code>TestEnv::GetEnv()</code> and enqueues the run on the
+      base task stream. It returns before any test has executed, and the suite's own task shuts the engine down when
+      it finishes — which is what ends <code>Run()</code> and lets <code>main</code> read the tallies
+    </td>
+  </tr>
 </table>
 
-<h2 id="testcollection">TestCollection (<code>Engine/Test/TestCollection.h</code>)</h2>
-
-<h3>Class description</h3>
 <p>
-  A named group of tests. A subclass adds its tests in <code>Prepare</code>, the framework runs them, and the
-  same object then reports whether the run succeeded. Nearly every engine header declares one subclass in its
-  own trailing <code>#ifdef __UNIT_TEST__</code> region.
+  That is the module's entire free-function surface. Everything else is reached through the two types above.
 </p>
-
-<h3>Template parameters</h3>
-<p>None — TestCollection is not a template.</p>
-
-<h3>Class properties</h3>
-<p>
-  Three <code>LogFlush</code> guards — <code>lf</code> for the test's own output, <code>lfwarn</code>,
-  <code>lferr</code> — each holding a name, a level, a test index and a pointer into the buffer it collects
-  into. Then the title, the test list, <code>isDone</code> and <code>isSuccess</code>. The guards are the
-  mechanism behind <code>GetWarningMessages</code> and <code>GetErrorMessages</code>: a test's output lands in a
-  buffer chosen by severity instead of a shared console.
-</p>
-
-<h3>Class methods</h3>
-
-<pre><code><span class="kw">using</span> <span class="ty">TLogOut</span>    = std::stringstream;
-<span class="kw">using</span> <span class="ty">TLogBuffer</span> = std::vector&lt;std::string&gt;;
-<span class="kw">using</span> <span class="ty">TTestFunc</span>  = std::function&lt;<span class="kw">void</span>(<span class="ty">TLogOut</span>&amp;)&gt;;
-
-<span class="kw">explicit</span> <span class="ty">TestCollection</span>(<span class="kw">const char</span>* title);
-<span class="kw">virtual</span> ~<span class="ty">TestCollection</span>();
-
-<span class="kw">void</span> Start();
-<span class="kw">void</span> AddTest(<span class="kw">const char</span>* testName, <span class="kw">const</span> <span class="ty">TTestFunc</span>&amp; testCase);
-
-[[nodiscard]] <span class="kw">const char</span>* GetName() <span class="kw">const</span> <span class="kw">noexcept</span>;
-[[nodiscard]] <span class="kw">const</span> std::vector&lt;std::string&gt;&amp; GetWarningMessages() <span class="kw">const</span> <span class="kw">noexcept</span>;
-[[nodiscard]] <span class="kw">const</span> std::vector&lt;std::string&gt;&amp; GetErrorMessages() <span class="kw">const</span> <span class="kw">noexcept</span>;
-[[nodiscard]] <span class="kw">bool</span> IsDone() <span class="kw">const</span> <span class="kw">noexcept</span>;
-[[nodiscard]] <span class="kw">bool</span> IsSuccess() <span class="kw">const</span> <span class="kw">noexcept</span>;
-
-<span class="kw">protected</span>:
-    <span class="cm">// override to add this collection's tests</span>
-    <span class="kw">virtual void</span> Prepare() = <span class="nu">0</span>;
-
-<span class="kw">private</span>:
-    <span class="kw">void</span> ExecuteTests();
-    <span class="kw">void</span> Report() <span class="kw">const</span>;
-
-    <span class="cm">// RAII guard flushing the log around a test so output cannot interleave</span>
-    <span class="kw">class</span> <span class="ty">LogFlush</span> final { ... };</code></pre>
-
-<table>
-  <tr><th>Method</th><th>Contract a caller depends on</th></tr>
-  <tr><td><code>Prepare</code></td><td>Pure virtual: the one thing a subclass supplies. It is called by the framework, not by you</td></tr>
-  <tr><td><code>AddTest</code></td><td>Register one test by name. The body receives a log sink, which is how a test reports a mismatch without throwing — the engine is exception-free</td></tr>
-  <tr><td><code>Start</code></td><td>Runs the collection; <code>IsDone</code> is false until then, so reading a result early reads a false failure</td></tr>
-  <tr><td><code>GetWarningMessages</code>, <code>GetErrorMessages</code></td><td>What the run printed, kept per collection — the text you read after a failure instead of scrolling a console</td></tr>
-</table>
-
-<h3>Non-member helper functions</h3>
-<p>None.</p>
-
-<h2 id="testenv">TestEnv (<code>Engine/Test/TestEnv.h</code>)</h2>
-
-<h3>Class description</h3>
-<p>
-  The environment the suite runs in: it owns the collections, starts what they need, executes them, and prints
-  the tally.
-</p>
-
-<h3>Template parameters</h3>
-<p>None — TestEnv is not a template; <code>AddTestCollection</code> is the variadic method.</p>
-
-<h3>Class properties</h3>
-<p>The registered collections and the pass and failure counts; private, read through <code>GetPassCount</code> and <code>GetFailureCount</code>.</p>
-
-<h3>Class methods</h3>
-
-<pre><code>[[nodiscard]] <span class="kw">static</span> <span class="ty">TestEnv</span>&amp; GetEnv();
-
-<span class="kw">void</span> Start();
-
-<span class="kw">template</span>&lt;<span class="kw">typename</span>... Types&gt;
-<span class="kw">void</span> AddTestCollection(Types&amp;&amp;... args);
-
-[[nodiscard]] <span class="kw">unsigned int</span> GetPassCount() <span class="kw">const</span> <span class="kw">noexcept</span>;
-[[nodiscard]] <span class="kw">unsigned int</span> GetFailureCount() <span class="kw">const</span> <span class="kw">noexcept</span>;
-
-<span class="kw">bool</span> ExecuteTest(<span class="ty">TestCollection</span>&amp; testCollection);
-<span class="kw">void</span> Report();</code></pre>
 
 <div class="note">
-  The suite itself executes as a task on the base task stream
-  (<a href="../Core/index.html#tasksystem">TaskSystem</a>). That is a fact with teeth: the base stream is
-  occupied for the whole run, so a test that enqueues work expecting the base stream to pick it up will wait
-  forever. The measurement and the trap are recorded in
-  <a href="../TaskSystemRedesign.md">docs/TaskSystemRedesign.md</a>.
+  <strong>The suite runs as a task on the base task stream</strong>
+  (<a href="../Core/index.html#tasksystem">TaskSystem</a>), and that is a fact with teeth: the base stream is occupied
+  by the suite for the whole run, so a test that enqueues work expecting the base stream to pick it up waits forever.
+  Engine tests that need a stream pick a worker instead and say so in a comment — the wording is quoted on
+  <a href="UnitTestCollection/run-tests.html">the <code>RunTests</code> page</a>. The measurement and the trap are also
+  recorded in <a href="../TaskSystemRedesign.md">docs/TaskSystemRedesign.md</a>.
 </div>
 
-<h3>Non-member helper functions</h3>
-<p>None.</p>
+<h2 id="conditional-build">Conditional build</h2>
 
-<h2 id="unittestcollection">UnitTestCollection (<code>Engine/Test/UnitTestCollection.h</code>)</h2>
-
-<h3>Class description</h3>
 <p>
-  Not a class: one function, <code>hbe::Test::RunTests()</code>, which is the entry point
-  <code>Applications/EngineTest</code> calls. The file's entire content sits inside
-  <code>#ifdef __UNIT_TEST__</code>.
+  Everything here is test-build API, but not all of it is conditional in the same way, and the difference matters when
+  a build goes quietly green.
 </p>
 
-<h3>Template parameters</h3>
-<p>None.</p>
+<table>
+  <tr><th>What</th><th>Switched by</th><th>Consequence</th></tr>
+  <tr>
+    <td><code>UnitTestCollection.h</code>, entirely</td>
+    <td><code>#ifdef __UNIT_TEST__</code> around the whole file</td>
+    <td>
+      <code>RunTests</code> does not exist unless the macro is defined, so an <code>EngineTest</code> built without it
+      links a different <code>main</code> branch
+    </td>
+  </tr>
+  <tr>
+    <td><code>TestCollection.h</code>, <code>TestEnv.h</code></td>
+    <td>nothing — both are unguarded and includable in any configuration</td>
+    <td>
+      The types are visible everywhere; what is missing in a normal build is the fixtures. Every
+      <code>*Test</code> subclass sits behind <code>#ifdef __UNIT_TEST__</code> in the header it tests, so a suite
+      compiled without the macro registers nothing and has nothing to run
+    </td>
+  </tr>
+  <tr>
+    <td>The Test library target itself</td>
+    <td>
+      <code>precompileDefinitions = __UNIT_TEST__</code> in <code>Engine/Test/.module.config</code>, and
+      <code>add_compile_definitions(__UNIT_TEST__)</code> in <code>Engine/Test/CMakeLists.txt</code>
+    </td>
+    <td>
+      The framework's own sources always see the macro. It is the rest of the tree that needs it from
+      <code>build.sh -test</code>, which reconfigures with <code>-D__TEST__ -D__UNIT_TEST__</code> — and it has to be
+      global, because the test bodies live in the library sources the executable links, not only in
+      <code>TestMain.cpp</code>
+    </td>
+  </tr>
+</table>
 
-<h3>Class properties</h3>
-<p>None.</p>
-
-<h3>Class methods</h3>
-<p>None.</p>
-
-<h3>Non-member helper functions</h3>
-
-<pre><code><span class="kw">#ifdef</span> __UNIT_TEST__
-<span class="kw">namespace</span> hbe::Test
-{
-<span class="kw">void</span> RunTests();   <span class="cm">// registers every collection and runs them</span>
-}
-<span class="kw">#endif</span> <span class="cm">// __UNIT_TEST__</span></code></pre>
+<p>
+  This is why <code>EngineTest</code> refuses to report success when it was built without the macro: it prints what is
+  missing, how to get it, and returns <code>1</code> — see
+  <a href="../RunningTests.md">docs/RunningTests.md</a> and
+  <a href="../BuildSystem.md">docs/BuildSystem.md</a>. Before that guard existed, a build without
+  <code>-test</code> reported a green run over zero tests.
+</p>
 
 <h2 id="coverage">Coverage</h2>
 
 <table>
   <tr><th>Gap</th><th>Detail</th></tr>
   <tr>
-    <td>How a test signals failure</td>
-    <td><code>TLogOut</code> is now named — <code>std::stringstream</code>, with <code>TLogBuffer</code> as
-        <code>std::vector&lt;std::string&gt;</code> — but what a test body is expected to write into that stream to
-        register a failure rather than a warning is not documented anywhere yet.</td>
+    <td>No assertion helpers of any kind</td>
+    <td>
+      The framework has no <code>EXPECT</code>, no <code>ASSERT_EQ</code>, no helper that formats "expected X, got Y".
+      Test bodies hand-write <code>if</code> and stream text by hand, and the <code>Assert</code> family they
+      sometimes reach for lives in
+      <a href="../Core/index.html#functions">Core: Debug</a> and aborts rather than reporting. Whether the framework
+      should own its own assertion macros is a real open question, and the answer belongs in a design document, not here
+    </td>
   </tr>
   <tr>
-    <td>Assertion helpers</td>
-    <td>The <a href="../Core/index.html#functions"><code>Assert</code> family</a> lives in Core and is what test
-        bodies call. Whether the framework should own its own assertion macros is a real question, and the answer
-        belongs in a design document.</td>
+    <td>Per-case results exist only as console output</td>
+    <td>
+      <a href="TestCollection/start.html"><code>Start</code></a> prints <code>[PASS]</code> or <code>[FAIL]</code> per
+      case and keeps nothing: no accessor answers how many cases a collection ran, and no accessor names the failing
+      one. Nothing can be reported as a failure either — a case that crashes, leaks, hangs or registers nothing is
+      indistinguishable from one that passed. Details on
+      <a href="TestCollection/is-success.html"><code>IsSuccess</code></a> and
+      <a href="TestEnv/index.html#coverage">TestEnv: Coverage</a>
+    </td>
+  </tr>
+  <tr>
+    <td>Per-case memory is scoped but never checked</td>
+    <td>
+      Each case runs inside an <a href="../Memory/index.html#allocatorscope"><code>AllocatorScope</code></a> over a local
+      <code>MultiPoolAllocator</code> named after the case, which makes its allocations attributable — and nothing
+      compares what is outstanding when the case ends, so a leak passes. <code>PrintUsage()</code>, the call that would
+      have shown it, has its entire body inside <code>#if PROFILE_ENABLED</code>
+    </td>
+  </tr>
+  <tr>
+    <td>The <code>AddTestCollection</code> argument path</td>
+    <td>
+      Its parameter pack is forwarded as <code>std::forward(args)...</code> rather than
+      <code>std::forward&lt;Types&gt;(args)...</code>, which does not preserve an lvalue argument. No call site in the
+      repository passes an argument — all sixty are <code>AddTestCollection&lt;SomeTest&gt;()</code> — so that path is
+      compiled and never exercised. Stated on
+      <a href="TestEnv/add-test-collection.html">the method page</a>
+    </td>
+  </tr>
+  <tr>
+    <td>What the reporting channel will and will not deliver</td>
+    <td>
+      Which callbacks run, and when the text reaches the console, is Log's contract
+      (<a href="../Log/index.html#logger">Logger</a>) — as is whether a report has actually left the process when
+      <code>main</code> reads the tallies. Restated here only where it can turn a failure into a pass
+    </td>
   </tr>
   <tr>
     <td>Which collections run</td>
-    <td><code>RunTests</code> registers them; the list is code, not documentation. Engine modules with a trailing
-        test class — Config, Container, Memory, OSAL, Resource, HSTL and others — are the current membership.</td>
+    <td>
+      <a href="UnitTestCollection/run-tests.html"><code>RunTests</code></a> registers sixty of them, drawn from
+      Container, Core, HSTL, Math, Memory, OSAL, Renderer, Resource and String. <strong>Config is not among
+      them</strong> — no header in <code>Engine/Config/</code> declares a
+      <a href="TestCollection/index.html"><code>TestCollection</code></a> subclass, so that module's behaviour is
+      exercised only as a side effect of the logger's and allocator's own tests. The list is code, not documentation,
+      and a collection that is written but never registered simply does not run
+    </td>
+  </tr>
+  <tr>
+    <td>Non-headers in the directory</td>
+    <td>
+      <code>Engine/Test/</code> also holds <code>CMakeLists.txt</code>, a top-level
+      <code>precompileDefinitions</code> file, a code-review note, and a checked-in <code>HUnitTest</code> binary that
+      nothing in the build references. None of them are API and none are documented further; the binary is a build
+      artefact under source control, which its own review note flags
+    </td>
   </tr>
 </table>
 

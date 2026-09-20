@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TestEnv::Start — Test — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">TestEnv</a> methods</h3>
+  <ul class="methods">
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="get-env.html">GetEnv</a></li>
+    <li><a class="current" href="start.html">Start</a></li>
+    <li><a href="add-test-collection.html">AddTestCollection</a></li>
+    <li><a href="get-pass-count.html">GetPassCount</a></li>
+    <li><a href="get-failure-count.html">GetFailureCount</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Test</a> /
+  <a href="index.html">TestEnv</a> / Start
+</p>
+
+<h1><span class="fn">Start</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::TestEnv</span>
+  <span class="tag">Engine/Test/TestEnv.h</span>
+  <span class="tag">void</span>
+  run every registered collection, in registration order, then print the report
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code><span class="kw">void</span> <span class="fn">Start</span>();</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  One pass over <code>tests</code>, in this order:
+</p>
+
+<ol>
+  <li><code>invalidTests</code> and <code>failedTests</code> are cleared. Nothing else is — see the box below.</li>
+  <li>Each entry is asserted non-null and handed to the private <code>ExecuteTest</code>. That helper calls the
+      collection's own <a href="../TestCollection/start.html"><code>Start</code></a>, which is where
+      <a href="../TestCollection/prepare.html"><code>Prepare</code></a> and every test case actually run; then it
+      routes the outcome into <code>passCount</code>, <code>failedTests</code> or <code>invalidTests</code>, and merges
+      that collection's warnings and errors into the environment's own lists.</li>
+  <li><code>Report()</code> prints the tally — total registered, done, invalid, pass, fail — followed by the invalid,
+      failed, error and warning blocks, and finishes by flushing the logger.</li>
+</ol>
+
+<p>
+  It is entirely synchronous and single-threaded from the caller's point of view: <code>Start</code> does not return
+  until the last collection's report line has been printed. The word "Start" therefore describes the test run, not
+  this call — there is nothing to poll and nothing to wait for. Whatever thread calls it is the thread the collections
+  run on, which in the engine is a worker task on the base task stream rather than the main thread.
+</p>
+
+<div class="gap">
+  <strong>Only two of the five lists are cleared, so a second run reports two kinds of number at once.</strong>
+  <code>passCount</code> and <code>testedCount</code> keep counting up, and <code>warningMessages</code> and
+  <code>errorMessages</code> keep appending. So after a second <code>Start</code> the failure count is from this run
+  and the pass count is from every run, and the merged message blocks repeat everything printed before. The header
+  comment on <code>GetFailureCount</code> documents the clearing rule for the two lists it clears and is silent about
+  the rest; a harness that calls <code>Start</code> twice has to read that asymmetry off the source.
+</div>
+
+<div class="note">
+  <strong>The per-entry null check cannot fire through the public API.</strong> Each step asserts its entry non-null
+  with <a href="../../Core/index.html#functions"><code>Assert</code></a>, but the only way an entry gets into
+  <code>tests</code> is <a href="add-test-collection.html"><code>AddTestCollection</code></a> storing the result of
+  <code>std::make_unique</code>, which is never null. It is a guard against corruption, not against a caller — and,
+  being <code>Assert</code>, it is silent in a Release configuration, where a null entry would be dereferenced anyway.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  <code>void</code>. The environment keeps its own verdict in the two counters, and the only failure signal the
+  language offers is
+  <a href="get-failure-count.html"><code>GetFailureCount</code></a> afterwards. <code>ExecuteTest</code>'s per-collection
+  <code>bool</code> is discarded here — the loop does not look at it, so nothing about an individual collection
+  survives the loop except as a name in a list.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<p>
+  Exactly one call site in the engine, at the end of the registration list and inside the task the suite runs on:
+</p>
+
+<p class="meta">From Engine/Test/UnitTestCollection.cpp</p>
+
+<pre><code>        testEnv.<span class="fn">AddTestCollection</span>&lt;<span class="ty">ComponentSystemTest</span>&gt;();
+        testEnv.<span class="fn">AddTestCollection</span>&lt;<span class="ty">TaskStreamAffinityTest</span>&gt;();
+        testEnv.<span class="fn">AddTestCollection</span>&lt;<span class="ty">TaskSystemTest</span>&gt;();
+        testEnv.<span class="fn">AddTestCollection</span>&lt;<span class="ty">RHICapabilitiesTest</span>&gt;();
+
+        testEnv.<span class="fn">Start</span>();
+
+        <span class="ty">Engine::Get</span>().<span class="fn">ShutDown</span>();</code></pre>
+
+<p>
+  The position matters: <code>Start</code> runs what is registered <em>at the moment it is called</em>, so a collection
+  added afterwards is never run by that <code>Start</code>. And the whole suite is enqueued as a task — see
+  <a href="../UnitTestCollection/run-tests.html"><code>RunTests</code></a> for how, and why the base task stream being
+  occupied for the entire run is a fact with consequences for a test that enqueues work of its own.
+</p>
+
+<p>
+  Because <code>Start</code> does not return early even for a failing collection, one failing test does not stop the
+  suite: every registered collection runs, and the failures are only visible at the end.
+</p>
+
+<footer class="prevnext">
+  <span><a href="index.html">← TestEnv</a></span>
+  <span><a href="index.html#methods">All TestEnv methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

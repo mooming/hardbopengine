@@ -72,10 +72,13 @@ Class properties — one row per alias **and** per data member:
 ```
 
 Badge vocabulary, so one page's row kind is the next page's row kind: `member type` for a `using` **declared
-inside a class**, `alias` for an alias at namespace scope, `private` for a data member, `private nested` for a
-nested class or struct, `alias template` for a member `template` alias, and `deleted` for a special member that
-exists only to be removed. `member type` on a namespace-scope alias is a false statement about scope, which is why
-the two are separate. Anything else needs a sentence in the cell — the badge is a label, not an explanation.
+inside a class**, `alias` for an alias at namespace scope, `public` for a data member in the interface, `private`
+for one that is not, `public nested` and `private nested` for nested classes and structs, `alias template` for a
+member `template` alias, and `deleted` for a special member that exists only to be removed. The public and private
+variants are not interchangeable: a `private` badge on a public nested guard states a falsehood about the
+interface, which is the one thing a property table exists to get right. `member type` on a namespace-scope alias
+is a false statement about scope, which is why the two are separate. Anything else needs a sentence in the cell —
+the badge is a label, not an explanation.
 
 For an entry that is macros only, `Name | Declaration | What it means` states the same thing twice, so the
 middle column becomes **where it is read**: `Name | Read by | What it controls`, with `Read by` naming the
@@ -237,6 +240,28 @@ If you run this over the whole site rather than your module: the standalone desi
 stylesheet, so their classes are not ours to check. A link into a `.md` file is likewise not checkable — GitHub
 generates heading fragments that no string search can find. Both read as failures and are not.
 
+### The outbound check cannot see the failure mode §8 warns about
+
+Rewriting a module page can delete an anchor that six other modules link to, and the script above only inspects
+links leaving your pages. Run this inbound scan too — it is the one that catches the mistake that hurts:
+
+```bash
+cd /Users/anav/atelier/hardbopengine && python3 - <<'PY'
+import re, os, glob
+mod='<your module>'
+broken=[]
+for p in glob.glob('docs/**/*.html', recursive=True):
+    if p.startswith(f'docs/{mod}'): continue
+    for h in sorted(set(re.findall(r'href="([^"]*index\.html#[^"]+)"', open(p).read()))):
+        f,frag=h.split('#',1)
+        t=os.path.normpath(os.path.join(os.path.dirname(p), f))
+        if f'docs/{mod}/index.html' not in t.replace('./','docs/') and f'/{mod}/index.html' not in t: continue
+        if not (os.path.isfile(t) and f'id="{frag}"' in open(t).read()):
+            broken.append((p, h)); print('BROKEN', p, '->', h)
+print(f'inbound links into docs/{mod}: {"all resolve" if not broken else str(len(broken))+" BROKEN"}')
+PY
+```
+
 ## 13. Exemplar to copy from
 
 - `docs/Container/Array/index.html` — class page
@@ -257,7 +282,30 @@ So: write each file as you finish thinking about it rather than assembling a bat
 section 12 every few pages so a failure costs pages instead of a module. Rewrite the module page in its own
 response — it is the longest single file in a job and the worst place to run out of room.
 
-## 15. Boundaries
+## 15. A module-level function with a real contract still gets a page
+
+"None — see the module functions" points a reader at a table, which is right for a one-line helper and wrong for
+the function carrying the module's most surprising contract — "this returns before any test runs", for instance.
+Where a module function's behaviour cannot be told in its table cell, give it a page **inside the folder of the
+entry whose header declares it**, named by the file rule: `docs/Test/UnitTestCollection/run-tests.html`. Keep the
+module page's functions table as it is, and let the row link to the page. Do not invent a function page for a
+getter-shaped free function that needs none.
+
+## 16. A claim about what compiles needs a compiler
+
+Pages state build consequences: "not active in Release", "a link error", "does not compile". Those are the most
+expensive claims on the site, because a reader acts on them by changing code. **Grep proves a name exists; only a
+compiler proves what it does.** If you assert a compile outcome, run the smallest program that isolates it —
+`c++ -std=c++2b -fsyntax-only probe.cpp` — and quote the diagnostic on the page. Two claims in this project were
+wrong in exactly this way and one was corrected by a three-line probe: a variadic `std::forward(args)...` was
+described as silently moving lvalue arguments, when `remove_reference_t<T>&` is a non-deduced context and the
+argument-taking form does not compile at all. Wrong in the reassuring direction, which is the direction that
+matters: "silently consumed" invites a workaround, "does not compile" tells the truth.
+
+Say "declared, never defined — a call does not link" only when you greped every translation unit. Say "this does
+not compile" only when you have seen the error.
+
+## 17. Boundaries
 
 - Touch only `docs/<your modules>/`. Never edit `Engine/`, `docs/assets/hbe-docs.css`, another module's pages,
   `README.md`, `AGENTS.md` or `JOURNAL.md`.

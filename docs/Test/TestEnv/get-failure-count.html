@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TestEnv::GetFailureCount — Test — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">TestEnv</a> methods</h3>
+  <ul class="methods">
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="get-env.html">GetEnv</a></li>
+    <li><a href="start.html">Start</a></li>
+    <li><a href="add-test-collection.html">AddTestCollection</a></li>
+    <li><a href="get-pass-count.html">GetPassCount</a></li>
+    <li><a class="current" href="get-failure-count.html">GetFailureCount</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Test</a> /
+  <a href="index.html">TestEnv</a> / GetFailureCount
+</p>
+
+<h1><span class="fn">GetFailureCount</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::TestEnv</span>
+  <span class="tag">Engine/Test/TestEnv.h</span>
+  <span class="tag">const noexcept</span>
+  <span class="tag">inline</span>
+  the number a build gate exits non-zero on — failed collections plus collections that never finished
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code><span class="cm">/// @brief Collections that ran and failed, plus any that never completed.</span>
+<span class="cm">/// @details Valid after Start(); Start() clears both lists on entry.</span>
+[[nodiscard]] <span class="kw">unsigned int</span> <span class="fn">GetFailureCount</span>() <span class="kw">const</span> <span class="kw">noexcept</span>
+{
+        <span class="kw">return</span> <span class="kw">static_cast</span>&lt;<span class="kw">unsigned int</span>&gt;(failedTests.size() + invalidTests.size());
+}</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Computed on demand from the two name lists rather than stored in a counter: collections that ran and reported an
+  error message, plus collections whose <a href="../TestCollection/start.html"><code>Start</code></a> never completed.
+  Unlike <a href="get-pass-count.html"><code>GetPassCount</code></a> there is nothing to accumulate —
+  <a href="start.html"><code>Start</code></a> empties both lists on entry, so what you read after a run describes that
+  run. The header's <code>@details</code> line states exactly that clearing rule.
+</p>
+
+<p>
+  The unit is again the collection, not the test case: the header says "Collections that ran and failed", and one
+  collection containing ten failures counts as one. It is the number <code>EngineTest</code> prints and the condition
+  it returns <code>1</code> on, which makes this the module's only exit-status contract.
+</p>
+
+<div class="note">
+  <strong>The two halves are not equally reachable.</strong> <code>invalidTests</code> requires a collection that is
+  not <a href="../TestCollection/is-done.html">done</a> after <code>Start</code> returned, and the engine is
+  exception-free — a collection that gets that far always sets <code>isDone</code>. So in a run that reaches the
+  summary this number is <code>failedTests.size()</code>, and the "plus any that never completed" half describes a
+  crash that took the process with it.
+</div>
+
+<div class="gap">
+  <strong>Zero failures is not evidence that anything was verified.</strong> Nothing ran, nothing was registered, and
+  every case's <code>lferr</code> was declined by the logger — all three answer zero here, and this is the number a CI
+  gate trusts. <code>Applications/EngineTest/TestMain.cpp</code> guards the widest of those holes directly, by
+  refusing to report success when the binary was compiled without <code>__UNIT_TEST__</code> at all, rather than
+  returning zero over an empty suite — see
+  <a href="../index.html#conditional-build">how the Test module is built</a>. The narrower holes, a collection that
+  registered no cases and a suite filtered quiet, are still visible only in the report's own counts.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr>
+    <td><code>unsigned int</code></td>
+    <td>
+      <code>failedTests.size() + invalidTests.size()</code>, narrowed from <code>size_t</code> by an explicit cast.
+      Zero before the first <a href="start.html"><code>Start</code></a>, since both lists start empty and the
+      constructor does not touch them. <code>[[nodiscard]]</code>
+    </td>
+  </tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p>The only consumer, and the only place a test result becomes a process exit status:</p>
+
+<p class="meta">From Applications/EngineTest/TestMain.cpp</p>
+
+<pre><code><span class="cm">// The suite runs as a task that shuts the engine down when it finishes, so the tallies</span>
+<span class="cm">// are only complete once Run() returns. A failing suite has to leave a non-zero exit</span>
+<span class="cm">// status behind: until now it always returned 0, which made the run impossible to gate on.</span>
+<span class="kw">const</span> <span class="ty">hbe::TestEnv</span>&amp; testEnv = <span class="ty">hbe::TestEnv</span>::<span class="fn">GetEnv</span>();
+<span class="kw">const unsigned int</span> failures = testEnv.<span class="fn">GetFailureCount</span>();
+
+<span class="kw">if</span> (failures &gt; <span class="nu">0</span>)
+{
+        std::cerr &lt;&lt; <span class="st">"EngineTest: "</span> &lt;&lt; failures &lt;&lt; <span class="st">" test collection(s) FAILED"</span> &lt;&lt; std::endl;
+        <span class="kw">return</span> <span class="nu">1</span>;
+}</code></pre>
+
+<p>
+  Both of those lines are why the environment has to be the
+  <a href="get-env.html"><code>GetEnv</code></a> singleton: the caller is <code>main</code>, several frames and one task
+  away from the code that ran the tests, and the only channel between them is this instance's two lists.
+</p>
+
+<p>
+  To find out <em>which</em> collections those failures were, there is no accessor — the names live in the private
+  <code>failedTests</code> vector and reach the outside world only as the report's
+  <code>= Failed Tests =====</code> block. See <a href="index.html#coverage">Coverage</a>.
+</p>
+
+<footer class="prevnext">
+  <span><a href="index.html">← TestEnv</a></span>
+  <span><a href="index.html#methods">All TestEnv methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

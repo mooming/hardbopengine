@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TestEnv::AddTestCollection — Test — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">TestEnv</a> methods</h3>
+  <ul class="methods">
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="get-env.html">GetEnv</a></li>
+    <li><a href="start.html">Start</a></li>
+    <li><a class="current" href="add-test-collection.html">AddTestCollection</a></li>
+    <li><a href="get-pass-count.html">GetPassCount</a></li>
+    <li><a href="get-failure-count.html">GetFailureCount</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Test</a> /
+  <a href="index.html">TestEnv</a> / AddTestCollection
+</p>
+
+<h1><span class="fn">AddTestCollection</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::TestEnv</span>
+  <span class="tag">Engine/Test/TestEnv.h</span>
+  <span class="tag">member template</span>
+  construct one collection into the registry — the type is a template argument, not a parameter
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code><span class="kw">template</span>&lt;<span class="kw">typename</span> T, <span class="kw">typename</span>... Types&gt;
+<span class="kw">void</span> <span class="fn">AddTestCollection</span>(Types&amp;&amp;... args)
+{
+        tests.<span class="fn">push_back</span>(std::make_unique&lt;T&gt;(std::<span class="fn">forward</span>(args)...));
+}</code></pre>
+
+<p>
+  Declared and defined in the header; this is the whole body.
+</p>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Builds a <code>T</code> in place, forwards <code>args</code> to its constructor, and appends the resulting
+  <code>std::unique_ptr&lt;TestCollection&gt;</code> to the registry. Two things follow from doing the construction
+  here rather than in <a href="start.html"><code>Start</code></a>: every registered collection exists before any of them
+  runs, and whatever
+  <a href="../../Memory/index.html#allocatorscope"><code>AllocatorScope</code></a> is open at the registration call is
+  where that construction allocates — not the per-case scope, which only exists once
+  <a href="../TestCollection/start.html"><code>Start</code></a> reaches the case loop.
+</p>
+
+<p>
+  <code>T</code> has to be a concrete <a href="../TestCollection/index.html"><code>TestCollection</code></a> subclass:
+  it is stored as a pointer to the base, so an abstract <code>T</code> — including <code>TestCollection</code> itself —
+  and anything not derived from it are compile errors. Registration order is execution order, and is also the order of
+  the report's blocks.
+</p>
+
+<p>
+  There is no duplicate guard. Calling it twice with the same <code>T</code> produces two independent instances, both
+  run, both counted, and both writing the same messages under the same log category — so a suite can report
+  <code>all 61 collections passed</code> over sixty collections' worth of work.
+</p>
+
+<div class="gap">
+  <strong>The pack is forwarded without its template arguments, so this template only works when there is nothing to
+  forward.</strong> The call is written <code>std::forward(args)...</code>, not
+  <code>std::forward&lt;Types&gt;(args)...</code>. <code>std::forward</code>'s parameter type is
+  <code>remove_reference_t&lt;T&gt;&amp;</code>, a non-deduced context, so the argument-taking form does not quietly
+  degrade into a move — <strong>it does not compile</strong>, failing with <em>no matching function for call to
+  'forward'</em> and <em>couldn't infer template argument</em>. An empty pack expands to no call at all, which is the
+  only reason this header has never broken the build: all sixty engine call sites are
+  <code>AddTestCollection&lt;SomeTest&gt;()</code>, and every collection the suite registers is
+  default-constructible, so there has never been an argument to forward.
+  <p>
+    What that costs a caller: the variadic signature advertises constructor arguments that cannot be passed. A
+    collection needing one cannot be registered until the header says <code>std::forward&lt;Types&gt;(args)...</code>.
+    The failure is loud rather than silent, which is the only good thing about it.
+  </p>
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr>
+    <td><code>T</code></td>
+    <td><em>template parameter</em></td>
+    <td>
+      A concrete, non-abstract subclass of
+      <a href="../TestCollection/index.html"><code>TestCollection</code></a> with an accessible constructor matching
+      <code>args</code>. It is named between the angle brackets, never passed as a value
+    </td>
+  </tr>
+  <tr>
+    <td><code>Types</code></td>
+    <td><em>template parameter</em></td>
+    <td>Deduced from the arguments; empty in every call the engine makes</td>
+  </tr>
+  <tr>
+    <td><em>(function parameters)</em></td>
+    <td><code>Types&amp;&amp;... args</code></td>
+    <td>
+      Constructor arguments for <code>T</code>, which would be forwarded to <code>std::make_unique&lt;T&gt;</code>.
+      In practice the pack must be <strong>empty</strong>: a non-empty pack does not compile, so every engine call
+      passes nothing — see the hazard above
+    </td>
+  </tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  <code>void</code>, and nothing to check: the registration either compiles or does not. There is no handle returned —
+  the registry is <code>private</code> and has no accessor — so after this call the collection is unaddressable except
+  by running the whole environment.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<p>The engine's whole suite is one such call per collection, in the order the author wanted them reported:</p>
+
+<p class="meta">From Engine/Test/UnitTestCollection.cpp</p>
+
+<pre><code>        <span class="kw">auto</span>&amp; testEnv = <span class="ty">TestEnv</span>::<span class="fn">GetEnv</span>();
+
+        testEnv.<span class="fn">AddTestCollection</span>&lt;<span class="ty">SystemAllocatorTest</span>&gt;();
+        testEnv.<span class="fn">AddTestCollection</span>&lt;<span class="ty">BaseAllocatorTest</span>&gt;();
+        testEnv.<span class="fn">AddTestCollection</span>&lt;<span class="ty">InlinePoolAllocatorTest</span>&gt;();
+        <span class="cm">// … fifty-six more …</span>
+        testEnv.<span class="fn">AddTestCollection</span>&lt;<span class="ty">RHICapabilitiesTest</span>&gt;();
+
+        testEnv.<span class="fn">Start</span>();</code></pre>
+
+<p>
+  Adding a module's tests to the suite is one line here plus the fixture in the module's own header, in its trailing
+  <code>#ifdef __UNIT_TEST__</code> region — see
+  <a href="../TestCollection/prepare.html">Prepare</a> for the other half. A collection that is declared and never
+  registered with the environment never runs, and nothing warns you that it exists.
+</p>
+
+<p>
+  The constructor-argument form is reachable in principle — <code>AddTestCollection&lt;MyTest&gt;(title)</code> — and
+  unused. It is documented as written, not as intended; the hazard box above is the reason it is not offered as the
+  way to do anything.
+</p>
+
+<footer class="prevnext">
+  <span><a href="index.html">← TestEnv</a></span>
+  <span><a href="index.html#methods">All TestEnv methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>
