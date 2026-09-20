@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Logger::Flush — Log — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">Logger</a> methods</h3>
+  <ul class="methods">
+    <li><a href="get.html">Get</a></li>
+    <li><a href="get-name.html">GetName</a></li>
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+    <li><a href="start-task.html">StartTask</a></li>
+    <li><a href="stop-task.html">StopTask</a></li>
+    <li><a href="is-drain-task-running.html">IsDrainTaskRunning</a></li>
+    <li><a href="set-filter.html">SetFilter</a></li>
+    <li><a href="add-log.html">AddLog</a></li>
+    <li><a class="current" href="flush.html">Flush</a></li>
+    <li><a href="report-memory-configuration.html">ReportMemoryConfiguration</a></li>
+    <li><a href="wait-for-flush.html">WaitForFlush</a></li>
+    <li><a href="process-buffer.html">ProcessBuffer</a></li>
+    <li><a href="flush-buffer.html">FlushBuffer</a></li>
+    <li><a href="write-log.html">WriteLog</a></li>
+    <li><a href="print-std-io.html">PrintStdIO</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Log</a> /
+  <a href="index.html">Logger</a> / Flush
+</p>
+
+<h1><span class="fn">Flush</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Logger</span>
+  <span class="tag">Engine/Log/Logger.h</span>
+  <span class="tag">noexcept</span>
+  the only public way to ask for text on disk — and it is bounded, not guaranteed
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code><span class="kw">void</span> <span class="fn">Flush</span>() <span class="kw">noexcept</span>;</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>Two lines of dispatch, and the whole contract is in the question they ask:</p>
+
+<pre><code><span class="kw">if</span> (std::this_thread::get_id() == threadID)
+{
+        <span class="fn">ProcessBuffer</span>();
+        <span class="kw">return</span>;
+}
+
+<span class="fn">WaitForFlush</span>();</code></pre>
+
+<p>
+  On the log thread, <code>Flush</code> is the drain: it writes everything queued, right now, and returns. Anywhere else
+  it delegates to <a href="wait-for-flush.html"><code>WaitForFlush</code></a>, which polls <code>needFlush</code> every
+  10 ms against a 1000 ms deadline — and which, when no drain task can run (never started, or already stopped), drains
+  inline itself instead of waiting, because then the caller is the only thread that could ever write the queue.
+</p>
+
+<p>
+  So <code>Flush</code> never merely "requests" a flush: it either performs one or blocks until one has happened. What it
+  does <em>not</em> do is wait forever. If a second passes with the queue still unwritten, it writes a report straight to
+  standard error through the file-local emergency path and returns without draining — deliberately, because draining
+  while a live drain task is running would race on that task's buffers. The design intent, stated in the header, is that a
+  blocked or starved IO thread must not swallow the report that made you flush in the first place.
+</p>
+
+<div class="gap">
+  <strong>Returning does not prove your line was written.</strong> Three separate ways to leave <code>Flush</code> with text
+  still in memory: the one-second timeout just described; another thread's <a href="process-buffer.html">drain</a> winning
+  the <code>isDraining</code> claim, since a caller that cannot claim it returns having done nothing; and the header's own
+  caveat that the handshake "guarantees an empty queue at some instant, not the caller's own prefix" — a producer that
+  enqueues just after the queue empties can satisfy the wait that you are sitting in. Use <code>Flush</code> where losing a
+  line is survivable (a crash path, a threshold) and never as a checkpoint that says "the file now contains my line".
+</div>
+
+<div class="note">
+  <strong>The cost of this call depends entirely on which thread you are on.</strong> On the log thread it is one drain pass
+  — the file write plus the console write for each queued line. On any other thread it is, in the good case, one sleep
+  cycle of 10 ms while the drain catches up, and in the bad case a full second plus an stderr report. Two places inside
+  <a href="add-log.html"><code>AddLog</code></a> call it on an arbitrary producer thread: a
+  <a href="../ELogLevel/index.html"><code>FatalError</code></a>, and a queue that reached
+  <a href="../../Config/index.html#engineconfig"><code>Config::LogForceFlushThreshold</code></a>. A subsystem that logs
+  faster than the drain can write therefore pays a flush every 8192 lines, on the producing thread.
+</div>
+
+<div class="note">
+  <strong>The report on giving up goes somewhere else.</strong> It is written to standard error, not to the log file, and it
+  names its own category (<a href="get-name.html"><code>Logger</code></a>) and level (<code>Error</code>). That is the only
+  evidence the drain was alive but unresponsive, and it is not in the file a post-mortem reader opens — capture standard
+  error in any run where a hang matters.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  <code>void</code>. No status, no timeout indication, no count of lines written. The only way to detect the give-up case
+  from code is to look at what it produced: an <code>Error</code> line on standard error mentioning the timeout, and a queue
+  that is still non-empty afterwards — and the queue itself is private, so nothing here can tell you that.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<p>Choosing between stopping the drain and flushing it, from the engine's signal handler:</p>
+
+<p class="meta">From Engine/Engine/Engine.cpp</p>
+
+<pre><code><span class="kw">void</span> SignalHandler(<span class="kw">int</span> sigNum)
+{
+        <span class="kw">auto</span>&amp; engine = <span class="ty">Engine</span>::<span class="fn">Get</span>();
+        <span class="kw">if</span> (engine.<span class="fn">GetLogger</span>().<span class="fn">IsDrainTaskRunning</span>())
+        {
+                engine.<span class="fn">GetLogger</span>().<span class="fn">StopTask</span>(engine.<span class="fn">GetTaskSystem</span>());
+        }
+        <span class="kw">else</span>
+        {
+                engine.<span class="fn">GetLogger</span>().<span class="fn">Flush</span>();
+        }
+        ...
+}</code></pre>
+
+<p>And the in-module uses, which show how the call is normally reached without being written by hand:</p>
+
+<p class="meta">From Engine/Log/Logger.cpp</p>
+
+<pre><code><span class="kw">if</span> (unlikely(level &gt;= <span class="ty">ELogLevel</span>::FatalError))
+{
+        <span class="fn">Flush</span>();
+        <span class="fn">debugBreak</span>();
+        <span class="fn">Assert</span>(<span class="kw">false</span>);
+
+        <span class="kw">return</span>;
+}
+...
+<span class="kw">if</span> (bufferSize &gt;= Config::LogForceFlushThreshold)
+{
+        <span class="fn">Flush</span>();
+}</code></pre>
+
+<p>
+  For a synchronous write you can actually rely on, there are two levers outside this function: log at
+  <code>Warning</code> or above, which makes the drain flush the file stream after the batch
+  (<a href="process-buffer.html"><code>ProcessBuffer</code></a>), or build with
+  <a href="../../Config/index.html#buildconfig"><code>LOG_FORCE_PRINT_IMMEDIATELY</code></a> set, which removes the queue
+  from the picture entirely and prints each line at its call site — at the cost of the ordering guarantees, since every
+  thread then writes on its own.
+</p>
+
+<footer class="prevnext">
+  <span><a href="index.html">← Logger</a></span>
+  <span><a href="index.html#methods">All Logger methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

@@ -165,6 +165,31 @@ class nor a namespace and had no honest row kind or heading; its free functions 
 links into the rewritten Engine index resolve — `#engine` from Log, Test, Resource, Renderer and Config,
 `#einitlevel` from Memory, OSAL, Log and Resource.
 
+**Log landed — 36 pages, ten corrections, and one bug I confirmed line by line.** `Logger.cpp:230` stores
+`isRunning = true` *before* `CreateTask`; when `FindTask` then returns `nullptr` the function logs "log lines are
+flushed inline by whoever produces them" and returns — leaving `isRunning` true with no drain task that will ever
+run. So the message that is supposed to reassure is the symptom, and every later `Flush` waits the full
+`MaxFlushWaitMs` of 1000 ms for a task that does not exist. A log message describing a degraded mode is not
+evidence of the mode; the flag is.
+
+Three other corrections changed what the module page told a caller. It claimed logging "keeps working in a process
+that never constructed an Engine" and that the logger does not reach `Engine::Get()` — `Logger.cpp:327,576` and
+`LogLine.cpp:55,72` all call `Engine::Get()`; only `LogUtil` and the null-instance `EmergencyLog` path are
+engine-free, which is the opposite of the safety the page advertised. `ReportMemoryConfiguration` is wrapped in
+`#if PROFILE_ENABLED` in header and source, so in a default build it is not a member and calling it is a compile
+error. And `PrintArgs` ends the line on the **last** argument, not the first — its base case is
+`std::cout << arg << std::endl` — declared in an unnamed namespace at *global* scope, outside `hbe`.
+
+Worth a note: `PrintArgs.h:19` writes `std::forward<TTypes>(args)...` correctly. Two headers in this engine call
+the same function; one spells the template argument and one does not, and the one that does not is in the test
+framework I documented an hour earlier. The correct spelling was available both times.
+
+**Contract reconciliations from its report:** §9 and §15 contradicted each other — a namespace entry with
+function pages was told to write "None — see the module functions", which points a reader at a table linking back
+to the page they are on; §8 had no case for a sibling class in the same module, which `Logger` and `SimpleLogger`
+need on nearly every page. Its two other complaints (validator crash, no badge for a public data member) had
+already been fixed while it ran — stale reports are not defects, and it says so itself.
+
 ## Tasks become things the registry owns, addressed by identity (2026-09-19)
 
 **What landed**, as `3be27c3`: R7 with R22's sizing. `Engine/Core/TaskID.h` (`{index, generation}`) and

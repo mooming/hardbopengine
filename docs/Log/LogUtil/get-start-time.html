@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LogUtil::GetStartTime — Log — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">LogUtil</a> methods</h3>
+  <ul class="methods">
+    <li><a class="current" href="get-start-time.html">GetStartTime</a></li>
+    <li><a href="reset-start-time.html">ResetStartTime</a></li>
+    <li><a href="get-time-stamp-string.html">GetTimeStampString</a></li>
+    <li><a href="get-log-level-string.html">GetLogLevelString</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Log</a> /
+  <a href="index.html">LogUtil</a> / GetStartTime
+</p>
+
+<h1><span class="fn">GetStartTime</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::LogUtil</span>
+  <span class="tag">Engine/Log/LogUtil.h</span>
+  <span class="tag">noexcept</span>
+  the instant every log timestamp is measured from — and the first call is what fixes it
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>const <span class="ty">TTimePoint</span>&amp; <span class="fn">GetStartTime</span>() <span class="kw">noexcept</span>;</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Returns the module's zero point: <code>std::chrono::time_point&lt;std::chrono::steady_clock&gt;</code>, held as a
+  function-local static inside <code>LogUtil.cpp</code> and created on first call.
+  <a href="get-time-stamp-string.html"><code>GetTimeStampString</code></a> subtracts it from a line's instant, so
+  this is the number that decides what "0:0:0.000" means in your output.
+</p>
+
+<p>
+  The call is not read-only. The static initialises to <code>steady_clock::now()</code> the first time the
+  function runs, so the first caller in the process — whichever that happens to be — silently establishes the
+  epoch. <a href="../Logger/constructors.html"><code>Logger</code>'s constructor</a> exploits exactly this: it
+  calls <code>LogUtil::GetStartTime();</code> and throws the reference away, purely so the epoch exists before
+  the first line can be timestamped.
+</p>
+
+<div class="note">
+  <strong>A reference, not a snapshot.</strong> The same object is returned before and after
+  <a href="reset-start-time.html"><code>ResetStartTime</code></a>, so a reference held across a reset reads the
+  <em>new</em> instant. Copy the value if you need the old zero point — and note that no API hands you a way to
+  put it back.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr>
+    <td><a href="index.html#properties"><code>const TTimePoint&amp;</code></a></td>
+    <td>
+      The live epoch object, not a copy of it. Static storage duration, and <code>std::chrono::time_point</code>
+      has no destructor worth sequencing, so the reference stays valid through shutdown — but its <em>value</em>
+      changes if anything calls <a href="reset-start-time.html"><code>ResetStartTime</code></a>. Not
+      <code>[[nodiscard]]</code>, which is why the discard inside the <code>Logger</code> constructor compiles
+      without a warning
+    </td>
+  </tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p>
+  The call with no argument and no use of the result, whose whole purpose is to create the epoch at logger
+  construction:
+</p>
+
+<p class="meta">From Engine/Log/Logger.cpp</p>
+
+<pre><code><span class="ty">Logger</span>::<span class="ty">Logger</span>(<span class="ty">Engine</span>&amp; engine, <span class="kw">const</span> <span class="kw">char</span>* path, <span class="kw">const</span> <span class="kw">char</span>* filename) <span class="kw">noexcept</span>
+        : allocator(<span class="st">"LoggerMemoryPool"</span>)
+        , inputAlloc(<span class="st">"LoggerInputPool"</span>)
+        , ...
+{
+        <span class="ty">Assert</span>(engine.<span class="fn">IsMemoryManagerReady</span>());
+
+        instance = <span class="kw">this</span>;
+        <span class="ty">LogUtil</span>::<span class="fn">GetStartTime</span>();              <span class="cm">// result discarded on purpose</span>
+        ...
+}</code></pre>
+
+<p>
+  Elapsed time inside a log statement, which is the only reason a caller normally wants the epoch at all:
+</p>
+
+<p class="meta">Illustrative — the repository computes elapsed time inside <a href="get-time-stamp-string.html"><code>GetTimeStampString</code></a> rather than at call sites.</p>
+
+<pre><code><span class="kw">auto</span> elapsed = std::chrono::steady_clock::now() - <span class="ty">hbe</span>::<span class="ty">LogUtil</span>::<span class="fn">GetStartTime</span>();
+
+log.<span class="fn">Out</span>([elapsed](<span class="kw">auto</span>&amp; ls)
+{
+        ls &lt;&lt; <span class="st">"shader compile took "</span>
+           &lt;&lt; std::chrono::duration_cast&lt;std::chrono::milliseconds&gt;(elapsed).<span class="fn">count</span>()
+           &lt;&lt; <span class="st">"ms since log start"</span>;
+});</code></pre>
+
+<footer class="prevnext">
+  <span><a href="index.html">← LogUtil</a></span>
+  <span><a href="index.html#methods">All LogUtil methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

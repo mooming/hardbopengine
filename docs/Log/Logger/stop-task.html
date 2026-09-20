@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Logger::StopTask — Log — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">Logger</a> methods</h3>
+  <ul class="methods">
+    <li><a href="get.html">Get</a></li>
+    <li><a href="get-name.html">GetName</a></li>
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+    <li><a href="start-task.html">StartTask</a></li>
+    <li><a class="current" href="stop-task.html">StopTask</a></li>
+    <li><a href="is-drain-task-running.html">IsDrainTaskRunning</a></li>
+    <li><a href="set-filter.html">SetFilter</a></li>
+    <li><a href="add-log.html">AddLog</a></li>
+    <li><a href="flush.html">Flush</a></li>
+    <li><a href="report-memory-configuration.html">ReportMemoryConfiguration</a></li>
+    <li><a href="wait-for-flush.html">WaitForFlush</a></li>
+    <li><a href="process-buffer.html">ProcessBuffer</a></li>
+    <li><a href="flush-buffer.html">FlushBuffer</a></li>
+    <li><a href="write-log.html">WriteLog</a></li>
+    <li><a href="print-std-io.html">PrintStdIO</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Log</a> /
+  <a href="index.html">Logger</a> / StopTask
+</p>
+
+<h1><span class="fn">StopTask</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Logger</span>
+  <span class="tag">Engine/Log/Logger.h</span>
+  <span class="tag">public</span>
+  retire the drain task cooperatively, write the last batch, close the file
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code><span class="kw">void</span> <span class="fn">StopTask</span>(<span class="ty">TaskSystem</span>&amp; taskSys);</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  The drain task ends itself; <code>StopTask</code> only asks it to and then waits (see
+  <a href="start-task.html">StartTask's return-value trick</a>). Clearing
+  <a href="index.html#properties"><code>isRunning</code></a> is the request — a runnable in flight sees it on its next
+  iteration and reports its range complete instead of draining once more.
+</p>
+
+<p>Then:</p>
+
+<ol>
+  <li>The task is found by <a href="index.html#properties"><code>taskID</code></a>. If it is missing or reports
+    <code>HasDone()</code>, the id is released and the function <strong>returns immediately</strong> — no final line, no
+    final drain, no close.</li>
+  <li>Otherwise <code>drainTask-&gt;Wait()</code> blocks until the drain acknowledges, and the id is released.</li>
+  <li><code>threadID</code> is reset to a default-constructed id, so no thread is the log thread any more.</li>
+  <li>One last line is logged — <code>"Logger shall be terminated."</code> with an explicit end-line marker
+    (<a href="../../String/index.html#endline"><code>hendl</code></a>), unlike every other line in the engine, which
+    leaves the newline to the writer.</li>
+  <li><a href="process-buffer.html"><code>ProcessBuffer</code></a> is called directly, writing that line and whatever the
+    drain left behind to both destinations, and the file stream is flushed and closed.</li>
+</ol>
+
+<p>
+  After this call the logger is still a live object and still accepts
+  <a href="add-log.html"><code>AddLog</code></a>: the queue simply has no drainer, so lines accumulate in memory until
+  the <a href="destructor.html">destructor</a> writes them. The exception is a line at
+  <a href="../ELogLevel/index.html"><code>FatalError</code></a>, which calls <a href="flush.html"><code>Flush</code></a>
+  itself and, with no drain task, will drain inline.
+</p>
+
+<div class="gap">
+  <strong>Called with no drain task running, it blocks forever.</strong> The header says so in terms:
+  <a href="is-drain-task-running.html"><code>IsDrainTaskRunning</code></a> exists precisely because
+  <code>StopTask</code> "called without a task … waits for something that was never started". The registry lookup and the
+  <code>HasDone()</code> test catch a task that never existed or already finished, but a logger whose task the registry
+  could not track (the failure branch in <a href="start-task.html"><code>StartTask</code></a>) still has
+  <code>isRunning</code> set, and that combination is exactly what the check in
+  <a href="../../Engine/index.html#engine">the engine's signal handler</a> guards against before it chooses between this
+  call and <a href="flush.html"><code>Flush</code></a>. Ask the question, then call.
+</div>
+
+<div class="gap">
+  <strong>The early-return branch skips the last two steps above.</strong> When the task is absent or already done, the
+  function releases the id and leaves — the final log line is never enqueued, no final drain runs, and
+  <code>outFileStream</code> is not flushed or closed here. Whatever was queued stays queued until
+  <a href="destructor.html">the destructor</a>, and the file is closed by the stream's own destructor with no explicit
+  flush first. So calling <code>StopTask</code> twice, or calling it after the drain has already retired, is not a
+  no-op: it silently loses the shutdown flush that a caller reasonably believes it performed.
+</div>
+
+<div class="note">
+  <strong>Two lines are written by this function and by nobody else.</strong> Its own final line and anything still in
+  the queue at that moment. If you want your <em>own</em> last message in the file, log it before calling
+  <code>StopTask</code> — after it, you are writing into a queue with no drainer, and the level parameter and category
+  filters are still consulted, so a suppressed line never appears at all.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr>
+    <td><code>taskSys</code></td>
+    <td><a href="../../Core/index.html#tasksystem"><code>TaskSystem&amp;</code></a></td>
+    <td>
+      The same system passed to <a href="start-task.html"><code>StartTask</code></a>, still able to resolve
+      <code>FindTask</code>, <code>Wait</code> and <code>ReleaseTask</code> for that id. It is also used by the final
+      <a href="add-log.html"><code>AddLog</code></a>, which reads the IO stream's existence through it before deciding to
+      wake it
+    </td>
+  </tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  <code>void</code>. Nothing distinguishes "drain task waited for and released" from "id released, no drain performed" —
+  the difference is visible only in whether the log file got its final bytes. Treat a successful return as "I asked the
+  drain to stop", and rely on <a href="destructor.html">the destructor</a> or an explicit
+  <a href="flush.html"><code>Flush</code></a> if the write itself must be certain.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<p>The only caller in the repository — and it asks first whether a drain task exists:</p>
+
+<p class="meta">From Engine/Engine/Engine.cpp</p>
+
+<pre><code><span class="kw">void</span> SignalHandler(<span class="kw">int</span> sigNum)
+{
+        <span class="kw">auto</span>&amp; engine = <span class="ty">Engine</span>::<span class="fn">Get</span>();
+        <span class="kw">if</span> (engine.<span class="fn">GetLogger</span>().<span class="fn">IsDrainTaskRunning</span>())
+        {
+                engine.<span class="fn">GetLogger</span>().<span class="fn">StopTask</span>(engine.<span class="fn">GetTaskSystem</span>());
+        }
+        <span class="kw">else</span>
+        {
+                engine.<span class="fn">GetLogger</span>().<span class="fn">Flush</span>();
+        }
+        ...
+}</code></pre>
+
+<p>
+  The shape to copy is the branch, not just the call: a logger that was constructed but never started has to be flushed
+  directly, because <code>StopTask</code> on it would wait for a task that does not exist. Note also that this handler
+  is running inside a signal — <code>Wait()</code>, a mutex and a file write are all doing work that a signal context
+  does not normally permit; the engine accepts that because losing the crash report is the alternative.
+</p>
+
+<footer class="prevnext">
+  <span><a href="index.html">← Logger</a></span>
+  <span><a href="index.html#methods">All Logger methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

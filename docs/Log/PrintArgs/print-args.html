@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PrintArgs — Log — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">PrintArgs</a> methods</h3>
+  <ul class="methods">
+    <li><a class="current" href="print-args.html">PrintArgs</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Log</a> /
+  <a href="index.html">PrintArgs</a> / PrintArgs
+</p>
+
+<h1><span class="fn">PrintArgs</span></h1>
+<p class="subtitle">
+  <span class="tag">Engine/Log/PrintArgs.h</span>
+  <span class="tag">2 overloads</span>
+  <span class="tag">noexcept</span>
+  <span class="tag">internal linkage, per translation unit</span>
+  stream every argument to <code>std::cout</code>, one line, no separators
+</p>
+
+<h2 id="signature">Signatures</h2>
+
+<p>Verbatim from the header, including the enclosing scope:</p>
+
+<pre><code><span class="kw">namespace</span>                            <span class="cm">// unnamed, at global scope</span>
+{
+<span class="kw">template</span>&lt;<span class="kw">typename</span> T&gt;
+<span class="kw">static void</span> <span class="fn">PrintArgs</span>(<span class="kw">const</span> T&amp; arg) <span class="kw">noexcept</span>;          <span class="cm">// base case: prints, then std::endl</span>
+
+<span class="kw">template</span>&lt;<span class="kw">typename</span> T, <span class="kw">typename</span>... TTypes&gt;
+<span class="kw">static void</span> <span class="fn">PrintArgs</span>(<span class="kw">const</span> T&amp; arg, TTypes&amp;&amp;... args) <span class="kw">noexcept</span>;   <span class="cm">// prints arg, recurses on the rest</span>
+
+} <span class="cm">// namespace</span></code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>Both bodies are two lines each:</p>
+
+<pre><code>std::cout &lt;&lt; arg &lt;&lt; std::endl;                          <span class="cm">// one argument</span>
+
+std::cout &lt;&lt; arg;                                       <span class="cm">// two or more</span>
+PrintArgs(std::forward&lt;TTypes&gt;(args)...);</code></pre>
+
+<p>
+  Recursion peels the first argument off on each call, so the arguments appear left to right and
+  <strong>the last one ends the line</strong>. Nothing is written between them: <code>PrintArgs(<span class="st">"a"</span>, <span class="st">"b"</span>, <span class="nu">3</span>)</code>
+  produces <code>ab3</code> followed by a newline. Separators are arguments, which is exactly what the one structured call site in the engine does (see the
+  <code>Exception</code> example below).
+</p>
+
+<p>
+  The constraint on every argument is streamability — an <code>operator&lt;&lt;</code> taking <code>std::ostream&amp;</code> must be findable for the type. That
+  is a looser and different set than the logger's, which accepts anything a lambda can push into
+  <a href="../../String/index.html#inlinestringbuilder"><code>InlineStringBuilder</code></a>: a type streamable to <code>std::ostream</code> but not to the
+  engine's builder works here and not there, and the reverse is equally true.
+</p>
+
+<div class="gap">
+  <strong>printf-style arguments are printed literally, side by side with the values they were meant to consume.</strong> The assert family forwards its
+  varargs straight here, and this function has no conversion specifications — so the call in
+  <code>Engine/Log/Logger.cpp</code>, <code>Assert(<span class="kw">false</span>, "Invalid userdata %p", userData)</code>, writes
+  <code>[Assert] Invalid userdata %p0x7ffee4</code>. Every variadic assert in the engine that uses <code>%d</code>, <code>%p</code> or <code>%s</code> reads this
+  way in a crash log. Pass the message pre-built, or accept the literal; there is no <code>printf</code> anywhere in this path.
+</div>
+
+<div class="gap">
+  <strong><code>noexcept</code> on a call into a user-defined <code>operator&lt;&lt;</code>.</strong> Both overloads promise not to throw while doing the one thing
+  that can: streaming an arbitrary type, potentially into a stream in a failed state with exceptions enabled. A user stream operator that throws — or a
+  <code>std::cout</code> configured to throw on failure — turns the print of an assertion into <code>std::terminate</code> <em>before</em> the caller reaches its
+  own <code>debugBreak()</code> and <code>std::abort()</code>, so the report you were trying to print is the reason it never appears.
+</div>
+
+<div class="note">
+  <strong>Whether this prints at all depends on the caller's build configuration, not on this header.</strong> The assert family is compiled out of Release:
+  in that configuration <code>Assert(cond, args...)</code> is an empty inline function, so its arguments are never evaluated — the header of
+  <code>Core/Debug.h</code> calls this out explicitly, because it means an argument with a side effect happens in Debug and not in Release. The variadic
+  <code>PrintArgs</code> overloads themselves are always compiled; only the callers gate them.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr>
+    <td><code>arg</code></td>
+    <td><code>const T&amp;</code></td>
+    <td>Streamable to <code>std::ostream</code>. Bound as a const reference, so a temporary lives to the end of the full expression — which is long enough,
+        because the whole print happens inside this call</td>
+  </tr>
+  <tr>
+    <td><code>args</code></td>
+    <td><code>TTypes&amp;&amp;...</code></td>
+    <td>Only on the variadic overload. Each must be streamable; each is forwarded, so a reference argument reaches <code>std::cout</code> as the caller wrote
+        it</td>
+  </tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  <code>void</code>. The only output is the line on <code>std::cout</code>, and nothing reports failure: a stream that discards, a redirected standard output
+  that is closed, or a truncated write all look identical to success. There is no return value to check and no way to know whether anyone will read it.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<p>The single-argument form, from the assert that has nothing further to say:</p>
+
+<p class="meta">From Engine/Core/Debug.h</p>
+
+<pre><code><span class="kw">inline void</span> Assert(<span class="kw">bool</span> shouldBeTrue) <span class="kw">noexcept</span>
+{
+        <span class="kw">if</span> (likely(shouldBeTrue))
+        {
+                <span class="kw">return</span>;
+        }
+
+        <span class="fn">FlushLogs</span>();
+        <span class="fn">PrintArgs</span>(<span class="st">"[Assert] Please check it."</span>);
+
+        <span class="fn">debugBreak</span>();
+        std::abort();
+}</code></pre>
+
+<p>And the variadic form, where the separators are passed as arguments because nothing adds them — the file/line prefix of an exception:</p>
+
+<p class="meta">From Engine/Core/Exception.h</p>
+
+<pre><code><span class="kw">template</span>&lt;<span class="kw">typename</span>... Types&gt;
+<span class="kw">inline</span> <span class="ty">Exception</span>(<span class="kw">const char</span>* file, <span class="kw">int</span> line, Types&amp;&amp;... args)
+{
+        <span class="kw">using namespace</span> std;
+        <span class="fn">PrintArgs</span>(file, <span class="st">":"</span>, line, forward&lt;Types&gt;(args)...);
+}</code></pre>
+
+<p>
+  Note what the assert path does first: <code>FlushLogs()</code>, which calls <code>Engine::FlushLog()</code> and thus
+  <a href="../Logger/flush.html"><code>Logger::Flush</code></a> (<a href="../../Engine/index.html#engine">Engine</a>). The ordering that produces is worth
+  internalising — queued lines are pushed out, <em>then</em> this line is printed, so an assertion's own text can appear after older lines it was involved
+  with but before any line still in the queue when it fired.
+</p>
+
+<footer class="prevnext">
+  <span><a href="index.html">← PrintArgs</a></span>
+  <span><a href="index.html#methods">All PrintArgs methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

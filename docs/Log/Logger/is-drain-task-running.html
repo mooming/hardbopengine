@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Logger::IsDrainTaskRunning — Log — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">Logger</a> methods</h3>
+  <ul class="methods">
+    <li><a href="get.html">Get</a></li>
+    <li><a href="get-name.html">GetName</a></li>
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+    <li><a href="start-task.html">StartTask</a></li>
+    <li><a href="stop-task.html">StopTask</a></li>
+    <li><a class="current" href="is-drain-task-running.html">IsDrainTaskRunning</a></li>
+    <li><a href="set-filter.html">SetFilter</a></li>
+    <li><a href="add-log.html">AddLog</a></li>
+    <li><a href="flush.html">Flush</a></li>
+    <li><a href="report-memory-configuration.html">ReportMemoryConfiguration</a></li>
+    <li><a href="wait-for-flush.html">WaitForFlush</a></li>
+    <li><a href="process-buffer.html">ProcessBuffer</a></li>
+    <li><a href="flush-buffer.html">FlushBuffer</a></li>
+    <li><a href="write-log.html">WriteLog</a></li>
+    <li><a href="print-std-io.html">PrintStdIO</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Log</a> /
+  <a href="index.html">Logger</a> / IsDrainTaskRunning
+</p>
+
+<h1><span class="fn">IsDrainTaskRunning</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Logger</span>
+  <span class="tag">Engine/Log/Logger.h</span>
+  <span class="tag">const noexcept</span>
+  <span class="tag">[[nodiscard]]</span>
+  whether a drain task exists — defined in the header, one acquire load and nothing else
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] <span class="kw">bool</span> <span class="fn">IsDrainTaskRunning</span>() <span class="kw">const</span> <span class="kw">noexcept</span>
+{
+        <span class="kw">return</span> isRunning.load(std::memory_order_acquire);
+}</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  The only logger method with a body in the header. It loads
+  <a href="index.html#properties"><code>isRunning</code></a>, which <a href="start-task.html"><code>StartTask</code></a>
+  sets and <a href="stop-task.html"><code>StopTask</code></a> clears, and returns. No lock, no task-system call, no memory
+  allocation.
+</p>
+
+<p>
+  Its reason for existing is a specific decision at shutdown: <a href="stop-task.html"><code>StopTask</code></a> waits for
+  the drain task to acknowledge, so calling it when none is running blocks forever. The header says this in as many words —
+  the answer "lives here rather than in a flag elsewhere" because a caller weighing <code>StopTask</code> against a plain
+  <a href="flush.html"><code>Flush</code></a> has to ask it first.
+</p>
+
+<p>The header adds a thread-safety claim, and the code supports it: a single acquire load with no other side effect is
+readable from any thread, and the header goes as far as naming a signal handler. <a href="../../Engine/index.html#engine">The
+engine's</a> is a real caller of exactly that kind.</p>
+
+<div class="note">
+  <strong>Three similar questions, three different answers.</strong> This one is not
+  <a href="flush.html">"is the queue empty"</a>, which is <code>needFlush</code> and is private. It is not
+  <em>"is a drain in progress right now"</em> either — that is <code>isDraining</code>, the buffer claim, also private. And it
+  is not "does the logger exist": <a href="../../Engine/index.html#engine"><code>Engine::IsLoggerReady</code></a> is set by
+  <a href="constructors.html">the constructor</a> and stays true whether or not a drain task was ever started. The one
+  question this answers is whether <a href="start-task.html"><code>StartTask</code></a> has run and
+  <a href="stop-task.html"><code>StopTask</code></a> has not.
+</div>
+
+<div class="gap">
+  <strong><code>true</code> does not prove the drain is capable of running.</strong> <code>isRunning</code> is a flag, not a
+  poll of the task registry. In the failure branch of <a href="start-task.html"><code>StartTask</code></a> — where the
+  registry could not track the task — the flag was already set and is never cleared, so this reports
+  <code>true</code> while nothing will ever drain, and a caller that trusts it picks <code>StopTask</code> over
+  <code>Flush</code> and waits on a task nobody owns. Symmetrically, a drain task that exists but is starved still answers
+  <code>true</code>; that is the case <a href="flush.html"><code>Flush</code></a> survives by timing out.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr>
+    <td><code>bool</code></td>
+    <td>
+      <code>true</code> between <a href="start-task.html"><code>StartTask</code></a> and
+      <a href="stop-task.html"><code>StopTask</code></a>, <code>false</code> before and after.
+      <code>[[nodiscard]]</code>: the value is a decision input, so reading and discarding it is always a bug. Treat it as
+      "has logging been started", never as "will my line be written"
+    </td>
+  </tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p>The one call site, deciding how to get a crash report out:</p>
+
+<p class="meta">From Engine/Engine/Engine.cpp</p>
+
+<pre><code><span class="kw">void</span> SignalHandler(<span class="kw">int</span> sigNum)
+{
+        <span class="kw">auto</span>&amp; engine = <span class="ty">Engine</span>::<span class="fn">Get</span>();
+        <span class="kw">if</span> (engine.<span class="fn">GetLogger</span>().<span class="fn">IsDrainTaskRunning</span>())
+        {
+                engine.<span class="fn">GetLogger</span>().<span class="fn">StopTask</span>(engine.<span class="fn">GetTaskSystem</span>());
+        }
+        <span class="kw">else</span>
+        {
+                engine.<span class="fn">GetLogger</span>().<span class="fn">Flush</span>();
+        }
+        ...
+}</code></pre>
+
+<p>
+  The pairing is the pattern: stop the drain when there is one to stop — which is also the path that flushes and closes the
+  file — and flush directly when there is not, because <a href="wait-for-flush.html"><code>WaitForFlush</code></a> only
+  drains inline once it has established that no drain task can run.
+</p>
+
+<footer class="prevnext">
+  <span><a href="index.html">← Logger</a></span>
+  <span><a href="index.html#methods">All Logger methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

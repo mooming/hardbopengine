@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Logger — Log — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="#description">Class description</a></li>
+    <li><a href="#template">Template parameters</a></li>
+    <li><a href="#properties">Class properties</a></li>
+    <li><a href="#methods">Class methods</a></li>
+    <li><a href="#non-member">Non-member helpers</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+
+  <h3>Methods</h3>
+  <ul class="methods">
+    <li><a href="get.html">Get</a></li>
+    <li><a href="get-name.html">GetName</a></li>
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+    <li><a href="start-task.html">StartTask</a></li>
+    <li><a href="stop-task.html">StopTask</a></li>
+    <li><a href="is-drain-task-running.html">IsDrainTaskRunning</a></li>
+    <li><a href="set-filter.html">SetFilter</a></li>
+    <li><a href="add-log.html">AddLog</a></li>
+    <li><a href="flush.html">Flush</a></li>
+    <li><a href="report-memory-configuration.html">ReportMemoryConfiguration</a></li>
+    <li><a href="wait-for-flush.html">WaitForFlush</a></li>
+    <li><a href="process-buffer.html">ProcessBuffer</a></li>
+    <li><a href="flush-buffer.html">FlushBuffer</a></li>
+    <li><a href="write-log.html">WriteLog</a></li>
+    <li><a href="print-std-io.html">PrintStdIO</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Log</a> / Logger
+</p>
+
+<h1 id="logger">Logger</h1>
+<p class="subtitle">
+  <span class="tag">Engine/Log/Logger.h</span>
+  <span class="tag">namespace hbe</span>
+  <span class="tag">final</span>
+  <span class="tag">16 methods</span>
+  one queued sink per process: producers format and hand over, one drain thread writes the file and the console
+</p>
+
+<h2 id="description">Class description</h2>
+
+<p>
+  <code>Logger</code> is the queue between a log statement and its destinations. A producer formats its text into
+  an inline buffer on its own thread, and
+  <a href="add-log.html"><code>AddLog</code></a> appends a <a href="../LogLine/index.html"><code>LogLine</code></a>
+  to <a href="#properties"><code>inputBuffer</code></a> under <code>inputLock</code> — then returns. A drain task
+  on <a href="../../Core/index.html#taskstream">the IO task stream</a> runs
+  <a href="process-buffer.html"><code>ProcessBuffer</code></a>, which swaps the queue into
+  <code>swapBuffer</code>, renders each line, and hands the batch to two output functions: the log file and the
+  engine console.
+</p>
+
+<p>
+  There is exactly one live instance, and the type makes that structural rather than a convention: it is
+  <code>final</code>, its copy and move constructor and assignment are <code>= delete</code>, and its constructor
+  publishes <code>this</code> into the static <a href="#properties"><code>instance</code></a> while its destructor
+  clears it. <a href="constructors.html">The constructor</a> takes an <code>Engine&amp;</code> because it needs the
+  memory manager to be ready and calls <code>Engine::SetLoggerReady()</code> when it is done — <a href="../index.html">this module</a>
+  has no instance registry of its own; <a href="../../Engine/index.html#engine">Engine</a> holds a
+  <code>Logger</code> as a member.
+</p>
+
+<p>
+  The queue is double-buffered, not lock-free. The lock is held only for the emplace and for the swap, so a log
+  statement's cost on a frame-critical thread is the formatting (which happens on the caller, in the caller's
+  callback) plus one short mutex hold.
+</p>
+
+<div class="note">
+  <strong>Two log lines are not one string.</strong> A line is category, level, thread name, an instant and text;
+  the prefix is assembled at drain time in
+  <a href="process-buffer.html"><code>ProcessBuffer</code></a>, not at the call site. That is why a line's timestamp
+  is when it was <em>produced</em> even though the file is written later, and why changing the line format is one
+  function rather than a hunt through call sites.
+</div>
+
+<div class="gap">
+  <strong>The log file is truncated when the logger is constructed.</strong>
+  <a href="constructors.html">The constructor</a> calls <code>outFileStream.open(logPath.c_str())</code> with the
+  default open mode, which for <code>std::ofstream</code> truncates: relaunching a process discards the previous
+  run's log. There is no append mode, no rotation and no size limit anywhere in this module, so a long-running
+  build grows one file until the disk refuses.
+</div>
+
+<h2 id="template">Template parameters</h2>
+
+<p>None — <code>Logger</code> is not a template. Its configurable behaviour is the
+  <a href="../SimpleLogger/index.html"><code>SimpleLogger</code></a> it hands out and the filter you install with
+  <a href="set-filter.html"><code>SetFilter</code></a>, neither of which is parameterised on the logger type.</p>
+
+<h2 id="properties">Class properties</h2>
+
+<p>
+  All data members are private; the aliases are the public vocabulary callers write signatures with. The three
+  buffer types are the reason the queue can be swapped in one operation.
+</p>
+
+<table>
+  <tr><th>Name</th><th>Declaration</th><th>What it means</th></tr>
+  <tr>
+    <td><code>TString</code></td>
+    <td><code>using TString = hbe::HString;</code></td>
+    <td>
+      <span class="badge">member type</span> An <code>std::basic_string</code> over
+      <a href="../../Memory/index.html#allocators"><code>DefaultAllocator</code></a> (see
+      <a href="../../HSTL/index.html#hstring">HSTL: HString</a>). It is the type of a <em>rendered</em> line, and of
+      <code>logPath</code> — so it draws on whatever allocator scope is open at the moment of formatting
+    </td>
+  </tr>
+  <tr>
+    <td><code>TLogBuffer</code></td>
+    <td><code>using TLogBuffer = hbe::HVector&lt;LogLine&gt;;</code></td>
+    <td>
+      <span class="badge">member type</span> The queue type, used twice: <code>inputBuffer</code> and
+      <code>swapBuffer</code>. <code>HVector</code> of <code>LogLine</code> by value, which is only affordable
+      because <a href="../LogLine/constructors.html"><code>LogLine</code>'s move constructor</a> is
+      <code>noexcept</code>
+    </td>
+  </tr>
+  <tr>
+    <td><code>TTextBuffer</code></td>
+    <td><code>using TTextBuffer = hbe::HVector&lt;TString&gt;;</code></td>
+    <td>
+      <span class="badge">member type</span> One batch of finished lines. It is what the output functions receive,
+      so a batch is always written to both destinations in the same order
+    </td>
+  </tr>
+  <tr>
+    <td><code>TTimePoint</code></td>
+    <td><code>using TTimePoint = std::chrono::time_point&lt;std::chrono::steady_clock&gt;;</code></td>
+    <td>
+      <span class="badge">member type</span> The log clock, declared a third time
+      (<a href="../LogUtil/index.html#properties"><code>LogUtil::TTimePoint</code></a>,
+      <a href="../LogLine/index.html#properties"><code>LogLine::TTimePoint</code></a>); identical type, no shared
+      alias
+    </td>
+  </tr>
+  <tr>
+    <td><code>TLogStream</code></td>
+    <td><code>using TLogStream = InlineStringBuilder&lt;Config::LogOutputBuffer&gt;;</code></td>
+    <td>
+      <span class="badge">member type</span> The stream a log callback writes into — and the type behind the
+      public alias <a href="#non-member"><code>hbe::LogStream</code></a>. <code>Config::LogOutputBuffer</code> is
+      <code>LogLineLength * 128</code>, i.e. 131072, so one of these is a 128 KiB object with an inline buffer (see
+      <a href="../../String/index.html#inlinestringbuilder">String: InlineStringBuilder</a>); see the hazard under
+      <a href="add-log.html"><code>AddLog</code></a> about where one is constructed
+    </td>
+  </tr>
+  <tr>
+    <td><code>TLogFunction</code></td>
+    <td><code>using TLogFunction = std::function&lt;void(TLogStream&amp;)&gt;;</code></td>
+    <td>
+      <span class="badge">member type</span> The shape of every log statement. It is a callback rather than a
+      string so that a level or filter that rejects the line skips the formatting entirely — the reason call sites
+      read <code>log.Out([](auto&amp; ls){ ls &lt;&lt; …; })</code>
+    </td>
+  </tr>
+  <tr>
+    <td><code>TOutputFunc</code></td>
+    <td><code>using TOutputFunc = std::function&lt;void(const TTextBuffer&amp;)&gt;;</code></td>
+    <td>
+      <span class="badge">member type</span> One destination. The constructor installs exactly two —
+      <a href="write-log.html"><code>WriteLog</code></a> then <a href="print-std-io.html"><code>PrintStdIO</code></a>
+      — and there is no public way to add or remove one
+    </td>
+  </tr>
+  <tr>
+    <td><code>TOutputFuncs</code></td>
+    <td><code>using TOutputFuncs = hbe::HVector&lt;TOutputFunc&gt;;</code></td>
+    <td><span class="badge">member type</span> The destination list, held by <code>flushFuncs</code> and iterated by <a href="flush-buffer.html"><code>FlushBuffer</code></a></td>
+  </tr>
+  <tr>
+    <td><code>TLogFilter</code></td>
+    <td><code>using TLogFilter = std::function&lt;bool(ELogLevel)&gt;;</code></td>
+    <td>
+      <span class="badge">member type</span> Per-category predicate: return <code>true</code> to keep the line. It
+      receives only the level — never the text — so a filter can never inspect what it is deciding, and it runs on
+      the <em>producing</em> thread inside <a href="add-log.html"><code>AddLog</code></a>
+    </td>
+  </tr>
+  <tr>
+    <td><code>TFilters</code></td>
+    <td><code>using TFilters = hbe::HUnorderedMap&lt;StaticString, TLogFilter&gt;;</code></td>
+    <td>
+      <span class="badge">member type</span> Category to filter, keyed by interned
+      <a href="../../String/index.html#staticstring"><code>StaticString</code></a> so a lookup costs a hash of an
+      id (see <a href="../../HSTL/index.html#hunorderedmap">HSTL: HUnorderedMap</a>)
+    </td>
+  </tr>
+  <tr>
+    <td><code>instance</code></td>
+    <td><code>static Logger* instance;</code></td>
+    <td>
+      <span class="badge">private static</span> The registry: set in the constructor, cleared in the destructor, read
+      by <a href="get.html"><code>Get</code></a> and by every
+      <a href="../SimpleLogger/out.html"><code>SimpleLogger::Out</code></a>. It is a plain pointer, not an atomic —
+      the reason <a href="../SimpleLogger/index.html">a SimpleLogger</a> that was obtained before construction still
+      works (it falls through to the emergency path) but the check itself is not synchronised
+    </td>
+  </tr>
+  <tr>
+    <td><code>allocator</code></td>
+    <td><code>MultiPoolAllocator allocator;</code></td>
+    <td>
+      <span class="badge">private</span> <code>"LoggerMemoryPool"</code>. Owns the rendered text and the
+      <code>swapBuffer</code>/<code>textBuffer</code> side of the queue, so the drain thread's allocations land in a
+      pool that only it touches. See <a href="../../Memory/index.html#allocators">Memory: allocators</a>
+    </td>
+  </tr>
+  <tr>
+    <td><code>inputAlloc</code></td>
+    <td><code>ThreadSafeMultiPoolAllocator inputAlloc;</code></td>
+    <td>
+      <span class="badge">private</span> <code>"LoggerInputPool"</code>. Opened as a scope inside the enqueue block
+      of <a href="add-log.html"><code>AddLog</code></a>, so lines are built in a pool designed for many threads
+    </td>
+  </tr>
+  <tr>
+    <td><code>taskID</code></td>
+    <td><code>TaskID taskID;</code></td>
+    <td>
+      <span class="badge">private</span> The drain task's registry identity, as returned by <code>CreateTask</code>
+      in <a href="start-task.html"><code>StartTask</code></a>. It is a handle, not the task — which is what lets
+      <a href="stop-task.html"><code>StopTask</code></a> find and wait for the task rather than assume it
+    </td>
+  </tr>
+  <tr>
+    <td><code>isRunning</code></td>
+    <td><code>std::atomic&lt;bool&gt; isRunning;</code></td>
+    <td>
+      <span class="badge">private</span> "A drain task exists." Set in <a href="start-task.html"><code>StartTask</code></a>,
+      cleared in <a href="stop-task.html"><code>StopTask</code></a>; read by
+      <a href="is-drain-task-running.html"><code>IsDrainTaskRunning</code></a>, by the drain runnable (a task that
+      finds this false returns without draining) and by
+      <a href="wait-for-flush.html"><code>WaitForFlush</code></a> to decide whether waiting can ever end
+    </td>
+  </tr>
+  <tr>
+    <td><code>hasInput</code></td>
+    <td><code>std::atomic&lt;bool&gt; hasInput;</code></td>
+    <td>
+      <span class="badge">private</span> "Something may be queued." Set with the enqueue, cleared by the drain after
+      the swap. A false reading lets a drain return without touching the buffers, which is the cheap path when
+      nothing is logging
+    </td>
+  </tr>
+  <tr>
+    <td><code>needFlush</code></td>
+    <td><code>std::atomic&lt;bool&gt; needFlush;</code></td>
+    <td>
+      <span class="badge">private</span> The handshake
+      <a href="wait-for-flush.html"><code>WaitForFlush</code></a> polls: set on every enqueue, cleared by the drain
+      when a pass finishes. It is not a count, so one drain can satisfy several waiters at once — including waiters
+      whose lines arrived after the drain started
+    </td>
+  </tr>
+  <tr>
+    <td><code>isDraining</code></td>
+    <td><code>std::atomic&lt;bool&gt; isDraining;</code></td>
+    <td>
+      <span class="badge">private</span> Claims exclusive rights to the swap and text buffers.
+      <a href="process-buffer.html"><code>ProcessBuffer</code></a> takes it with an exchange and returns immediately
+      if someone already holds it — the mechanism that makes an inline drain by a waiting thread safe rather than a
+      race on member state
+    </td>
+  </tr>
+  <tr>
+    <td><code>logPath</code></td>
+    <td><code>TString logPath;</code></td>
+    <td>
+      <span class="badge">private</span> Path and file name, combined once in the constructor: every
+      <code>\</code> becomes <code>/</code>, a separator is inserted if the path did not end in one, then the file
+      name is appended and the buffer shrunk. See the constructor's hazard about an empty path
+    </td>
+  </tr>
+  <tr>
+    <td><code>inputBuffer</code></td>
+    <td><code>TLogBuffer inputBuffer;</code></td>
+    <td><span class="badge">private</span> The receiving queue, reserved for 16 lines at construction. Written only under <code>inputLock</code></td>
+  </tr>
+  <tr>
+    <td><code>swapBuffer</code></td>
+    <td><code>TLogBuffer swapBuffer;</code></td>
+    <td>
+      <span class="badge">private</span> The drain's copy of a batch, obtained by <code>std::swap</code> under
+      <code>inputLock</code> — the whole handover is one pointer exchange, which is why producers are not waiting on
+      file I/O
+    </td>
+  </tr>
+  <tr>
+    <td><code>textBuffer</code></td>
+    <td><code>TTextBuffer textBuffer;</code></td>
+    <td><span class="badge">private</span> Rendered lines of the current batch; reserved to the batch size before the loop, cleared after both outputs have consumed it</td>
+  </tr>
+  <tr>
+    <td><code>flushFuncs</code></td>
+    <td><code>TOutputFuncs flushFuncs;</code></td>
+    <td>
+      <span class="badge">private</span> The destination list: file first, console second, both constructed with the
+      logger's pool scope open. Order here is the order a batch reaches the two destinations
+    </td>
+  </tr>
+  <tr>
+    <td><code>filters</code></td>
+    <td><code>TFilters filters;</code></td>
+    <td><span class="badge">private</span> Category filters, read and written under <code>filterLock</code></td>
+  </tr>
+  <tr>
+    <td><code>outFileStream</code></td>
+    <td><code>std::ofstream outFileStream;</code></td>
+    <td>
+      <span class="badge">private</span> The log file. Every <a href="write-log.html"><code>WriteLog</code></a> call
+      ends with <code>ofs.flush()</code>, and <a href="process-buffer.html"><code>ProcessBuffer</code></a>
+      additionally flushes the stream itself when a batch contained <a href="../ELogLevel/index.html"><code>Warning</code></a>
+      or above
+    </td>
+  </tr>
+  <tr>
+    <td><code>threadID</code></td>
+    <td><code>std::thread::id threadID;</code></td>
+    <td>
+      <span class="badge">private</span> Identity of the IO stream's thread, captured in
+      <a href="start-task.html"><code>StartTask</code></a> and reset in
+      <a href="stop-task.html"><code>StopTask</code></a>. Two decisions depend on it: whether
+      <a href="flush.html"><code>Flush</code></a> drains inline or waits, and whether an <code>Error</code>-or-above
+      line produced <em>by that thread</em> is written directly instead of queued. It is not an atomic — see the
+      hazard under <a href="#methods">thread safety</a>
+    </td>
+  </tr>
+  <tr>
+    <td><code>filterLock</code></td>
+    <td><code>std::mutex filterLock;</code></td>
+    <td><span class="badge">private</span> Guards <code>filters</code> for both <a href="set-filter.html"><code>SetFilter</code></a> and the lookup in <a href="add-log.html"><code>AddLog</code></a></td>
+  </tr>
+  <tr>
+    <td><code>inputLock</code></td>
+    <td><code>std::mutex inputLock;</code></td>
+    <td><span class="badge">private</span> Guards <code>inputBuffer</code>: the enqueue and the swap. The two are the only places a producer and the drain can be in the same container</td>
+  </tr>
+  <tr>
+    <td><code>Logger(const Logger&amp;)</code></td>
+    <td><code>Logger(const Logger&amp;) = delete;</code></td>
+    <td><span class="badge">deleted</span> A second instance would mean two publishers racing for <code>instance</code> and two owners of one file</td>
+  </tr>
+  <tr>
+    <td><code>Logger(Logger&amp;&amp;)</code></td>
+    <td><code>Logger(Logger&amp;&amp;) = delete;</code></td>
+    <td><span class="badge">deleted</span> Moving would move an open <code>std::ofstream</code>, two mutexes and a task identity that the registry still points at</td>
+  </tr>
+  <tr>
+    <td><code>operator=(const Logger&amp;)</code></td>
+    <td><code>Logger&amp; operator=(const Logger&amp;) = delete;</code></td>
+    <td><span class="badge">deleted</span> Same reason as the copy constructor; the four deletions together make the singleton a property of the type rather than a rule you must remember</td>
+  </tr>
+  <tr>
+    <td><code>operator=(Logger&amp;&amp;)</code></td>
+    <td><code>Logger&amp; operator=(Logger&amp;&amp;) = delete;</code></td>
+    <td><span class="badge">deleted</span> Move assignment removed, so no live logger can be overwritten out from under a <a href="../SimpleLogger/index.html"><code>SimpleLogger</code></a> that points at it</td>
+  </tr>
+</table>
+
+<h2 id="methods">Class methods</h2>
+
+<p>
+  Nine public names plus construction and destruction, and five private ones that decide what the public ones
+  promise. The private five get pages of their own because <a href="flush.html"><code>Flush</code></a> cannot be
+  understood without them: the bounded wait, the exclusive drain and the two destinations are where a caller's actual
+  guarantees live.
+</p>
+
+<table>
+  <tr><th>Method</th><th>Signature</th><th>What a caller depends on</th></tr>
+  <tr>
+    <td><a href="get.html">Get</a><span class="badge">2 overloads</span></td>
+    <td class="sig">static Logger&amp; Get() noexcept<br>static SimpleLogger Get(StaticString category, ELogLevel level = ELogLevel::Info) noexcept</td>
+    <td>Chosen by argument list: no argument yields the sink itself and <code>FatalAssert</code>s if none exists; a category yields a <a href="../SimpleLogger/index.html"><code>SimpleLogger</code></a> value by value, allocating nothing</td>
+  </tr>
+  <tr>
+    <td><a href="get-name.html">GetName</a></td>
+    <td class="sig">static StaticString GetName() noexcept</td>
+    <td>The compact class name of <code>Logger</code> itself, interned on first call — used as the category for the logger's own messages, which is how "Logger started." is attributable</td>
+  </tr>
+  <tr>
+    <td><a href="constructors.html">constructors</a></td>
+    <td class="sig">Logger(Engine&amp; engine, const char* path, const char* filename) noexcept</td>
+    <td>Opens the log file (truncating it), builds both pools and installs the two output functions. Copy and move are deleted</td>
+  </tr>
+  <tr>
+    <td><a href="destructor.html">destructor</a></td>
+    <td class="sig">~Logger() noexcept</td>
+    <td>Clears <code>instance</code> first, then drains once more and closes the file — so a line logged after this point cannot reach the file at all</td>
+  </tr>
+  <tr>
+    <td><a href="start-task.html">StartTask</a></td>
+    <td class="sig">void StartTask(TaskSystem&amp; taskSys)</td>
+    <td>Creates the drain task and enqueues it on the IO stream; records that stream's thread id. This is what <a href="../../Engine/index.html#engine">Engine</a> does for <a href="../../Engine/index.html#einitlevel"><code>EInitLevel::Logger</code></a></td>
+  </tr>
+  <tr>
+    <td><a href="stop-task.html">StopTask</a></td>
+    <td class="sig">void StopTask(TaskSystem&amp; taskSys)</td>
+    <td>Clears <code>isRunning</code>, waits for the drain task to finish, releases it, writes the last batch and closes the file. Must be called while a drain task exists</td>
+  </tr>
+  <tr>
+    <td><a href="is-drain-task-running.html">IsDrainTaskRunning</a></td>
+    <td class="sig">bool IsDrainTaskRunning() const noexcept</td>
+    <td>Whether a drain task exists — one acquire load, no other work. The question <a href="../../Engine/index.html#engine">the signal handler</a> asks before choosing between <a href="stop-task.html"><code>StopTask</code></a> and <a href="flush.html"><code>Flush</code></a></td>
+  </tr>
+  <tr>
+    <td><a href="set-filter.html">SetFilter</a></td>
+    <td class="sig">void SetFilter(StaticString category, TLogFilter&amp;&amp; filter) noexcept</td>
+    <td>Installs or replaces one category's predicate under <code>filterLock</code>. Last call wins; there is no removal, so "off" means a predicate that always returns false</td>
+  </tr>
+  <tr>
+    <td><a href="add-log.html">AddLog</a></td>
+    <td class="sig">void AddLog(StaticString category, ELogLevel level, const TLogFunction&amp; logFunc) noexcept</td>
+    <td>Everything a log statement does: level parameter check, category filter, the callback on <em>your</em> thread, then the enqueue. Five short-circuits can drop the line before any memory is touched</td>
+  </tr>
+  <tr>
+    <td><a href="flush.html">Flush</a></td>
+    <td class="sig">void Flush() noexcept</td>
+    <td>Drains inline when called on the log thread; otherwise waits, but for at most one second — and on giving up it reports to standard error <em>without</em> draining</td>
+  </tr>
+  <tr>
+    <td><a href="report-memory-configuration.html">ReportMemoryConfiguration</a></td>
+    <td class="sig">void ReportMemoryConfiguration()</td>
+    <td>Prints the logger pool's block configuration. Exists only when <a href="../../Config/index.html#buildconfig"><code>PROFILE_ENABLED</code></a> is 1 — in a default build the member is not part of the type</td>
+  </tr>
+  <tr>
+    <td><a href="wait-for-flush.html">WaitForFlush</a><span class="badge">private</span></td>
+    <td class="sig">void WaitForFlush() noexcept</td>
+    <td>The polling handshake behind <a href="flush.html"><code>Flush</code></a>: 10 ms sleeps against a 1000 ms deadline, draining inline whenever no drain task can run</td>
+  </tr>
+  <tr>
+    <td><a href="process-buffer.html">ProcessBuffer</a><span class="badge">private</span></td>
+    <td class="sig">void ProcessBuffer() noexcept</td>
+    <td>One pass: claims <code>isDraining</code>, swaps the queue, renders, writes both destinations, clears <code>needFlush</code>. A second concurrent caller returns having done nothing</td>
+  </tr>
+  <tr>
+    <td><a href="flush-buffer.html">FlushBuffer</a><span class="badge">private</span></td>
+    <td class="sig">void FlushBuffer(const TTextBuffer&amp; buffer) const noexcept</td>
+    <td>Hands one batch to every output function in order — the single point where "where do log lines go" is answered</td>
+  </tr>
+  <tr>
+    <td><a href="write-log.html">WriteLog</a><span class="badge">private</span></td>
+    <td class="sig">void WriteLog(const TTextBuffer&amp; buffer) noexcept</td>
+    <td>Destination one: the file, one line per element, flushed at the end of the batch</td>
+  </tr>
+  <tr>
+    <td><a href="print-std-io.html">PrintStdIO</a><span class="badge">private</span></td>
+    <td class="sig">static void PrintStdIO(const TTextBuffer&amp; buffer) noexcept</td>
+    <td>Destination two: the engine console, through <code>Engine::ConsoleOutLn</code> — which is why draining needs an <code>Engine</code> to be alive</td>
+  </tr>
+</table>
+
+<h3>Thread safety of the entry points</h3>
+
+<table>
+  <tr><th>Call</th><th>From a worker thread</th><th>What is held while it runs</th></tr>
+  <tr>
+    <td><a href="../SimpleLogger/out.html">SimpleLogger::Out…</a>, <a href="add-log.html">AddLog</a></td>
+    <td>Yes — this is the intended use</td>
+    <td><code>filterLock</code> for the lookup, released before formatting; then <code>inputLock</code> for the emplace. Formatting and both level checks happen outside every lock</td>
+  </tr>
+  <tr>
+    <td><a href="set-filter.html">SetFilter</a></td>
+    <td>Yes</td>
+    <td><code>filterLock</code> for the map write. Your predicate then runs later, on whatever thread logs, still holding that lock — see the deadlock note below</td>
+  </tr>
+  <tr>
+    <td><a href="flush.html">Flush</a></td>
+    <td>Yes, but it blocks</td>
+    <td>Either the drain claim (<code>isDraining</code>) if it drains itself, or nothing at all while it polls <code>needFlush</code> every 10 ms for up to a second</td>
+  </tr>
+  <tr>
+    <td><a href="get.html">Get</a>, <a href="get-name.html">GetName</a>, <a href="is-drain-task-running.html">IsDrainTaskRunning</a></td>
+    <td>Yes</td>
+    <td>Nothing: a pointer read, an interned static, an acquire load. <a href="is-drain-task-running.html">The header states</a> the last is safe from a signal handler, and <a href="../../Engine/index.html#engine">the engine's signal handler</a> is a real caller</td>
+  </tr>
+  <tr>
+    <td><a href="start-task.html">StartTask</a>, <a href="stop-task.html">StopTask</a></td>
+    <td>No — one thread, during initialisation and shutdown</td>
+    <td>They write <code>threadID</code>, which is not an atomic, while every producing thread reads it in <a href="add-log.html"><code>AddLog</code></a> and <a href="flush.html"><code>Flush</code></a>; <a href="stop-task.html">StopTask</a> also blocks until the drain task acknowledges</td>
+  </tr>
+  <tr>
+    <td><a href="process-buffer.html">ProcessBuffer</a></td>
+    <td>Only one at a time, by design</td>
+    <td>The <code>isDraining</code> claim for the whole pass, <code>inputLock</code> only for the swap</td>
+  </tr>
+</table>
+
+<div class="gap">
+  <strong>Whether the log thread is <em>you</em> is decided by a non-atomic field.</strong>
+  <code>threadID</code> is an ordinary <code>std::thread::id</code>, written by
+  <a href="start-task.html"><code>StartTask</code></a> and reset by
+  <a href="stop-task.html"><code>StopTask</code></a>, and read by <a href="add-log.html"><code>AddLog</code></a> and
+  <a href="flush.html"><code>Flush</code></a> on other threads. In practice <code>StartTask</code> runs once before
+  any worker exists, so the write is harmless; the exposure is <a href="stop-task.html"><code>StopTask</code></a>,
+  which clears it while producers may still be comparing against it. Every other flag in this class is an
+  <code>std::atomic</code> — <code>isRunning</code>, <code>hasInput</code>, <code>needFlush</code>,
+  <code>isDraining</code> — which is what makes this one look unintended rather than designed.
+</div>
+
+<div class="note">
+  <strong>Order is per batch, and the bypasses are visible in the output.</strong> Queued lines are written in the
+  order the enqueue lock was won, and a batch is rendered in that order to both destinations. But four paths skip
+  the queue: an <code>Error</code> or worse produced on the log thread itself, a <code>FatalError</code> (which
+  flushes then breaks), the emergency path used when no logger exists, and the
+  <a href="../../Config/index.html#buildconfig"><code>LOG_BREAK_IF_WARNING</code></a>,
+  <code>LOG_BREAK_IF_ERROR</code> and <code>LOG_FORCE_PRINT_IMMEDIATELY</code> builds. Those are interleaved with
+  queued output by whichever thread got there first, so two lines that look adjacent in the file may have crossed
+  paths through different mechanisms.
+</div>
+
+<div class="note">
+  <strong>A category filter that logs is a deadlock, and nothing detects it.</strong>
+  <a href="add-log.html"><code>AddLog</code></a> calls your predicate while holding <code>filterLock</code>, and
+  <code>std::mutex</code> is not recursive. A filter that calls <a href="set-filter.html"><code>SetFilter</code></a>
+  deadlocks the producing thread outright; a filter that logs at a level the filter itself would reject escapes
+  only because the rejection happens before the lookup. Decide filters from level alone, without I/O, as
+  <a href="set-filter.html">the real example</a> does.
+</div>
+
+<h2 id="non-member">Non-member helper functions</h2>
+
+<p>No functions. <code>Logger.h</code> declares two names at namespace scope besides the class:</p>
+
+<table>
+  <tr><th>Alias</th><th>Declaration</th><th>What it means</th></tr>
+  <tr>
+    <td><code>hbe::TLog</code></td>
+    <td><code>using TLog = Logger::SimpleLogger;</code></td>
+    <td>
+      The name call sites write when they want a bound category and level without naming the nested class. It is a
+      type alias only — no function named <code>TLog</code> exists
+    </td>
+  </tr>
+  <tr>
+    <td><code>hbe::LogStream</code></td>
+    <td><code>using LogStream = Logger::TLogStream;</code></td>
+    <td>
+      The 128 KiB inline builder a log callback receives, spelled without the nested path. Every
+      <code>[](auto&amp; ls)</code> callback in the engine takes this type
+    </td>
+  </tr>
+</table>
+
+<h2 id="coverage">Coverage</h2>
+
+<table>
+  <tr><th>Gap</th><th>Detail</th></tr>
+  <tr>
+    <td>Four helpers that decide behaviour but are not API</td>
+    <td><code>Logger.cpp</code>'s anonymous namespace holds <code>ImmediateLog</code> (compiled only when one of the
+        three immediate macros is set), <code>EmergencyLog</code> (the no-logger path), <code>DrainGuard</code> (the
+        <code>isDraining</code> claim) and the constants <code>MaxFlushWaitMs = 1000</code> /
+        <code>FlushPollPeriodMs = 10</code>. They are described on the pages that depend on them and are not
+        callable from outside the translation unit</td>
+  </tr>
+  <tr>
+    <td>Memory verification bookkeeping</td>
+    <td><a href="start-task.html"><code>StartTask</code></a> and <a href="stop-task.html"><code>StopTask</code></a>
+        retag the logger pool's owning thread under <code>MEMORY_VERIFICATION_ENABLED</code>, which is a
+        <a href="../../Config/index.html#buildconfig">build configuration</a> switch, not this module's surface. See
+        <a href="../../Memory/index.html#allocatorproxy">Memory: AllocatorProxy</a></td>
+  </tr>
+  <tr>
+    <td>How the drain task is scheduled</td>
+    <td><a href="start-task.html"><code>StartTask</code></a> creates a task and enqueues a subtask on the IO stream;
+        what happens after that — the stream's wake-up, the task's re-enqueue policy, its affinity — is
+        <a href="../../Core/index.html#tasksystem">Core: TaskSystem</a></td>
+  </tr>
+  <tr>
+    <td>Who constructs and starts the logger</td>
+    <td><code>Engine</code> holds a <code>Logger</code> member built with <code>("./", "hardbop.log")</code>, calls
+        <a href="start-task.html"><code>StartTask</code></a> under
+        <a href="../../Engine/index.html#einitlevel"><code>EInitLevel::Logger</code></a>. Its signal handler is the
+        only caller of <a href="stop-task.html"><code>StopTask</code></a> in the repository; a clean shutdown never
+        stops the drain task, so the last batch is written by
+        <a href="destructor.html">the destructor</a>. That wiring belongs to
+        <a href="../../Engine/index.html#engine">Engine</a></td>
+  </tr>
+  <tr>
+    <td>The other logging pipeline</td>
+    <td><code>Engine::Log</code> / <code>Engine::LogError</code> write a <em>separate</em> file through their own
+        mutex and are gated by <code>ENGINE_LOG_ENABLED</code>, not by this class. They take an
+        <a href="../ELogLevel/index.html"><code>ELogLevel</code></a> argument, which is the only thing they share with
+        this module. See <a href="../../Engine/index.html#engine">Engine</a></td>
+  </tr>
+</table>
+
+<footer class="prevnext">
+  <span><a href="../index.html">← Log</a></span>
+  <span><a href="../index.html#logger">Logger in the Log class list</a></span>
+</footer>
+
+</main>
+</body>
+</html>

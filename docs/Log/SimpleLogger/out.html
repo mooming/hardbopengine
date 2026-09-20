@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SimpleLogger::Out — Log — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">SimpleLogger</a> methods</h3>
+  <ul class="methods">
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a class="current" href="out.html">Out</a></li>
+    <li><a href="out-warning.html">OutWarning</a></li>
+    <li><a href="out-error.html">OutError</a></li>
+    <li><a href="out-fatal-error.html">OutFatalError</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Log</a> /
+  <a href="index.html">SimpleLogger</a> / Out
+</p>
+
+<h1><span class="fn">Out</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Logger::SimpleLogger</span>
+  <span class="tag">Engine/Log/Logger.h</span>
+  <span class="tag">4 overloads</span>
+  <span class="tag">const noexcept</span>
+  emit one line: callback for text that must be built, literal for text that is already there
+</p>
+
+<h2 id="signature">Signatures</h2>
+
+<p>One page for the name because all four forms state one contract — the line is emitted now, on this thread:</p>
+
+<pre><code><span class="kw">void</span> <span class="fn">Out</span>(<span class="kw">const</span> <span class="ty">TLogFunction</span>&amp; logFunc) <span class="kw">const</span> <span class="kw">noexcept</span>;
+<span class="kw">void</span> <span class="fn">Out</span>(<span class="ty">ELogLevel</span> level, <span class="kw">const</span> <span class="ty">TLogFunction</span>&amp; logFunc) <span class="kw">const</span> <span class="kw">noexcept</span>;
+
+<span class="kw">void</span> <span class="fn">Out</span>(<span class="kw">const char</span>* text) <span class="kw">const</span> <span class="kw">noexcept</span>;
+<span class="kw">void</span> <span class="fn">Out</span>(<span class="ty">ELogLevel</span> level, <span class="kw">const char</span>* text) <span class="kw">const</span> <span class="kw">noexcept</span>;</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>Two real bodies exist, and they differ only in where the level comes from:</p>
+
+<pre><code><span class="kw">if</span> (unlikely(instance == <span class="kw">nullptr</span>))
+{
+        <span class="fn">EmergencyLog</span>(category, level, logFunc);
+        <span class="kw">return</span>;
+}
+
+instance-&gt;<span class="fn">AddLog</span>(category, level, logFunc);</code></pre>
+
+<p>
+  The <code>const char*</code> forms are one-liners that wrap their argument:
+  <code>Out([text](<span class="kw">auto</span>&amp; ls) { ls &lt;&lt; text; });</code>. They exist so that a constant string does not pay the construction of a
+  <a href="../Logger/index.html#properties"><code>std::function</code></a>, and overload resolution sends a literal here rather than to the callback
+  form — a literal is an exact match for <code>const char*</code>, while the callback form would need a user-defined conversion.
+</p>
+
+<p>
+  Where the level comes from decides nothing else: with no level argument the bound
+  <a href="index.html#properties"><code>level</code></a> is used, and the two-argument forms override it for that call without touching the object,
+  which is <code>const</code>.
+</p>
+
+<div class="gap">
+  <strong>The fallback is a different logging system, and it is louder than the real one.</strong> When
+  <a href="../Logger/index.html#properties"><code>Logger::instance</code></a> is null — before <a href="../Logger/constructors.html">construction</a>,
+  after <a href="../Logger/destructor.html">destruction</a> — the line goes to the file-local <code>EmergencyLog</code>, which
+  <em>ignores the <code>Log.Level</code> threshold, ignores every category filter, and writes no timestamp</em>. Output from this path is
+  <code>[category][Level] text</code> with no leading time field, sent with <code>fputs</code> plus <code>fflush</code> to standard output, or to
+  standard error at <a href="../ELogLevel/index.html"><code>Error</code></a> and above, and it never reaches the log file. Two things follow: a
+  startup or shutdown sequence prints more than you expect, and a line without a timestamp in its prefix is evidence of this path rather than of
+  corruption.
+</div>
+
+<div class="note">
+  <strong>Your callback runs before this call returns.</strong> <a href="../Logger/add-log.html"><code>AddLog</code></a> invokes it on the calling
+  thread, into a builder on the calling stack, so captures by reference are sound — this is the module where <code>[&amp;]</code> does not dangle.
+  It also means the work is charged to <em>your</em> thread, including the 128 KiB builder, and that a callback which blocks blocks the caller, not
+  the drain. The <code>const char*</code> forms capture the pointer rather than the bytes, which is safe for exactly the same reason: the text has
+  to outlive the call, not the write. A null pointer becomes the text <code>Null</code> rather than a crash, courtesy of the string builder's
+  handling of null.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr>
+    <td><code>logFunc</code></td>
+    <td><a href="../Logger/index.html#properties"><code>const TLogFunction&amp;</code></a></td>
+    <td>Anything accepting <code>(TLogStream&amp;)</code>; called at most once, synchronously. Must not throw out — the whole path is
+        <code>noexcept</code> — and must not assume the line will be kept: the level and filter checks in the sink happen <em>after</em> it is handed
+        over but <em>before</em> it runs</td>
+  </tr>
+  <tr>
+    <td><code>text</code></td>
+    <td><code>const char*</code></td>
+    <td>A NUL-terminated constant, typically a string literal. Truncation follows the line rules: at most 1023 characters are stored inline, and
+        the rendered line is cut at about 2000 characters (see <a href="../LogLine/constructors.html">LogLine</a> and
+        <a href="../Logger/process-buffer.html">the drain</a>)</td>
+  </tr>
+  <tr>
+    <td><code>level</code></td>
+    <td><a href="../ELogLevel/index.html"><code>ELogLevel</code></a></td>
+    <td>Only on the two-argument forms. Overrides the bound level for this one line; it is the argument that selects the threshold, filter, and any
+        of the error-level special paths in the sink</td>
+  </tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  <code>void</code>, and no failure is reportable. The call succeeding means the line was passed to the sink (or to the emergency path) — not that
+  it cleared the level threshold, not that it passed the category filter, and not that any byte reached the file.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<p>The literal form, for text that is already a constant:</p>
+
+<p class="meta">From Engine/Core/TaskSystem.cpp</p>
+
+<pre><code><span class="kw">auto</span> log = <span class="ty">Logger</span>::<span class="fn">Get</span>(<span class="fn">GetName</span>());
+log.<span class="fn">Out</span>(<span class="st">"# Creating TaskStreams ======================"</span>);</code></pre>
+
+<p>The callback form, when the text is made of values — the shape used for every diagnostic in the engine:</p>
+
+<p class="meta">From Engine/Core/TaskStream.cpp</p>
+
+<pre><code><span class="kw">auto</span> log = <span class="ty">Logger</span>::<span class="fn">Get</span>(name);
+log.<span class="fn">Out</span>([name = name](<span class="kw">auto</span>&amp; ls) { ls &lt;&lt; name.c_str() &lt;&lt; <span class="st">" is created."</span>; });</code></pre>
+
+<p>And overriding the bound level for one line, from the engine's initialisation banner:</p>
+
+<p class="meta">From Engine/Engine/Engine.cpp</p>
+
+<pre><code><span class="kw">auto</span> log = <span class="ty">Logger</span>::<span class="fn">Get</span>(<span class="fn">GetClassName</span>());
+
+log.<span class="fn">Out</span>(<span class="st">"Command Line Arguments"</span>);
+
+<span class="kw">for</span> (<span class="kw">int</span> i = <span class="nu">0</span>; i &lt; argc; ++i)
+{
+        log.<span class="fn">Out</span>([i, argv](<span class="kw">auto</span>&amp; ls) { ls &lt;&lt; i &lt;&lt; <span class="st">" : "</span> &lt;&lt; argv[i]; });
+}</code></pre>
+
+<p>
+  All three bind no level explicitly, so each line is emitted at <code>Info</code> — and all three are therefore subject to whatever
+  <code>Log.Level</code> says on the day you read the file. For anything you need to see regardless of a chatty default, use
+  <a href="out-warning.html"><code>OutWarning</code></a>, <a href="out-error.html"><code>OutError</code></a>, or the two-argument form with a level named.
+</p>
+
+<footer class="prevnext">
+  <span><a href="index.html">← SimpleLogger</a></span>
+  <span><a href="index.html#methods">All SimpleLogger methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

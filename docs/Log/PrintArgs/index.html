@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PrintArgs — Log — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="#description">Class description</a></li>
+    <li><a href="#template">Template parameters</a></li>
+    <li><a href="#properties">Class properties</a></li>
+    <li><a href="#methods">Class methods</a></li>
+    <li><a href="#non-member">Non-member helpers</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+
+  <h3>Methods</h3>
+  <ul class="methods">
+    <li><a href="print-args.html">PrintArgs</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Log</a> / PrintArgs
+</p>
+
+<h1 id="printargs">PrintArgs</h1>
+<p class="subtitle">
+  <span class="tag">Engine/Log/PrintArgs.h</span>
+  <span class="tag">unnamed namespace at global scope — not hbe</span>
+  <span class="tag">2 function templates</span>
+  <span class="tag">header-only</span>
+  the last-resort print: no queue, no timestamp, no logger, straight to <code>std::cout</code>
+</p>
+
+<h2 id="description">Class description</h2>
+
+<p>
+  Two function templates that stream their arguments to <code>std::cout</code> and terminate the line after the last one. They are the print you
+  reach for when the logging system is the thing you no longer trust: no
+  <a href="../Logger/index.html"><code>Logger</code></a>, no level, no category, no filter, no memory pool, no task system — just
+  <code>&lt;&lt;</code> and <code>std::endl</code>. That is why the assertion family and
+  <a href="../../Core/index.html#exception"><code>Exception</code></a> use it rather than the asynchronous sink: an assert must produce its text even if
+  the drain thread is the thing that hung.
+</p>
+
+<p>
+  It is not a formatting facility. Arguments are written back to back with no separator, and the only
+  <a href="../Logger/index.html#properties"><code>TLogStream</code></a>-like conveniences (padding, timestamps, level names) are absent. The one real call
+  site that needs separation supplies it as an argument itself: <code>PrintArgs(file, ":", line, forward&lt;Types&gt;(args)...)</code> in
+  <code>Exception.h</code>.
+</p>
+
+<div class="gap">
+  <strong>Read the linkage before you include this header for convenience.</strong> Both templates are defined in an
+  <em>unnamed namespace at global scope</em> — not inside <code>hbe</code> — and marked <code>static</code>. Every translation unit that includes
+  <code>PrintArgs.h</code> therefore compiles its own copy of both functions: <code>Engine/Core/Debug.h</code> and <code>Engine/Core/Exception.h</code>
+  each carry one today. The copies are well-formed and cannot collide (that is what the unnamed namespace buys), but this is not one shared engine
+  function: it is duplicated code in each includer, it cannot be called from another translation unit, and there is no single definition to breakpoint
+  or to redirect. A caller wanting a shared formatter should use
+  <a href="../../String/index.html#inlinestringbuilder"><code>InlineStringBuilder</code></a> or the logger's callback form.
+</div>
+
+<div class="note">
+  <strong>Output from here and output from the logger interleave freely.</strong> This goes to <code>std::cout</code> unbuffered-by-agreement; queued log
+  lines reach the console through <a href="../Logger/print-std-io.html"><code>PrintStdIO</code></a> → <code>Engine::ConsoleOutLn</code> later, on the drain
+  thread. An assert printed this way therefore appears before the log lines it was caused by, and the two streams cannot be ordered against each other
+  without <a href="../../Config/index.html#buildconfig"><code>LOG_FORCE_PRINT_IMMEDIATELY</code></a>.
+</div>
+
+<h2 id="template">Template parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Kind</th><th>What it must satisfy</th></tr>
+  <tr>
+    <td><code>T</code></td>
+    <td><code>typename</code></td>
+    <td>Type of the first argument. It must be streamable: an <code>operator&lt;&lt;(std::ostream&amp;, …)</code> must exist for it, because the body is
+        <code>std::cout &lt;&lt; arg</code>. That includes the awkward cases — a <code>char</code> prints as a character, not a number, and a raw pointer prints
+        as an address</td>
+  </tr>
+  <tr>
+    <td><code>TTypes</code></td>
+    <td><code>typename...</code></td>
+    <td>Types of the remaining arguments, each of which must also be streamable. They are forwarded, so an argument is passed as an rvalue reference
+        and a stream that consumes its argument (a manipulator with state) sees exactly what the caller wrote</td>
+  </tr>
+</table>
+
+<h2 id="properties">Class properties</h2>
+
+<p>
+  Not applicable — the header declares no types, no objects and no aliases. Its entire content is the two templates below, plus
+  <code>#include &lt;iostream&gt;</code>. Anything you need from it is a call.
+</p>
+
+<h2 id="methods">Class methods</h2>
+
+<table>
+  <tr><th>Method</th><th>Signature</th><th>What a caller depends on</th></tr>
+  <tr>
+    <td><a href="print-args.html">PrintArgs</a><span class="badge">2 overloads</span></td>
+    <td class="sig">template&lt;typename T&gt; static void PrintArgs(const T&amp; arg) noexcept<br>template&lt;typename T, typename... TTypes&gt; static void PrintArgs(const T&amp; arg, TTypes&amp;&amp;... args) noexcept</td>
+    <td>Prints every argument to <code>std::cout</code> with no separator, then one <code>std::endl</code> after the last — the line ends with the final argument, not the first</td>
+  </tr>
+</table>
+
+<h2 id="non-member">Non-member helper functions</h2>
+
+<p>None — the two templates in the methods table are the whole file, and they are themselves the free functions.</p>
+
+<h2 id="coverage">Coverage</h2>
+
+<table>
+  <tr><th>Gap</th><th>Detail</th></tr>
+  <tr>
+    <td>No conversion, no formatting</td>
+    <td><code>%d</code> and friends mean nothing here; the assert call sites in <code>Engine/Log/Logger.cpp</code> that pass printf-style arguments
+        (<code>Assert(<span class="kw">false</span>, "Invalid userdata %p", userData)</code>) get the format string and the value printed side by side. Detail on
+        <a href="print-args.html">the function page</a></td>
+  </tr>
+  <tr>
+    <td>What the callers add on top</td>
+    <td><a href="../../Core/index.html#functions">The assert family</a> flushes the logger, prints through this, then traps and aborts;
+        <a href="../../Core/index.html#exception"><code>Exception</code></a> prints and does nothing else — it holds no message and is not throwable in any
+        useful sense. Both belong to <a href="../../Core/index.html">Core</a></td>
+  </tr>
+  <tr>
+    <td>Destination is fixed</td>
+    <td><code>std::cout</code> only, with no redirect, no level and no way to route it into the log file. The only related switch is the
+        <a href="../../Config/index.html#buildconfig"><code>LOG_FORCE_PRINT_IMMEDIATELY</code></a> family, which changes where
+        <a href="../Logger/index.html"><code>Logger</code></a> prints — not where this prints</td>
+  </tr>
+</table>
+
+<footer class="prevnext">
+  <span><a href="../index.html">← Log</a></span>
+  <span><a href="../index.html#printargs">PrintArgs in the Log class list</a></span>
+</footer>
+
+</main>
+</body>
+</html>

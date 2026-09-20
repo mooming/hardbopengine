@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Logger::SetFilter — Log — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">Logger</a> methods</h3>
+  <ul class="methods">
+    <li><a href="get.html">Get</a></li>
+    <li><a href="get-name.html">GetName</a></li>
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+    <li><a href="start-task.html">StartTask</a></li>
+    <li><a href="stop-task.html">StopTask</a></li>
+    <li><a href="is-drain-task-running.html">IsDrainTaskRunning</a></li>
+    <li><a class="current" href="set-filter.html">SetFilter</a></li>
+    <li><a href="add-log.html">AddLog</a></li>
+    <li><a href="flush.html">Flush</a></li>
+    <li><a href="report-memory-configuration.html">ReportMemoryConfiguration</a></li>
+    <li><a href="wait-for-flush.html">WaitForFlush</a></li>
+    <li><a href="process-buffer.html">ProcessBuffer</a></li>
+    <li><a href="flush-buffer.html">FlushBuffer</a></li>
+    <li><a href="write-log.html">WriteLog</a></li>
+    <li><a href="print-std-io.html">PrintStdIO</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Log</a> /
+  <a href="index.html">Logger</a> / SetFilter
+</p>
+
+<h1><span class="fn">SetFilter</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Logger</span>
+  <span class="tag">Engine/Log/Logger.h</span>
+  <span class="tag">noexcept</span>
+  one predicate per category, consulted on the producing thread before anything is formatted
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code><span class="kw">void</span> <span class="fn">SetFilter</span>(<span class="ty">StaticString</span> category, <span class="ty">TLogFilter</span>&amp;&amp; filter) <span class="kw">noexcept</span>;</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Moves a <a href="index.html#properties"><code>TLogFilter</code></a> — <code>std::function&lt;bool(ELogLevel)&gt;</code>
+  — into the category map under <code>filterLock</code>. Two statements, a lock guard and an assignment; the work happens
+  later, inside <a href="add-log.html"><code>AddLog</code></a>, which looks the category up on every line and drops the
+  line if the predicate returns false.
+</p>
+
+<p>
+  Its purpose is per-subsystem thresholds. The module-wide threshold is the <code>Log.Level</code> parameter, identical
+  for every caller; a filter is how one subsystem says "quieter than everyone else" without editing its call sites. It
+  is checked after that global threshold and before the formatting callback, so a rejected line costs a hash lookup and
+  a call, not a rendered string.
+</p>
+
+<div class="note">
+  <strong>Set semantics, not add semantics.</strong> The map is keyed by category, so the last call for a category wins
+  and earlier ones are destroyed. There is no removal and no clearing: to switch a category off permanently you install a
+  predicate that always returns false, and there is no way back to "no filter" except a predicate that always returns
+  true. Two subsystems sharing a category string share one filter, deliberately or not.
+</div>
+
+<div class="gap">
+  <strong>Your predicate runs on the producer's thread while <code>filterLock</code> is held, and that mutex is not
+  recursive.</strong> A filter that calls <code>SetFilter</code> deadlocks the calling thread on its own lock; a filter
+  that logs directly through <a href="add-log.html"><code>AddLog</code></a> does the same, while a log through the normal
+  <a href="../SimpleLogger/out.html"><code>Out</code></a> path survives only if the level fails the global threshold first
+  and so never reaches the lookup. Every call site in the engine is a level comparison against a configuration parameter,
+  which is the whole of what a filter should do. It also inherits the producer's thread: a filter that blocks, blocks the
+  frame that was trying to log.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr>
+    <td><code>category</code></td>
+    <td><a href="../../String/index.html#staticstring"><code>StaticString</code></a></td>
+    <td>
+      Must match the category passed to <a href="add-log.html"><code>AddLog</code></a> — usually via
+      <a href="get.html"><code>Logger::Get(category, level)</code></a> — exactly, since the key is an interned string and a
+      near-miss silently filters nothing
+    </td>
+  </tr>
+  <tr>
+    <td><code>filter</code></td>
+    <td><a href="index.html#properties"><code>TLogFilter&amp;&amp;</code></a></td>
+    <td>
+      Anything convertible to <code>std::function&lt;bool(ELogLevel)&gt;</code>: it receives the line's level and returns
+      true to keep it. It is moved from, so a lambda with captures is transferred rather than copied. A null function is
+      tolerated at install time and skipped at check time — it filters nothing, which is the same as no filter at all
+    </td>
+  </tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  <code>void</code>. There is no report of whether the category already had a filter, and no way to read the current one
+  back out — <a href="index.html#properties"><code>filters</code></a> is private and has no accessor. The only observable
+  effect of a mistake here is missing lines somewhere else.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<p>The one call site in the engine, installed during task system initialisation:</p>
+
+<p class="meta">From Engine/Core/TaskSystem.cpp</p>
+
+<pre><code><span class="kw">void</span> <span class="ty">TaskSystem</span>::Initialize() <span class="kw">noexcept</span>
+{
+        <span class="kw">auto</span>&amp; logger = <span class="ty">Logger</span>::<span class="fn">Get</span>();
+        <span class="kw">auto</span> logFilter = [](<span class="kw">auto</span> level)
+        {
+                <span class="kw">static</span> <span class="ty">TAtomicConfigParam</span>&lt;<span class="kw">uint8_t</span>&gt; logLevel(<span class="st">"Log.TaskSystem"</span>, <span class="st">"The TaskSystem Log Level"</span>,
+                                                        <span class="kw">static_cast</span>&lt;<span class="kw">uint8_t</span>&gt;(<span class="ty">ELogLevel</span>::Warning));
+
+                <span class="kw">return</span> level &gt; <span class="kw">static_cast</span>&lt;<span class="ty">ELogLevel</span>&gt;(logLevel.<span class="fn">Get</span>());
+        };
+
+        logger.<span class="fn">SetFilter</span>(<span class="fn">GetName</span>(), logFilter);
+
+        <span class="kw">auto</span> log = <span class="ty">Logger</span>::<span class="fn">Get</span>(<span class="fn">GetName</span>());
+        log.<span class="fn">Out</span>([<span class="kw">this</span>](<span class="kw">auto</span>&amp; ls) { ls &lt;&lt; <span class="st">"Hardware Concurrency = "</span> &lt;&lt; numHardwareThreads; });
+}</code></pre>
+
+<div class="note">
+  <strong>Read that filter's comparison before copying the pattern.</strong> It returns <code>level &gt; threshold</code>,
+  not <code>level &gt;= threshold</code>, and its default threshold is <code>Warning</code> — so with default settings the
+  TaskSystem category keeps only <code>Error</code> and <code>FatalError</code>, and the
+  <code>"Hardware Concurrency = …"</code> line three statements later is discarded by the filter installed two
+  statements before it. Note too that the filter's own parameter is <code>Log.TaskSystem</code>, an independent threshold
+  from the module-wide <code>Log.Level</code>: a line must satisfy both to be written, and the stricter one wins.
+</div>
+
+<footer class="prevnext">
+  <span><a href="index.html">← Logger</a></span>
+  <span><a href="index.html#methods">All Logger methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

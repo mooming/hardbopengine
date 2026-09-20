@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Logger::AddLog — Log — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">Logger</a> methods</h3>
+  <ul class="methods">
+    <li><a href="get.html">Get</a></li>
+    <li><a href="get-name.html">GetName</a></li>
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+    <li><a href="start-task.html">StartTask</a></li>
+    <li><a href="stop-task.html">StopTask</a></li>
+    <li><a href="is-drain-task-running.html">IsDrainTaskRunning</a></li>
+    <li><a href="set-filter.html">SetFilter</a></li>
+    <li><a class="current" href="add-log.html">AddLog</a></li>
+    <li><a href="flush.html">Flush</a></li>
+    <li><a href="report-memory-configuration.html">ReportMemoryConfiguration</a></li>
+    <li><a href="wait-for-flush.html">WaitForFlush</a></li>
+    <li><a href="process-buffer.html">ProcessBuffer</a></li>
+    <li><a href="flush-buffer.html">FlushBuffer</a></li>
+    <li><a href="write-log.html">WriteLog</a></li>
+    <li><a href="print-std-io.html">PrintStdIO</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Log</a> /
+  <a href="index.html">Logger</a> / AddLog
+</p>
+
+<h1><span class="fn">AddLog</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Logger</span>
+  <span class="tag">Engine/Log/Logger.h</span>
+  <span class="tag">noexcept</span>
+  the whole life of a log statement: five ways to be dropped, three to bypass the queue, one to be queued
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code><span class="kw">void</span> <span class="fn">AddLog</span>(<span class="ty">StaticString</span> category, <span class="ty">ELogLevel</span> level, <span class="kw">const</span> <span class="ty">TLogFunction</span>&amp; logFunc) <span class="kw">noexcept</span>;</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>In execution order — and every branch below is a decision a caller can observe in the output:</p>
+
+<table>
+  <tr><th>Step</th><th>What happens</th><th>If it stops here</th></tr>
+  <tr>
+    <td>1</td>
+    <td><code>Assert(this == instance)</code> — the logger you are calling must be the published one</td>
+    <td>Debug and Dev only; a non-instance logger proceeds silently in Release</td>
+  </tr>
+  <tr>
+    <td>2</td>
+    <td><code>#if !LOG_ENABLED return;</code> — a compile-time switch, read nowhere else in the repository</td>
+    <td>Nothing is logged at all, except lines from the no-logger emergency path, which is not gated by it</td>
+  </tr>
+  <tr>
+    <td>3</td>
+    <td><code>AllocatorScope scope(InvalidAllocatorID)</code> — the default-allocator scope is closed for the rest of the call</td>
+    <td>—</td>
+  </tr>
+  <tr>
+    <td>4</td>
+    <td>A null <code>logFunc</code> logs <code>"Null log function!"</code> at <code>Warning</code> under the logger's own category and returns</td>
+    <td>Your line is gone; the replacement is, which is how a bad <code>std::function</code> becomes visible</td>
+  </tr>
+  <tr>
+    <td>5</td>
+    <td>
+      The first call creates a <code>TAtomicConfigParam&lt;uint8_t&gt;</code> named <code>Log.Level</code> defaulting to
+      <a href="../ELogLevel/index.html"><code>Info</code></a>; the line is dropped if <code>level &lt;</code> its value
+    </td>
+    <td>Filtered before your callback runs — the reason callback-shaped logging is affordable</td>
+  </tr>
+  <tr>
+    <td>6</td>
+    <td>The category's filter, if any, is consulted under <code>filterLock</code></td>
+    <td>Same — see <a href="set-filter.html">SetFilter</a> for what a filter may and may not do</td>
+  </tr>
+  <tr>
+    <td>7</td>
+    <td><code>Engine::Get()</code>, <code>GetTaskSystem()</code> and <code>TaskSystem::GetCurrentStreamName()</code> supply the engine, the task system and the thread name</td>
+    <td>No engine instance means no logging: the assert fires in Debug and Dev, and the pointer is dereferenced anyway in Release</td>
+  </tr>
+  <tr>
+    <td>8</td>
+    <td><code>TLogStream ls; logFunc(ls);</code> — your callback renders into a 131072-byte inline builder, on this thread</td>
+    <td>—</td>
+  </tr>
+  <tr>
+    <td>9</td>
+    <td>With <code>LOG_BREAK_IF_WARNING</code> set: at <code>Warning</code> or above, print immediately, <code>debugBreak()</code>, return</td>
+    <td>The line never enters the queue and never reaches the file</td>
+  </tr>
+  <tr>
+    <td>10</td>
+    <td>With <code>LOG_BREAK_IF_ERROR</code> set: the same from <code>Error</code> up</td>
+    <td>Same</td>
+  </tr>
+  <tr>
+    <td>11</td>
+    <td>With <code>LOG_FORCE_PRINT_IMMEDIATELY</code> set: print immediately, return</td>
+    <td>Every line takes this path; the queue, the drain task and the file are unused</td>
+  </tr>
+  <tr>
+    <td>12</td>
+    <td>If <code>level &gt;= Error</code> <em>and</em> this is the log thread: format into a thread-local buffer, allocated from the system allocator, and write it through <a href="flush-buffer.html">FlushBuffer</a> directly</td>
+    <td>The line skips the queue, so it appears ahead of lines queued before it; <code>FatalError</code> additionally calls <code>debugBreak()</code></td>
+  </tr>
+  <tr>
+    <td>13</td>
+    <td>Otherwise: enqueue a <a href="../LogLine/index.html">LogLine</a> under <code>inputLock</code> with <code>inputAlloc</code> open as allocator scope, then set <code>hasInput</code> and <code>needFlush</code></td>
+    <td>—</td>
+  </tr>
+  <tr>
+    <td>14</td>
+    <td>If <code>level &gt;= FatalError</code>: <a href="flush.html">Flush</a>, <code>debugBreak()</code>, <code>Assert(false)</code>, return</td>
+    <td>The IO stream is never woken — the flush already happened on this thread</td>
+  </tr>
+  <tr>
+    <td>15</td>
+    <td>If the IO stream exists, wake it</td>
+    <td>—</td>
+  </tr>
+  <tr>
+    <td>16</td>
+    <td>If the queue length reached <a href="../../Config/index.html#engineconfig"><code>Config::LogForceFlushThreshold</code></a> (8192), flush inline</td>
+    <td>A producer that outpaces the drain blocks here</td>
+  </tr>
+</table>
+
+<div class="gap">
+  <strong>Step 8 puts a 128 KiB automatic object on the calling thread's stack.</strong>
+  <a href="index.html#properties"><code>TLogStream</code></a> is <code>InlineStringBuilder&lt;Config::LogOutputBuffer&gt;</code>
+  and that builder holds its buffer inline (<a href="../../String/index.html#inlinestringbuilder">String: InlineStringBuilder</a>),
+  so every accepted log statement costs the caller a stack frame large enough to hold a whole rendered line — and
+  same object appears again in the no-logger emergency path, and step 12 uses one 128 bytes larger. On a
+  thread created with a platform-default main stack this is invisible; on a worker created with a small stack it is an
+  overflow from a single log call. If you spawn threads outside
+  <a href="../../Core/index.html#taskstream">the task streams</a>, check their stack size before logging from them.
+</div>
+
+<div class="gap">
+  <strong>Breaking on a warning is enabled by the macro, not by the build — and it also removes the line from the
+  log.</strong> <code>BuildConfig.h</code> annotates <code>LOG_BREAK_IF_WARNING</code> and <code>LOG_BREAK_IF_ERROR</code>
+  as "(debug only)", but the only guard around those blocks is the macro itself (steps 9 and 10): set either to
+  <code>1</code> in a Release build and the Release build breaks. Both branches <code>return</code> after
+  <code>debugBreak()</code>, so a warning-or-worse line is printed to standard output by the file-local
+  <code>ImmediateLog</code> and is <em>not</em> queued — with either macro on, the log file stops containing the very lines
+  you were debugging. See <a href="../../Config/index.html#buildconfig">Config: BuildConfig</a>.
+</div>
+
+<div class="note">
+  <strong>The thread name in the prefix is whatever the task system recorded for this thread.</strong> Step 7 reads
+  <code>TaskSystem::GetCurrentStreamName()</code>, a <code>thread_local</code> value that a stream sets when it runs a task.
+  A thread that never joined a stream — the main thread before the streams start, or a thread you created — yields an empty
+  name, and the line renders as <code>[0:0:0:12][][Renderer][Info] …</code>. It is also the name at the moment of
+  <em>production</em>, which is the right one: the drain thread never appears in the prefix of a queued line.
+</div>
+
+<div class="note">
+  <strong>Two different quantities are compared in steps 12 and 16.</strong> The force-flush threshold is a count of
+  <em>lines</em> in the queue — <code>inputBuffer.size()</code> — not a byte total, so 8192 short lines and 8192 long ones
+  trigger it equally. Step 12's test is a thread-identity comparison against
+  <a href="index.html#properties"><code>threadID</code></a>, which is why a logger whose drain task was never started still
+  takes the inline path for errors but only for errors.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr>
+    <td><code>category</code></td>
+    <td><a href="../../String/index.html#staticstring"><code>StaticString</code></a></td>
+    <td>The filter key and prefix. Interned, so a <code>const char*</code> argument is looked up in the string table on the first call</td>
+  </tr>
+  <tr>
+    <td><code>level</code></td>
+    <td><a href="../ELogLevel/index.html"><code>ELogLevel</code></a></td>
+    <td>Compared against <code>Log.Level</code>, then against the category filter, then against the <code>Error</code> / <code>FatalError</code> special cases. It selects behaviour, not only text</td>
+  </tr>
+  <tr>
+    <td><code>logFunc</code></td>
+    <td><a href="index.html#properties"><code>const TLogFunction&amp;</code></a></td>
+    <td>
+      Called at most once, on this thread, before the enqueue — never later, so anything it captures must outlive the call
+      itself, not the eventual write. Must not be null (step 4) and must not assume it is running on the drain thread. If it
+      allocates through the default allocator it does so with the scope closed to
+      <code>InvalidAllocatorID</code>; what that costs is <a href="../../Memory/index.html#allocators">Memory</a>'s contract
+    </td>
+  </tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  <code>void</code>, and there is no way to learn which of the sixteen steps your line stopped at. A dropped line is
+  indistinguishable from a line that is still queued: both leave the function successfully and both leave the file
+  unchanged. If a call site must know, compare <a href="flush.html"><code>Flush</code></a> before and after, or filter the
+  category yourself rather than guessing afterwards.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<p>
+  Direct calls in the engine come from inside the logger itself — a call site has no reason to name a level it can bind once:
+</p>
+
+<p class="meta">From Engine/Log/Logger.cpp</p>
+
+<pre><code><span class="kw">void</span> Logger::<span class="fn">StartTask</span>(<span class="ty">TaskSystem</span>&amp; taskSys)
+{
+        <span class="fn">AddLog</span>(<span class="fn">GetName</span>(), <span class="ty">ELogLevel</span>::Info, [](<span class="kw">auto</span>&amp; logStream) { logStream &lt;&lt; <span class="st">"Logger started."</span>; });
+        ...
+}</code></pre>
+
+<p>The ordinary call site reaches this function through a bound <a href="../SimpleLogger/index.html"><code>SimpleLogger</code></a> — and note that the callback may be a plain literal, which the <code>const char*</code> overloads wrap for you:</p>
+
+<p class="meta">From Engine/Renderer/Vulkan/VulkanCapabilities.cpp</p>
+
+<pre><code><span class="kw">static</span> <span class="kw">const</span> <span class="kw">auto</span> log = <span class="ty">Logger</span>::<span class="fn">Get</span>(<span class="st">"VulkanCapabilities"</span>, <span class="ty">ELogLevel</span>::Error);
+...
+log.<span class="fn">OutError</span>(<span class="st">"Error: cannot query capabilities from a null physical device; leaving capabilities unqueried"</span>);</code></pre>
+
+<p>
+  and, when the text has to be assembled from values, the callback form:
+</p>
+
+<p class="meta">From Engine/Core/TaskStream.cpp</p>
+
+<pre><code><span class="kw">const</span> <span class="kw">auto</span> log = <span class="ty">Logger</span>::<span class="fn">Get</span>(name);
+...
+log.<span class="fn">OutWarning</span>([dt = deltaTime](<span class="kw">auto</span>&amp; ls) { ls &lt;&lt; <span class="st">"Slow DeltaTime = "</span> &lt;&lt; dt; });</code></pre>
+
+<p>
+  The capture discipline matters more here than it looks: <code>dt = deltaTime</code> copies, and the engine's other style —
+  <code>[&amp;]</code> — is safe only because step 8 runs the callback before
+  <code>AddLog</code> returns. A <code>std::function</code> stored and handed to a later drain pass would be the bug; this
+  module never does that.
+</p>
+
+<footer class="prevnext">
+  <span><a href="index.html">← Logger</a></span>
+  <span><a href="index.html#methods">All Logger methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

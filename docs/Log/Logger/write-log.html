@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Logger::WriteLog — Log — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">Logger</a> methods</h3>
+  <ul class="methods">
+    <li><a href="get.html">Get</a></li>
+    <li><a href="get-name.html">GetName</a></li>
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+    <li><a href="start-task.html">StartTask</a></li>
+    <li><a href="stop-task.html">StopTask</a></li>
+    <li><a href="is-drain-task-running.html">IsDrainTaskRunning</a></li>
+    <li><a href="set-filter.html">SetFilter</a></li>
+    <li><a href="add-log.html">AddLog</a></li>
+    <li><a href="flush.html">Flush</a></li>
+    <li><a href="report-memory-configuration.html">ReportMemoryConfiguration</a></li>
+    <li><a href="wait-for-flush.html">WaitForFlush</a></li>
+    <li><a href="process-buffer.html">ProcessBuffer</a></li>
+    <li><a href="flush-buffer.html">FlushBuffer</a></li>
+    <li><a class="current" href="write-log.html">WriteLog</a></li>
+    <li><a href="print-std-io.html">PrintStdIO</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Log</a> /
+  <a href="index.html">Logger</a> / WriteLog
+</p>
+
+<h1><span class="fn">WriteLog</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Logger</span>
+  <span class="tag">private</span>
+  <span class="tag">noexcept</span>
+  destination one: the log file, one line per element, flushed at the end of the batch
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code><span class="cm">// private:</span>
+<span class="kw">void</span> <span class="fn">WriteLog</span>(<span class="kw">const</span> <span class="ty">TTextBuffer</span>&amp; buffer) <span class="kw">noexcept</span>;</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<pre><code><span class="kw">auto</span>&amp; ofs = outFileStream;
+
+<span class="kw">for</span> (<span class="kw">auto</span>&amp; logText : buffer)
+{
+        ofs &lt;&lt; logText &lt;&lt; std::endl;
+}
+
+ofs.<span class="fn">flush</span>();</code></pre>
+
+<p>
+  The first of the two functions installed into
+  <a href="index.html#properties"><code>flushFuncs</code></a> by <a href="constructors.html">the constructor</a>, so the file is written
+  before the console sees a batch. It adds exactly one thing to each line: a newline, via <code>std::endl</code>. The text itself is
+  whatever <a href="process-buffer.html"><code>ProcessBuffer</code></a> rendered — timestamp, thread, category, level, message — with no
+  trailing newline of its own.
+</p>
+
+<p>
+  The stream is flushed once per batch, not per line. A second flush may follow the batch inside
+  <a href="process-buffer.html"><code>ProcessBuffer</code></a> if any line reached
+  <a href="../ELogLevel/index.html"><code>Warning</code></a>, which is redundant work in the usual case and the reason severity affects
+  how fast text reaches disk.
+</p>
+
+<div class="gap">
+  <strong>Stream failure is never examined, so an unwritable log file is indistinguishable from an idle logger.</strong> Nothing in
+  this function, in <a href="flush-buffer.html"><code>FlushBuffer</code></a> or in
+  <a href="constructors.html">the constructor</a> checks <code>outFileStream</code>'s state: a path that could not be opened, a full disk,
+  or a file that stopped accepting writes all leave the stream in a failed state while every call returns normally. Lines are discarded
+  one batch at a time, and the console destination — which is installed after this one and is unaffected — keeps printing, which is how
+  a "logging works" console coexists with an empty log file.
+</div>
+
+<div class="note">
+  <strong>One writer at a time, and the guarantee comes from elsewhere.</strong> This function has no lock of its own. What serialises
+  file writes is the <code>isDraining</code> claim taken by <a href="process-buffer.html"><code>ProcessBuffer</code></a>, plus the fact
+  that <a href="add-log.html"><code>AddLog</code></a>'s inline error path only runs on the log thread. Two drains cannot therefore be in
+  this loop together. Output that <em>does</em> bypass the serialisation — the emergency path and the
+  <code>LOG_BREAK_IF_*</code> / <code>LOG_FORCE_PRINT_IMMEDIATELY</code> builds — writes to the C++ standard streams rather than to this
+  file, so interleaving is a console phenomenon here, not a file one.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr>
+    <td><code>buffer</code></td>
+    <td><a href="index.html#properties"><code>const TTextBuffer&amp;</code></a> (<code>HVector&lt;HString&gt;</code>)</td>
+    <td>Finished lines in output order; an empty buffer writes nothing and still flushes the stream. Each element is written with
+        <code>operator&lt;&lt;</code> for <code>std::basic_string</code> over the engine's allocator, so it goes through
+        <code>c_str</code>-equivalent data — embedded NULs would truncate a line here, though no Log code produces them</td>
+  </tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  <code>void</code>, and not a count of bytes or lines. Because failures are unexamined, no caller of this function — including
+  <a href="flush.html"><code>Flush</code></a> two layers up — can distinguish "written to disk" from "discarded by a dead stream".
+</p>
+
+<h2 id="example">Examples</h2>
+
+<p>
+  No call site names this function; the constructor installs it as one of the two output functions, and
+  <a href="flush-buffer.html"><code>FlushBuffer</code></a> invokes it:
+</p>
+
+<p class="meta">From Engine/Log/Logger.cpp</p>
+
+<pre><code>flushFuncs.<span class="fn">reserve</span>(<span class="nu">2</span>);
+flushFuncs.<span class="fn">emplace_back</span>([<span class="kw">this</span>](<span class="kw">const</span> <span class="ty">TTextBuffer</span>&amp; buffer) { <span class="fn">WriteLog</span>(buffer); });
+flushFuncs.<span class="fn">emplace_back</span>([](<span class="kw">const</span> <span class="ty">TTextBuffer</span>&amp; buffer) { <span class="fn">PrintStdIO</span>(buffer); });</code></pre>
+
+<p>
+  Reading the resulting file: every line is exactly what the drain built, so a line you cannot find is a line that was filtered, dropped
+  or truncated upstream — <a href="add-log.html"><code>AddLog</code></a> for the first two,
+  <a href="process-buffer.html"><code>ProcessBuffer</code></a> for the third — and not a line this function lost. One exception: the
+  logger's own shutdown line is written with an explicit end-line marker
+  (<a href="../../String/index.html#endline"><code>hendl</code></a> appended in
+  <a href="stop-task.html"><code>StopTask</code></a>) on top of the newline added here, so a stopped logger leaves a blank line after
+  <code>Logger shall be terminated.</code> — the only such gap in the file.
+</p>
+
+<footer class="prevnext">
+  <span><a href="index.html">← Logger</a></span>
+  <span><a href="index.html#methods">All Logger methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

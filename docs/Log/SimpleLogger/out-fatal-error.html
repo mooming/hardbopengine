@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SimpleLogger::OutFatalError — Log — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">SimpleLogger</a> methods</h3>
+  <ul class="methods">
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="out.html">Out</a></li>
+    <li><a href="out-warning.html">OutWarning</a></li>
+    <li><a href="out-error.html">OutError</a></li>
+    <li><a class="current" href="out-fatal-error.html">OutFatalError</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Log</a> /
+  <a href="index.html">SimpleLogger</a> / OutFatalError
+</p>
+
+<h1><span class="fn">OutFatalError</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Logger::SimpleLogger</span>
+  <span class="tag">Engine/Log/Logger.h</span>
+  <span class="tag">2 overloads</span>
+  <span class="tag">const noexcept</span>
+  one line to the log, then a trap — this call does not return to a running program
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code><span class="kw">void</span> <span class="fn">OutFatalError</span>(<span class="kw">const</span> <span class="ty">TLogFunction</span>&amp; logFunc) <span class="kw">const</span> <span class="kw">noexcept</span>
+{
+        <span class="fn">Out</span>(<span class="ty">ELogLevel</span>::FatalError, logFunc);
+}
+
+<span class="kw">void</span> <span class="fn">OutFatalError</span>(<span class="kw">const char</span>* text) <span class="kw">const</span> <span class="kw">noexcept</span>
+{
+        <span class="fn">OutFatalError</span>([text](<span class="kw">auto</span>&amp; ls) { ls &lt;&lt; text; });
+}</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  The call itself is the ordinary one: <a href="out.html"><code>Out(ELogLevel::FatalError, …)</code></a>. Everything that makes it fatal is in
+  <a href="../Logger/add-log.html"><code>AddLog</code></a>, which enqueues the line and then does this:
+</p>
+
+<pre><code><span class="kw">if</span> (unlikely(level &gt;= <span class="ty">ELogLevel</span>::FatalError))
+{
+        <span class="fn">Flush</span>();
+        <span class="fn">debugBreak</span>();
+        <span class="fn">Assert</span>(<span class="kw">false</span>);
+
+        <span class="kw">return</span>;
+}</code></pre>
+
+<p>
+  So the sequence is: enqueue, drain the queue on <em>this</em> thread (with the one-second bound that
+  <a href="../Logger/flush.html"><code>Flush</code></a> carries), trap, and — after a trap that does not terminate — assert. The IO stream is never
+  woken, because the flushing has already been done here.
+</p>
+
+<p>
+  <code>debugBreak()</code> is not a debug-build facility: it is <code>__builtin_trap()</code> on Clang and GCC and <code>__debugbreak()</code> on
+  MSVC (<a href="../../OSAL/index.html#intrinsic">OSAL: Intrinsic</a>), compiled into every configuration including Release. Treat this function as
+  "write this line, then end the process" — which is what the engine's allocator and configuration callers intend, even where their code reads
+  otherwise.
+</p>
+
+<div class="gap">
+  <strong>Every call site in the engine is followed by a <code>return</code> that will not run.</strong> The convention is
+  <code>log.OutFatalError(…); return;</code> — <code>ConfigSystem::Register</code> does exactly that for a duplicated key, and
+  <code>MultiPoolAllocator</code> for a pointer it does not own. The <code>return</code> is unreachable once the sink reaches its trap, so any cleanup
+  written after the call is dead code. If the process must survive the condition, this is the wrong call: use
+  <a href="out-error.html"><code>OutError</code></a> and handle the failure.
+</div>
+
+<div class="gap">
+  <strong>Suppress the line and you suppress the crash.</strong> The threshold and filter checks in <a href="../Logger/add-log.html">the sink</a> happen
+  <em>before</em> the fatal branch. A <code>Log.Level</code> parameter set to <a href="../ELogLevel/index.html"><code>MAX</code></a>, or a category filter
+  that returns false for <code>FatalError</code>, makes the whole call a no-op: no enqueue, no flush, no trap, and execution continues through the
+  <code>return</code> the caller thought it would never reach. The opposite hazard is the one that bites harder — if the drain thread is wedged, the
+  bounded flush gives up after a second and the line is still in memory when the trap fires, so the message you wrote for the post-mortem is in
+  standard error only (<a href="../Logger/wait-for-flush.html">the give-up report</a>), not in the file.
+</div>
+
+<div class="note">
+  <strong>Before a logger exists, this function is merely a print.</strong> With
+  <a href="../Logger/index.html#properties"><code>Logger::instance</code></a> null the call falls to the emergency path, which writes to standard error
+  and returns normally — no flush, no trap. Same for a process that never builds an
+  <a href="../../Engine/index.html#engine">Engine</a>. A fatal report emitted during early startup therefore reports and continues, which is the one case
+  where the <code>return</code> after it does execute.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr>
+    <td><code>logFunc</code></td>
+    <td><a href="../Logger/index.html#properties"><code>const TLogFunction&amp;</code></a></td>
+    <td>Runs on this thread before anything else happens, provided the threshold and filter let the line through. It is the last formatted output this thread produces, so anything it needs has to be captured now</td>
+  </tr>
+  <tr>
+    <td><code>text</code></td>
+    <td><code>const char*</code></td>
+    <td>NUL-terminated literal, captured as a pointer. Keep it short: it shares the line's 1023-character inline budget, and a body beyond roughly 2000 characters is cut before it is written (<a href="../Logger/process-buffer.html">the render limit</a>)</td>
+  </tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  <code>void</code>, and there is no path that returns normally while the logger is live and the line survives its filters: the trap sits between the
+  flush and the function's end. Write it as the last statement of a failure branch, not as a message followed by recovery.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<p>A configuration key registered twice — reported, then the process ends:</p>
+
+<p class="meta">From Engine/Config/ConfigSystem.cpp</p>
+
+<pre><code><span class="kw">if</span> (unlikely(byteParams.find(name) != byteParams.end()))
+{
+        <span class="kw">auto</span> log = <span class="ty">Logger</span>::<span class="fn">Get</span>(<span class="fn">GetName</span>());
+        log.<span class="fn">OutFatalError</span>([name](<span class="kw">auto</span>&amp; ls)
+        { ls &lt;&lt; <span class="st">"The key "</span> &lt;&lt; name &lt;&lt; <span class="st">" is duplicated. It's not allowed strictly."</span>; });
+
+        <span class="kw">return</span>;   <span class="cm">// unreachable: the sink traps before AddLog returns</span>
+}</code></pre>
+
+<p>The same shape in the allocator, where the message walks its own banks to explain the mismatch:</p>
+
+<p class="meta">From Engine/Memory/MultiPoolAllocator.cpp</p>
+
+<pre><code><span class="kw">auto</span> index = GetBankIndex(ptr);
+<span class="kw">if</span> (index &gt;= banks.size())
+{
+        <span class="kw">auto</span> log = <span class="ty">Logger</span>::<span class="fn">Get</span>(name);
+        log.<span class="fn">OutFatalError</span>([ptr, <span class="kw">this</span>](<span class="kw">auto</span>&amp; ls)
+        {
+                ls &lt;&lt; ptr &lt;&lt; <span class="st">" is not allocated by this allocator."</span>;
+                ...
+        });
+}</code></pre>
+
+<p>
+  The callback there enumerates the pool's banks while formatting — legitimate, since it runs before the trap, and a reminder that whatever evidence
+  you want in the record has to be assembled inside this callback. Nothing after the call runs, and the flush that precedes the trap is the last thing
+  the logger does for you.
+</p>
+
+<footer class="prevnext">
+  <span><a href="index.html">← SimpleLogger</a></span>
+  <span><a href="index.html#methods">All SimpleLogger methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LogLine::GetText — Log — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">LogLine</a> methods</h3>
+  <ul class="methods">
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+    <li><a class="current" href="get-text.html">GetText</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Log</a> /
+  <a href="index.html">LogLine</a> / GetText
+</p>
+
+<h1><span class="fn">GetText</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::LogLine</span>
+  <span class="tag">Engine/Log/LogLine.h</span>
+  <span class="tag">const noexcept</span>
+  <span class="tag">[[nodiscard]]</span>
+  the message body, with the union already resolved
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] <span class="kw">const char</span>* <span class="fn">GetText</span>() <span class="kw">const</span> <span class="kw">noexcept</span>;</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<pre><code><span class="kw">if</span> (unlikely(isLong))
+{
+        <span class="kw">return</span> longText;
+}
+
+<span class="kw">return</span> text;</code></pre>
+
+<p>
+  One branch on <a href="index.html#properties"><code>isLong</code></a>, and that is the whole function. It exists because
+  <a href="index.html#properties">the anonymous union</a> makes both members nameable at any time — <code>line.longText</code> compiles whether or
+  not it is the live variant — so the alternative to this accessor is a reader that has to remember the flag, and one reader that forgets
+  prints the first eight bytes of an inline message as a pointer.
+</p>
+
+<p>
+  The returned pointer addresses the line's own storage: the inline buffer inside the object, or the allocation the producing constructor made.
+  No copy is made and no length is returned, so the string is exactly as long as its terminator says, which is why
+  <a href="constructors.html">the truncation rules of the constructor</a> are also the rules for what you see here.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr>
+    <td><code>const char*</code></td>
+    <td>
+      The message, NUL-terminated, never null for a line that was constructed correctly. Valid until the line is destroyed or moved
+      from — the inline variant points into the object itself, so a line held in a queue that gets
+      <a href="../Logger/process-buffer.html">swapped or cleared</a> invalidates it. Empty, not null, for a default-constructed line and for one
+      that was moved from; for a long line, up to <a href="../../Config/index.html#engineconfig"><code>Config::LogLineLength</code></a> bytes of a
+      longer message are lost before it gets here, in the renderer rather than in the line
+    </td>
+  </tr>
+</table>
+
+<div class="gap">
+  <strong>There is no length and no variant check, so this function cannot tell you it is lying.</strong> If
+  <a href="index.html#properties"><code>isLong</code></a> and the storage disagree — which only a hand-built line can arrange, via
+  <a href="constructors.html">the null-text branch</a> — this returns an indeterminate pointer and the caller's <code>strlen</code> is where the
+  crash appears, far from the construction that caused it. Reading <code>isLong</code> alongside the result costs nothing and localises that bug.
+</div>
+
+<h2 id="example">Examples</h2>
+
+<p>The one caller in the engine, appending the body after the prefix it just built:</p>
+
+<p class="meta">From Engine/Log/Logger.cpp</p>
+
+<pre><code><span class="kw">for</span> (<span class="kw">auto</span>&amp; log : swapBuffer)
+{
+        ...
+        <span class="ty">InlineStringBuilder</span>&lt;<span class="ty">Config</span>::LogLineLength * <span class="nu">2</span>&gt; text;
+
+        text &lt;&lt; <span class="st">'['</span> &lt;&lt; timeStampStr.c_str() &lt;&lt; <span class="st">"]["</span> &lt;&lt; log.threadName &lt;&lt; <span class="st">"["</span>;
+        text &lt;&lt; log.category &lt;&lt; <span class="st">"]["</span> &lt;&lt; levelStr &lt;&lt; <span class="st">"] "</span>;
+        text &lt;&lt; log.GetText();
+
+        textBuffer.<span class="fn">emplace_back</span>(text.c_str());
+}</code></pre>
+
+<p>
+  Note that the result is consumed immediately and copied into an <code>HString</code> in the same iteration — the only safe pattern, since the
+  next statement after the loop clears <code>swapBuffer</code> and destroys the line the pointer belongs to. Nothing in the engine keeps a
+  <code>const char*</code> out of a line past its own batch.
+</p>
+
+<footer class="prevnext">
+  <span><a href="index.html">← LogLine</a></span>
+  <span><a href="index.html#methods">All LogLine methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

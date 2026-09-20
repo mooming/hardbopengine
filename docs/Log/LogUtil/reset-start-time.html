@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LogUtil::ResetStartTime — Log — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">LogUtil</a> methods</h3>
+  <ul class="methods">
+    <li><a href="get-start-time.html">GetStartTime</a></li>
+    <li><a class="current" href="reset-start-time.html">ResetStartTime</a></li>
+    <li><a href="get-time-stamp-string.html">GetTimeStampString</a></li>
+    <li><a href="get-log-level-string.html">GetLogLevelString</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Log</a> /
+  <a href="index.html">LogUtil</a> / ResetStartTime
+</p>
+
+<h1><span class="fn">ResetStartTime</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::LogUtil</span>
+  <span class="tag">Engine/Log/LogUtil.h</span>
+  <span class="tag">noexcept</span>
+  make "now" the instant every later line measures itself against
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code><span class="kw">void</span> <span class="fn">ResetStartTime</span>() <span class="kw">noexcept</span>;</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Assigns <code>std::chrono::steady_clock::now()</code> to the epoch that
+  <a href="get-start-time.html"><code>GetStartTime</code></a> returns. After the call, a new line's elapsed time
+  starts from zero again; every line already produced keeps the number it was given, so the output contains the
+  old sequence followed by the new one. There is no flag, no log line of its own and no return value to tell you
+  the clock just moved — the only trace is the discontinuity in the file.
+</p>
+
+<p>
+  It takes no instant as an argument, and the header states the reason: the caller that owns the decision
+  (<code>SystemStatistics</code>) keeps its own start in <code>time::TTime</code> over
+  <code>high_resolution_clock</code>, and that clock is <code>system_clock</code> on some standard libraries. A
+  parameter of the caller's clock type would have to be converted into <code>steady_clock</code> to be stored — a
+  unit error that only appears when the toolchain changes under the code. Reading the log's own clock here instead
+  removes the conversion entirely.
+</p>
+
+<div class="gap">
+  <strong>This is an unsynchronised write to a static that every formatted line reads.</strong> The epoch is a
+  plain <code>TTimePoint</code>, guarded by no mutex and no atomic (see
+  <a href="index.html#description">the namespace note</a>). Calling <code>ResetStartTime</code> while another
+  thread is inside <a href="get-time-stamp-string.html"><code>GetTimeStampString</code></a> — which is every
+  thread that ever logs, on the drain path — is a data race on a 64-bit-or-wider value, not merely a cosmetic
+  renumbering. It is safe for the engine's use because the call happens in <code>Engine::Engine()</code>, before
+  any worker or IO thread exists. If you call it anywhere else, prove to yourself that no other thread can log at
+  that moment.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None — deliberately. The new zero point is always "now", never a value the caller supplies.</p>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  <code>void</code>. The previous epoch is not returned, so the old zero point cannot be restored: there is no
+  undo, and no way to measure how far the clock was moved. Read
+  <a href="get-start-time.html"><code>GetStartTime</code></a> into a local <em>value</em> before resetting if you
+  need to know either.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<p>The only call site in the repository — the engine constructor, not <code>Initialize</code>:</p>
+
+<p class="meta">From Engine/Engine/Engine.cpp</p>
+
+<pre><code><span class="ty">Engine</span>::<span class="ty">Engine</span>()
+        : preEngineInit(<span class="kw">this</span>)
+        , ...
+        , logger(*<span class="kw">this</span>, <span class="st">"./"</span>, <span class="st">"hardbop.log"</span>)
+{
+        time::<span class="fn">ResetEngineEpoch</span>();
+        <span class="ty">LogUtil</span>::<span class="fn">ResetStartTime</span>();          <span class="cm">// log time 0 = engine construction</span>
+        std::signal(SIGABRT, SignalHandler);
+        ...
+}</code></pre>
+
+<div class="note">
+  <strong>The order of those two statements is the contract.</strong> Resetting the log clock before any thread
+  that logs exists is what keeps this call race-free, and putting it in the constructor rather than in
+  <code>Initialize</code> means the zero point is set even by a process that initialises only part of the engine —
+  a headless context that passes <a href="../../Engine/index.html#einitlevel"><code>EInitLevel</code></a> flags
+  without an application still gets log time measured from engine construction.
+</div>
+
+<footer class="prevnext">
+  <span><a href="index.html">← LogUtil</a></span>
+  <span><a href="index.html#methods">All LogUtil methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

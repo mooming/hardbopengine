@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ELogLevel — Log — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="#description">Class description</a></li>
+    <li><a href="#template">Template parameters</a></li>
+    <li><a href="#properties">Class properties</a></li>
+    <li><a href="#methods">Class methods</a></li>
+    <li><a href="#non-member">Non-member helpers</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+
+  <h3>Methods</h3>
+  <ul class="methods">
+    <li>None — an <code>enum class</code> declares no members</li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Log</a> / ELogLevel
+</p>
+
+<h1 id="eloglevel">ELogLevel</h1>
+<p class="subtitle">
+  <span class="tag">Engine/Log/LogLevel.h</span>
+  <span class="tag">namespace hbe</span>
+  <span class="tag">enum class : unsigned char</span>
+  <span class="tag">7 enumerators</span>
+  severity of one line, where the declaration order <em>is</em> the filtering rule
+</p>
+
+<h2 id="description">Class description</h2>
+
+<p>
+  Six severities from chatty to fatal, plus <code>MAX</code> as a count. The header says
+  "ordered from least to most severe" and every consumer in the module relies on exactly that: the logger never
+  tests a level for equality, it tests ranges — <code>level &lt; threshold</code> drops a line in
+  <a href="../Logger/add-log.html"><code>AddLog</code></a>, <code>level &gt;= ELogLevel::Warning</code> decides
+  whether the file gets flushed in <a href="../Logger/process-buffer.html"><code>ProcessBuffer</code></a>, and
+  <code>level &gt;= ELogLevel::Error</code> selects the inline-write path in
+  <a href="../Logger/add-log.html"><code>AddLog</code></a>. Nothing switches on individual levels except
+  <a href="../LogUtil/get-log-level-string.html"><code>GetLogLevelString</code></a>.
+</p>
+
+<p>
+  The numeric values are public, not internal. <a href="../Logger/add-log.html"><code>AddLog</code></a> compares
+  against a <code>TAtomicConfigParam&lt;uint8_t&gt;</code> named <code>Log.Level</code>, and
+  <a href="../../Core/index.html#tasksystem"><code>TaskSystem::Initialize</code></a> does the same for its own
+  category, so a level
+  reaches the logger as a <code>uint8_t</code> that is <code>static_cast</code> against
+  <a href="../../Config/index.html#configparam"><code>ConfigParam</code></a> storage. The order is therefore a
+  stored-format contract: inserting a level between <code>Info</code> and <code>Significant</code> silently
+  renumbers every level that a config file or a defaulting parameter already holds — including the two
+  <a href="../../Config/index.html#engineconfig"><code>Config::EngineLogLevel</code></a> constants, which are
+  <code>uint8_t</code> literals written against this enum's numbering.</p>
+
+<div class="note">
+  <strong><code>MAX</code> is a sentinel, not a level you log at.</strong> It exists so the count of real levels
+  has a name. It has no text — <a href="../LogUtil/get-log-level-string.html"><code>GetLogLevelString</code></a>
+  returns a default-constructed <a href="../../String/index.html#staticstring"><code>StaticString</code></a> for
+  any value outside the six, so printing <code>MAX</code> yields an empty field, not <code>"MAX"</code>.
+</div>
+
+<h2 id="template">Template parameters</h2>
+
+<p>None — <code>ELogLevel</code> is not a template.</p>
+
+<h2 id="properties">Class properties</h2>
+
+<p>
+  The enumerators, with the ordinal each one has under <code>: unsigned char</code>. The ordinal column is not
+  decoration: it is the number a <code>uint8_t</code> log-level parameter stores.
+</p>
+
+<table>
+  <tr><th>Name</th><th>Declaration</th><th>What it means</th></tr>
+  <tr>
+    <td><code>Verbose</code></td>
+    <td><code>Verbose</code> (<code>0</code>)</td>
+    <td>
+      <span class="badge">enumerator</span> Per-line detail. It is dropped at the default setting, because
+      <a href="../Logger/add-log.html"><code>AddLog</code></a> compares against <code>Log.Level</code>, whose
+      default is <code>Info</code>. It is rejected before the formatting callback runs, so the line is never
+      rendered and no <a href="../../String/index.html#inlinestringbuilder"><code>InlineStringBuilder</code></a>
+      is built for it
+    </td>
+  </tr>
+  <tr>
+    <td><code>Info</code></td>
+    <td><code>Info</code> (<code>1</code>)</td>
+    <td>
+      <span class="badge">enumerator</span> Ordinary progress, and the default level of both
+      <a href="../Logger/get.html"><code>Logger::Get(category, level)</code></a> and the <code>Log.Level</code>
+      parameter — so it is the level a call site gets when it does not name one
+    </td>
+  </tr>
+  <tr>
+    <td><code>Significant</code></td>
+    <td><code>Significant</code> (<code>2</code>)</td>
+    <td>
+      <span class="badge">enumerator</span> A milestone worth keeping in a normal build's output. It is the first
+      level that survives the engine's own standard-output threshold
+      (<code>Config::EngineLogLevelPrint</code>, which is <code>2</code> unless memory logging is compiled in)
+    </td>
+  </tr>
+  <tr>
+    <td><code>Warning</code></td>
+    <td><code>Warning</code> (<code>3</code>)</td>
+    <td>
+      <span class="badge">enumerator</span> Degraded but continuing. Reaching it has one mechanical consequence:
+      <a href="../Logger/process-buffer.html"><code>ProcessBuffer</code></a> sets its <code>needIOFlush</code> flag
+      and calls <code>outFileStream.flush()</code> after the batch, so a warning is on disk shortly after it is
+      written while a plain <code>Info</code> batch may sit in the stream buffer
+    </td>
+  </tr>
+  <tr>
+    <td><code>Error</code></td>
+    <td><code>Error</code> (<code>4</code>)</td>
+    <td>
+      <span class="badge">enumerator</span> A failed operation. The threshold for two special behaviours in
+      <a href="../Logger/add-log.html"><code>AddLog</code></a>: produced on the log thread it is written inline
+      rather than queued, and it is the level <code>EmergencyLog</code> sends to standard error rather than
+      standard output
+    </td>
+  </tr>
+  <tr>
+    <td><code>FatalError</code></td>
+    <td><code>FatalError</code> (<code>5</code>)</td>
+    <td>
+      <span class="badge">enumerator</span> The process is not continuing. <code>AddLog</code> enqueues it, then
+      calls <a href="../Logger/flush.html"><code>Flush</code></a>, <code>debugBreak()</code> and
+      <code>Assert(false)</code> before returning, and skips the step that wakes the IO stream — the flush is
+      this thread's own business by then
+    </td>
+  </tr>
+  <tr>
+    <td><code>MAX</code></td>
+    <td><code>MAX</code> (<code>6</code>)</td>
+    <td>
+      <span class="badge">enumerator, sentinel</span> One past the last real level. Logging at it is not
+      meaningless — it passes every <code>&gt;=</code> threshold in the module, including the one that flushes
+      the file — but it has no name text, so the line renders with an empty level field:
+      <code>[0:0:1:4][Worker 0][Engine][] texture cache disabled</code>
+    </td>
+  </tr>
+</table>
+
+<h2 id="methods">Class methods</h2>
+
+<p>None — an <code>enum class</code> declares no members, and nothing in this module adds any by operator
+overload. Comparisons are the built-in ones on the underlying <code>unsigned char</code>.</p>
+
+<h2 id="non-member">Non-member helper functions</h2>
+
+<table>
+  <tr><th>Function</th><th>What it does with a level</th></tr>
+  <tr>
+    <td><a href="../LogUtil/get-log-level-string.html"><code>LogUtil::GetLogLevelString</code></a></td>
+    <td>Maps one of the six to an interned <code>StaticString</code>; returns an empty one for anything else,
+        <code>MAX</code> included</td>
+  </tr>
+  <tr>
+    <td><a href="../../Config/index.html#engineconfig"><code>Config::EngineLogLevel</code></a>,
+        <code>Config::EngineLogLevelPrint</code></td>
+    <td>Two <code>uint8_t</code> constants read by <code>hbe::Engine::Log</code>, a second logging pipeline that
+        uses this enum for its arguments but not this module's queue — see
+        <a href="../../Engine/index.html#engine">Engine</a></td>
+  </tr>
+</table>
+
+<h2 id="coverage">Coverage</h2>
+
+<table>
+  <tr><th>Gap</th><th>Detail</th></tr>
+  <tr>
+    <td>Where the thresholds live</td>
+    <td>This page documents the levels, not the numbers a running engine compares them against. The
+        <code>Log.Level</code> parameter is declared inside
+        <a href="../Logger/add-log.html"><code>AddLog</code></a> and the per-category ones inside each subsystem's
+        own filter; the parameter mechanism is
+        <a href="../../Config/index.html#configparam">Config: ConfigParam</a></td>
+  </tr>
+  <tr>
+    <td>No text for <code>MAX</code>, and a dead string</td>
+    <td><code>GetLogLevelString</code> declares <code>static StaticString none("None")</code> and never returns
+        it; the <code>default</code> branch returns a default-constructed value instead. Recorded on
+        <a href="../LogUtil/get-log-level-string.html">that function's page</a> rather than fixed here</td>
+  </tr>
+  <tr>
+    <td>No parser</td>
+    <td>Nothing converts text back to a level. A config file that wants <code>Log.Level = 3</code> must supply a
+        number; there is no <code>From</code> counterpart to
+        <a href="../LogUtil/get-log-level-string.html"><code>GetLogLevelString</code></a> anywhere in
+        <code>Engine/Log/</code></td>
+  </tr>
+</table>
+
+<footer class="prevnext">
+  <span><a href="../index.html">← Log</a></span>
+  <span><a href="../index.html#eloglevel">ELogLevel in the Log class list</a></span>
+</footer>
+
+</main>
+</body>
+</html>

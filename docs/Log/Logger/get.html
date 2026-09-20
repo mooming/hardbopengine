@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Logger::Get — Log — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">Logger</a> methods</h3>
+  <ul class="methods">
+    <li><a class="current" href="get.html">Get</a></li>
+    <li><a href="get-name.html">GetName</a></li>
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+    <li><a href="start-task.html">StartTask</a></li>
+    <li><a href="stop-task.html">StopTask</a></li>
+    <li><a href="is-drain-task-running.html">IsDrainTaskRunning</a></li>
+    <li><a href="set-filter.html">SetFilter</a></li>
+    <li><a href="add-log.html">AddLog</a></li>
+    <li><a href="flush.html">Flush</a></li>
+    <li><a href="report-memory-configuration.html">ReportMemoryConfiguration</a></li>
+    <li><a href="wait-for-flush.html">WaitForFlush</a></li>
+    <li><a href="process-buffer.html">ProcessBuffer</a></li>
+    <li><a href="flush-buffer.html">FlushBuffer</a></li>
+    <li><a href="write-log.html">WriteLog</a></li>
+    <li><a href="print-std-io.html">PrintStdIO</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Log</a> /
+  <a href="index.html">Logger</a> / Get
+</p>
+
+<h1><span class="fn">Get</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Logger</span>
+  <span class="tag">Engine/Log/Logger.h</span>
+  <span class="tag">2 overloads</span>
+  <span class="tag">static noexcept</span>
+  the same name asks for two different things, and the argument list decides which
+</p>
+
+<h2 id="signature">Signatures</h2>
+
+<p>One page for the name, because both forms answer "give me the logger" and differ in what they hand back:</p>
+
+<pre><code><span class="cm">/// the sink itself</span>
+[[nodiscard]] <span class="kw">static</span> <span class="ty">Logger</span>&amp; <span class="fn">Get</span>() <span class="kw">noexcept</span>;
+
+<span class="cm">/// a category and level bound into one value</span>
+[[nodiscard]] <span class="kw">static</span> <span class="ty">SimpleLogger</span> <span class="fn">Get</span>(<span class="ty">StaticString</span> category,
+                                       <span class="ty">ELogLevel</span> level = <span class="ty">ELogLevel</span>::Info) <span class="kw">noexcept</span>;</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  With no argument, <code>Get</code> returns the live singleton: it reads the static
+  <a href="index.html#properties"><code>instance</code></a> pointer and <code>FatalAssert</code>s if it is null.
+  That reference is what you need in order to call <a href="set-filter.html"><code>SetFilter</code></a>,
+  <a href="flush.html"><code>Flush</code></a>, <a href="add-log.html"><code>AddLog</code></a> or
+  <a href="start-task.html"><code>StartTask</code></a> directly.
+</p>
+
+<p>
+  With a category — and optionally a level, defaulting to <a href="../ELogLevel/index.html"><code>Info</code></a> —
+  it returns a <a href="../SimpleLogger/index.html"><code>SimpleLogger</code></a> <em>by value</em>: two fields
+  copied out, no reference to the logger held, no allocation, and no check that a logger exists yet. This is the
+  form almost every call site uses, because it lets a subsystem state its category once and then write
+  <code>log.OutError(…)</code>.
+</p>
+
+<div class="note">
+  <strong>Overload resolution, not intent, picks the form.</strong> <code>Logger::Get("Renderer")</code> cannot be
+  the sink, because <code>StaticString</code> is implicitly constructible from <code>const char*</code> — a caller
+  who meant the singleton and left an argument in gets a <code>SimpleLogger</code> and a compile error only at the
+  point of use, when a method turns out not to exist. Ask for the sink with an empty argument list, always.
+</div>
+
+<div class="gap">
+  <strong>A <code>SimpleLogger</code> obtained before a logger exists is not broken — it is a different code
+  path.</strong> Nothing here checks <code>instance</code>, and <a href="../SimpleLogger/out.html"><code>Out</code></a>
+  tests it on every call: while it is null, the line bypasses the queue entirely and is written straight to standard
+  output or standard error by the file-local emergency path. So logging "works" before
+  <a href="constructors.html">the constructor</a> and after <a href="destructor.html">the destructor</a>, but it does
+  <em>not</em> reach the log file, is not filtered by the level parameter or by any category filter, and is not
+  ordered against queued lines. The no-argument form, by contrast, stops the
+  process with <code>FatalAssert</code> rather than let you write to nothing.
+</div>
+
+<div class="note">
+  <strong>The first call with a literal interns that literal.</strong> <code>StaticString category</code> means a
+  <code>const char*</code> argument is looked up in the static-string table, which takes that table's mutex
+  (<a href="../../String/index.html#staticstring">String: StaticString</a>). Storing the result in a
+  <code>static const auto</code>, as every engine call site does, moves the interning to the first call and leaves
+  the rest as two field copies.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr>
+    <td><code>category</code></td>
+    <td><a href="../../String/index.html#staticstring"><code>StaticString</code></a></td>
+    <td>
+      Only on the second overload. The filter key and the bracketed prefix on every line this value produces —
+      free-form, interned, and it must match the string passed to <a href="set-filter.html"><code>SetFilter</code></a>
+      character for character for a filter to apply
+    </td>
+  </tr>
+  <tr>
+    <td><code>level</code></td>
+    <td><a href="../ELogLevel/index.html"><code>ELogLevel</code></a></td>
+    <td>
+      Defaulted to <code>Info</code>. The level a plain <code>Out</code> logs at; it is stored in the value, so a
+      later <code>Out(ELogLevel::Error, …)</code> on the same object overrides it for that line only
+    </td>
+  </tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr>
+    <td><code>Logger&amp;</code></td>
+    <td>The singleton. Valid while the <a href="constructors.html">constructor</a>'s object is alive; it is an
+        <a href="../../Engine/index.html#engine">Engine</a> member, so its lifetime is the engine's</td>
+  </tr>
+  <tr>
+    <td><a href="../SimpleLogger/index.html"><code>SimpleLogger</code></a></td>
+    <td>
+      A two-field value (<code>category</code>, <code>level</code>), copyable and storable in a static, and never
+      invalidated by anything the logger does — it looks the logger up by static pointer on each call rather than
+      holding a reference to it
+    </td>
+  </tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p>Both forms in one function, from the task system's initialisation — first the sink to install a filter, then a bound logger for its own lines:</p>
+
+<p class="meta">From Engine/Core/TaskSystem.cpp</p>
+
+<pre><code><span class="kw">void</span> <span class="ty">TaskSystem</span>::Initialize() <span class="kw">noexcept</span>
+{
+        <span class="kw">auto</span>&amp; logger = <span class="ty">Logger</span>::<span class="fn">Get</span>();
+        <span class="kw">auto</span> logFilter = [](<span class="kw">auto</span> level)
+        {
+                ...
+                <span class="kw">return</span> level &gt; <span class="kw">static_cast</span>&lt;<span class="kw">ELogLevel</span>&gt;(logLevel.<span class="fn">Get</span>());
+        };
+
+        logger.<span class="fn">SetFilter</span>(<span class="fn">GetName</span>(), logFilter);
+
+        <span class="kw">auto</span> log = <span class="ty">Logger</span>::<span class="fn">Get</span>(<span class="fn">GetName</span>());
+        log.<span class="fn">Out</span>([<span class="kw">this</span>](<span class="kw">auto</span>&amp; ls) { ls &lt;&lt; <span class="st">"Hardware Concurrency = "</span> &lt;&lt; numHardwareThreads; });</code></pre>
+
+<p>The same bound-logger form cached in a static, which is how a file-scope helper avoids repeating the category:</p>
+
+<p class="meta">From Engine/Renderer/Vulkan/VulkanRenderer.cpp</p>
+
+<pre><code><span class="kw">void</span> LogFailure(<span class="kw">const char</span>* step, VkResult result) <span class="kw">noexcept</span>
+{
+        <span class="kw">static</span> <span class="kw">const</span> <span class="kw">auto</span> log = <span class="ty">Logger</span>::<span class="fn">Get</span>(<span class="st">"VulkanRenderer"</span>, <span class="ty">ELogLevel</span>::Error);
+        log.<span class="fn">OutError</span>([step, result](<span class="kw">auto</span>&amp; ls)
+        {
+                ls &lt;&lt; step &lt;&lt; <span class="st">" failed (VkResult="</span> &lt;&lt; <span class="kw">static_cast</span>&lt;<span class="kw">int</span>&gt;(result) &lt;&lt; <span class="st">")"</span>;
+        });
+}</code></pre>
+
+<p>
+  Note the asymmetry the two examples demonstrate: the filter has to be installed on the sink, so it goes through
+  the no-argument form, while everything that only emits lines uses the category form and never touches the sink
+  again.
+</p>
+
+<footer class="prevnext">
+  <span><a href="index.html">← Logger</a></span>
+  <span><a href="index.html#methods">All Logger methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

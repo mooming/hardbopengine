@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Logger::~Logger — Log — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">Logger</a> methods</h3>
+  <ul class="methods">
+    <li><a href="get.html">Get</a></li>
+    <li><a href="get-name.html">GetName</a></li>
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a class="current" href="destructor.html">destructor</a></li>
+    <li><a href="start-task.html">StartTask</a></li>
+    <li><a href="stop-task.html">StopTask</a></li>
+    <li><a href="is-drain-task-running.html">IsDrainTaskRunning</a></li>
+    <li><a href="set-filter.html">SetFilter</a></li>
+    <li><a href="add-log.html">AddLog</a></li>
+    <li><a href="flush.html">Flush</a></li>
+    <li><a href="report-memory-configuration.html">ReportMemoryConfiguration</a></li>
+    <li><a href="wait-for-flush.html">WaitForFlush</a></li>
+    <li><a href="process-buffer.html">ProcessBuffer</a></li>
+    <li><a href="flush-buffer.html">FlushBuffer</a></li>
+    <li><a href="write-log.html">WriteLog</a></li>
+    <li><a href="print-std-io.html">PrintStdIO</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Log</a> /
+  <a href="index.html">Logger</a> / destructor
+</p>
+
+<h1><span class="fn">~Logger</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Logger</span>
+  <span class="tag">Engine/Log/Logger.h</span>
+  <span class="tag">noexcept</span>
+  closes the file after one last drain — and retires the singleton before doing it
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>~<span class="ty">Logger</span>() <span class="kw">noexcept</span>;</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>Four statements, in this order:</p>
+
+<pre><code>instance = <span class="kw">nullptr</span>;
+
+<span class="fn">ProcessBuffer</span>();
+
+outFileStream.<span class="fn">flush</span>();
+outFileStream.<span class="fn">close</span>();</code></pre>
+
+<p>
+  Clearing <a href="index.html#properties"><code>instance</code></a> first means the queue stops accepting from that
+  instant: every <a href="../SimpleLogger/out.html"><code>SimpleLogger::Out</code></a> now finds a null instance and
+  diverts to the emergency path, which writes to standard output or standard error and never to the file. The drain
+  that follows is a direct <a href="process-buffer.html"><code>ProcessBuffer</code></a> call on the destroying thread
+  — it does not go through <a href="flush.html"><code>Flush</code></a>, so it neither waits nor cares whether a drain
+  task still exists, and it writes whatever is queued at this moment to both destinations. Then the stream is flushed
+  and closed.
+</p>
+
+<p>
+  That is the whole shutdown guarantee in a clean run. <a href="stop-task.html"><code>StopTask</code></a> has exactly
+  one caller in the repository — <a href="../../Engine/index.html#engine">Engine</a>'s signal handler — so an
+  ordinarily terminating process reaches the file for the last time right here.
+</p>
+
+<div class="gap">
+  <strong>Lines produced after this point cannot reach the log file, and nothing tells you.</strong> The emergency path
+  is silent about being an emergency: it writes to standard output, bypasses the level parameter and every category
+  filter, and returns. A subsystem that logs from a static destructor, or from a thread still running after the engine
+  is gone, produces text that looks like log output on the console and is absent from the file — the exact symptom that
+  reads as "logging is broken". Order your shutdown so that logging ends before the logger does.
+</div>
+
+<div class="gap">
+  <strong>The final drain still writes to the console, which means it still needs the engine.</strong>
+  <a href="process-buffer.html"><code>ProcessBuffer</code></a> hands the batch to <em>both</em> output functions, and the
+  second is <a href="print-std-io.html"><code>PrintStdIO</code></a> → <code>Engine::Get().ConsoleOutLn(…)</code>.
+  <code>Engine::Get()</code> asserts that an instance exists and dereferences the pointer regardless. For a
+  <code>Logger</code> that is an <a href="../../Engine/index.html#engine">Engine</a> member this happens to work: the
+  <code>PreEngineInit</code> object that publishes the engine pointer is its first member and so is destroyed last,
+  leaving the pointer live while the logger's destructor runs. A logger constructed anywhere else — or destroyed after
+  its engine — has no such protection at this line.
+</div>
+
+<div class="note">
+  <strong>The destructor does not stop the drain task.</strong> It clears no <code>isRunning</code> and releases no
+  <a href="index.html#properties"><code>taskID</code></a>, so a task that is still live when the object dies belongs to
+  whoever called <a href="start-task.html"><code>StartTask</code></a>. That is why
+  <a href="stop-task.html"><code>StopTask</code></a> exists as a separate call and why the header insists
+  <a href="is-drain-task-running.html"><code>IsDrainTaskRunning</code></a> is not the same question as "does the logger
+  exist".
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  <code>void</code>, from a <code>noexcept</code> destructor: an exception escaping any of this — from the output
+  functions, from a stream — terminates rather than unwinding. There is also no report of whether the last batch made
+  it: if the stream was already in a failed state (see
+  <a href="constructors.html">the constructor's note</a>), the final drain writes into a dead stream and the last lines
+  of the run are lost quietly.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<p>
+  There is no call site for a logger destructor: the object is an <code>Engine</code> member, so it is destroyed with
+  the engine and never explicitly. The nearest real shutdown sequence — the signal handler, which stops the drain task
+  while it still can, and only then relies on the flush — is the correct way to think about this destructor's limits:
+</p>
+
+<p class="meta">From Engine/Engine/Engine.cpp</p>
+
+<pre><code><span class="kw">void</span> SignalHandler(<span class="kw">int</span> sigNum)
+{
+        <span class="kw">auto</span>&amp; engine = <span class="ty">Engine</span>::<span class="fn">Get</span>();
+        <span class="kw">if</span> (engine.<span class="fn">GetLogger</span>().<span class="fn">IsDrainTaskRunning</span>())
+        {
+                engine.<span class="fn">GetLogger</span>().<span class="fn">StopTask</span>(engine.<span class="fn">GetTaskSystem</span>());
+        }
+        <span class="kw">else</span>
+        {
+                engine.<span class="fn">GetLogger</span>().<span class="fn">Flush</span>();
+        }
+        ...
+        engine.<span class="fn">CloseLog</span>();
+
+        <span class="kw">exit</span>(<span class="nu">128</span> + sigNum);
+}</code></pre>
+
+<p>
+  Note what that handler does <em>not</em> rely on: it exits through <code>exit</code>, so the engine's members —
+  including this logger — are never destroyed, and the lines it wants preserved are written by
+  <a href="stop-task.html"><code>StopTask</code></a> or <a href="flush.html"><code>Flush</code></a> rather than by the
+  destructor. Treat this destructor as the clean-exit path only.
+</p>
+
+<footer class="prevnext">
+  <span><a href="index.html">← Logger</a></span>
+  <span><a href="index.html#methods">All Logger methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

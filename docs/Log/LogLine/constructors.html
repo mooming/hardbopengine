@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LogLine constructors — Log — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">LogLine</a> methods</h3>
+  <ul class="methods">
+    <li><a class="current" href="constructors.html">constructors</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+    <li><a href="get-text.html">GetText</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Log</a> /
+  <a href="index.html">LogLine</a> / constructors
+</p>
+
+<h1><span class="fn">LogLine</span> constructors</h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::LogLine</span>
+  <span class="tag">Engine/Log/LogLine.h</span>
+  <span class="tag">3 overloads</span>
+  <span class="tag">all noexcept</span>
+  produce a line, move a line, or make an empty one — one of the three allocates
+</p>
+
+<h2 id="signature">Signatures</h2>
+
+<pre><code><span class="cm">/// empty line: level Info, inline variant, both end bytes of the buffer set to '\0'</span>
+<span class="ty">LogLine</span>() <span class="kw">noexcept</span>;
+
+<span class="cm">/// steal a line's body — pointer hand-off for the long variant, 1024-byte copy for the short one</span>
+<span class="ty">LogLine</span>(<span class="ty">LogLine</span>&amp;&amp; rhs) <span class="kw">noexcept</span>;
+
+<span class="cm">/// the form the logger calls: stamps now, copies inText, chooses the variant from size</span>
+<span class="ty">LogLine</span>(<span class="ty">ELogLevel</span> level, <span class="ty">StaticString</span> threadName, <span class="ty">StaticString</span> category,
+       <span class="kw">const char</span>* inText, size_t size) <span class="kw">noexcept</span>;</code></pre>
+
+<p>
+  There is no copy constructor. Declaring the move constructor implicitly deletes it, so
+  <code>LogLine b = a;</code> is a compile error — which is exactly what you want from a class whose second variant owns a raw pointer.
+</p>
+
+<h2 id="description">Function description</h2>
+
+<h3>Producing a line</h3>
+
+<p>
+  The five-argument form is the constructor that does work. It stamps <code>steady_clock::now()</code> into
+  <a href="index.html#properties"><code>timeStamp</code></a>, decides
+  <a href="index.html#properties"><code>isLong</code></a> from <code>size &gt;= Config::LogLineLength - 1</code> — 1023, so the threshold and the
+  inline capacity are the same constant — and then takes one of two paths.
+</p>
+
+<p>
+  Long: it asks <code>Engine::Get().GetMemoryManager()</code> for <code>size + 1</code> bytes via <code>SysAllocate</code>, and copies
+  <code>size + 1</code> bytes from <code>inText</code> — one more than you gave it, taking the terminator on trust.
+  Short: it ignores your <code>size</code> entirely, re-measures with
+  <code>StringUtil::StrLen(inText, Config::LogLineLength - 1)</code>, copies that many bytes and writes its own terminator. An inline line
+  therefore ends at the first NUL in the input, while a long line is copied by count.
+</p>
+
+<h3>Moving a line</h3>
+
+<p>
+  Long: the pointer and size are taken, and the source is reset to an empty short line (<code>isLong = false</code>,
+  <code>longText = nullptr</code>, <code>longTextSize = 0</code>, <code>text[0] = '\0'</code> — all of that written through the union). Short:
+  all 1024 bytes are copied, which is why a queue of short lines is cheap to swap as a buffer
+  (<a href="../Logger/process-buffer.html">one <code>std::swap</code> of the vector</a>) and expensive to move element by element.
+</p>
+
+<h3>The empty line</h3>
+
+<p>
+  The default constructor sets <code>level = Info</code>, <code>isLong = false</code>, zeroes the pointer member, and writes
+  <code>'\0'</code> at both <code>text[0]</code> and <code>text[Config::LogLineLength - 1]</code>. The last of those is belt-and-braces: it
+  guarantees the buffer's final byte is a terminator even if something later scribbles into the tail. It leaves
+  <code>timeStamp</code> uninitialised — a default-constructed line has no moment in time, and the drain would print an arbitrary elapsed
+  value for one.
+</p>
+
+<div class="gap">
+  <strong>A null <code>inText</code> with a size of 1023 or more produces a line whose body pointer was never set.</strong> The constructor
+  selects the long variant from the <em>size argument alone</em>, then bails out early when <code>inText == nullptr</code> by writing
+  <code>text[0] = '\0'</code> and returning — leaving <code>isLong</code> true and <a href="index.html#properties"><code>longText</code></a>
+  uninitialised. <a href="get-text.html"><code>GetText</code></a> then returns an indeterminate pointer, and
+  <a href="destructor.html">the destructor</a> tries to free it (after an <code>Assert</code> that only Debug and Dev run). No current caller
+  can reach this — <a href="../Logger/add-log.html"><code>AddLog</code></a> always passes a builder it just filled, with a matching
+  <code>Size()</code> — but a hand-built line, or any future caller that passes a length and a pointer separately, can.
+</div>
+
+<div class="note">
+  <strong>The two variants draw memory from different places, and the long one is not the logger's.</strong> Long bodies come from
+  <a href="../../Memory/index.html#memorymanager"><code>MemoryManager::SysAllocate</code></a> rather than from
+  <a href="../Logger/index.html#properties"><code>"LoggerInputPool"</code></a>, even though
+  <a href="../Logger/add-log.html"><code>AddLog</code></a> opens that pool as allocator scope around the enqueue. It is a deliberate
+  asymmetry: <code>SysAllocate</code> takes an explicit size, and the allocator scope only redirects the
+  <a href="../../Memory/index.html#allocators">default allocator</a> that <code>HString</code> and the queues use.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr>
+    <td><code>level</code></td>
+    <td><a href="../ELogLevel/index.html"><code>ELogLevel</code></a></td>
+    <td>Stored as produced; no filtering happens here — that is <a href="../Logger/add-log.html">already done</a> before a line is built</td>
+  </tr>
+  <tr>
+    <td><code>threadName</code></td>
+    <td><a href="../../String/index.html#staticstring"><code>StaticString</code></a></td>
+    <td>Interned handle, copied by value. Pass what <code>TaskSystem::GetCurrentStreamName()</code> gave you; nothing validates it</td>
+  </tr>
+  <tr>
+    <td><code>category</code></td>
+    <td><a href="../../String/index.html#staticstring"><code>StaticString</code></a></td>
+    <td>The key the line will be attributable to in output</td>
+  </tr>
+  <tr>
+    <td><code>inText</code></td>
+    <td><code>const char*</code></td>
+    <td>
+      Must be NUL-terminated at or before <code>size</code>: the long path copies <code>size + 1</code> bytes and the short path re-measures with
+      <code>StrLen</code>. Not null — see the hazard above
+    </td>
+  </tr>
+  <tr>
+    <td><code>size</code></td>
+    <td><code>size_t</code></td>
+    <td>Length of the text excluding the terminator. It alone chooses the variant, and it is ignored on the short path</td>
+  </tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  A constructed line. Nothing reports whether the body was truncated, whether it went to the heap, or whether an allocation happened;
+  <code>noexcept</code> throughout, so a failed allocation in the long path is not something this constructor can survive as a status either.
+  Read <a href="index.html#properties"><code>isLong</code></a> and <a href="index.html#properties"><code>longTextSize</code></a> afterwards if
+  you need to know what you got.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<p>The only construction in the engine — inside the enqueue block, with a builder the caller thread just filled:</p>
+
+<p class="meta">From Engine/Log/Logger.cpp</p>
+
+<pre><code><span class="ty">TLogStream</span> ls;
+logFunc(ls);
+...
+{
+        std::lock_guard lock(inputLock);
+        <span class="ty">AllocatorScope</span> inputAllocScope(inputAlloc);
+        inputBuffer.<span class="fn">emplace_back</span>(level, threadName, category, ls.c_str(), ls.<span class="fn">Size</span>());
+
+        bufferSize = inputBuffer.size();
+        ...
+}</code></pre>
+
+<p>
+  <code>emplace_back</code> here runs the five-argument constructor in place, so the line is built directly inside the queue's storage — and
+  the two <code>StaticString</code> arguments are handles, not copies of text. The corresponding move constructor is what
+  <a href="../Logger/index.html#properties"><code>HVector</code></a> needs to grow that storage; without its <code>noexcept</code>, a reallocation
+  would have to copy, which this class deliberately does not allow.
+</p>
+
+<footer class="prevnext">
+  <span><a href="index.html">← LogLine</a></span>
+  <span><a href="index.html#methods">All LogLine methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

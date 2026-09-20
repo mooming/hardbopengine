@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Logger::StartTask — Log — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">Logger</a> methods</h3>
+  <ul class="methods">
+    <li><a href="get.html">Get</a></li>
+    <li><a href="get-name.html">GetName</a></li>
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+    <li><a class="current" href="start-task.html">StartTask</a></li>
+    <li><a href="stop-task.html">StopTask</a></li>
+    <li><a href="is-drain-task-running.html">IsDrainTaskRunning</a></li>
+    <li><a href="set-filter.html">SetFilter</a></li>
+    <li><a href="add-log.html">AddLog</a></li>
+    <li><a href="flush.html">Flush</a></li>
+    <li><a href="report-memory-configuration.html">ReportMemoryConfiguration</a></li>
+    <li><a href="wait-for-flush.html">WaitForFlush</a></li>
+    <li><a href="process-buffer.html">ProcessBuffer</a></li>
+    <li><a href="flush-buffer.html">FlushBuffer</a></li>
+    <li><a href="write-log.html">WriteLog</a></li>
+    <li><a href="print-std-io.html">PrintStdIO</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Log</a> /
+  <a href="index.html">Logger</a> / StartTask
+</p>
+
+<h1><span class="fn">StartTask</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Logger</span>
+  <span class="tag">Engine/Log/Logger.h</span>
+  <span class="tag">public</span>
+  attach the drain task to the IO stream — the call that turns a buffering queue into a writing one
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code><span class="kw">void</span> <span class="fn">StartTask</span>(<span class="ty">TaskSystem</span>&amp; taskSys);</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>Before it does anything with the task system, it logs one line: <code>"Logger started."</code> at
+<a href="../ELogLevel/index.html"><code>Info</code></a> under the category
+<a href="get-name.html"><code>GetName()</code></a> — enqueued, like everything else, so it reaches the file whenever
+the drain first runs.</p>
+
+<p>The rest, in order:</p>
+
+<ol>
+  <li>
+    A runnable is defined that reads <code>isRunning</code> with a relaxed load, returns <code>1</code> if it is clear,
+    and otherwise calls <a href="process-buffer.html"><code>ProcessBuffer</code></a> and returns <code>0</code>.
+  </li>
+  <li><code>isRunning</code> is stored true with release ordering — <em>before</em> the task is created.</li>
+  <li><code>taskID = taskSys.CreateTask("Logger", runnable, this)</code> registers the drain and keeps its identity.</li>
+  <li>The task is looked up. If the registry cannot produce it, an <code>Error</code> line is logged and the function
+    returns without enqueuing anything.</li>
+  <li>Otherwise a ranged task over indices 0 to 1 is generated from it and enqueued on
+    <a href="../../Core/index.html#taskstream">the IO task stream</a> (<code>TaskSystem::GetIOTaskStreamIndex()</code>).</li>
+  <li><code>threadID</code> is captured from that stream — the value that later decides whether
+    <a href="flush.html"><code>Flush</code></a> drains inline and whether an error line is written directly.</li>
+</ol>
+
+<p>
+  The runnable's return value is the mechanism worth understanding. A
+  <a href="../../Core/index.html#runnable"><code>TRunnable</code></a> returns the number of indices it has finished,
+  and returning less than the range means "call me again". The range here is a single index, so <code>0</code> means the
+  drain is rescheduled and <code>1</code> means the task is complete — a self-terminating loop: the drain runs again and
+  again while <code>isRunning</code> holds, and the moment <a href="stop-task.html"><code>StopTask</code></a> clears it the
+  runnable reports the index as done and the task retires itself without anyone cancelling.
+</p>
+
+<div class="note">
+  <strong>Draining has no back-off of its own.</strong> Each pass that finds <code>hasInput</code> clear returns after
+  one atomic load, but the runnable still reports the range unfinished, so the stream is entitled to call it again
+  immediately. The only thing in this module that yields is
+  <a href="wait-for-flush.html"><code>WaitForFlush</code></a>'s sleep, on the <em>waiting</em> thread. What an idle drain
+  actually costs — whether the stream parks between invocations — is <a href="../../Core/index.html#taskstream">TaskStream</a>
+  behaviour, and it is the question to ask before assuming an idle logger is free.
+</div>
+
+<div class="gap">
+  <strong>If the registry cannot track the task, the logger degrades into something that does not match its own error
+  message.</strong> The <code>Error</code> line promises "log lines are flushed inline by whoever produces them", but
+  <code>isRunning</code> was already stored true in step 2 and nothing clears it on this path. Consequences:
+  <a href="wait-for-flush.html"><code>WaitForFlush</code></a> only drains inline when <em>no</em> drain task can run, so
+  from here on every <a href="flush.html"><code>Flush</code></a> polls for the full 1000 ms, then reports to standard
+  error that the queue is still buffered; the queued lines are written only by the direct
+  <a href="process-buffer.html"><code>ProcessBuffer</code></a> calls in <a href="stop-task.html"><code>StopTask</code></a>
+  and <a href="destructor.html">the destructor</a>. A producer that hits the
+  <a href="add-log.html">force-flush threshold</a> therefore stalls a full second per threshold. This branch is reachable
+  only when the task registry declines to track the task — but nothing here tests that it happened.
+</div>
+
+<div class="note">
+  <strong>Call it exactly once, after the task system is initialised.</strong> The function overwrites
+  <a href="index.html#properties"><code>taskID</code></a> without releasing the previous one, so a second call leaks the
+  first task identity and leaves two drains competing for the <code>isDraining</code> claim — the loser of that claim
+  returning having done nothing. <a href="../../Engine/index.html#engine">Engine</a> calls it once, from
+  <code>Initialize</code>, under <a href="../../Engine/index.html#einitlevel"><code>EInitLevel::Logger</code></a>, which
+  also implies <code>EInitLevel::TaskSystem</code> — that implication is what makes the argument valid.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr>
+    <td><code>taskSys</code></td>
+    <td><a href="../../Core/index.html#tasksystem"><code>TaskSystem&amp;</code></a></td>
+    <td>
+      Already initialised, with an IO stream available and a working task registry: it is used for
+      <code>GetIOTaskStreamIndex</code>, <code>CreateTask</code>, <code>FindTask</code>, <code>Enqueue</code>,
+      <code>GetIOTaskStream</code> and, through the stream's thread, <code>GetThreadID</code>. It must outlive the
+      logger's logging, since <a href="stop-task.html"><code>StopTask</code></a> needs it again
+    </td>
+  </tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  <code>void</code>, and there is no status to inspect: the registry-tracking failure is reported only as a log line in
+  the category you may already have filtered. If you must know whether the drain is live afterwards, ask
+  <a href="is-drain-task-running.html"><code>IsDrainTaskRunning</code></a> — and be aware that in the failure case above it
+  answers <code>true</code>, because it reports the flag rather than the task.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<p>The engine's wiring — start the task system, then attach the logger to it:</p>
+
+<p class="meta">From Engine/Engine/Engine.cpp</p>
+
+<pre><code><span class="kw">void</span> Engine::<span class="fn">Initialize</span>(<span class="kw">int</span> argc, <span class="kw">const char</span>* argv[], <span class="ty">EInitLevel</span> levels)
+{
+        <span class="kw">if</span> (HasFlag(levels, <span class="ty">EInitLevel</span>::Logger))
+        {
+                levels = levels | <span class="ty">EInitLevel</span>::TaskSystem;
+        }
+
+        <span class="kw">if</span> (HasFlag(levels, <span class="ty">EInitLevel</span>::TaskSystem))
+        {
+                taskSystem.Initialize();
+                isTaskSystemReady = <span class="kw">true</span>;
+        }
+
+        <span class="kw">if</span> (HasFlag(levels, <span class="ty">EInitLevel</span>::Logger))
+        {
+                logger.<span class="fn">StartTask</span>(taskSystem);
+                isLoggerReady = <span class="kw">true</span>;
+        }
+        ...
+}</code></pre>
+
+<p>
+  Everything logged between <a href="constructors.html">construction</a> and this call is buffered rather than written —
+  that is normal and not a lost line, because the file is written by the drain this function installs. What the call does
+  change is <a href="flush.html"><code>Flush</code></a>: before it, a flush drains inline on the caller; after it, a flush
+  from any other thread waits for the drain instead.
+</p>
+
+<footer class="prevnext">
+  <span><a href="index.html">← Logger</a></span>
+  <span><a href="index.html#methods">All Logger methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

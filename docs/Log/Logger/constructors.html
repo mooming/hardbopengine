@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Logger constructors — Log — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">Logger</a> methods</h3>
+  <ul class="methods">
+    <li><a href="get.html">Get</a></li>
+    <li><a href="get-name.html">GetName</a></li>
+    <li><a class="current" href="constructors.html">constructors</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+    <li><a href="start-task.html">StartTask</a></li>
+    <li><a href="stop-task.html">StopTask</a></li>
+    <li><a href="is-drain-task-running.html">IsDrainTaskRunning</a></li>
+    <li><a href="set-filter.html">SetFilter</a></li>
+    <li><a href="add-log.html">AddLog</a></li>
+    <li><a href="flush.html">Flush</a></li>
+    <li><a href="report-memory-configuration.html">ReportMemoryConfiguration</a></li>
+    <li><a href="wait-for-flush.html">WaitForFlush</a></li>
+    <li><a href="process-buffer.html">ProcessBuffer</a></li>
+    <li><a href="flush-buffer.html">FlushBuffer</a></li>
+    <li><a href="write-log.html">WriteLog</a></li>
+    <li><a href="print-std-io.html">PrintStdIO</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Log</a> /
+  <a href="index.html">Logger</a> / constructors
+</p>
+
+<h1><span class="fn">Logger</span> constructors</h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Logger</span>
+  <span class="tag">Engine/Log/Logger.h</span>
+  <span class="tag">1 constructing form</span>
+  <span class="tag">4 deleted</span>
+  opens the file, builds the pools, and claims the process-wide instance pointer
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<p>One form constructs a logger; the other four special members exist only to be removed:</p>
+
+<pre><code><span class="ty">Logger</span>(<span class="ty">Engine</span>&amp; engine, <span class="kw">const char</span>* path, <span class="kw">const char</span>* filename) <span class="kw">noexcept</span>;
+
+<span class="ty">Logger</span>(<span class="kw">const</span> <span class="ty">Logger</span>&amp;) = <span class="kw">delete</span>;
+<span class="ty">Logger</span>(<span class="ty">Logger</span>&amp;&amp;) = <span class="kw">delete</span>;
+<span class="ty">Logger</span>&amp; <span class="fn">operator=</span>(<span class="kw">const</span> <span class="ty">Logger</span>&amp;) = <span class="kw">delete</span>;
+<span class="ty">Logger</span>&amp; <span class="fn">operator=</span>(<span class="ty">Logger</span>&amp;&amp;) = <span class="kw">delete</span>;</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Construction is the whole setup, and it happens in one order that matters. The pools come first as members
+  (<code>"LoggerMemoryPool"</code>, then <code>"LoggerInputPool"</code>), then the body publishes
+  <code>instance = this</code> and touches <a href="../LogUtil/get-start-time.html"><code>LogUtil::GetStartTime()</code></a>
+  purely to create the log clock's epoch. From that point on every allocation the constructor makes is inside
+  <code>AllocatorScope scope(allocator)</code>, with a nested scope for <code>inputAlloc</code> around the two
+  queue reserves — so the logger's own storage is its own, never whatever scope happened to be open.
+</p>
+
+<p>
+  Then the file name is assembled: <code>path</code> is copied into <a href="index.html#properties"><code>logPath</code></a>,
+  every <code>\</code> is replaced with <code>/</code>, the length of <code>filename</code> is measured (capped at
+  <a href="../../Config/index.html#engineconfig"><code>Config::MaxPathLength</code></a>, which is 512), a separator is
+  added if the path did not already end in one, the file name is appended, and the buffer is shrunk to fit. Only
+  then does <code>outFileStream.open(logPath.c_str())</code> run.
+</p>
+
+<p>
+  Finally the two output functions are registered, in this order: a lambda calling
+  <a href="write-log.html"><code>WriteLog</code></a>, then one calling
+  <a href="print-std-io.html"><code>PrintStdIO</code></a>. That is the order a batch reaches the file and the
+  console. The last statement is <code>engine.SetLoggerReady()</code>, which is the flag
+  <a href="../../Engine/index.html#engine">Engine</a> reports as "logging available".
+</p>
+
+<p>
+  The queue is reserved for 16 lines on each side and the text buffer, filter map and destination list for 16, 16
+  and 2. Nothing else is pre-allocated: the queue grows on demand, from the logger's pools on the drain side and the
+  thread-safe pool on the enqueue side.
+</p>
+
+<div class="gap">
+  <strong>An empty <code>path</code> reads one element before the buffer.</strong> The body takes
+  <code>auto endChar = logPath[logPath.size() - 1];</code> to decide whether a separator is needed, with no test for
+  an empty string. On an empty path that index is <code>size() - 1</code> on an unsigned count — a huge offset out of
+  the allocation — and <code>std::basic_string::operator[]</code> has no bounds check to catch it, in any
+  configuration. Pass at least one character; <code>"./"</code>, as the engine does, is the smallest sensible value.
+</div>
+
+<div class="gap">
+  <strong>Nothing here prevents a second logger, and the singleton is not protected from one.</strong> The four
+  deleted special members stop a <em>copy</em> or a <em>move</em>; they do not stop a second call to this
+  constructor, which overwrites <code>instance</code> with the new object while the first object keeps its own open
+  file and its own pools. Whichever is destroyed first clears <code>instance</code> unconditionally, and from that
+  moment every <a href="../SimpleLogger/out.html"><code>SimpleLogger::Out</code></a> in the process silently falls
+  through to the emergency path. A process with one <a href="../../Engine/index.html#engine">Engine</a> cannot reach
+  this; one that constructs two, or that constructs a logger outside an engine, can.
+</div>
+
+<div class="note">
+  <strong>The file is truncated, not appended to, and the open is not checked.</strong>
+  <code>std::ofstream::open</code> with its default mode truncates, so a relaunch replaces the previous run's log
+  rather than continuing it. Neither the truncate nor a failed open is reported: <code>outFileStream</code> simply
+  enters a failed state, and every later <a href="write-log.html"><code>WriteLog</code></a> writes into a dead stream
+  and is discarded without a word. If a log file is missing, suspect this line before suspecting the logging calls.
+</div>
+
+<div class="note">
+  <strong>The one precondition check is an <code>Assert</code>.</strong> The body opens with
+  <code>Assert(engine.IsMemoryManagerReady());</code> — the family documented in
+  <a href="../../Core/index.html#functions">Core: Debug</a>, which means it is live in Debug and Dev and compiled out
+  in Release. The pools it protects are registered with the memory manager as they are constructed, so the ordering
+  requirement is real whether or not the build reports a violation.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr>
+    <td><code>engine</code></td>
+    <td><code>Engine&amp;</code></td>
+    <td>
+      Must have a ready memory manager; its only use is <code>SetLoggerReady()</code> and the assertion. It must
+      outlive the logger — <a href="../../Engine/index.html#engine">Engine</a> satisfies this by holding the
+      <code>Logger</code> as a member
+    </td>
+  </tr>
+  <tr>
+    <td><code>path</code></td>
+    <td><code>const char*</code></td>
+    <td>
+      <strong>At least one character</strong>, for the reason above. Directory part of the log file; backslashes are
+      rewritten as forward slashes, and a trailing separator is accepted and not doubled
+    </td>
+  </tr>
+  <tr>
+    <td><code>filename</code></td>
+    <td><code>const char*</code></td>
+    <td>
+      File name only. Its length is <em>measured</em> with <code>StringUtil::StrLen(filename, Config::MaxPathLength)</code>,
+      so a longer string is under-reserved rather than truncated, and then appended in full. A relative name is
+      resolved against the process working directory
+    </td>
+  </tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  A constructed <code>Logger</code> — and, as a side effect, the process's logging instance. There is no success
+  value: a log file that could not be opened still yields a fully working logger whose lines go to the console only.
+  Because the type is <code>final</code> and uncopyable, the object you construct is the only handle to it; everybody
+  else reaches it through <a href="get.html"><code>Get</code></a>.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<p>The only construction in the engine — an <code>Engine</code> member, initialised in the constructor's member list:</p>
+
+<p class="meta">From Engine/Engine/Engine.cpp</p>
+
+<pre><code><span class="ty">Engine</span>::<span class="ty">Engine</span>()
+        : preEngineInit(<span class="kw">this</span>)
+        , isMemoryManagerReady(<span class="kw">false</span>)
+        , ...
+        , logFile(<span class="st">"helowlevel.log"</span>)
+        , memoryManager(*<span class="kw">this</span>)
+        , statistics(*<span class="kw">this</span>)
+        , logger(*<span class="kw">this</span>, <span class="st">"./"</span>, <span class="st">"hardbop.log"</span>)   <span class="cm">// the log file lands next to the working directory</span>
+{
+        time::<span class="fn">ResetEngineEpoch</span>();
+        <span class="ty">LogUtil</span>::<span class="fn">ResetStartTime</span>();
+        ...
+}</code></pre>
+
+<p>
+  Two ordering facts are visible in that snippet and both are load-bearing. The logger is constructed after
+  <code>memoryManager</code> and <code>statistics</code>, which is what makes the
+  <code>IsMemoryManagerReady</code> assertion satisfiable — members initialise in declaration order, not in the order
+  you write them. And <a href="../LogUtil/reset-start-time.html"><code>LogUtil::ResetStartTime()</code></a> runs in
+  the constructor <em>body</em>, that is, after this constructor has already logged nothing but has created the epoch,
+  so the epoch is then moved to the end of engine construction.
+</p>
+
+<footer class="prevnext">
+  <span><a href="index.html">← Logger</a></span>
+  <span><a href="index.html#methods">All Logger methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

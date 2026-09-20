@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LogUtil — Log — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="#description">Class description</a></li>
+    <li><a href="#template">Template parameters</a></li>
+    <li><a href="#properties">Class properties</a></li>
+    <li><a href="#methods">Class methods</a></li>
+    <li><a href="#non-member">Non-member helpers</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+
+  <h3>Methods</h3>
+  <ul class="methods">
+    <li><a href="get-start-time.html">GetStartTime</a></li>
+    <li><a href="reset-start-time.html">ResetStartTime</a></li>
+    <li><a href="get-time-stamp-string.html">GetTimeStampString</a></li>
+    <li><a href="get-log-level-string.html">GetLogLevelString</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Log</a> / LogUtil
+</p>
+
+<h1 id="logutil">LogUtil</h1>
+<p class="subtitle">
+  <span class="tag">Engine/Log/LogUtil.h</span>
+  <span class="tag">namespace hbe::LogUtil</span>
+  <span class="tag">4 functions</span>
+  <span class="tag">1 member type</span>
+  the log's own elapsed-time clock and the two formatters every stored line is built from
+</p>
+
+<h2 id="description">Class description</h2>
+
+<p>
+  A namespace, not a class. It holds the instant that every
+  <a href="../LogLine/index.html"><code>LogLine</code></a> timestamp is measured against, and the two functions
+  that turn an instant and a <a href="../ELogLevel/index.html"><code>ELogLevel</code></a> into text. Nothing here
+  knows about buffers, categories or the queue: <code>LogUtil</code> is the only part of the module that a caller
+  may use with no <a href="../Logger/index.html"><code>Logger</code></a> in existence, and the only part whose
+  implementation touches neither <code>MemoryManager</code> nor <code>Engine::Get()</code>.
+</p>
+
+<p>
+  The clock is deliberately relative. <code>GetStartTime</code> answers with a
+  <code>steady_clock</code> instant captured the first time anybody asks, and
+  <a href="reset-start-time.html"><code>ResetStartTime</code></a> moves that instant to "now". A log therefore
+  reads as time-since-start rather than as a wall-clock value — which is the right unit for a frame-rate or
+  stall report and the wrong one for correlating with another process's log.
+</p>
+
+<div class="note">
+  <strong>Asking for the start time sets it.</strong> The epoch is a function-local static inside
+  <code>LogUtil.cpp</code>, initialised on first call, so <code>GetStartTime()</code> is not a pure read: the
+  first call fixes the zero point. <a href="../Logger/constructors.html"><code>Logger</code>'s constructor</a>
+  calls it and discards the result precisely to make that happen at logger construction.
+</div>
+
+<div class="gap">
+  <strong>The epoch is ordinary mutable storage with no lock and no atomic around it.</strong>
+  <a href="reset-start-time.html"><code>ResetStartTime</code></a> writes it while
+  <a href="get-time-stamp-string.html"><code>GetTimeStampString</code></a> reads it, and nothing serialises the
+  two. That is safe only because the engine writes it exactly once, in
+  <code>Engine::Engine()</code>, before any thread that logs exists. A subsystem that calls
+  <a href="reset-start-time.html"><code>ResetStartTime</code></a> at runtime is a data race before it is a
+  confusing log.
+</div>
+
+<h2 id="template">Template parameters</h2>
+
+<p>None — <code>hbe::LogUtil</code> is a plain namespace, not a template.</p>
+
+<h2 id="properties">Class properties</h2>
+
+<table>
+  <tr><th>Name</th><th>Declaration</th><th>What it means</th></tr>
+  <tr>
+    <td><code>TTimePoint</code></td>
+    <td><code>using TTimePoint = std::chrono::time_point&lt;std::chrono::steady_clock&gt;;</code></td>
+    <td>
+      <span class="badge">member type</span> The one clock type the module timestamps with, spelled identically in
+      <a href="../Logger/index.html#properties"><code>Logger::TTimePoint</code></a> and
+      <a href="../LogLine/index.html#properties"><code>LogLine::TTimePoint</code></a> — three declarations of the
+      same type rather than one alias used by all three. Because it is <code>steady_clock</code>, a timestamp
+      cannot be converted to a date; nothing in this module records wall-clock time
+    </td>
+  </tr>
+</table>
+
+<p>
+  No variables. The epoch is a function-local static inside <code>LogUtil.cpp</code>'s anonymous namespace
+  (<code>MutableStartTime()</code>), so there is no object at namespace scope to take the address of, reset by
+  hand, or observe from another translation unit. The only way in or out is the two functions.
+</p>
+
+<h2 id="methods">Class methods</h2>
+
+<table>
+  <tr><th>Method</th><th>Signature</th><th>What a caller depends on</th></tr>
+  <tr>
+    <td><a href="get-start-time.html">GetStartTime</a></td>
+    <td class="sig">const TTimePoint&amp; GetStartTime() noexcept</td>
+    <td>The zero point, by reference — valid for the rest of the process, including across a reset, because the
+        reference names the same object that changes value</td>
+  </tr>
+  <tr>
+    <td><a href="reset-start-time.html">ResetStartTime</a></td>
+    <td class="sig">void ResetStartTime() noexcept</td>
+    <td>Moves the zero point to now. Call it once, before any thread logs; every line already written keeps its
+        old number and reads as if time ran backwards</td>
+  </tr>
+  <tr>
+    <td><a href="get-time-stamp-string.html">GetTimeStampString</a></td>
+    <td class="sig">void GetTimeStampString(InlineStringBuilder&lt;64&gt;&amp; outStr,<br>const TTimePoint&amp; currentTime = std::chrono::steady_clock::now()) noexcept</td>
+    <td>Appends <code>h:m:s.mmm</code> elapsed to <code>outStr</code> — appends, does not clear, and the second
+        argument defaults to "now" so the logger can pass a stored line's own instant</td>
+  </tr>
+  <tr>
+    <td><a href="get-log-level-string.html">GetLogLevelString</a></td>
+    <td class="sig">StaticString GetLogLevelString(ELogLevel level) noexcept</td>
+    <td>Interned level name. Anything outside the six real levels, <code>MAX</code> included, comes back empty
+        rather than as an error</td>
+  </tr>
+</table>
+
+<h2 id="non-member">Non-member helper functions</h2>
+
+<p>
+  None. <code>LogUtil.h</code> declares nothing outside the namespace — the four functions above are the whole
+  file's public surface, and all four are defined once in <code>Engine/Log/LogUtil.cpp</code> with external
+  linkage, so every translation unit shares them. Contrast
+  <a href="../PrintArgs/index.html"><code>PrintArgs</code></a>, whose copies are per translation unit.
+</p>
+
+<h2 id="coverage">Coverage</h2>
+
+<table>
+  <tr><th>Gap</th><th>Detail</th></tr>
+  <tr>
+    <td><code>MutableStartTime()</code></td>
+    <td>The accessor that owns the epoch is in <code>LogUtil.cpp</code>'s anonymous namespace, so it is not API —
+        it is described here because it is what makes <a href="get-start-time.html"><code>GetStartTime</code></a>
+        a mutation on first call and what makes
+        <a href="reset-start-time.html"><code>ResetStartTime</code></a> a plain write</td>
+  </tr>
+  <tr>
+    <td>Where the epoch is set</td>
+    <td><code>Engine::Engine()</code> calls <a href="reset-start-time.html"><code>ResetStartTime</code></a> in its
+        member-initialiser body — the constructor, not <code>Initialize</code> — which is the only call site in
+        the repository. That belongs to <a href="../../Engine/index.html#engine">Engine</a></td>
+  </tr>
+  <tr>
+    <td>The rendering of the result</td>
+    <td>The timestamp's exact field widths and the level name's placement inside a line are decided by
+        <a href="../Logger/process-buffer.html"><code>ProcessBuffer</code></a>, not by this namespace — see
+        <a href="get-time-stamp-string.html"><code>GetTimeStampString</code></a> for what this layer does and does
+        not guarantee about padding</td>
+  </tr>
+</table>
+
+<footer class="prevnext">
+  <span><a href="../index.html">← Log</a></span>
+  <span><a href="../index.html#logutil">LogUtil in the Log class list</a></span>
+</footer>
+
+</main>
+</body>
+</html>

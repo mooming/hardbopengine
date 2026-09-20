@@ -152,6 +152,7 @@ comment, `<span class="nu">` number, `<span class="st">` string. Spans are optio
 | class page | stylesheet, Module Index, own module | `../../assets/hbe-docs.css`, `../../index.html`, `../index.html` |
 | class page | another module's **page** | `../../Memory/index.html` or `../../Memory/index.html#allocators` (the anchor must exist) |
 | class page | its own method pages | `resize.html` |
+| class page or method page | a **sibling class in the same module** | `../SimpleLogger/index.html`, or `../SimpleLogger/flush.html` for one of its methods — a module is not a namespace boundary, and `Logger` and `SimpleLogger` reference each other on almost every page |
 | method page | its class page | `index.html` |
 
 - **Never link to a class page or method page that is not in your assigned batch.** Cross-module references point
@@ -174,9 +175,12 @@ on a class page marks **no** entry current; on a method page it also marks none.
 
 A class whose members are aliases only has no method pages: replace the list with
 `<li>None — aliases only</li>` and keep the "Methods" heading, so the sidebar does not look half-written. Same
-for a macro set (`None — macros only`) and a namespace entry (`None — see the module functions`). An
-`enum class` writes `None — an enumeration declares no members`; a plain data struct writes `None — data only`.
-Those four phrasings are the whole vocabulary — inventing a fifth per module is how thirty pages end up saying
+for a macro set (`None — macros only`) and a namespace entry whose functions need no page
+(`None — see the module functions`). An `enum class` writes `None — an enumeration declares no members`; a plain
+data struct writes `None — data only`. **A namespace entry whose functions do carry a contract per §15 lists those
+pages** — `Config/EngineConfig` lists `get-max-system-memory-target.html`, and telling it to write "see the module
+functions" would point a reader at a table that links straight back to the page they are on. Those four phrasings
+are the whole vocabulary — inventing a fifth per module is how thirty pages end up saying
 the same absence thirty different ways. **Every class
 page carries the heading**, even when the honest content is a two-word absence: a missing heading cannot be told
 apart from an unfinished page. **An orchestrator brief does not override this file** — one brief told an alias

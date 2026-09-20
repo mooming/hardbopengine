@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Logger::ReportMemoryConfiguration — Log — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">Logger</a> methods</h3>
+  <ul class="methods">
+    <li><a href="get.html">Get</a></li>
+    <li><a href="get-name.html">GetName</a></li>
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+    <li><a href="start-task.html">StartTask</a></li>
+    <li><a href="stop-task.html">StopTask</a></li>
+    <li><a href="is-drain-task-running.html">IsDrainTaskRunning</a></li>
+    <li><a href="set-filter.html">SetFilter</a></li>
+    <li><a href="add-log.html">AddLog</a></li>
+    <li><a href="flush.html">Flush</a></li>
+    <li><a class="current" href="report-memory-configuration.html">ReportMemoryConfiguration</a></li>
+    <li><a href="wait-for-flush.html">WaitForFlush</a></li>
+    <li><a href="process-buffer.html">ProcessBuffer</a></li>
+    <li><a href="flush-buffer.html">FlushBuffer</a></li>
+    <li><a href="write-log.html">WriteLog</a></li>
+    <li><a href="print-std-io.html">PrintStdIO</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Log</a> /
+  <a href="index.html">Logger</a> / ReportMemoryConfiguration
+</p>
+
+<h1><span class="fn">ReportMemoryConfiguration</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Logger</span>
+  <span class="tag">Engine/Log/Logger.h</span>
+  <span class="tag">only exists when PROFILE_ENABLED is 1</span>
+  hand the logger's own pool to the memory manager's pool-configuration report
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<p>Both the declaration and the definition sit inside the same guard, in the header and in the source:</p>
+
+<pre><code><span class="cm">#if PROFILE_ENABLED</span>
+<span class="kw">void</span> <span class="fn">ReportMemoryConfiguration</span>();
+<span class="cm">#endif // PROFILE_ENABLED</span></code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  One statement: <code>allocator.ReportConfiguration();</code> — that is, the logger's
+  <a href="index.html#properties"><code>"LoggerMemoryPool"</code></a> and nothing else. The pool walks its banks, collects
+  each block size against the high-water mark of blocks used, and registers the result with
+  <a href="../../Memory/index.html#memorymanager"><code>MemoryManager</code></a> under the interned pool name; what it costs
+  and where the summary is printed is <a href="../../Memory/index.html">Memory</a>'s business. Note the asymmetry this method
+  encodes: the *input* pool <code>"LoggerInputPool"</code> is a <code>ThreadSafeMultiPoolAllocator</code> with its own
+  <code>ReportConfiguration</code>, and the logger never calls it, so this report never covers the pool that producers
+  allocate from.
+</p>
+
+<p>
+  It is a profiling instrument, not part of logging: no log line is produced, the queue is untouched, and no output
+  destination is involved.
+</p>
+
+<div class="gap">
+  <strong>In a default build this member does not exist, so a call is a compile error, not a link error.</strong>
+  <code>BuildConfig.h</code> sets <a href="../../Config/index.html#buildconfig"><code>PROFILE_ENABLED</code></a> to
+  <code>0</code>, the declaration inside <code>Logger.h</code> is inside the guard, and the
+  <code>MultiPoolAllocator::ReportConfiguration</code> it calls is <em>also</em> guarded. That is the good failure mode — a
+  mistyped call in a normal build is diagnosed immediately — but it also means code that wants to call it must carry the same
+  <code>#if</code>. The one engine call site does exactly that: <code>Engine::PreShutdown()</code> wraps it in
+  <code>#if PROFILE_ENABLED</code>, so in a default build that line is not compiled either and the member has no live caller.
+</div>
+
+<div class="note">
+  <strong>Nothing here is thread-safe by construction, and the engine's own call site shows the exposure.</strong> The method
+  has no lock, and the bank walk it triggers reads pool state that
+  <a href="process-buffer.html"><code>ProcessBuffer</code></a> writes whenever the drain runs. <code>Engine::PreShutdown()</code>
+  calls it between two of its own log statements, with the drain task still live — the read is concurrent with the pool's writer.
+  <a href="stop-task.html"><code>StopTask</code></a> first is the point at which the pool is quiescent, and nothing does that here.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  <code>void</code>, non-const, and not <code>noexcept</code> — the only logger method with neither qualifier. It reports by
+  side effect into the memory manager, so a caller gets no data back and no indication that profiling was compiled out
+  (which, in a build where <code>PROFILE_ENABLED</code> is 0, is not a thing that can happen: the call would not compile).
+</p>
+
+<h2 id="example">Examples</h2>
+
+<p>The engine's shutdown hook, which is the only call site in the repository and carries the matching guard:</p>
+
+<p class="meta">From Engine/Engine/Engine.cpp</p>
+
+<pre><code><span class="kw">void</span> Engine::<span class="fn">PreShutdown</span>()
+{
+        <span class="kw">auto</span> log = <span class="ty">Logger</span>::<span class="fn">Get</span>(<span class="fn">ToCompactMethodName</span>(__PRETTY_FUNCTION__));
+
+        log.<span class="fn">Out</span>(<span class="st">"Engine PreShutdown [Start]"</span>);
+
+<span class="cm">#if PROFILE_ENABLED</span>
+        logger.<span class="fn">ReportMemoryConfiguration</span>();
+<span class="cm">#endif // PROFILE_ENABLED</span>
+
+        memoryManager.<span class="fn">PreEngineShutdown</span>();
+
+        log.<span class="fn">Out</span>(<span class="st">"Engine PreShutdown [Done]"</span>);
+}</code></pre>
+
+<p>
+  Two things are visible in the placement. The report is emitted while the drain task is still running — the log lines either side
+  of it go through the same pools it is about to read — and it happens before <code>memoryManager.PreEngineShutdown()</code>, so the
+  figures describe the pool as it stood at the start of shutdown rather than as it stands when the logger is finally destroyed.
+  For the pool's numbers without a guard at all, <code>MultiPoolAllocator::PrintUsage</code> is the ungated sibling, and
+  <a href="../../Core/index.html#systemstatistics">Core: SystemStatistics</a> prints allocator profiles as log lines — see
+  <a href="process-buffer.html">the drain</a> for how such a line reaches the file.
+</p>
+
+<footer class="prevnext">
+  <span><a href="index.html">← Logger</a></span>
+  <span><a href="index.html#methods">All Logger methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

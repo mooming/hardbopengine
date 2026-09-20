@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LogUtil::GetLogLevelString — Log — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">LogUtil</a> methods</h3>
+  <ul class="methods">
+    <li><a href="get-start-time.html">GetStartTime</a></li>
+    <li><a href="reset-start-time.html">ResetStartTime</a></li>
+    <li><a href="get-time-stamp-string.html">GetTimeStampString</a></li>
+    <li><a class="current" href="get-log-level-string.html">GetLogLevelString</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Log</a> /
+  <a href="index.html">LogUtil</a> / GetLogLevelString
+</p>
+
+<h1><span class="fn">GetLogLevelString</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::LogUtil</span>
+  <span class="tag">Engine/Log/LogUtil.h</span>
+  <span class="tag">noexcept</span>
+  <span class="tag">[[nodiscard]]</span>
+  the name of a severity, interned once so printing it costs a pointer copy
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] <span class="ty">StaticString</span> <span class="fn">GetLogLevelString</span>(<span class="ty">ELogLevel</span> level) <span class="kw">noexcept</span>;</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  A <code>switch</code> over the six real levels of
+  <a href="../ELogLevel/index.html"><code>ELogLevel</code></a>, each returning one of six function-local
+  <a href="../../String/index.html#staticstring"><code>StaticString</code></a> statics: <code>"Verbose"</code>,
+  <code>"Info"</code>, <code>"Significant"</code>, <code>"Warning"</code>, <code>"Error"</code>,
+  <code>"FatalError"</code>. Because they are interned, the returned value is an identifier-sized handle and
+  repeating the call costs the switch and nothing else.
+</p>
+
+<p>
+  The statics are initialised on the first call, from whichever thread logs first, and interning a string takes
+  the static-string table's own mutex. After that first call the function takes no lock and touches no shared
+  state, so it is as safe to call from a worker as
+  <a href="../Logger/add-log.html"><code>AddLog</code></a> assumes — <a href="../Logger/index.html">the logger</a>
+  calls it on the producer thread for the inline error path and on the drain thread for every queued line.
+</p>
+
+<div class="gap">
+  <strong>An unrecognised level yields an empty string, not a complaint, and the compiler will not tell you when
+  the enum outgrows this function.</strong> The <code>default</code> branch returns a default-constructed
+  <code>StaticString</code>, so <a href="../ELogLevel/index.html"><code>ELogLevel::MAX</code></a> or a value cast
+  out of range from a config parameter prints as nothing: <code>[0:0:1:4][Worker 0][Engine][] stalled</code>. The
+  same <code>default</code> swallows a future enumerator — add a seventh level to <code>ELogLevel</code> and this
+  switch still compiles clean while the new level prints blank. The names exist twice in the module, in the enum
+  and here, and nothing but a test links them.
+</div>
+
+<div class="note">
+  <strong><code>LogUtil.cpp</code> declares a name that is never used.</strong> The function opens with
+  <code>static StaticString none("None");</code> and no branch returns it, while the branch that would want a
+  fallback returns an empty value instead. The interned string <code>"None"</code> is therefore created and never
+  printed — read that as an unfinished decision about what an unknown level should look like, not as a documented
+  behaviour.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr>
+    <td><code>level</code></td>
+    <td><a href="../ELogLevel/index.html"><code>ELogLevel</code></a></td>
+    <td>
+      Any value of the enum; nothing is rejected. The six real levels have names — <code>MAX</code> and any
+      out-of-range cast come back empty. A level read from a <code>uint8_t</code> config parameter is worth
+      range-testing before it reaches a line, precisely because this function cannot report the problem
+    </td>
+  </tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr>
+    <td><a href="../../String/index.html#staticstring"><code>StaticString</code></a></td>
+    <td>
+      The interned name, by value — a handle into the static-string table, valid for the rest of the process and
+      cheap to copy. Empty for a level with no name. <code>[[nodiscard]]</code>: there is no other way to learn a
+      level's text, so discarding it is always a mistake
+    </td>
+  </tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p>The drain path, where the stored level becomes part of the line's prefix:</p>
+
+<p class="meta">From Engine/Log/Logger.cpp</p>
+
+<pre><code><span class="kw">for</span> (<span class="kw">auto</span>&amp; log : swapBuffer)
+{
+        <span class="ty">InlineStringBuilder</span>&lt;<span class="nu">64</span>&gt; timeStampStr;
+        <span class="ty">LogUtil</span>::<span class="fn">GetTimeStampString</span>(timeStampStr, log.timeStamp);
+        <span class="kw">auto</span> levelStr = <span class="ty">LogUtil</span>::<span class="fn">GetLogLevelString</span>(log.level);
+
+        text &lt;&lt; log.category &lt;&lt; <span class="st">"]["</span> &lt;&lt; levelStr &lt;&lt; <span class="st">"] "</span>;
+        text &lt;&lt; log.GetText();
+        ...
+}</code></pre>
+
+<p>
+  The same call in the emergency path, which writes to standard output or standard error without ever touching the
+  queue — the reason a level name is available before a <a href="../Logger/index.html"><code>Logger</code></a>
+  exists:
+</p>
+
+<p class="meta">From Engine/Log/Logger.cpp</p>
+
+<pre><code><span class="kw">void</span> EmergencyLog(<span class="ty">StaticString</span> category, <span class="ty">ELogLevel</span> level, <span class="kw">const</span> <span class="ty">Logger</span>::<span class="ty">TLogFunction</span>&amp; logFunc)
+{
+        <span class="ty">Logger</span>::<span class="ty">TLogStream</span> str;
+        str &lt;&lt; <span class="st">'['</span> &lt;&lt; category &lt;&lt; <span class="st">"]["</span> &lt;&lt; <span class="ty">LogUtil</span>::<span class="fn">GetLogLevelString</span>(level) &lt;&lt; <span class="st">"] "</span>;
+        logFunc(str);
+
+        <span class="kw">auto</span>* out = level &gt;= ELogLevel::Error ? stderr : stdout;
+        fputs(str.c_str(), out);
+        ...
+}</code></pre>
+
+<p>
+  The second example is a function in <code>Logger.cpp</code>'s anonymous namespace, so it is engine-internal
+  rather than API — it is shown because it is where the level/destination rule lives: <code>Error</code> and above
+  go to standard error, everything below to standard output.
+</p>
+
+<footer class="prevnext">
+  <span><a href="index.html">← LogUtil</a></span>
+  <span><a href="index.html#methods">All LogUtil methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SimpleLogger — Log — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="#description">Class description</a></li>
+    <li><a href="#template">Template parameters</a></li>
+    <li><a href="#properties">Class properties</a></li>
+    <li><a href="#methods">Class methods</a></li>
+    <li><a href="#non-member">Non-member helpers</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+
+  <h3>Methods</h3>
+  <ul class="methods">
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="out.html">Out</a></li>
+    <li><a href="out-warning.html">OutWarning</a></li>
+    <li><a href="out-error.html">OutError</a></li>
+    <li><a href="out-fatal-error.html">OutFatalError</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Log</a> / SimpleLogger
+</p>
+
+<h1 id="simplelogger">SimpleLogger</h1>
+<p class="subtitle">
+  <span class="tag">Engine/Log/Logger.h, nested in Logger</span>
+  <span class="tag">hbe::TLog</span>
+  <span class="tag">final</span>
+  <span class="tag">10 member functions</span>
+  a category and a level bound into one value — the face almost every call site actually uses
+</p>
+
+<h2 id="description">Class description</h2>
+
+<p>
+  Two <code>const</code> fields and ten functions that do nothing but forward. A <code>SimpleLogger</code> answers the question "what
+  category, what level" once, so a call site writes
+  <code>log.OutError([](auto&amp; ls){ ls &lt;&lt; …; })</code> instead of repeating both arguments on every line in the file. It is
+  <code>Logger</code>'s nested class, aliased at namespace scope as <a href="../Logger/index.html#non-member"><code>hbe::TLog</code></a>, and
+  obtained either from <a href="../Logger/get.html"><code>Logger::Get(category, level)</code></a> or by naming the constructor directly.
+</p>
+
+<p>
+  It holds no reference to the sink. Each call reads the process-wide
+  <a href="../Logger/index.html#properties"><code>Logger::instance</code></a> pointer and hands off to
+  <a href="../Logger/add-log.html"><code>AddLog</code></a>; if the pointer is null — before the logger is constructed, after it is destroyed —
+  the line goes to the file-local emergency path instead, which writes to standard output or standard error and never to the log file.
+</p>
+
+<p>
+  That makes this object's lifetime embarrassingly easy: it is two fields, copyable, and storable in a <code>static const auto</code> at file
+  scope, which is what every engine subsystem does with one. Nothing the logger does can invalidate it.
+</p>
+
+<div class="note">
+  <strong>The fields are <code>const</code>, so a bound logger is bound.</strong> Copying works, assignment does not — const members delete the
+  copy-assignment operator implicitly. A subsystem cannot change its category at runtime, and the workaround is to construct a new one, which
+  is also the reason the constructor is <code>explicit</code>: no implicit conversion from a bare category string to a logger.
+</div>
+
+<div class="gap">
+  <strong>Shortcuts exist only for the three levels that mean trouble.</strong> There is <a href="out-warning.html"><code>OutWarning</code></a>,
+  <a href="out-error.html"><code>OutError</code></a> and <a href="out-fatal-error.html"><code>OutFatalError</code></a>, and no
+  <code>OutVerbose</code>, <code>OutInfo</code> or <code>OutSignificant</code>. Below the bound level you use
+  <a href="out.html"><code>Out(level, …)</code></a> explicitly — which is more than a style point: the bound level defaults to
+  <a href="../ELogLevel/index.html"><code>Info</code></a>, and a call site that writes <code>log.Out(…)</code> for something interesting and
+  forgets the level is writing at <code>Info</code>, where a threshold of <code>Significant</code> or higher discards it.
+</div>
+
+<h2 id="template">Template parameters</h2>
+
+<p>None — <code>SimpleLogger</code> is not a template. Its functions are templated only in the sense that a lambda passed to
+<code>Out</code> converts to <a href="../Logger/index.html#properties"><code>TLogFunction</code></a>.</p>
+
+<h2 id="properties">Class properties</h2>
+
+<p>Both fields are public and both are <code>const</code>; there are no aliases of its own, since the types it speaks are
+<a href="../Logger/index.html#properties">declared by <code>Logger</code></a>.</p>
+
+<table>
+  <tr><th>Name</th><th>Declaration</th><th>What it means</th></tr>
+  <tr>
+    <td><code>category</code></td>
+    <td><code>const StaticString category;</code></td>
+    <td>
+      <span class="badge">data member</span> The filter key and the bracketed prefix on every line this object produces. Interned, so copying a
+      logger copies a handle — the reason a file-scope logger costs nothing
+    </td>
+  </tr>
+  <tr>
+    <td><code>level</code></td>
+    <td><code>const ELogLevel level;</code></td>
+    <td>
+      <span class="badge">data member</span> The level used by <a href="out.html"><code>Out(logFunc)</code></a> and by the three shortcuts' implicit
+      argument — except that each shortcut overrides it with its own severity, so a logger bound at <code>Info</code> still reports through
+      <a href="out-error.html"><code>OutError</code></a> at <code>Error</code>
+    </td>
+  </tr>
+</table>
+
+<h2 id="methods">Class methods</h2>
+
+<p>
+  Ten functions under four names. Each name exists in a callback form taking a
+  <a href="../Logger/index.html#properties"><code>TLogFunction</code></a> and a literal form taking a <code>const char*</code>, and
+  <a href="out.html"><code>Out</code></a> adds two more that name the level explicitly instead of using the bound one. The three shortcuts are
+  one-line bodies in the header that call <code>Out</code> with their own severity.
+</p>
+
+<table>
+  <tr><th>Method</th><th>Signature</th><th>What a caller depends on</th></tr>
+  <tr>
+    <td><a href="constructors.html">constructors</a></td>
+    <td class="sig">explicit SimpleLogger(StaticString category, ELogLevel level = ELogLevel::Info) noexcept</td>
+    <td>Two field copies and nothing else — legal before any logger exists, which is why engine code can hold one in a static</td>
+  </tr>
+  <tr>
+    <td><a href="out.html">Out</a><span class="badge">4 overloads</span></td>
+    <td class="sig">void Out(const TLogFunction&amp; logFunc) const noexcept<br>void Out(ELogLevel level, const TLogFunction&amp; logFunc) const noexcept<br>void Out(const char* text) const noexcept<br>void Out(ELogLevel level, const char* text) const noexcept</td>
+    <td>The whole surface: callback form for text that must be assembled, literal form for text that is already a constant. Level defaults to the bound one</td>
+  </tr>
+  <tr>
+    <td><a href="out-warning.html">OutWarning</a><span class="badge">2 overloads</span></td>
+    <td class="sig">void OutWarning(const TLogFunction&amp; logFunc) const noexcept<br>void OutWarning(const char* text) const noexcept</td>
+    <td>One statement: <code>Out(ELogLevel::Warning, …)</code>. Reaching it also makes the drain flush the file after the batch</td>
+  </tr>
+  <tr>
+    <td><a href="out-error.html">OutError</a><span class="badge">2 overloads</span></td>
+    <td class="sig">void OutError(const TLogFunction&amp; logFunc) const noexcept<br>void OutError(const char* text) const noexcept</td>
+    <td><code>Out(ELogLevel::Error, …)</code>. From the log thread itself this takes the inline write path rather than the queue</td>
+  </tr>
+  <tr>
+    <td><a href="out-fatal-error.html">OutFatalError</a><span class="badge">2 overloads</span></td>
+    <td class="sig">void OutFatalError(const TLogFunction&amp; logFunc) const noexcept<br>void OutFatalError(const char* text) const noexcept</td>
+    <td><code>Out(ELogLevel::FatalError, …)</code>: flush, <code>debugBreak()</code> and <code>Assert(false)</code> follow inside the sink. Not a reporting call</td>
+  </tr>
+</table>
+
+<h2 id="non-member">Non-member helper functions</h2>
+
+<p>
+  None. Two namespace-scope aliases in the same header name this class and the stream its callbacks receive —
+  <code>using TLog = Logger::SimpleLogger;</code> and <code>using LogStream = Logger::TLogStream;</code> — documented with
+  <a href="../Logger/index.html#non-member">Logger's non-member declarations</a>, where they live.
+</p>
+
+<h2 id="coverage">Coverage</h2>
+
+<table>
+  <tr><th>Gap</th><th>Detail</th></tr>
+  <tr>
+    <td>The fallback that is not API</td>
+    <td>
+      <code>EmergencyLog</code> — the no-instance path every <code>Out</code> can take — is a function in <code>Logger.cpp</code>'s anonymous
+      namespace. Its behaviour (standard output below <code>Error</code>, standard error at or above it, no filters, no file) is described on
+      <a href="out.html">Out</a> and cannot be called or configured directly
+    </td>
+  </tr>
+  <tr>
+    <td>Everything that happens after the hand-off</td>
+    <td>Level threshold, category filter, the callback's execution, the queue, and the two destinations are
+        <a href="../Logger/add-log.html"><code>AddLog</code></a> and the pages linked from it. A <code>SimpleLogger</code> call returning
+        successfully means the line was handed over — not that it was written or even kept</td>
+  </tr>
+  <tr>
+    <td>No query surface</td>
+    <td>Nothing here can tell you whether a level or category would survive; the thresholds live in
+        <a href="../../Config/index.html#configparam">configuration parameters</a> that a call site cannot read through this class</td>
+  </tr>
+</table>
+
+<footer class="prevnext">
+  <span><a href="../index.html">← Log</a></span>
+  <span><a href="../index.html#simplelogger">SimpleLogger in the Log class list</a></span>
+</footer>
+
+</main>
+</body>
+</html>

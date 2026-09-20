@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LogUtil::GetTimeStampString — Log — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">LogUtil</a> methods</h3>
+  <ul class="methods">
+    <li><a href="get-start-time.html">GetStartTime</a></li>
+    <li><a href="reset-start-time.html">ResetStartTime</a></li>
+    <li><a class="current" href="get-time-stamp-string.html">GetTimeStampString</a></li>
+    <li><a href="get-log-level-string.html">GetLogLevelString</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Log</a> /
+  <a href="index.html">LogUtil</a> / GetTimeStampString
+</p>
+
+<h1><span class="fn">GetTimeStampString</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::LogUtil</span>
+  <span class="tag">Engine/Log/LogUtil.h</span>
+  <span class="tag">noexcept</span>
+  elapsed time as <code>h:m:s.mmm</code>, written into a fixed inline buffer with no allocation
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code><span class="kw">void</span> <span class="fn">GetTimeStampString</span>(<span class="ty">InlineStringBuilder</span>&lt;<span class="nu">64</span>&gt;&amp; outStr,
+                        <span class="kw">const</span> <span class="ty">TTimePoint</span>&amp; currentTime = std::chrono::steady_clock::now()) <span class="kw">noexcept</span>;</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Subtracts <a href="get-start-time.html"><code>GetStartTime()</code></a> from <code>currentTime</code>, splits
+  the difference into hours, minutes, seconds and milliseconds, and appends them to <code>outStr</code> separated
+  by <code>:</code>, <code>:</code> and <code>.</code>. Each field is produced with
+  <code>std::to_string</code> on an integer count, so the whole call is a handful of appends into a buffer that
+  already exists: no allocation, no <code>sprintf</code>, no locale.
+</p>
+
+<p>
+  The default argument is what lets one function serve both jobs. Called with one argument it stamps
+  <em>now</em> — that is what an immediate or inline write wants. Called with an instant it stamps that instant —
+  which is how <a href="../Logger/process-buffer.html"><code>ProcessBuffer</code></a> stamps each queued line with
+  the moment it was <em>produced</em> (<a href="../LogLine/index.html#properties"><code>LogLine::timeStamp</code></a>)
+  rather than the moment the drain thread got round to it.
+</p>
+
+<div class="gap">
+  <strong>The fields are not zero-padded, and the fractional part is therefore not what it looks like.</strong>
+  Every field comes from <code>std::to_string</code> on an integer, so 3.05 seconds renders as
+  <code>0:0:3.50</code> and 3.5 seconds renders as <code>0:0:3.500</code> — the millisecond field carries only as
+  many digits as its value needs. Two consequences that bite: a reader cannot trust the fraction's width, and
+  <code>sort</code> on a log file is not chronological, because <code>0:0:10.5</code> sorts before
+  <code>0:0:9.9</code>. Nothing in the module pads them for you.
+</div>
+
+<div class="note">
+  <strong>Hours accumulate; they do not wrap.</strong> The hour field is the total hours of the elapsed span, not
+  hours-of-day, so a long-running server's lines read <code>72:14:09:220</code> after three days. Minutes and
+  seconds are reduced modulo 60 and milliseconds modulo 1000, so the four fields always describe the same instant.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr>
+    <td><code>outStr</code></td>
+    <td><a href="../../String/index.html#inlinestringbuilder"><code>InlineStringBuilder&lt;64&gt;&amp;</code></a></td>
+    <td>
+      The builder to write into. The size is part of the type, so a builder of any other capacity — including
+      <a href="../Logger/index.html#properties"><code>Logger::TLogStream</code></a>, which is 131072 — will not
+      bind; you must construct a 64-byte builder for this call. Text is <em>appended</em> and never cleared first,
+      so pass a fresh builder or one you have called <code>Clear()</code> on. Writes clamp at the bound and
+      truncate silently, so an over-long result is cut rather than corrupting memory
+    </td>
+  </tr>
+  <tr>
+    <td><code>currentTime</code></td>
+    <td><a href="index.html#properties"><code>const TTimePoint&amp;</code></a></td>
+    <td>
+      The instant to render, defaulted to <code>std::chrono::steady_clock::now()</code>. It must be a
+      <code>steady_clock</code> time point — <a href="../LogLine/index.html#properties"><code>LogLine::timeStamp</code></a>
+      is one, but a <code>system_clock</code> value from outside the engine is a different clock and the
+      subtraction would be meaningless. An instant earlier than the epoch yields a negative span and the fields
+      print negative counts
+    </td>
+  </tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  <code>void</code>. The result is the text appended to <code>outStr</code>; read it with
+  <code>outStr.c_str()</code> or stream the builder directly, which is what every caller in the module does. The
+  function reports nothing on failure because it has no failure: the builder truncates itself and the caller
+  cannot tell.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<p>
+  Stamping a stored line with its own production time, from the drain path — the two-argument form, and the
+  reason a queued line does not carry the drain time:
+</p>
+
+<p class="meta">From Engine/Log/Logger.cpp</p>
+
+<pre><code><span class="kw">for</span> (<span class="kw">auto</span>&amp; log : swapBuffer)
+{
+        <span class="ty">InlineStringBuilder</span>&lt;<span class="nu">64</span>&gt; timeStampStr;
+        <span class="ty">LogUtil</span>::<span class="fn">GetTimeStampString</span>(timeStampStr, log.timeStamp);
+        <span class="kw">auto</span> levelStr = <span class="ty">LogUtil</span>::<span class="fn">GetLogLevelString</span>(log.level);
+
+        <span class="ty">InlineStringBuilder</span>&lt;<span class="ty">Config</span>::LogLineLength * <span class="nu">2</span>&gt; text;
+
+        text &lt;&lt; <span class="st">'['</span> &lt;&lt; timeStampStr.c_str() &lt;&lt; <span class="st">"]["</span> &lt;&lt; log.threadName &lt;&lt; <span class="st">"["</span>;
+        text &lt;&lt; log.category &lt;&lt; <span class="st">"]["</span> &lt;&lt; levelStr &lt;&lt; <span class="st">"] "</span>;
+        text &lt;&lt; log.GetText();
+        ...
+}</code></pre>
+
+<p>The one-argument form, which stamps the moment the call runs instead:</p>
+
+<p class="meta">From Engine/Log/Logger.cpp</p>
+
+<pre><code><span class="ty">InlineStringBuilder</span>&lt;<span class="nu">64</span>&gt; timeStampStr;
+<span class="ty">LogUtil</span>::<span class="fn">GetTimeStampString</span>(timeStampStr);        <span class="cm">// defaults to steady_clock::now()</span></code></pre>
+
+<footer class="prevnext">
+  <span><a href="index.html">← LogUtil</a></span>
+  <span><a href="index.html#methods">All LogUtil methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

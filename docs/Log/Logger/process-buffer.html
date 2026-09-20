@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Logger::ProcessBuffer — Log — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">Logger</a> methods</h3>
+  <ul class="methods">
+    <li><a href="get.html">Get</a></li>
+    <li><a href="get-name.html">GetName</a></li>
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+    <li><a href="start-task.html">StartTask</a></li>
+    <li><a href="stop-task.html">StopTask</a></li>
+    <li><a href="is-drain-task-running.html">IsDrainTaskRunning</a></li>
+    <li><a href="set-filter.html">SetFilter</a></li>
+    <li><a href="add-log.html">AddLog</a></li>
+    <li><a href="flush.html">Flush</a></li>
+    <li><a href="report-memory-configuration.html">ReportMemoryConfiguration</a></li>
+    <li><a href="wait-for-flush.html">WaitForFlush</a></li>
+    <li><a class="current" href="process-buffer.html">ProcessBuffer</a></li>
+    <li><a href="flush-buffer.html">FlushBuffer</a></li>
+    <li><a href="write-log.html">WriteLog</a></li>
+    <li><a href="print-std-io.html">PrintStdIO</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Log</a> /
+  <a href="index.html">Logger</a> / ProcessBuffer
+</p>
+
+<h1><span class="fn">ProcessBuffer</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Logger</span>
+  <span class="tag">private</span>
+  <span class="tag">Engine/Log/Logger.h</span>
+  <span class="tag">noexcept</span>
+  one drain pass: claim the buffers, swap the queue, render every line, hand the batch out
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code><span class="cm">// private:</span>
+<span class="kw">void</span> <span class="fn">ProcessBuffer</span>() <span class="kw">noexcept</span>;</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>This is where a queue of <a href="../LogLine/index.html"><code>LogLine</code></a> becomes text. Order of operations:</p>
+
+<ol>
+  <li>
+    <strong>Claim.</strong> A <code>DrainGuard</code> exchanges <code>true</code> into
+    <a href="index.html#properties"><code>isDraining</code></a>; if it did not acquire the claim, the function returns at once —
+    having drained nothing and having touched <code>needFlush</code>. The guard releases the flag only if it acquired it.
+  </li>
+  <li>
+    <strong>Check.</strong> If <code>hasInput</code> reads false, <code>needFlush</code> is cleared and the function returns. This
+    is the path a continuously-rescheduled drain takes while nothing is logging (see
+    <a href="start-task.html">the runnable's return value</a>).
+  </li>
+  <li>
+    <strong>Swap.</strong> With <code>AllocatorScope scope(allocator)</code> open and <code>inputLock</code> held,
+    <code>std::swap(inputBuffer, swapBuffer)</code> and <code>hasInput</code> is cleared. Producers are unblocked again as soon as
+    this block ends; nothing below it holds a lock.
+  </li>
+  <li>If <code>swapBuffer</code> is empty, clear <code>needFlush</code> and return.</li>
+  <li>
+    <strong>Render.</strong> For each line: note <code>level &gt;= Warning</code> into a local <code>needIOFlush</code>, format the
+    line's <em>own</em> timestamp with <a href="../LogUtil/get-time-stamp-string.html"><code>GetTimeStampString</code></a> and its
+    name with <a href="../LogUtil/get-log-level-string.html"><code>GetLogLevelString</code></a>, and build
+    <code>[time][thread][category][level] text</code> into a <code>InlineStringBuilder&lt;Config::LogLineLength * 2&gt;</code> — 2048
+    bytes — appending the result into <code>textBuffer</code>.
+  </li>
+  <li>
+    <strong>Release the lines.</strong> <code>swapBuffer.clear()</code> destroys each <code>LogLine</code>, which returns any
+    heap-allocated long text to the system allocator.
+  </li>
+  <li>
+    <strong>Write.</strong> <a href="flush-buffer.html"><code>FlushBuffer</code></a> passes the whole batch to every output
+    function — file then console — and <code>textBuffer</code> is cleared.
+  </li>
+  <li>If any line in the batch reached <code>Warning</code>, the file stream is flushed; then <code>needFlush</code> is cleared,
+    releasing anyone sitting in <a href="wait-for-flush.html"><code>WaitForFlush</code></a>.</li>
+</ol>
+
+<div class="gap">
+  <strong>A long message is truncated at render time even though it was stored whole.</strong> Step 5 builds into 2048 bytes, while
+  <a href="../LogLine/constructors.html"><code>LogLine</code></a> keeps a body longer than 1022 characters in a heap allocation as
+  large as the statement produced — up to 131071 bytes, the ceiling of
+  <a href="index.html#properties"><code>TLogStream</code></a>. So a body of roughly 2000 bytes or more survives allocation, survives
+  the queue, survives the move — and is cut off mid-sentence when the prefix and body are concatenated into that 2048-byte builder,
+  which truncates silently. The union in <code>LogLine</code> buys fidelity the drain then throws away; if you need a whole
+  100 KB dump, do not send it as one log line.
+</div>
+
+<div class="gap">
+  <strong>A caller that loses the claim has flushed nothing, and cannot tell.</strong> Step 1 returns without draining and without
+  clearing <code>needFlush</code>. That is the safety property that makes an inline drain from a waiting thread legal — two threads
+  must never share <code>swapBuffer</code> — but it means <a href="flush.html"><code>Flush</code></a> on the log thread, or the inline
+  branch of <a href="wait-for-flush.html"><code>WaitForFlush</code></a>, can return having done nothing at all.
+</div>
+
+<div class="note">
+  <strong><code>needFlush</code> describes the instant the pass ends, not the lines you care about.</strong> Lines enqueued after the
+  swap in step 3 are already back in <code>inputBuffer</code>, and step 8 clears the flag regardless — which is precisely the caveat
+  <a href="flush.html"><code>Flush</code></a>'s header records: the handshake guarantees an empty queue at some instant, not the
+  caller's own prefix. Two other asymmetries are worth knowing: clearing <code>needFlush</code> happens whether or not a single line
+  was written, and the file flush in step 7 is keyed on the batch's highest level, so a batch containing one
+  <a href="../ELogLevel/index.html"><code>Warning</code></a> puts every line in it on disk.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None. It drains whatever is queued, on the calling thread, into whichever destinations are installed.</p>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  <code>void</code>. No count of lines written, no indication of whether the claim was won, no status from the destinations. The only
+  externally visible effect is the file and console output itself plus the clearing of a private flag.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<p>
+  Reached three ways, never by name from outside the class. From the drain task's runnable, which calls it on the IO stream's thread:
+</p>
+
+<p class="meta">From Engine/Log/Logger.cpp</p>
+
+<pre><code><span class="kw">auto</span> runnable = [](<span class="kw">void</span>* userData, std::size_t startIndex, std::size_t endIndex) -&gt; std::size_t
+{
+        <span class="kw">auto</span> self = <span class="kw">static_cast</span>&lt;<span class="ty">Logger</span>*&gt;(userData);
+        ...
+        <span class="kw">const</span> <span class="kw">bool</span> isRunning = self-&gt;isRunning.load(std::memory_order_relaxed);
+        <span class="kw">if</span> (!isRunning)
+        {
+                <span class="kw">return</span> <span class="nu">1</span>;
+        }
+
+        self-&gt;<span class="fn">ProcessBuffer</span>();
+
+        <span class="kw">return</span> <span class="nu">0</span>;
+};</code></pre>
+
+<p>And from the two shutdown paths, which call it directly so that a stopped drain cannot lose the last batch:</p>
+
+<p class="meta">From Engine/Log/Logger.cpp</p>
+
+<pre><code>Logger::~<span class="ty">Logger</span>() <span class="kw">noexcept</span>
+{
+        instance = <span class="kw">nullptr</span>;
+
+        <span class="fn">ProcessBuffer</span>();
+
+        outFileStream.<span class="fn">flush</span>();
+        outFileStream.<span class="fn">close</span>();
+}</code></pre>
+
+<footer class="prevnext">
+  <span><a href="index.html">← Logger</a></span>
+  <span><a href="index.html#methods">All Logger methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

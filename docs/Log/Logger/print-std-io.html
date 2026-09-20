@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Logger::PrintStdIO — Log — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">Logger</a> methods</h3>
+  <ul class="methods">
+    <li><a href="get.html">Get</a></li>
+    <li><a href="get-name.html">GetName</a></li>
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+    <li><a href="start-task.html">StartTask</a></li>
+    <li><a href="stop-task.html">StopTask</a></li>
+    <li><a href="is-drain-task-running.html">IsDrainTaskRunning</a></li>
+    <li><a href="set-filter.html">SetFilter</a></li>
+    <li><a href="add-log.html">AddLog</a></li>
+    <li><a href="flush.html">Flush</a></li>
+    <li><a href="report-memory-configuration.html">ReportMemoryConfiguration</a></li>
+    <li><a href="wait-for-flush.html">WaitForFlush</a></li>
+    <li><a href="process-buffer.html">ProcessBuffer</a></li>
+    <li><a href="flush-buffer.html">FlushBuffer</a></li>
+    <li><a href="write-log.html">WriteLog</a></li>
+    <li><a class="current" href="print-std-io.html">PrintStdIO</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Log</a> /
+  <a href="index.html">Logger</a> / PrintStdIO
+</p>
+
+<h1><span class="fn">PrintStdIO</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Logger</span>
+  <span class="tag">private static</span>
+  <span class="tag">noexcept</span>
+  destination two: the console, one line at a time, through the engine — which makes the engine a dependency of draining
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code><span class="cm">// private:</span>
+<span class="kw">static</span> <span class="kw">void</span> <span class="fn">PrintStdIO</span>(<span class="kw">const</span> <span class="ty">TTextBuffer</span>&amp; buffer) <span class="kw">noexcept</span>;</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<pre><code><span class="kw">auto</span>&amp; engine = <span class="ty">Engine</span>::Get();
+
+<span class="kw">for</span> (<span class="kw">auto</span>&amp; logText : buffer)
+{
+        engine.<span class="fn">ConsoleOutLn</span>(logText.c_str());
+}</code></pre>
+
+<p>
+  The second function installed into
+  <a href="index.html#properties"><code>flushFuncs</code></a>, so the console sees a batch after the file does. It is
+  <code>static</code> — the only one of the two destinations that does not need the object — because it touches no logger state: it
+  goes straight to the process's engine and hands over one line at a time.
+</p>
+
+<p>
+  <code>Engine::ConsoleOutLn</code> is <code>std::lock_guard</code> on the engine's console mutex followed by
+  <code>std::cout &lt;&lt; str &lt;&lt; std::endl</code> (<a href="../../Engine/index.html#engine">Engine</a>). Per-line locking, per-line
+  newline: the drain does not hold the console for the whole batch, and the text arrives exactly as
+  <a href="process-buffer.html"><code>ProcessBuffer</code></a> rendered it.
+</p>
+
+<div class="gap">
+  <strong>Draining requires a live <code>Engine</code>, and this is the call that makes it so.</strong>
+  <code>Engine::Get()</code> asserts the instance pointer is non-null — Debug and Dev only — and dereferences it in every
+  configuration. The engine is already needed one layer up, since <a href="add-log.html"><code>AddLog</code></a> itself calls
+  <code>Engine::Get()</code> and <code>GetTaskSystem()</code> for the thread name, and
+  <a href="../LogLine/constructors.html"><code>LogLine</code>'s long-message constructor</a> needs the memory manager. The practical
+  consequence: a <code>Logger</code> constructed in a process with no engine does not merely lose its console output — the drain reaches
+  this line and dereferences null. Anything that wants logging without an engine has to use
+  <a href="../LogUtil/index.html">LogUtil</a> and write the text itself.
+</div>
+
+<div class="note">
+  <strong>Batch atomicity is per line, so console order can differ from file order.</strong> The lock covers one line, which means
+  another thread writing to <code>std::cout</code> directly — the no-logger emergency path, or the
+  <a href="../../Config/index.html#buildconfig"><code>LOG_BREAK_IF_*</code></a> / <code>LOG_FORCE_PRINT_IMMEDIATELY</code> immediate
+  path — can land between two lines of the same batch. The file, written first and by one claimed thread, keeps the batch contiguous.
+  Diffing a console transcript against the log file therefore proves nothing about ordering inside a batch.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr>
+    <td><code>buffer</code></td>
+    <td><a href="index.html#properties"><code>const TTextBuffer&amp;</code></a> (<code>HVector&lt;HString&gt;</code>)</td>
+    <td>Finished lines in output order; empty is legal and writes nothing. Only <code>c_str()</code> is passed on, so the string's
+        allocator is irrelevant to this call — but a NUL inside a line ends it here, where
+        <a href="write-log.html"><code>WriteLog</code></a> would have written up to the embedded NUL's length</td>
+  </tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  <code>void</code>. Whether the console accepted the text is not reported back by
+  <code>Engine::ConsoleOutLn</code> either, so this destination, like the file one, is fire-and-forget: neither a redirect nor a closed
+  standard output changes what the logger does next.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<p>Installed as an output function in the constructor; never called by name:</p>
+
+<p class="meta">From Engine/Log/Logger.cpp</p>
+
+<pre><code>flushFuncs.<span class="fn">reserve</span>(<span class="nu">2</span>);
+flushFuncs.<span class="fn">emplace_back</span>([<span class="kw">this</span>](<span class="kw">const</span> <span class="ty">TTextBuffer</span>&amp; buffer) { <span class="fn">WriteLog</span>(buffer); });
+flushFuncs.<span class="fn">emplace_back</span>([](<span class="kw">const</span> <span class="ty">TTextBuffer</span>&amp; buffer) { <span class="fn">PrintStdIO</span>(buffer); });</code></pre>
+
+<p>
+  The consequence of that pairing is the output you actually see: every line appears in the file and on the console, in the same
+  rendering, with the file write first. A build whose console is quiet while the file fills is not filtering — the engine's console path
+  is where to look. A build whose file is empty while the console is busy is the opposite case, and
+  <a href="write-log.html"><code>WriteLog</code></a> explains why nobody notices.
+</p>
+
+<footer class="prevnext">
+  <span><a href="index.html">← Logger</a></span>
+  <span><a href="index.html#methods">All Logger methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

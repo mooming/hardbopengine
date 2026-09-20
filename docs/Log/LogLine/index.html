@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LogLine — Log — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="#description">Class description</a></li>
+    <li><a href="#template">Template parameters</a></li>
+    <li><a href="#properties">Class properties</a></li>
+    <li><a href="#methods">Class methods</a></li>
+    <li><a href="#non-member">Non-member helpers</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+
+  <h3>Methods</h3>
+  <ul class="methods">
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+    <li><a href="get-text.html">GetText</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Log</a> / LogLine
+</p>
+
+<h1 id="logline">LogLine</h1>
+<p class="subtitle">
+  <span class="tag">Engine/Log/LogLine.h</span>
+  <span class="tag">namespace hbe</span>
+  <span class="tag">final</span>
+  <span class="tag">3 constructors</span>
+  one produced entry: a timestamp, the producing thread, a category, a level, and text that is inline or on the heap
+</p>
+
+<h2 id="description">Class description</h2>
+
+<p>
+  The record <a href="../Logger/add-log.html"><code>AddLog</code></a> puts in its queue and
+  <a href="../Logger/process-buffer.html"><code>ProcessBuffer</code></a> takes out. It is an aggregate in every sense but
+  syntax: five public data members, a <code>union</code> for the body, and no behaviour beyond the constructors, the destructor and
+  <a href="get-text.html"><code>GetText</code></a>. Nothing formats it — the prefix is assembled at drain time from these fields.
+</p>
+
+<p>
+  The union is the design. A body shorter than
+  <a href="../../Config/index.html#engineconfig"><code>Config::LogLineLength</code></a> − 1 lives in the line's own storage and costs no
+  allocation; a longer one is a pointer plus a length, with the bytes allocated from the system allocator by
+  <a href="constructors.html">the producing constructor</a> and returned by <a href="destructor.html">the destructor</a>.
+  <a href="#properties"><code>isLong</code></a> says which member is live, and it is the flag <em>every</em> reader must consult —
+  <a href="get-text.html"><code>GetText</code></a> exists so that nobody reads the union directly.
+</p>
+
+<p>
+  <a href="#properties"><code>timeStamp</code></a> is captured with <code>steady_clock::now()</code> at construction, which is why a
+  queued line still carries the moment it was produced rather than the moment it was written.
+  <a href="../Logger/process-buffer.html">The drain</a> formats that stored value into the prefix.
+</p>
+
+<div class="note">
+  <strong>Every line costs about a kilobyte, whatever it says.</strong> The union is sized by its inline member — 1024 characters — so
+  a twenty-character message occupies the same space as an empty one. Multiplied by the queue, that is the real cost of the design: at
+  <a href="../../Config/index.html#engineconfig"><code>Config::LogForceFlushThreshold</code></a> (8192) the pending queue is roughly
+  eight megabytes held in <a href="../Logger/index.html#properties"><code>"LoggerInputPool"</code></a>. Long lines add their own
+  allocation on top, from a different pool.
+</div>
+
+<div class="gap">
+  <strong>Only about the first 2000 characters of a long line ever reach the log file.</strong> Storing a large body faithfully is not
+  the same as emitting it: <a href="../Logger/process-buffer.html"><code>ProcessBuffer</code></a> concatenates the prefix and the body into
+  <code>InlineStringBuilder&lt;Config::LogLineLength * 2&gt;</code> — 2048 bytes, which truncates silently. The union buys fidelity that the
+  renderer then discards, so a multi-kilobyte dump must be written by other means or split into lines.
+</div>
+
+<div class="note">
+  <strong>A line cannot be copied, and that is not an oversight.</strong> The class declares a move constructor, which implicitly deletes
+  the copy constructor — so a shallow copy of the long variant, which would double-free, cannot be written. Lines move between the queue
+  and the drain, which is the only transfer they need; <a href="../Logger/index.html#properties"><code>TLogBuffer</code></a> holds them by
+  value precisely because that move is <code>noexcept</code>.
+</div>
+
+<h2 id="template">Template parameters</h2>
+
+<p>None — <code>LogLine</code> is not a template.</p>
+
+<h2 id="properties">Class properties</h2>
+
+<p>
+  Every member of <code>LogLine</code> is public: the type is a payload passed between two functions of one module, not an object with an
+  invariant to protect. Badges below therefore name the <em>kind</em> of member; the visibility is uniform.
+</p>
+
+<table>
+  <tr><th>Name</th><th>Declaration</th><th>What it means</th></tr>
+  <tr>
+    <td><code>TTimePoint</code></td>
+    <td><code>using TTimePoint = typename std::chrono::time_point&lt;std::chrono::steady_clock&gt;;</code></td>
+    <td>
+      <span class="badge">member type</span> The third identical spelling of the log clock in this module
+      (<a href="../LogUtil/index.html#properties"><code>LogUtil::TTimePoint</code></a>,
+      <a href="../Logger/index.html#properties"><code>Logger::TTimePoint</code></a>); the leading <code>typename</code> here is redundant on a
+      non-dependent name and harmless
+    </td>
+  </tr>
+  <tr>
+    <td><code>timeStamp</code></td>
+    <td><code>TTimePoint timeStamp;</code></td>
+    <td>
+      <span class="badge">data member</span> Set to <code>steady_clock::now()</code> by the producing constructor; the default constructor
+      leaves it uninitialised. Read by the drain and formatted by
+      <a href="../LogUtil/get-time-stamp-string.html"><code>GetTimeStampString</code></a>, which turns it into elapsed-since-epoch text
+    </td>
+  </tr>
+  <tr>
+    <td><code>threadName</code></td>
+    <td><code>StaticString threadName;</code></td>
+    <td>
+      <span class="badge">data member</span> The producing thread's stream name, interned so the field costs a handle. It is whatever
+      <code>TaskSystem::GetCurrentStreamName()</code> returned at the moment of production — empty for a thread that never joined a stream
+      (see <a href="../Logger/add-log.html">the prefix that results</a>)
+    </td>
+  </tr>
+  <tr>
+    <td><code>category</code></td>
+    <td><code>StaticString category;</code></td>
+    <td><span class="badge">data member</span> The same key the filter was looked up under, carried into the line so the drain can print it without consulting the logger</td>
+  </tr>
+  <tr>
+    <td><code>level</code></td>
+    <td><code>ELogLevel level;</code></td>
+    <td>
+      <span class="badge">data member</span> Severity as produced. The drain uses it twice: for
+      <a href="../LogUtil/get-log-level-string.html">the name in the prefix</a> and for the
+      <a href="../ELogLevel/index.html"><code>Warning</code></a>-or-above test that decides whether the file stream is flushed after the batch
+    </td>
+  </tr>
+  <tr>
+    <td><code>isLong</code></td>
+    <td><code>bool isLong;</code></td>
+    <td>
+      <span class="badge">data member</span> Which union member is live. Set from the size alone (<code>size &gt;= LogLineLength - 1</code>) and
+      consulted by <a href="get-text.html"><code>GetText</code></a> and by <a href="destructor.html">the destructor</a>; nothing checks that a
+      reader agrees with it
+    </td>
+  </tr>
+  <tr>
+    <td><code>(anonymous union)</code></td>
+    <td><code>union { char text[Config::LogLineLength]; struct { char* longText; size_t longTextSize; }; };</code></td>
+    <td>
+      <span class="badge">data member</span> The body storage. Because the union is <em>anonymous</em>, its members are injected into
+      <code>LogLine</code> itself: <code>line.longText</code> is legal whether or not <code>isLong</code> says it is live, and reading the wrong
+      one is a silent misread of the other variant's bytes rather than an error
+    </td>
+  </tr>
+  <tr>
+    <td><code>text</code></td>
+    <td><code>char text[Config::LogLineLength];</code></td>
+    <td>
+      <span class="badge">data member</span> Inline body, 1024 bytes including the terminator: at most 1023 characters survive, and the
+      producing constructor truncates to that rather than failing
+    </td>
+  </tr>
+  <tr>
+    <td><code>longText</code></td>
+    <td><code>char* longText;</code></td>
+    <td>
+      <span class="badge">data member</span> Heap body for a line that did not fit — allocated by
+      <a href="../../Memory/index.html#memorymanager"><code>MemoryManager::SysAllocate</code></a>, i.e. the system allocator, not the logger's own
+      pool. Uninitialized when <a href="constructors.html">a construction with null text</a> still selects the long variant
+    </td>
+  </tr>
+  <tr>
+    <td><code>longTextSize</code></td>
+    <td><code>size_t longTextSize;</code></td>
+    <td>
+      <span class="badge">data member</span> Allocation size, stored as <em>including</em> the terminator (<code>size + 1</code>), and passed back
+      to <code>SysDeallocate</code> by the destructor — so the size the allocator received and the size it gets back always match
+    </td>
+  </tr>
+</table>
+
+<h2 id="methods">Class methods</h2>
+
+<table>
+  <tr><th>Method</th><th>Signature</th><th>What a caller depends on</th></tr>
+  <tr>
+    <td><a href="constructors.html">constructors</a><span class="badge">3 overloads</span></td>
+    <td class="sig">LogLine() noexcept<br>LogLine(LogLine&amp;&amp; rhs) noexcept<br>LogLine(ELogLevel level, StaticString threadName, StaticString category, const char* inText, size_t size) noexcept</td>
+    <td>The five-argument form is the one the logger uses and the one that allocates; the move is what makes the queue cheap; the default form exists so a vector can hold lines and leaves <code>timeStamp</code> uninitialised</td>
+  </tr>
+  <tr>
+    <td><a href="destructor.html">destructor</a></td>
+    <td class="sig">~LogLine() noexcept</td>
+    <td>Returns a heap body to the system allocator and does nothing at all for an inline line — which is why moving a line is safe</td>
+  </tr>
+  <tr>
+    <td><a href="get-text.html">GetText</a></td>
+    <td class="sig">const char* GetText() const noexcept</td>
+    <td>The only correct way to read the body: it resolves <code>isLong</code> for you. <code>[[nodiscard]]</code></td>
+  </tr>
+</table>
+
+<h2 id="non-member">Non-member helper functions</h2>
+
+<p>
+  None. <code>LogLine.h</code> declares nothing at namespace scope. There is no <code>operator&lt;&lt;</code> for a line and no formatter —
+  rendering lives in <a href="../Logger/process-buffer.html"><code>ProcessBuffer</code></a>, and a caller that wants a line as text has to
+  assemble the same five fields by hand.
+</p>
+
+<h2 id="coverage">Coverage</h2>
+
+<table>
+  <tr><th>Gap</th><th>Detail</th></tr>
+  <tr>
+    <td>Who constructs lines</td>
+    <td>Only <a href="../Logger/add-log.html"><code>AddLog</code></a>, and only with a builder it just filled. The hazards of
+        <a href="constructors.html">the producing constructor</a> are recorded as reachable-by-hand rather than as live bugs, because no
+        current call path supplies a null or oversized body that the logger itself did not format</td>
+  </tr>
+  <tr>
+    <td>What the fields become on disk</td>
+    <td>The prefix format, its truncation at 2048 characters and the ordering of a batch are documented with
+        <a href="../Logger/process-buffer.html">the drain</a>, not duplicated here</td>
+  </tr>
+  <tr>
+    <td>The allocator behind the long body</td>
+    <td><code>SysAllocate</code> / <code>SysDeallocate</code> and the lifetime of <code>MemoryManager</code> are
+        <a href="../../Memory/index.html#memorymanager">Memory</a>'s contract; this page records only that the long variant does not use the
+        logger's pools</td>
+  </tr>
+  <tr>
+    <td>Profiling counters</td>
+    <td>Under <a href="../../Config/index.html#buildconfig"><code>PROFILE_ENABLED</code></a> the producing constructor increments one of two
+        engine statistics (<code>IncLongLogCount</code> for the heap variant, <code>IncLogCount</code> for the inline one); the counters
+        themselves belong to <a href="../../Core/index.html#systemstatistics">Core: SystemStatistics</a></td>
+  </tr>
+</table>
+
+<footer class="prevnext">
+  <span><a href="../index.html">← Log</a></span>
+  <span><a href="../index.html#logline">LogLine in the Log class list</a></span>
+</footer>
+
+</main>
+</body>
+</html>

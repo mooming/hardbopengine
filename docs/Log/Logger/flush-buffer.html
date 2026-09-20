@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Logger::FlushBuffer — Log — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">Logger</a> methods</h3>
+  <ul class="methods">
+    <li><a href="get.html">Get</a></li>
+    <li><a href="get-name.html">GetName</a></li>
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+    <li><a href="start-task.html">StartTask</a></li>
+    <li><a href="stop-task.html">StopTask</a></li>
+    <li><a href="is-drain-task-running.html">IsDrainTaskRunning</a></li>
+    <li><a href="set-filter.html">SetFilter</a></li>
+    <li><a href="add-log.html">AddLog</a></li>
+    <li><a href="flush.html">Flush</a></li>
+    <li><a href="report-memory-configuration.html">ReportMemoryConfiguration</a></li>
+    <li><a href="wait-for-flush.html">WaitForFlush</a></li>
+    <li><a href="process-buffer.html">ProcessBuffer</a></li>
+    <li><a class="current" href="flush-buffer.html">FlushBuffer</a></li>
+    <li><a href="write-log.html">WriteLog</a></li>
+    <li><a href="print-std-io.html">PrintStdIO</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Log</a> /
+  <a href="index.html">Logger</a> / FlushBuffer
+</p>
+
+<h1><span class="fn">FlushBuffer</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Logger</span>
+  <span class="tag">private</span>
+  <span class="tag">const noexcept</span>
+  the one funnel: hand a batch of finished lines to every installed destination, in order
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code><span class="cm">// private:</span>
+<span class="kw">void</span> <span class="fn">FlushBuffer</span>(<span class="kw">const</span> <span class="ty">TTextBuffer</span>&amp; buffer) <span class="kw">const</span> <span class="kw">noexcept</span>;</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<pre><code><span class="kw">for</span> (<span class="kw">auto</span>&amp; func : flushFuncs)
+{
+        <span class="fn">Assert</span>(func != <span class="kw">nullptr</span>);
+        func(buffer);
+}</code></pre>
+
+<p>
+  Each element of <a href="index.html#properties"><code>flushFuncs</code></a> receives the whole batch, in registration order, which
+  is the order the constructor installed them: <a href="write-log.html"><code>WriteLog</code></a> (the file) first, then
+  <a href="print-std-io.html"><code>PrintStdIO</code></a> (the console). This is the function that answers "where do log lines go" —
+  there is no public way to install a third, so a custom destination means either a fork of this class or reading the file it writes.
+</p>
+
+<p>
+  It is <code>const</code> in the sense that it never changes the logger's own bookkeeping; the destinations obviously mutate, an
+  <code>std::ofstream</code> and a console each. The batch is passed by reference and unchanged, so a destination may keep a copy of a
+  line but must not modify the one it was handed.
+</p>
+
+<div class="note">
+  <strong>Three callers, and they are the three ways text can leave this module.</strong>
+  <a href="process-buffer.html"><code>ProcessBuffer</code></a> with a whole drained batch; <a href="add-log.html"><code>AddLog</code></a>'s
+  inline path with a single-element thread-local buffer for an error produced on the log thread; and, transitively, the two shutdown
+  calls to <code>ProcessBuffer</code> in <a href="stop-task.html"><code>StopTask</code></a> and
+  <a href="destructor.html">the destructor</a>. Everything that reaches the file passes through this loop; the emergency and
+  <code>LOG_FORCE_PRINT_IMMEDIATELY</code> paths do not — they write to the C++ standard streams and never appear in the log file.
+</div>
+
+<div class="gap">
+  <strong>A destination that throws terminates the process.</strong> <code>flushFuncs</code> holds
+  <code>std::function</code>, which carries no <code>noexcept</code>, while <code>FlushBuffer</code> itself is
+  <code>noexcept</code>. An exception escaping either output function therefore propagates out of a function promised not to throw —
+  <code>std::terminate</code>, with the batch half-written: file written, console not, and the caller in
+  <a href="process-buffer.html"><code>ProcessBuffer</code></a> never reaching its <code>needFlush</code> clear. Likewise a null entry is
+  diagnosed by <code>Assert</code>, which is Debug and Dev only (see <a href="../../Core/index.html#functions">Core: Debug</a>) and then
+  calls it anyway.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr>
+    <td><code>buffer</code></td>
+    <td><a href="index.html#properties"><code>const TTextBuffer&amp;</code></a> (<code>HVector&lt;HString&gt;</code>)</td>
+    <td>
+      The finished lines, already prefixed, in output order; an empty buffer is legal and calls each destination once with nothing to
+      write. It must stay alive for the whole call — each function receives the same reference in turn, so a temporary is fine but
+      destroying it between two destinations is not
+    </td>
+  </tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  <code>void</code>. No destination reports anything back: a failed file write
+  (<a href="write-log.html"><code>WriteLog</code></a> checks nothing) and a console that discarded the line
+  (<a href="print-std-io.html"><code>PrintStdIO</code></a> checks nothing) are both successes here. This is the layer where a caller's
+  assumption "it is on disk" is either honoured or silently dropped, and it cannot tell you which.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<p>
+  The inline single-line write — an error produced <em>by</em> the log thread, which cannot safely queue itself, so it builds a
+  one-element batch on the spot and writes through this function:
+</p>
+
+<p class="meta">From Engine/Log/Logger.cpp</p>
+
+<pre><code><span class="kw">if</span> (unlikely(level &gt;= <span class="ty">ELogLevel</span>::Error &amp;&amp; std::this_thread::get_id() == threadID))
+{
+        <span class="ty">AllocatorScope</span> memAllocScope(MemoryManager::SystemAllocatorID);
+
+        <span class="kw">thread_local</span> <span class="ty">TTextBuffer</span> tmpTextBuffer;
+        tmpTextBuffer.<span class="fn">reserve</span>(<span class="nu">1</span>);
+        ...
+        tmpTextBuffer.<span class="fn">emplace_back</span>(text.c_str());
+
+        <span class="fn">FlushBuffer</span>(tmpTextBuffer);
+        tmpTextBuffer.<span class="fn">clear</span>();
+
+        <span class="kw">if</span> (unlikely(level &gt;= <span class="ty">ELogLevel</span>::FatalError))
+        {
+                <span class="fn">debugBreak</span>();
+        }
+
+        <span class="kw">return</span>;
+}</code></pre>
+
+<p>
+  Note the allocator scope this caller opens: the batch's <code>HString</code> is built from the system allocator rather than the
+  logger's pool, because a thread that is already inside the drain must not take from the pool the drain is writing. The buffer is
+  thread-local and cleared rather than destroyed, so the reserve happens once per thread.
+</p>
+
+<footer class="prevnext">
+  <span><a href="index.html">← Logger</a></span>
+  <span><a href="index.html#methods">All Logger methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>
