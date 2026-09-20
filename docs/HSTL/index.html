@@ -34,10 +34,14 @@
     <li><a href="#classes">Module classes</a></li>
     <li><a href="#variables">Module variables</a></li>
     <li><a href="#functions">Module functions</a></li>
-    <li><a href="#hstring">HString</a></li>
-    <li><a href="#hvector">HVector</a></li>
-    <li><a href="#hunorderedmap">HUnorderedMap</a></li>
     <li><a href="#coverage">Coverage</a></li>
+  </ul>
+
+  <h3>Classes</h3>
+  <ul>
+    <li><a href="HString/index.html">HString</a></li>
+    <li><a href="HVector/index.html">HVector</a></li>
+    <li><a href="HUnorderedMap/index.html">HUnorderedMap</a></li>
   </ul>
 
   <h3>Design documents</h3>
@@ -54,134 +58,174 @@
 <p class="subtitle">
   <span class="tag">namespace hbe</span>
   <span class="tag">Engine/HSTL</span>
-  3 headers, 2 sources — standard containers rebound to engine allocators, and nothing else
+  <span class="tag">3 headers, 2 sources</span>
+  <span class="tag">6 aliases, 1 hash specialisation</span>
+  standard containers rebound to engine allocators — and the sources ship no code at all
 </p>
 
 <h2 id="description">Module description</h2>
 
 <p>
-  HardBop STL is a thin layer: each header declares aliases that plug an engine allocator into a standard
-  container. There is no wrapper class, no reimplementation, and therefore no second behaviour to learn — you
-  get <code>std::vector</code>'s guarantees with the engine's accounting. Where the engine's own
-  <a href="../Container/index.html">Container</a> module exists, prefer it for engine internals; use these
-  where a standard container is needed, which is mostly at boundaries with code that expects one.
+  HardBop STL is six <code>using</code>-declarations across three headers. Each one names a standard container
+  specialisation with an engine allocator substituted, and none of them declares a class, a member or a function
+  in <code>namespace hbe</code>. There is no wrapper and no reimplementation, so a member you already know is the
+  member you get, with the standard's contract attached.
+</p>
+
+<p>
+  The one thing the layer actually decides is which allocator a container holds, and that answer is subtler than
+  "the engine's". <code>DefaultAllocator&lt;T&gt;</code>'s default constructor stores
+  <code>MemoryManager::GetCurrentAllocatorID()</code>, and a container default-constructs its allocator when the
+  container is constructed. So the pool an <code>HVector</code>, <code>HString</code> or
+  <code>HUnorderedMap</code> draws from is fixed at its own construction site by whichever
+  <a href="../Memory/index.html#allocatorscope">allocator scope</a> happens to be open there, and never revisited
+  by a later insertion. When that id is <code>MemoryManager::SystemAllocatorID</code>,
+  <code>DefaultAllocator::allocate</code> calls <code>malloc</code> directly and bypasses
+  <code>MemoryManager</code> — so "engine allocator" does not by itself mean the allocation is accounted.
+</p>
+
+<div class="gap">
+  <strong>There is one piece of second behaviour to learn, and it is not in a container.</strong>
+  <code>HString.h</code> specialises <code>std::hash&lt;hbe::HString&gt;</code> with djb2 over
+  <code>c_str()</code>. It is not a rename of anything: it replaces the hash the standard library would
+  otherwise have refused to supply, it stops at the first null while <code>operator==</code> compares the whole
+  string, and it widens <code>char</code> in a way whose result depends on that type's ABI-defined signedness.
+  <a href="HString/index.html#non-member">The HString page</a> carries the code and the consequences.
+</div>
+
+<p>
+  Where the engine's own <a href="../Container/index.html">Container</a> module covers the same need, prefer it
+  for engine internals: <a href="../Container/index.html#array"><code>Array</code></a> names its allocator at the
+  use site and allocates exactly the element count, while these aliases hide the allocator and keep the
+  standard's growth policy. Use the standard shapes where a standard container is wanted — at OS and
+  serialisation boundaries, and behind a member typedef inside a class, which is how the engine itself uses
+  them.
+</p>
+
+<p>
+  The module's two <code>.cpp</code> files are worth stating plainly, because they change what a build of
+  <code>libHSTL</code> contains. <code>HString.cpp</code> is a copyright line and <code>#include "HString.h"</code>
+  and nothing else; <code>HUnorderedMap.cpp</code> is an include plus the body of a
+  <code>__UNIT_TEST__</code>-guarded fixture. Outside the test build the target compiles no code — which is
+  exactly what an alias layer should do, and is the reason <code>HVector.h</code> has no source file beside it.
 </p>
 
 <h2 id="classes">Module classes</h2>
 
+<p>
+  Every entry is an alias family, so every entry has its own page and none has method pages: a name that the
+  standard library already defines has no engine contract to document. The heading in each sidebar reads
+  <em>None — aliases only</em> rather than being left off, so an empty list is never mistaken for unfinished work.
+</p>
+
 <table>
   <tr><th>Name</th><th>Kind</th><th>Header</th><th>Role</th></tr>
-  <tr><td><a href="#hstring">HString</a></td><td>Alias family</td><td>HString.h</td><td><code>std::basic_string</code> on the default allocator, plus two inline-pool variants</td></tr>
-  <tr><td><a href="#hvector">HVector</a></td><td>Alias family</td><td>HVector.h</td><td><code>std::vector</code> on the default allocator, plus an inline-pool variant</td></tr>
-  <tr><td><a href="#hunorderedmap">HUnorderedMap</a></td><td>Alias</td><td>HUnorderedMap.h</td><td><code>std::unordered_map</code> on the default allocator</td></tr>
+  <tr id="hstring">
+    <td><a href="HString/index.html">HString</a><span class="badge">no method pages</span></td>
+    <td>Alias family — 3 aliases plus a <code>std::hash</code> specialisation</td>
+    <td>HString.h</td>
+    <td><code>std::basic_string&lt;char, char_traits&lt;char&gt;, DefaultAllocator&lt;char&gt;&gt;</code>, a
+        distinct type from <code>std::string</code> with no conversion to it, plus two inline-pool variants. The
+        engine's string at OS and configuration boundaries</td>
+  </tr>
+  <tr id="hvector">
+    <td><a href="HVector/index.html">HVector</a><span class="badge">no method pages</span></td>
+    <td>Alias family — 2 aliases</td>
+    <td>HVector.h</td>
+    <td><code>std::vector&lt;T, DefaultAllocator&lt;T&gt;&gt;</code>, a pure rename, plus
+        <code>HInlineVector</code> whose pool lives inside the vector object. <code>PoolSize</code> there counts
+        elements per block, not bytes</td>
+  </tr>
+  <tr id="hunorderedmap">
+    <td><a href="HUnorderedMap/index.html">HUnorderedMap</a><span class="badge">no method pages</span></td>
+    <td>Alias template — 1 alias</td>
+    <td>HUnorderedMap.h</td>
+    <td><code>std::unordered_map</code> on
+        <code>DefaultAllocator&lt;std::pair&lt;const TKey, T&gt;&gt;</code>, forwarding hash and predicate and
+        fixing nothing else. No inline-pool variant exists</td>
+  </tr>
 </table>
 
 <h2 id="variables">Module variables</h2>
 
-<p>None — an alias declares no entity. The inline pool sizes are template arguments, listed with each alias.</p>
+<p>
+  None. An alias declares no entity, so nothing in this module has storage, linkage or a lifetime, and there is
+  no object to read. The inline pool sizes are template arguments, not variables, and are listed with each alias
+  on its page. The single value the module reads from elsewhere is
+  <a href="../Config/index.html"><code>Config::MaxPathLength</code></a> — <code>512</code>, a
+  <code>static constexpr int</code> in <code>Engine/Config/EngineConfig.h</code> — which
+  <code>HInlinePathString</code> uses as its block size.
+</p>
 
 <h2 id="functions">Module functions</h2>
 
-<p>None.</p>
-
-<h2 id="hstring">HString (<code>Engine/HSTL/HString.h</code>)</h2>
-
-<h3>Class description</h3>
 <p>
-  The engine's string type at interfaces — <a href="../OSAL/index.html#window">OSAL</a> window titles and
-  <a href="../Resource/index.html">resource</a> paths travel as <code>HString</code>. Three aliases, differing
-  only in where the characters live.
+  None: no header declares a function at namespace scope in <code>hbe</code>. This is not quite "nothing
+  callable" — <code>HString.h</code> declares
+  <code>std::hash&lt;hbe::HString&gt;::operator()</code>, a <code>noexcept</code> call operator reached by every
+  <code>HUnorderedMap</code> keyed on <code>HString</code>. It is documented where it is declared, on
+  <a href="HString/index.html#non-member">the HString page</a>, rather than claimed as an engine function.
 </p>
-
-<h3>Template parameters</h3>
-<table>
-  <tr><th>Alias</th><th>Template parameters</th><th>Allocator</th></tr>
-  <tr><td><code>HString</code></td><td>none</td><td><code>hbe::DefaultAllocator&lt;char&gt;</code></td></tr>
-  <tr><td><code>HInlineString&lt;PoolSize = 128&gt;</code></td><td><code>PoolSize</code></td><td><code>hbe::InlinePoolAllocator&lt;char, PoolSize, 2&gt;</code></td></tr>
-  <tr><td><code>HInlinePathString</code></td><td>none</td><td>inline pool sized for paths</td></tr>
-</table>
-
-<h3>Class properties</h3>
-<p>Not applicable — these are aliases, so the storage is the standard container's own.</p>
-
-<pre><code><span class="kw">using</span> <span class="ty">HString</span> = std::basic_string&lt;<span class="kw">char</span>, std::char_traits&lt;<span class="kw">char</span>&gt;,
-                                   <span class="ty">hbe::DefaultAllocator</span>&lt;<span class="kw">char</span>&gt;&gt;;
-
-<span class="kw">template</span>&lt;std::size_t PoolSize = <span class="nu">128</span>&gt;
-<span class="kw">using</span> <span class="ty">HInlineString</span> = std::basic_string&lt;<span class="kw">char</span>, std::char_traits&lt;<span class="kw">char</span>&gt;,
-                                         <span class="ty">hbe::InlinePoolAllocator</span>&lt;<span class="kw">char</span>, PoolSize, <span class="nu">2</span>&gt;&gt;;
-
-<span class="kw">using</span> <span class="ty">HInlinePathString</span> = <span class="cm">// inline pool sized for a path</span></code></pre>
-
-<h3>Class methods</h3>
-<p>Every <code>std::basic_string</code> member, unchanged.</p>
-
-<h3>Non-member helper functions</h3>
-<p>None.</p>
-
-<h2 id="hvector">HVector (<code>Engine/HSTL/HVector.h</code>)</h2>
-
-<h3>Class description</h3>
-<p>A standard vector whose allocations are engine allocations, and an inline-pool variant for small vectors that should not touch the general allocator.</p>
-
-<h3>Template parameters</h3>
-<table>
-  <tr><th>Alias</th><th>Template parameters</th><th>Allocator</th></tr>
-  <tr><td><code>HVector&lt;T&gt;</code></td><td><code>T</code></td><td><code>hbe::DefaultAllocator&lt;T&gt;</code></td></tr>
-  <tr><td><code>HInlineVector&lt;T, PoolSize = 16&gt;</code></td><td><code>T</code>, <code>PoolSize</code></td><td><code>hbe::InlinePoolAllocator&lt;T, PoolSize, 2&gt;</code> — pool block count 2</td></tr>
-</table>
-
-<h3>Class properties</h3>
-<p>Not applicable — aliases.</p>
-
-<pre><code><span class="kw">template</span>&lt;<span class="kw">typename</span> T&gt;
-<span class="kw">using</span> <span class="ty">HVector</span> = std::vector&lt;T, <span class="ty">hbe::DefaultAllocator</span>&lt;T&gt;&gt;;
-
-<span class="kw">template</span>&lt;<span class="kw">typename</span> T, std::size_t PoolSize = <span class="nu">16</span>&gt;
-<span class="kw">using</span> <span class="ty">HInlineVector</span> = std::vector&lt;T, <span class="ty">hbe::InlinePoolAllocator</span>&lt;T, PoolSize, <span class="nu">2</span>&gt;&gt;;</code></pre>
-
-<h3>Class methods</h3>
-<p>Every <code>std::vector</code> member, unchanged.</p>
-
-<h3>Non-member helper functions</h3>
-<p>None.</p>
-
-<h2 id="hunorderedmap">HUnorderedMap (<code>Engine/HSTL/HUnorderedMap.h</code>)</h2>
-
-<h3>Class description</h3>
-<p>Standard hash map on the default allocator. Reach for <a href="../Container/index.html#hashmap"><code>HashMap</code></a> first inside the engine; this exists for code that needs the standard container's interface and iterator stability rules.</p>
-
-<h3>Template parameters</h3>
-<table>
-  <tr><th>Parameter</th><th>Default</th><th>Meaning</th></tr>
-  <tr><td><code>TKey</code>, <code>T</code></td><td>—</td><td>Key and value types</td></tr>
-  <tr><td><code>THash</code></td><td><code>std::hash&lt;TKey&gt;</code></td><td>Hash function</td></tr>
-  <tr><td><code>TPred</code></td><td><code>std::equal_to&lt;TKey&gt;</code></td><td>Key equality</td></tr>
-</table>
-
-<h3>Class properties</h3>
-<p>Not applicable — an alias. The allocator it is bound to is <code>DefaultAllocator&lt;std::pair&lt;const TKey, T&gt;&gt;</code>, which is the value type the map actually allocates, not <code>T</code>.</p>
-
-<h3>Class methods</h3>
-<p>Every <code>std::unordered_map</code> member, unchanged.</p>
-
-<h3>Non-member helper functions</h3>
-<p>None.</p>
 
 <h2 id="coverage">Coverage</h2>
 
 <table>
   <tr><th>Gap</th><th>Detail</th></tr>
   <tr>
-    <td><code>HInlinePathString</code> pool size</td>
-    <td>The alias is bound to an inline pool sized for paths; the exact expression is in the header. Naming
-        <a href="../Config/index.html#variables"><code>Config::MaxPathLength</code></a> here without reading it
-        would be a guess, so the header stays the text.</td>
+    <td><code>HInlinePathString</code> has no user</td>
+    <td>No file under <code>Engine/</code> or <code>Applications/</code> names it. Its size is resolved here —
+        <code>Config::MaxPathLength</code> is <code>512</code>, so 512 characters per block and 2 blocks — but no
+        call site exists to show, and what it was intended for cannot be stated. Recorded on
+        <a href="HString/index.html#coverage">HString</a></td>
   </tr>
   <tr>
-    <td>Inline pool semantics</td>
-    <td>What <code>InlinePoolAllocator&lt;T, PoolSize, 2&gt;</code> does when the pool is exhausted is allocator
-        design and belongs in <a href="../AllocatorGuide.md">docs/AllocatorGuide.md</a>, not on an alias page.</td>
+    <td><code>HInlinePathString</code> is not what resource paths use</td>
+    <td>The name invites the assumption that resource paths travel in it. They do not:
+        <a href="../Resource/index.html"><code>ResourceManager</code></a> keys by
+        <code>StaticString</code> (<code>ResourceItem::path</code>, <code>RequestLoad</code>, <code>Load</code>)
+        and <a href="../String/index.html">String</a> owns that type. The <code>HString</code> paths in the
+        repository are the OS-layer ones — <code>OS::GetFullPath</code>, <code>OS::ListFilesInDirectory</code> in
+        <code>Engine/OSAL/OSAbstractLayer.h</code></td>
+  </tr>
+  <tr>
+    <td>Allocator scope, id lifetime and pool exhaustion</td>
+    <td>What <code>MemoryManager::GetCurrentAllocatorID</code> returns at a given point, how long a pool must
+        outlive a container holding its id, and what <code>InlinePoolAllocator</code> does when a request exceeds
+        its block are allocator contracts: <a href="../Memory/index.html#allocators">Memory</a> and
+        <a href="../AllocatorGuide.md">docs/AllocatorGuide.md</a>. This module's pages state where each rule bites
+        and do not restate the rules</td>
+  </tr>
+  <tr>
+    <td>The standard library's own guarantees</td>
+    <td>Growth factors, rehash and iterator invalidation, small-string behaviour and complexity bounds belong to
+        <code>std::vector</code>, <code>std::basic_string</code> and <code>std::unordered_map</code> and are not
+        reproduced. Where a page needed a library fact it cited the standard; where the answer is
+        implementation-defined — a growth factor, which internal types a container rebinds an allocator to — the
+        page says so instead of guessing</td>
+  </tr>
+  <tr>
+    <td>Test-only code</td>
+    <td><code>HUnorderedMap.h</code> declares the fixture <code>HUnorderedMapTest</code> under
+        <code>__UNIT_TEST__</code> and <code>HUnorderedMap.cpp</code> defines it; that is the module's only
+        fixture, and its <code>operator[]</code> expectations are recorded on
+        <a href="HUnorderedMap/index.html#coverage">HUnorderedMap</a>. <code>HString.h</code> and
+        <code>HVector.h</code> declare none. Fixtures and registration are
+        <a href="../Test/index.html">Test</a>'s subject</td>
+  </tr>
+  <tr>
+    <td><code>Engine/HSTL/ReviewNote.txt</code> is stale</td>
+    <td>It reports a defect — "Namespace comment mismatch: closing comment says <code>namespace HSTL</code> but
+        actual namespace is <code>namespace hbe</code>" — that no longer exists: all three headers close with
+        <code>} // namespace hbe</code>. It also lists "HVector.h - std::vector with DefaultAllocator" without the
+        <code>HInlineVector</code> alias it calls a strength two lines later. A review note is not a spec, so this
+        page follows the headers and records the note here rather than editing a file outside
+        <code>docs/HSTL/</code></td>
+  </tr>
+  <tr>
+    <td>No page for any standard member</td>
+    <td>Deliberate and total: this module has zero method pages because it has zero engine-defined members. A
+        reader looking for <code>push_back</code> or <code>find</code> will not find them here and is not missing
+        documentation — the contract those names carry is the standard's</td>
   </tr>
 </table>
 

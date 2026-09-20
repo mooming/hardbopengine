@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HString — HSTL — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="#description">Class description</a></li>
+    <li><a href="#template">Template parameters</a></li>
+    <li><a href="#properties">Class properties</a></li>
+    <li><a href="#methods">Class methods</a></li>
+    <li><a href="#non-member">Non-member helpers</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+
+  <h3>Methods</h3>
+  <ul class="methods">
+    <li>None — aliases only</li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">HSTL</a> / HString
+</p>
+
+<h1>HString</h1>
+<p class="subtitle">
+  <span class="tag">Engine/HSTL/HString.h</span>
+  <span class="tag">namespace hbe</span>
+  <span class="tag">3 aliases</span>
+  <span class="tag">1 std::hash specialization</span>
+  <code>std::basic_string</code> on an engine allocator — a different type from <code>std::string</code>, not an alias for it
+</p>
+
+<h2 id="description">Class description</h2>
+
+<p>
+  There is no class here. <code>HString.h</code> declares three type aliases and one
+  <code>std::hash</code> specialization; every string operation is the standard library's, unchanged. What the
+  header actually changes is the allocator, and that single change is the whole reason the alias exists: an
+  <code>HString</code> takes its storage from the engine's memory system instead of from the global operator new.
+</p>
+
+<p>
+  The consequence a caller meets first is that <code>HString</code> is not <code>std::string</code>. It is
+  <code>std::basic_string&lt;char, std::char_traits&lt;char&gt;, hbe::DefaultAllocator&lt;char&gt;&gt;</code>, a
+  distinct type: no conversion exists between the two in either direction, and the codebase crosses between them
+  only through <code>const char*</code> — a <code>const char*</code> constructs an <code>HString</code>, and
+  <code>c_str()</code> hands one back.
+</p>
+
+<p>
+  The allocator is where the memory comes from, and it is decided once, at construction.
+  <code>DefaultAllocator&lt;char&gt;</code>'s default constructor stores
+  <code>MemoryManager::GetCurrentAllocatorID()</code> in the allocator object, so an <code>HString</code> records
+  whichever <a href="../../Memory/index.html#allocatorscope">allocator scope</a> was open at the moment it was
+  built — not the one that is open when it next reallocates. Two <code>HString</code>s built in different scopes
+  draw from different pools and are not allocator-equal, because <code>DefaultAllocator::operator==</code>
+  compares those stored ids. The same header that supplies it warns about exactly this: "It should be careful to
+  use this when the current allocator is stack allocators."
+</p>
+
+<div class="gap">
+  <strong>A string that outlives the scope it was built in keeps a stale allocator id.</strong> Nothing re-stamps
+  <code>DefaultAllocator::allocatorID</code> after construction, so the deallocation at destruction is routed to
+  whatever allocator now holds that id — reused id, wrong pool. <code>HString</code> is therefore safe as a
+  permanent member and unsafe as a long-lived copy of something built inside a
+  <a href="../../Memory/index.html#allocatorscope">temporary scope</a>. That is the allocator's contract, not this
+  alias's; it is recorded on <a href="../../Memory/index.html">Memory</a>.
+</div>
+
+<p>
+  One branch of that contract is worth knowing before you measure anything. <code>DefaultAllocator::allocate</code>
+  short-circuits to <code>malloc</code> when the stored id equals <code>MemoryManager::SystemAllocatorID</code>,
+  bypassing <code>MemoryManager</code> entirely. Built outside any explicit scope, an <code>HString</code> is
+  therefore system-heap memory that the engine's statistics never see; the accounting only happens when a
+  non-system allocator is current at construction.
+</p>
+
+<p>
+  Three real declarations show how the type is used; all three name the alias rather than spelling the
+  <code>basic_string</code> specialisation out.
+</p>
+
+<pre><code><span class="cm">// Engine/OSAL/OSAbstractLayer.h</span>
+<span class="ty">hbe::HString</span> <span class="fn">GetFullPath</span>(<span class="kw">const</span> <span class="ty">hbe::HString</span>&amp; path);
+
+<span class="ty">hbe::HVector</span>&lt;<span class="ty">hbe::HString</span>&gt; <span class="fn">ListFilesInDirectory</span>(<span class="kw">const char</span>* path);</code></pre>
+<p class="meta">From Engine/OSAL/OSAbstractLayer.h</p>
+
+<pre><code><span class="cm">// Engine/Config/ConfigFile.h</span>
+<span class="kw">using</span> <span class="ty">TString</span> = <span class="ty">HString</span>;
+<span class="kw">using</span> <span class="ty">TValue</span> = std::optional&lt;<span class="ty">TString</span>&gt;;
+<span class="kw">using</span> <span class="ty">TMap</span> = <span class="ty">HUnorderedMap</span>&lt;<span class="ty">TString</span>, <span class="ty">TString</span>&gt;;</code></pre>
+<p class="meta">From Engine/Config/ConfigFile.h</p>
+
+<p>
+  <code>TMap</code> is what makes the <a href="#non-member">hash specialisation</a> below live code rather than a
+  curiosity: <a href="../HUnorderedMap/index.html#template"><code>HUnorderedMap</code></a>'s <code>THash</code>
+  defaults to <code>std::hash&lt;TKey&gt;</code>, and here <code>TKey</code> is <code>HString</code>.
+</p>
+
+<pre><code><span class="cm">// Engine/String/StaticString.cpp, inside StaticStringTest::Prepare</span>
+<span class="ty">hbe::HString</span> hello(<span class="st">"Hello?"</span>);
+<span class="ty">hbe::HInlineString</span>&lt;&gt; helloInline(<span class="st">"Hello?"</span>);
+
+<span class="ty">StaticString</span> str(hello);
+<span class="ty">StaticString</span> strInline(helloInline);</code></pre>
+<p class="meta">From Engine/String/StaticString.cpp</p>
+
+<p>
+  Both strings are built from <code>const char*</code> and read back through <code>c_str()</code>; neither is
+  copied or stored. That is the pattern the inline variants are safe in — see the hazard under
+  <a href="#properties">Class properties</a>.
+</p>
+
+<div class="note">
+  <strong>No call site exists for <code>HInlinePathString</code>.</strong> Grepping <code>Engine/</code> and
+  <code>Applications/</code> returns the declaration in <code>HString.h</code> and nothing else, so this page
+  shows no snippet for it: an invented one would be the kind of claim this reference was rebuilt to remove. The
+  absence is recorded in <a href="#coverage">Coverage</a>.
+</div>
+
+<h2 id="template">Template parameters</h2>
+
+<table>
+  <tr><th>Alias</th><th>Template parameters</th><th>Allocator it binds</th></tr>
+  <tr>
+    <td><code>HString</code></td>
+    <td>none — not a template</td>
+    <td><code>hbe::DefaultAllocator&lt;char&gt;</code></td>
+  </tr>
+  <tr>
+    <td><code>HInlineString</code></td>
+    <td><code>template&lt;size_t PoolSize = 128&gt;</code></td>
+    <td><code>hbe::InlinePoolAllocator&lt;char, PoolSize, 2&gt;</code></td>
+  </tr>
+  <tr>
+    <td><code>HInlinePathString</code></td>
+    <td>none — not a template</td>
+    <td><code>hbe::InlinePoolAllocator&lt;char, hbe::Config::MaxPathLength, 2&gt;</code></td>
+  </tr>
+</table>
+
+<p>
+  <code>PoolSize</code> is a <code>size_t</code> non-type parameter spelled <code>size_t</code> in the header, not
+  <code>std::size_t</code>. It is passed to <code>InlinePoolAllocator</code>'s <em>second</em> parameter, whose own
+  name is <code>BlockSize</code> — see the geometry note under
+  <a href="#properties">Class properties</a> for what the number therefore buys.
+</p>
+
+<h2 id="properties">Class properties</h2>
+
+<p>
+  Verbatim from <code>Engine/HSTL/HString.h</code>, in declaration order. An alias owns no members, so each row is
+  the alias itself and the cell states what differs from the standard type it names.
+</p>
+
+<table>
+  <tr><th>Name</th><th>Declaration</th><th>What it means</th></tr>
+  <tr>
+    <td><code>HString</code></td>
+    <td><code>using HString = std::basic_string&lt;char, std::char_traits&lt;char&gt;, hbe::DefaultAllocator&lt;char&gt;&gt;;</code></td>
+    <td>
+      <span class="badge">alias</span> Pure rename of that one specialization — no behaviour is added, hidden or
+      removed. Engine string at interfaces: <a href="../../OSAL/index.html">OSAL</a> window titles
+      (<code>Window::CreateWindow</code>, <code>Window::SetTitle</code>) and
+      <a href="../../Config/index.html">Config</a> file keys and values (<code>ConfigFile::TString</code>). Its
+      allocator is copyable and stamps the current id, so it adds no size beyond the pointer-sized id it carries
+    </td>
+  </tr>
+  <tr>
+    <td><code>HInlineString&lt;PoolSize&gt;</code></td>
+    <td><code>template&lt;size_t PoolSize = 128&gt;<br>using HInlineString = std::basic_string&lt;char, std::char_traits&lt;char&gt;, hbe::InlinePoolAllocator&lt;char, PoolSize, 2&gt;&gt;;</code></td>
+    <td>
+      <span class="badge">alias template</span> Same character type and traits; the difference is that the pool
+      lives <em>inside</em> the allocator, and the string holds the allocator, so the bytes are inside the string
+      object. The geometry comes from <code>InlinePoolAllocator</code>: block size
+      <code>max(PoolSize, sizeof(void*))</code>, block count <code>max(2, 1) = 2</code>, so <code>PoolSize</code>
+      is characters per block and the inline footprint is <code>2 * PoolSize</code> bytes. Used at
+      <code>HInlineString&lt;256&gt;</code> in <code>StringBuilder</code> tests and at
+      <code>HInlineString&lt;InlineBufferSize&gt;</code> in <code>BufferInputStream</code>;
+      <code>HInlineString&lt;&gt;</code> is the 128 default
+    </td>
+  </tr>
+  <tr>
+    <td><code>HInlinePathString</code></td>
+    <td><code>using HInlinePathString = std::basic_string&lt;char, std::char_traits&lt;char&gt;, hbe::InlinePoolAllocator&lt;char, hbe::Config::MaxPathLength, 2&gt;&gt;;</code></td>
+    <td>
+      <span class="badge">alias</span> The path-sized member of the family: <code>Config::MaxPathLength</code> is
+      <code>512</code> (<code>Engine/Config/EngineConfig.h</code>), so 512 characters per block, 1024 bytes inline.
+      The name says what it is for; nothing in the repository uses it — see
+      <a href="#coverage">Coverage</a>
+    </td>
+  </tr>
+</table>
+
+<div class="gap">
+  <strong>Copying an inline-pool string asserts, in every configuration where <code>Assert</code> is compiled.</strong>
+  <code>InlinePoolAllocator</code> declares its copy constructor as
+  <code>InlinePoolAllocator(const InlinePoolAllocator&amp;) : InlinePoolAllocator() { Assert(false); }</code> —
+  it builds a fresh pool rather than copying, then fires the assertion. <code>Assert</code> is active in Debug and
+  Dev, silent in Release, where the copy quietly produces an independent second pool. The standard specifies that
+  <code>get_allocator()</code> returns the allocator by value, so that call alone is enough to reach it, and a
+  container is free to copy its allocator elsewhere too. In other words: use
+  <code>HInlineString</code> and <a href="../HVector/index.html"><code>HInlineVector</code></a> in place, by
+  reference, and do not put them in a container that copies elements. See
+  <a href="../../Memory/index.html">Memory</a> for the allocator itself.
+</div>
+
+<h2 id="methods">Class methods</h2>
+
+<p>
+  None, and none is possible: an alias has no members of its own. Every <code>std::basic_string</code> member —
+  <code>size</code>, <code>c_str</code>, <code>append</code>, <code>reserve</code>, the iterators — is available
+  with the standard's contract, which is the point of the layer. A name that standard-library code already
+  defines has no page here, so this page has no method pages by design rather than by omission.
+</p>
+
+<h2 id="non-member">Non-member helper functions</h2>
+
+<p>
+  One, and it is the only thing in the module that changes behaviour rather than storage.
+  <code>HString.h</code> specialises <code>std::hash</code> for <code>hbe::HString</code>, in
+  <code>namespace std</code>, and marks the specialisation <code>final</code>:
+</p>
+
+<pre><code><span class="kw">template</span>&lt;&gt;
+<span class="kw">struct</span> <span class="ty">hash</span>&lt;hbe::HString&gt; <span class="kw">final</span>
+{
+        [[nodiscard]] std::size_t <span class="fn">operator</span>()(<span class="kw">const</span> <span class="ty">hbe::HString</span>&amp; obj) <span class="kw">const</span> <span class="kw">noexcept</span>
+        {
+                <span class="kw">auto</span> text = obj.<span class="fn">c_str</span>();
+                size_t hashCode = <span class="nu">5381</span>;
+
+                <span class="kw">while</span> (*text != <span class="st">'</span>\<span class="nu">0</span><span class="st">'</span>)
+                {
+                        size_t ch = *text;
+                        ++text;
+                        hashCode = ((hashCode &lt;&lt; <span class="nu">5</span>) + hashCode) + ch;
+                }
+
+                <span class="kw">return</span> hashCode;
+        }
+};</code></pre>
+
+<p>
+  This is djb2: seed <code>5381</code>, then <code>hashCode * 33 + ch</code> per character. It is the hash
+  <a href="../../Config/index.html"><code>ConfigFile</code></a> keys run on — its
+  <code>TMap</code> is <code>HUnorderedMap&lt;TString, TString&gt;</code> and <code>HUnorderedMap</code>'s
+  <code>THash</code> defaults to <code>std::hash&lt;TKey&gt;</code>, which resolves to this specialisation.
+  Three properties of it are visible in the eleven lines above:
+</p>
+
+<table>
+  <tr><th>What the code does</th><th>What follows for a caller</th></tr>
+  <tr>
+    <td>Walks <code>c_str()</code> to the first <code>'\<span class="nu">0</span>'</code></td>
+    <td>
+      Characters after an embedded null do not affect the hash, while <code>operator==</code> compares the whole
+      string — so <code>"a\0b"</code> and <code>"a\0c"</code> hash identically and compare unequal. A legal
+      collision, not a bug in the hash, but it is the string's <em>length</em> that is being ignored, not a
+      pathological input
+    </td>
+  </tr>
+  <tr>
+    <td>Widens with <code>size_t ch = *text;</code>, where <code>text</code> is a <code>const char*</code></td>
+    <td>
+      Where <code>char</code> is signed, a byte at or above <code>0x80</code> sign-extends to a huge
+      <code>size_t</code>; where it is unsigned, the same byte widens to <code>0..255</code>. <code>char</code>
+      signedness is set by the ABI, not by this header, so two platforms can give different hashes for one
+      non-ASCII string. The values are stable within a platform, which is all any in-process hash map needs
+    </td>
+  </tr>
+  <tr>
+    <td>Takes the string by const reference and returns <code>std::size_t</code>, marked <code>noexcept</code></td>
+    <td>Nothing surprising: it is usable as an unordered-container key and cannot throw out of a rehash</td>
+  </tr>
+</table>
+
+<p>
+  There is no matching specialisation for <code>HInlineString</code> or <code>HInlinePathString</code> — each is a
+  different <code>std::basic_string</code> specialisation, so <code>std::hash</code> is not defined for them and
+  one cannot be used as an unordered-container key without passing a hash of your own as
+  <a href="../HUnorderedMap/index.html#template"><code>THash</code></a>.
+</p>
+
+<h2 id="coverage">Coverage</h2>
+
+<table>
+  <tr><th>Gap</th><th>Detail</th></tr>
+  <tr>
+    <td><code>HInlinePathString</code> has no user</td>
+    <td>No file under <code>Engine/</code> or <code>Applications/</code> names it, so this page can state its
+        geometry from the header but cannot show a call site or report what it is actually used for. Its intended
+        size source <code>Config::MaxPathLength</code> is documented on
+        <a href="../../Config/index.html">Config</a></td>
+  </tr>
+  <tr>
+    <td>Which library operations copy the allocator</td>
+    <td>The copy constructor's <code>Assert(false)</code> is a fact from
+        <code>Engine/Memory/InlinePoolAllocator.h</code>, and <code>get_allocator()</code> returning by value is
+        a fact from the standard. Which additional internal calls a given standard library makes to it — during
+        growth, swap, or container construction — is library-internal and was not verified here; treat the hazard
+        above as "assume it copies" rather than as an enumerated list</td>
+  </tr>
+  <tr>
+    <td><code>std::basic_string</code>'s own guarantees</td>
+    <td>Small-string optimisation, iterator invalidation rules, <code>reserve</code> behaviour and exception
+        guarantees belong to the standard library and are not restated. Only what the engine changes is on this
+        page</td>
+  </tr>
+  <tr>
+    <td>Allocator scope, id reuse and pool exhaustion</td>
+    <td>When <code>InlinePoolAllocator</code> runs out of blocks it falls back through
+        <code>MemoryManager::FallbackAllocate</code>; what that costs and which pool answers is
+        <a href="../../Memory/index.html">Memory</a>'s subject, and the design write-up is
+        <a href="../../AllocatorGuide.md">docs/AllocatorGuide.md</a></td>
+  </tr>
+  <tr>
+    <td>No test fixture of its own</td>
+    <td><code>HString.h</code> has no <code>__UNIT_TEST__</code> block, unlike its sibling
+        <a href="../HUnorderedMap/index.html"><code>HUnorderedMap.h</code></a>. The strings are exercised from
+        other modules' tests — <code>StaticStringTest</code> in <code>Engine/String/StaticString.cpp</code> and
+        <code>WindowTest</code> in <code>Engine/OSAL/Window.cpp</code>, both quoted below. The runner itself is
+        <a href="../../Test/index.html">Test</a></td>
+  </tr>
+</table>
+
+<footer class="prevnext">
+  <span><a href="../index.html">← HSTL</a></span>
+  <span><a href="../index.html#hstring">HString in the HSTL class list</a></span>
+</footer>
+
+</main>
+</body>
+</html>

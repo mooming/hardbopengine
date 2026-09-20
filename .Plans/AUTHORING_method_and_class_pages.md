@@ -71,10 +71,11 @@ Class properties — one row per alias **and** per data member:
 </table>
 ```
 
-Badge vocabulary, so one page's row kind is the next page's row kind: `member type` for a `using`, `private` for
-a data member, `private nested` for a nested class or struct, `alias template` for a member `template` alias, and
-`deleted` for a special member that exists only to be removed. Anything else needs a sentence in the cell — the
-badge is a label, not an explanation.
+Badge vocabulary, so one page's row kind is the next page's row kind: `member type` for a `using` **declared
+inside a class**, `alias` for an alias at namespace scope, `private` for a data member, `private nested` for a
+nested class or struct, `alias template` for a member `template` alias, and `deleted` for a special member that
+exists only to be removed. `member type` on a namespace-scope alias is a false statement about scope, which is why
+the two are separate. Anything else needs a sentence in the cell — the badge is a label, not an explanation.
 
 For an entry that is macros only, `Name | Declaration | What it means` states the same thing twice, so the
 middle column becomes **where it is read**: `Name | Read by | What it controls`, with `Read by` naming the
@@ -103,6 +104,11 @@ is what makes the absence of an argument list an explicit fact rather than an ov
 Return value — `<table>` `Type | What you get` when the type carries meaning, a `<p>` when it is `void`.
 
 ## 5. Examples — approved rule
+
+**This rule is about method pages.** The fixed class-page outline has no Examples heading, and §3's outline is not
+yours to extend: on a class page, cite a real call site inline where it belongs — in the Class description, or in
+that method's row in the methods table — as `<code>Engine/Core/TaskSystem.cpp</code>`. Method pages get the
+Examples section and the rules below.
 
 1. **Real call site first.** Grep `Engine/` and `Applications/` for a caller, quote it, and name the file:
    `<p class="meta">From Engine/Core/TaskSystem.cpp</p>` inside the example section.
@@ -159,7 +165,9 @@ A class whose members are aliases only has no method pages: replace the list wit
 `<li>None — aliases only</li>` and keep the "Methods" heading, so the sidebar does not look half-written. Same
 for a macro set (`None — macros only`) and a namespace entry (`None — see the module functions`). **Every class
 page carries the heading**, even when the honest content is a two-word absence: a missing heading cannot be told
-apart from an unfinished page.
+apart from an unfinished page. **An orchestrator brief does not override this file** — one brief told an alias
+family to write `None — see the module functions`, which §9 reserves for namespaces and which pointed at a
+section reading "None." If a brief and this file disagree, this file wins and the brief is the bug.
 
 ## 10. Footer
 
@@ -200,19 +208,29 @@ css=set(re.findall(r'\.([A-Za-z][\w-]*)', open('docs/assets/hbe-docs.css').read(
 bad=0
 for p in glob.glob('docs/<your modules here>/**/*.html', recursive=True):
     src=open(p).read(); c=C(); c.feed(src); c.close()
-    dead=[h for h in c.hrefs if not h.startswith(('http','#')) and not os.path.isfile(os.path.normpath(os.path.join(os.path.dirname(p), h.split('#')[0])))]
-    anch=[h for h in c.hrefs if '#' in h and not h.startswith('http') and h.split('#')[0] and not f'id="{h.split(chr(35))[1]}"' in open(os.path.normpath(os.path.join(os.path.dirname(p), h.split('#')[0]))).read()]
-    miss=[h for h in c.hrefs if h.startswith('#') and h[1:] not in c.ids]
+    dead=[]; xanchor=[]
+    for h in c.hrefs:
+        if h.startswith(('http','#')): continue
+        f,frag=(h.split('#')+[None])[:2]
+        t=os.path.normpath(os.path.join(os.path.dirname(p), f))
+        if not os.path.isfile(t):
+            dead.append(h); continue                     # report it, never open it
+        if frag and not f.endswith('.md') and f'id="{frag}"' not in open(t).read():
+            xanchor.append(h)
+    local=[h for h in c.hrefs if h.startswith('#') and h[1:] not in c.ids]
     badcss=sorted(c.cls-css)
-    if dead or c.err or c.st or anch or miss or badcss:
-        bad+=1; print(p, 'dead',dead,'err',c.err[:3],'unclosed',c.st[:3],'xanchor',anch[:3],'localanchor',miss[:3],'css',badcss)
-    if len(re.findall(r'<pre><code>',src))!=len(re.findall(r'</code></pre>',src)):
-        bad+=1; print(p,'UNBALANCED code blocks')
+    pre=len(re.findall(r'<pre><code>',src))!=len(re.findall(r'</code></pre>',src))
+    if dead or c.err or c.st or xanchor or local or badcss or pre:
+        bad+=1; print(p,'dead',dead,'err',c.err[:3],'unclosed',c.st[:3],'xanchor',xanchor,'localanchor',local,'css',badcss,'pre' if pre else '')
 print('ALL CLEAN' if bad==0 else f'{bad} pages with problems')
 PY
 ```
 
-Replace the glob with your module names. **Do not report done until it prints `ALL CLEAN`.**
+Replace the glob with your module names. **Do not report done until it prints `ALL CLEAN`.** A missing file is a
+finding to print, not an exception to throw — an earlier revision opened every link target before checking it, so
+the script crashed with `FileNotFoundError` on exactly the dead link it existed to catch, which is the worst
+possible behaviour for a validator: it fails silently-by-crash mid-batch and teaches the reader to distrust
+`ALL CLEAN`.
 
 If you run this over the whole site rather than your module: the standalone design documents
 (`docs/RendererDesign.html`, `docs/design/**`) carry their own inlined styles and are not part of this
@@ -229,7 +247,17 @@ generates heading fragments that no string search can find. Both read as failure
 Read all four before writing. Match their voice: declarative, no "this function does X", every sentence earning
 its line.
 
-## 14. Boundaries
+## 14. Write discipline — learned from an agent that lost a whole module
+
+One response must carry **one file, at most three**. A sibling agent composing the Test module emitted roughly
+230,000 output tokens in a single response; the API rejected the entire response as over the context ceiling and
+every page in it was lost. It had written nothing, which is the only reason the cost was zero.
+
+So: write each file as you finish thinking about it rather than assembling a batch to emit at once, and run
+section 12 every few pages so a failure costs pages instead of a module. Rewrite the module page in its own
+response — it is the longest single file in a job and the worst place to run out of room.
+
+## 15. Boundaries
 
 - Touch only `docs/<your modules>/`. Never edit `Engine/`, `docs/assets/hbe-docs.css`, another module's pages,
   `README.md`, `AGENTS.md` or `JOURNAL.md`.

@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HUnorderedMap — HSTL — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="#description">Class description</a></li>
+    <li><a href="#template">Template parameters</a></li>
+    <li><a href="#properties">Class properties</a></li>
+    <li><a href="#methods">Class methods</a></li>
+    <li><a href="#non-member">Non-member helpers</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+
+  <h3>Methods</h3>
+  <ul class="methods">
+    <li>None — aliases only</li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">HSTL</a> / HUnorderedMap
+</p>
+
+<h1>HUnorderedMap</h1>
+<p class="subtitle">
+  <span class="tag">Engine/HSTL/HUnorderedMap.h</span>
+  <span class="tag">namespace hbe</span>
+  <span class="tag">1 alias, 0 functions</span>
+  <code>std::unordered_map</code> on the default allocator — one alias, four template parameters, no inline-pool variant
+</p>
+
+<h2 id="description">Class description</h2>
+
+<p>
+  There is no class here. <code>HUnorderedMap.h</code> declares exactly one alias, and it is a
+  <strong>pure rename</strong> of a <code>std::unordered_map</code> specialisation: no wrapper, no member, no
+  free function, no behaviour added. Everything about lookup, rehashing, node and iterator stability, and
+  <code>operator[]</code>'s default-insertion is the standard library's, because the header implements none of
+  it.
+</p>
+
+<p>
+  What the alias pins down is the allocator, and it pins it to the map's <em>value</em> type rather than to
+  either of the types you pass in: <code>hbe::DefaultAllocator&lt;std::pair&lt;const TKey, T&gt;&gt;</code>.
+  <code>DefaultAllocator</code>'s default constructor stores <code>MemoryManager::GetCurrentAllocatorID()</code>,
+  so a map's nodes come from whichever <a href="../../Memory/index.html#allocatorscope">allocator scope</a> was
+  open when the map was constructed — the same rule <a href="../HVector/index.html">HVector</a> carries, with the
+  same consequence that the choice is made once and a later insertion does not revisit it, and the same
+  <code>malloc</code> fast path when the system allocator is current.
+</p>
+
+<p>
+  Unlike its two siblings, this header exposes its remaining template parameters instead of hard-coding one
+  shape: <code>THash</code> and <code>TPred</code> are yours, defaulted to the standard pair. That is the
+  difference that decides whether a key type works at all — the default is <code>std::hash&lt;TKey&gt;</code>,
+  and a key whose hash the standard does not define cannot be used until you pass one. Both live uses in the
+  engine are specialisations supplied elsewhere:
+</p>
+
+<pre><code><span class="cm">// Engine/Config/ConfigFile.h</span>
+<span class="kw">using</span> <span class="ty">TString</span> = <span class="ty">HString</span>;
+<span class="kw">using</span> <span class="ty">TMap</span> = <span class="ty">HUnorderedMap</span>&lt;<span class="ty">TString</span>, <span class="ty">TString</span>&gt;;</code></pre>
+<p class="meta">From Engine/Config/ConfigFile.h</p>
+
+<pre><code><span class="cm">// Engine/Log/Logger.h</span>
+<span class="kw">using</span> <span class="ty">TLogFilter</span> = std::function&lt;<span class="kw">bool</span>(ELogLevel)&gt;;
+<span class="kw">using</span> <span class="ty">TFilters</span> = hbe::HUnorderedMap&lt;StaticString, TLogFilter&gt;;</code></pre>
+<p class="meta">From Engine/Log/Logger.h</p>
+
+<p>
+  <code>ConfigFile::TMap</code> hashes on the module's own <code>std::hash&lt;hbe::HString&gt;</code>
+  (<a href="../HString/index.html#non-member">documented on the HString page</a>);
+  <code>Logger::TFilters</code> hashes on <code>std::hash&lt;hbe::StaticString&gt;</code>, specialised in
+  <code>Engine/String/StaticString.h</code> and belonging to <a href="../../String/index.html">String</a>. One
+  alias, two key types, two hash functions, neither of them named at the use site.
+</p>
+
+<h2 id="template">Template parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Kind</th><th>Default</th><th>What it fixes</th></tr>
+  <tr>
+    <td><code>TKey</code></td>
+    <td><code>class</code></td>
+    <td>—</td>
+    <td>Key type, stored as <code>const TKey</code> inside the map's value. Must have a hash and an equality
+        predicate available, either from <code>std::</code> or from the two arguments below</td>
+  </tr>
+  <tr>
+    <td><code>T</code></td>
+    <td><code>class</code></td>
+    <td>—</td>
+    <td>Mapped type. Together with <code>TKey</code> it forms the value type the allocator is bound to:
+        <code>std::pair&lt;const TKey, T&gt;</code></td>
+  </tr>
+  <tr>
+    <td><code>THash</code></td>
+    <td><code>class</code></td>
+    <td><code>std::hash&lt;TKey&gt;</code></td>
+    <td>Forwarded unchanged to the standard container. This is the parameter the module relies on for
+        <code>HString</code> keys and the one that makes a key type with no <code>std::hash</code> a compile
+        error rather than a silent fallback</td>
+  </tr>
+  <tr>
+    <td><code>TPred</code></td>
+    <td><code>class</code></td>
+    <td><code>std::equal_to&lt;TKey&gt;</code></td>
+    <td>Forwarded unchanged. For <code>HString</code> keys this is <code>operator==</code> on the string, which
+        compares the whole content — including the characters an embedded null hides from the hash</td>
+  </tr>
+  <tr>
+    <td><em>(allocator)</em></td>
+    <td>not a parameter</td>
+    <td><code>hbe::DefaultAllocator&lt;std::pair&lt;const TKey, T&gt;&gt;</code></td>
+    <td>Deliberately not exposed. There is no way to give a map a different pool through this alias; naming one
+        means <a href="../../Container/index.html">Container</a> or a new alias</td>
+  </tr>
+</table>
+
+<h2 id="properties">Class properties</h2>
+
+<p>
+  The alias as <code>Engine/HSTL/HUnorderedMap.h</code> spells it, on one line as the header does. An alias owns
+  no members, so the row is the alias and the cell states the difference from <code>std::unordered_map</code>.
+</p>
+
+<table>
+  <tr><th>Name</th><th>Declaration</th><th>What it means</th></tr>
+  <tr>
+    <td><code>HUnorderedMap</code></td>
+    <td><code>template&lt;class TKey, class T, class THash = std::hash&lt;TKey&gt;, class TPred = std::equal_to&lt;TKey&gt;&gt;<br>using HUnorderedMap = std::unordered_map&lt;TKey, T, THash, TPred, hbe::DefaultAllocator&lt;std::pair&lt;const TKey, T&gt;&gt;&gt;;</code></td>
+    <td>
+      <span class="badge">alias template</span> A pure rename of that specialisation. The allocator argument is
+      the map's <em>value</em> type, <code>std::pair&lt;const TKey, T&gt;</code>, not <code>TKey</code> and not
+      <code>T</code> — the pair is what a node holds, and it is the type whose size the allocator multiplies by
+      the count. <code>DefaultAllocator</code> also declares a nested <code>rebind</code>, which is what lets the
+      container obtain the same allocator for storage that is not a value; a map allocates bucket arrays as well
+      as nodes, so the allocator you see named here is not the only instantiation the map ends up using. See
+      <a href="../../Memory/index.html#allocators">Memory: allocators</a>
+    </td>
+  </tr>
+</table>
+
+<div class="note">
+  <strong>There is no inline-pool member of this family.</strong> <code>HUnorderedMap.h</code> includes only
+  <code>Memory/DefaultAllocator.h</code>, while <code>HString.h</code> and <code>HVector.h</code> each include
+  <code>InlinePoolAllocator.h</code> too and publish a second alias from it. So there is no
+  <code>HInlineUnorderedMap</code>: the naming pattern is not a promise. A map whose memory must come from a
+  specific pool is a <a href="../../Container/index.html#hashmap">HashMap</a> or a new alias, not a variant of
+  this one.
+</div>
+
+<div class="gap">
+  <strong>Iteration order is the hash's order, and the hash is the module's own.</strong> Code that walks a
+  <a href="../../Config/index.html"><code>ConfigFile</code></a>'s pairs sees them in bucket order: neither file
+  order nor alphabetical. That is not a defect in the map: it follows from <code>std::unordered_map</code> plus
+  <code>HUnorderedMap&lt;HString, HString&gt;</code> plus this module's <code>std::hash&lt;HString&gt;</code>. A
+  caller that needs an order has to sort after reading, and any output that a test compares line by line has to
+  do the same.
+</div>
+
+<h2 id="methods">Class methods</h2>
+
+<p>
+  None, and none is possible: an alias has no members. Every <code>std::unordered_map</code> member is present
+  with the standard's contract — <code>find</code>, <code>insert_or_assign</code>, <code>operator[]</code>,
+  <code>emplace</code>, <code>reserve</code>, the bucket interface, the iterators — and none of them is
+  engine-specific, so none has a page here. This page has no method pages by design, not by omission. The
+  engine's own hash table, whose contracts <em>are</em> engine-defined, is under
+  <a href="../../Container/index.html#hashmap">Container</a>.
+</p>
+
+<h2 id="non-member">Non-member helper functions</h2>
+
+<p>
+  None at namespace scope. The header declares a test fixture beside the alias — the only one of the module's
+  three headers to do so:
+</p>
+
+<pre><code><span class="kw">#ifdef __UNIT_TEST__</span>
+<span class="kw">class</span> <span class="ty">HUnorderedMapTest</span> <span class="kw">final</span> : <span class="kw">public</span> <span class="ty">TestCollection</span>
+{
+<span class="kw">public</span>:
+        <span class="fn">HUnorderedMapTest</span>();
+        ~<span class="fn">HUnorderedMapTest</span>() <span class="kw">override</span> = <span class="kw">default</span>;
+
+<span class="kw">protected</span>:
+        <span class="kw">void</span> <span class="fn">Prepare</span>() <span class="kw">override</span>;
+};
+<span class="kw">#endif //__UNIT_TEST__</span></code></pre>
+<p class="meta">From Engine/HSTL/HUnorderedMap.h</p>
+
+<p>
+  It is compiled only under <code>__UNIT_TEST__</code>, and a fixture is the Test module's subject rather than
+  this module's — see <a href="../../Test/index.html">Test</a>. No <code>std::hash</code> specialisation lives
+  in this header, unlike <a href="../HString/index.html#non-member">HString.h</a>.
+</p>
+
+<h2 id="coverage">Coverage</h2>
+
+<table>
+  <tr><th>Gap</th><th>Detail</th></tr>
+  <tr>
+    <td>What <code>HUnorderedMapTest</code> asserts</td>
+    <td>Two cases in <code>Engine/HSTL/HUnorderedMap.cpp</code>: default construction, and three
+        <code>operator[]</code> assignments on <code>HUnorderedMap&lt;int, int&gt;</code> including the
+        expectation that <code>map[3]</code> reads <code>0</code> for a key never inserted. That expectation is
+        standard <code>std::unordered_map</code> behaviour — a subscript on a missing key default-inserts the
+        value, so the test is asserting the library's rule through the alias, not an engine rule. Fixture
+        registration belongs to <a href="../../Test/index.html">Test</a></td>
+  </tr>
+  <tr>
+    <td>Which types the container rebinds the allocator to</td>
+    <td>That <code>DefaultAllocator</code> declares <code>rebind&lt;TOther&gt;::other</code> is in
+        <code>Engine/Memory/DefaultAllocator.h</code>, and that a map allocates bucket storage as well as nodes
+        is in the standard. The exact internal types a given standard library rebinds to were not verified, so
+        the properties table says "not the only instantiation" and no more</td>
+  </tr>
+  <tr>
+    <td>The key types' own hash contracts</td>
+    <td><code>std::hash&lt;hbe::HString&gt;</code> is this module's and is documented on
+        <a href="../HString/index.html#non-member">the HString page</a>;
+        <code>std::hash&lt;hbe::StaticString&gt;</code> belongs to
+        <a href="../../String/index.html">String</a>. Neither is restated here</td>
+  </tr>
+  <tr>
+    <td>Which pool a given map's nodes come from</td>
+    <td>Depends on the <a href="../../Memory/index.html#allocatorscope">allocator scope</a> open at the map's
+        construction, which is run-time behaviour this page cannot resolve statically; and what
+        <code>MemoryManager</code> then does with the request is <a href="../../Memory/index.html">Memory</a>'s
+        contract</td>
+  </tr>
+  <tr>
+    <td><code>std::unordered_map</code>'s own guarantees</td>
+    <td>Rehash invalidation rules, node and reference stability, load factor and complexity bounds belong to the
+        standard library and are not restated. Only what the engine changes is on this page, which for this
+        alias is one template argument</td>
+  </tr>
+  <tr>
+    <td>Prefer the engine's table inside the engine</td>
+    <td><a href="../../Container/index.html#hashmap"><code>HashMap</code></a> is the container this module's own
+        description points engine-internal code toward. Which key types and allocator control it offers is that
+        module's page, not this one</td>
+  </tr>
+</table>
+
+<footer class="prevnext">
+  <span><a href="../index.html">← HSTL</a></span>
+  <span><a href="../index.html#hunorderedmap">HUnorderedMap in the HSTL class list</a></span>
+</footer>
+
+</main>
+</body>
+</html>

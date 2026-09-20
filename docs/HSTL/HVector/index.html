@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HVector — HSTL — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="#description">Class description</a></li>
+    <li><a href="#template">Template parameters</a></li>
+    <li><a href="#properties">Class properties</a></li>
+    <li><a href="#methods">Class methods</a></li>
+    <li><a href="#non-member">Non-member helpers</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+
+  <h3>Methods</h3>
+  <ul class="methods">
+    <li>None — aliases only</li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">HSTL</a> / HVector
+</p>
+
+<h1>HVector</h1>
+<p class="subtitle">
+  <span class="tag">Engine/HSTL/HVector.h</span>
+  <span class="tag">namespace hbe</span>
+  <span class="tag">2 aliases, 0 functions</span>
+  <code>std::vector</code> with the allocator replaced — a pure rename apart from where the bytes come from
+</p>
+
+<h2 id="description">Class description</h2>
+
+<p>
+  There is no class here. <code>HVector.h</code> declares two aliases and includes
+  <code>&lt;vector&gt;</code> plus the two engine allocators; it defines no type of its own and adds no member,
+  helper or free function. Every behaviour of <code>HVector</code> is
+  <code>std::vector</code>'s — growth policy, reallocation, iterator invalidation, the copy and move rules —
+  because the header reimplements none of it.
+</p>
+
+<p>
+  So <code>HVector&lt;int&gt;</code> is <code>std::vector&lt;int, hbe::DefaultAllocator&lt;int&gt;&gt;</code>. The
+  one question this page exists to answer is which pool those bytes come from, and the answer is not in this
+  header: <code>DefaultAllocator&lt;T&gt;</code>'s default constructor stores
+  <code>MemoryManager::GetCurrentAllocatorID()</code>, and a container default-constructs its allocator when the
+  container is constructed. The pool is therefore chosen at the vector's construction site and never revisited —
+  a later <code>push_back</code> or <code>reserve</code> allocates from the pool that was current when the vector
+  came into being, not from the one current at the call. When that id is
+  <code>MemoryManager::SystemAllocatorID</code>, <code>DefaultAllocator::allocate</code> calls <code>malloc</code>
+  directly and the allocation is not accounted at all.
+</p>
+
+<p>
+  The header declares no members, so the call sites below are the whole engine-visible surface: a member typedef
+  in three classes, and one inline-pool vector that sizes itself against the pool.
+</p>
+
+<pre><code><span class="cm">// Engine/Core/TaskStream.h</span>
+<span class="kw">template</span> &lt;<span class="kw">typename</span> T&gt;
+<span class="kw">using</span> <span class="ty">TVector</span> = hbe::HVector&lt;T&gt;;
+<span class="kw">using</span> <span class="ty">TRangedTasks</span> = TVector&lt;RangedTask&gt;;</code></pre>
+<p class="meta">From Engine/Core/TaskStream.h</p>
+
+<pre><code><span class="cm">// Engine/Core/ComponentSystem.h</span>
+<span class="kw">using</span> <span class="ty">TCompoList</span> = hbe::HVector&lt;TComponent&gt;;</code></pre>
+<p class="meta">From Engine/Core/ComponentSystem.h</p>
+
+<pre><code><span class="cm">// Engine/Memory/ThreadSafeMultiPoolAllocator.h, a member of the allocator itself</span>
+hbe::HVector&lt;PoolAllocator&gt; banks;</code></pre>
+<p class="meta">From Engine/Memory/ThreadSafeMultiPoolAllocator.h</p>
+
+<div class="note">
+  <strong>The engine already has a dynamic array, and it is a deliberately different animal.</strong>
+  <a href="../../Container/index.html#array"><code>Array</code></a> allocates exactly the element count with no
+  capacity, deletes its copy operations, indexes with <code>int</code>, and names its allocator as a template
+  argument you can see at the use site. <code>HVector</code> has the standard's geometric growth, is copyable
+  whenever the element is, sizes with <code>size_t</code>, and hides its allocator inside the alias. The
+  choice the engine makes in practice is by layer, not by taste: <code>ComponentSystem</code>,
+  <code>TaskStream</code> and <code>ResourceManager</code> all use <code>HVector</code> behind a member typedef.
+</div>
+
+<h2 id="template">Template parameters</h2>
+
+<table>
+  <tr><th>Alias</th><th>Template parameters</th><th>Container it binds</th></tr>
+  <tr>
+    <td><code>HVector</code></td>
+    <td><code>template&lt;typename T&gt;</code> — <code>T</code> only, nothing defaulted</td>
+    <td><code>std::vector&lt;T, hbe::DefaultAllocator&lt;T&gt;&gt;</code></td>
+  </tr>
+  <tr>
+    <td><code>HInlineVector</code></td>
+    <td><code>template&lt;typename T, size_t PoolSize = 16&gt;</code></td>
+    <td><code>std::vector&lt;T, hbe::InlinePoolAllocator&lt;T, PoolSize, 2&gt;&gt;</code></td>
+  </tr>
+</table>
+
+<p>
+  Neither alias forwards an allocator, an element-count type or an comparator: the allocator is fixed by the
+  alias, which is the entire point and also the limitation — there is no way to ask
+  <code>HVector</code> for a different pool. Naming a pool means
+  <a href="../../Container/index.html#array"><code>Array&lt;T, TAllocator&gt;</code></a> or a new alias.
+</p>
+
+<h2 id="properties">Class properties</h2>
+
+<p>
+  Both lines as <code>Engine/HSTL/HVector.h</code> spells them. An alias owns no members, so each row is the
+  alias and the cell states the difference from <code>std::vector&lt;T&gt;</code>.
+</p>
+
+<table>
+  <tr><th>Name</th><th>Declaration</th><th>What it means</th></tr>
+  <tr>
+    <td><code>HVector&lt;T&gt;</code></td>
+    <td><code>template&lt;typename T&gt;<br>using HVector = std::vector&lt;T, hbe::DefaultAllocator&lt;T&gt;&gt;;</code></td>
+    <td>
+      <span class="badge">alias</span> <strong>A pure rename of that one specialisation.</strong> Nothing is
+      added, hidden or removed; the only difference from <code>std::vector&lt;T&gt;</code> is the allocator, and
+      with it the pool the memory is drawn from and the fact that <code>get_allocator()</code> answers
+      <code>DefaultAllocator&lt;T&gt;</code>, whose <code>operator==</code> compares allocator ids. Used by
+      <code>TaskStream</code>, <code>ComponentSystem</code>, <code>ResourceManager</code>,
+      <code>BufferInputStream</code>, <code>ThreadSafeMultiPoolAllocator</code> and
+      <code>OS::ListFilesInDirectory</code>
+    </td>
+  </tr>
+  <tr>
+    <td><code>HInlineVector&lt;T, PoolSize&gt;</code></td>
+    <td><code>template&lt;typename T, size_t PoolSize = 16&gt;<br>using HInlineVector = std::vector&lt;T, hbe::InlinePoolAllocator&lt;T, PoolSize, 2&gt;&gt;;</code></td>
+    <td>
+      <span class="badge">alias template</span> The element type and interface are unchanged; what changes is that
+      the first allocation can be satisfied from bytes stored inside the vector object. The pool lives in the
+      allocator, the vector holds the allocator, and <code>InlinePoolAllocator</code>'s own arithmetic is
+      <code>ActualBlockSize = max(PoolSize, sizeof(void*))</code>,
+      <code>ActualNumBlocks = max(2, 1) = 2</code>,
+      <code>BlockSizeInBytes = sizeof(T) * ActualBlockSize</code> — so <code>PoolSize</code> is a count of
+      <code>T</code> per block, two blocks, and the vector object carries
+      <code>2 * PoolSize * sizeof(T)</code> bytes inline
+    </td>
+  </tr>
+</table>
+
+<p>
+  The only engine use of the inline form sizes itself against that block:
+</p>
+
+<pre><code><span class="cm">// Engine/Memory/MultiPoolAllocator.cpp</span>
+constexpr size_t InlineBufferSize = <span class="nu">128</span>;
+Assert(initialConfigurations.size() &lt;= InlineBufferSize);
+
+<span class="ty">HInlineVector</span>&lt;PoolConfig, InlineBufferSize&gt; vlist;
+vlist.<span class="fn">reserve</span>(InlineBufferSize);</code></pre>
+<p class="meta">From Engine/Memory/MultiPoolAllocator.cpp</p>
+
+<p>
+  Read against the arithmetic above, <code>reserve(128)</code> asks
+  <code>allocate(128)</code>, which asks for <code>128 * sizeof(PoolConfig)</code> bytes against a block of
+  <code>max(128, 8) * sizeof(PoolConfig)</code> — exactly one block, so the buffer is the vector's own storage and
+  no pool or allocator is consulted. The <code>Assert</code> two lines earlier is that ceiling enforced in code
+  rather than left to the alias. The same pair appears in <code>ThreadSafeMultiPoolAllocator.cpp</code>.
+</p>
+
+<div class="gap">
+  <strong>The name <code>PoolSize</code> and the parameter it feeds disagree about units.</strong>
+  <code>InlinePoolAllocator</code>'s second parameter is named <code>BlockSize</code> and its header comment
+  calls it "The desired size of the object allocated in bytes", but the class computes
+  <code>BlockSizeInBytes = sizeof(T) * ActualBlockSize</code>. For <code>char</code> the two readings coincide;
+  for any other element type the number in the alias is elements, not bytes, so
+  <code>HInlineVector&lt;PoolConfig, 128&gt;</code> reserves 128 configs — hundreds of times the figure a reader
+  who trusts the comment would infer. Both spellings are in the headers; the multiplication is the one the code
+  executes. See <a href="../../Memory/index.html">Memory</a> for the allocator and
+  <a href="../../AllocatorGuide.md">docs/AllocatorGuide.md</a> for the pool design.
+</div>
+
+<div class="gap">
+  <strong>An inline-pool vector must not be copied.</strong> <code>InlinePoolAllocator</code> declares
+  <code>InlinePoolAllocator(const InlinePoolAllocator&amp;) : InlinePoolAllocator() { Assert(false); }</code>:
+  a copy builds a fresh pool and fires the assertion, which is live in Debug and Dev and silent in Release. The
+  standard makes <code>get_allocator()</code> return the allocator by value, and a vector is free to copy its
+  allocator elsewhere; storing an <code>HInlineVector</code> in another container copies elements. The full
+  hazard, including the <a href="../HString/index.html#properties">string side of it</a>, is on the
+  <a href="../HString/index.html">HString</a> page.
+</div>
+
+<h2 id="methods">Class methods</h2>
+
+<p>
+  None, and none is possible: an alias has no members. Every <code>std::vector</code> member is present with the
+  standard's contract — <code>push_back</code>, <code>emplace_back</code>, <code>reserve</code>,
+  <code>size</code>, <code>operator[]</code>, the iterators — and none of them is engine-specific, so none has a
+  page here. This page has no method pages by design, not by omission. The engine's own container surface, where
+  the contracts <em>are</em> engine-defined, is documented under
+  <a href="../../Container/index.html">Container</a>.
+</p>
+
+<h2 id="non-member">Non-member helper functions</h2>
+
+<p>
+  None. <code>HVector.h</code> declares nothing at namespace scope beyond the two aliases — no
+  <code>std::hash</code> specialisation (contrast <a href="../HString/index.html#non-member">HString</a>, which
+  does declare one), no test fixture under <code>__UNIT_TEST__</code> (contrast
+  <a href="../HUnorderedMap/index.html">HUnorderedMap</a>), and no source file: the module's
+  <code>CMakeLists.txt</code> lists <code>HVector.h</code> as a header of the <code>HSTL</code> target with no
+  <code>HVector.cpp</code> beside it.
+</p>
+
+<h2 id="coverage">Coverage</h2>
+
+<table>
+  <tr><th>Gap</th><th>Detail</th></tr>
+  <tr>
+    <td>Which allocator is current at a given call site</td>
+    <td>Depends on the <a href="../../Memory/index.html#allocatorscope">allocator scope</a> open where the vector
+        is constructed, which is per-run behaviour this page cannot resolve statically. The documented example
+        above is the one case in <code>Engine/</code> where the arithmetic proves the answer is "the inline
+        block, neither pool"</td>
+  </tr>
+  <tr>
+    <td>Pool exhaustion and the fallback path</td>
+    <td><code>InlinePoolAllocator::AllocateBytes</code> falls back to <code>MemoryManager::FallbackAllocate</code>
+        once a request exceeds <code>BlockSizeInBytes</code>; the cost, the pool that answers and the accounting
+        are <a href="../../Memory/index.html">Memory</a>'s contract, not restated here</td>
+  </tr>
+  <tr>
+    <td>Growth policy and reallocation rules</td>
+    <td>Owned by the standard library and left to it, deliberately. The exact growth factor is
+        implementation-defined and was not measured, which is why no page here quotes one</td>
+  </tr>
+  <tr>
+    <td>There is no <code>HInlineUnorderedMap</code></td>
+    <td>Stated because the naming pattern invites the question: <code>HUnorderedMap.h</code> includes only
+        <code>Memory/DefaultAllocator.h</code>, so the inline-pool idea exists for strings and vectors only.
+        Recorded again on <a href="../HUnorderedMap/index.html#coverage">HUnorderedMap</a></td>
+  </tr>
+  <tr>
+    <td>No test fixture of its own</td>
+    <td><code>HVector.h</code> carries no <code>__UNIT_TEST__</code> block. Vectors are exercised through their
+        users, and those uses are the engine demonstrating the stamping rule: <code>MonotonicAllocatorTest</code>
+        and <code>StackAllocatorTest</code> each construct an <code>HVector&lt;int&gt;</code> inside an
+        <code>AllocatorScope</code> over their own allocator, then assert the allocator recorded the
+        <code>push_back</code>. The runner is <a href="../../Test/index.html">Test</a></td>
+  </tr>
+</table>
+
+<footer class="prevnext">
+  <span><a href="../index.html">← HSTL</a></span>
+  <span><a href="../index.html#hvector">HVector in the HSTL class list</a></span>
+</footer>
+
+</main>
+</body>
+</html>

@@ -67,6 +67,24 @@ The same lesson ran the other way twice in one day: my own checker also flagged 
 classes it never claimed to use, and `README.md#documentation-policy` for a fragment GitHub generates and no
 string search can see.
 
+**HSTL landed, and it corrected HSTL's own module page on four points.** A `std::hash<hbe::HString>` specialization
+sits at `HString.h:24` while the module page said the module has no functions at all. "You get `std::vector`'s
+guarantees with the engine's accounting" is wrong for the common configuration: `DefaultAllocator` short-circuits
+to `malloc` when its allocator id is `MemoryManager::SystemAllocatorID`, so nothing is accounted in that case —
+every HSTL page now says the pool is stamped at construction and unaccounted under the system allocator.
+`MaxPathLength = 512` in `EngineConfig.h` resolved a figure the old page deferred as a guess, and
+`HInlinePathString` has zero call sites anywhere.
+
+**Three of my instruments were wrong, each found by something other than me.** The validator I shipped to every
+agent opened each link target before checking it existed, so it crashed with `FileNotFoundError` on precisely the
+dead link it was written to detect — a validator that fails by exception is worse than none, because `ALL CLEAN`
+stops meaning anything; it now reports and moves on, self-tested against `docs/Container`, where four dead links
+are genuinely pending mid-flight. My HSTL brief contradicted contract §9, the agent followed §9 and reported the
+brief, and the contract now states that a brief does not override it — the brief is the artifact written last and
+read once. And my site-wide check flagged a module page for missing a sidebar heading that only class pages
+carry: the third false positive today, all three the same error, applying a rule past the scope it was written
+for. Scope the check, then run it.
+
 ## Tasks become things the registry owns, addressed by identity (2026-09-19)
 
 **What landed**, as `3be27c3`: R7 with R22's sizing. `Engine/Core/TaskID.h` (`{index, generation}`) and
