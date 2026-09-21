@@ -10,8 +10,7 @@ namespace hbe
 {
 
 Task::Task() noexcept
-	: numResults(0)
-	, numSubTasks(0)
+	: numSubTasks(0)
 	, numFinishedSubTasks(0)
 	, func(nullptr)
 	, userData(nullptr)
@@ -20,7 +19,6 @@ Task::Task() noexcept
 
 Task::Task(StaticString taskName, TRunnable func, void* userData) noexcept
 	: name(taskName)
-	, numResults(0)
 	, numSubTasks(0)
 	, numFinishedSubTasks(0)
 	, func(func)
@@ -89,7 +87,6 @@ void Task::LoadIntoRecord(TaskID newID, StaticString taskName, TRunnable newFunc
 {
 	id = newID;
 	name = taskName;
-	numResults = 0;
 	numSubTasks = 0;
 	result.Clear();
 	numFinishedSubTasks.store(0, std::memory_order::relaxed);

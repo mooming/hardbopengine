@@ -32,10 +32,6 @@ TaskStream::TaskStream()
 	: streamIndex(0)
 	, loopCount(0)
 	, allocator("None")
-	, firstResultContainer(allocator, 0)
-	, secondResultContainer(allocator, 0)
-	, growBySlots(DefaultGrowBySlots)
-	, maxResultCapacitySlots(DefaultMaxResultCapacitySlots)
 {
 	Assert(threadID == std::thread::id());
 }
@@ -45,48 +41,23 @@ TaskStream::TaskStream(StaticString name, TStreamIndex streamIndex)
 	, streamIndex(streamIndex)
 	, loopCount(0)
 	, allocator(name)
-	, firstResultContainer(allocator, InitialResultCapacitySlots)
-	, secondResultContainer(allocator, InitialResultCapacitySlots)
-	, growBySlots(DefaultGrowBySlots)
-	, maxResultCapacitySlots(DefaultMaxResultCapacitySlots)
 {
 	auto log = Logger::Get(name);
 	log.Out([name = name](auto& ls) { ls << name.c_str() << " is created."; });
 }
 
-bool TaskStream::EnqueueFifo(const RangedTask& task) noexcept
+void TaskStream::EnqueueFifo(const RangedTask& task) noexcept
 {
-	const auto numResults = task.declaredResults;
-	if (!CanAdmitResults(numResults))
-	{
-		ReportRefusal(task, numResults);
-		return false;
-	}
-
 	std::scoped_lock<std::mutex> lock(queueLock);
 	fifoQueue.PushBack(task);
 	cv.notify_one();
-	return true;
 }
 
-bool TaskStream::EnqueuePriority(const RangedTask& task) noexcept
+void TaskStream::EnqueuePriority(const RangedTask& task) noexcept
 {
-	const auto numResults = task.declaredResults;
-	if (!CanAdmitResults(numResults))
-	{
-		ReportRefusal(task, numResults);
-		return false;
-	}
-
 	std::scoped_lock<std::mutex> lock(queueLock);
 	priorityQueue.Push(task);
 	cv.notify_one();
-	return true;
-}
-
-bool TaskStream::CanAdmitResults(Task::TNumResults numResults) const noexcept
-{
-	return maxResultCapacitySlots == 0 || static_cast<std::size_t>(numResults) <= maxResultCapacitySlots;
 }
 
 void TaskStream::ReportReleasedTask(const RangedTask& task) const noexcept
@@ -97,18 +68,6 @@ void TaskStream::ReportReleasedTask(const RangedTask& task) const noexcept
 	{
 		ls << name.c_str() << " dropped a work item of " << taskName.c_str() << ", record " << index << " generation "
 		   << generation << ", because that task had already been released. Nothing was run. ";
-	});
-}
-
-void TaskStream::ReportRefusal(const RangedTask& task, Task::TNumResults numResults) const noexcept
-{
-	const auto taskName = task.taskName;
-	auto log = Logger::Get(name);
-	log.OutError([name = name, taskName, numResults, maxCapacitySlots = maxResultCapacitySlots](auto& ls)
-	{
-		ls << name.c_str() << " refused " << taskName.c_str() << ", which declares " << numResults
-		   << " results against a ceiling of " << maxCapacitySlots
-		   << " slots. It was not queued and will not run, so the caller has to honour the refusal. ";
 	});
 }
 
@@ -160,12 +119,6 @@ bool TaskStream::MayTakeNewWork() const noexcept
 std::chrono::nanoseconds TaskStream::GetAccumulatedCPUTime() const noexcept
 {
 	return budget.GetAccumulated();
-}
-
-const ResultContainer& TaskStream::GetResultContainer(std::size_t index) const noexcept
-{
-	Assert(index < NumResultContainers, "Stream", name.c_str(), "has no result container at index", index, ".");
-	return index == 0 ? firstResultContainer : secondResultContainer;
 }
 
 void TaskStream::Start(TaskSystem& taskSys) noexcept

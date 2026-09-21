@@ -17,7 +17,6 @@
 #include "Core/CPUBudget.h"
 #include "Core/ComponentSystem.h"
 #include "Core/Debug.h"
-#include "Core/ResultContainer.h"
 #include "Core/ResultPacket.h"
 #include "Core/StreamDrainPolicy.h"
 #include "Core/TaskProvider.h"
@@ -91,7 +90,6 @@ void RunTests()
 		testEnv.AddTestCollection<TimeTest>();
 		testEnv.AddTestCollection<CPUBudgetTest>();
 		testEnv.AddTestCollection<TaskProviderTest>();
-		testEnv.AddTestCollection<ResultContainerTest>();
 		testEnv.AddTestCollection<TaskRegistryTest>();
 		testEnv.AddTestCollection<ResultPacketTest>();
 		testEnv.AddTestCollection<StreamDrainPolicyTest>();

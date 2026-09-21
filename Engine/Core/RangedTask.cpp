@@ -35,7 +35,6 @@ RangedTask::RangedTask(Task& task, TIndex start, TIndex end, uint8_t priority) n
 	: priority(priority)
 	, taskName(task.GetName())
 	, taskID(task.GetID())
-	, declaredResults(task.GetNumResults())
 	, start(start)
 	, end(end)
 	, currentIndex(start)

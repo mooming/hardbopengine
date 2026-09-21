@@ -27,13 +27,6 @@ public:
 	///          rather than run it through a dead task's fields.
 	TaskID taskID;
 
-	/// @brief Result packets the owning task declared when this work item was generated.
-	/// @details The same type as Task::TNumResults; spelled out because RangedTask.h cannot include Task.h, which
-	///          includes this file.
-	/// @details A snapshot rather than a live read, and deliberately so: a stream admits work against what was
-	///          promised when the work was made, so declaring more results afterwards cannot enlarge a promise that
-	///          has already been checked and queued.
-	std::uint32_t declaredResults;
 
 	// RangedTask Start Index
 	TIndex start;
