@@ -130,3 +130,17 @@ Gate: Debug, Dev and Release each built with 0 `error:` and ran with exit 0 and 
 2. **Deliver granularity**: one work item per completed task (RangedTask stays 128 B, costs a dispatch per result) or
    batches of up to 8 TaskIDs inside a grown work item (256 B, one dispatch per 8 results, doubles queue footprint).
 3. Whether `Task::numResults` is deleted or kept as an advisory declaration of caller-managed outputs.
+
+## 8. C3c landed early (as `ac496e6`) — the order changed, and why
+
+C3c went **before** C3b: deleting the container needs nothing from the pass, and doing it first means C3b is
+written against the final enqueue signatures (`void`, not `[[nodiscard]] bool`) instead of being written twice.
+Removed 435 lines of container plus `NamedPoolAllocator` plus `Task::numResults` plus `RangedTask::declaredResults`
+plus `Array`'s two container-only members; six tests went with their subject; suite 60 -> 59. Measured peak RSS
+fell 12.3 MiB, stated with its caveat in the commit message and the journal.
+
+Still to do, in this order: **C3b** (completion list + the pass + `CPUBudget::Reset` having a caller at last +
+triage into a deliver work item), then the successor and join counter on the record, then the `Wait` removal.
+The three open figures from section 5 are unchanged and still unanswered: pass cadence (default 1 ms proposed),
+deliver granularity (one work item per completed task proposed), and `numResults` is now **deleted** - that one
+answered itself by being removed.

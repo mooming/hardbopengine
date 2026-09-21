@@ -1,5 +1,59 @@
 # Journal
 
+## The result moved into the task, and the container that held it was deleted (2026-09-19)
+
+**What landed**, in order: `2b30818` one meaning for "base" - stream 0 is `Base`, the thread driving `Engine::Run`
+is `EngineLoop`, `baseTaskThreadID` became `engineLoopThreadID`, and a thread that is not a stream reports
+`NonStreamIndex` instead of claiming to be stream 0; `bc0342e` the result packet embedded in `Task` (R23's first
+commit, no behaviour change); `ac496e6` the result container, its sizing chain and the refusal path deleted.
+**Suite: 58 -> 60 -> 59 collections** (`TaskRegistryTest` and `ResultPacketTest` in, `ResultContainerTest` out).
+
+**Four design rounds in one session, and the owner's instinct drove three of them.** Asked what "fold" meant, the
+answer was: the design names it as a step and never says what it does - so the owner retired the word, then
+rejected the refcounted janitor model as too complex, then settled the shape: **one 128-byte packet per task,
+embedded in the record, destination stream in R5's 8-byte header, filled by the producing task**, and the base
+stream triages and enqueues a deliver work item. Bigger results are the task's own problem. That retired **eleven
+rows** - R3, R4, R11-R15, R17, R18, R20, R21 - and both guards I had been carrying. `R19`'s principle survived
+vindicated: the `TaskDescriptor` was never invented.
+
+**Measured, not estimated, at every pricing step.** `Task` 48 -> 176, record 64 -> **192** = three cache lines (so
+every record is line-aligned), default table 256 KiB -> **768 KiB**. `RangedTask` measured 128 bytes. Peak RSS of
+the test binary fell **12.3 MiB** on deletion - stated with its caveat: RSS counts touched pages, the 24 MiB pool
+reserve was never fully written because there were zero producers, and the deleted test had its own allocations,
+so the clean claim is the grep: nothing asks a pool for result storage any more. Layout is enforced by
+`static_assert`: widening the payload or dropping the alignment fails the build and names the decision. Padding
+the packet to its own cache line was measured and **rejected** - it makes the record 208, which is not a multiple
+of 64, so records stop being aligned; the intuition was wrong and the measurement caught it.
+
+**A live defect still unfixed, now the next commit.** `CPUBudget::Reset()` has no production caller: a stream that
+spends its allowance **stops dequeuing permanently**. R1/R2 say the base-stream pass reopens every window; that
+pass is the next commit, and the completion list and triage ride with it.
+
+**Five of my own errors, all caught before or by the tools, none by luck.**
+1. A test I wrote called `TaskSystem::Dequeue` to inspect the general queue - a queue shared with every other
+   collection. It took `RHICapabilities`' work item and discarded it, and that collection aborted with "is not
+   allocated by this allocator" one log line later. The failure looked like a memory bug in a subsystem the test
+   never touched. Deleted, proven by removal, and recorded as a trap: that queue has no test seam.
+2. My edit helper `open(path,"w").write(fn(open(path).read()))` truncates before reading - Python evaluates the
+   truncating `open` first - which emptied `TaskSystem.cpp`, all 1068 lines. Caught by `git diff --stat`, restored
+   from HEAD, helper rewritten to write a temp file and rename over it.
+3. `clang-format` on `CMakeLists.txt`: it does not know CMake and joined line 1 into
+   `cmake_minimum_required(VERSION 3.12) project(Core)`. Configure died and the build exited 1 with **zero**
+   `error:` lines - a failed configure prints nothing clang-shaped, so grep `FAILED:` and read the tail. All 22
+   tracked CMakeLists checked afterwards; only the edited file was damaged.
+4. My cut of the container initialisers deleted the two lane-enqueue definitions instead of converting them, and
+   took the stream's own pool allocator with it - the compiler caught both.
+5. `git add -A` staged a concurrent agent's untracked docs; unstaged before committing. Related: three documents
+   repeated "six `(void)` casts" where the measured count is five - a number counted once, wrongly, then copied
+   (`1608855` corrected it).
+
+**Two traps worth keeping.** `thread_local TIndex StreamIndex = 0` with `BaseStreamIndex == 0` made
+`IsBaseThread()` true on every thread that never called `SetStreamIndex`, which made the assert in `BuildStreams`
+incapable of failing and charged a non-stream thread's contact with a task to stream 0; `TaskStreamAffinity`
+guards `bitIndex >= NumBits`, so the sentinel is dropped rather than shifting past the unit. And something else in
+this checkout runs `EngineTest`: a Debug run took SIGTERM (exit 143) with a second instance alive - a `143` is not
+a defect in the change under test, check for the other instance and rerun.
+
 ## The reference goes three levels deep: class pages and a page per method (2026-09-20)
 
 **Decision.** `Array` became `docs/Container/Array/index.html` plus one page per method name, overload families
