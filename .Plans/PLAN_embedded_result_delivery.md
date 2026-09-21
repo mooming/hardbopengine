@@ -144,3 +144,21 @@ triage into a deliver work item), then the successor and join counter on the rec
 The three open figures from section 5 are unchanged and still unanswered: pass cadence (default 1 ms proposed),
 deliver granularity (one work item per completed task proposed), and `numResults` is now **deleted** - that one
 answered itself by being removed.
+
+## 9. C3b landed as the budget window only (R26/R27)
+
+The plan's step ① became the whole commit, and steps ②③ (drain completions, triage, deliver) moved out: delivery
+is defined as enqueuing a **successor**, no successor field exists on a task or a record, and a pass that drained
+completions with nothing lawful to enqueue would discard work it found. What landed instead: the pass, the acquire
+gate at the general queue, and each stream reopening its own budget and its own drain round.
+
+Also corrected here: line ① of section 4 claimed a stream "stops dequeuing permanently" as a future-tense risk
+introduced by wiring the gate. It was already true. `StreamDrainPolicy::ChooseLane` returns `None` for an exhausted
+round and nothing called `EndRound`, so a configured allowance was a permanent latch the moment it was spent - see
+the correction section of `docs/TaskSystemRedesign.md`.
+
+Still ahead, in order: **(a)** the successor field plus the join counter, which needs one owner decision - a
+`TaskID` successor costs 8 bytes per record minimum, taking the record from 192 (3 cache lines) to 200, which is
+no longer a multiple of 64: either pad the record to 256 (default table 768 KiB -> 1 MiB) or keep the successor out
+of the record. **(b)** completion publication and the triage pass, which need (a) to have something to enqueue.
+**(c)** item 4: `ParallelFor` together with the deletion of `RangedTask` and the caller-side range protocol (R25).

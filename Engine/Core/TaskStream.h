@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include <atomic>
 #include <condition_variable>
 #include <mutex>
 #include <queue>
@@ -62,6 +63,16 @@ private:
 	BoundedPriorityQueue<RangedTask> priorityQueue;
 	StreamDrainPolicy drainPolicy;
 
+	/// @brief Whether the budget window has closed since this stream last reopened. Set by the base stream's
+	///        pass, cleared by this stream's own thread.
+	/// @details The pass signals and this stream reopens, which is what keeps every write to the budget on the
+	///          thread whose CPU it charges - see RequestWindowAdvance.
+	std::atomic<bool> windowAdvanceRequested{false};
+	/// @brief Times this stream left a task in the general queue because its allowance was already spent.
+	/// @details The only witness that the acquire gate exists: a stream that declines work is otherwise
+	///          indistinguishable from one that has nothing to do.
+	std::atomic<unsigned> generalQueueRefusals{0};
+
 public:
 	TaskStream();
 	explicit TaskStream(StaticString name, TStreamIndex streamIndex);
@@ -105,12 +116,37 @@ public:
 	///          the overshoot is bounded by the longest task, not by the allowance.
 	/// @threadsafe Readable from any thread. Enquiry does not act on the answer, so a reader that acts must
 	///             accept that another thread may have spent the budget in between.
+	/// @note Wired today in front of the general queue only, and not in front of a stream's own lanes. An entry on
+	///       a lane is either a task nobody has taken or one taken and paused before it finished, and the two are
+	///       indistinguishable without a field the work item does not have. Refusing the lane would strand the
+	///       second kind, which is the failure this gate exists not to cause.
 	[[nodiscard]] bool MayTakeNewWork() const noexcept;
 
 	/// @brief CPU time this stream has charged to its budget so far.
 	/// @threadsafe Readable from any thread, though it is written only by the stream's own thread; reading
 	///             it elsewhere sees the value as of the last task that thread finished.
 	[[nodiscard]] std::chrono::nanoseconds GetAccumulatedCPUTime() const noexcept;
+
+	/// @brief Mark that the budget window has closed, so this stream reopens its allowance on its next pass
+	///        round the loop.
+	/// @details Signals only: it writes this one atomic and no budget field. A budget charges the CPU time of the
+	///          thread that owns it, so a reset executed on another thread lands on the pairing between that
+	///          thread's BeginTask and EndTask, and the cost of breaking the pairing is either a lost charge or
+	///          the thread's whole life billed to the budget, which reads as a stream that refuses work forever.
+	///          A reopen that cannot interrupt a task in flight is the honest shape: it means a window boundary
+	///          falls between tasks, which is the overshoot rule MayTakeNewWork already states.
+	/// @threadsafe Callable from any thread. The base stream's pass is the only caller in the engine.
+	void RequestWindowAdvance() noexcept
+	{
+		windowAdvanceRequested.store(true, std::memory_order_relaxed);
+	}
+
+	/// @brief Times this stream declined to take a task from the general queue because its allowance was spent.
+	/// @threadsafe Readable from any thread.
+	[[nodiscard]] unsigned GetGeneralQueueRefusalCount() const noexcept
+	{
+		return generalQueueRefusals.load(std::memory_order_relaxed);
+	}
 
 	void Join() noexcept
 	{
@@ -159,6 +195,11 @@ private:
 	///          single hardest thing to diagnose in this subsystem. A caller that releases a task while its subtasks
 	///          are still queued will see one line per dropped subtask.
 	void ReportReleasedTask(const RangedTask& task) const noexcept;
+
+	/// @brief Count a refusal to take from the general queue, and report the first one this stream ever refuses.
+	/// @details A throttled stream has to be visible somewhere or it looks like an idle one, and the count alone
+	///          is invisible to anyone not reading a debugger.
+	void ReportGeneralQueueRefusal() noexcept;
 };
 
 } // namespace hbe

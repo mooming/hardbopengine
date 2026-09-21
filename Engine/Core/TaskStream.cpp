@@ -71,6 +71,22 @@ void TaskStream::ReportReleasedTask(const RangedTask& task) const noexcept
 	});
 }
 
+void TaskStream::ReportGeneralQueueRefusal() noexcept
+{
+	if (generalQueueRefusals.fetch_add(1, std::memory_order_relaxed) != 0)
+	{
+		return;
+	}
+
+	auto log = Logger::Get(name);
+	log.OutWarning([name = name, allowance = budget.GetAllowance()](auto& ls)
+	{
+		ls << name.c_str() << " has spent its allowance of "
+		   << std::chrono::duration_cast<std::chrono::microseconds>(allowance).count()
+		   << " us and is leaving tasks in the general queue until the budget window advances again.";
+	});
+}
+
 void TaskStream::ConfigureRate(uint32_t fifoWeight, uint32_t priorityWeight) noexcept
 {
 	drainPolicy.ConfigureRate(fifoWeight, priorityWeight);
@@ -152,6 +168,17 @@ void TaskStream::RunLoop() noexcept
 
 	for (; likely(taskSys.IsRunning()); ++loopCount)
 	{
+		if (windowAdvanceRequested.exchange(false, std::memory_order_relaxed))
+		{
+			budget.Reset();
+			drainPolicy.EndRound();
+		}
+
+		if (streamIndex == TaskSystem::BaseStreamIndex)
+		{
+			taskSys.RunBudgetWindowPass();
+		}
+
 		std::optional<RangedTask> rangedTask;
 		StreamDrainPolicy::ELane lane = StreamDrainPolicy::ELane::None;
 
@@ -209,7 +236,14 @@ void TaskStream::RunLoop() noexcept
 
 		if (!rangedTask.has_value())
 		{
-			taskSys.Dequeue(rangedTask);
+			if (budget.CanTakeWork())
+			{
+				taskSys.Dequeue(rangedTask);
+			}
+			else
+			{
+				ReportGeneralQueueRefusal();
+			}
 		}
 
 		if (!rangedTask.has_value())

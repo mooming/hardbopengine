@@ -348,7 +348,7 @@ before choosing it.
 
 | # | Decision | Consequence accepted |
 |---|---|---|
-| R1 | **The base stream resets each stream's budget by calling into it.** The base stream is the sync point, and one base-stream pass reopens every window. | `CPUBudget`'s "belongs to exactly one thread" note is amended: `isMeasuring` becomes atomic. A reset landing between a worker's `BeginTask` and `EndTask` drops that task's charge, which is fail-open and already the documented behaviour for an unpaired `EndTask`. |
+| R1 | **The base stream resets each stream's budget by calling into it.** The base stream is the sync point, and one base-stream pass reopens every window. | `CPUBudget`'s "belongs to exactly one thread" note is amended: `isMeasuring` becomes atomic. A reset landing between a worker's `BeginTask` and `EndTask` drops that task's charge, which is fail-open and already the documented behaviour for an unpaired `EndTask`. | **[Mechanism superseded by R26/R27: the pass signals and the stream reopens itself, so no foreign thread writes a budget field and the atomic `isMeasuring` this row anticipated was never needed. The decision - one pass reopens every window - stands.]**
 | R2 | There was **no reopen rule at all before this.** `CanTakeWork()` is `accumulated < allowance` and `Reset()` had no caller, so a stream with a configured allowance stopped dequeuing permanently after spending it. | Pre-existing defect, inherited rather than introduced. The test that appeared to cover it only proved the latch is permanent. |
 | R3 | **Result delivery is two containers per stream.** The worker appends results to its own; the base stream swaps the pair under a short lock and then drains what it took without holding the lock. | The worker's blocking window is one swap, not the whole drain. A result is not delivered until the base stream next pumps: stall the base thread and results accumulate, they do not get lost. | **[Superseded by R23 - two containers per stream no longer exists.]**
 | R4 | **Payloads are fixed 128-byte packets from a thread-safe pool allocator**, populated on worker streams and released on the base stream. A delivered packet stays valid **for one frame**. | `MultiPoolAllocator` is not thread-safe - no mutex, no atomic, no thread_local anywhere in its header or implementation - so results get their own pool. The free list is deliberately a mutex over pre-allocated banks rather than an atomic Treiber stack, which has an ABA defect; this path sees one push per completed task, far cheaper than the CPU-time syscall already paid per task, so lock-free buys nothing measurable. | **[Superseded by R23 - 128-byte packets from a thread-safe pool, released on the base stream, valid for one frame no longer exists.]**
@@ -461,6 +461,7 @@ observe it directly.
 | R23e | **Completion is published through a bounded list - a mutex over a pre-allocated array sized from the registry capacity - and it cannot overflow.** | Proven rather than retried: a record is live at most once, and a task publishes only as it finishes, so outstanding entries never exceed live tasks, which never exceed capacity. R4's own argument transfers verbatim - one push per completed task is far cheaper than the CPU-time syscall the stream already pays per task, so lock-free buys nothing measurable and an atomic Treiber stack contributes an ABA defect for free. |
 | R24 | **Stream 0 is named "Base". The thread that drives `Engine::Run()` is named "EngineLoop".** | Three different things were called base: stream 0 (named "Main"), the OS thread named "Base" at `TaskSystem.cpp:266`, and `baseTaskThreadID`, which means "whoever constructed the TaskSystem". Each now has one name, and `baseTaskThreadID` becomes `engineLoopThreadID`. |
 | R24a | **A thread that is not a stream has a stream index of `NonStreamIndex`, not 0.** | `thread_local TIndex StreamIndex = 0` combined with `BaseStreamIndex == 0` made `IsBaseThread()` true on **every thread that never called `SetStreamIndex`**, application threads included, and made `Assert(IsBaseThread())` in `BuildStreams` pass vacuously; the general-queue drain at `:169` charged such a thread's sighting of a task to **stream 0**. Safe to change because `TaskStreamAffinity` guards `bitIndex >= NumBits` on Get, Set and Unset, so an out-of-range index is dropped rather than shifting past the unit. One behaviour changes deliberately: a non-stream thread no longer takes work off the general queue at all, which is more honest than letting it pose as stream 0. |
+| R25 | **`RangedTask` is deleted in the commit that lands `ParallelFor`, not before.** | The type is not a caller convenience, it is what every queue stores: each stream's FIFO `Deque<RangedTask>` and `BoundedPriorityQueue<RangedTask>`, the shared general queue, and the item `TaskQueueItem` embeds. Deleting it needs a replacement item type and a producer in the same commit, and the producer is `ParallelFor`. Doing it earlier means rewriting the same call sites twice: measured today, 15 `GenerateSubTask` sites across 6 files and 19 enqueue or dequeue sites, all in nine production files. What the deletion will buy is measured too: `RangedTask` is 128 bytes (a name copy, a `TaskID`, an affinity mask, two atomics, four index fields) against 40 bytes for the `{TaskID, start, end, priority}` item R11 describes, so queue slots and every enqueue copy get 3.2 times cheaper. Until then nothing new may be written against the caller-side range protocol `Task::Start` and `GenerateSubTask` expose - which is why the completion list carries `TaskID`s and not work items. |
 | R25 | **The superseded machinery was deleted in the same round rather than left behind.** `ResultContainer.h/.cpp`, the `NamedPoolAllocator` adapter written for it, `TaskStream`'s two container members and their whole sizing chain (`InitialResultCapacitySlots`, `DefaultGrowBySlots`, `DefaultMaxResultCapacitySlots`, `growBySlots`, `maxResultCapacitySlots` and their accessors), `CanAdmitResults` and `ReportRefusal`, `Task::numResults` with its accessors and the `TNumResults` alias, `RangedTask::declaredResults`, and the two `Array` members that `1f7e777` added for nothing else - all gone. The three lane-enqueue entry points went back to `void` with the five `(void)` casts that had been marking "no fallback exists yet". | 1,126 lines out, 26 in. Peak resident set of the test binary measured **418,955,264 bytes before and 407,584,768 after** (a second run gave 406,028,288), so roughly 11-12 MiB rather than the 24 MiB the reservation arithmetic suggests - RSS counts *touched* pages, and a buffer with zero producers never had its pages written. The clean claim is the one a grep makes: nothing in the engine asks a pool for result storage any more. Suite 60 -> 59 collections. |
 
 
@@ -534,6 +535,7 @@ document refuses everywhere else.
 | # | Decision | Consequence accepted |
 |---|---|---|
 | R26 | **The pass is split by dependency: the budget window lands first, and triage plus delivery land with the successor field.** | The rejected alternative was to finish delivery now by declaring that the first 16 bytes of a payload are a `{TRunnable, void*}` pair the engine runs on the destination stream. That works, and it invents an engine-wide calling convention whose only job is to be replaced one round later by the successor field - the same mistake this document already caught itself making with a `TaskDescriptor` built to hold one integer (R19). The second rejected alternative was to build the successor field first and land the whole pass at once, which leaves an inert budget and no window while the record grows. Cost of the chosen split: this round changes no observable behaviour for a caller who never configures a budget, so the proof is tests and measurement rather than a demo. |
+| R27 | **The budget window is one base frame period wide, and the pass signals rather than writes.** `TaskSystem::RunBudgetWindowPass` advances at most once per `time::GetBaseFramePeriod()`, called from stream 0's own loop; each stream then reopens itself. | No new tunable was added, because the yardstick already exists: `ConfigureBudget` states an allowance as CPU time per base frame period, so a window narrower or wider than that period would make the two numbers mean different things and drift. The pass writes one atomic per stream and nothing else, which is R26's rule kept exactly - `CPUBudget` charges the CPU time of its owning thread, and a reset executed elsewhere races that thread's BeginTask-EndTask pairing on `taskStart` and `isMeasuring`, where the cost of a broken pairing is either a lost charge or the thread's whole life billed to the budget. **Consequence: R1's amendment is not needed.** R1 anticipated `isMeasuring` becoming atomic; under the signal-and-self-reopen mechanism no foreign thread writes any budget field, so it stays a plain owner-thread member. Second consequence, and the one a caller should know: **the window cadence is the base stream's loop**, so a work item that blocks that thread freezes every budget window in the engine. That is R8's rule with a new cost attached - blocking the base stream used to stall deliveries, and now it also stalls every reopen. |
 
 ### The mechanism I am proposing under R26, flagged as mine rather than the owner's
 
@@ -577,3 +579,52 @@ sizing a sentence: removing `RangedTask::declaredResults` shrank the **work item
 is 6.25% of every queued item in every stream's queues, and `RangedTask` is still trivially copyable - measured
 with `std::is_trivially_copyable_v`, not assumed from the defaulted destructor. R25 recorded the record size and
 the resident-set figure; this is the third number the same commit moved.
+
+
+## Correction to the call-site census above, and what the budget window found
+
+The census concluded that an allowance "gates **nothing** today" and that "the budget primitive is inert in the
+running engine". **That is wrong, and it was written in this file.** The census counted callers of
+`TaskStream::MayTakeNewWork` - correctly, there are none in production - but that is not the only place the
+allowance is consulted. `StreamDrainPolicy::ChooseLane` compares the round's own accumulations against the same
+allowance and returns `ELane::None` when they reach it (`Engine/Core/StreamDrainPolicy.cpp:40-44`, reached from
+`TaskStream::RunLoop` under the queue lock). `EndRound()` - the only thing that clears those accumulations - had
+no production caller. So the true statement is the opposite of inert:
+
+> The moment any caller configures an allowance and a stream spends it, that stream **stops serving its own lanes
+> for the rest of the process's life.** Not "takes a while to resume" - forever, with the work items still sitting
+> on the lane, and nothing in the engine able to unstick it.
+
+That is R2 as originally written, and it is reachable today by one call to `ConfigureBudget`. What made it
+demonstrable rather than theoretical is that I built it: a test that configured a 1 ms allowance on a worker and
+queued a task to that worker hung the process for its entire life, because a previous test had already charged
+that stream's round 219 ms and no `EndRound` had ever run. The R26 section's own defect table found the sibling
+of this problem two rounds earlier from documentation, and missed this one because it looked for callers of the
+wrong predicate.
+
+The window that landed closes it: `RequestWindowAdvance` sets one atomic per stream, and the stream's own thread
+calls `budget.Reset()` **and `drainPolicy.EndRound()`** at the top of its loop. `EndRound` goes from zero
+production callers to one, and it is the half that actually frees a stalled lane - removing it alone is enough to
+make a queued task never run (mutation M4 below).
+
+### What the mechanism refuses to be measured by, with the two failures that proved it
+
+A window advance zeroes `CPUBudget::accumulatedNanos` and zeroes the round. Both facts, and one more that is
+easier to state than to believe:
+
+| Attempt | What it looked like | What it was |
+|---|---|---|
+| Read the stream's charged CPU to prove it spent its allowance | A charge of **-222,014 us** | The baseline read before the task ran was itself zeroed by a window the test advanced, so the delta went negative. A quantity the mechanism erases cannot witness the mechanism. |
+| Read it again, waiting for a charge rather than a completion | A charge of **0 us** on a task that had just spent 222 ms | The stream reported the task finished before it recorded the charge, and the pending window advance consumed at the top of the next iteration zeroed the figure as it landed. |
+| Advance windows while looking for a refusal | **0 refusals in 5 s** | Advancing windows is what un-shuts a stream. Polling the pass every millisecond keeps every stream permanently reopened, so the shut state under test cannot exist while a test looks for it. |
+| Sleep for the spent state | Hang, exit 143 after 5 min 5 s | A test runs inside a work item on the base stream's thread. Sleeping in it freezes the pass the test is waiting for, and blocks the suite. |
+
+What survives is behavioural and does not read a erased quantity: queue a task, advance windows **only until that
+task is confirmed to be running**, then leave the windows alone. The charge lands when the stream closes the task,
+the stream's next round the loop is a refusal, and the refusal counter only ever counts up. Measured on a run:
+**14 refusals while shut, resumed on its own thread at window 5, with 3 windows advanced by the base stream's own
+loop before the test ever ran** - which is the witness that the wiring, not just the mechanism, exists.
+
+The general rule for the next person: **count things a reopen cannot erase.** Tasks that ran, and refusals
+recorded, are both monotone; charges, round usage and lane credit are all reset by design, and a test that reads
+them is testing which one of them the timing happened to leave behind.

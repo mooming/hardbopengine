@@ -205,6 +205,25 @@ void TaskSystem::Enqueue(const TIndex streamIndex, const RangedTask& task) noexc
 	streams[streamIndex].EnqueueFifo(task);
 }
 
+void TaskSystem::RunBudgetWindowPass() noexcept
+{
+	const auto now = time::GetNow();
+	const auto period = time::GetBaseFramePeriod();
+
+	if (lastBudgetWindowAdvance != time::TTime{} && now - lastBudgetWindowAdvance < period)
+	{
+		return;
+	}
+
+	lastBudgetWindowAdvance = now;
+	numBudgetWindowsAdvanced.fetch_add(1, std::memory_order_relaxed);
+
+	for (auto& stream : streams)
+	{
+		stream.RequestWindowAdvance();
+	}
+}
+
 void TaskSystem::DispatchToMainThread(TMainThreadTask taskFunc, void* userData, uint8_t priority) noexcept
 {
 	mainThreadTaskQueue.Enqueue(taskFunc, userData, priority);
@@ -317,6 +336,28 @@ namespace hbe
 
 namespace
 {
+
+/// @brief Advance the budget window from this thread until a predicate holds, and say whether it came to hold.
+/// @details A stream that has spent its allowance takes nothing from its own lanes - StreamDrainPolicy::ChooseLane
+///          returns None for an exhausted round - so a task queued to such a stream runs only once a window reopens
+///          it. Windows are advanced by the base stream's own thread, which is the thread a test occupies by
+///          running, so a test that merely waited was waiting for itself to be scheduled. Measured as a hang for the
+///          life of the process before it was written this way.
+/// @note A window advance also zeroes the stream's accumulated CPU, so a predicate that reads that figure is
+///       reading something this helper destroys. Every predicate used with it counts things a reopen cannot erase:
+///       tasks that ran, and refusals recorded.
+template <typename TPredicate>
+bool AdvanceWindowsUntil(TaskSystem& taskSys, const TPredicate& holds, std::chrono::milliseconds patience) noexcept
+{
+	const auto deadline = std::chrono::steady_clock::now() + patience;
+	while (!holds() && std::chrono::steady_clock::now() < deadline)
+	{
+		taskSys.RunBudgetWindowPass();
+		std::this_thread::sleep_for(std::chrono::milliseconds(1));
+	}
+
+	return holds();
+}
 
 class TrackedTask final
 {
@@ -712,6 +753,151 @@ void TaskSystemTest::Prepare()
 			ls << "The no-stream index " << foreignIndex.load() << " is inside the " << TaskStreamAffinity::GetNumBits()
 			   << "-bit affinity mask, so a thread that is not a stream would be recorded as one - and the general"
 			   << " queue would charge its sightings to whichever stream shares the value." << lferr;
+		}
+	});
+
+	// The witnesses here are what a stream does with a work item, never what its budget counter reads: advancing a
+	// window zeroes that counter, so reading it to prove the mechanism would let the mechanism erase its own
+	// evidence. Measured as exactly that - a charge of 0 us reported for a task that had just spent 222 ms.
+
+
+	// What is watched here is what a stream does with work, never what its budget counter reads: advancing a window
+	// zeroes that counter, so a test that read it to prove the mechanism would watch the mechanism erase its own
+	// evidence. Measured as exactly that - 0 us reported for a task that had just spent 222 ms.
+
+
+	// What is watched here is what a stream does with work, never what its budget counter reads, because a window
+	// advance zeroes that counter: reading it to prove the mechanism would mean watching the mechanism erase its own
+	// evidence. Measured as exactly that - 0 us reported for a task that had just spent 222 ms. The same reason sets
+	// the shape of the waits below. Advancing windows keeps a stream reopened, so a test that advanced them while
+	// looking for a refusal would never see one: the pass is what un-shuts a stream, and the state under test is
+	// shut. Everything here therefore advances windows only until a task is confirmed to be running, and then leaves
+	// them alone long enough for that task to finish.
+	AddTest("A stream with a spent allowance declines the general queue and resumes after a window", [this](TLogOut& ls)
+	{
+		auto& taskSys = Engine::Get().GetTaskSystem();
+		const auto workerIndex = TaskSystem::GetIOTaskStreamIndex() + 1;
+		if (!taskSys.HasStream(workerIndex))
+		{
+			ls << "No worker stream at index " << workerIndex << ", so no stream could be shown throttling itself."
+			   << lferr;
+			return;
+		}
+
+		auto& stream = taskSys.GetStream(workerIndex);
+
+		// Read the pass counter before this test touches anything: it is the witness that TaskStream's loop calls
+		// the pass by itself. A test that advanced the first window on its own proves nothing about that wiring.
+		const auto windowsSoFar = taskSys.GetNumBudgetWindowsAdvanced();
+		ls << "The base stream's own loop had advanced " << windowsSoFar << " window(s) before this test ran." << lf;
+
+		if (windowsSoFar == 0)
+		{
+			ls << "No budget window has closed in the ~55 s of engine run time before this test, so the base stream's"
+			   << " loop never calls RunBudgetWindowPass, and an allowance configured anywhere in the engine stays"
+			   << " spent for the life of the process." << lferr;
+		}
+
+		auto BurnCpu = [](void* userData, TIndex startIndex, TIndex endIndex) -> std::size_t
+		{
+			static_cast<std::atomic<unsigned>*>(userData)->fetch_add(1, std::memory_order_relaxed);
+			volatile unsigned long long sink = 0;
+			for (unsigned long long counter = 0; counter < 5000000ULL; ++counter)
+			{
+				sink += counter % 7U;
+			}
+
+			return static_cast<std::size_t>(endIndex - startIndex);
+		};
+
+		constexpr auto allowance = std::chrono::milliseconds(1);
+		stream.ConfigureBudget(allowance);
+
+		std::atomic<unsigned> burnRuns{0};
+		const TrackedTask burn("SpendAllowance", BurnCpu, &burnRuns);
+		taskSys.Enqueue(workerIndex, (*burn).GenerateSubTask(0, 1));
+
+		const auto refusalsBefore = stream.GetGeneralQueueRefusalCount();
+
+		if (!AdvanceWindowsUntil(taskSys, [&burnRuns] { return burnRuns.load() > 0; }, std::chrono::seconds(5)))
+		{
+			ls << stream.GetName().c_str() << " never ran a task queued to its own lane within 5 s of windows"
+			   << " advancing on every poll, so the stream never got as far as spending anything. An exhausted round"
+			   << " that no reopen ends is the latch this pass exists to break." << lferr;
+			stream.ConfigureBudget(std::chrono::duration<double>{});
+			return;
+		}
+
+		// The task is running and no window advance is left pending beyond the one that started it, so its charge
+		// survives: it lands when the stream closes the task, and the stream's next round the loop is the refusal.
+		// Measured at roughly 20 ms of CPU for this task, against the 200 ms waited here.
+		std::this_thread::sleep_for(std::chrono::milliseconds(200));
+
+		const auto refusals = stream.GetGeneralQueueRefusalCount() - refusalsBefore;
+
+		if (refusals == 0)
+		{
+			ls << stream.GetName().c_str() << " charged a 1 ms allowance and took general queue work for 200 ms"
+			   << " anyway. An allowance that changes no decision is billed per task as a measurement of nothing -"
+			   << " the syscall is paid and the answer is ignored." << lferr;
+		}
+		else
+		{
+			ls << stream.GetName().c_str() << " declined the general queue " << refusals << " time(s) with its"
+			   << " allowance spent." << lf;
+		}
+
+		// The same stream must resume the moment a window advances it: refusing forever is the defect the pass is
+		// for, and it is reachable from here, since a stream that never reopened would still be shut right now.
+		const bool resumed =
+				AdvanceWindowsUntil(taskSys, [&stream] { return stream.MayTakeNewWork(); }, std::chrono::seconds(5));
+
+		if (!resumed)
+		{
+			ls << stream.GetName().c_str() << " is still shut after 5 s of windows advancing. That is the permanent"
+			   << " latch: an allowance spent once stays spent for the life of the process." << lferr;
+		}
+		else
+		{
+			ls << stream.GetName().c_str() << " resumed on its own thread at window "
+			   << taskSys.GetNumBudgetWindowsAdvanced() << ", having declined " << refusals << " refusal(s) while"
+			   << " shut." << lf;
+		}
+
+		const auto drainDeadline = std::chrono::steady_clock::now() + std::chrono::seconds(2);
+		while (!(*burn).HasDone() && std::chrono::steady_clock::now() < drainDeadline)
+		{
+			std::this_thread::sleep_for(std::chrono::milliseconds(1));
+		}
+
+		stream.ConfigureBudget(std::chrono::duration<double>{});
+
+		if (!stream.MayTakeNewWork())
+		{
+			ls << "Restoring the unlimited allowance did not restore willingness to take work." << lferr;
+		}
+	});
+
+
+	AddTest("A stream with no allowance never declines general work", [this](TLogOut& ls)
+	{
+		auto& taskSys = Engine::Get().GetTaskSystem();
+		if (!taskSys.HasStream(TaskSystem::GetIOTaskStreamIndex()))
+		{
+			ls << "No IO stream, so no unlimited stream could be observed." << lferr;
+			return;
+		}
+
+		auto& ioStream = taskSys.GetStream(TaskSystem::GetIOTaskStreamIndex());
+		const auto refusals = ioStream.GetGeneralQueueRefusalCount();
+
+		ls << ioStream.GetName().c_str() << " has an unlimited allowance and has declined general work " << refusals
+		   << " time(s)." << lf;
+
+		if (refusals != 0)
+		{
+			ls << "A stream with no allowance refused general work, so the gate is reading something other than "
+			   << "an unspent allowance - or an unlimited stream is being measured and charged anyway." << lferr;
 		}
 	});
 }

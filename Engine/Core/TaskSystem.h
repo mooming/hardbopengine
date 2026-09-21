@@ -11,6 +11,7 @@
 #include "MainThreadTaskQueue.h"
 #include "TaskRegistry.h"
 #include "TaskStream.h"
+#include "Time.h"
 
 namespace hbe
 {
@@ -59,6 +60,11 @@ private:
 
 	std::mutex taskQueueMutex;
 	BoundedPriorityQueue<RangedTask> taskQueue;
+
+	/// @brief When the budget window last closed, and how many times it has closed. See RunBudgetWindowPass.
+	/// @note Written and read only by the base stream's thread, except the count, which is read for diagnosis.
+	time::TTime lastBudgetWindowAdvance{};
+	std::atomic<std::size_t> numBudgetWindowsAdvanced{0};
 
 	MainThreadTaskQueue mainThreadTaskQueue;
 
@@ -123,6 +129,28 @@ public:
 	[[nodiscard]] TaskRegistry& GetRegistry() noexcept
 	{
 		return taskRegistry;
+	}
+
+	/// @brief Close every stream's CPU-budget window, to be reopened by each stream on its own thread.
+	/// @details An allowance that closes nothing is a measurement that changes no decision, which is a syscall
+	///          billed per task for nothing; the window is what makes an allowance mean "per frame period", the
+	///          yardstick ConfigureBudget already states allowances against. Cheap enough to call from a loop -
+	///          it advances only once a base frame period has passed, and the base stream period is the number
+	///          every budget in the engine is measured against, so the two cannot drift apart.
+	/// @details Nothing here writes a budget. Each stream is signalled and reopens itself, because a budget
+	///          charges the CPU time of the thread that owns it, and a reset executed elsewhere races that
+	///          thread's BeginTask and EndTask pairing on the fields that decide whether a charge is a task or a
+	///          thread's whole life.
+	/// @note The base stream's own thread calls this from its loop, and the timing state it holds is unsynchronised
+	///       on purpose: a second caller would need a lock to decide a timestamp.
+	void RunBudgetWindowPass() noexcept;
+
+	/// @brief How many budget windows have closed since the task system was built.
+	/// @details The witness that the pass is alive. A stream that reopens looks exactly like a stream that was
+	///          never throttled, so the pass needs a number of its own to be provable.
+	[[nodiscard]] std::size_t GetNumBudgetWindowsAdvanced() const noexcept
+	{
+		return numBudgetWindowsAdvanced.load(std::memory_order_relaxed);
 	}
 
 	/// @brief Queue a task on one stream by index.

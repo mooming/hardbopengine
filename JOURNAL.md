@@ -1,5 +1,60 @@
 # Journal
 
+## The budget window landed, and it disproved a conclusion in our own design doc (2026-09-20)
+
+**Two decisions and one correction.** `R25`: `RangedTask` is deleted in the commit that lands `ParallelFor`, not
+before - it is not a caller convenience but the item type every queue stores (each stream's FIFO and priority
+lanes, the shared general queue, and `TaskQueueItem`), so deleting it needs a replacement *and* a producer in the
+same commit; measured blast radius 15 `GenerateSubTask` sites in 6 files plus 19 enqueue/dequeue sites, all in
+nine production files, and doing it now means rewriting them twice. Price of waiting: 128 bytes per queue slot
+against 40 for the `{TaskID, start, end, priority}` item R11 describes. `R26`/`R27`: the base-stream pass lands as
+the **budget window only**, because delivery is defined as enqueuing a successor and no successor field exists - a
+pass that drained completions with nothing lawful to enqueue would be a pass that finds work and discards it.
+Window width is `time::GetBaseFramePeriod()` and no new tunable was invented: `ConfigureBudget` already states an
+allowance per base frame period, so a second number could only drift from the first.
+
+**The correction.** A census in `docs/TaskSystemRedesign.md` concluded an allowance "gates nothing today" because
+`TaskStream::MayTakeNewWork` has zero production callers. Wrong, and I have the evidence: `StreamDrainPolicy::
+ChooseLane` compares the same allowance against the round's accumulations and returns `None` when they reach it
+(`StreamDrainPolicy.cpp:40-44`), and `EndRound()` - the only clearer - had no caller. So the truth was the opposite
+of inert: **one call to `ConfigureBudget` and one spent allowance shut a stream's own lanes for the life of the
+process**, with the work items still sitting on the lane. I found it by falling into it - a test of mine configured
+1 ms on a worker, queued a task to that worker, and hung the process for 5 min 5 s until it was killed, because an
+earlier test had already charged that round 219 ms. R2 as originally written was right; the round that produced
+the census found the sibling defect from documentation two rounds earlier and missed this one by looking for
+callers of the wrong predicate. `EndRound` now has one production caller, and removing it alone still makes a
+queued task never run.
+
+**What the mechanism refuses to be measured by.** Four designs failed before one held, each for a reason worth
+keeping: reading the charged CPU gave **-222,014 us** (the baseline the test took was itself zeroed by a window the
+test advanced); waiting for a charge instead gave **0 us** for a task that had just spent 222 ms (the charge lands
+after the task reports itself done, and a pending window advance erases it as it lands); advancing windows while
+looking for a refusal gave **0 refusals in 5 s** (advancing windows is precisely what un-shuts a stream, so the
+shut state cannot exist while a test polls for it); and sleeping for the spent state hung, because a test runs
+*inside* a work item on the base thread, which is the only thread that can advance a window. What holds is
+behavioural: queue a task, advance windows **only until it is confirmed running**, then leave them alone; count
+things a reopen cannot erase - tasks that ran, refusals recorded. Observed on one run: 3 windows advanced by the
+base stream's own loop before the test ran, **14 refusals while shut, resumed on its own thread at window 5.**
+That is a rule for anyone testing this subsystem again, and it is written in the design doc.
+
+**My errors, five of them.** The hang above was mine and reached a working tree before I caught it. A trailing
+cleanup loop I wrote as `while (now < now + 1s)` is an unbounded loop wearing a bound - fixed to a real deadline.
+Two string literals lost their closing quote to my own edits, and one of them was only caught by the compiler.
+`-Werror,-Wunused-private-field` caught a `refusalLogged` bool I had made redundant with the counter that already
+answers "is this the first one", and `-Wunused-but-set` caught a busy-work variable; the loop is now `volatile`,
+which is also what keeps a CPU-burning test honest in Release. The `-Wunused-function` gate has now caught three
+of my dead helpers across this session - it is earning its keep.
+
+**Practice adopted from the owner:** `EngineTest` is now always launched under a wall-clock limit
+(`/tmp/hbe/runtest.sh <Config> [seconds]`, a perl fork+alarm since macOS ships no `timeout`), because a hang that
+runs until something external sends SIGTERM returns exit 143 and reads like someone else's kill. Exit 255 plus a
+"wall clock limit" line now means our own hang, which is a different diagnosis entirely.
+
+**Suite stays 59 collections.** Debug, Dev, Release green. Five mutations, one red test each: no pass call in the
+loop, no reopen block, no acquire gate, `EndRound` removed alone, no window counter. `Task::Start`'s divide-by-zero
+is already recorded and stays unreachable - it has no caller, and R25's commit deletes the protocol that contains
+it. Nothing pushed.
+
 ## Documentation only: the guide was rebuilt against HEAD, and it found two defects the code cannot see (2026-09-20)
 
 The owner put the budget window on another agent and confined this session to documentation. Nothing in
