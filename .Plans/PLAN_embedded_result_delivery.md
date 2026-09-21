@@ -157,8 +157,14 @@ introduced by wiring the gate. It was already true. `StreamDrainPolicy::ChooseLa
 round and nothing called `EndRound`, so a configured allowance was a permanent latch the moment it was spent - see
 the correction section of `docs/TaskSystemRedesign.md`.
 
-Still ahead, in order: **(a)** the successor field plus the join counter, which needs one owner decision - a
-`TaskID` successor costs 8 bytes per record minimum, taking the record from 192 (3 cache lines) to 200, which is
-no longer a multiple of 64: either pad the record to 256 (default table 768 KiB -> 1 MiB) or keep the successor out
-of the record. **(b)** completion publication and the triage pass, which need (a) to have something to enqueue.
+Still ahead, in order: **(a)** the successor field plus the join counter, which is priced by R28: the record is padded to 256 bytes (default table 768 KiB -> 1 MiB) in the same commit that
+adds the field. Measured and rejected alternatives are in the design doc - the free-list link alias, a side table,
+and shipping 208 bytes unwrapped. **(b)** completion publication and the triage pass, which need (a) to have something to enqueue.
 **(c)** item 4: `ParallelFor` together with the deletion of `RangedTask` and the caller-side range protocol (R25).
+
+## 10. R28 answered the only open decision, so the delivery half is unblocked
+
+Successor goes in the record, and the record is padded to 256 bytes for it. Next commit therefore carries: the
+successor `TaskID` on the record, the join counter, `RecordSizeBytes` re-pinned at 256 with its static_asserts, the
+default table re-priced at 1 MiB, completion publication, and the pass's triage step enqueuing the successor onto
+the packet's destination stream. Padding never lands alone.
