@@ -502,3 +502,78 @@ Why the generation is 32 bits: a stale ID aliases only after the same record is 
 is not a window anyone reaches; a 16-bit generation makes aliasing an everyday hazard in a table this size, and
 the whole point of R7's identity is that a recycled record is recognised rather than followed.
 
+
+## Owner decisions, 2026-09-20 (budget window: what the pass owns before it can own anything else)
+
+The pass R23c names has three jobs - reopen budgets, drain completions, deliver results. Asked which of them
+to build, the owner chose **the budget window alone**. That choice is R26, and it was made on a call-site
+census rather than a preference. Measured at `28a0cbc`:
+
+| Thing | Production callers | Test callers |
+|---|---|---|
+| `CPUBudget::Reset()` | 0 | 1 - its own test, `CPUBudget.cpp:155` |
+| `TaskStream::MayTakeNewWork()` | **0** - `TaskStream::RunLoop` never consults the budget before acquiring | 3, all inside `__UNIT_TEST__`: `TaskSystem.cpp:581`, `:622`, `:629` |
+| `StreamDrainPolicy::EndRound()` | 0 | 0 |
+| `StreamDrainPolicy::IsRoundExhausted()` | 0 | 0 |
+| Successor task (`EnqueueSuccessor`) | 0 - the name exists only in this document, at line 99-101 and section 6.1 | 0 |
+
+Two consequences, and they point the same way. An allowance configured on a stream gates **nothing** today, so
+the budget primitive is inert in the running engine. And the moment the acquire gate is wired without a window
+boundary, a stream that spends its allowance stops dequeuing for the rest of the process's life - which means
+R2 is not a defect that has been sitting there doing damage, it is a defect waiting for the wiring that will
+make it bite. The window is therefore simultaneously the smallest useful increment and a prerequisite for the
+gate that gives an allowance any meaning.
+
+The deliver half is blocked by a dependency, not by effort. This document defines delivery as *"An outcome is
+delivered by enqueuing a successor task that **embeds** it"* (section 6.1, and R9 restricts TaskSystem to
+"dispatch a job, an optional successor"). The work item the pass would enqueue onto the destination stream
+**is** a successor, and no successor field exists on a task or a record. A pass that drains completions with
+nothing lawful to enqueue would be a pass that finds work and discards it, which is the stranding failure this
+document refuses everywhere else.
+
+| # | Decision | Consequence accepted |
+|---|---|---|
+| R26 | **The pass is split by dependency: the budget window lands first, and triage plus delivery land with the successor field.** | The rejected alternative was to finish delivery now by declaring that the first 16 bytes of a payload are a `{TRunnable, void*}` pair the engine runs on the destination stream. That works, and it invents an engine-wide calling convention whose only job is to be replaced one round later by the successor field - the same mistake this document already caught itself making with a `TaskDescriptor` built to hold one integer (R19). The second rejected alternative was to build the successor field first and land the whole pass at once, which leaves an inert budget and no window while the record grows. Cost of the chosen split: this round changes no observable behaviour for a caller who never configures a budget, so the proof is tests and measurement rather than a demo. |
+
+### The mechanism I am proposing under R26, flagged as mine rather than the owner's
+
+The obvious shape - the base pass walks the streams and calls `Reset()` on each budget - is wrong, and wrong in
+a way this document has already been burned by: `CPUBudget` documents itself as belonging to exactly one thread,
+because it charges *that thread's* CPU time. `Reset()` writes `accumulatedNanos`, which is atomic and portable,
+but also `isMeasuring` and `taskStart`, which are plain members of an owner-thread class. A base-thread reset
+landing between the owner's `BeginTask()` and `EndTask()` is a data race on both, and the header's own note
+explains what a broken pairing costs: either the charge is lost, or the thread's entire life is billed to the
+budget and the stream refuses work forever. The pass would be introducing R2 by trying to close it.
+
+So the pass **signals** and the stream **reopens**:
+
+| Step | Where it runs | What it does |
+|---|---|---|
+| Window advances | Base stream, in the pass | Sets one atomic flag per stream. No write to any budget field. |
+| Reopen | That stream's own thread, at the top of its loop | Swaps its own flag, and if it was set calls `budget.Reset()` and `drainPolicy.EndRound()` itself. |
+
+The cost is that a reopen takes effect on the owner's next loop iteration rather than at the instant the pass
+runs. That cost is free, and better than free: it means a window boundary can only ever fall **between** tasks,
+which is exactly the overshoot rule R13's successor already states - a task in flight is never truncated, so a
+reopen that cannot interrupt one is the honest implementation rather than a laggy one. The gate itself, when it
+is wired, belongs in front of *acquiring* - draining a provider, dequeuing from the general queue - and never in
+front of running a work item already held or delivering a result, per `TaskStream::MayTakeNewWork`'s own contract.
+
+### Two defects the guide audit turned up, with their evidence
+
+Neither is in the budget window's scope, and neither is fixed - documenting them is all that happened here.
+
+| Defect | Evidence | Why it has not failed yet |
+|---|---|---|
+| `Task::Start` divides by the wrong counter. `const TIndex length = endIndex - startIndex + 1; TIndex interval = length / numSubTasks;` uses the task's **member** `numSubTasks`, not the `numberOfSubTasks` parameter it was handed. | `Engine/Core/Task.cpp`, in `Task::Start`. `GenerateSubTask` is the only writer of that member and it runs after the division, so a task that has generated nothing divides by zero. (`length` is also off by one for a half-open range.) | `Task::Start` has **no caller** anywhere in `Engine/` or `Applications/` - the only `.Start(` call sites are `TaskStream::Start`, `TestCollection::Start` and `TestEnv::Start`, which are different functions on different classes. Nobody has executed the arithmetic. What did execute was `docs/TaskSystemGuide.md`, which presented stack-construct + `Start` + `BusyWait` as the primary usage for five months; the guide now says do not use it and why. |
+| `ac496e6`'s commit message states the five `(void)` casts "are gone with the refusal they annotated". Three went; **two remain**. | Still in the tree at HEAD: `Engine/Log/Logger.cpp:246`, `Engine/Test/UnitTestCollection.cpp:166`. `git log ac496e6..HEAD -- <both files>` prints nothing, so no later commit removed them either - the message was wrong when it was written. | Casting a `void` call to `void` compiles and executes nothing. The harm is communicative: the cast asserts "this call can fail and I have no fallback", which stopped being true the moment `Enqueue` lost its refusal. It is the same class of stale annotation this file corrected for R8 in R23d, one level down. |
+
+Both were found by checking documentation against source line by line rather than reading the source, which is
+the argument for keeping a user-facing guide at all: three of the five months of drift were invisible from
+inside the code.
+
+One measured side effect of `ac496e6` that nobody wrote down when it landed, and which this audit caught while
+sizing a sentence: removing `RangedTask::declaredResults` shrank the **work item** from 128 bytes to **120**, which
+is 6.25% of every queued item in every stream's queues, and `RangedTask` is still trivially copyable - measured
+with `std::is_trivially_copyable_v`, not assumed from the defaulted destructor. R25 recorded the record size and
+the resident-set figure; this is the third number the same commit moved.

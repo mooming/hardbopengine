@@ -1,5 +1,51 @@
 # Journal
 
+## Documentation only: the guide was rebuilt against HEAD, and it found two defects the code cannot see (2026-09-20)
+
+The owner put the budget window on another agent and confined this session to documentation. Nothing in
+`Engine/` was touched here. Two files changed: `docs/TaskSystemGuide.md` rewritten, and a new section appended
+to `docs/TaskSystemRedesign.md`.
+
+**R26 recorded: the pass is split by dependency, budget window first.** The owner chose it on a census, so the
+census is in the document with its line numbers - `CPUBudget::Reset()` has no production caller,
+`TaskStream::MayTakeNewWork()` is called only from `__UNIT_TEST__` (`TaskSystem.cpp:581`, `:622`, `:629`) and never
+from `RunLoop`, `StreamDrainPolicy::EndRound`/`IsRoundExhausted` have no caller at all, and a successor task exists
+only as a name in this document. Reading: an allowance gates nothing today, and the window has to exist before the
+acquire gate can be wired at all, or wiring it produces R2 on the first spend. Triage and delivery move to the
+successor round because delivery *is* "enqueue a successor that embeds the outcome" (section 6.1, R9) and there is
+no successor to enqueue. The rejected alternative - reading a `{TRunnable, void*}` pair out of the payload to have
+something to run - is recorded as rejected with its reason, which is R19's reason against a one-field descriptor.
+
+**The mechanism I proposed under R26 is labelled as mine, not the owner's.** The pass signals a per-stream atomic
+flag and the stream reopens its own budget and drain round on its own thread. The base-thread-walks-and-calls-`Reset`
+shape is rejected in writing, because `Reset` writes `isMeasuring` and `taskStart`, which are plain members of a
+class documented as single-owner: resetting from another thread between the owner's `BeginTask` and `EndTask` either
+loses a charge or bills the thread's whole life to the budget - R2 introduced by the fix for R2. The accepted cost,
+that a reopen lands on the owner's next iteration, is the overshoot rule rather than a lag.
+
+**The guide was five months stale, and rebuilding it against source found two defects.** `docs/TaskSystemGuide.md`
+was last touched `9cb5555` on 2026-04-23; it taught stack-`Task` + `Start` + `BusyWait` as the primary usage, which
+against HEAD means a null `TaskID`, so every work item is dropped by every stream with a warning and no work runs.
+Rewritten to 335 lines from 223, covering registry identity, the embedded packet and its three constants, the real
+affinity polarity (raw `0` means set, one index spread across 8 bits per word, base and IO refused on first contact,
+a `NonStreamIndex` thread taking nothing forever), the priority direction where `0` now means least urgent and the
+default is 128, `Engine::Run` as a yield loop with no frame barrier, registry sizing parameters, and a "do not do
+these things" table. Two findings written into the design document rather than fixed:
+
+1. `Task::Start` divides by the task's **member** `numSubTasks` instead of its own `numberOfSubTasks` parameter, and
+   `GenerateSubTask` - the only writer of that member - runs after the division. A fresh task divides by zero. It has
+   **zero callers** in `Engine/` and `Applications/`; the three `.Start(` hits are `TaskStream`, `TestCollection` and
+   `TestEnv`, different classes. So nobody has crashed, and the only thing that ever ran that arithmetic was a guide.
+2. `ac496e6` claims all five `(void)` casts went "with the refusal they annotated". Three did. Two are at HEAD:
+   `Engine/Log/Logger.cpp:246` and `Engine/Test/UnitTestCollection.cpp:166`, and `git log ac496e6..HEAD` on those
+   files is empty - the message was wrong the moment it was written. Casting `void` to `void` harms nothing; asserting
+   in a repo record that code was removed when it was not is the harm.
+
+That makes **two verifiable claims false in one commit message**, the attribution of errors in `28a0cbc` and this
+cast count. The lesson goes in the design document, not here: a subagent's prose is not evidence, and the only
+record of what landed is what a grep returns from the tree it claims to have produced.
+
+
 ## The result moved into the task, and the container that held it was deleted (2026-09-19)
 
 **What landed**, in order: `2b30818` one meaning for "base" - stream 0 is `Base`, the thread driving `Engine::Run`
