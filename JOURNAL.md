@@ -29,21 +29,21 @@ of 64, so records stop being aligned; the intuition was wrong and the measuremen
 spends its allowance **stops dequeuing permanently**. R1/R2 say the base-stream pass reopens every window; that
 pass is the next commit, and the completion list and triage ride with it.
 
-**Five of my own errors, all caught before or by the tools, none by luck.**
-1. A test I wrote called `TaskSystem::Dequeue` to inspect the general queue - a queue shared with every other
+**Five errors surfaced in this round, all caught before or by the tools, none by luck - and four of them belong to the session that ran before this one, not to the run that deleted the container.** The attribution matters: `ac496e6` and this entry both claimed all five as their own, and `1608855`, `d6f6f1b` and `2b30818` already carry them. Evidence for the reassignment is in item 2.
+1. *(earlier session, recorded in `2b30818` and `d6f6f1b`)* A test called `TaskSystem::Dequeue` to inspect the general queue - a queue shared with every other
    collection. It took `RHICapabilities`' work item and discarded it, and that collection aborted with "is not
    allocated by this allocator" one log line later. The failure looked like a memory bug in a subsystem the test
    never touched. Deleted, proven by removal, and recorded as a trap: that queue has no test seam.
-2. My edit helper `open(path,"w").write(fn(open(path).read()))` truncates before reading - Python evaluates the
+2. *(earlier session)* The edit helper `open(path,"w").write(fn(open(path).read()))` truncates before reading - Python evaluates the
    truncating `open` first - which emptied `TaskSystem.cpp`, all 1068 lines. Caught by `git diff --stat`, restored
-   from HEAD, helper rewritten to write a temp file and rename over it.
-3. `clang-format` on `CMakeLists.txt`: it does not know CMake and joined line 1 into
+   from HEAD, helper rewritten to write a temp file and rename over it. **This is why items 1-4 are reassigned:** the file that got emptied was 1068 lines, and the state handed to the deletion run was already the restored file with six ceiling tests cut (20,525 bytes, ~630 lines); the pre-handoff backup `/tmp/hbe/orig2/TaskSystem.cpp.preC3c` is the 1068-line file. A run starting from 630 lines cannot empty a 1068-line file. Item 4's second half - a stream allocator taken by the same kind of cut - is the one detail with no counterpart in the earlier session, so it may be the deletion run's own.
+3. *(earlier session, during `bc0342e`)* `clang-format` on `CMakeLists.txt`: it does not know CMake and joined line 1 into
    `cmake_minimum_required(VERSION 3.12) project(Core)`. Configure died and the build exited 1 with **zero**
    `error:` lines - a failed configure prints nothing clang-shaped, so grep `FAILED:` and read the tail. All 22
    tracked CMakeLists checked afterwards; only the edited file was damaged.
-4. My cut of the container initialisers deleted the two lane-enqueue definitions instead of converting them, and
+4. *(earlier session)* The cut of the container members deleted the two lane-enqueue definitions instead of converting them, and
    took the stream's own pool allocator with it - the compiler caught both.
-5. `git add -A` staged a concurrent agent's untracked docs; unstaged before committing. Related: three documents
+5. *(this run - the only one of the five the deletion run incurred itself)* `git add -A` staged a concurrent agent's untracked docs; unstaged before committing. Related: three documents
    repeated "six `(void)` casts" where the measured count is five - a number counted once, wrongly, then copied
    (`1608855` corrected it).
 
