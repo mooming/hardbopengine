@@ -11,6 +11,7 @@ namespace hbe
 
 Task::Task() noexcept
 	: numSubTasks(0)
+	, numGeneratedSubTasks(0)
 	, numFinishedSubTasks(0)
 	, func(nullptr)
 	, userData(nullptr)
@@ -20,51 +21,11 @@ Task::Task() noexcept
 Task::Task(StaticString taskName, TRunnable func, void* userData) noexcept
 	: name(taskName)
 	, numSubTasks(0)
+	, numGeneratedSubTasks(0)
 	, numFinishedSubTasks(0)
 	, func(func)
 	, userData(userData)
 {
-}
-
-void Task::Start(TIndex numberOfSubTasks, TIndex startIndex, TIndex endIndex, uint8_t priority) noexcept
-{
-	auto& taskSystem = Engine::Get().GetTaskSystem();
-
-	if (endIndex <= startIndex)
-	{
-		auto rangedTask = GenerateSubTask(startIndex, endIndex, priority);
-		taskSystem.Enqueue(rangedTask);
-		return;
-	}
-
-	endIndex = std::max(startIndex, endIndex);
-	if (numberOfSubTasks < 2)
-	{
-		// Single Thread Task
-		const auto rangedTask = GenerateSubTask(startIndex, endIndex, priority);
-		taskSystem.Enqueue(rangedTask);
-
-		return;
-	}
-
-	constexpr TIndex one = 1;
-	const TIndex length = endIndex - startIndex + 1;
-	TIndex interval = length / numSubTasks; // always bigger than zero.
-	interval = std::max(interval, one);
-	TIndex iStart = startIndex;
-	TIndex iEnd = iStart + interval;
-
-	while (iEnd < endIndex)
-	{
-		auto rangedTask = GenerateSubTask(iStart, iEnd, priority);
-		taskSystem.Enqueue(rangedTask);
-
-		iStart = iEnd;
-		iEnd += interval;
-	}
-
-	auto rangedTask = GenerateSubTask(iStart, endIndex, priority);
-	taskSystem.Enqueue(rangedTask);
 }
 
 void Task::BusyWait() const noexcept
@@ -88,6 +49,7 @@ void Task::LoadIntoRecord(TaskID newID, StaticString taskName, TRunnable newFunc
 	id = newID;
 	name = taskName;
 	numSubTasks = 0;
+	numGeneratedSubTasks = 0;
 	result.Clear();
 	numFinishedSubTasks.store(0, std::memory_order::relaxed);
 	func = newFunc;
@@ -96,7 +58,11 @@ void Task::LoadIntoRecord(TaskID newID, StaticString taskName, TRunnable newFunc
 
 RangedTask Task::GenerateSubTask(TIndex start, TIndex end, uint8_t priority) noexcept
 {
-	++numSubTasks;
+	Assert(numGeneratedSubTasks < numSubTasks,
+		   "\"%s\" handed out a work item beyond the %d it reserved, so this task reports itself finished before"
+		   " the item runs.",
+		   name.c_str(), numSubTasks);
+
 	return {*this, start, end, priority};
 }
 } // namespace hbe

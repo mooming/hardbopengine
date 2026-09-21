@@ -1,5 +1,40 @@
 # Journal
 
+## Successor, join counter, and a declare-first rule (D1, in progress of the three remaining items)
+
+R28 priced the successor field, so this commit pays it: `Record` gains a `TaskID successor` and is padded to **256
+bytes** (four cache lines, default table **1 MiB**). Routing is registry state, not task state - R9's sentence read
+literally - and `Task` itself stayed at **176 bytes** because the counter R29 needed went into padding it already
+had at offset 26. Accessors are `TaskRegistry::SetSuccessor` / `GetSuccessor`, wrapped by the task system.
+
+**R29 is the part with teeth.** Handing out a work item used to *increment* the count, so a producer that queued
+item 1 before generating item 2 could have a worker finish item 1 against `numSubTasks == 1`: the task reports
+itself done on one item of three and anything waiting is woken before results exist. Now `ReserveSubTasks(n)`
+declares the join before the first item is visible, `GenerateSubTask` counts nothing, and
+`ReportFinishedSubTask` returns whether this call closed the join - on an **equality**, because a threshold makes
+every finisher past the last one a winner and a successor would dispatch twice. Nine producer sites were updated
+(7 in the suite, the logger's drain task, the suite's own task). `Task::Start` was deleted: dead, and it divided by
+the member `numSubTasks` that the caller has not set yet, so a fresh task divided by zero.
+
+**Two of my checks were weak, and mutation proving is what said so.** `SetSuccessor`'s refusal of an untracked task
+was tested by recording a successor on a released ID and reading it back - green with the guard deleted, twice.
+The first version was blind because the read path (`Find`) returns nullptr for a released task whatever the field
+holds; the second was blind because `Create` clears the field when a record is reissued, which fixes the damage the
+refusal was supposed to prevent. Only an attack that lands on a record somebody is *still using* separates the two
+builds: an ID naming a live record at the wrong generation. That is the alias `TaskID` exists to catch, so the
+final test is also the one that tests R7 rather than the accessor. Recorded in the test's own comment, because the
+next person will otherwise write the same weak version.
+
+**Mutation table:** successor never stored -> the read-back test red; `Create` not clearing -> the recycled-record
+test red; live-record check removed -> the stale-generation test red (after two fixes); join rule back to `>=` ->
+the join test red. The fifth mutation - deleting the generated-item counter - stayed **green**, and that is honest
+rather than a problem: its only consumer is the over-production assert, which aborts and so is stated rather than
+tested. One test also caught the price change on its own: `ResultPacketTest`'s layout test failed the moment the
+record grew, which is exactly what a pinned price test is for.
+
+Suite stays **59 collections**; Debug/Dev/Release green; the two stale `(void)` casts the guide audit named
+(`Logger.cpp:246`, `UnitTestCollection.cpp:166`) are gone with this, since `Enqueue` cannot fail since `ac496e6`.
+
 ## The budget window landed, and it disproved a conclusion in our own design doc (2026-09-20)
 
 **Two decisions and one correction.** `R25`: `RangedTask` is deleted in the commit that lands `ParallelFor`, not

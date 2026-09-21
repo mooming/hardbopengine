@@ -28,7 +28,7 @@ namespace hbe
 ///          named allocator, exact-sized, because a pool bank rounds a table of this size up by more than the table
 ///          itself - see the registry section of docs/TaskSystemRedesign.md.
 ///
-/// @details __Capacity.__ Three knobs, deliberately the same three as a result container's: an initial capacity in
+/// @details __Capacity.__ Three knobs, the same shape as every other growable in the engine: an initial capacity in
 ///          records, a grow-by, and a ceiling where zero means no ceiling. Growing is always an explicit call.
 ///          Create never grows the table, so the thread that runs out of records is not the thread that pays for
 ///          more memory - it gets a null ID and a log line naming what could not be tracked.
@@ -38,15 +38,16 @@ namespace hbe
 ///       with release semantics before the bank count grows, and a record's generation and in-use flag are atomic,
 ///       so a lookup reads a consistent answer without one thread waiting for another.
 /// @note __Growing__ is only legal while no lookup is in flight, which in practice means between frames on whoever
-///       owns the registry. Nothing grows it from a task. This is the same rule the result containers follow, that
-///       no allocation ever lands on the path a task runs.
+///       owns the registry. Nothing grows it from a task: an allocation that lands on the path a task runs makes
+///       the task, and not the caller, pay for a table it had no part in sizing.
 class TaskRegistry final
 {
 public:
-	/// @brief Records the registry starts with: 4096, which is one bank.
+	/// @brief Records the registry starts with: 4096, which is one bank of 1 MiB.
 	/// @details Chosen against a measured demand of one tracked task in engine code - the logger's - so this is
 	///          sized for what a game will dispatch rather than for what this tree does today. A record is
-	///          sizeof(Record) bytes, so a fresh registry costs on the order of a few hundred KiB.
+	///          RecordSizeBytes bytes - 256 since R28 - so a fresh registry costs 1 MiB. That is the price of
+	///          tracking a task at all: identity, generation, a result packet, a successor, and a line of its own.
 	static constexpr std::size_t DefaultInitialCapacityRecords = 4096;
 
 	/// @brief Records each grow adds: one bank, the same figure as the initial capacity.
@@ -72,9 +73,19 @@ private:
 	struct Record final
 	{
 		Task task;
+
+		/// @brief The task to dispatch when this one's join closes, or a null ID for "nobody is waiting".
+		/// @details Routing lives here rather than in Task, which is R9's rule: the task system knows a job, an
+		///          optional successor, and a join counter, and nothing about pipelines. It is registry state on
+		///          purpose - the only path allowed to act on it is the one that holds the identity rules.
+		TaskID successor;
+
 		std::atomic<TaskID::TGeneration> generation;
 		std::atomic<bool> inUse;
 		std::size_t nextFreeRecord;
+
+		/// @brief Space held back so every record starts on a cache line. See RecordSizeBytes and R28.
+		std::byte reservedToCacheLine[48];
 	};
 
 	using TBank = Record*;
@@ -88,14 +99,17 @@ public:
 
 	/// @brief The record's priced size, asserted rather than quoted, because the table's memory is this figure
 	///        times the capacity and a field that quietly changes it changes every engine's memory budget.
-	/// @details The second assert is not tidiness: the record is 192 bytes, which is three cache lines, so every
-	///        record in a bank starts on a line boundary. Padding the embedded result packet to a line of its own
-	///        was measured and rejected - it makes the record 208 bytes, which is not a multiple of 64, so
-	///        records stop being aligned and neighbours start sharing lines.
-	static_assert(RecordSizeBytes == 192, "The result packet prices a record at 192 bytes; re-measure and re-decide");
+	/// @details The successor costs a full TaskID - measured 16 bytes - which takes the record past three cache
+	///        lines, so it is padded to four. R28 priced and decided that: the alternatives were a record of 208
+	///        bytes, a multiple of 8 that stops records starting on line boundaries so two streams writing results
+	///        into neighbouring records invalidate each other through the shared line; aliasing the free-list link,
+	///        which is unused while a record is live but caps a successor at a compressed identity and leaves an
+	///        overlap a reader has to hold in their head; and a side table, which buys the alignment back with a
+	///        lifetime rule and a second read on the delivery path.
+	/// @details Cost: 64 bytes per record, so the default 4096-record table is 1 MiB rather than 768 KiB.
+	static_assert(RecordSizeBytes == 256, "R28 prices a record at 256 bytes; re-measure and re-decide");
 	static_assert(RecordSizeBytes % 64 == 0, "Records must start on cache-line boundaries");
 
-private:
 private:
 	std::mutex registryLock;
 	StaticString name;
@@ -125,6 +139,19 @@ public:
 
 	TaskRegistry(const TaskRegistry&) = delete;
 	TaskRegistry& operator=(const TaskRegistry&) = delete;
+
+	/// @brief Record which task to dispatch when this one's join closes.
+	/// @details This is the whole of what the task system knows about chains (R9): a job, an optional successor,
+	///          and a join counter. Whether the successor runs on the completing task's own stream or somewhere
+	///          else is decided by the destination byte the completing task wrote into its own result packet, so
+	///          routing stays data in the registry and never becomes a pipeline the engine has to understand.
+	/// @note A successor is a promise about the future, not a lease: it is dispatched when the join closes, and if
+	///       it has been released by then the dispatch is refused and logged rather than run.
+	/// @note Naming a task that is not tracked does nothing and is reported, same as Release.
+	void SetSuccessor(TaskID task, TaskID successor) noexcept;
+
+	/// @brief The successor recorded for a task, or a null ID when nobody is waiting on its join.
+	[[nodiscard]] TaskID GetSuccessor(TaskID task) noexcept;
 
 	/// @brief Track a task and return the identity that names it.
 	/// @return The new identity, or a null ID if the table has no free record. A refused task is not tracked, is

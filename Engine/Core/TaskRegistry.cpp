@@ -81,6 +81,7 @@ TaskID TaskRegistry::Create(StaticString taskName, TRunnable func, void* userDat
 
 	const TaskID::TGeneration generation = record.generation.load(std::memory_order::relaxed) + 1;
 	record.generation.store(generation, std::memory_order::relaxed);
+	record.successor = {};
 	record.task.LoadIntoRecord(TaskID{recordIndex, generation}, taskName, func, userData);
 	record.inUse.store(true, std::memory_order::release);
 	usedRecords.fetch_add(1, std::memory_order::relaxed);
@@ -113,6 +114,30 @@ Task* TaskRegistry::Find(TaskID id) noexcept
 	}
 
 	return &record.task;
+}
+
+void TaskRegistry::SetSuccessor(TaskID task, TaskID successor) noexcept
+{
+	Record* record = FindLiveRecord(task);
+	if (record == nullptr)
+	{
+		auto log = Logger::Get(name);
+		log.OutError([name = name, index = task.index, generation = task.generation](auto& ls)
+		{
+			ls << name.c_str() << " was asked to record a successor for task record " << index << " generation "
+			   << generation << ", which it is not tracking, so nothing will be dispatched when that join closes. ";
+		});
+		return;
+	}
+
+	record->successor = successor;
+}
+
+TaskID TaskRegistry::GetSuccessor(TaskID task) noexcept
+{
+	const Record* record = FindLiveRecord(task);
+
+	return record == nullptr ? TaskID{} : record->successor;
 }
 
 void TaskRegistry::Release(TaskID id) noexcept
@@ -573,6 +598,145 @@ void TaskRegistryTest::Prepare()
 		}
 	});
 
+	AddTest("A successor is recorded on the task and read back by identity", [this](auto& ls)
+	{
+		TaskRegistry registry;
+		registry.Initialize("RegistryTest", 8, 4);
+
+		ls << "A record costs " << TaskRegistry::RecordSizeBytes << " bytes, which is "
+		   << TaskRegistry::RecordSizeBytes / 64 << " cache lines, so the default table is "
+		   << TaskRegistry::DefaultInitialCapacityRecords * TaskRegistry::RecordSizeBytes / 1048576 << " MiB." << lf;
+
+		const auto first = registry.Create("FirstTask", RegistryTestRunnable(), nullptr);
+		const auto second = registry.Create("SecondTask", RegistryTestRunnable(), nullptr);
+
+		registry.SetSuccessor(first, second);
+
+		if (registry.GetSuccessor(first) != second)
+		{
+			ls << "A successor recorded for a tracked task did not come back, so the routing the pass acts on is"
+			   << " not being stored." << lferr;
+		}
+
+		if (!registry.GetSuccessor(second).IsNull())
+		{
+			ls << "Recording a successor for one task also gave another task a successor, so the field is not"
+			   << " per record." << lferr;
+		}
+
+		registry.Release(first);
+
+		if (!registry.GetSuccessor(first).IsNull())
+		{
+			ls << "A released task still reported a successor. Nothing can dispatch on a task that no longer"
+			   << " exists, so the answer must be nobody." << lferr;
+		}
+	});
+
+	AddTest("A recycled record does not inherit the previous occupant's successor", [this](auto& ls)
+	{
+		TaskRegistry registry;
+		registry.Initialize("RegistryTest", 8, 4);
+
+		const auto first = registry.Create("FirstTask", RegistryTestRunnable(), nullptr);
+		const auto second = registry.Create("SecondTask", RegistryTestRunnable(), nullptr);
+		registry.SetSuccessor(first, second);
+		registry.Release(first);
+
+		const auto recycled = registry.Create("RecycledTask", RegistryTestRunnable(), nullptr);
+		if (recycled.index != first.index)
+		{
+			ls << "The test expected the freed record to be reused so it could check what it inherits; it came"
+			   << " back as record " << recycled.index << " instead of " << first.index << ", so this proves nothing."
+			   << lf;
+		}
+
+		if (!registry.GetSuccessor(recycled).IsNull())
+		{
+			ls << "Record " << recycled.index << " was issued to a new task still holding the successor of the"
+			   << " task that had it before. A dispatch that never happened would run on this task's join." << lferr;
+		}
+	});
+
+	AddTest("A successor cannot be recorded through an identity the registry does not honour", [this](auto& ls)
+	{
+		TaskRegistry registry;
+		registry.Initialize("RegistryTest", 8, 4);
+
+		const auto live = registry.Create("LiveTask", RegistryTestRunnable(), nullptr);
+		const auto other = registry.Create("OtherTask", RegistryTestRunnable(), nullptr);
+
+		// The case that matters is the one TaskID exists for: a stale identity naming a record that is still live,
+		// held by a different generation. It must not be able to route anything. A released-ID version of this
+		// test stayed green with the guard removed, because Create clears the field when it reissues a record -
+		// the write refusal is only observable against a record somebody is still using.
+		const TaskID staleIdentity{live.index, live.generation + 7};
+
+		registry.SetSuccessor(staleIdentity, other);
+
+		if (!registry.GetSuccessor(live).IsNull())
+		{
+			ls << "An ID at generation " << staleIdentity.generation << " recorded a successor on record " << live.index
+			   << ", which generation " << live.generation << " is still using. That is the alias"
+			   << " R7 closes for lookups, reaching the routing field." << lferr;
+		}
+
+		registry.SetSuccessor({}, other);
+
+		if (!registry.GetSuccessor(live).IsNull() || !registry.GetSuccessor(other).IsNull())
+		{
+			ls << "A null task identity routed a successor onto a live task." << lferr;
+		}
+
+		registry.SetSuccessor(other, {});
+
+		if (!registry.GetSuccessor(other).IsNull())
+		{
+			ls << "Clearing a successor by naming no task left a routing decision in place." << lferr;
+		}
+	});
+
+	AddTest("The work item that closes a join is the last reserved one, and only that one", [this](auto& ls)
+	{
+		Task task("JoinTask", RegistryTestRunnable(), nullptr);
+
+		if (task.HasDone())
+		{
+			ls << "A task with nothing reserved reported itself done before anything ran." << lferr;
+		}
+
+		task.ReserveSubTasks(3);
+
+		const bool first = task.ReportFinishedSubTask();
+		const bool second = task.ReportFinishedSubTask();
+
+		if (first || second || task.HasDone())
+		{
+			ls << "A join of three closed after two items, so whatever waits on it is woken early and reads"
+			   << " results that were never written." << lferr;
+		}
+
+		const bool third = task.ReportFinishedSubTask();
+		const bool fourth = task.ReportFinishedSubTask();
+
+		if (!third)
+		{
+			ls << "The last reserved item did not report the join closed, so no successor would ever be"
+			   << " dispatched." << lferr;
+		}
+
+		if (!task.HasDone())
+		{
+			ls << "All three reserved items finished and the task still reports it is not done." << lferr;
+		}
+
+		if (fourth)
+		{
+			ls << "A finish beyond the reservation also reported the join closed. Two winners means the"
+			   << " successor is dispatched twice." << lferr;
+		}
+	});
+
 	AddTest("A work item carries the identity of the task that generated it", [this](auto& ls)
 	{
 		auto& taskSystem = Engine::Get().GetTaskSystem();
@@ -586,6 +750,7 @@ void TaskRegistryTest::Prepare()
 			return;
 		}
 
+		task->ReserveSubTasks(1);
 		const auto subtask = task->GenerateSubTask(0, 1, 0);
 
 		ls << "Task identity: record " << id.index << " generation " << id.generation << "; subtask carries record "

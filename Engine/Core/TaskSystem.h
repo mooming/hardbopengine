@@ -125,6 +125,18 @@ public:
 	/// @brief Stop tracking a task and give its record back to the registry. See TaskRegistry::Release.
 	void ReleaseTask(TaskID id) noexcept;
 
+	/// @brief Record which task to dispatch when `task`'s join closes. See TaskRegistry::SetSuccessor.
+	void SetSuccessor(TaskID task, TaskID successor) noexcept
+	{
+		taskRegistry.SetSuccessor(task, successor);
+	}
+
+	/// @brief The successor recorded for a task, or a null ID. See TaskRegistry::GetSuccessor.
+	[[nodiscard]] TaskID GetSuccessor(TaskID task) noexcept
+	{
+		return taskRegistry.GetSuccessor(task);
+	}
+
 	/// @brief The registry itself, for capacity and growth. See TaskRegistry.
 	[[nodiscard]] TaskRegistry& GetRegistry() noexcept
 	{

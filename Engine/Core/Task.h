@@ -36,6 +36,12 @@ private:
 	// Number of RangedTasks
 	TNumSubTasks numSubTasks;
 
+	/// @brief How many work items have been handed out for this task, which is never more than numSubTasks.
+	/// @details Lives in what used to be padding, so counting it costs the record nothing. It exists to make
+	///          over-production catchable: a task that hands out more items than it reserved reports done before the
+	///          last one runs, and a task that reports done early is the hang this subsystem has been debugged for.
+	TNumSubTasks numGeneratedSubTasks;
+
 	// Number of finished RangedTasks
 	std::atomic<TNumSubTasks> numFinishedSubTasks;
 
@@ -53,7 +59,18 @@ public:
 	Task(StaticString taskName, TRunnable func, void* userData) noexcept;
 	~Task() = default;
 
-	void Start(TIndex numberOfSubTasks, TIndex startIndex, TIndex endIndex, uint8_t priority = 0) noexcept;
+	/// @brief Declare how many work items this task will be split into, before any of them is queued.
+	/// @details The join is decided by counting finished items against this figure, so the figure has to be the
+	///          truth before the first item can be seen by a worker. Reserving afterwards lets a task report
+	///          itself done when one item of three has run, and a caller waiting on that never wakes up.
+	/// @note Call it once, on a task the registry has just issued, before the first GenerateSubTask is queued.
+	///       Reserving is not a promise that somebody waits: a fire-and-forget job (R16) still reserves the number
+	///       of items it queues, and simply has nobody reading the join. What is optional is the reporting, not the
+	///       count.
+	void ReserveSubTasks(TNumSubTasks count) noexcept
+	{
+		numSubTasks = count;
+	}
 
 	// Wait
 	void BusyWait() const noexcept;
@@ -117,10 +134,18 @@ private:
 	void LoadIntoRecord(TaskID newID, StaticString taskName, TRunnable newFunc, void* newUserData) noexcept;
 
 public:
-	// Increase numFinishedSubTasks.  It guarantees all other global memory values are synced properly.
-	void ReportFinishedSubTask() noexcept
+	/// @brief Count one finished work item, and say whether this one finished the join.
+	/// @return True in exactly one caller when the last reserved item finishes, which is what makes it safe for
+	///         that caller to act as the one that completed the task. The comparison is an equality rather than a
+	///         threshold on purpose: past the last item every later caller would otherwise also be told it won,
+	///         and a join that fires twice dispatches its successor twice.
+	/// @details The counter is the join of R9, and reading it with seq_cst is what orders the task's own writes
+	///          before the completion anyone else will observe.
+	bool ReportFinishedSubTask() noexcept
 	{
-		numFinishedSubTasks.fetch_add(1, std::memory_order::seq_cst);
+		const auto finishedBefore = numFinishedSubTasks.fetch_add(1, std::memory_order::seq_cst);
+
+		return finishedBefore + 1 == numSubTasks;
 	}
 
 	[[nodiscard]] TRunnable GetRunnable() const noexcept
@@ -138,7 +163,10 @@ public:
 		return userData;
 	}
 
-	// Generate a RangedTask with the given range [start, end)
+	/// @brief Build one work item for the index range [start, end), which is what a queue holds.
+	/// @details Does not count anything: the join is what ReserveSubTasks declared, not what has been handed out.
+	///          Handing out more items than were reserved makes the task report itself finished before the last
+	///          item ran, so the generated count is checked against the reservation and the excess is reported.
 	RangedTask GenerateSubTask(TIndex start, TIndex end, uint8_t priority = 0) noexcept;
 };
 } // namespace hbe

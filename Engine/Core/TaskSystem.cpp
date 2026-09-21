@@ -420,6 +420,7 @@ void TaskSystemTest::Prepare()
 
 		auto& engine = Engine::Get();
 		auto& taskSys = engine.GetTaskSystem();
+		task.ReserveSubTasks(1);
 		taskSys.Enqueue(task.GenerateSubTask(0, 0));
 		task.BusyWait();
 
@@ -465,6 +466,7 @@ void TaskSystemTest::Prepare()
 		auto& engine = Engine::Get();
 		auto& taskSys = engine.GetTaskSystem();
 
+		task.ReserveSubTasks(NumSubtasks);
 		for (std::size_t i = 0; i < Count; i += Increment)
 		{
 			taskSys.Enqueue(task.GenerateSubTask(i, i + Increment));
@@ -524,6 +526,7 @@ void TaskSystemTest::Prepare()
 		auto& engine = Engine::Get();
 		auto& taskSys = engine.GetTaskSystem();
 
+		task.ReserveSubTasks(NumSubtasks);
 		for (std::size_t i = 0; i < Count; i += Increment)
 		{
 			taskSys.Enqueue(task.GenerateSubTask(i, i + Increment));
@@ -575,6 +578,7 @@ void TaskSystemTest::Prepare()
 		auto& laneTask = *trackedLane;
 
 		constexpr unsigned fifoTasks = 3;
+		laneTask.ReserveSubTasks(fifoTasks + 1);
 		for (unsigned index = 0; index < fifoTasks; ++index)
 		{
 			stream.EnqueueFifo(laneTask.GenerateSubTask(index, index + 1));
@@ -645,6 +649,7 @@ void TaskSystemTest::Prepare()
 
 		const TrackedTask trackedBusy("BudgetTask", busyFunc, nullptr);
 		auto& busyTask = *trackedBusy;
+		busyTask.ReserveSubTasks(1);
 		taskSys.Enqueue(workerIndex, busyTask.GenerateSubTask(0, 1));
 		busyTask.Wait(1);
 
@@ -815,6 +820,7 @@ void TaskSystemTest::Prepare()
 
 		std::atomic<unsigned> burnRuns{0};
 		const TrackedTask burn("SpendAllowance", BurnCpu, &burnRuns);
+		(*burn).ReserveSubTasks(1);
 		taskSys.Enqueue(workerIndex, (*burn).GenerateSubTask(0, 1));
 
 		const auto refusalsBefore = stream.GetGeneralQueueRefusalCount();
