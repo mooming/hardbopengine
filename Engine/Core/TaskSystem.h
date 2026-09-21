@@ -137,6 +137,41 @@ public:
 		return taskRegistry.GetSuccessor(task);
 	}
 
+	/// @brief Deliver a finished task's outcome: copy its result packet onto the successor recorded for it and queue
+	///        that successor on the stream the packet names.
+	/// @details This is §6.1's arrow, and the thread that closed the join runs it - whichever worker happened to finish
+	///          the last work item, not a thread chosen for the purpose. Nothing accumulates in between: there is no
+	///          completion buffer, no per-stream queue of finished tasks, no scan of the registry. A task carries its
+	///          own outcome, so the outcome is already in the hands of the thread holding the task, and one enqueue is
+	///          the whole delivery. Chains work for free: the successor's own work item closes its join the same way
+	///          and dispatches in turn, so A can wake B and B wake C without the engine knowing pipelines exist (R9).
+	/// @details __What must be true for a successor to run.__ The finishing task must have recorded a successor, and
+	/// its
+	///          result packet must name a destination stream - a successor with no stream named is a routing decision
+	///          nobody has made, so it is reported and left undone rather than guessed at. The successor must still be
+	///          tracked: one released while its producer ran is a caller abandoning work it asked to be told about, and
+	///          that is reported too. The successor must have reserved at least one subtask, because this queues
+	///          exactly one work item covering its whole range. Whatever the successor held in its own packet is
+	///          overwritten by the outcome - the successor's packet is the outcome slot, and parameters for a successor
+	///          have to travel somewhere the successor reads them.
+	/// @details __What one delivery touches.__ A lookup, a 128-byte packet copy, then the destination stream's queue
+	///          lock for the length of a push. That lock is this shape's only coupling: a worker delivering into a
+	///          stream can wait for that stream's lock, and a stream holds its lock across the lane rotation that picks
+	///          its next work item. The alternative - a completion list the base stream drains - moves that wait off
+	///          the worker and onto memory, at the price of a container that outlives the task it describes, which is
+	///          the shape this design has declined three times: the result buffer at R23, the result container at
+	///          `ac496e6`, and the completion list dropped while writing R30. The wait here is one push long and only
+	///          ever for a stream somebody named out loud.
+	/// @note __Every refusal is reported.__ A successor that is never dispatched stops a chain in one place, and the
+	///       symptom is a task that simply never runs - which surfaces as a hang far downstream. Each path that
+	///       declines to dispatch names the pair that caused it.
+	/// @param finishedTask The identity of the task whose join just closed. A null identity - a task built by hand
+	///        rather than created through the task system - has nowhere to have recorded a successor, so nothing runs.
+	/// @threadsafe Called by the thread that closed the join, from inside the work item that closed it. It queues the
+	///             successor rather than running it, so a chain of any depth costs one push per link and never grows
+	///             the caller's stack.
+	void DispatchSuccessor(TaskID finishedTask) noexcept;
+
 	/// @brief The registry itself, for capacity and growth. See TaskRegistry.
 	[[nodiscard]] TaskRegistry& GetRegistry() noexcept
 	{

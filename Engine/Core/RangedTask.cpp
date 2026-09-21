@@ -8,7 +8,7 @@
 
 namespace hbe
 {
-void RangedTask::Run(Task& task) noexcept
+bool RangedTask::Run(Task& task) noexcept
 {
 	auto runnable = task.GetRunnable();
 	if (runnable == nullptr)
@@ -18,17 +18,19 @@ void RangedTask::Run(Task& task) noexcept
 		auto logger = Logger::Get(task.GetName());
 		logger.OutError([](auto& ls) { ls << "Null Runnable."; });
 
-		return;
+		return false;
 	}
 
 	auto userData = task.GetUserData();
 	auto delta = runnable(userData, currentIndex, end);
 	currentIndex += delta;
 
-	if (HasFinished())
+	if (!HasFinished())
 	{
-		task.ReportFinishedSubTask();
+		return false;
 	}
+
+	return task.ReportFinishedSubTask();
 }
 
 RangedTask::RangedTask(Task& task, TIndex start, TIndex end, uint8_t priority) noexcept

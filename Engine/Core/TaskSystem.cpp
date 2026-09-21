@@ -224,6 +224,81 @@ void TaskSystem::RunBudgetWindowPass() noexcept
 	}
 }
 
+void TaskSystem::DispatchSuccessor(TaskID finishedTask) noexcept
+{
+	Task* finished = taskRegistry.Find(finishedTask);
+	if (finished == nullptr)
+	{
+		return;
+	}
+
+	const TaskID successorID = taskRegistry.GetSuccessor(finishedTask);
+	if (successorID.IsNull())
+	{
+		return;
+	}
+
+	const ResultPacket& packet = finished->GetResult();
+	const std::uint8_t destination = packet.GetDestinationStreamIndex();
+	if (destination == ResultPacket::NoDestinationStream)
+	{
+		auto log = Logger::Get(GetName());
+		log.OutError([finishedTask, successorID](auto& ls)
+		{
+			ls << "Task record " << finishedTask.index << " generation " << finishedTask.generation
+			   << " recorded a successor and closed its join, but its result packet names no destination stream, so"
+			   << " record " << successorID.index << " generation " << successorID.generation
+			   << " was never dispatched. A chain that stops here has no symptom until something downstream waits. ";
+		});
+		return;
+	}
+
+	if (!HasStream(destination))
+	{
+		auto log = Logger::Get(GetName());
+		const auto numStreams = streams.Size();
+		log.OutError([finishedTask, successorID, destination, numStreams](auto& ls)
+		{
+			ls << "Task record " << finishedTask.index << " generation " << finishedTask.generation
+			   << " addressed stream " << static_cast<unsigned int>(destination) << " for record " << successorID.index
+			   << " generation " << successorID.generation << ", and this engine has " << numStreams
+			   << " streams. Nothing was dispatched. ";
+		});
+		return;
+	}
+
+	Task* successor = taskRegistry.Find(successorID);
+	if (successor == nullptr)
+	{
+		auto log = Logger::Get(GetName());
+		log.OutError([finishedTask, successorID](auto& ls)
+		{
+			ls << "Task record " << finishedTask.index << " generation " << finishedTask.generation
+			   << " finished, and its successor, record " << successorID.index << " generation "
+			   << successorID.generation << ", is no longer tracked. A successor released while its producer ran"
+			   << " abandoned the outcome it asked for, so nothing was dispatched. ";
+		});
+		return;
+	}
+
+	if (successor->NumSubTasks() == 0)
+	{
+		auto log = Logger::Get(GetName());
+		log.OutError([successorID](auto& ls)
+		{
+			ls << "Record " << successorID.index << " generation " << successorID.generation
+			   << " is named as a successor but reserved no subtask, so there is no work item to queue for it: an"
+			   << " outcome is delivered as one item covering the successor's whole range, which is one reserved"
+			   << " subtask. Nothing was dispatched. ";
+		});
+		return;
+	}
+
+	successor->GetResult() = packet;
+
+	streams[destination].EnqueueFifo(successor->GenerateSubTask(0, 1));
+}
+
 void TaskSystem::DispatchToMainThread(TMainThreadTask taskFunc, void* userData, uint8_t priority) noexcept
 {
 	mainThreadTaskQueue.Enqueue(taskFunc, userData, priority);
@@ -387,6 +462,112 @@ public:
 		return *task;
 	}
 };
+
+/// @brief The identity, the routing and the counters of one task in an outcome-delivery test.
+/// @details One fixture per task rather than one per test, because a runnable receives user data and an index range
+///          and nothing else: under R23 a task writes its outcome into its own packet, which it reaches by its own
+///          identity through the registry, so the writer has to know who it is. Sharing one fixture between a producer
+///          and its successor would make `self` mean two things at once.
+/// @note `destination` left at NoDestinationStream is how a test expresses "this task produced a result and never
+///       named a stream", which is the half-filled routing case DispatchSuccessor has to refuse out loud.
+struct DeliveryFixture final
+{
+	TaskSystem* taskSystem{nullptr};
+	TaskID self{};
+	TaskID next{};
+	std::uint8_t destination{ResultPacket::NoDestinationStream};
+
+	std::atomic<unsigned> stageOneRuns{0};
+	std::atomic<unsigned> stageTwoRuns{0};
+	std::atomic<unsigned> stageThreeRuns{0};
+	std::atomic<unsigned> sentinelRuns{0};
+	std::atomic<std::uint8_t> deliveredKind{ResultPacket::KindNoResult};
+	std::atomic<std::uint8_t> deliveredPayload{0};
+};
+
+/// @brief Write an outcome into the packet of the task named by `writer`, addressed through the registry.
+void WriteOutcome(DeliveryFixture& fixture, TaskID writer, std::uint8_t kind, std::uint8_t outcomeByte) noexcept
+{
+	Task* task = fixture.taskSystem->FindTask(writer);
+	if (task == nullptr)
+	{
+		return;
+	}
+
+	ResultPacket& packet = task->GetResult();
+	packet.SetKind(kind);
+	packet.SetDestinationStreamIndex(fixture.destination);
+	packet.GetPayload()[0] = outcomeByte;
+}
+
+/// @brief Produce an outcome and stop. The first link of a chain, and a task whose join closes normally.
+std::size_t RunStageOne(void* userData, TIndex startIndex, TIndex endIndex) noexcept
+{
+	DeliveryFixture& fixture = *static_cast<DeliveryFixture*>(userData);
+	fixture.stageOneRuns.fetch_add(1, std::memory_order_relaxed);
+	WriteOutcome(fixture, fixture.self, ResultPacket::FirstApplicationKind, 0xA5);
+	return static_cast<std::size_t>(endIndex - startIndex);
+}
+
+/// @brief Record a successor from inside the running task, then produce an outcome for it. The middle link.
+/// @details Recording from inside the runnable, rather than by the test before enqueueing, is deliberate: it is the
+///          shape a real producer has, where the task to wake is only known once the work has been done. With `next`
+///          left null it clears a successor, which the registry accepts and which no chain should follow.
+std::size_t RunStageTwo(void* userData, TIndex startIndex, TIndex endIndex) noexcept
+{
+	DeliveryFixture& fixture = *static_cast<DeliveryFixture*>(userData);
+	fixture.stageTwoRuns.fetch_add(1, std::memory_order_relaxed);
+	fixture.taskSystem->SetSuccessor(fixture.self, fixture.next);
+	WriteOutcome(fixture, fixture.self, ResultPacket::FirstApplicationKind, 0x5A);
+	return static_cast<std::size_t>(endIndex - startIndex);
+}
+
+/// @brief Read the outcome this task was dispatched with, and count the run. The last link.
+std::size_t RunStageThree(void* userData, TIndex startIndex, TIndex endIndex) noexcept
+{
+	DeliveryFixture& fixture = *static_cast<DeliveryFixture*>(userData);
+	fixture.stageThreeRuns.fetch_add(1, std::memory_order_relaxed);
+
+	Task* task = fixture.taskSystem->FindTask(fixture.self);
+	if (task != nullptr)
+	{
+		fixture.deliveredKind.store(task->GetResult().GetKind(), std::memory_order_relaxed);
+		fixture.deliveredPayload.store(task->GetResult().GetPayload()[0], std::memory_order_relaxed);
+	}
+
+	return static_cast<std::size_t>(endIndex - startIndex);
+}
+
+/// @brief Count a run and nothing else.
+/// @details This is the in-band barrier the delivery tests are built on, and it exists because a negative cannot be
+///          slept for. Queued behind the subject task on the same lane, it can only start once the subject's work item
+///          has left the stream - and DispatchSuccessor runs inside that item, before the stream takes anything else -
+///          so its run is proof the delivery attempt is over, rather than an amount of time that might be enough.
+///          Measured before this existed: a test that slept 200 ms and then looked found what the machine happened to
+///          have done in 200 ms, which passed on a loaded machine for the wrong reason and failed on an idle one for
+///          the right one.
+std::size_t RunSentinel(void* userData, TIndex startIndex, TIndex endIndex) noexcept
+{
+	DeliveryFixture& fixture = *static_cast<DeliveryFixture*>(userData);
+	fixture.sentinelRuns.fetch_add(1, std::memory_order_relaxed);
+	return static_cast<std::size_t>(endIndex - startIndex);
+}
+
+/// @brief Wait until a predicate holds, and say whether it came to hold within `patience`.
+/// @details Delivery is done by the thread that closed the join, so unlike a budget window it needs nothing from the
+///          base stream and a test may wait for it instead of pumping anything. Predicates count runs, never a
+///          measurement a window reopen could zero.
+template <typename TPredicate>
+bool WaitFor(const TPredicate& holds, std::chrono::milliseconds patience) noexcept
+{
+	const auto deadline = std::chrono::steady_clock::now() + patience;
+	while (!holds() && std::chrono::steady_clock::now() < deadline)
+	{
+		std::this_thread::sleep_for(std::chrono::milliseconds(1));
+	}
+
+	return holds();
+}
 
 } // namespace
 
@@ -906,7 +1087,404 @@ void TaskSystemTest::Prepare()
 			   << "an unspent allowance - or an unlimited stream is being measured and charged anyway." << lferr;
 		}
 	});
+
+
+	AddTest("A finished task hands its outcome to the successor on the stream it named", [this](TLogOut& ls)
+	{
+		auto& taskSys = Engine::Get().GetTaskSystem();
+		const auto producerStream = TaskSystem::GetIOTaskStreamIndex() + 1;
+		const auto successorStream = producerStream + 1;
+		if (!taskSys.HasStream(successorStream))
+		{
+			ls << "This engine has no stream " << successorStream << ", so a delivery cannot be shown crossing from"
+			   << " one stream to another." << lferr;
+			return;
+		}
+
+		DeliveryFixture producer;
+		producer.taskSystem = &taskSys;
+		producer.destination = static_cast<std::uint8_t>(producerStream);
+
+		DeliveryFixture successor;
+		successor.taskSystem = &taskSys;
+
+		const TrackedTask producerTask("DeliverProducer", RunStageOne, &producer);
+		const TrackedTask successorTask("DeliverSuccessor", RunStageThree, &successor);
+		const TrackedTask sentinelTask("DeliverSentinel", RunSentinel, &producer);
+		producer.self = producerTask.id;
+		successor.self = successorTask.id;
+
+		producer.destination = static_cast<std::uint8_t>(successorStream);
+		(*producerTask).ReserveSubTasks(1);
+		(*successorTask).ReserveSubTasks(1);
+		(*sentinelTask).ReserveSubTasks(1);
+		taskSys.SetSuccessor(producer.self, successor.self);
+
+		taskSys.Enqueue(producerStream, (*producerTask).GenerateSubTask(0, 1));
+		taskSys.Enqueue(producerStream, (*sentinelTask).GenerateSubTask(0, 1));
+
+		if (!WaitFor([&producer] { return producer.sentinelRuns.load() > 0; }, std::chrono::seconds(5)))
+		{
+			ls << "The sentinel queued behind the producer never ran within 5 s, so the producer's work item never"
+			   << " left stream " << producerStream << " and no delivery could have been attempted." << lferr;
+			return;
+		}
+
+		const bool delivered =
+				WaitFor([&successor] { return successor.stageThreeRuns.load() > 0; }, std::chrono::seconds(5));
+
+		ls << "Producer ran " << producer.stageOneRuns.load() << " time(s); successor on stream "
+		   << static_cast<unsigned int>(producer.destination) << " ran " << successor.stageThreeRuns.load()
+		   << " time(s), reading kind " << static_cast<unsigned int>(successor.deliveredKind.load())
+		   << " and payload byte " << static_cast<int>(successor.deliveredPayload.load()) << "." << lf;
+
+		if (!delivered)
+		{
+			ls << "The producer closed its join with a successor recorded and its packet naming stream "
+			   << static_cast<unsigned int>(producer.destination) << ", and that successor was never dispatched."
+			   << " This is the whole of section 6.1 not happening." << lferr;
+		}
+		else if (successor.deliveredKind.load() != ResultPacket::FirstApplicationKind ||
+				 successor.deliveredPayload.load() != 0xA5)
+		{
+			ls << "The successor ran but its packet is not the outcome the producer wrote: kind "
+			   << static_cast<unsigned int>(successor.deliveredKind.load()) << " byte "
+			   << static_cast<int>(successor.deliveredPayload.load()) << ", expected kind "
+			   << static_cast<unsigned int>(ResultPacket::FirstApplicationKind)
+			   << " and byte 165. Dispatch copying the packet across is the delivery, not a courtesy." << lferr;
+		}
+
+		if (producer.stageOneRuns.load() != 1)
+		{
+			ls << "The producer ran " << producer.stageOneRuns.load() << " time(s), and a task queued once runs once"
+			   << " unless something re-dispatched it." << lferr;
+		}
+	});
+
+	AddTest("Outcomes chain: a successor that produces in turn dispatches its own successor", [this](TLogOut& ls)
+	{
+		auto& taskSys = Engine::Get().GetTaskSystem();
+		const auto firstStream = TaskSystem::GetIOTaskStreamIndex() + 1;
+		const auto lastStream = firstStream + 1;
+		if (!taskSys.HasStream(lastStream))
+		{
+			ls << "This engine has no stream " << lastStream << ", so a two-link chain cannot cross streams." << lferr;
+			return;
+		}
+
+		DeliveryFixture first;
+		DeliveryFixture middle;
+		DeliveryFixture last;
+		first.taskSystem = &taskSys;
+		middle.taskSystem = &taskSys;
+		last.taskSystem = &taskSys;
+
+		const TrackedTask firstTask("ChainFirst", RunStageOne, &first);
+		const TrackedTask middleTask("ChainMiddle", RunStageTwo, &middle);
+		const TrackedTask lastTask("ChainLast", RunStageThree, &last);
+		const TrackedTask sentinelTask("ChainSentinel", RunSentinel, &first);
+		first.self = firstTask.id;
+		middle.self = middleTask.id;
+		last.self = lastTask.id;
+		first.next = middle.self;
+		middle.next = last.self;
+		first.destination = static_cast<std::uint8_t>(firstStream);
+		middle.destination = static_cast<std::uint8_t>(lastStream);
+
+		(*firstTask).ReserveSubTasks(1);
+		(*middleTask).ReserveSubTasks(1);
+		(*lastTask).ReserveSubTasks(1);
+		(*sentinelTask).ReserveSubTasks(1);
+		taskSys.SetSuccessor(first.self, middle.self);
+
+		taskSys.Enqueue(firstStream, (*firstTask).GenerateSubTask(0, 1));
+		taskSys.Enqueue(firstStream, (*sentinelTask).GenerateSubTask(0, 1));
+
+		WaitFor([&first] { return first.sentinelRuns.load() > 0; }, std::chrono::seconds(5));
+		const bool middleRan = WaitFor([&middle] { return middle.stageTwoRuns.load() > 0; }, std::chrono::seconds(5));
+		const bool lastRan = WaitFor([&last] { return last.stageThreeRuns.load() > 0; }, std::chrono::seconds(5));
+
+		ls << "Links that ran: first " << first.stageOneRuns.load() << ", middle " << middle.stageTwoRuns.load()
+		   << ", last " << last.stageThreeRuns.load() << "; last read byte "
+		   << static_cast<int>(last.deliveredPayload.load()) << "." << lf;
+
+		if (!middleRan)
+		{
+			ls << "The first link closed its join and the middle was never dispatched, so the chain has one link."
+			   << lferr;
+		}
+		else if (!lastRan)
+		{
+			ls << "The middle link ran, recorded its own successor and produced an outcome, and that successor was"
+			   << " never dispatched. A successor dispatched by a task the engine itself dispatched is the case R9"
+			   << " is for: if only the first link's outcome ever routes, chains are not supported, they only look"
+			   << " supported until a second link is needed." << lferr;
+		}
+		else if (last.deliveredPayload.load() != 0x5A)
+		{
+			ls << "The last link ran but carries byte " << static_cast<int>(last.deliveredPayload.load())
+			   << " instead of the 90 the middle wrote, so a link forwarded something other than its own outcome."
+			   << lferr;
+		}
+	});
+
+	AddTest("A task that recorded no successor wakes nobody, and does not run itself again", [this](TLogOut& ls)
+	{
+		auto& taskSys = Engine::Get().GetTaskSystem();
+		const auto workerStream = TaskSystem::GetIOTaskStreamIndex() + 1;
+		if (!taskSys.HasStream(workerStream + 1))
+		{
+			ls << "This engine has no stream " << workerStream + 1
+			   << ", so nothing could be shown staying undispatched." << lferr;
+			return;
+		}
+
+		DeliveryFixture producer;
+		producer.taskSystem = &taskSys;
+		producer.destination = static_cast<std::uint8_t>(workerStream + 1);
+
+		DeliveryFixture bystander;
+		bystander.taskSystem = &taskSys;
+
+		const TrackedTask producerTask("NoSuccessorProducer", RunStageOne, &producer);
+		const TrackedTask bystanderTask("NoSuccessorBystander", RunStageTwo, &bystander);
+		const TrackedTask sentinelTask("NoSuccessorSentinel", RunSentinel, &producer);
+		producer.self = producerTask.id;
+		bystander.self = bystanderTask.id;
+
+		(*producerTask).ReserveSubTasks(1);
+		(*bystanderTask).ReserveSubTasks(1);
+		(*sentinelTask).ReserveSubTasks(1);
+
+		taskSys.Enqueue(workerStream, (*producerTask).GenerateSubTask(0, 1));
+		taskSys.Enqueue(workerStream, (*sentinelTask).GenerateSubTask(0, 1));
+
+		if (!WaitFor([&producer] { return producer.sentinelRuns.load() > 0; }, std::chrono::seconds(5)))
+		{
+			ls << "The sentinel never ran, so the producer's item never completed and nothing here was tested."
+			   << lferr;
+			return;
+		}
+
+		std::this_thread::sleep_for(std::chrono::milliseconds(200));
+
+		ls << "Producer ran " << producer.stageOneRuns.load() << " time(s), the bystander it never named ran "
+		   << bystander.stageTwoRuns.load() << " time(s)." << lf;
+
+		if (bystander.stageTwoRuns.load() != 0)
+		{
+			ls << "A task with no successor recorded dispatched one anyway. R16's fire-and-forget job is the common"
+			   << " shape, and if finishing wakes tasks nobody recorded, every fire-and-forget job becomes a dispatch"
+			   << " with an invented target." << lferr;
+		}
+
+		if (producer.stageOneRuns.load() != 1)
+		{
+			ls << "The producer ran " << producer.stageOneRuns.load() << " time(s) from one queueing. A task that"
+			   << " wakes itself when it has no successor is a loop that never ends, and nothing downstream can tell"
+			   << " it apart from slow work." << lferr;
+		}
+	});
+
+	AddTest("A successor with no stream named in the packet is refused out loud, not guessed", [this](TLogOut& ls)
+	{
+		auto& taskSys = Engine::Get().GetTaskSystem();
+		const auto workerStream = TaskSystem::GetIOTaskStreamIndex() + 1;
+		if (!taskSys.HasStream(workerStream))
+		{
+			ls << "No worker stream, so no delivery could be attempted at all." << lferr;
+			return;
+		}
+
+		DeliveryFixture producer;
+		producer.taskSystem = &taskSys;
+
+		DeliveryFixture successor;
+		successor.taskSystem = &taskSys;
+
+		const TrackedTask producerTask("NoStreamProducer", RunStageOne, &producer);
+		const TrackedTask successorTask("NoStreamSuccessor", RunStageTwo, &successor);
+		const TrackedTask sentinelTask("NoStreamSentinel", RunSentinel, &producer);
+		producer.self = producerTask.id;
+		successor.self = successorTask.id;
+
+		(*producerTask).ReserveSubTasks(1);
+		(*successorTask).ReserveSubTasks(1);
+		(*sentinelTask).ReserveSubTasks(1);
+		taskSys.SetSuccessor(producer.self, successor.self);
+
+		taskSys.Enqueue(workerStream, (*producerTask).GenerateSubTask(0, 1));
+		taskSys.Enqueue(workerStream, (*sentinelTask).GenerateSubTask(0, 1));
+
+		if (!WaitFor([&producer] { return producer.sentinelRuns.load() > 0; }, std::chrono::seconds(5)))
+		{
+			ls << "The sentinel never ran, so the delivery was never attempted." << lferr;
+			return;
+		}
+
+		std::this_thread::sleep_for(std::chrono::milliseconds(200));
+
+		ls << "The producer produced a result naming no stream, and its successor ran " << successor.stageTwoRuns.load()
+		   << " time(s). An error naming the pair is the only output of this test." << lf;
+
+		if (successor.stageTwoRuns.load() != 0)
+		{
+			ls << "A successor was dispatched although its packet named no stream, so the engine picked a stream for"
+			   << " a routing decision its caller never made." << lferr;
+		}
+	});
+
+	AddTest("A successor addressed to a stream this engine does not have is refused", [this](TLogOut& ls)
+	{
+		auto& taskSys = Engine::Get().GetTaskSystem();
+		const auto workerStream = TaskSystem::GetIOTaskStreamIndex() + 1;
+		if (!taskSys.HasStream(workerStream))
+		{
+			ls << "No worker stream, so the producing half of this test cannot run." << lferr;
+			return;
+		}
+
+		DeliveryFixture producer;
+		producer.taskSystem = &taskSys;
+		producer.destination = 0xFE;
+
+		DeliveryFixture successor;
+		successor.taskSystem = &taskSys;
+
+		const TrackedTask producerTask("BogusStreamProducer", RunStageOne, &producer);
+		const TrackedTask successorTask("BogusStreamSuccessor", RunStageTwo, &successor);
+		const TrackedTask sentinelTask("BogusStreamSentinel", RunSentinel, &producer);
+		producer.self = producerTask.id;
+		successor.self = successorTask.id;
+
+		(*producerTask).ReserveSubTasks(1);
+		(*successorTask).ReserveSubTasks(1);
+		(*sentinelTask).ReserveSubTasks(1);
+		taskSys.SetSuccessor(producer.self, successor.self);
+
+		taskSys.Enqueue(workerStream, (*producerTask).GenerateSubTask(0, 1));
+		taskSys.Enqueue(workerStream, (*sentinelTask).GenerateSubTask(0, 1));
+
+		if (!WaitFor([&producer] { return producer.sentinelRuns.load() > 0; }, std::chrono::seconds(5)))
+		{
+			ls << "The sentinel never ran, so the delivery was never attempted." << lferr;
+			return;
+		}
+
+		std::this_thread::sleep_for(std::chrono::milliseconds(200));
+
+		ls << "Stream 254 does not exist, and the successor ran " << successor.stageTwoRuns.load() << " time(s)." << lf;
+
+		if (successor.stageTwoRuns.load() != 0)
+		{
+			ls << "A destination of 254 reached a queue, so the byte is used as an index unchecked against the stream"
+			   << " count - a wild write into an Array the engine does not own." << lferr;
+		}
+	});
+
+	AddTest("A successor released while its producer runs is reported and never dispatched", [this](TLogOut& ls)
+	{
+		auto& taskSys = Engine::Get().GetTaskSystem();
+		const auto workerStream = TaskSystem::GetIOTaskStreamIndex() + 1;
+		if (!taskSys.HasStream(workerStream))
+		{
+			ls << "No worker stream, so no delivery could be attempted." << lferr;
+			return;
+		}
+
+		DeliveryFixture producer;
+		producer.taskSystem = &taskSys;
+		producer.destination = static_cast<std::uint8_t>(workerStream);
+
+		DeliveryFixture successor;
+		successor.taskSystem = &taskSys;
+
+		const TaskID abandonedID = taskSys.CreateTask("AbandonedSuccessor", RunStageTwo, &successor);
+		successor.self = abandonedID;
+		(*taskSys.FindTask(abandonedID)).ReserveSubTasks(1);
+		taskSys.ReleaseTask(abandonedID);
+
+		const TrackedTask producerTask("ReleasedSuccessorProducer", RunStageOne, &producer);
+		const TrackedTask sentinelTask("ReleasedSuccessorSentinel", RunSentinel, &producer);
+		producer.self = producerTask.id;
+		producer.next = abandonedID;
+
+		(*producerTask).ReserveSubTasks(1);
+		(*sentinelTask).ReserveSubTasks(1);
+		taskSys.SetSuccessor(producer.self, abandonedID);
+
+		taskSys.Enqueue(workerStream, (*producerTask).GenerateSubTask(0, 1));
+		taskSys.Enqueue(workerStream, (*sentinelTask).GenerateSubTask(0, 1));
+
+		const bool barrierRan =
+				WaitFor([&producer] { return producer.sentinelRuns.load() > 0; }, std::chrono::seconds(5));
+
+		ls << "The task was released at record " << abandonedID.index << " generation " << abandonedID.generation
+		   << " before its producer ran; the sentinel completed the barrier: " << (barrierRan ? "yes" : "no")
+		   << ", and the released task's runnable ran " << successor.stageTwoRuns.load() << " time(s)." << lf;
+
+		if (successor.stageTwoRuns.load() != 0)
+		{
+			ls << "A task released before its producer finished still ran, so the registry handed out a record that"
+			   << " was on the free list - or its slot had been taken by a different task, which then ran someone"
+			   << " else's work under the abandoned identity." << lferr;
+		}
+
+		if (!barrierRan)
+		{
+			ls << "The sentinel never ran, so this test observed nothing." << lferr;
+		}
+	});
+
+	AddTest("A successor that reserved no subtask cannot be dispatched and says why", [this](TLogOut& ls)
+	{
+		auto& taskSys = Engine::Get().GetTaskSystem();
+		const auto workerStream = TaskSystem::GetIOTaskStreamIndex() + 1;
+		if (!taskSys.HasStream(workerStream))
+		{
+			ls << "No worker stream, so no delivery could be attempted." << lferr;
+			return;
+		}
+
+		DeliveryFixture producer;
+		producer.taskSystem = &taskSys;
+		producer.destination = static_cast<std::uint8_t>(workerStream);
+
+		DeliveryFixture successor;
+		successor.taskSystem = &taskSys;
+
+		const TrackedTask producerTask("UnreservedProducer", RunStageOne, &producer);
+		const TrackedTask successorTask("UnreservedSuccessor", RunStageTwo, &successor);
+		const TrackedTask sentinelTask("UnreservedSentinel", RunSentinel, &producer);
+		producer.self = producerTask.id;
+		successor.self = successorTask.id;
+
+		(*producerTask).ReserveSubTasks(1);
+		(*sentinelTask).ReserveSubTasks(1);
+		taskSys.SetSuccessor(producer.self, successor.self);
+
+		taskSys.Enqueue(workerStream, (*producerTask).GenerateSubTask(0, 1));
+		taskSys.Enqueue(workerStream, (*sentinelTask).GenerateSubTask(0, 1));
+
+		if (!WaitFor([&producer] { return producer.sentinelRuns.load() > 0; }, std::chrono::seconds(5)))
+		{
+			ls << "The sentinel never ran, so the delivery was never attempted." << lferr;
+			return;
+		}
+
+		std::this_thread::sleep_for(std::chrono::milliseconds(200));
+
+		ls << "The successor reserved nothing under R29 and ran " << successor.stageTwoRuns.load() << " time(s)." << lf;
+
+		if (successor.stageTwoRuns.load() != 0)
+		{
+			ls << "A successor with no reserved subtask was dispatched. Its join counter then never reaches a count"
+			   << " it was never given, so the task runs and closes nothing - the one shape of bug that looks like"
+			   << " working code and hangs on the next link." << lferr;
+		}
+	});
 }
+
 
 } // namespace hbe
 #endif //__UNIT_TEST__

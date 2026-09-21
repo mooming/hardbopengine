@@ -168,3 +168,12 @@ Successor goes in the record, and the record is padded to 256 bytes for it. Next
 successor `TaskID` on the record, the join counter, `RecordSizeBytes` re-pinned at 256 with its static_asserts, the
 default table re-priced at 1 MiB, completion publication, and the pass's triage step enqueuing the successor onto
 the packet's destination stream. Padding never lands alone.
+
+## R30 closed this plan's remaining work, and the plan's shape was wrong (2026-09-22)
+
+Step 2 of the pass table - "drain the completion list into a local batch" - and with it R23e's bounded list are
+**gone**: the owner rejected the container ("there's not task completion container. Since task itself has a data
+for its result"), and delivery became one function run by the thread that closes a join. `TaskSystem::DispatchSuccessor`
+is steps 3 and 4 of that table (triage by the packet's destination byte, enqueue the successor on it) with step 2
+removed, and step 1 (publish) deleted as unnecessary. The completion-list header written during that reasoning was
+deleted before it reached a build; nothing referenced it.

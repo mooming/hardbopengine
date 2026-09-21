@@ -51,11 +51,16 @@ public:
 		return currentIndex >= end;
 	}
 
-	/// @brief Run this range of the task's work.
+	/// @brief Run this item's slice of the task's work and report whether it was the last one.
 	/// @param task The task this item was issued for, resolved by the stream from TaskID before calling.
 	/// @note The caller has already checked that the ID names a live task. A work item whose task has been released
 	///       is dropped by whoever dequeued it; nothing here reaches for a task by itself.
-	void Run(Task& task) noexcept;
+	/// @return True when this call closed the task's join, meaning every reserved subtask has now reported in and the
+	///         outcome, if any, is ready to route. Exactly one item of a task ever gets true, and under R29 that item
+	///         is the last reserved one rather than merely one of the ones past the count.
+	/// @note The caller that gets true is the thread that finished the work, and it owes the successor a dispatch:
+	///       TaskSystem::DispatchSuccessor. Nothing else delivers an outcome.
+	bool Run(Task& task) noexcept;
 
 private:
 	RangedTask(Task& task, TIndex start, TIndex end, uint8_t priority) noexcept;

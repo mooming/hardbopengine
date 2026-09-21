@@ -1,5 +1,50 @@
 # Journal
 
+## Outcome delivery without a container (R30, lands on top of D1 `2ea4d72`)
+
+I came to the owner with a designed completion list - mutex over a pre-allocated array, capacity from the registry,
+overflow proof written out (R23e) - and one sentence killed it: *"there's not task completion container. Since task
+itself has a data for its result."* Same stroke as R23 (result buffer) and `ac496e6` (`ResultContainer`). The header
+I had written was deleted before it reached a build; nothing referenced it. What is left is one function,
+`TaskSystem::DispatchSuccessor`, run by **the thread that closed the join**: copy the finished task's 128-byte packet
+onto the successor's record, push one work item onto the stream the packet's destination byte names. Section 6.1 drew
+that arrow producer-to-B-in-the-first-place; routing it through a buffer the base stream drains was my addition.
+
+Four refusal paths, each logging the pair that caused it, because a half-filled routing field shows up as a task
+that never runs and therefore as a hang far downstream: no stream named, stream not in this engine, successor no
+longer tracked (released while its producer ran), successor reserved no subtask under R29. No successor recorded is
+the common case (R16) and stays silent. Chains are not special - dispatch queues rather than runs, so A wakes B
+wakes C for one push per link and no stack growth.
+
+**Three measurement/ownership errors of mine, all found by the harness rather than by luck.**
+
+1. The wall-clock runner reported **exit 0 when the child died by a signal** (`exit($? >> 8)` discards the signal
+   number). Three mutations that killed the process - out-of-bounds stream index, released successor dereferenced,
+   reservation check removed - were being read as green. Fixed to `128 + signal`, self-proved against a child that
+   aborts itself, and every mutation verdict re-run. Any earlier conclusion of the form "exit 0 therefore alive"
+   was only as good as this runner; the gate itself was safe because it also required the summary line.
+2. The mutation harness restored sources but not the binary, so the "clean" run taken right after the matrix
+   executed the last mutant's binary and appeared to crash on its own in a test that had passed. Diagnosis cost one
+   rebuild: after `restore`, always rebuild before believing a clean result.
+3. TC10 was written with the receiving role given to the wrong runnable (`RunStageTwo` counts, it does not read the
+   packet) and the expected byte copied from the wrong producer (`0x5A` where stage one writes `0xA5`). It failed,
+   and the failure message - kind 0 byte 0 rather than 165 - was the honest clue that nothing had been read at all.
+
+**Mutation table (8, each with its own attribution).** Successor never queued / packet never copied / loop never
+dispatches / routed to the base stream instead of the named one: each turns TC10 and TC11 red, naming its own
+mechanism. Invents-a-stream-when-none-named: TC13 red. No stream bounds check: process died (trap, 133) inside
+TC14, which is `Array::operator[]`'s own `FatalAssert` catching the wild index. Released successor guard removed:
+**SIGSEGV (139)** inside TC15. Reservation check removed: trap (133) inside TC16, with R29's over-production assert
+printing first - the guard exists to keep that assert unreachable. Clean tree afterwards: exit 0, all 59 collections
+passed, twice.
+
+Suite stays **59 collections** (7 delivery tests went into `TaskSystemTest`). R23c now owns only the budget window,
+R23e is struck, and R23d's reason narrowed - an outcome no longer waits on the base thread, which is worth noting
+because the unit suite blocks that thread for the better part of a minute and every delivery in this repository
+would otherwise have been frozen behind the test run. Left open on purpose: the one work item the engine makes for a
+successor carries the default priority, since making it is the engine's job and R18 bands are declared by whoever
+queues - closing that needs a priority field the record has no room for (R28 priced the room).
+
 ## Successor, join counter, and a declare-first rule (D1, in progress of the three remaining items)
 
 R28 priced the successor field, so this commit pays it: `Record` gains a `TaskID successor` and is padded to **256

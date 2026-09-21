@@ -273,7 +273,10 @@ void TaskStream::RunLoop() noexcept
 
 		{
 			time::ScopedTime timer(duration);
-			rangedTask->Run(*task);
+			if (rangedTask->Run(*task))
+			{
+				taskSys.DispatchSuccessor(task->GetID());
+			}
 		}
 
 		if (chargingBudget)
