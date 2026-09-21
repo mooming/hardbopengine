@@ -172,6 +172,70 @@ public:
 	///             the caller's stack.
 	void DispatchSuccessor(TaskID finishedTask) noexcept;
 
+	/// @brief Split a heavy job into sub-jobs across the streams the caller names, and let the join close on its own.
+	/// @details G5 moved splitting out of the task container and into a primitive here, and R10 asked for it as two
+	///          functions: one taking the streams to use, one asking for a number of streams and letting the engine
+	///          choose them. Neither waits. The engine creates the task, declares the join with ReserveSubTasks (R29),
+	///          queues one work item per contiguous non-empty range, round-robin over the chosen streams, and returns.
+	///          The last item to report in closes the join, and the join dispatches the successor named by the caller -
+	///          so a caller that wants to combine results supplies a task to do the combining, not a thread to park.
+	///          Measured against the alternative this retires: a BusyWait occupies a stream thread for the whole
+	///          duration, and a stream thread is the scarcest thing the engine has.
+	/// @details __Where per-item results go.__ One task holds one 128-byte packet (R23), so the sub-jobs of one split
+	///          cannot each own a packet. Per-item output belongs to the caller - memory that `userData` names - and it
+	///          has to be written in **indexed slots** rather than accumulated: items reach different streams and
+	///          finish in an order nobody controls, so a shared accumulator is a data race that usually passes, which
+	///          is worse than one that fails. The combine happens in the successor's runnable, over slots addressed by
+	///          index, and must be order-independent or ordered by that index. Deriving a slot from the range start,
+	///          which every runnable receives, is how a runnable knows which slot is its own.
+	/// @details __What the arguments become.__ Counts of zero or less are refusals, not empty splits: these counts
+	///          arrive as the engine's signed stream-index type, and a negative one is not a smaller job - it is a
+	///          value that turns into an enormous range the moment it reaches an unsigned index. `numSubJobs` is
+	///          clamped down to `numItems`, because an empty range is a work item that reports in for nothing, and
+	///          further down to 255 because the join counter is 8 bits.
+	///          Both clamps are silent and neither is a refusal: the split still covers every item, with fewer items of
+	///          work. A stream index that is not a stream refuses the whole call - a null TaskID comes back and no task
+	///          is created - because placing the work is the stated intent of naming streams at all, and silently
+	///          dropping part of that list produces a split that runs somewhere else while looking configured. Zero
+	///          items or zero sub-jobs is likewise a refusal, since there is nothing that could be a work item.
+	/// @param successor Routed before the first work item is queued, never after: a join that closes before the
+	///        routing exists delivers to nobody, and with enough streams that is a race rather than a bug report.
+	///        Passing a null TaskID means fire-and-forget (R16) - the split runs, its join closes, and nothing is
+	///        dispatched, which is the shape for work whose result nobody reads.
+	/// @param successorStream Where the successor runs, which a split has to be told and an ordinary task is not. R30
+	///        routes an outcome by the destination byte of the producing task's packet, and a split has no producing
+	///        task: its packet is written by nobody, because the sub-jobs each own a slice of the work and the combine
+	///        happens in the successor. So the byte is filled from this argument, before the first item is queued.
+	///        Naming a successor without naming a stream for it refuses the call, which is the same rule R30 applies
+	///        to a task that produced a result and named nowhere to send it. A sub-job that later rewrites the packet
+	///        overwrites this, and that is how a stage hands its outcome somewhere else on purpose.
+	/// @param priority R18's producer-declared band: zero sends every item down the destination stream's FIFO lane,
+	///        anything above it sends them down that stream's priority lane. One split uses one band throughout, and
+	///        a split cannot carry per-item bands because the items are this call's, not the caller's.
+	/// @return The identity of the created task, or a null TaskID if the call was refused.
+	/// @note __The caller owns what comes back.__ Release the identity when the packet is no longer wanted: nothing
+	///       else will, since the engine has no reason to hold a task whose join has closed, and a split whose
+	///       identity was never kept is a record that stays live until the registry is torn down.
+	/// @threadsafe Callable from any thread, including from inside a running task's own runnable - a split that
+	///             finishes a stage and forks the next one is the shape this is for. It never blocks on a stream: the
+	///             only locks taken are the destination streams' queue locks, one push per item.
+	[[nodiscard]] TaskID ParallelFor(StaticString taskName, TRunnable func, void* userData, TIndex numItems,
+									 TIndex numSubJobs, const TIndex* streamIndices, TIndex numStreamIndices,
+									 uint8_t priority = 0, TaskID successor = {},
+									 TIndex successorStream = NonStreamIndex) noexcept;
+
+	/// @brief The R10 variant that asks for a number of streams instead of naming them.
+	/// @details Streams are chosen from the worker range only - never the base stream and never the IO stream - round
+	///          robin from its first stream, which makes the choice reproducible for a given engine configuration.
+	///          Asking for more streams than exist clamps to what exists rather than refusing; a caller that needs
+	///          specific streams should name them, which is what the other form is for and why both exist (R10: the
+	///          explicit form keeps "not the IO stream" expressible, and the same call behaving differently frame to
+	///          frame is exactly what makes a regression hard to reproduce).
+	/// @return As the explicit form: the created task's identity, or null if the call was refused.
+	[[nodiscard]] TaskID ParallelFor(StaticString taskName, TRunnable func, void* userData, TIndex numItems,
+									 TIndex numSubJobs, TIndex numStreams, uint8_t priority = 0, TaskID successor = {},
+									 TIndex successorStream = NonStreamIndex) noexcept;
+
 	/// @brief The registry itself, for capacity and growth. See TaskRegistry.
 	[[nodiscard]] TaskRegistry& GetRegistry() noexcept
 	{
@@ -266,6 +330,15 @@ public:
 	/// @note Answers "can I index this now", nothing more. It is not a lifetime guarantee across the
 	///       call: a concurrent `JoinAndClear` can retire the stream between the test and the use, so a
 	///       caller logging while another thread tears the pump down still needs its own ordering.
+	/// @brief Cap on how many streams one split may spread across, so the chosen list can live on the caller's stack.
+	/// @note Not a tuning knob: a job spread over more than this many streams is not a shape the engine has, and the
+	///       clamp keeps the choice reproducible instead of allocating.
+	static constexpr TIndex MaxStreamsPerSplit = 64;
+
+	TaskID RunSplit(StaticString taskName, TRunnable func, void* userData, TIndex numItems, TIndex numSubJobs,
+					const TIndex* streamIndices, TIndex numStreamIndices, uint8_t priority, TaskID successor,
+					TIndex successorStream) noexcept;
+
 	[[nodiscard]] bool HasStream(TIndex index) const noexcept
 	{
 		return streams.IsValidIndex(index);

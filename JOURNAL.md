@@ -1,5 +1,48 @@
 # Journal
 
+## `ParallelFor` lands, and two holes fell out of it (R32, R33)
+
+G5 wanted splitting as a primitive on the task system, R10 wanted it as two functions, and G5's ordering constraint
+was that the splitting tests migrate onto it before the protocol they use is deleted. Both forms exist: name the
+streams, or ask for a number and get workers. Neither waits - the last sub-job to report in closes the join and
+dispatches the collator via R30, so no thread is parked on its own children. "Bagel Problem" now runs on it and
+reports 10 sub-jobs, 10 slots, collator once, 1.64493 against pi squared over 6. The retired version accumulated
+into a shared `double` from 10 threads under no synchronisation and added a `static_cast<float>` on the way; the new
+one claims slots with `fetch_add` and sums them by index, which is the collation shape G5 described and is race-free
+by construction.
+
+**First hole, found by running the tests rather than by reading the code.** All three split tests failed with every
+sub-job having run and the collator never dispatched, and the engine said why in its own voice: *"record 3 generation
+1 recorded a successor and closed its join, but its result packet names no destination stream"*. R30 routes by the
+packet byte the producer writes, and a split has no producer - nobody writes its packet, because the sub-jobs own
+slices of the work and the combine is downstream. So `ParallelFor` takes the successor's stream and fills the byte
+before the first item is queued, and naming a successor with no stream refuses the call. Three of my tests had been
+written assuming routing was the engine's business; it is, precisely, nobody's business unless somebody states it.
+
+**Second hole, found by reading the type.** The counts arrive as `TaskSystem::TIndex`, which is
+`Array<TaskStream>::TIndex` - **`int`** (`Array.h:20`), while namespace `hbe::TIndex` is `size_t`. Two different types
+with one spelling in one family of headers; the compiler prints both as `TIndex`, which cost a build cycle to see. A
+negative therefore passed an `== 0` guard and became a fourteen-digit range the moment `GenerateSubTask` read it as a
+`size_t`. Guards are `<= 0` now (R33), with tests. The same row records the second clamp: 300 sub-jobs asked for is
+255 declared, because the join counter is 8 bits and silent truncation to 44 closes a join while most of the work is
+still queued. Measured: 1000 items into 300 sub-jobs -> declared 255, ran 255 items, covered all 1000 units.
+
+**Mutation table (8).** Destination byte never written -> Bagel plus all three split tests red. No clamp to items ->
+the clamp test red. No clamp to the counter -> the truncation test red. No stream validation -> died by trap inside
+the bogus-stream test (`Array::operator[]` catches the index). Variant starting at stream 0 -> the variant test red.
+No successor-stream check, and signed guards relaxed back to zero-checks -> the refusal test red.
+
+**One mutation survived, stated rather than buried.** Recording the successor *after* queueing instead of before came
+back green, with the summary line printed: the race needs a sub-job to finish before `ParallelFor` returns, and on
+this machine the smallest split I can write still takes longer to reach a stream than the call takes to return. No
+test of mine can force that ordering, and the failure it would cause is silent - the join closes, sees no routing, and
+returns. So the ordering is a contract in the header, not a verified property, and the next person to touch this
+should know that the reason it is untested is that it is hard to witness, not that it is safe.
+
+Suite stays **59 collections** (one test migrated, five added). Debug, Dev, Release each green under a wall-clock
+limit with the summary line. Process note: exact-string edits failed three times because clang-format re-wraps lines
+after every save; the fix is whitespace-flexible matching, kept at `/tmp/hbe/flex.py`.
+
 ## Outcome delivery without a container (R30, lands on top of D1 `2ea4d72`)
 
 I came to the owner with a designed completion list - mutex over a pre-allocated array, capacity from the registry,

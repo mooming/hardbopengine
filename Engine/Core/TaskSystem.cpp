@@ -2,6 +2,7 @@
 
 #include "TaskSystem.h"
 
+#include <array>
 #include <atomic>
 #include <chrono>
 #include <exception>
@@ -297,6 +298,170 @@ void TaskSystem::DispatchSuccessor(TaskID finishedTask) noexcept
 	successor->GetResult() = packet;
 
 	streams[destination].EnqueueFifo(successor->GenerateSubTask(0, 1));
+}
+
+TaskID TaskSystem::ParallelFor(StaticString taskName, TRunnable func, void* userData, TIndex numItems,
+							   TIndex numSubJobs, const TIndex* streamIndices, TIndex numStreamIndices,
+							   uint8_t priority, TaskID successor, TIndex successorStream) noexcept
+{
+	if (streamIndices == nullptr || numStreamIndices == 0)
+	{
+		auto log = Logger::Get(GetName());
+		log.OutError([taskName](auto& ls)
+		{
+			ls << "ParallelFor of task " << taskName.c_str() << " named no stream to spread across, so nothing was"
+			   << " split. Naming the streams is the point of this form. ";
+		});
+		return {};
+	}
+
+	for (TIndex candidate = 0; candidate < numStreamIndices; ++candidate)
+	{
+		if (!HasStream(streamIndices[candidate]))
+		{
+			auto log = Logger::Get(GetName());
+			const auto numStreams = streams.Size();
+			log.OutError([taskName, candidate, numStreams](auto& ls)
+			{
+				ls << "ParallelFor of task " << taskName.c_str() << " named stream " << candidate << " of "
+				   << numStreams << ", which this engine does not have, so the split was refused rather than run on"
+				   << " the streams that happened to be left. ";
+			});
+			return {};
+		}
+	}
+
+	return RunSplit(taskName, func, userData, numItems, numSubJobs, streamIndices, numStreamIndices, priority,
+					successor, successorStream);
+}
+
+TaskID TaskSystem::ParallelFor(StaticString taskName, TRunnable func, void* userData, TIndex numItems,
+							   TIndex numSubJobs, TIndex numStreams, uint8_t priority, TaskID successor,
+							   TIndex successorStream) noexcept
+{
+	if (numStreams <= 0)
+	{
+		auto log = Logger::Get(GetName());
+		log.OutError([taskName, numStreams](auto& ls)
+		{
+			ls << "ParallelFor of task " << taskName.c_str() << " asked for " << numStreams
+			   << " streams, which is nothing to spread across, so nothing was split. ";
+		});
+		return {};
+	}
+
+	const TIndex firstWorker = GetIOTaskStreamIndex() + 1;
+	const TIndex numWorkers = streams.Size() > firstWorker ? streams.Size() - firstWorker : 0;
+
+	if (numWorkers == 0)
+	{
+		auto log = Logger::Get(GetName());
+		log.OutError([taskName, numStreams = numStreams](auto& ls)
+		{
+			ls << "ParallelFor of task " << taskName.c_str() << " asked for " << numStreams
+			   << " streams and this engine has no worker stream: every stream it has is the base stream or the IO"
+			   << " stream, and a split is never placed on either of its own accord. ";
+		});
+		return {};
+	}
+
+	TIndex chosen[MaxStreamsPerSplit];
+	const TIndex usable = std::min({numStreams, numWorkers, MaxStreamsPerSplit});
+	for (TIndex index = 0; index < usable; ++index)
+	{
+		chosen[index] = firstWorker + index;
+	}
+
+	return RunSplit(taskName, func, userData, numItems, numSubJobs, chosen, usable, priority, successor,
+					successorStream);
+}
+
+TaskID TaskSystem::RunSplit(StaticString taskName, TRunnable func, void* userData, TIndex numItems, TIndex numSubJobs,
+							const TIndex* streamIndices, TIndex numStreamIndices, uint8_t priority, TaskID successor,
+							TIndex successorStream) noexcept
+{
+	if (numItems <= 0 || numSubJobs <= 0)
+	{
+		auto log = Logger::Get(GetName());
+		log.OutError([taskName, numItems, numSubJobs](auto& ls)
+		{
+			ls << "ParallelFor of task " << taskName.c_str() << " over " << numItems << " items in " << numSubJobs
+			   << " sub-jobs has nothing to queue. Counts of zero or less are refusals, not empty splits: these counts "
+				  "are signed, and a negative one becomes an enormous range the moment it is used as an index. ";
+		});
+		return {};
+	}
+
+	if (!successor.IsNull() && !HasStream(successorStream))
+	{
+		auto log = Logger::Get(GetName());
+		log.OutError([taskName, successorStream](auto& ls)
+		{
+			ls << "ParallelFor of task " << taskName.c_str() << " named a successor and named stream "
+			   << successorStream
+			   << " for it, which is not a stream this engine has, so the split was refused. A split has no producer "
+				  "to write the routing into its packet, so this call is where that byte comes from, and a byte left "
+				  "unwritten is an outcome with nowhere to go. ";
+		});
+		return {};
+	}
+
+	if (numSubJobs > numItems)
+	{
+		numSubJobs = numItems;
+	}
+
+	if (numSubJobs > Task::MaxNumSubTasks)
+	{
+		numSubJobs = Task::MaxNumSubTasks;
+	}
+
+	const TaskID taskID = CreateTask(taskName, func, userData);
+	Task* task = FindTask(taskID);
+	if (task == nullptr)
+	{
+		auto log = Logger::Get(GetName());
+		log.OutError([taskName](auto& ls)
+		{
+			ls << "ParallelFor could not get a record for task " << taskName.c_str()
+			   << ", so the split was not queued. The registry is at its capacity. ";
+		});
+		return {};
+	}
+
+	if (!successor.IsNull())
+	{
+		SetSuccessor(taskID, successor);
+		task->GetResult().SetDestinationStreamIndex(static_cast<std::uint8_t>(successorStream));
+	}
+
+	task->ReserveSubTasks(static_cast<Task::TNumSubTasks>(numSubJobs));
+
+	TIndex itemStart = 0;
+	TIndex destinationSlot = 0;
+
+	for (TIndex subJob = 0; subJob < numSubJobs; ++subJob)
+	{
+		const TIndex itemsLeft = numItems - itemStart;
+		const TIndex jobsLeft = numSubJobs - subJob;
+		const TIndex itemEnd = itemStart + (itemsLeft + jobsLeft - 1) / jobsLeft;
+
+		auto& destination = streams[streamIndices[destinationSlot]];
+		const auto item = task->GenerateSubTask(itemStart, itemEnd, priority);
+		if (priority > 0)
+		{
+			destination.EnqueuePriority(item);
+		}
+		else
+		{
+			destination.EnqueueFifo(item);
+		}
+
+		itemStart = itemEnd;
+		destinationSlot = (destinationSlot + 1) % numStreamIndices;
+	}
+
+	return taskID;
 }
 
 void TaskSystem::DispatchToMainThread(TMainThreadTask taskFunc, void* userData, uint8_t priority) noexcept
@@ -614,60 +779,111 @@ void TaskSystemTest::Prepare()
 	AddTest("Bagel Problem", [this](TLogOut& ls)
 	{
 		constexpr std::size_t Count = 1000000;
-		constexpr std::size_t NumSubtasks = 10;
-		constexpr std::size_t Increment = Count / NumSubtasks;
+		constexpr std::size_t NumSubJobs = 10;
 
-		double result = 0;
-
-		auto func = [](void* userData, std::size_t start, std::size_t end) -> std::size_t
+		struct SplitSum final
 		{
-			double taskResult = 0;
+			std::array<std::atomic<double>, NumSubJobs> slots;
+			std::atomic<std::size_t> nextSlot{0};
+			std::atomic<unsigned> subJobRuns{0};
+			std::atomic<unsigned> collatorRuns{0};
+			std::atomic<double> collated{0.0};
+		};
 
-			for (std::size_t i = start + 1; i <= end; ++i)
+		SplitSum split;
+		for (auto& slot : split.slots)
+		{
+			slot.store(0.0, std::memory_order_relaxed);
+		}
+
+		auto sumRange = [](void* userData, std::size_t startIndex, std::size_t endIndex) -> std::size_t
+		{
+			SplitSum& state = *static_cast<SplitSum*>(userData);
+
+			double partial = 0.0;
+			for (std::size_t i = startIndex + 1; i <= endIndex; ++i)
 			{
 				double value = 1.0 / static_cast<double>(i);
 				value *= value;
-				taskResult += value;
+				partial += value;
 			}
 
-			auto* totalSumPtr = static_cast<double*>(userData);
-			double& totalSum = *totalSumPtr;
-			totalSum += static_cast<float>(taskResult);
+			const std::size_t slot = state.nextSlot.fetch_add(1, std::memory_order_relaxed) % NumSubJobs;
+			state.slots[slot].store(partial, std::memory_order_relaxed);
+			state.subJobRuns.fetch_add(1, std::memory_order_relaxed);
 
-			return end - start;
+			return endIndex - startIndex;
 		};
 
-		const TrackedTask trackedTask("TestTask", func, &result);
-		auto& task = *trackedTask;
-		if (task.HasDone())
+		auto collate = [](void* userData, std::size_t startIndex, std::size_t endIndex) -> std::size_t
 		{
-			ls << "The task should not be marked done before running." << lferr;
+			SplitSum& state = *static_cast<SplitSum*>(userData);
+
+			double total = 0.0;
+			for (const auto& slot : state.slots)
+			{
+				total += slot.load(std::memory_order_relaxed);
+			}
+
+			state.collated.store(total, std::memory_order_relaxed);
+			state.collatorRuns.fetch_add(1, std::memory_order_relaxed);
+
+			return endIndex - startIndex;
+		};
+
+		auto& taskSys = Engine::Get().GetTaskSystem();
+		const TaskSystem::TIndex firstWorker = TaskSystem::GetIOTaskStreamIndex() + 1;
+		const TaskSystem::TIndex chosenStreams[] = {firstWorker, firstWorker + 1};
+		if (!taskSys.HasStream(chosenStreams[1]))
+		{
+			ls << "This engine has no second worker stream, so a split cannot be shown spreading." << lferr;
+			return;
 		}
 
-		auto& engine = Engine::Get();
-		auto& taskSys = engine.GetTaskSystem();
+		const TrackedTask collatorTask("BagelCollator", collate, &split);
+		(*collatorTask).ReserveSubTasks(1);
 
-		task.ReserveSubTasks(NumSubtasks);
-		for (std::size_t i = 0; i < Count; i += Increment)
+		const TaskID splitID = taskSys.ParallelFor("BagelSplit", sumRange, &split, Count, NumSubJobs, chosenStreams,
+												   std::size(chosenStreams), 0, collatorTask.id, chosenStreams[1]);
+
+		ls << "Split over " << Count << " items into " << NumSubJobs << " sub-jobs on streams " << chosenStreams[0]
+		   << " and " << chosenStreams[1] << ", collating into task record " << collatorTask.id.index << "." << lf;
+
+		if (splitID.IsNull())
 		{
-			taskSys.Enqueue(task.GenerateSubTask(i, i + Increment));
+			ls << "ParallelFor refused a well-formed split over two real streams." << lferr;
+			return;
 		}
 
-		task.BusyWait();
+		const bool collated = WaitFor([&split] { return split.collatorRuns.load() > 0; }, std::chrono::seconds(20));
 
-		if (!task.HasDone())
-		{
-			ls << "The task should be marked done after running." << lferr;
-		}
-
+		const double result = split.collated.load();
 		constexpr double EulerAnswer = Pi * Pi / 6.0;
-		ls << "Test Result = " << result << ", Pi/6 = " << EulerAnswer << lf;
+
+		ls << "Sub-jobs that ran: " << split.subJobRuns.load() << ", slots claimed: " << split.nextSlot.load()
+		   << ", collator runs: " << split.collatorRuns.load() << ". Test Result = " << result
+		   << ", Pi squared over 6 = " << EulerAnswer << lf;
 
 		const double error = std::round(result - EulerAnswer);
 		if (error > Epsilon)
 		{
-			ls << "The error exceeds limit. Error = " << error << lferr;
+			ls << "The error exceeds limit. Error = " << error << ", and the collator ran " << split.collatorRuns.load()
+			   << " time(s) over " << split.subJobRuns.load() << " sub-jobs." << lferr;
 		}
+
+		if (!collated)
+		{
+			ls << "The join closed on " << split.subJobRuns.load() << " of " << NumSubJobs
+			   << " sub-jobs and the collator was never dispatched. An asynchronous join that never fires is the"
+			   << " failure G5 warns about, and unlike BusyWait it is silent." << lferr;
+		}
+
+		if (split.subJobRuns.load() != NumSubJobs)
+		{
+			ls << "Expected " << NumSubJobs << " sub-jobs to run, got " << split.subJobRuns.load() << "." << lferr;
+		}
+
+		taskSys.ReleaseTask(splitID);
 	});
 
 	AddTest("Bagel Problem (Incremental Task)", [this](TLogOut& ls)
@@ -1481,6 +1697,368 @@ void TaskSystemTest::Prepare()
 			ls << "A successor with no reserved subtask was dispatched. Its join counter then never reaches a count"
 			   << " it was never given, so the task runs and closes nothing - the one shape of bug that looks like"
 			   << " working code and hangs on the next link." << lferr;
+		}
+	});
+
+	AddTest("A split queues no empty work item and counts only what it queued", [this](TLogOut& ls)
+	{
+		auto& taskSys = Engine::Get().GetTaskSystem();
+		const TaskSystem::TIndex workerStream = TaskSystem::GetIOTaskStreamIndex() + 1;
+		if (!taskSys.HasStream(workerStream))
+		{
+			ls << "No worker stream, so no split could be queued at all." << lferr;
+			return;
+		}
+
+		struct SplitShape final
+		{
+			std::atomic<unsigned> runs{0};
+			std::atomic<unsigned> emptyRanges{0};
+			std::atomic<unsigned> collatorRuns{0};
+		};
+
+		SplitShape shape;
+
+		auto countRange = [](void* userData, std::size_t startIndex, std::size_t endIndex) -> std::size_t
+		{
+			SplitShape& state = *static_cast<SplitShape*>(userData);
+			state.runs.fetch_add(1, std::memory_order_relaxed);
+			if (endIndex <= startIndex)
+			{
+				state.emptyRanges.fetch_add(1, std::memory_order_relaxed);
+			}
+
+			return endIndex > startIndex ? endIndex - startIndex : 1;
+		};
+
+		auto noteCollator = [](void* userData, std::size_t startIndex, std::size_t endIndex) -> std::size_t
+		{
+			static_cast<SplitShape*>(userData)->collatorRuns.fetch_add(1, std::memory_order_relaxed);
+			return endIndex - startIndex;
+		};
+
+		const TaskSystem::TIndex oneStream[] = {workerStream};
+		const TrackedTask collatorTask("ClampCollator", noteCollator, &shape);
+		(*collatorTask).ReserveSubTasks(1);
+
+		constexpr TaskSystem::TIndex NumItems = 3;
+		const TaskID splitID = taskSys.ParallelFor("ClampSplit", countRange, &shape, NumItems, 10, oneStream,
+												   std::size(oneStream), 0, collatorTask.id, workerStream);
+
+		if (splitID.IsNull())
+		{
+			ls << "ParallelFor refused a split of 3 items into 10 sub-jobs, which is a clamp, not a refusal." << lferr;
+			return;
+		}
+
+		const bool closed = WaitFor([&shape] { return shape.collatorRuns.load() > 0; }, std::chrono::seconds(5));
+		const Task* splitTask = taskSys.FindTask(splitID);
+		const unsigned reserved = splitTask != nullptr ? static_cast<unsigned>((*splitTask).NumSubTasks()) : 0;
+
+		ls << "Three items asked for in ten sub-jobs produced " << shape.runs.load() << " work item(s) covering the"
+		   << " job, the join was declared as " << reserved << " sub-task(s), " << shape.emptyRanges.load()
+		   << " of them covered an empty range, and the collator ran " << shape.collatorRuns.load() << " time(s)."
+		   << lf;
+
+		if (!closed)
+		{
+			ls << "The join never closed, so the clamped count and the number of items queued disagree - which is"
+			   << " the one disagreement R29 makes fatal." << lferr;
+		}
+
+		if (shape.runs.load() != NumItems || reserved != NumItems)
+		{
+			ls << "Expected exactly " << NumItems << " items covering three units of work, got " << shape.runs.load()
+			   << " item(s) and a join of " << reserved << "." << lferr;
+		}
+
+		if (shape.emptyRanges.load() != 0)
+		{
+			ls << shape.emptyRanges.load() << " work item(s) ran over an empty range, each reporting in for a unit"
+			   << " of work that does not exist." << lferr;
+		}
+
+		taskSys.ReleaseTask(splitID);
+	});
+
+	AddTest("A split larger than the join counter can count is cut down, not truncated", [this](TLogOut& ls)
+	{
+		auto& taskSys = Engine::Get().GetTaskSystem();
+		const TaskSystem::TIndex workerStream = TaskSystem::GetIOTaskStreamIndex() + 1;
+		if (!taskSys.HasStream(workerStream))
+		{
+			ls << "No worker stream, so no split could be queued." << lferr;
+			return;
+		}
+
+		struct BigSplit final
+		{
+			std::atomic<unsigned> runs{0};
+			std::atomic<unsigned> emptyRanges{0};
+			std::atomic<unsigned> collatorRuns{0};
+			std::atomic<unsigned> itemsCovered{0};
+		};
+
+		BigSplit big;
+
+		auto countRange = [](void* userData, std::size_t startIndex, std::size_t endIndex) -> std::size_t
+		{
+			BigSplit& state = *static_cast<BigSplit*>(userData);
+			state.runs.fetch_add(1, std::memory_order_relaxed);
+			if (endIndex <= startIndex)
+			{
+				state.emptyRanges.fetch_add(1, std::memory_order_relaxed);
+				return 1;
+			}
+
+			state.itemsCovered.fetch_add(static_cast<unsigned>(endIndex - startIndex), std::memory_order_relaxed);
+			return endIndex - startIndex;
+		};
+
+		auto noteCollator = [](void* userData, std::size_t startIndex, std::size_t endIndex) -> std::size_t
+		{
+			static_cast<BigSplit*>(userData)->collatorRuns.fetch_add(1, std::memory_order_relaxed);
+			return endIndex - startIndex;
+		};
+
+		const TaskSystem::TIndex oneStream[] = {workerStream};
+		const TrackedTask collatorTask("TruncateCollator", noteCollator, &big);
+		(*collatorTask).ReserveSubTasks(1);
+
+		constexpr TaskSystem::TIndex NumItems = 1000;
+		constexpr TaskSystem::TIndex AskedSubJobs = 300;
+		const TaskID splitID = taskSys.ParallelFor("TruncateSplit", countRange, &big, NumItems, AskedSubJobs, oneStream,
+												   std::size(oneStream), 0, collatorTask.id, workerStream);
+
+		const bool closed = WaitFor([&big] { return big.collatorRuns.load() > 0; }, std::chrono::seconds(10));
+		const Task* splitTask = taskSys.FindTask(splitID);
+		const unsigned reserved = splitTask != nullptr ? static_cast<unsigned>((*splitTask).NumSubTasks()) : 0;
+
+		ls << "A split of " << NumItems << " items into " << AskedSubJobs << " sub-jobs was declared as " << reserved
+		   << " sub-task(s) (the counter is " << Task::MaxNumSubTasks << " at most), ran " << big.runs.load()
+		   << " item(s) covering " << big.itemsCovered.load() << " of " << NumItems << " units, of which "
+		   << big.emptyRanges.load() << " were empty, and the collator ran " << big.collatorRuns.load()
+		   << " time(s). Join closed: " << (closed ? "yes" : "no") << "." << lf;
+
+		if (reserved != Task::MaxNumSubTasks)
+		{
+			ls << "The join was declared as " << reserved << ", which is not " << Task::MaxNumSubTasks
+			   << ". A count that a uint8_t cannot hold does not fail to compile - it silently becomes the low eight"
+			   << " bits, and the join then closes while most of the work is still queued." << lferr;
+		}
+
+		if (big.runs.load() != reserved)
+		{
+			ls << big.runs.load() << " work items were queued against a join of " << reserved
+			   << ", so the number that decides when the join closes is not the number queued." << lferr;
+		}
+
+		if (big.itemsCovered.load() != NumItems)
+		{
+			ls << "The sub-jobs covered " << big.itemsCovered.load() << " of " << NumItems
+			   << " items, so clamping the split did not keep the whole job covered." << lferr;
+		}
+
+		if (big.emptyRanges.load() != 0)
+		{
+			ls << big.emptyRanges.load() << " item(s) covered an empty range." << lferr;
+		}
+
+		if (!closed)
+		{
+			ls << "The join never closed." << lferr;
+		}
+
+		taskSys.ReleaseTask(splitID);
+	});
+
+	AddTest("A split naming a stream the engine does not have is refused and creates nothing", [this](TLogOut& ls)
+	{
+		auto& taskSys = Engine::Get().GetTaskSystem();
+
+		std::atomic<unsigned> runs{0};
+
+		auto countRun = [](void* userData, std::size_t startIndex, std::size_t endIndex) -> std::size_t
+		{
+			static_cast<std::atomic<unsigned>*>(userData)->fetch_add(1, std::memory_order_relaxed);
+			return endIndex > startIndex ? endIndex - startIndex : 1;
+		};
+
+		const TaskSystem::TIndex bogusStreams[] = {
+				static_cast<TaskSystem::TIndex>(TaskSystem::GetIOTaskStreamIndex() + 60000)};
+		const TaskID refused =
+				taskSys.ParallelFor("BogusStreamSplit", countRun, &runs, 8, 4, bogusStreams, std::size(bogusStreams));
+
+		std::this_thread::sleep_for(std::chrono::milliseconds(200));
+
+		ls << "A split naming stream " << bogusStreams[0] << " returned a " << (refused.IsNull() ? "null" : "live")
+		   << " task and ran " << runs.load() << " time(s)." << lf;
+
+		if (!refused.IsNull())
+		{
+			ls << "A split onto a stream that does not exist came back with a live task, so the check on stream"
+			   << " indices is not there and the enqueue used an index outside the array of streams." << lferr;
+			taskSys.ReleaseTask(refused);
+		}
+
+		if (runs.load() != 0)
+		{
+			ls << "The refused split ran " << runs.load() << " time(s) anyway." << lferr;
+		}
+	});
+
+	AddTest("Asking for streams picks workers and never the base stream or the IO stream", [this](TLogOut& ls)
+	{
+		auto& taskSys = Engine::Get().GetTaskSystem();
+
+		struct WhereRan final
+		{
+			std::array<std::atomic<int>, 64> streamOfSubJob;
+			std::atomic<std::size_t> nextSlot{0};
+			std::atomic<unsigned> collatorRuns{0};
+		};
+
+		WhereRan where;
+		for (auto& slot : where.streamOfSubJob)
+		{
+			slot.store(-1, std::memory_order_relaxed);
+		}
+
+		auto noteStream = [](void* userData, std::size_t startIndex, std::size_t endIndex) -> std::size_t
+		{
+			WhereRan& state = *static_cast<WhereRan*>(userData);
+			const std::size_t slot =
+					state.nextSlot.fetch_add(1, std::memory_order_relaxed) % state.streamOfSubJob.size();
+			state.streamOfSubJob[slot].store(static_cast<int>(TaskSystem::GetCurrentStreamIndex()),
+											 std::memory_order_relaxed);
+			return endIndex > startIndex ? endIndex - startIndex : 1;
+		};
+
+		auto noteCollator = [](void* userData, std::size_t startIndex, std::size_t endIndex) -> std::size_t
+		{
+			static_cast<WhereRan*>(userData)->collatorRuns.fetch_add(1, std::memory_order_relaxed);
+			return endIndex - startIndex;
+		};
+
+		const TrackedTask collatorTask("VariantCollator", noteCollator, &where);
+		(*collatorTask).ReserveSubTasks(1);
+
+		constexpr TaskSystem::TIndex NumSubJobs = 8;
+		const TaskID splitID = taskSys.ParallelFor("VariantSplit", noteStream, &where, 64, NumSubJobs, 999, 0,
+												   collatorTask.id, TaskSystem::GetIOTaskStreamIndex() + 1);
+
+		const bool closed = WaitFor([&where] { return where.collatorRuns.load() > 0; }, std::chrono::seconds(10));
+
+		unsigned distinctUsed = 0;
+		unsigned onBaseOrIO = 0;
+		int highestStream = -1;
+		for (const auto& slot : where.streamOfSubJob)
+		{
+			const int ran = slot.load(std::memory_order_relaxed);
+			if (ran < 0)
+			{
+				continue;
+			}
+
+			++distinctUsed;
+			highestStream = ran > highestStream ? ran : highestStream;
+			if (static_cast<TaskSystem::TIndex>(ran) <= TaskSystem::GetIOTaskStreamIndex())
+			{
+				++onBaseOrIO;
+			}
+		}
+
+		ls << "Asking for 999 streams placed " << NumSubJobs << " sub-jobs across " << distinctUsed
+		   << " distinct stream(s), the highest being index " << highestStream << ", of which " << onBaseOrIO
+		   << " landed on the base or IO stream. Join closed: " << (closed ? "yes" : "no") << "." << lf;
+
+		if (!closed)
+		{
+			ls << "The split asked for 999 streams and its join never closed within 10 s, so some part of it went"
+			   << " somewhere that does not pump." << lferr;
+		}
+
+		if (onBaseOrIO != 0)
+		{
+			ls << onBaseOrIO << " sub-job(s) ran on the base or IO stream. R10 keeps that placement expressible for"
+			   << " a caller that names streams; an engine choosing them on its own must never pick either - R8"
+			   << " exists because blocking them stalls the engine." << lferr;
+		}
+
+		if (distinctUsed != NumSubJobs)
+		{
+			ls << "Expected " << NumSubJobs << " sub-jobs to report where they ran, got " << distinctUsed << "."
+			   << lferr;
+		}
+
+		taskSys.ReleaseTask(splitID);
+	});
+
+	AddTest("A split with nothing to do is refused rather than queued as a task that can never close",
+			[this](TLogOut& ls)
+	{
+		auto& taskSys = Engine::Get().GetTaskSystem();
+		const TaskSystem::TIndex workerStream = TaskSystem::GetIOTaskStreamIndex() + 1;
+		if (!taskSys.HasStream(workerStream))
+		{
+			ls << "No worker stream to name." << lferr;
+			return;
+		}
+
+		const TaskSystem::TIndex oneStream[] = {workerStream};
+
+		std::atomic<unsigned> runs{0};
+		auto countRun = [](void* userData, std::size_t startIndex, std::size_t endIndex) -> std::size_t
+		{
+			static_cast<std::atomic<unsigned>*>(userData)->fetch_add(1, std::memory_order_relaxed);
+			return endIndex > startIndex ? endIndex - startIndex : 1;
+		};
+
+		const TaskID zeroItems =
+				taskSys.ParallelFor("ZeroItemsSplit", countRun, &runs, 0, 4, oneStream, std::size(oneStream));
+		const TaskID zeroJobs =
+				taskSys.ParallelFor("ZeroJobsSplit", countRun, &runs, 8, 0, oneStream, std::size(oneStream));
+		const TaskID noStreams = taskSys.ParallelFor("NoStreamsSplit", countRun, &runs, 8, 4, nullptr, 0);
+		const TaskID negativeItems =
+				taskSys.ParallelFor("NegativeItemsSplit", countRun, &runs, -8, 4, oneStream, std::size(oneStream));
+		const TaskID negativeJobs =
+				taskSys.ParallelFor("NegativeJobsSplit", countRun, &runs, 8, -4, oneStream, std::size(oneStream));
+		const TaskID negativeStreams = taskSys.ParallelFor("NegativeStreamsSplit", countRun, &runs, 8, 4, -3);
+		const TaskID successorNowhere = taskSys.ParallelFor("SuccessorNowhereSplit", countRun, &runs, 8, 4, oneStream,
+															std::size(oneStream), 0, TaskID{7, 7});
+
+		ls << "Refused as having nothing to do - zero items: " << (zeroItems.IsNull() ? "yes" : "no")
+		   << ", zero sub-jobs: " << (zeroJobs.IsNull() ? "yes" : "no")
+		   << ", no streams named: " << (noStreams.IsNull() ? "yes" : "no")
+		   << ", negative items: " << (negativeItems.IsNull() ? "yes" : "no")
+		   << ", negative sub-jobs: " << (negativeJobs.IsNull() ? "yes" : "no")
+		   << ", negative stream count: " << (negativeStreams.IsNull() ? "yes" : "no")
+		   << ". Refused for routing a successor nowhere: " << (successorNowhere.IsNull() ? "yes" : "no") << "." << lf;
+
+		if (!zeroItems.IsNull() || !zeroJobs.IsNull() || !noStreams.IsNull() || !negativeItems.IsNull() ||
+			!negativeJobs.IsNull() || !negativeStreams.IsNull())
+		{
+			ls << "A split with nothing to queue was accepted. That takes a registry record for a task whose join"
+			   << " can never close, which is the state R29 calls fatal, made permanent. And a negative count is"
+			   << " not a smaller split but an index conversion: the range arithmetic reaches GenerateSubTask as a"
+			   << " size_t, so minus eight becomes a range of fourteen digits." << lferr;
+		}
+
+		if (successorNowhere.IsNull())
+		{
+			ls << "A split whose successor has no stream to run on was refused, which is R30's rule for a result"
+			   << " with nowhere to go. If this engine ever gives a split a default destination, that default is a"
+			   << " stream nobody chose." << lf;
+		}
+		else
+		{
+			ls << "A split was accepted with a successor and no stream for it, so its join will close and deliver"
+			   << " nothing - the silent stop R30 reports out loud for every other task." << lferr;
+		}
+
+		if (runs.load() != 0)
+		{
+			ls << "Refused splits still ran " << runs.load() << " time(s)." << lferr;
 		}
 	});
 }

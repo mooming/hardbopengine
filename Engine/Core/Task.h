@@ -24,6 +24,11 @@ public:
 	using TThreadID = std::thread::id;
 	using TNumSubTasks = uint8_t;
 
+	/// @brief The most subtasks a task can count, which is the width of the join counter rather than a policy choice.
+	/// @note A splitter clamps to it rather than refusing, because the counter is what makes a join close, and a task
+	///       that counted past it would report itself finished at the wrong item - the failure R29 exists to prevent.
+	static constexpr TNumSubTasks MaxNumSubTasks = 255;
+
 private:
 	/// @brief Where this task lives in the registry, and the identity every work item derived from it carries.
 	/// @details Set once, when the registry issues the record. A task that was not created through a registry
