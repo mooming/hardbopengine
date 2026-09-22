@@ -1,5 +1,38 @@
 # Journal
 
+## A driven base stream hangs on the first thing that blocks the main thread - and the stack names it
+
+**What was attempted.** Plan commit 1 landed clean (`6dbb879`): `TaskStream::Update` is one non-blocking pass, `WaitForWork` is
+the explicit idle call, the pass reads the task system recorded at `Start` instead of resolving the live engine, and the
+thread-local stream index and allocator scope are entered and restored around each pass. Then the base stream was given that
+driver - `Start` stopped creating its thread, `Engine::Run` called `Update` each iteration, and `JoinAndClear` owed it a final
+drain - and the suite hung at `WindowTest TC0.Create Window`.
+
+**The stack, not a guess.** Frames 14-15 are `std::future<std::unique_ptr<OS::Window>>::get()` reached from
+`WindowTest::Prepare()::$_0`, and the thread is named `EngineLoop`. Window creation posts the real work to the main thread and
+returns a future; the test then waits on that future **on the main thread**. While the main thread blocks, nothing drives the
+base stream, so the post that would complete the future never runs. This is I4 - a thread blocked on the task system must keep
+driving what it owns - violated in a place that had never needed to honour it, because the base stream always had a thread of its
+own to carry the work away.
+
+**Two inventions I must record as mine.** I wrote that `Engine::Run` pumps `RunFrameTasks()` and that the function "does
+per-stream stuff". Neither exists: there is no `RunFrameTasks` and no `numBaseFramePasses` anywhere in the tree - the base frame
+of R33 was never implemented, and the only base-stream duty that exists is `RunBudgetWindowPass` (`TaskStream.cpp:328`). I also
+earlier stated that the base stream rides on the engine loop thread the way the IO stream was to; it does not - `Start` creates a
+thread for every stream with no ownership flag, and the base stream's relationship to the engine loop is `mainThreadTaskQueue`
+alone. Both claims were plausible shapes inferred from structure rather than read from code, and both were load-bearing for the
+plan.
+
+**Correction to the deadlock analysis.** The budget window pass is run by the **base stream's own pass**
+(`TaskStream.cpp:328`), not by the engine loop as first written here. The cycle is unchanged in kind: a flush that blocks a
+thread which must run the base stream's pass - the main thread among them - stops the window from ever re-opening.
+
+**Sequence, revised.** Making the base stream driven is still right, and `Update` is now proven to be exactly the old loop body,
+so the goal stands. It cannot land until every blocking main-thread wait drives the base stream while it waits: `OSAL/Window.cpp`
+dispatches to the main thread at lines 64, 152, 255, 357, 461 and 557, and the create and destroy paths wait on futures. Those
+waits become driving waits first, then the base stream loses its thread, then `MainThreadTaskQueue` is absorbed into the base
+stream it serves. Reverted to `6dbb879`; three configurations green, 59 collections.
+
 ## Two ways I broke my own tree in one session, and the lead the budget-gate test left behind
 
 **A stale backup nearly destroyed committed work.** My mutation harness keeps its pristine copy under `build/gate/orig/`, but
