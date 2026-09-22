@@ -1,5 +1,22 @@
 # Journal
 
+## Parent-plan status corrected against the code, and B2's seam question resolved by reading the contract
+
+Three rows in `PLAN_task_system_refactor.md` still drew B3b, B3c and B4 as open while the work is plainly in the tree
+(`BoundedPriorityQueue.h:16-17` states highest number = most urgent with oldest-first ties; `TaskStream.h:62-63` holds the two
+lanes; `TaskSystem.h:86,91` name the base and IO streams). A reader who trusts that table redoes finished work, so the rows now
+carry ✅ plus the evidence and a note that the status was corrected from the code rather than from memory. The commit ladder also
+numbered two steps "8", which silently merges two boundaries; renumbered to 8, 9, 10.
+
+**B2's budget-gate test needed no seam, and the thing that revealed it was reading the note I was about to work around.**
+`ConfigureBudget` says: configure before the streams start, or from the stream's own thread - "a mid-run change from elsewhere is
+a data race, not merely a late one." My planned test was going to configure a worker's allowance from the base thread and poll
+`MayTakeNewWork()` from there too, which would have raced twice over and then looked flaky in the direction of passing. The
+race-free shape is to observe from inside the drain: `Produce` runs on the draining stream's own thread, so the provider can read
+`MayTakeNewWork()` there without violating anything and record whether the gate was open at each ask. The invariant becomes "no
+ask ever happened while its own observation says the gate was closed", which needs no knowledge of window timing at all, and it
+fails by name under the mutant that removes the gate - the same mutant that survived when I tested the drain without this check.
+Recorded in task #10 as the design; implementation is the next step.
 ## The resume test does have an assertion of its own, and one unreproducible runner flake
 
 The open question from the `WorkItem` commit was whether

@@ -236,11 +236,11 @@ Established by running things, not by reading interfaces. Each one invalidates a
 | **B1** | ✅ **done 2026-09-18** — epoch (`57336b2`) + budget primitive (`f751a8f`): `OS::GetThreadCPUTime` on all three platforms, `hbe::CPUBudget`, `time::Set/GetBaseFrameRate` and `GetBaseFramePeriod`. Suite 55/55 ×3, mutation-proven both ways, build gate 12/12. Nothing consumes them yet; wiring is B3. | G1 ✅, G2 ✅ |
 | **B2** | ✅ **done 2026-09-18** (`e5fb359`): `TaskProvider`, `TaskHandle`, `TaskProduceContext` + `ForStream`, `TStreamIndex` its own header. 7 tests, suite 56/56 ×3, mutation-proven. Two forced deviations from the sketch (bounded attach set because engine `Array` cannot grow; `Stop` is a request the stream applies) recorded in the design doc. | G3 ✅ |
 | **B3a** | ✅ **done 2026-09-18** (`65944f1`): `TaskStream` holds a `CPUBudget`, charges each task it runs, and answers `MayTakeNewWork`. Nothing gates on it yet — deliberately not the existing pop, which holds already-accepted work. | G1 ✅ |
-| **B3b** | Invert `BoundedPriorityQueue`: highest number = most urgent, oldest first within a tie, buckets become `hbe::Deque`. Update `BoundedPriorityQueueTest` to the new contract and `MainThreadTaskQueue`'s documented convention and default with it. | O1, O2 |
-| **B3c** | Dual lanes in `TaskStream`: FIFO + priority queue, per-stream rate from the constructor, two enqueue functions, lane-aware sweep and re-add, lane budget shares with free borrowing and a round that ends on allowance exhaustion. | L1-L3, B1-B3 |
+| ✅ **B3b** | **done** - priority inversion in place: BoundedPriorityQueue.h:16-17 states highest number = most urgent, oldest first within a tie. Status was corrected against the code on 2026-09-22; the row previously still read as open.
+| ✅ **B3c** | **done** - two lanes in TaskStream.h:62-63 (Deque fifoQueue + BoundedPriorityQueue priorityQueue), lane-aware sweep and re-add in TaskStream.cpp RunLoop. Status was corrected against the code on 2026-09-22; the row previously still read as open.
 | **B3d** | Task max age: steady-clock stamp on the queued entry, evaluated in the existing sweep, per-task choice of abandon (reports the subtask finished-cancelled) or escalate (front of the priority lane). | A1-A3 |
 | **B3e** | Providers are user-side (R34) and the stream drains them (R35): a user implements `TaskProvider`, attaches it to a **lane** of a stream, and that lane asks the provider for a work item when it is empty, under the budget gate, ending the drain when `Produce` returns false. Land it with the queue item type, because the produced item is that type. | G1, G3b |
-| **B4** | Named streams: Engine / IO / Render / Base Application (`UserThread[0]`) / Custom (`UserThread[1..N]`). Replace `BaseStreamIndex = 0` / `IOStreamIndex = 1` constants and `baseTaskThreadID`-captured-at-construction identity (`TaskSystem.cpp:70`). Update its users, incl. the `Assert(IsBaseThread())` at `TaskSystem.cpp:232`. | — |
+| ✅ **B4** | **done** - named streams in TaskSystem.h:86,91 (GetBaseTaskStreamIndex / GetIOTaskStreamIndex), base identity no longer captured at construction. Status was corrected against the code on 2026-09-22; the row previously still read as open.
 | ~~**B5**~~ | Outcome delivery **landed in a different shape than this row described**: R23 gave a task exactly one embedded 128-byte packet (no size classes, no heap `unique_ptr`, larger payloads are caller-owned memory), and R30 delivers it from the thread that closes the join onto the stream the packet names. Cross-stream successor routing is the record's `successor` field plus that destination byte. |cessor enqueue. | G4 |
 | **B6a** | `Engine::Run()` pumps a frame tick to the major systems (task system, renderer, log flush) while applets still own their loops and call the tick. Early — parent-plan steps 6/7 target this. | G1, G2 |
 | **B6b** | Frame ownership moves to the pump; applets become `TaskProvider`s; applet-owned loops removed. **Parent-plan §6 is re-derived here.** | G3 |
@@ -290,8 +290,8 @@ Additional: budget enforcement over many frames; cancellation safety — stoppin
 6. `refactor(engine): B6a — Engine::Run pumps a frame tick to task system, renderer and log flush`
 7. `refactor(core): retire/bridge range-splitting RangedTask`
 8. `refactor(engine): B6b — the pump owns the frame and applets become TaskProviders`
-8. `test(core): the four task-system guardrails as executable tests`
-9. `docs: TaskSystemGuide describes the provider/stream model` + `JOURNAL.md`
+9. `test(core): the four task-system guardrails as executable tests`
+10. `docs: TaskSystemGuide describes the provider/stream model` + `JOURNAL.md`
 
 ---
 
