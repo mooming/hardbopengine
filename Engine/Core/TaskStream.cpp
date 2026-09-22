@@ -11,6 +11,7 @@
 #include "OSAL/Intrinsic.h"
 #include "OSAL/OSThread.h"
 #include "ScopedTime.h"
+#include "TaskProvider.h"
 #include "TaskSystem.h"
 
 namespace hbe
@@ -58,6 +59,125 @@ void TaskStream::EnqueuePriority(const WorkItem& task) noexcept
 	std::scoped_lock<std::mutex> lock(queueLock);
 	priorityQueue.Push(task);
 	cv.notify_one();
+}
+
+namespace
+{
+/// @brief Which list serves a lane, or an out-of-range index when the lane is `None`.
+constexpr size_t ProviderSlot(StreamDrainPolicy::ELane lane) noexcept
+{
+	return lane == StreamDrainPolicy::ELane::Fifo ? 0U : (lane == StreamDrainPolicy::ELane::Priority ? 1U : 2U);
+}
+} // namespace
+
+bool TaskStream::AttachProvider(TaskProvider& provider, StreamDrainPolicy::ELane lane) noexcept
+{
+	const size_t slot = ProviderSlot(lane);
+	if (slot >= laneProviders.size())
+	{
+		return false;
+	}
+
+	std::scoped_lock<std::mutex> lock(queueLock);
+	auto& list = laneProviders[slot];
+
+	for (TIndex index = 0; index < list.count; ++index)
+	{
+		if (list.items[static_cast<size_t>(index)] == &provider)
+		{
+			return false;
+		}
+	}
+
+	if (list.count >= MaxProvidersPerLane)
+	{
+		return false;
+	}
+
+	list.items[static_cast<size_t>(list.count)] = &provider;
+	++list.count;
+	cv.notify_one();
+	return true;
+}
+
+bool TaskStream::DetachProvider(TaskProvider& provider, StreamDrainPolicy::ELane lane) noexcept
+{
+	const size_t slot = ProviderSlot(lane);
+	if (slot >= laneProviders.size())
+	{
+		return false;
+	}
+
+	std::scoped_lock<std::mutex> lock(queueLock);
+	auto& list = laneProviders[slot];
+
+	for (TIndex index = 0; index < list.count; ++index)
+	{
+		if (list.items[static_cast<size_t>(index)] != &provider)
+		{
+			continue;
+		}
+
+		for (TIndex shift = index; shift + 1 < list.count; ++shift)
+		{
+			list.items[static_cast<size_t>(shift)] = list.items[static_cast<size_t>(shift + 1)];
+		}
+
+		list.items[static_cast<size_t>(list.count - 1)] = nullptr;
+		--list.count;
+		return true;
+	}
+
+	return false;
+}
+
+bool TaskStream::IsProviderAttached(const TaskProvider& provider, StreamDrainPolicy::ELane lane) noexcept
+{
+	const size_t slot = ProviderSlot(lane);
+	if (slot >= laneProviders.size())
+	{
+		return false;
+	}
+
+	std::scoped_lock<std::mutex> lock(queueLock);
+	const auto& list = laneProviders[slot];
+
+	for (TIndex index = 0; index < list.count; ++index)
+	{
+		if (list.items[static_cast<size_t>(index)] == &provider)
+		{
+			return true;
+		}
+	}
+
+	return false;
+}
+
+std::optional<WorkItem> TaskStream::DrainProvidersLocked(StreamDrainPolicy::ELane lane) noexcept
+{
+	const size_t slot = ProviderSlot(lane);
+	if (slot >= laneProviders.size())
+	{
+		return std::nullopt;
+	}
+
+	const auto& list = laneProviders[slot];
+	if (list.count == 0)
+	{
+		return std::nullopt;
+	}
+
+	const TaskProduceContext context = TaskProduceContext::ForStream(streamIndex);
+
+	for (TIndex index = 0; index < list.count; ++index)
+	{
+		if (auto produced = list.items[static_cast<size_t>(index)]->Produce(context); produced.has_value())
+		{
+			return produced;
+		}
+	}
+
+	return std::nullopt;
 }
 
 void TaskStream::ReportReleasedTask(const WorkItem& item) const noexcept
@@ -225,6 +345,29 @@ void TaskStream::RunLoop() noexcept
 					break;
 				case StreamDrainPolicy::ELane::None:
 					break;
+			}
+
+			if (!workItem.has_value())
+			{
+				// Both lanes offered nothing, so ask whoever attached to them - the lane that is empty is the one that
+				// asks, and a spent allowance means no asking at all (R39).
+				for (const auto probe : {StreamDrainPolicy::ELane::Fifo, StreamDrainPolicy::ELane::Priority})
+				{
+					const bool laneIsEmpty =
+							probe == StreamDrainPolicy::ELane::Fifo ? fifoQueue.IsEmpty() : priorityQueue.IsEmpty();
+					if (!laneIsEmpty || !budget.CanTakeWork())
+					{
+						continue;
+					}
+
+					if (auto produced = DrainProvidersLocked(probe); produced.has_value())
+					{
+						workItem = produced;
+						lane = probe;
+						drainPolicy.CommitTake(probe);
+						break;
+					}
+				}
 			}
 
 			if (!workItem.has_value())

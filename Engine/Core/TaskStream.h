@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include <array>
 #include <atomic>
 #include <condition_variable>
 #include <mutex>
@@ -21,6 +22,8 @@
 
 namespace hbe
 {
+class TaskProvider;
+
 class TaskStream;
 class TaskSystem;
 
@@ -48,6 +51,27 @@ private:
 		TaskQueueItem& operator=(const TaskQueueItem& other) = default;
 		bool operator<(const TaskQueueItem& other) const;
 	};
+
+	/// @brief Providers handing this stream work, one list per lane.
+	/// @details The stream's list, not the provider's, is what the drain reads: a provider's own attachment slots
+	/// record
+	///          what its user asked for, and a stream only ever asks a provider that registered with it (R38). A
+	///          provider attached to a stream the engine does not have is therefore recorded and never asked, which the
+	///          provider reports rather than hides.
+	/// @brief How many providers may feed one lane of one stream.
+	/// @details The realistic figure is one, and a lane is asked at most once per pass per provider registered on it,
+	/// so
+	///          this is a bound to keep the list inline rather than a limit anyone is expected to reach. Overflow is
+	///          refused by `AttachProvider` and reported by the provider that asked.
+	static constexpr TIndex MaxProvidersPerLane = 8;
+
+	struct LaneProviders final
+	{
+		std::array<TaskProvider*, static_cast<size_t>(MaxProvidersPerLane)> items{};
+		TIndex count = 0;
+	};
+
+	std::array<LaneProviders, 2> laneProviders;
 
 	StaticString name;
 	TThreadID threadID;
@@ -183,11 +207,40 @@ public:
 		return loopCount;
 	}
 
+	/// @brief Let a provider hand this stream work on one lane.
+	/// @details Called by `TaskProvider::AttachTo` for a stream the engine really has; the provider's own slot list is
+	///          bookkeeping, and this list is what the drain reads (R38). Registering the same provider on the same
+	///          lane twice is refused, because the drain walks the list and would ask it twice per pass.
+	/// @return False if the provider is already registered on this lane.
+	bool AttachProvider(TaskProvider& provider, StreamDrainPolicy::ELane lane) noexcept;
+
+	/// @brief Stop a provider from feeding one lane, and report whether it was registered there.
+	/// @details Takes this stream's queue lock, which is the same lock a drain holds across `Produce` - so a detach
+	/// that
+	///          arrives mid-call simply waits, and there is no window where a provider is erased while its item is on
+	///          the way. That is R37's guarantee, and R40 is the reason it costs no counter or wait loop: the lock is
+	///          the wait.
+	bool DetachProvider(TaskProvider& provider, StreamDrainPolicy::ELane lane) noexcept;
+
+	/// @brief Whether a provider is registered on one lane of this stream.
+	[[nodiscard]] bool IsProviderAttached(const TaskProvider& provider, StreamDrainPolicy::ELane lane) noexcept;
+
 	void Start(TaskSystem& taskSys) noexcept;
 	void RunLoop() noexcept;
 
 private:
 	void Dequeue(std::optional<WorkItem>& outTask);
+
+	/// @brief Ask the providers on one lane for an item, when that lane has run out of queued work.
+	/// @details The drain position R39 settled: a lane empty of items asks once per pass, under the same budget gate
+	/// that
+	///          governs taking queued work - a stream whose allowance is spent must not manufacture work the budget
+	///          already refused. Providers are asked in registration order and the first that hands something back
+	///          wins; a provider with nothing returns `nullopt` and the lane stops being drained this pass rather than
+	///          spinning.
+	/// @note The queue lock is held across the provider call, so this helper never runs user code unlocked and never
+	///       re-enters the queue. A provider must therefore not touch this stream from inside `Produce`.
+	std::optional<WorkItem> DrainProvidersLocked(StreamDrainPolicy::ELane lane) noexcept;
 
 	/// @brief Say that a queued work item was dropped because its task had been released.
 	/// @details This is R7's rule in action - a reference to a task that no longer exists is recognised and dropped

@@ -6,10 +6,12 @@
 #include <atomic>
 #include <chrono>
 #include <cstdint>
+#include <optional>
 
 #include "Core/StreamDrainPolicy.h"
 #include "Core/TaskStreamIndex.h"
 #include "Core/Time.h"
+#include "Core/WorkItem.h"
 #include "String/StaticString.h"
 
 namespace hbe
@@ -92,6 +94,8 @@ struct TaskProduceContext final
 ///          A separate HasWork predicate was rejected: by the time Produce runs, a HasWork answer is
 ///          already advisory because provider state can change in between, so the stream would be steering
 ///          on a reading it cannot trust.
+class TaskSystem;
+
 class TaskProvider
 {
 public:
@@ -121,8 +125,21 @@ public:
 					   : (lane == StreamDrainPolicy::ELane::Priority ? LaneBitPriority : 0U);
 	}
 
-	explicit TaskProvider(StaticString name) noexcept;
-	virtual ~TaskProvider() = default;
+	/// @param targetSystem The task system this provider creates tasks in, and whose streams it attaches to.
+	/// @details A provider that hands a stream an item has to build that item from a real record, so it needs a task
+	///          system before it can produce anything. Taking it here rather than reaching for the engine instance
+	///          keeps this type usable by code that constructs a provider before the engine exists, and keeps the unit
+	///          probes able to attach to stream indices the engine does not have.
+	explicit TaskProvider(StaticString name, TaskSystem& targetSystem) noexcept;
+
+	/// @brief Asserts that this provider is registered on no live stream.
+	/// @details R37: a stream holds this object's pointer, so destroying a provider that still feeds one leaves a dead
+	///          pointer in that lane's list. Detach first. The rule counts *registrations*, not recorded attachments,
+	///          and the difference matters: an attachment naming a stream the engine does not have puts nothing
+	///          anywhere, so it cannot dangle and must not be fatal. A destructor assert alone cannot see a drain in
+	///          progress, which is why `DetachFrom` and `DetachAll` take the target stream's lock rather than clearing
+	///          flags here.
+	virtual ~TaskProvider();
 
 	TaskProvider(const TaskProvider&) = delete;
 	TaskProvider& operator=(const TaskProvider&) = delete;
@@ -133,7 +150,19 @@ public:
 	///          does not detach the provider.
 	/// @note Implementations must be cheap enough to call when idle, since an idle provider is asked once
 	///       per drain and that call is the price of not keeping a second source of truth about intent.
-	virtual bool Produce(const TaskProduceContext& context) noexcept = 0;
+	/// @brief Hand the draining stream the next item of work, or report that there is none.
+	/// @return The item to run, or `std::nullopt` when this provider has nothing to hand over. `nullopt` ends this
+	///         lane's drain for the pass - the provider is asked again on a later pass, so reporting nothing is never a
+	///         way to stop being asked (that is what `Stop` and `DetachFrom` are for).
+	/// @note Called on the draining stream's thread with that stream's queue lock held (R40). Therefore: do not enqueue
+	///       into that stream from here - `EnqueueFifo`/`EnqueuePriority` take the same non-recursive mutex and would
+	///       deadlock; do not block; and do not touch another stream's queue. Building a task
+	///       (`TaskSystem::CreateTask`) and declaring its join (`Task::ReserveSubTasks`) is expected, since the task
+	///       registry has its own lock and takes it before the stream does nowhere.
+	/// @note Hand back an item from `Task::GenerateSubTask`. An item naming a task that was released in between is
+	///       dropped by the stream with the usual warning, so a provider cannot smuggle dead work past the liveness
+	///       check.
+	virtual std::optional<WorkItem> Produce(const TaskProduceContext& context) noexcept = 0;
 
 	/// @brief Start being drained by one lane of one stream. Naming the lane is not decoration: which lane
 	///        attaches decides the policy the stream applies to what this provider hands it (R35).
@@ -144,8 +173,24 @@ public:
 	///       to be the caller's decision and never a default.
 	/// @note `ELane::None` names no lane and attaches nothing; it is reported rather than accepted, because an
 	///       attachment with no lane would sit in the slot and never be drained.
+	/// @details When `stream` names a stream the task system really has, the provider also registers on that lane, and
+	///          that registration - not this provider's slot list - is what the drain reads (R38). Attaching to an
+	///          index nothing owns is recorded and reported: nothing will ever ask this provider, and the log says so.
 	void AttachTo(TStreamIndex stream, StreamDrainPolicy::ELane lane) noexcept;
 
+	/// @brief Stop feeding one stream and wait for a drain already in flight on it.
+	/// @details Takes the stream's lock per lane, so a `Produce` still running has handed over (or refused) its item
+	///          before this returns, and no item can arrive afterwards.
+	void DetachFrom(TStreamIndex stream) noexcept;
+
+	/// @brief Detach from every stream this provider is attached to.
+	void DetachAll() noexcept;
+
+private:
+	void RegisterOnStream(TStreamIndex stream, StreamDrainPolicy::ELane lane) noexcept;
+	void UnregisterFromStream(TStreamIndex stream, StreamDrainPolicy::ELane lane) noexcept;
+
+public:
 	/// @brief How many streams this provider currently feeds.
 	[[nodiscard]] TStreamIndex GetAttachedCount() const noexcept
 	{
@@ -186,15 +231,20 @@ public:
 
 private:
 	StaticString name;
+	TaskSystem& taskSystem;
 	std::array<TStreamIndex, static_cast<size_t>(MaxAttachedStreams)> attached{};
 	std::array<std::uint8_t, static_cast<size_t>(MaxAttachedStreams)> lanes{};
 	TStreamIndex attachedCount = 0;
+
+	/// @brief How many live streams currently hold this object's pointer, and what `~TaskProvider` asserts on.
+	int registeredCount = 0;
 	std::atomic<bool> stopRequested{false};
 };
 
 } // namespace hbe
 
 #ifdef __UNIT_TEST__
+#include "Engine/Engine.h"
 #include "Test/TestCollection.h"
 
 namespace hbe
@@ -211,6 +261,14 @@ public:
 
 protected:
 	void Prepare() override;
+
+	/// @brief The task system the probes attach to, taken when a test asks rather than when the collection is built.
+	/// @details Tests attach to stream indices the engine may not have, which is what the R38 bookkeeping path is for,
+	///          so they need a real system to hand the constructor without assuming a stream exists.
+	[[nodiscard]] static hbe::TaskSystem& System() noexcept
+	{
+		return Engine::Get().GetTaskSystem();
+	}
 };
 
 } // namespace hbe

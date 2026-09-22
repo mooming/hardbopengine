@@ -4,6 +4,7 @@
 #include <atomic>
 #include <chrono>
 #include <iostream>
+#include <optional>
 #include <thread>
 
 #include "Core/TaskProvider.h"
@@ -28,27 +29,25 @@ std::size_t RunWindowTick(void* userData, std::size_t startIndex, std::size_t en
 class WindowTickProvider final : public hbe::TaskProvider
 {
 public:
-	WindowTickProvider(hbe::TaskSystem& targetSystem, hbe::TaskSystem::TIndex targetStream,
-					   std::atomic<unsigned>& tickCounter) noexcept
-		: TaskProvider("WindowTickProvider")
+	WindowTickProvider(hbe::TaskSystem& targetSystem, std::atomic<unsigned>& tickCounter) noexcept
+		: TaskProvider("WindowTickProvider", targetSystem)
 		, taskSystem(targetSystem)
-		, stream(targetStream)
 		, ticks(tickCounter)
 	{
 		frames.fill(hbe::TaskID{});
 	}
 
-	bool Produce(const hbe::TaskProduceContext& context) noexcept override
+	std::optional<hbe::WorkItem> Produce(const hbe::TaskProduceContext& context) noexcept override
 	{
 		if (produced >= MaxFrameTasks || IsStopRequested())
 		{
-			return false;
+			return std::nullopt;
 		}
 
 		const hbe::TaskID frame = taskSystem.CreateTask("WindowTick", RunWindowTick, &ticks);
 		if (frame.IsNull())
 		{
-			return false;
+			return std::nullopt;
 		}
 
 		frames[produced] = frame;
@@ -57,13 +56,12 @@ public:
 		hbe::Task* task = taskSystem.FindTask(frame);
 		if (task == nullptr)
 		{
-			return false;
+			return std::nullopt;
 		}
 
 		task->ReserveSubTasks(1);
-		taskSystem.Enqueue(stream, task->GenerateSubTask(0, 1));
 
-		return true;
+		return task->GenerateSubTask(0, 1);
 	}
 
 	[[nodiscard]] std::size_t GetProducedCount() const noexcept
@@ -83,16 +81,10 @@ public:
 
 private:
 	hbe::TaskSystem& taskSystem;
-	hbe::TaskSystem::TIndex stream;
 	std::atomic<unsigned>& ticks;
 	std::array<hbe::TaskID, MaxFrameTasks> frames;
 	std::size_t produced = 0;
 };
-
-void PumpProvider(hbe::TaskProvider& provider, hbe::TaskSystem::TIndex stream) noexcept
-{
-	provider.Produce(hbe::TaskProduceContext::ForStream(stream));
-}
 
 } // namespace
 
@@ -125,15 +117,13 @@ int main(int argc, const char* argv[]) noexcept
 	}
 
 	std::atomic<unsigned> ticks{0};
-	WindowTickProvider tickProvider(taskSystem, tickStream, ticks);
+	WindowTickProvider tickProvider(taskSystem, ticks);
 	tickProvider.AttachTo(tickStream, hbe::StreamDrainPolicy::ELane::Fifo);
 
 	for (int frame = 0; frame < static_cast<int>(MaxFrameTasks); ++frame)
 	{
 		app->PollEvents();
 		window->PollEvents();
-
-		PumpProvider(tickProvider, tickStream);
 
 		std::this_thread::sleep_for(std::chrono::seconds(1));
 
@@ -154,6 +144,7 @@ int main(int argc, const char* argv[]) noexcept
 
 	tickProvider.ReleaseFrames();
 	tickProvider.Stop();
+	tickProvider.DetachAll();
 
 	window->Close();
 	hengine.ShutDown();

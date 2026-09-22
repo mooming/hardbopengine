@@ -3,7 +3,9 @@
 #include "TaskProvider.h"
 
 #include "Core/Debug.h"
+#include "Engine/Engine.h"
 #include "Log/Logger.h"
+#include "TaskSystem.h"
 
 namespace hbe
 {
@@ -31,9 +33,16 @@ void TaskHandle::RequestStop() const noexcept
 	}
 }
 
-TaskProvider::TaskProvider(StaticString providerName) noexcept
+TaskProvider::TaskProvider(StaticString providerName, TaskSystem& targetSystem) noexcept
 	: name(providerName)
+	, taskSystem(targetSystem)
 {
+}
+
+TaskProvider::~TaskProvider()
+{
+	Assert(registeredCount == 0, "TaskProvider ", name, " was destroyed while it still fed ", registeredCount,
+		   " live stream(s). A stream holds this object's pointer, so destroy it only after DetachFrom or DetachAll.");
 }
 
 void TaskProvider::AttachTo(TStreamIndex stream, StreamDrainPolicy::ELane lane) noexcept
@@ -59,7 +68,14 @@ void TaskProvider::AttachTo(TStreamIndex stream, StreamDrainPolicy::ELane lane) 
 			continue;
 		}
 
+		const bool alreadyOnLane = (lanes[static_cast<size_t>(index)] & laneBit) != 0;
 		lanes[static_cast<size_t>(index)] |= laneBit;
+
+		if (!alreadyOnLane)
+		{
+			RegisterOnStream(stream, lane);
+		}
+
 		return;
 	}
 
@@ -82,6 +98,91 @@ void TaskProvider::AttachTo(TStreamIndex stream, StreamDrainPolicy::ELane lane) 
 	attached[static_cast<size_t>(attachedCount)] = stream;
 	lanes[static_cast<size_t>(attachedCount)] = laneBit;
 	++attachedCount;
+
+	RegisterOnStream(stream, lane);
+}
+
+void TaskProvider::DetachFrom(TStreamIndex stream) noexcept
+{
+	for (TStreamIndex index = 0; index < attachedCount; ++index)
+	{
+		if (attached[static_cast<size_t>(index)] != stream)
+		{
+			continue;
+		}
+
+		const std::uint8_t held = lanes[static_cast<size_t>(index)];
+
+		if ((held & LaneBitFifo) != 0)
+		{
+			UnregisterFromStream(stream, StreamDrainPolicy::ELane::Fifo);
+		}
+
+		if ((held & LaneBitPriority) != 0)
+		{
+			UnregisterFromStream(stream, StreamDrainPolicy::ELane::Priority);
+		}
+
+		for (TStreamIndex shift = index; shift + 1 < attachedCount; ++shift)
+		{
+			attached[static_cast<size_t>(shift)] = attached[static_cast<size_t>(shift + 1)];
+			lanes[static_cast<size_t>(shift)] = lanes[static_cast<size_t>(shift + 1)];
+		}
+
+		attached[static_cast<size_t>(attachedCount - 1)] = 0;
+		lanes[static_cast<size_t>(attachedCount - 1)] = 0;
+		--attachedCount;
+		return;
+	}
+}
+
+void TaskProvider::DetachAll() noexcept
+{
+	for (TStreamIndex index = attachedCount - 1; index >= 0; --index)
+	{
+		DetachFrom(attached[static_cast<size_t>(index)]);
+	}
+}
+
+void TaskProvider::RegisterOnStream(TStreamIndex stream, StreamDrainPolicy::ELane lane) noexcept
+{
+	if (!taskSystem.HasStream(stream))
+	{
+		auto log = Logger::Get(name);
+		log.OutWarning([name = name, stream](auto& ls)
+		{
+			ls << "TaskProvider " << name.c_str() << " is attached to stream " << stream
+			   << ", which this engine does not have. The attachment is recorded and nothing will ever ask this"
+			   << " provider for work.";
+		});
+		return;
+	}
+
+	if (!taskSystem.GetStream(stream).AttachProvider(*this, lane))
+	{
+		auto log = Logger::Get(name);
+		log.OutError([name = name, stream](auto& ls)
+		{
+			ls << "TaskProvider " << name.c_str() << " could not register on stream " << stream
+			   << ". The lane list already holds this provider or is full, so the drain will not ask it.";
+		});
+		return;
+	}
+
+	++registeredCount;
+}
+
+void TaskProvider::UnregisterFromStream(TStreamIndex stream, StreamDrainPolicy::ELane lane) noexcept
+{
+	if (!taskSystem.HasStream(stream))
+	{
+		return;
+	}
+
+	if (taskSystem.GetStream(stream).DetachProvider(*this, lane))
+	{
+		--registeredCount;
+	}
 }
 
 TStreamIndex TaskProvider::GetAttachedStream(TStreamIndex index) const noexcept
@@ -144,17 +245,33 @@ class RecordingProvider final : public hbe::TaskProvider
 public:
 	using TaskProvider::TaskProvider;
 
+	/// @brief Detaches before the probe dies, because the contract R37 now enforces is detach-before-destruction.
+	/// @details The probes attach to stream indices that this engine really does have, so they register, and a provider
+	///          that is destroyed while registered is exactly the dangling pointer the assert exists to catch. A test
+	///          double that cleans up after itself keeps that rule strict for everyone else.
+	~RecordingProvider() override
+	{
+		DetachAll();
+	}
+
 	int produceCalls = 0;
 	hbe::TStreamIndex lastStream = -1;
 	hbe::time::TEngineTimePoint lastNow{};
 	bool produceResult = true;
+	std::optional<hbe::WorkItem> itemToHand{};
 
-	bool Produce(const hbe::TaskProduceContext& context) noexcept override
+	std::optional<hbe::WorkItem> Produce(const hbe::TaskProduceContext& context) noexcept override
 	{
 		++produceCalls;
 		lastStream = context.stream;
 		lastNow = context.now;
-		return produceResult;
+
+		if (!produceResult)
+		{
+			return std::nullopt;
+		}
+
+		return itemToHand;
 	}
 };
 
@@ -164,7 +281,7 @@ void hbe::TaskProviderTest::Prepare()
 {
 	AddTest("Produce is handed the stream and a live clock reading", [this](auto& ls)
 	{
-		RecordingProvider provider("ProviderContextProbe");
+		RecordingProvider provider("ProviderContextProbe", System());
 
 		const auto before = std::chrono::steady_clock::now();
 		const auto context = TaskProduceContext::ForStream(3);
@@ -192,7 +309,7 @@ void hbe::TaskProviderTest::Prepare()
 
 	AddTest("Both lanes of one stream share one slot and keep their own bits", [this](auto& ls)
 	{
-		RecordingProvider provider("ProviderLaneMaskProbe");
+		RecordingProvider provider("ProviderLaneMaskProbe", System());
 		provider.AttachTo(3, StreamDrainPolicy::ELane::Fifo);
 		provider.AttachTo(3, StreamDrainPolicy::ELane::Priority);
 		provider.AttachTo(3, StreamDrainPolicy::ELane::Fifo);
@@ -233,15 +350,16 @@ void hbe::TaskProviderTest::Prepare()
 
 	AddTest("Produce reporting nothing does not lose the attachment", [this](auto& ls)
 	{
-		RecordingProvider provider("ProviderIdleProbe");
+		RecordingProvider provider("ProviderIdleProbe", System());
 		provider.AttachTo(0, StreamDrainPolicy::ELane::Fifo);
 		provider.produceResult = false;
 
-		const bool produced = provider.Produce(TaskProduceContext::ForStream(0));
+		const auto produced = provider.Produce(TaskProduceContext::ForStream(0));
+		const bool handedSomething = produced.has_value();
 
-		if (produced)
+		if (handedSomething)
 		{
-			ls << "Produce reported work when the provider had none, so a drain would never end." << lferr;
+			ls << "Produce handed work over when the provider had none, so a drain would never end." << lferr;
 		}
 
 		if (!provider.IsAttachedTo(0))
@@ -252,7 +370,7 @@ void hbe::TaskProviderTest::Prepare()
 
 	AddTest("AttachTo is idempotent", [this](auto& ls)
 	{
-		RecordingProvider provider("ProviderAttachProbe");
+		RecordingProvider provider("ProviderAttachProbe", System());
 		provider.AttachTo(2, StreamDrainPolicy::ELane::Fifo);
 		provider.AttachTo(2, StreamDrainPolicy::ELane::Fifo);
 		provider.AttachTo(5, StreamDrainPolicy::ELane::Fifo);
@@ -276,7 +394,7 @@ void hbe::TaskProviderTest::Prepare()
 
 	AddTest("Attachment list fills to its cap", [this](auto& ls)
 	{
-		RecordingProvider provider("ProviderCapProbe");
+		RecordingProvider provider("ProviderCapProbe", System());
 
 		for (TStreamIndex stream = 0; stream < TaskProvider::MaxAttachedStreams; ++stream)
 		{
@@ -297,7 +415,7 @@ void hbe::TaskProviderTest::Prepare()
 
 	AddTest("Stop and handle reach the same state", [this](auto& ls)
 	{
-		RecordingProvider provider("ProviderStopProbe");
+		RecordingProvider provider("ProviderStopProbe", System());
 		provider.AttachTo(1, StreamDrainPolicy::ELane::Fifo);
 
 		const auto handle = provider.GetHandle();
@@ -317,7 +435,7 @@ void hbe::TaskProviderTest::Prepare()
 			ls << "Provider::Stop was invisible to the handle for it." << lferr;
 		}
 
-		RecordingProvider other("ProviderStopProbe2");
+		RecordingProvider other("ProviderStopProbe2", System());
 		const auto otherHandle = other.GetHandle();
 		otherHandle.RequestStop();
 		if (!other.IsStopRequested())
@@ -333,7 +451,7 @@ void hbe::TaskProviderTest::Prepare()
 
 	AddTest("Stop leaves attachments for the stream to apply", [this](auto& ls)
 	{
-		RecordingProvider provider("ProviderDetachProbe");
+		RecordingProvider provider("ProviderDetachProbe", System());
 		provider.AttachTo(4, StreamDrainPolicy::ELane::Fifo);
 
 		provider.Stop();
