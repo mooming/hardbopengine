@@ -1,5 +1,27 @@
 # Journal
 
+## The resume test does have an assertion of its own, and one unreproducible runner flake
+
+The open question from the `WorkItem` commit was whether
+`An item that returns part of its range resumes at the index it stopped at` proves anything by itself, because both mutants
+the suite caught (progress dropped, strict `HasFinished`) were killed by `Bagel Problem` rather than by it. Measured now with
+the corrected harness - substitution shown to have applied, `WorkItem.cpp` is the file that owns the code, build clean,
+binary relinked - using the mutant that best matches the failure the test claims to catch: hand the runnable `start` instead
+of `current`, so a partially done slice is restarted rather than resumed.
+
+**Killed, by both** `An item that returns part of its range resumes at the index it stopped at` **and** `Bagel Problem
+(Incremental Task)`. So the test's `startSum` assertion is load-bearing: it is the only check in the suite that names
+"restarted instead of resumed" as its own failure text, and it does so without depending on stream timing because it drives
+`WorkItem::Run` directly. Kept, not retired, and the earlier note that its power was undemonstrated is now superseded - that
+note was correct when written (no mutant then run separated it from `Bagel Problem`) and wrong to leave as the last word.
+
+**Flake, unreproduced:** immediately after restoring the source and rebuilding, the runner returned exit 1 while printing no
+`collection(s) FAILED` line and no `[FAIL]`. The very next run on the same binary exited 0 with `all 59 collections passed`,
+and `cmp` confirmed the source matched the pre-mutation backup. Most likely the relink raced the run start. Recorded because
+a runner that can report a failure without naming one is exactly the failure mode this session has already been bitten by
+twice, and because "I saw a red run and it went away" is not evidence of health either. Worth hardening: if the runner ever
+exits non-zero with no `FAILED` line and no signal, it should say so explicitly rather than leave the reader to guess.
+
 ## Final tree proven in all three configurations, closing my own caveat
 
 The affinity commit's message noted that Dev and Release had run the gate before the copyright-line reorder, and that only
