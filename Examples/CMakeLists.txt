@@ -31,9 +31,5 @@ include_directories ( ${CMAKE_SOURCE_DIR}
  ${CMAKE_SOURCE_DIR}/Engine
  ${CMAKE_SOURCE_DIR}/Engine/Renderer
  )
-add_subdirectory (EngineTest)
-add_subdirectory (VulkanExample)
 
-
-
-
+add_subdirectory (WindowExample)

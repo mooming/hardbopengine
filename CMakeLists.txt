@@ -32,6 +32,7 @@ include_directories ( ${CMAKE_SOURCE_DIR}
  ${CMAKE_SOURCE_DIR}/Engine/Renderer
  )
 add_subdirectory (Applications)
+add_subdirectory (Examples)
 add_subdirectory (External)
 add_subdirectory (Engine)
 

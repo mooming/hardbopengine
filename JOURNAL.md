@@ -1,5 +1,32 @@
 # Journal
 
+## WindowExample moves to `Examples/`, and the doc corruption my own script caused
+
+`git mv Applications/WindowExample Examples/WindowExample`, a new `Examples/CMakeLists.txt` carrying the same preamble,
+`Applications/CMakeLists.txt` losing its `WindowExample` line, and `add_subdirectory (Examples)` added at the root.
+`build.sh` takes `basename` of its argument (`build.sh:75`), so the target name is unchanged by the move; CMake now
+emits to `build/Examples/WindowExample/Debug/WindowExample`. EngineTest still reports **all 59 collections passed**
+after the root change, and the moved app runs: exit 0, and it prints **"Provider produced 8 frame task(s), and the
+stream ran 8 of them on stream 2"** - which also independently confirms R36's arithmetic, since the run shows
+`Worker1` through `Worker10`, ten worker streams against a cap of 8.
+
+The skeleton is a `WindowTickProvider : public TaskProvider` that creates a task per frame, reserves its join and
+enqueues it. Two interim choices are deliberate and both are load-bearing honesty, not laziness: the app pumps the
+provider itself (`PumpProvider`, once per frame) because **nothing drains providers yet** - R35's drain is decided and
+unbuilt, and an example that only called `AttachTo` would silently do nothing - and it ends with `Stop()` rather than
+`DetachAll()`, because R37's detach entry point does not exist yet. Both lines change when those rows are built.
+
+**My own error, disclosed.** The R35/R36/R37 rows landed *inside a prose paragraph*, truncating a sentence to
+"So the pass **s". Cause: in one script I captured a byte offset to the end of the R34 row, then replaced that row with
+different text, and inserted at the **stale offset** - which by then pointed into a paragraph several lines below. The
+file is repaired (`So the pass **signals** and the stream **reopens**:`, rows relocated below R34) and asserted: no line
+in the document contains a decision row that does not begin the line. Rule for next time: recompute anchors after every
+mutation to the same string, or patch bottom-up.
+
+Left for the owner of another page, not touched: `docs/OSAL/Application/index.html:98` cites
+`Applications/WindowExample/Main.cpp:16`, which my move makes stale. That file is **untracked** - a concurrent agent's
+uncommitted work - so editing it would collide with them; the citation needs `Examples/` in it whenever that page lands.
+
 ## Providers are user-side, so the engine stops planning to offer them (R34)
 
 Asked what remained, I listed B3e - register providers per stream and drain them - as an engine step. The owner
