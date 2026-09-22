@@ -86,3 +86,19 @@ consequence and the reason `Task::Start` was already deleted.
   the thread that closed a join, not on the base thread, so a delivery test needs an in-band barrier
   (a sentinel queued behind the subject on the same lane) rather than a timeout.
 - Do not enqueue to the shared general queue from a test: `TaskSystem::Dequeue` can steal another collection's item.
+
+---
+
+## 5. Two things settled after this plan was written (2026-09-22)
+
+- **R34 withdraws B3e**: providers are user-side and `TaskProvider` has zero engine callers. So this commit does **not**
+  need to leave a provider-shaped hole or hook anything to a provider registry. It needs the one primitive both this
+  commit and delivery want: *queue a task whole on a named stream*. `DispatchSuccessor` already does that inline for a
+  successor (`ReserveSubTasks` >= 1, one item covering the range); `Logger.cpp`'s carrier use becomes the public form
+  of the same thing. Give it one name and one definition, not two.
+- **D3c's only producer-side user is `Logger.cpp:266` (`HasDone`) and `:272` (`Wait`)**. Everything else waiting on a
+  task is inside `#ifdef __UNIT_TEST__` (`TaskSystem.cpp` 12 sites, `TaskRegistry.cpp` 3). Once this commit gives
+  Logger a task-whole enqueue that it does not have to wait on, D3c is: delete `Task::Wait`, `Task::BusyWait` and the
+  public `HasDone`, and rewrite ~15 test sites to observe runs through a counter or an in-band sentinel instead of
+  asking a task whether it is finished. Do not leave `HasDone` public "because tests use it" - that keeps the
+  synchronous model alive by its tail.
