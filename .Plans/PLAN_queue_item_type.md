@@ -123,3 +123,18 @@ Consumers to update in the same round, all user-side: `Applications/WindowExampl
 (`Engine/Test/UnitTestCollection.cpp:96` registers `WindowTest`), and `EngineTest` for the mechanism - production
 observed as work actually running on the stream that drained it, plus the two gates: a stream with a spent allowance
 must not be producing, and a provider that returns false must not be asked again in the same pass.
+
+## 7. Provider attachment shape, settled (R36, R37)
+
+- `attached[]` is **one slot per stream** with a two-bit lane mask per slot; capacity rises to cover every stream a
+  machine of this kind has (64 is the working figure, ~256 inline bytes). `StreamDrainPolicy::ELane` is the lane enum -
+  `None`, `Fifo`, `Priority` at `StreamDrainPolicy.h:32-37` - and `TaskProvider.h` includes it rather than inventing a
+  second enum. Define lane bits explicitly (`LaneBitFifo`, `LaneBitPriority`) instead of shifting an ELane value, whose
+  `None` makes positional encoding wrong.
+- Duplicates are per **(stream, lane)**. An attachment that does not fit logs provider, stream and capacity - never a
+  silent drop, because the old silent drop's symptom was a stream that never gets work.
+- `DetachFrom(stream)` / `DetachAll()` take that stream's lock and wait for a drain in flight; `~TaskProvider` asserts
+  nothing is attached. A per-stream drain-in-progress count is the price. `Stop()` stays non-cancelling and still does
+  not detach - `TaskProvider.cpp:254-261` asserts that today, so leave it passing.
+- The existing cap probe at `TaskProvider.cpp:197-212` fills all slots and checks slot N is unattached: it needs the
+  lane argument after this change, and its figure has to follow the new capacity rather than the old 8.
