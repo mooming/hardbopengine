@@ -1,5 +1,38 @@
 # Journal
 
+## Affinity mask made dense: the queued work item goes 112 bytes -> 56
+
+The defect was in `TaskStreamAffinity.h`: `BitsArraySize` divided `NumBits` by `BitArrayUnitBytes` (bytes per word) where
+the arithmetic needs bits per word, and `GetBitsArrayIndexOf` divided by that same wrong figure. The two halves agreed
+with each other, which is the whole reason it survived: 64 bits reserved 8 words and ever wrote bits 0-7 of each, so the
+type was correct and merely eight times the size. A queued work item embeds it, so every item paid 64 bytes for a
+64-stream mask. Dense now: word `i / 64`, shift `i % 64`, `sizeof(TaskStreamAffinity)` 8 bytes, `sizeof(WorkItem)` 56,
+pinned by `ResultPacket`'s price test and by a new test in this module's collection that pins the *formula* (a 517-bit
+mask must be 72 bytes) - because no behavioural test can distinguish the two encodings, each being internally consistent.
+
+Mutation results, harness now proving substitution-landed, right-file, build-clean, binary-relinked:
+
+| Mutation | Result |
+|---|---|
+| word count reverts to bytes per word | **killed** - the new size test and the price test both fail |
+| index helper divides by the word count again | **killed** - hangs the 517-bit sweep (out of bounds) |
+| `Get`'s inverted polarity flipped | **killed** - "Affinity Unset", "Affinity Set/Unset" |
+| shift uses bytes per word while indexing stays dense | **equivalent mutant, not a gap** - within a 64-block the mapping is still a bijection (shifts grow with the index and a masked collision would need a 64-spread the block cannot produce), so behaviour is identical and no test can separate it |
+
+Added "Taking away one stream leaves every other stream alone": for probes at bits 0, 1, 63, 64, 127, 128 and 516, unset
+one and require all 516 others to still read allowed; plus an index-past-the-end probe. Honest status of this test: it is
+insurance against word-index arithmetic going wrong again, and the mutation that *would* break interference is the
+out-of-bounds one, which the existing 517-bit sweep already caught - so this test's unique killing power is not
+demonstrated, and its past-end assertion is weak (a missing guard there disturbs no real bit, because padding bits live in
+their own word). Kept because the invariant it states is the one affinity actually means, not because a mutant proves it.
+
+Fixed on the way, both pre-existing and surfaced by lint once these files were staged: `TaskStreamAffinity.h` and
+`TaskStreamAffinity.cpp` carried a `Created by` line above the copyright, and `check.sh` requires the copyright on line 1.
+
+Debug, Dev and Release each rebuild `EngineTest` with 0 `error:` and run under a wall-clock limit to exit 0 with all 59
+collections passed; `check.sh --staged`: 0 mechanical violations, the 2 standing `using TIndex` advisories now down to the
+1 on `WorkItem.h`.
+
 ## `RangedTask` deleted: the queue holds `WorkItem`, and the item is 112 bytes not 48
 
 `WorkItem` replaces `RangedTask` in every queue (`Deque` FIFO lane, `BoundedPriorityQueue` priority lane, the general

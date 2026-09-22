@@ -17,11 +17,9 @@ class Task;
 ///          giving up. The name had exactly one reader: the warning issued when an item is dropped because its task
 ///          was released - and there the registry can no longer confirm the name is the one that task had, while the
 ///          ID is still the identity that means something. Dropping it also removes the item's only dependency on
-/// @note The item measures 112 bytes, and 64 of them are `TaskStreamAffinity`. That mask sizes its bit buffer with
-///        `BitArrayUnitBytes` where the arithmetic needs bits per unit (`TaskStreamAffinity.h:19`), so it reserves
-///        eight 64-bit words and ever writes bits 0-7 of each - self-consistent, correct, and eight times the storage
-///        it needs. Taking that out is this type's remaining half: a dense encoding leaves the mask 8 bytes and the
-///        item 56.
+/// @note The item measures 56 bytes. 8 of them are `TaskStreamAffinity`, which once cost 64 because its word count was
+///        derived from bytes per word instead of bits per word; that is fixed in `TaskStreamAffinity.h` and pinned by a
+///        test there, because the defect was internally consistent and therefore invisible to any behavioural test.
 ///          `StaticString`, so a queued item can outlive the tracked task without holding a stale name alive.
 /// @note The type is trivially copyable apart from the affinity mask, and `current` is mutable because re-adding an
 ///       unfinished item to a lane is a queue operation, not a change of the work it describes.

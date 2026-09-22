@@ -32,7 +32,7 @@ void ResultPacketTest::Prepare()
 		// four. The task itself stayed at 176 - the join's generated counter went into padding it already had.
 		constexpr std::size_t decidedRecordBytes = 256;
 		constexpr std::size_t decidedTableKib = 1024;
-		constexpr std::size_t decidedWorkItemBytes = 112;
+		constexpr std::size_t decidedWorkItemBytes = 56;
 
 		const auto tableBytes = TaskRegistry::DefaultInitialCapacityRecords * TaskRegistry::RecordSizeBytes;
 
