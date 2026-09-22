@@ -104,6 +104,38 @@ Two more that are not bugs but must be explicit, because a driver thread makes t
 | A reader mistakes the absence of an IO measurement for an IO measurement of zero. | Every per-stream budget report must distinguish "not budgeted" from "charged nothing" (section 10). |
 | Diagnostic latency coupling | One thread now serves log writing and IO tasks, so a 500 ms file read delays the flush that a failing test is waiting on. `Update` handles at most one item per pass and returns, letting the driver drain logs between items; long IO tasks are then bounded by policy rather than by luck. |
 
+## 4b. Prerequisite, requested by the owner: the base task stream supersedes `MainThreadTaskQueue`
+
+The owner's instruction is that `mainThreadTaskQueue` should not exist and the base task stream should take over. The complete
+inventory, so that "all main thread things" is a closed list rather than a hope:
+
+| Site | What it is | Replacement |
+|---|---|---|
+| `Engine/Core/MainThreadTaskQueue.h`, `.cpp` | The whole class: `Enqueue`, `ProcessTasks`, `HasPendingTasks`, `RequestStop`, `IsRunning` | Delete both files and their `Engine/Core/CMakeLists.txt` entry |
+| `TaskSystem.h:11,69,316-318` | include, member `mainThreadTaskQueue`, accessor `GetMainThreadTaskQueue` | Remove all three |
+| `TaskSystem.h:284`, `TaskSystem.cpp:472-474` | `ProcessMainThreadTasks()` returning `mainThreadTaskQueue.ProcessTasks()` | Becomes driving the base stream: `GetStream(GetBaseTaskStreamIndex()).Update()`, the same entry point a driven stream uses |
+| `TaskSystem.cpp:466-469` | `DispatchToMainThread(TMainThreadTask, void*, uint8_t priority)` | Posts a real item to stream 0 - see the decision below |
+| `TaskSystem.cpp:126-128` (`JoinAndClear`) | `while (isRunning \|\| mainThreadTaskQueue.HasPendingTasks()) { ProcessMainThreadTasks(); }` | Same loop over the base stream's own pending state, via `Update` and a queue-empty query |
+| `Engine.cpp:139-146` | Engine loop pumps the main-thread queue | Engine loop drives the base task stream |
+| `TMainThreadTask` typedef | The `{ func, userData }` shape the queue stores | See decision: it either disappears or becomes how a base-stream item is built |
+
+**The crux, which needs the owner's answer.** `MainThreadTaskQueue` stores bare `{ func, userData, priority }` triples. A base
+stream queue holds `WorkItem`, and `WorkItem` names a `Task` in the registry. So "post to the base stream" is not a rename; one
+of these must happen:
+
+| Option | What it means | Cost |
+|---|---|---|
+| **Registry-backed posts** | Every post becomes a real `Task` (`CreateTask`-equivalent) enqueued on stream 0 | Uniform - base stream work then gets the same lifetime, dedup and tracing as everything else, and `WorkItem` stays as it is. Costs a registry slot per post and forces posts to obey the record-capacity contract |
+| **A callable form of `WorkItem`** | `WorkItem` gains a second flavour: a task reference *or* a plain callback | No registry cost, but `WorkItem` grows and every consumer must handle both flavours - the same kind of two-flavour item the `RangedTask` to `WorkItem` change was supposed to remove |
+
+Recommended: registry-backed posts, because it deletes a parallel task representation instead of adding a second flavour to the
+item type, and because the base stream then behaves exactly like the IO stream in this plan - one queue type, one pump, one set
+of rules.
+
+**Ordering.** This prerequisite needs `TaskStream::Update`, so it lands after plan commit 1 and before plan commit 3, and it
+must be verified with the three-configuration gate plus the existing base-stream tests (`The base stream is named Base, and the
+thread driving the engine is not called that`).
+
 ## 5. Steps
 
 ### Commit 1 - `TaskStream::Update` and `TaskStream::WaitForWork`
