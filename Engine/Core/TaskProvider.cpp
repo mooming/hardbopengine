@@ -329,7 +329,14 @@ public:
 
 		task->ReserveSubTasks(1);
 
-		return task->GenerateSubTask(0, 1);
+		const auto item = task->GenerateSubTask(0, 1);
+
+		if (releaseImmediately)
+		{
+			system.ReleaseTask(id);
+		}
+
+		return item;
 	}
 
 	[[nodiscard]] int GetAsks() const noexcept
@@ -353,6 +360,10 @@ public:
 	}
 
 	bool produceResult = true;
+	/// @brief Release each task the moment its item is built, so the item names a record that is already gone by the
+	///        time the stream can see it. The release happens inside `Produce`, which the stream calls under its queue
+	///        lock, so the ordering is arranged rather than raced.
+	bool releaseImmediately = false;
 
 private:
 	static std::size_t CountOnce(void* userData, std::size_t startIndex, std::size_t endIndex) noexcept
@@ -376,6 +387,40 @@ private:
 
 /// @brief Waits until the predicate holds, or the bound is reached.
 /// @return True if the predicate held within the bound.
+/// @brief A provider that stays inside `Produce` until the test lets it go.
+/// @details The only way to test "a detach waits for a drain in flight" is to have a drain actually in flight, and a
+///          `Produce` that returns immediately is never in flight when the test looks.
+class BlockingProvider final : public hbe::TaskProvider
+{
+public:
+	BlockingProvider(hbe::StaticString name, hbe::TaskSystem& system) noexcept
+		: TaskProvider(name, system)
+	{
+	}
+
+	~BlockingProvider() override
+	{
+		DetachAll();
+	}
+
+	std::optional<hbe::WorkItem> Produce(const hbe::TaskProduceContext& context) noexcept override
+	{
+		inside.store(true, std::memory_order_release);
+
+		for (int spin = 0; spin < 5000 && !release.load(std::memory_order_acquire); ++spin)
+		{
+			std::this_thread::sleep_for(std::chrono::milliseconds(1));
+		}
+
+		inside.store(false, std::memory_order_release);
+
+		return std::nullopt;
+	}
+
+	std::atomic<bool> inside{false};
+	std::atomic<bool> release{false};
+};
+
 bool WaitFor(const std::function<bool()>& done, int attempts) noexcept
 {
 	for (int attempt = 0; attempt < attempts; ++attempt)
@@ -514,6 +559,165 @@ void hbe::TaskProviderTest::Prepare()
 			ls << "Reporting nothing led to " << asksDuringIdle
 			   << " asks inside 300ms. Once per pass is the rule (R39); a hot loop turns an idle provider into a busy"
 			   << " core and starves the lane it is idle on." << lferr;
+		}
+	});
+
+	AddTest("Both lanes of a stream drain their own providers", [this](auto& ls)
+	{
+		auto& taskSystem = System();
+		const auto worker = hbe::TaskSystem::GetIOTaskStreamIndex() + 1;
+
+		if (!taskSystem.HasStream(worker))
+		{
+			ls << "This engine has no worker stream past the IO stream." << lferr;
+			return;
+		}
+
+		DrainObservation fifoRuns;
+		DrainObservation priorityRuns;
+		DrainingProvider fifoProvider("LaneFifoProbe", taskSystem, fifoRuns);
+		DrainingProvider priorityProvider("LanePriorityProbe", taskSystem, priorityRuns);
+
+		fifoProvider.AttachTo(worker, StreamDrainPolicy::ELane::Fifo);
+		priorityProvider.AttachTo(worker, StreamDrainPolicy::ELane::Priority);
+
+		const bool bothServed = WaitFor([&]() {
+			return fifoRuns.runs.load(std::memory_order_relaxed) > 0 &&
+				   priorityRuns.runs.load(std::memory_order_relaxed) > 0;
+		}, 500);
+
+		const unsigned fifo = fifoRuns.runs.load(std::memory_order_relaxed);
+		const unsigned priority = priorityRuns.runs.load(std::memory_order_relaxed);
+		const int fifoStream = fifoRuns.ranOnStream.load(std::memory_order_relaxed);
+		const int priorityStream = priorityRuns.ranOnStream.load(std::memory_order_relaxed);
+
+		if (!bothServed)
+		{
+			ls << "A provider attached to only one lane is served " << fifo << " time(s) and the other lane "
+			   << priority << " time(s), so one lane list is not being drained at all. Naming a lane is the whole of"
+			   << " R35, and recording an attachment in the provider proves nothing about the stream's list." << lferr;
+		}
+
+		if (fifo > 0 && fifoStream != static_cast<int>(worker))
+		{
+			ls << "The FIFO-lane provider's work ran on stream " << fifoStream << " instead of " << worker << "."
+			   << lferr;
+		}
+
+		if (priority > 0 && priorityStream != static_cast<int>(worker))
+		{
+			ls << "The priority-lane provider's work ran on stream " << priorityStream << " instead of " << worker
+			   << "." << lferr;
+		}
+
+		fifoProvider.DetachAll();
+		priorityProvider.DetachAll();
+		fifoProvider.ReleaseItems();
+		priorityProvider.ReleaseItems();
+	});
+
+	AddTest("DetachAll waits for a Produce that is already in flight", [this](auto& ls)
+	{
+		auto& taskSystem = System();
+		const auto worker = hbe::TaskSystem::GetIOTaskStreamIndex() + 1;
+
+		if (!taskSystem.HasStream(worker))
+		{
+			ls << "This engine has no worker stream past the IO stream." << lferr;
+			return;
+		}
+
+		BlockingProvider provider("DetachInFlightProbe", taskSystem);
+		provider.AttachTo(worker, StreamDrainPolicy::ELane::Fifo);
+
+		const bool entered = WaitFor([&]() { return provider.inside.load(std::memory_order_acquire); }, 500);
+
+		if (!entered)
+		{
+			provider.release.store(true, std::memory_order_release);
+			ls << "The stream never entered Produce, so the detach had nothing to wait for and this test proved"
+			   << " nothing about the window it exists to close." << lferr;
+			return;
+		}
+
+		std::atomic<bool> detachReturned{false};
+		std::thread detacher([&provider, &detachReturned]()
+		{
+			provider.DetachAll();
+			detachReturned.store(true, std::memory_order_release);
+		});
+
+		std::this_thread::sleep_for(std::chrono::milliseconds(100));
+		const bool returnedEarly = detachReturned.load(std::memory_order_acquire);
+
+		provider.release.store(true, std::memory_order_release);
+		detacher.join();
+
+		if (returnedEarly)
+		{
+			ls << "DetachAll returned while Produce was still running, so the stream could have held a pointer to an"
+			   << " object being destroyed. R40 holds the queue lock across Produce precisely so that a detach waits"
+			   << " on that lock." << lferr;
+		}
+
+		if (!detachReturned.load(std::memory_order_acquire))
+		{
+			ls << "DetachAll never returned even after the drain was released, so waiting on the queue lock deadlocks"
+			   << " rather than blocking." << lferr;
+		}
+
+		if (taskSystem.GetStream(worker).IsProviderAttached(provider, StreamDrainPolicy::ELane::Fifo))
+		{
+			ls << "The provider stayed registered on the stream after a completed DetachAll." << lferr;
+		}
+	});
+
+	AddTest("An item whose task is gone is dropped and the lane keeps working", [this](auto& ls)
+	{
+		auto& taskSystem = System();
+		const auto worker = hbe::TaskSystem::GetIOTaskStreamIndex() + 1;
+
+		if (!taskSystem.HasStream(worker))
+		{
+			ls << "This engine has no worker stream past the IO stream." << lferr;
+			return;
+		}
+
+		DrainObservation deadRuns;
+		DrainingProvider deadProvider("DeadItemProbe", taskSystem, deadRuns);
+		deadProvider.releaseImmediately = true;
+		deadProvider.AttachTo(worker, StreamDrainPolicy::ELane::Fifo);
+
+		const bool askedForDead = WaitFor([&]() { return deadProvider.GetAsks() >= 4; }, 500);
+
+		deadProvider.DetachAll();
+
+		if (!askedForDead)
+		{
+			ls << "The drain asked the dead-item provider only " << deadProvider.GetAsks()
+			   << " time(s), so the test could not show what happens to an item naming a released task." << lferr;
+		}
+
+		if (deadRuns.runs.load(std::memory_order_relaxed) != 0)
+		{
+			ls << "Work ran " << deadRuns.runs.load(std::memory_order_relaxed)
+			   << " time(s) from items whose tasks had already been released, so a provider can smuggle dead work past"
+			   << " the liveness check (R7)." << lferr;
+		}
+
+		DrainObservation liveRuns;
+		DrainingProvider liveProvider("AfterDeadItemProbe", taskSystem, liveRuns);
+		liveProvider.AttachTo(worker, StreamDrainPolicy::ELane::Fifo);
+
+		const bool laneSurvived = WaitFor([&]() { return liveRuns.runs.load(std::memory_order_relaxed) > 0; }, 500);
+
+		liveProvider.DetachAll();
+		liveProvider.ReleaseItems();
+
+		if (!laneSurvived)
+		{
+			ls << "After dropping dead items the stream never ran anything again, so a released task does not merely"
+			   << " lose its work - it wedges the lane." << lferr;
 		}
 	});
 
