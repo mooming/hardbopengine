@@ -2,6 +2,10 @@
 
 #include "TaskProvider.h"
 
+#include <atomic>
+#include <chrono>
+#include <thread>
+
 #include "Core/Debug.h"
 #include "Engine/Engine.h"
 #include "Log/Logger.h"
@@ -275,6 +279,118 @@ public:
 	}
 };
 
+struct DrainObservation
+{
+	std::atomic<unsigned> runs{0};
+	std::atomic<int> ranOnStream{-1};
+};
+
+/// @brief Hands out a bounded number of real work items, so a drain can be observed doing what a drain is for.
+/// @details The probe deliberately owns nothing the stream has to know about: each item is a task created in the system
+///          the provider was built with, and the probe releases them only once the test has seen them run.
+class DrainingProvider final : public hbe::TaskProvider
+{
+public:
+	DrainingProvider(hbe::StaticString name, hbe::TaskSystem& system, DrainObservation& target) noexcept
+		: TaskProvider(name, system)
+		, system(system)
+		, observation(target)
+	{
+	}
+
+	~DrainingProvider() override
+	{
+		DetachAll();
+	}
+
+	std::optional<hbe::WorkItem> Produce(const hbe::TaskProduceContext& context) noexcept override
+	{
+		++asks;
+
+		if (handed >= MaxItems || !produceResult)
+		{
+			return std::nullopt;
+		}
+
+		const hbe::TaskID id = system.CreateTask("DrainTick", CountOnce, &observation);
+		if (id.IsNull())
+		{
+			return std::nullopt;
+		}
+
+		ids[handed] = id;
+		++handed;
+
+		hbe::Task* task = system.FindTask(id);
+		if (task == nullptr)
+		{
+			return std::nullopt;
+		}
+
+		task->ReserveSubTasks(1);
+
+		return task->GenerateSubTask(0, 1);
+	}
+
+	[[nodiscard]] int GetAsks() const noexcept
+	{
+		return asks;
+	}
+
+	[[nodiscard]] int GetHanded() const noexcept
+	{
+		return handed;
+	}
+
+	void ReleaseItems() noexcept
+	{
+		for (int index = 0; index < handed; ++index)
+		{
+			system.ReleaseTask(ids[index]);
+		}
+
+		handed = 0;
+	}
+
+	bool produceResult = true;
+
+private:
+	static std::size_t CountOnce(void* userData, std::size_t startIndex, std::size_t endIndex) noexcept
+	{
+		auto& observation = *static_cast<DrainObservation*>(userData);
+		observation.runs.fetch_add(1, std::memory_order_relaxed);
+		observation.ranOnStream.store(static_cast<int>(hbe::TaskSystem::GetCurrentStreamIndex()),
+									  std::memory_order_relaxed);
+
+		return endIndex - startIndex;
+	}
+
+	static constexpr int MaxItems = 4;
+
+	hbe::TaskSystem& system;
+	DrainObservation& observation;
+	std::array<hbe::TaskID, MaxItems> ids{hbe::TaskID{}, hbe::TaskID{}, hbe::TaskID{}, hbe::TaskID{}};
+	int asks = 0;
+	int handed = 0;
+};
+
+/// @brief Waits until the predicate holds, or the bound is reached.
+/// @return True if the predicate held within the bound.
+bool WaitFor(const std::function<bool()>& done, int attempts) noexcept
+{
+	for (int attempt = 0; attempt < attempts; ++attempt)
+	{
+		if (done())
+		{
+			return true;
+		}
+
+		std::this_thread::sleep_for(std::chrono::milliseconds(10));
+	}
+
+	return done();
+}
+
 } // namespace
 
 void hbe::TaskProviderTest::Prepare()
@@ -304,6 +420,100 @@ void hbe::TaskProviderTest::Prepare()
 			ls << "The context's clock reading predates the engine epoch, which means it was not taken in the epoch's "
 				  "time base."
 			   << lferr;
+		}
+	});
+
+	AddTest("A provider's item is run by the stream that drained it", [this](auto& ls)
+	{
+		auto& taskSystem = System();
+		const auto worker = hbe::TaskSystem::GetIOTaskStreamIndex() + 1;
+
+		if (!taskSystem.HasStream(worker))
+		{
+			ls << "This engine has no worker stream past the IO stream, so the drain cannot be observed at all."
+			   << lferr;
+			return;
+		}
+
+		DrainObservation observation;
+		DrainingProvider provider("DrainDeliveryProbe", taskSystem, observation);
+		provider.AttachTo(worker, StreamDrainPolicy::ELane::Fifo);
+
+		const bool drained = WaitFor([&]() { return observation.runs.load(std::memory_order_relaxed) >= 4; }, 500);
+
+		const unsigned runs = observation.runs.load(std::memory_order_relaxed);
+		const int ranOn = observation.ranOnStream.load(std::memory_order_relaxed);
+
+		provider.DetachAll();
+
+		if (!drained)
+		{
+			ls << "The stream never ran anything the provider handed over: " << provider.GetAsks() << " asks produced "
+			   << provider.GetHanded() << " item(s) and " << runs
+			   << " ran. Asking is not delivering - this test exists because a drain that never asks would otherwise"
+			   << " fail silently." << lferr;
+		}
+
+		if (provider.GetHanded() > 0 && runs == 0)
+		{
+			ls << "The provider handed over " << provider.GetHanded()
+			   << " item(s) and none ran, so the drain takes items but the stream does not execute them." << lferr;
+		}
+
+		if (runs > 0 && ranOn != static_cast<int>(worker))
+		{
+			ls << "The work ran on stream " << ranOn << " instead of " << worker
+			   << ", which is the stream the provider attached to. Routing by lane is the whole point of naming a lane"
+			   << " (R35)." << lferr;
+		}
+
+		if (taskSystem.GetStream(worker).IsProviderAttached(provider, StreamDrainPolicy::ELane::Fifo))
+		{
+			ls << "DetachAll left the provider registered on the stream, so the stream still holds a pointer to an"
+			   << " object about to die." << lferr;
+		}
+
+		provider.ReleaseItems();
+	});
+
+	AddTest("A provider with nothing to hand over is not asked in a hot loop", [this](auto& ls)
+	{
+		auto& taskSystem = System();
+		const auto worker = hbe::TaskSystem::GetIOTaskStreamIndex() + 1;
+
+		if (!taskSystem.HasStream(worker))
+		{
+			ls << "This engine has no worker stream past the IO stream." << lferr;
+			return;
+		}
+
+		DrainObservation observation;
+		DrainingProvider provider("DrainIdleProbe", taskSystem, observation);
+		provider.produceResult = false;
+		provider.AttachTo(worker, StreamDrainPolicy::ELane::Fifo);
+
+		const bool askedOnce = WaitFor([&]() { return provider.GetAsks() > 0; }, 500);
+
+		std::this_thread::sleep_for(std::chrono::milliseconds(300));
+		const int asksDuringIdle = provider.GetAsks();
+
+		provider.DetachAll();
+
+		if (!askedOnce)
+		{
+			ls << "A provider on an empty lane was never asked, so the drain does not run at all." << lferr;
+		}
+
+		if (provider.GetHanded() != 0)
+		{
+			ls << "A provider reporting nothing produced " << provider.GetHanded() << " item(s)." << lferr;
+		}
+
+		if (asksDuringIdle > 200)
+		{
+			ls << "Reporting nothing led to " << asksDuringIdle
+			   << " asks inside 300ms. Once per pass is the rule (R39); a hot loop turns an idle provider into a busy"
+			   << " core and starves the lane it is idle on." << lferr;
 		}
 	});
 
