@@ -143,3 +143,39 @@ must not be producing, and a provider that returns false must not be asked again
   no-op), and the build **succeeded and relinked** (a rejected build leaves the previous binary, which then "passes"
   every test). Two false verdicts in one session came from skipping one of each.
 
+## 8. Provider drain and detach - implementation order (R38, R39)
+
+Nothing here is undecided; this is the order, because the pieces need each other and the last attempt at them stalled on
+one question (`AttachTo` knows an index, a drain needs an object).
+
+1. `TaskStream` gains one provider list per lane (`Fifo`, `Priority`) of `TaskProvider*`, plus a drain-in-flight count.
+   Registration and removal happen under `queueLock`, the same lock the drain takes.
+2. `TaskProvider::AttachTo(stream, lane)` keeps its slot bookkeeping **and** registers into the stream when the engine has
+   a task system and `stream` names a live one. Do not "simplify" this into refusing unknown indices: the idempotence,
+   capacity and lane-mask probes attach to invented indices to test the provider's own rule, and forcing them to conjure
+   streams would replace those tests with stream-registration tests.
+3. `Produce` becomes `bool Produce(const TaskProduceContext&, WorkItem& outWorkItem)`. Update `RecordingProvider` and
+   `Examples/WindowExample/Main.cpp` in the same commit; the example then stops calling `Enqueue` itself, and its interim
+   `PumpProvider` can go once the stream drains it.
+4. Drain in the lane path: lane empty *and* `MayTakeNewWork()` *and* a provider attached → ask once; `true` → enqueue the
+   item into that lane and keep going; `false` → stop draining that lane this pass. Increment the in-flight count around
+   the call.
+5. `DetachFrom`/`DetachAll` take each target stream's lock and wait for that stream's in-flight count to reach zero, then
+   remove the pointer and the slot. `~TaskProvider` asserts nothing is attached. `Stop()` stays non-cancelling and keeps
+   not detaching (`TaskProvider.cpp:254-261` asserts that; leave it passing).
+
+Tests to write, and the gate each one is proving - production observed as work actually running on the stream that drained
+it, never as "the provider was called":
+
+| Test | Gate it proves |
+|---|---|
+| A provider attached to a lane has its item run on that stream | the drain exists and routes by lane |
+| A stream whose allowance is spent never asks its provider | the drain is budget-gated, not merely queue-gated |
+| A provider returning `false` is asked at most once per pass | `false` ends the drain instead of spinning |
+| A provider attached to both lanes is asked per lane | R36's per-(stream,lane) duplication is real, not just recorded |
+| `DetachAll` returns only after an in-flight `Produce` finished | R37's wait, and the use-after-free it prevents |
+| An item from a provider naming a released task is dropped, with the R25 warning | a provider does not bypass the liveness check |
+
+Order of work per this session's two harness lessons: mutation-prove each new check, and before believing any verdict
+prove that the substitution changed the file, that the file owns the code, and that the build relinked.
+
