@@ -25,9 +25,8 @@ has to move *who executes the IO stream*, not when windows turn over.
 ## 2. Target design
 
 The logger owns a real thread that exists for the logger's whole lifetime, which starts before the task system and ends
-after it. The IO stream stops being a thread-owning stream and becomes a driven stream, like the base stream. The logger's
-thread loop calls a pump - a functor the task system installs - so the IO stream's queues are worked on by a thread that
-can never be waiting on the IO stream.
+after it. The IO stream stops being a thread-owning stream and becomes a driven stream: its queues are worked by the
+logger's thread through a pump the task system installs, so nothing that drives the IO stream can be waiting on it.
 
 ```
 Logger thread                         TaskSystem
@@ -52,6 +51,28 @@ is how a failing test turned into a five-minute wall-clock death instead of a re
 | I4 | A thread blocked waiting on the task system keeps driving what it owns. | This is what the base thread already fails to do, and the direct cause of the deadlock |
 | I5 | The accounting window still turns over on the base frame pass. | R26/R27, enforced by the tests named in section 1 |
 | I6 | No allocation on the logger thread's drain path while the allocator is being torn down. | The logger outlives subsystems that own allocators |
+
+## 3b. Precedent check: the base stream does *not* ride on another thread
+
+An earlier draft of this plan described the IO stream as becoming "a driven stream, like the base stream". That was wrong,
+inherited from the shape of `BuildStreams` rather than read from the code, and the correction matters to the design.
+
+| Claim | Evidence | Verdict |
+|---|---|---|
+| `Start` skips thread creation for the engine streams | `TaskStream.cpp:279` - `thread = std::thread(RunLoop)` unconditionally, no branch, no `ownsThread` or ride-on flag anywhere in `TaskStream.h/.cpp` | **False.** Base and IO own real threads today, named "Base" and "IO", exactly like Worker1..N |
+| The base stream is driven by the engine loop thread | `mainThreadTaskQueue` is a `TaskSystem` member (`TaskSystem.h:69`), filled at `TaskSystem.cpp:469`, pumped by the engine loop at `Engine.cpp:141,146` and by `JoinAndClear` at `:126-128` | **Half true.** The engine loop drives *that queue*. The Base stream's own thread still exists and runs the ordinary loop, so stream index 0 has two intakes and two executors |
+| Base and IO are special by construction | They are reserved, named, and created before the workers (`BuildStreams`), and their indices are fixed | **True, and only that.** |
+
+Two consequences, both of which the plan now carries:
+
+1. **There is no in-tree precedent for a driven stream.** `Update` and `WaitForWork` are new code, not an extra entry point on
+   a mechanism somebody already solved. The container-lifetime hazard (F4) in particular has never had to be solved before,
+   so it is enforced by explicit bracketing and an assert rather than by copying a neighbour.
+2. **The obvious alternative is disqualified, and must be seen to be disqualified.** The tempting reuse is the base
+   mechanism: post the logger's drain to `mainThreadTaskQueue` and let the engine loop run it. That queue is driven by the
+   engine loop thread, and the engine loop thread is precisely the thread that blocks in a log flush - so the reuse rebuilds
+   the very cycle this plan exists to close. The IO stream's driver must not be the engine loop thread, and the logger thread
+   is the only candidate that is already alive before the task system and still alive after it.
 
 ## 4. The interface the logger thread calls, verified against the code
 
