@@ -361,11 +361,24 @@ before choosing it.
 
 ### Still open
 
-* semantics of the header's `flags` byte (named rather than left as padding, but not yet defined)
-* task registry capacity and what happens when it is full
-* result pool bank growth policy and behaviour on exhaustion
-* which allocator the pool's banks come from, given per-stream pools cannot be freed cross-thread
-* how stage-to-stage payload binding works when two of a caller's sequential jobs want the same slot
+Three of the five items this list carried were retired by the decisions that removed the containers they were about,
+and leaving them here read as an invitation to rebuild deleted machinery (R23 embedded the result in the task,
+`ac496e6` deleted `ResultContainer` and the pool with it - recorded as R31):
+
+* semantics of the packet header's `flags` byte - named rather than left as padding, still undefined
+* how stage-to-stage payload binding works when two of a caller's sequential jobs want the same slot, given R23 gives
+  a task exactly one packet and larger payloads are caller-owned memory
+* the priority band of the one work item the engine makes for a successor (R30): R18 has a producer declare a band for
+  work it queues itself, and here no producer exists, so the item runs at the default. Closing it needs a field on the
+  record, and R28 priced the record's room without one
+* the ordering "record the successor before queueing the first item" is a contract in `ParallelFor`'s header with **no
+  test behind it** (R32): a mutation that records it afterwards came back green, because witnessing the race needs a
+  sub-job to reach a stream, finish, and close its join before the call returns. Losing it is silent - the join closes,
+  finds no routing, and nothing is dispatched
+
+Closed since the list was written, with where the answer lives: registry capacity, growth and full-table behaviour are
+R22 with the refusal measured in `TaskRegistryTest`; the result buffer's growth policy and its allocator question died
+with the buffer (R23, R31).
 
 ## Owner decisions, 2026-09-18 (third round: the result container is a stack allocator)
 
