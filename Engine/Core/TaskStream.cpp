@@ -278,10 +278,217 @@ std::chrono::nanoseconds TaskStream::GetAccumulatedCPUTime() const noexcept
 
 void TaskStream::Start(TaskSystem& taskSys) noexcept
 {
+	taskSystem = &taskSys;
+
 	auto func = [this]() { RunLoop(); };
 
 	thread = std::thread(func);
 	OS::SetThreadPriority(thread, 0);
+}
+
+bool TaskStream::Update() noexcept
+{
+	if (threadID == TThreadID{})
+	{
+		threadID = std::this_thread::get_id();
+	}
+
+	// A driven stream shares its driver thread with whatever else that thread does, so the index and the allocator are
+	// entered and left around this pass rather than assumed for the lifetime of the thread.
+	const TStreamIndex previousStreamIndex = TaskSystem::GetCurrentStreamIndex();
+	TaskSystem::SetStreamIndex(streamIndex);
+	AllocatorScope scope(allocator);
+
+	auto restore = [&]()
+	{
+		TaskSystem::SetStreamIndex(previousStreamIndex);
+	};
+
+	static ConfigParam<float, true> thresholdDuration(
+			"TaskStreamDurationThreshold", "Print a warning log if it detects slower task. (seconds)", 0.16f);
+
+	TaskSystem& taskSys = *taskSystem;
+	++loopCount;
+
+	if (windowAdvanceRequested.exchange(false, std::memory_order_relaxed))
+	{
+		budget.Reset();
+		drainPolicy.EndRound();
+	}
+
+	// The allowance is this thread's field to write, so a request made from elsewhere is applied here rather than
+	// landing in the middle of another thread's store.
+	if (auto applied = budget.ApplyRequestedAllowance(); applied.has_value())
+	{
+		drainPolicy.ConfigureAllowance(*applied);
+	}
+
+	if (streamIndex == TaskSystem::BaseStreamIndex)
+	{
+		taskSys.RunBudgetWindowPass();
+	}
+
+	std::optional<WorkItem> workItem;
+	StreamDrainPolicy::ELane lane = StreamDrainPolicy::ELane::None;
+
+	{
+		std::unique_lock lock(queueLock);
+
+		// A task that finished elsewhere is released from its lane and put back on that same lane, so the
+		// sweep and the re-add are per lane and no task changes lane on the way.
+		priorityQueue.Remove([](const WorkItem& task) { return task.HasFinished(); });
+		priorityQueue.PushRange(readdingPriority);
+		readdingPriority.clear();
+
+		for (auto& task : readdingFifo)
+		{
+			fifoQueue.PushBack(task);
+		}
+
+		readdingFifo.clear();
+
+		// Rotating the lane drops finished tasks in place and preserves arrival order for the rest, which
+		// is the same O(n)-per-loop price BoundedPriorityQueue::Remove already pays.
+		const size_t fifoCount = fifoQueue.Size();
+		for (size_t i = 0; i < fifoCount; ++i)
+		{
+			auto entry = fifoQueue.Front();
+			fifoQueue.PopFront();
+
+			if (!entry.HasFinished())
+			{
+				fifoQueue.PushBack(entry);
+			}
+		}
+
+		lane = drainPolicy.ChooseLane(!fifoQueue.IsEmpty(), !priorityQueue.IsEmpty());
+		switch (lane)
+		{
+			case StreamDrainPolicy::ELane::Fifo:
+				workItem = fifoQueue.Front();
+				fifoQueue.PopFront();
+				drainPolicy.CommitTake(lane);
+				break;
+			case StreamDrainPolicy::ELane::Priority:
+				workItem = priorityQueue.Pop();
+				drainPolicy.CommitTake(lane);
+				break;
+			case StreamDrainPolicy::ELane::None:
+				break;
+		}
+
+		if (!workItem.has_value())
+		{
+			// Both lanes offered nothing, so ask whoever attached to them - the lane that is empty is the one that
+			// asks, and a spent allowance means no asking at all (R39).
+			for (const auto probe : {StreamDrainPolicy::ELane::Fifo, StreamDrainPolicy::ELane::Priority})
+			{
+				const bool laneIsEmpty =
+						probe == StreamDrainPolicy::ELane::Fifo ? fifoQueue.IsEmpty() : priorityQueue.IsEmpty();
+				if (!laneIsEmpty || !budget.CanTakeWork())
+				{
+					continue;
+				}
+
+				if (auto produced = DrainProvidersLocked(probe); produced.has_value())
+				{
+					workItem = produced;
+					lane = probe;
+					drainPolicy.CommitTake(probe);
+					break;
+				}
+			}
+		}
+
+		if (!workItem.has_value())
+		{
+			lane = StreamDrainPolicy::ELane::None;
+		}
+	}
+
+	if (!workItem.has_value())
+	{
+		if (budget.CanTakeWork())
+		{
+			taskSys.Dequeue(workItem);
+		}
+		else
+		{
+			ReportGeneralQueueRefusal();
+		}
+	}
+
+	if (!workItem.has_value())
+	{
+		restore();
+		return false;
+	}
+
+	auto* task = taskSys.FindTask(workItem->taskID);
+	if (task == nullptr)
+	{
+		ReportReleasedTask(*workItem);
+		restore();
+		return true;
+	}
+
+	time::TDuration duration;
+	const bool chargingBudget = budget.GetAllowance().count() > 0.0;
+	const auto chargedBefore = chargingBudget ? budget.GetAccumulated() : std::chrono::nanoseconds::zero();
+	if (chargingBudget)
+	{
+		budget.BeginTask();
+	}
+
+	{
+		time::ScopedTime timer(duration);
+		if (workItem->Run(*task))
+		{
+			taskSys.DispatchSuccessor(task->GetID());
+		}
+	}
+
+	if (chargingBudget)
+	{
+		budget.EndTask();
+
+		const auto spent = budget.GetAccumulated() - chargedBefore;
+		if (lane == StreamDrainPolicy::ELane::Priority)
+		{
+			drainPolicy.ChargePriority(spent);
+		}
+		else
+		{
+			drainPolicy.ChargeFifo(spent);
+		}
+	}
+
+	const float deltaTime = time::ToFloat(duration);
+	if (deltaTime > thresholdDuration.Get())
+	{
+		Logger::Get(name).OutWarning([dt = deltaTime](auto& ls) { ls << "Slow DeltaTime = " << dt; });
+	}
+
+	if (!workItem->HasFinished())
+	{
+		if (lane == StreamDrainPolicy::ELane::Priority)
+		{
+			readdingPriority.push_back(*workItem);
+		}
+		else
+		{
+			readdingFifo.push_back(*workItem);
+		}
+	}
+
+	restore();
+	return true;
+}
+
+void TaskStream::WaitForWork(std::chrono::milliseconds patience) noexcept
+{
+	std::unique_lock lock(queueLock);
+	cv.wait_for(lock, patience);
 }
 
 void TaskStream::RunLoop() noexcept
@@ -296,189 +503,11 @@ void TaskStream::RunLoop() noexcept
 
 	threadID = std::this_thread::get_id();
 
-	static ConfigParam<float, true> thresholdDuration(
-			"TaskStreamDurationThreshold", "Print a warning log if it detects slower task. (seconds)", 0.16f);
-
-	auto& engine = Engine::Get();
-	auto& taskSys = engine.GetTaskSystem();
-
-	HVector<WorkItem> readdingFifo;
-	HVector<WorkItem> readdingPriority;
-
-	for (; likely(taskSys.IsRunning()); ++loopCount)
+	while (likely(taskSystem->IsRunning()))
 	{
-		if (windowAdvanceRequested.exchange(false, std::memory_order_relaxed))
+		if (!Update())
 		{
-			budget.Reset();
-			drainPolicy.EndRound();
-		}
-
-		// The allowance is this thread's field to write, so a request made from elsewhere is applied here rather than
-		// landing in the middle of another thread's store.
-		if (auto applied = budget.ApplyRequestedAllowance(); applied.has_value())
-		{
-			drainPolicy.ConfigureAllowance(*applied);
-		}
-
-		if (streamIndex == TaskSystem::BaseStreamIndex)
-		{
-			taskSys.RunBudgetWindowPass();
-		}
-
-		std::optional<WorkItem> workItem;
-		StreamDrainPolicy::ELane lane = StreamDrainPolicy::ELane::None;
-
-		{
-			std::unique_lock lock(queueLock);
-
-			// A task that finished elsewhere is released from its lane and put back on that same lane, so the
-			// sweep and the re-add are per lane and no task changes lane on the way.
-			priorityQueue.Remove([](const WorkItem& task) { return task.HasFinished(); });
-			priorityQueue.PushRange(readdingPriority);
-			readdingPriority.clear();
-
-			for (auto& task : readdingFifo)
-			{
-				fifoQueue.PushBack(task);
-			}
-
-			readdingFifo.clear();
-
-			// Rotating the lane drops finished tasks in place and preserves arrival order for the rest, which
-			// is the same O(n)-per-loop price BoundedPriorityQueue::Remove already pays.
-			const size_t fifoCount = fifoQueue.Size();
-			for (size_t i = 0; i < fifoCount; ++i)
-			{
-				auto entry = fifoQueue.Front();
-				fifoQueue.PopFront();
-
-				if (!entry.HasFinished())
-				{
-					fifoQueue.PushBack(entry);
-				}
-			}
-
-			lane = drainPolicy.ChooseLane(!fifoQueue.IsEmpty(), !priorityQueue.IsEmpty());
-			switch (lane)
-			{
-				case StreamDrainPolicy::ELane::Fifo:
-					workItem = fifoQueue.Front();
-					fifoQueue.PopFront();
-					drainPolicy.CommitTake(lane);
-					break;
-				case StreamDrainPolicy::ELane::Priority:
-					workItem = priorityQueue.Pop();
-					drainPolicy.CommitTake(lane);
-					break;
-				case StreamDrainPolicy::ELane::None:
-					break;
-			}
-
-			if (!workItem.has_value())
-			{
-				// Both lanes offered nothing, so ask whoever attached to them - the lane that is empty is the one that
-				// asks, and a spent allowance means no asking at all (R39).
-				for (const auto probe : {StreamDrainPolicy::ELane::Fifo, StreamDrainPolicy::ELane::Priority})
-				{
-					const bool laneIsEmpty =
-							probe == StreamDrainPolicy::ELane::Fifo ? fifoQueue.IsEmpty() : priorityQueue.IsEmpty();
-					if (!laneIsEmpty || !budget.CanTakeWork())
-					{
-						continue;
-					}
-
-					if (auto produced = DrainProvidersLocked(probe); produced.has_value())
-					{
-						workItem = produced;
-						lane = probe;
-						drainPolicy.CommitTake(probe);
-						break;
-					}
-				}
-			}
-
-			if (!workItem.has_value())
-			{
-				lane = StreamDrainPolicy::ELane::None;
-			}
-		}
-
-		if (!workItem.has_value())
-		{
-			if (budget.CanTakeWork())
-			{
-				taskSys.Dequeue(workItem);
-			}
-			else
-			{
-				ReportGeneralQueueRefusal();
-			}
-		}
-
-		if (!workItem.has_value())
-		{
-			// Wait for a signal for waitPeriod
-			std::unique_lock lock(queueLock);
-			constexpr std::chrono::milliseconds waitPeriod(10);
-			cv.wait_for(lock, waitPeriod);
-
-			continue;
-		}
-
-		auto* task = taskSys.FindTask(workItem->taskID);
-		if (task == nullptr)
-		{
-			ReportReleasedTask(*workItem);
-			continue;
-		}
-
-		time::TDuration duration;
-		const bool chargingBudget = budget.GetAllowance().count() > 0.0;
-		const auto chargedBefore = chargingBudget ? budget.GetAccumulated() : std::chrono::nanoseconds::zero();
-		if (chargingBudget)
-		{
-			budget.BeginTask();
-		}
-
-		{
-			time::ScopedTime timer(duration);
-			if (workItem->Run(*task))
-			{
-				taskSys.DispatchSuccessor(task->GetID());
-			}
-		}
-
-		if (chargingBudget)
-		{
-			budget.EndTask();
-
-			const auto spent = budget.GetAccumulated() - chargedBefore;
-			if (lane == StreamDrainPolicy::ELane::Priority)
-			{
-				drainPolicy.ChargePriority(spent);
-			}
-			else
-			{
-				drainPolicy.ChargeFifo(spent);
-			}
-		}
-
-		const float deltaTime = time::ToFloat(duration);
-		if (deltaTime > thresholdDuration.Get())
-		{
-			log.OutWarning([dt = deltaTime](auto& ls) { ls << "Slow DeltaTime = " << dt; });
-		}
-
-		if (!workItem->HasFinished())
-		{
-			if (lane == StreamDrainPolicy::ELane::Priority)
-			{
-				readdingPriority.push_back(*workItem);
-			}
-			else
-			{
-				readdingFifo.push_back(*workItem);
-			}
+			WaitForWork(std::chrono::milliseconds(10));
 		}
 	}
 

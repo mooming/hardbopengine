@@ -78,6 +78,14 @@ private:
 	TStreamIndex streamIndex;
 	std::uint64_t loopCount;
 	MultiPoolAllocator allocator;
+
+	/// @brief The task system this stream works for, recorded rather than looked up.
+	/// @details `Update` may run on a thread that outlives the engine, so it cannot resolve the task system through the
+	///          live engine the way a thread-owned loop can.
+	TaskSystem* taskSystem = nullptr;
+
+	HVector<WorkItem> readdingFifo;
+	HVector<WorkItem> readdingPriority;
 	CPUBudget budget;
 
 	std::mutex queueLock;
@@ -236,6 +244,24 @@ public:
 	[[nodiscard]] bool IsProviderAttached(const TaskProvider& provider, StreamDrainPolicy::ELane lane) noexcept;
 
 	void Start(TaskSystem& taskSys) noexcept;
+
+	/// @brief Drive exactly one pass of this stream, on whatever thread calls it.
+	/// @details The pass is non-blocking: it sweeps finished work, applies a pending allowance request, reopens the
+	///          accounting window if one was asked for, takes at most one item from a lane, asks the providers attached to
+	///          the empty lanes, and otherwise falls back to the general queue. It returns true when it took or dropped
+	///          something, so a driver that has other duties knows whether to keep going or to call `WaitForWork`.
+	/// @note One driver at a time, and that driver is this stream's owner thread for every purpose that asks who owns it:
+	///       `IsBaseThread`, `IsIOThread`, the owner-thread budget asserts, and the thread-local stream index. The index and
+	///       the allocator scope are entered and restored around each pass, because a shared driver does not belong to this
+	///       stream for the whole of its life.
+	/// @note This resolves nothing global. A driven stream must outlive the engine object that hosts the task system, so the
+	///       pass reads the task system recorded at registration and never the live engine.
+	bool Update() noexcept;
+
+	/// @brief Sleep until this stream is worth driving again, or `patience` runs out.
+	/// @details Separate from `Update` on purpose: a pass that found nothing must not decide how long to wait, because a
+	///          driver with several duties knows its own latency budget and this stream cannot.
+	void WaitForWork(std::chrono::milliseconds patience) noexcept;
 	void RunLoop() noexcept;
 
 private:
