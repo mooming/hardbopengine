@@ -102,3 +102,24 @@ consequence and the reason `Task::Start` was already deleted.
   public `HasDone`, and rewrite ~15 test sites to observe runs through a counter or an in-band sentinel instead of
   asking a task whether it is finished. Do not leave `HasDone` public "because tests use it" - that keeps the
   synchronous model alive by its tail.
+
+## 6. Do the provider drain in this commit, not after it (R35, owner decided 2026-09-22)
+
+The owner settled the provider shape: *"User implements a custom task provider and attach the provider to a stream.
+Then, stream drains a task to run from provider by priority or FIFO policy. Which lane it's attached will defines the
+behaviour."* Three consequences for this commit:
+
+1. `AttachTo(TStreamIndex)` is too coarse. A stream has two lanes with different policies, so attachment has to name
+   the lane - reuse `StreamDrainPolicy::ELane` rather than inventing a second enum for the same distinction.
+2. `Produce` **hands the stream a work item**; it does not enqueue into a queue itself. That item is the type this
+   commit is introducing, which is the whole reason to do both together: written against `RangedTask` first, every
+   provider signature and body has to be rewritten again in this commit.
+3. Drain position: where the lane is served. A lane empty of queued items asks its attached provider for one item,
+   under the same budget gate that governs taking new work, and `Produce` returning false ends the drain for that
+   stream for this pass. `Stop()` stays non-cancelling.
+
+Consumers to update in the same round, all user-side: `Applications/WindowExample/Main.cpp` (its loop is currently
+`app->PollEvents(); window->PollEvents();` and never touches the task system), the window test
+(`Engine/Test/UnitTestCollection.cpp:96` registers `WindowTest`), and `EngineTest` for the mechanism - production
+observed as work actually running on the stream that drained it, plus the two gates: a stream with a spent allowance
+must not be producing, and a provider that returns false must not be asked again in the same pass.
