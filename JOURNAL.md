@@ -1,5 +1,47 @@
 # Journal
 
+## R36 in code: one slot per stream, a lane mask in it, and a refused attachment that reports
+
+`AttachTo` now names the lane it attaches on - `AttachTo(TStreamIndex, StreamDrainPolicy::ELane)` - with no default,
+because a defaulted lane is the guessed-target mistake again in smaller clothing. Slots are per stream and hold a
+`std::uint8_t` lane mask beside the stream index, so two lanes on one stream cost one slot and one duplicate check, and
+`GetAttachedLanes(stream)` reports the mask. `ELane::None` claims no bit: the bit constants are named explicitly rather
+than shifted from `ELane`, whose `None` is zero and would otherwise give "no lane" a bit of its own; naming no lane is
+refused with a log rather than accepted, since a lane-less attachment occupies a slot no drain will ever read.
+`MaxAttachedStreams` goes 8 -> 64 on the R36 reasoning, and a refused attach keeps the assert and adds a Logger error
+naming the provider, the stream, the lane and the count already fed - the old release build dropped it silently, and the
+header's own doc named the symptom as "a stream that never hears from the provider".
+
+Public API change, and the census was tiny: the only callers of `AttachTo` in the tree were the provider test collection
+and `Examples/WindowExample/Main.cpp`, both updated. No HTML page documents `TaskProvider` yet (`docs/Core/` holds
+`Runnable`, `TaskID`, `Types` and an index; nothing tracked mentions `AttachTo`), so there is no doc page to correct -
+the contract lives in the header until that page is written.
+
+Verified: Debug/Dev/Release each build `EngineTest` with 0 `error:` and run under the wall-clock runner to exit 0 with
+**all 59 collections passed** (collection count unchanged - the new lane test went into the existing provider collection,
+not a new one). `check.sh --staged`: 0 violations, 0 warnings. Mutation-proved, each killed by the named test
+"Both lanes of one stream share one slot and keep their own bits", and the baseline re-verified green after restore:
+
+| Mutation | Result |
+|---|---|
+| Repeat attach assigns the lane bit instead of OR-ing it | killed, named test fails |
+| `ELane::None` guard inverted so a lane-less attach succeeds | killed, exit 133 |
+| Slots matched by (stream, lane), giving one stream one slot per lane | killed, named test fails |
+| `GetAttachedLanes` always returns zero | killed, named test fails |
+
+The refusal log was observed firing in a real run, text and all, rather than only asserted not to crash.
+
+**R37 is deliberately not in this commit.** Its detach has to wait for a drain already in flight, and nothing drains
+providers yet, so a per-stream in-flight counter added now is dead code that no test can distinguish from its absence -
+the same dead-counter situation the mutation run flagged two commits ago. It lands with the drain, which lands with the
+slim queue item.
+
+Two environment notes, because both cost time and would cost it again. `/tmp/hbe` (wall-clock runner, mutation backups)
+was wiped mid-session, so anything that looks like an instant pass with empty output should be checked for a missing
+runner; the runner and backups now live in `build/gate/`. And the first mutation script died decoding engine output as
+UTF-8 (Korean log text and ANSI escapes), leaving a mutant in the tree - it was detected by comparing against the backup
+and restored before the real run, which is the procedure working, not the procedure failing.
+
 ## WindowExample moves to `Examples/`, and the doc corruption my own script caused
 
 `git mv Applications/WindowExample Examples/WindowExample`, a new `Examples/CMakeLists.txt` carrying the same preamble,

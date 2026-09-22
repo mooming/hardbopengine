@@ -5,7 +5,9 @@
 #include <array>
 #include <atomic>
 #include <chrono>
+#include <cstdint>
 
+#include "Core/StreamDrainPolicy.h"
 #include "Core/TaskStreamIndex.h"
 #include "Core/Time.h"
 #include "String/StaticString.h"
@@ -96,10 +98,28 @@ public:
 	/// @brief How many streams one provider may feed.
 	/// @details Attachments are a lifecycle event, and the realistic figures are one or two, so the set is
 	///          held inline rather than allocated: a provider needs no allocator to exist, and a provider
-	///          that cannot allocate still gets to be constructed. Exceeding this asserts, and is dropped
-	///          in a release build, where the visible symptom is a stream that never hears from the
-	///          provider rather than memory corruption. Raise the constant if a real provider needs more.
-	static constexpr TStreamIndex MaxAttachedStreams = 8;
+	///          that cannot allocate still gets to be constructed. What that reasoning justifies is a fixed
+	///          inline set, not a small one: the bound has to clear the number of streams an ordinary machine
+	///          has, because feeding every worker stream is a thing providers do (measured: twelve hardware
+	///          threads here give ten worker streams, and R35's lanes make both lanes on every worker twenty
+	///          attachments). Exceeding this asserts, reports the provider, the stream and the capacity, and
+	///          drops the attachment - never a silent drop, because the symptom of a lost attachment is a
+	///          stream that quietly never gets work.
+	static constexpr TStreamIndex MaxAttachedStreams = 64;
+
+	/// @brief The lane bits an attachment may name, one per lane of a stream.
+	/// @details Named explicitly rather than derived from `ELane`'s values: `ELane::None` occupies zero, so a
+	///          positional encoding would give "no lane" a bit of its own and a stream could match it.
+	static constexpr std::uint8_t LaneBitFifo = 1U << 0;
+	static constexpr std::uint8_t LaneBitPriority = 1U << 1;
+
+	/// @brief The lane mask an `ELane` claims, or zero for `ELane::None`.
+	[[nodiscard]] static constexpr std::uint8_t LaneBit(StreamDrainPolicy::ELane lane) noexcept
+	{
+		return lane == StreamDrainPolicy::ELane::Fifo
+					   ? LaneBitFifo
+					   : (lane == StreamDrainPolicy::ELane::Priority ? LaneBitPriority : 0U);
+	}
 
 	explicit TaskProvider(StaticString name) noexcept;
 	virtual ~TaskProvider() = default;
@@ -115,10 +135,16 @@ public:
 	///       per drain and that call is the price of not keeping a second source of truth about intent.
 	virtual bool Produce(const TaskProduceContext& context) noexcept = 0;
 
-	/// @brief Start being drained by a stream. Calling this again with the same stream changes nothing.
-	/// @note Duplicate suppression is not convenience: a stream that listed a provider twice would call
-	///       Produce twice per drain, doubling that provider's output rate silently.
-	void AttachTo(TStreamIndex stream) noexcept;
+	/// @brief Start being drained by one lane of one stream. Naming the lane is not decoration: which lane
+	///        attaches decides the policy the stream applies to what this provider hands it (R35).
+	/// @note Duplicates are per (stream, lane). Attaching the same lane twice changes nothing, because a stream
+	///       that listed a provider twice on one lane would call Produce twice per drain and double its output
+	///       rate silently. Attaching the other lane is a different thing and is allowed: it says this provider
+	///       may be drawn on by either lane, which is the same doubled-call hazard taken with intent, so it has
+	///       to be the caller's decision and never a default.
+	/// @note `ELane::None` names no lane and attaches nothing; it is reported rather than accepted, because an
+	///       attachment with no lane would sit in the slot and never be drained.
+	void AttachTo(TStreamIndex stream, StreamDrainPolicy::ELane lane) noexcept;
 
 	/// @brief How many streams this provider currently feeds.
 	[[nodiscard]] TStreamIndex GetAttachedCount() const noexcept
@@ -128,8 +154,11 @@ public:
 
 	/// @brief The attached stream held at a position in attachment order. Out-of-range asserts and returns 0.
 	[[nodiscard]] TStreamIndex GetAttachedStream(TStreamIndex index) const noexcept;
-	/// @brief Whether a given stream is currently draining this provider.
+	/// @brief Whether a given stream is currently draining this provider on any lane.
 	[[nodiscard]] bool IsAttachedTo(TStreamIndex stream) const noexcept;
+
+	/// @brief The lane mask this provider is attached to `stream` on, or zero if it is not attached to it.
+	[[nodiscard]] std::uint8_t GetAttachedLanes(TStreamIndex stream) const noexcept;
 
 	/// @brief Request that this provider stop producing.
 	/// @details Sets a flag; it does not remove the provider from any stream's list, because the streams
@@ -158,6 +187,7 @@ public:
 private:
 	StaticString name;
 	std::array<TStreamIndex, static_cast<size_t>(MaxAttachedStreams)> attached{};
+	std::array<std::uint8_t, static_cast<size_t>(MaxAttachedStreams)> lanes{};
 	TStreamIndex attachedCount = 0;
 	std::atomic<bool> stopRequested{false};
 };

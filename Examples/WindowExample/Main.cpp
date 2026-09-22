@@ -126,7 +126,7 @@ int main(int argc, const char* argv[]) noexcept
 
 	std::atomic<unsigned> ticks{0};
 	WindowTickProvider tickProvider(taskSystem, tickStream, ticks);
-	tickProvider.AttachTo(tickStream);
+	tickProvider.AttachTo(tickStream, hbe::StreamDrainPolicy::ELane::Fifo);
 
 	for (int frame = 0; frame < static_cast<int>(MaxFrameTasks); ++frame)
 	{

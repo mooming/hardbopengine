@@ -3,6 +3,7 @@
 #include "TaskProvider.h"
 
 #include "Core/Debug.h"
+#include "Log/Logger.h"
 
 namespace hbe
 {
@@ -35,24 +36,51 @@ TaskProvider::TaskProvider(StaticString providerName) noexcept
 {
 }
 
-void TaskProvider::AttachTo(TStreamIndex stream) noexcept
+void TaskProvider::AttachTo(TStreamIndex stream, StreamDrainPolicy::ELane lane) noexcept
 {
+	const std::uint8_t laneBit = LaneBit(lane);
+
+	if (laneBit == 0)
+	{
+		auto log = Logger::Get(name);
+		log.OutError([name = name, stream](auto& ls)
+		{
+			ls << "TaskProvider " << name.c_str() << " was attached to stream " << stream
+			   << " with no lane, so nothing was attached. An attachment with no lane sits in a slot that no"
+			   << " drain ever reads.";
+		});
+		return;
+	}
+
 	for (TStreamIndex index = 0; index < attachedCount; ++index)
 	{
-		if (attached[static_cast<size_t>(index)] == stream)
+		if (attached[static_cast<size_t>(index)] != stream)
 		{
-			return;
+			continue;
 		}
+
+		lanes[static_cast<size_t>(index)] |= laneBit;
+		return;
 	}
 
 	if (attachedCount >= MaxAttachedStreams)
 	{
 		Assert(false, "TaskProvider ", name, " is already attached to its maximum of ", MaxAttachedStreams,
 			   " streams; this attachment was dropped");
+
+		auto log = Logger::Get(name);
+		const auto dropped = attachedCount;
+		log.OutError([name = name, stream, laneBit, dropped](auto& ls)
+		{
+			ls << "TaskProvider " << name.c_str() << " could not attach to stream " << stream << " on lane "
+			   << static_cast<unsigned int>(laneBit) << ": it already feeds " << dropped
+			   << " streams. The attachment was dropped, and the stream will never ask this provider for work.";
+		});
 		return;
 	}
 
 	attached[static_cast<size_t>(attachedCount)] = stream;
+	lanes[static_cast<size_t>(attachedCount)] = laneBit;
 	++attachedCount;
 }
 
@@ -66,6 +94,19 @@ TStreamIndex TaskProvider::GetAttachedStream(TStreamIndex index) const noexcept
 	}
 
 	return attached[static_cast<size_t>(index)];
+}
+
+std::uint8_t TaskProvider::GetAttachedLanes(TStreamIndex stream) const noexcept
+{
+	for (TStreamIndex index = 0; index < attachedCount; ++index)
+	{
+		if (attached[static_cast<size_t>(index)] == stream)
+		{
+			return lanes[static_cast<size_t>(index)];
+		}
+	}
+
+	return 0;
 }
 
 bool TaskProvider::IsAttachedTo(TStreamIndex stream) const noexcept
@@ -149,10 +190,51 @@ void hbe::TaskProviderTest::Prepare()
 		}
 	});
 
+	AddTest("Both lanes of one stream share one slot and keep their own bits", [this](auto& ls)
+	{
+		RecordingProvider provider("ProviderLaneMaskProbe");
+		provider.AttachTo(3, StreamDrainPolicy::ELane::Fifo);
+		provider.AttachTo(3, StreamDrainPolicy::ELane::Priority);
+		provider.AttachTo(3, StreamDrainPolicy::ELane::Fifo);
+
+		if (provider.GetAttachedCount() != 1)
+		{
+			ls << "Attaching stream 3 on two lanes took " << provider.GetAttachedCount()
+			   << " slots. One stream is one slot holding a lane mask, and two slots would be asked twice per drain."
+			   << lferr;
+		}
+
+		const auto lanes = provider.GetAttachedLanes(3);
+		if (lanes != (TaskProvider::LaneBitFifo | TaskProvider::LaneBitPriority))
+		{
+			ls << "Stream 3 holds lane mask " << static_cast<unsigned int>(lanes)
+			   << ". Both lanes have to be recorded: which lane asks decides the policy applied to the work, and the"
+			   << " repeat Fifo attach must not have dropped the Priority bit." << lferr;
+		}
+
+		if (provider.GetAttachedLanes(4) != 0)
+		{
+			ls << "A stream with no attachment reported lane mask "
+			   << static_cast<unsigned int>(provider.GetAttachedLanes(4)) << "." << lferr;
+		}
+
+		provider.AttachTo(3, StreamDrainPolicy::ELane::None);
+		if (provider.GetAttachedCount() != 1)
+		{
+			ls << "An attachment naming no lane took a slot. Nothing drains a lane-less attachment, so it would sit"
+			   << " there forever and the caller would believe it was attached." << lferr;
+		}
+
+		if (provider.GetAttachedLanes(3) != (TaskProvider::LaneBitFifo | TaskProvider::LaneBitPriority))
+		{
+			ls << "Naming no lane still wrote to the lane mask of stream 3." << lferr;
+		}
+	});
+
 	AddTest("Produce reporting nothing does not lose the attachment", [this](auto& ls)
 	{
 		RecordingProvider provider("ProviderIdleProbe");
-		provider.AttachTo(0);
+		provider.AttachTo(0, StreamDrainPolicy::ELane::Fifo);
 		provider.produceResult = false;
 
 		const bool produced = provider.Produce(TaskProduceContext::ForStream(0));
@@ -171,9 +253,9 @@ void hbe::TaskProviderTest::Prepare()
 	AddTest("AttachTo is idempotent", [this](auto& ls)
 	{
 		RecordingProvider provider("ProviderAttachProbe");
-		provider.AttachTo(2);
-		provider.AttachTo(2);
-		provider.AttachTo(5);
+		provider.AttachTo(2, StreamDrainPolicy::ELane::Fifo);
+		provider.AttachTo(2, StreamDrainPolicy::ELane::Fifo);
+		provider.AttachTo(5, StreamDrainPolicy::ELane::Fifo);
 
 		if (provider.GetAttachedCount() != 2)
 		{
@@ -198,7 +280,7 @@ void hbe::TaskProviderTest::Prepare()
 
 		for (TStreamIndex stream = 0; stream < TaskProvider::MaxAttachedStreams; ++stream)
 		{
-			provider.AttachTo(stream);
+			provider.AttachTo(stream, StreamDrainPolicy::ELane::Fifo);
 		}
 
 		if (provider.GetAttachedCount() != TaskProvider::MaxAttachedStreams)
@@ -216,7 +298,7 @@ void hbe::TaskProviderTest::Prepare()
 	AddTest("Stop and handle reach the same state", [this](auto& ls)
 	{
 		RecordingProvider provider("ProviderStopProbe");
-		provider.AttachTo(1);
+		provider.AttachTo(1, StreamDrainPolicy::ELane::Fifo);
 
 		const auto handle = provider.GetHandle();
 		if (!handle)
@@ -252,7 +334,7 @@ void hbe::TaskProviderTest::Prepare()
 	AddTest("Stop leaves attachments for the stream to apply", [this](auto& ls)
 	{
 		RecordingProvider provider("ProviderDetachProbe");
-		provider.AttachTo(4);
+		provider.AttachTo(4, StreamDrainPolicy::ELane::Fifo);
 
 		provider.Stop();
 
