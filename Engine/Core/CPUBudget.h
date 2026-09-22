@@ -4,6 +4,7 @@
 
 #include <atomic>
 #include <chrono>
+#include <optional>
 
 namespace hbe
 {
@@ -30,7 +31,22 @@ class CPUBudget
 {
 public:
 	/// @brief Set the allowance, expressed as a duration of CPU time. Zero means unlimited.
+	/// @note Only the owning stream thread may call this, because `allowance` is deliberately unsynchronised -
+	///       `CanTakeWork` reads it once per pass on that thread. Anyone else wants `RequestAllowance`.
 	void Configure(std::chrono::duration<double> allowance) noexcept;
+
+	/// @brief Ask the owning stream to change its allowance, from whichever thread the caller is on.
+	/// @details `allowance` is a plain field on purpose, so writing it from elsewhere is a data race rather than a late
+	///          write. A request stores one value atomically and the owner applies it, which is the same hand-off the
+	///          accounting window already uses: the pass signals and the stream applies to itself.
+	/// @note The most recent request wins. An unapplied earlier request is not queued and is not observable - the
+	///       allowance is a state, not an event, and a stream that asked for 5ms and then for 1ms before its next pass
+	///       should end up at 1ms, not bill itself for both.
+	void RequestAllowance(std::chrono::duration<double> allowance) noexcept;
+
+	/// @brief Apply a pending request, if there is one. Call only on the thread that owns this budget.
+	/// @return The allowance the request set, or `std::nullopt` when nothing was pending.
+	std::optional<std::chrono::duration<double>> ApplyRequestedAllowance() noexcept;
 	/// @brief The configured allowance. Zero means unlimited.
 	[[nodiscard]] std::chrono::duration<double> GetAllowance() const noexcept;
 
@@ -56,7 +72,15 @@ public:
 	[[nodiscard]] bool CanTakeWork() const noexcept;
 
 private:
+	static constexpr long long PendingAllowanceNone = -1;
+
 	std::chrono::duration<double> allowance{};
+
+	/// @brief A pending allowance in nanoseconds, or `PendingAllowanceNone` when nothing is waiting.
+	/// @details Held as an integer because `duration<double>` has no atomic form worth storing, and a budget decision
+	///          never needs more nanosecond resolution than this.
+	std::atomic<long long> requestedAllowanceNanos{PendingAllowanceNone};
+
 	std::atomic<long long> accumulatedNanos{0};
 	std::chrono::nanoseconds taskStart{};
 	bool isMeasuring = false;

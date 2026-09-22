@@ -208,6 +208,13 @@ void TaskStream::ReportGeneralQueueRefusal() noexcept
 
 void TaskStream::ConfigureRate(uint32_t fifoWeight, uint32_t priorityWeight) noexcept
 {
+	if (threadID != TThreadID{})
+	{
+		Assert(std::this_thread::get_id() == threadID, "Stream ", name,
+			   " had its lane rate configured from another thread while it is running. The drain policy's weights are "
+			   "unsynchronised fields this stream reads when it chooses a lane, so that is a data race.");
+	}
+
 	drainPolicy.ConfigureRate(fifoWeight, priorityWeight);
 }
 
@@ -240,8 +247,21 @@ void TaskStream::WakeUp() noexcept
 	cv.notify_one();
 }
 
+void TaskStream::RequestBudget(std::chrono::duration<double> allowance) noexcept
+{
+	budget.RequestAllowance(allowance);
+}
+
 void TaskStream::ConfigureBudget(std::chrono::duration<double> allowance) noexcept
 {
+	if (threadID != TThreadID{})
+	{
+		Assert(std::this_thread::get_id() == threadID, "Stream ", name,
+			   " had its budget configured from another thread while it is running. The allowance is an "
+			   "unsynchronised field this stream reads every pass, so that is a data race. Use RequestBudget, "
+			   "which the stream applies to itself.");
+	}
+
 	budget.Configure(allowance);
 	drainPolicy.ConfigureAllowance(allowance);
 }
@@ -291,6 +311,13 @@ void TaskStream::RunLoop() noexcept
 		{
 			budget.Reset();
 			drainPolicy.EndRound();
+		}
+
+		// The allowance is this thread's field to write, so a request made from elsewhere is applied here rather than
+		// landing in the middle of another thread's store.
+		if (auto applied = budget.ApplyRequestedAllowance(); applied.has_value())
+		{
+			drainPolicy.ConfigureAllowance(*applied);
 		}
 
 		if (streamIndex == TaskSystem::BaseStreamIndex)

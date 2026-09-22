@@ -130,6 +130,16 @@ public:
 	///       measure at all; a mid-run change from elsewhere is a data race, not merely a late one.
 	void ConfigureBudget(std::chrono::duration<double> allowance) noexcept;
 
+	/// @brief Ask this stream to change its CPU allowance, from any thread.
+	/// @details `ConfigureBudget` writes a field the stream reads on its own thread every pass, so from elsewhere it is
+	///          a data race, not a late write. This stores one pending value atomically and the stream applies it to
+	///          itself at the top of its next loop, which is the hand-off the accounting window already uses (the pass
+	///          signals, the stream reopens). Consequence for callers: the change is not instantaneous - it lands on
+	///          the stream's next pass, and the most recent request wins over any earlier unapplied one.
+	/// @note The drain policy's allowance follows the same apply, because a lane ratio computed against the old
+	///       allowance would spread work against a figure the stream no longer has.
+	void RequestBudget(std::chrono::duration<double> allowance) noexcept;
+
 	/// @brief Whether this stream may take on another task.
 	/// @details The gate belongs in front of work being ACQUIRED - draining a provider, dequeuing from a
 	///          feeder - and never in front of running a task already held or delivering a result. Refusing

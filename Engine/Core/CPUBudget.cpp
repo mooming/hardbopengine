@@ -45,6 +45,27 @@ void hbe::CPUBudget::Reset() noexcept
 	isMeasuring = false;
 }
 
+void hbe::CPUBudget::RequestAllowance(std::chrono::duration<double> newAllowance) noexcept
+{
+	const auto nanos = std::chrono::duration_cast<std::chrono::nanoseconds>(newAllowance).count();
+
+	requestedAllowanceNanos.store(nanos, std::memory_order_release);
+}
+
+std::optional<std::chrono::duration<double>> hbe::CPUBudget::ApplyRequestedAllowance() noexcept
+{
+	const long long requested = requestedAllowanceNanos.exchange(PendingAllowanceNone, std::memory_order_acq_rel);
+
+	if (requested == PendingAllowanceNone)
+	{
+		return std::nullopt;
+	}
+
+	allowance = std::chrono::duration_cast<std::chrono::duration<double>>(std::chrono::nanoseconds(requested));
+
+	return allowance;
+}
+
 bool hbe::CPUBudget::CanTakeWork() const noexcept
 {
 	if (allowance.count() <= 0.0)
@@ -77,6 +98,56 @@ void BurnCPU(std::chrono::milliseconds target) noexcept
 
 void hbe::CPUBudgetTest::Prepare()
 {
+	AddTest("A requested allowance is applied once by the owner and the latest request wins", [this](auto& ls)
+	{
+		using namespace std::chrono;
+
+		CPUBudget budget;
+
+		if (budget.ApplyRequestedAllowance().has_value())
+		{
+			ls << "A brand new budget had a request pending, so the first pass of every stream would apply a figure"
+			   << " nobody asked for." << lferr;
+		}
+
+		budget.RequestAllowance(milliseconds(5));
+
+		const auto applied = budget.ApplyRequestedAllowance();
+		if (!applied.has_value())
+		{
+			ls << "A pending request was not applied, so a budget requested from another thread never takes effect"
+			   << " and the stream runs on the wrong allowance forever." << lferr;
+		}
+
+		if (duration_cast<milliseconds>(applied.value_or(duration<double>{})).count() != 5)
+		{
+			ls << "The applied allowance is not the 5ms that was requested, so the request is being stored in a unit"
+			   << " that does not survive the round trip." << lferr;
+		}
+
+		if (duration_cast<milliseconds>(budget.GetAllowance()).count() != 5)
+		{
+			ls << "GetAllowance does not show the applied request, so the unsynchronised field this budget reads every"
+			   << " pass was never written - the request path would be a no-op that looks correct." << lferr;
+		}
+
+		if (budget.ApplyRequestedAllowance().has_value())
+		{
+			ls << "The same request applied twice, so the pending marker is not cleared and the stream re-applies an"
+			   << " old figure every pass." << lferr;
+		}
+
+		budget.RequestAllowance(milliseconds(2));
+		budget.RequestAllowance(milliseconds(1));
+
+		const auto latest = budget.ApplyRequestedAllowance();
+		if (duration_cast<milliseconds>(latest.value_or(duration<double>{})).count() != 1)
+		{
+			ls << "Two requests before a single pass did not resolve to the latest one. An allowance is a state, not a"
+			   << " queue of events, so asking for 2ms then 1ms must not bill the stream for both." << lferr;
+		}
+	});
+
 	AddTest("Unlimited budget always accepts work", [this](auto& ls)
 	{
 		CPUBudget budget;

@@ -1031,7 +1031,9 @@ void TaskSystemTest::Prepare()
 		}
 
 		constexpr auto allowance = std::chrono::milliseconds(1);
-		stream.ConfigureBudget(allowance);
+		stream.RequestBudget(allowance);
+
+		std::this_thread::sleep_for(std::chrono::milliseconds(50));
 
 		auto busyFunc = [](void*, std::size_t, std::size_t) -> std::size_t
 		{
@@ -1067,7 +1069,9 @@ void TaskSystemTest::Prepare()
 			ls << "A stream that has spent its allowance still reported that it may take more work." << lferr;
 		}
 
-		stream.ConfigureBudget(std::chrono::duration<double>{});
+		stream.RequestBudget(std::chrono::duration<double>{});
+
+		std::this_thread::sleep_for(std::chrono::milliseconds(50));
 
 		if (!stream.MayTakeNewWork())
 		{
@@ -1213,7 +1217,9 @@ void TaskSystemTest::Prepare()
 		};
 
 		constexpr auto allowance = std::chrono::milliseconds(1);
-		stream.ConfigureBudget(allowance);
+		stream.RequestBudget(allowance);
+
+		std::this_thread::sleep_for(std::chrono::milliseconds(50));
 
 		std::atomic<unsigned> burnRuns{0};
 		const TrackedTask burn("SpendAllowance", BurnCpu, &burnRuns);
@@ -1227,7 +1233,9 @@ void TaskSystemTest::Prepare()
 			ls << stream.GetName().c_str() << " never ran a task queued to its own lane within 5 s of windows"
 			   << " advancing on every poll, so the stream never got as far as spending anything. An exhausted round"
 			   << " that no reopen ends is the latch this pass exists to break." << lferr;
-			stream.ConfigureBudget(std::chrono::duration<double>{});
+			stream.RequestBudget(std::chrono::duration<double>{});
+
+			std::this_thread::sleep_for(std::chrono::milliseconds(50));
 			return;
 		}
 
@@ -1273,7 +1281,9 @@ void TaskSystemTest::Prepare()
 			std::this_thread::sleep_for(std::chrono::milliseconds(1));
 		}
 
-		stream.ConfigureBudget(std::chrono::duration<double>{});
+		stream.RequestBudget(std::chrono::duration<double>{});
+
+		std::this_thread::sleep_for(std::chrono::milliseconds(50));
 
 		if (!stream.MayTakeNewWork())
 		{

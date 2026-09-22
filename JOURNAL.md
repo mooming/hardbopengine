@@ -1,5 +1,44 @@
 # Journal
 
+## The budget data race: root cause, demonstrated by execution, then fixed with request-and-apply (options 1 + 5)
+
+**Root cause.** `CPUBudget::allowance` is a plain `std::chrono::duration<double>` (`CPUBudget.h:57`); only
+`accumulatedNanos` was ever made atomic, deliberately, because it is read for diagnosis cross-thread. So the field is
+single-owner by design, and every read - `CanTakeWork` in the general-queue gate and in the drain gate, and `MayTakeNewWork` -
+happens on the owning stream thread. The one public door that let a foreign thread write it was `TaskStream::ConfigureBudget`.
+Five call sites write a **worker's** allowance from the **base** thread (`TaskSystem.cpp:1034,1070,1216,1230,1276`, all inside
+`__UNIT_TEST__`, reaching `GetIOTaskStreamIndex() + 1`). Production has no such caller: the accounting window was already built
+correctly, `RunBudgetWindowPass` only raising `RequestWindowAdvance()` and the owning stream performing `budget.Reset()`. The
+primitive was right; one door bypassed it, and the tests were standing in the doorway.
+
+**My contribution to it.** The drain I landed this session reads `budget.CanTakeWork()` once per pass, which made a *second*
+unsynchronised reader where there had been one. Same race, wider window, my doing.
+
+**Demonstrated rather than asserted (option 5 first).** An owner-thread trap went into `ConfigureBudget` while the offending
+tests were still unconverted, and the suite answered immediately: `[Assert] Stream Worker1 had its budget configured from
+another thread while it is running` - exit 133, signal 5. That is the bug seen by execution, which is the only kind of evidence
+available here, because this tree has no ThreadSanitizer build.
+
+**Fix (option 1).** `CPUBudget::RequestAllowance` stores one pending value as an atomic nanosecount, and
+`ApplyRequestedAllowance` - called by the stream at the top of its own loop, beside the accounting-window reopen - writes the
+plain field and mirrors it into `drainPolicy.ConfigureAllowance`. Same hand-off the window already used: signal, and let the
+owner apply to itself. Latest request wins, because an allowance is a state and not a queue of events; an unapplied earlier
+request disappears rather than billing the stream twice. The five test sites became `RequestBudget` plus a short settle, and
+the trap has not fired since. `TaskStream::ConfigureRate` had the identical hazard against the drain policy's weights and got
+the same owner-thread trap - it has no violating caller today, which is exactly the sort of thing that changes silently.
+
+**New test, mutation-proved.** `A requested allowance is applied once by the owner and the latest request wins` covers: nothing
+pending on a fresh budget, a request applied, the figure surviving the unit round trip, `GetAllowance` reflecting it, no
+double application, and latest-wins over two requests in one pass. Three mutants, all killed by that test by name: never clearing
+the pending marker; storing the request in seconds so a 5ms ask becomes 0; and returning the figure without writing the field -
+the last being the dangerous one, because a request path that looks correct while doing nothing would leave every stream running
+on the wrong allowance forever.
+
+**Not closed:** the drain's budget gate is still untested (#10 in progress). A mutant that removes that specific check still
+survives - the existing budget test covers the general queue, as its name `A stream with a spent allowance declines the general
+queue` already says. The race-free design for it is recorded in the task: read the gate from inside `Produce`, which is the
+owner thread, so no seam and no cross-thread read are needed.
+
 ## Parent-plan status corrected against the code, and B2's seam question resolved by reading the contract
 
 Three rows in `PLAN_task_system_refactor.md` still drew B3b, B3c and B4 as open while the work is plainly in the tree
