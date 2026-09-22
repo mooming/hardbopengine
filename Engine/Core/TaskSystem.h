@@ -59,7 +59,7 @@ private:
 	TaskRegistry taskRegistry;
 
 	std::mutex taskQueueMutex;
-	BoundedPriorityQueue<RangedTask> taskQueue;
+	BoundedPriorityQueue<WorkItem> taskQueue;
 
 	/// @brief When the budget window last closed, and how many times it has closed. See RunBudgetWindowPass.
 	/// @note Written and read only by the base stream's thread, except the count, which is read for diagnosis.
@@ -103,7 +103,7 @@ public:
 
 	// Enqueue a task into the general task queue which is a low-priority queue. The task will be executed after
 	// performing all existing special queue for eash task stream.
-	void Enqueue(const RangedTask& task) noexcept;
+	void Enqueue(const WorkItem& task) noexcept;
 
 	// Take the top priority task from the general task queue if task stream affinity has been set.
 	// It'll add an task-stream affinity once it fails to take the top priority task due to its task-stream affinity
@@ -111,7 +111,7 @@ public:
 	// @note A thread that has not been given a stream never takes from here, and is not recorded as having seen
 	//       anything: its index is NonStreamIndex, which is out of range for the affinity mask and therefore
 	//       dropped. Before that index had a distinct value such a thread was treated as stream 0.
-	void Dequeue(std::optional<RangedTask>& outTask) noexcept;
+	void Dequeue(std::optional<WorkItem>& outTask) noexcept;
 
 	/// @brief Track a task and return the identity that names it.
 	/// @return The identity, or a null TaskID when the registry has no free record - see TaskRegistry::Create. A
@@ -270,7 +270,7 @@ public:
 	///          allocated when the task is created, so there is no capacity left for a stream to run short of.
 	/// @note An index outside the streams is a programming error and asserts; the general-queue overload above
 	///       needs no index, and takes the task without choosing a stream.
-	void Enqueue(TIndex streamIndex, const RangedTask& task) noexcept;
+	void Enqueue(TIndex streamIndex, const WorkItem& task) noexcept;
 
 	// Dispatch a task to be executed on the main thread.
 	// The task will be queued and executed when the main thread processes its queue.

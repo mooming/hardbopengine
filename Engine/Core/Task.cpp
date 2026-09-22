@@ -56,7 +56,7 @@ void Task::LoadIntoRecord(TaskID newID, StaticString taskName, TRunnable newFunc
 	userData = newUserData;
 }
 
-RangedTask Task::GenerateSubTask(TIndex start, TIndex end, uint8_t priority) noexcept
+WorkItem Task::GenerateSubTask(TIndex start, TIndex end, uint8_t priority) noexcept
 {
 	Assert(numGeneratedSubTasks < numSubTasks,
 		   "\"%s\" handed out a work item beyond the %d it reserved, so this task reports itself finished before"

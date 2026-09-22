@@ -14,10 +14,10 @@
 #include "Core/StreamDrainPolicy.h"
 #include "HSTL/HVector.h"
 #include "Memory/MultiPoolAllocator.h"
-#include "RangedTask.h"
 #include "String/StaticString.h"
 #include "Task.h"
 #include "TaskStreamIndex.h"
+#include "WorkItem.h"
 
 namespace hbe
 {
@@ -34,16 +34,16 @@ private:
 	using TIndex = Task::TIndex;
 	using TStreamIndex = hbe::TStreamIndex;
 	using TThreadID = std::thread::id;
-	using TRangedTasks = TVector<RangedTask>;
+	using TWorkItems = TVector<WorkItem>;
 
 private:
 	struct TaskQueueItem final
 	{
 		uint8_t priority;
-		mutable RangedTask task;
+		mutable WorkItem task;
 		float duration;
 
-		TaskQueueItem(uint8_t priority, const RangedTask& task);
+		TaskQueueItem(uint8_t priority, const WorkItem& task);
 
 		TaskQueueItem& operator=(const TaskQueueItem& other) = default;
 		bool operator<(const TaskQueueItem& other) const;
@@ -59,8 +59,8 @@ private:
 	std::mutex queueLock;
 	std::condition_variable cv;
 	std::thread thread;
-	Deque<RangedTask> fifoQueue;
-	BoundedPriorityQueue<RangedTask> priorityQueue;
+	Deque<WorkItem> fifoQueue;
+	BoundedPriorityQueue<WorkItem> priorityQueue;
 	StreamDrainPolicy drainPolicy;
 
 	/// @brief Whether the budget window has closed since this stream last reopened. Set by the base stream's
@@ -82,11 +82,11 @@ public:
 	/// @details Cannot fail. A task is queued or it is not, and the only reason a stream ever refused one was a
 	///          declared result count it could not fit - a question that stopped existing when the result moved
 	///          into the task's own record.
-	void EnqueueFifo(const RangedTask& task) noexcept;
+	void EnqueueFifo(const WorkItem& task) noexcept;
 
 	/// @brief Queue a task on the priority lane, which runs the highest priority number first and the
 	///        oldest first within a tie.
-	void EnqueuePriority(const RangedTask& task) noexcept;
+	void EnqueuePriority(const WorkItem& task) noexcept;
 
 	/// @brief Set this stream's FIFO:priority rate, which is a share of its CPU allowance. Zero weights are
 	///        treated as one, not as "never serve this lane".
@@ -187,14 +187,14 @@ public:
 	void RunLoop() noexcept;
 
 private:
-	void Dequeue(std::optional<RangedTask>& outTask);
+	void Dequeue(std::optional<WorkItem>& outTask);
 
 	/// @brief Say that a queued work item was dropped because its task had been released.
 	/// @details This is R7's rule in action - a reference to a task that no longer exists is recognised and dropped
 	///          rather than followed - and it is warned rather than left silent because work that vanishes is the
 	///          single hardest thing to diagnose in this subsystem. A caller that releases a task while its subtasks
 	///          are still queued will see one line per dropped subtask.
-	void ReportReleasedTask(const RangedTask& task) const noexcept;
+	void ReportReleasedTask(const WorkItem& task) const noexcept;
 
 	/// @brief Count a refusal to take from the general queue, and report the first one this stream ever refuses.
 	/// @details A throttled stream has to be visible somewhere or it looks like an idle one, and the count alone

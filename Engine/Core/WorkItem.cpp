@@ -1,19 +1,18 @@
 // Copyright (c) 2026 Hansol Park (mooming.go@gmail.com). All rights reserved.
-// Created by mooming on 11/10/2025.
 
-#include "RangedTask.h"
+#include "WorkItem.h"
 
 #include "Log/Logger.h"
 #include "TaskSystem.h"
 
 namespace hbe
 {
-bool RangedTask::Run(Task& task) noexcept
+bool WorkItem::Run(Task& task) noexcept
 {
 	auto runnable = task.GetRunnable();
 	if (runnable == nullptr)
 	{
-		currentIndex = end;
+		current = end;
 
 		auto logger = Logger::Get(task.GetName());
 		logger.OutError([](auto& ls) { ls << "Null Runnable."; });
@@ -22,8 +21,8 @@ bool RangedTask::Run(Task& task) noexcept
 	}
 
 	auto userData = task.GetUserData();
-	auto delta = runnable(userData, currentIndex, end);
-	currentIndex += delta;
+	auto delta = runnable(userData, current, end);
+	current += delta;
 
 	if (!HasFinished())
 	{
@@ -33,13 +32,12 @@ bool RangedTask::Run(Task& task) noexcept
 	return task.ReportFinishedSubTask();
 }
 
-RangedTask::RangedTask(Task& task, TIndex start, TIndex end, uint8_t priority) noexcept
+WorkItem::WorkItem(Task& task, TIndex start, TIndex end, uint8_t priority) noexcept
 	: priority(priority)
-	, taskName(task.GetName())
 	, taskID(task.GetID())
 	, start(start)
 	, end(end)
-	, currentIndex(start)
+	, current(start)
 {
 	affinity.Unset(TaskSystem::GetBaseTaskStreamIndex());
 	affinity.Unset(TaskSystem::GetIOTaskStreamIndex());

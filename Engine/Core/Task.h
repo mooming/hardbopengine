@@ -5,18 +5,18 @@
 #include <atomic>
 #include <cstdint>
 #include <thread>
-#include "RangedTask.h"
 #include "ResultPacket.h"
 #include "Runnable.h"
 #include "String/StaticString.h"
 #include "TaskID.h"
+#include "WorkItem.h"
 
 namespace hbe
 {
 class TaskRegistry;
 
 /// @brief Represents a unit of work to be executed by the task system. It consists of multiple
-/// RangedTasks and can be split across threads.
+/// work items and can be split across threads.
 class Task final
 {
 public:
@@ -38,7 +38,7 @@ private:
 	// Task Name
 	StaticString name;
 
-	// Number of RangedTasks
+	// Number of work items issued for this task
 	TNumSubTasks numSubTasks;
 
 	/// @brief How many work items have been handed out for this task, which is never more than numSubTasks.
@@ -47,7 +47,7 @@ private:
 	///          last one runs, and a task that reports done early is the hang this subsystem has been debugged for.
 	TNumSubTasks numGeneratedSubTasks;
 
-	// Number of finished RangedTasks
+	// Number of work items that have reported in
 	std::atomic<TNumSubTasks> numFinishedSubTasks;
 
 	// Runnable Function
@@ -172,6 +172,6 @@ public:
 	/// @details Does not count anything: the join is what ReserveSubTasks declared, not what has been handed out.
 	///          Handing out more items than were reserved makes the task report itself finished before the last
 	///          item ran, so the generated count is checked against the reservation and the excess is reported.
-	RangedTask GenerateSubTask(TIndex start, TIndex end, uint8_t priority = 0) noexcept;
+	WorkItem GenerateSubTask(TIndex start, TIndex end, uint8_t priority = 0) noexcept;
 };
 } // namespace hbe

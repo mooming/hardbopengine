@@ -16,7 +16,7 @@
 namespace hbe
 {
 
-TaskStream::TaskQueueItem::TaskQueueItem(uint8_t priority, const RangedTask& task)
+TaskStream::TaskQueueItem::TaskQueueItem(uint8_t priority, const WorkItem& task)
 	: priority(priority)
 	, task(task)
 	, duration(0)
@@ -46,28 +46,27 @@ TaskStream::TaskStream(StaticString name, TStreamIndex streamIndex)
 	log.Out([name = name](auto& ls) { ls << name.c_str() << " is created."; });
 }
 
-void TaskStream::EnqueueFifo(const RangedTask& task) noexcept
+void TaskStream::EnqueueFifo(const WorkItem& task) noexcept
 {
 	std::scoped_lock<std::mutex> lock(queueLock);
 	fifoQueue.PushBack(task);
 	cv.notify_one();
 }
 
-void TaskStream::EnqueuePriority(const RangedTask& task) noexcept
+void TaskStream::EnqueuePriority(const WorkItem& task) noexcept
 {
 	std::scoped_lock<std::mutex> lock(queueLock);
 	priorityQueue.Push(task);
 	cv.notify_one();
 }
 
-void TaskStream::ReportReleasedTask(const RangedTask& task) const noexcept
+void TaskStream::ReportReleasedTask(const WorkItem& item) const noexcept
 {
 	auto log = Logger::Get(name);
-	log.OutWarning([name = name, taskName = task.taskName, index = task.taskID.index,
-					generation = task.taskID.generation](auto& ls)
+	log.OutWarning([name = name, index = item.taskID.index, generation = item.taskID.generation](auto& ls)
 	{
-		ls << name.c_str() << " dropped a work item of " << taskName.c_str() << ", record " << index << " generation "
-		   << generation << ", because that task had already been released. Nothing was run. ";
+		ls << name.c_str() << " dropped a work item, record " << index << " generation " << generation
+		   << ", because that task had already been released. Nothing was run.";
 	});
 }
 
@@ -92,7 +91,7 @@ void TaskStream::ConfigureRate(uint32_t fifoWeight, uint32_t priorityWeight) noe
 	drainPolicy.ConfigureRate(fifoWeight, priorityWeight);
 }
 
-void TaskStream::Dequeue(std::optional<RangedTask>& outTask)
+void TaskStream::Dequeue(std::optional<WorkItem>& outTask)
 {
 	std::scoped_lock<std::mutex> lock(queueLock);
 
@@ -163,8 +162,8 @@ void TaskStream::RunLoop() noexcept
 	auto& engine = Engine::Get();
 	auto& taskSys = engine.GetTaskSystem();
 
-	HVector<RangedTask> readdingFifo;
-	HVector<RangedTask> readdingPriority;
+	HVector<WorkItem> readdingFifo;
+	HVector<WorkItem> readdingPriority;
 
 	for (; likely(taskSys.IsRunning()); ++loopCount)
 	{
@@ -179,7 +178,7 @@ void TaskStream::RunLoop() noexcept
 			taskSys.RunBudgetWindowPass();
 		}
 
-		std::optional<RangedTask> rangedTask;
+		std::optional<WorkItem> workItem;
 		StreamDrainPolicy::ELane lane = StreamDrainPolicy::ELane::None;
 
 		{
@@ -187,7 +186,7 @@ void TaskStream::RunLoop() noexcept
 
 			// A task that finished elsewhere is released from its lane and put back on that same lane, so the
 			// sweep and the re-add are per lane and no task changes lane on the way.
-			priorityQueue.Remove([](const RangedTask& task) { return task.HasFinished(); });
+			priorityQueue.Remove([](const WorkItem& task) { return task.HasFinished(); });
 			priorityQueue.PushRange(readdingPriority);
 			readdingPriority.clear();
 
@@ -216,29 +215,29 @@ void TaskStream::RunLoop() noexcept
 			switch (lane)
 			{
 				case StreamDrainPolicy::ELane::Fifo:
-					rangedTask = fifoQueue.Front();
+					workItem = fifoQueue.Front();
 					fifoQueue.PopFront();
 					drainPolicy.CommitTake(lane);
 					break;
 				case StreamDrainPolicy::ELane::Priority:
-					rangedTask = priorityQueue.Pop();
+					workItem = priorityQueue.Pop();
 					drainPolicy.CommitTake(lane);
 					break;
 				case StreamDrainPolicy::ELane::None:
 					break;
 			}
 
-			if (!rangedTask.has_value())
+			if (!workItem.has_value())
 			{
 				lane = StreamDrainPolicy::ELane::None;
 			}
 		}
 
-		if (!rangedTask.has_value())
+		if (!workItem.has_value())
 		{
 			if (budget.CanTakeWork())
 			{
-				taskSys.Dequeue(rangedTask);
+				taskSys.Dequeue(workItem);
 			}
 			else
 			{
@@ -246,7 +245,7 @@ void TaskStream::RunLoop() noexcept
 			}
 		}
 
-		if (!rangedTask.has_value())
+		if (!workItem.has_value())
 		{
 			// Wait for a signal for waitPeriod
 			std::unique_lock lock(queueLock);
@@ -256,10 +255,10 @@ void TaskStream::RunLoop() noexcept
 			continue;
 		}
 
-		auto* task = taskSys.FindTask(rangedTask->taskID);
+		auto* task = taskSys.FindTask(workItem->taskID);
 		if (task == nullptr)
 		{
-			ReportReleasedTask(*rangedTask);
+			ReportReleasedTask(*workItem);
 			continue;
 		}
 
@@ -273,7 +272,7 @@ void TaskStream::RunLoop() noexcept
 
 		{
 			time::ScopedTime timer(duration);
-			if (rangedTask->Run(*task))
+			if (workItem->Run(*task))
 			{
 				taskSys.DispatchSuccessor(task->GetID());
 			}
@@ -300,15 +299,15 @@ void TaskStream::RunLoop() noexcept
 			log.OutWarning([dt = deltaTime](auto& ls) { ls << "Slow DeltaTime = " << dt; });
 		}
 
-		if (!rangedTask->HasFinished())
+		if (!workItem->HasFinished())
 		{
 			if (lane == StreamDrainPolicy::ELane::Priority)
 			{
-				readdingPriority.push_back(*rangedTask);
+				readdingPriority.push_back(*workItem);
 			}
 			else
 			{
-				readdingFifo.push_back(*rangedTask);
+				readdingFifo.push_back(*workItem);
 			}
 		}
 	}

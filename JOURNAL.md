@@ -1,5 +1,56 @@
 # Journal
 
+## `RangedTask` deleted: the queue holds `WorkItem`, and the item is 112 bytes not 48
+
+`WorkItem` replaces `RangedTask` in every queue (`Deque` FIFO lane, `BoundedPriorityQueue` priority lane, the general
+queue, and `TaskQueueItem`), keeping `{ priority, affinity, taskID, start, end, current }`. `current` is the field that
+matters: a runnable may return part of its range and the stream re-adds the item, so progress lives in the item, not in
+the task. The name copy is gone - its single reader was the drop-because-released warning, which now reports record index
+and generation, and a released record's name is not something the registry can confirm anyway. `Logger.cpp`'s local
+renamed to match. R25's deletion note goes in the commit message; the owner's approved deviation ("delete it in its own
+commit", recorded in `.Plans/PLAN_queue_item_type.md` section 0) is what this commit is.
+
+**The plan's target was missed and the reason is a defect.** `sizeof(WorkItem)` measures **112**, not the ~48 the plan
+predicted: dropping the name bought 16 bytes. 64 of the 112 are `TaskStreamAffinity`, because `BitsArraySize` is computed
+as `(NumBits + BitArrayUnitBytes - 1) / BitArrayUnitBytes` at `TaskStreamAffinity.h:19` - bytes per unit where the
+arithmetic wants bits per unit - so a 64-bit mask reserves eight 64-bit words and only ever writes bits 0-7 of each,
+since `GetBitsArrayIndexOf` divides by the same wrong figure. Self-consistent and functionally correct, eight times the
+storage. Dense encoding leaves the mask 8 bytes and the item 56; that is a separate commit with its own mutation proof,
+and it is now written into `WorkItem.h`'s class doc so nobody measures 112 again and thinks it is the design.
+`ResultPacket.cpp`'s price test pins 112 with a message that says why the width is paid per lane change.
+
+**A harness bug of mine invalidated a first round of mutation results, and it is now fixed.** My mutation loop ignored
+the build's exit status. `current += 0` made `delta` unused, warnings are errors, the build was rejected, and the runner
+executed the *previous binary* - so the mutant "passed every test". Reported first as "mutation A survived, the suite has
+no resumability check", which was wrong. The harness now requires 0 compile errors *and* a changed binary mtime before it
+will believe a run, exactly the rule the test runner already enforces for exit codes. Corrected results:
+
+| Mutation | Result under the corrected harness |
+|---|---|
+| progress dropped (`current += delta * 0`, delta still used) | **killed** - Bagel Problem fails; the plan's claim about the incremental test holds |
+| `HasFinished` made strict (`current > end`) | **killed** - Bagel Problem fails; the earlier "survived" was a second harness bug, see below |
+
+**A second harness bug of the same family, and it produced a false claim in this commit's message.** My mutation loop
+held one target path - `WorkItem.cpp` - and wrote every mutation into it, including the one whose code lives in
+`WorkItem.h`. The header edit was therefore never applied: the loop rebuilt pristine source, the binary's timestamp moved
+because the previous iteration's C++ mutation had just been reverted, and the run of an *unmutated* engine came back as
+"the strict `HasFinished` survives". Re-run against the right file with the substitution asserted before the build, and
+it is killed by Bagel Problem. Two rules now hold in the harness, not one: **the mutation must be shown to have changed
+the file it is applied to, and the file it is applied to must be the file that owns the code under test.** A run whose
+subject was never modified is not evidence of anything - which is the same lesson as the failed build, seen from the
+other side.
+
+What remains genuinely open, and is not a coverage claim either way: neither of these two mutations was killed by the new
+resume test, both were killed by `Bagel Problem`. So the new test's assertions are not yet shown to be load-bearing on
+their own; the next session should either find a mutation only it catches, or justify keeping it as a direct
+`WorkItem::Run` contract test that does not depend on stream timing.
+
+New test added to the existing task-system collection (still **59**, no new collection): "An item that returns part of its
+range resumes at the index it stopped at" - asserts the item finishes, the runnable is called once per index, the starts
+handed over sum to 0+1+..+7, and `current` ends at `end`. Debug, Dev and Release each rebuilt `EngineTest` with 0
+`error:` and ran under a wall-clock limit to exit 0 with all 59 collections passed; `check.sh --staged` reports 0
+mechanical violations with the 2 standing `using TIndex` advisories.
+
 ## R36 in code: one slot per stream, a lane mask in it, and a refused attachment that reports
 
 `AttachTo` now names the lane it attaches on - `AttachTo(TStreamIndex, StreamDrainPolicy::ELane)` - with no default,

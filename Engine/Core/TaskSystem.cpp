@@ -144,13 +144,13 @@ void TaskSystem::JoinAndClear() noexcept
 	streams.Clear();
 }
 
-void TaskSystem::Enqueue(const RangedTask& task) noexcept
+void TaskSystem::Enqueue(const WorkItem& task) noexcept
 {
 	std::scoped_lock<std::mutex> lock(taskQueueMutex);
 	taskQueue.Push(task);
 }
 
-void TaskSystem::Dequeue(std::optional<RangedTask>& outTask) noexcept
+void TaskSystem::Dequeue(std::optional<WorkItem>& outTask) noexcept
 {
 	std::scoped_lock<std::mutex> lock(taskQueueMutex);
 	if (taskQueue.IsEmpty())
@@ -159,24 +159,24 @@ void TaskSystem::Dequeue(std::optional<RangedTask>& outTask) noexcept
 		return;
 	}
 
-	auto rangedTaskOpt = taskQueue.Top();
-	if (!rangedTaskOpt.has_value())
+	auto workItemOpt = taskQueue.Top();
+	if (!workItemOpt.has_value())
 	{
 		outTask.reset();
 		return;
 	}
 
-	const RangedTask& rangedTask = rangedTaskOpt.value();
+	const WorkItem& workItem = workItemOpt.value();
 	const unsigned int streamIndex = GetCurrentStreamIndex();
 
-	auto& affinity = rangedTask.affinity;
+	auto& affinity = workItem.affinity;
 	if (!affinity.Get(streamIndex))
 	{
 		affinity.Set(streamIndex);
 		return;
 	}
 
-	outTask = rangedTask;
+	outTask = workItem;
 	(void) taskQueue.Pop();
 }
 
@@ -195,7 +195,7 @@ void TaskSystem::ReleaseTask(TaskID id) noexcept
 	taskRegistry.Release(id);
 }
 
-void TaskSystem::Enqueue(const TIndex streamIndex, const RangedTask& task) noexcept
+void TaskSystem::Enqueue(const TIndex streamIndex, const WorkItem& task) noexcept
 {
 	if (!streams.IsValidIndex(streamIndex))
 	{
@@ -1992,6 +1992,62 @@ void TaskSystemTest::Prepare()
 		}
 
 		taskSys.ReleaseTask(splitID);
+	});
+
+	AddTest("An item that returns part of its range resumes at the index it stopped at", [this](auto& ls)
+	{
+		struct ProgressLog
+		{
+			std::size_t calls = 0;
+			std::size_t startSum = 0;
+		};
+
+		auto func = [](void* userData, std::size_t start, std::size_t) -> std::size_t
+		{
+			auto& log = *static_cast<ProgressLog*>(userData);
+			++log.calls;
+			log.startSum += start;
+			return 1;
+		};
+
+		constexpr std::size_t Count = 8;
+		constexpr std::size_t SumOfIndices = (Count - 1) * Count / 2;
+
+		ProgressLog log;
+		const TrackedTask tracked("ResumeProbe", func, &log);
+		auto& task = *tracked;
+
+		task.ReserveSubTasks(1);
+		auto item = task.GenerateSubTask(0, Count, 0);
+
+		for (std::size_t guard = 0; guard < Count * 2 && !item.HasFinished(); ++guard)
+		{
+			item.Run(task);
+		}
+
+		if (!item.HasFinished())
+		{
+			ls << "An item whose runnable advanced one index per call never finished; a stream would re-add it"
+			   << " forever. It reported " << log.calls << " calls." << lferr;
+		}
+
+		if (log.calls != Count)
+		{
+			ls << "The runnable was called " << log.calls << " times for a range of " << Count
+			   << " indices, so a partial return was not turned into one call per remaining index." << lferr;
+		}
+
+		if (log.startSum != SumOfIndices)
+		{
+			ls << "The runnable was handed starts summing to " << log.startSum << " instead of " << SumOfIndices
+			   << ", so it was not resumed where it stopped: it was restarted, and every index before that point was"
+			   << " done twice." << lferr;
+		}
+
+		if (item.current != Count)
+		{
+			ls << "A finished item left current at " << item.current << " rather than at its end." << lferr;
+		}
 	});
 
 	AddTest("A split with nothing to do is refused rather than queued as a task that can never close",

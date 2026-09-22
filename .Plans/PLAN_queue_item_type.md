@@ -138,3 +138,8 @@ must not be producing, and a provider that returns false must not be asked again
   not detach - `TaskProvider.cpp:254-261` asserts that today, so leave it passing.
 - The existing cap probe at `TaskProvider.cpp:197-212` fills all slots and checks slot N is unattached: it needs the
   lane argument after this change, and its figure has to follow the new capacity rather than the old 8.
+- A mutation harness must prove three things before believing a verdict, in this order: the substitution **changed the
+  file**, the file is the one that **owns the code** being mutated (a header mutation written to the `.cpp` is a silent
+  no-op), and the build **succeeded and relinked** (a rejected build leaves the previous binary, which then "passes"
+  every test). Two false verdicts in one session came from skipping one of each.
+

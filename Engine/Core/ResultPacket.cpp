@@ -6,6 +6,7 @@
 
 #include "Task.h"
 #include "TaskRegistry.h"
+#include "WorkItem.h"
 
 #ifdef __UNIT_TEST__
 namespace hbe
@@ -31,12 +32,22 @@ void ResultPacketTest::Prepare()
 		// four. The task itself stayed at 176 - the join's generated counter went into padding it already had.
 		constexpr std::size_t decidedRecordBytes = 256;
 		constexpr std::size_t decidedTableKib = 1024;
+		constexpr std::size_t decidedWorkItemBytes = 112;
 
 		const auto tableBytes = TaskRegistry::DefaultInitialCapacityRecords * TaskRegistry::RecordSizeBytes;
 
 		ls << "Packet " << sizeof(ResultPacket) << " bytes, task " << sizeof(Task) << " bytes, record "
 		   << TaskRegistry::RecordSizeBytes << " bytes (" << TaskRegistry::RecordSizeBytes / 64
-		   << " cache lines), and the default table is " << tableBytes / 1024 << " KiB." << lf;
+		   << " cache lines), a queued work item " << sizeof(WorkItem) << " bytes, and the default table is "
+		   << tableBytes / 1024 << " KiB." << lf;
+
+		if (sizeof(WorkItem) != decidedWorkItemBytes)
+		{
+			ls << "A queued work item is " << sizeof(WorkItem) << " bytes, not " << decidedWorkItemBytes
+			   << ". An item is copied on every enqueue, every re-add after a partial run and every sweep that moves"
+			   << " it between lanes, so this width is paid per lane change rather than per task - which is why"
+			   << " RangedTask's name copy came out when the item type was slimmed." << lferr;
+		}
 
 		if (sizeof(ResultPacket) != decidedPacketBytes)
 		{
