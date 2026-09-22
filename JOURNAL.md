@@ -1,5 +1,28 @@
 # Journal
 
+## Providers are user-side, so the engine stops planning to offer them (R34)
+
+Asked what remained, I listed B3e - register providers per stream and drain them - as an engine step. The owner
+corrected it: *"You don't have to add TaskProvider for all task streams. It's a user side thing. System doesn't
+provide it unless there's a thing system need to use TaskStream."* Measured afterwards, the correction was already
+true of the code: `TaskProvider` has **zero production callers**. `Engine/Core/TaskProvider.{h,cpp}` reference each
+other, the only consumer is its own `TaskProviderTest` registered at `Engine/Test/UnitTestCollection.cpp:92`, and
+`TaskStream` and `TaskSystem` never mention providers. The plan was describing an attachment point for a user that
+does not exist.
+
+The engine's own need is narrower and already served. `Logger`'s drain task is the one system-owned recurring job on
+a stream, and it needs "queue this task whole on that stream", which is the same primitive `DispatchSuccessor` needs
+to deliver an outcome (R30) - so it costs nothing beyond D3b. `TaskProvider`/`TaskHandle` stay, as user-side surface
+with no engine caller, for one named reason: B6b plans applets to become providers. That reason is the whole
+justification, and it expires with B6b - if applets turn out not to need it, the type and its test collection are
+deleted then rather than kept as an extra pair of shoulders on the engine.
+
+What changed on paper: R34 recorded, B3e struck from the refactor plan's step table. The remaining engine list is now
+D3b (queue item type, `RangedTask` deleted), D3c (`Wait`/`BusyWait`/public `HasDone` - whose only producer-side user
+is `Logger.cpp:266` and `:272`), B3d (task max age and abandonment, which G5's "an abandoned child still closes the
+join" rule depends on), B4's naming beyond Base/EngineLoop, B6a's frame tick pump, B8's four guardrails as tests, and
+the doc debt in `docs/TaskSystemGuide.md`, which still documents the range-splitting model.
+
 ## `ParallelFor` lands, and two holes fell out of it (R32, R33)
 
 G5 wanted splitting as a primitive on the task system, R10 wanted it as two functions, and G5's ordering constraint
