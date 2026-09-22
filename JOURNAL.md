@@ -1,5 +1,14 @@
 # Journal
 
+## Final tree proven in all three configurations, closing my own caveat
+
+The affinity commit's message noted that Dev and Release had run the gate before the copyright-line reorder, and that only
+Debug was rebuilt afterwards. A caveat in the log is a defect in the log, so the tree at `bd77ec6` was rebuilt and re-run
+where it mattered: Dev and Release each compile `EngineTest` with 0 `error:` and run under the wall-clock runner to exit 0
+with **all 59 collections passed**, and each builds the moved `WindowExample` target with 0 `error:`. Zero uncommitted
+tracked files. The rule taken from it: if I am going to write down that something was not verified, verify it before the
+commit rather than promise to do it later.
+
 ## Affinity mask made dense: the queued work item goes 112 bytes -> 56
 
 The defect was in `TaskStreamAffinity.h`: `BitsArraySize` divided `NumBits` by `BitArrayUnitBytes` (bytes per word) where
