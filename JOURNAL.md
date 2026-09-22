@@ -1,5 +1,30 @@
 # Journal
 
+## Two ways I broke my own tree in one session, and the lead the budget-gate test left behind
+
+**A stale backup nearly destroyed committed work.** My mutation harness keeps its pristine copy under `build/gate/orig/`, but
+that copy of `TaskStream.cpp` predated the `RequestBudget` work: the harness wrote the mutant from the *stale* base, which
+silently deleted 27 lines of the committed race fix. Symptoms were a link failure - `symbol(s) not found`, because
+`TaskStream::RequestBudget` had vanished from the source - and then `exit=127` when the runner could not find the binary the
+failed link never produced. Worse, when I tried to repair the dirty file I restored *from that same stale backup*, re-deleting
+the same 27 lines. `git diff --stat` caught it; `git checkout -- <file>` from `HEAD` was the actual fix. Two rules, both already
+violated once today: refresh the harness backup from `HEAD` before each mutant run, and when a file is dirty unexpectedly,
+compare against `HEAD` rather than against a copy of unknown vintage.
+
+**The budget-gate test hangs the suite, and is reverted rather than shipped.** The race-free design worked as designed - the
+provider reads `MayTakeNewWork()` inside `Produce`, on the draining stream's own thread, which is the only legal place to read
+that unsynchronised field - and the test itself reported `Result [PASS]`. But the run then printed the shutdown banner and never
+exited, hitting the 300 s wall-clock limit at 5:15 where a normal run finishes in about 40 s. Confirmed twice, and confirmed
+absent when the test was reverted with sources otherwise clean and the build clean. So the gate test is not landed.
+
+**The lead is more interesting than the test.** Everything ran and passed; the hang is in shutdown, after this test had
+configured a worker's allowance to 1 ms, run a 20 ms burn on it, detached the provider, restored the allowance to unlimited, and
+released the burn task. The candidate defect is therefore in the engine, not in the assertion: a worker that was throttled mid-
+run, and may hold a released item in a lane, appears to prevent `Engine::ShutDown` from completing. If that is real, it is not a
+test problem - a stream that cannot be shut down after being throttled is a production bug, and one the budget-window work should
+close. Recorded as a task with the reproduction conditions named, because the next person should not have to rediscover that
+this is where it hides.
+
 ## The budget data race: root cause, demonstrated by execution, then fixed with request-and-apply (options 1 + 5)
 
 **Root cause.** `CPUBudget::allowance` is a plain `std::chrono::duration<double>` (`CPUBudget.h:57`); only
