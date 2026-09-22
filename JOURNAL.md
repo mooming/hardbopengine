@@ -1,5 +1,38 @@
 # Journal
 
+## The base stream absorbed the main-thread queue, and the last log line would not flush
+
+**What was built, all of it working until teardown.** `MainThreadTaskQueue` became `PostedTaskQueue` and moved into the stream it
+serves: `TaskStream` owns one, `TaskStream::EnqueuePosted` is the intake, and `Update` drains it before any lane item - posted
+work is window and engine-loop work, and the loop this queue replaced ran it first. `TaskSystem::DispatchToMainThread` became
+`DispatchToBaseStream`, and all six `OSAL/Window.cpp` sites moved to it. `TaskSystem::Update()` is the engine frame entry: it
+drives the base stream until the base frame budget - `time::GetBaseFramePeriod()`, 16 ms by default - is spent or the stream has
+nothing. `TaskSystem::DriveUntil` is the designated wait point: a wait issued from base work pumps the stream whose queued
+callback will satisfy it, because the thread that would run that callback is the thread that is waiting, and re-entry is permitted
+only there and withdrawn on the way out; from any other thread it degrades to a plain timed sleep, since driving from elsewhere
+would be a second driver. The base stream stopped creating a thread, `Engine::Run` calls `taskSystem.Update()` each iteration, and
+`JoinAndClear` owes the driven stream a final drain via `HasPendingWork()` - which counts lanes plus posted work and deliberately
+excludes providers, because providers manufacture work on demand and would turn a drain into a spin. **All 59 collections passed
+with the base stream driven, nested pumping live, and no thread of its own.** That is the architecture working.
+
+**Then it trapped.** Exit 133 - signal 5 - from a `FatalAssert` after `[Logger][Error] Flush gave up after 1000ms: the drain task
+is alive but has not written the queue`. Reading `Logger::WaitForFlush` (`Logger.cpp:438-471`): the give-up branch chosen is the
+one taken when the logger believes a drain task is in flight, so the drain task existed and no thread ran it within 1000 ms. The IO
+stream was alive - `IO has begun.` is in the same log - so this is not a missing stream. What it points at is ordering inside
+`JoinAndClear`: the base drain loop runs, then the loop joins every stream thread including IO's, and the final flush lands where
+the task that would write the log queue can no longer be reached. The fix is therefore an ordering fix - finish and flush before
+joining the streams that carry the logger's work - not a change to the driven-stream architecture, and the distinction matters
+because the architecture is what all 59 collections exercised.
+
+**Reverted rather than left half-landed.** The tree is back at the green commit, with `MainThreadTaskQueue` intact. Everything
+above is the shape to re-apply; the plan and this entry carry it.
+
+**Third harness mistake of the session, recorded because it is the quietest.** An insertion of the `ProcessOne` definition into
+`PostedTaskQueue.cpp` used an `hbe::`-qualified anchor while the file sits inside a `namespace hbe { }` block, so nothing matched
+and nothing was inserted - and that particular replace carried no assertion, so the script reported success. The failure surfaced
+later as `Undefined symbols: hbe::PostedTaskQueue::ProcessOne()`. A no-op edit is only dangerous when it is silent: assert on every
+substitution, including the ones that look trivial.
+
 ## A driven base stream hangs on the first thing that blocks the main thread - and the stack names it
 
 **What was attempted.** Plan commit 1 landed clean (`6dbb879`): `TaskStream::Update` is one non-blocking pass, `WaitForWork` is
