@@ -42,6 +42,9 @@ TaskStream::TaskStream(StaticString name, TStreamIndex streamIndex)
 	, streamIndex(streamIndex)
 	, loopCount(0)
 	, allocator(name)
+	, shutdownDrainDeadline(streamIndex == TaskSystem::BaseStreamIndex || streamIndex == TaskSystem::IOStreamIndex
+									? std::chrono::milliseconds::zero()
+									: std::chrono::milliseconds(2000))
 {
 	auto log = Logger::Get(name);
 	log.Out([name = name](auto& ls) { ls << name.c_str() << " is created."; });
@@ -490,7 +493,7 @@ std::size_t TaskStream::CountPendingItems() const noexcept
 std::uint64_t TaskStream::DrainForShutdown() noexcept
 {
 	isDrainingForShutdown = true;
-	const auto deadline = std::chrono::steady_clock::now() + ShutdownDrainDeadline;
+	const auto deadline = std::chrono::steady_clock::now() + shutdownDrainDeadline;
 
 	std::uint64_t passes = 0;
 

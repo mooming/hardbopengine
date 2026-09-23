@@ -123,9 +123,14 @@ void TaskSystem::RequestOtherStreamsClose() noexcept
 {
 	TaskStream& baseStream = GetStream(GetBaseTaskStreamIndex());
 
+	// The IO stream stays open with the base stream, because log writing is a task that runs on it: closing the
+	// executor of the reporting before the reporting is done leaves a drain task in flight that can never run again,
+	// and every late log line then waits on it.
+	TaskStream& ioStream = GetStream(GetIOTaskStreamIndex());
+
 	for (auto& stream : streams)
 	{
-		if (&stream != &baseStream)
+		if (&stream != &baseStream && &stream != &ioStream)
 		{
 			stream.RequestClose();
 		}
@@ -137,10 +142,11 @@ bool TaskSystem::AreOtherStreamsClosed() noexcept
 
 
 	const TaskStream& baseStream = GetStream(GetBaseTaskStreamIndex());
+	const TaskStream& ioStream = GetStream(GetIOTaskStreamIndex());
 
 	for (const auto& stream : streams)
 	{
-		if (&stream == &baseStream)
+		if (&stream == &baseStream || &stream == &ioStream)
 		{
 			continue;
 		}
@@ -179,6 +185,10 @@ void TaskSystem::JoinAndClear() noexcept
 		// stream is still running its own work. Joining first leaves the flush waiting on an executor that has already
 		// exited, which is a timeout and a fatal assert rather than a shutdown.
 		Logger::Get().Flush();
+
+		// The reporting the shutdown exists to produce is finished, so the streams that carried it close last, and in
+		// this order: the executor of log work first, then the base stream that drove the end of the run.
+		GetStream(GetIOTaskStreamIndex()).RequestClose();
 	}
 
 	if (hasStreams)

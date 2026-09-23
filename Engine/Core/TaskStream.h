@@ -110,8 +110,15 @@ private:
 	/// @brief Set while this stream runs its own remaining work on the way out, which suspends provider probing.
 	bool isDrainingForShutdown = false;
 
-	/// @brief How long a shutdown drain may spend before remaining work is reported as abandoned.
-	static constexpr std::chrono::milliseconds ShutdownDrainDeadline{2000};
+	/// @brief How long this stream's shutdown drain may spend before remaining work is reported as abandoned.
+	/// @details Worker streams get a real window. The engine's own streams get none, because "run until the queues are
+	/// empty"
+	///          is not what closing them means: the IO stream's work is the log buffer, and writing a line re-posts the
+	///          drain task, so draining it to emptiness is a loop that ends only at the deadline - measured at over 2.6
+	///          million passes and the full window for no work but its own. The shutdown flushes the logger explicitly
+	///          instead, which is that stream's real work, and the base stream's end-of-run duties are likewise driven
+	///          by the shutdown rather than discovered by a drain.
+	std::chrono::milliseconds shutdownDrainDeadline{2000};
 	/// @brief Times this stream left a task in the general queue because its allowance was already spent.
 	/// @details The only witness that the acquire gate exists: a stream that declines work is otherwise
 	///          indistinguishable from one that has nothing to do.
