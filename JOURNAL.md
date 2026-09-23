@@ -1,5 +1,41 @@
 # Journal
 
+## Reviewing the teardown: the shutdown is inverted, and no stream closes gracefully
+
+Prompted by the flush trap after the driven base stream landed. Reading the shutdown path end to end, the fault is structural and
+independent of that change - it was merely being masked.
+
+**Four findings, each from the committed code.**
+
+| # | Finding | Evidence |
+|---|---|---|
+| T1 | **The order is inverted.** `Engine::Run` calls `JoinAndClear()` - joining every stream thread and clearing `streams` - and only afterwards does `Engine::ShutDown()` call `RequestShutDown()`, setting the flag the already-dead threads were waiting on. | `Engine.cpp:145` then `Engine.cpp:181` |
+| T2 | **No stream closes gracefully.** A stream loop runs `while (taskSys.IsRunning())`, so the instant that flag falls the loop returns: no drain of what the stream already holds, no report of what was abandoned, and the re-add buffers are destroyed with work inside them. | `TaskStream.cpp` loop condition; `readdingFifo`/`readdingPriority` are loop locals |
+| T3 | **The logger's writes are stream work, so the shutdown kills its executor first.** Log lines are written by a drain task on the IO stream. After the joins, the only reason the final lines appear at all is the fallback inside `WaitForFlush` - `if (!hasDrainTask) ProcessBuffer();`. Any state where a drain task is in flight when the streams are gone becomes a 1000 ms stall and a `FatalAssert`, which is exactly the trap that ended the driven-base-stream run. | `Logger.cpp:230/263` set the drain-task flag, `:438-471` is the wait, `Logger.cpp:208/247` place the task on the IO stream |
+| T4 | **Teardown runs twice.** `~TaskSystem` calls `JoinAndClear()` again on already-cleared streams; harmless only because a default `std::thread` is not joinable. | `TaskSystem.cpp:80` |
+
+So the flush trap was not a bug in the driven base stream. It was T1 plus T3 becoming observable, and the inline fallback had been
+carrying the whole end-of-run reporting load by luck.
+
+**The protocol the owner specified, and what I built for it.** `RequestShutDown` closes every stream except the base stream; the
+base stream keeps pumping until all others are properly closed; the logger works to the very end. Implemented as a per-stream
+`RequestClose()` and `isClosed` flag, `DrainForShutdown()` running a stream's own remaining work with provider probing suspended,
+and `JoinAndClear` reordered to: ask others to close, pump the main-thread queue while `AreOtherStreamsClosed()` is false, flush
+the logger **while the stream carrying its work is still alive**, then close the base stream last, then join.
+
+**It hung, and the suspect is the drain bound.** `DrainForShutdown` loops `while (Update())` capped at a million passes. A
+resumable task is re-added on every pass, so `Update` never reports "nothing happened" - the loop is correct in logic and a hang in
+practice, because a million lock-taking passes is not a bound that a shutdown can survive. The fix is not a bigger number: bound the
+drain by wall clock and by absence of progress, and treat work that can never finish as **abandoned and reported**, which is the
+honest outcome - the alternative is a shutdown that spends forever on a task that would never end.
+
+**Fourth tooling mistake, and a small one that cost a scare.** `timeout 600 ./build/gate/gate.sh` returned 127, which I nearly
+recorded as a broken harness - macOS has no `timeout` binary. A missing executable and a failing test both look like a nonzero exit
+until the message is read.
+
+Reverted to `26f817c`; three configurations green, 59 collections. The four findings above stand on the committed code and do not
+depend on the reverted change.
+
 ## The base stream absorbed the main-thread queue, and the last log line would not flush
 
 **What was built, all of it working until teardown.** `MainThreadTaskQueue` became `PostedTaskQueue` and moved into the stream it
