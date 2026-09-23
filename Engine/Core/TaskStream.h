@@ -100,6 +100,18 @@ private:
 	/// @details The pass signals and this stream reopens, which is what keeps every write to the budget on the
 	///          thread whose CPU it charges - see RequestWindowAdvance.
 	std::atomic<bool> windowAdvanceRequested{false};
+
+	/// @brief Set when this stream should finish what it holds and stop, independently of every other stream.
+	std::atomic<bool> closeRequested{false};
+
+	/// @brief Set once this stream has drained its work and left its loop.
+	std::atomic<bool> isClosed{false};
+
+	/// @brief Set while this stream runs its own remaining work on the way out, which suspends provider probing.
+	bool isDrainingForShutdown = false;
+
+	/// @brief How long a shutdown drain may spend before remaining work is reported as abandoned.
+	static constexpr std::chrono::milliseconds ShutdownDrainDeadline{2000};
 	/// @brief Times this stream left a task in the general queue because its allowance was already spent.
 	/// @details The only witness that the acquire gate exists: a stream that declines work is otherwise
 	///          indistinguishable from one that has nothing to do.
@@ -247,19 +259,68 @@ public:
 
 	/// @brief Drive exactly one pass of this stream, on whatever thread calls it.
 	/// @details The pass is non-blocking: it sweeps finished work, applies a pending allowance request, reopens the
-	///          accounting window if one was asked for, takes at most one item from a lane, asks the providers attached to
-	///          the empty lanes, and otherwise falls back to the general queue. It returns true when it took or dropped
-	///          something, so a driver that has other duties knows whether to keep going or to call `WaitForWork`.
-	/// @note One driver at a time, and that driver is this stream's owner thread for every purpose that asks who owns it:
-	///       `IsBaseThread`, `IsIOThread`, the owner-thread budget asserts, and the thread-local stream index. The index and
-	///       the allocator scope are entered and restored around each pass, because a shared driver does not belong to this
-	///       stream for the whole of its life.
-	/// @note This resolves nothing global. A driven stream must outlive the engine object that hosts the task system, so the
+	///          accounting window if one was asked for, takes at most one item from a lane, asks the providers attached
+	///          to the empty lanes, and otherwise falls back to the general queue. It returns true when it took or
+	///          dropped something, so a driver that has other duties knows whether to keep going or to call
+	///          `WaitForWork`.
+	/// @note One driver at a time, and that driver is this stream's owner thread for every purpose that asks who owns
+	/// it:
+	///       `IsBaseThread`, `IsIOThread`, the owner-thread budget asserts, and the thread-local stream index. The
+	///       index and the allocator scope are entered and restored around each pass, because a shared driver does not
+	///       belong to this stream for the whole of its life.
+	/// @note This resolves nothing global. A driven stream must outlive the engine object that hosts the task system,
+	/// so the
 	///       pass reads the task system recorded at registration and never the live engine.
 	bool Update() noexcept;
 
+	/// @brief Ask this stream to finish its work and close.
+	/// @details The counterpart to a shutdown request. One global flag stops every stream in the same instant, which
+	/// abandons
+	///          whatever each of them already holds and closes the base stream along with the rest even though that
+	///          stream still owns the end of the run. Closing is therefore per stream and ordered by whoever drives the
+	///          shutdown: everything else first, the base stream last.
+	void RequestClose() noexcept
+	{
+		closeRequested.store(true, std::memory_order_release);
+		cv.notify_all();
+	}
+
+	/// @brief Whether this stream has been asked to close.
+	[[nodiscard]] bool IsCloseRequested() const noexcept
+	{
+		return closeRequested.load(std::memory_order_acquire);
+	}
+
+	/// @brief Whether this stream has drained its own work and left its loop.
+	/// @details Being asked to close is not being closed: the ask is a request and this says the stream finished.
+	/// Whoever
+	///          orders the shutdown waits on this rather than on a thread handle, because a driven stream has no thread
+	///          to join.
+	[[nodiscard]] bool IsClosed() const noexcept
+	{
+		return isClosed.load(std::memory_order_acquire);
+	}
+
+	/// @brief Run this stream's own remaining work, then stop.
+	/// @details The graceful half of closing: a stream that was asked to close keeps taking and running what it already
+	/// holds
+	///          instead of handing items back to nobody and destroying its re-add buffers with work inside them.
+	///          Provider probing is suspended, because a provider can answer every request with another item and a
+	///          drain that never ends is not a close. The bound is a wall clock rather than a pass count, because a
+	///          resumable task is re-added on every pass and would outrun any pass limit - a bound that such work can
+	///          defeat is not a bound.
+	/// @note Work still held when the deadline passes is **reported as abandoned** rather than looped over forever. A
+	/// task that
+	///       can never finish is a defect in that task, and the shutdown's job is to say so and proceed.
+	/// @return The number of passes taken; abandoned items are reported by this call directly.
+	std::uint64_t DrainForShutdown() noexcept;
+
+	/// @brief How many items this stream still holds in its lanes.
+	[[nodiscard]] std::size_t CountPendingItems() const noexcept;
+
 	/// @brief Sleep until this stream is worth driving again, or `patience` runs out.
-	/// @details Separate from `Update` on purpose: a pass that found nothing must not decide how long to wait, because a
+	/// @details Separate from `Update` on purpose: a pass that found nothing must not decide how long to wait, because
+	/// a
 	///          driver with several duties knows its own latency budget and this stream cannot.
 	void WaitForWork(std::chrono::milliseconds patience) noexcept;
 	void RunLoop() noexcept;

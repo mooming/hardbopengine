@@ -98,7 +98,23 @@ public:
 	~TaskSystem() noexcept;
 
 	void Initialize() noexcept;
+	/// @brief Ask the run to end: close every stream except the base stream, which is closed last.
+	/// @details Closing means finishing the work a stream already holds rather than stopping in the middle of it, so
+	/// the request
+	///          that ends a run must not be the thing that abandons queued items. It must also not close the base
+	///          stream, which still owns the end of the run - final statistics, the last log lines, and whatever the
+	///          closing streams hand back - and log writing is itself a task on a stream, so an executor closed before
+	///          the reporting it must carry out turns an orderly end into a flush timeout.
 	void RequestShutDown() noexcept;
+
+	/// @brief Ask every stream except the base stream to close, without ending the run. Idempotent.
+	/// @details Called by the teardown as well as by the shutdown request, because a wait for streams that were never
+	/// asked to
+	///          close is a wait that never ends.
+	void RequestOtherStreamsClose() noexcept;
+
+	/// @brief Whether every stream except the base stream has drained its work and left its loop.
+	[[nodiscard]] bool AreOtherStreamsClosed() noexcept;
 	void JoinAndClear() noexcept;
 
 	// Enqueue a task into the general task queue which is a low-priority queue. The task will be executed after

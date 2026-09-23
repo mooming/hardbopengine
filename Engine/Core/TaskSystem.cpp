@@ -115,19 +115,75 @@ void TaskSystem::Initialize() noexcept
 void TaskSystem::RequestShutDown() noexcept
 {
 	isRunning = false;
+
+	RequestOtherStreamsClose();
+}
+
+void TaskSystem::RequestOtherStreamsClose() noexcept
+{
+	TaskStream& baseStream = GetStream(GetBaseTaskStreamIndex());
+
+	for (auto& stream : streams)
+	{
+		if (&stream != &baseStream)
+		{
+			stream.RequestClose();
+		}
+	}
+}
+
+bool TaskSystem::AreOtherStreamsClosed() noexcept
+{
+
+
+	const TaskStream& baseStream = GetStream(GetBaseTaskStreamIndex());
+
+	for (const auto& stream : streams)
+	{
+		if (&stream == &baseStream)
+		{
+			continue;
+		}
+
+		if (!stream.IsClosed())
+		{
+			return false;
+		}
+	}
+
+	return true;
 }
 
 void TaskSystem::JoinAndClear() noexcept
 {
 	const bool isEngineLoopThread = std::this_thread::get_id() == engineLoopThreadID;
 
-	if (isEngineLoopThread)
+	// Teardown can be reached without the ordered shutdown, since the destructor is a caller. Asking is idempotent, and
+	// not asking would make the wait below one that never ends.
+	const bool hasStreams = HasStream(GetBaseTaskStreamIndex());
+
+	if (hasStreams)
 	{
-		while (isRunning || mainThreadTaskQueue.HasPendingTasks())
+		RequestOtherStreamsClose();
+	}
+
+	if (isEngineLoopThread && hasStreams)
+	{
+		while (!AreOtherStreamsClosed() || mainThreadTaskQueue.HasPendingTasks())
 		{
 			ProcessMainThreadTasks();
 			std::this_thread::sleep_for(std::chrono::milliseconds(1));
 		}
+
+		// Log lines are written by a task running on a stream, so the flush that ends the run has to happen while that
+		// stream is still running its own work. Joining first leaves the flush waiting on an executor that has already
+		// exited, which is a timeout and a fatal assert rather than a shutdown.
+		Logger::Get().Flush();
+	}
+
+	if (hasStreams)
+	{
+		GetStream(GetBaseTaskStreamIndex()).RequestClose();
 	}
 
 	for (auto& stream : streams)

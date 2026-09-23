@@ -299,10 +299,7 @@ bool TaskStream::Update() noexcept
 	TaskSystem::SetStreamIndex(streamIndex);
 	AllocatorScope scope(allocator);
 
-	auto restore = [&]()
-	{
-		TaskSystem::SetStreamIndex(previousStreamIndex);
-	};
+	auto restore = [&]() { TaskSystem::SetStreamIndex(previousStreamIndex); };
 
 	static ConfigParam<float, true> thresholdDuration(
 			"TaskStreamDurationThreshold", "Print a warning log if it detects slower task. (seconds)", 0.16f);
@@ -385,7 +382,7 @@ bool TaskStream::Update() noexcept
 			{
 				const bool laneIsEmpty =
 						probe == StreamDrainPolicy::ELane::Fifo ? fifoQueue.IsEmpty() : priorityQueue.IsEmpty();
-				if (!laneIsEmpty || !budget.CanTakeWork())
+				if (!laneIsEmpty || isDrainingForShutdown || !budget.CanTakeWork())
 				{
 					continue;
 				}
@@ -485,6 +482,38 @@ bool TaskStream::Update() noexcept
 	return true;
 }
 
+std::size_t TaskStream::CountPendingItems() const noexcept
+{
+	return fifoQueue.Size() + priorityQueue.Size();
+}
+
+std::uint64_t TaskStream::DrainForShutdown() noexcept
+{
+	isDrainingForShutdown = true;
+	const auto deadline = std::chrono::steady_clock::now() + ShutdownDrainDeadline;
+
+	std::uint64_t passes = 0;
+
+	while (Update() && std::chrono::steady_clock::now() < deadline)
+	{
+		++passes;
+	}
+
+	isDrainingForShutdown = false;
+
+	if (const auto remaining = CountPendingItems(); remaining > 0)
+	{
+		Logger::Get(name).OutWarning([name = name, remaining](auto& ls)
+		{
+			ls << name.c_str() << " is closing with " << remaining
+			   << " item(s) still held. They are abandoned, not requeued: a task that cannot finish inside the drain"
+			   << " deadline is a defect in that task, and the shutdown must report it and proceed.";
+		});
+	}
+
+	return passes;
+}
+
 void TaskStream::WaitForWork(std::chrono::milliseconds patience) noexcept
 {
 	std::unique_lock lock(queueLock);
@@ -503,7 +532,7 @@ void TaskStream::RunLoop() noexcept
 
 	threadID = std::this_thread::get_id();
 
-	while (likely(taskSystem->IsRunning()))
+	while (likely(!closeRequested.load(std::memory_order_acquire)))
 	{
 		if (!Update())
 		{
@@ -511,6 +540,11 @@ void TaskStream::RunLoop() noexcept
 		}
 	}
 
-	log.Out([name = name](auto& ls) { ls << name.c_str() << " has been terminated."; });
+	const auto drainPasses = DrainForShutdown();
+
+	log.Out([name = name, drainPasses](auto& ls)
+	{ ls << name.c_str() << " closed after draining " << drainPasses << " pass(es)."; });
+
+	isClosed.store(true, std::memory_order_release);
 }
 } // namespace hbe
