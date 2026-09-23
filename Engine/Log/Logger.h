@@ -21,6 +21,8 @@
 namespace hbe
 {
 
+class TaskStream;
+
 class Engine;
 class TaskSystem;
 
@@ -125,10 +127,42 @@ private:
 	std::ofstream outFileStream;
 	std::thread::id threadID;
 
+	/// @brief The thread this logger writes on, owned by the logger and by nothing else.
+	/// @details Logging has to work before the task system exists, after the task system is gone, and while the
+	/// subsystem it
+	///          is reporting on is wedged - a logger that depends on the thing it reports cannot report that thing
+	///          failing, which is not a preference but the reason this thread exists. Once the task system has built
+	///          its streams, the IO stream is handed to this thread, and that stream is driven here through
+	///          `TaskStream::Update` rather than owning a thread of its own.
+	std::thread driverThread;
+	std::atomic<bool> driverRunning{false};
+	std::atomic<TaskStream*> ioStream{nullptr};
+
 	std::mutex filterLock;
 	std::mutex inputLock;
 
+	/// @brief Run one pass of the IO stream on this logger's driver thread, or write the log queue directly when no
+	/// stream
+	/// @brief has been handed over yet.
+	void DriverLoop() noexcept;
+
 public:
+	/// @brief Hand the IO stream to this logger's driver thread, or take it back with nullptr.
+	/// @details The IO stream is a service stream - the logger is one of its customers, as async file access will be -
+	/// and it
+	///          is a ride-on-thread stream, so its driver must be named rather than assumed. The task system installs
+	///          the stream once its streams exist and withdraws it, waiting for an in-flight pass, before it destroys
+	///          them: the driver thread outlives the task system by design, and a pointer left installed would be read
+	///          after the streams were freed.
+	void SetIODriver(TaskStream* stream) noexcept;
+
+	/// @brief Stop the driver thread, letting it finish what it holds before it exits.
+	/// @details Reached only when the process is done logging. The final pass is taken inside the thread itself, so
+	/// whatever
+	///          was still queued at the moment the stop was requested is written by the thread that owns the file,
+	///          rather than abandoned to whoever happened to ask for shutdown.
+	void StopDriverThread() noexcept;
+
 	static Logger& Get() noexcept;
 	static SimpleLogger Get(StaticString category, ELogLevel level = ELogLevel::Info) noexcept;
 
@@ -197,3 +231,5 @@ using TLog = Logger::SimpleLogger;
 using LogStream = Logger::TLogStream;
 
 } // namespace hbe
+
+class TaskStream;

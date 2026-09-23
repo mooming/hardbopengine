@@ -182,11 +182,63 @@ Logger::Logger(Engine& engine, const char* path, const char* filename) noexcept
 	flushFuncs.emplace_back([this](const TTextBuffer& buffer) { WriteLog(buffer); });
 	flushFuncs.emplace_back([](const TTextBuffer& buffer) { PrintStdIO(buffer); });
 
+	// The driver thread starts with the logger itself, not with the first subsystem that wants to write a line.
+	driverRunning.store(true, std::memory_order_release);
+	driverThread = std::thread([this] { DriverLoop(); });
+	threadID = driverThread.get_id();
+
 	engine.SetLoggerReady();
+}
+
+void Logger::StopDriverThread() noexcept
+{
+	driverRunning.store(false, std::memory_order_release);
+
+	if (driverThread.joinable() && driverThread.get_id() != std::this_thread::get_id())
+	{
+		driverThread.join();
+	}
+}
+
+void Logger::DriverLoop() noexcept
+{
+	threadID = std::this_thread::get_id();
+
+	while (driverRunning.load(std::memory_order_acquire))
+	{
+		// With a stream installed, the IO stream's own queues are the work: whatever the logger posted there runs,
+		// along with any other customer's IO request. Without one - before the task system exists and after it is gone
+		// - the log queue is written directly, which is the same work with one fewer hop.
+		if (auto* stream = ioStream.load(std::memory_order_acquire); stream != nullptr)
+		{
+			stream->Update();
+		}
+		else
+		{
+			ProcessBuffer();
+		}
+
+		std::this_thread::sleep_for(std::chrono::microseconds(200));
+	}
+
+	if (auto* stream = ioStream.load(std::memory_order_acquire); stream != nullptr)
+	{
+		while (stream->Update())
+		{
+		}
+	}
+
+	ProcessBuffer();
+}
+
+void Logger::SetIODriver(TaskStream* stream) noexcept
+{
+	ioStream.store(stream, std::memory_order_release);
 }
 
 Logger::~Logger() noexcept
 {
+	StopDriverThread();
 	instance = nullptr;
 
 	ProcessBuffer();

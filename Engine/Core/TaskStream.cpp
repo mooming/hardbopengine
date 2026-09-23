@@ -283,6 +283,15 @@ void TaskStream::Start(TaskSystem& taskSys) noexcept
 {
 	taskSystem = &taskSys;
 
+	// The IO stream is a ride-on-thread stream: it is driven by the logger's own thread through Update, because the
+	// logger has to work before the task system exists and after it is gone, and a thread of its own would make the
+	// logger's writing depend on a stream the logger is also responsible for feeding.
+	if (streamIndex == TaskSystem::IOStreamIndex)
+	{
+		return;
+	}
+
+
 	auto func = [this]() { RunLoop(); };
 
 	thread = std::thread(func);

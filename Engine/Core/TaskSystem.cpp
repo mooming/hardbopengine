@@ -186,6 +186,10 @@ void TaskSystem::JoinAndClear() noexcept
 		// exited, which is a timeout and a fatal assert rather than a shutdown.
 		Logger::Get().Flush();
 
+		// The driver thread outlives the task system, so the stream must be taken back before the streams are freed.
+		// After this the logger writes its queue directly, which keeps it working to the very last line of the process.
+		Logger::Get().SetIODriver(nullptr);
+
 		// The reporting the shutdown exists to produce is finished, so the streams that carried it close last, and in
 		// this order: the executor of log work first, then the base stream that drove the end of the run.
 		GetStream(GetIOTaskStreamIndex()).RequestClose();
@@ -628,6 +632,9 @@ void TaskSystem::BuildStreams()
 	{
 		stream.Start(*this);
 	}
+
+	// The IO stream has no thread to claim, so its driver is named here: the logger's own thread drives it from now on.
+	Logger::Get().SetIODriver(&GetIOTaskStream());
 }
 } // namespace hbe
 
