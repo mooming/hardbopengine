@@ -1,5 +1,29 @@
 # Journal
 
+## 2026-09-24 23:25 — the reference and the guide now describe the API that exists
+
+HEAD `6ffe2f8`, tree clean, `check.sh` 0 mechanical violations and build gate 12/12, 59 collections green.
+
+`docs/Core/index.html` named `RangedTask` twelve times and `WorkItem` zero, still listed `Task::Wait` and `Task::BusyWait` as
+public, and presented `Task::GenerateSubTask` as how one builds a queue item. Every one of those is gone from the engine, so the
+documentation was not merely behind — it was teaching two deleted APIs and a closed door. The renames are mechanical; the
+corrections carry the reasons, which is the point: the waits died because a counter cannot distinguish *finished* from
+*never-dispatched*, and item construction is engine-internal because a customer-built item bypasses the registry's bookkeeping.
+`HasDone` is now documented as private and engine-internal, with `TaskStream::CountPendingItems` named as what a caller asks
+instead, and `hbe::WaitUntil` as what a test uses.
+
+**A decision worth stating, because it looks like a missing file.** `AGENTS.md` prescribes `docs/<Module>/index.html` per module,
+and the tracked Core reference is a single page with one section per class — while another agent is right now converting
+`docs/Core` into per-class directories (`Runnable/`, `TaskID/`, `Types/` are untracked in the tree). So `TaskProvider` is
+documented **as a section of the Core reference**, following the tracked convention, rather than as `docs/Core/TaskProvider/index.html`
+sitting inside a directory whose layout is actively changing. The content requirement — description, template parameters,
+properties, methods, non-members — is met in full; the placement follows what is committed. If the per-class restructure lands,
+moving the section is a copy, not a rewrite.
+
+The same staleness was in `docs/TaskSystemGuide.md`: the `Enqueue(const RangedTask&)` overloads documented as the customer path,
+and two rows asserting the waits "still exist" and are "on their way out". The example now uses `EnqueueTask`, and the table
+gained `EnqueueTask`, `taskSys.Update()` and `DriveUntil` — the three calls an engine loop and a waiting caller actually make.
+
 ## 2026-09-24 22:55 — #17 closed: the budget gate is now provable in a Release build
 
 HEAD `852f9f8`, tree clean, 59 collections green in Debug/Dev/Release, `check.sh` build gate 12/12.
