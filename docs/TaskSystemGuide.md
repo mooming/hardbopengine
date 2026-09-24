@@ -101,6 +101,27 @@ taskSystem.ReleaseTask(taskID);   // the creator releases. Releasing with work i
                                   // detected and logged, not silently wrong - R7.
 ```
 
+### Splitting one task across several items
+
+A `Task` is a promise about a range and a result; a `WorkItem` is one piece of that range sitting in a queue. They are not the
+same object and they do not have the same lifetime. The task's **reserved count** is how many items you intend to hand out, and
+the task is finished when that many items have reported - so the count and the items must agree exactly, which is the single most
+common way to make a task that never finishes.
+
+Three facts that are not visible from the declarations:
+
+| Fact | Consequence |
+|---|---|
+| A `WorkItem` is 56 bytes and names its task by id, not by pointer. | A queue holding a hundred items costs a few kilobytes, and an item stays valid even if the caller loses track of the `Task` object - but the registry record must still be alive, so do not `ReleaseTask` while items may still be queued. |
+| The item carries `[start, end)` and a priority. | Every worker of a split task writes a disjoint slice of the same result packet, so ranges must not overlap and must together cover what `Start` declared. |
+| A runnable may return short of its range. | The stream re-queues the remainder, which is how one long item yields to a frame budget. That is resumable work; it is also why a shutdown that refuses to re-queue has to say so rather than loop forever. |
+
+As a customer you do not build items. `TaskSystem::EnqueueTask(streamIndex, task, priority)` hands one stream the whole task, and
+that is the right call almost always - splitting is the engine's decision when a provider is involved, and it is made by the
+provider through the protected `TaskProvider::MakeWholeItem`. If you find yourself wanting two items for one task, the question to
+answer first is which stream must run which slice; if the answer is "not specifically", the general queue and the drain policy will
+spread it better than a hand-written split will.
+
 ## 4. Streams, and which thread you are on
 
 | Index | Stream name | Purpose |
@@ -323,6 +344,9 @@ another bank rather than relocating anything. That is what makes a `TaskID` inde
 | `Bagel Problem` | Range-split work over the general queue produces the right sum. |
 | `Bagel Problem (Incremental Task)` | A runnable that returns short of its range resumes and finishes. |
 | `Both lanes serve their tasks` | Neither lane starves the other. |
+| `A throttled stream is throttled, not broken, and never asks a provider while spent` | That a spent allowance holds work back
+  without stranding it, and that no provider is asked while spent - counted in every build, because the assert is Release-compiled
+  out. |
 | `Stream charges a configured budget` | `MayTakeNewWork` and the accumulated charge agree. |
 | `The base stream is named Base, and the thread driving the engine is not called that` | Section 4's naming. |
 | `A thread that was never given a stream does not claim to have one` | `NonStreamIndex` is not zero and is out of affinity range. |

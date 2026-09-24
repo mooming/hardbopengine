@@ -697,3 +697,25 @@ Two things this shape gives back and one it does not close:
 - The one item the engine makes for a successor carries the default priority band, because making it is the
   engine's job and R18's bands are declared by whoever queues an item. Closing that gap needs a priority on the
   record, and the record has no room that R28 did not already price. Left open on purpose.
+
+## Superseded and narrowed by the shutdown and threading work
+
+Rows above are the record as written, and the record is not edited into a different shape after the fact. This section says, in
+one place, which of those decisions no longer describe the engine, so a reader who starts at the top and stops halfway does not
+leave with a wrong model. Each entry names what replaced it, not merely that it changed.
+
+| Superseded decision | Now | Why it moved |
+|---|---|---|
+| The base stream is served like any other, by a worker thread of its own. | Stream 0 has no thread. `TaskSystem::Update()` gives it one pass' worth of work inside the engine loop, and `Engine::Run` calls it every frame. A designated nested pump, `TaskSystem::DriveUntil`, is the only place that pumps it out of turn. | A base thread competing with the loop was the source of the freezes; a base that runs only inside the loop cannot delay a frame, only share one. |
+| `ProcessMainThreadTasks` / `MainThreadTaskQueue` as a facility beside the task system. | Absorbed: the base stream owns `postedTasks`, drained at the top of every pass, and `DispatchToMainThread` forwards to it. | Two queues for one thread was the reason a wait on "the main thread" could be satisfied by a queue the pump never read. |
+| The IO stream is a worker like the others and is drained when the system closes. | IO is driven by the logger's own thread, created before the task system and stopped last, and it stays open through shutdown. | A logger that depends on what it reports cannot report that thing failing. Measured: the IO stream drained over 2.6 million passes because a log line re-posts its own drain task. |
+| Waiting on a task handle is how you join work (`Task::Wait`, `Task::BusyWait`). | Both removed. Callers ask the queue (`TaskStream::CountPendingItems`); tests use `hbe::WaitUntil`, which carries a deadline and reports a stall as a failure. | The counter cannot distinguish a finished task from one that was never dispatched, so a timeout on it is not a deadline but an unnameable hang. |
+| `RangedTask` is a type callers pass around. | `WorkItem`, 56 bytes, engine-internal. A provider builds one through the protected `TaskProvider::MakeWholeItem`; a caller that wants work run uses `TaskSystem::EnqueueTask`. | Items built outside the engine bypassed the registry's bookkeeping, which is the failure mode behind the released-task reports. |
+| Shutdown drains until the queues are empty. | Bounded at 2000 ms of wall clock, then abandoned work is reported. Streams close in order, each with a graceful close, and the pump that waits for the threads is bounded too. | Resumable work outruns any pass-count bound, and an unbounded join turned a stuck test into an unanalysable hang. Shutdown means stop. |
+| The budget gate is a behaviour, verified by what the stream does. | Asserted at the provider-ask site in Debug/Dev, and counted in every build (`GetProviderAskWhileSpentCount`, `GetLaneWorkRefusalCount`). | Asserts are compiled out in Release, so Release shipped with no observation of the rule at all. A broken gate now fails a Release run by name. |
+
+Left open deliberately, not overlooked: the engine throttles from **two books** - `StreamDrainPolicy`'s per-lane time book gates
+the lanes, while `CPUBudget` gates the provider ask and the general-queue pickup. The counters make that visible from outside for
+the first time. Whether one of them should own the quantity is an owner decision, and it is the natural next question now that the
+numbers can be read.
+
