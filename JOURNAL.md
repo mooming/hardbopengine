@@ -1,5 +1,27 @@
 # Journal
 
+## 2026-09-24 23:58 — #9 closed: the guide tells the range-splitting story and the record says which rows no longer hold
+
+HEAD `775d2e3`, tree clean, `check.sh` 0 mechanical violations and build gate 12/12. 46 insertions, 0 deletions — the diff stat
+read before committing, which is the habit that caught the truncated guide earlier today.
+
+**The guide had a hole where the hardest idea lives.** It covered creating, running, waiting and results but never said how one
+task becomes several queue items — which is the part that actually bites, because the reserved count and the items handed out must
+agree *exactly*, and the disagreement is a task that never finishes. The new subsection states the three facts that the
+declarations cannot show: an item is 56 bytes naming its task by id, so it stays valid on its own while the registry record must
+still be alive — the reason a task must never be released while items may still be queued; ranges must not overlap and must cover
+what `Start` declared, because the slices write one result packet; and a runnable may return short of its range and be re-queued,
+which is simultaneously how long work yields to a frame budget and why a bounded shutdown must report abandoned work rather than
+loop. It ends by telling the reader **not** to hand-split.
+
+**The redesign record gets a superseded section instead of edited rows.** Earlier rows stay as written — rewriting history into the
+shape of present truth is how a design record stops being evidence — and one section now names seven decisions that no longer
+describe the engine, each with its replacement *and* its reason: base-stream threading, the absorbed main-thread queue, IO on the
+logger's own thread staying open through shutdown, the deleted handle waits, the engine-internal queue item, the bounded shutdown,
+and the budget gate counted in every build. The two-allowance-books question is written down as left open on purpose.
+
+`§13 What is tested` gained the throttle test, so that section still describes the suite rather than the suite as it was last week.
+
 ## 2026-09-24 23:40 — I deleted 292 lines of the guide with a greedy regex, and how it was caught
 
 `6ffe2f8` reports `docs/TaskSystemGuide.md | 278 +----` with 292 deletions for an edit that should have touched ten lines. Cause:
