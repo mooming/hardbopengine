@@ -315,6 +315,12 @@ void TaskSystem::ReleaseTask(TaskID id) noexcept
 	taskRegistry.Release(id);
 }
 
+void TaskSystem::EnqueueTask(const TIndex streamIndex, Task& task, const uint8_t priority) noexcept
+{
+	task.ReserveSubTasks(1);
+	Enqueue(streamIndex, task.GenerateSubTask(0, 1, priority));
+}
+
 void TaskSystem::Enqueue(const TIndex streamIndex, const WorkItem& task) noexcept
 {
 	if (!streams.IsValidIndex(streamIndex))

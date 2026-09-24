@@ -122,6 +122,7 @@ public:
 private:
 	friend class TaskRegistry;
 	friend class TaskSystem;
+	friend class TaskProvider;
 	friend class TaskSystemTest;
 	friend class TaskRegistryTest;
 
@@ -173,6 +174,15 @@ public:
 	{
 		return userData;
 	}
+
+private:
+	// Demoted from the customer surface, because an item is the engine's currency rather than the customer's. A
+	// customer creates a task, declares its join with ReserveSubTasks and dispatches it; the items that fill the join
+	// are produced and queued inside the engine, which is the only place the relationship between an item and its task
+	// can be kept honest - the index range, the priority and the reserved count are engine invariants, and an item
+	// built from outside them is how a task comes to report itself finished on work that never ran. The callers the
+	// build can reach are TaskSystem and the unit tests, both friends above, and a provider's own contract says it
+	// hands back an item built here.
 
 	/// @brief Build one work item for the index range [start, end), which is what a queue holds.
 	/// @details Does not count anything: the join is what ReserveSubTasks declared, not what has been handed out.

@@ -330,9 +330,7 @@ void Logger::StartTask(TaskSystem& taskSys)
 		return;
 	}
 
-	drainTask->ReserveSubTasks(1);
-	const auto workItem = drainTask->GenerateSubTask(0, 1, 0);
-	taskSys.Enqueue(ioStreamIndex, workItem);
+	taskSys.EnqueueTask(ioStreamIndex, *drainTask);
 
 	auto& ioTaskStream = taskSys.GetIOTaskStream();
 	threadID = ioTaskStream.GetThreadID();

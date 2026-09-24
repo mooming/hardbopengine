@@ -160,11 +160,7 @@ void RunTests()
 		return;
 	}
 
-	testTask->ReserveSubTasks(1);
-	const auto workItem = testTask->GenerateSubTask(0, 1, 0);
-
-	const auto baseStreamIndex = TaskSystem::GetBaseTaskStreamIndex();
-	taskSystem.Enqueue(baseStreamIndex, workItem);
+	taskSystem.EnqueueTask(TaskSystem::GetBaseTaskStreamIndex(), *testTask);
 }
 
 } // namespace hbe::Test

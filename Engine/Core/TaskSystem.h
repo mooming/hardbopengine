@@ -331,6 +331,16 @@ public:
 	///       needs no index, and takes the task without choosing a stream.
 	void Enqueue(TIndex streamIndex, const WorkItem& task) noexcept;
 
+	/// @brief Queue a whole task on one stream, which is the customer's entry point for single-shot work.
+	/// @details The task declares its own join and the engine builds the item that fills it, which is the only order in which
+	///          those two facts can be stated without the caller having to know anything about items. A customer that builds an
+	///          item itself has reached inside the engine for a handle it should not hold, and this is the call it wants instead.
+	/// @param streamIndex Which stream takes the work. An index outside the streams asserts, as with Enqueue.
+	/// @param task The task to run. It must have been issued by the registry and must not already declare a join - this declares
+	///             one of exactly one item, and calling it twice on the same task would overwrite the first declaration.
+	/// @param Priority of the item, 0 being the least urgent.
+	void EnqueueTask(TIndex streamIndex, Task& task, uint8_t priority = 0) noexcept;
+
 	// Dispatch a task to be executed on the main thread.
 	// The task will be queued and executed when the main thread processes its queue.
 	// priority: 0 = least urgent, 255 = most urgent. The default is 128 to match MainThreadTaskQueue's own

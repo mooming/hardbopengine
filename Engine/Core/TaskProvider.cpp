@@ -227,6 +227,13 @@ bool TaskProvider::IsAttachedTo(TStreamIndex stream) const noexcept
 	return false;
 }
 
+WorkItem TaskProvider::MakeWholeItem(Task& task, const uint8_t priority) noexcept
+{
+	task.ReserveSubTasks(1);
+
+	return task.GenerateSubTask(0, 1, priority);
+}
+
 void TaskProvider::Stop() noexcept
 {
 	stopRequested.store(true, std::memory_order_release);
@@ -327,9 +334,7 @@ public:
 			return std::nullopt;
 		}
 
-		task->ReserveSubTasks(1);
-
-		const auto item = task->GenerateSubTask(0, 1);
+		const auto item = MakeWholeItem(*task);
 
 		if (releaseImmediately)
 		{

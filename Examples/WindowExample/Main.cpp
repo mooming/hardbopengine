@@ -59,9 +59,7 @@ public:
 			return std::nullopt;
 		}
 
-		task->ReserveSubTasks(1);
-
-		return task->GenerateSubTask(0, 1);
+		return MakeWholeItem(*task);
 	}
 
 	[[nodiscard]] std::size_t GetProducedCount() const noexcept
