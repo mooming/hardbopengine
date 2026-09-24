@@ -66,15 +66,15 @@ the six `OSAL/Window.cpp` waits report in band instead of calling `get()` on a f
 With the mutant restored, `WindowTest` TC0/TC1/TC2 each name the missing intake. That is the standard every
 future mutation is held to: **a named test, naming the gate.**
 
-### N1b — Bound the shutdown pump over posted work (todo #16) — **do this next**
-The same mutant hung at a second place, found by sampling: with the drain removed the tests all finished and the
-run hung in `TaskSystem::JoinAndClear`, frames going `Engine::Run` → `TaskSystem::Update` → `TaskStream::Update` →
-`BoundedPriorityQueue<WorkItem>::Remove`. That loop's condition asks whether posted work or other streams are still
-pending and pumps while true, **with no deadline** — unlike `DrainForShutdown`, which got a wall clock exactly
-because a bound a resumable task can outrun is not a bound. Give it the same treatment: per-stream wall-clock
-deadline, anything still pending reported **abandoned** (a promised item left behind means a customer never
-answered — name it, never drop it silently). **Acceptance:** restore the same drain mutant and show the run ends
-inside the bound with an abandoned-work report instead of being killed by a wall clock.
+### N1b — ~~Bound the shutdown pump over posted work~~ **DONE: `a8946ea`** — it was two unbounded waits, not one
+
+The pump in `JoinAndClear` got the 2000ms wall clock plus an abandoned-work report. The more serious half was the
+**engine loop's own run condition**, found by sampling: it kept looping while posted work remained, *including after
+shutdown had been requested*, when no executor can ever run it. Shutdown must mean stop, so `Engine::Run` now loops
+while the task system is running and nothing else, and `HasPendingPostedWork` was deleted rather than left as dead
+code. Accepted mutant evidence: six named window tests (TC0–TC5) + "Shutdown abandoned work on the base stream after
+2000ms…" + the process ending 13ms after the deadline instead of never, then trapping in `MemoryManager::Allocate` on
+a stale allocator ID — abandoned promised work corrupts what the promise was for, which is why the report is an error.
 
 ### N1c — Inventory used by N1, kept here so it does not have to be rediscovered
 Behaviour is already right: `TaskSystem::Update()` pumps the main-thread queue and base-stream passes under
@@ -95,7 +95,7 @@ note the `Core/` prefix: this tree's includes are project-qualified, and a bare 
 not resolve from `TaskStream.h`. Nothing calls `RequestStop`/`IsRunning` from outside the queue, so no stop
 forwarding was needed.
 
-### N2 — Test the drain's budget gate (todo #10)
+### N2 — Test the drain's budget gate (todo #10) — **do this next**
 Design settled and proven race-free: the provider reads `MayTakeNewWork()` inside `Produce`, which runs on
 the draining stream's own thread — the only legal place to read the unsynchronised allowance. The earlier
 attempt reported `Result [PASS]` and then hung at shutdown; that hang was the shutdown defect, now fixed, so

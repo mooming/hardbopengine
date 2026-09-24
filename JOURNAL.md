@@ -1,5 +1,35 @@
 # Journal
 
+## 2026-09-24 17:20 — shutdown means stop: two unbounded waits on posted work, closed by the same mutant
+
+HEAD `a8946ea`, nothing pushed, 59 collections green in Debug/Dev/Release, check.sh 0 violations and build gate 12/12.
+Commits since the last entry: `1a3cbd0` (formatter reflow that `2345f03` had left out), `a8946ea` (this).
+
+**The error, stated once:** both bugs were waiting on *work* instead of waiting on an *end*. The shutdown pump asked
+whether posted work or open streams remained and spun on that; the engine loop asked whether the engine was running
+**or** posted work remained. The second one is the worse of the two and was found by sampling, not reading: after the
+posted drain was deleted the run finished all its tests, closed every worker, and then sat in `Engine::Run` - the loop
+would not exit because work it could never run was still pending, *after* shutdown had been requested. Shutdown has to
+mean stop. `Engine::Run` now loops while the task system is running and nothing else, and `HasPendingPostedWork` is
+deleted rather than left as dead code; whatever is still queued is drained by `JoinAndClear`, which is the one place it
+can still be honoured, under a 2000ms deadline, and reported if it cannot be.
+
+**Why the report says "at least one posted callable" instead of a number:** the queue answers whether it holds any, not
+how many, and printing a guessed count in an error line is a measurement that was never taken. Same rule as every other
+report in this arc - say what was observed.
+
+**Acceptance, met one step further than last time.** Restoring the drain mutant: the run prints six named window tests
+(TC0 Create Window through TC5 Close Window), prints "Shutdown abandoned work on the base stream after 2000ms: 0 queued
+item(s) and at least one posted callable", closes IO then Base, and the process ends 13ms after the deadline instead of
+never. It then traps in `MemoryManager::Allocate` on a stale allocator ID, because the abandoned window creation left an
+allocator registered against an object that never came to be. That is the lesson the abandonment report exists to carry:
+dropping promised work does not merely lose a result, it can corrupt the thing the promise was for - hence an error line,
+not an info line.
+
+**Process note, because it is the third time:** a multi-edit documentation patch of mine produced a duplicated heading by
+replacing a heading line whose body it did not also consume. Verified by listing the headings afterwards rather than trusting
+the edit result, and repaired.
+
 ## 2026-09-24 16:40 — the base stream owns posted work, and a mutation set the standard for how proof must look
 
 HEAD `50c91eb`, nothing pushed, 59 collections green in Debug/Dev/Release, `check.sh` 0 violations, build gate 12/12.
