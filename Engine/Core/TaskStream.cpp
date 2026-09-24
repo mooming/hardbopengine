@@ -408,6 +408,14 @@ bool TaskStream::Update() noexcept
 		}
 
 		lane = drainPolicy.ChooseLane(!fifoQueue.IsEmpty(), !priorityQueue.IsEmpty());
+
+		// A lane holding work with no lane chosen is the decline itself: ChooseLane returns a lane whenever work exists
+		// and the allowance is unlimited, so nothing else produces this combination. Per pass, so it is a rate and not
+		// a queue depth.
+		if (lane == StreamDrainPolicy::ELane::None && (!fifoQueue.IsEmpty() || !priorityQueue.IsEmpty()))
+		{
+			laneWorkRefusals.fetch_add(1, std::memory_order_relaxed);
+		}
 		switch (lane)
 		{
 			case StreamDrainPolicy::ELane::Fifo:
@@ -436,13 +444,21 @@ bool TaskStream::Update() noexcept
 					continue;
 				}
 
-				// The invariant, stated where it can be checked: a provider is asked only while this stream's allowance permits
-				// taking work. Asking while spent is the failure this gate exists to prevent - a spent stream would otherwise keep
-				// manufacturing work it has no right to run. Reading the budget a second time here is legal for one reason: this is
-				// the owning thread, the only thread ever allowed to read that unsynchronised field.
+				// The invariant, stated where it can be checked: a provider is asked only while this stream's allowance
+				// permits taking work. Asking while spent is the failure this gate exists to prevent - a spent stream
+				// would otherwise keep manufacturing work it has no right to run. Reading the budget a second time here
+				// is legal for one reason: this is the owning thread, the only thread ever allowed to read that
+				// unsynchronised field.
 				Assert(budget.CanTakeWork(), "Stream ", name,
-						" was asked for provider work while its allowance was spent. The drain gate is what keeps a spent stream "
-						"from manufacturing work, so a provider ask here means that gate stopped consulting the budget.");
+					   " was asked for provider work while its allowance was spent. The drain gate is what keeps a "
+					   "spent stream "
+					   "from manufacturing work, so a provider ask here means that gate stopped consulting the "
+					   "budget.");
+
+				if (!budget.CanTakeWork())
+				{
+					providerAsksWhileSpent.fetch_add(1, std::memory_order_relaxed);
+				}
 
 				if (auto produced = DrainProvidersLocked(probe); produced.has_value())
 				{

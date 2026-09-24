@@ -142,6 +142,21 @@ private:
 	///          indistinguishable from one that has nothing to do.
 	std::atomic<unsigned> generalQueueRefusals{0};
 
+	/// @brief Times a pass found work waiting in a lane and chose no lane, which is the lane throttle itself.
+	/// @details StreamDrainPolicy keeps its own per-lane time book and returns no lane once that is spent,
+	/// independently of
+	///          CPUBudget, so this counts the lane gate while GetGeneralQueueRefusalCount counts the CPUBudget gate.
+	///          Both are needed: the engine throttles from two books, and a watch that reads only one cannot see work
+	///          held by the other.
+	std::atomic<unsigned> laneWorkRefusals{0};
+
+	/// @brief Times a provider was asked for work while this stream's allowance was already spent.
+	/// @details The invariant, made countable so it holds in a Release build too, where the assert on the provider gate
+	/// is
+	///          compiled out. It must stay zero: a spent stream that still manufactures work will run work it has no
+	///          right to.
+	std::atomic<unsigned> providerAsksWhileSpent{0};
+
 public:
 	TaskStream();
 	explicit TaskStream(StaticString name, TStreamIndex streamIndex);
@@ -222,6 +237,18 @@ public:
 
 	/// @brief Times this stream declined to take a task from the general queue because its allowance was spent.
 	/// @threadsafe Readable from any thread.
+	/// @brief How many passes declined a lane that held work because the drain policy's allowance was spent.
+	[[nodiscard]] unsigned GetLaneWorkRefusalCount() const noexcept
+	{
+		return laneWorkRefusals.load(std::memory_order_relaxed);
+	}
+
+	/// @brief How many times a provider was asked while the allowance was spent. Zero unless the gate is broken.
+	[[nodiscard]] unsigned GetProviderAskWhileSpentCount() const noexcept
+	{
+		return providerAsksWhileSpent.load(std::memory_order_relaxed);
+	}
+
 	[[nodiscard]] unsigned GetGeneralQueueRefusalCount() const noexcept
 	{
 		return generalQueueRefusals.load(std::memory_order_relaxed);

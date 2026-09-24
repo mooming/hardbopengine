@@ -213,15 +213,14 @@ void TaskSystem::JoinAndClear() noexcept
 	{
 		TaskStream& baseStream = GetStream(GetBaseTaskStreamIndex());
 
-		// Bounded for the same reason a closing stream's drain is bounded, and by the same measurement: a bound that resumable
-		// work can outrun is not a bound, and this loop asks for work rather than for an end. Without it the shutdown waits on
-		// posted work that may never be drained - found by sampling, after every test had finished and nothing else could run -
-		// so the honest outcome is a named loss rather than a process that never exits.
+		// Bounded for the same reason a closing stream's drain is bounded, and by the same measurement: a bound that
+		// resumable work can outrun is not a bound, and this loop asks for work rather than for an end. Without it the
+		// shutdown waits on posted work that may never be drained - found by sampling, after every test had finished
+		// and nothing else could run - so the honest outcome is a named loss rather than a process that never exits.
 		const auto pumpDeadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(2000);
 
-		while (std::chrono::steady_clock::now() < pumpDeadline
-				&& (!AreOtherStreamsClosed() || baseStream.HasPostedTasks()
-						|| baseStream.CountPendingItems() > 0))
+		while (std::chrono::steady_clock::now() < pumpDeadline &&
+			   (!AreOtherStreamsClosed() || baseStream.HasPostedTasks() || baseStream.CountPendingItems() > 0))
 		{
 			baseStream.Update();
 			std::this_thread::sleep_for(std::chrono::milliseconds(1));
@@ -232,23 +231,23 @@ void TaskSystem::JoinAndClear() noexcept
 
 		if (hasAbandonedPostedWork || abandonedItemCount > 0)
 		{
-			// Never dropped quietly. A work item still sitting here is a promise somebody made to a customer who will not be
-			// answered, which is a hung customer rather than a finished shutdown. Posted callables are reported as present
-			// rather than counted: the queue says whether it holds any, and inventing a number here would be a guess printed
-			// as a measurement.
+			// Never dropped quietly. A work item still sitting here is a promise somebody made to a customer who will
+			// not be answered, which is a hung customer rather than a finished shutdown. Posted callables are reported
+			// as present rather than counted: the queue says whether it holds any, and inventing a number here would be
+			// a guess printed as a measurement.
 			Logger::Get().AddLog(GetName(), ELogLevel::Error,
-					[hasAbandonedPostedWork, abandonedItemCount](auto& logStream)
-					{
-						logStream << "Shutdown abandoned work on the base stream after 2000ms: " << abandonedItemCount
-								  << " queued item(s)";
+								 [hasAbandonedPostedWork, abandonedItemCount](auto& logStream)
+			{
+				logStream << "Shutdown abandoned work on the base stream after 2000ms: " << abandonedItemCount
+						  << " queued item(s)";
 
-						if (hasAbandonedPostedWork)
-						{
-							logStream << " and at least one posted callable";
-						}
+				if (hasAbandonedPostedWork)
+				{
+					logStream << " and at least one posted callable";
+				}
 
-						logStream << ". Whatever was promised through them will not happen.";
-					});
+				logStream << ". Whatever was promised through them will not happen.";
+			});
 		}
 
 		// Log lines are written by a task running on a stream, so the flush that ends the run has to happen while that
@@ -1243,6 +1242,143 @@ void TaskSystemTest::Prepare()
 		if (!stream.MayTakeNewWork())
 		{
 			ls << "Restoring the unlimited allowance did not restore willingness to take work." << lferr;
+		}
+	});
+
+	// Placed immediately after the budget charges test on purpose. This test throttles a stream and lets work wait,
+	// which costs about two seconds of wall clock, and the test above measures charges over a bounded window - running
+	// this one first made that test report the throttle as a fault. Own a stream of your own, and do not run in front
+	// of a test that is timing-sensitive.
+	AddTest("A throttled stream is throttled, not broken, and never asks a provider while spent", [this](TLogOut& ls)
+	{
+		auto& taskSys = Engine::Get().GetTaskSystem();
+
+		unsigned workerIndex = 0;
+		while (taskSys.HasStream(workerIndex + 1))
+		{
+			++workerIndex;
+		}
+
+		if (workerIndex <= TaskSystem::GetIOTaskStreamIndex())
+		{
+			ls << "No separate worker stream to throttle, so the throttle could not be observed." << lferr;
+			return;
+		}
+
+		auto& stream = taskSys.GetStream(workerIndex);
+
+		// Bounded by wall-clock and not by an iteration count, deliberately: an iteration-count burn is milliseconds in
+		// a Release build and tens of them in a Debug build, so a fixed observation window sees a queue in one
+		// configuration and an empty stream in another. A time bound is what makes the numbers below comparable across
+		// configurations.
+		auto burnFunc = [](void*, std::size_t, std::size_t) -> std::size_t
+		{
+			const auto until = std::chrono::steady_clock::now() + std::chrono::milliseconds(250);
+
+			unsigned long long sink = 0;
+			while (std::chrono::steady_clock::now() < until)
+			{
+				++sink;
+			}
+
+			return sink == 0 ? 1 : 1;
+		};
+
+		std::array<TaskID, 4> ids{};
+		int dispatchedCount = 0;
+
+		for (int item = 0; item < 4; ++item)
+		{
+			const TaskID id = taskSys.CreateTask("ThrottleCheck", burnFunc, nullptr);
+
+			if (id.IsNull())
+			{
+				continue;
+			}
+
+			if (auto* task = taskSys.FindTask(id); task != nullptr)
+			{
+				taskSys.EnqueueTask(workerIndex, *task);
+				ids[dispatchedCount] = id;
+				++dispatchedCount;
+			}
+		}
+
+		const auto passesBefore = stream.GetDrivenPassCount();
+		const auto laneDeclinesBefore = stream.GetLaneWorkRefusalCount();
+		const auto generalRefusalsBefore = stream.GetGeneralQueueRefusalCount();
+		const auto pendingBefore = stream.CountPendingItems();
+
+		// The invariant is read across every stream, not only the one this test throttles. A drain gate that stopped
+		// consulting the budget would be an engine-wide fault and could surface on a stream with providers on it, which
+		// this stream does not have; watching only the throttled stream would let that pass.
+		unsigned asksWhileSpentBefore = 0;
+
+		for (unsigned index = 0; taskSys.HasStream(index); ++index)
+		{
+			asksWhileSpentBefore += taskSys.GetStream(index).GetProviderAskWhileSpentCount();
+		}
+
+		stream.RequestBudget(std::chrono::milliseconds(1));
+		std::this_thread::sleep_for(std::chrono::milliseconds(500));
+
+		const auto passDelta = stream.GetDrivenPassCount() - passesBefore;
+		const auto laneDeclineDelta = stream.GetLaneWorkRefusalCount() - laneDeclinesBefore;
+		const auto generalRefusalDelta = stream.GetGeneralQueueRefusalCount() - generalRefusalsBefore;
+		unsigned asksWhileSpentNow = 0;
+
+		for (unsigned index = 0; taskSys.HasStream(index); ++index)
+		{
+			asksWhileSpentNow += taskSys.GetStream(index).GetProviderAskWhileSpentCount();
+		}
+
+		const auto asksWhileSpentDelta = asksWhileSpentNow - asksWhileSpentBefore;
+		const auto pendingWhileThrottled = stream.CountPendingItems();
+
+		ls << stream.GetName().c_str() << " throttled at 1ms, " << pendingBefore << " item(s) queued: " << passDelta
+		   << " pass(es), " << laneDeclineDelta << " lane decline(s), " << generalRefusalDelta
+		   << " general-queue refusal(s), " << pendingWhileThrottled << " still queued after the window, "
+		   << asksWhileSpentDelta << " provider ask(s) while spent." << lf;
+
+		if (pendingWhileThrottled == 0)
+		{
+			ls << "Nothing was left waiting, so the throttle never engaged and this test observed nothing." << lferr;
+		}
+
+		if (laneDeclineDelta == 0)
+		{
+			ls << "Work waited while the allowance was spent, yet no pass declined a lane that held it." << lferr;
+		}
+
+		if (asksWhileSpentDelta != 0)
+		{
+			ls << "A provider was asked " << asksWhileSpentDelta
+			   << " time(s) while the allowance was spent. The drain gate is what stops a spent stream manufacturing "
+				  "work it has "
+				  "no right to run, and this is its witness in a Release build, where the assert is compiled out."
+			   << lferr;
+		}
+
+		// A throttle may delay work; it may not strand it.
+		stream.RequestBudget(std::chrono::duration<double>(0.0));
+
+		const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(30);
+		while (stream.CountPendingItems() > 0 && std::chrono::steady_clock::now() < deadline)
+		{
+			std::this_thread::sleep_for(std::chrono::milliseconds(2));
+		}
+
+		if (stream.CountPendingItems() > 0)
+		{
+			ls << "Work was still queued after the allowance was lifted, so the throttle is stranding it rather than "
+				  "delaying "
+				  "it."
+			   << lferr;
+		}
+
+		for (int index = 0; index < dispatchedCount; ++index)
+		{
+			taskSys.ReleaseTask(ids[index]);
 		}
 	});
 
