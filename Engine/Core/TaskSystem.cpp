@@ -1442,6 +1442,12 @@ void TaskSystemTest::Prepare()
 		isolationRecords[0].Reset();
 		isolationRecords[1].Reset();
 
+		// The control that makes the silence mean something. Lane work is isolated by construction - an item lives in the lane
+		// its stream pops, and no other stream can see it - so no cheap mutation can make an item migrate, and "one thread per
+		// stream" would be worthless if the recorder could not tell threads apart at all. Recording who dispatched proves the
+		// recorder does: the dispatching thread is the engine loop, and any worker that runs the work must differ from it.
+		const auto dispatchThread = std::this_thread::get_id();
+
 		std::array<TaskID, 3> firstIds{};
 		std::array<TaskID, 3> secondIds{};
 		int firstCount = 0;
@@ -1502,7 +1508,9 @@ void TaskSystemTest::Prepare()
 		const auto firstThread = isolationRecords[0].ids.empty() ? std::thread::id{} : isolationRecords[0].ids.front();
 		const auto secondThread = isolationRecords[1].ids.empty() ? std::thread::id{} : isolationRecords[1].ids.front();
 
-		ls << firstStream.GetName().c_str() << " ran " << firstRuns << " of " << firstCount << " on one thread: "
+		ls << "Dispatched from a thread distinct from both workers: "
+		   << ((firstThread != dispatchThread && secondThread != dispatchThread) ? 1 : 0) << ". "
+		   << firstStream.GetName().c_str() << " ran " << firstRuns << " of " << firstCount << " on one thread: "
 		   << firstSingleThread << ". " << secondStream.GetName().c_str() << " ran " << secondRuns << " of " << secondCount
 		   << " on one thread: " << secondSingleThread << ". Distinct: " << (firstThread != secondThread) << "." << lf;
 
@@ -1519,6 +1527,12 @@ void TaskSystemTest::Prepare()
 		if (!firstSingleThread || !secondSingleThread)
 		{
 			ls << "A stream's work ran on more than one thread, so lane work is not confined to the stream holding it." << lferr;
+		}
+
+		if (firstThread == dispatchThread || secondThread == dispatchThread)
+		{
+			ls << "Work ran on the thread that dispatched it, so the recorder never observed a different thread and the "
+				  "isolation result above is silence, not evidence." << lferr;
 		}
 
 		if (firstThread == secondThread)

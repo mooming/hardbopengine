@@ -6,6 +6,25 @@ LIMIT="${2:-300}"
 BIN="./build/Applications/EngineTest/$CONFIG/EngineTest"
 LOG="build/gate/$CONFIG-run.log"
 
+# Build first, then judge. Asking for the verdict of a binary we did not just build is how a failed compile reports
+# the previous binary's green, and a mtime heuristic cannot tell my uncommitted edit from another agent's file.
+# Building here makes staleness impossible rather than detectable.
+case "$CONFIG" in
+	Debug) BUILD_FLAG=-debug ;;
+	Dev) BUILD_FLAG=-dev ;;
+	Release) BUILD_FLAG=-release ;;
+	*) echo "runner REFUSED: unknown configuration $CONFIG" >&2; exit 90 ;;
+esac
+
+BUILD_LOG="build/gate/$CONFIG-build.log"
+if ! ./build.sh Applications/EngineTest -test "$BUILD_FLAG" > "$BUILD_LOG" 2>&1; then
+	echo "runner REFUSED: the build failed, so no verdict exists. First error:" >&2
+	grep -m1 "error:" "$BUILD_LOG" >&2
+	exit 90
+fi
+
+
+
 /usr/bin/perl -e '
 my ($limit, @cmd) = @ARGV;
 my $pid = fork();
