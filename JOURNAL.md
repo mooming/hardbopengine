@@ -1,5 +1,28 @@
 # Journal
 
+## 2026-09-25 01:50 — two guardrails with demonstrated kills, the first of the session
+
+HEAD `798813e`, tree clean, `check.sh` 0 mechanical violations / build gate 12/12, 59 collections green in Debug/Dev/Release.
+
+For once the order was right: **commit, then mutate, then revert onto the commit.** Both proofs are therefore in the history
+rather than in my account of them.
+
+**A throttled stream parks; it does not spin.** Four items on the last worker, 1ms allowance, wait out the in-flight item so the
+measured window contains nothing but the throttle's own cost, then measure 500ms: **47 passes** — the 10ms `WaitForWork` cadence.
+Mutant: `WaitForWork` returns without parking. Named result: *"The stream took 44625 passes in half a second while spent… it is
+polling the budget instead of parking"*, exit 1. **950× the observed value** — the bound discriminates by three orders of
+magnitude rather than recording a number. Both bounds matter: zero passes is a stalled pump, which from outside is identical to a
+hang, so the lower bound is what stops this test passing on a dead stream.
+
+**`WaitUntil` reports what it saw.** Ready-at-60ms observed at 70ms; a condition never true comes back false having waited the full
+150ms. Mutant: `return true;` → named result *"WaitUntil reported success for a condition that was never true. A helper that
+manufactures a pass is worse than one that hangs, because the hang gets investigated."*
+
+Two notes for whoever picks this up. The session's earlier guardrails (the budget gate, D2 isolation) were accepted with weaker
+evidence than these two — the budget gate has a Release mutant kill, D2 has an instrument check and no observed violation, because
+lane isolation is structural and no cheap edit can produce migration. And every mutant in this stretch was applied to a *committed*
+file, which is why none of them cost me work the way three earlier ones did.
+
 ## 2026-09-25 01:10 — the gate had a third hole: a failed build reported the last good verdict
 
 HEAD `eb21617`, tree clean, 59 collections green in Debug/Dev/Release through the hardened runner.
