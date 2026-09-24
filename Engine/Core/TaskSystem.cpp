@@ -732,13 +732,13 @@ void TaskSystem::BuildStreams()
 } // namespace hbe
 
 #ifdef __UNIT_TEST__
+#include <algorithm>
 #include <memory>
+#include <mutex>
+#include <vector>
 #include "../Engine/Engine.h"
 #include "OSAL/Intrinsic.h"
 #include "Test/TestCollection.h"
-#include <mutex>
-#include <vector>
-#include <algorithm>
 
 namespace hbe
 {
@@ -907,36 +907,36 @@ bool WaitFor(const TPredicate& holds, std::chrono::milliseconds patience) noexce
 
 namespace
 {
-	struct IsolationRecorder
+struct IsolationRecorder
+{
+	std::atomic<int> runs{0};
+	std::mutex idLock;
+	std::vector<std::thread::id> ids;
+
+	void Reset()
 	{
-		std::atomic<int> runs{0};
-		std::mutex idLock;
-		std::vector<std::thread::id> ids;
-
-		void Reset()
-		{
-			runs.store(0, std::memory_order_relaxed);
-			std::lock_guard lock(idLock);
-			ids.clear();
-		}
-	};
-
-	IsolationRecorder isolationRecords[2];
-
-	std::size_t RecordIsolationRun(void* userData, std::size_t begin, std::size_t end)
-	{
-		auto* record = static_cast<IsolationRecorder*>(userData);
-
-		{
-			std::lock_guard lock(record->idLock);
-			record->ids.push_back(std::this_thread::get_id());
-		}
-
-		record->runs.fetch_add(1, std::memory_order_relaxed);
-
-		return end > begin ? end - begin : 1;
+		runs.store(0, std::memory_order_relaxed);
+		std::lock_guard lock(idLock);
+		ids.clear();
 	}
+};
+
+IsolationRecorder isolationRecords[2];
+
+std::size_t RecordIsolationRun(void* userData, std::size_t begin, std::size_t end)
+{
+	auto* record = static_cast<IsolationRecorder*>(userData);
+
+	{
+		std::lock_guard lock(record->idLock);
+		record->ids.push_back(std::this_thread::get_id());
+	}
+
+	record->runs.fetch_add(1, std::memory_order_relaxed);
+
+	return end > begin ? end - begin : 1;
 }
+} // namespace
 
 void TaskSystemTest::Prepare()
 {
@@ -1442,10 +1442,11 @@ void TaskSystemTest::Prepare()
 		isolationRecords[0].Reset();
 		isolationRecords[1].Reset();
 
-		// The control that makes the silence mean something. Lane work is isolated by construction - an item lives in the lane
-		// its stream pops, and no other stream can see it - so no cheap mutation can make an item migrate, and "one thread per
-		// stream" would be worthless if the recorder could not tell threads apart at all. Recording who dispatched proves the
-		// recorder does: the dispatching thread is the engine loop, and any worker that runs the work must differ from it.
+		// The control that makes the silence mean something. Lane work is isolated by construction - an item lives in
+		// the lane its stream pops, and no other stream can see it - so no cheap mutation can make an item migrate, and
+		// "one thread per stream" would be worthless if the recorder could not tell threads apart at all. Recording who
+		// dispatched proves the recorder does: the dispatching thread is the engine loop, and any worker that runs the
+		// work must differ from it.
 		const auto dispatchThread = std::this_thread::get_id();
 
 		std::array<TaskID, 3> firstIds{};
@@ -1485,8 +1486,8 @@ void TaskSystemTest::Prepare()
 
 		const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(15);
 
-		while ((firstStream.CountPendingItems() > 0 || secondStream.CountPendingItems() > 0)
-			&& std::chrono::steady_clock::now() < deadline)
+		while ((firstStream.CountPendingItems() > 0 || secondStream.CountPendingItems() > 0) &&
+			   std::chrono::steady_clock::now() < deadline)
 		{
 			std::this_thread::sleep_for(std::chrono::milliseconds(2));
 		}
@@ -1497,9 +1498,10 @@ void TaskSystemTest::Prepare()
 		auto singleThread = [](IsolationRecorder& record)
 		{
 			std::lock_guard lock(record.idLock);
-			return record.ids.empty() ? false
-									  : std::all_of(record.ids.begin(), record.ids.end(),
-													[first = record.ids.front()](std::thread::id id) { return id == first; });
+			return record.ids.empty()
+						   ? false
+						   : std::all_of(record.ids.begin(), record.ids.end(),
+										 [first = record.ids.front()](std::thread::id id) { return id == first; });
 		};
 
 		const bool firstSingleThread = singleThread(isolationRecords[0]);
@@ -1510,13 +1512,15 @@ void TaskSystemTest::Prepare()
 
 		ls << "Dispatched from a thread distinct from both workers: "
 		   << ((firstThread != dispatchThread && secondThread != dispatchThread) ? 1 : 0) << ". "
-		   << firstStream.GetName().c_str() << " ran " << firstRuns << " of " << firstCount << " on one thread: "
-		   << firstSingleThread << ". " << secondStream.GetName().c_str() << " ran " << secondRuns << " of " << secondCount
-		   << " on one thread: " << secondSingleThread << ". Distinct: " << (firstThread != secondThread) << "." << lf;
+		   << firstStream.GetName().c_str() << " ran " << firstRuns << " of " << firstCount
+		   << " on one thread: " << firstSingleThread << ". " << secondStream.GetName().c_str() << " ran " << secondRuns
+		   << " of " << secondCount << " on one thread: " << secondSingleThread
+		   << ". Distinct: " << (firstThread != secondThread) << "." << lf;
 
 		if (firstCount < 3 || secondCount < 3)
 		{
-			ls << "Fewer than three tasks reached each stream, so too little was dispatched to conclude anything." << lferr;
+			ls << "Fewer than three tasks reached each stream, so too little was dispatched to conclude anything."
+			   << lferr;
 		}
 
 		if (firstRuns != firstCount || secondRuns != secondCount)
@@ -1526,13 +1530,16 @@ void TaskSystemTest::Prepare()
 
 		if (!firstSingleThread || !secondSingleThread)
 		{
-			ls << "A stream's work ran on more than one thread, so lane work is not confined to the stream holding it." << lferr;
+			ls << "A stream's work ran on more than one thread, so lane work is not confined to the stream holding it."
+			   << lferr;
 		}
 
 		if (firstThread == dispatchThread || secondThread == dispatchThread)
 		{
-			ls << "Work ran on the thread that dispatched it, so the recorder never observed a different thread and the "
-				  "isolation result above is silence, not evidence." << lferr;
+			ls << "Work ran on the thread that dispatched it, so the recorder never observed a different thread and "
+				  "the "
+				  "isolation result above is silence, not evidence."
+			   << lferr;
 		}
 
 		if (firstThread == secondThread)
@@ -1604,8 +1611,8 @@ void TaskSystemTest::Prepare()
 
 		stream.RequestBudget(std::chrono::milliseconds(1));
 
-		// Let the item already in flight finish and charge its time before measuring. Anything this stream does after that, while
-		// its allowance is spent and work is waiting, is the throttle's own cost.
+		// Let the item already in flight finish and charge its time before measuring. Anything this stream does after
+		// that, while its allowance is spent and work is waiting, is the throttle's own cost.
 		std::this_thread::sleep_for(std::chrono::milliseconds(400));
 
 		const auto passesBefore = stream.GetDrivenPassCount();
@@ -1614,10 +1621,10 @@ void TaskSystemTest::Prepare()
 		const auto passDelta = stream.GetDrivenPassCount() - passesBefore;
 		const auto pendingHeld = stream.CountPendingItems();
 
-		// WaitForWork parks on a condition variable with a 10ms timeout, so a stream with nothing to take wakes about fifty
-		// times a second. A stream that spun on the budget instead of parking would report thousands of passes in this window,
-		// and the upper bound is what catches that. The lower bound is what stops the test passing on a stream that stopped
-		// running at all, which would look identical to a hang from the outside.
+		// WaitForWork parks on a condition variable with a 10ms timeout, so a stream with nothing to take wakes about
+		// fifty times a second. A stream that spun on the budget instead of parking would report thousands of passes in
+		// this window, and the upper bound is what catches that. The lower bound is what stops the test passing on a
+		// stream that stopped running at all, which would look identical to a hang from the outside.
 		ls << stream.GetName().c_str() << " while spent over 500ms: " << passDelta << " pass(es), " << pendingBefore
 		   << " -> " << pendingHeld << " item(s) held." << lf;
 
@@ -1628,15 +1635,18 @@ void TaskSystemTest::Prepare()
 
 		if (passDelta == 0)
 		{
-			ls << "The stream took no pass at all while work waited, which is a stalled pump rather than a throttled one."
+			ls << "The stream took no pass at all while work waited, which is a stalled pump rather than a throttled "
+				  "one."
 			   << lferr;
 		}
 
 		if (passDelta > 200)
 		{
 			ls << "The stream took " << passDelta
-			   << " passes in half a second while spent. The wait cadence is 10ms, so it is polling the budget instead of "
-				  "parking on the condition variable, burning a core to decide it still cannot work." << lferr;
+			   << " passes in half a second while spent. The wait cadence is 10ms, so it is polling the budget instead "
+				  "of "
+				  "parking on the condition variable, burning a core to decide it still cannot work."
+			   << lferr;
 		}
 
 		if (pendingHeld != pendingBefore || pendingHeld == 0)
@@ -1660,6 +1670,67 @@ void TaskSystemTest::Prepare()
 		for (int index = 0; index < dispatchedCount; ++index)
 		{
 			taskSys.ReleaseTask(ids[index]);
+		}
+	});
+
+	AddTest("WaitUntil reports both outcomes and never decides by itself", [this](TLogOut& ls)
+	{
+		std::atomic<bool> ready{false};
+
+		const auto startReady = std::chrono::steady_clock::now();
+
+		std::thread setter([&ready]
+		{
+			std::this_thread::sleep_for(std::chrono::milliseconds(60));
+			ready.store(true, std::memory_order_release);
+		});
+
+		const bool sawReady = WaitUntil([&ready] { return ready.load(std::memory_order_acquire); }, 5000);
+		const auto readyElapsed =
+				std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - startReady)
+						.count();
+
+		setter.join();
+
+		const auto startTimeout = std::chrono::steady_clock::now();
+		const bool sawNever = WaitUntil([] { return false; }, 150);
+		const auto timeoutElapsed =
+				std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - startTimeout)
+						.count();
+
+		ls << "WaitUntil: became ready -> " << sawReady << " after " << readyElapsed << "ms; never ready -> "
+		   << sawNever << " after " << timeoutElapsed << "ms." << lf;
+
+		if (!sawReady)
+		{
+			ls << "WaitUntil did not observe a condition that became true, so every test that waits on it would time "
+				  "out "
+				  "instead of passing."
+			   << lferr;
+		}
+
+		if (sawNever)
+		{
+			ls << "WaitUntil reported success for a condition that was never true. A helper that manufactures a pass "
+				  "is worse "
+				  "than one that hangs, because the hang gets investigated."
+			   << lferr;
+		}
+
+		if (readyElapsed > 4000)
+		{
+			ls << "WaitUntil took " << readyElapsed
+			   << "ms for a condition ready at 60ms; it is not polling the predicate as "
+				  "often as it claims."
+			   << lferr;
+		}
+
+		if (timeoutElapsed < 100)
+		{
+			ls << "WaitUntil gave up after " << timeoutElapsed
+			   << "ms of a 150ms budget, so its deadline is not the one the "
+				  "caller asked for."
+			   << lferr;
 		}
 	});
 
