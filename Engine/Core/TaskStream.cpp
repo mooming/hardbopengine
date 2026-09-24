@@ -283,6 +283,13 @@ void TaskStream::Start(TaskSystem& taskSys) noexcept
 {
 	taskSystem = &taskSys;
 
+	// The base stream is a ride-on-thread stream, driven by the thread running the engine through Update.
+	if (streamIndex == TaskSystem::BaseStreamIndex)
+	{
+		threadID = std::this_thread::get_id();
+		return;
+	}
+
 	// The IO stream is a ride-on-thread stream: it is driven by the logger's own thread through Update, because the
 	// logger has to work before the task system exists and after it is gone, and a thread of its own would make the
 	// logger's writing depend on a stream the logger is also responsible for feeding.
@@ -304,6 +311,19 @@ bool TaskStream::Update() noexcept
 	{
 		threadID = std::this_thread::get_id();
 	}
+
+	Assert(!isPumping || nestedPumpAllowed, "Stream ", name,
+			" was pumped while it was already pumping; only a designated wait point may nest a pump.");
+
+	isPumping = true;
+	struct PumpGuard
+	{
+		bool& flag;
+		~PumpGuard()
+		{
+			flag = false;
+		}
+	} pumpGuard{isPumping};
 
 	++drivenPassCount;
 
@@ -526,6 +546,11 @@ void TaskStream::CloseDrivenStream() noexcept
 
 	Logger::Get(name).Out([name = name, passes = drivenPassCount](auto& ls)
 	{ ls << name.c_str() << " closed after " << passes << " driven pass(es)."; });
+}
+
+void TaskStream::SetNestedPumpAllowed(bool allowed) noexcept
+{
+	nestedPumpAllowed = allowed;
 }
 
 std::size_t TaskStream::CountPendingItems() const noexcept

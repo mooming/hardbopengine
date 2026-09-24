@@ -262,6 +262,14 @@ void Logger::SetIODriver(TaskStream* stream) noexcept
 	// nullptr cannot land, while a pass is in flight.
 	std::lock_guard lock(driverLock);
 	ioStream = stream;
+
+	// Withdrawing the stream also withdraws the drain task that lived on it: nothing can run it any more, so leaving the flag
+	// set would have every later flush wait 1000ms on an executor that no longer exists, then report the loss and assert. The
+	// driver loop writes the queue directly from here on, which is the same work with one fewer hop.
+	if (stream == nullptr)
+	{
+		isRunning.store(false, std::memory_order_release);
+	}
 }
 
 Logger::~Logger() noexcept

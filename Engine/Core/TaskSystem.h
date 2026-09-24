@@ -270,6 +270,49 @@ public:
 	///          thread's whole life.
 	/// @note The base stream's own thread calls this from its loop, and the timing state it holds is unsynchronised
 	///       on purpose: a second caller would need a lock to decide a timestamp.
+	/// @brief Run one engine frame of base-stream work inside the base frame budget.
+	void Update() noexcept;
+
+	/// @brief Wait for `isDone` by driving the base stream, the only way such a wait can end on this thread.
+	template <class Predicate>
+	bool DriveUntil(Predicate&& isDone, std::chrono::milliseconds patience = std::chrono::milliseconds(30000)) noexcept
+	{
+		TaskStream& baseStream = GetStream(GetBaseTaskStreamIndex());
+		auto remaining = patience;
+
+		if (std::this_thread::get_id() != baseStream.GetThreadID())
+		{
+			while (!isDone() && remaining > std::chrono::milliseconds::zero())
+			{
+				std::this_thread::sleep_for(std::chrono::milliseconds(1));
+				remaining -= std::chrono::milliseconds(1);
+			}
+
+			return isDone();
+		}
+
+		baseStream.SetNestedPumpAllowed(true);
+		struct NestedPumpGuard
+		{
+			TaskStream& stream;
+			~NestedPumpGuard()
+			{
+				stream.SetNestedPumpAllowed(false);
+			}
+		} nestedPumpGuard{baseStream};
+
+		while (!isDone() && remaining > std::chrono::milliseconds::zero())
+		{
+			// Update, not baseStream.Update: a callback posted to the engine loop sits in the main-thread queue, which the
+			// stream's own pump does not touch, so driving only the stream would wait on work that nothing here will run.
+			Update();
+			std::this_thread::sleep_for(std::chrono::milliseconds(1));
+			remaining -= std::chrono::milliseconds(1);
+		}
+
+		return isDone();
+	}
+
 	void RunBudgetWindowPass() noexcept;
 
 	/// @brief How many budget windows have closed since the task system was built.

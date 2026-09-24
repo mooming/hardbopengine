@@ -111,6 +111,10 @@ private:
 	/// atomic.
 	std::uint64_t drivenPassCount = 0;
 
+	bool isPumping = false;
+
+	bool nestedPumpAllowed = false;
+
 	/// @brief Set while this stream runs its own remaining work on the way out, which suspends provider probing.
 	bool isDrainingForShutdown = false;
 
@@ -295,6 +299,10 @@ public:
 		closeRequested.store(true, std::memory_order_release);
 		cv.notify_all();
 	}
+
+	/// @brief Permit or forbid a nested pump from inside work this stream is already running.
+	/// @details Only a designated wait point may allow re-entry, and it withdraws the permission on the way out.
+	void SetNestedPumpAllowed(bool allowed) noexcept;
 
 	/// @brief Whether this stream has been asked to close.
 	[[nodiscard]] bool IsCloseRequested() const noexcept

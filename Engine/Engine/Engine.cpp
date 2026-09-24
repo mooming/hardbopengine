@@ -138,7 +138,7 @@ void Engine::Run()
 
 	while (taskSystem.GetMainThreadTaskQueue().HasPendingTasks() || taskSystem.IsRunning())
 	{
-		taskSystem.ProcessMainThreadTasks();
+		taskSystem.Update();
 		std::this_thread::yield();
 	}
 

@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include <source_location>
 #include <cstdio>
 #include <cstdlib>
 #include <memory>
@@ -30,7 +31,7 @@ namespace hbe
 // as the second argument, so a message built from any other type compiled under __DEBUG__, ran
 // for days, then broke the Release build. A noexcept mismatch alone is enough to flip
 // std::is_nothrow_* traits between configurations, so both branches say noexcept.
-inline void Assert(bool shouldBeTrue) noexcept
+inline void Assert(bool shouldBeTrue, const std::source_location location = std::source_location::current()) noexcept
 {
 	if (likely(shouldBeTrue))
 	{
@@ -38,7 +39,8 @@ inline void Assert(bool shouldBeTrue) noexcept
 	}
 
 	FlushLogs();
-	PrintArgs("[Assert] Please check it.");
+	PrintArgs("[Assert] ", location.file_name(), ":", location.line(),
+			" failed. A message-less assert has nothing else to say, so the call site is the whole report.");
 
 	debugBreak();
 	std::abort();
@@ -77,7 +79,7 @@ void Assert(bool, Types&&...) noexcept
 
 namespace hbe
 {
-inline void FatalAssert(bool shouldBeTrue)
+inline void FatalAssert(bool shouldBeTrue, const std::source_location location = std::source_location::current())
 {
 	if (likely(shouldBeTrue))
 	{
@@ -85,7 +87,8 @@ inline void FatalAssert(bool shouldBeTrue)
 	}
 
 	FlushLogs();
-	PrintArgs("[FatalAssert] Please check it.");
+	PrintArgs("[FatalAssert] ", location.file_name(), ":", location.line(),
+			" failed. A message-less FatalAssert has no other way to say what it caught.");
 	debugBreak();
 	std::abort();
 }

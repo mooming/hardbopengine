@@ -121,6 +121,13 @@ void TaskSystem::RequestShutDown() noexcept
 
 void TaskSystem::RequestOtherStreamsClose() noexcept
 {
+	// No streams means nothing to ask. Reaching for index 0 of an empty array is an index assert, and this path is reached a
+	// second time from the destructor after the streams have already been cleared.
+	if (!HasStream(GetBaseTaskStreamIndex()))
+	{
+		return;
+	}
+
 	TaskStream& baseStream = GetStream(GetBaseTaskStreamIndex());
 
 	// The IO stream stays open with the base stream, because log writing is a task that runs on it: closing the
@@ -160,6 +167,23 @@ bool TaskSystem::AreOtherStreamsClosed() noexcept
 	return true;
 }
 
+void TaskSystem::Update() noexcept
+{
+	auto& baseStream = GetStream(GetBaseTaskStreamIndex());
+	const auto deadline = std::chrono::steady_clock::now()
+			+ std::chrono::duration_cast<std::chrono::nanoseconds>(time::GetBaseFramePeriod());
+
+	while (std::chrono::steady_clock::now() < deadline)
+	{
+		ProcessMainThreadTasks();
+
+		if (!baseStream.Update())
+		{
+			break;
+		}
+	}
+}
+
 void TaskSystem::JoinAndClear() noexcept
 {
 	const bool isEngineLoopThread = std::this_thread::get_id() == engineLoopThreadID;
@@ -175,8 +199,11 @@ void TaskSystem::JoinAndClear() noexcept
 
 	if (isEngineLoopThread && hasStreams)
 	{
-		while (!AreOtherStreamsClosed() || mainThreadTaskQueue.HasPendingTasks())
+		TaskStream& baseStream = GetStream(GetBaseTaskStreamIndex());
+
+		while (!AreOtherStreamsClosed() || mainThreadTaskQueue.HasPendingTasks() || baseStream.CountPendingItems() > 0)
 		{
+			baseStream.Update();
 			ProcessMainThreadTasks();
 			std::this_thread::sleep_for(std::chrono::milliseconds(1));
 		}
@@ -190,6 +217,11 @@ void TaskSystem::JoinAndClear() noexcept
 		// After this the logger writes its queue directly, which keeps it working to the very last line of the process.
 		Logger::Get().SetIODriver(nullptr);
 		GetIOTaskStream().CloseDrivenStream();
+		baseStream.CloseDrivenStream();
+
+		// The base stream rides the engine loop as well, so it too never reaches RunLoop and must be closed from outside. Its
+		// close comes after the IO stream's because it is the last executor left, and the assert below refuses to destroy a
+		// stream that was never closed - which is what caught this.
 
 		// The IO stream has no thread to join and no loop that could report its own ending, so the shutdown closes it
 		// here, after the driver is withdrawn and cannot be inside a pass. Both engine streams then end inside the

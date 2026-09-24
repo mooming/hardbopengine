@@ -120,6 +120,11 @@ void WindowTest::Prepare()
 			windowPromise.set_value(nullptr);
 		}, &userData);
 
+				taskSystem.DriveUntil([&windowFuture]()
+		{
+			return windowFuture.wait_for(std::chrono::seconds::zero()) == std::future_status::ready;
+		});
+
 		(void) windowFuture.get();
 	});
 
@@ -223,6 +228,11 @@ void WindowTest::Prepare()
 			windowPromise.set_value(nullptr);
 		}, &userData);
 
+				taskSystem.DriveUntil([&windowFuture]()
+		{
+			return windowFuture.wait_for(std::chrono::seconds::zero()) == std::future_status::ready;
+		});
+
 		(void) windowFuture.get();
 	});
 
@@ -324,6 +334,11 @@ void WindowTest::Prepare()
 			window.reset();
 			windowPromise.set_value(nullptr);
 		}, &userData);
+
+				taskSystem.DriveUntil([&windowFuture]()
+		{
+			return windowFuture.wait_for(std::chrono::seconds::zero()) == std::future_status::ready;
+		});
 
 		(void) windowFuture.get();
 	});
@@ -429,6 +444,11 @@ void WindowTest::Prepare()
 			windowPromise.set_value(nullptr);
 		}, &userData);
 
+				taskSystem.DriveUntil([&windowFuture]()
+		{
+			return windowFuture.wait_for(std::chrono::seconds::zero()) == std::future_status::ready;
+		});
+
 		(void) windowFuture.get();
 	});
 
@@ -525,6 +545,11 @@ void WindowTest::Prepare()
 			windowPromise.set_value(nullptr);
 		}, &userData);
 
+				taskSystem.DriveUntil([&windowFuture]()
+		{
+			return windowFuture.wait_for(std::chrono::seconds::zero()) == std::future_status::ready;
+		});
+
 		(void) windowFuture.get();
 	});
 
@@ -620,6 +645,11 @@ void WindowTest::Prepare()
 			window.reset();
 			windowPromise.set_value(nullptr);
 		}, &userData);
+
+				taskSystem.DriveUntil([&windowFuture]()
+		{
+			return windowFuture.wait_for(std::chrono::seconds::zero()) == std::future_status::ready;
+		});
 
 		(void) windowFuture.get();
 	});
