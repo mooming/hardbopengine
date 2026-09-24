@@ -1,5 +1,29 @@
 # Journal
 
+## 2026-09-24 22:55 — #17 closed: the budget gate is now provable in a Release build
+
+HEAD `852f9f8`, tree clean, 59 collections green in Debug/Dev/Release, `check.sh` build gate 12/12.
+
+**What shipped.** Three counters, read by one test. `laneWorkRefusals` counts a pass that found work waiting in a lane and was
+given no lane — the lane throttle itself, because `StreamDrainPolicy` keeps its own per-lane time book and returns no lane once
+that is spent, independently of `CPUBudget`. `providerAsksWhileSpent` counts a provider asked while the allowance was spent, and
+it exists for exactly one reason: the assert on the drain gate is compiled out in Release, so without a counter, Release ships
+with **no observation of the rule at all**.
+
+**The acceptance proof, which is the point of the whole item.** With the gate broken — `!budget.CanTakeWork()` dropped from the
+drain condition — the **Release** build fails the run and names it: *"A provider was asked 24 time(s) while the allowance was
+spent."* Debug and Dev catch the same mutant through the assert (`a166b67`), so the rule is now enforced in every configuration,
+not just the ones that keep asserts. Restored onto the commit and re-verified green in all three.
+
+**Two placement lessons, written into the code.** The test owns the **last** stream, because throttling the stream the budget
+charges test measures made that test report a throttle as a fault; and it sits **after** that test, because it spends about two
+seconds of wall clock in front of a test bounded by a window. The invariant is summed over **every** stream rather than read
+only from the throttled one — a gate that stopped consulting the budget is an engine-wide fault and would most likely surface on
+a stream that actually has providers, which the throttled one does not. That choice is what made the mutant catchable at all.
+
+**And the discipline that made this possible:** the test was committed *before* the mutation was attempted, and the mutation was
+reverted *onto* the commit that contains the fix. Two rules, each learned by losing a proof once.
+
 ## 2026-09-24 22:25 — the configuration "anomaly" was my own test design, and the throttle is configuration-independent
 
 HEAD `c3caec0`, tree returned to it. Two fixes to the test, then the measurement the whole item was waiting for.

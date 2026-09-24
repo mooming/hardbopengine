@@ -1,4 +1,11 @@
 # TODO — task system, current state and what a fresh session should do next
+> **Status 22:55 — #17 is CLOSED.** Three counters (`laneWorkRefusals`, `providerAsksWhileSpent`, plus the existing
+> `generalQueueRefusals`) and one test that reads them. Acceptance proof met: with `!budget.CanTakeWork()` removed from the drain
+> gate, the **Release** build fails and names it — "A provider was asked 24 time(s) while the allowance was spent." Debug/Dev catch
+> the same mutant via the assert in `a166b67`. Everything from the earlier diagnosis (configuration anomaly, pop-and-return,
+> misplaced counters) is superseded by this; the anomaly was an iteration-count burn, fixed by bounding the work in wall clock.
+> Everything still open in this file: #9 docs, #7 guardrail tests (D2/D3/D4/D5), #6 B3d, and the two owner decisions — the two
+> allowance books, and `MayTakeNewWork` having only test callers.
 
 **Read this first.** Everything below is verified against a real run unless a line says otherwise.
 HEAD is `4655298`; nothing has been pushed. The suite is **59 collections**, green in **Debug, Dev and
