@@ -136,14 +136,13 @@ void Engine::Run()
 {
 	FatalAssert(isTaskSystemReady, "Engine::Run needs EInitLevel::TaskSystem");
 
-	while (taskSystem.GetMainThreadTaskQueue().HasPendingTasks() || taskSystem.IsRunning())
+	while (taskSystem.HasPendingPostedWork() || taskSystem.IsRunning())
 	{
 		taskSystem.Update();
 		std::this_thread::yield();
 	}
 
 	taskSystem.JoinAndClear();
-	taskSystem.ProcessMainThreadTasks();
 
 	// It may terminate the application immediately.
 	if (application != nullptr)

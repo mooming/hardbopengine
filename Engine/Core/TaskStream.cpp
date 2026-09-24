@@ -327,6 +327,10 @@ bool TaskStream::Update() noexcept
 
 	++drivenPassCount;
 
+	// Posted callables first: they are the engine loop's own work, and the frame budget is spent on them before the stream's
+	// queues are asked for anything. They run with the queue's lock released, so a posted callable may post again.
+	postedTasks.ProcessTasks();
+
 	// A stream that has been asked to close stops taking work. What it still holds is dealt with by the close path that
 	// asked, which reports anything it cannot run rather than leaving the driver to pump a stream that has said it is
 	// done.
@@ -551,6 +555,22 @@ void TaskStream::CloseDrivenStream() noexcept
 void TaskStream::SetNestedPumpAllowed(bool allowed) noexcept
 {
 	nestedPumpAllowed = allowed;
+}
+
+void TaskStream::DispatchPostedTasks(MainThreadTaskQueue::TTaskFunc taskFunc, void* userData,
+		const uint8_t priority) noexcept
+{
+	postedTasks.Enqueue(taskFunc, userData, priority);
+}
+
+size_t TaskStream::ProcessPostedTasks() noexcept
+{
+	return postedTasks.ProcessTasks();
+}
+
+bool TaskStream::HasPostedTasks() const noexcept
+{
+	return postedTasks.HasPendingTasks();
 }
 
 std::size_t TaskStream::CountPendingItems() const noexcept

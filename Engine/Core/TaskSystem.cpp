@@ -175,8 +175,6 @@ void TaskSystem::Update() noexcept
 
 	while (std::chrono::steady_clock::now() < deadline)
 	{
-		ProcessMainThreadTasks();
-
 		if (!baseStream.Update())
 		{
 			break;
@@ -201,10 +199,9 @@ void TaskSystem::JoinAndClear() noexcept
 	{
 		TaskStream& baseStream = GetStream(GetBaseTaskStreamIndex());
 
-		while (!AreOtherStreamsClosed() || mainThreadTaskQueue.HasPendingTasks() || baseStream.CountPendingItems() > 0)
+		while (!AreOtherStreamsClosed() || baseStream.HasPostedTasks() || baseStream.CountPendingItems() > 0)
 		{
 			baseStream.Update();
-			ProcessMainThreadTasks();
 			std::this_thread::sleep_for(std::chrono::milliseconds(1));
 		}
 
@@ -592,13 +589,9 @@ TaskID TaskSystem::RunSplit(StaticString taskName, TRunnable func, void* userDat
 
 void TaskSystem::DispatchToMainThread(TMainThreadTask taskFunc, void* userData, uint8_t priority) noexcept
 {
-	mainThreadTaskQueue.Enqueue(taskFunc, userData, priority);
+	GetStream(GetBaseTaskStreamIndex()).DispatchPostedTasks(taskFunc, userData, priority);
 }
 
-size_t TaskSystem::ProcessMainThreadTasks() noexcept
-{
-	return mainThreadTaskQueue.ProcessTasks();
-}
 
 StaticString TaskSystem::GetStreamName(int index) const noexcept
 {

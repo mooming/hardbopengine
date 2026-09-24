@@ -8,7 +8,6 @@
 
 #include "Container/Array.h"
 #include "Container/BoundedPriorityQueue.h"
-#include "MainThreadTaskQueue.h"
 #include "TaskRegistry.h"
 #include "TaskStream.h"
 #include "Time.h"
@@ -66,7 +65,6 @@ private:
 	time::TTime lastBudgetWindowAdvance{};
 	std::atomic<std::size_t> numBudgetWindowsAdvanced{0};
 
-	MainThreadTaskQueue mainThreadTaskQueue;
 
 public:
 	static TIndex GetNumHardwareThreads() noexcept;
@@ -350,7 +348,6 @@ public:
 	void DispatchToMainThread(TMainThreadTask task, void* userData, uint8_t priority = 128) noexcept;
 
 	// Process all pending main thread tasks.
-	size_t ProcessMainThreadTasks() noexcept;
 
 	[[nodiscard]] StaticString GetName() const noexcept
 	{
@@ -372,6 +369,13 @@ public:
 		return streams[GetBaseTaskStreamIndex()];
 	}
 
+	/// @brief Whether work is waiting to be run on the engine loop, which is work posted to the base stream.
+	/// @note Safe to call before the streams exist: it says none. The engine loop uses it to decide whether a last frame is owed.
+	[[nodiscard]] bool HasPendingPostedWork() noexcept
+	{
+		return HasStream(GetBaseTaskStreamIndex()) && GetStream(GetBaseTaskStreamIndex()).HasPostedTasks();
+	}
+
 	auto& GetIOTaskStream() noexcept
 	{
 		return streams[GetIOTaskStreamIndex()];
@@ -380,11 +384,6 @@ public:
 	auto& GetIOTaskStream() const noexcept
 	{
 		return streams[GetIOTaskStreamIndex()];
-	}
-
-	auto& GetMainThreadTaskQueue() noexcept
-	{
-		return mainThreadTaskQueue;
 	}
 
 	[[nodiscard]] StaticString GetStreamName(int index) const noexcept;
