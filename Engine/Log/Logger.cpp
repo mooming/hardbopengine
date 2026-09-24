@@ -203,6 +203,12 @@ void Logger::StopDriverThread() noexcept
 void Logger::DriverLoop() noexcept
 {
 	threadID = std::this_thread::get_id();
+	TaskSystem::SetThreadName("LogDriver");
+
+	// One line from this thread, so that the name it was given can be seen in a log rather than assumed from the call that
+	// set it: every log line is attributed to the thread that wrote it, so a thread which never logs is a thread whose name
+	// is never observable.
+	Logger::Get(GetName()).Out("Log driver thread is running.");
 
 	while (driverRunning.load(std::memory_order_acquire))
 	{
@@ -221,12 +227,21 @@ void Logger::DriverLoop() noexcept
 			}
 		}
 
+		// Waiting on the stream, rather than sleeping and trying again, is what makes the thread cheap when nothing is happening
+		// and immediate when something is: a log line already wakes this stream, so the same wake-up serves both customers of
+		// one thread. The timeout is a safety net, not the mechanism - the wake-up notification is issued without the queue lock
+		// held, so a lost one costs at most this interval rather than a stall that never ends.
+		if (stream != nullptr)
+		{
+			stream->WaitForWork(std::chrono::milliseconds(20));
+		}
+
 		if (stream == nullptr)
 		{
 			ProcessBuffer();
-		}
 
-		std::this_thread::sleep_for(std::chrono::microseconds(200));
+			std::this_thread::sleep_for(std::chrono::milliseconds(1));
+		}
 	}
 
 	std::lock_guard lock(driverLock);
