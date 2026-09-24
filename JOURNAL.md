@@ -1,5 +1,39 @@
 # Journal
 
+## 2026-09-24 22:25 — the configuration "anomaly" was my own test design, and the throttle is configuration-independent
+
+HEAD `c3caec0`, tree returned to it. Two fixes to the test, then the measurement the whole item was waiting for.
+
+**Fix one: bound the work by wall-clock, not iterations.** The previous entry's dramatic "Debug throttles, Dev/Release do not"
+table was an artifact: an iteration-count burn is tens of milliseconds in Debug and single-digit in Release, so a fixed 500ms
+window sees a queue in one configuration and an empty stream in another. Worse, my own print outed `pendingBefore`, not the
+after value, so I read "4 item(s) waiting" while the real failure line said *"Nothing was left waiting"* — I nearly took that as
+a second engine anomaly. The same rule this arc keeps relearning: bound by time, not by a count.
+
+**With a 250ms wall-clock bound per item, all three configurations agree exactly:**
+
+| Config | passes | lane declines | general-queue refusals | still queued | provider asks while spent |
+|---|---|---|---|---|---|
+| Debug | 23 | 22 | 22 | 3 | **0** |
+| Dev | 24 | 23 | 23 | 3 | **0** |
+| Release | 24 | 23 | 23 | 3 | **0** |
+
+So the throttle behaves identically everywhere, both allowance books refuse together, and the invariant counter holds at zero in
+**Release** — which is the witness #17 has needed since it opened. The counter design is validated: it counts declines only when
+they happen, and it stays silent when they do not.
+
+**Fix two, and the remaining blocker, which is mundane rather than deep.** The test throttled Worker1, the same stream the
+pre-existing *"Stream charges a configured budget"* measures charges on, and made that test report the throttle as a fault. Giving
+the test its own stream (the last one, Worker10) made **Dev and Release pass all 59 collections with the new test present and
+reporting**. Debug still fails, and the cause is registration order: my `AddTest` landed mid-file, so the budget test's number
+shifted TC5→TC6 and in Debug the extra ~2s of elapsed time ahead of it upsets its window-count assumptions. **Next step, clean and
+small: give this test its own collection, or append it after the budget test rather than before it** — then the Release mutant
+proof (drop `!budget.CanTakeWork()` from the drain gate and watch the new invariant counter fail the run by name in a Release
+build), which is the acceptance criterion.
+
+Both fixes are reverted, not shipped: a change that leaves one configuration red does not go in, and the counters have no witness
+test without it.
+
 ## 2026-09-24 21:55 — the throttle behaves differently by configuration, and that is the sharpest lead yet
 
 HEAD `5f94f42`, tree returned to HEAD content. One clean build of all three configurations, counters in the engine, the same
