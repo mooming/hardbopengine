@@ -1551,6 +1551,118 @@ void TaskSystemTest::Prepare()
 		}
 	});
 
+	AddTest("A stream whose allowance is spent sleeps instead of spinning", [this](TLogOut& ls)
+	{
+		auto& taskSys = Engine::Get().GetTaskSystem();
+
+		unsigned workerIndex = 0;
+		while (taskSys.HasStream(workerIndex + 1))
+		{
+			++workerIndex;
+		}
+
+		if (workerIndex <= TaskSystem::GetIOTaskStreamIndex())
+		{
+			ls << "No worker stream of its own to observe, so this could not be measured." << lferr;
+			return;
+		}
+
+		auto& stream = taskSys.GetStream(workerIndex);
+
+		auto burnFunc = [](void*, std::size_t, std::size_t) -> std::size_t
+		{
+			const auto until = std::chrono::steady_clock::now() + std::chrono::milliseconds(120);
+
+			unsigned long long sink = 0;
+			while (std::chrono::steady_clock::now() < until)
+			{
+				++sink;
+			}
+
+			return sink == 0 ? 1 : 1;
+		};
+
+		std::array<TaskID, 4> ids{};
+		int dispatchedCount = 0;
+
+		for (int item = 0; item < 4; ++item)
+		{
+			const TaskID id = taskSys.CreateTask("SleepNotSpin", burnFunc, nullptr);
+
+			if (id.IsNull())
+			{
+				continue;
+			}
+
+			if (auto* task = taskSys.FindTask(id); task != nullptr)
+			{
+				taskSys.EnqueueTask(workerIndex, *task);
+				ids[dispatchedCount] = id;
+				++dispatchedCount;
+			}
+		}
+
+		stream.RequestBudget(std::chrono::milliseconds(1));
+
+		// Let the item already in flight finish and charge its time before measuring. Anything this stream does after that, while
+		// its allowance is spent and work is waiting, is the throttle's own cost.
+		std::this_thread::sleep_for(std::chrono::milliseconds(400));
+
+		const auto passesBefore = stream.GetDrivenPassCount();
+		const auto pendingBefore = stream.CountPendingItems();
+		std::this_thread::sleep_for(std::chrono::milliseconds(500));
+		const auto passDelta = stream.GetDrivenPassCount() - passesBefore;
+		const auto pendingHeld = stream.CountPendingItems();
+
+		// WaitForWork parks on a condition variable with a 10ms timeout, so a stream with nothing to take wakes about fifty
+		// times a second. A stream that spun on the budget instead of parking would report thousands of passes in this window,
+		// and the upper bound is what catches that. The lower bound is what stops the test passing on a stream that stopped
+		// running at all, which would look identical to a hang from the outside.
+		ls << stream.GetName().c_str() << " while spent over 500ms: " << passDelta << " pass(es), " << pendingBefore
+		   << " -> " << pendingHeld << " item(s) held." << lf;
+
+		if (dispatchedCount < 4)
+		{
+			ls << "Too few tasks reached the stream to measure anything." << lferr;
+		}
+
+		if (passDelta == 0)
+		{
+			ls << "The stream took no pass at all while work waited, which is a stalled pump rather than a throttled one."
+			   << lferr;
+		}
+
+		if (passDelta > 200)
+		{
+			ls << "The stream took " << passDelta
+			   << " passes in half a second while spent. The wait cadence is 10ms, so it is polling the budget instead of "
+				  "parking on the condition variable, burning a core to decide it still cannot work." << lferr;
+		}
+
+		if (pendingHeld != pendingBefore || pendingHeld == 0)
+		{
+			ls << "Work that was held while the allowance was spent changed during the measurement window." << lferr;
+		}
+
+		stream.RequestBudget(std::chrono::duration<double>(0.0));
+
+		const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(20);
+		while (stream.CountPendingItems() > 0 && std::chrono::steady_clock::now() < deadline)
+		{
+			std::this_thread::sleep_for(std::chrono::milliseconds(2));
+		}
+
+		if (stream.CountPendingItems() > 0)
+		{
+			ls << "Work was stranded: still queued after the allowance was lifted." << lferr;
+		}
+
+		for (int index = 0; index < dispatchedCount; ++index)
+		{
+			taskSys.ReleaseTask(ids[index]);
+		}
+	});
+
 	AddTest("The base stream is named Base, and the thread driving the engine is not called that", [this](TLogOut& ls)
 	{
 		auto& taskSys = Engine::Get().GetTaskSystem();
