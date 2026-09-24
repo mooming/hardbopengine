@@ -313,12 +313,14 @@ bool TaskStream::Update() noexcept
 	}
 
 	Assert(!isPumping || nestedPumpAllowed, "Stream ", name,
-			" was pumped while it was already pumping; only a designated wait point may nest a pump.");
+		   " was pumped while it was already pumping; only a designated wait point may nest a pump.");
 
 	isPumping = true;
+
 	struct PumpGuard
 	{
 		bool& flag;
+
 		~PumpGuard()
 		{
 			flag = false;
@@ -327,8 +329,9 @@ bool TaskStream::Update() noexcept
 
 	++drivenPassCount;
 
-	// Posted callables first: they are the engine loop's own work, and the frame budget is spent on them before the stream's
-	// queues are asked for anything. They run with the queue's lock released, so a posted callable may post again.
+	// Posted callables first: they are the engine loop's own work, and the frame budget is spent on them before the
+	// stream's queues are asked for anything. They run with the queue's lock released, so a posted callable may post
+	// again.
 	postedTasks.ProcessTasks();
 
 	// A stream that has been asked to close stops taking work. What it still holds is dealt with by the close path that
@@ -558,7 +561,7 @@ void TaskStream::SetNestedPumpAllowed(bool allowed) noexcept
 }
 
 void TaskStream::DispatchPostedTasks(MainThreadTaskQueue::TTaskFunc taskFunc, void* userData,
-		const uint8_t priority) noexcept
+									 const uint8_t priority) noexcept
 {
 	postedTasks.Enqueue(taskFunc, userData, priority);
 }

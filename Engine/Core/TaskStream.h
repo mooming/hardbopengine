@@ -113,11 +113,12 @@ private:
 	std::uint64_t drivenPassCount = 0;
 
 	/// @brief Work posted to the thread this stream drives, held here so that one pump reaches it.
-	/// @details A callable posted from any thread is a promise that the engine loop will run it. It lives on the stream that
-	///          the engine loop drives, rather than beside the stream, because that is what makes the stream's own pump the
-	///          only place work is taken: a wait that drives the stream then cannot fail to reach posted work, which was a real
-	///          deadlock and not a hypothetical one. Thread-safe on its own - the enqueuer is arbitrary, the drainer is this
-	///          stream's driver, and the queue invokes callables with its lock released.
+	/// @details A callable posted from any thread is a promise that the engine loop will run it. It lives on the stream
+	/// that
+	///          the engine loop drives, rather than beside the stream, because that is what makes the stream's own pump
+	///          the only place work is taken: a wait that drives the stream then cannot fail to reach posted work,
+	///          which was a real deadlock and not a hypothetical one. Thread-safe on its own - the enqueuer is
+	///          arbitrary, the drainer is this stream's driver, and the queue invokes callables with its lock released.
 	MainThreadTaskQueue postedTasks;
 
 	bool isPumping = false;
@@ -317,15 +318,18 @@ public:
 	/// @param taskFunc Invoked with userData on the driving thread. Must not be null.
 	/// @param userData Passed through untouched. May be null.
 	/// @param priority 0 is the least urgent, 255 the most. The default is 128, matching a plain engine-loop post.
-	/// @note Cannot refuse the work. The queue is bounded; a post past the bound is a programming error and reports itself.
+	/// @note Cannot refuse the work. The queue is bounded; a post past the bound is a programming error and reports
+	/// itself.
 	void DispatchPostedTasks(MainThreadTaskQueue::TTaskFunc taskFunc, void* userData, uint8_t priority = 128) noexcept;
 
 	/// @brief Run every callable posted to this stream that is runnable now, and say how many ran.
-	/// @details Called from the stream's own pump, so a thread driving the stream reaches posted work without knowing it exists.
+	/// @details Called from the stream's own pump, so a thread driving the stream reaches posted work without knowing
+	/// it exists.
 	size_t ProcessPostedTasks() noexcept;
 
 	/// @brief Whether any callable is waiting to be run by this stream's driver.
-	/// @note A snapshot across another thread's queue: a false answer of "none" is only sound once the poster has stopped.
+	/// @note A snapshot across another thread's queue: a false answer of "none" is only sound once the poster has
+	/// stopped.
 	[[nodiscard]] bool HasPostedTasks() const noexcept;
 
 	/// @brief Whether this stream has been asked to close.
