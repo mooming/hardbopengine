@@ -28,22 +28,6 @@ Task::Task(StaticString taskName, TRunnable func, void* userData) noexcept
 {
 }
 
-void Task::BusyWait() const noexcept
-{
-	while (!HasDone())
-		;
-}
-
-void Task::Wait(uint32_t intervalMilliSecs) const noexcept
-{
-	const auto interval = std::chrono::milliseconds(intervalMilliSecs);
-
-	while (!HasDone())
-	{
-		std::this_thread::sleep_for(interval);
-	}
-}
-
 void Task::LoadIntoRecord(TaskID newID, StaticString taskName, TRunnable newFunc, void* newUserData) noexcept
 {
 	id = newID;

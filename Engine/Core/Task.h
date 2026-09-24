@@ -77,10 +77,6 @@ public:
 		numSubTasks = count;
 	}
 
-	// Wait
-	void BusyWait() const noexcept;
-	void Wait(uint32_t intervalMilliSecs = 10) const noexcept;
-
 public:
 	[[nodiscard]] auto GetName() const noexcept
 	{
@@ -123,13 +119,23 @@ public:
 		return numFinishedSubTasks.load(std::memory_order::relaxed);
 	}
 
+private:
+	friend class TaskRegistry;
+	friend class TaskSystem;
+	friend class TaskSystemTest;
+	friend class TaskRegistryTest;
+
+	// Kept off the customer surface on purpose. This counter cannot tell a task that finished from one that was never
+	// dispatched - both read as not-done here - so a customer waiting on it has no way to notice that the executor it
+	// depends on is gone, and no honest deadline it could apply. A customer asks what it can answer instead: whether
+	// any work is still queued, which is what OS::Logger::StopTask does. The task system needs the counter for its own
+	// completion accounting, and the unit tests are white-box by construction, so the friends above are who this is
+	// reachable by. A test that waits uses hbe::WaitUntil, which carries a deadline and reports a stall as a failure
+	// instead of hanging.
 	[[nodiscard]] bool HasDone() const noexcept
 	{
 		return numSubTasks > 0 && NumFinishedSubTasks() >= numSubTasks;
 	}
-
-private:
-	friend class TaskRegistry;
 
 	/// @brief Fill this task in place, as the record that holds it issues it.
 	/// @details The registry owns record storage and cannot assign one task over another - the finished-subtask

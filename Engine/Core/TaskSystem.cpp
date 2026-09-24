@@ -121,8 +121,8 @@ void TaskSystem::RequestShutDown() noexcept
 
 void TaskSystem::RequestOtherStreamsClose() noexcept
 {
-	// No streams means nothing to ask. Reaching for index 0 of an empty array is an index assert, and this path is reached a
-	// second time from the destructor after the streams have already been cleared.
+	// No streams means nothing to ask. Reaching for index 0 of an empty array is an index assert, and this path is
+	// reached a second time from the destructor after the streams have already been cleared.
 	if (!HasStream(GetBaseTaskStreamIndex()))
 	{
 		return;
@@ -170,8 +170,8 @@ bool TaskSystem::AreOtherStreamsClosed() noexcept
 void TaskSystem::Update() noexcept
 {
 	auto& baseStream = GetStream(GetBaseTaskStreamIndex());
-	const auto deadline = std::chrono::steady_clock::now()
-			+ std::chrono::duration_cast<std::chrono::nanoseconds>(time::GetBaseFramePeriod());
+	const auto deadline = std::chrono::steady_clock::now() +
+						  std::chrono::duration_cast<std::chrono::nanoseconds>(time::GetBaseFramePeriod());
 
 	while (std::chrono::steady_clock::now() < deadline)
 	{
@@ -219,9 +219,9 @@ void TaskSystem::JoinAndClear() noexcept
 		GetIOTaskStream().CloseDrivenStream();
 		baseStream.CloseDrivenStream();
 
-		// The base stream rides the engine loop as well, so it too never reaches RunLoop and must be closed from outside. Its
-		// close comes after the IO stream's because it is the last executor left, and the assert below refuses to destroy a
-		// stream that was never closed - which is what caught this.
+		// The base stream rides the engine loop as well, so it too never reaches RunLoop and must be closed from
+		// outside. Its close comes after the IO stream's because it is the last executor left, and the assert below
+		// refuses to destroy a stream that was never closed - which is what caught this.
 
 		// The IO stream has no thread to join and no loop that could report its own ending, so the shutdown closes it
 		// here, after the driver is withdrawn and cannot be inside a pass. Both engine streams then end inside the
@@ -891,7 +891,7 @@ void TaskSystemTest::Prepare()
 		auto& taskSys = engine.GetTaskSystem();
 		task.ReserveSubTasks(1);
 		taskSys.Enqueue(task.GenerateSubTask(0, 0));
-		task.BusyWait();
+		WaitUntil([&task]() { return task.HasDone(); });
 
 		if (!task.HasDone())
 		{
@@ -1052,7 +1052,7 @@ void TaskSystemTest::Prepare()
 			taskSys.Enqueue(task.GenerateSubTask(i, i + Increment));
 		}
 
-		task.BusyWait();
+		WaitUntil([&task]() { return task.HasDone(); });
 
 		if (!task.HasDone())
 		{
@@ -1173,7 +1173,7 @@ void TaskSystemTest::Prepare()
 		auto& busyTask = *trackedBusy;
 		busyTask.ReserveSubTasks(1);
 		taskSys.Enqueue(workerIndex, busyTask.GenerateSubTask(0, 1));
-		busyTask.Wait(1);
+		WaitUntil([&busyTask]() { return busyTask.HasDone(); });
 
 		const auto charged = stream.GetAccumulatedCPUTime();
 		ls << stream.GetName().c_str() << " charged "
