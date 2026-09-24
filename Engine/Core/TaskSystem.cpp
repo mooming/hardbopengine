@@ -189,6 +189,13 @@ void TaskSystem::JoinAndClear() noexcept
 		// The driver thread outlives the task system, so the stream must be taken back before the streams are freed.
 		// After this the logger writes its queue directly, which keeps it working to the very last line of the process.
 		Logger::Get().SetIODriver(nullptr);
+		GetIOTaskStream().CloseDrivenStream();
+
+		// The IO stream has no thread to join and no loop that could report its own ending, so the shutdown closes it
+		// here, after the driver is withdrawn and cannot be inside a pass. Both engine streams then end inside the
+		// engine's shutdown instead of one of them ending silently whenever the logger is destroyed. The logger itself
+		// is unaffected: its thread exists before this stream does and keeps writing the log queue directly after this
+		// stream is gone.
 
 		// The reporting the shutdown exists to produce is finished, so the streams that carried it close last, and in
 		// this order: the executor of log work first, then the base stream that drove the end of the run.
@@ -209,6 +216,17 @@ void TaskSystem::JoinAndClear() noexcept
 		}
 
 		thread.join();
+	}
+
+	// Nothing is destroyed that was not closed first. A stream left unclosed here means either a new stream kind that
+	// nobody asked to close, or a thread that is still running while its queues are being freed - and both are far
+	// cheaper to find as a named assert than as a crash in a later run.
+	for (const auto& stream : streams)
+	{
+		Assert(stream.IsClosed(), "Stream ", stream.GetName(),
+			   " is being destroyed without having been closed. Every stream must be closed - drained if it owns a "
+			   "thread, "
+			   "marked closed by its driver if it rides one - before the task system tears itself down.");
 	}
 
 	streams.Clear();

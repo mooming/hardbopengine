@@ -136,7 +136,13 @@ private:
 	///          `TaskStream::Update` rather than owning a thread of its own.
 	std::thread driverThread;
 	std::atomic<bool> driverRunning{false};
-	std::atomic<TaskStream*> ioStream{nullptr};
+	/// @brief Guards the IO stream pointer, and is held across the pass that uses it.
+	/// @details Withdrawal is therefore a lock acquisition: asking for the stream back blocks until whatever the driver
+	/// thread
+	///          was doing inside the stream has returned, which is the only way the task system can free its streams
+	///          without the driver thread reading a freed one on a pass it had already started.
+	std::mutex driverLock;
+	TaskStream* ioStream = nullptr;
 
 	std::mutex filterLock;
 	std::mutex inputLock;

@@ -305,6 +305,16 @@ bool TaskStream::Update() noexcept
 		threadID = std::this_thread::get_id();
 	}
 
+	++drivenPassCount;
+
+	// A stream that has been asked to close stops taking work. What it still holds is dealt with by the close path that
+	// asked, which reports anything it cannot run rather than leaving the driver to pump a stream that has said it is
+	// done.
+	if (closeRequested.load(std::memory_order_acquire))
+	{
+		return false;
+	}
+
 	// A driven stream shares its driver thread with whatever else that thread does, so the index and the allocator are
 	// entered and left around this pass rather than assumed for the lifetime of the thread.
 	const TStreamIndex previousStreamIndex = TaskSystem::GetCurrentStreamIndex();
@@ -492,6 +502,30 @@ bool TaskStream::Update() noexcept
 
 	restore();
 	return true;
+}
+
+void TaskStream::CloseDrivenStream() noexcept
+{
+	RequestClose();
+
+	if (isClosed.exchange(true, std::memory_order_acq_rel))
+	{
+		return;
+	}
+
+	if (const auto remaining = CountPendingItems(); remaining > 0)
+	{
+		Logger::Get(name).OutWarning([name = name, remaining](auto& ls)
+		{
+			ls << name.c_str() << " is closing with " << remaining
+			   << " item(s) still held. They are abandoned, not requeued, and any customer waiting on a result from "
+				  "them"
+			   << " will not receive one.";
+		});
+	}
+
+	Logger::Get(name).Out([name = name, passes = drivenPassCount](auto& ls)
+	{ ls << name.c_str() << " closed after " << passes << " driven pass(es)."; });
 }
 
 std::size_t TaskStream::CountPendingItems() const noexcept

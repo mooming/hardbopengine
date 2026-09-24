@@ -104,8 +104,12 @@ private:
 	/// @brief Set when this stream should finish what it holds and stop, independently of every other stream.
 	std::atomic<bool> closeRequested{false};
 
-	/// @brief Set once this stream has drained its work and left its loop.
+	/// @brief Set once this stream has drained its work and left its loop, or been closed from outside.
 	std::atomic<bool> isClosed{false};
+
+	/// @brief How many passes this stream has run. Written by the single thread driving this stream, so it needs no
+	/// atomic.
+	std::uint64_t drivenPassCount = 0;
 
 	/// @brief Set while this stream runs its own remaining work on the way out, which suspends provider probing.
 	bool isDrainingForShutdown = false;
@@ -303,6 +307,20 @@ public:
 	/// Whoever
 	///          orders the shutdown waits on this rather than on a thread handle, because a driven stream has no thread
 	///          to join.
+	/// @brief Close this stream from the outside, for a stream that has no thread of its own.
+	/// @details A ride-on stream never enters `RunLoop`, so nothing there would drain it, report it, or mark it closed
+	/// - and a
+	///          stream whose closed state is never set is a stream that any correct future waiter would wait on
+	///          forever. Whoever drove it closes it, after the driver has been withdrawn and can no longer be inside a
+	///          pass.
+	void CloseDrivenStream() noexcept;
+
+	/// @brief Number of `Update` passes this stream has run, on whichever thread drove it.
+	[[nodiscard]] std::uint64_t GetDrivenPassCount() const noexcept
+	{
+		return drivenPassCount;
+	}
+
 	[[nodiscard]] bool IsClosed() const noexcept
 	{
 		return isClosed.load(std::memory_order_acquire);

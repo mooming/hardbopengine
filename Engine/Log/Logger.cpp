@@ -209,11 +209,19 @@ void Logger::DriverLoop() noexcept
 		// With a stream installed, the IO stream's own queues are the work: whatever the logger posted there runs,
 		// along with any other customer's IO request. Without one - before the task system exists and after it is gone
 		// - the log queue is written directly, which is the same work with one fewer hop.
-		if (auto* stream = ioStream.load(std::memory_order_acquire); stream != nullptr)
+		TaskStream* stream = nullptr;
+
 		{
-			stream->Update();
+			std::lock_guard lock(driverLock);
+			stream = ioStream;
+
+			if (stream != nullptr)
+			{
+				stream->Update();
+			}
 		}
-		else
+
+		if (stream == nullptr)
 		{
 			ProcessBuffer();
 		}
@@ -221,9 +229,11 @@ void Logger::DriverLoop() noexcept
 		std::this_thread::sleep_for(std::chrono::microseconds(200));
 	}
 
-	if (auto* stream = ioStream.load(std::memory_order_acquire); stream != nullptr)
+	std::lock_guard lock(driverLock);
+
+	if (ioStream != nullptr)
 	{
-		while (stream->Update())
+		while (ioStream->Update())
 		{
 		}
 	}
@@ -233,7 +243,10 @@ void Logger::DriverLoop() noexcept
 
 void Logger::SetIODriver(TaskStream* stream) noexcept
 {
-	ioStream.store(stream, std::memory_order_release);
+	// Passing the lock is what makes withdrawal mean something: the new owner cannot install a different stream, and
+	// nullptr cannot land, while a pass is in flight.
+	std::lock_guard lock(driverLock);
+	ioStream = stream;
 }
 
 Logger::~Logger() noexcept
