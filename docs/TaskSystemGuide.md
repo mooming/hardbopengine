@@ -13,11 +13,15 @@ Design decisions and the reasons behind them live in [TaskSystemRedesign.md](Tas
 | Object | What it is | Who owns it |
 |---|---|---|
 | `Task` | One unit of work: a runnable, its user data, a subtask counter, and one result packet. | The `TaskRegistry`. It lives inside a registry record and never moves. |
-| `RangedTask` | One **work item**: a half-open index range `[start, end)` of a task, plus priority and affinity. 120 bytes, trivially copyable, so queues take it by value. | Whichever queue holds it. |
+| `WorkItem` | One **work item**: a half-open index range `[start, end)` of a task, plus priority and the task it belongs to. 56 bytes, so queues take it by value. | Whichever queue holds it. |
 | `TaskID` | `index` + `generation`. The only thing safe to hold across threads. | You, by value. |
 
 A task is split into work items, work items are queued to streams, and streams are threads. Nothing else in
-this subsystem has a lifetime worth worrying about.
+this subsystem has a lifetime worth worrying about. Building an item is the engine's job, not yours: an item's
+range, priority and the task's reserved count have to agree, and `Task::GenerateSubTask` is not reachable from
+outside the engine for exactly that reason. A customer creates a task, declares how many items will fill it, and
+dispatches it — `TaskSystem::EnqueueTask(stream, task)` for single-shot work, or a provider's
+`MakeWholeItem(task)` when it is producing items for a stream.
 
 The reason `TaskID` exists at all: a `Task&` is a pointer into a record another thread may hand back to the
 free list and refill with a different task. `TaskRegistry::Find` refuses such a reference by comparing the
