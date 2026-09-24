@@ -1,5 +1,24 @@
 # Journal
 
+## 2026-09-24 23:40 — I deleted 292 lines of the guide with a greedy regex, and how it was caught
+
+`6ffe2f8` reports `docs/TaskSystemGuide.md | 278 +----` with 292 deletions for an edit that should have touched ten lines. Cause:
+`re.sub(r"... \|.*", repl, s, flags=re.S)` — with `DOTALL`, `.*` does not stop at the end of a table row, it runs to the end of the
+**file**, and I applied that pattern several times without `count=1`. Most of the guide was overwritten by the first replacement's
+substitution text.
+
+Caught by the one habit that has kept paying for itself: read `--stat` before committing. Ten edited lines cannot produce 292
+deletions, and the mismatch was enough to stop and look rather than ship it. Fixes, in order: restore the file from `3bdc19e`,
+re-apply every edit with `[^
+]*` and `re.M` and no `DOTALL`, and make each substitution assert it matched **exactly once** — a
+pattern that matches zero times or five is a bug, not a no-op. Verified by line count before and after (339 → 342, the three added
+table rows) rather than by eyeballing a diff.
+
+**Rule adopted, and it is the same rule this session keeps teaching:** an edit is not accepted until something measurable names
+what it changed. For code that means a mutant killed by a named test; for docs it means a line count and a match count. Both halves
+of #9's content work are now in — the Core reference's stale API surface corrected, `TaskProvider` documented as a section, and the
+guide's customer-facing table fixed — and the guide's remaining narrative item (the range-splitting story) is still open.
+
 ## 2026-09-24 23:25 — the reference and the guide now describe the API that exists
 
 HEAD `6ffe2f8`, tree clean, `check.sh` 0 mechanical violations and build gate 12/12, 59 collections green.
