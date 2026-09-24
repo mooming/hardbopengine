@@ -1,5 +1,36 @@
 # Journal
 
+## 2026-09-24 18:10 — the budget gate is asserted where it can be seen, and my test for it nearly shipped a use-after-free
+
+HEAD `dc9a400`, nothing pushed, 59 collections green in Debug/Dev/Release, check.sh 0 violations, build gate 12/12.
+
+**Chose to assert at the ask site rather than at the gate.** Three ways to enforce R39's rule - count refusals and test
+the count, assert inside the gate, or assert where the provider is actually asked. Refusing is not the interesting event;
+a provider being **asked while the budget says spent** is, and only the ask site can say that. Reading the budget twice on
+consecutive lines is legal there for one reason worth stating: this is the owning thread, the only thread ever permitted to
+read that unsynchronised field. The mutant evidence came out of a real run, not reasoning - dropping the budget check from
+the gate traps with "Stream Worker1 was asked for provider work while its allowance was spent" inside the pre-existing
+`TaskSystemTest` case "Stream charges a configured budget", which is the named-test death this item had wanted for a
+dozen commits.
+
+**Why I did not call it done.** Asserts are compiled out in Release, so the one configuration where a silent regression
+would actually ship still has no observation. That residual is todo #17 with its acceptance written as: the same mutant
+must produce a named failure **in Release**, where the assert is absent.
+
+**My own test crashed, and the cause is a rule, not a bug.** The probe test released tasks whose work items were still
+queued; the stream later executed a runnable whose `userData` pointed into a dead stack frame - a real use-after-free of my
+making, and a fact worth having: releasing while pending is fatal, not untidy. It also reported only 1 of 12 dispatched
+tasks having run, and I reverted rather than debug on empty context. Both are recorded in #17 so the next attempt waits on
+completion instead of assuming it. I did **not** leave it in the tree, and I did not mark #10 finished - I marked it done
+by accident, corrected course, and opened #17 instead; the todo tool refuses `completed → in_progress`, so the honest state
+lives in #17 and in this paragraph.
+
+**The last vacuity hole in my own tooling closed.** `hang.sh` builds with plain `cmake --build`, which can re-configure
+without `-D__TEST__` and hand back a binary containing no test bodies; it printed "FINISHED exit=1" for exactly such a
+binary *while I was mutating this very gate*. It now refuses that output the way `runtest.sh` already did. Two rules this
+session keeps re-learning: verify the artifact rather than the command's exit code, and when a check would be vacuous, say
+so in the check rather than in the commit message afterwards.
+
 ## 2026-09-24 17:20 — shutdown means stop: two unbounded waits on posted work, closed by the same mutant
 
 HEAD `a8946ea`, nothing pushed, 59 collections green in Debug/Dev/Release, check.sh 0 violations and build gate 12/12.

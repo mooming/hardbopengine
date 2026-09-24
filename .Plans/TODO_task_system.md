@@ -95,7 +95,22 @@ note the `Core/` prefix: this tree's includes are project-qualified, and a bare 
 not resolve from `TaskStream.h`. Nothing calls `RequestStop`/`IsRunning` from outside the queue, so no stop
 forwarding was needed.
 
-### N2 — Test the drain's budget gate (todo #10) — **do this next**
+### N2 — Budget gate: assert landed `dc9a400`, **Release coverage still owed (todo #17) — do this next**
+
+`TaskStream` now asserts at the provider ask site that the allowance permits work. Accepted mutant
+evidence, in a real run: gate without `!budget.CanTakeWork()` traps with *"Stream Worker1 was asked
+for provider work while its allowance was spent"* inside the existing `TaskSystemTest` case **"Stream
+charges a configured budget"** — a named test that was already in the suite, exit 133. Without the
+mutant: 59 collections, exit 0, all three configurations.
+
+**Why it is not finished:** asserts compile out in Release, so the configuration where a silent
+regression would ship has no observation of the invariant. The positive test design is in #17, with
+the two traps my first attempt fell into recorded there — releasing a task while its item is still
+queued is a genuine use-after-free (the runnable's `userData` was a dead stack frame; that was the
+SIGSEGV), and waiting on a run count that assumed every dispatch would run hid the fact that only 1
+of 12 executed.
+
+### N2-superseded — original count-based design (kept: it was wrong, and why matters)
 Design revised — **and the earlier version of this item was flaky by construction.** `CPUBudget.h` says an allowance of
 **zero means unlimited**, so no value expresses "permanently spent"; a tiny allowance plus accumulated charge does get
 spent, but the accumulation resets when the accounting window advances, so a test asserting "the provider was never
