@@ -1,5 +1,31 @@
 # Journal
 
+## 2026-09-24 20:40 — the lane throttle is a second account of the same intent, and my counter still did not fire
+
+HEAD `a166b67`, tree clean, 59 collections green in Debug/Dev/Release. No code from this attempt survived; what survived is
+the mechanism and a decisive next measurement.
+
+**Where the lane throttle actually is.** `StreamDrainPolicy::ChooseLane` returns no lane once `fifoUsed + priorityUsed` has
+spent *its own* allowance — a per-lane time book kept by the drain policy, entirely separate from `CPUBudget`. So the task
+system throttles from **two accounts of one intent**: lanes are gated by the policy, the provider gate and the general queue
+by `CPUBudget`. That is worth the owner's attention on its own — two books for one quantity is how you get a stream throttled
+by one account and not the other, and it is why my first counter, which asked `budget.CanTakeWork()` at the lane site, could
+never fire.
+
+**The corrected counter still did not fire.** Moved to the condition that the code itself makes impossible to satisfy by
+accident — work present in a lane and no lane chosen — it counted **zero** while **three items sat queued** for 150ms. By the
+branch logic in `ChooseLane` that combination should be unattainable unless the pass never reached it. So the remaining
+question is narrow and cheap to settle: **sample `GetDrivenPassCount()` across the throttle window.** If it does not advance,
+the worker is not cycling and the whole "what happens while spent" model is wrong; if it advances, the decline is somewhere I
+have still not read. One number, before any further code. (And a methodological note against my own repeat: a 50-million
+iteration burn is tens of milliseconds in Debug, so a 150ms observation window can straddle the first task's completion — widen
+it and sample the pass delta on both sides.)
+
+**What I reverted and why.** The test asserted its own vacuity — *"Work waited while the drain policy spent its allowance, yet
+no decline was counted"* — and I deleted it plus both counters rather than commit a guardrail that observes nothing. Enforcement
+today is the assert in `a166b67`, real in Debug and Dev; Release remains unobserved, and #17 stays open with the measurement
+that settles it next.
+
 ## 2026-09-24 20:05 — a claim about behaviour, checked against a binary that contained it once
 
 HEAD `a166b67`, tree clean, 59 collections green in Debug/Dev/Release.

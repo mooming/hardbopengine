@@ -108,6 +108,16 @@ mutant revert deleted it and I committed afterwards, writing a message about cod
 in `a166b67` now, verified with `git show HEAD:` rather than in the working tree, and re-proven against the gate mutant
 (exit 133, names Worker1). **Rule: commit before mutating, never after.**
 
+**Where the lane throttle really lives, and the one number that settles #17.** `StreamDrainPolicy::ChooseLane` returns no lane
+once its **own** `fifoUsed + priorityUsed` has spent the allowance — a per-lane time book separate from `CPUBudget`. Two
+accounts of one intent: lanes gated by the policy, provider gate and general queue gated by `CPUBudget`. **That split is itself
+a finding for the owner** — one quantity, two books, so a stream can be throttled by one and not the other, and it explains why
+my first counter asked the wrong book. My corrected counter (work present + no lane chosen, a condition `ChooseLane`'s own
+branches make unattainable by accident) still counted **0** with **3 items queued** for 150ms. **Next step, one number before
+any code: delta of `GetDrivenPassCount()` across the throttle window** — it separates "the worker is not cycling while spent"
+from "the decline is elsewhere". Widen the window to ~500ms; a 50M-iteration burn is tens of ms in Debug and a 150ms window can
+straddle the first task finishing. Test and counters reverted; the assert in `a166b67` stands as the only enforcement.
+
 **Instrumentation location, measured:** a no-budget control ran **6 of 6** with nothing left queued, so dispatch is sound
 and the old 1-of-6 was the budget path. A throttled run then reported *"0 pass(es) declined a lane that held work, 2 item(s)
 still queued, 0 provider ask(s) while spent"* — work waited while spent, and my new decline counter never fired, so the
