@@ -136,7 +136,10 @@ void Engine::Run()
 {
 	FatalAssert(isTaskSystemReady, "Engine::Run needs EInitLevel::TaskSystem");
 
-	while (taskSystem.HasPendingPostedWork() || taskSystem.IsRunning())
+	// The loop runs while the engine is running, and stops when it is not. Pending posted work is deliberately not a reason to
+	// continue: once shutdown has been requested there is no executor left that could run it, so treating it as a reason kept the
+	// process looping forever on work nothing would ever drain. JoinAndClear drains what it still can, under a deadline, and names
+	// whatever it has to abandon - which is where that work belongs being accounted for, not here.
 	{
 		taskSystem.Update();
 		std::this_thread::yield();

@@ -390,13 +390,6 @@ public:
 		return streams[GetBaseTaskStreamIndex()];
 	}
 
-	/// @brief Whether work is waiting to be run on the engine loop, which is work posted to the base stream.
-	/// @note Safe to call before the streams exist: it says none. The engine loop uses it to decide whether a last
-	/// frame is owed.
-	[[nodiscard]] bool HasPendingPostedWork() noexcept
-	{
-		return HasStream(GetBaseTaskStreamIndex()) && GetStream(GetBaseTaskStreamIndex()).HasPostedTasks();
-	}
 
 	auto& GetIOTaskStream() noexcept
 	{

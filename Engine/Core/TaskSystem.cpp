@@ -213,10 +213,42 @@ void TaskSystem::JoinAndClear() noexcept
 	{
 		TaskStream& baseStream = GetStream(GetBaseTaskStreamIndex());
 
-		while (!AreOtherStreamsClosed() || baseStream.HasPostedTasks() || baseStream.CountPendingItems() > 0)
+		// Bounded for the same reason a closing stream's drain is bounded, and by the same measurement: a bound that resumable
+		// work can outrun is not a bound, and this loop asks for work rather than for an end. Without it the shutdown waits on
+		// posted work that may never be drained - found by sampling, after every test had finished and nothing else could run -
+		// so the honest outcome is a named loss rather than a process that never exits.
+		const auto pumpDeadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(2000);
+
+		while (std::chrono::steady_clock::now() < pumpDeadline
+				&& (!AreOtherStreamsClosed() || baseStream.HasPostedTasks()
+						|| baseStream.CountPendingItems() > 0))
 		{
 			baseStream.Update();
 			std::this_thread::sleep_for(std::chrono::milliseconds(1));
+		}
+
+		const bool hasAbandonedPostedWork = baseStream.HasPostedTasks();
+		const auto abandonedItemCount = baseStream.CountPendingItems();
+
+		if (hasAbandonedPostedWork || abandonedItemCount > 0)
+		{
+			// Never dropped quietly. A work item still sitting here is a promise somebody made to a customer who will not be
+			// answered, which is a hung customer rather than a finished shutdown. Posted callables are reported as present
+			// rather than counted: the queue says whether it holds any, and inventing a number here would be a guess printed
+			// as a measurement.
+			Logger::Get().AddLog(GetName(), ELogLevel::Error,
+					[hasAbandonedPostedWork, abandonedItemCount](auto& logStream)
+					{
+						logStream << "Shutdown abandoned work on the base stream after 2000ms: " << abandonedItemCount
+								  << " queued item(s)";
+
+						if (hasAbandonedPostedWork)
+						{
+							logStream << " and at least one posted callable";
+						}
+
+						logStream << ". Whatever was promised through them will not happen.";
+					});
 		}
 
 		// Log lines are written by a task running on a stream, so the flush that ends the run has to happen while that
