@@ -49,10 +49,34 @@ Tracked copies now live in `.pi/skills/hb-standards/scripts/`. The ones under `b
 | `0ec7538` | Logger waits on the queue observable, not the task handle | — |
 | `a25168b` | **C1**: `Task::Wait`/`BusyWait` deleted, `HasDone` private, `hbe::WaitUntil` for tests | every remaining caller was a *test body*, not production |
 | `4655298` | **C2**: `GenerateSubTask` engine-internal; `TaskProvider::MakeWholeItem` (protected); new `TaskSystem::EnqueueTask(stream, task, priority)` | found `Examples/WindowExample/Main.cpp`, three internal providers, the logger and `hbe::Test` hand-building items |
+| `2345f03` | **N1**: `MainThreadTaskQueue` becomes `TaskStream::postedTasks`, drained by the stream's own pump; one intake | mutation-proven, and the mutation found two more gaps |
+| `50c91eb` | `DriveUntil` reports a failed wait; the six window waits fail in band instead of blocking | the mutant now kills `WindowTest` TC0/TC1/TC2 by name, where it had been a silent timeout |
+| `e86dd55` | Journal + this file rewritten to reality; `hang.sh`/`runtest.sh` tracked in the skill | the tracked `runtest.sh` run from its new location is the proof |
 
 ## Remaining, in the order I recommend
 
-### N1 — Let the base stream own the work posted to the engine loop (todo #15)
+### N1 — ~~Let the base stream own the work posted to the engine loop~~ **DONE: `2345f03` + `50c91eb`**
+
+`MainThreadTaskQueue` is now `TaskStream::postedTasks`, drained at the top of every pass, so one pump reaches
+it. `ProcessMainThreadTasks` and `GetMainThreadTaskQueue` are gone; `DispatchToMainThread` forwards to the base
+stream and `HasPendingPostedWork` carries the engine loop's run condition. The acceptance mutant (delete the
+posted drain) initially produced **no failing test at all** — exit 60 on a wall clock, nothing printed — which
+uncovered two gaps fixed in `50c91eb`: `DriveUntil` now reports what it waited for via `ReportDriveTimeout`, and
+the six `OSAL/Window.cpp` waits report in band instead of calling `get()` on a future nothing will satisfy.
+With the mutant restored, `WindowTest` TC0/TC1/TC2 each name the missing intake. That is the standard every
+future mutation is held to: **a named test, naming the gate.**
+
+### N1b — Bound the shutdown pump over posted work (todo #16) — **do this next**
+The same mutant hung at a second place, found by sampling: with the drain removed the tests all finished and the
+run hung in `TaskSystem::JoinAndClear`, frames going `Engine::Run` → `TaskSystem::Update` → `TaskStream::Update` →
+`BoundedPriorityQueue<WorkItem>::Remove`. That loop's condition asks whether posted work or other streams are still
+pending and pumps while true, **with no deadline** — unlike `DrainForShutdown`, which got a wall clock exactly
+because a bound a resumable task can outrun is not a bound. Give it the same treatment: per-stream wall-clock
+deadline, anything still pending reported **abandoned** (a promised item left behind means a customer never
+answered — name it, never drop it silently). **Acceptance:** restore the same drain mutant and show the run ends
+inside the bound with an abandoned-work report instead of being killed by a wall clock.
+
+### N1c — Inventory used by N1, kept here so it does not have to be rediscovered
 Behaviour is already right: `TaskSystem::Update()` pumps the main-thread queue and base-stream passes under
 the frame budget. What is left is one object, not two. Inventory at `4655298`:
 
@@ -65,13 +89,11 @@ the frame budget. What is left is one object, not two. Inventory at `4655298`:
 | `TaskSystem.cpp:178/204/207/593/598` | the pump in `Update`, the wait in `JoinAndClear`, the two forwarders |
 | `Engine.cpp:139/146` | `GetMainThreadTaskQueue().HasPendingTasks()` in the run condition, `ProcessMainThreadTasks()` after the loop |
 
-`MainThreadTaskQueue` is self-contained (`BoundedPriorityQueue<TaskItem,256,1024>`, mutex-guarded, tasks run
-with the lock released), so it moves into `TaskStream` without a circular include — `TaskStream.h` includes
-`MainThreadTaskQueue.h`, not `TaskSystem.h`. Then: `TaskStream::Update()` drains posted callables first, so
-`Update`, `DriveUntil` and the shutdown pump all reach them by construction; `DispatchToMainThread` becomes
-one line forwarding to the base stream; `GetMainThreadTaskQueue` and `ProcessMainThreadTasks` go away and
-`Engine.cpp` asks the base stream for its pending count. **Acceptance:** one intake, one pump, all three
-configs at exit 0 with 59 collections, and a mutant that skips the posted drain dying to a named test.
+The queue turned out to be self-contained (`BoundedPriorityQueue<TaskItem,256,1024>`, mutex-guarded, callables
+invoked with the lock released), so it moved into `TaskStream` with `#include "Core/MainThreadTaskQueue.h"` —
+note the `Core/` prefix: this tree's includes are project-qualified, and a bare `"MainThreadTaskQueue.h"` does
+not resolve from `TaskStream.h`. Nothing calls `RequestStop`/`IsRunning` from outside the queue, so no stop
+forwarding was needed.
 
 ### N2 — Test the drain's budget gate (todo #10)
 Design settled and proven race-free: the provider reads `MayTakeNewWork()` inside `Produce`, which runs on

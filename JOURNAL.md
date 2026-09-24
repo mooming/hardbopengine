@@ -1,5 +1,42 @@
 # Journal
 
+## 2026-09-24 16:40 — the base stream owns posted work, and a mutation set the standard for how proof must look
+
+HEAD `50c91eb`, nothing pushed, 59 collections green in Debug/Dev/Release, `check.sh` 0 violations, build gate 12/12.
+Commits since the last entry: `e86dd55` (handoff documents, tracked gate scripts), `2345f03` (N1), `50c91eb` (the wait reports).
+
+**Why the queue moved onto the stream.** Two places work could wait in - the stream's queues and a main-thread queue
+kept beside the streams - meant the single-pump story depended on someone remembering to pump both. `MainThreadTaskQueue`
+is now `TaskStream::postedTasks`, drained at the top of every pass before the queues are asked for anything, so a wait
+that drives a stream reaches posted work by construction. The deadlock being prevented was already measured once: a
+stalled `EngineTest` sampled with the wait still inside `std::future::get`, the callback sitting in a queue the stream
+could not see. `ProcessMainThreadTasks` and `GetMainThreadTaskQueue` are gone, and so is the drain after `JoinAndClear`,
+which was draining a queue whose stream had already been closed - posted work is now drained by the close itself, while
+the stream is alive.
+
+**The mutation is what taught the lesson, not the design.** Acceptance was "a mutant that skips the posted drain dies to
+a named test". It killed the suite and named nothing: exit 60 on a wall clock, no `FAILED` line, nothing printed. The
+code it exposed was mine and it was doubly wrong - `DriveUntil` returned false silently, and all six `OSAL/Window.cpp`
+sites then called `get()` on the future they had just failed to wait for, which blocks forever. So a missing drain looked
+like an unnameable hang, which is the failure mode this whole arc has been eliminating. `DriveUntil` now reports what it
+was waiting for and for how long, through a non-template member so the reporting does not drag the engine header into
+every translation unit that drives a wait, and the test bodies report in band and return. Restoring the mutant then
+printed, under `WindowTest`: `TC0.Create Window`, `TC1.Set and Get Title`, `TC2.Set and Get Size` - each naming that the
+engine loop never ran the posted window creation.
+
+**New standing standard, earned rather than decided:** a mutation is not accepted until a **named test names the gate**. A
+timeout is not a verdict. And a wait that can give up must say so before its caller continues, because callers follow the
+happy path by default.
+
+**What the same mutant found and I did not fix, deliberately.** With the drain removed, the tests all finished and the run
+then hung in `TaskSystem::JoinAndClear` - sampled frames `Engine::Run` → `TaskSystem::Update` → `TaskStream::Update` →
+`BoundedPriorityQueue<WorkItem>::Remove`. That pump waits on posted work and open streams with **no deadline**, unlike
+`DrainForShutdown`, which was given a wall clock exactly because a bound a resumable task can outrun is not a bound. Recorded
+as todo #16 with that evidence and with its acceptance written as: restore this same mutant, show the run ends inside a
+bound with an abandoned-work report. Two small truths from building it: `Engine::LogError` is a **non-static member**, so the
+file's own `Logger::Get().AddLog(GetName(), ...)` idiom is what compiles here; and includes in this tree are project-qualified,
+so it is `#include "Core/MainThreadTaskQueue.h"`.
+
 ## 2026-09-24 15:57 — both engine streams ride a thread; the handle-based waits are gone; items are engine currency
 
 HEAD `4655298`, nothing pushed, 59 collections green in Debug/Dev/Release, `check.sh` 0 violations and build gate 12/12.
