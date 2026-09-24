@@ -1,5 +1,32 @@
 # Journal
 
+## 2026-09-24 21:55 — the throttle behaves differently by configuration, and that is the sharpest lead yet
+
+HEAD `5f94f42`, tree returned to HEAD content. One clean build of all three configurations, counters in the engine, the same
+test in all three binaries. The numbers are the finding:
+
+| Config | passes in 500ms | lane declines | general-queue refusals | provider asks while spent | items waiting |
+|---|---|---|---|---|---|
+| Debug | 28 | **27** | 27 | 0 | 4 |
+| Dev | 51 | **0** | 0 | 0 | 4 |
+| Release | 50 | **0** | 0 | 0 | 4 |
+
+**In Debug the throttle is observable and consistent**: ~28 passes, and 27 of them found work waiting in a lane with no lane
+chosen, plus 27 general-queue refusals — the two allowance books agreeing, the work held, and the invariant counter at zero.
+
+**In Dev and Release the same code produced ~50 passes, zero declines, zero refusals, and the same 4 items still waiting.** Those
+three cannot be true together under the code as I have read it: ~50 passes is the 10ms `WaitForWork` cadence, so `Update()` kept
+returning "took nothing"; work was in the lanes; and yet the branch that fires exactly on that combination never fired, and neither
+did the `CPUBudget` gate on the general queue. Either `CountPendingItems()` is counting something the drain is not looking at in
+those configurations, or `Update()` returns before reaching the lane code — and both possibilities are checkable, cheaply, which is
+what makes this a lead rather than a mystery. The earlier cross-build confusion is now excluded: these three rows come from one
+build of each configuration running one identical test.
+
+**What I did not do:** the test fails in all three configurations, so it is not committed. The counters are reverted with it — an
+instrument that reports contradictory numbers is not yet a witness, and shipping it would dress an open question up as coverage.
+Enforcement stays what it was: the committed assert (`a166b67`) on the provider gate, real in Debug and Dev, absent in Release.
+#17 remains open, now narrowed to a configuration-dependent difference in how a spent stream behaves.
+
 ## 2026-09-24 21:35 — I recorded a hypothesis last entry that the code contradicts; correcting it here
 
 HEAD `f1567d6`, tree clean. Reading the drain end-to-end rather than at one branch, the gate map is now exact:
