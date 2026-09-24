@@ -167,6 +167,20 @@ bool TaskSystem::AreOtherStreamsClosed() noexcept
 	return true;
 }
 
+void TaskSystem::ReportDriveTimeout(const char* waitingFor, const std::chrono::milliseconds patience) noexcept
+{
+	Logger::Get().AddLog(GetName(), ELogLevel::Error, [waitingFor, patience](auto& logStream)
+	{
+		logStream << "A thread driving the engine loop gave up waiting for " << waitingFor << " after "
+				  << patience.count()
+				  << "ms. The work was still queued, so nothing was going to run it, and a caller that proceeds from "
+					 "here "
+					 "usually blocks on the very thing it waited for. The intake that should have drained it is the "
+					 "first "
+					 "thing to look at.";
+	});
+}
+
 void TaskSystem::Update() noexcept
 {
 	auto& baseStream = GetStream(GetBaseTaskStreamIndex());
@@ -591,7 +605,6 @@ void TaskSystem::DispatchToMainThread(TMainThreadTask taskFunc, void* userData, 
 {
 	GetStream(GetBaseTaskStreamIndex()).DispatchPostedTasks(taskFunc, userData, priority);
 }
-
 
 StaticString TaskSystem::GetStreamName(int index) const noexcept
 {

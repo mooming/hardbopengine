@@ -273,7 +273,8 @@ public:
 
 	/// @brief Wait for `isDone` by driving the base stream, the only way such a wait can end on this thread.
 	template <class Predicate>
-	bool DriveUntil(Predicate&& isDone, std::chrono::milliseconds patience = std::chrono::milliseconds(30000)) noexcept
+	bool DriveUntil(const char* waitingFor, Predicate&& isDone,
+					std::chrono::milliseconds patience = std::chrono::milliseconds(30000)) noexcept
 	{
 		TaskStream& baseStream = GetStream(GetBaseTaskStreamIndex());
 		auto remaining = patience;
@@ -290,9 +291,11 @@ public:
 		}
 
 		baseStream.SetNestedPumpAllowed(true);
+
 		struct NestedPumpGuard
 		{
 			TaskStream& stream;
+
 			~NestedPumpGuard()
 			{
 				stream.SetNestedPumpAllowed(false);
@@ -301,15 +304,29 @@ public:
 
 		while (!isDone() && remaining > std::chrono::milliseconds::zero())
 		{
-			// Update, not baseStream.Update: a callback posted to the engine loop sits in the main-thread queue, which the
-			// stream's own pump does not touch, so driving only the stream would wait on work that nothing here will run.
+			// Update, not baseStream.Update: a callback posted to the engine loop lives on the stream the loop drives,
+			// and a stream's pump is what runs it.
 			Update();
 			std::this_thread::sleep_for(std::chrono::milliseconds(1));
 			remaining -= std::chrono::milliseconds(1);
 		}
 
+		if (!isDone())
+		{
+			// Say it out loud. A caller that proceeds after a failed wait usually blocks on the very thing it was
+			// waiting for, and a suite that hangs reports nothing - which is how a missing drain looked: no failing
+			// test, only a wall clock.
+			ReportDriveTimeout(waitingFor, patience);
+		}
+
 		return isDone();
 	}
+
+	/// @brief Report that a drive-until wait gave up, naming what it was waiting for and how long it tried.
+	/// @details Separate from the template so the reporting does not drag the engine header into every translation unit
+	/// that
+	///          drives a wait.
+	void ReportDriveTimeout(const char* waitingFor, std::chrono::milliseconds patience) noexcept;
 
 	void RunBudgetWindowPass() noexcept;
 
@@ -330,12 +347,16 @@ public:
 	void Enqueue(TIndex streamIndex, const WorkItem& task) noexcept;
 
 	/// @brief Queue a whole task on one stream, which is the customer's entry point for single-shot work.
-	/// @details The task declares its own join and the engine builds the item that fills it, which is the only order in which
-	///          those two facts can be stated without the caller having to know anything about items. A customer that builds an
-	///          item itself has reached inside the engine for a handle it should not hold, and this is the call it wants instead.
+	/// @details The task declares its own join and the engine builds the item that fills it, which is the only order in
+	/// which
+	///          those two facts can be stated without the caller having to know anything about items. A customer that
+	///          builds an item itself has reached inside the engine for a handle it should not hold, and this is the
+	///          call it wants instead.
 	/// @param streamIndex Which stream takes the work. An index outside the streams asserts, as with Enqueue.
-	/// @param task The task to run. It must have been issued by the registry and must not already declare a join - this declares
-	///             one of exactly one item, and calling it twice on the same task would overwrite the first declaration.
+	/// @param task The task to run. It must have been issued by the registry and must not already declare a join - this
+	/// declares
+	///             one of exactly one item, and calling it twice on the same task would overwrite the first
+	///             declaration.
 	/// @param Priority of the item, 0 being the least urgent.
 	void EnqueueTask(TIndex streamIndex, Task& task, uint8_t priority = 0) noexcept;
 
@@ -370,7 +391,8 @@ public:
 	}
 
 	/// @brief Whether work is waiting to be run on the engine loop, which is work posted to the base stream.
-	/// @note Safe to call before the streams exist: it says none. The engine loop uses it to decide whether a last frame is owed.
+	/// @note Safe to call before the streams exist: it says none. The engine loop uses it to decide whether a last
+	/// frame is owed.
 	[[nodiscard]] bool HasPendingPostedWork() noexcept
 	{
 		return HasStream(GetBaseTaskStreamIndex()) && GetStream(GetBaseTaskStreamIndex()).HasPostedTasks();

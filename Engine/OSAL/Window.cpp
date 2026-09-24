@@ -120,10 +120,16 @@ void WindowTest::Prepare()
 			windowPromise.set_value(nullptr);
 		}, &userData);
 
-				taskSystem.DriveUntil([&windowFuture]()
+				const bool isReady = taskSystem.DriveUntil("window creation", [&windowFuture]()
 		{
 			return windowFuture.wait_for(std::chrono::seconds::zero()) == std::future_status::ready;
 		});
+
+		if (!isReady)
+		{
+			ls << "The engine loop never ran the posted window creation, so there is no window to examine." << lferr;
+			return;
+		}
 
 		(void) windowFuture.get();
 	});
@@ -228,10 +234,16 @@ void WindowTest::Prepare()
 			windowPromise.set_value(nullptr);
 		}, &userData);
 
-				taskSystem.DriveUntil([&windowFuture]()
+				const bool isReady = taskSystem.DriveUntil("window creation", [&windowFuture]()
 		{
 			return windowFuture.wait_for(std::chrono::seconds::zero()) == std::future_status::ready;
 		});
+
+		if (!isReady)
+		{
+			ls << "The engine loop never ran the posted window creation, so there is no window to examine." << lferr;
+			return;
+		}
 
 		(void) windowFuture.get();
 	});
@@ -335,10 +347,16 @@ void WindowTest::Prepare()
 			windowPromise.set_value(nullptr);
 		}, &userData);
 
-				taskSystem.DriveUntil([&windowFuture]()
+				const bool isReady = taskSystem.DriveUntil("window creation", [&windowFuture]()
 		{
 			return windowFuture.wait_for(std::chrono::seconds::zero()) == std::future_status::ready;
 		});
+
+		if (!isReady)
+		{
+			ls << "The engine loop never ran the posted window creation, so there is no window to examine." << lferr;
+			return;
+		}
 
 		(void) windowFuture.get();
 	});
@@ -444,10 +462,16 @@ void WindowTest::Prepare()
 			windowPromise.set_value(nullptr);
 		}, &userData);
 
-				taskSystem.DriveUntil([&windowFuture]()
+				const bool isReady = taskSystem.DriveUntil("window creation", [&windowFuture]()
 		{
 			return windowFuture.wait_for(std::chrono::seconds::zero()) == std::future_status::ready;
 		});
+
+		if (!isReady)
+		{
+			ls << "The engine loop never ran the posted window creation, so there is no window to examine." << lferr;
+			return;
+		}
 
 		(void) windowFuture.get();
 	});
@@ -545,10 +569,16 @@ void WindowTest::Prepare()
 			windowPromise.set_value(nullptr);
 		}, &userData);
 
-				taskSystem.DriveUntil([&windowFuture]()
+				const bool isReady = taskSystem.DriveUntil("window creation", [&windowFuture]()
 		{
 			return windowFuture.wait_for(std::chrono::seconds::zero()) == std::future_status::ready;
 		});
+
+		if (!isReady)
+		{
+			ls << "The engine loop never ran the posted window creation, so there is no window to examine." << lferr;
+			return;
+		}
 
 		(void) windowFuture.get();
 	});
@@ -646,10 +676,16 @@ void WindowTest::Prepare()
 			windowPromise.set_value(nullptr);
 		}, &userData);
 
-				taskSystem.DriveUntil([&windowFuture]()
+				const bool isReady = taskSystem.DriveUntil("window creation", [&windowFuture]()
 		{
 			return windowFuture.wait_for(std::chrono::seconds::zero()) == std::future_status::ready;
 		});
+
+		if (!isReady)
+		{
+			ls << "The engine loop never ran the posted window creation, so there is no window to examine." << lferr;
+			return;
+		}
 
 		(void) windowFuture.get();
 	});
