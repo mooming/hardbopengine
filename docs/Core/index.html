@@ -313,7 +313,40 @@
   <a href="../TaskSystemRedesign.md">docs/TaskSystemRedesign.md</a>.
 </div>
 
-<h2 id="rangedtask">WorkItem (<code>Engine/Core/WorkItem.h</code>)</h2>
+<h2 id="taskprovider">TaskProvider (<code>Engine/Core/TaskProvider.h</code>)</h2>
+
+<h3>Class description</h3>
+<p>The pull interface a stream uses to manufacture work for itself. A stream that owns a provider asks it for an item when it
+would otherwise sit idle, instead of every producer having to know which stream wants work. Derive from it, implement the work
+generation, register the derived object with a stream; the engine owns when it is asked, and it asks only while the stream's
+allowance permits taking work - a spent stream does not get to manufacture work it has no right to run, which is asserted in
+Debug and Dev and counted in every build by <code>GetProviderAskWhileSpentCount</code>.</p>
+
+<h3>Template parameters</h3>
+<p>None.</p>
+
+<h3>Class properties</h3>
+<p>None that a derived class sets. Whether a provider is asked at all is the owning stream's configuration, not the provider's.</p>
+
+<h3>Class methods</h3>
+<table>
+  <tr><th>Method</th><th>Purpose</th></tr>
+  <tr><td><code>GenerateTasks</code> (implemented by the derived class)</td><td>Produce the next item, or report that there is
+      nothing to produce. Runs on the owning stream's thread with its queue lock held: it must not block, must not allocate
+      freely, and must not touch another stream's queues.</td></tr>
+  <tr><td><code>MakeWholeItem</code> (protected static)</td><td>Build a queue item covering a whole task - the sanctioned way
+      for a derived provider to hand work to the engine. <code>Task::GenerateSubTask</code> is private; the provider base is the
+      friend and derived classes inherit this instead, so the door stays closed to everyone else.</td></tr>
+</table>
+
+<h3>Non-member helper functions</h3>
+<p>None. Code that is not a provider and wants a task to run uses <code>TaskSystem::EnqueueTask</code> rather than building an
+item.</p>
+
+<h2 id="workitem">WorkItem (<code>Engine/Core/WorkItem.h</code>)</h2>
+<p class="muted">The queue item type: what a stream holds and pops, 56 bytes, engine-internal. Its construction is not a public
+operation because an item built outside the engine bypasses the registry's bookkeeping - a provider builds one through
+<code>MakeWholeItem</code>, a plain caller uses <code>TaskSystem::EnqueueTask</code>.</p>
 
 <h3>Class description</h3>
 <p>A task carrying a specific index range <code>[start, end)</code>, which is the unit of parallel splitting.</p>
