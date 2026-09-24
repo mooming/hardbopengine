@@ -1,5 +1,32 @@
 # Journal
 
+## 2026-09-24 21:35 — I recorded a hypothesis last entry that the code contradicts; correcting it here
+
+HEAD `f1567d6`, tree clean. Reading the drain end-to-end rather than at one branch, the gate map is now exact:
+
+| Line | Gate | Which allowance book it consults |
+|---|---|---|
+| `TaskStream.cpp:410` | `drainPolicy.ChooseLane(...)` — called unconditionally every pass | the policy's own per-lane `fifoUsed`/`priorityUsed` |
+| `TaskStream.cpp:434` | provider gate `!laneIsEmpty \|\| isDrainingForShutdown \|\| !budget.CanTakeWork()` | `CPUBudget` |
+| `TaskStream.cpp:465` | general-queue pickup `if (budget.CanTakeWork())` | `CPUBudget` |
+| `TaskStream.cpp:499` | `workItem->Run(*task)` | — |
+
+**My "taken and put back" hypothesis is wrong.** A lane item is always run: the pop at 414/419 leads to `Run` at 499, and the
+only re-add sites (530/534) are for a resumable item that did not finish. My burn items finish, so no re-add applies. I write
+this because the previous entry asserted that shape as the answer, and an unexamined confident entry is the thing that misleads
+the next session.
+
+**A real finding from the same grep.** `TaskStream::MayTakeNewWork()` is consulted at four places in the tree — all four are
+unit-test bodies. **Production never consults it**; the engine's own decisions come from the policy book at 410 and `CPUBudget`
+at 434/465. That is defensible as a design (the method answers a caller's question, and the engine independently gates itself),
+but the header should say so plainly, because "may I start more work?" reads like the engine's own gate and is not. That belongs
+to you as an owner decision alongside the two-allowance-books question.
+
+**The one remaining contradiction, and how to close it without inference.** Pass delta 27 with 3 items frozen in lanes implies
+`ChooseLane` returned no lane on most passes; yet the counter on exactly that condition read zero. Both cannot be true, and the
+unverified link is my own: I have never printed pending, pass delta and the decline counter from *one* build of *one* run. Next
+step is that single measurement — no reasoning attached, three numbers, one binary.
+
 ## 2026-09-24 21:10 — the pass-count probe settles what a spent stream does, and voids my model of it
 
 HEAD `823d60f`, tree clean, 59 collections green in Debug/Dev/Release. One temporary probe, measured, removed.

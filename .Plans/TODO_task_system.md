@@ -108,6 +108,19 @@ mutant revert deleted it and I committed afterwards, writing a message about cod
 in `a166b67` now, verified with `git show HEAD:` rather than in the working tree, and re-proven against the gate mutant
 (exit 133, names Worker1). **Rule: commit before mutating, never after.**
 
+**Correction to the paragraph below: the "taken and put back" hypothesis is wrong.** The pop at `TaskStream.cpp:414/419` leads
+straight to `Run` at 499; the only re-adds (530/534) are for resumable items that did not finish, and the probe's items finish.
+Gate map: `410` `ChooseLane` (policy's own `fifoUsed`/`priorityUsed`, called unconditionally every pass), `434` provider gate
+(`CPUBudget`), `465` general-queue pickup (`CPUBudget`), `499` run.
+
+**Side finding, wants an owner decision:** `TaskStream::MayTakeNewWork()` has exactly four callers in the tree and **all four are
+unit-test bodies** — production never consults it, so the name reads like the engine's own gate while the engine actually gates on
+the policy book and `CPUBudget` alone. Either the header says so explicitly or the method changes shape.
+
+**Closing contradiction, one measurement, no inference:** pass delta 27 with 3 items frozen implies `ChooseLane` returned no lane,
+yet the counter on that condition read zero. Print pending + pass delta + decline counter from ONE build of ONE run — never again
+compare numbers taken from different builds.
+
 **Measured, and it voided the model.** Probe output: *"dispatched 4, pending 4 -> 3, pass delta over 500ms = 27, accumulated
 CPU 220648us"*; after lifting the allowance: *"pending 1, pass delta 2"*. So (a) a throttled stream **does** keep cycling — 27
 passes in 500ms, the 10ms `WaitForWork` cadence — and every conclusion drawn from "a spent stream takes no passes" is void;
