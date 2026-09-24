@@ -96,11 +96,23 @@ not resolve from `TaskStream.h`. Nothing calls `RequestStop`/`IsRunning` from ou
 forwarding was needed.
 
 ### N2 — Test the drain's budget gate (todo #10) — **do this next**
-Design settled and proven race-free: the provider reads `MayTakeNewWork()` inside `Produce`, which runs on
-the draining stream's own thread — the only legal place to read the unsynchronised allowance. The earlier
-attempt reported `Result [PASS]` and then hung at shutdown; that hang was the shutdown defect, now fixed, so
-retry it as written. **Acceptance:** the mutant replacing `if (!laneIsEmpty || !budget.CanTakeWork())` with
-`if (!laneIsEmpty)` must die by a named test — it survives all 59 today.
+Design revised — **and the earlier version of this item was flaky by construction.** `CPUBudget.h` says an allowance of
+**zero means unlimited**, so no value expresses "permanently spent"; a tiny allowance plus accumulated charge does get
+spent, but the accumulation resets when the accounting window advances, so a test asserting "the provider was never
+asked" races the window and can pass for the wrong reason.
+
+**Test the invariant instead**, which needs no timing luck: at the drain gate, on the owner thread, record the pair
+(was the budget the reason for refusing, did the drain ask the provider) and assert that **no ask ever happened while
+the budget was spent**. Give the stream a small allowance and a provider whose `Produce` burns a few ms of CPU so the
+gate is genuinely crossed — the number of passes is irrelevant because the assertion is about the pair. Keep the in-band
+sentinel the earlier tests learned to require: assert the refusal counter is **non-zero**, or the test passes vacuously on
+a stream that was never budget-gated.
+
+**Acceptance, still the point:** the mutant replacing `if (!laneIsEmpty || !budget.CanTakeWork())` with `if (!laneIsEmpty)`
+must die by a named test — it survives all 59 collections today. Implementation: the gate is in `TaskStream.cpp`'s provider
+drain; the counters are relaxed atomics with `TaskStream` accessors (useful as diagnostics regardless). Copy the stream setup
+from the `TaskSystemTest` case that enqueues a busy task on a worker and reads `GetAccumulatedCPUTime` — same stream
+setup, same measurement idiom.
 
 ### N3 — Guardrails as executable tests (todo #7, plan D2–D5)
 Start with D2 (cross-stream isolation: communicate only via outcome delivery) — independent, no new seams.
