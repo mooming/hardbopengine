@@ -436,6 +436,14 @@ bool TaskStream::Update() noexcept
 					continue;
 				}
 
+				// The invariant, stated where it can be checked: a provider is asked only while this stream's allowance permits
+				// taking work. Asking while spent is the failure this gate exists to prevent - a spent stream would otherwise keep
+				// manufacturing work it has no right to run. Reading the budget a second time here is legal for one reason: this is
+				// the owning thread, the only thread ever allowed to read that unsynchronised field.
+				Assert(budget.CanTakeWork(), "Stream ", name,
+						" was asked for provider work while its allowance was spent. The drain gate is what keeps a spent stream "
+						"from manufacturing work, so a provider ask here means that gate stopped consulting the budget.");
+
 				if (auto produced = DrainProvidersLocked(probe); produced.has_value())
 				{
 					workItem = produced;
