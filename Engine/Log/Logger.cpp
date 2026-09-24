@@ -350,14 +350,29 @@ void Logger::StopTask(TaskSystem& taskSys)
 {
 	isRunning.store(false, std::memory_order_release);
 
-	auto* drainTask = taskSys.FindTask(taskID);
-	if (drainTask == nullptr || drainTask->HasDone())
+	// The drain work is one item in the IO stream's queue, so an empty queue is the only observable that says the promise has
+	// been kept. Waiting on the task instead spun on a counter that cannot distinguish finished from never-dispatched, and spun
+	// forever when no executor was left to run it - a hang dressed as a wait. On give-up the task is deliberately not released:
+	// freeing a task another thread may still run is a use-after-free, not a shutdown.
+	auto& drainStream = taskSys.GetIOTaskStream();
+	const auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(1000);
+
+	while (drainStream.CountPendingItems() > 0 && std::chrono::steady_clock::now() < deadline)
 	{
-		taskSys.ReleaseTask(taskID);
+		std::this_thread::sleep_for(std::chrono::milliseconds(1));
+	}
+
+	if (drainStream.CountPendingItems() > 0)
+	{
+		AddLog(GetName(), ELogLevel::Error, [](auto& logStream)
+		{
+			logStream << "Logger gave up waiting for its drain task and left it alive: the IO stream still held work after "
+					"1000ms. Releasing it here would free a task another thread might still run.";
+		});
+
 		return;
 	}
 
-	drainTask->Wait();
 	taskSys.ReleaseTask(taskID);
 	threadID = std::thread::id();
 
