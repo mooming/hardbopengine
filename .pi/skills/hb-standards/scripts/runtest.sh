@@ -21,7 +21,19 @@ exit ($status >> 8);
 ' "$LIMIT" "$BIN" 2>&1 | tee "$LOG"
 code=${PIPESTATUS[0]}
 
-echo "runner exit=$code  $(grep -a 'collections passed' "$LOG" | tail -1)"
+summary=$(grep -a 'collections passed' "$LOG" | tail -1)
+count=$(printf '%s' "$summary" | sed -n 's/.*all \([0-9][0-9]*\) collections.*/\1/p')
+passLines=$(grep -ac 'Result \[PASS\]' "$LOG")
+
+# An exit code of 0 only means the process stopped cleanly. A run that executed no test collection, or
+# printed no passing result, proves nothing however cleanly it stopped, and "all 0 collections passed" is
+# grammatically a pass - so it has to be refused here rather than trusted downstream.
+if [ "$code" -eq 0 ] && { [ -z "$count" ] || [ "$count" -eq 0 ] || [ "$passLines" -eq 0 ]; }; then
+	echo "runner REFUSED: exit=0 but nothing was proven (summary=\"$summary\" passingResults=$passLines)" >&2
+	code=98
+fi
+
+echo "runner exit=$code  $summary"
 
 # A binary configured without -test compiles no test body at all, prints advice about exactly that, and exits 1.
 # Any verdict taken from it - including "it exited quickly" - is vacuous. This cost several false green reports.

@@ -736,6 +736,9 @@ void TaskSystem::BuildStreams()
 #include "../Engine/Engine.h"
 #include "OSAL/Intrinsic.h"
 #include "Test/TestCollection.h"
+#include <mutex>
+#include <vector>
+#include <algorithm>
 
 namespace hbe
 {
@@ -901,6 +904,39 @@ bool WaitFor(const TPredicate& holds, std::chrono::milliseconds patience) noexce
 }
 
 } // namespace
+
+namespace
+{
+	struct IsolationRecorder
+	{
+		std::atomic<int> runs{0};
+		std::mutex idLock;
+		std::vector<std::thread::id> ids;
+
+		void Reset()
+		{
+			runs.store(0, std::memory_order_relaxed);
+			std::lock_guard lock(idLock);
+			ids.clear();
+		}
+	};
+
+	IsolationRecorder isolationRecords[2];
+
+	std::size_t RecordIsolationRun(void* userData, std::size_t begin, std::size_t end)
+	{
+		auto* record = static_cast<IsolationRecorder*>(userData);
+
+		{
+			std::lock_guard lock(record->idLock);
+			record->ids.push_back(std::this_thread::get_id());
+		}
+
+		record->runs.fetch_add(1, std::memory_order_relaxed);
+
+		return end > begin ? end - begin : 1;
+	}
+}
 
 void TaskSystemTest::Prepare()
 {
@@ -1379,6 +1415,125 @@ void TaskSystemTest::Prepare()
 		for (int index = 0; index < dispatchedCount; ++index)
 		{
 			taskSys.ReleaseTask(ids[index]);
+		}
+	});
+
+	AddTest("Work queued on one stream is never run by another", [this](TLogOut& ls)
+	{
+		auto& taskSys = Engine::Get().GetTaskSystem();
+
+		unsigned firstIndex = 0;
+		while (taskSys.HasStream(firstIndex + 1))
+		{
+			++firstIndex;
+		}
+
+		const unsigned secondIndex = firstIndex > TaskSystem::GetIOTaskStreamIndex() + 1 ? firstIndex - 1 : 0;
+
+		if (secondIndex <= TaskSystem::GetIOTaskStreamIndex())
+		{
+			ls << "Two worker streams are needed to observe isolation and the tree has fewer." << lferr;
+			return;
+		}
+
+		auto& firstStream = taskSys.GetStream(firstIndex);
+		auto& secondStream = taskSys.GetStream(secondIndex);
+
+		isolationRecords[0].Reset();
+		isolationRecords[1].Reset();
+
+		std::array<TaskID, 3> firstIds{};
+		std::array<TaskID, 3> secondIds{};
+		int firstCount = 0;
+		int secondCount = 0;
+
+		for (int item = 0; item < 3; ++item)
+		{
+			const TaskID id = taskSys.CreateTask("IsolationFirst", RecordIsolationRun, &isolationRecords[0]);
+
+			if (!id.IsNull())
+			{
+				if (auto* task = taskSys.FindTask(id); task != nullptr)
+				{
+					taskSys.EnqueueTask(firstIndex, *task);
+					firstIds[firstCount] = id;
+					++firstCount;
+				}
+			}
+		}
+
+		for (int item = 0; item < 3; ++item)
+		{
+			const TaskID id = taskSys.CreateTask("IsolationSecond", RecordIsolationRun, &isolationRecords[1]);
+
+			if (!id.IsNull())
+			{
+				if (auto* task = taskSys.FindTask(id); task != nullptr)
+				{
+					taskSys.EnqueueTask(secondIndex, *task);
+					secondIds[secondCount] = id;
+					++secondCount;
+				}
+			}
+		}
+
+		const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(15);
+
+		while ((firstStream.CountPendingItems() > 0 || secondStream.CountPendingItems() > 0)
+			&& std::chrono::steady_clock::now() < deadline)
+		{
+			std::this_thread::sleep_for(std::chrono::milliseconds(2));
+		}
+
+		const auto firstRuns = isolationRecords[0].runs.load(std::memory_order_relaxed);
+		const auto secondRuns = isolationRecords[1].runs.load(std::memory_order_relaxed);
+
+		auto singleThread = [](IsolationRecorder& record)
+		{
+			std::lock_guard lock(record.idLock);
+			return record.ids.empty() ? false
+									  : std::all_of(record.ids.begin(), record.ids.end(),
+													[first = record.ids.front()](std::thread::id id) { return id == first; });
+		};
+
+		const bool firstSingleThread = singleThread(isolationRecords[0]);
+		const bool secondSingleThread = singleThread(isolationRecords[1]);
+
+		const auto firstThread = isolationRecords[0].ids.empty() ? std::thread::id{} : isolationRecords[0].ids.front();
+		const auto secondThread = isolationRecords[1].ids.empty() ? std::thread::id{} : isolationRecords[1].ids.front();
+
+		ls << firstStream.GetName().c_str() << " ran " << firstRuns << " of " << firstCount << " on one thread: "
+		   << firstSingleThread << ". " << secondStream.GetName().c_str() << " ran " << secondRuns << " of " << secondCount
+		   << " on one thread: " << secondSingleThread << ". Distinct: " << (firstThread != secondThread) << "." << lf;
+
+		if (firstCount < 3 || secondCount < 3)
+		{
+			ls << "Fewer than three tasks reached each stream, so too little was dispatched to conclude anything." << lferr;
+		}
+
+		if (firstRuns != firstCount || secondRuns != secondCount)
+		{
+			ls << "Work went missing: a queue reported empty with items unaccounted for." << lferr;
+		}
+
+		if (!firstSingleThread || !secondSingleThread)
+		{
+			ls << "A stream's work ran on more than one thread, so lane work is not confined to the stream holding it." << lferr;
+		}
+
+		if (firstThread == secondThread)
+		{
+			ls << "Both streams ran their work on the same thread, so one of them did not own any." << lferr;
+		}
+
+		for (int index = 0; index < firstCount; ++index)
+		{
+			taskSys.ReleaseTask(firstIds[index]);
+		}
+
+		for (int index = 0; index < secondCount; ++index)
+		{
+			taskSys.ReleaseTask(secondIds[index]);
 		}
 	});
 
