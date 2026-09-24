@@ -1,5 +1,32 @@
 # Journal
 
+## 2026-09-24 20:05 — a claim about behaviour, checked against a binary that contained it once
+
+HEAD `a166b67`, tree clean, 59 collections green in Debug/Dev/Release.
+
+**I reported an assert as landed that was not in the commit.** `dc9a400`'s message describes the budget-gate assert,
+quotes the trap it produced, and says it landed. The mutant run that produced that genuine trap held the assert as
+*uncommitted* working-tree content; my `git checkout` to undo the mutant deleted the assert with it, and the commit I
+wrote afterwards contained only the `hang.sh` hardening. So the proof was real and the code it described was gone — the
+worst kind of green: a behaviour claim verified against a binary that happened to contain that behaviour once. The assert
+is now actually committed (`a166b67`), **verified in `git show HEAD:` rather than in the working tree**, and re-proven
+against the same mutant (exit 133, "Stream Worker1 was asked for provider work while its allowance was spent"), with the
+mutation reverted *onto* the commit that contains it. Process rule, learned expensively: **commit before mutating, never
+after** — a proof you cannot restore is not a proof.
+
+**Then my instrumentation turned out to be in the wrong place, found only by measuring.** A control test with no budget
+at all: *"6 of 6 ran; 0 item(s) still queued"* — the queue-and-run path is sound, so the old "1 of 6" was the budget path,
+not dispatch. A throttled test next: *"Worker1 throttled at 1ms: 0 pass(es) declined a lane that held work, 2 item(s) still
+queued, 0 provider ask(s) while spent."* Work demonstrably waited while the allowance was spent, and the counter I added to
+observe exactly that **never fired** — the decline happens inside `StreamDrainPolicy`'s own allowance accounting, not at the
+call site where it looked like the decision was made. Both the test and the two speculative counters were reverted rather
+than committed: the test correctly reported its own vacuity, and a guardrail test that observes nothing is worse than none.
+
+Third wrong location on this one item, and the pattern is consistent: **I instrumented where I reasoned the decision must
+be, instead of reading where it is.** Next session, read `StreamDrainPolicy::ChooseLane` and its allowance book first, then
+put the counter where work is actually declined, and the acceptance stays what it has been since the start — the gate mutant
+must produce a named failure in **Release**, where asserts are compiled out.
+
 ## 2026-09-24 19:20 — a spent stream observes nothing, and nothing observes it: why the budget-gate test is a production question
 
 HEAD `0e4c3af` still, tree clean, 59 collections green in Debug/Dev/Release. Third attempt at todo #17, third revert,

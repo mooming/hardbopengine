@@ -103,6 +103,17 @@ for provider work while its allowance was spent"* inside the existing `TaskSyste
 charges a configured budget"** — a named test that was already in the suite, exit 133. Without the
 mutant: 59 collections, exit 0, all three configurations.
 
+**Correction that outranks everything in this section:** the assert `dc9a400` claimed was **not in that commit** — my
+mutant revert deleted it and I committed afterwards, writing a message about code that was gone. It is genuinely committed
+in `a166b67` now, verified with `git show HEAD:` rather than in the working tree, and re-proven against the gate mutant
+(exit 133, names Worker1). **Rule: commit before mutating, never after.**
+
+**Instrumentation location, measured:** a no-budget control ran **6 of 6** with nothing left queued, so dispatch is sound
+and the old 1-of-6 was the budget path. A throttled run then reported *"0 pass(es) declined a lane that held work, 2 item(s)
+still queued, 0 provider ask(s) while spent"* — work waited while spent, and my new decline counter never fired, so the
+decline is inside `StreamDrainPolicy`'s own allowance accounting, not at the call site I instrumented. Test and speculative
+counters reverted; **read `StreamDrainPolicy::ChooseLane` before instrumenting again.**
+
 **Third attempt, and the real mechanism, measured:** a worker whose allowance is spent **stops taking passes**. Test output:
 *"Worker1: 1 of 6 task run(s), registry refused 0, 0 run(s) observed after the allowance was spent, 0 provider ask(s), 0 of
 those while spent."* No passes means no lane draining, no asks, and — the crash — a deferred `DetachAll` that never completes,
