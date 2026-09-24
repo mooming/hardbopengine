@@ -1,5 +1,33 @@
 # Journal
 
+## 2026-09-25 01:10 — the gate had a third hole: a failed build reported the last good verdict
+
+HEAD `eb21617`, tree clean, 59 collections green in Debug/Dev/Release through the hardened runner.
+
+**What happened.** I inserted a deliberate compile break to test something else; `build.sh` exited 1; `runtest.sh` carried on,
+ran the **previous** binary, and printed `runner exit=0  EngineTest: all 59 collections passed`. A failed build reporting the last
+green is indistinguishable from success — and since I had been chaining `check.sh --apply` (whose build gate drops `-test`) with
+`build.sh -test` all day, this was a live risk for every verdict I have reported today.
+
+**Fix, and why the first attempt was wrong.** My first guard compared binary mtime against source mtimes; it had the right
+instinct and the wrong signal — it refused to certify *anything* while another agent's newer files sat in the tree. `runtest.sh`
+now builds the target itself for the configuration it is about to certify and refuses with exit **90** if that build fails:
+staleness becomes impossible rather than detectable. Proven both directions, not asserted — deliberate break → *"the build failed,
+so no verdict exists"* + first error; revert → exit 0, 59 collections.
+
+That is the third hole found in my own gate today: a non-test binary (99), a run with no collections (98), a stale/unbuilt binary
+(90). All three were found because something **failed**, never because a green was interrogated. Standing consequence: a green I
+cannot trace to a build I watched succeed is not a green.
+
+**D2's acceptance criterion changed, honestly.** Lane isolation is structural — an item lives in the lane of the stream that pops
+it — so no cheap edit can make work migrate, which is precisely why the general-queue mutant collapsed the suite instead of failing
+this test. So the mutant requirement is replaced by an instrument check: the test records the dispatching thread and fails if work
+ran on it, declaring its own result silence rather than evidence. Measured everywhere: control 1, Worker10 3 of 3 on one thread,
+Worker9 3 of 3 on one thread.
+
+**Third recurrence of the same self-inflicted loss:** a `git checkout` to undo an experiment deleted this control once already. The
+order that prevents it — commit, then experiment, then revert onto the commit — is now in the commit message, not just here.
+
 ## 2026-09-25 00:25 — D2 landed, and it cost me a second look at my own gate script
 
 HEAD `34de7e6`, tree clean, `check.sh` 0 mechanical violations and build gate 12/12, 59 collections green in Debug/Dev/Release.
