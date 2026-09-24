@@ -1,95 +1,102 @@
-# TODO — task system, including the half-finished change in the working tree
+# TODO — task system, current state and what a fresh session should do next
 
-**Read this before anything else in this directory:** group **A** landed and is gated (Debug/Dev/Release, 59 collections,
-0 mechanical violations), but **nothing yet proves the drain delivers work** - that is group B, and until it lands the drain
-is implemented-and-inert rather than implemented-and-proven. The only production user is `Examples/WindowExample`. Gate for every item: `./build.sh Applications/EngineTest -test -debug|dev|release`, then
-`build/gate/runtest.sh <Config> [seconds]` and require the line `EngineTest: all 59 collections passed` — exit 0 alone is
-not a pass.
+**Read this first.** Everything below is verified against a real run unless a line says otherwise.
+HEAD is `4655298`; nothing has been pushed. The suite is **59 collections**, green in **Debug, Dev and
+Release** at HEAD, with `check.sh` at **0 mechanical violations / build gate PASS 12/12**.
 
-| Group | What | Tree state |
-|---|---|---|
-| **A** | Provider lane drain and detach (R35, R37, R38, R39, R40) | **done and gated**; unproven (see B) |
-| **B** | Verification owed on A | blocked by A |
-| **C** | Deletions the new model now permits | independent of A |
-| **D** | Remaining plan items (B3d, B6, B8, B9) | ordered, some blocked |
-| **E** | Recorded and deliberately not done | — |
+## Gate — the only commands that count
 
----
+```bash
+./build.sh Applications/EngineTest -test -debug -dev -release          # must be -test, see trap 1
+.pi/skills/hb-standards/scripts/hang.sh Debug 240                      # prints: FINISHED exit=0 : ... all 59 collections passed
+.pi/skills/hb-standards/scripts/hang.sh Dev 240
+.pi/skills/hb-standards/scripts/hang.sh Release 240
+bash .pi/skills/hb-standards/scripts/check.sh                          # mechanical violations + 12-target build gate
+```
 
-## A. Finish the in-flight change (11 items)
-
-Already written and compiling-clean in isolation: `TaskStream.h/.cpp` — per-lane provider lists (`MaxProvidersPerLane = 8`),
-`AttachProvider` / `DetachProvider` / `IsProviderAttached`, `DrainProvidersLocked`, and the drain wired into the lane path
-(asks only an empty lane, only when `budget.CanTakeWork()`, `CommitTake` on the lane it fed). `TaskProvider.h` — constructor
-takes `TaskSystem&`, `~TaskProvider` declared, `Produce` now `std::optional<WorkItem>`, `DetachFrom` / `DetachAll`, private
-`RegisterOnStream` / `UnregisterFromStream`, and the `.cpp` implementations of all of those.
-
-| # | Task | Note |
-|---|---|---|
-| A1 | Forward-declare `class TaskSystem;` in `TaskProvider.h` | Anchor on `class TaskProvider` — `namespace hbe` occurs **twice** (the `__UNIT_TEST__` block), which is what aborted the last edit |
-| A2 | `RecordingProvider`: override `std::optional<WorkItem> Produce(...)`, add `std::optional<WorkItem> itemToHand{}`, keep `produceResult == false → nullopt` | Its `using TaskProvider::TaskProvider;` inherits the new 2-arg ctor |
-| A3 | Give `TaskProviderTest::Prepare()` a `auto& taskSystem = Engine::Get().GetTaskSystem();` and pass it to all 8 `RecordingProvider` constructions (7 named `provider`, one `other`) | Regex used last time was correct but the file was never written because the script died at A1 |
-| A4 | Add `#include "Engine/Engine.h"` to `TaskProvider.cpp` | Mirrors `TaskStream.cpp:11` |
-| A5 | `Examples/WindowExample/Main.cpp`: construct with `(name, taskSystem)`, return `std::optional<WorkItem>` from `Produce`, drop its own `Enqueue` call | The whole point: the stream now drains it, so the interim `PumpProvider` call goes away |
-| A6 | Confirm the three existing provider probes still mean what they claim | Capacity probe attaches 64 invented indices — all `HasStream` false, so all recorded and none registered: correct by R38, but the probe must not start asserting registration |
-| A7 | `~TaskProvider`'s assert | **proven in a real run**: the example destroyed a still-attached provider and the engine trapped (exit 133) with the assert naming the provider; after adding `DetachAll` the app exits 0. Not provable *inside* the suite (it aborts the process), but it was observed firing outside it | ~~not proven~~ **proven in a real run**: it aborts the process, so a test that provokes it kills the run. It was observed firing during development (a probe that registered on a real stream and never detached), and that is the honest extent of the evidence. What changed instead: the assert counts **registrations**, not recorded attachments, because an attachment naming a stream the engine does not have dangles nothing |
-| A8 | Verify no lock-order inversion: `Produce` runs holding `queueLock` and may call `TaskSystem::CreateTask` (registry lock) | Documented as the expected pattern in `Produce`'s contract; check nothing takes registry-then-stream nested, which would invert it |
-| A9 | Three-configuration build + run, `check.sh --staged` | 59 collections, 0 mechanical violations |
-| A10 | Record **R40** in `docs/TaskSystemRedesign.md`: the queue lock is held across `Produce`, so detach is a lock acquisition and no drain-in-flight counter exists | Supersedes R37's "waits for a drain already in flight" mechanism, not its guarantee; also amend R39's `false` wording to `nullopt`, and R38's "when the engine has a task system" to "the task system it was constructed with" |
-| A11 | Commit as one commit | Steps 1–5 of `PLAN_queue_item_type.md` §8 are one unit: a detach before the drain would have a wait whose body can never run |
-
-## B. Verification owed on A (6 items — each test names the gate it proves)
-
-| # | Test | Gate | Trap that makes it pass falsely |
-|---|---|---|---|
-| B1 | A provider's item **runs** on the stream that drained it | the drain exists and routes by lane | asserting "the provider was called" passes while nothing is ever run |
-| B2 | A stream whose allowance is spent never asks | the drain is budget-gated, not merely queue-gated | must not consume the shared general queue |
-| B3 | `nullopt` is asked at most once per lane per pass | `nullopt` ends the drain instead of spinning | needs a pass boundary, not a timeout |
-| B4 | Attached to both lanes → asked per lane | R36's per-(stream,lane) rule is real | — |
-| B5 | `DetachAll` cannot return while a `Produce` is inside | R37/R40's guarantee against use-after-free | a `Produce` that returns instantly proves nothing — block inside it on a flag the test controls |
-| B6 | An item naming a released task is dropped with the R25 warning | providers do not bypass liveness | needs the in-band sentinel on the same lane, not a sleep |
-
-Then mutation-prove each: substitution **changed the file**, that file **owns the code**, build **relinked** (0 errors + new
-binary timestamp). Two false verdicts this session came from skipping one of those three.
-
----
-
-## C. Deletions the new model now permits (3 items)
-
-| # | Task | Detail |
-|---|---|---|
-| C1 | Remove `Task::Wait`, `Task::BusyWait`, public `HasDone` | Last producer-side waiters are `Logger.cpp:266` (`HasDone`) and `:272` (`Wait`); give Logger the "queue this task whole on a named stream" entry point that `DispatchSuccessor` already performs inline, then rewrite ~15 `#ifdef __UNIT_TEST__` sites to count runs or use a sentinel. Do **not** keep `HasDone` public "because tests use it" |
-| C2 | Demote `Task::GenerateSubTask` to an engine-internal helper | It is the range protocol; users get `ParallelFor`, providers get it via friendship until a narrower surface exists |
-| C3 | Prove or retire the resume test's own assertions | `An item that returns part of its range resumes…` passes, but neither caught mutant (`progress dropped`, `strict HasFinished`) fails it — both are caught by `Bagel Problem`. Candidates for a mutant only it kills: `GenerateSubTask` setting `current` to `end`, or `Run` passing `start` instead of `current` |
-
-## D. Remaining plan items (ordered)
-
-| # | Item | Blocked by | Scope |
-|---|---|---|---|
-| D1 | **B3d** — max age and abandonment: steady-clock stamp at enqueue, evaluated in the existing sweep, per-task abandon-or-escalate | C1 (the abandoned-child rule needs no `Wait`) | Also decides G5's open abandoned-child question; deadline must read engine clock, not wall clock |
-| D2 | **B8 guardrail 4** — cross-stream isolation: communicate only via outcome delivery | — | Independent, doable now |
-| D3 | **B8 guardrail 3** — enqueue is SPSC lock-free or mutex, never MPMC lock-free | needs a ThreadSanitizer build this tree lacks | Decide: add the build, or record the gap explicitly |
-| D4 | **B8 guardrails 1, 2** — abandonment destroys (RAII on a dropped task); deadlines are engine-clock and stream-independent | D1 | Leak/heap checks for 1; fast custom stream vs engine stream for 2 |
-| D5 | Extra listed guardrails — budget sustained over many frames; stopping a provider mid-frame must not corrupt a task | A | Cheapest to add with B1–B6 |
-| D6 | **B6a** — `Engine::Run()` pumps a frame tick to task system, renderer, log flush (applets keep their loops) | — | — |
-| D7 | **B6b** — pump owns the frame; applets become `TaskProvider`s; applet-owned loops removed | A, D6 | Re-derive parent plan §6 here rather than assume it |
-| D8 | **B9** — rewrite `docs/TaskSystemGuide.md` (still teaches range splitting); mark superseded R rows rather than deleting | A, C1 | Must cover declare-then-enqueue, delivery by the join-closing thread, `ParallelFor`, the item and its resumability, lane-attached providers, and the user prohibitions (never wait on a task, never invent a range) |
-| D9 | HTML API pages for `TaskProvider` and `WorkItem` (no pages exist; header contracts are the only docs) | A | `docs/Core` is the concurrent agent's territory — **coordinate before writing** |
-| D10 | Parent-plan hygiene: mark **B3b**, **B3c**, **B4** done (evidence: `BoundedPriorityQueue.h:16-17`, `TaskStream.h:62-63`, `TaskSystem.h:86,91`); fix the commit ladder that numbers two steps "8" | — | Docs only |
-
-## E. Recorded and deliberately not done
-
-| Item | Why |
+| Script | What it protects |
 |---|---|
-| Shrinking `TaskStreamAffinity` below 64 bits (~10 streams today) | Correct at 8 bytes; the next byte is not worth touching every user |
-| `docs/OSAL/Application/index.html:98` cites the pre-move `Applications/` path | That file is the concurrent agent's untracked work |
-| A drain-in-flight counter per stream | Made unnecessary by A10's decision; adding it would be dead code no test can distinguish from absence |
+| `hang.sh <Config> <patienceSeconds>` | builds, refuses to run a binary whose build failed, and **if the run stalls it samples that pid** and prints `hbe::` frames. It found two bugs this session that reasoning did not. |
+| `runtest.sh <Config> [limit]` | wall clock, reports `128 + signal`, **refuses a binary not configured with `-test` (exit 99)**, and warns when a non-zero exit printed no `FAILED` line. |
+| `check.sh` | clang-format/Allman/include rules, the copyright line, and a 12-target build gate including `WindowExample`. |
 
----
+Tracked copies now live in `.pi/skills/hb-standards/scripts/`. The ones under `build/gate/` are wiped by
+`-clean` — do not rely on them.
 
-## Standing rules this list was written under
+## Traps that produced false verdicts this session (all real, all mine)
 
-Stage owned paths by name — never `git add -A` (concurrent agent owns `docs/Core`, `docs/OSAL`). Never push without
-permission. No comments in `.cpp` except structural labels; contracts in the paired `.h`, rationale in `docs/`. Recompute
-every anchor after mutating the same string. If something is going to be written as "not verified", verify it before the
-commit rather than promising it afterwards.
+1. **Only `-test` compiles the test bodies.** They live in the library sources, not only in the test
+   executable. A binary built without it prints advice saying exactly that and exits 1; any verdict from
+   it — including a fast exit — is vacuous. Several `build exit=0` results reported mid-session proved nothing.
+2. **A failed link leaves the previous binary in place.** `hang.sh` refuses this; a manual `cmake --build`
+   does not.
+3. **Mutation backups must be taken from HEAD.** A stale backup restored over 27 committed lines, twice.
+   Assert every substitution actually changed the file.
+4. **macOS has no `timeout`.** Exit 127 from it means missing tool, not test failure.
+5. **A log flush that blocks the base thread is a hazard.** A thread blocked on the task system must keep
+   driving what it owns — `TaskSystem::DriveUntil` is the only designated nested-pump wait point.
+
+## Landed this session (all gated, all committed)
+
+| Commit | What | The measurement that mattered |
+|---|---|---|
+| `a02e21c` | Per-stream close requests, wall-clock drain, base closes last | a pass-count bound was outrun by resumable work and hung |
+| `78c3946` | IO stream stays open through shutdown, not drained to empty | IO drained 2,635,177 passes / the full 2000 ms — a log line re-posts its own drain task |
+| `fd8633f` | Logger driver thread; IO stream becomes ride-on-thread | flush give-up 1 → 0 |
+| `16ffd7e` | Driver thread named `LogDriver`, event-driven idle | `[LogDriver]` observed in all three configs |
+| `fcc07c8` | Every stream asserted closed before `streams.Clear()` | 12 close reports per run |
+| `ba5f3a7` | **Base stream rides the engine loop**; `TaskSystem::Update` is the single pump; `DriveUntil` at the six `OSAL/Window.cpp` waits; message-less `Assert`/`FatalAssert` print file and line | sampling found the wait still in `std::future::get` (drive was not pumping the main-thread queue); `source_location` named `Array.h:112` — indexing `streams` after clear, i.e. defect T4 |
+| `0ec7538` | Logger waits on the queue observable, not the task handle | — |
+| `a25168b` | **C1**: `Task::Wait`/`BusyWait` deleted, `HasDone` private, `hbe::WaitUntil` for tests | every remaining caller was a *test body*, not production |
+| `4655298` | **C2**: `GenerateSubTask` engine-internal; `TaskProvider::MakeWholeItem` (protected); new `TaskSystem::EnqueueTask(stream, task, priority)` | found `Examples/WindowExample/Main.cpp`, three internal providers, the logger and `hbe::Test` hand-building items |
+
+## Remaining, in the order I recommend
+
+### N1 — Let the base stream own the work posted to the engine loop (todo #15)
+Behaviour is already right: `TaskSystem::Update()` pumps the main-thread queue and base-stream passes under
+the frame budget. What is left is one object, not two. Inventory at `4655298`:
+
+| Site | Symbol |
+|---|---|
+| `TaskSystem.h:11` | `#include "MainThreadTaskQueue.h"` |
+| `TaskSystem.h:27` | `using TMainThreadTask = void (*)(void*)` |
+| `TaskSystem.h:69` | `MainThreadTaskQueue mainThreadTaskQueue;` |
+| `TaskSystem.h:350/353/385` | `DispatchToMainThread`, `ProcessMainThreadTasks`, `GetMainThreadTaskQueue` |
+| `TaskSystem.cpp:178/204/207/593/598` | the pump in `Update`, the wait in `JoinAndClear`, the two forwarders |
+| `Engine.cpp:139/146` | `GetMainThreadTaskQueue().HasPendingTasks()` in the run condition, `ProcessMainThreadTasks()` after the loop |
+
+`MainThreadTaskQueue` is self-contained (`BoundedPriorityQueue<TaskItem,256,1024>`, mutex-guarded, tasks run
+with the lock released), so it moves into `TaskStream` without a circular include — `TaskStream.h` includes
+`MainThreadTaskQueue.h`, not `TaskSystem.h`. Then: `TaskStream::Update()` drains posted callables first, so
+`Update`, `DriveUntil` and the shutdown pump all reach them by construction; `DispatchToMainThread` becomes
+one line forwarding to the base stream; `GetMainThreadTaskQueue` and `ProcessMainThreadTasks` go away and
+`Engine.cpp` asks the base stream for its pending count. **Acceptance:** one intake, one pump, all three
+configs at exit 0 with 59 collections, and a mutant that skips the posted drain dying to a named test.
+
+### N2 — Test the drain's budget gate (todo #10)
+Design settled and proven race-free: the provider reads `MayTakeNewWork()` inside `Produce`, which runs on
+the draining stream's own thread — the only legal place to read the unsynchronised allowance. The earlier
+attempt reported `Result [PASS]` and then hung at shutdown; that hang was the shutdown defect, now fixed, so
+retry it as written. **Acceptance:** the mutant replacing `if (!laneIsEmpty || !budget.CanTakeWork())` with
+`if (!laneIsEmpty)` must die by a named test — it survives all 59 today.
+
+### N3 — Guardrails as executable tests (todo #7, plan D2–D5)
+Start with D2 (cross-stream isolation: communicate only via outcome delivery) — independent, no new seams.
+D3 needs ThreadSanitizer. D4 is RAII-on-drop plus engine-clock deadlines. D5 is sustained budget over frames.
+
+### N4 — B3d: task max age and abandonment (todo #6, plan D1)
+Steady-clock stamp at enqueue, evaluated in the existing sweep, per-stream policy. Was blocked by C1 (the
+handle waits had to go first); unblocked now.
+
+### N5 — Documentation and plan hygiene (todo #9, plan D8–D10)
+`docs/TaskSystemGuide.md` still teaches range splitting. Mark superseded R rows rather than deleting them.
+HTML API pages for `TaskProvider` and `WorkItem` do not exist — the header contracts are the only docs.
+Parent-plan: mark B3b, B3c, B4 done with the evidence already cited in plan D10.
+
+## Standing rules
+
+Stage owned paths **by name** — never `git add -A`; `git restore --staged docs/Core docs/OSAL` before every
+commit (a concurrent agent owns those). Never push without permission. No comments in `.cpp` except
+structural labels; contracts in the paired `.h`; rationale in `docs/`. Talk to the owner in English.
+Working style the owner asked for: do not stop to ask; find at least three solutions, compare them, take the
+best, keep going, then report an executive summary of solutions and why.

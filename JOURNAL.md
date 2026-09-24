@@ -1,5 +1,59 @@
 # Journal
 
+## 2026-09-24 15:57 — both engine streams ride a thread; the handle-based waits are gone; items are engine currency
+
+HEAD `4655298`, nothing pushed, 59 collections green in Debug/Dev/Release, `check.sh` 0 violations and build gate 12/12.
+Five commits: `ba5f3a7` base stream ride-on-thread, `0ec7538`+`a25168b` C1, `4655298` C2.
+
+**Why a ride-on-thread stream, and why `Update` is the only execution path.** The owner's design: an engine stream
+should not need a thread of its own. Base is driven by the thread running the engine, one frame budget at a time
+(`time::GetBaseFramePeriod()`), so a base stream may delay a frame and can never replace one. IO is driven by the
+logger's own thread. There is no in-tree precedent for either (`c2d92f3` showed `Start` creating a thread for every
+stream), so `Update`/`WaitForWork` are new code and were treated as such.
+
+**Why the logger owns a thread at all.** A logger that depends on the subsystem it reports cannot report that
+subsystem failing - that is what the flush trap kept demonstrating. Its thread is created with the logger, before
+any subsystem can ask for a line, and stopped last, after the task system is gone. Handing the stream back is a
+mutex held across the pass (`driverLock`), not an atomic store: it is the only way the task system can free streams
+while the driver outlives them, and it removed a use-after-free where withdrawal stored nullptr while a pass was in flight.
+
+**Two failures found by measurement after two wrong guesses - recorded because the guessing was the error.**
+The 400 s kill: sampling the binary's own pid showed the wait still inside `std::future::get`, and the reason was
+visible in the same frames - my drive called the *stream's* `Update`, which never touches the main-thread queue where
+the awaited callback sat. The `exit 133`: the message-less assert said `Please check it.` and nothing else while the
+tree holds ~60 candidate sites, so the fix was to the assert. `Assert`/`FatalAssert` now take a defaulted
+`std::source_location` and print file and line; it named `Engine/Container/Array.h:112` immediately - indexing `streams`
+after `Clear()`, which is defect **T4** (teardown runs twice) biting through my own unguarded `GetStream(0)`. Instrumenting
+the diagnosis beat reasoning about it twice in one session.
+
+**C1's real shape came from classifying callers, not counting them.** An earlier inventory claimed two remaining users;
+the truth was that it searched only the dot form and missed `BusyWait` entirely, and that every remaining caller was a
+*unit-test body* (`TaskSystemTest::Prepare`, `TaskRegistryTest::Prepare`) rather than production code. That decided the
+solution: delete `Task::Wait`/`Task::BusyWait` outright instead of demoting them, give tests `hbe::WaitUntil` which
+carries a deadline so a stall is a failure rather than a hang, and keep `HasDone` private with friends - because the
+counter cannot distinguish finished from never-dispatched, so a customer can put no honest deadline on it. The logger
+now asks the question it can answer: is the queue empty.
+
+**C2 was worth doing because of what it found.** Demoting `GenerateSubTask` exposed four callers that were not the
+engine: a **customer-authored provider in `Examples/WindowExample/Main.cpp`**, three internal test providers, the
+**logger's** drain task, and the `hbe::Test` helper. Each got the door that fits it - providers inherit
+`TaskProvider::MakeWholeItem` (the base is the friend, derived providers never meet `Task` directly), and a customer who
+just wants work run calls the new `TaskSystem::EnqueueTask(stream, task, priority)`. An item is the engine's currency:
+range, priority and reserved count must agree with their task, and building one from outside is exactly how a task
+reports finished on work that never ran.
+
+**Errors owned, this session, all disclosed at the time.** Only `-test` compiles the test bodies, so several
+`build exit=0` results I reported as evidence were vacuous - the runner now refuses such a binary (exit 99). Two
+inventories were wrong (C1's caller count, and a claim that `RunFrameTasks` existed, which it never did). My own patch
+scripts discarded good edits three times by omitting a heredoc terminator or bundling a bad anchor, and one formatting
+pass left a namespace brace swallowed. Two earlier false claims (a flush give-up that had in fact appeared, and a thread
+name asserted before anything could observe it) were corrected by evidence in the next commit.
+
+**Handoff.** `.Plans/TODO_task_system.md` is rewritten to this state: N1 base stream owns posted work (full inventory),
+N2 the B2 budget-gate test (unblocked, design settled, mutant named), N3 guardrail tests, N4 B3d, N5 docs. The gate
+scripts are now tracked in `.pi/skills/hb-standards/scripts/` - `hang.sh` builds then samples a stalled pid, `runtest.sh`
+refuses a non-`-test` binary - because the copies under `build/gate/` are deleted by `-clean`.
+
 ## Reviewing the teardown: the shutdown is inverted, and no stream closes gracefully
 
 Prompted by the flush trap after the driven base stream landed. Reading the shutdown path end to end, the fault is structural and
