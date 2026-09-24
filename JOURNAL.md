@@ -1,5 +1,30 @@
 # Journal
 
+## 2026-09-24 21:10 — the pass-count probe settles what a spent stream does, and voids my model of it
+
+HEAD `823d60f`, tree clean, 59 collections green in Debug/Dev/Release. One temporary probe, measured, removed.
+
+    TEMP probe on Worker1: dispatched 4, pending 4 -> 3, pass delta over 500ms = 27, accumulated CPU 220648us
+    TEMP after lifting the allowance: pending 1, pass delta 2
+
+**A throttled stream is not idle.** 27 passes in 500ms matches the 10ms `WaitForWork` cadence, so the worker cycles while its
+allowance is spent — "a spent stream takes no passes" was an assumption I had been reasoning from, and it is false. I also read
+the block to be sure: `ChooseLane` is called unconditionally each pass with no budget guard around it, so across those 27 passes
+it returned a lane nearly every time — otherwise the counter sitting on *work present and no lane chosen* would have counted, and
+it counted zero.
+
+**Which leaves one shape of explanation, and it is narrow.** Work is genuinely held (pending stuck at 3 for half a second while
+220ms of CPU was charged, and lifting the allowance did not drain it within 400ms), passes advance, and the branch I instrumented
+never fires — that is exactly what you get if the item is **taken and then put back**: the FIFO block rotates entries and re-adds
+anything unfinished, and there is a second re-add path for items whose task finished elsewhere. So the decline site is not the
+lane choice; it is whatever happens to a popped item between `ChooseLane` and execution. Next step is to instrument that — count
+items popped and returned while the allowance is spent — which is a specific search, not an open question.
+
+Enforcement meanwhile is still the assert in `a166b67` (Debug/Dev); Release remains unobserved and this item stays open with the
+same acceptance: the gate mutant must fail by name in a Release build. The **two-allowance-books** finding stands on its own and
+wants an owner decision: `StreamDrainPolicy` keeps per-lane `fifoUsed`/`priorityUsed`, `CPUBudget` keeps the stream's allowance,
+and the three gates consult different ones.
+
 ## 2026-09-24 20:40 — the lane throttle is a second account of the same intent, and my counter still did not fire
 
 HEAD `a166b67`, tree clean, 59 collections green in Debug/Dev/Release. No code from this attempt survived; what survived is

@@ -108,7 +108,16 @@ mutant revert deleted it and I committed afterwards, writing a message about cod
 in `a166b67` now, verified with `git show HEAD:` rather than in the working tree, and re-proven against the gate mutant
 (exit 133, names Worker1). **Rule: commit before mutating, never after.**
 
-**Where the lane throttle really lives, and the one number that settles #17.** `StreamDrainPolicy::ChooseLane` returns no lane
+**Measured, and it voided the model.** Probe output: *"dispatched 4, pending 4 -> 3, pass delta over 500ms = 27, accumulated
+CPU 220648us"*; after lifting the allowance: *"pending 1, pass delta 2"*. So (a) a throttled stream **does** keep cycling — 27
+passes in 500ms, the 10ms `WaitForWork` cadence — and every conclusion drawn from "a spent stream takes no passes" is void;
+(b) `ChooseLane` is called unconditionally every pass (read to confirm), and it returned a lane on essentially all 27 passes,
+since the decline branch I instrumented counted zero; (c) work is nonetheless held. Those three together fit exactly one shape:
+**the item is taken and then put back** — the FIFO rotation re-adds unfinished entries and there is a second re-add path for items
+whose task finished elsewhere. **Next instrumentation: count items popped-and-returned while spent**, between `ChooseLane` and
+execution. Not an open question any more, a specific search.
+
+ `StreamDrainPolicy::ChooseLane` returns no lane
 once its **own** `fifoUsed + priorityUsed` has spent the allowance — a per-lane time book separate from `CPUBudget`. Two
 accounts of one intent: lanes gated by the policy, provider gate and general queue gated by `CPUBudget`. **That split is itself
 a finding for the owner** — one quantity, two books, so a stream can be throttled by one and not the other, and it explains why
