@@ -1,5 +1,30 @@
 # Journal
 
+## 2026-09-25 00:25 — D2 landed, and it cost me a second look at my own gate script
+
+HEAD `34de7e6`, tree clean, `check.sh` 0 mechanical violations and build gate 12/12, 59 collections green in Debug/Dev/Release.
+
+**The isolation test states evidence, not expectation.** Three tasks onto each of the last two worker streams, each runnable
+recording the thread that executed it; measured everywhere: *"Worker10 ran 3 of 3 on one thread: 1. Worker9 ran 3 of 3 on one
+thread: 1. Distinct: 1."* It names each way it could come apart — too few dispatched, work unaccounted for when the queue reported
+empty, one stream's work seen on two threads, or both streams reporting the same thread.
+
+**Then the mutation exposed a hole in the gate, and the hole was the real find.** I routed lane work onto the general queue — the
+non-isolated route — expecting the test to fail by name. Instead the suite never ran a collection, the binary printed
+**`EngineTest: all 0 collections passed`** and exited **0**, and my own `runtest.sh` reported that as a pass. An exit code records
+that a process stopped, not that it tested anything; a summary line that is grammatically a pass while containing zero tests is
+precisely how a green build lies. `runtest.sh` now parses the collection count and the count of passing results and refuses with
+exit **98** when either is missing or zero — **proven against the real artifact from that run, not a fabricated log**: count=0,
+passingResults=0 → `REFUSED code=98`.
+
+**And I repeated a mistake I had already been burned by.** Reverting the mutant with `git checkout` took the new test out of the
+tree with it — identical to losing the budget-gate assert earlier. This time I noticed immediately because I went to re-run the
+mutation and found nothing to mutate, rather than discovering it later. The test is back and **committed before any further
+mutation**, which is the rule that makes the difference: the mutation is the experiment, the commit is the record.
+
+D2 is therefore done. D3 still needs a sanitizer configuration that does not exist in this tree; D4/D5 are cheap now that #17's
+counters exist as instrumentation. #6 (task max age) remains untouched and unstarted.
+
 ## 2026-09-24 23:58 — #9 closed: the guide tells the range-splitting story and the record says which rows no longer hold
 
 HEAD `775d2e3`, tree clean, `check.sh` 0 mechanical violations and build gate 12/12. 46 insertions, 0 deletions — the diff stat
