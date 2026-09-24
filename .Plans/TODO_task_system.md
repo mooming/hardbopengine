@@ -103,6 +103,17 @@ for provider work while its allowance was spent"* inside the existing `TaskSyste
 charges a configured budget"** — a named test that was already in the suite, exit 133. Without the
 mutant: 59 collections, exit 0, all three configurations.
 
+**Third attempt, and the real mechanism, measured:** a worker whose allowance is spent **stops taking passes**. Test output:
+*"Worker1: 1 of 6 task run(s), registry refused 0, 0 run(s) observed after the allowance was spent, 0 provider ask(s), 0 of
+those while spent."* No passes means no lane draining, no asks, and — the crash — a deferred `DetachAll` that never completes,
+because a detach completes on the stream's next drain; the stream then invoked a destroyed provider. **A spent stream observes
+nothing and nothing observes it**, so every sentinel built on runs/asks/refusals-inside-a-pass is unreachable, including
+`generalQueueRefusals` (it counts a pass that noticed it was spent). This item is therefore a **production decision**: let a
+spent stream keep taking passes and decline inside the pass — makes the throttle observable, lets detaches complete, and
+removes a liveness trap where a provider on a spent stream is never asked again even after its allowance returns. Full write-up
+in todo #17. **Independent hazard:** detach completion depends on the stream draining, so a provider attached to a quiet stream
+is a live pointer to a dying object, and R37's guarantee is only as strong as the stream still running.
+
 **Root cause of both failed attempts, found at last:** a stream whose allowance is spent **stops taking work**, so
 the tasks written to spend the allowance never run — the first runs, spends it, and the rest stay queued. That is the
 whole explanation for the earlier "1 of 12 tasks ran", and it makes *"task runs observed while spent"* an unreachable

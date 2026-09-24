@@ -1,5 +1,38 @@
 # Journal
 
+## 2026-09-24 19:20 — a spent stream observes nothing, and nothing observes it: why the budget-gate test is a production question
+
+HEAD `0e4c3af` still, tree clean, 59 collections green in Debug/Dev/Release. Third attempt at todo #17, third revert,
+and this time the mechanism is measured instead of inferred. The test printed its own numbers:
+*"Worker1: 1 of 6 task run(s) and the registry refused 0 creation(s), 0 run(s) observed after the allowance was spent,
+0 provider ask(s), 0 of those while spent."*
+
+**A worker whose allowance is spent stops taking passes.** Not "declines the general queue" — no passes at all, so no lane
+draining, no provider asks, nothing reportable. Three things follow, and all three were observed: only the first burn task
+ran; the provider was never asked, so the invariant could not be seen to hold *or* to break; and my probe's deferred detach
+could never finish, because a detach completes on the stream's next drain — so the stream invoked a destroyed provider
+later, which is the SIGSEGV. That crash was my test's design, not the engine's, and the ordering I blamed earlier was only
+half of it.
+
+**This makes the item a production decision, not a test to write.** A sentinel based on runs-while-spent, asks-while-spent,
+or refusals reported from inside a pass is unreachable, because there are no passes while spent; `generalQueueRefusals`
+counts a pass that noticed it was spent, which presumes the pass happens. The options, with the recommendation: let a spent
+stream keep taking passes and decline inside the pass — which makes the throttle observable, lets deferred detaches complete,
+and removes a liveness trap where a provider attached to a spent stream is never asked again even after its allowance
+returns. The alternatives (account at the point of decline and decouple detach from draining; or rely on the Debug-only
+assert and leave Release unobserved) are worse. Written up in #17 with acceptance unchanged: the gate mutant must produce a
+named failure in Release.
+
+**A hazard worth its own attention, independent of any test:** *detach completion depends on the stream draining.* A provider
+attached to a stream that has gone quiet — throttled, paused, idle — leaves a live pointer to an object that is about to be
+destroyed, and R37's guarantee that `DetachAll` cannot return while a `Produce` is in flight is only as strong as the stream
+still running. My probe was that scenario by accident.
+
+Three reverts on one item is a lot, and I am reporting it as such rather than dressing it up: each one removed scaffolding
+that could destabilise a later run, and each left the mechanism better pinned than the last. The honest summary is that the
+gate is enforced in Debug/Dev by `dc9a400`, is unobserved in Release, and the reason it is unobserved is now a specific,
+small, fixable piece of engine behaviour rather than a vague "the test is flaky".
+
 ## 2026-09-24 18:45 — why the budget-gate test cannot be written the way I wrote it twice
 
 HEAD `dc9a400` still, tree clean, 59 collections green in Debug/Dev/Release. No code change from this attempt, and
