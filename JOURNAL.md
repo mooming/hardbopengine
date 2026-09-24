@@ -1,5 +1,28 @@
 # Journal
 
+## 2026-09-24 18:45 — why the budget-gate test cannot be written the way I wrote it twice
+
+HEAD `dc9a400` still, tree clean, 59 collections green in Debug/Dev/Release. No code change from this attempt, and
+that is the honest outcome: two tries at the Release-coverage test (todo #17) were reverted, and the reason is now known.
+
+**A stream with a spent allowance stops taking work — so the tasks written to spend the allowance never run.** The first
+executes, spends it, the rest stay queued. That single fact explains the "1 of 12 tasks ran" I reported as undiagnosed,
+and it means a sentinel of *"task runs observed while spent"* is unreachable: spending the budget and running work while
+spent exclude each other. The sentinel has to be about **passes happening while spent** — which the existing
+`generalQueueRefusals` counter already observes (it counts exactly the case where a stream declines work because it is
+spent), or which a lane counterpart would, if I add one.
+
+**And the crash is the same hazard wearing a different face.** I moved the observation to static storage to kill the
+dangling-`userData` use-after-free, and it still segfaulted — later, in a provider drain, far from the release. Releasing a
+task whose work item is still queued lets the registry recycle the record underneath that item; the item then runs against a
+recycled task. Navigating around that in a test is fragile; refusing or draining a release while items are pending is its
+own change, and worth doing for its own sake.
+
+**What I did deliberately:** reverted rather than leaving scaffolding that could crash a later run, re-verified all three
+configurations green after the revert, and wrote the diagnosis into #17 so the next attempt starts from the mechanism
+instead of rediscovering it through two more crashes. Claiming a guardrail test exists when it segfaults is worse than
+saying it does not exist yet.
+
 ## 2026-09-24 18:10 — the budget gate is asserted where it can be seen, and my test for it nearly shipped a use-after-free
 
 HEAD `dc9a400`, nothing pushed, 59 collections green in Debug/Dev/Release, check.sh 0 violations, build gate 12/12.

@@ -103,6 +103,20 @@ for provider work while its allowance was spent"* inside the existing `TaskSyste
 charges a configured budget"** — a named test that was already in the suite, exit 133. Without the
 mutant: 59 collections, exit 0, all three configurations.
 
+**Root cause of both failed attempts, found at last:** a stream whose allowance is spent **stops taking work**, so
+the tasks written to spend the allowance never run — the first runs, spends it, and the rest stay queued. That is the
+whole explanation for the earlier "1 of 12 tasks ran", and it makes *"task runs observed while spent"* an unreachable
+sentinel: spending the budget and running work while spent are mutually exclusive. It also explains the SIGSEGV: releasing
+a task whose item is still queued lets the registry recycle the record under that item, which then executes against a
+recycled task seconds later — the crash appeared in a provider drain on a worker, nowhere near the release.
+
+**The sentinel must be about passes happening while spent, not work happening while spent.** Either use the existing
+`generalQueueRefusalCount` (incremented exactly when a stream declines the general queue because it is spent, so non-zero
+proves spent passes occurred with a provider attached), or add its lane counterpart — one relaxed atomic plus an accessor,
+mirroring `generalQueueRefusals`. The counter is recommended: it is honest production state, because it answers what an
+operator asks about a throttled stream — was it gated, and how often. Acceptance stays: the mutant dropping
+`!budget.CanTakeWork()` must produce a **named failure in Release**, where `dc9a400`'s assert is compiled out.
+
 **Why it is not finished:** asserts compile out in Release, so the configuration where a silent
 regression would ship has no observation of the invariant. The positive test design is in #17, with
 the two traps my first attempt fell into recorded there — releasing a task while its item is still
