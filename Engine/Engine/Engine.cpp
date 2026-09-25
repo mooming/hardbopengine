@@ -140,6 +140,7 @@ void Engine::Run()
 	// continue: once shutdown has been requested there is no executor left that could run it, so treating it as a reason kept the
 	// process looping forever on work nothing would ever drain. JoinAndClear drains what it still can, under a deadline, and names
 	// whatever it has to abandon - which is where that work belongs being accounted for, not here.
+	while (taskSystem.IsRunning())
 	{
 		taskSystem.Update();
 		std::this_thread::yield();

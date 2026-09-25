@@ -1,5 +1,30 @@
 # Journal
 
+## 2026-09-25 04:40 — the review found that I broke `Engine::Run`: it had no loop header, and ran one pass
+
+HEAD before this fix: `71dd0ab`. Found while correcting `docs/Engine/Engine/run.html` from the **source** instead of from memory —
+which is the third time today that refusing to trust my own recollection is what surfaced a defect.
+
+`git show a8946ea` is unambiguous. My commit removed
+
+    -	while (taskSystem.HasPendingPostedWork() || taskSystem.IsRunning())
+
+and put in its place **four comment lines describing the loop**. `Engine::Run` therefore executed `taskSystem.Update()` once,
+yielded once, and fell through to `JoinAndClear()`. Any application built on this would start, pump a single pass, and tear down.
+My commit message for `a8946ea` claims the loop condition was "reduced to `taskSystem.IsRunning()` only" — that claim has been
+false since the moment I wrote it. **Second false commit message today**, after `dc9a400`, and both are the same failure: writing
+the message from intent instead of from the diff.
+
+Why nothing caught it, and this is the part worth keeping: **nothing in the verification path calls `Engine::Run`.** The suite
+drives its collections through `Test::RunTests`, so 59 collections stayed green while the engine's main entry point was broken;
+`check.sh`'s build gate compiles `WindowExample` but never runs it; my shutdown mutant test drove the task system directly. A green
+that never traverses the code it certifies is not a green — I have been saying a weaker version of that sentence all day, and here
+is the concrete case.
+
+Fix: the header restored as `while (taskSystem.IsRunning())` — exactly the intended reduction, verified against the deleted line
+rather than remembered. Build gate 12/12, suite unchanged and green in Debug/Dev/Release, which is itself the evidence that the
+suite cannot see this function.
+
 ## 2026-09-25 02:20 — D3's first triage found a real defect in what I built this arc, and fixed it
 
 HEAD `eef92a7`, tree clean, 59 collections green in Debug/Dev/Release.
