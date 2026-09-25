@@ -507,7 +507,7 @@ void Logger::AddLog(StaticString category, ELogLevel level, const TLogFunction& 
 		return;
 	}
 
-	if (taskSystem.HasStream(TaskSystem::GetIOTaskStreamIndex()))
+	if (taskSystem.IsRunning())
 	{
 		taskSystem.GetIOTaskStream().WakeUp();
 	}
