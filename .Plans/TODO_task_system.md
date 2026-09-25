@@ -356,3 +356,31 @@ What actually discriminates is **who was running when the suite finished**. Two 
 Either belongs in `TestMain.cpp`, where `Run()` is already called and teardown is expected - which is why this never had to be a
 collection fighting the engine's `FatalAssert(isTaskSystemReady)` and its `application.reset()` at the end.
 
+### The in-process guardrail is dead, measured - and what that measurement says about the design (06:00)
+
+I implemented the pass-rate witness in `Applications/EngineTest/TestMain.cpp` (a thread sampling the base stream's driven-pass count
+every 5 ms, keeping the largest delta observed while `taskSystem.IsRunning()` was true, and failing the run if that stayed below 50).
+It failed against **correct** code, with numbers that explain why:
+
+    a 5ms window observed at most 1 pass(es) while the task system reported itself running
+    Base closed after 8 driven pass(es).
+
+The loop header was present at the time - I had fixed it earlier - so the only reading is that **`IsRunning()` is already false when
+`Run()` is entered**: the suite completes inside `Test::RunTests()`, which blocks, and requests shutdown on its own. The loop body
+therefore never runs in this binary, and no witness living inside this binary can ever tell a loop from no loop. **Design 1 is dead,
+and it is dead for a structural reason, not an implementation one.**
+
+The same measurement says something uncomfortable about the design I shipped in `ba5f3a7`: **the base stream received 8 driven passes
+in the whole test binary**, all of them from `JoinAndClear`'s bounded pump. So "base work is driven by the engine loop" has never been
+exercised by the test binary, and the comment at `TestMain.cpp:17` - "the [results] are only complete once Run() returns" - describes
+an arrangement the code does not have: `Test::RunTests()` blocks and finishes first. The comment is not wrong about intent, it is
+wrong about fact, and I wrote tests under that assumption.
+
+What follows, in the order I would do it:
+
+1. **Decide what the test binary is for.** Either the suite runs *while* `Engine::Run()` pumps - in which case `Test::RunTests()` must
+   not block, and every test that sleeps in place becomes a test that the loop must carry - or the binary keeps driving its own
+   collections and the comment and the intent both get corrected to say so. This is the owner's call, and it is the same call as #15.
+2. **Then the smoke run becomes the guardrail** (design 2): a real application under a wall clock, which is the only harness where
+   the engine loop actually runs.
+
