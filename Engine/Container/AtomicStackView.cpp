@@ -4,6 +4,8 @@
 
 #ifdef __UNIT_TEST__
 #include <thread>
+#include <array>
+#include <atomic>
 #include "HSTL/HVector.h"
 #include "Log/Logger.h"
 
@@ -148,6 +150,145 @@ namespace hbe
 			}
 
 			ls << "Multithreaded push & pop test done!" << lf;
+		});
+
+		AddTest("Recycled nodes are never handed to two threads at once", [this](auto& ls)
+		{
+			struct StressNode
+			{
+				StressNode* next = nullptr;
+				std::atomic<bool> claimed{ false };
+				int serial = -1;
+			};
+
+			constexpr int nodeCount = 128;
+			constexpr int roundCount = 400;
+			constexpr int popsPerThread = 4;
+
+			std::array<StressNode, nodeCount> nodes{};
+
+			for (int index = 0; index < nodeCount; ++index)
+			{
+				nodes[index].serial = index;
+			}
+
+			AtomicStackView<StressNode> stack;
+
+			std::atomic<int> duplicateHandoffs{ 0 };
+			std::atomic<int> totalPops{ 0 };
+			std::atomic<int> threadPops[ 2 ]{};
+			std::atomic<bool> roundOpen{ false };
+
+			int contendedRounds = 0;
+			int lostNodes = 0;
+			int aliasedNodes = 0;
+
+			for (int round = 0; round < roundCount; ++round)
+			{
+				for (auto& node : nodes)
+				{
+					node.claimed.store(false, std::memory_order_relaxed);
+				}
+
+				for (auto& node : nodes)
+				{
+					stack.Push(node);
+				}
+
+				roundOpen.store(false, std::memory_order_relaxed);
+
+				auto consumer = [ & ]( int slot )
+				{
+					while (!roundOpen.load(std::memory_order_acquire))
+					{
+						std::this_thread::yield();
+					}
+
+					int popped = 0;
+
+					while (popped < popsPerThread)
+					{
+						auto* node = stack.Pop();
+
+						if (node == nullptr)
+						{
+							continue;
+						}
+
+						totalPops.fetch_add(1, std::memory_order_relaxed);
+
+						if (node->claimed.exchange(true, std::memory_order_acq_rel))
+						{
+							duplicateHandoffs.fetch_add(1, std::memory_order_relaxed);
+						}
+
+						++popped;
+
+						node->claimed.store(false, std::memory_order_release);
+						stack.Push(*node);
+					}
+
+					threadPops[ slot ].store(popped, std::memory_order_relaxed);
+				};
+
+				std::thread first(consumer, 0);
+				std::thread second(consumer, 1);
+
+				roundOpen.store(true, std::memory_order_release);
+
+				first.join();
+				second.join();
+
+				if (threadPops[ 0 ].load(std::memory_order_relaxed) > 0 && threadPops[ 1 ].load(std::memory_order_relaxed) > 0)
+				{
+					++contendedRounds;
+				}
+
+				std::array<bool, nodeCount> seen{};
+				int drained = 0;
+
+				while (auto* node = stack.Pop())
+				{
+					if (seen[ node->serial ])
+					{
+						++aliasedNodes;
+					}
+					else
+					{
+						seen[ node->serial ] = true;
+						++drained;
+					}
+				}
+
+				lostNodes += nodeCount - drained;
+			}
+
+			ls << "recycled-node stress: " << roundCount << " round(s), " << nodeCount << " node(s), "
+			   << totalPops.load() << " pop(s), " << contendedRounds << " contended round(s), " << duplicateHandoffs.load()
+			   << " double hand-off(s), " << lostNodes << " lost reference(s), " << aliasedNodes << " aliased pop(s)." << lf;
+
+			if (contendedRounds < roundCount / 2)
+			{
+				ls << "Both threads only actually popped in " << contendedRounds << " of " << roundCount
+				   << " rounds, so most rounds observed no contention at all." << lferr;
+			}
+
+			if (duplicateHandoffs.load() != 0)
+			{
+				ls << "A node was claimed while another thread still held it: the same node reached two threads at once, which "
+					  "is exactly what a plain next field read by a non-owner allows." << lferr;
+			}
+
+			if (lostNodes != 0)
+			{
+				ls << "References went missing: the stack held fewer than " << nodeCount
+				   << " nodes after quiescence, so a CAS that overwrote a stale next lost a link." << lferr;
+			}
+
+			if (aliasedNodes != 0)
+			{
+				ls << "The same node came out twice at quiescence, so the list had a cycle or a duplicate link." << lferr;
+			}
 		});
 	}
 
