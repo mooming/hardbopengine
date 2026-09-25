@@ -24,8 +24,14 @@ What the counts say, without pretending they are diagnosed:
 | `TaskSystem.cpp:781 hbe::(anonymous namespace)::TrackedTask::Track` | first SUMMARY | a **test helper**, so probably a test bug rather than an engine one |
 
 So D3 is a real project, not a checkbox: (1) the suite needs splitting or a per-collection TSan budget because it cannot finish;
-(2) the first triage is the test harness and `TrackedTask`, which is cheap and will remove a large share of the 66; (3) only then
-is it worth asking whether `TaskStream::Update`/`WorkItem::Run` is an engine race or TSan mis-modelling the queue lock; (4) a
+(2) **corrected after reading a race block rather than its summary**: the harness frames are the call chain, not the defect. The
+contested object is `MemoryManager`'s allocator registry - `AtomicStackView<AllocatorProxy>::Push` inside
+`MemoryManager::DeregisterAllocator`, reached from `PoolAllocator::~PoolAllocator` <- `MultiPoolAllocator::~MultiPoolAllocator`
+<- `TestCollection::ExecuteTests()` (TestCollection.cpp:118) <- `TestEnv::Start` <- `WorkItem::Run`. One whole test collection's
+allocators are deregistered from a task running on a stream thread, concurrently with someone else touching the same registry -
+which is why TestEnv/TestCollection frames show up 268 and 134 times. So "triage the harness first" was wrong guidance: the share
+belongs to **Memory**, and the first question there is whether `AtomicStackView`'s reader walks plain fields (a real defect) or is
+correctly atomic and being mis-modelled (a false positive wanting an annotation, not an engine change); (4) a
 Sanitizer *configuration* in CMake is what makes this a gate rather than an event - and `__TEST__` must stay on, or the binary
 prints advice and exits, which is the oldest trap in this repository.
 
