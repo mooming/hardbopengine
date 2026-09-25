@@ -1,5 +1,31 @@
 # Journal
 
+## 2026-09-25 02:20 — D3's first triage found a real defect in what I built this arc, and fixed it
+
+HEAD `eef92a7`, tree clean, 59 collections green in Debug/Dev/Release.
+
+**The race was mine, and it was architectural.** ThreadSanitizer's first report: the LogDriver thread's own stack —
+`DriverLoop → SimpleLogger::Out → Logger::AddLog → TaskSystem::HasStream → Array<TaskStream>::IsValidIndex` — reading the streams
+array's size while the main thread was still constructing it (`Previous write: Array<TaskStream>::Array()`). The thread that exists
+to report the engine's failures was dereferencing a container mid-construction. That is the exact hazard of giving the logger a
+thread that predates the task system: the ordering that lets it report anything also lets it reach in before there is anything
+valid to reach. It was not harness noise, and I nearly filed it as such because the *first SUMMARY* line named a test helper.
+
+**Fix: a published flag instead of a container probe.** `isRunning` is atomic, set true at the end of `BuildStreams`, set false in
+`RequestShutDown` which runs before `JoinAndClear` clears the array — true exactly while the streams exist. Logs written after
+shutdown begins stay buffered and are drained by the IO close path this arc already established; they simply no longer wake a
+stream that may be on its way out.
+
+**Verified, with the limit stated.** Targeted access: 3 mentions of `HasStream`/`IsValidIndex` in the old sanitizer log, **0** in the
+new. Total counts 66 → 73 are **not** an improvement claim — both runs were wall-clock-truncated, so they are samples of an
+unfinished run, and saying otherwise would be the same sin as a stale-binary green.
+
+**A trap for whoever does sanitizer work next:** an out-of-tree build is *not* isolated in this project. After building in `/tmp`,
+the repo's own Debug link failed on missing `___tsan_*` symbols pulled from `libHEngine.a` objects — instrumented artifacts had
+leaked into in-tree outputs while the cache itself stayed clean. Repair: clean reconfigure. And `runtest.sh` earned its keep again:
+it **refused a verdict from the failed build** instead of reporting the previous green, which is exactly the hole I had opened
+myself by chaining builds.
+
 ## 2026-09-25 01:50 — two guardrails with demonstrated kills, the first of the session
 
 HEAD `798813e`, tree clean, `check.sh` 0 mechanical violations / build gate 12/12, 59 collections green in Debug/Dev/Release.
