@@ -1,4 +1,28 @@
 # TODO — task system, current state and what a fresh session should do next
+
+### Verified facts for the next session, gathered 2026-09-25 (no change made, deliberately)
+
+`TaskSystem::ReleaseTask(TaskID id)` is one line: `taskRegistry.Release(id)`. **It checks nothing** - not whether the task's
+sub-tasks were reported, not whether items naming that id may still sit in a lane. The released-task case is handled later, at
+drain time, by `ReportReleasedTask(WorkItem)` - which lives in `TaskStream.cpp`, not in `TaskSystem.cpp` - where a popped item
+whose task cannot be found is reported and dropped.
+
+So early release today means: **the promised work is quietly dropped, with a log line, some time after the release.** That is a
+defined protocol rather than a use-after-free, and it is not a bug to "fix" by asserting in passing without deciding the
+semantics. The decision to make first, and it is the owner's:
+
+1. **Refuse** - `ReleaseTask` on a task whose reserved sub-tasks are unreported does nothing and reports. Cost: `Task::HasDone()`
+   is private with four friends, and `TaskSystem` is already one of them, so the check is available at no API cost. Risk: existing
+   legitimate callers, e.g. the `Empty Task` test releases a task that never ran anything, and `Logger::StopTask` gives up on a
+   task after 1000ms and deliberately leaves it alive.
+2. **Assert in Debug/Dev, report in all builds** - matches how the budget gate was done (assert plus a counted witness), and the
+   counted witness here would be the existing released-task report.
+3. **Document it as intended** - early release cancels work - and write the test that pins the cancellation, which is the cheapest
+   option and may be the honest one, since the drain already reports the case.
+
+Option 3 is likely correct and requires no engine edit; option 1 is what the hazard instinct wants and is the one that will break
+callers. Do not start this without picking one.
+
 > **Status 22:55 — #17 is CLOSED.** Three counters (`laneWorkRefusals`, `providerAsksWhileSpent`, plus the existing
 > `generalQueueRefusals`) and one test that reads them. Acceptance proof met: with `!budget.CanTakeWork()` removed from the drain
 > gate, the **Release** build fails and names it — "A provider was asked 24 time(s) while the allowance was spent." Debug/Dev catch
