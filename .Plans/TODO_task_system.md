@@ -330,3 +330,29 @@ What would actually work, in the order I would try it:
 3. **Source-shape lint.** Cheapest, and the weakest: it pins a spelling, not a behaviour, and reformulating the condition would break
    it. Only worth it if 1 and 2 are refused, and then it belongs as an explicit, documented pin, not as a heuristic.
 
+### Why EngineTest stayed green over a dead engine loop, and the trap in the obvious check (05:30)
+
+`Applications/EngineTest/TestMain.cpp:17` says it plainly: *"The suite runs as a task that shuts the engine down when it finishes,
+so the [results] are only complete once Run() returns."* So `Engine::Run()` is supposed to pump for the whole suite - and when my
+commit removed its header, `Run` fell straight into `JoinAndClear()`, whose bounded pump finished the suite's tasks anyway. The
+binary still reported 59 collections passing while the engine loop never ran once. Which means **the base-stream-driven-by-the-engine
+-loop design (ba5f3a7, #15) has never been proven end-to-end**, including by the one binary that looks like it exercises it.
+
+The obvious guardrail - measure how long `Run()` took - **does not work, and here is why**: `JoinAndClear()` is called *inside*
+`Run()` (`Engine.cpp:148`), and it pumps the streams under a wall-clock bound, so a broken `Run` still takes seconds. Elapsed time
+inside `Run` cannot tell the two cases apart, and a test built on it would pass over the very defect it is meant to catch. Same
+trap for anything that asserts "the suite completed": the bounded drain completes it either way.
+
+What actually discriminates is **who was running when the suite finished**. Two candidate witnesses, both cheap:
+
+1. Sample the base stream's driven-pass count from another thread *while* `Run()` is executing, and require the loop - not
+   `JoinAndClear` - to have been driving it. Distinguishable because the loop body is `Update(); yield();` with no wait, so its pass
+   rate is far above the 10 ms `WaitForWork` cadence that `JoinAndClear`'s pump produces. A rate threshold with both a floor and a
+   ceiling separates them; a bare count does not.
+2. Record the moment the suite requests shutdown and the moment `Run()`'s loop exits, and assert the request happened *inside* the
+   loop rather than during teardown. That is the property the design actually promises: the engine loop drives base work until the
+   engine says stop.
+
+Either belongs in `TestMain.cpp`, where `Run()` is already called and teardown is expected - which is why this never had to be a
+collection fighting the engine's `FatalAssert(isTaskSystemReady)` and its `application.reset()` at the end.
+
