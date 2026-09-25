@@ -1,5 +1,35 @@
 # TODO — task system, current state and what a fresh session should do next
 
+### D3 groundwork, measured 2026-09-25: ThreadSanitizer runs here, and the suite does not finish under it
+
+No CMake change was needed for a first look. Out-of-tree, zero risk to the tracked build:
+
+    cmake -B /tmp/hbe/tsan -S . -G "Ninja Multi-Config" \
+      -DCMAKE_CXX_FLAGS="-fsanitize=thread -g -O1 -D__TEST__ -D__UNIT_TEST__" \
+      -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=thread" -DCMAKE_SHARED_LINKER_FLAGS="-fsanitize=thread"
+    cmake --build /tmp/hbe/tsan --config Debug --target EngineTest -j 8
+    /usr/bin/perl -e 'alarm 420; exec @ARGV' /tmp/hbe/tsan/Applications/EngineTest/Debug/EngineTest
+
+Result: the build succeeds, the binary lands inside the out-of-tree dir (the repo build/ is untouched), the suite starts and
+runs, and ThreadSanitizer reports **66 races** before the 420s wall clock kills it - it does not complete. Captured in
+`build/gate/tsan-run-first.log` (gitignored dir; copy it out before cleaning).
+
+What the counts say, without pretending they are diagnosed:
+
+| Frame | Mentions | Reading |
+|---|---|---|
+| `TaskStream::Update()` TaskStream.cpp:515 | 165 | the item-run/re-add neighbourhood, adjacent to the code this arc touched - investigate first |
+| `WorkItem::Run(Task&)` WorkItem.cpp:24 | 147 | the same path one level in |
+| `TestEnv::Start` / `ExecuteTest` / `TestCollection::Start` / `Test::RunTests()::$_0` | 120 each | one shared test-harness story, not four bugs |
+| `TaskSystem.cpp:781 hbe::(anonymous namespace)::TrackedTask::Track` | first SUMMARY | a **test helper**, so probably a test bug rather than an engine one |
+
+So D3 is a real project, not a checkbox: (1) the suite needs splitting or a per-collection TSan budget because it cannot finish;
+(2) the first triage is the test harness and `TrackedTask`, which is cheap and will remove a large share of the 66; (3) only then
+is it worth asking whether `TaskStream::Update`/`WorkItem::Run` is an engine race or TSan mis-modelling the queue lock; (4) a
+Sanitizer *configuration* in CMake is what makes this a gate rather than an event - and `__TEST__` must stay on, or the binary
+prints advice and exits, which is the oldest trap in this repository.
+
+
 ### Verified facts for the next session, gathered 2026-09-25 (no change made, deliberately)
 
 `TaskSystem::ReleaseTask(TaskID id)` is one line: `taskRegistry.Release(id)`. **It checks nothing** - not whether the task's
