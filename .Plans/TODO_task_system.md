@@ -309,3 +309,24 @@ pass because I had not read it, and editing an unseen page is how the guide lost
 and applying the same substitution the guide got: the loop condition is `taskSystem.IsRunning()` alone, `taskSystem.Update()` gives
 the base stream one pass, and there is no separate main-thread queue left to drain.
 
+### Guardrail that does not exist yet, and the design that would work (written after fixing the defect, 05:00)
+
+`Engine::Run` has no test, and that is why my own commit could delete its loop header and 59 collections stayed green. A
+mechanical source-text rule was attempted and **reverted for being dishonest**: it inserted after the summary so it printed nothing,
+it carried an unused variable, and it pinned a string rather than a behaviour. Do not repeat that attempt.
+
+What would actually work, in the order I would try it:
+
+1. **Behavioural, in-process.** A collection that runs `Engine::Run` on a helper thread, counts `TaskSystem::Update` passes through
+   an existing counter, calls `RequestShutDown()` from the test, joins, and asserts the pass count exceeded one. This is the only
+   guardrail that fails for the reason the defect happened. Two obstacles to solve first: `Run` begins with
+   `FatalAssert(isTaskSystemReady, ...)`, and it ends with `JoinAndClear()` plus `application.reset()`, so calling it mid-suite tears
+   the engine down. Both are solvable - a dedicated collection that expects to be last, or a fixture that re-initialises afterwards -
+   but they need thought, not an afternoon.
+2. **A smoke run of a real application.** `check.sh` builds `WindowExample` without running it; running it under a bounded wall clock
+   and requiring it to still be alive when the clock fires would have caught this exactly. The obstacle is headless environments: a
+   windowed app may fail for reasons unrelated to the loop, and a flaky gate is a gate nobody trusts. Needs a config flag or a
+   headless target before it can be wired in.
+3. **Source-shape lint.** Cheapest, and the weakest: it pins a spelling, not a behaviour, and reformulating the condition would break
+   it. Only worth it if 1 and 2 are refused, and then it belongs as an explicit, documented pin, not as a heuristic.
+
