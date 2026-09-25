@@ -300,3 +300,12 @@ The fix is therefore a design choice rather than a tweak: per-node atomic `next`
 around the registry. It is not mine to make - Memory is another agent's module right now - and the first step is to prove or
 disprove ABA with a targeted stress on whether a proxy node can be re-pushed while another thread may still hold a pointer to it,
 before any data structure is touched.
+
+### Left deliberately by the review, 04:10
+
+`docs/Engine/Engine/run.html` still names `ProcessMainThreadTasks` and `GetMainThreadTaskQueue`. It is a per-class reference page
+for `Engine::Run`, which is exactly the surface the guide just corrected, so it is wrong for the same reason. Not edited in this
+pass because I had not read it, and editing an unseen page is how the guide lost 292 lines earlier today. Fix by reading the page
+and applying the same substitution the guide got: the loop condition is `taskSystem.IsRunning()` alone, `taskSystem.Update()` gives
+the base stream one pass, and there is no separate main-thread queue left to drain.
+

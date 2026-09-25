@@ -256,7 +256,8 @@ thread and the acquire gate to bite.
 
 ```cpp
 taskSystem.DispatchToMainThread([](void* userData) { /* runs on the EngineLoop thread */ }, data, 128);
-taskSystem.ProcessMainThreadTasks();   // drains the queue
+// No manual drain exists any more: the base stream takes posted callables at the top of every
+// pass, and the engine loop gives it that pass.
 ```
 
 Priority is `0` = least urgent, `255` = most urgent, and the parameter **defaults to 128**. It used to default
@@ -265,13 +266,9 @@ to 0 under an inverted "0 = highest" convention; with the direction fixed, passi
 
 `Engine::Run()` is not a frame loop. It is:
 
-```cpp
-while (taskSystem.GetMainThreadTaskQueue().HasPendingTasks() || taskSystem.IsRunning())
-{
-    taskSystem.ProcessMainThreadTasks();
-    std::this_thread::yield();
-}
-```
+Reduced to the two facts that matter today: the loop condition is `taskSystem.IsRunning()` alone, and inside it
+`taskSystem.Update()` gives the base stream one pass' worth of work. There is no separate main-thread queue to
+drain, so nothing in the loop has to remember to do that - which is the whole point of absorbing it.
 
 There is **no per-frame barrier** anywhere in this design. Correctness depends only on explicit result
 delivery, and a heavy result may legitimately arrive several frames after it was produced (design section 2).

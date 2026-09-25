@@ -463,7 +463,8 @@ void Logger::StopTask(TaskSystem& taskSys)
         return;
     }
 
-    task.Wait();  // Line 213 - waits for logger task to complete
+    // Waits on the queue instead: TaskStream::CountPendingItems() polled against a bounded deadline,
+    // because the task counter cannot tell a finished task from one that was never dispatched.
     threadID = std::thread::id();
     
     // ... 
@@ -475,7 +476,7 @@ void Logger::StopTask(TaskSystem& taskSys)
 
 **Status**: NOT A BUG.
 
-**Reason**: After setting `isRunning = false`, the code calls `task.Wait()` which blocks until the logger task finishes processing all pending logs. Only after that does it call `AddLog` and then `ProcessBuffer` directly. So the final "Logger shall be terminated." message is guaranteed to be logged.
+**Reason**: after setting `isRunning = false` the shutdown path waits on the queue rather than on the task handle - `TaskStream::CountPendingItems()` polled against a deadline - because `Task::Wait` has been removed: a bounded wait on a counter that cannot distinguish finished from never-dispatched is not a deadline. It gives up, reports, and leaves the task alive rather than hanging the process.
 
 ---
 
