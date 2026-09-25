@@ -284,3 +284,19 @@ commit (a concurrent agent owns those). Never push without permission. No commen
 structural labels; contracts in the paired `.h`; rationale in `docs/`. Talk to the owner in English.
 Working style the owner asked for: do not stop to ask; find at least three solutions, compare them, take the
 best, keep going, then report an executive summary of solutions and why.
+
+### D3 answered 02:55 by reading the container instead of running another sanitizer cycle
+
+`AtomicStackView` is a Treiber stack: `top` is a real `std::atomic<T*>` with an `is_always_lock_free` static_assert, and Push and
+Pop use `compare_exchange_weak` with release ordering - so the top pointer is sound, and it is not what ThreadSanitizer flags. The
+flagged access is the **plain `next` field**: `Push` writes `newItem.next` unsynchronised, and `Pop` reads `node->next` from a node
+it has only loaded, not exclusively claimed. Those nodes are recycled - `MemoryManager::DeregisterAllocator` ends with
+`proxyPool.Push(allocator)`, returning the node to the pool it is re-pushed from. Node recycling plus a plain `next` read by a
+non-owner is the precondition for the classic Treiber-stack ABA, so the report is a **true positive on a real defect class, not a
+mis-model of a correct lock-free structure**, and the correction I wrote earlier in this file - "or it is correctly atomic and being
+mis-modelled" - is the second branch that turned out not to hold.
+
+The fix is therefore a design choice rather than a tweak: per-node atomic `next`, an epoch or hazard-pointer scheme, or a lock
+around the registry. It is not mine to make - Memory is another agent's module right now - and the first step is to prove or
+disprove ABA with a targeted stress on whether a proxy node can be re-pushed while another thread may still hold a pointer to it,
+before any data structure is touched.
