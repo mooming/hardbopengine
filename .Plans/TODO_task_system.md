@@ -64,7 +64,7 @@ callers. Do not start this without picking one.
 > gate, the **Release** build fails and names it — "A provider was asked 24 time(s) while the allowance was spent." Debug/Dev catch
 > the same mutant via the assert in `a166b67`. Everything from the earlier diagnosis (configuration anomaly, pop-and-return,
 > misplaced counters) is superseded by this; the anomaly was an iteration-count burn, fixed by bounding the work in wall clock.
-> **Status as of 06:40.** Open: **#6 B3d** (design decided and recorded above - implement per-stream max age, not the per-task deadline), **#7 D3** (true-positive Treiber ABA in `AtomicStackView`, which is the Memory module's to fix), the **`Engine::Run` guardrail** (needs the owner's call on whether the suite runs while `Run()` pumps - see the 06:00 entry), and **three owner decisions**: the two allowance books, the shape of `MayTakeNewWork`, and what releasing a task early means. Closed since: #9 docs, #7 D2/D4/D5, and #10-#17.
+> **Status as of 07:10.** **#6 B3d is now specified to the line** in `.Plans/PLAN_b3d_max_age.md` - per-stream max age, per-task deadline excluded, every anchor quoted from the tree, mutant list and gate commands included. Still open: **implementing** that plan; **#7 D3** (true-positive Treiber ABA in `AtomicStackView`, the Memory module's to fix); the **`Engine::Run` guardrail**, which needs the owner's call on whether the suite should run while `Run()` pumps; and three owner decisions - the two allowance books, the shape of `MayTakeNewWork`, what releasing a task early means. Closed: #9 docs, #7 D2/D4/D5, #10-#17.
 > allowance books, and `MayTakeNewWork` having only test callers.
 
 **Read this first.** Everything below is verified against a real run unless a line says otherwise.
