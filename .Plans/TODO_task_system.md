@@ -446,6 +446,17 @@ Three solutions compared:
 | **B. Outcome state on the record, polled** | `EOutcome { pending, done, abandoned }` on the registry record + public `GetOutcome(TaskID)` | one field - it fits the record's existing 48 bytes of cache-line padding - and one accessor | **Recommended first.** It removes the `nullptr` ambiguity at no dispatch cost and burdens nobody |
 | **C. Per-task abandonment callback** | `SetAbandonedHandler(id, fn)` | a callable per task: size, ownership, and *which thread runs it* - re-importing the exact cross-thread callback surface this arc spent itself deleting in C1 | **Rejected**, for the same reason the handle waits went |
 
+**RESOLVED 08:10 — the owner chose the optional callback (option C with a function pointer, unset by default), and it is
+specified to the line in `.Plans/PLAN_abandonment_notice.md`.** The read that changed my recommendation: at two of the three
+abandonment sites the task is **not resolvable** - `:500` has already had `FindTask` return `nullptr`, and the two shutdown
+close sites only call `CountPendingItems()` and never look at an item - so a handler stored on the task or beside
+`successor` in the record is unreachable precisely when it is needed. The notice therefore travels **on the `WorkItem`**:
+function pointer plus `void* userData`, 16 bytes, copied for free by the item's existing `= default` copy semantics, so
+re-adds and split slices keep it. That makes the queue item **72 bytes, or 80 with max age**, which is the one number the
+owner still has to accept; the fallback if it is refused is named in the plan and does not fake the shutdown case. Option
+B (`EOutcome` on the record + `GetOutcome`) is still worth doing on its own merits - it removes the `FindTask`-returns-
+`nullptr` ambiguity that no callback fixes.
+
 **Ordering constraint: settle this before implementing `PLAN_b3d_max_age.md`.** A max-age drop is the third site that
 abandons work; building it while the answer is "log only" bakes the ambiguity into one more place, and unwinding that is
 the kind of change that has already cost this project a session.

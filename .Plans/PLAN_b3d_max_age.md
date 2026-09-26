@@ -42,7 +42,7 @@ Add `#include <chrono>` to the header's includes.
 
 `Engine/Core/WorkItem.cpp`, in the private constructor at line 35
 (`WorkItem::WorkItem(Task& task, TIndex start, TIndex end, uint8_t priority)`): initialise `offerTime`
-in the member-init list from the engine's steady clock. **Spend two minutes here:** use the same clock
+in the member-init list from the engine's steady clock. **Resolved 08:10, no check needed:** `TaskStream.cpp:615` uses `std::chrono::steady_clock::now()` for its shutdown deadline, so the engine's bound clock is `steady_clock` - stamp `offerTime` from `std::chrono::steady_clock::now().time_since_epoch()` and the age book and the deadline book share one clock. The original warning stands as history: use the same clock as
 `StreamDrainPolicy` already measures lane time with, not a second clock — a mismatch between the age
 book and the time-accounting book is a silent bug, and `StreamDrainPolicy.h` already returns
 `std::chrono::nanoseconds` for `GetFifoUsed`/`GetPriorityUsed`, so the units match and only the clock
