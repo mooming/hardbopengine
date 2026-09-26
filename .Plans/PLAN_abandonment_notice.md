@@ -191,3 +191,42 @@ released-task site. Sizes moved as the guards predicted: `WorkItem` 56 -> 72, `T
 The reason for landing rather than continuing is disclosed rather than hidden: the implementing session ran out of context,
 and half-written test bodies in a library source are how this project lost work three times. A committed, gated, opt-in
 feature with its gap written down is recoverable; a broken tree is not.
+
+### Why Step 6 was not written in that session, and the two designs that would work
+
+The obvious end-to-end test - enqueue, release, drive, expect the notice - is **not safe to write casually**, and a flaky test
+is worse than none because it teaches everyone to ignore the red one. Two obstacles, both from contracts in the tree:
+
+* `TaskStream::Update` allows **one driver, and that driver is the stream's owner thread**. So a test body cannot simply call
+  `Update()` on a stream it does not own; and a worker stream *is* driven by its own thread, which would race the release and
+  sometimes run the item before it is dropped. That is the flake.
+* `WorkItem`'s constructor is private with `Task` and `TaskStream` as its only friends, and `FireAbandonedNotice` is private to
+  `TaskStream`, so a test cannot fabricate the drop the way it would like to.
+
+**Design A - deterministic, in-process, kills the two mechanisms most likely to rot.** In the task-system test file, declare a
+provider subclass to reach `MakeWholeItem` (C2 made it `protected static` for exactly this kind of legitimate use):
+
+```cpp
+	struct NoticeProbeProvider final : TaskProvider
+	{
+		using TaskProvider::MakeWholeItem;
+	};
+```
+
+Then: set a notice on a task, `MakeWholeItem(task, priority)` and assert `item.abandonedNotice` and
+`item.abandonedUserData` came through - which is the constructor stamp, i.e. the same mechanism a split slice inherits - then
+call the stream's fire helper and assert the probe recorded this task's ID and this requestor's `userData`, and that a second
+item with no notice left the probe untouched. This needs one enabler to decide first: either `TaskSystemTest` (or
+`TaskStreamTest`) is made a friend of `TaskStream`, or `FireAbandonedNotice` becomes public. **Prefer the friend**: publishing
+an internal drop-site helper as engine API to make a test shorter is the trade that later gets used by accident.
+
+**Design B - the real end-to-end, and the condition that makes it legal.** Drive the base stream from its own owner thread and
+assert on the *wiring* at the released-task site. Legal only if the test body genuinely runs on the base thread, which it has
+to be checked for, not assumed - this project already has a base-thread witness in the isolation tests, and the measurement
+that `Engine::Run` pumps almost never means the base stream is not being driven from a loop in this binary, so the test must
+drive it itself and from the right thread. Bound the driving in wall clock, never in passes.
+
+**Recommended order: A first** - it is deterministic, it costs microseconds, and it kills both the "fire removed" mutant and the
+"stamp removed" mutant, which are the two that break silently. B afterwards, and only once the base-thread question is settled,
+because B is also the test that would have caught `Engine::Run`.
+
