@@ -384,3 +384,34 @@ What follows, in the order I would do it:
 2. **Then the smoke run becomes the guardrail** (design 2): a real application under a wall clock, which is the only harness where
    the engine loop actually runs.
 
+### N4 (todo #6, B3d) - three designs compared, the one to build, and the one NOT to build with it (06:30)
+
+Requirement, from `docs/TaskSystemRedesign.md`: a task may declare an optional deadline (engine-clock relative); exceeded means
+**abandoned**, and the critical invariant is that **an abandoned task is still destroyed** - RAII frees what it possesses, and the
+registry record must go with it. `N4`'s own note says: steady-clock stamp at enqueue, evaluated in the existing sweep, per-stream
+policy.
+
+| # | Design | Cost | Why it wins or loses |
+|---|---|---|---|
+| 1 | Stamp the enqueue time on every `WorkItem`, compare against a per-stream ceiling in the sweep | `WorkItem` 56 -> **64 bytes**, +8 per queued item, paid on every enqueue copy and every re-add after an unfinished run | **Chosen.** Evaluation stays local to the item the sweep is already holding; no second lookup, no queue-internal clock to reason about |
+| 2 | Put the deadline on the task record, read age from a per-lane monotonic watermark | no field growth | **Rejected.** A lane that stalls while other lanes advance gets the wrong age, which is exactly the case the feature exists for - and the age is a property of when the work was offered, not of when the lane last moved |
+| 3 | Enforce at dispatch only, no sweep: an over-age item is abandoned instead of run | zero sweep work | **Viable and cheap**, but stale items keep occupying queue memory until something reaches them, and on a starved lane the head item is the only one examined - so it protects the decision, not the capacity |
+
+**Build the per-stream ceiling first, and do NOT build the per-task optional deadline in the same change.** The per-stream max age is
+what prevents the documented harm - work whose context went stale hours later being run because it was queued - and it costs one
+field per stream. The per-task deadline is a task-author convenience with **no caller in the tree today**; adding a field to `Task`
+and a second comparison path for a feature nobody requests is the over-engineering I have been removing all session, not adding.
+
+Implementation shape, so the next session starts from a decision and not a question:
+1. `WorkItem` gains a steady-clock enqueue stamp; `TaskSystem`'s enqueue sites stamp it; the existing `static_assert` on the item's
+   size has to be updated to 64 with the reason, since that assert exists precisely to catch a silent layout change.
+2. `StreamDrainPolicy` gains `SetMaxAge` / `GetMaxAge`, default **none** - unlimited, because every stream behaves as it does today
+   until someone opts in.
+3. The sweep already in `TaskStream::Update` drops over-age items instead of re-adding them: release the registry record, destroy the
+   item, and count it through the **same abandoned-work report path #16 built for shutdown**, so abandoned work has one accounting
+   vocabulary in the engine instead of two.
+4. Test, with the in-band sentinel the negative assertion needs: set a ~20 ms ceiling, enqueue work, let it age without driving, then
+   drive - and assert the runnable never executed (sentinel stays 0), the registry record is gone, and exactly one work item was
+   reported abandoned. Named mutant to kill it: force the age comparison false; the test must fail by name, per the standing standard
+   that a mutation is not accepted until a named test names the gate.
+
