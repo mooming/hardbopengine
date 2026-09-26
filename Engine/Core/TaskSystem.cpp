@@ -1,6 +1,5 @@
 // Copyright (c) 2026 Hansol Park (mooming.go@gmail.com). All rights reserved.
 
-#include "TaskProvider.h"
 #include "TaskSystem.h"
 
 #include <array>
@@ -14,6 +13,7 @@
 #include "Config/ConfigParam.h"
 #include "Constants.h"
 #include "Log/Logger.h"
+#include "TaskProvider.h"
 
 namespace hbe
 {
@@ -941,37 +941,37 @@ std::size_t RecordIsolationRun(void* userData, std::size_t begin, std::size_t en
 
 namespace
 {
-	std::atomic<int> abandonmentFires{ 0 };
-	std::atomic<void*> abandonmentUserData{ nullptr };
-	TaskID abandonmentTaskIDSeen;
+std::atomic<int> abandonmentFires{0};
+std::atomic<void*> abandonmentUserData{nullptr};
+TaskID abandonmentTaskIDSeen;
 
-	std::size_t AbandonmentNoticeRunnable(void*, std::size_t, std::size_t) noexcept
-	{
-		return 0;
-	}
-
-	void AbandonmentProbe(TaskID abandonedTask, void* userData) noexcept
-	{
-		abandonmentTaskIDSeen = abandonedTask;
-		abandonmentUserData.store(userData, std::memory_order_relaxed);
-		abandonmentFires.fetch_add(1, std::memory_order_relaxed);
-	}
-
-	// Abstract on purpose: only the inherited static factory is used, and instantiating a provider would
-	// attach it to streams that this test has no business touching.
-	struct AbandonNoticeProvider : TaskProvider
-	{
-		using TaskProvider::MakeWholeItem;
-	};
+std::size_t AbandonmentNoticeRunnable(void*, std::size_t, std::size_t) noexcept
+{
+	return 0;
 }
+
+void AbandonmentProbe(TaskID abandonedTask, void* userData) noexcept
+{
+	abandonmentTaskIDSeen = abandonedTask;
+	abandonmentUserData.store(userData, std::memory_order_relaxed);
+	abandonmentFires.fetch_add(1, std::memory_order_relaxed);
+}
+
+// Abstract on purpose: only the inherited static factory is used, and instantiating a provider would
+// attach it to streams that this test has no business touching.
+struct AbandonNoticeProvider : TaskProvider
+{
+	using TaskProvider::MakeWholeItem;
+};
+} // namespace
 
 void TaskSystemTest::Prepare()
 {
-	// The notice is the one mechanism whose failure is invisible: an item that should report itself and silently does not
-	// looks exactly like a stream with nothing to report, which is the same class of blind spot that let a deleted loop
-	// header in the engine loop pass 59 collections. So both directions are asserted - the requestor that asked is told
-	// once, with its own ID and its own userData - and the silence of a task nobody asked about is asserted as well,
-	// because if the default ever started notifying, every task in the engine would.
+	// The notice is the one mechanism whose failure is invisible: an item that should report itself and silently does
+	// not looks exactly like a stream with nothing to report, which is the same class of blind spot that let a deleted
+	// loop header in the engine loop pass 59 collections. So both directions are asserted - the requestor that asked is
+	// told once, with its own ID and its own userData - and the silence of a task nobody asked about is asserted as
+	// well, because if the default ever started notifying, every task in the engine would.
 	AddTest("A dropped work item notifies the requestor that asked and a task nobody asked about notifies nobody",
 			[this](TLogOut& ls)
 	{

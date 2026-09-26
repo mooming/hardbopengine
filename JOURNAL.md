@@ -1,5 +1,29 @@
 # Journal
 
+## 2026-09-25 09:20 — the abandonment notice now has a test that can see silence, and two mutants died to it
+
+Design A from `.Plans/PLAN_abandonment_notice.md`, landed: an abstract `TaskProvider` subclass exposing the inherited static
+`MakeWholeItem` builds real queue items from real tasks, and the collection asserts the notice travels from task to item with its
+`userData`, that firing an unstamped item notifies nobody, and that firing a stamped one notifies exactly once with the dropped
+task's ID and the requestor's pointer. It runs as `TaskSystemTest` TC0, in microseconds, with no threads.
+
+Mutation evidence, both killed by name (`TC0`, `runner exit=1`): removing the call from `TaskStream::FireAbandonedNotice`, and
+removing the two initialisers that stamp the notice in `WorkItem`'s constructor. Those are the two mechanisms that fail silently -
+an item that should report itself and does not looks exactly like a stream with nothing to report, which is the same blind spot
+that let a deleted loop header in `Engine::Run` pass 59 collections. Both mutants were applied from a committed tree and reverted
+with `git checkout`; the rule about committing first is now load-bearing rather than theoretical.
+
+Disclosed against myself: my `#include "TaskProvider.h"` went in **before the file's own header**, which `check.sh` caught as 2
+mechanical violations (include layout plus the clang-format drift it caused). The rule is own header, then `<standard>`, then
+`"project"`, each alphabetical - and the reason my placement was wrong is the same reason it is worth having written down: the
+own-header-first rule is what makes a file's subject visible in its first line. Fixed by moving it after `Log/Logger.h`, then
+`--apply`, then rebuilding with `-test` because `check.sh`'s own rebuild drops it. Final: 0 violations, build gate 12/12,
+59 collections green in Debug/Dev/Release.
+
+Still open on this feature, in order: the wiring mutant at the released-task site (a test that drops real work and sees the notice
+arrive, which is Design B and needs the base-thread question settled - it is also the test that would have caught `Engine::Run`),
+the shutdown close sites which are still count-only, and the documentation steps.
+
 ## 2026-09-25 04:40 — the review found that I broke `Engine::Run`: it had no loop header, and ran one pass
 
 HEAD before this fix: `71dd0ab`. Found while correcting `docs/Engine/Engine/run.html` from the **source** instead of from memory —
