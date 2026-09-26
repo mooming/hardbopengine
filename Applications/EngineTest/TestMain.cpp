@@ -14,6 +14,10 @@ int main(int argc, const char* argv[]) noexcept
 	hbe::Test::RunTests();
 	hengine.Run();
 
+	// Measured rather than assumed, because the sentence below is wrong about fact: with the loop header in place the base
+	// stream recorded 8 driven passes in the whole binary and at most 1 inside the loop, and Run() returned immediately -
+	// the collections drive themselves to completion inside RunTests(), which blocks, so shutdown is already requested by
+	// the time Run() is entered. What follows describes the intended arrangement, not the one this binary has.
 	// The suite runs as a task that shuts the engine down when it finishes, so the tallies
 	// are only complete once Run() returns. A failing suite has to leave a non-zero exit
 	// status behind: until now it always returned 0, which made the run impossible to gate on.
