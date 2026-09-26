@@ -415,3 +415,38 @@ Implementation shape, so the next session starts from a decision and not a quest
    reported abandoned. Named mutant to kill it: force the age comparison false; the test must fail by name, per the standing standard
    that a mutation is not accepted until a named test names the gate.
 
+### Standing decision 4 (NEW, 07:40) — who is told when work is abandoned, and today the answer is nobody
+
+The owner asked whether abandonment reaches the requestor. It does not, and grepping the public surface proves the
+scope of it: there is **no abandon/notify/callback anywhere in `TaskSystem.h`, `Task.h`, `TaskProvider.h` or
+`TaskStream.h`** - every occurrence of the word is an internal report or a doc note. The single delivery primitive is
+`TaskSystem::DispatchSuccessor(TaskID finishedTask)`, and it is called from exactly one place, `TaskStream.cpp:515`,
+inside `if (workItem->Run(*task))` - so it fires only when a join **completed**. Every drop path - the released task at
+`TaskStream.cpp:500`, the shutdown deadline reports at `:572` and `:627`, and the max-age check that
+`PLAN_b3d_max_age.md` Step 3 would add - destroys the item, writes a log line, and never calls it.
+
+Three consequences, in order of how much they hurt:
+
+1. The requestor's **successor is never enqueued**, so its chain stops with no signal at all. `SetSuccessor`/
+   `GetSuccessor` exist, and nothing on the abandonment side consults them.
+2. `FindTask(id)` returning `nullptr` is the only thing a requestor can observe, and **it is ambiguous by construction**:
+   it cannot distinguish abandoned from completed-and-released from never-existed. That is not a signal, it is the
+   absence of one wearing a signal's clothes - which is the failure mode this session has been chasing in every other
+   form. (C1 made it worse in a useful direction: `Task::HasDone` is private and the handle waits are gone, so nobody
+   can even poll completion; requestors poll their own sentinels.)
+3. The only in-band, honest signal is the **wait side**: `DriveUntil("waiting for ...", predicate, timeout)` reporting
+   `ReportDriveTimeout`. A requestor that waits finds out it never got its outcome; a requestor that does not wait never
+   finds out anything.
+
+Three solutions compared:
+
+| Option | Shape | Cost | Verdict |
+|---|---|---|---|
+| **A. Failure successor dispatch** | on abandonment route a packet to the successor carrying an abandoned status, one path for success and failure | needs a status in `ResultPacket`'s 128 bytes, and **every** task author must then handle "my input is missing" | Right for chains that must continue; too broad to impose by default - the owner's call |
+| **B. Outcome state on the record, polled** | `EOutcome { pending, done, abandoned }` on the registry record + public `GetOutcome(TaskID)` | one field - it fits the record's existing 48 bytes of cache-line padding - and one accessor | **Recommended first.** It removes the `nullptr` ambiguity at no dispatch cost and burdens nobody |
+| **C. Per-task abandonment callback** | `SetAbandonedHandler(id, fn)` | a callable per task: size, ownership, and *which thread runs it* - re-importing the exact cross-thread callback surface this arc spent itself deleting in C1 | **Rejected**, for the same reason the handle waits went |
+
+**Ordering constraint: settle this before implementing `PLAN_b3d_max_age.md`.** A max-age drop is the third site that
+abandons work; building it while the answer is "log only" bakes the ambiguity into one more place, and unwinding that is
+the kind of change that has already cost this project a session.
+

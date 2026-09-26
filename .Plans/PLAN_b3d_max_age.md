@@ -5,6 +5,14 @@ fixed the `Engine::Run` loop-header regression. Every anchor below was read from
 commit; line numbers are given as landmarks, the quoted code is what to match. If an anchor does not
 match, the tree moved — re-read that file rather than trusting the number.
 
+## PRECONDITION — blocking owner decision, added 07:40 after the plan was written
+
+Do not implement Step 3 until **standing decision 4** in `.Plans/TODO_task_system.md` is settled: today an abandoned
+work item notifies **nobody**. `DispatchSuccessor` fires only when a join completes, so a dropped item stops the
+requestor's chain silently, and `FindTask` returning `nullptr` cannot tell abandonment from a completed-and-released
+task. A max-age drop is the third such site; the plan is valid either way, but its `ReportAgedOutWorkItem` must either
+deliver the outcome the decision chooses or the decision must explicitly accept log-only for this stream class.
+
 ## Scope decision (already made — do not reopen without the owner)
 
 Implement the **per-stream max age**. Do **not** implement the per-task optional deadline in this
