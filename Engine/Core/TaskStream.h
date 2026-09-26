@@ -434,6 +434,12 @@ private:
 	///          are still queued will see one line per dropped subtask.
 	void ReportReleasedTask(const WorkItem& task) const noexcept;
 
+	/// @brief Fire an item's abandonment notice if it has one - the single place that decides whether to notify.
+	/// @details Every drop site that holds an item calls this, so a future site cannot log without notifying or notify
+	///          without a log line to go with it. Log text stays per-site because each site knows something different
+	///          about why the work died; only the decision to notify is shared.
+	void FireAbandonedNotice(const WorkItem& item) const noexcept;
+
 	/// @brief Count a refusal to take from the general queue, and report the first one this stream ever refuses.
 	/// @details A throttled stream has to be visible somewhere or it looks like an idle one, and the count alone
 	///          is invisible to anyone not reading a debugger.

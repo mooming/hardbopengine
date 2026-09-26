@@ -9,6 +9,13 @@ namespace hbe
 {
 class Task;
 
+/// @brief Called when work is dropped without running, on the thread that dropped it.
+/// @param abandonedTask the ID the dropped item carried, which is the only identity that still means something
+/// @param userData the pointer the requestor supplied, opaque to the engine
+/// @note At most one call per work item, and never for work that ran. The callee must not block, must not acquire a
+///       task-stream lock, and must not look up the task record - it is being dropped around this call.
+using FAbandonedNotice = void (*)(TaskID abandonedTask, void* userData) noexcept;
+
 /// @brief What a task stream's queue actually holds: one task, one slice of its index range, and how far that slice
 ///        has got.
 /// @details Replaces `RangedTask`, which was this plus a copy of the task's name and measured 128 bytes. A queue item
@@ -17,7 +24,8 @@ class Task;
 ///          giving up. The name had exactly one reader: the warning issued when an item is dropped because its task
 ///          was released - and there the registry can no longer confirm the name is the one that task had, while the
 ///          ID is still the identity that means something. Dropping it also removes the item's only dependency on
-/// @note The item measures 56 bytes. 8 of them are `TaskStreamAffinity`, which once cost 64 because its word count was
+/// @note The item measures 72 bytes, 16 of them the optional abandonment notice. The width is guarded by `decidedWorkItemBytes`, which exists to make a size change loud rather than silent.
+/// @note Before the notice it measured 56 bytes. 8 of those were `TaskStreamAffinity`, which o 8 of them are `TaskStreamAffinity`, which once cost 64 because its word count was
 ///        derived from bytes per word instead of bits per word; that is fixed in `TaskStreamAffinity.h` and pinned by a
 ///        test there, because the defect was internally consistent and therefore invisible to any behavioural test.
 ///          `StaticString`, so a queued item can outlive the tracked task without holding a stale name alive.
@@ -47,6 +55,17 @@ public:
 	///          run starts here. A task whose runnable never finishes in one call is only ever correct because of this
 	///          field; the incremental-resume test in the task system tests exists to catch its removal.
 	mutable TIndex current;
+
+	/// @brief Optional notice fired if this item is dropped without running; `nullptr` means nobody is listening.
+	/// @details Copied like every other field, so an item re-added after a partial run and every slice of a split job
+	///          keep the notice their task was offered with. Stamped from the task by the constructor, which is what
+	///          makes a slice inherit its parent's notice instead of needing a line to remember it.
+	/// @see TaskSystem::SetAbandonedNotice
+	FAbandonedNotice abandonedNotice{ nullptr };
+
+	/// @brief The requestor's context, passed through untouched. Its lifetime belongs to whoever set the notice: it
+	///        must outlive every drop this item can suffer, and the engine will not clear it.
+	void* abandonedUserData{ nullptr };
 
 public:
 	~WorkItem() = default;

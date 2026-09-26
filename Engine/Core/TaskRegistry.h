@@ -85,7 +85,7 @@ private:
 		std::size_t nextFreeRecord;
 
 		/// @brief Space held back so every record starts on a cache line. See RecordSizeBytes and R28.
-		std::byte reservedToCacheLine[48];
+		std::byte reservedToCacheLine[32];
 	};
 
 	using TBank = Record*;

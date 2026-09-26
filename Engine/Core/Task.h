@@ -56,6 +56,12 @@ private:
 	// Custom User Data
 	void* userData;
 
+	/// @brief Notice fired if this task's work is dropped without running; `nullptr` is every task's state unless a
+	///        requestor asked. Separate from `userData` above on purpose: that one belongs to the runnable, this one
+	///        belongs to whoever asked to be told, and the two are not the same party.
+	FAbandonedNotice abandonedNotice{ nullptr };
+	void* abandonedUserData{ nullptr };
+
 	/// @brief This task's result, written by the task itself. See GetResult.
 	ResultPacket result;
 
@@ -121,6 +127,7 @@ public:
 
 private:
 	friend class TaskRegistry;
+	friend class WorkItem;
 	friend class TaskSystem;
 	friend class TaskProvider;
 	friend class TaskSystemTest;

@@ -183,6 +183,14 @@ std::optional<WorkItem> TaskStream::DrainProvidersLocked(StreamDrainPolicy::ELan
 	return std::nullopt;
 }
 
+void TaskStream::FireAbandonedNotice(const WorkItem& item) const noexcept
+{
+	if (item.abandonedNotice != nullptr)
+	{
+		item.abandonedNotice(item.taskID, item.abandonedUserData);
+	}
+}
+
 void TaskStream::ReportReleasedTask(const WorkItem& item) const noexcept
 {
 	auto log = Logger::Get(name);
@@ -498,6 +506,7 @@ bool TaskStream::Update() noexcept
 	if (task == nullptr)
 	{
 		ReportReleasedTask(*workItem);
+		FireAbandonedNotice(*workItem);
 		restore();
 		return true;
 	}

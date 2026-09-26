@@ -145,6 +145,24 @@ public:
 		taskRegistry.SetSuccessor(task, successor);
 	}
 
+	/// @brief Ask to be told if this task's work is dropped without running.
+	/// @param handler `nullptr` clears the notice, which is also the default: a task nobody asked about notifies nobody.
+	/// @param userData handed to the handler untouched and never cleared by the engine; its lifetime is the requestor's to
+	///        guarantee, and it must outlive every drop this task's work can suffer.
+	/// @note Call it before the task is offered. Once work is queued the engine may drop an item before this lands, which
+	///       loses the notice rather than racing it, and there is deliberately no lock to close that window: a mutex on
+	///       the offer path to protect an opt-in courtesy is the trade this engine has already refused twice.
+	/// @note The handler runs on the thread that dropped the work, which may be a worker mid-shift. Do not block in it,
+	///       and do not look the task record up from it - that record is being dropped around the call.
+	void SetAbandonedNotice(TaskID task, FAbandonedNotice handler, void* userData = nullptr) noexcept
+	{
+		if (auto* target = FindTask(task); target != nullptr)
+		{
+			target->abandonedNotice = handler;
+			target->abandonedUserData = userData;
+		}
+	}
+
 	/// @brief The successor recorded for a task, or a null ID. See TaskRegistry::GetSuccessor.
 	[[nodiscard]] TaskID GetSuccessor(TaskID task) noexcept
 	{

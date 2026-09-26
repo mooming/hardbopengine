@@ -38,6 +38,8 @@ WorkItem::WorkItem(Task& task, TIndex start, TIndex end, uint8_t priority) noexc
 	, start(start)
 	, end(end)
 	, current(start)
+	, abandonedNotice(task.abandonedNotice)
+	, abandonedUserData(task.abandonedUserData)
 {
 	affinity.Unset(TaskSystem::GetBaseTaskStreamIndex());
 	affinity.Unset(TaskSystem::GetIOTaskStreamIndex());

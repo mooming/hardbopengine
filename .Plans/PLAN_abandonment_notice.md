@@ -1,7 +1,7 @@
 # PLAN — optional abandonment notice to the requestor (decision 4, owner's call 08:10)
 
 Owner's decision: **provide an optional callback** — a function pointer, set only by requestors who want to know.
-Status: **not started, specified to the line.** Written at `ffa14fa` by the session that established the gap.
+Status: **partly landed at the next commit - see "What landed" at the bottom of this file.** Written at `ffa14fa` by the session that established the gap.
 
 ## The fact that decides the shape (read from the tree, not inferred)
 
@@ -167,3 +167,27 @@ concurrent agent's, so note the new public member for them instead of editing it
 `TaskStream.cpp:615` uses `std::chrono::steady_clock::now()` for its shutdown deadline — the engine's bound clock **is**
 `steady_clock`. That resolves the two-minute clock-source check the max-age plan flagged: stamp `offerTime` from
 `std::chrono::steady_clock::now().time_since_epoch()`, and the age book and the deadline book are the same clock.
+
+
+## What landed, and what did not (written at implementation time)
+
+Landed, gated green in Debug/Dev/Release: `FAbandonedNotice`, the two `WorkItem` fields, the `Task` fields, the constructor
+stamp (which is why sub-slices inherit for free - `GenerateSubTask` passes `*this`, so no inheritance line was needed),
+`TaskSystem::SetAbandonedNotice`, `TaskStream::FireAbandonedNotice` as the single decision point, and the call at the
+released-task site. Sizes moved as the guards predicted: `WorkItem` 56 -> 72, `Task` 176 -> 192 absorbed by shrinking
+`TaskRegistry::reservedToCacheLine` 48 -> 32 so the record stayed priced at 256.
+
+**Not landed, in the order that matters:**
+1. **The firing branch has no test.** The 59 green collections prove only that the `nullptr` default path is untouched -
+   which is what makes this safe to land, not what makes it correct. Without Step 6's control case, deleting the
+   `if (item.abandonedNotice != nullptr)` call would break nothing, which is precisely how `Engine::Run`'s loop header
+   disappeared unnoticed. Do Step 6 before adding anything else here.
+2. **The shutdown close sites are still count-only.** `CloseDrivenStream`/`CloseOtherStream` call `CountPendingItems()`
+   and never examine an item, so work abandoned at teardown notifies nobody. Their log lines therefore remain true, and
+   Step 5's rewording is deliberately not applied - it would be a lie in the other direction. This is the plan's named
+   fallback, and it means the notice today covers released-task drops only.
+3. Steps 7-8: the named mutants, and the documentation.
+
+The reason for landing rather than continuing is disclosed rather than hidden: the implementing session ran out of context,
+and half-written test bodies in a library source are how this project lost work three times. A committed, gated, opt-in
+feature with its gap written down is recoverable; a broken tree is not.
