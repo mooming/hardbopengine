@@ -434,11 +434,18 @@ private:
 	///          are still queued will see one line per dropped subtask.
 	void ReportReleasedTask(const WorkItem& task) const noexcept;
 
+	/// @details `TaskSystemTest` is a friend because this is the one mechanism whose failure is invisible: an item that
+	///          should notify and silently does not looks exactly like a stream with nothing to report. The same
+	///          friendship already exists on `Task` and `TaskRegistry`, so it is this codebase's convention rather than
+	///          a new concession, and the alternative - publishing a drop-site helper as engine API to save a test some
+	///          lines - is the trade that gets used by accident later.
 	/// @brief Fire an item's abandonment notice if it has one - the single place that decides whether to notify.
 	/// @details Every drop site that holds an item calls this, so a future site cannot log without notifying or notify
 	///          without a log line to go with it. Log text stays per-site because each site knows something different
 	///          about why the work died; only the decision to notify is shared.
 	void FireAbandonedNotice(const WorkItem& item) const noexcept;
+
+	friend class TaskSystemTest;
 
 	/// @brief Count a refusal to take from the general queue, and report the first one this stream ever refuses.
 	/// @details A throttled stream has to be visible somewhere or it looks like an idle one, and the count alone
