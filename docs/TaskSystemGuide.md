@@ -397,9 +397,30 @@ must outlive every drop this work can suffer.
 notice rather than racing it, and there is deliberately no lock closing that window: a mutex on the offer path to protect an opt-in
 courtesy is the trade this engine has refused twice already.
 
-**What is not covered yet, stated plainly.** The notice fires when work is dropped because its task was released. The shutdown close
-sites are still count-only, so work abandoned at teardown does not notify anyone - `CloseDrivenStream` and `CloseOtherStream` report
-`"is closing with N item(s) still held"` and their wording that a waiting customer will not receive one is therefore still true. The
-design for closing that gap is in `.Plans/PLAN_abandonment_notice.md`; it is a teardown-semantics change, because draining those
-queues is what makes a per-item notice possible, and a named test currently asserts on the pending count it would consume.
+**Every drop site now notifies.** Work dropped because its task was released, and work still held when a stream closes, both fire the
+notice: a closing stream calls `AbandonHeldWork`, which pops each lane, fires each item's notice and counts what it dropped.
+`GetAbandonedWorkNoticeCount()` is the readable witness for that, in the style of `GetLaneWorkRefusalCount`, because a shutdown report
+that can only be verified by scraping its own output is not verified.
+
+## 15. Choosing a lane: `StreamDrainPolicy::ELane`
+
+A stream holds two queues, and **which one your work lands in is now your choice** rather than a consequence of which internal
+function a caller happened to reach:
+
+```cpp
+using ELane = hbe::StreamDrainPolicy::ELane;   // Fifo | Priority | None
+
+taskSys.EnqueueTask(streamIndex, *task, 0, ELane::Fifo);       // arrival order
+taskSys.EnqueueTask(streamIndex, *task, 7, ELane::Priority);   // highest priority first, oldest within a tie
+```
+
+**Lane and priority are different things and must not be confused.** The *lane* is the queue that serves the work.
+`WorkItem::priority` is the ordering **inside the priority queue** - it selects nothing, and on the FIFO lane it changes nothing at
+all. The engine previously exposed exactly one route, `EnqueueFifo`, so the priority lane could not be filled from the public API:
+its share of the FIFO:priority drain rate, its re-add path and its half of the shutdown drain were unreachable, and a mutant that
+drained that lane without notifying anyone survived a full suite twice because there was no input a test could construct. The lane
+parameter exists to remove that class of blind spot, not to add a knob.
+
+`ELane::None` is rejected with an assert rather than absorbed as FIFO: work with nowhere to go and work nobody attached to a lane are
+different problems, and merging them turns a provider bug into a mysteriously missing task.
 

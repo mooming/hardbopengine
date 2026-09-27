@@ -983,6 +983,19 @@ std::size_t AbandonmentNoticeRunnable(void*, std::size_t, std::size_t endIndex) 
 	return endIndex;
 }
 
+std::atomic<int> fifoLaneRuns{0};
+std::atomic<int> priorityLaneRuns{0};
+
+std::size_t LaneRunCountingRunnable(void* userData, std::size_t, std::size_t endIndex) noexcept
+{
+	if (userData != nullptr)
+	{
+		static_cast<std::atomic<int>*>(userData)->fetch_add(1, std::memory_order_relaxed);
+	}
+
+	return endIndex;
+}
+
 void AbandonmentProbe(TaskID abandonedTask, void* userData) noexcept
 {
 	abandonmentTaskIDSeen = abandonedTask;
@@ -1077,6 +1090,57 @@ void TaskSystemTest::Prepare()
 	// drained by two loops, and one body parameterised over both is how the priority loop went a whole session without
 	// a witness. The lane is named by the caller through the public API, so this exercises the reachable route and not
 	// a hand-filled queue.
+	// Both drain tests prove work can be dropped from either lane. This covers the other half, which nothing had
+	// covered for the priority lane at all: that work offered there through the public API is actually reached and run.
+	// The lane counter is the task's own userData, so the runnable never learns which lane it is on and no pair of test
+	// globals can be crossed. DriveUntil is bounded by wall clock rather than passes, because the same burn is
+	// milliseconds apart between configurations.
+	AddTest("Work offered on each lane through the public API is reached and run", [this](TLogOut& ls)
+	{
+		auto& taskSys = Engine::Get().GetTaskSystem();
+
+		fifoLaneRuns.store(0, std::memory_order_relaxed);
+		priorityLaneRuns.store(0, std::memory_order_relaxed);
+
+		const TaskID fifoID = taskSys.CreateTask("LaneReachFifo", &LaneRunCountingRunnable, &fifoLaneRuns);
+		const TaskID priorityID = taskSys.CreateTask("LaneReachPriority", &LaneRunCountingRunnable, &priorityLaneRuns);
+
+		Task* fifoTask = taskSys.FindTask(fifoID);
+		Task* priorityTask = taskSys.FindTask(priorityID);
+		if (fifoTask == nullptr || priorityTask == nullptr)
+		{
+			ls << "the lane reach test could not create its two tasks." << lferr;
+			return;
+		}
+
+		taskSys.EnqueueTask(TaskSystem::GetBaseTaskStreamIndex(), *fifoTask, 0, StreamDrainPolicy::ELane::Fifo);
+		taskSys.EnqueueTask(TaskSystem::GetBaseTaskStreamIndex(), *priorityTask, 1, StreamDrainPolicy::ELane::Priority);
+
+		taskSys.DriveUntil("work on both lanes being reached", []() {
+			return fifoLaneRuns.load(std::memory_order_acquire) > 0 &&
+				   priorityLaneRuns.load(std::memory_order_acquire) > 0;
+		}, std::chrono::milliseconds(400));
+
+		const auto fifoRuns = fifoLaneRuns.load(std::memory_order_acquire);
+		const auto priorityRuns = priorityLaneRuns.load(std::memory_order_acquire);
+
+		if (fifoRuns == 0)
+		{
+			ls << "work offered on the FIFO lane was never run." << lferr;
+		}
+
+		if (priorityRuns == 0)
+		{
+			ls << "work offered on the priority lane was never run: the lane accepts items and nothing acquires them, "
+				  "which is "
+				  "the state the drain-rate machinery was written to describe."
+			   << lferr;
+		}
+
+		taskSys.ReleaseTask(fifoID);
+		taskSys.ReleaseTask(priorityID);
+	});
+
 	AddTest("Work held on the priority lane is abandoned with its notice fired, not silently", [this](TLogOut& ls)
 	{
 		auto& taskSys = Engine::Get().GetTaskSystem();
