@@ -1,105 +1,70 @@
-# PLAN — run the suite on the base stream, driven by `Engine::Run` (owner's arrangement, 2026-09-28)
+# Corrected again — why per-collection granularity cannot make the loop's iteration load-bearing
 
-## Decision given
+Follow-up to the "corrected after `54efe90`" section, written after trying to implement step 1.
 
-Owner's words: *"it'll be ideal if the engine test suite runs on the base stream while other engine
-streams are working independently."*
+## The blocking fact, read from source
 
-This closes the item that had been blocked as **"the `Engine::Run` guardrail needs a headless-safe
-target"**. No headless application is needed, because the arrangement makes the harness itself the
-witness: **if the engine loop does not pump, no collection runs, and a zero-collection run is already a
-hard refusal** (`runtest.sh` exit 98). The pass count stops being a number a dead loop can print
-anyway and becomes proof that the loop ran.
+`CPUBudget`: **an allowance of zero means unlimited**, and `CanTakeWork` reads it **once per pass**
+(`CPUBudget.h:22,33,50,71`). The base stream runs with the default, which is zero. So a single
+`TaskStream::Update()` keeps taking work **until the stream is empty** — a pass is not a bounded unit.
 
-`Applications/EngineTest/TestMain.cpp` already names this as the intended arrangement and records that
-it is not the current one: today `RunTests()` **blocks and shuts the engine down before `Run()` is
-entered**, so the loop sees an already-stopped system. Measured: the base stream recorded 8 driven
-passes in the whole binary, at most 1 inside the loop.
+Consequence: posting the suite as 59 items instead of one changes nothing about whether one pass can
+finish the run. **One pass can carry all 59**, exactly as today's single item carries all 59 (measured:
+8 driven passes for the whole binary). Granularity was the wrong lever; the pass has no capacity.
+
+## Why mutant M-A survives every witness so far
+
+Traced in the `while`→`if` build, statement by statement:
 
 ```
-today:    Initialize → RunTests() [blocks, pumps itself, shuts down] → Run() [0 passes]
-target:   Initialize → post the suite to the base stream → Run() [pumps base; IO and worker
-          streams run on their own threads] → suite's last collection requests shutdown →
-          Run() returns → main reads the tallies and sets the exit status
+Run() → taskSystem.Update() → base item taken → suite body runs all 59 collections
+      → suite calls Engine::ShutDown() → JoinAndClear() runs INSIDE that Update()
+      → Update() returns → loop header re-checks IsRunning() → false either way → Run() returns
 ```
 
-## Feasibility, read from source rather than assumed
+The healthy build and the defective one differ only in a header test that is false in both. The
+shut-down request comes from inside the suite's own single pass, so the loop never had a second pass to
+make. **In the EngineTest target, as the suite is shaped now, the defect is not observable — not
+imprudently un-witnessed, but genuinely unobservable.** That is the real reason three designs and two
+mutants failed to catch it, and it is worth writing down before any further witness is built.
 
-| Question | Answer | Where |
-|---|---|---|
-| Does shutdown requested from inside base work self-join? | **No.** `JoinAndClear()` never joins the base thread — it *is* that thread. It requests other streams closed, then **keeps pumping the base stream** under a wall-clock deadline while posted tasks and pending items remain, then reports abandoned work | `TaskSystem.cpp:206-231` |
-| Can a test body wait for cross-stream conditions while running inside base work? | **Yes.** `TaskSystem::DriveUntil` detects the base-owner thread and takes the nested-pump branch (`SetNestedPumpAllowed(true)` + RAII guard, calling `Update()` per millisecond). Inside `Run()` the thread is still the base thread, so the same branch is taken — the nesting is one level deeper, not a different mode | `TaskSystem.h:297-340` |
-| How is the suite posted? | `TaskStream::DispatchPostedTasks(MainThreadTaskQueue::TTaskFunc, void*)` — a callable run by the thread driving the stream. `HasPostedTasks()` is what `JoinAndClear` drains | `TaskStream.h:383-399` |
-| Does anything else in the loop get exercised? | Yes, and that is the point: `Engine::Run`'s header, the frame-tick/pump ownership, and `JoinAndClear`'s bounded tail all become load-bearing for the suite's own result | `Engine.cpp:139-149` |
+## The one lever that is not timing-fragile, and what it costs
 
-## Corrected after `54efe90` - the harness already does what was asked, so the increments changed
+Force the run to need more than one pass, then the existing rescue flag makes the loop's iteration
+verifiable:
 
-Read from source: `RunTests()` posts the suite onto the base stream and `Engine::Run()` pumps it, and the suite's own last act is
-`Engine::ShutDown()`. The arrangement described above is therefore **already implemented**, and the blindness came from
-`TaskSystem::JoinAndClear` pumping the base stream under a wall-clock bound and running the suite as a rescue. `54efe90` adds the
-provenance flag and the suite's own check of it.
+1. Give the base stream a **bounded per-pass allowance in the test target**, set from `TestMain` before
+   `Initialize` — a small CPU-time duration (order 1 ms), not an item count, because the API has no item
+   count. With the 59 collections costing far more than 1 ms in total, **one pass provably cannot finish
+   the suite**, so a healthy run needs many passes and a dead loop yields exactly one. The threshold is
+   then only wrong in the harmless direction: too small means more passes, never fewer.
+2. Keep the existing per-item provenance check (`54efe90`) and add a harness assertion that the run
+   spanned **at least two** engine-loop passes, reported by `Engine::Run` itself rather than inferred.
+3. The rescue flag then does its job: if a shutdown drain finishes what the loop did not, that is a named
+   failure rather than a green run.
 
-What that does **not** catch, measured rather than reasoned: reducing `Engine::Run`'s `while` to `if` still leaves all 59 collections
-green, because one `Update()` takes and runs the entire suite - the 59 collections live inside **one** work item, and they finish before
-the rescue pump begins. So the remaining increment is granularity, not arrangement:
+Costs, honestly: the base stream is throttled for the whole test binary, so collections that rely on
+base-stream throughput get slower (bounded in wall clock by `DriveUntil`, which already governs every
+wait, so no test should break — but that must be measured, not assumed); the suite's wall time grows by
+one `Platform::Sleep(1)` per pass; and the allowance value is a duration, so it is a tuning knob with a
+comment rather than an exact quantity.
 
-1. **Post one work item per collection** instead of one item that runs all of them. Then a loop that pumps once and stops cannot
-   complete the run, the shutdown pump is what finishes it, and the flag added in `54efe90` reports it. Preserve registration order -
-   FIFO posting in order does that - and expect the base stream's driven-pass count to rise from ~8 to ~59, which is the positive
-   control that iteration is now required.
-2. Keep the tally-vs-registered check anyway, with a decided constant rather than a counted registration, because a suite that never
-   runs at all has registered nothing and cannot accuse itself.
-3. Documentation of the arrangement as fact, which `TestMain.cpp`'s comment already half-does and now needs correcting in one place:
-   the "8 driven passes" measurement there is about the old defect's run, not about today.
+## Rejected, with the reason
 
-Rejected: asserting a minimum pass count inside the suite (an arbitrary number that a `sleep` in the loop could satisfy); and a source
-lint on the loop header (pins a spelling - already reverted once as dishonest).
+* **Post collection items from a non-base thread** and hope the first pass misses them — the take loop
+  drains whatever is queued when it looks, so this races the drain instead of bounding it.
+* **Assert an exact pass count** — a `sleep` in the loop body satisfies any number. Assert a minimum of
+  two, which is the property the defect actually violates.
+* **Source-shape lint on the loop header** — pins a spelling; already tried and reverted as dishonest.
+* **Leave it unverified and rely on review** — the position I held for five commits, and it is what let
+  `a8946ea` ship.
 
-## Increments (original ordering, superseded for steps 1-3 by the section above; the later steps still stand)
+## Open decision for the owner
 
-**A half-migrated harness invalidates every gate**, because all three configurations are gated on this
-executable. So the sequence is built so that each commit leaves a runnable suite.
+Either (a) land the throttle + ≥2-pass assertion in the **test target** as above, accepting a throttled
+base stream for every collection in that binary; or (b) keep the test target untuned and put the
+iteration witness in a **smoke-run target** that has real frame work and no window (the headless target
+question asked earlier), which costs a build target but leaves the suite's timing untouched.
 
-1. **Tally-vs-registered witness first, before touching the harness.** `RunTests()` knows how many
-   collections are registered; assert that the number *executed* equals it, and fail out loud with the
-   gap when it does not. This is the guardrail proper: it is what turns "the loop stopped pumping" into
-   a named failure instead of a shorter green run. It must land while the harness still works the old
-   way, so that a regression in it cannot be confused with the migration.
-   *Mutant:* run one collection fewer than registered → the new check must fail by name.
-2. **Move the shutdown request out of `RunTests()`** into a function the suite calls when its last
-   collection completes, leaving today's inline pump path intact. Still green, still identical output.
-   *Witness:* the "all N collections passed" line and exit code unchanged in all three configurations.
-3. **Post the suite to the base stream and let `Run()` pump it.** `DispatchPostedTasks(&suiteEntry, nullptr)`,
-   then `hengine.Run()`. Delete the inline pump from the old path in the same commit, or the suite runs
-   twice. Expect the base stream's driven-pass count to jump from ~8 to hundreds — that number is the
-   positive control that the loop is doing the work.
-   *Mutant — the one this whole item exists for:* delete `Engine::Run`'s `while` header (the real
-   regression, commit `a8946ea`) → must be caught by name, by increment 1's check and the zero-collection
-   refusal, not by a hand-made witness.
-4. **Independent streams must be proven independent, not asserted.** At least one collection that
-   demonstrates a worker stream and the IO stream progressing while base work runs — IO already has its
-   LogDriver thread. Bound every wait in wall clock via `DriveUntil`; never in passes.
-5. **Documentation:** `TestMain.cpp`'s comment — which currently documents the *absence* of this
-   arrangement — gets rewritten to describe it as fact; `docs/TaskSystemGuide.md` gains the harness
-   section; `docs/Test/` pages if the module reference covers the runner.
-
-## Risks to carry, and how each is settled
-
-| Risk | Settlement |
-|---|---|
-| Nested pump depth: a test's `DriveUntil` re-entering `Update()` from inside a base item could re-enter the suite item itself | The suite item is popped before its body runs, so it cannot re-run itself; verify with an assertion counter in the suite entry that it executes exactly once |
-| Shutdown requested from inside a work item | Settled by source above — `JoinAndClear` continues pumping base under its deadline, so late posted work still runs. If anything is left over, the existing abandoned-work report will name it |
-| Tally read in `main` racing the suite | The suite's last action is the shutdown request, and `Run()` returns only after `JoinAndClear`, so the tallies are complete before `main` reads them — assert, do not assume: increment 1's check is what makes a truncated tally impossible |
-| `Test::RunTests()`'s own signature is public API (`Engine/Test/UnitTestCollection.h`) | Keep the name, change what it does; a `Prepare()`-style split is not needed and would be a second way to do one thing |
-| Flakiness from real concurrency where the old harness drove everything itself | This is a *feature* of the change — worker and IO timing stop being hidden. Expect the first runs to surface genuine races, which is what the D2/D3 guardrails exist to catch |
-
-## Gate (unchanged, and now stronger because it is the subject)
-
-```bash
-./build.sh Applications/EngineTest -test -debug -dev -release
-for C in Debug Dev Release; do .pi/skills/hb-standards/scripts/runtest.sh $C 280; done
-bash .pi/skills/hb-standards/scripts/check.sh
-```
-Success is `runner exit=0  EngineTest: all <N> collections passed` three times with **N equal to the
-registered count**, plus 0 mechanical violations and build gate 12/12. Commit before mutating, never
-after; stage paths by name; never push.
+Recommendation: **(a)**, because it keeps the witness inside the thing the gate already runs, and its
+failure mode is confined to the verification binary.
