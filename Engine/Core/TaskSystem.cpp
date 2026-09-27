@@ -1003,6 +1003,20 @@ void MaxAgeNoticeProbe(TaskID, void*) noexcept
 	maxAgeNotices.fetch_add(1, std::memory_order_relaxed);
 }
 
+// Per-lane counters for the rate test. These belong to the tasks rather than to the stream on purpose: a
+// stream-wide counter cannot say which lane served the work, and that is exactly the question here.
+std::atomic<int> rateFifoRuns{0};
+std::atomic<int> ratePriorityRuns{0};
+
+std::size_t RateCountingRunnable(void* userData, std::size_t, std::size_t endIndex) noexcept
+{
+	if (userData != nullptr)
+	{
+		static_cast<std::atomic<int>*>(userData)->fetch_add(1, std::memory_order_relaxed);
+	}
+	return endIndex;
+}
+
 std::atomic<int> fifoLaneRuns{0};
 std::atomic<int> priorityLaneRuns{0};
 
@@ -3395,6 +3409,87 @@ void TaskSystemTest::Prepare()
 		}
 
 		baseStream.SetMaxAge(ceilingFound);
+	});
+
+	// The rate is the other half of the lane contract, and until the lane was reachable from the public API it could
+	// not be measured end to end at all: a test that filled the priority queue by hand proved the policy's arithmetic
+	// and nothing about whether a customer's priority work ever runs. This drives real work through both lanes. The
+	// rate is read before it is changed and restored afterwards, because the base stream belongs to the whole suite.
+	// What this asserts is the promise the stream actually makes - a lane with work is never starved by the other
+	// lane's weight - and not the ratio. The ratio was the original intent and it is not observable here: with no CPU
+	// allowance configured, borrowing is free, the policy's own note says the long-run ratio is not preserved when
+	// both lanes are permanently backlogged, and a measured 4/4 of 8 offered items proved it. The ratio is a per-take
+	// decision and is tested where it is decided, in StreamDrainPolicyTest; asserting it end to end would have been a
+	// test that fails on correct code, which is worse than no test because it teaches everyone to ignore tests.
+	AddTest("A lopsided rate reaches both lanes through the public API and starves neither", [this](TLogOut& ls)
+	{
+		auto& taskSys = Engine::Get().GetTaskSystem();
+		auto& baseStream = taskSys.GetStream(TaskSystem::GetBaseTaskStreamIndex());
+
+		const uint32_t fifoWeightFound = baseStream.GetFifoWeight();
+		const uint32_t priorityWeightFound = baseStream.GetPriorityWeight();
+
+		rateFifoRuns.store(0, std::memory_order_relaxed);
+		ratePriorityRuns.store(0, std::memory_order_relaxed);
+
+		baseStream.ConfigureRate(8, 1);
+
+		TaskID fifoTasks[4];
+		TaskID priorityTasks[4];
+		int offered = 0;
+		for (auto& id : fifoTasks)
+		{
+			id = taskSys.CreateTask("RateFifo", &RateCountingRunnable, &rateFifoRuns);
+			if (Task* task = taskSys.FindTask(id); task != nullptr)
+			{
+				taskSys.EnqueueTask(TaskSystem::GetBaseTaskStreamIndex(), *task, 0, StreamDrainPolicy::ELane::Fifo);
+				++offered;
+			}
+		}
+		for (auto& id : priorityTasks)
+		{
+			id = taskSys.CreateTask("RatePriority", &RateCountingRunnable, &ratePriorityRuns);
+			if (Task* task = taskSys.FindTask(id); task != nullptr)
+			{
+				taskSys.EnqueueTask(TaskSystem::GetBaseTaskStreamIndex(), *task, 7, StreamDrainPolicy::ELane::Priority);
+				++offered;
+			}
+		}
+
+		if (offered != 8)
+		{
+			baseStream.ConfigureRate(fifoWeightFound, priorityWeightFound);
+			ls << "only " << offered << " of 8 tasks could be offered, so the ratio below is not the ratio asked about"
+			   << lferr;
+			return;
+		}
+
+		const bool allServed = taskSys.DriveUntil("every item on both lanes of an 8:1 stream", []() {
+			return rateFifoRuns.load(std::memory_order_acquire) + ratePriorityRuns.load(std::memory_order_acquire) >= 8;
+		}, std::chrono::milliseconds{600});
+
+		const int fifoRuns = rateFifoRuns.load(std::memory_order_acquire);
+		const int priorityRuns = ratePriorityRuns.load(std::memory_order_acquire);
+
+		for (auto& id : fifoTasks)
+		{
+			taskSys.ReleaseTask(id);
+		}
+		for (auto& id : priorityTasks)
+		{
+			taskSys.ReleaseTask(id);
+		}
+		baseStream.ConfigureRate(fifoWeightFound, priorityWeightFound);
+
+		if (!allServed || fifoRuns != 4 || priorityRuns != 4)
+		{
+			ls << "an 8:1 rate served " << fifoRuns << " FIFO and " << priorityRuns
+			   << " priority out of 8 offered, DriveUntil"
+			   << " reported " << (allServed ? "true" : "false")
+			   << "; free borrowing is allowed to ignore the ratio, but a"
+			   << " lane that has work must never be starved by the weight of the other lane" << lferr;
+			return;
+		}
 	});
 }
 

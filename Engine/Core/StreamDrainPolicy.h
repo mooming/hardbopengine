@@ -90,6 +90,16 @@ public:
 	/// @brief The oldest work this stream is still willing to run; zero means unlimited.
 	[[nodiscard]] std::chrono::nanoseconds GetMaxAge() const noexcept;
 
+	/// @brief The configured FIFO lane weight.
+	/// @details Readable for the same reason the ceiling is: a caller that re-rates a shared stream has to be able to
+	///          restore what it found, and a test that re-rates a stream it does not own without restoring it leaves
+	///          every later collection running under a policy nobody chose. A weight cannot be recovered from the
+	///          shares, which are normalised.
+	[[nodiscard]] uint32_t GetFifoWeight() const noexcept;
+
+	/// @brief The configured priority lane weight. See GetFifoWeight.
+	[[nodiscard]] uint32_t GetPriorityWeight() const noexcept;
+
 	/// @brief Whether work stamped `offerTime` is too old to run here at `now`.
 	/// @details Three independent reasons to say no, each load-bearing: an unlimited stream never ages anything out, an
 	///          unstamped item (zero) cannot be judged, and only then does the comparison apply. A check that dropped

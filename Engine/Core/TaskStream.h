@@ -201,6 +201,19 @@ public:
 		return drainPolicy.GetMaxAge();
 	}
 
+	/// @brief The configured lane weights, readable so that a temporary re-rate can be undone exactly.
+	/// @see StreamDrainPolicy::GetFifoWeight
+	[[nodiscard]] uint32_t GetFifoWeight() const noexcept
+	{
+		return drainPolicy.GetFifoWeight();
+	}
+
+	/// @brief The configured priority lane weight. See GetFifoWeight.
+	[[nodiscard]] uint32_t GetPriorityWeight() const noexcept
+	{
+		return drainPolicy.GetPriorityWeight();
+	}
+
 	void WakeUp() noexcept;
 
 	/// @brief Set this stream's CPU allowance, expressed as a duration. Zero means unlimited.

@@ -148,6 +148,16 @@ bool StreamDrainPolicy::IsOverAge(std::chrono::nanoseconds offerTime, std::chron
 	return maxAge.count() > 0 && offerTime.count() > 0 && now - offerTime > maxAge;
 }
 
+uint32_t StreamDrainPolicy::GetFifoWeight() const noexcept
+{
+	return fifoWeight;
+}
+
+uint32_t StreamDrainPolicy::GetPriorityWeight() const noexcept
+{
+	return priorityWeight;
+}
+
 std::chrono::duration<double> StreamDrainPolicy::GetFifoShare() const noexcept
 {
 	if (allowance.count() <= 0.0)
