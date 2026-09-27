@@ -1,5 +1,43 @@
 # Journal
 
+## 2026-09-25 16:10 - B3d steps 1-2: the age clock went on the task, because the plan's design could not be written
+
+`feb1c73`. The plan said: stamp `WorkItem::offerTime` in its constructor and let a sub-slice inherit with one line,
+`subItem.offerTime = offerTime;`. **That line cannot be written.** `Task::GenerateSubTask` is a method of `Task`, and the item a task
+is currently running is not reachable from the task - so "inherit the parent's stamp" has no parent in scope. The plan's own Step 5
+demanded a mutant be caught for that inheritance, which means the design was internally inconsistent rather than merely unfinished.
+
+Three ways out, and the scope decision in the plan ruled two of them out before I arrived. A field on `Task` written by whoever runs
+the item puts a second writer in the run path for no benefit. A stream-side "currently running item" link is a new ownership edge in
+the most concurrent object in the engine. So the clock moved to `Task` and is **stamped where the registry loads the record**:
+`Task::offerTime`, carried by `WorkItem`'s constructor exactly like the notice pair, which means inheritance needs no line that could
+be forgotten and the dodge the plan worried about - a task postponing a ceiling by splitting late, or by not finishing in one call -
+is closed by construction rather than by a check. A task is the thing whose context goes stale; an item is a slice of it.
+
+The stamp is taken from `time::ElapsedSinceEngineEpoch()`, the engine's own epoch base. My first attempt called `GetNow()`, which is
+`hbe::time::GetNow()` and is a different reading; `TaskProduceContext` documents its `now` as an instant in the epoch base, and an age
+book kept in a different time base from the accounting book is a bug that reports nothing at all.
+
+`StreamDrainPolicy` gained `SetMaxAge` / `GetMaxAge` / `IsOverAge`, defaulting to unlimited, so **no stream's behaviour changed** -
+enforcement is the next change and until it lands this is inert infrastructure with its guards under test.
+
+Four mutants, four named killers:
+
+| Mutation | Killed by | Why that is the right witness |
+|---|---|---|
+| Drop the `maxAge > 0` guard | `StreamDrainPolicyTest` | Turns "unlimited" into "drop everything older than nothing" - every stream at once |
+| Drop the unstamped guard | `StreamDrainPolicyTest` | A stream inventing an age for work it cannot date drops hand-built tasks |
+| `>` to `>=` | `StreamDrainPolicyTest` | The boundary is pinned both sides: exactly-at-ceiling admissible, one nanosecond over not |
+| `LoadIntoRecord` forgets to re-date | `TaskSystemTest` | The second tenant is asserted **strictly** newer, because equality is what a forgotten stamp looks like |
+
+Two mistakes of mine are in this record because they are the instructive kind. My replacement text **deleted** `WorkItem::abandonedUserData`
+- I pattern-matched a block and rewrote it without the line I was anchoring on, and only the compiler noticed. And my first boundary
+assertion failed on correct code: I wrote `IsOverAge(1ns, 21ms - 1ns)` believing that was under a 20 ms ceiling when the delta is
+20.99 ms. The test was wrong and the code was right, which is the failure mode a boundary test exists to catch and is not a reason to
+weaken it - the fix was to pin both sides properly, with a non-zero stamp so the subtraction means something.
+
+Sizes: `decidedTaskBytes` 192 -> **200**, `decidedWorkItemBytes` 72 -> **80**, record width held at **256** by
+`reservedToCacheLine[24]`. Gate: 59 collections green in Debug/Dev/Release, 0 violations, build gate 12/12, nothing pushed.
 ## 2026-09-25 15:00 - `check.sh` no longer reports success about nothing: an empty rev-scope falls back to the code underneath
 
 The blind spot found at 14:30 is fixed in the tool rather than memorised. An empty **rev-scope** now resolves the newest ancestor of
