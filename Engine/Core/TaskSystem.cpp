@@ -1017,6 +1017,22 @@ std::size_t RateCountingRunnable(void* userData, std::size_t, std::size_t endInd
 	return endIndex;
 }
 
+// Witnesses for the drop-site guardrail: whether the work ran, and whether the requestor was told. The record
+// question this test asks is answered by the registry's own live count, which needs neither of these.
+std::atomic<int> dropSiteRuns{0};
+std::atomic<int> dropSiteNotices{0};
+
+std::size_t DropSiteRunnable(void*, std::size_t, std::size_t endIndex) noexcept
+{
+	dropSiteRuns.fetch_add(1, std::memory_order_relaxed);
+	return endIndex;
+}
+
+void DropSiteNoticeProbe(TaskID, void*) noexcept
+{
+	dropSiteNotices.fetch_add(1, std::memory_order_relaxed);
+}
+
 std::atomic<int> fifoLaneRuns{0};
 std::atomic<int> priorityLaneRuns{0};
 
@@ -3490,6 +3506,142 @@ void TaskSystemTest::Prepare()
 			   << " lane that has work must never be starved by the weight of the other lane" << lferr;
 			return;
 		}
+	});
+
+	// The RAII half of the abandonment contract, and the last of the four guardrails to get an executable form. A task
+	// whose work is dropped still has to end up exactly where a released task ends up - and nothing asserted that,
+	// because a drop site that freed the record twice, or never, looks identical to a correct one from outside: the
+	// work is gone either way and the warning line reads the same. All three sites are walked in order with their own
+	// baseline step, and the count is proven to have moved while the tasks were alive, since a comparison of a baseline
+	// with itself would also be satisfied by a counter that never changes.
+	AddTest("Work dropped at each of the three sites leaves its task record exactly where a release leaves it",
+			[this](TLogOut& ls)
+	{
+		auto& taskSys = Engine::Get().GetTaskSystem();
+		auto& baseStream = taskSys.GetStream(TaskSystem::GetBaseTaskStreamIndex());
+		auto& registry = taskSys.GetRegistry();
+
+		const std::size_t baseline = registry.GetCount();
+		const std::chrono::nanoseconds ceilingFound = baseStream.GetMaxAge();
+
+		dropSiteRuns.store(0, std::memory_order_relaxed);
+		dropSiteNotices.store(0, std::memory_order_relaxed);
+
+		const TaskID orphaned = taskSys.CreateTask("DropSiteOrphaned", &DropSiteRunnable, nullptr);
+		const TaskID agedOut = taskSys.CreateTask("DropSiteAged", &DropSiteRunnable, nullptr);
+		const TaskID heldAtClose = taskSys.CreateTask("DropSiteHeld", &DropSiteRunnable, nullptr);
+
+		if (registry.GetCount() != baseline + 3)
+		{
+			ls << "three created tasks moved the live count by " << registry.GetCount() - baseline
+			   << "; if the counter does not respond, every comparison against the baseline below is vacuous" << lferr;
+			return;
+		}
+
+		// Site 1: the requestor released the task while its work was still queued.
+		taskSys.SetAbandonedNotice(orphaned, &DropSiteNoticeProbe, nullptr);
+		if (Task* task = taskSys.FindTask(orphaned); task != nullptr)
+		{
+			taskSys.EnqueueTask(TaskSystem::GetBaseTaskStreamIndex(), *task, 0, StreamDrainPolicy::ELane::Fifo);
+		}
+		taskSys.ReleaseTask(orphaned);
+
+		const bool orphanDropped = taskSys.DriveUntil("queued work whose task was released", []()
+		{ return dropSiteNotices.load(std::memory_order_acquire) > 0; }, std::chrono::milliseconds{300});
+
+		if (!orphanDropped || dropSiteNotices.load(std::memory_order_acquire) != 1)
+		{
+			baseStream.SetMaxAge(ceilingFound);
+			ls << "the released-task site reported " << dropSiteNotices.load(std::memory_order_acquire)
+			   << " notice(s); the drop has to be witnessed before its effect on the record can be judged" << lferr;
+			return;
+		}
+		if (registry.GetCount() != baseline + 2 || taskSys.FindTask(orphaned) != nullptr)
+		{
+			baseStream.SetMaxAge(ceilingFound);
+			ls << "after dropping work whose task was released the live count sits " << registry.GetCount() - baseline
+			   << " above the baseline; the release owned that record, so the drop site must neither free it again nor"
+			   << " resurrect it" << lferr;
+			return;
+		}
+
+		// Site 2: the stream declined the work as older than its ceiling, which is a decision about the item and not a
+		// verdict on the task that owns the record.
+		taskSys.SetAbandonedNotice(agedOut, &DropSiteNoticeProbe, nullptr);
+		if (Task* task = taskSys.FindTask(agedOut); task != nullptr)
+		{
+			taskSys.EnqueueTask(TaskSystem::GetBaseTaskStreamIndex(), *task, 0, StreamDrainPolicy::ELane::Fifo);
+		}
+		baseStream.SetMaxAge(std::chrono::nanoseconds{1});
+		const std::size_t agedBefore = baseStream.GetAgedOutWorkCount();
+		const bool agedDropped =
+				taskSys.DriveUntil("queued work older than the stream ceiling", [&baseStream, agedBefore]()
+		{ return baseStream.GetAgedOutWorkCount() > agedBefore; }, std::chrono::milliseconds{300});
+		baseStream.SetMaxAge(ceilingFound);
+
+		if (!agedDropped || taskSys.FindTask(agedOut) == nullptr)
+		{
+			baseStream.SetMaxAge(ceilingFound);
+			ls << "aging work out " << (taskSys.FindTask(agedOut) == nullptr ? "destroyed" : "left") << " its task,"
+			   << " DriveUntil reported " << (agedDropped ? "true" : "false")
+			   << "; a task whose work was declined is still"
+			   << " a live task its requestor owns" << lferr;
+			return;
+		}
+		taskSys.ReleaseTask(agedOut);
+		if (registry.GetCount() != baseline + 1 || taskSys.FindTask(agedOut) != nullptr)
+		{
+			baseStream.SetMaxAge(ceilingFound);
+			ls << "a task that survived having its work aged out could not be released cleanly; live count sits "
+			   << registry.GetCount() - baseline << " above the baseline" << lferr;
+			return;
+		}
+
+		// Site 3: work still held when the stream gave up on what it was holding.
+		// The closing site drains two queues with two different bodies, so this site deliberately uses the lane the
+		// other two do not: an earlier version offered here on FIFO, and a mutation placed in the priority drain loop
+		// walked straight past it. That blind spot was found by running a mutant, not by reading the test.
+		taskSys.SetAbandonedNotice(heldAtClose, &DropSiteNoticeProbe, nullptr);
+		if (Task* task = taskSys.FindTask(heldAtClose); task != nullptr)
+		{
+			taskSys.EnqueueTask(TaskSystem::GetBaseTaskStreamIndex(), *task, 0, StreamDrainPolicy::ELane::Priority);
+		}
+		const int noticesBeforeClose = dropSiteNotices.load(std::memory_order_acquire);
+		const std::size_t abandoned = baseStream.AbandonHeldWork();
+
+		if (abandoned < 1 || dropSiteNotices.load(std::memory_order_acquire) != noticesBeforeClose + 1)
+		{
+			baseStream.SetMaxAge(ceilingFound);
+			ls << "closing reported " << abandoned << " item(s) abandoned and notified "
+			   << dropSiteNotices.load(std::memory_order_acquire) - noticesBeforeClose << " requestor(s)" << lferr;
+			return;
+		}
+		if (taskSys.FindTask(heldAtClose) == nullptr)
+		{
+			baseStream.SetMaxAge(ceilingFound);
+			ls << "abandoning held work destroyed its task record; the requestor still holds that ID and is entitled to"
+			   << " release it itself" << lferr;
+			return;
+		}
+		taskSys.ReleaseTask(heldAtClose);
+
+		if (registry.GetCount() != baseline)
+		{
+			baseStream.SetMaxAge(ceilingFound);
+			ls << "after all three drop sites the live count is off by " << registry.GetCount() - baseline
+			   << " from the baseline; a record left behind here leaks one task per dropped item" << lferr;
+			return;
+		}
+		if (dropSiteRuns.load(std::memory_order_acquire) != 0)
+		{
+			baseStream.SetMaxAge(ceilingFound);
+			ls << "work reported abandoned at one of the three sites also ran "
+			   << dropSiteRuns.load(std::memory_order_acquire)
+			   << " time(s); a drop that runs the work and reports it dropped is the worst of the shapes" << lferr;
+			return;
+		}
+
+		baseStream.SetMaxAge(ceilingFound);
 	});
 }
 
