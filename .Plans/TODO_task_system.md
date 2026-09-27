@@ -64,7 +64,7 @@ callers. Do not start this without picking one.
 > gate, the **Release** build fails and names it — "A provider was asked 24 time(s) while the allowance was spent." Debug/Dev catch
 > the same mutant via the assert in `a166b67`. Everything from the earlier diagnosis (configuration anomaly, pop-and-return,
 > misplaced counters) is superseded by this; the anomaly was an iteration-count burn, fixed by bounding the work in wall clock.
-> **Status as of 07:10.** **#6 B3d is now specified to the line** in `.Plans/PLAN_b3d_max_age.md` - per-stream max age, per-task deadline excluded, every anchor quoted from the tree, mutant list and gate commands included. Still open: **implementing** that plan; **#7 D3** (true-positive Treiber ABA in `AtomicStackView`, the Memory module's to fix); the **`Engine::Run` guardrail**, which needs the owner's call on whether the suite should run while `Run()` pumps; and three owner decisions - the two allowance books, the shape of `MayTakeNewWork`, what releasing a task early means. Closed: #9 docs, #7 D2/D4/D5, #10-#17.
+> **Status as of 13:20.** Shipped since 07:10: the opt-in **abandonment notice** end to end (item, both drop sites, counter, two lane-duplicated tests, guide section 14) plus the **recycled-registry-record notice defect** it caught; **standing decision 5 resolved as S1** - callers now choose the lane through the public API; and the `WorkItem::priority` **insertion-label contract**. Open now: **#6 B3d** (line-level plan unchanged, needs implementing), **dynamic priority** (`PLAN_dynamic_priority.md` - specified, blocked on standing decision 6), the **drain-rate ratio** test (needs a weights getter first), the **`Engine::Run` guardrail**, **#7 D3** (Memory's `AtomicStackView` ABA), and standing decisions 2, 3 and 4's early-release half. HEAD `073e746`, 59 collections green in Debug/Dev/Release, `check.sh` 0 violations, build gate 12/12, nothing pushed.
 > allowance books, and `MayTakeNewWork` having only test callers.
 
 **Read this first.** Everything below is verified against a real run unless a line says otherwise.
@@ -539,4 +539,25 @@ Two obstacles, and they are why this stayed a spec rather than becoming a commit
 
 So the sequence is: add the weights getter → save/restore the base stream's rate around the test → assert served-both and
 strictly-more-FIFO. Anything shorter trades a real guarantee for a flake.
+
+### Standing decision 5 - CLOSED, resolved as S1 by the owner (12:00)
+
+"Both lanes should be reachable and customers can choose one with public APIs." Implemented exactly that: `TaskSystem::Enqueue`
+takes a `StreamDrainPolicy::ELane`, `EnqueueTask` grew a defaulted lane as its last parameter, and `ELane::None` asserts instead of
+being absorbed as FIFO. `S2` (deleting the priority lane and its rate machinery) is therefore off the table, and `S3`/`S4` were
+superseded by something better than either: with the lane reachable, the drain test fills it through the public API instead of by
+hand, and the previously surviving mutant is killed by name. `c07eecc` `56b70a3` `4295562` `79df8b5`.
+
+### Standing decision 6 (NEW, 13:20) - derived keys or maintained keys, and the aging step
+
+Blocking all remaining dynamic-priority work. Full analysis, cost model and the four-step build order are in
+`.Plans/PLAN_dynamic_priority.md`; the decision is two things:
+
+1. **Derived or maintained.** Derived keys cannot go stale, cost nothing when nothing changed, and make the per-frame refresh O(256)
+   or free because the global argmax is always one of at most 256 bucket fronts. Maintained keys place the cost in a sweep you
+   schedule, bill and observe, and keep the queue's physical order equal to its priority order - a real debugging property. Recommended
+   hybrid: **explicit intent maintained, time derived.**
+2. **The aging step** - how many frames of waiting promote an item one level. That is a starvation-policy number, not an implementation
+   detail: with 256 levels it sets the worst-case wait before an item saturates the top, and it must **saturate at 255 rather than wrap**
+   or the most urgent queued work becomes the least urgent, silently, and only after a long stall.
 

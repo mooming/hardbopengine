@@ -177,7 +177,7 @@ stamp (which is why sub-slices inherit for free - `GenerateSubTask` passes `*thi
 released-task site. Sizes moved as the guards predicted: `WorkItem` 56 -> 72, `Task` 176 -> 192 absorbed by shrinking
 `TaskRegistry::reservedToCacheLine` 48 -> 32 so the record stayed priced at 256.
 
-**Not landed, in the order that matters:**
+**Not landed, in the order that matters:** *(all four items below are now closed - read the 13:20 status block at the bottom)*
 1. ~~**The firing branch has no test.**~~ **CLOSED 09:20** - Design A landed as `TaskSystemTest` TC0, and two mutants
    (fire removed, stamp removed) were killed by name. What remains from this item is the *wiring* mutant at the released-task
    site - **CLOSED 09:55**: Design B landed and killed the "reports without notifying" mutant by name, while Design A's test
@@ -246,4 +246,30 @@ drain, or the gate fails for a reason that looks unrelated to the change and som
 That is why this was left undone rather than half-done: it changes teardown semantics, teardown is where this project's deadlocks
 lived, and the session that understood those semantics had no budget left. The two close-site messages must be reworded in the same
 commit (Step 5), since after the drain a customer awaiting dropped work *will* be told.
+
+## Status 13:20 - the feature is complete, and two of this plan's own claims were corrected by measurement
+
+| Plan item | State |
+|---|---|
+| Step 1-4: notice type, item fields, ctor stamp, `SetAbandonedNotice`, `FireAbandonedNotice`, size guards | ✅ `cb7e7bf` |
+| Step 3 enforcement at the released-task site | ✅ `cb7e7bf`, mutant killed by name |
+| Step 6 test (Design A, deterministic) | ✅ `30ffc72` - killed "fire removed" and "stamp removed" |
+| Design B, the notice reached through a real stream | ✅ `61bb0b0` - and it was Design B, not Design A, that killed the "reports without notifying" mutant |
+| Step 5 wording that told a waiting customer it would receive nothing | ✅ replaced in `548c360`, because it stopped being true |
+| Shutdown close sites count-only | ✅ closed by `AbandonHeldWork` + `GetAbandonedWorkNoticeCount`, `548c360` |
+| Priority-lane drain coverage | ✅ closed once the lane became reachable - `56b70a3` `79df8b5` |
+| Step 8 documentation | ✅ `c36446a` (guide section 14, redesign 6.4) |
+
+**Corrections to this plan, recorded so nobody chases them as real blockers.** The "trap" paragraph claimed a named test asserts on
+the pending item count at close, so a drain would break it. That was wrong: the string cited is production shutdown code inside
+`TaskSystem::JoinAndClear`, and **no test asserts on that count**. The real constraint is ordering, and it was verified before
+teardown was touched - `TaskSystem` requests other streams closed at `:210`, counts and reports what the base stream holds at `:231`,
+and only then calls `CloseDrivenStream` at `:262` and `:263` - so the drain inside a close site cannot consume what that report
+measures. See `c07eecc`.
+
+**Two more facts the implementation settled that the plan left open.** Sub-slices inherit the notice with **no extra line**: the
+constructor stamps it from the task, and `Task::GenerateSubTask` passes `*this`, so the same mechanism covers a slice. And the notice
+pair had to be reloaded in `Task::LoadIntoRecord` - a recycled registry record kept the previous tenant's callback and context pointer,
+which the control assertion caught on the first run. A plan that had shipped the in-class initialisers alone would have shipped a
+dangling-pointer callback.
 

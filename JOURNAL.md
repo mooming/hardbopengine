@@ -1,5 +1,61 @@
 # Journal
 
+## 2026-09-25 13:20 - the lane is now the caller's choice, the priority contract is written down, and the dynamic-priority design is specified but not started
+
+**The abandonment notice is complete.** Opt-in `FAbandonedNotice` (function pointer + `void*`, `nullptr` by default) carried on the
+`WorkItem` rather than on the task, because at the moments it must fire the task record is exactly what is missing. It fires when
+work is dropped because its task was released and when a closing stream discards what it still holds (`AbandonHeldWork`, counted by
+`GetAbandonedWorkNoticeCount()`). `cb7e7bf` `548c360` `30ffc72` `61bb0b0` `b4ccd0c` `c36446a`.
+
+**That feature caught a live defect.** `Task::LoadIntoRecord` reloaded id, name, join counters, result packet, runnable and
+`userData` - but not the notice pair, because those fields only carry in-class initialisers, which run at construction and not when a
+registry slot is handed to a new tenant. A silent task of a later test reused a record whose notice still pointed at a dead task's
+callback with its requestor's context pointer: the engine would fire a stranger's function with a dangling `void*` for work nobody
+asked about. Caught on the first run by the control assertion written for exactly that purpose. Fixed in `548c360`.
+
+**Standing decision 5 was answered by the owner as S1 and shipped.** The root cause was three lines: `TaskSystem::Enqueue` called
+`EnqueueFifo` unconditionally, so lane membership was decided by which internal function a caller reached, and the public API had one
+route - the priority lane could not be filled, its half of the drain rate and its half of the shutdown drain were unreachable, and the
+mutant that popped that lane and notified nobody survived the suite **twice** because no test could construct input for it. Now
+`Enqueue(streamIndex, item, ELane)` and `EnqueueTask(..., uint8_t priority = 0, ELane lane = Fifo)` exist; the lane parameter is last
+and defaulted because a `uint8_t` next to a scoped enum would let `EnqueueTask(i, t, 1)` bind to the lane silently; `ELane::None`
+asserts rather than being absorbed as FIFO. `c07eecc` `56b70a3` `4295562`.
+
+**Both lanes now have witnesses, duplicated rather than shared** (the owner asked for duplicates and the reason is in the record): two
+queues drained by two loops, one parameterised body is how the second loop went unwitnessed. `Work offered on each lane through the
+public API is reached and run` proves priority-lane work actually executes, not merely that the lane accepts items. `9a1e471` `79df8b5`.
+
+**Then the owner asked about dynamic priority, and the answer reframed the question.** `BoundedPriorityQueue` is bucketed - an array of
+256 lazily-created deques, highest number most urgent, oldest-first within a level - and the **bucket index is the priority**, not the
+byte. Because within a level items sit in arrival order and aging is monotone in age, effective keys are non-decreasing front-to-back,
+which means the global argmax is always one of at most 256 fronts. So a per-frame refresh does not need to touch N items at all:
+derived keys make it O(256) or free, while a maintained key refreshed every 10th frame at N = 10^6 touches ~80 MB per sweep and blows
+the frame budget. Two traps named: a `uint8_t` key must **saturate at 255**, never wrap (wrapping makes the most urgent work the
+least); and at millions of queued tasks the binding constraint is `RecordSizeBytes == 256` - roughly 256 MB of registry records - not
+the queue algorithm, with the open `AtomicStackView` ABA becoming a live risk at that turnover.
+
+**Derived versus maintained keys was explained and is now the open decision.** Derived keys cannot go stale and cost nothing when
+nothing changed, but spend their time at dispatch, which is inside the window `CPUBudget` charges to a lane, and they lose the
+debugging view where physical order equals priority order. Maintained keys place cost in a sweep you schedule and can bill, but every
+writer must keep them true and a missed write is silent. Recommended hybrid: intent maintained, time derived.
+
+**What shipped from that discussion, and what I refused to ship.** `073e746` records in `WorkItem.h` that `priority` is an insertion
+label - writing it on a queued item changes nothing about when the item runs, and changing it means remove-and-re-push because
+assignment cannot repair an order. I also attempted the stronger fix, having `Pop` report the level it actually served from so the
+disagreement is unrepresentable rather than documented. It failed the build gate: `auto item = std::move(bucket.Front())` deduces a
+non-optional value, so the member access is `item.priority`, not `item->`, and the cast must stay `decltype(item.priority)` because the
+template is instantiated for other element types too. I reverted the code rather than leave a broken tree, and trimmed the header note
+so it does not claim a repair that does not happen. That change is four lines and is the next one here.
+
+**Disclosed, in the order they happened.** I created a commit after a failing run because the commit was chained with a semicolon
+instead of gated on the run's status; undone with `git reset --soft HEAD~1` and recommitted once green. I committed a test message
+claiming both lanes were covered, a mutant disproved it, and I amended the message to withdraw the claim rather than leave it in
+history's headline. Three of my own python edit scripts aborted on their own anchor assertions - two of them after I had already
+started to read the following build as evidence for a change that had not been applied - because clang-format had reformatted the text
+I was matching; the assertions ahead of the write are what kept the tree untouched each time. Fix cycles were needed for: escaped
+quotes in an `Assert` literal, `TaskProvider` being incomplete and abstract, `<type_traits>` not being included, and `final` on an
+abstract class. All three configurations are green and the tree is clean at `073e746`.
+
 ## 2026-09-25 11:15 - why the surviving mutant could not have died: the priority lane has no public route into it
 
 `TaskSystem::EnqueueTask(index, task, priority)` puts the priority into the item's byte and then calls `TaskSystem::Enqueue`, which

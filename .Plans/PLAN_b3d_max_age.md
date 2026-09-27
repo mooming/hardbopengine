@@ -13,6 +13,22 @@ requestor's chain silently, and `FindTask` returning `nullptr` cannot tell aband
 task. A max-age drop is the third such site; the plan is valid either way, but its `ReportAgedOutWorkItem` must either
 deliver the outcome the decision chooses or the decision must explicitly accept log-only for this stream class.
 
+## CHANGED SINCE THIS PLAN WAS WRITTEN (13:20) - four facts to fold in before starting
+
+1. **Both lanes are now reachable from the public API** (`TaskSystem::Enqueue(..., StreamDrainPolicy::ELane)`, and
+   `EnqueueTask(..., priority, lane)`). An over-age check therefore has to cover **both** lanes, and the test has to be duplicated per
+   lane rather than parameterised - that is how this project proved it, twice: a shared body let the priority loop go unwitnessed and a
+   mutant survived it (`c07eecc` `56b70a3`).
+2. **The abandonment vocabulary exists now.** `TaskStream::AbandonHeldWork` and `GetAbandonedWorkNoticeCount()` are the established way
+   a stream reports work it will never run. Step 3's `ReportAgedOutWorkItem` should follow that shape and feed a readable counter, not
+   invent a second vocabulary, and it must call `FireAbandonedNotice` so an aged-out item tells its requestor.
+3. **`WorkItem` is 72 bytes, not 56**, since the abandonment notice arrived. So Step 1's arithmetic is **72 -> 80**, and the two decided
+   figures to update are `decidedWorkItemBytes = 72` and the header note that says the item measures 72; `decidedTaskBytes` is 192 and
+   `decidedRecordBytes` stays 256 because `reservedToCacheLine` was already shrunk 48 -> 32.
+4. **Item `priority` is an insertion label, not a live value** (`073e746`). Relevant because age-based promotion in B3d must not be
+   implemented by writing that byte on a queued item: the level the item sits in is what decides when it runs, so age has to be
+   evaluated at the check site. That is the same derived-key choice as standing decision 6, and the two should be decided together.
+
 ## Scope decision (already made — do not reopen without the owner)
 
 Implement the **per-stream max age**. Do **not** implement the per-task optional deadline in this
