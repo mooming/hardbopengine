@@ -59,8 +59,19 @@ private:
 	/// @brief Notice fired if this task's work is dropped without running; `nullptr` is every task's state unless a
 	///        requestor asked. Separate from `userData` above on purpose: that one belongs to the runnable, this one
 	///        belongs to whoever asked to be told, and the two are not the same party.
-	FAbandonedNotice abandonedNotice{ nullptr };
-	void* abandonedUserData{ nullptr };
+	FAbandonedNotice abandonedNotice{nullptr};
+	void* abandonedUserData{nullptr};
+
+	/// @brief When this task's record was loaded, in engine steady-clock nanoseconds since the epoch.
+	/// @details The single age clock in the task system. It lives here rather than on `WorkItem` because a task is the
+	///          thing whose context goes stale: the item is a slice of it, and a sub-slice is a slice of a slice, so
+	///          stamping the item would let a task postpone a stream's max age by splitting it late or by not
+	///          finishing in one call - both of which hand the same work to a fresh timestamp. Reading one clock in
+	///          three places instead of writing one field in three places is the same choice the abandonment notice
+	///          made, and for the same reason: `WorkItem` is constructed from the task, so inheritance needs no line
+	///          that could be forgotten.
+	/// @note Zero means "never loaded", which only a hand-built task can be. Streams with no max age never read it.
+	std::chrono::nanoseconds offerTime{};
 
 	/// @brief This task's result, written by the task itself. See GetResult.
 	ResultPacket result;
@@ -150,10 +161,11 @@ private:
 	///          counter is atomic, which leaves this class without a copy or move assignment to lean on. Setting the
 	///          fields is also what a recycled record needs: the previous task's identity, name, runnable and
 	///          accounting must all be replaced together, before the record is published as in use.
-	/// @note Reloads **every** field, including the abandonment notice. A registry record is recycled, and a notice left
+	/// @note Reloads **every** field, including the abandonment notice. A registry record is recycled, and a notice
+	/// left
 	///       behind by the previous tenant of the slot would fire the old requestor's callback with its stale context
-	///       pointer for work the new task never asked about - which is why the in-class initialisers on those two fields
-	///       are not enough on their own.
+	///       pointer for work the new task never asked about - which is why the in-class initialisers on those two
+	///       fields are not enough on their own.
 	void LoadIntoRecord(TaskID newID, StaticString taskName, TRunnable newFunc, void* newUserData) noexcept;
 
 public:

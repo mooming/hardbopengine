@@ -1,6 +1,7 @@
 // Copyright (c) 2026 Hansol Park (mooming.go@gmail.com). All rights reserved.
 
 #pragma once
+#include <chrono>
 #include <cstddef>
 #include "TaskID.h"
 #include "TaskStreamAffinity.h"
@@ -24,8 +25,10 @@ using FAbandonedNotice = void (*)(TaskID abandonedTask, void* userData) noexcept
 ///          giving up. The name had exactly one reader: the warning issued when an item is dropped because its task
 ///          was released - and there the registry can no longer confirm the name is the one that task had, while the
 ///          ID is still the identity that means something. Dropping it also removes the item's only dependency on
-/// @note The item measures 72 bytes, 16 of them the optional abandonment notice. The width is guarded by `decidedWorkItemBytes`, which exists to make a size change loud rather than silent.
-/// @note Before the notice it measured 56 bytes. 8 of those were `TaskStreamAffinity`, which o 8 of them are `TaskStreamAffinity`, which once cost 64 because its word count was
+/// @note The item measures 72 bytes, 16 of them the optional abandonment notice. The width is guarded by
+/// `decidedWorkItemBytes`, which exists to make a size change loud rather than silent.
+/// @note Before the notice it measured 56 bytes. 8 of those were `TaskStreamAffinity`, which o 8 of them are
+/// `TaskStreamAffinity`, which once cost 64 because its word count was
 ///        derived from bytes per word instead of bits per word; that is fixed in `TaskStreamAffinity.h` and pinned by a
 ///        test there, because the defect was internally consistent and therefore invisible to any behavioural test.
 ///          `StaticString`, so a queued item can outlive the tracked task without holding a stale name alive.
@@ -37,10 +40,11 @@ class WorkItem final
 
 public:
 	/// @brief Ordering key inside the priority queue, read at insertion only: it is the level this item is filed under.
-	/// @details Not a live value. `BoundedPriorityQueue` buckets by this byte at `Push` and never re-sorts, so writing it
-	///          while the item is queued changes nothing about when the item runs - the level it sits in is what decides.
-	///          Changing a queued item's priority means removing it and pushing it again, because assignment cannot
-	///          repair an order, only relocate the item. On the FIFO lane this byte is not consulted at all.
+	/// @details Not a live value. `BoundedPriorityQueue` buckets by this byte at `Push` and never re-sorts, so writing
+	/// it
+	///          while the item is queued changes nothing about when the item runs - the level it sits in is what
+	///          decides. Changing a queued item's priority means removing it and pushing it again, because assignment
+	///          cannot repair an order, only relocate the item. On the FIFO lane this byte is not consulted at all.
 	uint8_t priority;
 	mutable TaskStreamAffinity affinity;
 
@@ -66,13 +70,22 @@ public:
 	///          keep the notice their task was offered with. Stamped from the task by the constructor, which is what
 	///          makes a slice inherit its parent's notice instead of needing a line to remember it.
 	/// @see TaskSystem::SetAbandonedNotice
-	FAbandonedNotice abandonedNotice{ nullptr };
+	FAbandonedNotice abandonedNotice{nullptr};
 
 	/// @brief The requestor's context, passed through untouched. Its lifetime belongs to whoever set the notice: it
 	///        must outlive every drop this item can suffer, and the engine will not clear it.
-	void* abandonedUserData{ nullptr };
+	void* abandonedUserData{nullptr};
+
+	/// @brief The owning task's age clock, carried so a lane can tell whether this work is still fresh enough to run.
+	/// @details Copied like every other field, so an item re-added after a partial run keeps the age its task had when
+	///          it was offered rather than becoming younger. Read only by a stream that configured a max age; with none
+	///          configured this field costs a load nobody performs.
+	/// @see StreamDrainPolicy::SetMaxAge
+	std::chrono::nanoseconds offerTime{};
 
 public:
+	friend class TaskSystemTest;
+
 	~WorkItem() = default;
 	WorkItem& operator=(const WorkItem& other) = default;
 

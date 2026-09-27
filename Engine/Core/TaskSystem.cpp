@@ -3169,6 +3169,81 @@ void TaskSystemTest::Prepare()
 			ls << "Refused splits still ran " << runs.load() << " time(s)." << lferr;
 		}
 	});
+	// The age clock lives on the task, not on the item, and these two collections are what makes that choice
+	// load-bearing rather than a preference. The first closes the dodge: if a slice could be born with a fresh
+	// timestamp, a task facing a ceiling would only have to split late, or fail to finish in one call, to buy
+	// itself a new life - and both of those are legitimate behaviours this engine advertises. The second is the
+	// recycled-record trap that has now bitten this module twice: a registry slot handed to a new tenant keeps
+	// whatever LoadIntoRecord forgot to write, which for a notice meant firing a stranger's callback with a
+	// dangling context pointer, and for an age stamp would mean a brand new task being dropped as stale the
+	// moment it was offered. Strictly newer, not merely newer: equality is what a missing stamp looks like.
+	AddTest("Every slice carries the age the registry stamped, and a recycled record is dated afresh",
+			[this](TLogOut& ls)
+	{
+		auto& taskSys = Engine::Get().GetTaskSystem();
+
+		const TaskID first = taskSys.CreateTask("AgeStampSource", &AbandonmentNoticeRunnable, nullptr);
+		Task* firstTask = taskSys.FindTask(first);
+		if (firstTask == nullptr)
+		{
+			ls << "CreateTask gave record " << first.index << " but FindTask could not find it, so the fixture"
+			   << " never ran" << lferr;
+			return;
+		}
+
+		if (firstTask->offerTime.count() <= 0)
+		{
+			ls << "A registry-loaded task carries no age stamp, so no stream could ever age its work out" << lferr;
+			return;
+		}
+
+		firstTask->ReserveSubTasks(2);
+		const WorkItem lowSlice = firstTask->GenerateSubTask(0, 1, 0);
+		const WorkItem highSlice = firstTask->GenerateSubTask(1, 2, 7);
+		if (lowSlice.offerTime != firstTask->offerTime || highSlice.offerTime != firstTask->offerTime)
+		{
+			ls << "A slice was born with age " << lowSlice.offerTime.count() << "/" << highSlice.offerTime.count()
+			   << "ns while its task reports " << firstTask->offerTime.count() << "ns" << lferr;
+			return;
+		}
+
+		taskSys.ReleaseTask(first);
+
+		std::chrono::nanoseconds previousStamp = firstTask->offerTime;
+		bool reusedTheRecord = false;
+		for (int attempt = 0; attempt < 8 && !reusedTheRecord; ++attempt)
+		{
+			const TaskID next = taskSys.CreateTask("AgeStampRecycled", &AbandonmentNoticeRunnable, nullptr);
+			const Task* nextTask = taskSys.FindTask(next);
+			if (nextTask == nullptr)
+			{
+				ls << "The task created after a release could not be found, so the recycle was never observed" << lferr;
+				return;
+			}
+
+			reusedTheRecord = next.index == first.index;
+			if (reusedTheRecord)
+			{
+				if (nextTask->offerTime <= previousStamp)
+				{
+					ls << "Record " << next.index << " came back to a new task still dated "
+					   << nextTask->offerTime.count() << "ns, the previous tenant's age" << lferr;
+					return;
+				}
+			}
+			else
+			{
+				previousStamp = nextTask->offerTime;
+			}
+			taskSys.ReleaseTask(next);
+		}
+
+		if (!reusedTheRecord)
+		{
+			ls << "Eight create/release cycles never reused the freed record, so the recycle went unobserved" << lferr;
+			return;
+		}
+	});
 }
 
 

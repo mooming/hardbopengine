@@ -2,6 +2,8 @@
 
 #include "Task.h"
 
+#include "Time.h"
+
 #include "Engine/Engine.h"
 #include "Log/Logger.h"
 #include "TaskSystem.h"
@@ -40,6 +42,7 @@ void Task::LoadIntoRecord(TaskID newID, StaticString taskName, TRunnable newFunc
 	userData = newUserData;
 	abandonedNotice = nullptr;
 	abandonedUserData = nullptr;
+	offerTime = std::chrono::duration_cast<std::chrono::nanoseconds>(time::ElapsedSinceEngineEpoch());
 }
 
 WorkItem Task::GenerateSubTask(TIndex start, TIndex end, uint8_t priority) noexcept

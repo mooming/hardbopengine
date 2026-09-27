@@ -80,6 +80,22 @@ public:
 	/// @brief The priority lane's share of the allowance, derived from the rate. Zero when unlimited.
 	[[nodiscard]] std::chrono::duration<double> GetPriorityShare() const noexcept;
 
+	/// @brief Set the oldest work this stream is still willing to run; zero means unlimited.
+	/// @details A stream that runs work whose context has already gone stale does harm and reports nothing. The ceiling
+	///          is per stream, not per task, because staleness is a property of what the stream is for: the same task
+	///          is still worth running on a background stream and worthless on a frame-bound one.
+	/// @note Default unlimited, so every stream behaves exactly as it does today until someone opts in.
+	void SetMaxAge(std::chrono::nanoseconds maxAge) noexcept;
+
+	/// @brief The oldest work this stream is still willing to run; zero means unlimited.
+	[[nodiscard]] std::chrono::nanoseconds GetMaxAge() const noexcept;
+
+	/// @brief Whether work stamped `offerTime` is too old to run here at `now`.
+	/// @details Three independent reasons to say no, each load-bearing: an unlimited stream never ages anything out, an
+	///          unstamped item (zero) cannot be judged, and only then does the comparison apply. A check that dropped
+	///          either guard would fire on hand-built tasks and on every stream that never asked.
+	[[nodiscard]] bool IsOverAge(std::chrono::nanoseconds offerTime, std::chrono::nanoseconds now) const noexcept;
+
 private:
 	/// @brief Rotation credit for the unlimited case, where shares cannot be expressed in CPU time.
 	/// @details Held as signed values and replenished by the weights when both sides have run out, which is
@@ -94,6 +110,7 @@ private:
 	std::chrono::nanoseconds priorityUsed{};
 	int64_t fifoCredit = 1;
 	int64_t priorityCredit = 1;
+	std::chrono::nanoseconds maxAge{};
 };
 
 } // namespace hbe

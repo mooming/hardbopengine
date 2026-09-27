@@ -133,6 +133,21 @@ std::chrono::nanoseconds StreamDrainPolicy::GetPriorityUsed() const noexcept
 	return priorityUsed;
 }
 
+void StreamDrainPolicy::SetMaxAge(std::chrono::nanoseconds newMaxAge) noexcept
+{
+	maxAge = newMaxAge;
+}
+
+std::chrono::nanoseconds StreamDrainPolicy::GetMaxAge() const noexcept
+{
+	return maxAge;
+}
+
+bool StreamDrainPolicy::IsOverAge(std::chrono::nanoseconds offerTime, std::chrono::nanoseconds now) const noexcept
+{
+	return maxAge.count() > 0 && offerTime.count() > 0 && now - offerTime > maxAge;
+}
+
 std::chrono::duration<double> StreamDrainPolicy::GetFifoShare() const noexcept
 {
 	if (allowance.count() <= 0.0)
@@ -340,6 +355,64 @@ void hbe::StreamDrainPolicyTest::Prepare()
 		if (fifoMicros != 1500 || priorityMicros != 500)
 		{
 			ls << "3:1 over 2 ms gave " << fifoMicros << "/" << priorityMicros << " us, not 1500/500." << lferr;
+		}
+	});
+
+	AddTest("A stream with no max age ages nothing out, and work it cannot date is never judged", [this](auto& ls)
+	{
+		using namespace std::chrono_literals;
+
+		StreamDrainPolicy unlimited;
+		unlimited.ConfigureRate(1, 1);
+
+		// A stream that never opted in must not age anything out, however old the work is. This is the guard that
+		// decides whether the feature is off by default or merely unreadable: without it every existing stream
+		// starts dropping tasks whose age happens to exceed a zero ceiling.
+		if (unlimited.IsOverAge(std::chrono::nanoseconds{1}, std::chrono::nanoseconds{10s}))
+		{
+			ls << "An unlimited stream aged out work 10s old; zero must mean unlimited, not 'drop everything'" << lferr;
+			return;
+		}
+
+		StreamDrainPolicy bounded;
+		bounded.ConfigureRate(1, 1);
+		bounded.SetMaxAge(20ms);
+
+		if (bounded.GetMaxAge() != 20ms)
+		{
+			ls << "SetMaxAge(20ms) reports " << bounded.GetMaxAge().count() << "ns" << lferr;
+			return;
+		}
+
+		// Work with no stamp cannot be dated. Hand-built tasks and anything constructed before the registry loaded
+		// it land here, and the safe answer for a stream is to run it, not to guess it is stale.
+		if (bounded.IsOverAge(std::chrono::nanoseconds{0}, std::chrono::nanoseconds{10s}))
+		{
+			ls << "An unstamped item was aged out; a stream may not invent an age for work it cannot date" << lferr;
+			return;
+		}
+
+		if (!bounded.IsOverAge(std::chrono::nanoseconds{1}, std::chrono::nanoseconds{21ms}))
+		{
+			ls << "Work 21ms old survived a 20ms ceiling" << lferr;
+			return;
+		}
+
+		// The boundary, pinned on both sides rather than described. Work exactly as old as the ceiling is still
+		// admissible and one nanosecond more is not: pinning only the far side would let the comparison become
+		// >= unnoticed, and a ceiling that is one nanosecond stricter than documented is a starvation change
+		// nobody approved. Note the stamp is not zero here - it has to be a real instant for the delta to mean
+		// anything, which is the arithmetic this test originally got wrong in its own favour.
+		if (bounded.IsOverAge(1ms, 21ms))
+		{
+			ls << "Work exactly 20ms old survived out a 20ms ceiling; the comparison must be strict" << lferr;
+			return;
+		}
+
+		if (!bounded.IsOverAge(1ms, 21ms + 1ns))
+		{
+			ls << "Work 20ms and 1ns old survived a 20ms ceiling" << lferr;
+			return;
 		}
 	});
 }
