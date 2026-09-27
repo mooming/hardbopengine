@@ -75,6 +75,15 @@ void RunTests()
 
 		auto& testEnv = TestEnv::GetEnv();
 
+		// Asked of the stream before anything is registered, because this is a question about who is driving, and a
+		// suite that has already run 59 collections cannot answer it any more. If the engine loop had pumped this
+		// item, the shutdown pump has not started yet. If it has, the loop is dead or absent and every result below
+		// was produced by the rescue path - which is precisely the run that must not be allowed to look like a pass.
+		if (Engine::Get().GetTaskSystem().GetStream(TaskSystem::GetBaseTaskStreamIndex()).IsDrivenByShutdownPump())
+		{
+			testEnv.NoteSuiteDrivenByShutdownPump();
+		}
+
 		testEnv.AddTestCollection<SystemAllocatorTest>();
 		testEnv.AddTestCollection<BaseAllocatorTest>();
 		testEnv.AddTestCollection<InlinePoolAllocatorTest>();

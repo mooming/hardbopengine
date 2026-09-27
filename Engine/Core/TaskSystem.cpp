@@ -220,6 +220,10 @@ void TaskSystem::JoinAndClear() noexcept
 		// and nothing else could run - so the honest outcome is a named loss rather than a process that never exits.
 		const auto pumpDeadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(2000);
 
+		// From here on this stream is pumped by shutdown, not by the engine loop. Recorded before the first pass
+		// rather than after, because the whole point is that work run by this pump cannot claim the loop ran.
+		baseStream.SetDrivenByShutdownPump();
+
 		while (std::chrono::steady_clock::now() < pumpDeadline &&
 			   (!AreOtherStreamsClosed() || baseStream.HasPostedTasks() || baseStream.CountPendingItems() > 0))
 		{

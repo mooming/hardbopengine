@@ -129,6 +129,7 @@ private:
 	bool isDrainingForShutdown = false;
 	std::atomic<std::size_t> abandonedWorkNoticeCount{0};
 	std::atomic<std::size_t> agedOutWorkCount{0};
+	bool drivenByShutdownPump{false};
 
 	/// @brief How long this stream's shutdown drain may spend before remaining work is reported as abandoned.
 	/// @details Worker streams get a real window. The engine's own streams get none, because "run until the queues are
@@ -460,6 +461,26 @@ public:
 	/// @details A counter rather than a log scrape, so a caller can tell "the ceiling never fired" from "the ceiling
 	///          fired and I cannot see it". A drop that is invisible in both places is the defect this feature exists
 	///          to avoid, so it must be visible in one of them by construction.
+	/// @brief Whether the engine's shutdown path is pumping this stream right now, rather than the engine loop.
+	/// @details `TaskSystem::JoinAndClear` pumps the base stream itself, under a wall-clock bound, to drain posted
+	///          work and close the system cleanly. That is a legitimate rescue for real shutdowns and a serious
+	///          liability for verification: work that only ever runs there has proved nothing about the engine loop,
+	///          which is how a deleted loop header left the whole suite green - the shutdown drain ran the suite and
+	///          reported results as if the loop had pumped it. Anything that must be driven by the engine loop has to
+	///          be able to tell those two drivers apart, which is what this flag is for.
+	[[nodiscard]] bool IsDrivenByShutdownPump() const noexcept
+	{
+		return drivenByShutdownPump;
+	}
+
+	/// @brief Mark that the shutdown path has taken over this stream's pumping. Never cleared.
+	/// @details Not cleared on exit, because a run in which the rescue ever happened is a run whose provenance is
+	///          already compromised, and a reader that checks after the fact must still be able to see it.
+	void SetDrivenByShutdownPump() noexcept
+	{
+		drivenByShutdownPump = true;
+	}
+
 	[[nodiscard]] std::size_t GetAgedOutWorkCount() const noexcept
 	{
 		return agedOutWorkCount.load(std::memory_order_relaxed);
