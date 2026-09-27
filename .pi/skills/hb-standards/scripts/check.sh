@@ -144,6 +144,22 @@ echo " mode         : $([[ $APPLY -eq 1 ]] && echo 'apply' || echo 'check-only')
 echo "=========================================================================="
 
 for f in "${SKIPPED[@]:-}"; do [[ -n "$f" ]] && echo "  excluded : $f"; done
+# ---------------------------------------------------------------- scope fallback --
+# A docs-only commit hides the code underneath it. An empty rev-scope then makes
+# 'mechanical violations : 0' a statement about nothing, and --apply silently rewrites
+# nothing either - which is how an unformatted header shipped once a plan commit landed
+# on top of the commit that changed it. So an empty rev-scope re-enters this script on
+# the newest ancestor that really did touch a source, exactly once: the marker keeps a
+# scope whose files were all deleted from recursing.
+if [[ ${#FILES[@]} -eq 0 && $ALL -eq 0 && $STAGED -eq 0 && -z "${HBE_CHECK_SCOPE_FALLBACK:-}" ]]; then
+	ancestor=$(git log -1 --pretty=format:%H "${REVSPEC:-HEAD}" -- '*.h' '*.hpp' '*.cpp' '*.cc' 2>/dev/null)
+	if [[ -n "$ancestor" && "$ancestor" != "$(git rev-parse "${REVSPEC:-HEAD}" 2>/dev/null)" ]]; then
+		echo "scope fallback : ${REVSPEC} touches no C/C++ source - linting its code at ${ancestor:0:9} instead"
+		export HBE_CHECK_SCOPE_FALLBACK=1
+		exec "$0" "$ancestor" $( (( APPLY == 1 )) && printf -- '--apply' ) $( (( BUILD == 0 )) && printf -- '--no-build' ) $( (( TEST == 1 )) && printf -- '--test' )
+	fi
+fi
+
 if [[ ${#FILES[@]} -eq 0 ]]; then
 	echo "no formattable C/C++ sources in scope"
 	if [[ $BUILD -eq 0 ]]; then

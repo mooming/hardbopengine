@@ -1,5 +1,31 @@
 # Journal
 
+## 2026-09-25 15:00 - `check.sh` no longer reports success about nothing: an empty rev-scope falls back to the code underneath
+
+The blind spot found at 14:30 is fixed in the tool rather than memorised. An empty **rev-scope** now resolves the newest ancestor of
+the requested revision that actually touched a C/C++ source, prints `scope fallback : <rev> touches no C/C++ source - linting its code
+at <sha>`, and re-enters the script on that revision. A marker variable makes it happen **once**, so a revision whose files were all
+deleted cannot recurse, and `--staged` and `--all` are excluded because both already name a real scope. The flags are forwarded, so
+`--apply` and `--test` reach through the fallback too - which matters, because silent `--apply` was the half that let an unformatted
+header through.
+
+Verified with the exact scenario that caused the two false greens, not with a weaker stand-in:
+
+| Situation | Result |
+|---|---|
+| Docs-only revision, nothing hidden | resolves to the ancestor, examines **1 file**, reports 0 violations, exits normally |
+| Code revision requested | **0 mentions of the fallback** - unchanged behaviour, no double pass |
+| Formatting deliberately broken in the worktree, docs revision requested | **`[FAIL] clang-format - 1 file(s) not conformant`, violations: 1** - previously reported 0 about nothing |
+| Same broken state, `--apply` through the fallback | applied to 1 file and the file came back **byte-identical to its committed form** |
+
+The last two rows are the ones that matter: they show the tool now *sees* what it used to walk past, and that its repair path reaches
+the same file. A gate whose verdict depends on which commit happens to be on top is not a gate; the fallback removes the dependency
+instead of teaching me to remember it.
+
+My own botched first attempt at this patch is worth one line too: I built the bash function by string interpolation and wrote a
+literal `$body` plus a detached loop into the script. `bash -n` caught it as "syntax ok" only *after* I had restored from the backup I
+took before starting - which is the same rule as committing before mutating, applied one layer over: **take the copy before the edit,
+not after the failure.**
 ## 2026-09-25 14:30 - the gate's own blind spot: `check.sh` scopes to the **last** commit, so a docs commit hides the code one
 
 Twice today I shipped something while `check.sh` reported a violation, and the second time I disclosed it instead of chasing it.
