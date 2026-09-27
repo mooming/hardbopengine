@@ -122,19 +122,27 @@ public:
 	}
 
 	/// @brief Take the most urgent item, which is the oldest one at the highest populated priority.
+	/// @brief Serve the most urgent item, reporting its `priority` as the level it was actually served from.
+	/// @details **The bucket index is the priority**, not the byte. `Push` files an item by the byte and nothing afterwards
+	///          re-sorts it, so a byte written while the item is queued leaves it filed under the old level while every read
+	///          reports the new one. Rather than hand a caller an item whose two accounts disagree, `Pop` overwrites the byte
+	///          with the level it served from. To change a queued item's priority, remove it and push it again: assignment
+	///          cannot repair an order, only relocate the item.
 	[[nodiscard]] std::optional<T> Pop() noexcept
 	{
 		if (totalSize == 0)
 			return std::nullopt;
 
 		auto& bucket = *buckets[highestBucket];
+		const std::size_t servedFromLevel = highestBucket;
 		auto item = std::move(bucket.Front());
 		bucket.PopFront();
 		--totalSize;
 
-		ReleaseEmptyBucket(highestBucket);
+		ReleaseEmptyBucket(servedFromLevel);
 		RetrackHighestBucket();
 
+		item.priority = static_cast<decltype(item.priority)>(servedFromLevel);
 		return item;
 	}
 
