@@ -945,9 +945,12 @@ std::atomic<int> abandonmentFires{0};
 std::atomic<void*> abandonmentUserData{nullptr};
 TaskID abandonmentTaskIDSeen;
 
-std::size_t AbandonmentNoticeRunnable(void*, std::size_t, std::size_t) noexcept
+std::atomic<int> abandonmentWorkRuns{0};
+
+std::size_t AbandonmentNoticeRunnable(void*, std::size_t, std::size_t endIndex) noexcept
 {
-	return 0;
+	abandonmentWorkRuns.fetch_add(1, std::memory_order_relaxed);
+	return endIndex;
 }
 
 void AbandonmentProbe(TaskID abandonedTask, void* userData) noexcept
@@ -972,6 +975,62 @@ void TaskSystemTest::Prepare()
 	// loop header in the engine loop pass 59 collections. So both directions are asserted - the requestor that asked is
 	// told once, with its own ID and its own userData - and the silence of a task nobody asked about is asserted as
 	// well, because if the default ever started notifying, every task in the engine would.
+	// Design B: the same notice reached through a stream that actually dropped the work, rather than through a
+	// hand-built item. Legal only because this body runs on the engine loop thread, which is the base stream's owner -
+	// Update allows one driver and that driver is the owner thread, so driving a worker stream from here would race its
+	// own thread and sometimes run the item before the release lands. That abandonmentWorkRuns stays zero is the
+	// in-band half: without it, a build that ran the work and then reported it abandoned would pass just as happily.
+	AddTest("Work dropped because its task was released notifies the requestor through the stream", [this](TLogOut& ls)
+	{
+		auto& taskSys = Engine::Get().GetTaskSystem();
+
+		abandonmentFires.store(0, std::memory_order_relaxed);
+		abandonmentUserData.store(nullptr, std::memory_order_relaxed);
+		abandonmentWorkRuns.store(0, std::memory_order_relaxed);
+		abandonmentTaskIDSeen = TaskID{};
+
+		static int wireSentinel = 0;
+
+		const TaskID id = taskSys.CreateTask("AbandonNoticeWired", &AbandonmentNoticeRunnable, nullptr);
+		Task* task = taskSys.FindTask(id);
+		if (task == nullptr)
+		{
+			ls << "The wired abandonment notice test could not create its task." << lferr;
+			return;
+		}
+
+		taskSys.SetAbandonedNotice(id, &AbandonmentProbe, &wireSentinel);
+		taskSys.EnqueueTask(TaskSystem::GetBaseTaskStreamIndex(), *task);
+		taskSys.ReleaseTask(id);
+
+		const bool notified = taskSys.DriveUntil("an abandonment notice for released work", []()
+		{ return abandonmentFires.load(std::memory_order_acquire) > 0; }, std::chrono::milliseconds(200));
+
+		const auto fires = abandonmentFires.load(std::memory_order_acquire);
+		if (fires != 1)
+		{
+			ls << "the released-task site notified " << fires << " time(s), DriveUntil reported "
+			   << (notified ? "true" : "false")
+			   << "; the notice has to arrive through the stream that dropped the work, not only through a hand-built "
+				  "item."
+			   << lferr;
+		}
+
+		if (!(abandonmentTaskIDSeen == id) || abandonmentUserData.load(std::memory_order_acquire) != &wireSentinel)
+		{
+			ls << "the notice arrived from the stream with the wrong ID or without the requestor's userData." << lferr;
+		}
+
+		const auto runs = abandonmentWorkRuns.load(std::memory_order_relaxed);
+		if (runs != 0)
+		{
+			ls << "the abandoned work ran " << runs
+			   << " time(s) and was reported abandoned as well, which is not the same claim about the same work."
+			   << lferr;
+		}
+	});
+
+
 	AddTest("A dropped work item notifies the requestor that asked and a task nobody asked about notifies nobody",
 			[this](TLogOut& ls)
 	{
