@@ -358,13 +358,19 @@ void TaskSystem::ReleaseTask(TaskID id) noexcept
 	taskRegistry.Release(id);
 }
 
-void TaskSystem::EnqueueTask(const TIndex streamIndex, Task& task, const uint8_t priority) noexcept
+void TaskSystem::EnqueueTask(const TIndex streamIndex, Task& task, const uint8_t priority,
+							 const StreamDrainPolicy::ELane lane) noexcept
 {
 	task.ReserveSubTasks(1);
-	Enqueue(streamIndex, task.GenerateSubTask(0, 1, priority));
+	Enqueue(streamIndex, task.GenerateSubTask(0, 1, priority), lane);
 }
 
 void TaskSystem::Enqueue(const TIndex streamIndex, const WorkItem& task) noexcept
+{
+	Enqueue(streamIndex, task, StreamDrainPolicy::ELane::Fifo);
+}
+
+void TaskSystem::Enqueue(const TIndex streamIndex, const WorkItem& task, const StreamDrainPolicy::ELane lane) noexcept
 {
 	if (!streams.IsValidIndex(streamIndex))
 	{
@@ -372,7 +378,29 @@ void TaskSystem::Enqueue(const TIndex streamIndex, const WorkItem& task) noexcep
 		return;
 	}
 
-	streams[streamIndex].EnqueueFifo(task);
+	switch (lane)
+	{
+		case StreamDrainPolicy::ELane::Fifo:
+		{
+			streams[streamIndex].EnqueueFifo(task);
+			break;
+		}
+
+		case StreamDrainPolicy::ELane::Priority:
+		{
+			streams[streamIndex].EnqueuePriority(task);
+			break;
+		}
+
+		case StreamDrainPolicy::ELane::None:
+		{
+			Assert(false,
+				   "'%s' was queued with ELane::None, which names no queue to hold it. Attach a provider to a lane, or "
+				   "name Fifo or Priority - work with nowhere to go and work nobody attached are different problems.",
+				   task.taskID.index);
+			break;
+		}
+	}
 }
 
 void TaskSystem::RunBudgetWindowPass() noexcept
@@ -994,24 +1022,17 @@ void TaskSystemTest::Prepare()
 		abandonmentFires.store(0, std::memory_order_relaxed);
 		abandonmentWorkRuns.store(0, std::memory_order_relaxed);
 
-		// Both lanes are offered to, and both have to be non-empty: the drain walks the priority lane and the FIFO lane
-		// separately, so a test that only ever used the default priority would leave one of the two loops unexercised -
-		// which is not hypothetical, because a mutant that pops the priority lane and notifies nobody survived exactly
-		// this test while it offered only priority 0 work.
-		constexpr uint8_t lanePriorities[4] = {0, 0, 1, 1};
-		TaskID ids[4];
+		TaskID ids[3];
 		int offered = 0;
-		int laneIndex = 0;
 		for (auto& id : ids)
 		{
-			id = taskSys.CreateTask("AbandonOnClear", &AbandonmentNoticeRunnable, nullptr);
+			id = taskSys.CreateTask("AbandonOnClearFifo", &AbandonmentNoticeRunnable, nullptr);
 			taskSys.SetAbandonedNotice(id, &AbandonmentProbe, nullptr);
 			if (Task* task = taskSys.FindTask(id); task != nullptr)
 			{
-				taskSys.EnqueueTask(TaskSystem::GetBaseTaskStreamIndex(), *task, lanePriorities[laneIndex]);
+				taskSys.EnqueueTask(TaskSystem::GetBaseTaskStreamIndex(), *task, 0, StreamDrainPolicy::ELane::Fifo);
 				++offered;
 			}
-			++laneIndex;
 		}
 
 		const auto abandoned = baseStream.AbandonHeldWork();
@@ -1049,6 +1070,72 @@ void TaskSystemTest::Prepare()
 			taskSys.ReleaseTask(id);
 		}
 	});
+
+	// Duplicated from the FIFO case on purpose rather than shared through a helper: the two lanes are two queues drained by
+	// two loops, and one body parameterised over both is how the priority loop went a whole session without a witness. The
+	// lane is named by the caller through the public API, so this exercises the reachable route and not a hand-filled queue.
+	AddTest("Work held on the priority lane is abandoned with its notice fired, not silently", [this](TLogOut& ls)
+	{
+		auto& taskSys = Engine::Get().GetTaskSystem();
+		auto& baseStream = taskSys.GetStream(TaskSystem::GetBaseTaskStreamIndex());
+
+		abandonmentFires.store(0, std::memory_order_relaxed);
+		abandonmentWorkRuns.store(0, std::memory_order_relaxed);
+
+		TaskID ids[3];
+		int offered = 0;
+		for (auto& id : ids)
+		{
+			id = taskSys.CreateTask("AbandonOnClearPriority", &AbandonmentNoticeRunnable, nullptr);
+			taskSys.SetAbandonedNotice(id, &AbandonmentProbe, nullptr);
+			if (Task* task = taskSys.FindTask(id); task != nullptr)
+			{
+				taskSys.EnqueueTask(TaskSystem::GetBaseTaskStreamIndex(), *task, 1, StreamDrainPolicy::ELane::Priority);
+				++offered;
+			}
+		}
+
+		if (offered == 0)
+		{
+			ls << "the priority lane case offered nothing, so it proves nothing about that lane." << lferr;
+			return;
+		}
+
+		const auto abandoned = baseStream.AbandonHeldWork();
+		if (abandoned < static_cast<std::size_t>(offered))
+		{
+			ls << "clearing the stream abandoned " << abandoned << " of " << offered
+			   << " priority item(s): the priority drain loop pops them, reports a number and tells nobody." << lferr;
+		}
+
+		if (const auto left = baseStream.CountPendingItems(); left != 0)
+		{
+			ls << "clearing the stream left " << left << " priority item(s) behind." << lferr;
+		}
+
+		if (abandonmentFires.load(std::memory_order_relaxed) != offered)
+		{
+			ls << "the priority lane dropped " << offered << " item(s) and notified "
+			   << abandonmentFires.load(std::memory_order_relaxed) << " requestor(s)." << lferr;
+		}
+
+		if (const auto runs = abandonmentWorkRuns.load(std::memory_order_relaxed); runs != 0)
+		{
+			ls << "the abandoned priority work ran " << runs << " time(s) and was reported abandoned as well." << lferr;
+		}
+
+		if (baseStream.GetAbandonedWorkNoticeCount() < static_cast<std::size_t>(offered))
+		{
+			ls << "the stream counted " << baseStream.GetAbandonedWorkNoticeCount()
+			   << " abandoned item(s) over its life, fewer than the " << offered << " priority ones it just dropped." << lferr;
+		}
+
+		for (const auto& id : ids)
+		{
+			taskSys.ReleaseTask(id);
+		}
+	});
+
 
 	AddTest("Work dropped because its task was released notifies the requestor through the stream", [this](TLogOut& ls)
 	{

@@ -362,6 +362,18 @@ public:
 	///          allocated when the task is created, so there is no capacity left for a stream to run short of.
 	/// @note An index outside the streams is a programming error and asserts; the general-queue overload above
 	///       needs no index, and takes the task without choosing a stream.
+	/// @brief Queue one work item on one stream, on the lane the caller names.
+	/// @param lane `StreamDrainPolicy::ELane::Fifo` runs items in arrival order; `Priority` runs the highest `priority`
+	///        first, oldest within a tie. `ELane::None` is a caller error and is asserted, because a provider attached to
+	///        no lane is a different condition from work with nowhere to go.
+	/// @note **Lane and priority are two different things and this API keeps them apart.** The lane is which queue serves
+	///       the work; `WorkItem::priority` is the ordering *inside* the priority queue. Before this overload existed the
+	///       lane was decided by which internal function a caller happened to reach, and the engine's public surface could
+	///       only reach the FIFO lane - so the priority lane, its share of the drain rate, and its half of the shutdown
+	///       drain were unreachable from the public API. See decision 5 in `.Plans/TODO_task_system.md`.
+	void Enqueue(TIndex streamIndex, const WorkItem& task, StreamDrainPolicy::ELane lane) noexcept;
+
+	/// @brief Queue one work item on the FIFO lane of one stream. Equivalent to `Enqueue(streamIndex, task, ELane::Fifo)`.
 	void Enqueue(TIndex streamIndex, const WorkItem& task) noexcept;
 
 	/// @brief Queue a whole task on one stream, which is the customer's entry point for single-shot work.
@@ -376,7 +388,13 @@ public:
 	///             one of exactly one item, and calling it twice on the same task would overwrite the first
 	///             declaration.
 	/// @param Priority of the item, 0 being the least urgent.
-	void EnqueueTask(TIndex streamIndex, Task& task, uint8_t priority = 0) noexcept;
+	/// @brief Offer a task to one stream as a single whole-range work item, on the lane the caller names.
+	/// @param priority ordering key inside the priority queue - it does **not** choose a lane; see `lane`.
+	/// @param lane which queue serves the work, `ELane::Fifo` by default so existing callers keep today's behaviour.
+	/// @note The lane parameter is added last and defaulted for one reason: a `uint8_t` priority and a scoped lane enum
+	///       next to each other invite a call like `EnqueueTask(i, t, 1)` binding to the lane instead of the priority.
+	void EnqueueTask(TIndex streamIndex, Task& task, uint8_t priority = 0,
+					 StreamDrainPolicy::ELane lane = StreamDrainPolicy::ELane::Fifo) noexcept;
 
 	// Dispatch a task to be executed on the main thread.
 	// The task will be queued and executed when the main thread processes its queue.
