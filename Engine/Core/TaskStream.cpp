@@ -191,6 +191,16 @@ void TaskStream::FireAbandonedNotice(const WorkItem& item) const noexcept
 	}
 }
 
+void TaskStream::ReportAgedOutWorkItem(const WorkItem& item, std::chrono::nanoseconds age) const noexcept
+{
+	auto log = Logger::Get(name);
+	log.OutWarning([name = name, index = item.taskID.index, generation = item.taskID.generation, age](auto& ls)
+	{
+		ls << name.c_str() << " dropped a work item, record " << index << " generation " << generation << ", aged "
+		   << age.count() << "ns, older than this stream's max age. Nothing was run.";
+	});
+}
+
 void TaskStream::ReportReleasedTask(const WorkItem& item) const noexcept
 {
 	auto log = Logger::Get(name);
@@ -511,6 +521,19 @@ bool TaskStream::Update() noexcept
 		return true;
 	}
 
+	// Age is judged after the task lookup, not before: a task that no longer exists has no owner to explain a
+	// refusal to, and the released path already owns that case. Both lanes pass this point, which is why one
+	// insertion covers the FIFO lane and the priority lane with one rule.
+	if (const auto now = std::chrono::duration_cast<std::chrono::nanoseconds>(time::ElapsedSinceEngineEpoch());
+		drainPolicy.IsOverAge(workItem->offerTime, now))
+	{
+		agedOutWorkCount.fetch_add(1, std::memory_order_relaxed);
+		ReportAgedOutWorkItem(*workItem, now - workItem->offerTime);
+		FireAbandonedNotice(*workItem);
+		restore();
+		return true;
+	}
+
 	time::TDuration duration;
 	const bool chargingBudget = budget.GetAllowance().count() > 0.0;
 	const auto chargedBefore = chargingBudget ? budget.GetAccumulated() : std::chrono::nanoseconds::zero();
@@ -660,7 +683,8 @@ std::uint64_t TaskStream::DrainForShutdown() noexcept
 		{
 			ls << name.c_str() << " is closing with " << abandoned
 			   << " item(s) still held. They are abandoned, not requeued: a task that cannot finish inside the drain"
-			   << " deadline is a defect in that task, and the shutdown must report it and proceed - reporting it means "
+			   << " deadline is a defect in that task, and the shutdown must report it and proceed - reporting it "
+				  "means "
 				  "firing the notice as well, not only naming a number."
 			   << " Abandoned here are " << abandoned << ".";
 		});

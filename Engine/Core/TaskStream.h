@@ -127,7 +127,8 @@ private:
 
 	/// @brief Set while this stream runs its own remaining work on the way out, which suspends provider probing.
 	bool isDrainingForShutdown = false;
-	std::atomic<std::size_t> abandonedWorkNoticeCount{ 0 };
+	std::atomic<std::size_t> abandonedWorkNoticeCount{0};
+	std::atomic<std::size_t> agedOutWorkCount{0};
 
 	/// @brief How long this stream's shutdown drain may spend before remaining work is reported as abandoned.
 	/// @details Worker streams get a real window. The engine's own streams get none, because "run until the queues are
@@ -176,6 +177,30 @@ public:
 	/// @brief Set this stream's FIFO:priority rate, which is a share of its CPU allowance. Zero weights are
 	///        treated as one, not as "never serve this lane".
 	void ConfigureRate(uint32_t fifoWeight, uint32_t priorityWeight) noexcept;
+
+	/// @brief Set the oldest work this stream is still willing to run; zero means unlimited.
+	/// @details Off by default. A stream whose frame budget slipped can still be holding work whose context was
+	///          destroyed, re-pointed or simply irrelevant several frames ago; running it late is worse than not
+	///          running it, because the work looks fresh to whoever queued it and stale to whoever owns the state it
+	///          touches. The ceiling is stated here rather than per task because staleness is a property of the
+	///          stream: the same task is still worth running on a background stream and worthless on a frame-bound
+	///          one. Over-age work is dropped, reported and notified exactly like work whose task was released - it
+	///          is never run, never requeued, and never silently discarded.
+	/// @see StreamDrainPolicy::IsOverAge, Task::offerTime
+	void SetMaxAge(std::chrono::nanoseconds maxAge) noexcept
+	{
+		drainPolicy.SetMaxAge(maxAge);
+	}
+
+	/// @brief The ceiling this stream currently enforces; zero means unlimited.
+	/// @details Readable so a caller that temporarily tightens a shared stream can put back exactly what it found.
+	///          A test that configured a shared stream without restoring it would leave every later collection
+	///          running under someone else's policy.
+	[[nodiscard]] std::chrono::nanoseconds GetMaxAge() const noexcept
+	{
+		return drainPolicy.GetMaxAge();
+	}
+
 	void WakeUp() noexcept;
 
 	/// @brief Set this stream's CPU allowance, expressed as a duration. Zero means unlimited.
@@ -418,6 +443,19 @@ public:
 	/// @details A counter rather than a log scrape, in the style of `GetLaneWorkRefusalCount`: the number has to be
 	///          readable by a test, and a shutdown report that can only be verified by reading its own output is not
 	///          verified.
+	/// @brief How many work items this stream has dropped for being older than its max age.
+	/// @details A counter rather than a log scrape, so a caller can tell "the ceiling never fired" from "the ceiling
+	///          fired and I cannot see it". A drop that is invisible in both places is the defect this feature exists
+	///          to avoid, so it must be visible in one of them by construction.
+	[[nodiscard]] std::size_t GetAgedOutWorkCount() const noexcept
+	{
+		return agedOutWorkCount.load(std::memory_order_relaxed);
+	}
+
+	/// @note This counts work items the stream abandoned at close, whether or not their requestor had asked to be
+	///       told. A stream can abandon ten items and notify nobody and still read ten here, so the full answer to
+	///       "did anybody find out" is this counter together with the notices requestors actually received. Work
+	///       dropped by a running stream reports through GetAgedOutWorkCount and its own notice instead.
 	[[nodiscard]] std::size_t GetAbandonedWorkNoticeCount() const noexcept
 	{
 		return abandonedWorkNoticeCount.load(std::memory_order_relaxed);
@@ -450,6 +488,11 @@ private:
 	///          single hardest thing to diagnose in this subsystem. A caller that releases a task while its subtasks
 	///          are still queued will see one line per dropped subtask.
 	void ReportReleasedTask(const WorkItem& task) const noexcept;
+	/// @brief Report work this stream refused because it was older than the stream's max age.
+	/// @details Same vocabulary as a released task on purpose: in both cases the engine had work, decided not to run
+	///          it, and owes whoever queued it a sentence saying which. `age` is measured against the engine's own
+	///          epoch base, so it is comparable with the lane time book in the same log.
+	void ReportAgedOutWorkItem(const WorkItem& item, std::chrono::nanoseconds age) const noexcept;
 
 	/// @details `TaskSystemTest` is a friend because this is the one mechanism whose failure is invisible: an item that
 	///          should notify and silently does not looks exactly like a stream with nothing to report. The same

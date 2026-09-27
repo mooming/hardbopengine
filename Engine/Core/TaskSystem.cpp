@@ -983,6 +983,26 @@ std::size_t AbandonmentNoticeRunnable(void*, std::size_t, std::size_t endIndex) 
 	return endIndex;
 }
 
+// Witness for the max-age drop: the only way to tell "this work was too old to run" apart from "this
+// work was never queued" is a counter that moves in the second case and must not move in the first.
+// That counter has to be seen moving by a control pass before any negative assertion means anything.
+std::atomic<int> maxAgeWorkRuns{0};
+
+std::size_t MaxAgeRunnable(void*, std::size_t, std::size_t endIndex) noexcept
+{
+	maxAgeWorkRuns.fetch_add(1, std::memory_order_relaxed);
+	return endIndex;
+}
+
+// The other half of the same witness: a drop the engine counted but the requestor never heard about is a
+// report filed in a book nobody reads. Both have to move.
+std::atomic<int> maxAgeNotices{0};
+
+void MaxAgeNoticeProbe(TaskID, void*) noexcept
+{
+	maxAgeNotices.fetch_add(1, std::memory_order_relaxed);
+}
+
 std::atomic<int> fifoLaneRuns{0};
 std::atomic<int> priorityLaneRuns{0};
 
@@ -992,6 +1012,7 @@ std::size_t LaneRunCountingRunnable(void* userData, std::size_t, std::size_t end
 	{
 		static_cast<std::atomic<int>*>(userData)->fetch_add(1, std::memory_order_relaxed);
 	}
+
 
 	return endIndex;
 }
@@ -3243,6 +3264,137 @@ void TaskSystemTest::Prepare()
 			ls << "Eight create/release cycles never reused the freed record, so the recycle went unobserved" << lferr;
 			return;
 		}
+	});
+
+	// B3d: work that could not be run in time must be refused out loud, not run late. The control pass is not
+	// decoration and is not parameterised away: it runs the identical fixture with no ceiling and has to see the
+	// work run, because "the runnable never ran" is otherwise indistinguishable from a test that failed to queue
+	// anything - the exact vacuity this project has now been bitten by repeatedly. The two aged passes are written
+	// out per lane rather than shared, for the same documented reason: one body covering two lanes is how a lane
+	// went unwitnessed and a mutant survived. The ceiling is read back before it is tightened and restored on
+	// every exit path, including the early ones, because the base stream is shared by every later collection.
+	AddTest("Work older than the stream's max age is dropped, reported and notified, while the same work runs when no "
+			"ceiling is set",
+			[this](TLogOut& ls)
+	{
+		auto& taskSys = Engine::Get().GetTaskSystem();
+		auto& baseStream = taskSys.GetStream(TaskSystem::GetBaseTaskStreamIndex());
+
+		const std::chrono::nanoseconds ceilingFound = baseStream.GetMaxAge();
+		maxAgeWorkRuns.store(0, std::memory_order_relaxed);
+
+		baseStream.SetMaxAge(std::chrono::nanoseconds{0});
+
+		const TaskID controlID = taskSys.CreateTask("MaxAgeControl", &MaxAgeRunnable, nullptr);
+		if (Task* controlTask = taskSys.FindTask(controlID); controlTask != nullptr)
+		{
+			taskSys.EnqueueTask(TaskSystem::GetBaseTaskStreamIndex(), *controlTask, 0, StreamDrainPolicy::ELane::Fifo);
+		}
+		const bool controlRan = taskSys.DriveUntil("the ceiling-free fixture to run", []()
+		{ return maxAgeWorkRuns.load(std::memory_order_acquire) > 0; }, std::chrono::milliseconds{400});
+		taskSys.ReleaseTask(controlID);
+
+		if (!controlRan || maxAgeWorkRuns.load(std::memory_order_acquire) != 1)
+		{
+			baseStream.SetMaxAge(ceilingFound);
+			ls << "control pass ran the work " << maxAgeWorkRuns.load(std::memory_order_acquire)
+			   << " time(s), DriveUntil reported " << (controlRan ? "true" : "false")
+			   << "; if the fixture cannot run, every assertion about work NOT running proves nothing" << lferr;
+			return;
+		}
+
+		// One nanosecond is not a typo. The stamp is taken when the registry loads the record, so by the time
+		// this item has been queued and the stream has been driven, the work is microseconds old at the very
+		// least in every configuration; a ceiling that small cannot be raced, and a wait bounded in wall clock
+		// rather than in passes keeps Debug and Release agreeing.
+		baseStream.SetMaxAge(std::chrono::nanoseconds{1});
+
+		{
+			const std::size_t agedBefore = baseStream.GetAgedOutWorkCount();
+			const int noticesBefore = maxAgeNotices.load(std::memory_order_acquire);
+
+			const TaskID id = taskSys.CreateTask("AgedOutOnFifo", &MaxAgeRunnable, nullptr);
+			taskSys.SetAbandonedNotice(id, &MaxAgeNoticeProbe, nullptr);
+			if (Task* task = taskSys.FindTask(id); task != nullptr)
+			{
+				taskSys.EnqueueTask(TaskSystem::GetBaseTaskStreamIndex(), *task, 0, StreamDrainPolicy::ELane::Fifo);
+			}
+			const bool dropped = taskSys.DriveUntil("FIFO work to be aged out", [&baseStream, agedBefore]()
+			{ return baseStream.GetAgedOutWorkCount() > agedBefore; }, std::chrono::milliseconds{300});
+
+			const std::size_t aged = baseStream.GetAgedOutWorkCount();
+			const int notices = maxAgeNotices.load(std::memory_order_acquire);
+			const int runs = maxAgeWorkRuns.load(std::memory_order_acquire);
+			taskSys.ReleaseTask(id);
+
+			if (!dropped || aged - agedBefore != 1)
+			{
+				baseStream.SetMaxAge(ceilingFound);
+				ls << "FIFO pass: aged-out count moved by " << (aged - agedBefore) << ", DriveUntil reported "
+				   << (dropped ? "true" : "false") << "; a ceiling that drops work invisibly is the defect, not a fix"
+				   << lferr;
+				return;
+			}
+			if (runs != 1)
+			{
+				baseStream.SetMaxAge(ceilingFound);
+				ls << "FIFO pass: work older than the ceiling ran " << runs - 1 << " extra time(s); over-age work must"
+				   << " never run, that is the whole feature" << lferr;
+				return;
+			}
+			if (notices - noticesBefore != 1)
+			{
+				baseStream.SetMaxAge(ceilingFound);
+				ls << "FIFO pass: notified " << (notices - noticesBefore) << " requestor(s); work dropped for age"
+				   << " has to tell whoever queued it, in the same words as work dropped for a released task" << lferr;
+				return;
+			}
+		}
+
+		{
+			const std::size_t agedBefore = baseStream.GetAgedOutWorkCount();
+			const int noticesBefore = maxAgeNotices.load(std::memory_order_acquire);
+
+			const TaskID id = taskSys.CreateTask("AgedOutOnPriority", &MaxAgeRunnable, nullptr);
+			taskSys.SetAbandonedNotice(id, &MaxAgeNoticeProbe, nullptr);
+			if (Task* task = taskSys.FindTask(id); task != nullptr)
+			{
+				taskSys.EnqueueTask(TaskSystem::GetBaseTaskStreamIndex(), *task, 0, StreamDrainPolicy::ELane::Priority);
+			}
+			const bool dropped = taskSys.DriveUntil("priority-lane work to be aged out", [&baseStream, agedBefore]()
+			{ return baseStream.GetAgedOutWorkCount() > agedBefore; }, std::chrono::milliseconds{300});
+
+			const std::size_t aged = baseStream.GetAgedOutWorkCount();
+			const int notices = maxAgeNotices.load(std::memory_order_acquire);
+			const int runs = maxAgeWorkRuns.load(std::memory_order_acquire);
+			taskSys.ReleaseTask(id);
+
+			if (!dropped || aged - agedBefore != 1)
+			{
+				baseStream.SetMaxAge(ceilingFound);
+				ls << "priority-lane pass: aged-out count moved by " << (aged - agedBefore) << ", DriveUntil reported "
+				   << (dropped ? "true" : "false") << "; the lane is chosen by the caller now, so both lanes have to"
+				   << " enforce the ceiling" << lferr;
+				return;
+			}
+			if (runs != 1)
+			{
+				baseStream.SetMaxAge(ceilingFound);
+				ls << "priority-lane pass: work older than the ceiling ran " << runs - 1
+				   << " extra time(s); a high priority is not a licence to run stale context" << lferr;
+				return;
+			}
+			if (notices - noticesBefore != 1)
+			{
+				baseStream.SetMaxAge(ceilingFound);
+				ls << "priority-lane pass: notified " << (notices - noticesBefore)
+				   << " requestor(s); the notice is the only signal a requestor gets that its work was refused"
+				   << lferr;
+				return;
+			}
+		}
+
+		baseStream.SetMaxAge(ceilingFound);
 	});
 }
 
