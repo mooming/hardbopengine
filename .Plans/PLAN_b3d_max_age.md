@@ -1,6 +1,10 @@
 # PLAN — B3d: per-stream max age and abandonment (todo #6, N4)
 
-Status: **steps 1-2 landed at `feb1c73`; step 3 (enforcement at the drop site) and step 5's end-to-end collection are what remains.** Step 1's design was wrong in one specific way, recorded in the 16:10 journal entry: the stamp cannot live on `WorkItem` with inheritance in `GenerateSubTask`, because that method has no parent item in scope, so the clock is `Task::offerTime` stamped by `LoadIntoRecord` and carried by the item's constructor. The PRECONDITION above is settled - the abandonment notice exists and `FireAbandonedNotice` is the delivery mechanism step 3 must call. Steps 2's mutants are all killed by name (three by `StreamDrainPolicyTest`, the `LoadIntoRecord` one by `TaskSystemTest`).
+Status: **COMPLETE. Steps 1-2 at `feb1c73`, steps 3, 5 and 7 at `215db9b`, the lane-rate witness at `6d9f2f5`, step 6 (documentation) with the guide's sections 16 and 17.** Step 4's figures moved again: the item is 80 bytes and the task 200, with the record held at 256 by `reservedToCacheLine[24]`.
+
+Step 5's mutants, as run: **N1 remove the check, N2 remove the notice, N3 remove the counter and N5 report-then-run-anyway were all killed by the new collection by name. N4 inverted the predicate and the suite stopped working instead of failing** (`runner exit=60`, no named test), because the default ceiling is unlimited and an inverted rule drops every item on every stream - a detection with nothing left alive to attribute it to.
+
+Original status, for the record: **not started, fully specified.** Step 1's design was wrong in one specific way, recorded in the 16:10 journal entry: the stamp cannot live on `WorkItem` with inheritance in `GenerateSubTask`, because that method has no parent item in scope, so the clock is `Task::offerTime` stamped by `LoadIntoRecord` and carried by the item's constructor. The PRECONDITION above is settled - the abandonment notice exists and `FireAbandonedNotice` is the delivery mechanism step 3 must call. Steps 2's mutants are all killed by name (three by `StreamDrainPolicyTest`, the `LoadIntoRecord` one by `TaskSystemTest`).
 
 Original status, for the record: **not started, fully specified.** Written 2026-09-25 07:10 at `02ca08e` by the session that
 fixed the `Engine::Run` loop-header regression. Every anchor below was read from the tree at that

@@ -144,3 +144,16 @@ So the repair is observable through a mutant that changes what it writes, and no
 for it" nor "the mutant survived, so it is worthless" is the true statement; the true statement is that this is a guard against an input
 the test suite cannot construct, and the existing order tests are what keep the guard honest.
 
+## 11. Decision 6 closed by the session acting as owner-proxy - aging deliberately not implemented
+
+Read `TODO_task_system.md` for the decision itself; the summary here is that **none of steps 2, 3 and 4 will be built now**, and step 1
+is the only thing that shipped. The reasons are the three in the decision: the drain policy already promises a lane with work is never
+starved by the other lane's weight and that promise is now measured end to end at 8:1 (`6d9f2f5`), max age bounds staleness from the
+other side (`215db9b`), and at a base stream that closes holding 8 items an aging term changes nothing observable while making the
+bucket-index-is-the-priority invariant someone's responsibility to keep true.
+
+The derived-key lemma in section 2, the tournament in section 3, the clamp at 255 and the pending-reprioritise list are all still
+correct and still specified. They are not dead documentation: they are the design for the first caller that needs age-based promotion,
+and the reopen conditions are written in the TODO. If that caller appears, start from section 5's step 2 and do not skip the wrap
+boundary - it is the only trap here that fails silently.
+

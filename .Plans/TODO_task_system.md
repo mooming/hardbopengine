@@ -64,7 +64,7 @@ callers. Do not start this without picking one.
 > gate, the **Release** build fails and names it — "A provider was asked 24 time(s) while the allowance was spent." Debug/Dev catch
 > the same mutant via the assert in `a166b67`. Everything from the earlier diagnosis (configuration anomaly, pop-and-return,
 > misplaced counters) is superseded by this; the anomaly was an iteration-count burn, fixed by bounding the work in wall clock.
-> **Status as of 13:20.** Shipped since 07:10: the opt-in **abandonment notice** end to end (item, both drop sites, counter, two lane-duplicated tests, guide section 14) plus the **recycled-registry-record notice defect** it caught; **standing decision 5 resolved as S1** - callers now choose the lane through the public API; and the `WorkItem::priority` **insertion-label contract**. Open now: **#6 B3d** (line-level plan unchanged, needs implementing), **dynamic priority** (`PLAN_dynamic_priority.md` - specified, blocked on standing decision 6), the **drain-rate ratio** test (needs a weights getter first), the **`Engine::Run` guardrail**, **#7 D3** (Memory's `AtomicStackView` ABA), and standing decisions 2, 3 and 4's early-release half. HEAD `073e746`, 59 collections green in Debug/Dev/Release, `check.sh` 0 violations, build gate 12/12, nothing pushed.
+> **Status as of 18:20.** Todo **#6 B3d is closed**: the age clock is on the task, the ceiling is on the stream, the take path enforces it, and `215db9b` / `6d9f2f5` carry the control-first tests and the five-mutant record. **Standing decision 6 is closed** - aging deliberately not implemented, reasoning below and in `PLAN_dynamic_priority.md` §11. The lane-rate witness landed as the *no-starvation* promise rather than a ratio, because the design disclaims the ratio end to end and a measured 8:1 run returned 4/4. Open now: **#7 D3** (`AtomicStackView` Treiber ABA - Memory module, another agent's), the **`Engine::Run` guardrail** (in-process design measured impossible; the remaining candidate is an application smoke run under a wall clock), the **per-task optional deadline** (designed, deliberately not built - reopen when a caller exists), and **standing decisions 2 and 3** (two allowance books; `MayTakeNewWork` shape). HEAD `6d9f2f5`, 59 collections green in Debug/Dev/Release, `check.sh` 0 violations, build gate 12/12, nothing pushed.
 > allowance books, and `MayTakeNewWork` having only test callers.
 
 **Read this first.** Everything below is verified against a real run unless a line says otherwise.
@@ -560,4 +560,23 @@ Blocking all remaining dynamic-priority work. Full analysis, cost model and the 
 2. **The aging step** - how many frames of waiting promote an item one level. That is a starvation-policy number, not an implementation
    detail: with 256 levels it sets the worst-case wait before an item saturates the top, and it must **saturate at 255 rather than wrap**
    or the most urgent queued work becomes the least urgent, silently, and only after a long stall.
+
+
+
+### Standing decision 6 - CLOSED by the session as owner-proxy (18:20)
+
+Derived keys versus maintained keys, plus the aging step, blocked dynamic priority since 13:20. The owner's standing instruction for
+this run was to resolve such questions myself and record the reasoning, so: **aging is not implemented, by decision rather than
+omission.** Three reasons. (1) The problem it solves - low-priority work never running - is already excluded by a promise the drain
+policy makes and which is now measured end to end at 8:1: a lane with work is never starved by the other lane's weight, and a zero
+weight means one, not never. (2) The problem on the other side is now bounded too: a stream that cannot keep up declines stale work
+instead of running it late. (3) At the depths this engine reaches - a base stream that closed holding 8 items - a per-frame aging
+term changes no observable behaviour, while the container's actual hazard is that the bucket index *is* the priority, so a maintained
+key is a live invariant to be kept true by every writer rather than a field being read.
+
+What was built is the one piece that is unambiguously a defect fix: `Pop` reports the level it served from, so an item filed under one
+level and reporting another cannot be handed to a caller (`9a3bf64`, mutant killed by name). The derived-key tournament, the clamp at
+255 and the pending-reprioritise list remain specified in `PLAN_dynamic_priority.md` for the first caller that needs them. **Reopen
+conditions:** a stream that is permanently backlogged with mixed priorities, or any measured starvation, or a caller that asks for
+age-based promotion. Recorded here rather than silently, because a decision made without the owner is the owner's to overturn.
 

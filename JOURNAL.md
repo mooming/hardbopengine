@@ -1,5 +1,54 @@
 # Journal
 
+## 2026-09-25 18:20 - max age enforced end to end, the lane rate measured against the promise it actually makes, and standing decision 6 closed
+
+**Todo #6 is finished.** `TaskStream::SetMaxAge` / `GetMaxAge` expose the ceiling; the shared take path now drops over-age work
+immediately after the task lookup, counts it in `GetAgedOutWorkCount()`, reports it in the same words as work dropped for a released
+task, and fires `SetAbandonedNotice` for a requestor that asked. Never run, never requeued, off by default. `215db9b` closes steps 3
+and 5 of the plan; `6d9f2f5` adds the lane-rate witness.
+
+**Five mutants on the enforcement, four killed by name and one that was not attributable.** N1 remove the check, N2 remove the notice,
+N3 remove the counter, N5 keep reporting and run the work anyway - all killed by the new collection. **N4, inverting the predicate, is
+different and is recorded as such: the suite did not merely fail, it stopped working** (`runner exit=60`, no named test), because the
+default ceiling is unlimited, so an inverted rule drops every item on every stream and nothing downstream can run to report it. That is
+a detection without an attribution, and the distinction matters: a mutation that disables an engine-wide gate cannot be pinned to the
+test that "should" catch it, and pretending otherwise would put a checkmark on something that was never measured.
+
+**The end-to-end rate test could not be written as planned, and the reason is in the design document already.** `StreamDrainPolicy` says
+free borrowing means the long-run ratio is *not* preserved when both lanes are permanently backlogged. Measured at 8:1 on the base
+stream: 4 FIFO and 4 priority out of 8 offered, in one pass. The planned assertion would have **failed on correct code**, which is worse
+than no test because it trains the reader to ignore the suite. What is asserted instead is the narrower promise both drain modes make -
+**a lane with work is never starved by the other lane's weight** - and the ratio stays tested where it is decided, in
+`StreamDrainPolicyTest`. Getting the weight getters was a precondition: a test that re-rates the shared base stream has to put back what
+it found, and a normalised share cannot be inverted back to a weight.
+
+**The starvation mutant is credited honestly.** Making `ChooseLane` always take FIFO when both lanes are backlogged is killed by
+`StreamDrainPolicyTest` TC1, TC4 and TC5 - **not** by the new end-to-end collection, which passes over it, because once the FIFO lane
+empties the fall-through serves the priority lane and all eight items complete. That is the design working, and it means the new test's
+job is the public-API path and completion under a configured rate, not ratio policing.
+
+**`GetAbandonedWorkNoticeCount` had an overclaiming header.** It documented notices fired while counting items abandoned at close,
+whether or not anyone had asked to be told: a stream can abandon ten items, notify nobody, and read ten. Corrected in place rather than
+by quietly renaming it, and the new test asserts on its own requestor probe instead of that proxy, because the question is "did anybody
+find out".
+
+**Standing decision 6, closed by the session acting as owner-proxy, and reversible.** Derived keys or maintained keys, and what aging
+step, was blocking dynamic priority for two days. The resolution is **do not implement aging now**, because nothing in the tree needs
+it and the two things it was for are covered: the drain contract already guarantees a lane with work is never starved by the other
+lane's weight (now measured at 8:1), and max age bounds staleness from the other side. At the depths this engine actually reaches - a
+base stream that closed holding 8 items - aging changes no observable behaviour, and the container's real hazard is that the bucket
+index *is* the priority, which makes a maintained key a live invariant rather than a field. The one part worth building, and the only
+part built, was the repair that makes the disagreement unrepresentable: `Pop` reports the level it served from, landed earlier today at
+`9a3bf64` and killed by name. The derived-key tournament stays specified in `PLAN_dynamic_priority.md` for the day a caller needs it.
+
+**Process notes, because they repeat.** clang-format's rewrites bit my anchors three times today - `{ 0 }` collapsing to `{0}` and the
+namespace body de-indenting - and the assert-before-write habit is what kept the tree untouched every time instead of half-patched.
+A global `str.replace` inside a per-lane loop made a two-occurrence count assertion fail on its second pass; I wrote that bug twice in
+one session. Two of my own final "no leftovers" assertions were over-broad, checking the whole file for a symbol that other collections
+legitimately use. And one test failed because it demanded a notice the fixture never requested - the notice is opt-in - which is the
+same defect class as asserting an unimplementable ratio: my expectation, not the engine, was wrong.
+
+Gate: 59 collections green in Debug, Dev and Release; 0 mechanical violations; build gate 12/12.
 ## 2026-09-25 16:10 - B3d steps 1-2: the age clock went on the task, because the plan's design could not be written
 
 `feb1c73`. The plan said: stamp `WorkItem::offerTime` in its constructor and let a sub-slice inherit with one line,

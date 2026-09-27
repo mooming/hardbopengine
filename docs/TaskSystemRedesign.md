@@ -79,6 +79,16 @@ Properties:
 - **Budget = frame time.** The engine task stream's budget bounds how long one frame may run. Other streams self-regulate their own budgets.
 - **Independent clocks.** A task on the render stream (120 Hz) and one on the engine stream (60 Hz) share only the **engine clock**, which is what deadlines reference.
 
+**Status (2026-09-25) - what is and is not implemented.** The per-task optional deadline below is a **design that
+was not built**: no caller in the tree declares one, and it would cost a field in `Task` plus a second comparison
+path against a clock that can disagree with the drain clock. What ships instead is the narrower mechanism that
+prevents the documented harm: a **per-stream max age**, `TaskStream::SetMaxAge`, judged against `Task::offerTime`
+(stamped when the registry loads the record, carried by every item and every sub-slice) and evaluated where work is
+taken. Over-age work is dropped, counted by `GetAgedOutWorkCount()`, reported in the same words as work dropped for
+a released task, and notified through `SetAbandonedNotice`. It is off by default, and it is per stream because
+staleness is a property of what the stream is for. Reopen the per-task deadline when a caller exists that needs a
+deadline independent of its stream.
+
 **Deadline policy.** Each task may declare an optional deadline (engine-clock relative). If a task has not been executed within its deadline, it is **abandoned**. Abandonment still destroys the task (RAII frees its allocations — see §6).
 
 ---
@@ -216,7 +226,7 @@ Outcomes may form a chain: `A → B → C`, where `C` may be the engine stream, 
 
 ### 6.2 Abandonment and RAII
 
-A task is **abandoned** when it exceeds its deadline (or its provider is stopped before it runs). Critical invariant:
+A task's work is **abandoned** when its stream declines it as older than that stream's max age (implemented, see `TaskStream::SetMaxAge`), when its task is released while it is still queued, or when a closing stream discards what it still holds; the per-task deadline that would add a fourth cause is designed but not implemented. Critical invariant:
 
 > **An abandoned task is still destroyed.** RAII frees the allocations the task possesses — including a heap `unique_ptr` outcome in flight.
 

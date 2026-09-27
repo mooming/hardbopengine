@@ -424,3 +424,48 @@ parameter exists to remove that class of blind spot, not to add a knob.
 `ELane::None` is rejected with an assert rather than absorbed as FIFO: work with nowhere to go and work nobody attached to a lane are
 different problems, and merging them turns a provider bug into a mysteriously missing task.
 
+## 16. Refusing work you can no longer run in time: `TaskStream::SetMaxAge`
+
+A stream that falls behind does not lose work; it defers it. Deferral is harmless for a frame or two and harmful
+for longer, because the world the work was queued against keeps moving: the entity it was told to update was
+destroyed, the settings it read were changed, or the frame it was annotating is four frames gone. Running that
+work late is not neutral - it looks completely legitimate to whoever queued it, and it is stale to whoever owns
+the state it touches.
+
+```cpp
+	// A frame-bound stream declines anything it could not start within two frames.
+	taskSystem.GetStream(TaskSystem::GetBaseTaskStreamIndex())
+		.SetMaxAge(std::chrono::duration_cast<std::chrono::nanoseconds>(2 * frameTime));
+```
+
+Three properties worth knowing before you reach for it:
+
+* **It is per stream and off by default.** Staleness is a property of what a stream is for. The same task is
+  still worth running on a background stream and worthless on a frame-bound one, so the ceiling belongs to the
+  stream and a stream that never opts in behaves exactly as it always has.
+* **The age is the task's, not the item's.** `Task::offerTime` is stamped when the registry loads the record and
+  is carried by every work item the task hands out, including sub-slices. Stamping the item instead would let a
+  task postpone its deadline by splitting late or by not finishing in one call - both of which this engine
+  advertises as normal behaviour.
+* **Over-age work is dropped, counted, reported and notified, never run and never requeued.** It uses the same
+  vocabulary as work dropped because its task was released, and it fires `SetAbandonedNotice` for requestors that
+  asked, so nobody waits for a result that was declined. `GetAgedOutWorkCount()` is the engine-side signal; the
+  log line names the task, its range and its age.
+
+The check sits after the task lookup on the shared take path, so one rule covers both lanes. `GetMaxAge` exists
+so a caller that tightens a shared stream temporarily can put back exactly what it found; the test that does so
+restores it on every exit path, because the base stream is shared by every later collection.
+
+## 17. What the lane rate promises, and what it does not
+
+`ConfigureRate(fifoWeight, priorityWeight)` divides a stream's CPU allowance between its two lanes, and it is a
+per-take decision, not a quota enforced over time. With no allowance configured, borrowing is free, and the
+documented consequence is that **the long-run ratio is not preserved when both lanes are permanently backlogged**:
+whoever has work gets the CPU. Measured on the base stream at 8:1, eight offered items came back as four FIFO and
+four priority in a single pass. That is correct behaviour, not a bug - which is why no test asserts a ratio end to
+end. The ratio is tested where it is decided, in `StreamDrainPolicyTest`.
+
+The promise both drain modes do make, and the one the end-to-end test asserts, is narrower and more useful: **a
+lane with work is never starved by the other lane's weight.** A weight of 1 means "later", never "never"; a zero
+weight falls back to one rather than switching a lane off, because a lane with a queue and no service would strand
+those tasks forever.
