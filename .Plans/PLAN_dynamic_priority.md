@@ -73,7 +73,7 @@ accumulator is not billed for a container comparison, and add a debug dump print
 
 ## 5. Build order (each step lands green on its own)
 
-1. **`Pop` reports the level it served from** — makes "filed under 2, reports 7" unrepresentable instead of documented. Four lines,
+1. **`Pop` reports the level it served from** — ✅ **LANDED at `9a3bf64`.** It makes "filed under 2, reports 7" unrepresentable instead of documented. Four lines,
    already attempted and reverted at `073e746`. **The exact fix:** inside the template
    `auto item = std::move(bucket.Front());` deduces a **non-optional value**, so the member access is `item.priority` and **not**
    `item->priority`; capture `const std::size_t servedFromLevel = highestBucket;` **before** `RetrackHighestBucket()`, pass that to
@@ -132,3 +132,15 @@ go unwitnessed. **Commit before mutating, never after.** Stage paths by name; ne
 **Standing decision 6:** (a) derived keys or maintained keys, or the hybrid above; (b) the **aging step** — frames of waiting per level
 of promotion, which is a starvation policy, not an implementation detail. Nothing in section 5 beyond step 1 should start before
 those two answers exist.
+
+## 10. How step 1 was verified, and what the mutants could not see
+
+| Mutant on the repair | Result | Reading |
+|---|---|---|
+| **Delete the assignment** | **survived** — `runner exit=0`, 59 collections | Inherent, not a gap: for an item nobody wrote to while queued, the repair writes the value the byte already held. And the divergence cannot be constructed from outside — `Top()` returns a copy, `Remove` walks by const reference — which is also why it cannot occur by accident |
+| **Write `servedFromLevel + 1`** | **killed by name** — `BoundedPriorityQueueTest TC0.Push and Pop basic`, "Expected priority 15", `runner exit=1` | The repair's *value* is witnessed by the container's existing ordering tests, which is why no new collection was added |
+
+So the repair is observable through a mutant that changes what it writes, and not through one that removes it. Neither "there is a test
+for it" nor "the mutant survived, so it is worthless" is the true statement; the true statement is that this is a guard against an input
+the test suite cannot construct, and the existing order tests are what keep the guard honest.
+

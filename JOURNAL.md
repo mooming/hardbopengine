@@ -1,5 +1,33 @@
 # Journal
 
+## 2026-09-25 14:05 - `Pop` now reports the level it served from, and the two mutants say precisely what that is worth
+
+Step 1 of `PLAN_dynamic_priority.md` is landed and needed no decision from the owner, unlike steps 2-4. `Pop` overwrites the item's
+`priority` with the level it actually served from, which makes "filed under 2, reports 7" unrepresentable to callers instead of merely
+documented. The member access is `item.priority` because the local is the element and not the optional; the level is captured before
+`RetrackHighestBucket()` moves `highestBucket`; the cast is `decltype(item.priority)` rather than `uint8_t` because the template is
+instantiated for element types other than `WorkItem`, and not `std::remove_reference_t` because this header deliberately pulls in
+nothing from `<type_traits>`. No `Assert` was added: that would make Container depend on Core and invert the layering, and an assert
+only fires in a checked build anyway.
+
+Two mutants, and the asymmetry between them is the finding, not an aside:
+
+* **Repair deleted → survived.** `runner exit=0`, all 59 collections. Inherent, not a test gap: for an item nobody wrote to while it
+  was queued, the value the repair writes is the value the byte already held, so no test built out of honest inputs can distinguish the
+  two builds. Creating the divergence from outside is impossible by design - `Top()` hands back a copy, `Remove` walks by const
+  reference - which is the same reason the divergence cannot happen by accident in the field.
+* **Repair changed to write `level + 1` → killed by name.** `BoundedPriorityQueueTest TC0.Push and Pop basic`, "Expected priority 15",
+  `runner exit=1`. The repair's *value* is witnessed by the existing ordering tests, which is why no new collection was written: the
+  container already asserts that what comes out of `Pop` carries the priority it was served at.
+
+So the honest statement is: the repair's presence is only observable through a mutant that changes what it writes, never through one
+that removes it. A test suite that could not see a removed repair is not a suite that failed to test this feature - it is a suite
+reporting correctly that the repair is a guard against an input it cannot construct. Recording the distinction because "we have a test
+for it" would have been the false version, and "the mutant survived so the change is worthless" would have been the other false
+version.
+
+Standing decision 6 (derived vs maintained keys, and the aging step) still gates steps 2-4. Gate: 59 collections green in
+Debug/Dev/Release, `check.sh` 0 violations, build gate 12/12, tree clean at `9a3bf64`, nothing pushed.
 ## 2026-09-25 13:20 - the lane is now the caller's choice, the priority contract is written down, and the dynamic-priority design is specified but not started
 
 **The abandonment notice is complete.** Opt-in `FAbandonedNotice` (function pointer + `void*`, `nullptr` by default) carried on the
