@@ -980,12 +980,13 @@ void TaskSystemTest::Prepare()
 	// Update allows one driver and that driver is the owner thread, so driving a worker stream from here would race its
 	// own thread and sometimes run the item before the release lands. That abandonmentWorkRuns stays zero is the
 	// in-band half: without it, a build that ran the work and then reported it abandoned would pass just as happily.
-	// AbandonHeldWork is what a closing stream calls, so it is tested directly on the owner thread rather than by tearing
-	// a stream down mid-suite: closing the IO stream would take the logger with it, and closing a worker mid-run leaves the
-	// rest of the collections without an executor. The count alone is not the property - an implementation that pops the
-	// queues and reports a number while notifying nobody passes that - so the notices fired are asserted against the items
-	// taken, and that the work never ran is asserted separately.
-	AddTest("Work still held when a stream is cleared is abandoned with its notice fired, not silently", [this](TLogOut& ls)
+	// AbandonHeldWork is what a closing stream calls, so it is tested directly on the owner thread rather than by
+	// tearing a stream down mid-suite: closing the IO stream would take the logger with it, and closing a worker
+	// mid-run leaves the rest of the collections without an executor. The count alone is not the property - an
+	// implementation that pops the queues and reports a number while notifying nobody passes that - so the notices
+	// fired are asserted against the items taken, and that the work never ran is asserted separately.
+	AddTest("Work still held when a stream is cleared is abandoned with its notice fired, not silently",
+			[this](TLogOut& ls)
 	{
 		auto& taskSys = Engine::Get().GetTaskSystem();
 		auto& baseStream = taskSys.GetStream(TaskSystem::GetBaseTaskStreamIndex());
@@ -993,17 +994,24 @@ void TaskSystemTest::Prepare()
 		abandonmentFires.store(0, std::memory_order_relaxed);
 		abandonmentWorkRuns.store(0, std::memory_order_relaxed);
 
-		TaskID ids[3];
+		// Both lanes are offered to, and both have to be non-empty: the drain walks the priority lane and the FIFO lane
+		// separately, so a test that only ever used the default priority would leave one of the two loops unexercised -
+		// which is not hypothetical, because a mutant that pops the priority lane and notifies nobody survived exactly
+		// this test while it offered only priority 0 work.
+		constexpr uint8_t lanePriorities[4] = {0, 0, 1, 1};
+		TaskID ids[4];
 		int offered = 0;
+		int laneIndex = 0;
 		for (auto& id : ids)
 		{
 			id = taskSys.CreateTask("AbandonOnClear", &AbandonmentNoticeRunnable, nullptr);
 			taskSys.SetAbandonedNotice(id, &AbandonmentProbe, nullptr);
 			if (Task* task = taskSys.FindTask(id); task != nullptr)
 			{
-				taskSys.EnqueueTask(TaskSystem::GetBaseTaskStreamIndex(), *task);
+				taskSys.EnqueueTask(TaskSystem::GetBaseTaskStreamIndex(), *task, lanePriorities[laneIndex]);
 				++offered;
 			}
+			++laneIndex;
 		}
 
 		const auto abandoned = baseStream.AbandonHeldWork();
