@@ -1,5 +1,29 @@
 # Journal
 
+## 2026-09-28 00:55 - the owner settled the `Engine::Run` guardrail by changing the harness, not by adding a witness
+
+Owner's arrangement: the suite runs on the base stream while the other streams work independently. That retires the item I had parked
+as "needs a headless-safe application target", and the reason it retires it is worth keeping: under this arrangement **the harness is the
+guardrail**. If the loop stops pumping, no collection executes, and a zero-collection run is already refused by `runtest.sh` (exit 98),
+so a dead loop cannot print a pass count at all. No hand-built witness, no pass-count sampler, no source-shape pin - the three designs
+this item cycled through are all superseded by making the suite depend on the loop.
+
+`Applications/EngineTest/TestMain.cpp` already named this as the intended arrangement and documented that it is not the current one:
+`RunTests()` blocks and shuts the engine down before `Run()` is entered, which is precisely why the measured loop saw at most one pass.
+
+Feasibility was read from source before writing the plan, because two mechanisms looked like blockers and are not: `TaskSystem::JoinAndClear`
+never joins the base thread - it *is* that thread, and it keeps pumping the base stream under a wall-clock deadline after other streams
+are told to close (`TaskSystem.cpp:206-231`), so shutdown requested from inside base work cannot self-deadlock. And `DriveUntil` already
+has a nested-pump mode for the base-owner thread (`SetNestedPumpAllowed` + RAII guard), so tests that wait on other streams keep working
+one level deeper inside the loop rather than in a different mode.
+
+Plan written to `.Plans/PLAN_suite_on_base_stream.md` with the increments in an order that leaves a runnable suite at every commit -
+starting with the tally-vs-registered check *while the old harness still works*, so that a regression in the guardrail can never be
+confused with the migration. The mutant that this whole item exists for is listed in step 3: delete `Engine::Run`'s `while` header, the
+actual regression I shipped in `a8946ea`, and it has to be caught by the harness rather than by anything I wrote to catch it.
+
+Not implemented in this turn, deliberately: a half-migrated harness invalidates every gate, since all three configurations are gated on
+this executable, so the change has to land green as whole increments rather than begin here and stop mid-way.
 ## 2026-09-27 22:45 - the last of the four guardrails got its test, and running a mutant found a hole in the test I had just written
 
 Both numbered todos are now done. `e74e05c` adds the D4 RAII-on-drop witness: work driven to each of the three drop sites - released
