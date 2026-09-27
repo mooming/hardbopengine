@@ -180,7 +180,8 @@ released-task site. Sizes moved as the guards predicted: `WorkItem` 56 -> 72, `T
 **Not landed, in the order that matters:**
 1. ~~**The firing branch has no test.**~~ **CLOSED 09:20** - Design A landed as `TaskSystemTest` TC0, and two mutants
    (fire removed, stamp removed) were killed by name. What remains from this item is the *wiring* mutant at the released-task
-   site, which needs Design B. The 59 green collections prove only that the `nullptr` default path is untouched -
+   site - **CLOSED 09:55**: Design B landed and killed the "reports without notifying" mutant by name, while Design A's test
+   passed over that mutant, which is the proof that both were needed. The 59 green collections prove only that the `nullptr` default path is untouched -
    which is what makes this safe to land, not what makes it correct. Without Step 6's control case, deleting the
    `if (item.abandonedNotice != nullptr)` call would break nothing, which is precisely how `Engine::Run`'s loop header
    disappeared unnoticed. Do Step 6 before adding anything else here.

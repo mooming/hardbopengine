@@ -1,5 +1,22 @@
 # Journal
 
+## 2026-09-25 09:55 — Design B landed: the base stream's drop path is finally under test, and the wiring mutant died to it
+
+`Work dropped because its task was released notifies the requestor through the stream` creates a task, asks for the notice,
+offers it to the base stream, releases the task so a pass drops the item, then drives with `DriveUntil` under a wall clock. It
+asserts the notice arrived once with the dropped task's ID and the requestor's pointer, and separately that the work never ran.
+Legal because the body runs on the engine loop thread, which is the base stream's owner - `Update` permits one driver and that
+driver must be the owner thread.
+
+Mutant, killed by name at `runner exit=1`: the released-task site calling `ReportReleasedTask` **without** `FireAbandonedNotice`.
+The informative part is *which* test failed: only Design B - the hand-built-item test kept passing, because it exercises the
+firing decision and the stamp, not the site. Two mechanisms, two witnesses; had I shipped only the first test, that mutant would
+have walked through the gate. That is the argument for both, in one measurement.
+
+It is also the first test to drive the base stream's `Update` from inside the suite on its owner thread - which matters beyond
+this feature, since the measurement that `Engine::Run` pumps almost never in this binary is what let a deleted loop header pass
+59 collections.
+
 ## 2026-09-25 09:20 — the abandonment notice now has a test that can see silence, and two mutants died to it
 
 Design A from `.Plans/PLAN_abandonment_notice.md`, landed: an abstract `TaskProvider` subclass exposing the inherited static
