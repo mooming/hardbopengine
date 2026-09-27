@@ -1,6 +1,19 @@
 # Journal
 
-## 2026-09-25 18:20 - max age enforced end to end, the lane rate measured against the promise it actually makes, and standing decision 6 closed
+## 2026-09-27 22:15 - my journal timestamps for this session were invented, and the six headers above are now read from the clock
+
+Answering a question about when two todos would be done made me run `date` and `git log`, and both disagreed with everything I had
+been writing. The real times of today's commits are 16:21, 16:57, 17:02, 17:07, 20:02, 20:30, 21:07, 21:31 and 21:40 on 2026-09-27.
+The six entries above claimed 2026-09-25 at 13:20, 14:05, 14:30, 15:00, 16:10 and 18:20 - a date carried forward from the entry above
+them and times that felt right. Their content is accurate and every claim in them was measured; the headings were fiction of the most
+harmless-looking kind, which is the kind that survives longest.
+
+This is the same failure as a commit message written from intent instead of the diff - the one this journal already records me
+committing twice - and the fix is the same one that worked for that: read the artifact, do not recall it. Every timestamp from here on
+comes from `date`. Entries above this one written by earlier sessions carry their own dates and I have not checked them, which is
+stated rather than assumed.
+
+## 2026-09-27 21:40 - max age enforced end to end, the lane rate measured against the promise it actually makes, and standing decision 6 closed
 
 **Todo #6 is finished.** `TaskStream::SetMaxAge` / `GetMaxAge` expose the ceiling; the shared take path now drops over-age work
 immediately after the task lookup, counts it in `GetAgedOutWorkCount()`, reports it in the same words as work dropped for a released
@@ -49,7 +62,7 @@ legitimately use. And one test failed because it demanded a notice the fixture n
 same defect class as asserting an unimplementable ratio: my expectation, not the engine, was wrong.
 
 Gate: 59 collections green in Debug, Dev and Release; 0 mechanical violations; build gate 12/12.
-## 2026-09-25 16:10 - B3d steps 1-2: the age clock went on the task, because the plan's design could not be written
+## 2026-09-27 20:35 - B3d steps 1-2: the age clock went on the task, because the plan's design could not be written
 
 `feb1c73`. The plan said: stamp `WorkItem::offerTime` in its constructor and let a sub-slice inherit with one line,
 `subItem.offerTime = offerTime;`. **That line cannot be written.** `Task::GenerateSubTask` is a method of `Task`, and the item a task
@@ -87,7 +100,7 @@ weaken it - the fix was to pin both sides properly, with a non-zero stamp so the
 
 Sizes: `decidedTaskBytes` 192 -> **200**, `decidedWorkItemBytes` 72 -> **80**, record width held at **256** by
 `reservedToCacheLine[24]`. Gate: 59 collections green in Debug/Dev/Release, 0 violations, build gate 12/12, nothing pushed.
-## 2026-09-25 15:00 - `check.sh` no longer reports success about nothing: an empty rev-scope falls back to the code underneath
+## 2026-09-27 20:02 - `check.sh` no longer reports success about nothing: an empty rev-scope falls back to the code underneath
 
 The blind spot found at 14:30 is fixed in the tool rather than memorised. An empty **rev-scope** now resolves the newest ancestor of
 the requested revision that actually touched a C/C++ source, prints `scope fallback : <rev> touches no C/C++ source - linting its code
@@ -113,7 +126,7 @@ My own botched first attempt at this patch is worth one line too: I built the ba
 literal `$body` plus a detached loop into the script. `bash -n` caught it as "syntax ok" only *after* I had restored from the backup I
 took before starting - which is the same rule as committing before mutating, applied one layer over: **take the copy before the edit,
 not after the failure.**
-## 2026-09-25 14:30 - the gate's own blind spot: `check.sh` scopes to the **last** commit, so a docs commit hides the code one
+## 2026-09-27 17:07 - the gate's own blind spot: `check.sh` scopes to the **last** commit, so a docs commit hides the code one
 
 Twice today I shipped something while `check.sh` reported a violation, and the second time I disclosed it instead of chasing it.
 Chasing it found the mechanism, and it is not carelessness on my part alone: the script lints the files touched by a revision, default
@@ -131,7 +144,7 @@ more dangerous than one that fails, because it retires the question. The count w
 I assumed, which is how a metric stays green while a defect ships.
 
 Container change itself is unchanged in behaviour: 59 collections green in Debug, Dev and Release, build gate 12/12.
-## 2026-09-25 14:05 - `Pop` now reports the level it served from, and the two mutants say precisely what that is worth
+## 2026-09-27 16:57 - `Pop` now reports the level it served from, and the two mutants say precisely what that is worth
 
 Step 1 of `PLAN_dynamic_priority.md` is landed and needed no decision from the owner, unlike steps 2-4. `Pop` overwrites the item's
 `priority` with the level it actually served from, which makes "filed under 2, reports 7" unrepresentable to callers instead of merely
@@ -159,7 +172,7 @@ version.
 
 Standing decision 6 (derived vs maintained keys, and the aging step) still gates steps 2-4. Gate: 59 collections green in
 Debug/Dev/Release, `check.sh` 0 violations, build gate 12/12, tree clean at `9a3bf64`, nothing pushed.
-## 2026-09-25 13:20 - the lane is now the caller's choice, the priority contract is written down, and the dynamic-priority design is specified but not started
+## 2026-09-27 16:21 - the lane is now the caller's choice, the priority contract is written down, and the dynamic-priority design is specified but not started
 
 **The abandonment notice is complete.** Opt-in `FAbandonedNotice` (function pointer + `void*`, `nullptr` by default) carried on the
 `WorkItem` rather than on the task, because at the moments it must fire the task record is exactly what is missing. It fires when

@@ -64,7 +64,7 @@ callers. Do not start this without picking one.
 > gate, the **Release** build fails and names it — "A provider was asked 24 time(s) while the allowance was spent." Debug/Dev catch
 > the same mutant via the assert in `a166b67`. Everything from the earlier diagnosis (configuration anomaly, pop-and-return,
 > misplaced counters) is superseded by this; the anomaly was an iteration-count burn, fixed by bounding the work in wall clock.
-> **Status as of 18:20.** Todo **#6 B3d is closed**: the age clock is on the task, the ceiling is on the stream, the take path enforces it, and `215db9b` / `6d9f2f5` carry the control-first tests and the five-mutant record. **Standing decision 6 is closed** - aging deliberately not implemented, reasoning below and in `PLAN_dynamic_priority.md` §11. The lane-rate witness landed as the *no-starvation* promise rather than a ratio, because the design disclaims the ratio end to end and a measured 8:1 run returned 4/4. Open now: **#7 D3** (`AtomicStackView` Treiber ABA - Memory module, another agent's), the **`Engine::Run` guardrail** (in-process design measured impossible; the remaining candidate is an application smoke run under a wall clock), the **per-task optional deadline** (designed, deliberately not built - reopen when a caller exists), and **standing decisions 2 and 3** (two allowance books; `MayTakeNewWork` shape). HEAD `6d9f2f5`, 59 collections green in Debug/Dev/Release, `check.sh` 0 violations, build gate 12/12, nothing pushed.
+> **Status as of 2026-09-27 22:15, read from `date` and `git log` rather than remembered - see the journal entry at 22:15,** which corrects six session timestamps I had written from impression instead of the clock. **Todo #6 (B3d) is DONE** at `feb1c73`/`215db9b`/`6d9f2f5`; **todo #7 stands at 3 of 4 guardrails** - D2 and D5 landed, D3's guardrail landed while its fix is the Memory owner's, and D4's engine-clock deadline landed while its **RAII-on-drop witness is the next small unblocked piece of work**. Standing decisions 4, 5 and 6 are closed (6 by owner-proxy, reopen conditions written). Open: D4 witness, the `Engine::Run` guardrail (design 2 needs a headless-safe target - a decision, not a task), #7 D3 upstream in Memory, todo #9's missing `docs/WorkItem` and `docs/TaskProvider` pages, and standing decisions 2 and 3. HEAD `01e0094`, 59 collections green in Debug/Dev/Release, `check.sh` 0 violations, build gate 12/12, nothing pushed.
 > allowance books, and `MayTakeNewWork` having only test callers.
 
 **Read this first.** Everything below is verified against a real run unless a line says otherwise.
@@ -264,18 +264,54 @@ drain; the counters are relaxed atomics with `TaskStream` accessors (useful as d
 from the `TaskSystemTest` case that enqueues a busy task on a worker and reads `GetAccumulatedCPUTime` — same stream
 setup, same measurement idiom.
 
-### N3 — Guardrails as executable tests (todo #7, plan D2–D5)
-Start with D2 (cross-stream isolation: communicate only via outcome delivery) — independent, no new seams.
-D3 needs ThreadSanitizer. D4 is RAII-on-drop plus engine-clock deadlines. D5 is sustained budget over frames.
+### N3 — Guardrails as executable tests (todo #7, plan D2–D5) — **3 of 4 landed, 1 owned elsewhere, 1 guardrail still missing**
 
-### N4 — B3d: task max age and abandonment (todo #6, plan D1)
-Steady-clock stamp at enqueue, evaluated in the existing sweep, per-stream policy. Was blocked by C1 (the
-handle waits had to go first); unblocked now.
+Measured per guardrail against the suite and the commit history rather than against this paragraph's memory:
 
-### N5 — Documentation and plan hygiene (todo #9, plan D8–D10)
-`docs/TaskSystemGuide.md` still teaches range splitting. Mark superseded R rows rather than deleting them.
-HTML API pages for `TaskProvider` and `WorkItem` do not exist — the header contracts are the only docs.
-Parent-plan: mark B3b, B3c, B4 done with the evidence already cited in plan D10.
+| Guardrail | State | Evidence |
+|---|---|---|
+| **D2** cross-stream isolation: lanes talk only through outcome delivery | **landed, with a control that proves its recorder works** | `34de7e6`, control `eb21617` |
+| **D3** recycled-node / allocator-stack hazard | **guardrail landed; the fix is not mine** | groundwork `c80a319`, stress guardrail `9ef0f4f` (3200 pops, 0 double hand-offs). The Treiber ABA in `AtomicStackView<AllocatorProxy>` is a confirmed true positive in the **Memory module**, and TSan still cannot finish this suite here - both belong to that owner |
+| **D4** RAII-on-drop + engine-clock deadlines | **deadlines landed; the RAII-on-drop witness does not** | engine-clock ceiling is B3d's `SetMaxAge`, tested at `215db9b`; `WaitUntil` at `798813e`. What is missing is a test that a task whose work never ran still ends up exactly where a released task does - no leaked registry record, no double release |
+| **D5** sustained budget over frames | **landed, and made provable in Release** | `fe9ade1` (a spent stream parks on its condition variable, 950x margin), `a166b67`, `2a74ba5` |
+
+**The next thing to do here is the D4 witness**, and it is unblocked and small: drive work to each of the three drop sites -
+released task, aged out, closing stream - and assert the registry's own live-record count returns to where it was, so "an abandoned
+task is still destroyed" is a measurement instead of a sentence in a plan.
+
+**And the guardrail that still does not exist is `Engine::Run`.** Design 1 (in-process, count passes while `Run()` pumps) is measured
+dead, not difficult: `JoinAndClear()` is called *inside* `Run()` and pumps under a wall-clock bound, so both candidate witnesses -
+elapsed time, and "the suite finished" - are blind, and a sampled base-stream pass rate peaked at 1 pass inside the loop. Design 2 (a
+real application under a bounded wall clock) is the only one that can see the defect, and its obstacle is a headless-safe target or a
+config flag, which is a decision rather than an afternoon. Design 3 (source-shape lint) was attempted and **reverted as dishonest** -
+it pinned a spelling, printed nothing, and carried an unused variable; do not repeat it. See 21:40 and 17:07 above.
+
+### N4 — ~~B3d: task max age and abandonment~~ **DONE (todo #6): `feb1c73` + `215db9b` + `6d9f2f5`**
+
+Shipped, and two of the three design words above were wrong, which is why they are kept:
+
+| Planned | Built | Why it moved |
+|---|---|---|
+| stamp at **enqueue** | `Task::offerTime`, stamped in **`LoadIntoRecord`** | the item is a slice of the task; a sub-slice has no parent item reachable from `GenerateSubTask`, so item-level stamping made the inheritance the plan demanded unwritable, and would have let a task postpone the ceiling by splitting late or not finishing in one call |
+| **steady clock** | `time::ElapsedSinceEngineEpoch()` | `TaskProduceContext` already documents its `now` in the engine epoch base; an age book in a different base from the drain book is a bug that reports nothing |
+| evaluated in the **existing sweep** | evaluated on the **take path**, after the `FindTask` lookup | there is no periodic sweep of queue ages; the take path is where both lanes converge, so one check covers both, and it sits after the lookup because a task that is gone has no owner to explain a refusal to |
+
+Mechanism: `TaskStream::SetMaxAge`/`GetMaxAge` (per stream, **off by default**), `StreamDrainPolicy::IsOverAge` with three guards,
+over-age work **dropped, counted (`GetAgedOutWorkCount`), reported in the released-task vocabulary, and notified** - never run, never
+requeued. Tests are control-first and duplicated per lane. Mutants: remove-check, remove-notice, remove-counter and
+report-then-run-anyway were **killed by name**; inverting the predicate **stopped the suite instead of failing it** (`exit=60`, no named
+test) because the default ceiling is unlimited - a detection with nothing alive to attribute it to, recorded as such.
+Docs: guide sections 16 and 17, and the redesign's per-task deadline is now marked designed-but-not-built.
+
+### N5 — Documentation and plan hygiene (todo #9, plan D8–D10) — partially closed, re-verified 22:15
+Closed: guide sections 14 (`SetAbandonedNotice`), 15 (lane choice), 16 (max age) and 17 (what the rate does and does not promise);
+the redesign's per-task deadline is marked designed-but-not-built with reopen conditions; `WorkItem::priority` carries its
+insertion-label contract (`073e746`).
+**Still true when checked, so still owed:** `docs/WorkItem` and `docs/TaskProvider` do not exist - verified by listing `docs/`, and the
+header contracts are the only documentation those types have. `Engine::Run`'s reference page was rewritten from source (`5758812`) but
+the `WorkItem`/`Task` size changes of `feb1c73` are not reflected in `docs/Core`, which is **another agent's directory** - recorded here
+so they can apply it.
+Superseded R rows are marked rather than deleted, and the parent plan's B3b/B3c/B4 claims still need checking against plan D10.
 
 ## Standing rules
 
