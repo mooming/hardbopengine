@@ -461,3 +461,47 @@ B (`EOutcome` on the record + `GetOutcome`) is still worth doing on its own meri
 abandons work; building it while the answer is "log only" bakes the ambiguity into one more place, and unwinding that is
 the kind of change that has already cost this project a session.
 
+### Standing decision 5 (NEW, 11:15) - the priority lane is unreachable from the public API, so my drain test was vacuous
+
+Investigated because a mutant survived twice: `AbandonHeldWork`'s priority-lane loop pops, counts and fires no notice, and all 59
+collections passed. The cause is three lines of production code, not the test.
+
+```cpp
+void TaskSystem::EnqueueTask(TIndex streamIndex, Task& task, uint8_t priority)
+{
+    task.ReserveSubTasks(1);
+    Enqueue(streamIndex, task.GenerateSubTask(0, 1, priority));   // priority goes into WorkItem::priority
+}
+
+void TaskSystem::Enqueue(TIndex streamIndex, const WorkItem& task)
+{
+    streams[streamIndex].EnqueueFifo(task);                       // always FIFO - no branch, no lane choice
+}
+```
+
+The lane a work item lands in is decided by **which function is called** - `TaskStream::EnqueueFifo` or `TaskStream::EnqueuePriority`
+(`TaskStream.h:170/174`) - and the engine's public surface has exactly one route, which is `EnqueueFifo`. `priorityQueue` is fed only
+by `priorityQueue.PushRange(readdingPriority)` at `TaskStream.cpp:394`, which re-adds items that were **already** in the priority lane:
+circular, so nothing can ever get there. Consequences, all verified by grep rather than inferred:
+
+* the `priority` byte is read only by `WorkItem::operator<`, which orders entries **inside** `BoundedPriorityQueue` - and the FIFO lane
+  is a deque (`PushBack`/`PopFront`), so for the only work the engine can actually enqueue the byte influences nothing at all;
+* `StreamDrainPolicy`'s FIFO:priority rate machinery is exercised solely by unit tests that call the policy directly
+  (`StreamDrainPolicy.cpp:197` counts takes), never by real work reaching either lane;
+* the priority re-add path and the priority half of the shutdown drain are unreachable, which is why a mutant there cannot be killed
+  by any test that enters through the public API - my four-item test was not weak, it was **input-starved**.
+
+Two different models of "priority" shipped under one name: **lane selection** (by function) and **in-queue ordering** (by byte). The
+documents describe a two-lane stream with a rate between the lanes; the code has one reachable lane. That mismatch is the root cause,
+and it is a design question, not something this arc should close by inference.
+
+| # | Solution | Cost | Verdict |
+|---|---|---|---|
+| **S1** | Make the lane reachable: route `TaskSystem::Enqueue` to `EnqueuePriority` when the item asks for it, or add an explicit lane parameter to the public API. The `priority` byte and the drain-rate arithmetic become live for the first time | Small code, **real behaviour change**: priority work would preempt, lane budget shares stop being theoretical, and #16's bounded drain needs re-proving under two live lanes | Fixes the design. Owner's call, because it changes dispatch behaviour that every existing caller depends on |
+| **S2** | Delete the unreachable lane: `EnqueuePriority`, `priorityQueue`, the priority re-add, the lane-share arithmetic in `StreamDrainPolicy`, `WorkItem::operator<` - and the rate row in the design document | Largest diff, removes a documented goal | Honest minimalism if the lane is not wanted. Also the owner's call, and it is the option my own minimalism instinct prefers |
+| **S3** | Keep behaviour, un-vacuum the test: `EnqueuePriority` is **public**, so the drain test can fill the lane directly and then call `AbandonHeldWork` | A few lines | Do now, with a comment naming the reason the lane is filled by hand. Tests the drain, **not** reachability - and if the reason is not written next to it, it hides root cause B behind a green suite |
+| **S4** | Collapse `AbandonHeldWork`'s two loops into one "pop one from this lane" helper | Small | Do now. The duplicated loop shape is what makes a per-loop mutant expressible at all; one path cannot have a fire in one lane and not the other |
+
+**Recommendation: S3 + S4 immediately** (they make the drain genuinely covered and remove the shape that allowed the survivor), and
+**S1 vs S2 as one owner decision** - "should the priority lane be reachable?" Code says no, documents say yes, and both cannot stay.
+

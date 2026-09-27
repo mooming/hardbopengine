@@ -1,5 +1,27 @@
 # Journal
 
+## 2026-09-25 11:15 - why the surviving mutant could not have died: the priority lane has no public route into it
+
+`TaskSystem::EnqueueTask(index, task, priority)` puts the priority into the item's byte and then calls `TaskSystem::Enqueue`, which
+unconditionally calls `streams[i].EnqueueFifo`. Lane membership is chosen by *which function you call* - `TaskStream::EnqueueFifo` or
+`TaskStream::EnqueuePriority` - and the public API has one route, to FIFO. The only writer to `priorityQueue` besides that function is
+the re-add of items already in the priority lane, which is circular: nothing can arrive there. So the mutant that popped the priority
+lane and notified nobody was not surviving a weak test; there was no input that test could construct through the public API. My
+four-item test was input-starved, not insufficient.
+
+Verified consequences: the `priority` byte only feeds `WorkItem::operator<`, which orders inside a `BoundedPriorityQueue`, while the
+reachable lane is a FIFO deque, so for every item the engine can actually enqueue the byte changes nothing; `StreamDrainPolicy`'s
+FIFO:priority rate is exercised only by unit tests that call the policy directly; and the priority half of the shutdown drain is
+unreachable code that my amended commit message correctly called unverified.
+
+Two models of "priority" shipped under one name - lane selection by function, in-queue ordering by byte - and the documents describe a
+two-lane stream with a rate between lanes while the code exposes one lane. That is the root cause, and it is a design question.
+
+Solutions recorded in `.Plans/TODO_task_system.md` as standing decision 5: S1 make the lane reachable (small code, real dispatch
+behaviour change, owner's call), S2 delete the lane and its rate machinery (largest diff, removes a documented goal, also the owner's
+call), S3 fill the lane directly in the drain test - `EnqueuePriority` is public - and say out loud why it is filled by hand, S4
+collapse `AbandonHeldWork`'s two loops into one so a per-loop mutant stops being expressible. Recommend S3+S4 now, S1-versus-S2 as one
+owner decision, because code and documents cannot both stay as they are.
 ## 2026-09-25 10:10 — the abandonment notice is documented, and two of my own doc claims were wrong before I committed them
 
 `docs/TaskSystemGuide.md` §14 covers the API, why the notice rides on the queue item rather than the task, the three rules the
