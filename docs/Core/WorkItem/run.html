@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WorkItem::Run — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="index.html#description">Class description</a></li>
+    <li><a href="index.html#template">Template parameters</a></li>
+    <li><a href="index.html#properties">Class properties</a></li>
+    <li><a href="index.html#methods">Class methods</a></li>
+    <li><a href="index.html#non-member">Non-member helpers</a></li>
+    <li><a href="index.html#coverage">Coverage</a></li>
+  </ul>
+
+  <h3>Methods</h3>
+  <ul class="methods">
+    <li><a class="current" href="run.html">Run</a></li>
+    <li><a class="current" href="has-finished.html">HasFinished</a></li>
+    <li><a class="current" href="operator-less.html">operator&lt;</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">WorkItem</a> / Run
+</p>
+
+<h1><span class="fn">Run</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::WorkItem</span>
+  <span class="tag">Engine/Core/WorkItem.h</span>
+  <span class="tag">noexcept</span>
+  run this item's slice of the task's work and report whether that call closed the join
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code><span class="kw">bool</span> <span class="fn">Run</span>(<span class="ty">Task</span>&amp; task) <span class="kw">noexcept</span>;</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Executes the slice this item carries — <code>current</code> up to <code>end</code> of the task's reserved range — and
+  reports whether that call <strong>closed the task's join</strong>. The item does not resolve its own task: the stream
+  looks <a href="../TaskID/index.html"><code>taskID</code></a> up and hands the live record in, which is what lets a
+  stream drop an item whose task is gone instead of running it against whatever task now occupies that slot.
+</p>
+
+<p>
+  Closing the join means every reserved subtask has reported and the task's result, if any, is ready to route. Under the
+  join counting rules exactly one item of a task ever returns true, and it is the <em>last reserved</em> one rather than
+  merely one of the ones past the count — a task that handed out more items than it reserved is a bug the engine asserts
+  on, not a case this return value papers over.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Meaning</th></tr>
+  <tr><td><code>task</code></td><td>The task this item was issued for, already resolved by the calling stream. The
+    precondition is real: the caller has confirmed the ID names a live task. Nothing here reaches for a task by itself</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  <code>true</code> when this call closed the join. That boolean is a transfer of obligation, not just information: the
+  thread that gets <code>true</code> is the one that finished the work, and <strong>it owes the successor a
+  dispatch</strong>. No other path delivers an outcome — successor routing happens at exactly one call site, so a
+  stream that runs the item, sees <code>true</code>, and does not dispatch leaves the whole chain waiting.
+</p>
+
+<div class="gap">
+  <strong>true means "you own the hand-off", not "the result was delivered".</strong> Reading this return value and
+  discarding it is the silent failure this engine's redesign calls out by name: the work completed, the record was
+  correct, and no successor ever ran.
+</div>
+
+<h2 id="example">Example</h2>
+
+<pre><code><span class="kw">if</span> (item.<span class="fn">Run</span>(*task))
+{
+    taskSystem.<span class="fn">DispatchSuccessor</span>(item.taskID);   <span class="cmt">// the obligation that came with true</span>
+}</code></pre>
+
+</main>
+</body>
+</html>

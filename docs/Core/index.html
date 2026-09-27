@@ -344,6 +344,8 @@ Debug and Dev and counted in every build by <code>GetProviderAskWhileSpentCount<
 item.</p>
 
 <h2 id="workitem">WorkItem (<code>Engine/Core/WorkItem.h</code>)</h2>
+<p><a href="WorkItem/index.html">Full class reference: <code>WorkItem</code> and its methods</a> — this section stays as the module-level summary; the folder page carries the field contracts, the ordering key, and the notice and age-clock rules.</p>
+
 <p class="muted">The queue item type: what a stream holds and pops, 56 bytes, engine-internal. Its construction is not a public
 operation because an item built outside the engine bypasses the registry's bookkeeping - a provider builds one through
 <code>MakeWholeItem</code>, a plain caller uses <code>TaskSystem::EnqueueTask</code>.</p>

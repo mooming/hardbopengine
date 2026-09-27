@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WorkItem::operator-less — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="index.html#description">Class description</a></li>
+    <li><a href="index.html#template">Template parameters</a></li>
+    <li><a href="index.html#properties">Class properties</a></li>
+    <li><a href="index.html#methods">Class methods</a></li>
+    <li><a href="index.html#non-member">Non-member helpers</a></li>
+    <li><a href="index.html#coverage">Coverage</a></li>
+  </ul>
+
+  <h3>Methods</h3>
+  <ul class="methods">
+    <li><a class="current" href="run.html">Run</a></li>
+    <li><a class="current" href="has-finished.html">HasFinished</a></li>
+    <li><a class="current" href="operator-less.html">operator&lt;</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">WorkItem</a> / operator-less
+</p>
+
+<h1><span class="fn">operator-less</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::WorkItem</span>
+  <span class="tag">Engine/Core/WorkItem.h</span>
+  <span class="tag">noexcept</span>
+  the priority queue's ordering key: the insertion label, and nothing else
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code><span class="kw">bool</span> <span class="fn">operator&lt;</span>(<span class="kw">const</span> <span class="ty">WorkItem</span>&amp; other) <span class="kw">const</span> <span class="kw">noexcept</span>;</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  <code>priority &lt; other.priority</code> and nothing else: a higher number is more urgent, and ties are left to the
+  container's own order, which is oldest-first within a level. There is no task identity, no age and no stream in the
+  comparison, so an item cannot become more urgent by waiting — aging, if a project ever wants it, is a decision made at
+  the drain site and not here.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Meaning</th></tr>
+  <tr><td><code>other</code></td><td>Another item, compared only by its <code>priority</code> byte</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p><code>true</code> when this item is <em>less</em> urgent than <code>other</code>.</p>
+
+<div class="gap">
+  <strong>Consulted by one container, on one lane.</strong> This is the ordering key of
+  <code>BoundedPriorityQueue</code>, which reads <code>priority</code> once at insertion and files the item in a bucket —
+  the bucket index is the priority. The FIFO lane never calls this and never looks at the byte, so a caller who queued on
+  FIFO and expected an ordering effect will see none.
+</div>
+
+<h2 id="example">Example</h2>
+
+<pre><code><span class="cmt">// Only ever used by the container; callers choose a lane instead:</span>
+taskSystem.<span class="fn">EnqueueTask</span>(stream, task, <span class="cmt">/*priority*/</span> <span class="num">7</span>, <span class="ty">StreamDrainPolicy::ELane::Priority</span>);</code></pre>
+
+</main>
+</body>
+</html>
