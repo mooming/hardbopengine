@@ -573,14 +573,14 @@ void TaskStream::CloseDrivenStream() noexcept
 		return;
 	}
 
-	if (const auto remaining = CountPendingItems(); remaining > 0)
+	if (const auto abandoned = AbandonHeldWork(); abandoned > 0)
 	{
-		Logger::Get(name).OutWarning([name = name, remaining](auto& ls)
+		Logger::Get(name).OutWarning([name = name, abandoned](auto& ls)
 		{
-			ls << name.c_str() << " is closing with " << remaining
-			   << " item(s) still held. They are abandoned, not requeued, and any customer waiting on a result from "
-				  "them"
-			   << " will not receive one.";
+			ls << name.c_str() << " is closing with " << abandoned
+			   << " item(s) still held. They are abandoned, not requeued, and every requestor that asked to be told "
+				  "has been told, on this thread, as each one was dropped."
+			   << " The count is not the report: an item discarded without a word is a promise cancelled silently.";
 		});
 	}
 
@@ -614,6 +614,32 @@ std::size_t TaskStream::CountPendingItems() const noexcept
 	return fifoQueue.Size() + priorityQueue.Size();
 }
 
+std::size_t TaskStream::AbandonHeldWork() noexcept
+{
+	std::size_t abandoned = 0;
+
+	while (!priorityQueue.IsEmpty())
+	{
+		if (const auto item = priorityQueue.Pop(); item.has_value())
+		{
+			FireAbandonedNotice(*item);
+			++abandoned;
+		}
+	}
+
+	while (!fifoQueue.IsEmpty())
+	{
+		const WorkItem item = fifoQueue.Front();
+		fifoQueue.PopFront();
+		FireAbandonedNotice(item);
+		++abandoned;
+	}
+
+	abandonedWorkNoticeCount.fetch_add(abandoned, std::memory_order_relaxed);
+
+	return abandoned;
+}
+
 std::uint64_t TaskStream::DrainForShutdown() noexcept
 {
 	isDrainingForShutdown = true;
@@ -628,13 +654,15 @@ std::uint64_t TaskStream::DrainForShutdown() noexcept
 
 	isDrainingForShutdown = false;
 
-	if (const auto remaining = CountPendingItems(); remaining > 0)
+	if (const auto abandoned = AbandonHeldWork(); abandoned > 0)
 	{
-		Logger::Get(name).OutWarning([name = name, remaining](auto& ls)
+		Logger::Get(name).OutWarning([name = name, abandoned](auto& ls)
 		{
-			ls << name.c_str() << " is closing with " << remaining
+			ls << name.c_str() << " is closing with " << abandoned
 			   << " item(s) still held. They are abandoned, not requeued: a task that cannot finish inside the drain"
-			   << " deadline is a defect in that task, and the shutdown must report it and proceed.";
+			   << " deadline is a defect in that task, and the shutdown must report it and proceed - reporting it means "
+				  "firing the notice as well, not only naming a number."
+			   << " Abandoned here are " << abandoned << ".";
 		});
 	}
 

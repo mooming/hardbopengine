@@ -38,6 +38,8 @@ void Task::LoadIntoRecord(TaskID newID, StaticString taskName, TRunnable newFunc
 	numFinishedSubTasks.store(0, std::memory_order::relaxed);
 	func = newFunc;
 	userData = newUserData;
+	abandonedNotice = nullptr;
+	abandonedUserData = nullptr;
 }
 
 WorkItem Task::GenerateSubTask(TIndex start, TIndex end, uint8_t priority) noexcept

@@ -980,6 +980,68 @@ void TaskSystemTest::Prepare()
 	// Update allows one driver and that driver is the owner thread, so driving a worker stream from here would race its
 	// own thread and sometimes run the item before the release lands. That abandonmentWorkRuns stays zero is the
 	// in-band half: without it, a build that ran the work and then reported it abandoned would pass just as happily.
+	// AbandonHeldWork is what a closing stream calls, so it is tested directly on the owner thread rather than by tearing
+	// a stream down mid-suite: closing the IO stream would take the logger with it, and closing a worker mid-run leaves the
+	// rest of the collections without an executor. The count alone is not the property - an implementation that pops the
+	// queues and reports a number while notifying nobody passes that - so the notices fired are asserted against the items
+	// taken, and that the work never ran is asserted separately.
+	AddTest("Work still held when a stream is cleared is abandoned with its notice fired, not silently", [this](TLogOut& ls)
+	{
+		auto& taskSys = Engine::Get().GetTaskSystem();
+		auto& baseStream = taskSys.GetStream(TaskSystem::GetBaseTaskStreamIndex());
+
+		abandonmentFires.store(0, std::memory_order_relaxed);
+		abandonmentWorkRuns.store(0, std::memory_order_relaxed);
+
+		TaskID ids[3];
+		int offered = 0;
+		for (auto& id : ids)
+		{
+			id = taskSys.CreateTask("AbandonOnClear", &AbandonmentNoticeRunnable, nullptr);
+			taskSys.SetAbandonedNotice(id, &AbandonmentProbe, nullptr);
+			if (Task* task = taskSys.FindTask(id); task != nullptr)
+			{
+				taskSys.EnqueueTask(TaskSystem::GetBaseTaskStreamIndex(), *task);
+				++offered;
+			}
+		}
+
+		const auto abandoned = baseStream.AbandonHeldWork();
+
+		if (abandoned < static_cast<std::size_t>(offered))
+		{
+			ls << "clearing the stream abandoned " << abandoned << " of " << offered
+			   << " item(s) it was holding, and the rest are destroyed without anybody being told." << lferr;
+		}
+
+		if (const auto left = baseStream.CountPendingItems(); left != 0)
+		{
+			ls << "clearing the stream left " << left << " item(s) behind." << lferr;
+		}
+
+		if (abandonmentFires.load(std::memory_order_relaxed) != offered)
+		{
+			ls << "the stream dropped " << offered << " item(s) and notified "
+			   << abandonmentFires.load(std::memory_order_relaxed) << " requestor(s)." << lferr;
+		}
+
+		if (const auto runs = abandonmentWorkRuns.load(std::memory_order_relaxed); runs != 0)
+		{
+			ls << "the cleared-away work ran " << runs << " time(s) and was reported abandoned as well." << lferr;
+		}
+
+		if (baseStream.GetAbandonedWorkNoticeCount() < static_cast<std::size_t>(offered))
+		{
+			ls << "the stream counted " << baseStream.GetAbandonedWorkNoticeCount()
+			   << " abandoned item(s) across its life, fewer than the " << offered << " it just dropped." << lferr;
+		}
+
+		for (const auto& id : ids)
+		{
+			taskSys.ReleaseTask(id);
+		}
+	});
+
 	AddTest("Work dropped because its task was released notifies the requestor through the stream", [this](TLogOut& ls)
 	{
 		auto& taskSys = Engine::Get().GetTaskSystem();

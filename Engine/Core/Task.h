@@ -150,6 +150,10 @@ private:
 	///          counter is atomic, which leaves this class without a copy or move assignment to lean on. Setting the
 	///          fields is also what a recycled record needs: the previous task's identity, name, runnable and
 	///          accounting must all be replaced together, before the record is published as in use.
+	/// @note Reloads **every** field, including the abandonment notice. A registry record is recycled, and a notice left
+	///       behind by the previous tenant of the slot would fire the old requestor's callback with its stale context
+	///       pointer for work the new task never asked about - which is why the in-class initialisers on those two fields
+	///       are not enough on their own.
 	void LoadIntoRecord(TaskID newID, StaticString taskName, TRunnable newFunc, void* newUserData) noexcept;
 
 public:

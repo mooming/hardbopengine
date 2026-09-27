@@ -127,6 +127,7 @@ private:
 
 	/// @brief Set while this stream runs its own remaining work on the way out, which suspends provider probing.
 	bool isDrainingForShutdown = false;
+	std::atomic<std::size_t> abandonedWorkNoticeCount{ 0 };
 
 	/// @brief How long this stream's shutdown drain may spend before remaining work is reported as abandoned.
 	/// @details Worker streams get a real window. The engine's own streams get none, because "run until the queues are
@@ -378,6 +379,13 @@ public:
 	///          pass.
 	void CloseDrivenStream() noexcept;
 
+	/// @brief Discard every work item this stream still holds, firing each one's abandonment notice on the way out.
+	/// @return The number of items abandoned, which is the count the closing report used to obtain from
+	///         `CountPendingItems` alone - the same measurement, taken by whoever is about to destroy the items.
+	/// @note This is the only place the engine drops work it will never run *and* tells somebody. A closing stream must
+	///       call it before reporting, because a count without a notice is a promise that was cancelled silently.
+	std::size_t AbandonHeldWork() noexcept;
+
 	/// @brief Number of `Update` passes this stream has run, on whichever thread drove it.
 	[[nodiscard]] std::uint64_t GetDrivenPassCount() const noexcept
 	{
@@ -405,6 +413,15 @@ public:
 
 	/// @brief How many items this stream still holds in its lanes.
 	[[nodiscard]] std::size_t CountPendingItems() const noexcept;
+
+	/// @brief How many work items this stream has abandoned with a notice fired, across its life.
+	/// @details A counter rather than a log scrape, in the style of `GetLaneWorkRefusalCount`: the number has to be
+	///          readable by a test, and a shutdown report that can only be verified by reading its own output is not
+	///          verified.
+	[[nodiscard]] std::size_t GetAbandonedWorkNoticeCount() const noexcept
+	{
+		return abandonedWorkNoticeCount.load(std::memory_order_relaxed);
+	}
 
 	/// @brief Sleep until this stream is worth driving again, or `patience` runs out.
 	/// @details Separate from `Update` on purpose: a pass that found nothing must not decide how long to wait, because
