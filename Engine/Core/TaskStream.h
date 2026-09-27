@@ -465,9 +465,14 @@ public:
 	/// @details `TaskSystem::JoinAndClear` pumps the base stream itself, under a wall-clock bound, to drain posted
 	///          work and close the system cleanly. That is a legitimate rescue for real shutdowns and a serious
 	///          liability for verification: work that only ever runs there has proved nothing about the engine loop,
-	///          which is how a deleted loop header left the whole suite green - the shutdown drain ran the suite and
-	///          reported results as if the loop had pumped it. Anything that must be driven by the engine loop has to
-	///          be able to tell those two drivers apart, which is what this flag is for.
+	///          which is how a deleted loop header left the whole suite green: the shutdown drain ran the suite and
+	///          reported results as if the loop had pumped it.
+	/// @note **What this does not catch, measured.** A loop header replaced by a single pass still leaves the suite
+	///       green, because one `Update()` is enough to take and run the whole suite - all 59 collections execute
+	///       inside one work item, before the shutdown pump has begun, so the flag is legitimately false. Provenance
+	///       alone cannot detect a loop that pumps once and stops; detecting that needs the suite posted as one item
+	///       per collection, so that the engine loop has to iterate for the run to complete at all. That posting is the
+	///       follow-up, and this flag is what makes it verifiable rather than hopeful.
 	[[nodiscard]] bool IsDrivenByShutdownPump() const noexcept
 	{
 		return drivenByShutdownPump;

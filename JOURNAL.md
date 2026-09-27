@@ -1,5 +1,35 @@
 # Journal
 
+## 2026-09-28 01:40 - the shutdown-rescue detector landed, killed one mutant and lost another, and says so in its own header
+
+The owner's arrangement was already the implemented one: `RunTests()` posts the suite onto the base stream and `Engine::Run` pumps it.
+So the reason a deleted loop header once shipped green was not the harness at all - it was `TaskSystem::JoinAndClear`, which pumps the
+base stream itself under a wall-clock bound, ran the suite, and reported its results. The fix is therefore not a harness rewrite but
+provenance: the stream records when the shutdown path takes over (`54efe90`), and the suite asks at the top of its own body, before
+anything is registered, because a suite that has already run 59 collections can no longer answer a question about who drove it.
+
+**Two mutants, and one of them won.**
+
+| Mutation | Result | Reading |
+|---|---|---|
+| The engine loop marks itself as the rescue pump | **killed** - `runner exit=1` | The detector is live in both directions; it is not a flag nobody reads |
+| `Engine::Run`'s `while` reduced to `if` - the actual defect I shipped | **survived** - all 59 green | One `Update()` is enough to take and run the entire suite, because **all 59 collections execute inside one work item**, and they finish before the shutdown pump begins. Provenance cannot distinguish "the loop iterated" from "the loop pumped once and quit" |
+
+So the honest closure of the `Engine::Run` guardrail needs the suite posted as **one work item per collection**, which makes the engine
+loop's iteration load-bearing for the run to complete at all - and this flag is what makes that change verifiable rather than hopeful.
+Recorded in the plan as the next increment, and the header of `IsDrivenByShutdownPump` now states the undetected case itself rather
+than letting a reader assume the guard is wider than it is.
+
+**Two failures of mine, both of the kind that cost the most.**
+
+* I ran the first mutant pair against an **uncommitted** tree and used `git checkout` to restore it, which destroyed my own
+  `JoinAndClear` marking - the exact failure the rule "commit before mutating, never after" exists to prevent. I broke it on the first
+  attempt at a change I had myself written into the rule's justification. The detector appeared dead for that reason as much as any other.
+* My first version recorded the failure by appending to `failedTests`, which `Start()` clears on entry - so the finding was wiped two
+  statements after being made, and the guard passed over the defect it existed to catch. Two surviving mutants are what made me read the
+  code instead of trusting my intent. It is now a dedicated flag that `GetFailureCount()` folds in.
+
+Gate: 59 collections green in Debug, Dev and Release, 0 mechanical violations, tree clean, nothing pushed.
 ## 2026-09-28 00:55 - the owner settled the `Engine::Run` guardrail by changing the harness, not by adding a witness
 
 Owner's arrangement: the suite runs on the base stream while the other streams work independently. That retires the item I had parked

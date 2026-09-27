@@ -32,7 +32,30 @@ target:   Initialize → post the suite to the base stream → Run() [pumps base
 | How is the suite posted? | `TaskStream::DispatchPostedTasks(MainThreadTaskQueue::TTaskFunc, void*)` — a callable run by the thread driving the stream. `HasPostedTasks()` is what `JoinAndClear` drains | `TaskStream.h:383-399` |
 | Does anything else in the loop get exercised? | Yes, and that is the point: `Engine::Run`'s header, the frame-tick/pump ownership, and `JoinAndClear`'s bounded tail all become load-bearing for the suite's own result | `Engine.cpp:139-149` |
 
-## Increments — each one green on its own, none of them half a harness
+## Corrected after `54efe90` - the harness already does what was asked, so the increments changed
+
+Read from source: `RunTests()` posts the suite onto the base stream and `Engine::Run()` pumps it, and the suite's own last act is
+`Engine::ShutDown()`. The arrangement described above is therefore **already implemented**, and the blindness came from
+`TaskSystem::JoinAndClear` pumping the base stream under a wall-clock bound and running the suite as a rescue. `54efe90` adds the
+provenance flag and the suite's own check of it.
+
+What that does **not** catch, measured rather than reasoned: reducing `Engine::Run`'s `while` to `if` still leaves all 59 collections
+green, because one `Update()` takes and runs the entire suite - the 59 collections live inside **one** work item, and they finish before
+the rescue pump begins. So the remaining increment is granularity, not arrangement:
+
+1. **Post one work item per collection** instead of one item that runs all of them. Then a loop that pumps once and stops cannot
+   complete the run, the shutdown pump is what finishes it, and the flag added in `54efe90` reports it. Preserve registration order -
+   FIFO posting in order does that - and expect the base stream's driven-pass count to rise from ~8 to ~59, which is the positive
+   control that iteration is now required.
+2. Keep the tally-vs-registered check anyway, with a decided constant rather than a counted registration, because a suite that never
+   runs at all has registered nothing and cannot accuse itself.
+3. Documentation of the arrangement as fact, which `TestMain.cpp`'s comment already half-does and now needs correcting in one place:
+   the "8 driven passes" measurement there is about the old defect's run, not about today.
+
+Rejected: asserting a minimum pass count inside the suite (an arbitrary number that a `sleep` in the loop could satisfy); and a source
+lint on the loop header (pins a spelling - already reverted once as dishonest).
+
+## Increments (original ordering, superseded for steps 1-3 by the section above; the later steps still stand)
 
 **A half-migrated harness invalidates every gate**, because all three configurations are gated on this
 executable. So the sequence is built so that each commit leaves a runnable suite.
