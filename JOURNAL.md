@@ -1,5 +1,23 @@
 # Journal
 
+## 2026-09-25 14:30 - the gate's own blind spot: `check.sh` scopes to the **last** commit, so a docs commit hides the code one
+
+Twice today I shipped something while `check.sh` reported a violation, and the second time I disclosed it instead of chasing it.
+Chasing it found the mechanism, and it is not carelessness on my part alone: the script lints the files touched by a revision, default
+`HEAD`. So when I committed the container change and then committed a docs-only change on top, `check.sh` reported
+`lint scope: NONE` and `mechanical violations : 0` - **a clean reading of a tree whose code had never been looked at**. Worse, the same
+scope rule means `check.sh --apply` formats nothing in that position, which is why my "run the formatter, then build, then commit"
+sequence at `9a3bf64` produced a commit that was never actually formatted while the summary line said 0.
+
+The fix is in the tool already: pass the revision. `check.sh 9a3bf64` found `[FAIL] clang-format` and
+`mechanical violations : 1` for the file the docs commit had hidden; `check.sh 9a3bf64 --apply` formatted it. The rule to keep is short:
+**after a docs or plan commit, the code commit underneath is no longer in scope - lint it by revision.**
+
+That is the same class of defect as the `-test` trap I recorded earlier: a gate that silently examines nothing and reports success is
+more dangerous than one that fails, because it retires the question. The count was not wrong; the count was about a different thing than
+I assumed, which is how a metric stays green while a defect ships.
+
+Container change itself is unchanged in behaviour: 59 collections green in Debug, Dev and Release, build gate 12/12.
 ## 2026-09-25 14:05 - `Pop` now reports the level it served from, and the two mutants say precisely what that is worth
 
 Step 1 of `PLAN_dynamic_priority.md` is landed and needed no decision from the owner, unlike steps 2-4. `Pop` overwrites the item's
