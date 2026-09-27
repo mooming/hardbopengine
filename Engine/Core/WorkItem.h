@@ -36,6 +36,11 @@ class WorkItem final
 	using TIndex = std::size_t;
 
 public:
+	/// @brief Ordering key inside the priority queue, read at insertion only: it is the level this item is filed under.
+	/// @details Not a live value. `BoundedPriorityQueue` buckets by this byte at `Push` and never re-sorts, so writing it
+	///          while the item is queued changes nothing about when the item runs - the level it sits in is what decides.
+	///          Changing a queued item's priority means removing it and pushing it again, because assignment cannot
+	///          repair an order, only relocate the item. On the FIFO lane this byte is not consulted at all.
 	uint8_t priority;
 	mutable TaskStreamAffinity affinity;
 
