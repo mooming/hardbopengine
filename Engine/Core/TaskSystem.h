@@ -146,10 +146,13 @@ public:
 	}
 
 	/// @brief Ask to be told if this task's work is dropped without running.
-	/// @param handler `nullptr` clears the notice, which is also the default: a task nobody asked about notifies nobody.
-	/// @param userData handed to the handler untouched and never cleared by the engine; its lifetime is the requestor's to
+	/// @param handler `nullptr` clears the notice, which is also the default: a task nobody asked about notifies
+	/// nobody.
+	/// @param userData handed to the handler untouched and never cleared by the engine; its lifetime is the requestor's
+	/// to
 	///        guarantee, and it must outlive every drop this task's work can suffer.
-	/// @note Call it before the task is offered. Once work is queued the engine may drop an item before this lands, which
+	/// @note Call it before the task is offered. Once work is queued the engine may drop an item before this lands,
+	/// which
 	///       loses the notice rather than racing it, and there is deliberately no lock to close that window: a mutex on
 	///       the offer path to protect an opt-in courtesy is the trade this engine has already refused twice.
 	/// @note The handler runs on the thread that dropped the work, which may be a worker mid-shift. Do not block in it,
@@ -364,16 +367,19 @@ public:
 	///       needs no index, and takes the task without choosing a stream.
 	/// @brief Queue one work item on one stream, on the lane the caller names.
 	/// @param lane `StreamDrainPolicy::ELane::Fifo` runs items in arrival order; `Priority` runs the highest `priority`
-	///        first, oldest within a tie. `ELane::None` is a caller error and is asserted, because a provider attached to
-	///        no lane is a different condition from work with nowhere to go.
-	/// @note **Lane and priority are two different things and this API keeps them apart.** The lane is which queue serves
-	///       the work; `WorkItem::priority` is the ordering *inside* the priority queue. Before this overload existed the
-	///       lane was decided by which internal function a caller happened to reach, and the engine's public surface could
-	///       only reach the FIFO lane - so the priority lane, its share of the drain rate, and its half of the shutdown
-	///       drain were unreachable from the public API. See decision 5 in `.Plans/TODO_task_system.md`.
+	///        first, oldest within a tie. `ELane::None` is a caller error and is asserted, because a provider attached
+	///        to no lane is a different condition from work with nowhere to go.
+	/// @note **Lane and priority are two different things and this API keeps them apart.** The lane is which queue
+	/// serves
+	///       the work; `WorkItem::priority` is the ordering *inside* the priority queue. Before this overload existed
+	///       the lane was decided by which internal function a caller happened to reach, and the engine's public
+	///       surface could only reach the FIFO lane - so the priority lane, its share of the drain rate, and its half
+	///       of the shutdown drain were unreachable from the public API. See decision 5 in
+	///       `.Plans/TODO_task_system.md`.
 	void Enqueue(TIndex streamIndex, const WorkItem& task, StreamDrainPolicy::ELane lane) noexcept;
 
-	/// @brief Queue one work item on the FIFO lane of one stream. Equivalent to `Enqueue(streamIndex, task, ELane::Fifo)`.
+	/// @brief Queue one work item on the FIFO lane of one stream. Equivalent to `Enqueue(streamIndex, task,
+	/// ELane::Fifo)`.
 	void Enqueue(TIndex streamIndex, const WorkItem& task) noexcept;
 
 	/// @brief Queue a whole task on one stream, which is the customer's entry point for single-shot work.
@@ -425,7 +431,6 @@ public:
 	{
 		return streams[GetBaseTaskStreamIndex()];
 	}
-
 
 	auto& GetIOTaskStream() noexcept
 	{

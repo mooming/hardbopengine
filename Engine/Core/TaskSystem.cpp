@@ -381,25 +381,27 @@ void TaskSystem::Enqueue(const TIndex streamIndex, const WorkItem& task, const S
 	switch (lane)
 	{
 		case StreamDrainPolicy::ELane::Fifo:
-		{
-			streams[streamIndex].EnqueueFifo(task);
-			break;
-		}
+			{
+				streams[streamIndex].EnqueueFifo(task);
+				break;
+			}
 
 		case StreamDrainPolicy::ELane::Priority:
-		{
-			streams[streamIndex].EnqueuePriority(task);
-			break;
-		}
+			{
+				streams[streamIndex].EnqueuePriority(task);
+				break;
+			}
 
 		case StreamDrainPolicy::ELane::None:
-		{
-			Assert(false,
-				   "'%s' was queued with ELane::None, which names no queue to hold it. Attach a provider to a lane, or "
-				   "name Fifo or Priority - work with nowhere to go and work nobody attached are different problems.",
-				   task.taskID.index);
-			break;
-		}
+			{
+				Assert(false,
+					   "'%s' was queued with ELane::None, which names no queue to hold it. Attach a provider to a "
+					   "lane, or "
+					   "name Fifo or Priority - work with nowhere to go and work nobody attached are different "
+					   "problems.",
+					   task.taskID.index);
+				break;
+			}
 	}
 }
 
@@ -1071,9 +1073,10 @@ void TaskSystemTest::Prepare()
 		}
 	});
 
-	// Duplicated from the FIFO case on purpose rather than shared through a helper: the two lanes are two queues drained by
-	// two loops, and one body parameterised over both is how the priority loop went a whole session without a witness. The
-	// lane is named by the caller through the public API, so this exercises the reachable route and not a hand-filled queue.
+	// Duplicated from the FIFO case on purpose rather than shared through a helper: the two lanes are two queues
+	// drained by two loops, and one body parameterised over both is how the priority loop went a whole session without
+	// a witness. The lane is named by the caller through the public API, so this exercises the reachable route and not
+	// a hand-filled queue.
 	AddTest("Work held on the priority lane is abandoned with its notice fired, not silently", [this](TLogOut& ls)
 	{
 		auto& taskSys = Engine::Get().GetTaskSystem();
@@ -1127,7 +1130,8 @@ void TaskSystemTest::Prepare()
 		if (baseStream.GetAbandonedWorkNoticeCount() < static_cast<std::size_t>(offered))
 		{
 			ls << "the stream counted " << baseStream.GetAbandonedWorkNoticeCount()
-			   << " abandoned item(s) over its life, fewer than the " << offered << " priority ones it just dropped." << lferr;
+			   << " abandoned item(s) over its life, fewer than the " << offered << " priority ones it just dropped."
+			   << lferr;
 		}
 
 		for (const auto& id : ids)
