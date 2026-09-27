@@ -1,5 +1,24 @@
 # Journal
 
+## 2026-09-25 10:10 — the abandonment notice is documented, and two of my own doc claims were wrong before I committed them
+
+`docs/TaskSystemGuide.md` §14 covers the API, why the notice rides on the queue item rather than the task, the three rules the
+callback must respect (no blocking, no task-stream lock, no looking up the record that is being dropped around the call), and the
+order constraint that the notice must be set before the task is offered - with the reason there is no lock closing that window.
+`docs/TaskSystemRedesign.md` §6.4 records that abandonment now reaches a requestor that asked, and keeps the per-task deadline
+marked **not implemented** with the reason, so the design document stops describing a feature the tree does not have.
+
+Both drafts were checked against the source before committing, and both contained a claim that the source contradicted: I wrote
+`TaskSystem::SetAbandonmentNotice`, a function that does not exist, and the guide's example passed a `stream` object where
+`EnqueueTask` takes a stream index. This is the same failure that produced the false commit messages earlier today - writing from
+intent instead of from the thing - so the verification step is now part of writing docs and not a step at the end.
+
+Left undone deliberately: the shutdown close sites still notify nobody. `CountPendingItems()` is `fifoQueue.Size() +
+priorityQueue.Size()`, so draining them is about eight lines - but those items today sit in the queues until the containers die,
+and the #16 test `Shutdown abandoned work on the base stream` asserts on pending work at close, so the drain turns that count to
+zero and the test must move to a fired-notice counter in the same commit. That is a teardown-semantics change in the area where
+this project's deadlocks lived, and the session that understands those semantics had no budget left; the design and the trap are
+in `.Plans/PLAN_abandonment_notice.md` instead of a half-done edit in `CloseDrivenStream`.
 ## 2026-09-25 09:55 — Design B landed: the base stream's drop path is finally under test, and the wiring mutant died to it
 
 `Work dropped because its task was released notifies the requestor through the stream` creates a task, asks for the notice,

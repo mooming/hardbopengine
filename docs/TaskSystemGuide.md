@@ -361,3 +361,45 @@ Build and run them:
 
 `-test` is what compiles the unit-test sources at all; there is no `-notest`. See
 [RunningTests.md](RunningTests.md).
+
+## 14. Being told when your work is dropped: `SetAbandonedNotice`
+
+Every task asks nothing by default, and that default is the point: `FAbandonedNotice` is `nullptr` unless a requestor asks, so a
+task nobody asked about notifies nobody and costs nothing.
+
+```cpp
+void OnAbandoned(hbe::TaskID dropped, void* context) noexcept
+{
+    auto* tracker = static_cast<MyJobTracker*>(context);
+    tracker->MarkUnfinished(dropped);
+}
+
+const hbe::TaskID id = taskSys.CreateTask("Load", &LoadRunnable, ctx);
+taskSys.SetAbandonedNotice(id, &OnAbandoned, &myTracker);   // before the task is offered
+taskSys.EnqueueTask(streamIndex, *taskSys.FindTask(id));
+```
+
+**Why the notice rides on the queue item, not on the task.** At the moments it must fire, the task is exactly the thing that is not
+there: the most common drop is work whose task was already released, so `FindTask` has returned null, and at the shutdown close
+sites the stream reports how many items it is discarding without resolving any of them. A handler stored on the task, or beside
+`successor` in the registry record, would be unreachable precisely when it was needed. So `WorkItem` carries the pair, which also
+means the existing copy semantics do the rest for free: an item re-added to a lane after a partial run, and every slice of a split
+job, keep the notice their task was offered with. The price is 8 + 8 bytes per queued item, and queue-item width is paid per lane
+change rather than per task, which is why the size is guarded by `decidedWorkItemBytes`.
+
+**Three rules the callback must respect.** It runs on the thread that dropped the work, which may be a worker mid-shift, so it must
+not block. It must not take a task-stream lock. It must not look the task record up - that record is being dropped around the call,
+and touching it is the single hardest thing to diagnose in this subsystem. It receives the dropped `TaskID` and the `void*` you
+supplied, which the engine passes through untouched and never clears: the lifetime of that pointer is yours to guarantee, and it
+must outlive every drop this work can suffer.
+
+**Call it before you offer the task.** Once work is queued, the engine may drop an item before the notice lands - that loses the
+notice rather than racing it, and there is deliberately no lock closing that window: a mutex on the offer path to protect an opt-in
+courtesy is the trade this engine has refused twice already.
+
+**What is not covered yet, stated plainly.** The notice fires when work is dropped because its task was released. The shutdown close
+sites are still count-only, so work abandoned at teardown does not notify anyone - `CloseDrivenStream` and `CloseOtherStream` report
+`"is closing with N item(s) still held"` and their wording that a waiting customer will not receive one is therefore still true. The
+design for closing that gap is in `.Plans/PLAN_abandonment_notice.md`; it is a teardown-semantics change, because draining those
+queues is what makes a per-item notice possible, and a named test currently asserts on the pending count it would consume.
+

@@ -233,3 +233,17 @@ drive it itself and from the right thread. Bound the driving in wall clock, neve
 "stamp removed" mutant, which are the two that break silently. B afterwards, and only once the base-thread question is settled,
 because B is also the test that would have caught `Engine::Run`.
 
+### The shutdown close sites, with the API and the trap (09:55)
+
+`CountPendingItems()` is `fifoQueue.Size() + priorityQueue.Size()`, and the queues support `IsEmpty()`, `Pop()` for the priority
+lane and `Front()`+`PopFront()` for FIFO, so draining them at close is about eight lines. The trap is not the draining, it is what
+the drained items were doing: today they stay in the queues until the stream's containers die, and a named test from #16 -
+`Shutdown abandoned work on the base stream...` (`TaskSystem.cpp:242`) - asserts on pending work at close. Draining changes that
+count to zero, so the test must move to a witness that survives the change: a counter on `TaskStream` for items abandoned with a
+notice fired, in the style of `GetLaneWorkRefusalCount`, rather than the queue size. Do that swap **in the same commit** as the
+drain, or the gate fails for a reason that looks unrelated to the change and somebody spends an hour on the wrong file.
+
+That is why this was left undone rather than half-done: it changes teardown semantics, teardown is where this project's deadlocks
+lived, and the session that understood those semantics had no budget left. The two close-site messages must be reworded in the same
+commit (Step 5), since after the drain a customer awaiting dropped work *will* be told.
+

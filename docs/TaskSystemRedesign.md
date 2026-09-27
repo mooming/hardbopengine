@@ -719,3 +719,13 @@ the lanes, while `CPUBudget` gates the provider ask and the general-queue pickup
 the first time. Whether one of them should own the quantity is an owner decision, and it is the natural next question now that the
 numbers can be read.
 
+### 6.4 Abandonment now reaches the requestor that asked (implemented; supersedes the silence in 6.2)
+
+6.2 stated the ownership invariant - an abandoned task is still destroyed - and said nothing about the party waiting on the
+outcome, because nothing told it. `TaskSystem::SetAbandonedNotice` closes that for the drop sites that can reach it: the handler is a plain function pointer plus a `void*`, `nullptr` by default, and it travels on the
+queue item rather than on the task because abandonment is where the task record is by definition unavailable. The per-task
+optional *deadline* of section 2 remains **not implemented** and no caller in the tree asks for it; what is implemented instead is
+the per-stream ceiling specified in `.Plans/PLAN_b3d_max_age.md`, which prevents the harm the deadline was for without adding a
+field to every task. The shutdown close sites are still count-only, so this closes the gap for released-work drops and not yet
+for teardown.
+
