@@ -505,3 +505,38 @@ and it is a design question, not something this arc should close by inference.
 **Recommendation: S3 + S4 immediately** (they make the drain genuinely covered and remove the shape that allowed the survivor), and
 **S1 vs S2 as one owner decision** - "should the priority lane be reachable?" Code says no, documents say yes, and both cannot stay.
 
+### Drain rate through the public API: `ChooseLane` read at last, and why the test is still not writable today (12:30)
+
+The reachability half is done. The ratio half was blocked on one unknown - what `ChooseLane` does with no allowance - and reading
+it answers the question and introduces a worse one.
+
+`ChooseLane` is pure (it neither charges the budget nor mutates rotation state) and has two regimes:
+
+* **Unlimited allowance** (`allowance.count() <= 0.0`): if only one lane has work it serves that lane; if **both** have work it
+  returns `fifoCredit >= priorityCredit ? Fifo : Priority` - credit-driven alternation, where credit comes from
+  `ConfigureRate(fifoWeight, priorityWeight)` and is spent by `CommitTake`. A weight of zero is treated as one with both falling
+  back to `1:1`, and the header is explicit that a zero weight is **not** "never serve this lane", because silently configuring one
+  would strand that lane's queued tasks.
+* **Finite allowance**: per-lane shares derived from the rate; returns `ELane::None` when the round is exhausted, and picks the lane
+  with more remaining share when both have room.
+
+Two obstacles, and they are why this stayed a spec rather than becoming a commit:
+
+1. **The test must configure a rate on a live stream.** The only stream a test may legally drive is the base stream, because a test
+   body runs on its owner thread - so measuring the ratio end-to-end means calling `ConfigureRate` on the base stream *during the
+   suite*, changing dispatch behaviour for every collection that runs afterwards. That is the same class of mistake as the
+   iteration-bound test that produced the phantom "configuration anomaly": a test that alters shared engine state does not measure
+   the engine, it measures the order the collections happened to run in. A correct version restores the prior configuration, and
+   `StreamDrainPolicy` exposes `GetFifoShare`/`GetFifoUsed` but **no getter for the configured weights**, so there is nothing to
+   restore from. Adding that getter is the first step, not an afterthought.
+2. **The claim has to be the one the policy makes, not the one that is convenient to assert.** With both lanes loaded and a 3:1
+   rate, the exact take split depends on credit already spent, and the number of takes a `DriveUntil` window produces is not
+   controlled by the test - each pass takes at most one item and may fall back to the general queue. So the honest assertions are
+   *both lanes served* (no starvation, which is the property the zero-weight fallback exists to guarantee) and *FIFO strictly more
+   served than priority under 6+6 items with a 3:1 rate* (which detects a rate that is ignored entirely). Asserting an exact 6/2
+   split end-to-end would be a test of `CommitTake`'s bookkeeping wearing an integration test's clothes - and that bookkeeping is
+   already tested exactly where it lives, at `StreamDrainPolicy.cpp:231`.
+
+So the sequence is: add the weights getter → save/restore the base stream's rate around the test → assert served-both and
+strictly-more-FIFO. Anything shorter trades a real guarantee for a flake.
+
