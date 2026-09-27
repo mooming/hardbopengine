@@ -1,5 +1,30 @@
 # Journal
 
+## 2026-09-27 22:45 - the last of the four guardrails got its test, and running a mutant found a hole in the test I had just written
+
+Both numbered todos are now done. `e74e05c` adds the D4 RAII-on-drop witness: work driven to each of the three drop sites - released
+while queued, aged out, still held when the stream gave up - has to leave the registry's live-record count and the ID's findability
+exactly where a release leaves them. The baseline is asserted to *move* while the three tasks were alive before it is ever compared with
+itself, and site 2 asserts the direction that a naive test gets backwards: a task whose work was declined is still a live task its
+requestor owns, because the failure worth catching is the engine taking that record behind their back - which would leave the count
+returning tidily to baseline and read as success. Used the existing public `TaskSystem::GetRegistry()`; the accessor I had begun to add
+would have been a second name for one thing.
+
+**Then the mutant run disagreed with me.** Making the closing site release every record it abandons was not caught. I first wrote that
+up as a structural fact - `TaskStream` holds no `TaskSystem` handle, so the mutation is unbuildable - and both halves were wrong: the
+member `TaskSystem* taskSystem` has been there since line 86, and my mutant failed to compile only because I typed `taskSys`. Reading the
+error instead of assuming from it took me to the real cause, which was my test: `AbandonHeldWork` drains two queues with two different
+bodies, my witness offered its work on **FIFO**, and the mutation sat in the **priority** drain loop and passed straight through. Third
+time this project has hit a lane blind spot, first time caught by *running* the mutant rather than reading the test. Site 3 now offers on
+the priority lane, the mutation is killed by name, and the false mechanism sentence was withdrawn in the amended commit message rather
+than left where a reader would trust it.
+
+A comment in the test now carries the blind spot, because the version of this file that only says "covered both lanes" would teach the
+next person nothing about why both lanes are covered.
+
+Gate: 59 collections green in Debug/Dev/Release, 0 mechanical violations, tree clean, nothing pushed. What is left is listed in
+`.Plans/TODO_task_system.md`'s status line and is not in the numbered list: the Memory owner's `AtomicStackView` ABA fix, the
+`Engine::Run` guardrail (needs a headless-safe target - a decision), and the two absent API pages under `docs/`.
 ## 2026-09-27 22:15 - my journal timestamps for this session were invented, and the six headers above are now read from the clock
 
 Answering a question about when two todos would be done made me run `date` and `git log`, and both disagreed with everything I had

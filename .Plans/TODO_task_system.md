@@ -64,7 +64,7 @@ callers. Do not start this without picking one.
 > gate, the **Release** build fails and names it — "A provider was asked 24 time(s) while the allowance was spent." Debug/Dev catch
 > the same mutant via the assert in `a166b67`. Everything from the earlier diagnosis (configuration anomaly, pop-and-return,
 > misplaced counters) is superseded by this; the anomaly was an iteration-count burn, fixed by bounding the work in wall clock.
-> **Status as of 2026-09-27 22:15, read from `date` and `git log` rather than remembered - see the journal entry at 22:15,** which corrects six session timestamps I had written from impression instead of the clock. **Todo #6 (B3d) is DONE** at `feb1c73`/`215db9b`/`6d9f2f5`; **todo #7 stands at 3 of 4 guardrails** - D2 and D5 landed, D3's guardrail landed while its fix is the Memory owner's, and D4's engine-clock deadline landed while its **RAII-on-drop witness is the next small unblocked piece of work**. Standing decisions 4, 5 and 6 are closed (6 by owner-proxy, reopen conditions written). Open: D4 witness, the `Engine::Run` guardrail (design 2 needs a headless-safe target - a decision, not a task), #7 D3 upstream in Memory, todo #9's missing `docs/WorkItem` and `docs/TaskProvider` pages, and standing decisions 2 and 3. HEAD `01e0094`, 59 collections green in Debug/Dev/Release, `check.sh` 0 violations, build gate 12/12, nothing pushed.
+> **Status as of 2026-09-27 22:45** (read from `date`). **Todos #6 and #7 are both DONE.** #6 (B3d max age) at `feb1c73`/`215db9b`/`6d9f2f5`; #7 closed by `e74e05c`, which put the last of the four guardrails - D4 RAII-on-drop - into executable form, and whose own mutant run exposed and then fixed a FIFO/priority blind spot in that very test. Standing decisions 4, 5 and 6 stay closed (6 by owner-proxy, reopen conditions written). **What is genuinely left, none of it in the numbered list:** the `AtomicStackView` Treiber ABA **fix**, which is the Memory module owner's together with the fact that ThreadSanitizer cannot finish this suite; the **`Engine::Run` guardrail**, where in-process counting is measured dead (`JoinAndClear` pumps inside `Run` under a wall-clock bound), the source-shape lint was reverted as dishonest, and the only surviving design needs a headless-safe application target - a decision, not a task; **todo #9's** missing `docs/WorkItem` and `docs/TaskProvider` pages, verified absent by listing `docs/`; and standing decisions 2 and 3. HEAD `e74e05c`, 59 collections green in Debug/Dev/Release, `check.sh` 0 violations, nothing pushed.
 > allowance books, and `MayTakeNewWork` having only test callers.
 
 **Read this first.** Everything below is verified against a real run unless a line says otherwise.
@@ -264,7 +264,7 @@ drain; the counters are relaxed atomics with `TaskStream` accessors (useful as d
 from the `TaskSystemTest` case that enqueues a busy task on a worker and reads `GetAccumulatedCPUTime` — same stream
 setup, same measurement idiom.
 
-### N3 — Guardrails as executable tests (todo #7, plan D2–D5) — **3 of 4 landed, 1 owned elsewhere, 1 guardrail still missing**
+### N3 — ~~Guardrails as executable tests~~ **DONE (todo #7, plan D2–D5): all four have executable tests; `e74e05c` closes D4**
 
 Measured per guardrail against the suite and the commit history rather than against this paragraph's memory:
 
@@ -272,12 +272,19 @@ Measured per guardrail against the suite and the commit history rather than agai
 |---|---|---|
 | **D2** cross-stream isolation: lanes talk only through outcome delivery | **landed, with a control that proves its recorder works** | `34de7e6`, control `eb21617` |
 | **D3** recycled-node / allocator-stack hazard | **guardrail landed; the fix is not mine** | groundwork `c80a319`, stress guardrail `9ef0f4f` (3200 pops, 0 double hand-offs). The Treiber ABA in `AtomicStackView<AllocatorProxy>` is a confirmed true positive in the **Memory module**, and TSan still cannot finish this suite here - both belong to that owner |
-| **D4** RAII-on-drop + engine-clock deadlines | **deadlines landed; the RAII-on-drop witness does not** | engine-clock ceiling is B3d's `SetMaxAge`, tested at `215db9b`; `WaitUntil` at `798813e`. What is missing is a test that a task whose work never ran still ends up exactly where a released task does - no leaked registry record, no double release |
+| **D4** RAII-on-drop + engine-clock deadlines | **landed** | deadlines: B3d's `SetMaxAge` at `215db9b`, `WaitUntil` at `798813e`; RAII-on-drop: `e74e05c` walks all three drop sites and asserts the registry live count and the ID's findability end where a release leaves them |
 | **D5** sustained budget over frames | **landed, and made provable in Release** | `fe9ade1` (a spent stream parks on its condition variable, 950x margin), `a166b67`, `2a74ba5` |
 
-**The next thing to do here is the D4 witness**, and it is unblocked and small: drive work to each of the three drop sites -
-released task, aged out, closing stream - and assert the registry's own live-record count returns to where it was, so "an abandoned
-task is still destroyed" is a measurement instead of a sentence in a plan.
+**The D4 witness landed**, and the lesson from it is not the test - it is how the blind spot was found. Its first version offered the
+closing-site work on the FIFO lane; the mutant placed in `AbandonHeldWork`'s **priority** drain loop walked straight past it and the
+suite passed. Site 3 now uses the priority lane, which the other two sites do not cover, and the mutation is killed by name. That is the
+same lane blind spot for the third time, and the only time it was caught by *running* a mutant instead of reading a test - which is the
+standing standard earning its keep.
+
+One sentence in that commit's first draft was false and was withdrawn in the amended message: I claimed a record-freeing close site "is
+not expressible because `TaskStream` holds no `TaskSystem` handle". `TaskStream` has held `TaskSystem*` at line 86 all along; my mutant
+failed because I wrote `taskSys` where the member is `taskSystem`. A mechanism argument invented from a compile error I had not read
+closely is the most durable kind of wrong documentation, because it reads like a design fact.
 
 **And the guardrail that still does not exist is `Engine::Run`.** Design 1 (in-process, count passes while `Run()` pumps) is measured
 dead, not difficult: `JoinAndClear()` is called *inside* `Run()` and pumps under a wall-clock bound, so both candidate witnesses -
