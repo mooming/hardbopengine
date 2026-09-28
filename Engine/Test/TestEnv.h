@@ -57,6 +57,8 @@ public:
 	[[nodiscard]] const char* GetTestletLabel(std::size_t testletIndex) const;
 
 	/// @brief Run one testlet, and finalise its collection once its last testlet has run.
+	/// @details Repeats are reported through NoteTestletRepeated and the testlet still runs, because a suite that
+	///          refuses to execute what it was handed would hide the schedule defect that produced the repeat.
 	/// @param testletIndex Index into the flattened sequence, not into a collection.
 	/// @details Collections are finalised in registration order because their testlets are contiguous in that
 	///          sequence and a collection's verdict needs all of them.
@@ -85,6 +87,17 @@ public:
 			   (suiteDrivenByShutdownPump ? 1u : 0u);
 	}
 
+	/// @brief Record that one testlet ran more than once, which no scheduling of this suite is allowed to do.
+	/// @details The suite's own totals cannot see this defect: a chain whose every step is told it is step zero runs
+	///          one testlet N times and still reports N of N executed, which is exactly how a real bug in this
+	///          harness once looked green-right-up-to-the-registry-ceiling. Counting runs per testlet is what turns
+	///          that into a named failure.
+	/// @note The first offender is kept, and later ones append, so a report names the repeat rather than a count.
+	void NoteTestletRepeated(std::size_t testletIndex)
+	{
+		failedTests.push_back("testlet index " + std::to_string(testletIndex) + " ran more than once");
+	}
+
 	/// @brief Record that a testlet ran while the shutdown path was pumping the base stream, not the engine loop.
 	/// @details Reported as a failure rather than printed, because a suite that prints its own defect and still
 	///          exits 0 is exactly the shape that let a missing engine loop ship green once already.
@@ -107,6 +120,7 @@ private:
 	std::vector<std::string> errorMessages;
 
 	std::size_t executedTestletCount{0};
+	std::vector<unsigned int> testletRunCounts;
 
 	unsigned int testedCount;
 	unsigned int passCount;

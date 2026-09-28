@@ -68,17 +68,11 @@ void TestCollection::PrepareTests()
 	Prepare();
 }
 
-void TestCollection::AddTest(const char* name, const TTestFunc& testCase)
+void TestCollection::ReportNullTestCase(const std::string_view testName) noexcept
 {
-	if (unlikely(testCase == nullptr))
-	{
-		auto log = Logger::Get(GetName());
-		log.OutError([](auto& ls) { ls << "Null test-case error."; });
-
-		return;
-	}
-
-	tests.emplace_back(name != nullptr ? name : "None", testCase);
+	auto log = Logger::Get(GetName());
+	log.OutError([testName](auto& ls)
+	{ ls << "Test " << testName << " was registered with no callable, so it will not run"; });
 }
 
 bool TestCollection::RunTestAt(const std::size_t testIndex)
@@ -88,8 +82,8 @@ bool TestCollection::RunTestAt(const std::size_t testIndex)
 		return false;
 	}
 
-	const auto& testPair = tests[testIndex];
-	const auto testName = testPair.first.c_str();
+	const auto& testlet = tests[testIndex];
+	const auto testName = testlet.GetName().data();
 	const auto errorCursorBefore = errorMessages.size();
 
 	const auto indexLabel = static_cast<uint32_t>(testIndex);
@@ -101,13 +95,6 @@ bool TestCollection::RunTestAt(const std::size_t testIndex)
 	lferr.testIndex = indexLabel;
 	lferr.testName = testName;
 
-	auto& test = testPair.second;
-	if (test == nullptr)
-	{
-		std::cerr << "Error: test is null" << std::endl;
-	}
-	Assert(test != nullptr);
-
 	auto log = Logger::Get(GetName());
 	log.Out([indexLabel, testName](auto& ls) { ls << "# TC" << indexLabel << '.' << testName << " #"; });
 
@@ -116,7 +103,7 @@ bool TestCollection::RunTestAt(const std::size_t testIndex)
 
 		MultiPoolAllocator alloc(testName);
 		AllocatorScope scope(alloc);
-		test(logStream);
+		testlet.Run(logStream);
 
 		alloc.PrintUsage();
 	}
@@ -139,14 +126,14 @@ bool TestCollection::RunTestAt(const std::size_t testIndex)
 	return isPassed;
 }
 
-const char* TestCollection::GetTestName(const std::size_t testIndex) const noexcept
+std::string_view TestCollection::GetTestName(const std::size_t testIndex) const noexcept
 {
 	if (testIndex >= tests.size())
 	{
 		return "";
 	}
 
-	return tests[testIndex].first.c_str();
+	return tests[testIndex].GetName();
 }
 
 void TestCollection::Complete()

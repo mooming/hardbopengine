@@ -41,6 +41,7 @@ add_library (Test STATIC
  TestCollection.h
  TestEnv.h
  UnitTestCollection.h
+ Testlet.h
 ${PLATFORM_SOURCES}
 )
 

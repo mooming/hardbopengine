@@ -7,11 +7,14 @@
 #include <functional>
 #include <sstream>
 #include <string>
+#include <string_view>
 #include <thread>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
 #include "Log/LogLevel.h"
+#include "Testlet.h"
 
 namespace hbe
 {
@@ -40,9 +43,16 @@ bool WaitUntil(Predicate&& isReady, const std::uint32_t timeoutMilliSecs = 2000)
 class TestCollection
 {
 public:
+	/*
+	 * How much inline storage each testlet of this suite gets, chosen here because the collections are what hold
+	 * the testlets. A collection whose tests genuinely need a larger capture changes the alias below, and the
+	 * static_assert in Testlet's constructor is what tells it so at the registration site.
+	 */
+	static constexpr size_t MaxClosureBytes = 48;
+	using TTestlet = Testlet<MaxClosureBytes>;
+
 	using TLogOut = std::stringstream;
 	using TLogBuffer = std::vector<std::string>;
-	using TTestFunc = std::function<void(TLogOut& /*ls*/)>;
 
 	class LogFlush final
 	{
@@ -79,7 +89,33 @@ public:
 	/// @brief Close the collection: decide success from the errors its testlets accumulated, then report.
 	void Complete();
 
-	void AddTest(const char* testName, const TTestFunc& testCase);
+	/*
+	 * Registers one testlet. The name is a char array reference rather than a pointer or a view so that a
+	 * literal is the only thing that can arrive: it has static storage, so Testlet may hold a view of it, and
+	 * it is null terminated, which the logger and the per-testlet allocator both need. A computed name fails
+	 * to compile here rather than dangling later.
+	 *
+	 * The closure is a template parameter and not a type-erased callable precisely so that no allocation can
+	 * happen on the way in - the closure reaches Testlet with its real type, and Testlet's static_assert is
+	 * what decides whether it fits. Call sites keep writing plain lambdas; nothing about the syntax changes.
+	 */
+	template <size_t TNameLength, typename TClosure>
+	void AddTest(const char (&testName)[TNameLength], TClosure&& testCase)
+	{
+		using TClosureType = std::remove_cvref_t<TClosure>;
+
+		if constexpr (std::is_pointer_v<TClosureType>)
+		{
+			if (testCase == nullptr)
+			{
+				ReportNullTestCase(testName);
+
+				return;
+			}
+		}
+
+		tests.emplace_back(testName, std::forward<TClosure>(testCase));
+	}
 
 	/// @brief How many testlets this collection registered. Zero until PrepareTests() has run.
 	[[nodiscard]] std::size_t GetTestCount() const noexcept
@@ -88,7 +124,8 @@ public:
 	}
 
 	/// @brief The name a testlet registered itself under, for the task name and the failure report.
-	[[nodiscard]] const char* GetTestName(std::size_t testIndex) const noexcept;
+	/// @details A view of storage that outlives the run, because AddTest only accepts literals.
+	[[nodiscard]] std::string_view GetTestName(std::size_t testIndex) const noexcept;
 
 	[[nodiscard]] const char* GetName() const noexcept;
 	[[nodiscard]] const std::vector<std::string>& GetWarningMessages() const noexcept;
@@ -97,7 +134,14 @@ public:
 	[[nodiscard]] bool IsSuccess() const noexcept;
 
 protected:
-	std::vector<std::pair<std::string, TTestFunc>> tests;
+	/*
+	 * Reports a registration that handed over no callable. Kept out of the template above so that the header
+	 * needs no logger, which matters because the logger's own headers are order-sensitive about the allocator
+	 * they use; a test file should not have to include that allocator first to compile.
+	 */
+	void ReportNullTestCase(std::string_view testName) noexcept;
+
+	std::vector<TTestlet> tests;
 	std::vector<std::string> warningMessages;
 	std::vector<std::string> errorMessages;
 

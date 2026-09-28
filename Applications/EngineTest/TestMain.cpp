@@ -56,7 +56,8 @@ int main(int argc, const char* argv[]) noexcept
 		return 1;
 	}
 
-	std::cout << "EngineTest: all " << testEnv.GetPassCount() << " collections passed" << std::endl;
+	std::cout << "EngineTest: all " << testEnv.GetPassCount() << " collections passed ("
+			  << testEnv.GetExecutedTestletCount() << " testlets)" << std::endl;
 
 #else
 	// Every test body in the engine sits behind #ifdef __UNIT_TEST__, including the ones this

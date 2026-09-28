@@ -43,6 +43,8 @@ void TestEnv::PrepareTestlets()
 		runningTotal += test->GetTestCount();
 		collectionOffsets.push_back(runningTotal);
 	}
+
+	testletRunCounts.assign(testletLabels.size(), 0);
 }
 
 const char* TestEnv::GetTestletLabel(const std::size_t testletIndex) const
@@ -73,6 +75,11 @@ void TestEnv::RunTestlet(const std::size_t testletIndex)
 
 	const std::size_t firstTestletOfCollection = collectionIndex == 0 ? 0 : collectionOffsets[collectionIndex - 1];
 	auto& testCollection = *tests[collectionIndex];
+
+	if (++testletRunCounts[testletIndex] > 1)
+	{
+		NoteTestletRepeated(testletIndex);
+	}
 
 	testCollection.RunTestAt(testletIndex - firstTestletOfCollection);
 	++executedTestletCount;
