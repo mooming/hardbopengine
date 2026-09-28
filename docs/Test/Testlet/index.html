@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Testlet — Test — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../index.html">Test</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="#description">Class description</a></li>
+    <li><a href="#template">Template parameters</a></li>
+    <li><a href="#properties">Class properties</a></li>
+    <li><a href="#methods">Class methods</a></li>
+    <li><a href="#non-member">Non-member helpers</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+</nav>
+
+<main>
+
+<h1>Testlet</h1>
+<p><code>Engine/Test/Testlet.h</code> &nbsp;·&nbsp; <code>hbe::Testlet</code> &nbsp;·&nbsp; class template, <code>final</code></p>
+
+<h2 id="description">Class description</h2>
+<p>
+One registered test: the name it was registered under, and the lambda that runs it. Both are held
+<em>inside</em> the object, which is the entire reason the type exists. Registering a test must not
+allocate, because the suite is the thing that audits allocation, and a registration that quietly took
+from the global heap would be invisible to every allocator scope it is supposed to be measuring.
+</p>
+<p>
+Measured, not argued: 151 of the 378 test names in this suite are longer than a small-string buffer
+holds, so a <code>std::string</code> name member heap-allocated for two in five tests. And
+<code>std::function</code> — the obvious way to hold the lambda — has a small-object buffer whose size is
+a library implementation detail; a closure larger than it allocates with nothing recorded anywhere the
+suite could read. Both cases are compile errors here instead, naming the limit that was exceeded.
+</p>
+<p>
+Two design alternatives were considered and rejected, and the reasons are worth keeping:
+</p>
+<table>
+<thead><tr><th>Alternative</th><th>Why it was not used</th></tr></thead>
+<tbody>
+<tr><td>A borrowed view of the callable (a <code>function_ref</code> shape)</td>
+<td>It allocates nothing, and it does not work here. Every <code>AddTest</code> call hands over a temporary
+lambda that dies at the end of that expression, and a view cannot extend a lifetime. It would dangle, or
+refuse to compile — the same outcome with better manners.</td></tr>
+<tr><td>A plain function pointer, as <a href="../../Core/Runnable/index.html"><code>TRunnable</code></a> does</td>
+<td>Zero allocation and zero capture, which the engine's own task contract already uses. Rejected on proportion:
+measured across the tree, 0 of 379 test lambdas are non-capturing (315 use <code>[this]</code>), so it would
+mean rewriting every test in the engine to reach the same storage property.</td></tr>
+</tbody>
+</table>
+<p>
+<em>Ownership and lifetime.</em> A testlet owns its name bytes and its closure bytes. Copies are deleted —
+copying an arbitrary closure would need a clone hook that nothing in the suite asks for. Moving one
+relocates the closure into the new storage and leaves the source with no dispatch table, so a moved-from
+testlet reports itself and does nothing rather than invoking a closure that no longer lives there.
+</p>
+<p>
+<em>Thread safety.</em> Registration is main-thread only and happens before the run is posted. During the
+run each testlet is executed by exactly one thread — the one driving the base stream — and never
+concurrently with another testlet of the same collection.
+</p>
+
+<h2 id="template">Template parameters</h2>
+<table>
+<thead><tr><th>Parameter</th><th>Default</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td><code>TClosureBytes</code></td><td><code>48</code></td>
+<td>Inline storage reserved for the closure. A parameter rather than a constant inside the type because the
+ceiling belongs where the captures are known — by whoever holds the testlets — and raising it should be a
+visible edit at the use site, not an edit to a shared type. The default is measured: 375 of 379 closures in
+this suite fit in 32 bytes, and the four that do not are all 40 (the importance-sampling tests, whose
+<code>[&amp;]</code> captures hold pointers to locals, not the static generator they share). 48 is that
+maximum plus one word.</td></tr>
+</tbody>
+</table>
+
+<h2 id="properties">Class properties</h2>
+<table>
+<thead><tr><th>Name</th><th>Type</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td><code>ClosureBytes</code></td><td><code>static constexpr size_t</code></td>
+<td>The storage this instantiation reserved for the closure, reported back to the caller that chose it.</td></tr>
+<tr><td><code>MaxNameBytes</code></td><td><code>static constexpr size_t</code></td>
+<td>Inline storage for the test name: 128. Long enough for the longest name measured in the suite today
+(105 characters) plus room for one more clause. Enforced by a <code>static_assert</code> in the constructor,
+so a longer name is a compile error at the registration site rather than a truncated label in a failure
+report.</td></tr>
+</tbody>
+</table>
+<p>
+Three <code>static_assert</code>s guard the parameters themselves: <code>TClosureBytes &gt; 0</code>,
+<code>TClosureBytes</code> a whole number of words, and <code>MaxNameBytes &gt; 1</code>.
+</p>
+
+<h2 id="methods">Class methods</h2>
+
+<h3><code>template &lt;size_t TNameBytes, typename TClosure&gt; Testlet(const char (&amp;testName)[TNameBytes], TClosure&amp;&amp; closure)</code></h3>
+<p>
+Registers one test. The name is a char-array parameter rather than a pointer or a view, so <strong>only a
+literal compiles</strong>: that gives the buffer something to copy from, gives the per-testlet allocator the
+null terminator it needs as a property of the type, and refuses a computed name at its call site instead of
+dangling later. The closure is a template parameter so it arrives with its real type — that is what allows
+the size check below and keeps any allocation off the path. <code>noexcept</code> is deliberately absent:
+constructing an arbitrary closure is the case the coding standard points at when it declines to promise
+exception freedom for something whose body this type cannot see.
+</p>
+<p><strong>Preconditions.</strong> <code>testName</code> must be a literal of 2 to
+<code>MaxNameBytes</code> characters including its terminator; <code>sizeof(closure)</code> must fit
+<code>TClosureBytes</code> and must not be over-aligned. All are compile-time checks, not runtime ones.</p>
+<p><strong>Postconditions.</strong> The testlet owns a copy of the name and a constructed closure. Neither
+can outlive the testlet; both need no external storage.</p>
+
+<h3><code>Testlet(Testlet&amp;&amp; other) noexcept</code></h3>
+<p>
+Relocates. The name bytes are copied, the closure is placement-moved into this object's storage, and the
+source loses its dispatch table so its destructor has nothing to destroy. Required because the collections
+hold testlets in a vector that grows during registration. <code>noexcept</code> holds because the closures
+being relocated were written by this suite and the engine is exception-free.</p>
+
+<h3><code>Testlet(const Testlet&amp;) = delete</code> · <code>operator=</code> both deleted</h3>
+<p>A copy would need a clone hook for an arbitrary closure type, and nothing in the suite asks to duplicate a test.</p>
+
+<h3><code>~Testlet()</code></h3>
+<p>Destroys the closure through the dispatch table when there is one; a moved-from testlet destroys nothing.</p>
+
+<h3><code>void Run(TLogOut&amp; outLog) const noexcept</code></h3>
+<p>
+Invokes the closure. <code>outLog</code> is a write-only parameter by the coding standard's
+<code>out</code>-prefix convention: a testlet's whole effect is what it writes there, plus whatever its
+assertions record. A testlet that has been moved from writes an error to <code>std::cerr</code>, asserts,
+and returns without running.
+</p>
+<p><strong>Thread-safety.</strong> Called by the thread driving the base stream, once per testlet, never
+concurrently with another testlet of the same collection.</p>
+<p><strong>Contract note.</strong> <code>noexcept</code> here is a promise about the suite, not about this
+function: a testlet signals failure by logging and asserting, and the engine is exception-free. A testlet
+that ever threw would terminate rather than unwind the run.</p>
+
+<h3><code>const char* GetName() const noexcept</code></h3>
+<p>The registered name, owned by this testlet and null terminated by construction, so a caller may print it freely.</p>
+
+<h2 id="non-member">Non-member helper functions</h2>
+<p>No free functions. One companion type lives in the same header:</p>
+<table>
+<thead><tr><th>Type</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td><code>TestletDispatch</code></td>
+<td>A POD of three function pointers — <code>invoke</code>, <code>destroy</code>, <code>relocate</code> — with
+one <code>constexpr</code> instance generated per closure type. Its address is stable and it needs no vptr,
+which is what lets a testlet be two words of bookkeeping plus its own storage.</td></tr>
+</tbody>
+</table>
+<p>
+Logging inside this type goes to <code>std::cerr</code> rather than the engine logger, following the rest of
+the Test module and deliberately so: pulling <code>Log/Logger.h</code> into this header would make every
+test file in the engine sensitive to the logger's own include order, which is a real fragility in the tree —
+<code>HSTL/HUnorderedMap.h</code> uses <code>Memory::DefaultAllocator</code> without including its header —
+found when this change tried it.
+</p>
+
+<h2 id="coverage">Coverage</h2>
+<p>
+No unit test exercises <code>Testlet</code> directly, and this page says so rather than implying otherwise.
+What covers it instead:
+</p>
+<ul>
+<li><strong>Every testlet in the engine is a <code>Testlet</code>.</strong> A broken one does not fail a test;
+it removes a test, and <a href="../TestEnv/index.html"><code>TestEnv</code></a>'s registered-versus-executed
+check makes that removal a run failure rather than a shorter green run.</li>
+<li><strong>Double execution is refused by name.</strong> <code>TestEnv</code> counts runs per testlet, because
+the suite's own totals cannot see this defect: a schedule that ran one testlet 372 times would still report
+372 of 372.</li>
+<li><strong>The limits are compile-time and were fired on purpose.</strong> Setting the closure ceiling to 32
+refused exactly four closures at their registration sites; setting <code>MaxNameBytes</code> to 100 refused
+the 105-character name at its own site. Those are the witnesses for the two decided numbers.</li>
+<li><strong>Relocation was mutated.</strong> Removing the <code>relocate</code> call from the move constructor
+makes the suite die by signal — detected, but as a crash rather than a named assertion, which is recorded here
+as the weaker half of this coverage.</li>
+</ul>
+<p>
+Still allocated and disclosed: <code>TestCollection::tests</code> is a <code>std::vector</code> of testlets, so
+its buffer — roughly 372 × 192 bytes — comes from global <code>operator new</code> at registration. The
+testlets themselves allocate nothing; the array that holds them is the next thing that should move onto the
+engine's books.
+</p>
+
+<p class="breadcrumb">
+  <a href="../../index.html">HardBop Engine</a> /
+  <a href="../index.html">Test</a> /
+  Testlet
+</p>
+
+</main>
+</body>
+</html>

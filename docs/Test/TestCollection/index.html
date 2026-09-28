@@ -144,14 +144,25 @@
     </td>
   </tr>
   <tr>
-    <td><code>TTestFunc</code></td>
-    <td><code>using TTestFunc = std::function&lt;void(TLogOut&amp;)&gt;;</code></td>
-    <td>
-      <span class="badge">member type</span> One test case. Type-erased, so a lambda that captures
-      <code>this</code> is storable — and every real test body does capture <code>this</code>, because
-      <code>lferr</code> is a member and a non-capturing lambda cannot name it
-    </td>
-  </tr>
+  <td><code>TTestlet</code></td>
+  <td><code>using TTestlet = Testlet&lt;MaxClosureBytes&gt;;</code></td>
+  <td>
+    <span class="badge">member type</span> One test, owning its name and its closure inline. Every real test
+    body captures <code>this</code> — measured, 0 of 379 are non-capturing, because <code>lferr</code> is a member
+    and a non-capturing lambda cannot name it — so the closure is kept with its real type inside
+    <a href="../Testlet/index.html"><code>Testlet</code></a> instead of being type-erased into a callable that could
+    allocate on the way in
+  </td>
+</tr>
+<tr>
+  <td><code>MaxClosureBytes</code></td>
+  <td><code>static constexpr size_t MaxClosureBytes = 48;</code></td>
+  <td>
+    <span class="badge">constant</span> How much inline storage each test's closure gets in this suite. Chosen here
+    because the collections hold the tests; a collection needing more changes the alias above and
+    <code>Testlet</code>'s <code>static_assert</code> says so at the registration site
+  </td>
+</tr>
   <tr>
     <td><code>LogFlush</code></td>
     <td><code>class LogFlush final { … };</code></td>
@@ -192,13 +203,13 @@
     </td>
   </tr>
   <tr>
-    <td><code>tests</code></td>
-    <td><code>std::vector&lt;std::pair&lt;std::string, TTestFunc&gt;&gt; tests;</code></td>
-    <td>
-      <span class="badge">protected</span> The registered cases as name-and-body pairs, run in registration order.
-      Protected so a subclass could walk or re-run them directly; nothing in the engine does
-    </td>
-  </tr>
+  <td><code>tests</code></td>
+  <td><code>std::vector&lt;TTestlet&gt; tests;</code></td>
+  <td>
+    <span class="badge">protected</span> The registered tests, run in registration order. Protected so a subclass
+    could walk or re-run them directly; nothing in the engine does
+  </td>
+</tr>
   <tr>
     <td><code>warningMessages</code></td>
     <td><code>std::vector&lt;std::string&gt; warningMessages;</code></td>
@@ -276,15 +287,41 @@
     <td>Virtual because collections are owned as <code>std::unique_ptr&lt;TestCollection&gt;</code>; the run's results die with the object</td>
   </tr>
   <tr>
-    <td><a href="start.html">Start</a></td>
-    <td class="sig">void Start()</td>
-    <td>The whole run in one call: clears previous state, calls <code>Prepare</code>, runs every case, then sets the verdict. Calling it again re-runs from scratch</td>
-  </tr>
+  <td><code>PrepareTests</code></td>
+  <td><code>void PrepareTests()</code></td>
+  <td>
+    Registers this collection's tests without running any of them: clears previous state, logs the collection
+    banner, calls <code>Prepare</code>. The harness calls it for every collection before posting anything, so the
+    suite's total is known outside the run rather than discovered by it
+  </td>
+</tr>
+<tr>
+  <td><code>RunTestAt</code></td>
+  <td><code>bool RunTestAt(std::size_t testIndex)</code></td>
+  <td>
+    Runs one test by index, with the same logging and per-test allocator scope the old batch loop gave it, and
+    returns whether it added no error. An index past the registered count returns false
+  </td>
+</tr>
+<tr>
+  <td><code>Complete</code></td>
+  <td><code>void Complete()</code></td>
+  <td>
+    Decides the collection's verdict from what its tests accumulated, then reports. Called once, by
+    <a href="../TestEnv/index.html"><code>TestEnv</code></a>, when the collection's last test has run
+  </td>
+</tr>
   <tr>
-    <td><a href="add-test.html">AddTest</a></td>
-    <td class="sig">void AddTest(const char* testName, const TTestFunc&amp; testCase)</td>
-    <td>Registers one case; only callable from inside <code>Prepare</code> in practice, because <code>Start</code> clears the list first. A null body is logged and dropped</td>
-  </tr>
+  <td><code>AddTest</code></td>
+  <td><code>template &lt;size_t TNameBytes, typename TClosure&gt; void AddTest(const char (&amp;testName)[TNameBytes], TClosure&amp;&amp; testCase)</code></td>
+  <td>
+    Registers one test. The name is a char-array parameter, so only a literal compiles — static storage for the
+    testlet to own, null termination the per-test allocator needs, and a computed name refused here instead of
+    dangling later. The closure is a template parameter so it arrives with its real type and no allocation can
+    happen on the way in. Only callable from inside <code>Prepare</code> in practice, because
+    <code>PrepareTests</code> clears the list
+  </td>
+</tr>
   <tr>
     <td><a href="prepare.html">Prepare</a></td>
     <td class="sig">virtual void Prepare() = 0</td>
@@ -395,7 +432,7 @@
     <td>Engine headers each declare their own <code>*Test</code> subclass in a trailing
         <code>#ifdef __UNIT_TEST__</code> region — <code>ArrayTest</code> in
         <a href="../../Container/index.html#array"><code>Engine/Container/Array.h</code></a> is one of roughly sixty.
-        Which ones are registered is <a href="../UnitTestCollection/run-tests.html">RunTests</a></td>
+        Which ones are registered is <a href="../UnitTestCollection/suite-entry-points.html">RunTests</a></td>
   </tr>
 </table>
 

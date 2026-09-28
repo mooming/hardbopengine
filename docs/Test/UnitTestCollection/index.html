@@ -40,7 +40,7 @@
 
   <h3>Methods</h3>
   <ul class="methods">
-    <li><a href="run-tests.html">RunTests</a></li>
+    <li><a href="suite-entry-points.html">Suite entry points</a></li>
   </ul>
 </nav>
 
@@ -72,13 +72,13 @@
 {
 <span class="kw">namespace</span> Test
 {
-<span class="kw">void</span> <span class="fn">RunTests</span>();
+<span class="kw">void</span> <span class="fn">Suite entry points</span>();
 }
 } <span class="cm">// namespace hbe</span>
 <span class="kw">#endif</span> <span class="cm">// __UNIT_TEST__</span></code></pre>
 
 <p>
-  <a href="run-tests.html"><code>hbe::Test::RunTests</code></a> is what
+  <a href="suite-entry-points.html"><code>hbe::Test::RunTests</code></a> is what
   <code>Applications/EngineTest/TestMain.cpp</code> calls, and it is the only place in the engine that decides which
   collections are tested: its definition registers sixty of them into
   <a href="../TestEnv/get-env.html"><code>TestEnv::GetEnv</code></a>, then enqueues the run as a task. Add a module to
@@ -88,7 +88,7 @@
 <div class="gap">
   <strong>This is the one header in the module that is genuinely conditional.</strong> <code>TestCollection.h</code> and
   <code>TestEnv.h</code> carry no guard and are includable from any build; this one declares nothing unless
-  <code>__UNIT_TEST__</code> is defined, so <code>RunTests</code> does not exist to link against in a normal build —
+  <code>__UNIT_TEST__</code> is defined, so <code>RegisterSuite</code> and <code>ScheduleSuiteOnBaseStream</code> does not exist to link against in a normal build —
   which is the same switch <code>build.sh -test</code> passes as <code>-D__TEST__ -D__UNIT_TEST__</code>. The
   consequences for an <code>EngineTest</code> built without it are recorded on
   <a href="../index.html#conditional-build">the module page</a>.
@@ -110,7 +110,7 @@
   None. No type, no alias, no data. The only state anywhere near this entry is the function-local
   <code>static TaskID taskID</code> in its definition, which remembers the suite's task across calls so a second call
   re-enqueues rather than creating a second task — see
-  <a href="run-tests.html">the <code>RunTests</code> page</a>.
+  <a href="suite-entry-points.html">the <code>RegisterSuite</code> and <code>ScheduleSuiteOnBaseStream</code> page</a>.
 </p>
 
 <h2 id="methods">Class methods</h2>
@@ -123,7 +123,7 @@
 <table>
   <tr><th>Method</th><th>Signature</th><th>What a caller depends on</th></tr>
   <tr>
-    <td><a href="run-tests.html">RunTests</a></td>
+    <td><a href="suite-entry-points.html">Suite entry points</a></td>
     <td class="sig">void RunTests()</td>
     <td>
       Registers the suite and enqueues it on the base task stream; returns as soon as the enqueue is issued. The
@@ -135,7 +135,7 @@
 <h2 id="non-member">Non-member helper functions</h2>
 
 <p>
-  <a href="run-tests.html"><code>hbe::Test::RunTests</code></a> is itself the non-member function this entry declares —
+  <a href="suite-entry-points.html"><code>hbe::Test::RunTests</code></a> is itself the non-member function this entry declares —
   it is shown under <a href="#methods">Class methods</a> above so the page has a working navigation target rather than
   an empty table. Nothing else in <code>UnitTestCollection.h</code> is declared.
 </p>
@@ -148,7 +148,7 @@
     <td>Which collections are in the suite</td>
     <td>Sixty <a href="../TestEnv/add-test-collection.html"><code>AddTestCollection</code></a> calls, listed by type in
         <code>Engine/Test/UnitTestCollection.cpp</code>. They are enumerated on
-        <a href="run-tests.html">the <code>RunTests</code> page</a> only as a sample — the authoritative list is that
+        <a href="suite-entry-points.html">the <code>RegisterSuite</code> and <code>ScheduleSuiteOnBaseStream</code> page</a> only as a sample — the authoritative list is that
         source file, and it is the kind of list documentation cannot keep current</td>
   </tr>
   <tr>
@@ -169,7 +169,7 @@
     <td>The function-local <code>static TaskID</code> means a repeat call reuses and re-enqueues the same task rather
         than creating another. What that does to the tallies is a
         <a href="../TestEnv/start.html"><code>TestEnv::Start</code></a> matter — its counters accumulate, and
-        <a href="run-tests.html">the page</a> explains why a re-run is not a clean second measurement</td>
+        <a href="suite-entry-points.html">the page</a> explains why a re-run is not a clean second measurement</td>
   </tr>
   <tr>
     <td>Memory the suite allocates outlives its own allocator</td>

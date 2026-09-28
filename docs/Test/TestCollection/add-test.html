@@ -70,39 +70,38 @@
 
 <h2 id="signature">Signature</h2>
 
-<pre><code><span class="kw">void</span> <span class="fn">AddTest</span>(<span class="kw">const char</span>* testName, <span class="kw">const</span> <span class="ty">TTestFunc</span>&amp; testCase);</code></pre>
+<pre><code><span class="kw">template</span> &lt;<span class="kw">size_t</span> TNameBytes, <span class="kw">typename</span> TClosure&gt;
+<span class="kw">void</span> <span class="fn">AddTest</span>(<span class="kw">const char</span> (&amp;testName)[TNameBytes],
+                  TClosure&amp;&amp; testCase)</code></pre>
 
 <h2 id="description">Function description</h2>
 
 <p>
-  Appends the pair <code>(testName, testCase)</code> to <code>tests</code>, which
-  <a href="start.html"><code>Start</code></a> then runs in that order. The body is stored as a
-  <a href="index.html#properties"><code>TTestFunc</code></a> — a <code>std::function</code> — so any callable with
-  the right signature works, and in the engine they are all lambdas capturing <code>this</code> so the body can
-  reach <code>lf</code>, <code>lfwarn</code> and <code>lferr</code>.
+  Registers one test. The name and the body are copied into a
+  <a href="../Testlet/index.html"><code>Testlet</code></a>, which owns both inline, and the suite runs them in
+  registration order.
 </p>
 
 <p>
-  A null body is rejected rather than stored: it is reported at error severity through the collection's logger
-  category and the call returns without registering anything. A null <code>testName</code> is tolerated and stored
-  as <code>"None"</code>.
+  Two constraints follow from that ownership, and both bite at compile time rather than at runtime. The name is a
+  char-array parameter, so <strong>only a literal compiles</strong>: that gives the testlet storage it may own
+  outright, gives the per-test allocator the null terminator it needs as a property of the type rather than as a hope,
+  and refuses a computed name here instead of dangling later. And the closure is a template parameter, so it arrives
+  with its real type — which is what lets <code>Testlet</code> size-check the capture and keep allocation off the
+  registration path entirely.
 </p>
 
-<div class="gap">
-  <strong>A rejected null body does not fail the collection.</strong> That rejection is written straight to the
-  logger, not through the error guard, so <code>errorMessages</code> does not grow and
-  <a href="is-success.html"><code>IsSuccess</code></a> is unaffected by it. It also happens during
-  <a href="prepare.html"><code>Prepare</code></a>, before the first case runs, so nothing afterwards re-examines
-  it. A collection whose cases were all rejected by a bad function pointer reports
-  <code>[SUCCESS]</code> with zero cases run.
-</div>
+<p>
+  Every real body in the engine is a lambda capturing <code>this</code> — measured, 0 of 379 are non-capturing —
+  because <code>lf</code>, <code>lfwarn</code> and <code>lferr</code> are members, and a non-capturing lambda cannot
+  name <code>lferr</code> and therefore cannot fail.
+</p>
 
-<div class="note">
-  <strong>Public, though it belongs in <code>Prepare</code>.</strong> Nothing stops a caller from calling
-  <code>AddTest</code> on a collection from outside — except that the next <a href="start.html"><code>Start</code></a>
-  clears <code>tests</code> before it calls <code>Prepare</code>, so cases registered from outside are erased before
-  they can run. Register in <code>Prepare</code> or not at all.
-</div>
+<p>
+  A null body is rejected rather than stored: it is reported at error severity through the collection's logger, which
+  is only reachable in the <code>if constexpr</code> branch where the argument really is a pointer — a closure has no
+  null state to test.
+</p>
 
 <h2 id="parameters">Parameters</h2>
 
@@ -119,7 +118,7 @@
   </tr>
   <tr>
     <td><code>testCase</code></td>
-    <td><a href="index.html#properties"><code>const TTestFunc&amp;</code></a> (<code>std::function&lt;void(TLogOut&amp;)&gt;</code>)</td>
+    <td><a href="../Testlet/index.html"><code>TClosure&amp;&amp;</code></a> — deduced, not type-erased</td>
     <td>
       Must not be null. Must not throw: the engine is exception-free, and this call sits on the path out of
       <a href="../../Core/index.html#tasksystem"><code>TaskSystem</code></a>. Capture <code>this</code> if the body

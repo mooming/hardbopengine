@@ -42,6 +42,7 @@
   <ul>
     <li><a href="TestCollection/index.html">TestCollection</a></li>
     <li><a href="TestEnv/index.html">TestEnv</a></li>
+    <li><a href="Testlet/index.html">Testlet</a></li>
     <li><a href="UnitTestCollection/index.html">UnitTestCollection</a></li>
   </ul>
 
@@ -67,13 +68,18 @@
 <h2 id="description">Module description</h2>
 
 <p>
-  A test is a lambda taking a log stream; tests group into a
+  A test is a lambda taking a log stream. That lambda and its name together are one
+  <a href="Testlet/index.html"><code>Testlet</code></a>, which owns both inline, and the testlet — not the collection —
+  is the unit the suite schedules. Tests group into a
   <a href="TestCollection/index.html"><code>TestCollection</code></a> subclass that names them one by one; collections
-  are registered by type into a <a href="TestEnv/index.html"><code>TestEnv</code></a> which runs them, counts them and
-  prints the result; and <a href="UnitTestCollection/run-tests.html"><code>hbe::Test::RunTests</code></a> is the entry
-  point <code>Applications/EngineTest</code> calls to put all of that on a task stream. Almost every engine header
-  carries its own <code>*Test</code> class inside an <code>#ifdef __UNIT_TEST__</code> region at the bottom of the file,
-  which is the convention <a href="../CodingStandards.md">docs/CodingStandards.md</a> fixes.
+  are registered by type into a <a href="TestEnv/index.html"><code>TestEnv</code></a>, which flattens them into one
+  sequence, runs one test at a time, and counts what actually executed against what was registered.
+  <a href="UnitTestCollection/suite-entry-points.html"><code>hbe::Test::RegisterSuite</code></a> and
+  <code>hbe::Test::ScheduleSuiteOnBaseStream</code> are the entry points <code>Applications/EngineTest</code> calls: the
+  first registers before the engine loop is entered, the second posts the first testlet to the base stream, and after
+  that each testlet posts the next. Almost every engine header carries its own <code>*Test</code> class inside an
+  <code>#ifdef __UNIT_TEST__</code> region at the bottom of the file, which is the convention
+  <a href="../CodingStandards.md">docs/CodingStandards.md</a> fixes.
 </p>
 
 <p>
@@ -125,7 +131,7 @@
     <td>Entry-point function, <code>hbe::Test</code></td>
     <td>UnitTestCollection.h</td>
     <td>
-      Not a class: the header is one declaration, <a href="UnitTestCollection/run-tests.html"><code>RunTests</code></a>,
+      Not a class: the header is one declaration, <a href="UnitTestCollection/suite-entry-points.html"><code>RunTests</code></a>,
       which registers the engine's sixty collections and enqueues the run. Present only under
       <code>__UNIT_TEST__</code>
     </td>
@@ -138,7 +144,7 @@
   None. No header in the module declares an object at namespace scope. The only statics are function-local ones that
   hold the module's whole mutable state: the <code>static TestEnv instance</code> inside
   <a href="TestEnv/get-env.html"><code>TestEnv::GetEnv</code></a>, and the <code>static TaskID</code> inside
-  <a href="UnitTestCollection/run-tests.html"><code>RunTests</code></a> that keeps the suite's own task identity across
+  <a href="UnitTestCollection/suite-entry-points.html"><code>RunTests</code></a> that keeps the suite's own task identity across
   calls.
 </p>
 
@@ -147,7 +153,7 @@
 <table>
   <tr><th>Function</th><th>Parameters</th><th>Returns</th><th>Purpose</th></tr>
   <tr>
-    <td><a href="UnitTestCollection/run-tests.html"><code>hbe::Test::RunTests</code></a></td>
+    <td><a href="UnitTestCollection/suite-entry-points.html"><code>hbe::Test::RunTests</code></a></td>
     <td>none</td>
     <td><code>void</code></td>
     <td>
@@ -167,7 +173,7 @@
   (<a href="../Core/index.html#tasksystem">TaskSystem</a>), and that is a fact with teeth: the base stream is occupied
   by the suite for the whole run, so a test that enqueues work expecting the base stream to pick it up waits forever.
   Engine tests that need a stream pick a worker instead and say so in a comment — the wording is quoted on
-  <a href="UnitTestCollection/run-tests.html">the <code>RunTests</code> page</a>. The measurement and the trap are also
+  <a href="UnitTestCollection/suite-entry-points.html">the <code>RunTests</code> page</a>. The measurement and the trap are also
   recorded in <a href="../TaskSystemRedesign.md">docs/TaskSystemRedesign.md</a>.
 </div>
 
@@ -275,7 +281,7 @@
   <tr>
     <td>Which collections run</td>
     <td>
-      <a href="UnitTestCollection/run-tests.html"><code>RunTests</code></a> registers sixty of them, drawn from
+      <a href="UnitTestCollection/suite-entry-points.html"><code>RunTests</code></a> registers sixty of them, drawn from
       Container, Core, HSTL, Math, Memory, OSAL, Renderer, Resource and String. <strong>Config is not among
       them</strong> — no header in <code>Engine/Config/</code> declares a
       <a href="TestCollection/index.html"><code>TestCollection</code></a> subclass, so that module's behaviour is

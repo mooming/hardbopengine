@@ -232,10 +232,23 @@
     <td>The one instance whose tallies the executable reads; a function-local static, so first call constructs it</td>
   </tr>
   <tr>
-    <td><a href="start.html">Start</a></td>
-    <td class="sig">void Start()</td>
-    <td>Runs every registered collection in order, then prints the report. Clears the two name lists — and only those two</td>
-  </tr>
+  <td><code>PrepareTestlets</code></td>
+  <td><code>void PrepareTestlets()</code></td>
+  <td>Prepares every registered collection's tests and flattens them into one schedulable sequence. Call it after the
+      last <code>AddTestCollection</code> and before anything is posted, because the flattened sequence is the total
+      the run is counted against</td>
+</tr>
+<tr>
+  <td><code>RunTestlet</code></td>
+  <td><code>void RunTestlet(std::size_t testletIndex)</code></td>
+  <td>Runs one test by index in the flattened sequence and finalises its collection once that collection's last test
+      has run. Counts runs per test and reports a repeat, since the totals alone cannot see double execution</td>
+</tr>
+<tr>
+  <td><code>Finalize</code></td>
+  <td><code>void Finalize()</code></td>
+  <td>Prints the suite report, once, after the last test</td>
+</tr>
   <tr>
     <td><a href="add-test-collection.html">AddTestCollection</a></td>
     <td class="sig">template &lt;typename T, typename... Types&gt;<br>void AddTestCollection(Types&amp;&amp;... args)</td>
@@ -257,7 +270,7 @@
 
 <p>
   None. <code>TestEnv.h</code> declares the class and nothing else at namespace scope; the module's one free function,
-  <a href="../UnitTestCollection/run-tests.html"><code>hbe::Test::RunTests</code></a>, lives in another header.
+  <a href="../UnitTestCollection/suite-entry-points.html"><code>hbe::Test::RunTests</code></a>, lives in another header.
 </p>
 
 <h2 id="coverage">Coverage</h2>
@@ -301,7 +314,7 @@
   <tr>
     <td>Which collections are registered</td>
     <td>Not this class's concern: the list is written by
-        <a href="../UnitTestCollection/run-tests.html"><code>RunTests</code></a>, and it is code, not documentation</td>
+        <a href="../UnitTestCollection/suite-entry-points.html"><code>RunTests</code></a>, and it is code, not documentation</td>
   </tr>
 </table>
 

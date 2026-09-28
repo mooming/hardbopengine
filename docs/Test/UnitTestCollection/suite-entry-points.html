@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Suite entry points — Test — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../index.html">Test</a></li>
+  </ul>
+
+    <h3>This page</h3>
+  <ul>
+    <li><a href="#description">What this module is</a></li>
+    <li><a href="#register-suite">RegisterSuite</a></li>
+    <li><a href="#schedule">ScheduleSuiteOnBaseStream</a></li>
+    <li><a href="#why">Why the split, and why before Run</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+
+  <h3>Methods</h3>
+  <ul class="methods">
+    <li><a href="index.html">constructors</a></li>
+    <li><a href="../TestEnv/get-env.html">GetEnv</a></li>
+    <li><a href="../TestEnv/start.html">Start</a></li>
+    <li><a href="../TestEnv/add-test-collection.html">AddTestCollection</a></li>
+    <li><a href="../TestEnv/get-pass-count.html">GetPassCount</a></li>
+    <li><a href="../TestEnv/get-failure-count.html">GetFailureCount</a></li>
+  </ul>
+</nav>
+
+<main>
+
+<h1>Suite entry points</h1>
+<p><code>Engine/Test/UnitTestCollection.h</code> &nbsp;·&nbsp; namespace <code>hbe::Test</code> &nbsp;·&nbsp; two free functions, both behind <code>#ifdef __UNIT_TEST__</code></p>
+
+<h2 id="description">What this module is</h2>
+<p>
+The whole of <code>UnitTestCollection</code> is two free functions, and they are the only thing
+<code>Applications/EngineTest</code> calls. One registers the suite, the other starts it running on the engine's own
+base stream. There is no longer a single <code>RunTests</code> doing both from inside one task, and the reason that
+was split is recorded under <a href="#why">Why the split</a>.
+</p>
+
+<h2 id="register-suite"><code>void hbe::Test::RegisterSuite()</code></h2>
+<p>
+Registers every test collection by type into <a href="../TestEnv/index.html"><code>TestEnv</code></a> and flattens them
+into the sequence of <a href="../Testlet/index.html"><code>Testlet</code></a>s the harness schedules.
+</p>
+<p><strong>Preconditions.</strong> The engine is initialised — collection construction reaches the task system, the
+logger and the default allocator. Call it <strong>before</strong> <code>Engine::Run</code> is entered.</p>
+<p><strong>Postconditions.</strong> <code>GetTestletCount()</code> reports the total the run is expected to reach, and
+no work has been posted yet.</p>
+<p><strong>Thread-safety.</strong> Main thread only. It mutates the single <code>TestEnv</code> instance with no
+synchronisation, because nothing else exists yet to race with.</p>
+
+<h2 id="schedule"><code>void hbe::Test::ScheduleSuiteOnBaseStream()</code></h2>
+<p>
+Posts the first testlet as a task on the base stream. Each testlet posts the next when it runs, and the last posts a
+task that prints the report and requests shutdown. <code>Engine::Run</code> is therefore the only thing that can carry
+the suite to its end, and it returns with the tallies already settled — which is why the harness reads them after the
+loop rather than before it.
+</p>
+<p><strong>Preconditions.</strong> <code>RegisterSuite()</code> has run.</p>
+<p><strong>Postconditions.</strong> One task is queued, and completing the suite is now the engine loop's job.</p>
+
+<h2 id="why">Why the split, and why before <code>Run</code></h2>
+<p>
+Registering from inside the suite's own task would leave the suite to discover how many tests it has. A run that never
+started would then report an expected total of zero, agree with the zero that executed, and certify a dead engine as
+balanced — the exact shape a real defect passed through once. Registering before <code>Run</code> puts that expected
+total in the harness's hands instead, so a shortfall between registered and executed becomes a failure <code>main</code>
+can see; scheduling had to be separable for the total to be knowable without posting anything.
+</p>
+
+<h2 id="coverage">Coverage</h2>
+<p>
+Both functions run in every gate run in three configurations, and they fail loudly: measured against a build whose
+<code>Engine::Run</code> loop was reduced to a single pass, the run exited non-zero with
+<em>only 13 of 372 registered testlets ran</em>.
+</p>
+
+<p class="breadcrumb">
+  <a href="../../index.html">HardBop Engine</a> /
+  <a href="../index.html">Test</a> /
+  <a href="index.html">UnitTestCollection</a> /
+  Suite entry points
+</p>
+
+</main>
+</body>
+</html>
