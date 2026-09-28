@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TestCollection::RunTestAt — Test — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<div style="border-left:4px solid #b45309;background:#fffbeb;padding:10px 14px;margin:0 0 22px 0;font-size:0.94em;">
+  <strong>Lifecycle changed on 2026-09-28.</strong> The one-call run this page describes is gone. A test is now a
+  <a href="../Testlet/index.html"><code>Testlet</code></a> and the unit the harness schedules, so
+  <a href="../TestCollection/start.html"><code>TestCollection::Start</code></a> became
+  <code>PrepareTests</code> / <code>RunTestAt</code> / <code>Complete</code>,
+  <a href="../TestEnv/start.html"><code>TestEnv::Start</code></a> became <code>PrepareTestlets</code> /
+  <code>RunTestlet</code> / <code>Finalize</code>, and <code>hbe::Test::RunTests</code> became
+  <a href="../UnitTestCollection/suite-entry-points.html"><code>RegisterSuite</code> and
+  <code>ScheduleSuiteOnBaseStream</code></a>. The statements below that name the old lifecycle are history, not
+  reference; the replacements are documented: <a href="prepare-tests.html"><code>PrepareTests</code></a> / <a href="run-test-at.html"><code>RunTestAt</code></a> / <a href="complete.html"><code>Complete</code></a> on TestCollection and <a href="../TestEnv/prepare-testlets.html"><code>PrepareTestlets</code></a> / <a href="../TestEnv/run-testlet.html"><code>RunTestlet</code></a> / <a href="../TestEnv/finalize.html"><code>Finalize</code></a> on TestEnv.
+</div>
+
+
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul class="toc">
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#measures">What it measures around the body</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#thread">Thread and re-entry</a></li>
+    <li><a href="#see">See also</a></li>
+  </ul>
+
+          <h3><a href="index.html">TestCollection</a> methods</h3>
+  <ul class="methods">
+    <li><a href="memory-ceiling.html">MaxRetainedGlobalBytes</a></li>
+    <li><a href="prepare-tests.html">PrepareTests</a></li>
+    <li><a class="current" href="run-test-at.html">RunTestAt</a></li>
+    <li><a href="complete.html">Complete</a></li>
+    <li><a href="add-test.html">AddTest</a></li>
+    <li><a href="prepare.html">Prepare</a></li>
+    <li><a href="get-global-allocation-count.html">GetGlobalAllocationCount</a></li>
+    <li><a href="get-max-retained-global-bytes.html">GetMaxRetainedGlobalBytes</a></li>
+    <li><a href="get-name.html">GetName</a></li>
+    <li><a href="get-warning-messages.html">GetWarningMessages</a></li>
+    <li><a href="get-error-messages.html">GetErrorMessages</a></li>
+    <li><a href="is-done.html">IsDone</a></li>
+    <li><a href="is-success.html">IsSuccess</a></li>
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+    <li><a href="start.html">Start (removed)</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Test</a> /
+  <a href="index.html">TestCollection</a> / RunTestAt
+</p>
+
+<h1><span class="fn">RunTestAt</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::TestCollection</span>
+  <span class="tag">Engine/Test/TestCollection.h</span>
+  <span class="tag">replaces ExecuteTests (2026-09-28)</span>
+  runs exactly one testlet, with its log line, its allocator scope and its memory ceiling
+</p>
+
+<h2 id="signature">Signature</h2>
+<pre><code><span class="kw">bool</span> <span class="fn">RunTestAt</span>(std::size_t testIndex);</code></pre>
+
+<h2 id="description">Function description</h2>
+<p>
+  One call, one testlet - and only one, because this is the unit the harness schedules as a task. It sets the test
+  index and name on the log flush objects so messages raised inside the body are attributed to the right case, opens
+  the case's log line, constructs a fresh <code>MultiPoolAllocator</code> named after the test under an
+  <a href="../../Memory/index.html#allocatorscope"><code>AllocatorScope</code></a>, runs the testlet, then reads what
+  happened.
+</p>
+
+<h2 id="measures">What it measures around the body</h2>
+<table>
+<thead><tr><th>Quantity</th><th>How</th><th>Reported where</th></tr></thead>
+  <tr>
+    <td>Pass or fail</td>
+    <td>Whether the error buffer grew. That is the only verdict rule: no exception is expected anywhere, because the
+        engine is exception-free.</td>
+    <td>The case's <code>Result [PASS]</code> / <code>[FAIL]</code> line, and the collection's
+        <a href="is-success.html"><code>IsSuccess</code></a> later.</td>
+  </tr>
+  <tr>
+    <td>Allocator usage</td>
+    <td>The per-testlet pool prints its own usage after the body.</td>
+    <td>The log. Measured across the current suite it reports nothing at all, because test bodies use std containers
+        and those bypass the scope entirely.</td>
+  </tr>
+  <tr>
+    <td>Global heap traffic</td>
+    <td>Deltas of the engine's global allocation counters across the body - requested, released, and the retained
+        difference.</td>
+    <td>A <code>global heap …</code> line, but only when the testlet actually reached the heap. See
+        <a href="get-global-allocation-count.html">the read-out</a>.</td>
+  </tr>
+  <tr>
+    <td>Memory ceiling</td>
+    <td>Retention compared against the testlet's own allowance.</td>
+    <td>An error naming the testlet, the retained bytes and the ceiling - see
+        <a href="memory-ceiling.html"><code>MaxRetainedGlobalBytes</code></a>.</td>
+  </tr>
+</table>
+
+<h2 id="parameters">Parameters</h2>
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr>
+    <td><code>testIndex</code></td>
+    <td><code>std::size_t</code></td>
+    <td>Index into <em>this collection's</em> testlets, zero based. The harness passes the flattened index minus the
+        collection's offset - see
+        <a href="../TestEnv/run-testlet.html"><code>TestEnv::RunTestlet</code></a>, which does that conversion.</td>
+  </tr>
+</table>
+
+<h2 id="return">Return value</h2>
+<p>
+  True when the testlet added no error message. Returns false without running anything when
+  <code>testIndex</code> is past the registered count - a caller that ignores the return value treats "index past the
+  end" as a passing testlet, which is why the harness checks the index itself and reports the shortfall by name.
+</p>
+
+<h2 id="thread">Thread and re-entry</h2>
+<p>
+  Runs on whatever worker took the testlet task. It mutates this collection's error and warning buffers, so two
+  testlets of the same collection must not run concurrently - the schedule is a chain in which each testlet posts its
+  successor, which holds that property without a lock.
+</p>
+
+<h2 id="see">See also</h2>
+<ul>
+  <li><a href="prepare-tests.html"><code>PrepareTests</code></a> and <a href="complete.html"><code>Complete</code></a></li>
+  <li><a href="../Testlet/index.html"><code>Testlet</code></a> - what <code>Run</code> does inside the scope</li>
+  <li><a href="../TestEnv/run-testlet.html"><code>TestEnv::RunTestlet</code></a></li>
+</ul>
+
+<footer class="prevnext">
+  <span><a href="index.html">TestCollection</a></span>
+  <span><a href="../index.html">Test</a></span>
+  <span><a href="../../index.html">Module Index</a></span>
+</footer>
+
+</main>
+</body>
+</html>

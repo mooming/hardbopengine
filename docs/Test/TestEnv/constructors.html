@@ -17,8 +17,7 @@
   <code>RunTestlet</code> / <code>Finalize</code>, and <code>hbe::Test::RunTests</code> became
   <a href="../UnitTestCollection/suite-entry-points.html"><code>RegisterSuite</code> and
   <code>ScheduleSuiteOnBaseStream</code></a>. The statements below that name the old lifecycle are history, not
-  reference; the method pages that should replace them are recorded as owed work in
-  <code>.Plans/TODO_task_system.md</code>.
+  reference; the replacements are documented: <a href="../TestCollection/prepare-tests.html"><code>PrepareTests</code></a> / <a href="../TestCollection/run-test-at.html"><code>RunTestAt</code></a> / <a href="../TestCollection/complete.html"><code>Complete</code></a> on TestCollection and <a href="prepare-testlets.html"><code>PrepareTestlets</code></a> / <a href="run-testlet.html"><code>RunTestlet</code></a> / <a href="finalize.html"><code>Finalize</code></a> on TestEnv.
 </div>
 
 
@@ -52,15 +51,18 @@
     <li><a href="#example">Examples</a></li>
   </ul>
 
-        <h3><a href="index.html">TestEnv</a> methods</h3>
+          <h3><a href="index.html">TestEnv</a> methods</h3>
   <ul class="methods">
+    <li><a href="prepare-testlets.html">PrepareTestlets</a></li>
+    <li><a href="run-testlet.html">RunTestlet</a></li>
+    <li><a href="finalize.html">Finalize</a></li>
+    <li><a href="global-allocation-totals.html">Global allocation totals</a></li>
     <li><a href="add-test-collection.html">AddTestCollection</a></li>
     <li><a href="get-pass-count.html">GetPassCount</a></li>
     <li><a href="get-failure-count.html">GetFailureCount</a></li>
-    <li><a href="global-allocation-totals.html">Global allocation totals</a></li>
     <li><a class="current" href="constructors.html">constructors</a></li>
     <li><a href="get-env.html">GetEnv</a></li>
-    <li><a href="start.html">Start (removed API)</a></li>
+    <li><a href="start.html">Start (removed)</a></li>
   </ul>
 </nav>
 

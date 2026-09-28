@@ -17,8 +17,7 @@
   <code>RunTestlet</code> / <code>Finalize</code>, and <code>hbe::Test::RunTests</code> became
   <a href="../UnitTestCollection/suite-entry-points.html"><code>RegisterSuite</code> and
   <code>ScheduleSuiteOnBaseStream</code></a>. The statements below that name the old lifecycle are history, not
-  reference; the method pages that should replace them are recorded as owed work in
-  <code>.Plans/TODO_task_system.md</code>.
+  reference; the replacements are documented: <a href="prepare-tests.html"><code>PrepareTests</code></a> / <a href="run-test-at.html"><code>RunTestAt</code></a> / <a href="complete.html"><code>Complete</code></a> on TestCollection and <a href="../TestEnv/prepare-testlets.html"><code>PrepareTestlets</code></a> / <a href="../TestEnv/run-testlet.html"><code>RunTestlet</code></a> / <a href="../TestEnv/finalize.html"><code>Finalize</code></a> on TestEnv.
 </div>
 
 
@@ -52,10 +51,14 @@
     <li><a href="#example">Examples</a></li>
   </ul>
 
-        <h3><a href="index.html">TestCollection</a> methods</h3>
+          <h3><a href="index.html">TestCollection</a> methods</h3>
   <ul class="methods">
     <li><a href="memory-ceiling.html">MaxRetainedGlobalBytes</a></li>
+    <li><a href="prepare-tests.html">PrepareTests</a></li>
+    <li><a href="run-test-at.html">RunTestAt</a></li>
+    <li><a href="complete.html">Complete</a></li>
     <li><a href="add-test.html">AddTest</a></li>
+    <li><a href="prepare.html">Prepare</a></li>
     <li><a href="get-global-allocation-count.html">GetGlobalAllocationCount</a></li>
     <li><a href="get-max-retained-global-bytes.html">GetMaxRetainedGlobalBytes</a></li>
     <li><a href="get-name.html">GetName</a></li>
@@ -65,8 +68,7 @@
     <li><a href="is-success.html">IsSuccess</a></li>
     <li><a href="constructors.html">constructors</a></li>
     <li><a href="destructor.html">destructor</a></li>
-    <li><a href="start.html">Start (removed API)</a></li>
-    <li><a href="prepare.html">Prepare (removed API)</a></li>
+    <li><a href="start.html">Start (removed)</a></li>
   </ul>
 </nav>
 

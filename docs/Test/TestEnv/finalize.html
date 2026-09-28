@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>TestEnv global allocation totals — Test — HardBop Engine API reference</title>
+<title>TestEnv::Finalize — Test — HardBop Engine API reference</title>
 <link rel="stylesheet" href="../../assets/hbe-docs.css">
 </head>
 <body>
@@ -43,11 +43,11 @@
   </ul>
 
   <h3>This function</h3>
-    <ul>
+  <ul class="toc">
     <li><a href="#signature">Signature</a></li>
-    <li><a href="#description">What they add up</a></li>
-    <li><a href="#contrast">Suite totals against process totals</a></li>
-    <li><a href="#return">Return value</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#who">Who calls it</a></li>
+    <li><a href="#verdict">Where the verdict actually lives</a></li>
     <li><a href="#see">See also</a></li>
   </ul>
 
@@ -55,8 +55,8 @@
   <ul class="methods">
     <li><a href="prepare-testlets.html">PrepareTestlets</a></li>
     <li><a href="run-testlet.html">RunTestlet</a></li>
-    <li><a href="finalize.html">Finalize</a></li>
-    <li><a class="current" href="global-allocation-totals.html">Global allocation totals</a></li>
+    <li><a class="current" href="finalize.html">Finalize</a></li>
+    <li><a href="global-allocation-totals.html">Global allocation totals</a></li>
     <li><a href="add-test-collection.html">AddTestCollection</a></li>
     <li><a href="get-pass-count.html">GetPassCount</a></li>
     <li><a href="get-failure-count.html">GetFailureCount</a></li>
@@ -71,63 +71,65 @@
 <p class="breadcrumb">
   <a href="../../index.html">Module Index</a> /
   <a href="../index.html">Test</a> /
-  <a href="index.html">TestEnv</a> / global allocation totals
+  <a href="index.html">TestEnv</a> / Finalize
 </p>
 
-<h1><span class="fn">Global allocation totals</span></h1>
+<h1><span class="fn">Finalize</span></h1>
 <p class="subtitle">
-  <span class="tag">members of hbe::TestEnv</span>
+  <span class="tag">member of hbe::TestEnv</span>
   <span class="tag">Engine/Test/TestEnv.h</span>
-  <span class="tag">const noexcept</span>
-  the suite-wide view of what the testlets took through <code>operator new</code>
+  <span class="tag">call once, after the last testlet</span>
+  prints the suite report the gate reads its verdict from
 </p>
 
 <h2 id="signature">Signature</h2>
-<pre><code>[[nodiscard]] std::size_t   <span class="fn">GetGlobalAllocationBytes</span>() <span class="kw">const</span> noexcept;
-[[nodiscard]] std::uint64_t <span class="fn">GetGlobalAllocationCount</span>() <span class="kw">const</span> noexcept;
-[[nodiscard]] std::size_t   <span class="fn">GetTestletCountWithGlobalAllocations</span>() <span class="kw">const</span> noexcept;</code></pre>
+<pre><code><span class="kw">void</span> <span class="fn">Finalize</span>();</code></pre>
 
-<h2 id="description">What they add up</h2>
+<h2 id="description">Function description</h2>
 <p>
-  Each getter sums the matching figure over every collection the environment owns, so the suite reports one number
-  instead of fifty-nine. They are the figures behind the report line
-  <code># Global heap over testlet bodies = …</code>, and behind the line the EngineTest entry point prints with the
-  whole-process totals taken straight from
-  <a href="../../Memory/index.html#global-allocation"><code>MemoryManager</code></a>.
+  Prints the report block: total collections, how many completed, how many were invalid, pass and fail counts, and the
+  suite's global heap figures -
+  <a href="global-allocation-totals.html">cumulative requests, cumulative bytes, and how many testlets were
+  involved</a>. It then lists the invalid collections and the failed ones with their collected messages.
+</p>
+<p>
+  Collections themselves are closed by
+  <a href="run-testlet.html"><code>RunTestlet</code></a> as each one's last testlet finishes; this is the suite-level
+  closing, and it does not decide anything - every verdict already exists by the time it is called.
 </p>
 
-<h2 id="contrast">Suite totals against process totals</h2>
+<h2 id="who">Who calls it</h2>
+<p>
+  The task that the last testlet posts, immediately before it asks the engine to shut down. That ordering is the point
+  of the chain: the report is produced by the same scheduled sequence it is reporting on, so a suite that never reached
+  the end also never produced a report claiming it did.
+</p>
+
+<h2 id="verdict">Where the verdict actually lives</h2>
 <table>
-<thead><tr><th>Figure</th><th>Window it covers</th><th>Why both are printed</th></tr></thead>
+<thead><tr><th>Consumer</th><th>What it reads</th></tr></thead>
   <tr>
-    <td>These getters</td>
-    <td>Testlet bodies only, summed over collections. The fixture that prepares a testlet, engine boot and standard
-        library start-up are all outside.</td>
-    <td>This is the number a test author is responsible for.</td>
+    <td>The gate script</td>
+    <td>The entry point's last line, <code>EngineTest: all 59 collections passed (372 testlets)</code>, and the
+        process exit status. Zero-collection runs are refused outright, so an empty suite cannot read as a pass.</td>
   </tr>
   <tr>
-    <td><code>MemoryManager::GetGlobalAllocation*</code></td>
-    <td>Everything since process start, engine and standard library included.</td>
-    <td>The gap between the two is what the harness and the engine consume on a run's behalf - the place to look when
-        a suite gets slower and no testlet will admit to it.</td>
+    <td><a href="get-failure-count.html"><code>GetFailureCount</code></a></td>
+    <td>What the entry point turns into a non-zero exit. It includes failures the report itself would not mention - the
+        shutdown-pump provenance guard and the duplicate-testlet guard both fold in here rather than into a buffer the
+        next run clears.</td>
   </tr>
 </table>
 
-<h2 id="return">Return value</h2>
-<p>
-  Zero before any testlet has run. The byte figure is cumulative bytes <em>requested</em>, not memory held - freeing
-  does not reduce it, so the suite total is dominated by allocator stress tests and means nothing alone. The held
-  figure per collection is
-  <a href="../TestCollection/get-max-retained-global-bytes.html"><code>TestCollection::GetMaxRetainedGlobalBytes</code></a>.
-</p>
-
 <h2 id="see">See also</h2>
 <ul>
-  <li><a href="../TestCollection/memory-ceiling.html">The ceiling</a> these figures are judged against</li>
-  <li><a href="../UnitTestCollection/suite-entry-points.html">Suite entry points</a> - where the totals get printed</li>
+  <li><a href="prepare-testlets.html"><code>PrepareTestlets</code></a> and <a href="run-testlet.html"><code>RunTestlet</code></a></li>
+  <li><a href="../UnitTestCollection/suite-entry-points.html">Suite entry points</a></li>
+  <li><a href="../TestCollection/complete.html"><code>TestCollection::Complete</code></a> - the per-collection closing</li>
 </ul>
 
 <footer class="prevnext">
+  <span><a href="index.html">TestEnv</a></span>
   <span><a href="../index.html">Test</a></span>
   <span><a href="../../index.html">Module Index</a></span>
 </footer>

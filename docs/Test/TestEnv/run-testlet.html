@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TestEnv::RunTestlet — Test — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<div style="border-left:4px solid #b45309;background:#fffbeb;padding:10px 14px;margin:0 0 22px 0;font-size:0.94em;">
+  <strong>Lifecycle changed on 2026-09-28.</strong> The one-call run this page describes is gone. A test is now a
+  <a href="../Testlet/index.html"><code>Testlet</code></a> and the unit the harness schedules, so
+  <a href="../TestCollection/start.html"><code>TestCollection::Start</code></a> became
+  <code>PrepareTests</code> / <code>RunTestAt</code> / <code>Complete</code>,
+  <a href="../TestEnv/start.html"><code>TestEnv::Start</code></a> became <code>PrepareTestlets</code> /
+  <code>RunTestlet</code> / <code>Finalize</code>, and <code>hbe::Test::RunTests</code> became
+  <a href="../UnitTestCollection/suite-entry-points.html"><code>RegisterSuite</code> and
+  <code>ScheduleSuiteOnBaseStream</code></a>. The statements below that name the old lifecycle are history, not
+  reference; the replacements are documented: <a href="../TestCollection/prepare-tests.html"><code>PrepareTests</code></a> / <a href="../TestCollection/run-test-at.html"><code>RunTestAt</code></a> / <a href="../TestCollection/complete.html"><code>Complete</code></a> on TestCollection and <a href="prepare-testlets.html"><code>PrepareTestlets</code></a> / <a href="run-testlet.html"><code>RunTestlet</code></a> / <a href="finalize.html"><code>Finalize</code></a> on TestEnv.
+</div>
+
+
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul class="toc">
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#guards">The two guards it owns</a></li>
+    <li><a href="#shortfall">What this call makes checkable</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#see">See also</a></li>
+  </ul>
+
+          <h3><a href="index.html">TestEnv</a> methods</h3>
+  <ul class="methods">
+    <li><a href="prepare-testlets.html">PrepareTestlets</a></li>
+    <li><a class="current" href="run-testlet.html">RunTestlet</a></li>
+    <li><a href="finalize.html">Finalize</a></li>
+    <li><a href="global-allocation-totals.html">Global allocation totals</a></li>
+    <li><a href="add-test-collection.html">AddTestCollection</a></li>
+    <li><a href="get-pass-count.html">GetPassCount</a></li>
+    <li><a href="get-failure-count.html">GetFailureCount</a></li>
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="get-env.html">GetEnv</a></li>
+    <li><a href="start.html">Start (removed)</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Test</a> /
+  <a href="index.html">TestEnv</a> / RunTestlet
+</p>
+
+<h1><span class="fn">RunTestlet</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::TestEnv</span>
+  <span class="tag">Engine/Test/TestEnv.h</span>
+  <span class="tag">replaces ExecuteTest (2026-09-28)</span>
+  runs one testlet of the flattened schedule and closes its collection when that was its last
+</p>
+
+<h2 id="signature">Signature</h2>
+<pre><code><span class="kw">void</span> <span class="fn">RunTestlet</span>(std::size_t testletIndex);</code></pre>
+
+<h2 id="description">Function description</h2>
+<p>
+  The body of the task the suite is made of. It maps a flattened index to (collection, index within it) using the
+  offsets <a href="prepare-testlets.html"><code>PrepareTestlets</code></a> built, hands the call to
+  <a href="../TestCollection/run-test-at.html"><code>TestCollection::RunTestAt</code></a>, counts the execution, and
+  finalises the collection when the testlet was its last.
+</p>
+
+<h2 id="guards">The two guards it owns</h2>
+<table>
+<thead><tr><th>Guard</th><th>Behaviour</th><th>Why it is in this shape</th></tr></thead>
+  <tr>
+    <td>Index past the schedule</td>
+    <td>Reports to <code>std::cerr</code>, naming the index and the registered total, and returns without running.</td>
+    <td>The Test module deliberately writes its own diagnostics to <code>std::cerr</code> rather than the logger, so
+        the message survives even when the failure is in logging or allocation itself.</td>
+  </tr>
+  <tr>
+    <td>A testlet asked for twice</td>
+    <td>Recorded as a failure and <strong>the testlet still runs</strong>.</td>
+    <td>Refusing to execute what it was handed would hide the scheduling defect that produced the duplicate - the
+        schedule is a chain, so a node that posted its successor twice is the bug, and the run needs to say so while
+        still showing the work.</td>
+  </tr>
+</table>
+
+<h2 id="shortfall">What this call makes checkable</h2>
+<p>
+  Each call increments <a href="index.html#methods"><code>GetExecutedTestletCount</code></a>. The entry point compares
+  that against the registered total, and a gap fails the run naming the loop that drives the suite:
+</p>
+<pre><code><span class="cm">EngineTest: only 13 of 372 registered testlets ran, so the engine never drove the suite it was given</span></code></pre>
+<p>
+  That message is the reason the suite is shaped this way at all: a testlet is a task, each one posts its successor,
+  and if the engine's loop stops pumping the base stream the suite stops - and says which of those happened.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr>
+    <td><code>testletIndex</code></td>
+    <td><code>std::size_t</code></td>
+    <td>Index into the flattened sequence, <strong>not</strong> into a collection. The conversion to a per-collection
+        index happens here, which is the only place that knows both spaces.</td>
+  </tr>
+</table>
+
+<h2 id="see">See also</h2>
+<ul>
+  <li><a href="../TestCollection/run-test-at.html"><code>TestCollection::RunTestAt</code></a> - what actually runs</li>
+  <li><a href="finalize.html"><code>Finalize</code></a> - the step after the last testlet</li>
+  <li><a href="../UnitTestCollection/suite-entry-points.html">Suite entry points</a> - who posts these tasks</li>
+</ul>
+
+<footer class="prevnext">
+  <span><a href="index.html">TestEnv</a></span>
+  <span><a href="../index.html">Test</a></span>
+  <span><a href="../../index.html">Module Index</a></span>
+</footer>
+
+</main>
+</body>
+</html>

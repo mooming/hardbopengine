@@ -1,5 +1,34 @@
 # Journal
 
+## 2026-09-28 23:30 - the six lifecycle method pages exist, and the pointer that claimed they were owed was itself untrue
+
+Twenty-two pages carried a banner saying the replacements for the removed one-call lifecycle were "recorded as owed
+work in `.Plans/TODO_task_system.md`". Checked: **that file never named the item.** The work was genuinely owed, but
+the pointer pointed at nothing. Both halves are closed now - the pages exist and the TODO file records them.
+
+Authored from the source, not from memory, because every falsehood this session came from writing an API down from
+recall: `TestCollection/prepare-tests.html`, `run-test-at.html`, `complete.html`, and `TestEnv/prepare-testlets.html`,
+`run-testlet.html`, `finalize.html`. Each describes what the implementation actually does - `PrepareTests` clears
+`tests` before calling the virtual `Prepare`, so registration is a `Prepare` job and re-preparing is idempotent;
+`RunTestAt`'s verdict rule is "the error buffer grew" and its out-of-range return is `false` without running;
+`Complete` reads nothing new; `PrepareTestlets` leaves four pieces of state the guards compare against; `RunTestlet`
+owns the past-the-end message and the duplicate guard that runs the testlet anyway and records the failure; `Finalize`
+decides nothing, because every verdict already exists when it is called.
+
+**A falsehood of my own making, found and removed.** The class nav I authored yesterday labelled
+`TestCollection/prepare.html` "Prepare (removed API)". `Prepare` is live - it is the virtual `PrepareTests` calls,
+which is the entire reason `PrepareTests` exists. The label is now `Prepare`, and the page says its own function is
+live API whose job changed from running tests to registering them.
+
+30 banner sentences across 24 pages now name the six replacements instead of pointing at an owed-work claim; the two
+`start.html` pages had a separate wording variant saying "Authoring the replacement method pages is recorded as owed
+work", which needed the same correction. Lifecycle sections were added to both class index pages, and index nav lists
+reach all the new pages.
+
+Verified after: **0 dead file links and 0 missing anchors** across `docs/Test` and `docs/Memory`, tags balanced on all
+33 Test pages, and **0 pages anywhere in `docs/` still claiming owed work**. Gate: `check.sh` 0 mechanical violations,
+0 advisory, build gate PASS 12/12; Debug/Dev/Release all `all 59 collections passed (372 testlets)`.
+
 ## 2026-09-28 22:37 - the accounting and the ceiling got reference pages, and one page was found lying
 
 Docs for the last three commits: a Global allocation accounting section in `docs/Memory/index.html`, and five new pages

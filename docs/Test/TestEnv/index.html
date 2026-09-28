@@ -17,8 +17,7 @@
   <code>RunTestlet</code> / <code>Finalize</code>, and <code>hbe::Test::RunTests</code> became
   <a href="../UnitTestCollection/suite-entry-points.html"><code>RegisterSuite</code> and
   <code>ScheduleSuiteOnBaseStream</code></a>. The statements below that name the old lifecycle are history, not
-  reference; the method pages that should replace them are recorded as owed work in
-  <code>.Plans/TODO_task_system.md</code>.
+  reference; the replacements are documented: <a href="../TestCollection/prepare-tests.html"><code>PrepareTests</code></a> / <a href="../TestCollection/run-test-at.html"><code>RunTestAt</code></a> / <a href="../TestCollection/complete.html"><code>Complete</code></a> on TestCollection and <a href="prepare-testlets.html"><code>PrepareTestlets</code></a> / <a href="run-testlet.html"><code>RunTestlet</code></a> / <a href="finalize.html"><code>Finalize</code></a> on TestEnv.
 </div>
 
 
@@ -59,6 +58,9 @@
     <li><a href="get-env.html">GetEnv</a></li>
     <li><a href="start.html">Start</a></li>
     <li><a href="add-test-collection.html">AddTestCollection</a></li>
+    <li><a href="prepare-testlets.html">PrepareTestlets</a></li>
+    <li><a href="run-testlet.html">RunTestlet</a></li>
+    <li><a href="finalize.html">Finalize</a></li>
     <li><a href="get-pass-count.html">GetPassCount</a></li>
     <li><a href="get-failure-count.html">GetFailureCount</a></li>
     <li><a href="global-allocation-totals.html">Global allocation totals</a></li>
@@ -344,6 +346,33 @@
   the entry point prints from <a href="../../Memory/index.html#global-allocation"><code>MemoryManager</code></a>: the
   gap between the two is what the harness and the engine consume on a run's behalf.
 </p>
+
+<h2 id="lifecycle">Driving the suite</h2>
+
+<p>
+  Three calls, in this order, and the second one happens 372 times:
+</p>
+
+<table>
+  <tr><th>Call</th><th>What it does</th><th>When</th></tr>
+  <tr>
+    <td><a href="prepare-testlets.html"><code>PrepareTestlets</code></a></td>
+    <td>Prepares every collection and flattens their testlets into one sequence with labels and offsets.</td>
+    <td>After the last <a href="add-test-collection.html"><code>AddTestCollection</code></a>, before anything is
+        posted.</td>
+  </tr>
+  <tr>
+    <td><a href="run-testlet.html"><code>RunTestlet</code></a></td>
+    <td>Runs one testlet of the flattened schedule, guards against a past-the-end index and a duplicate, and closes the
+        collection when its last testlet finishes.</td>
+    <td>Once per testlet, from the task the chain posts.</td>
+  </tr>
+  <tr>
+    <td><a href="finalize.html"><code>Finalize</code></a></td>
+    <td>Prints the report the gate reads.</td>
+    <td>Once, by the task the last testlet posts, before shutdown.</td>
+  </tr>
+</table>
 
 <footer class="prevnext">
   <span><a href="../index.html">← Test</a></span>

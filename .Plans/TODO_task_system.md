@@ -623,3 +623,27 @@ level and reporting another cannot be handed to a caller (`9a3bf64`, mutant kill
 conditions:** a stream that is permanently backlogged with mixed priorities, or any measured starvation, or a caller that asks for
 age-based promotion. Recorded here rather than silently, because a decision made without the owner is the owner's to overturn.
 
+### Test lifecycle method pages - CLOSED by the 22:40 session
+
+Twenty-two reference pages carried a banner saying the replacements for the removed one-call lifecycle were
+"recorded as owed work in `.Plans/TODO_task_system.md`". That claim was only ever half true: the work was real and
+owed, but no entry here tracked it - the banners were pointing at a file that did not name the item. Both halves are
+now closed.
+
+Authored, from the source rather than from memory:
+
+| Page | Documents |
+|---|---|
+| `docs/Test/TestCollection/prepare-tests.html` | `TestCollection::PrepareTests` - clears buffers, calls the virtual `Prepare`, registers nothing running |
+| `docs/Test/TestCollection/run-test-at.html` | `TestCollection::RunTestAt` - one testlet, its scope, its measurements, its ceiling, its verdict contribution |
+| `docs/Test/TestCollection/complete.html` | `TestCollection::Complete` - verdict from accumulated errors, and what each of the three outcomes does at the environment |
+| `docs/Test/TestEnv/prepare-testlets.html` | `TestEnv::PrepareTestlets` - flattening, labels, offsets, run counts, and what state it leaves |
+| `docs/Test/TestEnv/run-testlet.html` | `TestEnv::RunTestlet` - index space, the past-the-end guard, the duplicate guard that still runs the testlet, and the shortfall message |
+| `docs/Test/TestEnv/finalize.html` | `TestEnv::Finalize` - the report, who posts it, and where the verdict the gate reads actually lives |
+
+Every banner's final sentence now names those pages instead of pointing here.
+
+One falsehood of mine was removed on the way: the class nav I authored yesterday labelled `TestCollection/prepare.html`
+as "Prepare (removed API)". `Prepare` is live - it is the virtual `PrepareTests` calls, which is exactly why
+`PrepareTests` exists. The label now reads `Prepare`, and the page states plainly that its own function is live API
+whose job changed from running tests to registering them.

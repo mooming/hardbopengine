@@ -17,8 +17,7 @@
   <code>RunTestlet</code> / <code>Finalize</code>, and <code>hbe::Test::RunTests</code> became
   <a href="../UnitTestCollection/suite-entry-points.html"><code>RegisterSuite</code> and
   <code>ScheduleSuiteOnBaseStream</code></a>. The statements below that name the old lifecycle are history, not
-  reference; the method pages that should replace them are recorded as owed work in
-  <code>.Plans/TODO_task_system.md</code>.
+  reference; the replacements are documented: <a href="prepare-tests.html"><code>PrepareTests</code></a> / <a href="run-test-at.html"><code>RunTestAt</code></a> / <a href="complete.html"><code>Complete</code></a> on TestCollection and <a href="../TestEnv/prepare-testlets.html"><code>PrepareTestlets</code></a> / <a href="../TestEnv/run-testlet.html"><code>RunTestlet</code></a> / <a href="../TestEnv/finalize.html"><code>Finalize</code></a> on TestEnv.
 </div>
 
 
@@ -59,6 +58,9 @@
     <li><a href="destructor.html">destructor</a></li>
     <li><a href="start.html">Start</a></li>
     <li><a href="add-test.html">AddTest</a></li>
+    <li><a href="prepare-tests.html">PrepareTests</a></li>
+    <li><a href="run-test-at.html">RunTestAt</a></li>
+    <li><a href="complete.html">Complete</a></li>
     <li><a href="memory-ceiling.html">MaxRetainedGlobalBytes</a></li>
     <li><a href="get-global-allocation-count.html">GetGlobalAllocationCount</a></li>
     <li><a href="get-max-retained-global-bytes.html">GetMaxRetainedGlobalBytes</a></li>
@@ -476,6 +478,37 @@
         <code>GetGlobalAllocationBytes</code>, <code>GetTestletCountWithGlobalAllocations</code></td>
     <td>Churn rather than retention: requests, cumulative bytes asked for, and how many testlets touched the global
         heap at all. Measured suite-wide that last figure is 320 of 372 in Debug.</td>
+  </tr>
+</table>
+
+<h2 id="lifecycle">The three phases</h2>
+
+<p>
+  A collection is driven prepare, run-each-testlet-once, complete - one call each, and the harness owns all three. The
+  split is what lets the suite be scheduled as tasks: the total number of testlets has to exist before the first one
+  executes, which the old one-call <a href="start.html"><code>Start</code></a> could not offer because registration was
+  a side effect of running.
+</p>
+
+<table>
+  <tr><th>Phase</th><th>What it does</th><th>Who calls it</th></tr>
+  <tr>
+    <td><a href="prepare-tests.html"><code>PrepareTests</code></a></td>
+    <td>Clears the buffers and calls the subclass's <a href="prepare.html"><code>Prepare</code></a>, which registers
+        testlets. Nothing runs.</td>
+    <td><a href="../TestEnv/prepare-testlets.html"><code>TestEnv::PrepareTestlets</code></a>, for every collection,
+        before anything is posted.</td>
+  </tr>
+  <tr>
+    <td><a href="run-test-at.html"><code>RunTestAt</code></a></td>
+    <td>One testlet: its log line, its allocator scope, its memory ceiling, its verdict contribution.</td>
+    <td>The task the harness posted for that testlet, via
+        <a href="../TestEnv/run-testlet.html"><code>TestEnv::RunTestlet</code></a>.</td>
+  </tr>
+  <tr>
+    <td><a href="complete.html"><code>Complete</code></a></td>
+    <td>Decides success from the accumulated errors and reports it.</td>
+    <td><code>RunTestlet</code>, when the testlet it ran was this collection's last.</td>
   </tr>
 </table>
 
