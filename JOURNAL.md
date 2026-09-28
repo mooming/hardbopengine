@@ -1,5 +1,65 @@
 # Journal
 
+## 2026-09-28 19:35 - every global allocation is now accounted for, and the suite told me I was wrong about its size
+
+The owner redirected my proposal twice: the watchdog belongs in `MemoryManager` rather than in a test helper, and
+`SystemAllocator` is the right owner of the system heap. Both were improvements on what I had. The first landed
+increment is accounting only - `Engine/Memory/GlobalAllocation.cpp` owns the global allocation entry points and
+feeds constant initialised counters on `MemoryManager`, and the backing store stays malloc.
+
+**Two design facts decided the shape, both read from code rather than assumed.**
+| Fact | Where | Consequence |
+|---|---|---|
+| `operator new` cannot be declared inside a namespace | compiler, 18 errors on first build | the accounting carries `hbe`, the entry points cannot |
+| `MultiPoolAllocator` takes its bank backing through `AllocatorScope(MemoryManager::SystemAllocatorID)` | `MultiPoolAllocator.cpp:248` | merging the two records would blame whichever testlet triggered a bank for the bank |
+| `SystemAllocator` records capacity obtained and pairs it; this record counts bytes requested and never pairs | `SystemAllocator.h` under `PROFILE_ENABLED` | the two are different quantities and must not be summed |
+| Under `MEMORY_INVESTIGATION_ENABLED` the system path allocates page granular | same file | routing global new onto it would turn every small std allocation into a page |
+
+**Cumulative rather than paired is what makes the boot window harmless.** The counters exist from the first
+instruction, so an allocation made by the earliest static initialiser is recorded and its later release cannot
+look like an underflow. That is the whole reason the record does not mirror `UsageRecord`.
+
+**What the instrument found, which is why it was worth building.**
+| Quantity | Debug | Release |
+|---|---|---|
+| Testlets that reach the global heap from their own body | **320 of 372 (86%)** | **282 of 372** |
+| Cumulative requests over testlet bodies | 68,669,714 | 68,668,046 |
+| Largest single testlet | 33,554,446 requests (an allocator stress test) | same family |
+
+I had been asserting for several commits that invisible allocations existed. They do, and they are not the
+exception - they are the norm, which changes the next step: a rule that refuses any global allocation inside a
+testlet body would refuse 86% of the suite, so the ceiling has to be a decided number, not an exception list.
+
+**Cost, measured as an A/B rather than argued.** Counters live, counters zeroed, three samples each, median.
+| Configuration | With accounting | Without | Difference |
+|---|---|---|---|
+| Debug | 17.54s | 17.31s | +0.23s (+1.3%) |
+| Release | 12.29s | 12.82s | **-0.53s** - accounting was faster, so the true figure is noise |
+
+The owner chose all three configurations for the counters, and the measurement supports keeping them there.
+
+**Three failures of mine, recorded without euphemism.**
+1. I moved `operator new` inside `namespace hbe` when integrating the probe that had worked at global scope. The
+   compiler refused it; the /tmp experiment had been correct and I undid its lesson during integration.
+2. I declared three `TestEnv` getters and never implemented them - caught by the linker, so the cost was one
+   build, but it was a step I had written into my own plan and skipped.
+3. I introduced `uint64_t` uses in four files relying on transitive includes. Auditing my own diff found the gap
+   in `TestEnv.h`, `TestCollection.cpp`, `TestEnv.cpp` as well as `MemoryManager.h`; `<cstdint>` now appears in
+   each. This is the same self-sufficiency defect I criticised in `HSTL/HUnorderedMap.h` two days ago.
+
+**A finding about the gate itself.** `check.sh` reports one mechanical violation on this revision, and it is not
+mine: `Engine/Memory/MemoryManager.h` has been non-conformant to `.clang-format` for a long time (234 violation
+sites at HEAD). I measured the tree before deciding anything: **96 of 139 engine headers (69%) do not conform**.
+So I reverted a 346-line reformat rather than ship it inside a feature commit - it also expands every short inline
+body in that header, which is a style policy decision, not a mechanical one. The consequence stands and is owed:
+any commit that touches a non-conformant header inherits its violation, so either the tree gets one formatting
+commit or `check.sh` learns to judge added lines rather than whole files.
+
+Gate at `ee6fddf`: Debug/Dev/Release all report `all 59 collections passed (372 testlets)`, build gate 12/12.
+
+Owed by this increment: the refusal rule and its ceiling; API reference pages for the six new `MemoryManager`
+entry points under `docs/Memory`; a note on `docs/Test` that the per-testlet figure is now printed.
+
 ## 2026-09-28 06:30 - a testlet became a type that cannot allocate, on three instructions from the owner
 
 The owner drove this in three moves, and each one removed a thing I had left in: first that `std::function` allocates implicitly and that is not acceptable in a suite whose job is measuring allocation; then that the storage ceiling should be a template parameter rather than a constant inside the type, so the decision lives where the captures are known; then that the name should be a fixed `char[128]` rather than borrowed. The result is `Engine/Test/Testlet.h`: one class template owning a name and a closure inline, with a per-closure-type constexpr dispatch table, so registering a test allocates nothing and cannot.
