@@ -8,6 +8,21 @@
 </head>
 <body>
 
+<div style="border-left:4px solid #b45309;background:#fffbeb;padding:10px 14px;margin:0 0 22px 0;font-size:0.94em;">
+  <strong>Lifecycle changed on 2026-09-28.</strong> The one-call run this page describes is gone. A test is now a
+  <a href="../Testlet/index.html"><code>Testlet</code></a> and the unit the harness schedules, so
+  <a href="../TestCollection/start.html"><code>TestCollection::Start</code></a> became
+  <code>PrepareTests</code> / <code>RunTestAt</code> / <code>Complete</code>,
+  <a href="../TestEnv/start.html"><code>TestEnv::Start</code></a> became <code>PrepareTestlets</code> /
+  <code>RunTestlet</code> / <code>Finalize</code>, and <code>hbe::Test::RunTests</code> became
+  <a href="../UnitTestCollection/suite-entry-points.html"><code>RegisterSuite</code> and
+  <code>ScheduleSuiteOnBaseStream</code></a>. The statements below that name the old lifecycle are history, not
+  reference; the method pages that should replace them are recorded as owed work in
+  <code>.Plans/TODO_task_system.md</code>.
+</div>
+
+
+
 <nav class="sidebar">
   <a class="home" href="../../index.html">HardBop Engine</a>
 
@@ -78,7 +93,7 @@
 <span class="kw">#endif</span> <span class="cm">// __UNIT_TEST__</span></code></pre>
 
 <p>
-  <a href="suite-entry-points.html"><code>hbe::Test::RunTests</code></a> is what
+  <a href="suite-entry-points.html"><code>hbe::Test::RegisterSuite</code> and <code>ScheduleSuiteOnBaseStream</code></a> is what
   <code>Applications/EngineTest/TestMain.cpp</code> calls, and it is the only place in the engine that decides which
   collections are tested: its definition registers sixty of them into
   <a href="../TestEnv/get-env.html"><code>TestEnv::GetEnv</code></a>, then enqueues the run as a task. Add a module to
@@ -124,7 +139,7 @@
   <tr><th>Method</th><th>Signature</th><th>What a caller depends on</th></tr>
   <tr>
     <td><a href="suite-entry-points.html">Suite entry points</a></td>
-    <td class="sig">void RunTests()</td>
+    <td class="sig">void RegisterSuite()<br>void ScheduleSuiteOnBaseStream()</td>
     <td>
       Registers the suite and enqueues it on the base task stream; returns as soon as the enqueue is issued. The
       engine is shut down by the suite's own task when the last report is printed
@@ -135,7 +150,7 @@
 <h2 id="non-member">Non-member helper functions</h2>
 
 <p>
-  <a href="suite-entry-points.html"><code>hbe::Test::RunTests</code></a> is itself the non-member function this entry declares —
+  <a href="suite-entry-points.html"><code>hbe::Test::RegisterSuite</code> and <code>ScheduleSuiteOnBaseStream</code></a> is itself the non-member function this entry declares —
   it is shown under <a href="#methods">Class methods</a> above so the page has a working navigation target rather than
   an empty table. Nothing else in <code>UnitTestCollection.h</code> is declared.
 </p>

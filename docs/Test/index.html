@@ -8,6 +8,21 @@
 </head>
 <body>
 
+<div style="border-left:4px solid #b45309;background:#fffbeb;padding:10px 14px;margin:0 0 22px 0;font-size:0.94em;">
+  <strong>Lifecycle changed on 2026-09-28.</strong> The one-call run this page describes is gone. A test is now a
+  <a href="../Testlet/index.html"><code>Testlet</code></a> and the unit the harness schedules, so
+  <a href="../TestCollection/start.html"><code>TestCollection::Start</code></a> became
+  <code>PrepareTests</code> / <code>RunTestAt</code> / <code>Complete</code>,
+  <a href="../TestEnv/start.html"><code>TestEnv::Start</code></a> became <code>PrepareTestlets</code> /
+  <code>RunTestlet</code> / <code>Finalize</code>, and <code>hbe::Test::RunTests</code> became
+  <a href="../UnitTestCollection/suite-entry-points.html"><code>RegisterSuite</code> and
+  <code>ScheduleSuiteOnBaseStream</code></a>. The statements below that name the old lifecycle are history, not
+  reference; the method pages that should replace them are recorded as owed work in
+  <code>.Plans/TODO_task_system.md</code>.
+</div>
+
+
+
 <nav class="sidebar">
   <a class="home" href="../index.html">HardBop Engine</a>
 
@@ -131,7 +146,7 @@
     <td>Entry-point function, <code>hbe::Test</code></td>
     <td>UnitTestCollection.h</td>
     <td>
-      Not a class: the header is one declaration, <a href="UnitTestCollection/suite-entry-points.html"><code>RunTests</code></a>,
+      Not a class: the header is one declaration, <a href="UnitTestCollection/suite-entry-points.html"><code>RegisterSuite</code> · <code>ScheduleSuiteOnBaseStream</code></a>,
       which registers the engine's sixty collections and enqueues the run. Present only under
       <code>__UNIT_TEST__</code>
     </td>
@@ -144,7 +159,7 @@
   None. No header in the module declares an object at namespace scope. The only statics are function-local ones that
   hold the module's whole mutable state: the <code>static TestEnv instance</code> inside
   <a href="TestEnv/get-env.html"><code>TestEnv::GetEnv</code></a>, and the <code>static TaskID</code> inside
-  <a href="UnitTestCollection/suite-entry-points.html"><code>RunTests</code></a> that keeps the suite's own task identity across
+  <a href="UnitTestCollection/suite-entry-points.html"><code>RegisterSuite</code> · <code>ScheduleSuiteOnBaseStream</code></a> that keeps the suite's own task identity across
   calls.
 </p>
 
@@ -281,7 +296,7 @@
   <tr>
     <td>Which collections run</td>
     <td>
-      <a href="UnitTestCollection/suite-entry-points.html"><code>RunTests</code></a> registers sixty of them, drawn from
+      <a href="UnitTestCollection/suite-entry-points.html"><code>RegisterSuite</code> · <code>ScheduleSuiteOnBaseStream</code></a> registers sixty of them, drawn from
       Container, Core, HSTL, Math, Memory, OSAL, Renderer, Resource and String. <strong>Config is not among
       them</strong> — no header in <code>Engine/Config/</code> declares a
       <a href="TestCollection/index.html"><code>TestCollection</code></a> subclass, so that module's behaviour is
