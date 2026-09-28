@@ -2,13 +2,13 @@
 
 #include "TestEnv.h"
 
+#include <iostream>
 #include <sstream>
 
 #include "Core/Debug.h"
 #include "Core/Exception.h"
 #include "Log/Logger.h"
 #include "TestCollection.h"
-
 
 namespace hbe
 {
@@ -19,27 +19,76 @@ TestEnv& TestEnv::GetEnv()
 	return instance;
 }
 
-void TestEnv::Start()
+void TestEnv::PrepareTestlets()
 {
-	invalidTests.clear();
-	failedTests.clear();
+	collectionOffsets.clear();
+	testletLabels.clear();
+	executedTestletCount = 0;
 
-	for (auto& testCase : tests)
+	std::size_t runningTotal = 0;
+
+	for (auto& test : tests)
 	{
-		if (testCase == nullptr)
-		{
-			std::cerr << "Error: testCase is null" << std::endl;
-		}
-		Assert(testCase != nullptr);
-		ExecuteTest(*testCase);
-	}
+		Assert(test != nullptr);
 
-	Report();
+		test->PrepareTests();
+
+		for (std::size_t testIndex = 0; testIndex < test->GetTestCount(); ++testIndex)
+		{
+			std::stringstream label;
+			label << test->GetName() << " TC" << testIndex << '.' << test->GetTestName(testIndex);
+			testletLabels.push_back(label.str());
+		}
+
+		runningTotal += test->GetTestCount();
+		collectionOffsets.push_back(runningTotal);
+	}
 }
 
-bool TestEnv::ExecuteTest(TestCollection& testCollection)
+const char* TestEnv::GetTestletLabel(const std::size_t testletIndex) const
 {
-	testCollection.Start();
+	if (testletIndex >= testletLabels.size())
+	{
+		return "";
+	}
+
+	return testletLabels[testletIndex].c_str();
+}
+
+void TestEnv::RunTestlet(const std::size_t testletIndex)
+{
+	if (testletIndex >= testletLabels.size())
+	{
+		std::cerr << "Error: testlet index " << testletIndex << " is past the " << testletLabels.size()
+				  << " testlets the suite registered, so the run cannot be scheduled as far as it is reaching."
+				  << std::endl;
+		return;
+	}
+
+	std::size_t collectionIndex = 0;
+	while (testletIndex >= collectionOffsets[collectionIndex])
+	{
+		++collectionIndex;
+	}
+
+	const std::size_t firstTestletOfCollection = collectionIndex == 0 ? 0 : collectionOffsets[collectionIndex - 1];
+	auto& testCollection = *tests[collectionIndex];
+
+	testCollection.RunTestAt(testletIndex - firstTestletOfCollection);
+	++executedTestletCount;
+
+	if (testletIndex + 1 == collectionOffsets[collectionIndex])
+	{
+		FinalizeCollection(testCollection);
+	}
+}
+
+/// @brief Close one collection whose last testlet has just run, and tally it exactly as the batch loop used to.
+/// @details The collection reports its own testlets; this decides what the collection as a whole contributes
+///          to the suite: a pass, a failure, and the warnings it left behind.
+void TestEnv::FinalizeCollection(TestCollection& testCollection)
+{
+	testCollection.Complete();
 
 	if (!testCollection.IsDone())
 	{
@@ -87,8 +136,11 @@ bool TestEnv::ExecuteTest(TestCollection& testCollection)
 			}
 		}
 	}
+}
 
-	return testCollection.IsSuccess();
+void TestEnv::Finalize()
+{
+	Report();
 }
 
 void TestEnv::Report()

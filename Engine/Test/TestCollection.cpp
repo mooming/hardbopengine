@@ -6,20 +6,27 @@
 
 #include "Log/Logger.h"
 
-
 namespace hbe
 {
 
-TestCollection::LogFlush::LogFlush(const char* name, ELogLevel level, TLogBuffer* buffer) :
-	name(name), level(level), testIndex(0), testName("None"), messageBuffer(buffer)
-{}
+TestCollection::LogFlush::LogFlush(const char* name, ELogLevel level, TLogBuffer* buffer)
+	: name(name)
+	, level(level)
+	, testIndex(0)
+	, testName("None")
+	, messageBuffer(buffer)
+{
+}
 
-TestCollection::TestCollection(const char* inTitle) :
-	lf(inTitle, ELogLevel::Info, nullptr),
-	lfwarn(inTitle, ELogLevel::Warning, &warningMessages),
-	lferr(inTitle, ELogLevel::Error, &errorMessages),
-	title(inTitle), isDone(false), isSuccess(false)
-{}
+TestCollection::TestCollection(const char* inTitle)
+	: lf(inTitle, ELogLevel::Info, nullptr)
+	, lfwarn(inTitle, ELogLevel::Warning, &warningMessages)
+	, lferr(inTitle, ELogLevel::Error, &errorMessages)
+	, title(inTitle)
+	, isDone(false)
+	, isSuccess(false)
+{
+}
 
 const char* TestCollection::GetName() const noexcept
 {
@@ -46,7 +53,7 @@ bool TestCollection::IsSuccess() const noexcept
 	return isSuccess;
 }
 
-void TestCollection::Start()
+void TestCollection::PrepareTests()
 {
 	isDone = false;
 	isSuccess = false;
@@ -59,12 +66,6 @@ void TestCollection::Start()
 	log.Out("= START ========================================");
 
 	Prepare();
-	ExecuteTests();
-
-	isSuccess = errorMessages.empty();
-	isDone = true;
-
-	Report();
 }
 
 void TestCollection::AddTest(const char* name, const TTestFunc& testCase)
@@ -80,62 +81,80 @@ void TestCollection::AddTest(const char* name, const TTestFunc& testCase)
 	tests.emplace_back(name != nullptr ? name : "None", testCase);
 }
 
-void TestCollection::ExecuteTests()
+bool TestCollection::RunTestAt(const std::size_t testIndex)
 {
-	TLogOut logStream;
-
-	size_t errorCursor = 0;
-	const size_t length = tests.size();
-
-	for (uint32_t i = 0; i < length; ++i)
+	if (testIndex >= tests.size())
 	{
-		auto& testPair = tests[i];
-		auto testName = testPair.first.c_str();
-
-		lf.testIndex = i;
-		lf.testName = testName;
-		lfwarn.testIndex = i;
-		lfwarn.testName = testName;
-		lferr.testIndex = i;
-		lferr.testName = testName;
-
-		auto& test = testPair.second;
-		if (test == nullptr)
-		{
-			std::cerr << "Error: test is null" << std::endl;
-		}
-		Assert(test != nullptr);
-
-		auto log = Logger::Get(GetName());
-		log.Out([i, testName](auto& ls) { ls << "# TC" << i << '.' << testName << " #"; });
-
-		{
-			MultiPoolAllocator alloc(testName);
-			AllocatorScope scope(alloc);
-			test(logStream);
-
-			alloc.PrintUsage();
-		}
-
-		auto newErrorCursor = errorMessages.size();
-		bool isPassed = newErrorCursor == errorCursor;
-		errorCursor = newErrorCursor;
-
-		log.Out([i, isPassed, testName](auto& ls)
-		{
-			ls << "# TC" << i << '.' << testName << " Result ";
-			if (isPassed)
-			{
-				ls << "[PASS] #\n";
-			}
-			else
-			{
-				ls << "[FAIL] #\n";
-			}
-		});
-
-		logStream.str("");
+		return false;
 	}
+
+	const auto& testPair = tests[testIndex];
+	const auto testName = testPair.first.c_str();
+	const auto errorCursorBefore = errorMessages.size();
+
+	const auto indexLabel = static_cast<uint32_t>(testIndex);
+
+	lf.testIndex = indexLabel;
+	lf.testName = testName;
+	lfwarn.testIndex = indexLabel;
+	lfwarn.testName = testName;
+	lferr.testIndex = indexLabel;
+	lferr.testName = testName;
+
+	auto& test = testPair.second;
+	if (test == nullptr)
+	{
+		std::cerr << "Error: test is null" << std::endl;
+	}
+	Assert(test != nullptr);
+
+	auto log = Logger::Get(GetName());
+	log.Out([indexLabel, testName](auto& ls) { ls << "# TC" << indexLabel << '.' << testName << " #"; });
+
+	{
+		TLogOut logStream;
+
+		MultiPoolAllocator alloc(testName);
+		AllocatorScope scope(alloc);
+		test(logStream);
+
+		alloc.PrintUsage();
+	}
+
+	const bool isPassed = errorMessages.size() == errorCursorBefore;
+
+	log.Out([indexLabel, isPassed, testName](auto& ls)
+	{
+		ls << "# TC" << indexLabel << '.' << testName << " Result ";
+		if (isPassed)
+		{
+			ls << "[PASS] #\n";
+		}
+		else
+		{
+			ls << "[FAIL] #\n";
+		}
+	});
+
+	return isPassed;
+}
+
+const char* TestCollection::GetTestName(const std::size_t testIndex) const noexcept
+{
+	if (testIndex >= tests.size())
+	{
+		return "";
+	}
+
+	return tests[testIndex].first.c_str();
+}
+
+void TestCollection::Complete()
+{
+	isSuccess = errorMessages.empty();
+	isDone = true;
+
+	Report();
 }
 
 void TestCollection::Report() const
@@ -170,7 +189,8 @@ std::ostream& operator<<(std::ostream& os, const TestCollection::LogFlush& lf)
 		ls << '[' << prefix.c_str() << "." << lf.testName << "] " << str.c_str();
 
 		auto messages = lf.messageBuffer;
-		if (messages == nullptr) return;
+		if (messages == nullptr)
+			return;
 
 		{
 			std::stringstream msg;

@@ -11,17 +11,42 @@ int main(int argc, const char* argv[]) noexcept
 #ifdef __UNIT_TEST__
 	hbe::Engine hengine;
 	hengine.Initialize(argc, argv);
-	hbe::Test::RunTests();
+
+	// The base stream is throttled deliberately, and the throttle is what makes the guardrail bear weight rather than
+	// decorate it. CPUBudget's allowance of zero means unlimited, and CanTakeWork reads it once per pass, so a single
+	// unthrottled pass of the base stream takes every work item in the stream - which is exactly why an engine loop
+	// that pumped once and quit could leave 59 collections green: nothing in that run needed a second pass. With a 1ms
+	// allowance one pass provably cannot carry the suite's testlets, so finishing the suite requires Engine::Run to
+	// iterate, and the shortfall check below is what notices when it does not. An allowance too small only costs extra
+	// passes, never correctness, which is the harmless direction and the reason for 1ms rather than a guessed larger
+	// one.
+	hengine.GetTaskSystem()
+			.GetStream(hbe::TaskSystem::GetBaseTaskStreamIndex())
+			.ConfigureBudget(std::chrono::duration<double>(0.001));
+
+	// Registered before Run is entered, so the total the run is expected to reach belongs to the harness rather than
+	// being discovered by the suite - and a suite that never started cannot report a total matching the nothing it ran.
+	hbe::Test::RegisterSuite();
+	hbe::Test::ScheduleSuiteOnBaseStream();
+
+	// Every testlet is a task on the base stream and each one posts the next, so this loop is the only thing that can
+	// carry the suite to its end. The last testlet reports and requests shutdown from inside the run, which is why
+	// Run() returns with the tallies already settled and no separate shutdown call belongs here.
 	hengine.Run();
 
-	// Measured rather than assumed, because the sentence below is wrong about fact: with the loop header in place the base
-	// stream recorded 8 driven passes in the whole binary and at most 1 inside the loop, and Run() returned immediately -
-	// the collections drive themselves to completion inside RunTests(), which blocks, so shutdown is already requested by
-	// the time Run() is entered. What follows describes the intended arrangement, not the one this binary has.
-	// The suite runs as a task that shuts the engine down when it finishes, so the tallies
-	// are only complete once Run() returns. A failing suite has to leave a non-zero exit
-	// status behind: until now it always returned 0, which made the run impossible to gate on.
 	const hbe::TestEnv& testEnv = hbe::TestEnv::GetEnv();
+
+	// The guardrail proper: registered is known from before the run and executed is what the run achieved, so a loop
+	// that stopped iterating leaves a gap that cannot be argued away. Measured against the defect this exists for -
+	// Engine::Run's while reduced to a single pass - the suite reaches only a fraction of its testlets, and this is
+	// the line that refuses it.
+	if (testEnv.GetExecutedTestletCount() != testEnv.GetTestletCount())
+	{
+		std::cerr << "EngineTest: only " << testEnv.GetExecutedTestletCount() << " of " << testEnv.GetTestletCount()
+				  << " registered testlets ran, so the engine never drove the suite it was given" << std::endl;
+		return 1;
+	}
+
 	const unsigned int failures = testEnv.GetFailureCount();
 
 	if (failures > 0)
@@ -31,6 +56,7 @@ int main(int argc, const char* argv[]) noexcept
 	}
 
 	std::cout << "EngineTest: all " << testEnv.GetPassCount() << " collections passed" << std::endl;
+
 #else
 	// Every test body in the engine sits behind #ifdef __UNIT_TEST__, including the ones this
 	// executable links from the library modules. Built without the macro there is nothing left

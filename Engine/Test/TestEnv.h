@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include <cstddef>
 #include <memory>
 #include <string>
 #include <vector>
@@ -10,7 +11,13 @@
 
 namespace hbe
 {
-
+/// @brief Owns the test collections, their registration order, and the tally of what actually ran.
+/// @details A testlet - one test lambda inside one collection - is the unit this can schedule individually, and
+///          the unit the harness therefore holds the engine loop to: `Test::ScheduleSuiteOnBaseStream` posts one
+///          work item per testlet, so the run has to be driven testlet after testlet. The count it expects is the
+///          count registered *before* the run was posted, which is what stops a suite that never started from
+///          certifying itself: an expected total that the suite discovers for itself would read zero, agree with
+///          the zero that ran, and call the dead run balanced.
 class TestEnv final
 {
 public:
@@ -21,32 +28,6 @@ public:
 	}
 
 	[[nodiscard]] static TestEnv& GetEnv();
-	void Start();
-
-	/// @brief Collections that completed successfully.
-	[[nodiscard]] unsigned int GetPassCount() const noexcept
-	{
-		return passCount;
-	}
-
-	/// @brief Collections that ran and failed, plus any that never completed.
-	/// @details Valid after Start(); Start() clears both lists on entry.
-	[[nodiscard]] unsigned int GetFailureCount() const noexcept
-	{
-		return static_cast<unsigned int>(failedTests.size() + invalidTests.size()) +
-			   (suiteDrivenByShutdownPump ? 1u : 0u);
-	}
-
-	/// @brief Record that the suite began only because the shutdown path pumped it, and refuse to call that a pass.
-	/// @details Reported as a failure rather than printed, because a suite that prints its own defect and still exits
-	///          0 is exactly the shape that let a missing engine loop ship green once already.
-	/// @note Held as its own flag, not appended to `failedTests`: `Start()` clears that list on entry, and the whole
-	///       point is to record this before the suite has started. The first version of this recorded into a buffer
-	///       that was wiped two statements later, which is why it passed over the defect it existed to catch.
-	void NoteSuiteDrivenByShutdownPump() noexcept
-	{
-		suiteDrivenByShutdownPump = true;
-	}
 
 	template <typename T, typename... Types>
 	void AddTestCollection(Types&&... args)
@@ -54,21 +35,85 @@ public:
 		tests.push_back(std::make_unique<T>(std::forward(args)...));
 	}
 
+	/// @brief Prepare every registered collection's testlets and flatten them into one schedulable sequence.
+	/// @details Call after the last AddTestCollection and before anything is posted: the flattened sequence is what
+	///          the harness counts against, and a collection that was prepared after posting began would make that
+	///          count a moving target.
+	void PrepareTestlets();
+
+	/// @brief How many testlets the whole suite registered - the total a run is expected to reach.
+	[[nodiscard]] std::size_t GetTestletCount() const noexcept
+	{
+		return testletLabels.size();
+	}
+
+	/// @brief How many testlets have actually been run. Compare with GetTestletCount(); a shortfall is a failure.
+	[[nodiscard]] std::size_t GetExecutedTestletCount() const noexcept
+	{
+		return executedTestletCount;
+	}
+
+	/// @brief "Collection TC<n>.<name>" for one testlet, used as its task name so the registry names what is stuck.
+	[[nodiscard]] const char* GetTestletLabel(std::size_t testletIndex) const;
+
+	/// @brief Run one testlet, and finalise its collection once its last testlet has run.
+	/// @param testletIndex Index into the flattened sequence, not into a collection.
+	/// @details Collections are finalised in registration order because their testlets are contiguous in that
+	///          sequence and a collection's verdict needs all of them.
+	void RunTestlet(std::size_t testletIndex);
+
+	/// @brief Print the suite report. Call once, after the last testlet.
+	void Finalize();
+
+	/// @brief Collections that completed successfully.
+	[[nodiscard]] unsigned int GetPassCount() const noexcept
+	{
+		return passCount;
+	}
+
+	/// @brief Collections registered, whether or not they ran.
+	[[nodiscard]] unsigned int GetCollectionCount() const noexcept
+	{
+		return static_cast<unsigned int>(tests.size());
+	}
+
+	/// @brief Collections that ran and failed, plus any that never completed, plus the provenance finding below.
+	/// @details Valid after every testlet has run and its collection been finalised.
+	[[nodiscard]] unsigned int GetFailureCount() const noexcept
+	{
+		return static_cast<unsigned int>(failedTests.size() + invalidTests.size()) +
+			   (suiteDrivenByShutdownPump ? 1u : 0u);
+	}
+
+	/// @brief Record that a testlet ran while the shutdown path was pumping the base stream, not the engine loop.
+	/// @details Reported as a failure rather than printed, because a suite that prints its own defect and still
+	///          exits 0 is exactly the shape that let a missing engine loop ship green once already.
+	/// @note Held as its own flag, not appended to `failedTests`: that list is cleared when the suite prepares, and
+	///       a finding about who drove the run has to survive being recorded before the run is over.
+	void NoteSuiteDrivenByShutdownPump() noexcept
+	{
+		suiteDrivenByShutdownPump = true;
+	}
+
 private:
 	using TCPtr = std::unique_ptr<TestCollection>;
 
 	std::vector<TCPtr> tests;
+	std::vector<std::size_t> collectionOffsets;
+	std::vector<std::string> testletLabels;
 	std::vector<std::string> invalidTests;
 	std::vector<std::string> failedTests;
 	std::vector<std::string> warningMessages;
 	std::vector<std::string> errorMessages;
+
+	std::size_t executedTestletCount{0};
 
 	unsigned int testedCount;
 	unsigned int passCount;
 
 	bool suiteDrivenByShutdownPump{false};
 
-	bool ExecuteTest(TestCollection& testCollection);
+	void FinalizeCollection(TestCollection& testCollection);
 	void Report();
 };
 

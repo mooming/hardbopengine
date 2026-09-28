@@ -3,6 +3,7 @@
 #pragma once
 
 #include <chrono>
+#include <cstddef>
 #include <functional>
 #include <sstream>
 #include <string>
@@ -63,8 +64,31 @@ public:
 	explicit TestCollection(const char* title);
 	virtual ~TestCollection() = default;
 
-	void Start();
+	/// @brief Register this collection's testlets without running any of them.
+	/// @details The harness calls this for every collection before it posts anything, so the number of testlets in
+	///          the whole suite is known outside the run rather than discovered by it. Prepare() only records
+	///          lambdas, which is what makes it safe to run ahead of execution.
+	void PrepareTests();
+
+	/// @brief Run one testlet by index, with the same logging and per-testlet allocator scope the old batch loop gave
+	/// it.
+	/// @param testIndex Index into this collection's registered testlets, which PrepareTests() made enumerable.
+	/// @return True if the testlet added no error message. A testlet past the registered count returns false.
+	bool RunTestAt(std::size_t testIndex);
+
+	/// @brief Close the collection: decide success from the errors its testlets accumulated, then report.
+	void Complete();
+
 	void AddTest(const char* testName, const TTestFunc& testCase);
+
+	/// @brief How many testlets this collection registered. Zero until PrepareTests() has run.
+	[[nodiscard]] std::size_t GetTestCount() const noexcept
+	{
+		return tests.size();
+	}
+
+	/// @brief The name a testlet registered itself under, for the task name and the failure report.
+	[[nodiscard]] const char* GetTestName(std::size_t testIndex) const noexcept;
 
 	[[nodiscard]] const char* GetName() const noexcept;
 	[[nodiscard]] const std::vector<std::string>& GetWarningMessages() const noexcept;
@@ -86,7 +110,6 @@ private:
 	bool isDone;
 	bool isSuccess;
 
-	void ExecuteTests();
 	void Report() const;
 };
 
