@@ -1,5 +1,45 @@
 # Journal
 
+## 2026-09-28 22:37 - the accounting and the ceiling got reference pages, and one page was found lying
+
+Docs for the last three commits: a Global allocation accounting section in `docs/Memory/index.html`, and five new pages
+in the Test module - `TestCollection/memory-ceiling.html`, `TestCollection/get-global-allocation-count.html`,
+`TestCollection/get-max-retained-global-bytes.html`, `Testlet/get-max-retained-global-bytes.html`,
+`docs/Test/TestEnv/global-allocation-totals.html` - plus new sections on the TestCollection, TestEnv, Testlet and module
+index pages.
+
+**One existing page was not merely stale but false.** `TestCollection/add-test.html` still described `testName` as
+"Copied into a `std::string`, so it need not outlive the call" and said `nullptr` is accepted and becomes `"None"`. The
+current signature takes `const char (&)[TNameLength]` - a literal is the only thing that can arrive - and a null
+callable goes to `ReportNullTestCase`. Corrected while adding the ceiling overload, because leaving a page that
+describes a different function is worse than not touching it.
+
+**The measured reasoning went in with the API, which is the point of a reference.** The ceiling page carries the
+percentile table (median 48, p90 352, p99 3,072, max 33,200), the candidate-ceiling table that shows why 64 KiB, why a
+ceiling on *requests* was rejected on the same data, and the three limits stated plainly: the pool door is outside the
+guard, retention can read slightly low, and no in-suite test can cover the guard because a testlet cannot run a testlet
+and one over its ceiling would fail the run it is proving. The Memory section carries the interposition measurement -
+executable-level `__interpose` of `malloc` caught nothing, not even a direct `malloc(64)` from the test's own
+translation unit, while defining `operator new` caught all three of `std::string`, `std::vector` and a bare
+`operator new`: 3 requests, 18,496 bytes.
+
+**My error, caught by my own checker.** A link to `suite-entry-points.html` from a TestEnv page pointed at the TestEnv
+folder; the page lives in `UnitTestCollection/`. This is the second time in this session that I pasted a link at the
+wrong depth - the same class of mistake as the banner links earlier - so the check is now part of the sequence rather
+than something I remember afterwards. Verified after the fix: **0 dead file links and 0 missing anchors across
+`docs/Test` and `docs/Memory`**, tags balanced on all ten pages touched.
+
+Nav lists in 20 Test module pages were rebuilt to include the new pages; the two pages that document removed API
+(`TestCollection/start.html`, `prepare.html`, `TestEnv/start.html`) are labelled as such in the nav rather than dropped,
+because deleting their reachability would be a coverage regression in a different costume.
+
+Pre-existing and untouched, recorded rather than fixed by me: dead links inside `docs/Core/TaskID`, `docs/Core/Runnable`
+and `docs/OSAL/Application` - all in folders the concurrent agent owns.
+
+Gate: `check.sh` 0 mechanical violations, 0 advisory, build gate PASS 12/12; Debug/Dev/Release all
+`all 59 collections passed (372 testlets)`.
+
+
 ## 2026-09-28 21:34 - the ceiling became a per-testlet declaration, and the mutant proved both directions
 
 The owner chose the option where each testlet can declare its own allowance. The point of putting it in an

@@ -40,6 +40,7 @@
     <li><a href="#allocatorproxy">AllocatorProxy</a></li>
     <li><a href="#poolconfig">PoolConfig</a></li>
     <li><a href="#shareable">Shareable</a></li>
+    <li><a href="#global-allocation">Global allocation accounting</a></li>
     <li><a href="#coverage">Coverage</a></li>
   </ul>
 
@@ -368,6 +369,147 @@
 
 <h3>Non-member helper functions</h3>
 <p>None.</p>
+
+<h2 id="global-allocation">Global allocation accounting (<code>Engine/Memory/GlobalAllocation.cpp</code>)</h2>
+
+<p>
+  The engine owns the process's allocation entry points, and the accounting that comes with them. It exists
+  because <a href="#allocatorscope"><code>AllocatorScope</code></a> cannot reach them: a
+  <code>std::vector</code> or <code>std::string</code> reaches the heap through <code>operator new</code>, which no
+  scope redirects, so without this file an allocation made in the middle of anything - a task, a test, a
+  subsystem boot - happens off every report the engine owns. That is not a hypothetical: measured over the unit
+  test suite, <strong>320 of 372 testlets</strong> reach the global heap from their own bodies, and the engine's
+  own per-testlet allocator reports usage for none of them.
+</p>
+
+<h3>Static members of <code>MemoryManager</code></h3>
+<table>
+  <tr><th>Declaration</th><th>What a caller depends on</th></tr>
+  <tr>
+    <td><code>static void RecordGlobalAllocation(size_t nBytes) noexcept</code></td>
+    <td>Adds one request and its byte count to the cumulative totals. Called by the allocation entry points, not
+        by engine code directly; never logs and never allocates, because an accounting path that allocated would
+        re-enter the allocator it measures.</td>
+  </tr>
+  <tr>
+    <td><code>static void RecordGlobalFree(size_t nBytes) noexcept</code></td>
+    <td>Adds one release to the cumulative released totals. Cumulative on both sides, so the live figure is
+        derived rather than tracked - see the boot window below.</td>
+  </tr>
+  <tr>
+    <td><code>static size_t GetGlobalAllocationBytes() noexcept</code></td>
+    <td>Bytes <em>requested</em> through the entry points since process start. Cumulative, not live: freeing does
+        not reduce it. Read it as a delta around a region.</td>
+  </tr>
+  <tr>
+    <td><code>static uint64_t GetGlobalAllocationCount() noexcept</code></td>
+    <td>Requests made since process start. Same cumulative rule.</td>
+  </tr>
+  <tr>
+    <td><code>static size_t GetGlobalFreeBytes() noexcept</code></td>
+    <td>Bytes released since process start, where a release through the unsized <code>operator delete</code>
+        reports the block size the system heap chose rather than the size originally asked for.</td>
+  </tr>
+  <tr>
+    <td><code>static uint64_t GetGlobalFreeCount() noexcept</code></td>
+    <td>Releases that reached the entry points since process start.</td>
+  </tr>
+</table>
+
+<h3>Contract</h3>
+<table>
+  <tr><th>Property</th><th>Guarantee</th></tr>
+  <tr>
+    <td>Availability</td>
+    <td>Valid from the first instruction. The counters are constant initialised, so there is no ready flag to get
+        wrong and no window in which an allocation goes unrecorded. This is why the record is not paired: an
+        allocation made before anything existed and released afterwards cannot drive a negative figure, which is
+        exactly what a paired record would suffer.</td>
+  </tr>
+  <tr>
+    <td>Thread safety</td>
+    <td>Relaxed atomics. The totals are correct in the aggregate; there is no ordering between the byte counter
+        and the request counter, so never treat a bytes/count pair as one instantaneous sample.</td>
+  </tr>
+  <tr>
+    <td>Recursion</td>
+    <td>Impossible by construction on the accounting path. The failure path is the exception, and it is guarded by
+        giving any installed <code>new_handler</code> its turn before reporting.</td>
+  </tr>
+  <tr>
+    <td>Exhaustion</td>
+    <td>Logs the size and alignment, then aborts. A deliberate deviation from the standard's
+        <code>std::bad_alloc</code>: the engine is exception-free, so nothing could catch it, and throwing would
+        lose the message with it.</td>
+  </tr>
+  <tr>
+    <td>Alignment</td>
+    <td>The over-aligned forms go through <code>posix_memalign</code> with the requested alignment rounded up into
+        the size, which is what that API requires.</td>
+  </tr>
+</table>
+
+<h3>Decisions, with what decided them</h3>
+<table>
+  <tr><th>Decision</th><th>Reason, measured where measurement was possible</th></tr>
+  <tr>
+    <td>The backing store stays <code>malloc</code></td>
+    <td><a href="#memorymanager"><code>SystemAllocator</code></a> is the natural owner of the system heap and
+        routing these entry points through it is the right destination. Not yet: its investigation configuration
+        allocates page granular with underrun placement, which would silently turn each small standard-library
+        allocation into a page and change what every configuration measures. Keeping <code>malloc</code> also
+        keeps releases unambiguous - a pointer produced before this file existed is still freeable by the same call
+        that was freeing it then.</td>
+  </tr>
+  <tr>
+    <td>Not merged with <code>SystemAllocator</code>'s usage record</td>
+    <td>Two independent reasons. <code>MultiPoolAllocator</code> takes its bank backing through
+        <code>AllocatorScope(MemoryManager::SystemAllocatorID)</code>, so a merged figure would attribute a bank to
+        whichever testlet or task happened to trigger it. And the two count different quantities: this one counts
+        bytes requested, that one counts capacity obtained and pairs allocations with releases.</td>
+  </tr>
+  <tr>
+    <td>The entry points are <code>operator new</code>, not <code>malloc</code></td>
+    <td>Measured on macOS/arm64 with Apple clang before choosing. A <code>__DATA,__interpose</code> entry replacing
+        <code>malloc</code> in the executable caught <strong>nothing</strong> - not even a <code>malloc(64)</code>
+        issued directly by the test's own translation unit - because callers inside the dyld shared cache are
+        pre-bound and interposition cannot rebind them. Defining <code>operator new</code> in the binary caught
+        every allocation of <code>std::string</code>, <code>std::vector</code> and a bare <code>operator new</code>
+        in the same program: 3 requests, 18,496 bytes. Allocations made <em>inside</em> system images still bypass
+        this, which is a boundary of the technique rather than a defect in it.</td>
+  </tr>
+  <tr>
+    <td>Cost is accepted in all three configurations</td>
+    <td>A/B with counters live against counters zeroed, three samples each, median: Debug +0.23s (+1.3%), Release
+        indistinguishable - the instrumented build measured 0.53s <em>faster</em>, which says only that the
+        difference is noise.</td>
+  </tr>
+</table>
+
+<h3>Reading it</h3>
+<pre><code><span class="cm">// Every figure is a delta: none of these totals is ever reduced by a release.</span>
+<span class="kw">const auto</span> requestsBefore    = MemoryManager::GetGlobalAllocationCount();
+<span class="kw">const auto</span> bytesBefore       = MemoryManager::GetGlobalAllocationBytes();
+<span class="kw">const auto</span> freedBytesBefore  = MemoryManager::GetGlobalFreeBytes();
+
+DoWork();
+
+<span class="kw">const auto</span> requests = MemoryManager::GetGlobalAllocationCount() - requestsBefore;
+<span class="kw">const auto</span> bytes    = MemoryManager::GetGlobalAllocationBytes() - bytesBefore;
+<span class="kw">const auto</span> freed    = MemoryManager::GetGlobalFreeBytes() - freedBytesBefore;
+
+<span class="cm">/* Retained is what a ceiling wants: a loop may request hundreds of megabytes and
+ *  hold almost none of it, a leak holds every byte without asking for more. The
+ *  clamp is not decoration - a block can be larger than the size that was asked
+ *  for, so freed can slightly outrun bytes. */</span>
+<span class="kw">const auto</span> retained = bytes &gt; freed ? bytes - freed : 0;</code></pre>
+
+<p>
+  The unit test suite is the current consumer and shows the shape: it measures the delta around each testlet body,
+  refuses a testlet holding more than its ceiling - see
+  <a href="../Test/TestCollection/memory-ceiling.html">the Test module's ceiling page</a> - and prints the totals for
+  the run.
+</p>
 
 <h2 id="coverage">Coverage</h2>
 

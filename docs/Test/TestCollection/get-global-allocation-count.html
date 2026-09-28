@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TestCollection::GetGlobalAllocationCount — Test — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<div style="border-left:4px solid #b45309;background:#fffbeb;padding:10px 14px;margin:0 0 22px 0;font-size:0.94em;">
+  <strong>Lifecycle changed on 2026-09-28.</strong> The one-call run this page describes is gone. A test is now a
+  <a href="../Testlet/index.html"><code>Testlet</code></a> and the unit the harness schedules, so
+  <a href="../TestCollection/start.html"><code>TestCollection::Start</code></a> became
+  <code>PrepareTests</code> / <code>RunTestAt</code> / <code>Complete</code>,
+  <a href="../TestEnv/start.html"><code>TestEnv::Start</code></a> became <code>PrepareTestlets</code> /
+  <code>RunTestlet</code> / <code>Finalize</code>, and <code>hbe::Test::RunTests</code> became
+  <a href="../UnitTestCollection/suite-entry-points.html"><code>RegisterSuite</code> and
+  <code>ScheduleSuiteOnBaseStream</code></a>. The statements below that name the old lifecycle are history, not
+  reference; the method pages that should replace them are recorded as owed work in
+  <code>.Plans/TODO_task_system.md</code>.
+</div>
+
+
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+    <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">What each one counts</a></li>
+    <li><a href="#validity">When the figures mean anything</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#see">See also</a></li>
+  </ul>
+
+        <h3><a href="index.html">TestCollection</a> methods</h3>
+  <ul class="methods">
+    <li><a href="memory-ceiling.html">MaxRetainedGlobalBytes</a></li>
+    <li><a href="add-test.html">AddTest</a></li>
+    <li><a class="current" href="get-global-allocation-count.html">GetGlobalAllocationCount</a></li>
+    <li><a href="get-max-retained-global-bytes.html">GetMaxRetainedGlobalBytes</a></li>
+    <li><a href="get-name.html">GetName</a></li>
+    <li><a href="get-warning-messages.html">GetWarningMessages</a></li>
+    <li><a href="get-error-messages.html">GetErrorMessages</a></li>
+    <li><a href="is-done.html">IsDone</a></li>
+    <li><a href="is-success.html">IsSuccess</a></li>
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+    <li><a href="start.html">Start (removed API)</a></li>
+    <li><a href="prepare.html">Prepare (removed API)</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Test</a> /
+  <a href="index.html">TestCollection</a> / GetGlobalAllocationCount
+</p>
+
+<h1><span class="fn">GetGlobalAllocationCount</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::TestCollection</span>
+  <span class="tag">Engine/Test/TestCollection.h</span>
+  <span class="tag">const noexcept</span>
+  what this collection's testlet bodies took through the global allocation entry points
+</p>
+
+<h2 id="signature">Signature</h2>
+<pre><code>[[nodiscard]] std::uint64_t <span class="fn">GetGlobalAllocationCount</span>() <span class="kw">const</span> noexcept;
+[[nodiscard]] std::size_t   <span class="fn">GetGlobalAllocationBytes</span>() <span class="kw">const</span> noexcept;
+[[nodiscard]] std::size_t   <span class="fn">GetTestletCountWithGlobalAllocations</span>() <span class="kw">const</span> noexcept;</code></pre>
+
+<p>
+  The three are one read-out and are documented together, because each on its own is a field return and the
+  interesting fact is how they differ. Splitting a page per line of code would produce three pages that say nothing
+  and hide the one thing worth reading, which is the difference between requests, bytes and how many testlets were
+  involved.
+</p>
+
+<h2 id="description">What each one counts</h2>
+<table>
+<thead><tr><th>Getter</th><th>Counts</th><th>What a reader should take from it</th></tr></thead>
+  <tr>
+    <td><code>GetGlobalAllocationCount</code></td>
+    <td>Requests this collection's testlet bodies sent to <code>operator new</code>.</td>
+    <td>Churn. A testlet doing this thousands of times is doing something a test usually should not, whatever it
+        holds at the end.</td>
+  </tr>
+  <tr>
+    <td><code>GetGlobalAllocationBytes</code></td>
+    <td>Bytes those requests asked for, cumulative.</td>
+    <td>Not memory used. Freeing does not reduce it, so a stress loop reaches hundreds of megabytes while retaining
+        almost nothing. For the held figure see
+        <a href="get-max-retained-global-bytes.html"><code>GetMaxRetainedGlobalBytes</code></a>.</td>
+  </tr>
+  <tr>
+    <td><code>GetTestletCountWithGlobalAllocations</code></td>
+    <td>How many of this collection's testlets reached the global heap at all.</td>
+    <td>The honest scale of the problem. Measured across the suite this is 320 of 372 testlets in Debug and 282 in
+        Release, which is why a refusal rule needed a decided ceiling rather than an exception list.</td>
+  </tr>
+</table>
+
+<h2 id="validity">When the figures mean anything</h2>
+<p>
+  All three read zero before the testlets have run, and they are cumulative over the testlets of this collection
+  only - the fixture that prepares a testlet and everything the process allocated earlier are outside them. The
+  measurement window is the testlet body: snapshots are taken after the collection's
+  <code>MultiPoolAllocator</code> and <code>AllocatorScope</code> have been constructed and immediately around the
+  call into the testlet itself.
+</p>
+
+<h2 id="return">Return value</h2>
+<p>
+  The counters described above. No allocation, no formatting, no side effect; safe to call from a report path while
+  another testlet is mid-run, though the numbers are then a snapshot of a moving total.
+</p>
+
+<h2 id="see">See also</h2>
+<ul>
+  <li><a href="memory-ceiling.html"><code>MaxRetainedGlobalBytes</code></a> - the ceiling and where its number came from</li>
+  <li><a href="get-max-retained-global-bytes.html"><code>GetMaxRetainedGlobalBytes</code></a> - the quantity the ceiling is applied to</li>
+  <li><a href="../../Memory/index.html#global-allocation">Global allocation accounting</a> - the process-wide counters these are deltas of</li>
+</ul>
+
+<footer class="prevnext">
+  <span><a href="../index.html">Test</a></span>
+  <span><a href="../../index.html">Module Index</a></span>
+</footer>
+
+</main>
+</body>
+</html>

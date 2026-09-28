@@ -37,18 +37,21 @@
     <li><a href="#example">Examples</a></li>
   </ul>
 
-  <h3><a href="index.html">TestCollection</a> methods</h3>
+        <h3><a href="index.html">TestCollection</a> methods</h3>
   <ul class="methods">
-    <li><a href="constructors.html">constructors</a></li>
-    <li><a href="destructor.html">destructor</a></li>
-    <li><a href="start.html">Start</a></li>
+    <li><a href="memory-ceiling.html">MaxRetainedGlobalBytes</a></li>
     <li><a class="current" href="add-test.html">AddTest</a></li>
-    <li><a href="prepare.html">Prepare</a></li>
+    <li><a href="get-global-allocation-count.html">GetGlobalAllocationCount</a></li>
+    <li><a href="get-max-retained-global-bytes.html">GetMaxRetainedGlobalBytes</a></li>
     <li><a href="get-name.html">GetName</a></li>
     <li><a href="get-warning-messages.html">GetWarningMessages</a></li>
     <li><a href="get-error-messages.html">GetErrorMessages</a></li>
     <li><a href="is-done.html">IsDone</a></li>
     <li><a href="is-success.html">IsSuccess</a></li>
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+    <li><a href="start.html">Start (removed API)</a></li>
+    <li><a href="prepare.html">Prepare (removed API)</a></li>
   </ul>
 </nav>
 
@@ -73,6 +76,15 @@
 <pre><code><span class="kw">template</span> &lt;<span class="kw">size_t</span> TNameBytes, <span class="kw">typename</span> TClosure&gt;
 <span class="kw">void</span> <span class="fn">AddTest</span>(<span class="kw">const char</span> (&amp;testName)[TNameBytes],
                   TClosure&amp;&amp; testCase)</code></pre>
+
+<p>
+  A second form declares the testlet's memory allowance beside it instead of taking the suite default. Everything
+  else about the call is unchanged:
+</p>
+
+<pre><code><span class="kw">template</span> &lt;<span class="kw">size_t</span> TNameLength, <span class="kw">typename</span> TClosure&gt;
+<span class="kw">void</span> <span class="fn">AddTest</span>(<span class="kw">const char</span> (&amp;testName)[TNameLength], std::size_t maxRetainedGlobalBytes,
+              TClosure&amp;&amp; testCase)</code></pre>
 
 <h2 id="description">Function description</h2>
 
@@ -103,17 +115,39 @@
   null state to test.
 </p>
 
+<p>
+  The overload that takes an allowance exists for reviewability rather than convenience. Retention is measured per
+  testlet against <a href="memory-ceiling.html"><code>MaxRetainedGlobalBytes</code></a>, and a breach fails the run
+  naming the testlet - so the way a heavy test gets past the ceiling should be visible in the diff that grants it.
+  An argument at the registration site is; an edit to the shared constant is not, and it relaxes every other testlet
+  at the same time. Nothing passes the argument today, so the first call site that does will be the only precedent
+  there is.
+</p>
+
 <h2 id="parameters">Parameters</h2>
 
 <table>
   <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
   <tr>
     <td><code>testName</code></td>
-    <td><code>const char*</code></td>
+    <td><code>const char (&amp;)[TNameLength]</code></td>
     <td>
-      A short description of the case — the engine's convention is a sentence stating the invariant, not the
-      function under test. Copied into a <code>std::string</code>, so it need not outlive the call.
-      <code>nullptr</code> is accepted and becomes <code>"None"</code>
+      A string literal - the type admits nothing else, which is the point: the array has static storage so the
+      <a href="../Testlet/index.html"><code>Testlet</code></a> may hold a view of it, and it is null terminated, which
+      the log line and the per-testlet allocator both need. A computed name fails to compile here instead of dangling
+      later. Longer than <code>Testlet::MaxNameBytes</code> (128) is refused at the site that registered it, never
+      truncated.
+    </td>
+  </tr>
+  <tr>
+    <td><code>maxRetainedGlobalBytes</code></td>
+    <td><code>std::size_t</code></td>
+    <td>
+      Only in the second form: how much global heap this testlet may still be holding when its body ends. The
+      single-argument form passes <a href="memory-ceiling.html"><code>MaxRetainedGlobalBytes</code></a>, so the
+      exception to the ceiling is an argument beside the test that needs it rather than an edit to a shared constant
+      that quietly relaxes all 372 testlets. Pass it when the test genuinely retains - a cache it warms, a buffer it
+      intentionally keeps - and state the reason at the site, because the number alone is not an argument.
     </td>
   </tr>
   <tr>
@@ -175,6 +209,23 @@
                 ls &lt;&lt; <span class="st">"A registry with room did not issue a task, so nothing here can be checked."</span> &lt;&lt; lferr;
                 <span class="kw">return</span>;
         }</code></pre>
+
+<h2 id="example-ceiling">Example: a testlet that keeps memory on purpose</h2>
+
+<pre><code>        <span class="cm">// Warms a lookup table the whole collection reads afterwards, so the retention is</span>
+        <span class="cm">// the point of the test rather than a leak. Declared here, next to the reason.</span>
+        AddTest(<span class="st">"The cache keeps its warmed table between testlets"</span>,
+                256 * 1024,
+                [this](<span class="kw">auto</span>&amp; ls) {
+                        Cache&amp; cache = BuildCache(ls);
+                        Assert(cache.GetEntryCount() == ExpectedEntries);
+                });</code></pre>
+
+<p>
+  The log then says so on every line that testlet produces -
+  <code>…, retained 98304 bytes, freed 4120 bytes outside the allocator scope, against a declared ceiling of 262144 #</code>
+  - which is what keeps an exception legible in a log excerpt when nobody is looking at the source that registered it.
+</p>
 
 <footer class="prevnext">
   <span><a href="index.html">← TestCollection</a></span>

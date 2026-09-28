@@ -315,6 +315,20 @@
   </tr>
 </table>
 
+<h2 id="memory">What a testlet may spend</h2>
+
+<p>
+  A testlet is a task that owns nothing, and it is also measured for what it spends. Each one is checked for how much
+  global heap it still holds when its body ends, against
+  <a href="TestCollection/memory-ceiling.html"><code>TestCollection::MaxRetainedGlobalBytes</code></a> - 64 KiB, taken
+  from the measured distribution rather than picked. The reason the guard has to sit on the global door is the module's
+  own history: the per-testlet allocator scope that was built to watch a test's memory sees none of it, because a
+  <code>std::vector</code> or <code>std::string</code> inside a test reaches the heap through <code>operator new</code>,
+  which no scope redirects. Those entry points are accounted for by
+  <a href="../Memory/index.html#global-allocation"><code>MemoryManager</code></a>, and this module is what turns the
+  accounting into a limit.
+</p>
+
 <footer class="prevnext">
   <span><a href="../String/index.html">← String</a></span>
   <span><a href="../index.html">Module Index</a></span>

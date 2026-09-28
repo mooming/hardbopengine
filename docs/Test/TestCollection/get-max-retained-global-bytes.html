@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>TestCollection::GetName — Test — HardBop Engine API reference</title>
+<title>TestCollection::GetMaxRetainedGlobalBytes — Test — HardBop Engine API reference</title>
 <link rel="stylesheet" href="../../assets/hbe-docs.css">
 </head>
 <body>
@@ -44,12 +44,12 @@
   </ul>
 
   <h3>This function</h3>
-  <ul>
+    <ul>
     <li><a href="#signature">Signature</a></li>
     <li><a href="#description">Function description</a></li>
-    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#bias">Which way it is wrong</a></li>
     <li><a href="#return">Return value</a></li>
-    <li><a href="#example">Examples</a></li>
+    <li><a href="#see">See also</a></li>
   </ul>
 
         <h3><a href="index.html">TestCollection</a> methods</h3>
@@ -57,8 +57,8 @@
     <li><a href="memory-ceiling.html">MaxRetainedGlobalBytes</a></li>
     <li><a href="add-test.html">AddTest</a></li>
     <li><a href="get-global-allocation-count.html">GetGlobalAllocationCount</a></li>
-    <li><a href="get-max-retained-global-bytes.html">GetMaxRetainedGlobalBytes</a></li>
-    <li><a class="current" href="get-name.html">GetName</a></li>
+    <li><a class="current" href="get-max-retained-global-bytes.html">GetMaxRetainedGlobalBytes</a></li>
+    <li><a href="get-name.html">GetName</a></li>
     <li><a href="get-warning-messages.html">GetWarningMessages</a></li>
     <li><a href="get-error-messages.html">GetErrorMessages</a></li>
     <li><a href="is-done.html">IsDone</a></li>
@@ -75,85 +75,57 @@
 <p class="breadcrumb">
   <a href="../../index.html">Module Index</a> /
   <a href="../index.html">Test</a> /
-  <a href="index.html">TestCollection</a> / GetName
+  <a href="index.html">TestCollection</a> / GetMaxRetainedGlobalBytes
 </p>
 
-<h1><span class="fn">GetName</span></h1>
+<h1><span class="fn">GetMaxRetainedGlobalBytes</span></h1>
 <p class="subtitle">
   <span class="tag">member of hbe::TestCollection</span>
   <span class="tag">Engine/Test/TestCollection.h</span>
   <span class="tag">const noexcept</span>
-  the collection's title — which is also the log category its cases report under
+  the largest amount of global heap any one of this collection's testlets still held at the end of its body
 </p>
 
 <h2 id="signature">Signature</h2>
-
-<pre><code>[[nodiscard]] <span class="kw">const char</span>* <span class="fn">GetName</span>() <span class="kw">const</span> <span class="kw">noexcept</span>;</code></pre>
+<pre><code>[[nodiscard]] std::size_t <span class="fn">GetMaxRetainedGlobalBytes</span>() <span class="kw">const</span> noexcept;</code></pre>
 
 <h2 id="description">Function description</h2>
-
 <p>
-  Returns <code>title.c_str()</code>, the copy of the name given to the
-  <a href="constructors.html">constructor</a>. A field read: no allocation, no formatting, nothing that can fail.
+  Retention for one testlet is the bytes it requested through the global allocation entry points minus the bytes it
+  released during the same window; this getter reports the maximum over the testlets this collection ran. It is the
+  quantity <a href="memory-ceiling.html"><code>MaxRetainedGlobalBytes</code></a> is compared against, so a reader who
+  wants to know how close a collection is to its ceiling can ask for this without reading a log.
+</p>
+<p>
+  It is a maximum, not a total: two testlets each holding 4 KiB report 4 KiB, because the guard is per testlet. That
+  is deliberate and matches what a breach means - one test being heavy, not the collection being sum-of-parts heavy.
 </p>
 
+<h2 id="bias">Which way it is wrong</h2>
 <p>
-  Nothing in the class writes <code>title</code> after construction, so the pointer is stable for the object's
-  lifetime and may be kept. It is never null for a collection that finished constructing — an empty title yields an
-  empty string, not a null pointer, and a null argument never reaches this state.
+  Over-retention, never under: a release that arrives through the unsized <code>operator delete</code> reports the
+  block size the system heap chose, which can exceed the size originally asked for, so the released total can
+  slightly outrun the requested total. The difference is clamped at zero rather than allowed to go negative, which
+  is why the arithmetic reads as a ternary instead of a subtraction. A testlet whose releases are all unsized - most
+  of them, in practice - will therefore look as if it retained a little more than it really did, and that direction
+  is the safe one for a ceiling.
 </p>
-
-<p>
-  Inside the class this is how the framework labels its own output: <a href="start.html"><code>Start</code></a>
-  opens its log with <code>Logger::Get(GetName())</code>, <code>Report</code> prints the verdict through the same
-  category, and <a href="../TestEnv/start.html"><code>TestEnv::ExecuteTest</code></a> uses it for the failed-list and
-  invalid-list entries and for the <code>[CollectionName]</code> prefix on every collected message. It is the join
-  key between one collection's output and the environment's summary, not merely a display string.
-</p>
-
-<h2 id="parameters">Parameters</h2>
-
-<p>None.</p>
 
 <h2 id="return">Return value</h2>
-
-<table>
-  <tr><th>Type</th><th>What you get</th></tr>
-  <tr>
-    <td><code>const char*</code></td>
-    <td>
-      The title, valid until the collection is destroyed — and since nothing mutates it, that is a stable pointer
-      rather than a borrowed one. <code>[[nodiscard]]</code>, so calling it for effect is a compile error; there is
-      no effect to call it for
-    </td>
-  </tr>
-</table>
-
-<h2 id="example">Examples</h2>
-
-<p>The framework's own uses — collecting a failed collection's name, and prefixing its warnings:</p>
-
-<p class="meta">From Engine/Test/TestEnv.cpp</p>
-
-<pre><code>        <span class="kw">if</span> (!testCollection.<span class="fn">IsDone</span>())
-        {
-                invalidTests.<span class="fn">push_back</span>(testCollection.<span class="fn">GetName</span>());
-        }
-
-        <span class="cm">// … and later, for a collection that ran and failed:</span>
-        ss &lt;&lt; testCollection.<span class="fn">GetName</span>() &lt;&lt; <span class="st">" : [FAIL]"</span>;
-        failedTests.<span class="fn">push_back</span>(ss.<span class="fn">str</span>());</code></pre>
-
 <p>
-  Outside the framework, the name is also the way to address one collection's log output while it runs: it is the
-  <a href="../../Log/index.html#logger">logger</a> category the guards were built from, so filtering on
-  <code>"ArrayTest"</code> filters exactly that collection's lines and nothing else. Subclasses rarely call it — they
-  already know their own name — and no test body in the engine does.
+  Zero before any testlet has run, or for a collection whose testlets free everything they take. Measured over the
+  whole suite, the largest figure any collection reports is 33,200 bytes.
 </p>
 
+<h2 id="see">See also</h2>
+<ul>
+  <li><a href="get-global-allocation-count.html">The cumulative read-out</a> - requests and bytes, which are a different question</li>
+  <li><a href="../Testlet/get-max-retained-global-bytes.html"><code>Testlet::GetMaxRetainedGlobalBytes</code></a> - the per-testlet allowance this is compared with</li>
+</ul>
+
 <footer class="prevnext">
-  <span><a href="index.html">← TestCollection</a></span>
-  <span><a href="index.html#methods">All TestCollection methods</a></span>
+  <span><a href="../index.html">Test</a></span>
+  <span><a href="../../index.html">Module Index</a></span>
 </footer>
 
 </main>

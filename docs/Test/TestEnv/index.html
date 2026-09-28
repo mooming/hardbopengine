@@ -61,6 +61,7 @@
     <li><a href="add-test-collection.html">AddTestCollection</a></li>
     <li><a href="get-pass-count.html">GetPassCount</a></li>
     <li><a href="get-failure-count.html">GetFailureCount</a></li>
+    <li><a href="global-allocation-totals.html">Global allocation totals</a></li>
   </ul>
 </nav>
 
@@ -332,6 +333,17 @@
         <a href="../UnitTestCollection/suite-entry-points.html"><code>RunTests</code></a>, and it is code, not documentation</td>
   </tr>
 </table>
+
+<h2 id="memory">Global allocation totals</h2>
+
+<p>
+  <a href="global-allocation-totals.html"><code>GetGlobalAllocationBytes</code></a>,
+  <code>GetGlobalAllocationCount</code> and <code>GetTestletCountWithGlobalAllocations</code> sum the matching
+  per-collection figures, so the suite reports one triple instead of one per collection. They are the numbers behind
+  the report line <code># Global heap over testlet bodies = …</code>. Read them together with the whole-process figures
+  the entry point prints from <a href="../../Memory/index.html#global-allocation"><code>MemoryManager</code></a>: the
+  gap between the two is what the harness and the engine consume on a run's behalf.
+</p>
 
 <footer class="prevnext">
   <span><a href="../index.html">← Test</a></span>

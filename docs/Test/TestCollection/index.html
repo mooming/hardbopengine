@@ -59,6 +59,9 @@
     <li><a href="destructor.html">destructor</a></li>
     <li><a href="start.html">Start</a></li>
     <li><a href="add-test.html">AddTest</a></li>
+    <li><a href="memory-ceiling.html">MaxRetainedGlobalBytes</a></li>
+    <li><a href="get-global-allocation-count.html">GetGlobalAllocationCount</a></li>
+    <li><a href="get-max-retained-global-bytes.html">GetMaxRetainedGlobalBytes</a></li>
     <li><a href="prepare.html">Prepare</a></li>
     <li><a href="get-name.html">GetName</a></li>
     <li><a href="get-warning-messages.html">GetWarningMessages</a></li>
@@ -448,6 +451,31 @@
         <code>#ifdef __UNIT_TEST__</code> region — <code>ArrayTest</code> in
         <a href="../../Container/index.html#array"><code>Engine/Container/Array.h</code></a> is one of roughly sixty.
         Which ones are registered is <a href="../UnitTestCollection/suite-entry-points.html">RunTests</a></td>
+  </tr>
+</table>
+
+
+<h2 id="memory">Memory ceiling</h2>
+
+<p>
+  Each testlet is measured for how much global heap it still holds when its body ends, and a testlet over
+  <a href="memory-ceiling.html"><code>MaxRetainedGlobalBytes</code></a> fails the run by name. The quantity is
+  retention - requested minus released - because a stress loop can request hundreds of megabytes while holding almost
+  none, and a leak holds every byte without asking for more. A heavy test gets past the ceiling by declaring its own
+  allowance at the <a href="add-test.html">registration site</a>, not by editing the shared constant.
+</p>
+
+<table>
+  <tr><th>Read-out</th><th>What it answers</th></tr>
+  <tr>
+    <td><a href="get-max-retained-global-bytes.html"><code>GetMaxRetainedGlobalBytes</code></a></td>
+    <td>How close this collection came to its ceiling - the worst single testlet, in bytes still held.</td>
+  </tr>
+  <tr>
+    <td><a href="get-global-allocation-count.html"><code>GetGlobalAllocationCount</code></a>,
+        <code>GetGlobalAllocationBytes</code>, <code>GetTestletCountWithGlobalAllocations</code></td>
+    <td>Churn rather than retention: requests, cumulative bytes asked for, and how many testlets touched the global
+        heap at all. Measured suite-wide that last figure is 320 of 372 in Debug.</td>
   </tr>
 </table>
 

@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TestCollection::MaxRetainedGlobalBytes — Test — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<div style="border-left:4px solid #b45309;background:#fffbeb;padding:10px 14px;margin:0 0 22px 0;font-size:0.94em;">
+  <strong>Lifecycle changed on 2026-09-28.</strong> The one-call run this page describes is gone. A test is now a
+  <a href="../Testlet/index.html"><code>Testlet</code></a> and the unit the harness schedules, so
+  <a href="../TestCollection/start.html"><code>TestCollection::Start</code></a> became
+  <code>PrepareTests</code> / <code>RunTestAt</code> / <code>Complete</code>,
+  <a href="../TestEnv/start.html"><code>TestEnv::Start</code></a> became <code>PrepareTestlets</code> /
+  <code>RunTestlet</code> / <code>Finalize</code>, and <code>hbe::Test::RunTests</code> became
+  <a href="../UnitTestCollection/suite-entry-points.html"><code>RegisterSuite</code> and
+  <code>ScheduleSuiteOnBaseStream</code></a>. The statements below that name the old lifecycle are history, not
+  reference; the method pages that should replace them are recorded as owed work in
+  <code>.Plans/TODO_task_system.md</code>.
+</div>
+
+
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+    <ul>
+    <li><a href="#signature">Declaration</a></li>
+    <li><a href="#description">What it guards</a></li>
+    <li><a href="#quantity">Retention, not requests</a></li>
+    <li><a href="#basis">The number, and what produced it</a></li>
+    <li><a href="#enforcement">How a breach behaves</a></li>
+    <li><a href="#exceptions">Raising it for one testlet</a></li>
+    <li><a href="#limits">What this ceiling does not cover</a></li>
+    <li><a href="#see">See also</a></li>
+  </ul>
+
+        <h3><a href="index.html">TestCollection</a> methods</h3>
+  <ul class="methods">
+    <li><a class="current" href="memory-ceiling.html">MaxRetainedGlobalBytes</a></li>
+    <li><a href="add-test.html">AddTest</a></li>
+    <li><a href="get-global-allocation-count.html">GetGlobalAllocationCount</a></li>
+    <li><a href="get-max-retained-global-bytes.html">GetMaxRetainedGlobalBytes</a></li>
+    <li><a href="get-name.html">GetName</a></li>
+    <li><a href="get-warning-messages.html">GetWarningMessages</a></li>
+    <li><a href="get-error-messages.html">GetErrorMessages</a></li>
+    <li><a href="is-done.html">IsDone</a></li>
+    <li><a href="is-success.html">IsSuccess</a></li>
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+    <li><a href="start.html">Start (removed API)</a></li>
+    <li><a href="prepare.html">Prepare (removed API)</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Test</a> /
+  <a href="index.html">TestCollection</a> / MaxRetainedGlobalBytes
+</p>
+
+<h1><span class="fn">MaxRetainedGlobalBytes</span></h1>
+<p class="subtitle">
+  <span class="tag">static constexpr member of hbe::TestCollection</span>
+  <span class="tag">Engine/Test/TestCollection.h</span>
+  <span class="tag">std::size_t</span>
+  the ceiling on global heap memory one testlet may still be holding when its body ends
+</p>
+
+<h2 id="signature">Declaration</h2>
+<pre><code><span class="kw">static constexpr std::size_t</span> <span class="fn">MaxRetainedGlobalBytes</span> = 64 * 1024;</code></pre>
+
+<h2 id="description">What it guards</h2>
+<p>
+  Every testlet runs inside its own <code>MultiPoolAllocator</code> under an
+  <a href="../../Memory/index.html#allocatorscope"><code>AllocatorScope</code></a>, but that fixture cannot see the
+  traffic that actually matters: a <code>std::vector</code> or <code>std::string</code> inside a test body reaches the
+  heap through <code>operator new</code>, and no scope redirects that. The engine accounts for those entry points
+  globally - see <a href="../../Memory/index.html#global-allocation">Global allocation accounting</a> - and this
+  constant turns that accounting into a per-testlet limit.
+</p>
+<p>
+  Measured across the suite, 320 of 372 testlets reach the global heap from their own bodies in Debug and 282 in
+  Release, and the per-testlet allocator reports usage for <strong>none</strong> of them. A limit on something that
+  was previously invisible is the entire point of this constant.
+</p>
+
+<h2 id="quantity">Retention, not requests</h2>
+<p>
+  The quantity compared is <strong>retention</strong>: bytes requested during the body minus bytes released during it.
+  That choice is the design. A stress loop can request hundreds of megabytes while holding almost none of it; a leak
+  holds every byte without requesting more. A ceiling on bytes <em>requested</em> would refuse the honest test and
+  pass the leak, so it is not a ceiling worth having.
+</p>
+
+<h2 id="basis">The number, and what produced it</h2>
+<p>Measured, not picked. Over the 320 testlets that allocate at all:</p>
+<table>
+<thead><tr><th>Retention percentile</th><th>Bytes</th></tr></thead>
+  <tr><td>median</td><td>48</td></tr>
+  <tr><td>p90</td><td>352</td></tr>
+  <tr><td>p99</td><td>3,072</td></tr>
+  <tr><td>maximum</td><td>33,200 - a thread-safety testlet</td></tr>
+  <tr><td>testlets retaining nothing</td><td>82 of 320</td></tr>
+</table>
+
+<table>
+<thead><tr><th>Candidate ceiling</th><th>Testlets refused today</th><th>Verdict</th></tr></thead>
+  <tr><td>4 KiB</td><td>2</td><td>Refuses tests that are behaving</td></tr>
+  <tr><td>16 KiB</td><td>1</td><td>Would need an exception on day one</td></tr>
+  <tr><td><strong>64 KiB - chosen</strong></td><td><strong>0</strong></td><td>About two times headroom over the worst current offender</td></tr>
+  <tr><td>1 MiB</td><td>0</td><td>So loose it guards nothing</td></tr>
+</table>
+
+<p>
+  A ceiling on the <em>number</em> of requests was considered and rejected on the same data: p99 is 3.8 million and
+  the maximum 33.5 million, because the allocator performance tests allocate tens of millions of times for a reason.
+  Any request ceiling that passes them today is not a guard.
+</p>
+
+<h2 id="enforcement">How a breach behaves</h2>
+<p>
+  A breach logs an error naming the testlet, its retained byte count and the ceiling, and records an entry in the
+  collection's error buffer - which is the thing the verdict is decided on. A guard that only printed would be a
+  comment with a number in it. Verified by mutating the ceiling down to 1 KiB: eleven testlets refused by name,
+  <code>EngineTest: 7 test collection(s) FAILED</code>, runner exit non-zero.
+</p>
+<p>The refusal says whose ceiling was breached, so a declared budget is never mistaken for the default:</p>
+<pre><code><span class="cm"># TC0.Print CallStack retained 1568 bytes of the global heap at the end of its body,
+   over the 256 byte ceiling this testlet declared for itself. Free it, or raise the
+   ceiling with a reason that survives review #</span></code></pre>
+
+<h2 id="exceptions">Raising it for one testlet</h2>
+<p>
+  <a href="add-test.html"><code>AddTest</code></a> has a form taking the allowance, so an exception is an argument
+  beside the test that needs it rather than an edit to this shared constant that quietly relaxes all 372 testlets at
+  once. A testlet with a declared budget also repeats it on every line it logs, so the exception stays visible in a log
+  excerpt rather than only in the source that registered it. Nothing passes the argument today: the mechanism shipped
+  with zero exceptions granted.
+</p>
+
+<h2 id="limits">What this ceiling does not cover</h2>
+<table>
+<thead><tr><th>Limit</th><th>Detail</th></tr></thead>
+  <tr>
+    <td>The engine allocator door</td>
+    <td>A testlet allocating through its <code>AllocatorScope</code> draws on <code>MultiPoolAllocator</code> banks,
+        which are not in this figure. Covering it needs a public usage accessor on that class, declined as speculative
+        while the door measures zero traffic across the whole suite.</td>
+  </tr>
+  <tr>
+    <td>Retention can read slightly low</td>
+    <td>A release through the unsized <code>operator delete</code> reports the block size the system heap chose, which
+        can exceed the size asked for, so the released total can outrun the requested total a little. The clamp at zero
+        absorbs it, and the direction is the safe one for a ceiling.</td>
+  </tr>
+  <tr>
+    <td>No test inside the suite covers the guard</td>
+    <td>Not expressible rather than missing - see
+        <a href="../Testlet/get-max-retained-global-bytes.html">the reasoning recorded on the testlet</a>. The substitute
+        is the mutation described above, run in both directions.</td>
+  </tr>
+</table>
+
+<h2 id="see">See also</h2>
+<ul>
+  <li><a href="get-max-retained-global-bytes.html"><code>GetMaxRetainedGlobalBytes</code></a> - the quantity compared</li>
+  <li><a href="get-global-allocation-count.html">The cumulative read-out</a> - requests and bytes</li>
+  <li><a href="../TestEnv/global-allocation-totals.html">Suite-wide totals</a></li>
+  <li><a href="../../Memory/index.html#global-allocation">Global allocation accounting</a> - where the counters come from</li>
+</ul>
+
+<footer class="prevnext">
+  <span><a href="index.html">TestCollection</a></span>
+  <span><a href="../index.html">Test</a></span>
+  <span><a href="../../index.html">Module Index</a></span>
+</footer>
+
+</main>
+</body>
+</html>

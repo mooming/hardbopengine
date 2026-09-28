@@ -72,6 +72,9 @@ refuse to compile — the same outcome with better manners.</td></tr>
 <td>Zero allocation and zero capture, which the engine's own task contract already uses. Rejected on proportion:
 measured across the tree, 0 of 379 test lambdas are non-capturing (315 use <code>[this]</code>), so it would
 mean rewriting every test in the engine to reach the same storage property.</td></tr>
+<tr><td><code>maxRetainedGlobalBytes</code></td><td><code>std::size_t</code></td>
+<td>Per-testlet memory allowance, set at registration and read once after the body finishes. See
+<a href="get-max-retained-global-bytes.html"><code>GetMaxRetainedGlobalBytes</code></a>.</td></tr>
 </tbody>
 </table>
 <p>
@@ -165,6 +168,15 @@ that ever threw would terminate rather than unwind the run.</p>
 <h3><code>const char* GetName() const noexcept</code></h3>
 <p>The registered name, owned by this testlet and null terminated by construction, so a caller may print it freely.</p>
 
+<h3><code>std::size_t GetMaxRetainedGlobalBytes() const noexcept</code> &mdash; <a href="get-max-retained-global-bytes.html">documented in full</a></h3>
+<p>
+The global heap this one testlet is permitted to still hold when its body ends. It arrives through the constructor
+and travels with the testlet rather than sitting in a parallel array in the collection, because a second container has
+to be kept in step by hand and every way of failing that produces a test judged by another test's budget - a silent
+failure that reads as a flaky test. Cost: eight bytes per testlet, taking <code>sizeof(Testlet)</code> from 184 to
+192, about three kilobytes across the suite's 372 testlets.
+</p>
+
 <h2 id="non-member">Non-member helper functions</h2>
 <p>No free functions. One companion type lives in the same header:</p>
 <table>
@@ -182,6 +194,16 @@ the Test module and deliberately so: pulling <code>Log/Logger.h</code> into this
 test file in the engine sensitive to the logger's own include order, which is a real fragility in the tree —
 <code>HSTL/HUnorderedMap.h</code> uses <code>Memory::DefaultAllocator</code> without including its header —
 found when this change tried it.
+</p>
+
+<h2 id="guard">The memory ceiling guard, and why no test covers it</h2>
+<p>
+  The harness compares what a testlet retained against this allowance. Nothing inside the suite tests that comparison,
+  and nothing can: a testlet cannot run a testlet, and a testlet that went over its own ceiling would fail the very run
+  whose behaviour it was demonstrating. What stands in for the unit test is mutating the ceiling and reading the
+  refusal, which was done in both directions - with the default lowered to 1 KiB, nine testlets were refused under the
+  wording "a testlet may hold", a testlet declaring 64 KiB for itself survived retaining 12,352 bytes, and one
+  declaring only 256 was refused under the wording "this testlet declared for itself".
 </p>
 
 <h2 id="coverage">Coverage</h2>

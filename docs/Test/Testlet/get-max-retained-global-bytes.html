@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Testlet::GetMaxRetainedGlobalBytes — Test — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../index.html">Test</a></li>
+  </ul>
+    <h3><a href="index.html">Testlet</a> methods</h3>
+  <ul class="methods">
+    <li><a href="index.html">Class overview</a></li>
+    <li><a class="current" href="get-max-retained-global-bytes.html">GetMaxRetainedGlobalBytes</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="index.html#description">Class description</a></li>
+    <li><a href="index.html#template">Template parameters</a></li>
+    <li><a href="index.html#properties">Class properties</a></li>
+    <li><a href="index.html#methods">Class methods</a></li>
+    <li><a href="index.html#non-member">Non-member helpers</a></li>
+    <li><a href="index.html#coverage">Coverage</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Test</a> /
+  <a href="index.html">Testlet</a> / GetMaxRetainedGlobalBytes
+</p>
+
+<h1><span class="fn">GetMaxRetainedGlobalBytes</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Testlet</span>
+  <span class="tag">Engine/Test/Testlet.h</span>
+  <span class="tag">const noexcept</span>
+  how much global heap this one testlet is permitted to still hold when its body ends
+</p>
+
+<h2 id="signature">Signature</h2>
+<pre><code>[[nodiscard]] std::size_t <span class="fn">GetMaxRetainedGlobalBytes</span>() <span class="kw">const</span> noexcept;</code></pre>
+
+<h2 id="description">Function description</h2>
+<p>
+  A testlet carries its own ceiling, declared where it was registered. The registration form without an argument
+  passes <a href="../TestCollection/memory-ceiling.html"><code>TestCollection::MaxRetainedGlobalBytes</code></a>; the
+  form with one passes whatever that particular test needs. The harness reads the value once per run, after the body
+  finishes, and compares it against what the testlet actually retained.
+</p>
+
+<h2 id="placement">Why the testlet owns the value</h2>
+<p>
+  The alternative was a parallel array in the collection, indexed alongside the testlets. Rejected: a second container
+  has to be kept in step by hand, and every way of getting that wrong - an insert that forgets a slot, a sort that
+  moves one and not the other - produces a test judged by another test's budget. That failure is silent and reads as
+  a flaky test. Owning the value costs eight bytes per testlet, which took <code>sizeof(Testlet)</code> from 184 to
+  192: about three kilobytes across the 372 testlets in the suite.
+</p>
+
+<h2 id="coverage">There is no test of this guard, and there cannot be one</h2>
+<p>
+  A testlet cannot run a testlet. And a testlet that went over its own ceiling would fail the very run whose
+  behaviour it was trying to demonstrate, so an in-suite test of this mechanism is not merely missing - it is not
+  expressible. What stands in for one is mutating the ceiling and reading the refusal. Done in both directions: with
+  the default lowered to 1 KiB, nine testlets were refused under the wording "a testlet may hold" while a testlet that
+  declared 64 KiB for itself survived retaining 12,352 bytes, and another that declared only 256 was refused under the
+  wording "this testlet declared for itself".
+</p>
+
+<h2 id="return">Return value</h2>
+<p>
+  The allowance in force, which is the suite default unless the registration site said otherwise. Never zero: a
+  testlet with no allowance would fail unconditionally, so the value is a limit rather than an optional.
+</p>
+
+<h2 id="see">See also</h2>
+<ul>
+  <li><a href="index.html">Testlet</a> - why the type cannot allocate at all</li>
+  <li><a href="../TestCollection/memory-ceiling.html"><code>TestCollection::MaxRetainedGlobalBytes</code></a></li>
+  <li><a href="../TestCollection/add-test.html"><code>AddTest</code></a> - where the allowance is declared</li>
+  <li><a href="../../Memory/index.html#global-allocation">Global allocation accounting</a></li>
+</ul>
+
+<footer class="prevnext">
+  <span><a href="../index.html">Test</a></span>
+  <span><a href="../../index.html">Module Index</a></span>
+</footer>
+
+</main>
+</body>
+</html>
