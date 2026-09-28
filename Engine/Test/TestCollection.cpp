@@ -126,17 +126,21 @@ bool TestCollection::RunTestAt(const std::size_t testIndex)
 		const auto retainedBytesOverBody =
 				globalBytesOverBody > globalFreedBytesOverBody ? globalBytesOverBody - globalFreedBytesOverBody : 0;
 
+		const auto retainedCeiling = testlet.GetMaxRetainedGlobalBytes();
+
 		maxRetainedGlobalBytes =
 				retainedBytesOverBody > maxRetainedGlobalBytes ? retainedBytesOverBody : maxRetainedGlobalBytes;
 
-		if (retainedBytesOverBody > MaxRetainedGlobalBytes)
+		if (retainedBytesOverBody > retainedCeiling)
 		{
-			log.OutError([indexLabel, testName, retainedBytesOverBody](auto& ls)
+			log.OutError([indexLabel, testName, retainedBytesOverBody, retainedCeiling](auto& ls)
 			{
 				ls << "# TC" << indexLabel << '.' << testName << " retained " << retainedBytesOverBody
-				   << " bytes of the global heap at the end of its body, over the " << MaxRetainedGlobalBytes
-				   << " byte ceiling one testlet may hold. Free it, or raise the ceiling with a "
-					  "reason that survives review #\n";
+				   << " bytes of the global heap at the end of its body, over the " << retainedCeiling
+				   << " byte ceiling "
+				   << (retainedCeiling == MaxRetainedGlobalBytes ? "a testlet may hold"
+																 : "this testlet declared for itself")
+				   << ". Free it, or raise the ceiling with a reason that survives review #\n";
 			});
 
 			/*
@@ -155,13 +159,22 @@ bool TestCollection::RunTestAt(const std::size_t testIndex)
 		if (globalRequestsOverBody != 0)
 		{
 			log.Out([indexLabel, testName, globalRequestsOverBody, globalBytesOverBody, globalFreedCountBefore,
-					 globalFreedBytesOverBody, retainedBytesOverBody](auto& ls)
+					 globalFreedBytesOverBody, retainedBytesOverBody, retainedCeiling](auto& ls)
 			{
 				ls << "# TC" << indexLabel << '.' << testName << " global heap " << globalRequestsOverBody
 				   << " cumulative requests, " << globalBytesOverBody << " bytes requested, "
 				   << (MemoryManager::GetGlobalFreeCount() - globalFreedCountBefore) << " releases, retained "
 				   << retainedBytesOverBody << " bytes, freed " << globalFreedBytesOverBody
-				   << " bytes outside the allocator scope #\n";
+				   << " bytes outside the allocator scope";
+
+				// A testlet that asked for its own budget says so on every line it produces, so the exception is
+				// legible in a log excerpt and not only in the source that registered it.
+				if (retainedCeiling != MaxRetainedGlobalBytes)
+				{
+					ls << ", against a declared ceiling of " << retainedCeiling;
+				}
+
+				ls << " #\n";
 			});
 		}
 	}

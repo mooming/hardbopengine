@@ -123,6 +123,22 @@ public:
 	template <size_t TNameLength, typename TClosure>
 	void AddTest(const char (&testName)[TNameLength], TClosure&& testCase)
 	{
+		AddTest(testName, MaxRetainedGlobalBytes, std::forward<TClosure>(testCase));
+	}
+
+	/*
+	 * Registers one testlet that is allowed to hold more - or less - global heap than the suite default when its
+	 * body ends. The allowance is an argument at the registration site on purpose: an exception to the ceiling
+	 * then appears in a diff as a number next to the test that needs it, which is the form a reviewer can
+	 * actually challenge, unlike a change to a shared constant that silently relaxes every other testlet too.
+	 *
+	 * Nothing in the suite passes this argument today. The measured maximum retention is 33,200 bytes against a
+	 * 65,536 byte ceiling, so the mechanism ships with zero exceptions granted, and the first call site that does
+	 * pass one is a visible event rather than a pre-existing pattern to hide behind.
+	 */
+	template <size_t TNameLength, typename TClosure>
+	void AddTest(const char (&testName)[TNameLength], std::size_t maxRetainedGlobalBytes, TClosure&& testCase)
+	{
 		using TClosureType = std::remove_cvref_t<TClosure>;
 
 		if constexpr (std::is_pointer_v<TClosureType>)
@@ -135,7 +151,7 @@ public:
 			}
 		}
 
-		tests.emplace_back(testName, std::forward<TClosure>(testCase));
+		tests.emplace_back(testName, maxRetainedGlobalBytes, std::forward<TClosure>(testCase));
 	}
 
 	/// @brief How many testlets this collection registered. Zero until PrepareTests() has run.

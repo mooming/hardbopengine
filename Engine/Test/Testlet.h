@@ -90,8 +90,9 @@ public:
 	 */
 	template <size_t TNameBytes, typename TClosure>
 		requires(!std::same_as<std::remove_cvref_t<TClosure>, Testlet>)
-	Testlet(const char (&testName)[TNameBytes], TClosure&& closure)
+	Testlet(const char (&testName)[TNameBytes], std::size_t retainedByteCeiling, TClosure&& closure)
 		: dispatch(&GetDispatch<std::remove_cvref_t<TClosure>>())
+		, maxRetainedGlobalBytes(retainedByteCeiling)
 	{
 		static_assert(TNameBytes <= MaxNameBytes,
 					  "A test's name does not fit Testlet::MaxNameBytes. The buffer is inline so that naming a test "
@@ -117,6 +118,7 @@ public:
 
 	Testlet(Testlet&& other) noexcept
 		: dispatch(other.dispatch)
+		, maxRetainedGlobalBytes(other.maxRetainedGlobalBytes)
 	{
 		std::memcpy(name, other.name, MaxNameBytes);
 		if (other.dispatch != nullptr)
@@ -170,6 +172,22 @@ public:
 		return name;
 	}
 
+	/*
+	 * The most global heap memory this testlet may still hold when its body ends, declared where the testlet was
+	 * registered. It travels with the testlet rather than sitting in a parallel array because a second container
+	 * would have to be kept in step by hand, and every way of getting that wrong shows up as one test being
+	 * judged by another test's budget.
+	 *
+	 * No test inside the suite can cover this guard, and that is a property of the guard rather than a gap: a
+	 * testlet cannot run a testlet, and one that exceeded its own ceiling would fail the very run whose behaviour
+	 * it is trying to demonstrate. What stands in for the unit test is mutating the ceiling and reading the
+	 * refusal - measured twice before this shipped, in both directions.
+	 */
+	[[nodiscard]] std::size_t GetMaxRetainedGlobalBytes() const noexcept
+	{
+		return maxRetainedGlobalBytes;
+	}
+
 private:
 	template <typename TClosure>
 	static void InvokeClosure(const void* object, TLogOut& outLog)
@@ -206,6 +224,7 @@ private:
 
 	char name[MaxNameBytes];
 	const TestletDispatch* dispatch;
+	std::size_t maxRetainedGlobalBytes;
 	alignas(alignof(std::max_align_t)) std::byte storage[TClosureBytes];
 };
 
