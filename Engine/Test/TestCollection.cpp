@@ -108,11 +108,43 @@ bool TestCollection::RunTestAt(const std::size_t testIndex)
 
 		const auto globalBytesBefore = MemoryManager::GetGlobalAllocationBytes();
 		const auto globalRequestsBefore = MemoryManager::GetGlobalAllocationCount();
+		const auto globalFreedBytesBefore = MemoryManager::GetGlobalFreeBytes();
+		const auto globalFreedCountBefore = MemoryManager::GetGlobalFreeCount();
 
 		testlet.Run(logStream);
 
 		const auto globalBytesOverBody = MemoryManager::GetGlobalAllocationBytes() - globalBytesBefore;
 		const auto globalRequestsOverBody = MemoryManager::GetGlobalAllocationCount() - globalRequestsBefore;
+		const auto globalFreedBytesOverBody = MemoryManager::GetGlobalFreeBytes() - globalFreedBytesBefore;
+
+		/*
+		 * Retention is what a ceiling has to be about. A stress loop can request hundreds of megabytes while
+		 * holding almost none of it, and a leak of the same size holds every byte without requesting more. The
+		 * comparison is unsigned, so the clamp is not decoration: an unsized delete reports no size and releases
+		 * nothing against the total, which can push freed above requested.
+		 */
+		const auto retainedBytesOverBody =
+				globalBytesOverBody > globalFreedBytesOverBody ? globalBytesOverBody - globalFreedBytesOverBody : 0;
+
+		maxRetainedGlobalBytes =
+				retainedBytesOverBody > maxRetainedGlobalBytes ? retainedBytesOverBody : maxRetainedGlobalBytes;
+
+		if (retainedBytesOverBody > MaxRetainedGlobalBytes)
+		{
+			log.OutError([indexLabel, testName, retainedBytesOverBody](auto& ls)
+			{
+				ls << "# TC" << indexLabel << '.' << testName << " retained " << retainedBytesOverBody
+				   << " bytes of the global heap at the end of its body, over the " << MaxRetainedGlobalBytes
+				   << " byte ceiling one testlet may hold. Free it, or raise the ceiling with a "
+					  "reason that survives review #\n";
+			});
+
+			/*
+			 * Recorded as an error as well as logged, because whether this testlet passed is decided by the
+			 * error count, and a guard that only prints is a comment with a number in it.
+			 */
+			errorMessages.push_back(std::string(testName) + " retained more global heap than the ceiling allows");
+		}
 
 		globalAllocationBytes += globalBytesOverBody;
 		globalAllocationCount += globalRequestsOverBody;
@@ -122,11 +154,14 @@ bool TestCollection::RunTestAt(const std::size_t testIndex)
 
 		if (globalRequestsOverBody != 0)
 		{
-			log.Out([indexLabel, testName, globalRequestsOverBody, globalBytesOverBody](auto& ls)
+			log.Out([indexLabel, testName, globalRequestsOverBody, globalBytesOverBody, globalFreedCountBefore,
+					 globalFreedBytesOverBody, retainedBytesOverBody](auto& ls)
 			{
 				ls << "# TC" << indexLabel << '.' << testName << " global heap " << globalRequestsOverBody
-				   << " cumulative requests, " << globalBytesOverBody
-				   << " cumulative bytes requested, outside the allocator scope #\n";
+				   << " cumulative requests, " << globalBytesOverBody << " bytes requested, "
+				   << (MemoryManager::GetGlobalFreeCount() - globalFreedCountBefore) << " releases, retained "
+				   << retainedBytesOverBody << " bytes, freed " << globalFreedBytesOverBody
+				   << " bytes outside the allocator scope #\n";
 			});
 		}
 	}
@@ -245,6 +280,11 @@ std::uint64_t TestCollection::GetGlobalAllocationCount() const noexcept
 std::size_t TestCollection::GetTestletCountWithGlobalAllocations() const noexcept
 {
 	return testletsWithGlobalAllocations;
+}
+
+std::size_t TestCollection::GetMaxRetainedGlobalBytes() const noexcept
+{
+	return maxRetainedGlobalBytes;
 }
 
 } // namespace hbe

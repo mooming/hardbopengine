@@ -49,6 +49,23 @@ public:
 	 * the testlets. A collection whose tests genuinely need a larger capture changes the alias below, and the
 	 * static_assert in Testlet's constructor is what tells it so at the registration site.
 	 */
+	/*
+	 * The most global heap memory a single testlet may still be holding when its body ends.
+	 *
+	 * Decided from the measured distribution rather than picked: across the 320 testlets that allocate at all,
+	 * median retention is 48 bytes, the 99th percentile is 3,072, and the largest single figure is 33,200, from
+	 * a thread-safety testlet. 64 KiB therefore refuses nothing today while leaving roughly two times headroom
+	 * over the worst current offender, which is the shape a ceiling wants: a regression becomes visible, and the
+	 * honest way past it is changing the test rather than the number.
+	 *
+	 * Two limits are known and deliberate. It counts the global door only - a testlet allocating through its
+	 * AllocatorScope draws on MultiPoolAllocator banks, which are not in this figure, and closing that would
+	 * mean adding a usage accessor to another module for a door measured to carry zero traffic today. And a
+	 * release through the unsized operator delete reports the block size the system heap chose, which can exceed
+	 * what was asked for, so retention can read slightly low.
+	 */
+	static constexpr std::size_t MaxRetainedGlobalBytes = 64 * 1024;
+
 	static constexpr size_t MaxClosureBytes = 48;
 	using TTestlet = Testlet<MaxClosureBytes>;
 
@@ -144,6 +161,13 @@ public:
 	/// @details The suite wants this count rather than the byte total when it decides which testlets must justify
 	/// an allocation, because one request is the fact that matters and its size is only context.
 	[[nodiscard]] std::size_t GetTestletCountWithGlobalAllocations() const noexcept;
+
+	/// @brief The largest amount of global heap one of this collection's testlets was still holding at its end.
+	/// @details Bytes requested during a body minus bytes released during it, so a testlet that allocates and
+	/// frees in a loop scores here the way it should: heavily, on requests, and not at all on retention. The
+	/// figure can over-estimate, never under-estimate, because an unsized delete reports no size and therefore
+	/// releases nothing against the total.
+	[[nodiscard]] std::size_t GetMaxRetainedGlobalBytes() const noexcept;
 	[[nodiscard]] const std::vector<std::string>& GetWarningMessages() const noexcept;
 	[[nodiscard]] const std::vector<std::string>& GetErrorMessages() const noexcept;
 	[[nodiscard]] bool IsDone() const noexcept;
@@ -164,6 +188,7 @@ protected:
 	std::size_t globalAllocationBytes{0};
 	std::uint64_t globalAllocationCount{0};
 	std::size_t testletsWithGlobalAllocations{0};
+	std::size_t maxRetainedGlobalBytes{0};
 
 	friend std::ostream& operator<<(std::ostream& os, const LogFlush& lf);
 

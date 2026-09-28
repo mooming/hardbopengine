@@ -7,6 +7,7 @@
 
 #include "Log/Logger.h"
 #include "MemoryManager.h"
+#include "OSAL/OSMemory.h"
 
 /*
  * The engine's global allocation entry points, and the accounting that goes with them.
@@ -144,11 +145,18 @@ void* TryAllocateAccountedAligned(size_t size, std::align_val_t alignment) noexc
 	return ptr;
 }
 
+/*
+ * A release that arrives without a size - the unsized operator delete, which is what most generated code calls
+ * - asks the system heap how large the block really is. Without that, the released total stays at zero for most
+ * frees, retention degenerates into the requested total, and a testlet that frees everything it allocated looks
+ * the same as one that leaks. The answer is the block size, which can exceed the size requested, so the released
+ * total can slightly outrun the requested total; the clamp on retention absorbs that.
+ */
 void Deallocate(void* ptr, size_t size) noexcept
 {
 	if (ptr != nullptr)
 	{
-		hbe::MemoryManager::RecordGlobalFree(size);
+		hbe::MemoryManager::RecordGlobalFree(size != 0 ? size : OS::GetAllocSize(ptr));
 		std::free(ptr);
 	}
 }
