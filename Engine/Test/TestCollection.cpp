@@ -83,7 +83,7 @@ bool TestCollection::RunTestAt(const std::size_t testIndex)
 	}
 
 	const auto& testlet = tests[testIndex];
-	const auto testName = testlet.GetName().data();
+	const auto testName = testlet.GetName();
 	const auto errorCursorBefore = errorMessages.size();
 
 	const auto indexLabel = static_cast<uint32_t>(testIndex);
@@ -126,7 +126,7 @@ bool TestCollection::RunTestAt(const std::size_t testIndex)
 	return isPassed;
 }
 
-std::string_view TestCollection::GetTestName(const std::size_t testIndex) const noexcept
+const char* TestCollection::GetTestName(const std::size_t testIndex) const noexcept
 {
 	if (testIndex >= tests.size())
 	{

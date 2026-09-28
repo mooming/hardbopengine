@@ -3,6 +3,7 @@
 #pragma once
 
 #include <cstddef>
+#include <cstring>
 #include <iostream>
 #include <new>
 #include <sstream>
@@ -71,20 +72,35 @@ public:
 	/// @brief The storage this instantiation reserved, reported back to callers that chose it.
 	static constexpr size_t ClosureBytes = TClosureBytes;
 
+	/*
+	 * Storage for the test's name: long enough for the longest name measured in the suite today (105 characters)
+	 * with room for one more clause. Enforced rather than hoped for, so a longer name is a compile error at the
+	 * site that registered it.
+	 */
+	static constexpr size_t MaxNameBytes = 128;
+
 	static_assert(TClosureBytes > 0, "A testlet with no inline storage can only ever hold a null callable");
 	static_assert(TClosureBytes % sizeof(void*) == 0, "TClosureBytes should be a whole number of words");
+	static_assert(MaxNameBytes > 1, "MaxNameBytes has to leave room for a name and its terminator");
 
 	/*
 	 * Constructs the closure in place. noexcept is deliberately absent: constructing an arbitrary closure is the
 	 * case the coding standard points at when it says not to promise exception freedom for something whose
 	 * implementation this type cannot see.
 	 */
-	template <typename TClosure>
+	template <size_t TNameBytes, typename TClosure>
 		requires(!std::same_as<std::remove_cvref_t<TClosure>, Testlet>)
-	Testlet(std::string_view testName, TClosure&& closure)
-		: name(testName)
-		, dispatch(&GetDispatch<std::remove_cvref_t<TClosure>>())
+	Testlet(const char (&testName)[TNameBytes], TClosure&& closure)
+		: dispatch(&GetDispatch<std::remove_cvref_t<TClosure>>())
 	{
+		static_assert(TNameBytes <= MaxNameBytes,
+					  "A test's name does not fit Testlet::MaxNameBytes. The buffer is inline so that naming a test "
+					  "cannot allocate; shorten the label to what the test actually tests, or raise MaxNameBytes where "
+					  "the reason for a longer label is stated - the one thing not available is borrowing somebody "
+					  "else's storage, or quietly truncating a label a failure report depends on.");
+		static_assert(TNameBytes > 1, "A test must have a name worth reporting");
+
+		std::memcpy(name, testName, TNameBytes);
 		static_assert(
 				sizeof(std::remove_cvref_t<TClosure>) <= TClosureBytes,
 				"A testlet's captured state does not fit the TClosureBytes it was given, which is inline storage "
@@ -100,9 +116,9 @@ public:
 	}
 
 	Testlet(Testlet&& other) noexcept
-		: name(other.name)
-		, dispatch(other.dispatch)
+		: dispatch(other.dispatch)
 	{
+		std::memcpy(name, other.name, MaxNameBytes);
 		if (other.dispatch != nullptr)
 		{
 			other.dispatch->relocate(other.storage, storage);
@@ -137,8 +153,8 @@ public:
 	{
 		if (dispatch == nullptr)
 		{
-			std::cerr << "Error: testlet " << name.data()
-					  << " has no dispatch table, so it was moved from and cannot run" << std::endl;
+			std::cerr << "Error: testlet " << name << " has no dispatch table, so it was moved from and cannot run"
+					  << std::endl;
 
 			Assert(dispatch != nullptr);
 
@@ -149,7 +165,7 @@ public:
 	}
 
 	/// @brief The registered name, viewing storage that outlives the run because AddTest accepts literals only.
-	[[nodiscard]] std::string_view GetName() const noexcept
+	[[nodiscard]] const char* GetName() const noexcept
 	{
 		return name;
 	}
@@ -188,7 +204,7 @@ private:
 		return dispatch;
 	}
 
-	std::string_view name;
+	char name[MaxNameBytes];
 	const TestletDispatch* dispatch;
 	alignas(alignof(std::max_align_t)) std::byte storage[TClosureBytes];
 };

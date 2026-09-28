@@ -51,6 +51,9 @@ public:
 	static constexpr size_t MaxClosureBytes = 48;
 	using TTestlet = Testlet<MaxClosureBytes>;
 
+	/// @brief Longest test name this suite can hold, reported from the type that owns the storage.
+	static constexpr size_t MaxTestNameBytes = TTestlet::MaxNameBytes;
+
 	using TLogOut = std::stringstream;
 	using TLogBuffer = std::vector<std::string>;
 
@@ -124,8 +127,8 @@ public:
 	}
 
 	/// @brief The name a testlet registered itself under, for the task name and the failure report.
-	/// @details A view of storage that outlives the run, because AddTest only accepts literals.
-	[[nodiscard]] std::string_view GetTestName(std::size_t testIndex) const noexcept;
+	/// @details Owned by the testlet and null terminated by construction, so callers may print it freely.
+	[[nodiscard]] const char* GetTestName(std::size_t testIndex) const noexcept;
 
 	[[nodiscard]] const char* GetName() const noexcept;
 	[[nodiscard]] const std::vector<std::string>& GetWarningMessages() const noexcept;
