@@ -1,5 +1,53 @@
 # Journal
 
+## 2026-09-28 20:18 - a testlet now has a memory ceiling, and the number came from the distribution
+
+The owner asked for a ceiling on the memory a testlet may use. Deciding a number without a distribution behind it
+would have been the one thing I have been arguing against all session, so the order was: measure retention, find
+the shape, then set the line.
+
+**Measurement first exposed that the existing fixture measures nothing.** `MultiPoolAllocator::PrintUsage()` emits
+**zero** lines across the whole suite, which means the per-testlet `MultiPoolAllocator` + `AllocatorScope` fixture -
+built precisely to see a test's allocations - sees none of them, because the bodies use std containers and those go
+through `operator new`. Every byte of real traffic was already in the other door.
+
+**Then the retention figure was wrong for a specific, findable reason.** A release through the unsized
+`operator delete` passes no size, and `Deallocate` recorded zero. The result looked plausible and was useless:
+one testlet reported 15 requests and 9 releases but *freed 0 bytes*, so retention equalled the requested total and
+a testlet that frees everything looked exactly like one that leaks. The release now asks the system heap for the
+block size, the way `SystemAllocator` already does via `OS::GetAllocSize`, and the same testlet reports 112
+retained and 272 freed. This is what it means to disbelieve a number that arrived on schedule.
+
+**The distribution, from 320 testlets that allocate at all.**
+| Retention percentile | Bytes |
+|---|---|
+| median | 48 |
+| p90 | 352 |
+| p99 | 3,072 |
+| max | 33,200 (a thread-safety testlet) |
+| testlets retaining nothing | 82 of 320 |
+
+| Candidate ceiling | Testlets refused today |
+|---|---|
+| 4 KiB | 2 |
+| 16 KiB | 1 |
+| **64 KiB (chosen)** | **0**, with about two times headroom over the worst offender |
+| 1 MiB | 0, and so loose it would guard nothing |
+
+A ceiling on the *number* of requests was considered and rejected on the same data: p99 is 3.8 million and the
+maximum 33.5 million, because the allocator stress tests allocate tens of millions of times for a reason, so any
+ceiling that passes them today is not a guard.
+
+**Witness ledger.** Ceiling lowered to 1 KiB: 11 testlets refused by name with their retained byte counts, `EngineTest: 7 test collection(s) FAILED`, `runner exit=1` - so the guard changes the verdict rather than decorating the log. Ceiling at the committed 64 KiB: 0 refused, three configurations green. The refusal records an error as well as logging one, because whether a testlet passed is decided by the error count.
+
+**Two limits written into the header rather than left implied.** The guard counts the global door only: a testlet allocating through its `AllocatorScope` draws on `MultiPoolAllocator` banks, which are not in the figure, and closing that needs a public usage accessor on another module - refused here as speculative for a door measured to carry zero traffic. And a block size can exceed the size requested, so retention can read slightly low; the unsigned clamp in the retention arithmetic is what absorbs that, and is not decoration.
+
+**My slips in this increment, both small and both real.** I wrote the ceiling constant's edit with a two-tab anchor into a one-tab file, so it silently did not install and the compiler found it - the compiler, not me. And a mechanical multi-edit rewrite of `TestCollection.cpp` aborted halfway because clang-format had re-wrapped my own anchors from five minutes earlier, leaving the header declared and the implementation absent; the build passed because nothing called the missing function yet. Both are the same lesson arriving twice: re-read the file before anchoring, even on text I just wrote.
+
+Gate at `40ba133`: `check.sh` reports 0 mechanical violations, 0 advisory, build gate PASS 12/12; Debug/Dev/Release all `all 59 collections passed (372 testlets)`.
+
+Owed: the pool-door coverage if a testlet ever uses it; API reference pages for `MemoryManager`'s six new entry points and for `TestCollection`'s retention getters and ceiling.
+
 ## 2026-09-28 19:35 - every global allocation is now accounted for, and the suite told me I was wrong about its size
 
 The owner redirected my proposal twice: the watchdog belongs in `MemoryManager` rather than in a test helper, and
@@ -57,7 +105,8 @@ commit or `check.sh` learns to judge added lines rather than whole files.
 
 Gate at `ee6fddf`: Debug/Dev/Release all report `all 59 collections passed (372 testlets)`, build gate 12/12.
 
-Owed by this increment: the refusal rule and its ceiling; API reference pages for the six new `MemoryManager`
+Owed by this increment: the refusal rule and its ceiling - **closed two entries later**, by the 64 KiB per-testlet
+retention ceiling recorded at 20:18; API reference pages for the six new `MemoryManager`
 entry points under `docs/Memory`; a note on `docs/Test` that the per-testlet figure is now printed.
 
 ## 2026-09-28 06:30 - a testlet became a type that cannot allocate, on three instructions from the owner
