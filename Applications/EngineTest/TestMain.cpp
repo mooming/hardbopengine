@@ -12,14 +12,15 @@ int main(int argc, const char* argv[]) noexcept
 	hbe::Engine hengine;
 	hengine.Initialize(argc, argv);
 
-	// The base stream is throttled deliberately, and the throttle is what makes the guardrail bear weight rather than
-	// decorate it. CPUBudget's allowance of zero means unlimited, and CanTakeWork reads it once per pass, so a single
-	// unthrottled pass of the base stream takes every work item in the stream - which is exactly why an engine loop
-	// that pumped once and quit could leave 59 collections green: nothing in that run needed a second pass. With a 1ms
-	// allowance one pass provably cannot carry the suite's testlets, so finishing the suite requires Engine::Run to
-	// iterate, and the shortfall check below is what notices when it does not. An allowance too small only costs extra
-	// passes, never correctness, which is the harmless direction and the reason for 1ms rather than a guessed larger
-	// one.
+	// The base stream is throttled, and the reason it is worth the extra passes is a future one rather than a present
+	// one. Measured on the defect this harness exists to catch - Engine::Run's while reduced to a single pass - the
+	// shortfall check refuses it with or without this allowance, because each testlet only posts the next one after it
+	// runs, so the queue is empty the moment an item is taken and a pass that quits early cannot reach far. The chain
+	// is the load; the allowance is the insurance. CPUBudget's zero means unlimited and CanTakeWork reads it once per
+	// pass, so if the driver is ever changed to re-scan the queue after every completed item, an unbounded pass would
+	// drain the whole chain at once and make the guard vacuous again - silently, which is how this was missed for five
+	// commits. A bounded allowance keeps that from being possible. Too small costs only extra passes, never
+	// correctness, which is the harmless direction and the reason for 1ms rather than a guessed larger figure.
 	hengine.GetTaskSystem()
 			.GetStream(hbe::TaskSystem::GetBaseTaskStreamIndex())
 			.ConfigureBudget(std::chrono::duration<double>(0.001));

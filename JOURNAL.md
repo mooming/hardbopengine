@@ -1,5 +1,33 @@
 # Journal
 
+## 2026-09-28 03:10 - a testlet is a task: the Engine::Run guardrail closed, and closed by the shape of the suite rather than by a witness
+
+Owner's direction was that a task should be a testlet - one test lambda - dispatched on the base stream, with the window log print scoped
+out. Landing that (`429a9c1`) closed an item this session had cycled through three designs and two surviving mutants without closing, and it
+closed it because the suite stopped being a single unit of work: `TestCollection` gained three phases (`PrepareTests` / `RunTestAt` /
+`Complete`), `TestEnv` flattens collections into one testlet sequence and finalises a collection when its last testlet lands, and the harness
+posts one task per testlet where each testlet posts the next. 372 testlets, 59 collections, same report, same exit contract, 3.9 seconds.
+
+**Mutant ledger, all of it run against a committed tree this time.**
+
+| Mutation | Result | What it proves |
+|---|---|---|
+| `Engine::Run`'s `while` reduced to a single pass - the defect I shipped in `a8946ea` | **killed**: `runner exit=1`, `only 13 of 372 registered testlets ran, so the engine never drove the suite it was given` | The guardrail the session owed now exists, and it fires with the defect's own signature rather than a proxy |
+| Same defect **with the throttle removed** | **killed** | The chain, not the allowance, carries the guard: a testlet posts its successor only after running, so the queue is empty the instant an item is taken and a pass that quits early reaches 13 testlets and no further |
+| Healthy loop with the throttle removed | **passes** | The throttle costs correctness nothing; it is retained as insurance against a future driver that re-scans the queue per item, which would otherwise make the guard vacuous silently again |
+
+**I was wrong about which of the two was load-bearing.** The commit message and the TestMain comment both asserted the throttle was the load -
+that reasoning was sound on `CPUBudget`'s semantics and wrong in practice, and only running the no-throttle mutant showed it. The comment now
+states the measured division: chain is the load, allowance is the insurance. Registering the total outside the run is the third piece and the
+one that keeps a run that never began from certifying itself - `RegisterSuite()` executes before `Run()` is entered, so the expected 372 belongs
+to the harness rather than to the suite.
+
+**Two of my own defects, both found by running rather than reading.** `testletIndices` was resized and never filled, so the zero-filled slots
+told every testlet it was step zero and the suite re-ran its first testlet until the task registry refused to track more and said so; and a
+condition in my own patch script could not fire, silently dropping `FinalizeCollection` - caught by the compiler this time rather than by luck.
+
+Registration count is now known before the run and the executed count after it, and any gap is a failure. That is the whole guardrail: three
+numbers the harness owns, and no witness I wrote to observe the loop from outside.
 ## 2026-09-28 01:40 - the shutdown-rescue detector landed, killed one mutant and lost another, and says so in its own header
 
 The owner's arrangement was already the implemented one: `RunTests()` posts the suite onto the base stream and `Engine::Run` pumps it.
