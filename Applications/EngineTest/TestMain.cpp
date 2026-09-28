@@ -3,6 +3,7 @@
 #include <iostream>
 
 #include "Engine/Engine.h"
+#include "Memory/MemoryManager.h"
 #include "Test/TestEnv.h"
 #include "Test/UnitTestCollection.h"
 
@@ -49,6 +50,16 @@ int main(int argc, const char* argv[]) noexcept
 	}
 
 	const unsigned int failures = testEnv.GetFailureCount();
+
+	// Reported before the verdict is printed so a failing run carries the figure too. The first pair is what the
+	// testlet bodies took through operator new, which is the traffic an AllocatorScope cannot redirect; the second
+	// is everything the process asked the same entry points for, engine and standard library included.
+	std::cout << "EngineTest: global heap over testlet bodies " << testEnv.GetGlobalAllocationCount()
+			  << " cumulative requests, " << testEnv.GetGlobalAllocationBytes() << " cumulative bytes requested, over "
+			  << testEnv.GetTestletCountWithGlobalAllocations() << " of " << testEnv.GetExecutedTestletCount()
+			  << " testlets; whole process " << hbe::MemoryManager::GetGlobalAllocationCount()
+			  << " cumulative requests, " << hbe::MemoryManager::GetGlobalAllocationBytes()
+			  << " cumulative bytes requested" << std::endl;
 
 	if (failures > 0)
 	{

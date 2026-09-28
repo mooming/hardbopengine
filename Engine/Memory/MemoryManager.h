@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include <cstdint>
 #include <functional>
 #include <mutex>
 #include <thread>
@@ -53,6 +54,31 @@ namespace hbe
 		static StaticStringID GetMultiPoolConfigCacheFilePath();
 		static MemoryManager& GetInstance();
 		static TId GetCurrentAllocatorID();
+
+		/// @brief Records one request through a global allocation entry point.
+		/// @param nBytes requested size; the zero-size normalisation the standard performs is not counted twice.
+		/// @details Safe before any Engine or MemoryManager exists: the counters are constant initialised, so the
+		/// earliest static initialiser is already accounted for. Never logs, never allocates - an accounting path
+		/// that allocated would re-enter the allocator it is measuring.
+		static void RecordGlobalAllocation(size_t nBytes) noexcept;
+		/// @brief Records one release through a global deallocation entry point.
+		/// @details Cumulative like the allocation side, so the live figure is derived rather than tracked. A
+		/// pointer allocated before this existed can therefore be released without driving anything negative.
+		static void RecordGlobalFree(size_t nBytes) noexcept;
+		/// @brief Bytes requested through global allocation entry points since process start.
+		/// @details Cumulative, not live: freeing does not reduce it. Read it as a delta around a region of
+		/// interest, which is how the test suite uses it to see allocations that no allocator scope can report.
+		/// @note SystemAllocator's own traffic is deliberately absent. Its usage lives in the paired UsageRecord
+		/// reported under PROFILE_ENABLED, and the two are not the same measure - this one counts bytes requested,
+		/// that one counts capacity obtained. Merging them would also misattribute a pool's bank backing, which
+		/// arrives through SystemAllocator, to whichever testlet happened to trigger the bank.
+		[[nodiscard]] static size_t GetGlobalAllocationBytes() noexcept;
+		/// @brief Number of requests that reached a global allocation entry point since process start.
+		[[nodiscard]] static uint64_t GetGlobalAllocationCount() noexcept;
+		/// @brief Bytes released through global deallocation entry points since process start.
+		[[nodiscard]] static size_t GetGlobalFreeBytes() noexcept;
+		/// @brief Number of releases that reached a global deallocation entry point since process start.
+		[[nodiscard]] static uint64_t GetGlobalFreeCount() noexcept;
 
 		struct UsageRecord final
 		{

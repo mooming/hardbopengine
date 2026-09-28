@@ -4,6 +4,7 @@
 
 #include <chrono>
 #include <cstddef>
+#include <cstdint>
 #include <functional>
 #include <sstream>
 #include <string>
@@ -131,6 +132,18 @@ public:
 	[[nodiscard]] const char* GetTestName(std::size_t testIndex) const noexcept;
 
 	[[nodiscard]] const char* GetName() const noexcept;
+
+	/// @brief Bytes the testlets of this collection asked the global allocation entry points for.
+	/// @details Measured across each testlet body, so it excludes the fixture that prepares it. This is the
+	/// number an AllocatorScope cannot see: a std::vector or std::string inside a test reaches the heap through
+	/// operator new, which no scope redirects, so without this a testlet could allocate freely off the books.
+	[[nodiscard]] std::size_t GetGlobalAllocationBytes() const noexcept;
+	/// @brief Requests this collection's testlet bodies sent to the global allocation entry points.
+	[[nodiscard]] std::uint64_t GetGlobalAllocationCount() const noexcept;
+	/// @brief How many of this collection's testlets reached the global heap at all while their body ran.
+	/// @details The suite wants this count rather than the byte total when it decides which testlets must justify
+	/// an allocation, because one request is the fact that matters and its size is only context.
+	[[nodiscard]] std::size_t GetTestletCountWithGlobalAllocations() const noexcept;
 	[[nodiscard]] const std::vector<std::string>& GetWarningMessages() const noexcept;
 	[[nodiscard]] const std::vector<std::string>& GetErrorMessages() const noexcept;
 	[[nodiscard]] bool IsDone() const noexcept;
@@ -147,6 +160,10 @@ protected:
 	std::vector<TTestlet> tests;
 	std::vector<std::string> warningMessages;
 	std::vector<std::string> errorMessages;
+
+	std::size_t globalAllocationBytes{0};
+	std::uint64_t globalAllocationCount{0};
+	std::size_t testletsWithGlobalAllocations{0};
 
 	friend std::ostream& operator<<(std::ostream& os, const LogFlush& lf);
 

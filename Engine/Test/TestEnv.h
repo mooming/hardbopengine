@@ -3,6 +3,7 @@
 #pragma once
 
 #include <cstddef>
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <vector>
@@ -66,6 +67,16 @@ public:
 
 	/// @brief Print the suite report. Call once, after the last testlet.
 	void Finalize();
+
+	/// @brief Bytes every testlet body asked the global allocation entry points for.
+	/// @details Summed across collections, and counted over testlet bodies only - the fixture that prepares a
+	/// testlet, and everything the process allocated before the first testlet ran, are outside it. A non-zero
+	/// figure means testlets reach the heap through operator new, which AllocatorScope cannot redirect.
+	[[nodiscard]] std::size_t GetGlobalAllocationBytes() const noexcept;
+	/// @brief Requests every testlet body sent to the global allocation entry points.
+	[[nodiscard]] std::uint64_t GetGlobalAllocationCount() const noexcept;
+	/// @brief How many testlets reached the global heap at all while their body ran.
+	[[nodiscard]] std::size_t GetTestletCountWithGlobalAllocations() const noexcept;
 
 	/// @brief Collections that completed successfully.
 	[[nodiscard]] unsigned int GetPassCount() const noexcept

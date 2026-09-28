@@ -2,6 +2,7 @@
 
 #include "TestEnv.h"
 
+#include <cstdint>
 #include <iostream>
 #include <sstream>
 
@@ -150,6 +151,42 @@ void TestEnv::Finalize()
 	Report();
 }
 
+std::size_t TestEnv::GetGlobalAllocationBytes() const noexcept
+{
+	std::size_t total = 0;
+
+	for (const auto& testCollection : tests)
+	{
+		total += testCollection->GetGlobalAllocationBytes();
+	}
+
+	return total;
+}
+
+std::uint64_t TestEnv::GetGlobalAllocationCount() const noexcept
+{
+	std::uint64_t total = 0;
+
+	for (const auto& testCollection : tests)
+	{
+		total += testCollection->GetGlobalAllocationCount();
+	}
+
+	return total;
+}
+
+std::size_t TestEnv::GetTestletCountWithGlobalAllocations() const noexcept
+{
+	std::size_t total = 0;
+
+	for (const auto& testCollection : tests)
+	{
+		total += testCollection->GetTestletCountWithGlobalAllocations();
+	}
+
+	return total;
+}
+
 void TestEnv::Report()
 {
 	using namespace std;
@@ -164,6 +201,9 @@ void TestEnv::Report()
 		ls << "# Invalid Test = " << invalidTests.size() << hendl;
 		ls << "# Pass = " << passCount << hendl;
 		ls << "# Fail = " << failedTests.size() << hendl;
+		ls << "# Global heap over testlet bodies = " << GetGlobalAllocationCount() << " cumulative requests, "
+		   << GetGlobalAllocationBytes() << " cumulative bytes requested, over "
+		   << GetTestletCountWithGlobalAllocations() << " of " << GetExecutedTestletCount() << " testlets" << hendl;
 		ls << "##### TEST Report Done #####" << hendl;
 	});
 

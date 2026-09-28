@@ -37,6 +37,7 @@ add_library (Memory STATIC
  AllocStats.cpp
  AllocatorScope.cpp
  DefaultAllocator.cpp
+ GlobalAllocation.cpp
  InlineMonotonicAllocator.cpp
  InlinePoolAllocator.cpp
  MemoryManager.cpp

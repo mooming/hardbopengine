@@ -2,9 +2,11 @@
 
 #include "Test/TestCollection.h"
 
+#include <cstdint>
 #include <exception>
 
 #include "Log/Logger.h"
+#include "Memory/MemoryManager.h"
 
 namespace hbe
 {
@@ -103,9 +105,30 @@ bool TestCollection::RunTestAt(const std::size_t testIndex)
 
 		MultiPoolAllocator alloc(testName);
 		AllocatorScope scope(alloc);
+
+		const auto globalBytesBefore = MemoryManager::GetGlobalAllocationBytes();
+		const auto globalRequestsBefore = MemoryManager::GetGlobalAllocationCount();
+
 		testlet.Run(logStream);
 
+		const auto globalBytesOverBody = MemoryManager::GetGlobalAllocationBytes() - globalBytesBefore;
+		const auto globalRequestsOverBody = MemoryManager::GetGlobalAllocationCount() - globalRequestsBefore;
+
+		globalAllocationBytes += globalBytesOverBody;
+		globalAllocationCount += globalRequestsOverBody;
+		testletsWithGlobalAllocations += globalRequestsOverBody == 0 ? 0 : 1;
+
 		alloc.PrintUsage();
+
+		if (globalRequestsOverBody != 0)
+		{
+			log.Out([indexLabel, testName, globalRequestsOverBody, globalBytesOverBody](auto& ls)
+			{
+				ls << "# TC" << indexLabel << '.' << testName << " global heap " << globalRequestsOverBody
+				   << " cumulative requests, " << globalBytesOverBody
+				   << " cumulative bytes requested, outside the allocator scope #\n";
+			});
+		}
 	}
 
 	const bool isPassed = errorMessages.size() == errorCursorBefore;
@@ -207,6 +230,21 @@ std::ostream& operator<<(std::ostream& os, const TestCollection::LogFlush& lf)
 
 	return os;
 #endif
+}
+
+std::size_t TestCollection::GetGlobalAllocationBytes() const noexcept
+{
+	return globalAllocationBytes;
+}
+
+std::uint64_t TestCollection::GetGlobalAllocationCount() const noexcept
+{
+	return globalAllocationCount;
+}
+
+std::size_t TestCollection::GetTestletCountWithGlobalAllocations() const noexcept
+{
+	return testletsWithGlobalAllocations;
 }
 
 } // namespace hbe
