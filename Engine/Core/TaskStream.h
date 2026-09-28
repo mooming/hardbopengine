@@ -467,12 +467,13 @@ public:
 	///          liability for verification: work that only ever runs there has proved nothing about the engine loop,
 	///          which is how a deleted loop header left the whole suite green: the shutdown drain ran the suite and
 	///          reported results as if the loop had pumped it.
-	/// @note **What this does not catch, measured.** A loop header replaced by a single pass still leaves the suite
-	///       green, because one `Update()` is enough to take and run the whole suite - all 59 collections execute
-	///       inside one work item, before the shutdown pump has begun, so the flag is legitimately false. Provenance
-	///       alone cannot detect a loop that pumps once and stops; detecting that needs the suite posted as one item
-	///       per collection, so that the engine loop has to iterate for the run to complete at all. That posting is the
-	///       follow-up, and this flag is what makes it verifiable rather than hopeful.
+	/// @note **What this catches, and what the suite catches.** Provenance alone cannot detect a loop that pumps once
+	///       and stops: before the suite was split, one `Update()` was enough to run all 59 collections inside a single
+	///       work item, so the flag was legitimately false in the defective build and the run looked clean. What closes
+	///       that case is the suite's shape - one task per testlet, each posting its successor, so a pass that quits
+	///       early lands a fraction of the registered testlets and the harness refuses the gap. This flag is the second
+	///       of the two halves: it is what names the shutdown pump as the driver in the cases where the rescue really
+	///       does finish the run, as opposed to the loop never having been asked to.
 	[[nodiscard]] bool IsDrivenByShutdownPump() const noexcept
 	{
 		return drivenByShutdownPump;

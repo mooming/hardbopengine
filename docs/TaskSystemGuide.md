@@ -469,3 +469,37 @@ The promise both drain modes do make, and the one the end-to-end test asserts, i
 lane with work is never starved by the other lane's weight.** A weight of 1 means "later", never "never"; a zero
 weight falls back to one rather than switching a lane off, because a lane with a queue and no service would strand
 those tasks forever.
+
+---
+
+## 18. How the suite is driven, and what that proves
+
+The suite is engine work, not a thing that happens around the engine. `Test::RegisterSuite()` registers all 59
+collections and flattens them into a sequence of 372 **testlets** - one test lambda each - and then
+`Test::ScheduleSuiteOnBaseStream()` posts the first one to the base stream. Each testlet runs as its own task, and
+each one posts the next; the last posts a task that prints the report and requests shutdown, so `Engine::Run` is the
+only thing that can carry the suite to its end and it returns with the tallies already settled.
+
+That shape is load-bearing in a way a witness never was. Three facts make it so:
+
+| Fact | Consequence |
+|---|---|
+| Registration happens before `Run()` is entered | The expected total belongs to the harness, so a suite that never started cannot report a total matching the nothing it executed |
+| A testlet posts its successor only after running | The queue is empty the moment an item is taken, so one pass cannot reach far: measured with `Engine::Run`'s loop reduced to a single pass, 13 of 372 testlets ran |
+| `Engine::Run` returning without finishing is a gap between two numbers the harness owns | `TestMain` compares registered with executed and exits 1, naming the shortfall. No hand-written observer of the loop is involved |
+
+Two support pieces, both of which exist because something was measured rather than assumed:
+
+* **`TaskStream::IsDrivenByShutdownPump`** - `TaskSystem::JoinAndClear` pumps the base stream under a wall-clock bound
+  to close the system down. That rescue is correct for real shutdowns, and it is what once let a dead engine loop pass
+  the whole suite: the drain ran the tests and reported them. A testlet that runs while that pump is driving records a
+  failure, because results produced by the rescue path are not evidence about the loop.
+* **A bounded per-pass allowance on the base stream** (`ConfigureBudget`, set by the harness). Today the chain alone
+  forces many passes, so the allowance is insurance rather than the load: `CPUBudget` treats zero as unlimited and reads
+  the allowance once per pass, so a future driver that re-scanned the queue after every completed item could drain a
+  whole chain in one pass and make the guard vacuous again - silently. A small allowance makes that impossible, and too
+  small an allowance costs only extra passes.
+
+The engine-loop contract this enforces is the one `Engine::Run` has always documented: pump while the task system is
+running, and shut down only through the shutdown path. Breaking the loop is now a test failure with the loop in its
+name, which is the property the suite previously lacked while claiming 59 collections of coverage.
