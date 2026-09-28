@@ -1,5 +1,26 @@
 # Journal
 
+## 2026-09-28 06:30 - a testlet became a type that cannot allocate, on three instructions from the owner
+
+The owner drove this in three moves, and each one removed a thing I had left in: first that `std::function` allocates implicitly and that is not acceptable in a suite whose job is measuring allocation; then that the storage ceiling should be a template parameter rather than a constant inside the type, so the decision lives where the captures are known; then that the name should be a fixed `char[128]` rather than borrowed. The result is `Engine/Test/Testlet.h`: one class template owning a name and a closure inline, with a per-closure-type constexpr dispatch table, so registering a test allocates nothing and cannot.
+
+**The measurements that made the change worth doing, all taken rather than asserted.**
+| Quantity | Value | Consequence |
+|---|---|---|
+| Test lambdas that capture | 379 of 379 (0 non-capturing; 315 use `[this]`) | A plain function pointer like the engine's own `TRunnable` would have meant rewriting every test in the engine — rejected on proportion, and the reason is on the page |
+| Test names longer than a small-string buffer | 151 of 378 (40%) | As a `std::string` member, two in five tests heap-allocated at registration |
+| Closures over 32 bytes | 4, each exactly 40 | `TClosureBytes = 48`: measured maximum plus one word, found by letting the `static_assert` fire and then asking the compiler for the sizes with a one-off undefined-template probe |
+| Longest test name | 105 characters | `MaxNameBytes = 128`, so the existing longest name fits with a clause spare |
+
+**Mutant and compile-gate ledger.** A test run twice is now refused by name (`runner exit=1`, three collections reported failed) because `TestEnv` counts runs per testlet — and that guard exists because the suite's own totals structurally cannot see double execution: a schedule that ran one testlet 372 times would still report 372 of 372, which is how the earlier zero-filled-payload bug looked. Removing the relocation from the move constructor is caught only as a segfault, recorded as the weaker half of the coverage rather than presented as a pass. The compile gates were fired deliberately twice: capacity 32 refused exactly four closures at their registration sites, and `MaxNameBytes = 100` refused the 105-character name at `Engine/Core/TaskSystem.cpp:3312`. Both are the witnesses for the two decided numbers.
+
+**Three failures of mine, in the order they hurt.**
+
+* I ran the `MaxNameBytes` mutant against an **uncommitted** new file and used `git checkout` to restore it, which replaced my rewritten `Testlet.h` with the committed `string_view` version and destroyed the change. This is the second time today I have broken the commit-before-mutating rule, and the second time it cost real work rather than only time. The rewrite survived only because I had written the file out in full earlier in the session.
+* Deleting `run-tests.html` — correct, since `hbe::Test::RunTests` no longer exists — broke **12 references** before I repointed them. A dead link I created while documenting the change is a defect inside the change, and the sweep is now verified to leave 0 inside the Test module.
+* My equivalence witness was botched twice: a `sed` with an illegal byte sequence produced a baseline file that parsed to 42 records, and a normaliser that replaced digits with `N` before grepping for `TC0` produced 0 comparable lines. So the refactor's equivalence claim rests on the harness's in-band checks — registered versus executed, no testlet running twice, 372 testlets and 59 collections green in all three configurations — and **not** on the byte-for-byte log comparison I originally planned. Stating that is the difference between a weak witness and an unverifiable one.
+
+Docs: `Testlet` has its page, and the pages my own commits had turned into falsehoods — `TTestFunc`, the name-and-pair vector, `TestCollection::Start`, the old `AddTest` signature, `TestEnv::Start`, and the `RunTests` module story — were corrected rather than left to mislead, with two pages about removed functions carrying a Removed banner instead of a silent deletion or a silent lie. Authoring the replacement method pages for those two is owed work and is recorded as such.
 ## 2026-09-28 03:10 - a testlet is a task: the Engine::Run guardrail closed, and closed by the shape of the suite rather than by a witness
 
 Owner's direction was that a task should be a testlet - one test lambda - dispatched on the base stream, with the window log print scoped
