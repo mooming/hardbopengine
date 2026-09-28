@@ -1,5 +1,40 @@
 # Journal
 
+## 2026-09-28 21:34 - the ceiling became a per-testlet declaration, and the mutant proved both directions
+
+The owner chose the option where each testlet can declare its own allowance. The point of putting it in an
+argument at the registration site rather than in a shared constant is reviewability: an exception shows up in a
+diff as a number next to the test that needs it, which is something a reader can push back on, whereas editing one
+global constant quietly relaxes all 372 testlets at once.
+
+**What it cost, measured.** `AddTest` gained a ceiling form; the allowance lives in `Testlet` rather than a parallel
+array, because a second container has to be kept in step by hand and every way of failing that means one test
+judged by another test's budget. `sizeof(Testlet)` went **184 to 192** - one word, about three kilobytes across
+the suite. No call site passes the argument today: measured maximum retention is 33,200 against a 65,536 ceiling,
+so the mechanism ships with **zero exceptions granted**, and the first site that does pass one will be an event.
+
+**Why there is no unit test for this guard, and what stands in instead.** A testlet cannot run a testlet, and a
+testlet that exceeded its own ceiling would fail the very run whose behaviour it was demonstrating - so an
+in-suite test of the ceiling is not merely missing, it is not expressible. That reasoning is now written in
+`Testlet.h` where a reader looking for the missing test will find it. The substitute was run in both directions in
+a single build, after committing, so reverting was safe:
+| Mutant | Expected | Observed |
+|---|---|---|
+| default 64 KiB lowered to 1 KiB | suite refuses by name | 9 testlets refused, 6 collections FAILED, `runner exit=1` |
+| `MapMemory` declared 64 KiB while default was 1 KiB | that testlet survives | retained 12,352, refused **0** times, line carries "against a declared ceiling of 65536" |
+| `Print CallStack` declared 256 | refused as declared, not default | "over the 256 byte ceiling **this testlet declared for itself**" |
+
+A testlet with a declared budget repeats it on every line it emits, which is what made the rescue legible in the
+log without re-reading the source, and a refusal says whose ceiling was breached.
+
+Gate at `c134744`: `check.sh` 0 mechanical violations, 0 advisory, build gate PASS 12/12; Debug/Dev/Release all
+`all 59 collections passed (372 testlets)`.
+
+Owed, unchanged and still honest: the pool door (`MultiPoolAllocator` bank traffic) is outside the ceiling until
+that class grows a usage accessor - refused as speculative while the door measures zero traffic; and API reference
+pages for `MemoryManager`'s six new entry points, `Testlet::GetMaxRetainedGlobalBytes`, and `AddTest`'s ceiling
+form.
+
 ## 2026-09-28 20:18 - a testlet now has a memory ceiling, and the number came from the distribution
 
 The owner asked for a ceiling on the memory a testlet may use. Deciding a number without a distribution behind it
