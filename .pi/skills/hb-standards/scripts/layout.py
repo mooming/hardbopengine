@@ -59,6 +59,30 @@ UNWRAP = {'TemplateDecl', 'ClassTemplatePartialSpecializationDecl', 'TypeAliasTe
 GUARDED = re.compile(r'^\s*#\s*if(n?def)?\b', re.M)
 CLASS_DECL = re.compile(r'^\s*(?:template\s*<[^>]*>\s*)?(class|struct)\s+[A-Za-z_]\w*', re.M)
 DECL_NAME = r'(?:class|struct|union)\s+([A-Za-z_]\w*)'
+NOT_A_CLASS_NAME = {'alignas', 'void', 'operator', 'return', 'const', 'mutable', 'static', 'friend', 'explicit'}
+
+
+def declaration_tail_is_a_body(rest):
+    """Does what follows the name introduce a body, or a variable?
+
+    `struct stat info;` at OSAL/LinuxFileHandle.cpp:34 is a local of a system type, not a class this
+    file declares, and `struct alignas(16) Vec` names a keyword rather than a type. A name is a
+    declaration only when what follows it is a body, a base list, or nothing.
+    """
+    rest = rest.strip()
+    if not rest or rest.startswith('{'):
+        return True
+    first = re.match(r'([A-Za-z_]\w*)', rest)
+    if not first:
+        return rest.startswith(':')
+    word = first.group(1)
+    if word in ('final', 'override'):
+        return True
+    after = rest[first.end():].lstrip()
+    if after.startswith((';', '=', '(')):
+        return False
+    return after.startswith(':') or not after
+
 NAMESPACE = re.compile(r'^\s*namespace\s+([A-Za-z_]\w*)', re.M)
 
 
@@ -201,9 +225,10 @@ def declared_names(text):
         for match in re.finditer(DECL_NAME, line):
             if line[:match.start()].rstrip().endswith('enum'):
                 continue
-            if line[match.end():].lstrip().startswith(';'):
+            name = match.group(1)
+            if name in NOT_A_CLASS_NAME or not declaration_tail_is_a_body(line[match.end():]):
                 continue
-            names.append(match.group(1))
+            names.append(name)
     return list(dict.fromkeys(names))
 
 
