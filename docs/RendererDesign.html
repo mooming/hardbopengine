@@ -216,6 +216,7 @@
     <h2>HardBop RHI</h2>
     <ul>
         <li><a href="#intro">Introduction</a></li>
+        <li><a href="#status">0. Implementation Status</a></li>
         <li><a href="#fundamentals">1. Modern API Fundamentals</a></li>
         <li><a href="#pipeline">2. Hybrid Pipeline Architecture</a></li>
         <li><a href="#dataflow">3. High-Level Data Flow</a></li>
@@ -236,6 +237,111 @@
     </header>
 
 
+
+<section id="status">
+        <h2>0. Implementation Status</h2>
+        <div class="intro-card">
+            <strong>Status:</strong> Target design. None of the four phases below exist in the tree yet.<br>
+            <strong>Checked: 2026-09-29</strong>, against <code>Engine/Renderer</code> (13 files, 2,506 lines).<br>
+            <strong>Rule for this section:</strong> the design text is not edited to match the code; only this section
+            moves as work lands.
+        </div>
+
+        <table>
+            <tr><th>Design element</th><th>Stated in this document</th><th>In the tree today</th><th>How that was measured</th></tr>
+            <tr>
+                <td>Phase 1 EXTRACT</td>
+                <td>Lockless ECS snapshot to SoA buffers (<code>TransformStack</code>, <code>MeshBuffer</code>,
+                    <code>MaterialIndexBuffer</code>)</td>
+                <td><strong>No</strong></td>
+                <td>None of those three type names appears in any engine source file</td>
+            </tr>
+            <tr>
+                <td>Phase 2 PREPARE</td>
+                <td>Compute-driven frustum culling, Hi-Z occlusion, LOD selection on worker threads</td>
+                <td><strong>No</strong></td>
+                <td><code>vkCmdDispatch</code> 0, compute pipeline creation 0, <code>std::thread</code> 0</td>
+            </tr>
+            <tr>
+                <td>Phase 3 RENDER GRAPH</td>
+                <td>DAG with dependency resolution and automatic barrier injection</td>
+                <td><strong>No</strong></td>
+                <td><code>RenderGraph</code> 0, <code>vkCmdPipelineBarrier</code> 0. Today there is one
+                    <code>VkRenderPass</code> created once, with two attachments and clear-on-load</td>
+            </tr>
+            <tr>
+                <td>Phase 4 SUBMIT</td>
+                <td>64-bit radix-sorted command buckets, zero lock contention</td>
+                <td><strong>No</strong></td>
+                <td>One <code>vkCmdDrawIndexed</code> per frame, recorded into one command buffer on the calling thread</td>
+            </tr>
+            <tr>
+                <td>Bindless resource model</td>
+                <td>32-bit handles into global descriptor arrays, slot layout 0 / 4 / 8 / 12</td>
+                <td><strong>No</strong></td>
+                <td>No descriptor set is created or updated anywhere. Resources reach the shader as 128 bytes of push
+                    constants plus vertex and index bindings</td>
+            </tr>
+            <tr>
+                <td>HLSL single source of truth</td>
+                <td>SM 6.6+ cross-compiled to DXIL, SPIR-V and MSL</td>
+                <td><strong>No</strong></td>
+                <td>No <code>.hlsl</code> file exists in the repository. The shipped shaders are GLSL
+                    (<code>Vulkan/Shaders/MC.vert</code>, <code>MC.frag</code>) baked into <code>ShadersSpv.h</code></td>
+            </tr>
+            <tr>
+                <td>Three backends (DX12 / Vulkan / Metal)</td>
+                <td>Mapping matrix across all three, backend chosen at compile time</td>
+                <td><strong>Vulkan only</strong></td>
+                <td><code>Engine/Renderer/Vulkan</code> is the only backend. <code>CAMetalLayer</code> and
+                    <code>id&lt;MTLDevice&gt;</code> appear only to build the macOS surface MoltenVK presents through;
+                    D3D12 appears only as a mapping column in the <code>RenderCapabilities</code> header comment</td>
+            </tr>
+            <tr>
+                <td>Transient resource heap with aliasing</td>
+                <td>Intermediates carved from pre-allocated aliased regions</td>
+                <td><strong>No</strong></td>
+                <td>Four direct <code>vkAllocateMemory</code> calls, one per buffer; vertex data is host-visible and
+                    host-coherent, mapped in place</td>
+            </tr>
+            <tr>
+                <td>PSO cache with versioning</td>
+                <td>Unified graphics / compute / ray-tracing cache keyed on shader hash</td>
+                <td><strong>No</strong></td>
+                <td>Exactly one graphics pipeline with two shader stages, created once during initialization</td>
+            </tr>
+            <tr>
+                <td>Hardware capability query</td>
+                <td>Static tier tables in the mapping matrix</td>
+                <td><strong>Recorded differently</strong></td>
+                <td><code>RenderCapabilities</code> is read from the physical device at runtime and zero-initialised
+                    until then, because hard-coded defaults were measured to contradict real hardware. The tier tables
+                    here are prose and are not what the engine reports</td>
+            </tr>
+        </table>
+
+        <p>
+            Two things the current backend does that this document never mentions, recorded so they are not lost when the
+            design gets built: the swapchain frame cycle with two frames in flight and Mailbox-over-FIFO present
+            promotion; and the invariant that every failure path still releases the frame fence with an empty submit, so a
+            failed submit cannot wedge the next frame. The word <em>swapchain</em> does not occur anywhere in this design,
+            although it is what the running code is built on.
+        </p>
+
+        <p>
+            Left to the design owner rather than edited here: the 64-bit sort key table assigns bits 63, 59-48, 47-32 and
+            31-0, so <strong>bits 62, 61 and 60 belong to no component</strong>. Spare, error, or reserved is a design
+            decision.
+        </p>
+
+        <p>
+            Provenance: this page had a markdown twin at <code>docs/RendererDesign.md</code>. It was removed on 2026-09-29 by
+            the owner's decision and this page is the design document. A note in
+            <a href="Renderer/index.html">the Renderer module reference</a> previously claimed the two files were
+            different designs; measured against the phase names and the identical bit layout, that claim was wrong - they
+            were the same design at two depths.
+        </p>
+    </section>
 
     <section id="fundamentals">
         <h2>1. Fundamentals of Modern Graphics APIs</h2>
@@ -280,7 +386,7 @@
                 <div class="stage">GRAPH</div>
                 <div class="stage">SUBMIT</div>
             </div>
-            <p><small>Data evolves from ECS World $\rightarrow$ SoA Buffers $\rightarrow$ Culled Indices $\rightarrow$ GPU Command Buckets</small></p>
+            <p><small>Data evolves from ECS World → SoA Buffers → Culled Indices → GPU Command Buckets</small></p>
         </div>
 
         <h3>Phase 1: EXTRACT</h3>

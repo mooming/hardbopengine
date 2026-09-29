@@ -54,9 +54,8 @@
   <h3>Design documents</h3>
   <ul>
     <li><a href="../RendererDesign.html">Renderer design (RHI architecture)</a></li>
-    <li><a href="../RendererDesign.md">Renderer design, markdown form (a different document - see below)</a></li>
     <li><a href="../design/LightweightRenderer_Design.html">Lightweight renderer design</a></li>
-    <li><a href="../design/LightweightRenderer_Design.md">Lightweight renderer design, markdown form (adds the phase plan)</a></li>
+    <li><a href="../design/LightweightRenderer_Design.md">Lightweight renderer design, markdown form (newer than the HTML - see below)</a></li>
     <li><a href="../Config/index.html#buildconfig">VULKAN_SDK detection</a></li>
   </ul>
 </nav>
@@ -86,37 +85,41 @@
 </p>
 
 <p>
-  Two of those documents exist twice, in markdown and in HTML, and the pairs are <strong>not equivalent</strong> - which
-  is why both forms are linked above rather than one. Measured by section headings:
-</p>
+  One design document used to exist twice, and this page previously mis-described it. <code>RendererDesign.md</code> and
+  <code>RendererDesign.html</code> were <strong>the same design at two depths</strong>, not two designs: the phase names
+  (<code>EXTRACT</code> / <code>PREPARE</code> / render graph / <code>SUBMIT</code>) and the 64-bit sort key layout
+  (bits 63, 59-48, 47-32, 31-0) match between them line for line. The markdown held the declaration sketches, the HTML
+  held the prose and tables. <strong>The markdown twin was removed on 2026-09-29 by the owner</strong>;
+  <a href="../RendererDesign.html"><code>docs/RendererDesign.html</code></a> is the design document, and its
+  <a href="../RendererDesign.html#status">Implementation Status</a> section records how much of that design exists in the
+  tree today - measured, because the design itself is forward-looking and stays untouched by code reality.
 
-<table>
-  <tr><th>Pair</th><th>Sections</th><th>Overlap</th><th>What the unlinked form holds</th></tr>
-  <tr>
-    <td><code>RendererDesign.md</code> / <code>RendererDesign.html</code></td>
-    <td>24 / 17</td>
-    <td><strong>5</strong></td>
-    <td>Not a rendering of the same text. The markdown is 47 KB against the HTML's 15 KB, and the heading sets barely
-        intersect: this is a second, larger design document that shares a title, not a second format. The HTML form is
-        the one every module page has been linking.</td>
-  </tr>
-  <tr>
-    <td><code>LightweightRenderer_Design.md</code> / <code>.html</code></td>
-    <td>42 / 35</td>
-    <td><strong>33</strong></td>
-    <td>Close to the same document. The markdown carries the phase plan (<code>Phase 1 Core data structures</code>,
-        <code>Phase 2 Render graph</code>) and a shorter vision heading; the HTML has two sections the markdown does
-        not. The markdown was modified 2026-09-06, the HTML 2026-09-01 - so the linked form is the older of the two.</td>
-  </tr>
-</table>
+  The wrong claim that was here before is worth keeping as a lesson: it asserted the two files were different designs,
+  because their <em>section headings</em> overlapped in only 5 of 24. Headings are not claims. Comparing what the two
+  documents actually assert - phase names, bit layout, bindless slot numbers, Metal paging - gives overlap, not conflict.
 
-<p>
-  Deciding which form is authoritative is the owner's call, not something to settle by editing links, and the first
-  renderer in the tree is a Vulkan backend that would have to change if the answer moved. What is not debatable is the
-  state this page is correcting: before this note both markdown files were referenced by <em>nothing</em>, so a reader
-  following the reference could not discover that a competing 47 KB renderer design exists in the same folder. That
-  matches the site's own rule - a second copy of a standard is a second place to be wrong - and duplication you cannot
-  reach is worse than duplication you can.
+  <table>
+    <tr><th>Document</th><th>What it is</th><th>Relation to the code</th></tr>
+    <tr>
+      <td><a href="../RendererDesign.html"><code>RendererDesign.html</code></a></td>
+      <td>Target RHI architecture: hybrid 4-phase pipeline, bindless, HLSL single source</td>
+      <td>Not built. Its own section 0 lists each design element against what is measurably present in
+          <code>Engine/Renderer</code></td>
+    </tr>
+    <tr>
+      <td><a href="../design/LightweightRenderer_Design.html"><code>design/LightweightRenderer_Design.html</code></a>
+          and <a href="../design/LightweightRenderer_Design.md"><code>.md</code></a></td>
+      <td>The staged lightweight renderer plan, still present in both formats</td>
+      <td>Also not built. Section overlap between the two formats is 33 of 35 and 33 of 42: near the same document, and
+          the markdown is the newer of the two (2026-09-06 against 2026-09-01), so the linked HTML is the older form.
+          Which one to keep is still the owner's call; both are linked here so neither is invisible</td>
+    </tr>
+  </table>
+
+  What was not debatable and is now fixed is the reachability: before this note, the markdown forms were referenced by
+  <em>nothing</em>, and nothing anywhere said that the design on this page is unbuilt. The site's own rule says a second
+  copy of a standard is a second place to be wrong - and a gap between design and implementation that no page states is a
+  place where nobody is wrong, because nobody looks
 </p>
 
 

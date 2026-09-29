@@ -1,5 +1,49 @@
 # Journal
 
+## 2026-09-29 18:05 - the renderer design is labelled what it is, its markdown twin is gone, and my own false note is corrected
+
+The owner settled the question I raised: the renderer design was written fresh and is **not** applied to the code, so the
+design must not be rewritten to match the code. What was missing was the progress record - nothing anywhere said the
+design is unbuilt.
+
+**Added `0. Implementation Status` to `docs/RendererDesign.html`**, in the page every module reference already links. A
+status card (target design, checked 2026-09-29, and the rule that the design text is not edited toward code reality
+while only this section moves) plus a table of ten design elements against the tree, each with the measurement that
+decided it: `RenderGraph` 0 and `vkCmdPipelineBarrier` 0 against a design whose phase 3 *is* barrier injection; no
+descriptor set created or updated anywhere against a bindless 32-bit handle model; no `.hlsl` file in the repository
+against "HLSL single source of truth", where the shipped shaders are GLSL `MC.vert`/`MC.frag` baked into
+`ShadersSpv.h`; one `vkCmdDrawIndexed` per frame against radix-sorted command buckets; four direct `vkAllocateMemory`
+against a transient aliased heap; one graphics pipeline against a versioned PSO cache; Vulkan only, with `CAMetalLayer`
+and `id<MTLDevice>` present only to build the macOS surface MoltenVK presents through. Two of the current backend's
+real properties are recorded there too, because the design never mentions them and would otherwise lose them: the
+swapchain frame cycle with two frames in flight and Mailbox-over-FIFO promotion, and the invariant that every failure
+path still releases the fence with an empty submit. The word *swapchain* occurs nowhere in the design.
+
+Two design-content items were deliberately **not** edited: the sort key leaves bits 62, 61 and 60 unassigned, and the
+phase name is spelled three ways in one page. Both are written into section 0 as the design owner's call, not mine.
+One rendering defect in that page was mine to fix: line 283 carried literal `$\rightarrow$` (3 occurrences) while the
+only script loaded is `mermaid.min.js`, so the arrow rendered as source text. Replaced with the `→` the page already
+uses elsewhere.
+
+**Removed `docs/RendererDesign.md`** by owner decision (`git rm`, history preserved). It was the same design as the HTML
+at a different depth, not a second design.
+
+**My own false statement is corrected on `docs/Renderer/index.html`.** I wrote yesterday that the two files were "a
+second, larger design document that shares a title, not a second format", measured from section-heading overlap of 5 in
+24. Wrong: the phase names, the bit layout (63 / 59-48 / 47-32 / 31-0), the bindless slot numbers and the Metal paging
+topic all match. Headings are not claims; comparing what the documents actually assert gives overlap, not conflict. The
+corrected text states the relationship, the removal, and keeps my error visible with the reason it happened, so the next
+reader does not repeat the measurement. The remaining pair `design/LightweightRenderer_Design.{md,html}` is left in
+place and linked both ways - 33 of 35 overlap, markdown newer (2026-09-06 against 2026-09-01) - because choosing between
+them is still the owner's call.
+
+**Two verification bugs of my own, caught before committing.** An orphan check compared absolute resolved paths against
+relative keys and reported 14 orphans that did not exist; the earlier "0" was the correct one, and the corrected rerun
+still says 0. A second check counted links into class pages as if they were links into the module index and reported 19
+missing anchors; comparing against `git show HEAD` for the same measurement gives 0 before, 0 after, 0 added by me.
+Final state: 0 orphan design documents, 0 dead links in the folders this session owns (the 50 that remain are all
+`docs/Core` and `docs/OSAL`), tags balanced.
+
 ## 2026-09-29 14:09 - the reference index audit found two documents nobody could reach, one of them a competing renderer design
 
 The audit was mechanical, not impressionistic: every module folder against its reference page, every design document
