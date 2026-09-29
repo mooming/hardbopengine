@@ -107,7 +107,38 @@ already embodies the rules.
 
 ## 6. Stage 1 — per-module cycle, one worker at a time
 
-Four commits per module, in this order, because each one makes the next one's diff readable.
+Measured 2026-09-29 after the checkers were fixed, so these are the real figures and not estimates:
+comment lines are those the ban requires to move, layout findings come from the clang AST, docs
+gaps are namespace-scope API entries with no page.
+
+| Order | Module | Status | API pages missing | comment lines to move | layout findings |
+|---|---|---|---|---|---|
+| 1 | HSTL | **complete** `8854177` | 0 | 0 | 0 |
+| 2 | Config | pending | 0 | 101 | 2 |
+| 3 | Log | pending | 1 | 82 | 3 |
+| 4 | Test | pending | 1 | 109 | 3 |
+| 5 | Renderer | pending | 0 | 157 | 3 |
+| 6 | Engine | pending | 0 | 28 | 1 |
+| 7 | Resource | pending | 4 | 8 | 4 |
+| 8 | String | pending | 8 | 10 | 8 |
+| 9 | Container | pending | 1 | 51 | 12 |
+| 10 | OSAL | pending | 7 | 46 | 10 |
+| 11 | Math | pending | 15 | 93 | 15 |
+| 12 | Memory | pending | 20 | 98 | 19 |
+| 13 | Core | pending | 25 | 1178 | 22 |
+| 14 | Applications | pending | 0 | 26 | 0 |
+
+The modules are ordered by cost, cheapest complete cycle first, so the pipeline is proven on the
+small ones and the documentation-heavy ones are the last thing standing if this stops.
+
+Within a module, one subagent per batch of ≤ 16 files, batches run strictly one at a time.
+`Engine/Core` is 46 files, so it is more than one batch; the module still gets four commits.
+
+Subagent contract: `.Plans/STANDARD_WORKER_BRIEF.md`. Read the whole file, edit only the assigned
+files, never run the formatter (the orchestrator owns the mechanical layer), never build, never
+push, return a per-file verdict.
+
+## 6a. Four commits per module, in this order
 
 | Commit | Content | Verification before it is allowed |
 |---|---|---|
@@ -147,12 +178,21 @@ return a structured verdict per file.
 | Gate | When | Command |
 |---|---|---|
 | Mechanical lint | Every commit | `.pi/skills/hb-standards/scripts/check.sh --staged --no-build` |
-| Module compile | Layout and naming commits | `cmake --build cmake-build-debug --target <Module>` |
+| Module compile | Layout and naming commits | `cmake --build build --config Dev --target <Module>` |
 | HTML validity | Docs commits | validator block from `.Plans/AUTHORING_method_and_class_pages.md` |
 | Whole-tree lint | End of each module | `check.sh --all --no-build`, expecting the violation count to fall monotonically |
 | Full build gate, once per 3 modules and at the end | Proves nothing was broken by the sweep | `check.sh --all --test` — Dev, Debug, Release, plus `EngineTest` |
 
 Maximum 10 fix-and-reverify iterations per module, then stop and report.
+
+### What Stage 0 and the first cycle proved, before a second module was started
+
+| Finding | Where it landed |
+|---|---|
+| `comments.py` judged a structural label by its text, so it rejected the rule book's own example and would have accepted `// TODO`; separately, it parsed every C++ `if` as a preprocessor guard | fixed in `3d44cb1`, false findings 3035 → 2723 |
+| `layout.py` reported "5 clean" for a module whose two class bodies it had never seen: no `ClassTemplateSpecializationDecl`, one filtered pass, retry only on a wholly empty dump | fixed in `3d44cb1`, `fcaa0b7` |
+| A worker that built three configurations and diffed `-O2` assembly to justify collapsing four blank lines | brief now says where a worker's job ends |
+| The HSTL worker's two disputes were both correct | the checkers were wrong, not the module. Fixed rather than the files being bent to fit them |
 
 ## 8. Honest scale, measured, not estimated
 

@@ -6,19 +6,19 @@ Source comments are banned, so a missing page means the contract is nowhere.
 
 | module | API entries | with a page | missing | test-only | comment lines still in sources |
 |---|---|---|---|---|---|
-| Config | 3 | 3 | 0 | 0 | 12 |
-| Container | 10 | 9 | 1 | 0 | 59 |
-| Core | 27 | 2 | 25 | 5 | 1114 |
-| Engine | 1 | 1 | 0 | 0 | 17 |
-| HSTL | 0 | 0 | 0 | 1 | 1 |
-| Log | 3 | 2 | 1 | 0 | 66 |
-| Math | 15 | 0 | 15 | 7 | 101 |
-| Memory | 20 | 0 | 20 | 0 | 94 |
-| OSAL | 8 | 1 | 7 | 4 | 47 |
-| Renderer | 7 | 7 | 0 | 0 | 137 |
-| Resource | 7 | 3 | 4 | 3 | 10 |
-| String | 8 | 0 | 8 | 0 | 12 |
-| Test | 3 | 2 | 1 | 0 | 59 |
+| Config | 3 | 3 | 0 | 0 | 101 |
+| Container | 10 | 9 | 1 | 0 | 51 |
+| Core | 27 | 2 | 25 | 5 | 1178 |
+| Engine | 1 | 1 | 0 | 0 | 28 |
+| HSTL | 0 | 0 | 0 | 1 | 0 |
+| Log | 3 | 2 | 1 | 0 | 82 |
+| Math | 15 | 0 | 15 | 7 | 93 |
+| Memory | 20 | 0 | 20 | 0 | 98 |
+| OSAL | 8 | 1 | 7 | 4 | 46 |
+| Renderer | 7 | 7 | 0 | 0 | 157 |
+| Resource | 7 | 3 | 4 | 3 | 8 |
+| String | 8 | 0 | 8 | 0 | 10 |
+| Test | 3 | 2 | 1 | 0 | 109 |
 
 ## Entries
 

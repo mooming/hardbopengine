@@ -266,9 +266,12 @@ def write_ledger():
         group = by_module[module]
         api = [g for g in group if not g['test_only']]
         have = sum(1 for g in api if g['exists'])
-        # One row per entry, but a file with three classes must not bill its comments three times.
-        sources = sorted({g['source'] for g in group})
-        comments = sum(comment_count(os.path.join(REPO_ROOT, s)) for s in sources)
+        # Comments are counted over every header of the module, not over the files that own an
+        # entry. Counting only those hid Engine/Config/BuildConfig.h — a header of macro switches
+        # whose whole content is documentation and which declares no class — and reported 12 lines
+        # for a module that actually owed 102, which is the difference between a small pass and a
+        # documentation migration.
+        comments = sum(comment_count(path) for path in sources(os.path.join(REPO_ROOT, 'Engine', module)))
         out.append('| %s | %d | %d | %d | %d | %d |'
                    % (module, len(api), have, len(api) - have, len(group) - len(api), comments))
     out += ['', '## Entries', '', '| module | entry | kind | source | page | method pages | status |', '|---|---|---|---|---|---|---|']
