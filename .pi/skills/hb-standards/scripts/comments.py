@@ -24,7 +24,9 @@ COPYRIGHT = re.compile(r'Copyright \(c\).*Hansol Park')
 IGNORE_TAG = 'hb-standards:ignore'
 
 CLOSING_LINE = re.compile(r'^[{}\s]*$|^#[ \t]*(endif|else|elif)\b')
-LABEL = re.compile(r'^/{2}\s*!?(?:endif|else|elif|ifdef|ifndef|namespace\s+[\w:]+(\s+[\w:]+)*|[A-Z][A-Z0-9_]*)\s*$')
+DIRECTIVE = re.compile(r'^(if|ifdef|ifndef|else|elif|endif)\b(.*)$', re.S)
+
+NAMESPACE_HEAD = re.compile(r'\bnamespace\s+([A-Za-z_]\w*)')
 
 EXEMPT_FILES = ('Engine/CodingStandards.cpp',)
 
@@ -105,16 +107,102 @@ def code_prefix(line_text, col):
     return line_text[:col].strip()
 
 
-def is_label_comment(line_text, comment_col, body):
+def condition_variants(condition):
+    """Every spelling that legitimately names an `#if` condition on the line closing it.
+
+    The rule book permits the guard named directly (`#endif // PROFILE_ENABLED`) and in negated
+    form (`#else // !__DEBUG__`), and conditions written with `defined(...)` too. Enumerating the
+    variants is what lets `//__UNIT_TEST__` through while `// TODO` still reads as a comment: the
+    label has to *be* the construct's name, not merely look like an identifier.
+    """
+    condition = ' '.join(condition.split()).strip()
+    variants = {condition, '!' + condition}
+    for name in re.findall(r'\b[A-Za-z_][A-Za-z_0-9]*\b', condition):
+        variants.update({name, '!' + name, '!defined(%s)' % name, '! defined(%s)' % name, '! defined (%s)' % name})
+    compact = re.sub(r'\s+', '', condition)
+    variants.update({compact, '!' + compact})
+    return variants
+
+
+def label_expectations(text):
+    """Map each line that may carry a structural label to the labels that line allows.
+
+    Two constructs qualify, per docs/CodingStandards.md: a preprocessor conditional, closed by
+    `#endif`/`#else`/`#elif`, and a namespace, closed by a line whose only code is `}`.
+
+    The first version judged the comment *text* by pattern, and got it wrong in both directions. It
+    rejected `#else  // !__DEBUG__`, the rule book's own example, because the guard macros this
+    engine uses begin with an underscore — 104 `#endif //__UNIT_TEST__` labels — and it would have
+    accepted `// TODO`, since a capitalised word matches `[A-Z][A-Z0-9_]*`. Comparing the label
+    against what the line actually closes gets both right, and it is what stops the exemption from
+    becoming a hole through which any short comment can pass.
+    """
+    expectations = {}
+    guard_stack = []
+    namespace_stack = []
+    depth = 0
+    pending = ''
+    line = 1
+    line_start = 0
+    blanked = list(text)
+    for begin, end, kind in comment_spans(text):
+        for k in range(begin, min(end, len(blanked))):
+            if blanked[k] != '\n':
+                blanked[k] = ' '
+    blanked = ''.join(blanked)
+
+    for index, ch in enumerate(blanked):
+        if ch == '\n':
+            line += 1
+            line_start = index + 1
+            continue
+        if index == line_start:
+            line_end = blanked.find('\n', line_start)
+            raw = blanked[line_start:line_end if line_end >= 0 else len(blanked)].strip()
+            # The '#' must be there before anything is matched. Stripping it first and then
+            # matching the keyword makes every C++ `if` and `else` in the file look like a
+            # preprocessor guard, which pushes and pops the stack on ordinary statements and
+            # mislabels whichever `#endif` happens to be on top when the real guard closes.
+            directive = raw[1:].strip() if raw.startswith('#') else None
+            match = DIRECTIVE.match(directive) if directive else None
+            if match:
+                keyword, condition = match.group(1), match.group(2)
+                if keyword in ('if', 'ifdef', 'ifndef'):
+                    guard_stack.append(condition_variants(condition))
+                elif guard_stack:
+                    expectations.setdefault(line, set()).update(guard_stack[-1])
+        if ch == '{':
+            found = NAMESPACE_HEAD.search(pending)
+            namespace_stack.append((found.group(1) if found else None, depth))
+            depth += 1
+            pending = ''
+        elif ch == '}':
+            depth -= 1
+            closed = None
+            while namespace_stack and namespace_stack[-1][1] == depth:
+                name, _ = namespace_stack.pop()
+                if name:
+                    closed = name if closed is None else '%s::%s' % (name, closed)
+            if closed:
+                expectations.setdefault(line, set()).update({'namespace %s' % closed, 'namespace %s' % closed.split('::')[-1]})
+            pending = ''
+        elif ch == ';':
+            pending = ''
+        else:
+            pending = (pending + ch)[-120:]
+    return expectations
+
+
+def is_label_comment(line_text, comment_col, body, allowed):
     """A label names only the construct its own line closes, and nothing else."""
-    before = code_prefix(line_text, comment_col)
-    if not CLOSING_LINE.match(before):
+    if not allowed:
+        return False
+    if not CLOSING_LINE.match(code_prefix(line_text, comment_col)):
         return False
     stripped = body.strip()
-    if stripped.startswith('//'):
-        return bool(LABEL.match(stripped))
-    inner = stripped[2:-2].strip() if stripped.endswith('*/') else stripped
-    return bool(LABEL.match('//' + inner))
+    inner = stripped[2:].strip() if stripped.startswith('//') else stripped[2:-2].strip()
+    inner = ' '.join(inner.split()).strip()
+    return inner in allowed
 
 
 def check_file(path, text):
@@ -127,6 +215,7 @@ def check_file(path, text):
     except ValueError as exc:
         return ['%s:1: LEXER  %s — the file cannot be lexed, so no verdict is possible' % (path, exc)]
     lines = text.split('\n')
+    expectations = label_expectations(text)
     for begin, end, kind in spans:
         lineno = line_of(starts, begin)
         if lineno == 1 and COPYRIGHT.search(text[begin:end]):
@@ -136,7 +225,7 @@ def check_file(path, text):
         body = text[begin:end]
         if IGNORE_TAG in body:
             continue
-        if is_label_comment(line_text, comment_col, body):
+        if is_label_comment(line_text, comment_col, body, expectations.get(lineno)):
             continue
         first = body.strip().split('\n')[0][:88]
         findings.append('%s:%d: %s  %s' % (path, lineno, 'COMMENT' if kind == 'line' else 'BLOCK-COMMENT', first))

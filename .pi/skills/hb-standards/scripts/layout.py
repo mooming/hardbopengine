@@ -56,26 +56,14 @@ EXEMPT_KINDS = {'AccessSpecDecl', 'EmptyDecl', 'FullComment', 'FinalAttr', 'Frie
                 'TemplateTypeParmDecl', 'BuiltinTemplateDecl', 'MSGuidDecl', '__AttributeDecl'}
 
 UNWRAP = {'TemplateDecl', 'ClassTemplatePartialSpecializationDecl', 'TypeAliasTemplateDecl', 'ClassTemplateDecl'}
-GUARDED = re.compile(r'^\s*#\s*if(n?def)?\b')
+GUARDED = re.compile(r'^\s*#\s*if(n?def)?\b', re.M)
 CLASS_DECL = re.compile(r'^\s*(?:template\s*<[^>]*>\s*)?(class|struct)\s+[A-Za-z_]\w*', re.M)
+DECL_NAME = r'(?:class|struct|union)\s+([A-Za-z_]\w*)'
 NAMESPACE = re.compile(r'^\s*namespace\s+([A-Za-z_]\w*)', re.M)
 
 
-def dump_filter(text, target):
-    """The name substring clang should keep.
-
-    -ast-dump-filter matches the qualified name, so the outermost namespace of the file keeps
-    every declaration of its own project while dropping the whole standard library: 624 MB
-    unfiltered against ~1 MB filtered, measured on Engine/Memory/MemoryManager.h. A file with
-    no namespace has no such prefix, so its own class names are used instead.
-    """
-    namespaces = NAMESPACE.findall(text)
-    if namespaces:
-        return namespaces[0] + '::'
-    names = re.findall(r'^\s*(?:template\s*<[^>]*>\s*)?(?:class|struct)\s+([A-Za-z_]\w*)', text, re.M)
-    if not names:
-        raise Skipped('no namespace and no class name to filter the AST by')
-    return names[0]
+def namespace_list(text):
+    return list(dict.fromkeys(NAMESPACE.findall(text)))
 
 
 class Skipped(Exception):
@@ -142,43 +130,166 @@ def clang_argv(entry, target, name_filter):
     return cmd
 
 
-def ast_of(target, entries, by_name, clang_override=None):
-    """The clang AST of this file, plus how much of it clang was allowed to see.
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import comments as comment_lexer
 
-    Returns (roots, has_preprocessor_guard, note).
+RECORD_KINDS = {'CXXRecordDecl', 'ClassTemplateSpecializationDecl', 'ClassTemplatePartialSpecializationDecl'}
+MAX_RESCUE_PASSES = 8
 
-    A file whose body sits behind `#ifdef __UNIT_TEST__` — Engine/Renderer/RendererTest.h and
-    three Math sources, measured — preprocesses to nothing under the Dev configuration, and clang
-    then exits 0 having dumped zero declarations. Reading that as clean would be a verdict about
-    an unexamined class, so the pass is retried with the define the build itself uses, and the
-    note says which macros were active.
+
+
+def blank_template_params(text):
+    """Blank every `template < … >` header, which may run over several lines.
+
+    A multi-line parameter list is the common engine shape:
+
+        template<typename TKey,
+                 typename TValue,
+                 class TKeyEqual = std::equal_to<TKey>>
+
+    Removing only single-line lists left `class TKeyEqual` and `class TAllocator` looking like class
+    declarations, and each one cost a clang pass plus a note about a type parameter that has no
+    member layout to check.
     """
-    entry = resolve_command(target, entries, by_name)
-    text = open(target, encoding='utf-8', errors='ignore').read()
-    guarded = bool(GUARDED.search(text))
+    blanked = list(text)
+    for match in re.finditer(r'\btemplate\b', text):
+        depth = 0
+        started = False
+        k = match.end()
+        while k < len(text):
+            ch = text[k]
+            if ch == '<':
+                depth += 1
+                started = True
+            elif ch == '>':
+                depth -= 1
+                if started and depth == 0:
+                    break
+            elif ch in '{;' and started is False:
+                break
+            k += 1
+        for position in range(match.start(), min(k + 1, len(blanked))):
+            if blanked[position] != '\n':
+                blanked[position] = ' '
+    return ''.join(blanked)
 
-    def run(extra_defines):
-        cmd = clang_argv(entry, target, dump_filter(text, target)) + extra_defines
-        if clang_override:
-            cmd[0] = clang_override
-        try:
-            return subprocess.run(cmd, cwd=entry['directory'], capture_output=True, text=True)
-        except OSError as exc:
-            raise Skipped('clang could not run: %s' % exc)
 
-    proc = run([])
+def declared_names(text):
+    """Every class, struct and union this file *defines a body for*, at any depth.
+
+    Three exclusions, each of which otherwise buys a wasted clang pass and a note about a type that
+    has no layout to check:
+      * prose — `This singleton class serves as the core memory controller` is a sentence, so
+        comments are blanked first (and will be absent entirely once the ban lands);
+      * template parameters — `template<typename T, class THash>` declares a type parameter, and
+        `class THash` reads exactly like a class declaration to a naive pattern;
+      * forward declarations and `friend` lines — `class Engine;` names a type owned elsewhere.
+    """
+    blanked = list(text)
+    try:
+        spans = comment_lexer.comment_spans(text)
+    except ValueError:
+        spans = []
+    for begin, end, kind in spans:
+        for k in range(begin, min(end, len(blanked))):
+            if blanked[k] != '\n':
+                blanked[k] = ' '
+    names = []
+    for line in blank_template_params(''.join(blanked)).split('\n'):
+        if 'friend' in line:
+            continue
+        for match in re.finditer(DECL_NAME, line):
+            if line[:match.start()].rstrip().endswith('enum'):
+                continue
+            if line[match.end():].lstrip().startswith(';'):
+                continue
+            names.append(match.group(1))
+    return list(dict.fromkeys(names))
+
+
+def run_clang(entry, target, name_filter, extra_defines, clang_override):
+    cmd = clang_argv(entry, target, name_filter) + list(extra_defines)
+    if clang_override:
+        cmd[0] = clang_override
+    try:
+        proc = subprocess.run(cmd, cwd=entry['directory'], capture_output=True, text=True)
+    except OSError as exc:
+        raise Skipped('clang could not run: %s' % exc)
     if proc.returncode != 0:
         detail = [d for d in (proc.stderr + proc.stdout).split('\n') if d.strip()]
         hint = next((d for d in detail if 'error' in d), detail[0] if detail else 'no output')
         raise Skipped('clang rejected this file: %s' % hint[:160])
-    roots = parse_ast_stream(proc.stdout)
-    if roots:
-        return roots, guarded, None
-    proc = run(['-D__UNIT_TEST__=1'])
-    roots = parse_ast_stream(proc.stdout) if proc.returncode == 0 else []
-    if roots:
-        return roots, guarded, 'checked with -D__UNIT_TEST__=1, which the Dev build does not define'
-    return [], guarded, 'no declaration is visible to this build configuration'
+    return parse_ast_stream(proc.stdout)
+
+
+def collect_records(target, entries, by_name, clang_override=None):
+    """Every class body this file defines, gathered by as many filtered passes as it takes.
+
+    One pass is not enough, and believing otherwise is how this checker reported "5 clean" for a
+    module whose two class bodies it had never seen. A filtered dump only carries declarations
+    whose qualified name contains the filter, so:
+
+      * the file's own namespace catches the classes declared in it (the common case, one pass);
+      * a `std::hash<hbe::HString>` specialisation is declared in `namespace std`, and rescuing it
+        needs a pass filtered by its own name;
+      * a class inside `#ifdef __UNIT_TEST__` is invisible unless the build's define is added —
+        Engine/Renderer/RendererTest.h and three Math sources preprocess to nothing under Dev, and
+        clang then exits 0 having dumped nothing, which reads as clean unless it is retried.
+
+    Returns (records, has_preprocessor_guard, notes).
+    """
+    text = open(target, encoding='utf-8', errors='ignore').read()
+    entry = resolve_command(target, entries, by_name)
+    guarded = bool(GUARDED.search(text))
+    wanted = declared_names(text)
+    namespaces = namespace_list(text)
+    notes = []
+
+    records = {}
+
+    def absorb(name_filter, defines, note):
+        for root in run_clang(entry, target, name_filter, defines, clang_override):
+            for record, line, home, offset in records_in([root], target, text):
+                key = (record.get('name'), offset)
+                if key not in records:
+                    records[key] = (record, line, home)
+        if note and note not in notes:
+            notes.append(note)
+
+    # A dump must be filtered, so build the pass list first rather than discovering mid-run that
+    # there is nothing to filter by: an unfiltered dump of this tree is 624 MB of JSON.
+    passes = [namespace + '::' for namespace in namespaces]
+    if not passes and wanted:
+        passes = [wanted[0]]
+    if not passes:
+        raise Skipped('no namespace and no declared name to filter the AST by')
+    for name_filter in passes:
+        absorb(name_filter, (), None)
+
+    found_names = lambda: {base_name(r[0].get('name')) for r in records.values()}
+    missing = [name for name in wanted if name not in found_names()]
+    for name in missing[:MAX_RESCUE_PASSES]:
+        try:
+            absorb(name, (), None)
+        except Skipped:
+            continue
+    if len(missing) > MAX_RESCUE_PASSES:
+        notes.append('%d declared name(s) beyond the %d rescue passes were not reached'
+                     % (len(missing) - MAX_RESCUE_PASSES, MAX_RESCUE_PASSES))
+
+    still_missing = [name for name in wanted if name not in found_names()]
+    if still_missing and guarded:
+        for name in still_missing[:MAX_RESCUE_PASSES]:
+            try:
+                absorb(name, ('-D__UNIT_TEST__=1',),
+                       'checked with -D__UNIT_TEST__=1, which the Dev build does not define')
+            except Skipped:
+                continue
+    if wanted:
+        unrecovered = [name for name in wanted if name not in found_names()]
+        if unrecovered:
+            notes.append('no class body reached for: %s' % ', '.join(sorted(unrecovered)[:8]))
+    return list(records.values()), guarded, notes
 
 
 def unwrap(node):
@@ -327,20 +438,30 @@ def records_in(ast, target, text):
         loc = node.get('loc') or {}
         own = loc.get('file')
         home = os.path.abspath(own) if own else home
-        if node.get('kind') == 'CXXRecordDecl' and node.get('completeDefinition') and home == absolute:
+        if node.get('kind') in RECORD_KINDS and node.get('completeDefinition') and home == absolute:
             begin = ((node.get('range') or {}).get('begin') or {}).get('offset')
             if begin is None or begin >= size:
                 return
             key = (node.get('name'), loc.get('line'), begin)
             if key not in seen:
                 seen.add(key)
-                found.append((node, loc.get('line', 0), home))
+                found.append((node, loc.get('line', 0), home, begin))
         for c in node.get('inner') or []:
             walk(c, home)
 
     for root in ast:
         walk(root, None)
     return found
+
+
+def base_name(name):
+    """`hash<hbe::HString>` is the declaration of `hash`.
+
+    clang names a specialisation with its argument list attached, while the source line a rescue
+    pass is filtered by says only `hash`. Comparing the two without stripping the arguments leaves
+    every standard-template specialisation looking as though it had never been found.
+    """
+    return (name or '').split('<')[0].strip()
 
 
 def members_of(record, tag, home):
@@ -388,15 +509,10 @@ def check_file(target, entries, by_name, clang_override=None):
     text = open(target, encoding='utf-8', errors='ignore').read()
     if not CLASS_DECL.search(text):
         return [], [], 'no class or struct defined here'
-    ast, guarded, config_note = ast_of(target, entries, by_name, clang_override)
-    notes = []
-    if guarded:
-        notes.append('%s: [PARTIAL] a preprocessor guard may hide members from the AST' % target)
-    if config_note:
-        notes.append('%s: [PARTIAL] %s' % (target, config_note))
-    records = records_in(ast, target, text)
+    records, guarded, notes = collect_records(target, entries, by_name, clang_override)
+    notes = [n if n.startswith(target) else '%s: [PARTIAL] %s' % (target, n) for n in notes]
     if not records:
-        return [], notes, 'no class body visible to clang in this file'
+        return [], notes, 'no class body reached by clang in this file'
     findings = []
     for record, line, home in records:
         name = record.get('name') or '(anonymous at line %d)' % line
