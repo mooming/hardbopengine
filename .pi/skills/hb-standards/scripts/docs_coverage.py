@@ -53,6 +53,32 @@ def blank_out(text):
     return ''.join(blanked)
 
 
+def unit_test_guarded_lines(text):
+    """Lines whose code exists only when __UNIT_TEST__ is defined.
+
+    The authoring contract puts test-only code in the Coverage section of the page that owns it,
+    not on a page of its own, so a test class declared inside `#ifdef __UNIT_TEST__` must not be
+    demanded as `docs/HSTL/HUnorderedMapTest/index.html`. The first ledger asked for exactly that.
+
+    Only the branch the guard opens is treated as test-only: an `#else` branch is the production
+    code, so a stack entry is cleared there rather than kept.
+    """
+    guarded = set()
+    stack = []
+    for number, line in enumerate(text.split('\n'), 1):
+        directive = line.strip()
+        if directive.startswith('#'):
+            if re.match(r'#\s*if(n?def)?\b', directive):
+                stack.append(bool(re.search(r'__UNIT_TEST__|__TEST__', directive)))
+            elif re.match(r'#\s*(else|elif)\b', directive) and stack:
+                stack[-1] = False
+            elif re.match(r'#\s*endif\b', directive) and stack:
+                stack.pop()
+        if any(stack):
+            guarded.add(number)
+    return guarded
+
+
 def brace_depths(text):
     """Class-body nesting at the start of each line, where namespace braces are transparent.
 
@@ -133,10 +159,15 @@ def entries_in(path):
     if EXCLUDE_FILE_LINE.search('\n'.join(text.split('\n')[:3])):
         return []
     depths = brace_depths(text)
+    guarded = unit_test_guarded_lines(text)
     found = []
     for match in ENTRY.finditer(text):
         kind, name = match.group(1), match.group(2)
-        if depths.get(text[:match.start()].count('\n') + 1, 1) != 0:
+        line = text[:match.start()].count('\n') + 1
+        if depths.get(line, 1) != 0:
+            continue
+        if line in guarded:
+            found.append((name, 'test-only'))
             continue
         if name.startswith('I') and name[1:2].isupper():
             found.append((name, 'interface'))
@@ -184,13 +215,14 @@ def ledger_rows():
                 'source': os.path.relpath(path, REPO_ROOT),
                 'page': os.path.relpath(page, REPO_ROOT),
                 'exists': os.path.isfile(page),
+                'test_only': kind == 'test-only',
                 'method_pages': len([f for f in os.listdir(os.path.dirname(page)) if f.endswith('.html') and f != 'index.html']) if os.path.isdir(os.path.dirname(page)) else 0,
                 'comments': comment_count(path),
             })
     return rows
 
 
-def site_links_ok():
+def site_links_ok(wanted=None):
     """docs/index.html must reach every module page, and every module page must reach its entries."""
     problems = []
     index = os.path.join(DOCS, 'index.html')
@@ -198,6 +230,8 @@ def site_links_ok():
         return ['docs/index.html is missing — the module index is the site start page']
     text = open(index, encoding='utf-8', errors='ignore').read()
     for module in modules():
+        if wanted and module not in wanted:
+            continue
         page = os.path.join(DOCS, module, 'index.html')
         if not os.path.isfile(page):
             problems.append('docs/%s/index.html is missing' % module)
@@ -207,6 +241,8 @@ def site_links_ok():
         module_text = open(page, encoding='utf-8', errors='ignore').read()
         for path in sources(os.path.join('Engine', module)):
             for name, kind in entries_in(path):
+                if kind == 'test-only':
+                    continue
                 if os.path.isdir(os.path.join(DOCS, module, name)) and 'href="%s/index.html"' % name not in module_text.replace('%s/' % module, ''):
                     if ('%s/index.html' % name) not in module_text:
                         problems.append('docs/%s/index.html does not link %s/index.html' % (module, name))
@@ -224,25 +260,29 @@ def write_ledger():
            'Every entry the engine declares, and whether the HTML reference has a page for it.',
            'Source comments are banned, so a missing page means the contract is nowhere.',
            '',
-           '| module | entries | with a page | missing | comment lines still in sources |',
-           '|---|---|---|---|---|']
+           '| module | API entries | with a page | missing | test-only | comment lines still in sources |',
+           '|---|---|---|---|---|---|']
     for module in sorted(by_module):
         group = by_module[module]
-        have = sum(1 for g in group if g['exists'])
+        api = [g for g in group if not g['test_only']]
+        have = sum(1 for g in api if g['exists'])
         # One row per entry, but a file with three classes must not bill its comments three times.
         sources = sorted({g['source'] for g in group})
         comments = sum(comment_count(os.path.join(REPO_ROOT, s)) for s in sources)
-        out.append('| %s | %d | %d | %d | %d |' % (module, len(group), have, len(group) - have, comments))
+        out.append('| %s | %d | %d | %d | %d | %d |'
+                   % (module, len(api), have, len(api) - have, len(group) - len(api), comments))
     out += ['', '## Entries', '', '| module | entry | kind | source | page | method pages | status |', '|---|---|---|---|---|---|---|']
     for r in sorted(rows, key=lambda r: (r['module'], r['entry'])):
         out.append('| %s | %s | %s | `%s` | `%s` | %d | %s |' % (r['module'], r['entry'], r['kind'], r['source'],
                                                                  r['page'], r['method_pages'],
-                                                                 'documented' if r['exists'] else 'MISSING'))
+                                                                 'documented' if r['exists'] else ('test-only — owns a Coverage row' if r['test_only'] else 'MISSING')))
     os.makedirs(os.path.dirname(LEDGER), exist_ok=True)
     open(LEDGER, 'w').write('\n'.join(out) + '\n')
-    missing = sum(1 for r in rows if not r['exists'])
-    print('ledger written: %d entries, %d documented, %d missing -> %s'
-          % (len(rows), len(rows) - missing, missing, os.path.relpath(LEDGER, REPO_ROOT)))
+    api = [r for r in rows if not r['test_only']]
+    documented = sum(1 for r in api if r['exists'])
+    test_only = len(rows) - len(api)
+    print('ledger written: %d API entries (%d documented, %d missing) + %d test-only -> %s'
+          % (len(api), documented, len(api) - documented, test_only, os.path.relpath(LEDGER, REPO_ROOT)))
     return 0
 
 
@@ -253,14 +293,14 @@ def check(argv):
         return 0
     rows = ledger_rows()
     wanted = set(argv)
-    missing = [r for r in rows if not r['exists'] and (not wanted or r['module'] in wanted)]
+    missing = [r for r in rows if not r['exists'] and not r['test_only'] and (not wanted or r['module'] in wanted)]
     by_module = {}
     for r in missing:
         by_module.setdefault(r['module'], []).append(r)
     for module in sorted(by_module):
         names = ', '.join(sorted(r['entry'] for r in by_module[module]))
         print('[MISSING PAGE] docs/%s/ — %d entry(ies): %s' % (module, len(by_module[module]), names))
-    problems = site_links_ok()
+    problems = site_links_ok(wanted if wanted else None)
     for p in problems:
         print('[SITE LINK] %s' % p)
     total = len(missing) + len(problems)

@@ -4,21 +4,21 @@
 Every entry the engine declares, and whether the HTML reference has a page for it.
 Source comments are banned, so a missing page means the contract is nowhere.
 
-| module | entries | with a page | missing | comment lines still in sources |
-|---|---|---|---|---|
-| Config | 3 | 3 | 0 | 12 |
-| Container | 10 | 9 | 1 | 59 |
-| Core | 32 | 2 | 30 | 1114 |
-| Engine | 1 | 1 | 0 | 17 |
-| HSTL | 1 | 0 | 1 | 1 |
-| Log | 3 | 2 | 1 | 66 |
-| Math | 22 | 0 | 22 | 101 |
-| Memory | 20 | 0 | 20 | 94 |
-| OSAL | 12 | 1 | 11 | 47 |
-| Renderer | 7 | 7 | 0 | 137 |
-| Resource | 10 | 3 | 7 | 10 |
-| String | 8 | 0 | 8 | 12 |
-| Test | 3 | 2 | 1 | 59 |
+| module | API entries | with a page | missing | test-only | comment lines still in sources |
+|---|---|---|---|---|---|
+| Config | 3 | 3 | 0 | 0 | 12 |
+| Container | 10 | 9 | 1 | 0 | 59 |
+| Core | 27 | 2 | 25 | 5 | 1114 |
+| Engine | 1 | 1 | 0 | 0 | 17 |
+| HSTL | 0 | 0 | 0 | 1 | 1 |
+| Log | 3 | 2 | 1 | 0 | 66 |
+| Math | 15 | 0 | 15 | 7 | 101 |
+| Memory | 20 | 0 | 20 | 0 | 94 |
+| OSAL | 8 | 1 | 7 | 4 | 47 |
+| Renderer | 7 | 7 | 0 | 0 | 137 |
+| Resource | 7 | 3 | 4 | 3 | 10 |
+| String | 8 | 0 | 8 | 0 | 12 |
+| Test | 3 | 2 | 1 | 0 | 59 |
 
 ## Entries
 
@@ -38,19 +38,19 @@ Source comments are banned, so a missing page means the contract is nowhere.
 | Container | RingQueue | class | `Engine/Container/RingQueue.h` | `docs/Container/RingQueue/index.html` | 1 | documented |
 | Container | Vector | class | `Engine/Container/Vector.h` | `docs/Container/Vector/index.html` | 6 | documented |
 | Core | CPUBudget | class | `Engine/Core/CPUBudget.h` | `docs/Core/CPUBudget/index.html` | 0 | MISSING |
-| Core | CPUBudgetTest | class | `Engine/Core/CPUBudget.h` | `docs/Core/CPUBudgetTest/index.html` | 0 | MISSING |
+| Core | CPUBudgetTest | test-only | `Engine/Core/CPUBudget.h` | `docs/Core/CPUBudgetTest/index.html` | 0 | test-only — owns a Coverage row |
 | Core | CommandLineArguments | class | `Engine/Core/CommandLineArguments.h` | `docs/Core/CommandLineArguments/index.html` | 0 | MISSING |
 | Core | Component | class | `Engine/Core/Component.h` | `docs/Core/Component/index.html` | 0 | MISSING |
 | Core | ComponentSystem | class | `Engine/Core/ComponentSystem.h` | `docs/Core/ComponentSystem/index.html` | 0 | MISSING |
 | Core | Exception | class | `Engine/Core/Exception.h` | `docs/Core/Exception/index.html` | 0 | MISSING |
 | Core | False_t | class | `Engine/Core/CommonUtil.h` | `docs/Core/False_t/index.html` | 0 | MISSING |
 | Core | MainThreadTaskQueue | class | `Engine/Core/MainThreadTaskQueue.h` | `docs/Core/MainThreadTaskQueue/index.html` | 0 | MISSING |
-| Core | ResultPacketTest | class | `Engine/Core/ResultPacket.h` | `docs/Core/ResultPacketTest/index.html` | 0 | MISSING |
+| Core | ResultPacketTest | test-only | `Engine/Core/ResultPacket.h` | `docs/Core/ResultPacketTest/index.html` | 0 | test-only — owns a Coverage row |
 | Core | ScopedLock | class | `Engine/Core/ScopedLock.h` | `docs/Core/ScopedLock/index.html` | 0 | MISSING |
 | Core | ScopedTime | class | `Engine/Core/ScopedTime.h` | `docs/Core/ScopedTime/index.html` | 0 | MISSING |
 | Core | StaticString | class | `Engine/Core/SystemStatistics.h` | `docs/Core/StaticString/index.html` | 0 | MISSING |
 | Core | StreamDrainPolicy | class | `Engine/Core/StreamDrainPolicy.h` | `docs/Core/StreamDrainPolicy/index.html` | 0 | MISSING |
-| Core | StreamDrainPolicyTest | class | `Engine/Core/StreamDrainPolicy.h` | `docs/Core/StreamDrainPolicyTest/index.html` | 0 | MISSING |
+| Core | StreamDrainPolicyTest | test-only | `Engine/Core/StreamDrainPolicy.h` | `docs/Core/StreamDrainPolicyTest/index.html` | 0 | test-only — owns a Coverage row |
 | Core | SystemStatistics | class | `Engine/Core/SystemStatistics.h` | `docs/Core/SystemStatistics/index.html` | 0 | MISSING |
 | Core | Task | class | `Engine/Core/Task.h` | `docs/Core/Task/index.html` | 0 | MISSING |
 | Core | Task | class | `Engine/Core/WorkItem.h` | `docs/Core/Task/index.html` | 0 | MISSING |
@@ -58,10 +58,10 @@ Source comments are banned, so a missing page means the contract is nowhere.
 | Core | TaskID | struct | `Engine/Core/TaskID.h` | `docs/Core/TaskID/index.html` | 1 | documented |
 | Core | TaskProduceContext | struct | `Engine/Core/TaskProvider.h` | `docs/Core/TaskProduceContext/index.html` | 0 | MISSING |
 | Core | TaskProvider | class | `Engine/Core/TaskStream.h` | `docs/Core/TaskProvider/index.html` | 0 | MISSING |
-| Core | TaskProviderTest | class | `Engine/Core/TaskProvider.h` | `docs/Core/TaskProviderTest/index.html` | 0 | MISSING |
+| Core | TaskProviderTest | test-only | `Engine/Core/TaskProvider.h` | `docs/Core/TaskProviderTest/index.html` | 0 | test-only — owns a Coverage row |
 | Core | TaskRegistry | class | `Engine/Core/Task.h` | `docs/Core/TaskRegistry/index.html` | 0 | MISSING |
 | Core | TaskRegistry | class | `Engine/Core/TaskRegistry.h` | `docs/Core/TaskRegistry/index.html` | 0 | MISSING |
-| Core | TaskRegistryTest | class | `Engine/Core/TaskRegistry.h` | `docs/Core/TaskRegistryTest/index.html` | 0 | MISSING |
+| Core | TaskRegistryTest | test-only | `Engine/Core/TaskRegistry.h` | `docs/Core/TaskRegistryTest/index.html` | 0 | test-only — owns a Coverage row |
 | Core | TaskStream | class | `Engine/Core/TaskStream.h` | `docs/Core/TaskStream/index.html` | 0 | MISSING |
 | Core | TaskStreamAffinityBase | class | `Engine/Core/TaskStreamAffinity.h` | `docs/Core/TaskStreamAffinityBase/index.html` | 0 | MISSING |
 | Core | TaskSystem | class | `Engine/Core/TaskProvider.h` | `docs/Core/TaskSystem/index.html` | 0 | MISSING |
@@ -70,31 +70,31 @@ Source comments are banned, so a missing page means the contract is nowhere.
 | Core | True_t | class | `Engine/Core/CommonUtil.h` | `docs/Core/True_t/index.html` | 0 | MISSING |
 | Core | WorkItem | class | `Engine/Core/WorkItem.h` | `docs/Core/WorkItem/index.html` | 3 | documented |
 | Engine | Engine | class | `Engine/Engine/Engine.h` | `docs/Engine/Engine/index.html` | 29 | documented |
-| HSTL | HUnorderedMapTest | class | `Engine/HSTL/HUnorderedMap.h` | `docs/HSTL/HUnorderedMapTest/index.html` | 0 | MISSING |
+| HSTL | HUnorderedMapTest | test-only | `Engine/HSTL/HUnorderedMap.h` | `docs/HSTL/HUnorderedMapTest/index.html` | 0 | test-only — owns a Coverage row |
 | Log | LogLine | class | `Engine/Log/LogLine.h` | `docs/Log/LogLine/index.html` | 3 | documented |
 | Log | Logger | class | `Engine/Log/Logger.h` | `docs/Log/Logger/index.html` | 16 | documented |
 | Log | TaskSystem | class | `Engine/Log/Logger.h` | `docs/Log/TaskSystem/index.html` | 0 | MISSING |
 | Math | AABB | class | `Engine/Math/AABB.h` | `docs/Math/AABB/index.html` | 0 | MISSING |
 | Math | ImportanceResampling | class | `Engine/Math/ImportanceResampling.h` | `docs/Math/ImportanceResampling/index.html` | 0 | MISSING |
-| Math | ImportanceResamplingTest | class | `Engine/Math/ImportanceResampling.h` | `docs/Math/ImportanceResamplingTest/index.html` | 0 | MISSING |
+| Math | ImportanceResamplingTest | test-only | `Engine/Math/ImportanceResampling.h` | `docs/Math/ImportanceResamplingTest/index.html` | 0 | test-only — owns a Coverage row |
 | Math | Matrix2x2 | class | `Engine/Math/Matrix2x2.h` | `docs/Math/Matrix2x2/index.html` | 0 | MISSING |
 | Math | Matrix3x3 | class | `Engine/Math/Matrix3x3.h` | `docs/Math/Matrix3x3/index.html` | 0 | MISSING |
 | Math | Matrix4x4 | class | `Engine/Math/Matrix4x4.h` | `docs/Math/Matrix4x4/index.html` | 0 | MISSING |
 | Math | MonteCarloIntegrator | class | `Engine/Math/MonteCarloIntegrator.h` | `docs/Math/MonteCarloIntegrator/index.html` | 0 | MISSING |
 | Math | OBB | class | `Engine/Math/OBB.h` | `docs/Math/OBB/index.html` | 0 | MISSING |
 | Math | PerlinNoise | class | `Engine/Math/PerlinNoise.h` | `docs/Math/PerlinNoise/index.html` | 0 | MISSING |
-| Math | PerlinNoiseTest | class | `Engine/Math/PerlinNoise.h` | `docs/Math/PerlinNoiseTest/index.html` | 0 | MISSING |
+| Math | PerlinNoiseTest | test-only | `Engine/Math/PerlinNoise.h` | `docs/Math/PerlinNoiseTest/index.html` | 0 | test-only — owns a Coverage row |
 | Math | RigidTransform | class | `Engine/Math/RigidTransform.h` | `docs/Math/RigidTransform/index.html` | 0 | MISSING |
-| Math | RigidTransformTest | class | `Engine/Math/RigidTransform.h` | `docs/Math/RigidTransformTest/index.html` | 0 | MISSING |
+| Math | RigidTransformTest | test-only | `Engine/Math/RigidTransform.h` | `docs/Math/RigidTransformTest/index.html` | 0 | test-only — owns a Coverage row |
 | Math | StratifiedSampling | class | `Engine/Math/StratifiedSampling.h` | `docs/Math/StratifiedSampling/index.html` | 0 | MISSING |
-| Math | StratifiedSamplingTest | class | `Engine/Math/StratifiedSampling.h` | `docs/Math/StratifiedSamplingTest/index.html` | 0 | MISSING |
+| Math | StratifiedSamplingTest | test-only | `Engine/Math/StratifiedSampling.h` | `docs/Math/StratifiedSamplingTest/index.html` | 0 | test-only — owns a Coverage row |
 | Math | Transform | class | `Engine/Math/Transform.h` | `docs/Math/Transform/index.html` | 0 | MISSING |
-| Math | TransformTest | class | `Engine/Math/Transform.h` | `docs/Math/TransformTest/index.html` | 0 | MISSING |
+| Math | TransformTest | test-only | `Engine/Math/Transform.h` | `docs/Math/TransformTest/index.html` | 0 | test-only — owns a Coverage row |
 | Math | UniformTransform | class | `Engine/Math/UniformTransform.h` | `docs/Math/UniformTransform/index.html` | 0 | MISSING |
-| Math | UniformTransformTest | class | `Engine/Math/UniformTransform.h` | `docs/Math/UniformTransformTest/index.html` | 0 | MISSING |
+| Math | UniformTransformTest | test-only | `Engine/Math/UniformTransform.h` | `docs/Math/UniformTransformTest/index.html` | 0 | test-only — owns a Coverage row |
 | Math | Vector2 | class | `Engine/Math/Vector2.h` | `docs/Math/Vector2/index.html` | 0 | MISSING |
 | Math | Vector3 | class | `Engine/Math/Vector3.h` | `docs/Math/Vector3/index.html` | 0 | MISSING |
-| Math | Vector3Test | class | `Engine/Math/Vector3.h` | `docs/Math/Vector3Test/index.html` | 0 | MISSING |
+| Math | Vector3Test | test-only | `Engine/Math/Vector3.h` | `docs/Math/Vector3Test/index.html` | 0 | test-only — owns a Coverage row |
 | Math | Vector4 | class | `Engine/Math/Vector4.h` | `docs/Math/Vector4/index.html` | 0 | MISSING |
 | Memory | AllocatorScope | class | `Engine/Memory/AllocatorScope.h` | `docs/Memory/AllocatorScope/index.html` | 0 | MISSING |
 | Memory | Buffer | class | `Engine/Memory/MultiPoolConfigCache.h` | `docs/Memory/Buffer/index.html` | 0 | MISSING |
@@ -121,10 +121,10 @@ Source comments are banned, so a missing page means the contract is nowhere.
 | OSAL | File | class | `Engine/OSAL/File.h` | `docs/OSAL/File/index.html` | 0 | MISSING |
 | OSAL | FileOpenMode | class | `Engine/OSAL/OSInputOutput.h` | `docs/OSAL/FileOpenMode/index.html` | 0 | MISSING |
 | OSAL | MapSyncMode | class | `Engine/OSAL/OSInputOutput.h` | `docs/OSAL/MapSyncMode/index.html` | 0 | MISSING |
-| OSAL | OSDebugTest | class | `Engine/OSAL/OSDebug.h` | `docs/OSAL/OSDebugTest/index.html` | 0 | MISSING |
-| OSAL | OSInputOutputTest | class | `Engine/OSAL/OSInputOutput.h` | `docs/OSAL/OSInputOutputTest/index.html` | 0 | MISSING |
-| OSAL | OSMemoryTest | class | `Engine/OSAL/OSMemory.h` | `docs/OSAL/OSMemoryTest/index.html` | 0 | MISSING |
-| OSAL | OSThreadTest | class | `Engine/OSAL/OSThread.h` | `docs/OSAL/OSThreadTest/index.html` | 0 | MISSING |
+| OSAL | OSDebugTest | test-only | `Engine/OSAL/OSDebug.h` | `docs/OSAL/OSDebugTest/index.html` | 0 | test-only — owns a Coverage row |
+| OSAL | OSInputOutputTest | test-only | `Engine/OSAL/OSInputOutput.h` | `docs/OSAL/OSInputOutputTest/index.html` | 0 | test-only — owns a Coverage row |
+| OSAL | OSMemoryTest | test-only | `Engine/OSAL/OSMemory.h` | `docs/OSAL/OSMemoryTest/index.html` | 0 | test-only — owns a Coverage row |
+| OSAL | OSThreadTest | test-only | `Engine/OSAL/OSThread.h` | `docs/OSAL/OSThreadTest/index.html` | 0 | test-only — owns a Coverage row |
 | OSAL | ProtectionMode | class | `Engine/OSAL/OSInputOutput.h` | `docs/OSAL/ProtectionMode/index.html` | 0 | MISSING |
 | OSAL | SourceLocation | class | `Engine/OSAL/SourceLocation.h` | `docs/OSAL/SourceLocation/index.html` | 0 | MISSING |
 | OSAL | Window | class | `Engine/OSAL/Window.h` | `docs/OSAL/Window/index.html` | 0 | MISSING |
@@ -137,10 +137,10 @@ Source comments are banned, so a missing page means the contract is nowhere.
 | Renderer | VulkanRenderer | class | `Engine/Renderer/Vulkan/VulkanRenderer.h` | `docs/Renderer/VulkanRenderer/index.html` | 13 | documented |
 | Resource | Buffer | class | `Engine/Resource/Buffer.h` | `docs/Resource/Buffer/index.html` | 8 | documented |
 | Resource | BufferInputStream | class | `Engine/Resource/BufferInputStream.h` | `docs/Resource/BufferInputStream/index.html` | 0 | MISSING |
-| Resource | BufferInputStreamTest | class | `Engine/Resource/BufferInputStream.h` | `docs/Resource/BufferInputStreamTest/index.html` | 0 | MISSING |
+| Resource | BufferInputStreamTest | test-only | `Engine/Resource/BufferInputStream.h` | `docs/Resource/BufferInputStreamTest/index.html` | 0 | test-only — owns a Coverage row |
 | Resource | BufferOutputStream | class | `Engine/Resource/BufferOutputStream.h` | `docs/Resource/BufferOutputStream/index.html` | 0 | MISSING |
-| Resource | BufferOutputStreamTest | class | `Engine/Resource/BufferOutputStream.h` | `docs/Resource/BufferOutputStreamTest/index.html` | 0 | MISSING |
-| Resource | BufferTest | class | `Engine/Resource/Buffer.h` | `docs/Resource/BufferTest/index.html` | 0 | MISSING |
+| Resource | BufferOutputStreamTest | test-only | `Engine/Resource/BufferOutputStream.h` | `docs/Resource/BufferOutputStreamTest/index.html` | 0 | test-only — owns a Coverage row |
+| Resource | BufferTest | test-only | `Engine/Resource/Buffer.h` | `docs/Resource/BufferTest/index.html` | 0 | test-only — owns a Coverage row |
 | Resource | FileHandle | class | `Engine/Resource/BufferUtil.h` | `docs/Resource/FileHandle/index.html` | 0 | MISSING |
 | Resource | Resource | class | `Engine/Resource/Resource.h` | `docs/Resource/Resource/index.html` | 2 | documented |
 | Resource | ResourceManager | class | `Engine/Resource/ResourceManager.h` | `docs/Resource/ResourceManager/index.html` | 5 | documented |
