@@ -54,7 +54,9 @@
   <h3>Design documents</h3>
   <ul>
     <li><a href="../RendererDesign.html">Renderer design (RHI architecture)</a></li>
+    <li><a href="../RendererDesign.md">Renderer design, markdown form (a different document - see below)</a></li>
     <li><a href="../design/LightweightRenderer_Design.html">Lightweight renderer design</a></li>
+    <li><a href="../design/LightweightRenderer_Design.md">Lightweight renderer design, markdown form (adds the phase plan)</a></li>
     <li><a href="../Config/index.html#buildconfig">VULKAN_SDK detection</a></li>
   </ul>
 </nav>
@@ -82,6 +84,41 @@
   <a href="../design/LightweightRenderer_Design.html">docs/design/LightweightRenderer_Design.html</a> covers the
   lightweight path; this page and the pages below stay on what the headers declare.
 </p>
+
+<p>
+  Two of those documents exist twice, in markdown and in HTML, and the pairs are <strong>not equivalent</strong> - which
+  is why both forms are linked above rather than one. Measured by section headings:
+</p>
+
+<table>
+  <tr><th>Pair</th><th>Sections</th><th>Overlap</th><th>What the unlinked form holds</th></tr>
+  <tr>
+    <td><code>RendererDesign.md</code> / <code>RendererDesign.html</code></td>
+    <td>24 / 17</td>
+    <td><strong>5</strong></td>
+    <td>Not a rendering of the same text. The markdown is 47 KB against the HTML's 15 KB, and the heading sets barely
+        intersect: this is a second, larger design document that shares a title, not a second format. The HTML form is
+        the one every module page has been linking.</td>
+  </tr>
+  <tr>
+    <td><code>LightweightRenderer_Design.md</code> / <code>.html</code></td>
+    <td>42 / 35</td>
+    <td><strong>33</strong></td>
+    <td>Close to the same document. The markdown carries the phase plan (<code>Phase 1 Core data structures</code>,
+        <code>Phase 2 Render graph</code>) and a shorter vision heading; the HTML has two sections the markdown does
+        not. The markdown was modified 2026-09-06, the HTML 2026-09-01 - so the linked form is the older of the two.</td>
+  </tr>
+</table>
+
+<p>
+  Deciding which form is authoritative is the owner's call, not something to settle by editing links, and the first
+  renderer in the tree is a Vulkan backend that would have to change if the answer moved. What is not debatable is the
+  state this page is correcting: before this note both markdown files were referenced by <em>nothing</em>, so a reader
+  following the reference could not discover that a competing 47 KB renderer design exists in the same folder. That
+  matches the site's own rule - a second copy of a standard is a second place to be wrong - and duplication you cannot
+  reach is worse than duplication you can.
+</p>
+
 
 <p>
   The one backend is Vulkan, split across two files for one class: <code>VulkanRenderer.cpp</code> holds the portable

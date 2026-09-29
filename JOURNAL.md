@@ -1,5 +1,34 @@
 # Journal
 
+## 2026-09-29 14:09 - the reference index audit found two documents nobody could reach, one of them a competing renderer design
+
+The audit was mechanical, not impressionistic: every module folder against its reference page, every design document
+against its inbound references, every page against its reachability from the module and class indexes.
+
+**What passed.** All 13 build-target modules have reference pages and all 13 are linked from the module index. All 33
+Test-module pages are reachable and balanced. Of the 50 dead links left in `docs/`, **27 sit in `docs/Core` and 23 in
+`docs/OSAL`** - the folders the concurrent agent owns and I do not touch. My change added none.
+
+**What failed, and it is the interesting kind of failure.** Two documents were referenced by nothing:
+`docs/RendererDesign.md` and `docs/design/LightweightRenderer_Design.md`. Both have HTML siblings that *are* linked, so
+they looked like duplicate formats - the ordinary untidy case. Measured by section-heading overlap they are not the same
+thing:
+
+| Pair | Sections (md/html) | Overlap | Reading |
+|---|---|---|---|
+| `RendererDesign.md` / `.html` | 24 / 17 | **5** | Not a format pair. 47 KB vs 15 KB, heading sets barely intersect: two renderer designs sharing a filename stem, one of them invisible |
+| `LightweightRenderer_Design.md` / `.html` | 42 / 35 | **33** | Same document, drifted: the markdown holds the phase plan and was modified 2026-09-06, the linked HTML 2026-09-01 - the reachable form is the older one |
+
+Both are now linked from `docs/Renderer/index.html`, nav and body, with that table and one sentence stating plainly that
+choosing the authoritative form is an owner decision - the Vulkan backend would have to move if the answer changed - and
+that the state being corrected is unreachability, not duplication. The site's own rule says a second copy of a standard
+is a second place to be wrong; duplication nobody can find is worse, because it cannot even be noticed as a conflict.
+
+Re-run after the fix: **0 orphan design documents**, 0 dead links and 0 missing anchors in the folders I own.
+
+The finding to answer, not this commit: which renderer design is current. `RendererDesign.html` is what every module page
+links; `RendererDesign.md` is three times its size and disagrees with it structurally.
+
 ## 2026-09-28 23:30 - the six lifecycle method pages exist, and the pointer that claimed they were owed was itself untrue
 
 Twenty-two pages carried a banner saying the replacements for the removed one-call lifecycle were "recorded as owed
