@@ -63,3 +63,5 @@ MinSizeRel
 External
 
 .pi/logs/
+
+__pycache__/

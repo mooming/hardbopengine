@@ -14,6 +14,20 @@
 #
 # Exit status: 0 = clean, 1 = violations found, 2 = build failed, 3 = usage/environment error
 #
+# Layers, in the order they run. Each covers what the previous one structurally cannot:
+#   1. clang-format        Allman braces, tabs, 120 columns, include order, blank lines.
+#   2. mechanical greps    rules a formatter cannot express: joined empty bodies, no
+#                          exceptions, m_ prefix, explicit inline, hygiene, include layout.
+#   3. comments.py         the comment ban, by lexing the file. scripts/comments.py
+#   4. layout.py           the twelve-block member layout, from the clang AST.
+#                          scripts/layout.py
+#   5. docs_coverage.py    every declared entry owns a page under docs/, which is what makes
+#                          deleting a comment safe. scripts/docs_coverage.py
+#   6. build gate          Dev, Debug, Release, plus EngineTest on request.
+# Layers 3, 4 and 5 report and never rewrite: no tool here can tell which comment belonged to
+# which member, and reordering data members against each other changes C++ initialisation
+# order. Those two edits belong to a reader, and the layers exist to prove the reader worked.
+#
 # Design notes that are easy to get wrong, each verified on this tree:
 #   * .mm / .m are EXCLUDED. clang-format classifies them as Objective-C, and the
 #     repo .clang-format declares only `Language: Cpp`, so it aborts with
@@ -22,10 +36,12 @@
 #     formatted none of them. Worse, run from a directory where the config is not
 #     found, clang-format silently falls back to LLVM defaults and rewrites the
 #     file — measured: 2249 -> 2400 bytes, wrong style, exit 0.
-#   * .inl are EXCLUDED. MatrixCommonImpl.inl and VectorCommonImpl.inl are
-#     #include-d *inside a class body inside a namespace*, so their one-tab
-#     indentation is inherited from the includer. Formatting them standalone
-#     de-indents every line to column 0.
+#   * .inl are EXCLUDED FROM FORMATTING ONLY. MatrixCommonImpl.inl and VectorCommonImpl.inl
+#     are #include-d *inside a class body inside a namespace*, so their one-tab indentation
+#     is inherited from the includer; formatting them standalone de-indents every line to
+#     column 0. They are still comment-checked and layout-checked, because the members they
+#     contribute belong to the class and the lines to fix live in the .inl — measured: the
+#     Vector Lerp and Matrix CreateDiagonal ordering findings point into those two files.
 #   * The build gate must not trust "ninja: no work to do". The touched files are
 #     touched before building so a real recompile is forced and the gate cannot
 #     pass vacuously.
@@ -40,13 +56,21 @@
 #     awk. It is position-dependent (two blanks survive before a using-directive, one
 #     elsewhere) and a hand-written copy of it reported 85 findings that the formatter
 #     itself disagreed with in 7 of them.
+#   * Member order is never checked by a pattern. C++ declarator syntax defeats regex exactly
+#     where this rule lives: `std::function<void(int)> cb;` is data holding parentheses,
+#     `using TLogFunc = std::function<void(std::ostream&)>;` is a type that reads as a call,
+#     `explicit operator bool() const` is a function with no name, and an unnamed union is a
+#     data member written in place, not a nested type. All four were mis-sorted by the first
+#     prototype of layout.py, which is why it asks clang instead of guessing.
+#   * The layout layer needs a compile database for the compiler's own flags. Absent, it says
+#     [NONE] out loud: a rule that could not run must never be readable as a rule that passed.
 #   * Empty scope is announced, not hidden. A commit touching no C++ yields zero
 #     violations without proving anything, so the verdict states that the lint
 #     examined nothing rather than falling silent.
 
 set -uo pipefail
 
-usage() { sed -n '2,20p' "$0"; exit 3; }
+usage() { sed -n '2,16p' "$0"; exit 3; }
 
 REVSPEC=""
 STAGED=0
@@ -73,6 +97,12 @@ REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null) || { echo "not a git tree
 cd "$REPO_ROOT" || exit 3
 [[ -f .clang-format ]] || { echo ".clang-format not found at repo root" >&2; exit 3; }
 command -v clang-format >/dev/null 2>&1 || { echo "clang-format not on PATH" >&2; exit 3; }
+command -v python3 >/dev/null 2>&1 || { echo "python3 not on PATH — the comment, layout and docs-coverage checks cannot run" >&2; exit 3; }
+SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+
+# The compile database the layout check reads clang's flags from. cmake exports it for the
+# IDE configurations; build/ does not carry one, so cmake-build-debug is the canonical source.
+COMPILE_DB="cmake-build-debug/compile_commands.json"
 
 CLANG_FORMAT_VERSION=$(clang-format --version 2>&1 | head -1)
 
@@ -103,7 +133,7 @@ run_capped() {
 # ------------------------------------------------------------- file selection --
 INCLUDE_EXT='h|hpp|cpp|cc'
 EXCLUDE_EXT='mm|m|inl'
-
+declare -a INL_FILES=()
 declare -a CANDIDATES=()
 if [[ $ALL -eq 1 ]]; then
 	while IFS= read -r f; do CANDIDATES+=("$f"); done < <(
@@ -123,6 +153,10 @@ for f in "${CANDIDATES[@]:-}"; do
 	if [[ ! -f "$f" ]]; then continue; fi                 # deleted in this rev
 	ext="${f##*.}"
 	if [[ "$ext" =~ ^($EXCLUDE_EXT)$ ]]; then
+		# .inl cannot be formatted standalone (its indentation is inherited from the class body
+		# that #includes it) but its comments and member order are still the engine's business,
+		# so it is collected for those checks instead of vanishing from the run.
+		if [[ "$ext" == "inl" ]]; then INL_FILES+=("$f"); fi
 		SKIPPED+=("$f ($ext — excluded: see check.sh header)")
 		continue
 	fi
@@ -276,12 +310,12 @@ if [[ ${#FILES[@]} -gt 0 ]]; then
 	check "joined empty function/ctor body — braces must break" '\)[[:space:]]*((const|noexcept|override|constexpr)[[:space:]]+)*\{\}[[:space:]]*$' FAIL "${FILES[@]}"
 	check "joined empty record"                '(struct|class|union|enum)[[:space:]]+[[:alnum:]_]+[[:space:]]*\{[[:space:]]*\}[[:space:]]*;' FAIL "${FILES[@]}"
 	check "no exceptions (engine is exception-free)" '\b(throw\s+[A-Za-z_(]|try\s*\{|catch\s*\()' FAIL "${FILES[@]}"
-	check "no m_ member prefix"                '\b(m_[a-z]|[a-z]+_[a-z]+\s*;)'                  WARN "${FILES[@]}"
+	check "no m_ member prefix"                '\b(m_[a-z]|[a-z]+_[a-z]+\s*;)'                  FAIL "${FILES[@]}"
 	check "std::move on return kills NRVO"     'return\s+std::move'                              FAIL "${FILES[@]}"
 	check "virtual alongside override"         'virtual\s+[^;{]*\boverride'                      FAIL "${FILES[@]}"
 
 	hdr "naming and interface conventions"
-	check "no explicit inline keyword"         '^\s*inline\s+[A-Za-z_]'                          WARN "${FILES[@]}"
+	check "no explicit inline keyword"         '^\s*inline\s+[A-Za-z_]'                          FAIL "${FILES[@]}"
 	# Single-argument ctor explicitness, getter [[nodiscard]], log-before-early-return
 	# and constexpr-over-magic-number are judgement calls, not greps.
 	# They are listed in SKILL.md for manual review instead of being faked here.
@@ -415,7 +449,47 @@ if [[ ${#FILES[@]} -gt 0 ]]; then
 	done
 	[[ $inc -eq 0 ]] && echo "[PASS] include layout — own header, then <standard>, then \"project\", each alphabetical" || VIOL=$((VIOL+1))
 
-	hdr "convention debt — reported, not gated (repository-wide, owner decision pending)"
+	hdr "comment ban — no comments in .h or .cpp, docs/ holds the prose"
+	# A lexer, not a grep: `grep '//'` calls "http://" inside a string literal a comment.
+	# Exemptions are exhaustive and listed in docs/CodingStandards.md: the line-1 copyright,
+	# a structural label on the line that closes its construct, `hb-standards:ignore`, and
+	# Engine/CodingStandards.cpp, which teaches the rule by breaking it.
+	declare -a COMMENT_TARGETS=("${FILES[@]}")
+	[[ ${#INL_FILES[@]} -gt 0 ]] && COMMENT_TARGETS+=("${INL_FILES[@]}")
+	comment_out=$(python3 "$SCRIPT_DIR/comments.py" "${COMMENT_TARGETS[@]}" 2>&1)
+	comment_code=$?
+	if [[ $comment_code -eq 0 ]]; then
+		echo "[PASS] no comment outside the exemption list"
+	else
+		echo "$comment_out" | sed 's/^/    /'
+		VIOL=$((VIOL+1))
+	fi
+
+	hdr "member layout — twelve blocks: types, then all data, then all functions"
+	# Read from the clang AST, not a pattern: `std::function<void(int)> cb;` is data that
+	# contains parentheses and `explicit operator bool() const` is a function with no name.
+	if [[ -f $COMPILE_DB ]]; then
+		layout_out=$(python3 "$SCRIPT_DIR/layout.py" --quiet --db "$COMPILE_DB" "${FILES[@]}" 2>&1)
+		layout_code=$?
+		echo "$layout_out" | grep -vE '^\[|member layout:' | sed 's/^/    /'
+		echo "  $(echo "$layout_out" | grep 'member layout:')"
+		echo "$layout_out" | grep -E '^\[[A-Z]+\]' | sed 's/^/    note: /'
+		if [[ $layout_code -ne 0 ]]; then VIOL=$((VIOL+1)); fi
+	else
+		printf '[NONE] member layout — %s is absent; configure with -DCMAKE_EXPORT_COMPILE_COMMANDS=ON.\n' "$COMPILE_DB"
+		printf '       An unmeasured rule is not a passing rule, so this is stated, not skipped.\n'
+	fi
+
+	hdr "docs coverage — every declared entry owns a page under docs/"
+	# The comment ban moves each contract into the HTML reference. Deleting a comment whose
+	# page does not exist yet destroys the only copy, so this gate is what makes that safe.
+	modules_touched=$(for f in "${FILES[@]}"; do [[ "$f" == Engine/*/* ]] && printf '%s\n' "${f#Engine/}" | cut -d/ -f1; done | sort -u)
+	coverage_out=$(python3 "$SCRIPT_DIR/docs_coverage.py" check $modules_touched 2>&1)
+	coverage_code=$?
+	echo "$coverage_out" | sed 's/^/    /'
+	if [[ $coverage_code -ne 0 ]]; then VIOL=$((VIOL+1)); fi
+
+	hdr "convention debt — namespace indentation, reported while the sweep is in progress"
 	# A namespace body must start at column 0. Only the first non-blank line after
 	# the namespace's opening brace is examined: anything deeper is class-body
 	# indentation, which is legitimate and would otherwise read as a false hit.

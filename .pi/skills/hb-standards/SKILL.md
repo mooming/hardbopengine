@@ -13,9 +13,22 @@ description: >-
 
 # hb-standards
 
-Two independent layers, then a build gate. Both layers are required: on this tree
-the standard's own exemplar files were **clang-format-clean but rule-non-clean**
-(include layout), so neither layer alone is sufficient.
+Six layers, then a build gate. All are required: on this tree the standard's own exemplar files
+were **clang-format-clean but rule-non-clean** (include layout), so no single layer is sufficient.
+
+| Layer | Checks | How | Rewrites? |
+|---|---|---|---|
+| 1 | Allman braces, tabs, 120 columns, include order, blank lines | clang-format | yes, `--apply` |
+| 2 | joined empty bodies, no exceptions, `m_` prefix, explicit `inline`, hygiene, include layout | greps | no |
+| 3 | comment ban in `.h` and `.cpp` | `scripts/comments.py`, a lexer | no |
+| 4 | twelve-block member layout | `scripts/layout.py`, clang AST | no |
+| 5 | every declared entry owns a page under `docs/` | `scripts/docs_coverage.py` + `.Plans/DOCS_COVERAGE.md` | no |
+| 6 | Dev, Debug, Release compile, `EngineTest` on request | cmake + ninja | no |
+
+Layers 3 to 5 never rewrite, and that is load-bearing rather than lazy. No tool can tell which
+doc comment belonged to which member, and reordering data members against one another changes C++
+initialisation order. A formatter that guessed either would corrupt documentation or behaviour
+silently, so the layers report and a reader decides.
 
 ## Run it
 
@@ -136,6 +149,41 @@ The touched files are `touch`ed first so ninja genuinely recompiles: without thi
 `Examples/MacOSApp` is not covered: `Examples/` is not in the root `CMakeLists.txt`,
 so formatting there cannot be compile-verified.
 
+## Layer 3 — the comment ban (`comments.py`)
+
+No comments in `.h` or `.cpp`. The engine's prose belongs to `docs/`; see
+`docs/CodingStandards.md` for the rule and the exhaustive exemption list. A grep cannot enforce
+this: `http://` inside a string literal is not a comment, so the script lexes the file — line
+comments, block comments, string and character literals, and line continuations. Raw string
+literals are absent from this tree (measured: 0 files), and the lexer fails loudly rather than
+mis-lexing if one appears.
+
+Run the ledger before deleting comments from a module, and delete only once its pages exist:
+
+```bash
+.pi/skills/hb-standards/scripts/docs_coverage.py ledger     # rewrite .Plans/DOCS_COVERAGE.md
+.pi/skills/hb-standards/scripts/docs_coverage.py check Core # pages Core still owes
+```
+
+## Layer 4 — twelve-block member layout (`layout.py`)
+
+Types, then all data, then all functions; each layer `public` → `protected` → `private`, `static`
+first inside each. The block table is in `docs/CodingStandards.md`. The checker asks clang, because
+C++ declarator syntax defeats patterns exactly here — see the traps below.
+
+Needs a compile database for the project's own flags: `cmake-build-debug/compile_commands.json`.
+Absent, the layer prints `[NONE]` and says so; a rule that could not run must never be readable as
+a rule that passed. Regenerate one with
+`cmake -S . -B cmake-build-debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON`.
+
+## Layer 5 — docs coverage (`docs_coverage.py`)
+
+Structural only, and honestly so: a script can prove a page exists and is linked, never that its
+prose is right. The ledger lists every namespace-scope entry of every header. A nested type is
+documented on its owner's page, and a `.cpp` declares implementation rather than API — both are
+excluded from the ledger deliberately; the first version counted them and demanded pages no reader
+could name (`docs/Container/Iterator/index.html` was wanted by three different `Iterator` types).
+
 ## Judgement checks a script cannot do
 
 Grep these in the changed hunks and fix by hand:
@@ -154,6 +202,33 @@ Grep these in the changed hunks and fix by hand:
 | `noexcept` | mark only what is provably exception-free; drop it where `new` is called |
 
 ## Traps already paid for — do not relearn them
+
+- **Member layout is not greppable.** All four of these were mis-classified by the first
+  prototype of `layout.py`: `std::function<void(int)> cb;` is data containing parentheses;
+  `using TLogFunc = std::function<void(std::ostream&)>;` is a type that reads as a call;
+  `explicit operator bool() const` is a function with no name; and an unnamed `union` in a class
+  body is a **data member written in place**, not a nested type — sorting it as block 0 tells you
+  to hoist `Engine/Math/Vector3.h`'s union above its constants.
+- **The AST dump needs a qualified filter.** `-ast-dump-filter=hbe::` against
+  `Engine/Memory/MemoryManager.h` dumps 1 MB in 0.3 s; unfiltered it dumps **624 MB**. The filter
+  matches the qualified name, so derive it from the file's own namespace.
+- **clang's JSON emits one document per filtered declaration.** `json.loads` takes one document
+  and raises `Extra data` at the second root; decode the stream root by root with `raw_decode`.
+- **A templated class has no `file` on its definition node.** clang puts it on the enclosing
+  `ClassTemplateDecl` only. Filtering on a node's own `loc.file` silently skips *every template in
+  the engine* — measured on `Engine/Core/ScopedLock.h` and `Engine/Math/Vector3.h`, both reported
+  "no class body". Inherit the file from the nearest ancestor that has one.
+- **`#include`d `.inl` members belong to the class but not to the includer's line numbers.**
+  `VectorCommonImpl.inl` and `MatrixCommonImpl.inl` are included *inside* a class body; clang
+  marks their locs with `includedFrom`, and the line is relative to the `.inl`. Attributing them
+  to the includer reports line 242 of a 151-line file. Resolve the real file by proving the
+  declaration is on that line of a candidate include, and say so when you cannot prove it.
+- **A `#ifdef __UNIT_TEST__` file compiles to nothing under Dev**, and clang then exits 0 having
+  dumped zero declarations. That is not a pass. Re-run with `-D__UNIT_TEST__=1` and report which
+  macros were active — `Engine/Renderer/RendererTest.h` and three Math sources need it.
+- **`docs_coverage.py` namespace detection needs the newline.** A pending-declaration buffer that
+  drops newlines reads `...h"namespace hbe` and the pattern for a namespace brace can no longer
+  see the keyword, so every class looked nested. Keep a separator when you strip whitespace.
 
 - **`.mm` / `.m` are excluded.** clang-format classifies them as Objective-C, the
   repo config declares only `Language: Cpp`, so it aborts with exit 1 and writes
@@ -198,14 +273,12 @@ spending time on a gate failure they caused.
 ## Known debt surfaced, not gated
 
 `NamespaceIndentation` is **confirmed `None`** by the owner (2026-09-06) — this is
-no longer an open question. ~218 engine files are written indented and are legacy
-debt awaiting a sweep. The script reports them as `[DEBT]` and does not fail on
-them: failing every commit that happens to touch one of those files would block
-unrelated work. When you `--apply` to such a file, expect its namespace body to be
-de-indented to column 0 as part of bringing that file into conformance — that is
-the rule working, not collateral damage.
+no longer an open question. ~218 engine files are written indented and are legacy debt awaiting a sweep. The script reports them as `[DEBT]` and does not fail on them: failing every commit that happens to touch one of those files would block
+unrelated work. When you `--apply` to such a file, expect its namespace body to be de-indented to column 0 as part of bringing that file into conformance — that is the rule working, not collateral damage.
 
-The bulk sweep is a separate, owner-scheduled operation.
+The owner scheduled the whole-tree sweep on 2026-09-29, module by module, each in its own commit
+separate from any reordering commit. When the last module lands, flip this layer from `[DEBT]` to
+`[FAIL]` — until then it stays advisory precisely so unrelated work can still be committed.
 
 ## Reporting
 

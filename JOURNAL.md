@@ -1,5 +1,54 @@
 # Journal
 
+## 2026-09-29 21:20 - two new rules become enforcement, not prose, and the tree is measured against them
+
+The owner set three rules in one sitting: member variables move above member functions in a
+twelve-block order, comments leave `.h` as well as `.cpp`, and `docs/` becomes the reference that
+covers every API. A rule nothing checks is not a rule, so this session built the checks first and
+touched no engine source.
+
+**`check.sh` now runs six layers instead of two.** New: `scripts/comments.py` lexes the ban
+(line comments, block comments, string and character literals, continuations), `scripts/layout.py`
+reads the clang AST for member order, `scripts/docs_coverage.py` pairs each declared entry with its
+page. The two rules that were `[WARN]` — `m_` prefix (24 files) and explicit `inline` (5 files) —
+are now `[FAIL]`, because the owner chose to fix both fully. Layers 3 to 5 report and never
+rewrite: no tool can tell which doc comment belonged to which member, and reordering data members
+against each other changes C++ initialisation order, which is the one way a style fix becomes a
+silent defect. The invariant is written into the standard: move the block, never re-sequence it.
+
+**True baseline under the new rules, whole tree, 283 files:** 3035 comment findings, 324
+member-layout findings across 62 files of 279 checked, 183 files off clang-format (109 of them
+namespace-indent debt, swept per module by owner decision), 15 include-layout, 17 hygiene, 66
+joined empty bodies, 104 violation groups reported. Docs: 132 namespace-scope entries, 30 with a
+page, **102 without** — `docs/Core` carries 1114 of the comment lines against 2 class pages, which
+is why the per-module order is pages first, deletion second, always.
+
+**Seven checker bugs, each caught by testing rather than by reading.** The AST dump is 624 MB
+unfiltered against 1 MB with `-ast-dump-filter=hbe::` (0.3 s). clang's JSON emits one document per
+declaration, so `json.loads` died at the second root. A **templated class carries no `file` on its
+definition node** — only on the enclosing `ClassTemplateDecl` — which made the first version report
+"no class body" for `ScopedLock.h` and `Vector3.h`: silently blind to every template in the engine.
+An unnamed `union` is a data member written in place, not a type, and sorting it as block 0 told me
+to hoist `Vector3.h`'s union above its constants. Members contributed by a class-body `#include` of
+`VectorCommonImpl.inl` belong to the class but not to the includer's line numbers — attributing
+them reported line 242 of a 151-line file. A `#ifdef __UNIT_TEST__` file preprocesses to nothing
+under Dev and clang exits 0 having dumped nothing, which is a false pass unless the pass is retried
+with the define. And an unnamed-pending-buffer that dropped newlines read `...h"namespace hbe`, so
+`docs_coverage.py` first demanded 185 pages for nested types and file-local structs, then found
+**1** entry, and finally settled at 132 with the collisions gone (`docs/Container/Iterator/index.html`
+was wanted by three different `Iterator` types).
+
+**Honest gaps, not hidden.** `Engine/Memory/ScopedAllocator.h` cannot compile standalone — `use of
+undeclared identifier 'std'` at line 27 — so the layout layer reports `[SKIP]` with clang's words
+rather than a verdict; that header owns a real missing-include defect, logged for the Memory pass.
+`docs_coverage.py` proves a page exists and is linked; it cannot prove the prose is correct, and
+SKILL.md says so. Four files whose whole body is unit-test-guarded are checked with `-D__UNIT_TEST__=1`
+and announce it as `[PARTIAL]`.
+
+**Not started:** the sweep itself. 14 modules, four commits each — pages, format, comment strip,
+layout — one worker at a time, beginning with HSTL. Nothing is stripped from a module before its
+pages exist.
+
 ## 2026-09-29 18:05 - the renderer design is labelled what it is, its markdown twin is gone, and my own false note is corrected
 
 The owner settled the question I raised: the renderer design was written fresh and is **not** applied to the code, so the

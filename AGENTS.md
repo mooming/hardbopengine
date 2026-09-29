@@ -6,13 +6,28 @@
 HardBop Engine: high‑performance C++23 engine with custom memory, task system, and OSAL for cross‑platform use.
 
 ## Self Documented Code and API Reference Documents
-The engine codebase avoid comments. It allows brief comments in header files only.
+The engine codebase carries no comments at all — not in `.cpp`, and not in `.h` either. Names,
+types and structure document the code; every sentence of prose belongs to the API reference.
+The exemption list is exhaustive and recorded in `docs/CodingStandards.md`: the line-1 copyright
+notice, a structural label on the line that closes its own construct (`#endif // PROFILE_ENABLED`,
+`} // namespace hbe`), the `// hb-standards:ignore` tool directive, and the BAD EXAMPLE blocks of
+`Engine/CodingStandards.{h,cpp}` that teach the rules by breaking them.
+
 API reference documents are HTML files under "docs", one folder per module directory of "Engine/":
 the Module Index page is "docs/index.html" and is the start page, and a module's reference is
 "docs/<Module>/index.html", so the documentation tree matches the source tree. Create or revise
 those files. The API documents provides these information.
 
+Because source comments are banned, the reference is the only place a contract exists. It must
+therefore cover **every** API and feature of the engine: one page per class (or macro set, or
+free-function namespace) and one page per method name, per
+`.Plans/AUTHORING_method_and_class_pages.md`. A page that does not document everything states
+what it omits in its Coverage section — a partial page must never read as a complete one.
+
 Module Index page links every module page and every design document of that module.
+`.pi/skills/hb-standards/scripts/docs_coverage.py` proves the pairing, and it is the gate that
+makes deleting a comment safe: no comment is removed from a module before that module's pages
+exist.
 
 # Module
 1. Module Description
@@ -35,11 +50,20 @@ Module Index page links every module page and every design document of that modu
 
 ## Coding Standards
 
-- **No comments in `.cpp` files.** Implementation files are self-documented: names, types
-  and structure carry the intent. Do not explain code in the implementation — put the
+- **Member ordering: the data layer is one block.** All member variables are declared before all
+  member functions, and within each of those two layers the sections run `public` → `protected` →
+  `private`, with `static` first in every section. Types head the class, `friend` declarations end
+  it. `docs/CodingStandards.md` carries the twelve-block table, and
+  `.pi/skills/hb-standards/scripts/layout.py` checks it from the clang AST. When fixing a file,
+  never change the order of the data members relative to each other: C++ initialises them in
+  declaration order, so moving the block is safe and re-sequencing it is a silent behaviour change.
+
+- **No comments in `.cpp` or `.h` files.** Both halves of the source pair are self-documented:
+  names, types and structure carry the intent. Do not explain code in either file — put the
   explanation where a reader forms intent instead:
     - Material useful to **users of the engine** (contract, preconditions, ownership,
-      lifetime, thread-safety, complexity a caller depends on) goes in the paired `.h`.
+      lifetime, thread-safety, complexity a caller depends on) goes in the **HTML API
+      reference**: `docs/<Module>/<Class>/…`.
     - Material useful for **implementation or system design** (invariants, algorithms,
       allocation strategy, locking protocol, platform quirks) goes in an HTML design
       document under `docs/`.

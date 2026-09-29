@@ -14,7 +14,41 @@ To maintain high code quality and consistency, please adhere to the following gu
 - **Template Type Parameters & Type Aliases**: Prefix with `T` (e.g., `template <typename TEntry>`, `using TIndex = uint32_t;`).
 
 ### Class Conventions
-- **Member Ordering**: Place `static` members first, followed by other members ordered by visibility (`public` > `protected` > `private`).
+- **Member Ordering**: The data layer of a class is one visible block, separated from the function
+  layer. All member variables are declared before all member functions, and inside each of those
+  two layers the sections run `public` → `protected` → `private` with `static` first in every
+  section. Types are neither data nor functions, so they head the class. A class body therefore
+  has at most twelve populated blocks, in this order:
+
+    | Block | Contents | Example |
+    |---|---|---|
+    | 0 | nested types, aliases, enumerators — `public` → `protected` → `private` | `using TId = TAllocatorID;` |
+    | 1 | public static variables | `static constexpr TId SystemAllocatorID = 0;` |
+    | 2 | public variables | `uint32_t id;` |
+    | 3 | protected static variables | `static constexpr int MaxRetry;` |
+    | 4 | protected variables | `MemoryManager* owner;` |
+    | 5 | private static variables | `static const char* Tag;` |
+    | 6 | private variables | `AllocatorProxy allocators[MaxNumAllocators];` |
+    | 7 | public static functions | `static MemoryManager& GetInstance();` |
+    | 8 | public functions — constructors, destructors and operators included | `void PostEngineInit() noexcept;` |
+    | 9 | protected static functions | `static int Clamp(int value);` |
+    | 10 | protected functions | `void LogContext() const;` |
+    | 11 | private static functions | `static bool IsValid(TId id);` |
+    | 12 | private functions | `void RegisterSystemAllocator();` |
+
+    `friend` declarations are neither, and sit at the end of the class.
+    - Why: a reader who wants to know what a class *holds* should find it in one place, at one
+      depth, without scrolling past the API that happens to use it. Interleaving the two layers
+      makes the state of a 200-line class a scavenger hunt.
+    - Enforcement: `.pi/skills/hb-standards/scripts/layout.py`, which reads the clang AST. It is
+      not a grep, because `std::function<void(int)> cb;` is data that contains parentheses and
+      `explicit operator bool() const` is a function with no name.
+    - **Safety invariant when fixing a file**: the relative order of the data members with respect
+      to each other must not change. C++ initialises non-static data members in declaration order,
+      so moving the whole block above the functions is provably semantics-preserving, while
+      re-sequencing two variables against each other is a silent behaviour change that no
+      compiler, lint or test necessarily reports.
+    - Machine-readable form: the block table above is the specification `layout.py` implements.
 - **Access Specifiers**: Always explicitly define access specifiers for all classes and structs.
 - **Getters**: Use the `[[nodiscard]]` attribute for getter functions and functions that return values.
 - **Inheritance**: Use the `final` specifier for classes that are not intended to be inherited from.
@@ -100,42 +134,53 @@ To maintain high code quality and consistency, please adhere to the following gu
       its guard already terminates the file's logic and cannot be relocated.
 
 ### Comments
-- **No comments in `.cpp` files.** Implementation files are self-documented — names, types
-  and structure carry the intent, so a comment is either redundant or a sign that a name
-  should have carried it. Do not explain code inside the implementation.
-- **Where prose goes instead.** A header is where a reader forms intent, so that is where
-  explanation belongs:
+- **No comments in source files — `.h` and `.cpp` alike.** Implementation and declaration files
+  carry code only. A comment in either half of the source pair is a defect, not a style choice:
+  the engine's prose lives in the HTML reference under `docs/`, where it is written once, is
+  searchable, and cannot drift from a signature by one edited line.
+- **Where prose goes instead.**
     - Useful to **users of the engine** — contract, preconditions, ownership, lifetime,
-      thread-safety, complexity a caller depends on → the paired **`.h`** declaration.
+      thread-safety, complexity a caller depends on → `docs/<Module>/<Class>/…`, the class and
+      method pages of the API reference. `.Plans/AUTHORING_method_and_class_pages.md` is the page
+      contract.
     - Useful for **implementation or system design** — invariants, algorithms, allocation
       strategy, locking protocol, platform quirks → an **HTML design document under `docs/`**
       (see `docs/RendererDesign.html` for the house style and `docs/design/*_Design.html`
       for the naming convention).
-- **Structural labels are not documentation.** A trailing comment whose entire content is
-  the name of the construct its own line closes may remain:
-    ```cpp
-    #endif // MEMORY_VERIFICATION_ENABLED
-    #else  // !__DEBUG__
-    }      // namespace hbe
-    }}     // namespace hbe::StringUtil
-    ```
-  A bare `#endif` is not self-documenting: it cannot state which `#if` it closes, so the
-  label advances the rule instead of evading it. Naming the guard in negated form
-  (`!__DEBUG__`) and qualifying a namespace (`hbe::StringUtil`) still count as naming the
-  construct. The permission is deliberately narrow:
-    - the comment must name **only** the closed construct — no sentence, no TODO, no
-      reasoning. `} // namespace hbe  // TODO: rename` is prose in a label's clothes.
-    - it must sit on the closing line itself. A label on the line *above* is a comment.
-    - data-table indices are **not** structural labels. `// 'A' (65)` above a glyph row
-      restates the array index, which position already encodes; write the index rule once
-      in the design document instead.
-- **Exemptions.**
+- **The ban is only safe because the replacement is proved first.** Deleting a comment whose page
+  does not exist yet destroys the only copy of that contract. Per module the order is therefore
+  always: write the pages → prove coverage → delete the comments. `docs_coverage.py` is that
+  proof, and `docs/index.html` must reach every module page for the site to count as a reference.
+- **Exemptions, and this list is exhaustive.**
     - The line-1 `// Copyright (c) … Hansol Park` notice: a legal notice, not documentation,
       and required by the standards lint. Where an IDE banner wraps it (`//`, then the
       copyright, then `// Created by …`), keep the copyright line and drop the banner.
-    - `Engine/CodingStandards.cpp`: the rule's own teaching exemplar, which carries
-      deliberate BAD EXAMPLE commentary. `check.sh` already exempts
-      `Engine/CodingStandards.*` from behavioural checks for the same reason.
+    - **Structural labels are not documentation.** A trailing comment whose entire content is
+      the name of the construct its own line closes may remain:
+        ```cpp
+        #endif // MEMORY_VERIFICATION_ENABLED
+        #else  // !__DEBUG__
+        }      // namespace hbe
+        }}     // namespace hbe::StringUtil
+        ```
+      A bare `#endif` is not self-documenting: it cannot state which `#if` it closes, so the
+      label advances the rule instead of evading it. Naming the guard in negated form
+      (`!__DEBUG__`) and qualifying a namespace (`hbe::StringUtil`) still count as naming the
+      construct. The permission is deliberately narrow:
+        - the comment must name **only** the closed construct — no sentence, no TODO, no
+          reasoning. `} // namespace hbe  // TODO: rename` is prose in a label's clothes.
+        - it must sit on the closing line itself. A label on the line *above* is a comment.
+        - data-table indices are **not** structural labels. `// 'A' (65)` above a glyph row
+          restates the array index, which position already encodes; write the index rule once
+          in the design document instead.
+    - **`// hb-standards:ignore`** on a line: a tool directive in the class of a compiler warning
+      suppression, not prose. It is what a deliberate exception costs, and it stays visible in
+      review precisely because every other comment is forbidden.
+    - `Engine/CodingStandards.cpp` and the BAD EXAMPLE blocks of `Engine/CodingStandards.h`:
+      the rule's own teaching exemplar, which carries deliberate BAD EXAMPLE commentary.
+      `check.sh` already exempts `Engine/CodingStandards.*` from behavioural checks.
+- **Enforcement**: `.pi/skills/hb-standards/scripts/comments.py`, a lexer rather than a grep, so
+  `http://example.com` inside a string literal is never reported as a comment.
 
 ### Error Handling, Logging & Memory Management
 - **Error and Warning Logging**: Always output a descriptive log
