@@ -7,26 +7,26 @@
 #include "Memory/DefaultAllocator.h"
 #include "Memory/InlinePoolAllocator.h"
 
-
 namespace hbe
 {
 using HString = std::basic_string<char, std::char_traits<char>, hbe::DefaultAllocator<char>>;
 
-template<size_t PoolSize = 128>
+template <size_t PoolSize = 128>
 using HInlineString = std::basic_string<char, std::char_traits<char>, hbe::InlinePoolAllocator<char, PoolSize, 2>>;
-using HInlinePathString = std::basic_string<char, std::char_traits<char>,
-												hbe::InlinePoolAllocator<char, hbe::Config::MaxPathLength, 2>>;
+using HInlinePathString =
+		std::basic_string<char, std::char_traits<char>, hbe::InlinePoolAllocator<char, hbe::Config::MaxPathLength, 2>>;
 } // namespace hbe
 
 namespace std
 {
-template<>
+template <>
 struct hash<hbe::HString> final
 {
 	[[nodiscard]] std::size_t operator()(const hbe::HString& obj) const noexcept
 	{
 		auto text = obj.c_str();
-		size_t hashCode = 5381;
+		constexpr size_t Djb2Seed = 5381;
+		size_t hashCode = Djb2Seed;
 
 		while (*text != '\0')
 		{
