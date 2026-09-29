@@ -28,7 +28,7 @@
     <li><a href="../../Test/index.html">Test</a></li>
   </ul>
 
-  <h3>This class</h3>
+  <h3>This entry</h3>
   <ul>
     <li><a href="#description">Class description</a></li>
     <li><a href="#template">Template parameters</a></li>
@@ -82,8 +82,10 @@
 </p>
 
 <p>
-  The header declares no members, so the call sites below are the whole engine-visible surface: a member typedef
-  in three classes, and one inline-pool vector that sizes itself against the pool.
+  The header declares no members, so every use of it is a name written somewhere else. Twenty-six files outside
+  <code>Engine/HSTL/</code> name <code>HVector</code>; the three declarations below are three of them, chosen
+  because each is a different shape of use — a templated member typedef, a plain one, and a vector held by an
+  allocator itself — plus the one inline-pool vector that sizes itself against the pool.
 </p>
 
 <pre><code><span class="cm">// Engine/Core/TaskStream.h</span>
@@ -149,7 +151,8 @@ hbe::HVector&lt;PoolAllocator&gt; banks;</code></pre>
       <span class="badge">alias</span> <strong>A pure rename of that one specialisation.</strong> Nothing is
       added, hidden or removed; the only difference from <code>std::vector&lt;T&gt;</code> is the allocator, and
       with it the pool the memory is drawn from and the fact that <code>get_allocator()</code> answers
-      <code>DefaultAllocator&lt;T&gt;</code>, whose <code>operator==</code> compares allocator ids. Used by
+      <code>DefaultAllocator&lt;T&gt;</code>, whose <code>operator==</code> compares allocator ids. Named by 26
+      files outside <code>Engine/HSTL/</code>, 21 of which include the header directly; among them
       <code>TaskStream</code>, <code>ComponentSystem</code>, <code>ResourceManager</code>,
       <code>BufferInputStream</code>, <code>ThreadSafeMultiPoolAllocator</code> and
       <code>OS::ListFilesInDirectory</code>
@@ -275,7 +278,7 @@ vlist.<span class="fn">reserve</span>(InlineBufferSize);</code></pre>
 
 <footer class="prevnext">
   <span><a href="../index.html">← HSTL</a></span>
-  <span><a href="../index.html#hvector">HVector in the HSTL class list</a></span>
+  <span><a href="../index.html#classes">HVector in the HSTL class list</a></span>
 </footer>
 
 </main>

@@ -213,6 +213,29 @@
         <a href="../Test/index.html">Test</a>'s subject</td>
   </tr>
   <tr>
+    <td>Alias names do not carry the <code>T</code> prefix the standard requires</td>
+    <td>docs/CodingStandards.md spells type aliases and template type parameters <code>TIndex</code>-style. None
+        of the six aliases here does — <code>HString</code>, <code>HInlineString</code>,
+        <code>HInlinePathString</code>, <code>HVector</code>, <code>HInlineVector</code>,
+        <code>HUnorderedMap</code> — and neither do the template parameters spelled <code>T</code> and
+        <code>PoolSize</code>. The <code>H</code> prefix is this module's own convention: every name is the
+        standard container it renames. Renaming reaches 123 occurrences in 38 files outside
+        <code>Engine/HSTL/</code>, spanning ten engine modules, so it is an owner decision recorded here rather
+        than a defect a standards pass may settle silently. The names are documented as the headers spell them</td>
+  </tr>
+  <tr>
+    <td>What the aliases permit that the engine's memory rules discourage</td>
+    <td>The standard asks callers to avoid dynamic allocation and to know where a container's bytes come from.
+        An alias cannot honour either request on a caller's behalf: <code>HVector</code> and
+        <code>HUnorderedMap</code> grow geometrically as their element count grows, <code>DefaultAllocator</code>
+        stamps the allocator id current at construction, and neither the growth nor the pool is visible at the use
+        site. There is no wrapper here to put a ceiling in — that is what an alias is. Each shape's consequence is
+        stated once where it bites, on <a href="HString/index.html#description">HString</a> and
+        <a href="HVector/index.html#description">HVector</a>; the container that names its allocator and allocates
+        the exact element count is <a href="../Container/index.html#array"><code>Array</code></a>. Bounded or
+        pool-named variants would be new aliases, which is a module decision, not a documentation one</td>
+  </tr>
+  <tr>
     <td><code>Engine/HSTL/ReviewNote.txt</code> is stale</td>
     <td>It reports a defect — "Namespace comment mismatch: closing comment says <code>namespace HSTL</code> but
         actual namespace is <code>namespace hbe</code>" — that no longer exists: all three headers close with

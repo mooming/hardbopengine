@@ -28,7 +28,7 @@
     <li><a href="../../Test/index.html">Test</a></li>
   </ul>
 
-  <h3>This class</h3>
+  <h3>This entry</h3>
   <ul>
     <li><a href="#description">Class description</a></li>
     <li><a href="#template">Template parameters</a></li>
@@ -106,7 +106,8 @@
 </p>
 
 <p>
-  Three real declarations show how the type is used; all three name the alias rather than spelling the
+  Three real declarations show how the type is used, chosen from the twenty files outside
+  <code>Engine/HSTL/</code> that name it; all three name the alias rather than spelling the
   <code>basic_string</code> specialisation out.
 </p>
 
@@ -259,7 +260,8 @@
         [[nodiscard]] std::size_t <span class="fn">operator</span>()(<span class="kw">const</span> <span class="ty">hbe::HString</span>&amp; obj) <span class="kw">const</span> <span class="kw">noexcept</span>
         {
                 <span class="kw">auto</span> text = obj.<span class="fn">c_str</span>();
-                size_t hashCode = <span class="nu">5381</span>;
+                <span class="kw">constexpr</span> size_t <span class="ty">Djb2Seed</span> = <span class="nu">5381</span>;
+                size_t hashCode = <span class="ty">Djb2Seed</span>;
 
                 <span class="kw">while</span> (*text != <span class="st">'</span>\<span class="nu">0</span><span class="st">'</span>)
                 {
@@ -273,11 +275,12 @@
 };</code></pre>
 
 <p>
-  This is djb2: seed <code>5381</code>, then <code>hashCode * 33 + ch</code> per character. It is the hash
+  This is djb2: the seed <code>5381</code>, named <code>Djb2Seed</code> in the header so the value carries a role,
+  then <code>hashCode * 33 + ch</code> per character. It is the hash
   <a href="../../Config/index.html"><code>ConfigFile</code></a> keys run on — its
   <code>TMap</code> is <code>HUnorderedMap&lt;TString, TString&gt;</code> and <code>HUnorderedMap</code>'s
   <code>THash</code> defaults to <code>std::hash&lt;TKey&gt;</code>, which resolves to this specialisation.
-  Three properties of it are visible in the eleven lines above:
+  Three properties of it follow from the code above:
 </p>
 
 <table>
@@ -357,7 +360,7 @@
 
 <footer class="prevnext">
   <span><a href="../index.html">← HSTL</a></span>
-  <span><a href="../index.html#hstring">HString in the HSTL class list</a></span>
+  <span><a href="../index.html#classes">HString in the HSTL class list</a></span>
 </footer>
 
 </main>

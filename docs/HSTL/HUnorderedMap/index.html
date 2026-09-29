@@ -28,7 +28,7 @@
     <li><a href="../../Test/index.html">Test</a></li>
   </ul>
 
-  <h3>This class</h3>
+  <h3>This entry</h3>
   <ul>
     <li><a href="#description">Class description</a></li>
     <li><a href="#template">Template parameters</a></li>
@@ -231,6 +231,16 @@
 <table>
   <tr><th>Gap</th><th>Detail</th></tr>
   <tr>
+    <td><code>HUnorderedMapTest</code> is test-only code</td>
+    <td>Declared in <code>Engine/HSTL/HUnorderedMap.h</code> inside <code>#ifdef __UNIT_TEST__</code>, defined in
+        <code>Engine/HSTL/HUnorderedMap.cpp</code>, and compiled in no other configuration — so the alias above is
+        the entire production interface of this header. A fixture is not an entry and gets no page of its own:
+        this row names it, the next row states what it asserts, registration is the single
+        <code>AddTestCollection&lt;HUnorderedMapTest&gt;</code> line in
+        <code>Engine/Test/UnitTestCollection.cpp</code>, and the run itself is
+        <a href="../../Test/index.html">Test</a>'s subject</td>
+  </tr>
+  <tr>
     <td>What <code>HUnorderedMapTest</code> asserts</td>
     <td>Two cases in <code>Engine/HSTL/HUnorderedMap.cpp</code>: default construction, and three
         <code>operator[]</code> assignments on <code>HUnorderedMap&lt;int, int&gt;</code> including the
@@ -276,7 +286,7 @@
 
 <footer class="prevnext">
   <span><a href="../index.html">← HSTL</a></span>
-  <span><a href="../index.html#hunorderedmap">HUnorderedMap in the HSTL class list</a></span>
+  <span><a href="../index.html#classes">HUnorderedMap in the HSTL class list</a></span>
 </footer>
 
 </main>
