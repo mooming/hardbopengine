@@ -1,5 +1,44 @@
 # Journal
 
+## 2026-10-01 02:03 - The review driver failed loudly while working, and worked while reported dead
+
+Ran the per-file hb-standards judgement review over `Engine/Core` (46 files, 11,413 lines) off the main
+session. Result: 133 unique findings, 44 cited by two independent reviewers, 67 high-confidence, 11 files
+clean. Findings live in `.Plans/review/` (gitignored), the driver in `.pi/workflows/hb-review-pairwise.js`,
+the merge in `.Plans/review/core/merge.py`. Three things worth remembering about *how* it ran:
+
+- **`args` reaches a workflow script as JSON text, not as an object.** Passing `{module, width, batches}`
+  produced `typeof args === "string"`, so `args.batches` was undefined and the first `batches.length` threw
+  at 25 ms with zero agents. Proven by probing `typeof args` and `Object.keys` inside the script, not by
+  reading the tool docs, which say "verbatim". The driver now parses a string `args` before touching a
+  property, and logs what arrived.
+- **A workflow can be reported failed while every agent keeps running.** The re-run, with the `args` bug
+  fixed, was reported `Error - 0/0 agents` in 25 ms, and had in fact completed 15 of 20 batches by the time
+  I noticed, because `batch03..batch14.json` kept appearing with fresh timestamps. The failure was in the
+  notification path, not the worker: a probe run reported `1/5 agents` for a script that launched exactly
+  one, so workflow progress accounting is being contaminated by `Agent` tasks running beside it. Never
+  conclude a fan-out died from its notification; count its output files.
+- **Cost is per agent, not per line.** A 75-line pair cost 239k tokens, a 370-line pair 503k, the 4,149
+  lines of `TaskSystem` 2.02M. Roughly 90% of an agent's spend is fixed overhead, so the per-class granularity the
+  owner first chose was re-priced mid-run into four line-budget packs of ~2,700 lines. The two tracks were
+  kept rather than discarded: they disagree (12 files flagged by both, 13 pairwise only, 4 pack only), so
+  `merge.py` unions them and marks agreement, which is a stronger signal than either pass alone.
+
+Both tracks' own totals reconcile, which is the check that nothing was lost: the per-class run reported 98
+findings over 44 files with 19 of 20 batches passing, and the files on disk hold 103 - the difference being
+the four `Time` findings its gate had rejected at the time (repaired by hand, see below) and the three small
+pairs whose files my `Agent` passes happened to write last. Total spend for the two tracks: 14.1M tokens
+(7.26M per-class, 6.87M packed), against roughly 4-5M had the run not doubled. Reviewers also flagged one
+defect that is a bug rather than a rule violation and so filed no finding: `CommandLineArguments::Parse`
+never populates `executablePath`, `executableFilename` or `arguments`, so `Print` prints those members
+empty.
+
+One citation was rejected by `verify-findings.py` as *too short to check* (`return;`), not as invented. The
+finding was real - `Time.cpp:80` returns on `hertz <= 0.0` with no log, the twin of the accepted one at
+line 70 - so the evidence was widened to the verbatim guard block rather than dropped. A rule-name table
+must normalize model-written rule strings (`"log before failing"`, `"named constants pascalcase"`) before
+deduplication, or the same defect survives twice under two spellings.
+
 ## 2026-09-30 23:03 - The skill could grade the reference and delete the comments, but not write the pages
 
 The owner asked whether hb-standards removes comments and creates their reference documents. The honest
