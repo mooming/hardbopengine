@@ -90,6 +90,7 @@ def brace_depths(text):
     depths = {}
     line = 1
     depth = 0
+    max_depth = 0
     stack = []
     pending = ''
     for ch in clean:
@@ -100,7 +101,11 @@ def brace_depths(text):
             # pattern that is supposed to recognise the namespace brace then cannot see it.
             pending += ' '
             continue
-        depths.setdefault(line, depth)
+        if line not in depths:
+            depths[line] = depth
+            max_depth = max(max_depth, depth)
+        else:
+            depths[line] = min(depths[line], depth)
         if ch == '{':
             is_namespace = bool(NAMESPACE_HEAD.search(pending))
             stack.append(is_namespace)
@@ -115,6 +120,12 @@ def brace_depths(text):
             pending = ''
         else:
             pending = (pending + ch)[-120:]
+    # Blank lines are never visited by the character loop above, so they used to be absent from the
+    # map — and callers read a missing line as depth 1, "nested, therefore not an entry". That was
+    # latent until a comment sweep turned the line before every class into a blank one, and Config
+    # then reported zero entries and passed coverage unchecked. Every line gets its shallowest depth.
+    for index in range(1, line + 1):
+        depths.setdefault(index, max_depth)
     return depths
 
 ENTRY = re.compile(r'^\s*(?:template\s*<[^>]*>\s*)?(class|struct|union|enum)\s+(?:class\s+)?([A-Za-z_]\w*)\s*(?:final\b[^;{]*)?(?=[;{])', re.M)
@@ -163,8 +174,16 @@ def entries_in(path):
     found = []
     for match in ENTRY.finditer(text):
         kind, name = match.group(1), match.group(2)
-        line = text[:match.start()].count('\n') + 1
+        # Measured from the keyword, not from match.start(): `^\s*` in MULTILINE happily swallows a
+        # blank line, so a class written under one reports a start on the blank line above it.
+        line = text[:match.start(1)].count('\n') + 1
         if depths.get(line, 1) != 0:
+            continue
+        if text[match.end()] == ';':
+            # A forward declaration names a type owned elsewhere. Logger.h:27 declares
+            # `class TaskSystem;` to break an include cycle, and an earlier revision of this script
+            # billed a docs/Log/TaskSystem/ page for it — while Core's real backlog grew with rows
+            # for Task in WorkItem.h and TaskRegistry in Task.h, none of which is a definition.
             continue
         if line in guarded:
             found.append((name, 'test-only'))
@@ -192,7 +211,8 @@ def comment_count(path):
         text = open(path, encoding='utf-8', errors='ignore').read()
     except OSError:
         return 0
-    return len(comment_lexer.check_file(os.path.relpath(path, REPO_ROOT), text))
+    findings, _spans = comment_lexer.check_file(os.path.relpath(path, REPO_ROOT), text)
+    return len(findings)
 
 
 def modules():
