@@ -136,10 +136,6 @@ void Engine::Run()
 {
 	FatalAssert(isTaskSystemReady, "Engine::Run needs EInitLevel::TaskSystem");
 
-	// The loop runs while the engine is running, and stops when it is not. Pending posted work is deliberately not a reason to
-	// continue: once shutdown has been requested there is no executor left that could run it, so treating it as a reason kept the
-	// process looping forever on work nothing would ever drain. JoinAndClear drains what it still can, under a deadline, and names
-	// whatever it has to abandon - which is where that work belongs being accounted for, not here.
 	while (taskSystem.IsRunning())
 	{
 		taskSystem.Update();
@@ -148,7 +144,6 @@ void Engine::Run()
 
 	taskSystem.JoinAndClear();
 
-	// It may terminate the application immediately.
 	if (application != nullptr)
 	{
 		application.reset();
@@ -157,14 +152,10 @@ void Engine::Run()
 
 void Engine::ShutDown()
 {
-	// Print final statistics
 	{
 		auto& configSys = ConfigSystem::Get();
 
 #ifdef __DEBUG__
-		//        const auto logLevel = static_cast<uint8_t>(ELogLevel::Verbose);
-		//        configSys.SetByte("Log.Engine", logLevel);
-		//        configSys.SetByte("Log.Level", logLevel);
 #endif // __DEBUG__
 
 		auto& staticStrTable = StaticStringTable::GetInstance();

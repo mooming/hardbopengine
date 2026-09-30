@@ -6,17 +6,6 @@
 
 namespace hbe
 {
-/// @brief Which engine subsystems Engine::Initialize should start.
-/// @details A tool that converts one file into another needs neither a window server nor a resource
-///          manager, and starting them anyway is not merely wasteful: the Application level creates
-///          the OS application object and connects to the window server, which a headless or CI
-///          context may refuse. Levels are flags, so a caller states exactly the set it needs.
-/// @note Logger implies TaskSystem - the logger writes through the task system's IO stream - and
-///       Engine::Initialize adds the dependency rather than trusting the caller to spell it out.
-/// @note A level decides what is *started*, never what exists. MemoryManager, SystemStatistics and
-///       the Logger object itself are members of Engine and are constructed before this is ever
-///       called; what they need at that point is a live MemoryManager, which is why the levels
-///       cannot be used to omit memory.
 enum class EInitLevel : uint8_t
 {
 	None = 0,
