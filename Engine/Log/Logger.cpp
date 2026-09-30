@@ -35,7 +35,7 @@ void ImmediateLog(ELogLevel level, StaticString category, const char* logStr)
 	cout << '[' << timeStampStr << "][" << std::this_thread::get_id() << "][" << category << "][" << levelStr << "] "
 		 << logStr << endl;
 }
-#endif // LOG_FORCE_IMMEDIATE
+#endif
 
 constexpr int64_t MaxFlushWaitMs = 1000;
 constexpr int64_t FlushPollPeriodMs = 10;
@@ -54,6 +54,10 @@ void EmergencyLog(StaticString category, ELogLevel level, const Logger::TLogFunc
 
 class DrainGuard final
 {
+private:
+	std::atomic<bool>& guard;
+	bool acquired;
+
 public:
 	explicit DrainGuard(std::atomic<bool>& inProgress) noexcept
 		: guard(inProgress)
@@ -78,13 +82,9 @@ public:
 	{
 		return acquired;
 	}
-
-private:
-	std::atomic<bool>& guard;
-	bool acquired;
 };
 
-} // anonymous namespace
+} // namespace
 
 Logger* Logger::instance = nullptr;
 
@@ -182,7 +182,6 @@ Logger::Logger(Engine& engine, const char* path, const char* filename) noexcept
 	flushFuncs.emplace_back([this](const TTextBuffer& buffer) { WriteLog(buffer); });
 	flushFuncs.emplace_back([](const TTextBuffer& buffer) { PrintStdIO(buffer); });
 
-	// The driver thread starts with the logger itself, not with the first subsystem that wants to write a line.
 	driverRunning.store(true, std::memory_order_release);
 	driverThread = std::thread([this] { DriverLoop(); });
 	threadID = driverThread.get_id();
@@ -205,16 +204,10 @@ void Logger::DriverLoop() noexcept
 	threadID = std::this_thread::get_id();
 	TaskSystem::SetThreadName("LogDriver");
 
-	// One line from this thread, so that the name it was given can be seen in a log rather than assumed from the call that
-	// set it: every log line is attributed to the thread that wrote it, so a thread which never logs is a thread whose name
-	// is never observable.
 	Logger::Get(GetName()).Out("Log driver thread is running.");
 
 	while (driverRunning.load(std::memory_order_acquire))
 	{
-		// With a stream installed, the IO stream's own queues are the work: whatever the logger posted there runs,
-		// along with any other customer's IO request. Without one - before the task system exists and after it is gone
-		// - the log queue is written directly, which is the same work with one fewer hop.
 		TaskStream* stream = nullptr;
 
 		{
@@ -227,10 +220,6 @@ void Logger::DriverLoop() noexcept
 			}
 		}
 
-		// Waiting on the stream, rather than sleeping and trying again, is what makes the thread cheap when nothing is happening
-		// and immediate when something is: a log line already wakes this stream, so the same wake-up serves both customers of
-		// one thread. The timeout is a safety net, not the mechanism - the wake-up notification is issued without the queue lock
-		// held, so a lost one costs at most this interval rather than a stall that never ends.
 		if (stream != nullptr)
 		{
 			stream->WaitForWork(std::chrono::milliseconds(20));
@@ -258,14 +247,9 @@ void Logger::DriverLoop() noexcept
 
 void Logger::SetIODriver(TaskStream* stream) noexcept
 {
-	// Passing the lock is what makes withdrawal mean something: the new owner cannot install a different stream, and
-	// nullptr cannot land, while a pass is in flight.
 	std::lock_guard lock(driverLock);
 	ioStream = stream;
 
-	// Withdrawing the stream also withdraws the drain task that lived on it: nothing can run it any more, so leaving the flag
-	// set would have every later flush wait 1000ms on an executor that no longer exists, then report the loss and assert. The
-	// driver loop writes the queue directly from here on, which is the same work with one fewer hop.
 	if (stream == nullptr)
 	{
 		isRunning.store(false, std::memory_order_release);
@@ -348,10 +332,6 @@ void Logger::StopTask(TaskSystem& taskSys)
 {
 	isRunning.store(false, std::memory_order_release);
 
-	// The drain work is one item in the IO stream's queue, so an empty queue is the only observable that says the promise has
-	// been kept. Waiting on the task instead spun on a counter that cannot distinguish finished from never-dispatched, and spun
-	// forever when no executor was left to run it - a hang dressed as a wait. On give-up the task is deliberately not released:
-	// freeing a task another thread may still run is a use-after-free, not a shutdown.
 	auto& drainStream = taskSys.GetIOTaskStream();
 	const auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(1000);
 
@@ -364,8 +344,9 @@ void Logger::StopTask(TaskSystem& taskSys)
 	{
 		AddLog(GetName(), ELogLevel::Error, [](auto& logStream)
 		{
-			logStream << "Logger gave up waiting for its drain task and left it alive: the IO stream still held work after "
-					"1000ms. Releasing it here would free a task another thread might still run.";
+			logStream << "Logger gave up waiting for its drain task and left it alive: the IO stream still held work "
+						 "after "
+						 "1000ms. Releasing it here would free a task another thread might still run.";
 		});
 
 		return;
@@ -454,7 +435,7 @@ void Logger::AddLog(StaticString category, ELogLevel level, const TLogFunction& 
 #if LOG_FORCE_PRINT_IMMEDIATELY
 	ImmediateLog(level, category, ls.c_str());
 	return;
-#endif // LOG_FORCE_IMMEDIATE
+#endif
 
 	if (unlikely(level >= ELogLevel::Error && std::this_thread::get_id() == threadID))
 	{

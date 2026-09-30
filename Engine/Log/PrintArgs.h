@@ -7,17 +7,17 @@
 namespace
 {
 
-	template<typename T>
-	static void PrintArgs(const T& arg) noexcept
-	{
-		std::cout << arg << std::endl;
-	}
+template <typename T>
+static void PrintArgs(const T& arg) noexcept
+{
+	std::cout << arg << std::endl;
+}
 
-	template<typename T, typename... TTypes>
-	static void PrintArgs(const T& arg, TTypes&&... args) noexcept
-	{
-		std::cout << arg;
-		PrintArgs(std::forward<TTypes>(args)...);
-	}
+template <typename T, typename... TTypes>
+static void PrintArgs(const T& arg, TTypes&&... args) noexcept
+{
+	std::cout << arg;
+	PrintArgs(std::forward<TTypes>(args)...);
+}
 
 } // namespace

@@ -10,19 +10,24 @@
 #include "OSAL/Intrinsic.h"
 #include "String/StringUtil.h"
 
-
 namespace hbe
 {
 
-LogLine::LogLine() noexcept : level(ELogLevel::Info), isLong(false), longText(nullptr)
+LogLine::LogLine() noexcept
+	: level(ELogLevel::Info)
+	, isLong(false)
+	, longText(nullptr)
 {
 	text[0] = '\0';
 	text[Config::LogLineLength - 1] = '\0';
 }
 
-LogLine::LogLine(LogLine&& rhs) noexcept :
-	timeStamp(rhs.timeStamp), threadName(rhs.threadName), category(rhs.category), level(rhs.level),
-	isLong(rhs.isLong)
+LogLine::LogLine(LogLine&& rhs) noexcept
+	: timeStamp(rhs.timeStamp)
+	, threadName(rhs.threadName)
+	, category(rhs.category)
+	, level(rhs.level)
+	, isLong(rhs.isLong)
 {
 	if (unlikely(isLong))
 	{
@@ -40,9 +45,13 @@ LogLine::LogLine(LogLine&& rhs) noexcept :
 	std::copy(std::begin(rhs.text), std::end(rhs.text), std::begin(text));
 }
 
-LogLine::LogLine(ELogLevel level, StaticString threadName, StaticString category, const char* inText, size_t size) noexcept :
-	timeStamp(std::chrono::steady_clock::now()), threadName(threadName), category(category), level(level),
-	isLong(size >= (Config::LogLineLength - 1))
+LogLine::LogLine(ELogLevel level, StaticString threadName, StaticString category, const char* inText,
+				 size_t size) noexcept
+	: timeStamp(std::chrono::steady_clock::now())
+	, threadName(threadName)
+	, category(category)
+	, level(level)
+	, isLong(size >= (Config::LogLineLength - 1))
 {
 	if (unlikely(inText == nullptr))
 	{
@@ -84,7 +93,8 @@ LogLine::LogLine(ELogLevel level, StaticString threadName, StaticString category
 
 LogLine::~LogLine() noexcept
 {
-	if (likely(!isLong)) return;
+	if (likely(!isLong))
+		return;
 
 	Assert(longText != nullptr);
 	auto& mmgr = MemoryManager::GetInstance();

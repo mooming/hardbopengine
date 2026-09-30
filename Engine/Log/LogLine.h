@@ -10,8 +10,6 @@
 namespace hbe
 {
 
-/// @brief Represents a single log entry with metadata and message text.
-/// Uses a union to optimize memory: short messages stored inline, long messages use dynamic allocation.
 class LogLine final
 {
 public:
@@ -26,6 +24,7 @@ public:
 	union
 	{
 		char text[Config::LogLineLength];
+
 		struct
 		{
 			char* longText;
