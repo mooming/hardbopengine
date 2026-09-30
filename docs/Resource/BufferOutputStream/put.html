@@ -46,7 +46,7 @@
     <li><a href="has-error.html">HasError</a></li>
     <li><a href="clear-error-count.html">ClearErrorCount</a></li>
     <li><a href="is-done.html">IsDone</a></li>
-    <li><a href="operator-shift-left.html">operator&lt;&lt;</a></li>
+    <li><a href="operator-left-shift.html">operator&lt;&lt;</a></li>
     <li><a href="is-valid-index.html">IsValidIndex</a></li>
     <li><a href="put.html">Put</a></li>
   </ul>
@@ -77,7 +77,7 @@
 template &lt;<span class="kw">typename</span> T&gt;
 <span class="kw">void</span> <span class="fn">Put</span>(<span class="kw">const</span> T* value, <span class="kw">size_t</span> length) <span class="kw">noexcept</span>;</code></pre>
 
-<p>Both are private templates defined in the class body, and every public <a href="operator-shift-left.html"><code>operator&lt;&lt;</code></a> reaches the block through one of them. There is no other write path in this class.</p>
+<p>Both are private templates defined in the class body, and every public <a href="operator-left-shift.html"><code>operator&lt;&lt;</code></a> reaches the block through one of them. There is no other write path in this class.</p>
 
 <h2 id="description">Function description</h2>
 

@@ -48,7 +48,7 @@
     <li><a href="has-error.html">HasError</a></li>
     <li><a href="clear-error-count.html">ClearErrorCount</a></li>
     <li><a href="is-done.html">IsDone</a></li>
-    <li><a href="operator-shift-left.html">operator&lt;&lt;</a></li>
+    <li><a href="operator-left-shift.html">operator&lt;&lt;</a></li>
     <li><a href="is-valid-index.html">IsValidIndex</a></li>
     <li><a href="put.html">Put</a></li>
   </ul>
@@ -78,7 +78,7 @@
   and does not own, a byte <a href="get-cursor.html">cursor</a>, an
   <a href="get-error-count.html">error count</a>, and the thread id captured by
   <a href="constructors.html">the constructor</a>. Serialising is the act of pushing values through
-  <a href="operator-shift-left.html"><code>operator&lt;&lt;</code></a>; each one lands in the block before the call
+  <a href="operator-left-shift.html"><code>operator&lt;&lt;</code></a>; each one lands in the block before the call
   returns, so there is no buffer of its own, no flush, and nothing to do at
   <a href="destructor.html">destruction</a>.
 </p>
@@ -171,7 +171,7 @@
   <tr>
     <td><code>This</code></td>
     <td><code>using This = BufferOutputStream;</code></td>
-    <td><span class="badge">member type</span> The spelling every <a href="operator-shift-left.html"><code>operator&lt;&lt;</code></a>
+    <td><span class="badge">member type</span> The spelling every <a href="operator-left-shift.html"><code>operator&lt;&lt;</code></a>
         returns, so the overload set reads uniformly instead of repeating the class name 18 times</td>
   </tr>
   <tr>
@@ -209,7 +209,7 @@
 
 <p>
   One page per name, all overloads of a name together, in header declaration order. The 17
-  <a href="operator-shift-left.html"><code>operator&lt;&lt;</code></a> overloads share a page because they share a
+  <a href="operator-left-shift.html"><code>operator&lt;&lt;</code></a> overloads share a page because they share a
   contract; the two <a href="put.html"><code>Put</code></a> templates share one for the same reason.
 </p>
 
@@ -254,7 +254,7 @@
     <td>Cursor at or past <code>GetSize()</code> — "this block is used up", not "I finished writing"</td>
   </tr>
   <tr>
-    <td><a href="operator-shift-left.html">operator&lt;&lt;</a><span class="badge">18 overloads</span></td>
+    <td><a href="operator-left-shift.html">operator&lt;&lt;</a><span class="badge">18 overloads</span></td>
     <td class="sig">This&amp; operator&lt;&lt;(char) noexcept<br>This&amp; operator&lt;&lt;(int8_t … uint64_t) noexcept<br>This&amp; operator&lt;&lt;(float … long double) noexcept<br>This&amp; operator&lt;&lt;(const char*) noexcept<br>template&lt;typename T, size_t N&gt; This&amp; operator&lt;&lt;(T (&amp;array)[N]) noexcept<br>template&lt;size_t N&gt; This&amp; operator&lt;&lt;(const HInlineString&lt;N&gt;&amp;) noexcept<br>This&amp; operator&lt;&lt;(const HString&amp;) noexcept<br>This&amp; operator&lt;&lt;(StaticString) noexcept</td>
     <td>Each is one <a href="put.html"><code>Put</code></a> call and a return of <code>*this</code>. Strings are
         length-prefixed without a terminator; a null <code>const char*</code> writes nothing and is not counted as an

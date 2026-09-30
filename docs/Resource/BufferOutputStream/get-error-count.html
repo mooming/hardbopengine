@@ -46,7 +46,7 @@
     <li><a href="has-error.html">HasError</a></li>
     <li><a href="clear-error-count.html">ClearErrorCount</a></li>
     <li><a href="is-done.html">IsDone</a></li>
-    <li><a href="operator-shift-left.html">operator&lt;&lt;</a></li>
+    <li><a href="operator-left-shift.html">operator&lt;&lt;</a></li>
     <li><a href="is-valid-index.html">IsValidIndex</a></li>
     <li><a href="put.html">Put</a></li>
   </ul>
@@ -76,7 +76,7 @@
 
 <p>A field read over <code>size_t errorCount;</code>, which only <a href="put.html"><code>Put</code></a> ever raises. Two conditions reach it: the value would end past <a href="../Buffer/get-size.html"><code>GetSize()</code></a>, and — in probing mode, where the buffer reports a null block — even the reservation did not fit the size the buffer claims.</p>
 
-<p>It is a tally, not a diagnosis. The counter is shared by every overload of <a href="operator-shift-left.html"><code>operator&lt;&lt;</code></a>, so a non-zero count says "something was refused" and nothing more: not which value, not at what offset, not by how much it overflowed. The engine is exception-free, so this counter and the <code>unlikely()</code> branches around it are the entire error channel of serialisation.</p>
+<p>It is a tally, not a diagnosis. The counter is shared by every overload of <a href="operator-left-shift.html"><code>operator&lt;&lt;</code></a>, so a non-zero count says "something was refused" and nothing more: not which value, not at what offset, not by how much it overflowed. The engine is exception-free, so this counter and the <code>unlikely()</code> branches around it are the entire error channel of serialisation.</p>
 
 <p>A rejected write does not advance the cursor. That means the stream does not resynchronise: once one value has been refused, every later value is written at the offset the refused one would have used, so a caller that ignores the count gets a silently mis-aligned image rather than a hole.</p>
 

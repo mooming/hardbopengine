@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EndLine — String module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a class="current" href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="#description">Class description</a></li>
+    <li><a href="#template">Template parameters</a></li>
+    <li><a href="#properties">Class properties</a></li>
+    <li><a href="#methods">Class methods</a></li>
+    <li><a href="#non-member">Non-member helpers</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+
+  <h3>Methods</h3>
+  <ul class="methods">
+              <li><a href="operator-cast.html">operator const char*</a></li></ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">String</a> /
+  EndLine
+</p>
+
+<h1>EndLine</h1>
+<p class="subtitle">
+  <span class="tag">Engine/String/EndLine.h</span>
+  <span class="tag">final</span>
+  <span class="tag">no data</span>
+  a named newline: an empty type that becomes the string literal for one
+</p>
+
+<h2 id="description">Class description</h2>
+
+<p>
+  A type whose only purpose is to become a newline when a stream takes it. It holds nothing, converts to
+  <code>"\n"</code>, and exists so a call site reads as intent — <code>ls &lt;&lt; name &lt;&lt; hendl</code> —
+  rather than ending a line with an escape sequence that is invisible in the source.
+</p>
+
+<pre><code><span class="kw">class</span> <span class="ty">EndLine</span> <span class="kw">final</span>
+{
+<span class="kw">public</span>:
+	[[<span class="kw">nodiscard</span>]] <span class="kw">operator const char</span>*() <span class="kw">const</span>
+	{
+		<span class="kw">return</span> <span class="st">"\n"</span>;
+	}
+};
+
+<span class="kw">static constexpr</span> <span class="ty">EndLine</span> hendl;</code></pre>
+
+<p class="meta">From Engine/String/EndLine.h, complete — this is the whole class</p>
+
+<p>
+  The type earns its place only if something can take it <em>as a type</em>. Nothing in the engine does
+  today: every use relies on the conversion, so <code>hendl</code> reaches the stream as a
+  <code>const char*</code>. It is a named newline, not a manipulator — which is honest, and is what the
+  Coverage table below records rather than glossing over.
+</p>
+<h2 id="template">Template parameters</h2>
+
+<p>None — <code>EndLine</code> is not a template and takes no character or allocator parameters.</p>
+<h2 id="properties">Class properties</h2>
+
+<p>
+  None. The class has no data members, so it is empty, trivially copyable, and its size is one byte like
+  every other empty type. Copying <code>hendl</code> is free, and there is deliberately nothing to
+  observe about a copy.
+</p>
+<h2 id="methods">Class methods</h2>
+
+<table>
+  <tr><th>Method</th><th>Signature</th><th>What it does</th></tr>
+  <tr>
+    <td><a href="operator-cast.html"><code>operator const char*</code></a></td>
+    <td><code>[[nodiscard]] operator const char*() const</code></td>
+    <td>Returns the string literal <code>"\n"</code> — the whole behaviour of the class</td>
+  </tr>
+</table>
+
+<p>
+  There is no constructor declared, no destructor declared, and no assignment operator: the implicit ones
+  are correct for an empty type, and writing them out would add six lines that a reader has to check are
+  still the defaults.
+</p>
+<h2 id="non-member">Non-member helpers</h2>
+
+<p>The single instance, and it is the reason the type is usable at a call site at all:</p>
+
+<pre><code><span class="kw">static constexpr</span> <span class="ty">EndLine</span> hendl;</code></pre>
+
+<p>
+  <code>constexpr</code> means no construction happens at run time. Declaring it <code>static</code> at
+  namespace scope in a header gives it <strong>internal linkage</strong>, so each translation unit that
+  includes <code>EndLine.h</code> gets its own object — which is harmless here only because the type is
+  empty and stateless. A type with state would have quietly become several objects, one per translation
+  unit, and <code>inline constexpr</code> is the spelling that gives one object tree-wide.
+</p>
+
+<p>
+  Do not confuse it with the <code>lf</code>, <code>lfwarn</code> and <code>lferr</code> of
+  <a href="../index.html"><code>Test</code></a>: those are <code>TestCollection::LogFlush</code> objects
+  whose <code>operator&lt;&lt;</code> emits the testlet's accumulated message at a chosen level. They end
+  a <em>log record</em>. <code>hendl</code> writes one newline character.
+</p>
+<h2 id="coverage">Coverage</h2>
+
+<table>
+  <tr><th>Gap</th><th>Detail</th></tr>
+  <tr>
+    <td>No overload takes <code>EndLine</code> as itself</td>
+    <td>Every use in the tree — <a href="../../Test/index.html"><code>TestEnv</code></a>,
+        <a href="../../Memory/index.html"><code>ThreadSafeMultiPoolAllocator</code></a>,
+        <a href="../../Math/index.html"><code>AABB</code></a> — relies on the conversion to
+        <code>const char*</code>. The type buys a readable call site, not custom behaviour; the
+        "a builder can give it its own overload" that an earlier revision of the module page claimed is
+        not implemented anywhere</td>
+  </tr>
+  <tr>
+    <td>The instance has internal linkage</td>
+    <td><code>static constexpr</code> in a header means one object per translation unit. Harmless for an
+        empty type; <code>inline constexpr</code> would be the single-object spelling</td>
+  </tr>
+  <tr>
+    <td>No test coverage that exists</td>
+    <td>No testlet asserts the conversion yields <code>"\n"</code>. The behaviour is trivial enough that a
+        test would mostly restate the literal, and it is exercised indirectly by every testlet that logs</td>
+  </tr>
+</table>
+
+<footer class="prevnext">
+  <span><a href="index.html">&larr; EndLine</a></span>
+  <span><a href="index.html#methods">All EndLine methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

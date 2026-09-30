@@ -45,7 +45,7 @@
     <li><a href="has-error.html">HasError</a></li>
     <li><a href="clear-error-count.html">ClearErrorCount</a></li>
     <li><a href="is-done.html">IsDone</a></li>
-    <li><a href="operator-shift-left.html">operator&lt;&lt;</a></li>
+    <li><a href="operator-left-shift.html">operator&lt;&lt;</a></li>
     <li><a href="is-valid-index.html">IsValidIndex</a></li>
     <li><a href="put.html">Put</a></li>
   </ul>
@@ -80,13 +80,13 @@ explicit <span class="fn">BufferOutputStream</span>(<a href="../Buffer/index.htm
 
 <h2 id="description">Function description</h2>
 
-<p>The constructor stores the buffer reference and starts the stream at the beginning of it: <code>cursor(0)</code>, <code>errorCount(0)</code>, and <code>threadID(std::this_thread::get_id())</code>. It reads nothing and writes nothing, so a freshly opened stream has not touched the block; the first byte is written by the first <a href="operator-shift-left.html"><code>operator&lt;&lt;</code></a>.</p>
+<p>The constructor stores the buffer reference and starts the stream at the beginning of it: <code>cursor(0)</code>, <code>errorCount(0)</code>, and <code>threadID(std::this_thread::get_id())</code>. It reads nothing and writes nothing, so a freshly opened stream has not touched the block; the first byte is written by the first <a href="operator-left-shift.html"><code>operator&lt;&lt;</code></a>.</p>
 
 <p>The thread captured there is not informational. Every <a href="put.html"><code>Put</code></a> begins by asserting the current thread equals it, so opening a stream is also the act of declaring which thread owns it — see <a href="#thread-pinning">thread pinning</a> below.</p>
 
 <p>Copying and moving are deleted for one reason: the cursor is the stream's entire state, and two streams holding one cursor would write over each other at the same offsets. A second stream over the same buffer is legal — construct one — but it starts at 0 and knows nothing about the first. The deletion stops the one case that looks like ownership transfer and is not: handing a stream on as a value.</p>
 
-<p>Both string-family overloads and the container overloads are on <a href="operator-shift-left.html"><code>operator&lt;&lt;</code></a>; the buffer's own lifetime is a <a href="../Buffer/destructor.html"><code>Buffer</code></a> question, not a stream question.</p>
+<p>Both string-family overloads and the container overloads are on <a href="operator-left-shift.html"><code>operator&lt;&lt;</code></a>; the buffer's own lifetime is a <a href="../Buffer/destructor.html"><code>Buffer</code></a> question, not a stream question.</p>
 <div class="note" id="thread-pinning">
   <strong>Thread pinning is an assertion, and Release builds compile assertions away.</strong> <code>Assert</code> is a function in <a href="../../Core/index.html"><code>Core/Debug.h</code></a> with an empty Release form, so the cross-thread check that makes this contract real in Debug and Dev is not present in Release. What remains is the ordering discipline of whoever constructed the stream; nothing detects the violation there.
 </div>

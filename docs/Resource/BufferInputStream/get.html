@@ -45,7 +45,7 @@
     <li><a href="has-error.html">HasError</a></li>
     <li><a href="clear-error-count.html">ClearErrorCount</a></li>
     <li><a href="is-done.html">IsDone</a></li>
-    <li><a href="operator-shift-right.html">operator&gt;&gt;</a></li>
+    <li><a href="operator-right-shift.html">operator&gt;&gt;</a></li>
     <li><a href="get.html">Get</a></li>
     <li><a href="is-valid-index.html">IsValidIndex</a></li>
   </ul>
@@ -80,7 +80,7 @@ template &lt;<span class="kw">typename</span> T&gt;
 template &lt;<span class="kw">typename</span> T, <span class="kw">class</span> TContainer = TVector&lt;T&gt;&gt;
 <span class="kw">void</span> <span class="fn">Get</span>(TContainer&amp; array) <span class="kw">noexcept</span>;</code></pre>
 
-<p>All three are private, defined in the class body, and the whole public surface — every <a href="operator-shift-right.html"><code>operator&gt;&gt;</code></a> — goes through one of them.</p>
+<p>All three are private, defined in the class body, and the whole public surface — every <a href="operator-right-shift.html"><code>operator&gt;&gt;</code></a> — goes through one of them.</p>
 
 <h2 id="description">Function description</h2>
 
@@ -125,7 +125,7 @@ std::<span class="fn">copy</span>(dataBegin, dataEnd, std::<span class="fn">back
   <strong>The empty-image case is honoured, not refused.</strong> A zero length prefix that fits inside the buffer means the image holds an empty array, so the container is cleared and no error is raised. The branch used to read <code>length &lt;= 0</code> on an unsigned type — a comparison that can only ever mean <code>== 0</code> — and it is now written as what it does.
 </div>
 
-<p>The array and container forms are the exact counterpart of <a href="../BufferOutputStream/operator-shift-left.html">the writer's array overload</a>, which writes an element count and then the elements. A fixed array on one side pairs with <code>T(&amp;array)[N]</code> on the other; a container pairs with the same bytes read into an <code>HVector&lt;T&gt;</code>.</p>
+<p>The array and container forms are the exact counterpart of <a href="../BufferOutputStream/operator-left-shift.html">the writer's array overload</a>, which writes an element count and then the elements. A fixed array on one side pairs with <code>T(&amp;array)[N]</code> on the other; a container pairs with the same bytes read into an <code>HVector&lt;T&gt;</code>.</p>
 
 <h2 id="parameters">Parameters</h2>
 

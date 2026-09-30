@@ -45,7 +45,7 @@
     <li><a href="has-error.html">HasError</a></li>
     <li><a href="clear-error-count.html">ClearErrorCount</a></li>
     <li><a href="is-done.html">IsDone</a></li>
-    <li><a href="operator-shift-right.html">operator&gt;&gt;</a></li>
+    <li><a href="operator-right-shift.html">operator&gt;&gt;</a></li>
     <li><a href="get.html">Get</a></li>
     <li><a href="is-valid-index.html">IsValidIndex</a></li>
   </ul>
@@ -93,7 +93,7 @@ This&amp; <span class="fn">operator&gt;&gt;</span>(TContainer&amp; container) <s
 
 <p>The thirteen scalar overloads are one line each in <code>BufferInputStream.cpp</code>: a call to the scalar <a href="get.html"><code>Get</code></a> with the argument and a type-appropriate default (<code>'\0'</code> for <code>char</code>, <code>0</code> for the integers, <code>0.0</code> for the floats), then <code>return *this;</code>. So the read either fills the argument from the block or fills it with that constant and raises <a href="get-error-count.html">the count</a>; there is no third outcome and no way for the argument to be left uninitialised.</p>
 
-<p><strong>Strings are the asymmetric ones.</strong> <code>operator&gt;&gt;(StaticString&amp;)</code> reads the <code>size_t</code> length prefix that <a href="../BufferOutputStream/operator-shift-left.html"><code>operator&lt;&lt;</code></a> wrote. A zero length assigns a function-local interned empty string and returns. Otherwise it reserves in a local <code>HInlineString&lt;256&gt;</code> and reads the characters one at a time through the scalar <a href="get.html"><code>Get</code></a>, then asserts the collected size equals the declared length and assigns <code>str = StaticString(tmpStr.c_str())</code> — a fresh interning, not a recovered handle. Interning identity does not survive a round trip through a buffer, only the characters do.</p>
+<p><strong>Strings are the asymmetric ones.</strong> <code>operator&gt;&gt;(StaticString&amp;)</code> reads the <code>size_t</code> length prefix that <a href="../BufferOutputStream/operator-left-shift.html"><code>operator&lt;&lt;</code></a> wrote. A zero length assigns a function-local interned empty string and returns. Otherwise it reserves in a local <code>HInlineString&lt;256&gt;</code> and reads the characters one at a time through the scalar <a href="get.html"><code>Get</code></a>, then asserts the collected size equals the declared length and assigns <code>str = StaticString(tmpStr.c_str())</code> — a fresh interning, not a recovered handle. Interning identity does not survive a round trip through a buffer, only the characters do.</p>
 
 <p>Reading a string one character at a time is a consequence of alignment rather than of laziness: each character is an aligned 1-byte read at the running cursor, so the reader stays on the same offset arithmetic as the writer for every element it consumes.</p>
 
@@ -110,7 +110,7 @@ there.</p>
  and <code>N</code> both deduce from <code>T(&amp;array)[N]</code>.
 </div>
 <div class="gap">
-  <strong><code>operator&gt;&gt;(const HString&amp;)</code> reads nothing. </strong> Its body is <code>return *this;</code> — no <a href="get.html"><code>Get</code></a> call, no cursor movement, no error count. It is a declared, defined, chainable no-op. It cannot fill its argument in any case, because the parameter is <code>const</code>, so the overload as written has no reachable effect: an image containing a string passed to this overload leaves the string untouched and the cursor unmoved, and everything after it in the chain desynchronises against the image. The <code>StaticString</code> overload immediately above is the one that works, and the <a href="../BufferOutputStream/operator-shift-left.html">writer</a> has no matching <code>HString</code> write either — it converts every string type with <code>c_str()</code> and writes bytes.
+  <strong><code>operator&gt;&gt;(const HString&amp;)</code> reads nothing. </strong> Its body is <code>return *this;</code> — no <a href="get.html"><code>Get</code></a> call, no cursor movement, no error count. It is a declared, defined, chainable no-op. It cannot fill its argument in any case, because the parameter is <code>const</code>, so the overload as written has no reachable effect: an image containing a string passed to this overload leaves the string untouched and the cursor unmoved, and everything after it in the chain desynchronises against the image. The <code>StaticString</code> overload immediately above is the one that works, and the <a href="../BufferOutputStream/operator-left-shift.html">writer</a> has no matching <code>HString</code> write either — it converts every string type with <code>c_str()</code> and writes bytes.
 </div>
 <div class="gap">
   <strong>A stored length above 256 characters leaves the inline buffer behind.</strong> The local collection buffer is <code>HInlineString&lt;256&gt;</code> with <code>reserve(length)</code> called on it, so a longer stored string depends on that class growing off its inline storage, and the value handed to <code>StaticString</code> comes from <code>c_str()</code> afterwards. The <code>Assert(tmpStr.size() == length)</code> that follows checks the count, not the capacity behaviour. Long strings are therefore exercised by a different path than short ones, and the engine's own test collection does not cover the long case.
@@ -157,7 +157,7 @@ there.</p>
 
 <h2 id="example">Examples</h2>
 
-<p>A chain that matches the writer in <a href="../BufferOutputStream/operator-shift-left.html#example"><code>operator&lt;&lt;</code></a>, and the single check that makes the result trustworthy:</p>
+<p>A chain that matches the writer in <a href="../BufferOutputStream/operator-left-shift.html#example"><code>operator&lt;&lt;</code></a>, and the single check that makes the result trustworthy:</p>
 
 <pre><code>BufferInputStream is(<span class="kw">buffer</span>);
 <span class="kw">uint32_t</span> version = 0;

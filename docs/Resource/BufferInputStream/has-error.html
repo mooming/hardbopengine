@@ -44,7 +44,7 @@
     <li><a href="has-error.html">HasError</a></li>
     <li><a href="clear-error-count.html">ClearErrorCount</a></li>
     <li><a href="is-done.html">IsDone</a></li>
-    <li><a href="operator-shift-right.html">operator&gt;&gt;</a></li>
+    <li><a href="operator-right-shift.html">operator&gt;&gt;</a></li>
     <li><a href="get.html">Get</a></li>
     <li><a href="is-valid-index.html">IsValidIndex</a></li>
   </ul>
@@ -74,7 +74,7 @@
 
 <p>One comparison on the counter <a href="get-error-count.html"><code>GetErrorCount</code></a> returns. Because a refused read still fills its output argument with a default value, this is the only member that distinguishes "the image said zero" from "the image had nothing".</p>
 
-<p>For a reader the practical use is at the end of a deserialisation, once: check the flag, discard the object if it is set. Checking after each field would cost a comparison per field and would still not identify which field, since the count is shared by every <a href="operator-shift-right.html"><code>operator&gt;&gt;</code></a> and every <a href="get.html"><code>Get</code></a>.</p>
+<p>For a reader the practical use is at the end of a deserialisation, once: check the flag, discard the object if it is set. Checking after each field would cost a comparison per field and would still not identify which field, since the count is shared by every <a href="operator-right-shift.html"><code>operator&gt;&gt;</code></a> and every <a href="get.html"><code>Get</code></a>.</p>
 
 <h2 id="parameters">Parameters</h2>
 

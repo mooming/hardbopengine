@@ -46,7 +46,7 @@
     <li><a href="has-error.html">HasError</a></li>
     <li><a href="clear-error-count.html">ClearErrorCount</a></li>
     <li><a href="is-done.html">IsDone</a></li>
-    <li><a href="operator-shift-left.html">operator&lt;&lt;</a></li>
+    <li><a href="operator-left-shift.html">operator&lt;&lt;</a></li>
     <li><a href="is-valid-index.html">IsValidIndex</a></li>
     <li><a href="put.html">Put</a></li>
   </ul>
@@ -97,7 +97,7 @@ This&amp; <span class="fn">operator&lt;&lt;</span>(StaticString str) <span class
 
 <p>Every overload is a thin, chainable wrapper over <a href="put.html"><code>Put</code></a>, which holds the alignment and bounds behaviour. Nothing here reports failure; a refused write raises the tally that <a href="has-error.html"><code>HasError</code></a> reads.</p>
 
-<p><strong>Strings are length-prefixed, and the terminator is not written.</strong> The <code>const char*</code> overload measures the string with <code>StringUtil::StrLen</code> and hands it to <code>Put&lt;char&gt;(str, length)</code>, which writes a <code>size_t</code> length first and then exactly <code>length</code> characters. So the byte count is the string length, the NUL is absent, and the reader that consumes this image must be the one on <a href="../BufferInputStream/operator-shift-right.html"><code>BufferInputStream</code></a>, which reads a length and then that many characters. A hand-written reader that expects a C string will not agree with a hand-written writer that appends a terminator.</p>
+<p><strong>Strings are length-prefixed, and the terminator is not written.</strong> The <code>const char*</code> overload measures the string with <code>StringUtil::StrLen</code> and hands it to <code>Put&lt;char&gt;(str, length)</code>, which writes a <code>size_t</code> length first and then exactly <code>length</code> characters. So the byte count is the string length, the NUL is absent, and the reader that consumes this image must be the one on <a href="../BufferInputStream/operator-right-shift.html"><code>BufferInputStream</code></a>, which reads a length and then that many characters. A hand-written reader that expects a C string will not agree with a hand-written writer that appends a terminator.</p>
 
 <p>Three string types funnel through that one overload by <code>c_str()</code>: <code>HInlineString&lt;N&gt;</code>, <code>HString</code> and <code>StaticString</code>. Interned identity is therefore <em>not</em> preserved across a stream — the reader gets a fresh <a href="../../String/index.html#staticstring"><code>StaticString</code></a> built from the bytes, and re-interns it.</p>
 
@@ -152,7 +152,7 @@ returnIfBos.<span class="fn">HasError</span>();   <span class="cm">// the size p
 
 <p class="meta">From Engine/Memory/MemoryManager.cpp, abbreviated</p>
 
-<p>The symmetric reader for the same image, including the length-prefixed string form, is on <a href="../BufferInputStream/operator-shift-right.html"><code>operator&gt;&gt;</code></a>.</p>
+<p>The symmetric reader for the same image, including the length-prefixed string form, is on <a href="../BufferInputStream/operator-right-shift.html"><code>operator&gt;&gt;</code></a>.</p>
 
 
 <footer class="prevnext">

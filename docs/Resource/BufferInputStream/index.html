@@ -47,7 +47,7 @@
     <li><a href="has-error.html">HasError</a></li>
     <li><a href="clear-error-count.html">ClearErrorCount</a></li>
     <li><a href="is-done.html">IsDone</a></li>
-    <li><a href="operator-shift-right.html">operator&gt;&gt;</a></li>
+    <li><a href="operator-right-shift.html">operator&gt;&gt;</a></li>
     <li><a href="get.html">Get</a></li>
     <li><a href="is-valid-index.html">IsValidIndex</a></li>
   </ul>
@@ -76,7 +76,7 @@
   Three members and no ownership: a <code>const <a href="../Buffer/index.html">Buffer&amp;</a></code>, a byte
   <a href="constructors.html">cursor</a> starting at zero, and an
   <a href="get-error-count.html">error count</a>. Deserialising is pushing the image through
-  <a href="operator-shift-right.html"><code>operator&gt;&gt;</code></a>; each read either fills its argument from the
+  <a href="operator-right-shift.html"><code>operator&gt;&gt;</code></a>; each read either fills its argument from the
   block or fills it with a type-appropriate default and raises the count. Values are never left uninitialised, which
   is precisely why <a href="has-error.html"><code>HasError</code></a> carries the whole burden of trust at the end of a
   chain.
@@ -102,7 +102,7 @@
 <p>
   The reader assumes the three rules <a href="../BufferOutputStream/index.html#format">the writer follows</a>, and
   nothing verifies them at runtime. If the image was produced by
-  <a href="../BufferOutputStream/operator-shift-left.html"><code>BufferOutputStream</code></a> they hold by
+  <a href="../BufferOutputStream/operator-left-shift.html"><code>BufferOutputStream</code></a> they hold by
   construction; for any other producer they are an agreement made elsewhere:
 </p>
 
@@ -146,7 +146,7 @@
   None on the class. The class declares one member template alias,
   <code>template &lt;typename T&gt; using TVector = hbe::HVector&lt;T&gt;;</code>, which is what the container
   overloads default to: <code>template &lt;typename T, class TContainer = TVector&lt;T&gt;&gt;</code> on both
-  <a href="operator-shift-right.html"><code>operator&gt;&gt;</code></a> and
+  <a href="operator-right-shift.html"><code>operator&gt;&gt;</code></a> and
   <a href="get.html"><code>Get</code></a>. A caller can therefore read into a container other than
   <code>HVector</code> by naming it explicitly, as long as its <code>value_type</code> matches the element type —
   that is a <code>static_assert</code>, not a convention.
@@ -159,7 +159,7 @@
   <tr>
     <td><code>This</code></td>
     <td><code>using This = BufferInputStream;</code></td>
-    <td><span class="badge">member type</span> What every <a href="operator-shift-right.html"><code>operator&gt;&gt;</code></a>
+    <td><span class="badge">member type</span> What every <a href="operator-right-shift.html"><code>operator&gt;&gt;</code></a>
         returns, so chains read uniformly</td>
   </tr>
   <tr>
@@ -195,7 +195,7 @@
 
 <p>
   One page per name, all overloads of a name together, in header declaration order. The 17
-  <a href="operator-shift-right.html"><code>operator&gt;&gt;</code></a> overloads share a page because they share one
+  <a href="operator-right-shift.html"><code>operator&gt;&gt;</code></a> overloads share a page because they share one
   contract, and the three <a href="get.html"><code>Get</code></a> templates share another because together they are the
   single read path.
 </p>
@@ -237,7 +237,7 @@
         the next value would fit</td>
   </tr>
   <tr>
-    <td><a href="operator-shift-right.html">operator&gt;&gt;</a><span class="badge">17 overloads</span></td>
+    <td><a href="operator-right-shift.html">operator&gt;&gt;</a><span class="badge">17 overloads</span></td>
     <td class="sig">This&amp; operator&gt;&gt;(char&amp;) noexcept<br>This&amp; operator&gt;&gt;(int8_t&amp; … uint64_t&amp;) noexcept<br>This&amp; operator&gt;&gt;(float&amp; … long double&amp;) noexcept<br>This&amp; operator&gt;&gt;(StaticString&amp;) noexcept<br>This&amp; operator&gt;&gt;(const HString&amp;) noexcept<br>template&lt;typename T, size_t N&gt; This&amp; operator&gt;&gt;(T (&amp;array)[N]) noexcept<br>template&lt;typename T, class TContainer = TVector&lt;T&gt;&gt; This&amp; operator&gt;&gt;(TContainer&amp;) noexcept</td>
     <td>Each scalar overload is one <a href="get.html"><code>Get</code></a> call with a default and a return of
         <code>*this</code>. The <code>StaticString</code> form rebuilds and re-interns the string; the
@@ -285,7 +285,7 @@
     <td><code>operator&gt;&gt;(const HString&amp;)</code> is a no-op</td>
     <td>Defined as <code>return *this;</code> — no read, no cursor movement, no error. Its parameter is
         <code>const</code>, so it could not fill the argument even if it tried. Discussed on
-        <a href="operator-shift-right.html"><code>operator&gt;&gt;</code></a></td>
+        <a href="operator-right-shift.html"><code>operator&gt;&gt;</code></a></td>
   </tr>
   <tr>
     <td>Fixed this cycle: a refused read no longer empties the caller&#39;s container</td>
