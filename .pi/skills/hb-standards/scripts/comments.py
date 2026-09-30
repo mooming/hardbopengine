@@ -328,6 +328,58 @@ def code_lines(text):
     return [' '.join(line.split()) for line in code_only(text).split('\n') if line.strip()]
 
 
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+
+
+def engine_module(path):
+    """The module a source file belongs to, or None for anything outside Engine/.
+
+    Applications and Examples own no API reference — they are not modules under Engine/ — so their prose
+    has no class page to land in and the caller must place it in a guide by hand. That is stated out loud
+    below rather than treated as satisfied.
+    """
+    parts = os.path.normpath(path).split(os.sep)
+    if parts and parts[0] == 'Engine' and len(parts) > 2:
+        return parts[1]
+    return None
+
+
+def docs_are_in_place(paths, force=False):
+    """True when every module about to lose its comments already owns its reference pages.
+
+    The ban is only safe after the prose has somewhere to live, and until now that ordering lived in one
+    sentence of SKILL.md plus the operator's memory. This makes it a precondition of the tool: the two
+    doc checks run as the same commands the gate runs, so the verdict here and the verdict in check.sh
+    cannot drift apart, and a module whose checker could not run at all is a refusal rather than a pass.
+    """
+    modules = sorted({m for m in (engine_module(p) for p in paths) if m})
+    outside = [p for p in paths if engine_module(p) is None]
+    if outside:
+        print('note: %d file(s) outside Engine/ own no API pages — move their prose into a guide under '
+              'docs/ by hand' % len(outside))
+    blockers = []
+    for module in modules:
+        for tool, args, what in (('docs_coverage.py', ['check', module], 'class pages'),
+                                 ('docs_methods.py', [module], 'method pages')):
+            script = os.path.join(SCRIPT_DIR, tool)
+            if not os.path.isfile(script):
+                blockers.append('%s: %s is missing, so %s cannot be verified' % (module, tool, what))
+                continue
+            import subprocess
+            result = subprocess.run([sys.executable, script] + args, capture_output=True, text=True)
+            if result.returncode != 0:
+                blockers.append('%s: %s reports missing %s (%s %s)'
+                                % (module, tool, what, tool, ' '.join(args)))
+    if not blockers:
+        return True
+    print('REFUSED: comments are being deleted before their reference pages exist', file=sys.stderr)
+    for row in blockers:
+        print('  %s' % row, file=sys.stderr)
+    print('  Write the pages first (docs_page.py emits them with correct chrome), or pass --force if the '
+          'prose is going somewhere else.', file=sys.stderr)
+    return force
+
+
 def strip_file(path, text):
     """Delete exactly the reported comment spans, and refuse to write if any code moved.
 
@@ -398,8 +450,12 @@ def main(argv):
             return 0 if same else 1
         return 0
 
+    force = '--force' in argv
+    argv = [a for a in argv if a != '--force']
     strip = '--strip' in argv
     argv = [a for a in argv if a != '--strip']
+    if strip and not docs_are_in_place(argv, force=force):
+        return 1
     if not argv:
         print('usage: comments.py [--strip] <file ...>', file=sys.stderr)
         return 3
