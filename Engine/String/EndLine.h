@@ -5,13 +5,16 @@
 namespace hbe
 {
 
-	/// @brief A marker class for inserting newlines in string builders.
-	class EndLine final
+/// @brief A marker class for inserting newlines in string builders.
+class EndLine final
+{
+public:
+	operator const char*() const
 	{
-	public:
-		operator const char*() const { return "\n"; }
-	};
+		return "\n";
+	}
+};
 
-	static constexpr EndLine hendl;
+static constexpr EndLine hendl;
 
 } // namespace hbe

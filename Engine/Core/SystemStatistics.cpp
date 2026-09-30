@@ -8,14 +8,22 @@
 #include "String/StaticString.h"
 #include "String/StringUtil.h"
 
-
 namespace hbe
 {
 
-SystemStatistics::SystemStatistics(Engine& engine) :
-	frameCount(0), slowFrameCount(0), engineLogCount(0), logCount(0), longLogCount(0), fallbackAllocCount(0),
-	allocCount(0), deallocCount(0), totalUsage(0), maxUsage(0), startTime(time::TStopWatch::now()),
-	currentTime(startTime)
+SystemStatistics::SystemStatistics(Engine& engine)
+	: frameCount(0)
+	, slowFrameCount(0)
+	, engineLogCount(0)
+	, logCount(0)
+	, longLogCount(0)
+	, fallbackAllocCount(0)
+	, allocCount(0)
+	, deallocCount(0)
+	, totalUsage(0)
+	, maxUsage(0)
+	, startTime(time::TStopWatch::now())
+	, currentTime(startTime)
 {
 	Assert(engine.IsMemoryManagerReady());
 	engine.SetSystemStatisticsReady();
@@ -41,7 +49,10 @@ void SystemStatistics::UpdateCurrentTime() noexcept
 }
 
 #if PROFILE_ENABLED
-void SystemStatistics::Report(const AllocStats& stats) { allocStats.emplace_back(stats); }
+void SystemStatistics::Report(const AllocStats& stats)
+{
+	allocStats.emplace_back(stats);
+}
 
 void SystemStatistics::ReportSysMemAlloc(size_t usage)
 {

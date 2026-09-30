@@ -5,10 +5,12 @@
 #include <iostream>
 #include "Core/Debug.h"
 
-
 namespace hbe
 {
-CommandLineArguments::CommandLineArguments(int argc, const char* argv[]) { Parse(argc, argv); }
+CommandLineArguments::CommandLineArguments(int argc, const char* argv[])
+{
+	Parse(argc, argv);
+}
 
 void CommandLineArguments::Print()
 {

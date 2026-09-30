@@ -120,10 +120,8 @@ void WindowTest::Prepare()
 			windowPromise.set_value(nullptr);
 		}, &userData);
 
-				const bool isReady = taskSystem.DriveUntil("window creation", [&windowFuture]()
-		{
-			return windowFuture.wait_for(std::chrono::seconds::zero()) == std::future_status::ready;
-		});
+		const bool isReady = taskSystem.DriveUntil("window creation", [&windowFuture]()
+		{ return windowFuture.wait_for(std::chrono::seconds::zero()) == std::future_status::ready; });
 
 		if (!isReady)
 		{
@@ -234,10 +232,8 @@ void WindowTest::Prepare()
 			windowPromise.set_value(nullptr);
 		}, &userData);
 
-				const bool isReady = taskSystem.DriveUntil("window creation", [&windowFuture]()
-		{
-			return windowFuture.wait_for(std::chrono::seconds::zero()) == std::future_status::ready;
-		});
+		const bool isReady = taskSystem.DriveUntil("window creation", [&windowFuture]()
+		{ return windowFuture.wait_for(std::chrono::seconds::zero()) == std::future_status::ready; });
 
 		if (!isReady)
 		{
@@ -347,10 +343,8 @@ void WindowTest::Prepare()
 			windowPromise.set_value(nullptr);
 		}, &userData);
 
-				const bool isReady = taskSystem.DriveUntil("window creation", [&windowFuture]()
-		{
-			return windowFuture.wait_for(std::chrono::seconds::zero()) == std::future_status::ready;
-		});
+		const bool isReady = taskSystem.DriveUntil("window creation", [&windowFuture]()
+		{ return windowFuture.wait_for(std::chrono::seconds::zero()) == std::future_status::ready; });
 
 		if (!isReady)
 		{
@@ -462,10 +456,8 @@ void WindowTest::Prepare()
 			windowPromise.set_value(nullptr);
 		}, &userData);
 
-				const bool isReady = taskSystem.DriveUntil("window creation", [&windowFuture]()
-		{
-			return windowFuture.wait_for(std::chrono::seconds::zero()) == std::future_status::ready;
-		});
+		const bool isReady = taskSystem.DriveUntil("window creation", [&windowFuture]()
+		{ return windowFuture.wait_for(std::chrono::seconds::zero()) == std::future_status::ready; });
 
 		if (!isReady)
 		{
@@ -569,10 +561,8 @@ void WindowTest::Prepare()
 			windowPromise.set_value(nullptr);
 		}, &userData);
 
-				const bool isReady = taskSystem.DriveUntil("window creation", [&windowFuture]()
-		{
-			return windowFuture.wait_for(std::chrono::seconds::zero()) == std::future_status::ready;
-		});
+		const bool isReady = taskSystem.DriveUntil("window creation", [&windowFuture]()
+		{ return windowFuture.wait_for(std::chrono::seconds::zero()) == std::future_status::ready; });
 
 		if (!isReady)
 		{
@@ -676,10 +666,8 @@ void WindowTest::Prepare()
 			windowPromise.set_value(nullptr);
 		}, &userData);
 
-				const bool isReady = taskSystem.DriveUntil("window creation", [&windowFuture]()
-		{
-			return windowFuture.wait_for(std::chrono::seconds::zero()) == std::future_status::ready;
-		});
+		const bool isReady = taskSystem.DriveUntil("window creation", [&windowFuture]()
+		{ return windowFuture.wait_for(std::chrono::seconds::zero()) == std::future_status::ready; });
 
 		if (!isReady)
 		{

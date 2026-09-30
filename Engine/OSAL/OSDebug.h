@@ -23,7 +23,10 @@ namespace hbe
 class OSDebugTest final : public TestCollection
 {
 public:
-	OSDebugTest() : TestCollection("OSDebugTest") {}
+	OSDebugTest()
+		: TestCollection("OSDebugTest")
+	{
+	}
 
 protected:
 	void Prepare() override;

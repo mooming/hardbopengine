@@ -21,19 +21,35 @@ public:
 		return SourceLocation{fileName, functionName, lineNumber, columnOffset};
 	}
 
-	constexpr SourceLocation() noexcept :
-		fileName("Invalid"), functionName("Invalid"), lineNumber(0), columnOffset(0)
-	{}
+	constexpr SourceLocation() noexcept
+		: fileName("Invalid")
+		, functionName("Invalid")
+		, lineNumber(0)
+		, columnOffset(0)
+	{
+	}
 
 	SourceLocation(const SourceLocation& rhs) noexcept = default;
 
-	[[nodiscard]] constexpr const char* file_name() const noexcept { return fileName; }
+	[[nodiscard]] constexpr const char* file_name() const noexcept
+	{
+		return fileName;
+	}
 
-	[[nodiscard]] constexpr const char* function_name() const noexcept { return functionName; }
+	[[nodiscard]] constexpr const char* function_name() const noexcept
+	{
+		return functionName;
+	}
 
-	[[nodiscard]] constexpr uint_least32_t line() const noexcept { return lineNumber; }
+	[[nodiscard]] constexpr uint_least32_t line() const noexcept
+	{
+		return lineNumber;
+	}
 
-	[[nodiscard]] constexpr std::uint_least32_t column() const noexcept { return columnOffset; }
+	[[nodiscard]] constexpr std::uint_least32_t column() const noexcept
+	{
+		return columnOffset;
+	}
 
 private:
 	const char* fileName;
@@ -44,8 +60,12 @@ private:
 	constexpr SourceLocation(const char* fileName, const char* functionName, const uint_least32_t lineNumber,
 							 const uint_least32_t columnOffset) noexcept
 
-		: fileName(fileName), functionName(functionName), lineNumber(lineNumber), columnOffset(columnOffset)
-	{}
+		: fileName(fileName)
+		, functionName(functionName)
+		, lineNumber(lineNumber)
+		, columnOffset(columnOffset)
+	{
+	}
 };
 
 } // namespace hbe

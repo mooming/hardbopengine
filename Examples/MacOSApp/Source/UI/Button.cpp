@@ -4,7 +4,6 @@
 
 #include "Framebuffer.h"
 
-
 namespace hbe
 {
 
@@ -172,7 +171,7 @@ void Button::Draw(Framebuffer& framebuffer)
 	const int charWidth = 9;
 	const int textWidth = static_cast<int>(label.size()) * charWidth;
 	const int textX = x + (width - textWidth) / 2;
-	const int textY = y + (height - 12) / 2;  // 12 = font height
+	const int textY = y + (height - 12) / 2; // 12 = font height
 
 	framebuffer.DrawText(textX, textY, label.c_str(), textColor);
 }

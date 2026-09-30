@@ -2,10 +2,10 @@
 
 #pragma once
 
-#include <source_location>
 #include <cstdio>
 #include <cstdlib>
 #include <memory>
+#include <source_location>
 
 #include "Log/PrintArgs.h"
 #include "OSAL/Intrinsic.h"
@@ -16,7 +16,7 @@
 
 namespace hbe
 {
-template<typename T>
+template <typename T>
 using TDebugVariable = const T;
 
 void FlushLogs();
@@ -40,13 +40,13 @@ inline void Assert(bool shouldBeTrue, const std::source_location location = std:
 
 	FlushLogs();
 	PrintArgs("[Assert] ", location.file_name(), ":", location.line(),
-			" failed. A message-less assert has nothing else to say, so the call site is the whole report.");
+			  " failed. A message-less assert has nothing else to say, so the call site is the whole report.");
 
 	debugBreak();
 	std::abort();
 }
 
-template<typename... Types>
+template <typename... Types>
 void Assert(bool shouldBeTrue, Types&&... args) noexcept
 {
 	if (likely(shouldBeTrue))
@@ -69,11 +69,14 @@ namespace hbe
 {
 // The arguments are unnamed and unused on purpose: the call inlines away, which also means an
 // argument with a side effect is evaluated in Debug and dropped here. Same trap as any assert.
-inline void Assert(bool) noexcept {}
+inline void Assert(bool) noexcept
+{
+}
 
-template<typename... Types>
+template <typename... Types>
 void Assert(bool, Types&&...) noexcept
-{}
+{
+}
 } // namespace hbe
 #endif // __DEBUG__
 
@@ -88,12 +91,12 @@ inline void FatalAssert(bool shouldBeTrue, const std::source_location location =
 
 	FlushLogs();
 	PrintArgs("[FatalAssert] ", location.file_name(), ":", location.line(),
-			" failed. A message-less FatalAssert has no other way to say what it caught.");
+			  " failed. A message-less FatalAssert has no other way to say what it caught.");
 	debugBreak();
 	std::abort();
 }
 
-template<typename... Types>
+template <typename... Types>
 void FatalAssert(bool shouldBeTrue, Types&&... args)
 {
 	if (likely(shouldBeTrue))

@@ -5,7 +5,6 @@
 #ifdef __UNIT_TEST__
 #include "Test/TestCollection.h"
 
-
 namespace hbe
 {
 

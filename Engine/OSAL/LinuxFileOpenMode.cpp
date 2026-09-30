@@ -7,15 +7,33 @@
 #ifdef PLATFORM_LINUX
 #include <fcntl.h>
 
-void OS::FileOpenMode::SetReadOnly() noexcept { value |= O_RDONLY; }
+void OS::FileOpenMode::SetReadOnly() noexcept
+{
+	value |= O_RDONLY;
+}
 
-void OS::FileOpenMode::SetWriteOnly() noexcept { value |= O_WRONLY; }
+void OS::FileOpenMode::SetWriteOnly() noexcept
+{
+	value |= O_WRONLY;
+}
 
-void OS::FileOpenMode::SetReadWrite() noexcept { value |= O_RDWR; }
+void OS::FileOpenMode::SetReadWrite() noexcept
+{
+	value |= O_RDWR;
+}
 
-void OS::FileOpenMode::SetCreate() noexcept { value |= O_CREAT; }
+void OS::FileOpenMode::SetCreate() noexcept
+{
+	value |= O_CREAT;
+}
 
-void OS::FileOpenMode::SetTruncate() noexcept { value |= O_TRUNC; }
+void OS::FileOpenMode::SetTruncate() noexcept
+{
+	value |= O_TRUNC;
+}
 
-void OS::FileOpenMode::SetAppend() noexcept { value |= O_APPEND; }
+void OS::FileOpenMode::SetAppend() noexcept
+{
+	value |= O_APPEND;
+}
 #endif // PLATFORM_LINUX

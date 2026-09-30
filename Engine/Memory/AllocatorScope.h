@@ -7,31 +7,33 @@
 namespace hbe
 {
 
-	/// @brief RAII wrapper for temporarily changing the scoped allocator.
-	/// @details Saves the current allocator ID on construction and restores it on destruction.
-	/// Used to temporarily redirect allocations to a specific allocator within a scope.
-	class AllocatorScope final
+/// @brief RAII wrapper for temporarily changing the scoped allocator.
+/// @details Saves the current allocator ID on construction and restores it on destruction.
+/// Used to temporarily redirect allocations to a specific allocator within a scope.
+class AllocatorScope final
+{
+public:
+	AllocatorScope(const AllocatorScope&) = delete;
+	AllocatorScope(AllocatorScope&&) = delete;
+	AllocatorScope& operator=(const AllocatorScope&) noexcept = delete;
+	AllocatorScope& operator=(AllocatorScope&&) noexcept = delete;
+
+public:
+	AllocatorScope() noexcept;
+	AllocatorScope(TAllocatorID id) noexcept;
+
+	template <typename T>
+	AllocatorScope(const T& allocator) noexcept
+		: AllocatorScope(allocator.GetID())
 	{
-	public:
-		AllocatorScope(const AllocatorScope&) = delete;
-		AllocatorScope(AllocatorScope&&) = delete;
-		AllocatorScope& operator=(const AllocatorScope&) noexcept = delete;
-		AllocatorScope& operator=(AllocatorScope&&) noexcept = delete;
+	}
 
-	public:
-		AllocatorScope() noexcept;
-		AllocatorScope(TAllocatorID id) noexcept;
+	~AllocatorScope() noexcept;
 
-		template<typename T>
-		AllocatorScope(const T& allocator) noexcept : AllocatorScope(allocator.GetID())
-		{}
-
-		~AllocatorScope() noexcept;
-
-	private:
-		TAllocatorID previous;
-		TAllocatorID current;
-	};
+private:
+	TAllocatorID previous;
+	TAllocatorID current;
+};
 
 } // namespace hbe
 
@@ -41,14 +43,17 @@ namespace hbe
 namespace hbe
 {
 
-	class AllocatorScopeTest : public TestCollection
+class AllocatorScopeTest : public TestCollection
+{
+public:
+	AllocatorScopeTest()
+		: TestCollection("AllocatorScopeTest")
 	{
-	public:
-		AllocatorScopeTest() : TestCollection("AllocatorScopeTest") {}
+	}
 
-	protected:
-		void Prepare() override;
-	};
+protected:
+	void Prepare() override;
+};
 
 } // namespace hbe
 

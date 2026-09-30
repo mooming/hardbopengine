@@ -6,33 +6,33 @@
 
 namespace hbe
 {
-	/// @brief Utility class for character classification and validation.
-	class Letter
+/// @brief Utility class for character classification and validation.
+class Letter
+{
+public:
+	using TChar = char;
+
+	static bool IsLowerCase(TChar letter)
 	{
-	public:
-		using TChar = char;
+		returnValueIf(false, letter < 'a');
+		returnValueIf(false, letter > 'z');
 
-		static bool IsLowerCase(TChar letter)
-		{
-			returnValueIf(false, letter < 'a');
-			returnValueIf(false, letter > 'z');
+		return true;
+	}
 
-			return true;
-		}
+	static bool IsUpperCase(TChar letter)
+	{
+		returnValueIf(false, letter < 'A');
+		returnValueIf(false, letter > 'Z');
 
-		static bool IsUpperCase(TChar letter)
-		{
-			returnValueIf(false, letter < 'A');
-			returnValueIf(false, letter > 'Z');
+		return true;
+	}
 
-			return true;
-		}
+	static bool IsGenuineLetter(TChar letter)
+	{
+		returnValueIf(false, letter == ' ' || letter == '\t' || letter == '\n' || letter == '\r');
 
-		static bool IsGenuineLetter(TChar letter)
-		{
-			returnValueIf(false, letter == ' ' || letter == '\t' || letter == '\n' || letter == '\r');
-
-			return true;
-		}
-	};
+		return true;
+	}
+};
 } // namespace hbe

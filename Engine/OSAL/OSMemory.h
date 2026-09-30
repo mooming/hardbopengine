@@ -17,7 +17,7 @@ namespace OS
 /// alignment, and protection.
 [[nodiscard]] bool IsValidAllocation(void* ptr) noexcept;
 
-template<typename T>
+template <typename T>
 [[nodiscard]] bool CheckAligned(T* ptr, uint32_t alignBytes = hbe::Config::DefaultAlign) noexcept
 {
 	const size_t address = reinterpret_cast<size_t>(ptr);
@@ -48,7 +48,10 @@ namespace hbe
 class OSMemoryTest final : public TestCollection
 {
 public:
-	OSMemoryTest() : TestCollection("OSMemoryTest") {}
+	OSMemoryTest()
+		: TestCollection("OSMemoryTest")
+	{
+	}
 
 protected:
 	void Prepare() override;

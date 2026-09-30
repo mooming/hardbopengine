@@ -20,7 +20,10 @@ public:
 	CommandLineArguments(int argc, const char* argv[]);
 	~CommandLineArguments() = default;
 
-	[[nodiscard]] auto& GetArguments() const noexcept { return arguments; }
+	[[nodiscard]] auto& GetArguments() const noexcept
+	{
+		return arguments;
+	}
 
 	void Print();
 

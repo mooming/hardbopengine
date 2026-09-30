@@ -24,12 +24,12 @@ namespace
 {
 // Portability enumeration is required for MoltenVK to appear in the device list.
 constexpr const char* kInstanceExtensions[] = {
-	VK_KHR_SURFACE_EXTENSION_NAME,
-	VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME,
+		VK_KHR_SURFACE_EXTENSION_NAME,
+		VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME,
 #if defined(PLATFORM_OSX)
-	VK_EXT_METAL_SURFACE_EXTENSION_NAME,
+		VK_EXT_METAL_SURFACE_EXTENSION_NAME,
 #elif defined(PLATFORM_WINDOWS) && defined(VK_USE_PLATFORM_WIN32_KHR)
-	VK_KHR_WIN32_SURFACE_EXTENSION_NAME,
+		VK_KHR_WIN32_SURFACE_EXTENSION_NAME,
 #endif
 };
 
@@ -37,10 +37,7 @@ constexpr const char* kInstanceExtensions[] = {
 void LogFailure(const char* step, VkResult result) noexcept
 {
 	static const auto log = Logger::Get("VulkanRenderer", ELogLevel::Error);
-	log.OutError([step, result](auto& ls)
-	{
-		ls << step << " failed (VkResult=" << static_cast<int>(result) << ")";
-	});
+	log.OutError([step, result](auto& ls) { ls << step << " failed (VkResult=" << static_cast<int>(result) << ")"; });
 }
 
 /// @brief Report a VulkanRenderer step that failed without a VkResult to report.
@@ -53,7 +50,7 @@ void LogFailure(const char* step) noexcept
 constexpr uint32_t kInstanceExtensionCount = static_cast<uint32_t>(sizeof(kInstanceExtensions) / sizeof(const char*));
 
 bool FindMemoryType(VkPhysicalDevice physicalDevice, uint32_t typeFilter, VkMemoryPropertyFlags properties,
-	uint32_t& outIndex) noexcept
+					uint32_t& outIndex) noexcept
 {
 	VkPhysicalDeviceMemoryProperties mem{};
 	vkGetPhysicalDeviceMemoryProperties(physicalDevice, &mem);
@@ -93,8 +90,8 @@ bool HasDepthSupport(VkPhysicalDevice physicalDevice, VkFormat format) noexcept
 {
 	VkFormatProperties props{};
 	vkGetPhysicalDeviceFormatProperties(physicalDevice, format, &props);
-	return (props.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT) != 0
-		|| (props.linearTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT) != 0;
+	return (props.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT) != 0 ||
+		   (props.linearTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT) != 0;
 }
 } // namespace
 
@@ -145,24 +142,37 @@ VulkanRenderer::~VulkanRenderer()
 
 bool VulkanRenderer::Initialize(OS::Window* inWindow) noexcept
 {
-	if (initialized) return true;
-	if (inWindow == nullptr) return false;
+	if (initialized)
+		return true;
+	if (inWindow == nullptr)
+		return false;
 
 	window = inWindow;
 
 	// The surface must exist before device picking: queue family support is
 	// queried against the surface itself.
-	if (!CreateInstance()) return false;
-	if (!CreateSurface()) return false;
-	if (!PickDevice()) return false;
-	if (!CreateDevice()) return false;
-	if (!CreateSwapchain()) return false;
-	if (!CreateRenderPass()) return false;
-	if (!CreateDepthResource()) return false;
-	if (!CreateFramebuffers()) return false;
-	if (!CreateCommandBuffers()) return false;
-	if (!CreatePipeline()) return false;
-	if (!CreateSyncObjects()) return false;
+	if (!CreateInstance())
+		return false;
+	if (!CreateSurface())
+		return false;
+	if (!PickDevice())
+		return false;
+	if (!CreateDevice())
+		return false;
+	if (!CreateSwapchain())
+		return false;
+	if (!CreateRenderPass())
+		return false;
+	if (!CreateDepthResource())
+		return false;
+	if (!CreateFramebuffers())
+		return false;
+	if (!CreateCommandBuffers())
+		return false;
+	if (!CreatePipeline())
+		return false;
+	if (!CreateSyncObjects())
+		return false;
 
 	initialized = true;
 	return true;
@@ -263,7 +273,8 @@ bool VulkanRenderer::PickDevice() noexcept
 
 		for (uint32_t q = 0; q < qfCount; ++q)
 		{
-			if ((queues[q].queueFlags & VK_QUEUE_GRAPHICS_BIT) == 0) continue;
+			if ((queues[q].queueFlags & VK_QUEUE_GRAPHICS_BIT) == 0)
+				continue;
 
 			VkBool32 presents = VK_FALSE;
 			continueIf(vkGetPhysicalDeviceSurfaceSupportKHR(devices[i], q, surface, &presents) != VK_SUCCESS);
@@ -349,7 +360,8 @@ bool VulkanRenderer::CreateSwapchain() noexcept
 	uint32_t formatCount = 0;
 	vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, surface, &formatCount, nullptr);
 	std::vector<VkSurfaceFormatKHR> formats(formatCount);
-	if (formatCount > 0) vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, surface, &formatCount, formats.data());
+	if (formatCount > 0)
+		vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, surface, &formatCount, formats.data());
 	if (formats.empty())
 	{
 		LogFailure("surface reports no supported formats");
@@ -370,7 +382,8 @@ bool VulkanRenderer::CreateSwapchain() noexcept
 	uint32_t modeCount = 0;
 	vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, surface, &modeCount, nullptr);
 	std::vector<VkPresentModeKHR> modes(modeCount);
-	if (modeCount > 0) vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, surface, &modeCount, modes.data());
+	if (modeCount > 0)
+		vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, surface, &modeCount, modes.data());
 
 	// FIFO is the only mode guaranteed to exist; mailbox is preferred when available.
 	presentMode = VK_PRESENT_MODE_FIFO_KHR;
@@ -384,7 +397,8 @@ bool VulkanRenderer::CreateSwapchain() noexcept
 	}
 
 	uint32_t imageCount = caps.minImageCount + 1;
-	if (caps.maxImageCount > 0 && imageCount > caps.maxImageCount) imageCount = caps.maxImageCount;
+	if (caps.maxImageCount > 0 && imageCount > caps.maxImageCount)
+		imageCount = caps.maxImageCount;
 
 	VkSwapchainCreateInfoKHR ci{};
 	ci.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
@@ -453,8 +467,10 @@ bool VulkanRenderer::CreateRenderPass() noexcept
 	attachments[0].finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 
 	depthFormat = VK_FORMAT_D32_SFLOAT;
-	if (!HasDepthSupport(physicalDevice, depthFormat)) depthFormat = VK_FORMAT_D24_UNORM_S8_UINT;
-	if (!HasDepthSupport(physicalDevice, depthFormat)) depthFormat = VK_FORMAT_D16_UNORM;
+	if (!HasDepthSupport(physicalDevice, depthFormat))
+		depthFormat = VK_FORMAT_D24_UNORM_S8_UINT;
+	if (!HasDepthSupport(physicalDevice, depthFormat))
+		depthFormat = VK_FORMAT_D16_UNORM;
 
 	attachments[1].format = depthFormat;
 	attachments[1].samples = VK_SAMPLE_COUNT_1_BIT;
@@ -484,9 +500,11 @@ bool VulkanRenderer::CreateRenderPass() noexcept
 	VkSubpassDependency dependency{};
 	dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
 	dependency.dstSubpass = 0;
-	dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+	dependency.srcStageMask =
+			VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
 	dependency.srcAccessMask = 0;
-	dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+	dependency.dstStageMask =
+			VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
 	dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
 
 	VkRenderPassCreateInfo ci{};
@@ -630,9 +648,10 @@ bool VulkanRenderer::CreateCommandBuffers() noexcept
 }
 
 bool VulkanRenderer::CreateBuffer(VkBuffer& buffer, VkDeviceMemory& memory, size_t size,
-	VkBufferUsageFlags usage) noexcept
+								  VkBufferUsageFlags usage) noexcept
 {
-	if (size == 0) return false;
+	if (size == 0)
+		return false;
 
 	VkBufferCreateInfo bci{};
 	bci.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
@@ -655,8 +674,8 @@ bool VulkanRenderer::CreateBuffer(VkBuffer& buffer, VkDeviceMemory& memory, size
 	// The mesh is written once from the CPU and never modified per frame, so host
 	// visible memory is mapped directly. A device local copy + staging transfer is the
 	// right long-term shape (tracked as a follow-up).
-	const auto properties = static_cast<VkMemoryPropertyFlags>(
-		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+	const auto properties = static_cast<VkMemoryPropertyFlags>(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+															   VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 	if (!FindMemoryType(physicalDevice, req.memoryTypeBits, properties, ami.memoryTypeIndex))
 	{
 		LogFailure("no host visible memory type for the mesh buffer");
@@ -680,13 +699,16 @@ bool VulkanRenderer::CreateVertexBuffers(const Mesh& mesh) noexcept
 
 	vertexCount = mesh.vertices.size();
 	indexCount = mesh.indices.size();
-	if (vertexCount == 0 || indexCount == 0) return true; // empty mesh: clear-only frame
+	if (vertexCount == 0 || indexCount == 0)
+		return true; // empty mesh: clear-only frame
 
 	const auto vertexBytes = vertexCount * sizeof(MeshVertex);
 	const auto indexBytes = indexCount * sizeof(uint32_t);
 
-	if (!CreateBuffer(vertexBuffer, vertexMemory, vertexBytes, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT)) return false;
-	if (!CreateBuffer(indexBuffer, indexMemory, indexBytes, VK_BUFFER_USAGE_INDEX_BUFFER_BIT)) return false;
+	if (!CreateBuffer(vertexBuffer, vertexMemory, vertexBytes, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT))
+		return false;
+	if (!CreateBuffer(indexBuffer, indexMemory, indexBytes, VK_BUFFER_USAGE_INDEX_BUFFER_BIT))
+		return false;
 
 	if (vkBindBufferMemory(device, vertexBuffer, vertexMemory, 0) != VK_SUCCESS)
 	{
@@ -713,18 +735,24 @@ bool VulkanRenderer::CreateVertexBuffers(const Mesh& mesh) noexcept
 		return true;
 	};
 
-	if (!upload(vertexMemory, mesh.vertices.data(), vertexBytes)) return false;
-	if (!upload(indexMemory, mesh.indices.data(), indexBytes)) return false;
+	if (!upload(vertexMemory, mesh.vertices.data(), vertexBytes))
+		return false;
+	if (!upload(indexMemory, mesh.indices.data(), indexBytes))
+		return false;
 
 	return true;
 }
 
 void VulkanRenderer::ReleaseVertexBuffers() noexcept
 {
-	if (indexBuffer != VK_NULL_HANDLE) vkDestroyBuffer(device, indexBuffer, nullptr);
-	if (indexMemory != VK_NULL_HANDLE) vkFreeMemory(device, indexMemory, nullptr);
-	if (vertexBuffer != VK_NULL_HANDLE) vkDestroyBuffer(device, vertexBuffer, nullptr);
-	if (vertexMemory != VK_NULL_HANDLE) vkFreeMemory(device, vertexMemory, nullptr);
+	if (indexBuffer != VK_NULL_HANDLE)
+		vkDestroyBuffer(device, indexBuffer, nullptr);
+	if (indexMemory != VK_NULL_HANDLE)
+		vkFreeMemory(device, indexMemory, nullptr);
+	if (vertexBuffer != VK_NULL_HANDLE)
+		vkDestroyBuffer(device, vertexBuffer, nullptr);
+	if (vertexMemory != VK_NULL_HANDLE)
+		vkFreeMemory(device, vertexMemory, nullptr);
 
 	indexBuffer = VK_NULL_HANDLE;
 	indexMemory = VK_NULL_HANDLE;
@@ -752,8 +780,10 @@ bool VulkanRenderer::CreatePipeline() noexcept
 		return true;
 	};
 
-	if (!loadModule(gMCVertexSpv, gMCVertexSpv_size, vertModule)) return false;
-	if (!loadModule(gMCFragmentSpv, gMCFragmentSpv_size, fragModule)) return false;
+	if (!loadModule(gMCVertexSpv, gMCVertexSpv_size, vertModule))
+		return false;
+	if (!loadModule(gMCFragmentSpv, gMCFragmentSpv_size, fragModule))
+		return false;
 
 	VkVertexInputBindingDescription binding{};
 	binding.binding = 0;
@@ -761,8 +791,8 @@ bool VulkanRenderer::CreatePipeline() noexcept
 	binding.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 
 	const VkVertexInputAttributeDescription attrs[2] = {
-		{0, 0, VK_FORMAT_R32G32B32_SFLOAT, static_cast<uint32_t>(offsetof(MeshVertex, position))},
-		{1, 0, VK_FORMAT_R32G32B32_SFLOAT, static_cast<uint32_t>(offsetof(MeshVertex, normal))},
+			{0, 0, VK_FORMAT_R32G32B32_SFLOAT, static_cast<uint32_t>(offsetof(MeshVertex, position))},
+			{1, 0, VK_FORMAT_R32G32B32_SFLOAT, static_cast<uint32_t>(offsetof(MeshVertex, normal))},
 	};
 
 	VkPipelineVertexInputStateCreateInfo vi{};
@@ -811,8 +841,8 @@ bool VulkanRenderer::CreatePipeline() noexcept
 	dss.depthBoundsTestEnable = VK_FALSE;
 
 	VkPipelineColorBlendAttachmentState cba{};
-	cba.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT
-		| VK_COLOR_COMPONENT_A_BIT;
+	cba.colorWriteMask =
+			VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
 	cba.blendEnable = VK_FALSE;
 
 	VkPipelineColorBlendStateCreateInfo cb{};
@@ -953,7 +983,7 @@ void VulkanRenderer::RecordFrame() noexcept
 		std::memcpy(push.model, modelMat, sizeof(push.model));
 		MultiplyColumnMajor(push.viewProj, projMat, viewMat);
 		vkCmdPushConstants(commandBuffers[currentFrame], pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(push),
-			&push);
+						   &push);
 
 		const VkDeviceSize offset = 0;
 		vkCmdBindVertexBuffers(commandBuffers[currentFrame], 0, 1, &vertexBuffer, &offset);
@@ -975,7 +1005,7 @@ void VulkanRenderer::BeginFrame() noexcept
 	frameActive = false;
 
 	const VkResult acquire = vkAcquireNextImageKHR(device, swapchain, UINT64_MAX,
-		semaphoresImageAvailable[currentFrame], VK_NULL_HANDLE, &imageIndex);
+												   semaphoresImageAvailable[currentFrame], VK_NULL_HANDLE, &imageIndex);
 	if (acquire != VK_SUCCESS && acquire != VK_SUBOPTIMAL_KHR)
 	{
 		// Swapchain lost. EndFrame still has to release the fence it just reset,
@@ -1044,8 +1074,7 @@ void VulkanRenderer::EndFrame() noexcept
 			log.Out([&](auto& ls)
 			{
 				ls << "first frame presented (" << extent.width << "x" << extent.height
-					<< ", swapchain images=" << framebuffers.size()
-					<< ", index count=" << indexCount << ")";
+				   << ", swapchain images=" << framebuffers.size() << ", index count=" << indexCount << ")";
 			});
 		}
 	}
@@ -1104,14 +1133,18 @@ RenderCapabilities VulkanRenderer::GetCapabilities() const noexcept
 
 void VulkanRenderer::Destroy() noexcept
 {
-	if (device != VK_NULL_HANDLE) vkDeviceWaitIdle(device);
+	if (device != VK_NULL_HANDLE)
+		vkDeviceWaitIdle(device);
 
 	for (auto sem : semaphoresImageAvailable)
-		if (sem != VK_NULL_HANDLE) vkDestroySemaphore(device, sem, nullptr);
+		if (sem != VK_NULL_HANDLE)
+			vkDestroySemaphore(device, sem, nullptr);
 	for (auto sem : semaphoresRenderFinished)
-		if (sem != VK_NULL_HANDLE) vkDestroySemaphore(device, sem, nullptr);
+		if (sem != VK_NULL_HANDLE)
+			vkDestroySemaphore(device, sem, nullptr);
 	for (auto fence : fences)
-		if (fence != VK_NULL_HANDLE) vkDestroyFence(device, fence, nullptr);
+		if (fence != VK_NULL_HANDLE)
+			vkDestroyFence(device, fence, nullptr);
 	semaphoresImageAvailable.clear();
 	semaphoresRenderFinished.clear();
 	fences.clear();
@@ -1119,44 +1152,58 @@ void VulkanRenderer::Destroy() noexcept
 	ReleaseVertexBuffers();
 
 	// The command pool frees its command buffers when destroyed.
-	if (commandPool != VK_NULL_HANDLE) vkDestroyCommandPool(device, commandPool, nullptr);
+	if (commandPool != VK_NULL_HANDLE)
+		vkDestroyCommandPool(device, commandPool, nullptr);
 	commandPool = VK_NULL_HANDLE;
 	commandBuffers.clear();
 
-	if (graphicsPipeline != VK_NULL_HANDLE) vkDestroyPipeline(device, graphicsPipeline, nullptr);
-	if (pipelineLayout != VK_NULL_HANDLE) vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
-	if (vertModule != VK_NULL_HANDLE) vkDestroyShaderModule(device, vertModule, nullptr);
-	if (fragModule != VK_NULL_HANDLE) vkDestroyShaderModule(device, fragModule, nullptr);
+	if (graphicsPipeline != VK_NULL_HANDLE)
+		vkDestroyPipeline(device, graphicsPipeline, nullptr);
+	if (pipelineLayout != VK_NULL_HANDLE)
+		vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
+	if (vertModule != VK_NULL_HANDLE)
+		vkDestroyShaderModule(device, vertModule, nullptr);
+	if (fragModule != VK_NULL_HANDLE)
+		vkDestroyShaderModule(device, fragModule, nullptr);
 	graphicsPipeline = VK_NULL_HANDLE;
 	pipelineLayout = VK_NULL_HANDLE;
 	vertModule = VK_NULL_HANDLE;
 	fragModule = VK_NULL_HANDLE;
 
 	for (auto fb : framebuffers)
-		if (fb != VK_NULL_HANDLE) vkDestroyFramebuffer(device, fb, nullptr);
+		if (fb != VK_NULL_HANDLE)
+			vkDestroyFramebuffer(device, fb, nullptr);
 	framebuffers.clear();
 
 	// Views must die before the image / memory they alias.
-	if (depthImageView != VK_NULL_HANDLE) vkDestroyImageView(device, depthImageView, nullptr);
-	if (depthImage != VK_NULL_HANDLE) vkDestroyImage(device, depthImage, nullptr);
-	if (depthMemory != VK_NULL_HANDLE) vkFreeMemory(device, depthMemory, nullptr);
+	if (depthImageView != VK_NULL_HANDLE)
+		vkDestroyImageView(device, depthImageView, nullptr);
+	if (depthImage != VK_NULL_HANDLE)
+		vkDestroyImage(device, depthImage, nullptr);
+	if (depthMemory != VK_NULL_HANDLE)
+		vkFreeMemory(device, depthMemory, nullptr);
 	depthImageView = VK_NULL_HANDLE;
 	depthImage = VK_NULL_HANDLE;
 	depthMemory = VK_NULL_HANDLE;
 
 	for (auto view : swapchainImageViews)
-		if (view != VK_NULL_HANDLE) vkDestroyImageView(device, view, nullptr);
+		if (view != VK_NULL_HANDLE)
+			vkDestroyImageView(device, view, nullptr);
 	swapchainImageViews.clear();
 	swapchainImages.clear();
 
-	if (swapchain != VK_NULL_HANDLE) vkDestroySwapchainKHR(device, swapchain, nullptr);
+	if (swapchain != VK_NULL_HANDLE)
+		vkDestroySwapchainKHR(device, swapchain, nullptr);
 	swapchain = VK_NULL_HANDLE;
 
-	if (device != VK_NULL_HANDLE) vkDestroyDevice(device, nullptr);
+	if (device != VK_NULL_HANDLE)
+		vkDestroyDevice(device, nullptr);
 	device = VK_NULL_HANDLE;
 
-	if (surface != VK_NULL_HANDLE) vkDestroySurfaceKHR(instance, surface, nullptr);
-	if (instance != VK_NULL_HANDLE) vkDestroyInstance(instance, nullptr);
+	if (surface != VK_NULL_HANDLE)
+		vkDestroySurfaceKHR(instance, surface, nullptr);
+	if (instance != VK_NULL_HANDLE)
+		vkDestroyInstance(instance, nullptr);
 	surface = VK_NULL_HANDLE;
 	instance = VK_NULL_HANDLE;
 

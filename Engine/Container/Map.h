@@ -11,351 +11,404 @@
 #include "Memory/DefaultAllocator.h"
 #include "Memory/Memory.h"
 
-
 namespace hbe
 {
 
-	template<typename TKey, typename TValue, class TCompare = std::less<TKey>, class TAllocator = DefaultAllocator<uint8_t>>
-	class Map final
+template <typename TKey, typename TValue, class TCompare = std::less<TKey>,
+		  class TAllocator = DefaultAllocator<uint8_t>>
+class Map final
+{
+public:
+	static constexpr int DefaultCapacity = 4;
+
+	struct Pair final
+	{
+		TKey key;
+		TValue value;
+	};
+
+	using TIndex = int;
+
+	class Iterator
 	{
 	public:
-		static constexpr int DefaultCapacity = 4;
+		using TPair = Pair;
+		friend class Map;
 
-		struct Pair final
-		{
-			TKey key;
-			TValue value;
-		};
+	private:
+		Pair* ptr;
 
-		using TIndex = int;
-
-		class Iterator
-		{
-		public:
-			using TPair = Pair;
-			friend class Map;
-
-		private:
-			Pair* ptr;
-
-		public:
-			explicit Iterator(Pair* ptr) noexcept : ptr(ptr) {}
-
-			Iterator& operator++() noexcept { ++ptr; return *this; }
-			bool operator==(const Iterator& rhs) const noexcept { return ptr == rhs.ptr; }
-			bool operator!=(const Iterator& rhs) const noexcept { return ptr != rhs.ptr; }
-			Pair& operator*() noexcept { return *ptr; }
-			const Pair& operator*() const noexcept { return *ptr; }
-			Pair* operator->() noexcept { return ptr; }
-			const Pair* operator->() const noexcept { return ptr; }
-		};
-
-		using ConstIterator = Iterator;
-
-		Map() noexcept
-			: entries(nullptr)
-			, count(0)
-			, cap(0)
+	public:
+		explicit Iterator(Pair* ptr) noexcept
+			: ptr(ptr)
 		{
 		}
 
-		Map(const Map&) = delete;
-
-		Map(Map&& rhs) noexcept
-			: entries(rhs.entries)
-			, count(rhs.count)
-			, cap(rhs.cap)
+		Iterator& operator++() noexcept
 		{
+			++ptr;
+			return *this;
+		}
+
+		bool operator==(const Iterator& rhs) const noexcept
+		{
+			return ptr == rhs.ptr;
+		}
+
+		bool operator!=(const Iterator& rhs) const noexcept
+		{
+			return ptr != rhs.ptr;
+		}
+
+		Pair& operator*() noexcept
+		{
+			return *ptr;
+		}
+
+		const Pair& operator*() const noexcept
+		{
+			return *ptr;
+		}
+
+		Pair* operator->() noexcept
+		{
+			return ptr;
+		}
+
+		const Pair* operator->() const noexcept
+		{
+			return ptr;
+		}
+	};
+
+	using ConstIterator = Iterator;
+
+	Map() noexcept
+		: entries(nullptr)
+		, count(0)
+		, cap(0)
+	{
+	}
+
+	Map(const Map&) = delete;
+
+	Map(Map&& rhs) noexcept
+		: entries(rhs.entries)
+		, count(rhs.count)
+		, cap(rhs.cap)
+	{
+		rhs.entries = nullptr;
+		rhs.count = 0;
+		rhs.cap = 0;
+	}
+
+	~Map()
+	{
+		Release();
+	}
+
+	Map& operator=(const Map&) = delete;
+
+	Map& operator=(Map&& rhs) noexcept
+	{
+		if (this != &rhs)
+		{
+			Release();
+
+			entries = rhs.entries;
+			count = rhs.count;
+			cap = rhs.cap;
+
 			rhs.entries = nullptr;
 			rhs.count = 0;
 			rhs.cap = 0;
 		}
 
-		~Map()
+		return *this;
+	}
+
+	Iterator begin() noexcept
+	{
+		return Iterator(entries);
+	}
+
+	Iterator end() noexcept
+	{
+		return Iterator(entries + count);
+	}
+
+	ConstIterator begin() const noexcept
+	{
+		return ConstIterator(entries);
+	}
+
+	ConstIterator end() const noexcept
+	{
+		return ConstIterator(entries + count);
+	}
+
+	TValue& operator[](const TKey& key)
+	{
+		auto idx = FindIndex(key);
+		if (idx >= 0)
 		{
-			Release();
-		}
-
-		Map& operator=(const Map&) = delete;
-
-		Map& operator=(Map&& rhs) noexcept
-		{
-			if (this != &rhs)
-			{
-				Release();
-
-				entries = rhs.entries;
-				count = rhs.count;
-				cap = rhs.cap;
-
-				rhs.entries = nullptr;
-				rhs.count = 0;
-				rhs.cap = 0;
-			}
-
-			return *this;
-		}
-
-		Iterator begin() noexcept { return Iterator(entries); }
-		Iterator end() noexcept { return Iterator(entries + count); }
-		ConstIterator begin() const noexcept { return ConstIterator(entries); }
-		ConstIterator end() const noexcept { return ConstIterator(entries + count); }
-
-		TValue& operator[](const TKey& key)
-		{
-			auto idx = FindIndex(key);
-			if (idx >= 0)
-			{
-				return entries[idx].value;
-			}
-
-			idx = InsertSorted(key);
 			return entries[idx].value;
 		}
 
-		TValue& operator[](TKey&& key)
-		{
-			auto idx = FindIndex(key);
-			if (idx >= 0)
-			{
-				return entries[idx].value;
-			}
+		idx = InsertSorted(key);
+		return entries[idx].value;
+	}
 
-			idx = InsertSorted(std::move(key));
+	TValue& operator[](TKey&& key)
+	{
+		auto idx = FindIndex(key);
+		if (idx >= 0)
+		{
 			return entries[idx].value;
 		}
 
-		[[nodiscard]] Iterator Find(const TKey& key) noexcept
-		{
-			auto idx = FindIndex(key);
-			if (idx < 0)
-				return end();
+		idx = InsertSorted(std::move(key));
+		return entries[idx].value;
+	}
 
-			return Iterator(entries + idx);
+	[[nodiscard]] Iterator Find(const TKey& key) noexcept
+	{
+		auto idx = FindIndex(key);
+		if (idx < 0)
+			return end();
+
+		return Iterator(entries + idx);
+	}
+
+	[[nodiscard]] ConstIterator Find(const TKey& key) const noexcept
+	{
+		auto idx = FindIndex(key);
+		if (idx < 0)
+			return end();
+
+		return ConstIterator(entries + idx);
+	}
+
+	bool Insert(const TKey& key, const TValue& value)
+	{
+		auto idx = FindIndex(key);
+		if (idx >= 0)
+			return false;
+
+		idx = InsertSorted(key);
+		entries[idx].value = value;
+
+		return true;
+	}
+
+	bool Insert(const TKey& key, TValue&& value)
+	{
+		auto idx = FindIndex(key);
+		if (idx >= 0)
+			return false;
+
+		idx = InsertSorted(key);
+		entries[idx].value = std::move(value);
+
+		return true;
+	}
+
+	bool Insert(TKey&& key, TValue&& value)
+	{
+		auto idx = FindIndex(key);
+		if (idx >= 0)
+			return false;
+
+		idx = InsertSorted(std::move(key));
+		entries[idx].value = std::move(value);
+
+		return true;
+	}
+
+	bool Remove(const TKey& key)
+	{
+		auto idx = FindIndex(key);
+		if (idx < 0)
+			return false;
+
+		entries[idx].~Pair();
+
+		for (TIndex i = idx + 1; i < count; ++i)
+		{
+			new (&entries[i - 1]) Pair(std::move(entries[i]));
+			entries[i].~Pair();
 		}
 
-		[[nodiscard]] ConstIterator Find(const TKey& key) const noexcept
-		{
-			auto idx = FindIndex(key);
-			if (idx < 0)
-				return end();
+		--count;
 
-			return ConstIterator(entries + idx);
+		return true;
+	}
+
+	[[nodiscard]] bool Contains(const TKey& key) const noexcept
+	{
+		return FindIndex(key) >= 0;
+	}
+
+	[[nodiscard]] TIndex Size() const noexcept
+	{
+		return count;
+	}
+
+	[[nodiscard]] bool IsEmpty() const noexcept
+	{
+		return count == 0;
+	}
+
+	void Clear() noexcept
+	{
+		for (TIndex i = 0; i < count; ++i)
+		{
+			entries[i].~Pair();
 		}
 
-		bool Insert(const TKey& key, const TValue& value)
-		{
-			auto idx = FindIndex(key);
-			if (idx >= 0)
-				return false;
+		count = 0;
+	}
 
-			idx = InsertSorted(key);
-			entries[idx].value = value;
+private:
+	Pair* entries;
+	TIndex count;
+	TIndex cap;
+	TCompare compare;
+	TAllocator allocator;
 
-			return true;
-		}
-
-		bool Insert(const TKey& key, TValue&& value)
-		{
-			auto idx = FindIndex(key);
-			if (idx >= 0)
-				return false;
-
-			idx = InsertSorted(key);
-			entries[idx].value = std::move(value);
-
-			return true;
-		}
-
-		bool Insert(TKey&& key, TValue&& value)
-		{
-			auto idx = FindIndex(key);
-			if (idx >= 0)
-				return false;
-
-			idx = InsertSorted(std::move(key));
-			entries[idx].value = std::move(value);
-
-			return true;
-		}
-
-		bool Remove(const TKey& key)
-		{
-			auto idx = FindIndex(key);
-			if (idx < 0)
-				return false;
-
-			entries[idx].~Pair();
-
-			for (TIndex i = idx + 1; i < count; ++i)
-			{
-				new (&entries[i - 1]) Pair(std::move(entries[i]));
-				entries[i].~Pair();
-			}
-
-			--count;
-
-			return true;
-		}
-
-		[[nodiscard]] bool Contains(const TKey& key) const noexcept
-		{
-			return FindIndex(key) >= 0;
-		}
-
-		[[nodiscard]] TIndex Size() const noexcept { return count; }
-		[[nodiscard]] bool IsEmpty() const noexcept { return count == 0; }
-
-		void Clear() noexcept
-		{
-			for (TIndex i = 0; i < count; ++i)
-			{
-				entries[i].~Pair();
-			}
-
-			count = 0;
-		}
-
-	private:
-		Pair* entries;
-		TIndex count;
-		TIndex cap;
-		TCompare compare;
-		TAllocator allocator;
-
-		[[nodiscard]] TIndex FindIndex(const TKey& key) const noexcept
-		{
-			if (count == 0)
-				return -1;
-
-			TIndex lo = 0;
-			TIndex hi = count - 1;
-
-			while (lo <= hi)
-			{
-				TIndex mid = lo + (hi - lo) / 2;
-
-				if (compare(entries[mid].key, key))
-				{
-					lo = mid + 1;
-				}
-				else if (compare(key, entries[mid].key))
-				{
-					hi = mid - 1;
-				}
-				else
-				{
-					return mid;
-				}
-			}
-
+	[[nodiscard]] TIndex FindIndex(const TKey& key) const noexcept
+	{
+		if (count == 0)
 			return -1;
-		}
 
-		[[nodiscard]] TIndex LowerBound(const TKey& key) const noexcept
+		TIndex lo = 0;
+		TIndex hi = count - 1;
+
+		while (lo <= hi)
 		{
-			TIndex lo = 0;
-			TIndex hi = count;
+			TIndex mid = lo + (hi - lo) / 2;
 
-			while (lo < hi)
+			if (compare(entries[mid].key, key))
 			{
-				TIndex mid = lo + (hi - lo) / 2;
-
-				if (compare(entries[mid].key, key))
-				{
-					lo = mid + 1;
-				}
-				else
-				{
-					hi = mid;
-				}
+				lo = mid + 1;
 			}
-
-			return lo;
+			else if (compare(key, entries[mid].key))
+			{
+				hi = mid - 1;
+			}
+			else
+			{
+				return mid;
+			}
 		}
 
-		TIndex InsertSorted(const TKey& key) noexcept
+		return -1;
+	}
+
+	[[nodiscard]] TIndex LowerBound(const TKey& key) const noexcept
+	{
+		TIndex lo = 0;
+		TIndex hi = count;
+
+		while (lo < hi)
 		{
-			if (count == cap)
+			TIndex mid = lo + (hi - lo) / 2;
+
+			if (compare(entries[mid].key, key))
 			{
-				Grow();
+				lo = mid + 1;
 			}
-
-			auto idx = LowerBound(key);
-
-			for (TIndex i = count; i > idx; --i)
+			else
 			{
-				new (&entries[i]) Pair(std::move(entries[i - 1]));
-				entries[i - 1].~Pair();
+				hi = mid;
 			}
-
-			new (&entries[idx]) Pair{key, TValue{}};
-			++count;
-
-			return idx;
 		}
 
-		TIndex InsertSorted(TKey&& key) noexcept
+		return lo;
+	}
+
+	TIndex InsertSorted(const TKey& key) noexcept
+	{
+		if (count == cap)
 		{
-			if (count == cap)
-			{
-				Grow();
-			}
-
-			auto idx = LowerBound(key);
-
-			for (TIndex i = count; i > idx; --i)
-			{
-				new (&entries[i]) Pair(std::move(entries[i - 1]));
-				entries[i - 1].~Pair();
-			}
-
-			new (&entries[idx]) Pair{std::move(key), TValue{}};
-			++count;
-
-			return idx;
+			Grow();
 		}
 
-		void Grow() noexcept
+		auto idx = LowerBound(key);
+
+		for (TIndex i = count; i > idx; --i)
 		{
-			auto newCap = std::max(DefaultCapacity, cap * 2);
-			auto allocSize = sizeof(Pair) * newCap;
-			auto* raw = allocator.allocate(allocSize);
-			auto* newEntries = reinterpret_cast<Pair*>(raw);
-
-			for (TIndex i = 0; i < count; ++i)
-			{
-				new (&newEntries[i]) Pair(std::move(entries[i]));
-				entries[i].~Pair();
-			}
-
-			if (entries != nullptr)
-			{
-				auto oldSize = sizeof(Pair) * cap;
-				allocator.deallocate(reinterpret_cast<uint8_t*>(entries), oldSize);
-			}
-
-			entries = newEntries;
-			cap = newCap;
+			new (&entries[i]) Pair(std::move(entries[i - 1]));
+			entries[i - 1].~Pair();
 		}
 
-		void Release() noexcept
+		new (&entries[idx]) Pair{key, TValue{}};
+		++count;
+
+		return idx;
+	}
+
+	TIndex InsertSorted(TKey&& key) noexcept
+	{
+		if (count == cap)
 		{
-			returnIf(entries == nullptr);
-
-			for (TIndex i = 0; i < count; ++i)
-			{
-				entries[i].~Pair();
-			}
-
-			auto allocSize = sizeof(Pair) * cap;
-			allocator.deallocate(reinterpret_cast<uint8_t*>(entries), allocSize);
-
-			entries = nullptr;
-			count = 0;
-			cap = 0;
+			Grow();
 		}
-	};
+
+		auto idx = LowerBound(key);
+
+		for (TIndex i = count; i > idx; --i)
+		{
+			new (&entries[i]) Pair(std::move(entries[i - 1]));
+			entries[i - 1].~Pair();
+		}
+
+		new (&entries[idx]) Pair{std::move(key), TValue{}};
+		++count;
+
+		return idx;
+	}
+
+	void Grow() noexcept
+	{
+		auto newCap = std::max(DefaultCapacity, cap * 2);
+		auto allocSize = sizeof(Pair) * newCap;
+		auto* raw = allocator.allocate(allocSize);
+		auto* newEntries = reinterpret_cast<Pair*>(raw);
+
+		for (TIndex i = 0; i < count; ++i)
+		{
+			new (&newEntries[i]) Pair(std::move(entries[i]));
+			entries[i].~Pair();
+		}
+
+		if (entries != nullptr)
+		{
+			auto oldSize = sizeof(Pair) * cap;
+			allocator.deallocate(reinterpret_cast<uint8_t*>(entries), oldSize);
+		}
+
+		entries = newEntries;
+		cap = newCap;
+	}
+
+	void Release() noexcept
+	{
+		returnIf(entries == nullptr);
+
+		for (TIndex i = 0; i < count; ++i)
+		{
+			entries[i].~Pair();
+		}
+
+		auto allocSize = sizeof(Pair) * cap;
+		allocator.deallocate(reinterpret_cast<uint8_t*>(entries), allocSize);
+
+		entries = nullptr;
+		count = 0;
+		cap = 0;
+	}
+};
 
 } // namespace hbe
 
@@ -365,14 +418,17 @@ namespace hbe
 namespace hbe
 {
 
-	class MapTest : public TestCollection
+class MapTest : public TestCollection
+{
+public:
+	MapTest()
+		: TestCollection("MapTest")
 	{
-	public:
-		MapTest() : TestCollection("MapTest") {}
+	}
 
-	protected:
-		void Prepare() override;
-	};
+protected:
+	void Prepare() override;
+};
 
 } // namespace hbe
 #endif //__UNIT_TEST__

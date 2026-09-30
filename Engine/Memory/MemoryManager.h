@@ -19,209 +19,235 @@
 
 namespace hbe
 {
-	struct source_location;
-	class Engine;
+struct source_location;
+class Engine;
 
-	/// @brief Centralized memory management system for the engine.
-	/// @details This singleton class serves as the core memory controller, providing:
-	/// - **Allocator Management**: Registration and retrieval of various allocators (System, Pool, Stack, etc.)
-	///   via `TAllocatorID`.
-	/// - **Scoped Allocation**: Support for thread-local allocation scopes using `ScopedAllocator`.
-	/// - **Object Lifecycle**: Type-safe object creation (`New`, `NewArray`) and destruction (`Delete`, `DeleteArray`)
-	///   with automatic constructor/destructor calls.
-	/// - **Tracking & Statistics**: Real-time tracking of allocation/deallocation counts, usage, and capacity
-	///   across all registered allocators.
-	/// - **Fallthrough Mechanism**: A hierarchical fallback system for handling exhausted allocators.
-	/// - **Configuration Persistence**: Loading and saving `MultiPool` configurations via `MultiPoolConfigCache`.
-	/// - **Profiling Support**: Built-in hooks for memory investigation, logging, and detailed usage reporting
-	///   when `PROFILE_ENABLED` is active.
-	class MemoryManager final
+/// @brief Centralized memory management system for the engine.
+/// @details This singleton class serves as the core memory controller, providing:
+/// - **Allocator Management**: Registration and retrieval of various allocators (System, Pool, Stack, etc.)
+///   via `TAllocatorID`.
+/// - **Scoped Allocation**: Support for thread-local allocation scopes using `ScopedAllocator`.
+/// - **Object Lifecycle**: Type-safe object creation (`New`, `NewArray`) and destruction (`Delete`, `DeleteArray`)
+///   with automatic constructor/destructor calls.
+/// - **Tracking & Statistics**: Real-time tracking of allocation/deallocation counts, usage, and capacity
+///   across all registered allocators.
+/// - **Fallthrough Mechanism**: A hierarchical fallback system for handling exhausted allocators.
+/// - **Configuration Persistence**: Loading and saving `MultiPool` configurations via `MultiPoolConfigCache`.
+/// - **Profiling Support**: Built-in hooks for memory investigation, logging, and detailed usage reporting
+///   when `PROFILE_ENABLED` is active.
+class MemoryManager final
+{
+public:
+	template <typename T>
+	using TVector = std::vector<T>;
+
+	using TId = TAllocatorID;
+	using TAllocBytes = AllocatorProxy::TAllocBytes;
+	using TDeallocBytes = AllocatorProxy::TDeallocBytes;
+	using TLogFunc = std::function<void(std::ostream& out)>;
+	using TPoolConfigs = TVector<PoolConfig>;
+
+	static constexpr TId SystemAllocatorID = 0;
+	static constexpr size_t MaxBaseMemory = 8'000'000'000;
+	static thread_local TId scopedAllocatorID;
+
+	static StaticStringID GetMultiPoolConfigCacheFilePath();
+	static MemoryManager& GetInstance();
+	static TId GetCurrentAllocatorID();
+
+	/// @brief Records one request through a global allocation entry point.
+	/// @param nBytes requested size; the zero-size normalisation the standard performs is not counted twice.
+	/// @details Safe before any Engine or MemoryManager exists: the counters are constant initialised, so the
+	/// earliest static initialiser is already accounted for. Never logs, never allocates - an accounting path
+	/// that allocated would re-enter the allocator it is measuring.
+	static void RecordGlobalAllocation(size_t nBytes) noexcept;
+	/// @brief Records one release through a global deallocation entry point.
+	/// @details Cumulative like the allocation side, so the live figure is derived rather than tracked. A
+	/// pointer allocated before this existed can therefore be released without driving anything negative.
+	static void RecordGlobalFree(size_t nBytes) noexcept;
+	/// @brief Bytes requested through global allocation entry points since process start.
+	/// @details Cumulative, not live: freeing does not reduce it. Read it as a delta around a region of
+	/// interest, which is how the test suite uses it to see allocations that no allocator scope can report.
+	/// @note SystemAllocator's own traffic is deliberately absent. Its usage lives in the paired UsageRecord
+	/// reported under PROFILE_ENABLED, and the two are not the same measure - this one counts bytes requested,
+	/// that one counts capacity obtained. Merging them would also misattribute a pool's bank backing, which
+	/// arrives through SystemAllocator, to whichever testlet happened to trigger the bank.
+	[[nodiscard]] static size_t GetGlobalAllocationBytes() noexcept;
+	/// @brief Number of requests that reached a global allocation entry point since process start.
+	[[nodiscard]] static uint64_t GetGlobalAllocationCount() noexcept;
+	/// @brief Bytes released through global deallocation entry points since process start.
+	[[nodiscard]] static size_t GetGlobalFreeBytes() noexcept;
+	/// @brief Number of releases that reached a global deallocation entry point since process start.
+	[[nodiscard]] static uint64_t GetGlobalFreeCount() noexcept;
+
+	struct UsageRecord final
 	{
-	public:
-		template<typename T>
-		using TVector = std::vector<T>;
-
-		using TId = TAllocatorID;
-		using TAllocBytes = AllocatorProxy::TAllocBytes;
-		using TDeallocBytes = AllocatorProxy::TDeallocBytes;
-		using TLogFunc = std::function<void(std::ostream& out)>;
-		using TPoolConfigs = TVector<PoolConfig>;
-
-		static constexpr TId SystemAllocatorID = 0;
-		static constexpr size_t MaxBaseMemory = 8'000'000'000;
-		static thread_local TId scopedAllocatorID;
-
-		static StaticStringID GetMultiPoolConfigCacheFilePath();
-		static MemoryManager& GetInstance();
-		static TId GetCurrentAllocatorID();
-
-		/// @brief Records one request through a global allocation entry point.
-		/// @param nBytes requested size; the zero-size normalisation the standard performs is not counted twice.
-		/// @details Safe before any Engine or MemoryManager exists: the counters are constant initialised, so the
-		/// earliest static initialiser is already accounted for. Never logs, never allocates - an accounting path
-		/// that allocated would re-enter the allocator it is measuring.
-		static void RecordGlobalAllocation(size_t nBytes) noexcept;
-		/// @brief Records one release through a global deallocation entry point.
-		/// @details Cumulative like the allocation side, so the live figure is derived rather than tracked. A
-		/// pointer allocated before this existed can therefore be released without driving anything negative.
-		static void RecordGlobalFree(size_t nBytes) noexcept;
-		/// @brief Bytes requested through global allocation entry points since process start.
-		/// @details Cumulative, not live: freeing does not reduce it. Read it as a delta around a region of
-		/// interest, which is how the test suite uses it to see allocations that no allocator scope can report.
-		/// @note SystemAllocator's own traffic is deliberately absent. Its usage lives in the paired UsageRecord
-		/// reported under PROFILE_ENABLED, and the two are not the same measure - this one counts bytes requested,
-		/// that one counts capacity obtained. Merging them would also misattribute a pool's bank backing, which
-		/// arrives through SystemAllocator, to whichever testlet happened to trigger the bank.
-		[[nodiscard]] static size_t GetGlobalAllocationBytes() noexcept;
-		/// @brief Number of requests that reached a global allocation entry point since process start.
-		[[nodiscard]] static uint64_t GetGlobalAllocationCount() noexcept;
-		/// @brief Bytes released through global deallocation entry points since process start.
-		[[nodiscard]] static size_t GetGlobalFreeBytes() noexcept;
-		/// @brief Number of releases that reached a global deallocation entry point since process start.
-		[[nodiscard]] static uint64_t GetGlobalFreeCount() noexcept;
-
-		struct UsageRecord final
-		{
-			size_t allocCount = 0;
-			size_t deallocCount = 0;
-			size_t totalUsage = 0;
-			size_t maxUsage = 0;
-			size_t totalCapacity = 0;
-			size_t maxCapacity = 0;
-		};
-
-	public:
-		MemoryManager(const MemoryManager&) = delete;
-		MemoryManager& operator=(const MemoryManager&) = delete;
-
-		explicit MemoryManager(Engine& engine);
-		~MemoryManager();
-
-		void PostEngineInit() noexcept;
-		void PreEngineShutdown() noexcept;
-
-		static const char* GetName();
-		const char* GetAllocatorName(TAllocatorID id) const;
-
-		std::lock_guard<std::mutex> AcquireStatsLock() { return std::lock_guard(statsLock); }
-		AllocatorProxy& GetAllocatorProxy(TId id);
-		TId RegisterAllocator(void* allocator, const char* name, bool isInline, size_t capacity, TAllocBytes allocFunc,
-							  TDeallocBytes deallocFunc);
-		void DeregisterAllocator(TId id);
-
-		void ReportAllocation(TId id, void* ptr, size_t requested, size_t allocated);
-		void ReportDeallocation(TId id, void* ptr, size_t requested, size_t allocated);
-
-		void* SysAllocate(size_t nBytes);
-		void SysDeallocate(void* ptr, size_t nBytes);
-		void* FallbackAllocate(TId id, TId parentId, size_t requested);
-
-		void* Allocate(TId id, size_t nBytes);
-		void Deallocate(TId id, void* ptr, size_t nBytes);
-
-		void* Allocate(size_t nBytes);
-		void Deallocate(void* ptr, size_t nBytes);
-
-		bool IsLogEnabled(ELogLevel level) const;
-		void Log(ELogLevel level, TLogFunc func) const;
-
-		const MultiPoolAllocatorConfig& LookUpMultiPoolConfig(StaticStringID uniqueName) const;
-
-		void LogWarning(const TLogFunc& func) const { Log(ELogLevel::Warning, func); }
-		void LogError(const TLogFunc& func) const { Log(ELogLevel::Error, func); }
-		[[nodiscard]] auto& GetInlineUsage() const { return inlineUsage; }
-		[[nodiscard]] auto& GetUsage() const { return usage; }
-
-#if PROFILE_ENABLED
-		AllocStats GetAllocatorStat(TAllocatorID id);
-
-		void DeregisterAllocator(TId id, const hbe::source_location& srcLocation);
-		void ReportMultiPoolConfigutation(StaticStringID uniqueName, TPoolConfigs&& poolConfigs);
-#endif // PROFILE_ENABLED
-
-		template<typename T>
-		T* AllocateByType(size_t n)
-		{
-			const auto nBytes = n * sizeof(T);
-			auto ptr = Allocate(GetScopedAllocatorID(), nBytes);
-
-			return static_cast<T*>(ptr);
-		}
-
-		template<typename T>
-		void DeallocateTypes(T* ptr, size_t n)
-		{
-			const auto nBytes = n * sizeof(T);
-			Deallocate(GetScopedAllocatorID(), static_cast<void*>(ptr), nBytes);
-		}
-
-		template<typename Type, typename... Types>
-		Type* New(Types&&... args)
-		{
-			auto ptr = AllocateByType<Type>(1);
-			auto tptr = new (ptr) Type(std::forward<Types>(args)...);
-			return tptr;
-		}
-
-		template<typename Type, typename... Types>
-		Type* NewArray(Index size, Types&&... args)
-		{
-			auto ptr = AllocateByType<Type>(size);
-
-			for (Index i = 0; i < size; ++i)
-			{
-				new (&ptr[i]) Type(std::forward<Types>(args)...);
-			}
-
-			return ptr;
-		}
-
-		template<typename Type>
-		void Delete(Type* ptr)
-		{
-			ptr->~Type();
-			DeallocateTypes<Type>(ptr, 1);
-		}
-
-		template<typename Type>
-		void DeleteArray(Type* ptr, size_t n)
-		{
-			for (size_t i = 0; i < n; ++i)
-			{
-				ptr[i].~Type();
-			}
-
-			DeallocateTypes<Type>(ptr, n);
-		}
-
-	private:
-		AllocatorProxy allocators[MaxNumAllocators];
-		AtomicStackView<AllocatorProxy> proxyPool;
-
-		std::mutex statsLock;
-		size_t allocCount;
-		size_t deallocCount;
-
-		UsageRecord inlineUsage;
-		UsageRecord usage;
-
-		MultiPoolConfigCache multiPoolConfigCache;
-
-#if PROFILE_ENABLED
-		MultiPoolConfigCache multiPoolConfigLog;
-#endif // PROFILE_ENABLED
-
-		[[nodiscard]] static bool IsValid(TAllocatorID id) { return id >= 0 && id < MaxNumAllocators; }
-		[[nodiscard]] static TId GetScopedAllocatorID() { return scopedAllocatorID; }
-
-		void ReportFallback(TId id, void* ptr, size_t requested);
-		void RegisterSystemAllocator();
-		void DeregisterSystemAllocator();
-		void LoadMultiPoolConfigs();
-		void SaveMultiPoolConfigs();
-		void SetScopedAllocatorID(TId id);
-
-		friend class AllocatorScope;
+		size_t allocCount = 0;
+		size_t deallocCount = 0;
+		size_t totalUsage = 0;
+		size_t maxUsage = 0;
+		size_t totalCapacity = 0;
+		size_t maxCapacity = 0;
 	};
+
+public:
+	MemoryManager(const MemoryManager&) = delete;
+	MemoryManager& operator=(const MemoryManager&) = delete;
+
+	explicit MemoryManager(Engine& engine);
+	~MemoryManager();
+
+	void PostEngineInit() noexcept;
+	void PreEngineShutdown() noexcept;
+
+	static const char* GetName();
+	const char* GetAllocatorName(TAllocatorID id) const;
+
+	std::lock_guard<std::mutex> AcquireStatsLock()
+	{
+		return std::lock_guard(statsLock);
+	}
+
+	AllocatorProxy& GetAllocatorProxy(TId id);
+	TId RegisterAllocator(void* allocator, const char* name, bool isInline, size_t capacity, TAllocBytes allocFunc,
+						  TDeallocBytes deallocFunc);
+	void DeregisterAllocator(TId id);
+
+	void ReportAllocation(TId id, void* ptr, size_t requested, size_t allocated);
+	void ReportDeallocation(TId id, void* ptr, size_t requested, size_t allocated);
+
+	void* SysAllocate(size_t nBytes);
+	void SysDeallocate(void* ptr, size_t nBytes);
+	void* FallbackAllocate(TId id, TId parentId, size_t requested);
+
+	void* Allocate(TId id, size_t nBytes);
+	void Deallocate(TId id, void* ptr, size_t nBytes);
+
+	void* Allocate(size_t nBytes);
+	void Deallocate(void* ptr, size_t nBytes);
+
+	bool IsLogEnabled(ELogLevel level) const;
+	void Log(ELogLevel level, TLogFunc func) const;
+
+	const MultiPoolAllocatorConfig& LookUpMultiPoolConfig(StaticStringID uniqueName) const;
+
+	void LogWarning(const TLogFunc& func) const
+	{
+		Log(ELogLevel::Warning, func);
+	}
+
+	void LogError(const TLogFunc& func) const
+	{
+		Log(ELogLevel::Error, func);
+	}
+
+	[[nodiscard]] auto& GetInlineUsage() const
+	{
+		return inlineUsage;
+	}
+
+	[[nodiscard]] auto& GetUsage() const
+	{
+		return usage;
+	}
+
+#if PROFILE_ENABLED
+	AllocStats GetAllocatorStat(TAllocatorID id);
+
+	void DeregisterAllocator(TId id, const hbe::source_location& srcLocation);
+	void ReportMultiPoolConfigutation(StaticStringID uniqueName, TPoolConfigs&& poolConfigs);
+#endif // PROFILE_ENABLED
+
+	template <typename T>
+	T* AllocateByType(size_t n)
+	{
+		const auto nBytes = n * sizeof(T);
+		auto ptr = Allocate(GetScopedAllocatorID(), nBytes);
+
+		return static_cast<T*>(ptr);
+	}
+
+	template <typename T>
+	void DeallocateTypes(T* ptr, size_t n)
+	{
+		const auto nBytes = n * sizeof(T);
+		Deallocate(GetScopedAllocatorID(), static_cast<void*>(ptr), nBytes);
+	}
+
+	template <typename Type, typename... Types>
+	Type* New(Types&&... args)
+	{
+		auto ptr = AllocateByType<Type>(1);
+		auto tptr = new (ptr) Type(std::forward<Types>(args)...);
+		return tptr;
+	}
+
+	template <typename Type, typename... Types>
+	Type* NewArray(Index size, Types&&... args)
+	{
+		auto ptr = AllocateByType<Type>(size);
+
+		for (Index i = 0; i < size; ++i)
+		{
+			new (&ptr[i]) Type(std::forward<Types>(args)...);
+		}
+
+		return ptr;
+	}
+
+	template <typename Type>
+	void Delete(Type* ptr)
+	{
+		ptr->~Type();
+		DeallocateTypes<Type>(ptr, 1);
+	}
+
+	template <typename Type>
+	void DeleteArray(Type* ptr, size_t n)
+	{
+		for (size_t i = 0; i < n; ++i)
+		{
+			ptr[i].~Type();
+		}
+
+		DeallocateTypes<Type>(ptr, n);
+	}
+
+private:
+	AllocatorProxy allocators[MaxNumAllocators];
+	AtomicStackView<AllocatorProxy> proxyPool;
+
+	std::mutex statsLock;
+	size_t allocCount;
+	size_t deallocCount;
+
+	UsageRecord inlineUsage;
+	UsageRecord usage;
+
+	MultiPoolConfigCache multiPoolConfigCache;
+
+#if PROFILE_ENABLED
+	MultiPoolConfigCache multiPoolConfigLog;
+#endif // PROFILE_ENABLED
+
+	[[nodiscard]] static bool IsValid(TAllocatorID id)
+	{
+		return id >= 0 && id < MaxNumAllocators;
+	}
+
+	[[nodiscard]] static TId GetScopedAllocatorID()
+	{
+		return scopedAllocatorID;
+	}
+
+	void ReportFallback(TId id, void* ptr, size_t requested);
+	void RegisterSystemAllocator();
+	void DeregisterSystemAllocator();
+	void LoadMultiPoolConfigs();
+	void SaveMultiPoolConfigs();
+	void SetScopedAllocatorID(TId id);
+
+	friend class AllocatorScope;
+};
 
 } // namespace hbe

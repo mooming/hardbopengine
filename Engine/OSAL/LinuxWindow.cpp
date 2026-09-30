@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Hansol Park (mooming.go@gmail.com). All rights reserved.
 
-#include "Window.h"
 #include "Core/CommonMacros.h"
+#include "Window.h"
 
 #ifdef PLATFORM_LINUX
 
@@ -9,7 +9,12 @@ namespace OS
 {
 
 Window::Window()
-	: display(nullptr), window(0), width(0), height(0), visibleFlag(true), closedFlag(false)
+	: display(nullptr)
+	, window(0)
+	, width(0)
+	, height(0)
+	, visibleFlag(true)
+	, closedFlag(false)
 {
 }
 
@@ -24,14 +29,9 @@ bool Window::CreateWindow(const hbe::HString& title, int width, int height)
 
 	returnValueIf(false, !display);
 
-	window = XCreateSimpleWindow(
-		display,
-		DefaultRootWindow(display),
-		0, 0, width, height,
-		1,
-		BlackPixel(display, DefaultScreen(display)),
-		WhitePixel(display, DefaultScreen(display))
-	);
+	window = XCreateSimpleWindow(display, DefaultRootWindow(display), 0, 0, width, height, 1,
+								 BlackPixel(display, DefaultScreen(display)),
+								 WhitePixel(display, DefaultScreen(display)));
 
 	returnValueIf(false, !window);
 

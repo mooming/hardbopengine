@@ -2,10 +2,9 @@
 
 #include "Matrix3x3.h"
 
-
 namespace hbe
 {
-	template class Matrix3x3<float>;
+template class Matrix3x3<float>;
 } // namespace hbe
 
 #ifdef __UNIT_TEST__

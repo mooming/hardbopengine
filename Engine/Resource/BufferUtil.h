@@ -14,45 +14,45 @@
 
 namespace OS
 {
-	class FileHandle;
+class FileHandle;
 };
 
 namespace hbe
 {
-	/// @brief Utility functions for creating and managing buffers from various sources.
-	namespace BufferUtil
+/// @brief Utility functions for creating and managing buffers from various sources.
+namespace BufferUtil
+{
+using namespace BufferTypes;
+
+[[nodiscard]] Buffer GenerateDummyBuffer(size_t size = std::numeric_limits<size_t>::max()) noexcept;
+[[nodiscard]] Buffer GenerateFileBuffer(StaticString path, OS::FileOpenMode openMode, OS::ProtectionMode protection,
+										size_t size = 0);
+[[nodiscard]] Buffer GetFileBuffer(StaticString path);
+[[nodiscard]] Buffer GetReadOnlyFileBuffer(StaticString path);
+[[nodiscard]] Buffer GetWriteOnlyFileBuffer(StaticString path, size_t size);
+
+template <typename T>
+[[nodiscard]] Buffer GetMemoryBuffer(TSize numElements, const T& defaultValue)
+{
+	auto& mmgr = MemoryManager::GetInstance();
+	auto generator = [&mmgr, numElements, defaultValue](TSize& outSize, TBufferData& outData)
 	{
-		using namespace BufferTypes;
+		outSize = numElements * sizeof(T);
+		auto ptr = mmgr.NewArray<T>(numElements, defaultValue);
+		outData = reinterpret_cast<TBufferData>(ptr);
+	};
 
-		[[nodiscard]] Buffer GenerateDummyBuffer(size_t size = std::numeric_limits<size_t>::max()) noexcept;
-		[[nodiscard]] Buffer GenerateFileBuffer(StaticString path, OS::FileOpenMode openMode, OS::ProtectionMode protection,
-								  size_t size = 0);
-		[[nodiscard]] Buffer GetFileBuffer(StaticString path);
-		[[nodiscard]] Buffer GetReadOnlyFileBuffer(StaticString path);
-		[[nodiscard]] Buffer GetWriteOnlyFileBuffer(StaticString path, size_t size);
+	auto releaser = [&mmgr](TSize size, TBufferData data)
+	{
+		const TSize numElements = size / sizeof(T);
+		Assert((numElements * sizeof(T)) == size);
 
-		template<typename T>
-		[[nodiscard]] Buffer GetMemoryBuffer(TSize numElements, const T& defaultValue)
-		{
-			auto& mmgr = MemoryManager::GetInstance();
-			auto generator = [&mmgr, numElements, defaultValue](TSize& outSize, TBufferData& outData)
-			{
-				outSize = numElements * sizeof(T);
-				auto ptr = mmgr.NewArray<T>(numElements, defaultValue);
-				outData = reinterpret_cast<TBufferData>(ptr);
-			};
+		auto ptr = reinterpret_cast<T*>(data);
+		mmgr.DeleteArray<T>(ptr, numElements);
+	};
 
-			auto releaser = [&mmgr](TSize size, TBufferData data)
-			{
-				const TSize numElements = size / sizeof(T);
-				Assert((numElements * sizeof(T)) == size);
+	return Buffer(generator, releaser);
+}
 
-				auto ptr = reinterpret_cast<T*>(data);
-				mmgr.DeleteArray<T>(ptr, numElements);
-			};
-
-			return Buffer(generator, releaser);
-		}
-
-	} // namespace BufferUtil
+} // namespace BufferUtil
 } // namespace hbe

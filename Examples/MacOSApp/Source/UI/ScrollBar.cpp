@@ -6,7 +6,6 @@
 
 #include "Framebuffer.h"
 
-
 namespace hbe
 {
 
@@ -18,7 +17,6 @@ constexpr int TrackPadding = 2;
 constexpr int MinThumbHeight = 16;
 
 } // namespace
-
 
 ScrollBar::ScrollBar()
 	: minValue(0.0f)
@@ -136,8 +134,8 @@ void ScrollBar::OnUpdate(const InputState& input)
 	thumbHeightCache = thumbHeight;
 
 	// Hit detection
-	const bool thumbContainsMouse = input.mouseX >= trackX && input.mouseX < trackX + ThumbWidth
-	                              && input.mouseY >= thumbTopCache && input.mouseY < thumbTopCache + thumbHeightCache;
+	const bool thumbContainsMouse = input.mouseX >= trackX && input.mouseX < trackX + ThumbWidth &&
+									input.mouseY >= thumbTopCache && input.mouseY < thumbTopCache + thumbHeightCache;
 
 	// Track if mouse is over the scrollbar (for hover visual)
 	hoveredFlag = Contains(input.mouseX, input.mouseY);
@@ -173,8 +171,8 @@ void ScrollBar::OnUpdate(const InputState& input)
 		const int dragDelta = input.mouseY - thumbDragStartY;
 		if (valueRange > 0.001f)
 		{
-			const float deltaValue = static_cast<float>(dragDelta) /
-				static_cast<float>(trackHeight - thumbHeight) * valueRange;
+			const float deltaValue =
+					static_cast<float>(dragDelta) / static_cast<float>(trackHeight - thumbHeight) * valueRange;
 			SetValue(static_cast<float>(thumbDragStartValue) + deltaValue);
 		}
 	}
@@ -214,7 +212,8 @@ void ScrollBar::Draw(Framebuffer& framebuffer)
 
 	// Draw thumb border
 	framebuffer.DrawLine(trackX, thumbTop, trackX + ThumbWidth - 1, thumbTop, TrackBorderColor);
-	framebuffer.DrawLine(trackX, thumbTop + thumbHeight - 1, trackX + ThumbWidth - 1, thumbTop + thumbHeight - 1, TrackBorderColor);
+	framebuffer.DrawLine(trackX, thumbTop + thumbHeight - 1, trackX + ThumbWidth - 1, thumbTop + thumbHeight - 1,
+						 TrackBorderColor);
 }
 
 } // namespace hbe

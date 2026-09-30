@@ -7,26 +7,38 @@
 
 namespace hbe
 {
-	/// @brief A lightweight identifier for static strings stored in the global string table.
-	struct StaticStringID final
+/// @brief A lightweight identifier for static strings stored in the global string table.
+struct StaticStringID final
+{
+	static constexpr uint8_t* Default = nullptr;
+	const uint8_t* ptr;
+
+	StaticStringID()
+		: ptr(Default)
 	{
-		static constexpr uint8_t* Default = nullptr;
-		const uint8_t* ptr;
+	}
 
-		StaticStringID() : ptr(Default) {}
+	bool operator==(const StaticStringID& rhs) const
+	{
+		return ptr == rhs.ptr;
+	}
 
-		bool operator==(const StaticStringID& rhs) const { return ptr == rhs.ptr; }
-
-		bool operator<(const StaticStringID& rhs) const { return ptr < rhs.ptr; }
-	};
+	bool operator<(const StaticStringID& rhs) const
+	{
+		return ptr < rhs.ptr;
+	}
+};
 
 } // namespace hbe
 
 namespace std
 {
-	template<>
-	struct hash<hbe::StaticStringID> final
+template <>
+struct hash<hbe::StaticStringID> final
+{
+	std::size_t operator()(const hbe::StaticStringID& obj) const
 	{
-		std::size_t operator()(const hbe::StaticStringID& obj) const { return reinterpret_cast<std::size_t>(obj.ptr); }
-	};
+		return reinterpret_cast<std::size_t>(obj.ptr);
+	}
+};
 } // namespace std

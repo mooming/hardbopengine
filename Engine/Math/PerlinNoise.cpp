@@ -53,13 +53,13 @@ TReal PerlinNoise::Noise(TReal x, TReal y, TReal z) const noexcept
 	const TReal v = Fade(fy);
 	const TReal w = Fade(fz);
 
-	const TReal n000 = Grad(At(X    , Y    , Z    ), fx      , fy      , fz      );
-	const TReal n100 = Grad(At(X + 1, Y    , Z    ), fx - 1.0, fy      , fz      );
-	const TReal n010 = Grad(At(X    , Y + 1, Z    ), fx      , fy - 1.0, fz      );
-	const TReal n110 = Grad(At(X + 1, Y + 1, Z    ), fx - 1.0, fy - 1.0, fz      );
-	const TReal n001 = Grad(At(X    , Y    , Z + 1), fx      , fy      , fz - 1.0);
-	const TReal n101 = Grad(At(X + 1, Y    , Z + 1), fx - 1.0, fy      , fz - 1.0);
-	const TReal n011 = Grad(At(X    , Y + 1, Z + 1), fx      , fy - 1.0, fz - 1.0);
+	const TReal n000 = Grad(At(X, Y, Z), fx, fy, fz);
+	const TReal n100 = Grad(At(X + 1, Y, Z), fx - 1.0, fy, fz);
+	const TReal n010 = Grad(At(X, Y + 1, Z), fx, fy - 1.0, fz);
+	const TReal n110 = Grad(At(X + 1, Y + 1, Z), fx - 1.0, fy - 1.0, fz);
+	const TReal n001 = Grad(At(X, Y, Z + 1), fx, fy, fz - 1.0);
+	const TReal n101 = Grad(At(X + 1, Y, Z + 1), fx - 1.0, fy, fz - 1.0);
+	const TReal n011 = Grad(At(X, Y + 1, Z + 1), fx, fy - 1.0, fz - 1.0);
 	const TReal n111 = Grad(At(X + 1, Y + 1, Z + 1), fx - 1.0, fy - 1.0, fz - 1.0);
 
 	const TReal y0z0 = Lerp(u, n000, n100);
@@ -70,8 +70,8 @@ TReal PerlinNoise::Noise(TReal x, TReal y, TReal z) const noexcept
 	return Lerp(w, Lerp(v, y0z0, y1z0), Lerp(v, y0z1, y1z1));
 }
 
-TReal PerlinNoise::Fbm(TReal x, TReal y, TReal z, TUInt octaves
-	, TReal frequency, TReal lacunarity, TReal gain) const noexcept
+TReal PerlinNoise::Fbm(TReal x, TReal y, TReal z, TUInt octaves, TReal frequency, TReal lacunarity,
+					   TReal gain) const noexcept
 {
 	TReal sum = 0.0f;
 	TReal amplitude = 1.0f;
@@ -108,23 +108,40 @@ TReal PerlinNoise::Grad(TUInt hash, TReal x, TReal y, TReal z) noexcept
 	// Ken Perlin's reference gradient selection for "improved noise".
 	switch (hash & 15)
 	{
-		case 0x0: return x + y;
-		case 0x1: return -x + y;
-		case 0x2: return x - y;
-		case 0x3: return -x - y;
-		case 0x4: return x + z;
-		case 0x5: return -x + z;
-		case 0x6: return x - z;
-		case 0x7: return -x - z;
-		case 0x8: return y + z;
-		case 0x9: return -y + z;
-		case 0xA: return y - z;
-		case 0xB: return -y - z;
-		case 0xC: return y + x;
-		case 0xD: return -y + z;
-		case 0xE: return y - x;
-		case 0xF: return -y - z;
-		default: return 0.0f;
+		case 0x0:
+			return x + y;
+		case 0x1:
+			return -x + y;
+		case 0x2:
+			return x - y;
+		case 0x3:
+			return -x - y;
+		case 0x4:
+			return x + z;
+		case 0x5:
+			return -x + z;
+		case 0x6:
+			return x - z;
+		case 0x7:
+			return -x - z;
+		case 0x8:
+			return y + z;
+		case 0x9:
+			return -y + z;
+		case 0xA:
+			return y - z;
+		case 0xB:
+			return -y - z;
+		case 0xC:
+			return y + x;
+		case 0xD:
+			return -y + z;
+		case 0xE:
+			return y - x;
+		case 0xF:
+			return -y - z;
+		default:
+			return 0.0f;
 	}
 }
 
@@ -168,8 +185,7 @@ void hbe::PerlinNoiseTest::Prepare() noexcept
 			}
 		}
 
-		ls << samples << " samples, same-seed mismatches: " << sameSeed
-		   << ", different-seed mismatches: " << otherSeed;
+		ls << samples << " samples, same-seed mismatches: " << sameSeed << ", different-seed mismatches: " << otherSeed;
 
 		if (sameSeed != 0)
 		{
@@ -197,8 +213,8 @@ void hbe::PerlinNoiseTest::Prepare() noexcept
 			{
 				for (int k = -4; k <= 4; ++k)
 				{
-					const float value = noise.Noise(static_cast<float>(i), static_cast<float>(j)
-						, static_cast<float>(k));
+					const float value =
+							noise.Noise(static_cast<float>(i), static_cast<float>(j), static_cast<float>(k));
 					if (value != 0.0f)
 					{
 						++nonZero;
@@ -212,8 +228,8 @@ void hbe::PerlinNoiseTest::Prepare() noexcept
 
 		if (nonZero != 0)
 		{
-			ls << " | FAIL: " << nonZero << " lattice points were not exactly zero (worst "
-			   << worst << "), so the fade/lerp blend is leaking neighbouring corners" << lferr;
+			ls << " | FAIL: " << nonZero << " lattice points were not exactly zero (worst " << worst
+			   << "), so the fade/lerp blend is leaking neighbouring corners" << lferr;
 		}
 		else
 		{
@@ -241,7 +257,7 @@ void hbe::PerlinNoiseTest::Prepare() noexcept
 				const float basic = noise.Noise(x, y, z);
 				const float fbm = noise.Fbm(x, y, z, 5);
 
-				for (const float value : { basic, fbm })
+				for (const float value : {basic, fbm})
 				{
 					++samples;
 					if (!std::isfinite(value))
@@ -325,8 +341,8 @@ void hbe::PerlinNoiseTest::Prepare() noexcept
 
 		const float zeroctaves = noise.Fbm(1.25f, 2.5f, 3.75f, 0);
 
-		ls << "octaves 1..6, largest |value|: " << largest << ", out of range: " << failures
-		   << ", octaves=0 -> " << zeroctaves;
+		ls << "octaves 1..6, largest |value|: " << largest << ", out of range: " << failures << ", octaves=0 -> "
+		   << zeroctaves;
 
 		if (failures != 0)
 		{

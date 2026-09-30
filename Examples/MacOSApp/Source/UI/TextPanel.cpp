@@ -2,11 +2,10 @@
 
 #include "UI/TextPanel.h"
 
-#include "Core/CommonMacros.h"
 #include <algorithm>
+#include "Core/CommonMacros.h"
 
 #include "Framebuffer.h"
-
 
 namespace hbe
 {
@@ -14,12 +13,11 @@ namespace hbe
 namespace
 {
 
-constexpr int CharWidth = 9;   // 8px font + 1px spacing
+constexpr int CharWidth = 9; // 8px font + 1px spacing
 constexpr int FontHeight = 12;
 constexpr int LineGap = 2;
 
 } // namespace
-
 
 TextPanel::TextPanel()
 	: scrollOffset(0)

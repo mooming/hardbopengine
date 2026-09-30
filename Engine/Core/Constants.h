@@ -20,7 +20,7 @@ constexpr float SqrEpsilon = Epsilon * Epsilon;
 
 namespace Physics
 {
-	constexpr float Epsilon = 0.005f;
-	constexpr float SqrEpsilon = Epsilon * Epsilon;
-	} // namespace Physics
+constexpr float Epsilon = 0.005f;
+constexpr float SqrEpsilon = Epsilon * Epsilon;
+} // namespace Physics
 } // namespace hbe

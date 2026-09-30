@@ -231,14 +231,18 @@ public:
 
 private:
 	StaticString name;
+
 protected:
-	/// @brief Declare a one-item join on `task` and return the item that fills it, for a provider whose Produce hands work to a stream.
-	/// @details A provider's contract is to hand back an item, and an item is built by the engine rather than by a customer - the
-	///          index range, the priority and the reserved count have to agree with the task they belong to, and only the engine can
-	///          keep them agreeing. This is that facility, kept where a provider can reach it and away from everyone else: the base
-	///          class is a friend of Task, and derived providers inherit the helper instead of each being made a friend of a type they
-	///          have no business knowing.
-	/// @param task The task the item belongs to. Must have been issued by the registry and must not already declare a join.
+	/// @brief Declare a one-item join on `task` and return the item that fills it, for a provider whose Produce hands
+	/// work to a stream.
+	/// @details A provider's contract is to hand back an item, and an item is built by the engine rather than by a
+	/// customer - the
+	///          index range, the priority and the reserved count have to agree with the task they belong to, and only
+	///          the engine can keep them agreeing. This is that facility, kept where a provider can reach it and away
+	///          from everyone else: the base class is a friend of Task, and derived providers inherit the helper
+	///          instead of each being made a friend of a type they have no business knowing.
+	/// @param task The task the item belongs to. Must have been issued by the registry and must not already declare a
+	/// join.
 	/// @param Priority of the item, 0 being the least urgent.
 	/// @return The item to return from Produce.
 	static WorkItem MakeWholeItem(Task& task, uint8_t priority = 0) noexcept;

@@ -11,14 +11,14 @@
 namespace hbe
 {
 
-template<typename T>
+template <typename T>
 concept CLockable = requires(T t) {
 	t.lock();
 	t.unlock();
 };
 
 /// @brief A RAII-style lock wrapper that acquires a lock on construction and releases it on destruction.
-template<CLockable TLockable>
+template <CLockable TLockable>
 class ScopedLock final
 {
 	using TSrcLoc = hbe::source_location;
@@ -36,8 +36,11 @@ public:
 	ScopedLock(const ScopedLock&) = delete;
 
 #if PROFILE_ENABLED
-	explicit ScopedLock(TLockable& lockable, float timeOutSec = 0.01f, const TSrcLoc& srcLoc = TSrcLoc::current()) :
-		lockable(lockable), startTime(time::TStopWatch::now()), timeOutSec(timeOutSec), srcLoc(srcLoc)
+	explicit ScopedLock(TLockable& lockable, float timeOutSec = 0.01f, const TSrcLoc& srcLoc = TSrcLoc::current())
+		: lockable(lockable)
+		, startTime(time::TStopWatch::now())
+		, timeOutSec(timeOutSec)
+		, srcLoc(srcLoc)
 	{
 		lockable.lock();
 #ifdef __DEBUG__
@@ -45,11 +48,21 @@ public:
 #endif // __DEBUG__
 	}
 #else // PROFILE_ENABLED
-	ScopedLock(TLockable& lockable) : lockable(lockable) { lockable.lock(); }
+	ScopedLock(TLockable& lockable)
+		: lockable(lockable)
+	{
+		lockable.lock();
+	}
 
-	ScopedLock(TLockable& lockable, float) : ScopedLock(lockable) {}
+	ScopedLock(TLockable& lockable, float)
+		: ScopedLock(lockable)
+	{
+	}
 
-	ScopedLock(TLockable& lockable, float, const TSrcLoc&) : ScopedLock(lockable) {}
+	ScopedLock(TLockable& lockable, float, const TSrcLoc&)
+		: ScopedLock(lockable)
+	{
+	}
 #endif // PROFILE_ENABLED
 
 	~ScopedLock()

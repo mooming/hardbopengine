@@ -7,833 +7,852 @@
 #include "Core/Debug.h"
 #include "StringUtil.h"
 
-
 namespace hbe
 {
 
-	String::String(const bool value) noexcept : hashCode(0)
+String::String(const bool value) noexcept
+	: hashCode(0)
+{
+	if (value)
 	{
-		if (value)
-		{
-			buffer->resize(5);
+		buffer->resize(5);
 
-			auto& text = *buffer;
-			text[0] = 't';
-			text[1] = 'r';
-			text[2] = 'u';
-			text[3] = 'e';
-			text[4] = '\0';
-		}
-		else
-		{
-			buffer->resize(6);
-
-			auto& text = *buffer;
-			text[0] = 'f';
-			text[1] = 'a';
-			text[2] = 'l';
-			text[3] = 's';
-			text[4] = 'e';
-			text[5] = '\0';
-		}
-
-		CalculateHashCode();
-	}
-
-	String::String(const Pointer ptr) noexcept : hashCode(0)
-	{
-		buffer->resize(32);
 		auto& text = *buffer;
-		snprintf(text.data(), text.size(), "%p", ptr);
-		CalculateHashCode();
+		text[0] = 't';
+		text[1] = 'r';
+		text[2] = 'u';
+		text[3] = 'e';
+		text[4] = '\0';
 	}
-
-	String::String(const char letter) noexcept : hashCode(0)
+	else
 	{
-		buffer->resize(2);
+		buffer->resize(6);
+
 		auto& text = *buffer;
-		text[0] = letter;
-		text[1] = '\0';
+		text[0] = 'f';
+		text[1] = 'a';
+		text[2] = 'l';
+		text[3] = 's';
+		text[4] = 'e';
+		text[5] = '\0';
+	}
+
+	CalculateHashCode();
+}
+
+String::String(const Pointer ptr) noexcept
+	: hashCode(0)
+{
+	buffer->resize(32);
+	auto& text = *buffer;
+	snprintf(text.data(), text.size(), "%p", ptr);
+	CalculateHashCode();
+}
+
+String::String(const char letter) noexcept
+	: hashCode(0)
+{
+	buffer->resize(2);
+	auto& text = *buffer;
+	text[0] = letter;
+	text[1] = '\0';
+
+	CalculateHashCode();
+}
+
+String::String(const unsigned char value) noexcept
+	: hashCode(0)
+{
+	buffer->resize(16);
+	auto& text = *buffer;
+	snprintf(text.data(), text.size(), "0x%02X", value);
+	buffer->resize(strlen(text.data()) + 1);
+
+	CalculateHashCode();
+}
+
+String::String(const short value) noexcept
+	: hashCode(0)
+{
+	buffer->resize(16);
+	auto& text = *buffer;
+	snprintf(text.data(), text.size(), "%d", value);
+	buffer->resize(StringUtil::StrLen(text.data()) + 1);
+
+	CalculateHashCode();
+}
+
+String::String(const unsigned short value) noexcept
+	: hashCode(0)
+{
+	buffer->resize(16);
+	auto& text = *buffer;
+	snprintf(text.data(), text.size(), "%u", value);
+	buffer->resize(StringUtil::StrLen(text.data()) + 1);
+
+	CalculateHashCode();
+}
+
+String::String(const int value) noexcept
+	: hashCode(0)
+{
+	buffer->resize(16);
+	auto& text = *buffer;
+	snprintf(text.data(), text.capacity(), "%d", value);
+	buffer->resize(StringUtil::StrLen(text.data()) + 1);
+
+	CalculateHashCode();
+}
+
+String::String(const unsigned int value) noexcept
+	: hashCode(0)
+{
+	buffer->resize(16);
+	auto& text = *buffer;
+	snprintf(text.data(), text.size(), "%u", value);
+	buffer->resize(StringUtil::StrLen(text.data()) + 1);
+
+	CalculateHashCode();
+}
+
+String::String(const long value) noexcept
+	: hashCode(0)
+{
+	buffer->resize(16);
+	auto& text = *buffer;
+	snprintf(text.data(), text.size(), "%ld", value);
+	buffer->resize(StringUtil::StrLen(text.data()) + 1);
+
+	CalculateHashCode();
+}
+
+String::String(const unsigned long value) noexcept
+	: hashCode(0)
+{
+	buffer->resize(16);
+	auto& text = *buffer;
+	snprintf(text.data(), text.size(), "%lu", value);
+	buffer->resize(StringUtil::StrLen(text.data()) + 1);
+
+	CalculateHashCode();
+}
+
+String::String(const long long value) noexcept
+	: hashCode(0)
+{
+	buffer->resize(16);
+	auto& text = *buffer;
+	snprintf(text.data(), text.size(), "%lld", value);
+	buffer->resize(StringUtil::StrLen(text.data()) + 1);
+
+	CalculateHashCode();
+}
+
+String::String(const unsigned long long value) noexcept
+	: hashCode(0)
+{
+	buffer->resize(16);
+	auto& text = *buffer;
+	snprintf(text.data(), text.size(), "%llu", value);
+	buffer->resize(StringUtil::StrLen(text.data()) + 1);
+
+	CalculateHashCode();
+}
+
+String::String(const float value) noexcept
+	: hashCode(0)
+{
+	buffer->resize(16);
+	auto& text = *buffer;
+	snprintf(text.data(), text.size(), "%f", value);
+	buffer->resize(StringUtil::StrLen(text.data()) + 1);
+
+	CalculateHashCode();
+}
+
+String::String(const double value) noexcept
+	: hashCode(0)
+{
+	buffer->resize(16);
+	auto& text = *buffer;
+	snprintf(text.data(), text.size(), "%f", value);
+	buffer->resize(StringUtil::StrLen(text.data()) + 1);
+
+	CalculateHashCode();
+}
+
+String::String(const long double value) noexcept
+	: hashCode(0)
+{
+	buffer->resize(16);
+	auto& text = *buffer;
+	snprintf(text.data(), text.size(), "%Lf", value);
+	buffer->resize(StringUtil::StrLen(text.data()) + 1);
+
+	CalculateHashCode();
+}
+
+String::String(const char* text) noexcept
+	: hashCode(0)
+{
+	if (text == nullptr)
+	{
+		text = "";
+	}
+
+	const auto totalLength = strlen(text) + 1;
+	buffer->resize(totalLength);
+	Vector<char>& textVec = *buffer;
+	memcpy(textVec.data(), text, totalLength);
+
+	CalculateHashCode();
+}
+
+String::String(const String& string, Index startIndex, Index endIndex) noexcept
+	: buffer()
+{
+	if (startIndex >= string.Length())
+	{
+		startIndex = string.Length();
+	}
+
+	if (endIndex > string.Length())
+	{
+		endIndex = string.Length();
+	}
+
+	if (startIndex > endIndex)
+	{
+		startIndex = endIndex;
+	}
+
+	auto length = endIndex - startIndex;
+
+	if (length > 0)
+	{
+		buffer->resize(length + 1);
+
+		auto ptr = buffer->data();
+		memcpy(ptr, string.buffer->data() + startIndex, length);
+		ptr[length] = '\0';
 
 		CalculateHashCode();
 	}
-
-	String::String(const unsigned char value) noexcept : hashCode(0)
+	else
 	{
-		buffer->resize(16);
-		auto& text = *buffer;
-		snprintf(text.data(), text.size(), "0x%02X", value);
-		buffer->resize(strlen(text.data()) + 1);
+		hashCode = 0;
+	}
+}
 
-		CalculateHashCode();
+String& String::operator=(const char* text) noexcept
+{
+	if (text == nullptr)
+	{
+		text = "";
 	}
 
-	String::String(const short value) noexcept : hashCode(0)
+	if (buffer.GetReferenceCount() > 1)
 	{
-		buffer->resize(16);
-		auto& text = *buffer;
-		snprintf(text.data(), text.size(), "%d", value);
-		buffer->resize(StringUtil::StrLen(text.data()) + 1);
-
-		CalculateHashCode();
+		Swap(String(text));
+	}
+	else
+	{
+		const auto textLength = strlen(text) + 1;
+		buffer->resize(textLength);
+		memcpy(buffer->data(), text, textLength);
 	}
 
-	String::String(const unsigned short value) noexcept : hashCode(0)
-	{
-		buffer->resize(16);
-		auto& text = *buffer;
-		snprintf(text.data(), text.size(), "%u", value);
-		buffer->resize(StringUtil::StrLen(text.data()) + 1);
+	return *this;
+}
 
-		CalculateHashCode();
+String& String::operator=(const String& rhs) noexcept
+{
+	if (buffer.GetReferenceCount() > 1)
+	{
+		Swap(String(rhs.ToCharArray()));
+	}
+	else
+	{
+		const auto length = rhs.buffer->size();
+		buffer->resize(length);
+		memcpy(buffer->data(), rhs.buffer->data(), length);
 	}
 
-	String::String(const int value) noexcept : hashCode(0)
+	return *this;
+}
+
+bool String::operator<(const String& rhs) const noexcept
+{
+	const Index shorterLen = std::min(Length(), rhs.Length());
+	Index matchCount = 0;
+
+	for (Index i = 0; i < shorterLen; ++i)
 	{
-		buffer->resize(16);
-		auto& text = *buffer;
-		snprintf(text.data(), text.capacity(), "%d", value);
-		buffer->resize(StringUtil::StrLen(text.data()) + 1);
-
-		CalculateHashCode();
-	}
-
-	String::String(const unsigned int value) noexcept : hashCode(0)
-	{
-		buffer->resize(16);
-		auto& text = *buffer;
-		snprintf(text.data(), text.size(), "%u", value);
-		buffer->resize(StringUtil::StrLen(text.data()) + 1);
-
-		CalculateHashCode();
-	}
-
-	String::String(const long value) noexcept : hashCode(0)
-	{
-		buffer->resize(16);
-		auto& text = *buffer;
-		snprintf(text.data(), text.size(), "%ld", value);
-		buffer->resize(StringUtil::StrLen(text.data()) + 1);
-
-		CalculateHashCode();
-	}
-
-	String::String(const unsigned long value) noexcept : hashCode(0)
-	{
-		buffer->resize(16);
-		auto& text = *buffer;
-		snprintf(text.data(), text.size(), "%lu", value);
-		buffer->resize(StringUtil::StrLen(text.data()) + 1);
-
-		CalculateHashCode();
-	}
-
-	String::String(const long long value) noexcept : hashCode(0)
-	{
-		buffer->resize(16);
-		auto& text = *buffer;
-		snprintf(text.data(), text.size(), "%lld", value);
-		buffer->resize(StringUtil::StrLen(text.data()) + 1);
-
-		CalculateHashCode();
-	}
-
-	String::String(const unsigned long long value) noexcept : hashCode(0)
-	{
-		buffer->resize(16);
-		auto& text = *buffer;
-		snprintf(text.data(), text.size(), "%llu", value);
-		buffer->resize(StringUtil::StrLen(text.data()) + 1);
-
-		CalculateHashCode();
-	}
-
-	String::String(const float value) noexcept : hashCode(0)
-	{
-		buffer->resize(16);
-		auto& text = *buffer;
-		snprintf(text.data(), text.size(), "%f", value);
-		buffer->resize(StringUtil::StrLen(text.data()) + 1);
-
-		CalculateHashCode();
-	}
-
-	String::String(const double value) noexcept : hashCode(0)
-	{
-		buffer->resize(16);
-		auto& text = *buffer;
-		snprintf(text.data(), text.size(), "%f", value);
-		buffer->resize(StringUtil::StrLen(text.data()) + 1);
-
-		CalculateHashCode();
-	}
-
-	String::String(const long double value) noexcept : hashCode(0)
-	{
-		buffer->resize(16);
-		auto& text = *buffer;
-		snprintf(text.data(), text.size(), "%Lf", value);
-		buffer->resize(StringUtil::StrLen(text.data()) + 1);
-
-		CalculateHashCode();
-	}
-
-	String::String(const char* text) noexcept : hashCode(0)
-	{
-		if (text == nullptr)
+		if ((*buffer)[i] == (*rhs.buffer)[i])
 		{
-			text = "";
+			++matchCount;
+
+			continue;
 		}
 
-		const auto totalLength = strlen(text) + 1;
-		buffer->resize(totalLength);
-		Vector<char>& textVec = *buffer;
-		memcpy(textVec.data(), text, totalLength);
-
-		CalculateHashCode();
-	}
-
-	String::String(const String& string, Index startIndex, Index endIndex) noexcept : buffer()
-	{
-		if (startIndex >= string.Length())
+		if ((*buffer)[i] > (*rhs.buffer)[i])
 		{
-			startIndex = string.Length();
-		}
-
-		if (endIndex > string.Length())
-		{
-			endIndex = string.Length();
-		}
-
-		if (startIndex > endIndex)
-		{
-			startIndex = endIndex;
-		}
-
-		auto length = endIndex - startIndex;
-
-		if (length > 0)
-		{
-			buffer->resize(length + 1);
-
-			auto ptr = buffer->data();
-			memcpy(ptr, string.buffer->data() + startIndex, length);
-			ptr[length] = '\0';
-
-			CalculateHashCode();
-		}
-		else
-		{
-			hashCode = 0;
-		}
-	}
-
-	String& String::operator=(const char* text) noexcept
-	{
-		if (text == nullptr)
-		{
-			text = "";
-		}
-
-		if (buffer.GetReferenceCount() > 1)
-		{
-			Swap(String(text));
-		}
-		else
-		{
-			const auto textLength = strlen(text) + 1;
-			buffer->resize(textLength);
-			memcpy(buffer->data(), text, textLength);
-		}
-
-		return *this;
-	}
-
-	String& String::operator=(const String& rhs) noexcept
-	{
-		if (buffer.GetReferenceCount() > 1)
-		{
-			Swap(String(rhs.ToCharArray()));
-		}
-		else
-		{
-			const auto length = rhs.buffer->size();
-			buffer->resize(length);
-			memcpy(buffer->data(), rhs.buffer->data(), length);
-		}
-
-		return *this;
-	}
-
-	bool String::operator<(const String& rhs) const noexcept
-	{
-		const Index shorterLen = std::min(Length(), rhs.Length());
-		Index matchCount = 0;
-
-		for (Index i = 0; i < shorterLen; ++i)
-		{
-			if ((*buffer)[i] == (*rhs.buffer)[i])
-			{
-				++matchCount;
-
-				continue;
-			}
-
-			if ((*buffer)[i] > (*rhs.buffer)[i])
-			{
-				return false;
-			}
-
-			return true;
-		}
-
-		if (matchCount == shorterLen)
-		{
-			return Length() < rhs.Length();
+			return false;
 		}
 
 		return true;
 	}
 
-	bool String::operator==(const String& string) const noexcept
+	if (matchCount == shorterLen)
 	{
-		if (hashCode != string.hashCode)
+		return Length() < rhs.Length();
+	}
+
+	return true;
+}
+
+bool String::operator==(const String& string) const noexcept
+{
+	if (hashCode != string.hashCode)
+	{
+		return false;
+	}
+
+	const auto length = Length();
+	if (length != string.Length())
+	{
+		return false;
+	}
+
+	for (Index i = 0; i < length; ++i)
+	{
+		if ((*buffer)[i] != (*string.buffer)[i])
 		{
 			return false;
 		}
+	}
 
-		const auto length = Length();
-		if (length != string.Length())
+	return true;
+}
+
+bool String::operator==(const char* rhs) const noexcept
+{
+	const bool isEmpty = IsEmpty();
+	if (rhs == nullptr)
+	{
+		return isEmpty;
+	}
+
+	if (isEmpty)
+	{
+		return rhs[0] == '\0';
+	}
+
+	const auto length = Length();
+	for (Index i = 0; i < length; ++i)
+	{
+		if ((*buffer)[i] != rhs[i])
 		{
 			return false;
 		}
-
-		for (Index i = 0; i < length; ++i)
-		{
-			if ((*buffer)[i] != (*string.buffer)[i])
-			{
-				return false;
-			}
-		}
-
-		return true;
 	}
 
-	bool String::operator==(const char* rhs) const noexcept
+	return rhs[length] == '\0';
+}
+
+const char* String::ToCharArray() const noexcept
+{
+	return buffer ? buffer.Get().data() : "";
+}
+
+String String::Clone() const noexcept
+{
+	String str;
+	Assert(str.buffer);
+
+	*(str.buffer) = *buffer;
+
+	return str;
+}
+
+bool String::ContainsAt(const String& keyword, Index startIndex) const noexcept
+{
+	const Index endIndex = startIndex + keyword.Length();
+
+	if (endIndex > Length())
 	{
-		const bool isEmpty = IsEmpty();
-		if (rhs == nullptr)
-		{
-			return isEmpty;
-		}
-
-		if (isEmpty)
-		{
-			return rhs[0] == '\0';
-		}
-
-		const auto length = Length();
-		for (Index i = 0; i < length; ++i)
-		{
-			if ((*buffer)[i] != rhs[i])
-			{
-				return false;
-			}
-		}
-
-		return rhs[length] == '\0';
+		return false;
 	}
 
-	const char* String::ToCharArray() const noexcept { return buffer ? buffer.Get().data() : ""; }
+	Index index = 0;
 
-	String String::Clone() const noexcept
+	for (Index i = startIndex; i < endIndex; ++i, ++index)
 	{
-		String str;
-		Assert(str.buffer);
-
-		*(str.buffer) = *buffer;
-
-		return str;
-	}
-
-	bool String::ContainsAt(const String& keyword, Index startIndex) const noexcept
-	{
-		const Index endIndex = startIndex + keyword.Length();
-
-		if (endIndex > Length())
+		if ((*buffer)[i] != (*keyword.buffer)[index])
 		{
 			return false;
 		}
-
-		Index index = 0;
-
-		for (Index i = startIndex; i < endIndex; ++i, ++index)
-		{
-			if ((*buffer)[i] != (*keyword.buffer)[index])
-			{
-				return false;
-			}
-		}
-
-		return true;
 	}
 
-	Index String::Find(const TChar ch) const noexcept
+	return true;
+}
+
+Index String::Find(const TChar ch) const noexcept
+{
+	const auto length = Length();
+
+	for (Index i = 0; i < length; ++i)
 	{
-		const auto length = Length();
-
-		for (Index i = 0; i < length; ++i)
+		if ((*buffer)[i] == ch)
 		{
-			if ((*buffer)[i] == ch)
-			{
-				return i;
-			}
+			return i;
 		}
-
-		return length;
 	}
 
-	Index String::Find(const Array<TChar>& chs) const noexcept
+	return length;
+}
+
+Index String::Find(const Array<TChar>& chs) const noexcept
+{
+	const auto length = Length();
+	auto chsLen = chs.Size();
+
+	for (Index i = 0; i < length; ++i)
 	{
-		const auto length = Length();
-		auto chsLen = chs.Size();
-
-		for (Index i = 0; i < length; ++i)
+		for (decltype(chsLen) j = 0; j < chsLen; ++j)
 		{
-			for (decltype(chsLen) j = 0; j < chsLen; ++j)
-			{
-				if ((*buffer)[i] == chs[j])
-				{
-					return i;
-				}
-			}
-		}
-
-		return length;
-	}
-
-	Index String::Find(const String& keyword) const noexcept
-	{
-		const auto length = Length();
-		const auto keywordLength = keyword.Length();
-
-		if (keywordLength > length)
-		{
-			return length;
-		}
-
-		const Index lastIndex = length - keywordLength + 1;
-		for (Index i = 0; i < lastIndex; ++i)
-		{
-			if (ContainsAt(keyword, i))
+			if ((*buffer)[i] == chs[j])
 			{
 				return i;
 			}
 		}
+	}
 
+	return length;
+}
+
+Index String::Find(const String& keyword) const noexcept
+{
+	const auto length = Length();
+	const auto keywordLength = keyword.Length();
+
+	if (keywordLength > length)
+	{
 		return length;
 	}
 
-	Index String::Find(const String& keyword, Index startIndex, Index endIndex) const noexcept
+	const Index lastIndex = length - keywordLength + 1;
+	for (Index i = 0; i < lastIndex; ++i)
 	{
-		const auto length = Length();
-		const auto keywordLength = keyword.Length();
-
-		Assert(startIndex < length);
-		if (startIndex >= length)
+		if (ContainsAt(keyword, i))
 		{
-			startIndex = length - 1;
+			return i;
 		}
+	}
 
-		Assert(endIndex >= startIndex);
-		if (endIndex < startIndex)
-		{
-			endIndex = startIndex;
-		}
+	return length;
+}
 
-		Assert(endIndex <= length);
-		if (endIndex > length)
-		{
-			endIndex = length;
-		}
+Index String::Find(const String& keyword, Index startIndex, Index endIndex) const noexcept
+{
+	const auto length = Length();
+	const auto keywordLength = keyword.Length();
 
-		if ((startIndex + keywordLength) > endIndex)
-		{
-			return length;
-		}
+	Assert(startIndex < length);
+	if (startIndex >= length)
+	{
+		startIndex = length - 1;
+	}
 
-		const Index lastIndex = endIndex - keywordLength + 1;
-		for (Index i = startIndex; i < lastIndex; ++i)
-		{
-			if (ContainsAt(keyword, i))
-			{
-				return i;
-			}
-		}
+	Assert(endIndex >= startIndex);
+	if (endIndex < startIndex)
+	{
+		endIndex = startIndex;
+	}
 
+	Assert(endIndex <= length);
+	if (endIndex > length)
+	{
+		endIndex = length;
+	}
+
+	if ((startIndex + keywordLength) > endIndex)
+	{
 		return length;
 	}
 
-	Index String::FindLast(const TChar ch) const noexcept
+	const Index lastIndex = endIndex - keywordLength + 1;
+	for (Index i = startIndex; i < lastIndex; ++i)
 	{
-		const auto length = Length();
-		for (Index i = length; i > 0;)
+		if (ContainsAt(keyword, i))
 		{
-			if ((*buffer)[--i] == ch)
+			return i;
+		}
+	}
+
+	return length;
+}
+
+Index String::FindLast(const TChar ch) const noexcept
+{
+	const auto length = Length();
+	for (Index i = length; i > 0;)
+	{
+		if ((*buffer)[--i] == ch)
+		{
+			return i;
+		}
+	}
+
+	return length;
+}
+
+String String::Append(const TChar letter) const noexcept
+{
+	String str;
+	const auto length = Length();
+
+	str.buffer->resize(length + sizeof(TChar) + 1);
+	memcpy(str.buffer->data(), buffer->data(), length);
+
+	(*str.buffer)[length] = letter;
+	(*str.buffer)[length + 1] = '\0';
+
+	return str;
+}
+
+String String::Append(const int value) const noexcept
+{
+	char tmp[16];
+	snprintf(tmp, sizeof(tmp), "%d", value);
+
+	const auto length = Length();
+	const Index tmpLength = static_cast<Index>(strlen(tmp));
+
+	String str;
+	str.buffer->resize(length + tmpLength + 1);
+
+	memcpy(str.buffer->data(), buffer->data(), length);
+	memcpy(str.buffer->data() + length, tmp, tmpLength + 1);
+
+	return str;
+}
+
+String String::Append(const float value) const noexcept
+{
+	char tmp[16];
+	snprintf(tmp, sizeof(tmp), "%f", value);
+
+	const auto length = Length();
+	const Index tmpLength = static_cast<Index>(strlen(tmp));
+
+	String str;
+	str.buffer->resize(length + tmpLength + 1);
+
+	memcpy(str.buffer->data(), buffer->data(), length);
+	memcpy(str.buffer->data() + length, tmp, tmpLength + 1);
+
+	return str;
+}
+
+String String::Append(const TChar* text) const noexcept
+{
+	const auto length = Length();
+	const Index textLength = static_cast<Index>(strlen(text));
+
+	String str;
+	str.buffer->resize(length + textLength + 1);
+
+	memcpy(str.buffer->data(), buffer->data(), length);
+	memcpy(str.buffer->data() + length, text, textLength + 1);
+
+	return str;
+}
+
+String String::Append(const String& string) const noexcept
+{
+	if (string.IsEmpty())
+	{
+		return Clone();
+	}
+
+	const auto length = Length();
+	const auto strLength = string.Length();
+
+	String str;
+	str.buffer->resize(length + strLength + 1);
+
+	memcpy(str.buffer->data(), buffer->data(), length);
+	memcpy(str.buffer->data() + length, string.buffer->data(), strLength + 1);
+
+	return str;
+}
+
+void String::AppendSelf(const TChar letter) noexcept
+{
+	// Optimized single-pass append: obtain a reference to the buffer once,
+	// resize to accommodate the letter + trailing null, and write both
+	// directly. This halves the Shareable dereferencing overhead versus
+	// the previous push_back('\0') + assign-at-index pattern.
+	auto& buf = buffer.Get();
+	const auto index = buf.size();
+	buf.resize(index + 2); // room for the letter + trailing null terminator
+	buf.data()[index] = letter;
+	buf.data()[index + 1] = '\0';
+}
+
+void String::AppendSelf(const int value) noexcept
+{
+	char tmp[16];
+	snprintf(tmp, sizeof(tmp), "%d", value);
+
+	const auto length = Length();
+	const Index tmpLength = static_cast<Index>(strlen(tmp));
+	const auto newLength = length + tmpLength + 1;
+
+	if (newLength > buffer->capacity())
+	{
+		buffer->reserve(newLength * 3 / 2);
+	}
+
+	buffer->resize(newLength);
+	memcpy(buffer->data() + length, tmp, tmpLength + 1);
+}
+
+void String::AppendSelf(const float value) noexcept
+{
+	char tmp[16];
+	snprintf(tmp, sizeof(tmp), "%f", value);
+
+	const auto length = Length();
+	const Index tmpLength = static_cast<Index>(strlen(tmp));
+	const auto newLength = length + tmpLength + 1;
+
+	if (newLength > buffer->capacity())
+	{
+		buffer->reserve(newLength * 3 / 2);
+	}
+
+	buffer->resize(newLength);
+	memcpy(buffer->data() + length, tmp, tmpLength + 1);
+}
+
+void String::AppendSelf(const TChar* text) noexcept
+{
+	const auto length = Length();
+	const Index textLength = static_cast<Index>(strlen(text));
+	const auto newLength = length + textLength + 1;
+
+	if (newLength > buffer->capacity())
+	{
+		buffer->reserve(newLength * 3 / 2);
+	}
+
+	buffer->resize(newLength);
+	memcpy(buffer->data() + length, text, textLength + 1);
+}
+
+void String::AppendSelf(const String& string) noexcept
+{
+	if (string.IsEmpty())
+	{
+		return;
+	}
+
+	const auto length = Length();
+	const Index textLength = string.Length();
+	const auto newLength = length + textLength + 1;
+
+	if (newLength > buffer->capacity())
+	{
+		buffer->reserve(newLength * 3 / 2);
+	}
+
+	buffer->resize(newLength);
+	memcpy(buffer->data() + length, string.buffer->data(), textLength + 1);
+}
+
+String String::Replace(const String& from, const String& to, Index offset, Index endIndex) const noexcept
+{
+	if (!buffer || from.IsEmpty())
+	{
+		return Clone();
+	}
+
+	const Index strLength = Length();
+	const Index actualEndIndex = !IsValidIndex(endIndex) ? strLength : endIndex;
+	const Index actualOffset = !IsValidIndex(offset) ? 0 : offset;
+	if (actualOffset >= actualEndIndex)
+	{
+		return Clone();
+	}
+
+	const Index searchLength = from.Length();
+	Index foundIndex = strLength;
+
+	for (Index i = actualOffset; i <= actualEndIndex - searchLength; ++i)
+	{
+		bool match = true;
+		for (Index j = 0; j < searchLength; ++j)
+		{
+			if ((*buffer)[i + j] != from.buffer->data()[j])
 			{
-				return i;
-			}
-		}
-
-		return length;
-	}
-
-	String String::Append(const TChar letter) const noexcept
-	{
-		String str;
-		const auto length = Length();
-
-		str.buffer->resize(length + sizeof(TChar) + 1);
-		memcpy(str.buffer->data(), buffer->data(), length);
-
-		(*str.buffer)[length] = letter;
-		(*str.buffer)[length + 1] = '\0';
-
-		return str;
-	}
-
-	String String::Append(const int value) const noexcept
-	{
-		char tmp[16];
-		snprintf(tmp, sizeof(tmp), "%d", value);
-
-		const auto length = Length();
-		const Index tmpLength = static_cast<Index>(strlen(tmp));
-
-		String str;
-		str.buffer->resize(length + tmpLength + 1);
-
-		memcpy(str.buffer->data(), buffer->data(), length);
-		memcpy(str.buffer->data() + length, tmp, tmpLength + 1);
-
-		return str;
-	}
-
-	String String::Append(const float value) const noexcept
-	{
-		char tmp[16];
-		snprintf(tmp, sizeof(tmp), "%f", value);
-
-		const auto length = Length();
-		const Index tmpLength = static_cast<Index>(strlen(tmp));
-
-		String str;
-		str.buffer->resize(length + tmpLength + 1);
-
-		memcpy(str.buffer->data(), buffer->data(), length);
-		memcpy(str.buffer->data() + length, tmp, tmpLength + 1);
-
-		return str;
-	}
-
-	String String::Append(const TChar* text) const noexcept
-	{
-		const auto length = Length();
-		const Index textLength = static_cast<Index>(strlen(text));
-
-		String str;
-		str.buffer->resize(length + textLength + 1);
-
-		memcpy(str.buffer->data(), buffer->data(), length);
-		memcpy(str.buffer->data() + length, text, textLength + 1);
-
-		return str;
-	}
-
-	String String::Append(const String& string) const noexcept
-	{
-		if (string.IsEmpty())
-		{
-			return Clone();
-		}
-
-		const auto length = Length();
-		const auto strLength = string.Length();
-
-		String str;
-		str.buffer->resize(length + strLength + 1);
-
-		memcpy(str.buffer->data(), buffer->data(), length);
-		memcpy(str.buffer->data() + length, string.buffer->data(), strLength + 1);
-
-		return str;
-	}
-
-	void String::AppendSelf(const TChar letter) noexcept
-	{
-		// Optimized single-pass append: obtain a reference to the buffer once,
-		// resize to accommodate the letter + trailing null, and write both
-		// directly. This halves the Shareable dereferencing overhead versus
-		// the previous push_back('\0') + assign-at-index pattern.
-		auto& buf = buffer.Get();
-		const auto index = buf.size();
-		buf.resize(index + 2); // room for the letter + trailing null terminator
-		buf.data()[index] = letter;
-		buf.data()[index + 1] = '\0';
-	}
-
-	void String::AppendSelf(const int value) noexcept
-	{
-		char tmp[16];
-		snprintf(tmp, sizeof(tmp), "%d", value);
-
-		const auto length = Length();
-		const Index tmpLength = static_cast<Index>(strlen(tmp));
-		const auto newLength = length + tmpLength + 1;
-
-		if (newLength > buffer->capacity())
-		{
-			buffer->reserve(newLength * 3 / 2);
-		}
-
-		buffer->resize(newLength);
-		memcpy(buffer->data() + length, tmp, tmpLength + 1);
-	}
-
-	void String::AppendSelf(const float value) noexcept
-	{
-		char tmp[16];
-		snprintf(tmp, sizeof(tmp), "%f", value);
-
-		const auto length = Length();
-		const Index tmpLength = static_cast<Index>(strlen(tmp));
-		const auto newLength = length + tmpLength + 1;
-
-		if (newLength > buffer->capacity())
-		{
-			buffer->reserve(newLength * 3 / 2);
-		}
-
-		buffer->resize(newLength);
-		memcpy(buffer->data() + length, tmp, tmpLength + 1);
-	}
-
-	void String::AppendSelf(const TChar* text) noexcept
-	{
-		const auto length = Length();
-		const Index textLength = static_cast<Index>(strlen(text));
-		const auto newLength = length + textLength + 1;
-
-		if (newLength > buffer->capacity())
-		{
-			buffer->reserve(newLength * 3 / 2);
-		}
-
-		buffer->resize(newLength);
-		memcpy(buffer->data() + length, text, textLength + 1);
-	}
-
-	void String::AppendSelf(const String& string) noexcept
-	{
-		if (string.IsEmpty())
-		{
-			return;
-		}
-
-		const auto length = Length();
-		const Index textLength = string.Length();
-		const auto newLength = length + textLength + 1;
-
-		if (newLength > buffer->capacity())
-		{
-			buffer->reserve(newLength * 3 / 2);
-		}
-
-		buffer->resize(newLength);
-		memcpy(buffer->data() + length, string.buffer->data(), textLength + 1);
-	}
-
-	String String::Replace(const String& from, const String& to, Index offset, Index endIndex) const noexcept
-	{
-		if (!buffer || from.IsEmpty())
-		{
-			return Clone();
-		}
-
-		const Index strLength = Length();
-		const Index actualEndIndex =  !IsValidIndex(endIndex) ? strLength : endIndex;
-		const Index actualOffset = !IsValidIndex(offset) ? 0 : offset;
-		if (actualOffset >= actualEndIndex)
-		{
-			return Clone();
-		}
-
-		const Index searchLength = from.Length();
-		Index foundIndex = strLength;
-
-		for (Index i = actualOffset; i <= actualEndIndex - searchLength; ++i)
-		{
-			bool match = true;
-			for (Index j = 0; j < searchLength; ++j)
-			{
-				if ((*buffer)[i + j] != from.buffer->data()[j])
-				{
-					match = false;
-					break;
-				}
-			}
-
-			if (match)
-			{
-				foundIndex = i;
+				match = false;
 				break;
 			}
 		}
 
-		if (!IsValidIndex(foundIndex))
+		if (match)
 		{
-			return Clone();
+			foundIndex = i;
+			break;
 		}
-
-		String result;
-		result.buffer->clear();
-
-		for (Index i = 0; i < foundIndex; ++i)
-		{
-			result.buffer->push_back((*buffer)[i]);
-		}
-
-		for (Index i = 0; i < to.Length(); ++i)
-		{
-			result.buffer->push_back(to.buffer->data()[i]);
-		}
-
-		for (Index i = foundIndex + searchLength; i < strLength; ++i)
-		{
-			result.buffer->push_back((*buffer)[i]);
-		}
-
-		result.buffer->push_back('\0');
-		result.CalculateHashCode();
-
-		return result;
 	}
 
-	String String::ReplaceAll(char from, char to) const noexcept
+	if (!IsValidIndex(foundIndex))
 	{
-		if (!buffer)
-		{
-			return {};
-		}
-
-		String str = Clone();
-		TChar* data = str.buffer->data();
-		Assert(data != nullptr);
-
-		Index length = str.Length();
-		for (Index i = 0; i < length; ++i)
-		{
-			if (data[i] == from)
-			{
-				data[i] = to;
-			}
-		}
-
-		str.CalculateHashCode();
-
-		return str;
+		return Clone();
 	}
 
-	String String::ReplaceAll(String from, String to) const noexcept
+	String result;
+	result.buffer->clear();
+
+	for (Index i = 0; i < foundIndex; ++i)
 	{
-		if (!buffer || from.IsEmpty())
+		result.buffer->push_back((*buffer)[i]);
+	}
+
+	for (Index i = 0; i < to.Length(); ++i)
+	{
+		result.buffer->push_back(to.buffer->data()[i]);
+	}
+
+	for (Index i = foundIndex + searchLength; i < strLength; ++i)
+	{
+		result.buffer->push_back((*buffer)[i]);
+	}
+
+	result.buffer->push_back('\0');
+	result.CalculateHashCode();
+
+	return result;
+}
+
+String String::ReplaceAll(char from, char to) const noexcept
+{
+	if (!buffer)
+	{
+		return {};
+	}
+
+	String str = Clone();
+	TChar* data = str.buffer->data();
+	Assert(data != nullptr);
+
+	Index length = str.Length();
+	for (Index i = 0; i < length; ++i)
+	{
+		if (data[i] == from)
 		{
-			return Clone();
+			data[i] = to;
+		}
+	}
+
+	str.CalculateHashCode();
+
+	return str;
+}
+
+String String::ReplaceAll(String from, String to) const noexcept
+{
+	if (!buffer || from.IsEmpty())
+	{
+		return Clone();
+	}
+
+	const Index strLength = Length();
+	const Index searchLength = from.Length();
+	const Index toLength = to.Length();
+
+	if (searchLength > strLength)
+	{
+		return Clone();
+	}
+
+	String result;
+	result.buffer->clear();
+
+	Index i = 0;
+	const Index lastIndex = strLength - searchLength;
+	while (i <= lastIndex)
+	{
+		bool match = true;
+		for (Index j = 0; j < searchLength; ++j)
+		{
+			if ((*buffer)[i + j] != from.buffer->data()[j])
+			{
+				match = false;
+				break;
+			}
 		}
 
-		const Index strLength = Length();
-		const Index searchLength = from.Length();
-		const Index toLength = to.Length();
-
-		if (searchLength > strLength)
+		if (match)
 		{
-			return Clone();
+			for (Index j = 0; j < toLength; ++j)
+			{
+				result.buffer->push_back(to.buffer->data()[j]);
+			}
+
+			i += searchLength;
 		}
-
-		String result;
-		result.buffer->clear();
-
-		Index i = 0;
-		const Index lastIndex = strLength - searchLength;
-		while (i <= lastIndex)
-		{
-			bool match = true;
-			for (Index j = 0; j < searchLength; ++j)
-			{
-				if ((*buffer)[i + j] != from.buffer->data()[j])
-				{
-					match = false;
-					break;
-				}
-			}
-
-			if (match)
-			{
-				for (Index j = 0; j < toLength; ++j)
-				{
-					result.buffer->push_back(to.buffer->data()[j]);
-				}
-
-				i += searchLength;
-			}
-			else
-			{
-				result.buffer->push_back((*buffer)[i]);
-				++i;
-			}
-		}
-
-		while (i < strLength)
+		else
 		{
 			result.buffer->push_back((*buffer)[i]);
 			++i;
 		}
-
-		result.buffer->push_back('\0');
-		result.CalculateHashCode();
-
-		return result;
 	}
 
-	void String::ParseKeyValue(String& key, String& value) noexcept
+	while (i < strLength)
 	{
-		auto index = Find('=');
-		key = SubString(0, index).Trim();
-		value = SubString(index + 1).Trim();
+		result.buffer->push_back((*buffer)[i]);
+		++i;
 	}
 
-	void String::CalculateHashCode() noexcept
+	result.buffer->push_back('\0');
+	result.CalculateHashCode();
+
+	return result;
+}
+
+void String::ParseKeyValue(String& key, String& value) noexcept
+{
+	auto index = Find('=');
+	key = SubString(0, index).Trim();
+	value = SubString(index + 1).Trim();
+}
+
+void String::CalculateHashCode() noexcept
+{
+	hashCode = 5381;
+
+	const auto length = Length();
+	auto text = buffer->data();
+
+	Assert(length != 0 || text[0] == '\0');
+
+	for (Index i = 0; i < length; ++i)
 	{
-		hashCode = 5381;
-
-		const auto length = Length();
-		auto text = buffer->data();
-
-		Assert(length != 0 || text[0] == '\0');
-
-		for (Index i = 0; i < length; ++i)
-		{
-			Index ch = text[i];
-			hashCode = ((hashCode << 5) + hashCode) + ch; /* hash * 33 + c */
-		}
+		Index ch = text[i];
+		hashCode = ((hashCode << 5) + hashCode) + ch; /* hash * 33 + c */
 	}
+}
 
-	void String::ResetBuffer(size_t size) noexcept
-	{
-		buffer->reserve(static_cast<Index>(size + 1));
-		buffer->clear();
-		buffer->push_back('\0');
-	}
+void String::ResetBuffer(size_t size) noexcept
+{
+	buffer->reserve(static_cast<Index>(size + 1));
+	buffer->clear();
+	buffer->push_back('\0');
+}
 
 } // namespace hbe
 
@@ -843,309 +862,313 @@ namespace hbe
 namespace hbe
 {
 
-	void StringTest::Prepare()
+void StringTest::Prepare()
+{
+	AddTest("Comparison with Zero-Terminated String", [this](auto& ls)
 	{
-		AddTest("Comparison with Zero-Terminated String", [this](auto& ls)
+		String str("Hello? World!");
+		ls << str.c_str() << lf;
+
+		if (str != "Hello? World!")
 		{
-			String str("Hello? World!");
-			ls << str.c_str() << lf;
+			ls << "String Compare Failure. " << str << lferr;
+		}
+	});
 
-			if (str != "Hello? World!")
-			{
-				ls << "String Compare Failure. " << str << lferr;
-			}
-		});
+	AddTest("To Lower Case", [this](auto& ls)
+	{
+		String str("Hello? World!");
 
-		AddTest("To Lower Case", [this](auto& ls)
+		auto lower = str.GetLowerCase();
+		ls << lower.c_str() << lf;
+
+		if (lower != "hello? world!")
 		{
-			String str("Hello? World!");
+			ls << "To lowercase failed. " << lower << lferr;
+		}
+	});
 
-			auto lower = str.GetLowerCase();
-			ls << lower.c_str() << lf;
+	AddTest("To Upper Case", [this](auto& ls)
+	{
+		String str("Hello? World!");
 
-			if (lower != "hello? world!")
-			{
-				ls << "To lowercase failed. " << lower << lferr;
-			}
-		});
+		auto upper = str.GetUpperCase();
+		ls << upper.c_str() << lf;
 
-		AddTest("To Upper Case", [this](auto& ls)
+		if (upper != "HELLO? WORLD!")
 		{
-			String str("Hello? World!");
+			ls << "To uppercase failed. " << upper << lferr;
+		}
+	});
 
-			auto upper = str.GetUpperCase();
-			ls << upper.c_str() << lf;
+	AddTest("Move Semantics", [this](auto& ls)
+	{
+		String str("Hello? World!");
 
-			if (upper != "HELLO? WORLD!")
-			{
-				ls << "To uppercase failed. " << upper << lferr;
-			}
-		});
+		auto upper = str.GetUpperCase();
+		auto tmpString = std::move(upper);
+		ls << tmpString.c_str() << lf;
 
-		AddTest("Move Semantics", [this](auto& ls)
+		if (tmpString != "HELLO? WORLD!")
 		{
-			String str("Hello? World!");
+			ls << "String move failed." << lferr;
+		}
+	});
 
-			auto upper = str.GetUpperCase();
-			auto tmpString = std::move(upper);
-			ls << tmpString.c_str() << lf;
-
-			if (tmpString != "HELLO? WORLD!")
-			{
-				ls << "String move failed." << lferr;
-			}
-		});
-
-		AddTest("Find Last", [this](auto& ls)
+	AddTest("Find Last", [this](auto& ls)
+	{
+		String str("Hello? World!");
+		auto lastL = str.FindLast('l');
+		if (lastL != 10)
 		{
-			String str("Hello? World!");
-			auto lastL = str.FindLast('l');
-			if (lastL != 10)
-			{
-				ls << "Failed to find the last 'l', index = " << lastL << ", but expected 10." << lferr;
-			}
-		});
+			ls << "Failed to find the last 'l', index = " << lastL << ", but expected 10." << lferr;
+		}
+	});
 
-		AddTest("SubString", [this](auto& ls)
+	AddTest("SubString", [this](auto& ls)
+	{
+		String str("Hello? World!");
+		auto lastL = str.FindLast('l');
+		auto afterL = str.SubString(lastL);
+		ls << afterL.c_str() << lf;
+
+		if (afterL != "ld!")
 		{
-			String str("Hello? World!");
-			auto lastL = str.FindLast('l');
-			auto afterL = str.SubString(lastL);
-			ls << afterL.c_str() << lf;
+			ls << "Substring failed: " << afterL << lferr;
+		}
+	});
 
-			if (afterL != "ld!")
-			{
-				ls << "Substring failed: " << afterL << lferr;
-			}
-		});
+	AddTest("Unsigned Short Constructor", [this](auto& ls)
+	{
+		unsigned short value = 42;
+		String str(value);
+		ls << "Unsigned short 42 = " << str.c_str() << lf;
 
-		AddTest("Unsigned Short Constructor", [this](auto& ls)
+		if (str != "42")
 		{
-			unsigned short value = 42;
-			String str(value);
-			ls << "Unsigned short 42 = " << str.c_str() << lf;
+			ls << "Unsigned short constructor failed: expected '42', got '" << str.c_str() << "'" << lferr;
+		}
 
-			if (str != "42")
-			{
-				ls << "Unsigned short constructor failed: expected '42', got '" << str.c_str() << "'" << lferr;
-			}
-
-			unsigned short zero = 0;
-			String strZero(zero);
-			if (strZero != "0")
-			{
-				ls << "Unsigned short constructor failed for 0: expected '0', got '" << strZero.c_str() << "'" << lferr;
-			}
-
-			unsigned short maxVal = 65535;
-			String strMax(maxVal);
-			if (strMax != "65535")
-			{
-				ls << "Unsigned short constructor failed for 65535: expected '65535', got '" << strMax.c_str() << "'" << lferr;
-			}
-		});
-
-		AddTest("Replace Single", [this](auto& ls)
+		unsigned short zero = 0;
+		String strZero(zero);
+		if (strZero != "0")
 		{
-			String str("Hello World");
-			auto result = str.Replace(String("World"), String("Engine"));
-			ls << "Replace: " << result.c_str() << lf;
+			ls << "Unsigned short constructor failed for 0: expected '0', got '" << strZero.c_str() << "'" << lferr;
+		}
 
-			if (result != "Hello Engine")
-			{
-				ls << "Replace failed: expected 'Hello Engine', got '" << result.c_str() << "'" << lferr;
-			}
-		});
-
-		AddTest("Replace Not Found", [this](auto& ls)
+		unsigned short maxVal = 65535;
+		String strMax(maxVal);
+		if (strMax != "65535")
 		{
-			String str("Hello World");
-			auto result = str.Replace(String("Foo"), String("Bar"));
-			ls << "Replace not found: " << result.c_str() << lf;
+			ls << "Unsigned short constructor failed for 65535: expected '65535', got '" << strMax.c_str() << "'"
+			   << lferr;
+		}
+	});
 
-			if (result != "Hello World")
-			{
-				ls << "Replace not found should return original: expected 'Hello World', got '" << result.c_str() << "'" << lferr;
-			}
-		});
+	AddTest("Replace Single", [this](auto& ls)
+	{
+		String str("Hello World");
+		auto result = str.Replace(String("World"), String("Engine"));
+		ls << "Replace: " << result.c_str() << lf;
 
-		AddTest("Replace With Offset", [this](auto& ls)
+		if (result != "Hello Engine")
 		{
-			String str("foo bar foo baz");
-			auto result = str.Replace(String("foo"), String("XXX"), 5);
-			ls << "Replace with offset: " << result.c_str() << lf;
+			ls << "Replace failed: expected 'Hello Engine', got '" << result.c_str() << "'" << lferr;
+		}
+	});
 
-			if (result != "foo bar XXX baz")
-			{
-				ls << "Replace with offset failed: expected 'foo bar XXX baz', got '" << result.c_str() << "'" << lferr;
-			}
-		});
+	AddTest("Replace Not Found", [this](auto& ls)
+	{
+		String str("Hello World");
+		auto result = str.Replace(String("Foo"), String("Bar"));
+		ls << "Replace not found: " << result.c_str() << lf;
 
-		AddTest("Replace Empty From", [this](auto& ls)
+		if (result != "Hello World")
 		{
-			String str("Hello");
-			auto result = str.Replace(String(""), String("X"));
-			ls << "Replace empty from: " << result.c_str() << lf;
+			ls << "Replace not found should return original: expected 'Hello World', got '" << result.c_str() << "'"
+			   << lferr;
+		}
+	});
 
-			if (result != "Hello")
-			{
-				ls << "Replace empty from should return clone: expected 'Hello', got '" << result.c_str() << "'" << lferr;
-			}
-		});
+	AddTest("Replace With Offset", [this](auto& ls)
+	{
+		String str("foo bar foo baz");
+		auto result = str.Replace(String("foo"), String("XXX"), 5);
+		ls << "Replace with offset: " << result.c_str() << lf;
 
-		AddTest("Replace Longer To", [this](auto& ls)
+		if (result != "foo bar XXX baz")
 		{
-			String str("abc");
-			auto result = str.Replace(String("b"), String("XYZ"));
-			ls << "Replace longer to: " << result.c_str() << lf;
+			ls << "Replace with offset failed: expected 'foo bar XXX baz', got '" << result.c_str() << "'" << lferr;
+		}
+	});
 
-			if (result != "aXYZc")
-			{
-				ls << "Replace longer to failed: expected 'aXYZc', got '" << result.c_str() << "'" << lferr;
-			}
-		});
+	AddTest("Replace Empty From", [this](auto& ls)
+	{
+		String str("Hello");
+		auto result = str.Replace(String(""), String("X"));
+		ls << "Replace empty from: " << result.c_str() << lf;
 
-		AddTest("Replace Shorter To", [this](auto& ls)
+		if (result != "Hello")
 		{
-			String str("Hello World");
-			auto result = str.Replace(String(" World"), String(""));
-			ls << "Replace shorter to: " << result.c_str() << lf;
+			ls << "Replace empty from should return clone: expected 'Hello', got '" << result.c_str() << "'" << lferr;
+		}
+	});
 
-			if (result != "Hello")
-			{
-				ls << "Replace shorter to failed: expected 'Hello', got '" << result.c_str() << "'" << lferr;
-			}
-		});
+	AddTest("Replace Longer To", [this](auto& ls)
+	{
+		String str("abc");
+		auto result = str.Replace(String("b"), String("XYZ"));
+		ls << "Replace longer to: " << result.c_str() << lf;
 
-		AddTest("ReplaceAll Single Char Pattern", [this](auto& ls)
+		if (result != "aXYZc")
 		{
-			String str("a.b.c.d");
-			auto result = str.ReplaceAll(String("."), String("-"));
-			ls << "ReplaceAll: " << result.c_str() << lf;
+			ls << "Replace longer to failed: expected 'aXYZc', got '" << result.c_str() << "'" << lferr;
+		}
+	});
 
-			if (result != "a-b-c-d")
-			{
-				ls << "ReplaceAll failed: expected 'a-b-c-d', got '" << result.c_str() << "'" << lferr;
-			}
-		});
+	AddTest("Replace Shorter To", [this](auto& ls)
+	{
+		String str("Hello World");
+		auto result = str.Replace(String(" World"), String(""));
+		ls << "Replace shorter to: " << result.c_str() << lf;
 
-		AddTest("ReplaceAll Multi Char Pattern", [this](auto& ls)
+		if (result != "Hello")
 		{
-			String str("foo bar foo baz foo");
-			auto result = str.ReplaceAll(String("foo"), String("XXX"));
-			ls << "ReplaceAll multi: " << result.c_str() << lf;
+			ls << "Replace shorter to failed: expected 'Hello', got '" << result.c_str() << "'" << lferr;
+		}
+	});
 
-			if (result != "XXX bar XXX baz XXX")
-			{
-				ls << "ReplaceAll multi failed: expected 'XXX bar XXX baz XXX', got '" << result.c_str() << "'" << lferr;
-			}
-		});
+	AddTest("ReplaceAll Single Char Pattern", [this](auto& ls)
+	{
+		String str("a.b.c.d");
+		auto result = str.ReplaceAll(String("."), String("-"));
+		ls << "ReplaceAll: " << result.c_str() << lf;
 
-		AddTest("ReplaceAll Not Found", [this](auto& ls)
+		if (result != "a-b-c-d")
 		{
-			String str("Hello World");
-			auto result = str.ReplaceAll(String("Foo"), String("Bar"));
-			ls << "ReplaceAll not found: " << result.c_str() << lf;
+			ls << "ReplaceAll failed: expected 'a-b-c-d', got '" << result.c_str() << "'" << lferr;
+		}
+	});
 
-			if (result != "Hello World")
-			{
-				ls << "ReplaceAll not found should return original: expected 'Hello World', got '" << result.c_str() << "'" << lferr;
-			}
-		});
+	AddTest("ReplaceAll Multi Char Pattern", [this](auto& ls)
+	{
+		String str("foo bar foo baz foo");
+		auto result = str.ReplaceAll(String("foo"), String("XXX"));
+		ls << "ReplaceAll multi: " << result.c_str() << lf;
 
-		AddTest("ReplaceAll Empty From", [this](auto& ls)
+		if (result != "XXX bar XXX baz XXX")
 		{
-			String str("Hello");
-			auto result = str.ReplaceAll(String(""), String("X"));
-			ls << "ReplaceAll empty from: " << result.c_str() << lf;
+			ls << "ReplaceAll multi failed: expected 'XXX bar XXX baz XXX', got '" << result.c_str() << "'" << lferr;
+		}
+	});
 
-			if (result != "Hello")
-			{
-				ls << "ReplaceAll empty from should return clone: expected 'Hello', got '" << result.c_str() << "'" << lferr;
-			}
-		});
+	AddTest("ReplaceAll Not Found", [this](auto& ls)
+	{
+		String str("Hello World");
+		auto result = str.ReplaceAll(String("Foo"), String("Bar"));
+		ls << "ReplaceAll not found: " << result.c_str() << lf;
 
-		AddTest("ReplaceAll Longer Replacement", [this](auto& ls)
+		if (result != "Hello World")
 		{
-			String str("abc");
-			auto result = str.ReplaceAll(String("b"), String("XYZ"));
-			ls << "ReplaceAll longer: " << result.c_str() << lf;
+			ls << "ReplaceAll not found should return original: expected 'Hello World', got '" << result.c_str() << "'"
+			   << lferr;
+		}
+	});
 
-			if (result != "aXYZc")
-			{
-				ls << "ReplaceAll longer failed: expected 'aXYZc', got '" << result.c_str() << "'" << lferr;
-			}
-		});
+	AddTest("ReplaceAll Empty From", [this](auto& ls)
+	{
+		String str("Hello");
+		auto result = str.ReplaceAll(String(""), String("X"));
+		ls << "ReplaceAll empty from: " << result.c_str() << lf;
 
-		AddTest("ReplaceAll Shorter Replacement", [this](auto& ls)
+		if (result != "Hello")
 		{
-			String str("Hello World");
-			auto result = str.ReplaceAll(String("o"), String(""));
-			ls << "ReplaceAll shorter: " << result.c_str() << lf;
+			ls << "ReplaceAll empty from should return clone: expected 'Hello', got '" << result.c_str() << "'"
+			   << lferr;
+		}
+	});
 
-			if (result != "Hell Wrld")
-			{
-				ls << "ReplaceAll shorter failed: expected 'Hell Wrld', got '" << result.c_str() << "'" << lferr;
-			}
-		});
+	AddTest("ReplaceAll Longer Replacement", [this](auto& ls)
+	{
+		String str("abc");
+		auto result = str.ReplaceAll(String("b"), String("XYZ"));
+		ls << "ReplaceAll longer: " << result.c_str() << lf;
 
-		AddTest("ReplaceAll Adjacent Matches", [this](auto& ls)
+		if (result != "aXYZc")
 		{
-			String str("aabbcc");
-			auto result = str.ReplaceAll(String("ab"), String("X"));
-			ls << "ReplaceAll adjacent: " << result.c_str() << lf;
+			ls << "ReplaceAll longer failed: expected 'aXYZc', got '" << result.c_str() << "'" << lferr;
+		}
+	});
 
-			if (result != "aXbcc")
-			{
-				ls << "ReplaceAll adjacent failed: expected 'aXbcc', got '" << result.c_str() << "'" << lferr;
-			}
-		});
+	AddTest("ReplaceAll Shorter Replacement", [this](auto& ls)
+	{
+		String str("Hello World");
+		auto result = str.ReplaceAll(String("o"), String(""));
+		ls << "ReplaceAll shorter: " << result.c_str() << lf;
 
-		AddTest("Performance", [this](auto& ls)
+		if (result != "Hell Wrld")
 		{
-			constexpr int COUNT = 100000;
+			ls << "ReplaceAll shorter failed: expected 'Hell Wrld', got '" << result.c_str() << "'" << lferr;
+		}
+	});
 
-			time::TDuration heTime;
+	AddTest("ReplaceAll Adjacent Matches", [this](auto& ls)
+	{
+		String str("aabbcc");
+		auto result = str.ReplaceAll(String("ab"), String("X"));
+		ls << "ReplaceAll adjacent: " << result.c_str() << lf;
 
+		if (result != "aXbcc")
+		{
+			ls << "ReplaceAll adjacent failed: expected 'aXbcc', got '" << result.c_str() << "'" << lferr;
+		}
+	});
+
+	AddTest("Performance", [this](auto& ls)
+	{
+		constexpr int COUNT = 100000;
+
+		time::TDuration heTime;
+
+		{
+			time::ScopedTime measure(heTime);
+
+			String str;
+			for (int i = 0; i < COUNT; ++i)
 			{
-				time::ScopedTime measure(heTime);
-
-				String str;
-				for (int i = 0; i < COUNT; ++i)
+				str = "";
+				for (char ch = 'a'; ch <= 'z'; ++ch)
 				{
-					str = "";
-					for (char ch = 'a'; ch <= 'z'; ++ch)
-					{
-						str += ch;
-					}
+					str += ch;
 				}
 			}
+		}
 
-			time::TDuration stlTime;
+		time::TDuration stlTime;
 
+		{
+			time::ScopedTime measure(stlTime);
+
+			std::string str;
+			for (int i = 0; i < COUNT; ++i)
 			{
-				time::ScopedTime measure(stlTime);
-
-				std::string str;
-				for (int i = 0; i < COUNT; ++i)
+				str = "";
+				for (char ch = 'a'; ch <= 'z'; ++ch)
 				{
-					str = "";
-					for (char ch = 'a'; ch <= 'z'; ++ch)
-					{
-						str += ch;
-					}
+					str += ch;
 				}
 			}
+		}
 
-			ls << "Time: he = " << time::ToFloat(heTime) << ", stl = " << time::ToFloat(stlTime) << lf;
+		ls << "Time: he = " << time::ToFloat(heTime) << ", stl = " << time::ToFloat(stlTime) << lf;
 
-			if (heTime > stlTime)
-			{
-				ls << "HE String is slower than STL string." << std::endl
-				   << "Time: he = " << time::ToFloat(heTime) << ", stl = " << time::ToFloat(stlTime) << lfwarn;
-			}
-		});
-	}
+		if (heTime > stlTime)
+		{
+			ls << "HE String is slower than STL string." << std::endl
+			   << "Time: he = " << time::ToFloat(heTime) << ", stl = " << time::ToFloat(stlTime) << lfwarn;
+		}
+	});
+}
 
 } // namespace hbe
 #endif //__UNIT_TEST__

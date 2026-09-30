@@ -6,15 +6,15 @@
 
 namespace hbe
 {
-	/// @brief Utility functions for pool configuration management.
-	namespace PoolConfigUtil
-	{
+/// @brief Utility functions for pool configuration management.
+namespace PoolConfigUtil
+{
 
-		using TPoolConfigs = std::vector<PoolConfig>;
+using TPoolConfigs = std::vector<PoolConfig>;
 
-		void Normalize(TPoolConfigs& configs);
-		void MergeMax(TPoolConfigs& dst, TPoolConfigs& src);
+void Normalize(TPoolConfigs& configs);
+void MergeMax(TPoolConfigs& dst, TPoolConfigs& src);
 
-	} // namespace PoolConfigUtil
+} // namespace PoolConfigUtil
 
 } // namespace hbe

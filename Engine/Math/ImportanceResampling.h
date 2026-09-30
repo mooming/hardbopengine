@@ -13,154 +13,165 @@
 
 namespace hbe
 {
-	/// @brief Importance resampling class for Monte Carlo integration.
-	template<typename TInput = double, typename TOutput = double, typename TReal = double, typename TInteger = uint32_t>
-	class ImportanceResampling final
+/// @brief Importance resampling class for Monte Carlo integration.
+template <typename TInput = double, typename TOutput = double, typename TReal = double, typename TInteger = uint32_t>
+class ImportanceResampling final
+{
+public:
+	static_assert(std::is_floating_point_v<TReal>);
+	static_assert(std::is_integral_v<TInteger>);
+
+private:
+	TReal totalWeight;
+	hbe::HVector<TReal> weights;
+	hbe::HVector<TInput> samples;
+	hbe::HVector<TReal> normalizedWeights;
+
+public:
+	ImportanceResampling() = default;
+	~ImportanceResampling() = default;
+
+	[[nodiscard]] auto& GetWeights() const noexcept
 	{
-	public:
-		static_assert(std::is_floating_point_v<TReal>);
-		static_assert(std::is_integral_v<TInteger>);
+		return weights;
+	}
 
-	private:
-		TReal totalWeight;
-		hbe::HVector<TReal> weights;
-		hbe::HVector<TInput> samples;
-		hbe::HVector<TReal> normalizedWeights;
+	[[nodiscard]] auto& GetSamples() const noexcept
+	{
+		return samples;
+	}
 
-	public:
-		ImportanceResampling() = default;
-		~ImportanceResampling() = default;
+	[[nodiscard]] auto& GetNormalizedWeights() const noexcept
+	{
+		return normalizedWeights;
+	}
 
-		[[nodiscard]] auto& GetWeights() const noexcept { return weights; }
-		[[nodiscard]] auto& GetSamples() const noexcept { return samples; }
-		[[nodiscard]] auto& GetNormalizedWeights() const noexcept { return normalizedWeights; }
+	void Reset() noexcept
+	{
+		totalWeight = 0;
+		std::swap(weights, hbe::HVector<TReal>());
+		std::swap(normalizedWeights, hbe::HVector<TReal>());
+		std::swap(samples, hbe::HVector<TInput>());
+	}
 
-		void Reset() noexcept
+	void ClearResampledData() noexcept
+	{
+		totalWeight = 0;
+		weights.clear();
+		samples.clear();
+		normalizedWeights.clear();
+	}
+
+	///
+	/// Resample Inportance Sampling
+	///
+	///  To utilise good samples more, it'll resample by weights
+	///
+	/// @param f A function that you want to integrate, TOutput f(const TInput& input)
+	/// @param p A source probability density function, TReal p(const TInput& input)
+	/// @param sampler Random input generator, TInput sampler()
+	/// @param numSourceSamples Number of source samples
+	/// @param norm Calculate a norm of the given function output, TReal norm(const TOutput& output)
+	/// @return false if it fails to resample
+	///
+	template <typename TFunction, typename TPDF, typename TRandomSampler, typename TOutputNorm>
+	[[nodiscard]] bool Resample(const TFunction& f, const TPDF& p, const TRandomSampler& sampler,
+								const TOutputNorm& norm, const TInteger numSourceSamples) noexcept
+	{
+		returnValueIf(false, numSourceSamples <= 0);
+
+		weights.reserve(weights.size() + numSourceSamples);
+		samples.reserve(samples.size() + numSourceSamples);
+
+		TReal sumWeights = 0;
+		for (TInteger i = 0; i < numSourceSamples; ++i)
 		{
-			totalWeight = 0;
-			std::swap(weights, hbe::HVector<TReal>());
-			std::swap(normalizedWeights, hbe::HVector<TReal>());
-			std::swap(samples, hbe::HVector<TInput>());
+			const TInput x = sampler();
+			const TReal p_x = p(x);
+			returnValueIf(false, p_x <= 0);
+
+			const TOutput f_x = f(x);
+			const TOutput fx_over_px = f_x / p_x;
+			const TReal weight = norm(fx_over_px);
+
+			continueIf(weight <= 0);
+
+			sumWeights += weight;
+			weights.emplace_back(weight);
+			samples.emplace_back(x);
 		}
 
-		void ClearResampledData() noexcept
+		if (sumWeights <= 0)
+			return false;
+
+		totalWeight += sumWeights;
+
+		// Normalize Discrete PDF
+		// stepWidth = 1 / numSourceSamples
+		// Total Area = Sum (W[i] * stepWidth) = stepWidth * Sum(W[i]) = StepWith * totalWeight = totalWeight /
+		// numSourceSamples normalizeFactor = numSourceSamples / totalWeight
 		{
-			totalWeight = 0;
-			weights.clear();
-			samples.clear();
+			const auto numSamples = weights.size();
 			normalizedWeights.clear();
+			normalizedWeights.reserve(numSamples);
+
+			const TReal normalizeFactor = static_cast<TReal>(numSamples) / totalWeight;
+			for (auto& weight : weights)
+			{
+				normalizedWeights.push_back(weight * normalizeFactor);
+			}
 		}
 
-		///
-		/// Resample Inportance Sampling
-		///
-		///  To utilise good samples more, it'll resample by weights
-		///
-		/// @param f A function that you want to integrate, TOutput f(const TInput& input)
-		/// @param p A source probability density function, TReal p(const TInput& input)
-		/// @param sampler Random input generator, TInput sampler()
-		/// @param numSourceSamples Number of source samples
-		/// @param norm Calculate a norm of the given function output, TReal norm(const TOutput& output)
-		/// @return false if it fails to resample
-		///
-		template<typename TFunction, typename TPDF, typename TRandomSampler, typename TOutputNorm>
-		[[nodiscard]] bool Resample(const TFunction& f, const TPDF& p, const TRandomSampler& sampler,
-									 const TOutputNorm& norm, const TInteger numSourceSamples) noexcept
+		return true;
+	}
+
+	///
+	/// Monte Carlo Method with Importance resampled importance sampling
+	///
+	///  Importance resampling is a sample generation technique that can be used to generate more equally weighted
+	///  samples for importance sampling.
+	///
+	///
+	/// @param result result of the integration
+	/// @param f A function that you want to integrate, TOutput f(const TInput& input)
+	/// @param discreteSampler A random sampler for index based on resampled probability, TInteger sampler()
+	/// @param uniformSampler A random sampler for input value random deviation, TInput sampler()
+	/// @param numIterations Number of iterations with resampled importance sampling
+	/// @return false if it fails to calculate the integration.
+	///
+	template <typename TFunction, typename TDiscreteSampler, typename TUniformSampler>
+	[[nodiscard]] bool Integrate(TOutput& result, const TFunction& f, const TDiscreteSampler& discreteSampler,
+								 const TUniformSampler& uniformSampler, const TInteger numIterations) noexcept
+	{
+		result = 0;
+
+		returnValueIf(false, numIterations <= 0 || f == nullptr);
+		returnValueIf(false, samples.empty() || weights.empty());
+
+		// Now we have importance resamples
+		for (TInteger i = 0; i < numIterations; ++i)
 		{
-			returnValueIf(false, numSourceSamples <= 0);
-
-			weights.reserve(weights.size() + numSourceSamples);
-			samples.reserve(samples.size() + numSourceSamples);
-
-			TReal sumWeights = 0;
-			for (TInteger i = 0; i < numSourceSamples; ++i)
+			const auto chosenIndex = discreteSampler();
+			const TReal q_x = normalizedWeights[chosenIndex];
+			if (q_x <= 0)
 			{
-				const TInput x = sampler();
-				const TReal p_x = p(x);
-				returnValueIf(false, p_x <= 0);
-
-				const TOutput f_x = f(x);
-				const TOutput fx_over_px = f_x / p_x;
-				const TReal weight = norm(fx_over_px);
-
-				continueIf(weight <= 0);
-
-				sumWeights += weight;
-				weights.emplace_back(weight);
-				samples.emplace_back(x);
-			}
-
-			if (sumWeights <= 0)
+				// it shouldn't reach here.
 				return false;
-
-			totalWeight += sumWeights;
-
-			// Normalize Discrete PDF
-			// stepWidth = 1 / numSourceSamples
-			// Total Area = Sum (W[i] * stepWidth) = stepWidth * Sum(W[i]) = StepWith * totalWeight = totalWeight /
-			// numSourceSamples normalizeFactor = numSourceSamples / totalWeight
-			{
-				const auto numSamples = weights.size();
-				normalizedWeights.clear();
-				normalizedWeights.reserve(numSamples);
-
-				const TReal normalizeFactor = static_cast<TReal>(numSamples) / totalWeight;
-				for (auto& weight : weights)
-				{
-					normalizedWeights.push_back(weight * normalizeFactor);
-				}
 			}
 
-			return true;
+			const auto delta = uniformSampler();
+			auto x = samples[chosenIndex];
+			x += delta;
+			const auto f_x = f(x);
+			const TOutput fx_over_qx = f_x / q_x;
+			result += fx_over_qx;
 		}
 
-		///
-		/// Monte Carlo Method with Importance resampled importance sampling
-		///
-		///  Importance resampling is a sample generation technique that can be used to generate more equally weighted
-		///  samples for importance sampling.
-		///
-		///
-		/// @param result result of the integration
-		/// @param f A function that you want to integrate, TOutput f(const TInput& input)
-		/// @param discreteSampler A random sampler for index based on resampled probability, TInteger sampler()
-		/// @param uniformSampler A random sampler for input value random deviation, TInput sampler()
-		/// @param numIterations Number of iterations with resampled importance sampling
-		/// @return false if it fails to calculate the integration.
-		///
-		template<typename TFunction, typename TDiscreteSampler, typename TUniformSampler>
-		[[nodiscard]] bool Integrate(TOutput& result, const TFunction& f, const TDiscreteSampler& discreteSampler,
-									  const TUniformSampler& uniformSampler, const TInteger numIterations) noexcept
-		{
-			result = 0;
+		result /= numIterations;
 
-			returnValueIf(false, numIterations <= 0 || f == nullptr);
-			returnValueIf(false, samples.empty() || weights.empty());
-
-			// Now we have importance resamples
-			for (TInteger i = 0; i < numIterations; ++i)
-			{
-				const auto chosenIndex = discreteSampler();
-				const TReal q_x = normalizedWeights[chosenIndex];
-				if (q_x <= 0)
-				{
-					// it shouldn't reach here.
-					return false;
-				}
-
-				const auto delta = uniformSampler();
-				auto x = samples[chosenIndex];
-				x += delta;
-				const auto f_x = f(x);
-				const TOutput fx_over_qx = f_x / q_x;
-				result += fx_over_qx;
-			}
-
-			result /= numIterations;
-
-			return true;
-		}
-	};
+		return true;
+	}
+};
 } // namespace hbe
 
 #ifdef __UNIT_TEST__
@@ -168,13 +179,16 @@ namespace hbe
 
 namespace hbe
 {
-	class ImportanceResamplingTest final : public TestCollection
+class ImportanceResamplingTest final : public TestCollection
+{
+public:
+	ImportanceResamplingTest()
+		: TestCollection("Importance Resampling Test")
 	{
-	public:
-		ImportanceResamplingTest() : TestCollection("Importance Resampling Test") {}
+	}
 
-	protected:
-		void Prepare() noexcept override;
-	};
+protected:
+	void Prepare() noexcept override;
+};
 } // namespace hbe
 #endif //__UNIT_TEST__

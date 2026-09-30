@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Hansol Park (mooming.go@gmail.com). All rights reserved.
 
-#include "OSAbstractLayer.h"
 #include "Core/CommonMacros.h"
+#include "OSAbstractLayer.h"
 
 #ifdef PLATFORM_OSX
 #include <cstdio>

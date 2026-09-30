@@ -2,12 +2,11 @@
 
 #include "AABB.h"
 
-
 namespace hbe
 {
 
-	template class AABB<TFloat2>;
-	template class AABB<TFloat3>;
+template class AABB<TFloat2>;
+template class AABB<TFloat3>;
 
 } // namespace hbe
 

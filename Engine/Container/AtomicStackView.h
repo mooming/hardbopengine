@@ -8,60 +8,65 @@
 namespace hbe
 {
 
-	template<typename T>
-	concept CNext = requires(T t) { t.next; };
+template <typename T>
+concept CNext = requires(T t) { t.next; };
 
-	template<CNext T>
-	class AtomicStackView final
+template <CNext T>
+class AtomicStackView final
+{
+public:
+	/// @brief A lock-free atomic stack implementation using CAS operations
+private:
+	static_assert(std::atomic<T*>::is_always_lock_free,
+				  "The speicified type is not always lock free on this platfrom.");
+	std::atomic<T*> top;
+
+public:
+	using Iterator = T*;
+	using ConstIterator = const T*;
+
+public:
+	AtomicStackView() noexcept
+		: top(nullptr)
 	{
-	public:
-		/// @brief A lock-free atomic stack implementation using CAS operations
-	private:
-		static_assert(std::atomic<T*>::is_always_lock_free,
-					  "The speicified type is not always lock free on this platfrom.");
-		std::atomic<T*> top;
+	}
 
-	public:
-		using Iterator = T*;
-		using ConstIterator = const T*;
+	~AtomicStackView() = default;
 
-	public:
-		AtomicStackView() noexcept : top(nullptr) {}
+	void Push(T& newItem) noexcept
+	{
+		newItem.next = top.load(std::memory_order_relaxed);
 
-		~AtomicStackView() = default;
+		while (!top.compare_exchange_weak(newItem.next, &newItem, std::memory_order_release, std::memory_order_relaxed))
+			;
+	}
 
-		void Push(T& newItem) noexcept
+	T* Pop() noexcept
+	{
+		T* node = top.load(std::memory_order_relaxed);
+		if (unlikely(node == nullptr))
 		{
-			newItem.next = top.load(std::memory_order_relaxed);
-
-			while (!top.compare_exchange_weak(newItem.next, &newItem, std::memory_order_release,
-											  std::memory_order_relaxed))
-				;
+			return nullptr;
 		}
 
-		T* Pop() noexcept
+		while (!top.compare_exchange_weak(node, node->next, std::memory_order_release, std::memory_order_relaxed))
 		{
-			T* node = top.load(std::memory_order_relaxed);
-			if (unlikely(node == nullptr))
+			if (node == nullptr)
 			{
 				return nullptr;
 			}
-
-			while (!top.compare_exchange_weak(node, node->next, std::memory_order_release, std::memory_order_relaxed))
-			{
-				if (node == nullptr)
-				{
-					return nullptr;
-				}
-			}
-
-			node->next = nullptr;
-
-			return node;
 		}
 
-		[[nodiscard]] bool IsEmpty() const noexcept { return top.load(std::memory_order_relaxed) == nullptr; }
-	};
+		node->next = nullptr;
+
+		return node;
+	}
+
+	[[nodiscard]] bool IsEmpty() const noexcept
+	{
+		return top.load(std::memory_order_relaxed) == nullptr;
+	}
+};
 
 } // namespace hbe
 
@@ -71,14 +76,17 @@ namespace hbe
 namespace hbe
 {
 
-	class AtomicStackViewTest : public TestCollection
+class AtomicStackViewTest : public TestCollection
+{
+public:
+	AtomicStackViewTest()
+		: TestCollection("AtomicStackViewTest")
 	{
-	public:
-		AtomicStackViewTest() : TestCollection("AtomicStackViewTest") {}
+	}
 
-	protected:
-		void Prepare() override;
-	};
+protected:
+	void Prepare() override;
+};
 
 } // namespace hbe
 

@@ -30,7 +30,10 @@ size_t OS::GetPageSize() noexcept
 	return pageSize;
 }
 
-void* OS::VirtualAlloc(size_t size) { return ::VirtualAlloc(nullptr, size, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE); }
+void* OS::VirtualAlloc(size_t size)
+{
+	return ::VirtualAlloc(nullptr, size, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+}
 
 void OS::VirtualFree(void* address, std::size_t n) noexcept
 {

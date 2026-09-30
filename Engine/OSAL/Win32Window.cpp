@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Hansol Park (mooming.go@gmail.com). All rights reserved.
 
-#include "Window.h"
 #include "Core/CommonMacros.h"
+#include "Window.h"
 
 #ifdef PLATFORM_WINDOWS
 #include <windows.h>
@@ -10,7 +10,12 @@ namespace OS
 {
 
 Window::Window()
-	: hwnd(nullptr), width(0), height(0), visibleFlag(true), closedFlag(false), shouldCloseFlag(false)
+	: hwnd(nullptr)
+	, width(0)
+	, height(0)
+	, visibleFlag(true)
+	, closedFlag(false)
+	, shouldCloseFlag(false)
 {
 }
 
@@ -32,14 +37,8 @@ bool Window::CreateWindow(const hbe::HString& title, int width, int height)
 
 	RegisterClass(&wc);
 
-	hwnd = CreateWindowEx(
-		0,
-		"HardbopEngineWindowClass",
-		title.c_str(),
-		WS_OVERLAPPEDWINDOW,
-		CW_USEDEFAULT, CW_USEDEFAULT, width, height,
-		nullptr, nullptr, hInstance, this
-	);
+	hwnd = CreateWindowEx(0, "HardbopEngineWindowClass", title.c_str(), WS_OVERLAPPEDWINDOW, CW_USEDEFAULT,
+						  CW_USEDEFAULT, width, height, nullptr, nullptr, hInstance, this);
 
 	returnValueIf(false, hwnd == nullptr);
 
@@ -147,16 +146,16 @@ long Window::WindowProc(void* hwnd, unsigned int uMsg, unsigned long long wParam
 	{
 		switch (uMsg)
 		{
-		case WM_DESTROY:
-			pThis->shouldCloseFlag = true;
-			PostQuitMessage(0);
+			case WM_DESTROY:
+				pThis->shouldCloseFlag = true;
+				PostQuitMessage(0);
 
-			return 0;
-		case WM_SIZE:
-			pThis->width = LOWORD(lParam);
-			pThis->height = HIWORD(lParam);
+				return 0;
+			case WM_SIZE:
+				pThis->width = LOWORD(lParam);
+				pThis->height = HIWORD(lParam);
 
-			return 0;
+				return 0;
 		}
 	}
 

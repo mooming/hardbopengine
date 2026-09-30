@@ -9,65 +9,65 @@
 
 namespace
 {
-	template<int BufferSize>
-	class VectorGrowthTest final
+template <int BufferSize>
+class VectorGrowthTest final
+{
+public:
+	float operator()(const char* name, auto& ls, auto& lf, int vectorSize) const
 	{
-	public:
-		float operator()(const char* name, auto& ls, auto& lf, int vectorSize) const
+		using namespace hbe;
+
+		time::TDuration inlineTime;
+		time::TDuration stdTime;
+
+		constexpr int testIterations = 2048;
+
 		{
-			using namespace hbe;
+			time::ScopedTime measure(inlineTime);
 
-			time::TDuration inlineTime;
-			time::TDuration stdTime;
+			std::vector<int, InlinePoolAllocator<int, BufferSize, 8>> v;
 
-			constexpr int testIterations = 2048;
-
+			for (int j = 0; j < testIterations; ++j)
 			{
-				time::ScopedTime measure(inlineTime);
-
-				std::vector<int, InlinePoolAllocator<int, BufferSize, 8>> v;
-
-				for (int j = 0; j < testIterations; ++j)
+				v.reserve(vectorSize);
+				for (int i = 0; i < vectorSize; ++i)
 				{
-					v.reserve(vectorSize);
-					for (int i = 0; i < vectorSize; ++i)
-					{
-						v.push_back(i);
-					}
-
-					v.clear();
-					v.shrink_to_fit();
+					v.push_back(i);
 				}
+
+				v.clear();
+				v.shrink_to_fit();
 			}
-
-			{
-				time::ScopedTime measure(stdTime);
-				std::vector<int> v;
-
-				for (int j = 0; j < testIterations; ++j)
-				{
-					for (int i = 0; i < vectorSize; ++i)
-					{
-						v.reserve(i + 1);
-						v.push_back(i);
-						v.shrink_to_fit();
-					}
-
-					v.clear();
-					v.shrink_to_fit();
-				}
-			}
-
-			auto inlineTimeSec = time::ToFloat(inlineTime);
-			auto stdTimeSec = time::ToFloat(stdTime);
-			auto rate = inlineTimeSec / stdTimeSec;
-
-			ls << "Vector Growth Performance : InlineAlloc: " << inlineTimeSec << " msec vs STL: " << stdTimeSec
-			   << " msec, rate = " << rate << lf;
-
-			return rate;
 		}
-	};
+
+		{
+			time::ScopedTime measure(stdTime);
+			std::vector<int> v;
+
+			for (int j = 0; j < testIterations; ++j)
+			{
+				for (int i = 0; i < vectorSize; ++i)
+				{
+					v.reserve(i + 1);
+					v.push_back(i);
+					v.shrink_to_fit();
+				}
+
+				v.clear();
+				v.shrink_to_fit();
+			}
+		}
+
+		auto inlineTimeSec = time::ToFloat(inlineTime);
+		auto stdTimeSec = time::ToFloat(stdTime);
+		auto rate = inlineTimeSec / stdTimeSec;
+
+		ls << "Vector Growth Performance : InlineAlloc: " << inlineTimeSec << " msec vs STL: " << stdTimeSec
+		   << " msec, rate = " << rate << lf;
+
+		return rate;
+	}
+};
 } // namespace
 
 void hbe::InlinePoolAllocatorTest::Prepare()

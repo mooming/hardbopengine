@@ -14,9 +14,15 @@
 #include "Core/Debug.h"
 #include "Intrinsic.h"
 
-size_t OS::GetAllocSize(void* ptr) noexcept { return malloc_usable_size(ptr); }
+size_t OS::GetAllocSize(void* ptr) noexcept
+{
+	return malloc_usable_size(ptr);
+}
 
-size_t OS::GetPageSize() noexcept { return sysconf(_SC_PAGESIZE); }
+size_t OS::GetPageSize() noexcept
+{
+	return sysconf(_SC_PAGESIZE);
+}
 
 void* OS::VirtualAlloc(size_t size)
 {
@@ -27,7 +33,10 @@ void* OS::VirtualAlloc(size_t size)
 
 // BUG FIX: Memory allocated with mmap() must be freed with munmap(), not free()
 // Using free() on mmap'd memory causes undefined behavior and heap corruption
-void OS::VirtualFree(void* address, std::size_t size) noexcept { munmap(address, size); }
+void OS::VirtualFree(void* address, std::size_t size) noexcept
+{
+	munmap(address, size);
+}
 
 bool OS::IsValidAllocation(void* ptr) noexcept
 {

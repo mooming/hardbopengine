@@ -9,7 +9,10 @@ class MapSyncMode final
 public:
 	int value;
 
-	MapSyncMode() noexcept : value(0) {}
+	MapSyncMode() noexcept
+		: value(0)
+	{
+	}
 
 	void SetAsync() noexcept;
 	void SetSync() noexcept;

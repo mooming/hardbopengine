@@ -2,10 +2,9 @@
 
 #include "Vector4.h"
 
-
 namespace hbe
 {
-	template class Vector4<float>;
+template class Vector4<float>;
 } // namespace hbe
 
 #ifdef __UNIT_TEST__

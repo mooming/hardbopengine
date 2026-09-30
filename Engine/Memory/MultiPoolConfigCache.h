@@ -7,35 +7,46 @@
 
 namespace hbe
 {
-	class Buffer;
+class Buffer;
 
-	/// @brief Cache for multi-pool allocator configurations.
-	/// @details Serializes and deserializes pool configurations.
-	class MultiPoolConfigCache final
+/// @brief Cache for multi-pool allocator configurations.
+/// @details Serializes and deserializes pool configurations.
+class MultiPoolConfigCache final
+{
+public:
+	using TVersion = uint32_t;
+
+	template <typename T>
+	using TVector = std::vector<T>;
+	using TMultiPoolConfigs = TVector<MultiPoolAllocatorConfig>;
+
+private:
+	static constexpr TVersion version = 0;
+	TMultiPoolConfigs data;
+
+public:
+	static StaticString GetClassName();
+
+	size_t Serialize(Buffer& outBuffer);
+	bool Deserialize(const Buffer& buffer);
+
+	[[nodiscard]] static auto GetVersion()
 	{
-	public:
-		using TVersion = uint32_t;
+		return version;
+	}
 
-		template<typename T>
-		using TVector = std::vector<T>;
-		using TMultiPoolConfigs = TVector<MultiPoolAllocatorConfig>;
+	[[nodiscard]] auto& GetData()
+	{
+		return data;
+	}
 
-	private:
-		static constexpr TVersion version = 0;
-		TMultiPoolConfigs data;
+	[[nodiscard]] auto& GetData() const
+	{
+		return data;
+	}
 
-	public:
-		static StaticString GetClassName();
-
-		size_t Serialize(Buffer& outBuffer);
-		bool Deserialize(const Buffer& buffer);
-
-		[[nodiscard]] static auto GetVersion() { return version; }
-		[[nodiscard]] auto& GetData() { return data; }
-		[[nodiscard]] auto& GetData() const { return data; }
-
-	private:
-		void Normalize();
-	};
+private:
+	void Normalize();
+};
 
 } // namespace hbe

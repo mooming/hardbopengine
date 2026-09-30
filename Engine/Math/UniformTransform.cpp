@@ -46,8 +46,8 @@ void hbe::UniformTransformTest::Prepare() noexcept
 
 		if (tm * TFloat3::Forward != TFloat3::Forward)
 		{
-			ls << "Identity Transform Failed. " << (tm * TFloat3::Forward) << ", but " << TFloat3::Forward << " expected."
-			   << lferr;
+			ls << "Identity Transform Failed. " << (tm * TFloat3::Forward) << ", but " << TFloat3::Forward
+			   << " expected." << lferr;
 		}
 	});
 
@@ -62,8 +62,8 @@ void hbe::UniformTransformTest::Prepare() noexcept
 
 		if (result1 != result2)
 		{
-			ls << "Transform result failed. " << (tm3 * TFloat4(TFloat3::Forward, 1.0f)) << ", but " << result2 << " expected."
-			   << lferr;
+			ls << "Transform result failed. " << (tm3 * TFloat4(TFloat3::Forward, 1.0f)) << ", but " << result2
+			   << " expected." << lferr;
 		}
 
 		if (!tm3.IsInvertible())
@@ -74,7 +74,8 @@ void hbe::UniformTransformTest::Prepare() noexcept
 		TFloat3 result = tm3.Inverse() * TFloat4(result1, 1.0f);
 		if (result != TFloat3::Forward)
 		{
-			ls << "Transform matrix inverse failed. " << result << ", but " << TFloat3::Forward << " expected." << lferr;
+			ls << "Transform matrix inverse failed. " << result << ", but " << TFloat3::Forward << " expected."
+			   << lferr;
 		}
 
 		result = tm2.InverseTransform(tm.InverseTransform(result2));

@@ -10,7 +10,10 @@ class ProtectionMode final
 public:
 	int value;
 
-	ProtectionMode() noexcept : value(0) {}
+	ProtectionMode() noexcept
+		: value(0)
+	{
+	}
 
 	void SetForbidden() noexcept;
 	void SetReadable() noexcept;

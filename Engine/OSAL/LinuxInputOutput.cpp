@@ -64,8 +64,7 @@ bool Close(FileHandle&& inHandle) noexcept
 	auto result = close(fd);
 	if (unlikely(result < 0))
 	{
-		log.OutWarning([fd, result](auto& ls)
-		{
+		log.OutWarning([fd, result](auto& ls) {
 			ls << "File Close (fd:" << fd << ") failed. result = " << result << ", reason(" << std::strerror(errno)
 			   << ')';
 		});
@@ -282,8 +281,7 @@ bool UnmapMemory(void* ptr, size_t size) noexcept
 	auto result = munmap(ptr, size);
 	if (unlikely(result != 0))
 	{
-		log.OutError([ptr, size](auto& ls)
-		{
+		log.OutError([ptr, size](auto& ls) {
 			ls << "Failed to unmap(" << ptr << ") with the size " << size << ". ErrorMsg(" << std::strerror(errno)
 			   << ')';
 		});

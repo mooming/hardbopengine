@@ -24,8 +24,10 @@ struct MeshVertex
 	MeshVertex() = default;
 
 	MeshVertex(float x, float y, float z, float nx, float ny, float nz)
-		: position{x, y, z}, normal{nx, ny, nz}
-	{}
+		: position{x, y, z}
+		, normal{nx, ny, nz}
+	{
+	}
 };
 
 /// @brief A triangle mesh to upload to the GPU.
@@ -49,7 +51,8 @@ struct PushConstants
 
 inline void IdentityMatrix(float m[16]) noexcept
 {
-	for (int i = 0; i < 16; ++i) m[i] = 0.0f;
+	for (int i = 0; i < 16; ++i)
+		m[i] = 0.0f;
 	m[0] = m[5] = m[10] = m[15] = 1.0f;
 }
 

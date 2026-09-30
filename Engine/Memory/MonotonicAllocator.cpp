@@ -7,12 +7,14 @@
 #include "Core/Debug.h"
 #include "MemoryManager.h"
 
-
 namespace hbe
 {
 
-MonotonicAllocator::MonotonicAllocator(const char* name, TSize inCapacity) :
-	id(InvalidAllocatorID), cursor(0), capacity(inCapacity), buffer(nullptr)
+MonotonicAllocator::MonotonicAllocator(const char* name, TSize inCapacity)
+	: id(InvalidAllocatorID)
+	, cursor(0)
+	, capacity(inCapacity)
+	, buffer(nullptr)
 {
 	{
 		constexpr auto AlignUnit = Config::DefaultAlign;
@@ -122,21 +124,21 @@ size_t MonotonicAllocator::GetUsage() const
 	return cursor;
 }
 
-	bool MonotonicAllocator::IsMine(TPointer ptr) const
+bool MonotonicAllocator::IsMine(TPointer ptr) const
+{
+	auto bytePtr = static_cast<uint8_t*>(ptr);
+	if (bytePtr < buffer)
 	{
-		auto bytePtr = static_cast<uint8_t*>(ptr);
-		if (bytePtr < buffer)
-		{
-			return false;
-		}
-
-		if (bytePtr >= (buffer + capacity))
-		{
-			return false;
-		}
-
-		return true;
+		return false;
 	}
+
+	if (bytePtr >= (buffer + capacity))
+	{
+		return false;
+	}
+
+	return true;
+}
 
 } // namespace hbe
 

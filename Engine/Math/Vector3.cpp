@@ -2,10 +2,9 @@
 
 #include "Vector3.h"
 
-
 namespace hbe
 {
-	template class Vector3<float>;
+template class Vector3<float>;
 } // namespace hbe
 
 #ifdef __UNIT_TEST__
@@ -119,7 +118,8 @@ void hbe::Vector3Test::Prepare() noexcept
 
 		if (y != TFloat3::Slerp(x, y, 1.0f))
 		{
-			ls << "Float3 slerp 1 should match its destination " << y << ", but " << TFloat3::Slerp(x, y, 1.0f) << lferr;
+			ls << "Float3 slerp 1 should match its destination " << y << ", but " << TFloat3::Slerp(x, y, 1.0f)
+			   << lferr;
 		}
 
 		TFloat3 half = TFloat3::Slerp(x, y, 0.5f);

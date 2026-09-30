@@ -21,8 +21,8 @@ class Button final : public UIComponent
 public:
 	enum class Type
 	{
-		Normal,  // Standard button
-		Danger,  // Red-themed (e.g., Close)
+		Normal, // Standard button
+		Danger, // Red-themed (e.g., Close)
 		Primary, // Blue-themed (e.g., Full Screen)
 	};
 
@@ -63,7 +63,7 @@ private:
 	std::string label;
 	Type buttonType;
 	bool pressedFlag;
-	bool wasPressedOutside;  // Track if mouse was pressed outside, to cancel click
+	bool wasPressedOutside; // Track if mouse was pressed outside, to cancel click
 
 	// Colors (ARGB format)
 	static constexpr uint32_t NormalBg = 0xFF2D3139u;

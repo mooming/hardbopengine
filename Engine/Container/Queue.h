@@ -8,60 +8,92 @@
 #include "Container/Deque.h"
 #include "Core/Debug.h"
 
-
 namespace hbe
 {
 
-	template<typename TElement, class TContainer = Deque<TElement>>
-	class Queue final
+template <typename TElement, class TContainer = Deque<TElement>>
+class Queue final
+{
+public:
+	using TContainerType = TContainer;
+
+	Queue() = default;
+
+	Queue(const Queue&) = delete;
+
+	Queue(Queue&& rhs) noexcept
+		: container(std::move(rhs.container))
 	{
-	public:
-		using TContainerType = TContainer;
+	}
 
-		Queue() = default;
+	Queue& operator=(const Queue&) = delete;
 
-		Queue(const Queue&) = delete;
+	Queue& operator=(Queue&& rhs) noexcept
+	{
+		container = std::move(rhs.container);
+		return *this;
+	}
 
-		Queue(Queue&& rhs) noexcept
-			: container(std::move(rhs.container))
-		{
-		}
+	void Push(const TElement& value) noexcept
+	{
+		container.PushBack(value);
+	}
 
-		Queue& operator=(const Queue&) = delete;
+	void Push(TElement&& value) noexcept
+	{
+		container.PushBack(std::move(value));
+	}
 
-		Queue& operator=(Queue&& rhs) noexcept
-		{
-			container = std::move(rhs.container);
-			return *this;
-		}
+	template <typename... Types>
+	TElement& Emplace(Types&&... args) noexcept
+	{
+		return container.EmplaceBack(std::forward<Types>(args)...);
+	}
 
-		void Push(const TElement& value) noexcept { container.PushBack(value); }
-		void Push(TElement&& value) noexcept { container.PushBack(std::move(value)); }
+	void Pop() noexcept
+	{
+		FatalAssert(!container.IsEmpty());
+		container.PopFront();
+	}
 
-		template<typename... Types>
-		TElement& Emplace(Types&&... args) noexcept
-		{
-			return container.EmplaceBack(std::forward<Types>(args)...);
-		}
+	TElement& Front() noexcept
+	{
+		return container.Front();
+	}
 
-		void Pop() noexcept
-		{
-			FatalAssert(!container.IsEmpty());
-			container.PopFront();
-		}
+	const TElement& Front() const noexcept
+	{
+		return container.Front();
+	}
 
-		TElement& Front() noexcept { return container.Front(); }
-		const TElement& Front() const noexcept { return container.Front(); }
-		TElement& Back() noexcept { return container.Back(); }
-		const TElement& Back() const noexcept { return container.Back(); }
+	TElement& Back() noexcept
+	{
+		return container.Back();
+	}
 
-		[[nodiscard]] auto Size() const noexcept { return container.Size(); }
-		[[nodiscard]] bool IsEmpty() const noexcept { return container.IsEmpty(); }
-		void Clear() noexcept { container.Clear(); }
+	const TElement& Back() const noexcept
+	{
+		return container.Back();
+	}
 
-	private:
-		TContainer container;
-	};
+	[[nodiscard]] auto Size() const noexcept
+	{
+		return container.Size();
+	}
+
+	[[nodiscard]] bool IsEmpty() const noexcept
+	{
+		return container.IsEmpty();
+	}
+
+	void Clear() noexcept
+	{
+		container.Clear();
+	}
+
+private:
+	TContainer container;
+};
 
 } // namespace hbe
 
@@ -71,14 +103,17 @@ namespace hbe
 namespace hbe
 {
 
-	class QueueTest : public TestCollection
+class QueueTest : public TestCollection
+{
+public:
+	QueueTest()
+		: TestCollection("QueueTest")
 	{
-	public:
-		QueueTest() : TestCollection("QueueTest") {}
+	}
 
-	protected:
-		void Prepare() override;
-	};
+protected:
+	void Prepare() override;
+};
 
 } // namespace hbe
 #endif //__UNIT_TEST__

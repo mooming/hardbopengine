@@ -30,9 +30,16 @@ void SetHandle(FileHandle& outHandle, int fd)
 
 } // namespace
 
-FileHandle::FileHandle() { Invalidate(); }
+FileHandle::FileHandle()
+{
+	Invalidate();
+}
 
-FileHandle::FileHandle(FileHandle&& rhs) : data(rhs.data) { rhs.Invalidate(); }
+FileHandle::FileHandle(FileHandle&& rhs)
+	: data(rhs.data)
+{
+	rhs.Invalidate();
+}
 
 FileHandle::~FileHandle()
 {
@@ -64,7 +71,10 @@ bool FileHandle::IsValid() const noexcept
 	return fd >= 0;
 }
 
-void FileHandle::Invalidate() noexcept { SetHandle(*this, -1); }
+void FileHandle::Invalidate() noexcept
+{
+	SetHandle(*this, -1);
+}
 
 } // namespace OS
 #endif // PLATFORM_OSX

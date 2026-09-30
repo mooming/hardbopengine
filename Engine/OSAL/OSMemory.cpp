@@ -13,12 +13,12 @@
 
 // Ensure a valid platform is defined
 #if !defined(PLATFORM_LINUX) && !defined(PLATFORM_OSX) && !defined(PLATFORM_WINDOWS)
-    #error "No platform macro defined. Please define one of: PLATFORM_LINUX, PLATFORM_OSX, PLATFORM_WINDOWS"
+#error "No platform macro defined. Please define one of: PLATFORM_LINUX, PLATFORM_OSX, PLATFORM_WINDOWS"
 #endif
 
 // Skip fallback implementation if platform-specific files are being compiled
 #if defined(PLATFORM_LINUX) || defined(PLATFORM_OSX) || defined(PLATFORM_WINDOWS)
-    // Platform-specific implementation will handle this
+// Platform-specific implementation will handle this
 #elif defined(__linux__)
 #include <cerrno>
 #include <cstdlib>
@@ -27,9 +27,15 @@
 #include <sys/mman.h>
 #include <unistd.h>
 
-size_t OS::GetAllocSize(void* ptr) noexcept { return malloc_usable_size(ptr); }
+size_t OS::GetAllocSize(void* ptr) noexcept
+{
+	return malloc_usable_size(ptr);
+}
 
-size_t OS::GetPageSize() noexcept { return sysconf(_SC_PAGESIZE); }
+size_t OS::GetPageSize() noexcept
+{
+	return sysconf(_SC_PAGESIZE);
+}
 
 void* OS::VirtualAlloc(size_t size)
 {
@@ -40,7 +46,10 @@ void* OS::VirtualAlloc(size_t size)
 
 // BUG FIX: Parameter was unnamed but body referenced 'size' - caused compilation error
 // Added parameter name to fix undefined variable error
-void OS::VirtualFree(void* address, std::size_t size) noexcept { munmap(address, size); }
+void OS::VirtualFree(void* address, std::size_t size) noexcept
+{
+	munmap(address, size);
+}
 
 void OS::ProtectMemory(void* address, size_t n) noexcept
 {
@@ -62,7 +71,10 @@ void OS::ProtectMemory(void* address, size_t n) noexcept
 #include <sys/mman.h>
 #include <unistd.h>
 
-size_t OS::GetAllocSize(void* ptr) noexcept { return malloc_size(ptr); }
+size_t OS::GetAllocSize(void* ptr) noexcept
+{
+	return malloc_size(ptr);
+}
 
 size_t OS::GetPageSize() noexcept
 {
@@ -77,7 +89,10 @@ void* OS::VirtualAlloc(size_t size)
 	return ptr;
 }
 
-void OS::VirtualFree(void* address, std::size_t size) noexcept { munmap(address, size); }
+void OS::VirtualFree(void* address, std::size_t size) noexcept
+{
+	munmap(address, size);
+}
 
 bool OS::IsValidAllocation(void* ptr) noexcept
 {
@@ -124,7 +139,10 @@ size_t OS::GetPageSize() noexcept
 	return pageSize;
 }
 
-void* OS::VirtualAlloc(size_t size) noexcept { return ::VirtualAlloc(nullptr, size, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE); }
+void* OS::VirtualAlloc(size_t size) noexcept
+{
+	return ::VirtualAlloc(nullptr, size, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+}
 
 void OS::VirtualFree(void* address, std::size_t n) noexcept
 {

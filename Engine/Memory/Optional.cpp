@@ -66,9 +66,15 @@ void hbe::OptionalTest::Prepare()
 		{
 			int x;
 
-			Integer() : x(conCount++) {}
+			Integer()
+				: x(conCount++)
+			{
+			}
 
-			~Integer() { ++desCount; }
+			~Integer()
+			{
+				++desCount;
+			}
 		};
 
 		Optional<Integer&> a;

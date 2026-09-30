@@ -11,34 +11,47 @@
 namespace hbe
 {
 
-	class AllocatorProxy final
-	{
-	public:
-		using TAllocBytes = void* (*) (void* /*userData*/, size_t /* allocSize */);
-		using TDeallocBytes = void (*)(void* /*userData*/, void* /* pointer */, size_t /* allocSize */);
+class AllocatorProxy final
+{
+public:
+	using TAllocBytes = void* (*) (void* /*userData*/, size_t /* allocSize */);
+	using TDeallocBytes = void (*)(void* /*userData*/, void* /* pointer */, size_t /* allocSize */);
 
-		TAllocatorID id;
-		AllocatorProxy* next;
-		void* allocator;
-		TAllocBytes allocate;
-		TDeallocBytes deallocate;
+	TAllocatorID id;
+	AllocatorProxy* next;
+	void* allocator;
+	TAllocBytes allocate;
+	TDeallocBytes deallocate;
 
 #if PROFILE_ENABLED
-		AllocStats stats;
+	AllocStats stats;
 #endif // PROFILE_ENABLED
 
 #if MEMORY_VERIFICATION_ENABLED
-		std::thread::id threadId;
+	std::thread::id threadId;
 #endif // MEMORY_VERIFICATION_ENABLED
 
-	public:
-		AllocatorProxy() : id(InvalidAllocatorID), next(nullptr), allocator(nullptr), allocate(nullptr), deallocate(nullptr) {}
+public:
+	AllocatorProxy()
+		: id(InvalidAllocatorID)
+		, next(nullptr)
+		, allocator(nullptr)
+		, allocate(nullptr)
+		, deallocate(nullptr)
+	{
+	}
 
 #if PROFILE_ENABLED
-		[[nodiscard]] const char* GetName() const { return stats.name; }
+	[[nodiscard]] const char* GetName() const
+	{
+		return stats.name;
+	}
 #else // PROFILE_ENABLED
-		[[nodiscard]] const char* GetName() const { return "NoName"; }
+	[[nodiscard]] const char* GetName() const
+	{
+		return "NoName";
+	}
 #endif // PROFILE_ENABLED
-	};
+};
 
 } // namespace hbe

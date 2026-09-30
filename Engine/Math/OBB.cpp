@@ -2,10 +2,9 @@
 
 #include "OBB.h"
 
-
 namespace hbe
 {
-	template class OBB<float>;
+template class OBB<float>;
 } // namespace hbe
 
 #ifdef __UNIT_TEST__
@@ -13,7 +12,9 @@ namespace hbe
 namespace hbe
 {
 
-	void OBBTest::Prepare() noexcept {}
+void OBBTest::Prepare() noexcept
+{
+}
 
 } // namespace hbe
 

@@ -5,16 +5,19 @@
 #include "../Engine/Engine.h"
 #include "Core/TaskSystem.h"
 
-
 namespace hbe
 {
 
-	ResourceManager::ResourceManager() noexcept = default;
+ResourceManager::ResourceManager() noexcept = default;
 
-	ResourceManager::~ResourceManager() noexcept = default;
+ResourceManager::~ResourceManager() noexcept = default;
 
-	void ResourceManager::PostUpdate(Engine& engine) noexcept {}
+void ResourceManager::PostUpdate(Engine& engine) noexcept
+{
+}
 
-	void ResourceManager::RequestTasks(TaskSystem& taskSys) noexcept {}
+void ResourceManager::RequestTasks(TaskSystem& taskSys) noexcept
+{
+}
 
 } // namespace hbe

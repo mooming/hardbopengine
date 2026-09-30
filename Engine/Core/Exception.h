@@ -12,7 +12,7 @@ namespace hbe
 class Exception final
 {
 public:
-	template<typename... Types>
+	template <typename... Types>
 	inline Exception(const char* file, int line, Types&&... args)
 	{
 		using namespace std;

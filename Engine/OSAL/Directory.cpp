@@ -2,8 +2,8 @@
 
 #include "Directory.h"
 
-#include "OSAbstractLayer.h"
 #include "Core/CommonMacros.h"
+#include "OSAbstractLayer.h"
 #include "String/StringUtil.h"
 
 using namespace std;
@@ -11,7 +11,8 @@ using namespace std;
 namespace OS
 {
 
-Directory::Directory(const char* path) : path(hbe::StringUtil::TrimPath(path))
+Directory::Directory(const char* path)
+	: path(hbe::StringUtil::TrimPath(path))
 {
 	auto list = ListFilesInDirectory(path);
 

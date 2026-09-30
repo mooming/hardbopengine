@@ -4,35 +4,37 @@
 
 #include "StaticStringTable.h"
 
-
 namespace hbe
 {
 
-	StaticString::StaticString() noexcept
-	{
-		static StaticString null("None");
-		id = null.id;
-	}
+StaticString::StaticString() noexcept
+{
+	static StaticString null("None");
+	id = null.id;
+}
 
-	StaticString::StaticString(StaticStringID id) noexcept : id(id) {}
+StaticString::StaticString(StaticStringID id) noexcept
+	: id(id)
+{
+}
 
-	StaticString::StaticString(const char* string) noexcept
-	{
-		auto& ssTable = StaticStringTable::GetInstance();
-		id = ssTable.Register(string);
-	}
+StaticString::StaticString(const char* string) noexcept
+{
+	auto& ssTable = StaticStringTable::GetInstance();
+	id = ssTable.Register(string);
+}
 
-	StaticString::StaticString(const std::string_view& str) noexcept
-	{
-		auto& ssTable = StaticStringTable::GetInstance();
-		id = ssTable.Register(str);
-	}
+StaticString::StaticString(const std::string_view& str) noexcept
+{
+	auto& ssTable = StaticStringTable::GetInstance();
+	id = ssTable.Register(str);
+}
 
-	const char* StaticString::c_str() const noexcept
-	{
-		auto& ssTable = StaticStringTable::GetInstance();
-		return ssTable.Get(id);
-	}
+const char* StaticString::c_str() const noexcept
+{
+	auto& ssTable = StaticStringTable::GetInstance();
+	return ssTable.Get(id);
+}
 
 } // namespace hbe
 
@@ -45,67 +47,67 @@ namespace hbe
 namespace hbe
 {
 
-	void StaticStringTest::Prepare()
+void StaticStringTest::Prepare()
+{
+	AddTest("Default Construct", [](auto&) { StaticString str; });
+
+	AddTest("StaticStic Print", [this](TLogOut& ls)
 	{
-		AddTest("Default Construct", [](auto&) { StaticString str; });
+		StaticString str("Hello?");
+		ls << str.c_str() << lf;
+	});
 
-		AddTest("StaticStic Print", [this](TLogOut& ls)
+	AddTest("Hetero String Comparison", [this](TLogOut& ls)
+	{
+		hbe::HString hello("Hello?");
+		hbe::HInlineString<> helloInline("Hello?");
+
+		StaticString str(hello);
+		ls << str << lf;
+		ls << str.c_str() << lf;
+
+		StaticString strInline(helloInline);
+		ls << strInline << lf;
+		ls << strInline.c_str() << lf;
+
+		if (str != strInline)
 		{
-			StaticString str("Hello?");
-			ls << str.c_str() << lf;
-		});
+			ls << "Test failes due to comparison failure." << lferr;
+		}
+	});
 
-		AddTest("Hetero String Comparison", [this](TLogOut& ls)
+	AddTest("Self-Comparison", [this](auto& ls)
+	{
+		StaticString str("Hello?");
+
+		if (str != str)
 		{
-			hbe::HString hello("Hello?");
-			hbe::HInlineString<> helloInline("Hello?");
+			ls << "Test failes due to comparison failure." << lferr;
+		}
+	});
 
-			StaticString str(hello);
-			ls << str << lf;
-			ls << str.c_str() << lf;
+	AddTest("Two Strings Comparison", [this](auto& ls)
+	{
+		StaticString strA("Hello?");
+		StaticString strB("Hello?");
 
-			StaticString strInline(helloInline);
-			ls << strInline << lf;
-			ls << strInline.c_str() << lf;
-
-			if (str != strInline)
-			{
-				ls << "Test failes due to comparison failure." << lferr;
-			}
-		});
-
-		AddTest("Self-Comparison", [this](auto& ls)
+		if (strA != strB)
 		{
-			StaticString str("Hello?");
+			ls << "Test failes due to comparison failure." << lferr;
+		}
+	});
 
-			if (str != str)
-			{
-				ls << "Test failes due to comparison failure." << lferr;
-			}
-		});
+	AddTest("Inequality", [this](auto& ls)
+	{
+		StaticString strA("Hello?");
+		StaticString strB("Ha");
 
-		AddTest("Two Strings Comparison", [this](auto& ls)
+		if (strA == strB)
 		{
-			StaticString strA("Hello?");
-			StaticString strB("Hello?");
-
-			if (strA != strB)
-			{
-				ls << "Test failes due to comparison failure." << lferr;
-			}
-		});
-
-		AddTest("Inequality", [this](auto& ls)
-		{
-			StaticString strA("Hello?");
-			StaticString strB("Ha");
-
-			if (strA == strB)
-			{
-				ls << "Test failes due to comparison failure. " << lferr;
-			}
-		});
-	}
+			ls << "Test failes due to comparison failure. " << lferr;
+		}
+	});
+}
 } // namespace hbe
 
 #endif //__UNIT_TEST__

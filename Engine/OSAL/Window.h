@@ -67,7 +67,10 @@ namespace hbe
 class WindowTest final : public TestCollection
 {
 public:
-	WindowTest() : TestCollection("WindowTest") {}
+	WindowTest()
+		: TestCollection("WindowTest")
+	{
+	}
 
 protected:
 	void Prepare() override;

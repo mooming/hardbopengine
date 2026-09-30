@@ -8,17 +8,23 @@
 #include "MemoryManager.h"
 #include "OSAL/Intrinsic.h"
 
-
 namespace hbe
 {
 
 #if PROFILE_ENABLED
-StackAllocator::StackAllocator(const char* name, SizeType inCapacity, const TSrcLoc& location) :
-	id(InvalidAllocatorID), parentID(InvalidAllocatorID), capacity(inCapacity), cursor(0), buffer(nullptr),
-	srcLocation(location)
+StackAllocator::StackAllocator(const char* name, SizeType inCapacity, const TSrcLoc& location)
+	: id(InvalidAllocatorID)
+	, parentID(InvalidAllocatorID)
+	, capacity(inCapacity)
+	, cursor(0)
+	, buffer(nullptr)
+	, srcLocation(location)
 #else // PROFILE_ENABLED
-StackAllocator::StackAllocator(const char* name, SizeType inCapacity) :
-	id(InvalidAllocatorID), capacity(inCapacity), cursor(0), buffer(nullptr)
+StackAllocator::StackAllocator(const char* name, SizeType inCapacity)
+	: id(InvalidAllocatorID)
+	, capacity(inCapacity)
+	, cursor(0)
+	, buffer(nullptr)
 #endif // PROFILE_ENABLED
 {
 	{

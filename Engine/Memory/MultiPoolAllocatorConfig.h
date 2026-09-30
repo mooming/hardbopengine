@@ -8,22 +8,22 @@
 
 namespace hbe
 {
-	/// @brief Configuration for a multi-pool allocator.
-	/// @details Stores name and pool configurations for a multi-pool allocator.
-	class MultiPoolAllocatorConfig final
-	{
-	public:
-		template<typename T>
-		using TVector = std::vector<T>;
-		using TPoolConfigs = TVector<PoolConfig>;
+/// @brief Configuration for a multi-pool allocator.
+/// @details Stores name and pool configurations for a multi-pool allocator.
+class MultiPoolAllocatorConfig final
+{
+public:
+	template <typename T>
+	using TVector = std::vector<T>;
+	using TPoolConfigs = TVector<PoolConfig>;
 
-		StaticStringID uniqueName;
-		TPoolConfigs configs;
+	StaticStringID uniqueName;
+	TPoolConfigs configs;
 
-		MultiPoolAllocatorConfig() noexcept = default;
-		MultiPoolAllocatorConfig(StaticStringID id, TPoolConfigs&& configs) noexcept;
+	MultiPoolAllocatorConfig() noexcept = default;
+	MultiPoolAllocatorConfig(StaticStringID id, TPoolConfigs&& configs) noexcept;
 
-		bool operator<(const MultiPoolAllocatorConfig& rhs) const noexcept;
-	};
+	bool operator<(const MultiPoolAllocatorConfig& rhs) const noexcept;
+};
 
 } // namespace hbe

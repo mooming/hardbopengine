@@ -13,9 +13,16 @@
 namespace OS
 {
 
-FileHandle::FileHandle() { Invalidate(); }
+FileHandle::FileHandle()
+{
+	Invalidate();
+}
 
-FileHandle::FileHandle(FileHandle&& rhs) : data(rhs.data) { rhs.Invalidate(); }
+FileHandle::FileHandle(FileHandle&& rhs)
+	: data(rhs.data)
+{
+	rhs.Invalidate();
+}
 
 FileHandle::~FileHandle()
 {
@@ -40,9 +47,15 @@ size_t FileHandle::GetFileSize() const
 	return statValue.st_size;
 }
 
-bool FileHandle::IsValid() const { return fd >= 0; }
+bool FileHandle::IsValid() const
+{
+	return fd >= 0;
+}
 
-void FileHandle::Invalidate() { fd = -1; }
+void FileHandle::Invalidate()
+{
+	fd = -1;
+}
 
 } // namespace OS
 #endif // PLATFORM_LINUX

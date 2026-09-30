@@ -58,17 +58,55 @@ public:
 	void Print() noexcept;
 	void PrintAllocatorProfiles() noexcept;
 
-	void IncFrameCount() noexcept { frameCount.fetch_add(1, std::memory_order_relaxed); }
-	void IncSlowFrameCount() noexcept { slowFrameCount.fetch_add(1, std::memory_order_relaxed); }
-	void IncEngineLogCount() noexcept { engineLogCount.fetch_add(1, std::memory_order_relaxed); }
-	void IncLogCount() noexcept { logCount.fetch_add(1, std::memory_order_relaxed); }
-	void IncLongLogCount() noexcept { longLogCount.fetch_add(1, std::memory_order_relaxed); }
-	void IncFallbackAllocCount() noexcept { fallbackAllocCount.fetch_add(1, std::memory_order_relaxed); }
+	void IncFrameCount() noexcept
+	{
+		frameCount.fetch_add(1, std::memory_order_relaxed);
+	}
 
-	[[nodiscard]] auto GetStartTime() const noexcept { return startTime; }
-	[[nodiscard]] auto GetCurrentTime() const noexcept { return currentTime; }
-	[[nodiscard]] auto GetTimeSinceStart() const noexcept { return timeSinceStart; }
-	[[nodiscard]] auto GetDeltaTime() const noexcept { return deltaTime; }
+	void IncSlowFrameCount() noexcept
+	{
+		slowFrameCount.fetch_add(1, std::memory_order_relaxed);
+	}
+
+	void IncEngineLogCount() noexcept
+	{
+		engineLogCount.fetch_add(1, std::memory_order_relaxed);
+	}
+
+	void IncLogCount() noexcept
+	{
+		logCount.fetch_add(1, std::memory_order_relaxed);
+	}
+
+	void IncLongLogCount() noexcept
+	{
+		longLogCount.fetch_add(1, std::memory_order_relaxed);
+	}
+
+	void IncFallbackAllocCount() noexcept
+	{
+		fallbackAllocCount.fetch_add(1, std::memory_order_relaxed);
+	}
+
+	[[nodiscard]] auto GetStartTime() const noexcept
+	{
+		return startTime;
+	}
+
+	[[nodiscard]] auto GetCurrentTime() const noexcept
+	{
+		return currentTime;
+	}
+
+	[[nodiscard]] auto GetTimeSinceStart() const noexcept
+	{
+		return timeSinceStart;
+	}
+
+	[[nodiscard]] auto GetDeltaTime() const noexcept
+	{
+		return deltaTime;
+	}
 };
 
 } // namespace hbe

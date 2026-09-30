@@ -7,7 +7,6 @@
 #include "ComponentState.h"
 #include "ScopedTime.h"
 
-
 namespace hbe
 {
 
@@ -38,14 +37,24 @@ void ComponentSystemTest::Prepare()
 
 			Test(const Test&) = delete;
 
-			Test(bool& testResult, TestCollection::TLogOut& ls, TestCollection::LogFlush& lferr) :
-				Component("Test"), testResult(testResult), ls(ls), lferr(lferr)
-			{}
+			Test(bool& testResult, TestCollection::TLogOut& ls, TestCollection::LogFlush& lferr)
+				: Component("Test")
+				, testResult(testResult)
+				, ls(ls)
+				, lferr(lferr)
+			{
+			}
 
-			Test(Test&& rhs) noexcept :
-				Component(rhs), isInit(rhs.isInit), updateCount(rhs.updateCount), isReleased(rhs.isReleased),
-				isOnEnableCalled(rhs.isOnEnableCalled), isOnDisableCalled(rhs.isOnDisableCalled),
-				testResult(rhs.testResult), ls(rhs.ls), lferr(rhs.lferr)
+			Test(Test&& rhs) noexcept
+				: Component(rhs)
+				, isInit(rhs.isInit)
+				, updateCount(rhs.updateCount)
+				, isReleased(rhs.isReleased)
+				, isOnEnableCalled(rhs.isOnEnableCalled)
+				, isOnDisableCalled(rhs.isOnDisableCalled)
+				, testResult(rhs.testResult)
+				, ls(rhs.ls)
+				, lferr(rhs.lferr)
 			{
 				rhs.isValid = false;
 			}
@@ -64,7 +73,7 @@ void ComponentSystemTest::Prepare()
 				return *this;
 			}
 
-					~Test() override
+			~Test() override
 			{
 				if (!isValid)
 					return;
@@ -80,8 +89,7 @@ void ComponentSystemTest::Prepare()
 			{
 				if (GetState() != ComponentState::BORN)
 				{
-					ls << "State failure, state = " << GetState() << ", but expected " << ComponentState::BORN
-					   << lferr;
+					ls << "State failure, state = " << GetState() << ", but expected " << ComponentState::BORN << lferr;
 
 					testResult = false;
 				}
@@ -110,8 +118,7 @@ void ComponentSystemTest::Prepare()
 			{
 				if (GetState() != ComponentState::DEAD)
 				{
-					ls << "State failure, state = " << GetState() << ", but expected " << ComponentState::DEAD
-					   << lferr;
+					ls << "State failure, state = " << GetState() << ", but expected " << ComponentState::DEAD << lferr;
 
 					testResult = false;
 				}

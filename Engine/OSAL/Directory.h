@@ -20,8 +20,15 @@ public:
 	Directory(const char* path);
 	virtual ~Directory() = default;
 
-	[[nodiscard]] const Files& FileList() const { return fileList; }
-	[[nodiscard]] const Dirs& DirList() const { return dirList; }
+	[[nodiscard]] const Files& FileList() const
+	{
+		return fileList;
+	}
+
+	[[nodiscard]] const Dirs& DirList() const
+	{
+		return dirList;
+	}
 
 private:
 	Files fileList;

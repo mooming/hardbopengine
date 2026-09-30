@@ -25,13 +25,42 @@ public:
 	virtual void OnDisable() = 0;
 
 public:
-	Component(const char* name) : state(State::NONE), name(name) {}
+	Component(const char* name)
+		: state(State::NONE)
+		, name(name)
+	{
+	}
+
 	virtual ~Component() = default;
-	[[nodiscard]] State GetState() const noexcept { return state; }
-	void SetState(State inState) noexcept { Component::state = inState; }
-	[[nodiscard]] const String& GetName() const noexcept { return name; }
-	[[nodiscard]] bool IsEnabled() const noexcept { return state == State::ALIVE; }
-	void SetEnable(bool isEnabled) noexcept { SetState(isEnabled ? State::ALIVE : State::SLEEP); }
-	void Destroy() noexcept { SetState(State::DEAD); }
+
+	[[nodiscard]] State GetState() const noexcept
+	{
+		return state;
+	}
+
+	void SetState(State inState) noexcept
+	{
+		Component::state = inState;
+	}
+
+	[[nodiscard]] const String& GetName() const noexcept
+	{
+		return name;
+	}
+
+	[[nodiscard]] bool IsEnabled() const noexcept
+	{
+		return state == State::ALIVE;
+	}
+
+	void SetEnable(bool isEnabled) noexcept
+	{
+		SetState(isEnabled ? State::ALIVE : State::SLEEP);
+	}
+
+	void Destroy() noexcept
+	{
+		SetState(State::DEAD);
+	}
 };
 } // namespace hbe

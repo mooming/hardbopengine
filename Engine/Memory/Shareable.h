@@ -6,136 +6,171 @@
 
 namespace hbe
 {
-	/// @brief Reference-counted smart pointer for shared ownership.
-	/// @details Manages a heap-allocated object with reference counting.
-	/// Automatically deallocates when reference count reaches zero.
-	/// @brief Reference-counted smart pointer for shared ownership.
-	/// @details Manages a heap-allocated object with reference counting.
-	/// Automatically deallocates when reference count reaches zero.
-	template<typename TType, typename RefCount = uint8_t>
-	class Shareable
+/// @brief Reference-counted smart pointer for shared ownership.
+/// @details Manages a heap-allocated object with reference counting.
+/// Automatically deallocates when reference count reaches zero.
+/// @brief Reference-counted smart pointer for shared ownership.
+/// @details Manages a heap-allocated object with reference counting.
+/// Automatically deallocates when reference count reaches zero.
+template <typename TType, typename RefCount = uint8_t>
+class Shareable
+{
+private:
+	class Body
 	{
 	private:
-		class Body
-		{
-		private:
-			static constexpr auto SizeOfType = sizeof(TType);
-			RefCount count;
-			TType data;
-
-		public:
-			template<typename... Types>
-			static Body* Create(Types&&... args)
-			{
-				auto& mmgr = MemoryManager::GetInstance();
-				auto newBody = mmgr.New<Body>(std::forward<Types>(args)...);
-				return newBody->Reference();
-			}
-
-			TType& GetBody() { return data; }
-
-			Body* Reference()
-			{
-				++count;
-				return this;
-			}
-
-			RefCount GetRefCount() const { return count; }
-
-			void Dereference()
-			{
-				if (count > 0)
-				{
-					--count;
-
-					if (count == 0)
-					{
-						auto& mmgr = MemoryManager::GetInstance();
-						mmgr.Delete<Body>(this);
-					}
-				}
-			}
-
-			template<typename... Types>
-			Body(Types&&... args) : count(0), data(std::forward<Types>(args)...)
-			{}
-		};
-
-	private:
-		Body* body;
+		static constexpr auto SizeOfType = sizeof(TType);
+		RefCount count;
+		TType data;
 
 	public:
-		template<typename... Types>
-		Shareable(Types&&... args) : body(Body::Create(std::forward<Types>(args)...))
-		{}
-
-		Shareable(Shareable& rhs)
+		template <typename... Types>
+		static Body* Create(Types&&... args)
 		{
-			if (rhs)
-			{
-				body = rhs.body->Reference();
-			}
-			else
-			{
-				body = nullptr;
-			}
+			auto& mmgr = MemoryManager::GetInstance();
+			auto newBody = mmgr.New<Body>(std::forward<Types>(args)...);
+			return newBody->Reference();
 		}
 
-		Shareable(Shareable&& rhs)
+		TType& GetBody()
 		{
-			body = rhs.body;
-			rhs.body = nullptr;
+			return data;
 		}
 
-		~Shareable()
+		Body* Reference()
 		{
-			if (body != nullptr)
-			{
-				body->Dereference();
-				body = nullptr;
-			}
+			++count;
+			return this;
 		}
 
-		Shareable& operator=(Shareable& rhs)
+		RefCount GetRefCount() const
 		{
-			Release();
+			return count;
+		}
 
-			if (rhs)
+		void Dereference()
+		{
+			if (count > 0)
 			{
-				body = rhs.body->Reference();
+				--count;
+
+				if (count == 0)
+				{
+					auto& mmgr = MemoryManager::GetInstance();
+					mmgr.Delete<Body>(this);
+				}
 			}
 		}
 
-		[[nodiscard]] RefCount GetReferenceCount() const { return body != nullptr ? body->GetRefCount() : 0; }
-
-		operator bool() const { return body != nullptr; }
-
-		[[nodiscard]] TType& Get() { return body->GetBody(); }
-
-		[[nodiscard]] const TType& Get() const { return body->GetBody(); }
-
-		[[nodiscard]] TType& operator*() { return body->GetBody(); }
-
-		[[nodiscard]] const TType& operator*() const { return body->GetBody(); }
-
-		[[nodiscard]] TType* operator->() { return &body->GetBody(); }
-
-		[[nodiscard]] const TType* operator->() const { return &body->GetBody(); }
-
-		void Release()
+		template <typename... Types>
+		Body(Types&&... args)
+			: count(0)
+			, data(std::forward<Types>(args)...)
 		{
-			if (body != nullptr)
-			{
-				body->Dereference();
-				body = nullptr;
-			}
-		}
-
-		void Swap(Shareable& rhs)
-		{
-			auto tmpBody = body;
-			body = rhs.body;
-			rhs.body = tmpBody;
 		}
 	};
+
+private:
+	Body* body;
+
+public:
+	template <typename... Types>
+	Shareable(Types&&... args)
+		: body(Body::Create(std::forward<Types>(args)...))
+	{
+	}
+
+	Shareable(Shareable& rhs)
+	{
+		if (rhs)
+		{
+			body = rhs.body->Reference();
+		}
+		else
+		{
+			body = nullptr;
+		}
+	}
+
+	Shareable(Shareable&& rhs)
+	{
+		body = rhs.body;
+		rhs.body = nullptr;
+	}
+
+	~Shareable()
+	{
+		if (body != nullptr)
+		{
+			body->Dereference();
+			body = nullptr;
+		}
+	}
+
+	Shareable& operator=(Shareable& rhs)
+	{
+		Release();
+
+		if (rhs)
+		{
+			body = rhs.body->Reference();
+		}
+	}
+
+	[[nodiscard]] RefCount GetReferenceCount() const
+	{
+		return body != nullptr ? body->GetRefCount() : 0;
+	}
+
+	operator bool() const
+	{
+		return body != nullptr;
+	}
+
+	[[nodiscard]] TType& Get()
+	{
+		return body->GetBody();
+	}
+
+	[[nodiscard]] const TType& Get() const
+	{
+		return body->GetBody();
+	}
+
+	[[nodiscard]] TType& operator*()
+	{
+		return body->GetBody();
+	}
+
+	[[nodiscard]] const TType& operator*() const
+	{
+		return body->GetBody();
+	}
+
+	[[nodiscard]] TType* operator->()
+	{
+		return &body->GetBody();
+	}
+
+	[[nodiscard]] const TType* operator->() const
+	{
+		return &body->GetBody();
+	}
+
+	void Release()
+	{
+		if (body != nullptr)
+		{
+			body->Dereference();
+			body = nullptr;
+		}
+	}
+
+	void Swap(Shareable& rhs)
+	{
+		auto tmpBody = body;
+		body = rhs.body;
+		rhs.body = tmpBody;
+	}
+};
 } // namespace hbe

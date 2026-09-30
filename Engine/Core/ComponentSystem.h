@@ -11,7 +11,7 @@
 namespace hbe
 {
 /// @brief A template-based system for managing components through their lifecycle states (init, update, sleep, dead).
-template<typename TComponent>
+template <typename TComponent>
 class ComponentSystem
 {
 	using TCompoList = hbe::HVector<TComponent>;
@@ -27,19 +27,31 @@ private:
 	TCompoList transitionList;
 
 public:
-	ComponentSystem(const char* name) :
-		name(name), initList(), updateList(), swapUpdateList(), sleepList(), transitionList()
-	{}
+	ComponentSystem(const char* name)
+		: name(name)
+		, initList()
+		, updateList()
+		, swapUpdateList()
+		, sleepList()
+		, transitionList()
+	{
+	}
 
-	[[nodiscard]] explicit operator bool() const noexcept { return !initList.empty() || !updateList.empty() || !sleepList.empty(); }
+	[[nodiscard]] explicit operator bool() const noexcept
+	{
+		return !initList.empty() || !updateList.empty() || !sleepList.empty();
+	}
 
-	[[nodiscard]] inline const char* GetName() const noexcept { return name.ToCharArray(); }
+	[[nodiscard]] inline const char* GetName() const noexcept
+	{
+		return name.ToCharArray();
+	}
 
-	template<typename... Types>
-		TComponent& Create(Types&&... args)
-		{
-			initList.emplace_back(std::forward<Types>(args)...);
-			auto& compo = initList.back();
+	template <typename... Types>
+	TComponent& Create(Types&&... args)
+	{
+		initList.emplace_back(std::forward<Types>(args)...);
+		auto& compo = initList.back();
 		compo.SetState(ComponentState::BORN);
 
 		return compo;
@@ -131,7 +143,10 @@ namespace hbe
 class ComponentSystemTest : public TestCollection
 {
 public:
-	ComponentSystemTest() : TestCollection("ComponentSystemTest") {}
+	ComponentSystemTest()
+		: TestCollection("ComponentSystemTest")
+	{
+	}
 
 protected:
 	void Prepare() override;

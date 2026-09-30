@@ -41,8 +41,8 @@ void RigidTransformTest::Prepare() noexcept
 
 		if (tm * TFloat3::Forward != TFloat3::Forward)
 		{
-			ls << "Identity Transform Failed. " << (tm * TFloat3::Forward) << ", but " << TFloat3::Forward << " expected."
-			   << lferr;
+			ls << "Identity Transform Failed. " << (tm * TFloat3::Forward) << ", but " << TFloat3::Forward
+			   << " expected." << lferr;
 		}
 	});
 
@@ -72,7 +72,8 @@ void RigidTransformTest::Prepare() noexcept
 		TFloat3 result = tm3.Inverse() * result1;
 		if (result != TFloat3::Forward)
 		{
-			ls << "Transform matrix inverse failed. " << result << ", but " << TFloat3::Forward << " expected." << lferr;
+			ls << "Transform matrix inverse failed. " << result << ", but " << TFloat3::Forward << " expected."
+			   << lferr;
 		}
 
 		result = tm2.InverseTransform(tm.InverseTransform(result2));

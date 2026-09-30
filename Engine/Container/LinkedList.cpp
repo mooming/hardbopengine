@@ -11,7 +11,6 @@
 #include "Memory/AllocatorScope.h"
 #include "Memory/PoolAllocator.h"
 
-
 namespace hbe
 {
 

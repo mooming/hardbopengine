@@ -16,7 +16,11 @@ private:
 public:
 	ScopedTime(const ScopedTime&) = delete;
 
-	explicit ScopedTime(TDuration& outDeltaTime) noexcept : duration(outDeltaTime), start(TStopWatch::now()) {}
+	explicit ScopedTime(TDuration& outDeltaTime) noexcept
+		: duration(outDeltaTime)
+		, start(TStopWatch::now())
+	{
+	}
 
 	~ScopedTime() noexcept
 	{
@@ -24,5 +28,4 @@ public:
 		duration = end - start;
 	}
 };
-} // namespace hbe::Time
-
+} // namespace hbe::time

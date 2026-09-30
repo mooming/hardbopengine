@@ -4,7 +4,6 @@
 
 #include <mutex>
 
-
 namespace hbe
 {
 template class ScopedLock<std::mutex>;

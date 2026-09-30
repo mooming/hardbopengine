@@ -6,31 +6,41 @@
 
 namespace hbe
 {
-	/// @brief Wrapper that ties an allocator to an allocation scope.
-	/// @details RAII wrapper that sets the current allocator on construction
-	/// and restores the previous scope on destruction.
-	template<typename TAlloc>
-	class ScopedAllocator final
+/// @brief Wrapper that ties an allocator to an allocation scope.
+/// @details RAII wrapper that sets the current allocator on construction
+/// and restores the previous scope on destruction.
+template <typename TAlloc>
+class ScopedAllocator final
+{
+private:
+	TAlloc allocator;
+	AllocatorScope scope;
+
+public:
+	ScopedAllocator(const ScopedAllocator&) = delete;
+	ScopedAllocator(ScopedAllocator&&) = delete;
+	ScopedAllocator& operator=(const ScopedAllocator&) = delete;
+	ScopedAllocator& operator=(ScopedAllocator&&) = delete;
+
+public:
+	template <typename... Types>
+	ScopedAllocator(Types&&... args)
+		: allocator(std::forward<Types>(args)...)
+		, scope(allocator)
 	{
-	private:
-		TAlloc allocator;
-		AllocatorScope scope;
+	}
 
-	public:
-		ScopedAllocator(const ScopedAllocator&) = delete;
-		ScopedAllocator(ScopedAllocator&&) = delete;
-		ScopedAllocator& operator=(const ScopedAllocator&) = delete;
-		ScopedAllocator& operator=(ScopedAllocator&&) = delete;
+	~ScopedAllocator() = default;
 
-	public:
-		template<typename... Types>
-		ScopedAllocator(Types&&... args) : allocator(std::forward<Types>(args)...), scope(allocator)
-		{}
+	[[nodiscard]] auto& GetAllocator()
+	{
+		return allocator;
+	}
 
-		~ScopedAllocator() = default;
-
-		[[nodiscard]] auto& GetAllocator() { return allocator; }
-		[[nodiscard]] auto& GetAllocator() const { return allocator; }
-	};
+	[[nodiscard]] auto& GetAllocator() const
+	{
+		return allocator;
+	}
+};
 
 } // namespace hbe

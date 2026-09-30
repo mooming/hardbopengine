@@ -10,51 +10,66 @@
 
 namespace hbe
 {
-	/// @brief A stratified sampling class for generating samples within intervals.
-	template<typename TReal = double, typename TInteger = uint32_t>
-	class StratifiedSampling final
+/// @brief A stratified sampling class for generating samples within intervals.
+template <typename TReal = double, typename TInteger = uint32_t>
+class StratifiedSampling final
+{
+public:
+	static_assert(std::is_floating_point_v<TReal>);
+	static_assert(std::is_integral_v<TInteger>);
+
+private:
+	TInteger numSubGroups;
+	TInteger subGroupIndex;
+	TReal interval;
+	TReal start;
+	TReal end;
+
+public:
+	StratifiedSampling() noexcept
+		: numSubGroups(0)
+		, subGroupIndex(0)
+		, interval(0)
+		, start(0)
+		, end(0)
 	{
-	public:
-		static_assert(std::is_floating_point_v<TReal>);
-		static_assert(std::is_integral_v<TInteger>);
+	}
 
-	private:
-		TInteger numSubGroups;
-		TInteger subGroupIndex;
-		TReal interval;
-		TReal start;
-		TReal end;
+	StratifiedSampling(TInteger inNumSubGroups, TReal start, TReal end) noexcept
+		: numSubGroups(inNumSubGroups > 0 ? inNumSubGroups : 1)
+		, subGroupIndex(0)
+		, interval((end - start) / numSubGroups)
+		, start(start)
+		, end(end)
+	{
+	}
 
-	public:
-		StratifiedSampling() noexcept : numSubGroups(0), subGroupIndex(0), interval(0), start(0), end(0) {}
-		StratifiedSampling(TInteger inNumSubGroups, TReal start, TReal end) noexcept :
-			numSubGroups(inNumSubGroups > 0 ? inNumSubGroups : 1), subGroupIndex(0),
-			interval((end - start) / numSubGroups), start(start), end(end)
-		{}
+	~StratifiedSampling() = default;
 
-		~StratifiedSampling() = default;
+	[[nodiscard]] TInteger GetSubGroupIndex() const noexcept
+	{
+		return subGroupIndex;
+	}
 
-		[[nodiscard]] TInteger GetSubGroupIndex() const noexcept { return subGroupIndex; }
+	// TRangeSampler - TReal sampler(TReal rangeStart, TReal rangeEnd), return a random number within the given
+	// range
+	template <typename TRangeSampler>
+	[[nodiscard]] TReal Sample(const TRangeSampler& sampler) noexcept
+	{
+		const TReal rangeStart = start + (interval * subGroupIndex);
+		const TReal rangeEnd = rangeStart + interval;
 
-		// TRangeSampler - TReal sampler(TReal rangeStart, TReal rangeEnd), return a random number within the given
-		// range
-		template<typename TRangeSampler>
-		[[nodiscard]] TReal Sample(const TRangeSampler& sampler) noexcept
-		{
-			const TReal rangeStart = start + (interval * subGroupIndex);
-			const TReal rangeEnd = rangeStart + interval;
+		return sampler(rangeStart, rangeEnd);
+	}
 
-			return sampler(rangeStart, rangeEnd);
-		}
+	void ChangeSubGroup(TInteger delta = 1) noexcept
+	{
+		subGroupIndex += delta;
 
-		void ChangeSubGroup(TInteger delta = 1) noexcept
-		{
-			subGroupIndex += delta;
-
-			if (subGroupIndex <= 0 || subGroupIndex >= numSubGroups)
-				subGroupIndex = 0;
-		}
-	};
+		if (subGroupIndex <= 0 || subGroupIndex >= numSubGroups)
+			subGroupIndex = 0;
+	}
+};
 } // namespace hbe
 
 #ifdef __UNIT_TEST__
@@ -62,13 +77,16 @@ namespace hbe
 
 namespace hbe
 {
-	class StratifiedSamplingTest final : public TestCollection
+class StratifiedSamplingTest final : public TestCollection
+{
+public:
+	StratifiedSamplingTest()
+		: TestCollection("Stratified Sampling Test")
 	{
-	public:
-		StratifiedSamplingTest() : TestCollection("Stratified Sampling Test") {}
+	}
 
-	protected:
-		void Prepare() noexcept override;
-	};
+protected:
+	void Prepare() noexcept override;
+};
 } // namespace hbe
 #endif //__UNIT_TEST__

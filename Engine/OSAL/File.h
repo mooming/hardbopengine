@@ -14,11 +14,20 @@ namespace OS
 class File
 {
 public:
-	explicit File(const char* path) : path(path) {}
+	explicit File(const char* path)
+		: path(path)
+	{
+	}
 
-	File(const File& src) : path(src.path) {}
+	File(const File& src)
+		: path(src.path)
+	{
+	}
 
-	File(File&& src) noexcept : path(std::move(src.path)) {}
+	File(File&& src) noexcept
+		: path(std::move(src.path))
+	{
+	}
 
 	File& operator=(const File& src)
 	{
@@ -34,7 +43,10 @@ public:
 		return *this;
 	}
 
-	bool operator<(const File& rhs) const { return path < rhs.path; }
+	bool operator<(const File& rhs) const
+	{
+		return path < rhs.path;
+	}
 
 	friend std::ostream& operator<<(std::ostream& os, const File& file)
 	{
@@ -43,7 +55,10 @@ public:
 		return os;
 	}
 
-	[[nodiscard]] const auto& GetPath() const { return path; }
+	[[nodiscard]] const auto& GetPath() const
+	{
+		return path;
+	}
 
 private:
 	std::string path;

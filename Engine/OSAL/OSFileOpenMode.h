@@ -9,7 +9,10 @@ class FileOpenMode final
 public:
 	int value;
 
-	FileOpenMode() noexcept : value(0) {}
+	FileOpenMode() noexcept
+		: value(0)
+	{
+	}
 
 	void SetReadOnly() noexcept;
 	void SetWriteOnly() noexcept;

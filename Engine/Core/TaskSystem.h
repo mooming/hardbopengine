@@ -5,7 +5,6 @@
 
 #include <atomic>
 #include <thread>
-
 #include "Container/Array.h"
 #include "Container/BoundedPriorityQueue.h"
 #include "TaskRegistry.h"
