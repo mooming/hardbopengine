@@ -1,5 +1,32 @@
 # Journal
 
+## 2026-09-30 16:05 - the standard's own exemplar was fixed, and it took two of my bugs to show why that needed a checker
+
+`Engine/CodingStandards.h` reported 0 layout findings, from 14. The user chose to fix the good examples
+rather than exempt the file, so the exemplar now obeys the rule it teaches: data above functions in
+`InlinedData`, `DataProcessor`, `TextBuffer`, `TemplateExample`, `Processor` and `CodingStandards`, and
+`CodingStandardsBase`'s five public static members grouped above its non-static ones — matching the
+shape Logger.h already uses, where private data legitimately sits above public functions.
+
+Two bugs came out of the generic move helper I wrote to do it, and they failed differently:
+
+- **A wrong-class move, caught by `layout.py`.** `index('class CodingStandards')` matched
+  `CodingStandardsBase`, so `CodingStandards`'s `data` member was moved into its own base class. The
+  layout re-check reported an impossible finding — a static constant in the base ordered after a member
+  of the derived class — before any compiler was asked. Substring matching on identifiers needs the
+  delimiter; `class X` is not the start of `class XY`.
+- **An access change, caught by nothing but looking.** The helper assumed moved data was private and
+  re-emitted it under a `private:` label. `InlinedData::buffer` was public. That is a contract change
+  that compiles — nothing in the target reads `buffer`, so no build, test or lint failure would ever
+  have appeared. Fixed by hand, and the lesson is that a helper which re-emits an access specifier is
+  deciding something it was never asked to decide.
+
+Proof after the fix: token multiset differs from HEAD by exactly one `public` and one `:` — the label
+`CodingStandards` now needs to re-open public after its data block — which says nothing was lost,
+added or renamed, only reordered. `CodingStandards` builds in Debug, Dev and Release; full gate 12/12
+with 59 collections green in all three configurations.
+
+
 ## 2026-09-30 15:30 - mechanical debt is zero tree-wide, and two of my own rules could not be obeyed
 
 Every grep-enforceable rule now passes across Engine, Applications and Examples: **81 failures down to

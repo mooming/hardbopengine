@@ -112,9 +112,9 @@ public:
 class InlinedData final
 {
 public:
-	explicit InlinedData(int value = 0) noexcept;
-
 	int buffer[1024];
+
+	explicit InlinedData(int value = 0) noexcept;
 };
 
 /*
@@ -125,6 +125,10 @@ public:
  */
 class DataProcessor
 {
+private:
+	int value;
+	int workBuffer[256];
+
 public:
 	explicit DataProcessor(int initialValue) noexcept;
 	void Process() noexcept;
@@ -136,14 +140,14 @@ public:
 	 * Here `inValue` avoids colliding with the member `value`.
 	 */
 	void SetValue(int inValue) noexcept;
-
-private:
-	int value;
-	int workBuffer[256];
 };
 
 class TextBuffer final
 {
+private:
+	char* data;
+	size_t length;
+
 public:
 	TextBuffer() noexcept;
 	explicit TextBuffer(const char* text); // Deliberately noexcept-free: uses new (can throw std::bad_alloc)
@@ -154,10 +158,6 @@ public:
 	~TextBuffer();
 
 	[[nodiscard]] const char* GetText() const noexcept;
-
-private:
-	char* data;
-	size_t length;
 };
 
 /* Type aliases and template type parameters use T prefix */
@@ -172,6 +172,9 @@ class TemplateExample final
 	/* Validate template parameter constraints at compile time */
 	static_assert(std::is_integral_v<TEntry>, "TemplateExample requires an integral type");
 
+private:
+	TEntry value;
+
 public:
 	explicit TemplateExample(const TEntry& initial) noexcept
 		: value(initial)
@@ -182,9 +185,6 @@ public:
 	{
 		return value;
 	}
-
-private:
-	TEntry value;
 };
 
 /*
@@ -235,6 +235,10 @@ public:
  */
 class Processor final
 {
+private:
+	DataProcessor processor;
+	int extraData;
+
 public:
 	/*
 	 * `inExtraData` is a name-colliding parameter for the member `extraData`,
@@ -256,10 +260,6 @@ public:
 	{
 		return extraData;
 	}
-
-private:
-	DataProcessor processor;
-	int extraData;
 };
 
 // ========================================================================
@@ -297,12 +297,6 @@ public:
 	/* Validate constant ranges at compile time */
 	static_assert(MaxValue > 0, "MaxValue must be positive");
 
-	CodingStandardsBase() noexcept;
-	virtual ~CodingStandardsBase() = default;
-
-	InlinedData Compute() noexcept;
-	InlinedData Create() noexcept;
-	InlinedData CreateWithMove() noexcept;
 	static TextBuffer UseMoveCorrectly(TextBuffer&& source) noexcept;
 
 	/* Use consteval (C++20) for functions that must evaluate at compile time */
@@ -353,6 +347,13 @@ public:
 	 * parameters with `inOut` to signal modification intent.
 	 */
 	static void ClampToRange(int& inOutValue, int min, int max) noexcept;
+
+	CodingStandardsBase() noexcept;
+	virtual ~CodingStandardsBase() = default;
+
+	InlinedData Compute() noexcept;
+	InlinedData Create() noexcept;
+	InlinedData CreateWithMove() noexcept;
 
 	/*
 	 * Single-line Statements: Avoid unnecessary braces for
@@ -448,6 +449,11 @@ public:
 	static_assert(DefaultVersion > 0, "DefaultVersion must be positive");
 	static_assert(MaxNameLength > 0, "MaxNameLength must be positive");
 
+private:
+	// Has-a relationship: CodingStandards owns CodingStandardsData
+	CodingStandardsData data;
+
+public:
 	CodingStandards() noexcept;
 	~CodingStandards() override;
 
@@ -480,10 +486,6 @@ public:
 	 * See .cpp for the comprehensive rule explanation.
 	 */
 	void ProcessWithErrorLogging() noexcept;
-
-private:
-	// Has-a relationship: CodingStandards owns CodingStandardsData
-	CodingStandardsData data;
 };
 
 } // namespace examples
