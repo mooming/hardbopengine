@@ -10,6 +10,8 @@
 int main(int argc, const char* argv[]) noexcept
 {
 #ifdef __UNIT_TEST__
+	constexpr auto BaseStreamPassBudget = std::chrono::duration<double>(0.001);
+
 	hbe::Engine hengine;
 	hengine.Initialize(argc, argv);
 
@@ -22,9 +24,7 @@ int main(int argc, const char* argv[]) noexcept
 	// drain the whole chain at once and make the guard vacuous again - silently, which is how this was missed for five
 	// commits. A bounded allowance keeps that from being possible. Too small costs only extra passes, never
 	// correctness, which is the harmless direction and the reason for 1ms rather than a guessed larger figure.
-	hengine.GetTaskSystem()
-			.GetStream(hbe::TaskSystem::GetBaseTaskStreamIndex())
-			.ConfigureBudget(std::chrono::duration<double>(0.001));
+	hengine.GetTaskSystem().GetStream(hbe::TaskSystem::GetBaseTaskStreamIndex()).ConfigureBudget(BaseStreamPassBudget);
 
 	// Registered before Run is entered, so the total the run is expected to reach belongs to the harness rather than
 	// being discovered by the suite - and a suite that never started cannot report a total matching the nothing it ran.

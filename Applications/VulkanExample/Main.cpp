@@ -23,48 +23,62 @@ namespace
 {
 std::atomic<bool> running{true};
 
+constexpr size_t MatrixElementCount = 16;
+
+constexpr int RequestedWindowWidth = 800;
+constexpr int RequestedWindowHeight = 600;
+
+constexpr float FieldOfViewDegrees = 60.0f;
+constexpr float NearZ = 0.1f;
+constexpr float FarZ = 100.0f;
+constexpr float CameraZ = -3.0f;
+
+constexpr float RadiansPerSecond = 1.2f;
+constexpr auto FrameSleep = std::chrono::milliseconds(16);
+
 // All matrices are column-major (element [col * 4 + row]), matching the GLSL mat4
 // layout that VulkanRenderer pushes to the shader.
-void SetIdentity(float m[16]) noexcept
+void SetIdentity(float outMatrix[MatrixElementCount]) noexcept
 {
-	std::memset(m, 0, sizeof(float) * 16);
-	m[0] = m[5] = m[10] = m[15] = 1.0f;
+	std::memset(outMatrix, 0, sizeof(float) * MatrixElementCount);
+	outMatrix[0] = outMatrix[5] = outMatrix[10] = outMatrix[15] = 1.0f;
 }
 
-void SetTranslation(float m[16], float x, float y, float z) noexcept
+void SetTranslation(float outMatrix[MatrixElementCount], float x, float y, float z) noexcept
 {
-	SetIdentity(m);
-	m[12] = x;
-	m[13] = y;
-	m[14] = z;
+	SetIdentity(outMatrix);
+	outMatrix[12] = x;
+	outMatrix[13] = y;
+	outMatrix[14] = z;
 }
 
-void SetRotationY(float m[16], float radians) noexcept
+void SetRotationY(float outMatrix[MatrixElementCount], float radians) noexcept
 {
-	SetIdentity(m);
-	const float c = std::cos(radians);
-	const float s = std::sin(radians);
-	m[0] = c;
-	m[2] = -s;
-	m[8] = s;
-	m[10] = c;
+	SetIdentity(outMatrix);
+	const float cosAngle = std::cos(radians);
+	const float sinAngle = std::sin(radians);
+	outMatrix[0] = cosAngle;
+	outMatrix[2] = -sinAngle;
+	outMatrix[8] = sinAngle;
+	outMatrix[10] = cosAngle;
 }
 
 /// @brief Right-handed perspective mapped into Vulkan's [0, 1] depth and Y-down framebuffer.
-void SetPerspective(float m[16], float fovRadians, float aspect, float nearZ, float farZ) noexcept
+void SetPerspective(float outMatrix[MatrixElementCount], float fovRadians, float aspect, float nearZ,
+					float farZ) noexcept
 {
-	std::memset(m, 0, sizeof(float) * 16);
-	const float f = 1.0f / std::tan(fovRadians * 0.5f);
-	m[0] = f / aspect;
-	m[5] = -f; // Y flip: world +Y is screen up
-	m[10] = farZ / (nearZ - farZ);
-	m[11] = -1.0f;
-	m[14] = farZ * nearZ / (nearZ - farZ);
+	std::memset(outMatrix, 0, sizeof(float) * MatrixElementCount);
+	const float inverseHalfFovTangent = 1.0f / std::tan(fovRadians * 0.5f);
+	outMatrix[0] = inverseHalfFovTangent / aspect;
+	outMatrix[5] = -inverseHalfFovTangent;
+	outMatrix[10] = farZ / (nearZ - farZ);
+	outMatrix[11] = -1.0f;
+	outMatrix[14] = farZ * nearZ / (nearZ - farZ);
 }
 
 /// @brief A unit-ish quad in the XY plane facing +Z, so the fixed directional light
 ///        sweeps across it as it rotates about Y.
-Mesh MakeQuad() noexcept
+[[nodiscard]] Mesh MakeQuad() noexcept
 {
 	Mesh mesh;
 	mesh.vertices = {
@@ -93,7 +107,8 @@ int main(int argc, char* argv[]) noexcept
 		return 1;
 	}
 
-	auto window = OS::CreateWindow("VulkanExample - Rotating Quad (Vulkan)", 800, 600);
+	auto window =
+			OS::CreateWindow("VulkanExample - Rotating Quad (Vulkan)", RequestedWindowWidth, RequestedWindowHeight);
 	if (!window)
 	{
 		std::cerr << "Error: Failed to create window" << std::endl;
@@ -121,12 +136,12 @@ int main(int argc, char* argv[]) noexcept
 	// renderer rather than the 800x600 we asked the window for.
 	const VkExtent2D extent = renderer.GetExtent();
 
-	float view[16];
-	float proj[16];
-	float model[16];
-	SetPerspective(proj, DegreeToRadian(60.0f), static_cast<float>(extent.width) / static_cast<float>(extent.height),
-				   0.1f, 100.0f);
-	SetTranslation(view, 0.0f, 0.0f, -3.0f);
+	float view[MatrixElementCount];
+	float proj[MatrixElementCount];
+	float model[MatrixElementCount];
+	SetPerspective(proj, DegreeToRadian(FieldOfViewDegrees),
+				   static_cast<float>(extent.width) / static_cast<float>(extent.height), NearZ, FarZ);
+	SetTranslation(view, 0.0f, 0.0f, CameraZ);
 	renderer.SetView(view);
 	renderer.SetProj(proj);
 
@@ -141,9 +156,9 @@ int main(int argc, char* argv[]) noexcept
 		float deltaTime = std::chrono::duration<float>(currentTime - lastTime).count();
 		lastTime = currentTime;
 
-		angle += deltaTime * 1.2f;
-		if (angle > 2.0f * Pi)
-			angle -= 2.0f * Pi;
+		angle += deltaTime * RadiansPerSecond;
+		if (angle > TwoPi)
+			angle -= TwoPi;
 
 		SetRotationY(model, angle);
 		renderer.SetModel(model);
@@ -152,7 +167,7 @@ int main(int argc, char* argv[]) noexcept
 		renderer.Render(deltaTime);
 		renderer.EndFrame();
 
-		std::this_thread::sleep_for(std::chrono::milliseconds(16));
+		std::this_thread::sleep_for(FrameSleep);
 	}
 
 	renderer.Shutdown();
