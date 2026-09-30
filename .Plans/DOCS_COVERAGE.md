@@ -16,7 +16,7 @@ Source comments are banned, so a missing page means the contract is nowhere.
 | Memory | 19 | 0 | 19 | 11 | 149 |
 | OSAL | 9 | 0 | 9 | 5 | 105 |
 | Renderer | 8 | 8 | 0 | 2 | 265 |
-| Resource | 5 | 3 | 2 | 3 | 11 |
+| Resource | 5 | 5 | 0 | 3 | 0 |
 | String | 8 | 0 | 8 | 5 | 19 |
 | Test | 4 | 3 | 1 | 0 | 126 |
 
@@ -174,13 +174,13 @@ Source comments are banned, so a missing page means the contract is nowhere.
 | Renderer | Vertex | struct | `Engine/Renderer/Vertex.h` | `docs/Renderer/Vertex/index.html` | 1 | documented |
 | Renderer | VulkanRenderer | class | `Engine/Renderer/Vulkan/VulkanRenderer.h` | `docs/Renderer/VulkanRenderer/index.html` | 13 | documented |
 | Resource | Buffer | class | `Engine/Resource/Buffer.h` | `docs/Resource/Buffer/index.html` | 8 | documented |
-| Resource | BufferInputStream | class | `Engine/Resource/BufferInputStream.h` | `docs/Resource/BufferInputStream/index.html` | 0 | MISSING |
+| Resource | BufferInputStream | class | `Engine/Resource/BufferInputStream.h` | `docs/Resource/BufferInputStream/index.html` | 9 | documented |
 | Resource | BufferInputStreamTest | test-only | `Engine/Resource/BufferInputStream.h` | `docs/Resource/BufferInputStreamTest/index.html` | 0 | test-only — owns a Coverage row |
-| Resource | BufferOutputStream | class | `Engine/Resource/BufferOutputStream.h` | `docs/Resource/BufferOutputStream/index.html` | 0 | MISSING |
+| Resource | BufferOutputStream | class | `Engine/Resource/BufferOutputStream.h` | `docs/Resource/BufferOutputStream/index.html` | 10 | documented |
 | Resource | BufferOutputStreamTest | test-only | `Engine/Resource/BufferOutputStream.h` | `docs/Resource/BufferOutputStreamTest/index.html` | 0 | test-only — owns a Coverage row |
 | Resource | BufferTest | test-only | `Engine/Resource/Buffer.h` | `docs/Resource/BufferTest/index.html` | 0 | test-only — owns a Coverage row |
 | Resource | Resource | class | `Engine/Resource/Resource.h` | `docs/Resource/Resource/index.html` | 2 | documented |
-| Resource | ResourceManager | class | `Engine/Resource/ResourceManager.h` | `docs/Resource/ResourceManager/index.html` | 5 | documented |
+| Resource | ResourceManager | class | `Engine/Resource/ResourceManager.h` | `docs/Resource/ResourceManager/index.html` | 6 | documented |
 | String | EndLine | class | `Engine/String/EndLine.h` | `docs/String/EndLine/index.html` | 0 | MISSING |
 | String | InlineStringBuilder | class | `Engine/String/InlineStringBuilder.h` | `docs/String/InlineStringBuilder/index.html` | 0 | MISSING |
 | String | InlineStringBuilderTest | test-only | `Engine/String/InlineStringBuilder.h` | `docs/String/InlineStringBuilderTest/index.html` | 0 | test-only — owns a Coverage row |

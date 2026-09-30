@@ -1,5 +1,50 @@
 # Journal
 
+## 2026-09-30 17:40 - Resource cycle complete, and documentation found three defects no test reports
+
+Five modules now conform: HSTL, Config, Log, Engine and **Resource** — 0 comment lines, 0 layout findings,
+5 of 5 entries with pages, 0 missing method pages. Gate green throughout (build 12/12, 59 collections in
+Debug, Dev, Release).
+
+**Reading the code far enough to document it turned up three defects.** None is visible in a test, and none
+would have been found by the mechanical sweep, which never reads behaviour:
+
+- `BufferInputStream::IsValidIndex(size_t index)` ignores `index` and compares `cursor` against the buffer
+  size. All three `Get` templates pass the offset a read would end at, so the guard answers "are we still
+  inside" where the caller needs "does this fit". A read starting inside a block and ending outside it is
+  not refused; in the bulk forms the overhang is set by a length prefix taken from the image, which also
+  reaches `reserve()` unconstrained. The writer owns the same helper and never calls it, so only the reader
+  carries the consequence.
+- `operator>>(const HString&)` is `return *this;` — no read, no cursor movement, no error count, and a
+  `const` parameter it could not fill. A chain through it desynchronises from the image while `HasError()`
+  reports clean.
+- `BufferInputStream::Get` clears the caller's container before reading the length prefix, so a refused
+  read destroys what was in it rather than leaving it alone.
+
+All three are documented on their pages and on the module Coverage table, **not fixed** — the cycle is
+docs, format, strip, layout, and a guard's semantics plus a stub's purpose are the owner's decisions. The
+guard is a two-character change; the stub is either an implementation or a deletion.
+
+**The mover I wrote repeated a mistake I had already recorded.** It inserted `private:` plus the members
+without re-opening `public:`, so everything below the insertion point became private. That compiles, and
+only surfaced when clang rejected `ResourceManager.h` for a reason that looked unrelated: "field of type
+`Buffer` has private default constructor". Two days of notes said a generic mover must not decide an
+access specifier; the bug still happened, which says the lesson belongs in the tool as an assertion, not
+in a journal as a warning. Insertion points are now located by a word-bounded class match, because the
+earlier mover's plain substring search had moved a derived class's member into its base.
+
+**`prove_format.py` mislabelled its own new case.** A member reorder reported as `include-order`, naming a
+change that had not occurred — the classifier had no bucket for declarations moving, so it fell through to
+the include branch. It now has one, with the honest invariant: nothing may be lost from the token multiset
+and the only tokens a reorder may add are access labels, which crossing access sections requires. The
+first draft of that guard demanded an identical multiset and so would have failed the reorder it was
+written to verify, and my first cut of the permitted set included `template`, which is not an access label
+and would have admitted a keyword that can carry a change of behaviour.
+
+Six pages inside Resource asserted these classes were "not documented in this batch", and three quoted
+`/// @brief` text the strip deletes. Stale gap notes are the worse failure: they tell a reader a hole
+exists where the material now is.
+
 ## 2026-09-30 16:05 - the standard's own exemplar was fixed, and it took two of my bugs to show why that needed a checker
 
 `Engine/CodingStandards.h` reported 0 layout findings, from 14. The user chose to fix the good examples

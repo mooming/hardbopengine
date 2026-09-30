@@ -163,17 +163,22 @@ module, layout findings from `layout.py` over the whole tree, page counts from `
 
 | Order | Module | Comment lines | Layout findings | Class pages missing | Method pages missing |
 |---|---|---|---|---|---|
-| — | Config, Engine, HSTL, Log | 0 | 0 | 0 | 0 |
-| 1 | Resource | 11 | 20 | 2 | 1 |
-| 2 | String | 19 | 11 | 8 | 0 |
-| 3 | OSAL | 105 | 14 | 9 | 0 |
-| 4 | Math | 132 | 26 | 16 | 0 |
-| 5 | Memory | 149 | 23 | 19 | 0 |
-| 6 | Test | 126 | 32 | 1 | 21 |
-| 7 | Renderer | 265 | 44 | 0 | 18 |
-| 8 | Core | 1,476 | 62 | 23 | 2 |
-| 9 | Container | 60 | 59 | 2 | 112 |
-| 10 | Applications + Examples | 297 | 0 | 0 | 0 |
+| — | Config, Engine, HSTL, Log, **Resource** | 0 | 0 | 0 | 0 |
+| 1 | String | 19 | 11 | 8 | 0 |
+| 2 | OSAL | 105 | 14 | 9 | 0 |
+| 3 | Math | 132 | 26 | 16 | 0 |
+| 4 | Memory | 149 | 23 | 19 | 0 |
+| 5 | Test | 126 | 32 | 1 | 21 |
+| 6 | Renderer | 265 | 44 | 0 | 18 |
+| 7 | Core | 1,476 | 62 | 23 | 2 |
+| 8 | Container | 60 | 59 | 2 | 112 |
+| 9 | Applications + Examples | 297 | 0 | 0 | 0 |
+
+Resource is the first module taken end to end through the full four-commit cycle after the mechanical
+sweep, and it earned the "cheapest" label in a way the estimates did not predict: 11 comment lines and 20
+layout findings, but documentation authoring found three behavioural defects that no test reports — the
+reader's bounds guard ignoring its argument, a string overload that reads nothing, and a container cleared
+before the read is verified. Cheapest to migrate is not cheapest to understand.
 
 Three readings this table forces:
 
