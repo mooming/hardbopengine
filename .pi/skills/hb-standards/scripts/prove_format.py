@@ -27,6 +27,7 @@ Usage: prove_format.py [rev]        default rev: HEAD
 Exit status: 0 when every changed C++ file is explained.
 """
 
+import collections
 import subprocess
 import sys
 import os
@@ -36,6 +37,7 @@ sys.path.insert(0, SCRIPT_DIR)
 import comments
 
 CPP = ('.h', '.hh', '.hpp', '.cpp', '.cc', '.cxx', '.inl')
+ACCESS_LABELS = {'public', 'private', 'protected', ':'}
 
 
 def run(*args):
@@ -78,10 +80,25 @@ def explain(path, rev):
         return 'whitespace', ''
     old_includes, new_includes = include_paths(old_tokens), include_paths(new_tokens)
     old_payload, new_payload = payload_text(old_tokens), payload_text(new_tokens)
-    if old_includes == new_includes and old_payload != new_payload:
-        return 'literal-split', '' if old_payload == new_payload else None
-    if sorted(old_includes) == sorted(new_includes) and old_payload == new_payload:
+    # Identical include list and identical string literals, with the token multiset unchanged, means the
+    # file lost nothing and gained nothing but ordering — which is a member reorder, not an include move.
+    # Classifying that as include-order is what this branch used to do, and a verdict that names the wrong
+    # change is worse than no verdict: it reads as a reason to stop looking.
+    lost = collections.Counter(old_tokens) - collections.Counter(new_tokens)
+    gained = collections.Counter(new_tokens) - collections.Counter(old_tokens)
+    # A reorder that crosses access sections has to re-open the access the members it passed were written
+    # under, so access labels are the one thing it may add. Nothing else may be added, and nothing at all
+    # may be lost — that asymmetry is the check, and it is why "identical multiset" alone would have
+    # rejected this file's own honest reorder.
+    if (not lost and old_includes == new_includes and old_payload == new_payload
+            and set(gained) <= ACCESS_LABELS):
+        return 'reorder', 'access label(s) added: %s' % dict(gained) if gained else ''
+    if old_includes != new_includes and sorted(old_includes) == sorted(new_includes) and old_payload == new_payload:
+        if sorted(old_tokens) != sorted(new_tokens):
+            return 'unexplained', 'include order changed and the token multiset changed too'
         return 'include-order', ''
+    if old_includes == new_includes and old_payload != new_payload and sorted(old_tokens) == sorted(new_tokens):
+        return 'literal-split', ''
     if sorted(old_includes) == sorted(new_includes) and old_payload != new_payload:
         first = next((i for i in range(min(len(old_payload), len(new_payload)))
                       if old_payload[i] != new_payload[i]), min(len(old_payload), len(new_payload)))
