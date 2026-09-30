@@ -9,7 +9,7 @@ namespace hbe
 class EndLine final
 {
 public:
-	operator const char*() const
+	[[nodiscard]] operator const char*() const
 	{
 		return "\n";
 	}

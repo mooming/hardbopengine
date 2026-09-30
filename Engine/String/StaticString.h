@@ -47,12 +47,12 @@ public:
 		return c_str();
 	}
 
-	bool operator<(const StaticString& rhs) const noexcept
+	[[nodiscard]] bool operator<(const StaticString& rhs) const noexcept
 	{
 		return id.ptr < rhs.id.ptr;
 	}
 
-	bool operator==(const StaticString& rhs) const noexcept
+	[[nodiscard]] bool operator==(const StaticString& rhs) const noexcept
 	{
 		return id.ptr == rhs.id.ptr;
 	}

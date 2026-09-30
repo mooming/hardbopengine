@@ -12,7 +12,7 @@ class Letter
 public:
 	using TChar = char;
 
-	static bool IsLowerCase(TChar letter)
+	[[nodiscard]] static bool IsLowerCase(TChar letter)
 	{
 		returnValueIf(false, letter < 'a');
 		returnValueIf(false, letter > 'z');
@@ -20,7 +20,7 @@ public:
 		return true;
 	}
 
-	static bool IsUpperCase(TChar letter)
+	[[nodiscard]] static bool IsUpperCase(TChar letter)
 	{
 		returnValueIf(false, letter < 'A');
 		returnValueIf(false, letter > 'Z');
@@ -28,7 +28,7 @@ public:
 		return true;
 	}
 
-	static bool IsGenuineLetter(TChar letter)
+	[[nodiscard]] static bool IsGenuineLetter(TChar letter)
 	{
 		returnValueIf(false, letter == ' ' || letter == '\t' || letter == '\n' || letter == '\r');
 

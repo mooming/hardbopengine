@@ -18,12 +18,12 @@ struct StaticStringID final
 	{
 	}
 
-	bool operator==(const StaticStringID& rhs) const
+	[[nodiscard]] bool operator==(const StaticStringID& rhs) const
 	{
 		return ptr == rhs.ptr;
 	}
 
-	bool operator<(const StaticStringID& rhs) const
+	[[nodiscard]] bool operator<(const StaticStringID& rhs) const
 	{
 		return ptr < rhs.ptr;
 	}
