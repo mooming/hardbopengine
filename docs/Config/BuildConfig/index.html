@@ -288,7 +288,9 @@
       <code>FatalAssert</code> sits outside the guard and is live in every configuration. The top-level
       <code>CMakeLists.txt</code> puts <code>-D__DEBUG__</code> on <code>CMAKE_CXX_FLAGS_DEBUG</code>, and
       <code>CMAKE_CXX_FLAGS_DEV</code> is defined as <code>${CMAKE_CXX_FLAGS_DEBUG} -O1</code>, so Dev inherits it
-      and Release does not have it. See <a href="../../Core/index.html#functions">Core: Debug</a>
+      and Release does not have it. Confirmed against the built binaries rather than the flag lines: the
+      message the live <code>Assert</code> prints appears in the Dev and Debug <code>EngineTest</code> binaries
+      and not in the Release one. See <a href="../../Core/index.html#functions">Core: Debug</a>
     </td>
   </tr>
 </table>
@@ -326,23 +328,35 @@
         <code>ENGINE_MIN_HARDWARE_THREADS</code></td>
   </tr>
   <tr>
-    <td><code>MAX_NUM_TASK_STREAMS</code> has no reader</td>
-    <td>No file under <code>Engine/</code> or <code>Applications/</code> uses it, so this page records the header
-        comment and cannot state what enforces 64. The live stream count limit, if any, lives in
-        <a href="../../Core/index.html#tasksystem">TaskSystem</a></td>
-  </tr>
-  <tr>
-    <td>The header's own <code>__DEBUG__</code> comment contradicts the build</td>
-    <td><code>BuildConfig.h</code> states that "Nothing in the build system defines it, so <code>Assert()</code> is
-        a no-op in Debug, Dev and Release alike." <code>CMakeLists.txt</code> line 9 disagrees: it adds
-        <code>-D__DEBUG__</code> to the Debug flags and Dev inherits them. The build script is the authority on a
-        compiler flag, so the table above follows it; the comment is stale and this page does not repeat it</td>
-  </tr>
-  <tr>
     <td>How to set any of it per build</td>
     <td>Covered by <a href="../../BuildSystem.md">docs/BuildSystem.md</a> and
         <a href="../../HelperScript.md">docs/HelperScript.md</a>, not duplicated here. Generated
         <code>CMakeLists.txt</code> files are never edited by hand</td>
+  </tr>
+  <tr>
+    <td>What the deleted <code>__DEBUG__</code> comment warned about no longer happens</td>
+    <td>The header used to say the suite does not survive assertions: that with <code>__DEBUG__</code> defined,
+        <code>EngineTest</code> aborts in <code>PoolAllocatorTest</code> on a contradiction between
+        <code>Memory/PoolAllocator.cpp</code> asserting on the raw <code>blockSize</code> parameter and its own
+        initialiser clamping that same parameter. Measured after the comment was removed: a Dev build — which has
+        assertions live, as the row above establishes — runs <strong>59 collections, 372 testlets, all
+        passing</strong>. The header made a stale claim about a build it had not been run against, and it is
+        recorded here rather than repeated there. Reproduce with
+        <code>./build.sh Applications/EngineTest -dev -test</code> then
+        <code>./build/Applications/EngineTest/Dev/EngineTest</code></td>
+  </tr>
+  <tr>
+    <td>Turning assertions on for one build</td>
+    <td>Pass the define to the compiler for that build alone —
+        <code>CXXFLAGS="-D__DEBUG__" ./build.sh Applications/EngineTest -dev -test</code> — rather than defining it
+        in this header, which would make every configuration carry it. Assertions are already live in Dev and
+        Debug, so this is only needed for a RelWithDebInfo or Release investigation</td>
+  </tr>
+  <tr>
+    <td><code>MAX_NUM_TASK_STREAMS</code> has no reader</td>
+    <td>No file under <code>Engine/</code> or <code>Applications/</code> uses it, so nothing states what enforces
+        64 and this page cannot invent an answer. The live stream count limit, if any, lives in
+        <a href="../../Core/index.html#tasksystem">TaskSystem</a></td>
   </tr>
   <tr>
     <td>Related defect, outside this page</td>
