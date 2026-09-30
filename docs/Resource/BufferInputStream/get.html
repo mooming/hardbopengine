@@ -93,26 +93,36 @@ template &lt;<span class="kw">typename</span> T, <span class="kw">class</span> T
 <pre><code>array.<span class="fn">clear</span>();
 
 <span class="kw">size_t</span> length = 0;
+const size_t errorCountBefore = errorCount;
+
+<span class="kw">size_t</span> length = 0;
 <span class="fn">Get</span>&lt;<span class="kw">size_t</span>&gt;(length, 0);
-<span class="kw">if</span> (length &lt;= 0)
+<span class="kw">if</span> (unlikely(errorCount != errorCountBefore))
 	<span class="kw">return</span>;
+
+<span class="kw">if</span> (length == 0)
+	{
+		array.<span class="fn">clear</span>();
+		<span class="kw">return</span>;
+	}
 
 <span class="cm">// ... compute startIndex / newIndex, consult IsValidIndex ...</span>
 
+array.<span class="fn">clear</span>();
 array.<span class="fn">reserve</span>(length);
 std::<span class="fn">copy</span>(dataBegin, dataEnd, std::<span class="fn">back_inserter</span>(array));</code></pre>
 
 <p class="meta">From Engine/Resource/BufferInputStream.h, abbreviated</p>
 
-<p>The container is cleared before anything is read, the bounds test sits between the length prefix and the <code>reserve</code>, and elements arrive through <code>back_inserter</code> — so the container's own size is never trusted, only its capacity is pre-booked.</p>
-<div class="gap">
-  <strong>A failed container read destroys what was in the container.</strong> <code>array.clear()</code> runs before the length prefix is read and before any bounds test, so a refused read leaves the caller's container empty rather than unchanged. A caller that reuses one container across several reads has no way to recover the previous contents.
+<p>The container is cleared only once the read is known to be honoured: the length prefix is read first, a refusal returns immediately with the container untouched, an explicit zero length clears it, and a bound that does not fit clears nothing. Elements then arrive through <code>back_inserter</code>, so the container&#39;s own size is never trusted — only its capacity is pre-booked.</p>
+<div class="note">
+  <strong>A refused read leaves the container alone.</strong> This order was not the original one: <code>array.clear()</code> used to run before the length prefix was read, so a refusal emptied the caller&#39;s container. Both behaviours are pinned by testlets now — "Refused Read Keeps The Container" asserts that a prefix which cannot be read leaves the contents, and that a zero-length prefix inside the buffer clears them.
 </div>
 <div class="gap">
-  <strong><code>reserve(length)</code> is sized by data from the image.</strong> The only thing standing between a four-byte length field and an allocation request of that many elements is <a href="is-valid-index.html"><code>IsValidIndex</code></a>, which does not test the end offset of the read at all. A large prefix therefore asks the allocator for a correspondingly large block before a single byte is copied. Trusting an image is the caller's decision; this path does not make it for them.
+  <strong>The allocation a container read asks for is sized by the image, but it is now bounded.</strong> <code>reserve(length)</code> is reached only after <a href="is-valid-index.html"><code>IsValidIndex</code></a> has accepted <code>startIndex + sizeof(T) * length</code> against <a href="../Buffer/get-size.html"><code>GetSize()</code></a>, so <code>length</code> cannot exceed the remaining bytes divided by the element size. That bound is what the guard&#39;s previous comparison failed to impose.
 </div>
 <div class="note">
-  <strong><code>if (length &lt;= 0)</code> on a <code>size_t</code> tests one value.</strong> The type is unsigned, so the comparison is <code>length == 0</code> in every case and a malformed prefix that someone intended as "-1" arrives as a huge positive number and takes the normal path. Reading it as intent, the branch means "empty image, leave the container empty"; reading it as code, it does not exclude negative values because none exist.
+  <strong>The empty-image case is honoured, not refused.</strong> A zero length prefix that fits inside the buffer means the image holds an empty array, so the container is cleared and no error is raised. The branch used to read <code>length &lt;= 0</code> on an unsigned type — a comparison that can only ever mean <code>== 0</code> — and it is now written as what it does.
 </div>
 
 <p>The array and container forms are the exact counterpart of <a href="../BufferOutputStream/operator-shift-left.html">the writer's array overload</a>, which writes an element count and then the elements. A fixed array on one side pairs with <code>T(&amp;array)[N]</code> on the other; a container pairs with the same bytes read into an <code>HVector&lt;T&gt;</code>.</p>
@@ -144,15 +154,28 @@ std::<span class="fn">copy</span>(dataBegin, dataEnd, std::<span class="fn">back
 
 <h2 id="example">Examples</h2>
 
-<p>The container form is how the pool-configuration loader rebuilds a vector of records; the call site is a single <code>&gt;&gt;</code>, which forwards here with the default container <code>HVector&lt;T&gt;</code>:</p>
+<p><strong>The container form has no call site in the engine, and cannot be reached by the operator.</strong>
+Its declaration is <code>template &lt;typename T, class TContainer = TVector&lt;T&gt;&gt; This&amp;
+operator&gt;&gt;(TContainer&amp; container)</code>, and <code>T</code> appears only in the default argument — it
+is not deducible from the parameter, so <code>stream &gt;&gt; someVector;</code> does not bind. The reachable form
+is the qualified call with the element type named:</p>
 
-<pre><code>HVector&lt;PoolConfig&gt; configs;
-is &gt;&gt; configs;                       <span class="cm">// binds the container template</span>
-returnIfB(is.<span class="fn">HasError</span>());  <span class="cm">// empty could mean empty image</span></code></pre>
+<pre><code>HVector&lt;<span class="kw">int</span>&gt; values;
+bis.operator&gt;&gt;&lt;<span class="kw">int</span>&gt;(values);        <span class="cm">// T named explicitly; TContainer defaults to HVector&lt;int&gt;</span></code></pre>
 
-<p class="meta">Shape used by the deserialisation paths in Engine/Memory/</p>
+<p class="meta">The form used by BufferInputStreamTest, which is the only code in the tree that instantiates this template</p>
 
-<p>An empty result and a refused result are the same observable state for that code — <code>array.clear()</code> runs first — which is the concrete reason the error count has to be consulted rather than the container contents inspected.</p>
+<p>The fixed-array form has no such problem — <code>T</code> and <code>N</code> both deduce from
+<code>T(&amp;array)[N]</code> — so <code>stream &gt;&gt; values;</code> works for a C array, and that is the bulk
+path real code takes. Where an engine loader needs a sequence it reads a count and then loops over scalars:
+<code>MultiPoolConfigCache::Deserialize</code> in <code>Engine/Memory/MultiPoolConfigCache.cpp</code> does
+<code>bis &gt;&gt; size;</code> and then reads each field per element, never through a container.</p>
+
+<div class="note">
+  <strong>Because nothing instantiated this template, its body was never compiled.</strong> An uninstantiated
+  template member is not checked, so the container form could carry a compile error that no build would report.
+  The new testlets instantiate it, which is also how the container-clearing order above became verifiable at all.
+</div>
 
 
 <footer class="prevnext">

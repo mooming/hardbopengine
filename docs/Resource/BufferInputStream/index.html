@@ -247,7 +247,7 @@
     <td><a href="get.html">Get</a><span class="badge">3 template overloads</span><span class="badge">private</span></td>
     <td class="sig">template&lt;typename T&gt; void Get(T&amp; value, const T&amp; defaultValue) noexcept<br>template&lt;typename T&gt; void Get(T* arrayBuffer, size_t size) noexcept<br>template&lt;typename T, class TContainer = TVector&lt;T&gt;&gt; void Get(TContainer&amp; array) noexcept</td>
     <td>The only read path: alignment rounding, default substitution on refusal, length prefixes for the two bulk
-        forms, and a container cleared before anything is verified</td>
+        forms, and a container touched only once the read is verified</td>
   </tr>
   <tr>
     <td><a href="is-valid-index.html">IsValidIndex</a><span class="badge">private</span></td>
@@ -275,12 +275,11 @@
 <table>
   <tr><th>Gap</th><th>Detail</th></tr>
   <tr>
-    <td>The bounds guard does not test the end of the read</td>
-    <td><a href="is-valid-index.html"><code>IsValidIndex(index)</code></a> ignores <code>index</code> and compares
-        <code>cursor</code> against <a href="../Buffer/get-size.html"><code>GetSize()</code></a>. Three call sites in
-        <a href="get.html"><code>Get</code></a> pass the end offset. A read starting inside the block and ending
-        outside it is therefore not refused, and for the bulk forms the overhang is governed by a length taken from
-        the image</td>
+    <td>Fixed this cycle: the bounds guard now tests the end of the read</td>
+    <td><a href="is-valid-index.html"><code>IsValidIndex(index)</code></a> used to compare <code>cursor</code>
+        against <a href="../Buffer/get-size.html"><code>GetSize()</code></a> and ignore its argument, so a read
+        starting inside a block and ending outside it was honoured. Three testlets in
+        <code>BufferInputStreamTest</code> now cover it, and each of them fails against the old comparison</td>
   </tr>
   <tr>
     <td><code>operator&gt;&gt;(const HString&amp;)</code> is a no-op</td>
@@ -289,10 +288,11 @@
         <a href="operator-shift-right.html"><code>operator&gt;&gt;</code></a></td>
   </tr>
   <tr>
-    <td>A container is emptied before the read is verified, and sized by the image</td>
-    <td><code>array.clear()</code> runs before the length prefix is read, and <code>reserve(length)</code> uses a
-        length that the broken bounds guard does not constrain. Both are on
-        <a href="get.html">the <code>Get</code> page</a></td>
+    <td>Fixed this cycle: a refused read no longer empties the caller&#39;s container</td>
+    <td><code>array.clear()</code> used to run before the length prefix was read. It now runs only after the read
+        is known to be honoured — a refusal leaves the contents alone, an explicit zero length clears them — and
+        <code>reserve(length)</code> is bounded by the corrected guard. Asserted by
+        "Refused Read Keeps The Container": <a href="get.html">the <code>Get</code> page</a></td>
   </tr>
   <tr>
     <td>Strings longer than 256 characters take a different path</td>
@@ -314,11 +314,14 @@
         guaranteed to have the same shape on another</td>
   </tr>
   <tr>
-    <td>Test coverage that exists, and the case that does not</td>
-    <td><code>BufferInputStreamTest</code> is declared in this header under <code>__UNIT_TEST__</code> and registered
-        through <a href="../../Test/index.html#unittestcollection">Test</a>; its "Empty Buffer" case is the refused-read
-        behaviour. There is no case for a tail shorter than one element, which is the case
-        <a href="is-valid-index.html">the guard</a> would fail</td>
+    <td>Test coverage</td>
+    <td><code>BufferInputStreamTest</code> is declared in this header under <code>__UNIT_TEST__</code> and
+        registered through <a href="../../Test/index.html#unittestcollection">Test</a>. It covered the empty-buffer
+        and full-image cases, and now also the tail shorter than one element, a bulk read past the end, and the
+        three container outcomes — refused, explicitly empty, accepted. Still uncovered: a buffer whose pointer is
+        null while its size is large, the shape
+        <a href="../BufferUtil/index.html#generate-dummy-buffer"><code>GenerateDummyBuffer</code></a> produces for
+        the writer and which no reader should be handed</td>
   </tr>
 </table>
 

@@ -148,6 +148,8 @@ This& BufferInputStream::operator>>(const hbe::HString& str) noexcept
 } // namespace hbe
 
 #ifdef __UNIT_TEST__
+#include "BufferOutputStream.h"
+#include "BufferUtil.h"
 #include "Memory/MemoryManager.h"
 #include "String/StringUtil.h"
 
@@ -257,6 +259,127 @@ void BufferInputStreamTest::Prepare()
 		if (bis.GetErrorCount() != 0)
 		{
 			ls << "Invalid error count " << bis.GetErrorCount() << ", 0 is expected." << lferr;
+		}
+	});
+
+	AddTest("Tail Shorter Than One Element", [this](auto& ls)
+	{
+		Buffer buffer = BufferUtil::GetMemoryBuffer<uint8_t>(6, 0);
+		BufferInputStream bis(buffer);
+
+		int first = 0;
+		bis >> first;
+
+		if (bis.HasError())
+		{
+			ls << "A 4 byte read at offset 0 of a 6 byte buffer must be honoured." << lferr;
+		}
+
+		int second = 0;
+		bis >> second;
+
+		if (!bis.HasError())
+		{
+			ls << "A read ending at byte 8 of a 6 byte buffer must be refused." << lferr;
+		}
+
+		if (bis.GetErrorCount() != 1)
+		{
+			ls << "Invalid error count " << bis.GetErrorCount() << ", 1 is expected." << lferr;
+		}
+	});
+
+	AddTest("Bulk Read Past The End", [this](auto& ls)
+	{
+		constexpr size_t BufferSize = 64;
+		constexpr size_t ElementCount = 20;
+
+		Buffer buffer = BufferUtil::GetMemoryBuffer<uint8_t>(BufferSize, 0);
+		*reinterpret_cast<size_t*>(buffer.GetData()) = ElementCount;
+
+		int values[ElementCount];
+		for (size_t i = 0; i < ElementCount; ++i)
+		{
+			values[i] = -1;
+		}
+
+		BufferInputStream bis(buffer);
+		bis >> values;
+
+		if (!bis.HasError())
+		{
+			ls << ElementCount << " ints from offset 8 cannot fit " << BufferSize << " bytes." << lferr;
+		}
+
+		for (size_t i = 0; i < ElementCount; ++i)
+		{
+			if (values[i] != -1)
+			{
+				ls << "A refused read must not write the destination, element " << i << " holds " << values[i] << lferr;
+				break;
+			}
+		}
+	});
+
+	AddTest("Refused Read Keeps The Container", [this](auto& ls)
+	{
+		constexpr size_t BufferSize = 64;
+
+		HVector<int> values;
+		values.push_back(111);
+		values.push_back(222);
+		values.push_back(333);
+
+		{
+			Buffer buffer = BufferUtil::GetMemoryBuffer<uint8_t>(4, 0);
+			BufferInputStream bis(buffer);
+
+			bis.operator>> <int>(values);
+
+			if (!bis.HasError())
+			{
+				ls << "A size_t prefix cannot be read out of a 4 byte buffer." << lferr;
+			}
+		}
+
+		{
+			Buffer buffer = BufferUtil::GetMemoryBuffer<uint8_t>(BufferSize, 0);
+			BufferInputStream bis(buffer);
+
+			bis.operator>> <int>(values);
+
+			if (bis.HasError())
+			{
+				ls << "A zero length prefix inside the buffer is an honoured empty array, not a refusal." << lferr;
+			}
+		}
+
+		if (!values.empty())
+		{
+			ls << "An empty array in the image must clear the container, it still holds " << values.size()
+			   << " element(s)." << lferr;
+		}
+
+		{
+			Buffer buffer = BufferUtil::GetMemoryBuffer<uint8_t>(BufferSize, 0);
+			BufferInputStream bis(buffer);
+
+			int payload[3] = {7, 8, 9};
+			BufferOutputStream bos(buffer);
+			bos << payload;
+
+			bis.operator>> <int>(values);
+
+			if (bis.HasError())
+			{
+				ls << "A 3 element array written by the output stream must read back." << lferr;
+			}
+
+			if (values.size() != 3 || values[0] != 7 || values[2] != 9)
+			{
+				ls << "An accepted read must replace the container contents, it holds " << values.size()
+				   << " element(s)." << lferr;
+			}
 		}
 	});
 }

@@ -88,7 +88,7 @@ public:
 private:
 	[[nodiscard]] bool IsValidIndex(size_t index) const noexcept
 	{
-		return cursor < buffer.GetSize();
+		return index <= buffer.GetSize();
 	}
 
 	template <typename T>
@@ -149,13 +149,19 @@ private:
 	{
 		static_assert(std::is_same<T, typename TContainer::value_type>::value);
 
-		array.clear();
+		const size_t errorCountBefore = errorCount;
 
 		size_t length = 0;
 		Get<size_t>(length, 0);
 
-		if (length <= 0)
+		if (unlikely(errorCount != errorCountBefore))
 			return;
+
+		if (length == 0)
+		{
+			array.clear();
+			return;
+		}
 
 		constexpr size_t tSize = sizeof(T);
 		const size_t startIndex = ((cursor + tSize - 1) / tSize) * tSize;
@@ -167,6 +173,7 @@ private:
 			return;
 		}
 
+		array.clear();
 		array.reserve(length);
 
 		auto bufferBase = buffer.GetData();

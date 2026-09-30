@@ -82,7 +82,11 @@
 
 <p><a href="put.html"><code>Put</code></a> does the bounds work directly instead, and does it correctly: it compares the end of the proposed write against the buffer size — <code>if (newIndex &gt; size)</code> — which is the test the helper's signature appears to promise and does not perform. Both <code>Put</code> templates carry that check, in the normal path and in the null-pointer probing path.</p>
 
-<p>It is documented rather than deleted because it is a live difference between the two stream classes: the sibling helper on <a href="../BufferInputStream/is-valid-index.html"><code>BufferInputStream</code></a> has the same body, and there it <em>is</em> called — three times, each time with an argument it ignores. Keeping the pair on one page each is what keeps that asymmetry visible.</p>
+<p>It is documented rather than deleted because it is why the two stream helpers no longer look alike: the
+ sibling on <a href="../BufferInputStream/is-valid-index.html"><code>BufferInputStream</code></a> is called three
+ times and was corrected to compare its argument, while this one is never called and still compares
+ <code>cursor</code>. One page each keeps that difference visible instead of letting a reader assume the bodies
+ match.</p>
 
 <h2 id="parameters">Parameters</h2>
 
@@ -107,7 +111,12 @@
 <h2 id="notes">Notes</h2>
 
 <div class="gap">
-  <strong>Do not adopt this helper.</strong> Any caller that writes <code>if (!IsValidIndex(endOfWrite))</code> gets "the cursor is somewhere inside the buffer" as an answer to "does this write fit". The correct form, used by <a href="put.html"><code>Put</code></a>, compares the end of the write against <a href="../Buffer/get-size.html"><code>GetSize()</code></a>. The consequence in the sibling class is documented on <a href="../BufferInputStream/is-valid-index.html">its page</a>.
+  <strong>Do not adopt this helper.</strong> Any caller that writes
+ <code>if (!IsValidIndex(endOfWrite))</code> gets "the cursor is somewhere inside the buffer" as an answer to
+ "does this write fit". The correct form is what <a href="put.html"><code>Put</code></a> does inline — compare
+ the end of the write against <a href="../Buffer/get-size.html"><code>GetSize()</code></a> — and what the
+ reader&#39;s guard now does: <a href="../BufferInputStream/is-valid-index.html">BufferInputStream:
+ IsValidIndex</a>
 </div>
 
 

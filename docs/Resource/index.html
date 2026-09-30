@@ -215,13 +215,13 @@
         path, the id or the bytes is a design decision, not a documentation omission</td>
   </tr>
   <tr>
-    <td>The streams' bounds guard does not test the end of a read</td>
-    <td>Both classes declare an identical private <code>IsValidIndex(size_t index)</code> whose body compares
-        <code>cursor</code> against the buffer size and never reads its argument. The output stream never calls it —
-        its real guard is the <code>newIndex &gt; size</code> test inside
-        <a href="BufferOutputStream/put.html"><code>Put</code></a>. The input stream calls it three times, so a read
-        that starts inside a block and ends outside it is not refused:
-        <a href="BufferInputStream/is-valid-index.html">BufferInputStream: IsValidIndex</a></td>
+    <td>Fixed this cycle: the reader&#39;s bounds guard now tests the end of a read</td>
+    <td><a href="BufferInputStream/is-valid-index.html"><code>IsValidIndex(index)</code></a> compared
+        <code>cursor</code> against the buffer size and ignored its argument; it now compares <code>index</code>,
+        which is what the three call sites in <a href="BufferInputStream/get.html"><code>Get</code></a> pass. The
+        output stream still owns a helper comparing <code>cursor</code>, but nothing calls it — its real guard is
+        the <code>newIndex &gt; size</code> test inside
+        <a href="BufferOutputStream/put.html"><code>Put</code></a></td>
   </tr>
   <tr>
     <td><code>operator&gt;&gt;(const HString&amp;)</code> reads nothing</td>

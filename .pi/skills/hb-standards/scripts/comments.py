@@ -383,6 +383,21 @@ def strip_file(path, text):
 
 
 def main(argv):
+    if argv and argv[0] == 'code_tokens':
+        argv = argv[1:]
+        if len(argv) not in (1, 2):
+            print('usage: comments.py code_tokens <file> [other-file]', file=sys.stderr)
+            return 3
+        tokens = [code_tokens(open(p, encoding='utf-8', errors='ignore').read()) for p in argv]
+        for path, toks in zip(argv, tokens):
+            print('%s : %d code token(s)' % (path, len(toks)))
+        if len(argv) == 2:
+            from collections import Counter
+            same = Counter(tokens[0]) == Counter(tokens[1])
+            print('token multiset %s' % ('identical' if same else 'DIFFERS'))
+            return 0 if same else 1
+        return 0
+
     strip = '--strip' in argv
     argv = [a for a in argv if a != '--strip']
     if not argv:

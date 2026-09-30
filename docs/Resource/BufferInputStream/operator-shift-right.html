@@ -97,7 +97,18 @@ This&amp; <span class="fn">operator&gt;&gt;</span>(TContainer&amp; container) <s
 
 <p>Reading a string one character at a time is a consequence of alignment rather than of laziness: each character is an aligned 1-byte read at the running cursor, so the reader stays on the same offset arithmetic as the writer for every element it consumes.</p>
 
-<p>The array and container templates forward to the two bulk <a href="get.html"><code>Get</code></a> forms, so the prefix semantics, the container clearing and the <code>static_assert</code> on element type are described there.</p>
+<p>The array and container templates forward to the two bulk <a href="get.html"><code>Get</code></a> forms, so
+the prefix semantics, the container clearing and the <code>static_assert</code> on element type are described
+there.</p>
+
+<div class="gap">
+  <strong>The container overload cannot be selected by <code>&gt;&gt;</code>.</strong> Its
+ <code>T</code> appears only in the default argument of <code>class TContainer = TVector&lt;T&gt;</code>, so it is
+ not deducible from the operand and <code>stream &gt;&gt; someVector;</code> fails to bind. Reachable only as
+ <code>stream.operator&gt;&gt;&lt;T&gt;(container)</code>, which no engine code does — the loaders read a count and
+ then loop over scalars instead. The C-array overload immediately above has no such problem, since <code>T</code>
+ and <code>N</code> both deduce from <code>T(&amp;array)[N]</code>.
+</div>
 <div class="gap">
   <strong><code>operator&gt;&gt;(const HString&amp;)</code> reads nothing. </strong> Its body is <code>return *this;</code> — no <a href="get.html"><code>Get</code></a> call, no cursor movement, no error count. It is a declared, defined, chainable no-op. It cannot fill its argument in any case, because the parameter is <code>const</code>, so the overload as written has no reachable effect: an image containing a string passed to this overload leaves the string untouched and the cursor unmoved, and everything after it in the chain desynchronises against the image. The <code>StaticString</code> overload immediately above is the one that works, and the <a href="../BufferOutputStream/operator-shift-left.html">writer</a> has no matching <code>HString</code> write either — it converts every string type with <code>c_str()</code> and writes bytes.
 </div>
@@ -161,7 +172,12 @@ returnIfB(is.<span class="fn">HasError</span>());
 
 <p class="meta">Shape used by the deserialisation paths in Engine/Memory/</p>
 
-<p>The loop condition is <a href="is-done.html"><code>IsDone</code></a> rather than a count, and it relies on alignment and the cursor; a truncated final record is caught, if at all, by <a href="is-valid-index.html">a guard that does not check the end offset</a>.</p>
+<p>The loop condition is <a href="is-done.html"><code>IsDone</code></a> rather than a count, and it relies on
+ alignment and the cursor. A truncated final record is caught by
+ <a href="is-valid-index.html"><code>IsValidIndex</code></a>, which compares the end offset of the proposed read
+ against <a href="../Buffer/get-size.html"><code>GetSize()</code></a> — behaviour pinned by the "Tail Shorter Than
+ One Element" and "Bulk Read Past The End" testlets, both of which fail against the guard as it stood before this
+ cycle.</p>
 
 
 <footer class="prevnext">
