@@ -1,6 +1,32 @@
 # Journal
 
-## 2026-09-30 17:40 - Resource cycle complete, and documentation found three defects no test reports
+## 2026-09-30 17:04 - The two Resource defects are fixed, and each fix is proven by a test that fails without it
+
+The owner approved fixing the guard and the container order, and left the `HString` overload as the design
+decision it is. `IsValidIndex` now compares `index <= GetSize()`. `Get` for a container reads the length prefix
+first, returns on a refusal with the caller's contents intact, clears only for an explicitly empty image, and
+`length <= 0` on a `size_t` became the `length == 0` it always meant. The writer's never-called twin stays as it
+was, so the two helpers now genuinely differ — which is a paragraph in the docs, not a note in the code.
+
+**Verification that a test means something: rebuild against the old code and watch it fail.** All three new
+testlets report failures with the previous guard restored, including a bulk read past the end that really did
+write its destination. Restored, the suite is 59 collections / **375 testlets** (was 372) across Dev, Debug and
+Release, and the full gate reports 0 grep failures and build 12/12. The docs for the guard, `Get`, both index
+pages and the writer's cross-references were amended in the same commit, so code and pages agree at every
+commit boundary.
+
+Two claims from my own Resource pages were false and are corrected there: `stream >> someVector` **cannot
+bind** — that overload's `T` sits only in a default argument, so it is undeducible, reachable only as
+`stream.operator>><T>(container)` — and the pool-config loader I cited as its user reads a count and loops over
+scalars instead. Nothing had ever instantiated that template, so its body had never been compiled.
+
+**Two errors in my own records, found by checking instead of trusting.** A plan row cited a commit hash that
+does not exist in this repository, and five JOURNAL entry timestamps came from the clock in my head rather than
+`date` — one claimed 17:40 when its commit is 16:35 and the session clock read 17:06. Headers now carry
+committer dates. A log entry with an invented timestamp is worse than no entry: it is evidence that never
+happened.
+
+## 2026-09-30 16:35 - Resource cycle complete, and documentation found three defects no test reports
 
 Five modules now conform: HSTL, Config, Log, Engine and **Resource** — 0 comment lines, 0 layout findings,
 5 of 5 entries with pages, 0 missing method pages. Gate green throughout (build 12/12, 59 collections in
@@ -14,16 +40,17 @@ would have been found by the mechanical sweep, which never reads behaviour:
   inside" where the caller needs "does this fit". A read starting inside a block and ending outside it is
   not refused; in the bulk forms the overhang is set by a length prefix taken from the image, which also
   reaches `reserve()` unconstrained. The writer owns the same helper and never calls it, so only the reader
-  carries the consequence.
+  carries the consequence. **Fixed in `cc6c4ea`** — see the entry above.
 - `operator>>(const HString&)` is `return *this;` — no read, no cursor movement, no error count, and a
   `const` parameter it could not fill. A chain through it desynchronises from the image while `HasError()`
   reports clean.
 - `BufferInputStream::Get` clears the caller's container before reading the length prefix, so a refused
-  read destroys what was in it rather than leaving it alone.
+  read destroys what was in it rather than leaving it alone. **Fixed in `cc6c4ea`** — see the entry above.
 
-All three are documented on their pages and on the module Coverage table, **not fixed** — the cycle is
-docs, format, strip, layout, and a guard's semantics plus a stub's purpose are the owner's decisions. The
-guard is a two-character change; the stub is either an implementation or a deletion.
+All three were documented on their pages and on the module Coverage table **before** anything changed, and
+the owner then approved fixing two of them in `cc6c4ea`: the guard and the container order, each proven by a
+testlet that fails against the previous code. `operator>>(const HString&)` is untouched — implementing it or
+deleting it is a design decision, not a documentation one.
 
 **The mover I wrote repeated a mistake I had already recorded.** It inserted `private:` plus the members
 without re-opening `public:`, so everything below the insertion point became private. That compiles, and
@@ -45,7 +72,7 @@ Six pages inside Resource asserted these classes were "not documented in this ba
 `/// @brief` text the strip deletes. Stale gap notes are the worse failure: they tell a reader a hole
 exists where the material now is.
 
-## 2026-09-30 16:05 - the standard's own exemplar was fixed, and it took two of my bugs to show why that needed a checker
+## 2026-09-30 15:37 - the standard's own exemplar was fixed, and it took two of my bugs to show why that needed a checker
 
 `Engine/CodingStandards.h` reported 0 layout findings, from 14. The user chose to fix the good examples
 rather than exempt the file, so the exemplar now obeys the rule it teaches: data above functions in
@@ -72,7 +99,7 @@ added or renamed, only reordered. `CodingStandards` builds in Debug, Dev and Rel
 with 59 collections green in all three configurations.
 
 
-## 2026-09-30 15:30 - mechanical debt is zero tree-wide, and two of my own rules could not be obeyed
+## 2026-09-30 15:23 - mechanical debt is zero tree-wide, and two of my own rules could not be obeyed
 
 Every grep-enforceable rule now passes across Engine, Applications and Examples: **81 failures down to
 0**, gate green (build 12/12, EngineTest 59 collections in Debug, Dev and Release). Format 169 files,
@@ -125,7 +152,7 @@ from the greps and `comments.py` exempts it from the ban, but `layout.py` has no
 exemplar is billed by a rule it demonstrates against. Fix the good examples, or exempt the file from
 layout too.
 
-## 2026-09-30 03:10 - four modules conformant, and the docs gate turns out to have been measuring the wrong thing
+## 2026-09-30 13:31 - four modules conformant, and the docs gate turns out to have been measuring the wrong thing
 
 Subagent dispatch was abandoned after measurement: the HSTL worker took 58 minutes and over-verified
 (it built three configurations and diffed `-O2` assembly to justify collapsing four blank lines), the

@@ -178,7 +178,8 @@ Resource is the first module taken end to end through the full four-commit cycle
 sweep, and it earned the "cheapest" label in a way the estimates did not predict: 11 comment lines and 20
 layout findings, but documentation authoring found three behavioural defects that no test reports — the
 reader's bounds guard ignoring its argument, a string overload that reads nothing, and a container cleared
-before the read is verified. Cheapest to migrate is not cheapest to understand.
+before the read is verified. The guard and the container were fixed in `cc6c4ea`, each proven by a testlet
+that fails against the previous code; the string overload remains an owner decision. Cheapest to migrate is not cheapest to understand.
 
 Three readings this table forces:
 
