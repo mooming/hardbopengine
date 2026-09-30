@@ -1,5 +1,57 @@
 # Journal
 
+## 2026-09-30 23:03 - The skill could grade the reference and delete the comments, but not write the pages
+
+The owner asked whether hb-standards removes comments and creates their reference documents. The honest
+answer was half and half, and the half that was missing was the important one: `comments.py --strip` deletes
+comments and appeared **zero times** in SKILL.md; `docs_methods.py`, `htmlcheck.py` and `prove_format.py`
+were in `scripts/` and undocumented; and nothing in the skill authored a page, so the generators I used for
+Resource and String lived in /tmp and would have died with the session. The skill could grade the reference,
+could delete the prose meant to be replaced by it, and could not write the replacement.
+
+Six commits, and the tooling found five real defects in itself once it started being used:
+
+- **The per-method gate never looked at operators.** `check_module` appended every operator to a
+  "check by hand" bucket and `continue`d before consulting `expected_file()`, so a class whose entire API is
+  one conversion — `hbe::EndLine`, the named newline — required no documentation whatsoever. My own earlier
+  commit claimed the opposite on the strength of a unit test of `expected_file()` in isolation. Verified the
+  whole path this time: the module check reported 0 findings for a class the function said needed a page.
+- **The page comparison could never match.** `folded` holds `norm()`-ed file names, `norm` deletes hyphens,
+  and the raw `operator-right-shift` was compared against them — so no operator page in the tree could ever
+  satisfy its own requirement, and only hyphen-free names like `constructors` passed by accident.
+- **clang names a templated constructor `ConfigParam<T, IsAtomic>`.** Taking the last whitespace token
+  yields `IsAtomic>`, which reads as a method called `IsAtomic` that owns no page; `Config` had been
+  reporting a requirement the contract never made. The name is whatever follows the kind word `function`.
+- **Three spellings for two operators.** The contract says `operator-index.html` and
+  `operator-left-shift.html`; the tool's table said `subscript` and omitted `<<`/`>>`; my own Resource pages
+  went out as `operator-shift-left.html`. The contract wins, `docs/` is renamed to match, and the table is
+  now its machine-readable copy.
+- **`= delete` and `= default` are invisible to the AST**, which reports the literal string
+  `function operator=`. The exemption needs the source line. Both are counted in the summary line rather
+  than dropped, because an exemption nobody can see is a way to hide a gap.
+
+**`docs_page.py` makes page authoring repeatable** — chrome and validation, never prose — and its own
+validator caught four of its bugs, including a lifted module-index page resolving its stylesheet to
+`docs/String/assets/`. **`--strip` now refuses** when the module still owes class or method pages, running
+the gate's own checks as subprocesses so the two verdicts cannot drift, tested in both directions (refused
+for `String`, allowed for `Resource`). **Layer 5 in `check.sh` runs all three doc checks** instead of one,
+with unauthored pages as backlog and a broken page as a violation.
+
+**Clearing the HTML debt before tightening the gate** turned out to need care: `htmlcheck` counted only the
+shared stylesheet, so a design document with its own `<style>` block reported seven styled blocks as
+undeclared classes — a check that cries wolf is a check that gets ignored. Behind the false positive: 13 real
+pages of debt (undeclared `toc`/`cmt`/`num`, dead links to `TaskID` and `Runnable` pages that do not exist,
+an unbalanced `</span>` in an ASCII diagram). 279 pages now validate with 0 problems, which is what makes the
+new strictness fair.
+
+**Procedure trap, mine:** one commit message was written with an unquoted heredoc delimiter, so every
+backtick in it ran as a shell command and the body came out two lines long. Commit messages need `<<'EOF'`.
+Amended from a file.
+
+State: 5 of 14 Engine modules fully conformant plus Applications; per-method debt now measured honestly —
+Container 128 (was believed 112), Test 21, Renderer 18, Core 2. Next is String cycle 1's remaining headers:
+`Letter`, `StaticStringID`, `StaticString` — 13 method pages, authored with `docs_page.py` this time.
+
 ## 2026-09-30 17:04 - The two Resource defects are fixed, and each fix is proven by a test that fails without it
 
 The owner approved fixing the guard and the container order, and left the `HString` overload as the design
