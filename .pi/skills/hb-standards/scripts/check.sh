@@ -17,7 +17,9 @@
 # Layers, in the order they run. Each covers what the previous one structurally cannot:
 #   1. clang-format        Allman braces, tabs, 120 columns, include order, blank lines.
 #   2. mechanical greps    rules a formatter cannot express: joined empty bodies, no
-#                          exceptions, m_ prefix, explicit inline, hygiene, include layout.
+#                          exceptions, m_ prefix, hygiene, include layout. `explicit inline` is
+#                          advisory only: a grep cannot tell an in-class member (keyword is noise)
+#                          from a header free function (keyword prevents a duplicate symbol).
 #   3. comments.py         the comment ban, by lexing the file. scripts/comments.py
 #   4. layout.py           the twelve-block member layout, from the clang AST.
 #                          scripts/layout.py
@@ -209,6 +211,13 @@ fi
 # ---------------------------------------------------------------- clang-format --
 VIOL=0
 WARN=0
+# `VIOL` counts failing sections, one each, so before this split the verdict line added
+# "files clang-format wants to rewrite" to "greps that failed" to "sections that reported backlog" and
+# printed the sum as `mechanical violations`. A reader took 3 to mean three lines of bad code when it
+# meant three sections still holding work the sweep has not reached. Backlog sections — comment ban,
+# member layout, docs coverage — count separately now, because they are the remaining work, not
+# violations of a rule that can be fixed today.
+BACKLOG=0
 
 # A --staged run is a promise about a commit, and a commit takes its bytes from the index.
 # Every check below reads worktree files instead, so when the two differ the verdict does not
@@ -320,7 +329,12 @@ if [[ ${#FILES[@]} -gt 0 ]]; then
 	check "virtual alongside override"         'virtual\s+[^;{]*\boverride'                      FAIL "${FILES[@]}"
 
 	hdr "naming and interface conventions"
-	check "no explicit inline keyword"         '^\s*inline\s+[A-Za-z_]'                          FAIL "${FILES[@]}"
+	# `inline` cannot be policed by a grep, and a FAIL here would order something that breaks the build.
+	# 16 of the 18 sites in this tree are functions or operators defined at namespace scope in a header,
+	# where the keyword is what stops every including translation unit emitting a duplicate symbol;
+	# only in-class member definitions are noise. Distinguishing them needs the AST, so the rule lives
+	# in SKILL.md's manual list and this line reports without failing.
+	check "redundant inline keyword?"          '^\s*inline\s+[A-Za-z_]'                          WARN "${FILES[@]}"
 	# A snake_case member name cannot be grepped: the member name is the token before `;`, and
 	# `size_t MaxNameLength = 127;` has a type where a snake_case member would be. An attempt at
 	# this rule flagged every size_t declaration in the tree, which is worse than not checking it. It is
@@ -471,7 +485,7 @@ if [[ ${#FILES[@]} -gt 0 ]]; then
 		echo "[PASS] no comment outside the exemption list"
 	else
 		echo "$comment_out" | sed 's/^/    /'
-		VIOL=$((VIOL+1))
+		BACKLOG=$((BACKLOG+1))
 	fi
 
 	hdr "member layout — twelve blocks: types, then all data, then all functions"
@@ -483,7 +497,7 @@ if [[ ${#FILES[@]} -gt 0 ]]; then
 		echo "$layout_out" | grep -vE '^\[|member layout:' | sed 's/^/    /'
 		echo "  $(echo "$layout_out" | grep 'member layout:')"
 		echo "$layout_out" | grep -E '^\[[A-Z]+\]' | sed 's/^/    note: /'
-		if [[ $layout_code -ne 0 ]]; then VIOL=$((VIOL+1)); fi
+		if [[ $layout_code -ne 0 ]]; then BACKLOG=$((BACKLOG+1)); fi
 	else
 		printf '[NONE] member layout — %s is absent; configure with -DCMAKE_EXPORT_COMPILE_COMMANDS=ON.\n' "$COMPILE_DB"
 		printf '       An unmeasured rule is not a passing rule, so this is stated, not skipped.\n'
@@ -496,7 +510,7 @@ if [[ ${#FILES[@]} -gt 0 ]]; then
 	coverage_out=$(python3 "$SCRIPT_DIR/docs_coverage.py" check $modules_touched 2>&1)
 	coverage_code=$?
 	echo "$coverage_out" | sed 's/^/    /'
-	if [[ $coverage_code -ne 0 ]]; then VIOL=$((VIOL+1)); fi
+	if [[ $coverage_code -ne 0 ]]; then BACKLOG=$((BACKLOG+1)); fi
 
 	hdr "convention debt — namespace indentation, reported while the sweep is in progress"
 	# A namespace body must start at column 0. Only the first non-blank line after
@@ -641,8 +655,9 @@ fi
 # ---------------------------------------------------------------------- verdict --
 echo
 echo "=========================================================================="
-printf " mechanical violations : %d\n" "$VIOL"
-printf " warnings / advisory   : %d\n" "$WARN"
+printf " grep rule failures   : %d\n" "$VIOL"
+printf " advisory             : %d\n" "$WARN"
+printf " sweep backlog        : %d%s\n" "$BACKLOG" "$([[ $BACKLOG -gt 0 ]] && echo '  (comment ban, member layout, docs coverage — see above)')"
 if [[ ${#FILES[@]} -eq 0 ]]; then
 	# Vacuity guard. With zero files in scope the lint checks above examined nothing
 	# and a violation count of zero is meaningless — the same trap that let the
@@ -653,5 +668,5 @@ fi
 printf " build gate            : %s\n" "$([[ $BUILD -eq 0 ]] && echo 'skipped (--no-build)' || ([[ $BUILD_STATUS -eq 0 ]] && echo "PASS ${BUILD_PASS}/${BUILD_TOTAL}" || echo 'FAIL'))"
 echo "=========================================================================="
 if [[ $BUILD_STATUS -ne 0 ]]; then exit 2; fi
-if [[ $VIOL -ne 0 ]]; then exit 1; fi
+if [[ $VIOL -ne 0 || $BACKLOG -ne 0 ]]; then exit 1; fi
 exit 0

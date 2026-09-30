@@ -53,7 +53,14 @@ To maintain high code quality and consistency, please adhere to the following gu
 - **Getters**: Use the `[[nodiscard]]` attribute for getter functions and functions that return values.
 - **Inheritance**: Use the `final` specifier for classes that are not intended to be inherited from.
 - **Initialization**: Avoid in-class initialization except when using `constexpr`. Prefer initializing members via constructors.
-- **Inline Functions**: Do not use the `inline` keyword explicitly. Do not define multi-line functions in headers unless it's absolutely necessary (e.g., for templates or `constexpr`).
+- **Inline Functions**: Do not write `inline` where it does nothing. A member function defined inside its
+  class is already inline, and a template does not need the keyword, so writing it there is noise.
+  It is **not** a general ban: a function or operator *defined at namespace scope in a header* needs
+  `inline`, because without it every translation unit that includes the header emits its own
+  definition and the link fails with a duplicate symbol. `Assert`, `FatalAssert`, `IdentityMatrix` and
+  `operator<<` for `ComponentState` are in that category, so removing the keyword from them is a build
+  break, not a cleanup. The second half of the rule stands on its own: do not define multi-line
+  functions in headers unless it is genuinely necessary, as for templates and `constexpr`.
 - **Single-argument Constructors**: Mark single-argument constructors with `explicit` to prevent implicit conversions.
 - **Defaulted Members**: Use `= default` instead of empty `{}` for trivial special member function implementations.
 - **Member Initializer Lists**: Prefer member initializer lists over assignment in constructors.

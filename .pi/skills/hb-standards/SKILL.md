@@ -199,10 +199,19 @@ Grep these in the changed hunks and fix by hand:
 | `static_assert` | use it wherever a condition is compile-time evaluable |
 | `constexpr` | no magic numbers; constants are PascalCase |
 | Composition | prefer has-a; `final` on classes not meant as bases |
+| `inline` keyword | redundant on an in-class member definition and on a template; **load-bearing** on a function or operator defined at namespace scope in a header, where dropping it makes every including translation unit emit the symbol and the link fails. Only the AST separates the two, so the lint reports `inline` as advisory |
 | No snake_case member | a member is the token before `;`, and a type sits in the same position — `size_t MaxNameLength = 127;` is a type then a PascalCase name, so no grep separates them. The `m_` prefix is checked mechanically; this half of the rule is not |
 | `noexcept` | mark only what is provably exception-free; drop it where `new` is called |
 
 ## Traps already paid for — do not relearn them
+
+- **A ban on `inline` cannot be a grep.** Stage 0 raised this rule from advisory to FAIL on the strength
+  of the standard's sentence "do not use the `inline` keyword explicitly". Applying it would have
+  deleted the keyword from `Assert`, `FatalAssert`, `IdentityMatrix` and `operator<<` for `ComponentState`
+  — namespace-scope definitions in headers, where `inline` is the only thing separating a working build
+  from a duplicate-symbol link error. 16 of the 18 sites in the tree are that shape; exactly one, a
+  constructor defined inside `Exception`, was noise. The standard's sentence is now qualified, and the
+  layer is advisory again.
 
 - **Member layout is not greppable.** All four of these were mis-classified by the first
   prototype of `layout.py`: `std::function<void(int)> cb;` is data containing parentheses;
