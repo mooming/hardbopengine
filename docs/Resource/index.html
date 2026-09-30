@@ -107,11 +107,32 @@
     <td>Bytes plus a releaser; the module's working, used API</td>
   </tr>
   <tr>
-    <td><a href="ResourceManager/index.html">ResourceManager</a><span class="badge">5 method pages</span></td>
+    <td><a href="ResourceManager/index.html">ResourceManager</a><span class="badge">6 method pages</span></td>
     <td>Class</td>
     <td>ResourceManager.h</td>
     <td>Path-keyed loads, reference counting, asynchronous advance — declared; construction and destruction are the parts
         that exist</td>
+  </tr>
+  <tr>
+    <td><a href="BufferInputStream/index.html">BufferInputStream</a><span class="badge">9 method pages</span></td>
+    <td>Class, copyable</td>
+    <td>BufferInputStream.h</td>
+    <td>Reads the image the output stream writes: alignment-rounded primitives, length-prefixed strings and arrays,
+        refusals counted rather than reported</td>
+  </tr>
+  <tr>
+    <td><a href="BufferOutputStream/index.html">BufferOutputStream</a><span class="badge">10 method pages</span></td>
+    <td>Class, not copyable, not movable</td>
+    <td>BufferOutputStream.h</td>
+    <td>The only write path into a borrowed buffer; thread-pinned at construction, and able to measure an image
+        against a buffer that holds no bytes</td>
+  </tr>
+  <tr>
+    <td><a href="BufferUtil/index.html">BufferUtil</a><span class="badge">6 functions, 1 page</span></td>
+    <td>Namespace of free functions</td>
+    <td>BufferUtil.h</td>
+    <td>The six producers of <a href="Buffer/index.html"><code>Buffer</code></a> objects, and the only place the OS
+        file-mapping and release contract lives</td>
   </tr>
   <tr>
     <td><a href="BufferTypes/index.html">BufferTypes</a><span class="badge">no methods</span></td>
@@ -180,8 +201,8 @@
 </table>
 
 <p>
-  They are listed here and named nowhere else: no class page or method page in this batch documents them. See
-  <a href="#coverage">Coverage</a>.
+  Each is documented in its own section of <a href="BufferUtil/index.html"><code>BufferUtil</code></a>, including the
+  pairing that makes a size probe possible before a file is created.
 </p>
 
 <h2 id="coverage">Coverage</h2>
@@ -194,20 +215,25 @@
         path, the id or the bytes is a design decision, not a documentation omission</td>
   </tr>
   <tr>
-    <td><code>BufferInputStream</code> and <code>BufferOutputStream</code></td>
-    <td>These are not a legend from the deleted guide: they are real public classes, each in its own header
-        (<code>Engine/Resource/BufferInputStream.h</code>, <code>Engine/Resource/BufferOutputStream.h</code>) with its own source
-        file. Both borrow the buffer they are given — <code>const Buffer&amp;</code> in, <code>Buffer&amp;</code> out — both keep a
-        cursor and an error count, the input stream reads primitives, <code>StaticString</code>, C arrays and containers through
-        <code>operator&gt;&gt;</code>, the output stream writes them through <code>operator&lt;&lt;</code> and pins itself to the
-        thread that constructed it. None of that surface has a page in this batch, and it is the main body of real API in the
-        module: it is what <code>MultiPoolConfigCache</code> serialises with</td>
+    <td>The streams' bounds guard does not test the end of a read</td>
+    <td>Both classes declare an identical private <code>IsValidIndex(size_t index)</code> whose body compares
+        <code>cursor</code> against the buffer size and never reads its argument. The output stream never calls it —
+        its real guard is the <code>newIndex &gt; size</code> test inside
+        <a href="BufferOutputStream/put.html"><code>Put</code></a>. The input stream calls it three times, so a read
+        that starts inside a block and ends outside it is not refused:
+        <a href="BufferInputStream/is-valid-index.html">BufferInputStream: IsValidIndex</a></td>
   </tr>
   <tr>
-    <td><code>hbe::BufferUtil</code></td>
-    <td>The six factories under <a href="#functions">Module functions</a> have no page of their own here. They are the only
-        producers of <a href="Buffer/index.html"><code>Buffer</code></a> objects in the engine, and the only place the OS file
-        mapping contract lives</td>
+    <td><code>operator&gt;&gt;(const HString&amp;)</code> reads nothing</td>
+    <td>Defined as <code>return *this;</code>, with a <code>const</code> parameter it could not fill. An image
+        deserialised through it leaves the string untouched and desynchronises the rest of the chain:
+        <a href="BufferInputStream/operator-shift-right.html"><code>operator&gt;&gt;</code></a></td>
+  </tr>
+  <tr>
+    <td>Read-only names the mapping, not the descriptor</td>
+    <td><a href="BufferUtil/index.html#get-read-only-file-buffer"><code>GetReadOnlyFileBuffer</code></a> opens the file
+        read-write and restricts only the protection, so the guarantee is a protection fault rather than an OS-level
+        denial. Nothing in the engine writes through a read-only mapping, so the difference is untested</td>
   </tr>
   <tr>
     <td>Asynchronous loading, caching and retirement</td>

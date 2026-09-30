@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BufferInputStream::IsDone — Resource — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+  </ul>
+
+  <h3><a href="index.html">Buffer</a> methods</h3>
+  <ul class="methods">
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+    <li><a href="get-error-count.html">GetErrorCount</a></li>
+    <li><a href="has-error.html">HasError</a></li>
+    <li><a href="clear-error-count.html">ClearErrorCount</a></li>
+    <li><a href="is-done.html">IsDone</a></li>
+    <li><a href="operator-shift-right.html">operator&gt;&gt;</a></li>
+    <li><a href="get.html">Get</a></li>
+    <li><a href="is-valid-index.html">IsValidIndex</a></li>
+  </ul>
+</nav>
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Resource</a> /
+  <a href="index.html">BufferInputStream</a> / IsDone
+</p>
+
+<h1><span class="fn">IsDone</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::BufferInputStream</span>
+  <span class="tag">Engine/Resource/BufferInputStream.h</span>
+  <span class="tag">const noexcept</span>
+  <span class="tag">[[nodiscard]]</span>
+  the cursor has reached the end of the block
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] <span class="kw">bool</span> <span class="fn">IsDone</span>() <span class="kw">const</span> <span class="kw">noexcept</span> { <span class="kw">return</span> cursor &gt;= buffer.<span class="fn">GetSize</span>(); }</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>Asks whether the read position is at or past the end of the block. It is the loop condition for"read until the image is exhausted" — the shape used when the record count is not stored in the image.</p>
+
+<p>Two limits follow from the comparison itself. It says nothing about whether the <em>next</em> value would fit: at a cursor one byte from the end of a buffer, <code>IsDone()</code> is false and a <code>double</code> read is still refused, because the bounds decision is made separately by <a href="is-valid-index.html"><code>IsValidIndex</code></a>. And alignment means the cursor can pass the end legitimately: a value rounded up past the last byte leaves the cursor beyond <a href="../Buffer/get-size.html"><code>GetSize()</code></a> without any error having been raised.</p>
+
+<p>For a zero-size or null-pointer buffer it reports <code>true</code> immediately, which is the cheap way to test "is there any image here at all" — although <a href="../Buffer/get-data.html"><code>GetData() == nullptr</code></a> is the honest test for whether there are bytes to touch.</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr>
+    <td><code>bool</code></td>
+    <td><code>cursor &gt;= GetSize()</code>. Does not consult <a href="get-error-count.html"><code>errorCount</code></a>, so a reader can be done and error-free, or not-done and already failing. <code>[[nodiscard]]</code></td>
+  </tr>
+</table>
+
+
+<footer class="prevnext">
+  <span><a href="index.html">&larr; BufferInputStream</a></span>
+  <span><a href="index.html#methods">All BufferInputStream methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

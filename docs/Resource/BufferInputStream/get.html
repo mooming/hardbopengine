@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BufferInputStream::Get — Resource — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">Buffer</a> methods</h3>
+  <ul class="methods">
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+    <li><a href="get-error-count.html">GetErrorCount</a></li>
+    <li><a href="has-error.html">HasError</a></li>
+    <li><a href="clear-error-count.html">ClearErrorCount</a></li>
+    <li><a href="is-done.html">IsDone</a></li>
+    <li><a href="operator-shift-right.html">operator&gt;&gt;</a></li>
+    <li><a href="get.html">Get</a></li>
+    <li><a href="is-valid-index.html">IsValidIndex</a></li>
+  </ul>
+</nav>
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Resource</a> /
+  <a href="index.html">BufferInputStream</a> / Get
+</p>
+
+<h1><span class="fn">Get</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::BufferInputStream</span>
+  <span class="tag">Engine/Resource/BufferInputStream.h</span>
+  <span class="tag">private</span>
+  <span class="tag">template</span>
+  <span class="tag">noexcept</span>
+  <span class="tag">3 overloads</span>
+  the single read path, and where refusals are born
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code><span class="kw">using</span> <span class="ty">TVector</span> = hbe::HVector&lt;T&gt;   <span class="cm">// member template alias</span>
+
+template &lt;<span class="kw">typename</span> T&gt;
+<span class="kw">void</span> <span class="fn">Get</span>(T&amp; value, <span class="kw">const</span> T&amp; defaultValue) <span class="kw">noexcept</span>;
+template &lt;<span class="kw">typename</span> T&gt;
+<span class="kw">void</span> <span class="fn">Get</span>(T* arrayBuffer, <span class="kw">size_t</span> size) <span class="kw">noexcept</span>;
+template &lt;<span class="kw">typename</span> T, <span class="kw">class</span> TContainer = TVector&lt;T&gt;&gt;
+<span class="kw">void</span> <span class="fn">Get</span>(TContainer&amp; array) <span class="kw">noexcept</span>;</code></pre>
+
+<p>All three are private, defined in the class body, and the whole public surface — every <a href="operator-shift-right.html"><code>operator&gt;&gt;</code></a> — goes through one of them.</p>
+
+<h2 id="description">Function description</h2>
+
+<p><strong>Scalar form</strong> <code>Get&lt;T&gt;(value, defaultValue)</code>. It rounds the cursor up to a multiple of <code>sizeof(T)</code>, asks <a href="is-valid-index.html"><code>IsValidIndex</code></a> whether the read may proceed, and on refusal raises <a href="get-error-count.html">the error count</a>, assigns <code>defaultValue</code> into the caller's object, and returns without moving the cursor. On success it reads through <code>reinterpret_cast&lt;const T*&gt;</code> at the rounded offset and leaves the cursor one element past the value. The mirror of <a href="../BufferOutputStream/put.html"><code>Put</code></a>, in the offset arithmetic and in the silent-failure shape.</p>
+
+<p><strong>Fixed-array form</strong> <code>Get&lt;T&gt;(arrayBuffer, size)</code>. It first reads a <code>size_t</code> length prefix through the scalar form, then requires that prefix to equal the caller's <code>size</code>. A mismatch raises the count and returns — after the prefix has already been consumed, so the cursor is past it. On a match, the elements are copied with <code>std::copy</code> over <code>length</code> elements starting at the aligned offset.</p>
+
+<p><strong>Container form</strong> <code>Get&lt;T, TContainer&gt;(array)</code>, the default <code>TContainer</code> being the member alias <code>TVector&lt;T&gt;</code> = <code>HVector&lt;T&gt;</code>. A <code>static_assert</code> ties <code>T</code> to <code>TContainer::value_type</code>, so asking for the wrong element type is a compile error rather than a reinterpretation. Order matters and is worth reading carefully:</p>
+
+<pre><code>array.<span class="fn">clear</span>();
+
+<span class="kw">size_t</span> length = 0;
+<span class="fn">Get</span>&lt;<span class="kw">size_t</span>&gt;(length, 0);
+<span class="kw">if</span> (length &lt;= 0)
+	<span class="kw">return</span>;
+
+<span class="cm">// ... compute startIndex / newIndex, consult IsValidIndex ...</span>
+
+array.<span class="fn">reserve</span>(length);
+std::<span class="fn">copy</span>(dataBegin, dataEnd, std::<span class="fn">back_inserter</span>(array));</code></pre>
+
+<p class="meta">From Engine/Resource/BufferInputStream.h, abbreviated</p>
+
+<p>The container is cleared before anything is read, the bounds test sits between the length prefix and the <code>reserve</code>, and elements arrive through <code>back_inserter</code> — so the container's own size is never trusted, only its capacity is pre-booked.</p>
+<div class="gap">
+  <strong>A failed container read destroys what was in the container.</strong> <code>array.clear()</code> runs before the length prefix is read and before any bounds test, so a refused read leaves the caller's container empty rather than unchanged. A caller that reuses one container across several reads has no way to recover the previous contents.
+</div>
+<div class="gap">
+  <strong><code>reserve(length)</code> is sized by data from the image.</strong> The only thing standing between a four-byte length field and an allocation request of that many elements is <a href="is-valid-index.html"><code>IsValidIndex</code></a>, which does not test the end offset of the read at all. A large prefix therefore asks the allocator for a correspondingly large block before a single byte is copied. Trusting an image is the caller's decision; this path does not make it for them.
+</div>
+<div class="note">
+  <strong><code>if (length &lt;= 0)</code> on a <code>size_t</code> tests one value.</strong> The type is unsigned, so the comparison is <code>length == 0</code> in every case and a malformed prefix that someone intended as "-1" arrives as a huge positive number and takes the normal path. Reading it as intent, the branch means "empty image, leave the container empty"; reading it as code, it does not exclude negative values because none exist.
+</div>
+
+<p>The array and container forms are the exact counterpart of <a href="../BufferOutputStream/operator-shift-left.html">the writer's array overload</a>, which writes an element count and then the elements. A fixed array on one side pairs with <code>T(&amp;array)[N]</code> on the other; a container pairs with the same bytes read into an <code>HVector&lt;T&gt;</code>.</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Form</th><th>Parameter</th><th>Contract</th></tr>
+  <tr>
+    <td rowspan="2">scalar</td><td><code>value</code></td><td>Written either from the block or with <code>defaultValue</code>. Always assigned, so it is never left uninitialised by a refused read</td>
+  </tr>
+  <tr>
+    <td><code>defaultValue</code></td><td>What a refusal produces. <code>operator&gt;&gt;</code> supplies <code>0</code>, <code>'\0'</code> or <code>0.0</code> per type</td>
+  </tr>
+  <tr>
+    <td rowspan="2">fixed array</td><td><code>arrayBuffer</code></td><td>Destination for <code>length</code> elements. Not null-checked</td>
+  </tr>
+  <tr>
+    <td><code>size</code></td><td>The count the caller has room for, and the value the stored prefix must match — a stored length larger than the destination is a mismatch, not an overflow</td>
+  </tr>
+  <tr>
+    <td>container</td><td><code>array</code></td><td>Emptied first, then filled from the block. <code>T</code> must equal <code>TContainer::value_type</code> or the <code>static_assert</code> fires</td>
+  </tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>None. Every form communicates through the cursor and the tally read by <a href="get-error-count.html"><code>GetErrorCount</code></a>, and the scalar form additionally through the default value it assigns.</p>
+
+<h2 id="example">Examples</h2>
+
+<p>The container form is how the pool-configuration loader rebuilds a vector of records; the call site is a single <code>&gt;&gt;</code>, which forwards here with the default container <code>HVector&lt;T&gt;</code>:</p>
+
+<pre><code>HVector&lt;PoolConfig&gt; configs;
+is &gt;&gt; configs;                       <span class="cm">// binds the container template</span>
+returnIfB(is.<span class="fn">HasError</span>());  <span class="cm">// empty could mean empty image</span></code></pre>
+
+<p class="meta">Shape used by the deserialisation paths in Engine/Memory/</p>
+
+<p>An empty result and a refused result are the same observable state for that code — <code>array.clear()</code> runs first — which is the concrete reason the error count has to be consulted rather than the container contents inspected.</p>
+
+
+<footer class="prevnext">
+  <span><a href="index.html">&larr; BufferInputStream</a></span>
+  <span><a href="index.html#methods">All BufferInputStream methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

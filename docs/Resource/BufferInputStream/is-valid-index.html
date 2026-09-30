@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BufferInputStream::IsValidIndex — Resource — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#notes">Notes</a></li>
+  </ul>
+
+  <h3><a href="index.html">Buffer</a> methods</h3>
+  <ul class="methods">
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+    <li><a href="get-error-count.html">GetErrorCount</a></li>
+    <li><a href="has-error.html">HasError</a></li>
+    <li><a href="clear-error-count.html">ClearErrorCount</a></li>
+    <li><a href="is-done.html">IsDone</a></li>
+    <li><a href="operator-shift-right.html">operator&gt;&gt;</a></li>
+    <li><a href="get.html">Get</a></li>
+    <li><a href="is-valid-index.html">IsValidIndex</a></li>
+  </ul>
+</nav>
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Resource</a> /
+  <a href="index.html">BufferInputStream</a> / IsValidIndex
+</p>
+
+<h1><span class="fn">IsValidIndex</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::BufferInputStream</span>
+  <span class="tag">Engine/Resource/BufferInputStream.h</span>
+  <span class="tag">private</span>
+  <span class="tag">const noexcept</span>
+  <span class="tag">argument ignored</span>
+  the bounds test every read relies on, testing the wrong offset
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] <span class="kw">bool</span> <span class="fn">IsValidIndex</span>(<span class="kw">size_t</span> index) <span class="kw">const</span> <span class="kw">noexcept</span>
+{
+	<span class="kw">return</span> cursor &lt; buffer.<span class="fn">GetSize</span>();
+}</code></pre>
+
+<p>Quoted verbatim from <code>Engine/Resource/BufferInputStream.h</code>. The parameter <code>index</code> does not appear in the body.</p>
+
+<h2 id="description">Function description</h2>
+
+<p>Three call sites, all inside <a href="get.html"><code>Get</code></a>, all of the same shape:</p>
+
+<pre><code><span class="kw">const</span> size_t startIndex = ((cursor + tSize - 1) / tSize) * tSize;
+<span class="kw">const</span> size_t newIndex = startIndex + tSize;      <span class="cm">// or startIndex + tSize * length</span>
+
+<span class="kw">if</span> (unlikely(!<span class="fn">IsValidIndex</span>(newIndex)))
+{
+	++errorCount;
+	value = defaultValue;
+	<span class="kw">return</span>;
+}</code></pre>
+
+<p class="meta">From Engine/Resource/BufferInputStream.h, the scalar form; the two bulk forms are the same test</p>
+
+<p>The argument is the offset the read would end at, and the body never looks at it. What is actually tested is whether the <em>current</em> cursor lies inside the block. So the answer to "does this read fit" is derived from a different question — "have we already run out" — and any read whose start is inside while its end is outside passes the test and proceeds.</p>
+
+<p>For the scalar form the overhang is bounded: the read is <code>sizeof(T)</code> bytes from an offset at most one alignment unit past the old cursor, so a short tail of the block can be read past by less than the element size. The bulk forms are not bounded that way. There, <code>newIndex</code> is <code>startIndex + tSize * length</code> and <code>length</code> came from the image itself, so a truncated or corrupt length makes the copy run past the end of the block by an amount the caller supplied, and <a href="get.html"><code>Get</code></a> then copies that many elements into the caller supplied container or array.</p>
+
+<p>The correct comparison is the one the writer uses on its own path:<code>newIndex &gt; size</code>, evaluated against <a href="../Buffer/get-size.html"><code>GetSize()</code></a>, as documented on <a href="../BufferOutputStream/put.html"><code>Put</code></a>. That is also what <a href="../BufferOutputStream/is-valid-index.html">the writer's identical helper</a> would have to become to be usable — it is never called there, which is the only reason the writer does not share this behaviour.</p>
+<div class="gap">
+  <strong>Consequence, stated plainly.</strong> A read is refused only when the cursor has already left the block. A read that starts inside the block and ends outside it is not refused: the scalar forms read up to one element past the tail, and the bulk forms read <code>length</code> elements, where <code>length</code> is data from the image. The guard is the engine's only bounds check on this path, so a malformed buffer is not detected here. Nothing in <code>Engine/Resource/</code> validates a length prefix against the remaining size before copying.
+</div>
+<div class="note">
+  <strong>This page documents behaviour, it does not approve of it.</strong> The engine's comment ban means every such finding lives here rather than in the source, which is also the place a reader of the header would look for it. The fix is a two-character change in the body — compare <code>index</code> rather than <code>cursor</code> — and would turn three call sites from"are we still inside" into "does this fit".
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Fate</th></tr>
+  <tr>
+    <td><code>index</code></td><td><code>size_t</code></td>
+    <td>Passed the end offset of the proposed read by all three call sites. Never read by the body</td>
+  </tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr>
+    <td><code>bool</code></td>
+    <td><code>cursor &lt; GetSize()</code> — true while the cursor is inside the block, regardless of how far past the end the proposed read reaches</td>
+  </tr>
+</table>
+
+<h2 id="notes">Notes</h2>
+
+<p>It is marked <code>[[nodiscard]]</code>, so the compiler enforces that the result is used; no diagnostic exists for the weaker problem that the result answers a different question. A unit test for it would need a buffer whose tail is shorter than one element — a case the existing <code>BufferInputStreamTest</code> collection does not cover.</p>
+
+
+<footer class="prevnext">
+  <span><a href="index.html">&larr; BufferInputStream</a></span>
+  <span><a href="index.html#methods">All BufferInputStream methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

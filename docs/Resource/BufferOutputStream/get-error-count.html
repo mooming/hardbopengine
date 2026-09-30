@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BufferOutputStream::GetErrorCount — Resource — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#notes">Notes</a></li>
+  </ul>
+
+  <h3><a href="index.html">Buffer</a> methods</h3>
+  <ul class="methods">
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+    <li><a href="get-cursor.html">GetCursor</a></li>
+    <li><a href="get-error-count.html">GetErrorCount</a></li>
+    <li><a href="has-error.html">HasError</a></li>
+    <li><a href="clear-error-count.html">ClearErrorCount</a></li>
+    <li><a href="is-done.html">IsDone</a></li>
+    <li><a href="operator-shift-left.html">operator&lt;&lt;</a></li>
+    <li><a href="is-valid-index.html">IsValidIndex</a></li>
+    <li><a href="put.html">Put</a></li>
+  </ul>
+</nav>
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Resource</a> /
+  <a href="index.html">BufferOutputStream</a> / GetErrorCount
+</p>
+
+<h1><span class="fn">GetErrorCount</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::BufferOutputStream</span>
+  <span class="tag">Engine/Resource/BufferOutputStream.h</span>
+  <span class="tag">const noexcept</span>
+  <span class="tag">[[nodiscard]]</span>
+  how many writes were refused, not which ones
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] <span class="kw">auto</span> <span class="fn">GetErrorCount</span>() <span class="kw">const</span> <span class="kw">noexcept</span> { <span class="kw">return</span> errorCount; }</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>A field read over <code>size_t errorCount;</code>, which only <a href="put.html"><code>Put</code></a> ever raises. Two conditions reach it: the value would end past <a href="../Buffer/get-size.html"><code>GetSize()</code></a>, and — in probing mode, where the buffer reports a null block — even the reservation did not fit the size the buffer claims.</p>
+
+<p>It is a tally, not a diagnosis. The counter is shared by every overload of <a href="operator-shift-left.html"><code>operator&lt;&lt;</code></a>, so a non-zero count says "something was refused" and nothing more: not which value, not at what offset, not by how much it overflowed. The engine is exception-free, so this counter and the <code>unlikely()</code> branches around it are the entire error channel of serialisation.</p>
+
+<p>A rejected write does not advance the cursor. That means the stream does not resynchronise: once one value has been refused, every later value is written at the offset the refused one would have used, so a caller that ignores the count gets a silently mis-aligned image rather than a hole.</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr>
+    <td><code>size_t</code></td>
+    <td>Writes refused since the last <a href="clear-error-count.html"><code>ClearErrorCount</code></a> or since construction. <code>0</code> means every write landed. <code>[[nodiscard]]</code>, so the usual mistake of calling it and discarding the result is a compile error</td>
+  </tr>
+</table>
+
+<h2 id="notes">Notes</h2>
+
+<div class="note">
+  <strong>Check it once at the end, not after every value.</strong> The counter is cumulative, so the check belongs where the serialisation finishes — the same place <a href="get-cursor.html"><code>GetCursor</code></a> is read for the byte count. Per-value checks would cost a comparison each and still would not say which value failed.
+</div>
+
+
+<footer class="prevnext">
+  <span><a href="index.html">&larr; BufferOutputStream</a></span>
+  <span><a href="index.html#methods">All BufferOutputStream methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

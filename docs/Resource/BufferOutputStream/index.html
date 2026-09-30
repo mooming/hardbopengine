@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BufferOutputStream — Resource — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="#description">Class description</a></li>
+    <li><a href="#format">The image format</a></li>
+    <li><a href="#template">Template parameters</a></li>
+    <li><a href="#properties">Class properties</a></li>
+    <li><a href="#methods">Class methods</a></li>
+    <li><a href="#non-member">Non-member helpers</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+
+  <h3>Methods</h3>
+  <ul class="methods">
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+    <li><a href="get-cursor.html">GetCursor</a></li>
+    <li><a href="get-error-count.html">GetErrorCount</a></li>
+    <li><a href="has-error.html">HasError</a></li>
+    <li><a href="clear-error-count.html">ClearErrorCount</a></li>
+    <li><a href="is-done.html">IsDone</a></li>
+    <li><a href="operator-shift-left.html">operator&lt;&lt;</a></li>
+    <li><a href="is-valid-index.html">IsValidIndex</a></li>
+    <li><a href="put.html">Put</a></li>
+  </ul>
+</nav>
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Resource</a> / BufferOutputStream
+</p>
+
+<h1>BufferOutputStream</h1>
+<p class="subtitle">
+  <span class="tag">Engine/Resource/BufferOutputStream.h</span>
+  <span class="tag">namespace hbe</span>
+  <span class="tag">final</span>
+  <span class="tag">not copyable, not movable</span>
+  <span class="tag">thread-pinned at construction</span>
+  a cursor, an error tally, and the only write path into a borrowed
+  <a href="../Buffer/index.html"><code>Buffer</code></a>
+</p>
+
+<h2 id="description">Class description</h2>
+
+<p>
+  Four members do everything: a <a href="../Buffer/index.html"><code>Buffer&amp;</code></a> the stream writes into
+  and does not own, a byte <a href="get-cursor.html">cursor</a>, an
+  <a href="get-error-count.html">error count</a>, and the thread id captured by
+  <a href="constructors.html">the constructor</a>. Serialising is the act of pushing values through
+  <a href="operator-shift-left.html"><code>operator&lt;&lt;</code></a>; each one lands in the block before the call
+  returns, so there is no buffer of its own, no flush, and nothing to do at
+  <a href="destructor.html">destruction</a>.
+</p>
+
+<p>
+  The engine has no exception mechanism, so a stream that cannot write does not report it in any way a caller can
+  miss by accident: the write is refused, the cursor stays put, and
+  <a href="has-error.html"><code>HasError</code></a> reads the tally afterwards. <code>noexcept</code> on every
+  overload is therefore accurate rather than decorative — this class has no failure path that could unwind.
+</p>
+
+<p>
+  Its purpose is pair-work. The bytes it produces are read back by
+  <a href="../BufferInputStream/index.html"><code>BufferInputStream</code></a>, which applies the same alignment
+  rounding and the same length prefixes. The two classes are the same design mirrored: the input stream holds
+  <code>const Buffer&amp;</code>, the output stream holds <code>Buffer&amp;</code>; both count refusals rather than
+  reporting them; the output stream additionally pins itself to a thread, because it is the one that mutates.
+</p>
+
+<p>
+  A third use is measurable rather than productive: build the stream on a buffer whose pointer is null and every
+  write becomes a reservation, so the cursor afterwards is the size the image needs. That is how
+  <code>MemoryManager::SaveMultiPoolConfigs</code> learns the size of the file it is about to write. See
+  <a href="put.html"><code>Put</code></a> for the exact conditions.
+</p>
+
+<div class="note" id="thread-pinning">
+  <strong>One stream, one thread — asserted in Debug and Dev, unenforced in Release.</strong> Both
+  <a href="put.html"><code>Put</code></a> templates open with
+  <code>Assert(std::this_thread::get_id() == threadID)</code>, and <code>Assert</code> is an ordinary function in
+  <a href="../../Core/index.html"><code>Core/Debug.h</code></a> whose Release form discards its argument. The capture
+  happens once, in <a href="constructors.html">the constructor</a>, so which thread owns a stream is decided by where
+  it was constructed.
+</div>
+
+<h2 id="format">The image format</h2>
+
+<p>
+  Writing is not a byte copy, and a reader that assumes one will not agree with this writer. Three rules define
+  what lands in the block, all of them in <a href="put.html"><code>Put</code></a>:
+</p>
+
+<table>
+  <tr><th>Rule</th><th>What it does</th><th>Why it is there</th></tr>
+  <tr>
+    <td>Per-value alignment</td>
+    <td>The cursor is rounded up to a multiple of <code>sizeof(T)</code> before each write</td>
+    <td>The value is stored through <code>reinterpret_cast&lt;T*&gt;</code>, so it has to sit on its own alignment for
+        the store to be valid on every platform the engine builds for</td>
+  </tr>
+  <tr>
+    <td>Padding is zero-filled</td>
+    <td>The skipped bytes are written as <code>0</code> rather than left alone</td>
+    <td>Two runs of the same write sequence give byte-identical output, so a saved file is comparable and whatever
+        was in the block before does not reach disk</td>
+  </tr>
+  <tr>
+    <td>Strings and arrays are length-prefixed</td>
+    <td>A <code>size_t</code> count precedes the elements. Strings write no terminator; arrays count
+        elements, not bytes</td>
+    <td>The reader needs a length to size a container, and the engine's strings are not
+        NUL-terminated in memory either — <a href="../../String/index.html">String</a> stores an interned
+        view</td>
+  </tr>
+</table>
+
+<p>
+  Nothing in the image identifies itself: no magic, no version, no endianness marker, and no type tags. A format
+  that needs those writes them itself before opening a stream, the way
+  <code>MultiPoolConfigCache::Serialize</code> writes <code>MultiPoolConfigCache::Version</code> as its first
+  value — a convention between two functions, not a feature of this class.
+</p>
+
+<h2 id="template">Template parameters</h2>
+
+<p>
+  None on the class — <code>BufferOutputStream</code> is not a template, and a stream does not need to know what
+  type it is writing because the type arrives per call. The templates are on the members: the two
+  <a href="put.html"><code>Put&lt;T&gt;</code></a> forms that carry every byte into the block, the
+  <code>operator&lt;&lt;</code> overload taking <code>T(&amp;array)[N]</code>, and the one taking
+  <code>HInlineString&lt;N&gt;</code>. <code>sizeof(T)</code> is taken inside <code>Put</code> as
+  <code>constexpr size_t tSize</code>, with <code>static_assert(tSize &gt; 0)</code>, so the alignment arithmetic is
+  resolved at compile time and a zero-size element type is a compile error rather than a divide-by-zero.
+</p>
+
+<h2 id="properties">Class properties</h2>
+
+<table>
+  <tr><th>Name</th><th>Declaration</th><th>What it means</th></tr>
+  <tr>
+    <td><code>This</code></td>
+    <td><code>using This = BufferOutputStream;</code></td>
+    <td><span class="badge">member type</span> The spelling every <a href="operator-shift-left.html"><code>operator&lt;&lt;</code></a>
+        returns, so the overload set reads uniformly instead of repeating the class name 18 times</td>
+  </tr>
+  <tr>
+    <td><code>buffer</code></td>
+    <td><code>Buffer&amp; buffer;</code></td>
+    <td><span class="badge">private</span> <span class="badge">reference</span> The destination, borrowed and never
+        owned. Both the pointer and the size are re-read from it on every write, which is what lets a buffer be
+        handed over before its generator has installed the bytes — see
+        <a href="../Buffer/get-data.html"><code>GetData</code></a> and
+        <a href="../BufferTypes/index.html"><code>TGenerateBuffer</code></a></td>
+  </tr>
+  <tr>
+    <td><code>cursor</code></td>
+    <td><code>size_t cursor;</code></td>
+    <td><span class="badge">private</span> Next write offset, reached by
+        <a href="get-cursor.html"><code>GetCursor</code></a>. Read-only from outside: there is no setter and no
+        rewind, so a length placeholder cannot be back-patched</td>
+  </tr>
+  <tr>
+    <td><code>errorCount</code></td>
+    <td><code>size_t errorCount;</code></td>
+    <td><span class="badge">private</span> Refused writes, raised only by <a href="put.html"><code>Put</code></a> and
+        zeroed only by <a href="clear-error-count.html"><code>ClearErrorCount</code></a>. The whole error channel of
+        this class</td>
+  </tr>
+  <tr>
+    <td><code>threadID</code></td>
+    <td><code>std::thread::id threadID;</code></td>
+    <td><span class="badge">private</span> Captured once in <a href="constructors.html">the constructor</a> and
+        asserted on every write. Nothing else reads or writes it after construction</td>
+  </tr>
+</table>
+
+<h2 id="methods">Class methods</h2>
+
+<p>
+  One page per name, all overloads of a name together, in header declaration order. The 17
+  <a href="operator-shift-left.html"><code>operator&lt;&lt;</code></a> overloads share a page because they share a
+  contract; the two <a href="put.html"><code>Put</code></a> templates share one for the same reason.
+</p>
+
+<table>
+  <tr><th>Method</th><th>Signature</th><th>What a caller depends on</th></tr>
+  <tr>
+    <td><a href="constructors.html">constructors</a><span class="badge">copy and move deleted</span></td>
+    <td class="sig">explicit BufferOutputStream(Buffer&amp; buffer) noexcept<br>BufferOutputStream(const BufferOutputStream&amp;) = delete<br>BufferOutputStream(BufferOutputStream&amp;&amp;) = delete</td>
+    <td>Cursor and error count start at zero, the current thread is captured. Deleted copies exist because two
+        streams over one cursor write over each other</td>
+  </tr>
+  <tr>
+    <td><a href="destructor.html">destructor</a></td>
+    <td class="sig">~BufferOutputStream() = default</td>
+    <td>Trivial. Nothing is flushed because nothing is staged; the buffer's own release is a
+        <a href="../Buffer/destructor.html">Buffer</a> matter</td>
+  </tr>
+  <tr>
+    <td><a href="get-cursor.html">GetCursor</a></td>
+    <td class="sig">auto GetCursor() const noexcept</td>
+    <td>Next write offset — also the size of the image, but including alignment padding, and in probing mode it can
+        exceed the block</td>
+  </tr>
+  <tr>
+    <td><a href="get-error-count.html">GetErrorCount</a></td>
+    <td class="sig">auto GetErrorCount() const noexcept</td>
+    <td>How many writes were refused, not which ones. Cumulative across every overload</td>
+  </tr>
+  <tr>
+    <td><a href="has-error.html">HasError</a></td>
+    <td class="sig">bool HasError() const noexcept</td>
+    <td><code>errorCount &gt; 0</code>. The form to check once, at the end of a serialisation</td>
+  </tr>
+  <tr>
+    <td><a href="clear-error-count.html">ClearErrorCount</a></td>
+    <td class="sig">void ClearErrorCount() noexcept</td>
+    <td>Zeroes the tally only. Does not rewind the cursor, so a cleared stream is not a reusable one</td>
+  </tr>
+  <tr>
+    <td><a href="is-done.html">IsDone</a></td>
+    <td class="sig">bool IsDone() const noexcept</td>
+    <td>Cursor at or past <code>GetSize()</code> — "this block is used up", not "I finished writing"</td>
+  </tr>
+  <tr>
+    <td><a href="operator-shift-left.html">operator&lt;&lt;</a><span class="badge">18 overloads</span></td>
+    <td class="sig">This&amp; operator&lt;&lt;(char) noexcept<br>This&amp; operator&lt;&lt;(int8_t … uint64_t) noexcept<br>This&amp; operator&lt;&lt;(float … long double) noexcept<br>This&amp; operator&lt;&lt;(const char*) noexcept<br>template&lt;typename T, size_t N&gt; This&amp; operator&lt;&lt;(T (&amp;array)[N]) noexcept<br>template&lt;size_t N&gt; This&amp; operator&lt;&lt;(const HInlineString&lt;N&gt;&amp;) noexcept<br>This&amp; operator&lt;&lt;(const HString&amp;) noexcept<br>This&amp; operator&lt;&lt;(StaticString) noexcept</td>
+    <td>Each is one <a href="put.html"><code>Put</code></a> call and a return of <code>*this</code>. Strings are
+        length-prefixed without a terminator; a null <code>const char*</code> writes nothing and is not counted as an
+        error</td>
+  </tr>
+  <tr>
+    <td><a href="is-valid-index.html">IsValidIndex</a><span class="badge">private</span></td>
+    <td class="sig">bool IsValidIndex(size_t index) const noexcept</td>
+    <td>Never called, and its body ignores <code>index</code>. <a href="put.html"><code>Put</code></a> compares the
+        end of the write against the buffer size directly instead</td>
+  </tr>
+  <tr>
+    <td><a href="put.html">Put</a><span class="badge">2 template overloads</span><span class="badge">private</span></td>
+    <td class="sig">template&lt;typename T&gt; void Put(T value) noexcept<br>template&lt;typename T&gt; void Put(const T* value, size_t length) noexcept</td>
+    <td>The only write path: asserts the thread, rounds to the element alignment, zero-fills the gap, refuses and
+        counts when the write would pass the end, and reserves without writing when the buffer has no bytes</td>
+  </tr>
+</table>
+
+<h2 id="non-member">Non-member helper functions</h2>
+
+<p>
+  None in <code>BufferOutputStream.h</code>. The buffers this class writes into come from the sibling namespace
+  <code>hbe::BufferUtil</code>, documented on <a href="../BufferUtil/index.html">its own page</a> —
+  <a href="../BufferUtil/index.html#generate-dummy-buffer"><code>GenerateDummyBuffer</code></a> is the one that makes
+  probing mode possible, and <a href="../BufferUtil/index.html#get-file-buffer"><code>GetFileBuffer</code></a> and
+  <a href="../BufferUtil/index.html#generate-file-buffer"><code>GenerateFileBuffer</code></a> are the ones that
+  produce a writable block in the first place.
+</p>
+
+<h2 id="coverage">Coverage</h2>
+
+<table>
+  <tr><th>Gap</th><th>Detail</th></tr>
+  <tr>
+    <td>Bounds work is done twice, and the helper that looks like it does it is unreachable</td>
+    <td><a href="is-valid-index.html"><code>IsValidIndex</code></a> is declared, defined and never called, and its
+        body compares <code>cursor</code> against the buffer size while ignoring its argument. The guard that
+        actually runs is the <code>newIndex &gt; size</code> test inside
+        <a href="put.html"><code>Put</code></a>. The sibling class calls its identical helper three times —
+        <a href="../BufferInputStream/is-valid-index.html">BufferInputStream: IsValidIndex</a></td>
+  </tr>
+  <tr>
+    <td>A refused array write can leave its length prefix behind</td>
+    <td>The array form of <a href="put.html"><code>Put</code></a> commits the <code>size_t</code> prefix before
+        testing whether the payload fits, so refusal can leave a count with no elements after it. Nothing rolls it
+        back, and there is no rewind to correct it</td>
+  </tr>
+  <tr>
+    <td>Nothing in the image identifies the image</td>
+    <td>No magic number, version field or endianness marker is written. Callers that need one write it themselves —
+        <code>MultiPoolConfigCache::Serialize</code> in <code>Engine/Memory/</code> writes its own
+        <code>Version</code> first</td>
+  </tr>
+  <tr>
+    <td>Width of <code>long double</code> and <code>size_t</code> across platforms</td>
+    <td><code>long double</code> is a distinct overload and its <code>sizeof</code> is platform-dependent, as is
+        whether <code>size_t</code> is a distinct type at all — hence the <code>#ifndef PLATFORM_LINUX</code> around
+        that one overload in the header. An image written on one platform and read on another is not guaranteed the
+        same shape</td>
+  </tr>
+  <tr>
+    <td>No test collection for the output stream</td>
+    <td>Unlike <a href="../BufferInputStream/index.html#coverage"><code>BufferInputStream</code></a>, this header
+        declares no test class under <code>__UNIT_TEST__</code>. Its behaviour is exercised indirectly, as the writer
+        half of <code>Engine/Test/</code> cases and of the pool-config save path in
+        <a href="../../Memory/index.html#memorymanager"><code>MemoryManager</code></a></td>
+  </tr>
+  <tr>
+    <td>The buffer must outlive the stream, and nothing checks it</td>
+    <td>Discussed on <a href="constructors.html">the constructors</a>. The reference member is the only link to the
+        block, and no weak-handle or generation check backs it</td>
+  </tr>
+</table>
+
+<footer class="prevnext">
+  <span><a href="../index.html">&larr; Resource</a></span>
+  <span><a href="../index.html#classes">BufferOutputStream in the Resource class list</a></span>
+</footer>
+
+</main>
+</body>
+</html>

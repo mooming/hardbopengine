@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BufferInputStream — Resource — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="#description">Class description</a></li>
+    <li><a href="#format">What the reader assumes</a></li>
+    <li><a href="#template">Template parameters</a></li>
+    <li><a href="#properties">Class properties</a></li>
+    <li><a href="#methods">Class methods</a></li>
+    <li><a href="#non-member">Non-member helpers</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+
+  <h3>Methods</h3>
+  <ul class="methods">
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+    <li><a href="get-error-count.html">GetErrorCount</a></li>
+    <li><a href="has-error.html">HasError</a></li>
+    <li><a href="clear-error-count.html">ClearErrorCount</a></li>
+    <li><a href="is-done.html">IsDone</a></li>
+    <li><a href="operator-shift-right.html">operator&gt;&gt;</a></li>
+    <li><a href="get.html">Get</a></li>
+    <li><a href="is-valid-index.html">IsValidIndex</a></li>
+  </ul>
+</nav>
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Resource</a> / BufferInputStream
+</p>
+
+<h1>BufferInputStream</h1>
+<p class="subtitle">
+  <span class="tag">Engine/Resource/BufferInputStream.h</span>
+  <span class="tag">namespace hbe</span>
+  <span class="tag">final</span>
+  <span class="tag">copyable</span>
+  <span class="tag">no thread affinity</span>
+  a cursor, an error tally, and the only read path out of a borrowed
+  <a href="../Buffer/index.html"><code>Buffer</code></a>
+</p>
+
+<h2 id="description">Class description</h2>
+
+<p>
+  Three members and no ownership: a <code>const <a href="../Buffer/index.html">Buffer&amp;</a></code>, a byte
+  <a href="constructors.html">cursor</a> starting at zero, and an
+  <a href="get-error-count.html">error count</a>. Deserialising is pushing the image through
+  <a href="operator-shift-right.html"><code>operator&gt;&gt;</code></a>; each read either fills its argument from the
+  block or fills it with a type-appropriate default and raises the count. Values are never left uninitialised, which
+  is precisely why <a href="has-error.html"><code>HasError</code></a> carries the whole burden of trust at the end of a
+  chain.
+</p>
+
+<p>
+  It is the mirror of <a href="../BufferOutputStream/index.html"><code>BufferOutputStream</code></a>, and the two
+  differences are deliberate. The reader holds <code>const Buffer&amp;</code>, so it cannot mutate the image; it
+  captures no thread id, because reading a block nobody else is writing needs no owner —
+  <a href="../BufferOutputStream/put.html">the writer asserts one</a> because it races on its own cursor; and the
+  reader does not delete its copy operations, so a copy is an independent reader parked at the same offset, which is
+  how one image is walked twice.
+</p>
+
+<p>
+  A refused read does not move the cursor, so a reader that runs off the end keeps failing at the same offset and
+  every remaining field comes back as a default. There is no seek, no rewind and no peek: to restart, construct
+  another reader, which costs a reference and two integers.
+</p>
+
+<h2 id="format">What the reader assumes</h2>
+
+<p>
+  The reader assumes the three rules <a href="../BufferOutputStream/index.html#format">the writer follows</a>, and
+  nothing verifies them at runtime. If the image was produced by
+  <a href="../BufferOutputStream/operator-shift-left.html"><code>BufferOutputStream</code></a> they hold by
+  construction; for any other producer they are an agreement made elsewhere:
+</p>
+
+<table>
+  <tr><th>Assumption</th><th>What the reader does with it</th><th>What happens if it is false</th></tr>
+  <tr>
+    <td>Every value sits at an offset rounded up to <code>sizeof(T)</code>, with the gap zero-filled</td>
+    <td>Each <a href="get.html"><code>Get</code></a> rounds the cursor up before reading, mirroring
+        <a href="../BufferOutputStream/put.html"><code>Put</code></a></td>
+    <td>Packed images (a file written byte-packed by another tool, or a hand-rolled writer) deserialise as garbage
+        from the first value that needed padding. Nothing detects it: the bytes read are valid bytes of
+        <code>T</code></td>
+  </tr>
+  <tr>
+    <td>Strings and arrays carry a <code>size_t</code> prefix; strings carry no terminator; the array prefix counts
+        elements, not bytes</td>
+    <td>The bulk <a href="get.html"><code>Get</code></a> forms read the prefix first and consume that many
+        elements</td>
+    <td>A terminator in the image becomes a stray element; a byte count where an element count was expected makes the
+        read run far past the intended end, since the only guard is
+        <a href="is-valid-index.html"><code>IsValidIndex</code></a></td>
+  </tr>
+  <tr>
+    <td>The image is complete and its lengths are honest</td>
+    <td>Nothing in this class validates a length against the remaining size before using it</td>
+    <td>A corrupt length reaches <code>reserve()</code> and <code>std::copy</code> — see
+        <a href="get.html">the two gaps on the <code>Get</code> page</a></td>
+  </tr>
+</table>
+
+<div class="note">
+  <strong>No magic, no version, no endianness marker is checked, because none is written.</strong> A format that needs
+  a version prefix writes one itself, the way <code>MultiPoolConfigCache::Deserialize</code> in
+  <code>Engine/Memory/</code> reads the <code>Version</code> its writer stored first and compares it before trusting
+  anything after. That check belongs to the caller, immediately after opening the reader.
+</div>
+
+<h2 id="template">Template parameters</h2>
+
+<p>
+  None on the class. The class declares one member template alias,
+  <code>template &lt;typename T&gt; using TVector = hbe::HVector&lt;T&gt;;</code>, which is what the container
+  overloads default to: <code>template &lt;typename T, class TContainer = TVector&lt;T&gt;&gt;</code> on both
+  <a href="operator-shift-right.html"><code>operator&gt;&gt;</code></a> and
+  <a href="get.html"><code>Get</code></a>. A caller can therefore read into a container other than
+  <code>HVector</code> by naming it explicitly, as long as its <code>value_type</code> matches the element type —
+  that is a <code>static_assert</code>, not a convention.
+</p>
+
+<h2 id="properties">Class properties</h2>
+
+<table>
+  <tr><th>Name</th><th>Declaration</th><th>What it means</th></tr>
+  <tr>
+    <td><code>This</code></td>
+    <td><code>using This = BufferInputStream;</code></td>
+    <td><span class="badge">member type</span> What every <a href="operator-shift-right.html"><code>operator&gt;&gt;</code></a>
+        returns, so chains read uniformly</td>
+  </tr>
+  <tr>
+    <td><code>TVector</code></td>
+    <td><code>template &lt;typename T&gt; using TVector = hbe::HVector&lt;T&gt;;</code></td>
+    <td><span class="badge">member template</span> The default container for array reads. The engine's own vector from
+        <a href="../../HSTL/index.html">HSTL</a>, so a read allocates through the same path as every other
+        container</td>
+  </tr>
+  <tr>
+    <td><code>buffer</code></td>
+    <td><code>const Buffer&amp; buffer;</code></td>
+    <td><span class="badge">private</span> <span class="badge">reference</span> The image, borrowed and not owned.
+        Both its pointer and its size are re-read on every access, so the buffer is asked rather than cached — see
+        <a href="../Buffer/get-data.html"><code>GetData</code></a> and
+        <a href="../Buffer/get-size.html"><code>GetSize</code></a></td>
+  </tr>
+  <tr>
+    <td><code>cursor</code></td>
+    <td><code>size_t cursor;</code></td>
+    <td><span class="badge">private</span> Next read offset. Read-only from outside except through reads themselves:
+        no setter, so no seek — see <a href="clear-error-count.html">the note on rewinding</a></td>
+  </tr>
+  <tr>
+    <td><code>errorCount</code></td>
+    <td><code>size_t errorCount;</code></td>
+    <td><span class="badge">private</span> Refused reads, raised only inside <a href="get.html"><code>Get</code></a>.
+        The only distinction between "the image said zero" and "the image had nothing there"</td>
+  </tr>
+</table>
+
+<h2 id="methods">Class methods</h2>
+
+<p>
+  One page per name, all overloads of a name together, in header declaration order. The 17
+  <a href="operator-shift-right.html"><code>operator&gt;&gt;</code></a> overloads share a page because they share one
+  contract, and the three <a href="get.html"><code>Get</code></a> templates share another because together they are the
+  single read path.
+</p>
+
+<table>
+  <tr><th>Method</th><th>Signature</th><th>What a caller depends on</th></tr>
+  <tr>
+    <td><a href="constructors.html">constructors</a></td>
+    <td class="sig">explicit BufferInputStream(const Buffer&amp; buffer) noexcept</td>
+    <td>Cursor and error count start at zero; the buffer is borrowed, not owned, and must outlive the stream. Copies
+        are allowed and start at the same offset</td>
+  </tr>
+  <tr>
+    <td><a href="destructor.html">destructor</a></td>
+    <td class="sig">~BufferInputStream() = default</td>
+    <td>Trivial, and abandoning a reader mid-image leaves the block untouched — unlike the writer, a partial read
+        cannot leave half-written structure behind</td>
+  </tr>
+  <tr>
+    <td><a href="get-error-count.html">GetErrorCount</a></td>
+    <td class="sig">auto GetErrorCount() const noexcept</td>
+    <td>How many reads were refused, each of which also assigned a default value. Never identifies which</td>
+  </tr>
+  <tr>
+    <td><a href="has-error.html">HasError</a></td>
+    <td class="sig">bool HasError() const noexcept</td>
+    <td>The check that makes a deserialised object trustworthy. Do it once, after the chain</td>
+  </tr>
+  <tr>
+    <td><a href="clear-error-count.html">ClearErrorCount</a></td>
+    <td class="sig">void ClearErrorCount() noexcept</td>
+    <td>Zeroes the count only. The cursor, the substituted defaults and the emptied container all stay as they
+        are</td>
+  </tr>
+  <tr>
+    <td><a href="is-done.html">IsDone</a></td>
+    <td class="sig">bool IsDone() const noexcept</td>
+    <td>Cursor at or past <code>GetSize()</code> — the loop condition for "read to the end", and not a statement that
+        the next value would fit</td>
+  </tr>
+  <tr>
+    <td><a href="operator-shift-right.html">operator&gt;&gt;</a><span class="badge">17 overloads</span></td>
+    <td class="sig">This&amp; operator&gt;&gt;(char&amp;) noexcept<br>This&amp; operator&gt;&gt;(int8_t&amp; … uint64_t&amp;) noexcept<br>This&amp; operator&gt;&gt;(float&amp; … long double&amp;) noexcept<br>This&amp; operator&gt;&gt;(StaticString&amp;) noexcept<br>This&amp; operator&gt;&gt;(const HString&amp;) noexcept<br>template&lt;typename T, size_t N&gt; This&amp; operator&gt;&gt;(T (&amp;array)[N]) noexcept<br>template&lt;typename T, class TContainer = TVector&lt;T&gt;&gt; This&amp; operator&gt;&gt;(TContainer&amp;) noexcept</td>
+    <td>Each scalar overload is one <a href="get.html"><code>Get</code></a> call with a default and a return of
+        <code>*this</code>. The <code>StaticString</code> form rebuilds and re-interns the string; the
+        <code>HString</code> form currently reads nothing at all</td>
+  </tr>
+  <tr>
+    <td><a href="get.html">Get</a><span class="badge">3 template overloads</span><span class="badge">private</span></td>
+    <td class="sig">template&lt;typename T&gt; void Get(T&amp; value, const T&amp; defaultValue) noexcept<br>template&lt;typename T&gt; void Get(T* arrayBuffer, size_t size) noexcept<br>template&lt;typename T, class TContainer = TVector&lt;T&gt;&gt; void Get(TContainer&amp; array) noexcept</td>
+    <td>The only read path: alignment rounding, default substitution on refusal, length prefixes for the two bulk
+        forms, and a container cleared before anything is verified</td>
+  </tr>
+  <tr>
+    <td><a href="is-valid-index.html">IsValidIndex</a><span class="badge">private</span></td>
+    <td class="sig">bool IsValidIndex(size_t index) const noexcept</td>
+    <td>The bounds test all three <a href="get.html"><code>Get</code></a> forms rely on. It compares the current
+        cursor against the buffer size and never looks at its argument, so it answers "are we still inside" where the
+        call sites need "does this fit"</td>
+  </tr>
+</table>
+
+<h2 id="non-member">Non-member helper functions</h2>
+
+<p>
+  None in <code>BufferInputStream.h</code>, beyond the test collection under <code>__UNIT_TEST__</code> noted below.
+  The buffers it reads are produced by <a href="../BufferUtil/index.html"><code>hbe::BufferUtil</code></a> —
+  <a href="../BufferUtil/index.html#get-file-buffer"><code>GetFileBuffer</code></a> and
+  <a href="../BufferUtil/index.html#get-read-only-file-buffer"><code>GetReadOnlyFileBuffer</code></a> are the two that
+  hand back a mapped file a reader consumes, and
+  <a href="../BufferUtil/index.html#get-memory-buffer"><code>GetMemoryBuffer&lt;T&gt;</code></a> the one that hands back
+  an allocator-owned block.
+</p>
+
+<h2 id="coverage">Coverage</h2>
+
+<table>
+  <tr><th>Gap</th><th>Detail</th></tr>
+  <tr>
+    <td>The bounds guard does not test the end of the read</td>
+    <td><a href="is-valid-index.html"><code>IsValidIndex(index)</code></a> ignores <code>index</code> and compares
+        <code>cursor</code> against <a href="../Buffer/get-size.html"><code>GetSize()</code></a>. Three call sites in
+        <a href="get.html"><code>Get</code></a> pass the end offset. A read starting inside the block and ending
+        outside it is therefore not refused, and for the bulk forms the overhang is governed by a length taken from
+        the image</td>
+  </tr>
+  <tr>
+    <td><code>operator&gt;&gt;(const HString&amp;)</code> is a no-op</td>
+    <td>Defined as <code>return *this;</code> — no read, no cursor movement, no error. Its parameter is
+        <code>const</code>, so it could not fill the argument even if it tried. Discussed on
+        <a href="operator-shift-right.html"><code>operator&gt;&gt;</code></a></td>
+  </tr>
+  <tr>
+    <td>A container is emptied before the read is verified, and sized by the image</td>
+    <td><code>array.clear()</code> runs before the length prefix is read, and <code>reserve(length)</code> uses a
+        length that the broken bounds guard does not constrain. Both are on
+        <a href="get.html">the <code>Get</code> page</a></td>
+  </tr>
+  <tr>
+    <td>Strings longer than 256 characters take a different path</td>
+    <td>Read into a local <code>HInlineString&lt;256&gt;</code> one character at a time, then handed to
+        <code>StaticString(c_str())</code>. The <code>Assert</code> that follows checks the collected count, not the
+        growth behaviour of the inline buffer beyond its inline capacity</td>
+  </tr>
+  <tr>
+    <td>No seek, no peek, no per-field error identity</td>
+    <td><code>cursor</code> has no setter; the error count is shared by every overload and every
+        <a href="get.html"><code>Get</code></a> form. A caller that must skip an optional field has to read it into a
+        discard temporary of the right type, because the offset arithmetic is type-dependent</td>
+  </tr>
+  <tr>
+    <td><code>long double</code> and <code>size_t</code> portability</td>
+    <td><code>long double</code> is its own overload with a platform-dependent <code>sizeof</code>, and the
+        <code>size_t</code> overload exists only when <code>PLATFORM_LINUX</code> is not defined — on Linux
+        <code>size_t</code> and <code>uint64_t</code> are the same type. An image written on one platform is not
+        guaranteed to have the same shape on another</td>
+  </tr>
+  <tr>
+    <td>Test coverage that exists, and the case that does not</td>
+    <td><code>BufferInputStreamTest</code> is declared in this header under <code>__UNIT_TEST__</code> and registered
+        through <a href="../../Test/index.html#unittestcollection">Test</a>; its "Empty Buffer" case is the refused-read
+        behaviour. There is no case for a tail shorter than one element, which is the case
+        <a href="is-valid-index.html">the guard</a> would fail</td>
+  </tr>
+</table>
+
+<footer class="prevnext">
+  <span><a href="../index.html">&larr; Resource</a></span>
+  <span><a href="../index.html#classes">BufferInputStream in the Resource class list</a></span>
+</footer>
+
+</main>
+</body>
+</html>

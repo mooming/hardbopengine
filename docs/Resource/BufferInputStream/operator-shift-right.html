@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BufferInputStream::operator&gt;&gt; — Resource — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">Buffer</a> methods</h3>
+  <ul class="methods">
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+    <li><a href="get-error-count.html">GetErrorCount</a></li>
+    <li><a href="has-error.html">HasError</a></li>
+    <li><a href="clear-error-count.html">ClearErrorCount</a></li>
+    <li><a href="is-done.html">IsDone</a></li>
+    <li><a href="operator-shift-right.html">operator&gt;&gt;</a></li>
+    <li><a href="get.html">Get</a></li>
+    <li><a href="is-valid-index.html">IsValidIndex</a></li>
+  </ul>
+</nav>
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Resource</a> /
+  <a href="index.html">BufferInputStream</a> / operator&gt;&gt;
+</p>
+
+<h1><span class="fn">operator&gt;&gt;</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::BufferInputStream</span>
+  <span class="tag">Engine/Resource/BufferInputStream.h</span>
+  <span class="tag">noexcept</span>
+  <span class="tag">chainable</span>
+  <span class="tag">17 overloads</span>
+  the read surface: primitives with defaults, strings, arrays and containers
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code><span class="kw">using</span> <span class="ty">This</span> = BufferInputStream;
+
+This&amp; <span class="fn">operator&gt;&gt;</span>(<span class="kw">char</span>&amp; value) <span class="kw">noexcept</span>;
+This&amp; <span class="fn">operator&gt;&gt;</span>(<span class="kw">int8_t</span>&amp; value) <span class="kw">noexcept</span>;   <span class="cm">// and uint8_t, int16_t, uint16_t,</span>
+<span class="cm">//   int32_t, uint32_t, int64_t, uint64_t</span>
+#<span class="kw">ifndef</span> PLATFORM_LINUX
+This&amp; <span class="fn">operator&gt;&gt;</span>(<span class="kw">size_t</span>&amp; value) <span class="kw">noexcept</span>;
+#<span class="kw">endif</span> // PLATFORM_LINUX
+This&amp; <span class="fn">operator&gt;&gt;</span>(<span class="kw">float</span>&amp; value) <span class="kw">noexcept</span>;     <span class="cm">// and double, long double</span>
+
+This&amp; <span class="fn">operator&gt;&gt;</span>(StaticString&amp; str) <span class="kw">noexcept</span>;
+This&amp; <span class="fn">operator&gt;&gt;</span>(<span class="kw">const</span> hbe::HString&amp; str) <span class="kw">noexcept</span>;
+
+template &lt;<span class="kw">typename</span> T, <span class="kw">size_t</span> N&gt;
+This&amp; <span class="fn">operator&gt;&gt;</span>(T (&amp;array)[N]) <span class="kw">noexcept</span> { <span class="fn">Get&lt;T&gt;</span>(array, N); <span class="kw">return</span> *<span class="kw">this</span>; }
+
+template &lt;<span class="kw">typename</span> T, <span class="kw">class</span> TContainer = TVector&lt;T&gt;&gt;
+This&amp; <span class="fn">operator&gt;&gt;</span>(TContainer&amp; container) <span class="kw">noexcept</span> { <span class="fn">Get&lt;T&gt;</span>(container); <span class="kw">return</span> *<span class="kw">this</span>; }</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>The thirteen scalar overloads are one line each in <code>BufferInputStream.cpp</code>: a call to the scalar <a href="get.html"><code>Get</code></a> with the argument and a type-appropriate default (<code>'\0'</code> for <code>char</code>, <code>0</code> for the integers, <code>0.0</code> for the floats), then <code>return *this;</code>. So the read either fills the argument from the block or fills it with that constant and raises <a href="get-error-count.html">the count</a>; there is no third outcome and no way for the argument to be left uninitialised.</p>
+
+<p><strong>Strings are the asymmetric ones.</strong> <code>operator&gt;&gt;(StaticString&amp;)</code> reads the <code>size_t</code> length prefix that <a href="../BufferOutputStream/operator-shift-left.html"><code>operator&lt;&lt;</code></a> wrote. A zero length assigns a function-local interned empty string and returns. Otherwise it reserves in a local <code>HInlineString&lt;256&gt;</code> and reads the characters one at a time through the scalar <a href="get.html"><code>Get</code></a>, then asserts the collected size equals the declared length and assigns <code>str = StaticString(tmpStr.c_str())</code> — a fresh interning, not a recovered handle. Interning identity does not survive a round trip through a buffer, only the characters do.</p>
+
+<p>Reading a string one character at a time is a consequence of alignment rather than of laziness: each character is an aligned 1-byte read at the running cursor, so the reader stays on the same offset arithmetic as the writer for every element it consumes.</p>
+
+<p>The array and container templates forward to the two bulk <a href="get.html"><code>Get</code></a> forms, so the prefix semantics, the container clearing and the <code>static_assert</code> on element type are described there.</p>
+<div class="gap">
+  <strong><code>operator&gt;&gt;(const HString&amp;)</code> reads nothing. </strong> Its body is <code>return *this;</code> — no <a href="get.html"><code>Get</code></a> call, no cursor movement, no error count. It is a declared, defined, chainable no-op. It cannot fill its argument in any case, because the parameter is <code>const</code>, so the overload as written has no reachable effect: an image containing a string passed to this overload leaves the string untouched and the cursor unmoved, and everything after it in the chain desynchronises against the image. The <code>StaticString</code> overload immediately above is the one that works, and the <a href="../BufferOutputStream/operator-shift-left.html">writer</a> has no matching <code>HString</code> write either — it converts every string type with <code>c_str()</code> and writes bytes.
+</div>
+<div class="gap">
+  <strong>A stored length above 256 characters leaves the inline buffer behind.</strong> The local collection buffer is <code>HInlineString&lt;256&gt;</code> with <code>reserve(length)</code> called on it, so a longer stored string depends on that class growing off its inline storage, and the value handed to <code>StaticString</code> comes from <code>c_str()</code> afterwards. The <code>Assert(tmpStr.size() == length)</code> that follows checks the count, not the capacity behaviour. Long strings are therefore exercised by a different path than short ones, and the engine's own test collection does not cover the long case.
+</div>
+<div class="note">
+  <strong>Every overload returns <code>*this</code>, including the ones that read nothing.</strong> Chains always run to completion. That is what makes a single <a href="has-error.html"><code>HasError()</code></a> at the end of a chain the load-bearing check — no intermediate return value can tell you a field was missing.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Form</th><th>Parameter</th><th>What it receives</th></tr>
+  <tr>
+    <td>scalar</td><td><code>value</code> (non-const ref)</td>
+    <td>The stored value, or the overload's default. Alignment-rounded offset, as written</td>
+  </tr>
+  <tr>
+    <td><code>StaticString&amp;</code></td><td><code>str</code></td>
+    <td>A newly interned string built from <code>length</code> characters, or an interned empty string when the prefix is zero</td>
+  </tr>
+  <tr>
+    <td><code>const HString&amp;</code></td><td><code>str</code></td>
+    <td>Nothing. See the gap above</td>
+  </tr>
+  <tr>
+    <td><code>T(&amp;array)[N]</code></td><td><code>array</code></td>
+    <td> <code>N</code> elements, only if the stored element count equals <code>N</code></td>
+  </tr>
+  <tr>
+    <td><code>TContainer&amp;</code></td><td><code>container</code></td>
+    <td>Emptied, then filled with <code>length</code> elements. Defaults to <code>HVector&lt;T&gt;</code></td>
+  </tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr>
+    <td><code>This&amp;</code> (<code>BufferInputStream&amp;</code>)</td>
+    <td><code>*this</code> from every overload, whether the read landed, was refused, or — for the <code>HString</code> form — was never attempted</td>
+  </tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p>A chain that matches the writer in <a href="../BufferOutputStream/operator-shift-left.html#example"><code>operator&lt;&lt;</code></a>, and the single check that makes the result trustworthy:</p>
+
+<pre><code>BufferInputStream is(<span class="kw">buffer</span>);
+<span class="kw">uint32_t</span> version = 0;
+<span class="kw">size_t</span> count = 0;
+StaticString name;
+is &gt;&gt; version &gt;&gt; count &gt;&gt; name;
+returnIfB(is.<span class="fn">HasError</span>());
+<span class="kw">while</span> (!is.<span class="fn">IsDone</span>()) {
+	PoolConfig config;
+	is &gt;&gt; config.a &gt;&gt; config.b;
+}</code></pre>
+
+<p class="meta">Shape used by the deserialisation paths in Engine/Memory/</p>
+
+<p>The loop condition is <a href="is-done.html"><code>IsDone</code></a> rather than a count, and it relies on alignment and the cursor; a truncated final record is caught, if at all, by <a href="is-valid-index.html">a guard that does not check the end offset</a>.</p>
+
+
+<footer class="prevnext">
+  <span><a href="index.html">&larr; BufferInputStream</a></span>
+  <span><a href="index.html#methods">All BufferInputStream methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

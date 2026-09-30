@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BufferUtil — Resource — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This namespace</h3>
+  <ul>
+    <li><a href="#generate-dummy-buffer">GenerateDummyBuffer</a></li>
+    <li><a href="#generate-file-buffer">GenerateFileBuffer</a></li>
+    <li><a href="#get-file-buffer">GetFileBuffer</a></li>
+    <li><a href="#get-read-only-file-buffer">GetReadOnlyFileBuffer</a></li>
+    <li><a href="#get-write-only-file-buffer">GetWriteOnlyFileBuffer</a></li>
+    <li><a href="#get-memory-buffer">GetMemoryBuffer</a></li>
+    <li><a href="#description">What every function here does</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+
+  <h3>Methods</h3>
+  <ul class="methods">
+    <li><a href="#generate-dummy-buffer">GenerateDummyBuffer</a></li>
+    <li><a href="#generate-file-buffer">GenerateFileBuffer</a></li>
+    <li><a href="#get-file-buffer">GetFileBuffer</a></li>
+    <li><a href="#get-read-only-file-buffer">GetReadOnlyFileBuffer</a></li>
+    <li><a href="#get-write-only-file-buffer">GetWriteOnlyFileBuffer</a></li>
+    <li><a href="#get-memory-buffer">GetMemoryBuffer</a></li>
+  </ul>
+</nav>
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Resource</a> / BufferUtil
+</p>
+
+<h1>BufferUtil</h1>
+<p class="subtitle">
+  <span class="tag">Engine/Resource/BufferUtil.h</span>
+  <span class="tag">namespace hbe::BufferUtil</span>
+  <span class="tag">free functions, one template</span>
+  <span class="tag"><code>using namespace BufferTypes;</code></span>
+  the six ways a <a href="../Buffer/index.html"><code>Buffer</code></a> comes into existence
+</p>
+
+<h2 id="description">What every function here does</h2>
+
+<p>
+  <a href="../Buffer/index.html"><code>Buffer</code></a> stores a size, a pointer and the closure that frees them; it
+  allocates nothing itself. Every function in this namespace is therefore the same shape: build a
+  <a href="../BufferTypes/index.html"><code>TGenerateBuffer</code></a> lambda that knows how to obtain bytes, hand it
+  to a <a href="../Buffer/constructors.html"><code>Buffer</code> constructor</a>, and — where the bytes need freeing —
+  follow with <a href="../Buffer/set-releaser.html"><code>SetReleaser</code></a>. The header runs
+  <code>using namespace BufferTypes;</code> inside the namespace, which is why these signatures say
+  <code>TBufferData</code> and <code>TSize</code> unqualified.
+</p>
+
+<p>
+  Two of them matter as a pair more than as functions. A buffer whose pointer is null and whose size is a lie —
+  <a href="#generate-dummy-buffer"><code>GenerateDummyBuffer()</code></a> — is what lets
+  <a href="../BufferOutputStream/index.html"><code>BufferOutputStream</code></a> run over a serialisation and count the
+  bytes without writing any; and
+  <a href="#get-write-only-file-buffer"><code>GetWriteOnlyFileBuffer(path, size)</code></a> takes exactly that count to
+  create and map a file of the right length. <code>MemoryManager::SaveMultiPoolConfigs</code> uses them in that order:
+  probe, take the writer's cursor, create, write for real.
+</p>
+
+<p>
+  Failure is reported twice and neither is a return code: a message is logged through a
+  <a href="../../Log/index.html"><code>Logger</code></a> obtained as a function-local static, and the returned buffer
+  comes back empty — size zero, pointer null. So the caller's test is
+  <a href="../Buffer/get-data.html"><code>GetData() == nullptr</code></a>, and the engine's own callers use
+  <code>returnIfB</code> against exactly that.
+</p>
+
+<h2 id="functions">Functions</h2>
+
+<h3 id="generate-dummy-buffer">GenerateDummyBuffer</h3>
+
+<pre><code>[[nodiscard]] Buffer <span class="fn">GenerateDummyBuffer</span>(<span class="kw">size_t</span> size = std::numeric_limits&lt;<span class="kw">size_t</span>&gt;::max()) <span class="kw">noexcept</span>;</code></pre>
+
+<p>
+  The generator captures <code>size</code> and writes <code>outSize = size; outData = nullptr;</code>. Nothing else:
+  no releaser is installed, because there is nothing to release. The result is a buffer that claims a size and owns no
+  bytes, which is the measuring device described above — <a href="../BufferOutputStream/put.html"><code>Put</code></a>
+  sees a null base, advances its cursor when the write would fit the claimed size, and refuses when it would
+  not.
+</p>
+
+<div class="note">
+  <strong>The default size is <code>size_t</code> max, and that is load-bearing.</strong> With it, a probe of any
+  plausible image always "fits" and the writer's cursor ends as the true image size. Passing a smaller size turns the
+  same call into an upper-bound test: writes past it raise
+  <a href="../BufferOutputStream/get-error-count.html">the writer's error count</a> instead of advancing the cursor.
+</div>
+
+<h3 id="generate-file-buffer">GenerateFileBuffer</h3>
+
+<pre><code>[[nodiscard]] Buffer <span class="fn">GenerateFileBuffer</span>(StaticString path, OS::FileOpenMode openMode,
+                                                OS::ProtectionMode protection, <span class="kw">size_t</span> size = 0);</code></pre>
+
+<p>
+  The one real implementation; the four <code>Get…FileBuffer</code> functions below are argument presets for
+  it. Its generator runs the whole sequence, and any step that fails returns with the buffer left empty after logging:
+</p>
+
+<table>
+  <tr><th>Step</th><th>Call</th><th>On failure</th></tr>
+  <tr><td>Open</td><td><code>Open(fh, path, openMode)</code> in <a href="../../OSAL/index.html#file">OSAL</a></td>
+      <td><code>OutError</code> "Failed to open", buffer stays empty</td></tr>
+  <tr><td>Resize, only when <code>size != 0</code></td><td><code>Truncate(fh, fileSize)</code></td>
+      <td><code>OutWarning</code> "Failed to resize", buffer stays empty</td></tr>
+  <tr><td>Reject nothing-to-map</td><td>the resulting file size</td>
+      <td><code>OutWarning</code> "Nothing to map. File size is zero"</td></tr>
+  <tr><td>Map</td><td><code>MapMemory(fh, fileSize, protection, 0)</code></td>
+      <td><code>OutError</code> "Failed to map", buffer stays empty</td></tr>
+</table>
+
+<p>
+  Only after a mapping exists does the function take the file handle's raw data out of the local
+  <code>FileHandle</code>, <a href="../../OSAL/index.html#functions">invalidate</a> the local so it stops owning, and
+  install a releaser capturing the raw handle. That releaser, run by
+  <a href="../Buffer/destructor.html"><code>~Buffer</code></a>: re-arms a <code>FileHandle</code> from the captured
+  data, asserts the size is non-zero, calls <code>MapSync</code> with the sync mode set, then
+  <code>UnmapMemory</code>, then <code>Close</code>. Writes through the mapping are therefore flushed before the
+  mapping is dropped and the descriptor closed, in that order, and the buffer needs no further ceremony from its
+  owner.
+</p>
+
+<div class="gap">
+  <strong>The early return skips the releaser installation, and that is intended — but it means an empty buffer is
+  indistinguishable from a deliberate no-releaser buffer.</strong> On every failure path the function returns
+  <code>Buffer(generator)</code> with no releaser installed and
+  <a href="../Buffer/get-data.html"><code>GetData()</code></a> null. The engine's own file-mapping path also builds a
+  buffer in that state deliberately for one statement before installing the releaser, so
+  <a href="../Buffer/index.html">the gap recorded on <code>Buffer</code></a> about a mapped block with no releaser is
+  reachable here too if the process exits between those two statements.
+</div>
+
+<div class="note">
+  <strong><code>if (fileSize &lt;= 0)</code> on a file size.</strong> The size is unsigned, so this is a test for
+  zero. An empty file is refused with a warning rather than mapped, which is what keeps a zero-length mapping from
+  reaching <a href="../Buffer/index.html"><code>Buffer</code></a> at all.
+</div>
+
+<h3 id="get-file-buffer">GetFileBuffer</h3>
+
+<pre><code>[[nodiscard]] Buffer <span class="fn">GetFileBuffer</span>(StaticString path);</code></pre>
+
+<p>
+  <code>GenerateFileBuffer(path, read-write, readable + writable)</code> with no size, so an existing file is mapped
+  for reading and writing at its current length and resized by nobody. This is the load path: the image is read through
+  <a href="../BufferInputStream/index.html"><code>BufferInputStream</code></a>, and the writable mapping is what makes
+  the same buffer usable for in-place editing.
+</p>
+
+<h3 id="get-read-only-file-buffer">GetReadOnlyFileBuffer</h3>
+
+<pre><code>[[nodiscard]] Buffer <span class="fn">GetReadOnlyFileBuffer</span>(StaticString path);</code></pre>
+
+<p>
+  <code>GenerateFileBuffer(path, read-write, readable)</code>. The name promises read-only, and the mapping keeps that
+  promise — the protection is readable only — but the file itself is opened read-write.
+</p>
+
+<div class="gap">
+  <strong>The name describes the mapping, not the open mode.</strong> <code>openMode.SetReadWrite()</code> is what this
+  function passes; only <code>protection</code> is restricted. So the process holds a writable descriptor on a file it
+  has asked to see read-only, and the read-only guarantee is the mapping's protection fault rather than an OS-level
+  denial. Writing through the pointer is undefined behaviour, not a graceful error; nothing in the engine writes
+  through a read-only mapping today, so the distinction has not been tested.
+</div>
+
+<h3 id="get-write-only-file-buffer">GetWriteOnlyFileBuffer</h3>
+
+<pre><code>[[nodiscard]] Buffer <span class="fn">GetWriteOnlyFileBuffer</span>(StaticString path, <span class="kw">size_t</span> size);</code></pre>
+
+<p>
+  Opens read-write, then either <code>SetTruncate()</code> when <code>Exist(path)</code> is true or
+  <code>SetCreate()</code> when it is not, with writable-only protection and the given <code>size</code> — which
+  <a href="#generate-file-buffer"><code>GenerateFileBuffer</code></a> turns into a <code>Truncate</code>. The result is a
+  file of exactly <code>size</code> bytes, mapped for writing, and released with a sync when the buffer dies.
+</p>
+
+<p>
+  The size is a parameter rather than a discovery, and that is the pairing that makes the probing trick work: measure
+  the image with <a href="#generate-dummy-buffer"><code>GenerateDummyBuffer()</code></a> and
+  <a href="../BufferOutputStream/get-cursor.html"><code>GetCursor()</code></a>, then create a file that size. Too small
+  a size and the writer's later writes are refused —
+  <a href="../BufferOutputStream/get-error-count.html">counted, not fatal</a>.
+</p>
+
+<div class="gap">
+  <strong>Existing content is destroyed without a trace, and the mapping cannot be read.</strong> A file that exists is
+  truncated; protection is writable only, so reading the mapped bytes back is not permitted by the mapping. A caller
+  that needs to inspect what it wrote must release the buffer and open the file again through
+  <a href="#get-file-buffer"><code>GetFileBuffer</code></a> or
+  <a href="#get-read-only-file-buffer"><code>GetReadOnlyFileBuffer</code></a>.
+</div>
+
+<h3 id="get-memory-buffer">GetMemoryBuffer</h3>
+
+<pre><code>template &lt;<span class="kw">typename</span> T&gt;
+[[nodiscard]] Buffer <span class="fn">GetMemoryBuffer</span>(TSize numElements, <span class="kw">const</span> T&amp; defaultValue);</code></pre>
+
+<p>
+  Defined in the header, and the only function here that allocates rather than maps. The generator takes
+  <code>MemoryManager::GetInstance()</code> by reference, computes <code>numElements * sizeof(T)</code>, and stores a
+  block from <code>mmgr.NewArray&lt;T&gt;(numElements, defaultValue)</code>. The releaser divides the size back by
+  <code>sizeof(T)</code>, asserts the division was exact, and calls <code>mmgr.DeleteArray&lt;T&gt;(ptr,
+  numElements)</code>.
+</p>
+
+<p>
+  The <code>Assert</code> on exact division is what makes the closure pair safe: the
+  <a href="../BufferTypes/index.html"><code>TReleaseBuffer</code></a> signature carries a byte size and a pointer and
+  nothing else, so a releaser that needs an element count has to recover it, and this is the check that the recovery
+  was lossless. <a href="../../Memory/index.html#memorymanager"><code>MemoryManager</code></a> is the allocator on
+  both sides, so a memory buffer returns its bytes to whichever pool served them.
+</p>
+
+<div class="note">
+  <strong><code>defaultValue</code> is a value-initialisation, not a memset.</strong> It is handed to
+  <code>NewArray&lt;T&gt;</code>, so <code>T</code>'s own construction runs per element. For a trivially copyable
+  <code>T</code> that is the same cost as a fill; for anything with a constructor it is a loop of constructor calls,
+  and the caller is naming a value of <code>T</code> rather than a byte pattern.
+</div>
+
+<h2 id="coverage">Coverage</h2>
+
+<table>
+  <tr><th>Gap</th><th>Detail</th></tr>
+  <tr>
+    <td>Failure is a log line and an empty buffer</td>
+    <td>No function here returns a status, and none throws — the engine is exception-free. The caller's only test is
+        <a href="../Buffer/get-data.html"><code>GetData() == nullptr</code></a>. Whether the failure was "cannot open",
+        "cannot resize", "empty file" or "cannot map" appears only in the log, through the
+        <a href="../../Log/index.html"><code>Logger</code></a> this namespace acquires as a function-local
+        static</td>
+  </tr>
+  <tr>
+    <td>The mapping size and the file size can disagree</td>
+    <td><code>GenerateFileBuffer</code> maps whatever length it settles on — the file's own length, or the requested
+        <code>size</code> after a successful truncate. A file that grows behind the mapping after that point is not
+        visible, and <a href="../Buffer/get-size.html"><code>GetSize()</code></a> keeps reporting the mapped
+        length</td>
+  </tr>
+  <tr>
+    <td>Read-only means the mapping, not the descriptor</td>
+    <td>Discussed on <a href="#get-read-only-file-buffer"><code>GetReadOnlyFileBuffer</code></a>: the open mode is
+        read-write in both read-only and read-write variants, differing only in protection</td>
+  </tr>
+  <tr>
+    <td>Nothing validates an image on the way in</td>
+    <td>These functions produce a buffer of bytes and no function checks what the bytes mean. Version checks, magic
+        numbers and length sanity are the caller's, and the reader will not supply them — see
+        <a href="../BufferInputStream/index.html#format">what the reader assumes</a></td>
+  </tr>
+  <tr>
+    <td>Where the platform behaviour lives</td>
+    <td>Open, truncate, map, sync, unmap and close are all OS-layer calls with per-platform implementations —
+        <a href="../../OSAL/index.html#file">OSAL: file</a>, <a href="../../OSAL/index.html#functions"><code>FileHandle</code></a>,
+        and the memory primitives in <a href="../../OSAL/index.html#functions">the OSAL memory and mapping primitives</a>. Nothing in this file
+        branches per platform</td>
+  </tr>
+  <tr>
+    <td>No test collection for this namespace</td>
+    <td><code>BufferUtil.h</code> declares none. The paths are exercised indirectly by
+        <a href="../Buffer/index.html#coverage"><code>BufferTest</code></a>'s generation and release case and by the
+        pool-config save and load path in
+        <a href="../../Memory/index.html#memorymanager"><code>MemoryManager</code></a></td>
+  </tr>
+</table>
+
+<footer class="prevnext">
+  <span><a href="../index.html">&larr; Resource</a></span>
+  <span><a href="../Buffer/index.html">Buffer — the type every function here returns</a></span>
+</footer>
+
+</main>
+</body>
+</html>

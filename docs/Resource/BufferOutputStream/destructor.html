@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BufferOutputStream::destructor — Resource — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#notes">Notes</a></li>
+  </ul>
+
+  <h3><a href="index.html">Buffer</a> methods</h3>
+  <ul class="methods">
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+    <li><a href="get-cursor.html">GetCursor</a></li>
+    <li><a href="get-error-count.html">GetErrorCount</a></li>
+    <li><a href="has-error.html">HasError</a></li>
+    <li><a href="clear-error-count.html">ClearErrorCount</a></li>
+    <li><a href="is-done.html">IsDone</a></li>
+    <li><a href="operator-shift-left.html">operator&lt;&lt;</a></li>
+    <li><a href="is-valid-index.html">IsValidIndex</a></li>
+    <li><a href="put.html">Put</a></li>
+  </ul>
+</nav>
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Resource</a> /
+  <a href="index.html">BufferOutputStream</a> / destructor
+</p>
+
+<h1><span class="fn">destructor</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::BufferOutputStream</span>
+  <span class="tag">Engine/Resource/BufferOutputStream.h</span>
+  <span class="tag">= default</span>
+  <span class="tag">noexcept</span>
+  trivial: a stream finalises nothing
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>~<span class="fn">BufferOutputStream</span>() = <span class="kw">default</span>;</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>Generated, and correct to be generated: the members are a reference, two counters and a thread id, none of which need anything at teardown. There is no flush, because there is no staging — <a href="put.html"><code>Put</code></a> writes each value into the block as it is called, so the bytes are already in the buffer before the stream ends.</p>
+
+<p>Nothing about the block changes at stream destruction. Whether the bytes survive depends only on what the buffer itself does next, which is the subject of <a href="../Buffer/destructor.html"><code>Buffer::~Buffer</code></a>: the buffer runs its own releaser, and a buffer that was given none logs a warning and leaves the block allocated.</p>
+
+<p>The value the caller usually wants before letting the stream go is <a href="get-cursor.html"><code>GetCursor()</code></a> — how many bytes the serialisation consumed, which is also the technique <code>MemoryManager</code> uses to size a file before writing one.</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<p>None.</p>
+
+<h2 id="notes">Notes</h2>
+
+<p>Because the destructor is defaulted and the copy and move operations are deleted, this class is neither copyable nor movable in any form. That is what forces the one-scope discipline described on <a href="constructors.html">the constructors</a>.</p>
+
+
+<footer class="prevnext">
+  <span><a href="index.html">&larr; BufferOutputStream</a></span>
+  <span><a href="index.html#methods">All BufferOutputStream methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BufferOutputStream::operator&lt;&lt; — Resource — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3><a href="index.html">Buffer</a> methods</h3>
+  <ul class="methods">
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+    <li><a href="get-cursor.html">GetCursor</a></li>
+    <li><a href="get-error-count.html">GetErrorCount</a></li>
+    <li><a href="has-error.html">HasError</a></li>
+    <li><a href="clear-error-count.html">ClearErrorCount</a></li>
+    <li><a href="is-done.html">IsDone</a></li>
+    <li><a href="operator-shift-left.html">operator&lt;&lt;</a></li>
+    <li><a href="is-valid-index.html">IsValidIndex</a></li>
+    <li><a href="put.html">Put</a></li>
+  </ul>
+</nav>
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Resource</a> /
+  <a href="index.html">BufferOutputStream</a> / operator&lt;&lt;
+</p>
+
+<h1><span class="fn">operator&lt;&lt;</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::BufferOutputStream</span>
+  <span class="tag">Engine/Resource/BufferOutputStream.h</span>
+  <span class="tag">noexcept</span>
+  <span class="tag">chainable</span>
+  <span class="tag">18 overloads</span>
+  the write surface: primitives, strings and arrays
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code><span class="kw">using</span> <span class="ty">This</span> = BufferOutputStream;
+
+This&amp; <span class="fn">operator&lt;&lt;</span>(<span class="kw">char</span> value) <span class="kw">noexcept</span>;
+This&amp; <span class="fn">operator&lt;&lt;</span>(<span class="kw">int8_t</span> value) <span class="kw">noexcept</span>;   <span class="cm">// and uint8_t, int16_t, uint16_t,</span>
+<span class="cm">//   int32_t, uint32_t, int64_t, uint64_t</span>
+#<span class="kw">ifndef</span> PLATFORM_LINUX
+This&amp; <span class="fn">operator&lt;&lt;</span>(<span class="kw">size_t</span> value) <span class="kw">noexcept</span>;
+#<span class="kw">endif</span> // PLATFORM_LINUX
+This&amp; <span class="fn">operator&lt;&lt;</span>(<span class="kw">float</span> value) <span class="kw">noexcept</span>;     <span class="cm">// and double, long double</span>
+This&amp; <span class="fn">operator&lt;&lt;</span>(<span class="kw">const</span> <span class="kw">char</span>* str) <span class="kw">noexcept</span>;
+
+template &lt;<span class="kw">typename</span> T, <span class="kw">size_t</span> N&gt;
+This&amp; <span class="fn">operator&lt;&lt;</span>(T (&amp;array)[N]) <span class="kw">noexcept</span> { <span class="fn">Put&lt;T&gt;</span>(array, N); <span class="kw">return</span> *<span class="kw">this</span>; }
+
+template &lt;<span class="kw">size_t</span> N&gt;
+This&amp; <span class="fn">operator&lt;&lt;</span>(<span class="kw">const</span> hbe::HInlineString&lt;N&gt;&amp; str) <span class="kw">noexcept</span> { <span class="kw">return</span> *<span class="kw">this</span> &lt;&lt; str.<span class="fn">c_str</span>(); }
+
+This&amp; <span class="fn">operator&lt;&lt;</span>(<span class="kw">const</span> hbe::HString&amp; str) <span class="kw">noexcept</span>   { <span class="kw">return</span> *<span class="kw">this</span> &lt;&lt; str.<span class="fn">c_str</span>(); }
+This&amp; <span class="fn">operator&lt;&lt;</span>(StaticString str) <span class="kw">noexcept</span>   { <span class="kw">return</span> *<span class="kw">this</span> &lt;&lt; str.<span class="fn">c_str</span>(); }</code></pre>
+
+<p>The nine fixed-width and three floating overloads are declared in the header and defined one per statement in <code>BufferOutputStream.cpp</code>, each body a single <code>Put&lt;T&gt;</code> call followed by <code>return *this;</code>.</p>
+
+<h2 id="description">Function description</h2>
+
+<p>Every overload is a thin, chainable wrapper over <a href="put.html"><code>Put</code></a>, which holds the alignment and bounds behaviour. Nothing here reports failure; a refused write raises the tally that <a href="has-error.html"><code>HasError</code></a> reads.</p>
+
+<p><strong>Strings are length-prefixed, and the terminator is not written.</strong> The <code>const char*</code> overload measures the string with <code>StringUtil::StrLen</code> and hands it to <code>Put&lt;char&gt;(str, length)</code>, which writes a <code>size_t</code> length first and then exactly <code>length</code> characters. So the byte count is the string length, the NUL is absent, and the reader that consumes this image must be the one on <a href="../BufferInputStream/operator-shift-right.html"><code>BufferInputStream</code></a>, which reads a length and then that many characters. A hand-written reader that expects a C string will not agree with a hand-written writer that appends a terminator.</p>
+
+<p>Three string types funnel through that one overload by <code>c_str()</code>: <code>HInlineString&lt;N&gt;</code>, <code>HString</code> and <code>StaticString</code>. Interned identity is therefore <em>not</em> preserved across a stream — the reader gets a fresh <a href="../../String/index.html#staticstring"><code>StaticString</code></a> built from the bytes, and re-interns it.</p>
+
+<p><strong>Arrays carry their element count, not their byte count.</strong> The <code>T(&amp;array)[N]</code> template deduces the element type and the length from the argument, so <code>float v[8]</code> writes a prefix of 8 and eight elements. That prefix is what lets <a href="../BufferInputStream/get.html"><code>Get</code></a> on the input side size a container, and it is why the two templates — the fixed-array form here and the container form there — are the pair that makes arrays round-trip.</p>
+
+<p><strong>Alignment is per value, and the gap is zero-filled.</strong> Each write rounds the cursor up to a multiple of <code>sizeof(T)</code> before storing, and writes zeroes into the skipped bytes. A reader rounding the same way lands on the value; a reader walking byte-by-byte walks into the padding, which is why the two stream classes are meant to be used as a pair rather than independently.</p>
+<div class="gap">
+  <strong>A null string pointer writes nothing and is not an error.</strong> The <code>const char*</code> overload returns early on <code>nullptr</code> — not <code>errorCount++</code>, not a zero-length record. A stream of records with a nullable name field therefore produces a shorter image than the writer intended, and since nothing was refused, <a href="has-error.html"><code>HasError()</code></a> stays false and the reader desynchronises against the rest of the record. Pass <code>""</code> if the field is empty; it writes a zero length, which the reader turns into an empty string.
+</div>
+<div class="note">
+  <strong><code>size_t</code> is a separate overload only off Linux.</strong> On Linux <code>size_t</code> and <code>unsigned long</code> are the same type, so the the <code>uint64_t</code> overload already binds it; elsewhere they are distinct and the extra overload is needed for <code>Put&lt;size_t&gt;</code> to be reachable. Code that streams a bare <code>size_t</code> therefore resolves to different overloads per platform — same width on LP64, different binding rule.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Form</th><th>What lands in the block</th></tr>
+  <tr>
+    <td><code>value</code></td><td>any of the 12 scalar overloads</td>
+    <td>The object representation of <code>T</code>, at an offset rounded up to <code>sizeof(T)</code> </td>
+  </tr>
+  <tr>
+    <td><code>str</code></td><td><code>const char*</code>, <code>HString</code>, <code>HInlineString&lt;N&gt;</code>, <code>StaticString</code></td>
+    <td>A <code>size_t</code> length, then that many characters, no terminator. Null pointer writes nothing at all</td>
+  </tr>
+  <tr>
+    <td><code>array</code></td><td><code>T(&amp;array)[N]</code></td>
+    <td>A <code>size_t</code> element count, then <code>N</code> elements</td>
+  </tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr>
+    <td><code>This&amp;</code> (<code>BufferOutputStream&amp;</code>)</td>
+    <td><code>*this</code>, always, including when the write was refused — so chains run to completion and the failure is visible only through <a href="get-error-count.html"><code>GetErrorCount</code></a></td>
+  </tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p>The engine's own writer, from <code>MemoryManager::SaveMultiPoolConfigs</code>: the stream is built on a buffer whose pointer is null so the pass measures the image, and the cursor afterwards becomes the file size. Every <code>&lt;&lt;</code> in the chain takes the probing path.</p>
+
+<pre><code>Buffer buffer = BufferUtil::GenerateDummyBuffer();
+BufferOutputStream bos(buffer);
+bos &lt;&lt; MultiPoolConfigCache::Version
+   &lt;&lt; static_cast&lt;<span class="kw">size_t</span>&gt;(numConfigs);
+<span class="cm">// ... one line per pool configuration ...</span>
+returnIfBos.<span class="fn">HasError</span>();   <span class="cm">// the size probe overflowed the dummy</span></code></pre>
+
+<p class="meta">From Engine/Memory/MemoryManager.cpp, abbreviated</p>
+
+<p>The symmetric reader for the same image, including the length-prefixed string form, is on <a href="../BufferInputStream/operator-shift-right.html"><code>operator&gt;&gt;</code></a>.</p>
+
+
+<footer class="prevnext">
+  <span><a href="index.html">&larr; BufferOutputStream</a></span>
+  <span><a href="index.html#methods">All BufferOutputStream methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

@@ -237,9 +237,10 @@
   <code>hbe::BufferUtil</code> (<code>Engine/Resource/BufferUtil.h</code>):
   <code>GenerateDummyBuffer</code>, <code>GenerateFileBuffer</code>, <code>GetFileBuffer</code>,
   <code>GetReadOnlyFileBuffer</code>, <code>GetWriteOnlyFileBuffer</code> and the
-  <code>GetMemoryBuffer&lt;T&gt;</code> template. They are not documented by a page in this batch — see
-  <a href="../index.html#coverage">the module Coverage</a> — but they are quoted on the pages below, because they
-  are the real call sites for these constructors and for <a href="set-releaser.html"><code>SetReleaser</code></a>.
+  <code>GetMemoryBuffer&lt;T&gt;</code> template, documented on
+  <a href="../BufferUtil/index.html"><code>BufferUtil</code></a> — they are the real call sites for these constructors
+  and for <a href="set-releaser.html"><code>SetReleaser</code></a>, and each section there quotes the closure pair it
+  builds.
 </p>
 
 <h2 id="coverage">Coverage</h2>
@@ -260,9 +261,11 @@
         previous version of the module page asserted. They are public classes with a wide
         <code>operator&gt;&gt;</code> / <code>operator&lt;&lt;</code> surface over primitives, strings and
         containers, and they borrow rather than own: the input stream holds <code>const Buffer&amp;</code>, the
-        output stream holds <code>Buffer&amp;</code> and pins itself to the thread that constructed it. Neither has
-        a page in this batch, so that surface is a named gap on
-        <a href="../index.html#coverage">the module page</a></td>
+        output stream holds <code>Buffer&amp;</code> and pins itself to the thread that constructed it. Both are
+        documented now — <a href="../BufferInputStream/index.html"><code>BufferInputStream</code></a> and
+        <a href="../BufferOutputStream/index.html"><code>BufferOutputStream</code></a> — and the image they agree on
+        is described once, on
+        <a href="../BufferOutputStream/index.html#format">the writer&#39;s format section</a></td>
   </tr>
   <tr>
     <td>Alignment and provenance of <code>data</code></td>

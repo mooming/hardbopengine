@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BufferInputStream::constructors — Resource — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+  </ul>
+
+  <h3><a href="index.html">Buffer</a> methods</h3>
+  <ul class="methods">
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+    <li><a href="get-error-count.html">GetErrorCount</a></li>
+    <li><a href="has-error.html">HasError</a></li>
+    <li><a href="clear-error-count.html">ClearErrorCount</a></li>
+    <li><a href="is-done.html">IsDone</a></li>
+    <li><a href="operator-shift-right.html">operator&gt;&gt;</a></li>
+    <li><a href="get.html">Get</a></li>
+    <li><a href="is-valid-index.html">IsValidIndex</a></li>
+  </ul>
+</nav>
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Resource</a> /
+  <a href="index.html">BufferInputStream</a> / constructors
+</p>
+
+<h1><span class="fn">constructors</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::BufferInputStream</span>
+  <span class="tag">Engine/Resource/BufferInputStream.h</span>
+  <span class="tag">explicit</span>
+  <span class="tag">noexcept</span>
+  <span class="tag">copyable</span>
+  open a reader at the start of a block someone else owns
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>explicit <span class="fn">BufferInputStream</span>(<span class="kw">const</span> <a href="../Buffer/index.html"><code>Buffer</code></a>&amp; buffer) <span class="kw">noexcept</span>;
+~<span class="fn">BufferInputStream</span>() = <span class="kw">default</span>;</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>Stores the reference and starts at the beginning: <code>buffer(buffer)</code>, <code>cursor(0)</code>, <code>errorCount(0)</code>. Nothing is read, so a reader that is opened and never used has observed nothing about the block.</p>
+
+<p>Unlike <a href="../BufferOutputStream/constructors.html"><code>BufferOutputStream</code></a>, this class does not capture a thread id and does not delete its copy operations. Reading does not mutate the block, so a copy is coherent: it duplicates the buffer reference and the current cursor, giving an independent reader positioned at the same offset. Two copies then advance separately, which is the natural way to re-read a header or to walk one image twice. The <code>explicit</code> on the constructor is what stops <code>BufferInputStream in = buffer;</code> from silently opening a reader.</p>
+
+<p>The buffer is borrowed, not owned: the stream keeps no reference count and no weak handle, so the caller must keep the buffer alive — see the note below, and <a href="../Buffer/destructor.html"><code>Buffer::~Buffer</code></a> for when the block actually goes away.</p>
+<div class="note">
+  <strong>No thread pinning here, which is a difference from the writer rather than an oversight.</strong> <a href="../BufferOutputStream/put.html"><code>Put</code></a> asserts thread identity because it mutates a cursor that another thread could be mutating. Every member of this class mutates only its own <code>cursor</code> and <code>errorCount</code>, so two readers on one buffer — including two copies of the same reader — race on nothing. A reader shared by reference across threads does race on its own cursor, exactly as any two callers of a stateful object would.
+</div>
+<div class="gap">
+  <strong>A buffer that stops holding its bytes mid-read is not detected.</strong> The member is <code>const Buffer&amp; buffer;</code>, and each read re-asks <a href="../Buffer/get-data.html"><code>GetData()</code></a> for the address and <a href="../Buffer/get-size.html"><code>GetSize()</code></a> for the size. If the buffer is released between two reads, the next read gets a new or null address with no indication that anything changed; a null address turns into a read from <code>&amp;bufferBase[cursor]</code> with a null base, which the bounds test does not catch — see <a href="is-valid-index.html"><code>IsValidIndex</code></a>.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Contract</th></tr>
+  <tr>
+    <td><code>buffer</code></td><td><code>const <a href="../Buffer/index.html">Buffer</a>&amp;</code></td>
+    <td>The image to read, borrowed and not owned. Must outlive the stream. A buffer whose pointer is null — the shape <a href="../BufferUtil/index.html#generate-dummy-buffer"><code>GenerateDummyBuffer</code></a> produces — is accepted and yields refusals rather than a failure at construction</td>
+  </tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>None — this is a constructor.</p>
+
+
+<footer class="prevnext">
+  <span><a href="index.html">&larr; BufferInputStream</a></span>
+  <span><a href="index.html#methods">All BufferInputStream methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

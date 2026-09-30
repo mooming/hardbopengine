@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BufferOutputStream::Put — Resource — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#notes">Notes</a></li>
+  </ul>
+
+  <h3><a href="index.html">Buffer</a> methods</h3>
+  <ul class="methods">
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+    <li><a href="get-cursor.html">GetCursor</a></li>
+    <li><a href="get-error-count.html">GetErrorCount</a></li>
+    <li><a href="has-error.html">HasError</a></li>
+    <li><a href="clear-error-count.html">ClearErrorCount</a></li>
+    <li><a href="is-done.html">IsDone</a></li>
+    <li><a href="operator-shift-left.html">operator&lt;&lt;</a></li>
+    <li><a href="is-valid-index.html">IsValidIndex</a></li>
+    <li><a href="put.html">Put</a></li>
+  </ul>
+</nav>
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Resource</a> /
+  <a href="index.html">BufferOutputStream</a> / Put
+</p>
+
+<h1><span class="fn">Put</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::BufferOutputStream</span>
+  <span class="tag">Engine/Resource/BufferOutputStream.h</span>
+  <span class="tag">private</span>
+  <span class="tag">template</span>
+  <span class="tag">noexcept</span>
+  the single write path: alignment, padding, probing, refusal
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>template &lt;<span class="kw">typename</span> T&gt;
+<span class="kw">void</span> <span class="fn">Put</span>(T value) <span class="kw">noexcept</span>;
+
+template &lt;<span class="kw">typename</span> T&gt;
+<span class="kw">void</span> <span class="fn">Put</span>(<span class="kw">const</span> T* value, <span class="kw">size_t</span> length) <span class="kw">noexcept</span>;</code></pre>
+
+<p>Both are private templates defined in the class body, and every public <a href="operator-shift-left.html"><code>operator&lt;&lt;</code></a> reaches the block through one of them. There is no other write path in this class.</p>
+
+<h2 id="description">Function description</h2>
+
+<p><strong>The scalar form.</strong> It asserts the calling thread equals the one captured by <a href="constructors.html">the constructor</a>, takes the buffer size afresh on every call, and computes two offsets from <code>sizeof(T)</code>: <code>startIndex</code>, the cursor rounded up to a multiple of the element size, and <code>newIndex</code>, one element beyond it. It then either writes or refuses:</p>
+
+<pre><code><span class="kw">const</span> size_t startIndex = ((cursor + tSize - 1) / tSize) * tSize;
+<span class="kw">const</span> <span class="kw">auto</span> newIndex = startIndex + tSize;
+
+<span class="kw">auto</span> bufferBase = buffer.<span class="fn">GetData</span>();
+<span class="kw">if</span> (bufferBase == <span class="kw">nullptr</span>) {
+	<span class="kw">if</span> (newIndex &lt;= size) { cursor = newIndex; } <span class="kw">else</span> { ++errorCount; }
+	<span class="kw">return</span>;
+}
+
+<span class="kw">if</span> (newIndex &gt; size) { ++errorCount; <span class="kw">return</span>; }
+<span class="kw">while</span> (cursor &lt; startIndex) { bufferBase[cursor++] = 0; }</code></pre>
+
+<p class="meta">From Engine/Resource/BufferOutputStream.h, with the assert elided</p>
+
+<p>The bytes between the old cursor and <code>startIndex</code> are written as zeroes before the value is stored, so padding is deterministic: two runs of the same write sequence produce byte-identical images, which is what makes a saved file comparable and what stops uninitialised block contents reaching disk. The value itself is stored through <code>reinterpret_cast&lt;T*&gt;</code> at <code>startIndex</code>, and the cursor ends at <code>newIndex</code>.</p>
+
+<p><strong>The array form</strong> writes a <code>size_t</code> length prefix by calling the scalar form for <code>size_t</code>, then rounds to the element alignment and stores <code>length</code> elements in a counted loop. Padding is zero-filled the same way, once — between the prefix and the first element. The prefix is an element count, matching what <a href="../BufferInputStream/get.html"><code>Get</code></a> expects on the reading side.</p>
+
+<p><strong>Probing mode.</strong> When <a href="../Buffer/get-data.html"><code>GetData()</code></a> returns null the function does not write, and the buffer's <em>claimed</em> size is the only bound: if the write would fit, the cursor advances as though it had happened; if not, the error count rises. A caller can therefore serialise once against <code>BufferUtil::GenerateDummyBuffer()</code> — size <code>max</code>, pointer null — and read the needed length from <a href="get-cursor.html"><code>GetCursor()</code></a>. <code>MemoryManager</code> uses exactly this to size the pool-config file before opening it.</p>
+
+<p><strong>Refusal.</strong> Both forms raise <code>errorCount</code> and return without touching the cursor or the block. Nothing is partially written, and nothing is undone: an array form that wrote its length prefix and then found the payload did not fit leaves the prefix in the block.</p>
+<div class="gap">
+  <strong>A length prefix that survives a refused payload is not rolled back.</strong> The array form commits <code>Put&lt;size_t&gt;(length)</code> before it tests whether the payload fits. On refusal the count is one higher and the block holds a length with no elements behind it, which a reader will follow off the end. Serialise into a probing buffer first, size the real buffer from that, and the refusal path stops being reachable.
+</div>
+<div class="note">
+  <strong>The size is re-read from the buffer on every write, the pointer is re-read too.</strong> Neither is cached, so a buffer whose generator has not installed its data yet takes the probing path for those calls and the real path afterwards. This is how the file-mapping factories in <a href="../BufferUtil/index.html"><code>BufferUtil</code></a> can hand out a buffer and fill in the mapping a statement later.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Contract</th></tr>
+  <tr>
+    <td><code>value</code></td><td><code>T</code> (scalar form)</td>
+    <td>Stored as its object representation. <code>static_assert(sizeof(T) &gt; 0)</code> rejects empty and non-object types at compile time</td>
+  </tr>
+  <tr>
+    <td><code>value</code></td><td><code>const T*</code> (array form)</td>
+    <td><code>length</code> elements read from here. Not checked for null — a null pointer with a non-zero length is a read from address zero, since the bounds logic reasons about the destination only</td>
+  </tr>
+  <tr>
+    <td><code>length</code></td><td><code>size_t</code></td>
+    <td>Element count, written as the prefix and used as the loop bound</td>
+  </tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>None. Success and failure are both silent; failure increments the tally read by <a href="get-error-count.html"><code>GetErrorCount</code></a>.</p>
+
+<h2 id="notes">Notes</h2>
+
+<div class="note">
+  <strong>Thread identity is asserted, not enforced.</strong> Both forms begin with <code>Assert(std::this_thread::get_id() == threadID)</code>. <code>Assert</code> is a function in <a href="../../Core/index.html"><code>Core/Debug.h</code></a> whose Release form discards the condition, so in a Release build two threads sharing one stream race on <code>cursor</code> with no detection and no diagnostic. One stream, one thread, is a rule the caller keeps.
+</div>
+
+
+<footer class="prevnext">
+  <span><a href="index.html">&larr; BufferOutputStream</a></span>
+  <span><a href="index.html#methods">All BufferOutputStream methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>
