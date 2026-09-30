@@ -66,7 +66,7 @@
 
 <p>
   A <code>WorkItem</code> is the queue element, not the unit of work. The unit is
-  <a href="../TaskID/index.html"><code>Task</code></a>; this is one offer of one slice of that task, together with the
+  <code>Task</code>; this is one offer of one slice of that task, together with the
   progress cursor <code>current</code> that lets a runnable return part of its range and be re-added to the lane it came
   from. It is produced only by the engine — the constructor is private and <code>Task</code> and <code>TaskStream</code>
   are its only friends — and it is copied constantly: on every enqueue, on every re-add after an unfinished run, and on
@@ -77,7 +77,7 @@
   It replaced <code>RangedTask</code>, which was this data plus a copy of the task's name and measured 128 bytes. The
   name had exactly one reader: the warning issued when an item is dropped because its task was already released — and
   there the registry can no longer confirm the name belongs to the task that produced the ID, so the copy was both
-  expensive and untrustworthy. <a href="../TaskID/index.html"><code>TaskID</code></a> is the identity that still means
+  expensive and untrustworthy. <code>TaskID</code> is the identity that still means
   something at a drop site. See <code>decidedWorkItemBytes</code>, which exists to make any change to this width loud
   rather than silent.
 </p>

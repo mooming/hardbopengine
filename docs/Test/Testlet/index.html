@@ -68,7 +68,7 @@ Two design alternatives were considered and rejected, and the reasons are worth 
 <td>It allocates nothing, and it does not work here. Every <code>AddTest</code> call hands over a temporary
 lambda that dies at the end of that expression, and a view cannot extend a lifetime. It would dangle, or
 refuse to compile — the same outcome with better manners.</td></tr>
-<tr><td>A plain function pointer, as <a href="../../Core/Runnable/index.html"><code>TRunnable</code></a> does</td>
+<tr><td>A plain function pointer, as <code>TRunnable</code> does</td>
 <td>Zero allocation and zero capture, which the engine's own task contract already uses. Rejected on proportion:
 measured across the tree, 0 of 379 test lambdas are non-capturing (315 use <code>[this]</code>), so it would
 mean rewriting every test in the engine to reach the same storage property.</td></tr>

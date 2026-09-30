@@ -84,7 +84,13 @@ def check_page(path, css_classes):
                 cross_anchor.append(href)
         if not file_part and fragment and fragment not in parser.ids:
             findings.append('in-page anchor #%s has no id on this page' % fragment)
-    unstyled = sorted(parser.classes - css_classes)
+    # A design document may carry its own <style> block — docs/RendererDesign.html does — and a class
+    # declared there is declared, whatever the shared stylesheet thinks. Excluding them reported seven
+    # perfectly styled blocks as bugs, which teaches a reader to ignore the tool.
+    local = set()
+    for block in re.findall(r'<style[^>]*>(.*?)</style>', source, re.S | re.I):
+        local |= set(re.findall(r'\.([A-Za-z][\w-]*)', block))
+    unstyled = sorted(parser.classes - css_classes - local)
     if parser.errors:
         findings.append('unbalanced tag(s) %s' % parser.errors[:3])
     if parser.stack:

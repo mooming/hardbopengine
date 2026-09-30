@@ -71,7 +71,7 @@
 <p>
   Executes the slice this item carries — <code>current</code> up to <code>end</code> of the task's reserved range — and
   reports whether that call <strong>closed the task's join</strong>. The item does not resolve its own task: the stream
-  looks <a href="../TaskID/index.html"><code>taskID</code></a> up and hands the live record in, which is what lets a
+  looks <code>taskID</code> up and hands the live record in, which is what lets a
   stream drop an item whose task is gone instead of running it against whatever task now occupies that slot.
 </p>
 
@@ -109,7 +109,7 @@
 
 <pre><code><span class="kw">if</span> (item.<span class="fn">Run</span>(*task))
 {
-    taskSystem.<span class="fn">DispatchSuccessor</span>(item.taskID);   <span class="cmt">// the obligation that came with true</span>
+    taskSystem.<span class="fn">DispatchSuccessor</span>(item.taskID);   <span class="cm">// the obligation that came with true</span>
 }</code></pre>
 
 </main>

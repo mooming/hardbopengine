@@ -151,6 +151,18 @@ pre code {
 .cm { color: #6b7280; font-style: italic; }
 .fn { color: #a78bfa; }
 
+/* ul.toc is the class the Test module's method pages give their contents list; the sidebar already
+   styles its lists, so this exists to say the class is intentional rather than to change how it looks. */
+.toc { list-style: none; }
+
+/* Quieter secondary text — used by docs/Core/index.html for the lines that describe rather than state. */
+.muted { color: var(--text-dim, #9ca3af); }
+
+/* Consumed by mermaid.js on docs/RendererDesign.html, which replaces the element's contents with a
+   rendered diagram. It needs no styling, and declaring it here keeps htmlcheck's undeclared-class rule
+   meaning "nobody renders this" rather than "nobody styled this in CSS". */
+.mermaid { display: block; }
+
 table {
 	width: 100%;
 	border-collapse: collapse;
