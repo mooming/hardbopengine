@@ -19,6 +19,14 @@ class BufferOutputStream final
 public:
 	using This = BufferOutputStream;
 
+
+private:
+	Buffer& buffer;
+	size_t cursor;
+	size_t errorCount;
+	std::thread::id threadID;
+
+public:
 	BufferOutputStream(const BufferOutputStream&) = delete;
 	BufferOutputStream(BufferOutputStream&&) = delete;
 
@@ -189,11 +197,6 @@ private:
 
 		cursor = newIndex;
 	}
-
-	Buffer& buffer;
-	size_t cursor;
-	size_t errorCount;
-	std::thread::id threadID;
 };
 
 } // namespace hbe

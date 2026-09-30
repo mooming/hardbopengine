@@ -19,6 +19,38 @@ public:
 	template <typename T>
 	using TVector = hbe::HVector<T>;
 
+private:
+	class ResourceItem final
+	{
+	public:
+		uint32_t id;
+		uint32_t referenceCount;
+		StaticString path;
+		Buffer buffer;
+
+		ResourceItem()
+			: id(0)
+			, referenceCount(0)
+		{
+		}
+	};
+
+	class LoadingRequest final
+	{
+	public:
+		uint32_t resourceID;
+		StaticString path;
+
+		LoadingRequest()
+			: resourceID(0)
+		{
+		}
+	};
+
+	TVector<ResourceItem> resources;
+	TVector<ResourceItem*> loadingRequests;
+
+public:
 	ResourceManager() noexcept;
 	~ResourceManager() noexcept;
 
@@ -28,36 +60,6 @@ public:
 
 private:
 	void RequestTasks(TaskSystem& taskSys) noexcept;
-
-	class ResourceItem final
-	{
-	public:
-		ResourceItem()
-			: id(0)
-			, referenceCount(0)
-		{
-		}
-
-		uint32_t id;
-		uint32_t referenceCount;
-		StaticString path;
-		Buffer buffer;
-	};
-
-	class LoadingRequest final
-	{
-	public:
-		LoadingRequest()
-			: resourceID(0)
-		{
-		}
-
-		uint32_t resourceID;
-		StaticString path;
-	};
-
-	TVector<ResourceItem> resources;
-	TVector<ResourceItem*> loadingRequests;
 };
 
 } // namespace hbe

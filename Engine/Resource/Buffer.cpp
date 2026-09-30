@@ -252,7 +252,6 @@ void BufferTest::Prepare()
 
 				ptr[i] = 'a';
 			}
-
 		}
 
 		{

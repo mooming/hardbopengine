@@ -22,6 +22,13 @@ public:
 	template <typename T>
 	using TVector = hbe::HVector<T>;
 
+
+private:
+	const Buffer& buffer;
+	size_t cursor;
+	size_t errorCount;
+
+public:
 	explicit BufferInputStream(const Buffer& buffer) noexcept;
 	~BufferInputStream() = default;
 
@@ -169,10 +176,6 @@ private:
 
 		cursor = newIndex;
 	}
-
-	const Buffer& buffer;
-	size_t cursor;
-	size_t errorCount;
 };
 
 } // namespace hbe

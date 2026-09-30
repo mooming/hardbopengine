@@ -17,6 +17,13 @@ public:
 	using TGenerateBuffer = BufferTypes::TGenerateBuffer;
 	using TReleaseBuffer = BufferTypes::TReleaseBuffer;
 
+
+private:
+	TSize size;
+	TBufferData data;
+	TReleaseBuffer releaser;
+
+public:
 	Buffer();
 	Buffer(Buffer&& rhs) noexcept;
 	explicit Buffer(const TGenerateBuffer& genFunc);
@@ -58,11 +65,6 @@ public:
 	{
 		return size;
 	}
-
-private:
-	TSize size;
-	TBufferData data;
-	TReleaseBuffer releaser;
 };
 
 } // namespace hbe
