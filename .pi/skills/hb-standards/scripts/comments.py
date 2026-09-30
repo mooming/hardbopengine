@@ -27,6 +27,10 @@ CLOSING_LINE = re.compile(r'^[{}\s]*$|^#[ \t]*(endif|else|elif)\b')
 DIRECTIVE = re.compile(r'^(if|ifdef|ifndef|else|elif|endif)\b(.*)$', re.S)
 
 NAMESPACE_HEAD = re.compile(r'\bnamespace\s+([A-Za-z_]\w*)')
+# `namespace` with no name — the marker pushed for its brace so an anonymous body is not mistaken
+# for a plain block. Chosen so no namespace identifier can collide with it.
+ANONYMOUS = '\x00anonymous'
+ANONYMOUS_HEAD = re.compile(r'\bnamespace\b(?!\s*[A-Za-z_:])')
 
 EXEMPT_FILES = ('Engine/CodingStandards.cpp',)
 
@@ -173,18 +177,32 @@ def label_expectations(text):
                     expectations.setdefault(line, set()).update(guard_stack[-1])
         if ch == '{':
             found = NAMESPACE_HEAD.search(pending)
-            namespace_stack.append((found.group(1) if found else None, depth))
+            if found:
+                namespace_stack.append((found.group(1), depth))
+            elif ANONYMOUS_HEAD.search(pending):
+                # `namespace` with no name still opens a body, and its closing `}` can only be
+                # labelled `// namespace` — there is no name to write. Marking the brace keeps that
+                # distinguishable from an ordinary block, which also pushes None and must stay
+                # unlabelled.
+                namespace_stack.append((ANONYMOUS, depth))
+            else:
+                namespace_stack.append((None, depth))
             depth += 1
             pending = ''
         elif ch == '}':
             depth -= 1
             closed = None
+            anonymous = False
             while namespace_stack and namespace_stack[-1][1] == depth:
                 name, _ = namespace_stack.pop()
-                if name:
+                if name == ANONYMOUS:
+                    anonymous = True
+                elif name:
                     closed = name if closed is None else '%s::%s' % (name, closed)
             if closed:
                 expectations.setdefault(line, set()).update({'namespace %s' % closed, 'namespace %s' % closed.split('::')[-1]})
+            elif anonymous:
+                expectations.setdefault(line, set()).update({'namespace'})
             pending = ''
         elif ch == ';':
             pending = ''
@@ -257,6 +275,48 @@ def code_only(text):
                 out[i] = ' '
     return re.sub(r'[ \t]+$', '', ''.join(out), flags=re.M)
 
+TOKEN = re.compile(
+    r'R"[^"]*"'                     # raw string, opaque
+    r'|"(?:\\.|[^"\\])*"'           # string literal, opaque
+    r"|'(?:\\.|[^'\\])*'"           # character literal, opaque
+    r'|[A-Za-z_][A-Za-z_0-9]*'      # identifier or keyword
+    r'|0[xX][0-9a-fA-F]+'
+    r'|\d+(?:\.\d*)?(?:[eE][+-]?\d+)?[fFuUlL]*'
+    r'|\.\d+'
+    r'|::|<=>|->|\.\*'
+    r'|<<=|>>='
+    r'|\+\+|--'
+    r'|[-+*/%&|^<>=!]=|&&|\|\||<<|>>'
+    r'|[+\-*/%&|^~!<>=?:;,.()\[\]{}#@]',
+    re.VERBOSE)
+
+
+def code_tokens(text):
+    """The token stream: comments gone, whitespace ignored, literals whole.
+
+    This is the proof that a formatting pass changed nothing, and the word-splitting version
+    (`code_lines`) is not it. clang-format turning `template<typename` into `template <typename` splits
+    one word into two without moving a token, and that reported drift in 98 files that were identical.
+
+    Maximal munch is what keeps the check honest rather than merely permissive: `a+ +b` tokenises as
+    `a`, `+`, `+`, `b` while `a++b` is `a`, `++`, `b`, so a change that ever merged an operator across
+    whitespace is caught rather than normalised away. Getting that behaviour took a bug in this very
+    pattern — `++` and `--` were missing from the operator list, so both spellings fell back to two
+    `+` tokens and looked equal, which is the failure the check was written to catch. Line
+    continuations are consumed as whitespace, which is what they are to the preprocessor, so a macro
+    written over five lines compares equal to the same macro over two.
+    """
+    blanked = list(text)
+    try:
+        spans = comment_spans(text)
+    except ValueError:
+        return None
+    for begin, end, kind in spans:
+        for i in range(begin, min(end, len(blanked))):
+            if blanked[i] != '\n':
+                blanked[i] = ' '
+    joined = re.sub(r'\\\n[ \t]*', ' ', ''.join(blanked))
+    return [match.group(0) for match in TOKEN.finditer(joined)]
 
 def code_lines(text):
     """Code only, one entry per line that holds code, intra-line whitespace collapsed.
