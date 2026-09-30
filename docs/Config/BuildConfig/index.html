@@ -252,12 +252,13 @@
   </tr>
   <tr>
     <td><code>LEFT_HANDED_COORDINATE</code></td>
-    <td><code>// #define LEFT_HANDED_COORDINATE</code></td>
+    <td><span class="badge">not declared</span></td>
     <td>
-      <span class="badge">declared only as a comment</span> The alternative handedness, present in the file only
-      as the line you uncomment to switch. Nothing tests <code>#ifdef LEFT_HANDED_COORDINATE</code>: the code
-      asks whether <code>RIGHT_HANDED_COORDINATE</code> is absent, so defining this one as well does not undo the
-      right-handed branch
+      The alternative handedness. Nothing tests <code>#ifdef LEFT_HANDED_COORDINATE</code> anywhere in the engine: the
+      code asks whether <a href="../../Math/index.html">Math</a>'s right-handed branch is <em>absent</em>, so defining
+      this name would do nothing, and deleting the other one is what changes handedness. The header used to carry a
+      commented-out <code>#define</code> for it as the line you would uncomment; the comment ban removed that line, so
+      this row is where the fact lives now
     </td>
   </tr>
   <tr>

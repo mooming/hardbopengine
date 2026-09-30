@@ -154,14 +154,14 @@
   <tr><td><code>MemLogLevel</code></td><td><code>uint8_t</code></td><td>1</td><td>Default of the <code>Log.Memory</code> parameter, itself compiled under <code>MEMORY_LOGGING_ENABLED</code></td></tr>
   <tr><td><code>DefaultAlign</code></td><td><code>size_t</code></td><td>16</td><td>Allocation alignment the allocators round to</td></tr>
   <tr><td><code>MaxPathLength</code></td><td><code>int</code></td><td>512</td><td>Longest path <em>measured</em>: the pool size of <code>HInlinePathString</code>, and the cap on the length <code>Logger</code> computes when reserving its log path — it does not truncate a path</td></tr>
-  <tr><td><code>StaticStringBufferSize</code></td><td><code>int</code></td><td>8 MB</td><td>Grouped under <code>// String</code>; <strong>no consumer in the tree</strong>, so its purpose beyond that grouping is unverified</td></tr>
+  <tr><td><code>StaticStringBufferSize</code></td><td><code>int</code></td><td>8 MB</td><td>Declared among the string-interning constants in <code>EngineConfig.h</code>; <strong>no consumer in the tree</strong>, so its purpose beyond that grouping is unverified</td></tr>
   <tr><td><code>StaticStringNumHashBuckets</code></td><td><code>int</code></td><td>256</td><td><code>StaticStringTable::NumTables</code> — the buckets every parameter key is interned into</td></tr>
   <tr><td><code>LogLineLength</code></td><td><code>int</code></td><td>1024</td><td>Characters of text in one stored log line, and the "is long" threshold</td></tr>
   <tr><td><code>LogOutputBuffer</code></td><td><code>int</code></td><td>LogLineLength * 128</td><td>Capacity of the inline builder each statement formats into (<code>Logger::TLogStream</code>) — not a queue size</td></tr>
-  <tr><td><code>LogMemoryBlockSize</code></td><td><code>int</code></td><td>LogLineLength * 256</td><td>Grouped under <code>// Log</code>; <strong>no consumer in the tree</strong></td></tr>
-  <tr><td><code>LogNumMemoryBlocks</code></td><td><code>int</code></td><td>1024 * 12</td><td>Grouped under <code>// Log</code>; <strong>no consumer in the tree</strong></td></tr>
+  <tr><td><code>LogMemoryBlockSize</code></td><td><code>int</code></td><td>LogLineLength * 256</td><td>Declared among the logging constants in <code>EngineConfig.h</code>; <strong>no consumer in the tree</strong></td></tr>
+  <tr><td><code>LogNumMemoryBlocks</code></td><td><code>int</code></td><td>1024 * 12</td><td>Declared among the logging constants in <code>EngineConfig.h</code>; <strong>no consumer in the tree</strong></td></tr>
   <tr><td><code>LogForceFlushThreshold</code></td><td><code>int</code></td><td>1024 * 8</td><td>Pending bytes that force the logger to flush</td></tr>
-  <tr><td><code>MaxConcurrentTasks</code></td><td><code>int</code></td><td>32</td><td>Grouped under <code>// TaskSystem</code>; <strong>no consumer in the tree</strong>, so nothing enforces 32</td></tr>
+  <tr><td><code>MaxConcurrentTasks</code></td><td><code>int</code></td><td>32</td><td>Declared among the TaskSystem constants; <strong>no consumer in the tree</strong>, so nothing enforces 32</td></tr>
   <tr><td><code>DebugTimeOutMultiplier</code></td><td><code>float</code></td><td>2.0f</td><td>Scales <code>ScopedLock</code>'s lock-wait timeout — and only inside <code>PROFILE_ENABLED</code> and <code>__DEBUG__</code>, so inert by default</td></tr>
 </table>
 

@@ -175,7 +175,7 @@
     <td><code>StaticStringBufferSize</code></td>
     <td><code>static constexpr int StaticStringBufferSize = 8 * 1024 * 1024;</code></td>
     <td>
-      <span class="badge">constexpr</span> Grouped under the header's <code>// String</code> heading next to the
+      <span class="badge">constexpr</span> Declared next to the
       bucket count, which is what the old guide read as the interning table's storage. No file in
       <code>Engine/</code> or <code>Applications/</code> reads it; the interning table sizes its own storage
       elsewhere. Treat this value as currently inert — <a href="#coverage">Coverage</a>
@@ -214,7 +214,7 @@
     <td><code>LogMemoryBlockSize</code></td>
     <td><code>static constexpr int LogMemoryBlockSize = LogLineLength * 256;</code></td>
     <td>
-      <span class="badge">constexpr</span> Grouped under <code>// Log</code>. No consumer in the tree — the
+      <span class="badge">constexpr</span> Declared among the logging constants. No consumer in the tree — the
       logger's pools are <code>MultiPoolAllocator</code> instances constructed by name, not from this number.
       Inert today, see <a href="#coverage">Coverage</a>
     </td>
@@ -222,7 +222,7 @@
   <tr>
     <td><code>LogNumMemoryBlocks</code></td>
     <td><code>static constexpr int LogNumMemoryBlocks = 1024 * 12;</code></td>
-    <td><span class="badge">constexpr</span> Same as above: declared, grouped under <code>// Log</code>, read by nothing</td>
+    <td><span class="badge">constexpr</span> Same as above: declared, read by nothing</td>
   </tr>
   <tr>
     <td><code>LogForceFlushThreshold</code></td>
@@ -237,7 +237,7 @@
     <td><code>MaxConcurrentTasks</code></td>
     <td><code>static constexpr int MaxConcurrentTasks = 32;</code></td>
     <td>
-      <span class="badge">constexpr</span> Grouped under the header's <code>// TaskSystem</code> heading. Nothing
+      <span class="badge">constexpr</span> Declared with the task-system constants, by position in the header. Nothing
       reads it, so there is no concurrency ceiling in the engine that this number enforces — the task system's
       actual limits are its own. See <a href="../../Core/index.html#tasksystem">Core: TaskSystem</a> and
       <a href="#coverage">Coverage</a>
@@ -289,9 +289,9 @@
     <td>Four constants have no consumer</td>
     <td><code>StaticStringBufferSize</code>, <code>LogMemoryBlockSize</code>, <code>LogNumMemoryBlocks</code> and
         <code>MaxConcurrentTasks</code> are declared and read by nothing under <code>Engine/</code> or
-        <code>Applications/</code>. Their headers are grouped by comment only — <code>// String</code>,
-        <code>// Log</code>, <code>// TaskSystem</code> — so any purpose beyond that grouping, including the ones
-        the previous guide gave them, cannot be confirmed from the code and is not asserted here</td>
+        <code>Applications/</code>. Nothing in the header says what any of them is for — they are separated from the
+        rest only by position — so any purpose beyond that, including the ones the previous guide gave them, cannot
+        be confirmed from the code and is not asserted here</td>
   </tr>
   <tr>
     <td><code>GetMaxSystemMemoryTarget</code> has no definition</td>
