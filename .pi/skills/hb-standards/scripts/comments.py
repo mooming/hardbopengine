@@ -206,14 +206,20 @@ def is_label_comment(line_text, comment_col, body, allowed):
 
 
 def check_file(path, text):
+    """Every comment in this file the ban does not exempt, as findings and as byte ranges.
+
+    The ranges come back too because the strip step must delete exactly what was reported — not a
+    re-scan of its own, which could disagree with the checker about what counted.
+    """
     findings = []
+    spans_kept = []
     if path in EXEMPT_FILES:
-        return findings
+        return findings, spans_kept
     starts = line_starts(text)
     try:
         spans = comment_spans(text)
     except ValueError as exc:
-        return ['%s:1: LEXER  %s — the file cannot be lexed, so no verdict is possible' % (path, exc)]
+        return ['%s:1: LEXER  %s — the file cannot be lexed, so no verdict is possible' % (path, exc)], spans_kept
     lines = text.split('\n')
     expectations = label_expectations(text)
     for begin, end, kind in spans:
@@ -229,15 +235,102 @@ def check_file(path, text):
             continue
         first = body.strip().split('\n')[0][:88]
         findings.append('%s:%d: %s  %s' % (path, lineno, 'COMMENT' if kind == 'line' else 'BLOCK-COMMENT', first))
-    return findings
+        spans_kept.append((begin, end))
+    return findings, spans_kept
+
+
+def code_only(text):
+    """The file with every comment blanked and strings left intact — the text a strip must not change.
+
+    Two versions of a file are code-identical when this is equal for both. That is a stronger proof
+    than reading a diff, and it is what lets a comment sweep be run by a tool instead of by hand:
+    2,723 findings removed one file at a time, each verified against the version before it.
+    """
+    try:
+        spans = comment_spans(text)
+    except ValueError:
+        return text
+    out = list(text)
+    for begin, end, kind in spans:
+        for i in range(begin, min(end, len(out))):
+            if out[i] != '\n':
+                out[i] = ' '
+    return re.sub(r'[ \t]+$', '', ''.join(out), flags=re.M)
+
+
+def code_lines(text):
+    """Code only, one entry per line that holds code, intra-line whitespace collapsed.
+
+    `code_only` blanks a comment where it stood, so `f(a, /* x */ b)` and `f(a, b)` differ by spaces
+    while being the same code; collapsing runs of whitespace removes that without blinding the
+    comparison to a token that moved, which is what the strip step must never do.
+    """
+    return [' '.join(line.split()) for line in code_only(text).split('\n') if line.strip()]
+
+
+def strip_file(path, text):
+    """Delete exactly the reported comment spans, and refuse to write if any code moved.
+
+    The check is the point of this function. The copyright notice and the structural labels are
+    exempt from the check, so they survive without special handling; everything else that is
+    reported is deleted, and the file is written only if the surviving code lines are identical to
+    the ones before, compared with `code_lines`. A sweep of 2,723 findings is only safe to run as a
+    tool if the tool cannot quietly change a token on the way past it.
+
+    Deleting characters is most of it; two cases need a line decision as well:
+
+      * a line that held nothing but a comment goes entirely, or the file fills with blank rows the
+        formatter then spends its pass collapsing;
+      * a comment inside a line leaves the surrounding code exactly where it was, minus the trailing
+        whitespace the comment was hanging off.
+
+    A line is dropped only when no character of it lay outside a comment — a block comment whose
+    middle rows are prose and whose last row is `b */` takes all of them with it, while a line of
+    real code never does.
+    """
+    findings, spans = check_file(path, text)
+    if not spans:
+        return 0
+    in_comment = [False] * len(text)
+    for begin, end in spans:
+        for i in range(begin, min(end, len(text))):
+            in_comment[i] = True
+    out = list(text)
+    for begin, end in spans:
+        for i in range(begin, min(end, len(text))):
+            out[i] = ''
+    blanked = ''.join(out)
+    kept = []
+    old_lines = text.split('\n')
+    new_lines = blanked.split('\n')
+    offset = 0
+    for index, new_line in enumerate(new_lines):
+        old_line = old_lines[index] if index < len(old_lines) else ''
+        width = len(old_line) + 1
+        had_code = any(not in_comment[offset + i] and old_line[i] not in ' \t'
+                       for i in range(min(len(old_line), len(text) - offset)))
+        if new_line.strip() == '' and old_line.strip() != '' and not had_code:
+            offset += width
+            continue
+        kept.append(re.sub(r'[ \t]+$', '', new_line))
+        offset += width
+    result = '\n'.join(kept)
+    if code_lines(result) != code_lines(text):
+        print('%s:1: STRIP-REFUSED  code lines differ after removing %d comment(s); nothing was written' % (path, len(spans)), file=sys.stderr)
+        return -1
+    open(path, 'w', encoding='utf-8').write(result)
+    return len(spans)
 
 
 def main(argv):
+    strip = '--strip' in argv
+    argv = [a for a in argv if a != '--strip']
     if not argv:
-        print('usage: comments.py <file ...>', file=sys.stderr)
+        print('usage: comments.py [--strip] <file ...>', file=sys.stderr)
         return 3
     total = 0
     scored = 0
+    refused = 0
     for path in argv:
         if not path:
             continue
@@ -248,12 +341,23 @@ def main(argv):
             total += 1
             continue
         scored += 1
-        found = check_file(path, text)
+        if strip:
+            removed = strip_file(path, text)
+            if removed < 0:
+                total += 1
+                refused += 1
+            else:
+                total += removed
+            continue
+        found, _unused = check_file(path, text)
         total += len(found)
         for f in found:
             print(f)
-    print('comments examined in %d file(s): %d violation(s)' % (scored, total))
-    return 1 if total else 0
+    if strip:
+        print('stripped %d comment(s) from %d file(s), %d refused' % (total, scored, refused))
+    else:
+        print('comments examined in %d file(s): %d violation(s)' % (scored, total))
+    return 1 if (total and not strip) or refused else 0
 
 
 if __name__ == '__main__':
