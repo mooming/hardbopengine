@@ -22,13 +22,13 @@ namespace OS
 {
 
 Application::Application() noexcept
-	: m_platformHandle(nullptr)
+	: platformHandle(nullptr)
 {
 }
 
 Application::~Application()
 {
-	returnIf(m_platformHandle == nullptr);
+	returnIf(platformHandle == nullptr);
 
 	// Deliberately not [app terminate:]: that call ends in exit(), which tears the process
 	// down from inside a destructor. The consequences are silent and severe - main()'s return
@@ -38,15 +38,15 @@ Application::~Application()
 	// sequence, so stopping the run loop is all that belongs here.
 	// Quitting on the close button is unaffected: that path is windowShouldClose: ->
 	// shouldClose flag -> the application loop exits on its own.
-	auto app = static_cast<NSApplication*>(m_platformHandle);
+	auto app = static_cast<NSApplication*>(platformHandle);
 	[app stop:nil];
 
-	m_platformHandle = nullptr;
+	platformHandle = nullptr;
 }
 
 void Application::Initialize()
 {
-	if (m_platformHandle != nullptr)
+	if (platformHandle != nullptr)
 	{
 		// Already initialised.
 		return;
@@ -63,18 +63,18 @@ void Application::Initialize()
 	}
 
 	[app finishLaunching];
-	m_platformHandle = app;
+	platformHandle = app;
 }
 
 void Application::PollEvents()
 {
-	if (m_platformHandle == nullptr)
+	if (platformHandle == nullptr)
 	{
 		// It hasn't been initialised.
 		return;
 	}
 
-	auto app = static_cast<NSApplication*>(m_platformHandle);
+	auto app = static_cast<NSApplication*>(platformHandle);
 
 	// Clear all the queued events.
 	while (NSEvent *event = [app nextEventMatchingMask:NSEventMaskAny

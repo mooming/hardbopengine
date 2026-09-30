@@ -2,13 +2,14 @@
 
 #include "OSMemory.h"
 
-#include "Core/CommonMacros.h"
 #ifdef PLATFORM_WINDOWS
 #include <errhandlingapi.h>
 #include <malloc.h>
 #include <memoryapi.h>
 #include <sysinfoapi.h>
 #include <windows.h>
+
+#include "Core/CommonMacros.h"
 
 size_t OS::GetAllocSize(void* ptr) noexcept
 {

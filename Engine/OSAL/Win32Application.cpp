@@ -8,7 +8,7 @@ namespace OS
 {
 
 Application::Application() noexcept
-	: m_platformHandle(nullptr)
+	: platformHandle(nullptr)
 {
 }
 

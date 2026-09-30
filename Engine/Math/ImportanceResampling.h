@@ -1,15 +1,15 @@
-//
 // Copyright (c) 2026 Hansol Park (mooming.go@gmail.com). All rights reserved.
 // Created by mooming on 22/06/2025.
-//
+
+// Created by mooming on 22/06/2025.
 
 #pragma once
 
-#include "Core/CommonMacros.h"
-#include "HSTL/HVector.h"
-
 #include <random>
 #include <type_traits>
+
+#include "Core/CommonMacros.h"
+#include "HSTL/HVector.h"
 
 namespace hbe
 {

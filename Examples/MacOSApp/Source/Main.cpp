@@ -1,17 +1,16 @@
 // Copyright (c) 2026 Hansol Park (mooming.go@gmail.com). All rights reserved.
 
-#include "Application.h"
-#include "Framebuffer.h"
-#include "Window.h"
-
-#include "UI/Button.h"
-#include "UI/ScrollBar.h"
-#include "UI/TextPanel.h"
-
 #include <algorithm>
 #include <cstdint>
 #include <iostream>
 #include <string>
+
+#include "Application.h"
+#include "Framebuffer.h"
+#include "UI/Button.h"
+#include "UI/ScrollBar.h"
+#include "UI/TextPanel.h"
+#include "Window.h"
 
 namespace hbe
 {

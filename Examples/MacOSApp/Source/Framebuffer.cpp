@@ -2,13 +2,13 @@
 
 #include "Framebuffer.h"
 
-#include "Core/CommonMacros.h"
-
 #include <algorithm>
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
 #include <iostream>
+
+#include "Core/CommonMacros.h"
 
 // 8x12 bitmap font: 96 printable ASCII characters (32..127), 12 rows each, 8 bits per row.
 // Each byte's MSB (0x80) = leftmost pixel in the character cell.

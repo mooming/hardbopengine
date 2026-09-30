@@ -23,7 +23,7 @@ public:
 
 private:
 	// Opaque per-platform handle (e.g. NSApplication*, HINSTANCE, ...).
-	void* m_platformHandle;
+	void* platformHandle;
 };
 
 /// @brief Creates an Application owned by the caller.
