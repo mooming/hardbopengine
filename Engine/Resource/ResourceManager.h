@@ -13,7 +13,6 @@ namespace hbe
 class Engine;
 class TaskSystem;
 
-/// @brief Manages resource loading and lifetime with reference counting.
 class ResourceManager final
 {
 public:
@@ -30,7 +29,6 @@ public:
 private:
 	void RequestTasks(TaskSystem& taskSys) noexcept;
 
-	/// @brief Internal storage for a loaded resource with reference counting.
 	class ResourceItem final
 	{
 	public:

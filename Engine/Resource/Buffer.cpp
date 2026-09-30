@@ -253,9 +253,6 @@ void BufferTest::Prepare()
 				ptr[i] = 'a';
 			}
 
-			//            OS::MapSyncMode syncMode;
-			//            syncMode.SetSync();
-			//            OS::MapSync(ptr, buffer.GetSize(), syncMode);
 		}
 
 		{

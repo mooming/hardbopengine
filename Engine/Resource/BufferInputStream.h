@@ -15,7 +15,6 @@
 namespace hbe
 {
 
-/// @brief Stream for reading primitive types and strings from a buffer.
 class BufferInputStream final
 {
 public:

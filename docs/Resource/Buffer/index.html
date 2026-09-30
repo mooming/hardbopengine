@@ -248,11 +248,8 @@
 <table>
   <tr><th>Gap</th><th>Detail</th></tr>
   <tr>
-    <td>The header summary promises lazy initialisation</td>
-    <td><code>Buffer.h</code> describes the class as "A dynamically allocated memory buffer with lazy
-        initialization and release callback." No deferral exists: every constructor that takes a generator calls
-        it before returning, and no generator is stored. This page documents the constructors, not the
-        comment</td>
+    <td>Nothing about a buffer is lazy</td>
+    <td>The word "buffer" invites an assumption of deferred work, so it is worth stating plainly: every constructor that takes a <a href="../BufferTypes/index.html"><code>TGenerateBuffer</code></a> calls it before the constructor returns, and no generator is stored for later. A buffer is therefore fully resolved at the end of its own construction, and the only thing that can still be pending is the releaser — see <a href="set-releaser.html"><code>SetReleaser</code></a></td>
   </tr>
   <tr>
     <td><code>BufferInputStream</code> and <code>BufferOutputStream</code></td>

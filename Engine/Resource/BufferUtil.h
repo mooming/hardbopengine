@@ -19,7 +19,6 @@ class FileHandle;
 
 namespace hbe
 {
-/// @brief Utility functions for creating and managing buffers from various sources.
 namespace BufferUtil
 {
 using namespace BufferTypes;

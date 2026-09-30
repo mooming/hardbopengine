@@ -9,7 +9,6 @@
 namespace hbe
 {
 
-/// @brief A dynamically allocated memory buffer with lazy initialization and release callback.
 class Buffer final
 {
 public:

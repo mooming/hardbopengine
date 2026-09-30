@@ -8,7 +8,6 @@
 namespace hbe
 {
 
-/// @brief Handle to a loaded resource managed by ResourceManager.
 class Resource final
 {
 public:

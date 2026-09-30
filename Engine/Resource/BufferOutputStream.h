@@ -14,7 +14,6 @@
 namespace hbe
 {
 
-/// @brief Stream for writing primitive types and strings into a buffer.
 class BufferOutputStream final
 {
 public:
