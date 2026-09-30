@@ -35,6 +35,13 @@ DOCS = os.path.join(REPO_ROOT, 'docs')
 LEDGER = os.path.join(REPO_ROOT, '.Plans', 'DOCS_COVERAGE.md')
 
 SOURCE_EXT = ('.h', '.hpp')
+# The comment column must walk more than the headers. With SOURCE_EXT alone the ledger reported Core
+# holding 1,181 comment lines while the module actually holds 1,476 — the 295 in its .cpp and .inl files
+# were invisible. That number is what the sweep is scheduled from, so an undercount does not merely
+# misreport, it sequences the work wrong: a module reads nearly finished while half its prose is still
+# in implementation files. Class enumeration stays header-only, because declared entries come from
+# headers; only the comment tally widens.
+PROSE_EXT = ('.h', '.hpp', '.hh', '.cpp', '.cc', '.cxx', '.inl', '.mm', '.m')
 SKIP_DIR = ('build', 'cmake-build')
 
 
@@ -137,12 +144,12 @@ NAMESPACED_FUNCS = re.compile(r'^\s*(?:namespace\s+(\w+))', re.M)
 EXCLUDE_FILE_LINE = re.compile(r'auto-?generated|do not edit', re.I)
 
 
-def sources(module=None):
+def sources(module=None, ext=SOURCE_EXT):
     root = os.path.join(REPO_ROOT, module) if module else os.path.join(REPO_ROOT, 'Engine')
     for directory, dirs, files in os.walk(root):
         dirs[:] = [d for d in dirs if not any(s in os.path.join(directory, d).split(os.sep) for s in SKIP_DIR)]
         for f in sorted(files):
-            if f.endswith(SOURCE_EXT):
+            if f.endswith(ext):
                 yield os.path.join(directory, f)
 
 
@@ -292,7 +299,7 @@ def write_ledger():
         # whose whole content is documentation and which declares no class — and reported 12 lines
         # for a module that actually owed 102, which is the difference between a small pass and a
         # documentation migration.
-        comments = sum(comment_count(path) for path in sources(os.path.join(REPO_ROOT, 'Engine', module)))
+        comments = sum(comment_count(path) for path in sources(os.path.join(REPO_ROOT, 'Engine', module), PROSE_EXT))
         out.append('| %s | %d | %d | %d | %d | %d |'
                    % (module, len(api), have, len(api) - have, len(group) - len(api), comments))
     out += ['', '## Entries', '', '| module | entry | kind | source | page | method pages | status |', '|---|---|---|---|---|---|---|']

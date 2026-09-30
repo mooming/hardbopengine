@@ -1,5 +1,58 @@
 # Journal
 
+## 2026-09-30 15:30 - mechanical debt is zero tree-wide, and two of my own rules could not be obeyed
+
+Every grep-enforceable rule now passes across Engine, Applications and Examples: **81 failures down to
+0**, gate green (build 12/12, EngineTest 59 collections in Debug, Dev and Release). Format 169 files,
+joined empty bodies 65 files to 0, hygiene 18 files, include order 15 files, `m_` 11 uses in 4 files,
+one redundant `inline`.
+
+**The standard's ban on `inline` was unobeyable, and I promoted it to a gate.** "Do not use the `inline`
+keyword explicitly" reads as cleanup; applied, it strips the keyword from `Assert`, `FatalAssert`,
+`IdentityMatrix` and `operator<<` for `ComponentState` — namespace-scope definitions in headers, where
+without it every including translation unit emits the symbol and the link fails. 16 of 18 sites were
+that shape; only a constructor inside `Exception` was noise. Stage 0 raised the layer from advisory to
+FAIL on the strength of how the sentence read rather than what following it would do, which is the
+promotion this reverses. Standard qualified, layer advisory with the reason beside it, SKILL.md gained
+the row and the trap.
+
+**The verdict line was summing unlike things.** `VIOL` incremented once per failing section and once per
+file clang-format wanted to rewrite, so `mechanical violations : 3` printed with not one FAIL line above
+it — the 3 were the comment ban, member layout and docs coverage, which are the remaining sweep, not
+debt fixable today. Grep failures, advisories and backlog now print separately. Introducing the split
+also briefly deleted `WARN=0`, which `set -u` turned into a crash two sections later: a counter edit can
+break the script that prints the counters.
+
+**`prove_format.py` exists because a 15,000-line diff cannot be read, and two plausible proofs of it were
+wrong.** A word-level comparison claimed drift in 98 identical files (`template<typename` is one word,
+`template <typename` two). A whitespace-collapsed comparison still flagged 15, whose real changes were
+sorted includes and one long message split into three adjacent literals — and joining literals with
+their quote characters made equal text look unequal. The tokeniser that fixed this then failed the
+example in its own docstring: `++` and `--` were missing from the operator list, so `a++b` and `a+ +b`
+tokenised identically, exactly the hazard the tokeniser exists to catch. Final state: 169 files, 154
+whitespace-only, 15 include reorderings, 0 unexplained.
+
+**The ledger was under-counting the work it schedules.** `SOURCE_EXT` is `('.h', '.hpp')`, so the comment
+column saw only headers: Core read 1,181 lines where the module holds 1,476 — 295 lines in `.cpp` and
+`.inl` files were invisible, and a module could look nearly finished while carrying half its prose in
+implementation files. Widened to every source extension; the regenerated ledger now agrees with a
+per-module `comments.py` measurement on all nine modules that still hold debt. Separately, the ledger
+was stale for Log and Engine, reporting 81 and 28 comment lines for modules measured at 0 — checked
+before believing either figure.
+
+**One gap the lint set cannot see, recorded so it is not re-walked:** `m_platformHandle` was used in
+`OSXApplication.mm`, which is not in the lint's file set. The `m_` grep reported 3 files; renaming only
+those would have compiled on Linux and Windows and broken macOS. Relatedly, `Win32Application.cpp` and
+`LinuxApplication.cpp` do not compile on this machine, so the rename there is proven by whole-word
+substitution and a tree-wide grep returning zero, not by a compiler.
+
+**Open, needs the owner:** `Engine/CodingStandards.h` carries 14 layout findings, 12 of them before the
+file's single `BAD EXAMPLE` marker — so they sit in the good examples, e.g. `InlinedData` declares
+`int buffer[1024];` after its constructor while teaching RVO. `check.sh` exempts `CodingStandards.*`
+from the greps and `comments.py` exempts it from the ban, but `layout.py` has no exemption, so the
+exemplar is billed by a rule it demonstrates against. Fix the good examples, or exempt the file from
+layout too.
+
 ## 2026-09-30 03:10 - four modules conformant, and the docs gate turns out to have been measuring the wrong thing
 
 Subagent dispatch was abandoned after measurement: the HSTL worker took 58 minutes and over-verified

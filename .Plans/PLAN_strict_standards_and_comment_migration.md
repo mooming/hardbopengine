@@ -156,7 +156,42 @@ push, return a per-file verdict.
 | `<module> comment ban` | Delete comments. Pure deletions | The module's docs pages exist and were reviewed; diff is deletions only |
 | `<module> layout and naming` | Twelve-block reorder, `m_` renames, `inline` removal, and the judgement rules: `[[nodiscard]]`, `explicit`, `= default`, `out`/`inOut`/`in`, log-before-return, `final`, `noexcept`, `static_assert`, composition | `check.sh --staged --no-build` clean **and** that module's library target compiles in Dev |
 
-Module order, cheapest complete cycle first, so the pipeline is proven on the small ones:
+Module order, cheapest complete cycle first, so the pipeline is proven on the small ones. These are
+measured numbers from after the mechanical sweep, not estimates: comment lines from `comments.py` per
+module, layout findings from `layout.py` over the whole tree, page counts from `docs_coverage.py` and
+`docs_methods.py` against the AST.
+
+| Order | Module | Comment lines | Layout findings | Class pages missing | Method pages missing |
+|---|---|---|---|---|---|
+| — | Config, Engine, HSTL, Log | 0 | 0 | 0 | 0 |
+| 1 | Resource | 11 | 20 | 2 | 1 |
+| 2 | String | 19 | 11 | 8 | 0 |
+| 3 | OSAL | 105 | 14 | 9 | 0 |
+| 4 | Math | 132 | 26 | 16 | 0 |
+| 5 | Memory | 149 | 23 | 19 | 0 |
+| 6 | Test | 126 | 32 | 1 | 21 |
+| 7 | Renderer | 265 | 44 | 0 | 18 |
+| 8 | Core | 1,476 | 62 | 23 | 2 |
+| 9 | Container | 60 | 59 | 2 | 112 |
+| 10 | Applications + Examples | 297 | 0 | 0 | 0 |
+
+Three readings this table forces:
+
+- **Math, Memory, OSAL and String report 0 method pages because they own no class directory under
+  `docs/`, not because their methods are covered.** `docs_methods.py` can only look for a page inside
+  `docs/<Module>/<Class>/`; with no class directory there is nothing to search, so absence of findings
+  is absence of measurement. Their 16, 19, 9 and 8 missing class pages are the real work, and the
+  method tally stays unknown until those directories exist.
+- **Container is 114 pages while holding only 60 comment lines.** It is by far the worst ratio in the
+  tree, and the reason is that its contracts live in inline template code the class page cannot carry.
+  It goes last not because it is small but because nothing else in the tree benefits from the authoring
+  pattern that 112 pages would establish.
+- **Core is 1,476 comment lines, 2.5x the next module.** One module holds more prose than the other
+  eight combined, so the plan's original 14-step order was wrong in more than detail.
+
+`Applications` and `Examples` are 297 comment lines with no API pages to write, and they are outside the
+ledger, which walks `Engine/` only. Examples is additionally outside the root `CMakeLists`, so nothing
+compiles it — a strip there cannot be verified by the build gate, only by token identity.
 
 | Order | Module | Entries needing docs pages | Sources | Reorder violations |
 |---|---|---|---|---|

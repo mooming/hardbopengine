@@ -7,18 +7,18 @@ Source comments are banned, so a missing page means the contract is nowhere.
 | module | API entries | with a page | missing | test-only | comment lines still in sources |
 |---|---|---|---|---|---|
 | Config | 3 | 3 | 0 | 0 | 0 |
-| Container | 12 | 10 | 2 | 10 | 51 |
-| Core | 24 | 1 | 23 | 9 | 1178 |
-| Engine | 2 | 2 | 0 | 0 | 28 |
+| Container | 12 | 10 | 2 | 10 | 60 |
+| Core | 24 | 1 | 23 | 9 | 1476 |
+| Engine | 2 | 2 | 0 | 0 | 0 |
 | HSTL | 0 | 0 | 0 | 1 | 0 |
-| Log | 3 | 3 | 0 | 0 | 81 |
-| Math | 16 | 0 | 16 | 15 | 93 |
-| Memory | 19 | 0 | 19 | 11 | 98 |
-| OSAL | 9 | 0 | 9 | 5 | 46 |
-| Renderer | 8 | 8 | 0 | 2 | 157 |
-| Resource | 5 | 3 | 2 | 3 | 8 |
-| String | 8 | 0 | 8 | 5 | 10 |
-| Test | 4 | 3 | 1 | 0 | 109 |
+| Log | 3 | 3 | 0 | 0 | 0 |
+| Math | 16 | 0 | 16 | 15 | 132 |
+| Memory | 19 | 0 | 19 | 11 | 149 |
+| OSAL | 9 | 0 | 9 | 5 | 105 |
+| Renderer | 8 | 8 | 0 | 2 | 265 |
+| Resource | 5 | 3 | 2 | 3 | 11 |
+| String | 8 | 0 | 8 | 5 | 19 |
+| Test | 4 | 3 | 1 | 0 | 126 |
 
 ## Entries
 
@@ -83,11 +83,11 @@ Source comments are banned, so a missing page means the contract is nowhere.
 | Core | True_t | class | `Engine/Core/CommonUtil.h` | `docs/Core/True_t/index.html` | 0 | MISSING |
 | Core | WorkItem | class | `Engine/Core/WorkItem.h` | `docs/Core/WorkItem/index.html` | 3 | documented |
 | Engine | EInitLevel | enum | `Engine/Engine/EngineInitLevel.h` | `docs/Engine/EInitLevel/index.html` | 2 | documented |
-| Engine | Engine | class | `Engine/Engine/Engine.h` | `docs/Engine/Engine/index.html` | 29 | documented |
+| Engine | Engine | class | `Engine/Engine/Engine.h` | `docs/Engine/Engine/index.html` | 31 | documented |
 | HSTL | HUnorderedMapTest | test-only | `Engine/HSTL/HUnorderedMap.h` | `docs/HSTL/HUnorderedMapTest/index.html` | 0 | test-only — owns a Coverage row |
 | Log | ELogLevel | enum | `Engine/Log/LogLevel.h` | `docs/Log/ELogLevel/index.html` | 0 | documented |
 | Log | LogLine | class | `Engine/Log/LogLine.h` | `docs/Log/LogLine/index.html` | 3 | documented |
-| Log | Logger | class | `Engine/Log/Logger.h` | `docs/Log/Logger/index.html` | 16 | documented |
+| Log | Logger | class | `Engine/Log/Logger.h` | `docs/Log/Logger/index.html` | 19 | documented |
 | Math | AABB | class | `Engine/Math/AABB.h` | `docs/Math/AABB/index.html` | 0 | MISSING |
 | Math | AABBTest | test-only | `Engine/Math/AABB.h` | `docs/Math/AABBTest/index.html` | 0 | test-only — owns a Coverage row |
 | Math | ImportanceResampling | class | `Engine/Math/ImportanceResampling.h` | `docs/Math/ImportanceResampling/index.html` | 0 | MISSING |
