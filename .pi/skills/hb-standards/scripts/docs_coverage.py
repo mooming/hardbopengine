@@ -128,7 +128,8 @@ def brace_depths(text):
         depths.setdefault(index, max_depth)
     return depths
 
-ENTRY = re.compile(r'^\s*(?:template\s*<[^>]*>\s*)?(class|struct|union|enum)\s+(?:class\s+)?([A-Za-z_]\w*)\s*(?:final\b[^;{]*)?(?=[;{])', re.M)
+ENTRY = re.compile(r'^\s*(?:template\s*<[^>]*>\s*)?(class|struct|union|enum)\s+(?:class\s+)?([A-Za-z_]\w*)'
+                   r'\s*(?:final\b)?\s*(?::[^;{]*)?(?=[;{])', re.M)
 NAMESPACE_HEAD = re.compile(r'(^|[^\w.])\bnamespace\b')
 ENUM_ANON = re.compile(r'^\s*enum\s+(?:class\s+)?[A-Za-z_]\w*\s*(?=\{|$)')
 MACRO_SET = re.compile(r'^\s*#\s*define\s+(HB_[A-Z0-9_]+|[A-Z][A-Z0-9_]{2,})\b')
