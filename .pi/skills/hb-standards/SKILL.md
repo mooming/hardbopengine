@@ -199,6 +199,7 @@ Grep these in the changed hunks and fix by hand:
 | `static_assert` | use it wherever a condition is compile-time evaluable |
 | `constexpr` | no magic numbers; constants are PascalCase |
 | Composition | prefer has-a; `final` on classes not meant as bases |
+| No snake_case member | a member is the token before `;`, and a type sits in the same position — `size_t MaxNameLength = 127;` is a type then a PascalCase name, so no grep separates them. The `m_` prefix is checked mechanically; this half of the rule is not |
 | `noexcept` | mark only what is provably exception-free; drop it where `new` is called |
 
 ## Traps already paid for — do not relearn them
