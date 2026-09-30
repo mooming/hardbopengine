@@ -15,33 +15,15 @@ int main(int argc, const char* argv[]) noexcept
 	hbe::Engine hengine;
 	hengine.Initialize(argc, argv);
 
-	// The base stream is throttled, and the reason it is worth the extra passes is a future one rather than a present
-	// one. Measured on the defect this harness exists to catch - Engine::Run's while reduced to a single pass - the
-	// shortfall check refuses it with or without this allowance, because each testlet only posts the next one after it
-	// runs, so the queue is empty the moment an item is taken and a pass that quits early cannot reach far. The chain
-	// is the load; the allowance is the insurance. CPUBudget's zero means unlimited and CanTakeWork reads it once per
-	// pass, so if the driver is ever changed to re-scan the queue after every completed item, an unbounded pass would
-	// drain the whole chain at once and make the guard vacuous again - silently, which is how this was missed for five
-	// commits. A bounded allowance keeps that from being possible. Too small costs only extra passes, never
-	// correctness, which is the harmless direction and the reason for 1ms rather than a guessed larger figure.
 	hengine.GetTaskSystem().GetStream(hbe::TaskSystem::GetBaseTaskStreamIndex()).ConfigureBudget(BaseStreamPassBudget);
 
-	// Registered before Run is entered, so the total the run is expected to reach belongs to the harness rather than
-	// being discovered by the suite - and a suite that never started cannot report a total matching the nothing it ran.
 	hbe::Test::RegisterSuite();
 	hbe::Test::ScheduleSuiteOnBaseStream();
 
-	// Every testlet is a task on the base stream and each one posts the next, so this loop is the only thing that can
-	// carry the suite to its end. The last testlet reports and requests shutdown from inside the run, which is why
-	// Run() returns with the tallies already settled and no separate shutdown call belongs here.
 	hengine.Run();
 
 	const hbe::TestEnv& testEnv = hbe::TestEnv::GetEnv();
 
-	// The guardrail proper: registered is known from before the run and executed is what the run achieved, so a loop
-	// that stopped iterating leaves a gap that cannot be argued away. Measured against the defect this exists for -
-	// Engine::Run's while reduced to a single pass - the suite reaches only a fraction of its testlets, and this is
-	// the line that refuses it.
 	if (testEnv.GetExecutedTestletCount() != testEnv.GetTestletCount())
 	{
 		std::cerr << "EngineTest: only " << testEnv.GetExecutedTestletCount() << " of " << testEnv.GetTestletCount()
@@ -51,9 +33,6 @@ int main(int argc, const char* argv[]) noexcept
 
 	const unsigned int failures = testEnv.GetFailureCount();
 
-	// Reported before the verdict is printed so a failing run carries the figure too. The first pair is what the
-	// testlet bodies took through operator new, which is the traffic an AllocatorScope cannot redirect; the second
-	// is everything the process asked the same entry points for, engine and standard library included.
 	std::cout << "EngineTest: global heap over testlet bodies " << testEnv.GetGlobalAllocationCount()
 			  << " cumulative requests, " << testEnv.GetGlobalAllocationBytes() << " cumulative bytes requested, over "
 			  << testEnv.GetTestletCountWithGlobalAllocations() << " of " << testEnv.GetExecutedTestletCount()
@@ -71,15 +50,6 @@ int main(int argc, const char* argv[]) noexcept
 			  << testEnv.GetExecutedTestletCount() << " testlets)" << std::endl;
 
 #else
-	// Every test body in the engine sits behind #ifdef __UNIT_TEST__, including the ones this
-	// executable links from the library modules. Built without the macro there is nothing left
-	// to run, and returning 0 from there reads exactly like a passing suite - which is how a
-	// build gate came to report success over zero tests. So say what is missing, how to get it,
-	// and leave a non-zero status behind.
-	// Written as adjacent literals, one per line, rather than a raw string: the guide is
-	// space-indented so it survives any tab width, and the lint rule against space-indented
-	// source lines reads the FILE - so the spaces belong inside the literals, where they are
-	// output, not at the start of a source line, where they would be code.
 	std::cerr << "EngineTest: built WITHOUT __UNIT_TEST__, so this binary contains no tests.\n"
 				 "Nothing has been verified, and the exit status used to claim otherwise.\n"
 				 "\n"

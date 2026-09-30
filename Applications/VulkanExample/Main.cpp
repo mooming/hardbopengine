@@ -36,8 +36,6 @@ constexpr float CameraZ = -3.0f;
 constexpr float RadiansPerSecond = 1.2f;
 constexpr auto FrameSleep = std::chrono::milliseconds(16);
 
-// All matrices are column-major (element [col * 4 + row]), matching the GLSL mat4
-// layout that VulkanRenderer pushes to the shader.
 void SetIdentity(float outMatrix[MatrixElementCount]) noexcept
 {
 	std::memset(outMatrix, 0, sizeof(float) * MatrixElementCount);
@@ -63,7 +61,6 @@ void SetRotationY(float outMatrix[MatrixElementCount], float radians) noexcept
 	outMatrix[10] = cosAngle;
 }
 
-/// @brief Right-handed perspective mapped into Vulkan's [0, 1] depth and Y-down framebuffer.
 void SetPerspective(float outMatrix[MatrixElementCount], float fovRadians, float aspect, float nearZ,
 					float farZ) noexcept
 {
@@ -76,8 +73,6 @@ void SetPerspective(float outMatrix[MatrixElementCount], float fovRadians, float
 	outMatrix[14] = farZ * nearZ / (nearZ - farZ);
 }
 
-/// @brief A unit-ish quad in the XY plane facing +Z, so the fixed directional light
-///        sweeps across it as it rotates about Y.
 [[nodiscard]] Mesh MakeQuad() noexcept
 {
 	Mesh mesh;
@@ -117,11 +112,9 @@ int main(int argc, char* argv[]) noexcept
 
 	window->SetVisible(true);
 
-	// Vulkan-only: construct the concrete renderer directly (no factory, no inheritance).
 	VulkanRenderer renderer;
 	if (!renderer.Initialize(window.get()))
 	{
-		// The logger is asynchronous: flush so its diagnostics survive this exit.
 		Logger::Get().Flush();
 		std::cerr << "Error: Failed to initialize Vulkan renderer" << std::endl;
 		return 1;
@@ -132,8 +125,6 @@ int main(int argc, char* argv[]) noexcept
 
 	printf("Rendering with: Vulkan\n");
 
-	// The drawable follows the window content rect, so the aspect ratio comes from the
-	// renderer rather than the 800x600 we asked the window for.
 	const VkExtent2D extent = renderer.GetExtent();
 
 	float view[MatrixElementCount];
