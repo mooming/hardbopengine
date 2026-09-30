@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Logger::StopDriverThread — Log — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#notes">Notes</a></li>
+  </ul>
+
+  <h3><a href="index.html">Logger</a> methods</h3>
+  <ul class="methods">
+    <li><a href="get.html">Get</a></li>
+    <li><a href="get-name.html">GetName</a></li>
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+    <li><a href="start-task.html">StartTask</a></li>
+    <li><a href="stop-task.html">StopTask</a></li>
+    <li><a href="is-drain-task-running.html">IsDrainTaskRunning</a></li>
+    <li><a href="set-filter.html">SetFilter</a></li>
+    <li><a href="add-log.html">AddLog</a></li>
+    <li><a href="flush.html">Flush</a></li>
+    <li><a href="report-memory-configuration.html">ReportMemoryConfiguration</a></li>
+    <li><a href="wait-for-flush.html">WaitForFlush</a></li>
+    <li><a href="process-buffer.html">ProcessBuffer</a></li>
+    <li><a href="flush-buffer.html">FlushBuffer</a></li>
+    <li><a href="write-log.html">WriteLog</a></li>
+    <li><a href="print-std-io.html">PrintStdIO</a></li>
+    <li><a href="set-io-driver.html">SetIODriver</a></li>
+    <li><a href="stop-driver-thread.html">StopDriverThread</a></li>
+    <li><a href="driver-loop.html">DriverLoop</a></li>
+  </ul>
+</nav>
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Log</a> /
+  <a href="index.html">Logger</a> / StopDriverThread
+</p>
+
+<h1><span class="fn">StopDriverThread</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Logger</span>
+  <span class="tag">Engine/Log/Logger.h</span>
+  <span class="tag">public</span>
+  end the driver thread, letting it finish the work it holds before it exits
+</p>
+
+
+<h2 id="signature">Signature</h2>
+
+<pre><code><span class="kw">void</span> <span class="fn">StopDriverThread</span>() noexcept;</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>Lowers the flag that keeps <a href="driver-loop.html"><code>DriverLoop</code></a> repeating, then joins. It is
+reached only when the process is done logging — the destructor calls it before anything else is torn down.</p>
+
+<pre><code>driverRunning.<span class="fn">store</span>(<span class="kw">false</span>, <span class="ty">std</span>::memory_order_release);
+
+<span class="kw">if</span> (driverThread.<span class="fn">joinable</span>() &amp;&amp; driverThread.<span class="fn">get_id</span>() != <span class="ty">std</span>::<span class="fn">this_thread</span>::<span class="fn">get_id</span>())
+{
+    driverThread.<span class="fn">join</span>();
+}</code></pre>
+
+<p>The join is guarded against the current thread because the driver thread is the one that writes the log
+file, and a line written during shutdown can reach this call. Joining oneself is undefined; joining nothing is
+harmless. The <code>joinable()</code> test covers a logger that was destroyed without ever starting a driver.</p>
+
+<p>What makes the stop <em>safe</em> rather than merely final is where the last pass happens. Lowering the flag
+only ends the loop; the trailing drain lives inside <a href="driver-loop.html"><code>DriverLoop</code></a>
+itself, so whatever was still queued at the moment the stop was requested is written by the thread that owns the
+file, rather than abandoned to whoever happened to ask for shutdown. A caller of this function returns only
+after that work is done.</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<p>None. Returns once the driver thread has finished its final pass and exited.</p>
+
+<h2 id="notes">Notes</h2>
+
+<ul>
+  <li><strong>Call sites.</strong> <code>Logger::~Logger</code> is the only caller. It runs
+      <a href="constructors.html">construction</a>'s teardown in the reverse order: stop the thread, clear
+      <code>instance</code>, then drain and close the file.</li>
+  <li><strong>Not a substitute for <a href="stop-task.html"><code>StopTask</code></a>.</strong> That stops the
+      periodic <em>drain task</em> on the task system's stream; this stops the logger's own thread. A logger
+      with a task system installed needs both, and they are independent.</li>
+  <li><strong>After this returns</strong> nothing may log. <code>instance</code> is cleared immediately
+      afterwards, so a later call reaches a logger that is no longer there.</li>
+</ul>
+
+<footer class="prevnext">
+  <span><a href="index.html">← Logger</a></span>
+  <span><a href="index.html#methods">All Logger methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

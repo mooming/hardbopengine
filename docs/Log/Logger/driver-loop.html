@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Logger::DriverLoop — Log — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#notes">Notes</a></li>
+  </ul>
+
+  <h3><a href="index.html">Logger</a> methods</h3>
+  <ul class="methods">
+    <li><a href="get.html">Get</a></li>
+    <li><a href="get-name.html">GetName</a></li>
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+    <li><a href="start-task.html">StartTask</a></li>
+    <li><a href="stop-task.html">StopTask</a></li>
+    <li><a href="is-drain-task-running.html">IsDrainTaskRunning</a></li>
+    <li><a href="set-filter.html">SetFilter</a></li>
+    <li><a href="add-log.html">AddLog</a></li>
+    <li><a href="flush.html">Flush</a></li>
+    <li><a href="report-memory-configuration.html">ReportMemoryConfiguration</a></li>
+    <li><a href="wait-for-flush.html">WaitForFlush</a></li>
+    <li><a href="process-buffer.html">ProcessBuffer</a></li>
+    <li><a href="flush-buffer.html">FlushBuffer</a></li>
+    <li><a href="write-log.html">WriteLog</a></li>
+    <li><a href="print-std-io.html">PrintStdIO</a></li>
+    <li><a href="set-io-driver.html">SetIODriver</a></li>
+    <li><a href="stop-driver-thread.html">StopDriverThread</a></li>
+    <li><a href="driver-loop.html">DriverLoop</a></li>
+  </ul>
+</nav>
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Log</a> /
+  <a href="index.html">Logger</a> / DriverLoop
+</p>
+
+<h1><span class="fn">DriverLoop</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Logger</span>
+  <span class="tag">Engine/Log/Logger.h</span>
+  <span class="tag">private</span>
+  the driver thread's body — one pass of the IO stream, or a direct write when there is no stream yet
+</p>
+
+
+<h2 id="signature">Signature</h2>
+
+<pre><code><span class="kw">void</span> <span class="fn">DriverLoop</span>() noexcept;   // private</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>The body of <a href="index.html"><code>driverThread</code></a>. It runs one pass of the IO stream on the
+logger's own thread, or writes the log queue directly when no stream has been handed over yet — the same work
+with one fewer hop, which is what lets logging work <em>before</em> the task system exists and <em>after</em> it
+is gone.</p>
+
+<pre><code>threadID = <span class="ty">std</span>::<span class="fn">this_thread</span>::<span class="fn">get_id</span>();
+<span class="ty">TaskSystem</span>::<span class="fn">SetThreadName</span>(<span class="st">"LogDriver"</span>);
+
+Logger::<span class="fn">Get</span>(<span class="fn">GetName</span>()).<span class="fn">Out</span>(<span class="st">"Log driver thread is running."</span>);
+
+<span class="kw">while</span> (driverRunning.<span class="fn">load</span>(<span class="ty">std</span>::memory_order_acquire))
+{
+    <span class="ty">TaskStream</span>* stream = <span class="kw">nullptr</span>;
+
+    {
+        <span class="ty">std</span>::<span class="fn">lock_guard</span> lock(driverLock);
+        stream = ioStream;
+
+        <span class="kw">if</span> (stream != <span class="kw">nullptr</span>)
+        {
+            stream-&gt;<span class="fn">Update</span>();
+        }
+    }
+
+    <span class="kw">if</span> (stream != <span class="kw">nullptr</span>)
+    {
+        stream-&gt;<span class="fn">WaitForWork</span>(<span class="ty">std</span>::<span class="fn">chrono</span>::<span class="fn">milliseconds</span>(20));
+    }
+
+    <span class="kw">if</span> (stream == <span class="kw">nullptr</span>)
+    {
+        <span class="fn">ProcessBuffer</span>();
+
+        <span class="ty">std</span>::<span class="fn">this_thread</span>::<span class="fn">sleep_for</span>(<span class="ty">std</span>::<span class="fn">chrono</span>::<span class="fn">milliseconds</span>(1));
+    }
+}</code></pre>
+
+<p>That first log line is deliberate and exists for a reason worth stating: a thread which never logs is a
+thread whose name is never observable, because every log line is attributed to the thread that wrote it. One
+line from this thread is what makes <code>"LogDriver"</code> visible in a log rather than assumed from the call
+that set it.</p>
+
+<h3>Two ways to wait</h3>
+
+<p>With a stream installed the thread waits on the stream itself, not on a timer:</p>
+
+<ul>
+  <li><code>stream-&gt;WaitForWork(20ms)</code> — the wake-up is what makes the thread cheap when nothing is
+      happening and immediate when something is. A log line already wakes that stream, so one wake-up serves
+      both customers of one thread.</li>
+  <li>The 20&nbsp;ms timeout is a safety net, not the mechanism. The wake-up notification is issued without the
+      queue lock held, so a lost notification costs at most one interval rather than a stall that never ends.</li>
+  <li>With no stream there is nothing to wait on, so the loop calls
+      <a href="process-buffer.html"><code>ProcessBuffer</code></a> and sleeps 1&nbsp;ms.</li>
+</ul>
+
+<h3>The last pass</h3>
+
+<p>After the loop the thread takes <code>driverLock</code> once more, calls <code>ioStream-&gt;Update()</code>
+until it reports no more work, and finishes with <a href="process-buffer.html"><code>ProcessBuffer</code></a>.
+This lives here rather than in <a href="stop-driver-thread.html"><code>StopDriverThread</code></a> so that the
+final write is performed by the thread that owns the file — see that page for why the ordering matters.</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None. Everything it needs is member state: <a href="index.html"><code>driverRunning</code></a> for the loop
+condition, <code>ioStream</code> and <code>driverLock</code> for the pass.</p>
+
+<h2 id="return">Return value</h2>
+
+<p>None. Returning ends the driver thread; <a href="stop-driver-thread.html"><code>StopDriverThread</code></a>
+joins it.</p>
+
+<h2 id="notes">Notes</h2>
+
+<ul>
+  <li><strong>Private, and reachable only as a thread body.</strong> The constructor starts it with
+      <code>driverThread = std::thread([this] { DriverLoop(); })</code>. Nothing calls it directly, which is why
+      it has no overload and no return value.</li>
+  <li><strong>Lock discipline.</strong> <code>driverLock</code> is held <em>across</em>
+      <code>Update()</code>, never around the pointer read alone. That is what makes
+      <a href="set-io-driver.html"><code>SetIODriver</code></a> with <code>nullptr</code> a synchronisation point
+      rather than a flag write.</li>
+  <li><strong>Starts with the logger, not with the first subsystem that wants to write a line</strong>, so a
+      line emitted during early construction has somewhere to go. Logging never depends on the subsystem it is
+      reporting on.</li>
+</ul>
+
+<footer class="prevnext">
+  <span><a href="index.html">← Logger</a></span>
+  <span><a href="index.html#methods">All Logger methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

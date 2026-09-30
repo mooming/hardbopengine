@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Logger::SetIODriver — Log — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#notes">Notes</a></li>
+  </ul>
+
+  <h3><a href="index.html">Logger</a> methods</h3>
+  <ul class="methods">
+    <li><a href="get.html">Get</a></li>
+    <li><a href="get-name.html">GetName</a></li>
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+    <li><a href="start-task.html">StartTask</a></li>
+    <li><a href="stop-task.html">StopTask</a></li>
+    <li><a href="is-drain-task-running.html">IsDrainTaskRunning</a></li>
+    <li><a href="set-filter.html">SetFilter</a></li>
+    <li><a href="add-log.html">AddLog</a></li>
+    <li><a href="flush.html">Flush</a></li>
+    <li><a href="report-memory-configuration.html">ReportMemoryConfiguration</a></li>
+    <li><a href="wait-for-flush.html">WaitForFlush</a></li>
+    <li><a href="process-buffer.html">ProcessBuffer</a></li>
+    <li><a href="flush-buffer.html">FlushBuffer</a></li>
+    <li><a href="write-log.html">WriteLog</a></li>
+    <li><a href="print-std-io.html">PrintStdIO</a></li>
+    <li><a href="set-io-driver.html">SetIODriver</a></li>
+    <li><a href="stop-driver-thread.html">StopDriverThread</a></li>
+    <li><a href="driver-loop.html">DriverLoop</a></li>
+  </ul>
+</nav>
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Log</a> /
+  <a href="index.html">Logger</a> / SetIODriver
+</p>
+
+<h1><span class="fn">SetIODriver</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Logger</span>
+  <span class="tag">Engine/Log/Logger.h</span>
+  <span class="tag">public</span>
+  install the IO stream this logger's driver thread should drive, or withdraw it — the handover that makes stream destruction safe while another thread is running it
+</p>
+
+
+<h2 id="signature">Signature</h2>
+
+<pre><code><span class="kw">void</span> <span class="fn">SetIODriver</span>(<span class="ty">TaskStream</span>* stream) noexcept;</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>Installs the IO stream this logger's driver thread should drive, or withdraws it. The whole body is a
+lock acquisition and an assignment, and the lock is the entire design:</p>
+
+<pre><code><span class="ty">std</span>::<span class="fn">lock_guard</span> lock(driverLock);
+ioStream = stream;</code></pre>
+
+<p><a href="index.html"><code>Logger</code></a>'s IO stream is a <em>service</em> stream — the logger is one of
+its customers, as asynchronous file access will be — and it is a ride-on-thread stream, so its driver must be
+named rather than assumed. The task system installs it once its streams exist and withdraws it before it
+destroys them. That ordering is not politeness: <a href="driver-loop.html"><code>driverThread</code></a>
+outlives the task system by design, so a pointer left installed would be read on a pass whose stream had
+already been freed.</p>
+
+<p>Passing the lock is what makes withdrawal <em>mean</em> something. <a href="driver-loop.html"
+><code>DriverLoop</code></a> holds <code>driverLock</code> across
+<code>stream-&gt;Update()</code>, so <code>nullptr</code> cannot land while a pass is in flight: the call blocks
+until that pass has returned. This is the only mechanism that lets the task system free its streams while
+another thread is running them.</p>
+
+<p>Withdrawing also withdraws the drain task that lived on the stream, and the flag goes with it:</p>
+
+<pre><code><span class="kw">if</span> (stream == <span class="kw">nullptr</span>)
+{
+    isRunning.<span class="fn">store</span>(<span class="kw">false</span>, <span class="ty">std</span>::memory_order_release);
+}</code></pre>
+
+<p>Nothing can run that task any more, so leaving <code>isRunning</code> set would have every later
+<a href="flush.html"><code>Flush</code></a> wait its full 1000&nbsp;ms on an executor that no longer exists, then
+report the loss and assert. From here on the driver loop writes the queue directly — the same work with one
+fewer hop.</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Meaning</th></tr>
+  <tr>
+    <td><code>stream</code></td>
+    <td><code>TaskStream*</code></td>
+    <td>The service stream to drive, or <code>nullptr</code> to withdraw it. Not owned: never freed here.
+        The previous value, if any, is replaced without warning — there is one slot, not a stack of customers</td>
+  </tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>None. The call cannot fail; the only thing it can do is wait for an in-flight pass.</p>
+
+<h2 id="notes">Notes</h2>
+
+<ul>
+  <li><strong>Who calls it.</strong> The task system, from its own thread — never the driver thread.
+      <code>TaskSystem</code> installs <code>&amp;GetIOTaskStream()</code> once its streams exist, and passes
+      <code>nullptr</code> while shutting streams down. See
+      <a href="../../Core/index.html">TaskSystem</a>.</li>
+  <li><strong>Thread safety.</strong> Safe to call from any thread that may install or withdraw the stream,
+      because the pointer is only ever read or written under <code>driverLock</code>. It is not called by
+      <a href="add-log.html"><code>AddLog</code></a> or any logging path.</li>
+  <li><strong>Ordering.</strong> Withdrawal must precede stream destruction, and installing must follow stream
+      construction. Both are the task system's obligation, and nothing in the signature enforces either.</li>
+</ul>
+
+<footer class="prevnext">
+  <span><a href="index.html">← Logger</a></span>
+  <span><a href="index.html#methods">All Logger methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>
