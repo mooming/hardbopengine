@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Engine::PreShutdown — Engine — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#notes">Notes</a></li>
+  </ul>
+
+  <h3><a href="index.html">Engine</a> methods</h3>
+  <ul class="methods">
+    <li><a href="get.html">Get</a></li>
+    <li><a href="get-logger.html">GetLogger</a></li>
+    <li><a href="get-memory-manager.html">GetMemoryManager</a></li>
+    <li><a href="get-task-system.html">GetTaskSystem</a></li>
+    <li><a href="get-resource-manager.html">GetResourceManager</a></li>
+    <li><a href="get-statistics.html">GetStatistics</a></li>
+    <li><a href="get-application.html">GetApplication</a></li>
+    <li><a href="get-class-name.html">GetClassName</a></li>
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+    <li><a href="initialize.html">Initialize</a></li>
+    <li><a href="run.html">Run</a></li>
+    <li><a href="shutdown.html">Shutdown</a></li>
+    <li><a href="log.html">Log</a></li>
+    <li><a href="log-error.html">LogError</a></li>
+    <li><a href="flush-log.html">FlushLog</a></li>
+    <li><a href="close-log.html">CloseLog</a></li>
+    <li><a href="console-out-ln.html">ConsoleOutLn</a></li>
+    <li><a href="is-memory-manager-ready.html">IsMemoryManagerReady</a></li>
+    <li><a href="is-logger-ready.html">IsLoggerReady</a></li>
+    <li><a href="is-task-system-ready.html">IsTaskSystemReady</a></li>
+    <li><a href="is-resource-manager-ready.html">IsResourceManagerReady</a></li>
+    <li><a href="is-system-statistics-ready.html">IsSystemStatisticsReady</a></li>
+    <li><a href="set-memory-manager-ready.html">SetMemoryManagerReady</a></li>
+    <li><a href="set-logger-ready.html">SetLoggerReady</a></li>
+    <li><a href="set-task-system-ready.html">SetTaskSystemReady</a></li>
+    <li><a href="set-resource-manager-ready.html">SetResourceManagerReady</a></li>
+    <li><a href="set-system-statistics-ready.html">SetSystemStatisticsReady</a></li>
+    <li><a href="operator-assign.html">operator=</a></li>
+    <li><a href="post-initialize.html">PostInitialize</a></li>
+    <li><a href="pre-shutdown.html">PreShutdown</a></li>
+  </ul>
+</nav>
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Engine</a> /
+  <a href="index.html">Engine</a> / PreShutdown
+</p>
+
+<h1><span class="fn">PreShutdown</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Engine</span>
+  <span class="tag">Engine/Engine/Engine.h</span>
+  <span class="tag">private</span>
+  the pre-shutdown hook — memory teardown and the memory configuration report, while every subsystem is still alive
+</p>
+
+
+<h2 id="signature">Signature</h2>
+
+<pre><code><span class="kw">void</span> <span class="fn">PreShutdown</span>();   // private</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>The teardown mirror of <a href="post-initialize.html"><code>PostInitialize</code></a>: one memory hook
+bracketed by two log lines, plus a report that only exists in a profiling build.</p>
+
+<pre><code>log.<span class="fn">Out</span>(<span class="st">"Engine PreShutdown [Start]"</span>);
+
+<span class="kw">#if</span> PROFILE_ENABLED
+    logger.<span class="fn">ReportMemoryConfiguration</span>();
+<span class="kw">#endif</span>
+    memoryManager.<span class="fn">PreEngineShutdown</span>();
+
+log.<span class="fn">Out</span>(<span class="st">"Engine PreShutdown [Done]"</span>);</code></pre>
+
+<p>The order is the point. Everything here runs while every subsystem is still alive — before
+<code>taskSystem</code> is joined, before the streams are freed, before the application object is
+released. So the memory manager gets a last step in which it can still ask its allocators what they
+hold, and the profiler gets one in which the <a href="../../Log/index.html">logger</a> can still write
+what it answers.</p>
+
+<p><code>ReportMemoryConfiguration</code> is compiled out unless
+<a href="../../Config/BuildConfig/index.html"><code>PROFILE_ENABLED</code></a> is set, so in a Dev or
+Release build the hook is the memory call alone. That is the same gate that keeps the accounting out of
+the allocators themselves: what is missing is the report, not the teardown.</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<p>None.</p>
+
+<h2 id="notes">Notes</h2>
+
+<ul>
+  <li><strong>Called once, from <a href="shutdown.html"><code>ShutDown</code></a></strong>, before the task
+      system is torn down. Not reachable from outside the class, and not idempotent by contract — the
+      memory hook is expected to run exactly once.</li>
+  <li><strong>The bracket is what makes it debuggable</strong>: <em>Start</em> without <em>Done</em> names the
+      subsystem that did not return, in the one place where a hang during shutdown is usually happening.</li>
+  <li><strong>Log lines emitted here may be the last thing written.</strong> The logger's own driver thread
+      outlives the task system, so these lines are drained by
+      <a href="../../Log/Logger/stop-driver-thread.html"><code>StopDriverThread</code></a> at destruction
+      rather than by anything in this file.</li>
+</ul>
+
+<footer class="prevnext">
+  <span><a href="index.html">← Engine</a></span>
+  <span><a href="index.html#methods">All Engine methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

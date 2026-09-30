@@ -43,6 +43,8 @@
     <li><a href="get.html">Get</a></li>
     <li><a href="constructors.html">constructors</a></li>
     <li><a href="operator-assign.html">operator=</a></li>
+    <li><a href="post-initialize.html">PostInitialize</a></li>
+    <li><a href="pre-shutdown.html">PreShutdown</a></li>
     <li><a href="destructor.html">destructor</a></li>
     <li><a href="initialize.html">Initialize</a></li>
     <li><a href="run.html">Run</a></li>
@@ -355,7 +357,21 @@
     <td>The only assignment operator, and it is removed. An <code>Engine</code> is never moved or copied; it is declared where
         it is used and referenced everywhere else</td>
   </tr>
+    <tr>
+    <td><a href="post-initialize.html">PostInitialize</a><span class="badge">private</span></td>
+    <td class="sig">void PostInitialize()</td>
+    <td>Runs the memory manager's post-initialisation step after every selected level has started, bracketed by two
+      log lines so a start with no matching done names the hook that did not return
+    </td>
+  </tr>
   <tr>
+    <td><a href="pre-shutdown.html">PreShutdown</a><span class="badge">private</span></td>
+    <td class="sig">void PreShutdown()</td>
+    <td>Memory teardown, and the memory configuration report in a profiling build, both while every subsystem is
+      still alive — before the task system is joined and the application released
+    </td>
+  </tr>
+<tr>
     <td><a href="destructor.html">destructor</a></td>
     <td class="sig">~Engine()</td>
     <td>Flushes the engine's own log stream and nothing else. It is not a substitute for

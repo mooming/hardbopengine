@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Engine::PostInitialize — Engine — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#notes">Notes</a></li>
+  </ul>
+
+  <h3><a href="index.html">Engine</a> methods</h3>
+  <ul class="methods">
+    <li><a href="get.html">Get</a></li>
+    <li><a href="get-logger.html">GetLogger</a></li>
+    <li><a href="get-memory-manager.html">GetMemoryManager</a></li>
+    <li><a href="get-task-system.html">GetTaskSystem</a></li>
+    <li><a href="get-resource-manager.html">GetResourceManager</a></li>
+    <li><a href="get-statistics.html">GetStatistics</a></li>
+    <li><a href="get-application.html">GetApplication</a></li>
+    <li><a href="get-class-name.html">GetClassName</a></li>
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+    <li><a href="initialize.html">Initialize</a></li>
+    <li><a href="run.html">Run</a></li>
+    <li><a href="shutdown.html">Shutdown</a></li>
+    <li><a href="log.html">Log</a></li>
+    <li><a href="log-error.html">LogError</a></li>
+    <li><a href="flush-log.html">FlushLog</a></li>
+    <li><a href="close-log.html">CloseLog</a></li>
+    <li><a href="console-out-ln.html">ConsoleOutLn</a></li>
+    <li><a href="is-memory-manager-ready.html">IsMemoryManagerReady</a></li>
+    <li><a href="is-logger-ready.html">IsLoggerReady</a></li>
+    <li><a href="is-task-system-ready.html">IsTaskSystemReady</a></li>
+    <li><a href="is-resource-manager-ready.html">IsResourceManagerReady</a></li>
+    <li><a href="is-system-statistics-ready.html">IsSystemStatisticsReady</a></li>
+    <li><a href="set-memory-manager-ready.html">SetMemoryManagerReady</a></li>
+    <li><a href="set-logger-ready.html">SetLoggerReady</a></li>
+    <li><a href="set-task-system-ready.html">SetTaskSystemReady</a></li>
+    <li><a href="set-resource-manager-ready.html">SetResourceManagerReady</a></li>
+    <li><a href="set-system-statistics-ready.html">SetSystemStatisticsReady</a></li>
+    <li><a href="operator-assign.html">operator=</a></li>
+    <li><a href="post-initialize.html">PostInitialize</a></li>
+    <li><a href="pre-shutdown.html">PreShutdown</a></li>
+  </ul>
+</nav>
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Engine</a> /
+  <a href="index.html">Engine</a> / PostInitialize
+</p>
+
+<h1><span class="fn">PostInitialize</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Engine</span>
+  <span class="tag">Engine/Engine/Engine.h</span>
+  <span class="tag">private</span>
+  the post-initialisation hook — the memory manager’s last setup step, bracketed so a log can name a hook that did not return
+</p>
+
+
+<h2 id="signature">Signature</h2>
+
+<pre><code><span class="kw">void</span> <span class="fn">PostInitialize</span>();   // private</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>The post-initialisation hook, and the whole body is one call wrapped in two log lines:</p>
+
+<pre><code><span class="kw">auto</span> log = Logger::<span class="fn">Get</span>(<span class="ty">ToCompactMethodName</span>(__PRETTY_FUNCTION__));
+
+log.<span class="fn">Out</span>(<span class="st">"Engine PostInitialize [Start]"</span>);
+
+memoryManager.<span class="fn">PostEngineInit</span>();
+
+log.<span class="fn">Out</span>(<span class="st">"Engine PostInitialize [Done]"</span>);</code></pre>
+
+<p>The two lines exist because this is the boundary a reader of a log wants: every subsystem that takes
+a <a href="../../Memory/index.html">post-initialisation step</a> appears between them, so a start line
+with no matching done line names the hook that did not return. No other structure in
+<a href="initialize.html"><code>Initialize</code></a> is bracketed that way.</p>
+
+<p>It runs after every selected level has started — after the task system's streams, after the logger's
+drain task, after the application object if the
+<a href="../EInitLevel/index.html"><code>Application</code></a> level was requested — which is what makes
+it the right place for work that must not see a half-built engine. Memory is the only hook called here
+today.</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<p>None.</p>
+
+<h2 id="notes">Notes</h2>
+
+<ul>
+  <li><strong>No level governs it.</strong> It runs at the end of <a href="initialize.html">Initialize</a>
+      whatever bits were passed, so the memory hook is not optional — the same reasoning that leaves memory
+      out of <a href="../EInitLevel/index.html"><code>EInitLevel</code></a>.</li>
+  <li><strong>The log category is derived, not written.</strong>
+      <code>ToCompactMethodName(__PRETTY_FUNCTION__)</code> is what makes the category name the function
+      rather than the class, so these lines are attributable in a log full of
+      <a href="get-logger.html"><code>GetLogger()</code></a> categories.</li>
+  <li><strong>Its counterpart is <a href="pre-shutdown.html"><code>PreShutdown</code></a></strong>, called at
+      the matching point of <a href="shutdown.html"><code>ShutDown</code></a>.</li>
+</ul>
+
+<footer class="prevnext">
+  <span><a href="index.html">← Engine</a></span>
+  <span><a href="index.html#methods">All Engine methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

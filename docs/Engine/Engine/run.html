@@ -42,6 +42,8 @@
     <li><a href="get.html">Get</a></li>
     <li><a href="constructors.html">constructors</a></li>
     <li><a href="operator-assign.html">operator=</a></li>
+    <li><a href="post-initialize.html">PostInitialize</a></li>
+    <li><a href="pre-shutdown.html">PreShutdown</a></li>
     <li><a href="destructor.html">destructor</a></li>
     <li><a href="initialize.html">Initialize</a></li>
     <li><a class="current" href="run.html">Run</a></li>
@@ -116,11 +118,19 @@
 </p>
 
 <p>
+  The loop condition deserves its own sentence, because it was once wrong in the instructive way. It runs while the engine
+  is running and stops when it is not — <em>pending posted work is deliberately not a reason to continue</em>. Once shutdown
+  has been requested there is no executor left that could run that work, so treating it as a reason kept the process looping
+  forever on work nothing would ever drain. <code>JoinAndClear</code> drains what it still can, under a deadline, and names
+  whatever it has to abandon; that is where abandoned work belongs being accounted for, not here in the loop condition.
+</p>
+
+<p>
   What follows is teardown, and it is the reason the header says main thread. <code>taskSystem.JoinAndClear()</code> waits
   the queue out again with a one-millisecond sleep, joins each worker stream thread and clears the stream array. Then
-  <code>ProcessMainThreadTasks()</code> once more, to run anything a joining thread posted on the way out. Finally, under the
-  source's own comment <code>// It may terminate the application immediately.</code>, the line
-  <code>application.reset();</code>.
+  <code>ProcessMainThreadTasks()</code> once more, to run anything a joining thread posted on the way out. Finally,
+  <code>application.reset();</code> — the call that may terminate the application immediately, which is why nothing runs after
+  it.
 </p>
 
 <div class="gap">
