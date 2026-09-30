@@ -2,114 +2,53 @@
 
 #pragma once
 
-// =============================================================================
-// Build Configuration
-// =============================================================================
-// This file contains compile-time configuration settings for the engine.
-// Most settings can be left at their defaults, but can be modified as needed.
-
-// =============================================================================
-// Platform Detection
-// =============================================================================
-// Automatically detected from compiler macros:
-// Only ONE of these should be defined (as 1):
-//   - PLATFORM_LINUX  : Running on Linux
-//   - PLATFORM_OSX    : Running on macOS
-//   - PLATFORM_WINDOWS: Running on Windows
 
 #ifdef __linux__
-    #define PLATFORM_LINUX 1
+#define PLATFORM_LINUX 1
 #elif defined __APPLE__
-    #define PLATFORM_OSX 1
+#define PLATFORM_OSX 1
 #elif defined _WIN32
-    #define PLATFORM_WINDOWS 1
+#define PLATFORM_WINDOWS 1
 #endif
 
-// Ensure exactly one platform is defined
 #if !defined(PLATFORM_LINUX) && !defined(PLATFORM_OSX) && !defined(PLATFORM_WINDOWS)
-    static_assert(false, "No platform defined. Please define PLATFORM_LINUX, PLATFORM_OSX, or PLATFORM_WINDOWS.");
+static_assert(false, "No platform defined. Please define PLATFORM_LINUX, PLATFORM_OSX, or PLATFORM_WINDOWS.");
 #endif
 
-// =============================================================================
-// Engine Configuration
-// =============================================================================
-#define MAX_NUM_TASK_STREAMS 64  // Maximum number of task streams in TaskSystem
+#define MAX_NUM_TASK_STREAMS 64
 
-// =============================================================================
-// Debug Control
-// =============================================================================
-// Assertions are compiled in only when __DEBUG__ is defined. Nothing in the build
-// system defines it, so Assert() is a no-op in Debug, Dev and Release alike.
-// FatalAssert() is outside the guard and is therefore always live.
-//
-// Turn assertions on per build with a compiler flag:
-//     CXXFLAGS="-D__DEBUG__" ./build.sh Applications/EngineTest -dev -test
-// Do not define it unconditionally here: the suite does not survive it yet. With
-// assertions live, EngineTest aborts in PoolAllocatorTest on a pre-existing
-// contradiction (Memory/PoolAllocator.cpp asserts on the raw blockSize parameter
-// while its own initialiser clamps that same parameter). See JOURNAL.md.
 
-// =============================================================================
-// System Requirements
-// =============================================================================
-#define ENGINE_MIN_HARDWARE_THREADS 4  // Minimum recommended CPU cores
+#define ENGINE_MIN_HARDWARE_THREADS 4
 
-// =============================================================================
-// Engine Core
-// =============================================================================
-#define ENGINE_LOG_ENABLED 1       // Enable/disable logging system
-#define ENGINE_PARAM_DESC_ENABLED 1 // Enable parameter descriptions in ConfigParam
+#define ENGINE_LOG_ENABLED 1
+#define ENGINE_PARAM_DESC_ENABLED 1
 
-// =============================================================================
-// Memory System
-// =============================================================================
-// Memory debugging features (set to 1 to enable, 0 for performance)
-#define MEMORY_VERIFICATION_ENABLED 0          // Verify memory integrity
-#define MEMORY_LOGGING_ENABLED 0               // Log memory operations
-#define MEMORY_INVESTIGATION_ENABLED 0          // Detailed memory investigation
-#define MEMORY_DANGLING_POINTER_CHECK_ENABLED 0 // Detect dangling pointers
-#define MEMORY_BUFFER_UNDERRUN_CHECK_ENABLED 0  // Detect buffer underruns
-#define FORCE_USE_SYSTEM_MALLOC 0        // Force use of system malloc instead of custom allocators
-#define MULTIPOOL_ALLOC_LOG ".multiPoolConfig.dat"  // MultiPool config cache file
+#define MEMORY_VERIFICATION_ENABLED 0
+#define MEMORY_LOGGING_ENABLED 0
+#define MEMORY_INVESTIGATION_ENABLED 0
+#define MEMORY_DANGLING_POINTER_CHECK_ENABLED 0
+#define MEMORY_BUFFER_UNDERRUN_CHECK_ENABLED 0
+#define FORCE_USE_SYSTEM_MALLOC 0
+#define MULTIPOOL_ALLOC_LOG ".multiPoolConfig.dat"
 
-// =============================================================================
-// Logging System
-// =============================================================================
-#define LOG_ENABLED 1                  // Master switch for logging
-#define LOG_BREAK_IF_WARNING 0         // Break on warnings (debug only)
-#define LOG_BREAK_IF_ERROR 0           // Break on errors (debug only)
-#define LOG_FORCE_PRINT_IMMEDIATELY 0  // Bypass async logging, print immediately
+#define LOG_ENABLED 1
+#define LOG_BREAK_IF_WARNING 0
+#define LOG_BREAK_IF_ERROR 0
+#define LOG_FORCE_PRINT_IMMEDIATELY 0
 
-// =============================================================================
-// Profiling
-// =============================================================================
-// Set to 1 to enable performance profiling (adds overhead)
 #define PROFILE_ENABLED 0
 
-// =============================================================================
-// Mathematics
-// =============================================================================
-// Coordinate system handedness (uncomment to change)
-// #define LEFT_HANDED_COORDINATE
-#define RIGHT_HANDED_COORDINATE  // Default
+#define RIGHT_HANDED_COORDINATE
 
-// =============================================================================
-// Testing
-// =============================================================================
-#define MEMORY_INVESTIGATOR_TEST_ENABLED 0  // Enable memory investigation tests
+#define MEMORY_INVESTIGATOR_TEST_ENABLED 0
 
-// =============================================================================
-// Third-Party Integration
-// =============================================================================
-// Vulkan SDK detection (auto-detected, do not modify)
-// Set to 1 if vulkan.h is found, 0 otherwise
-// Will produce compile warning if not found but code will still compile
-#if __has_include("vulkan/vulkan.h")                                      \
-    || __has_include("/opt/homebrew/include/vulkan/vulkan.h")             \
-    || __has_include("/usr/local/include/vulkan/vulkan.h")                \
-    || __has_include("External/VulkanSDK/include/vulkan/vulkan.h")
-    #define VULKAN_SDK 1
+#if __has_include("vulkan/vulkan.h") ||                                                                                \
+				  __has_include("/opt/homebrew/include/vulkan/vulkan.h") ||                                            \
+								__has_include("/usr/local/include/vulkan/vulkan.h") ||                                 \
+											  __has_include("External/VulkanSDK/include/vulkan/vulkan.h")
+#define VULKAN_SDK 1
 #else
-    #define VULKAN_SDK 0
-    #pragma message "Vulkan SDK not found. Please install it using the appropriate script: ./scripts/install_sdk_macos.sh for macOS, ./scripts/install_sdk_linux.sh for Linux, or ./scripts/install_sdk_windows.bat for Windows."
+#define VULKAN_SDK 0
+#pragma message                                                                                                        \
+		"Vulkan SDK not found. Please install it using the appropriate script: ./scripts/install_sdk_macos.sh for macOS, ./scripts/install_sdk_linux.sh for Linux, or ./scripts/install_sdk_windows.bat for Windows."
 #endif

@@ -12,90 +12,86 @@
 namespace hbe
 {
 
-	// ConfigParam represents a single config value with arbitrary file.
-	// It can be thread-safe when IsAtomic is set to true.
-	/// @brief Template class representing a single configuration parameter with optional thread safety.
-	template<typename T, bool IsAtomic = false>
-	class ConfigParam final
+template <typename T, bool IsAtomic = false>
+class ConfigParam final
+{
+public:
+	using TValue = std::conditional_t<IsAtomic, std::atomic<T>, T>;
+
+	static constexpr size_t MaxNameLength = 127;
+	static constexpr size_t MaxDescLength = 127;
+
+private:
+#if ENGINE_PARAM_DESC_ENABLED
+	StaticString name;
+	StaticString desc;
+#endif // ENGINE_PARAM_DESC_ENABLED
+
+	TValue value;
+	std::mutex lock;
+
+#ifdef __DEBUG__
+	std::thread::id threadID;
+#endif // __DEBUG__
+
+public:
+	ConfigParam(const char* inName, const char* inDesc, T defaultValue, std::thread::id id = std::this_thread::get_id())
+#if ENGINE_PARAM_DESC_ENABLED
+		: name(inName)
+		, desc(inDesc)
+		, value(defaultValue)
+#else // ENGINE_PARAM_DESC_ENABLED
+		: value(defaultValue)
+#endif // ENGINE_PARAM_DESC_ENABLED
+#ifdef __DEBUG__
+		, threadID(id)
+#endif // __DEBUG__
 	{
-	public:
-		static constexpr size_t MaxNameLength = 127;
-		static constexpr size_t MaxDescLength = 127;
+		auto& settings = ConfigSystem::Get();
+		settings.Register(*this);
+	}
 
-		using TValue = std::conditional_t<IsAtomic, std::atomic<T>, T>;
-
-	private:
+	[[nodiscard]] StaticString GetName() const
+	{
 #if ENGINE_PARAM_DESC_ENABLED
-		StaticString name;
-		StaticString desc;
-#endif // ENGINE_PARAM_DESC_ENABLED
-
-		TValue value;
-		std::mutex lock;
-
-#ifdef __DEBUG__
-		std::thread::id threadID;
-#endif // __DEBUG__
-
-	public:
-		ConfigParam(const char* inName, const char* inDesc, T defaultValue,
-					std::thread::id id = std::this_thread::get_id())
-#if ENGINE_PARAM_DESC_ENABLED
-			:
-			name(inName), desc(inDesc), value(defaultValue)
+		return name;
 #else // ENGINE_PARAM_DESC_ENABLED
-			: value(defaultValue)
+		return StaticString();
 #endif // ENGINE_PARAM_DESC_ENABLED
-#ifdef __DEBUG__
-			,
-			threadID(id)
-#endif // __DEBUG__
-		{
-			auto& settings = ConfigSystem::Get();
-			settings.Register(*this);
-		}
+	}
 
-		[[nodiscard]] StaticString GetName() const
-		{
+	[[nodiscard]] StaticString GetDescription() const
+	{
 #if ENGINE_PARAM_DESC_ENABLED
-			return name;
+		return desc;
 #else // ENGINE_PARAM_DESC_ENABLED
-			return StaticString();
+		return StaticString();
 #endif // ENGINE_PARAM_DESC_ENABLED
-		}
+	}
 
-		[[nodiscard]] StaticString GetDescription() const
-		{
-#if ENGINE_PARAM_DESC_ENABLED
-			return desc;
-#else // ENGINE_PARAM_DESC_ENABLED
-			return StaticString();
-#endif // ENGINE_PARAM_DESC_ENABLED
-		}
-
-		[[nodiscard]] T Get() const noexcept
-		{
+	[[nodiscard]] T Get() const noexcept
+	{
 #ifdef __DEBUG__
-			Assert(IsAtomic || std::this_thread::get_id() == threadID);
+		Assert(IsAtomic || std::this_thread::get_id() == threadID);
 #endif // __DEBUG__
 
-			return value;
-		}
+		return value;
+	}
 
-		void Set(const T& inValue) noexcept
-		{
+	void Set(const T& inValue) noexcept
+	{
 #ifdef __DEBUG__
-			Assert(IsAtomic || std::this_thread::get_id() == threadID);
+		Assert(IsAtomic || std::this_thread::get_id() == threadID);
 #endif // __DEBUG__
 
-			value = inValue;
-		}
-	};
+		value = inValue;
+	}
+};
 
-	template<typename T>
-	using TConfigParam = ConfigParam<T, false>;
+template <typename T>
+using TConfigParam = ConfigParam<T, false>;
 
-	template<typename T>
-	using TAtomicConfigParam = ConfigParam<T, true>;
+template <typename T>
+using TAtomicConfigParam = ConfigParam<T, true>;
 
 } // namespace hbe

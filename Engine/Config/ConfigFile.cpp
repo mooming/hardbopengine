@@ -15,107 +15,112 @@ using namespace hbe;
 namespace hbe
 {
 
-	ConfigFile::ConfigFile(const char* path) : isValid(false) { Parse(path); }
+ConfigFile::ConfigFile(const char* path)
+	: isValid(false)
+{
+	Parse(path);
+}
 
-	ConfigFile::ConfigFile(const char* path, const char* fileName) : isValid(false)
+ConfigFile::ConfigFile(const char* path, const char* fileName)
+	: isValid(false)
+{
+	TString filePath(path);
+
+	auto lastChar = filePath.back();
+	if (lastChar != '/' && lastChar != '\\')
 	{
-		TString filePath(path);
-
-		auto lastChar = filePath.back();
-		if (lastChar != '/' && lastChar != '\\')
-		{
-			filePath.append("/");
-		}
-
-		filePath.append(fileName);
-
-		Parse(filePath.c_str());
+		filePath.append("/");
 	}
 
-	ConfigFile::TValue ConfigFile::GetValue(const TString& key) const noexcept
-	{
-		auto found = keymap.find(key);
-		if (found == keymap.end())
-		{
-			return TValue();
-		}
+	filePath.append(fileName);
 
-		return found->second;
+	Parse(filePath.c_str());
+}
+
+ConfigFile::TValue ConfigFile::GetValue(const TString& key) const noexcept
+{
+	auto found = keymap.find(key);
+	if (found == keymap.end())
+	{
+		return TValue();
 	}
 
-	ConfigFile::TString ConfigFile::GetValue(const TString& key, const TString& defaultValue) const noexcept
-	{
-		auto found = keymap.find(key);
-		if (found == keymap.end())
-		{
-			return defaultValue;
-		}
+	return found->second;
+}
 
-		return found->second;
+ConfigFile::TString ConfigFile::GetValue(const TString& key, const TString& defaultValue) const noexcept
+{
+	auto found = keymap.find(key);
+	if (found == keymap.end())
+	{
+		return defaultValue;
 	}
 
-	void ConfigFile::Parse(const char* filePath)
+	return found->second;
+}
+
+void ConfigFile::Parse(const char* filePath)
+{
+	using namespace std;
+
+	ifstream ifs(filePath);
+	if (!ifs.is_open())
 	{
-		using namespace std;
+		cout << "[ConfigFile] Not Found: " << filePath << endl;
 
-		ifstream ifs(filePath);
-		if (!ifs.is_open())
+		return;
+	}
+
+	cout << "[ConfigFile] Open " << filePath << endl;
+
+	while (!ifs.eof())
+	{
+		TString line;
+		getline(ifs, line);
+
+		using TKeyValue = pair<TString, TString>;
+		auto ParseLine = [&line]() -> TKeyValue
 		{
-			cout << "[ConfigFile] Not Found: " << filePath << endl;
-
-			return;
-		}
-
-		cout << "[ConfigFile] Open " << filePath << endl;
-
-		while (!ifs.eof())
-		{
-			TString line;
-			getline(ifs, line);
-
-			using TKeyValue = pair<TString, TString>;
-			auto ParseLine = [&line]() -> TKeyValue
+			TKeyValue keyValue;
+			if (line.empty())
 			{
-				TKeyValue keyValue;
-				if (line.empty())
-				{
-					return keyValue;
-				}
-
-				auto separator = line.find('=');
-				if (separator == TString::npos)
-				{
-					return keyValue;
-				}
-
-				auto key = line.substr(0, separator);
-				auto value = line.substr(separator + 1);
-				keyValue.first = StringUtil::Trim(key);
-				keyValue.second = StringUtil::Trim(value);
-
 				return keyValue;
-			};
+			}
 
-			auto keyValue = ParseLine();
-			if (keyValue.first.empty() || keyValue.second.empty())
-				continue;
+			auto separator = line.find('=');
+			if (separator == TString::npos)
+			{
+				return keyValue;
+			}
 
-			keymap[keyValue.first] = keyValue.second;
-		}
+			auto key = line.substr(0, separator);
+			auto value = line.substr(separator + 1);
+			keyValue.first = StringUtil::Trim(key);
+			keyValue.second = StringUtil::Trim(value);
 
-		isValid = true;
+			return keyValue;
+		};
+
+		auto keyValue = ParseLine();
+		if (keyValue.first.empty() || keyValue.second.empty())
+			continue;
+
+		keymap[keyValue.first] = keyValue.second;
 	}
 
-	void ConfigFile::ForEach(std::function<void(const TMap::value_type&)> func) const noexcept
+	isValid = true;
+}
+
+void ConfigFile::ForEach(std::function<void(const TMap::value_type&)> func) const noexcept
+{
+	if (func == nullptr)
 	{
-		if (func == nullptr)
-		{
-			return;
-		}
-
-		for (auto& element : keymap)
-		{
-			func(element);
-		}
+		return;
 	}
+
+	for (auto& element : keymap)
+	{
+		func(element);
+	}
+}
 } // namespace hbe

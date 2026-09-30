@@ -310,12 +310,21 @@ if [[ ${#FILES[@]} -gt 0 ]]; then
 	check "joined empty function/ctor body — braces must break" '\)[[:space:]]*((const|noexcept|override|constexpr)[[:space:]]+)*\{\}[[:space:]]*$' FAIL "${FILES[@]}"
 	check "joined empty record"                '(struct|class|union|enum)[[:space:]]+[[:alnum:]_]+[[:space:]]*\{[[:space:]]*\}[[:space:]]*;' FAIL "${FILES[@]}"
 	check "no exceptions (engine is exception-free)" '\b(throw\s+[A-Za-z_(]|try\s*\{|catch\s*\()' FAIL "${FILES[@]}"
-	check "no m_ member prefix"                '\b(m_[a-z]|[a-z]+_[a-z]+\s*;)'                  FAIL "${FILES[@]}"
+	# The banned thing is the prefix itself. A second alternative here used to be
+	# `[a-z]+_[a-z]+\s*;`, "a snake_case name before a semicolon", which matched `using TValue =
+	# size_t;` and every other fixed-width type at a line end — 1 false file in Config alone. A
+	# snake_case member is a different rule and needs the type in front of it to be recognised as a
+	# declaration, so it is reported separately rather than folded into this grep.
+	check "no m_ member prefix"                '\bm_[a-zA-Z]'                                      FAIL "${FILES[@]}"
 	check "std::move on return kills NRVO"     'return\s+std::move'                              FAIL "${FILES[@]}"
 	check "virtual alongside override"         'virtual\s+[^;{]*\boverride'                      FAIL "${FILES[@]}"
 
 	hdr "naming and interface conventions"
 	check "no explicit inline keyword"         '^\s*inline\s+[A-Za-z_]'                          FAIL "${FILES[@]}"
+	# A snake_case member name cannot be grepped: the member name is the token before `;`, and
+	# `size_t MaxNameLength = 127;` has a type where a snake_case member would be. An attempt at
+	# this rule flagged every size_t declaration in the tree, which is worse than not checking it. It is
+	# a manual review item, listed in SKILL.md alongside the other rules a grep cannot hold.
 	# Single-argument ctor explicitness, getter [[nodiscard]], log-before-early-return
 	# and constexpr-over-magic-number are judgement calls, not greps.
 	# They are listed in SKILL.md for manual review instead of being faked here.
