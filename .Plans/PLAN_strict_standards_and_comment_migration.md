@@ -171,8 +171,11 @@ module, layout findings from `layout.py` over the whole tree, page counts from `
 | 5 | Test | 126 | 32 | 1 | 21 |
 | 6 | Renderer | 265 | 44 | 0 | 18 |
 | 7 | Core | 1,476 | 62 | 23 | 2 |
-| 8 | Container | 60 | 59 | 2 | 112 |
-| 9 | Applications + Examples | 297 | 0 | 0 | 0 |
+| 8 | Container | 60 | 59 | 2 | 128 |
+| — | **Applications** | 0 | 0 | 0 | 0 | entry points, prose moved to `docs/RunningTests.md` and
+  `docs/VulkanExampleGuide.md`
+| 9 | Examples | 257 | 0 | 0 | 0 | outside the root `CMakeLists.txt`, so a strip there is provable
+  only by token identity |
 
 Resource is the first module taken end to end through the full four-commit cycle after the mechanical
 sweep, and it earned the "cheapest" label in a way the estimates did not predict: 11 comment lines and 20
@@ -188,10 +191,12 @@ Three readings this table forces:
   `docs/<Module>/<Class>/`; with no class directory there is nothing to search, so absence of findings
   is absence of measurement. Their 16, 19, 9 and 8 missing class pages are the real work, and the
   method tally stays unknown until those directories exist.
-- **Container is 114 pages while holding only 60 comment lines.** It is by far the worst ratio in the
+- **Container is 130 pages while holding only 60 comment lines.** It is by far the worst ratio in the
   tree, and the reason is that its contracts live in inline template code the class page cannot carry.
-  It goes last not because it is small but because nothing else in the tree benefits from the authoring
-  pattern that 112 pages would establish.
+  Its method-page count rose from 112 to 128 when `docs_methods.py` was corrected: operator pages were
+  being routed past the checker entirely, so a class whose whole API is one conversion needed no page
+  at all. It goes last not because it is small but because nothing else in the tree benefits from the
+  authoring pattern that 128 pages would establish.
 - **Core is 1,476 comment lines, 2.5x the next module.** One module holds more prose than the other
   eight combined, so the plan's original 14-step order was wrong in more than detail.
 

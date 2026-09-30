@@ -503,14 +503,40 @@ if [[ ${#FILES[@]} -gt 0 ]]; then
 		printf '       An unmeasured rule is not a passing rule, so this is stated, not skipped.\n'
 	fi
 
-	hdr "docs coverage — every declared entry owns a page under docs/"
+	hdr "docs coverage — every declared entry owns a page, every method a page, and every page is valid"
 	# The comment ban moves each contract into the HTML reference. Deleting a comment whose
 	# page does not exist yet destroys the only copy, so this gate is what makes that safe.
+	# Three checks, because "a page exists" is three different claims: the class owns one
+	# (docs_coverage), each declared method has one of its own (docs_methods), and the pages
+	# that do exist are valid HTML with links that resolve (htmlcheck). Only the first was
+	# wired here, so a module could pass layer 5 with 18 method pages that covered none of its
+	# methods and a sidebar full of dead links — which is exactly what happened to Log.
 	modules_touched=$(for f in "${FILES[@]}"; do [[ "$f" == Engine/*/* ]] && printf '%s\n' "${f#Engine/}" | cut -d/ -f1; done | sort -u)
 	coverage_out=$(python3 "$SCRIPT_DIR/docs_coverage.py" check $modules_touched 2>&1)
 	coverage_code=$?
 	echo "$coverage_out" | sed 's/^/    /'
 	if [[ $coverage_code -ne 0 ]]; then BACKLOG=$((BACKLOG+1)); fi
+
+	if [[ -n "$modules_touched" ]]; then
+		methods_out=$(python3 "$SCRIPT_DIR/docs_methods.py" $modules_touched 2>&1)
+		methods_code=$?
+		echo "$methods_out" | sed 's/^/    /'
+		if [[ $methods_code -ne 0 ]]; then BACKLOG=$((BACKLOG+1)); fi
+
+		doc_pages=()
+		for m in $modules_touched; do
+			while IFS= read -r page; do doc_pages+=("$page"); done < <(find "docs/$m" -name '*.html' 2>/dev/null | sort)
+		done
+		if [[ ${#doc_pages[@]} -gt 0 ]]; then
+			html_out=$(python3 "$SCRIPT_DIR/htmlcheck.py" "${doc_pages[@]}" 2>&1)
+			html_code=$?
+			echo "$html_out" | sed 's/^/    /'
+			# A page that exists and is broken is a defect, not remaining work, so this one is a
+			# violation rather than backlog: an undeclared CSS class or a dead anchor is a bug in
+			# what was just written, and the reader meets it before anyone reads the ledger.
+			if [[ $html_code -ne 0 ]]; then VIOL=$((VIOL+1)); fi
+		fi
+	fi
 
 	hdr "convention debt — namespace indentation, reported while the sweep is in progress"
 	# A namespace body must start at column 0. Only the first non-blank line after

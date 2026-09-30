@@ -17,7 +17,7 @@ Source comments are banned, so a missing page means the contract is nowhere.
 | OSAL | 9 | 0 | 9 | 5 | 105 |
 | Renderer | 8 | 8 | 0 | 2 | 265 |
 | Resource | 5 | 5 | 0 | 3 | 0 |
-| String | 8 | 0 | 8 | 5 | 19 |
+| String | 8 | 1 | 7 | 5 | 19 |
 | Test | 4 | 3 | 1 | 0 | 126 |
 
 ## Entries
@@ -181,7 +181,7 @@ Source comments are banned, so a missing page means the contract is nowhere.
 | Resource | BufferTest | test-only | `Engine/Resource/Buffer.h` | `docs/Resource/BufferTest/index.html` | 0 | test-only — owns a Coverage row |
 | Resource | Resource | class | `Engine/Resource/Resource.h` | `docs/Resource/Resource/index.html` | 2 | documented |
 | Resource | ResourceManager | class | `Engine/Resource/ResourceManager.h` | `docs/Resource/ResourceManager/index.html` | 6 | documented |
-| String | EndLine | class | `Engine/String/EndLine.h` | `docs/String/EndLine/index.html` | 0 | MISSING |
+| String | EndLine | class | `Engine/String/EndLine.h` | `docs/String/EndLine/index.html` | 1 | documented |
 | String | InlineStringBuilder | class | `Engine/String/InlineStringBuilder.h` | `docs/String/InlineStringBuilder/index.html` | 0 | MISSING |
 | String | InlineStringBuilderTest | test-only | `Engine/String/InlineStringBuilder.h` | `docs/String/InlineStringBuilderTest/index.html` | 0 | test-only — owns a Coverage row |
 | String | Letter | class | `Engine/String/Letter.h` | `docs/String/Letter/index.html` | 0 | MISSING |

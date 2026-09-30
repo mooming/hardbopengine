@@ -1,14 +1,13 @@
 ---
 name: hb-standards
 description: >-
-  Format and strictly lint HardBop Engine C++ sources touched by a commit against
-  the project coding standards, then prove the tree still builds in Debug, Dev and
-  Release. Use when asked to apply clang-format, check or fix coding standards,
-  prepare or amend a commit, review a commit for style conformance, or when
-  Main.cpp / engine sources need the Allman brace style, tab indentation, include
-  ordering and the Engine/CodingStandards.h conventions enforced. Also use before
-  declaring any engine change done, because the skill ends with a three-configuration
-  build gate.
+  Bring HardBop Engine C++ sources into the project coding standards end to end: format, lint, migrate
+  doc comments into the HTML reference, delete them, reorder members, and prove the tree still builds in
+  Debug, Dev and Release. Use when asked to apply clang-format, check or fix coding standards, prepare or
+  amend a commit, review a commit for style conformance, sweep or strip comments from a module, write or
+  repair API reference pages under docs/, or when Main.cpp / engine sources need the Allman brace style,
+  tab indentation, include ordering and the Engine/CodingStandards.h conventions enforced. Also use before
+  declaring any engine change done, because the skill ends with a three-configuration build gate.
 ---
 
 # hb-standards
@@ -20,10 +19,10 @@ were **clang-format-clean but rule-non-clean** (include layout), so no single la
 |---|---|---|---|
 | 1 | Allman braces, tabs, 120 columns, include order, blank lines | clang-format | yes, `--apply` |
 | 2 | joined empty bodies, no exceptions, `m_` prefix, explicit `inline`, hygiene, include layout | greps | no |
-| 3 | comment ban in `.h` and `.cpp` | `scripts/comments.py`, a lexer | no |
+| 3 | comment ban in `.h` and `.cpp` | `scripts/comments.py`, a lexer; `--strip` deletes | yes, `--strip` |
 | 4 | twelve-block member layout | `scripts/layout.py`, clang AST | no |
-| 5 | every declared entry owns a page under `docs/` | `scripts/docs_coverage.py` + `.Plans/DOCS_COVERAGE.md` | no |
-| 6 | Dev, Debug, Release compile, `EngineTest` on request | cmake + ninja | no |
+| 5 | every entry owns a page, every method owns a page, every page is valid HTML | `scripts/docs_coverage.py`, `scripts/docs_methods.py`, `scripts/htmlcheck.py`; `scripts/docs_page.py` writes them | yes, `docs_page.py` |
+| 6 | Dev, Debug, Release compile, `EngineTest` on request | cmake + ninja, `scripts/runtest.sh` | no |
 
 Layers 3 to 5 never rewrite, and that is load-bearing rather than lazy. No tool can tell which
 doc comment belonged to which member, and reordering data members against one another changes C++
@@ -43,9 +42,9 @@ silently, so the layers report and a reader decides.
 
 Exit status: `0` clean, `1` violations, `2` build failed, `3` usage error.
 
-Default scope is the **files a commit touched**, not the whole tree. That is
-deliberate: the tree currently has ~218 files that predate current rules, and a
+Default scope is the **files a commit touched**, not the whole tree. That is deliberate: a
 bulk sweep is a separate owner decision, not something to fold into a feature commit.
+Use `--all` when the whole tree is the intended subject.
 
 Always run it **after** `--apply` and **before** committing. If `--apply` changed
 files, re-run the lint from scratch rather than trusting the formatter's exit code.
@@ -130,7 +129,132 @@ they carry deliberate BAD EXAMPLE blocks. Formatting, naming, hygiene and includ
 checks still apply to them. To silence a specific line elsewhere, end it with
 `// hb-standards:ignore`.
 
-## Layer 3 — build gate (mandatory, last)
+## Layer 3 — the comment ban (`comments.py`)
+
+No comments in `.h` or `.cpp`. The engine's prose belongs to `docs/`; see
+`docs/CodingStandards.md` for the rule and the exhaustive exemption list. A grep cannot enforce
+this: `http://` inside a string literal is not a comment, so the script lexes the file — line
+comments, block comments, string and character literals, and line continuations. Raw string
+literals are absent from this tree (measured: 0 files), and the lexer fails loudly rather than
+mis-lexing if one appears.
+
+Deleting them is `--strip`, and the ordering rule and its token proof live in
+*Deleting the comments, with proof* under Layer 5, because what gates the deletion is the reference.
+The ledger that schedules the work is the same file either way:
+
+```bash
+.pi/skills/hb-standards/scripts/docs_coverage.py ledger     # rewrite .Plans/DOCS_COVERAGE.md
+.pi/skills/hb-standards/scripts/docs_coverage.py check Core # pages Core still owes
+```
+
+## Layer 4 — twelve-block member layout (`layout.py`)
+
+Types, then all data, then all functions; each layer `public` → `protected` → `private`, `static`
+first inside each. The block table is in `docs/CodingStandards.md`. The checker asks clang, because
+C++ declarator syntax defeats patterns exactly here — see the traps below.
+
+Needs a compile database for the project's own flags: `cmake-build-debug/compile_commands.json`.
+Absent, the layer prints `[NONE]` and says so; a rule that could not run must never be readable as
+a rule that passed. Regenerate one with
+`cmake -S . -B cmake-build-debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON`.
+
+## Layer 5 — the reference under `docs/`
+
+Three claims, three checkers, because "this module is documented" is not one question. Only the first
+was wired into `check.sh` for a while, and the gap is exactly the failure it was meant to catch:
+`docs/Log/Logger/` held 18 method pages while none of them was `SetIODriver`, `StopDriverThread` or
+`DriverLoop`, so layer 5 read "documented" about a class whose entire IO-driver mechanism lived only in
+`///` comments a sweep was about to delete.
+
+| Check | Question it answers | Script | Fails the gate as |
+|---|---|---|---|
+| Coverage | does every namespace-scope entry own a page, and does the module index link it | `docs_coverage.py check <Module>` | `[DEBT]` — unauthored work |
+| Method pages | does every declared method own a page of its own | `docs_methods.py <Module>` | `[DEBT]` — unauthored work |
+| Validity | does every page parse, link something real, and use a class the CSS declares | `htmlcheck.py <page ...>` | `[FAIL]` — a defect in what exists |
+
+A page that exists and is broken is a violation, not remaining work: an undeclared CSS class or a dead
+anchor is a bug in what was just written, and the reader meets it before anyone reads the ledger.
+
+`docs_coverage.py ledger` regenerates `.Plans/DOCS_COVERAGE.md`, the per-module worklist. Run it before
+scheduling a module, not after — its first version counted only `.h` and `.hpp` for the comment column and
+so understated `Core` by 295 lines, and a queue built on it sends the next worker to the wrong module.
+
+### Method page naming, and why the checker asks clang
+
+Names come from the clang AST through `layout.py`, because the question is "what can a caller call":
+`operator bool` has no name a regex can find, `using TValue = std::function<void(int)>` reads as a call
+and is not one, and members of `Engine/Math/VectorCommonImpl.inl` belong to the class that includes them.
+
+File names follow `.Plans/AUTHORING_method_and_class_pages.md` section 2 — that table is the rule and
+`docs_methods.py`'s `OPERATOR_PAGES` is its machine-readable copy, so the two are edited together. Both
+sides of the comparison are `norm()`-ed, which is worth stating because `norm` deletes hyphens: comparing
+the raw `operator-right-shift` against the normalised file list means **no operator page ever matches the
+file that satisfies it**, and only single-word pages like `constructors` pass by the accident of having no
+hyphen. Three things that bug hid, all found in one sitting:
+
+- Operators were routed to a "check by hand" bucket before `expected_file()` was consulted, so a class
+  whose entire API is one conversion — `hbe::EndLine`, which exists to become `"\n"` — required no page at
+  all, and a reader could never reach its behaviour.
+- clang names a class template's constructor `ConfigParam<T, IsAtomic>`, so taking the last whitespace
+  token of the description yields `IsAtomic>` and reports a constructor as a method named `IsAtomic` that
+  owns no page. The name is whatever follows the kind word `function`.
+- The contract spells `operator[]` as `operator-index.html` and `operator<<` as
+  `operator-left-shift.html`; a copy of the table said `subscript` and omitted `<<` entirely, and my own
+  Resource pages went out as `operator-shift-left.html` — the third spelling in one tree.
+
+`[[nodiscard]]` on getters, `= delete` and `= default` operators are exempt from needing a page and are
+**counted in the summary line**, not dropped: what a class forbids or inherits by default is its ownership
+story, which the class page carries, and an exemption nobody can see becomes a way to hide a gap.
+
+### Writing the pages (`docs_page.py`)
+
+`docs_page.py` owns the chrome — the sidebar module list, the `current` marker, the breadcrumb depth, the
+prevnext footer, and the method list every page of a class must agree on. It does not own the prose: every
+sentence comes from a fragment file you wrote after reading the header, because a tool cannot know what a
+function was doing wrong.
+
+```bash
+docs_page.py class  String Letter --source Engine/String/Letter.h --summary "…" --sections spec.json
+docs_page.py method String Letter is-lower-case --source Engine/String/Letter.h --summary "…" \
+              --sections spec.json
+docs_page.py renav  String Letter        # after adding a page, re-sync every page's method list
+docs_page.py check  String               # htmlcheck over what was written
+```
+
+`spec.json` is a list of `{"anchor", "heading", "file"}` (or `"body"` for a short one) in page order, and
+the anchors must be the contract's ids. Chrome is lifted from the module's own `index.html` and its
+relative paths are deepened by one directory — the failure that proved this necessary was a lifted page
+whose stylesheet resolved to `docs/String/assets/`, caught by the validator rather than by a reader.
+
+A page is written to `<name>.html.new`, validated, and moved into place **only if `htmlcheck` accepts it**,
+with one tolerated exception: a dead link pointing at a sibling page of the same class that has not been
+authored yet, which is the normal state of the first page of a class. The count of tolerated links is
+printed, so finishing the class stays a visible obligation.
+
+### Deleting the comments, with proof
+
+The ban is only safe after the prose has somewhere to live, and that ordering used to live in one sentence
+of this file plus the operator's memory. It is now a precondition of the tool: `--strip` runs the same two
+doc checks the gate runs and **refuses** if the module still owes class or method pages, naming the
+command that lists them. `--force` overrides, for the case where prose is genuinely going somewhere other
+than a class page — a guide, or nowhere.
+
+```bash
+git show HEAD:Engine/Module/Header.h > /tmp/pre_Header.h        # 1. snapshot, before anything
+python3 scripts/comments.py Engine/Module/Header.h               # 2. read the findings
+python3 scripts/comments.py --strip Engine/Module/Header.h       # 3. delete; refuses if code moved
+python3 scripts/comments.py code_tokens Engine/Module/Header.h /tmp/pre_Header.h   # 4. prove equality
+```
+
+`code_tokens` is a real C++ tokenizer — comments blanked by the ban's own lexer, string and character
+literals opaque, line continuations treated as whitespace, maximal munch — and step 4 compares token
+multisets, so the proof is arithmetic rather than a reading of the diff. Two weak proofs came first: a
+word-level comparison that claimed drift in 98 files that were byte-identical, and a whitespace-collapsed
+one that still flagged 15 because it joined literals *with* their quote characters. The tokenizer's own
+docstring example caught a bug in its first version: `++` and `--` were missing from the operator list, so
+`a++b` and `a+ +b` tokenised identically.
+
+## Layer 6 — build gate (mandatory, last)
 
 Builds `EngineTest`, `VulkanExample` and `WindowExample` across **Dev, Debug and
 Release**, plus the `CodingStandards` target. Lint passing means nothing if the
@@ -149,40 +273,70 @@ The touched files are `touch`ed first so ninja genuinely recompiles: without thi
 `Examples/MacOSApp` is not covered: `Examples/` is not in the root `CMakeLists.txt`,
 so formatting there cannot be compile-verified.
 
-## Layer 3 — the comment ban (`comments.py`)
+## Proving a commit moved no code (`prove_format.py`)
 
-No comments in `.h` or `.cpp`. The engine's prose belongs to `docs/`; see
-`docs/CodingStandards.md` for the rule and the exhaustive exemption list. A grep cannot enforce
-this: `http://` inside a string literal is not a comment, so the script lexes the file — line
-comments, block comments, string and character literals, and line continuations. Raw string
-literals are absent from this tree (measured: 0 files), and the lexer fails loudly rather than
-mis-lexing if one appears.
-
-Run the ledger before deleting comments from a module, and delete only once its pages exist:
+`clang-format --apply` on 169 files is not reviewable by reading 169 diffs, and "the build passed" does
+not prove the formatter only moved whitespace. Run it against a revision and it classifies every file by
+token comparison:
 
 ```bash
-.pi/skills/hb-standards/scripts/docs_coverage.py ledger     # rewrite .Plans/DOCS_COVERAGE.md
-.pi/skills/hb-standards/scripts/docs_coverage.py check Core # pages Core still owes
+python3 scripts/prove_format.py HEAD~1     # exit 0 when every difference is explained
 ```
 
-## Layer 4 — twelve-block member layout (`layout.py`)
+Verdicts: `whitespace` (nothing but layout), `include-order` (a re-sorted include block), `literal-split`
+(a long string the formatter broke across lines), `reorder` (declarations moved — legal only for a member
+layout commit), `unexplained`, and `reorder` with a lost token is a hard failure. The invariant is stated
+once in the tool: nothing may be **lost** from the token multiset, and the only tokens a reorder may add
+are access labels, which crossing an access section requires. An earlier draft demanded an identical
+multiset and so would have failed the very reorder it was written to verify, and its first permitted set
+included `template`, which is not an access label and can carry a change of behaviour.
 
-Types, then all data, then all functions; each layer `public` → `protected` → `private`, `static`
-first inside each. The block table is in `docs/CodingStandards.md`. The checker asks clang, because
-C++ declarator syntax defeats patterns exactly here — see the traps below.
+## The module cycle
 
-Needs a compile database for the project's own flags: `cmake-build-debug/compile_commands.json`.
-Absent, the layer prints `[NONE]` and says so; a rule that could not run must never be readable as
-a rule that passed. Regenerate one with
-`cmake -S . -B cmake-build-debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON`.
+One module — or one header inside a module too large to review at once, which is the owner's decision for
+`String`, `Core` and `Container` — lands as separate commits, in this order, each with its own proof:
 
-## Layer 5 — docs coverage (`docs_coverage.py`)
+| Commit | Content | Proof required before committing |
+|---|---|---|
+| `<mod> layout and naming` | twelve-block reorder, `m_` and snake_case removal, `[[nodiscard]]`, `explicit`, `= default`, `out`-prefixed write-only parameters, named constants | `layout.py` reports 0 for the files; the module target compiles; **if the docs already describe the code, do this first**, otherwise pages quote signatures that are about to change |
+| `<mod> docs` | pages via `docs_page.py`, module index updated, `.Plans/DOCS_COVERAGE.md` regenerated | `docs_coverage.py check <mod>` and `docs_methods.py <mod>` at 0; `htmlcheck.py` clean |
+| `<mod> format` | `clang-format --apply` only | `prove_format.py HEAD~1` exits 0 with every file explained |
+| `<mod> comment ban` | `comments.py --strip` | `code_tokens` identical against the pre-strip snapshot; `comments.py` then reports 0 |
+| ledger and plan | `.Plans/DOCS_COVERAGE.md`, `JOURNAL.md` | the numbers in them re-measured, not carried forward |
 
-Structural only, and honestly so: a script can prove a page exists and is linked, never that its
-prose is right. The ledger lists every namespace-scope entry of every header. A nested type is
-documented on its owner's page, and a `.cpp` declares implementation rather than API — both are
-excluded from the ledger deliberately; the first version counted them and demanded pages no reader
-could name (`docs/Container/Iterator/index.html` was wanted by three different `Iterator` types).
+Three rules the cycle exists to enforce, each learned by being broken:
+
+- **Snapshot before stripping.** The proof of a comment deletion is a token comparison against the exact
+  bytes before it, and there is no way to recover that snapshot after the fact — one strip had to be
+  undone and redone to get a real baseline.
+- **Data member order never changes.** Member order is initialisation order. Only functions and types may
+  move past data, and only into their own block.
+- **A mover must never decide an access specifier.** Insert a labelled block, then re-open the access of
+  the anchor it was inserted before. A mover that inserted `private:` plus members without re-opening
+  `public:` produced a file that compiled and then failed three files away with "field of type `Buffer` has
+  private default constructor" — after two days of notes said exactly this.
+
+Applications and Examples are not modules: they own no API pages, and `Examples/` is outside the root
+`CMakeLists.txt` so **nothing compiles it** — a strip there is provable only by `code_tokens`, never by the
+build gate. Their prose goes to the top-level guides (`docs/RunningTests.md`, `docs/VulkanExampleGuide.md`
+and siblings), which is the convention the tree already uses for prose that is not API.
+
+## Helper scripts
+
+| Script | What it is for |
+|---|---|
+| `check.sh` | the six layers plus the build gate; `--staged`, `<rev>`, `--all`, `--apply`, `--test`, `--no-build` |
+| `gate.sh` | run the whole gate detached, `spawn` / `wait` / `status` / `list` / `release`, with 4 slots |
+| `runtest.sh` | build then run `EngineTest` under a wall clock, and report even when it says nothing |
+| `hang.sh` | build, run, and if the binary stalls, sample **its** stacks and say where |
+| `verify-findings.py` | reject review findings whose cited line does not exist or does not contain the quoted evidence |
+| `prove_format.py` | prove a commit moved no code, per revision |
+| `docs_page.py` | emit reference pages with correct chrome, validated before kept |
+
+`verify-findings.py` is not decoration. A model asked to audit files it never opened invents defects rather
+than reporting none, and the invention is invisible in prose but cheap to detect: the line it "quoted" is
+past the end of the file, or the file does not exist. Feeding findings through it turns that observation
+into an exit code, so a reviewer that fabricates fails a gate instead of reaching a human.
 
 ## Judgement checks a script cannot do
 
@@ -236,6 +390,28 @@ Grep these in the changed hunks and fix by hand:
 - **A `#ifdef __UNIT_TEST__` file compiles to nothing under Dev**, and clang then exits 0 having
   dumped zero declarations. That is not a pass. Re-run with `-D__UNIT_TEST__=1` and report which
   macros were active — `Engine/Renderer/RendererTest.h` and three Math sources need it.
+- **The doc gate must check three things, not one.** `docs_coverage.py` asks whether a page exists; it
+  cannot tell whether the page says anything about the method it names. Wiring only that one left `Log`
+  passing with 18 method pages covering none of the driver-thread methods. Add `docs_methods.py` and
+  `htmlcheck.py` to layer 5 and keep their exit codes distinct: unauthored pages are backlog, a broken page
+  is a violation.
+
+- **`htmlcheck` must count a page's own `<style>` block as a declaration.** Only reading the shared
+  stylesheet reported seven styled blocks in `docs/RendererDesign.html` as undeclared classes, which
+  teaches a reader to ignore the tool. A class consumed by a library rather than CSS — `mermaid` — is
+  declared in the shared stylesheet with the reason written next to it, so the rule keeps meaning "nobody
+  renders this".
+
+- **A ledger column is a measurement, not a constant.** The comment column of `docs_coverage.py ledger`
+  walked `.h`/`.hpp` only, which understated `Core` by 295 lines, and the same file still carried counts
+  for two modules stripped weeks earlier. Re-measure before scheduling work from it; a plausible number is
+  still a guess until something produces it.
+
+- **Do not trust your own earlier claim that a check runs end to end.** `expected_file()` was verified with
+  a unit test on its own inputs and reported as "the gate now requires a conversion page"; the caller
+  routed every operator past it. Verify the whole path — generate the page, run the checker, read the
+  verdict.
+
 - **`docs_coverage.py` namespace detection needs the newline.** A pending-declaration buffer that
   drops newlines reads `...h"namespace hbe` and the pattern for a namespace brace can no longer
   see the keyword, so every class looked nested. Keep a separator when you strip whitespace.
@@ -292,6 +468,6 @@ separate from any reordering commit. When the last module lands, flip this layer
 
 ## Reporting
 
-Report the violation count per layer, the 9-configuration build result, and
-anything left as `[DEBT]` or `[WARN]`. Never claim the gate passed on the strength
+Report the count per layer — grep failures, advisories, sweep backlog — the
+three-configuration build result, and anything left as `[DEBT]` or `[WARN]`. Never claim the gate passed on the strength
 of a "no work to do" build. Never push without explicit permission.
