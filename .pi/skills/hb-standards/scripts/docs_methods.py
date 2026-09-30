@@ -21,7 +21,10 @@ acronym was hyphenated — a stricter comparison would report a gap that is only
 Constructors and destructors own `constructors.html` and `destructor.html` (one page each, however
 many overloads), because that is what every existing page does. Operators are reported separately:
 `operator<` becomes `operator-less.html`, and a class that documents its operators in a table on its
-own page is answering the question, just not with a file per name.
+own page is answering the question, just not with a file per name. A conversion operator owns
+`conversion.html`, because it has no name a reader could search for and a class whose entire API is one
+conversion -- `hbe::EndLine`, which exists to become a newline -- would otherwise require no page at all.
+A user-defined literal operator is still unrecognised and asks for nothing.
 
 Usage: docs_methods.py [--db <compile_commands.json>] <Module> [<Module> ...]
 Exit status: 1 when a public method of an entry with a page has no page of its own.
@@ -73,7 +76,12 @@ def expected_file(description):
         tail = description[description.index('operator') + len('operator'):].strip()
         symbol = tail.split('(')[0].strip() or name
         spelled = OPERATOR_PAGES.get(symbol)
-        return ('operator-' + spelled) if spelled else None
+        if spelled:
+            return 'operator-' + spelled
+        bare = re.sub(r'<.*>', '', symbol).replace('const', '').strip()
+        if re.fullmatch(r'[A-Za-z_][\w:]*\s*\**', bare):
+            return 'conversion'
+        return None
     if name.startswith('~'):
         return 'destructor'
     return norm(name)
