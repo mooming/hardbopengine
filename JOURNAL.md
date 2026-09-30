@@ -1,5 +1,52 @@
 # Journal
 
+## 2026-09-30 03:10 - four modules conformant, and the docs gate turns out to have been measuring the wrong thing
+
+Subagent dispatch was abandoned after measurement: the HSTL worker took 58 minutes and over-verified
+(it built three configurations and diffed `-O2` assembly to justify collapsing four blank lines), the
+Config worker took 3.6 hours, made 20 tool calls and wrote **nothing**. The owner chose inline execution
+with me as the single worker. Modules closed since: HSTL, Config, Log, Engine — 10 of 14 remain.
+
+**Three checker defects were found and fixed, each one a false green.** `comments.py` judged a
+structural label by its text, rejecting the rule book's own `#else // !__UNIT_TEST__` example and
+accepting `// TODO`; separately it parsed every C++ `if` as a preprocessor directive. `layout.py`
+reported "5 clean" for HSTL having never seen either class body — no `ClassTemplateSpecializationDecl`,
+one filtered AST pass, retry only on a wholly empty dump. Both fixed, and the false-positive drop was
+measured (3035 → 2723) rather than assumed.
+
+**The comment sweep is a tool that cannot change a token.** `comments.py --strip` deletes exactly the
+spans the checker reported and refuses to write a file whose code lines moved, comparing
+whitespace-collapsed code lines before and after. Dry run on all 272 sources: 2,723 comments removed, 0
+refused, and independently `git show HEAD:` compared file by file — 272/272 code-identical. Proof
+caught something a diff would not have: clang-format split a long log literal into three adjacent
+literals, and the concatenation had to be compared character by character, because a string whose
+content changes still sits on the same line.
+
+**A de-indent tool was written, tested and deleted.** `NamespaceIndentation: None` was already in
+`.clang-format`, so `clang-format` performs the namespace sweep it took me 150 lines to reimplement.
+The first version also counted every `{` as a namespace, dedenting function bodies across 221 files —
+and the token proof could not see it, because indentation is not a token.
+
+**Two holes in the reference gate, both found by distrusting a plausible number.**
+`docs_coverage.py` counted HTML files in a class's directory and never compared them to the API:
+`docs/Log/Logger/` holds 18 method pages and none of them is `SetIODriver`, `StopDriverThread` or
+`DriverLoop` — the driver thread, the lock making stream withdrawal safe, and the shutdown order existed
+only in comments about to be deleted. `docs_methods.py` now asks per method, from the AST. Tree-wide:
+**160 method pages missing** (Container 112, Test 21, Renderer 18), and Math, Memory, String and OSAL
+report zero because they own no class pages at all — unmeasured, not covered. The same script found a
+forward declaration (`class TaskSystem;` in Logger.h) being billed a page, and a pattern that could not
+read a colon, which had hidden every derived class and every fixed-underlying-type enum: entries
+112 → 94 → 113, test-only 30 → 61, because a test class derives from a base.
+
+**A new class of defect the ban creates.** Nine reference sentences cited comments — "grouped under
+`// Log`", `LEFT_HANDED_COORDINATE` whose entire declaration was a commented-out `#define`. Those
+became false when a sweep three files away deleted the comment, and neither page-existence nor
+link-validity can see it. Every page that quoted a comment is now rewritten, and `run.html`'s quote of
+`// It may terminate the application immediately.` was fixed before Engine was swept rather than after.
+
+Tooling added: `comments.py --strip`, `htmlcheck.py` (the validator that lived in `.Plans` as a
+snippet and had never been run tree-wide — 19 problem pages), `docs_methods.py`.
+
 ## 2026-09-29 21:20 - two new rules become enforcement, not prose, and the tree is measured against them
 
 The owner set three rules in one sitting: member variables move above member functions in a

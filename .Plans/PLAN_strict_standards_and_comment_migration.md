@@ -114,19 +114,28 @@ gaps are namespace-scope API entries with no page.
 | Order | Module | Status | API pages missing | comment lines to move | layout findings |
 |---|---|---|---|---|---|
 | 1 | HSTL | **complete** `8854177` | 0 | 0 | 0 |
-| 2 | Config | pending | 0 | 101 | 2 |
-| 3 | Log | pending | 1 | 82 | 3 |
-| 4 | Test | pending | 1 | 109 | 3 |
-| 5 | Renderer | pending | 0 | 157 | 3 |
-| 6 | Engine | pending | 0 | 28 | 1 |
-| 7 | Resource | pending | 4 | 8 | 4 |
-| 8 | String | pending | 8 | 10 | 8 |
-| 9 | Container | pending | 1 | 51 | 12 |
-| 10 | OSAL | pending | 7 | 46 | 10 |
-| 11 | Math | pending | 15 | 93 | 15 |
-| 12 | Memory | pending | 20 | 98 | 19 |
-| 13 | Core | pending | 25 | 1178 | 22 |
+| 2 | Config | **complete** `914cad4` | 0 | 0 | 0 |
+| 3 | Log | **complete** `8f1684a` | 0 | 0 | 0 |
+| 4 | Engine | **complete** `5892e98` | 0 | 0 | 0 |
+| 5 | Resource | pending | 2 | 8 | 4 |
+| 6 | String | pending | 8 | 10 | 8 |
+| 7 | Container | pending | 1 | 51 | 12 |
+| 8 | OSAL | pending | 5 | 46 | 10 |
+| 9 | Test | pending | 1 | 109 | 3 |
+| 10 | Renderer | pending | 0 | 157 | 3 |
+| 11 | Math | pending | 16 | 93 | 16 |
+| 12 | Memory | pending | 17 | 98 | 19 |
+| 13 | Core | pending | 22 | 1178 | 22 |
 | 14 | Applications | pending | 0 | 26 | 0 |
+
+**A fifth column the table above cannot show: method pages.** `docs_coverage.py` only asks whether a
+class owns a page, so an entry can be "documented" with 18 pages that omit three methods. Measured with
+`docs_methods.py` on 2026-09-30, **160 methods have no page**: Container 112, Test 21, Renderer 18, Log 3
+(since written), Engine 2 (since written), Config 1, Resource 1. Math, Memory, String and OSAL report
+zero — not because they are covered but because they own no class directory for the script to compare
+against, so their method debt is unmeasured and at least equal to their method count. A module's comment
+sweep cannot pass until this column is zero for it, because comments are the only place those contracts
+currently live.
 
 The modules are ordered by cost, cheapest complete cycle first, so the pipeline is proven on the
 small ones and the documentation-heavy ones are the last thing standing if this stops.
