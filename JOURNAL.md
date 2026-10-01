@@ -1,5 +1,35 @@
 # Journal
 
+## 2026-10-01 15:49 — Core reference work started by hand; a Memory defect surfaced on the way
+
+**Context.** The owner ruled the reference pages hand work, which also settled the open question about the
+twelve-block reorder: it stays a manual step under the `layout.py --init-order` proof, and no reorder tool is
+to be built. Hand work means no generator, so the AUTHORING contract is the specification and its validators
+are the gate.
+
+**Landed (`a03312f`).** `True_t`, `False_t`, `IsReferenceType`: three folder pages plus module-page rows,
+sections and sidebar entries. Core class pages missing 22 → 19; `htmlcheck` clean, and the contract's own
+outbound and inbound scans report `ALL CLEAN` / `all resolve`. Two habits paid for themselves: every
+`file:line` was re-checked with grep after being written, which moved one citation from a function's opening
+line to the line that actually stores the pointer, and every compile-behaviour claim was probed rather than
+inferred — seven `static_assert`s compiled clean establish that `int&&` takes the **primary** template, which
+nothing in the spelling of `T&` would have told a reader.
+
+**Finding, recorded and deliberately not fixed: `Engine/Memory/Optional.h` copies a reference-typed storage
+with the wrong length.** For `TType = int&` the buffer is sized by `IsReferenceType<int&>::TypeSize`, which is
+`sizeof(int*)` — 8 measured — because the reference branch stores the referent's address
+(`Optional.h:192`). But the copy and move branches size their `memcpy` by `sizeof(TType)`
+(`Optional.h:211`, `:223`), and `sizeof(int&)` is the *referent's* size, 4 measured. The two agree only when the
+referent happens to be pointer-sized; `Optional<Class&>` would transfer one byte of a eight-byte pointer, and
+`Engine/Memory/Optional.cpp:31`, `:60`, `:80` do construct `Optional<int&>`, `Optional<Class&>` and
+`Optional<Integer&>`.
+
+It stayed a finding because a memcpy length next to a storage extent is a behaviour change in a module whose
+reference pages do not exist yet, and the owner chose documentation over a drive-by fix: the change deserves its
+own goal, its own reproducing probe — a copy at an address whose high half is non-zero — and its own
+three-configuration build gate. Stated as a hazard on the `IsReferenceType` page because that page is where
+`TypeSize` is defined, and a caller that copies storage sized by this trait makes the same mistake.
+
 ## 2026-10-01 13:50 — `comments.py` was deleting labels the standard permits; the stack now pops
 
 **Context.** The `ScopedLock` pilot reported that only one of the three comments `comments.py` flagged in
