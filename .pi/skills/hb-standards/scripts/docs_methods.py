@@ -239,6 +239,18 @@ def main(argv):
         at = argv.index('--db')
         db = argv[at + 1]
         argv = argv[:at] + argv[at + 2:]
+    # `--Only` restricts the report to named classes, so a caller stripping one file can ask about
+    # just the entries that file declares. Filtering happens on the finished rows rather than on the
+    # header walk: which pages a class owes is a property of the class, and skipping headers would
+    # change which `#include` chain clang resolves.
+    only = None
+    if '--only' in argv:
+        at = argv.index('--only')
+        if at + 1 >= len(argv):
+            print('[ERROR] --only wants a comma-separated class list', file=sys.stderr)
+            return 3
+        only = set(n.strip() for n in argv[at + 1].split(',') if n.strip())
+        argv = argv[:at] + argv[at + 2:]
     if not argv:
         print(__doc__, file=sys.stderr)
         return 2
@@ -259,6 +271,11 @@ def main(argv):
     total = 0
     for module in argv:
         missing, operators, notes, defaulted, deleted = check_module(module, entries, by_name)
+        if only is not None:
+            # Rows read `Engine/Core/WorkItem.h:89: DOC-METHOD  WorkItem — no destructor.html ...`,
+            # so the class is named after the marker; operator rows name it as `Class::operator<<`.
+            missing = [row for row in missing if any('DOC-METHOD  %s \u2014' % name in row for name in only)]
+            operators = [row for row in operators if any('%s::operator' % name in row for name in only)]
         for note in notes:
             print('    %s' % note)
         for row in missing:
@@ -266,9 +283,10 @@ def main(argv):
         for row in sorted(set(operators)):
             print('    [OPERATOR] %s' % row)
         total += len(missing)
-        print('    method coverage %s: %d method(s) without a page, %d operator(s) to check by hand, '
+        print('    method coverage %s%s: %d method(s) without a page, %d operator(s) to check by hand, '
               '%d defaulted, %d deleted'
-              % (module, len(missing), len(set(operators)), len(set(defaulted)), len(set(deleted))))
+              % (module, ' (filtered to %s)' % ','.join(sorted(only)) if only is not None else '',
+                 len(missing), len(set(operators)), len(set(defaulted)), len(set(deleted))))
     print('method pages missing: %d' % total)
     return 1 if total else 0
 

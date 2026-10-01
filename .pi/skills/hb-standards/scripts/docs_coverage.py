@@ -336,11 +336,68 @@ def write_ledger():
     return 0
 
 
+def check_file(argv):
+    """May this one file lose its source comments? The per-file question `--strip` has to ask.
+
+    The module-wide check could not answer it. `check Core` says "fifteen entries have no page", and
+    that is the right thing for a report to say, but it means a header whose own pages are finished,
+    every method page written and whose pointer resolves both, waits on every undocumented entry in
+    the same module - so `TaskSystem` sat at 233 comments with 46 pages already written, and the
+    guard that exists to stop prose being deleted before it has somewhere to live was instead
+    deleting nothing anywhere. Per entry, the invariant is exactly as strong: no comment goes away
+    until the entry it documents owns a page that the header points at.
+
+    A file that declares no API entry gets no green light. Comments in such a file are implementation
+    notes, and the standard sends those to a design document under docs/ - which no tool measures -
+    so the guard cannot prove they have somewhere to live and says so instead of passing them.
+    """
+    if not argv:
+        print('usage: docs_coverage.py check-file <path under Engine/>', file=sys.stderr)
+        return 3
+    path = os.path.relpath(argv[0], REPO_ROOT)
+    if not os.path.isfile(os.path.join(REPO_ROOT, path)):
+        print('[ERROR] %s: no such file' % path, file=sys.stderr)
+        return 3
+    rows = [r for r in ledger_rows() if r['source'] == path]
+    api = [r for r in rows if not r['test_only']]
+    if not api:
+        print('[NO ENTRIES] %s declares no documented entry of its own.' % path)
+        print('             Its comments are implementation notes, which belong in a design document')
+        print('             under docs/ - a migration no tool can verify. Strip it with --force, or')
+        print('             after the prose has been moved by hand.')
+        return 3
+    blockers = []
+    for row in api:
+        if not row['exists']:
+            blockers.append('%s has no reference page (%s)' % (row['entry'], row['page']))
+        elif not row['pointer']:
+            blockers.append('%s owns a page that %s does not address (no API reference pointer)'
+                            % (row['entry'], path))
+    import subprocess
+    script = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'docs_methods.py')
+    result = subprocess.run([sys.executable, script, api[0]['module'],
+                             '--only', ','.join(sorted(row['entry'] for row in api))],
+                            capture_output=True, text=True)
+    for line in result.stdout.splitlines():
+        if 'DOC-METHOD' in line:
+            blockers.append(line.strip())
+    for line in blockers:
+        print('[BLOCKS STRIP] %s: %s' % (path, line))
+    if blockers:
+        print('file docs check: %s - %d blocker(s)' % (path, len(blockers)))
+        return 1
+    print('file docs check: %s - %d entr%s documented, addressed from the header, method pages complete'
+          % (path, len(api), 'y' if len(api) == 1 else 'ies'))
+    return 0
+
+
 def check(argv):
     if not os.path.isfile(LEDGER):
         print('[NONE] no coverage ledger exists — run `docs_coverage.py ledger` first, an')
         print('       unmeasured tree is not a passing tree.')
-        return 0
+        # Returning 0 here made an unmeasured tree read as a documented one, and `--strip` asks
+        # this command whether the pages exist. A check that cannot run is a refusal.
+        return 3
     rows = ledger_rows()
     wanted = set(argv)
     # `check Core` and `check Engine/Core` are not the same question. Rows are keyed by module
@@ -388,6 +445,8 @@ def main(argv):
         return write_ledger()
     if action == 'check':
         return check(argv[1:])
+    if action == 'check-file':
+        return check_file(argv[1:])
     if action == 'missing':
         for r in ledger_rows():
             if r['module'] == (argv[1] if len(argv) > 1 else '') and not r['exists']:

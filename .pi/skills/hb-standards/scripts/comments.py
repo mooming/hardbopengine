@@ -453,39 +453,53 @@ def engine_module(path):
 
 
 def docs_are_in_place(paths, force=False):
-    """True when every module about to lose its comments already owns its reference pages.
+    """The files whose comments may be deleted, and why the rest may not.
 
-    The ban is only safe after the prose has somewhere to live, and until now that ordering lived in one
-    sentence of SKILL.md plus the operator's memory. This makes it a precondition of the tool: the two
-    doc checks run as the same commands the gate runs, so the verdict here and the verdict in check.sh
-    cannot drift apart, and a module whose checker could not run at all is a refusal rather than a pass.
+    The ban is only safe after the prose has somewhere to live, and that ordering must be a property of
+    the tool rather than of the operator's memory. It is asked per file, through
+    `docs_coverage.py check-file`, which answers for the entries *this* file declares: a page exists,
+    the header addresses it, and every method name has a page.
+
+    Per entry, not per module. The module-wide question — "is Core documented?" — has the wrong shape
+    for a strip: it made a header whose own reference was finished wait on every undocumented entry in
+    the same module, so the guard meant to protect prose ended up deleting none of it anywhere, and the
+    finished documentation bought nothing. What the invariant actually needs is per declaration: no
+    comment is removed until the entry it documents owns the page it was moved into.
     """
-    modules = sorted({m for m in (engine_module(p) for p in paths) if m})
+    import subprocess
     outside = [p for p in paths if engine_module(p) is None]
     if outside:
         print('note: %d file(s) outside Engine/ own no API pages — move their prose into a guide under '
               'docs/ by hand' % len(outside))
+    checker = os.path.join(SCRIPT_DIR, 'docs_coverage.py')
+    allowed = []
     blockers = []
-    for module in modules:
-        for tool, args, what in (('docs_coverage.py', ['check', module], 'class pages'),
-                                 ('docs_methods.py', [module], 'method pages')):
-            script = os.path.join(SCRIPT_DIR, tool)
-            if not os.path.isfile(script):
-                blockers.append('%s: %s is missing, so %s cannot be verified' % (module, tool, what))
-                continue
-            import subprocess
-            result = subprocess.run([sys.executable, script] + args, capture_output=True, text=True)
-            if result.returncode != 0:
-                blockers.append('%s: %s reports missing %s (%s %s)'
-                                % (module, tool, what, tool, ' '.join(args)))
+    for path in paths:
+        if engine_module(path) is None:
+            allowed.append(path)
+            continue
+        if not os.path.isfile(checker):
+            blockers.append('%s: docs_coverage.py is missing, so this file\'s pages cannot be verified' % path)
+            continue
+        result = subprocess.run([sys.executable, checker, 'check-file', path], capture_output=True, text=True)
+        if result.returncode == 0:
+            allowed.append(path)
+            continue
+        detail = [line.strip() for line in result.stdout.splitlines()
+                  if line.strip() and not line.startswith('file docs check')]
+        reason = detail[0] if detail else 'the per-file documentation check failed'
+        blockers.append('%s: %s' % (path, reason.replace('[BLOCKS STRIP] %s: ' % path, '')))
     if not blockers:
-        return True
+        return allowed
     print('REFUSED: comments are being deleted before their reference pages exist', file=sys.stderr)
     for row in blockers:
         print('  %s' % row, file=sys.stderr)
+    if allowed:
+        print('  %d file(s) in this call are not blocked and would still be stripped.' % len(allowed),
+              file=sys.stderr)
     print('  Write the pages first (docs_page.py emits them with correct chrome), or pass --force if the '
           'prose is going somewhere else.', file=sys.stderr)
-    return force
+    return paths if force else allowed
 
 
 def strip_file(path, text):
@@ -654,8 +668,14 @@ def main(argv):
     argv = [a for a in argv if a != '--force']
     strip = '--strip' in argv
     argv = [a for a in argv if a != '--strip']
-    if strip and not docs_are_in_place(argv, force=force):
-        return 1
+    if strip:
+        allowed = docs_are_in_place(argv, force=force)
+        if not allowed:
+            return 1
+        # A guard that narrows the scope must not let the run report full success: the files it refused
+        # are still standing, and a caller reading only the exit status would think the sweep finished.
+        partial = len(allowed) != len(argv)
+        argv = allowed
     if not argv:
         print('usage: comments.py [--strip] <file ...>', file=sys.stderr)
         return 3
@@ -686,6 +706,7 @@ def main(argv):
             print(f)
     if strip:
         print('stripped %d comment(s) from %d file(s), %d refused' % (total, scored, refused))
+        return 1 if refused or partial else 0
     else:
         print('comments examined in %d file(s): %d violation(s)' % (scored, total))
     return 1 if (total and not strip) or refused else 0
