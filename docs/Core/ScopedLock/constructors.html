@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ScopedLock::constructors — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3>Methods</h3>
+  <ul class="methods">
+    <li><a href="index.html">ScopedLock</a> methods</li>
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="destructor.html">~ScopedLock</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">ScopedLock</a> / constructors
+</p>
+
+<h1><span class="fn">constructors</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::ScopedLock</span>
+  <span class="tag">Engine/Core/ScopedLock.h</span>
+  takes the lock on the spot, and in a profiled build also records the hold's start, threshold and call site
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code><span class="cm">// Shape compiled when PROFILE_ENABLED is 1 (Engine/Config/BuildConfig.h defines it as 0 today):</span>
+<span class="kw">explicit</span> <span class="fn">ScopedLock</span>(<span class="ty">TLockable</span>&amp;amp; lockable, <span class="kw">float</span> timeOutSec = <span class="nu">0.01f</span>,
+                   <span class="kw">const</span> <span class="ty">TSrcLoc</span>&amp;amp; srcLoc = <span class="ty">TSrcLoc</span>::<span class="fn">current</span>());
+<span class="fn">ScopedLock</span>(<span class="kw">const</span> <span class="ty">ScopedLock</span>&amp;amp;) = <span class="kw">delete</span>;
+
+<span class="cm">// Shape compiled when PROFILE_ENABLED is 0:</span>
+<span class="fn">ScopedLock</span>(<span class="ty">TLockable</span>&amp;amp; lockable);
+<span class="fn">ScopedLock</span>(<span class="ty">TLockable</span>&amp;amp; lockable, <span class="kw">float</span>);
+<span class="fn">ScopedLock</span>(<span class="ty">TLockable</span>&amp;amp; lockable, <span class="kw">float</span>, <span class="kw">const</span> <span class="ty">TSrcLoc</span>&amp;amp;);
+<span class="fn">ScopedLock</span>(<span class="kw">const</span> <span class="ty">ScopedLock</span>&amp;amp;) = <span class="kw">delete</span>;</code></pre>
+<h2 id="description">Function description</h2>
+
+<p>
+  Every shape does the one thing a caller depends on: the constructor body calls <code>lockable.lock()</code>
+  before it returns, so a guard that exists holds the lock, and the guard is the only handle on it. There is no
+  unlock member and no release-on-failure path — <a href="destructor.html">the destructor</a> is the only way
+  the lock comes back. The result of <code>lock()</code> is discarded, whatever the lockable returns; the guard
+  assumes acquisition succeeded.
+</p>
+
+<p>
+  When <code>PROFILE_ENABLED</code> is 1 the constructor is <code>explicit</code> — a lockable reference never
+  becomes a guard by implicit conversion — and its member-initialization list records
+  <code>time::TStopWatch::now()</code> into <code>startTime</code> <em>before</em> <code>lock()</code> runs,
+  together with the timeout threshold and the call site. Under <code>__DEBUG__</code> the body then multiplies
+  the stored threshold by <code>Config::DebugTimeOutMultiplier</code> (<code>2.0f</code>,
+  <code>Engine/Config/EngineConfig.h:41</code>), so a debug build tolerates twice the wall time before the
+  destructor complains.
+</p>
+
+<p>
+  When <code>PROFILE_ENABLED</code> is 0 — every configuration shipped today — the lockable reference is the
+  only argument that survives. The two additional constructors accept <code>(lockable, float)</code> and
+  <code>(lockable, float, TSrcLoc)</code> and delegate to the one-argument form, discarding the timing
+  arguments. That is deliberate: a call site that names a timeout and a source location compiles identically
+  whether or not profiling is built in.
+</p>
+
+<div class="note">
+  <strong>The one-argument constructor of the profiling-disabled shape is the one constructor in this class
+  that is not <code>explicit</code>.</strong> The profiled shape marks its constructor <code>explicit</code>;
+  the compiled-out shape leaves the single-argument form implicit. Copy-initialization —
+  <code>ScopedLock guard = mutex;</code> — therefore names a locking intent in the build where the timing
+  members do not exist, and fails to compile in the profiled one.
+</div>
+
+<div class="gap">
+  <strong>A timeout named at a call site is ignored, silently, when profiling is compiled out.</strong> The
+  argument is accepted and dropped. It is not a runtime feature with a runtime off-switch —
+  <code>Engine/Config/BuildConfig.h</code> defines <code>PROFILE_ENABLED</code> as <code>0</code> and no build
+  configuration in this repository overrides it — so a call site written as
+  <code>ScopedLock(m, 5.0f)</code> locks exactly like <code>ScopedLock(m)</code> today, and only means
+  something if that header is edited.
+</div>
+
+<p>
+  The copy constructor is <code>= delete</code>, and no move constructor is implicitly generated: the
+  user-declared copy constructor and the user-provided destructor jointly suppress it (confirmed by a
+  <code>-fsyntax-only</code> probe of the same declaration pattern with
+  <code>std::is_move_constructible_v</code>). A guard is therefore born in a scope and dies in that scope;
+  nothing can carry the lock elsewhere. That matters because <code>lock()</code> ran on the constructing
+  thread, and lockables that track an owner — <code>std::mutex</code> among them — require the matching
+  <code>unlock()</code> on the same thread. The guard relies on the scope rule to give it that; it checks
+  nothing itself.
+</p>
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr>
+    <td><code>lockable</code></td>
+    <td><code>TLockable&amp;</code></td>
+    <td>
+      The mutex being held. Not owned: the guard stores a reference, so the lockable must be alive when the
+      guard is destroyed, and the guard must not outlive it. It must satisfy
+      <a href="index.html#template"><code>CLockable</code></a> — <code>lock()</code> and
+      <code>unlock()</code> — and whatever state <code>lock()</code> expects (unlocked, unlocked-by-this-thread,
+      recursive count) is the caller's obligation, not the guard's.
+    </td>
+  </tr>
+  <tr>
+    <td><code>timeOutSec</code></td>
+    <td><code>float</code> (default <code>0.01f</code>; accepted-and-discarded when <code>PROFILE_ENABLED</code> is 0)</td>
+    <td>
+      Hold threshold in seconds. The <a href="destructor.html">destructor</a> warns when the measured span
+      exceeds it; <code>&lt;= 0</code> disables the warning without disabling profiling state. Under
+      <code>__DEBUG__</code> the stored value is doubled by <code>Config::DebugTimeOutMultiplier</code>.
+    </td>
+  </tr>
+  <tr>
+    <td><code>srcLoc</code></td>
+    <td><code>const TSrcLoc&amp;</code> (default <code>TSrcLoc::current()</code>; accepted-and-discarded when <code>PROFILE_ENABLED</code> is 0)</td>
+    <td>
+      Call site written into the timeout warning's log line. Defaults to the construction point, which is the
+      only value that makes the warning actionable. The type's own availability is qualified on the
+      <a href="index.html#coverage">class page's Coverage section</a>.
+    </td>
+  </tr>
+</table>
+<h2 id="return">Return value</h2>
+
+<p>
+  A constructed guard that already holds the lock. There is nothing to inspect afterwards: the class exposes no
+  accessor and no query — its entire API is that it exists for the duration of a scope.
+</p>
+<h2 id="example">Examples</h2>
+
+<p class="note">Illustrative — no call site for this exists in the repository. The only instantiation of
+<code>ScopedLock</code> anywhere in the tree is the explicit definition <code>template class
+ScopedLock&lt;std::mutex&gt;;</code> in <code>Engine/Core/ScopedLock.cpp</code>; even
+<code>Engine/Engine/Engine.cpp</code>, which includes the header, locks with
+<code>std::lock_guard</code> instead.</p>
+
+<pre><code><span class="kw">std</span>::<span class="ty">mutex</span> counterLock;
+<span class="kw">long long</span> committedCount = <span class="nu">0</span>;
+
+<span class="kw">void</span> <span class="fn">Commit</span>(<span class="kw">int</span> count)
+{
+        <span class="ty">hbe</span>::<span class="ty">ScopedLock</span> guard(counterLock, <span class="nu">0.05f</span>);   <span class="cm">// locks here</span>
+        committedCount += count;
+}                                                                <span class="cm">// unlocks here</span></code></pre>
+
+<p>
+  Template argument deduction supplies <code>TLockable = std::mutex</code> from the first argument; the second
+  names the hold threshold that only a profiled build reads. In every configuration shipped today the call is
+  exactly the one-argument lock — see <a href="destructor.html">the destructor</a> for what the threshold would
+  do.
+</p>
+
+<footer class="prevnext">
+  <span><a href="index.html">&larr; ScopedLock</a></span>
+  <span><a href="index.html#methods">All ScopedLock methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

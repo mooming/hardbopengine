@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ScopedLock::~ScopedLock — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3>Methods</h3>
+  <ul class="methods">
+    <li><a href="index.html">ScopedLock</a> methods</li>
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="destructor.html">~ScopedLock</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">ScopedLock</a> / ~ScopedLock
+</p>
+
+<h1><span class="fn">~ScopedLock</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::ScopedLock</span>
+  <span class="tag">Engine/Core/ScopedLock.h</span>
+  unlocks first, then reports a hold that outstayed its timeout in a profiled build
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>~<span class="fn">ScopedLock</span>();</code></pre>
+<h2 id="description">Function description</h2>
+
+<p>
+  <code>lockable.unlock()</code> is the first statement of the body and is unconditional: the lock returns
+  whether or not <code>PROFILE_ENABLED</code> built the timing members in. Everything after it exists only in
+  the profiled shape.
+</p>
+
+<p>
+  After the unlock the profiled body measures
+  <code>duration = time::ToFloat(time::TStopWatch::now() - startTime)</code> and, when
+  <code>timeOutSec &gt; 0.0f &amp;&amp; duration &gt; timeOutSec</code> — a branch hinted <code>unlikely</code>,
+  because a guard that outstays its threshold is the exception the mechanism hunts for — emits a warning through
+  the Log module: <code>Logger::Get(name)</code> with <code>name</code> the compact class name of this
+  instantiation (<code>StringUtil::ToCompactClassName(__PRETTY_FUNCTION__)</code>, e.g.
+  <code>ScopedLock&lt;std::mutex&gt;</code>), and a message carrying the recorded call site as
+  <code>file(line:column) function_name</code>, the measured duration and the threshold. The warning fires at
+  most once per guard, at scope exit; a threshold of <code>&lt;= 0</code> never fires.
+</p>
+
+<div class="gap">
+  <strong>The measured span is acquisition wait plus hold time, not the wait.</strong> <code>startTime</code>
+  was sampled by the constructor's member-initialization list — before <code>lock()</code> ran — and the stop
+  is taken after <code>unlock()</code> returned. A log line therefore cannot tell you whether the mutex was
+  contended or the critical section was long; it tells you the scope was slow. Attribute the cause by reading
+  the recorded call site, not the number alone.
+</div>
+
+<p>
+  In the profiling-disabled shape — <code>PROFILE_ENABLED</code> 0, every configuration shipped today — the
+  destructor body is exactly the unlock, and the class collapses to the same job as
+  <code>std::lock_guard</code>.
+</p>
+
+<div class="note">
+  <strong>The guard must be destroyed by the thread that constructed it.</strong> <code>unlock()</code> runs on
+  whatever thread leaves the scope, and owner-tracking lockables such as <code>std::mutex</code> treat an
+  unlock from a non-owner as undefined behavior. The class cannot enforce this — it stores no thread id — and
+  cannot be rescued by moving either, because it is neither copyable nor movable: the scope that locks is the
+  scope that unlocks, by construction.
+</div>
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+<h2 id="return">Return value</h2>
+
+<p>
+  A destructor has no return value. It is implicitly <code>noexcept</code>; in the profiled shape it performs a
+  clock read, a logger lookup and a formatted write on the slow path, and the engine builds exception-free, so
+  nothing on that path may throw.
+</p>
+<h2 id="example">Examples</h2>
+
+<p class="note">Illustrative — no call site for this exists in the repository; see
+<a href="constructors.html">the constructors page</a> for the state of usage.</p>
+
+<pre><code><span class="kw">std</span>::<span class="ty">mutex</span> counterLock;
+<span class="kw">long long</span> committedCount = <span class="nu">0</span>;
+
+<span class="kw">void</span> <span class="fn">Commit</span>(<span class="kw">int</span> count)
+{
+        <span class="ty">hbe</span>::<span class="ty">ScopedLock</span> guard(counterLock, <span class="nu">0.05f</span>);   <span class="cm">// locks here</span>
+        committedCount += count;
+}                                        <span class="cm">// unlocks here, and in a profiled build warns</span>
+                                         <span class="cm">// if the scope outstayed 0.05 s (0.1 s under __DEBUG__)</span></code></pre>
+
+<p>
+  The warning the closing brace can produce names the construction point — the <code>srcLoc</code> the
+  constructor recorded — with the measured span and the threshold, under the log category
+  <code>ScopedLock&lt;std::mutex&gt;</code>. A scope that routinely trips it is either waiting on a contended
+  mutex or doing real work under lock; the message shows where, never which.
+</p>
+
+<footer class="prevnext">
+  <span><a href="index.html">&larr; ScopedLock</a></span>
+  <span><a href="index.html#methods">All ScopedLock methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

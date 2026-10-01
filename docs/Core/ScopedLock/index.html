@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ScopedLock — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="#description">Class description</a></li>
+    <li><a href="#template">Template parameters</a></li>
+    <li><a href="#properties">Class properties</a></li>
+    <li><a href="#methods">Class methods</a></li>
+    <li><a href="#non-member">Non-member helpers</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+
+  <h3>Methods</h3>
+  <ul class="methods">
+        <li><a href="constructors.html">constructors</a></li>
+    <li><a href="destructor.html">~ScopedLock</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  ScopedLock
+</p>
+
+<h1>ScopedLock</h1>
+<p class="subtitle">
+  <span class="tag">Engine/Core/ScopedLock.h</span>
+  a RAII lock guard that holds a CLockable lock for a scope, and measures the hold against a timeout when profiling is built in
+</p>
+
+<h2 id="description">Class description</h2>
+
+<p>
+  <code>ScopedLock</code> is an RAII-style lock wrapper: it acquires a lock on construction and releases it on
+  destruction, so a critical section is a lexical scope. There is no unlock member and no handle to misuse —
+  the guard exists while the lock is held, and the lock is released exactly once, at the closing brace.
+</p>
+
+<p>
+  The class stores one thing that matters: a reference to the caller's lockable. It does not own it, so the
+  lockable must outlive the guard. The copy constructor is deleted and no move constructor is generated, which
+  is not a limitation but the mechanism: the thread that locks must be the thread that unlocks for
+  owner-tracking lockables, and a guard that can neither be copied nor moved cannot leave the scope that locks
+  it. <code>ScopedLock</code> is <code>final</code>; a guard is not a base class.
+</p>
+
+<p>
+  The type exists in two build shapes. When <code>PROFILE_ENABLED</code> is 1 the guard additionally records
+  the clock at entry, a timeout threshold and the call site, and the destructor warns through the Log module
+  when the scope outstayed the threshold. When it is 0 — the value <code>Engine/Config/BuildConfig.h:39</code>
+  defines today, which no build configuration in this repository overrides — the timing members do not exist,
+  and the extra constructors that would fill them accept their arguments and discard them, so one call-site
+  spelling works in both shapes. See
+  <a href="constructors.html">the constructors</a> and
+  <a href="destructor.html">the destructor</a> for what each shape does.
+</p>
+
+<p>
+  The class template is constrained by the <a href="#template"><code>CLockable</code> concept</a> declared in
+  the same header. <code>Engine/Core/ScopedLock.cpp</code> explicitly instantiates
+  <code>hbe::ScopedLock&lt;std::mutex&gt;</code>, which is the only instantiation the repository uses; any
+  other lockable instantiates at its point of use. There is no call site of the guard anywhere in
+  <code>Engine/</code> or <code>Applications/</code> — see <a href="#coverage">Coverage</a>.
+</p>
+
+<div class="note">
+  <strong>The guard is a scope discipline, not a checking layer.</strong> It ignores whatever
+  <code>lock()</code> returns, does not detect recursion, does not assert thread identity, and cannot tell you
+  that the same mutex is already held two frames up. Everything the lockable refuses — self-deadlock on a
+  non-recursive mutex, unlocking from the wrong thread — remains exactly as refused with the guard as without
+  it.
+</div>
+<h2 id="template">Template parameters</h2>
+
+<p>
+  <code>ScopedLock</code> is constrained by a concept declared at namespace scope in the same header:
+</p>
+
+<pre><code><span class="kw">template</span> &lt;<span class="kw">typename</span> T&gt;
+<span class="kw">concept</span> <span class="ty">CLockable</span> = <span class="kw">requires</span>(T t) {
+        t.<span class="fn">lock</span>();
+        t.<span class="fn">unlock</span>();
+};</code></pre>
+
+<table>
+  <tr><th>Parameter</th><th>Kind</th><th>What it must satisfy</th></tr>
+  <tr>
+    <td><code>TLockable</code></td>
+    <td><code>CLockable</code> (constrained)</td>
+    <td>
+      Anything with a nullary <code>lock()</code> and a nullary <code>unlock()</code>. The concept asks for the
+      expressions only: return values are not examined, and a type with <code>try_lock</code> but no plain
+      <code>lock</code> does not qualify. <code>std::mutex</code> is the type the engine instantiates;
+      recursive mutexes and engine-internal lockables qualify on the same two expressions, and the semantics
+      of holding them belong to the lockable, not to the guard.
+    </td>
+  </tr>
+</table>
+
+<p>
+  The concept is not a class and owns no folder of its own; this section is its reference.
+</p>
+<h2 id="properties">Class properties</h2>
+
+<table>
+  <tr><th>Name</th><th>Declaration</th><th>What it means</th></tr>
+  <tr>
+    <td><code>TSrcLoc</code></td>
+    <td><code>using TSrcLoc = hbe::source_location;</code></td>
+    <td>
+      <span class="badge">member type</span> The call-site record the profiled constructor stores and the
+      destructor formats into its warning. The declared type is forward-declared and, in this tree, never
+      defined — see <a href="#coverage">Coverage</a>.
+    </td>
+  </tr>
+  <tr>
+    <td><code>lockable</code></td>
+    <td><code>TLockable&amp; lockable;</code></td>
+    <td>
+      <span class="badge">private</span> The only member every build shape has: a reference to the caller's
+      lockable, bound by the constructor and unlocked by the destructor. Not owned — the referent must outlive
+      the guard
+    </td>
+  </tr>
+  <tr>
+    <td><code>startTime</code></td>
+    <td><code>time::TTime startTime;</code></td>
+    <td>
+      <span class="badge">private</span> <span class="badge">PROFILE_ENABLED only</span> The
+      <code>time::TStopWatch</code> sample taken by the constructor's member-initialization list — before
+      <code>lock()</code> runs — so it anchors the wait-plus-hold span the destructor measures
+    </td>
+  </tr>
+  <tr>
+    <td><code>timeOutSec</code></td>
+    <td><code>float timeOutSec;</code></td>
+    <td>
+      <span class="badge">private</span> <span class="badge">PROFILE_ENABLED only</span> Hold threshold in
+      seconds, defaulted to <code>0.01f</code> and doubled under <code>__DEBUG__</code> by
+      <code>Config::DebugTimeOutMultiplier</code>; a value <code>&lt;= 0</code> disables the warning
+    </td>
+  </tr>
+  <tr>
+    <td><code>srcLoc</code></td>
+    <td><code>TSrcLoc srcLoc;</code></td>
+    <td>
+      <span class="badge">private</span> <span class="badge">PROFILE_ENABLED only</span> The call site named at
+      construction, defaulted to <code>TSrcLoc::current()</code>, written into the timeout warning's log line
+    </td>
+  </tr>
+</table>
+<h2 id="methods">Class methods</h2>
+
+<p>
+  The whole surface is lifetime: construction locks, destruction unlocks, and the two shapes of constructor are
+  one contract adapted to whether the timing members are compiled in.
+</p>
+
+<table>
+  <tr><th>Method</th><th>Signature</th><th>What a caller depends on</th></tr>
+  <tr>
+    <td><a href="constructors.html">constructors</a><span class="badge">2 build shapes</span></td>
+    <td class="sig">explicit ScopedLock(TLockable&amp;, float = 0.01f, const TSrcLoc&amp; = TSrcLoc::current())<br>ScopedLock(TLockable&amp;) — profiled-out shape<br>ScopedLock(TLockable&amp;, float) — profiled-out shape<br>ScopedLock(TLockable&amp;, float, const TSrcLoc&amp;) — profiled-out shape<br>ScopedLock(const ScopedLock&amp;) = delete</td>
+    <td>
+      <code>lockable.lock()</code> runs before the constructor returns, and its result is discarded. The
+      profiled-out shape keeps the timing arguments as accepted-and-discarded overloads so one call-site
+      spelling compiles in either build; copying the guard is deleted, and it is not movable
+    </td>
+  </tr>
+  <tr>
+    <td><a href="destructor.html">destructor</a></td>
+    <td class="sig">~ScopedLock()</td>
+    <td>
+      <code>lockable.unlock()</code> runs first, unconditionally; in the profiled shape the destructor then
+      warns when the wait-plus-hold span exceeded <code>timeOutSec</code>
+    </td>
+  </tr>
+</table>
+<h2 id="non-member">Non-member helpers</h2>
+
+<p>
+  None. <code>ScopedLock.h</code> declares no free functions; its namespace-scope names are the class template
+  and the <a href="#template"><code>CLockable</code> concept</a> that constrains it.
+</p>
+<h2 id="coverage">Coverage</h2>
+
+<table>
+  <tr><th>Gap</th><th>Detail</th></tr>
+  <tr>
+    <td><code>CLockable</code></td>
+    <td>
+      The concept is documented in <a href="#template">Template parameters</a>, above. A concept is not a class
+      and owns no reference folder, so that section is its whole page
+    </td>
+  </tr>
+  <tr>
+    <td><code>hbe::source_location</code></td>
+    <td>
+      Forward-declared at <code>Engine/Memory/MemoryManager.h:22</code>; a grep across
+      <code>Engine/</code>, <code>Applications/</code> and <code>Examples/</code> finds no definition. Every
+      use in this header sits behind <code>PROFILE_ENABLED</code>, which
+      <code>Engine/Config/BuildConfig.h</code> defines as <code>0</code> in all shipped configurations, so no
+      configuration exercises the gap. Whether a profiled build of this header would compile has not been
+      checked with a compiler here — the name belongs to <a href="../../Memory/index.html">Memory</a> to
+      resolve
+    </td>
+  </tr>
+  <tr>
+    <td>Usage in the engine</td>
+    <td>
+      None. The only instantiation is <code>template class ScopedLock&lt;std::mutex&gt;;</code> in
+      <code>Engine/Core/ScopedLock.cpp</code>, which exists to emit that one symbol;
+      <code>Engine/Engine/Engine.cpp</code> includes the header and then locks with <code>std::lock_guard</code>.
+      Both method pages therefore carry labelled illustrative examples rather than cited call sites
+    </td>
+  </tr>
+  <tr>
+    <td>The warning line itself</td>
+    <td>
+      <a href="destructor.html">The destructor</a> states what the log line carries; the exact string, its
+      category naming and severity levels belong to <a href="../../Log/index.html">Log</a>
+    </td>
+  </tr>
+  <tr>
+    <td>Lockable semantics</td>
+    <td>
+      Recursion, contention, thread-ownership rules and error reporting are properties of the
+      <code>TLockable</code> argument (<code>std::mutex</code> and friends), restated nowhere on this page by
+      design
+    </td>
+  </tr>
+</table>
+
+<footer class="prevnext">
+  <span><a href="../index.html">&larr; Core</a></span>
+  <span><a href="../index.html#classes">ScopedLock in the Core class list</a></span>
+</footer>
+
+</main>
+</body>
+</html>
