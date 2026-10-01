@@ -23,11 +23,19 @@ separately against `git show HEAD:<file>`:
 
 Anything outside those three is reported as a finding, with the first divergence shown.
 
-Usage: prove_format.py [rev]        default rev: HEAD
+Usage: prove_format.py [rev] [--manifest PATH]        default rev: HEAD
+
+With --manifest, the file written by autofix.py, a change that removes tokens is
+explained only if the fixer declared exactly that removal. The fixer cannot grade
+its own homework: the manifest is a claim about the edit, and this script re-derives
+the token multisets and refuses anything the claim does not cover. A file that lost
+tokens with no manifest entry stays `unexplained`, which is the whole point.
+
 Exit status: 0 when every changed C++ file is explained.
 """
 
 import collections
+import json
 import subprocess
 import sys
 import os
@@ -71,7 +79,18 @@ def payload_text(toks):
     return ''.join(out)
 
 
-def explain(path, rev):
+def load_manifest(path):
+    """file -> declared change, or {} when no manifest was given."""
+    if not path:
+        return {}
+    try:
+        data = json.load(open(path))
+    except (OSError, ValueError) as exc:
+        raise SystemExit('prove_format: cannot read manifest %s: %s' % (path, exc))
+    return {entry['file']: entry for entry in data.get('files', []) if entry.get('file')}
+
+
+def explain(path, rev, declared=None):
     """(verdict, detail) for one changed file: what the formatter was allowed to do."""
     before = run('git', 'show', '%s:%s' % (rev, path))
     after = open(path, encoding='utf-8', errors='ignore').read()
@@ -93,6 +112,24 @@ def explain(path, rev):
     if (not lost and old_includes == new_includes and old_payload == new_payload
             and set(gained) <= ACCESS_LABELS):
         return 'reorder', 'access label(s) added: %s' % dict(gained) if gained else ''
+    # A declared fix: the fixer said which tokens it removed and added, and the multisets agree.
+    # Anything the claim does not cover falls through to `unexplained` below rather than being
+    # waved through, because a manifest that under-claims is exactly how a stray edit survives.
+    if declared and declared.get('tokensRemoved'):
+        claimed_lost = collections.Counter(declared['tokensRemoved'])
+        claimed_gain = set(declared.get('tokensAdded') or {})
+        if claimed_lost == lost and set(gained) <= ACCESS_LABELS | claimed_gain:
+            detail = str(dict(sorted((declared.get('fixes') or {}).items())))
+            if gained:
+                detail += ', access label(s) added: %s' % dict(gained)
+            return 'declared-fix', detail
+        return 'unexplained', 'declared removal %s, observed loss %s, observed gain %s' % (
+            dict(sorted(claimed_lost.items())), dict(sorted(lost.items())), dict(sorted(gained.items())))
+    # Lost tokens with nothing declaring them is the case this tool exists for, and the include-set
+    # message below describes it as a changed include set (often an empty one), which sends the
+    # reader looking at the preamble instead of at the code that lost a symbol.
+    if lost:
+        return 'unexplained', 'token(s) removed with no declared fix: %s' % dict(sorted(lost.items()))
     if old_includes != new_includes and sorted(old_includes) == sorted(new_includes) and old_payload == new_payload:
         if sorted(old_tokens) != sorted(new_tokens):
             return 'unexplained', 'include order changed and the token multiset changed too'
@@ -109,13 +146,21 @@ def explain(path, rev):
 
 
 def main(argv):
-    rev = argv[0] if argv else 'HEAD'
+    rest, manifest_path = list(argv), None
+    if '--manifest' in rest:
+        index = rest.index('--manifest')
+        if index + 1 >= len(rest):
+            print('prove_format: --manifest needs a path', file=sys.stderr)
+            return 2
+        manifest_path = rest[index + 1]
+        del rest[index:index + 2]
+    rev = rest[0] if rest else 'HEAD'
+    manifest = load_manifest(manifest_path)
     changed = [f for f in run('git', 'diff', '--name-only', rev).split('\n')
                if f.endswith(CPP) and os.path.isfile(f)]
-    tally = {}
-    bad = []
+    tally, bad = {}, []
     for path in changed:
-        verdict, detail = explain(path, rev)
+        verdict, detail = explain(path, rev, manifest.get(path))
         tally[verdict] = tally.get(verdict, 0) + 1
         if verdict == 'unexplained':
             bad.append('%s: %s' % (path, detail))
@@ -123,8 +168,12 @@ def main(argv):
         print('%-16s %d file(s)' % (verdict, count))
     for line in bad:
         print('  %s' % line)
-    print('code identity: %d file(s) checked against %s, %d unexplained'
-          % (len(changed), rev, len(bad)))
+    unused = sorted(set(manifest) - set(changed))
+    if unused:
+        print('note: %d manifest entr%s not in this diff: %s'
+              % (len(unused), 'y' if len(unused) == 1 else 'ies', ', '.join(unused[:6])))
+    print('code identity: %d file(s) checked against %s%s, %d unexplained'
+          % (len(changed), rev, ' with manifest' if manifest else '', len(bad)))
     return 1 if bad else 0
 
 
