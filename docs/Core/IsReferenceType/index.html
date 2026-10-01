@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IsReferenceType — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="#description">Class description</a></li>
+    <li><a href="#template">Template parameters</a></li>
+    <li><a href="#properties">Class properties</a></li>
+    <li><a href="#methods">Class methods</a></li>
+    <li><a href="#non-member">Non-member helpers</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+
+  <h3>Methods</h3>
+  <ul class="methods">
+    <li>None — the trait exposes an alias and a constant, not behaviour</li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  IsReferenceType
+</p>
+
+<h1>IsReferenceType</h1>
+<p class="subtitle">
+  <span class="tag">Engine/Core/CommonUtil.h</span>
+  the engine's only hand-written type trait: it answers <em>is this an lvalue reference</em> with a tag type and
+  says how many bytes storing such a type needs
+</p>
+
+<h2 id="description">Class description</h2>
+
+<p>
+  <code>IsReferenceType</code> is a class template with two members and no functions. Its primary template
+  reports <a href="../False_t/index.html"><code>False_t</code></a> and sizes storage for the object itself; the
+  partial specialisation for <code>T&amp;</code> reports
+  <a href="../True_t/index.html"><code>True_t</code></a> and sizes storage for a <em>pointer</em> to the object.
+  The two members exist together on purpose: <code>Result</code> selects the branch that writes the storage, and
+  <code>TypeSize</code> is how much storage that branch needs. Reporting one without the other would let a caller
+  dispatch correctly and then allocate the wrong number of bytes.
+</p>
+
+<p>
+  The single consumer is <a href="../../Memory/index.html"><code>Optional</code></a>. It sizes its inline storage
+  with this trait — <code>Byte value[IsReferenceType&lt;TType&gt;::TypeSize]</code>, aligned by
+  <code>alignas(std::max(IsReferenceType&lt;TType&gt;::TypeSize, Config::DefaultAlign))</code> at
+  <code>Engine/Memory/Optional.h:20</code> — and it dispatches every lifetime operation by writing
+  <code>Result()</code>, letting overload resolution choose between storing a referent in place and storing its
+  address. <code>Optional&lt;int&amp;&gt;</code>, <code>Optional&lt;Class&amp;&gt;</code> and
+  <code>Optional&lt;Integer&amp;&gt;</code> are instantiated by the unit tests in
+  <code>Engine/Memory/Optional.cpp:31</code>, <code>:60</code> and <code>:80</code>.
+</p>
+
+<div class="gap">
+  <strong><code>TypeSize</code> is the extent of the storage, not a size you may copy with.</strong> For an
+  lvalue reference the trait reports <code>sizeof(T*)</code>, while <code>sizeof(TType)</code> for the same
+  <code>TType</code> is the size of the <em>referent</em>. Measured on this machine: with
+  <code>TType = int&amp;</code>, <code>TypeSize</code> is 8 and <code>sizeof(TType)</code> is 4.
+  <code>Optional</code>'s reference branch sizes its <code>memcpy</code> by <code>sizeof(TType)</code>
+  (<code>Engine/Memory/Optional.h:211</code> for the copy, <code>:223</code> for the move) while the storage holds
+  a pointer — so the two sizes disagree for every referent that is not pointer-sized. Reported as a finding
+  against <a href="../../Memory/index.html">Memory</a>; stated here because a caller that copies storage sized by
+  this trait is the same mistake, and this page is where the number is defined.
+</div>
+
+<h2 id="template">Template parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Kind</th><th>What it means here</th></tr>
+  <tr>
+    <td><code>T</code></td>
+    <td><code>typename</code></td>
+    <td>
+      The type being questioned, exactly as written. The trait does not strip <code>const</code>, references or
+      anything else before asking the question: <code>const int&amp;</code> is a reference and selects the
+      specialisation, and <code>int&amp;&amp;</code> is not a <code>T&amp;</code> and selects the primary template.
+      Both of those were checked with a compiler, not inferred — see <a href="#coverage">Coverage</a>
+    </td>
+  </tr>
+</table>
+
+<h2 id="properties">Class properties</h2>
+
+<table>
+  <tr><th>Name</th><th>Declaration</th><th>What it means</th></tr>
+  <tr>
+    <td><code>Result</code></td>
+    <td><code>using Result = False_t;</code><br><code>using Result = True_t;</code> for <code>T&amp;</code></td>
+    <td>
+      <span class="badge">member type</span> The tag a dispatcher writes at the call site.
+      <code>True_t</code> means <em>lvalue reference</em>: store the address, and destruction ends nothing.
+      <code>False_t</code> means everything else: construct, assign and destroy an object in the storage
+    </td>
+  </tr>
+  <tr>
+    <td><code>TypeSize</code></td>
+    <td><code>static constexpr size_t TypeSize = sizeof(T);</code><br><code>static constexpr size_t TypeSize = sizeof(T*);</code> for <code>T&amp;</code></td>
+    <td>
+      <span class="badge">public</span> Bytes of storage needed to hold a <code>T</code> under the scheme the tag
+      selects: the object for a value type, the pointer for a reference. Read as an array bound and an alignment
+      argument, never as a copy length — see the hazard above
+    </td>
+  </tr>
+</table>
+
+<h2 id="methods">Class methods</h2>
+
+<p>
+  None, and none is needed. A trait is read through its members at compile time; a function would imply a runtime
+  question that this one never asks. Note also that <code>Result()</code> at a call site is not calling anything
+  on this trait — it is value-initialising one of the empty tags, whose
+  <a href="../True_t/index.html">contract</a> is that such a temporary carries nothing.
+</p>
+
+<h2 id="non-member">Non-member helpers</h2>
+
+<p>
+  None. <code>Engine/Core/CommonUtil.h</code> declares <code>GetAs</code>, <code>SetAs</code>,
+  <code>CopyAs</code>, <code>ToAddress</code> and <code>CountOf</code> alongside this trait; they are unrelated to
+  it and belong to <a href="../index.html#functions">Module functions</a>.
+</p>
+
+<h2 id="coverage">Coverage</h2>
+
+<table>
+  <tr><th>Gap</th><th>Detail</th></tr>
+  <tr>
+    <td>What was compiled to establish the branch rules</td>
+    <td>
+      Seven <code>static_assert</code>s over <code>int</code>, <code>int&amp;</code>,
+      <code>const int&amp;</code> and <code>int&amp;&amp;</code>, checking <code>Result</code> against the two tag
+      types and <code>TypeSize</code> against <code>sizeof(T)</code>, <code>sizeof(T*)</code> and
+      <code>sizeof(T&amp;&amp;)</code>, compiled clean with
+      <code>c++ -std=c++2b -IEngine -fsyntax-only</code>. Every resolution stated on this page is one of those
+      assertions; nothing here is inferred from the spelling of the specialisation
+    </td>
+  </tr>
+  <tr>
+    <td>Function-pointer, array and member-pointer types</td>
+    <td>
+      Not probed. They take the primary template, which is certainly what the header does with them, but their
+      <code>sizeof</code> semantics differ from a scalar's and no consumer in this tree feeds such a type to the
+      trait, so no claim about them is made
+    </td>
+  </tr>
+  <tr>
+    <td>Storage layout, alignment and aliasing</td>
+    <td>
+      The trait only reports a number. Whether <code>Byte value[]</code> may be read as <code>TType&amp;</code>,
+      and whether <code>Config::DefaultAlign</code> is sufficient for a type with a larger requirement, are
+      contracts of <a href="../../Memory/index.html">Memory</a>
+    </td>
+  </tr>
+</table>
+
+<footer class="prevnext">
+  <span><a href="../index.html">&larr; Core</a></span>
+  <span><a href="../index.html#classes">IsReferenceType in the Core class list</a></span>
+</footer>
+
+</main>
+</body>
+</html>

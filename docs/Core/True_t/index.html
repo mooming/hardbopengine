@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>True_t — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="#description">Class description</a></li>
+    <li><a href="#template">Template parameters</a></li>
+    <li><a href="#properties">Class properties</a></li>
+    <li><a href="#methods">Class methods</a></li>
+    <li><a href="#non-member">Non-member helpers</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+
+  <h3>Methods</h3>
+  <ul class="methods">
+    <li>None — the type declares no members</li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  True_t
+</p>
+
+<h1>True_t</h1>
+<p class="subtitle">
+  <span class="tag">Engine/Core/CommonUtil.h</span>
+  a type-level <em>true</em>: the empty class a compile-time trait names when the property it tests holds, so overload sets can branch on a type instead of on an <code>if</code>
+</p>
+
+<h2 id="description">Class description</h2>
+
+<p>
+  <code>True_t</code> is an empty <code>final</code> class with no members of any kind. It carries no state and
+  is never read; the only thing it does is have a name distinct from
+  <a href="../False_t/index.html"><code>False_t</code></a>, which is enough to make two overloads
+  distinguishable. The pair plays the role a boolean template parameter would, with one advantage that the
+  engine actually uses: because the tags are function <em>parameters</em>, the compiler resolves them by
+  ordinary overload resolution rather than by <code>if constexpr</code>, so a class can give two real function
+  bodies for the two cases instead of one body with a dead branch.
+</p>
+
+<p>
+  Nothing in this repository asks a question of <code>True_t</code> directly. The single producer is
+  <a href="../IsReferenceType/index.html"><code>IsReferenceType</code></a>, whose <code>Result</code> member is
+  <code>True_t</code> for an lvalue reference and <code>False_t</code> otherwise, and whose <code>TypeSize</code>
+  sizes the storage that decision implies. The single consumer is
+  <a href="../../Memory/index.html"><code>Optional</code></a>, which writes <code>Result()</code> at each
+  dispatch — a temporary of the tag type, passed by value and discarded — selecting between a reference branch
+  and a value branch. <code>Engine/Memory/Optional.h</code> performs that dispatch sixteen times: in the copy
+  constructor, the move constructor, the copy and move assignment, the destructor, <code>Reset</code>, both
+  <code>Value()</code> accessors, and the private <code>ConstructAt</code>, <code>CopyValue</code>,
+  <code>MoveValue</code> and <code>Destroy</code> overload pairs.
+</p>
+
+<p>
+  For the reference case the tag selects the branch that stores the referent's <em>address</em> and destroys
+  nothing: <code>ConstructAt(True_t, …)</code> at <code>Engine/Memory/Optional.h:183</code> writes a
+  <code>void*</code> into the storage at <code>Engine/Memory/Optional.h:192</code>,
+  <code>GetValue(True_t)</code> reads that pointer back and dereferences it at
+  <code>Engine/Memory/Optional.h:234</code>, and <code>Destroy(True_t)</code> at
+  <code>Engine/Memory/Optional.h:264</code> only clears the <code>hasValue</code> flag, because ending a
+  reference ends nothing. The paired <a href="../False_t/index.html"><code>False_t</code></a> branches construct,
+  assign and explicitly call the destructor instead.
+</p>
+
+<div class="note">
+  <strong>A tag is a compile-time argument, not a runtime value.</strong> Reading a <code>True_t</code> object
+  tells you nothing, because there is nothing to read. What matters is which overload the temporary's
+  <em>type</em> selected at compile time; the temporary itself has no state to inspect, and writing one in a
+  place that needs a runtime <code>bool</code> would silently discard the decision at the next brace.
+</div>
+
+<h2 id="template">Template parameters</h2>
+
+<p>
+  None — <code>True_t</code> is not a template and is not parameterised on anything. It is the *result* of a
+  template: <a href="../IsReferenceType/index.html"><code>IsReferenceType</code></a> names it.
+</p>
+
+<h2 id="properties">Class properties</h2>
+
+<p>
+  None — there is no alias, no constant and no field in this class. The declaration is
+  <code>class True_t final { };</code> at <code>Engine/Core/CommonUtil.h:9</code>.
+</p>
+
+<h2 id="methods">Class methods</h2>
+
+<p>
+  None. No constructor, conversion, assignment or member function is declared, so the implicitly-declared
+  defaults are what a caller gets, and all of them do nothing observable: a <code>True_t</code> copied, moved or
+  destroyed is the same empty object before and after. The absence is the design — a member would give the tag a
+  runtime value to be wrong about.
+</p>
+
+<p>
+  <code>final</code> closes the type against derivation. A subclass could not add behaviour worth having either:
+  overload selection looks at the type written in the call, and any such subclass would be a different type,
+  selecting a different — or no — overload.
+</p>
+
+<h2 id="non-member">Non-member helpers</h2>
+
+<p>
+  None belong to this type. <code>Engine/Core/CommonUtil.h</code> also declares the namespace-scope functions
+  <code>GetAs</code>, <code>SetAs</code>, <code>CopyAs</code>, <code>ToAddress</code> and <code>CountOf</code>,
+  which have no relationship to the tag pair and are documented in
+  <a href="../index.html#functions">Module functions</a>.
+</p>
+
+<h2 id="coverage">Coverage</h2>
+
+<table>
+  <tr><th>Gap</th><th>Detail</th></tr>
+  <tr>
+    <td>Branch behaviour belongs to <code>Optional</code></td>
+    <td>
+      This page states what the tag is and which consumer dispatches on it. What each selected branch actually
+      does — the pointer store, the <code>memcpy</code>, the explicit destructor call — is
+      <a href="../../Memory/index.html">Memory</a>'s contract, and the storage asymmetry named in
+      <a href="../IsReferenceType/index.html"><code>IsReferenceType</code></a>'s hazard is a finding against that
+      module rather than against this type
+    </td>
+  </tr>
+  <tr>
+    <td>Usage outside the trait</td>
+    <td>
+      A grep of <code>Engine/</code>, <code>Applications/</code> and <code>Examples/</code> finds no other use of
+      the name. The pair is not a general-purpose boolean vocabulary of this engine and no other trait produces
+      it today, so a reader who reaches for <code>True_t</code> for a new trait is its first user
+    </td>
+  </tr>
+</table>
+
+<footer class="prevnext">
+  <span><a href="../index.html">&larr; Core</a></span>
+  <span><a href="../index.html#classes">True_t in the Core class list</a></span>
+</footer>
+
+</main>
+</body>
+</html>

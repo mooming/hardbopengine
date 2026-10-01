@@ -51,6 +51,9 @@
     <li><a href="#scopedtime">ScopedTime</a></li>
     <li><a href="#scopedlock">ScopedLock</a></li>
     <li><a href="#commandlinearguments">CommandLineArguments</a></li>
+    <li><a href="#true-t">True_t</a></li>
+    <li><a href="#false-t">False_t</a></li>
+    <li><a href="#isreferencetype">IsReferenceType</a></li>
     <li><a href="#coverage">Coverage</a></li>
   </ul>
 
@@ -111,6 +114,9 @@
   <tr><td><a href="#scopedtime">ScopedTime</a></td><td>Class</td><td>ScopedTime.h</td><td>RAII timer writing a duration on scope exit</td></tr>
   <tr><td><a href="#scopedlock">ScopedLock</a></td><td>Class template</td><td>ScopedLock.h</td><td>RAII lock with optional wait profiling</td></tr>
   <tr><td><a href="#commandlinearguments">CommandLineArguments</a></td><td>Class</td><td>CommandLineArguments.h</td><td>Parsed command line held as strings</td></tr>
+  <tr><td><a href="#true-t">True_t</a></td><td>Class</td><td>CommonUtil.h</td><td>Type-level <em>true</em>, the tag a trait names when its property holds</td></tr>
+  <tr><td><a href="#false-t">False_t</a></td><td>Class</td><td>CommonUtil.h</td><td>Type-level <em>false</em>, the tag that selects the branch owning object lifetime</td></tr>
+  <tr><td><a href="#isreferencetype">IsReferenceType</a></td><td>Class template</td><td>CommonUtil.h</td><td>Is this an lvalue reference, and how many bytes does storing it need</td></tr>
   <tr><td>CommonUtil</td><td>Free functions</td><td>CommonUtil.h</td><td>See <a href="#functions">Module functions</a></td></tr>
   <tr><td>Debug</td><td>Free functions</td><td>Debug.h</td><td>See <a href="#functions">Module functions</a></td></tr>
   <tr><td>time</td><td>Namespace</td><td>Time.h</td><td>See <a href="#functions">Module functions</a></td></tr>
@@ -746,6 +752,42 @@ the arguments to <code>PrintArgs</code> and stores nothing, which is why there i
 
 <h3>Non-member helper functions</h3>
 <p>None.</p>
+
+<h2 id="true-t">True_t (<code>Engine/Core/CommonUtil.h</code>)</h2>
+<p><a href="True_t/index.html">Full class reference: <code>True_t</code></a> — this section stays as the module-level summary; the folder page carries the dispatch mechanism, the sixteen <code>Optional</code> call sites it selects between, and why a tag is a compile-time argument rather than a runtime value.</p>
+
+<h3>Class description</h3>
+<p>An empty <code>final</code> class used as a type-level <em>true</em>: <code>IsReferenceType&lt;T&gt;::Result</code> names it for an lvalue reference, and <code>Optional</code> writes <code>Result()</code> to choose the branch that stores the referent's address and destroys nothing.</p>
+
+<h3>Class properties</h3>
+<p>None.</p>
+
+<h3>Class methods</h3>
+<p>None — the type declares no members.</p>
+
+<h2 id="false-t">False_t (<code>Engine/Core/CommonUtil.h</code>)</h2>
+<p><a href="False_t/index.html">Full class reference: <code>False_t</code></a> — this section stays as the module-level summary; the folder page carries the five <code>Optional</code> overloads this tag selects and what each does to object lifetime.</p>
+
+<h3>Class description</h3>
+<p>An empty <code>final</code> class used as a type-level <em>false</em>: <code>IsReferenceType&lt;T&gt;::Result</code> names it for everything that is not an lvalue reference, and <code>Optional</code> writes <code>Result()</code> to choose the branch that constructs, assigns and destroys an object in place.</p>
+
+<h3>Class properties</h3>
+<p>None.</p>
+
+<h3>Class methods</h3>
+<p>None — the type declares no members.</p>
+
+<h2 id="isreferencetype">IsReferenceType (<code>Engine/Core/CommonUtil.h</code>)</h2>
+<p><a href="IsReferenceType/index.html">Full class reference: <code>IsReferenceType</code></a> — this section stays as the module-level summary; the folder page carries the compiler-verified resolution rules, the storage-extent contract <code>Optional</code> depends on, and the <code>sizeof</code> asymmetry reported against <a href="../Memory/index.html">Memory</a>.</p>
+
+<h3>Class description</h3>
+<p>The engine's only hand-written trait: <code>Result</code> answers whether <code>T</code> is an lvalue reference and <code>TypeSize</code> states how many bytes storing such a <code>T</code> needs — the object for a value type, the pointer for a reference.</p>
+
+<h3>Class properties</h3>
+<p><code>Result</code> (member type: <code>False_t</code>, or <code>True_t</code> for <code>T&amp;</code>) and <code>TypeSize</code> (<code>sizeof(T)</code>, or <code>sizeof(T*)</code> for <code>T&amp;</code>).</p>
+
+<h3>Class methods</h3>
+<p>None — the trait is read at compile time.</p>
 
 <h2 id="coverage">Coverage</h2>
 

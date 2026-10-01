@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>False_t — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="#description">Class description</a></li>
+    <li><a href="#template">Template parameters</a></li>
+    <li><a href="#properties">Class properties</a></li>
+    <li><a href="#methods">Class methods</a></li>
+    <li><a href="#non-member">Non-member helpers</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+
+  <h3>Methods</h3>
+  <ul class="methods">
+    <li>None — the type declares no members</li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  False_t
+</p>
+
+<h1>False_t</h1>
+<p class="subtitle">
+  <span class="tag">Engine/Core/CommonUtil.h</span>
+  a type-level <em>false</em>: the empty class a compile-time trait names when the property it tests does not hold, which sends a dispatching class down the branch that owns real object lifetime
+</p>
+
+<h2 id="description">Class description</h2>
+
+<p>
+  <code>False_t</code> is an empty <code>final</code> class, the counterpart of
+  <a href="../True_t/index.html"><code>True_t</code></a>. Neither tag holds anything; what makes them useful is
+  that two overloads of one name can take them as parameters and be resolved by ordinary overload resolution, so
+  a class writes two real function bodies for two compile-time cases instead of one body with a dead branch
+  inside it.
+</p>
+
+<p>
+  The only producer in the tree is
+  <a href="../IsReferenceType/index.html"><code>IsReferenceType</code></a>, whose <code>Result</code> is
+  <code>False_t</code> for every type that is not an lvalue reference — which includes value types and, because
+  the partial specialisation matches <code>T&amp;</code> only, rvalue references and forwarding references too.
+  The only consumer is <a href="../../Memory/index.html"><code>Optional</code></a>, and the branch this tag
+  selects is the one that does the lifetime work:
+</p>
+
+<table>
+  <tr><th>Overload</th><th>At</th><th>What the value branch does</th></tr>
+  <tr>
+    <td><code>ConstructAt(False_t, Types&amp;&amp;...)</code></td>
+    <td><code>Engine/Memory/Optional.h:202</code></td>
+    <td>placement-<code>new</code> constructs <code>TType</code> in the storage, forwarding its arguments</td>
+  </tr>
+  <tr>
+    <td><code>CopyValue(False_t, const Optional&amp;)</code></td>
+    <td><code>Engine/Memory/Optional.h:214</code></td>
+    <td>assigns through <code>Value() = rhs.Value()</code>, so <code>TType</code>'s own copy assignment runs</td>
+  </tr>
+  <tr>
+    <td><code>MoveValue(False_t, Optional&amp;)</code></td>
+    <td><code>Engine/Memory/Optional.h:227</code></td>
+    <td>assigns through <code>Value() = std::move(rhs.Value())</code>, then clears the source's <code>hasValue</code></td>
+  </tr>
+  <tr>
+    <td><code>GetValue(False_t)</code></td>
+    <td><code>Engine/Memory/Optional.h:244</code></td>
+    <td><code>reinterpret_cast</code> of the storage to <code>TType&amp;</code> — the object lives in place, so no
+      pointer is dereferenced and no null check is needed</td>
+  </tr>
+  <tr>
+    <td><code>Destroy(False_t)</code></td>
+    <td><code>Engine/Memory/Optional.h:269</code></td>
+    <td>calls <code>Value().~TType()</code> explicitly when <code>hasValue</code>, then clears the flag</td>
+  </tr>
+</table>
+
+<div class="note">
+  <strong>The tag chooses who owns the lifetime, not how a value is compared.</strong> The
+  <code>True_t</code> branch stores an address, copies the storage and destroys nothing; this branch constructs,
+  assigns and runs the destructor. A reader who takes the names as ordinary booleans will look for a truth value
+  that does not exist: the whole meaning is which overload the compiler picked.
+</div>
+
+<h2 id="template">Template parameters</h2>
+
+<p>
+  None — <code>False_t</code> is not a template and is not parameterised on anything. It is the *result* of a
+  template: <a href="../IsReferenceType/index.html"><code>IsReferenceType</code></a> names it for every type
+  whose <code>Result</code> is not <a href="../True_t/index.html"><code>True_t</code></a>.
+</p>
+
+<h2 id="properties">Class properties</h2>
+
+<p>
+  None — there is no alias, no constant and no field in this class. The declaration is
+  <code>class False_t final { };</code> at <code>Engine/Core/CommonUtil.h:13</code>.
+</p>
+
+<h2 id="methods">Class methods</h2>
+
+<p>
+  None. Nothing is declared, so the implicit defaults are what a caller gets, and each of them is
+  unobservable. That absence is what makes the tag safe to construct at a call site as
+  <code>Result()</code>: a temporary of this type costs nothing and can be wrong about nothing.
+</p>
+
+<h2 id="non-member">Non-member helpers</h2>
+
+<p>
+  None belong to this type. <code>Engine/Core/CommonUtil.h</code> also declares the namespace-scope functions
+  <code>GetAs</code>, <code>SetAs</code>, <code>CopyAs</code>, <code>ToAddress</code> and <code>CountOf</code>,
+  which have no relationship to the tag pair and are documented in
+  <a href="../index.html#functions">Module functions</a>.
+</p>
+
+<h2 id="coverage">Coverage</h2>
+
+<table>
+  <tr><th>Gap</th><th>Detail</th></tr>
+  <tr>
+    <td>Branch behaviour belongs to <code>Optional</code></td>
+    <td>
+      The table above cites each overload and states what it does; the contracts those overloads depend on —
+      alignment of the storage, the aliasing rules behind <code>reinterpret_cast</code> over a byte array, the
+      <code>hasValue</code> invariant across a partial construction failure — belong to
+      <a href="../../Memory/index.html">Memory</a> and are not restated here
+    </td>
+  </tr>
+  <tr>
+    <td>Which types land on this branch</td>
+    <td>
+      Stated exactly on <a href="../IsReferenceType/index.html"><code>IsReferenceType</code></a>, including the
+      measured result that an rvalue reference selects this branch rather than the reference one
+    </td>
+  </tr>
+  <tr>
+    <td>Usage outside the trait</td>
+    <td>
+      A grep of <code>Engine/</code>, <code>Applications/</code> and <code>Examples/</code> finds no other use of
+      the name
+    </td>
+  </tr>
+</table>
+
+<footer class="prevnext">
+  <span><a href="../index.html">&larr; Core</a></span>
+  <span><a href="../index.html#classes">False_t in the Core class list</a></span>
+</footer>
+
+</main>
+</body>
+</html>
