@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskSystem::GetStream — Core module &mdash; HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3>Methods</h3>
+  <ul class="methods">
+    <li><a href="index.html">TaskSystem</a> methods</li>
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+    <li><a href="get-num-hardware-threads.html">GetNumHardwareThreads</a></li>
+    <li><a href="set-thread-name.html">SetThreadName</a></li>
+    <li><a href="set-stream-index.html">SetStreamIndex</a></li>
+    <li><a href="get-current-stream-name.html">GetCurrentStreamName</a></li>
+    <li><a href="get-current-thread-name.html">GetCurrentThreadName</a></li>
+    <li><a href="get-current-stream-index.html">GetCurrentStreamIndex</a></li>
+    <li><a href="is-base-thread.html">IsBaseThread</a></li>
+    <li><a href="is-io-thread.html">IsIOThread</a></li>
+    <li><a href="get-base-task-stream-index.html">GetBaseTaskStreamIndex</a></li>
+    <li><a href="get-io-task-stream-index.html">GetIOTaskStreamIndex</a></li>
+    <li><a href="initialize.html">Initialize</a></li>
+    <li><a href="request-shut-down.html">RequestShutDown</a></li>
+    <li><a href="request-other-streams-close.html">RequestOtherStreamsClose</a></li>
+    <li><a href="are-other-streams-closed.html">AreOtherStreamsClosed</a></li>
+    <li><a href="join-and-clear.html">JoinAndClear</a></li>
+    <li><a href="enqueue.html">Enqueue</a></li>
+    <li><a href="dequeue.html">Dequeue</a></li>
+    <li><a href="create-task.html">CreateTask</a></li>
+    <li><a href="find-task.html">FindTask</a></li>
+    <li><a href="release-task.html">ReleaseTask</a></li>
+    <li><a href="set-successor.html">SetSuccessor</a></li>
+    <li><a href="set-abandoned-notice.html">SetAbandonedNotice</a></li>
+    <li><a href="get-successor.html">GetSuccessor</a></li>
+    <li><a href="dispatch-successor.html">DispatchSuccessor</a></li>
+    <li><a href="parallel-for.html">ParallelFor</a></li>
+    <li><a href="get-registry.html">GetRegistry</a></li>
+    <li><a href="update.html">Update</a></li>
+    <li><a href="drive-until.html">DriveUntil</a></li>
+    <li><a href="report-drive-timeout.html">ReportDriveTimeout</a></li>
+    <li><a href="run-budget-window-pass.html">RunBudgetWindowPass</a></li>
+    <li><a href="get-num-budget-windows-advanced.html">GetNumBudgetWindowsAdvanced</a></li>
+    <li><a href="enqueue-task.html">EnqueueTask</a></li>
+    <li><a href="dispatch-to-main-thread.html">DispatchToMainThread</a></li>
+    <li><a href="get-name.html">GetName</a></li>
+    <li><a href="is-running.html">IsRunning</a></li>
+    <li><a href="get-base-task-stream.html">GetBaseTaskStream</a></li>
+    <li><a href="get-io-task-stream.html">GetIOTaskStream</a></li>
+    <li><a href="get-stream-name.html">GetStreamName</a></li>
+    <li><a href="get-stream-index.html">GetStreamIndex</a></li>
+    <li><a class="current" href="get-stream.html">GetStream</a></li>
+    <li><a href="run-split.html">RunSplit</a></li>
+    <li><a href="has-stream.html">HasStream</a></li>
+    <li><a href="build-streams.html">BuildStreams</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+<a href="index.html">TaskSystem</a> / GetStream
+</p>
+
+<h1><span class="fn">GetStream</span></h1>
+<p class="subtitle">
+  the stream at <code>index</code> — and an index outside the array returns the base stream instead of failing, which is the
+  most consequential line in this class
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code><span class="ty">TaskStream</span>&amp; <span class="ty">TaskSystem</span>::<span class="fn">GetStream</span>(<span class="kw">int</span> index) noexcept
+{
+        <span class="kw">if</span> (index &lt; 0 || index &gt;= streams.<span class="fn">Size</span>())
+        {
+                <span class="kw">return</span> streams[0];
+        }
+
+        <span class="kw">return</span> streams[index];
+}</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined at <code>Engine/Core/TaskSystem.cpp:705</code>. Almost every internal path reaches a stream through it:
+  <a href="update.html">Update</a> (<code>:187</code>), <a href="join-and-clear.html">JoinAndClear</a>,
+  <a href="request-other-streams-close.html">RequestOtherStreamsClose</a>,
+  <a href="dispatch-to-main-thread.html">DispatchToMainThread</a> and <a href="drive-until.html">DriveUntil</a>. There is no
+  <code>const</code> overload, so the reference it yields lets a caller enqueue, close, wake and reconfigure the stream it
+  names.
+</p>
+
+<div class="gap">
+  <strong>An out-of-range index silently means the base stream.</strong> The guard's fallback is
+  <code>streams[0]</code>, not an assert and not a null: work addressed to a stream that does not exist is queued on stream 0
+  and runs there, on the engine-loop thread, inside the base frame budget. Nothing logs it. The symptoms are all
+  behavioural — a task that takes far longer than it should, a base stream that appears to be doing someone else's work, and a
+  <a href="run-budget-window-pass.html">budget window</a> charged for CPU the real owner was supposed to spend. This is why
+  <a href="has-stream.html">HasStream</a> exists, and why <a href="parallel-for.html">ParallelFor</a> validates its whole
+  stream list before splitting rather than letting a bad index take this path.
+</div>
+
+<div class="gap">
+  <strong>The one case that does stop is the empty array.</strong> Before <a href="initialize.html">Initialize</a> and after
+  <a href="join-and-clear.html">JoinAndClear</a> there is no element 0, so the fallback itself indexes invalidly and
+  <code>Array::operator[]</code> aborts on its bounds assert. That is the only reason the claim "a bad index aborts" ever
+  appeared to be true: it is true for the empty array and false for every other out-of-range value.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr>
+    <td><code>index</code></td>
+    <td><code>int</code></td>
+    <td>A stream index between 0 and <code>streams.Size() - 1</code>. Anything else yields stream 0, so the precondition is
+      real and unchecked — verify with <a href="has-stream.html">HasStream</a></td>
+  </tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr>
+    <td><code>TaskStream&amp;</code></td>
+    <td>A live, mutable reference to the stream — or to the base stream, on the fallback path. The referenced object is
+      destroyed by <a href="join-and-clear.html">JoinAndClear</a>, so a reference held across a teardown is the next
+      hazard</td>
+  </tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Core/TaskSystem.cpp</p>
+
+<pre><code><span class="kw">void</span> <span class="ty">TaskSystem</span>::<span class="fn">DispatchToMainThread</span>(<span class="ty">TMainThreadTask</span> taskFunc, <span class="kw">void</span>* userData, <span class="kw">uint8_t</span> priority) noexcept
+{
+        <span class="fn">GetStream</span>(<span class="fn">GetBaseTaskStreamIndex</span>()).DispatchPostedTasks(taskFunc, userData, priority);
+}</code></pre>
+
+<p>
+  <code>Engine/Core/TaskSystem.cpp:670-673</code>. Note what the caller does to stay safe: the index comes from
+  <a href="get-base-task-stream-index.html">GetBaseTaskStreamIndex</a>, a constant, never from a value a task supplied. An
+  index from outside the engine goes through <a href="has-stream.html">HasStream</a> first — that is the pattern
+  <a href="parallel-for.html">ParallelFor</a> uses, and the reason its refusals are named rather than misdirected.
+</p>
+
+<footer class="prevnext">
+  <span><a href="index.html">&larr; TaskSystem</a></span>
+  <span><a href="index.html#methods">All TaskSystem methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

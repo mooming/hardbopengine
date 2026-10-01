@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskSystem::Initialize — Core module &mdash; HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3>Methods</h3>
+  <ul class="methods">
+    <li><a href="index.html">TaskSystem</a> methods</li>
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+    <li><a href="get-num-hardware-threads.html">GetNumHardwareThreads</a></li>
+    <li><a href="set-thread-name.html">SetThreadName</a></li>
+    <li><a href="set-stream-index.html">SetStreamIndex</a></li>
+    <li><a href="get-current-stream-name.html">GetCurrentStreamName</a></li>
+    <li><a href="get-current-thread-name.html">GetCurrentThreadName</a></li>
+    <li><a href="get-current-stream-index.html">GetCurrentStreamIndex</a></li>
+    <li><a href="is-base-thread.html">IsBaseThread</a></li>
+    <li><a href="is-io-thread.html">IsIOThread</a></li>
+    <li><a href="get-base-task-stream-index.html">GetBaseTaskStreamIndex</a></li>
+    <li><a href="get-io-task-stream-index.html">GetIOTaskStreamIndex</a></li>
+    <li><a class="current" href="initialize.html">Initialize</a></li>
+    <li><a href="request-shut-down.html">RequestShutDown</a></li>
+    <li><a href="request-other-streams-close.html">RequestOtherStreamsClose</a></li>
+    <li><a href="are-other-streams-closed.html">AreOtherStreamsClosed</a></li>
+    <li><a href="join-and-clear.html">JoinAndClear</a></li>
+    <li><a href="enqueue.html">Enqueue</a></li>
+    <li><a href="dequeue.html">Dequeue</a></li>
+    <li><a href="create-task.html">CreateTask</a></li>
+    <li><a href="find-task.html">FindTask</a></li>
+    <li><a href="release-task.html">ReleaseTask</a></li>
+    <li><a href="set-successor.html">SetSuccessor</a></li>
+    <li><a href="set-abandoned-notice.html">SetAbandonedNotice</a></li>
+    <li><a href="get-successor.html">GetSuccessor</a></li>
+    <li><a href="dispatch-successor.html">DispatchSuccessor</a></li>
+    <li><a href="parallel-for.html">ParallelFor</a></li>
+    <li><a href="get-registry.html">GetRegistry</a></li>
+    <li><a href="update.html">Update</a></li>
+    <li><a href="drive-until.html">DriveUntil</a></li>
+    <li><a href="report-drive-timeout.html">ReportDriveTimeout</a></li>
+    <li><a href="run-budget-window-pass.html">RunBudgetWindowPass</a></li>
+    <li><a href="get-num-budget-windows-advanced.html">GetNumBudgetWindowsAdvanced</a></li>
+    <li><a href="enqueue-task.html">EnqueueTask</a></li>
+    <li><a href="dispatch-to-main-thread.html">DispatchToMainThread</a></li>
+    <li><a href="get-name.html">GetName</a></li>
+    <li><a href="is-running.html">IsRunning</a></li>
+    <li><a href="get-base-task-stream.html">GetBaseTaskStream</a></li>
+    <li><a href="get-io-task-stream.html">GetIOTaskStream</a></li>
+    <li><a href="get-stream-name.html">GetStreamName</a></li>
+    <li><a href="get-stream-index.html">GetStreamIndex</a></li>
+    <li><a href="get-stream.html">GetStream</a></li>
+    <li><a href="run-split.html">RunSplit</a></li>
+    <li><a href="has-stream.html">HasStream</a></li>
+    <li><a href="build-streams.html">BuildStreams</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+<a href="index.html">TaskSystem</a> / Initialize
+</p>
+
+<h1><span class="fn">Initialize</span></h1>
+<p class="subtitle">
+  reads four configuration parameters, gives the registry its capacity, and builds every stream — the call that turns an
+  empty task system into the running one
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code><span class="kw">void</span> <span class="fn">Initialize</span>() noexcept;</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>Defined at <code>Engine/Core/TaskSystem.cpp:84</code>. In order, it does five things:</p>
+
+<table>
+  <tr><th>Step</th><th>What happens</th><th>Visible as</th></tr>
+  <tr>
+    <td>Log filter</td>
+    <td>Installs a filter for the <code>"TaskSystem"</code> logger fed by the atomic configuration parameter
+      <code>Log.TaskSystem</code>, defaulting to <code>Warning</code></td>
+    <td>Task-system log lines below Warning are dropped until the parameter is raised</td>
+  </tr>
+  <tr>
+    <td>Registry capacity</td>
+    <td>Reads <code>Task.RegistryInitialRecords</code>, <code>Task.RegistryGrowByRecords</code> and
+      <code>Task.RegistryMaxRecords</code>, then <code>taskRegistry.Initialize("TaskRegistry", …)</code> and
+      <code>SetMaxCapacity</code></td>
+    <td>How many <a href="../index.html#tasksystem">task records</a> exist before the first growth, and the ceiling</td>
+  </tr>
+  <tr>
+    <td>Streams</td>
+    <td>Calls <a href="build-streams.html">BuildStreams</a></td>
+    <td>One <code>TaskStream</code> per hardware thread: <code>"Base"</code>, <code>"IO"</code>, then
+      <code>"Worker1"</code> …</td>
+  </tr>
+  <tr>
+    <td>Threads</td>
+    <td>Each stream with a thread of its own is started, and <code>isRunning</code> is set to <code>true</code></td>
+    <td><code>Engine::Run</code>'s loop condition becomes true</td>
+  </tr>
+  <tr>
+    <td>IO driver</td>
+    <td><code>Logger::Get().SetIODriver(&amp;GetIOTaskStream())</code></td>
+    <td>The logger's thread begins driving the IO stream; see
+      <a href="is-io-thread.html">IsIOThread</a></td>
+  </tr>
+</table>
+
+<div class="gap">
+  <strong>Exactly once per instance, on the constructing thread.</strong> <a href="build-streams.html">BuildStreams</a>
+  asserts <code>std::this_thread::get_id() == engineLoopThreadID</code> before it creates anything, so calling this from
+  a thread other than the one that constructed the task system stops there. A second call is worse than redundant:
+  <code>streams.Swap(Array&lt;TaskStream&gt;(numHardwareThreads))</code> hands the old buffer to the temporary, and the
+  temporary's destruction destroys every live <code>TaskStream</code> — whose <code>std::thread</code> member is still
+  joinable, and destroying a joinable <code>std::thread</code> calls <code>std::terminate</code>. Nothing checks for the
+  second call, so the guard is the caller's discipline.
+</div>
+
+<p>
+  The three registry parameters are function-local <code>static</code> objects, so they register with the configuration
+  system the first time through and are never re-registered. Changing <code>Task.RegistryMaxRecords</code> at runtime
+  still works, because <code>SetMaxCapacity</code> reads it on each
+  <code>Initialize</code> — but only on a call that must not happen.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None. Everything it needs comes from the configuration system and from
+<a href="constructors.html">construction-time</a> state.</p>
+
+<h2 id="return">Return value</h2>
+
+<p><code>void</code>. It cannot fail softly: the minimum hardware-thread requirement is a <code>FatalAssert</code> inside <a href="build-streams.html">BuildStreams</a>.</p>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Engine/Engine.cpp</p>
+
+<pre><code><span class="kw">if</span> (<span class="fn">HasFlag</span>(levels, EInitLevel::TaskSystem))
+{
+        taskSystem.<span class="fn">Initialize</span>();
+        isTaskSystemReady = <span class="kw">true</span>;
+}
+
+<span class="kw">if</span> (<span class="fn">HasFlag</span>(levels, EInitLevel::Logger))
+{
+        logger.<span class="fn">StartTask</span>(taskSystem);
+        isLoggerReady = <span class="kw">true</span>;
+}</code></pre>
+
+<p>
+  <code>Engine/Engine/Engine.cpp:102-110</code>. Note what the order buys: the task system exists before the logger
+  registers its log-writing task with it, so the log driver has a stream to be handed to. Requesting
+  <code>EInitLevel::Logger</code> implies <code>EInitLevel::TaskSystem</code> a few lines earlier for the same reason.
+  <code>Engine::Run</code> then refuses to start without it: <code>FatalAssert(isTaskSystemReady, "Engine::Run needs
+  EInitLevel::TaskSystem")</code>.
+</p>
+
+<footer class="prevnext">
+  <span><a href="index.html">&larr; TaskSystem</a></span>
+  <span><a href="index.html#methods">All TaskSystem methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

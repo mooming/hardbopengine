@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskSystem::DispatchSuccessor — Core module &mdash; HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3>Methods</h3>
+  <ul class="methods">
+    <li><a href="index.html">TaskSystem</a> methods</li>
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+    <li><a href="get-num-hardware-threads.html">GetNumHardwareThreads</a></li>
+    <li><a href="set-thread-name.html">SetThreadName</a></li>
+    <li><a href="set-stream-index.html">SetStreamIndex</a></li>
+    <li><a href="get-current-stream-name.html">GetCurrentStreamName</a></li>
+    <li><a href="get-current-thread-name.html">GetCurrentThreadName</a></li>
+    <li><a href="get-current-stream-index.html">GetCurrentStreamIndex</a></li>
+    <li><a href="is-base-thread.html">IsBaseThread</a></li>
+    <li><a href="is-io-thread.html">IsIOThread</a></li>
+    <li><a href="get-base-task-stream-index.html">GetBaseTaskStreamIndex</a></li>
+    <li><a href="get-io-task-stream-index.html">GetIOTaskStreamIndex</a></li>
+    <li><a href="initialize.html">Initialize</a></li>
+    <li><a href="request-shut-down.html">RequestShutDown</a></li>
+    <li><a href="request-other-streams-close.html">RequestOtherStreamsClose</a></li>
+    <li><a href="are-other-streams-closed.html">AreOtherStreamsClosed</a></li>
+    <li><a href="join-and-clear.html">JoinAndClear</a></li>
+    <li><a href="enqueue.html">Enqueue</a></li>
+    <li><a href="dequeue.html">Dequeue</a></li>
+    <li><a href="create-task.html">CreateTask</a></li>
+    <li><a href="find-task.html">FindTask</a></li>
+    <li><a href="release-task.html">ReleaseTask</a></li>
+    <li><a href="set-successor.html">SetSuccessor</a></li>
+    <li><a href="set-abandoned-notice.html">SetAbandonedNotice</a></li>
+    <li><a href="get-successor.html">GetSuccessor</a></li>
+    <li><a class="current" href="dispatch-successor.html">DispatchSuccessor</a></li>
+    <li><a href="parallel-for.html">ParallelFor</a></li>
+    <li><a href="get-registry.html">GetRegistry</a></li>
+    <li><a href="update.html">Update</a></li>
+    <li><a href="drive-until.html">DriveUntil</a></li>
+    <li><a href="report-drive-timeout.html">ReportDriveTimeout</a></li>
+    <li><a href="run-budget-window-pass.html">RunBudgetWindowPass</a></li>
+    <li><a href="get-num-budget-windows-advanced.html">GetNumBudgetWindowsAdvanced</a></li>
+    <li><a href="enqueue-task.html">EnqueueTask</a></li>
+    <li><a href="dispatch-to-main-thread.html">DispatchToMainThread</a></li>
+    <li><a href="get-name.html">GetName</a></li>
+    <li><a href="is-running.html">IsRunning</a></li>
+    <li><a href="get-base-task-stream.html">GetBaseTaskStream</a></li>
+    <li><a href="get-io-task-stream.html">GetIOTaskStream</a></li>
+    <li><a href="get-stream-name.html">GetStreamName</a></li>
+    <li><a href="get-stream-index.html">GetStreamIndex</a></li>
+    <li><a href="get-stream.html">GetStream</a></li>
+    <li><a href="run-split.html">RunSplit</a></li>
+    <li><a href="has-stream.html">HasStream</a></li>
+    <li><a href="build-streams.html">BuildStreams</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+<a href="index.html">TaskSystem</a> / DispatchSuccessor
+</p>
+
+<h1><span class="fn">DispatchSuccessor</span></h1>
+<p class="subtitle">
+  delivers a finished task's outcome: copies its result packet onto the recorded successor and queues that successor on
+  the stream the packet names — six ways this declines, four of them out loud
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code><span class="kw">void</span> <span class="fn">DispatchSuccessor</span>(<span class="ty">TaskID</span> finishedTask) noexcept;</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined at <code>Engine/Core/TaskSystem.cpp:431</code>. This is the arrow between two tasks, and the thread that closed
+  the join runs it — whichever worker happened to finish the last work item, not a thread chosen for the purpose. Nothing
+  accumulates in between: there is no completion buffer, no per-stream queue of finished tasks, no scan of the registry. A
+  task carries its own outcome, so the outcome is already in the hands of the thread holding the task, and one enqueue is
+  the whole delivery.
+</p>
+
+<h3>What must be true, in the order it is checked</h3>
+
+<table>
+  <tr><th>#</th><th>Test</th><th>If it fails</th></tr>
+  <tr>
+    <td>1</td>
+    <td><code>finishedTask</code> names a tracked task</td>
+    <td><strong>Quiet return.</strong> No log line — a null identity, or a task built by hand rather than created through
+      the task system, has nowhere to have recorded a successor</td>
+  </tr>
+  <tr>
+    <td>2</td>
+    <td>A successor is recorded (<a href="get-successor.html">GetSuccessor</a> is not null)</td>
+    <td><strong>Quiet return.</strong> Fire-and-forget work reaches this line constantly; a log per join would be a log
+      per task</td>
+  </tr>
+  <tr>
+    <td>3</td>
+    <td>The producer's packet names a destination stream</td>
+    <td><strong>Logged error.</strong> "…recorded a successor and closed its join, but its result packet names no
+      destination stream… A chain that stops here has no symptom until something downstream waits." A routing decision
+      nobody has made is not guessed at — see <a href="set-successor.html">SetSuccessor</a> for where the byte comes
+      from</td>
+  </tr>
+  <tr>
+    <td>4</td>
+    <td>The named destination is a stream this engine has (<a href="has-stream.html">HasStream</a>)</td>
+    <td><strong>Logged error</strong> naming the index, the successor and how many streams exist</td>
+  </tr>
+  <tr>
+    <td>5</td>
+    <td>The successor is still tracked (<a href="find-task.html">FindTask</a>)</td>
+    <td><strong>Logged error.</strong> "…a successor released while its producer ran abandoned the outcome it asked
+      for" — see <a href="release-task.html">ReleaseTask</a></td>
+  </tr>
+  <tr>
+    <td>6</td>
+    <td>The successor reserved at least one subtask</td>
+    <td><strong>Logged error.</strong> An outcome is delivered as one item covering the successor's whole range, which is
+      one reserved subtask; with none, there is no item to queue</td>
+  </tr>
+</table>
+
+<p>
+  On success, exactly three things happen: a lookup, a 128-byte packet copy onto the successor's own packet —
+  <strong>overwriting whatever the successor held there</strong>, because the successor's packet <em>is</em> the outcome
+  slot and parameters for a successor have to travel somewhere the successor reads them — and one push under the
+  destination stream's queue lock.
+</p>
+
+<div class="note">
+  <strong>The delivery is always the FIFO lane.</strong> The final statement is
+  <code>streams[destination].EnqueueFifo(...)</code>. A producer's priority does not travel with its outcome, and
+  <code>WorkItem::priority</code> is not carried across — see the lane and priority distinction on
+  <a href="enqueue.html">Enqueue</a>. A chain that must arrive on the priority lane has to say so in the successor's own
+  work, not hope the byte carries.
+</div>
+
+<div class="gap">
+  <strong>One lock is the whole coupling, and it is the destination stream's.</strong> A worker delivering into a stream
+  can wait for that stream's queue lock, and a stream holds its lock across the lane rotation that picks its next work
+  item. The wait is one push long, and only ever for a stream somebody named out loud. The alternative — a completion list
+  the base stream drains — moves that wait off the worker and onto memory, at the price of a container that outlives the
+  task it describes; that shape was declined three times, at R23 for the result buffer, in commit <code>ac496e6</code> for
+  the result container, and while writing R30 for the completion list.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr>
+    <td><code>finishedTask</code></td>
+    <td><code>TaskID</code></td>
+    <td>The identity of the task whose join just closed. A null identity has nowhere to have recorded a successor, so
+      nothing runs — and nothing says so, per row 1 above</td>
+  </tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr>
+    <td><code>void</code></td>
+    <td>Nothing to the caller. Whether the chain continued is visible only in the log, or in the successor running. A
+      caller that must know should read the successor's state, not this call's</td>
+  </tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Core/TaskStream.cpp</p>
+
+<pre><code>{
+        <span class="ty">time::ScopedTime</span> timer(duration);
+        <span class="kw">if</span> (workItem-&gt;<span class="fn">Run</span>(*task))
+        {
+                taskSys.<span class="fn">DispatchSuccessor</span>(task-&gt;<span class="fn">GetID</span>());
+        }
+}</code></pre>
+
+<p>
+  <code>Engine/Core/TaskStream.cpp:545-550</code>. <code>WorkItem::Run</code> returns true only for the item that closed
+  the join, so exactly one of a task's items reaches this line, and it reaches it on the thread that finished the work.
+  That is what makes the shape free at any chain depth: A wakes B by one push, B wakes C by another, and no stack grows
+  past one link.
+</p>
+
+<footer class="prevnext">
+  <span><a href="index.html">&larr; TaskSystem</a></span>
+  <span><a href="index.html#methods">All TaskSystem methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

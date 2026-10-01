@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskSystem::GetStreamIndex — Core module &mdash; HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3>Methods</h3>
+  <ul class="methods">
+    <li><a href="index.html">TaskSystem</a> methods</li>
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+    <li><a href="get-num-hardware-threads.html">GetNumHardwareThreads</a></li>
+    <li><a href="set-thread-name.html">SetThreadName</a></li>
+    <li><a href="set-stream-index.html">SetStreamIndex</a></li>
+    <li><a href="get-current-stream-name.html">GetCurrentStreamName</a></li>
+    <li><a href="get-current-thread-name.html">GetCurrentThreadName</a></li>
+    <li><a href="get-current-stream-index.html">GetCurrentStreamIndex</a></li>
+    <li><a href="is-base-thread.html">IsBaseThread</a></li>
+    <li><a href="is-io-thread.html">IsIOThread</a></li>
+    <li><a href="get-base-task-stream-index.html">GetBaseTaskStreamIndex</a></li>
+    <li><a href="get-io-task-stream-index.html">GetIOTaskStreamIndex</a></li>
+    <li><a href="initialize.html">Initialize</a></li>
+    <li><a href="request-shut-down.html">RequestShutDown</a></li>
+    <li><a href="request-other-streams-close.html">RequestOtherStreamsClose</a></li>
+    <li><a href="are-other-streams-closed.html">AreOtherStreamsClosed</a></li>
+    <li><a href="join-and-clear.html">JoinAndClear</a></li>
+    <li><a href="enqueue.html">Enqueue</a></li>
+    <li><a href="dequeue.html">Dequeue</a></li>
+    <li><a href="create-task.html">CreateTask</a></li>
+    <li><a href="find-task.html">FindTask</a></li>
+    <li><a href="release-task.html">ReleaseTask</a></li>
+    <li><a href="set-successor.html">SetSuccessor</a></li>
+    <li><a href="set-abandoned-notice.html">SetAbandonedNotice</a></li>
+    <li><a href="get-successor.html">GetSuccessor</a></li>
+    <li><a href="dispatch-successor.html">DispatchSuccessor</a></li>
+    <li><a href="parallel-for.html">ParallelFor</a></li>
+    <li><a href="get-registry.html">GetRegistry</a></li>
+    <li><a href="update.html">Update</a></li>
+    <li><a href="drive-until.html">DriveUntil</a></li>
+    <li><a href="report-drive-timeout.html">ReportDriveTimeout</a></li>
+    <li><a href="run-budget-window-pass.html">RunBudgetWindowPass</a></li>
+    <li><a href="get-num-budget-windows-advanced.html">GetNumBudgetWindowsAdvanced</a></li>
+    <li><a href="enqueue-task.html">EnqueueTask</a></li>
+    <li><a href="dispatch-to-main-thread.html">DispatchToMainThread</a></li>
+    <li><a href="get-name.html">GetName</a></li>
+    <li><a href="is-running.html">IsRunning</a></li>
+    <li><a href="get-base-task-stream.html">GetBaseTaskStream</a></li>
+    <li><a href="get-io-task-stream.html">GetIOTaskStream</a></li>
+    <li><a href="get-stream-name.html">GetStreamName</a></li>
+    <li><a class="current" href="get-stream-index.html">GetStreamIndex</a></li>
+    <li><a href="get-stream.html">GetStream</a></li>
+    <li><a href="run-split.html">RunSplit</a></li>
+    <li><a href="has-stream.html">HasStream</a></li>
+    <li><a href="build-streams.html">BuildStreams</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+<a href="index.html">TaskSystem</a> / GetStreamIndex
+</p>
+
+<h1><span class="fn">GetStreamIndex</span></h1>
+<p class="subtitle">
+  which stream this OS thread owns, found by scanning every stream — the outside view of the same fact
+  <a href="get-current-stream-index.html">GetCurrentStreamIndex</a> reports from inside
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code><span class="ty">TaskSystem</span>::<span class="ty">TIndex</span> <span class="ty">TaskSystem</span>::<span class="fn">GetStreamIndex</span>(<span class="ty">TThreadID</span> id) <span class="kw">const</span> noexcept
+{
+        <span class="ty">TIndex</span> index = NonStreamIndex;
+
+        <span class="kw">auto</span> size = streams.<span class="fn">Size</span>();
+        <span class="kw">for</span> (<span class="kw">decltype</span>(size) i = 0; i &lt; size; ++i)
+        {
+                <span class="kw">if</span> (<span class="kw">auto</span>&amp; stream = streams[i]; stream.<span class="fn">GetThreadID</span>() != id)
+                {
+                        <span class="kw">continue</span>;
+                }
+
+                index = i;
+                <span class="kw">break</span>;
+        }
+
+        <span class="kw">return</span> index;
+}</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined at <code>Engine/Core/TaskSystem.cpp:686</code>. The two accessors answer the same question from opposite ends: a
+  thread asks its own <code>thread_local</code> index with
+  <a href="get-current-stream-index.html">GetCurrentStreamIndex</a>, while a third party holding a
+  <code>std::thread::id</code> asks this one, which searches.
+</p>
+
+<p>
+  Each stream's thread id is recorded once, at three different moments depending on what kind of stream it is.
+</p>
+
+<table>
+  <tr><th>Stream</th><th>When its thread id is recorded</th><th>Which thread it names</th></tr>
+  <tr>
+    <td>Base (0)</td>
+    <td><code>TaskStream::Start</code>, <code>Engine/Core/TaskStream.cpp:305-307</code></td>
+    <td>The thread that called <a href="initialize.html">Initialize</a> — the engine loop. This is the value
+      <a href="drive-until.html">DriveUntil</a> compares itself against</td>
+  </tr>
+  <tr>
+    <td>IO (1)</td>
+    <td>On the first driven pass, <code>Engine/Core/TaskStream.cpp:328-330</code></td>
+    <td>The logger's thread. Until that first pass the stream has no id to match, so this function returns
+      <a href="get-current-stream-index.html">NonStreamIndex</a> for the logger's own thread</td>
+  </tr>
+  <tr>
+    <td>Workers (2 up)</td>
+    <td><code>TaskStream::RunLoop</code>, <code>Engine/Core/TaskStream.cpp:712</code></td>
+    <td>The stream's own thread, as soon as it begins</td>
+  </tr>
+</table>
+
+<div class="gap">
+  <strong>The field this scan reads is not synchronised.</strong> <code>TThreadID threadID</code>
+  (<code>Engine/Core/TaskStream.h:78</code>) is a plain <code>std::thread::id</code> — not atomic, not written under a lock. It
+  is written by the owning or driving thread and read by this function, which any thread may call, so a scan that runs while a
+  stream is recording its id for the first time is a data race in the standard's terms. In practice the type is a small
+  trivially-copyable value and the engine's own reads are few — this scan, and <a href="drive-until.html">DriveUntil</a>'s
+  comparison, and <code>Logger::StartTask</code> reading the IO stream's id — which is exactly the pattern that passes for
+  years and then reports a wrong answer on hardware nobody tested. Ask before <a href="initialize.html">Initialize</a> has
+  returned and the race is not available.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr>
+    <td><code>id</code></td>
+    <td><code>TThreadID</code> (<code>std::thread::id</code>)</td>
+    <td>Usually <code>std::this_thread::get_id()</code>, or a saved id from a stream's own thread. A default-constructed id
+      matches a stream whose id has not been recorded yet, which is a real state before the first pass rather than an
+      impossible one</td>
+  </tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr>
+    <td><code>TIndex</code> (<code>int</code>)</td>
+    <td>The first stream whose recorded thread id equals <code>id</code>, or <code>NonStreamIndex</code> (-1). Not the
+      caller's <em>current claim</em> — a borrowed pass on a driven stream changes the thread-local index and not this
+      answer</td>
+  </tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p class="note">Illustrative — no engine call site exists; the test suite compares stream ids where a page cannot quote one.</p>
+
+<pre><code><span class="kw">const</span> <span class="ty">TIndex</span> owner = taskSys.<span class="fn">GetStreamIndex</span>(std::this_thread::get_id());
+<span class="kw">if</span> (owner == <span class="ty">TaskSystem</span>::NonStreamIndex)
+{
+        <span class="cm">// this thread is not a stream: it takes nothing from the general queue</span>
+}</code></pre>
+
+<p>
+  The test against <code>NonStreamIndex</code> is the useful one, because it is the answer for every thread the application
+  created — and the consequence is documented on <a href="dequeue.html">Dequeue</a>: such a thread neither takes general-queue
+  work nor is recorded as having looked at it.
+</p>
+
+<footer class="prevnext">
+  <span><a href="index.html">&larr; TaskSystem</a></span>
+  <span><a href="index.html#methods">All TaskSystem methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

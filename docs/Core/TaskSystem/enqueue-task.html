@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskSystem::EnqueueTask — Core module &mdash; HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3>Methods</h3>
+  <ul class="methods">
+    <li><a href="index.html">TaskSystem</a> methods</li>
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+    <li><a href="get-num-hardware-threads.html">GetNumHardwareThreads</a></li>
+    <li><a href="set-thread-name.html">SetThreadName</a></li>
+    <li><a href="set-stream-index.html">SetStreamIndex</a></li>
+    <li><a href="get-current-stream-name.html">GetCurrentStreamName</a></li>
+    <li><a href="get-current-thread-name.html">GetCurrentThreadName</a></li>
+    <li><a href="get-current-stream-index.html">GetCurrentStreamIndex</a></li>
+    <li><a href="is-base-thread.html">IsBaseThread</a></li>
+    <li><a href="is-io-thread.html">IsIOThread</a></li>
+    <li><a href="get-base-task-stream-index.html">GetBaseTaskStreamIndex</a></li>
+    <li><a href="get-io-task-stream-index.html">GetIOTaskStreamIndex</a></li>
+    <li><a href="initialize.html">Initialize</a></li>
+    <li><a href="request-shut-down.html">RequestShutDown</a></li>
+    <li><a href="request-other-streams-close.html">RequestOtherStreamsClose</a></li>
+    <li><a href="are-other-streams-closed.html">AreOtherStreamsClosed</a></li>
+    <li><a href="join-and-clear.html">JoinAndClear</a></li>
+    <li><a href="enqueue.html">Enqueue</a></li>
+    <li><a href="dequeue.html">Dequeue</a></li>
+    <li><a href="create-task.html">CreateTask</a></li>
+    <li><a href="find-task.html">FindTask</a></li>
+    <li><a href="release-task.html">ReleaseTask</a></li>
+    <li><a href="set-successor.html">SetSuccessor</a></li>
+    <li><a href="set-abandoned-notice.html">SetAbandonedNotice</a></li>
+    <li><a href="get-successor.html">GetSuccessor</a></li>
+    <li><a href="dispatch-successor.html">DispatchSuccessor</a></li>
+    <li><a href="parallel-for.html">ParallelFor</a></li>
+    <li><a href="get-registry.html">GetRegistry</a></li>
+    <li><a href="update.html">Update</a></li>
+    <li><a href="drive-until.html">DriveUntil</a></li>
+    <li><a href="report-drive-timeout.html">ReportDriveTimeout</a></li>
+    <li><a href="run-budget-window-pass.html">RunBudgetWindowPass</a></li>
+    <li><a href="get-num-budget-windows-advanced.html">GetNumBudgetWindowsAdvanced</a></li>
+    <li><a class="current" href="enqueue-task.html">EnqueueTask</a></li>
+    <li><a href="dispatch-to-main-thread.html">DispatchToMainThread</a></li>
+    <li><a href="get-name.html">GetName</a></li>
+    <li><a href="is-running.html">IsRunning</a></li>
+    <li><a href="get-base-task-stream.html">GetBaseTaskStream</a></li>
+    <li><a href="get-io-task-stream.html">GetIOTaskStream</a></li>
+    <li><a href="get-stream-name.html">GetStreamName</a></li>
+    <li><a href="get-stream-index.html">GetStreamIndex</a></li>
+    <li><a href="get-stream.html">GetStream</a></li>
+    <li><a href="run-split.html">RunSplit</a></li>
+    <li><a href="has-stream.html">HasStream</a></li>
+    <li><a href="build-streams.html">BuildStreams</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+<a href="index.html">TaskSystem</a> / EnqueueTask
+</p>
+
+<h1><span class="fn">EnqueueTask</span></h1>
+<p class="subtitle">
+  the customer's entry point for single-shot work: declares the task's join, builds the one item that fills it, and queues it —
+  in that order, which is the only order that works
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code><span class="kw">void</span> <span class="fn">EnqueueTask</span>(<span class="ty">TIndex</span> streamIndex, <span class="ty">Task</span>&amp; task, <span class="kw">uint8_t</span> priority = 0,
+                                    <span class="ty">StreamDrainPolicy::ELane</span> lane = <span class="ty">StreamDrainPolicy::ELane</span>::Fifo) noexcept
+{
+        task.<span class="fn">ReserveSubTasks</span>(1);
+        <span class="fn">Enqueue</span>(streamIndex, task.<span class="fn">GenerateSubTask</span>(0, 1, priority), lane);
+}</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined at <code>Engine/Core/TaskSystem.cpp:365</code>. A task declares its own join and the engine builds the item that
+  fills it, which is the only order in which those two facts can be stated without the caller knowing anything about items. A
+  customer that builds an item itself has reached inside the engine for a handle it should not hold — and this is the call it
+  wants instead.
+</p>
+
+<p>
+  The task is offered as a single whole-range item: the runnable receives <code>startIndex == 0</code> and
+  <code>endIndex == 1</code>, whatever the task's own notion of size might be. Splitting is
+  <a href="parallel-for.html">ParallelFor</a>'s job.
+</p>
+
+<div class="gap">
+  <strong>Call it once per task, and only on a task that declared no join.</strong> This declares a join of exactly one item, so
+  a task that already declared one has that declaration overwritten — the earlier count is lost, and a caller waiting on the
+  old number is waiting for reports that will never arrive. A second call on the same task also queues a second item against a
+  join that expects one, so the join closes on whichever item reports first and the second item runs as work nobody is
+  counting.
+</div>
+
+<div class="note">
+  <strong>The reserve comes first for a reason.</strong> The join's count must be true before the first item can be seen by a
+  worker: reserving afterwards lets a task report itself done when the one item queued has finished, which is correct here by
+  construction — and is the trap the ordering avoids in general, since <code>GenerateSubTask</code> hands out an item a worker
+  can take the instant it exists.
+</div>
+
+<p>
+  Lane and priority keep the distinction
+  <a href="enqueue.html">Enqueue</a> documents: <code>lane</code> chooses the queue, <code>priority</code> orders within the
+  priority lane, and the lane parameter is added last and defaulted so that <code>EnqueueTask(i, t, 1)</code> binds to the
+  priority rather than to the lane. Because the underlying enqueue is the indexed form, its rules apply unchanged — including
+  the one where an out-of-range <code>streamIndex</code> drops the item silently outside Debug builds.
+</p>
+
+<div class="note">
+  <strong>If a successor was recorded for the task, this can complete a chain.</strong> The item closes the join, the stream
+  that ran it calls <a href="dispatch-successor.html">DispatchSuccessor</a>, and delivery proceeds or refuses under those
+  rules — including the requirement that the packet name a destination stream. Single-shot work usually has no successor, so
+  this only bites when a task was routed with <a href="set-successor.html">SetSuccessor</a> and then offered by hand.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr>
+    <td><code>streamIndex</code></td>
+    <td><code>TIndex</code> (<code>int</code>)</td>
+    <td>Which stream takes the work. An index outside the streams is a programming error, and outside Debug builds it is a
+      silently dropped task — see <a href="has-stream.html">HasStream</a></td>
+  </tr>
+  <tr>
+    <td><code>task</code></td>
+    <td><code>Task&amp;</code></td>
+    <td>A record the registry issued, taken from <a href="find-task.html">FindTask</a>. It must not already declare a join. The
+      reference must stay valid while the item is queued, which it does as long as the record is not
+      <a href="release-task.html">released</a> early</td>
+  </tr>
+  <tr>
+    <td><code>priority</code></td>
+    <td><code>uint8_t</code></td>
+    <td>Ordering inside the priority queue, 0 least urgent; default 0. Not a lane</td>
+  </tr>
+  <tr>
+    <td><code>lane</code></td>
+    <td><code>StreamDrainPolicy::ELane</code></td>
+    <td>Which queue serves the work, <code>Fifo</code> by default. <code>None</code> is a caller error and is asserted — which
+      outside Debug means the item is dropped</td>
+  </tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  <code>void</code>. The identity is not returned because it was never taken: the caller already holds the task. Whether the
+  item was accepted follows the same silence as <a href="enqueue.html">Enqueue</a>.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Log/Logger.cpp</p>
+
+<pre><code>taskID = taskSys.<span class="fn">CreateTask</span>(<span class="st">"Logger"</span>, runnable, <span class="kw">this</span>);
+
+<span class="kw">auto</span>* drainTask = taskSys.<span class="fn">FindTask</span>(taskID);
+<span class="kw">if</span> (drainTask == <span class="kw">nullptr</span>)
+{
+        ...
+        <span class="kw">return</span>;
+}
+
+taskSys.<span class="fn">EnqueueTask</span>(ioStreamIndex, *drainTask);</code></pre>
+
+<p>
+  <code>Engine/Log/Logger.cpp:304-317</code>. The logger's drain task: created, verified, then offered to the IO stream at
+  default priority on the FIFO lane. It is a long-lived task in one sense only — the record stays live, and each pass over the
+  log queue is the same task being run again, which is why the join is declared once here rather than per use.
+</p>
+
+<footer class="prevnext">
+  <span><a href="index.html">&larr; TaskSystem</a></span>
+  <span><a href="index.html#methods">All TaskSystem methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

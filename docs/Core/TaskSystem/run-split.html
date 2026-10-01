@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskSystem::RunSplit — Core module &mdash; HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3>Methods</h3>
+  <ul class="methods">
+    <li><a href="index.html">TaskSystem</a> methods</li>
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+    <li><a href="get-num-hardware-threads.html">GetNumHardwareThreads</a></li>
+    <li><a href="set-thread-name.html">SetThreadName</a></li>
+    <li><a href="set-stream-index.html">SetStreamIndex</a></li>
+    <li><a href="get-current-stream-name.html">GetCurrentStreamName</a></li>
+    <li><a href="get-current-thread-name.html">GetCurrentThreadName</a></li>
+    <li><a href="get-current-stream-index.html">GetCurrentStreamIndex</a></li>
+    <li><a href="is-base-thread.html">IsBaseThread</a></li>
+    <li><a href="is-io-thread.html">IsIOThread</a></li>
+    <li><a href="get-base-task-stream-index.html">GetBaseTaskStreamIndex</a></li>
+    <li><a href="get-io-task-stream-index.html">GetIOTaskStreamIndex</a></li>
+    <li><a href="initialize.html">Initialize</a></li>
+    <li><a href="request-shut-down.html">RequestShutDown</a></li>
+    <li><a href="request-other-streams-close.html">RequestOtherStreamsClose</a></li>
+    <li><a href="are-other-streams-closed.html">AreOtherStreamsClosed</a></li>
+    <li><a href="join-and-clear.html">JoinAndClear</a></li>
+    <li><a href="enqueue.html">Enqueue</a></li>
+    <li><a href="dequeue.html">Dequeue</a></li>
+    <li><a href="create-task.html">CreateTask</a></li>
+    <li><a href="find-task.html">FindTask</a></li>
+    <li><a href="release-task.html">ReleaseTask</a></li>
+    <li><a href="set-successor.html">SetSuccessor</a></li>
+    <li><a href="set-abandoned-notice.html">SetAbandonedNotice</a></li>
+    <li><a href="get-successor.html">GetSuccessor</a></li>
+    <li><a href="dispatch-successor.html">DispatchSuccessor</a></li>
+    <li><a href="parallel-for.html">ParallelFor</a></li>
+    <li><a href="get-registry.html">GetRegistry</a></li>
+    <li><a href="update.html">Update</a></li>
+    <li><a href="drive-until.html">DriveUntil</a></li>
+    <li><a href="report-drive-timeout.html">ReportDriveTimeout</a></li>
+    <li><a href="run-budget-window-pass.html">RunBudgetWindowPass</a></li>
+    <li><a href="get-num-budget-windows-advanced.html">GetNumBudgetWindowsAdvanced</a></li>
+    <li><a href="enqueue-task.html">EnqueueTask</a></li>
+    <li><a href="dispatch-to-main-thread.html">DispatchToMainThread</a></li>
+    <li><a href="get-name.html">GetName</a></li>
+    <li><a href="is-running.html">IsRunning</a></li>
+    <li><a href="get-base-task-stream.html">GetBaseTaskStream</a></li>
+    <li><a href="get-io-task-stream.html">GetIOTaskStream</a></li>
+    <li><a href="get-stream-name.html">GetStreamName</a></li>
+    <li><a href="get-stream-index.html">GetStreamIndex</a></li>
+    <li><a href="get-stream.html">GetStream</a></li>
+    <li><a class="current" href="run-split.html">RunSplit</a></li>
+    <li><a href="has-stream.html">HasStream</a></li>
+    <li><a href="build-streams.html">BuildStreams</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+<a href="index.html">TaskSystem</a> / RunSplit
+</p>
+
+<h1><span class="fn">RunSplit</span></h1>
+<p class="subtitle">
+  the private half of <a href="parallel-for.html">ParallelFor</a>: clamps the counts, records the routing, then hands out
+  contiguous ranges round-robin — the only place the range arithmetic lives
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code><span class="ty">TaskID</span> <span class="fn">RunSplit</span>(<span class="ty">StaticString</span> taskName, <span class="ty">TRunnable</span> func, <span class="kw">void</span>* userData,
+                 <span class="ty">TIndex</span> numItems, <span class="ty">TIndex</span> numSubJobs,
+                 <span class="kw">const</span> <span class="ty">TIndex</span>* streamIndices, <span class="ty">TIndex</span> numStreamIndices,
+                 <span class="kw">uint8_t</span> priority, <span class="ty">TaskID</span> successor, <span class="ty">TIndex</span> successorStream) noexcept;</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Declared in the public block of <code>Engine/Core/TaskSystem.h</code> but documented as engine-internal: it is the body
+  both <a href="parallel-for.html">ParallelFor</a> forms call once they have validated their own stream arguments, and it
+  is where the two forms stop differing. Defined at <code>Engine/Core/TaskSystem.cpp:582</code>.
+</p>
+
+<table>
+  <tr><th>#</th><th>Step</th><th>Detail</th></tr>
+  <tr>
+    <td>1</td>
+    <td>Refuse a zero or negative count</td>
+    <td><code>numItems &lt;= 0</code> or <code>numSubJobs &lt;= 0</code> → logged, null identity. The counts are signed, and
+      a negative one turns into an enormous range the moment it reaches an index</td>
+  </tr>
+  <tr>
+    <td>2</td>
+    <td>Refuse a successor with nowhere to run</td>
+    <td>Non-null successor and <code>successorStream</code> that is not a stream → logged, null identity</td>
+  </tr>
+  <tr>
+    <td>3</td>
+    <td>Clamp, twice, silently</td>
+    <td><code>numSubJobs</code> down to <code>numItems</code>, then to <code>Task::MaxNumSubTasks</code> (255) because the
+      join counter is 8 bits. Fewer units of work, same coverage</td>
+  </tr>
+  <tr>
+    <td>4</td>
+    <td>Create and look up the record</td>
+    <td><a href="create-task.html">CreateTask</a> then <a href="find-task.html">FindTask</a>; a null record is logged as
+      "The registry is at its capacity" and nothing is queued</td>
+  </tr>
+  <tr>
+    <td>5</td>
+    <td>Record the routing <em>before</em> anything can finish</td>
+    <td><a href="set-successor.html">SetSuccessor</a>, then the packet's destination byte from
+    <code>successorStream</code>. Both before the first item exists</td>
+  </tr>
+  <tr>
+    <td>6</td>
+    <td>Declare the join</td>
+    <td><code>ReserveSubTasks(numSubJobs)</code> — the count must be true before the first item can be seen by a worker,
+      or a task reports itself done after one item of three and a caller waiting on it never wakes up</td>
+  </tr>
+  <tr>
+    <td>7</td>
+    <td>Hand out ranges round-robin</td>
+    <td>See the arithmetic below</td>
+  </tr>
+</table>
+
+<h3>The range arithmetic</h3>
+
+<pre><code><span class="kw">const</span> <span class="ty">TIndex</span> itemsLeft = numItems - itemStart;
+<span class="kw">const</span> <span class="ty">TIndex</span> jobsLeft  = numSubJobs - subJob;
+<span class="kw">const</span> <span class="ty">TIndex</span> itemEnd   = itemStart + (itemsLeft + jobsLeft - 1) / jobsLeft;
+
+<span class="kw">auto</span>&amp; destination = streams[streamIndices[destinationSlot]];
+<span class="kw">const</span> <span class="kw">auto</span> item = task-&gt;<span class="fn">GenerateSubTask</span>(itemStart, itemEnd, priority);
+<span class="kw">if</span> (priority &gt; 0) { destination.<span class="fn">EnqueuePriority</span>(item); }
+<span class="kw">else</span>              { destination.<span class="fn">EnqueueFifo</span>(item); }
+
+itemStart = itemEnd;
+destinationSlot = (destinationSlot + 1) % numStreamIndices;</code></pre>
+
+<p>
+  Ceiling division, so any remainder lands on the <em>earlier</em> ranges: three items in two sub-jobs is 2 + 1, not
+  1 + 2. Ranges are contiguous and non-empty because step 3 guaranteed <code>numSubJobs &lt;= numItems</code>. Stream
+  selection is a simple cycle over the caller's list, so a split over two streams alternates item by item rather than
+  giving each stream a block.
+</p>
+
+<div class="note">
+  <strong>One queue lock per item, and nothing else.</strong> Each <code>EnqueueFifo</code> /
+  <code>EnqueuePriority</code> takes that stream's lock for the length of a push. The function never waits for work to
+  finish, which is what makes it callable from inside a running task's own runnable — the shape a split that finishes one
+  stage and forks the next one needs.
+</div>
+
+<div class="note">
+  <strong><code>MaxStreamsPerSplit</code> is 64 so that the count form needs no allocation.</strong>
+  <a href="parallel-for.html">ParallelFor</a>'s count form fills <code>TIndex chosen[MaxStreamsPerSplit]</code> on the
+  caller's stack; the constant exists to make that array's size a compile-time fact, not because a split has ever wanted
+  64 streams. A job spread over more streams than that is not a shape the engine has, and the clamp keeps the choice
+  reproducible instead of allocating.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>
+  The same eleven as <a href="parallel-for.html">ParallelFor</a>, already validated by whichever form reached here —
+  except that <code>streamIndices</code> is now required to be a real, non-empty caller-owned array, because the cycle
+  above indexes it.
+</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr>
+    <td><code>TaskID</code></td>
+    <td>The created task's identity, or a null identity on any of the refusals above. Every refusal logs, because a split
+      that silently did not happen looks exactly like a split still waiting</td>
+  </tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p class="note">Illustrative — <code>RunSplit</code> is engine-internal; call sites go through
+<a href="parallel-for.html">ParallelFor</a>, whose examples section shows the real splits.</p>
+
+<pre><code><span class="cm">// six items, four sub-jobs, one stream:</span>
+<span class="cm">//   ranges handed out: [0,2) [2,4) [4,5) [5,6)</span>
+<span class="cm">//   all four land on the same stream because the cycle has length one</span></code></pre>
+
+<p>
+  The arithmetic is the whole reason this function is separate: the count form and the explicit form disagree about
+  <em>which</em> streams to use, and must agree perfectly about how a range is cut.
+</p>
+
+<footer class="prevnext">
+  <span><a href="index.html">&larr; TaskSystem</a></span>
+  <span><a href="index.html#methods">All TaskSystem methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskSystem::GetCurrentStreamIndex — Core module &mdash; HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3>Methods</h3>
+  <ul class="methods">
+    <li><a href="index.html">TaskSystem</a> methods</li>
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+    <li><a href="get-num-hardware-threads.html">GetNumHardwareThreads</a></li>
+    <li><a href="set-thread-name.html">SetThreadName</a></li>
+    <li><a href="set-stream-index.html">SetStreamIndex</a></li>
+    <li><a href="get-current-stream-name.html">GetCurrentStreamName</a></li>
+    <li><a href="get-current-thread-name.html">GetCurrentThreadName</a></li>
+    <li><a class="current" href="get-current-stream-index.html">GetCurrentStreamIndex</a></li>
+    <li><a href="is-base-thread.html">IsBaseThread</a></li>
+    <li><a href="is-io-thread.html">IsIOThread</a></li>
+    <li><a href="get-base-task-stream-index.html">GetBaseTaskStreamIndex</a></li>
+    <li><a href="get-io-task-stream-index.html">GetIOTaskStreamIndex</a></li>
+    <li><a href="initialize.html">Initialize</a></li>
+    <li><a href="request-shut-down.html">RequestShutDown</a></li>
+    <li><a href="request-other-streams-close.html">RequestOtherStreamsClose</a></li>
+    <li><a href="are-other-streams-closed.html">AreOtherStreamsClosed</a></li>
+    <li><a href="join-and-clear.html">JoinAndClear</a></li>
+    <li><a href="enqueue.html">Enqueue</a></li>
+    <li><a href="dequeue.html">Dequeue</a></li>
+    <li><a href="create-task.html">CreateTask</a></li>
+    <li><a href="find-task.html">FindTask</a></li>
+    <li><a href="release-task.html">ReleaseTask</a></li>
+    <li><a href="set-successor.html">SetSuccessor</a></li>
+    <li><a href="set-abandoned-notice.html">SetAbandonedNotice</a></li>
+    <li><a href="get-successor.html">GetSuccessor</a></li>
+    <li><a href="dispatch-successor.html">DispatchSuccessor</a></li>
+    <li><a href="parallel-for.html">ParallelFor</a></li>
+    <li><a href="get-registry.html">GetRegistry</a></li>
+    <li><a href="update.html">Update</a></li>
+    <li><a href="drive-until.html">DriveUntil</a></li>
+    <li><a href="report-drive-timeout.html">ReportDriveTimeout</a></li>
+    <li><a href="run-budget-window-pass.html">RunBudgetWindowPass</a></li>
+    <li><a href="get-num-budget-windows-advanced.html">GetNumBudgetWindowsAdvanced</a></li>
+    <li><a href="enqueue-task.html">EnqueueTask</a></li>
+    <li><a href="dispatch-to-main-thread.html">DispatchToMainThread</a></li>
+    <li><a href="get-name.html">GetName</a></li>
+    <li><a href="is-running.html">IsRunning</a></li>
+    <li><a href="get-base-task-stream.html">GetBaseTaskStream</a></li>
+    <li><a href="get-io-task-stream.html">GetIOTaskStream</a></li>
+    <li><a href="get-stream-name.html">GetStreamName</a></li>
+    <li><a href="get-stream-index.html">GetStreamIndex</a></li>
+    <li><a href="get-stream.html">GetStream</a></li>
+    <li><a href="run-split.html">RunSplit</a></li>
+    <li><a href="has-stream.html">HasStream</a></li>
+    <li><a href="build-streams.html">BuildStreams</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+<a href="index.html">TaskSystem</a> / GetCurrentStreamIndex
+</p>
+
+<h1><span class="fn">GetCurrentStreamIndex</span></h1>
+<p class="subtitle">
+  returns the <code>thread_local</code> stream index the calling thread last claimed, or
+  <code>NonStreamIndex</code> when it has claimed none
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code><span class="kw">static</span> <span class="ty">TIndex</span> <span class="fn">GetCurrentStreamIndex</span>() noexcept
+{
+        <span class="kw">return</span> StreamIndex;
+}</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Reads <code>thread_local TIndex StreamIndex</code> (<code>Engine/Core/TaskSystem.cpp:24</code>), written only by
+  <a href="set-stream-index.html">SetStreamIndex</a> and initialised to <code>NonStreamIndex</code> —
+  <code>static_cast&lt;TIndex&gt;(-1)</code>. This is the fact that
+  <a href="is-base-thread.html">IsBaseThread</a> and <a href="is-io-thread.html">IsIOThread</a> are built from, and the
+  one the general task queue consults when it decides whether this thread may take a work item: see
+  <a href="dequeue.html">Dequeue</a>.
+</p>
+
+<div class="note">
+  <strong>Why the "no stream" value is <code>-1</code> and not <code>0</code>.</strong> Stream 0 is a real stream — the
+  base stream — so a default of <code>0</code> made every thread in the process report itself the base stream until a
+  <code>TaskStream</code> loop claimed it. That made <a href="is-base-thread.html">IsBaseThread</a> useless as a check,
+  made the assert in <a href="build-streams.html">BuildStreams</a> pass on any thread at all, and made the general queue
+  charge a non-stream thread's contact with a task to stream 0's affinity. <code>NonStreamIndex</code> is out of range
+  for the affinity mask by construction, so a thread that is not a stream takes nothing from the general queue and is
+  not recorded as having seen anything.
+</div>
+
+<p>
+  The value is per-thread and per-pass. On the two driven streams — base and IO — it is set for the length of a drain
+  pass and restored afterwards (<code>Engine/Core/TaskStream.cpp:365-369</code>), so reading it from the same thread
+  one statement outside a pass gives <code>NonStreamIndex</code> again, not the stream that was being served a moment
+  ago.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr>
+    <td><code>TIndex</code> (<code>int</code>)</td>
+    <td>The claimed stream index, or <code>NonStreamIndex</code> (<code>-1</code>). Compare against
+      <a href="get-base-task-stream-index.html">GetBaseTaskStreamIndex</a> or
+      <a href="get-io-task-stream-index.html">GetIOTaskStreamIndex</a>; do not compare against the name, which is a
+      separate variable that can disagree — see <a href="set-stream-index.html">SetStreamIndex</a></td>
+  </tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Core/TaskSystem.cpp</p>
+
+<pre><code><span class="kw">const</span> <span class="kw">unsigned</span> <span class="kw">int</span> streamIndex = <span class="fn">GetCurrentStreamIndex</span>();
+
+<span class="kw">auto</span>&amp; affinity = workItem.affinity;
+<span class="kw">if</span> (!affinity.<span class="fn">Get</span>(streamIndex))
+{
+        affinity.<span class="fn">Set</span>(streamIndex);
+        <span class="kw">return</span>;
+}</code></pre>
+
+<p>
+  The general-queue intake at <code>Engine/Core/TaskSystem.cpp:337</code>, where the returned <code>TIndex</code> is
+  widened into <code>unsigned int</code>: <code>NonStreamIndex</code> arrives there as 4294967295, which
+  <code>TaskStreamAffinity</code> ignores because it is past the mask's width — so a non-stream thread neither takes the
+  item nor records a claim. The outcome is intended; it is reached by the width of the type rather than by a check, so
+  a future change to the affinity width would change this behaviour without any line here changing.
+</p>
+
+<footer class="prevnext">
+  <span><a href="index.html">&larr; TaskSystem</a></span>
+  <span><a href="index.html#methods">All TaskSystem methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

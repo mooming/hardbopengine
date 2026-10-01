@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskSystem::DriveUntil — Core module &mdash; HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3>Methods</h3>
+  <ul class="methods">
+    <li><a href="index.html">TaskSystem</a> methods</li>
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+    <li><a href="get-num-hardware-threads.html">GetNumHardwareThreads</a></li>
+    <li><a href="set-thread-name.html">SetThreadName</a></li>
+    <li><a href="set-stream-index.html">SetStreamIndex</a></li>
+    <li><a href="get-current-stream-name.html">GetCurrentStreamName</a></li>
+    <li><a href="get-current-thread-name.html">GetCurrentThreadName</a></li>
+    <li><a href="get-current-stream-index.html">GetCurrentStreamIndex</a></li>
+    <li><a href="is-base-thread.html">IsBaseThread</a></li>
+    <li><a href="is-io-thread.html">IsIOThread</a></li>
+    <li><a href="get-base-task-stream-index.html">GetBaseTaskStreamIndex</a></li>
+    <li><a href="get-io-task-stream-index.html">GetIOTaskStreamIndex</a></li>
+    <li><a href="initialize.html">Initialize</a></li>
+    <li><a href="request-shut-down.html">RequestShutDown</a></li>
+    <li><a href="request-other-streams-close.html">RequestOtherStreamsClose</a></li>
+    <li><a href="are-other-streams-closed.html">AreOtherStreamsClosed</a></li>
+    <li><a href="join-and-clear.html">JoinAndClear</a></li>
+    <li><a href="enqueue.html">Enqueue</a></li>
+    <li><a href="dequeue.html">Dequeue</a></li>
+    <li><a href="create-task.html">CreateTask</a></li>
+    <li><a href="find-task.html">FindTask</a></li>
+    <li><a href="release-task.html">ReleaseTask</a></li>
+    <li><a href="set-successor.html">SetSuccessor</a></li>
+    <li><a href="set-abandoned-notice.html">SetAbandonedNotice</a></li>
+    <li><a href="get-successor.html">GetSuccessor</a></li>
+    <li><a href="dispatch-successor.html">DispatchSuccessor</a></li>
+    <li><a href="parallel-for.html">ParallelFor</a></li>
+    <li><a href="get-registry.html">GetRegistry</a></li>
+    <li><a href="update.html">Update</a></li>
+    <li><a class="current" href="drive-until.html">DriveUntil</a></li>
+    <li><a href="report-drive-timeout.html">ReportDriveTimeout</a></li>
+    <li><a href="run-budget-window-pass.html">RunBudgetWindowPass</a></li>
+    <li><a href="get-num-budget-windows-advanced.html">GetNumBudgetWindowsAdvanced</a></li>
+    <li><a href="enqueue-task.html">EnqueueTask</a></li>
+    <li><a href="dispatch-to-main-thread.html">DispatchToMainThread</a></li>
+    <li><a href="get-name.html">GetName</a></li>
+    <li><a href="is-running.html">IsRunning</a></li>
+    <li><a href="get-base-task-stream.html">GetBaseTaskStream</a></li>
+    <li><a href="get-io-task-stream.html">GetIOTaskStream</a></li>
+    <li><a href="get-stream-name.html">GetStreamName</a></li>
+    <li><a href="get-stream-index.html">GetStreamIndex</a></li>
+    <li><a href="get-stream.html">GetStream</a></li>
+    <li><a href="run-split.html">RunSplit</a></li>
+    <li><a href="has-stream.html">HasStream</a></li>
+    <li><a href="build-streams.html">BuildStreams</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+<a href="index.html">TaskSystem</a> / DriveUntil
+</p>
+
+<h1><span class="fn">DriveUntil</span></h1>
+<p class="subtitle">
+  waits for a predicate by driving the base stream — if the caller is the thread that owns it. From any other thread the
+  same call is a sleep-poll that cannot make the condition come true
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code><span class="kw">template</span> &lt;<span class="kw">class</span> Predicate&gt;
+<span class="kw">bool</span> <span class="fn">DriveUntil</span>(<span class="kw">const</span> <span class="kw">char</span>* waitingFor, Predicate&amp;&amp; isDone,
+                <span class="kw">std</span>::chrono::milliseconds patience = <span class="kw">std</span>::chrono::milliseconds(30000)) noexcept
+{
+        <span class="ty">TaskStream</span>&amp; baseStream = <span class="fn">GetStream</span>(<span class="fn">GetBaseTaskStreamIndex</span>());
+        <span class="kw">auto</span> remaining = patience;
+
+        <span class="kw">if</span> (<span class="kw">std</span>::this_thread::<span class="fn">get_id</span>() != baseStream.<span class="fn">GetThreadID</span>())
+        {
+                <span class="kw">while</span> (!isDone() &amp;&amp; remaining &gt; <span class="kw">std</span>::chrono::milliseconds::zero())
+                {
+                        <span class="kw">std</span>::this_thread::<span class="fn">sleep_for</span>(<span class="kw">std</span>::chrono::milliseconds(1));
+                        remaining -= <span class="kw">std</span>::chrono::milliseconds(1);
+                }
+                <span class="kw">return</span> isDone();
+        }
+
+        baseStream.<span class="fn">SetNestedPumpAllowed</span>(<span class="kw">true</span>);
+
+        <span class="kw">struct</span> <span class="ty">NestedPumpGuard</span>
+        {
+                <span class="ty">TaskStream</span>&amp; stream;
+                ~<span class="fn">NestedPumpGuard</span>() { stream.<span class="fn">SetNestedPumpAllowed</span>(<span class="kw">false</span>); }
+        } nestedPumpGuard{baseStream};
+
+        <span class="kw">while</span> (!isDone() &amp;&amp; remaining &gt; <span class="kw">std</span>::chrono::milliseconds::zero())
+        {
+                <span class="fn">Update</span>();   <span class="cm">// not baseStream.Update — see below</span>
+                <span class="kw">std</span>::this_thread::<span class="fn">sleep_for</span>(<span class="kw">std</span>::chrono::milliseconds(1));
+                remaining -= <span class="kw">std</span>::chrono::milliseconds(1);
+        }
+
+        <span class="kw">if</span> (!isDone())
+        {
+                <span class="fn">ReportDriveTimeout</span>(waitingFor, patience);
+        }
+
+        <span class="kw">return</span> isDone();
+}</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  A member template defined in the header, because a predicate cannot live anywhere else. Its purpose is the one wait that
+  is legitimate on the thread that drives the engine: work is already queued, the caller needs it done, and on this engine
+  the only way it gets done on this thread is for this thread to run it. Parking a stream thread on a condition variable is
+  the shape the task system exists to avoid.
+</p>
+
+<h3>The two behaviours</h3>
+
+<table>
+  <tr><th>Caller</th><th>What the loop does</th><th>On giving up</th></tr>
+  <tr>
+    <td>The engine-loop thread — the one the base stream recorded at
+      <code>Engine/Core/TaskStream.cpp:305-307</code></td>
+    <td><a href="update.html">Update</a> plus a 1 ms sleep per iteration, nested pumping allowed for the duration</td>
+    <td><a href="report-drive-timeout.html">ReportDriveTimeout</a> logs an error naming what was waited for and how long
+      it tried</td>
+  </tr>
+  <tr>
+    <td>Any other thread</td>
+    <td>Sleeps 1 ms and re-tests. It cannot drive anything — it does not own the base stream, and a second driver would
+      break the one-driver rule that <a href="update.html">Update</a> depends on</td>
+    <td><strong>Silent.</strong> The reporting call is inside the driving branch only; a foreign thread's timeout produces
+      no log line at all</td>
+  </tr>
+</table>
+
+<div class="note">
+  <strong>The inner loop calls <code>Update()</code>, not <code>baseStream.Update()</code>.</strong> Left as a comment in
+  the source and worth keeping: a callback posted to the engine loop lives on the stream the loop drives, and a stream's
+  pump is what runs it. Going straight to the stream would run its lanes but skip what the task system wraps around that —
+  including the budget-window pass that lets a throttled stream take anything at all.
+</div>
+
+<div class="note">
+  <strong><code>SetNestedPumpAllowed</code> is a gate, not a flag.</strong> This call can be reached while the base stream
+  is already being pumped — a task running on the base stream that waits for something else is exactly that case — and
+  re-entering a pump is allowed only for a caller that has said so. The guard's destructor clears it on every exit path,
+  so a nested drive does not leave the stream permanently re-entrant.
+</div>
+
+<p>
+  The 1 ms sleep is a yield, not a poll rate: the predicate is usually set by work this very thread is running, so the sleep
+  costs one millisecond per unfinished unit and keeps the loop from spinning the core while it drives.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr>
+    <td><em>Predicate</em></td>
+    <td><em>template parameter</em></td>
+    <td>Anything callable as <code>bool()</code>. Bound by forwarding reference, so a lambda that captures by reference is
+      the normal case</td>
+  </tr>
+  <tr>
+    <td><code>waitingFor</code></td>
+    <td><code>const char*</code></td>
+    <td>A literal naming the condition, used in the timeout report. It is stored only for the length of the call, but it
+      must be a string literal or equivalent, not a temporary</td>
+  </tr>
+  <tr>
+    <td><code>isDone</code></td>
+    <td><code>Predicate&amp;&amp;</code></td>
+    <td>Tested before the first pass and after each one. Must not block: it runs on the thread that is trying to make it
+      true</td>
+  </tr>
+  <tr>
+    <td><code>patience</code></td>
+    <td><code>std::chrono::milliseconds</code></td>
+    <td>Wall-clock bound, defaulting to 30 000 ms. Decremented by the sleep rather than measured against a deadline, so a
+      call that overshoots each sleep drifts slightly longer than named</td>
+  </tr>
+  <tr>
+    <td><em>(function parameters)</em></td>
+    <td>—</td>
+    <td>Three, all above; the template parameter is not a call argument</td>
+  </tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr>
+    <td><code>bool</code></td>
+    <td>The predicate's final value. <code>false</code> means the bound expired: the work was still queued, nothing was
+      going to run it, and a caller that proceeds from here usually blocks on the very thing it waited for</td>
+  </tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/OSAL/Window.cpp</p>
+
+<pre><code><span class="kw">const</span> <span class="kw">bool</span> isReady = taskSystem.<span class="fn">DriveUntil</span>(<span class="st">"window creation"</span>, [&amp;windowFuture]()
+{ <span class="kw">return</span> windowFuture.<span class="fn">wait_for</span>(<span class="kw">std</span>::chrono::seconds::zero()) == <span class="kw">std</span>::future_status::ready; });
+
+<span class="kw">if</span> (!isReady)
+{
+        ls &lt;&lt; <span class="st">"The engine loop never ran the posted window creation, so there is no window to examine."</span> &lt;&lt; lferr;
+        <span class="kw">return</span>;
+}</code></pre>
+
+<p>
+  <code>Engine/OSAL/Window.cpp:123-130</code>, and the same shape again at <code>:235</code>. This is the window backend's
+  unit-test region — the file's test code begins at its <code>#ifdef __UNIT_TEST__</code> on line 25, so it is built only
+  in a test configuration. What it demonstrates is the whole point of the function: the work is posted with
+  <a href="dispatch-to-main-thread.html">DispatchToMainThread</a>, and the waiting thread is the one that drives the base
+  stream, so the predicate can only become true because of the driving this call does. The result is checked, and the
+  failure message says what it means — no window exists to look at.
+</p>
+
+<footer class="prevnext">
+  <span><a href="index.html">&larr; TaskSystem</a></span>
+  <span><a href="index.html#methods">All TaskSystem methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

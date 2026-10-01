@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskSystem::SetAbandonedNotice — Core module &mdash; HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3>Methods</h3>
+  <ul class="methods">
+    <li><a href="index.html">TaskSystem</a> methods</li>
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+    <li><a href="get-num-hardware-threads.html">GetNumHardwareThreads</a></li>
+    <li><a href="set-thread-name.html">SetThreadName</a></li>
+    <li><a href="set-stream-index.html">SetStreamIndex</a></li>
+    <li><a href="get-current-stream-name.html">GetCurrentStreamName</a></li>
+    <li><a href="get-current-thread-name.html">GetCurrentThreadName</a></li>
+    <li><a href="get-current-stream-index.html">GetCurrentStreamIndex</a></li>
+    <li><a href="is-base-thread.html">IsBaseThread</a></li>
+    <li><a href="is-io-thread.html">IsIOThread</a></li>
+    <li><a href="get-base-task-stream-index.html">GetBaseTaskStreamIndex</a></li>
+    <li><a href="get-io-task-stream-index.html">GetIOTaskStreamIndex</a></li>
+    <li><a href="initialize.html">Initialize</a></li>
+    <li><a href="request-shut-down.html">RequestShutDown</a></li>
+    <li><a href="request-other-streams-close.html">RequestOtherStreamsClose</a></li>
+    <li><a href="are-other-streams-closed.html">AreOtherStreamsClosed</a></li>
+    <li><a href="join-and-clear.html">JoinAndClear</a></li>
+    <li><a href="enqueue.html">Enqueue</a></li>
+    <li><a href="dequeue.html">Dequeue</a></li>
+    <li><a href="create-task.html">CreateTask</a></li>
+    <li><a href="find-task.html">FindTask</a></li>
+    <li><a href="release-task.html">ReleaseTask</a></li>
+    <li><a href="set-successor.html">SetSuccessor</a></li>
+    <li><a class="current" href="set-abandoned-notice.html">SetAbandonedNotice</a></li>
+    <li><a href="get-successor.html">GetSuccessor</a></li>
+    <li><a href="dispatch-successor.html">DispatchSuccessor</a></li>
+    <li><a href="parallel-for.html">ParallelFor</a></li>
+    <li><a href="get-registry.html">GetRegistry</a></li>
+    <li><a href="update.html">Update</a></li>
+    <li><a href="drive-until.html">DriveUntil</a></li>
+    <li><a href="report-drive-timeout.html">ReportDriveTimeout</a></li>
+    <li><a href="run-budget-window-pass.html">RunBudgetWindowPass</a></li>
+    <li><a href="get-num-budget-windows-advanced.html">GetNumBudgetWindowsAdvanced</a></li>
+    <li><a href="enqueue-task.html">EnqueueTask</a></li>
+    <li><a href="dispatch-to-main-thread.html">DispatchToMainThread</a></li>
+    <li><a href="get-name.html">GetName</a></li>
+    <li><a href="is-running.html">IsRunning</a></li>
+    <li><a href="get-base-task-stream.html">GetBaseTaskStream</a></li>
+    <li><a href="get-io-task-stream.html">GetIOTaskStream</a></li>
+    <li><a href="get-stream-name.html">GetStreamName</a></li>
+    <li><a href="get-stream-index.html">GetStreamIndex</a></li>
+    <li><a href="get-stream.html">GetStream</a></li>
+    <li><a href="run-split.html">RunSplit</a></li>
+    <li><a href="has-stream.html">HasStream</a></li>
+    <li><a href="build-streams.html">BuildStreams</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+<a href="index.html">TaskSystem</a> / SetAbandonedNotice
+</p>
+
+<h1><span class="fn">SetAbandonedNotice</span></h1>
+<p class="subtitle">
+  opts a task in to being told when its work is discarded without running — stored on the record, copied into each item,
+  and fired on whichever thread dropped it
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code><span class="kw">void</span> <span class="fn">SetAbandonedNotice</span>(<span class="ty">TaskID</span> task, <span class="ty">FAbandonedNotice</span> handler, <span class="kw">void</span>* userData = <span class="kw">nullptr</span>) noexcept
+{
+        <span class="kw">if</span> (<span class="kw">auto</span>* target = <span class="fn">FindTask</span>(task); target != <span class="kw">nullptr</span>)
+        {
+                target-&gt;abandonedNotice = handler;
+                target-&gt;abandonedUserData = userData;
+        }
+}</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Two field writes on the task record, guarded by <a href="find-task.html">FindTask</a>. The handler type is
+  <code>void (*)(TaskID abandonedTask, void* userData) noexcept</code>
+  (<code>Engine/Core/WorkItem.h:18</code>). A task nobody asked about notifies nobody: the record's default is
+  <code>nullptr</code>, and the engine checks that pointer before every call.
+</p>
+
+<p>
+  The notice is set on the <em>task</em> and each work item copies it at generation
+  (<code>Engine/Core/WorkItem.cpp:41</code>), so one call covers every item the task later produces — a
+  <a href="parallel-for.html">ParallelFor</a> split needs one notice for its dozen sub-jobs, not one per item.
+</p>
+
+<h3>What gets reported</h3>
+
+<p>Every drop path inside <code>TaskStream</code> fires it, and there are three:</p>
+
+<table>
+  <tr><th>Drop</th><th>Where</th><th>Also reported by the engine</th></tr>
+  <tr>
+    <td>The task was released between the queueing and the take</td>
+    <td><code>Engine/Core/TaskStream.cpp:515-521</code></td>
+    <td><code>ReportReleasedTask</code></td>
+  </tr>
+  <tr>
+    <td>The item aged out — the drain policy judged it too old to be worth starting</td>
+    <td><code>Engine/Core/TaskStream.cpp:527-533</code></td>
+    <td><code>ReportAgedOutWorkItem</code>, with the age</td>
+  </tr>
+  <tr>
+    <td>The stream closed with work still held</td>
+    <td><code>AbandonHeldWork</code>, <code>Engine/Core/TaskStream.cpp:640-659</code></td>
+    <td>The shutdown report in <a href="join-and-clear.html">JoinAndClear</a>, for base-stream work</td>
+  </tr>
+</table>
+
+<div class="gap">
+  <strong>Set it before the task is offered, and accept the window.</strong> Once work is queued the engine may drop an item
+  before this call lands, which loses the notice rather than racing it. There is deliberately no lock to close that window: a
+  mutex on the offer path to protect an opt-in courtesy is the trade this engine has already refused twice. The call is
+  therefore a request to be told about the future, not a guarantee about items that already exist.
+</div>
+
+<div class="gap">
+  <strong>The handler runs on the thread that dropped the work, which may be a worker mid-shift.</strong> Not a dedicated
+  reporting thread, and not necessarily the thread that queued it. Do not block in it. And do not look the task record up
+  from inside it — the first drop case above is "the record is gone", so a handler that calls
+  <a href="find-task.html">FindTask</a> is asking for the thing that just failed. Act on <code>abandonedTask</code> and
+  <code>userData</code>, or hand both to something else.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr>
+    <td><code>task</code></td>
+    <td><code>TaskID</code></td>
+    <td>A tracked task. An untracked identity is skipped in silence — the <code>if</code> has no <code>else</code>, and a
+      miss here means no notice will ever fire</td>
+  </tr>
+  <tr>
+    <td><code>handler</code></td>
+    <td><code>FAbandonedNotice</code></td>
+    <td><code>nullptr</code> clears the notice, which is also the default. Must be <code>noexcept</code>: it is called from
+      drop paths that are themselves <code>noexcept</code></td>
+  </tr>
+  <tr>
+    <td><code>userData</code></td>
+    <td><code>void*</code></td>
+    <td>Handed to the handler untouched and never cleared by the engine. Its lifetime is the requestor's to guarantee, and it
+      must outlive every drop this task's work can suffer — which, for a queued item, is unbounded until it runs or is
+      dropped</td>
+  </tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p><code>void</code>. It does not report whether the task was tracked, so a call made against a stale identity is indistinguishable from one that took.</p>
+
+<h2 id="example">Examples</h2>
+
+<p class="note">Illustrative — no engine code calls this; the task-system unit tests exercise it with a probe handler and a
+sentinel user-data pointer, asserting both arrive intact (<code>Engine/Core/TaskSystem.cpp:1341-1362</code>).</p>
+
+<pre><code><span class="kw">void</span> OnDropped(<span class="ty">TaskID</span> dropped, <span class="kw">void</span>* userData) noexcept
+{
+        <span class="kw">auto</span>* pending = <span class="kw">static_cast</span>&lt;<span class="kw">std</span>::atomic&lt;<span class="kw">int</span>&gt;*&gt;(userData);
+        pending-&gt;<span class="fn">fetch_sub</span>(1, <span class="kw">std</span>::memory_order_relaxed);   <span class="cm">// never block, never re-look-up the task</span>
+}
+
+taskSys.<span class="fn">CreateTask</span>(<span class="st">"Upload"</span>, &amp;RunUpload, &amp;job);
+taskSys.<span class="fn">SetAbandonedNotice</span>(id, &amp;OnDropped, &amp;outstandingCount);   <span class="cm">// before the task is offered</span></code></pre>
+
+<p>
+  The handler takes the identity and the pointer and does nothing but arithmetic — which is the shape the two hazards above
+  add up to. The engine's own silence test is worth knowing: an item whose notice is <code>nullptr</code> must produce no
+  call at all, so "the notice never fired" is not by itself proof that nothing was dropped.
+</p>
+
+<footer class="prevnext">
+  <span><a href="index.html">&larr; TaskSystem</a></span>
+  <span><a href="index.html#methods">All TaskSystem methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

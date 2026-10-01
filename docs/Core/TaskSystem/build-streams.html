@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskSystem::BuildStreams — Core module &mdash; HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3>Methods</h3>
+  <ul class="methods">
+    <li><a href="index.html">TaskSystem</a> methods</li>
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+    <li><a href="get-num-hardware-threads.html">GetNumHardwareThreads</a></li>
+    <li><a href="set-thread-name.html">SetThreadName</a></li>
+    <li><a href="set-stream-index.html">SetStreamIndex</a></li>
+    <li><a href="get-current-stream-name.html">GetCurrentStreamName</a></li>
+    <li><a href="get-current-thread-name.html">GetCurrentThreadName</a></li>
+    <li><a href="get-current-stream-index.html">GetCurrentStreamIndex</a></li>
+    <li><a href="is-base-thread.html">IsBaseThread</a></li>
+    <li><a href="is-io-thread.html">IsIOThread</a></li>
+    <li><a href="get-base-task-stream-index.html">GetBaseTaskStreamIndex</a></li>
+    <li><a href="get-io-task-stream-index.html">GetIOTaskStreamIndex</a></li>
+    <li><a href="initialize.html">Initialize</a></li>
+    <li><a href="request-shut-down.html">RequestShutDown</a></li>
+    <li><a href="request-other-streams-close.html">RequestOtherStreamsClose</a></li>
+    <li><a href="are-other-streams-closed.html">AreOtherStreamsClosed</a></li>
+    <li><a href="join-and-clear.html">JoinAndClear</a></li>
+    <li><a href="enqueue.html">Enqueue</a></li>
+    <li><a href="dequeue.html">Dequeue</a></li>
+    <li><a href="create-task.html">CreateTask</a></li>
+    <li><a href="find-task.html">FindTask</a></li>
+    <li><a href="release-task.html">ReleaseTask</a></li>
+    <li><a href="set-successor.html">SetSuccessor</a></li>
+    <li><a href="set-abandoned-notice.html">SetAbandonedNotice</a></li>
+    <li><a href="get-successor.html">GetSuccessor</a></li>
+    <li><a href="dispatch-successor.html">DispatchSuccessor</a></li>
+    <li><a href="parallel-for.html">ParallelFor</a></li>
+    <li><a href="get-registry.html">GetRegistry</a></li>
+    <li><a href="update.html">Update</a></li>
+    <li><a href="drive-until.html">DriveUntil</a></li>
+    <li><a href="report-drive-timeout.html">ReportDriveTimeout</a></li>
+    <li><a href="run-budget-window-pass.html">RunBudgetWindowPass</a></li>
+    <li><a href="get-num-budget-windows-advanced.html">GetNumBudgetWindowsAdvanced</a></li>
+    <li><a href="enqueue-task.html">EnqueueTask</a></li>
+    <li><a href="dispatch-to-main-thread.html">DispatchToMainThread</a></li>
+    <li><a href="get-name.html">GetName</a></li>
+    <li><a href="is-running.html">IsRunning</a></li>
+    <li><a href="get-base-task-stream.html">GetBaseTaskStream</a></li>
+    <li><a href="get-io-task-stream.html">GetIOTaskStream</a></li>
+    <li><a href="get-stream-name.html">GetStreamName</a></li>
+    <li><a href="get-stream-index.html">GetStreamIndex</a></li>
+    <li><a href="get-stream.html">GetStream</a></li>
+    <li><a href="run-split.html">RunSplit</a></li>
+    <li><a href="has-stream.html">HasStream</a></li>
+    <li><a class="current" href="build-streams.html">BuildStreams</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+<a href="index.html">TaskSystem</a> / BuildStreams
+</p>
+
+<h1><span class="fn">BuildStreams</span></h1>
+<p class="subtitle">
+  creates every stream, names this thread, starts the ones that own threads, and hands the IO stream to the logger — private,
+  called once, and the reason <a href="initialize.html">Initialize</a> must be called on the right thread
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code><span class="kw">void</span> <span class="fn">BuildStreams</span>();   <span class="cm">// private. Not noexcept, unlike the rest of this class.</span></code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>Defined at <code>Engine/Core/TaskSystem.cpp:715</code>, and it is the body of what
+<a href="initialize.html">Initialize</a> appears to do.</p>
+
+<table>
+  <tr><th>#</th><th>Step</th><th>Consequence</th></tr>
+  <tr>
+    <td>1</td>
+    <td><code>Assert(std::this_thread::get_id() == engineLoopThreadID)</code></td>
+    <td>The thread check is Debug-only — see the hazard below</td>
+  </tr>
+  <tr>
+    <td>2</td>
+    <td><code>FatalAssert(numHardwareThreads &gt;= ENGINE_MIN_HARDWARE_THREADS)</code></td>
+    <td>The minimum is 4 (<code>Engine/Config/BuildConfig.h:21</code>), so the smallest machine the engine will start on has
+      two worker streams — indices 2 and 3</td>
+  </tr>
+  <tr>
+    <td>3</td>
+    <td><code>SetThreadName(EngineLoopThreadName)</code></td>
+    <td>This thread's engine-internal name becomes <code>"EngineLoop"</code>, distinct from the base stream, which is stream 0
+      on a thread of its own in no engine — it rides this one</td>
+  </tr>
+  <tr>
+    <td>4</td>
+    <td><code>streams.Swap(Array&lt;TaskStream&gt;(numHardwareThreads))</code></td>
+    <td>The array is sized once, for the life of the object. Any previous contents go into the temporary and are destroyed —
+      which is why a second call is fatal rather than merely wrong</td>
+  </tr>
+  <tr>
+    <td>5</td>
+    <td>Emplace <code>"Base"</code> at 0, <code>"IO"</code> at 1, then <code>"Worker1"</code> … up to
+      <code>numHardwareThreads</code></td>
+    <td>Names a log line and a debugger see; built with an <code>InlineStringBuilder&lt;64&gt;</code> so the loop allocates
+      nothing per stream</td>
+  </tr>
+  <tr>
+    <td>6</td>
+    <td><code>isRunning = true</code>, then <code>stream.Start(*this)</code> for every stream</td>
+    <td>Streams that own threads spawn them; the base stream records this thread as its driver and never reaches
+      <code>RunLoop</code>, and the IO stream records nothing until its first driven pass</td>
+  </tr>
+  <tr>
+    <td>7</td>
+    <td><code>Logger::Get().SetIODriver(&amp;GetIOTaskStream())</code></td>
+    <td>The last statement, so the logger's thread cannot be handed a stream that is not yet constructed — and the reason
+      <a href="initialize.html">Initialize</a> implies the logger is started after the task system</td>
+  </tr>
+</table>
+
+<div class="gap">
+  <strong>The thread check does not exist outside Debug builds.</strong> Step 1 calls <code>Assert</code>, and
+  <code>Assert</code> is defined twice — the definition selected when <code>__DEBUG__</code> is undefined has an empty body
+  (<code>Engine/Core/Debug.h:72-79</code>). Only <code>FatalAssert</code> aborts in every configuration, and step 2 is a
+  <code>FatalAssert</code> about core counts, not about threads. So in Dev and Release a task system can be built on a thread
+  that will never drive it, and the failure appears later as a run loop that never drains the base stream and a shutdown that
+  joins without pumping. <a href="constructors.html">Construction</a> is what binds the identity; keeping the two on one thread
+  is a caller obligation the code cannot enforce.
+</div>
+
+<div class="gap">
+  <strong>A second call terminates the process.</strong> Step 4 moves the old buffer into the temporary, and destroying a
+  <code>TaskStream</code> whose <code>std::thread</code> is joinable calls <code>terminate()</code> — the stream's own destructor
+  is <code>= default</code> and does not join. Nothing tests whether streams already exist.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None. It reads <code>numHardwareThreads</code> from <a href="constructors.html">construction</a> and the registry has already
+been sized by <a href="initialize.html">Initialize</a> before this runs.</p>
+
+<h2 id="return">Return value</h2>
+
+<p><code>void</code>. Success is a populated <code>streams</code> array, running threads, and the logger wired to stream 1.</p>
+
+<h2 id="example">Examples</h2>
+
+<p class="note">Illustrative — private and called from one place: the tail of
+<a href="initialize.html">Initialize</a>. What the result looks like, on an eight-core machine:</p>
+
+<pre><code>index 0  "Base"     driven by the engine-loop thread   (threadID recorded here, at step 6)
+index 1  "IO"       driven by the logger's thread      (threadID recorded at its first pass)
+index 2  "Worker1"  owns a thread, runs RunLoop
+index 3  "Worker2"  owns a thread, runs RunLoop
+   …     …
+index 7  "Worker6"  owns a thread, runs RunLoop</code></pre>
+
+<p>
+  Two engine streams and six workers, which is why the worker range starts at
+  <code>GetIOTaskStreamIndex() + 1</code> rather than at 2, and why the CPU-budget window pass is the base stream's job: it is
+  the only stream whose thread is guaranteed to be running the engine.
+</p>
+
+<footer class="prevnext">
+  <span><a href="index.html">&larr; TaskSystem</a></span>
+  <span><a href="index.html#methods">All TaskSystem methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

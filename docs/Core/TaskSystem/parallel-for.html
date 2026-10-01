@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskSystem::ParallelFor — Core module &mdash; HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3>Methods</h3>
+  <ul class="methods">
+    <li><a href="index.html">TaskSystem</a> methods</li>
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+    <li><a href="get-num-hardware-threads.html">GetNumHardwareThreads</a></li>
+    <li><a href="set-thread-name.html">SetThreadName</a></li>
+    <li><a href="set-stream-index.html">SetStreamIndex</a></li>
+    <li><a href="get-current-stream-name.html">GetCurrentStreamName</a></li>
+    <li><a href="get-current-thread-name.html">GetCurrentThreadName</a></li>
+    <li><a href="get-current-stream-index.html">GetCurrentStreamIndex</a></li>
+    <li><a href="is-base-thread.html">IsBaseThread</a></li>
+    <li><a href="is-io-thread.html">IsIOThread</a></li>
+    <li><a href="get-base-task-stream-index.html">GetBaseTaskStreamIndex</a></li>
+    <li><a href="get-io-task-stream-index.html">GetIOTaskStreamIndex</a></li>
+    <li><a href="initialize.html">Initialize</a></li>
+    <li><a href="request-shut-down.html">RequestShutDown</a></li>
+    <li><a href="request-other-streams-close.html">RequestOtherStreamsClose</a></li>
+    <li><a href="are-other-streams-closed.html">AreOtherStreamsClosed</a></li>
+    <li><a href="join-and-clear.html">JoinAndClear</a></li>
+    <li><a href="enqueue.html">Enqueue</a></li>
+    <li><a href="dequeue.html">Dequeue</a></li>
+    <li><a href="create-task.html">CreateTask</a></li>
+    <li><a href="find-task.html">FindTask</a></li>
+    <li><a href="release-task.html">ReleaseTask</a></li>
+    <li><a href="set-successor.html">SetSuccessor</a></li>
+    <li><a href="set-abandoned-notice.html">SetAbandonedNotice</a></li>
+    <li><a href="get-successor.html">GetSuccessor</a></li>
+    <li><a href="dispatch-successor.html">DispatchSuccessor</a></li>
+    <li><a class="current" href="parallel-for.html">ParallelFor</a></li>
+    <li><a href="get-registry.html">GetRegistry</a></li>
+    <li><a href="update.html">Update</a></li>
+    <li><a href="drive-until.html">DriveUntil</a></li>
+    <li><a href="report-drive-timeout.html">ReportDriveTimeout</a></li>
+    <li><a href="run-budget-window-pass.html">RunBudgetWindowPass</a></li>
+    <li><a href="get-num-budget-windows-advanced.html">GetNumBudgetWindowsAdvanced</a></li>
+    <li><a href="enqueue-task.html">EnqueueTask</a></li>
+    <li><a href="dispatch-to-main-thread.html">DispatchToMainThread</a></li>
+    <li><a href="get-name.html">GetName</a></li>
+    <li><a href="is-running.html">IsRunning</a></li>
+    <li><a href="get-base-task-stream.html">GetBaseTaskStream</a></li>
+    <li><a href="get-io-task-stream.html">GetIOTaskStream</a></li>
+    <li><a href="get-stream-name.html">GetStreamName</a></li>
+    <li><a href="get-stream-index.html">GetStreamIndex</a></li>
+    <li><a href="get-stream.html">GetStream</a></li>
+    <li><a href="run-split.html">RunSplit</a></li>
+    <li><a href="has-stream.html">HasStream</a></li>
+    <li><a href="build-streams.html">BuildStreams</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+<a href="index.html">TaskSystem</a> / ParallelFor
+</p>
+
+<h1><span class="fn">ParallelFor</span></h1>
+<p class="subtitle">
+  splits a heavy job into sub-jobs across streams and returns immediately — two forms, one because it names the streams
+  and one because it only knows how many it wants, and neither of them waits
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code><span class="cm">// explicit: spread across the streams the caller names</span>
+[[nodiscard]] <span class="ty">TaskID</span> <span class="fn">ParallelFor</span>(<span class="ty">StaticString</span> taskName, <span class="ty">TRunnable</span> func, <span class="kw">void</span>* userData,
+                              <span class="ty">TIndex</span> numItems, <span class="ty">TIndex</span> numSubJobs,
+                              <span class="kw">const</span> <span class="ty">TIndex</span>* streamIndices, <span class="ty">TIndex</span> numStreamIndices,
+                              <span class="kw">uint8_t</span> priority = 0, <span class="ty">TaskID</span> successor = {},
+                              <span class="ty">TIndex</span> successorStream = NonStreamIndex) noexcept;
+
+<span class="cm">// by count: ask for N streams and let the engine choose them</span>
+[[nodiscard]] <span class="ty">TaskID</span> <span class="fn">ParallelFor</span>(<span class="ty">StaticString</span> taskName, <span class="ty">TRunnable</span> func, <span class="kw">void</span>* userData,
+                              <span class="ty">TIndex</span> numItems, <span class="ty">TIndex</span> numSubJobs,
+                              <span class="ty">TIndex</span> numStreams,
+                              <span class="kw">uint8_t</span> priority = 0, <span class="ty">TaskID</span> successor = {},
+                              <span class="ty">TIndex</span> successorStream = NonStreamIndex) noexcept;</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Both forms end in the same private work (<a href="run-split.html">RunSplit</a>) and neither ever blocks. The engine
+  creates the task, declares the join with <code>ReserveSubTasks</code>, queues one work item per contiguous non-empty
+  range round-robin over the chosen streams, and returns. The last item to report in closes the join, and the join
+  dispatches the successor the caller named — so a caller that wants to combine results supplies a task to do the
+  combining, not a thread to park. The shape this retires is a busy-wait, which occupies a stream thread for the whole
+  duration, and a stream thread is the scarcest thing the engine has.
+</p>
+
+<h3>What each form refuses</h3>
+
+<table>
+  <tr><th>Condition</th><th>Explicit form</th><th>Count form</th></tr>
+  <tr>
+    <td><code>numItems &lt;= 0</code> or <code>numSubJobs &lt;= 0</code></td>
+    <td colspan="2">Refused, logged. These counts are signed, and a negative one becomes an enormous range the moment it
+      is used as an index — so a refusal, not an empty split</td>
+  </tr>
+  <tr>
+    <td>Stream list is <code>nullptr</code> or empty</td>
+    <td>Refused, logged: "Naming the streams is the point of this form"</td>
+    <td>n/a</td>
+  </tr>
+  <tr>
+    <td>A named index is not a stream</td>
+    <td>Refuses the <strong>whole call</strong>, logged — silently dropping part of the list would produce a split that
+      runs somewhere else while looking configured</td>
+    <td>n/a</td>
+  </tr>
+  <tr>
+    <td><code>numStreams &lt;= 0</code></td>
+    <td>n/a</td>
+    <td>Refused, logged</td>
+  </tr>
+  <tr>
+    <td>No worker stream exists</td>
+    <td>Runs on whatever streams were named, including base or IO</td>
+    <td>Refused, logged: "a split is never placed on either of its own accord". Defensive as configured —
+      <code>ENGINE_MIN_HARDWARE_THREADS</code> is 4, so a machine that reaches this line has at least two workers</td>
+  </tr>
+  <tr>
+    <td>A successor is named and <code>successorStream</code> is not a stream</td>
+    <td colspan="2">Refused, logged. A split has no producer to write the routing into its packet, so this argument is
+      where that byte comes from</td>
+  </tr>
+  <tr>
+    <td>Registry has no free record</td>
+    <td colspan="2">Refused, logged ("The registry is at its capacity")</td>
+  </tr>
+</table>
+
+<h3>What gets clamped, silently</h3>
+
+<p>
+  <code>numSubJobs</code> is clamped down to <code>numItems</code>, because an empty range is a work item that reports in
+  for nothing, and further down to <code>Task::MaxNumSubTasks</code> — 255 — because the join counter is 8 bits. Neither
+  clamp is a refusal: the split still covers every item, with fewer units of work. The unit tests assert both, at
+  <code>Engine/Core/TaskSystem.cpp:2852</code> (three items, ten requested sub-jobs) and <code>:2937</code> (more
+  requested than 255).
+</p>
+
+<div class="gap">
+  <strong>Per-item output belongs to the caller, and it has to go in indexed slots.</strong> One task holds one 128-byte
+  result packet, so the sub-jobs of one split cannot each own a packet. Memory that <code>userData</code> names is where
+  results go, and they must be <strong>written at slots addressed by index</strong> rather than accumulated: items reach
+  different streams and finish in an order nobody controls, so a shared accumulator is a data race that usually passes —
+  which is worse than one that fails. The combine happens in the successor's runnable, and must be order-independent or
+  ordered by that index. Deriving a slot from the range start, which every runnable receives, is how a runnable knows
+  which slot is its own.
+</div>
+
+<div class="note">
+  <strong>One split, one priority band.</strong> <code>priority == 0</code> sends every item down each destination
+  stream's FIFO lane; anything above sends them all down that stream's priority lane. A split cannot carry per-item bands,
+  because the items are this call's, not the caller's.
+</div>
+
+<p>
+  The count form chooses from the worker range only — never the base stream, never the IO stream — starting at
+  <code>GetIOTaskStreamIndex() + 1</code> and taking up to <code>min(numStreams, numWorkers, MaxStreamsPerSplit)</code>
+  contiguous streams, which makes the choice reproducible for a given engine configuration. Asking for more streams than
+  exist clamps rather than refusing; a caller that needs <em>specific</em> streams should name them, which is what the
+  other form is for. The reproducibility has a consequence worth knowing: two splits of the same size ask for the same
+  streams, because "reproducible" and "starts from the first worker" are the same rule.
+</p>
+
+<p>
+  <strong>The caller owns what comes back.</strong> Release the identity with
+  <a href="release-task.html">ReleaseTask</a> when the packet is no longer wanted: nothing else will, and a split whose
+  identity was never kept is a record that stays live until the registry is torn down.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr>
+    <td><code>taskName</code></td>
+    <td><code>StaticString</code></td>
+    <td>Label for the created task and for every refusal message</td>
+  </tr>
+  <tr>
+    <td><code>func</code></td>
+    <td><code>TRunnable</code></td>
+    <td><code>std::size_t (*)(void* userData, std::size_t startIndex, std::size_t endIndex)</code>
+      (<code>Engine/Core/Runnable.h:15</code>). Called with the half-open range that item owns; the return value is the
+      item's own bookkeeping, not the task's result</td>
+  </tr>
+  <tr>
+    <td><code>userData</code></td>
+    <td><code>void*</code></td>
+    <td>Handed to every runnable untouched. It must name memory that outlives the last sub-job, and per-item results go
+      through it — see the hazard above</td>
+  </tr>
+  <tr>
+    <td><code>numItems</code></td>
+    <td><code>TIndex</code></td>
+    <td>Count of items to cover. Must be greater than zero</td>
+  </tr>
+  <tr>
+    <td><code>numSubJobs</code></td>
+    <td><code>TIndex</code></td>
+    <td>Requested units of work. Clamped to <code>numItems</code>, then to 255</td>
+  </tr>
+  <tr>
+    <td><code>streamIndices</code> / <code>numStreamIndices</code></td>
+    <td><code>const TIndex*</code> / <code>TIndex</code></td>
+    <td>Explicit form: a caller-owned array of stream indices, each of which must be a real stream. The array is read
+      during the call only — items are queued before it returns</td>
+  </tr>
+  <tr>
+    <td><code>numStreams</code></td>
+    <td><code>TIndex</code></td>
+    <td>Count form: how many worker streams to use. Clamped to what exists and to 64</td>
+  </tr>
+  <tr>
+    <td><code>priority</code></td>
+    <td><code>uint8_t</code></td>
+    <td>0 for the FIFO lane, above 0 for the priority lane, one band for the whole split</td>
+  </tr>
+  <tr>
+    <td><code>successor</code></td>
+    <td><code>TaskID</code></td>
+    <td>The task to dispatch when the join closes. Must already exist and have reserved at least one subtask. Null means
+      fire-and-forget</td>
+  </tr>
+  <tr>
+    <td><code>successorStream</code></td>
+    <td><code>TIndex</code></td>
+    <td>Where the successor runs. Required whenever <code>successor</code> is not null — this argument is the only
+      source of the destination byte for a split</td>
+  </tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr>
+    <td><code>TaskID</code></td>
+    <td>The identity of the created task, or a null <code>TaskID</code> if the call was refused. On a refusal nothing was
+      created and nothing was queued; each one is logged with the task name. The identity is the caller's to
+      release</td>
+  </tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Core/TaskSystem.cpp</p>
+
+<pre><code><span class="kw">const</span> <span class="ty">TrackedTask</span> collatorTask(<span class="st">"BagelCollator"</span>, collate, &amp;split);
+(*collatorTask).<span class="fn">ReserveSubTasks</span>(1);
+
+<span class="kw">const</span> <span class="ty">TaskID</span> splitID = taskSys.<span class="fn">ParallelFor</span>(<span class="st">"BagelSplit"</span>, sumRange, &amp;split, Count, NumSubJobs, chosenStreams,
+                                                 <span class="kw">std</span>::<span class="fn">size</span>(chosenStreams), 0, collatorTask.id, chosenStreams[1]);
+
+<span class="kw">if</span> (splitID.<span class="fn">IsNull</span>())
+{
+        ls &lt;&lt; <span class="st">"ParallelFor refused a well-formed split over two real streams."</span> &lt;&lt; lferr;
+        <span class="kw">return</span>;
+}</code></pre>
+
+<p>
+  <code>Engine/Core/TaskSystem.cpp:1487-1500</code>, a split over two worker streams that collates into a successor.
+  Read it as the order of obligations: the successor is created and reserves its one subtask <em>first</em>, because
+  delivery queues exactly one item covering the successor's whole range; then the split names it and the stream it should
+  run on; then the caller checks the identity rather than assuming the work exists.
+</p>
+
+<footer class="prevnext">
+  <span><a href="index.html">&larr; TaskSystem</a></span>
+  <span><a href="index.html#methods">All TaskSystem methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskSystem::HasStream — Core module &mdash; HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3>Methods</h3>
+  <ul class="methods">
+    <li><a href="index.html">TaskSystem</a> methods</li>
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+    <li><a href="get-num-hardware-threads.html">GetNumHardwareThreads</a></li>
+    <li><a href="set-thread-name.html">SetThreadName</a></li>
+    <li><a href="set-stream-index.html">SetStreamIndex</a></li>
+    <li><a href="get-current-stream-name.html">GetCurrentStreamName</a></li>
+    <li><a href="get-current-thread-name.html">GetCurrentThreadName</a></li>
+    <li><a href="get-current-stream-index.html">GetCurrentStreamIndex</a></li>
+    <li><a href="is-base-thread.html">IsBaseThread</a></li>
+    <li><a href="is-io-thread.html">IsIOThread</a></li>
+    <li><a href="get-base-task-stream-index.html">GetBaseTaskStreamIndex</a></li>
+    <li><a href="get-io-task-stream-index.html">GetIOTaskStreamIndex</a></li>
+    <li><a href="initialize.html">Initialize</a></li>
+    <li><a href="request-shut-down.html">RequestShutDown</a></li>
+    <li><a href="request-other-streams-close.html">RequestOtherStreamsClose</a></li>
+    <li><a href="are-other-streams-closed.html">AreOtherStreamsClosed</a></li>
+    <li><a href="join-and-clear.html">JoinAndClear</a></li>
+    <li><a href="enqueue.html">Enqueue</a></li>
+    <li><a href="dequeue.html">Dequeue</a></li>
+    <li><a href="create-task.html">CreateTask</a></li>
+    <li><a href="find-task.html">FindTask</a></li>
+    <li><a href="release-task.html">ReleaseTask</a></li>
+    <li><a href="set-successor.html">SetSuccessor</a></li>
+    <li><a href="set-abandoned-notice.html">SetAbandonedNotice</a></li>
+    <li><a href="get-successor.html">GetSuccessor</a></li>
+    <li><a href="dispatch-successor.html">DispatchSuccessor</a></li>
+    <li><a href="parallel-for.html">ParallelFor</a></li>
+    <li><a href="get-registry.html">GetRegistry</a></li>
+    <li><a href="update.html">Update</a></li>
+    <li><a href="drive-until.html">DriveUntil</a></li>
+    <li><a href="report-drive-timeout.html">ReportDriveTimeout</a></li>
+    <li><a href="run-budget-window-pass.html">RunBudgetWindowPass</a></li>
+    <li><a href="get-num-budget-windows-advanced.html">GetNumBudgetWindowsAdvanced</a></li>
+    <li><a href="enqueue-task.html">EnqueueTask</a></li>
+    <li><a href="dispatch-to-main-thread.html">DispatchToMainThread</a></li>
+    <li><a href="get-name.html">GetName</a></li>
+    <li><a href="is-running.html">IsRunning</a></li>
+    <li><a href="get-base-task-stream.html">GetBaseTaskStream</a></li>
+    <li><a href="get-io-task-stream.html">GetIOTaskStream</a></li>
+    <li><a href="get-stream-name.html">GetStreamName</a></li>
+    <li><a href="get-stream-index.html">GetStreamIndex</a></li>
+    <li><a href="get-stream.html">GetStream</a></li>
+    <li><a href="run-split.html">RunSplit</a></li>
+    <li><a class="current" href="has-stream.html">HasStream</a></li>
+    <li><a href="build-streams.html">BuildStreams</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+<a href="index.html">TaskSystem</a> / HasStream
+</p>
+
+<h1><span class="fn">HasStream</span></h1>
+<p class="subtitle">
+  whether the stream at <code>index</code> exists at this instant — the precondition of every call that reaches a stream by
+  number, and not a lifetime guarantee
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>[[nodiscard]] <span class="kw">bool</span> <span class="fn">HasStream</span>(<span class="ty">TIndex</span> index) <span class="kw">const</span> noexcept
+{
+        <span class="kw">return</span> streams.<span class="fn">IsValidIndex</span>(index);
+}</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  A bounds test on the stream array. Streams are built by <a href="initialize.html">Initialize</a> and cleared by
+  <a href="join-and-clear.html">JoinAndClear</a>, so the array is empty before startup and again once the pump has joined —
+  and the index the caller is asking about is usually one of the constants, which look valid forever.
+</p>
+
+<div class="gap">
+  <strong>Reaching a stream by an unchecked index does not always fail.</strong>
+  <a href="get-stream.html">GetStream</a> answers an index outside a <em>built</em> array with stream 0 rather than with a
+  failure, so an unchecked index means work on the base stream, not a crash — the task simply runs somewhere plausible. Only
+  an empty array stops, and it stops inside <code>Array::operator[]</code>, because there is no stream 0 to hand back. That
+  asymmetry is why this test matters: the loud case is the rare one.
+</div>
+
+<p>
+  It answers "can I index this now" and nothing more. It is not a lifetime guarantee across the call: a concurrent
+  <a href="join-and-clear.html">JoinAndClear</a> can retire the stream between the test and the use, so a caller logging
+  while another thread tears the pump down still needs its own ordering. The engine's own users treat it exactly that way —
+  <a href="request-other-streams-close.html">RequestOtherStreamsClose</a> and <a href="join-and-clear.html">JoinAndClear</a>
+  test before touching index 0, and <a href="parallel-for.html">ParallelFor</a> refuses a whole split when one named index is
+  not a stream.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr>
+    <td><code>index</code></td>
+    <td><code>TIndex</code> (<code>int</code>)</td>
+    <td>A candidate stream index. Negative values and values at or above the stream count answer false, which is the whole
+      point — <code>NonStreamIndex</code> (-1) is a legitimate argument and answers false</td>
+  </tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr>
+    <td><code>bool</code></td>
+    <td>True while the array holds that index. Says nothing about whether the stream is closed, draining, or about to be
+      retired</td>
+  </tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Core/TaskSystem.cpp</p>
+
+<pre><code><span class="cm">// No streams means nothing to ask. Reaching for index 0 of an empty array is an index assert, and this path is</span>
+<span class="cm">// reached a second time from the destructor after the streams have already been cleared.</span>
+<span class="kw">if</span> (!<span class="fn">HasStream</span>(<span class="fn">GetBaseTaskStreamIndex</span>()))
+{
+        <span class="kw">return</span>;
+}</code></pre>
+
+<p>
+  <a href="request-other-streams-close.html">RequestOtherStreamsClose</a> at <code>Engine/Core/TaskSystem.cpp:125-130</code>.
+  The comment is the reason the test exists: the destructor is a caller, and by the time it calls, there is nothing left to
+  ask.
+</p>
+
+<footer class="prevnext">
+  <span><a href="index.html">&larr; TaskSystem</a></span>
+  <span><a href="index.html#methods">All TaskSystem methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

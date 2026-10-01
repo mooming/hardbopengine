@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskSystem::SetSuccessor — Core module &mdash; HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3>Methods</h3>
+  <ul class="methods">
+    <li><a href="index.html">TaskSystem</a> methods</li>
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+    <li><a href="get-num-hardware-threads.html">GetNumHardwareThreads</a></li>
+    <li><a href="set-thread-name.html">SetThreadName</a></li>
+    <li><a href="set-stream-index.html">SetStreamIndex</a></li>
+    <li><a href="get-current-stream-name.html">GetCurrentStreamName</a></li>
+    <li><a href="get-current-thread-name.html">GetCurrentThreadName</a></li>
+    <li><a href="get-current-stream-index.html">GetCurrentStreamIndex</a></li>
+    <li><a href="is-base-thread.html">IsBaseThread</a></li>
+    <li><a href="is-io-thread.html">IsIOThread</a></li>
+    <li><a href="get-base-task-stream-index.html">GetBaseTaskStreamIndex</a></li>
+    <li><a href="get-io-task-stream-index.html">GetIOTaskStreamIndex</a></li>
+    <li><a href="initialize.html">Initialize</a></li>
+    <li><a href="request-shut-down.html">RequestShutDown</a></li>
+    <li><a href="request-other-streams-close.html">RequestOtherStreamsClose</a></li>
+    <li><a href="are-other-streams-closed.html">AreOtherStreamsClosed</a></li>
+    <li><a href="join-and-clear.html">JoinAndClear</a></li>
+    <li><a href="enqueue.html">Enqueue</a></li>
+    <li><a href="dequeue.html">Dequeue</a></li>
+    <li><a href="create-task.html">CreateTask</a></li>
+    <li><a href="find-task.html">FindTask</a></li>
+    <li><a href="release-task.html">ReleaseTask</a></li>
+    <li><a class="current" href="set-successor.html">SetSuccessor</a></li>
+    <li><a href="set-abandoned-notice.html">SetAbandonedNotice</a></li>
+    <li><a href="get-successor.html">GetSuccessor</a></li>
+    <li><a href="dispatch-successor.html">DispatchSuccessor</a></li>
+    <li><a href="parallel-for.html">ParallelFor</a></li>
+    <li><a href="get-registry.html">GetRegistry</a></li>
+    <li><a href="update.html">Update</a></li>
+    <li><a href="drive-until.html">DriveUntil</a></li>
+    <li><a href="report-drive-timeout.html">ReportDriveTimeout</a></li>
+    <li><a href="run-budget-window-pass.html">RunBudgetWindowPass</a></li>
+    <li><a href="get-num-budget-windows-advanced.html">GetNumBudgetWindowsAdvanced</a></li>
+    <li><a href="enqueue-task.html">EnqueueTask</a></li>
+    <li><a href="dispatch-to-main-thread.html">DispatchToMainThread</a></li>
+    <li><a href="get-name.html">GetName</a></li>
+    <li><a href="is-running.html">IsRunning</a></li>
+    <li><a href="get-base-task-stream.html">GetBaseTaskStream</a></li>
+    <li><a href="get-io-task-stream.html">GetIOTaskStream</a></li>
+    <li><a href="get-stream-name.html">GetStreamName</a></li>
+    <li><a href="get-stream-index.html">GetStreamIndex</a></li>
+    <li><a href="get-stream.html">GetStream</a></li>
+    <li><a href="run-split.html">RunSplit</a></li>
+    <li><a href="has-stream.html">HasStream</a></li>
+    <li><a href="build-streams.html">BuildStreams</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+<a href="index.html">TaskSystem</a> / SetSuccessor
+</p>
+
+<h1><span class="fn">SetSuccessor</span></h1>
+<p class="subtitle">
+  records which task to dispatch when this task's join closes — half of a chain, the other half being the destination
+  byte, which this call does not set
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code><span class="kw">void</span> <span class="fn">SetSuccessor</span>(<span class="ty">TaskID</span> task, <span class="ty">TaskID</span> successor) noexcept
+{
+        taskRegistry.<span class="fn">SetSuccessor</span>(task, successor);
+}</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  An inline forward to <code>TaskRegistry::SetSuccessor</code> at <code>Engine/Core/TaskSystem.h</code>. One task
+  records one successor; when the producer's join closes, the thread that closed the join calls
+  <a href="dispatch-successor.html">DispatchSuccessor</a>, which reads this record. Chains need no engine machinery: the
+  successor's own work item closes its join the same way and dispatches in turn, so A can wake B and B wake C without the
+  engine knowing pipelines exist.
+</p>
+
+<div class="gap">
+  <strong>Record it before the first work item is queued, never after.</strong> A join that closes before the routing
+  exists delivers to nobody, and with enough streams running that is a race rather than a bug report.
+  <a href="run-split.html">RunSplit</a> is written this way on purpose: it records the successor and fills the
+  destination byte <em>before</em> it queues a single item. A caller that enqueues first and routes second has a chain
+  that works in a debug build and stops in a fast one.
+</div>
+
+<div class="note">
+  <strong>This names the successor; it does not say where it runs.</strong> Delivery is routed by the destination byte of
+  the producer's result packet (<code>ResultPacket::GetDestinationStreamIndex</code>), not by anything set here. A split
+  supplies that byte from <a href="parallel-for.html">ParallelFor</a>'s <code>successorStream</code> argument, because a
+  split has no producing task to write it. An ordinary task must set the byte on its own packet, or
+  <a href="dispatch-successor.html">DispatchSuccessor</a> refuses the delivery and logs that the successor "was never
+  dispatched" — the pair that caused it named in the message.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr>
+    <td><code>task</code></td>
+    <td><code>TaskID</code></td>
+    <td>The producer — the task whose join closing should trigger the dispatch. Must be tracked; an untracked identity
+      has nowhere to record anything</td>
+  </tr>
+  <tr>
+    <td><code>successor</code></td>
+    <td><code>TaskID</code></td>
+    <td>The task to dispatch. Must already exist and must have reserved at least one subtask, because delivery queues
+      exactly one item covering the successor's whole range. Passing a null identity is how fire-and-forget is expressed:
+      the join closes and nothing is dispatched</td>
+  </tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p><code>void</code>. It does not report whether either identity is tracked — the registry has no answer to give at this
+moment, and the failure surfaces at delivery time in <a href="dispatch-successor.html">DispatchSuccessor</a>.</p>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Core/TaskSystem.cpp</p>
+
+<pre><code><span class="kw">if</span> (!successor.<span class="fn">IsNull</span>())
+{
+        <span class="fn">SetSuccessor</span>(taskID, successor);
+        task-&gt;<span class="fn">GetResult</span>().<span class="fn">SetDestinationStreamIndex</span>(<span class="kw">static_cast</span>&lt;<span class="kw">std</span>::uint8_t&gt;(successorStream));
+}
+
+task-&gt;<span class="fn">ReserveSubTasks</span>(<span class="kw">static_cast</span>&lt;<span class="ty">Task::TNumSubTasks</span>&gt;(numSubJobs));</code></pre>
+
+<p>
+  Inside <a href="run-split.html">RunSplit</a>, before any item is queued. The two statements belong together — the pair
+  is "who" and "where" — and <code>ReserveSubTasks</code> comes after them for the same reason: nothing may be able to
+  finish before the routing exists.
+</p>
+
+<footer class="prevnext">
+  <span><a href="index.html">&larr; TaskSystem</a></span>
+  <span><a href="index.html#methods">All TaskSystem methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

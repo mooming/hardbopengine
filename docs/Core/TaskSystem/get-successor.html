@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskSystem::GetSuccessor — Core module &mdash; HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3>Methods</h3>
+  <ul class="methods">
+    <li><a href="index.html">TaskSystem</a> methods</li>
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+    <li><a href="get-num-hardware-threads.html">GetNumHardwareThreads</a></li>
+    <li><a href="set-thread-name.html">SetThreadName</a></li>
+    <li><a href="set-stream-index.html">SetStreamIndex</a></li>
+    <li><a href="get-current-stream-name.html">GetCurrentStreamName</a></li>
+    <li><a href="get-current-thread-name.html">GetCurrentThreadName</a></li>
+    <li><a href="get-current-stream-index.html">GetCurrentStreamIndex</a></li>
+    <li><a href="is-base-thread.html">IsBaseThread</a></li>
+    <li><a href="is-io-thread.html">IsIOThread</a></li>
+    <li><a href="get-base-task-stream-index.html">GetBaseTaskStreamIndex</a></li>
+    <li><a href="get-io-task-stream-index.html">GetIOTaskStreamIndex</a></li>
+    <li><a href="initialize.html">Initialize</a></li>
+    <li><a href="request-shut-down.html">RequestShutDown</a></li>
+    <li><a href="request-other-streams-close.html">RequestOtherStreamsClose</a></li>
+    <li><a href="are-other-streams-closed.html">AreOtherStreamsClosed</a></li>
+    <li><a href="join-and-clear.html">JoinAndClear</a></li>
+    <li><a href="enqueue.html">Enqueue</a></li>
+    <li><a href="dequeue.html">Dequeue</a></li>
+    <li><a href="create-task.html">CreateTask</a></li>
+    <li><a href="find-task.html">FindTask</a></li>
+    <li><a href="release-task.html">ReleaseTask</a></li>
+    <li><a href="set-successor.html">SetSuccessor</a></li>
+    <li><a href="set-abandoned-notice.html">SetAbandonedNotice</a></li>
+    <li><a class="current" href="get-successor.html">GetSuccessor</a></li>
+    <li><a href="dispatch-successor.html">DispatchSuccessor</a></li>
+    <li><a href="parallel-for.html">ParallelFor</a></li>
+    <li><a href="get-registry.html">GetRegistry</a></li>
+    <li><a href="update.html">Update</a></li>
+    <li><a href="drive-until.html">DriveUntil</a></li>
+    <li><a href="report-drive-timeout.html">ReportDriveTimeout</a></li>
+    <li><a href="run-budget-window-pass.html">RunBudgetWindowPass</a></li>
+    <li><a href="get-num-budget-windows-advanced.html">GetNumBudgetWindowsAdvanced</a></li>
+    <li><a href="enqueue-task.html">EnqueueTask</a></li>
+    <li><a href="dispatch-to-main-thread.html">DispatchToMainThread</a></li>
+    <li><a href="get-name.html">GetName</a></li>
+    <li><a href="is-running.html">IsRunning</a></li>
+    <li><a href="get-base-task-stream.html">GetBaseTaskStream</a></li>
+    <li><a href="get-io-task-stream.html">GetIOTaskStream</a></li>
+    <li><a href="get-stream-name.html">GetStreamName</a></li>
+    <li><a href="get-stream-index.html">GetStreamIndex</a></li>
+    <li><a href="get-stream.html">GetStream</a></li>
+    <li><a href="run-split.html">RunSplit</a></li>
+    <li><a href="has-stream.html">HasStream</a></li>
+    <li><a href="build-streams.html">BuildStreams</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+<a href="index.html">TaskSystem</a> / GetSuccessor
+</p>
+
+<h1><span class="fn">GetSuccessor</span></h1>
+<p class="subtitle">reads the successor recorded for a task, or a null identity when nobody is waiting on its join</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code><span class="ty">TaskID</span> <span class="fn">GetSuccessor</span>(<span class="ty">TaskID</span> task) noexcept
+{
+        <span class="kw">return</span> taskRegistry.<span class="fn">GetSuccessor</span>(task);
+}</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  An inline forward to <code>TaskRegistry::GetSuccessor</code>. It reads one field of the producer's record and returns
+  it. A null identity means no successor was recorded — which is the normal case, and the fire-and-forget case, and the
+  case where routing was never attempted because <a href="parallel-for.html">ParallelFor</a> refused the call before
+  getting as far as <a href="set-successor.html">SetSuccessor</a>.
+</p>
+
+<p>
+  It answers "who is recorded", nothing more. It cannot say whether that successor is still tracked
+  (<a href="find-task.html">FindTask</a> answers that), whether it reserved a subtask, or whether the producer's packet
+  names a destination stream — all three of which <a href="dispatch-successor.html">DispatchSuccessor</a> must have, and
+  each of which it checks separately and reports separately.
+</p>
+
+<div class="note">
+  <strong>It also tells you when routing was left undone.</strong> After a split has been created with a successor, a null
+  from here means the record did not take — usually because the identity passed to
+  <a href="set-successor.html">SetSuccessor</a> was not tracked. Reading it back after building a chain is the cheapest
+  check in this part of the API, and it is the one that catches a chain assembled from the wrong end.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr>
+    <td><code>task</code></td>
+    <td><code>TaskID</code></td>
+    <td>The producer whose routing is being asked about. An untracked or null identity returns a null identity — the
+      registry has no record to read and does not report which of the two it was</td>
+  </tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr>
+    <td><code>TaskID</code></td>
+    <td>The recorded successor, or a null <code>TaskID</code>. The value is a copy of an identity, so it stays readable
+      after the producer is released — and a successor that has since been released resolves to
+      <code>nullptr</code> through <a href="find-task.html">FindTask</a></td>
+  </tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p class="note">Illustrative — the engine reads the successor inside
+<a href="dispatch-successor.html">DispatchSuccessor</a> rather than exposing a call site for this forward.</p>
+
+<pre><code><span class="kw">const</span> <span class="ty">TaskID</span> next = taskSys.<span class="fn">GetSuccessor</span>(producer);
+<span class="kw">if</span> (!next.<span class="fn">IsNull</span>() &amp;&amp; taskSys.<span class="fn">FindTask</span>(next) == <span class="kw">nullptr</span>)
+{
+        <span class="cm">// recorded, but no longer tracked: delivery will be refused and logged</span>
+}</code></pre>
+
+<p>
+  The two tests together are what a chain needs before it can be trusted: recorded, and still there. Delivery checks the
+  same two, and its refusal message names the pair — see the five refusals on
+  <a href="dispatch-successor.html">DispatchSuccessor</a>.
+</p>
+
+<footer class="prevnext">
+  <span><a href="index.html">&larr; TaskSystem</a></span>
+  <span><a href="index.html#methods">All TaskSystem methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

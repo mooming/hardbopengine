@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskSystem::JoinAndClear — Core module &mdash; HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3>Methods</h3>
+  <ul class="methods">
+    <li><a href="index.html">TaskSystem</a> methods</li>
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+    <li><a href="get-num-hardware-threads.html">GetNumHardwareThreads</a></li>
+    <li><a href="set-thread-name.html">SetThreadName</a></li>
+    <li><a href="set-stream-index.html">SetStreamIndex</a></li>
+    <li><a href="get-current-stream-name.html">GetCurrentStreamName</a></li>
+    <li><a href="get-current-thread-name.html">GetCurrentThreadName</a></li>
+    <li><a href="get-current-stream-index.html">GetCurrentStreamIndex</a></li>
+    <li><a href="is-base-thread.html">IsBaseThread</a></li>
+    <li><a href="is-io-thread.html">IsIOThread</a></li>
+    <li><a href="get-base-task-stream-index.html">GetBaseTaskStreamIndex</a></li>
+    <li><a href="get-io-task-stream-index.html">GetIOTaskStreamIndex</a></li>
+    <li><a href="initialize.html">Initialize</a></li>
+    <li><a href="request-shut-down.html">RequestShutDown</a></li>
+    <li><a href="request-other-streams-close.html">RequestOtherStreamsClose</a></li>
+    <li><a href="are-other-streams-closed.html">AreOtherStreamsClosed</a></li>
+    <li><a class="current" href="join-and-clear.html">JoinAndClear</a></li>
+    <li><a href="enqueue.html">Enqueue</a></li>
+    <li><a href="dequeue.html">Dequeue</a></li>
+    <li><a href="create-task.html">CreateTask</a></li>
+    <li><a href="find-task.html">FindTask</a></li>
+    <li><a href="release-task.html">ReleaseTask</a></li>
+    <li><a href="set-successor.html">SetSuccessor</a></li>
+    <li><a href="set-abandoned-notice.html">SetAbandonedNotice</a></li>
+    <li><a href="get-successor.html">GetSuccessor</a></li>
+    <li><a href="dispatch-successor.html">DispatchSuccessor</a></li>
+    <li><a href="parallel-for.html">ParallelFor</a></li>
+    <li><a href="get-registry.html">GetRegistry</a></li>
+    <li><a href="update.html">Update</a></li>
+    <li><a href="drive-until.html">DriveUntil</a></li>
+    <li><a href="report-drive-timeout.html">ReportDriveTimeout</a></li>
+    <li><a href="run-budget-window-pass.html">RunBudgetWindowPass</a></li>
+    <li><a href="get-num-budget-windows-advanced.html">GetNumBudgetWindowsAdvanced</a></li>
+    <li><a href="enqueue-task.html">EnqueueTask</a></li>
+    <li><a href="dispatch-to-main-thread.html">DispatchToMainThread</a></li>
+    <li><a href="get-name.html">GetName</a></li>
+    <li><a href="is-running.html">IsRunning</a></li>
+    <li><a href="get-base-task-stream.html">GetBaseTaskStream</a></li>
+    <li><a href="get-io-task-stream.html">GetIOTaskStream</a></li>
+    <li><a href="get-stream-name.html">GetStreamName</a></li>
+    <li><a href="get-stream-index.html">GetStreamIndex</a></li>
+    <li><a href="get-stream.html">GetStream</a></li>
+    <li><a href="run-split.html">RunSplit</a></li>
+    <li><a href="has-stream.html">HasStream</a></li>
+    <li><a href="build-streams.html">BuildStreams</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+<a href="index.html">TaskSystem</a> / JoinAndClear
+</p>
+
+<h1><span class="fn">JoinAndClear</span></h1>
+<p class="subtitle">
+  asks, pumps, flushes, closes, joins and clears — the whole teardown of the task system, bounded at 2000 ms and
+  deliberately louder when it runs out of time than when it does not
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code><span class="kw">void</span> <span class="fn">JoinAndClear</span>() noexcept;</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>Defined at <code>Engine/Core/TaskSystem.cpp:200</code>. The order is the contract; each step is here because the
+next one breaks without it.</p>
+
+<table>
+  <tr><th>#</th><th>Step</th><th>Why it is in this position</th></tr>
+  <tr>
+    <td>1</td>
+    <td>Records whether the caller is the constructing thread, and whether streams exist at all</td>
+    <td>Both decide which of the steps below are possible; <a href="has-stream.html">HasStream</a> is what keeps an
+      already-cleared task system out of the index assert</td>
+  </tr>
+  <tr>
+    <td>2</td>
+    <td><a href="request-other-streams-close.html">RequestOtherStreamsClose</a>, if there are streams</td>
+    <td>Not asking would make the wait below one that never ends. Teardown can be reached without the ordered
+      shutdown, since <a href="destructor.html">the destructor</a> is a caller</td>
+  </tr>
+  <tr>
+    <td>3</td>
+    <td><code>baseStream.SetDrivenByShutdownPump()</code>, then pump the base stream for up to 2000 ms while any of
+      three conditions hold</td>
+    <td>Recorded before the first pass rather than after: the whole point is that work run by this pump cannot claim
+      the engine loop ran. The three conditions are the other streams not closed, posted tasks on the base stream, and
+      queued items on it</td>
+  </tr>
+  <tr>
+    <td>4</td>
+    <td>If work remains, an <code>Error</code> log naming the count</td>
+    <td>Never dropped quietly. A queued item left here is a promise made to a customer who will not be answered. Posted
+      callables are reported as <em>present</em> rather than counted, because the queue only says whether it holds
+      any — inventing a number would be a guess printed as a measurement</td>
+  </tr>
+  <tr>
+    <td>5</td>
+    <td><code>Logger::Get().Flush()</code></td>
+    <td>Log lines are written by a task running on a stream, so the flush that ends the run has to happen while that
+      stream is still running its own work. Joining first leaves the flush waiting on an executor that has already
+      exited — a timeout and a fatal assert rather than a shutdown</td>
+  </tr>
+  <tr>
+    <td>6</td>
+    <td><code>SetIODriver(nullptr)</code>, then <code>CloseDrivenStream()</code> on the IO stream and then the base
+      stream</td>
+    <td>The driver thread outlives the task system, so each stream must be taken back from its driver before the streams
+      are freed. After this the logger writes its queue directly, which keeps it working to the last line of the
+      process</td>
+  </tr>
+  <tr>
+    <td>7</td>
+    <td><code>RequestClose()</code> on the IO stream, then on the base stream</td>
+    <td>The reporting the shutdown exists to produce is finished, so the two executors that carried it close last, in
+      that order</td>
+  </tr>
+  <tr>
+    <td>8</td>
+    <td>Join every joinable thread, then <code>Assert(stream.IsClosed())</code> for each stream, then
+      <code>streams.Clear()</code></td>
+    <td>Nothing is destroyed that was not closed first. A stream left unclosed here means either a new stream kind
+      nobody asked to close, or a thread still running while its queues are being freed — both cheaper as a named
+      assert than as a crash in a later run</td>
+  </tr>
+</table>
+
+<div class="gap">
+  <strong>Only the constructing thread pumps; every other thread merely waits.</strong> Step 3 is conditioned on
+  <code>std::this_thread::get_id() == engineLoopThreadID</code>. A call from any other thread asks the streams to close,
+  joins them, and never drains the base stream — so work still posted there is abandoned with no log line about it,
+  because the pump that would have reported it never ran. This is not a thread-safe "wait for shutdown" from an
+  application thread; it is the shutdown, and it belongs on the thread that owns the run.
+</div>
+
+<div class="note">
+  <strong>The bound is 2000 ms, and it is a measured choice.</strong> A bound that resumable work can outrun is not a
+  bound, and this loop asks for work rather than for an end. Without it the shutdown waits on posted work that may never
+  be drained — found by sampling, after every test had finished and nothing else could run — so the honest outcome is a
+  named loss rather than a process that never exits.
+</div>
+
+<p>
+  It is safe to call twice. After the first pass the array is empty, so the second call skips steps 2 through 7, joins
+  nothing, asserts over nothing, and clears nothing — which is exactly what <a href="destructor.html">~TaskSystem</a>
+  relies on.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<p><code>void</code>. Whether it succeeded is visible only as what it logged: silence, or an error naming the work it
+had to leave behind.</p>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Engine/Engine.cpp</p>
+
+<pre><code><span class="kw">while</span> (taskSystem.<span class="fn">IsRunning</span>())
+{
+        taskSystem.<span class="fn">Update</span>();
+        <span class="kw">std</span>::this_thread::<span class="fn">yield</span>();
+}
+
+taskSystem.<span class="fn">JoinAndClear</span>();
+
+<span class="kw">if</span> (application != <span class="kw">nullptr</span>)
+{
+        application.<span class="fn">reset</span>();
+}</code></pre>
+
+<p>
+  <code>Engine/Engine/Engine.cpp:139-150</code>, on the thread that owns the run — the one that gets step 3. Note what
+  follows it: the application is released <em>after</em> the task system is joined, because an application teardown that
+  posts work needs a stream still able to run it.
+</p>
+
+<footer class="prevnext">
+  <span><a href="index.html">&larr; TaskSystem</a></span>
+  <span><a href="index.html#methods">All TaskSystem methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

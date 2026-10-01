@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskSystem::Enqueue — Core module &mdash; HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3>Methods</h3>
+  <ul class="methods">
+    <li><a href="index.html">TaskSystem</a> methods</li>
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+    <li><a href="get-num-hardware-threads.html">GetNumHardwareThreads</a></li>
+    <li><a href="set-thread-name.html">SetThreadName</a></li>
+    <li><a href="set-stream-index.html">SetStreamIndex</a></li>
+    <li><a href="get-current-stream-name.html">GetCurrentStreamName</a></li>
+    <li><a href="get-current-thread-name.html">GetCurrentThreadName</a></li>
+    <li><a href="get-current-stream-index.html">GetCurrentStreamIndex</a></li>
+    <li><a href="is-base-thread.html">IsBaseThread</a></li>
+    <li><a href="is-io-thread.html">IsIOThread</a></li>
+    <li><a href="get-base-task-stream-index.html">GetBaseTaskStreamIndex</a></li>
+    <li><a href="get-io-task-stream-index.html">GetIOTaskStreamIndex</a></li>
+    <li><a href="initialize.html">Initialize</a></li>
+    <li><a href="request-shut-down.html">RequestShutDown</a></li>
+    <li><a href="request-other-streams-close.html">RequestOtherStreamsClose</a></li>
+    <li><a href="are-other-streams-closed.html">AreOtherStreamsClosed</a></li>
+    <li><a href="join-and-clear.html">JoinAndClear</a></li>
+    <li><a class="current" href="enqueue.html">Enqueue</a></li>
+    <li><a href="dequeue.html">Dequeue</a></li>
+    <li><a href="create-task.html">CreateTask</a></li>
+    <li><a href="find-task.html">FindTask</a></li>
+    <li><a href="release-task.html">ReleaseTask</a></li>
+    <li><a href="set-successor.html">SetSuccessor</a></li>
+    <li><a href="set-abandoned-notice.html">SetAbandonedNotice</a></li>
+    <li><a href="get-successor.html">GetSuccessor</a></li>
+    <li><a href="dispatch-successor.html">DispatchSuccessor</a></li>
+    <li><a href="parallel-for.html">ParallelFor</a></li>
+    <li><a href="get-registry.html">GetRegistry</a></li>
+    <li><a href="update.html">Update</a></li>
+    <li><a href="drive-until.html">DriveUntil</a></li>
+    <li><a href="report-drive-timeout.html">ReportDriveTimeout</a></li>
+    <li><a href="run-budget-window-pass.html">RunBudgetWindowPass</a></li>
+    <li><a href="get-num-budget-windows-advanced.html">GetNumBudgetWindowsAdvanced</a></li>
+    <li><a href="enqueue-task.html">EnqueueTask</a></li>
+    <li><a href="dispatch-to-main-thread.html">DispatchToMainThread</a></li>
+    <li><a href="get-name.html">GetName</a></li>
+    <li><a href="is-running.html">IsRunning</a></li>
+    <li><a href="get-base-task-stream.html">GetBaseTaskStream</a></li>
+    <li><a href="get-io-task-stream.html">GetIOTaskStream</a></li>
+    <li><a href="get-stream-name.html">GetStreamName</a></li>
+    <li><a href="get-stream-index.html">GetStreamIndex</a></li>
+    <li><a href="get-stream.html">GetStream</a></li>
+    <li><a href="run-split.html">RunSplit</a></li>
+    <li><a href="has-stream.html">HasStream</a></li>
+    <li><a href="build-streams.html">BuildStreams</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+<a href="index.html">TaskSystem</a> / Enqueue
+</p>
+
+<h1><span class="fn">Enqueue</span></h1>
+<p class="subtitle">
+  three overloads, two destinations: name no stream and the item waits in the shared general queue, name one and it goes
+  onto that stream's FIFO or priority lane
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code><span class="cm">// general queue, low priority</span>
+<span class="kw">void</span> <span class="fn">Enqueue</span>(<span class="kw">const</span> <span class="ty">WorkItem</span>&amp; task) noexcept;
+
+<span class="cm">// one stream, FIFO lane</span>
+<span class="kw">void</span> <span class="fn">Enqueue</span>(<span class="ty">TIndex</span> streamIndex, <span class="kw">const</span> <span class="ty">WorkItem</span>&amp; task) noexcept;
+
+<span class="cm">// one stream, the lane the caller names</span>
+<span class="kw">void</span> <span class="fn">Enqueue</span>(<span class="ty">TIndex</span> streamIndex, <span class="kw">const</span> <span class="ty">WorkItem</span>&amp; task, <span class="ty">StreamDrainPolicy::ELane</span> lane) noexcept;</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<h3>The general-queue form</h3>
+
+<pre><code><span class="kw">void</span> <span class="ty">TaskSystem</span>::<span class="fn">Enqueue</span>(<span class="kw">const</span> <span class="ty">WorkItem</span>&amp; task) noexcept
+{
+        <span class="kw">std</span>::scoped_lock&lt;<span class="kw">std</span>::mutex&gt; lock(taskQueueMutex);
+        taskQueue.<span class="fn">Push</span>(task);
+}</code></pre>
+
+<p>
+  One mutex (<code>taskQueueMutex</code>) guarding one <code>BoundedPriorityQueue&lt;WorkItem&gt;</code>, at
+  <code>Engine/Core/TaskSystem.cpp:314</code>. "Low priority" describes when it is consulted, not how the item is
+  treated: a stream drains its own lanes first and reaches into the general queue afterwards, and
+  <a href="dequeue.html">Dequeue</a> is the taking side of that. <em>Bounded</em> refers to the priority range — 256
+  buckets — not to the number of items: <code>Push</code> checks nothing and the queue grows.
+</p>
+
+<h3>The indexed forms</h3>
+
+<pre><code><span class="kw">void</span> <span class="ty">TaskSystem</span>::<span class="fn">Enqueue</span>(<span class="kw">const</span> <span class="ty">TIndex</span> streamIndex, <span class="kw">const</span> <span class="ty">WorkItem</span>&amp; task) noexcept
+{
+        <span class="fn">Enqueue</span>(streamIndex, task, <span class="ty">StreamDrainPolicy::ELane</span>::Fifo);
+}
+
+<span class="kw">void</span> <span class="ty">TaskSystem</span>::<span class="fn">Enqueue</span>(<span class="kw">const</span> <span class="ty">TIndex</span> streamIndex, <span class="kw">const</span> <span class="ty">WorkItem</span>&amp; task,
+                                                           <span class="kw">const</span> <span class="ty">StreamDrainPolicy::ELane</span> lane) noexcept
+{
+        <span class="kw">if</span> (!streams.<span class="fn">IsValidIndex</span>(streamIndex))
+        {
+                <span class="fn">Assert</span>(<span class="kw">false</span>, <span class="st">"Invalid stream index %d"</span>, streamIndex);
+                <span class="kw">return</span>;
+        }
+
+        <span class="kw">switch</span> (lane)
+        {
+                <span class="kw">case</span> <span class="ty">StreamDrainPolicy::ELane</span>::Fifo:     streams[streamIndex].<span class="fn">EnqueueFifo</span>(task);     <span class="kw">break</span>;
+                <span class="kw">case</span> <span class="ty">StreamDrainPolicy::ELane</span>::Priority: streams[streamIndex].<span class="fn">EnqueuePriority</span>(task); <span class="kw">break</span>;
+                <span class="kw">case</span> <span class="ty">StreamDrainPolicy::ELane</span>::None:     <span class="fn">Assert</span>(<span class="kw">false</span>, <span class="st">"...ELane::None..."</span>);        <span class="kw">break</span>;
+        }
+}</code></pre>
+
+<p>
+  The two-argument form is a forward to the three-argument one with <code>ELane::Fifo</code>
+  (<code>Engine/Core/TaskSystem.cpp:372</code>), so there is one behaviour with two spellings. Neither form can refuse a
+  task for capacity: a stream used to refuse a task that declared more results than it could fit, and that question
+  stopped existing when a result moved into the task's own record, which is allocated when the task is created.
+</p>
+
+<div class="note">
+  <strong>Lane and priority are two different things and this API keeps them apart.</strong> The lane is <em>which
+  queue</em> serves the work; <code>WorkItem::priority</code> is the ordering <em>inside</em> the priority queue. Before
+  the lane overload existed, the lane was decided by which internal function a caller happened to reach, and the engine's
+  public surface could only reach the FIFO lane — so the priority lane, its share of the drain rate, and its half of the
+  shutdown drain were unreachable from the public API. That is recorded as decision 5 in the task-system redesign notes.
+</div>
+
+<div class="gap">
+  <strong>An out-of-range index discards the item, and in Dev and Release it does so in silence.</strong> The guard
+  calls <code>Assert(false, …)</code> and then <code>return</code>s. <code>Assert</code> is defined twice, and the
+  definition outside <code>__DEBUG__</code> is empty (<code>Engine/Core/Debug.h:72-79</code>) — only
+  <code>FatalAssert</code> survives in every configuration (<code>Engine/Core/Debug.h:85</code>). So the abort is a
+  Debug-build behaviour, while the <code>return</code> is unconditional: outside Debug the work item is gone, with no log
+  line and no error, and the task whose item it was never runs. <code>ELane::None</code> behaves the same way for the
+  same reason. Use <a href="has-stream.html">HasStream</a> before indexing a stream you did not create yourself.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr>
+    <td><code>streamIndex</code></td>
+    <td><code>TIndex</code> (<code>int</code>)</td>
+    <td>A stream between 0 and <code>streams.Size() - 1</code>. Only in the two indexed forms</td>
+  </tr>
+  <tr>
+    <td><code>task</code></td>
+    <td><code>const WorkItem&amp;</code></td>
+    <td>A work item, copied into the queue. Build it from a tracked task with <code>Task::GenerateSubTask</code>, or let
+      <a href="enqueue-task.html">EnqueueTask</a> do that — a hand-built item carries a task identity a stream must be
+      able to resolve, or the item is dropped at run time</td>
+  </tr>
+  <tr>
+    <td><code>lane</code></td>
+    <td><code>StreamDrainPolicy::ELane</code></td>
+    <td><code>Fifo</code> for arrival order, <code>Priority</code> for highest <code>priority</code> first with the
+      oldest winning a tie. <code>None</code> names no queue and is a caller error — see the hazard above. Only in the
+      three-argument form</td>
+  </tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p><code>void</code> in all three forms. None of them reports whether the item was accepted, which is precisely the
+hazard above.</p>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Core/TaskSystem.cpp</p>
+
+<pre><code>taskSys.<span class="fn">Enqueue</span>(workerIndex, (*burn).<span class="fn">GenerateSubTask</span>(0, 1));</code></pre>
+
+<p>
+  A work item generated from a tracked task and placed on one stream's FIFO lane, at
+  <code>Engine/Core/TaskSystem.cpp:2324</code>; the same pairing recurs throughout the task-system tests, at
+  <code>:2446</code>, <code>:2523</code>, <code>:2582</code> and elsewhere. Customer code that wants a whole task run on
+  one stream should reach for <a href="enqueue-task.html">EnqueueTask</a> instead, which declares the join as well.
+</p>
+
+<footer class="prevnext">
+  <span><a href="index.html">&larr; TaskSystem</a></span>
+  <span><a href="index.html#methods">All TaskSystem methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

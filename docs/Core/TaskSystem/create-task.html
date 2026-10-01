@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskSystem::CreateTask — Core module &mdash; HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3>Methods</h3>
+  <ul class="methods">
+    <li><a href="index.html">TaskSystem</a> methods</li>
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+    <li><a href="get-num-hardware-threads.html">GetNumHardwareThreads</a></li>
+    <li><a href="set-thread-name.html">SetThreadName</a></li>
+    <li><a href="set-stream-index.html">SetStreamIndex</a></li>
+    <li><a href="get-current-stream-name.html">GetCurrentStreamName</a></li>
+    <li><a href="get-current-thread-name.html">GetCurrentThreadName</a></li>
+    <li><a href="get-current-stream-index.html">GetCurrentStreamIndex</a></li>
+    <li><a href="is-base-thread.html">IsBaseThread</a></li>
+    <li><a href="is-io-thread.html">IsIOThread</a></li>
+    <li><a href="get-base-task-stream-index.html">GetBaseTaskStreamIndex</a></li>
+    <li><a href="get-io-task-stream-index.html">GetIOTaskStreamIndex</a></li>
+    <li><a href="initialize.html">Initialize</a></li>
+    <li><a href="request-shut-down.html">RequestShutDown</a></li>
+    <li><a href="request-other-streams-close.html">RequestOtherStreamsClose</a></li>
+    <li><a href="are-other-streams-closed.html">AreOtherStreamsClosed</a></li>
+    <li><a href="join-and-clear.html">JoinAndClear</a></li>
+    <li><a href="enqueue.html">Enqueue</a></li>
+    <li><a href="dequeue.html">Dequeue</a></li>
+    <li><a class="current" href="create-task.html">CreateTask</a></li>
+    <li><a href="find-task.html">FindTask</a></li>
+    <li><a href="release-task.html">ReleaseTask</a></li>
+    <li><a href="set-successor.html">SetSuccessor</a></li>
+    <li><a href="set-abandoned-notice.html">SetAbandonedNotice</a></li>
+    <li><a href="get-successor.html">GetSuccessor</a></li>
+    <li><a href="dispatch-successor.html">DispatchSuccessor</a></li>
+    <li><a href="parallel-for.html">ParallelFor</a></li>
+    <li><a href="get-registry.html">GetRegistry</a></li>
+    <li><a href="update.html">Update</a></li>
+    <li><a href="drive-until.html">DriveUntil</a></li>
+    <li><a href="report-drive-timeout.html">ReportDriveTimeout</a></li>
+    <li><a href="run-budget-window-pass.html">RunBudgetWindowPass</a></li>
+    <li><a href="get-num-budget-windows-advanced.html">GetNumBudgetWindowsAdvanced</a></li>
+    <li><a href="enqueue-task.html">EnqueueTask</a></li>
+    <li><a href="dispatch-to-main-thread.html">DispatchToMainThread</a></li>
+    <li><a href="get-name.html">GetName</a></li>
+    <li><a href="is-running.html">IsRunning</a></li>
+    <li><a href="get-base-task-stream.html">GetBaseTaskStream</a></li>
+    <li><a href="get-io-task-stream.html">GetIOTaskStream</a></li>
+    <li><a href="get-stream-name.html">GetStreamName</a></li>
+    <li><a href="get-stream-index.html">GetStreamIndex</a></li>
+    <li><a href="get-stream.html">GetStream</a></li>
+    <li><a href="run-split.html">RunSplit</a></li>
+    <li><a href="has-stream.html">HasStream</a></li>
+    <li><a href="build-streams.html">BuildStreams</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+<a href="index.html">TaskSystem</a> / CreateTask
+</p>
+
+<h1><span class="fn">CreateTask</span></h1>
+<p class="subtitle">
+  asks the registry for a record and hands back the identity that names it — a forward with one contract worth reading,
+  which is what a null return costs
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code><span class="ty">TaskID</span> <span class="ty">TaskSystem</span>::<span class="fn">CreateTask</span>(<span class="ty">StaticString</span> taskName, <span class="ty">TRunnable</span> func, <span class="kw">void</span>* userData) noexcept
+{
+        <span class="kw">return</span> taskRegistry.<span class="fn">Create</span>(taskName, func, userData);
+}</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  One forward to <code>TaskRegistry::Create</code> at <code>Engine/Core/TaskSystem.cpp:350</code>. It exists so that
+  callers reach the registry through the task system rather than holding the registry itself —
+  <a href="get-registry.html">GetRegistry</a> is the door to that, and it is narrower on purpose.
+</p>
+
+<p>
+  What comes back is a <a href="../WorkItem/index.html"><code>TaskID</code></a>: an index into the record table plus a
+  generation, so that an identity held past its task's release can be recognised as stale rather than silently naming a
+  different task. The three arguments are stored in the record; the runnable is not called here, and nothing is queued.
+</p>
+
+<div class="gap">
+  <strong>A null identity means the task will never run, and it is not this call's job to make room.</strong>
+  <code>TaskRegistry::Create</code> returns a null <code>TaskID</code> when the table has no free record. A refused task
+  is not tracked, is not run, and the refusal is logged with the task name and the capacity — because a task that
+  silently never runs is indistinguishable from one still waiting. The create path <em>never grows the table</em>: growth
+  is <code>Grow()</code>, which is legal only where no lookup is in flight, so a refusal here is a sizing problem to fix
+  somewhere else. The engine's own growth path is <a href="initialize.html">Initialize</a>, from the configuration
+  parameters it reads.
+</div>
+
+<div class="note">
+  <strong>Untracked work items are dropped, not delayed.</strong> A work item carries the identity of its task, and a
+  stream resolves that identity to run it. An item whose identity was never issued — a task built by hand rather than
+  through this call — resolves to nothing, so the item is discarded. This is why
+  <a href="enqueue-task.html">EnqueueTask</a> insists on a tracked task, and why
+  <a href="dispatch-successor.html">DispatchSuccessor</a> refuses rather than guessing.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr>
+    <td><code>taskName</code></td>
+    <td><code>StaticString</code></td>
+    <td>A label for logs and reports. The bytes must outlive the record's use of them, so call sites pass literals</td>
+  </tr>
+  <tr>
+    <td><code>func</code></td>
+    <td><code>TRunnable</code></td>
+    <td>The runnable that does the work. Stored, never called here</td>
+  </tr>
+  <tr>
+    <td><code>userData</code></td>
+    <td><code>void*</code></td>
+    <td>Handed to the runnable untouched. Its lifetime is the caller's to guarantee across every item this task's work
+      can produce — see <a href="parallel-for.html">ParallelFor</a> for what "every item" can mean</td>
+  </tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr>
+    <td><code>TaskID</code></td>
+    <td>The identity that names the tracked task, or a null <code>TaskID</code> when the registry has no free record.
+      <code>IsNull()</code> is the test</td>
+  </tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Log/Logger.cpp</p>
+
+<pre><code>taskID = taskSys.<span class="fn">CreateTask</span>(<span class="st">"Logger"</span>, runnable, <span class="kw">this</span>);
+
+<span class="kw">auto</span>* drainTask = taskSys.<span class="fn">FindTask</span>(taskID);
+<span class="kw">if</span> (drainTask == <span class="kw">nullptr</span>)
+{
+        <span class="fn">AddLog</span>(<span class="fn">GetName</span>(), ELogLevel::Error, [](<span class="kw">auto</span>&amp; logStream)
+        {
+                logStream &lt;&lt; <span class="st">"The task registry could not track the logger's drain task, so log lines are flushed"</span>
+                          &lt;&lt; <span class="st">" inline by whoever produces them."</span>;
+        });
+        <span class="kw">return</span>;
+}
+
+taskSys.<span class="fn">EnqueueTask</span>(ioStreamIndex, *drainTask);</code></pre>
+
+<p>
+  <code>Engine/Log/Logger.cpp:304-317</code>, where the logger registers the task that writes its queue. This is the
+  refusal path being honoured by the engine's own code: a null record is not ignored and not retried, it changes what the
+  logger does — log lines get flushed inline by whoever produces them, and the IO stream is never asked to run a task
+  that does not exist. The same file shows the pairing this call expects: <code>CreateTask</code> then
+  <a href="find-task.html">FindTask</a> then <a href="enqueue-task.html">EnqueueTask</a>.
+</p>
+
+<footer class="prevnext">
+  <span><a href="index.html">&larr; TaskSystem</a></span>
+  <span><a href="index.html#methods">All TaskSystem methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

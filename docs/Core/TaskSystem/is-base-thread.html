@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskSystem::IsBaseThread — Core module &mdash; HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3>Methods</h3>
+  <ul class="methods">
+    <li><a href="index.html">TaskSystem</a> methods</li>
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+    <li><a href="get-num-hardware-threads.html">GetNumHardwareThreads</a></li>
+    <li><a href="set-thread-name.html">SetThreadName</a></li>
+    <li><a href="set-stream-index.html">SetStreamIndex</a></li>
+    <li><a href="get-current-stream-name.html">GetCurrentStreamName</a></li>
+    <li><a href="get-current-thread-name.html">GetCurrentThreadName</a></li>
+    <li><a href="get-current-stream-index.html">GetCurrentStreamIndex</a></li>
+    <li><a class="current" href="is-base-thread.html">IsBaseThread</a></li>
+    <li><a href="is-io-thread.html">IsIOThread</a></li>
+    <li><a href="get-base-task-stream-index.html">GetBaseTaskStreamIndex</a></li>
+    <li><a href="get-io-task-stream-index.html">GetIOTaskStreamIndex</a></li>
+    <li><a href="initialize.html">Initialize</a></li>
+    <li><a href="request-shut-down.html">RequestShutDown</a></li>
+    <li><a href="request-other-streams-close.html">RequestOtherStreamsClose</a></li>
+    <li><a href="are-other-streams-closed.html">AreOtherStreamsClosed</a></li>
+    <li><a href="join-and-clear.html">JoinAndClear</a></li>
+    <li><a href="enqueue.html">Enqueue</a></li>
+    <li><a href="dequeue.html">Dequeue</a></li>
+    <li><a href="create-task.html">CreateTask</a></li>
+    <li><a href="find-task.html">FindTask</a></li>
+    <li><a href="release-task.html">ReleaseTask</a></li>
+    <li><a href="set-successor.html">SetSuccessor</a></li>
+    <li><a href="set-abandoned-notice.html">SetAbandonedNotice</a></li>
+    <li><a href="get-successor.html">GetSuccessor</a></li>
+    <li><a href="dispatch-successor.html">DispatchSuccessor</a></li>
+    <li><a href="parallel-for.html">ParallelFor</a></li>
+    <li><a href="get-registry.html">GetRegistry</a></li>
+    <li><a href="update.html">Update</a></li>
+    <li><a href="drive-until.html">DriveUntil</a></li>
+    <li><a href="report-drive-timeout.html">ReportDriveTimeout</a></li>
+    <li><a href="run-budget-window-pass.html">RunBudgetWindowPass</a></li>
+    <li><a href="get-num-budget-windows-advanced.html">GetNumBudgetWindowsAdvanced</a></li>
+    <li><a href="enqueue-task.html">EnqueueTask</a></li>
+    <li><a href="dispatch-to-main-thread.html">DispatchToMainThread</a></li>
+    <li><a href="get-name.html">GetName</a></li>
+    <li><a href="is-running.html">IsRunning</a></li>
+    <li><a href="get-base-task-stream.html">GetBaseTaskStream</a></li>
+    <li><a href="get-io-task-stream.html">GetIOTaskStream</a></li>
+    <li><a href="get-stream-name.html">GetStreamName</a></li>
+    <li><a href="get-stream-index.html">GetStreamIndex</a></li>
+    <li><a href="get-stream.html">GetStream</a></li>
+    <li><a href="run-split.html">RunSplit</a></li>
+    <li><a href="has-stream.html">HasStream</a></li>
+    <li><a href="build-streams.html">BuildStreams</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+<a href="index.html">TaskSystem</a> / IsBaseThread
+</p>
+
+<h1><span class="fn">IsBaseThread</span></h1>
+<p class="subtitle">
+  asks whether the calling thread currently claims stream 0 — not whether it constructed the task system, and not
+  whether it is where <code>Engine::Run</code> lives
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code><span class="kw">static</span> <span class="kw">bool</span> <span class="fn">IsBaseThread</span>() noexcept
+{
+        <span class="kw">return</span> StreamIndex == BaseStreamIndex;
+}</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  One comparison of the <code>thread_local</code> index against <code>BaseStreamIndex</code>, which is
+  <code>0</code>. It is true while the caller is inside a base-stream drain pass, which on this engine means on the
+  engine-loop thread with the claim that <code>TaskStream::Update</code> takes for the length of the pass
+  (<code>Engine/Core/TaskStream.cpp:365-369</code>). One statement outside that pass the same thread answers false,
+  because the claim is restored — see <a href="set-stream-index.html">SetStreamIndex</a>.
+</p>
+
+<div class="gap">
+  <strong>It is not the "did I build this" question, and it once could not be asked.</strong> The thread that
+  constructed the task system is recorded separately, in <code>engineLoopThreadID</code>, and
+  <a href="join-and-clear.html">JoinAndClear</a> and <a href="build-streams.html">BuildStreams</a> test that instead.
+  Before <a href="get-current-stream-index.html">NonStreamIndex</a> existed, the default stream index was
+  <code>0</code>, so <em>every</em> thread — application threads, the engine loop before it claimed a stream — answered
+  true. That made this function useless as a check and let the assert in
+  <a href="build-streams.html">BuildStreams</a> pass on any thread at all. It is now a real question; it still is not
+  the question "am I the constructing thread".
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<p>None.</p>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr>
+    <td><code>bool</code></td>
+    <td>True only while the caller claims stream 0. False on the engine-loop thread between passes, false on any thread
+      the application created, false on every worker and on the IO stream</td>
+  </tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p class="note">Illustrative — <code>IsBaseThread</code> has no call site in the repository; its unit-test use at
+<code>Engine/Core/TaskSystem.cpp:2190</code> prints the value rather than branching on it.</p>
+
+<pre><code><span class="kw">if</span> (<span class="ty">TaskSystem</span>::<span class="fn">IsBaseThread</span>())
+{
+        <span class="cm">// safe to touch base-stream-only state from inside a pass on it</span>
+}</code></pre>
+
+<p>
+  Code that needs the constructing thread rather than stream 0 has no accessor for it today —
+  <code>engineLoopThreadID</code> is private and unexposed — so the two questions cannot be confused by accident, only
+  by reading the wrong one into the other's name.
+</p>
+
+<footer class="prevnext">
+  <span><a href="index.html">&larr; TaskSystem</a></span>
+  <span><a href="index.html#methods">All TaskSystem methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

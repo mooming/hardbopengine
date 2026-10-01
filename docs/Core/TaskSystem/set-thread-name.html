@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskSystem::SetThreadName — Core module &mdash; HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3>Methods</h3>
+  <ul class="methods">
+    <li><a href="index.html">TaskSystem</a> methods</li>
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+    <li><a href="get-num-hardware-threads.html">GetNumHardwareThreads</a></li>
+    <li><a class="current" href="set-thread-name.html">SetThreadName</a></li>
+    <li><a href="set-stream-index.html">SetStreamIndex</a></li>
+    <li><a href="get-current-stream-name.html">GetCurrentStreamName</a></li>
+    <li><a href="get-current-thread-name.html">GetCurrentThreadName</a></li>
+    <li><a href="get-current-stream-index.html">GetCurrentStreamIndex</a></li>
+    <li><a href="is-base-thread.html">IsBaseThread</a></li>
+    <li><a href="is-io-thread.html">IsIOThread</a></li>
+    <li><a href="get-base-task-stream-index.html">GetBaseTaskStreamIndex</a></li>
+    <li><a href="get-io-task-stream-index.html">GetIOTaskStreamIndex</a></li>
+    <li><a href="initialize.html">Initialize</a></li>
+    <li><a href="request-shut-down.html">RequestShutDown</a></li>
+    <li><a href="request-other-streams-close.html">RequestOtherStreamsClose</a></li>
+    <li><a href="are-other-streams-closed.html">AreOtherStreamsClosed</a></li>
+    <li><a href="join-and-clear.html">JoinAndClear</a></li>
+    <li><a href="enqueue.html">Enqueue</a></li>
+    <li><a href="dequeue.html">Dequeue</a></li>
+    <li><a href="create-task.html">CreateTask</a></li>
+    <li><a href="find-task.html">FindTask</a></li>
+    <li><a href="release-task.html">ReleaseTask</a></li>
+    <li><a href="set-successor.html">SetSuccessor</a></li>
+    <li><a href="set-abandoned-notice.html">SetAbandonedNotice</a></li>
+    <li><a href="get-successor.html">GetSuccessor</a></li>
+    <li><a href="dispatch-successor.html">DispatchSuccessor</a></li>
+    <li><a href="parallel-for.html">ParallelFor</a></li>
+    <li><a href="get-registry.html">GetRegistry</a></li>
+    <li><a href="update.html">Update</a></li>
+    <li><a href="drive-until.html">DriveUntil</a></li>
+    <li><a href="report-drive-timeout.html">ReportDriveTimeout</a></li>
+    <li><a href="run-budget-window-pass.html">RunBudgetWindowPass</a></li>
+    <li><a href="get-num-budget-windows-advanced.html">GetNumBudgetWindowsAdvanced</a></li>
+    <li><a href="enqueue-task.html">EnqueueTask</a></li>
+    <li><a href="dispatch-to-main-thread.html">DispatchToMainThread</a></li>
+    <li><a href="get-name.html">GetName</a></li>
+    <li><a href="is-running.html">IsRunning</a></li>
+    <li><a href="get-base-task-stream.html">GetBaseTaskStream</a></li>
+    <li><a href="get-io-task-stream.html">GetIOTaskStream</a></li>
+    <li><a href="get-stream-name.html">GetStreamName</a></li>
+    <li><a href="get-stream-index.html">GetStreamIndex</a></li>
+    <li><a href="get-stream.html">GetStream</a></li>
+    <li><a href="run-split.html">RunSplit</a></li>
+    <li><a href="has-stream.html">HasStream</a></li>
+    <li><a href="build-streams.html">BuildStreams</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+<a href="index.html">TaskSystem</a> / SetThreadName
+</p>
+
+<h1><span class="fn">SetThreadName</span></h1>
+<p class="subtitle">
+  stores a name in a <code>thread_local</code> of the calling thread — it does not name the thread for the operating
+  system, a debugger or <code>top</code>
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code><span class="kw">static</span> <span class="kw">void</span> <span class="fn">SetThreadName</span>(<span class="ty">StaticString</span> name) noexcept
+{
+        ThreadName = name;
+}</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  One assignment to <code>thread_local StaticString ThreadName</code>, declared in the anonymous namespace at
+  <code>Engine/Core/TaskSystem.cpp:23</code>. It affects the calling thread only, and only for the lifetime of that
+  thread's <code>thread_local</code> storage.
+</p>
+
+<div class="gap">
+  <strong>This is not the operating system's thread name.</strong> No translation unit in the engine calls
+  <code>pthread_setname_np</code>, <code>SetThreadDescription</code> or <code>prctl(PR_SET_NAME)</code> — a grep of
+  <code>Engine/</code> for all three returns nothing. So the name is invisible to <code>lldb</code>, <code>top -H</code>
+  and any profiler that reads the OS's own thread labels; it appears only where engine code prints it, which is what
+  <a href="get-current-thread-name.html">GetCurrentThreadName</a> and the log lines that use it do. Anything that
+  names a thread for the platform has to do it separately.
+</div>
+
+<p>
+  Three places set it. <a href="build-streams.html">BuildStreams</a> labels the engine-loop thread with
+  <code>EngineLoopThreadName</code> (<code>"EngineLoop"</code>), <code>TaskStream::RunLoop</code> labels each stream
+  thread with its own stream's name at <code>Engine/Core/TaskStream.cpp:706</code>, and the logger's driver thread
+  labels itself <code>"LogDriver"</code> at <code>Engine/Log/Logger.cpp:205</code>. That last one is the interesting
+  case: the IO stream has no thread of its own — the logger's thread drives it — so that thread carries a name that is
+  not a stream name, and
+  <a href="get-current-stream-name.html">GetCurrentStreamName</a> will report <code>LogDriver</code> from it.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr>
+    <td><code>name</code></td>
+    <td><code>StaticString</code></td>
+    <td>A name to remember for the calling thread. <code>StaticString</code> is a pointer and a length, so the bytes it
+      points at must outlive the assignment — every call site in the engine passes a string literal or a stream name
+      held by the stream itself</td>
+  </tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p><code>void</code>. Nothing reports failure, and the name of the calling thread's previous owner is simply lost.</p>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Core/TaskStream.cpp</p>
+
+<pre><code><span class="kw">void</span> <span class="ty">TaskStream</span>::<span class="fn">RunLoop</span>() noexcept
+{
+        <span class="ty">AllocatorScope</span> scope(allocator);
+
+        <span class="ty">TaskSystem</span>::<span class="fn">SetThreadName</span>(name);
+        <span class="ty">TaskSystem</span>::<span class="fn">SetStreamIndex</span>(streamIndex);
+        ...
+}</code></pre>
+
+<p>
+  The first thing a stream's own thread does, before it logs its arrival, is label itself with the stream's name
+  (<code>Engine/Core/TaskStream.cpp:706</code>). Everything a worker logs from then on can be attributed without
+  passing a name through the call chain — and a task that outlives the pass that ran it will report whichever thread it
+  happens to be running on, which is why the pairing with
+  <a href="set-stream-index.html">SetStreamIndex</a> matters more than the name does.
+</p>
+
+<footer class="prevnext">
+  <span><a href="index.html">&larr; TaskSystem</a></span>
+  <span><a href="index.html#methods">All TaskSystem methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

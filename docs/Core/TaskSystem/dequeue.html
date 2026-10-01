@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskSystem::Dequeue — Core module &mdash; HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3>Methods</h3>
+  <ul class="methods">
+    <li><a href="index.html">TaskSystem</a> methods</li>
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+    <li><a href="get-num-hardware-threads.html">GetNumHardwareThreads</a></li>
+    <li><a href="set-thread-name.html">SetThreadName</a></li>
+    <li><a href="set-stream-index.html">SetStreamIndex</a></li>
+    <li><a href="get-current-stream-name.html">GetCurrentStreamName</a></li>
+    <li><a href="get-current-thread-name.html">GetCurrentThreadName</a></li>
+    <li><a href="get-current-stream-index.html">GetCurrentStreamIndex</a></li>
+    <li><a href="is-base-thread.html">IsBaseThread</a></li>
+    <li><a href="is-io-thread.html">IsIOThread</a></li>
+    <li><a href="get-base-task-stream-index.html">GetBaseTaskStreamIndex</a></li>
+    <li><a href="get-io-task-stream-index.html">GetIOTaskStreamIndex</a></li>
+    <li><a href="initialize.html">Initialize</a></li>
+    <li><a href="request-shut-down.html">RequestShutDown</a></li>
+    <li><a href="request-other-streams-close.html">RequestOtherStreamsClose</a></li>
+    <li><a href="are-other-streams-closed.html">AreOtherStreamsClosed</a></li>
+    <li><a href="join-and-clear.html">JoinAndClear</a></li>
+    <li><a href="enqueue.html">Enqueue</a></li>
+    <li><a class="current" href="dequeue.html">Dequeue</a></li>
+    <li><a href="create-task.html">CreateTask</a></li>
+    <li><a href="find-task.html">FindTask</a></li>
+    <li><a href="release-task.html">ReleaseTask</a></li>
+    <li><a href="set-successor.html">SetSuccessor</a></li>
+    <li><a href="set-abandoned-notice.html">SetAbandonedNotice</a></li>
+    <li><a href="get-successor.html">GetSuccessor</a></li>
+    <li><a href="dispatch-successor.html">DispatchSuccessor</a></li>
+    <li><a href="parallel-for.html">ParallelFor</a></li>
+    <li><a href="get-registry.html">GetRegistry</a></li>
+    <li><a href="update.html">Update</a></li>
+    <li><a href="drive-until.html">DriveUntil</a></li>
+    <li><a href="report-drive-timeout.html">ReportDriveTimeout</a></li>
+    <li><a href="run-budget-window-pass.html">RunBudgetWindowPass</a></li>
+    <li><a href="get-num-budget-windows-advanced.html">GetNumBudgetWindowsAdvanced</a></li>
+    <li><a href="enqueue-task.html">EnqueueTask</a></li>
+    <li><a href="dispatch-to-main-thread.html">DispatchToMainThread</a></li>
+    <li><a href="get-name.html">GetName</a></li>
+    <li><a href="is-running.html">IsRunning</a></li>
+    <li><a href="get-base-task-stream.html">GetBaseTaskStream</a></li>
+    <li><a href="get-io-task-stream.html">GetIOTaskStream</a></li>
+    <li><a href="get-stream-name.html">GetStreamName</a></li>
+    <li><a href="get-stream-index.html">GetStreamIndex</a></li>
+    <li><a href="get-stream.html">GetStream</a></li>
+    <li><a href="run-split.html">RunSplit</a></li>
+    <li><a href="has-stream.html">HasStream</a></li>
+    <li><a href="build-streams.html">BuildStreams</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+<a href="index.html">TaskSystem</a> / Dequeue
+</p>
+
+<h1><span class="fn">Dequeue</span></h1>
+<p class="subtitle">
+  the taking side of the general queue: one mutex, the top item by priority, and an affinity test that decides whether
+  this thread may have it
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code><span class="kw">void</span> <span class="fn">Dequeue</span>(<span class="kw">std</span>::optional&lt;<span class="ty">WorkItem</span>&gt;&amp; outTask) noexcept
+{
+        <span class="kw">std</span>::scoped_lock&lt;<span class="kw">std</span>::mutex&gt; lock(taskQueueMutex);
+        <span class="kw">if</span> (taskQueue.<span class="fn">IsEmpty</span>())
+        {
+                outTask.<span class="fn">reset</span>();
+                <span class="kw">return</span>;
+        }
+
+        <span class="kw">auto</span> workItemOpt = taskQueue.<span class="fn">Top</span>();
+        <span class="kw">if</span> (!workItemOpt.has_value())
+        {
+                outTask.<span class="fn">reset</span>();
+                <span class="kw">return</span>;
+        }
+
+        <span class="kw">const</span> <span class="ty">WorkItem</span>&amp; workItem = workItemOpt.value();
+        <span class="kw">const</span> <span class="kw">unsigned</span> <span class="kw">int</span> streamIndex = <span class="fn">GetCurrentStreamIndex</span>();
+
+        <span class="kw">auto</span>&amp; affinity = workItem.affinity;
+        <span class="kw">if</span> (!affinity.<span class="fn">Get</span>(streamIndex))
+        {
+                affinity.<span class="fn">Set</span>(streamIndex);
+                <span class="kw">return</span>;
+        }
+
+        outTask = workItem;
+        (<span class="kw">void</span>) taskQueue.<span class="fn">Pop</span>();
+}</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined at <code>Engine/Core/TaskSystem.cpp:320</code>. It holds the same <code>taskQueueMutex</code> that
+  <a href="enqueue.html">Enqueue</a> takes, so the general queue is one lock for every producer and every taker. The item
+  is the highest-priority one waiting — 0 is the least urgent — and it is <em>copied</em> out; the queue's copy is popped
+  only after the caller's <code>std::optional</code> has been assigned.
+</p>
+
+<p>
+  The stated rule is that a stream which fails to take the top item because of its task-stream affinity records that
+  fact, so that one item a thread cannot use does not block the whole general queue for everybody. The mechanism is
+  <code>WorkItem::affinity</code>, a <code>mutable TaskStreamAffinity</code>
+  (<code>Engine/Core/WorkItem.h:49</code>) — 64 bits, one per stream index.
+</p>
+
+<div class="gap">
+  <strong>In the engine as it stands, only the non-stream case actually fires.</strong> The affinity is touched at exactly
+  two places outside its own unit tests — <code>Engine/Core/TaskSystem.cpp:340</code> and <code>:342</code>, both inside
+  this function — and nothing calls <code>Unset</code>. A fresh <code>TaskStreamAffinity</code> starts with every
+  in-range bit reading back true, so for any real stream index <code>Get</code> succeeds, the guard is skipped, and the
+  item is taken on first contact. The path that would record a refusal is reached only when <code>Get</code> has already
+  returned false, and the only way to make it return false is an index at or above the mask's width. That is exactly what
+  <a href="get-current-stream-index.html">NonStreamIndex</a> is: widened to <code>unsigned int</code> it is 4294967295,
+  <code>Get</code> is out of range and answers false, <code>Set</code> is out of range and does nothing, and the function
+  returns without popping. So a thread that is not a stream never takes from the general queue and is never recorded as
+  having looked — which is the documented intent. What does not happen is the other half of the design: a stream that
+  cannot use an item does not hand it on to a different stream, because no code marks it.
+</div>
+
+<div class="note">
+  <strong>The mask is 64 bits wide; the stream count is not bounded to it.</strong>
+  <code>TaskStreamAffinity</code> is <code>TaskStreamAffinityBase&lt;64&gt;</code>
+  (<code>Engine/Core/TaskStreamAffinity.h:103</code>), while the number of streams comes from
+  <a href="get-num-hardware-threads.html">GetNumHardwareThreads</a> with no upper clamp. On a machine with more than 64
+  hardware threads, every stream from index 64 up is out of range for the mask — <code>Get</code> answers false — so
+  those streams can never take from the general queue. Nothing logs it; they simply stop being served by it.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr>
+    <td><code>outTask</code></td>
+    <td><code>std::optional&lt;WorkItem&gt;&amp;</code></td>
+    <td>Written on every path: set to the taken item, or <code>reset</code> when the queue is empty. Note that the path
+      which declines to take because of affinity leaves it <strong>untouched</strong> — a caller that reuses the optional
+      without resetting it will read the previous item again</td>
+  </tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  <code>void</code>; the result is in <code>outTask</code>. There are three distinct outcomes — taken, empty, and declined
+  for affinity — and the caller can only distinguish the first from the second, because the third leaves the optional as
+  it found it.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<p class="note">Illustrative — no call site for this exists outside <code>Engine/Core/TaskSystem.cpp</code>; a stream's
+drain policy is what decides when to ask.</p>
+
+<pre><code><span class="kw">std</span>::optional&lt;<span class="ty">WorkItem</span>&gt; item;
+item.<span class="fn">reset</span>();
+taskSys.<span class="fn">Dequeue</span>(item);
+<span class="kw">if</span> (item.<span class="fn">has_value</span>())
+{
+        <span class="cm">// run it, and report the item back to the stream that took it</span>
+}</code></pre>
+
+<p>
+  The <code>reset()</code> before the call is not decoration — it is what makes the third outcome indistinguishable from
+  the second, which is the honest reading of this signature.
+</p>
+
+<footer class="prevnext">
+  <span><a href="index.html">&larr; TaskSystem</a></span>
+  <span><a href="index.html#methods">All TaskSystem methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskSystem::DispatchToMainThread — Core module &mdash; HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3>Methods</h3>
+  <ul class="methods">
+    <li><a href="index.html">TaskSystem</a> methods</li>
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+    <li><a href="get-num-hardware-threads.html">GetNumHardwareThreads</a></li>
+    <li><a href="set-thread-name.html">SetThreadName</a></li>
+    <li><a href="set-stream-index.html">SetStreamIndex</a></li>
+    <li><a href="get-current-stream-name.html">GetCurrentStreamName</a></li>
+    <li><a href="get-current-thread-name.html">GetCurrentThreadName</a></li>
+    <li><a href="get-current-stream-index.html">GetCurrentStreamIndex</a></li>
+    <li><a href="is-base-thread.html">IsBaseThread</a></li>
+    <li><a href="is-io-thread.html">IsIOThread</a></li>
+    <li><a href="get-base-task-stream-index.html">GetBaseTaskStreamIndex</a></li>
+    <li><a href="get-io-task-stream-index.html">GetIOTaskStreamIndex</a></li>
+    <li><a href="initialize.html">Initialize</a></li>
+    <li><a href="request-shut-down.html">RequestShutDown</a></li>
+    <li><a href="request-other-streams-close.html">RequestOtherStreamsClose</a></li>
+    <li><a href="are-other-streams-closed.html">AreOtherStreamsClosed</a></li>
+    <li><a href="join-and-clear.html">JoinAndClear</a></li>
+    <li><a href="enqueue.html">Enqueue</a></li>
+    <li><a href="dequeue.html">Dequeue</a></li>
+    <li><a href="create-task.html">CreateTask</a></li>
+    <li><a href="find-task.html">FindTask</a></li>
+    <li><a href="release-task.html">ReleaseTask</a></li>
+    <li><a href="set-successor.html">SetSuccessor</a></li>
+    <li><a href="set-abandoned-notice.html">SetAbandonedNotice</a></li>
+    <li><a href="get-successor.html">GetSuccessor</a></li>
+    <li><a href="dispatch-successor.html">DispatchSuccessor</a></li>
+    <li><a href="parallel-for.html">ParallelFor</a></li>
+    <li><a href="get-registry.html">GetRegistry</a></li>
+    <li><a href="update.html">Update</a></li>
+    <li><a href="drive-until.html">DriveUntil</a></li>
+    <li><a href="report-drive-timeout.html">ReportDriveTimeout</a></li>
+    <li><a href="run-budget-window-pass.html">RunBudgetWindowPass</a></li>
+    <li><a href="get-num-budget-windows-advanced.html">GetNumBudgetWindowsAdvanced</a></li>
+    <li><a href="enqueue-task.html">EnqueueTask</a></li>
+    <li><a class="current" href="dispatch-to-main-thread.html">DispatchToMainThread</a></li>
+    <li><a href="get-name.html">GetName</a></li>
+    <li><a href="is-running.html">IsRunning</a></li>
+    <li><a href="get-base-task-stream.html">GetBaseTaskStream</a></li>
+    <li><a href="get-io-task-stream.html">GetIOTaskStream</a></li>
+    <li><a href="get-stream-name.html">GetStreamName</a></li>
+    <li><a href="get-stream-index.html">GetStreamIndex</a></li>
+    <li><a href="get-stream.html">GetStream</a></li>
+    <li><a href="run-split.html">RunSplit</a></li>
+    <li><a href="has-stream.html">HasStream</a></li>
+    <li><a href="build-streams.html">BuildStreams</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+<a href="index.html">TaskSystem</a> / DispatchToMainThread
+</p>
+
+<h1><span class="fn">DispatchToMainThread</span></h1>
+<p class="subtitle">
+  posts a callable to the thread that drives <code>Engine::Run</code> — the base stream's own posted queue, drained at the
+  top of every pass, which is why there is no "process main thread tasks" call to go with it
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code><span class="kw">void</span> <span class="ty">TaskSystem</span>::<span class="fn">DispatchToMainThread</span>(<span class="ty">TMainThreadTask</span> task, <span class="kw">void</span>* userData,
+                                                            <span class="kw">uint8_t</span> priority = 128) noexcept
+{
+        <span class="fn">GetStream</span>(<span class="fn">GetBaseTaskStreamIndex</span>()).<span class="fn">DispatchPostedTasks</span>(task, userData, priority);
+}</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  One forward, at <code>Engine/Core/TaskSystem.cpp:670</code>, to the base stream's <code>DispatchPostedTasks</code>,
+  which enqueues into that stream's <code>postedTasks</code>. <code>TMainThreadTask</code> is
+  <code>void (*)(void* userData)</code> — a plain callable plus one pointer, not a <code>TRunnable</code> and not a work
+  item: nothing reserves a join, and nothing reports completion.
+</p>
+
+<div class="note">
+  <strong>"Main thread" is the engine-loop thread, and there is exactly one queue for it.</strong> There used to be a
+  <code>MainThreadTaskQueue</code> facility beside the task system alongside a base-stream queue, and a call named
+  <code>ProcessMainThreadTasks</code> to drain one of them; two queues for one thread was the reason a wait on "the main
+  thread" could be satisfied by a queue the pump never read. The facility was absorbed — the base stream owns
+  <code>postedTasks</code>, and the drain happens at the top of every pass
+  (<code>Engine/Core/TaskStream.cpp:353</code>), so a thread driving the stream reaches posted work without knowing it
+  exists. That is why the header carries a posting call and no draining call: the draining is part of
+  <a href="update.html">Update</a>.
+</div>
+
+<p>
+  Priority defaults to <strong>128</strong>, and the number is not arbitrary. 0 is the least urgent and 255 the most; the
+  default used to be 0 under the old "0 = highest" convention, so inverting the direction without moving the default would
+  have sent every existing caller to the bottom of the queue instead of the top. 128 is <code>MainThreadTaskQueue</code>'s
+  own default, which keeps a caller that never thinks about priority where it always was.
+</p>
+
+<div class="gap">
+  <strong>Posted work runs only while something is pumping the base stream.</strong> Nothing waits for a driver, and no
+  thread is created for this: if the run loop is not calling <a href="update.html">Update</a>, the callable sits in the
+  queue indefinitely. Two consequences that have both been paid for. First, a caller that needs the work done must be on
+  the thread that can drive it, which is what <a href="drive-until.html">DriveUntil</a> exists for. Second, posted
+  callables still in the queue at shutdown are the one kind of abandoned work
+  <a href="join-and-clear.html">JoinAndClear</a> can only report as <em>present</em> rather than count — the queue says
+  whether it holds any, and inventing a number would be a guess printed as a measurement.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr>
+    <td><code>task</code></td>
+    <td><code>TMainThreadTask</code></td>
+    <td><code>void (*)(void* userData)</code>. A captureless lambda converts to it; a lambda that captures state passes that
+      state through <code>userData</code> and takes it <code>mutable</code> at the call site, as the window backend does</td>
+  </tr>
+  <tr>
+    <td><code>userData</code></td>
+    <td><code>void*</code></td>
+    <td>Handed to the callable untouched. It must outlive the drain, which is unbounded until something pumps — so state on
+      a stack needs a wait, not just a post</td>
+  </tr>
+  <tr>
+    <td><code>priority</code></td>
+    <td><code>uint8_t</code></td>
+    <td>0 least urgent, 255 most, default 128. Ordering <em>inside</em> the posted queue; it is not a lane and not a
+      task-system priority — see <a href="enqueue.html">Enqueue</a> for the distinction</td>
+  </tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p><code>void</code>. The post cannot fail, and it cannot report when the callable runs — the only witness is whatever the callable writes.</p>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/OSAL/Window.cpp</p>
+
+<pre><code>taskSystem.<span class="fn">DispatchToMainThread</span>([](<span class="kw">void</span>* userData) <span class="kw">mutable</span>
+{
+        <span class="cm">/* create the window, poll events a hundred times, report what it saw */</span>
+
+        window.<span class="fn">reset</span>();
+        windowPromise.<span class="fn">set_value</span>(<span class="kw">nullptr</span>);
+}, &amp;userData);
+
+<span class="kw">const</span> <span class="kw">bool</span> isReady = taskSystem.<span class="fn">DriveUntil</span>(<span class="st">"window creation"</span>, [&amp;windowFuture]()
+{ <span class="kw">return</span> windowFuture.<span class="fn">wait_for</span>(<span class="kw">std</span>::chrono::seconds::zero()) == <span class="kw">std</span>::future_status::ready; });</code></pre>
+
+<p>
+  <code>Engine/OSAL/Window.cpp:64</code> and <code>:123</code> — a window-creation sequence posted to the thread that owns
+  window work, and a wait that drives the base stream until the posted callable fulfils the promise. The body between the
+  first line and the last is elided here; it polls events for a hundred iterations before settling the promise. This is the
+  file's unit-test region, built only under <code>__UNIT_TEST__</code>.
+</p>
+
+<footer class="prevnext">
+  <span><a href="index.html">&larr; TaskSystem</a></span>
+  <span><a href="index.html#methods">All TaskSystem methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>
