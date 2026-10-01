@@ -136,6 +136,36 @@ public:
 		return numFinishedSubTasks.load(std::memory_order::relaxed);
 	}
 
+public:
+	/// @brief Count one finished work item, and say whether this one finished the join.
+	/// @return True in exactly one caller when the last reserved item finishes, which is what makes it safe for
+	///         that caller to act as the one that completed the task. The comparison is an equality rather than a
+	///         threshold on purpose: past the last item every later caller would otherwise also be told it won,
+	///         and a join that fires twice dispatches its successor twice.
+	/// @details The counter is the join of R9, and reading it with seq_cst is what orders the task's own writes
+	///          before the completion anyone else will observe.
+	bool ReportFinishedSubTask() noexcept
+	{
+		const auto finishedBefore = numFinishedSubTasks.fetch_add(1, std::memory_order::seq_cst);
+
+		return finishedBefore + 1 == numSubTasks;
+	}
+
+	[[nodiscard]] TRunnable GetRunnable() const noexcept
+	{
+		return func;
+	}
+
+	void SetRunnable(TRunnable runnable) noexcept
+	{
+		func = runnable;
+	}
+
+	[[nodiscard]] void* GetUserData() const noexcept
+	{
+		return userData;
+	}
+
 private:
 	friend class TaskRegistry;
 	friend class WorkItem;
@@ -167,36 +197,6 @@ private:
 	///       pointer for work the new task never asked about - which is why the in-class initialisers on those two
 	///       fields are not enough on their own.
 	void LoadIntoRecord(TaskID newID, StaticString taskName, TRunnable newFunc, void* newUserData) noexcept;
-
-public:
-	/// @brief Count one finished work item, and say whether this one finished the join.
-	/// @return True in exactly one caller when the last reserved item finishes, which is what makes it safe for
-	///         that caller to act as the one that completed the task. The comparison is an equality rather than a
-	///         threshold on purpose: past the last item every later caller would otherwise also be told it won,
-	///         and a join that fires twice dispatches its successor twice.
-	/// @details The counter is the join of R9, and reading it with seq_cst is what orders the task's own writes
-	///          before the completion anyone else will observe.
-	bool ReportFinishedSubTask() noexcept
-	{
-		const auto finishedBefore = numFinishedSubTasks.fetch_add(1, std::memory_order::seq_cst);
-
-		return finishedBefore + 1 == numSubTasks;
-	}
-
-	[[nodiscard]] TRunnable GetRunnable() const noexcept
-	{
-		return func;
-	}
-
-	void SetRunnable(TRunnable runnable) noexcept
-	{
-		func = runnable;
-	}
-
-	[[nodiscard]] void* GetUserData() const noexcept
-	{
-		return userData;
-	}
 
 private:
 	// Demoted from the customer surface, because an item is the engine's currency rather than the customer's. A
