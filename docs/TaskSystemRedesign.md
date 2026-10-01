@@ -739,3 +739,20 @@ the per-stream ceiling specified in `.Plans/PLAN_b3d_max_age.md`, which prevents
 field to every task. The shutdown close sites are still count-only, so this closes the gap for released-work drops and not yet
 for teardown.
 
+
+## Layout exceptions on record, 2026-10-02 (two types that cannot head their class)
+
+`docs/CodingStandards.md` puts types at the head of a class, before the state and the API. Two members of
+this module cannot obey that, and both fail for the same reason: the type's own definition names a constant
+of the enclosing class, and a name is not visible before it is declared.
+
+| Member | Declaration | Why it follows the constant |
+|---|---|---|
+| `TaskStream::LaneProviders` | `Engine/Core/TaskStream.h:69` | its array is `std::array<TaskProvider*, MaxProvidersPerLane>`; moved above `MaxProvidersPerLane` it fails with `error: use of undeclared identifier 'MaxProvidersPerLane'` |
+| `MainThreadTaskQueue::TQueue` | `Engine/Core/MainThreadTaskQueue.h:59` | the alias is bounded by `MaxQueueSize`, so it needs that constant declared first for the same reason |
+
+Both lines carry `// hb-standards:ignore`, which is the visible marker the standard allows, and `layout.py`
+reports each as `MEMBER-WAIVED` and prints the count, so the exception is never silent. The constant stays
+immediately above the type that needs it — the only position available. No behaviour changed; nothing about
+locking, stream selection or teardown is affected by the order of two declarations that already had to sit
+this way to compile.

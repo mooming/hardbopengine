@@ -12,10 +12,9 @@ namespace hbe
 {
 
 template <typename T>
-concept CLockable = requires(T t)
-{
+concept CLockable = requires(T t) {
 	t.lock();
-	t.unlock();	
+	t.unlock();
 };
 
 /// API reference: docs/Core/ScopedLock/index.html

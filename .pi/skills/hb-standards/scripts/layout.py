@@ -58,6 +58,25 @@ EXEMPT_KINDS = {'AccessSpecDecl', 'EmptyDecl', 'FullComment', 'FinalAttr', 'Frie
 UNWRAP = {'TemplateDecl', 'ClassTemplatePartialSpecializationDecl', 'TypeAliasTemplateDecl', 'ClassTemplateDecl'}
 GUARDED = re.compile(r'^\s*#\s*if(n?def)?\b', re.M)
 CLASS_DECL = re.compile(r'^\s*(?:template\s*<[^>]*>\s*)?(class|struct)\s+[A-Za-z_]\w*', re.M)
+HB_IGNORE = 'hb-standards:ignore'
+
+_DIRECTIVE_CACHE = {}
+
+
+def directive_lines(path):
+    """The 1-based line numbers of `path` that carry the visible exception directive.
+
+    A standard that bans comments in engine sources and still permits `hb-standards:ignore` is saying that
+    an exception must be marked rather than explained in place. This is where a checker reads that mark, so
+    a waived violation stays visible as a waiver instead of turning into silence.
+    """
+    if path not in _DIRECTIVE_CACHE:
+        try:
+            text = open(path, encoding='utf-8', errors='ignore').read()
+        except OSError:
+            text = ''
+        _DIRECTIVE_CACHE[path] = {index for index, line in enumerate(text.splitlines(), 1) if HB_IGNORE in line}
+    return _DIRECTIVE_CACHE[path]
 DECL_NAME = r'(?:class|struct|union)\s+([A-Za-z_]\w*)'
 NOT_A_CLASS_NAME = {'alignas', 'void', 'operator', 'return', 'const', 'mutable', 'static', 'friend', 'explicit'}
 
@@ -651,7 +670,38 @@ def selftest():
             failures += 1
             print('FAIL  %s: expected %s, got %s' % (label, expected, got))
         else:
-            print('PASS  %s' % label)
+            print('PASS  %s'
+                  % label)
+
+    # The waiver path, tested on a real file because the checker reads line numbers off disk.
+    import tempfile
+    sample = '\n'.join([
+        'struct S final',
+        '{',
+        '\tstruct Depends final',
+        '\t{',
+        '\t\tint items[Limit];',
+        '\t}; // hb-standards:ignore',
+        '',
+        '\tstatic constexpr int Limit = 8;',
+        '};',
+    ])
+    with tempfile.NamedTemporaryFile('w', suffix='.h', delete=False, encoding='utf-8') as handle:
+        handle.write(sample)
+        sample_path = handle.name
+    want = {6}
+    got = directive_lines(sample_path)
+    if got != want:
+        failures += 1
+        print('FAIL  the directive is read off the line that carries it: expected %s, got %s' % (sorted(want), sorted(got)))
+    else:
+        print('PASS  the directive is read off the line that carries it')
+    if directive_lines('/nonexistent/definitely-not-a-file.h') != set():
+        failures += 1
+        print('FAIL  a missing file must yield no waivers rather than raise')
+    else:
+        print('PASS  a missing file yields no waivers rather than raising')
+    os.unlink(sample_path)
     return 1 if failures else 0
 
 
@@ -692,12 +742,13 @@ def init_order_findings(target, entries, by_name, clang_override=None):
 def check_file(target, entries, by_name, clang_override=None):
     text = open(target, encoding='utf-8', errors='ignore').read()
     if not CLASS_DECL.search(text):
-        return [], [], 'no class or struct defined here'
+        return [], [], 'no class or struct defined here', []
     records, guarded, notes = collect_records(target, entries, by_name, clang_override)
     notes = [n if n.startswith(target) else '%s: [PARTIAL] %s' % (target, n) for n in notes]
     if not records:
-        return [], notes, 'no class body reached by clang in this file'
+        return [], notes, 'no class body reached by clang in this file', []
     findings = []
+    waived = []
     for record, line, home in records:
         name = record.get('name') or '(anonymous at line %d)' % line
         seq = members_of(record, record.get('tagUsed', 'class'), home)
@@ -707,9 +758,13 @@ def check_file(target, entries, by_name, clang_override=None):
         for member_file, member_line, note, what, block, prev_block, prev_what, prev_line in bad:
             shown = os.path.relpath(member_file, REPO_ROOT) if member_file else target
             where = '%s  [%s]' % (shown, note) if note else shown
+            if member_line and member_line in directive_lines(member_file or target):
+                waived.append('%s:%d: MEMBER-WAIVED  %s — %s would belong in block %d, and the line carries %s'
+                              % (shown, member_line, name, what, block, HB_IGNORE))
+                continue
             findings.append('%s:%d: MEMBER-LAYOUT  %s — %s belongs in block %d, but %s at line %d already sets block %d'
                             % (where, member_line, name, what, block, prev_what, prev_line, prev_block))
-    return findings, notes, ''
+    return findings, notes, '', waived
 
 
 def main(argv):
@@ -737,6 +792,7 @@ def main(argv):
         return 0
 
     total = 0
+    waived_total = 0
     partial = 0
     checked = 0
     skipped = 0
@@ -745,15 +801,20 @@ def main(argv):
     mode = 'init order' if opts.init_order else 'member layout'
     for target in opts.files:
         try:
-            findings, notes, reason = checker(target, entries, by_name, opts.clang)
+            result = checker(target, entries, by_name, opts.clang)
         except Skipped as exc:
             print('%s: [SKIP] %s' % (target, exc.reason))
             skipped += 1
             continue
+        findings, notes, reason = result[0], result[1], result[2]
+        waived = result[3] if len(result) > 3 else []
         checked += 1
         for n in notes:
             print(n)
             partial += 1
+        for w in waived:
+            print(w)
+        waived_total += len(waived)
         for f in findings:
             print(f)
         total += len(findings)
@@ -763,8 +824,9 @@ def main(argv):
                 print('%s: [NONE] %s' % (target, reason))
             elif not opts.quiet:
                 print('%s: [PASS] %s' % (target, mode))
-    print('%s: %d file(s) checked (%d clean, %d with findings), %d skipped, %d partial — %d violation(s)'
-          % (mode, checked, silent, checked - silent, skipped, partial, total))
+    summary = '%s: %d file(s) checked (%d clean, %d with findings), %d skipped, %d partial — %d violation(s)'
+    summary += ', %d waived' % waived_total if waived_total else ''
+    print(summary % (mode, checked, silent, checked - silent, skipped, partial, total))
     return 1 if total else 0
 
 

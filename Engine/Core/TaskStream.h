@@ -66,7 +66,7 @@ private:
 	///          refused by `AttachProvider` and reported by the provider that asked.
 	static constexpr TIndex MaxProvidersPerLane = 8;
 
-	struct LaneProviders final
+	struct LaneProviders final // hb-standards:ignore
 	{
 		std::array<TaskProvider*, static_cast<size_t>(MaxProvidersPerLane)> items{};
 		TIndex count = 0;

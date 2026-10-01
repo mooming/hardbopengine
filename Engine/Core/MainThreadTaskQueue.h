@@ -56,7 +56,7 @@ private:
 	};
 
 	static constexpr size_t MaxQueueSize = 1024;
-	using TQueue = BoundedPriorityQueue<TaskItem, 256, MaxQueueSize>;
+	using TQueue = BoundedPriorityQueue<TaskItem, 256, MaxQueueSize>; // hb-standards:ignore
 
 	TQueue queue;
 	/// @brief Guards queue alone. Mutable because HasPendingTasks takes it while reporting const.

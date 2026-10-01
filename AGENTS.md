@@ -60,6 +60,12 @@ whose own reference is finished.
   never change the order of the data members relative to each other: C++ initialises them in
   declaration order, so moving the block is safe and re-sequencing it is a silent behaviour change.
 
+- **A type that needs a class constant follows that constant.** A nested type sized by `MaxProvidersPerLane`,
+  or an alias bounded by `MaxQueueSize`, cannot be declared before the constant it names — the order the rule
+  wants does not compile. Mark its declaration line `// hb-standards:ignore`, keep the constant directly above
+  it, and put the reason in the module's design document; `layout.py` reports it as `MEMBER-WAIVED`, counted,
+  never silent.
+
 - **No comments in `.cpp` or `.h` files.** Both halves of the source pair are self-documented:
   names, types and structure carry the intent. Do not explain code in either file — put the
   explanation where a reader forms intent instead:

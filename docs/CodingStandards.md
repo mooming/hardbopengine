@@ -49,6 +49,15 @@ To maintain high code quality and consistency, please adhere to the following gu
       re-sequencing two variables against each other is a silent behaviour change that no
       compiler, lint or test necessarily reports.
     - Machine-readable form: the block table above is the specification `layout.py` implements.
+    - **Exception: a type whose definition needs a class constant follows that constant.** Types head
+      the class because they are neither state nor behaviour, but a nested type that sizes itself with
+      `MaxProvidersPerLane`, or an alias that bounds itself with `MaxQueueSize`, cannot name a name the
+      compiler has not seen yet — the order this rule wants does not compile. Put `// hb-standards:ignore`
+      on the type's own declaration line and keep the constant immediately above it, which is the only
+      place it can go.
+    - That directive carries no reason, because engine sources carry no prose; the reason belongs in the
+      module's design document. `layout.py` reports such a member as `MEMBER-WAIVED` and prints the count
+      in its summary, so a waived violation can never read as a clean file.
 - **Access Specifiers**: Always explicitly define access specifiers for all classes and structs.
 - **Getters**: Use the `[[nodiscard]]` attribute for getter functions and functions that return values.
 - **Inheritance**: Use the `final` specifier for classes that are not intended to be inherited from.
@@ -93,6 +102,12 @@ To maintain high code quality and consistency, please adhere to the following gu
     - **There are no exemptions.** An empty body still puts each brace on its own
       line — `void FunctionName() noexcept` followed by `{` and `}` on separate
       lines — and the same holds for an empty `struct`/`class`/`enum`.
+    - **One exception is forced by the formatter, not chosen.** A `requires` body of a `concept` is
+      written by clang-format as `concept C = requires(T t) {`, brace attached, and clang-format 22 has
+      no `BraceWrapping` key for a concept — passing `AfterConcept` is rejected with `unknown key`. Since
+      the formatter is the arbiter of this file's shape and a gate that can never pass is worse than one
+      irregular brace, `CLockable` in `Engine/Core/ScopedLock.h` keeps the formatter's shape. Do not
+      "fix" it back to Allman: that reintroduces a permanent format failure.
     - Machine-readable form: `.clang-format`. It spells the rule as
       `BreakBeforeBraces: Custom` with an explicit `BraceWrapping` table. Note that
       `AllowShortFunctionsOnASingleLine` must stay `None` alongside
