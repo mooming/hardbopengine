@@ -1,13 +1,15 @@
 ---
 name: hb-standards
 description: >-
-  Bring HardBop Engine C++ sources into the project coding standards end to end: format, lint, migrate
-  doc comments into the HTML reference, delete them, reorder members, and prove the tree still builds in
-  Debug, Dev and Release. Use when asked to apply clang-format, check or fix coding standards, prepare or
-  amend a commit, review a commit for style conformance, sweep or strip comments from a module, write or
-  repair API reference pages under docs/, or when Main.cpp / engine sources need the Allman brace style,
-  tab indentation, include ordering and the Engine/CodingStandards.h conventions enforced. Also use before
-  declaring any engine change done, because the skill ends with a three-configuration build gate.
+  Bring HardBop Engine C++ sources into the project coding standards end to end: format, apply the safe
+  mechanical fixes, reorder members and their initializer lists, author the HTML reference the comments
+  must move into, delete the comments, and prove the tree still builds in Debug, Dev and Release. Use when
+  asked to apply clang-format, check or fix coding standards, run check.sh --fix, drive
+  .pi/workflows/hb-fix-pairwise.js, prepare or amend a commit, review a commit for style conformance,
+  sweep or strip comments from a module, write or repair API reference pages under docs/, or when Main.cpp
+  / engine sources need the Allman brace style, tab indentation, include ordering and the
+  Engine/CodingStandards.h conventions enforced. Also use before declaring any engine change done, because
+  the skill ends with a three-configuration build gate.
 ---
 
 # hb-standards
@@ -15,19 +17,27 @@ description: >-
 Six layers, then a build gate. All are required: on this tree the standard's own exemplar files
 were **clang-format-clean but rule-non-clean** (include layout), so no single layer is sufficient.
 
-| Layer | Checks | How | Rewrites? |
+| Layer | Checks | How | Who fixes |
 |---|---|---|---|
-| 1 | Allman braces, tabs, 120 columns, include order, blank lines | clang-format | yes, `--apply` |
-| 2 | joined empty bodies, no exceptions, `m_` prefix, explicit `inline`, hygiene, include layout | greps | no |
-| 3 | comment ban in `.h` and `.cpp` | `scripts/comments.py`, a lexer; `--strip` deletes | yes, `--strip` |
-| 4 | twelve-block member layout | `scripts/layout.py`, clang AST | no |
-| 5 | every entry owns a page, every method owns a page, every page is valid HTML | `scripts/docs_coverage.py`, `scripts/docs_methods.py`, `scripts/htmlcheck.py`; `scripts/docs_page.py` writes them | yes, `docs_page.py` |
-| 6 | Dev, Debug, Release compile, `EngineTest` on request | cmake + ninja, `scripts/runtest.sh` | no |
+| 1 | Allman braces, tabs, 120 columns, include order, blank lines | clang-format | script, always, in every fix |
+| 2 | joined empty bodies, no exceptions, `m_` prefix, explicit `inline`, hygiene, include layout | greps; `scripts/autofix.py` applies the safe subset | script for five fixes, reviewer for the rest |
+| 3 | comment ban in `.h` and `.cpp` | `scripts/comments.py`, a lexer; `--strip` deletes | reviewer writes the prose into `docs/`, script deletes, gate proves |
+| 4 | twelve-block member layout | `scripts/layout.py`, clang AST; `--init-order` for initializer lists | reviewer, gate-proved |
+| 5 | every entry owns a page, every method owns a page, every page is valid HTML | `scripts/docs_coverage.py`, `scripts/docs_methods.py`, `scripts/htmlcheck.py`; `scripts/docs_page.py` writes them | reviewer authors, `docs_page.py` builds chrome, gate proves |
+| 6 | Dev, Debug, Release compile, `EngineTest` on request | cmake + ninja, `scripts/runtest.sh` | nobody fixes it; it decides whether the fix is real |
 
-Layers 3 to 5 never rewrite, and that is load-bearing rather than lazy. No tool can tell which
-doc comment belonged to which member, and reordering data members against one another changes C++
-initialisation order. A formatter that guessed either would corrupt documentation or behaviour
-silently, so the layers report and a reader decides.
+Three roles, and the split is the design.
+
+| Role | Does | Never does |
+|---|---|---|
+| Deterministic script (`autofix.py`, clang-format) | rewrites correct without knowing what the code was for, and declares every token it removes in `.Plans/fix-manifest.json` | rename across files, delete error handling, move members, write prose |
+| Reviewer subagent (primary) | member reorder, initializer re-sequencing, renames, exception paths, the prose that moves into `docs/`, and every fix the scripts refuse | skip a proof, push, or edit a file another agent owns |
+| Gate (`prove_format.py`, `layout.py`, `comments.py`, `docs_*`, the build) | independently re-derive what changed and refuse what the fixer did not declare | pass on `no work to do`, or check nothing and call that clean |
+
+Report-only is the **fallback**, not the default: a layer that cannot prove its own edit reports
+instead of guessing. That preserves the property the previous invariant was really protecting — no tool
+may move a data member past another on a guess, because member order is initialisation order — while
+stopping "a human will do it all" from being the reason nothing gets done.
 
 ## Run it
 
@@ -36,9 +46,16 @@ silently, so the layers report and a reader decides.
 .pi/skills/hb-standards/scripts/check.sh --staged        # files about to be committed
 .pi/skills/hb-standards/scripts/check.sh <rev>           # files in a given commit
 .pi/skills/hb-standards/scripts/check.sh --staged --apply  # rewrite, then lint
+.pi/skills/hb-standards/scripts/check.sh --staged --fix  # clang-format, autofix.py, clang-format, re-lint
 .pi/skills/hb-standards/scripts/check.sh --all --no-build  # whole tree, no compile
 .pi/skills/hb-standards/scripts/check.sh --test          # also run EngineTest
 ```
+
+`--fix` always runs layer 1: a fix that left layout to a formatter afterwards would re-run every grep
+against bytes about to change. It refuses while a C++ file the run does not own is dirty, because a fix
+that sweeps someone's half-finished refactor into its own commit cannot be explained by
+`prove_format.py` afterwards. Script-level edits stop at the safe list in layer 2; everything else a fix
+needs is reviewer work, which is what `.pi/workflows/hb-fix-pairwise.js` drives.
 
 Exit status: `0` clean, `1` violations, `2` build failed, `3` usage error.
 
@@ -129,6 +146,35 @@ they carry deliberate BAD EXAMPLE blocks. Formatting, naming, hygiene and includ
 checks still apply to them. To silence a specific line elsewhere, end it with
 `// hb-standards:ignore`.
 
+### What a script may fix, and what it hands off
+
+`autofix.py` applies exactly these, and each is safe because its result is decided by the rule text
+rather than by what the code was for:
+
+| Fix | Why no judgement is needed |
+|---|---|
+| split a joined empty body or empty record | layout only; layer 1 re-flattens what it likes |
+| drop `virtual` where `override` is present | `override` already implies `virtual`, so the keyword is dead text |
+| `return std::move(x);` to `return x;` for a plain local | the rule's own stated reason is NRVO, and this is its one shape |
+| trailing whitespace, missing final newline, missing line-1 copyright | hygiene, no tokens involved |
+
+Generated headers are skipped exactly as `check.sh` and `docs_coverage.py` skip them — the first
+tree-wide dry run found this script about to insert a copyright line into `ShadersSpv.h`, which the next
+codegen run would delete. A line carrying a comment is left alone: that comment is scheduled for
+deletion by layer 3, and rewriting code under text about to disappear is how a wrong edit gets made for
+the right reason.
+
+Everything else is counted and handed to a reviewer, because it needs the cross-file view (`m_`,
+snake_case), the control flow (exceptions), or the AST (member layout). Include order is **not** in the
+fixer's list: layer 1 is clang-format and `SortIncludes` is on, so a second sorter would only disagree
+with the first.
+
+The fixer declares its own edit and cannot grade it: `autofix.py` writes `.Plans/fix-manifest.json`
+with the tokens each file removed, and `prove_format.py HEAD --manifest .Plans/fix-manifest.json`
+explains a token loss only if the fixer declared exactly that loss. Verified in three directions: a
+declared fix passes, the same diff with no manifest fails, and one extra undeclared keyword removal
+under an otherwise valid manifest fails.
+
 ## Layer 3 — the comment ban (`comments.py`)
 
 No comments in `.h` or `.cpp`. The engine's prose belongs to `docs/`; see
@@ -147,6 +193,10 @@ The ledger that schedules the work is the same file either way:
 .pi/skills/hb-standards/scripts/docs_coverage.py check Core # pages Core still owes
 ```
 
+Pass the module **name**, never the path: `check Core`, not `check Engine/Core`. The path form matched
+no ledger row and used to print "0 missing page(s)" for a module that owed twenty-three. Both doc
+gatekeepers now name the argument, suggest the module name and exit 3.
+
 ## Layer 4 — twelve-block member layout (`layout.py`)
 
 Types, then all data, then all functions; each layer `public` → `protected` → `private`, `static`
@@ -157,6 +207,15 @@ Needs a compile database for the project's own flags: `cmake-build-debug/compile
 Absent, the layer prints `[NONE]` and says so; a rule that could not run must never be readable as
 a rule that passed. Regenerate one with
 `cmake -S . -B cmake-build-debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON`.
+
+`layout.py --init-order` is the second half of a reorder. Moving data members is only honest once every
+constructor initialises them the way they are now declared, and this is the compiler's own `-Wreorder`
+diagnostic computed statically. Three properties of clang's JSON had to be measured to get it right: the
+field lives at `anyInit.name` rather than on the initializer, this dump carries no `isWritten` flag, and
+children arrive in **initialization** order — already sorted by Sema to match declaration order — so
+comparing children order against declaration order compares the data with its own sort key and can never
+disagree. Written order is rebuilt from each initializer's source position. The first version read
+`name` off the initializer, skipped every entry, and reported clean on any input.
 
 ## Layer 5 — the reference under `docs/`
 
@@ -254,6 +313,14 @@ one that still flagged 15 because it joined literals *with* their quote characte
 docstring example caught a bug in its first version: `++` and `--` were missing from the operator list, so
 `a++b` and `a+ +b` tokenised identically.
 
+The refusal is **module-scoped**, and that is a property of the question, not an obstacle: "does this
+module's reference cover every entry" is answered per module, so one header/source pair can never
+satisfy it alone. The cycle therefore documents the whole module first and deletes in one pass, which is
+how `.pi/workflows/hb-fix-pairwise.js` is shaped: per-pair agents run the mechanical fix, the reorder
+and the page authoring, and a single module-wide pass then strips every file with its token proof. A
+pair whose module still owes pages leaves its comments in place and reports the count — a comment that
+survives costs nothing, while prose deleted before its page exists is gone.
+
 ## Layer 6 — build gate (mandatory, last)
 
 Builds `EngineTest`, `VulkanExample` and `WindowExample` across **Dev, Debug and
@@ -298,9 +365,9 @@ One module — or one header inside a module too large to review at once, which 
 
 | Commit | Content | Proof required before committing |
 |---|---|---|
-| `<mod> layout and naming` | twelve-block reorder, `m_` and snake_case removal, `[[nodiscard]]`, `explicit`, `= default`, `out`-prefixed write-only parameters, named constants | `layout.py` reports 0 for the files; the module target compiles; **if the docs already describe the code, do this first**, otherwise pages quote signatures that are about to change |
+| `<mod> layout and naming` | twelve-block reorder, `m_` and snake_case removal, `[[nodiscard]]`, `explicit`, `= default`, `out`-prefixed write-only parameters, named constants | `layout.py` reports 0 for the files **and** `layout.py --init-order` reports 0, because data moved; the module target compiles; **if the docs already describe the code, do this first**, otherwise pages quote signatures that are about to change |
 | `<mod> docs` | pages via `docs_page.py`, module index updated, `.Plans/DOCS_COVERAGE.md` regenerated | `docs_coverage.py check <mod>` and `docs_methods.py <mod>` at 0; `htmlcheck.py` clean |
-| `<mod> format` | `clang-format --apply` only | `prove_format.py HEAD~1` exits 0 with every file explained |
+| `<mod> format` | `check.sh --apply`, or `--fix` for the mechanical subset as well | `prove_format.py HEAD~1 --manifest .Plans/fix-manifest.json` exits 0 with every file explained |
 | `<mod> comment ban` | `comments.py --strip` | `code_tokens` identical against the pre-strip snapshot; `comments.py` then reports 0 |
 | ledger and plan | `.Plans/DOCS_COVERAGE.md`, `JOURNAL.md` | the numbers in them re-measured, not carried forward |
 
@@ -325,12 +392,13 @@ and siblings), which is the convention the tree already uses for prose that is n
 
 | Script | What it is for |
 |---|---|
-| `check.sh` | the six layers plus the build gate; `--staged`, `<rev>`, `--all`, `--apply`, `--test`, `--no-build` |
+| `check.sh` | the six layers plus the build gate; `--staged`, `<rev>`, `--all`, `--apply`, `--fix`, `--test`, `--no-build` |
+| `autofix.py` | the five mechanical fixes a script may make, and the manifest declaring every token it removed |
 | `gate.sh` | run the whole gate detached, `spawn` / `wait` / `status` / `list` / `release`, with 4 slots |
 | `runtest.sh` | build then run `EngineTest` under a wall clock, and report even when it says nothing |
 | `hang.sh` | build, run, and if the binary stalls, sample **its** stacks and say where |
 | `verify-findings.py` | reject review findings whose cited line does not exist or does not contain the quoted evidence |
-| `prove_format.py` | prove a commit moved no code, per revision |
+| `prove_format.py` | prove a commit moved no code, per revision; `--manifest` holds a fixer to its declared tokens |
 | `docs_page.py` | emit reference pages with correct chrome, validated before kept |
 
 `verify-findings.py` is not decoration. A model asked to audit files it never opened invents defects rather
@@ -462,6 +530,11 @@ spending time on a gate failure they caused.
 no longer an open question. ~218 engine files are written indented and are legacy debt awaiting a sweep. The script reports them as `[DEBT]` and does not fail on them: failing every commit that happens to touch one of those files would block
 unrelated work. When you `--apply` to such a file, expect its namespace body to be de-indented to column 0 as part of bringing that file into conformance — that is the rule working, not collateral damage.
 
+`docs_coverage.py check` still returns 0 when no ledger exists, printing `[NONE]`. That follows
+`layout.py`'s convention for a rule that could not run, and it is the last place where "nothing was
+checked" can be read as "nothing was owed". It deserves the same refusal the module-name argument now
+gets.
+
 The owner scheduled the whole-tree sweep on 2026-09-29, module by module, each in its own commit
 separate from any reordering commit. When the last module lands, flip this layer from `[DEBT]` to
 `[FAIL]` — until then it stays advisory precisely so unrelated work can still be committed.
@@ -469,5 +542,7 @@ separate from any reordering commit. When the last module lands, flip this layer
 ## Reporting
 
 Report the count per layer — grep failures, advisories, sweep backlog — the
-three-configuration build result, and anything left as `[DEBT]` or `[WARN]`. Never claim the gate passed on the strength
+three-configuration build result, and anything left as `[DEBT]` or `[WARN]`. On a fix run, report what
+was **refused** as well as what was changed: a refusal is a decision somebody made, and a diff cannot
+show the files that were deliberately left alone. Never claim the gate passed on the strength
 of a "no work to do" build. Never push without explicit permission.
