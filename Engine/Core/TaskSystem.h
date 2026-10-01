@@ -22,7 +22,7 @@ public:
 	using TThreadID = std::thread::id;
 	using TStreamArray = Array<TaskStream>;
 	using TIndex = TStreamArray::TIndex;
-	using TMainThreadTask = void (*)(void* );
+	using TMainThreadTask = void (*)(void*);
 
 	static constexpr TIndex NonStreamIndex = static_cast<TIndex>(-1);
 
