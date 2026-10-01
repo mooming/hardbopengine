@@ -8,7 +8,7 @@
 namespace hbe
 {
 
-/// @brief Enumeration representing the lifecycle states of a component.
+/// API reference: docs/Core/ComponentState/index.html
 enum class ComponentState : int
 {
 	NONE,

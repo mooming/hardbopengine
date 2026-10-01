@@ -8,7 +8,7 @@
 
 namespace hbe
 {
-/// @brief A simple exception class for reporting errors with file and line information.
+/// API reference: docs/Core/Exception/index.html
 class Exception final
 {
 public:

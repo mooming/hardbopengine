@@ -1,5 +1,45 @@
 # Journal
 
+## 2026-10-01 16:58 — the comment ban gains an address: the API reference pointer
+
+**Context.** The owner objected to stripping the `/// @brief` lines, then improved on keeping them: replace the
+sentence with a link to the entry's HTML page. That is better than either alternative for one reason worth
+writing down. A `@brief` line is a second copy of a claim the page subtitle already makes, so it can only be
+checked for style; a path can be checked for truth, in both directions — `comments.py` refuses a pointer whose
+page does not exist or which names a different entry, and `docs_coverage.py` refuses a page whose header carries
+no address. The rule is written in `docs/CodingStandards.md`, `AGENTS.md` and the skill, with the form exact —
+one line, that prefix, immediately above the declaration — because a pointer allowed to grow a sentence is the
+banned comment wearing a new hat.
+
+**Division of the check, so neither tool can drift.** `comments.py` asks "is this comment a valid address" and
+refuses four things: path does not resolve, module is not the file's own, entry not declared in the file, and a
+pointer sitting on a member rather than above its declaration. `docs_coverage.py` asks "does every page have an
+address" and reports `[NO POINTER]`. A broken pointer also **refuses a strip run** rather than being deleted by
+one: losing prose to a strip is the known hazard, but losing the address that was meant to replace it, silently,
+is worse, and it is repaired by typing one line. `--selftest` grew from five fixtures to twelve and was
+negative-controlled — with the position check disabled the position fixture fails, so the fixtures test
+something.
+
+**Making the exemptions stricter found two more that were narrower than the standard they implement** — the same
+shape as the guard-stack bug, one class of failure: an exemption that under-covers. `NAMESPACE_HEAD` captured a
+single segment, so a file opening `namespace hbe::time` was expected to close with the label `hbe` alone.
+`label_expectations` reported the allowed set on `Engine/Core/ScopedTime.h:31` as `['namespace hbe']` while the
+line reads with the qualified label, nine such labels were flagged engine-wide, and `--strip` would have deleted
+them — while `docs/CodingStandards.md` names a qualified namespace label as one of its own permitted examples.
+Fixing it moved the engine-wide count from 2,276 to 2,267, exactly those nine, with nothing added.
+
+**Applied where the reference is complete, held where it is not.** Seven entries gained pointers — `ScopedLock`,
+`ScopedTime`, `Exception`, `ComponentState`, and the `CommonUtil` trio — with their doc blocks replaced,
+`comments.py` reporting 0 violations across those five headers, and `code_tokens` identical to `HEAD` on every
+one, so nothing but comments moved. `WorkItem` was left alone deliberately: its block is twelve lines of prose,
+its page exists, but `docs_methods.py` still refuses it a constructor page and a destructor page, so its
+reference is incomplete and the prose has not finished its job. That is why `docs_coverage.py check Core` reports
+1 page without a pointer rather than 0 — the rule refusing its own author, which is the only version of it worth
+having.
+
+Tree-wide the requirement names 43 pages; 7 are satisfied, 35 wait in other modules. Core stands at 16 missing
+class pages. Build gate `PASS 12/12`.
+
 ## 2026-10-01 15:49 — Core reference work started by hand; a Memory defect surfaced on the way
 
 **Context.** The owner ruled the reference pages hand work, which also settled the open question about the

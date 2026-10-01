@@ -12,12 +12,13 @@ namespace hbe
 {
 
 template <typename T>
-concept CLockable = requires(T t) {
+concept CLockable = requires(T t)
+{
 	t.lock();
-	t.unlock();
+	t.unlock();	
 };
 
-/// @brief A RAII-style lock wrapper that acquires a lock on construction and releases it on destruction.
+/// API reference: docs/Core/ScopedLock/index.html
 template <CLockable TLockable>
 class ScopedLock final
 {

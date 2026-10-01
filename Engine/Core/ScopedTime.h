@@ -6,7 +6,7 @@
 
 namespace hbe::time
 {
-/// @brief A RAII-style scoped timer that measures execution time within a scope.
+/// API reference: docs/Core/ScopedTime/index.html
 class ScopedTime final
 {
 private:

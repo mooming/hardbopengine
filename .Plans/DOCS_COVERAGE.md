@@ -4,197 +4,197 @@
 Every entry the engine declares, and whether the HTML reference has a page for it.
 Source comments are banned, so a missing page means the contract is nowhere.
 
-| module | API entries | with a page | missing | test-only | comment lines still in sources |
-|---|---|---|---|---|---|
-| Config | 3 | 3 | 0 | 0 | 0 |
-| Container | 12 | 10 | 2 | 10 | 60 |
-| Core | 24 | 1 | 23 | 9 | 1476 |
-| Engine | 2 | 2 | 0 | 0 | 0 |
-| HSTL | 0 | 0 | 0 | 1 | 0 |
-| Log | 3 | 3 | 0 | 0 | 0 |
-| Math | 16 | 0 | 16 | 15 | 132 |
-| Memory | 19 | 0 | 19 | 11 | 149 |
-| OSAL | 9 | 0 | 9 | 5 | 105 |
-| Renderer | 8 | 8 | 0 | 2 | 265 |
-| Resource | 5 | 5 | 0 | 3 | 0 |
-| String | 8 | 1 | 7 | 5 | 19 |
-| Test | 4 | 3 | 1 | 0 | 126 |
+| module | API entries | with a page | missing | test-only | pages addressed from the header | comment lines still in sources |
+|---|---|---|---|---|---|---|
+| Config | 3 | 3 | 0 | 0 | 0 | 0 |
+| Container | 12 | 10 | 2 | 10 | 0 | 60 |
+| Core | 24 | 8 | 16 | 9 | 7 | 1467 |
+| Engine | 2 | 2 | 0 | 0 | 0 | 0 |
+| HSTL | 0 | 0 | 0 | 1 | 0 | 0 |
+| Log | 3 | 3 | 0 | 0 | 0 | 0 |
+| Math | 16 | 0 | 16 | 15 | 0 | 128 |
+| Memory | 19 | 0 | 19 | 11 | 0 | 129 |
+| OSAL | 9 | 0 | 9 | 5 | 0 | 105 |
+| Renderer | 8 | 8 | 0 | 2 | 0 | 259 |
+| Resource | 5 | 5 | 0 | 3 | 0 | 0 |
+| String | 8 | 1 | 7 | 5 | 0 | 18 |
+| Test | 4 | 3 | 1 | 0 | 0 | 125 |
 
 ## Entries
 
-| module | entry | kind | source | page | method pages | status |
-|---|---|---|---|---|---|---|
-| Config | ConfigFile | class | `Engine/Config/ConfigFile.h` | `docs/Config/ConfigFile/index.html` | 6 | documented |
-| Config | ConfigParam | class | `Engine/Config/ConfigParam.h` | `docs/Config/ConfigParam/index.html` | 5 | documented |
-| Config | ConfigSystem | class | `Engine/Config/ConfigSystem.h` | `docs/Config/ConfigSystem/index.html` | 16 | documented |
-| Container | Array | class | `Engine/Container/Array.h` | `docs/Container/Array/index.html` | 14 | documented |
-| Container | ArrayTest | test-only | `Engine/Container/Array.h` | `docs/Container/ArrayTest/index.html` | 0 | test-only — owns a Coverage row |
-| Container | AtomicStackView | class | `Engine/Container/AtomicStackView.h` | `docs/Container/AtomicStackView/index.html` | 2 | documented |
-| Container | AtomicStackViewTest | test-only | `Engine/Container/AtomicStackView.h` | `docs/Container/AtomicStackViewTest/index.html` | 0 | test-only — owns a Coverage row |
-| Container | BoundedPriorityQueue | class | `Engine/Container/BoundedPriorityQueue.h` | `docs/Container/BoundedPriorityQueue/index.html` | 3 | documented |
-| Container | BoundedPriorityQueueTest | test-only | `Engine/Container/BoundedPriorityQueue.h` | `docs/Container/BoundedPriorityQueueTest/index.html` | 0 | test-only — owns a Coverage row |
-| Container | Deque | class | `Engine/Container/Deque.h` | `docs/Container/Deque/index.html` | 4 | documented |
-| Container | DequeTest | test-only | `Engine/Container/Deque.h` | `docs/Container/DequeTest/index.html` | 0 | test-only — owns a Coverage row |
-| Container | EHashEntryState | enum | `Engine/Container/HashMap.h` | `docs/Container/EHashEntryState/index.html` | 0 | MISSING |
-| Container | HashMap | class | `Engine/Container/HashMap.h` | `docs/Container/HashMap/index.html` | 3 | documented |
-| Container | HashMapTest | test-only | `Engine/Container/HashMap.h` | `docs/Container/HashMapTest/index.html` | 0 | test-only — owns a Coverage row |
-| Container | LinkedList | class | `Engine/Container/LinkedList.h` | `docs/Container/LinkedList/index.html` | 2 | documented |
-| Container | LinkedListNode | struct | `Engine/Container/LinkedList.h` | `docs/Container/LinkedListNode/index.html` | 0 | MISSING |
-| Container | LinkedListTest | test-only | `Engine/Container/LinkedList.h` | `docs/Container/LinkedListTest/index.html` | 0 | test-only — owns a Coverage row |
-| Container | Map | class | `Engine/Container/Map.h` | `docs/Container/Map/index.html` | 2 | documented |
-| Container | MapTest | test-only | `Engine/Container/Map.h` | `docs/Container/MapTest/index.html` | 0 | test-only — owns a Coverage row |
-| Container | Queue | class | `Engine/Container/Queue.h` | `docs/Container/Queue/index.html` | 1 | documented |
-| Container | QueueTest | test-only | `Engine/Container/Queue.h` | `docs/Container/QueueTest/index.html` | 0 | test-only — owns a Coverage row |
-| Container | RingQueue | class | `Engine/Container/RingQueue.h` | `docs/Container/RingQueue/index.html` | 1 | documented |
-| Container | RingQueueTest | test-only | `Engine/Container/RingQueue.h` | `docs/Container/RingQueueTest/index.html` | 0 | test-only — owns a Coverage row |
-| Container | Vector | class | `Engine/Container/Vector.h` | `docs/Container/Vector/index.html` | 6 | documented |
-| Container | VectorTest | test-only | `Engine/Container/Vector.h` | `docs/Container/VectorTest/index.html` | 0 | test-only — owns a Coverage row |
-| Core | CPUBudget | class | `Engine/Core/CPUBudget.h` | `docs/Core/CPUBudget/index.html` | 0 | MISSING |
-| Core | CPUBudgetTest | test-only | `Engine/Core/CPUBudget.h` | `docs/Core/CPUBudgetTest/index.html` | 0 | test-only — owns a Coverage row |
-| Core | CommandLineArguments | class | `Engine/Core/CommandLineArguments.h` | `docs/Core/CommandLineArguments/index.html` | 0 | MISSING |
-| Core | Component | class | `Engine/Core/Component.h` | `docs/Core/Component/index.html` | 0 | MISSING |
-| Core | ComponentState | enum | `Engine/Core/ComponentState.h` | `docs/Core/ComponentState/index.html` | 0 | MISSING |
-| Core | ComponentSystem | class | `Engine/Core/ComponentSystem.h` | `docs/Core/ComponentSystem/index.html` | 0 | MISSING |
-| Core | ComponentSystemTest | test-only | `Engine/Core/ComponentSystem.h` | `docs/Core/ComponentSystemTest/index.html` | 0 | test-only — owns a Coverage row |
-| Core | Exception | class | `Engine/Core/Exception.h` | `docs/Core/Exception/index.html` | 0 | MISSING |
-| Core | False_t | class | `Engine/Core/CommonUtil.h` | `docs/Core/False_t/index.html` | 0 | MISSING |
-| Core | IsReferenceType | struct | `Engine/Core/CommonUtil.h` | `docs/Core/IsReferenceType/index.html` | 0 | MISSING |
-| Core | MainThreadTaskQueue | class | `Engine/Core/MainThreadTaskQueue.h` | `docs/Core/MainThreadTaskQueue/index.html` | 0 | MISSING |
-| Core | ResultPacketTest | test-only | `Engine/Core/ResultPacket.h` | `docs/Core/ResultPacketTest/index.html` | 0 | test-only — owns a Coverage row |
-| Core | ScopedLock | class | `Engine/Core/ScopedLock.h` | `docs/Core/ScopedLock/index.html` | 0 | MISSING |
-| Core | ScopedTime | class | `Engine/Core/ScopedTime.h` | `docs/Core/ScopedTime/index.html` | 0 | MISSING |
-| Core | StreamDrainPolicy | class | `Engine/Core/StreamDrainPolicy.h` | `docs/Core/StreamDrainPolicy/index.html` | 0 | MISSING |
-| Core | StreamDrainPolicyTest | test-only | `Engine/Core/StreamDrainPolicy.h` | `docs/Core/StreamDrainPolicyTest/index.html` | 0 | test-only — owns a Coverage row |
-| Core | SystemStatistics | class | `Engine/Core/SystemStatistics.h` | `docs/Core/SystemStatistics/index.html` | 0 | MISSING |
-| Core | Task | class | `Engine/Core/Task.h` | `docs/Core/Task/index.html` | 0 | MISSING |
-| Core | TaskHandle | class | `Engine/Core/TaskProvider.h` | `docs/Core/TaskHandle/index.html` | 0 | MISSING |
-| Core | TaskID | struct | `Engine/Core/TaskID.h` | `docs/Core/TaskID/index.html` | 0 | MISSING |
-| Core | TaskProduceContext | struct | `Engine/Core/TaskProvider.h` | `docs/Core/TaskProduceContext/index.html` | 0 | MISSING |
-| Core | TaskProvider | class | `Engine/Core/TaskProvider.h` | `docs/Core/TaskProvider/index.html` | 0 | MISSING |
-| Core | TaskProviderTest | test-only | `Engine/Core/TaskProvider.h` | `docs/Core/TaskProviderTest/index.html` | 0 | test-only — owns a Coverage row |
-| Core | TaskRegistry | class | `Engine/Core/TaskRegistry.h` | `docs/Core/TaskRegistry/index.html` | 0 | MISSING |
-| Core | TaskRegistryTest | test-only | `Engine/Core/TaskRegistry.h` | `docs/Core/TaskRegistryTest/index.html` | 0 | test-only — owns a Coverage row |
-| Core | TaskStream | class | `Engine/Core/TaskStream.h` | `docs/Core/TaskStream/index.html` | 0 | MISSING |
-| Core | TaskStreamAffinityBase | class | `Engine/Core/TaskStreamAffinity.h` | `docs/Core/TaskStreamAffinityBase/index.html` | 0 | MISSING |
-| Core | TaskStreamAffinityTest | test-only | `Engine/Core/TaskStreamAffinity.h` | `docs/Core/TaskStreamAffinityTest/index.html` | 0 | test-only — owns a Coverage row |
-| Core | TaskSystem | class | `Engine/Core/TaskSystem.h` | `docs/Core/TaskSystem/index.html` | 0 | MISSING |
-| Core | TaskSystemTest | test-only | `Engine/Core/TaskSystem.h` | `docs/Core/TaskSystemTest/index.html` | 0 | test-only — owns a Coverage row |
-| Core | TimeTest | test-only | `Engine/Core/Time.h` | `docs/Core/TimeTest/index.html` | 0 | test-only — owns a Coverage row |
-| Core | True_t | class | `Engine/Core/CommonUtil.h` | `docs/Core/True_t/index.html` | 0 | MISSING |
-| Core | WorkItem | class | `Engine/Core/WorkItem.h` | `docs/Core/WorkItem/index.html` | 3 | documented |
-| Engine | EInitLevel | enum | `Engine/Engine/EngineInitLevel.h` | `docs/Engine/EInitLevel/index.html` | 2 | documented |
-| Engine | Engine | class | `Engine/Engine/Engine.h` | `docs/Engine/Engine/index.html` | 31 | documented |
-| HSTL | HUnorderedMapTest | test-only | `Engine/HSTL/HUnorderedMap.h` | `docs/HSTL/HUnorderedMapTest/index.html` | 0 | test-only — owns a Coverage row |
-| Log | ELogLevel | enum | `Engine/Log/LogLevel.h` | `docs/Log/ELogLevel/index.html` | 0 | documented |
-| Log | LogLine | class | `Engine/Log/LogLine.h` | `docs/Log/LogLine/index.html` | 3 | documented |
-| Log | Logger | class | `Engine/Log/Logger.h` | `docs/Log/Logger/index.html` | 19 | documented |
-| Math | AABB | class | `Engine/Math/AABB.h` | `docs/Math/AABB/index.html` | 0 | MISSING |
-| Math | AABBTest | test-only | `Engine/Math/AABB.h` | `docs/Math/AABBTest/index.html` | 0 | test-only — owns a Coverage row |
-| Math | ImportanceResampling | class | `Engine/Math/ImportanceResampling.h` | `docs/Math/ImportanceResampling/index.html` | 0 | MISSING |
-| Math | ImportanceResamplingTest | test-only | `Engine/Math/ImportanceResampling.h` | `docs/Math/ImportanceResamplingTest/index.html` | 0 | test-only — owns a Coverage row |
-| Math | MathUtilTest | test-only | `Engine/Math/MathUtil.h` | `docs/Math/MathUtilTest/index.html` | 0 | test-only — owns a Coverage row |
-| Math | Matrix2x2 | class | `Engine/Math/Matrix2x2.h` | `docs/Math/Matrix2x2/index.html` | 0 | MISSING |
-| Math | Matrix3x3 | class | `Engine/Math/Matrix3x3.h` | `docs/Math/Matrix3x3/index.html` | 0 | MISSING |
-| Math | Matrix3x3Test | test-only | `Engine/Math/Matrix3x3.h` | `docs/Math/Matrix3x3Test/index.html` | 0 | test-only — owns a Coverage row |
-| Math | Matrix4x4 | class | `Engine/Math/Matrix4x4.h` | `docs/Math/Matrix4x4/index.html` | 0 | MISSING |
-| Math | MonteCarloIntegrationTest | test-only | `Engine/Math/MonteCarloIntegrator.h` | `docs/Math/MonteCarloIntegrationTest/index.html` | 0 | test-only — owns a Coverage row |
-| Math | MonteCarloIntegrator | class | `Engine/Math/MonteCarloIntegrator.h` | `docs/Math/MonteCarloIntegrator/index.html` | 0 | MISSING |
-| Math | OBB | class | `Engine/Math/OBB.h` | `docs/Math/OBB/index.html` | 0 | MISSING |
-| Math | OBBTest | test-only | `Engine/Math/OBB.h` | `docs/Math/OBBTest/index.html` | 0 | test-only — owns a Coverage row |
-| Math | PerlinNoise | class | `Engine/Math/PerlinNoise.h` | `docs/Math/PerlinNoise/index.html` | 0 | MISSING |
-| Math | PerlinNoiseTest | test-only | `Engine/Math/PerlinNoise.h` | `docs/Math/PerlinNoiseTest/index.html` | 0 | test-only — owns a Coverage row |
-| Math | Quaternion | class | `Engine/Math/Quaternion.h` | `docs/Math/Quaternion/index.html` | 0 | MISSING |
-| Math | QuaternionTest | test-only | `Engine/Math/Quaternion.h` | `docs/Math/QuaternionTest/index.html` | 0 | test-only — owns a Coverage row |
-| Math | RigidTransform | class | `Engine/Math/RigidTransform.h` | `docs/Math/RigidTransform/index.html` | 0 | MISSING |
-| Math | RigidTransformTest | test-only | `Engine/Math/RigidTransform.h` | `docs/Math/RigidTransformTest/index.html` | 0 | test-only — owns a Coverage row |
-| Math | StratifiedSampling | class | `Engine/Math/StratifiedSampling.h` | `docs/Math/StratifiedSampling/index.html` | 0 | MISSING |
-| Math | StratifiedSamplingTest | test-only | `Engine/Math/StratifiedSampling.h` | `docs/Math/StratifiedSamplingTest/index.html` | 0 | test-only — owns a Coverage row |
-| Math | Transform | class | `Engine/Math/Transform.h` | `docs/Math/Transform/index.html` | 0 | MISSING |
-| Math | TransformTest | test-only | `Engine/Math/Transform.h` | `docs/Math/TransformTest/index.html` | 0 | test-only — owns a Coverage row |
-| Math | UniformTransform | class | `Engine/Math/UniformTransform.h` | `docs/Math/UniformTransform/index.html` | 0 | MISSING |
-| Math | UniformTransformTest | test-only | `Engine/Math/UniformTransform.h` | `docs/Math/UniformTransformTest/index.html` | 0 | test-only — owns a Coverage row |
-| Math | Vector2 | class | `Engine/Math/Vector2.h` | `docs/Math/Vector2/index.html` | 0 | MISSING |
-| Math | Vector2Test | test-only | `Engine/Math/Vector2.h` | `docs/Math/Vector2Test/index.html` | 0 | test-only — owns a Coverage row |
-| Math | Vector3 | class | `Engine/Math/Vector3.h` | `docs/Math/Vector3/index.html` | 0 | MISSING |
-| Math | Vector3Test | test-only | `Engine/Math/Vector3.h` | `docs/Math/Vector3Test/index.html` | 0 | test-only — owns a Coverage row |
-| Math | Vector4 | class | `Engine/Math/Vector4.h` | `docs/Math/Vector4/index.html` | 0 | MISSING |
-| Math | Vector4Test | test-only | `Engine/Math/Vector4.h` | `docs/Math/Vector4Test/index.html` | 0 | test-only — owns a Coverage row |
-| Memory | AllocStats | class | `Engine/Memory/AllocStats.h` | `docs/Memory/AllocStats/index.html` | 0 | MISSING |
-| Memory | AllocatorProxy | class | `Engine/Memory/AllocatorProxy.h` | `docs/Memory/AllocatorProxy/index.html` | 0 | MISSING |
-| Memory | AllocatorScope | class | `Engine/Memory/AllocatorScope.h` | `docs/Memory/AllocatorScope/index.html` | 0 | MISSING |
-| Memory | AllocatorScopeTest | test-only | `Engine/Memory/AllocatorScope.h` | `docs/Memory/AllocatorScopeTest/index.html` | 0 | test-only — owns a Coverage row |
-| Memory | BaseAllocatorTest | test-only | `Engine/Memory/DefaultAllocator.h` | `docs/Memory/BaseAllocatorTest/index.html` | 0 | test-only — owns a Coverage row |
-| Memory | DefaultAllocator | class | `Engine/Memory/DefaultAllocator.h` | `docs/Memory/DefaultAllocator/index.html` | 0 | MISSING |
-| Memory | InlineMonotonicAllocator | class | `Engine/Memory/InlineMonotonicAllocator.h` | `docs/Memory/InlineMonotonicAllocator/index.html` | 0 | MISSING |
-| Memory | InlineMonotonicAllocatorTest | test-only | `Engine/Memory/InlineMonotonicAllocator.h` | `docs/Memory/InlineMonotonicAllocatorTest/index.html` | 0 | test-only — owns a Coverage row |
-| Memory | InlinePoolAllocator | class | `Engine/Memory/InlinePoolAllocator.h` | `docs/Memory/InlinePoolAllocator/index.html` | 0 | MISSING |
-| Memory | InlinePoolAllocatorTest | test-only | `Engine/Memory/InlinePoolAllocator.h` | `docs/Memory/InlinePoolAllocatorTest/index.html` | 0 | test-only — owns a Coverage row |
-| Memory | MemoryManager | class | `Engine/Memory/MemoryManager.h` | `docs/Memory/MemoryManager/index.html` | 0 | MISSING |
-| Memory | MonotonicAllocator | class | `Engine/Memory/MonotonicAllocator.h` | `docs/Memory/MonotonicAllocator/index.html` | 0 | MISSING |
-| Memory | MonotonicAllocatorTest | test-only | `Engine/Memory/MonotonicAllocator.h` | `docs/Memory/MonotonicAllocatorTest/index.html` | 0 | test-only — owns a Coverage row |
-| Memory | MultiPoolAllocator | class | `Engine/Memory/MultiPoolAllocator.h` | `docs/Memory/MultiPoolAllocator/index.html` | 0 | MISSING |
-| Memory | MultiPoolAllocatorConfig | class | `Engine/Memory/MultiPoolAllocatorConfig.h` | `docs/Memory/MultiPoolAllocatorConfig/index.html` | 0 | MISSING |
-| Memory | MultiPoolAllocatorTest | test-only | `Engine/Memory/MultiPoolAllocator.h` | `docs/Memory/MultiPoolAllocatorTest/index.html` | 0 | test-only — owns a Coverage row |
-| Memory | MultiPoolConfigCache | class | `Engine/Memory/MultiPoolConfigCache.h` | `docs/Memory/MultiPoolConfigCache/index.html` | 0 | MISSING |
-| Memory | Optional | class | `Engine/Memory/Optional.h` | `docs/Memory/Optional/index.html` | 0 | MISSING |
-| Memory | OptionalTest | test-only | `Engine/Memory/Optional.h` | `docs/Memory/OptionalTest/index.html` | 0 | test-only — owns a Coverage row |
-| Memory | PoolAllocator | class | `Engine/Memory/PoolAllocator.h` | `docs/Memory/PoolAllocator/index.html` | 0 | MISSING |
-| Memory | PoolAllocatorTest | test-only | `Engine/Memory/PoolAllocator.h` | `docs/Memory/PoolAllocatorTest/index.html` | 0 | test-only — owns a Coverage row |
-| Memory | PoolConfig | class | `Engine/Memory/PoolConfig.h` | `docs/Memory/PoolConfig/index.html` | 0 | MISSING |
-| Memory | ScopedAllocator | class | `Engine/Memory/ScopedAllocator.h` | `docs/Memory/ScopedAllocator/index.html` | 0 | MISSING |
-| Memory | Shareable | class | `Engine/Memory/Shareable.h` | `docs/Memory/Shareable/index.html` | 0 | MISSING |
-| Memory | StackAllocator | class | `Engine/Memory/StackAllocator.h` | `docs/Memory/StackAllocator/index.html` | 0 | MISSING |
-| Memory | StackAllocatorTest | test-only | `Engine/Memory/StackAllocator.h` | `docs/Memory/StackAllocatorTest/index.html` | 0 | test-only — owns a Coverage row |
-| Memory | SystemAllocator | class | `Engine/Memory/SystemAllocator.h` | `docs/Memory/SystemAllocator/index.html` | 0 | MISSING |
-| Memory | SystemAllocatorTest | test-only | `Engine/Memory/SystemAllocator.h` | `docs/Memory/SystemAllocatorTest/index.html` | 0 | test-only — owns a Coverage row |
-| Memory | ThreadSafeMultiPoolAllocator | class | `Engine/Memory/ThreadSafeMultiPoolAllocator.h` | `docs/Memory/ThreadSafeMultiPoolAllocator/index.html` | 0 | MISSING |
-| Memory | ThreadSafeMultiPoolAllocatorTest | test-only | `Engine/Memory/ThreadSafeMultiPoolAllocator.h` | `docs/Memory/ThreadSafeMultiPoolAllocatorTest/index.html` | 0 | test-only — owns a Coverage row |
-| OSAL | Application | class | `Engine/OSAL/Application.h` | `docs/OSAL/Application/index.html` | 0 | MISSING |
-| OSAL | Directory | class | `Engine/OSAL/Directory.h` | `docs/OSAL/Directory/index.html` | 0 | MISSING |
-| OSAL | File | class | `Engine/OSAL/File.h` | `docs/OSAL/File/index.html` | 0 | MISSING |
-| OSAL | FileHandle | class | `Engine/OSAL/OSFileHandle.h` | `docs/OSAL/FileHandle/index.html` | 0 | MISSING |
-| OSAL | FileOpenMode | class | `Engine/OSAL/OSFileOpenMode.h` | `docs/OSAL/FileOpenMode/index.html` | 0 | MISSING |
-| OSAL | MapSyncMode | class | `Engine/OSAL/OSMapSyncMode.h` | `docs/OSAL/MapSyncMode/index.html` | 0 | MISSING |
-| OSAL | OSDebugTest | test-only | `Engine/OSAL/OSDebug.h` | `docs/OSAL/OSDebugTest/index.html` | 0 | test-only — owns a Coverage row |
-| OSAL | OSInputOutputTest | test-only | `Engine/OSAL/OSInputOutput.h` | `docs/OSAL/OSInputOutputTest/index.html` | 0 | test-only — owns a Coverage row |
-| OSAL | OSMemoryTest | test-only | `Engine/OSAL/OSMemory.h` | `docs/OSAL/OSMemoryTest/index.html` | 0 | test-only — owns a Coverage row |
-| OSAL | OSThreadTest | test-only | `Engine/OSAL/OSThread.h` | `docs/OSAL/OSThreadTest/index.html` | 0 | test-only — owns a Coverage row |
-| OSAL | ProtectionMode | class | `Engine/OSAL/OSProtectionMode.h` | `docs/OSAL/ProtectionMode/index.html` | 0 | MISSING |
-| OSAL | SourceLocation | class | `Engine/OSAL/SourceLocation.h` | `docs/OSAL/SourceLocation/index.html` | 0 | MISSING |
-| OSAL | Window | class | `Engine/OSAL/Window.h` | `docs/OSAL/Window/index.html` | 0 | MISSING |
-| OSAL | WindowTest | test-only | `Engine/OSAL/Window.h` | `docs/OSAL/WindowTest/index.html` | 0 | test-only — owns a Coverage row |
-| Renderer | DeviceType | enum | `Engine/Renderer/RenderCapabilities.h` | `docs/Renderer/DeviceType/index.html` | 0 | documented |
-| Renderer | Mesh | struct | `Engine/Renderer/Vulkan/VulkanRenderer.h` | `docs/Renderer/Mesh/index.html` | 0 | documented |
-| Renderer | MeshVertex | struct | `Engine/Renderer/Vulkan/VulkanRenderer.h` | `docs/Renderer/MeshVertex/index.html` | 1 | documented |
-| Renderer | PushConstants | struct | `Engine/Renderer/Vulkan/VulkanRenderer.h` | `docs/Renderer/PushConstants/index.html` | 0 | documented |
-| Renderer | RHICapabilities | class | `Engine/Renderer/RHICapabilities.h` | `docs/Renderer/RHICapabilities/index.html` | 2 | documented |
-| Renderer | RHICapabilitiesTest | test-only | `Engine/Renderer/RHICapabilities.h` | `docs/Renderer/RHICapabilitiesTest/index.html` | 0 | test-only — owns a Coverage row |
-| Renderer | RenderCapabilities | class | `Engine/Renderer/RenderCapabilities.h` | `docs/Renderer/RenderCapabilities/index.html` | 1 | documented |
-| Renderer | RendererTest | test-only | `Engine/Renderer/RendererTest.h` | `docs/Renderer/RendererTest/index.html` | 0 | test-only — owns a Coverage row |
-| Renderer | Vertex | struct | `Engine/Renderer/Vertex.h` | `docs/Renderer/Vertex/index.html` | 1 | documented |
-| Renderer | VulkanRenderer | class | `Engine/Renderer/Vulkan/VulkanRenderer.h` | `docs/Renderer/VulkanRenderer/index.html` | 13 | documented |
-| Resource | Buffer | class | `Engine/Resource/Buffer.h` | `docs/Resource/Buffer/index.html` | 8 | documented |
-| Resource | BufferInputStream | class | `Engine/Resource/BufferInputStream.h` | `docs/Resource/BufferInputStream/index.html` | 9 | documented |
-| Resource | BufferInputStreamTest | test-only | `Engine/Resource/BufferInputStream.h` | `docs/Resource/BufferInputStreamTest/index.html` | 0 | test-only — owns a Coverage row |
-| Resource | BufferOutputStream | class | `Engine/Resource/BufferOutputStream.h` | `docs/Resource/BufferOutputStream/index.html` | 10 | documented |
-| Resource | BufferOutputStreamTest | test-only | `Engine/Resource/BufferOutputStream.h` | `docs/Resource/BufferOutputStreamTest/index.html` | 0 | test-only — owns a Coverage row |
-| Resource | BufferTest | test-only | `Engine/Resource/Buffer.h` | `docs/Resource/BufferTest/index.html` | 0 | test-only — owns a Coverage row |
-| Resource | Resource | class | `Engine/Resource/Resource.h` | `docs/Resource/Resource/index.html` | 2 | documented |
-| Resource | ResourceManager | class | `Engine/Resource/ResourceManager.h` | `docs/Resource/ResourceManager/index.html` | 6 | documented |
-| String | EndLine | class | `Engine/String/EndLine.h` | `docs/String/EndLine/index.html` | 1 | documented |
-| String | InlineStringBuilder | class | `Engine/String/InlineStringBuilder.h` | `docs/String/InlineStringBuilder/index.html` | 0 | MISSING |
-| String | InlineStringBuilderTest | test-only | `Engine/String/InlineStringBuilder.h` | `docs/String/InlineStringBuilderTest/index.html` | 0 | test-only — owns a Coverage row |
-| String | Letter | class | `Engine/String/Letter.h` | `docs/String/Letter/index.html` | 0 | MISSING |
-| String | StaticString | class | `Engine/String/StaticString.h` | `docs/String/StaticString/index.html` | 0 | MISSING |
-| String | StaticStringID | struct | `Engine/String/StaticStringID.h` | `docs/String/StaticStringID/index.html` | 0 | MISSING |
-| String | StaticStringTable | class | `Engine/String/StaticStringTable.h` | `docs/String/StaticStringTable/index.html` | 0 | MISSING |
-| String | StaticStringTest | test-only | `Engine/String/StaticString.h` | `docs/String/StaticStringTest/index.html` | 0 | test-only — owns a Coverage row |
-| String | String | class | `Engine/String/String.h` | `docs/String/String/index.html` | 0 | MISSING |
-| String | StringBuilder | class | `Engine/String/StringBuilder.h` | `docs/String/StringBuilder/index.html` | 0 | MISSING |
-| String | StringBuilderTest | test-only | `Engine/String/StringBuilder.h` | `docs/String/StringBuilderTest/index.html` | 0 | test-only — owns a Coverage row |
-| String | StringTest | test-only | `Engine/String/String.h` | `docs/String/StringTest/index.html` | 0 | test-only — owns a Coverage row |
-| String | StringUtilTest | test-only | `Engine/String/StringUtil.h` | `docs/String/StringUtilTest/index.html` | 0 | test-only — owns a Coverage row |
-| Test | TestCollection | class | `Engine/Test/TestCollection.h` | `docs/Test/TestCollection/index.html` | 16 | documented |
-| Test | TestEnv | class | `Engine/Test/TestEnv.h` | `docs/Test/TestEnv/index.html` | 10 | documented |
-| Test | Testlet | class | `Engine/Test/Testlet.h` | `docs/Test/Testlet/index.html` | 1 | documented |
-| Test | TestletDispatch | struct | `Engine/Test/Testlet.h` | `docs/Test/TestletDispatch/index.html` | 0 | MISSING |
+| module | entry | kind | source | page | method pages | header pointer | status |
+|---|---|---|---|---|---|---|---|
+| Config | ConfigFile | class | `Engine/Config/ConfigFile.h` | `docs/Config/ConfigFile/index.html` | 6 | **no** | documented |
+| Config | ConfigParam | class | `Engine/Config/ConfigParam.h` | `docs/Config/ConfigParam/index.html` | 5 | **no** | documented |
+| Config | ConfigSystem | class | `Engine/Config/ConfigSystem.h` | `docs/Config/ConfigSystem/index.html` | 16 | **no** | documented |
+| Container | Array | class | `Engine/Container/Array.h` | `docs/Container/Array/index.html` | 14 | **no** | documented |
+| Container | ArrayTest | test-only | `Engine/Container/Array.h` | `docs/Container/ArrayTest/index.html` | 0 | — | test-only — owns a Coverage row |
+| Container | AtomicStackView | class | `Engine/Container/AtomicStackView.h` | `docs/Container/AtomicStackView/index.html` | 2 | **no** | documented |
+| Container | AtomicStackViewTest | test-only | `Engine/Container/AtomicStackView.h` | `docs/Container/AtomicStackViewTest/index.html` | 0 | — | test-only — owns a Coverage row |
+| Container | BoundedPriorityQueue | class | `Engine/Container/BoundedPriorityQueue.h` | `docs/Container/BoundedPriorityQueue/index.html` | 3 | **no** | documented |
+| Container | BoundedPriorityQueueTest | test-only | `Engine/Container/BoundedPriorityQueue.h` | `docs/Container/BoundedPriorityQueueTest/index.html` | 0 | — | test-only — owns a Coverage row |
+| Container | Deque | class | `Engine/Container/Deque.h` | `docs/Container/Deque/index.html` | 4 | **no** | documented |
+| Container | DequeTest | test-only | `Engine/Container/Deque.h` | `docs/Container/DequeTest/index.html` | 0 | — | test-only — owns a Coverage row |
+| Container | EHashEntryState | enum | `Engine/Container/HashMap.h` | `docs/Container/EHashEntryState/index.html` | 0 | — | MISSING |
+| Container | HashMap | class | `Engine/Container/HashMap.h` | `docs/Container/HashMap/index.html` | 3 | **no** | documented |
+| Container | HashMapTest | test-only | `Engine/Container/HashMap.h` | `docs/Container/HashMapTest/index.html` | 0 | — | test-only — owns a Coverage row |
+| Container | LinkedList | class | `Engine/Container/LinkedList.h` | `docs/Container/LinkedList/index.html` | 2 | **no** | documented |
+| Container | LinkedListNode | struct | `Engine/Container/LinkedList.h` | `docs/Container/LinkedListNode/index.html` | 0 | — | MISSING |
+| Container | LinkedListTest | test-only | `Engine/Container/LinkedList.h` | `docs/Container/LinkedListTest/index.html` | 0 | — | test-only — owns a Coverage row |
+| Container | Map | class | `Engine/Container/Map.h` | `docs/Container/Map/index.html` | 2 | **no** | documented |
+| Container | MapTest | test-only | `Engine/Container/Map.h` | `docs/Container/MapTest/index.html` | 0 | — | test-only — owns a Coverage row |
+| Container | Queue | class | `Engine/Container/Queue.h` | `docs/Container/Queue/index.html` | 1 | **no** | documented |
+| Container | QueueTest | test-only | `Engine/Container/Queue.h` | `docs/Container/QueueTest/index.html` | 0 | — | test-only — owns a Coverage row |
+| Container | RingQueue | class | `Engine/Container/RingQueue.h` | `docs/Container/RingQueue/index.html` | 1 | **no** | documented |
+| Container | RingQueueTest | test-only | `Engine/Container/RingQueue.h` | `docs/Container/RingQueueTest/index.html` | 0 | — | test-only — owns a Coverage row |
+| Container | Vector | class | `Engine/Container/Vector.h` | `docs/Container/Vector/index.html` | 6 | **no** | documented |
+| Container | VectorTest | test-only | `Engine/Container/Vector.h` | `docs/Container/VectorTest/index.html` | 0 | — | test-only — owns a Coverage row |
+| Core | CPUBudget | class | `Engine/Core/CPUBudget.h` | `docs/Core/CPUBudget/index.html` | 0 | — | MISSING |
+| Core | CPUBudgetTest | test-only | `Engine/Core/CPUBudget.h` | `docs/Core/CPUBudgetTest/index.html` | 0 | — | test-only — owns a Coverage row |
+| Core | CommandLineArguments | class | `Engine/Core/CommandLineArguments.h` | `docs/Core/CommandLineArguments/index.html` | 0 | — | MISSING |
+| Core | Component | class | `Engine/Core/Component.h` | `docs/Core/Component/index.html` | 0 | — | MISSING |
+| Core | ComponentState | enum | `Engine/Core/ComponentState.h` | `docs/Core/ComponentState/index.html` | 1 | yes | documented |
+| Core | ComponentSystem | class | `Engine/Core/ComponentSystem.h` | `docs/Core/ComponentSystem/index.html` | 0 | — | MISSING |
+| Core | ComponentSystemTest | test-only | `Engine/Core/ComponentSystem.h` | `docs/Core/ComponentSystemTest/index.html` | 0 | — | test-only — owns a Coverage row |
+| Core | Exception | class | `Engine/Core/Exception.h` | `docs/Core/Exception/index.html` | 1 | yes | documented |
+| Core | False_t | class | `Engine/Core/CommonUtil.h` | `docs/Core/False_t/index.html` | 0 | yes | documented |
+| Core | IsReferenceType | struct | `Engine/Core/CommonUtil.h` | `docs/Core/IsReferenceType/index.html` | 0 | yes | documented |
+| Core | MainThreadTaskQueue | class | `Engine/Core/MainThreadTaskQueue.h` | `docs/Core/MainThreadTaskQueue/index.html` | 0 | — | MISSING |
+| Core | ResultPacketTest | test-only | `Engine/Core/ResultPacket.h` | `docs/Core/ResultPacketTest/index.html` | 0 | — | test-only — owns a Coverage row |
+| Core | ScopedLock | class | `Engine/Core/ScopedLock.h` | `docs/Core/ScopedLock/index.html` | 2 | yes | documented |
+| Core | ScopedTime | class | `Engine/Core/ScopedTime.h` | `docs/Core/ScopedTime/index.html` | 2 | yes | documented |
+| Core | StreamDrainPolicy | class | `Engine/Core/StreamDrainPolicy.h` | `docs/Core/StreamDrainPolicy/index.html` | 0 | — | MISSING |
+| Core | StreamDrainPolicyTest | test-only | `Engine/Core/StreamDrainPolicy.h` | `docs/Core/StreamDrainPolicyTest/index.html` | 0 | — | test-only — owns a Coverage row |
+| Core | SystemStatistics | class | `Engine/Core/SystemStatistics.h` | `docs/Core/SystemStatistics/index.html` | 0 | — | MISSING |
+| Core | Task | class | `Engine/Core/Task.h` | `docs/Core/Task/index.html` | 0 | — | MISSING |
+| Core | TaskHandle | class | `Engine/Core/TaskProvider.h` | `docs/Core/TaskHandle/index.html` | 0 | — | MISSING |
+| Core | TaskID | struct | `Engine/Core/TaskID.h` | `docs/Core/TaskID/index.html` | 0 | — | MISSING |
+| Core | TaskProduceContext | struct | `Engine/Core/TaskProvider.h` | `docs/Core/TaskProduceContext/index.html` | 0 | — | MISSING |
+| Core | TaskProvider | class | `Engine/Core/TaskProvider.h` | `docs/Core/TaskProvider/index.html` | 0 | — | MISSING |
+| Core | TaskProviderTest | test-only | `Engine/Core/TaskProvider.h` | `docs/Core/TaskProviderTest/index.html` | 0 | — | test-only — owns a Coverage row |
+| Core | TaskRegistry | class | `Engine/Core/TaskRegistry.h` | `docs/Core/TaskRegistry/index.html` | 0 | — | MISSING |
+| Core | TaskRegistryTest | test-only | `Engine/Core/TaskRegistry.h` | `docs/Core/TaskRegistryTest/index.html` | 0 | — | test-only — owns a Coverage row |
+| Core | TaskStream | class | `Engine/Core/TaskStream.h` | `docs/Core/TaskStream/index.html` | 0 | — | MISSING |
+| Core | TaskStreamAffinityBase | class | `Engine/Core/TaskStreamAffinity.h` | `docs/Core/TaskStreamAffinityBase/index.html` | 0 | — | MISSING |
+| Core | TaskStreamAffinityTest | test-only | `Engine/Core/TaskStreamAffinity.h` | `docs/Core/TaskStreamAffinityTest/index.html` | 0 | — | test-only — owns a Coverage row |
+| Core | TaskSystem | class | `Engine/Core/TaskSystem.h` | `docs/Core/TaskSystem/index.html` | 0 | — | MISSING |
+| Core | TaskSystemTest | test-only | `Engine/Core/TaskSystem.h` | `docs/Core/TaskSystemTest/index.html` | 0 | — | test-only — owns a Coverage row |
+| Core | TimeTest | test-only | `Engine/Core/Time.h` | `docs/Core/TimeTest/index.html` | 0 | — | test-only — owns a Coverage row |
+| Core | True_t | class | `Engine/Core/CommonUtil.h` | `docs/Core/True_t/index.html` | 0 | yes | documented |
+| Core | WorkItem | class | `Engine/Core/WorkItem.h` | `docs/Core/WorkItem/index.html` | 3 | **no** | documented |
+| Engine | EInitLevel | enum | `Engine/Engine/EngineInitLevel.h` | `docs/Engine/EInitLevel/index.html` | 2 | **no** | documented |
+| Engine | Engine | class | `Engine/Engine/Engine.h` | `docs/Engine/Engine/index.html` | 31 | **no** | documented |
+| HSTL | HUnorderedMapTest | test-only | `Engine/HSTL/HUnorderedMap.h` | `docs/HSTL/HUnorderedMapTest/index.html` | 0 | — | test-only — owns a Coverage row |
+| Log | ELogLevel | enum | `Engine/Log/LogLevel.h` | `docs/Log/ELogLevel/index.html` | 0 | **no** | documented |
+| Log | LogLine | class | `Engine/Log/LogLine.h` | `docs/Log/LogLine/index.html` | 3 | **no** | documented |
+| Log | Logger | class | `Engine/Log/Logger.h` | `docs/Log/Logger/index.html` | 19 | **no** | documented |
+| Math | AABB | class | `Engine/Math/AABB.h` | `docs/Math/AABB/index.html` | 0 | — | MISSING |
+| Math | AABBTest | test-only | `Engine/Math/AABB.h` | `docs/Math/AABBTest/index.html` | 0 | — | test-only — owns a Coverage row |
+| Math | ImportanceResampling | class | `Engine/Math/ImportanceResampling.h` | `docs/Math/ImportanceResampling/index.html` | 0 | — | MISSING |
+| Math | ImportanceResamplingTest | test-only | `Engine/Math/ImportanceResampling.h` | `docs/Math/ImportanceResamplingTest/index.html` | 0 | — | test-only — owns a Coverage row |
+| Math | MathUtilTest | test-only | `Engine/Math/MathUtil.h` | `docs/Math/MathUtilTest/index.html` | 0 | — | test-only — owns a Coverage row |
+| Math | Matrix2x2 | class | `Engine/Math/Matrix2x2.h` | `docs/Math/Matrix2x2/index.html` | 0 | — | MISSING |
+| Math | Matrix3x3 | class | `Engine/Math/Matrix3x3.h` | `docs/Math/Matrix3x3/index.html` | 0 | — | MISSING |
+| Math | Matrix3x3Test | test-only | `Engine/Math/Matrix3x3.h` | `docs/Math/Matrix3x3Test/index.html` | 0 | — | test-only — owns a Coverage row |
+| Math | Matrix4x4 | class | `Engine/Math/Matrix4x4.h` | `docs/Math/Matrix4x4/index.html` | 0 | — | MISSING |
+| Math | MonteCarloIntegrationTest | test-only | `Engine/Math/MonteCarloIntegrator.h` | `docs/Math/MonteCarloIntegrationTest/index.html` | 0 | — | test-only — owns a Coverage row |
+| Math | MonteCarloIntegrator | class | `Engine/Math/MonteCarloIntegrator.h` | `docs/Math/MonteCarloIntegrator/index.html` | 0 | — | MISSING |
+| Math | OBB | class | `Engine/Math/OBB.h` | `docs/Math/OBB/index.html` | 0 | — | MISSING |
+| Math | OBBTest | test-only | `Engine/Math/OBB.h` | `docs/Math/OBBTest/index.html` | 0 | — | test-only — owns a Coverage row |
+| Math | PerlinNoise | class | `Engine/Math/PerlinNoise.h` | `docs/Math/PerlinNoise/index.html` | 0 | — | MISSING |
+| Math | PerlinNoiseTest | test-only | `Engine/Math/PerlinNoise.h` | `docs/Math/PerlinNoiseTest/index.html` | 0 | — | test-only — owns a Coverage row |
+| Math | Quaternion | class | `Engine/Math/Quaternion.h` | `docs/Math/Quaternion/index.html` | 0 | — | MISSING |
+| Math | QuaternionTest | test-only | `Engine/Math/Quaternion.h` | `docs/Math/QuaternionTest/index.html` | 0 | — | test-only — owns a Coverage row |
+| Math | RigidTransform | class | `Engine/Math/RigidTransform.h` | `docs/Math/RigidTransform/index.html` | 0 | — | MISSING |
+| Math | RigidTransformTest | test-only | `Engine/Math/RigidTransform.h` | `docs/Math/RigidTransformTest/index.html` | 0 | — | test-only — owns a Coverage row |
+| Math | StratifiedSampling | class | `Engine/Math/StratifiedSampling.h` | `docs/Math/StratifiedSampling/index.html` | 0 | — | MISSING |
+| Math | StratifiedSamplingTest | test-only | `Engine/Math/StratifiedSampling.h` | `docs/Math/StratifiedSamplingTest/index.html` | 0 | — | test-only — owns a Coverage row |
+| Math | Transform | class | `Engine/Math/Transform.h` | `docs/Math/Transform/index.html` | 0 | — | MISSING |
+| Math | TransformTest | test-only | `Engine/Math/Transform.h` | `docs/Math/TransformTest/index.html` | 0 | — | test-only — owns a Coverage row |
+| Math | UniformTransform | class | `Engine/Math/UniformTransform.h` | `docs/Math/UniformTransform/index.html` | 0 | — | MISSING |
+| Math | UniformTransformTest | test-only | `Engine/Math/UniformTransform.h` | `docs/Math/UniformTransformTest/index.html` | 0 | — | test-only — owns a Coverage row |
+| Math | Vector2 | class | `Engine/Math/Vector2.h` | `docs/Math/Vector2/index.html` | 0 | — | MISSING |
+| Math | Vector2Test | test-only | `Engine/Math/Vector2.h` | `docs/Math/Vector2Test/index.html` | 0 | — | test-only — owns a Coverage row |
+| Math | Vector3 | class | `Engine/Math/Vector3.h` | `docs/Math/Vector3/index.html` | 0 | — | MISSING |
+| Math | Vector3Test | test-only | `Engine/Math/Vector3.h` | `docs/Math/Vector3Test/index.html` | 0 | — | test-only — owns a Coverage row |
+| Math | Vector4 | class | `Engine/Math/Vector4.h` | `docs/Math/Vector4/index.html` | 0 | — | MISSING |
+| Math | Vector4Test | test-only | `Engine/Math/Vector4.h` | `docs/Math/Vector4Test/index.html` | 0 | — | test-only — owns a Coverage row |
+| Memory | AllocStats | class | `Engine/Memory/AllocStats.h` | `docs/Memory/AllocStats/index.html` | 0 | — | MISSING |
+| Memory | AllocatorProxy | class | `Engine/Memory/AllocatorProxy.h` | `docs/Memory/AllocatorProxy/index.html` | 0 | — | MISSING |
+| Memory | AllocatorScope | class | `Engine/Memory/AllocatorScope.h` | `docs/Memory/AllocatorScope/index.html` | 0 | — | MISSING |
+| Memory | AllocatorScopeTest | test-only | `Engine/Memory/AllocatorScope.h` | `docs/Memory/AllocatorScopeTest/index.html` | 0 | — | test-only — owns a Coverage row |
+| Memory | BaseAllocatorTest | test-only | `Engine/Memory/DefaultAllocator.h` | `docs/Memory/BaseAllocatorTest/index.html` | 0 | — | test-only — owns a Coverage row |
+| Memory | DefaultAllocator | class | `Engine/Memory/DefaultAllocator.h` | `docs/Memory/DefaultAllocator/index.html` | 0 | — | MISSING |
+| Memory | InlineMonotonicAllocator | class | `Engine/Memory/InlineMonotonicAllocator.h` | `docs/Memory/InlineMonotonicAllocator/index.html` | 0 | — | MISSING |
+| Memory | InlineMonotonicAllocatorTest | test-only | `Engine/Memory/InlineMonotonicAllocator.h` | `docs/Memory/InlineMonotonicAllocatorTest/index.html` | 0 | — | test-only — owns a Coverage row |
+| Memory | InlinePoolAllocator | class | `Engine/Memory/InlinePoolAllocator.h` | `docs/Memory/InlinePoolAllocator/index.html` | 0 | — | MISSING |
+| Memory | InlinePoolAllocatorTest | test-only | `Engine/Memory/InlinePoolAllocator.h` | `docs/Memory/InlinePoolAllocatorTest/index.html` | 0 | — | test-only — owns a Coverage row |
+| Memory | MemoryManager | class | `Engine/Memory/MemoryManager.h` | `docs/Memory/MemoryManager/index.html` | 0 | — | MISSING |
+| Memory | MonotonicAllocator | class | `Engine/Memory/MonotonicAllocator.h` | `docs/Memory/MonotonicAllocator/index.html` | 0 | — | MISSING |
+| Memory | MonotonicAllocatorTest | test-only | `Engine/Memory/MonotonicAllocator.h` | `docs/Memory/MonotonicAllocatorTest/index.html` | 0 | — | test-only — owns a Coverage row |
+| Memory | MultiPoolAllocator | class | `Engine/Memory/MultiPoolAllocator.h` | `docs/Memory/MultiPoolAllocator/index.html` | 0 | — | MISSING |
+| Memory | MultiPoolAllocatorConfig | class | `Engine/Memory/MultiPoolAllocatorConfig.h` | `docs/Memory/MultiPoolAllocatorConfig/index.html` | 0 | — | MISSING |
+| Memory | MultiPoolAllocatorTest | test-only | `Engine/Memory/MultiPoolAllocator.h` | `docs/Memory/MultiPoolAllocatorTest/index.html` | 0 | — | test-only — owns a Coverage row |
+| Memory | MultiPoolConfigCache | class | `Engine/Memory/MultiPoolConfigCache.h` | `docs/Memory/MultiPoolConfigCache/index.html` | 0 | — | MISSING |
+| Memory | Optional | class | `Engine/Memory/Optional.h` | `docs/Memory/Optional/index.html` | 0 | — | MISSING |
+| Memory | OptionalTest | test-only | `Engine/Memory/Optional.h` | `docs/Memory/OptionalTest/index.html` | 0 | — | test-only — owns a Coverage row |
+| Memory | PoolAllocator | class | `Engine/Memory/PoolAllocator.h` | `docs/Memory/PoolAllocator/index.html` | 0 | — | MISSING |
+| Memory | PoolAllocatorTest | test-only | `Engine/Memory/PoolAllocator.h` | `docs/Memory/PoolAllocatorTest/index.html` | 0 | — | test-only — owns a Coverage row |
+| Memory | PoolConfig | class | `Engine/Memory/PoolConfig.h` | `docs/Memory/PoolConfig/index.html` | 0 | — | MISSING |
+| Memory | ScopedAllocator | class | `Engine/Memory/ScopedAllocator.h` | `docs/Memory/ScopedAllocator/index.html` | 0 | — | MISSING |
+| Memory | Shareable | class | `Engine/Memory/Shareable.h` | `docs/Memory/Shareable/index.html` | 0 | — | MISSING |
+| Memory | StackAllocator | class | `Engine/Memory/StackAllocator.h` | `docs/Memory/StackAllocator/index.html` | 0 | — | MISSING |
+| Memory | StackAllocatorTest | test-only | `Engine/Memory/StackAllocator.h` | `docs/Memory/StackAllocatorTest/index.html` | 0 | — | test-only — owns a Coverage row |
+| Memory | SystemAllocator | class | `Engine/Memory/SystemAllocator.h` | `docs/Memory/SystemAllocator/index.html` | 0 | — | MISSING |
+| Memory | SystemAllocatorTest | test-only | `Engine/Memory/SystemAllocator.h` | `docs/Memory/SystemAllocatorTest/index.html` | 0 | — | test-only — owns a Coverage row |
+| Memory | ThreadSafeMultiPoolAllocator | class | `Engine/Memory/ThreadSafeMultiPoolAllocator.h` | `docs/Memory/ThreadSafeMultiPoolAllocator/index.html` | 0 | — | MISSING |
+| Memory | ThreadSafeMultiPoolAllocatorTest | test-only | `Engine/Memory/ThreadSafeMultiPoolAllocator.h` | `docs/Memory/ThreadSafeMultiPoolAllocatorTest/index.html` | 0 | — | test-only — owns a Coverage row |
+| OSAL | Application | class | `Engine/OSAL/Application.h` | `docs/OSAL/Application/index.html` | 0 | — | MISSING |
+| OSAL | Directory | class | `Engine/OSAL/Directory.h` | `docs/OSAL/Directory/index.html` | 0 | — | MISSING |
+| OSAL | File | class | `Engine/OSAL/File.h` | `docs/OSAL/File/index.html` | 0 | — | MISSING |
+| OSAL | FileHandle | class | `Engine/OSAL/OSFileHandle.h` | `docs/OSAL/FileHandle/index.html` | 0 | — | MISSING |
+| OSAL | FileOpenMode | class | `Engine/OSAL/OSFileOpenMode.h` | `docs/OSAL/FileOpenMode/index.html` | 0 | — | MISSING |
+| OSAL | MapSyncMode | class | `Engine/OSAL/OSMapSyncMode.h` | `docs/OSAL/MapSyncMode/index.html` | 0 | — | MISSING |
+| OSAL | OSDebugTest | test-only | `Engine/OSAL/OSDebug.h` | `docs/OSAL/OSDebugTest/index.html` | 0 | — | test-only — owns a Coverage row |
+| OSAL | OSInputOutputTest | test-only | `Engine/OSAL/OSInputOutput.h` | `docs/OSAL/OSInputOutputTest/index.html` | 0 | — | test-only — owns a Coverage row |
+| OSAL | OSMemoryTest | test-only | `Engine/OSAL/OSMemory.h` | `docs/OSAL/OSMemoryTest/index.html` | 0 | — | test-only — owns a Coverage row |
+| OSAL | OSThreadTest | test-only | `Engine/OSAL/OSThread.h` | `docs/OSAL/OSThreadTest/index.html` | 0 | — | test-only — owns a Coverage row |
+| OSAL | ProtectionMode | class | `Engine/OSAL/OSProtectionMode.h` | `docs/OSAL/ProtectionMode/index.html` | 0 | — | MISSING |
+| OSAL | SourceLocation | class | `Engine/OSAL/SourceLocation.h` | `docs/OSAL/SourceLocation/index.html` | 0 | — | MISSING |
+| OSAL | Window | class | `Engine/OSAL/Window.h` | `docs/OSAL/Window/index.html` | 0 | — | MISSING |
+| OSAL | WindowTest | test-only | `Engine/OSAL/Window.h` | `docs/OSAL/WindowTest/index.html` | 0 | — | test-only — owns a Coverage row |
+| Renderer | DeviceType | enum | `Engine/Renderer/RenderCapabilities.h` | `docs/Renderer/DeviceType/index.html` | 0 | **no** | documented |
+| Renderer | Mesh | struct | `Engine/Renderer/Vulkan/VulkanRenderer.h` | `docs/Renderer/Mesh/index.html` | 0 | **no** | documented |
+| Renderer | MeshVertex | struct | `Engine/Renderer/Vulkan/VulkanRenderer.h` | `docs/Renderer/MeshVertex/index.html` | 1 | **no** | documented |
+| Renderer | PushConstants | struct | `Engine/Renderer/Vulkan/VulkanRenderer.h` | `docs/Renderer/PushConstants/index.html` | 0 | **no** | documented |
+| Renderer | RHICapabilities | class | `Engine/Renderer/RHICapabilities.h` | `docs/Renderer/RHICapabilities/index.html` | 2 | **no** | documented |
+| Renderer | RHICapabilitiesTest | test-only | `Engine/Renderer/RHICapabilities.h` | `docs/Renderer/RHICapabilitiesTest/index.html` | 0 | — | test-only — owns a Coverage row |
+| Renderer | RenderCapabilities | class | `Engine/Renderer/RenderCapabilities.h` | `docs/Renderer/RenderCapabilities/index.html` | 1 | **no** | documented |
+| Renderer | RendererTest | test-only | `Engine/Renderer/RendererTest.h` | `docs/Renderer/RendererTest/index.html` | 0 | — | test-only — owns a Coverage row |
+| Renderer | Vertex | struct | `Engine/Renderer/Vertex.h` | `docs/Renderer/Vertex/index.html` | 1 | **no** | documented |
+| Renderer | VulkanRenderer | class | `Engine/Renderer/Vulkan/VulkanRenderer.h` | `docs/Renderer/VulkanRenderer/index.html` | 13 | **no** | documented |
+| Resource | Buffer | class | `Engine/Resource/Buffer.h` | `docs/Resource/Buffer/index.html` | 8 | **no** | documented |
+| Resource | BufferInputStream | class | `Engine/Resource/BufferInputStream.h` | `docs/Resource/BufferInputStream/index.html` | 9 | **no** | documented |
+| Resource | BufferInputStreamTest | test-only | `Engine/Resource/BufferInputStream.h` | `docs/Resource/BufferInputStreamTest/index.html` | 0 | — | test-only — owns a Coverage row |
+| Resource | BufferOutputStream | class | `Engine/Resource/BufferOutputStream.h` | `docs/Resource/BufferOutputStream/index.html` | 10 | **no** | documented |
+| Resource | BufferOutputStreamTest | test-only | `Engine/Resource/BufferOutputStream.h` | `docs/Resource/BufferOutputStreamTest/index.html` | 0 | — | test-only — owns a Coverage row |
+| Resource | BufferTest | test-only | `Engine/Resource/Buffer.h` | `docs/Resource/BufferTest/index.html` | 0 | — | test-only — owns a Coverage row |
+| Resource | Resource | class | `Engine/Resource/Resource.h` | `docs/Resource/Resource/index.html` | 2 | **no** | documented |
+| Resource | ResourceManager | class | `Engine/Resource/ResourceManager.h` | `docs/Resource/ResourceManager/index.html` | 6 | **no** | documented |
+| String | EndLine | class | `Engine/String/EndLine.h` | `docs/String/EndLine/index.html` | 1 | **no** | documented |
+| String | InlineStringBuilder | class | `Engine/String/InlineStringBuilder.h` | `docs/String/InlineStringBuilder/index.html` | 0 | — | MISSING |
+| String | InlineStringBuilderTest | test-only | `Engine/String/InlineStringBuilder.h` | `docs/String/InlineStringBuilderTest/index.html` | 0 | — | test-only — owns a Coverage row |
+| String | Letter | class | `Engine/String/Letter.h` | `docs/String/Letter/index.html` | 0 | — | MISSING |
+| String | StaticString | class | `Engine/String/StaticString.h` | `docs/String/StaticString/index.html` | 0 | — | MISSING |
+| String | StaticStringID | struct | `Engine/String/StaticStringID.h` | `docs/String/StaticStringID/index.html` | 0 | — | MISSING |
+| String | StaticStringTable | class | `Engine/String/StaticStringTable.h` | `docs/String/StaticStringTable/index.html` | 0 | — | MISSING |
+| String | StaticStringTest | test-only | `Engine/String/StaticString.h` | `docs/String/StaticStringTest/index.html` | 0 | — | test-only — owns a Coverage row |
+| String | String | class | `Engine/String/String.h` | `docs/String/String/index.html` | 0 | — | MISSING |
+| String | StringBuilder | class | `Engine/String/StringBuilder.h` | `docs/String/StringBuilder/index.html` | 0 | — | MISSING |
+| String | StringBuilderTest | test-only | `Engine/String/StringBuilder.h` | `docs/String/StringBuilderTest/index.html` | 0 | — | test-only — owns a Coverage row |
+| String | StringTest | test-only | `Engine/String/String.h` | `docs/String/StringTest/index.html` | 0 | — | test-only — owns a Coverage row |
+| String | StringUtilTest | test-only | `Engine/String/StringUtil.h` | `docs/String/StringUtilTest/index.html` | 0 | — | test-only — owns a Coverage row |
+| Test | TestCollection | class | `Engine/Test/TestCollection.h` | `docs/Test/TestCollection/index.html` | 16 | **no** | documented |
+| Test | TestEnv | class | `Engine/Test/TestEnv.h` | `docs/Test/TestEnv/index.html` | 10 | **no** | documented |
+| Test | Testlet | class | `Engine/Test/Testlet.h` | `docs/Test/Testlet/index.html` | 1 | **no** | documented |
+| Test | TestletDispatch | struct | `Engine/Test/Testlet.h` | `docs/Test/TestletDispatch/index.html` | 0 | — | MISSING |

@@ -6,14 +6,17 @@
 
 namespace hbe
 {
+/// API reference: docs/Core/True_t/index.html
 class True_t final
 {
 };
 
+/// API reference: docs/Core/False_t/index.html
 class False_t final
 {
 };
 
+/// API reference: docs/Core/IsReferenceType/index.html
 template <typename T>
 struct IsReferenceType
 {
