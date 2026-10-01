@@ -26,8 +26,10 @@ what it omits in its Coverage section — a partial page must never read as a co
 
 Module Index page links every module page and every design document of that module.
 `.pi/skills/hb-standards/scripts/docs_coverage.py` proves the pairing, and it is the gate that
-makes deleting a comment safe: no comment is removed from a module before that module's pages
-exist.
+makes deleting a comment safe: no comment is removed until the entry it documents owns its page,
+which the header addresses, with a page for every method name — checked per file by
+`docs_coverage.py check-file <path>`, because one undocumented entry must not freeze a header
+whose own reference is finished.
 
 # Module
 1. Module Description

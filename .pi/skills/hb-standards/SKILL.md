@@ -316,7 +316,8 @@ than a class page — a guide, or nowhere.
 ```bash
 git show HEAD:Engine/Module/Header.h > /tmp/pre_Header.h        # 1. snapshot, before anything
 python3 scripts/comments.py Engine/Module/Header.h               # 2. read the findings
-python3 scripts/comments.py --strip Engine/Module/Header.h       # 3. delete; refuses if code moved
+python3 scripts/comments.py --strip Engine/Module/Header.h       # 3. delete; refuses if code moved,
+                                                                 #    or if an entry here lacks its pages
 python3 scripts/comments.py code_tokens Engine/Module/Header.h /tmp/pre_Header.h   # 4. prove equality
 ```
 
@@ -396,9 +397,9 @@ reorder can be checked by reading it. Work the pairs in order; nothing here need
 | 0 snapshot | `git show HEAD:<file> > /tmp/pre_<name>.h` for each file | the snapshot exists — it is the only copy of the pre-deletion bytes |
 | 1 mechanical | `clang-format --style=file -i <files>`; `python3 scripts/autofix.py --manifest .Plans/fix/manifest-<pair>.json <files>`; `clang-format --style=file -i <files>` | the manifest names every token removed, and nothing else was touched |
 | 2 layout | `python3 scripts/layout.py <files>`, edit, run it again | 0 findings, **and** `python3 scripts/layout.py --init-order <files>` at 0, because data moved |
-| 3 reference | `python3 scripts/docs_coverage.py check <mod>` and `scripts/docs_methods.py <mod>`, then `docs_page.py class` / `method` / `renav` / `check`; then replace the entry's doc block with its `/// API reference:` pointer line | both gates at 0 for the module, `htmlcheck` clean, and no `[NO POINTER]` row for an entry whose page now exists — until then step 4 is refused |
+| 3 reference | `python3 scripts/docs_coverage.py check <mod>` and `scripts/docs_methods.py <mod>`, then `docs_page.py class` / `method` / `renav` / `check`; then replace the entry's doc block with its `/// API reference:` pointer line | both gates at 0 for the module, `htmlcheck` clean, and no `[NO POINTER]` row for an entry whose page now exists; step 4 is refused per file by `docs_coverage.py check-file <path>` until that file's own entries pass, which is what lets a finished header be cleaned while its neighbours are still owed pages |
 | 4 delete | `python3 scripts/comments.py <files>` for the count, then `--strip`, then `comments.py code_tokens <file> /tmp/pre_<name>.h` | token multisets identical per file, then `comments.py` reports 0 |
-| 5 build | `.pi/skills/hb-standards/scripts/gate.sh spawn --all --test`, read with `gate.sh wait` | `GATE_EXIT=0`; never a pass read off `ninja: no work to do` |
+| 5 build | `.pi/skills/hb-standards/scripts/gate.sh spawn --all --test`, read with `gate.sh wait` | `GATE_EXIT=0`; never a pass read off `ninja: no work to do`. The marker line is echoed by the reviewing agent, not captured by the harness, and `check.sh` exits 0 when its lint scope comes out empty — so a CLEAN verdict with nothing else quoted is not evidence. Re-run `check.sh` yourself and read `$?` before believing one |
 
 Inside step 2, four rules hold: the data block moves as a unit and never re-orders internally; only
 functions and types pass data, and only into their own block; a mover re-opens the access of the anchor it
@@ -607,10 +608,11 @@ spending time on a gate failure they caused.
 no longer an open question. ~218 engine files are written indented and are legacy debt awaiting a sweep. The script reports them as `[DEBT]` and does not fail on them: failing every commit that happens to touch one of those files would block
 unrelated work. When you `--apply` to such a file, expect its namespace body to be de-indented to column 0 as part of bringing that file into conformance — that is the rule working, not collateral damage.
 
-`docs_coverage.py check` still returns 0 when no ledger exists, printing `[NONE]`. That follows
-`layout.py`'s convention for a rule that could not run, and it is the last place where "nothing was
-checked" can be read as "nothing was owed". It deserves the same refusal the module-name argument now
-gets.
+`docs_coverage.py check` returns **3** when no ledger exists, printing `[NONE]`: a check that could
+not run is a refusal, not a pass, and `comments.py --strip` now depends on that answer. It used to
+return 0, which is the same shape as "nothing is owed" — measured on this tree, `--strip` would have
+read an unmeasured tree as fully documented. The module-name argument already refused the path form
+for the same reason; this closes the other way the same lie could be told.
 
 The owner scheduled the whole-tree sweep on 2026-09-29, module by module, each in its own commit
 separate from any reordering commit. When the last module lands, flip this layer from `[DEBT]` to
