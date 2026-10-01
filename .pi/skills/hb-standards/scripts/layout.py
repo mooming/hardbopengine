@@ -530,6 +530,105 @@ def first_disorder(seq):
     return bad
 
 
+def field_order(record):
+    """{name: position} and [(name, line)] for this record's fields, in declaration order.
+
+    Declaration order is what the standard sequences initialisation by, not the order a
+    constructor happened to write, and not alphabetical order. A bitfield reports the
+    struct's own name or nothing at all, so it is skipped rather than guessed at: an
+    unrecognised name must never be reported as out of order.
+    """
+    order, seq = {}, []
+    for child in record.get('inner') or []:
+        node = unwrap(child)
+        if node.get('kind') != 'FieldDecl':
+            continue
+        name = node.get('name')
+        if not name or name in order:
+            continue
+        order[name] = len(seq)
+        seq.append((name, (child.get('loc') or {}).get('line', 0)))
+    return order, seq
+
+
+def written_initializers(record):
+    """[(constructor name, line, [(field name, line, col)])] in the order they were written.
+
+    Three things about clang's JSON are not what they look like, and each one produced a
+    silently passing check before it was measured against real output:
+
+    * The field is not a `name` on the initializer. It is `anyInit.name`, and `anyInit.kind`
+      is `FieldDecl`. Reading `name` off the initializer yields an empty string, every entry
+      is then skipped, and the check reports clean whatever the source says.
+    * This dump carries no `isWritten` flag, so an implicit entry has no marker. It is dropped
+      for having no source range instead, which is what an initializer clang invented lacks.
+    * Children arrive in **initialization** order, which Sema has already sorted to match
+      declaration order. Comparing children order against declaration order compares the data
+      with its own sort key and can never disagree, so the written order is reconstructed from
+      each initializer's source position, which the sort left intact.
+
+    Bases and delegating constructors are skipped: a base subobject is initialised before every
+    member no matter where it is written, so counting it reports a disorder that is not one.
+    """
+    out = []
+    for child in record.get('inner') or []:
+        node = unwrap(child)
+        if node.get('kind') != 'CXXConstructorDecl' or node.get('isImplicit'):
+            continue
+        inits = []
+        for inner in node.get('inner') or []:
+            if inner.get('kind') != 'CXXCtorInitializer':
+                continue
+            target = inner.get('anyInit') or {}
+            if target.get('kind') != 'FieldDecl':
+                continue
+            name = (target.get('name') or '').split('<')[0].strip()
+            if not name:
+                continue
+            first = next((e for e in inner.get('inner') or [] if (e.get('range') or {}).get('begin')), None)
+            if first is None:
+                continue
+            begin = first['range']['begin']
+            inits.append((name, begin.get('line', 0), begin.get('col', 0)))
+        inits.sort(key=lambda entry: (entry[1], entry[2]))
+        out.append((node.get('name') or 'constructor', (child.get('loc') or {}).get('line', 0), inits))
+    return out
+
+
+def init_order_findings(target, entries, by_name, clang_override=None):
+    """Findings for a written mem-initializer list that disagrees with declaration order.
+
+    This is the compiler's own `-Wreorder` diagnostic, computed statically and named for the
+    member the fixer must move. It exists because a twelve-block reorder that also moves data
+    members is only honest once every constructor initialises them the way they are now
+    declared: reordering the block without re-sequencing the list changes what runs first.
+    """
+    text = open(target, encoding='utf-8', errors='ignore').read()
+    if not CLASS_DECL.search(text):
+        return [], [], 'no class or struct defined here'
+    records, _guarded, notes = collect_records(target, entries, by_name, clang_override)
+    notes = [n if n.startswith(target) else '%s: [PARTIAL] %s' % (target, n) for n in notes]
+    if not records:
+        return [], notes, 'no class body reached by clang in this file'
+    findings = []
+    for record, _line, _home in records:
+        name = record.get('name') or '(anonymous at line %d)' % _line
+        order, seq = field_order(record)
+        if not order:
+            continue
+        declared_line = dict(seq)
+        for ctor, ctor_line, inits in written_initializers(record):
+            known = [(order[f], f, ln) for f, ln, _col in inits if f in order]
+            for i in range(1, len(known)):
+                if known[i][0] < known[i - 1][0]:
+                    later, sooner = known[i], known[i - 1]
+                    findings.append('%s:%d: INIT-ORDER  %s::%s — %s is initialised after %s, but %s is '
+                                    'declared earlier (line %d); initialisation follows declaration order'
+                                    % (target, later[2] or ctor_line, name, ctor,
+                                       later[1], sooner[1], later[1], declared_line[later[1]]))
+    return findings, notes, ''
+
+
 def check_file(target, entries, by_name, clang_override=None):
     text = open(target, encoding='utf-8', errors='ignore').read()
     if not CLASS_DECL.search(text):
@@ -559,10 +658,12 @@ def main(argv):
     parser.add_argument('--db', default='cmake-build-debug/compile_commands.json')
     parser.add_argument('--clang', default=None)
     parser.add_argument('--quiet', action='store_true')
+    parser.add_argument('--init-order', action='store_true',
+                        help='report written mem-initializer lists that disagree with declaration order')
     opts = parser.parse_args(argv)
 
     if not opts.files:
-        print('usage: layout.py <file ...> [--db compile_commands.json]', file=sys.stderr)
+        print('usage: layout.py <file ...> [--db compile_commands.json] [--init-order]', file=sys.stderr)
         return 3
     try:
         entries, by_name = read_compile_db(opts.db)
@@ -575,9 +676,11 @@ def main(argv):
     checked = 0
     skipped = 0
     silent = 0
+    checker = init_order_findings if opts.init_order else check_file
+    mode = 'init order' if opts.init_order else 'member layout'
     for target in opts.files:
         try:
-            findings, notes, reason = check_file(target, entries, by_name, opts.clang)
+            findings, notes, reason = checker(target, entries, by_name, opts.clang)
         except Skipped as exc:
             print('%s: [SKIP] %s' % (target, exc.reason))
             skipped += 1
@@ -594,9 +697,9 @@ def main(argv):
             if reason:
                 print('%s: [NONE] %s' % (target, reason))
             elif not opts.quiet:
-                print('%s: [PASS] member layout' % target)
-    print('member layout: %d file(s) checked (%d clean, %d with findings), %d skipped, %d partial — %d violation(s)'
-          % (checked, silent, checked - silent, skipped, partial, total))
+                print('%s: [PASS] %s' % (target, mode))
+    print('%s: %d file(s) checked (%d clean, %d with findings), %d skipped, %d partial — %d violation(s)'
+          % (mode, checked, silent, checked - silent, skipped, partial, total))
     return 1 if total else 0
 
 
