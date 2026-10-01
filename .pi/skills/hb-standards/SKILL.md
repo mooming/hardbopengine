@@ -363,9 +363,10 @@ One module — or one header inside a module too large to review at once, which 
 
 | Commit | Content | Proof required before committing |
 |---|---|---|
+| `<mod> judgement review` | the twelve rules above, two slicings, citations machine-checked, nothing edited | `verify-findings.py` passes every pass file; `review_merge.py` reports the unique count and the corroboration count — this list is what the next commit works from |
 | `<mod> layout and naming` | twelve-block reorder, `m_` and snake_case removal, `[[nodiscard]]`, `explicit`, `= default`, `out`-prefixed write-only parameters, named constants | `layout.py` reports 0 for the files **and** `layout.py --init-order` reports 0, because data moved; the module target compiles; **if the docs already describe the code, do this first**, otherwise pages quote signatures that are about to change |
-| `<mod> docs` | pages via `docs_page.py`, module index updated, `.Plans/DOCS_COVERAGE.md` regenerated | `docs_coverage.py check <mod>` and `docs_methods.py <mod>` at 0; `htmlcheck.py` clean |
 | `<mod> format` | `check.sh --apply`, or `--fix` for the mechanical subset as well | `prove_format.py HEAD~1 --manifest .Plans/fix-manifest.json` exits 0 with every file explained |
+| `<mod> docs` | pages via `docs_page.py`, module index updated, `.Plans/DOCS_COVERAGE.md` regenerated | `docs_coverage.py check <mod>` and `docs_methods.py <mod>` at 0; `htmlcheck.py` clean |
 | `<mod> comment ban` | `comments.py --strip` | `code_tokens` identical against the pre-strip snapshot; `comments.py` then reports 0 |
 | ledger and plan | `.Plans/DOCS_COVERAGE.md`, `JOURNAL.md` | the numbers in them re-measured, not carried forward |
 
@@ -417,6 +418,7 @@ and siblings), which is the convention the tree already uses for prose that is n
 | `runtest.sh` | build then run `EngineTest` under a wall clock, and report even when it says nothing |
 | `hang.sh` | build, run, and if the binary stalls, sample **its** stacks and say where |
 | `verify-findings.py` | reject review findings whose cited line does not exist or does not contain the quoted evidence |
+| `review_merge.py` | fold two independent review passes into one deduplicated finding set and mark the corroborated findings |
 | `prove_format.py` | prove a commit moved no code, per revision; `--manifest` holds a fixer to its declared tokens |
 | `docs_page.py` | emit reference pages with correct chrome, validated before kept |
 
@@ -443,6 +445,44 @@ Grep these in the changed hunks and fix by hand:
 | `inline` keyword | redundant on an in-class member definition and on a template; **load-bearing** on a function or operator defined at namespace scope in a header, where dropping it makes every including translation unit emit the symbol and the link fails. Only the AST separates the two, so the lint reports `inline` as advisory |
 | No snake_case member | a member is the token before `;`, and a type sits in the same position — `size_t MaxNameLength = 127;` is a type then a PascalCase name, so no grep separates them. The `m_` prefix is checked mechanically; this half of the rule is not |
 | `noexcept` | mark only what is provably exception-free; drop it where `new` is called |
+| Unit-test guard placement | an `#ifdef __UNIT_TEST__` region sits at the **end** of the file, one region per file |
+
+### Running a judgement review
+
+When the ask is "review this module" rather than "fix this file", the review changes nothing: the fix
+cycle is a different activity, and a review that edits files mid-pass loses the distinction between what
+was found and what was assumed.
+
+| Step | What it is | Why it is that way |
+|---|---|---|
+| Scope | `git ls-files 'Engine/<mod>/*.h' 'Engine/<mod>/*.cpp'` | never a bare `find`: the tree carries docs and vendored `External/` sources that are not the engine's to review |
+| Slice twice, differently | once per header/source pair, once by line budget (~2,700 lines a single reader holds honestly) | the slices are not redundant. A pair-slice sees a getter's whole contract; a budget-slice sees a 1,500-line implementation no pair split hands to one reader |
+| Read every file in full | open it, do not grep it | rules 1, 4, 6 and 9 are invisible in an excerpt, so a grep-only pass is not a review |
+| Cite or drop | file, line, the verbatim text of that line, one sentence of why, the concrete edit, a confidence | `verify-findings.py <file.json>` rejects a finding whose file is missing, whose line is out of range, or whose evidence does not appear on or beside the cited line |
+| Merge | `python3 scripts/review_merge.py <dir>` | folds free-text rule names onto rule numbers, deduplicates by (file, line, rule), keeps the highest-confidence wording, marks a finding corroborated when both slices cited it |
+
+**Do not report**: anything clang-format fixes (braces, indentation, spacing, blank lines, include order);
+comment presence in `.cpp` files, which a scheduled migration owns; namespace bodies indented at column 1,
+which is owner-confirmed legacy debt; speculative refactors, performance opinions, "consider renaming".
+A run that fills itself with those displaces the findings that were the point of the run.
+
+**Exempt from the behavioural rules**: `Engine/CodingStandards.{h,cpp}`, whose job is to break them
+legibly, and `Applications/EngineTest/TestMain.cpp`, whose `__UNIT_TEST__` guard is intentionally `main()`'s
+body.
+
+**Zero findings is a correct answer**, for a file and for a slice. This is stated rather than implied
+because a reviewer told to produce findings will produce them, and the citation gate exists precisely
+because a previous run invented defects in files it had not opened.
+
+Independence, stated plainly: a session that reads its own earlier findings is not a second reviewer.
+Write each pass to its own JSON and do not open the other pass's output until `review_merge.py` has
+already folded them — otherwise the second pass is recalling the first, and the corroboration count is
+measuring memory instead of agreement.
+
+Measured result for Engine/Core, the run this procedure came out of: 46 files, 177 input findings folded
+to 133 unique, 44 corroborated by both slices, confidence 67 high / 50 medium / 10 low / 6 field-omitted,
+and 11 files clean — the last number as much a result as the first, because it says where a fix cycle may
+start.
 
 ## Traps already paid for — do not relearn them
 
