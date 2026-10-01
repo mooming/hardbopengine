@@ -1,5 +1,31 @@
 # Journal
 
+## 2026-10-01 12:57 — the review method moved into the skill, and the last extension dependency went with it
+
+**Context.** The owner ruled that the workflow scripts be migrated into SKILL.md and removed from the
+repository, so nothing in the standards pipeline runs through a third-party agent extension. The scripts
+were not documentation of a machine process; the reusable part was the *method*, and the method is
+instructions plus Python gates.
+
+| Migrated | Where it lives now | Why it survived the move |
+|---|---|---|
+| The twelve judgement rules and the do-not-report list | `SKILL.md`, *Judgement checks a script cannot do* | clang-format cannot see rule 1, 4, 6 or 9, and a review that reports clang-format findings displaces the ones that were the point |
+| Citation discipline: file, line, verbatim evidence, why, fix, confidence | `SKILL.md` + `verify-findings.py`, unchanged | it exists because a previous run invented defects in files it never opened |
+| Two-slice corroboration, per-pair and line-budget | `SKILL.md`, as a procedure | neither slice is a superset of the other, so the union is the honest result and a finding cited by both is the strongest signal available |
+| Finding aggregation | `scripts/review_merge.py`, promoted from the gitignored `.Plans/review/core/merge.py` | reproduces the Engine/Core run exactly: 177 in, 133 unique, 44 corroborated. Made to require its directory argument, because a default that silently points at one module is the same bug family as the path-form docs argument, and an empty input directory now exits 3 instead of printing a clean zero |
+
+Deleted `hb-review-pairwise.js` (334 lines) and `hb-review-citation-gated.js` (106 lines) in `85ad27e`.
+
+**The pilot's result, checked rather than trusted.** It landed after the commit that claimed Core owed 23
+class pages, which made that claim stale until measured. Baseline with its pages set aside: 23 missing.
+With them: 22, zero site-link problems, `htmlcheck` clean on all four files touched. Engine sources
+untouched, and the pair's three comment violations still in place — the strip gate refusing because Core
+still owes 22 pages is the intended behaviour, not a stalled run. Committed separately as `a57965e`. Two
+incidental facts came out of the check: the remaining 2 method pages are pre-existing `WorkItem` debt, and
+`docs_methods.py` cannot analyse `Engine/Core/Runnable.h` standalone — clang rejects it with *no type named
+'size_t' in namespace 'std'*, so that header compiles only behind someone else's include. Recorded as debt,
+not fixed here.
+
 ## 2026-10-01 12:16 — hb-standards can now fix code, and depends on nothing but the toolchain
 
 **Context.** The owner asked for a skill that corrects code rather than reporting it, with the

@@ -59,6 +59,7 @@ MinSizeRel
 
 # hb-standards review-gate scratch: batch/findings JSON, rewritten by every gate run
 .Plans/review/
+.Plans/fix/
 
 External
 
