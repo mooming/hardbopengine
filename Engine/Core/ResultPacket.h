@@ -63,6 +63,16 @@ public:
 	static_assert(SizeBytes == 128, "A result packet must be the 128 bytes the design fixed");
 	static_assert(HeaderBytes > DestinationByteIndex, "The header must be wide enough to hold both decided fields");
 
+private:
+	/// @brief The header as bytes: kind, then destination, then whatever of the eight bytes is left over.
+	/// @details Deliberately not three named fields with a spare array between them - a spare field nobody reads is
+	///          a warning this project treats as an error, and the leftover bytes are not a field with a meaning
+	///          yet. The two fields that do have meaning are byte-indexed below.
+	std::uint8_t header[HeaderBytes] = {KindNoResult, NoDestinationStream};
+
+	std::uint8_t payload[PayloadBytes] = {};
+
+public:
 	/// @brief Forget every byte of this packet, putting it back to "no result".
 	/// @details Called when a record is issued, not when a task is finished with: a reused record must not be able
 	///          to report the previous occupant's result.
@@ -115,15 +125,6 @@ public:
 	{
 		return payload;
 	}
-
-private:
-	/// @brief The header as bytes: kind, then destination, then whatever of the eight bytes is left over.
-	/// @details Deliberately not three named fields with a spare array between them - a spare field nobody reads is
-	///          a warning this project treats as an error, and the leftover bytes are not a field with a meaning
-	///          yet. The two fields that do have meaning are byte-indexed below.
-	std::uint8_t header[HeaderBytes] = {KindNoResult, NoDestinationStream};
-
-	std::uint8_t payload[PayloadBytes] = {};
 };
 
 } // namespace hbe
