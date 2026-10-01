@@ -19,6 +19,8 @@ namespace hbe
 
 class TaskProvider;
 
+class TaskSystem;
+
 /// @brief Control token for one TaskProvider, held by whoever needs to stop it.
 /// @details A stream cannot stop a task that has already been taken, so the thing worth holding on to is
 ///          the producer: stopping a provider ends the supply of work without disturbing work already in
@@ -31,8 +33,12 @@ class TaskProvider;
 ///             than its stop state from another thread is not covered by this.
 class TaskHandle final
 {
+private:
+	TaskProvider* provider = nullptr;
+
 public:
 	TaskHandle() = default;
+
 	explicit TaskHandle(TaskProvider& provider) noexcept;
 
 	/// @brief True when this token refers to a provider. A default-constructed token refers to nothing.
@@ -56,9 +62,6 @@ public:
 	/// @note Doing nothing when the token is empty is deliberate, so that a registry entry that was never
 	///       filled can be stopped on a teardown path without a caller-side guard.
 	void RequestStop() const noexcept;
-
-private:
-	TaskProvider* provider = nullptr;
 };
 
 /// @brief Everything a stream hands its providers on a Produce call, which is deliberately two facts.
@@ -74,15 +77,17 @@ private:
 ///          numbers. Call time::ElapsedSinceEngineEpoch to turn it into a duration.
 struct TaskProduceContext final
 {
+public:
+	TStreamIndex stream = 0;
+
+	time::TEngineTimePoint now{};
+
 	/// @brief Build the context for one drain of one stream.
 	/// @details The clock reading is taken here rather than at each call site so that a single drain - and
 	///          every provider inside it - shares one instant. If each provider read the clock for itself,
 	///          two providers in the same drain would reason about two different times and a caller could
 	///          not tell a scheduling effect from a clock effect.
 	[[nodiscard]] static TaskProduceContext ForStream(TStreamIndex streamIndex) noexcept;
-
-	TStreamIndex stream = 0;
-	time::TEngineTimePoint now{};
 };
 
 /// @brief A producer of tasks, and the unit of lifecycle in the task system.
@@ -94,7 +99,6 @@ struct TaskProduceContext final
 ///          A separate HasWork predicate was rejected: by the time Produce runs, a HasWork answer is
 ///          already advisory because provider state can change in between, so the stream would be steering
 ///          on a reading it cannot trust.
-class TaskSystem;
 
 class TaskProvider
 {
@@ -115,8 +119,26 @@ public:
 	/// @details Named explicitly rather than derived from `ELane`'s values: `ELane::None` occupies zero, so a
 	///          positional encoding would give "no lane" a bit of its own and a stream could match it.
 	static constexpr std::uint8_t LaneBitFifo = 1U << 0;
+
 	static constexpr std::uint8_t LaneBitPriority = 1U << 1;
 
+private:
+	StaticString name;
+
+	TaskSystem& taskSystem;
+
+	std::array<TStreamIndex, static_cast<size_t>(MaxAttachedStreams)> attached{};
+
+	std::array<std::uint8_t, static_cast<size_t>(MaxAttachedStreams)> lanes{};
+
+	TStreamIndex attachedCount = 0;
+
+	/// @brief How many live streams currently hold this object's pointer, and what `~TaskProvider` asserts on.
+	int registeredCount = 0;
+
+	std::atomic<bool> stopRequested{false};
+
+public:
 	/// @brief The lane mask an `ELane` claims, or zero for `ELane::None`.
 	[[nodiscard]] static constexpr std::uint8_t LaneBit(StreamDrainPolicy::ELane lane) noexcept
 	{
@@ -142,6 +164,7 @@ public:
 	virtual ~TaskProvider();
 
 	TaskProvider(const TaskProvider&) = delete;
+
 	TaskProvider& operator=(const TaskProvider&) = delete;
 
 	/// @brief Produce work into the stream named by the context, and report whether anything was produced.
@@ -186,11 +209,6 @@ public:
 	/// @brief Detach from every stream this provider is attached to.
 	void DetachAll() noexcept;
 
-private:
-	void RegisterOnStream(TStreamIndex stream, StreamDrainPolicy::ELane lane) noexcept;
-	void UnregisterFromStream(TStreamIndex stream, StreamDrainPolicy::ELane lane) noexcept;
-
-public:
 	/// @brief How many streams this provider currently feeds.
 	[[nodiscard]] TStreamIndex GetAttachedCount() const noexcept
 	{
@@ -199,6 +217,7 @@ public:
 
 	/// @brief The attached stream held at a position in attachment order. Out-of-range asserts and returns 0.
 	[[nodiscard]] TStreamIndex GetAttachedStream(TStreamIndex index) const noexcept;
+
 	/// @brief Whether a given stream is currently draining this provider on any lane.
 	[[nodiscard]] bool IsAttachedTo(TStreamIndex stream) const noexcept;
 
@@ -229,8 +248,6 @@ public:
 		return name;
 	}
 
-private:
-	StaticString name;
 
 protected:
 	/// @brief Declare a one-item join on `task` and return the item that fills it, for a provider whose Produce hands
@@ -248,14 +265,9 @@ protected:
 	static WorkItem MakeWholeItem(Task& task, uint8_t priority = 0) noexcept;
 
 private:
-	TaskSystem& taskSystem;
-	std::array<TStreamIndex, static_cast<size_t>(MaxAttachedStreams)> attached{};
-	std::array<std::uint8_t, static_cast<size_t>(MaxAttachedStreams)> lanes{};
-	TStreamIndex attachedCount = 0;
+	void RegisterOnStream(TStreamIndex stream, StreamDrainPolicy::ELane lane) noexcept;
 
-	/// @brief How many live streams currently hold this object's pointer, and what `~TaskProvider` asserts on.
-	int registeredCount = 0;
-	std::atomic<bool> stopRequested{false};
+	void UnregisterFromStream(TStreamIndex stream, StreamDrainPolicy::ELane lane) noexcept;
 };
 
 } // namespace hbe
@@ -276,9 +288,8 @@ public:
 	{
 	}
 
-protected:
-	void Prepare() override;
 
+protected:
 	/// @brief The task system the probes attach to, taken when a test asks rather than when the collection is built.
 	/// @details Tests attach to stream indices the engine may not have, which is what the R38 bookkeeping path is for,
 	///          so they need a real system to hand the constructor without assuming a stream exists.
@@ -286,6 +297,8 @@ protected:
 	{
 		return Engine::Get().GetTaskSystem();
 	}
+
+	void Prepare() override;
 };
 
 } // namespace hbe

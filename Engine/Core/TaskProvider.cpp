@@ -256,6 +256,16 @@ class RecordingProvider final : public hbe::TaskProvider
 public:
 	using TaskProvider::TaskProvider;
 
+	int produceCalls = 0;
+
+	hbe::TStreamIndex lastStream = -1;
+
+	hbe::time::TEngineTimePoint lastNow{};
+
+	bool produceResult = true;
+
+	std::optional<hbe::WorkItem> itemToHand{};
+
 	/// @brief Detaches before the probe dies, because the contract R37 now enforces is detach-before-destruction.
 	/// @details The probes attach to stream indices that this engine really does have, so they register, and a provider
 	///          that is destroyed while registered is exactly the dangling pointer the assert exists to catch. A test
@@ -264,12 +274,6 @@ public:
 	{
 		DetachAll();
 	}
-
-	int produceCalls = 0;
-	hbe::TStreamIndex lastStream = -1;
-	hbe::time::TEngineTimePoint lastNow{};
-	bool produceResult = true;
-	std::optional<hbe::WorkItem> itemToHand{};
 
 	std::optional<hbe::WorkItem> Produce(const hbe::TaskProduceContext& context) noexcept override
 	{
@@ -288,7 +292,9 @@ public:
 
 struct DrainObservation
 {
+public:
 	std::atomic<unsigned> runs{0};
+
 	std::atomic<int> ranOnStream{-1};
 };
 
@@ -297,6 +303,27 @@ struct DrainObservation
 ///          the provider was built with, and the probe releases them only once the test has seen them run.
 class DrainingProvider final : public hbe::TaskProvider
 {
+public:
+	bool produceResult = true;
+
+	/// @brief Release each task the moment its item is built, so the item names a record that is already gone by the
+	///        time the stream can see it. The release happens inside `Produce`, which the stream calls under its queue
+	///        lock, so the ordering is arranged rather than raced.
+	bool releaseImmediately = false;
+
+private:
+	static constexpr int MaxItems = 4;
+
+	hbe::TaskSystem& system;
+
+	DrainObservation& observation;
+
+	std::array<hbe::TaskID, MaxItems> ids{hbe::TaskID{}, hbe::TaskID{}, hbe::TaskID{}, hbe::TaskID{}};
+
+	int asks = 0;
+
+	int handed = 0;
+
 public:
 	DrainingProvider(hbe::StaticString name, hbe::TaskSystem& system, DrainObservation& target) noexcept
 		: TaskProvider(name, system)
@@ -364,12 +391,6 @@ public:
 		handed = 0;
 	}
 
-	bool produceResult = true;
-	/// @brief Release each task the moment its item is built, so the item names a record that is already gone by the
-	///        time the stream can see it. The release happens inside `Produce`, which the stream calls under its queue
-	///        lock, so the ordering is arranged rather than raced.
-	bool releaseImmediately = false;
-
 private:
 	static std::size_t CountOnce(void* userData, std::size_t startIndex, std::size_t endIndex) noexcept
 	{
@@ -380,14 +401,6 @@ private:
 
 		return endIndex - startIndex;
 	}
-
-	static constexpr int MaxItems = 4;
-
-	hbe::TaskSystem& system;
-	DrainObservation& observation;
-	std::array<hbe::TaskID, MaxItems> ids{hbe::TaskID{}, hbe::TaskID{}, hbe::TaskID{}, hbe::TaskID{}};
-	int asks = 0;
-	int handed = 0;
 };
 
 /// @brief Waits until the predicate holds, or the bound is reached.
@@ -398,6 +411,10 @@ private:
 class BlockingProvider final : public hbe::TaskProvider
 {
 public:
+	std::atomic<bool> inside{false};
+
+	std::atomic<bool> release{false};
+
 	BlockingProvider(hbe::StaticString name, hbe::TaskSystem& system) noexcept
 		: TaskProvider(name, system)
 	{
@@ -421,9 +438,6 @@ public:
 
 		return std::nullopt;
 	}
-
-	std::atomic<bool> inside{false};
-	std::atomic<bool> release{false};
 };
 
 bool WaitFor(const std::function<bool()>& done, int attempts) noexcept
