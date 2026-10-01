@@ -1,5 +1,56 @@
 # Journal
 
+## 2026-10-01 22:25 — TaskSystem documented before it is cleaned: 46 pages, then the layout fix
+
+**Context.** The owner asked for the `TaskSystem` pair specifically: repair the header's comments, write the class's
+full reference, then run the fix cycle on `TaskSystem.h` and `TaskSystem.cpp`. Doing the pages first was the point —
+the repair pass had already found five detached or malformed doc blocks and one comment describing
+`ProcessMainThreadTasks`, a method that no longer exists. That is the failure mode of prose living beside code: the
+code moved and nobody moved the sentence. A page with a file:line citation on every claim is checkable; a header
+block is only checkable by reading the whole function again.
+
+**Depth is tiered by where a caller can lose work, not by uniform length.** `GetNumHardwareThreads` is a cast of a
+standard-library hint, so its page spends its space on the one thing that matters — the hint can be 0, and this
+engine turns that into a `FatalAssert` on a machine under four cores. `BuildStreams` got a row per clamp and a
+section per lock, because it is where the stream count, the 64-cores-per-name ceiling and the allocator-scope rule
+all land. Thin accessor pages say so in their Coverage section rather than padding themselves out.
+
+**The pages record where the shipped behaviour disagrees with the header.** `GetStream` answers an out-of-range
+index with the base stream instead of failing. The indexed `Enqueue` asserts and then returns, and `Assert` is an
+empty definition outside `__DEBUG__`, so a shipped build drops the item quietly. Nothing calls
+`TaskStreamAffinity::Unset`, so the exclusion mechanism `Dequeue` implements never actually hands on a refused
+item; the same 64-bit mask means streams 64 and above can never take general-queue work on a large machine.
+`ioTaskThreadID` is declared and then never written or read. `SetThreadName` names nothing an operating system
+can see — no `pthread_setname_np`, `SetThreadDescription` or `prctl` exists in `Engine/`. These are stated as the
+code stands, not as the design intends, and recorded rather than fixed: the owner's standing instruction is to
+report and keep documenting.
+
+**Standard-library claims were looked up, not recalled.** `hardware_concurrency` is quoted from its own
+specification as "the number of **potential** threads" usable "concurrently by this implementation", returning 0
+when the value is not computable or well defined. The `std::thread` destructor rule — terminating if the thread is
+still joinable, and that running thread *or not* — came from cplusplus.com and matches the engine's own comment at
+`Engine/Core/TaskStream.cpp:227-228`. Joining a `std::thread` that does not belong to the caller is
+undefined behaviour, which is why `DriveUntil` compares ids instead of joining.
+
+**Verification.** Structural validator over every page in `docs/Core`: unclosed tags, mismatched
+`<pre><code>`, classes the stylesheet does not define, dead links, local anchors, and the escaped-quote
+contamination that the site rejects — clean, after one unresolved cross-anchor (`../index.html#time`) was replaced
+by plain code rather than by inventing an anchor. `docs_methods.py Core` no longer demands a single `TaskSystem`
+page; `docs_coverage.py check Core` dropped `TaskSystem` from `[MISSING PAGE]` and `[NO POINTER]`, leaving 15 other
+Core entries and `WorkItem`. Inbound scan first: 68 links from five modules point at `docs/Core/index.html#tasksystem`,
+so that anchor was kept and the summary section kept its shape — the module page gained one full-reference line,
+pasted in by hand because a scripted multi-line insert into tracked prose is not worth its risk. `layout.py` went
+1 violation to 0 by moving `MaxStreamsPerSplit` into the public static-data block, proved by comparing the
+non-comment line multiset against the previous file: identical. `--init-order` 0, hygiene 0, format clean, build
+gate `PASS 12/12` across Dev, Debug and Release with no "up to date" marker, so every configuration really
+recompiled the touched header. `GATE_EXIT=1` remains, and it is the standing backlog: 233 doc comments in this
+header, 15 Core pages, 2 `WorkItem` method pages.
+
+**Deliberate non-actions.** The 233 comments stay: `--strip` refuses for `Core` while any Core entry still lacks
+pages, which is exactly the guard doing its job — the replacement for this class exists, the replacements for 15
+others do not. No reorder tool was built; the twelve-block move is hand work under `--init-order` proof. Foreign
+work in the tree (`Applications/EngineTest/TestMain.cpp`, `.Plans/PLAN_engine_test_module.md`) was left unstaged.
+
 ## 2026-10-01 16:58 — the comment ban gains an address: the API reference pointer
 
 **Context.** The owner objected to stripping the `/// @brief` lines, then improved on keeping them: replace the
