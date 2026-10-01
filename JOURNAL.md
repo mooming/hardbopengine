@@ -1,5 +1,39 @@
 # Journal
 
+## 2026-10-02 02:20 — the layout sweep reached its own limit, and the limit is the language
+
+**Context.** With `TaskSystem.h` clean, the owner said go, so pass #17 continued pair by pair. `Core` went
+from 62 member-layout findings across ten files to two across 46 files, each pair proved by multiset
+comparison against the previous file and by a build gate with `-D__UNIT_TEST__` defined plus EngineTest's
+59 collections in three configurations.
+
+**The automated reorder earned a trust boundary, and I found it by being wrong twice.** It closed a
+member unit on `rstrip() == '}'` while this style indents its closing brace, so `'    }'` never matched
+and a unit swallowed the following declaration — `MaxItems` left the class that indexes with it, and the
+plain build could not see the damage because those probes live in a `__UNIT_TEST__` region. It read a
+nested `struct Record`'s members as the outer class's own, and it would have dropped the nested class's
+access specifiers because its own conservation proof had excluded specifier lines from the comparison.
+It also classified `RecordSizeBytes = sizeof(Record)` as a function, since a parameter list followed by
+`;` looks like one, and it gave nested types per-access block numbers when the table puts every type in
+block 0. Now it refuses any body that nests a type, counts specifiers in the proof, and leaves
+`static_assert` out of the member ordering. Everything with a nest or preprocessor-guarded members —
+`TaskRegistry.h`, `ResultPacket.h` — went by hand.
+
+**The check that mattered was not the layout checker.** One hand move deleted `using TIndex =
+Task::TIndex;` and forgot to put it back, and `layout.py` reported the file clean, because a class with
+a missing member has no ordering problem. Only the multiset comparison against `HEAD` showed a line gone.
+That is the argument for keeping both checks rather than one: the AST checker says the arrangement is
+legal, the multiset says nothing was lost, and neither question implies the other.
+
+**The last two findings are the language, not the discipline.** `TaskStream.h:69` sizes
+`std::array<TaskProvider*, MaxProvidersPerLane>` inside a nested type, and `MainThreadTaskQueue.h:59`
+bounds an alias with `MaxQueueSize`; the block rule wants the type first, and C++ refuses to compile it:
+`error: use of undeclared identifier 'MaxProvidersPerLane'`. I did not resolve that by renaming a
+constant into the nested type, because that changes an API surface to satisfy a formatting rule. It is
+todo #27 with three options and the compiler output attached, and the recommendation is to amend the
+standard with one sentence and let `layout.py` honour the `hb-standards:ignore` directive the standard
+already defines for exactly this kind of visible exception.
+
 ## 2026-10-02 00:40 — the strip guard was too coarse to be useful, so TaskSystem.h waited on its neighbours
 
 **Context.** The owner asked when `TaskSystem.h` would stop carrying comments. It should have been clean
