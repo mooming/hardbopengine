@@ -3,11 +3,12 @@
 # then prove the tree still builds in Debug, Dev and Release.
 #
 # Usage:
-#   scripts/check.sh [--staged | <rev>] [--apply] [--no-build] [--test] [--all]
+#   scripts/check.sh [--staged | <rev>] [--apply | --fix] [--no-build] [--test] [--all]
 #
 #   --staged     lint files staged for the next commit
 #   <rev>        lint files touched by a revision (default: HEAD)
 #   --apply      rewrite files with clang-format (default is check-only)
+#   --fix        clang-format, then autofix.py, then clang-format, then re-lint
 #   --no-build   skip the build gate
 #   --test       also run the EngineTest suite for each configuration
 #   --all        lint every source under Engine, Examples, Applications
@@ -77,6 +78,7 @@ usage() { sed -n '2,16p' "$0"; exit 3; }
 REVSPEC=""
 STAGED=0
 APPLY=0
+FIX=0
 BUILD=1
 RUNTEST=0
 ALL=0
@@ -85,6 +87,7 @@ while [[ $# -gt 0 ]]; do
 	case "$1" in
 		--staged)   STAGED=1 ;;
 		--apply)    APPLY=1 ;;
+		--fix)      FIX=1; APPLY=1 ;;
 		--no-build) BUILD=0 ;;
 		--test)     RUNTEST=1 ;;
 		--all)      ALL=1 ;;
@@ -192,7 +195,7 @@ if [[ ${#FILES[@]} -eq 0 && $ALL -eq 0 && $STAGED -eq 0 && -z "${HBE_CHECK_SCOPE
 	if [[ -n "$ancestor" && "$ancestor" != "$(git rev-parse "${REVSPEC:-HEAD}" 2>/dev/null)" ]]; then
 		echo "scope fallback : ${REVSPEC} touches no C/C++ source - linting its code at ${ancestor:0:9} instead"
 		export HBE_CHECK_SCOPE_FALLBACK=1
-		exec "$0" "$ancestor" $( (( APPLY == 1 )) && printf -- '--apply' ) $( (( BUILD == 0 )) && printf -- '--no-build' ) $( (( TEST == 1 )) && printf -- '--test' )
+		exec "$0" "$ancestor" $( (( APPLY == 1 )) && printf -- '--apply' ) $( (( FIX == 1 )) && printf -- '--fix' ) $( (( BUILD == 0 )) && printf -- '--no-build' ) $( (( TEST == 1 )) && printf -- '--test' )
 	fi
 fi
 
@@ -236,12 +239,43 @@ if [[ $STAGED -eq 1 && ${#FILES[@]} -gt 0 ]]; then
 	fi
 fi
 
+# A fix rewrites bytes. Doing it to a tree whose other edits belong to nobody in this run is
+# how a formatter ends up committing someone else's half-finished refactor, so --fix refuses
+# while changes exist outside the scope it was asked to fix.
+if [[ $FIX -eq 1 && ${#FILES[@]} -gt 0 ]]; then
+	printf '%s\n' "${FILES[@]}" | sort > "/tmp/hb_fix_scope.$$"
+	git status --porcelain --untracked-files=no | sed 's/^...//' | cut -d' ' -f1 | sort > "/tmp/hb_fix_dirty.$$"
+	# Only the languages a fix rewrites can block it. The first version compared every dirty
+	# path, which meant the tool refused to run while its own scripts were being edited — a
+	# guard that blocks its own development is a guard nobody keeps.
+	comm -23 "/tmp/hb_fix_dirty.$$" "/tmp/hb_fix_scope.$$" \
+		| grep -E '\.(h|hh|hpp|cpp|cc|cxx)$' > "/tmp/hb_fix_outside.$$" || true
+	outside=$(cat "/tmp/hb_fix_outside.$$")
+	rm -f "/tmp/hb_fix_scope.$$" "/tmp/hb_fix_dirty.$$" "/tmp/hb_fix_outside.$$"
+	if [[ -n "$outside" ]]; then
+		echo "[FAIL] --fix edits the scoped file(s) only; these are modified outside that scope:"
+		printf '         %s\n' $outside
+		printf ' %s\n' '         Commit, stash, or widen the scope first. A fix that sweeps unrelated'
+		printf ' %s\n' '         work into its own commit cannot be proved by prove_format.py afterwards.'
+		exit 3
+	fi
+fi
+
 # Belt and braces: clang-format enforces the Allman brace rule, the 120 column
 # limit, tabs, and the blank-line conventions. Everything after this section
 # covers rules clang-format structurally cannot check.
 if [[ ${#FILES[@]} -gt 0 ]]; then
 	if [[ $APPLY -eq 1 ]]; then
 		clang-format --style=file -i "${FILES[@]}" || { echo "clang-format --apply failed" >&2; exit 1; }
+		# The mechanical half of a fix, then the formatter again so the braces the split just
+		# opened land on the project's own columns. autofix declares every token it removes, and
+		# the manifest it writes is what prove_format.py later holds this commit to.
+		if [[ $FIX -eq 1 ]]; then
+			python3 "$SCRIPT_DIR/autofix.py" --manifest .Plans/fix-manifest.json "${FILES[@]}"
+			clang-format --style=file -i "${FILES[@]}" \
+				|| { echo "clang-format --apply failed after autofix" >&2; exit 1; }
+			echo "[FIX] mechanical fixes applied to ${#FILES[@]} file(s); manifest .Plans/fix-manifest.json"
+		fi
 		# clang-format -i writes the worktree and does not touch the index, so with --staged
 		# scope the index keeps the bytes the formatter just rejected while every check below
 		# reads the formatted worktree and calls them clean. The commit then records the
