@@ -15,6 +15,7 @@ namespace hbe
 {
 
 /// @brief Manages tasks and task streams for parallel task execution.
+/// API reference: docs/Core/TaskSystem/index.html
 class TaskSystem final
 {
 public:
@@ -42,6 +43,11 @@ public:
 
 	static constexpr TIndex BaseStreamIndex = 0;
 	static constexpr TIndex IOStreamIndex = 1;
+
+	/// @brief Cap on how many streams one split may spread across, so the chosen list can live on the caller's stack.
+	/// @note Not a tuning knob: a job spread over more than this many streams is not a shape the engine has, and the
+	///       clamp keeps the choice reproducible instead of allocating.
+	static constexpr TIndex MaxStreamsPerSplit = 64;
 
 private:
 	std::atomic<bool> isRunning;
@@ -442,11 +448,6 @@ public:
 	[[nodiscard]] StaticString GetStreamName(int index) const noexcept;
 	[[nodiscard]] TIndex GetStreamIndex(TThreadID id) const noexcept;
 	TaskStream& GetStream(int index) noexcept;
-
-	/// @brief Cap on how many streams one split may spread across, so the chosen list can live on the caller's stack.
-	/// @note Not a tuning knob: a job spread over more than this many streams is not a shape the engine has, and the
-	///       clamp keeps the choice reproducible instead of allocating.
-	static constexpr TIndex MaxStreamsPerSplit = 64;
 
 	TaskID RunSplit(StaticString taskName, TRunnable func, void* userData, TIndex numItems, TIndex numSubJobs,
 					const TIndex* streamIndices, TIndex numStreamIndices, uint8_t priority, TaskID successor,
