@@ -36,6 +36,24 @@ public:
 		Priority
 	};
 
+private:
+	uint32_t fifoWeight = 1;
+
+	uint32_t priorityWeight = 1;
+
+	std::chrono::duration<double> allowance{};
+
+	std::chrono::nanoseconds fifoUsed{};
+
+	std::chrono::nanoseconds priorityUsed{};
+
+	int64_t fifoCredit = 1;
+
+	int64_t priorityCredit = 1;
+
+	std::chrono::nanoseconds maxAge{};
+
+public:
 	/// @brief Set the FIFO:priority rate.
 	/// @note A weight of zero on either side is treated as one, with both falling back to 1:1 if the caller
 	///       passes two zeros. A zero weight is not "never serve this lane" — a lane that can never be
@@ -59,6 +77,7 @@ public:
 
 	/// @brief Record the CPU time a task on a lane consumed.
 	void ChargeFifo(std::chrono::nanoseconds spent) noexcept;
+
 	/// @brief Record the CPU time a task on the priority lane consumed.
 	void ChargePriority(std::chrono::nanoseconds spent) noexcept;
 
@@ -72,11 +91,13 @@ public:
 
 	/// @brief CPU time charged to the FIFO lane in the current round.
 	[[nodiscard]] std::chrono::nanoseconds GetFifoUsed() const noexcept;
+
 	/// @brief CPU time charged to the priority lane in the current round.
 	[[nodiscard]] std::chrono::nanoseconds GetPriorityUsed() const noexcept;
 
 	/// @brief The FIFO lane's share of the allowance, derived from the rate. Zero when unlimited.
 	[[nodiscard]] std::chrono::duration<double> GetFifoShare() const noexcept;
+
 	/// @brief The priority lane's share of the allowance, derived from the rate. Zero when unlimited.
 	[[nodiscard]] std::chrono::duration<double> GetPriorityShare() const noexcept;
 
@@ -111,16 +132,8 @@ private:
 	/// @details Held as signed values and replenished by the weights when both sides have run out, which is
 	///          what keeps a lane alive when its configured weight is smaller than the other's.
 	[[nodiscard]] int64_t FifoCredit() const noexcept;
-	[[nodiscard]] int64_t PriorityCredit() const noexcept;
 
-	uint32_t fifoWeight = 1;
-	uint32_t priorityWeight = 1;
-	std::chrono::duration<double> allowance{};
-	std::chrono::nanoseconds fifoUsed{};
-	std::chrono::nanoseconds priorityUsed{};
-	int64_t fifoCredit = 1;
-	int64_t priorityCredit = 1;
-	std::chrono::nanoseconds maxAge{};
+	[[nodiscard]] int64_t PriorityCredit() const noexcept;
 };
 
 } // namespace hbe
