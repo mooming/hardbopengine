@@ -242,6 +242,19 @@ def main(argv):
     if not argv:
         print(__doc__, file=sys.stderr)
         return 2
+    # Same trap as docs_coverage.py: `Engine/Core` joined onto Engine/ yields a directory that
+    # does not exist, the module walks zero headers, and the run reports "0 method(s) without a
+    # page" for a module that owes some. An argument naming nothing must stop, not pass.
+    engine = os.path.join(REPO_ROOT, 'Engine')
+    known = sorted(d for d in os.listdir(engine) if os.path.isdir(os.path.join(engine, d)))
+    unknown = [m for m in argv if m not in known]
+    if unknown:
+        for name in unknown:
+            guess = name.split('/')[-1]
+            hint = ' — pass the module name, which is %s' % guess if guess in known else ''
+            print('[ERROR] no such module %r%s' % (name, hint), file=sys.stderr)
+        print('        known modules: %s' % ', '.join(known), file=sys.stderr)
+        return 3
     entries, by_name = layout.read_compile_db(db)
     total = 0
     for module in argv:

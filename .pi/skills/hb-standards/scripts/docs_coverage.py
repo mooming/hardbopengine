@@ -324,6 +324,19 @@ def check(argv):
         return 0
     rows = ledger_rows()
     wanted = set(argv)
+    # `check Core` and `check Engine/Core` are not the same question. Rows are keyed by module
+    # name, so the path form matches nothing and used to print "0 missing page(s)" for a module
+    # that owed twenty-three — a gate that reports a clean verdict over zero checked files is
+    # worse than no gate, because the reader stops looking. Refuse instead.
+    known = set(r['module'] for r in rows)
+    unknown = sorted(wanted - known)
+    if unknown:
+        for name in unknown:
+            guess = name.split('/')[-1] if name.startswith('Engine/') and '/' in name else None
+            hint = ' — pass the module name, which is %s' % guess if guess in known else ''
+            print('[ERROR] no ledger rows for %r%s' % (name, hint))
+        print('        known modules: %s' % ', '.join(sorted(known)))
+        return 3
     missing = [r for r in rows if not r['exists'] and not r['test_only'] and (not wanted or r['module'] in wanted)]
     by_module = {}
     for r in missing:
