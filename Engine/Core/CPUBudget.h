@@ -29,6 +29,22 @@ namespace hbe
 ///       and EndTask portable to another thread, and the total is only ever written by the owner.
 class CPUBudget
 {
+private:
+	static constexpr long long PendingAllowanceNone = -1;
+
+	std::chrono::duration<double> allowance{};
+
+	/// @brief A pending allowance in nanoseconds, or `PendingAllowanceNone` when nothing is waiting.
+	/// @details Held as an integer because `duration<double>` has no atomic form worth storing, and a budget decision
+	///          never needs more nanosecond resolution than this.
+	std::atomic<long long> requestedAllowanceNanos{PendingAllowanceNone};
+
+	std::atomic<long long> accumulatedNanos{0};
+
+	std::chrono::nanoseconds taskStart{};
+
+	bool isMeasuring = false;
+
 public:
 	/// @brief Set the allowance, expressed as a duration of CPU time. Zero means unlimited.
 	/// @note Only the owning stream thread may call this, because `allowance` is deliberately unsynchronised -
@@ -47,6 +63,7 @@ public:
 	/// @brief Apply a pending request, if there is one. Call only on the thread that owns this budget.
 	/// @return The allowance the request set, or `std::nullopt` when nothing was pending.
 	std::optional<std::chrono::duration<double>> ApplyRequestedAllowance() noexcept;
+
 	/// @brief The configured allowance. Zero means unlimited.
 	[[nodiscard]] std::chrono::duration<double> GetAllowance() const noexcept;
 
@@ -54,6 +71,7 @@ public:
 	/// @note Must be followed by EndTask on the same thread. Pairing them on different threads measures
 	///       the span between two unrelated threads and produces a number with no meaning.
 	void BeginTask() noexcept;
+
 	/// @brief Stop charging and add the measured span to the accumulation.
 	/// @note Does nothing if BeginTask has not been called since the last EndTask or Reset. Measuring from
 	///       a start that was never taken would charge the thread's entire life to the budget and leave a
@@ -70,20 +88,6 @@ public:
 	/// @brief Whether this budget still permits taking another task.
 	/// @return True while the allowance is not spent, and always true for an unlimited budget.
 	[[nodiscard]] bool CanTakeWork() const noexcept;
-
-private:
-	static constexpr long long PendingAllowanceNone = -1;
-
-	std::chrono::duration<double> allowance{};
-
-	/// @brief A pending allowance in nanoseconds, or `PendingAllowanceNone` when nothing is waiting.
-	/// @details Held as an integer because `duration<double>` has no atomic form worth storing, and a budget decision
-	///          never needs more nanosecond resolution than this.
-	std::atomic<long long> requestedAllowanceNanos{PendingAllowanceNone};
-
-	std::atomic<long long> accumulatedNanos{0};
-	std::chrono::nanoseconds taskStart{};
-	bool isMeasuring = false;
 };
 
 } // namespace hbe
