@@ -1,5 +1,54 @@
 # Journal
 
+## 2026-10-02 00:40 — the strip guard was too coarse to be useful, so TaskSystem.h waited on its neighbours
+
+**Context.** The owner asked when `TaskSystem.h` would stop carrying comments. It should have been clean
+hours earlier: its reference is 46 pages, `docs_methods.py` demands nothing more of it, and its pointer
+resolves in both directions. What kept 233 comments alive was the guard's granularity — `--strip` asked
+`docs_coverage.py check Core` and `docs_methods.py Core`, which answer "is the module documented?", and
+fifteen undocumented neighbours answered "no". A guard whose job is to stop prose being deleted before it
+has somewhere to live was deleting nothing anywhere, and the finished documentation bought nothing. The
+owner chose per-entry granularity, so the guard now asks the question the invariant actually makes: does
+*this* entry own the page its comment was moved into.
+
+**Two bugs surfaced on the way, both of the kind that make a green verdict mean nothing.**
+`layout.py --init-order` reported that `DrainingProvider` initialised `system` after `handed`, a member
+appearing in no initializer list: clang marks an unwritten initializer by making its expression a
+`CXXDefaultInitExpr`, and the tool dropped only entries with no source range — these have one, and it is
+the *constructor's* position, so every in-class initializer sorted ahead of every written one and the
+class's last declared member took the blame. A false finding is worse than a missed one here, because the
+fix it asks for changes nothing, and `--init-order` is the proof every layout reorder in this tree rests
+on. Recognition now uses clang's own marker, as the base-initializer case already did, and `--selftest`
+four recorded node shapes.
+
+**My own reorder script was the second one, and it broke the build.** It closed a member unit on
+`rstrip() == '}'`, but this style indents a closing brace, so `'    }'` never matched and the unit
+swallowed the next declaration: `MaxItems` left `DrainingProvider`, and the probe no longer derived from
+the class its call sites assumed. It compiled clean in the plain build because those probes live inside
+`#ifdef __UNIT_TEST__` — which is also why the `--test` flag mattered, and why "builds" is not the same
+claim as "builds what you changed". The rewrite tiles each class body, refuses if sorting into blocks
+would re-sequence data members relative to each other, and is checked by multiset comparison of
+non-comment lines rather than by my reading of the diff.
+
+**The third failure was not in code I wrote.** The gate printed `GATE_EXIT=0` while its own reviewer
+wrote `build gate : FAIL` in the same log. `gate.sh` line 174 instructs the reviewing agent to echo the
+exit code — the verdict is transcribed by a model, not captured — and `check.sh` exits 0 whenever its
+lint scope comes out empty, so a slightly different second invocation turns a failure into a CLEAN. Both
+gate runs after that were measured directly: `check.sh --staged --test` in the foreground, `$?` read
+without a pipe in between. That run said 1 for the TaskProvider pair and 1 for the strip, both with
+`build gate : PASS 12/12` and EngineTest 59 collections in Dev, Debug and Release — 1 being the standing
+backlog, not a new problem.
+
+**What the strip proves, and what is left.** `comments.py` deleted 233 comments and the code moved
+nowhere: 1199 code tokens before and after with both set differences empty, 195 code lines identical,
+and the `__UNIT_TEST__` region byte-identical at 20 lines. What survives in the header is the copyright
+line, one pointer, and the labels closing a namespace and the test region. Core's layout debt went from
+62 findings to 26 — `StreamDrainPolicy.h` 8, `CPUBudget.h` 6, `Task.h` 4, `TaskRegistry.h` 3,
+`ResultPacket.h` 2, then one each in `TaskStream.h`, `TaskStreamAffinity.h`, `MainThreadTaskQueue.h` —
+and the engine's comment backlog is 2031 lines over 266 files, 1235 of them in Core, where 15 entries
+still have no page and `WorkItem` still has no pointer. Under the new rule those are what stand between
+each of those files and its own clean header.
+
 ## 2026-10-01 22:25 — TaskSystem documented before it is cleaned: 46 pages, then the layout fix
 
 **Context.** The owner asked for the `TaskSystem` pair specifically: repair the header's comments, write the class's
