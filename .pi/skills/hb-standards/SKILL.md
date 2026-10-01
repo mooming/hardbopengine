@@ -318,8 +318,16 @@ git show HEAD:Engine/Module/Header.h > /tmp/pre_Header.h        # 1. snapshot, b
 python3 scripts/comments.py Engine/Module/Header.h               # 2. read the findings
 python3 scripts/comments.py --strip Engine/Module/Header.h       # 3. delete; refuses if code moved,
                                                                  #    or if an entry here lacks its pages
-python3 scripts/comments.py code_tokens Engine/Module/Header.h /tmp/pre_Header.h   # 4. prove equality
+clang-format --style=file -i Engine/Module/Header.h              # 4. format: an argument comment leaves
+                                                                 #    its space behind, `(void* )`
+python3 scripts/comments.py code_tokens Engine/Module/Header.h /tmp/pre_Header.h   # 5. prove equality
+clang-format --style=file --dry-run --Werror Engine/Module/Header.h                # 6. prove the space
 ```
+
+Both proofs are needed because they see different things. `code_tokens` compares tokens, so it cannot
+see whitespace and passed a header that had become `void (*)(void* )` after `/*userData*/` was deleted;
+`check.sh`'s format layer was what actually caught it, and the header had already been committed and
+gate-passed. A strip without a format pass afterwards leaves residue the formatter exists to remove.
 
 `code_tokens` is a real C++ tokenizer — comments blanked by the ban's own lexer, string and character
 literals opaque, line continuations treated as whitespace, maximal munch — and step 4 compares token
