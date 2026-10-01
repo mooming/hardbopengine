@@ -1,6 +1,6 @@
 # Journal
 
-## 2026-10-02 02:20 — the layout sweep reached its own limit, and the limit is the language
+## 2026-10-02 00:20 — the layout sweep reached its own limit, and the limit is the language
 
 **Context.** With `TaskSystem.h` clean, the owner said go, so pass #17 continued pair by pair. `Core` went
 from 62 member-layout findings across ten files to two across 46 files, each pair proved by multiset
@@ -34,7 +34,15 @@ todo #27 with three options and the compiler output attached, and the recommenda
 standard with one sentence and let `layout.py` honour the `hb-standards:ignore` directive the standard
 already defines for exactly this kind of visible exception.
 
-## 2026-10-02 00:40 — the strip guard was too coarse to be useful, so TaskSystem.h waited on its neighbours
+**One more way a gate can lie, found afterwards.** After committing the cleaned `TaskSystem.h`, the file
+showed as modified again, with two `static constexpr` declarations swapped. The working-tree copy was
+layout-clean and comment-clean, so no checker objected; the only thing that runs a member reorder at
+that hour was a gate's own reviewing agent, which is handed the fix cycle in `SKILL.md` — including its
+layout layer — and so can edit the tree it is judging. The unexplained edit was discarded and the
+committed, gate-verified version restored. A verdict is only worth what the tree under it is worth, so
+either the reviewing agent is denied write tools or the gate must diff the tree afterwards and say so.
+
+## 2026-10-01 23:55 — the strip guard was too coarse to be useful, so TaskSystem.h waited on its neighbours
 
 **Context.** The owner asked when `TaskSystem.h` would stop carrying comments. It should have been clean
 hours earlier: its reference is 46 pages, `docs_methods.py` demands nothing more of it, and its pointer
