@@ -42,6 +42,30 @@ namespace hbe
 ///       the task, and not the caller, pay for a table it had no part in sizing.
 class TaskRegistry final
 {
+	using TIndex = Task::TIndex;
+
+private:
+	struct Record final
+	{
+		Task task;
+
+		/// @brief The task to dispatch when this one's join closes, or a null ID for "nobody is waiting".
+		/// @details Routing lives here rather than in Task, which is R9's rule: the task system knows a job, an
+		///          optional successor, and a join counter, and nothing about pipelines. It is registry state on
+		///          purpose - the only path allowed to act on it is the one that holds the identity rules.
+		TaskID successor;
+
+		std::atomic<TaskID::TGeneration> generation;
+		std::atomic<bool> inUse;
+		std::size_t nextFreeRecord;
+
+		/// @brief Space held back so every record starts on a cache line. See RecordSizeBytes and R28.
+		std::byte reservedToCacheLine[24];
+	};
+
+	using TBank = Record*;
+
+public:
 public:
 	/// @brief Records the registry starts with: 4096, which is one bank of 1 MiB.
 	/// @details Chosen against a measured demand of one tracked task in engine code - the logger's - so this is
@@ -66,29 +90,6 @@ public:
 	///          records, far beyond what the ceiling is for, and growing past it is refused with a log line naming
 	///          the limit rather than being silently wrong.
 	static constexpr std::size_t MaxBanks = 1024;
-
-	using TIndex = Task::TIndex;
-
-private:
-	struct Record final
-	{
-		Task task;
-
-		/// @brief The task to dispatch when this one's join closes, or a null ID for "nobody is waiting".
-		/// @details Routing lives here rather than in Task, which is R9's rule: the task system knows a job, an
-		///          optional successor, and a join counter, and nothing about pipelines. It is registry state on
-		///          purpose - the only path allowed to act on it is the one that holds the identity rules.
-		TaskID successor;
-
-		std::atomic<TaskID::TGeneration> generation;
-		std::atomic<bool> inUse;
-		std::size_t nextFreeRecord;
-
-		/// @brief Space held back so every record starts on a cache line. See RecordSizeBytes and R28.
-		std::byte reservedToCacheLine[24];
-	};
-
-	using TBank = Record*;
 
 public:
 	/// @brief Bytes one record occupies, which is the multiplier behind every capacity figure here.
