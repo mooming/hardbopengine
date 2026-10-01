@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Exception — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="#description">Class description</a></li>
+    <li><a href="#template">Template parameters</a></li>
+    <li><a href="#properties">Class properties</a></li>
+    <li><a href="#methods">Class methods</a></li>
+    <li><a href="#non-member">Non-member helpers</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+
+  <h3>Methods</h3>
+  <ul class="methods">
+    <li><a href="constructors.html">constructors</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  Exception
+</p>
+
+<h1>Exception</h1>
+<p class="subtitle">
+  <span class="tag">Engine/Core/Exception.h</span>
+  a throw-site formatter that prints when it is constructed and keeps nothing — the engine is exception-free by
+  standard, and this class has no throw site anywhere in the repository
+</p>
+
+<h2 id="description">Class description</h2>
+
+<p>
+  <code>Exception</code> is a <code>final</code> class whose only member is a variadic constructor. That
+  constructor does one thing: it forwards its arguments to <code>PrintArgs</code> together with the file and line
+  it was given, so the report leaves through <a href="../../Log/index.html">Log</a> while the object is being
+  built. Nothing is stored. There is no message member, no code, no <code>what()</code>, and no base class — in
+  particular no <a href="#coverage"><code>std::exception</code></a> — so a handler that catches this type learns
+  only that a throw happened, and the text it might have wanted has already been written to the log and dropped.
+</p>
+
+<p>
+  That shape is consistent with the rule this engine actually follows: <code>docs/CodingStandards.md</code> states
+  <em>the engine is exception-free; do not use C++ exceptions</em>, and <code>Engine/CodingStandards.h:332</code>
+  records that no <code>try</code>, <code>catch</code> or <code>throw</code> appears anywhere. Error paths report
+  through the Log module and return, or assert. So <code>Exception</code> is best read as the mechanism for the one
+  spelling that rule forbids: write <code>throw Exception(__FILE__, __LINE__, "bad size ", size)</code> and the
+  diagnostics arrive formatted at the throw site, which is the useful half of what a conventional exception type
+  provides.
+</p>
+
+<div class="gap">
+  <strong>A caught <code>Exception</code> carries no information, and it is not a
+  <code>std::exception</code>.</strong> Because there is no <code>std::exception</code> base, a handler written as
+  <code>catch (const std::exception&amp;)</code> does not catch it, and <code>catch (...)</code> is the only form
+  that can. Because the constructor keeps nothing, the catch block cannot ask what went wrong: the arguments were
+  consumed by the print at construction time. Anything a handler needs to act on must therefore still be
+  communicated some other way, which is the same reason the engine's error paths return values instead.
+</div>
+
+<div class="note">
+  <strong>No throw site exists.</strong> A grep of <code>Engine/</code>, <code>Applications/</code> and
+  <code>Examples/</code> finds no construction of this type. Its single appearance outside its own header is the
+  <code>#include</code> at <code>Engine/Test/TestEnv.cpp:10</code>, where the file never names the type again — a
+  stale include, not a use. See <a href="#coverage">Coverage</a>.
+</div>
+
+<h2 id="template">Template parameters</h2>
+
+<p>
+  The class itself is not a template. Its constructor is, and <a href="constructors.html">that page</a> covers
+  what its parameter pack may contain.
+</p>
+
+<h2 id="properties">Class properties</h2>
+
+<p>
+  None — there is no alias, no constant and no field in this class. An object of this type occupies one byte and
+  holds nothing that could be read back.
+</p>
+
+<h2 id="methods">Class methods</h2>
+
+<table>
+  <tr><th>Method</th><th>Signature</th><th>What a caller depends on</th></tr>
+  <tr>
+    <td><a href="constructors.html">constructors</a><span class="badge">1 variadic template</span></td>
+    <td class="sig">template &lt;typename... Types&gt; Exception(const char* file, int line, Types&amp;&amp;... args)</td>
+    <td>
+      Prints <code>file</code>, a <code>:</code>, <code>line</code> and every forwarded argument through
+      <code>PrintArgs</code>, then stores nothing. The first argument is not checked for null
+    </td>
+  </tr>
+</table>
+
+<h2 id="non-member">Non-member helpers</h2>
+
+<p>
+  None. <code>Engine/Core/Exception.h</code> declares no free functions; the printing it relies on belongs to
+  <a href="../../Log/index.html">Log</a>.
+</p>
+
+<h2 id="coverage">Coverage</h2>
+
+<table>
+  <tr><th>Gap</th><th>Detail</th></tr>
+  <tr>
+    <td>Where the text goes</td>
+    <td>
+      <a href="constructors.html">The constructor page</a> says what is passed to <code>PrintArgs</code>;
+      destination, buffering, severity and thread behaviour of that call are
+      <a href="../../Log/index.html">Log</a>'s contract and are not restated here
+    </td>
+  </tr>
+  <tr>
+    <td>Whether the type can be removed</td>
+    <td>
+      Not answered here. It is never constructed, and the one file that includes it does not name it, so the
+      question is live — but deleting a public API type is a decision for the owner, not a documentation finding,
+      and the header may exist to be included by user code outside this repository
+    </td>
+  </tr>
+  <tr>
+    <td><code>std::exception</code></td>
+    <td>
+      Not inherited, deliberately or otherwise; the header includes <code>&lt;cstdio&gt;</code> and
+      <code>&lt;utility&gt;</code> and no <code>&lt;exception&gt;</code>. Stated because the absence changes which
+      <code>catch</code> clauses can reach this type
+    </td>
+  </tr>
+</table>
+
+<footer class="prevnext">
+  <span><a href="../index.html">&larr; Core</a></span>
+  <span><a href="../index.html#classes">Exception in the Core class list</a></span>
+</footer>
+
+</main>
+</body>
+</html>

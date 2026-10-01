@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ScopedTime::constructors — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3>Methods</h3>
+  <ul class="methods">
+    <li><a href="index.html">ScopedTime</a> methods</li>
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">ScopedTime</a> / constructors
+</p>
+
+<h1><span class="fn">constructors</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::time::ScopedTime</span>
+  <span class="tag">Engine/Core/ScopedTime.h</span>
+  starts the clock and binds the variable the measurement will be written to
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code><span class="kw">explicit</span> <span class="fn">ScopedTime</span>(<span class="ty">TDuration</span>&amp; outDeltaTime) <span class="kw">noexcept</span>
+        : duration(outDeltaTime)
+        , start(<span class="ty">TStopWatch</span>::<span class="fn">now</span>())
+{
+}
+
+<span class="kw">explicit</span> ScopedTime(<span class="kw">const</span> ScopedTime&amp;) = <span class="kw">delete</span>;</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Two members are initialized and nothing else happens: the output reference is bound, and
+  <code>start</code> takes <code>TStopWatch::now()</code>. That is the whole constructor, and its simplicity is what
+  makes the start sample honest — there is no work between entering the statement and the clock being read beyond the
+  constructor call itself.
+</p>
+
+<p>
+  <code>explicit</code> is deliberate. Without it a <code>TDuration</code> lvalue would convert to a guard implicitly,
+  and a temporary guard materialised on an argument list would end at the end of the full expression — measuring
+  something nobody chose to measure. Requiring the name makes the lifetime explicit at the call site.
+</p>
+
+<p>
+  The deleted copy constructor is the reason the guard cannot be copied or moved at all: a user-declared copy
+  constructor, even a deleted one, suppresses the implicit move constructor. A probe confirmed both
+  <code>std::is_copy_constructible_v</code> and <code>std::is_move_constructible_v</code> are false. Storing a guard in
+  a container, returning one from a function or capturing it in a lambda are therefore all unavailable, which is the
+  point: a timer that outlived its scope by a move would write a stale span into a variable that may no longer exist.
+</p>
+
+<p>
+  <code>noexcept</code> holds because neither operation can throw: binding a reference and reading a clock. It also
+  means the guard is safe to construct in a path that must not unwind — which matters because the destructor's own
+  <code>noexcept</code> means a destructor reached during unwinding would terminate rather than propagate.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr>
+    <td><code>outDeltaTime</code></td>
+    <td><code>TDuration&amp;</code></td>
+    <td>
+      A non-const lvalue, owned by the caller, that must outlive the guard. It is overwritten at destruction, so any
+      value it holds at construction is discarded — and it is a reference, so a temporary, a literal or the result of
+      a conversion will not bind
+    </td>
+  </tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>A constructor, so the guard. It has no other observable effect: no clock reading is produced until it is destroyed.</p>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Core/TaskStream.cpp</p>
+
+<pre><code><span class="ty">time::TDuration</span> duration;
+
+{
+        time::ScopedTime timer(duration);
+        <span class="kw">if</span> (workItem-&gt;<span class="fn">Run</span>(*task))
+        {
+                taskSys.<span class="fn">DispatchSuccessor</span>(task-&gt;<span class="fn">GetID</span>());
+        }
+}</code></pre>
+
+<p>
+  The duration is declared outside the block and the guard inside it, so the span covers exactly
+  <code>Run</code> plus the successor dispatch, and <code>duration</code> is complete and readable after the closing
+  brace. Declaring both in the same block would work equally well for correctness; the extra block is what makes the
+  end of the measured region visible in the source.
+</p>
+
+<footer class="prevnext">
+  <span><a href="index.html">&larr; ScopedTime</a></span>
+  <span><a href="index.html#methods">All ScopedTime methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

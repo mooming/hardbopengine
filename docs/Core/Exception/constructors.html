@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Exception::constructors — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3>Methods</h3>
+  <ul class="methods">
+    <li><a href="index.html">Exception</a> methods</li>
+    <li><a href="constructors.html">constructors</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">Exception</a> / constructors
+</p>
+
+<h1><span class="fn">constructors</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::Exception</span>
+  <span class="tag">Engine/Core/Exception.h</span>
+  formats the throw site and its arguments straight into the log, and builds an object that keeps none of them
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code><span class="kw">template</span> &lt;<span class="kw">typename</span>... Types&gt;
+<span class="fn">Exception</span>(<span class="kw">const</span> <span class="kw">char</span>* file, <span class="kw">int</span> line, Types&amp;&amp;... args)
+{
+        <span class="kw">using</span> <span class="kw">namespace</span> std;
+        <span class="fn">PrintArgs</span>(file, <span class="st">":"</span>, line, <span class="fn">forward</span>&lt;Types&gt;(args)...);
+}</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  One statement, and it is the whole constructor: <code>PrintArgs(file, ":", line, forward&lt;Types&gt;(args)...)</code>.
+  The file, a separator, the line and every argument are pushed at the log immediately, which is what makes this
+  constructor worth writing at all — a throw site gets its context formatted while the context still exists, in the
+  frame that still has the values.
+</p>
+
+<p>
+  Nothing is captured afterwards. The class declares no fields, so the pack is consumed entirely by the print and
+  there is no copy of the message for a handler to read. The consequences are on the
+  <a href="index.html">class page</a>: this type is not a <code>std::exception</code>, and a handler can learn only
+  that something was constructed.
+</p>
+
+<p>
+  The forwarding is ordinary perfect forwarding of an argument pack, so an lvalue argument reaches
+  <code>PrintArgs</code> as an lvalue and a temporary as an rvalue. That matters only in that
+  <code>PrintArgs</code> takes <code>const T&amp;</code> — a mutable argument is not modified here, and nothing is
+  moved out of anything.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr>
+    <td><code>file</code></td>
+    <td><code>const char*</code></td>
+    <td>A null-terminated string, conventionally <code>__FILE__</code>. <strong>Not checked for null</strong> — it is
+      handed to the log as given, so <code>nullptr</code> here is a fault at print time rather than a rejected call</td>
+  </tr>
+  <tr>
+    <td><code>line</code></td>
+    <td><code>int</code></td>
+    <td>Conventionally <code>__LINE__</code>. Printed as a number; no validity is assumed or needed</td>
+  </tr>
+  <tr>
+    <td><code>Types</code></td>
+    <td><em>template parameter pack</em></td>
+    <td>Zero or more types. Each is forwarded as written, so no conversion is imposed before the print</td>
+  </tr>
+  <tr>
+    <td><code>args</code></td>
+    <td><code>Types&amp;&amp;...</code></td>
+    <td>Anything <a href="../../Log/index.html">Log</a>'s <code>PrintArgs</code> can format. The arguments are the
+      message: this constructor has no format string, so the pack is concatenated left to right with no separators
+      inserted between the caller's own strings</td>
+  </tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>
+  A constructor, so the object — one byte, holding nothing. Nothing about the arguments survives it.
+</p>
+
+<h2 id="example">Examples</h2>
+
+<p class="note">Illustrative — no call site for this exists in the repository. A grep of <code>Engine/</code>,
+<code>Applications/</code> and <code>Examples/</code> finds no construction of <code>Exception</code>, because
+<code>docs/CodingStandards.md</code> requires the engine to be exception-free.</p>
+
+<pre><code><span class="kw">if</span> (size == <span class="nu">0</span>)
+{
+        <span class="kw">throw</span> <span class="ty">hbe::Exception</span>(__FILE__, __LINE__, <span class="st">"Empty buffer of capacity "</span>, capacity);
+}</code></pre>
+
+<p>
+  The printed report is the effect the caller should expect to see, and the only one: the log line appears at the
+  moment of construction, whether or not anything ever catches the throw.
+</p>
+
+<footer class="prevnext">
+  <span><a href="index.html">&larr; Exception</a></span>
+  <span><a href="index.html#methods">All Exception methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

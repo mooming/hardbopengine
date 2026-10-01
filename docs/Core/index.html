@@ -47,6 +47,7 @@
     <li><a href="#component">Component</a></li>
     <li><a href="#componentsystem">ComponentSystem</a></li>
     <li><a href="#systemstatistics">SystemStatistics</a></li>
+    <li><a href="#componentstate">ComponentState</a></li>
     <li><a href="#exception">Exception</a></li>
     <li><a href="#scopedtime">ScopedTime</a></li>
     <li><a href="#scopedlock">ScopedLock</a></li>
@@ -110,7 +111,8 @@
   <tr><td><a href="#component">Component</a></td><td>Abstract class</td><td>Component.h</td><td>Base of every engine component</td></tr>
   <tr><td><a href="#componentsystem">ComponentSystem</a></td><td>Class template</td><td>ComponentSystem.h</td><td>Drives a component type through its lifecycle</td></tr>
   <tr><td><a href="#systemstatistics">SystemStatistics</a></td><td>Class</td><td>SystemStatistics.h</td><td>Frame, log and allocator counters and deltas</td></tr>
-  <tr><td><a href="#exception">Exception</a></td><td>Class</td><td>Exception.h</td><td>Carries a formatted message with file and line</td></tr>
+  <tr><td><a href="#componentstate">ComponentState</a></td><td>Enum class</td><td>ComponentState.h</td><td>The five lifecycle states a <code>Component</code> passes through</td></tr>
+  <tr><td><a href="#exception">Exception</a></td><td>Class</td><td>Exception.h</td><td>Throw-site formatter that prints on construction and keeps nothing</td></tr>
   <tr><td><a href="#scopedtime">ScopedTime</a></td><td>Class</td><td>ScopedTime.h</td><td>RAII timer writing a duration on scope exit</td></tr>
   <tr><td><a href="#scopedlock">ScopedLock</a></td><td>Class template</td><td>ScopedLock.h</td><td>RAII lock with optional wait profiling</td></tr>
   <tr><td><a href="#commandlinearguments">CommandLineArguments</a></td><td>Class</td><td>CommandLineArguments.h</td><td>Parsed command line held as strings</td></tr>
@@ -659,7 +661,17 @@ thread boundary at its own width with no layout question.</p>
 <h3>Non-member helper functions</h3>
 <p>None.</p>
 
+<h2 id="componentstate">ComponentState (<code>Engine/Core/ComponentState.h</code>)</h2>
+<p><a href="ComponentState/index.html">Full class reference: <code>ComponentState</code> and its helpers</a> — this section stays as the module-level summary; the folder page carries each enumerator's meaning, the release path that rewinds the state before disabling, and the unchecked table lookup behind the stream operator.</p>
+
+<h3>Class description</h3>
+<p><code>enum class ComponentState : int</code> with <code>NONE</code>, <code>BORN</code>, <code>ALIVE</code>, <code>SLEEP</code>, <code>DEAD</code> — the whole state of a <a href="#component">Component</a>, which has no enabled flag of its own.</p>
+
+<h3>Class methods</h3>
+<p>None — an enumeration declares no members. The one namespace-scope helper is <code>operator&lt;&lt;</code>, which prints the enumerator's name by indexing a five-entry table with its number.</p>
+
 <h2 id="exception">Exception (<code>Engine/Core/Exception.h</code>)</h2>
+<p><a href="Exception/index.html">Full class reference: <code>Exception</code> and its constructors</a> — this section stays as the module-level summary; the folder page carries the print-on-construction contract, the absence of <code>std::exception</code>, and the fact that no throw site exists in the repository.</p>
 
 <h3>Class description</h3>
 <p>
@@ -688,6 +700,7 @@ the arguments to <code>PrintArgs</code> and stores nothing, which is why there i
 <p>None.</p>
 
 <h2 id="scopedtime">ScopedTime (<code>Engine/Core/ScopedTime.h</code>)</h2>
+<p><a href="ScopedTime/index.html">Full class reference: <code>ScopedTime</code> and its methods</a> — this section stays as the module-level summary; the folder pages carry the overwrite-not-accumulate rule, the probe-verified statement that the guard is neither copyable nor movable, and the production call site that feeds a <code>Slow DeltaTime</code> warning.</p>
 
 <h3>Class description</h3>
 <p>RAII scoped timer that writes the elapsed duration into the value you hand it, on scope exit.</p>

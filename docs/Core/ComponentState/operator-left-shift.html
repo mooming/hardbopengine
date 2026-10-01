@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ComponentState::operator&lt;&lt; — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3>Methods</h3>
+  <ul class="methods">
+    <li><a href="index.html">ComponentState</a> methods</li>
+    <li><a href="operator-left-shift.html">operator&lt;&lt;</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">ComponentState</a> / operator&lt;&lt;
+</p>
+
+<h1><span class="fn">operator&lt;&lt;</span></h1>
+<p class="subtitle">
+  <span class="tag">namespace hbe, Engine/Core/ComponentState.h</span>
+  prints an enumerator as its name by indexing a five-entry table with the enumerator's number, checking nothing
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code><span class="kw">inline</span> std::ostream&amp; <span class="fn">operator&lt;&lt;</span>(std::ostream&amp; os, <span class="kw">const</span> <span class="ty">ComponentState</span>&amp; state)
+{
+        <span class="kw">static</span> <span class="kw">const</span> <span class="kw">char</span>* names[] = {<span class="st">"NONE"</span>, <span class="st">"BORN"</span>, <span class="st">"ALIVE"</span>, <span class="st">"SLEEP"</span>, <span class="st">"DEAD"</span>};
+
+        os &lt;&lt; names[<span class="kw">static_cast</span>&lt;<span class="kw">int</span>&gt;(state)];
+        <span class="kw">return</span> os;
+}</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Stream insertion for the enumeration, so a <a href="../index.html#component"><code>Component</code></a>'s state can
+  be reported as <code>ALIVE</code> instead of <code>2</code>. The mechanism is a table lookup: the enumerator is cast
+  to <code>int</code> and used to index <code>names</code>, a function-local <code>static</code> array of five string
+  literals at <code>Engine/Core/ComponentState.h:23</code>.
+</p>
+
+<p>
+  The <code>inline</code> is load-bearing, not decorative. This is a namespace-scope function defined in a header
+  that <code>Engine/Core/Component.h</code> includes, so without it every translation unit that includes the header
+  would emit its own definition and the link would fail. That is the case the <em>inline</em> rule warns about: the
+  keyword is redundant on an in-class member and required here.
+</p>
+
+<div class="gap">
+  <strong>The index is unchecked.</strong> <code>names</code> holds five entries and
+  <code>static_cast&lt;int&gt;(state)</code> is not constrained before it is used at
+  <code>Engine/Core/ComponentState.h:25</code>, so any value outside 0 to 4 reads outside the array. The type makes
+  such a value reachable: the underlying type is <code>int</code>, so
+  <code>static_cast&lt;ComponentState&gt;(99)</code> is a well-formed <code>ComponentState</code> that no accessor in
+  this engine would ever have produced. There is no assert, clamp or fallback string. This matters most in the place
+  the operator exists for — a failure report about an unexpected state — because printing the very value that is
+  wrong is what crosses the boundary.
+</div>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr>
+    <td><code>os</code></td>
+    <td><code>std::ostream&amp;</code></td>
+    <td>Any writable stream. The engine's unit-test harness passes its own log stream, which supports this operator
+      through <a href="../../Log/index.html">Log</a></td>
+  </tr>
+  <tr>
+    <td><code>state</code></td>
+    <td><code>const ComponentState&amp;</code></td>
+    <td>One of the five enumerators declared by the enum. Values produced by casting an arbitrary <code>int</code>
+      are not handled — see the hazard above</td>
+  </tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<table>
+  <tr><th>Type</th><th>What you get</th></tr>
+  <tr>
+    <td><code>std::ostream&amp;</code></td>
+    <td>The same stream that was passed in, with the enumerator's name appended, so further <code>&lt;&lt;</code>
+      operations chain onto it. Nothing is inserted on failure — there is no failure path</td>
+  </tr>
+</table>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Core/ComponentSystem.cpp</p>
+
+<pre><code><span class="kw">if</span> (<span class="fn">GetState</span>() != ComponentState::BORN)
+{
+        ls &lt;&lt; <span class="st">"State failure, state = "</span> &lt;&lt; <span class="fn">GetState</span>() &lt;&lt; <span class="st">", but expected "</span> &lt;&lt; ComponentState::BORN &lt;&lt; lferr;
+}</code></pre>
+
+<p>
+  A lifecycle assertion in the component-system unit tests, at <code>Engine/Core/ComponentSystem.cpp:92</code>; the
+  same idiom repeats at <code>:102</code>, <code>:119</code>, <code>:131</code> and <code>:144</code> for the other
+  states. Both operands are inserted through this operator, which is why the report reads
+  <code>state = SLEEP, but expected ALIVE</code> rather than a pair of numbers.
+</p>
+
+<footer class="prevnext">
+  <span><a href="index.html">&larr; ComponentState</a></span>
+  <span><a href="index.html#methods">All ComponentState methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ComponentState — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="#description">Class description</a></li>
+    <li><a href="#template">Template parameters</a></li>
+    <li><a href="#properties">Class properties</a></li>
+    <li><a href="#methods">Class methods</a></li>
+    <li><a href="#non-member">Non-member helpers</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+
+  <h3>Methods</h3>
+  <ul class="methods">
+    <li>None — an enum class declares no members</li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  ComponentState
+</p>
+
+<h1>ComponentState</h1>
+<p class="subtitle">
+  <span class="tag">Engine/Core/ComponentState.h</span>
+  the five lifecycle states a <a href="../index.html#component"><code>Component</code></a> passes through, and the
+  only value <code>ComponentSystem</code> reads when it decides what to do with one
+</p>
+
+<h2 id="description">Class description</h2>
+
+<p>
+  <code>ComponentState</code> is an <code>enum class</code> over <code>int</code> with five enumerators. It is the
+  whole state of a component: <a href="../index.html#component"><code>Component</code></a> stores one in its
+  protected <code>state</code> member, and everything a component <em>is</em> at a given moment — enabled, asleep,
+  awaiting release — is expressed by which enumerator it holds. There is no flag word and no separate enabled bit;
+  <code>IsEnabled()</code> is the test <code>state == ALIVE</code>.
+</p>
+
+<p>
+  Values are written through <code>Component::SetState</code>, <code>SetEnable</code> and <code>Destroy</code>, and
+  they are consumed by <code>ComponentSystem::ProcessTransition</code>, which switches on the state of everything in
+  its transition list: <code>ALIVE</code> calls <code>OnEnable()</code> and moves the component into the update list,
+  <code>SLEEP</code> calls <code>OnDisable()</code> and moves it to the sleep list, and <code>DEAD</code> runs the
+  release path. Anything else reaches a <code>default</code> that asserts, so <code>NONE</code> and
+  <code>BORN</code> reaching that switch is treated as a bug rather than a state.
+</p>
+
+<div class="note">
+  <strong>The release path rewinds the state before it disables.</strong> For <code>DEAD</code> the transition is
+  <code>SetState(SLEEP)</code>, then <code>OnDisable()</code>, then <code>SetState(DEAD)</code>, then
+  <code>Release()</code> — <code>Engine/Core/ComponentSystem.h:117</code> through <code>:121</code>. A component
+  that reads its own state inside <code>OnDisable()</code> therefore sees <code>SLEEP</code>, never
+  <code>DEAD</code>, and code that tests for <code>DEAD</code> there is testing something that cannot be true at that
+  moment.
+</div>
+
+<h2 id="template">Template parameters</h2>
+
+<p>None — an enumeration is not a template, and this one is not parameterised on anything.</p>
+
+<h2 id="properties">Class properties</h2>
+
+<table>
+  <tr><th>Name</th><th>Declaration</th><th>What it means</th></tr>
+  <tr>
+    <td><code>NONE</code></td><td><code>= 0</code></td>
+    <td><span class="badge">enumerator</span> The state a component holds straight after
+      <code>Component::Component(const char*)</code> at <code>Engine/Core/Component.h:29</code>: constructed, not yet
+      registered with a system. Reaching the transition switch in this state asserts</td>
+  </tr>
+  <tr>
+    <td><code>BORN</code></td><td><code>= 1</code></td>
+    <td><span class="badge">enumerator</span> Set by <code>ComponentSystem.h:55</code> when a component is added.
+      The unit tests assert this value after registration (<code>Engine/Core/ComponentSystem.cpp:90</code>). Not a
+      valid state at transition time</td>
+  </tr>
+  <tr>
+    <td><code>ALIVE</code></td><td><code>= 2</code></td>
+    <td><span class="badge">enumerator</span> Enabled and updated. <code>ComponentSystem.h:73</code> sets it, and
+      <code>SetEnable(true)</code> sets it. The transition switch calls <code>OnEnable()</code> and puts the
+      component on the update list</td>
+  </tr>
+  <tr>
+    <td><code>SLEEP</code></td><td><code>= 3</code></td>
+    <td><span class="badge">enumerator</span> Disabled but alive: <code>SetEnable(false)</code> sets it, and the
+      switch calls <code>OnDisable()</code> and moves the component to the sleep list. It is also the value a
+      component sees inside <code>OnDisable()</code> while being released</td>
+  </tr>
+  <tr>
+    <td><code>DEAD</code></td><td><code>= 4</code></td>
+    <td><span class="badge">enumerator</span> Requested by <code>Component::Destroy()</code>. The switch disables,
+      then calls <code>Release()</code>. It is the only state whose handler changes the state twice</td>
+  </tr>
+</table>
+
+<p>
+  The underlying type is <code>int</code>, spelled <code>enum class ComponentState : int</code>. The five values are
+  the ones the header declares; nothing in the engine stores a state produced any other way, which matters because
+  the stream operator below indexes an array by this number.
+</p>
+
+<h2 id="methods">Class methods</h2>
+
+<p>
+  None — an enumeration declares no members. Reading and writing the state goes through
+  <a href="../index.html#component"><code>Component</code></a>'s accessors, not through this type.
+</p>
+
+<h2 id="non-member">Non-member helpers</h2>
+
+<table>
+  <tr><th>Helper</th><th>Signature</th><th>What a caller depends on</th></tr>
+  <tr>
+    <td><a href="operator-left-shift.html">operator&lt;&lt;</a></td>
+    <td class="sig">std::ostream&amp; operator&lt;&lt;(std::ostream&amp; os, const ComponentState&amp; state)</td>
+    <td>
+      Writes the enumerator's name — <code>ALIVE</code>, <code>DEAD</code> and so on — rather than its number, by
+      indexing a five-entry name table with <code>static_cast&lt;int&gt;(state)</code>. Defined <code>inline</code> in
+      the header, which is load-bearing for a namespace-scope function. See
+      <a href="operator-left-shift.html">the operator's page</a> for the range it does not check
+    </td>
+  </tr>
+</table>
+
+<h2 id="coverage">Coverage</h2>
+
+<table>
+  <tr><th>Gap</th><th>Detail</th></tr>
+  <tr>
+    <td>The transition machine itself</td>
+    <td>
+      This page states which state means what and which handler reads it. Who moves a component from one state to
+      another, and in what order the lists are processed, is <code>ComponentSystem</code>'s contract and belongs to
+      <a href="../index.html#componentsystem"><code>ComponentSystem</code></a>
+    </td>
+  </tr>
+  <tr>
+    <td>The assert text on the <code>default</code> path</td>
+    <td>
+      <code>ComponentSystem.h:122</code> onward formats the offending value with a <code>%d</code> conversion, which
+      is why an unexpected state is reported as a number and not a name even though the name operator above exists.
+      Formatting and severity belong to <a href="../../Log/index.html">Log</a>
+    </td>
+  </tr>
+  <tr>
+    <td>Component behaviour per state</td>
+    <td>
+      What <code>OnEnable()</code>, <code>OnDisable()</code> and <code>Release()</code> do is the subclass's; the
+      engine declares them pure virtual on <a href="../index.html#component"><code>Component</code></a>
+    </td>
+  </tr>
+</table>
+
+<footer class="prevnext">
+  <span><a href="../index.html">&larr; Core</a></span>
+  <span><a href="../index.html#classes">ComponentState in the Core class list</a></span>
+</footer>
+
+</main>
+</body>
+</html>

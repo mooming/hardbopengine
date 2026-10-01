@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ScopedTime — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This class</h3>
+  <ul>
+    <li><a href="#description">Class description</a></li>
+    <li><a href="#template">Template parameters</a></li>
+    <li><a href="#properties">Class properties</a></li>
+    <li><a href="#methods">Class methods</a></li>
+    <li><a href="#non-member">Non-member helpers</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+
+  <h3>Methods</h3>
+  <ul class="methods">
+    <li><a href="constructors.html">constructors</a></li>
+    <li><a href="destructor.html">destructor</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  ScopedTime
+</p>
+
+<h1>ScopedTime</h1>
+<p class="subtitle">
+  <span class="tag">Engine/Core/ScopedTime.h</span>
+  a scope that measures itself: it samples the clock on construction and writes the elapsed span into a caller-owned
+  variable on destruction
+</p>
+
+<h2 id="description">Class description</h2>
+
+<p>
+  <code>ScopedTime</code> is a measurement guard declared in <code>namespace hbe::time</code>. Its constructor samples
+  the clock; its destructor samples again and assigns the difference to the <code>TDuration</code> reference it was
+  given. There is no accessor and no getter — the output is the caller's variable, which means the value becomes
+  readable only after the guard's scope ends.
+</p>
+
+<p>
+  The guard is neither copyable nor movable, and the reason is structural: it holds
+  <a href="#properties"><code>TDuration&amp;</code></a>, and its copy constructor is explicitly deleted, which also
+  suppresses the implicit move constructor. Verified with a compiler rather than inferred —
+  <code>std::is_copy_constructible_v</code> and <code>std::is_move_constructible_v</code> are both false for
+  <code>ScopedTime</code>. That is the same mechanism the <a href="../ScopedLock/index.html">lock guard</a> relies on:
+  a guard that cannot leave its scope cannot report a span that ends somewhere other than where it began.
+</p>
+
+<p>
+  It is used in production, not only in tests. <code>Engine/Core/TaskStream.cpp:546</code> wraps one around
+  <code>workItem-&gt;Run(*task)</code> inside a nested block, so the timer is destroyed — and the duration written —
+  before the surrounding code reads that duration and compares it against the <code>CPUBudget</code> allowance
+  accumulated around it:
+</p>
+
+<p class="meta">From Engine/Core/TaskStream.cpp</p>
+
+<pre><code>time::TDuration duration;
+<span class="kw">const</span> <span class="kw">bool</span> chargingBudget = budget.GetAllowance().count() &gt; <span class="nu">0.0</span>;
+<span class="cm">// ...</span>
+{
+        time::ScopedTime timer(duration);
+        <span class="kw">if</span> (workItem-&gt;<span class="fn">Run</span>(*task))
+        {
+                taskSys.<span class="fn">DispatchSuccessor</span>(task-&gt;<span class="fn">GetID</span>());
+        }
+}</code></pre>
+
+<p>
+  Beyond that, the type appears in the unit-test timing blocks of the <a href="../../Container/index.html">Container</a>,
+  <a href="../../Memory/index.html">Memory</a> and <a href="../../Math/index.html">Math</a> modules, where a pair of
+  guarded blocks measures the engine's container against a standard-library baseline.
+</p>
+
+<div class="gap">
+  <strong>The destructor assigns; it does not accumulate.</strong> <code>duration = end - start</code> overwrites
+  whatever the referenced variable held. Two guards over the same <code>TDuration</code> therefore leave only the
+  second measurement, and a loop that constructs a guard per iteration with one output variable ends the loop holding
+  the last iteration's span, not the total. To sum spans, keep separate variables or add them explicitly.
+</div>
+
+<div class="note">
+  <strong>Read the output after the closing brace, never inside the scope.</strong> The value is written at
+  destruction, which is why the call site above wraps the work in its own block. Reading <code>duration</code> while a
+  guard naming it is still alive yields the previous value — and on a default-constructed local, zero.
+</div>
+
+<h2 id="template">Template parameters</h2>
+
+<p>None — there is no template here, and no class for one to belong to.</p>
+
+<h2 id="properties">Class properties</h2>
+
+<table>
+  <tr><th>Name</th><th>Declaration</th><th>What it means</th></tr>
+  <tr>
+    <td><code>duration</code></td>
+    <td><code>TDuration&amp; duration;</code></td>
+    <td>
+      <span class="badge">private</span> Where the measurement is written at destruction. Not owned: the referenced
+      object must outlive the guard, which is why every call site passes a local declared before the guard's block.
+      Overwritten, never added to
+    </td>
+  </tr>
+  <tr>
+    <td><code>start</code></td>
+    <td><code>TTime start;</code></td>
+    <td>
+      <span class="badge">private</span> The clock sample taken in the constructor's member-initialization list, so it
+      is the earliest point the guard can observe and it includes the constructor's own cost only trivially
+    </td>
+  </tr>
+</table>
+
+<h2 id="methods">Class methods</h2>
+
+<table>
+  <tr><th>Method</th><th>Signature</th><th>What a caller depends on</th></tr>
+  <tr>
+    <td><a href="constructors.html">constructors</a><span class="badge">1, plus a deleted copy</span></td>
+    <td class="sig">explicit ScopedTime(TDuration&amp; outDeltaTime) noexcept<br>ScopedTime(const ScopedTime&amp;) = delete</td>
+    <td>
+      Samples the clock into <code>start</code> and binds the output reference. Explicit, so a guard cannot be formed
+      by an implicit conversion from a duration; copying is deleted and moving is unavailable
+    </td>
+  </tr>
+  <tr>
+    <td><a href="destructor.html">destructor</a></td>
+    <td class="sig">~ScopedTime() noexcept</td>
+    <td>
+      Samples again and assigns <code>end - start</code> to the referenced duration. No throwing — it is
+      <code>noexcept</code>, and the arithmetic it performs cannot allocate
+    </td>
+  </tr>
+</table>
+
+<h2 id="non-member">Non-member helpers</h2>
+
+<p>
+  None in <code>Engine/Core/ScopedTime.h</code>. The conversions a caller usually wants next —
+  <code>GetNow()</code>, <code>ToFloat(TStopWatch::duration)</code> and the rest — are namespace-scope members of
+  <code>hbe::time</code> declared in <code>Engine/Core/Time.h</code> and documented under
+  <a href="../index.html#functions">Module functions</a>.
+</p>
+
+<h2 id="coverage">Coverage</h2>
+
+<table>
+  <tr><th>Gap</th><th>Detail</th></tr>
+  <tr>
+    <td>What a <code>TDuration</code> is</td>
+    <td>
+      Measured here, not assumed: <code>TStopWatch</code> is <code>std::chrono::high_resolution_clock</code>,
+      <code>TTime</code> is a <code>time_point</code> over it, and <code>TDuration</code> is its duration, whose period
+      on this toolchain is <code>1/1000000000</code> — nanoseconds. Converting to seconds or milliseconds is
+      <code>time::ToFloat</code>, a module function, and the clock's monotonicity guarantees belong to the standard
+      library rather than to this engine
+    </td>
+  </tr>
+  <tr>
+    <td>Clock identity</td>
+    <td>
+      <code>time::GetNow()</code> returns <code>std::chrono::steady_clock::now()</code>
+      (<code>Engine/Core/Time.h:16</code>) while <code>TTime</code> is a time point over
+      <code>high_resolution_clock</code>. That compiles here because a probe confirmed the two clock types are the same
+      type on this toolchain. On a toolchain where they are distinct, mixing the two APIs would not compile — stated so
+      that a reader does not treat the mix as portable
+    </td>
+  </tr>
+  <tr>
+    <td>What the measured span includes</td>
+    <td>
+      Everything between the two samples, including scheduling and any other thread's work that preempts this one. The
+      guard measures wall-clock passage, not CPU time; the accounting that turns such spans into budget charges lives
+      with <code>CPUBudget</code> at the call site above, and its rules are its own
+    </td>
+  </tr>
+</table>
+
+<footer class="prevnext">
+  <span><a href="../index.html">&larr; Core</a></span>
+  <span><a href="../index.html#classes">ScopedTime in the Core class list</a></span>
+</footer>
+
+</main>
+</body>
+</html>
