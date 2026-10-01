@@ -276,18 +276,6 @@ public:
 		return taskRegistry;
 	}
 
-	/// @brief Close every stream's CPU-budget window, to be reopened by each stream on its own thread.
-	/// @details An allowance that closes nothing is a measurement that changes no decision, which is a syscall
-	///          billed per task for nothing; the window is what makes an allowance mean "per frame period", the
-	///          yardstick ConfigureBudget already states allowances against. Cheap enough to call from a loop -
-	///          it advances only once a base frame period has passed, and the base stream period is the number
-	///          every budget in the engine is measured against, so the two cannot drift apart.
-	/// @details Nothing here writes a budget. Each stream is signalled and reopens itself, because a budget
-	///          charges the CPU time of the thread that owns it, and a reset executed elsewhere races that
-	///          thread's BeginTask and EndTask pairing on the fields that decide whether a charge is a task or a
-	///          thread's whole life.
-	/// @note The base stream's own thread calls this from its loop, and the timing state it holds is unsynchronised
-	///       on purpose: a second caller would need a lock to decide a timestamp.
 	/// @brief Run one engine frame of base-stream work inside the base frame budget.
 	void Update() noexcept;
 
@@ -348,6 +336,18 @@ public:
 	///          drives a wait.
 	void ReportDriveTimeout(const char* waitingFor, std::chrono::milliseconds patience) noexcept;
 
+	/// @brief Close every stream's CPU-budget window, to be reopened by each stream on its own thread.
+	/// @details An allowance that closes nothing is a measurement that changes no decision, which is a syscall
+	///          billed per task for nothing; the window is what makes an allowance mean "per frame period", the
+	///          yardstick ConfigureBudget already states allowances against. Cheap enough to call from a loop -
+	///          it advances only once a base frame period has passed, and the base stream period is the number
+	///          every budget in the engine is measured against, so the two cannot drift apart.
+	/// @details Nothing here writes a budget. Each stream is signalled and reopens itself, because a budget
+	///          charges the CPU time of the thread that owns it, and a reset executed elsewhere races that
+	///          thread's BeginTask and EndTask pairing on the fields that decide whether a charge is a task or a
+	///          thread's whole life.
+	/// @note The base stream's own thread calls this from its loop, and the timing state it holds is unsynchronised
+	///       on purpose: a second caller would need a lock to decide a timestamp.
 	void RunBudgetWindowPass() noexcept;
 
 	/// @brief How many budget windows have closed since the task system was built.
@@ -364,7 +364,7 @@ public:
 	///          allocated when the task is created, so there is no capacity left for a stream to run short of.
 	/// @note An index outside the streams is a programming error and asserts; the general-queue overload above
 	///       needs no index, and takes the task without choosing a stream.
-	/// @brief Queue one work item on one stream, on the lane the caller names.
+	/// @details Queue one work item on one stream, on the lane the caller names.
 	/// @param lane `StreamDrainPolicy::ELane::Fifo` runs items in arrival order; `Priority` runs the highest `priority`
 	///        first, oldest within a tie. `ELane::None` is a caller error and is asserted, because a provider attached
 	///        to no lane is a different condition from work with nowhere to go.
@@ -393,7 +393,7 @@ public:
 	///             one of exactly one item, and calling it twice on the same task would overwrite the first
 	///             declaration.
 	/// @param Priority of the item, 0 being the least urgent.
-	/// @brief Offer a task to one stream as a single whole-range work item, on the lane the caller names.
+	/// @details Offer a task to one stream as a single whole-range work item, on the lane the caller names.
 	/// @param priority ordering key inside the priority queue - it does **not** choose a lane; see `lane`.
 	/// @param lane which queue serves the work, `ELane::Fifo` by default so existing callers keep today's behaviour.
 	/// @note The lane parameter is added last and defaulted for one reason: a `uint8_t` priority and a scoped lane enum
@@ -408,8 +408,6 @@ public:
 	// function was silently enqueuing at top priority. With the direction inverted, leaving 0 here would
 	// have flipped those same callers to the bottom of the queue instead.
 	void DispatchToMainThread(TMainThreadTask task, void* userData, uint8_t priority = 128) noexcept;
-
-	// Process all pending main thread tasks.
 
 	[[nodiscard]] StaticString GetName() const noexcept
 	{
@@ -445,14 +443,6 @@ public:
 	[[nodiscard]] TIndex GetStreamIndex(TThreadID id) const noexcept;
 	TaskStream& GetStream(int index) noexcept;
 
-	/// @brief Whether the stream at `index` exists at this instant.
-	/// @details Streams are built by `Initialize` and cleared by `JoinAndClear`, so the array is empty
-	///          before startup and again once the pump has joined; indexing either way aborts with a
-	///          bare `FatalAssert`. Anything that reaches a stream by index instead of holding one must
-	///          ask first - this is the precondition of `GetStream` and `GetIOTaskStream`, not a policy.
-	/// @note Answers "can I index this now", nothing more. It is not a lifetime guarantee across the
-	///       call: a concurrent `JoinAndClear` can retire the stream between the test and the use, so a
-	///       caller logging while another thread tears the pump down still needs its own ordering.
 	/// @brief Cap on how many streams one split may spread across, so the chosen list can live on the caller's stack.
 	/// @note Not a tuning knob: a job spread over more than this many streams is not a shape the engine has, and the
 	///       clamp keeps the choice reproducible instead of allocating.
@@ -462,6 +452,16 @@ public:
 					const TIndex* streamIndices, TIndex numStreamIndices, uint8_t priority, TaskID successor,
 					TIndex successorStream) noexcept;
 
+	/// @brief Whether the stream at `index` exists at this instant.
+	/// @details Streams are built by `Initialize` and cleared by `JoinAndClear`, so the array is empty
+	///          before startup and again once the pump has joined. GetStream answers an index outside a built
+	///          array with stream 0 rather than a failure, so an unchecked index is work on the base stream,
+	///          not a crash; an empty array has no stream 0 to hand back, and the index assert inside Array
+	///          fires there instead. Anything that reaches a stream by index instead of holding one must ask
+	///          first - this is the precondition of `GetStream` and `GetIOTaskStream`, not a policy.
+	/// @note Answers "can I index this now", nothing more. It is not a lifetime guarantee across the
+	///       call: a concurrent `JoinAndClear` can retire the stream between the test and the use, so a
+	///       caller logging while another thread tears the pump down still needs its own ordering.
 	[[nodiscard]] bool HasStream(TIndex index) const noexcept
 	{
 		return streams.IsValidIndex(index);
