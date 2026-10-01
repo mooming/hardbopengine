@@ -67,6 +67,14 @@ exist.
     - Material useful for **implementation or system design** (invariants, algorithms,
       allocation strategy, locking protocol, platform quirks) goes in an HTML design
       document under `docs/`.
+    - **An API reference pointer is an address, not documentation.** Every documented entry
+      carries exactly one line, `/// API reference: docs/<Module>/<Entry>/index.html`,
+      immediately above its declaration — and nothing more. The header then contains the way
+      to the contract without keeping a copy of it, which is what a `@brief` sentence would
+      have been: a second place the same claim lives. Both directions are enforced —
+      `comments.py` refuses a pointer whose path does not resolve or which names a different
+      entry, and `docs_coverage.py` refuses a page whose header carries no address. An entry
+      without a page carries no pointer, because its prose has not moved yet.
     - Exemptions: the line-1 `// Copyright (c) … Hansol Park` notice is a legal notice,
       not documentation, and `check.sh` requires it; `Engine/CodingStandards.cpp` is the
       rule's own teaching exemplar and carries deliberate BAD EXAMPLE commentary, so it

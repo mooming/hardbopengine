@@ -159,6 +159,20 @@ To maintain high code quality and consistency, please adhere to the following gu
   always: write the pages → prove coverage → delete the comments. `docs_coverage.py` is that
   proof, and `docs/index.html` must reach every module page for the site to count as a reference.
 - **Exemptions, and this list is exhaustive.**
+    - **An API reference pointer is an address, not prose.** Every documented entry carries exactly
+      one `///` line naming its own page, immediately above the declaration:
+        ```cpp
+        /// API reference: docs/Core/ScopedTime/index.html
+        class ScopedTime final
+        ```
+      The reader of a header gets the way to the contract without the header owning a copy of it, and
+      unlike a `@brief` sentence the line can be checked in both directions: `comments.py` refuses a
+      pointer whose path does not resolve, whose module is not the file's own, whose entry the file
+      does not declare, or which sits on anything other than its own declaration; `docs_coverage.py`
+      refuses a page whose header carries no address. The form is exact — one line, that prefix, that
+      path shape — because a line free to grow a sentence is a `@brief` comment that escaped the ban.
+      An entry without a page has no pointer: the address would lead nowhere, and its prose has not
+      moved yet.
     - The line-1 `// Copyright (c) … Hansol Park` notice: a legal notice, not documentation,
       and required by the standards lint. Where an IDE banner wraps it (`//`, then the
       copyright, then `// Created by …`), keep the copyright line and drop the banner.

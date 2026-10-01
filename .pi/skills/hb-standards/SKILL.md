@@ -183,6 +183,14 @@ comments, block comments, string and character literals, and line continuations.
 literals are absent from this tree (measured: 0 files), and the lexer fails loudly rather than
 mis-lexing if one appears.
 
+The one exemption that is neither legal notice nor structural label is the **API reference pointer**: one
+`/// API reference: docs/<Module>/<Entry>/index.html` line directly above a documented entry. It is an
+address, so it is checkable in a way a sentence never is — `comments.py` rejects a pointer whose path does not
+resolve, whose module is not the file's own, whose entry the file does not declare, or which sits on a member
+rather than above its declaration, and `docs_coverage.py` rejects a page whose header carries no pointer at
+all. The form is exact for that reason: a pointer allowed to grow a sentence is a `@brief` comment that
+escaped the ban, which is what it replaced.
+
 Two properties of this script are easy to misread. It **exits 1 while any comment remains**, which is the
 normal state of a module that still owes reference pages — a nonzero exit here is a count, not a failed
 step, and a driver that treats it as a failure marks a correct run as broken. And its exemption for
@@ -374,7 +382,7 @@ One module — or one header inside a module too large to review at once, which 
 | `<mod> judgement review` | the twelve rules above, two slicings, citations machine-checked, nothing edited | `verify-findings.py` passes every pass file; `review_merge.py` reports the unique count and the corroboration count — this list is what the next commit works from |
 | `<mod> layout and naming` | twelve-block reorder, `m_` and snake_case removal, `[[nodiscard]]`, `explicit`, `= default`, `out`-prefixed write-only parameters, named constants | `layout.py` reports 0 for the files **and** `layout.py --init-order` reports 0, because data moved; the module target compiles; **if the docs already describe the code, do this first**, otherwise pages quote signatures that are about to change |
 | `<mod> format` | `check.sh --apply`, or `--fix` for the mechanical subset as well | `prove_format.py HEAD~1 --manifest .Plans/fix-manifest.json` exits 0 with every file explained |
-| `<mod> docs` | pages via `docs_page.py`, module index updated, `.Plans/DOCS_COVERAGE.md` regenerated | `docs_coverage.py check <mod>` and `docs_methods.py <mod>` at 0; `htmlcheck.py` clean |
+| `<mod> docs` | pages via `docs_page.py`, module index updated, each documented entry's header given its `/// API reference:` pointer, `.Plans/DOCS_COVERAGE.md` regenerated | `docs_coverage.py check <mod>` and `docs_methods.py <mod>` at 0, which includes 0 pages without a pointer; `htmlcheck.py` clean |
 | `<mod> comment ban` | `comments.py --strip` | `code_tokens` identical against the pre-strip snapshot; `comments.py` then reports 0 |
 | ledger and plan | `.Plans/DOCS_COVERAGE.md`, `JOURNAL.md` | the numbers in them re-measured, not carried forward |
 
@@ -388,7 +396,7 @@ reorder can be checked by reading it. Work the pairs in order; nothing here need
 | 0 snapshot | `git show HEAD:<file> > /tmp/pre_<name>.h` for each file | the snapshot exists — it is the only copy of the pre-deletion bytes |
 | 1 mechanical | `clang-format --style=file -i <files>`; `python3 scripts/autofix.py --manifest .Plans/fix/manifest-<pair>.json <files>`; `clang-format --style=file -i <files>` | the manifest names every token removed, and nothing else was touched |
 | 2 layout | `python3 scripts/layout.py <files>`, edit, run it again | 0 findings, **and** `python3 scripts/layout.py --init-order <files>` at 0, because data moved |
-| 3 reference | `python3 scripts/docs_coverage.py check <mod>` and `scripts/docs_methods.py <mod>`, then `docs_page.py class` / `method` / `renav` / `check` | both gates at 0 for the module and `htmlcheck` clean — until then step 4 is refused |
+| 3 reference | `python3 scripts/docs_coverage.py check <mod>` and `scripts/docs_methods.py <mod>`, then `docs_page.py class` / `method` / `renav` / `check`; then replace the entry's doc block with its `/// API reference:` pointer line | both gates at 0 for the module, `htmlcheck` clean, and no `[NO POINTER]` row for an entry whose page now exists — until then step 4 is refused |
 | 4 delete | `python3 scripts/comments.py <files>` for the count, then `--strip`, then `comments.py code_tokens <file> /tmp/pre_<name>.h` | token multisets identical per file, then `comments.py` reports 0 |
 | 5 build | `.pi/skills/hb-standards/scripts/gate.sh spawn --all --test`, read with `gate.sh wait` | `GATE_EXIT=0`; never a pass read off `ninja: no work to do` |
 

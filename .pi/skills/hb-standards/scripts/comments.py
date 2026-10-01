@@ -26,11 +26,19 @@ IGNORE_TAG = 'hb-standards:ignore'
 CLOSING_LINE = re.compile(r'^[{}\s]*$|^#[ \t]*(endif|else|elif)\b')
 DIRECTIVE = re.compile(r'^(if|ifdef|ifndef|else|elif|endif)\b(.*)$', re.S)
 
-NAMESPACE_HEAD = re.compile(r'\bnamespace\s+([A-Za-z_]\w*)')
+NAMESPACE_HEAD = re.compile(r'\bnamespace\s+([A-Za-z_]\w*(?:::[A-Za-z_]\w*)*)')
 # `namespace` with no name — the marker pushed for its brace so an anonymous body is not mistaken
 # for a plain block. Chosen so no namespace identifier can collide with it.
 ANONYMOUS = '\x00anonymous'
 ANONYMOUS_HEAD = re.compile(r'\bnamespace\b(?!\s*[A-Za-z_:])')
+
+POINTER = re.compile(r'^///\s*API reference:\s*(\S+)\s*$')
+POINTER_SHAPE = re.compile(r'^docs/([^/]+)/([^/]+)/index\.html$')
+ENTRY_DECL = re.compile(r'^\s*(?:class|struct|union|enum(?:\s+class)?)\s+([A-Za-z_]\w*)')
+ENTRY_ALIAS = re.compile(r'^\s*using\s+([A-Za-z_]\w*)\s*=')
+ENTRY_DEFINE = re.compile(r'^#\s*define\s+([A-Za-z_]\w*)\b')
+CONCEPT_DECL = re.compile(r'^\s*concept\s+([A-Za-z_]\w*)')
+TEMPLATE_LINE = re.compile(r'^\s*template\s*<')
 
 EXEMPT_FILES = ('Engine/CodingStandards.cpp',)
 
@@ -235,6 +243,75 @@ def is_label_comment(line_text, comment_col, body, allowed):
     return inner in allowed
 
 
+def entry_names(text):
+    """Every name this file declares as a documented entry: a type, an alias or a macro.
+
+    The pointer exemption is granted by name, so the set of admissible names has to come from the same
+    text the checker is reading. A pointer to `docs/Core/Task/index.html` inside `TaskProvider.h` is
+    exactly the copy-paste this catches, and it can only be caught by asking what the file declares.
+    """
+    names = set()
+    for line in text.split('\n'):
+        for pattern in (ENTRY_DECL, ENTRY_ALIAS, ENTRY_DEFINE):
+            found = pattern.match(line)
+            if found:
+                names.add(found.group(1))
+    return names
+
+
+def declaration_below(lines, lineno):
+    """The name declared after line `lineno`, skipping blank lines, comments and `template` headers.
+
+    A doc comment sits above the `template` line as often as above the class, and the standard's own
+    exemplars put the brief on the template header for `ScopedLock`. Skipping the template lines is what
+    lets one rule cover both spellings without letting a pointer drift onto an unrelated member.
+    """
+    for index in range(lineno, min(lineno + 12, len(lines))):
+        stripped = lines[index].strip()
+        if not stripped or stripped.startswith('//') or stripped.startswith('/*') or stripped.startswith('*'):
+            continue
+        if TEMPLATE_LINE.match(lines[index]):
+            continue
+        found = CONCEPT_DECL.match(lines[index])
+        if found:
+            return ('concept', found.group(1))
+        for pattern in (ENTRY_DECL, ENTRY_ALIAS, ENTRY_DEFINE):
+            found = pattern.match(lines[index])
+            if found:
+                return ('entry', found.group(1))
+        return ('other', stripped[:40])
+    return ('none', '')
+
+
+def pointer_violation(path, target, lines, lineno, names):
+    """None when the pointer line is admissible, else the category and what to do about it.
+
+    Four things are checked, cheapest first, and each answers a question a prose brief could not: is the
+    line shaped like a pointer, does the file it names exist, is it the module this header belongs to,
+    and does the entry it names sit immediately below the line. The last one is what stops the pointer
+    becoming a decorative comment on the wrong declaration.
+    """
+    shape = POINTER_SHAPE.match(target)
+    if not shape:
+        return ('POINTER-FORM', 'expected "/// API reference: docs/<Module>/<Entry>/index.html", got "%s"' % target)
+    if not pointer_resolves(target):
+        return ('POINTER-PATH', '%s does not exist, so the pointer leads nowhere' % target)
+    module = engine_module(path)
+    if module is None:
+        return ('POINTER-MODULE', '%s is outside Engine/, so it has no module reference folder to point at'
+                % path)
+    if shape.group(1) != module:
+        return ('POINTER-MODULE', 'names module %s while this file belongs to %s' % (shape.group(1), module))
+    named = shape.group(2)
+    if named not in names:
+        return ('POINTER-ENTRY', '%s declares no entry called %s' % (path, named))
+    kind, declared = declaration_below(lines, lineno)
+    if kind != 'entry' or declared != named:
+        return ('POINTER-POSITION', 'points at %s but the next declaration is %s%s' %
+                (named, declared, ' (a concept, which owns no page)' if kind == 'concept' else ''))
+    return None
+
+
 def check_file(path, text):
     """Every comment in this file the ban does not exempt, as findings and as byte ranges.
 
@@ -252,6 +329,7 @@ def check_file(path, text):
         return ['%s:1: LEXER  %s — the file cannot be lexed, so no verdict is possible' % (path, exc)], spans_kept
     lines = text.split('\n')
     expectations = label_expectations(text)
+    names = entry_names(text)
     for begin, end, kind in spans:
         lineno = line_of(starts, begin)
         if lineno == 1 and COPYRIGHT.search(text[begin:end]):
@@ -260,6 +338,12 @@ def check_file(path, text):
         comment_col = begin - starts[lineno - 1]
         body = text[begin:end]
         if IGNORE_TAG in body:
+            continue
+        pointer = POINTER.match(line_text.strip())
+        if pointer:
+            bad = pointer_violation(path, pointer.group(1), lines, lineno, names)
+            if bad:
+                findings.append('%s:%d: %s  %s' % (path, lineno, bad[0], bad[1]))
             continue
         if is_label_comment(line_text, comment_col, body, expectations.get(lineno)):
             continue
@@ -341,6 +425,18 @@ def code_lines(text):
 
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+REPO_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, '..', '..', '..', '..'))
+
+
+def pointer_resolves(target):
+    """Whether a pointer's path names a real file, tried against the working directory and the repo root.
+
+    Every script in this skill is documented as running from the repository root, and every other check
+    here assumes it. This one cannot, because it is the check that decides whether a comment survives a
+    strip: run from elsewhere, a naive relative lookup would call every pointer broken and delete the
+    addresses along with the prose they were meant to replace.
+    """
+    return os.path.isfile(target) or os.path.isfile(os.path.join(REPO_ROOT, target))
 
 
 def engine_module(path):
@@ -413,6 +509,13 @@ def strip_file(path, text):
     real code never does.
     """
     findings, spans = check_file(path, text)
+    broken = [row for row in findings if ': POINTER-' in row]
+    if broken:
+        print('%s:1: STRIP-REFUSED  %d broken API reference pointer(s); a pointer is an address, so repair it '
+              'rather than let a strip delete it' % (path, len(broken)), file=sys.stderr)
+        for row in broken:
+            print('  %s' % row, file=sys.stderr)
+        return -1
     if not spans:
         return 0
     in_comment = [False] * len(text)
@@ -463,16 +566,43 @@ NESTED_GUARD = '\n'.join([
     '#endif // PROFILE_ENABLED',
     '',
 ])
-SELFTEST_CASES.append(('nested guard: outer labels are labels', NESTED_GUARD, []))
+SELFTEST_CASES.append(('nested guard: outer labels are labels', 'selftest.h', NESTED_GUARD, []))
 SELFTEST_CASES.append(('nested guard: a label naming the inner guard on the outer close is prose',
-                       NESTED_GUARD.replace('#endif // PROFILE_ENABLED', '#endif // __DEBUG__'), [12]))
+                       'selftest.h', NESTED_GUARD.replace('#endif // PROFILE_ENABLED', '#endif // __DEBUG__'),
+                       [12]))
 SELFTEST_CASES.append(('a label that is not the construct is prose',
-                       '\n'.join(['#if PROFILE_ENABLED', '\tint x;', '#endif // TODO', '']), [3]))
+                       'selftest.h', '\n'.join(['#if PROFILE_ENABLED', '\tint x;', '#endif // TODO', '']), [3]))
 SELFTEST_CASES.append(('namespace close is a label',
+                       'selftest.h',
                        '\n'.join(['namespace hbe', '{', '\tvoid f();', '} // namespace hbe', '']), []))
+SELFTEST_CASES.append(('nested namespace close is a label too', 'selftest.h',
+                       '\n'.join(['namespace hbe::time', '{', '\tvoid f();', '} // namespace hbe::time', '']),
+                       []))
+SELFTEST_CASES.append(('a namespace label naming the wrong namespace is prose', 'selftest.h',
+                       '\n'.join(['namespace hbe::time', '{', '\tvoid f();', '} // namespace hbe', '']), [4]))
 SELFTEST_CASES.append(('doc comment is prose',
+                       'selftest.h',
                        '\n'.join(['namespace hbe', '{', '\t/// @brief Acquires on construction.',
                                   '\tvoid f();', '}', '']), [3]))
+
+POINTER_WORKITEM = 'Engine/Core/WorkItem.h'
+SELFTEST_CASES.append(('api reference pointer above its own entry is exempt', POINTER_WORKITEM,
+                       '\n'.join(['/// API reference: docs/Core/WorkItem/index.html',
+                                  'class WorkItem final', '{', '};', '']), []))
+SELFTEST_CASES.append(('api reference pointer naming another entry is reported', POINTER_WORKITEM,
+                       '\n'.join(['/// API reference: docs/Core/Task/index.html',
+                                  'class WorkItem final', '{', '};', '']), [1]))
+SELFTEST_CASES.append(('api reference pointer to a page that does not exist is reported', POINTER_WORKITEM,
+                       '\n'.join(['/// API reference: docs/Core/NoSuchEntry/index.html',
+                                  'class WorkItem final', '{', '};', '']), [1]))
+SELFTEST_CASES.append(('api reference pointer on a member is reported', POINTER_WORKITEM,
+                       '\n'.join(['class WorkItem final', '{', 'public:',
+                                  '\t/// API reference: docs/Core/WorkItem/index.html',
+                                  '\tvoid Run() {}', '};', '']), [4]))
+SELFTEST_CASES.append(('api reference pointer is not prose and survives a strip', POINTER_WORKITEM,
+                       '\n'.join(['/// API reference: docs/Core/WorkItem/index.html',
+                                  '/// @brief Prose that must go.',
+                                  'class WorkItem final', '{', '};', '']), [2]))
 
 
 def selftest():
@@ -482,10 +612,14 @@ def selftest():
     preprocessor close, because the code is valid either way. That makes this function the only place
     the distinction is checked, and the fixtures are the two shapes that were once wrong: the outer
     label deleted, and the inner label accepted.
+
+    The pointer fixtures point at a page that exists in this repository, `docs/Core/WorkItem/index.html`,
+    and at a module that exists, `Core`. A fixture pointing at a made-up page would prove only that the
+    file is missing, which is one of the four failures being tested rather than the test itself.
     """
     failures = 0
-    for name, source, expected in SELFTEST_CASES:
-        findings, _ = check_file('selftest.h', source)
+    for name, source_path, source, expected in SELFTEST_CASES:
+        findings, _ = check_file(source_path, source)
         got = sorted({int(finding.split(':', 2)[1]) for finding in findings})
         if got == sorted(expected):
             print('SELFTEST  ok    %s' % name)

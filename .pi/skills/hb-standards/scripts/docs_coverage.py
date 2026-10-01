@@ -209,6 +209,22 @@ def entries_in(path):
     return found
 
 
+def has_pointer(path, module, name):
+    """Whether the header carries the API reference pointer for this entry.
+
+    Presence of the exact line is the question here, because adjacency and path validity are already
+    enforced by `comments.py` when it decides whether a pointer is an exemption or a violation. Splitting
+    the two checks the way the standard splits them means neither tool can quietly disagree: one asks
+    "is this comment a valid address", this one asks "does every page have an address".
+    """
+    wanted = '/// API reference: docs/%s/%s/index.html' % (module, name)
+    try:
+        text = open(path, encoding='utf-8', errors='ignore').read()
+    except OSError:
+        return False
+    return any(line.strip() == wanted for line in text.split('\n'))
+
+
 def comment_count(path):
     """Comment lines in this file that the ban requires to move, per comments.py.
 
@@ -245,6 +261,7 @@ def ledger_rows():
                 'exists': os.path.isfile(page),
                 'test_only': kind == 'test-only',
                 'method_pages': len([f for f in os.listdir(os.path.dirname(page)) if f.endswith('.html') and f != 'index.html']) if os.path.isdir(os.path.dirname(page)) else 0,
+                'pointer': has_pointer(path, module, name),
                 'comments': comment_count(path),
             })
     return rows
@@ -288,25 +305,27 @@ def write_ledger():
            'Every entry the engine declares, and whether the HTML reference has a page for it.',
            'Source comments are banned, so a missing page means the contract is nowhere.',
            '',
-           '| module | API entries | with a page | missing | test-only | comment lines still in sources |',
-           '|---|---|---|---|---|---|']
+           '| module | API entries | with a page | missing | test-only | pages addressed from the header | comment lines still in sources |',
+           '|---|---|---|---|---|---|---|']
     for module in sorted(by_module):
         group = by_module[module]
         api = [g for g in group if not g['test_only']]
         have = sum(1 for g in api if g['exists'])
+        addressed = sum(1 for g in api if g['exists'] and g['pointer'])
         # Comments are counted over every header of the module, not over the files that own an
         # entry. Counting only those hid Engine/Config/BuildConfig.h — a header of macro switches
         # whose whole content is documentation and which declares no class — and reported 12 lines
         # for a module that actually owed 102, which is the difference between a small pass and a
         # documentation migration.
         comments = sum(comment_count(path) for path in sources(os.path.join(REPO_ROOT, 'Engine', module), PROSE_EXT))
-        out.append('| %s | %d | %d | %d | %d | %d |'
-                   % (module, len(api), have, len(api) - have, len(group) - len(api), comments))
-    out += ['', '## Entries', '', '| module | entry | kind | source | page | method pages | status |', '|---|---|---|---|---|---|---|']
+        out.append('| %s | %d | %d | %d | %d | %d | %d |'
+                   % (module, len(api), have, len(api) - have, len(group) - len(api), addressed, comments))
+    out += ['', '## Entries', '', '| module | entry | kind | source | page | method pages | header pointer | status |', '|---|---|---|---|---|---|---|---|']
     for r in sorted(rows, key=lambda r: (r['module'], r['entry'])):
-        out.append('| %s | %s | %s | `%s` | `%s` | %d | %s |' % (r['module'], r['entry'], r['kind'], r['source'],
-                                                                 r['page'], r['method_pages'],
-                                                                 'documented' if r['exists'] else ('test-only — owns a Coverage row' if r['test_only'] else 'MISSING')))
+        out.append('| %s | %s | %s | `%s` | `%s` | %d | %s | %s |' % (r['module'], r['entry'], r['kind'], r['source'],
+                                                                     r['page'], r['method_pages'],
+                                                                     'yes' if r['pointer'] else ('—' if not r['exists'] else '**no**'),
+                                                                     'documented' if r['exists'] else ('test-only — owns a Coverage row' if r['test_only'] else 'MISSING')))
     os.makedirs(os.path.dirname(LEDGER), exist_ok=True)
     open(LEDGER, 'w').write('\n'.join(out) + '\n')
     api = [r for r in rows if not r['test_only']]
@@ -347,9 +366,19 @@ def check(argv):
     problems = site_links_ok(wanted if wanted else None)
     for p in problems:
         print('[SITE LINK] %s' % p)
-    total = len(missing) + len(problems)
+    unpointed = [r for r in rows if r['exists'] and not r['test_only'] and not r['pointer']
+                 and (not wanted or r['module'] in wanted)]
+    by_pointer = {}
+    for r in unpointed:
+        by_pointer.setdefault(r['module'], []).append(r)
+    for module in sorted(by_pointer):
+        names = ', '.join(sorted(r['entry'] for r in by_pointer[module]))
+        print('[NO POINTER] docs/%s/ — %d page(s) whose header carries no address: %s'
+              % (module, len(by_pointer[module]), names))
+    total = len(missing) + len(problems) + len(unpointed)
     scope = ' '.join(sorted(wanted)) if wanted else 'all modules'
-    print('docs coverage: %s — %d missing page(s), %d site-link problem(s)' % (scope, len(missing), len(problems)))
+    print('docs coverage: %s — %d missing page(s), %d site-link problem(s), %d page(s) without a pointer'
+          % (scope, len(missing), len(problems), len(unpointed)))
     return 1 if total else 0
 
 
