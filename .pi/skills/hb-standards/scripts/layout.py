@@ -560,8 +560,14 @@ def written_initializers(record):
     * The field is not a `name` on the initializer. It is `anyInit.name`, and `anyInit.kind`
       is `FieldDecl`. Reading `name` off the initializer yields an empty string, every entry
       is then skipped, and the check reports clean whatever the source says.
-    * This dump carries no `isWritten` flag, so an implicit entry has no marker. It is dropped
-      for having no source range instead, which is what an initializer clang invented lacks.
+    * This dump carries no `isWritten` flag, so an unwritten entry has to be recognised some
+      other way: its initializer expression is a `CXXDefaultInitExpr`, which is clang's own marker
+      for a default or in-class initializer the constructor never mentioned. An entry with no
+      source range at all is dropped too, but that test alone does not catch these — they carry a
+      range, and it is the *constructor's own* position. Counting them is not harmless: every one
+      of them sorts ahead of every written entry, so a class with any in-class initializer reports
+      a disorder in whichever member is declared last. That is a false finding on a correct file,
+      which is worse than a missed one, because the fix it asks for changes nothing.
     * Children arrive in **initialization** order, which Sema has already sorted to match
       declaration order. Comparing children order against declaration order compares the data
       with its own sort key and can never disagree, so the written order is reconstructed from
@@ -588,11 +594,65 @@ def written_initializers(record):
             first = next((e for e in inner.get('inner') or [] if (e.get('range') or {}).get('begin')), None)
             if first is None:
                 continue
+            if first.get('kind') == 'CXXDefaultInitExpr':
+                continue
             begin = first['range']['begin']
             inits.append((name, begin.get('line', 0), begin.get('col', 0)))
         inits.sort(key=lambda entry: (entry[1], entry[2]))
         out.append((node.get('name') or 'constructor', (child.get('loc') or {}).get('line', 0), inits))
     return out
+
+
+def _fixture_init(field, kind, line, col, base=False):
+    node = {'kind': 'CXXCtorInitializer'}
+    if base:
+        node['baseInit'] = {'qualType': 'Base'}
+    else:
+        node['anyInit'] = {'kind': 'FieldDecl', 'name': field}
+    node['inner'] = [{'kind': kind, 'range': {'begin': {'line': line, 'col': col}}}]
+    return node
+
+
+def _fixture_record(inits):
+    return {'kind': 'CXXRecordDecl', 'name': 'Probe',
+            'inner': [{'kind': 'CXXConstructorDecl', 'name': 'Probe', 'loc': {'line': 10}, 'inner': inits}]}
+
+
+def selftest():
+    """Regression tests for the written-order reconstruction, on recorded clang JSON shapes.
+
+    Feed the node shapes rather than compiling fixtures: what broke was reading the wrong key, and
+    a compiled fixture would re-derive the shape from the same clang version that produced it.
+    """
+    cases = [
+        ('in-class initializers are not written ones',
+         _fixture_record([_fixture_init('', 'CXXConstructExpr', 10, 2, base=True),
+                          _fixture_init('asks', 'CXXDefaultInitExpr', 10, 2),
+                          _fixture_init('handed', 'CXXDefaultInitExpr', 10, 2),
+                          _fixture_init('system', 'DeclRefExpr', 12, 5),
+                          _fixture_init('observation', 'DeclRefExpr', 13, 5)]),
+         ['system', 'observation']),
+        ('a genuine disorder still reads as a disorder',
+         _fixture_record([_fixture_init('b', 'DeclRefExpr', 11, 5),
+                          _fixture_init('a', 'DeclRefExpr', 12, 5)]),
+         ['b', 'a']),
+        ('a constructor that writes nothing reports nothing',
+         _fixture_record([_fixture_init('asks', 'CXXDefaultInitExpr', 10, 2),
+                          _fixture_init('handed', 'CXXDefaultInitExpr', 10, 2)]),
+         []),
+        ('a base initializer is not a member',
+         _fixture_record([_fixture_init('', 'CXXConstructExpr', 10, 2, base=True)]),
+         []),
+    ]
+    failures = 0
+    for label, record, expected in cases:
+        got = [name for name, _, _ in written_initializers(record)[0][2]]
+        if got != expected:
+            failures += 1
+            print('FAIL  %s: expected %s, got %s' % (label, expected, got))
+        else:
+            print('PASS  %s' % label)
+    return 1 if failures else 0
 
 
 def init_order_findings(target, entries, by_name, clang_override=None):
@@ -660,7 +720,12 @@ def main(argv):
     parser.add_argument('--quiet', action='store_true')
     parser.add_argument('--init-order', action='store_true',
                         help='report written mem-initializer lists that disagree with declaration order')
+    parser.add_argument('--selftest', action='store_true',
+                        help='run the initializer-order reconstruction against recorded clang JSON shapes')
     opts = parser.parse_args(argv)
+
+    if opts.selftest:
+        return selftest()
 
     if not opts.files:
         print('usage: layout.py <file ...> [--db compile_commands.json] [--init-order]', file=sys.stderr)
