@@ -4,8 +4,8 @@ description: >-
   Bring HardBop Engine C++ sources into the project coding standards end to end: format, apply the safe
   mechanical fixes, reorder members and their initializer lists, author the HTML reference the comments
   must move into, delete the comments, and prove the tree still builds in Debug, Dev and Release. Use when
-  asked to apply clang-format, check or fix coding standards, run check.sh --fix, drive
-  .pi/workflows/hb-fix-pairwise.js, prepare or amend a commit, review a commit for style conformance,
+  asked to apply clang-format, check or fix coding standards, run check.sh --fix, run the module fix cycle
+  pair by pair, prepare or amend a commit, review a commit for style conformance,
   sweep or strip comments from a module, write or repair API reference pages under docs/, or when Main.cpp
   / engine sources need the Allman brace style, tab indentation, include ordering and the
   Engine/CodingStandards.h conventions enforced. Also use before declaring any engine change done, because
@@ -31,7 +31,7 @@ Three roles, and the split is the design.
 | Role | Does | Never does |
 |---|---|---|
 | Deterministic script (`autofix.py`, clang-format) | rewrites correct without knowing what the code was for, and declares every token it removes in `.Plans/fix-manifest.json` | rename across files, delete error handling, move members, write prose |
-| Reviewer subagent (primary) | member reorder, initializer re-sequencing, renames, exception paths, the prose that moves into `docs/`, and every fix the scripts refuse | skip a proof, push, or edit a file another agent owns |
+| Reviewer — the assistant, in session | member reorder, initializer re-sequencing, renames, exception paths, the prose that moves into `docs/`, and every fix the scripts refuse | skip a proof, push, or edit a file outside the pair being fixed |
 | Gate (`prove_format.py`, `layout.py`, `comments.py`, `docs_*`, the build) | independently re-derive what changed and refuse what the fixer did not declare | pass on `no work to do`, or check nothing and call that clean |
 
 Report-only is the **fallback**, not the default: a layer that cannot prove its own edit reports
@@ -55,7 +55,7 @@ stopping "a human will do it all" from being the reason nothing gets done.
 against bytes about to change. It refuses while a C++ file the run does not own is dirty, because a fix
 that sweeps someone's half-finished refactor into its own commit cannot be explained by
 `prove_format.py` afterwards. Script-level edits stop at the safe list in layer 2; everything else a fix
-needs is reviewer work, which is what `.pi/workflows/hb-fix-pairwise.js` drives.
+needs is reviewer work, run in session pair by pair — see *The fix cycle, in session* below.
 
 Exit status: `0` clean, `1` violations, `2` build failed, `3` usage error.
 
@@ -97,16 +97,15 @@ pi -p --offline --no-session --approve --skill .pi/skills/hb-standards \
    "Run .pi/skills/hb-standards/scripts/check.sh --all; echo GATE_EXIT=\$?; report per the skill's Reporting section; edit nothing."
 ```
 
-Whole-tree fan-out also runs detached, in one command — note the `=` form, because
-the space form swallows the prompt that follows it:
-
-```bash
-pi -p --offline --no-session --approve --subagents-workflow-file=<sweep>.js
-```
+Everything this skill requires is `clang-format`, `python3`, `cmake`, `ninja` and `git`. Fan-out to
+concurrent agents is **not** one of them: it needs a subagent extension, this project depends on none, and
+the sequential loop below reaches the same state. If such a tool happens to be available, the per-pair
+sequence is unchanged and the pairs are simply independent until a rename crosses a file boundary — at
+which point they were never independent, and the rename is done last, alone, for the whole module.
 
 ### Concurrency: 4, and ask first
 
-**Never run more than 4 concurrent subagents or detached gates without asking the
+**Never run more than 4 concurrent detached gates without asking the
 owner.** `PI_GATE_SLOTS` overrides the cap for `gate.sh`. This is not politeness:
 the build tree is single-occupancy, so two gates race on `cmake-build-*` and each
 reports a pass the other invalidated. `gate.sh` enforces it with `mkdir` slots
@@ -315,11 +314,10 @@ docstring example caught a bug in its first version: `++` and `--` were missing 
 
 The refusal is **module-scoped**, and that is a property of the question, not an obstacle: "does this
 module's reference cover every entry" is answered per module, so one header/source pair can never
-satisfy it alone. The cycle therefore documents the whole module first and deletes in one pass, which is
-how `.pi/workflows/hb-fix-pairwise.js` is shaped: per-pair agents run the mechanical fix, the reorder
-and the page authoring, and a single module-wide pass then strips every file with its token proof. A
-pair whose module still owes pages leaves its comments in place and reports the count — a comment that
-survives costs nothing, while prose deleted before its page exists is gone.
+satisfy it alone. The cycle therefore documents the whole module first and deletes in one pass: every pair
+reaches step 3 of *The fix cycle, in session*, and only then does a single module-wide pass strip every
+file with its token proof. A pair whose module still owes pages leaves its comments in place and reports
+the count — a comment that survives costs nothing, while prose deleted before its page exists is gone.
 
 ## Layer 6 — build gate (mandatory, last)
 
@@ -370,6 +368,27 @@ One module — or one header inside a module too large to review at once, which 
 | `<mod> format` | `check.sh --apply`, or `--fix` for the mechanical subset as well | `prove_format.py HEAD~1 --manifest .Plans/fix-manifest.json` exits 0 with every file explained |
 | `<mod> comment ban` | `comments.py --strip` | `code_tokens` identical against the pre-strip snapshot; `comments.py` then reports 0 |
 | ledger and plan | `.Plans/DOCS_COVERAGE.md`, `JOURNAL.md` | the numbers in them re-measured, not carried forward |
+
+### The fix cycle, in session
+
+A module is fixed one header and its implementation at a time, because that is the largest unit whose
+reorder can be checked by reading it. Work the pairs in order; nothing here needs an agent framework.
+
+| Step | Command | What must be true before the next step |
+|---|---|---|
+| 0 snapshot | `git show HEAD:<file> > /tmp/pre_<name>.h` for each file | the snapshot exists — it is the only copy of the pre-deletion bytes |
+| 1 mechanical | `clang-format --style=file -i <files>`; `python3 scripts/autofix.py --manifest .Plans/fix/manifest-<pair>.json <files>`; `clang-format --style=file -i <files>` | the manifest names every token removed, and nothing else was touched |
+| 2 layout | `python3 scripts/layout.py <files>`, edit, run it again | 0 findings, **and** `python3 scripts/layout.py --init-order <files>` at 0, because data moved |
+| 3 reference | `python3 scripts/docs_coverage.py check <mod>` and `scripts/docs_methods.py <mod>`, then `docs_page.py class` / `method` / `renav` / `check` | both gates at 0 for the module and `htmlcheck` clean — until then step 4 is refused |
+| 4 delete | `python3 scripts/comments.py <files>` for the count, then `--strip`, then `comments.py code_tokens <file> /tmp/pre_<name>.h` | token multisets identical per file, then `comments.py` reports 0 |
+| 5 build | `.pi/skills/hb-standards/scripts/gate.sh spawn --all --test`, read with `gate.sh wait` | `GATE_EXIT=0`; never a pass read off `ninja: no work to do` |
+
+Inside step 2, four rules hold: the data block moves as a unit and never re-orders internally; only
+functions and types pass data, and only into their own block; a mover re-opens the access of the anchor it
+inserted before; and a class whose data members are declared under different `#ifdef` configurations is
+reported rather than reordered, because no single order is then provably right. In step 3, if a passage
+cannot be placed honestly in a class page or a design document, the comment stays and the reason gets
+reported.
 
 Three rules the cycle exists to enforce, each learned by being broken:
 

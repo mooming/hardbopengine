@@ -1,5 +1,47 @@
 # Journal
 
+## 2026-10-01 12:16 — hb-standards can now fix code, and depends on nothing but the toolchain
+
+**Context.** The owner asked for a skill that corrects code rather than reporting it, with the
+script as a sub-tool and the AI as the primary fixer, and then removed the assumption that made
+the previous design necessary: `@tintinweb/pi-subagents` is a third-party extension, so the
+project may not depend on it. The question was never "how much work may a script do" but "which
+edits can be proved afterwards", and proof is available for more than the skill had admitted.
+
+**Three roles replace the old report-only invariant.** Deterministic scripts, reviewer work, and
+gates. The previous note here said layers 3 to 5 never rewrite because no tool can decide access
+specifiers or the safety of a member move; that survives as a rule about *tools*, not about
+layers: a *tool* may not move a data member on a guess, because member order is initialisation
+order, so a reviewer moves it and the build gate decides whether the guess was right.
+
+| Commit | Delivered | Proof that held it honest |
+|---|---|---|
+| `c0f6b02` | `autofix.py`: split joined empty body and empty record, drop `virtual` under `override`, `return std::move(x)` to `return x` for a plain local, hygiene. Everything else counted and handed off | dry run over 132 tree files crashed on `ShadersSpv.h`, a generated header, which is why generated files are skipped the same way `check.sh` skips them; the behavioural fixes skip `Engine/CodingStandards.*`, whose job is to break the rules legibly |
+| `37d9de9` | `prove_format.py --manifest`: a token loss is explained only if the fixer declared exactly that loss | three directions run: declared fix passes, same diff with no manifest fails, one extra undeclared keyword removal under a valid manifest fails. A fixer that declares its own edit cannot grade it either |
+| `25e972e` | `layout.py --init-order`, the `-Wreorder` diagnostic computed statically, so a reorder can be proved not to change initialisation order | the first version read `name` off the initializer where clang puts `anyInit.name`, so it skipped every entry and reported clean on any input. Measured from the dump: children arrive in **initialization** order, already sorted by Sema to match declaration order, so comparing children against declaration order compares the data with its own sort key; written order must be rebuilt from source positions, and this dump has no `isWritten` flag |
+| `466d41d` | `check.sh --fix`: clang-format, `autofix.py`, clang-format, full re-lint, build gate. Layer 1 always, because a fix that left formatting to a formatter afterwards would re-run every grep against bytes about to change | committed violations in a throwaway clone: 3 layer-2 failures before, all three passing after, `prove_format HEAD --manifest` classifying the change as `declared-fix`. The dirty-tree guard first refused a dirty *skill* script, so it is scoped to C++ — it exists to stop a fix sweeping up someone's refactor, not to stop the skill fixing itself |
+| `8fc0c16` | `docs_coverage.py` / `docs_methods.py` exit 3 on a path-form argument | the Engine/Core review nearly deleted comments on the strength of `docs_coverage.py check Engine/Core`, which matched no ledger row and printed "0 missing" for a module that owed 23. A check that checks nothing is the most dangerous kind of pass, and this one guarded deletion |
+| `edcc2ed` | `SKILL.md` rewritten: three roles, the safe list with the reason each item needs no judgement, `--init-order`, the module-name-not-path rule, and why the strip refusal is module-scoped rather than an obstacle | every claim run before it was written; `docs_coverage.py check` still returning 0 with no ledger is recorded as open debt rather than glossed |
+
+**The extension came out, not the orchestration.** `.pi/workflows/hb-fix-pairwise.js` was written,
+piloted on one pair, and deleted. It was never a choice of taste: `SubagentWorkflow` executes
+JavaScript in a Node realm, so a Python driver cannot run there, and the alternative to a
+JavaScript driver was not a Python driver but the skill's own instructions — a pair at a time,
+each step gated by a Python script, one module-wide strip pass after every pair's pages exist.
+Fan-out then becomes an optimisation nobody needs, and the skill requires only `clang-format`,
+`python3`, `cmake`, `ninja`, `git`, plus core `pi -p` for a detached gate: `--skill`, `--approve`,
+`--offline` and `--tools` are core flags, and only `--subagents-workflow-file` belonged to the
+extension. The two `.pi/workflows/hb-review-*.js` review drivers stay until the owner rules on
+them; they are the tool the Engine/Core findings were produced with, and a driver is inert without
+the extension that runs it.
+
+**The invariant that mattered, held anyway.** The comment-stripping gate stays: snapshot, pages
+complete for the whole module, `code_tokens` identical, then delete. The pilot reached step 1 and
+wrote a manifest; no engine file changed, which is the expected result for a pair as clean as
+`ScopedLock`. What is still open: `m_` and snake_case renames, exception removal and member-layout
+advice are counted for the reviewer and fixed in session, never by a script, and a rename is a
+module-wide commit of its own because it crosses file boundaries.
+
 ## 2026-10-01 02:03 - The review driver failed loudly while working, and worked while reported dead
 
 Ran the per-file hb-standards judgement review over `Engine/Core` (46 files, 11,413 lines) off the main
