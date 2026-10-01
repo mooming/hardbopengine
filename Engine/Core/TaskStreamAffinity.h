@@ -34,14 +34,14 @@ private:
 	TBitArrayUnit bitBuffer[BitsArraySize];
 
 public:
-	TaskStreamAffinityBase()
-		: bitBuffer{0}
-	{
-	}
-
 	[[nodiscard]] static constexpr auto GetNumBits() noexcept
 	{
 		return NumBits;
+	}
+
+	TaskStreamAffinityBase()
+		: bitBuffer{0}
+	{
 	}
 
 	void Unset(unsigned int bitIndex) noexcept
