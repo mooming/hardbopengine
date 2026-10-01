@@ -1,5 +1,54 @@
 # Journal
 
+## 2026-10-01 13:50 — `comments.py` was deleting labels the standard permits; the stack now pops
+
+**Context.** The `ScopedLock` pilot reported that only one of the three comments `comments.py` flagged in
+that pair was prose, and that the other two were exempt structural labels. Its own verdict was discarded by
+the driver's gate, so this was checked against the source rather than dismissed, and the comment was right
+while the tool was wrong.
+
+`label_expectations()` maintains a stack of open preprocessor conditions so a trailing comment can be
+compared against the construct its line actually closes. `#else`, `#elif` and `#endif` all fell through to
+the same branch, which **read** `guard_stack[-1]` and never removed it. The stack therefore only grew: the
+first nested guard in a file sat on top for the rest of the file, and every later `#else`/`#endif` was judged
+against the inner condition. In `Engine/Core/ScopedLock.h`, `#ifdef __DEBUG__` opens at 46 and closes at 48,
+so line 50 `#else // PROFILE_ENABLED` and line 66 `#endif // PROFILE_ENABLED` were graded against
+`__DEBUG__`, reported as violations, and **deleted by `--strip`** — measured on a copy, which is how this was
+caught before it happened to a real file. `AGENTS.md` names that exact label as permitted and calls a bare
+`#endif` not self-documenting, so the tool was destroying the conformance it exists to enforce.
+
+**The fix is two lines: `#endif` pops, `#else` and `#elif` do not**, because they belong to the guard still
+open and only `#endif` closes it. The pop sits inside `if guard_stack`, so an `#endif` with nothing open is
+ignored instead of raising — a checker that crashes has lost its verdict, which is the same lesson the
+directory arguments teach.
+
+| Measurement | Before | After |
+|---|---|---|
+| `ScopedLock.h` violations | 3, of which 2 were permitted labels | 1, the genuine `/// @brief` at line 20 |
+| Engine-wide flagged comments, 266 files | 2,304 | 2,276 — exactly the 28 predicted, no others moved |
+| Findings appearing only after the fix | — | 0, so the fix creates no new work anywhere in the engine |
+| `--strip` on a copy of the pair | removed `// PROFILE_ENABLED` from `#else` and `#endif` | removes the one prose comment; labels survive; token multiset identical |
+
+**The second consequence was worse and is latent, not hypothetical.** A stale stack also *accepts* a label
+that names the wrong guard: written today, `#endif // __DEBUG__` on the line closing `PROFILE_ENABLED` reads
+as a legitimate label. Zero instances in the engine right now, measured both directions, but the function's
+own docstring claims this comparison is "what stops the exemption from becoming a hole through which any
+short comment can pass", and with nested guards it did not. That shape is common here — `__UNIT_TEST__`
+inside `PROFILE_ENABLED`.
+
+`comments.py --selftest` was added to pin it: five fixtures, two of them the exact shapes that were wrong,
+plus the namespace label and the two prose cases the fix must not disturb. It is the only gate that can see
+this at all — every other gate compiles or compares bytes, and a mislabelled `#endif` is valid C++ either
+way. Proof that the fixtures have teeth: with the pop disabled, the self-test fails two cases and reports
+`selftest.h:8` and `:12`, which is the historical symptom reproduced exactly. The `--selftest` name is
+deliberate; no Python script in this skill had a test convention, so the first one is stated as such rather
+than implied.
+
+`SKILL.md` records that `comments.py` exits 1 while comments remain, which is the ordinary state of a module
+that still owes reference pages. The deleted driver had used that script as its per-pair gate and therefore
+marked a correct run failed — a lesson that outlives the driver, because the same misreading is available to
+anyone scripting step 4 by hand.
+
 ## 2026-10-01 12:57 — the review method moved into the skill, and the last extension dependency went with it
 
 **Context.** The owner ruled that the workflow scripts be migrated into SKILL.md and removed from the

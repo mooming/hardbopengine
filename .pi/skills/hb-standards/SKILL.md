@@ -183,6 +183,14 @@ comments, block comments, string and character literals, and line continuations.
 literals are absent from this tree (measured: 0 files), and the lexer fails loudly rather than
 mis-lexing if one appears.
 
+Two properties of this script are easy to misread. It **exits 1 while any comment remains**, which is the
+normal state of a module that still owes reference pages — a nonzero exit here is a count, not a failed
+step, and a driver that treats it as a failure marks a correct run as broken. And its exemption for
+structural labels (`#endif // PROFILE_ENABLED`, `} // namespace hbe`) depends on knowing which construct
+each line closes, which is a stack discipline no compile can check: `--selftest` runs five fixtures over
+it, including the nested-guard shape whose absence once deleted permitted labels from
+`Engine/Core/ScopedLock.h`.
+
 Deleting them is `--strip`, and the ordering rule and its token proof live in
 *Deleting the comments, with proof* under Layer 5, because what gates the deletion is the reference.
 The ledger that schedules the work is the same file either way:
@@ -389,7 +397,9 @@ functions and types pass data, and only into their own block; a mover re-opens t
 inserted before; and a class whose data members are declared under different `#ifdef` configurations is
 reported rather than reordered, because no single order is then provably right. In step 3, if a passage
 cannot be placed honestly in a class page or a design document, the comment stays and the reason gets
-reported.
+reported. Step 4 is read by its output, not its exit code: `comments.py` exits 1 whenever a comment is
+still present, so the pre-strip count is a nonzero exit by design, and the pass is judged on the token
+proof and on the post-strip count.
 
 Three rules the cycle exists to enforce, each learned by being broken:
 

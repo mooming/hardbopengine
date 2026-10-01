@@ -140,6 +140,16 @@ def label_expectations(text):
     accepted `// TODO`, since a capitalised word matches `[A-Z][A-Z0-9_]*`. Comparing the label
     against what the line actually closes gets both right, and it is what stops the exemption from
     becoming a hole through which any short comment can pass.
+
+    Comparing against what the line closes only works if the stack is a stack. `#else` and `#elif`
+    belong to the guard still open, so they read the top and keep it; `#endif` alone closes a guard,
+    so `#endif` alone pops. Reading without popping was the second bug in this function and the more
+    damaging one: the first nested guard in a file stayed on top forever, every later `#else` and
+    `#endif` was judged against the inner condition, and a permitted outer label such as
+    `#else // PROFILE_ENABLED` in `Engine/Core/ScopedLock.h` was therefore reported as a violation and
+    deleted by `--strip`. The pop is inside `if guard_stack` because an `#endif` with nothing open must
+    be ignored rather than raise: a checker that crashes on a malformed file has lost its verdict, and
+    `--selftest` pins the whole stack discipline.
     """
     expectations = {}
     guard_stack = []
@@ -175,6 +185,8 @@ def label_expectations(text):
                     guard_stack.append(condition_variants(condition))
                 elif guard_stack:
                     expectations.setdefault(line, set()).update(guard_stack[-1])
+                    if keyword == 'endif':
+                        guard_stack.pop()
         if ch == '{':
             found = NAMESPACE_HEAD.search(pending)
             if found:
@@ -434,7 +446,61 @@ def strip_file(path, text):
     return len(spans)
 
 
+SELFTEST_CASES = []
+
+NESTED_GUARD = '\n'.join([
+    '#if PROFILE_ENABLED',
+    '\tvoid f()',
+    '\t{',
+    '#ifdef __DEBUG__',
+    '\t\tx *= 2;',
+    '#endif // __DEBUG__',
+    '\t}',
+    '#else // PROFILE_ENABLED',
+    '\tvoid f()',
+    '\t{',
+    '\t}',
+    '#endif // PROFILE_ENABLED',
+    '',
+])
+SELFTEST_CASES.append(('nested guard: outer labels are labels', NESTED_GUARD, []))
+SELFTEST_CASES.append(('nested guard: a label naming the inner guard on the outer close is prose',
+                       NESTED_GUARD.replace('#endif // PROFILE_ENABLED', '#endif // __DEBUG__'), [12]))
+SELFTEST_CASES.append(('a label that is not the construct is prose',
+                       '\n'.join(['#if PROFILE_ENABLED', '\tint x;', '#endif // TODO', '']), [3]))
+SELFTEST_CASES.append(('namespace close is a label',
+                       '\n'.join(['namespace hbe', '{', '\tvoid f();', '} // namespace hbe', '']), []))
+SELFTEST_CASES.append(('doc comment is prose',
+                       '\n'.join(['namespace hbe', '{', '\t/// @brief Acquires on construction.',
+                                  '\tvoid f();', '}', '']), [3]))
+
+
+def selftest():
+    """Run the label rules against fixtures, so a stack regression cannot return silently.
+
+    Every other gate in this skill compiles or compares files; none of them can see a mislabelled
+    preprocessor close, because the code is valid either way. That makes this function the only place
+    the distinction is checked, and the fixtures are the two shapes that were once wrong: the outer
+    label deleted, and the inner label accepted.
+    """
+    failures = 0
+    for name, source, expected in SELFTEST_CASES:
+        findings, _ = check_file('selftest.h', source)
+        got = sorted({int(finding.split(':', 2)[1]) for finding in findings})
+        if got == sorted(expected):
+            print('SELFTEST  ok    %s' % name)
+            continue
+        failures += 1
+        print('SELFTEST  FAIL  %s: expected findings on lines %s, got %s' % (name, sorted(expected), got))
+        for finding in findings:
+            print('          %s' % finding)
+    print('selftest: %d case(s), %d failure(s)' % (len(SELFTEST_CASES), failures))
+    return 1 if failures else 0
+
+
 def main(argv):
+    if argv and argv[0] == '--selftest':
+        return selftest()
     if argv and argv[0] == 'code_tokens':
         argv = argv[1:]
         if len(argv) not in (1, 2):
