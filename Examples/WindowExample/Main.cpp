@@ -13,9 +13,9 @@
 #include "Engine/OSAL/Application.h"
 #include "Engine/OSAL/Window.h"
 
+
 namespace
 {
-
 constexpr std::size_t MaxFrameTasks = 10;
 
 constexpr int RequestedWindowWidth = 800;
@@ -90,7 +90,6 @@ public:
 		produced = 0;
 	}
 };
-
 } // namespace
 
 int main(int argc, const char* argv[]) noexcept
@@ -102,6 +101,7 @@ int main(int argc, const char* argv[]) noexcept
 	if (app == nullptr)
 	{
 		std::cerr << "Error: Failed to create application" << std::endl;
+
 		return 1;
 	}
 
@@ -109,6 +109,7 @@ int main(int argc, const char* argv[]) noexcept
 	if (!window)
 	{
 		std::cerr << "Error: Failed to create window" << std::endl;
+
 		return 1;
 	}
 
@@ -118,6 +119,7 @@ int main(int argc, const char* argv[]) noexcept
 	if (!taskSystem.HasStream(tickStream))
 	{
 		std::cerr << "Error: this engine has no worker stream to attach a provider to" << std::endl;
+
 		return 1;
 	}
 

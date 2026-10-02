@@ -7,6 +7,7 @@
 #include "Test/TestEnv.h"
 #include "Test/UnitTestCollection.h"
 
+
 int main(int argc, const char* argv[]) noexcept
 {
 #ifdef __UNIT_TEST__
@@ -28,6 +29,7 @@ int main(int argc, const char* argv[]) noexcept
 	{
 		std::cerr << "EngineTest: only " << testEnv.GetExecutedTestletCount() << " of " << testEnv.GetTestletCount();
 		std::cerr << " registered testlets ran, so the engine never drove the suite it was given" << std::endl;
+
 		return 1;
 	}
 
@@ -43,6 +45,7 @@ int main(int argc, const char* argv[]) noexcept
 	if (failures > 0)
 	{
 		std::cerr << "EngineTest: " << failures << " test collection(s) FAILED" << std::endl;
+
 		return 1;
 	}
 
@@ -64,6 +67,7 @@ int main(int argc, const char* argv[]) noexcept
 	std::cerr << std::endl;
 	std::cerr << "The standards gate does both halves, building and then running the suite:" << std::endl;
 	std::cerr << "    .pi/skills/hb-standards/scripts/check.sh --test" << std::endl;
+
 	return 1;
 #endif // __UNIT_TEST__
 
