@@ -141,7 +141,9 @@ To maintain high code quality and consistency, please adhere to the following gu
       exactly one blank line separates two concerns; a block never opens or closes on a blank line. Two
       blank lines is what the ceiling permits, not what the style wants — it reads as a paragraph break
       of the wrong size, and prevailing practice agrees (45 of 50 Core and Memory headers put exactly
-      one after `#pragma once`).
+      one after `#pragma once`). The order within a block is a reader's judgement of what the class is
+      for, so no tool decides it; `.pi/skills/hb-standards/scripts/prove_regroup.py` is what proves the
+      edit stayed whitespace and order, which is the part a tool can decide.
     - Two claims formerly made here were wrong and were measured out: that only one blank line survives
       before a namespace declaration, function or comment (two survives at each), and that the formatter
       "enforces" the one-line rule. Do not re-derive blank-line behaviour from prose — run the formatter

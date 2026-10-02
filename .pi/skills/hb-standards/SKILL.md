@@ -23,6 +23,7 @@ were **clang-format-clean but rule-non-clean** (include layout), so no single la
 | 2 | joined empty bodies, no exceptions, `m_` prefix, explicit `inline`, hygiene, include layout | greps; `scripts/autofix.py` applies the safe subset | script for five fixes, reviewer for the rest |
 | 3 | comment ban in `.h` and `.cpp` | `scripts/comments.py`, a lexer; `--strip` deletes | reviewer writes the prose into `docs/`, script deletes, gate proves |
 | 4 | twelve-block member layout | `scripts/layout.py`, clang AST; `--init-order` for initializer lists | reviewer, gate-proved |
+| 4b | grouping *inside* a block: one concern per group, one blank line at each seam | `scripts/prove_regroup.py` proves the edit moved nothing but order | reviewer decides, script proves |
 | 5 | every entry owns a page, every method owns a page, every page is valid HTML | `scripts/docs_coverage.py`, `scripts/docs_methods.py`, `scripts/htmlcheck.py`; `scripts/docs_page.py` writes them | reviewer authors, `docs_page.py` builds chrome, gate proves |
 | 6 | Dev, Debug, Release compile, `EngineTest` on request | cmake + ninja, `scripts/runtest.sh` | nobody fixes it; it decides whether the fix is real |
 
@@ -252,6 +253,51 @@ comparing children order against declaration order compares the data with its ow
 disagree. Written order is rebuilt from each initializer's source position. The first version read
 `name` off the initializer, skipped every entry, and reported clean on any input.
 
+## Layer 4b — grouping the declarations inside a block (`prove_regroup.py`)
+
+The twelve-block table says a class's state sits above its API. It says nothing about the order *within*
+a block, and that is where a header earns or loses its readability: a reader should be able to skim the
+declarations and get a table of contents out of the whitespace.
+
+The convention is `docs/CodingStandards.md`'s: members of one concern sit adjacent, exactly one blank line
+separates two concerns, and a block never opens or closes on a blank line. Beyond that the order is a
+judgement about what the class is for, which is why this layer has no autofix. A header that reads as a
+table of contents for a run loop looks like this, and the order below is the one `Engine/Core/TaskSystem.h`
+carries:
+
+```
+types → constants → state            (identity · thread identity · streams and registry · queue · budget)
+lifecycle → drive the frame → the queue it drains → handing work to a stream
+→ creating and fanning out → join and abandonment wiring → introspection → private helpers
+```
+
+Three things this layer has to respect, each measured on this tree:
+
+- **The formatter owns some of the seams.** `.clang-format` sets `SeparateDefinitionBlocks: Always`, which
+  inserts a blank line between definition blocks. Two inline member bodies can never be made adjacent, so
+  group around the declarations and let the formatter have the bodies.
+- **A strip destroys grouping, silently.** `comments.py --strip` deletes the comment-only lines that used to
+  sit between concerns. Re-group a header after stripping it, not only before — this is how `TaskSystem.h`
+  ended up format-clean and unreadable after its 233 comments went.
+- **Grouping is whitespace and order, so it must be provable as such.** Run the proof immediately after the
+  edit, and use `--between REV_A REV_B` to certify the commit rather than a working tree that may hold
+  someone else's uncommitted work.
+
+```bash
+python3 scripts/prove_regroup.py Engine/Module/Header.h --between <rev>^ <rev>
+```
+
+It proves four things: every non-blank line survives unchanged (so a member cannot be dropped or quietly
+edited — `layout.py` cannot see a vanished member, because a class missing a member has no ordering
+problem); non-static data members keep their declaration order, read from the clang AST, because C++
+initialises them in that order and nothing else reports a change; the `__UNIT_TEST__` region is
+byte-identical, since test-only surface is never part of a regrouping; and it reports how many lines moved,
+so a commit can say what it regrouped. Exit 0 proven, 1 not proven, 3 could not run — and a run that could
+not measure the data order says so rather than printing a pass.
+
+A regrouping changes what the class's reference page should look like too: the page's member table follows
+the header's groups, so the two are re-read together.
+
 ## Layer 5 — the reference under `docs/`
 
 Three claims, three checkers, because "this module is documented" is not one question. Only the first
@@ -348,6 +394,9 @@ Both proofs are needed because they see different things. `code_tokens` compares
 see whitespace and passed a header that had become `void (*)(void* )` after `/*userData*/` was deleted;
 `check.sh`'s format layer was what actually caught it, and the header had already been committed and
 gate-passed. A strip without a format pass afterwards leaves residue the formatter exists to remove.
+
+Then re-read the grouping — layer 4b. The comments that were deleted are what used to separate one concern
+from the next, so a header grouped before a strip is not grouped after it.
 
 `code_tokens` is a real C++ tokenizer — comments blanked by the ban's own lexer, string and character
 literals opaque, line continuations treated as whitespace, maximal munch — and step 4 compares token
