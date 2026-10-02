@@ -22,7 +22,7 @@ Rules, named as the standard names them:
   A11  after the `}` of a nested block: exactly one
   A12  between two definitions at namespace scope: exactly one
   A13  a `///` line and the declaration under it: none
-  A14  before a file-scope `#ifdef __UNIT_TEST__` region: exactly one
+  A14  before a trailing `#ifdef __UNIT_TEST__` region — one the file holds nothing after: exactly one
   A15  inside a parenthesised list, or between the lines of one: none
   A16  anywhere else: two or more consecutive blanks are forbidden, and a conditional region holding
        nothing but blanks separates nothing
@@ -35,7 +35,9 @@ Six precedence decisions, because the rules collide and only one of them can win
   * A5 beats A11 and A12: a blank between `} // namespace examples` and `} // namespace hbe` is
        simultaneously after a closing brace and before one, and the rule that keeps it out is the one
        that keeps a block's last line touching its own brace.
-  * A14 beats A11, so a test guard opens on exactly one blank even after a closing brace.
+  * A14 beats A11, so a test guard opens on exactly one blank even after a closing brace. It asks whether
+       the region is trailing, never where the guard sits: IndentPPDirectives: None writes every directive
+       at column 0, so an indentation test cannot tell a file-scope guard from one opening main().
   * A4 beats A10, which is how "unless the return is the only statement in its scope" is implemented
        rather than merely asserted: a blank under an opening brace is already illegal, so a lone return
        can never be asked for one.
@@ -256,6 +258,38 @@ def return_is_alone(facts, prev):
     return True
 
 
+CLOSE_BRACE = re.compile(r'^\}(?:\s*$|\s*//)')                  # a scope closing, optionally with its label
+
+
+def unit_test_region_is_trailing(facts, index):
+    """Whether the `#ifdef __UNIT_TEST__` opening at `index` is the last thing in the file.
+
+    A14 is about the seam a reader meets at the *end* of a file, which is what the rule "unit-test blocks go
+    at the end of the file" produces. The first version tested for file scope by asking whether the guard sat
+    at column 0, and that answer is not available: `.clang-format` sets `IndentPPDirectives: None`, which
+    writes every directive at column 0 — including the one that opens `main()`'s own body in
+    `Applications/EngineTest/TestMain.cpp`. The position test therefore read an in-function guard as
+    file-scope and demanded a blank directly under an opening brace, the one seam A4 exists to forbid, and
+    no spelling of the file could satisfy both checks.
+
+    Nesting depth is not the question either, because `NamespaceIndentation: None` puts a guard inside a
+    namespace body at column 0 as well, and such a guard is exactly the trailing region the rule wants
+    seams around — a region is last *within* the scope that holds it, followed by that scope's own closing
+    brace. So the test is the one the rule states, read as it means it: after the region ends, does anything
+    other than the braces closing the scopes around it survive to the end of the file?
+    """
+    depth = 0
+    for fact in facts[index:]:
+        if COND_OPEN.match(fact['stripped']):
+            depth += 1
+        elif COND_END.match(fact['stripped']):
+            depth -= 1
+            if depth <= 0:
+                return all(after['comment'] or after['blank'] or CLOSE_BRACE.match(after['stripped'])
+                           for after in facts[fact['index'] + 1:])
+    return True                                                 # unterminated: the region does reach the end
+
+
 def classify(facts, target, prev, nxt, preamble=None):
     """The legal blank-line range for one gap, as (low, high, rule)."""
     if prev is None:
@@ -269,7 +303,7 @@ def classify(facts, target, prev, nxt, preamble=None):
         return 0, 0, 'A13'
     if COND_OPEN.match(prev['stripped']) and COND_CLOSE.match(nxt['stripped']):
         return 0, 0, 'A16'                                       # a conditional region of blanks alone is no paragraph
-    if nxt['stripped'].startswith(UNIT_TEST_GUARD) and not nxt['raw'][:1].isspace():
+    if nxt['stripped'].startswith(UNIT_TEST_GUARD) and unit_test_region_is_trailing(facts, nxt['index']):
         return 1, 1, 'A14'
     if nxt['index'] == target and prev['directive_above']:
         return A3_EXPECT, A3_EXPECT, 'A3'
@@ -514,8 +548,16 @@ case('A14: the unit-test guard opens on no blank',
 case('A14 clean, and the guard is not an A12 definition pair',
      HEAD + 'class C\n{\n};\n\n#ifdef __UNIT_TEST__\n#endif\n', [])
 
-case('A14: an in-function guard is not a trailing region',
-     HEAD + 'int main()\n{\n\tint a = 1;\n\n#ifdef __UNIT_TEST__\n\treturn a;\n#else\n\treturn 0;\n#endif\n}\n', [])
+case('A14: a guard inside a namespace is still trailing, and still needs its blank',
+     HEAD + 'namespace hbe\n{\nclass C\n{\n};\n#ifdef __UNIT_TEST__\n#endif\n} // namespace hbe\n', [('A14', 9)])
+
+case('A14: a guard that opens main()\'s body is no trailing region, at column 0 or anywhere else',
+     HEAD + 'int main()\n{\n#ifdef __UNIT_TEST__\n\tint a = 1;\n\n\treturn a;\n#else\n\treturn 0;\n#endif\n\n\treturn 1;\n}\n',
+     [])
+
+case('A14 clean on an in-function guard, and the blank the old reading demanded is an A4 violation',
+     HEAD + 'int main()\n{\n\n#ifdef __UNIT_TEST__\n\tint a = 1;\n\n\treturn a;\n#else\n\treturn 0;\n#endif\n\n\treturn 1;\n}\n',
+     [('A4', 7)])
 
 case('A15: a blank between the lines of an initializer list',
      HEAD + 'C::C()\n\t: a(1)\n\n\t, b(2)\n{\n}\n', [('A15', 7)])
