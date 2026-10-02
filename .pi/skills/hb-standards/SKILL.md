@@ -272,13 +272,36 @@ table, so they are reported as "could not list", never as candidates, and a head
 build. Delete one candidate at a time, declare it in the manifest, let `gate.sh` prove it; when a consumer
 breaks it gains its own include and the transitive one is never restored.
 
+The provenance half was itself blind until it was measured, and it is the half that exists to refuse the
+unsound deletion. `walk_names` read `loc.file` off every node, and clang writes `file` on a location only
+where the file *changes*: a declaration nested inside a namespace this header also declares carries
+`{offset, line, col, tokLen}` and nothing else. Every declaration in this engine sits in `namespace hbe`, so
+a header's name set came back as its namespace name alone — measured over 9 engine headers, 11 names found
+before the fix and 164 after (`Vector3.h` 1 to 43, `MemoryManager.h` 1 to 32). An almost-empty name set makes
+every include that ablation survives look unnamed and therefore deletable, which is the recommendation this
+paragraph was written to refuse. The file is inherited down the AST, the way `layout.py` already inherits it
+for a template's definition node. Separately, a measurement taken from `cmake-build-debug/compile_commands.json`
+does not define `-D__TEST__ -D__UNIT_TEST__`, so for a file whose body lives behind that guard it compiled an
+empty translation unit in which any include deletion succeeds; the tool now adds both macros when the file
+carries the region and prints that it did, because a measurement of code that was never compiled must not read
+as a clean answer. It is per entry, not per build directory — `Engine/Test/UnitTestCollection.cpp`'s entry
+defines the macro, `Applications/EngineTest/TestMain.cpp`'s does not.
+
 Two obligations this layer carries. A blank-line pass is proved by `prove_regroup.py --whitespace-only`,
 which compares the sequence of non-blank lines position by position so an accidental deletion or a swap of
 two lines is a refusal — the multiset comparison the same script uses for a regrouping cannot see two lines
-trading places. And when probing formatter behaviour, probe *inside* the repository: clang-format takes its
-style from the directory of the file it is handed, so a probe written to `/tmp` silently runs LLVM defaults
-while looking exactly like a verified result. Three claims in `docs/CodingStandards.md` reached the wrong
-answer by that route before this section existed.
+trading places. Its `__UNIT_TEST__` guard over-claimed first, in the same shape as `--prove-immutable` above:
+it compared bytes from the marker to end of file, so on `Applications/EngineTest/TestMain.cpp` at
+`1b28de5..ea4c934` — a pass that inserted three blanks and moved no code — one run printed `[PASS] every
+non-blank line is still in place - only blank lines differ` and then `[FAIL] the #ifdef __UNIT_TEST__ region
+differs`, and rule A14 (a blank before a trailing region) plus rule A1 (a seam before a `return` after a
+paragraph of output) meant no file could satisfy both checkers at once. A regrouping still may not touch a
+byte of the region; a blank-line pass may add blanks inside it and is held to its code lines, which still
+catches a line edited in place and a line carried in from the ordinary surface — the case the whole-file
+multiset cannot see. And when probing formatter behaviour, probe *inside* the repository: clang-format takes
+its style from the directory of the file it is handed, so a probe written to `/tmp` silently runs LLVM
+defaults while looking exactly like a verified result. Three claims in `docs/CodingStandards.md` reached the
+wrong answer by that route before this section existed.
 
 ## Layer 3 — the comment ban (`comments.py`)
 

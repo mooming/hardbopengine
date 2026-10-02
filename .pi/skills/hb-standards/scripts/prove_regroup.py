@@ -13,8 +13,10 @@ Four properties, and each fails loudly with the lines involved:
      initialises them in declaration order and nothing else in the toolchain reports a change. It is read
      from the clang AST through layout.py, on a copy of the old revision written beside the new file so the
      compile database and the includes resolve;
-  3. the `__UNIT_TEST__` region is byte-identical. Test-only surface belongs at the end of a file and is
-     never part of a regrouping;
+  3. the `__UNIT_TEST__` region took no part in the edit. Test-only surface belongs at the end of a file
+     and is never part of a regrouping, so a regrouping may not touch a byte of it; a blank-line pass
+     (`--whitespace-only`) may insert blanks there like anywhere else, and is held to the code lines
+     instead — see `unit_test_check`.
   4. informational: which contiguous blocks of the old file now sit in a different position, so the commit
      message can say what was regrouped instead of being asked to guess.
 
@@ -58,10 +60,37 @@ def multiset_check(before, after):
     return lost, gained
 
 
-def unit_test_check(before, after):
+def unit_test_check(before, after, strict=True):
+    """Whether the `__UNIT_TEST__` region took no part in the edit, or None when the file has no such region.
+
+    Two answers, because the two modes ask different questions, and asking the stricter one of the mode
+    that exists to edit blank lines makes the two checkers contradict each other. Measured on
+    `Applications/EngineTest/TestMain.cpp` at `1b28de5..ea4c934`, a blank-line pass that inserted one blank
+    before each of three `return 1;` statements inside the region, and no code line anywhere moved: the run
+    printed `[PASS] every non-blank line is still in place - only blank lines differ` and then
+    `[FAIL] the #ifdef __UNIT_TEST__ region differs`, exiting 1 on a diff that contained nothing but blanks.
+    `blank_lines.py` rule A14 *requires* a blank before a trailing region, and rule A1 requires a seam
+    before a `return` after a paragraph of output, so a file cannot satisfy both checkers at once while this
+    compares bytes.
+
+    What the property actually defends is that test-only surface is never *reorganised*. In a regrouping
+    (`strict`) no byte of the region may change, because the edit is not supposed to touch it at all, and
+    that is kept. In a blank-line pass the region's blank lines are in the edit's scope like any other, so
+    the guarantee is that its code lines are identical and contiguous: a line edited in place still fails
+    (here and in the multiset check), and a line carried from the ordinary surface into the region changes
+    the region's code-line sequence and fails here even though the whole-file multiset is untouched.
+    """
     if UNIT_TEST_MARKER not in before or UNIT_TEST_MARKER not in after:
         return None
-    return before[before.index(UNIT_TEST_MARKER):] == after[after.index(UNIT_TEST_MARKER):]
+    tail_before = before[before.index(UNIT_TEST_MARKER):]
+    tail_after = after[after.index(UNIT_TEST_MARKER):]
+    if tail_before == tail_after:
+        return True
+    if strict:
+        return False
+    code_before = [line.rstrip() for line in tail_before.split('\n') if line.strip()]
+    code_after = [line.rstrip() for line in tail_after.split('\n') if line.strip()]
+    return code_before == code_after
 
 
 def field_sequences(path, text, db_entries, by_name, clang_override=None):
@@ -174,14 +203,26 @@ def main(argv):
         else:
             print('[PASS] every non-blank line is still in place — only blank lines differ')
 
-    identical = unit_test_check(before, after)
+    identical = unit_test_check(before, after, strict=not opts.whitespace_only)
     if identical is None:
         print('[NONE] no %s region in this file' % UNIT_TEST_MARKER)
     elif identical:
-        print('[PASS] the %s region is byte-identical' % UNIT_TEST_MARKER)
+        byte_exact = before[before.index(UNIT_TEST_MARKER):] == after[after.index(UNIT_TEST_MARKER):]
+        if byte_exact:
+            print('[PASS] the %s region is byte-identical' % UNIT_TEST_MARKER)
+        else:
+            # Say so out loud: this is the looser guarantee, chosen because this pass edits blanks, and a
+            # reader should not have to know the internals to tell the two kinds of pass apart.
+            print('[PASS] the %s region holds the same code lines in the same order; blank lines inside it '
+                  'differ, which is what --whitespace-only is for' % UNIT_TEST_MARKER)
     else:
         failures.append('the __UNIT_TEST__ region moved or changed')
-        print('[FAIL] the %s region differs — test-only surface is not part of a regrouping' % UNIT_TEST_MARKER)
+        if opts.whitespace_only:
+            print('[FAIL] the %s region\'s code lines differ — a blank-line pass may add blanks inside the '
+                  'region, never a line of code' % UNIT_TEST_MARKER)
+        else:
+            print('[FAIL] the %s region differs — test-only surface is not part of a regrouping'
+                  % UNIT_TEST_MARKER)
 
     if opts.whitespace_only:
         # "Identical and in place" already contains the data-member order: a sequence that has not moved
