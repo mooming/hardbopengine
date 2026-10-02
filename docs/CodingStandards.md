@@ -68,8 +68,32 @@ To maintain high code quality and consistency, please adhere to the following gu
   `inline`, because without it every translation unit that includes the header emits its own
   definition and the link fails with a duplicate symbol. `Assert`, `FatalAssert`, `IdentityMatrix` and
   `operator<<` for `ComponentState` are in that category, so removing the keyword from them is a build
-  break, not a cleanup. The second half of the rule stands on its own: do not define multi-line
-  functions in headers unless it is genuinely necessary, as for templates and `constexpr`.
+  break, not a cleanup. Where a namespace-scope definition in a header is genuinely wanted, `inline` is
+  what makes it legal — see *Header minimality* for when a body belongs in a header at all.
+- **Header minimality**: declare in the header, define in the source. A function body in a `.h` is the
+  reader's least necessary information about an API, and every line of it is paid for by everyone who
+  includes the file. A non-template, non-`constexpr` body therefore goes in the `.cpp`; the header keeps
+  the declaration, the types, the constants and the contract.
+    - Why: the header *is* the API surface. A header where half the lines are bodies hides the shape of the
+      class behind its implementation, and the twelve-block layout — state above the API — stops being
+      skimmable once members are interleaved with their own code.
+    - The optimisation argument, stated honestly rather than assumed. A body in a header is free to inline
+      for every includer; once it lives in a `.cpp`, only its own translation unit can inline it unless
+      link-time optimization runs. This tree builds Release at `-O3` with **no `-flto` and no
+      `INTERPROCEDURAL_OPTIMIZATION`**, measured from `CMakeLists.txt`, so cross-translation-unit inlining is
+      not happening today and a hot trivial accessor does cost a call. The rule accepts that cost: the way to
+      buy the inlining back is IPO on the Release configuration, not bodies back into headers. Where a profile
+      names a specific accessor, that is an argument for `-flto`, not for an exemption.
+    - Exceptions are technical, not stylistic: templates and members of class templates (the definition must
+      reach the instantiation site — measured: 960 of the engine's ~1,104 header bodies are this case);
+      `constexpr`/`consteval` functions a caller evaluates at compile time, which cannot hide behind a call;
+      a `friend` operator defined inside the class where argument-dependent lookup is the reason; and the
+      teaching pair `Engine/CodingStandards.{h,cpp}`, which carries deliberate BAD EXAMPLEs.
+    - Not machine-checked yet. A body in a header is decidable from the clang AST — a method record carrying a
+      `body` — so a checker is cheap, but the rule enters as a review item first: 145 bodies sit in the 39
+      engine headers that declare no templates (`Core/Task.h` 12, `Math/CoordinateOrientation.h` 12,
+      `Memory/PoolAllocator.h` 12, `Core/SystemStatistics.h` 10, `Core/ResultPacket.h` 9), and a gate switched
+      on over a backlog that size is red on the day it ships, which trains reviewers to ignore it.
 - **Single-argument Constructors**: Mark single-argument constructors with `explicit` to prevent implicit conversions.
 - **Defaulted Members**: Use `= default` instead of empty `{}` for trivial special member function implementations.
 - **Member Initializer Lists**: Prefer member initializer lists over assignment in constructors.

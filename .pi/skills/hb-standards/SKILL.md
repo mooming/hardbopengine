@@ -148,7 +148,34 @@ Tab-vs-space indentation · joined empty bodies that survived the formatter ·
 no exceptions · no `std::move` on return (kills NRVO) · no `virtual` with
 `override` · no `m_` prefix · copyright header, trailing newline, trailing
 whitespace · include layout (own header → `<standard>` → `"project"`, each
-alphabetical, exactly one blank line before the first code body).
+alphabetical, exactly one blank line before the first code body) · header
+minimality.
+
+### Header minimality: declared in the header, defined in the source
+
+A non-template, non-`constexpr` function body belongs in the `.cpp`. The header is the API surface, and a
+body in it is both a line the reader did not ask for and a private advantage handed to every includer.
+
+The optimisation reasoning has to be stated rather than assumed, because it is the part people get wrong.
+A body in a header can be inlined by any caller; a body in a `.cpp` can be inlined only inside its own
+translation unit unless link-time optimization runs. This tree has **no `-flto` and no
+`INTERPROCEDURAL_OPTIMIZATION`** (measured against `CMakeLists.txt`, where Release is `-O3`), so the
+second case really does cost a call today. The rule accepts that. Where a profile names a hot accessor, the
+fix is IPO on the Release configuration — not an exemption, and not a body creeping back into a header,
+which is how a header ends up re-parsed by every translation unit that wanted to ask one question.
+
+Technical exceptions, not stylistic ones: templates and members of class templates; `constexpr` and
+`consteval` a caller evaluates at compile time; a `friend` operator defined in-class where
+argument-dependent lookup is the reason; data and `static constexpr` values, since layout and constant
+expressions are what the header must expose. `Engine/CodingStandards.{h,cpp}` demonstrates all of it, the
+bad example included.
+
+This is the one rule in the layer that a reader reports rather than a grep: deciding whether a body is
+"genuinely necessary" needs the reason, and reasons are not greppable. It ships ungated on purpose — 145
+bodies sit in the 39 engine headers that declare no templates, and a gate switched on over a backlog that
+size is red from its first day, which is the failure mode this skill has spent a session removing. An AST
+checker is cheap when the sweep is ready (a method record carrying a `body`), and it must enter as an
+advisory count before it becomes a finding.
 
 `Engine/CodingStandards.{h,cpp}` are exempt from the behavioural checks only:
 they carry deliberate BAD EXAMPLE blocks. Formatting, naming, hygiene and include

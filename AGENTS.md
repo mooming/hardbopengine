@@ -66,6 +66,14 @@ whose own reference is finished.
   it, and put the reason in the module's design document; `layout.py` reports it as `MEMBER-WAIVED`, counted,
   never silent.
 
+- **Declare in the header, define in the source.** A non-template, non-`constexpr` function body belongs in
+  the `.cpp`; the header carries the declaration, the types, the constants and the contract. A header body
+  inlines for every includer; a source body inlines only in its own translation unit unless `-flto` runs, and
+  this build enables none — the call is an accepted cost, and IPO is how it is bought back, not another
+  exception. Templates, `constexpr`/`consteval`, in-class `friend` operators for ADL, and data are the
+  technical exceptions. Reported by a review, not yet gated; `Engine/CodingStandards.{h,cpp}` demonstrates
+  both halves.
+
 - **No comments in `.cpp` or `.h` files.** Both halves of the source pair are self-documented:
   names, types and structure carry the intent. Do not explain code in either file — put the
   explanation where a reader forms intent instead:

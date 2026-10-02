@@ -425,6 +425,64 @@ protected:
 };
 
 // ========================================================================
+// HEADER MINIMALITY: HeaderBodyExamples
+// Declare in the header, define in the source. A body in a header is a
+// gift to every includer: free to inline, and free to hide the API. A
+// body in the source is visible only to its own translation unit unless
+// link-time optimization runs, and this build enables none - Release is
+// -O3 with no -flto. One call is the accepted price of a header that
+// reads as an API instead of as an implementation.
+//
+// Exceptions are technical, never stylistic:
+//   - templates and members of class templates: the definition has to
+//     reach the instantiation site;
+//   - constexpr/consteval a caller evaluates at compile time: a call
+//     cannot produce a compile-time value;
+//   - a friend operator defined in-class when ADL is the reason;
+//   - data members and static constexpr values: layout and constant
+//     expressions are part of what the header must expose.
+// ========================================================================
+class HeaderBodyExamples final
+{
+public:
+	// GOOD: data belongs in the header. Object layout is API, and a
+	// constexpr value has to be visible to be used at compile time.
+	static constexpr int Version = 1;
+
+	// GOOD: a static function, declared only. The body is in the source.
+	[[nodiscard]] static int ComputeVersion() noexcept;
+
+	// GOOD: constexpr - the exception, not the convenience. Callers need
+	// this value in a constant expression, so no source file can supply it.
+	[[nodiscard]] static constexpr int GetDefaultVersion() noexcept
+	{
+		return Version;
+	}
+
+	// GOOD: a member of a template. The instantiation site needs the
+	// definition, so it stays here and is written out below.
+	template <class T>
+	[[nodiscard]] T Wrap(T value) const noexcept;
+
+	/* BAD EXAMPLE: a plain accessor with its body in the header.
+	 * Not a template, not constexpr, no ADL reason - so the body is here
+	 * only to cost every includer a call site's worth of reading and to
+	 * push the rest of the class's API further down the page. It belongs
+	 * in CodingStandards.cpp; the call it costs is the price of the rule,
+	 * and -flto is how that price is bought back, not another exception. */
+	[[nodiscard]] int GetBadVersion() const noexcept
+	{
+		return Version;
+	}
+};
+
+template <class T>
+T HeaderBodyExamples::Wrap(T value) const noexcept
+{
+	return value;
+}
+
+// ========================================================================
 // CONCRETE CLASS: CodingStandards
 // Extends CodingStandardsBase and implements ICodingStandards.
 // Demonstrates concrete-class conventions:

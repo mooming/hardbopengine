@@ -34,6 +34,23 @@ namespace hbe
 namespace examples
 {
 
+/*
+ * HEADER MINIMALITY: the good half of HeaderBodyExamples.
+ *
+ * Declared in the header, defined here, exactly as the rule asks. A caller
+ * that needs a value in a constant expression takes the constexpr
+ * GetDefaultVersion, which has to live in the header; a caller that needs a
+ * value at run time pays a call. That call is the price of the rule and the
+ * price is accepted - the way to buy the inlining back is -flto on the
+ * Release configuration, not moving the body into a header, which is how
+ * this file ends up carrying a second copy of its own header in every
+ * translation unit that only wanted to ask one question.
+ */
+int HeaderBodyExamples::ComputeVersion() noexcept
+{
+	return Version;
+}
+
 CodingStandardsBase::CodingStandardsBase() noexcept
 {
 }
