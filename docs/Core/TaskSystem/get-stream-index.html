@@ -40,8 +40,8 @@
   <h3>Methods</h3>
   <ul class="methods">
     <li><a href="index.html">TaskSystem</a> methods</li>
-    <li><a href="constructors.html">constructors</a></li>
-    <li><a href="destructor.html">destructor</a></li>
+    <li><a href="constructors.html">TaskSystem</a></li>
+    <li><a href="destructor.html">~TaskSystem</a></li>
     <li><a href="get-num-hardware-threads.html">GetNumHardwareThreads</a></li>
     <li><a href="set-thread-name.html">SetThreadName</a></li>
     <li><a href="set-stream-index.html">SetStreamIndex</a></li>
@@ -69,8 +69,6 @@
     <li><a href="parallel-for.html">ParallelFor</a></li>
     <li><a href="get-registry.html">GetRegistry</a></li>
     <li><a href="update.html">Update</a></li>
-    <li><a href="drive-until.html">DriveUntil</a></li>
-    <li><a href="report-drive-timeout.html">ReportDriveTimeout</a></li>
     <li><a href="run-budget-window-pass.html">RunBudgetWindowPass</a></li>
     <li><a href="get-num-budget-windows-advanced.html">GetNumBudgetWindowsAdvanced</a></li>
     <li><a href="enqueue-task.html">EnqueueTask</a></li>
@@ -80,7 +78,7 @@
     <li><a href="get-base-task-stream.html">GetBaseTaskStream</a></li>
     <li><a href="get-io-task-stream.html">GetIOTaskStream</a></li>
     <li><a href="get-stream-name.html">GetStreamName</a></li>
-    <li><a class="current" href="get-stream-index.html">GetStreamIndex</a></li>
+    <li><a href="get-stream-index.html">GetStreamIndex</a></li>
     <li><a href="get-stream.html">GetStream</a></li>
     <li><a href="run-split.html">RunSplit</a></li>
     <li><a href="has-stream.html">HasStream</a></li>
@@ -142,7 +140,7 @@
     <td>Base (0)</td>
     <td><code>TaskStream::Start</code>, <code>Engine/Core/TaskStream.cpp:305-307</code></td>
     <td>The thread that called <a href="initialize.html">Initialize</a> — the engine loop. This is the value
-      <a href="drive-until.html">DriveUntil</a> compares itself against</td>
+      <a href="../../Test/TestHelper/drive-until.html"><code>TestHelper::DriveUntil</code></a> compares itself against</td>
   </tr>
   <tr>
     <td>IO (1)</td>
@@ -162,7 +160,8 @@
   (<code>Engine/Core/TaskStream.h:78</code>) is a plain <code>std::thread::id</code> — not atomic, not written under a lock. It
   is written by the owning or driving thread and read by this function, which any thread may call, so a scan that runs while a
   stream is recording its id for the first time is a data race in the standard's terms. In practice the type is a small
-  trivially-copyable value and the engine's own reads are few — this scan, and <a href="drive-until.html">DriveUntil</a>'s
+  trivially-copyable value and the engine's own reads are few — this scan, and
+  <a href="../../Test/TestHelper/drive-until.html"><code>TestHelper::DriveUntil</code></a>'s
   comparison, and <code>Logger::StartTask</code> reading the IO stream's id — which is exactly the pattern that passes for
   years and then reports a wrong answer on hardware nobody tested. Ask before <a href="initialize.html">Initialize</a> has
   returned and the race is not available.

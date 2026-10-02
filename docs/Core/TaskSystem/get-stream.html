@@ -40,8 +40,8 @@
   <h3>Methods</h3>
   <ul class="methods">
     <li><a href="index.html">TaskSystem</a> methods</li>
-    <li><a href="constructors.html">constructors</a></li>
-    <li><a href="destructor.html">destructor</a></li>
+    <li><a href="constructors.html">TaskSystem</a></li>
+    <li><a href="destructor.html">~TaskSystem</a></li>
     <li><a href="get-num-hardware-threads.html">GetNumHardwareThreads</a></li>
     <li><a href="set-thread-name.html">SetThreadName</a></li>
     <li><a href="set-stream-index.html">SetStreamIndex</a></li>
@@ -69,8 +69,6 @@
     <li><a href="parallel-for.html">ParallelFor</a></li>
     <li><a href="get-registry.html">GetRegistry</a></li>
     <li><a href="update.html">Update</a></li>
-    <li><a href="drive-until.html">DriveUntil</a></li>
-    <li><a href="report-drive-timeout.html">ReportDriveTimeout</a></li>
     <li><a href="run-budget-window-pass.html">RunBudgetWindowPass</a></li>
     <li><a href="get-num-budget-windows-advanced.html">GetNumBudgetWindowsAdvanced</a></li>
     <li><a href="enqueue-task.html">EnqueueTask</a></li>
@@ -81,7 +79,7 @@
     <li><a href="get-io-task-stream.html">GetIOTaskStream</a></li>
     <li><a href="get-stream-name.html">GetStreamName</a></li>
     <li><a href="get-stream-index.html">GetStreamIndex</a></li>
-    <li><a class="current" href="get-stream.html">GetStream</a></li>
+    <li><a href="get-stream.html">GetStream</a></li>
     <li><a href="run-split.html">RunSplit</a></li>
     <li><a href="has-stream.html">HasStream</a></li>
     <li><a href="build-streams.html">BuildStreams</a></li>
@@ -117,10 +115,12 @@
 <h2 id="description">Function description</h2>
 
 <p>
-  Defined at <code>Engine/Core/TaskSystem.cpp:705</code>. Almost every internal path reaches a stream through it:
-  <a href="update.html">Update</a> (<code>:187</code>), <a href="join-and-clear.html">JoinAndClear</a>,
+  Defined at <code>Engine/Core/TaskSystem.cpp:740</code>. Almost every internal path reaches a stream through it:
+  <a href="update.html">Update</a> (<code>:181</code>), <a href="join-and-clear.html">JoinAndClear</a>,
   <a href="request-other-streams-close.html">RequestOtherStreamsClose</a>,
-  <a href="dispatch-to-main-thread.html">DispatchToMainThread</a> and <a href="drive-until.html">DriveUntil</a>. There is no
+  <a href="dispatch-to-main-thread.html">DispatchToMainThread</a>, and the wait in
+  <a href="../../Test/TestHelper/drive-until.html"><code>TestHelper::DriveUntil</code></a> — a free function that takes the
+  system by reference precisely because it needs a stream out of it. There is no
   <code>const</code> overload, so the reference it yields lets a caller enqueue, close, wake and reconfigure the stream it
   names.
 </p>

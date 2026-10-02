@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TestHelper::ReportDriveTimeout — Test module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a class="current" href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+
+  <h3>Methods</h3>
+  <ul class="methods">
+    <li><a href="index.html">TestHelper</a> methods</li>
+    <li><a href="drive-until.html">DriveUntil</a></li>
+    <li><a href="report-drive-timeout.html">ReportDriveTimeout</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Test</a> /
+  <a href="index.html">TestHelper</a> / ReportDriveTimeout
+</p>
+
+<h1><span class="fn">ReportDriveTimeout</span></h1>
+<p class="subtitle">
+  <span class="tag">Engine/Test/TestHelper.cpp</span>
+  <span class="tag">free function in hbe::TestHelper</span>
+  <span class="tag">declared in the header, defined in the source</span>
+  writes the error line that says a drive-until wait gave up, kept out of the template so a failure line does not drag the logging header into every translation unit that waits
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code><span class="kw">void</span> <span class="fn">ReportDriveTimeout</span>(<span class="ty">TaskSystem</span>&amp; taskSystem, <span class="kw">const</span> <span class="kw">char</span>* waitingFor,
+                        <span class="kw">const</span> <span class="kw">std</span>::chrono::milliseconds patience) noexcept
+{
+        <span class="ty">Logger</span>::<span class="fn">Get</span>().<span class="fn">AddLog</span>(taskSystem.<span class="fn">GetName</span>(), <span class="ty">ELogLevel</span>::Error, [waitingFor, patience](<span class="kw">auto</span>&amp; logStream)
+        {
+                logStream &lt;&lt; <span class="st">"A thread driving the engine loop gave up waiting for "</span> &lt;&lt; waitingFor &lt;&lt; <span class="st">" after "</span>
+                                  &lt;&lt; patience.count() &lt;&lt; <span class="st">"ms. The work was still queued, so nothing was going to run it, and a caller that proceeds "</span>
+                                  <span class="st">"from here usually blocks on the very thing it waited for. The intake that should have drained it is the "</span>
+                                  <span class="st">"first thing to look at."</span>;
+        });
+}</code></pre>
+
+<p class="meta">Declared at Engine/Test/TestHelper.h:15, defined at Engine/Test/TestHelper.cpp:13-26.</p>
+<h2 id="description">Function description</h2>
+
+<p>
+  Called from exactly one place: the end of the driving branch of
+  <a href="drive-until.html">DriveUntil</a>, after the bound expires with the predicate still false. Its only argument
+  that the caller had not already passed is <code>taskSystem</code>, from which it takes
+  <a href="../../Core/TaskSystem/get-name.html">GetName</a> as the log line's source — the one reason a function that
+  writes a sentence needs the system at all.
+</p>
+
+<div class="note">
+  <strong>Why it is not inside the template.</strong> <a href="drive-until.html">DriveUntil</a> is a header template, so
+  anything it calls is compiled into every translation unit that drives a wait. Naming <code>Logger</code> there would
+  pull the logging header into all of them for a line that runs once, on failure. Keeping the report in a function
+  defined in <code>Engine/Test/TestHelper.cpp</code> holds the template's includes to what the loop itself needs, which
+  is the same reason a non-template body belongs in a source file at all.
+</div>
+
+<div class="note">
+  <strong>It is declared above the template, and that is not a style choice.</strong> The call
+  <code>ReportDriveTimeout(taskSystem, waitingFor, patience)</code> has argument types fixed at the template's
+  definition, so it is a non-dependent call and is looked up in that definition context — a name declared later in the
+  namespace is simply not visible to it. While both were members of <code>TaskSystem</code> the order meant nothing,
+  because a class body is read complete; the first version of the header put the declaration after the template and
+  failed to compile with <em>use of undeclared identifier</em>. Anyone tempted to re-group this header by topic rather
+  than by dependency should expect the build, not a review, to catch it.
+</div>
+
+<div class="gap">
+  <strong>The other branch of <a href="drive-until.html">DriveUntil</a> never calls it.</strong> A caller that is not the
+  engine-loop thread takes the sleep-poll path, and that path returns without reporting. So a wait that times out on an
+  application thread is invisible in the log — correct in the sense that the thread could never have driven anything,
+  misleading in the sense that the symptom looks like silence rather than like a misuse of the API.
+</div>
+
+<p>
+  The wording is the diagnosis, not decoration: "the work was still queued, so nothing was going to run it" points at the
+  intake rather than at the waiter. The line exists because a suite that hangs reports nothing, which is how a missing
+  drain looked for a while: no failing test, only a wall clock.
+</p>
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr>
+    <td><code>taskSystem</code></td>
+    <td><code>TaskSystem&amp;</code></td>
+    <td>Read only, for <a href="../../Core/TaskSystem/get-name.html">GetName</a>, which becomes the log line's source
+      string. It is a reference rather than a literal so the line still names <code>TaskSystem</code> when the report
+      itself no longer lives in that class</td>
+  </tr>
+  <tr>
+    <td><code>waitingFor</code></td>
+    <td><code>const char*</code></td>
+    <td>The label the waiter was given, interpolated as-is. No ownership is taken, so it must still be valid when the log
+      line is formatted — every call site passes a string literal</td>
+  </tr>
+  <tr>
+    <td><code>patience</code></td>
+    <td><code>std::chrono::milliseconds</code></td>
+    <td>The <em>requested</em> bound, printed as <code>count()</code> milliseconds — not a measurement of how long the
+      wait actually took, which can run longer because the loop decrements a counter instead of reading a deadline</td>
+  </tr>
+</table>
+<h2 id="return">Return value</h2>
+
+<p><code>void</code>. The log line is the entire effect: the waiter's own return value is decided by its predicate, not by
+this function.</p>
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Test/TestHelper.h:57-60 — the tail of the template</p>
+
+<pre><code><span class="kw">if</span> (!isDone())
+{
+        <span class="fn">ReportDriveTimeout</span>(taskSystem, waitingFor, patience);
+}
+
+<span class="kw">return</span> isDone();</code></pre>
+
+<p>
+  The report is the last thing a failed drive does before handing its answer back, so a test that prints its own failure
+  message afterwards has both halves: this line in the log, naming what was waited for and for how long, and the test's
+  own message naming what the missing condition proves. <code>Engine/Core/TaskSystem.cpp</code>'s aged-work tests read the
+  boolean into a variable for exactly that second half — <em>"aged-out count moved by N, DriveUntil reported true"</em> —
+  because a ceiling that drops work invisibly is the defect the test is looking for, and the count alone cannot tell an
+  invisible drop from a slow one.
+</p>
+
+<footer class="prevnext">
+  <span><a href="index.html">&larr; TestHelper</a></span>
+  <span><a href="index.html#methods">All TestHelper methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

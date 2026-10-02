@@ -75,8 +75,9 @@
 <p class="subtitle">
   <span class="tag">namespace hbe</span>
   <span class="tag">namespace hbe::Test</span>
+  <span class="tag">namespace hbe::TestHelper</span>
   <span class="tag">Engine/Test</span>
-  3 headers, 3 sources — the framework every engine module's unit tests are written against
+  5 headers, 4 sources — the framework every engine module's unit tests are written against
 </p>
 
 <h2 id="description">Module description</h2>
@@ -150,6 +151,17 @@
       <code>__UNIT_TEST__</code>
     </td>
   </tr>
+  <tr id="testhelper">
+    <td><a href="TestHelper/index.html">TestHelper</a><span class="badge">2 method pages</span></td>
+    <td>Namespace of free functions, <code>hbe::TestHelper</code></td>
+    <td>TestHelper.h</td>
+    <td>
+      Not a class either: <a href="TestHelper/drive-until.html"><code>DriveUntil</code></a> and
+      <a href="TestHelper/report-drive-timeout.html"><code>ReportDriveTimeout</code></a> — the wait for work the base
+      stream has not run yet. Cut out of <a href="../Core/TaskSystem/index.html">TaskSystem</a> on 2026-10-02 because
+      all fourteen of its callers were test bodies and none of them was engine code
+    </td>
+  </tr>
 </table>
 
 <h2 id="variables">Module variables</h2>
@@ -176,10 +188,33 @@
       it finishes — which is what ends <code>Run()</code> and lets <code>main</code> read the tallies
     </td>
   </tr>
+  <tr>
+    <td><a href="TestHelper/drive-until.html"><code>hbe::TestHelper::DriveUntil</code></a></td>
+    <td><code>TaskSystem&amp;, const char*, Predicate&amp;&amp;, std::chrono::milliseconds</code></td>
+    <td><code>bool</code></td>
+    <td>
+      Drives the base stream until a predicate holds or a wall-clock bound expires, and returns the predicate's final
+      value. The only legitimate wait on the thread that drives the engine, because that thread is the one that would
+      have run the work
+    </td>
+  </tr>
+  <tr>
+    <td><a href="TestHelper/report-drive-timeout.html"><code>hbe::TestHelper::ReportDriveTimeout</code></a></td>
+    <td><code>TaskSystem&amp;, const char*, std::chrono::milliseconds</code></td>
+    <td><code>void</code></td>
+    <td>
+      Writes the error line an expired wait leaves behind. Called from one place, the tail of
+      <a href="TestHelper/drive-until.html"><code>DriveUntil</code></a>, and kept out of the template so the logging
+      header does not reach every translation unit that waits
+    </td>
+  </tr>
 </table>
 
 <p>
-  That is the module's entire free-function surface. Everything else is reached through the two types above.
+  <code>hbe::Test</code> and <code>hbe::TestHelper</code> are the module's entire free-function surface; everything else
+  is reached through the three types above. One more free function waits —
+  <code>hbe::WaitUntil</code> at <code>Engine/Test/TestCollection.h:32</code> — and owns no page; see the row for it in
+  <a href="#coverage">Coverage</a>.
 </p>
 
 <div class="note">
@@ -310,6 +345,18 @@
       <code>precompileDefinitions</code> file, a code-review note, and a checked-in <code>HUnitTest</code> binary that
       nothing in the build references. None of them are API and none are documented further; the binary is a build
       artefact under source control, which its own review note flags
+    </td>
+  </tr>
+  <tr>
+    <td>Two of the module's three test waits own no page</td>
+    <td>
+      <a href="TestHelper/drive-until.html"><code>TestHelper::DriveUntil</code></a> is documented; the other two are
+      not. <code>hbe::WaitUntil</code> (<code>Engine/Test/TestCollection.h:32</code>) is a deadline sleep-poll with five
+      callers, all of them in <code>Engine/Core/TaskSystem.cpp</code>, and <code>AdvanceWindowsUntil</code>
+      (<code>Engine/Core/TaskSystem.cpp:855</code>, internal linkage, three callers) advances budget windows rather than
+      pumping a stream. Both were left where they were on 2026-10-02 when the drive wait moved, so the change stayed a
+      one-function move; their absence is recorded on
+      <a href="TestHelper/index.html#coverage">TestHelper: Coverage</a> as well as here
     </td>
   </tr>
 </table>

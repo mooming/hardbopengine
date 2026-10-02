@@ -71,7 +71,7 @@ TaskSystem::EnqueueTask(TaskSystem::GetIOTaskStreamIndex(), *task); // the IO st
 | `TaskSystem::Enqueue(TIndex streamIndex, const WorkItem&)` | Engine-internal. One stream's own queue. |
 | `TaskSystem::EnqueueTask(TIndex streamIndex, Task& task, uint8_t priority = 0)` | **The customer API.** Put a task's work on one stream without building a queue item. |
 | `taskSys.Update()` | One pump pass of the base stream, driven by the engine loop. |
-| `TaskSystem::DriveUntil(waitingFor, predicate, patience)` | The designated nested-pump wait; reports a failed wait instead of blocking forever. |
+| `TestHelper::DriveUntil(taskSys, waitingFor, predicate, patience)` | The designated nested-pump wait; reports a failed wait instead of blocking forever. Test-build API in `namespace hbe::TestHelper` — until 2026-10-02 it was `TaskSystem::DriveUntil`, and it moved because all fourteen of its callers were test bodies. See `docs/Test/TestHelper/drive-until.html`. |
 
 The runnable:
 

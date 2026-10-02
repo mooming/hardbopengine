@@ -8,7 +8,7 @@ Source comments are banned, so a missing page means the contract is nowhere.
 |---|---|---|---|---|---|---|
 | Config | 3 | 3 | 0 | 0 | 0 | 0 |
 | Container | 12 | 10 | 2 | 10 | 0 | 60 |
-| Core | 24 | 8 | 16 | 9 | 7 | 1467 |
+| Core | 24 | 9 | 15 | 9 | 8 | 1235 |
 | Engine | 2 | 2 | 0 | 0 | 0 | 0 |
 | HSTL | 0 | 0 | 0 | 1 | 0 | 0 |
 | Log | 3 | 3 | 0 | 0 | 0 | 0 |
@@ -77,7 +77,7 @@ Source comments are banned, so a missing page means the contract is nowhere.
 | Core | TaskStream | class | `Engine/Core/TaskStream.h` | `docs/Core/TaskStream/index.html` | 0 | — | MISSING |
 | Core | TaskStreamAffinityBase | class | `Engine/Core/TaskStreamAffinity.h` | `docs/Core/TaskStreamAffinityBase/index.html` | 0 | — | MISSING |
 | Core | TaskStreamAffinityTest | test-only | `Engine/Core/TaskStreamAffinity.h` | `docs/Core/TaskStreamAffinityTest/index.html` | 0 | — | test-only — owns a Coverage row |
-| Core | TaskSystem | class | `Engine/Core/TaskSystem.h` | `docs/Core/TaskSystem/index.html` | 0 | — | MISSING |
+| Core | TaskSystem | class | `Engine/Core/TaskSystem.h` | `docs/Core/TaskSystem/index.html` | 43 | yes | documented |
 | Core | TaskSystemTest | test-only | `Engine/Core/TaskSystem.h` | `docs/Core/TaskSystemTest/index.html` | 0 | — | test-only — owns a Coverage row |
 | Core | TimeTest | test-only | `Engine/Core/Time.h` | `docs/Core/TimeTest/index.html` | 0 | — | test-only — owns a Coverage row |
 | Core | True_t | class | `Engine/Core/CommonUtil.h` | `docs/Core/True_t/index.html` | 0 | yes | documented |

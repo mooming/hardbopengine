@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TestHelper — Test module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a class="current" href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This entry</h3>
+  <ul>
+    <li><a href="#description">Class description</a></li>
+    <li><a href="#template">Template parameters</a></li>
+    <li><a href="#properties">Class properties</a></li>
+    <li><a href="#methods">Class methods</a></li>
+    <li><a href="#non-member">Non-member helper functions</a></li>
+    <li><a href="#coverage">Coverage</a></li>
+  </ul>
+
+  <h3>Methods</h3>
+  <ul class="methods">
+      <li><a href="drive-until.html">DriveUntil</a></li>
+    <li><a href="report-drive-timeout.html">ReportDriveTimeout</a></li></ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Test</a> /
+  TestHelper
+</p>
+
+<h1>TestHelper</h1>
+<p class="subtitle">
+  <span class="tag">Engine/Test/TestHelper.h</span>
+  <span class="tag">namespace hbe::TestHelper</span>
+  <span class="tag">2 functions</span>
+  <span class="tag">test-build API</span>
+  the wait an engine test uses for work the base stream has not run yet, and the line it writes when that wait gives up
+</p>
+
+<h2 id="description">Class description</h2>
+
+<p>
+  A namespace of free functions, not a class. It holds the wait a testlet uses for work the engine has not run yet,
+  <a href="drive-until.html"><code>DriveUntil</code></a>, and the failure line that wait writes,
+  <a href="report-drive-timeout.html"><code>ReportDriveTimeout</code></a>.
+</p>
+
+<p>
+  Both were cut out of <a href="../../Core/TaskSystem/index.html"><code>TaskSystem</code></a>, where they had been
+  members. The reason is a count: the wait had fourteen callers, six in <code>Engine/OSAL/Window.cpp</code> and eight in
+  <code>Engine/Core/TaskSystem.cpp</code>, and every one of them was a test body inside an
+  <code>__UNIT_TEST__</code> region. Nothing in the engine called it. A member whose only callers are tests is an
+  interface that misreports what the engine does, so the pair now names the system in its argument list instead of
+  through <code>this</code>.
+</p>
+
+<div class="note">
+  <strong>Nothing inside the loop was rewritten on the way out.</strong> The two branches, the guard that withdraws the
+  nested-pump permission, the decision to pump <code>TaskSystem::Update</code> rather than
+  <code>TaskStream::Update</code>, the 30 000 ms default, the counter decremented instead of a deadline re-read, and the
+  wording of the failure line all crossed unchanged — the last one proved by comparing the concatenated string literal
+  against the text deleted from <code>Engine/Core/TaskSystem.cpp</code>, because a re-wrap that moved a word boundary
+  would alter a sentence a reader only ever meets after a test has already failed. What did change is the order of the
+  two declarations; <a href="report-drive-timeout.html">ReportDriveTimeout</a> says why.
+</div>
+
+<div class="gap">
+  <strong>The nested-pump permission was never this namespace's to withhold.</strong>
+  <code>TaskStream::SetNestedPumpAllowed</code> is a public member of the stream
+  (<code>Engine/Core/TaskStream.h:382</code>), so the older claim that the wait was <em>the only place</em> a pump is
+  re-entered described there being one caller, not one reachable entry point. What enforces the rule is still the stream:
+  <code>TaskStream::Update</code> asserts <em>"Stream &lt;name&gt; was pumped while it was already pumping; only a
+  designated wait point may nest a pump"</em> at <code>Engine/Core/TaskStream.cpp:333</code>, and the guard this
+  namespace holds is what satisfies it. The move costs a reader one name worth grepping for, which is why
+  <a href="../../Core/TaskSystem/index.html">the TaskSystem page</a> keeps a row pointing here rather than dropping the
+  entry.
+</div>
+
+<p>
+  The header carries no <code>#ifdef __UNIT_TEST__</code> around its body, unlike
+  <a href="../UnitTestCollection/index.html"><code>UnitTestCollection.h</code></a>, which is wrapped whole. The Test
+  library defines <code>__UNIT_TEST__</code> for itself — <code>add_compile_definitions</code> in
+  <code>Engine/Test/CMakeLists.txt</code> — and each caller includes this header from inside a test region of its own, so
+  a third guard would remove no condition while adding one failure mode: an inclusion from somewhere unguarded would
+  resolve to nothing and report an undeclared identifier far from its cause. It follows
+  <a href="../TestCollection/index.html"><code>TestCollection.h</code></a>, which is test-build API and unguarded for the
+  same reason.
+</p>
+<h2 id="template">Template parameters</h2>
+
+<p>
+  None — <code>TestHelper</code> is a namespace. The one template parameter belongs to a single function and is
+  documented on <a href="drive-until.html">its own page</a>.
+</p>
+<h2 id="properties">Class properties</h2>
+
+<p>
+  None. The namespace declares no data, no alias and no constant. The default bound on the wait is a default argument
+  on <a href="drive-until.html"><code>DriveUntil</code></a>'s <code>patience</code> parameter, so the number lives in a
+  signature; promoting it to a namespace-scope constant would add an entry this reference then has to own, to name a
+  value that appears exactly once. It was written <code>std::chrono::milliseconds(30000)</code> as a member too, and the
+  move deliberately did not improve it.
+</p>
+<h2 id="methods">Class methods</h2>
+
+<table>
+  <tr><th>Function</th><th>Declaration</th><th>What it is for</th></tr>
+  <tr>
+    <td><a href="drive-until.html"><code>DriveUntil</code></a></td>
+    <td><span class="sig">template &lt;class Predicate&gt;<br>bool DriveUntil(TaskSystem&amp; taskSystem, const char* waitingFor, Predicate&amp;&amp; isDone, std::chrono::milliseconds patience = 30000ms) noexcept</span></td>
+    <td><span class="badge">template</span> Waits by driving the base stream when the caller owns it, and by sleeping when it
+      does not. Returns the predicate's final value, so a failed wait is a value the testlet can assert on rather than a
+      hang</td>
+  </tr>
+  <tr>
+    <td><a href="report-drive-timeout.html"><code>ReportDriveTimeout</code></a></td>
+    <td><span class="sig">void ReportDriveTimeout(TaskSystem&amp; taskSystem, const char* waitingFor, std::chrono::milliseconds patience) noexcept</span></td>
+    <td><span class="badge">source</span> Writes the error line for an expired wait. Declared at
+      <code>Engine/Test/TestHelper.h:15</code>, defined at <code>Engine/Test/TestHelper.cpp:13</code>, and called from
+      one place</td>
+  </tr>
+</table>
+<h2 id="non-member">Non-member helper functions</h2>
+
+<p>
+  None, because for an entry that is a namespace the two functions above <em>are</em> the free-function surface. There
+  is no helper standing beside them, and no operator.
+</p>
+<h2 id="coverage">Coverage</h2>
+
+<p>
+  This page documents both functions <code>Engine/Test/TestHelper.h</code> declares, which is that header's whole
+  surface. It does not document every wait an engine test can call, and the two it leaves out are deliberate:
+</p>
+
+<table>
+  <tr><th>Left out</th><th>Where it lives</th><th>Why it stayed</th></tr>
+  <tr>
+    <td><code>hbe::WaitUntil</code></td>
+    <td><code>Engine/Test/TestCollection.h:32</code></td>
+    <td>A deadline sleep-poll with no driving, five callers, all of them in <code>Engine/Core/TaskSystem.cpp</code>. It
+      belongs beside this namespace and owns no page; moving it was declined on 2026-10-02 so that this change stayed a
+      one-function move. <code>Engine/Core/Task.h</code> refers to it in prose as the honest way for a test to wait</td>
+  </tr>
+  <tr>
+    <td><code>AdvanceWindowsUntil</code></td>
+    <td><code>Engine/Core/TaskSystem.cpp:855</code>, internal linkage</td>
+    <td>Three callers. It advances budget windows rather than pumping the stream, which is a different mechanism with a
+      destructive side effect — an advance zeroes the stream's accumulated CPU — so it is not a variant of the wait
+      documented here. It has no page anywhere</td>
+  </tr>
+</table>
+
+<p>
+  One behaviour on <a href="drive-until.html">the method page</a> is read off the code rather than measured: the
+  sleep-poll branch taken by a caller that is not the base stream's thread has no caller in this tree, because every
+  testlet runs on the base stream. Nothing in the suite exercises it, and the claim that such a caller times out
+  silently is therefore a reading of <code>Engine/Test/TestHelper.h:25-34</code>, not a test result.
+</p>
+
+<footer class="prevnext">
+  <span><a href="index.html">&larr; TestHelper</a></span>
+  <span><a href="index.html#methods">All TestHelper methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>

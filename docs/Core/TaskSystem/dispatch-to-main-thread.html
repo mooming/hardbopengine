@@ -40,8 +40,8 @@
   <h3>Methods</h3>
   <ul class="methods">
     <li><a href="index.html">TaskSystem</a> methods</li>
-    <li><a href="constructors.html">constructors</a></li>
-    <li><a href="destructor.html">destructor</a></li>
+    <li><a href="constructors.html">TaskSystem</a></li>
+    <li><a href="destructor.html">~TaskSystem</a></li>
     <li><a href="get-num-hardware-threads.html">GetNumHardwareThreads</a></li>
     <li><a href="set-thread-name.html">SetThreadName</a></li>
     <li><a href="set-stream-index.html">SetStreamIndex</a></li>
@@ -69,12 +69,10 @@
     <li><a href="parallel-for.html">ParallelFor</a></li>
     <li><a href="get-registry.html">GetRegistry</a></li>
     <li><a href="update.html">Update</a></li>
-    <li><a href="drive-until.html">DriveUntil</a></li>
-    <li><a href="report-drive-timeout.html">ReportDriveTimeout</a></li>
     <li><a href="run-budget-window-pass.html">RunBudgetWindowPass</a></li>
     <li><a href="get-num-budget-windows-advanced.html">GetNumBudgetWindowsAdvanced</a></li>
     <li><a href="enqueue-task.html">EnqueueTask</a></li>
-    <li><a class="current" href="dispatch-to-main-thread.html">DispatchToMainThread</a></li>
+    <li><a href="dispatch-to-main-thread.html">DispatchToMainThread</a></li>
     <li><a href="get-name.html">GetName</a></li>
     <li><a href="is-running.html">IsRunning</a></li>
     <li><a href="get-base-task-stream.html">GetBaseTaskStream</a></li>
@@ -141,7 +139,8 @@
   <strong>Posted work runs only while something is pumping the base stream.</strong> Nothing waits for a driver, and no
   thread is created for this: if the run loop is not calling <a href="update.html">Update</a>, the callable sits in the
   queue indefinitely. Two consequences that have both been paid for. First, a caller that needs the work done must be on
-  the thread that can drive it, which is what <a href="drive-until.html">DriveUntil</a> exists for. Second, posted
+  the thread that can drive it, which is what
+  <a href="../../Test/TestHelper/drive-until.html"><code>TestHelper::DriveUntil</code></a> exists for. Second, posted
   callables still in the queue at shutdown are the one kind of abandoned work
   <a href="join-and-clear.html">JoinAndClear</a> can only report as <em>present</em> rather than count — the queue says
   whether it holds any, and inventing a number would be a guess printed as a measurement.
@@ -187,11 +186,11 @@
         windowPromise.<span class="fn">set_value</span>(<span class="kw">nullptr</span>);
 }, &amp;userData);
 
-<span class="kw">const</span> <span class="kw">bool</span> isReady = taskSystem.<span class="fn">DriveUntil</span>(<span class="st">"window creation"</span>, [&amp;windowFuture]()
+<span class="kw">const</span> <span class="kw">bool</span> isReady = <span class="ty">TestHelper</span>::<span class="fn">DriveUntil</span>(taskSystem, <span class="st">"window creation"</span>, [&amp;windowFuture]()
 { <span class="kw">return</span> windowFuture.<span class="fn">wait_for</span>(<span class="kw">std</span>::chrono::seconds::zero()) == <span class="kw">std</span>::future_status::ready; });</code></pre>
 
 <p>
-  <code>Engine/OSAL/Window.cpp:64</code> and <code>:123</code> — a window-creation sequence posted to the thread that owns
+  <code>Engine/OSAL/Window.cpp:65</code> and <code>:124</code> — a window-creation sequence posted to the thread that owns
   window work, and a wait that drives the base stream until the posted callable fulfils the promise. The body between the
   first line and the last is elided here; it polls events for a hundred iterations before settling the promise. This is the
   file's unit-test region, built only under <code>__UNIT_TEST__</code>.

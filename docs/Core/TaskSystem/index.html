@@ -40,8 +40,8 @@
 
   <h3>Methods</h3>
   <ul class="methods">
-    <li><a href="constructors.html">constructors</a></li>
-    <li><a href="destructor.html">destructor</a></li>
+        <li><a href="constructors.html">TaskSystem</a></li>
+    <li><a href="destructor.html">~TaskSystem</a></li>
     <li><a href="get-num-hardware-threads.html">GetNumHardwareThreads</a></li>
     <li><a href="set-thread-name.html">SetThreadName</a></li>
     <li><a href="set-stream-index.html">SetStreamIndex</a></li>
@@ -69,8 +69,6 @@
     <li><a href="parallel-for.html">ParallelFor</a></li>
     <li><a href="get-registry.html">GetRegistry</a></li>
     <li><a href="update.html">Update</a></li>
-    <li><a href="drive-until.html">DriveUntil</a></li>
-    <li><a href="report-drive-timeout.html">ReportDriveTimeout</a></li>
     <li><a href="run-budget-window-pass.html">RunBudgetWindowPass</a></li>
     <li><a href="get-num-budget-windows-advanced.html">GetNumBudgetWindowsAdvanced</a></li>
     <li><a href="enqueue-task.html">EnqueueTask</a></li>
@@ -166,7 +164,7 @@
   stream by the logger, so their identity is <em>borrowed</em> for the length of a pass: the thread-local stream index and the
   allocator scope are entered and restored around each pass rather than owned for a thread's life. Almost every surprising rule
   in this class follows from that — <a href="is-io-thread.html">IsIOThread</a> being true only mid-pass,
-  <a href="drive-until.html">DriveUntil</a> behaving differently on the two threads, and the shutdown order that keeps both open
+  <a href="../../Test/TestHelper/drive-until.html"><code>TestHelper::DriveUntil</code></a> behaving differently on the two threads, and the shutdown order that keeps both open
   until the last log line is written.
 </div>
 
@@ -182,8 +180,9 @@
 
 <h2 id="template">Template parameters</h2>
 
-<p>None. <code>TaskSystem</code> is <code>final</code> and takes no template parameters; the only template member is
-<a href="drive-until.html">DriveUntil</a>, which is documented with its own page.</p>
+<p>None. <code>TaskSystem</code> is <code>final</code> and takes no template parameters. It declares no template member
+either: the one it had — the wait now documented as
+<a href="../../Test/TestHelper/drive-until.html"><code>TestHelper::DriveUntil</code></a> — left the class on 2026-10-02.</p>
 
 <h2 id="properties">Class properties</h2>
 
@@ -194,7 +193,8 @@
       none — they are driven</td></tr>
   <tr><td><code>TThreadID</code></td><td><code>using TThreadID = std::thread::id;</code></td>
     <td><span class="badge">member type</span> Compared by <a href="get-stream-index.html">GetStreamIndex</a> and by
-      <a href="drive-until.html">DriveUntil</a>; stored once for the life of the object in
+      <a href="../../Test/TestHelper/drive-until.html"><code>TestHelper::DriveUntil</code></a>, which takes the system by
+      reference to make the comparison; stored once for the life of the object in
       <code>engineLoopThreadID</code></td></tr>
   <tr><td><code>TStreamArray</code></td><td><code>using TStreamArray = Array&lt;TaskStream&gt;;</code></td>
     <td><span class="badge">member type</span> Sized exactly once, by <a href="build-streams.html">BuildStreams</a>, for the
@@ -419,16 +419,6 @@
 	  <td>One engine frame of base-stream work inside the base frame period, stopping at the first pass that finds nothing.</td>
 	</tr>
 	<tr>
-	  <td><a href="drive-until.html">DriveUntil</a></td>
-	  <td class="sig">template &lt;class Predicate&gt;<br>bool DriveUntil(const char* waitingFor, Predicate&amp;&amp; isDone, std::chrono::milliseconds patience = 30000ms) noexcept</td>
-	  <td>Wait by driving — if you own the base stream. From any other thread it is a sleep-poll that cannot succeed.</td>
-	</tr>
-	<tr>
-	  <td><a href="report-drive-timeout.html">ReportDriveTimeout</a></td>
-	  <td class="sig">void ReportDriveTimeout(const char* waitingFor, std::chrono::milliseconds patience) noexcept</td>
-	  <td>The error line for an expired drive-until, kept out of the template so it costs no includes.</td>
-	</tr>
-	<tr>
 	  <td><a href="run-budget-window-pass.html">RunBudgetWindowPass</a></td>
 	  <td class="sig">void RunBudgetWindowPass() noexcept</td>
 	  <td>Closes every stream’s CPU-budget window once per base frame period, by request. Its caller is the base stream’s own pass.</td>
@@ -529,6 +519,14 @@ thread-local state the static accessors read lives in an anonymous namespace ins
     stands, not as the design intends</td></tr>
   <tr><td>The 64-stream affinity ceiling</td><td>Also on <a href="dequeue.html">Dequeue</a>: the mask is 64 bits wide while the
     stream count is unbounded above, so streams 64 and up can never take general-queue work on a large machine</td></tr>
+  <tr><td>The wait that drives this class</td><td><a href="../../Test/TestHelper/drive-until.html"><code>TestHelper::DriveUntil</code></a>
+    and <a href="../../Test/TestHelper/report-drive-timeout.html"><code>TestHelper::ReportDriveTimeout</code></a> were
+    members of this class until 2026-10-02, when every one of the wait's fourteen callers turned out to be a test body.
+    They are documented in the <a href="../../Test/index.html">Test</a> module now, and the <a href="update.html">Update</a>,
+    <a href="get-stream.html">GetStream</a>, <a href="get-stream-index.html">GetStreamIndex</a>,
+    <a href="get-base-task-stream-index.html">GetBaseTaskStreamIndex</a> and
+    <a href="dispatch-to-main-thread.html">DispatchToMainThread</a> pages still point at them, because that is where a
+    reader who came looking for a TaskSystem member ends up</td></tr>
 </table>
 
 <footer class="prevnext">
