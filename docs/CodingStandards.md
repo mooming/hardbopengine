@@ -168,6 +168,11 @@ To maintain high code quality and consistency, please adhere to the following gu
     - A4 and A5 are not preferences but what a paragraph looks like: a block's first and last lines touch
       its own braces. A8 and A9 then decide where the single seams go, and A16 makes the consequence
       mechanical — **one seam in a file may hold two blanks, and it is the one after the preamble.**
+    - A10 stops at a preprocessor directive. The seam that organises an `#ifdef` region or a
+      `#pragma clang diagnostic push` / `pop` pair sits **above** the directive, because the directive and
+      the line it governs are one paragraph; a blank between them would push a pragma away from the code it
+      exists to silence. A `return` sitting directly under a pragma therefore owes itself no blank, and
+      `CreateWithMove` in `Engine/CodingStandards.cpp` demonstrates that shape.
     - **clang-format is a pre-process, not the definition of clean.** Measured on clang-format 22.1.8 with
       this repository's `.clang-format`: it caps blanks at two (`MaxEmptyLinesToKeep`), *inserts* them
       before an access specifier (`EmptyLineBeforeAccessModifier: LogicalBlock`) and between definition

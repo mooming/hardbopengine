@@ -1,5 +1,70 @@
 # Journal
 
+## 2026-10-02 18:08 — Blank lines and includes became rules, and the gate changed to be able to hold them
+
+**Cause.** The owner asked the `hb-standards` skill for two more passes: one that keeps only the blank lines
+separating a real paragraph, and one that groups, sorts, de-duplicates and empties the include preamble.
+Both had guidance in `docs/CodingStandards.md` and no shape, and one of them — two blanks after the include
+block — had been **retired** by `ea0f157` with the reason "breaks the format gate".
+
+**Retiring the rule was the gate describing itself.** That commit's reason is a fact about `check.sh`, which
+diffed a file against clang-format's output for that file and called any difference unformatted. Rule A3
+asks for a thing the formatter cannot express: measured at the preamble seam, 1, 2, 3 and 4 blanks in give 1
+blank out whenever the body under it is a `namespace`, a `class` or a function definition — 250 of the 270
+engine files, 228 of them opening with `namespace hbe` — and `BreakAfterIncludes`, the option that would set
+the count, is `error: unknown key` in clang-format 22.1.8. Under that definition of clean the rule was not
+merely unpopular, it was unfalsifiable, and the file that teaches the rules was the counterexample.
+So the seam came back and the gate changed: a scoped run compares both sides through
+`blank_lines.py --collapse-seam`, which removes that one blank and nothing else — an A16 double blank
+elsewhere still shows in the diff. Measured on the exemplar after the pass, `Engine/CodingStandards.cpp`
+reports 1 differing line raw and 0 seam-aware, and a K&R-braced probe still reports 8, so the exception
+cannot hide a real format failure.
+
+**Three claims this session carried into the work were wrong, and the file on disk was the arbiter.**
+
+| Claim in the notes when this pass began | What the tree says |
+|---|---|
+| `.clang-format` sets `SortIncludes: true` and `BreakBeforeBinaryOperators: None` | Neither key exists in the file. It sets `IncludeBlocks: Preserve` and leaves `SortIncludes` at its default, which clang-format 22 dumps as `{Enabled: true, IgnoreCase: false, IgnoreExtension: false}` |
+| Add `SortIncludes: IgnoreCase` to fix the sort | In clang-format 22 that key is a **mapping**, and the bare value is rejected as `not a mapping` — which makes the entire style file fail to parse, the failure mode `.clang-format`'s own header warns about. Byte order is what the formatter reproduces, so byte order is now the standard in rule B2 |
+| clang-format forces a blank between `{` and a class's first access label, so a blank after `{` is unavoidable and the exemplar must carry one | `{`, zero blanks, `public:` stays at zero blanks. The insert happens only for a *nested* label, which is rule A7, so rule A4 needs no exception and the exemplar's blanks came out |
+
+**Rule set A is sixteen sizes and a checker that shuts up about three of them.** `blank_lines.py` decides
+A1-A5, A10, A13-A16 — every one a shape in the text — and is silent on A8, A9 and A11, which ask whether a
+seam is a real paragraph. Its 41 fixtures include four that exist because the first version got them wrong:
+`return {};` read as a return needing a seam, a directive's blank counted twice across `#if` and `#else`
+arms, a blank inside an initializer list missed because the statement ended three lines below it, and a
+comment block contributing phantom blanks to the seam under it. One more ruling fell out of the exemplar
+itself: **A10 stops at a preprocessor directive**. The seam organising a `#pragma clang diagnostic push` pair
+belongs above the directive, so the `return` inside `CreateWithMove` is not owed a blank beneath its own
+pragma — a checker that demanded one would push the pragma away from the code it exists to silence.
+
+**Rule set B needs two measurements per include, and the first version had one.** `includes.py --unused`
+candidates must clear ablation *and* name provenance. `Engine/Core/TaskRegistry.cpp` compiles without
+`"Core/Debug.h"` and without `"Memory/MemoryManager.h"` — its own header drags both in — yet it spells
+`Assert` on line 38 and `MemoryManager` on line 21. Ablation alone would have recommended deleting exactly
+the includes the file depends on, which is the rule inverted; the header's own declarations come out of the
+clang AST now, filtered by spelling location so a header reports its names and not its includes'. Standard
+headers have no name table, so they are reported as "could not list", never as candidates, and a `.h` file
+is refused outright: an include's absence from a header can only be disproved by the whole tree, which is
+what the build gate is for.
+
+**Backlog, measured rather than assumed, and gated by scope.** A whole-tree run reports
+`blank lines: 1661 finding(s) in 274 file(s)` (A10=538, A4=356, A3=270, A5=264, A11=116, A2=90, A1=6,
+A14=14, A16=5, A13=1, A15=1) and `includes: 23 finding(s) in 23 file(s)` (B2=12 sort, B5=11 relative paths,
+all of them `"../Engine/Engine.h"` forms). Layer 2b prints those as `[DEBT]` under `--all` and counts them
+as violations in a scoped run, which is the same policy the namespace-indent rule already uses: failing
+every commit that touches an engine file would block unrelated work, and an unmeasured rule is not a passing
+one either way. **Sweeping 1661 seams is an owner decision, not part of this change.**
+
+**What the exemplar now demonstrates.** Nine findings, all applied: two blanks restored at the `.cpp` seam,
+four blanks deleted after `{` and before closing braces, three seams written before `return`. The pair is
+also the two halves of the seam story — the `.h` sits its seam above a comment, where the formatter leaves
+two blanks alone and reports raw 0, while the `.cpp` sits its seam above `namespace hbe`, where the
+formatter deletes the second blank and reports raw 1. `prove_regroup.py --whitespace-only` was added for
+exactly this kind of edit and proves both files moved no line: it compares the sequence of non-blank lines
+position by position, so a swap of two lines is a refusal, which the multiset comparison a regrouping uses
+cannot see.
+
 ## 2026-10-02 16:37 — TaskSystem.cpp holds no comment, and the 201 that left went to four places
 
 **Cause.** The owner asked for the `hb-standards` pass over `Engine/Core/TaskSystem.{h,cpp}`, and ruled on

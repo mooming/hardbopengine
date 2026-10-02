@@ -251,6 +251,12 @@ def classify(facts, target, prev, nxt):
         return 0, 0, 'A5'
     if nxt['directive']:
         return 0, 1, 'A16'            # a preprocessor line is not a definition, so no seam is owed to it
+    if prev['directive']:
+        # A directive opens a region it wraps, and the seam that organises it sits above the directive, not
+        # between the directive and the line it guards — demanding a blank between `#pragma clang diagnostic
+        # ignored` and the statement that pragma exists to silence would push a pragma away from the code it
+        # governs. This is where A10 stops; `CreateWithMove` in Engine/CodingStandards.cpp is the case.
+        return 0, 1, 'A16'
     if prev['tokens'] and prev['tokens'][0] == '}':
         return 1, 1, ('A12' if prev['brace_after'] == 0 else 'A11')
     if RETURN_LINE.match(nxt['stripped']) and not return_is_alone(facts, prev):
@@ -354,6 +360,32 @@ def check_file(path):
         return check_text(text, path), None
     except ValueError as error:                       # unterminated literal: refuse rather than mis-lex
         return None, 'cannot lex: %s' % error
+
+
+def collapse_seam(text, path=None):
+    """Return `text` with rule A3's sanctioned double blank reduced to one.
+
+    The format gate needs this on both sides of its comparison. clang-format deletes the second blank at
+    the preamble seam whenever the line under it is a `namespace`, a `class` or a function definition
+    (measured: 1, 2, 3 and 4 blanks in, 1 blank out), so a file that obeys A3 can never be byte-identical
+    to its own formatted form, and a gate that diffs those two byte-for-byte reports the exemplar as
+    unformatted — which is the measurement that retired this convention once already. Collapsing the one
+    position where the standard and the formatter disagree makes the gate ask what it means to ask: does
+    this file differ from its formatted form anywhere the formatter is the authority.
+
+    Everything else arrives untouched, including a double blank the checker would report under A16: that
+    is a rule violation rather than a formatter disagreement, so it stays visible in the diff.
+    """
+    facts = line_facts(text, own_stem(text, path))
+    target = seam_target(facts)
+    drop = set()
+    for prev, nxt, gap in boundaries(facts):
+        if nxt is None:
+            continue
+        _low, _high, rule = classify(facts, target, prev, nxt)
+        if rule == 'A3' and gap > 1:
+            drop.update(fact['index'] for fact in facts[prev['index'] + 1:nxt['index']][:gap - 1])
+    return '\n'.join(line for index, line in enumerate(text.split('\n')) if index not in drop)
 
 
 # ----------------------------------------------------------------------- fixtures --
@@ -475,6 +507,30 @@ case('A3 does not apply to a file with no preamble at all',
      'namespace hbe\n{\n\tvoid F();\n} // namespace hbe\n', [])
 
 
+# A collapse fixture is (name, text, what the text must become). The interesting rows are the two that
+# must NOT collapse: a double blank that rule A16 forbids, and a double blank the formatter itself keeps.
+COLLAPSE_CASES = [
+    ('A3 at two blanks collapses to the shape clang-format produces',
+     '#include <atomic>\n\n\nnamespace hbe\n{\n} // namespace hbe\n',
+     '#include <atomic>\n\nnamespace hbe\n{\n} // namespace hbe\n'),
+    ('A3 already at one blank is left alone',
+     '#include <atomic>\n\nnamespace hbe\n{\n} // namespace hbe\n',
+     '#include <atomic>\n\nnamespace hbe\n{\n} // namespace hbe\n'),
+    ('a seam under a preamble comment collapses too, above the comment',
+     '#include <atomic>\n\n\n/// API reference: docs/Core/Foo/index.html\nclass Foo\n{\n};\n',
+     '#include <atomic>\n\n/// API reference: docs/Core/Foo/index.html\nclass Foo\n{\n};\n'),
+    ('an A16 double blank is a violation, not a formatter disagreement, so it stays visible',
+     '#include <atomic>\n\n\nnamespace hbe\n{\n\n\tint a;\n\n\n\tint b;\n} // namespace hbe\n',
+     '#include <atomic>\n\nnamespace hbe\n{\n\n\tint a;\n\n\n\tint b;\n} // namespace hbe\n'),
+]
+
+
+case('A10: a directive and the statement it wraps are one paragraph',
+     '#include <atomic>\n\n\nvoid F() noexcept\n{\n\tint a = 1;\n#pragma clang diagnostic push\n'
+     '#pragma clang diagnostic ignored "-Wpessimizing-move"\n\treturn a;\n#pragma clang diagnostic pop\n'
+     '} // F\n', [])
+
+
 def run_selftest():
     failures = 0
     for name, source, expect in CASES:
@@ -489,7 +545,14 @@ def run_selftest():
             failures += 1
         else:
             print('ok   %-62s %s' % (name, ','.join(sorted(set(rule for rule, _ in expect))) or 'clean'))
-    print('%d fixture(s), %d failure(s)' % (len(CASES), failures))
+    for name, source, want in COLLAPSE_CASES:
+        got = collapse_seam(source)
+        if got != want:
+            print('FAIL %-62s got %r' % (name, got))
+            failures += 1
+        else:
+            print('ok   %-62s collapse' % name)
+    print('%d fixture(s), %d failure(s)' % (len(CASES) + len(COLLAPSE_CASES), failures))
     return 1 if failures else 0
 
 
@@ -497,8 +560,21 @@ def main(argv):
     parser = argparse.ArgumentParser(description='Check the blank-line rules of docs/CodingStandards.md')
     parser.add_argument('files', nargs='*', help='C++ sources to check')
     parser.add_argument('--selftest', action='store_true', help='run the built-in fixtures')
+    parser.add_argument('--collapse-seam', action='store_true',
+                        help='read one file (or stdin) and print it with rule A3\'s double blank reduced to one, '
+                             'which is the shape clang-format produces; the format gate compares two texts '
+                             'through this so the one place the standard and the formatter disagree cannot '
+                             'fail a conforming file')
     parser.add_argument('--summary-only', action='store_true', help='print counts, not findings')
     args = parser.parse_args(argv)
+
+    if args.collapse_seam:
+        if args.files:
+            with open(args.files[0], encoding='utf-8') as handle:
+                sys.stdout.write(collapse_seam(handle.read(), args.files[0]))
+        else:
+            sys.stdout.write(collapse_seam(sys.stdin.read()))
+        return 0
 
     if args.selftest:
         return run_selftest()

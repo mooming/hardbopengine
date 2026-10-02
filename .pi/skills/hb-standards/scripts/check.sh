@@ -16,20 +16,27 @@
 # Exit status: 0 = clean, 1 = violations found, 2 = build failed, 3 = usage/environment error
 #
 # Layers, in the order they run. Each covers what the previous one structurally cannot:
-#   1. clang-format        Allman braces, tabs, 120 columns, include order, blank lines.
+#   1. clang-format        Allman braces, tabs, 120 columns, include order, blank-line *limits*.
+#                          A pre-process, not the definition of clean: it deletes the second blank at
+#                          the preamble seam, which rule A3 requires, so the gate compares through
+#                          blank_lines.py --collapse-seam. See the seam note among the design notes.
 #   2. mechanical greps    rules a formatter cannot express: joined empty bodies, no
 #                          exceptions, m_ prefix, hygiene, include layout. `explicit inline` is
 #                          advisory only: a grep cannot tell an in-class member (keyword is noise)
 #                          from a header free function (keyword prevents a duplicate symbol).
+#   2b. blank_lines.py     rule set A: the size of every blank-line seam clang-format leaves alone,
+#         includes.py        and rule set B: the shape of the include preamble. Both report and never
+#                          rewrite — which seam is a real paragraph, and which include is unused, are
+#                          a reader's edits. scripts/blank_lines.py scripts/includes.py
 #   3. comments.py         the comment ban, by lexing the file. scripts/comments.py
 #   4. layout.py           the twelve-block member layout, from the clang AST.
 #                          scripts/layout.py
 #   5. docs_coverage.py    every declared entry owns a page under docs/, which is what makes
 #                          deleting a comment safe. scripts/docs_coverage.py
 #   6. build gate          Dev, Debug, Release, plus EngineTest on request.
-# Layers 3, 4 and 5 report and never rewrite: no tool here can tell which comment belonged to
+# Layers 2b, 3, 4 and 5 report and never rewrite: no tool here can tell which comment belonged to
 # which member, and reordering data members against each other changes C++ initialisation
-# order. Those two edits belong to a reader, and the layers exist to prove the reader worked.
+# order. Those edits belong to a reader, and the layers exist to prove the reader worked.
 #
 # Design notes that are easy to get wrong, each verified on this tree:
 #   * .mm / .m are EXCLUDED. clang-format classifies them as Objective-C, and the
@@ -55,10 +62,14 @@
 #   * Neither timeout(1) nor gtimeout(1) is guaranteed to exist, and on this machine
 #     neither does. Calling one unconditionally exits 127 and the gate then blames the
 #     code for a missing helper binary, so probe for both and run uncapped if absent.
-#   * The blank-line-after-includes rule is enforced by clang-format alone, never by
-#     awk. It is position-dependent (two blanks survive before a using-directive, one
-#     elsewhere) and a hand-written copy of it reported 85 findings that the formatter
-#     itself disagreed with in 7 of them.
+#   * The blank lines around the include preamble are rule A3, owned by blank_lines.py, and clang-format
+#     cannot express them: at the seam before a `namespace`, a `class` or a function definition it forces
+#     exactly one blank however many a file holds, and `BreakAfterIncludes` is `error: unknown key` in
+#     clang-format 22.1.8. Before rule A3, this position was governed by a retired convention (commit
+#     ea0f157) that clang-format enforced alone — because a hand-written awk copy of it reported 85
+#     findings the formatter disagreed with in 7. The position-dependent behaviour is real (two blanks
+#     survive before a using-directive, one before a namespace) and is now carried by a lexer plus four
+#     dozen fixtures rather than by a regex. Do not restore an awk copy of it.
 #   * Member order is never checked by a pattern. C++ declarator syntax defeats regex exactly
 #     where this rule lives: `std::function<void(int)> cb;` is data holding parentheses,
 #     `using TLogFunc = std::function<void(std::ostream&)>;` is a type that reads as a call,
@@ -295,14 +306,22 @@ if [[ ${#FILES[@]} -gt 0 ]]; then
 		cfbad=0
 		cffail=""
 		for f in "${FILES[@]}"; do
-			d=$(clang-format --style=file "$f" 2>/dev/null | diff "$f" - 2>/dev/null | grep -c '^[<>]' || true)
+			# Both sides pass through `blank_lines.py --collapse-seam`, which reduces rule A3's sanctioned
+			# double blank to the single blank clang-format produces. Without it the gate compares a file
+			# against a shape the standard forbids: the formatter deletes that second blank before a
+			# namespace, a class or a function definition, so every conforming file would differ from its
+			# own formatted form by one line. Measured: the raw diff says 1 line for such a file, the
+			# seam-aware diff says 0, and a K&R-braced file still reports 8. This tolerates that one
+			# position and nothing else - an A16 double blank still shows up as a diff.
+			d=$(diff <(clang-format --style=file "$f" 2>/dev/null | python3 "$SCRIPT_DIR/blank_lines.py" --collapse-seam) \
+					<(python3 "$SCRIPT_DIR/blank_lines.py" --collapse-seam "$f" 2>/dev/null) 2>/dev/null | grep -c '^[<>]' || true)
 			if [[ "${d:-0}" -gt 0 ]]; then
 				cfbad=$((cfbad+1))
-				cffail+="    $f  ($d line(s) differ — run with --apply)"$'\n'
+				cffail+="    $f  ($d line(s) differ — run with --apply then redo the blank-line pass)"$'\n'
 			fi
 		done
 		if [[ $cfbad -eq 0 ]]; then
-			echo "[PASS] clang-format — Allman braces, tabs, 120 columns, blank lines"
+			echo "[PASS] clang-format — Allman braces, tabs, 120 columns, blank-line limits (rule A3's seam excepted)"
 		else
 			printf '[FAIL] clang-format — %d file(s) not conformant\n%s' "$cfbad" "$cffail"
 			VIOL=$((VIOL+1))
@@ -594,6 +613,34 @@ if [[ ${#FILES[@]} -gt 0 ]]; then
 		echo "         file into conformance."
 	else
 		echo "[PASS] namespace bodies not indented"
+	fi
+fi
+
+# ---------------------------------- blank-line paragraphs and the include preamble --
+hdr "blank lines (rule set A) and the include preamble (rule set B)"
+# Layer 2b. Rule set A sizes the seams clang-format leaves alone; rule set B shapes the preamble. Neither
+# rewrites anything: which seam is a real paragraph (A8, A9, A11) is a reader's judgement, and an include
+# deletion is a build-gated edit whose consumer may live in another module. Skill layer 2b owns the prose.
+if [[ ${#FILES[@]} -gt 0 ]]; then
+	bl_out=$(python3 "$SCRIPT_DIR/blank_lines.py" "${FILES[@]}" 2>&1); bl_code=$?
+	inc_out=$(python3 "$SCRIPT_DIR/includes.py" "${FILES[@]}" 2>&1); inc_code=$?
+	bl_sum=$(printf '%s\n' "$bl_out" | grep '^blank lines: ' || true)
+	inc_sum=$(printf '%s\n' "$inc_out" | grep '^includes: ' || true)
+	if [[ $bl_code -eq 0 && $inc_code -eq 0 ]]; then
+		printf '%s\n%s\n' "$bl_sum" "$inc_sum"
+	elif [[ $bl_code -eq 3 || $inc_code -eq 3 ]]; then
+		printf '%s\n%s\n' "$bl_out" "$inc_out"
+		echo "         [NONE] a checker could not run on this scope; an unmeasured rule is not a passing rule"
+	elif [[ $ALL -eq 1 ]]; then
+		printf '%s\n%s\n' "$bl_sum" "$inc_sum"
+		echo "         [DEBT] reported, not gated, while the sweep is an open owner decision: the tree predates"
+		echo "         both rule sets, so failing every commit that touches an engine file would block"
+		echo "         unrelated work — the failure mode this script exists to prevent. The same findings are"
+		echo "         violations in a scoped run (a revision, or --staged), which is where the rules bite."
+	else
+		printf '%s\n%s\n' "$bl_out" "$inc_out"
+		echo "[FAIL] rule set A and/or rule set B — docs/CodingStandards.md holds the tables, layer 2b the method"
+		VIOL=$((VIOL+1))
 	fi
 fi
 
