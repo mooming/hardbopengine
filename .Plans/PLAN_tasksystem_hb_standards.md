@@ -71,15 +71,18 @@ test-methodology rules and the invariants the tests exist to hold, so it goes to
 Everything else in the test region is narration that restates the code or the test name beside it -
 including one paragraph pasted three times at 2323, 2328 and 2333 - and is abandoned.
 
-## Sequence, with the proof each step needs
+## Sequence, with the proof each step produced
 
-| Step | Work | Proof |
+| Step | Work | Proof, as measured |
 |---|---|---|
-| 1 | Strip the 201 comment lines, delete the blank lines they were holding apart, format | `code_tokens` identical against `/tmp/hbe_ts/pre_TaskSystem.cpp`; `comments.py` reports 0; `prove_format.py` explains every file |
-| 2 | Re-group the header, restore the definition order in the source | `prove_regroup.py` exit 0 with data member order unchanged |
-| 3 | Repair the reference: re-point every citation into the pair, rewrite the claims the body move falsified, carry the rows above | `htmlcheck.py` clean; `docs_coverage.py check-file` and `docs_methods.py Core` unchanged at their own bar |
-| 4 | Lint and build | `check.sh` on the pair; Dev, Debug, Release plus EngineTest, files touched |
-| 5 | Commit per step, journal the rulings | one commit per proof |
+| 1 | Strip the 201 comment lines, delete the blank lines they were holding apart, format | `6dad493`. Token multiset of each file identical to `/tmp/hbe_ts/pre_TaskSystem.*`; `comments.py` 0 violations in both; `clang-format` clean. Source 3716 to 3500 lines, header 157 to 143 |
+| 2 | Re-group the header into the order the class is used | `9d9eace`. Non-blank line multiset unchanged, `__UNIT_TEST__` region byte-identical, data member declaration order untouched, `layout.py` clean |
+| 3 | Repair the reference: re-point every citation, rewrite the claims the body move falsified, carry the rows above | 53 citations re-pointed; 5 pages rewritten; `htmlcheck.py` 44 pages 0 problems; `docs_coverage.py check-file` reports one entry documented, addressed from the header, method pages complete |
+| 3b | The owner's rename `AreOtherStreamsClosed` to `AreUserStreamsClosed` landed mid-pass | Page renamed to `are-user-streams-closed.html`, 44 pages updated, the DOC-METHOD blocker cleared, and the page now states that both names cover the same set of streams |
+| 3c | Re-sequence the class page's method table and all 44 sidebars, which follow header order | Derived from the declarations rather than hand-mended: 43 rows and 43 links, one per page, `renav` propagated |
+| 3d | Guide section 13 rewritten: 9 stale test rows became 36, plus the test-writing rules | A checker compares `AddTest` names against the section: 36 in the source, 36 named verbatim |
+| 4 | Lint and build | `check.sh --staged --test`: grep rule failures 0, advisory 0, `build gate PASS 12/12`, EngineTest 59 collections passed in Dev, Debug and Release, `TaskSystemTest` 36 of 36 in all three |
+| 5 | Commit per step, journal the rulings | Four commits: strip, regroup, rename, reference. Journal entry at the head of `JOURNAL.md` |
 
 ## Deliberately not done
 
@@ -87,3 +90,10 @@ including one paragraph pasted three times at 2323, 2328 and 2333 - and is aband
   and 197 method pages. This pair's prose has a home or is abandoned, which is the case `--force` exists for.
 * Member order inside the data block does not change: member order is initialisation order.
 * No engine behaviour changes. A body move or a signature is not part of this task.
+* Definition order in `TaskSystem.cpp` stays as it is. No rule requires it to mirror the header, and
+  moving 3 500 lines to satisfy a preference nobody wrote down is churn.
+* Two extra guardrail rows in `docs/TaskSystemRedesign.md` §9: the reopen mechanism is already R1, R2,
+  R23c and the *signals versus reopens* table, and the age clock is guide §16. Giving one claim a second
+  home is how the first one starts to rot.
+* Per-method `/// API reference:` pointers. The pair carries the class pointer at `TaskSystem.h:16`,
+  which is what `docs_coverage` checks, and most Core headers are in the same state.

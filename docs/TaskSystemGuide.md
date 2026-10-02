@@ -332,25 +332,70 @@ another bank rather than relocating anything. That is what makes a `TaskID` inde
 
 ## 13. What is tested
 
-`TaskSystemTest` (in `Engine/Core/TaskSystem.cpp`) currently holds:
+`TaskSystemTest` lives in `Engine/Core/TaskSystem.cpp` and holds 36 tests, sorted by area.
 
-| Test | What it pins down |
+| Area | Test | What stops being true if it fails |
+|---|---|---|
+| Identity | `The base stream is named Base, and the thread driving the engine is not called that` | Stream 0 is `Base`, stream 1 is `IO`, the engine loop's thread is `EngineLoop`, and the thread running a test reports itself as the base stream — so the name in a log line identifies one executor and not two. |
+| Identity | `A thread that was never given a stream does not claim to have one` | `NonStreamIndex` is not 0, so a thread nobody made a stream is not treated as the base stream, and it lies outside the affinity mask, so the general queue does not charge its sightings to whatever stream shares the value. |
+| Task basics | `Empty Task` | A record with no work item is not marked done before it runs. |
+| Task basics | `Task of size 0` | A zero-length range still reports itself finished rather than hanging whatever waits on the join. |
+| Splitting | `Bagel Problem` | A million terms split over two worker streams sum to the right answer, and the collator posted as the successor actually runs — an asynchronous join that never fires is silent. |
+| Splitting | `Bagel Problem (Incremental Task)` | The same sum built by re-enqueuing ranges of one task closes its join. |
+| Splitting | `An item that returns part of its range resumes at the index it stopped at` | A runnable that returns short of its range is called again from where it stopped, once per remaining index, and is not restarted — otherwise every index before that point is done twice. |
+| Splitting | `A split queues no empty work item and counts only what it queued` | Three items asked for in ten sub-jobs produce three items, the join is declared as three, no item covers an empty range, and the collator runs. |
+| Splitting | `A split larger than the join counter can count is cut down, not truncated` | A count a `uint8_t` cannot hold is clamped to `Task::MaxNumSubTasks` rather than silently wrapped to its low eight bits, which would close the join while most of the work is still queued. |
+| Splitting | `A split naming a stream the engine does not have is refused and creates nothing` | Stream indices are checked before use, so an out-of-range index cannot index past the stream array, and a refused split neither creates a record nor runs. |
+| Splitting | `Asking for streams picks workers and never the base stream or the IO stream` | The count form of `ParallelFor` places work only on worker streams; blocking the base stream stalls the engine, and the IO stream carries log work. |
+| Splitting | `A split with nothing to do is refused rather than queued as a task that can never close` | Zero and negative item, sub-job and stream counts are refusals — a negative becomes a fourteen-digit range the moment it is used as an index — and a successor with no stream to run on is refused for the same reason every other unroutable result is. |
+| Delivery | `A finished task hands its outcome to the successor on the stream it named` | The whole of section 6.1: the producer's packet is copied to the successor and queued on the stream the producer named, once. |
+| Delivery | `Outcomes chain: a successor that produces in turn dispatches its own successor` | A successor dispatched by a task the engine itself dispatched — chains are supported, they do not merely look supported until a second link is needed. |
+| Delivery | `A task that recorded no successor wakes nobody, and does not run itself again` | The fire-and-forget case stays fire-and-forget: finishing wakes only what was recorded, and a task that wakes itself with no successor recorded is a loop no caller can tell from slow work. |
+| Delivery | `A successor with no stream named in the packet is refused out loud, not guessed` | Half-filled routing produces an error naming the pair, never a stream chosen on the caller's behalf. |
+| Delivery | `A successor addressed to a stream this engine does not have is refused` | The destination byte is checked against the stream count before it is used as an index. |
+| Delivery | `A successor released while its producer runs is reported and never dispatched` | A released record is not followed, so its slot cannot be handed to a new tenant that then runs someone else's work under the abandoned identity. |
+| Delivery | `A successor that reserved no subtask cannot be dispatched and says why` | An outcome is delivered as one item over the successor's whole range, which is one reserved subtask; without it the join counter never reaches a count it was never given. |
+| Lanes | `Both lanes serve their tasks` | A stream drains both of its queues, and an unfinished task is returned to its lane rather than dropped. |
+| Lanes | `Work offered on each lane through the public API is reached and run` | The lane a caller names is a lane something acquires from — the state the drain-rate machinery was written to describe is not the normal state of the priority lane. |
+| Lanes | `A lopsided rate reaches both lanes through the public API and starves neither` | A lane with work is never starved by the other lane's weight. The ratio itself is not asserted here; see section 17. |
+| Budget | `Stream charges a configured budget` | `RequestBudget` makes the stream measure the CPU its tasks use, `MayTakeNewWork` turns false once the allowance is spent, and restoring the unlimited allowance turns it true again. An unconfigured stream measures nothing and pays no syscall for a number nobody reads. |
+| Budget | `A throttled stream is throttled, not broken, and never asks a provider while spent` | Work waits rather than being stranded, passes decline a lane that holds work, and no provider is asked while the allowance is spent — counted across every stream, because the assert that also catches this is compiled out in Release. |
+| Budget | `A stream with a spent allowance declines the general queue and resumes after a window` | A spent allowance changes a decision, and the budget-window pass reopens the stream instead of leaving it latched spent for the life of the process. The pass counter is read before the test touches anything, which is the witness that the stream's own loop calls the pass. |
+| Budget | `A stream with no allowance never declines general work` | The gate reads an unspent allowance and nothing else, and an unlimited stream is not measured and charged anyway. |
+| Budget | `A stream whose allowance is spent sleeps instead of spinning` | A spent stream parks on its condition variable; the pass count over a fixed window separates parking from polling the budget, and the lower bound on that count separates a throttled stream from a stalled one. |
+| Isolation | `Work queued on one stream is never run by another` | Lane work is confined to the stream that holds it, and each stream's work runs on one thread — its own, never the one that dispatched it. |
+| Abandonment | `Work still held when a stream is cleared is abandoned with its notice fired, not silently` | Clearing a stream takes every item it holds, fires the notice for each, runs none of the work, and counts what it dropped. |
+| Abandonment | `Work held on the priority lane is abandoned with its notice fired, not silently` | The same, for the other queue: the priority drain loop cannot pop items, report a number, and tell nobody. |
+| Abandonment | `Work dropped because its task was released notifies the requestor through the stream` | The notice arrives through the stream that dropped the work, once, carrying the task's own identity and the requestor's `userData`. |
+| Abandonment | `A dropped work item notifies the requestor that asked and a task nobody asked about notifies nobody` | The notice travels from the task onto its work item, the default is silence, and silence is asserted as firmly as the firing — if the default ever started notifying, every task in the engine would. |
+| Abandonment | `Work dropped at each of the three sites leaves its task record exactly where a release leaves it` | A dropped task still ends up where `ReleaseTask` would have left it: no double free, no resurrection, no leak, and no work that both ran and was reported abandoned. |
+| Age | `Every slice carries the age the registry stamped, and a recycled record is dated afresh` | The age lives on the task, so a slice cannot be born with a fresh timestamp to dodge a ceiling, and a record reused by a new task is stamped strictly newer rather than dropped as stale the moment it is offered. |
+| Age | `Work older than the stream's max age is dropped, reported and notified, while the same work runs when no ceiling is set` | Over-age work is refused on both lanes, counted, and notified in the same words as work dropped for a released task — with a ceiling-free control pass in the same test proving the fixture can run at all. |
+| Harness | `WaitUntil reports both outcomes and never decides by itself` | The wait helper every polling test in the suite relies on reports true only for a condition that became true and keeps the timeout its caller asked for. |
+
+### How these tests are written, and why
+
+The suite runs as engine work on the base stream, so most of its hazards are about observing the engine
+without becoming a second engine loop. Each rule below replaced something that passed for the wrong
+reason, and the measurement that killed it is named.
+
+| Rule | Why it is that way |
 |---|---|
-| `Empty Task` | A task with no work item is released cleanly. |
-| `Task of size 0` | A zero-length range still reports itself finished rather than hanging a waiter. |
-| `Bagel Problem` | Range-split work over the general queue produces the right sum. |
-| `Bagel Problem (Incremental Task)` | A runnable that returns short of its range resumes and finishes. |
-| `Both lanes serve their tasks` | Neither lane starves the other. |
-| `A throttled stream is throttled, not broken, and never asks a provider while spent` | That a spent allowance holds work back
-  without stranding it, and that no provider is asked while spent - counted in every build, because the assert is Release-compiled
-  out. |
-| `Stream charges a configured budget` | `MayTakeNewWork` and the accumulated charge agree. |
-| `The base stream is named Base, and the thread driving the engine is not called that` | Section 4's naming. |
-| `A thread that was never given a stream does not claim to have one` | `NonStreamIndex` is not zero and is out of affinity range. |
+| **Test a worker stream, never the base stream.** | The suite's own testlet is a work item on the base stream, so that stream is occupied until the suite ends and can never run what a test queues to it. The first worker stream is the nearest one genuinely idle. |
+| **A witness must be a quantity the mechanism cannot erase.** | Advancing a budget window zeroes the stream's accumulated CPU, so a test that reads the charge to prove the budget watches the mechanism delete its own evidence — measured as a charge of 0 us on a task that had just spent 222 ms. Predicates count tasks that ran and refusals recorded, which a reopened window cannot undo. |
+| **A negative assertion needs its positive control in the same test.** | "the runnable never ran" is indistinguishable from "the test never queued anything", so each guardrail first runs the identical fixture with nothing configured and has to see the work run. For the same reason a baseline is only meaningful once the counter is proven to have moved while the subjects were alive: a comparison of a baseline with itself is also satisfied by a counter that never changes. |
+| **Bound a wait by wall clock, not by iterations or passes.** | An iteration-count burn is milliseconds in Release and tens of them in Debug, so a fixed number of passes sees a queue in one configuration and an empty stream in another. The same reasoning sets the bounds on a spent stream's pass count: `WaitForWork` parks on a condition variable with a 10 ms timeout, so a parked stream wakes about fifty times a second and one polling the budget instead would report thousands of passes in the same window. |
+| **An in-band sentinel beats a sleep.** | Queued behind the subject on the same lane, a counting sentinel can only start once the subject's work item has left the stream — and `DispatchSuccessor` runs inside that item — so the sentinel's run is proof the delivery attempt is over. Measured before this existed: a test that slept 200 ms and then looked found what the machine happened to have done in 200 ms, which passed on a loaded machine for the wrong reason and failed on an idle one for the right one. |
+| **Write the two lanes out separately.** | The lanes are two queues drained by two loops, and one body parameterised over both is how the priority lane went a whole session unwitnessed. The drop-site guardrail test therefore uses the lane its neighbours do not: an earlier version used FIFO everywhere, and a mutation placed in the priority drain loop walked straight past it — found by running a mutant, not by reading the test. |
+| **Read a shared setting before changing it, and restore it on every exit path.** | Max age and lane weights belong to the base stream, which every later collection shares. Restoring them only at the end of a body would leave the whole suite throttled by the first early return. |
+| **A test owns its stream, and does not run in front of a timing-sensitive neighbour.** | Throttling a stream costs about two seconds of wall clock, and the test that measures charges over a bounded window reported the throttle as a fault until the throttling test was moved after it. Order is part of what a test asserts. |
+| **An isolation result needs a thread it can distinguish.** | Recording which thread ran each item proves nothing unless the recorder is seen to tell threads apart, so the isolation test also records the dispatching thread as its control. Work that ran on the thread which dispatched it makes the isolation figure silence rather than evidence. |
+| **A notice is tested in both directions.** | An item that should report itself and silently does not looks exactly like a stream with nothing to report, which is the same class of blind spot that once let a deleted loop header pass 59 collections. So the firing is asserted, and so is the silence of a task nobody asked about. |
+| **Assert the promise, not the arithmetic.** | The lane rate is a per-take decision and is unit-tested where it is decided, in `StreamDrainPolicyTest`; with no CPU allowance configured borrowing is free and the long-run ratio is not preserved, which section 17 records as correct behaviour. An end-to-end test of the ratio would have been a test that fails on correct code — worse than no test, because it teaches everyone to ignore tests. |
 
-Adjacent collections that cover the same subsystem: `TaskRegistryTest` (identity, generation, growth, ceiling),
-`ResultPacketTest` (packet layout and the clearing rule), `CPUBudgetTest`, `StreamDrainPolicyTest`,
-`TaskStreamAffinityTest`.
+Adjacent collections that cover the same subsystem: `TaskRegistryTest` (identity, generation, growth,
+ceiling), `ResultPacketTest` (packet layout and the clearing rule), `CPUBudgetTest`,
+`StreamDrainPolicyTest`, `TaskStreamAffinityTest`.
 
 Build and run them:
 

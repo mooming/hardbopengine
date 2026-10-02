@@ -40,48 +40,48 @@
   <h3>Methods</h3>
   <ul class="methods">
     <li><a href="index.html">TaskSystem</a> methods</li>
-    <li><a href="constructors.html">TaskSystem</a></li>
-    <li><a href="destructor.html">~TaskSystem</a></li>
     <li><a href="get-num-hardware-threads.html">GetNumHardwareThreads</a></li>
     <li><a href="set-thread-name.html">SetThreadName</a></li>
     <li><a href="set-stream-index.html">SetStreamIndex</a></li>
+    <li><a href="get-current-stream-index.html">GetCurrentStreamIndex</a></li>
     <li><a href="get-current-stream-name.html">GetCurrentStreamName</a></li>
     <li><a href="get-current-thread-name.html">GetCurrentThreadName</a></li>
-    <li><a href="get-current-stream-index.html">GetCurrentStreamIndex</a></li>
     <li><a href="is-base-thread.html">IsBaseThread</a></li>
     <li><a href="is-io-thread.html">IsIOThread</a></li>
     <li><a href="get-base-task-stream-index.html">GetBaseTaskStreamIndex</a></li>
     <li><a href="get-io-task-stream-index.html">GetIOTaskStreamIndex</a></li>
+    <li><a href="constructors.html">TaskSystem</a></li>
+    <li><a href="destructor.html">~TaskSystem</a></li>
     <li><a href="initialize.html">Initialize</a></li>
     <li><a href="request-shut-down.html">RequestShutDown</a></li>
     <li><a href="request-other-streams-close.html">RequestOtherStreamsClose</a></li>
-    <li><a href="are-other-streams-closed.html">AreOtherStreamsClosed</a></li>
+    <li><a href="are-user-streams-closed.html">AreUserStreamsClosed</a></li>
     <li><a href="join-and-clear.html">JoinAndClear</a></li>
-    <li><a href="enqueue.html">Enqueue</a></li>
-    <li><a href="dequeue.html">Dequeue</a></li>
-    <li><a href="create-task.html">CreateTask</a></li>
-    <li><a href="find-task.html">FindTask</a></li>
-    <li><a href="release-task.html">ReleaseTask</a></li>
-    <li><a href="set-successor.html">SetSuccessor</a></li>
-    <li><a href="set-abandoned-notice.html">SetAbandonedNotice</a></li>
-    <li><a href="get-successor.html">GetSuccessor</a></li>
-    <li><a href="dispatch-successor.html">DispatchSuccessor</a></li>
-    <li><a href="parallel-for.html">ParallelFor</a></li>
-    <li><a href="get-registry.html">GetRegistry</a></li>
     <li><a href="update.html">Update</a></li>
     <li><a href="run-budget-window-pass.html">RunBudgetWindowPass</a></li>
     <li><a href="get-num-budget-windows-advanced.html">GetNumBudgetWindowsAdvanced</a></li>
+    <li><a href="enqueue.html">Enqueue</a></li>
+    <li><a href="dequeue.html">Dequeue</a></li>
     <li><a href="enqueue-task.html">EnqueueTask</a></li>
     <li><a href="dispatch-to-main-thread.html">DispatchToMainThread</a></li>
+    <li><a href="create-task.html">CreateTask</a></li>
+    <li><a href="find-task.html">FindTask</a></li>
+    <li><a href="release-task.html">ReleaseTask</a></li>
+    <li><a href="run-split.html">RunSplit</a></li>
+    <li><a href="parallel-for.html">ParallelFor</a></li>
+    <li><a href="set-successor.html">SetSuccessor</a></li>
+    <li><a href="get-successor.html">GetSuccessor</a></li>
+    <li><a href="set-abandoned-notice.html">SetAbandonedNotice</a></li>
+    <li><a href="dispatch-successor.html">DispatchSuccessor</a></li>
     <li><a href="get-name.html">GetName</a></li>
     <li><a href="is-running.html">IsRunning</a></li>
-    <li><a href="get-base-task-stream.html">GetBaseTaskStream</a></li>
-    <li><a href="get-io-task-stream.html">GetIOTaskStream</a></li>
+    <li><a href="get-registry.html">GetRegistry</a></li>
     <li><a href="get-stream-name.html">GetStreamName</a></li>
     <li><a href="get-stream-index.html">GetStreamIndex</a></li>
-    <li><a href="get-stream.html">GetStream</a></li>
-    <li><a href="run-split.html">RunSplit</a></li>
     <li><a href="has-stream.html">HasStream</a></li>
+    <li><a href="get-stream.html">GetStream</a></li>
+    <li><a href="get-base-task-stream.html">GetBaseTaskStream</a></li>
+    <li><a href="get-io-task-stream.html">GetIOTaskStream</a></li>
     <li><a href="build-streams.html">BuildStreams</a></li>
   </ul>
 </nav>
@@ -151,11 +151,23 @@
 
 <p class="meta">From Engine/Core/TaskSystem.cpp</p>
 
-<pre><code>ls &lt;&lt; <span class="st">"... this thread reports stream index "</span> &lt;&lt; <span class="ty">TaskSystem</span>::<span class="fn">GetCurrentStreamIndex</span>() &lt;&lt; <span class="st">" named \&quot;"</span>
-   &lt;&lt; <span class="ty">TaskSystem</span>::<span class="fn">GetCurrentThreadName</span>().c_str() &lt;&lt; <span class="st">"\&quot; and IsBaseThread = "</span> &lt;&lt; <span class="ty">TaskSystem</span>::<span class="fn">IsBaseThread</span>()</code></pre>
+<pre><code>
+        <span class="fn">AddTest</span>(<span class="st">&quot;The base stream is named Base, and the thread driving the engine is not called that&quot;</span>, [this](TLogOut&amp; ls)
+        {
+                <span class="kw">auto</span>&amp; taskSys = <span class="ty">Engine</span>::<span class="fn">Get</span>().<span class="fn">GetTaskSystem</span>();
+
+                <span class="kw">const</span> <span class="kw">auto</span> baseName = taskSys.<span class="fn">GetStreamName</span>(<span class="ty">TaskSystem</span>::<span class="fn">GetBaseTaskStreamIndex</span>());
+                <span class="kw">const</span> <span class="kw">auto</span> ioName = taskSys.<span class="fn">GetStreamName</span>(<span class="ty">TaskSystem</span>::<span class="fn">GetIOTaskStreamIndex</span>());
+
+                ls &lt;&lt; <span class="st">&quot;Stream 0 is named \&quot;&quot;</span> &lt;&lt; baseName.<span class="fn">c_str</span>() &lt;&lt; <span class="st">&quot;\&quot;, stream 1 is \&quot;&quot;</span> &lt;&lt; ioName.<span class="fn">c_str</span>()
+                   &lt;&lt; <span class="st">&quot;\&quot;, this thread reports stream index &quot;</span> &lt;&lt; <span class="ty">TaskSystem</span>::<span class="fn">GetCurrentStreamIndex</span>() &lt;&lt; <span class="st">&quot; named \&quot;&quot;</span>
+                   &lt;&lt; <span class="ty">TaskSystem</span>::<span class="fn">GetCurrentThreadName</span>().<span class="fn">c_str</span>() &lt;&lt; <span class="st">&quot;\&quot; and IsBaseThread = &quot;</span> &lt;&lt; <span class="ty">TaskSystem</span>::<span class="fn">IsBaseThread</span>()
+                   &lt;&lt; '.' &lt;&lt; lf;
+<span class="cm">// …</span>
+});</code></pre>
 
 <p>
-  A stream-identity failure report in the task-system unit tests, at <code>Engine/Core/TaskSystem.cpp:2103-2105</code>.
+  The stream-identity report in the task-system unit tests, at <code>Engine/Core/TaskSystem.cpp:2094-2105</code>,
   All three facts are printed together because they are three views of the same
   <code>thread_local</code> state, and a wrong one of them is the diagnosis: an index that disagrees with the name means
   a claim that was never restored.

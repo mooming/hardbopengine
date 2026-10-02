@@ -40,48 +40,48 @@
 
   <h3>Methods</h3>
   <ul class="methods">
-        <li><a href="constructors.html">TaskSystem</a></li>
-    <li><a href="destructor.html">~TaskSystem</a></li>
-    <li><a href="get-num-hardware-threads.html">GetNumHardwareThreads</a></li>
+                                <li><a href="get-num-hardware-threads.html">GetNumHardwareThreads</a></li>
     <li><a href="set-thread-name.html">SetThreadName</a></li>
     <li><a href="set-stream-index.html">SetStreamIndex</a></li>
+    <li><a href="get-current-stream-index.html">GetCurrentStreamIndex</a></li>
     <li><a href="get-current-stream-name.html">GetCurrentStreamName</a></li>
     <li><a href="get-current-thread-name.html">GetCurrentThreadName</a></li>
-    <li><a href="get-current-stream-index.html">GetCurrentStreamIndex</a></li>
     <li><a href="is-base-thread.html">IsBaseThread</a></li>
     <li><a href="is-io-thread.html">IsIOThread</a></li>
     <li><a href="get-base-task-stream-index.html">GetBaseTaskStreamIndex</a></li>
     <li><a href="get-io-task-stream-index.html">GetIOTaskStreamIndex</a></li>
+    <li><a href="constructors.html">TaskSystem</a></li>
+    <li><a href="destructor.html">~TaskSystem</a></li>
     <li><a href="initialize.html">Initialize</a></li>
     <li><a href="request-shut-down.html">RequestShutDown</a></li>
     <li><a href="request-other-streams-close.html">RequestOtherStreamsClose</a></li>
-    <li><a href="are-other-streams-closed.html">AreOtherStreamsClosed</a></li>
+    <li><a href="are-user-streams-closed.html">AreUserStreamsClosed</a></li>
     <li><a href="join-and-clear.html">JoinAndClear</a></li>
-    <li><a href="enqueue.html">Enqueue</a></li>
-    <li><a href="dequeue.html">Dequeue</a></li>
-    <li><a href="create-task.html">CreateTask</a></li>
-    <li><a href="find-task.html">FindTask</a></li>
-    <li><a href="release-task.html">ReleaseTask</a></li>
-    <li><a href="set-successor.html">SetSuccessor</a></li>
-    <li><a href="set-abandoned-notice.html">SetAbandonedNotice</a></li>
-    <li><a href="get-successor.html">GetSuccessor</a></li>
-    <li><a href="dispatch-successor.html">DispatchSuccessor</a></li>
-    <li><a href="parallel-for.html">ParallelFor</a></li>
-    <li><a href="get-registry.html">GetRegistry</a></li>
     <li><a href="update.html">Update</a></li>
     <li><a href="run-budget-window-pass.html">RunBudgetWindowPass</a></li>
     <li><a href="get-num-budget-windows-advanced.html">GetNumBudgetWindowsAdvanced</a></li>
+    <li><a href="enqueue.html">Enqueue</a></li>
+    <li><a href="dequeue.html">Dequeue</a></li>
     <li><a href="enqueue-task.html">EnqueueTask</a></li>
     <li><a href="dispatch-to-main-thread.html">DispatchToMainThread</a></li>
+    <li><a href="create-task.html">CreateTask</a></li>
+    <li><a href="find-task.html">FindTask</a></li>
+    <li><a href="release-task.html">ReleaseTask</a></li>
+    <li><a href="run-split.html">RunSplit</a></li>
+    <li><a href="parallel-for.html">ParallelFor</a></li>
+    <li><a href="set-successor.html">SetSuccessor</a></li>
+    <li><a href="get-successor.html">GetSuccessor</a></li>
+    <li><a href="set-abandoned-notice.html">SetAbandonedNotice</a></li>
+    <li><a href="dispatch-successor.html">DispatchSuccessor</a></li>
     <li><a href="get-name.html">GetName</a></li>
     <li><a href="is-running.html">IsRunning</a></li>
-    <li><a href="get-base-task-stream.html">GetBaseTaskStream</a></li>
-    <li><a href="get-io-task-stream.html">GetIOTaskStream</a></li>
+    <li><a href="get-registry.html">GetRegistry</a></li>
     <li><a href="get-stream-name.html">GetStreamName</a></li>
     <li><a href="get-stream-index.html">GetStreamIndex</a></li>
-    <li><a href="get-stream.html">GetStream</a></li>
-    <li><a href="run-split.html">RunSplit</a></li>
     <li><a href="has-stream.html">HasStream</a></li>
+    <li><a href="get-stream.html">GetStream</a></li>
+    <li><a href="get-base-task-stream.html">GetBaseTaskStream</a></li>
+    <li><a href="get-io-task-stream.html">GetIOTaskStream</a></li>
     <li><a href="build-streams.html">BuildStreams</a></li>
   </ul>
 </nav>
@@ -274,16 +274,6 @@ either: the one it had — the wait now documented as
   <tr><th>Method</th><th>Signature</th><th>What a caller depends on</th></tr>
 
 	<tr>
-	  <td><a href="constructors.html">constructors</a></td>
-	  <td class="sig"><span class="fn">TaskSystem</span>() noexcept</td>
-	  <td>Records the constructing thread as the engine loop, reads the hardware thread count, starts nothing.</td>
-	</tr>
-	<tr>
-	  <td><a href="destructor.html">~TaskSystem</a></td>
-	  <td class="sig"><span class="fn">~TaskSystem</span>() noexcept</td>
-	  <td>Calls <a href="join-and-clear.html">JoinAndClear</a>, which is what keeps an unrun engine from terminating on live threads.</td>
-	</tr>
-	<tr>
 	  <td><a href="get-num-hardware-threads.html">GetNumHardwareThreads</a></td>
 	  <td class="sig"><span class="kw">static</span> TIndex GetNumHardwareThreads() noexcept</td>
 	  <td>The standard library’s concurrency hint, cast to int — and the only figure that decides how many streams exist.</td>
@@ -299,6 +289,11 @@ either: the one it had — the wait now documented as
 	  <td>Claims a stream for the calling thread; claimed per pass on a driven stream, for life on a stream’s own thread.</td>
 	</tr>
 	<tr>
+	  <td><a href="get-current-stream-index.html">GetCurrentStreamIndex</a></td>
+	  <td class="sig"><span class="kw">static</span> TIndex GetCurrentStreamIndex() noexcept</td>
+	  <td>This thread’s claimed index, or NonStreamIndex — which is why IsBaseThread can answer at all.</td>
+	</tr>
+	<tr>
 	  <td><a href="get-current-stream-name.html">GetCurrentStreamName</a></td>
 	  <td class="sig"><span class="kw">static</span> StaticString GetCurrentStreamName() noexcept</td>
 	  <td>Returns the same thread_local name as GetCurrentThreadName — the two can never disagree.</td>
@@ -307,11 +302,6 @@ either: the one it had — the wait now documented as
 	  <td><a href="get-current-thread-name.html">GetCurrentThreadName</a></td>
 	  <td class="sig"><span class="kw">static</span> StaticString GetCurrentThreadName() noexcept</td>
 	  <td>The door onto that name that the engine actually prints.</td>
-	</tr>
-	<tr>
-	  <td><a href="get-current-stream-index.html">GetCurrentStreamIndex</a></td>
-	  <td class="sig"><span class="kw">static</span> TIndex GetCurrentStreamIndex() noexcept</td>
-	  <td>This thread’s claimed index, or NonStreamIndex — which is why IsBaseThread can answer at all.</td>
 	</tr>
 	<tr>
 	  <td><a href="is-base-thread.html">IsBaseThread</a></td>
@@ -334,6 +324,16 @@ either: the one it had — the wait now documented as
 	  <td>1 — and the number every worker range in the engine is measured from.</td>
 	</tr>
 	<tr>
+	  <td><a href="constructors.html">constructors</a></td>
+	  <td class="sig"><span class="fn">TaskSystem</span>() noexcept</td>
+	  <td>Records the constructing thread as the engine loop, reads the hardware thread count, starts nothing.</td>
+	</tr>
+	<tr>
+	  <td><a href="destructor.html">~TaskSystem</a></td>
+	  <td class="sig"><span class="fn">~TaskSystem</span>() noexcept</td>
+	  <td>Calls <a href="join-and-clear.html">JoinAndClear</a>, which is what keeps an unrun engine from terminating on live threads.</td>
+	</tr>
+	<tr>
 	  <td><a href="initialize.html">Initialize</a></td>
 	  <td class="sig">void Initialize() noexcept</td>
 	  <td>Reads four configuration parameters, sizes the registry, and builds every stream. Exactly once, on the constructing thread.</td>
@@ -349,69 +349,14 @@ either: the one it had — the wait now documented as
 	  <td>Asks every stream but the two engine streams to drain. Idempotent, and safe on a torn-down task system.</td>
 	</tr>
 	<tr>
-	  <td><a href="are-other-streams-closed.html">AreOtherStreamsClosed</a></td>
-	  <td class="sig">bool AreOtherStreamsClosed() noexcept</td>
+	  <td><a href="are-user-streams-closed.html">AreUserStreamsClosed</a></td>
+	  <td class="sig">bool AreUserStreamsClosed() noexcept</td>
 	  <td>The condition JoinAndClear waits on. Unguarded for an empty stream array, unlike its sibling.</td>
 	</tr>
 	<tr>
 	  <td><a href="join-and-clear.html">JoinAndClear</a></td>
 	  <td class="sig">void JoinAndClear() noexcept</td>
 	  <td>Asks, pumps for up to 2000 ms, flushes the logger, closes, joins and clears — the whole teardown, in one order that works.</td>
-	</tr>
-	<tr>
-	  <td><a href="enqueue.html">Enqueue</a></td>
-	  <td class="sig">void Enqueue(const WorkItem&amp; task) noexcept<br>void Enqueue(TIndex streamIndex, const WorkItem&amp; task) noexcept<br>void Enqueue(TIndex streamIndex, const WorkItem&amp; task, StreamDrainPolicy::ELane lane) noexcept</td>
-	  <td>Three destinations: the shared general queue, or one stream’s FIFO or priority lane. A bad index drops the item silently outside Debug.</td>
-	</tr>
-	<tr>
-	  <td><a href="dequeue.html">Dequeue</a></td>
-	  <td class="sig">void Dequeue(std::optional&lt;WorkItem&gt;&amp; outTask) noexcept</td>
-	  <td>The taking side of the general queue, with an affinity test whose only live effect is to exclude non-stream threads.</td>
-	</tr>
-	<tr>
-	  <td><a href="create-task.html">CreateTask</a></td>
-	  <td class="sig">TaskID CreateTask(StaticString taskName, TRunnable func, void* userData) noexcept</td>
-	  <td>Asks the registry for a record. A null identity means the task will never run, and the create path never grows the table.</td>
-	</tr>
-	<tr>
-	  <td><a href="find-task.html">FindTask</a></td>
-	  <td class="sig">Task* FindTask(TaskID id) noexcept</td>
-	  <td>Resolves an identity through its generation. The pointer is not a lease.</td>
-	</tr>
-	<tr>
-	  <td><a href="release-task.html">ReleaseTask</a></td>
-	  <td class="sig">void ReleaseTask(TaskID id) noexcept</td>
-	  <td>Returns a record to the registry, advancing its generation so stale identities resolve to nothing.</td>
-	</tr>
-	<tr>
-	  <td><a href="set-successor.html">SetSuccessor</a></td>
-	  <td class="sig">void SetSuccessor(TaskID task, TaskID successor) noexcept</td>
-	  <td>Records who to dispatch when this join closes — recorded before the first item is queued, never after.</td>
-	</tr>
-	<tr>
-	  <td><a href="set-abandoned-notice.html">SetAbandonedNotice</a></td>
-	  <td class="sig">void SetAbandonedNotice(TaskID task, FAbandonedNotice handler, void* userData = nullptr) noexcept</td>
-	  <td>Opts in to learning that work was dropped. The handler runs on whichever thread dropped it.</td>
-	</tr>
-	<tr>
-	  <td><a href="get-successor.html">GetSuccessor</a></td>
-	  <td class="sig">TaskID GetSuccessor(TaskID task) noexcept</td>
-	  <td>The recorded successor, or a null identity when nobody is waiting on the join.</td>
-	</tr>
-	<tr>
-	  <td><a href="dispatch-successor.html">DispatchSuccessor</a></td>
-	  <td class="sig">void DispatchSuccessor(TaskID finishedTask) noexcept</td>
-	  <td>Copies the outcome onto the successor and queues it on the stream the packet names. Six refusals, four of them logged.</td>
-	</tr>
-	<tr>
-	  <td><a href="parallel-for.html">ParallelFor</a></td>
-	  <td class="sig">TaskID ParallelFor(StaticString taskName, TRunnable func, void* userData, TIndex numItems, TIndex numSubJobs, const TIndex* streamIndices, TIndex numStreamIndices, uint8_t priority = 0, TaskID successor = {}, TIndex successorStream = NonStreamIndex) noexcept<br>TaskID ParallelFor(StaticString taskName, TRunnable func, void* userData, TIndex numItems, TIndex numSubJobs, TIndex numStreams, uint8_t priority = 0, TaskID successor = {}, TIndex successorStream = NonStreamIndex) noexcept</td>
-	  <td>Split a job across streams and return without waiting. Naming the streams, or asking for a count of them.</td>
-	</tr>
-	<tr>
-	  <td><a href="get-registry.html">GetRegistry</a></td>
-	  <td class="sig">TaskRegistry&amp; GetRegistry() noexcept</td>
-	  <td>The registry itself, for capacity and growth — which has a thread rule of its own.</td>
 	</tr>
 	<tr>
 	  <td><a href="update.html">Update</a></td>
@@ -429,6 +374,16 @@ either: the one it had — the wait now documented as
 	  <td>The witness that the budget pass is alive, since a reopened stream looks like an unthrottled one.</td>
 	</tr>
 	<tr>
+	  <td><a href="enqueue.html">Enqueue</a></td>
+	  <td class="sig">void Enqueue(const WorkItem&amp; task) noexcept<br>void Enqueue(TIndex streamIndex, const WorkItem&amp; task) noexcept<br>void Enqueue(TIndex streamIndex, const WorkItem&amp; task, StreamDrainPolicy::ELane lane) noexcept</td>
+	  <td>Three destinations: the shared general queue, or one stream’s FIFO or priority lane. A bad index drops the item silently outside Debug.</td>
+	</tr>
+	<tr>
+	  <td><a href="dequeue.html">Dequeue</a></td>
+	  <td class="sig">void Dequeue(std::optional&lt;WorkItem&gt;&amp; outTask) noexcept</td>
+	  <td>The taking side of the general queue, with an affinity test whose only live effect is to exclude non-stream threads.</td>
+	</tr>
+	<tr>
 	  <td><a href="enqueue-task.html">EnqueueTask</a></td>
 	  <td class="sig">void EnqueueTask(TIndex streamIndex, Task&amp; task, uint8_t priority = 0, StreamDrainPolicy::ELane lane = StreamDrainPolicy::ELane::Fifo) noexcept</td>
 	  <td>The customer’s entry point: declares the join, builds the one item that fills it, queues it.</td>
@@ -437,6 +392,51 @@ either: the one it had — the wait now documented as
 	  <td><a href="dispatch-to-main-thread.html">DispatchToMainThread</a></td>
 	  <td class="sig">void DispatchToMainThread(TMainThreadTask task, void* userData, uint8_t priority = 128) noexcept</td>
 	  <td>Posts a callable to the engine-loop thread. Drained at the top of every pass, so there is no draining call.</td>
+	</tr>
+	<tr>
+	  <td><a href="create-task.html">CreateTask</a></td>
+	  <td class="sig">TaskID CreateTask(StaticString taskName, TRunnable func, void* userData) noexcept</td>
+	  <td>Asks the registry for a record. A null identity means the task will never run, and the create path never grows the table.</td>
+	</tr>
+	<tr>
+	  <td><a href="find-task.html">FindTask</a></td>
+	  <td class="sig">Task* FindTask(TaskID id) noexcept</td>
+	  <td>Resolves an identity through its generation. The pointer is not a lease.</td>
+	</tr>
+	<tr>
+	  <td><a href="release-task.html">ReleaseTask</a></td>
+	  <td class="sig">void ReleaseTask(TaskID id) noexcept</td>
+	  <td>Returns a record to the registry, advancing its generation so stale identities resolve to nothing.</td>
+	</tr>
+	<tr>
+	  <td><a href="run-split.html">RunSplit</a></td>
+	  <td class="sig">TaskID RunSplit(StaticString taskName, TRunnable func, void* userData, TIndex numItems, TIndex numSubJobs, const TIndex* streamIndices, TIndex numStreamIndices, uint8_t priority, TaskID successor, TIndex successorStream) noexcept</td>
+	  <td>The private half of ParallelFor: clamps, routes, then hands out contiguous ranges round-robin.</td>
+	</tr>
+	<tr>
+	  <td><a href="parallel-for.html">ParallelFor</a></td>
+	  <td class="sig">TaskID ParallelFor(StaticString taskName, TRunnable func, void* userData, TIndex numItems, TIndex numSubJobs, const TIndex* streamIndices, TIndex numStreamIndices, uint8_t priority = 0, TaskID successor = {}, TIndex successorStream = NonStreamIndex) noexcept<br>TaskID ParallelFor(StaticString taskName, TRunnable func, void* userData, TIndex numItems, TIndex numSubJobs, TIndex numStreams, uint8_t priority = 0, TaskID successor = {}, TIndex successorStream = NonStreamIndex) noexcept</td>
+	  <td>Split a job across streams and return without waiting. Naming the streams, or asking for a count of them.</td>
+	</tr>
+	<tr>
+	  <td><a href="set-successor.html">SetSuccessor</a></td>
+	  <td class="sig">void SetSuccessor(TaskID task, TaskID successor) noexcept</td>
+	  <td>Records who to dispatch when this join closes — recorded before the first item is queued, never after.</td>
+	</tr>
+	<tr>
+	  <td><a href="get-successor.html">GetSuccessor</a></td>
+	  <td class="sig">TaskID GetSuccessor(TaskID task) noexcept</td>
+	  <td>The recorded successor, or a null identity when nobody is waiting on the join.</td>
+	</tr>
+	<tr>
+	  <td><a href="set-abandoned-notice.html">SetAbandonedNotice</a></td>
+	  <td class="sig">void SetAbandonedNotice(TaskID task, FAbandonedNotice handler, void* userData = nullptr) noexcept</td>
+	  <td>Opts in to learning that work was dropped. The handler runs on whichever thread dropped it.</td>
+	</tr>
+	<tr>
+	  <td><a href="dispatch-successor.html">DispatchSuccessor</a></td>
+	  <td class="sig">void DispatchSuccessor(TaskID finishedTask) noexcept</td>
+	  <td>Copies the outcome onto the successor and queues it on the stream the packet names. Six refusals, four of them logged.</td>
 	</tr>
 	<tr>
 	  <td><a href="get-name.html">GetName</a></td>
@@ -449,14 +449,9 @@ either: the one it had — the wait now documented as
 	  <td>The flag itself, read-only, so the run loop polls an atomic rather than a cached copy.</td>
 	</tr>
 	<tr>
-	  <td><a href="get-base-task-stream.html">GetBaseTaskStream</a></td>
-	  <td class="sig">TaskStream&amp; GetBaseTaskStream() noexcept<br>const TaskStream&amp; GetBaseTaskStream() const noexcept</td>
-	  <td>Stream 0, with no bounds path at all. Nothing in the engine calls it.</td>
-	</tr>
-	<tr>
-	  <td><a href="get-io-task-stream.html">GetIOTaskStream</a></td>
-	  <td class="sig">TaskStream&amp; GetIOTaskStream() noexcept<br>const TaskStream&amp; GetIOTaskStream() const noexcept</td>
-	  <td>Stream 1 — the handle the logger needs in order to drive the stream that has no thread.</td>
+	  <td><a href="get-registry.html">GetRegistry</a></td>
+	  <td class="sig">TaskRegistry&amp; GetRegistry() noexcept</td>
+	  <td>The registry itself, for capacity and growth — which has a thread rule of its own.</td>
 	</tr>
 	<tr>
 	  <td><a href="get-stream-name.html">GetStreamName</a></td>
@@ -469,19 +464,24 @@ either: the one it had — the wait now documented as
 	  <td>Which stream owns this OS thread, found by scanning. The scanned field is not synchronised.</td>
 	</tr>
 	<tr>
-	  <td><a href="get-stream.html">GetStream</a></td>
-	  <td class="sig">TaskStream&amp; GetStream(int index) noexcept</td>
-	  <td>The stream at index — and an out-of-range index returns the base stream instead of failing.</td>
-	</tr>
-	<tr>
 	  <td><a href="has-stream.html">HasStream</a></td>
 	  <td class="sig">bool HasStream(TIndex index) const noexcept</td>
 	  <td>Whether the index exists right now. The precondition of everything that reaches a stream by number.</td>
 	</tr>
 	<tr>
-	  <td><a href="run-split.html">RunSplit</a></td>
-	  <td class="sig">TaskID RunSplit(StaticString taskName, TRunnable func, void* userData, TIndex numItems, TIndex numSubJobs, const TIndex* streamIndices, TIndex numStreamIndices, uint8_t priority, TaskID successor, TIndex successorStream) noexcept</td>
-	  <td>The private half of ParallelFor: clamps, routes, then hands out contiguous ranges round-robin.</td>
+	  <td><a href="get-stream.html">GetStream</a></td>
+	  <td class="sig">TaskStream&amp; GetStream(int index) noexcept</td>
+	  <td>The stream at index — and an out-of-range index returns the base stream instead of failing.</td>
+	</tr>
+	<tr>
+	  <td><a href="get-base-task-stream.html">GetBaseTaskStream</a></td>
+	  <td class="sig">TaskStream&amp; GetBaseTaskStream() noexcept<br>const TaskStream&amp; GetBaseTaskStream() const noexcept</td>
+	  <td>Stream 0, with no bounds path at all. Nothing in the engine calls it.</td>
+	</tr>
+	<tr>
+	  <td><a href="get-io-task-stream.html">GetIOTaskStream</a></td>
+	  <td class="sig">TaskStream&amp; GetIOTaskStream() noexcept<br>const TaskStream&amp; GetIOTaskStream() const noexcept</td>
+	  <td>Stream 1 — the handle the logger needs in order to drive the stream that has no thread.</td>
 	</tr>
 	<tr>
 	  <td><a href="build-streams.html">BuildStreams</a></td>

@@ -1,5 +1,59 @@
 # Journal
 
+## 2026-10-02 16:37 — TaskSystem.cpp holds no comment, and the 201 that left went to four places
+
+**Cause.** The owner asked for the `hb-standards` pass over `Engine/Core/TaskSystem.{h,cpp}`, and ruled on
+the one thing no script can decide: read every comment, keep only what deserves a home, and take away the
+blank lines a comment was holding apart so the strip leaves no gap behind. `6dad493` deleted 201 comment
+lines, `9d9eace` re-sequenced the header, and this entry covers where the prose went and what the move
+broke elsewhere.
+
+**Disposition, not translation.** Two thirds of the engine comments were restatements of sentences the
+reference had carried for weeks, and the test region's comments were narration beside code that already
+said what it does. What had no other home:
+
+| What was worth keeping | Where it went |
+|---|---|
+| The close-ordering rule — the logger must close after the last stream, because a stream's shutdown line is written by that stream and the epoch a `Duration` formats against dies with the logger | `docs/Core/TaskSystem/join-and-clear.html`. The only claim in the file that existed nowhere else, and the one a reader cannot re-derive from the call order |
+| Ten rules of how these tests are written, each of which replaced something that passed for the wrong reason: a witness the mechanism cannot erase, a positive control beside every negative assertion, wall clock instead of iterations, an in-band sentinel instead of a sleep, the two lanes written out separately | `docs/TaskSystemGuide.md` section 13, new table. The measurements behind them (a charge read as 0 us after 222 ms spent; a 200 ms sleep that passed on a loaded machine for the wrong reason; a mutant in the priority drain loop that 59 collections walked past) only existed in those comments |
+| The test inventory, which the same section held as 9 rows while the file held 36 tests | Same section, 36 rows. A checker compares `AddTest` names against the section: 36 in the source, 36 named verbatim |
+| Narration that restated the code, the test name repeated as prose, one paragraph pasted three times | Deleted. Restating a sentence twice does not make it a contract |
+
+**The reference had been describing a header that no longer existed.** The body move left five pages
+asserting an inline body and a deduced `auto&` return, and `is-running.html` still documented the
+atomic-reference form of a getter that now returns `bool`. Those claims were about the old shape, and a
+reader who trusted them would design against a signature the compiler no longer accepts. Then
+re-grouping the header moved the declarations again, and the class page's method table and all 44
+sidebars follow header order — so the order was derived from the declarations and both rewritten, rather
+than hand-mended page by page.
+
+**The owner renamed `AreOtherStreamsClosed` mid-pass.** Code agreed with itself in three places; the
+reference named the old spelling in 44. The page became `are-user-streams-closed.html`, and
+`docs_coverage.py check-file` went from `DOC-METHOD — no areuserstreamsclosed.html` to one entry
+documented, addressed, method pages complete. `RequestOtherStreamsClose` keeps its own name, so the page
+now states in one sentence that both names cover the same set — every stream that is neither the base
+stream nor the IO stream — instead of leaving a reader to infer that two words mean one thing.
+
+**Two defects a citation audit finds and a formatter cannot.** `parallel-for.html` cited
+`TaskSystem.cpp:1435-1437` under a block that quotes 1431-1443 with the middle elided, and
+`get-current-thread-name.html` printed `"... this thread reports stream index "` — a string literal that
+has never existed in any file, written so a two-line quote would fit. Both now quote the source verbatim
+with the `…` elision this class already uses, and each line is compared against the file it claims.
+
+**Deliberately not done.**
+
+| Left alone | Because |
+|---|---|
+| Definition order in `TaskSystem.cpp` | No rule requires it to mirror the header, and shuffling 3 500 lines to satisfy a preference nobody wrote down is churn, not conformance |
+| Two extra guardrail rows in `docs/TaskSystemRedesign.md` §9 | The reopen mechanism is already R1, R2, R23c and the *signals versus reopens* table; the age clock is in guide §16. A second home for one claim is how the first one starts to rot |
+| Per-method `/// API reference:` pointers | The pair carries the class pointer at `TaskSystem.h:16`, which is what `docs_coverage` checks. Most Core headers are in the same state; starting it for one class would be a different task |
+
+**Gate.** `check.sh --staged --test` on the pair: grep rule failures 0, advisory 0, build gate
+`PASS 12/12`, EngineTest `59 collections` passed in Dev, Debug and Release, and the 36 tests of
+`TaskSystemTest` passed in all three. The token multiset of each file, comments stripped, is identical to
+the pre-strip snapshot except for the three occurrences of the owner's rename — so the deletion moved
+prose and nothing else. `htmlcheck` 44 pages 0 problems, `comments.py` 0, `layout.py` 2 clean.
+
 ## 2026-10-02 14:29 — a member with no engine caller is a lie about the interface, so it moved
 
 **Cause.** The owner asked who calls `TaskSystem::DriveUntil`. Fourteen call sites, six in

@@ -40,48 +40,48 @@
   <h3>Methods</h3>
   <ul class="methods">
     <li><a href="index.html">TaskSystem</a> methods</li>
-    <li><a href="constructors.html">TaskSystem</a></li>
-    <li><a href="destructor.html">~TaskSystem</a></li>
     <li><a href="get-num-hardware-threads.html">GetNumHardwareThreads</a></li>
     <li><a href="set-thread-name.html">SetThreadName</a></li>
     <li><a href="set-stream-index.html">SetStreamIndex</a></li>
+    <li><a href="get-current-stream-index.html">GetCurrentStreamIndex</a></li>
     <li><a href="get-current-stream-name.html">GetCurrentStreamName</a></li>
     <li><a href="get-current-thread-name.html">GetCurrentThreadName</a></li>
-    <li><a href="get-current-stream-index.html">GetCurrentStreamIndex</a></li>
     <li><a href="is-base-thread.html">IsBaseThread</a></li>
     <li><a href="is-io-thread.html">IsIOThread</a></li>
     <li><a href="get-base-task-stream-index.html">GetBaseTaskStreamIndex</a></li>
     <li><a href="get-io-task-stream-index.html">GetIOTaskStreamIndex</a></li>
+    <li><a href="constructors.html">TaskSystem</a></li>
+    <li><a href="destructor.html">~TaskSystem</a></li>
     <li><a href="initialize.html">Initialize</a></li>
     <li><a href="request-shut-down.html">RequestShutDown</a></li>
     <li><a href="request-other-streams-close.html">RequestOtherStreamsClose</a></li>
-    <li><a href="are-other-streams-closed.html">AreOtherStreamsClosed</a></li>
+    <li><a href="are-user-streams-closed.html">AreUserStreamsClosed</a></li>
     <li><a href="join-and-clear.html">JoinAndClear</a></li>
-    <li><a href="enqueue.html">Enqueue</a></li>
-    <li><a href="dequeue.html">Dequeue</a></li>
-    <li><a href="create-task.html">CreateTask</a></li>
-    <li><a href="find-task.html">FindTask</a></li>
-    <li><a href="release-task.html">ReleaseTask</a></li>
-    <li><a href="set-successor.html">SetSuccessor</a></li>
-    <li><a href="set-abandoned-notice.html">SetAbandonedNotice</a></li>
-    <li><a href="get-successor.html">GetSuccessor</a></li>
-    <li><a href="dispatch-successor.html">DispatchSuccessor</a></li>
-    <li><a href="parallel-for.html">ParallelFor</a></li>
-    <li><a href="get-registry.html">GetRegistry</a></li>
     <li><a href="update.html">Update</a></li>
     <li><a href="run-budget-window-pass.html">RunBudgetWindowPass</a></li>
     <li><a href="get-num-budget-windows-advanced.html">GetNumBudgetWindowsAdvanced</a></li>
+    <li><a href="enqueue.html">Enqueue</a></li>
+    <li><a href="dequeue.html">Dequeue</a></li>
     <li><a href="enqueue-task.html">EnqueueTask</a></li>
     <li><a href="dispatch-to-main-thread.html">DispatchToMainThread</a></li>
+    <li><a href="create-task.html">CreateTask</a></li>
+    <li><a href="find-task.html">FindTask</a></li>
+    <li><a href="release-task.html">ReleaseTask</a></li>
+    <li><a href="run-split.html">RunSplit</a></li>
+    <li><a href="parallel-for.html">ParallelFor</a></li>
+    <li><a href="set-successor.html">SetSuccessor</a></li>
+    <li><a href="get-successor.html">GetSuccessor</a></li>
+    <li><a href="set-abandoned-notice.html">SetAbandonedNotice</a></li>
+    <li><a href="dispatch-successor.html">DispatchSuccessor</a></li>
     <li><a href="get-name.html">GetName</a></li>
     <li><a href="is-running.html">IsRunning</a></li>
-    <li><a href="get-base-task-stream.html">GetBaseTaskStream</a></li>
-    <li><a href="get-io-task-stream.html">GetIOTaskStream</a></li>
+    <li><a href="get-registry.html">GetRegistry</a></li>
     <li><a href="get-stream-name.html">GetStreamName</a></li>
     <li><a href="get-stream-index.html">GetStreamIndex</a></li>
-    <li><a href="get-stream.html">GetStream</a></li>
-    <li><a href="run-split.html">RunSplit</a></li>
     <li><a href="has-stream.html">HasStream</a></li>
+    <li><a href="get-stream.html">GetStream</a></li>
+    <li><a href="get-base-task-stream.html">GetBaseTaskStream</a></li>
+    <li><a href="get-io-task-stream.html">GetIOTaskStream</a></li>
     <li><a href="build-streams.html">BuildStreams</a></li>
   </ul>
 </nav>
@@ -160,7 +160,7 @@ log.Out([&amp;](<span class="kw">auto</span>&amp; ls) { ls &lt;&lt; <span class=
 <p>
   Its twin does have a real use: the task-system unit tests print <code>GetCurrentThreadName()</code> beside
   <code>GetCurrentStreamIndex()</code> when a stream-identity assertion fails
-  (<code>Engine/Core/TaskSystem.cpp:2103-2105</code>). Both names would print the same word there, which is the plainest
+  (<code>Engine/Core/TaskSystem.cpp:2101-2105</code>). Both names would print the same word there, which is the plainest
   evidence that the pair is one variable seen twice.
 </p>
 
