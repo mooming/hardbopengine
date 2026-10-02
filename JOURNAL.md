@@ -1,5 +1,80 @@
 # Journal
 
+## 2026-10-02 21:17 — Rules A and B get their first module, and two checkers turn out to have measured the wrong region
+
+**Cause.** The owner chose the smallest real test of the new passes: sweep one module pair by hand, as a
+demonstration of what layer 2b costs and what it catches, before committing to 1485 seams across the tree.
+`Engine/Config` was the choice — nine files, 23 findings, no include findings, and no interaction with the
+`TaskSystem` work another agent was landing in the same window (`8ee8e0c` arrived mid-pass and touches no
+`Engine/Config` file).
+
+**The sweep's first product was two bug reports against its own tools.** `includes.py --prove-immutable`
+compared everything from the preamble boundary to end of file — which is the body of the file — so rule B7
+failed on all seven `Engine/Config` files for the crime of editing blanks, which is the entire job of a
+blank-line pass. What B7 protects is the includes below the preamble, and what makes one immune is what it
+belongs to: a `.inl` include cannot leave the class body it sits in, a test header cannot leave its
+`#ifdef __UNIT_TEST__`. The guard text is now part of each entry's identity, a hoist prints both lists, and
+a passing run prints `9 file(s) compared against HEAD; 0 include(s) below the preamble in 0 file(s); unmoved`
+— including the zero, because an unmeasured case must not read as a passing one. `blank_lines.py` used one
+boundary for two questions: where A3's seam sits, and where the preamble ends. In `Engine/Config/BuildConfig.h`
+— a platform-detection header whose only code is a `static_assert` inside its own `#if` — the first answer is
+"nowhere", and reading that as "no preamble" silently switched A1 and A2 off for the whole file while A3
+demanded its two blanks *between a directive and the line it guards*, which the conditional-hug rule forbids.
+Splitting the boundary fixes A1, kills the false A3, and exposes 26 A2 findings that had been invisible:
+missing blanks between the `<…>` and `"…"` blocks inside guarded test-include regions.
+
+**The exposed case became a rule, not a finding.** 15 of the tree's 85 A2 findings sit inside a guarded
+include region. The standard now states the distinction that the classifier had been implying: A2's blank
+reaches inside a guard, because a `#ifdef __UNIT_TEST__` list is a preamble at smaller scale, while rule B2's
+*sort* must never cross one, because `Engine/OSAL/OSMemory.cpp` picks headers per platform and sorting across
+`#if` / `#elif` arms would move a header out of the branch that found it. Blanks are the shape of a block;
+the sort is what a branch is for.
+
+**What one module's paragraph pass actually consists of.** 23 findings to zero over nine files, with 12
+blanks deleted, five preamble seams written, one `return` seam written, and two include-block blanks added:
+
+| Kind | Count | Where |
+|---|---|---|
+| A3 seam written (1 → 2 blanks) | 5 | `ConfigFile.h`, `ConfigParam.h`, `ConfigSystem.h`, `ConfigSystem.cpp`, `EngineConfig.h` |
+| A4 blank deleted after `{` | 5 | the same shape everywhere: `namespace hbe` `{` then a blank then the body |
+| A5 blank deleted before a closing brace | 4 | including every `} // namespace hbe` and one `} // namespace` of an anonymous namespace |
+| A10 seam written before `return` | 1 | `ConfigSystem::Get`, between the static instance and its return |
+| A2 blank between include blocks | 2 | `ConfigFile.cpp`, `EngineConfig.h` |
+| A1 / A16 double blanks reduced | 2 | `BuildConfig.h`, where define groups are one concern list, not a seam |
+
+The judgement half is the part a demonstration is for. `EngineConfig.h` had a `static_assert` alone in a
+paragraph of its own, sitting between the log-level constants it checks and the memory constants it does not
+— the blank above it went, and it now reads as a check attached to its subject. Its constants' grouping (log
+levels, memory, string buffers, log block sizes) already separated real concerns and was left exactly as it
+was. `ConfigParam.h` keeps three conditional member groups as three paragraphs (`name`/`desc`,
+`value`/`lock`, debug-only `threadID`) and keeps the blank between a debug-`Assert` region and the statement
+it guards — the seam A10 explicitly refuses to legislate. `ConfigSystem.h` needed no judgement at all: two
+seams, no other edit. Most files are like that, which is why the checker's count is an inventory and not a
+score.
+
+**Re-measured backlog, after the two corrections, with the scope named — 1485 and 1648 are not comparable
+numbers.** Over `check.sh --all` scope (259 files, which includes `Applications/` and `Examples/`):
+`blank lines: 1564 finding(s)` — A10=530, A4=347, A5=255, A3=203, A11=116, A2=88, A14=14, A1=5, A16=4, A13=1,
+A15=1 — and `includes: 23 finding(s) in 23 file(s)` (B2=12, B5=11). Over `Engine/` alone (244 files):
+`blank lines: 1485 finding(s)` — A10=512, A4=330, A5=238, A3=189, A11=104, A2=85, A14=13, A1=6, A16=4, A12=2,
+A13=1, A15=1. The whole-tree total moved 1648 → 1564 for two reasons and both are corrections rather than
+progress: `Engine/Config`'s 23 findings went to zero, and A3 lost 66 findings because a file whose first code
+sits inside a conditional never owed the seam in the first place. The 1648 figure stays in the record as what
+`check.sh --all` reported when it was measured, not as a baseline this entry beats.
+
+**Verification.** `blank_lines.py --selftest` 42 fixtures (one added for the conditional-first-code case),
+`includes.py --selftest` 10; `prove_regroup.py --whitespace-only` proves for all nine `Engine/Config` files
+that only blank lines changed; per-file format check shows `raw=1, seam-aware=0` on exactly the five files
+whose seam sits before a `namespace` and `raw=0` on the four that have no such seam, which is the measured
+formatter behaviour reproducing itself file by file; `--prove-immutable HEAD` over the module prints
+`0 include(s) below the preamble in 0 file(s); unmoved` and still catches a hoisted
+`#include "Vector3CommonImpl.inl"` by printing both identity lists; `check.sh HEAD` on the sweep commit
+reports `blank lines: 0`, `includes: 0`, `grep rule failures : 0`. The detached gate
+`20261002-211217-14578` finished `GATE_EXIT=1` with **build gate PASS 12/12** across Dev, Debug and Release
+and layer 2b reporting its counts as `[DEBT]`; that exit code is the standing comment-ban, member-layout and
+docs backlog, and the run compiled the 46 files another agent had dirty in the worktree without failing on
+them.
+
 ## 2026-10-02 18:08 — Blank lines and includes became rules, and the gate changed to be able to hold them
 
 **Cause.** The owner asked the `hb-standards` skill for two more passes: one that keeps only the blank lines
