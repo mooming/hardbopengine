@@ -521,8 +521,13 @@ The touched files are `touch`ed first so ninja genuinely recompiles: without thi
 `no work to do` line as a **suspicious** result and confirm it with
 `touch <file>`.
 
-`Examples/MacOSApp` is not covered: `Examples/` is not in the root `CMakeLists.txt`,
-so formatting there cannot be compile-verified.
+Coverage is per target, not per directory. `Examples/` **is** added by the root
+`CMakeLists.txt` at line 35, and `Examples/CMakeLists.txt` adds `WindowExample`, so that
+target is compile-verified like any other. What is not covered is an application directory
+that no `CMakeLists.txt` adds: its own `CMakeLists.txt` is then read by nobody, no
+configuration ever compiles it, and `layout.py` has no compile-database entry for its
+headers either. `Examples/MacOSApp` was deleted on 2026-10-03 for exactly that reason — it
+carried a `CMakeLists.txt` nothing read, so 18 files and 257 comments sat outside every gate.
 
 ## Proving a commit moved no code (`prove_format.py`)
 
@@ -592,10 +597,14 @@ Three rules the cycle exists to enforce, each learned by being broken:
   `public:` produced a file that compiled and then failed three files away with "field of type `Buffer` has
   private default constructor" — after two days of notes said exactly this.
 
-Applications and Examples are not modules: they own no API pages, and `Examples/` is outside the root
-`CMakeLists.txt` so **nothing compiles it** — a strip there is provable only by `code_tokens`, never by the
-build gate. Their prose goes to the top-level guides (`docs/RunningTests.md`, `docs/VulkanExampleGuide.md`
-and siblings), which is the convention the tree already uses for prose that is not API.
+Applications and Examples are not modules: they own no API pages, so a comment stripped from one
+of their files has no class page to move into and `docs_coverage.py check-file` has nothing to
+answer with. Their prose goes to the top-level guides (`docs/RunningTests.md`,
+`docs/VulkanExampleGuide.md` and siblings), which is the convention the tree already uses for
+prose that is not API. Unlike `Engine/` they are small enough to compile-verify whole, so a strip
+there is proved by `code_tokens` **and** by the build gate — provided every one of their sources
+belongs to a target the root `CMakeLists.txt` reaches, which is the condition the layer 6 note
+above tells you how to check.
 
 ## Helper scripts
 
