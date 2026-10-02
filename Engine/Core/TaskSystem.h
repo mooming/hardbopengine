@@ -28,7 +28,6 @@ public:
 	static constexpr TIndex NonStreamIndex = static_cast<TIndex>(-1);
 	static constexpr TIndex BaseStreamIndex = 0;
 	static constexpr TIndex IOStreamIndex = 1;
-
 	static constexpr TIndex MaxStreamsPerSplit = 64;
 
 	static constexpr const char* EngineLoopThreadName = "EngineLoop";
@@ -70,7 +69,7 @@ public:
 	void Initialize() noexcept;
 	void RequestShutDown() noexcept;
 	void RequestOtherStreamsClose() noexcept;
-	[[nodiscard]] bool AreOtherStreamsClosed() noexcept;
+	[[nodiscard]] bool AreUserStreamsClosed() noexcept;
 	void JoinAndClear() noexcept;
 
 	void Update() noexcept;

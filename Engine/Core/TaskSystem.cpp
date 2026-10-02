@@ -150,7 +150,7 @@ void TaskSystem::RequestOtherStreamsClose() noexcept
 	}
 }
 
-bool TaskSystem::AreOtherStreamsClosed() noexcept
+bool TaskSystem::AreUserStreamsClosed() noexcept
 {
 	const TaskStream& baseStream = GetStream(GetBaseTaskStreamIndex());
 	const TaskStream& ioStream = GetStream(GetIOTaskStreamIndex());
@@ -189,7 +189,6 @@ void TaskSystem::Update() noexcept
 void TaskSystem::JoinAndClear() noexcept
 {
 	const bool isEngineLoopThread = std::this_thread::get_id() == engineLoopThreadID;
-
 	const bool hasStreams = HasStream(GetBaseTaskStreamIndex());
 
 	if (hasStreams)
@@ -206,7 +205,7 @@ void TaskSystem::JoinAndClear() noexcept
 		baseStream.SetDrivenByShutdownPump();
 
 		while (std::chrono::steady_clock::now() < pumpDeadline &&
-			   (!AreOtherStreamsClosed() || baseStream.HasPostedTasks() || baseStream.CountPendingItems() > 0))
+			   (!AreUserStreamsClosed() || baseStream.HasPostedTasks() || baseStream.CountPendingItems() > 0))
 		{
 			baseStream.Update();
 			std::this_thread::sleep_for(std::chrono::milliseconds(1));
