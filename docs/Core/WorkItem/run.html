@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WorkItem::Run — HardBop Engine API reference</title>
+<title>WorkItem::Run — Core module — HardBop Engine API reference</title>
 <link rel="stylesheet" href="../../assets/hbe-docs.css">
 </head>
 <body>
@@ -15,7 +15,7 @@
   <ul>
     <li><a href="../../Config/index.html">Config</a></li>
     <li><a href="../../Container/index.html">Container</a></li>
-    <li><a class="current" href="../index.html">Core</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
     <li><a href="../../Engine/index.html">Engine</a></li>
     <li><a href="../../HSTL/index.html">HSTL</a></li>
     <li><a href="../../Log/index.html">Log</a></li>
@@ -28,21 +28,13 @@
     <li><a href="../../Test/index.html">Test</a></li>
   </ul>
 
-  <h3>This class</h3>
+  <h3>This function</h3>
   <ul>
-    <li><a href="index.html#description">Class description</a></li>
-    <li><a href="index.html#template">Template parameters</a></li>
-    <li><a href="index.html#properties">Class properties</a></li>
-    <li><a href="index.html#methods">Class methods</a></li>
-    <li><a href="index.html#non-member">Non-member helpers</a></li>
-    <li><a href="index.html#coverage">Coverage</a></li>
-  </ul>
-
-  <h3>Methods</h3>
-  <ul class="methods">
-    <li><a class="current" href="run.html">Run</a></li>
-    <li><a class="current" href="has-finished.html">HasFinished</a></li>
-    <li><a class="current" href="operator-less.html">operator&lt;</a></li>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Example</a></li>
   </ul>
 </nav>
 
@@ -58,13 +50,17 @@
 <p class="subtitle">
   <span class="tag">member of hbe::WorkItem</span>
   <span class="tag">Engine/Core/WorkItem.h</span>
+  <span class="tag">member of hbe::WorkItem</span>
+  <span class="tag">Engine/Core/WorkItem.h</span>
+  <span class="tag">member of hbe::WorkItem</span>
+  <span class="tag">Engine/Core/WorkItem.h</span>
   <span class="tag">noexcept</span>
   run this item's slice of the task's work and report whether that call closed the join
 </p>
 
 <h2 id="signature">Signature</h2>
 
-<pre><code><span class="kw">bool</span> <span class="fn">Run</span>(<span class="ty">Task</span>&amp; task) <span class="kw">noexcept</span>;</code></pre>
+<pre><code>bool Run(Task&amp; task) noexcept</code></pre>
 
 <h2 id="description">Function description</h2>
 
@@ -111,6 +107,10 @@
 {
     taskSystem.<span class="fn">DispatchSuccessor</span>(item.taskID);   <span class="cm">// the obligation that came with true</span>
 }</code></pre>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; WorkItem</a></span>
+  <span><a href="index.html#methods">All WorkItem methods</a></span>
+</footer>
 
 </main>
 </body>

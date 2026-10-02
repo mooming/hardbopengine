@@ -34,6 +34,7 @@ using FAbandonedNotice = void (*)(TaskID abandonedTask, void* userData) noexcept
 ///          `StaticString`, so a queued item can outlive the tracked task without holding a stale name alive.
 /// @note The type is trivially copyable apart from the affinity mask, and `current` is mutable because re-adding an
 ///       unfinished item to a lane is a queue operation, not a change of the work it describes.
+/// API reference: docs/Core/WorkItem/index.html
 class WorkItem final
 {
 	using TIndex = std::size_t;

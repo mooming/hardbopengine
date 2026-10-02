@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WorkItem — HardBop Engine API reference</title>
+<title>WorkItem — Core module — HardBop Engine API reference</title>
 <link rel="stylesheet" href="../../assets/hbe-docs.css">
 </head>
 <body>
@@ -15,7 +15,7 @@
   <ul>
     <li><a href="../../Config/index.html">Config</a></li>
     <li><a href="../../Container/index.html">Container</a></li>
-    <li><a class="current" href="../index.html">Core</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
     <li><a href="../../Engine/index.html">Engine</a></li>
     <li><a href="../../HSTL/index.html">HSTL</a></li>
     <li><a href="../../Log/index.html">Log</a></li>
@@ -34,15 +34,8 @@
     <li><a href="#template">Template parameters</a></li>
     <li><a href="#properties">Class properties</a></li>
     <li><a href="#methods">Class methods</a></li>
-    <li><a href="#non-member">Non-member helpers</a></li>
+    <li><a href="#non-member">Non-member helper functions</a></li>
     <li><a href="#coverage">Coverage</a></li>
-  </ul>
-
-  <h3>Methods</h3>
-  <ul class="methods">
-    <li><a href="run.html">Run</a></li>
-    <li><a href="has-finished.html">HasFinished</a></li>
-    <li><a href="operator-less.html">operator&lt;</a></li>
   </ul>
 </nav>
 
@@ -50,172 +43,143 @@
 
 <p class="breadcrumb">
   <a href="../../index.html">Module Index</a> /
-  <a href="../index.html">Core</a> / WorkItem
+  <a href="../index.html">Core</a> /
+  WorkItem
 </p>
 
 <h1>WorkItem</h1>
 <p class="subtitle">
   <span class="tag">Engine/Core/WorkItem.h</span>
+  <span class="tag">final</span>
   <span class="tag">namespace hbe</span>
-  <span class="tag">class, final</span>
-  <span class="tag">72 bytes</span>
-  what a task stream queue actually holds: one task, one slice of its index range, and how much of that slice has run
+  what a stream's queue holds: one task identity, one index range, and how far that range has got
 </p>
 
 <h2 id="description">Class description</h2>
 
 <p>
-  A <code>WorkItem</code> is the queue element, not the unit of work. The unit is
-  <code>Task</code>; this is one offer of one slice of that task, together with the
-  progress cursor <code>current</code> that lets a runnable return part of its range and be re-added to the lane it came
-  from. It is produced only by the engine — the constructor is private and <code>Task</code> and <code>TaskStream</code>
-  are its only friends — and it is copied constantly: on every enqueue, on every re-add after an unfinished run, and on
-  every sweep that moves work between lanes.
+  <code>class WorkItem final</code> at <code>Engine/Core/WorkItem.h</code>. What a task stream's queue actually holds:
+  one task's identity, one slice of its index range, and how far that slice has got. It is produced only by the engine —
+  the constructor is private and <code>Task</code> and <code>TaskStream</code> are its only friends — and it is copied
+  constantly: on every enqueue, on every re-add after an unfinished run, and on every sweep that moves work between
+  lanes.
 </p>
 
 <p>
   It replaced <code>RangedTask</code>, which was this data plus a copy of the task's name and measured 128 bytes. The
-  name had exactly one reader: the warning issued when an item is dropped because its task was already released — and
+  name had exactly one reader — the warning issued when an item is dropped because its task was already released — and
   there the registry can no longer confirm the name belongs to the task that produced the ID, so the copy was both
-  expensive and untrustworthy. <code>TaskID</code> is the identity that still means
-  something at a drop site. See <code>decidedWorkItemBytes</code>, which exists to make any change to this width loud
-  rather than silent.
+  expensive and untrustworthy. <code>TaskID</code> is the identity that still means something at
+  a drop site.
+</p>
+
+<p>
+  The item is where the <a href="../TaskSystem/set-abandoned-notice.html">abandonment notice</a> and the
+  <code>age clock</code> live. Both are carried on the item rather than read back from
+  the task because at the moments they matter the task is exactly what is missing: a dropped item's record may already
+  be released, or reused by another tenant. Anything stored only on the task is unreachable precisely when it would be
+  needed.
 </p>
 
 <div class="note">
-  <strong>The item is where the abandonment notice and the age clock live.</strong> Both are carried on the item rather
-  than read back from the task because at the moments they matter the task is exactly what is missing: a dropped item's
-  record may already be released, or reused by another tenant. Anything stored only on the task is unreachable precisely
-  when it would be needed.
+  <strong>The item measures 72 bytes, 16 of them the optional notice.</strong> The width is guarded by
+  <code>decidedWorkItemBytes</code>, which exists to make a size change loud rather than silent. Before the notice it
+  measured 56, and 8 of those were <code>TaskStreamAffinity</code> — a mask whose word count was derived from bytes per
+  word instead of bits per word, so a 64-bit word held 8 usable bits. That defect is described on
+  <code>TaskStreamAffinityBase</code>.
 </div>
 
 <h2 id="template">Template parameters</h2>
-<p>None. <code>WorkItem</code> is a concrete final class.</p>
+
+<p>None. <code>WorkItem</code> is a concrete <code>final</code> class.</p>
 
 <h2 id="properties">Class properties</h2>
 
 <table>
-  <tr><th>Property</th><th>Declaration</th><th>Contract a reader depends on</th></tr>
-  <tr>
-    <td><span class="badge">member type</span></td>
-    <td class="sig">using TIndex = std::size_t</td>
-    <td>Range index type, matching the task's own slicing units</td>
-  </tr>
-  <tr>
-    <td><span class="badge">public</span></td>
-    <td class="sig">uint8_t priority</td>
-    <td><strong>Insertion label, not a live value.</strong> <code>BoundedPriorityQueue</code> buckets by this byte at
-      <code>Push</code> and never re-sorts it, so writing it on a queued item changes nothing about when that item runs —
-      the level it sits in is what decides. Changing a queued priority means removing the item and pushing it again,
-      because assignment cannot repair an order, only relocate the item. On the FIFO lane this byte is not consulted at all</td>
-  </tr>
-  <tr>
-    <td><span class="badge">public</span></td>
-    <td class="sig">mutable TaskStreamAffinity affinity</td>
-    <td>Which streams this item may still be run on. Mutable because re-adding an unfinished item to a lane is a queue
-      operation, not a change to the work it describes</td>
-  </tr>
-  <tr>
-    <td><span class="badge">public</span></td>
-    <td class="sig">TaskID taskID</td>
-    <td>Which task this slice belongs to. The only identity that survives the task being released, which is one of the
-      three reasons an item gets dropped</td>
-  </tr>
-  <tr>
-    <td><span class="badge">public</span></td>
-    <td class="sig">TIndex start, end</td>
-    <td>The half-open index range this offer covers. <code>end</code> is one past the last index, and the pair is why the
-      item is not just <code>{taskID, priority}</code></td>
-  </tr>
-  <tr>
-    <td><span class="badge">public</span></td>
-    <td class="sig">mutable TIndex current</td>
-    <td>One past the last index run so far. A runnable is allowed to return part of its range and the stream re-adds the
-      item where it left off; a task whose runnable never finishes in one call is only correct because of this field</td>
-  </tr>
-  <tr>
-    <td><span class="badge">public</span></td>
-    <td class="sig">FAbandonedNotice abandonedNotice</td>
-    <td>Optional callback fired if this item is dropped without running; <code>nullptr</code> means nobody is listening.
-      Copied like every other field, so an item re-added after a partial run and every slice of a split job keep the
-      notice their task was offered with. Set through
-      <a href="#non-member"><code>TaskSystem::SetAbandonedNotice</code></a></td>
-  </tr>
-  <tr>
-    <td><span class="badge">public</span></td>
-    <td class="sig">void* abandonedUserData</td>
-    <td>The requestor's context, passed through untouched. Its lifetime belongs to whoever set the notice and must
-      outlive every drop this item can suffer; the engine never clears it</td>
-  </tr>
-  <tr>
-    <td><span class="badge">public</span></td>
-    <td class="sig">std::chrono::nanoseconds offerTime</td>
-    <td>The owning task's age clock, stamped when the registry loaded that task's record. Read only by a stream that
-      configured a max age; with none configured it costs a load nobody performs. An item re-added after a partial run
-      keeps the age it was offered with rather than becoming younger</td>
-  </tr>
+  <tr><th>Name</th><th>Declaration</th><th>What it means</th></tr>
+  <tr><td><code>TIndex</code></td><td><code>using TIndex = std::size_t;</code></td>
+    <td><span class="badge">member type</span> Header-private; the range index type, matching the task's own slicing units</td></tr>
+  <tr><td><code>priority</code></td><td><code>uint8_t priority;</code></td>
+    <td><span class="badge">public</span> Insertion label, not a live value — the level a queued item already sits in is what decides when it runs</td></tr>
+  <tr><td><code>affinity</code></td><td><code>mutable TaskStreamAffinity affinity;</code></td>
+    <td><span class="badge">public</span> Which streams may still run this item; <code>WorkItem</code>'s constructor excludes the Base and IO streams</td></tr>
+  <tr><td><code>taskID</code></td><td><code>TaskID taskID;</code></td>
+    <td><span class="badge">public</span> The owning task's identity — the only one that survives the task being released</td></tr>
+  <tr><td><code>start</code></td><td><code>TIndex start;</code></td>
+    <td><span class="badge">public</span> First index of this item's slice, as the splitter handed it out</td></tr>
+  <tr><td><code>end</code></td><td><code>TIndex end;</code></td>
+    <td><span class="badge">public</span> One past the last index of the slice; an item whose <code>current</code> reaches it has done its work</td></tr>
+  <tr><td><code>current</code></td><td><code>mutable TIndex current;</code></td>
+    <td><span class="badge">public</span> Where the slice resumes — the reason a runnable may return part of its range and be re-queued</td></tr>
+  <tr><td><code>abandonedNotice</code></td><td><code>FAbandonedNotice abandonedNotice{nullptr};</code></td>
+    <td><span class="badge">public</span> Fired if this item is dropped without running; <code>nullptr</code> means nobody is listening</td></tr>
+  <tr><td><code>abandonedUserData</code></td><td><code>void* abandonedUserData{nullptr};</code></td>
+    <td><span class="badge">public</span> The requestor's context, passed through untouched; its lifetime is the requestor's problem, not the engine's</td></tr>
+  <tr><td><code>offerTime</code></td><td><code>std::chrono::nanoseconds offerTime{};</code></td>
+    <td><span class="badge">public</span> The task's age at the moment it was offered; read only by a stream that configured a max age</td></tr>
 </table>
 
 <h2 id="methods">Class methods</h2>
 
-<table>
-  <tr><th>Method</th><th>Signature</th><th>What a caller depends on</th></tr>
-  <tr>
-    <td><a href="run.html">Run</a></td>
-    <td class="sig">bool Run(Task&amp; task) noexcept</td>
-    <td>Runs this item's slice and reports whether that call closed the task's join — see the page for who then owes the
-      successor a dispatch</td>
-  </tr>
-  <tr>
-    <td><a href="has-finished.html">HasFinished</a></td>
-    <td class="sig">[[nodiscard]] bool HasFinished() const noexcept</td>
-    <td>Whether this <em>item</em> consumed its whole range. Says nothing about the task</td>
-  </tr>
-  <tr>
-    <td><a href="operator-less.html">operator&lt;</a></td>
-    <td class="sig">bool operator&lt;(const WorkItem&amp; other) const noexcept</td>
-    <td>The priority-queue ordering key: <code>priority &lt; other.priority</code>, higher number more urgent</td>
-  </tr>
+<table class="methods">
+  <tr><th>Name</th><th>Signature</th><th>Link</th><th>What a caller depends on</th></tr>
+  <tr><td><code>~WorkItem</code></td><td class="sig">~WorkItem() = default</td>
+    <td><a href="destructor.html">destructor.html</a></td>
+    <td>A 72-byte value with nothing to release; the default is what keeps it trivially copyable apart from the mask.</td></tr>
+  <tr><td><code>operator=</code></td><td class="sig">WorkItem&amp; operator=(const WorkItem&amp; other) = default</td>
+    <td><span class="muted">no page — defaulted</span></td>
+    <td>Copy assignment is how the queue moves items; there is deliberately no move special member to suggest the copies are avoidable.</td></tr>
+  <tr><td><code>operator&lt;</code></td><td class="sig">bool operator&lt;(const WorkItem&amp; other) const noexcept</td>
+    <td><a href="operator-less.html">operator-less.html</a></td>
+    <td>The priority queue's ordering key: <code>priority &lt; other.priority</code>, so a higher number is the more urgent item.</td></tr>
+  <tr><td><code>HasFinished</code></td><td class="sig">[[nodiscard]] bool HasFinished() const noexcept</td>
+    <td><a href="has-finished.html">has-finished.html</a></td>
+    <td>Whether this item consumed its whole range — it says nothing about the task it came from.</td></tr>
+  <tr><td><code>Run</code></td><td class="sig">bool Run(Task&amp; task) noexcept</td>
+    <td><a href="run.html">run.html</a></td>
+    <td>Runs the item's slice and reports whether this call closed the task's join; the thread that gets <code>true</code> owes the successor a dispatch.</td></tr>
+  <tr><td><code>WorkItem</code></td><td class="sig">WorkItem(Task&amp; task, TIndex start, TIndex end, uint8_t priority) noexcept</td>
+    <td><a href="constructors.html">constructors.html</a></td>
+    <td>Private. Stamps the identity, the notice pair and the age clock from the task, and excludes the Base and IO streams from the item's affinity.</td></tr>
 </table>
 
-<p>
-  Construction is private — <code>WorkItem(Task&amp;, TIndex, TIndex, uint8_t)</code> — and reachable only through
-  <code>Task</code> (which stamps the notice pair and the age clock from itself) and <code>TaskStream</code>. Copy
-  assignment is defaulted, and there is deliberately no move special member: the type is a 72-byte value that is copied
-  on every queue operation, and naming a move here would suggest the copies are an accident.
-</p>
+<h2 id="non-member">Non-member helper functions</h2>
 
-<h2 id="non-member">Non-member helpers</h2>
+<p>None. The header's one namespace-scope declaration is a type, not a function:</p>
 
-<p>
-  The header also declares <code>FAAbandonedNotice</code>, the function-pointer type the notice fields hold:
-</p>
+<pre><code>using FAbandonedNotice = void (*)(TaskID abandonedTask, void* userData) noexcept;</code></pre>
 
-<pre><code><span class="kw">using</span> <span class="ty">FAAbandonedNotice</span> = <span class="ty">void</span> (*)(<span class="ty">TaskID</span> abandonedTask, <span class="kw">void</span>* userData) <span class="kw">noexcept</span>;</code></pre>
+<table>
+  <tr><th>Name</th><th>Declaration</th><th>What it means</th></tr>
+  <tr><td><code>FAbandonedNotice</code></td><td><code>using FAbandonedNotice = void (*)(TaskID, void*) noexcept;</code></td>
+    <td><span class="badge">alias</span> Called on the thread that dropped the work, at most once per item, never for work that ran</td></tr>
+</table>
 
-<p>
-  It is called <strong>on the thread that dropped the work</strong>, at most once per item, and never for work that ran.
-  The callee must not block, must not take the task or stream lock, and must not look up the task record — that record is
-  being dropped around this call, which is the entire reason the notice carries an ID rather than a pointer. Requests are
-  made per task through <code>TaskSystem::SetAbandonedNotice</code>; nothing in this header offers a way to install one
-  globally, because a default that notifies is a default that notifies for every task in the engine.
-</p>
+<div class="gap">
+  <strong>The callee must not block, must not take a task-stream lock, and must not look up the task record.</strong>
+  That record is being dropped around the call, which is the entire reason the notice carries an ID rather than a
+  pointer. Requests are made per task through
+  <a href="../TaskSystem/set-abandoned-notice.html">TaskSystem::SetAbandonedNotice</a>; nothing here offers a way to
+  install one globally, because a default that notifies is a default that notifies for every task in the engine.
+</div>
 
 <h2 id="coverage">Coverage</h2>
 
 <table>
-  <tr><th>Behaviour</th><th>Where it is proven</th></tr>
-  <tr><td>Partial run resumes at <code>current</code></td><td><code>TaskSystemTest</code> — "An item that returns part of its range resumes at the index it stopped at"</td></tr>
-  <tr><td>Notice fires for dropped work, and silence for work nobody asked about</td><td><code>TaskSystemTest</code> — the two abandonment collections, one through a hand-built item and one through a real stream drop</td></tr>
-  <tr><td>Age clock survives record recycling and slicing</td><td><code>TaskSystemTest</code> — "Every slice carries the age the registry stamped, and a recycled record is dated afresh"</td></tr>
-  <tr><td>Width is 72 bytes</td><td><code>ResultPacketTest</code> via <code>decidedWorkItemBytes</code></td></tr>
-  <tr>
-    <td><span class="badge">gap</span> Per-method pages</td>
-    <td>This folder documents the three public members. <code>TaskProvider</code>, <code>TaskHandle</code> and
-      <code>TaskProduceContext</code> have no folder pages yet and are described on the
-      <a href="../index.html#taskprovider">Core module page</a> and in their headers</td>
-  </tr>
+  <tr><th>Not documented here</th><th>Why</th></tr>
+  <tr><td>Who drops an item, and what each drop site logs</td><td>That is <code>TaskStream</code>'s
+    contract; <a href="../TaskSystem/set-abandoned-notice.html">SetAbandonedNotice</a> lists the three sites as they stand</td></tr>
+  <tr><td>Who re-adds an unfinished item to the lane it came from</td><td>Also the stream's; the fields that make the
+    resume possible are documented above</td></tr>
+  <tr><td><code>TaskProvider</code>, <code>TaskHandle</code>, <code>TaskProduceContext</code></td><td>Separate entries;
+    their pages own the producer-side view of a work item</td></tr>
+  <tr><td><code>friend class TaskSystemTest;</code></td><td>Test-only friendship, declared to let the suite build an item
+    by hand; it owns a Coverage row on the module ledger rather than a page</td></tr>
 </table>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; WorkItem</a></span>
+  <span><a href="index.html#methods">All WorkItem methods</a></span>
+</footer>
 
 </main>
 </body>

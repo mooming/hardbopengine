@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WorkItem::HasFinished — Core module — HardBop Engine API reference</title>
+<title>WorkItem::~WorkItem — Core module — HardBop Engine API reference</title>
 <link rel="stylesheet" href="../../assets/hbe-docs.css">
 </head>
 <body>
@@ -34,7 +34,7 @@
     <li><a href="#description">Function description</a></li>
     <li><a href="#parameters">Parameters</a></li>
     <li><a href="#return">Return value</a></li>
-    <li><a href="#example">Example</a></li>
+    <li><a href="#example">Examples</a></li>
   </ul>
 </nav>
 
@@ -43,10 +43,10 @@
 <p class="breadcrumb">
   <a href="../../index.html">Module Index</a> /
   <a href="../index.html">Core</a> /
-  <a href="index.html">WorkItem</a> / HasFinished
+  <a href="index.html">WorkItem</a> / ~WorkItem
 </p>
 
-<h1><span class="fn">HasFinished</span></h1>
+<h1><span class="fn">~WorkItem</span></h1>
 <p class="subtitle">
   <span class="tag">member of hbe::WorkItem</span>
   <span class="tag">Engine/Core/WorkItem.h</span>
@@ -54,50 +54,49 @@
   <span class="tag">Engine/Core/WorkItem.h</span>
   <span class="tag">member of hbe::WorkItem</span>
   <span class="tag">Engine/Core/WorkItem.h</span>
-  <span class="tag">constexpr-ready, noexcept</span>
-  whether this item consumed its whole index range — not whether its task is done
+  <span class="tag">member of hbe::WorkItem</span>
+  <span class="tag">Engine/Core/WorkItem.h</span>
+  defaulted, because an item owns no memory and the pointers it carries are not its to free
 </p>
 
 <h2 id="signature">Signature</h2>
 
-<pre><code>[[nodiscard]] bool HasFinished() const noexcept</code></pre>
+<pre><code>~WorkItem() = default</code></pre>
 
 <h2 id="description">Function description</h2>
 
 <p>
-  One comparison: <code>current &gt;= end</code>. It answers a question about <strong>this item</strong> and says nothing
-  about the task — a task split into four slices has three items that report finished while the join is still open, and
-  one that closes it.
+  Declared in <code>Engine/Core/WorkItem.h</code> as <code>WorkItem::~WorkItem()</code>, in the same public block as the
+  defaulted copy assignment. Nothing is released: the item owns no memory, and the two pointers it carries —
+  <code>abandonedUserData</code> above all — belong to whoever supplied them, so a destructor that touched them would be
+  a claim of ownership the engine never made.
 </p>
 
 <p>
-  The stream uses it to decide whether a returned item goes back on the lane. A runnable may legitimately complete only
-  part of its range; the item is then re-added to the lane it came from with <code>current</code> left where the run
-  stopped, which is the behaviour the resume test exists to protect.
+  It is spelled <code>= default</code> rather than left out for the same reason the copy assignment is: the special
+  member set is part of this type's contract, and a reader should not have to deduce that an item is copyable and
+  trivially destructible from the absence of a line. The item is copied on every queue operation, which is only cheap
+  while the type stays trivially copyable apart from the affinity mask.
 </p>
 
+<div class="note">
+  <strong>No base class, so no destructor question.</strong> <code>WorkItem</code> is <code>final</code> and derives
+  from nothing, so there is no virtual destructor to declare and no slicing path through a base pointer.
+</div>
+
 <h2 id="parameters">Parameters</h2>
+
 <p>None.</p>
 
 <h2 id="return">Return value</h2>
-<p><code>true</code> when this item consumed its whole range. Not a statement about the task, its join, or its result.</p>
 
-<div class="gap">
-  <strong>It also returns true for an empty slice.</strong> A range where <code>start == end</code> satisfies
-  <code>current &gt;= end</code> at construction, which is why an empty split is refused at the point it is asked for
-  rather than queued and counted as progress.
-</div>
+<p>None.</p>
 
-<h2 id="example">Example</h2>
+<h2 id="example">Examples</h2>
 
-<pre><code><span class="kw">if</span> (item.<span class="fn">HasFinished</span>())
-{
-    queue.<span class="fn">Push</span>(item);       <span class="cm">// nothing left of this slice</span>
-}
-<span class="kw">else</span>
-{
-    lane.<span class="fn">Push</span>(item);          <span class="cm">// same item, later start, same age and same notice</span>
-}</code></pre>
+<p class="note">Illustrative — no translation unit calls this. It runs when the <code>std::optional&lt;WorkItem&gt;</code>
+holding an item is reset or goes out of scope: every take, every refusal and every drop site in
+<code>TaskStream</code> ends that way.</p>
 <footer class="prevnext">
   <span><a href="index.html">&larr; WorkItem</a></span>
   <span><a href="index.html#methods">All WorkItem methods</a></span>

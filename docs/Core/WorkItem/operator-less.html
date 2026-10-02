@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WorkItem::operator-less — HardBop Engine API reference</title>
+<title>WorkItem::operator&lt; — Core module — HardBop Engine API reference</title>
 <link rel="stylesheet" href="../../assets/hbe-docs.css">
 </head>
 <body>
@@ -15,7 +15,7 @@
   <ul>
     <li><a href="../../Config/index.html">Config</a></li>
     <li><a href="../../Container/index.html">Container</a></li>
-    <li><a class="current" href="../index.html">Core</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
     <li><a href="../../Engine/index.html">Engine</a></li>
     <li><a href="../../HSTL/index.html">HSTL</a></li>
     <li><a href="../../Log/index.html">Log</a></li>
@@ -28,21 +28,13 @@
     <li><a href="../../Test/index.html">Test</a></li>
   </ul>
 
-  <h3>This class</h3>
+  <h3>This function</h3>
   <ul>
-    <li><a href="index.html#description">Class description</a></li>
-    <li><a href="index.html#template">Template parameters</a></li>
-    <li><a href="index.html#properties">Class properties</a></li>
-    <li><a href="index.html#methods">Class methods</a></li>
-    <li><a href="index.html#non-member">Non-member helpers</a></li>
-    <li><a href="index.html#coverage">Coverage</a></li>
-  </ul>
-
-  <h3>Methods</h3>
-  <ul class="methods">
-    <li><a class="current" href="run.html">Run</a></li>
-    <li><a class="current" href="has-finished.html">HasFinished</a></li>
-    <li><a class="current" href="operator-less.html">operator&lt;</a></li>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Example</a></li>
   </ul>
 </nav>
 
@@ -51,11 +43,15 @@
 <p class="breadcrumb">
   <a href="../../index.html">Module Index</a> /
   <a href="../index.html">Core</a> /
-  <a href="index.html">WorkItem</a> / operator-less
+  <a href="index.html">WorkItem</a> / operator&lt;
 </p>
 
-<h1><span class="fn">operator-less</span></h1>
+<h1><span class="fn">operator&lt;</span></h1>
 <p class="subtitle">
+  <span class="tag">member of hbe::WorkItem</span>
+  <span class="tag">Engine/Core/WorkItem.h</span>
+  <span class="tag">member of hbe::WorkItem</span>
+  <span class="tag">Engine/Core/WorkItem.h</span>
   <span class="tag">member of hbe::WorkItem</span>
   <span class="tag">Engine/Core/WorkItem.h</span>
   <span class="tag">noexcept</span>
@@ -64,7 +60,7 @@
 
 <h2 id="signature">Signature</h2>
 
-<pre><code><span class="kw">bool</span> <span class="fn">operator&lt;</span>(<span class="kw">const</span> <span class="ty">WorkItem</span>&amp; other) <span class="kw">const</span> <span class="kw">noexcept</span>;</code></pre>
+<pre><code>bool operator&lt;(const WorkItem&amp; other) const noexcept</code></pre>
 
 <h2 id="description">Function description</h2>
 
@@ -97,6 +93,10 @@
 
 <pre><code><span class="cm">// Only ever used by the container; callers choose a lane instead:</span>
 taskSystem.<span class="fn">EnqueueTask</span>(stream, task, <span class="cm">/*priority*/</span> <span class="nu">7</span>, <span class="ty">StreamDrainPolicy::ELane::Priority</span>);</code></pre>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; WorkItem</a></span>
+  <span><a href="index.html#methods">All WorkItem methods</a></span>
+</footer>
 
 </main>
 </body>

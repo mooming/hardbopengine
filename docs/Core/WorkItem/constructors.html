@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WorkItem::WorkItem — Core module — HardBop Engine API reference</title>
+<link rel="stylesheet" href="../../assets/hbe-docs.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <a class="home" href="../../index.html">HardBop Engine</a>
+
+  <h3>Modules</h3>
+  <ul>
+    <li><a href="../../Config/index.html">Config</a></li>
+    <li><a href="../../Container/index.html">Container</a></li>
+    <li><a class="current" href="../../Core/index.html">Core</a></li>
+    <li><a href="../../Engine/index.html">Engine</a></li>
+    <li><a href="../../HSTL/index.html">HSTL</a></li>
+    <li><a href="../../Log/index.html">Log</a></li>
+    <li><a href="../../Math/index.html">Math</a></li>
+    <li><a href="../../Memory/index.html">Memory</a></li>
+    <li><a href="../../OSAL/index.html">OSAL</a></li>
+    <li><a href="../../Renderer/index.html">Renderer</a></li>
+    <li><a href="../../Resource/index.html">Resource</a></li>
+    <li><a href="../../String/index.html">String</a></li>
+    <li><a href="../../Test/index.html">Test</a></li>
+  </ul>
+
+  <h3>This function</h3>
+  <ul>
+    <li><a href="#signature">Signature</a></li>
+    <li><a href="#description">Function description</a></li>
+    <li><a href="#parameters">Parameters</a></li>
+    <li><a href="#return">Return value</a></li>
+    <li><a href="#example">Examples</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+
+<p class="breadcrumb">
+  <a href="../../index.html">Module Index</a> /
+  <a href="../index.html">Core</a> /
+  <a href="index.html">WorkItem</a> / WorkItem
+</p>
+
+<h1><span class="fn">WorkItem</span></h1>
+<p class="subtitle">
+  <span class="tag">member of hbe::WorkItem</span>
+  <span class="tag">Engine/Core/WorkItem.h</span>
+  <span class="tag">member of hbe::WorkItem</span>
+  <span class="tag">Engine/Core/WorkItem.h</span>
+  <span class="tag">member of hbe::WorkItem</span>
+  <span class="tag">Engine/Core/WorkItem.h</span>
+  <span class="tag">member of hbe::WorkItem</span>
+  <span class="tag">Engine/Core/WorkItem.h</span>
+  the only way an item comes to exist, and the reason a generated item can never run on the base or IO stream
+</p>
+
+<h2 id="signature">Signature</h2>
+
+<pre><code>WorkItem(Task&amp; task, TIndex start, TIndex end, uint8_t priority) noexcept</code></pre>
+
+<h2 id="description">Function description</h2>
+
+<p>
+  Defined in <code>Engine/Core/WorkItem.cpp</code> as <code>WorkItem::WorkItem()</code>. It is the only way an item comes
+  to exist, and it is <code>private</code>: <code>friend class Task;</code> and <code>friend class TaskStream;</code>
+  end the header, and <code>friend class TaskSystemTest;</code> sits in its public block so the suite can build one by
+  hand. A customer who wants work to run calls
+  <a href="../TaskSystem/enqueue-task.html">TaskSystem::EnqueueTask</a> or a producer's
+  <code>TaskProvider::MakeWholeItem</code>, never this.
+</p>
+
+<p>
+  Three things happen here that make an item more than a range, and none of them is visible in the field list:
+</p>
+
+<table>
+  <tr><th>What the constructor does</th><th>Why it is done here and not by the caller</th></tr>
+  <tr><td>Takes <code>taskID</code> from <code>task.GetID()</code></td>
+    <td>An item can never be built around an identity the registry did not issue, so a stale or forged ID is not a
+      failure mode of this type</td></tr>
+  <tr><td>Copies <code>abandonedNotice</code>, <code>abandonedUserData</code> and <code>offerTime</code> off the task</td>
+    <td>This is what makes a slice inherit its parent's notice and its parent's age without any call site remembering to
+      set them — see <a href="../TaskSystem/set-abandoned-notice.html">SetAbandonedNotice</a> and the age rule in
+      <code>StreamDrainPolicy</code></td></tr>
+  <tr><td>Initialises <code>current</code> to <code>start</code></td>
+    <td>The resume point begins at the front of the slice, so a partially-run item continues rather than restarting</td></tr>
+</table>
+
+<pre><code>affinity.Unset(TaskSystem::GetBaseTaskStreamIndex());
+affinity.Unset(TaskSystem::GetIOTaskStreamIndex());</code></pre>
+
+<p class="meta">From Engine/Core/WorkItem.cpp, WorkItem::WorkItem()</p>
+
+<p>
+  The body runs after <code>affinity</code> has been default-constructed, which permits every in-range stream, and
+  clears two bits — so <strong>an engine-generated item is never eligible for the base stream or the IO stream</strong>.
+  That is the only thing in the engine that excludes a stream, and
+  <a href="../TaskSystem/dequeue.html">TaskSystem::Dequeue</a> is where its consequence is read.
+</p>
+
+<h2 id="parameters">Parameters</h2>
+
+<table>
+  <tr><th>Parameter</th><th>Type</th><th>Requirement</th></tr>
+  <tr><td><code>task</code></td><td><code>Task&amp;</code></td>
+    <td>A task the registry has just issued. Read for its identity, its notice pair and its age; not stored</td></tr>
+  <tr><td><code>start</code></td><td><code>TIndex</code></td><td>First index of the slice</td></tr>
+  <tr><td><code>end</code></td><td><code>TIndex</code></td><td>One past the last index. Nothing here checks that <code>start &lt; end</code></td></tr>
+  <tr><td><code>priority</code></td><td><code>uint8_t</code></td><td>The bucket the item is filed under if it reaches the general queue; ignored on a FIFO lane</td></tr>
+</table>
+
+<h2 id="return">Return value</h2>
+
+<p>A constructed <code>WorkItem</code>. It is returned by value from <code>Task::GenerateSubTask</code>, so no caller
+binds it by reference and none owns it.</p>
+
+<h2 id="example">Examples</h2>
+
+<p class="meta">From Engine/Core/Task.cpp, Task::GenerateSubTask()</p>
+
+<pre><code>return {*this, start, end, priority};</code></pre>
+
+<p>
+  The brace form works because the constructor is visible to <code>Task</code> as a friend. The line above it is an
+  <code>Assert</code> that the task has not handed out more items than the join it reserved, so an over-split task is
+  caught at the point of slicing rather than at the point the join would never close.
+</p>
+<footer class="prevnext">
+  <span><a href="index.html">&larr; WorkItem</a></span>
+  <span><a href="index.html#methods">All WorkItem methods</a></span>
+</footer>
+
+</main>
+</body>
+</html>
