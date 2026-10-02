@@ -26,8 +26,8 @@ int main(int argc, const char* argv[]) noexcept
 
 	if (testEnv.GetExecutedTestletCount() != testEnv.GetTestletCount())
 	{
-		std::cerr << "EngineTest: only " << testEnv.GetExecutedTestletCount() << " of " << testEnv.GetTestletCount()
-				  << " registered testlets ran, so the engine never drove the suite it was given" << std::endl;
+		std::cerr << "EngineTest: only " << testEnv.GetExecutedTestletCount() << " of " << testEnv.GetTestletCount();
+		std::cerr << " registered testlets ran, so the engine never drove the suite it was given" << std::endl;
 		return 1;
 	}
 
@@ -50,20 +50,20 @@ int main(int argc, const char* argv[]) noexcept
 			  << testEnv.GetExecutedTestletCount() << " testlets)" << std::endl;
 
 #else
-	std::cerr << "EngineTest: built WITHOUT __UNIT_TEST__, so this binary contains no tests.\n"
-				 "Nothing has been verified, and the exit status used to claim otherwise.\n"
-				 "\n"
-				 "To build and run the suite:\n"
-				 "    ./build.sh Applications/EngineTest -dev -debug -release -test\n"
-				 "    ./build/Applications/EngineTest/Dev/EngineTest    (or Debug/ or Release/)\n"
-				 "\n"
-				 "-test adds -D__UNIT_TEST__ to the entire build tree, and it has to be global: the\n"
-				 "test bodies live in the library sources this executable links, not only in this\n"
-				 "file. Leaving them out silently is how whole modules stop being tested without\n"
-				 "anything failing.\n"
-				 "\n"
-				 "The standards gate does both halves, building and then running the suite:\n"
-				 "    .pi/skills/hb-standards/scripts/check.sh --test\n";
+	std::cerr << "EngineTest: built WITHOUT __UNIT_TEST__, so this binary contains no tests." << std::endl;
+	std::cerr << "Nothing has been verified, and the exit status used to claim otherwise." << std::endl;
+	std::cerr << std::endl;
+	std::cerr << "To build and run the suite:" << std::endl;
+	std::cerr << "    ./build.sh Applications/EngineTest -dev -debug -release -test" << std::endl;
+	std::cerr << "    ./build/Applications/EngineTest/Dev/EngineTest    (or Debug/ or Release/)" << std::endl;
+	std::cerr << std::endl;
+	std::cerr << "-test adds -D__UNIT_TEST__ to the entire build tree, and it has to be global: the" << std::endl;
+	std::cerr << "test bodies live in the library sources this executable links, not only in this" << std::endl;
+	std::cerr << "file. Leaving them out silently is how whole modules stop being tested without" << std::endl;
+	std::cerr << "anything failing." << std::endl;
+	std::cerr << std::endl;
+	std::cerr << "The standards gate does both halves, building and then running the suite:" << std::endl;
+	std::cerr << "    .pi/skills/hb-standards/scripts/check.sh --test" << std::endl;
 	return 1;
 #endif // __UNIT_TEST__
 
