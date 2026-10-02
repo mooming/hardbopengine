@@ -48,7 +48,6 @@ namespace hbe
 // ========================================================================
 namespace examples
 {
-
 // ========================================================================
 // POD STRUCT: CodingStandardsData
 // Demonstrates naming and POD conventions:
@@ -364,6 +363,7 @@ public:
 	{
 		if (flag)
 			return 42;
+
 		return 0;
 	}
 
@@ -545,7 +545,5 @@ public:
 	 */
 	void ProcessWithErrorLogging() noexcept;
 };
-
 } // namespace examples
-
 } // namespace hbe

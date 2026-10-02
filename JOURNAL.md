@@ -48,13 +48,13 @@ headers have no name table, so they are reported as "could not list", never as c
 is refused outright: an include's absence from a header can only be disproved by the whole tree, which is
 what the build gate is for.
 
-**Backlog, measured rather than assumed, and gated by scope.** A whole-tree run reports
-`blank lines: 1661 finding(s) in 274 file(s)` (A10=538, A4=356, A3=270, A5=264, A11=116, A2=90, A1=6,
+**Backlog, measured rather than assumed, and gated by scope.** The detached whole-tree gate reports
+`blank lines: 1648 finding(s) in 272 file(s)` (A10=531, A4=354, A3=269, A5=261, A11=116, A2=90, A1=6,
 A14=14, A16=5, A13=1, A15=1) and `includes: 23 finding(s) in 23 file(s)` (B2=12 sort, B5=11 relative paths,
 all of them `"../Engine/Engine.h"` forms). Layer 2b prints those as `[DEBT]` under `--all` and counts them
 as violations in a scoped run, which is the same policy the namespace-indent rule already uses: failing
 every commit that touches an engine file would block unrelated work, and an unmeasured rule is not a passing
-one either way. **Sweeping 1661 seams is an owner decision, not part of this change.**
+one either way. **Sweeping 1648 seams is an owner decision, not part of this change.**
 
 **What the exemplar now demonstrates.** Nine findings, all applied: two blanks restored at the `.cpp` seam,
 four blanks deleted after `{` and before closing braces, three seams written before `return`. The pair is
@@ -64,6 +64,15 @@ formatter deletes the second blank and reports raw 1. `prove_regroup.py --whites
 exactly this kind of edit and proves both files moved no line: it compares the sequence of non-blank lines
 position by position, so a swap of two lines is a refusal, which the multiset comparison a regrouping uses
 cannot see.
+
+**Verification.** `blank_lines.py --selftest` 41 fixtures and `includes.py --selftest` 10 fixtures, 0
+failures; `prove_regroup.py --whitespace-only` proves both exemplar files changed only blank lines; the
+detached whole-tree gate `20261002-180815-70218` finished `GATE_EXIT=1` with **build gate PASS 12/12** across
+Dev, Debug and Release, `grep rule failures : 0`, layers 1 and 2 green and layer 2b printing its counts as
+`[DEBT]`. That exit code is the standing gated backlog — 2160 comment-ban violations, 225 layout violations,
+69 missing pages and 364 missing method pages — none of it from this change, and all of it the module sweep
+the skill already describes. The pass is not vacuous: 0 occurrences of the `no recompile exercised` marker,
+because `--all` scope touches every scoped file before building.
 
 ## 2026-10-02 16:37 — TaskSystem.cpp holds no comment, and the 201 that left went to four places
 

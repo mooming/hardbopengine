@@ -29,11 +29,11 @@
 #include <iostream>
 #include <utility>
 
+
 namespace hbe
 {
 namespace examples
 {
-
 /*
  * HEADER MINIMALITY: the good half of HeaderBodyExamples.
  *
@@ -70,6 +70,7 @@ bool CodingStandardsBase::TryParse(const char* text, int& outResult) noexcept
 		return false;
 
 	outResult = static_cast<int>(parsed);
+
 	return true;
 }
 
@@ -313,6 +314,7 @@ int CodingStandards::ComputeWithValidation() noexcept
 		if (temp < 0)
 		{
 			Assert(false && "Invalid default version");
+
 			return -1;
 		}
 	}
@@ -418,6 +420,5 @@ const char* TextBuffer::GetText() const noexcept
 {
 	return data != nullptr ? data : "";
 }
-
 } // namespace examples
 } // namespace hbe
