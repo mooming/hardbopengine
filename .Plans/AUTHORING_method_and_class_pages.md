@@ -87,18 +87,25 @@ sidebar is the one place a reader uses to orient before they have read anything.
 ## 4. Tables
 
 Class properties — one row per alias **and** per data member, in header declaration order. Three columns:
-`Name | Declaration | What it means`. **No link column** — a property owns no page, and a column that exists
-only to be empty reads as an unfinished table. The badge goes inside the description cell. The description is
-**one line**: a property's contract that needs three sentences is a contract about the mechanism, and the
-mechanism belongs to the method that owns it or to a design document.
+`Type + Name | Default Value | Description`. Column 1 is the declaration **as the header writes it** — type and name
+inside one `<code>`, because a reader scanning for `bool ownsThreads` should not have to join two cells to find it —
+followed by the badge. Column 2 is the default as the header writes it (`false`, `nullptr`, `{0}`, `= 0`),
+`none in the header` when the header gives the member none, and `not applicable` for an alias or a nested type. A
+`static constexpr` shows its value, and the value is escaped: a default of `static_cast<TIndex>(-1)` emitted unescaped
+is a `<TIndex>` tag, and the trailing semicolon is the declaration's punctuation rather than part of the value.
+**No link column** — a property owns no page, and a column that exists only to be empty reads as an unfinished table.
+The description is **one line**: a property's contract that needs three sentences is a contract about the mechanism,
+and the mechanism belongs to the method that owns it or to a design document.
 
 ```html
 <table>
-  <tr><th>Name</th><th>Declaration</th><th>What it means</th></tr>
-  <tr><td><code>TIndex</code></td><td><code>using TIndex = int;</code></td>
-      <td><span class="badge">member type</span> …</td></tr>
-  <tr><td><code>length</code></td><td><code>TIndex length;</code></td>
-      <td><span class="badge">private</span> …</td></tr>
+  <tr><th>Type + Name</th><th>Default Value</th><th>Description</th></tr>
+  <tr><td><code>using TIndex = int;</code> <span class="badge">member type</span></td>
+      <td><span class="muted">not applicable</span></td><td>…</td></tr>
+  <tr><td><code>TIndex length;</code> <span class="badge">private</span></td>
+      <td><span class="muted">none in the header</span></td><td>…</td></tr>
+  <tr><td><code>bool ownsThreads = true;</code> <span class="badge">private</span></td>
+      <td><code>true</code></td><td>…</td></tr>
 </table>
 ```
 
@@ -115,27 +122,26 @@ interface, which is the one thing a property table exists to get right. `member 
 is a false statement about scope, which is why the two are separate. Anything else needs a sentence in the cell —
 the badge is a label, not an explanation.
 
-For an entry that is macros only, `Name | Declaration | What it means` states the same thing twice, so the
-middle column becomes **where it is read**: `Name | Read by | What it controls`, with `Read by` naming the
-translation unit or "nothing". Naming the consumer is the whole value of such a table — a define nobody reads is
+For an entry that is macros only, `Type + Name | Default Value | Description` states the same thing twice and there is
+no default to report, so the columns become **where it is read**: `Name | Read by | What it controls`, with `Read by`
+naming the translation unit or "nothing". Naming the consumer is the whole value of such a table — a define nobody reads is
 a define that can rot, which is how `EngineAPIGuide` came to lie.
 
-Class methods — one row per **method name**, in header declaration order, four columns:
-`Name | Signature | Link | What a caller depends on`. The name is **not** the link: it is the identifier a
-caller copies, so it stays selectable plain text, and the fourth column is the address. The overload count is
-a badge beside the name, and every overload gets its own line in the signature cell.
+Class methods — one row per **method name**, in header declaration order, three columns:
+`Name | Signature | What a caller depends on`. The name **is** the link, because the table is the only path from a class
+page to a method page and a reader who wants the page clicks the word they already know. The overload count is
+a badge beside the name, and every overload gets its own line in the signature cell. A name that owns no page — a
+`= default` or `= delete` special member — is plain `<code>` and its description says what the default means.
 
 ```html
 <tr>
-  <td><code>Resize</code></td>
+  <td><a href="resize.html"><code>Resize</code></a></td>
   <td class="sig">void Resize(TIndex newSize) noexcept</td>
-  <td><a href="resize.html">resize.html</a></td>
   <td>Grows in place, so every iterator into the array dies here.</td>
 </tr>
 <tr>
-  <td><code>begin</code><span class="badge">2 overloads</span></td>
+  <td><a href="begin.html"><code>begin</code></a><span class="badge">2 overloads</span></td>
   <td class="sig">Iterator begin()<br>ConstIterator begin() const</td>
-  <td><a href="begin.html">begin.html</a></td>
   <td>… one clause a caller depends on …</td>
 </tr>
 ```

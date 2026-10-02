@@ -96,51 +96,29 @@
 <h2 id="properties">Class properties</h2>
 
 <table>
-  <tr><th>Name</th><th>Declaration</th><th>What it means</th></tr>
-  <tr><td><code>TIndex</code></td><td><code>using TIndex = std::size_t;</code></td>
-    <td><span class="badge">member type</span> Header-private; the range index type, matching the task's own slicing units</td></tr>
-  <tr><td><code>priority</code></td><td><code>uint8_t priority;</code></td>
-    <td><span class="badge">public</span> Insertion label, not a live value — the level a queued item already sits in is what decides when it runs</td></tr>
-  <tr><td><code>affinity</code></td><td><code>mutable TaskStreamAffinity affinity;</code></td>
-    <td><span class="badge">public</span> Which streams may still run this item; <code>WorkItem</code>'s constructor excludes the Base and IO streams</td></tr>
-  <tr><td><code>taskID</code></td><td><code>TaskID taskID;</code></td>
-    <td><span class="badge">public</span> The owning task's identity — the only one that survives the task being released</td></tr>
-  <tr><td><code>start</code></td><td><code>TIndex start;</code></td>
-    <td><span class="badge">public</span> First index of this item's slice, as the splitter handed it out</td></tr>
-  <tr><td><code>end</code></td><td><code>TIndex end;</code></td>
-    <td><span class="badge">public</span> One past the last index of the slice; an item whose <code>current</code> reaches it has done its work</td></tr>
-  <tr><td><code>current</code></td><td><code>mutable TIndex current;</code></td>
-    <td><span class="badge">public</span> Where the slice resumes — the reason a runnable may return part of its range and be re-queued</td></tr>
-  <tr><td><code>abandonedNotice</code></td><td><code>FAbandonedNotice abandonedNotice{nullptr};</code></td>
-    <td><span class="badge">public</span> Fired if this item is dropped without running; <code>nullptr</code> means nobody is listening</td></tr>
-  <tr><td><code>abandonedUserData</code></td><td><code>void* abandonedUserData{nullptr};</code></td>
-    <td><span class="badge">public</span> The requestor's context, passed through untouched; its lifetime is the requestor's problem, not the engine's</td></tr>
-  <tr><td><code>offerTime</code></td><td><code>std::chrono::nanoseconds offerTime{};</code></td>
-    <td><span class="badge">public</span> The task's age at the moment it was offered; read only by a stream that configured a max age</td></tr>
+  <tr><th>Type + Name</th><th>Default Value</th><th>Description</th></tr>
+  <tr><td><code>using TIndex = std::size_t;</code> <span class="badge">member type</span></td><td><span class="muted">not applicable</span></td><td>Header-private; the range index type, matching the task's own slicing units</td></tr>
+  <tr><td><code>uint8_t priority;</code> <span class="badge">public</span></td><td><span class="muted">none in the header</span></td><td>Insertion label, not a live value — the level a queued item already sits in is what decides when it runs</td></tr>
+  <tr><td><code>mutable TaskStreamAffinity affinity;</code> <span class="badge">public</span></td><td><span class="muted">none in the header</span></td><td>Which streams may still run this item; <code>WorkItem</code>'s constructor excludes the Base and IO streams</td></tr>
+  <tr><td><code>TaskID taskID;</code> <span class="badge">public</span></td><td><span class="muted">none in the header</span></td><td>The owning task's identity — the only one that survives the task being released</td></tr>
+  <tr><td><code>TIndex start;</code> <span class="badge">public</span></td><td><span class="muted">none in the header</span></td><td>First index of this item's slice, as the splitter handed it out</td></tr>
+  <tr><td><code>TIndex end;</code> <span class="badge">public</span></td><td><span class="muted">none in the header</span></td><td>One past the last index of the slice; an item whose <code>current</code> reaches it has done its work</td></tr>
+  <tr><td><code>mutable TIndex current;</code> <span class="badge">public</span></td><td><span class="muted">none in the header</span></td><td>Where the slice resumes — the reason a runnable may return part of its range and be re-queued</td></tr>
+  <tr><td><code>FAbandonedNotice abandonedNotice{nullptr};</code> <span class="badge">public</span></td><td><span class="muted">none in the header</span></td><td>Fired if this item is dropped without running; <code>nullptr</code> means nobody is listening</td></tr>
+  <tr><td><code>void* abandonedUserData{nullptr};</code> <span class="badge">public</span></td><td><span class="muted">none in the header</span></td><td>The requestor's context, passed through untouched; its lifetime is the requestor's problem, not the engine's</td></tr>
+  <tr><td><code>std::chrono::nanoseconds offerTime{};</code> <span class="badge">public</span></td><td><span class="muted">none in the header</span></td><td>The task's age at the moment it was offered; read only by a stream that configured a max age</td></tr>
 </table>
 
 <h2 id="methods">Class methods</h2>
 
 <table class="methods">
-  <tr><th>Name</th><th>Signature</th><th>Link</th><th>What a caller depends on</th></tr>
-  <tr><td><code>~WorkItem</code></td><td class="sig">~WorkItem() = default</td>
-    <td><a href="destructor.html">destructor.html</a></td>
-    <td>A 72-byte value with nothing to release; the default is what keeps it trivially copyable apart from the mask.</td></tr>
-  <tr><td><code>operator=</code></td><td class="sig">WorkItem&amp; operator=(const WorkItem&amp; other) = default</td>
-    <td><span class="muted">no page — defaulted</span></td>
-    <td>Copy assignment is how the queue moves items; there is deliberately no move special member to suggest the copies are avoidable.</td></tr>
-  <tr><td><code>operator&lt;</code></td><td class="sig">bool operator&lt;(const WorkItem&amp; other) const noexcept</td>
-    <td><a href="operator-less.html">operator-less.html</a></td>
-    <td>The priority queue's ordering key: <code>priority &lt; other.priority</code>, so a higher number is the more urgent item.</td></tr>
-  <tr><td><code>HasFinished</code></td><td class="sig">[[nodiscard]] bool HasFinished() const noexcept</td>
-    <td><a href="has-finished.html">has-finished.html</a></td>
-    <td>Whether this item consumed its whole range — it says nothing about the task it came from.</td></tr>
-  <tr><td><code>Run</code></td><td class="sig">bool Run(Task&amp; task) noexcept</td>
-    <td><a href="run.html">run.html</a></td>
-    <td>Runs the item's slice and reports whether this call closed the task's join; the thread that gets <code>true</code> owes the successor a dispatch.</td></tr>
-  <tr><td><code>WorkItem</code></td><td class="sig">WorkItem(Task&amp; task, TIndex start, TIndex end, uint8_t priority) noexcept</td>
-    <td><a href="constructors.html">constructors.html</a></td>
-    <td>Private. Stamps the identity, the notice pair and the age clock from the task, and excludes the Base and IO streams from the item's affinity.</td></tr>
+  <tr><th>Name</th><th>Signature</th><th>What a caller depends on</th></tr>
+  <tr><td><a href="destructor.html"><code>~WorkItem</code></a></td><td class="sig">~WorkItem() = default</td><td>A 72-byte value with nothing to release; the default is what keeps it trivially copyable apart from the mask.</td></tr>
+  <tr><td><code>operator=</code><span class="muted"> — no page</span></td><td class="sig">WorkItem&amp; operator=(const WorkItem&amp; other) = default</td><td>Copy assignment is how the queue moves items; there is deliberately no move special member to suggest the copies are avoidable.</td></tr>
+  <tr><td><a href="operator-less.html"><code>operator&lt;</code></a></td><td class="sig">bool operator&lt;(const WorkItem&amp; other) const noexcept</td><td>The priority queue's ordering key: <code>priority &lt; other.priority</code>, so a higher number is the more urgent item.</td></tr>
+  <tr><td><a href="has-finished.html"><code>HasFinished</code></a></td><td class="sig">[[nodiscard]] bool HasFinished() const noexcept</td><td>Whether this item consumed its whole range — it says nothing about the task it came from.</td></tr>
+  <tr><td><a href="run.html"><code>Run</code></a></td><td class="sig">bool Run(Task&amp; task) noexcept</td><td>Runs the item's slice and reports whether this call closed the task's join; the thread that gets <code>true</code> owes the successor a dispatch.</td></tr>
+  <tr><td><a href="constructors.html"><code>WorkItem</code></a></td><td class="sig">WorkItem(Task&amp; task, TIndex start, TIndex end, uint8_t priority) noexcept</td><td>Private. Stamps the identity, the notice pair and the age clock from the task, and excludes the Base and IO streams from the item's affinity.</td></tr>
 </table>
 
 <h2 id="non-member">Non-member helper functions</h2>
@@ -150,9 +128,8 @@
 <pre><code>using FAbandonedNotice = void (*)(TaskID abandonedTask, void* userData) noexcept;</code></pre>
 
 <table>
-  <tr><th>Name</th><th>Declaration</th><th>What it means</th></tr>
-  <tr><td><code>FAbandonedNotice</code></td><td><code>using FAbandonedNotice = void (*)(TaskID, void*) noexcept;</code></td>
-    <td><span class="badge">alias</span> Called on the thread that dropped the work, at most once per item, never for work that ran</td></tr>
+  <tr><th>Type + Name</th><th>Default Value</th><th>Description</th></tr>
+  <tr><td><code>using FAbandonedNotice = void (*)(TaskID, void*) noexcept;</code> <span class="badge">alias</span></td><td><span class="muted">not applicable</span></td><td>Called on the thread that dropped the work, at most once per item, never for work that ran</td></tr>
 </table>
 
 <div class="gap">
