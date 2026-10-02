@@ -53,27 +53,15 @@ private:
 
 public:
 	static TIndex GetNumHardwareThreads() noexcept;
-
 	static void SetThreadName(StaticString name) noexcept;
-
 	static void SetStreamIndex(TIndex index) noexcept;
 	static TIndex GetCurrentStreamIndex() noexcept;
-
 	static StaticString GetCurrentStreamName() noexcept;
 	static StaticString GetCurrentThreadName() noexcept;
-
 	static bool IsBaseThread() noexcept;
 	static bool IsIOThread() noexcept;
-
-	static TIndex GetBaseTaskStreamIndex() noexcept
-	{
-		return BaseStreamIndex;
-	}
-
-	static TIndex GetIOTaskStreamIndex() noexcept
-	{
-		return IOStreamIndex;
-	}
+	static TIndex GetBaseTaskStreamIndex() noexcept;
+	static TIndex GetIOTaskStreamIndex() noexcept;
 
 public:
 	TaskSystem() noexcept;
@@ -81,12 +69,24 @@ public:
 
 	void Initialize() noexcept;
 	void RequestShutDown() noexcept;
-
 	void RequestOtherStreamsClose() noexcept;
-	[[nodiscard]] bool AreOtherStreamsClosed() noexcept;
 	void JoinAndClear() noexcept;
-
 	void Update() noexcept;
+
+	[[nodiscard]] bool AreOtherStreamsClosed() noexcept;
+	[[nodiscard]] TaskID CreateTask(StaticString taskName, TRunnable func, void* userData) noexcept;
+	[[nodiscard]] Task* FindTask(TaskID id) noexcept;
+	[[nodiscard]] TaskID ParallelFor(StaticString taskName, TRunnable func, void* userData, TIndex numItems,
+									 TIndex numSubJobs, const TIndex* streamIndices, TIndex numStreamIndices,
+									 uint8_t priority = 0, TaskID successor = {},
+									 TIndex successorStream = NonStreamIndex) noexcept;
+	[[nodiscard]] TaskID ParallelFor(StaticString taskName, TRunnable func, void* userData, TIndex numItems,
+									 TIndex numSubJobs, TIndex numStreams, uint8_t priority = 0, TaskID successor = {},
+									 TIndex successorStream = NonStreamIndex) noexcept;
+
+	[[nodiscard]] StaticString GetName() const noexcept;
+	[[nodiscard]] bool IsRunning() const noexcept;
+	[[nodiscard]] TaskRegistry& GetRegistry() noexcept;
 
 	template <class Predicate>
 	bool DriveUntil(const char* waitingFor, Predicate&& isDone,
@@ -116,7 +116,9 @@ public:
 			{
 				stream.SetNestedPumpAllowed(false);
 			}
-		} nestedPumpGuard{baseStream};
+		};
+
+		NestedPumpGuard nestedPumpGuard{baseStream};
 
 		while (!isDone() && remaining > std::chrono::milliseconds::zero())
 		{
@@ -137,10 +139,7 @@ public:
 
 	void RunBudgetWindowPass() noexcept;
 
-	[[nodiscard]] std::size_t GetNumBudgetWindowsAdvanced() const noexcept
-	{
-		return numBudgetWindowsAdvanced.load(std::memory_order_relaxed);
-	}
+	[[nodiscard]] std::size_t GetNumBudgetWindowsAdvanced() const noexcept;
 
 	void Enqueue(const WorkItem& task) noexcept;
 	void Dequeue(std::optional<WorkItem>& outTask) noexcept;
@@ -153,85 +152,32 @@ public:
 
 	void DispatchToMainThread(TMainThreadTask task, void* userData, uint8_t priority = 128) noexcept;
 
-	[[nodiscard]] TaskID CreateTask(StaticString taskName, TRunnable func, void* userData) noexcept;
-	[[nodiscard]] Task* FindTask(TaskID id) noexcept;
+
 	void ReleaseTask(TaskID id) noexcept;
 
-	[[nodiscard]] TaskID ParallelFor(StaticString taskName, TRunnable func, void* userData, TIndex numItems,
-									 TIndex numSubJobs, const TIndex* streamIndices, TIndex numStreamIndices,
-									 uint8_t priority = 0, TaskID successor = {},
-									 TIndex successorStream = NonStreamIndex) noexcept;
-	[[nodiscard]] TaskID ParallelFor(StaticString taskName, TRunnable func, void* userData, TIndex numItems,
-									 TIndex numSubJobs, TIndex numStreams, uint8_t priority = 0, TaskID successor = {},
-									 TIndex successorStream = NonStreamIndex) noexcept;
+
 	TaskID RunSplit(StaticString taskName, TRunnable func, void* userData, TIndex numItems, TIndex numSubJobs,
 					const TIndex* streamIndices, TIndex numStreamIndices, uint8_t priority, TaskID successor,
 					TIndex successorStream) noexcept;
 
-	void SetSuccessor(TaskID task, TaskID successor) noexcept
-	{
-		taskRegistry.SetSuccessor(task, successor);
-	}
+	void SetSuccessor(TaskID task, TaskID successor) noexcept;
+	[[nodiscard]] TaskID GetSuccessor(TaskID task) noexcept;
 
-	[[nodiscard]] TaskID GetSuccessor(TaskID task) noexcept
-	{
-		return taskRegistry.GetSuccessor(task);
-	}
-
-	void SetAbandonedNotice(TaskID task, FAbandonedNotice handler, void* userData = nullptr) noexcept
-	{
-		if (auto* target = FindTask(task); target != nullptr)
-		{
-			target->abandonedNotice = handler;
-			target->abandonedUserData = userData;
-		}
-	}
+	void SetAbandonedNotice(TaskID task, FAbandonedNotice handler, void* userData = nullptr) noexcept;
 
 	void DispatchSuccessor(TaskID finishedTask) noexcept;
-
-	[[nodiscard]] StaticString GetName() const noexcept
-	{
-		return name;
-	}
-
-	[[nodiscard]] auto& IsRunning() const noexcept
-	{
-		return isRunning;
-	}
-
-	[[nodiscard]] TaskRegistry& GetRegistry() noexcept
-	{
-		return taskRegistry;
-	}
 
 	[[nodiscard]] StaticString GetStreamName(int index) const noexcept;
 	[[nodiscard]] TIndex GetStreamIndex(TThreadID id) const noexcept;
 	TaskStream& GetStream(int index) noexcept;
 
-	[[nodiscard]] bool HasStream(TIndex index) const noexcept
-	{
-		return streams.IsValidIndex(index);
-	}
+	[[nodiscard]] bool HasStream(TIndex index) const noexcept;
 
-	auto& GetBaseTaskStream() noexcept
-	{
-		return streams[GetBaseTaskStreamIndex()];
-	}
+	TaskStream& GetBaseTaskStream() noexcept;
+	const TaskStream& GetBaseTaskStream() const noexcept;
 
-	auto& GetBaseTaskStream() const noexcept
-	{
-		return streams[GetBaseTaskStreamIndex()];
-	}
-
-	auto& GetIOTaskStream() noexcept
-	{
-		return streams[GetIOTaskStreamIndex()];
-	}
-
-	auto& GetIOTaskStream() const noexcept
-	{
-		return streams[GetIOTaskStreamIndex()];
-	}
+	TaskStream& GetIOTaskStream() noexcept;
+	const TaskStream& GetIOTaskStream() const noexcept;
 
 private:
 	void BuildStreams();

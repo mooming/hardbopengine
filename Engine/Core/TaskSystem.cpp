@@ -67,6 +67,16 @@ bool TaskSystem::IsIOThread() noexcept
 	return StreamIndex == IOStreamIndex;
 }
 
+TaskSystem::TIndex TaskSystem::GetBaseTaskStreamIndex() noexcept
+{
+	return BaseStreamIndex;
+}
+
+TaskSystem::TIndex TaskSystem::GetIOTaskStreamIndex() noexcept
+{
+	return IOStreamIndex;
+}
+
 TaskSystem::TaskSystem() noexcept
 	: isRunning(false)
 	, name("TaskSystem")
@@ -362,6 +372,25 @@ void TaskSystem::ReleaseTask(TaskID id) noexcept
 	taskRegistry.Release(id);
 }
 
+void TaskSystem::SetSuccessor(TaskID task, TaskID successor) noexcept
+{
+	taskRegistry.SetSuccessor(task, successor);
+}
+
+TaskID TaskSystem::GetSuccessor(TaskID task) noexcept
+{
+	return taskRegistry.GetSuccessor(task);
+}
+
+void TaskSystem::SetAbandonedNotice(TaskID task, FAbandonedNotice handler, void* userData) noexcept
+{
+	if (auto* target = FindTask(task); target != nullptr)
+	{
+		target->abandonedNotice = handler;
+		target->abandonedUserData = userData;
+	}
+}
+
 void TaskSystem::EnqueueTask(const TIndex streamIndex, Task& task, const uint8_t priority,
 							 const StreamDrainPolicy::ELane lane) noexcept
 {
@@ -426,6 +455,11 @@ void TaskSystem::RunBudgetWindowPass() noexcept
 	{
 		stream.RequestWindowAdvance();
 	}
+}
+
+std::size_t TaskSystem::GetNumBudgetWindowsAdvanced() const noexcept
+{
+	return numBudgetWindowsAdvanced.load(std::memory_order_relaxed);
 }
 
 void TaskSystem::DispatchSuccessor(TaskID finishedTask) noexcept
@@ -579,6 +613,21 @@ TaskID TaskSystem::ParallelFor(StaticString taskName, TRunnable func, void* user
 					successorStream);
 }
 
+StaticString TaskSystem::GetName() const noexcept
+{
+	return name;
+}
+
+bool TaskSystem::IsRunning() const noexcept
+{
+	return isRunning.load(std::memory_order_acquire);
+}
+
+TaskRegistry& TaskSystem::GetRegistry() noexcept
+{
+	return taskRegistry;
+}
+
 TaskID TaskSystem::RunSplit(StaticString taskName, TRunnable func, void* userData, TIndex numItems, TIndex numSubJobs,
 							const TIndex* streamIndices, TIndex numStreamIndices, uint8_t priority, TaskID successor,
 							TIndex successorStream) noexcept
@@ -710,6 +759,31 @@ TaskStream& TaskSystem::GetStream(int index) noexcept
 	}
 
 	return streams[index];
+}
+
+bool TaskSystem::HasStream(TIndex index) const noexcept
+{
+	return streams.IsValidIndex(index);
+}
+
+TaskStream& TaskSystem::GetBaseTaskStream() noexcept
+{
+	return streams[GetBaseTaskStreamIndex()];
+}
+
+const TaskStream& TaskSystem::GetBaseTaskStream() const noexcept
+{
+	return streams[GetBaseTaskStreamIndex()];
+}
+
+TaskStream& TaskSystem::GetIOTaskStream() noexcept
+{
+	return streams[GetIOTaskStreamIndex()];
+}
+
+const TaskStream& TaskSystem::GetIOTaskStream() const noexcept
+{
+	return streams[GetIOTaskStreamIndex()];
 }
 
 void TaskSystem::BuildStreams()
