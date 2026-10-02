@@ -178,20 +178,6 @@ bool TaskSystem::AreOtherStreamsClosed() noexcept
 	return true;
 }
 
-void TaskSystem::ReportDriveTimeout(const char* waitingFor, const std::chrono::milliseconds patience) noexcept
-{
-	Logger::Get().AddLog(GetName(), ELogLevel::Error, [waitingFor, patience](auto& logStream)
-	{
-		logStream << "A thread driving the engine loop gave up waiting for " << waitingFor << " after "
-				  << patience.count()
-				  << "ms. The work was still queued, so nothing was going to run it, and a caller that proceeds from "
-					 "here "
-					 "usually blocks on the very thing it waited for. The intake that should have drained it is the "
-					 "first "
-					 "thing to look at.";
-	});
-}
-
 void TaskSystem::Update() noexcept
 {
 	auto& baseStream = GetStream(GetBaseTaskStreamIndex());
@@ -848,6 +834,7 @@ void TaskSystem::BuildStreams()
 #include "../Engine/Engine.h"
 #include "OSAL/Intrinsic.h"
 #include "Test/TestCollection.h"
+#include "Test/TestHelper.h"
 
 namespace hbe
 {
@@ -1245,7 +1232,7 @@ void TaskSystemTest::Prepare()
 		taskSys.EnqueueTask(TaskSystem::GetBaseTaskStreamIndex(), *fifoTask, 0, StreamDrainPolicy::ELane::Fifo);
 		taskSys.EnqueueTask(TaskSystem::GetBaseTaskStreamIndex(), *priorityTask, 1, StreamDrainPolicy::ELane::Priority);
 
-		taskSys.DriveUntil("work on both lanes being reached", []() {
+		TestHelper::DriveUntil(taskSys, "work on both lanes being reached", []() {
 			return fifoLaneRuns.load(std::memory_order_acquire) > 0 &&
 				   priorityLaneRuns.load(std::memory_order_acquire) > 0;
 		}, std::chrono::milliseconds(400));
@@ -1357,7 +1344,7 @@ void TaskSystemTest::Prepare()
 		taskSys.EnqueueTask(TaskSystem::GetBaseTaskStreamIndex(), *task);
 		taskSys.ReleaseTask(id);
 
-		const bool notified = taskSys.DriveUntil("an abandonment notice for released work", []()
+		const bool notified = TestHelper::DriveUntil(taskSys, "an abandonment notice for released work", []()
 		{ return abandonmentFires.load(std::memory_order_acquire) > 0; }, std::chrono::milliseconds(200));
 
 		const auto fires = abandonmentFires.load(std::memory_order_acquire);
@@ -3398,7 +3385,7 @@ void TaskSystemTest::Prepare()
 		{
 			taskSys.EnqueueTask(TaskSystem::GetBaseTaskStreamIndex(), *controlTask, 0, StreamDrainPolicy::ELane::Fifo);
 		}
-		const bool controlRan = taskSys.DriveUntil("the ceiling-free fixture to run", []()
+		const bool controlRan = TestHelper::DriveUntil(taskSys, "the ceiling-free fixture to run", []()
 		{ return maxAgeWorkRuns.load(std::memory_order_acquire) > 0; }, std::chrono::milliseconds{400});
 		taskSys.ReleaseTask(controlID);
 
@@ -3427,7 +3414,7 @@ void TaskSystemTest::Prepare()
 			{
 				taskSys.EnqueueTask(TaskSystem::GetBaseTaskStreamIndex(), *task, 0, StreamDrainPolicy::ELane::Fifo);
 			}
-			const bool dropped = taskSys.DriveUntil("FIFO work to be aged out", [&baseStream, agedBefore]()
+			const bool dropped = TestHelper::DriveUntil(taskSys, "FIFO work to be aged out", [&baseStream, agedBefore]()
 			{ return baseStream.GetAgedOutWorkCount() > agedBefore; }, std::chrono::milliseconds{300});
 
 			const std::size_t aged = baseStream.GetAgedOutWorkCount();
@@ -3469,7 +3456,8 @@ void TaskSystemTest::Prepare()
 			{
 				taskSys.EnqueueTask(TaskSystem::GetBaseTaskStreamIndex(), *task, 0, StreamDrainPolicy::ELane::Priority);
 			}
-			const bool dropped = taskSys.DriveUntil("priority-lane work to be aged out", [&baseStream, agedBefore]()
+			const bool dropped =
+					TestHelper::DriveUntil(taskSys, "priority-lane work to be aged out", [&baseStream, agedBefore]()
 			{ return baseStream.GetAgedOutWorkCount() > agedBefore; }, std::chrono::milliseconds{300});
 
 			const std::size_t aged = baseStream.GetAgedOutWorkCount();
@@ -3558,7 +3546,7 @@ void TaskSystemTest::Prepare()
 			return;
 		}
 
-		const bool allServed = taskSys.DriveUntil("every item on both lanes of an 8:1 stream", []() {
+		const bool allServed = TestHelper::DriveUntil(taskSys, "every item on both lanes of an 8:1 stream", []() {
 			return rateFifoRuns.load(std::memory_order_acquire) + ratePriorityRuns.load(std::memory_order_acquire) >= 8;
 		}, std::chrono::milliseconds{600});
 
@@ -3624,7 +3612,7 @@ void TaskSystemTest::Prepare()
 		}
 		taskSys.ReleaseTask(orphaned);
 
-		const bool orphanDropped = taskSys.DriveUntil("queued work whose task was released", []()
+		const bool orphanDropped = TestHelper::DriveUntil(taskSys, "queued work whose task was released", []()
 		{ return dropSiteNotices.load(std::memory_order_acquire) > 0; }, std::chrono::milliseconds{300});
 
 		if (!orphanDropped || dropSiteNotices.load(std::memory_order_acquire) != 1)
@@ -3653,7 +3641,7 @@ void TaskSystemTest::Prepare()
 		baseStream.SetMaxAge(std::chrono::nanoseconds{1});
 		const std::size_t agedBefore = baseStream.GetAgedOutWorkCount();
 		const bool agedDropped =
-				taskSys.DriveUntil("queued work older than the stream ceiling", [&baseStream, agedBefore]()
+				TestHelper::DriveUntil(taskSys, "queued work older than the stream ceiling", [&baseStream, agedBefore]()
 		{ return baseStream.GetAgedOutWorkCount() > agedBefore; }, std::chrono::milliseconds{300});
 		baseStream.SetMaxAge(ceilingFound);
 

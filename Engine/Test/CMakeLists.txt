@@ -37,9 +37,11 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/lib)
 add_library (Test STATIC 
  TestCollection.cpp
  TestEnv.cpp
+ TestHelper.cpp
  UnitTestCollection.cpp
  TestCollection.h
  TestEnv.h
+ TestHelper.h
  UnitTestCollection.h
  Testlet.h
 ${PLATFORM_SOURCES}

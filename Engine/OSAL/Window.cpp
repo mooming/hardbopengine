@@ -29,6 +29,7 @@ std::unique_ptr<Window> CreateWindow(const hbe::HString& title, int width, int h
 
 #include "Core/TaskSystem.h"
 #include "Engine/Engine.h"
+#include "Test/TestHelper.h"
 
 namespace hbe
 {
@@ -120,7 +121,7 @@ void WindowTest::Prepare()
 			windowPromise.set_value(nullptr);
 		}, &userData);
 
-		const bool isReady = taskSystem.DriveUntil("window creation", [&windowFuture]()
+		const bool isReady = TestHelper::DriveUntil(taskSystem, "window creation", [&windowFuture]()
 		{ return windowFuture.wait_for(std::chrono::seconds::zero()) == std::future_status::ready; });
 
 		if (!isReady)
@@ -232,7 +233,7 @@ void WindowTest::Prepare()
 			windowPromise.set_value(nullptr);
 		}, &userData);
 
-		const bool isReady = taskSystem.DriveUntil("window creation", [&windowFuture]()
+		const bool isReady = TestHelper::DriveUntil(taskSystem, "window creation", [&windowFuture]()
 		{ return windowFuture.wait_for(std::chrono::seconds::zero()) == std::future_status::ready; });
 
 		if (!isReady)
@@ -343,7 +344,7 @@ void WindowTest::Prepare()
 			windowPromise.set_value(nullptr);
 		}, &userData);
 
-		const bool isReady = taskSystem.DriveUntil("window creation", [&windowFuture]()
+		const bool isReady = TestHelper::DriveUntil(taskSystem, "window creation", [&windowFuture]()
 		{ return windowFuture.wait_for(std::chrono::seconds::zero()) == std::future_status::ready; });
 
 		if (!isReady)
@@ -456,7 +457,7 @@ void WindowTest::Prepare()
 			windowPromise.set_value(nullptr);
 		}, &userData);
 
-		const bool isReady = taskSystem.DriveUntil("window creation", [&windowFuture]()
+		const bool isReady = TestHelper::DriveUntil(taskSystem, "window creation", [&windowFuture]()
 		{ return windowFuture.wait_for(std::chrono::seconds::zero()) == std::future_status::ready; });
 
 		if (!isReady)
@@ -561,7 +562,7 @@ void WindowTest::Prepare()
 			windowPromise.set_value(nullptr);
 		}, &userData);
 
-		const bool isReady = taskSystem.DriveUntil("window creation", [&windowFuture]()
+		const bool isReady = TestHelper::DriveUntil(taskSystem, "window creation", [&windowFuture]()
 		{ return windowFuture.wait_for(std::chrono::seconds::zero()) == std::future_status::ready; });
 
 		if (!isReady)
@@ -666,7 +667,7 @@ void WindowTest::Prepare()
 			windowPromise.set_value(nullptr);
 		}, &userData);
 
-		const bool isReady = taskSystem.DriveUntil("window creation", [&windowFuture]()
+		const bool isReady = TestHelper::DriveUntil(taskSystem, "window creation", [&windowFuture]()
 		{ return windowFuture.wait_for(std::chrono::seconds::zero()) == std::future_status::ready; });
 
 		if (!isReady)
