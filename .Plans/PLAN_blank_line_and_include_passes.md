@@ -135,3 +135,42 @@ under `--all` and as `[FAIL]` for the files a run owns, so a file enters conform
 `AGENTS.md`, `Applications/EngineTest/TestMain.cpp` and 34 TaskSystem reference pages. Changes 1, 2, 3 and
 8 of this plan land on four of those same files, so the work must land first or the two commits become
 one story. Default: commit it as its own change before touching anything here.
+
+## Status — executed 2026-10-02, and three of this plan's own claims corrected on the way
+
+| Change | Outcome | Commit |
+|---|---|---|
+| 1 `docs/CodingStandards.md` | rule set A (A1-A16 table) and rule set B (B1-B7 table), each with its measurements | `8b15fc8` |
+| 2 `AGENTS.md` | both clauses in the agent-facing copy, with pointers to the tables | `2ee85b1` |
+| 3 `SKILL.md` | landed as **Layer 2b**, not 2c — the pass belongs before the comment sweep, so numbering follows position. Fix-cycle step 1b, module-cycle row, helper rows, judgement rows | `2ee85b1` |
+| 4 `blank_lines.py` | 16 rules, 41 fixtures. **No `--fix` mode**: deleting a blank because a checker said so is the failure this layer exists to prevent, so the tool reports and the reader edits | `f0f77c5`, `9e1f244` |
+| 5 `includes.py` | B1-B5 and B7 gated; B6 behind `--unused`, two measurements per candidate; 10 fixtures | `f0f77c5` |
+| 6 `check.sh` | layer 2b wired, `[DEBT]` under `--all` and violations in a scoped run; format check now compares both sides through `blank_lines.py --collapse-seam` | `9e1f244` |
+| 7 `prove_regroup.py` | `--whitespace-only`: non-blank lines identical **and** in place | `f0f77c5` |
+| 8 `Engine/CodingStandards.{h,cpp}` | nine findings applied; the stale preamble claim went with the blanks | `4a95940` |
+| 9 `JOURNAL.md` | the rulings, the reversal of `ea0f157`, and the three claims this plan began believing | `4a95940` |
+
+**Three corrections to the plan itself, all found by measuring instead of reading notes.**
+`.clang-format` never set `SortIncludes` or `BreakBeforeBinaryOperators`; it sets `IncludeBlocks: Preserve`
+and leaves `SortIncludes` at the clang-format 22 default `{Enabled: true, IgnoreCase: false,
+IgnoreExtension: false}`, which is why byte order is the standard rule B2 names and why
+`SortIncludes: IgnoreCase` is not available as written (the key became a mapping). The access-label blank
+the exemplar documented as unavoidable is not: `{`, no blank, `public:` survives a format run unchanged, so
+rule A4 needed no exception. And `BreakAfterIncludes` was already recorded correctly as absent — re-checked
+by running the formatter, not by trusting the note.
+
+**One rule added during execution.** A10 stops at a preprocessor directive: the seam organising a
+`#pragma clang diagnostic push` pair sits above the directive, so `CreateWithMove`'s `return` is not owed a
+blank beneath its own pragma.
+
+| Verification | Result |
+|---|---|
+| 1 `blank_lines.py --selftest` | 41 fixtures, 0 failures — one per decidable rule plus four that exist because the first version got them wrong |
+| 2 `includes.py` on the named files | `TaskSystem.cpp:788` and `OSMemory.cpp:5` report B5 (`"../Engine/Engine.h"`); `Vector3.h` and `Matrix4x4.h` report nothing, which is the in-class `.inl` immunity holding. `OSMemory.cpp` no longer reports B3 — its duplicates went in the earlier header work |
+| 3 `prove_regroup.py --whitespace-only` | proves both exemplar files changed only blank lines |
+| 4 `check.sh HEAD` / `check.sh 6dad493` | the conforming pair reports `blank lines: 0`, `includes: 0`; the older commit prints its 132 findings and `[FAIL] rule set A and/or rule set B`, so the scoped path bites and the clean path is not vacuous |
+| 5 gate with tests | `gate.sh spawn --all --test`, job `20261002-182032-91191` — the earlier job `20261002-180815-70218` reported build gate PASS 12/12 and `GATE_EXIT=1` from the standing comment/layout/docs backlog, with 0 occurrences of the `no recompile exercised` marker |
+| 6 `check.sh --all --no-build` | `blank lines: 1648 finding(s) in 272 file(s)`, `includes: 23 finding(s) in 23 file(s)`, both `[DEBT]`. Re-measured in the gate run, not carried from this plan |
+
+**Not in scope, and left as the owner's decision:** sweeping the 1648 seams and 23 include findings across
+the tree, and switching any configuration value in `.clang-format`.
