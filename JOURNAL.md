@@ -1,5 +1,53 @@
 # Journal
 
+## 2026-10-02 23:45 — a queue item's pages, a table grammar the owner changed twice, and five agents cut back to one
+
+**Cause.** Continuing the Core reference revision: `WorkItem` was the next TaskSystem-family entry, and the owner
+ruled on two more table shapes mid-task.
+
+**`WorkItem` is closed.** It had a class page with no method table — so its three existing pages were unreachable
+— and no page for the private constructor or the destructor. The constructor is the one that deserved one: it is
+where an item stops being a range, taking its identity from `task.GetID()`, copying the abandoned-notice pair and
+the age clock off the task so a slice inherits its parent's notice without a call site remembering, and clearing
+the Base and IO bits of the affinity mask, which is the only thing in the engine that excludes a stream from
+anything. `docs_coverage.py check-file Engine/Core/WorkItem.h` now reports the entry documented, addressed and
+complete.
+
+**Two defects the pages were carrying.** `operator-less.html` titled itself with its own file stem rather than
+`operator<`, so the page a reader wants and the word they search for disagreed. And four pages presented the
+function *body* as the signature — `HasFinished` appeared to return `current >= end` by inspection of a copy nobody
+maintains. Every signature on that entry is now the header's declaration, proved character for character against
+`Engine/Core/WorkItem.h`.
+
+**`docs_pass.py`: the two mechanical passes made durable.** `reskin` re-emits a folder's method pages and fails if
+any prose moved; `signatures` replaces each Signature section with the header's declaration and refuses to write if
+anything outside that section moved. Both cut a class's inline bodies out of a header before reading it, because a
+body is full of `{`, `;` and `<` — the three characters a declaration splitter reads as its own delimiters. Without
+that, the first version found one destructor in a class with six members; with a half-fix it left `current >= end`
+inside a signature and called it the contract. **Re-emitting a page was also making it longer**: the re-skin read an
+existing subtitle back — tag spans included — and handed it over as the summary, so each run nested another copy of
+the tag row inside the sentence describing the page. 48 pages of Core were listing their own source file two to five
+times. Verified fixed by running `reskin` twice over all 48 and comparing hashes: no byte changes.
+
+**Two more rulings from the owner, both about what a table column is for.** Properties became
+`Type + Name | Default Value | Description`: the declaration as the header writes it, because a reader hunting
+`bool ownsThreads` should not join a name cell to a type cell, and the default, which is the question a property
+table is actually asked at review time. Methods lost the Link column and the name took the link, because the column
+reproduced a filename no reader types while the word they already knew sat there inert. Migration tripped two traps
+worth recording in §4 of the authoring contract: a default of `static_cast<TIndex>(-1)` emitted unescaped is a
+`<TIndex>` tag, and a trailing semicolon is the declaration's punctuation rather than part of the value. A failed
+migration also truncated `docs/Core/TaskSystem/index.html` to zero bytes before it raised — the file was opened for
+writing before the replacement was computed. Restored from HEAD, and the pass now computes, then writes a temp, then
+renames.
+
+**Scale, and a retraction.** 195 Core method pages were owed, so the work was fanned out to five agents over
+disjoint class folders, with `.Plans/NOTE_api_authoring_worker_brief.md` as the shared brief — grammar, generator
+commands, citation rules, bounds, report format — so no rule lived only in a prompt. The owner then ruled that the
+backend serves one subagent at a time; the five were stopped (the backend had already reaped them, having written
+only a start on `TaskID`, and the site still validated clean), and one author was launched over the whole remainder
+in dependency order, `TaskStream`'s 53 pages last. Held back from the agents deliberately: comment stripping, module
+page rewrites beyond one row each, and every commit.
+
 ## 2026-10-02 21:37 — the reference had no way to reach a method page, and 41% of its bytes were not the answer
 
 **Cause.** The owner asked to revise the Core reference, TaskSystem family first. Measured first: 9 of 25 Core
