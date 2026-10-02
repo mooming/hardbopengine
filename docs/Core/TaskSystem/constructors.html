@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>TaskSystem::constructors — Core module &mdash; HardBop Engine API reference</title>
+<title>TaskSystem::TaskSystem — Core module — HardBop Engine API reference</title>
 <link rel="stylesheet" href="../../assets/hbe-docs.css">
 </head>
 <body>
@@ -36,54 +36,6 @@
     <li><a href="#return">Return value</a></li>
     <li><a href="#example">Examples</a></li>
   </ul>
-
-  <h3>Methods</h3>
-  <ul class="methods">
-    <li><a href="index.html">TaskSystem</a> methods</li>
-    <li><a href="get-num-hardware-threads.html">GetNumHardwareThreads</a></li>
-    <li><a href="set-thread-name.html">SetThreadName</a></li>
-    <li><a href="set-stream-index.html">SetStreamIndex</a></li>
-    <li><a href="get-current-stream-index.html">GetCurrentStreamIndex</a></li>
-    <li><a href="get-current-stream-name.html">GetCurrentStreamName</a></li>
-    <li><a href="get-current-thread-name.html">GetCurrentThreadName</a></li>
-    <li><a href="is-base-thread.html">IsBaseThread</a></li>
-    <li><a href="is-io-thread.html">IsIOThread</a></li>
-    <li><a href="get-base-task-stream-index.html">GetBaseTaskStreamIndex</a></li>
-    <li><a href="get-io-task-stream-index.html">GetIOTaskStreamIndex</a></li>
-    <li><a href="constructors.html">TaskSystem</a></li>
-    <li><a href="destructor.html">~TaskSystem</a></li>
-    <li><a href="initialize.html">Initialize</a></li>
-    <li><a href="request-shut-down.html">RequestShutDown</a></li>
-    <li><a href="request-other-streams-close.html">RequestOtherStreamsClose</a></li>
-    <li><a href="are-user-streams-closed.html">AreUserStreamsClosed</a></li>
-    <li><a href="join-and-clear.html">JoinAndClear</a></li>
-    <li><a href="update.html">Update</a></li>
-    <li><a href="run-budget-window-pass.html">RunBudgetWindowPass</a></li>
-    <li><a href="get-num-budget-windows-advanced.html">GetNumBudgetWindowsAdvanced</a></li>
-    <li><a href="enqueue.html">Enqueue</a></li>
-    <li><a href="dequeue.html">Dequeue</a></li>
-    <li><a href="enqueue-task.html">EnqueueTask</a></li>
-    <li><a href="dispatch-to-main-thread.html">DispatchToMainThread</a></li>
-    <li><a href="create-task.html">CreateTask</a></li>
-    <li><a href="find-task.html">FindTask</a></li>
-    <li><a href="release-task.html">ReleaseTask</a></li>
-    <li><a href="run-split.html">RunSplit</a></li>
-    <li><a href="parallel-for.html">ParallelFor</a></li>
-    <li><a href="set-successor.html">SetSuccessor</a></li>
-    <li><a href="get-successor.html">GetSuccessor</a></li>
-    <li><a href="set-abandoned-notice.html">SetAbandonedNotice</a></li>
-    <li><a href="dispatch-successor.html">DispatchSuccessor</a></li>
-    <li><a href="get-name.html">GetName</a></li>
-    <li><a href="is-running.html">IsRunning</a></li>
-    <li><a href="get-registry.html">GetRegistry</a></li>
-    <li><a href="get-stream-name.html">GetStreamName</a></li>
-    <li><a href="get-stream-index.html">GetStreamIndex</a></li>
-    <li><a href="has-stream.html">HasStream</a></li>
-    <li><a href="get-stream.html">GetStream</a></li>
-    <li><a href="get-base-task-stream.html">GetBaseTaskStream</a></li>
-    <li><a href="get-io-task-stream.html">GetIOTaskStream</a></li>
-    <li><a href="build-streams.html">BuildStreams</a></li>
-  </ul>
 </nav>
 
 <main class="main">
@@ -91,25 +43,20 @@
 <p class="breadcrumb">
   <a href="../../index.html">Module Index</a> /
   <a href="../index.html">Core</a> /
-<a href="index.html">TaskSystem</a> / constructors
+  <a href="index.html">TaskSystem</a> / TaskSystem
 </p>
 
 <h1><span class="fn">TaskSystem</span></h1>
 <p class="subtitle">
+  <span class="tag">member of hbe::TaskSystem</span>
+  <span class="tag">Engine/Core/TaskSystem.h</span>
   records the constructing thread as the one that will drive <code>Engine::Run</code>, reads the hardware thread
   count, and starts nothing
 </p>
 
 <h2 id="signature">Signature</h2>
 
-<pre><code><span class="fn">TaskSystem</span>() noexcept
-    : isRunning(false)
-    , name(<span class="st">"TaskSystem"</span>)
-    , numHardwareThreads(<span class="fn">GetNumHardwareThreads</span>())
-    , engineLoopThreadID(std::this_thread::get_id())
-{
-        <span class="fn">FatalAssert</span>(numHardwareThreads &gt; 0, <span class="st">"It should have at least one hardware thread."</span>);
-}</code></pre>
+<pre><code>	TaskSystem() noexcept;</code></pre>
 
 <h2 id="description">Function description</h2>
 
@@ -181,7 +128,6 @@
   before the task system and destroyed after it, which is what lets <a href="join-and-clear.html">JoinAndClear</a>
   still write an error line about abandoned work.
 </p>
-
 <footer class="prevnext">
   <span><a href="index.html">&larr; TaskSystem</a></span>
   <span><a href="index.html#methods">All TaskSystem methods</a></span>

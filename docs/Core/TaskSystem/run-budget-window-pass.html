@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>TaskSystem::RunBudgetWindowPass — Core module &mdash; HardBop Engine API reference</title>
+<title>TaskSystem::RunBudgetWindowPass — Core module — HardBop Engine API reference</title>
 <link rel="stylesheet" href="../../assets/hbe-docs.css">
 </head>
 <body>
@@ -36,54 +36,6 @@
     <li><a href="#return">Return value</a></li>
     <li><a href="#example">Examples</a></li>
   </ul>
-
-  <h3>Methods</h3>
-  <ul class="methods">
-    <li><a href="index.html">TaskSystem</a> methods</li>
-    <li><a href="get-num-hardware-threads.html">GetNumHardwareThreads</a></li>
-    <li><a href="set-thread-name.html">SetThreadName</a></li>
-    <li><a href="set-stream-index.html">SetStreamIndex</a></li>
-    <li><a href="get-current-stream-index.html">GetCurrentStreamIndex</a></li>
-    <li><a href="get-current-stream-name.html">GetCurrentStreamName</a></li>
-    <li><a href="get-current-thread-name.html">GetCurrentThreadName</a></li>
-    <li><a href="is-base-thread.html">IsBaseThread</a></li>
-    <li><a href="is-io-thread.html">IsIOThread</a></li>
-    <li><a href="get-base-task-stream-index.html">GetBaseTaskStreamIndex</a></li>
-    <li><a href="get-io-task-stream-index.html">GetIOTaskStreamIndex</a></li>
-    <li><a href="constructors.html">TaskSystem</a></li>
-    <li><a href="destructor.html">~TaskSystem</a></li>
-    <li><a href="initialize.html">Initialize</a></li>
-    <li><a href="request-shut-down.html">RequestShutDown</a></li>
-    <li><a href="request-other-streams-close.html">RequestOtherStreamsClose</a></li>
-    <li><a href="are-user-streams-closed.html">AreUserStreamsClosed</a></li>
-    <li><a href="join-and-clear.html">JoinAndClear</a></li>
-    <li><a href="update.html">Update</a></li>
-    <li><a href="run-budget-window-pass.html">RunBudgetWindowPass</a></li>
-    <li><a href="get-num-budget-windows-advanced.html">GetNumBudgetWindowsAdvanced</a></li>
-    <li><a href="enqueue.html">Enqueue</a></li>
-    <li><a href="dequeue.html">Dequeue</a></li>
-    <li><a href="enqueue-task.html">EnqueueTask</a></li>
-    <li><a href="dispatch-to-main-thread.html">DispatchToMainThread</a></li>
-    <li><a href="create-task.html">CreateTask</a></li>
-    <li><a href="find-task.html">FindTask</a></li>
-    <li><a href="release-task.html">ReleaseTask</a></li>
-    <li><a href="run-split.html">RunSplit</a></li>
-    <li><a href="parallel-for.html">ParallelFor</a></li>
-    <li><a href="set-successor.html">SetSuccessor</a></li>
-    <li><a href="get-successor.html">GetSuccessor</a></li>
-    <li><a href="set-abandoned-notice.html">SetAbandonedNotice</a></li>
-    <li><a href="dispatch-successor.html">DispatchSuccessor</a></li>
-    <li><a href="get-name.html">GetName</a></li>
-    <li><a href="is-running.html">IsRunning</a></li>
-    <li><a href="get-registry.html">GetRegistry</a></li>
-    <li><a href="get-stream-name.html">GetStreamName</a></li>
-    <li><a href="get-stream-index.html">GetStreamIndex</a></li>
-    <li><a href="has-stream.html">HasStream</a></li>
-    <li><a href="get-stream.html">GetStream</a></li>
-    <li><a href="get-base-task-stream.html">GetBaseTaskStream</a></li>
-    <li><a href="get-io-task-stream.html">GetIOTaskStream</a></li>
-    <li><a href="build-streams.html">BuildStreams</a></li>
-  </ul>
 </nav>
 
 <main class="main">
@@ -91,35 +43,20 @@
 <p class="breadcrumb">
   <a href="../../index.html">Module Index</a> /
   <a href="../index.html">Core</a> /
-<a href="index.html">TaskSystem</a> / RunBudgetWindowPass
+  <a href="index.html">TaskSystem</a> / RunBudgetWindowPass
 </p>
 
 <h1><span class="fn">RunBudgetWindowPass</span></h1>
 <p class="subtitle">
+  <span class="tag">member of hbe::TaskSystem</span>
+  <span class="tag">Engine/Core/TaskSystem.h</span>
   closes every stream's CPU-budget window once per base frame period, by request rather than by force — because a budget
   belongs to the thread that spends it
 </p>
 
 <h2 id="signature">Signature</h2>
 
-<pre><code><span class="kw">void</span> <span class="ty">TaskSystem</span>::<span class="fn">RunBudgetWindowPass</span>() noexcept
-{
-        <span class="kw">const</span> <span class="kw">auto</span> now = time::<span class="fn">GetNow</span>();
-        <span class="kw">const</span> <span class="kw">auto</span> period = time::<span class="fn">GetBaseFramePeriod</span>();
-
-        <span class="kw">if</span> (lastBudgetWindowAdvance != time::TTime{} &amp;&amp; now - lastBudgetWindowAdvance &lt; period)
-        {
-                <span class="kw">return</span>;
-        }
-
-        lastBudgetWindowAdvance = now;
-        numBudgetWindowsAdvanced.<span class="fn">fetch_add</span>(1, <span class="kw">std</span>::memory_order_relaxed);
-
-        <span class="kw">for</span> (<span class="kw">auto</span>&amp; stream : streams)
-        {
-                stream.<span class="fn">RequestWindowAdvance</span>();
-        }
-}</code></pre>
+<pre><code>	void RunBudgetWindowPass() noexcept;</code></pre>
 
 <h2 id="description">Function description</h2>
 
@@ -180,7 +117,6 @@
   unit tests have a helper that does the same thing from a test thread, for the reason stated above: a test that merely waited
   was waiting for itself to be scheduled, because advancing windows is the job of the thread the test occupies.
 </p>
-
 <footer class="prevnext">
   <span><a href="index.html">&larr; TaskSystem</a></span>
   <span><a href="index.html#methods">All TaskSystem methods</a></span>

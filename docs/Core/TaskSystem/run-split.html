@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>TaskSystem::RunSplit — Core module &mdash; HardBop Engine API reference</title>
+<title>TaskSystem::RunSplit — Core module — HardBop Engine API reference</title>
 <link rel="stylesheet" href="../../assets/hbe-docs.css">
 </head>
 <body>
@@ -36,54 +36,6 @@
     <li><a href="#return">Return value</a></li>
     <li><a href="#example">Examples</a></li>
   </ul>
-
-  <h3>Methods</h3>
-  <ul class="methods">
-    <li><a href="index.html">TaskSystem</a> methods</li>
-    <li><a href="get-num-hardware-threads.html">GetNumHardwareThreads</a></li>
-    <li><a href="set-thread-name.html">SetThreadName</a></li>
-    <li><a href="set-stream-index.html">SetStreamIndex</a></li>
-    <li><a href="get-current-stream-index.html">GetCurrentStreamIndex</a></li>
-    <li><a href="get-current-stream-name.html">GetCurrentStreamName</a></li>
-    <li><a href="get-current-thread-name.html">GetCurrentThreadName</a></li>
-    <li><a href="is-base-thread.html">IsBaseThread</a></li>
-    <li><a href="is-io-thread.html">IsIOThread</a></li>
-    <li><a href="get-base-task-stream-index.html">GetBaseTaskStreamIndex</a></li>
-    <li><a href="get-io-task-stream-index.html">GetIOTaskStreamIndex</a></li>
-    <li><a href="constructors.html">TaskSystem</a></li>
-    <li><a href="destructor.html">~TaskSystem</a></li>
-    <li><a href="initialize.html">Initialize</a></li>
-    <li><a href="request-shut-down.html">RequestShutDown</a></li>
-    <li><a href="request-other-streams-close.html">RequestOtherStreamsClose</a></li>
-    <li><a href="are-user-streams-closed.html">AreUserStreamsClosed</a></li>
-    <li><a href="join-and-clear.html">JoinAndClear</a></li>
-    <li><a href="update.html">Update</a></li>
-    <li><a href="run-budget-window-pass.html">RunBudgetWindowPass</a></li>
-    <li><a href="get-num-budget-windows-advanced.html">GetNumBudgetWindowsAdvanced</a></li>
-    <li><a href="enqueue.html">Enqueue</a></li>
-    <li><a href="dequeue.html">Dequeue</a></li>
-    <li><a href="enqueue-task.html">EnqueueTask</a></li>
-    <li><a href="dispatch-to-main-thread.html">DispatchToMainThread</a></li>
-    <li><a href="create-task.html">CreateTask</a></li>
-    <li><a href="find-task.html">FindTask</a></li>
-    <li><a href="release-task.html">ReleaseTask</a></li>
-    <li><a href="run-split.html">RunSplit</a></li>
-    <li><a href="parallel-for.html">ParallelFor</a></li>
-    <li><a href="set-successor.html">SetSuccessor</a></li>
-    <li><a href="get-successor.html">GetSuccessor</a></li>
-    <li><a href="set-abandoned-notice.html">SetAbandonedNotice</a></li>
-    <li><a href="dispatch-successor.html">DispatchSuccessor</a></li>
-    <li><a href="get-name.html">GetName</a></li>
-    <li><a href="is-running.html">IsRunning</a></li>
-    <li><a href="get-registry.html">GetRegistry</a></li>
-    <li><a href="get-stream-name.html">GetStreamName</a></li>
-    <li><a href="get-stream-index.html">GetStreamIndex</a></li>
-    <li><a href="has-stream.html">HasStream</a></li>
-    <li><a href="get-stream.html">GetStream</a></li>
-    <li><a href="get-base-task-stream.html">GetBaseTaskStream</a></li>
-    <li><a href="get-io-task-stream.html">GetIOTaskStream</a></li>
-    <li><a href="build-streams.html">BuildStreams</a></li>
-  </ul>
 </nav>
 
 <main class="main">
@@ -91,21 +43,21 @@
 <p class="breadcrumb">
   <a href="../../index.html">Module Index</a> /
   <a href="../index.html">Core</a> /
-<a href="index.html">TaskSystem</a> / RunSplit
+  <a href="index.html">TaskSystem</a> / RunSplit
 </p>
 
 <h1><span class="fn">RunSplit</span></h1>
 <p class="subtitle">
+  <span class="tag">member of hbe::TaskSystem</span>
+  <span class="tag">Engine/Core/TaskSystem.h</span>
   the private half of <a href="parallel-for.html">ParallelFor</a>: clamps the counts, records the routing, then hands out
   contiguous ranges round-robin — the only place the range arithmetic lives
 </p>
 
 <h2 id="signature">Signature</h2>
 
-<pre><code><span class="ty">TaskID</span> <span class="fn">RunSplit</span>(<span class="ty">StaticString</span> taskName, <span class="ty">TRunnable</span> func, <span class="kw">void</span>* userData,
-                 <span class="ty">TIndex</span> numItems, <span class="ty">TIndex</span> numSubJobs,
-                 <span class="kw">const</span> <span class="ty">TIndex</span>* streamIndices, <span class="ty">TIndex</span> numStreamIndices,
-                 <span class="kw">uint8_t</span> priority, <span class="ty">TaskID</span> successor, <span class="ty">TIndex</span> successorStream) noexcept;</code></pre>
+<pre><code>	TaskID RunSplit(StaticString taskName, TRunnable func, void* userData, TIndex numItems, TIndex numSubJobs,
+					TIndex successorStream) noexcept;</code></pre>
 
 <h2 id="description">Function description</h2>
 
@@ -227,7 +179,6 @@ destinationSlot = (destinationSlot + 1) % numStreamIndices;</code></pre>
   The arithmetic is the whole reason this function is separate: the count form and the explicit form disagree about
   <em>which</em> streams to use, and must agree perfectly about how a range is cut.
 </p>
-
 <footer class="prevnext">
   <span><a href="index.html">&larr; TaskSystem</a></span>
   <span><a href="index.html#methods">All TaskSystem methods</a></span>
