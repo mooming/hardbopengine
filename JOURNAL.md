@@ -73,6 +73,12 @@ Dev, Debug and Release, `grep rule failures : 0`, layers 1 and 2 green and layer
 69 missing pages and 364 missing method pages — none of it from this change, and all of it the module sweep
 the skill already describes. The pass is not vacuous: 0 occurrences of the `no recompile exercised` marker,
 because `--all` scope touches every scoped file before building.
+`--test` was then run separately, and the unit-test build fails — **not from this change**: all 12 normal
+builds pass, and `Engine/Core/TaskSystem.cpp:1447: use of undeclared identifier 'Pi'` points at an
+uncommitted edit that is not this session's, the one deleting `#include <limits>` and `#include "Constants.h"`
+from a file whose test region names `Pi` at line 1447 and `Epsilon` at 1454. It is left for its author, per
+the policy that a fix must not sweep work it does not own into its own commit — the gate log names the two
+dirty files for the same reason.
 
 ## 2026-10-02 16:37 — TaskSystem.cpp holds no comment, and the 201 that left went to four places
 
