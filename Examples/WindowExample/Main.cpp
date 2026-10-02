@@ -28,6 +28,12 @@ std::size_t RunWindowTick(void* userData, std::size_t startIndex, std::size_t en
 
 class WindowTickProvider final : public hbe::TaskProvider
 {
+private:
+	hbe::TaskSystem& taskSystem;
+	std::atomic<unsigned>& ticks;
+	std::array<hbe::TaskID, MaxFrameTasks> frames;
+	std::size_t produced = 0;
+
 public:
 	WindowTickProvider(hbe::TaskSystem& targetSystem, std::atomic<unsigned>& tickCounter) noexcept
 		: TaskProvider("WindowTickProvider", targetSystem)
@@ -76,12 +82,6 @@ public:
 
 		produced = 0;
 	}
-
-private:
-	hbe::TaskSystem& taskSystem;
-	std::atomic<unsigned>& ticks;
-	std::array<hbe::TaskID, MaxFrameTasks> frames;
-	std::size_t produced = 0;
 };
 
 } // namespace
