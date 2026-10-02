@@ -1,5 +1,70 @@
 # Journal
 
+## 2026-10-03 00:55 — the sweep of Applications and Examples, and the four checker claims that did not survive a compiler
+
+**Cause.** The owner asked for `hb-standards` on every file under `Applications/` and `Examples/`. Measured
+first: 18 files, and **100 % of the comment work, 76 % of the blank-line work and 75 % of the member-layout
+findings lived in one directory that nothing compiled**. `Examples/CMakeLists.txt` ends at
+`add_subdirectory (WindowExample)`, so `Examples/MacOSApp/CMakeLists.txt` was read by nobody, no
+configuration ever built it, and `layout.py` had no compile-database entry for its headers — which is why
+three of its headers answered `[SKIP] clang rejected this file: 'UI/UIComponent.h' file not found` instead of
+a verdict. The owner deleted the example rather than sweeping it: 18 files, 180 KB, 257 comment lines, and
+the only two `.mm` files in scope. Three files remain, and every one of them is now compiled by the gate
+that judges it.
+
+**The blind spot I shipped, and what caught it.** The owner ruled the tree's two pre-existing uncommitted
+edits should land first as their own commit, so the sweep started clean and `prove_format.py` could
+attribute each later change to one run. `Engine/Core/TaskSystem.cpp` deleted `<limits>` and
+`"Constants.h"`. I verified it with `-fsyntax-only` on the flags in
+`cmake-build-debug/compile_commands.json` — and that database is generated **without** `-D__UNIT_TEST__`, so
+the preprocessor deleted the only region of the file that names `Pi` and `Epsilon`, the probe exited 0, and
+the exit 0 meant nothing. Twelve green Dev, Debug and Release builds stayed green for the same reason. The
+gate's `--test` half caught it: `use of undeclared identifier 'Pi'` four times and `'Epsilon'` twice, at
+lines 1447-1529 inside the `#ifdef __UNIT_TEST__` region that runs 783→3497. `Engine/Core/Constants.h` is
+the only definition of either name in the engine. Restored — `<limits>` stays deleted, the file spells
+`numeric_limits` zero times. **A file carrying a `#ifdef __UNIT_TEST__` region must be probed with the macro
+defined, or the result is not a verification.** That is the skill's own known trap, restated for
+`layout.py`, and it applies to every hand-run probe.
+
+**Four checker claims refuted, each by something other than an argument.**
+
+| Checker claim | Refutation |
+|---|---|
+| `blank_lines.py` A14 wants a blank before `TestMain.cpp:13`'s `#ifdef __UNIT_TEST__` | A14 is about a *file-scope trailing* region. `docs/CodingStandards.md` exempts this exact guard — "an in-function conditional is not a trailing block. `main()` in `Applications/EngineTest/TestMain.cpp` wraps its own body". The checker's in-function test is *is the guard indented*, and `.clang-format` sets `IndentPPDirectives: None`, which de-indents it to column 0 (probed through stdin, inside the tree). Satisfying A14 would mean a blank directly under `{`, which A4 exists to forbid. The file keeps A4; the finding stands reported, not fixed. The fixture that was supposed to prevent this — `'A14: an in-function guard is not a trailing region'` — uses a guard preceded by one blank, so it passes for any guard and asserts nothing. |
+| `layout.py --init-order` reports `taskSystem is initialised after frames` | `frames` is not written in the initializer list. Its implicit default-init is a `std::array` default construction whose `CXXDefaultInitExpr` carries no range, so `written_initializers()` takes the next child that has one, positioned at the constructor itself. The tool's own docstring names this shape and calls counting it "a false finding on a correct file, which is worse than a missed one"; its guard catches `produced`'s in-class `= 0` and misses `frames`. clang `-Wall -Wextra -Wreorder` on that translation unit: **0** diagnostics, and the positive control — same source, written list swapped — reports `field 'ticks' will be initialized after field 'taskSystem' [-Wreorder-ctor]`. |
+| `includes.py --unused` offers `Test/UnitTestCollection.h` as deletable from `TestMain.cpp` | `TestMain.cpp` spells `hbe::Test::RegisterSuite()` and `ScheduleSuiteOnBaseStream()`, declared **only** in that header. Same root cause as my shipped breakage: the ablation compiles run under the database's flags, so that whole file preprocesses to nothing and every include looks unnamed. This one is dangerous rather than merely wrong — it recommends deleting a load-bearing include. |
+| `prove_regroup.py --whitespace-only` refuses the blank-line pass on `TestMain.cpp` | Its region guard compares everything from the first `#ifdef __UNIT_TEST__` to end of file byte-for-byte, on the premise that such a marker opens a *trailing* region — the premise `docs/CodingStandards.md` explicitly waives for this file. Here the marker sits on line 12 of 74, so the guard covers 62 of the file's lines while `blank_lines.py` demands three edits inside them. **The two checks cannot both be satisfied on this file.** The claim the guard protects was therefore verified directly: in that region, 0 lines removed or edited, 3 added and every one empty, non-blank lines identical and in place. |
+
+**What the deletion settled that is worth keeping.** `SKILL.md` carried two sentences claiming
+`Examples/` is outside the root `CMakeLists.txt` and so compiles nothing. Line 35 adds it, and
+`WindowExample` is a real ninja target in all three configurations. Both sentences now say what is true:
+coverage is per target, and a directory no `CMakeLists.txt` adds is the case that is not compile-verified.
+
+**Two ledgers were lying, not just stale.** `.Plans/STANDARDS_PER_FILE.md` held a row for
+`Applications/WindowExample/Main.cpp`, a path that has never existed — while the real
+`Examples/WindowExample/Main.cpp` had no row at all, so one file read as done and another read as absent. It
+also has 261 rows against 278 tracked sources: **19 tracked files carry no row**, nearly all of them engine
+files the Core refactor created. `.Plans/PLAN_no_cpp_comments.md` led its "densest targets" with
+`VulkanRenderer.cpp (51)`; the real first is `Engine/Core/TaskStream.h` at 265, and the list predates the
+split. Both files now say plainly what they do not cover, with the command that would regenerate them.
+
+**Deliberately not done.** `Language: ObjC` stays out of `.clang-format` — with `MacOSApp` gone the only
+`.mm` files left are `Engine/OSAL/OSXApplication.mm`, `OSXWindow.mm` and
+`Renderer/Vulkan/VulkanRenderer.mm`, all outside this scope, so the block would change nothing until an
+engine `.mm` file is in front of whoever adds it. `Produce(const TaskProduceContext& context)` keeps its
+unused named parameter: `-Wunused-parameter` is in `-Wextra`, this build carries `-Wall -Werror` only, and
+`Engine/Core/TaskProvider.cpp` declares four more overrides in the same shape, so naming-and-not-using is
+the engine's convention here.
+
+**Gate.** `check.sh` on each of the three C++ commits: **build gate PASS 12/12** — `EngineTest`,
+`VulkanExample`, `WindowExample`, `CodingStandards` in Dev, Debug and Release, **0 `no work to do` lines** —
+and `EngineTest` **pass=59 fail=0 of 59 collections in all three configurations**, 375 testlets. 0 grep-rule
+failures, 0 advisories, 0 layout findings, 0 comment findings, 0 include findings across the three files;
+1 blank-line finding, the A14 false positive above. `check.sh` exits 1 on all three runs: once for A14, and
+otherwise on tree-wide docs backlog (67 engine pages owed) that this task neither owns nor touched. Plan:
+`.Plans/PLAN_applications_examples_standards.md`. Commits `8421628`, `e88648b`, `fca89a9`, `1b28de5`,
+`ea4c934`, `50efdaa`.
+
 ## 2026-10-02 23:45 — a queue item's pages, a table grammar the owner changed twice, and five agents cut back to one
 
 **Cause.** Continuing the Core reference revision: `WorkItem` was the next TaskSystem-family entry, and the owner

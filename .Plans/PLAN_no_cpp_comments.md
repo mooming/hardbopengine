@@ -49,7 +49,12 @@
 Densest targets: `VulkanRenderer.cpp` (51) · `MemoryManager.cpp` (42) · `PoolAllocator.cpp` (35) ·
 `OSMemory.cpp` (30) · `VulkanCapabilities.cpp` (26) · `PerlinNoise.cpp` (20) ·
 `ThreadSafeMultiPoolAllocator.cpp` (20) · `MultiPoolAllocator.cpp` (20) ·
-`Examples/MacOSApp/Source/Framebuffer.cpp` (104).
+`Examples/MacOSApp/Source/Framebuffer.cpp` (104). **Two corrections, measured 2026-10-03.** That last
+target no longer exists — `Examples/MacOSApp` was deleted. And the whole list predates the Core split:
+re-running the count over `git ls-files 'Engine/*.cpp' 'Engine/*.h' 'Engine/*.inl'` puts
+`Engine/Core/TaskStream.h` first at 265, then `TaskProvider.h` 134, `CodingStandards.h` 120 (the
+standard's own teaching exemplar, exempt from the ban), `TaskRegistry.h` 111, `RenderCapabilities.h` 106,
+`Task.h` 84. The `.cpp` files this list led with are now tenth and lower.
 
 ---
 
