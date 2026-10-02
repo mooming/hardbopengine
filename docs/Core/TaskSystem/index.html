@@ -103,7 +103,7 @@
 <h2 id="description">Class description</h2>
 
 <p>
-  <code>class TaskSystem final</code> at <code>Engine/Core/TaskSystem.h:20</code>. A process has one, as a direct member of
+  <code>class TaskSystem final</code> at <code>Engine/Core/TaskSystem.h:17</code>. A process has one, as a direct member of
   <code>Engine</code> (<code>Engine/Engine/Engine.h:48</code>) — constructed with the engine, destroyed with it, reachable
   everywhere through <code>Engine::GetTaskSystem()</code>.
 </p>
@@ -239,7 +239,7 @@ either: the one it had — the wait now documented as
       caller owns the run. Unexposed — there is no accessor for it</td></tr>
   <tr><td><code>ioTaskThreadID</code></td><td><code>TThreadID ioTaskThreadID;</code></td>
     <td><span class="badge">private</span> <strong>Never written and never read.</strong> Declared at
-      <code>Engine/Core/TaskSystem.h:55</code> and named nowhere else in <code>Engine/</code>: the IO stream's driver thread id
+      <code>Engine/Core/TaskSystem.h:43</code> and named nowhere else in <code>Engine/</code>: the IO stream's driver thread id
       is recorded on the stream itself instead
       (<a href="get-stream-index.html">GetStreamIndex</a> explains when)</td></tr>
   <tr><td><code>streams</code></td><td><code>TStreamArray streams;</code></td>

@@ -102,17 +102,17 @@
 
 <h2 id="signature">Signature</h2>
 
-<pre><code>[[nodiscard]] <span class="kw">auto</span>&amp; <span class="fn">IsRunning</span>() <span class="kw">const</span> noexcept
-{
-        <span class="kw">return</span> isRunning;
-}</code></pre>
+<pre><code>[[nodiscard]] <span class="kw">bool</span> <span class="fn">IsRunning</span>() <span class="kw">const</span> noexcept;</code></pre>
 
 <h2 id="description">Function description</h2>
 
 <p>
-  An inline getter whose return type is deduced. Because the member is <code>std::atomic&lt;bool&gt; isRunning</code> and the
-  method is <code>const</code>, <code>auto&amp;</code> deduces <code>const std::atomic&lt;bool&gt;&amp;</code> — the caller gets
-  the atomic, read-only. It is a name that reads like a predicate and returns an object; the reason is the run loop.
+  Declared at <code>Engine/Core/TaskSystem.h:109</code> and defined at <code>Engine/Core/TaskSystem.cpp:568</code>. The
+  return type is <code>bool</code>, not the atomic: the body is one <code>load()</code> with
+  <code>std::memory_order_acquire</code>, so a caller cannot store through it and cannot read a stale copy. Before the
+  body moved out of the class the method returned <code>const std::atomic&lt;bool&gt;&amp;</code>, and only because
+  <code>auto&amp;</code> deduced it; a definition outside the class needs a written type, and the written type chosen is
+  the answer rather than the member.
 </p>
 
 <p>
@@ -122,12 +122,11 @@
 </p>
 
 <div class="note">
-  <strong>The reference is to the live flag, so a read is a synchronization point.</strong> The run loop's condition
-  <code>while (taskSystem.IsRunning())</code> uses <code>std::atomic</code>'s implicit conversion to <code>bool</code>, which
-  is a <code>load()</code> with the default ordering — not a cached value. That is what lets a task on any stream end the
-  process by clearing the flag: the loop sees it on its next condition test, with no notification involved. The other half
-  of that is that nothing here debounces the read; a loop that polls it in a tight spin is hammering an atomic across
-  cores.
+  <strong>The read is an acquire load, so it is a synchronization point.</strong> The run loop's condition
+  <code>while (taskSystem.IsRunning())</code> re-reads the flag on every test with acquire ordering — it is not a cached
+  value and it is not a relaxed read. That is what lets a task on any stream end the process by clearing the flag: the loop
+  sees it on its next condition test, with no notification involved. The other half of that is that nothing here debounces
+  the read; a loop that polls it in a tight spin is hammering an atomic across cores.
 </div>
 
 <h2 id="parameters">Parameters</h2>

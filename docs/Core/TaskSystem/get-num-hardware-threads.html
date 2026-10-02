@@ -171,7 +171,7 @@
 }</code></pre>
 
 <p>
-  Read once, at construction, and never re-read (<code>Engine/Core/TaskSystem.cpp:73</code>). Cores that appear later
+  Read once, at construction, and never re-read (<code>Engine/Core/TaskSystem.cpp:83</code>). Cores that appear later
   — CPU hot-add, or a cgroup limit raised at runtime — do not add streams, because nothing asks the question again.
 </p>
 

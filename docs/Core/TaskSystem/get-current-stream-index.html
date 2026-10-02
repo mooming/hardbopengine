@@ -166,7 +166,7 @@
 }</code></pre>
 
 <p>
-  The general-queue intake at <code>Engine/Core/TaskSystem.cpp:337</code>, where the returned <code>TIndex</code> is
+  The general-queue intake at <code>Engine/Core/TaskSystem.cpp:294</code>, where the returned <code>TIndex</code> is
   widened into <code>unsigned int</code>: <code>NonStreamIndex</code> arrives there as 4294967295, which
   <code>TaskStreamAffinity</code> ignores because it is past the mask's width — so a non-stream thread neither takes the
   item nor records a claim. The outcome is intended; it is reached by the width of the type rather than by a check, so

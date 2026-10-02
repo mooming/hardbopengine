@@ -106,7 +106,7 @@
 
 <h2 id="description">Function description</h2>
 
-<p>Defined at <code>Engine/Core/TaskSystem.cpp:200</code>. The order is the contract; each step is here because the
+<p>Defined at <code>Engine/Core/TaskSystem.cpp:189</code>. The order is the contract; each step is here because the
 next one breaks without it.</p>
 
 <table>
@@ -156,8 +156,10 @@ next one breaks without it.</p>
   <tr>
     <td>7</td>
     <td><code>RequestClose()</code> on the IO stream, then on the base stream</td>
-    <td>The reporting the shutdown exists to produce is finished, so the two executors that carried it close last, in
-      that order</td>
+    <td>The reporting the shutdown exists to produce is finished, so the two executors that carried it close last, and
+      in this order: the IO stream first, then the base stream, which is the last executor left and so the last thing that
+      may stop. Both engine streams end inside the engine's shutdown rather than one of them ending silently later, when
+      the logger happens to be destroyed</td>
   </tr>
   <tr>
     <td>8</td>

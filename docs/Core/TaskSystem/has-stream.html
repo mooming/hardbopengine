@@ -159,17 +159,16 @@
 
 <p class="meta">From Engine/Core/TaskSystem.cpp</p>
 
-<pre><code><span class="cm">// No streams means nothing to ask. Reaching for index 0 of an empty array is an index assert, and this path is</span>
-<span class="cm">// reached a second time from the destructor after the streams have already been cleared.</span>
-<span class="kw">if</span> (!<span class="fn">HasStream</span>(<span class="fn">GetBaseTaskStreamIndex</span>()))
+<pre><code><span class="kw">if</span> (!<span class="fn">HasStream</span>(<span class="fn">GetBaseTaskStreamIndex</span>()))
 {
         <span class="kw">return</span>;
 }</code></pre>
 
 <p>
-  <a href="request-other-streams-close.html">RequestOtherStreamsClose</a> at <code>Engine/Core/TaskSystem.cpp:125-130</code>.
-  The comment is the reason the test exists: the destructor is a caller, and by the time it calls, there is nothing left to
-  ask.
+  <a href="request-other-streams-close.html">RequestOtherStreamsClose</a> at <code>Engine/Core/TaskSystem.cpp:135-138</code>
+  asks this before it does anything else, because the destructor is one of its two callers: by the time
+  <a href="destructor.html">~TaskSystem</a> asks, <a href="join-and-clear.html">JoinAndClear</a> has already cleared the
+  array, and index 0 of an empty <code>Array</code> is an index assert.
 </p>
 
 <footer class="prevnext">

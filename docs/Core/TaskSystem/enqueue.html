@@ -123,7 +123,7 @@
 
 <p>
   One mutex (<code>taskQueueMutex</code>) guarding one <code>BoundedPriorityQueue&lt;WorkItem&gt;</code>, at
-  <code>Engine/Core/TaskSystem.cpp:314</code>. "Low priority" describes when it is consulted, not how the item is
+  <code>Engine/Core/TaskSystem.cpp:271</code>. "Low priority" describes when it is consulted, not how the item is
   treated: a stream drains its own lanes first and reaches into the general queue afterwards, and
   <a href="dequeue.html">Dequeue</a> is the taking side of that. <em>Bounded</em> refers to the priority range — 256
   buckets — not to the number of items: <code>Push</code> checks nothing and the queue grows.
@@ -155,7 +155,7 @@
 
 <p>
   The two-argument form is a forward to the three-argument one with <code>ELane::Fifo</code>
-  (<code>Engine/Core/TaskSystem.cpp:372</code>), so there is one behaviour with two spellings. Neither form can refuse a
+  (<code>Engine/Core/TaskSystem.cpp:350</code>), so there is one behaviour with two spellings. Neither form can refuse a
   task for capacity: a stream used to refuse a task that declared more results than it could fit, and that question
   stopped existing when a result moved into the task's own record, which is allocated when the task is created.
 </p>
@@ -216,8 +216,8 @@ hazard above.</p>
 
 <p>
   A work item generated from a tracked task and placed on one stream's FIFO lane, at
-  <code>Engine/Core/TaskSystem.cpp:2324</code>; the same pairing recurs throughout the task-system tests, at
-  <code>:2446</code>, <code>:2523</code>, <code>:2582</code> and elsewhere. Customer code that wants a whole task run on
+  <code>Engine/Core/TaskSystem.cpp:1229</code>; the same pairing recurs throughout the task-system tests, at
+  <code>:1711</code>, <code>:1971</code> and elsewhere. Customer code that wants a whole task run on
   one stream should reach for <a href="enqueue-task.html">EnqueueTask</a> instead, which declares the join as well.
 </p>
 

@@ -135,7 +135,7 @@
 <h2 id="description">Function description</h2>
 
 <p>
-  Defined at <code>Engine/Core/TaskSystem.cpp:320</code>. It holds the same <code>taskQueueMutex</code> that
+  Defined at <code>Engine/Core/TaskSystem.cpp:277</code>. It holds the same <code>taskQueueMutex</code> that
   <a href="enqueue.html">Enqueue</a> takes, so the general queue is one lock for every producer and every taker. The item
   is the highest-priority one waiting — 0 is the least urgent — and it is <em>copied</em> out; the queue's copy is popped
   only after the caller's <code>std::optional</code> has been assigned.
@@ -150,7 +150,7 @@
 
 <div class="gap">
   <strong>In the engine as it stands, only the non-stream case actually fires.</strong> The affinity is touched at exactly
-  two places outside its own unit tests — <code>Engine/Core/TaskSystem.cpp:340</code> and <code>:342</code>, both inside
+  two places outside its own unit tests — <code>Engine/Core/TaskSystem.cpp:297</code> and <code>:299</code>, both inside
   this function — and nothing calls <code>Unset</code>. A fresh <code>TaskStreamAffinity</code> starts with every
   in-range bit reading back true, so for any real stream index <code>Get</code> succeeds, the guard is skipped, and the
   item is taken on first contact. The path that would record a refusal is reached only when <code>Get</code> has already

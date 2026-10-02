@@ -175,7 +175,7 @@
   <code>numSubJobs</code> is clamped down to <code>numItems</code>, because an empty range is a work item that reports in
   for nothing, and further down to <code>Task::MaxNumSubTasks</code> — 255 — because the join counter is 8 bits. Neither
   clamp is a refusal: the split still covers every item, with fewer units of work. The unit tests assert both, at
-  <code>Engine/Core/TaskSystem.cpp:2852</code> (three items, ten requested sub-jobs) and <code>:2937</code> (more
+  <code>Engine/Core/TaskSystem.cpp:2741</code> (three items, ten requested sub-jobs) and <code>:2826</code> (more
   requested than 255).
 </p>
 
@@ -301,7 +301,7 @@
 }</code></pre>
 
 <p>
-  <code>Engine/Core/TaskSystem.cpp:1487-1500</code>, a split over two worker streams that collates into a successor.
+  <code>Engine/Core/TaskSystem.cpp:1435-1437</code>, a split over two worker streams that collates into a successor.
   Read it as the order of obligations: the successor is created and reserves its one subtask <em>first</em>, because
   delivery queues exactly one item covering the successor's whole range; then the split names it and the stream it should
   run on; then the caller checks the identity rather than assuming the work exists.

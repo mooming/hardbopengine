@@ -102,28 +102,24 @@
 
 <h2 id="signature">Signature</h2>
 
-<pre><code><span class="kw">auto</span>&amp; <span class="fn">GetIOTaskStream</span>() noexcept
-{
-        <span class="kw">return</span> streams[GetIOTaskStreamIndex()];
-}
+<pre><code><span class="kw">TaskStream</span>&amp; <span class="fn">GetIOTaskStream</span>() noexcept;
 
-<span class="kw">auto</span>&amp; <span class="fn">GetIOTaskStream</span>() <span class="kw">const</span> noexcept
-{
-        <span class="kw">return</span> streams[GetIOTaskStreamIndex()];
-}</code></pre>
+<span class="kw">const</span> <span class="kw">TaskStream</span>&amp; <span class="fn">GetIOTaskStream</span>() <span class="kw">const</span> noexcept;</code></pre>
 
 <h2 id="description">Function description</h2>
 
 <p>
-  Two inline overloads. The return type is deduced, which is the detail worth knowing: outside a
-  <code>const</code> method it is <code>TaskStream&amp;</code>, and inside one it is <code>const TaskStream&amp;</code> — the
-  same expression yields different types, so the declaration on the page is not the type you get.
+  Two overloads that differ only in the constness of the method, defined at <code>Engine/Core/TaskSystem.cpp:726</code>
+  and <code>:731</code>. Each names its return type: <code>TaskStream&amp;</code> outside a <code>const</code> method,
+  <code>const TaskStream&amp;</code> inside one. They used to be <code>auto&amp;</code> and deduce those types from the
+  constness of the enclosing method, which meant the declaration on a page could not state what a caller got; naming the
+  type is what allowed the body to move into the source file.
 </p>
 
 <p>
   The IO stream exists so that log work has somewhere to live that the engine loop does not have to service. It has no
   thread: <a href="build-streams.html">BuildStreams</a> hands it to the logger at its last statement,
-  <code>Logger::Get().SetIODriver(&amp;GetIOTaskStream())</code> (<code>Engine/Core/TaskSystem.cpp:765</code>), and the
+  <code>Logger::Get().SetIODriver(&amp;GetIOTaskStream())</code> (<code>Engine/Core/TaskSystem.cpp:782</code>), and the
   logger's own thread drives it from then on.
 </p>
 
@@ -148,7 +144,7 @@
   <tr><th>Type</th><th>What you get</th></tr>
   <tr>
     <td><code>TaskStream&amp;</code> / <code>const TaskStream&amp;</code></td>
-    <td>Stream 1, deduced from the constness of the call. Mutable in the non-const form: enqueueing, waking and closing it are
+    <td>Stream 1. The <code>const</code> overload answers <code>const TaskStream&amp;</code>, Mutable in the non-const form: enqueueing, waking and closing it are
       all available, and closing it is what <a href="join-and-clear.html">JoinAndClear</a> does after withdrawing the
       driver</td>
   </tr>

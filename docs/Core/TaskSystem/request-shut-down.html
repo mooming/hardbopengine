@@ -112,7 +112,7 @@
 <h2 id="description">Function description</h2>
 
 <p>
-  Two statements, at <code>Engine/Core/TaskSystem.cpp:116</code>. The first ends the run —
+  Two statements, at <code>Engine/Core/TaskSystem.cpp:126</code>. The first ends the run —
   <code>Engine::Run</code> spins <code>while (taskSystem.IsRunning())</code> at
   <code>Engine/Engine/Engine.cpp:139</code>, so clearing the flag is how a task stops the engine. The second begins the
   teardown of everything that is not needed to finish the run.

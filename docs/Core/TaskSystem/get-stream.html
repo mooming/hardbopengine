@@ -115,8 +115,8 @@
 <h2 id="description">Function description</h2>
 
 <p>
-  Defined at <code>Engine/Core/TaskSystem.cpp:740</code>. Almost every internal path reaches a stream through it:
-  <a href="update.html">Update</a> (<code>:181</code>), <a href="join-and-clear.html">JoinAndClear</a>,
+  Defined at <code>Engine/Core/TaskSystem.cpp:701</code>. Almost every internal path reaches a stream through it:
+  <a href="update.html">Update</a> (<code>:174</code>), <a href="join-and-clear.html">JoinAndClear</a>,
   <a href="request-other-streams-close.html">RequestOtherStreamsClose</a>,
   <a href="dispatch-to-main-thread.html">DispatchToMainThread</a>, and the wait in
   <a href="../../Test/TestHelper/drive-until.html"><code>TestHelper::DriveUntil</code></a> — a free function that takes the
@@ -176,7 +176,7 @@
 }</code></pre>
 
 <p>
-  <code>Engine/Core/TaskSystem.cpp:670-673</code>. Note what the caller does to stay safe: the index comes from
+  <code>Engine/Core/TaskSystem.cpp:666-669</code>. Note what the caller does to stay safe: the index comes from
   <a href="get-base-task-stream-index.html">GetBaseTaskStreamIndex</a>, a constant, never from a value a task supplied. An
   index from outside the engine goes through <a href="has-stream.html">HasStream</a> first — that is the pattern
   <a href="parallel-for.html">ParallelFor</a> uses, and the reason its refusals are named rather than misdirected.

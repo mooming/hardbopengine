@@ -134,7 +134,7 @@
   <a href="get-num-hardware-threads.html">GetNumHardwareThreads</a> returns
   <code>std::thread::hardware_concurrency()</code> unchanged, and that call is permitted to report
   <code>0</code> when the count is unrepresentable or simply not determined. The <code>FatalAssert</code> at
-  <code>Engine/Core/TaskSystem.cpp:76</code> turns a <code>0</code> into a halt at construction rather than a task
+  <code>Engine/Core/TaskSystem.cpp:86</code> turns a <code>0</code> into a halt at construction rather than a task
   system that owns no streams and pumps nothing, which is the cheaper failure: the alternative is an engine that
   starts and never runs a task.
 </div>

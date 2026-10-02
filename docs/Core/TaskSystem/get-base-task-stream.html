@@ -102,22 +102,18 @@
 
 <h2 id="signature">Signature</h2>
 
-<pre><code><span class="kw">auto</span>&amp; <span class="fn">GetBaseTaskStream</span>() noexcept
-{
-        <span class="kw">return</span> streams[GetBaseTaskStreamIndex()];
-}
+<pre><code><span class="kw">TaskStream</span>&amp; <span class="fn">GetBaseTaskStream</span>() noexcept;
 
-<span class="kw">auto</span>&amp; <span class="fn">GetBaseTaskStream</span>() <span class="kw">const</span> noexcept
-{
-        <span class="kw">return</span> streams[GetBaseTaskStreamIndex()];
-}</code></pre>
+<span class="kw">const</span> <span class="kw">TaskStream</span>&amp; <span class="fn">GetBaseTaskStream</span>() <span class="kw">const</span> noexcept;</code></pre>
 
 <h2 id="description">Function description</h2>
 
 <p>
-  Two inline overloads, identical in shape to <a href="get-io-task-stream.html">GetIOTaskStream</a> with a different constant.
-  The deduced return type is <code>TaskStream&amp;</code> or <code>const TaskStream&amp;</code> depending on which overload
-  the call resolves through.
+  Two overloads that differ only in the constness of the method, defined at <code>Engine/Core/TaskSystem.cpp:716</code>
+  and <code>:721</code>, identical in shape to <a href="get-io-task-stream.html">GetIOTaskStream</a> with a different
+  constant. Each names its return type — <code>TaskStream&amp;</code> and <code>const TaskStream&amp;</code> — which is
+  what let the bodies leave the header: a deduced <code>auto&amp;</code> cannot be declared in one file and defined in
+  another.
 </p>
 
 <p>

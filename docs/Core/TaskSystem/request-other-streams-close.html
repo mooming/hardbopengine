@@ -126,7 +126,7 @@
 <h2 id="description">Function description</h2>
 
 <p>
-  Defined at <code>Engine/Core/TaskSystem.cpp:123</code>. It carries no state of its own: it asks, and the streams
+  Defined at <code>Engine/Core/TaskSystem.cpp:133</code>. It carries no state of its own: it asks, and the streams
   notice on their own passes. Two callers use it — <a href="request-shut-down.html">RequestShutDown</a>, and
   <a href="join-and-clear.html">JoinAndClear</a>, which must ask before it can wait, because a wait for streams that were
   never asked to close is a wait that never ends.
@@ -174,7 +174,7 @@ them. <a href="are-other-streams-closed.html">AreOtherStreamsClosed</a> is the o
 }</code></pre>
 
 <p>
-  <code>Engine/Core/TaskSystem.cpp:116-121</code>. The other caller is <a href="join-and-clear.html">JoinAndClear</a>,
+  <code>Engine/Core/TaskSystem.cpp:126-131</code>. The other caller is <a href="join-and-clear.html">JoinAndClear</a>,
   which calls it before its bounded pump and skips it when there are no streams at all.
 </p>
 
