@@ -67,6 +67,7 @@ RETURN_LINE = re.compile(r'^(?:co_return|return)\b')
 COND_OPEN = re.compile(r'^#\s*(?:if|ifdef|ifndef)\b')
 COND_ELSE = re.compile(r'^#\s*else\b')
 COND_CLOSE = re.compile(r'^#\s*(?:else|elif|endif)\b')
+COND_END = re.compile(r'^#\s*endif\b')
 UNIT_TEST_GUARD = '#ifdef __UNIT_TEST__'
 INCLUDE_ANGLE = re.compile(r'^#\s*include\s*<')
 INCLUDE_QUOTED = re.compile(r'^#\s*include\s*"([^"]+)"')
@@ -180,6 +181,18 @@ def first_body_index(facts):
     return -1
 
 
+def preamble_end(facts):
+    """Where the include and define preamble stops, which is not the same question as where A3's seam is.
+
+    A file with no code at all — `Engine/Config/BuildConfig.h` is all platform detection and `#define`s —
+    has no A3 seam, because there is no first code body to introduce. It still has a preamble, and rules A1
+    and A2 still govern its blanks. Reading "no seam" as "no preamble" switched those two rules off for
+    exactly the file that needs them, so the two boundaries are computed separately.
+    """
+    first = first_body_index(facts)
+    return first if first >= 0 else len(facts)
+
+
 def seam_target(facts):
     """Where the two blanks go: the top of the first body paragraph, introducing comments included.
 
@@ -187,14 +200,36 @@ def seam_target(facts):
     "attached to it" — a blank between them would itself be a line in between. So walking up over
     adjacent comment lines finds the paragraph's top, and one walk covers both the file comment and a
     doc comment on the first declaration.
+
+    A file whose first line of code sits inside a conditional region has no seam at all, which is
+    `inside_conditional`.
     """
     first = first_body_index(facts)
-    if first < 0:
+    if first < 0 or inside_conditional(facts, first):
         return -1
     target = first
     while target - 1 >= 0 and facts[target - 1]['comment']:
         target -= 1
     return target
+
+
+def inside_conditional(facts, index):
+    """Whether an unclosed `#if` region covers line `index`.
+
+    Rule A3's seam is where the preamble ends and the file's own code begins — at file level. When the first
+    line of code is inside a conditional, the preamble never closed: `Engine/Config/BuildConfig.h` is a
+    define header whose first code is a platform `static_assert` inside its own `#if`, and the two blanks
+    A3 demands would have to be written between that directive and the line it guards, the exact position
+    the conditional-hug rule forbids. So the honest answer is that the file owns no A3 seam, and a checker
+    that reported one was about to instruct a reader to break a rule to satisfy another.
+    """
+    depth = 0
+    for fact in facts[:index]:
+        if COND_OPEN.match(fact['stripped']):
+            depth += 1
+        elif COND_END.match(fact['stripped']):
+            depth -= 1
+    return depth > 0
 
 
 def is_opener(fact):
@@ -221,7 +256,7 @@ def return_is_alone(facts, prev):
     return True
 
 
-def classify(facts, target, prev, nxt):
+def classify(facts, target, prev, nxt, preamble=None):
     """The legal blank-line range for one gap, as (low, high, rule)."""
     if prev is None:
         return 0, 0, 'A16'                                       # a file may not open on a blank line
@@ -238,7 +273,7 @@ def classify(facts, target, prev, nxt):
         return 1, 1, 'A14'
     if nxt['index'] == target and prev['directive_above']:
         return A3_EXPECT, A3_EXPECT, 'A3'
-    if 0 <= nxt['index'] < target:
+    if 0 <= nxt['index'] < (preamble_end(facts) if preamble is None else preamble):
         return preamble_expectation(prev, nxt)
     if prev['tokens'] and prev['tokens'][-1] == '{':
         return 0, 0, 'A4'
@@ -328,7 +363,7 @@ def check_text(text, path=None):
     target = seam_target(facts)
     findings = []
     for prev, nxt, gap in boundaries(facts):
-        low, high, rule = classify(facts, target, prev, nxt)
+        low, high, rule = classify(facts, target, prev, nxt, preamble_end(facts))
         line = (nxt['index'] + 1) if nxt is not None else len(facts)
         if gap < low:
             findings.append(Finding(rule, line, 'rule %s wants %d blank line(s) here, found %d' % (rule, low, gap)))
@@ -382,7 +417,7 @@ def collapse_seam(text, path=None):
     for prev, nxt, gap in boundaries(facts):
         if nxt is None:
             continue
-        _low, _high, rule = classify(facts, target, prev, nxt)
+        _low, _high, rule = classify(facts, target, prev, nxt, preamble_end(facts))
         if rule == 'A3' and gap > 1:
             drop.update(fact['index'] for fact in facts[prev['index'] + 1:nxt['index']][:gap - 1])
     return '\n'.join(line for index, line in enumerate(text.split('\n')) if index not in drop)
@@ -529,6 +564,11 @@ case('A10: a directive and the statement it wraps are one paragraph',
      '#include <atomic>\n\n\nvoid F() noexcept\n{\n\tint a = 1;\n#pragma clang diagnostic push\n'
      '#pragma clang diagnostic ignored "-Wpessimizing-move"\n\treturn a;\n#pragma clang diagnostic pop\n'
      '} // F\n', [])
+
+
+case('a file whose first code is inside a #if region owns no A3 seam but keeps A1 and A2',
+     '// Copyright.\n\n#pragma once\n\n\n#define FOO 1\n\n#if !defined(FOO)\nstatic_assert(false, "no FOO");\n'
+     '#endif\n\n#define BAR 2\n', [('A1', 6)])
 
 
 def run_selftest():

@@ -251,10 +251,15 @@ the seam, the duplicates and the below-preamble regions are.
 (`Engine/Math/Vector3.h:90`), where their position decides what is in scope where, and the
 `#ifdef __UNIT_TEST__` regions at the end of a file (`Engine/Core/TaskSystem.cpp:787-794`) are test-only
 surface that belongs after everything it tests. Hoisting either is a compile break dressed as a cleanup, so
-`includes.py` checks the preamble and `--prove-immutable <rev>` proves the region below it came out
-byte-identical. That proof prints its counts (`4 file(s) compared; 4 region(s) of 3407 line(s); unmoved`)
-rather than staying silent when it passes, because a region that was never compared must not read as a
-region that survived the pass.
+`includes.py` checks the preamble and `--prove-immutable <rev>` proves every include below the preamble kept
+its place and its guard. The claim is exactly that, and no larger: the first version compared everything
+from the preamble boundary to end of file, which is the body, so a blank-line pass failed it on every file it
+touched. What a below-preamble include cannot lose is the thing it belongs to — a class body, a `#ifdef`
+region — so the guard text is part of each entry's identity, and a hoist prints both lists:
+`[(None, '"', 'VectorCommonImpl.inl'), ('#ifdef __UNIT_TEST__', ...)] -> [...]`. It prints its counts when
+nothing moved (`9 file(s) compared; 0 include(s) below the preamble in 0 file(s); unmoved`) rather than
+staying silent, because an unmeasured case must not read as a passing one. That no *line* moved at all is the
+stronger claim, and `prove_regroup.py --whitespace-only` is what makes it.
 
 **Removing an include is a reader's edit with a build behind it.** `includes.py --unused` prints candidates,
 and each has cleared two tests rather than one: ablation (does the file still compile with the line gone)
@@ -560,7 +565,7 @@ reorder can be checked by reading it. Work the pairs in order; nothing here need
 |---|---|---|
 | 0 snapshot | `git show HEAD:<file> > /tmp/pre_<name>.h` for each file | the snapshot exists — it is the only copy of the pre-deletion bytes |
 | 1 mechanical | `clang-format --style=file -i <files>`; `python3 scripts/autofix.py --manifest .Plans/fix/manifest-<pair>.json <files>`; `clang-format --style=file -i <files>` | the manifest names every token removed, and nothing else was touched |
-| 1b paragraphs | `python3 scripts/blank_lines.py <files>`, decide the seams by reading the file, `python3 scripts/includes.py <files>`, and for any file carrying an include below the preamble `python3 scripts/includes.py --prove-immutable HEAD <files>` | rule set A and B clean, the two blanks after the preamble present, `--prove-immutable` reporting its region counts, and `python3 scripts/prove_regroup.py <file> --whitespace-only` proving only blank lines changed |
+| 1b paragraphs | `python3 scripts/blank_lines.py <files>`, decide the seams by reading the file, `python3 scripts/includes.py <files>`, and for any file carrying an include below the preamble `python3 scripts/includes.py --prove-immutable HEAD <files>` | rule set A and B clean, the two blanks after the preamble present, `--prove-immutable` reporting its include counts, and `python3 scripts/prove_regroup.py <file> --whitespace-only` proving only blank lines changed |
 | 2 layout | `python3 scripts/layout.py <files>`, edit, run it again | 0 findings, **and** `python3 scripts/layout.py --init-order <files>` at 0, because data moved |
 | 3 reference | `python3 scripts/docs_coverage.py check <mod>` and `scripts/docs_methods.py <mod>`, then `docs_page.py class` / `method` / `renav` / `check`; then replace the entry's doc block with its `/// API reference:` pointer line | both gates at 0 for the module, `htmlcheck` clean, and no `[NO POINTER]` row for an entry whose page now exists; step 4 is refused per file by `docs_coverage.py check-file <path>` until that file's own entries pass, which is what lets a finished header be cleaned while its neighbours are still owed pages |
 | 4 delete | `python3 scripts/comments.py <files>` for the count, then `--strip`, then `comments.py code_tokens <file> /tmp/pre_<name>.h` | token multisets identical per file, then `comments.py` reports 0 |
@@ -605,7 +610,7 @@ and siblings), which is the convention the tree already uses for prose that is n
 | `review_merge.py` | fold two independent review passes into one deduplicated finding set and mark the corroborated findings |
 | `prove_format.py` | prove a commit moved no code, per revision; `--manifest` holds a fixer to its declared tokens |
 | `blank_lines.py` | rule set A: the sixteen blank-line sizes, silent on the three that need a reader; `--collapse-seam` prints the shape clang-format produces, which is how the format gate can hold rule A3; `--selftest` runs 41 fixtures. **No `--fix`**: deleting a blank because a checker disapproved is the failure this layer exists to prevent |
-| `includes.py` | rule set B: the preamble shape; `--prove-immutable REV` proves rule B7's region came out byte-identical and prints its counts; `--unused` prints candidates that ablation *and* name provenance both clear; `--selftest` runs 10 fixtures. **No `--fix`**: a preamble rewritten by a script is a preamble nobody read |
+| `includes.py` | rule set B: the preamble shape; `--prove-immutable REV` proves every include below the preamble kept its place and its guard, and prints what it compared; `--unused` prints candidates that ablation *and* name provenance both clear; `--selftest` runs 10 fixtures. **No `--fix`**: a preamble rewritten by a script is a preamble nobody read |
 | `docs_page.py` | emit reference pages with correct chrome, validated before kept |
 
 `verify-findings.py` is not decoration. A model asked to audit files it never opened invents defects rather

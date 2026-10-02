@@ -173,6 +173,12 @@ To maintain high code quality and consistency, please adhere to the following gu
       the line it governs are one paragraph; a blank between them would push a pragma away from the code it
       exists to silence. A `return` sitting directly under a pragma therefore owes itself no blank, and
       `CreateWithMove` in `Engine/CodingStandards.cpp` demonstrates that shape.
+    - A2 reaches inside a guarded include region. A `#ifdef __UNIT_TEST__` block that pulls in `<deque>` and
+      `"Core/ScopedTime.h"` is a preamble at smaller scale, so the blank between the `<…>` block and the
+      `"…"` block belongs there too — 15 such findings tree-wide. Rule B2's *sort* is the one that must not
+      cross a guard: `Engine/OSAL/OSMemory.cpp` picks headers by platform, and sorting across `#if` / `#elif`
+      arms would move a header out of the branch that found it. Blanks are the shape of a block; the sort is
+      what a branch is for.
     - **clang-format is a pre-process, not the definition of clean.** Measured on clang-format 22.1.8 with
       this repository's `.clang-format`: it caps blanks at two (`MaxEmptyLinesToKeep`), *inserts* them
       before an access specifier (`EmptyLineBeforeAccessModifier: LogicalBlock`) and between definition
@@ -253,9 +259,9 @@ To maintain high code quality and consistency, please adhere to the following gu
       clang-format 22 that key is a mapping and the bare value is rejected as `not a mapping`, which makes
       the whole style file fail to load — the failure mode `.clang-format`'s own header warns about.
     - Enforcement: `.pi/skills/hb-standards/scripts/includes.py` for B1-B5 and `--prove-immutable <rev>` for
-      B7 — that proof prints the region and line counts it compared, because a region never compared must
-      not read as a region preserved — the pre-process for B2's sort while it is one block, and the build
-      gate for B6. A deleted include is a token loss and is
+      B7 — that proof compares the list of below-preamble includes, each with the guard it sits under, and
+      prints what it weighed, because a case never measured must not read as a case preserved — the
+      pre-process for B2's sort while it is one block, and the build gate for B6. A deleted include is a token loss and is
       declared in the fix manifest, which `prove_format.py` holds the editor to.
 - **System Compatibility**: Ensure every file ends with a newline character.
 - **Namespaces**: Do not indent code blocks contained within namespaces

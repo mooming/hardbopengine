@@ -12,13 +12,15 @@ does not name:
   B4  `<…>` for the standard library, `"…"` for everything else
   B5  project includes written root-relative — no `../`
   B6  an include the file does not itself name is removed — reported as a candidate list, never applied
-  B7  everything below the preamble is untouched, and `--prove-immutable <rev>` proves it was
+  B7  the preamble is the only region a pass rewrites, and `--prove-immutable <rev>` proves every include
+      below it kept its place and the guard it belongs to
 
 B7 is the reason this checker exists next to clang-format rather than inside it. 83 files carry includes
 below the preamble — `#include "VectorCommonImpl.inl"` inside a class body, where position decides what is
 in scope, and the `#ifdef __UNIT_TEST__` regions that close a file — and a pass that "tidied" them would
-break the build while looking like a cleanup. The proof is a byte comparison of the region under the
-preamble against the revision the edit started from.
+break the build while looking like a cleanup. The proof compares the list of below-preamble includes, each
+with the guard text it sits under, against the revision the edit started from: that list survives a
+blank-line pass and does not survive a hoist.
 
 B6 is deliberately the weakest output here. Compiling one translation unit with one include deleted tells
 you that file still builds; it says nothing about the consumer three modules away that names an entity it
@@ -198,10 +200,22 @@ def check_preamble(text, path):
     return findings
 
 
-def below_preamble(text, path):
-    """The bytes under the preamble — the region rule B7 forbids a pass to touch."""
-    _includes, boundary = parse_preamble(text, path)
-    return '\n'.join(text.split('\n')[boundary:])
+def below_preamble_includes(text, path):
+    """Every include below the preamble, as (guard, bracket, written path) in file order — what rule B7 protects.
+
+    An earlier version compared everything from the preamble boundary to end of file. That region is the
+    body of the file, so a blank-line pass — whose whole job is moving blanks inside the body — failed the
+    proof on every file it touched, and seven clean files came out dirty. The measure of an immune include is
+    what it belongs to: `#include "Vector3CommonImpl.inl"` cannot leave the class body it sits in, and
+    `#include "../Engine/Engine.h"` cannot leave the `#ifdef __UNIT_TEST__` region that exists to hold it, so
+    the guard text is part of the identity alongside the written path, and adding, dropping, re-ordering or
+    re-guarding any of them is a finding.
+
+    Whether some *line* moved is a stronger claim and belongs to another tool: `prove_regroup.py
+    --whitespace-only` proves no non-blank line moved at all.
+    """
+    return [(item['guard'], item['bracket'], item['path'])
+            for item in parse_preamble(text, path)[0] if item['below']]
 
 
 def revision_text(path, rev):
@@ -508,7 +522,7 @@ def main(argv):
     parser.add_argument('--unused', action='store_true',
                         help='B6 candidates: compile this file once per include with that include deleted')
     parser.add_argument('--prove-immutable', metavar='REV',
-                        help='B7: refuse unless the region under the preamble is byte-identical to REV')
+                        help='B7: refuse unless every include below the preamble kept its place and its guard')
     parser.add_argument('--summary-only', action='store_true', help='print counts, not findings')
     args = parser.parse_args(argv)
 
@@ -521,7 +535,7 @@ def main(argv):
     rules = ('B1', 'B2', 'B3', 'B4', 'B5', 'B7')
     counts = dict((rule, 0) for rule in rules)
     total, dirty = 0, 0
-    b7 = {'files': 0, 'regions': 0, 'lines': 0, 'changed': 0}
+    b7 = {'files': 0, 'holders': 0, 'includes': 0, 'changed': 0}
     for path in args.files:
         try:
             with open(path, encoding='utf-8') as handle:
@@ -536,14 +550,16 @@ def main(argv):
             if before is None:
                 print('[NONE] includes — %s: not in %s, so there is nothing to compare' % (path, args.prove_immutable))
                 return 3
-            was, now = below_preamble(before, path), below_preamble(text, path)
+            was, now = below_preamble_includes(before, path), below_preamble_includes(text, path)
             b7['files'] += 1
-            b7['lines'] += sum(1 for line in now.split('\n') if line.strip())
-            if now.strip():
-                b7['regions'] += 1
+            b7['includes'] += len(now)
+            if now:
+                b7['holders'] += 1
             if was != now:
                 b7['changed'] += 1
-                findings.append(Finding('B7', 0, 'the region under the preamble changed, and rule B7 forbids it'))
+                findings.append(Finding('B7', 0, 'the includes below the preamble changed — added, dropped, '
+                                                're-ordered, or moved into a different guard, which rule B7 '
+                                                'forbids: %s -> %s' % (was or 'none', now or 'none')))
 
         for finding in findings:
             counts[finding.rule] = counts.get(finding.rule, 0) + 1
@@ -578,11 +594,11 @@ def main(argv):
         # prints MEMBER-WAIVED instead of saying nothing: a region that never needed comparing must not read
         # as a region that survived a pass. The counts are what a commit message cites.
         verdict = '[PASS] B7' if not b7['changed'] else '[FAIL] B7'
-        moved = 'unmoved' if not b7['changed'] else '%d changed' % b7['changed']
-        print('%s — %d file(s) compared against %s; %d region(s) of %d line(s); %s; '
-              '%d file(s) hold no region below the preamble'
-              % (verdict, b7['files'], args.prove_immutable, b7['regions'], b7['lines'], moved,
-                 b7['files'] - b7['regions']))
+        moved = 'unmoved' if not b7['changed'] else '%d file(s) changed' % b7['changed']
+        print('%s — %d file(s) compared against %s; %d include(s) below the preamble in %d file(s); %s; '
+              '%d file(s) hold none'
+              % (verdict, b7['files'], args.prove_immutable, b7['includes'], b7['holders'], moved,
+                 b7['files'] - b7['holders']))
 
     detail = ', '.join('%s=%d' % (rule, counts[rule]) for rule in rules if counts.get(rule))
     print('includes: %d finding(s) in %d file(s)%s' % (total, dirty, ' — ' + detail if detail else ''))
