@@ -137,44 +137,116 @@ To maintain high code quality and consistency, please adhere to the following gu
       `AllowShortFunctionsOnASingleLine` must stay `None` alongside
       `SplitEmptyFunction: true`, or the empty-body rule silently disappears.
 - **Readability**:
-    - Place an empty line before `return` statements, unless the `return` is the only statement within its scope.
-    - Place an empty line after close brackets `}`.
-    - Place an empty line between member variables and methods for readability.
     - Prefer range-based for loops unless inevitable.
-    - Include blocks are grouped and sorted, own header first:
-      ```cpp
-      #include "OwnHeader.h"            // the file's own header, when one exists
+- **Blank lines are the paragraph structure of a file.** A blank line asserts that the line under it
+  belongs to a different thought than the line above it, and that assertion is the whole of the rule. A
+  blank that separates nothing informative is a defect to delete. A seam a reader needs is a blank to
+  write — a new step in a function, a new concern in a block, a paragraph of an algorithm that earns its
+  own space, or an outlier worth isolating. Whether a seam is real is a human judgement about what the
+  code is for, so the reader who opens the file makes it and no formatter can. What the *sizes* are is not
+  a judgement, and the table is exhaustive about them.
 
-      #include <atomic>                 // standard headers, alphabetical
-      #include <cstring>
+    | # | Position | Blank lines |
+    |---|---|---|
+    | A1 | line-1 copyright → `#pragma once`, and `#pragma once` → the first include | exactly one |
+    | A2 | between include blocks | exactly one |
+    | A3 | the include and define preamble → the first code body | **exactly two** — the only place in a file where two consecutive blanks are legal |
+    | A4 | immediately after an opening `{` of a namespace, a class or a function body | none |
+    | A5 | immediately before a closing `}` — function body, class body, or `} // namespace hbe` | none |
+    | A6 | immediately after an access specifier | none |
+    | A7 | immediately before an access specifier | exactly one |
+    | A8 | two statements of one step, two declarations of one concern | none |
+    | A9 | two logical paragraphs, or an emphasis the reader needs | exactly one |
+    | A10 | before `return`, unless the return is the only statement in its scope | exactly one |
+    | A11 | after the `}` of a nested block, before the next statement | exactly one |
+    | A12 | between two definition blocks at namespace scope | exactly one |
+    | A13 | between a doc comment or an `/// API reference:` pointer and its declaration | none |
+    | A14 | before a trailing `#ifdef __UNIT_TEST__` region | exactly one |
+    | A15 | inside a parenthesized continuation — a constructor initializer list, an attribute argument list | none |
+    | A16 | anywhere else | two or more consecutive blanks are forbidden |
 
-      #include "Config/ConfigParam.h"   // project headers, alphabetical
-      #include "Log/Logger.h"
-      ```
-    - After all include and define directives at the top of source files, place **one** empty line
-      before the first code body, and **one** after `#pragma once`.
-      The formatter is a **ceiling, and in one case a floor**. This tree sets `MaxEmptyLinesToKeep: 2`,
-      and measured against it: three or more blank lines collapse to two in every position tried —
-      between data members, before a function, before a comment — while one or two both survive in all
-      of them. It also *inserts* one place: `SeparateDefinitionBlocks: Always` puts a blank line between
-      definition blocks, so two inline member bodies can never be made adjacent, and a grouping that
-      wants them so is fighting the formatter. Everywhere else the formatter only caps, which is why a
-      file can be format-clean and grouped badly — grouping is a reader's edit, and these numbers are a
-      convention the formatter tolerates rather than one it enforces.
-    - **Blank lines mark groups.** Members of one concern sit adjacent with no blank between them;
-      exactly one blank line separates two concerns; a block never opens or closes on a blank line. Two
-      blank lines is what the ceiling permits, not what the style wants — it reads as a paragraph break
-      of the wrong size, and prevailing practice agrees (45 of 50 Core and Memory headers put exactly
-      one after `#pragma once`). The order within a block is a reader's judgement of what the class is
-      for, so no tool decides it; `.pi/skills/hb-standards/scripts/prove_regroup.py` is what proves the
-      edit stayed whitespace and order, which is the part a tool can decide.
-    - Two claims formerly made here were wrong and were measured out: that only one blank line survives
-      before a namespace declaration, function or comment (two survives at each), and that the formatter
-      "enforces" the one-line rule. Do not re-derive blank-line behaviour from prose — run the formatter
-      on a probe and read its output. **Probe through stdin, not a file outside the repository**:
-      clang-format takes its style from the directory of the file it is given, so a probe written to
-      `/tmp` silently runs LLVM defaults and "verifies" a config this tree does not use. That is how the
-      claim above came to be written down as measured.
+    - A4 and A5 are not preferences but what a paragraph looks like: a block's first and last lines touch
+      its own braces. A8 and A9 then decide where the single seams go, and A16 makes the consequence
+      mechanical — **one seam in a file may hold two blanks, and it is the one after the preamble.**
+    - **clang-format is a pre-process, not the definition of clean.** Measured on clang-format 22.1.8 with
+      this repository's `.clang-format`: it caps blanks at two (`MaxEmptyLinesToKeep`), *inserts* them
+      before an access specifier (`EmptyLineBeforeAccessModifier: LogicalBlock`) and between definition
+      blocks (`SeparateDefinitionBlocks: Always`), *deletes* them before any `}` and after an access
+      specifier, and **forces exactly one at two positions** — between two definition blocks, and after the
+      include preamble when the first code body is a `namespace`, a `class` or a function *definition*. At
+      that last position it deletes the second blank A3 requires, and it does so in 250 of the 270 engine
+      files: 228 of them open with `namespace hbe`, 22 with a function definition. `BreakAfterIncludes`, the
+      option that would settle this, does not exist in clang-format 22.1.8: `error: unknown key`, and the
+      string is absent from the binary. So A3 can never be formatter-native. The formatter runs first, a
+      reader applies this table afterwards, and a later `--apply` counts as a fresh pre-process that obliges
+      the reader again. Everywhere else the formatter only caps, which is why a file can be format-clean and
+      still read as one dense slab. The comment above `MaxEmptyLinesToKeep` in `.clang-format` claimed the
+      two blanks were kept *for* that seam; the measurement says the seam is precisely where they are not.
+    - Enforcement: `.pi/skills/hb-standards/scripts/blank_lines.py` decides A1-A5, A10, A13-A16 — every one
+      of those is a shape in the text, not an opinion about it. A6, A7 and A12 are the formatter's.
+      A8, A9 and A11 are the reader's, and the checker is deliberately silent about them so it cannot vote
+      on a paragraph it has not read. `.pi/skills/hb-standards/scripts/prove_regroup.py --whitespace-only`
+      proves the reader's edit changed nothing but blank lines: it compares the file against the revision it
+      came from and refuses if a non-blank line moved, appeared or disappeared. Grouping the declarations
+      inside one block of a class is the same edit under the same proof.
+    - **Do not re-derive blank-line behaviour from prose, and do not probe through a file outside the
+      repository.** Run the formatter on a probe and read its output; clang-format takes its style from the
+      directory of the file it is handed, so a probe written to `/tmp` silently runs LLVM defaults while
+      looking exactly like a verified result. Three claims in this section reached the wrong answer through
+      one of those two routes: that only one blank survives before a namespace declaration, function or
+      comment (true before a namespace and before a comment, false before a function *declaration*, where
+      two survive), that the formatter "enforces" the one-line rule, and that the post-include seam
+      collapses to one "measured for 1, 2, 3 and 4" — it collapses only before a namespace, a class or a
+      function definition, which is why `Engine/CodingStandards.h` passes the format gate with two blanks
+      there today: a comment follows its includes. Use `clang-format --style=file -` with the input on stdin.
+- **Includes are grouped, sorted, and hold nothing the file does not name.**
+
+    ```cpp
+    #include "TaskSystem.h"              // the file's own header, excluded from the sort
+
+    #include <atomic>                    // <…> for the standard library, lexicographic
+    #include <memory>
+
+    #include "Config/ConfigParam.h"      // "…" for everything else, lexicographic by written path,
+    #include "Log/Logger.h"              //   which is what groups the block by directory
+    ```
+
+    | # | Rule |
+    |---|---|
+    | B1 | the file's own header first, and excluded from the sort |
+    | B2 | three blocks — own header, `<standard>`, `"project"` — each sorted lexicographically on the written path, one blank line between blocks. Sorting the project block by path is what groups it by directory |
+    | B3 | no path appears twice in the preamble |
+    | B4 | `<…>` for the standard library, `"…"` for everything else |
+    | B5 | project includes are written root-relative. `"../Engine/Engine.h"` is a finding |
+    | B6 | an include the file does not itself name is removed. A consumer that breaks gains its own include; the transitive one is never restored |
+    | B7 | the preamble is the only region the pass rewrites |
+
+    - **What never moves.** 83 files carry includes below the preamble, and every one of them matters
+      where it stands: the `#include "MatrixCommonImpl.inl"` / `"VectorCommonImpl.inl"` directives
+      sit *inside a class body* (`Engine/Math/Vector3.h:90`), so their position decides what is in scope
+      where, and the `#ifdef __UNIT_TEST__` regions at the end of a file (`Engine/Core/TaskSystem.cpp:787-794`)
+      are test-only surface that belongs after everything they test. Hoisting, sorting or "cleaning" either
+      one is a compile break dressed up as a cleanup. The checker proves the region below the preamble came
+      out of the pass byte-identical.
+    - **Why B6 is a reader's edit with a build behind it.** A header's include list is also what its
+      consumers compile against, because some of them name entities they never include themselves. Only a
+      whole-tree build finds that, which is why removal is done by whoever is holding the file, one
+      candidate at a time, and proved by the three-configuration gate — not by a pattern match on the
+      preamble. A candidate is a file that names no entity the include provides; clang reports the
+      provenance, so the candidate list is computable (`includes.py` prints it as advice), but the deletion
+      and the consequence belong to the reader.
+    - **The formatter already produces B2's shape, and its knobs are not what they look like.** This config
+      sets `IncludeBlocks: Preserve` and leaves `SortIncludes` at its LLVM default, which clang-format
+      22.1.8 dumps as `SortIncludes: {Enabled: true, IgnoreCase: false, IgnoreExtension: false}`. It groups
+      by bracket type — `atomic` came out before `"Core/Debug.h"` from an interleaved input — and it sorts
+      case-sensitively, so `"HGroup.h"`, `"HSTL/HString.h"`, `"HardwareInfo.h"` is byte order rather than the
+      alphabetical order a reader would write. Byte order is therefore *the* standard here, because it is
+      what the formatter reproduces on every run. Do not buy it back with `SortIncludes: IgnoreCase`: in
+      clang-format 22 that key is a mapping and the bare value is rejected as `not a mapping`, which makes
+      the whole style file fail to load — the failure mode `.clang-format`'s own header warns about.
+    - Enforcement: `.pi/skills/hb-standards/scripts/includes.py` for B1-B5 and B7, the pre-process for
+      B2's sort while it is one block, and the build gate for B6. A deleted include is a token loss and is
+      declared in the fix manifest, which `prove_format.py` holds the editor to.
 - **System Compatibility**: Ensure every file ends with a newline character.
 - **Namespaces**: Do not indent code blocks contained within namespaces
   (`NamespaceIndentation: None`). This is a deliberate owner decision on record,
