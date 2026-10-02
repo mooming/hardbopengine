@@ -261,7 +261,7 @@
     <td>Three destinations: the shared general queue, or one stream's priority or FIFO lane. A bad index drops the item silently outside Debug.</td></tr>
   <tr><td><code>Dequeue</code></td><td class="sig">void Dequeue(std::optional&lt;WorkItem&gt;&amp; outTask) noexcept</td>
     <td><a href="dequeue.html">dequeue.html</a></td>
-    <td>The taking side of the general queue, with an affinity test whose only live effect is to exclude non-stream threads.</td></tr>
+    <td>The taking side of the general queue. An affinity refusal costs one attempt: the item stays at the head, and the refusing stream permits itself next time.</td></tr>
   <tr><td><code>EnqueueTask</code></td><td class="sig">void EnqueueTask(TIndex streamIndex, Task&amp; task, uint8_t priority = 0, StreamDrainPolicy::ELane lane = StreamDrainPolicy::ELane::Fifo) noexcept</td>
     <td><a href="enqueue-task.html">enqueue-task.html</a></td>
     <td>The customer's entry point: declares the join, builds the one item that fills it, queues it.</td></tr>
@@ -347,9 +347,10 @@
   <tr><td>Two silent returns in <a href="dispatch-successor.html">DispatchSuccessor</a></td>
     <td>Documented there as rows 1 and 2 of its refusal table — recorded here because "every refusal is reported" is true only of
       the four that were decisions</td></tr>
-  <tr><td>The affinity exclusion mechanism's other half, and the 64-stream affinity ceiling</td><td>Both on
-    <a href="dequeue.html">Dequeue</a>: nothing in the engine calls <code>Unset</code>, so a stream that cannot use a
-    general-queue item never hands it on, and the mask is 64 bits wide while the stream count is unbounded above</td></tr>
+  <tr><td>The affinity mask's inverted storage, and the 64-stream ceiling</td><td>Both on
+    <a href="dequeue.html">Dequeue</a>: a zero bit means permitted, so <code>Unset</code> excludes and <code>Set</code>
+    permits — the names describe the permitted set, not the bits — and the mask is 64 bits wide while the stream count
+    is unbounded above</td></tr>
   <tr><td>The wait that drives this class</td><td><a href="../../Test/TestHelper/drive-until.html"><code>TestHelper::DriveUntil</code></a>
     and <a href="../../Test/TestHelper/report-drive-timeout.html"><code>TestHelper::ReportDriveTimeout</code></a> were members of this
     class until 2026-10-02 and are documented in the <a href="../../Test/index.html">Test</a> module; five pages here still point at

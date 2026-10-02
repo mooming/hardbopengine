@@ -1,5 +1,56 @@
 # Journal
 
+## 2026-10-02 21:37 — the reference had no way to reach a method page, and 41% of its bytes were not the answer
+
+**Cause.** The owner asked to revise the Core reference, TaskSystem family first. Measured first: 9 of 25 Core
+entries owned a page, 197 declared methods owned none, and 1 004 comment lines were still in `Engine/Core`
+with nowhere to go — the strip is refused per module until the module is documented, so the pages are the
+precondition for deleting the prose, not a parallel job.
+
+**The click path did not exist.** `docs/Core/index.html`'s classes table linked `#tasksystem` and friends, so a
+click scrolled to a hand-written copy of the class doc instead of navigating, and the one link to the real page
+sat inside that copy; one file in the whole site linked a TaskSystem method page. The copy had rotted into
+fiction — it advertises `Task::Start` and `Task::Wait`, which `Engine/Core/Task.h` does not declare, and omits
+`ReserveSubTasks`, `SetRunnable`, `LoadIntoRecord`, which it does. Rows now link `<Class>/index.html`, the
+`id` moved off the embedded heading onto the row per AUTHORING §8, and all 72 inbound fragment links other
+modules point at Core still resolve. The class page's four-column method table — Name, Signature, Link, one
+line — is the navigation surface, and the all-methods sidebar is retired: 43 links repeated 44 times, 176 KB of
+the class's 427 KB, each one a bare name whose description already sits beside the same target in the table.
+
+**Two rules the owner ruled mid-task, both cheap to state and expensive to leave.** Properties get three
+columns and no Link column, because a property owns no page and a column that exists only to be empty reads as
+half-finished. And a Signature section shows the declaration and never a body: 34 of 43 method pages were
+pasting a definition, one of them `// general queue, low priority` — a source comment the ban is about to
+delete, reproduced in the page that quotes it. Prose moved nowhere through the re-skin: each page's body was
+compared byte-for-byte against the bytes that went in, and every difference anywhere was one trailing blank line.
+
+**Line citations were the finding this pass could not skip.** `Engine/X.cpp:174` is a claim about a file that
+moves, and it moved — a two-include deletion, uncommitted, put 11 of Core's 14 `Defined at` claims exactly two
+lines high, quietly and all in the same direction. Citations are now file plus symbol, and the five places where
+the specific lines are the contract print them instead: the four lines in `TaskStream::Update` that reopen the
+budget windows, the claim-and-restore that makes a driven stream's identity last a pass, the two claims set
+side by side, and the `Assert` definitions a shipped build compiles to nothing. Quoted code only, so no
+sentence the ban deletes is quoted back as source.
+
+**The gate was blind, and the blind spot was load-bearing.** `docs_coverage.py` matched nothing in
+`class alignas(std::uint64_t) ResultPacket final` — `alignas` read as the name, then the lookahead demanded `;`
+or `{` and found `(` — so a 158-line header with 48 comment lines owed the reference nothing and
+`comments.py --strip` would have taken its prose with no page ever demanded. Core now owes 16 entries, not 15.
+`docs_page.py` gained `--body`, which takes a page's prose as one file and reads the sidebar's section list back
+out of its own `<h2>` ids, so a page cannot index a section it never wrote.
+
+**Deliberately not done.** The `Parameter | Type | Requirement` table stays three columns even though the type
+repeats the signature: 490 pages already use it and a Core-only deviation makes one reference read as two
+sites. `docs/Core/index.html`'s embedded per-class sections survive until Stage 5 deletes them in one rebuild —
+the rows navigate today, so the reader is unstranded, and the stale prose goes with the table rewrite rather
+than being mended twice. Ten pages still cite a file whose lines carry a contract without printing them; the
+list is in the plan.
+
+**Gate.** `htmlcheck` 62 Core pages 0 problems; inbound-anchor scan 72 of 72 resolve; the module-page edit
+proved byte-exactly 18 intended line changes by reverse-transform equality against `HEAD`; 43 method pages
+394 468 B to 262 273 B. `docs_methods Core` still reports 197 method pages owed — this pass rewrote, it did not
+author. Plan: `.Plans/PLAN_core_api_reference_revision.md`. Commits `8ee8e0c`, `5950c48`, `b4a758c`.
+
 ## 2026-10-02 21:17 — Rules A and B get their first module, and two checkers turn out to have measured the wrong region
 
 **Cause.** The owner chose the smallest real test of the new passes: sweep one module pair by hand, as a

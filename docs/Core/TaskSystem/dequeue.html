@@ -67,35 +67,66 @@
   only after the caller's <code>std::optional</code> has been assigned.
 </p>
 
+<pre><code>const unsigned int streamIndex = GetCurrentStreamIndex();
+
+auto&amp; affinity = workItem.affinity;
+if (!affinity.Get(streamIndex))
+{
+        affinity.Set(streamIndex);
+        return;
+}</code></pre>
+
+<p class="meta">From Engine/Core/TaskSystem.cpp, TaskSystem::Dequeue()</p>
+
 <p>
-  The stated rule is that a stream which fails to take the top item because of its task-stream affinity records that
-  fact, so that one item a thread cannot use does not block the whole general queue for everybody. The mechanism is
-  <code>WorkItem::affinity</code>, a <code>mutable TaskStreamAffinity</code>
-  (<code>Engine/Core/WorkItem.h</code>) — 64 bits, one per stream index.
+  <code>TaskStreamAffinity</code> stores its mask <strong>inverted</strong>: a zero bit means permitted and a one bit
+  means excluded, so a default-constructed mask permits every in-range index, <code>Unset(i)</code>
+  <em>excludes</em> stream <em>i</em>, and <code>Set(i)</code> permits it again. The names describe the permitted set,
+  not the bits — which is the one thing a reader must get right before the rest of this makes sense
+  (<code>Engine/Core/TaskStreamAffinity.h</code>, <code>TaskStreamAffinityBase::Get</code>).
 </p>
 
-<div class="gap">
-  <strong>In the engine as it stands, only the non-stream case actually fires.</strong> The affinity is touched at exactly
-  two places outside its own unit tests — <code>Engine/Core/TaskSystem.cpp</code> and <code>:299</code>, both inside
-  this function — and nothing calls <code>Unset</code>. A fresh <code>TaskStreamAffinity</code> starts with every
-  in-range bit reading back true, so for any real stream index <code>Get</code> succeeds, the guard is skipped, and the
-  item is taken on first contact. The path that would record a refusal is reached only when <code>Get</code> has already
-  returned false, and the only way to make it return false is an index at or above the mask's width. That is exactly what
-  <a href="get-current-stream-index.html">NonStreamIndex</a> is: widened to <code>unsigned int</code> it is 4294967295,
-  <code>Get</code> is out of range and answers false, <code>Set</code> is out of range and does nothing, and the function
-  returns without popping. So a thread that is not a stream never takes from the general queue and is never recorded as
-  having looked — which is the documented intent. What does not happen is the other half of the design: a stream that
-  cannot use an item does not hand it on to a different stream, because no code marks it.
-</div>
+<p>
+  <code>WorkItem</code>'s private constructor excludes the two engine streams from every item it builds, so the guard
+  is not dormant in the engine as it stands:
+</p>
 
-<div class="note">
-  <strong>The mask is 64 bits wide; the stream count is not bounded to it.</strong>
-  <code>TaskStreamAffinity</code> is <code>TaskStreamAffinityBase&lt;64&gt;</code>
-  (<code>Engine/Core/TaskStreamAffinity.h</code>), while the number of streams comes from
-  <a href="get-num-hardware-threads.html">GetNumHardwareThreads</a> with no upper clamp. On a machine with more than 64
-  hardware threads, every stream from index 64 up is out of range for the mask — <code>Get</code> answers false — so
-  those streams can never take from the general queue. Nothing logs it; they simply stop being served by it.
-</div>
+<pre><code>affinity.Unset(TaskSystem::GetBaseTaskStreamIndex());
+affinity.Unset(TaskSystem::GetIOTaskStreamIndex());</code></pre>
+
+<p class="meta">From Engine/Core/WorkItem.cpp, WorkItem::WorkItem()</p>
+
+<table>
+  <tr><th>Who is asking</th><th>What happens</th><th>Why it happens</th></tr>
+  <tr>
+    <td>Stream 0 (<code>Base</code>) or 1 (<code>IO</code>)</td>
+    <td>Refused on the first look at a fresh head item, served on the next</td>
+    <td>Those two bits are unset at construction. The guard then records the refusal by
+      <code>Set</code>-ing the refusing stream — permitting <em>itself</em> — and returns without popping, so the same
+      item and stream cannot refuse each other twice</td>
+  </tr>
+  <tr>
+    <td>A thread with no stream</td>
+    <td>Never served, and never becomes eligible</td>
+    <td><code>NonStreamIndex</code> widened to <code>unsigned int</code> is out of range, where <code>Get</code>
+      answers false and <code>Set</code> does nothing</td>
+  </tr>
+  <tr>
+    <td>A stream at index 64 or above</td>
+    <td>Never served, and nothing logs it</td>
+    <td>The mask is <code>TaskStreamAffinityBase&lt;64&gt;</code> while
+      <a href="get-num-hardware-threads.html">GetNumHardwareThreads</a> has no upper clamp</td>
+  </tr>
+</table>
+
+<p>
+  A refusal therefore costs one attempt and bounds head-of-line blocking at a single pass — the item stays at the head
+  untouched, and the refusing stream may take it the next time round. What the guard does <em>not</em> do is hand the
+  item on: <code>Set</code> widens the mask for the stream that just refused and for nobody else, so the intent that a
+  stream which cannot use an item should let another stream have it has no mechanism behind it. The general queue is
+  reached only after a stream's own lanes come up empty and its budget allows work
+  (<code>Engine/Core/TaskStream.cpp</code>, <code>TaskStream::Update</code>).
+</p>
 
 <h2 id="parameters">Parameters</h2>
 

@@ -443,8 +443,8 @@ operation because an item built outside the engine bypasses the registry's bookk
 <pre><code><span class="kw">template</span>&lt;<span class="kw">unsigned int</span> NumBits&gt;
 <span class="kw">class</span> <span class="ty">TaskStreamAffinityBase</span> final
 {
-    <span class="kw">void</span> Set(<span class="kw">unsigned int</span> bitIndex) <span class="kw">noexcept</span>;      <span class="cm">// exclude this stream</span>
-    <span class="kw">void</span> Unset(<span class="kw">unsigned int</span> bitIndex) <span class="kw">noexcept</span>;    <span class="cm">// include this stream again</span>
+    <span class="kw">void</span> Set(<span class="kw">unsigned int</span> bitIndex) <span class="kw">noexcept</span>;      <span class="cm">// permit this stream again</span>
+    <span class="kw">void</span> Unset(<span class="kw">unsigned int</span> bitIndex) <span class="kw">noexcept</span>;    <span class="cm">// exclude this stream</span>
     [[nodiscard]] <span class="kw">bool</span> Get(<span class="kw">unsigned int</span> bitIndex) <span class="kw">const</span> <span class="kw">noexcept</span>;  <span class="cm">// is it included?</span>
 };
 
