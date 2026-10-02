@@ -18,6 +18,13 @@ namespace
 
 constexpr std::size_t MaxFrameTasks = 10;
 
+constexpr int RequestedWindowWidth = 800;
+constexpr int RequestedWindowHeight = 600;
+
+constexpr auto FramePollInterval = std::chrono::seconds(1);
+constexpr auto TickWaitInterval = std::chrono::milliseconds(10);
+constexpr unsigned MaxTickWaitPolls = 500;
+
 std::size_t RunWindowTick(void* userData, std::size_t startIndex, std::size_t endIndex) noexcept
 {
 	auto& ticks = *static_cast<std::atomic<unsigned>*>(userData);
@@ -98,7 +105,7 @@ int main(int argc, const char* argv[]) noexcept
 		return 1;
 	}
 
-	auto window = OS::CreateWindow("Hello? 안녕하세요?", 800, 600);
+	auto window = OS::CreateWindow("Hello? 안녕하세요?", RequestedWindowWidth, RequestedWindowHeight);
 	if (!window)
 	{
 		std::cerr << "Error: Failed to create window" << std::endl;
@@ -118,12 +125,12 @@ int main(int argc, const char* argv[]) noexcept
 	WindowTickProvider tickProvider(taskSystem, ticks);
 	tickProvider.AttachTo(tickStream, hbe::StreamDrainPolicy::ELane::Fifo);
 
-	for (int frame = 0; frame < static_cast<int>(MaxFrameTasks); ++frame)
+	for (std::size_t frame = 0; frame < MaxFrameTasks; ++frame)
 	{
 		app->PollEvents();
 		window->PollEvents();
 
-		std::this_thread::sleep_for(std::chrono::seconds(1));
+		std::this_thread::sleep_for(FramePollInterval);
 
 		if (window->IsClosed())
 		{
@@ -132,9 +139,9 @@ int main(int argc, const char* argv[]) noexcept
 	}
 
 	const std::size_t produced = tickProvider.GetProducedCount();
-	for (unsigned waited = 0; ticks.load() < produced && waited < 500; ++waited)
+	for (unsigned waited = 0; ticks.load() < produced && waited < MaxTickWaitPolls; ++waited)
 	{
-		std::this_thread::sleep_for(std::chrono::milliseconds(10));
+		std::this_thread::sleep_for(TickWaitInterval);
 	}
 
 	std::cout << "Provider produced " << produced << " frame task(s), and the stream ran " << ticks.load()

@@ -4,6 +4,7 @@
 #include <chrono>
 #include <cmath>
 #include <csignal>
+#include <cstddef>
 #include <cstring>
 #include <iostream>
 #include <thread>
@@ -23,7 +24,7 @@ namespace
 {
 std::atomic<bool> running{true};
 
-constexpr size_t MatrixElementCount = 16;
+constexpr std::size_t MatrixElementCount = 16;
 
 constexpr int RequestedWindowWidth = 800;
 constexpr int RequestedWindowHeight = 600;
@@ -82,7 +83,9 @@ void SetPerspective(float outMatrix[MatrixElementCount], float fovRadians, float
 			MeshVertex(1.0f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f),
 			MeshVertex(-1.0f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f),
 	};
+
 	mesh.indices = {0, 1, 2, 0, 2, 3};
+
 	return mesh;
 }
 } // namespace
@@ -99,6 +102,7 @@ int main(int argc, char* argv[]) noexcept
 	if (app == nullptr)
 	{
 		std::cerr << "Error: Failed to create application" << std::endl;
+
 		return 1;
 	}
 
@@ -107,6 +111,7 @@ int main(int argc, char* argv[]) noexcept
 	if (!window)
 	{
 		std::cerr << "Error: Failed to create window" << std::endl;
+
 		return 1;
 	}
 
@@ -117,13 +122,14 @@ int main(int argc, char* argv[]) noexcept
 	{
 		Logger::Get().Flush();
 		std::cerr << "Error: Failed to initialize Vulkan renderer" << std::endl;
+
 		return 1;
 	}
 
 	const Mesh quad = MakeQuad();
 	renderer.SetMesh(quad);
 
-	printf("Rendering with: Vulkan\n");
+	std::cout << "Rendering with: Vulkan" << std::endl;
 
 	const VkExtent2D extent = renderer.GetExtent();
 
