@@ -10,6 +10,7 @@
 #include <thread>
 
 #include "Config/ConfigParam.h"
+#include "Constants.h"
 #include "Log/Logger.h"
 #include "TaskProvider.h"
 
