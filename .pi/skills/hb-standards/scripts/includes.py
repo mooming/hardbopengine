@@ -244,7 +244,35 @@ def database_entry(entries, path):
     return None
 
 
-def syntax_check(entry, source_path, directory):
+TEST_MACRO_FLAGS = ('-D__TEST__=1', '-D__UNIT_TEST__=1')
+TEST_GUARD = re.compile(r'^\s*#\s*ifn?def\s+__UNIT_TEST__\b', re.MULTILINE)
+
+
+def text_macros(text):
+    """The preprocessor definitions a measurement must add, judged from the bytes it is about to compile.
+
+    `cmake-build-debug/compile_commands.json` is generated without `-D__TEST__ -D__UNIT_TEST__` — `build.sh`
+    adds them to `CMAKE_CXX_FLAGS` only under `-test` — so any measurement taken from that database looks at
+    a file with its unit-test surface preprocessed away. For a body that lives entirely behind the guard,
+    like `main()` in `Applications/EngineTest/TestMain.cpp`, the measurement is not of the file at all: it
+    compiles an empty translation unit, and an empty translation unit compiles with any include deleted.
+    `layout.py` already meets the same trap and answers it by re-running with the macro defined; this is the
+    same answer, and the caller prints which macros were active so a reader can tell a clean answer from an
+    unmeasured one.
+    """
+    return TEST_MACRO_FLAGS if TEST_GUARD.search(text) else ()
+
+
+def file_macros(path):
+    """`text_macros` read off a file, and no answer at all when the file cannot be read."""
+    try:
+        with open(path, encoding='utf-8', errors='ignore') as handle:
+            return text_macros(handle.read())
+    except OSError:
+        return ()
+
+
+def syntax_check(entry, source_path, directory, macros=()):
     """Compile one translation unit for errors only, from a copy sitting where the original sits.
 
     The copy has to live beside the original, because the include paths in the database entry are what
@@ -265,7 +293,7 @@ def syntax_check(entry, source_path, directory):
         if token.endswith(('.cpp', '.cc', '.cxx')):
             continue                             # the input is supplied below, from the scratch path
         kept.append(token)
-    kept += ['-fsyntax-only', source_path]
+    kept += list(macros) + ['-fsyntax-only', source_path]
     result = subprocess.run(kept, cwd=directory, capture_output=True, text=True)
     return result.returncode, result.stderr
 
@@ -285,7 +313,7 @@ def header_name_filter(header_path):
     return 'hbe'
 
 
-def ast_names_of(header_path, entry):
+def ast_names_of(header_path, entry, macros=()):
     """The names a header declares itself, read from clang rather than guessed.
 
     This is the half of B6 that ablation cannot answer. Deleting `#include <atomic>` from a file that
@@ -296,10 +324,14 @@ def ast_names_of(header_path, entry):
     Returns None when the question could not be answered. The caller reports that separately rather than
     folding it into the candidate list, because "could not tell" and "not a candidate" are different
     claims — the same distinction `layout.py` draws with `[NONE]`.
+
+    The cache is keyed on the macros as well as the path: one header read two ways declares two different
+    name sets, and a cached answer from the wrong one is a wrong answer about a file on disk.
     """
     cache = ast_names_of.__dict__.setdefault('cache', {})
-    if header_path in cache:
-        return cache[header_path]
+    key = (header_path, tuple(macros))
+    if key in cache:
+        return cache[key]
     wanted = os.path.abspath(header_path)
     scratch = os.path.join(os.path.dirname(wanted), '._includes_probe_names_%d.cpp' % os.getpid())
     with open(scratch, 'w', encoding='utf-8') as handle:
@@ -307,6 +339,9 @@ def ast_names_of(header_path, entry):
     names = set()
     try:
         command = layout.clang_argv(entry, scratch, header_name_filter(wanted))
+        if macros:
+            at = command.index('-fsyntax-only')
+            command = command[:at] + list(macros) + command[at:]
         result = subprocess.run(command, cwd=entry.get('directory', '.'), capture_output=True, text=True)
         decoder, dump, index = json.JSONDecoder(), result.stdout, 0
         while index < len(dump):
@@ -321,31 +356,45 @@ def ast_names_of(header_path, entry):
     finally:
         if os.path.exists(scratch):
             os.unlink(scratch)
-    cache[header_path] = names
+    cache[key] = names
     return names
 
 
-def walk_names(node, wanted):
+def walk_names(node, wanted, inherited=''):
     """Yield the declared name of every declaration of interest that lives in `wanted` itself.
 
     The location filter is what keeps a header's *own* names rather than everything its transitive
-    includes drag in: clang puts the spelling location on the declaration, and a declaration spelled in an
-    included file names a different file.
+    includes drag in — clang puts the spelling location on the declaration, and a declaration spelled in
+    an included file names a different file.
+
+    But clang writes `file` on a location only where the file *changes*. A declaration nested inside a
+    namespace that this file also declares carries `{'offset', 'line', 'col', 'tokLen'}` and nothing else:
+    the file is inherited, not repeated. Reading `loc.file` alone therefore yields nothing for a nested
+    declaration, which in this engine means for **every** declaration, because every one of them sits in
+    `namespace hbe`. Measured on `Engine/Test/UnitTestCollection.h` compiled as its own translation unit
+    with the test macros on: the `NamespaceDecl` reported a file, its two `FunctionDecl`s did not, so the
+    name set came back as `{'Test'}` and `RegisterSuite` was absent. The effect is not a missing nicety —
+    `supplied` is the half of B6 that exists to stop an unsound deletion, and an empty `supplied` makes
+    every include that ablation happens to survive look unnamed, which is exactly the recommendation the
+    rule was written to refuse. So the file is inherited down the tree, as `layout.py` already does for
+    the same quirk on a template's definition node.
     """
     kinds = {'CXXRecordDecl', 'ClassTemplateDecl', 'FunctionDecl', 'FunctionTemplateDecl', 'TypeAliasDecl',
              'TypedefDecl', 'EnumDecl', 'VarDecl', 'NamespaceDecl', 'ConceptDecl', 'UsingDecl'}
-    stack = [node]
+    stack = [(node, inherited)]
     while stack:
-        current = stack.pop()
+        current, from_above = stack.pop()
         if not isinstance(current, dict):
             continue
-        path = (current.get('loc') or {}).get('file') or ''
+        path = (current.get('loc') or {}).get('file') or from_above
         name = current.get('name') or ''
-        if current.get('kind') in kinds and name and os.path.abspath(path) == wanted:
+        if current.get('kind') in kinds and name and os.path.abspath(path or '') == wanted:
             yield name.split('<')[0].split('::')[-1]
         for value in current.values():
             if isinstance(value, list):
-                stack.extend(item for item in value if isinstance(item, dict))
+                stack.extend((item, path) for item in value if isinstance(item, dict))
+            elif isinstance(value, dict):
+                stack.append((value, path))
 
 
 def provided_names(item, entry, includer):
@@ -357,6 +406,14 @@ def provided_names(item, entry, includer):
     The including file's own directory is the first root, because a quoted include resolves against the
     file that writes it — `#include "Array.h"` in `Array.cpp` is the same directory, and leaving that out
     made every own header look unverifiable.
+
+    A header whose declarations sit behind `#ifdef __UNIT_TEST__` declares **nothing** to a compiler run
+    without that macro, and an empty name set intersects everything, so the include it owns is reported as
+    one the file neither needs nor names. Measured on `Applications/EngineTest/TestMain.cpp`, whose only two
+    calls are `hbe::Test::RegisterSuite` and `ScheduleSuiteOnBaseStream`, both declared solely inside that
+    guard in `Engine/Test/UnitTestCollection.h`: the tool offered that header for deletion. It is the same
+    blindness as the ablation half, and this half is the dangerous one, because the name test is the one
+    this rule trusts to stop an unsound deletion.
     """
     if item['bracket'] != '"':
         return None
@@ -365,12 +422,12 @@ def provided_names(item, entry, includer):
     for root in roots:
         candidate = os.path.normpath(os.path.join(root, item['path']))
         if os.path.isfile(candidate):
-            return ast_names_of(candidate, entry)
+            return ast_names_of(candidate, entry, macros=text_macros(candidate))
     return None
 
 
 def unused_candidates(path):
-    """Includes this file neither needs nor names, as (candidates, error, unverifiable, needed).
+    """Includes this file neither needs nor names, as (candidates, error, unverifiable, needed, macros).
 
     Only defined for a source file. A header's includes are consumed by whoever includes the header, so
     deleting one and recompiling the header's own translation unit proves nothing about the tree — the
@@ -381,24 +438,30 @@ def unused_candidates(path):
     and check that no name the include declares is spelled anywhere in the file's own code. The first
     alone would recommend deleting the include a file genuinely depends on and only gets transitively,
     which is the opposite of the rule.
+
+    Both are run under the test macros when the file carries a `#ifdef __UNIT_TEST__` region, because the
+    compile database does not define them and the measurement would otherwise be of an empty translation
+    unit. `macros` says which were used, so the report can not read as a clean answer about code nobody
+    compiled.
     """
     if not path.endswith(('.cpp', '.cc', '.cxx')):
         return None, ("B6 is a translation-unit question and %s is a header: a header's include list is what "
-                      'its consumers compile against, so the three-configuration build is the proof' % path), [], []
+                      'its consumers compile against, so the three-configuration build is the proof' % path), [], [], ()
     entries, database = load_compile_database()
     if entries is None:
         return None, ('no compile database at %s — regenerate with cmake -S . -B cmake-build-debug '
-                      '-DCMAKE_EXPORT_COMPILE_COMMANDS=ON' % database), [], []
+                      '-DCMAKE_EXPORT_COMPILE_COMMANDS=ON' % database), [], [], ()
     entry = database_entry(entries, path)
     if entry is None:
-        return None, 'no compile database entry for %s' % path, [], []
+        return None, 'no compile database entry for %s' % path, [], [], ()
     directory = entry.get('directory', os.getcwd())        # the database is authored against its own working directory
 
     try:
         with open(path, encoding='utf-8') as handle:
             text = handle.read()
     except OSError as error:
-        return None, str(error), [], []
+        return None, str(error), [], [], ()
+    macros = text_macros(text)
     items, _boundary = parse_preamble(text, path)
     inside = [item for item in items if not item['below']]
     lines = text.split('\n')
@@ -407,16 +470,16 @@ def unused_candidates(path):
                            '._includes_probe_%d%s' % (os.getpid(), os.path.splitext(path)[1]))
     candidates, unverifiable, needed = [], [], []
     try:
-        base_code, _stderr = syntax_check(entry, os.path.abspath(path), directory)
+        base_code, _stderr = syntax_check(entry, os.path.abspath(path), directory, macros)
         if base_code != 0:
-            return None, ('%s does not compile as it stands, so ablation would report every include as removable'
-                          % path), [], []
+            return None, ('%s does not compile as it stands%s, so ablation would report every include as removable'
+                          % (path, ' with ' + ' and '.join(macros) if macros else '')), [], [], macros
         for item in inside:
             variant = list(lines)
             del variant[item['line'] - 1]
             with open(scratch, 'w', encoding='utf-8') as handle:
                 handle.write('\n'.join(variant))
-            code, stderr = syntax_check(entry, scratch, directory)
+            code, stderr = syntax_check(entry, scratch, directory, macros)
             if code != 0:
                 if 'fatal error' in stderr and 'file not found' in stderr:
                     needed.append('%s%s> is needed: %s' % (item['bracket'], item['path'], stderr.splitlines()[0]))
@@ -429,7 +492,7 @@ def unused_candidates(path):
     finally:
         if os.path.exists(scratch):
             os.unlink(scratch)
-    return candidates, None, unverifiable, needed
+    return candidates, None, unverifiable, needed, macros
 
 
 # ----------------------------------------------------------------------- fixtures --
@@ -509,9 +572,40 @@ def run_selftest():
             failures += 1
         else:
             print('ok   %-58s %s' % (name, ','.join(sorted({rule for rule, _ in expect})) or 'clean'))
+    # The name-extraction half, on recorded clang JSON shapes. Feed the node rather than compiling a
+    # fixture: what broke was reading `loc.file` off a nested declaration, and clang writes that key only
+    # where the file changes, so a compiled fixture of one's own making is likely to re-derive the shape
+    # that already fooled the reader.
+    header = os.path.join(REPO_ROOT, 'Engine', 'Core', 'Probe.h')
+    other = os.path.join(REPO_ROOT, 'Engine', 'Core', 'Other.h')
+    # `hbe` is in every expectation because the enclosing NamespaceDecl is itself located in the header and
+    # is therefore a name the header supplies — which is exactly what the buggy reader reported as a whole
+    # name set, mistaking the one node that carried a file for the only node that existed.
+    shapes = [
+        ('a declaration nested in a namespace inherits the file clang wrote on the namespace',
+         {'kind': 'NamespaceDecl', 'name': 'hbe', 'loc': {'file': header, 'line': 5, 'col': 1},
+          'inner': [{'kind': 'FunctionDecl', 'name': 'RegisterSuite', 'loc': {'line': 18, 'col': 6}}]},
+         {'hbe', 'RegisterSuite'}),
+        ('a declaration clang located in a different file still names that file',
+         {'kind': 'NamespaceDecl', 'name': 'hbe', 'loc': {'file': header, 'line': 5, 'col': 1},
+          'inner': [{'kind': 'FunctionDecl', 'name': 'Borrowed', 'loc': {'file': other, 'line': 3, 'col': 6}},
+                    {'kind': 'FunctionDecl', 'name': 'OwnsIt', 'loc': {'line': 19, 'col': 6}}]},
+         {'hbe', 'OwnsIt'}),
+        ('a namespace with nothing in it supplies its own name',
+         {'kind': 'NamespaceDecl', 'name': 'Test', 'loc': {'file': header, 'line': 11, 'col': 11}},
+         {'Test'}),
+    ]
+    for name, node, expect in shapes:
+        got = set(walk_names(node, header))
+        if got != expect:
+            print('FAIL %-58s want %s got %s' % (name, sorted(expect), sorted(got)))
+            failures += 1
+        else:
+            print('ok   %-58s %s' % (name, ','.join(sorted(got)) or 'clean'))
+    total = len(CASES) + len(shapes)
     import shutil
     shutil.rmtree(root, ignore_errors=True)
-    print('%d fixture(s), %d failure(s)' % (len(CASES), failures))
+    print('%d fixture(s), %d failure(s)' % (total, failures))
     return 1 if failures else 0
 
 
@@ -520,7 +614,8 @@ def main(argv):
     parser.add_argument('files', nargs='*', help='C++ sources to check')
     parser.add_argument('--selftest', action='store_true', help='run the built-in fixtures')
     parser.add_argument('--unused', action='store_true',
-                        help='B6 candidates: compile this file once per include with that include deleted')
+                        help='B6 candidates: compile this file once per include with that include deleted, '
+                             'under -D__TEST__ -D__UNIT_TEST__ when it carries a unit-test region')
     parser.add_argument('--prove-immutable', metavar='REV',
                         help='B7: refuse unless every include below the preamble kept its place and its guard')
     parser.add_argument('--summary-only', action='store_true', help='print counts, not findings')
@@ -571,11 +666,14 @@ def main(argv):
                 for finding in findings:
                     print('    %s:%s: [%s] %s' % (path, finding.line or '-', finding.rule, finding.message))
         if args.unused:
-            candidates, error, unverifiable, needed = unused_candidates(path)
+            candidates, error, unverifiable, needed, macros = unused_candidates(path)
             if candidates is None:
                 print('[NONE] B6 — %s: %s' % (path, error))
                 continue
-            print('[INFO] B6 — %s: %d candidate(s) this file neither needs nor names' % (path, len(candidates)))
+            print('[INFO] B6 — %s: %d candidate(s) this file neither needs nor names%s'
+                  % (path, len(candidates),
+                     ' (measured with %s: the file\'s unit-test surface is otherwise preprocessed away)'
+                     % ' and '.join(macros) if macros else ''))
             for item in candidates:
                 closing = '>' if item['bracket'] == '<' else '"'
                 print("    %s:%d: %s%s%s — deletion is a reader's call, proved by the build gate"
