@@ -178,6 +178,10 @@ def footer(cls):
 
 
 def subtitle(tags, summary):
+    # A page is re-emitted far more often than it is written once, and a caller that hands back what it
+    # read off an existing page hands back its tags too. Duplicates say nothing twice, so they are dropped
+    # here rather than trusted to every caller.
+    tags = list(dict.fromkeys(tags))
     tags_html = ''.join('  <span class="tag">%s</span>\n' % t for t in tags)
     return '<p class="subtitle">\n%s  %s\n</p>\n\n' % (tags_html, summary)
 
