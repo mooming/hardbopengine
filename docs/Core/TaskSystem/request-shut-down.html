@@ -61,9 +61,9 @@
 <h2 id="description">Function description</h2>
 
 <p>
-  Two statements, at <code>Engine/Core/TaskSystem.cpp:126</code>. The first ends the run —
+  Two statements, at <code>Engine/Core/TaskSystem.cpp</code>. The first ends the run —
   <code>Engine::Run</code> spins <code>while (taskSystem.IsRunning())</code> at
-  <code>Engine/Engine/Engine.cpp:139</code>, so clearing the flag is how a task stops the engine. The second begins the
+  <code>Engine/Engine/Engine.cpp</code>, so clearing the flag is how a task stops the engine. The second begins the
   teardown of everything that is not needed to finish the run.
 </p>
 
@@ -117,7 +117,7 @@
 }</code></pre>
 
 <p>
-  <code>Engine/Engine/Engine.cpp:168-176</code>. Read it together with <code>Run</code>, which joins at line 145 before
+  <code>Engine/Engine/Engine.cpp</code>. Read it together with <code>Run</code>, which joins at line 145 before
   this is ever reached: in the normal path this call lands on an already-cleared task system and costs one flag store and
   one early return. It is the path where <code>Run</code> was never entered — or where a task called this and something
   else reached <code>ShutDown</code> first — that it is there for.

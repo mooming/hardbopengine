@@ -61,7 +61,7 @@
 <h2 id="description">Function description</h2>
 
 <p>
-  Defined at <code>Engine/Core/TaskSystem.cpp:153</code>. It scans the array, skips the two engine streams by address, and
+  Defined in <code>Engine/Core/TaskSystem.cpp</code> as <code>TaskSystem::AreUserStreamsClosed()</code>. It scans the array, skips the two engine streams by address, and
   returns false at the first stream that has not reported itself closed. "User streams" is the same set
   <a href="request-other-streams-close.html">RequestOtherStreamsClose</a> asks to close: every stream that is neither the
   base stream nor the IO stream. "Closed" is the stream's own
@@ -116,7 +116,7 @@
 
 <p>
   The bounded shutdown pump inside <a href="join-and-clear.html">JoinAndClear</a>, at
-  <code>Engine/Core/TaskSystem.cpp:207-212</code>. It is a condition, not a wait — the loop drives the base stream while
+  <code>Engine/Core/TaskSystem.cpp</code>. It is a condition, not a wait — the loop drives the base stream while
   it tests, because work the closing streams handed to the base stream is what the base stream still has to run.
 </p>
 <footer class="prevnext">

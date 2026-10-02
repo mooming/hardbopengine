@@ -58,8 +58,8 @@
 <h2 id="description">Class description</h2>
 
 <p>
-  <code>class TaskSystem final</code> at <code>Engine/Core/TaskSystem.h:17</code>. A process has one, as a direct member of
-  <code>Engine</code> (<code>Engine/Engine/Engine.h:48</code>) — constructed with the engine, destroyed with it, reachable
+  <code>class TaskSystem final</code> at <code>Engine/Core/TaskSystem.h</code>. A process has one, as a direct member of
+  <code>Engine</code> (<code>Engine/Engine/Engine.h</code>) — constructed with the engine, destroyed with it, reachable
   everywhere through <code>Engine::GetTaskSystem()</code>.
 </p>
 
@@ -108,7 +108,7 @@
   The lifecycle has exactly four moments, and the ordering is the design: <a href="constructors.html">construct</a> on the
   thread that will run the engine; <a href="initialize.html">Initialize</a> to size the registry and build every stream;
   <a href="update.html">Update</a> in a loop while <a href="is-running.html">IsRunning</a> — which is what
-  <code>Engine::Run</code> does at <code>Engine/Engine/Engine.cpp:139-143</code>; then
+  <code>Engine::Run</code> does at <code>Engine/Engine/Engine.cpp</code>; then
   <a href="join-and-clear.html">JoinAndClear</a>, which is also what the <a href="destructor.html">destructor</a> calls. The
   design rationale, including the R-numbered decisions several pages cite, is in
   <code>docs/TaskSystemRedesign.md</code>.
@@ -127,9 +127,9 @@
   <strong>Nothing in this class refuses a bad stream index in a shipped build.</strong> The indexed
   <a href="enqueue.html">Enqueue</a> and <a href="enqueue-task.html">EnqueueTask</a> assert and then drop the item;
   <a href="get-stream.html">GetStream</a> hands back the base stream instead of failing
-  (<code>Engine/Core/TaskSystem.cpp:698-706</code>); and the thread check in
+  (<code>Engine/Core/TaskSystem.cpp</code>); and the thread check in
   <a href="build-streams.html">BuildStreams</a> is an <code>Assert</code>, which has an empty definition outside
-  <code>__DEBUG__</code> (<code>Engine/Core/Debug.h:72-79</code>). Only <code>FatalAssert</code> and the logging paths survive.
+  <code>__DEBUG__</code> (<code>Engine/Core/Debug.h</code>). Only <code>FatalAssert</code> and the logging paths survive.
   So the checks that exist are for Debug builds, and the behaviour that ships is the fallback — which makes
   <a href="has-stream.html">HasStream</a> the caller's job rather than the engine's.
 </div>
@@ -159,7 +159,7 @@
   <tr><td><code>IOStreamIndex</code></td><td><code>static constexpr TIndex IOStreamIndex = 1;</code></td>
     <td><span class="badge">public static</span> The IO stream, driven by the logger's thread; worker streams begin at <code>IOStreamIndex + 1</code></td></tr>
   <tr><td><code>MaxStreamsPerSplit</code></td><td><code>static constexpr TIndex MaxStreamsPerSplit = 64;</code></td>
-    <td><span class="badge">public static</span> How many streams one split may spread across, so <a href="parallel-for.html">ParallelFor</a>'s count form keeps its chosen list on the caller's stack (<code>Engine/Core/TaskSystem.cpp:549-550</code>)</td></tr>
+    <td><span class="badge">public static</span> How many streams one split may spread across, so <a href="parallel-for.html">ParallelFor</a>'s count form keeps its chosen list on the caller's stack (<code>Engine/Core/TaskSystem.cpp</code>)</td></tr>
   <tr><td><code>EngineLoopThreadName</code></td><td><code>static constexpr const char* EngineLoopThreadName = "EngineLoop";</code></td>
     <td><span class="badge">public static</span> The engine-internal label for the thread driving <code>Engine::Run</code>; no operating-system thread name is ever set</td></tr>
   <tr><td><code>isRunning</code></td><td><code>std::atomic&lt;bool&gt; isRunning;</code></td>
@@ -171,7 +171,7 @@
   <tr><td><code>engineLoopThreadID</code></td><td><code>const TThreadID engineLoopThreadID;</code></td>
     <td><span class="badge">private</span> The constructing thread, so <a href="build-streams.html">BuildStreams</a> and <a href="join-and-clear.html">JoinAndClear</a> can ask whether the caller owns the run; no accessor exposes it</td></tr>
   <tr><td><code>ioTaskThreadID</code></td><td><code>TThreadID ioTaskThreadID;</code></td>
-    <td><span class="badge">private</span> <strong>Never written and never read</strong> — declared at <code>Engine/Core/TaskSystem.h:42</code> and named nowhere else in <code>Engine/</code></td></tr>
+    <td><span class="badge">private</span> <strong>Never written and never read</strong> — declared in <code>Engine/Core/TaskSystem.h</code> and named nowhere else in <code>Engine/</code></td></tr>
   <tr><td><code>streams</code></td><td><code>TStreamArray streams;</code></td>
     <td><span class="badge">private</span> Empty before <a href="initialize.html">Initialize</a> and again after <a href="join-and-clear.html">JoinAndClear</a>, which is what <a href="has-stream.html">HasStream</a> catches</td></tr>
   <tr><td><code>taskRegistry</code></td><td><code>TaskRegistry taskRegistry;</code></td>

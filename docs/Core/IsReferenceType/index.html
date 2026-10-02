@@ -75,11 +75,11 @@
   The single consumer is <a href="../../Memory/index.html"><code>Optional</code></a>. It sizes its inline storage
   with this trait — <code>Byte value[IsReferenceType&lt;TType&gt;::TypeSize]</code>, aligned by
   <code>alignas(std::max(IsReferenceType&lt;TType&gt;::TypeSize, Config::DefaultAlign))</code> at
-  <code>Engine/Memory/Optional.h:20</code> — and it dispatches every lifetime operation by writing
+  <code>Engine/Memory/Optional.h</code> — and it dispatches every lifetime operation by writing
   <code>Result()</code>, letting overload resolution choose between storing a referent in place and storing its
   address. <code>Optional&lt;int&amp;&gt;</code>, <code>Optional&lt;Class&amp;&gt;</code> and
   <code>Optional&lt;Integer&amp;&gt;</code> are instantiated by the unit tests in
-  <code>Engine/Memory/Optional.cpp:31</code>, <code>:60</code> and <code>:80</code>.
+  <code>Engine/Memory/Optional.cpp</code>, <code>:60</code> and <code>:80</code>.
 </p>
 
 <div class="gap">
@@ -88,7 +88,7 @@
   <code>TType</code> is the size of the <em>referent</em>. Measured on this machine: with
   <code>TType = int&amp;</code>, <code>TypeSize</code> is 8 and <code>sizeof(TType)</code> is 4.
   <code>Optional</code>'s reference branch sizes its <code>memcpy</code> by <code>sizeof(TType)</code>
-  (<code>Engine/Memory/Optional.h:211</code> for the copy, <code>:223</code> for the move) while the storage holds
+  (<code>Engine/Memory/Optional.h</code> for the copy, <code>:223</code> for the move) while the storage holds
   a pointer — so the two sizes disagree for every referent that is not pointer-sized. Reported as a finding
   against <a href="../../Memory/index.html">Memory</a>; stated here because a caller that copies storage sized by
   this trait is the same mistake, and this page is where the number is defined.

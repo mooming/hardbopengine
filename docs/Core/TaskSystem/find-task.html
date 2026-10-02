@@ -61,7 +61,7 @@
 <h2 id="description">Function description</h2>
 
 <p>
-  A forward to <code>TaskRegistry::Find</code> at <code>Engine/Core/TaskSystem.cpp:314</code>. The identity carries an
+  A forward to <code>TaskRegistry::Find</code> at <code>Engine/Core/TaskSystem.cpp</code>. The identity carries an
   index and a generation; the generation is what makes a stale identity answer <code>nullptr</code> instead of returning
   the new task that inherited the freed record.
 </p>
@@ -118,7 +118,7 @@
 }</code></pre>
 
 <p>
-  <code>Engine/Log/Logger.cpp:304-315</code>. The registry hands out an identity, and it is this call that says whether
+  <code>Engine/Log/Logger.cpp</code>. The registry hands out an identity, and it is this call that says whether
   there is a task behind it — the engine's own code checks rather than assuming, and degrades to inline flushing when the
   answer is null.
 </p>

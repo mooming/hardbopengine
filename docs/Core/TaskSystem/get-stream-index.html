@@ -61,7 +61,7 @@
 <h2 id="description">Function description</h2>
 
 <p>
-  Defined at <code>Engine/Core/TaskSystem.cpp:682</code>. The two accessors answer the same question from opposite ends: a
+  Defined in <code>Engine/Core/TaskSystem.cpp</code> as <code>TaskSystem::GetStreamIndex()</code>. The two accessors answer the same question from opposite ends: a
   thread asks its own <code>thread_local</code> index with
   <a href="get-current-stream-index.html">GetCurrentStreamIndex</a>, while a third party holding a
   <code>std::thread::id</code> asks this one, which searches.
@@ -75,26 +75,26 @@
   <tr><th>Stream</th><th>When its thread id is recorded</th><th>Which thread it names</th></tr>
   <tr>
     <td>Base (0)</td>
-    <td><code>TaskStream::Start</code>, <code>Engine/Core/TaskStream.cpp:305-307</code></td>
+    <td><code>TaskStream::Start</code>, <code>Engine/Core/TaskStream.cpp</code></td>
     <td>The thread that called <a href="initialize.html">Initialize</a> — the engine loop. This is the value
       <a href="../../Test/TestHelper/drive-until.html"><code>TestHelper::DriveUntil</code></a> compares itself against</td>
   </tr>
   <tr>
     <td>IO (1)</td>
-    <td>On the first driven pass, <code>Engine/Core/TaskStream.cpp:328-330</code></td>
+    <td>On the first driven pass, <code>Engine/Core/TaskStream.cpp</code></td>
     <td>The logger's thread. Until that first pass the stream has no id to match, so this function returns
       <a href="get-current-stream-index.html">NonStreamIndex</a> for the logger's own thread</td>
   </tr>
   <tr>
     <td>Workers (2 up)</td>
-    <td><code>TaskStream::RunLoop</code>, <code>Engine/Core/TaskStream.cpp:712</code></td>
+    <td><code>TaskStream::RunLoop</code>, <code>Engine/Core/TaskStream.cpp</code></td>
     <td>The stream's own thread, as soon as it begins</td>
   </tr>
 </table>
 
 <div class="gap">
   <strong>The field this scan reads is not synchronised.</strong> <code>TThreadID threadID</code>
-  (<code>Engine/Core/TaskStream.h:78</code>) is a plain <code>std::thread::id</code> — not atomic, not written under a lock. It
+  (<code>Engine/Core/TaskStream.h</code>) is a plain <code>std::thread::id</code> — not atomic, not written under a lock. It
   is written by the owning or driving thread and read by this function, which any thread may call, so a scan that runs while a
   stream is recording its id for the first time is a data race in the standard's terms. In practice the type is a small
   trivially-copyable value and the engine's own reads are few — this scan, and

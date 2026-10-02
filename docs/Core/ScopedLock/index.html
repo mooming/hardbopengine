@@ -78,7 +78,7 @@
 <p>
   The type exists in two build shapes. When <code>PROFILE_ENABLED</code> is 1 the guard additionally records
   the clock at entry, a timeout threshold and the call site, and the destructor warns through the Log module
-  when the scope outstayed the threshold. When it is 0 — the value <code>Engine/Config/BuildConfig.h:39</code>
+  when the scope outstayed the threshold. When it is 0 — the value <code>Engine/Config/BuildConfig.h</code>
   defines today, which no build configuration in this repository overrides — the timing members do not exist,
   and the extra constructors that would fill them accept their arguments and discard them, so one call-site
   spelling works in both shapes. See
@@ -227,7 +227,7 @@
   <tr>
     <td><code>hbe::source_location</code></td>
     <td>
-      Forward-declared at <code>Engine/Memory/MemoryManager.h:22</code>; a grep across
+      Forward-declared in <code>Engine/Memory/MemoryManager.h</code>; a grep across
       <code>Engine/</code>, <code>Applications/</code> and <code>Examples/</code> finds no definition. Every
       use in this header sits behind <code>PROFILE_ENABLED</code>, which
       <code>Engine/Config/BuildConfig.h</code> defines as <code>0</code> in all shipped configurations, so no

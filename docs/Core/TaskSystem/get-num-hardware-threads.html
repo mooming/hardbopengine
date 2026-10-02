@@ -63,7 +63,7 @@
 <p>
   A read and a cast. The standard library returns <code>unsigned int</code> and documents the result as a hint; here it
   arrives narrowed to <code>TIndex</code>, which is <code>int</code>
-  (<code>Engine/Container/Array.h:20</code>). Nothing else is examined: no affinity query, no reservation, no minimum.
+  (<code>Engine/Container/Array.h</code>). Nothing else is examined: no affinity query, no reservation, no minimum.
 </p>
 
 <p>
@@ -71,7 +71,7 @@
   <code>numHardwareThreads</code> for the life of the object, and that number <em>is</em> the stream array's size:
   <a href="build-streams.html">BuildStreams</a> builds <code>numHardwareThreads</code> streams — the base stream, the IO
   stream, and one worker per remaining core. Fewer than <code>ENGINE_MIN_HARDWARE_THREADS</code> (4,
-  <code>Engine/Config/BuildConfig.h:21</code>) stops the engine at a <code>FatalAssert</code> inside
+  <code>Engine/Config/BuildConfig.h</code>) stops the engine at a <code>FatalAssert</code> inside
   <a href="build-streams.html">BuildStreams</a>, so the smallest configuration this engine runs on has two worker streams and
   never fewer.
 </p>
@@ -119,7 +119,7 @@
 }</code></pre>
 
 <p>
-  Read once, at construction, and never re-read (<code>Engine/Core/TaskSystem.cpp:83</code>). Cores that appear later
+  Read once, at construction, and never re-read (<code>Engine/Core/TaskSystem.cpp</code>). Cores that appear later
   — CPU hot-add, or a cgroup limit raised at runtime — do not add streams, because nothing asks the question again.
 </p>
 <footer class="prevnext">

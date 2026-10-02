@@ -85,11 +85,11 @@
 
 <p>
   For the reference case the tag selects the branch that stores the referent's <em>address</em> and destroys
-  nothing: <code>ConstructAt(True_t, …)</code> at <code>Engine/Memory/Optional.h:183</code> writes a
-  <code>void*</code> into the storage at <code>Engine/Memory/Optional.h:192</code>,
+  nothing: <code>ConstructAt(True_t, …)</code> at <code>Engine/Memory/Optional.h</code> writes a
+  <code>void*</code> into the storage at <code>Engine/Memory/Optional.h</code>,
   <code>GetValue(True_t)</code> reads that pointer back and dereferences it at
-  <code>Engine/Memory/Optional.h:234</code>, and <code>Destroy(True_t)</code> at
-  <code>Engine/Memory/Optional.h:264</code> only clears the <code>hasValue</code> flag, because ending a
+  <code>Engine/Memory/Optional.h</code>, and <code>Destroy(True_t)</code> at
+  <code>Engine/Memory/Optional.h</code> only clears the <code>hasValue</code> flag, because ending a
   reference ends nothing. The paired <a href="../False_t/index.html"><code>False_t</code></a> branches construct,
   assign and explicitly call the destructor instead.
 </p>
@@ -112,7 +112,7 @@
 
 <p>
   None — there is no alias, no constant and no field in this class. The declaration is
-  <code>class True_t final { };</code> at <code>Engine/Core/CommonUtil.h:9</code>.
+  <code>class True_t final { };</code> at <code>Engine/Core/CommonUtil.h</code>.
 </p>
 
 <h2 id="methods">Class methods</h2>

@@ -81,7 +81,7 @@
 <div class="note">
   <strong>The release path rewinds the state before it disables.</strong> For <code>DEAD</code> the transition is
   <code>SetState(SLEEP)</code>, then <code>OnDisable()</code>, then <code>SetState(DEAD)</code>, then
-  <code>Release()</code> — <code>Engine/Core/ComponentSystem.h:117</code> through <code>:121</code>. A component
+  <code>Release()</code> — <code>Engine/Core/ComponentSystem.h</code> through <code>:121</code>. A component
   that reads its own state inside <code>OnDisable()</code> therefore sees <code>SLEEP</code>, never
   <code>DEAD</code>, and code that tests for <code>DEAD</code> there is testing something that cannot be true at that
   moment.
@@ -98,18 +98,18 @@
   <tr>
     <td><code>NONE</code></td><td><code>= 0</code></td>
     <td><span class="badge">enumerator</span> The state a component holds straight after
-      <code>Component::Component(const char*)</code> at <code>Engine/Core/Component.h:29</code>: constructed, not yet
+      <code>Component::Component(const char*)</code> at <code>Engine/Core/Component.h</code>: constructed, not yet
       registered with a system. Reaching the transition switch in this state asserts</td>
   </tr>
   <tr>
     <td><code>BORN</code></td><td><code>= 1</code></td>
-    <td><span class="badge">enumerator</span> Set by <code>ComponentSystem.h:55</code> when a component is added.
-      The unit tests assert this value after registration (<code>Engine/Core/ComponentSystem.cpp:90</code>). Not a
+    <td><span class="badge">enumerator</span> Set by <code>ComponentSystem::Create()</code> when a component is added.
+      The unit tests assert this value after registration (<code>Engine/Core/ComponentSystem.cpp</code>). Not a
       valid state at transition time</td>
   </tr>
   <tr>
     <td><code>ALIVE</code></td><td><code>= 2</code></td>
-    <td><span class="badge">enumerator</span> Enabled and updated. <code>ComponentSystem.h:73</code> sets it, and
+    <td><span class="badge">enumerator</span> Enabled and updated. <code>ComponentSystem::ProcessInit()</code> sets it, and
       <code>SetEnable(true)</code> sets it. The transition switch calls <code>OnEnable()</code> and puts the
       component on the update list</td>
   </tr>
@@ -170,7 +170,7 @@
   <tr>
     <td>The assert text on the <code>default</code> path</td>
     <td>
-      <code>ComponentSystem.h:122</code> onward formats the offending value with a <code>%d</code> conversion, which
+      The <code>default</code> path of <code>ComponentSystem::ProcessTransition()</code> formats the offending value with a <code>%d</code> conversion, which
       is why an unexpected state is reported as a number and not a name even though the name operator above exists.
       Formatting and severity belong to <a href="../../Log/index.html">Log</a>
     </td>

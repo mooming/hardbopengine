@@ -61,7 +61,7 @@
 <h2 id="description">Function description</h2>
 
 <p>
-  Defined at <code>Engine/Core/TaskSystem.cpp:388</code>. An allowance that closes nothing is a measurement that changes no
+  Defined in <code>Engine/Core/TaskSystem.cpp</code> as <code>TaskSystem::RunBudgetWindowPass()</code>. An allowance that closes nothing is a measurement that changes no
   decision, which makes it a syscall billed per task for nothing. The window is what makes an allowance mean "per frame
   period" — the yardstick every budget in the engine is measured against, from the same
   <code>GetBaseFramePeriod</code> that <a href="update.html">Update</a> uses for its deadline, so the two cannot drift apart.
@@ -76,7 +76,7 @@
 <div class="note">
   <strong>Nothing here writes a budget.</strong> Each stream is <em>signalled</em> and reopens itself on its next pass, where
   <code>windowAdvanceRequested.exchange(false)</code> triggers <code>budget.Reset()</code> and ends the drain round
-  (<code>Engine/Core/TaskStream.cpp:377-381</code>). A budget charges the CPU time of the thread that owns it, and a reset
+  (<code>Engine/Core/TaskStream.cpp</code>). A budget charges the CPU time of the thread that owns it, and a reset
   executed elsewhere would race that thread's <code>BeginTask</code> / <code>EndTask</code> pairing on the very fields that
   decide whether a charge is one task or a thread's whole life.
 </div>
@@ -84,7 +84,7 @@
 <div class="gap">
   <strong>Its one caller is the base stream's own pass, and the timing state is unsynchronised on purpose.</strong> The call
   sits inside the base stream's update, guarded by <code>streamIndex == BaseStreamIndex</code>
-  (<code>Engine/Core/TaskStream.cpp:390-393</code>), which is reached through
+  (<code>Engine/Core/TaskStream.cpp</code>), which is reached through
   <a href="update.html">Update</a>. <code>lastBudgetWindowAdvance</code> is a plain field with no lock, because a second caller
   would need one just to decide a timestamp. A second caller also breaks the assumption the streams make about who reopens
   them: a thread that stops driving the base stream stops advancing every stream's window with it, and a stream whose
@@ -113,7 +113,7 @@
 }</code></pre>
 
 <p>
-  <code>Engine/Core/TaskStream.cpp:390-393</code> — the only engine call site, inside the base stream's pass. The task-system
+  <code>Engine/Core/TaskStream.cpp</code> — the only engine call site, inside the base stream's pass. The task-system
   unit tests have a helper that does the same thing from a test thread, for the reason stated above: a test that merely waited
   was waiting for itself to be scheduled, because advancing windows is the job of the thread the test occupies.
 </p>

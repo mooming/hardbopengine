@@ -62,7 +62,7 @@
 
 <p>
   A process has exactly one of these, and it is a direct member of <code>Engine</code> at
-  <code>Engine/Engine/Engine.h:48</code> — not heap-allocated, not registered anywhere. Constructing an
+  <code>Engine/Engine/Engine.h</code> — not heap-allocated, not registered anywhere. Constructing an
   <code>Engine</code> therefore constructs the task system, on whatever thread the application constructed the engine
   on.
 </p>
@@ -81,7 +81,7 @@
   <a href="get-num-hardware-threads.html">GetNumHardwareThreads</a> returns
   <code>std::thread::hardware_concurrency()</code> unchanged, and that call is permitted to report
   <code>0</code> when the count is unrepresentable or simply not determined. The <code>FatalAssert</code> at
-  <code>Engine/Core/TaskSystem.cpp:86</code> turns a <code>0</code> into a halt at construction rather than a task
+  <code>Engine/Core/TaskSystem.cpp</code> turns a <code>0</code> into a halt at construction rather than a task
   system that owns no streams and pumps nothing, which is the cheaper failure: the alternative is an engine that
   starts and never runs a task.
 </div>
@@ -121,7 +121,7 @@
 };</code></pre>
 
 <p>
-  The declaration is the whole call site, at <code>Engine/Engine/Engine.h:48</code>. Because it is a member and not a
+  The declaration is the whole call site, at <code>Engine/Engine/Engine.h</code>. Because it is a member and not a
   pointer, the task system is constructed during <code>Engine</code>'s own construction and destroyed during its
   destruction, which is why the destructor is a real teardown path and not a formality — see
   <a href="destructor.html">destructor</a>. Its position in the block also fixes the order: the logger is constructed

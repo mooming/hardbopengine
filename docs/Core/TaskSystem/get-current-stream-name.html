@@ -61,10 +61,10 @@
 <h2 id="description">Function description</h2>
 
 <p>
-  Reads <code>thread_local StaticString ThreadName</code> (<code>Engine/Core/TaskSystem.cpp:23</code>), which is written
+  Reads <code>thread_local StaticString ThreadName</code> (<code>Engine/Core/TaskSystem.cpp</code>), which is written
   only by <a href="set-thread-name.html">SetThreadName</a>. There is exactly one name stored per thread, and this
   function and <a href="get-current-thread-name.html">GetCurrentThreadName</a> are two doors onto it: their bodies are
-  the same <code>return ThreadName;</code> at <code>Engine/Core/TaskSystem.cpp:45</code> and
+  the same <code>return ThreadName;</code> at <code>Engine/Core/TaskSystem.cpp</code> and
   <code>:50</code>.
 </p>
 
@@ -103,7 +103,7 @@
 
 <p class="note">Illustrative — <code>GetCurrentStreamName</code> has no call site anywhere in <code>Engine/</code>,
 <code>Applications/</code> or <code>Examples/</code>; only its definition at
-<code>Engine/Core/TaskSystem.cpp:45</code> mentions it.</p>
+<code>Engine/Core/TaskSystem.cpp</code> mentions it.</p>
 
 <pre><code><span class="kw">auto</span> log = Logger::Get(<span class="st">"MyCode"</span>);
 log.Out([&amp;](<span class="kw">auto</span>&amp; ls) { ls &lt;&lt; <span class="st">"running on "</span> &lt;&lt; <span class="ty">TaskSystem</span>::<span class="fn">GetCurrentStreamName</span>().c_str(); });</code></pre>
@@ -111,7 +111,7 @@ log.Out([&amp;](<span class="kw">auto</span>&amp; ls) { ls &lt;&lt; <span class=
 <p>
   Its twin does have a real use: the task-system unit tests print <code>GetCurrentThreadName()</code> beside
   <code>GetCurrentStreamIndex()</code> when a stream-identity assertion fails
-  (<code>Engine/Core/TaskSystem.cpp:2101-2105</code>). Both names would print the same word there, which is the plainest
+  (<code>Engine/Core/TaskSystem.cpp</code>). Both names would print the same word there, which is the plainest
   evidence that the pair is one variable seen twice.
 </p>
 <footer class="prevnext">

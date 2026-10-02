@@ -79,7 +79,7 @@
 </p>
 
 <p>
-  It is used in production, not only in tests. <code>Engine/Core/TaskStream.cpp:546</code> wraps one around
+  It is used in production, not only in tests. <code>Engine/Core/TaskStream.cpp</code> wraps one around
   <code>workItem-&gt;Run(*task)</code> inside a nested block, so the timer is destroyed — and the duration written —
   before the surrounding code reads that duration and compares it against the <code>CPUBudget</code> allowance
   accumulated around it:
@@ -193,7 +193,7 @@
     <td>Clock identity</td>
     <td>
       <code>time::GetNow()</code> returns <code>std::chrono::steady_clock::now()</code>
-      (<code>Engine/Core/Time.h:16</code>) while <code>TTime</code> is a time point over
+      (<code>Engine/Core/Time.h</code>) while <code>TTime</code> is a time point over
       <code>high_resolution_clock</code>. That compiles here because a probe confirmed the two clock types are the same
       type on this toolchain. On a toolchain where they are distinct, mixing the two APIs would not compile — stated so
       that a reader does not treat the mix as portable

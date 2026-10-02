@@ -61,7 +61,7 @@
 <h2 id="description">Function description</h2>
 
 <p>
-  A forward to <code>TaskRegistry::SetSuccessor</code>, defined at <code>Engine/Core/TaskSystem.cpp:322</code>. One task
+  A forward to <code>TaskRegistry::SetSuccessor</code>, defined in <code>Engine/Core/TaskSystem.cpp</code>. One task
   records one successor; when the producer's join closes, the thread that closed the join calls
   <a href="dispatch-successor.html">DispatchSuccessor</a>, which reads this record. Chains need no engine machinery: the
   successor's own work item closes its join the same way and dispatches in turn, so A can wake B and B wake C without the

@@ -64,7 +64,7 @@
   One comparison of the <code>thread_local</code> index against <code>BaseStreamIndex</code>, which is
   <code>0</code>. It is true while the caller is inside a base-stream drain pass, which on this engine means on the
   engine-loop thread with the claim that <code>TaskStream::Update</code> takes for the length of the pass
-  (<code>Engine/Core/TaskStream.cpp:365-369</code>). One statement outside that pass the same thread answers false,
+  (<code>Engine/Core/TaskStream.cpp</code>). One statement outside that pass the same thread answers false,
   because the claim is restored — see <a href="set-stream-index.html">SetStreamIndex</a>.
 </p>
 
@@ -78,6 +78,14 @@
   <a href="build-streams.html">BuildStreams</a> pass on any thread at all. It is now a real question; it still is not
   the question "am I the constructing thread".
 </div>
+
+<pre><code>const TStreamIndex previousStreamIndex = TaskSystem::GetCurrentStreamIndex();
+TaskSystem::SetStreamIndex(streamIndex);
+AllocatorScope scope(allocator);
+
+auto restore = [&amp;]() { TaskSystem::SetStreamIndex(previousStreamIndex); };</code></pre>
+
+<p class="meta">From Engine/Core/TaskStream.cpp, TaskStream::Update()</p>
 
 <h2 id="parameters">Parameters</h2>
 
@@ -97,7 +105,7 @@
 <h2 id="example">Examples</h2>
 
 <p class="note">Illustrative — <code>IsBaseThread</code> has no call site in the repository; its unit-test use at
-<code>Engine/Core/TaskSystem.cpp:2103</code> prints the value rather than branching on it.</p>
+<code>Engine/Core/TaskSystem.cpp</code> prints the value rather than branching on it.</p>
 
 <pre><code><span class="kw">if</span> (<span class="ty">TaskSystem</span>::<span class="fn">IsBaseThread</span>())
 {

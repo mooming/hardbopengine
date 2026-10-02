@@ -63,13 +63,13 @@
 <p>
   Two field writes on the task record, guarded by <a href="find-task.html">FindTask</a>. The handler type is
   <code>void (*)(TaskID abandonedTask, void* userData) noexcept</code>
-  (<code>Engine/Core/WorkItem.h:18</code>). A task nobody asked about notifies nobody: the record's default is
+  (<code>Engine/Core/WorkItem.h</code>). A task nobody asked about notifies nobody: the record's default is
   <code>nullptr</code>, and the engine checks that pointer before every call.
 </p>
 
 <p>
   The notice is set on the <em>task</em> and each work item copies it at generation
-  (<code>Engine/Core/WorkItem.cpp:41</code>), so one call covers every item the task later produces — a
+  (<code>Engine/Core/WorkItem.cpp</code>), so one call covers every item the task later produces — a
   <a href="parallel-for.html">ParallelFor</a> split needs one notice for its dozen sub-jobs, not one per item.
 </p>
 
@@ -81,17 +81,17 @@
   <tr><th>Drop</th><th>Where</th><th>Also reported by the engine</th></tr>
   <tr>
     <td>The task was released between the queueing and the take</td>
-    <td><code>Engine/Core/TaskStream.cpp:515-521</code></td>
+    <td><code>Engine/Core/TaskStream.cpp</code></td>
     <td><code>ReportReleasedTask</code></td>
   </tr>
   <tr>
     <td>The item aged out — the drain policy judged it too old to be worth starting</td>
-    <td><code>Engine/Core/TaskStream.cpp:527-533</code></td>
+    <td><code>Engine/Core/TaskStream.cpp</code></td>
     <td><code>ReportAgedOutWorkItem</code>, with the age</td>
   </tr>
   <tr>
     <td>The stream closed with work still held</td>
-    <td><code>AbandonHeldWork</code>, <code>Engine/Core/TaskStream.cpp:640-659</code></td>
+    <td><code>AbandonHeldWork</code>, <code>Engine/Core/TaskStream.cpp</code></td>
     <td>The shutdown report in <a href="join-and-clear.html">JoinAndClear</a>, for base-stream work</td>
   </tr>
 </table>
@@ -143,7 +143,7 @@
 <h2 id="example">Examples</h2>
 
 <p class="note">Illustrative — no engine code calls this; the task-system unit tests exercise it with a probe handler and a
-sentinel user-data pointer, asserting both arrive intact (<code>Engine/Core/TaskSystem.cpp:1228-1246</code>).</p>
+sentinel user-data pointer, asserting both arrive intact (<code>Engine/Core/TaskSystem.cpp</code>).</p>
 
 <pre><code><span class="kw">void</span> OnDropped(<span class="ty">TaskID</span> dropped, <span class="kw">void</span>* userData) noexcept
 {

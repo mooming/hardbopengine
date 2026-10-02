@@ -61,7 +61,7 @@
 <h2 id="description">Function description</h2>
 
 <p>
-  A forward to <code>TaskRegistry::Release</code> at <code>Engine/Core/TaskSystem.cpp:319</code>. The record's memory is
+  A forward to <code>TaskRegistry::Release</code> at <code>Engine/Core/TaskSystem.cpp</code>. The record's memory is
   not freed — the registry keeps its banks for the life of the table — but the generation advances, so every
   <code>TaskID</code> naming that slot from before now resolves to <code>nullptr</code> through
   <a href="find-task.html">FindTask</a>. That is the whole stale-identity defence in this engine, and it only works if

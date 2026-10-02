@@ -63,7 +63,7 @@
 
 <p>
   One assignment to <code>thread_local TIndex StreamIndex</code>, declared at
-  <code>Engine/Core/TaskSystem.cpp:24</code> and initialised to <a href="index.html#properties">NonStreamIndex</a>.
+  <code>Engine/Core/TaskSystem.cpp</code> and initialised to <a href="index.html#properties">NonStreamIndex</a>.
   A thread that nobody has called this for is not a stream, and nothing can tell it apart from a stream that has gone
   away — the value is the whole distinction.
 </p>
@@ -76,12 +76,12 @@
   <tr><th>Shape</th><th>Where</th><th>Duration of the claim</th></tr>
   <tr>
     <td>Permanent claim</td>
-    <td><code>TaskStream::RunLoop</code>, <code>Engine/Core/TaskStream.cpp:707</code></td>
+    <td><code>TaskStream::RunLoop</code>, <code>Engine/Core/TaskStream.cpp</code></td>
     <td>For the life of the thread. A stream that owns its own thread is that stream and nothing else</td>
   </tr>
   <tr>
     <td>Pass-scoped claim</td>
-    <td><code>TaskStream::Update</code>, <code>Engine/Core/TaskStream.cpp:365-369</code></td>
+    <td><code>TaskStream::Update</code>, <code>Engine/Core/TaskStream.cpp</code></td>
     <td>One drain pass. The previous index is saved first and restored on the way out, because a driven stream shares
       its driver thread with whatever else that thread does</td>
   </tr>
@@ -95,6 +95,19 @@
   <a href="index.html#properties">NonStreamIndex</a> keeps charging work to a stream it is no longer serving,
   and nothing detects it: the value is a bare integer with no owner to check it against.
 </div>
+
+<pre><code>const TStreamIndex previousStreamIndex = TaskSystem::GetCurrentStreamIndex();
+TaskSystem::SetStreamIndex(streamIndex);
+AllocatorScope scope(allocator);
+
+auto restore = [&amp;]() { TaskSystem::SetStreamIndex(previousStreamIndex); };</code></pre>
+
+<p class="meta">From Engine/Core/TaskStream.cpp, TaskStream::Update() — a driven stream lends its driver thread, so the claim is taken and handed back per pass</p>
+
+<pre><code>TaskSystem::SetThreadName(name);
+TaskSystem::SetStreamIndex(streamIndex);</code></pre>
+
+<p class="meta">From Engine/Core/TaskStream.cpp, TaskStream::RunLoop() — a stream that owns its thread claims its index once, for the life of the thread</p>
 
 <h2 id="parameters">Parameters</h2>
 

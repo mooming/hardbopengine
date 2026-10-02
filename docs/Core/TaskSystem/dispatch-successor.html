@@ -61,7 +61,7 @@
 <h2 id="description">Function description</h2>
 
 <p>
-  Defined at <code>Engine/Core/TaskSystem.cpp:412</code>. This is the arrow between two tasks, and the thread that closed
+  Defined in <code>Engine/Core/TaskSystem.cpp</code> as <code>TaskSystem::DispatchSuccessor()</code>. This is the arrow between two tasks, and the thread that closed
   the join runs it — whichever worker happened to finish the last work item, not a thread chosen for the purpose. Nothing
   accumulates in between: there is no completion buffer, no per-stream queue of finished tasks, no scan of the registry. A
   task carries its own outcome, so the outcome is already in the hands of the thread holding the task, and one enqueue is
@@ -171,7 +171,7 @@
 }</code></pre>
 
 <p>
-  <code>Engine/Core/TaskStream.cpp:545-550</code>. <code>WorkItem::Run</code> returns true only for the item that closed
+  <code>Engine/Core/TaskStream.cpp</code>. <code>WorkItem::Run</code> returns true only for the item that closed
   the join, so exactly one of a task's items reaches this line, and it reaches it on the thread that finished the work.
   That is what makes the shape free at any chain depth: A wakes B by one push, B wakes C by another, and no stack grows
   past one link.

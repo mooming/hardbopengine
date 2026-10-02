@@ -60,7 +60,7 @@
 <h2 id="description">Function description</h2>
 
 <p>
-  Returns the constant <code>IOStreamIndex</code> (<code>Engine/Core/TaskSystem.h:30</code>), which is <code>1</code>.
+  Returns the constant <code>IOStreamIndex</code> (<code>Engine/Core/TaskSystem.h</code>), which is <code>1</code>.
   Stream 0 is the base stream and stream 1 is the IO stream; everything from index 2 up is a worker created by
   <a href="build-streams.html">BuildStreams</a>, one per hardware thread past those two.
 </p>
@@ -104,7 +104,7 @@
 
 <p>
   The worker-range computation inside <a href="parallel-for.html">ParallelFor</a>, at
-  <code>Engine/Core/TaskSystem.cpp:537-538</code>. Expressed as an offset from the IO stream rather than as the literal
+  <code>Engine/Core/TaskSystem.cpp</code>. Expressed as an offset from the IO stream rather than as the literal
   <code>2</code>, so the two reserved streams can be re-ordered without every range in the engine moving with them.
 </p>
 <footer class="prevnext">

@@ -58,6 +58,10 @@ exist). Never copy a claim from a guide into an HTML page without seeing it in t
 State contracts, ownership, thread-safety, preconditions, complexity, and what breaks. Do not restate the
 signature in prose, and do not pad. A getter page may be six lines; that is correct, not lazy.
 
+**A location claim is file plus symbol, never `file:line`** (§5a), and where the specific lines are the
+contract the page shows them (§5a.2). A line number is the one kind of citation a change somewhere else in
+the file invalidates — silently, in bulk, and always in the same direction.
+
 ## 3. Page outline — fixed by AGENTS.md
 
 **Class page:** Class description → Template parameters → Class properties → Class methods → Non-member helper
@@ -168,6 +172,21 @@ Examples section and the rules below.
    defines, the example section states that plainly and explains the consequence — a call does not link — instead
    of showing a snippet that could not build. This is not a gap in your work; it is a finding about the module,
    and it belongs on the page, in Coverage, and in your report.
+
+### 5a. Citing a location — file and symbol, never `file:line`
+
+1. **Cite the file and the symbol.** `Engine/Core/TaskStream.cpp`, `TaskStream::Update()`. Where a definition is
+   being named, give it the spelling a reader would grep: *Defined in `Engine/Core/TaskSystem.cpp` as
+   `TaskSystem::Update()`*. `Engine/X.cpp:174` is a claim about a file that moves: one include removed above it
+   invalidates every number below, which is how 11 of Core's 14 `Defined at` claims went stale at once, from an
+   uncommitted formatting edit, all in the same direction. A symbol survives that.
+2. **Where the exact lines are the contract, print them.** A clamp, a lock scope, a guard that fires on one
+   branch only, a call in the order that matters — a symbol name does not carry those, so the page quotes them.
+   `<p class="meta">From Engine/Core/TaskStream.cpp, TaskStream::Update()</p>` under the block, one block per
+   function, and `…` where lines between two quoted groups are elided.
+3. **Quote code only.** A comment inside a quoted region is text the comment ban is scheduled to delete, and the
+   page would then reproduce a sentence that exists nowhere. What a deleted comment was worth goes into the
+   page's prose, not into its quotation.
 
 ## 6. Callout boxes
 

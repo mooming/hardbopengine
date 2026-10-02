@@ -72,7 +72,7 @@
 
 <p>
   That shape is consistent with the rule this engine actually follows: <code>docs/CodingStandards.md</code> states
-  <em>the engine is exception-free; do not use C++ exceptions</em>, and <code>Engine/CodingStandards.h:332</code>
+  <em>the engine is exception-free; do not use C++ exceptions</em>, and <code>Engine/CodingStandards.h</code>
   records that no <code>try</code>, <code>catch</code> or <code>throw</code> appears anywhere. Error paths report
   through the Log module and return, or assert. So <code>Exception</code> is best read as the mechanism for the one
   spelling that rule forbids: write <code>throw Exception(__FILE__, __LINE__, "bad size ", size)</code> and the
@@ -92,7 +92,7 @@
 <div class="note">
   <strong>No throw site exists.</strong> A grep of <code>Engine/</code>, <code>Applications/</code> and
   <code>Examples/</code> finds no construction of this type. Its single appearance outside its own header is the
-  <code>#include</code> at <code>Engine/Test/TestEnv.cpp:10</code>, where the file never names the type again — a
+  <code>#include</code> at <code>Engine/Test/TestEnv.cpp</code>, where the file never names the type again — a
   stale include, not a use. See <a href="#coverage">Coverage</a>.
 </div>
 

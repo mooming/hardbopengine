@@ -61,7 +61,7 @@
 <h2 id="description">Function description</h2>
 
 <p>
-  One forward to <code>TaskRegistry::Create</code> at <code>Engine/Core/TaskSystem.cpp:309</code>. It exists so that
+  One forward to <code>TaskRegistry::Create</code> at <code>Engine/Core/TaskSystem.cpp</code>. It exists so that
   callers reach the registry through the task system rather than holding the registry itself —
   <a href="get-registry.html">GetRegistry</a> is the door to that, and it is narrower on purpose.
 </p>
@@ -143,7 +143,7 @@
 taskSys.<span class="fn">EnqueueTask</span>(ioStreamIndex, *drainTask);</code></pre>
 
 <p>
-  <code>Engine/Log/Logger.cpp:304-317</code>, where the logger registers the task that writes its queue. This is the
+  <code>Engine/Log/Logger.cpp</code>, where the logger registers the task that writes its queue. This is the
   refusal path being honoured by the engine's own code: a null record is not ignored and not retried, it changes what the
   logger does — log lines get flushed inline by whoever produces them, and the IO stream is never asked to run a task
   that does not exist. The same file shows the pairing this call expects: <code>CreateTask</code> then

@@ -60,7 +60,7 @@
 <h2 id="description">Function description</h2>
 
 <p>
-  A forward to <code>TaskRegistry::GetSuccessor</code>, defined at <code>Engine/Core/TaskSystem.cpp:327</code>. It reads one field of the producer's record and returns
+  A forward to <code>TaskRegistry::GetSuccessor</code>, defined in <code>Engine/Core/TaskSystem.cpp</code>. It reads one field of the producer's record and returns
   it. A null identity means no successor was recorded — which is the normal case, and the fire-and-forget case, and the
   case where routing was never attempted because <a href="parallel-for.html">ParallelFor</a> refused the call before
   getting as far as <a href="set-successor.html">SetSuccessor</a>.

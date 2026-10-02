@@ -74,7 +74,7 @@
   Stream insertion for the enumeration, so a <a href="../index.html#component"><code>Component</code></a>'s state can
   be reported as <code>ALIVE</code> instead of <code>2</code>. The mechanism is a table lookup: the enumerator is cast
   to <code>int</code> and used to index <code>names</code>, a function-local <code>static</code> array of five string
-  literals at <code>Engine/Core/ComponentState.h:23</code>.
+  literals at <code>Engine/Core/ComponentState.h</code>.
 </p>
 
 <p>
@@ -87,7 +87,7 @@
 <div class="gap">
   <strong>The index is unchecked.</strong> <code>names</code> holds five entries and
   <code>static_cast&lt;int&gt;(state)</code> is not constrained before it is used at
-  <code>Engine/Core/ComponentState.h:25</code>, so any value outside 0 to 4 reads outside the array. The type makes
+  <code>Engine/Core/ComponentState.h</code>, so any value outside 0 to 4 reads outside the array. The type makes
   such a value reachable: the underlying type is <code>int</code>, so
   <code>static_cast&lt;ComponentState&gt;(99)</code> is a well-formed <code>ComponentState</code> that no accessor in
   this engine would ever have produced. There is no assert, clamp or fallback string. This matters most in the place
@@ -134,7 +134,7 @@
 }</code></pre>
 
 <p>
-  A lifecycle assertion in the component-system unit tests, at <code>Engine/Core/ComponentSystem.cpp:92</code>; the
+  A lifecycle assertion in the component-system unit tests, at <code>Engine/Core/ComponentSystem.cpp</code>; the
   same idiom repeats at <code>:102</code>, <code>:119</code>, <code>:131</code> and <code>:144</code> for the other
   states. Both operands are inserted through this operator, which is why the report reads
   <code>state = SLEEP, but expected ALIVE</code> rather than a pair of numbers.

@@ -132,7 +132,7 @@
 
 <p>
   The block closes at the point the measurement should stop; <code>duration</code> is then read at
-  <code>Engine/Core/TaskStream.cpp:568</code>, converted to seconds by <code>time::ToFloat</code>, and compared against
+  <code>Engine/Core/TaskStream.cpp</code>, converted to seconds by <code>time::ToFloat</code>, and compared against
   a threshold that produces a <code>Slow DeltaTime</code> warning through <a href="../../Log/index.html">Log</a>. That
   ordering is not incidental: read before the block closes and the warning would be built on a span the destructor has
   not written yet.

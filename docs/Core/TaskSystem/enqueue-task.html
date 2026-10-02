@@ -62,7 +62,7 @@
 <h2 id="description">Function description</h2>
 
 <p>
-  Defined at <code>Engine/Core/TaskSystem.cpp:341</code>. A task declares its own join and the engine builds the item that
+  Defined in <code>Engine/Core/TaskSystem.cpp</code> as <code>TaskSystem::EnqueueTask()</code>. A task declares its own join and the engine builds the item that
   fills it, which is the only order in which those two facts can be stated without the caller knowing anything about items. A
   customer that builds an item itself has reached inside the engine for a handle it should not hold — and this is the call it
   wants instead.
@@ -157,7 +157,7 @@
 taskSys.<span class="fn">EnqueueTask</span>(ioStreamIndex, *drainTask);</code></pre>
 
 <p>
-  <code>Engine/Log/Logger.cpp:304-317</code>. The logger's drain task: created, verified, then offered to the IO stream at
+  <code>Engine/Log/Logger.cpp</code>. The logger's drain task: created, verified, then offered to the IO stream at
   default priority on the FIFO lane. It is a long-lived task in one sense only — the record stays live, and each pass over the
   log queue is the same task being run again, which is why the join is declared once here rather than per use.
 </p>

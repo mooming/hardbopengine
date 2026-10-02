@@ -61,7 +61,7 @@
 <h2 id="description">Function description</h2>
 
 <p>
-  Declared at <code>Engine/Core/TaskSystem.h:109</code> and defined at <code>Engine/Core/TaskSystem.cpp:568</code>. The
+  Declared in <code>Engine/Core/TaskSystem.h</code> and defined in <code>Engine/Core/TaskSystem.cpp</code>. The
   return type is <code>bool</code>, not the atomic: the body is one <code>load()</code> with
   <code>std::memory_order_acquire</code>, so a caller cannot store through it and cannot read a stale copy. Before the
   body moved out of the class the method returned <code>const std::atomic&lt;bool&gt;&amp;</code>, and only because
@@ -110,7 +110,7 @@
 }</code></pre>
 
 <p>
-  <code>Engine/Engine/Engine.cpp:139</code>. The loop's exit condition is the same object
+  <code>Engine/Engine/Engine.cpp</code>. The loop's exit condition is the same object
   <a href="request-shut-down.html">RequestShutDown</a> clears, which is the entire handshake between "someone wants the run
   to end" and the thread that ends it.
 </p>

@@ -88,7 +88,7 @@
   <code>time::TStopWatch::now()</code> into <code>startTime</code> <em>before</em> <code>lock()</code> runs,
   together with the timeout threshold and the call site. Under <code>__DEBUG__</code> the body then multiplies
   the stored threshold by <code>Config::DebugTimeOutMultiplier</code> (<code>2.0f</code>,
-  <code>Engine/Config/EngineConfig.h:41</code>), so a debug build tolerates twice the wall time before the
+  <code>Engine/Config/EngineConfig.h</code>), so a debug build tolerates twice the wall time before the
   destructor complains.
 </p>
 

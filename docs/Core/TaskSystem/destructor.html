@@ -61,21 +61,21 @@
 <h2 id="description">Function description</h2>
 
 <p>
-  Declared <code>noexcept</code> at <code>Engine/Core/TaskSystem.h:67</code> and defined at
-  <code>Engine/Core/TaskSystem.cpp:89</code>. Its entire body is one call.
+  Declared <code>noexcept</code> at <code>Engine/Core/TaskSystem.h</code> and defined at
+  <code>Engine/Core/TaskSystem.cpp</code>. Its entire body is one call.
 </p>
 
 <p>
   In the normal path this is a second pass over work that is already finished: <code>Engine::Run</code> calls
-  <a href="join-and-clear.html">JoinAndClear</a> itself at <code>Engine/Engine/Engine.cpp:145</code>, long before
+  <a href="join-and-clear.html">JoinAndClear</a> itself at <code>Engine/Engine/Engine.cpp</code>, long before
   <code>Engine</code> is destroyed. What reaches the destructor's call is an <code>Engine</code> that was constructed
   and never run, or one whose run was left early — and for that case the call is not a formality.
 </p>
 
 <div class="gap">
   <strong>Without this call, teardown terminates the process.</strong> Each <code>TaskStream</code>
-  owns a <code>std::thread thread</code> (<code>Engine/Core/TaskStream.h:94</code>) and declares
-  <code>~TaskStream() = default</code> (<code>Engine/Core/TaskStream.h:166</code>) — it does not join. The standard
+  owns a <code>std::thread thread</code> (<code>Engine/Core/TaskStream.h</code>) and declares
+  <code>~TaskStream() = default</code> (<code>Engine/Core/TaskStream.h</code>) — it does not join. The standard
   library is explicit about what follows: the thread destructor "destroys the thread object. If the thread is joinable
   when destroyed, <code>terminate()</code> is called." So a task system that was started and never joined would take the
   process down during member destruction, after the destructor's own body had already run and while nothing was doing

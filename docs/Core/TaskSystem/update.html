@@ -61,7 +61,7 @@
 <h2 id="description">Function description</h2>
 
 <p>
-  Defined at <code>Engine/Core/TaskSystem.cpp:174</code>. The base stream has no thread of its own — it rides the engine
+  Defined in <code>Engine/Core/TaskSystem.cpp</code> as <code>TaskSystem::Update()</code>. The base stream has no thread of its own — it rides the engine
   loop — so this call is not a tick that notifies something elsewhere; it <em>is</em> where base-stream work runs.
   <code>Engine::Run</code> calls it in a loop, and the loop's other statement is a
   <code>std::this_thread::yield()</code>.
@@ -80,10 +80,17 @@
   most of its time remaining. The deadline is a ceiling on one call, not a promise to fill it.
 </p>
 
+<pre><code>if (streamIndex == TaskSystem::BaseStreamIndex)
+{
+	taskSys.RunBudgetWindowPass();
+}</code></pre>
+
+<p class="meta">From Engine/Core/TaskStream.cpp, TaskStream::Update()</p>
+
 <div class="note">
   <strong>Advancing the CPU-budget windows is a side effect of this call.</strong> Inside the base stream's own pass, when
   its index is <code>BaseStreamIndex</code>, <a href="run-budget-window-pass.html">RunBudgetWindowPass</a> is invoked
-  (<code>Engine/Core/TaskStream.cpp:390-393</code>). So a thread that stops calling <code>Update</code> does not merely
+  (<code>Engine/Core/TaskStream.cpp</code>). So a thread that stops calling <code>Update</code> does not merely
   stop running base-stream tasks — every stream's budget window stops reopening too, and a stream whose allowance is
   spent takes nothing from its own lanes until one reopens.
 </div>
@@ -92,7 +99,7 @@
   <strong>One driver at a time, and the driver is the engine-loop thread.</strong> Every pass on a driven stream enters
   and restores the thread-local stream index and the allocator scope, precisely because a shared driver does not belong to
   that stream for its whole life
-  (<code>Engine/Core/TaskStream.h:358-362</code>). Two threads calling <code>Update</code> on the same task system put two
+  (<code>Engine/Core/TaskStream.h</code>). Two threads calling <code>Update</code> on the same task system put two
   drivers on the base stream at once, and the ownership questions the rest of the engine asks —
   <a href="is-base-thread.html">IsBaseThread</a>, the owner-thread budget asserts, which allocator a task charges to — stop
   having one answer. Nothing here detects the second driver.
@@ -121,7 +128,7 @@
 }</code></pre>
 
 <p>
-  <code>Engine/Engine/Engine.cpp:139-143</code>. The loop exits because
+  <code>Engine/Engine/Engine.cpp</code>. The loop exits because
   <a href="request-shut-down.html">RequestShutDown</a> cleared <code>isRunning</code>, and everything the run still owes
   is settled by <a href="join-and-clear.html">JoinAndClear</a> on the line after it.
 </p>

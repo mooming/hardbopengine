@@ -81,28 +81,28 @@
   <tr><th>Overload</th><th>At</th><th>What the value branch does</th></tr>
   <tr>
     <td><code>ConstructAt(False_t, Types&amp;&amp;...)</code></td>
-    <td><code>Engine/Memory/Optional.h:202</code></td>
+    <td><code>Engine/Memory/Optional.h</code></td>
     <td>placement-<code>new</code> constructs <code>TType</code> in the storage, forwarding its arguments</td>
   </tr>
   <tr>
     <td><code>CopyValue(False_t, const Optional&amp;)</code></td>
-    <td><code>Engine/Memory/Optional.h:214</code></td>
+    <td><code>Engine/Memory/Optional.h</code></td>
     <td>assigns through <code>Value() = rhs.Value()</code>, so <code>TType</code>'s own copy assignment runs</td>
   </tr>
   <tr>
     <td><code>MoveValue(False_t, Optional&amp;)</code></td>
-    <td><code>Engine/Memory/Optional.h:227</code></td>
+    <td><code>Engine/Memory/Optional.h</code></td>
     <td>assigns through <code>Value() = std::move(rhs.Value())</code>, then clears the source's <code>hasValue</code></td>
   </tr>
   <tr>
     <td><code>GetValue(False_t)</code></td>
-    <td><code>Engine/Memory/Optional.h:244</code></td>
+    <td><code>Engine/Memory/Optional.h</code></td>
     <td><code>reinterpret_cast</code> of the storage to <code>TType&amp;</code> — the object lives in place, so no
       pointer is dereferenced and no null check is needed</td>
   </tr>
   <tr>
     <td><code>Destroy(False_t)</code></td>
-    <td><code>Engine/Memory/Optional.h:269</code></td>
+    <td><code>Engine/Memory/Optional.h</code></td>
     <td>calls <code>Value().~TType()</code> explicitly when <code>hasValue</code>, then clears the flag</td>
   </tr>
 </table>
@@ -126,7 +126,7 @@
 
 <p>
   None — there is no alias, no constant and no field in this class. The declaration is
-  <code>class False_t final { };</code> at <code>Engine/Core/CommonUtil.h:13</code>.
+  <code>class False_t final { };</code> at <code>Engine/Core/CommonUtil.h</code>.
 </p>
 
 <h2 id="methods">Class methods</h2>

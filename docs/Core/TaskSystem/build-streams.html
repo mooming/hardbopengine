@@ -60,7 +60,7 @@
 
 <h2 id="description">Function description</h2>
 
-<p>Defined at <code>Engine/Core/TaskSystem.cpp:736</code>, and it is the body of what
+<p>Defined in <code>Engine/Core/TaskSystem.cpp</code> as <code>TaskSystem::BuildStreams()</code>, and it is the body of what
 <a href="initialize.html">Initialize</a> appears to do.</p>
 
 <table>
@@ -73,7 +73,7 @@
   <tr>
     <td>2</td>
     <td><code>FatalAssert(numHardwareThreads &gt;= ENGINE_MIN_HARDWARE_THREADS)</code></td>
-    <td>The minimum is 4 (<code>Engine/Config/BuildConfig.h:21</code>), so the smallest machine the engine will start on has
+    <td>The minimum is 4 (<code>Engine/Config/BuildConfig.h</code>), so the smallest machine the engine will start on has
       two worker streams — indices 2 and 3</td>
   </tr>
   <tr>
@@ -112,7 +112,7 @@
 <div class="gap">
   <strong>The thread check does not exist outside Debug builds.</strong> Step 1 calls <code>Assert</code>, and
   <code>Assert</code> is defined twice — the definition selected when <code>__DEBUG__</code> is undefined has an empty body
-  (<code>Engine/Core/Debug.h:72-79</code>). Only <code>FatalAssert</code> aborts in every configuration, and step 2 is a
+  (<code>Engine/Core/Debug.h</code>). Only <code>FatalAssert</code> aborts in every configuration, and step 2 is a
   <code>FatalAssert</code> about core counts, not about threads. So in Dev and Release a task system can be built on a thread
   that will never drive it, and the failure appears later as a run loop that never drains the base stream and a shutdown that
   joins without pumping. <a href="constructors.html">Construction</a> is what binds the identity; keeping the two on one thread
@@ -124,6 +124,23 @@
   <code>TaskStream</code> whose <code>std::thread</code> is joinable calls <code>terminate()</code> — the stream's own destructor
   is <code>= default</code> and does not join. Nothing tests whether streams already exist.
 </div>
+
+<pre><code>#else // __DEBUG__
+
+namespace hbe
+{
+inline void Assert(bool) noexcept
+{
+}
+
+template &lt;typename... Types&gt;
+void Assert(bool, Types&amp;&amp;...) noexcept
+{
+}
+} // namespace hbe
+#endif // __DEBUG__</code></pre>
+
+<p class="meta">From Engine/Core/Debug.h — the branch a shipped build compiles</p>
 
 <h2 id="parameters">Parameters</h2>
 

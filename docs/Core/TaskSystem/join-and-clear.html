@@ -60,7 +60,7 @@
 
 <h2 id="description">Function description</h2>
 
-<p>Defined at <code>Engine/Core/TaskSystem.cpp:189</code>. The order is the contract; each step is here because the
+<p>Defined in <code>Engine/Core/TaskSystem.cpp</code> as <code>TaskSystem::JoinAndClear()</code>. The order is the contract; each step is here because the
 next one breaks without it.</p>
 
 <table>
@@ -173,7 +173,7 @@ taskSystem.<span class="fn">JoinAndClear</span>();
 }</code></pre>
 
 <p>
-  <code>Engine/Engine/Engine.cpp:139-150</code>, on the thread that owns the run — the one that gets step 3. Note what
+  <code>Engine/Engine/Engine.cpp</code>, on the thread that owns the run — the one that gets step 3. Note what
   follows it: the application is released <em>after</em> the task system is joined, because an application teardown that
   posts work needs a stream still able to run it.
 </p>

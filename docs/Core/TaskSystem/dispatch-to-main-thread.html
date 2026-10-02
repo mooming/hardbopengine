@@ -61,7 +61,7 @@
 <h2 id="description">Function description</h2>
 
 <p>
-  One forward, at <code>Engine/Core/TaskSystem.cpp:668</code>, to the base stream's <code>DispatchPostedTasks</code>,
+  One forward, at <code>Engine/Core/TaskSystem.cpp</code>, to the base stream's <code>DispatchPostedTasks</code>,
   which enqueues into that stream's <code>postedTasks</code>. <code>TMainThreadTask</code> is
   <code>void (*)(void* userData)</code> — a plain callable plus one pointer, not a <code>TRunnable</code> and not a work
   item: nothing reserves a join, and nothing reports completion.
@@ -73,7 +73,7 @@
   <code>ProcessMainThreadTasks</code> to drain one of them; two queues for one thread was the reason a wait on "the main
   thread" could be satisfied by a queue the pump never read. The facility was absorbed — the base stream owns
   <code>postedTasks</code>, and the drain happens at the top of every pass
-  (<code>Engine/Core/TaskStream.cpp:353</code>), so a thread driving the stream reaches posted work without knowing it
+  (<code>Engine/Core/TaskStream.cpp</code>), so a thread driving the stream reaches posted work without knowing it
   exists. That is why the header carries a posting call and no draining call: the draining is part of
   <a href="update.html">Update</a>.
 </div>
@@ -140,7 +140,7 @@
 { <span class="kw">return</span> windowFuture.<span class="fn">wait_for</span>(<span class="kw">std</span>::chrono::seconds::zero()) == <span class="kw">std</span>::future_status::ready; });</code></pre>
 
 <p>
-  <code>Engine/OSAL/Window.cpp:65</code> and <code>:124</code> — a window-creation sequence posted to the thread that owns
+  <code>Engine/OSAL/Window.cpp</code> and <code>:124</code> — a window-creation sequence posted to the thread that owns
   window work, and a wait that drives the base stream until the posted callable fulfils the promise. The body between the
   first line and the last is elided here; it polls events for a hundred iterations before settling the promise. This is the
   file's unit-test region, built only under <code>__UNIT_TEST__</code>.

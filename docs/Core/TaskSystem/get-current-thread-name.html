@@ -61,7 +61,7 @@
 
 <p>
   Byte for byte the body of <a href="get-current-stream-name.html">GetCurrentStreamName</a>
-  (<code>Engine/Core/TaskSystem.cpp:50</code> against <code>:45</code>): both return
+  (<code>Engine/Core/TaskSystem.cpp</code> against <code>:45</code>): both return
   <code>thread_local StaticString ThreadName</code>, which only
   <a href="set-thread-name.html">SetThreadName</a> writes. The two functions cannot report different values on the same
   thread, in any state, at any time.
@@ -72,7 +72,7 @@
   the stream's name (<code>"Worker3"</code>, <code>"Base"</code>, <code>"IO"</code>) by
   <code>TaskStream::RunLoop</code>; the engine-loop thread is labelled <code>"EngineLoop"</code> by
   <a href="build-streams.html">BuildStreams</a>; and the logger's driver thread labels itself <code>"LogDriver"</code>
-  (<code>Engine/Log/Logger.cpp:205</code>) while driving the IO stream. A thread nobody named returns a
+  (<code>Engine/Log/Logger.cpp</code>) while driving the IO stream. A thread nobody named returns a
   default-constructed <code>StaticString</code> — an application thread, most of the time.
 </p>
 
@@ -118,7 +118,7 @@
 });</code></pre>
 
 <p>
-  The stream-identity report in the task-system unit tests, at <code>Engine/Core/TaskSystem.cpp:2094-2105</code>,
+  The stream-identity report in the task-system unit tests, at <code>Engine/Core/TaskSystem.cpp</code>,
   All three facts are printed together because they are three views of the same
   <code>thread_local</code> state, and a wrong one of them is the diagnosis: an index that disagrees with the name means
   a claim that was never restored.

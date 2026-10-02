@@ -60,7 +60,7 @@
 
 <h2 id="description">Function description</h2>
 
-<p>Defined at <code>Engine/Core/TaskSystem.cpp:94</code>. In order, it does five things:</p>
+<p>Defined in <code>Engine/Core/TaskSystem.cpp</code> as <code>TaskSystem::Initialize()</code>. In order, it does five things:</p>
 
 <table>
   <tr><th>Step</th><th>What happens</th><th>Visible as</th></tr>
@@ -139,7 +139,7 @@
 }</code></pre>
 
 <p>
-  <code>Engine/Engine/Engine.cpp:102-110</code>. Note what the order buys: the task system exists before the logger
+  <code>Engine/Engine/Engine.cpp</code>. Note what the order buys: the task system exists before the logger
   registers its log-writing task with it, so the log driver has a stream to be handed to. Requesting
   <code>EInitLevel::Logger</code> implies <code>EInitLevel::TaskSystem</code> a few lines earlier for the same reason.
   <code>Engine::Run</code> then refuses to start without it: <code>FatalAssert(isTaskSystemReady, "Engine::Run needs

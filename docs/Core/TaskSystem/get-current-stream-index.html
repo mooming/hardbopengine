@@ -61,13 +61,21 @@
 <h2 id="description">Function description</h2>
 
 <p>
-  Reads <code>thread_local TIndex StreamIndex</code> (<code>Engine/Core/TaskSystem.cpp:24</code>), written only by
+  Reads <code>thread_local TIndex StreamIndex</code> (<code>Engine/Core/TaskSystem.cpp</code>), written only by
   <a href="set-stream-index.html">SetStreamIndex</a> and initialised to <code>NonStreamIndex</code> —
   <code>static_cast&lt;TIndex&gt;(-1)</code>. This is the fact that
   <a href="is-base-thread.html">IsBaseThread</a> and <a href="is-io-thread.html">IsIOThread</a> are built from, and the
   one the general task queue consults when it decides whether this thread may take a work item: see
   <a href="dequeue.html">Dequeue</a>.
 </p>
+
+<pre><code>const TStreamIndex previousStreamIndex = TaskSystem::GetCurrentStreamIndex();
+TaskSystem::SetStreamIndex(streamIndex);
+AllocatorScope scope(allocator);
+
+auto restore = [&amp;]() { TaskSystem::SetStreamIndex(previousStreamIndex); };</code></pre>
+
+<p class="meta">From Engine/Core/TaskStream.cpp, TaskStream::Update()</p>
 
 <div class="note">
   <strong>Why the "no stream" value is <code>-1</code> and not <code>0</code>.</strong> Stream 0 is a real stream — the
@@ -81,7 +89,7 @@
 
 <p>
   The value is per-thread and per-pass. On the two driven streams — base and IO — it is set for the length of a drain
-  pass and restored afterwards (<code>Engine/Core/TaskStream.cpp:365-369</code>), so reading it from the same thread
+  pass and restored afterwards (<code>Engine/Core/TaskStream.cpp</code>), so reading it from the same thread
   one statement outside a pass gives <code>NonStreamIndex</code> again, not the stream that was being served a moment
   ago.
 </p>
@@ -117,7 +125,7 @@
 }</code></pre>
 
 <p>
-  The general-queue intake at <code>Engine/Core/TaskSystem.cpp:294</code>, where the returned <code>TIndex</code> is
+  The general-queue intake at <code>Engine/Core/TaskSystem.cpp</code>, where the returned <code>TIndex</code> is
   widened into <code>unsigned int</code>: <code>NonStreamIndex</code> arrives there as 4294967295, which
   <code>TaskStreamAffinity</code> ignores because it is past the mask's width — so a non-stream thread neither takes the
   item nor records a claim. The outcome is intended; it is reached by the width of the type rather than by a check, so
