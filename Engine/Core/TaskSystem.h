@@ -103,9 +103,7 @@ public:
 
 	void DispatchToMainThread(TMainThreadTask task, void* userData, uint8_t priority = 128) noexcept;
 
-
 	void ReleaseTask(TaskID id) noexcept;
-
 
 	TaskID RunSplit(StaticString taskName, TRunnable func, void* userData, TIndex numItems, TIndex numSubJobs,
 					const TIndex* streamIndices, TIndex numStreamIndices, uint8_t priority, TaskID successor,

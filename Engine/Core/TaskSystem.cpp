@@ -132,8 +132,6 @@ void TaskSystem::RequestShutDown() noexcept
 
 void TaskSystem::RequestOtherStreamsClose() noexcept
 {
-	// No streams means nothing to ask. Reaching for index 0 of an empty array is an index assert, and this path is
-	// reached a second time from the destructor after the streams have already been cleared.
 	if (!HasStream(GetBaseTaskStreamIndex()))
 	{
 		return;
@@ -141,9 +139,6 @@ void TaskSystem::RequestOtherStreamsClose() noexcept
 
 	TaskStream& baseStream = GetStream(GetBaseTaskStreamIndex());
 
-	// The IO stream stays open with the base stream, because log writing is a task that runs on it: closing the
-	// executor of the reporting before the reporting is done leaves a drain task in flight that can never run again,
-	// and every late log line then waits on it.
 	TaskStream& ioStream = GetStream(GetIOTaskStreamIndex());
 
 	for (auto& stream : streams)
@@ -157,8 +152,6 @@ void TaskSystem::RequestOtherStreamsClose() noexcept
 
 bool TaskSystem::AreOtherStreamsClosed() noexcept
 {
-
-
 	const TaskStream& baseStream = GetStream(GetBaseTaskStreamIndex());
 	const TaskStream& ioStream = GetStream(GetIOTaskStreamIndex());
 
@@ -197,8 +190,6 @@ void TaskSystem::JoinAndClear() noexcept
 {
 	const bool isEngineLoopThread = std::this_thread::get_id() == engineLoopThreadID;
 
-	// Teardown can be reached without the ordered shutdown, since the destructor is a caller. Asking is idempotent, and
-	// not asking would make the wait below one that never ends.
 	const bool hasStreams = HasStream(GetBaseTaskStreamIndex());
 
 	if (hasStreams)
@@ -210,14 +201,8 @@ void TaskSystem::JoinAndClear() noexcept
 	{
 		TaskStream& baseStream = GetStream(GetBaseTaskStreamIndex());
 
-		// Bounded for the same reason a closing stream's drain is bounded, and by the same measurement: a bound that
-		// resumable work can outrun is not a bound, and this loop asks for work rather than for an end. Without it the
-		// shutdown waits on posted work that may never be drained - found by sampling, after every test had finished
-		// and nothing else could run - so the honest outcome is a named loss rather than a process that never exits.
 		const auto pumpDeadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(2000);
 
-		// From here on this stream is pumped by shutdown, not by the engine loop. Recorded before the first pass
-		// rather than after, because the whole point is that work run by this pump cannot claim the loop ran.
 		baseStream.SetDrivenByShutdownPump();
 
 		while (std::chrono::steady_clock::now() < pumpDeadline &&
@@ -232,10 +217,6 @@ void TaskSystem::JoinAndClear() noexcept
 
 		if (hasAbandonedPostedWork || abandonedItemCount > 0)
 		{
-			// Never dropped quietly. A work item still sitting here is a promise somebody made to a customer who will
-			// not be answered, which is a hung customer rather than a finished shutdown. Posted callables are reported
-			// as present rather than counted: the queue says whether it holds any, and inventing a number here would be
-			// a guess printed as a measurement.
 			Logger::Get().AddLog(GetName(), ELogLevel::Error,
 								 [hasAbandonedPostedWork, abandonedItemCount](auto& logStream)
 			{
@@ -251,29 +232,12 @@ void TaskSystem::JoinAndClear() noexcept
 			});
 		}
 
-		// Log lines are written by a task running on a stream, so the flush that ends the run has to happen while that
-		// stream is still running its own work. Joining first leaves the flush waiting on an executor that has already
-		// exited, which is a timeout and a fatal assert rather than a shutdown.
 		Logger::Get().Flush();
 
-		// The driver thread outlives the task system, so the stream must be taken back before the streams are freed.
-		// After this the logger writes its queue directly, which keeps it working to the very last line of the process.
 		Logger::Get().SetIODriver(nullptr);
 		GetIOTaskStream().CloseDrivenStream();
 		baseStream.CloseDrivenStream();
 
-		// The base stream rides the engine loop as well, so it too never reaches RunLoop and must be closed from
-		// outside. Its close comes after the IO stream's because it is the last executor left, and the assert below
-		// refuses to destroy a stream that was never closed - which is what caught this.
-
-		// The IO stream has no thread to join and no loop that could report its own ending, so the shutdown closes it
-		// here, after the driver is withdrawn and cannot be inside a pass. Both engine streams then end inside the
-		// engine's shutdown instead of one of them ending silently whenever the logger is destroyed. The logger itself
-		// is unaffected: its thread exists before this stream does and keeps writing the log queue directly after this
-		// stream is gone.
-
-		// The reporting the shutdown exists to produce is finished, so the streams that carried it close last, and in
-		// this order: the executor of log work first, then the base stream that drove the end of the run.
 		GetStream(GetIOTaskStreamIndex()).RequestClose();
 	}
 
@@ -293,9 +257,6 @@ void TaskSystem::JoinAndClear() noexcept
 		thread.join();
 	}
 
-	// Nothing is destroyed that was not closed first. A stream left unclosed here means either a new stream kind that
-	// nobody asked to close, or a thread that is still running while its queues are being freed - and both are far
-	// cheaper to find as a named assert than as a crash in a later run.
 	for (const auto& stream : streams)
 	{
 		Assert(stream.IsClosed(), "Stream ", stream.GetName(),
@@ -774,8 +735,6 @@ const TaskStream& TaskSystem::GetIOTaskStream() const noexcept
 
 void TaskSystem::BuildStreams()
 {
-	// The old check here was IsBaseThread, which every thread passed until it was given a stream - it could not
-	// have failed. What this function actually requires is to run on the thread that will drive the engine.
 	Assert(std::this_thread::get_id() == engineLoopThreadID);
 	FatalAssert(numHardwareThreads >= ENGINE_MIN_HARDWARE_THREADS,
 				"Number of hardware threads are less than the minimum requirement");
@@ -789,7 +748,6 @@ void TaskSystem::BuildStreams()
 
 	streams.Swap(Array<TaskStream>(numHardwareThreads));
 
-	// Pre-defined Engine Task Streams
 	{
 		auto index = GetBaseTaskStreamIndex();
 		streams.Emplace(index, "Base", index);
@@ -821,7 +779,6 @@ void TaskSystem::BuildStreams()
 		stream.Start(*this);
 	}
 
-	// The IO stream has no thread to claim, so its driver is named here: the logger's own thread drives it from now on.
 	Logger::Get().SetIODriver(&GetIOTaskStream());
 }
 } // namespace hbe
@@ -842,15 +799,6 @@ namespace hbe
 namespace
 {
 
-/// @brief Advance the budget window from this thread until a predicate holds, and say whether it came to hold.
-/// @details A stream that has spent its allowance takes nothing from its own lanes - StreamDrainPolicy::ChooseLane
-///          returns None for an exhausted round - so a task queued to such a stream runs only once a window reopens
-///          it. Windows are advanced by the base stream's own thread, which is the thread a test occupies by
-///          running, so a test that merely waited was waiting for itself to be scheduled. Measured as a hang for the
-///          life of the process before it was written this way.
-/// @note A window advance also zeroes the stream's accumulated CPU, so a predicate that reads that figure is
-///       reading something this helper destroys. Every predicate used with it counts things a reopen cannot erase:
-///       tasks that ran, and refusals recorded.
 template <typename TPredicate>
 bool AdvanceWindowsUntil(TaskSystem& taskSys, const TPredicate& holds, std::chrono::milliseconds patience) noexcept
 {
@@ -893,13 +841,6 @@ public:
 	}
 };
 
-/// @brief The identity, the routing and the counters of one task in an outcome-delivery test.
-/// @details One fixture per task rather than one per test, because a runnable receives user data and an index range
-///          and nothing else: under R23 a task writes its outcome into its own packet, which it reaches by its own
-///          identity through the registry, so the writer has to know who it is. Sharing one fixture between a producer
-///          and its successor would make `self` mean two things at once.
-/// @note `destination` left at NoDestinationStream is how a test expresses "this task produced a result and never
-///       named a stream", which is the half-filled routing case DispatchSuccessor has to refuse out loud.
 struct DeliveryFixture final
 {
 	TaskSystem* taskSystem{nullptr};
@@ -915,7 +856,6 @@ struct DeliveryFixture final
 	std::atomic<std::uint8_t> deliveredPayload{0};
 };
 
-/// @brief Write an outcome into the packet of the task named by `writer`, addressed through the registry.
 void WriteOutcome(DeliveryFixture& fixture, TaskID writer, std::uint8_t kind, std::uint8_t outcomeByte) noexcept
 {
 	Task* task = fixture.taskSystem->FindTask(writer);
@@ -930,7 +870,6 @@ void WriteOutcome(DeliveryFixture& fixture, TaskID writer, std::uint8_t kind, st
 	packet.GetPayload()[0] = outcomeByte;
 }
 
-/// @brief Produce an outcome and stop. The first link of a chain, and a task whose join closes normally.
 std::size_t RunStageOne(void* userData, TIndex startIndex, TIndex endIndex) noexcept
 {
 	DeliveryFixture& fixture = *static_cast<DeliveryFixture*>(userData);
@@ -939,10 +878,6 @@ std::size_t RunStageOne(void* userData, TIndex startIndex, TIndex endIndex) noex
 	return static_cast<std::size_t>(endIndex - startIndex);
 }
 
-/// @brief Record a successor from inside the running task, then produce an outcome for it. The middle link.
-/// @details Recording from inside the runnable, rather than by the test before enqueueing, is deliberate: it is the
-///          shape a real producer has, where the task to wake is only known once the work has been done. With `next`
-///          left null it clears a successor, which the registry accepts and which no chain should follow.
 std::size_t RunStageTwo(void* userData, TIndex startIndex, TIndex endIndex) noexcept
 {
 	DeliveryFixture& fixture = *static_cast<DeliveryFixture*>(userData);
@@ -952,7 +887,6 @@ std::size_t RunStageTwo(void* userData, TIndex startIndex, TIndex endIndex) noex
 	return static_cast<std::size_t>(endIndex - startIndex);
 }
 
-/// @brief Read the outcome this task was dispatched with, and count the run. The last link.
 std::size_t RunStageThree(void* userData, TIndex startIndex, TIndex endIndex) noexcept
 {
 	DeliveryFixture& fixture = *static_cast<DeliveryFixture*>(userData);
@@ -968,14 +902,6 @@ std::size_t RunStageThree(void* userData, TIndex startIndex, TIndex endIndex) no
 	return static_cast<std::size_t>(endIndex - startIndex);
 }
 
-/// @brief Count a run and nothing else.
-/// @details This is the in-band barrier the delivery tests are built on, and it exists because a negative cannot be
-///          slept for. Queued behind the subject task on the same lane, it can only start once the subject's work item
-///          has left the stream - and DispatchSuccessor runs inside that item, before the stream takes anything else -
-///          so its run is proof the delivery attempt is over, rather than an amount of time that might be enough.
-///          Measured before this existed: a test that slept 200 ms and then looked found what the machine happened to
-///          have done in 200 ms, which passed on a loaded machine for the wrong reason and failed on an idle one for
-///          the right one.
 std::size_t RunSentinel(void* userData, TIndex startIndex, TIndex endIndex) noexcept
 {
 	DeliveryFixture& fixture = *static_cast<DeliveryFixture*>(userData);
@@ -983,10 +909,6 @@ std::size_t RunSentinel(void* userData, TIndex startIndex, TIndex endIndex) noex
 	return static_cast<std::size_t>(endIndex - startIndex);
 }
 
-/// @brief Wait until a predicate holds, and say whether it came to hold within `patience`.
-/// @details Delivery is done by the thread that closed the join, so unlike a budget window it needs nothing from the
-///          base stream and a test may wait for it instead of pumping anything. Predicates count runs, never a
-///          measurement a window reopen could zero.
 template <typename TPredicate>
 bool WaitFor(const TPredicate& holds, std::chrono::milliseconds patience) noexcept
 {
@@ -1048,9 +970,6 @@ std::size_t AbandonmentNoticeRunnable(void*, std::size_t, std::size_t endIndex) 
 	return endIndex;
 }
 
-// Witness for the max-age drop: the only way to tell "this work was too old to run" apart from "this
-// work was never queued" is a counter that moves in the second case and must not move in the first.
-// That counter has to be seen moving by a control pass before any negative assertion means anything.
 std::atomic<int> maxAgeWorkRuns{0};
 
 std::size_t MaxAgeRunnable(void*, std::size_t, std::size_t endIndex) noexcept
@@ -1059,8 +978,6 @@ std::size_t MaxAgeRunnable(void*, std::size_t, std::size_t endIndex) noexcept
 	return endIndex;
 }
 
-// The other half of the same witness: a drop the engine counted but the requestor never heard about is a
-// report filed in a book nobody reads. Both have to move.
 std::atomic<int> maxAgeNotices{0};
 
 void MaxAgeNoticeProbe(TaskID, void*) noexcept
@@ -1068,8 +985,6 @@ void MaxAgeNoticeProbe(TaskID, void*) noexcept
 	maxAgeNotices.fetch_add(1, std::memory_order_relaxed);
 }
 
-// Per-lane counters for the rate test. These belong to the tasks rather than to the stream on purpose: a
-// stream-wide counter cannot say which lane served the work, and that is exactly the question here.
 std::atomic<int> rateFifoRuns{0};
 std::atomic<int> ratePriorityRuns{0};
 
@@ -1082,8 +997,6 @@ std::size_t RateCountingRunnable(void* userData, std::size_t, std::size_t endInd
 	return endIndex;
 }
 
-// Witnesses for the drop-site guardrail: whether the work ran, and whether the requestor was told. The record
-// question this test asks is answered by the registry's own live count, which needs neither of these.
 std::atomic<int> dropSiteRuns{0};
 std::atomic<int> dropSiteNotices{0};
 
@@ -1108,7 +1021,6 @@ std::size_t LaneRunCountingRunnable(void* userData, std::size_t, std::size_t end
 		static_cast<std::atomic<int>*>(userData)->fetch_add(1, std::memory_order_relaxed);
 	}
 
-
 	return endIndex;
 }
 
@@ -1119,8 +1031,6 @@ void AbandonmentProbe(TaskID abandonedTask, void* userData) noexcept
 	abandonmentFires.fetch_add(1, std::memory_order_relaxed);
 }
 
-// Abstract on purpose: only the inherited static factory is used, and instantiating a provider would
-// attach it to streams that this test has no business touching.
 struct AbandonNoticeProvider : TaskProvider
 {
 	using TaskProvider::MakeWholeItem;
@@ -1129,21 +1039,6 @@ struct AbandonNoticeProvider : TaskProvider
 
 void TaskSystemTest::Prepare()
 {
-	// The notice is the one mechanism whose failure is invisible: an item that should report itself and silently does
-	// not looks exactly like a stream with nothing to report, which is the same class of blind spot that let a deleted
-	// loop header in the engine loop pass 59 collections. So both directions are asserted - the requestor that asked is
-	// told once, with its own ID and its own userData - and the silence of a task nobody asked about is asserted as
-	// well, because if the default ever started notifying, every task in the engine would.
-	// Design B: the same notice reached through a stream that actually dropped the work, rather than through a
-	// hand-built item. Legal only because this body runs on the engine loop thread, which is the base stream's owner -
-	// Update allows one driver and that driver is the owner thread, so driving a worker stream from here would race its
-	// own thread and sometimes run the item before the release lands. That abandonmentWorkRuns stays zero is the
-	// in-band half: without it, a build that ran the work and then reported it abandoned would pass just as happily.
-	// AbandonHeldWork is what a closing stream calls, so it is tested directly on the owner thread rather than by
-	// tearing a stream down mid-suite: closing the IO stream would take the logger with it, and closing a worker
-	// mid-run leaves the rest of the collections without an executor. The count alone is not the property - an
-	// implementation that pops the queues and reports a number while notifying nobody passes that - so the notices
-	// fired are asserted against the items taken, and that the work never ran is asserted separately.
 	AddTest("Work still held when a stream is cleared is abandoned with its notice fired, not silently",
 			[this](TLogOut& ls)
 	{
@@ -1202,15 +1097,6 @@ void TaskSystemTest::Prepare()
 		}
 	});
 
-	// Duplicated from the FIFO case on purpose rather than shared through a helper: the two lanes are two queues
-	// drained by two loops, and one body parameterised over both is how the priority loop went a whole session without
-	// a witness. The lane is named by the caller through the public API, so this exercises the reachable route and not
-	// a hand-filled queue.
-	// Both drain tests prove work can be dropped from either lane. This covers the other half, which nothing had
-	// covered for the priority lane at all: that work offered there through the public API is actually reached and run.
-	// The lane counter is the task's own userData, so the runnable never learns which lane it is on and no pair of test
-	// globals can be crossed. DriveUntil is bounded by wall clock rather than passes, because the same burn is
-	// milliseconds apart between configurations.
 	AddTest("Work offered on each lane through the public API is reached and run", [this](TLogOut& ls)
 	{
 		auto& taskSys = Engine::Get().GetTaskSystem();
@@ -1320,7 +1206,6 @@ void TaskSystemTest::Prepare()
 		}
 	});
 
-
 	AddTest("Work dropped because its task was released notifies the requestor through the stream", [this](TLogOut& ls)
 	{
 		auto& taskSys = Engine::Get().GetTaskSystem();
@@ -1370,7 +1255,6 @@ void TaskSystemTest::Prepare()
 			   << lferr;
 		}
 	});
-
 
 	AddTest("A dropped work item notifies the requestor that asked and a task nobody asked about notifies nobody",
 			[this](TLogOut& ls)
@@ -1665,8 +1549,6 @@ void TaskSystemTest::Prepare()
 
 		auto& stream = taskSys.GetStream(workerIndex);
 
-		// Polling with a deadline rather than waiting on the task: a task that never gets served must produce
-		// a failed test, not a suite that stalls, which is the failure mode this test exists to detect.
 		static std::atomic<unsigned> laneRuns{0};
 		laneRuns.store(0, std::memory_order_relaxed);
 
@@ -1711,9 +1593,6 @@ void TaskSystemTest::Prepare()
 		auto& engine = Engine::Get();
 		auto& taskSys = engine.GetTaskSystem();
 
-		// The whole suite executes inside a task on the base stream - see UnitTestCollection.cpp's TestEnv
-		// subtask - so the base stream is occupied until the suite ends and can never run anything a test
-		// enqueues to it. The first worker stream is the nearest one that is genuinely idle.
 		const auto workerIndex = TaskSystem::GetIOTaskStreamIndex() + 1;
 		if (!taskSys.HasStream(workerIndex))
 		{
@@ -1784,10 +1663,6 @@ void TaskSystemTest::Prepare()
 		}
 	});
 
-	// Placed immediately after the budget charges test on purpose. This test throttles a stream and lets work wait,
-	// which costs about two seconds of wall clock, and the test above measures charges over a bounded window - running
-	// this one first made that test report the throttle as a fault. Own a stream of your own, and do not run in front
-	// of a test that is timing-sensitive.
 	AddTest("A throttled stream is throttled, not broken, and never asks a provider while spent", [this](TLogOut& ls)
 	{
 		auto& taskSys = Engine::Get().GetTaskSystem();
@@ -1806,10 +1681,6 @@ void TaskSystemTest::Prepare()
 
 		auto& stream = taskSys.GetStream(workerIndex);
 
-		// Bounded by wall-clock and not by an iteration count, deliberately: an iteration-count burn is milliseconds in
-		// a Release build and tens of them in a Debug build, so a fixed observation window sees a queue in one
-		// configuration and an empty stream in another. A time bound is what makes the numbers below comparable across
-		// configurations.
 		auto burnFunc = [](void*, std::size_t, std::size_t) -> std::size_t
 		{
 			const auto until = std::chrono::steady_clock::now() + std::chrono::milliseconds(250);
@@ -1848,9 +1719,6 @@ void TaskSystemTest::Prepare()
 		const auto generalRefusalsBefore = stream.GetGeneralQueueRefusalCount();
 		const auto pendingBefore = stream.CountPendingItems();
 
-		// The invariant is read across every stream, not only the one this test throttles. A drain gate that stopped
-		// consulting the budget would be an engine-wide fault and could surface on a stream with providers on it, which
-		// this stream does not have; watching only the throttled stream would let that pass.
 		unsigned asksWhileSpentBefore = 0;
 
 		for (unsigned index = 0; taskSys.HasStream(index); ++index)
@@ -1898,7 +1766,6 @@ void TaskSystemTest::Prepare()
 			   << lferr;
 		}
 
-		// A throttle may delay work; it may not strand it.
 		stream.RequestBudget(std::chrono::duration<double>(0.0));
 
 		const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(30);
@@ -1945,11 +1812,6 @@ void TaskSystemTest::Prepare()
 		isolationRecords[0].Reset();
 		isolationRecords[1].Reset();
 
-		// The control that makes the silence mean something. Lane work is isolated by construction - an item lives in
-		// the lane its stream pops, and no other stream can see it - so no cheap mutation can make an item migrate, and
-		// "one thread per stream" would be worthless if the recorder could not tell threads apart at all. Recording who
-		// dispatched proves the recorder does: the dispatching thread is the engine loop, and any worker that runs the
-		// work must differ from it.
 		const auto dispatchThread = std::this_thread::get_id();
 
 		std::array<TaskID, 3> firstIds{};
@@ -2114,8 +1976,6 @@ void TaskSystemTest::Prepare()
 
 		stream.RequestBudget(std::chrono::milliseconds(1));
 
-		// Let the item already in flight finish and charge its time before measuring. Anything this stream does after
-		// that, while its allowance is spent and work is waiting, is the throttle's own cost.
 		std::this_thread::sleep_for(std::chrono::milliseconds(400));
 
 		const auto passesBefore = stream.GetDrivenPassCount();
@@ -2124,10 +1984,6 @@ void TaskSystemTest::Prepare()
 		const auto passDelta = stream.GetDrivenPassCount() - passesBefore;
 		const auto pendingHeld = stream.CountPendingItems();
 
-		// WaitForWork parks on a condition variable with a 10ms timeout, so a stream with nothing to take wakes about
-		// fifty times a second. A stream that spun on the budget instead of parking would report thousands of passes in
-		// this window, and the upper bound is what catches that. The lower bound is what stops the test passing on a
-		// stream that stopped running at all, which would look identical to a hang from the outside.
 		ls << stream.GetName().c_str() << " while spent over 500ms: " << passDelta << " pass(es), " << pendingBefore
 		   << " -> " << pendingHeld << " item(s) held." << lf;
 
@@ -2244,8 +2100,6 @@ void TaskSystemTest::Prepare()
 		const auto baseName = taskSys.GetStreamName(TaskSystem::GetBaseTaskStreamIndex());
 		const auto ioName = taskSys.GetStreamName(TaskSystem::GetIOTaskStreamIndex());
 
-		// This test runs inside a task, and the suite's task is a work item on the base stream, so the thread
-		// running it is that stream's thread and must report exactly that.
 		ls << "Stream 0 is named \"" << baseName.c_str() << "\", stream 1 is \"" << ioName.c_str()
 		   << "\", this thread reports stream index " << TaskSystem::GetCurrentStreamIndex() << " named \""
 		   << TaskSystem::GetCurrentThreadName().c_str() << "\" and IsBaseThread = " << TaskSystem::IsBaseThread()
@@ -2320,23 +2174,6 @@ void TaskSystemTest::Prepare()
 		}
 	});
 
-	// The witnesses here are what a stream does with a work item, never what its budget counter reads: advancing a
-	// window zeroes that counter, so reading it to prove the mechanism would let the mechanism erase its own
-	// evidence. Measured as exactly that - a charge of 0 us reported for a task that had just spent 222 ms.
-
-
-	// What is watched here is what a stream does with work, never what its budget counter reads: advancing a window
-	// zeroes that counter, so a test that read it to prove the mechanism would watch the mechanism erase its own
-	// evidence. Measured as exactly that - 0 us reported for a task that had just spent 222 ms.
-
-
-	// What is watched here is what a stream does with work, never what its budget counter reads, because a window
-	// advance zeroes that counter: reading it to prove the mechanism would mean watching the mechanism erase its own
-	// evidence. Measured as exactly that - 0 us reported for a task that had just spent 222 ms. The same reason sets
-	// the shape of the waits below. Advancing windows keeps a stream reopened, so a test that advanced them while
-	// looking for a refusal would never see one: the pass is what un-shuts a stream, and the state under test is
-	// shut. Everything here therefore advances windows only until a task is confirmed to be running, and then leaves
-	// them alone long enough for that task to finish.
 	AddTest("A stream with a spent allowance declines the general queue and resumes after a window", [this](TLogOut& ls)
 	{
 		auto& taskSys = Engine::Get().GetTaskSystem();
@@ -2350,8 +2187,6 @@ void TaskSystemTest::Prepare()
 
 		auto& stream = taskSys.GetStream(workerIndex);
 
-		// Read the pass counter before this test touches anything: it is the witness that TaskStream's loop calls
-		// the pass by itself. A test that advanced the first window on its own proves nothing about that wiring.
 		const auto windowsSoFar = taskSys.GetNumBudgetWindowsAdvanced();
 		ls << "The base stream's own loop had advanced " << windowsSoFar << " window(s) before this test ran." << lf;
 
@@ -2397,9 +2232,6 @@ void TaskSystemTest::Prepare()
 			return;
 		}
 
-		// The task is running and no window advance is left pending beyond the one that started it, so its charge
-		// survives: it lands when the stream closes the task, and the stream's next round the loop is the refusal.
-		// Measured at roughly 20 ms of CPU for this task, against the 200 ms waited here.
 		std::this_thread::sleep_for(std::chrono::milliseconds(200));
 
 		const auto refusals = stream.GetGeneralQueueRefusalCount() - refusalsBefore;
@@ -2416,8 +2248,6 @@ void TaskSystemTest::Prepare()
 			   << " allowance spent." << lf;
 		}
 
-		// The same stream must resume the moment a window advances it: refusing forever is the defect the pass is
-		// for, and it is reachable from here, since a stream that never reopened would still be shut right now.
 		const bool resumed =
 				AdvanceWindowsUntil(taskSys, [&stream] { return stream.MayTakeNewWork(); }, std::chrono::seconds(5));
 
@@ -2449,7 +2279,6 @@ void TaskSystemTest::Prepare()
 		}
 	});
 
-
 	AddTest("A stream with no allowance never declines general work", [this](TLogOut& ls)
 	{
 		auto& taskSys = Engine::Get().GetTaskSystem();
@@ -2471,7 +2300,6 @@ void TaskSystemTest::Prepare()
 			   << "an unspent allowance - or an unlimited stream is being measured and charged anyway." << lferr;
 		}
 	});
-
 
 	AddTest("A finished task hands its outcome to the successor on the stream it named", [this](TLogOut& ls)
 	{
@@ -3285,14 +3113,6 @@ void TaskSystemTest::Prepare()
 			ls << "Refused splits still ran " << runs.load() << " time(s)." << lferr;
 		}
 	});
-	// The age clock lives on the task, not on the item, and these two collections are what makes that choice
-	// load-bearing rather than a preference. The first closes the dodge: if a slice could be born with a fresh
-	// timestamp, a task facing a ceiling would only have to split late, or fail to finish in one call, to buy
-	// itself a new life - and both of those are legitimate behaviours this engine advertises. The second is the
-	// recycled-record trap that has now bitten this module twice: a registry slot handed to a new tenant keeps
-	// whatever LoadIntoRecord forgot to write, which for a notice meant firing a stranger's callback with a
-	// dangling context pointer, and for an age stamp would mean a brand new task being dropped as stale the
-	// moment it was offered. Strictly newer, not merely newer: equality is what a missing stamp looks like.
 	AddTest("Every slice carries the age the registry stamped, and a recycled record is dated afresh",
 			[this](TLogOut& ls)
 	{
@@ -3361,13 +3181,6 @@ void TaskSystemTest::Prepare()
 		}
 	});
 
-	// B3d: work that could not be run in time must be refused out loud, not run late. The control pass is not
-	// decoration and is not parameterised away: it runs the identical fixture with no ceiling and has to see the
-	// work run, because "the runnable never ran" is otherwise indistinguishable from a test that failed to queue
-	// anything - the exact vacuity this project has now been bitten by repeatedly. The two aged passes are written
-	// out per lane rather than shared, for the same documented reason: one body covering two lanes is how a lane
-	// went unwitnessed and a mutant survived. The ceiling is read back before it is tightened and restored on
-	// every exit path, including the early ones, because the base stream is shared by every later collection.
 	AddTest("Work older than the stream's max age is dropped, reported and notified, while the same work runs when no "
 			"ceiling is set",
 			[this](TLogOut& ls)
@@ -3398,10 +3211,6 @@ void TaskSystemTest::Prepare()
 			return;
 		}
 
-		// One nanosecond is not a typo. The stamp is taken when the registry loads the record, so by the time
-		// this item has been queued and the stream has been driven, the work is microseconds old at the very
-		// least in every configuration; a ceiling that small cannot be raced, and a wait bounded in wall clock
-		// rather than in passes keeps Debug and Release agreeing.
 		baseStream.SetMaxAge(std::chrono::nanoseconds{1});
 
 		{
@@ -3493,16 +3302,6 @@ void TaskSystemTest::Prepare()
 		baseStream.SetMaxAge(ceilingFound);
 	});
 
-	// The rate is the other half of the lane contract, and until the lane was reachable from the public API it could
-	// not be measured end to end at all: a test that filled the priority queue by hand proved the policy's arithmetic
-	// and nothing about whether a customer's priority work ever runs. This drives real work through both lanes. The
-	// rate is read before it is changed and restored afterwards, because the base stream belongs to the whole suite.
-	// What this asserts is the promise the stream actually makes - a lane with work is never starved by the other
-	// lane's weight - and not the ratio. The ratio was the original intent and it is not observable here: with no CPU
-	// allowance configured, borrowing is free, the policy's own note says the long-run ratio is not preserved when
-	// both lanes are permanently backlogged, and a measured 4/4 of 8 offered items proved it. The ratio is a per-take
-	// decision and is tested where it is decided, in StreamDrainPolicyTest; asserting it end to end would have been a
-	// test that fails on correct code, which is worse than no test because it teaches everyone to ignore tests.
 	AddTest("A lopsided rate reaches both lanes through the public API and starves neither", [this](TLogOut& ls)
 	{
 		auto& taskSys = Engine::Get().GetTaskSystem();
@@ -3574,12 +3373,6 @@ void TaskSystemTest::Prepare()
 		}
 	});
 
-	// The RAII half of the abandonment contract, and the last of the four guardrails to get an executable form. A task
-	// whose work is dropped still has to end up exactly where a released task ends up - and nothing asserted that,
-	// because a drop site that freed the record twice, or never, looks identical to a correct one from outside: the
-	// work is gone either way and the warning line reads the same. All three sites are walked in order with their own
-	// baseline step, and the count is proven to have moved while the tasks were alive, since a comparison of a baseline
-	// with itself would also be satisfied by a counter that never changes.
 	AddTest("Work dropped at each of the three sites leaves its task record exactly where a release leaves it",
 			[this](TLogOut& ls)
 	{
@@ -3604,7 +3397,6 @@ void TaskSystemTest::Prepare()
 			return;
 		}
 
-		// Site 1: the requestor released the task while its work was still queued.
 		taskSys.SetAbandonedNotice(orphaned, &DropSiteNoticeProbe, nullptr);
 		if (Task* task = taskSys.FindTask(orphaned); task != nullptr)
 		{
@@ -3631,8 +3423,6 @@ void TaskSystemTest::Prepare()
 			return;
 		}
 
-		// Site 2: the stream declined the work as older than its ceiling, which is a decision about the item and not a
-		// verdict on the task that owns the record.
 		taskSys.SetAbandonedNotice(agedOut, &DropSiteNoticeProbe, nullptr);
 		if (Task* task = taskSys.FindTask(agedOut); task != nullptr)
 		{
@@ -3663,10 +3453,6 @@ void TaskSystemTest::Prepare()
 			return;
 		}
 
-		// Site 3: work still held when the stream gave up on what it was holding.
-		// The closing site drains two queues with two different bodies, so this site deliberately uses the lane the
-		// other two do not: an earlier version offered here on FIFO, and a mutation placed in the priority drain loop
-		// walked straight past it. That blind spot was found by running a mutant, not by reading the test.
 		taskSys.SetAbandonedNotice(heldAtClose, &DropSiteNoticeProbe, nullptr);
 		if (Task* task = taskSys.FindTask(heldAtClose); task != nullptr)
 		{
@@ -3710,7 +3496,5 @@ void TaskSystemTest::Prepare()
 		baseStream.SetMaxAge(ceilingFound);
 	});
 }
-
-
 } // namespace hbe
 #endif //__UNIT_TEST__
