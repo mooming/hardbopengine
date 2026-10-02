@@ -2,25 +2,39 @@
 """Emit API reference pages with correct chrome, then prove they validate.
 
 What this tool owns is the part an agent gets wrong repeatedly and that carries no information: the
-sidebar module list, the `current` marker, the breadcrumb depth, the prevnext footer, the `<main>`
-wrapper, and the method list every page of a class must agree on. What it never owns is the prose — a
+sidebar module list, the `current` marker, the breadcrumb depth, the prevnext footer, and the `<main>`
+wrapper. What it never owns is the prose — a
 tool cannot know what `BufferInputStream::IsValidIndex` was doing wrong, so every sentence comes from a
 fragment file an agent wrote after reading the header.
+
+There is deliberately no per-page method list. Every page of a class once carried a `<ul class="methods">`
+listing all of them, which on `Core/TaskSystem` measured 176 KB of the class's 427 KB — 41.3 % of the bytes
+were the same 43 links copied 44 times, each link bare of the description that sits beside it in the class
+page's own method table. Navigation is module page -> class page -> method page, and the class page's
+method table (`Name | Signature | Link | What a caller depends on`) is the one navigation surface; the
+footer's *All <Class> methods* is how a method page gets back to it.
 
 That split is the reason this exists. Chrome retyped per page drifts: a class page written by hand lists
 five of its seven methods, a method page links `../index.html` from two levels up when it sits three
 levels deep, and a `class="cmt"` renders unstyled because the stylesheet declares `.cm` and never
 `.cmt`. Each of those passed a reader's eye and was caught only by htmlcheck.py, after the fact. Here the
-chrome is derived from the module's own index page, the method list is derived from the directory, and the
+chrome is derived from the module's own index page and the
 page is validated before it is kept — an invalid page is never written.
 
 Commands
 
-  docs_page.py class   <Module> <Class> --source <header> --summary TEXT --sections SPEC [--tag TAG]...
-  docs_page.py method  <Module> <Class> <page-stem> --source <path> --summary TEXT --sections SPEC
-                       [--label DISPLAY] [--tag TAG]...
-  docs_page.py renav   <Module> <Class>       # re-sync every page's method list to the directory
+  docs_page.py class   <Module> <Class> --source <header> --summary TEXT (--sections SPEC | --body FILE)
+                       [--tag TAG]...
+  docs_page.py method  <Module> <Class> <page-stem> --source <path> --summary TEXT
+                       (--sections SPEC | --body FILE) [--label DISPLAY] [--tag TAG]...
+  docs_page.py renav   <Module> <Class>       # re-sync any method list a page still carries
   docs_page.py check   <Module>|<path> ...    # htmlcheck over what was written
+
+`--body FILE` takes a page's prose as one HTML file — every `<h2>` section in page order, starting at the
+first `<h2 id="…">`. The sidebar's *This class* / *This function* list is read back out of those headings, so
+one authored file cannot disagree with the chrome indexing it, and a heading that is not plain text is
+refused rather than silently stripped. `--sections SPEC` is the older route, for a page whose sections are
+each already their own fragment file.
 
 SPEC is a JSON list of sections in page order:
 
@@ -267,36 +281,69 @@ def pending_sibling_links(probe_path, htmlcheck_output):
     return pending
 
 
+def body_sections(text, origin, expected_anchors):
+    """The `(anchor, heading)` pairs a `--body` file declares, read back from its own `<h2>` headings.
+
+    Deriving the sidebar from the prose rather than from a second declaration is the point: a spec file can
+    list an anchor the body never writes, and the page then carries a link to nowhere. A heading must be plain
+    text for the same reason — the sidebar has no markup to give it, so markup inside a heading is silently
+    lost there and the two views of the page stop agreeing.
+    """
+    found = re.findall(r'<h2 id="([^"]+)">([^<]*)</h2>', text)
+    if not found:
+        die('%s declares no <h2 id="…">Heading</h2> section' % origin)
+    anchors = [anchor for anchor, _ in found]
+    unknown = [anchor for anchor in anchors if anchor not in expected_anchors]
+    duplicated = sorted({anchor for anchor in anchors if anchors.count(anchor) > 1})
+    if unknown or duplicated:
+        die('%s: unknown anchor(s) %s, repeated anchor(s) %s; the contract allows %s'
+            % (origin, unknown or 'none', duplicated or 'none', ', '.join(expected_anchors)))
+    return found
+
+
 def command_class(argv):
     module, cls = _require(argv, 2, 'class <Module> <Class>')
-    opts = _options(argv[2:], ('source', 'summary', 'sections'), ('tag',))
-    sections = load_sections(os.path.abspath(opts['sections']), CLASS_SECTIONS)
+    opts = _options(argv[2:], ('source', 'summary', 'sections', 'body'), ('tag',))
+    if bool(opts.get('sections')) == bool(opts.get('body')):
+        die('class %s %s: give exactly one of --sections or --body' % (module, cls))
+    if opts['body']:
+        body_text = open(opts['body'], encoding='utf-8').read()
+        pairs = body_sections(body_text, opts['body'], CLASS_SECTIONS)
+        body, sidebar_list = body_text.rstrip('\n'), ''.join('    <li><a href="#%s">%s</a></li>\n' % pair
+                                                            for pair in pairs)
+    else:
+        sections = load_sections(os.path.abspath(opts['sections']), CLASS_SECTIONS)
+        body, sidebar_list = section_blocks(sections), this_page_list(sections)
     head = module_nav_head(module, cls)
-    sidebar = ('\n\n  <h3>This class</h3>\n  <ul>\n%s  </ul>\n\n'
-               '  <h3>Methods</h3>\n  <ul class="methods">\n%s  </ul>\n</nav>\n'
-               % (this_page_list(sections), method_list_html(module, cls)))
+    sidebar = '\n\n  <h3>This class</h3>\n  <ul>\n%s  </ul>\n</nav>\n' % sidebar_list
     title = '<h1>%s</h1>\n' % cls
     page = (head + sidebar + '\n<main class="main">\n\n'
             + breadcrumb(module, cls) + title
             + subtitle([opts['source']] + opts['tag'], opts['summary'])
-            + section_blocks(sections) + footer(cls))
+            + body + footer(cls))
     keep_if_valid(os.path.join(DOCS, module, cls, 'index.html'), page)
 
 
 def command_method(argv):
     module, cls, stem = _require(argv, 3, 'method <Module> <Class> <page-stem>')
-    opts = _options(argv[3:], ('source', 'summary', 'sections', 'label'), ('tag',))
-    sections = load_sections(os.path.abspath(opts['sections']), METHOD_SECTIONS)
+    opts = _options(argv[3:], ('source', 'summary', 'sections', 'label', 'body'), ('tag',))
+    if bool(opts.get('sections')) == bool(opts.get('body')):
+        die('method %s %s %s: give exactly one of --sections or --body' % (module, cls, stem))
+    if opts['body']:
+        body_text = open(opts['body'], encoding='utf-8').read()
+        pairs = body_sections(body_text, opts['body'], METHOD_SECTIONS)
+        body = body_text.rstrip('\n')
+    else:
+        sections = load_sections(os.path.abspath(opts['sections']), METHOD_SECTIONS)
+        body, pairs = section_blocks(sections), [(a, h) for a, h, _ in sections]
+    sidebar_list = ''.join('    <li><a href="#%s">%s</a></li>\n' % pair for pair in pairs)
     label = opts.get('label') or stem.replace('-', ' ').capitalize()
     head = module_nav_head(module, '%s::%s' % (cls, label))
-    sidebar = ('\n\n  <h3>This function</h3>\n  <ul>\n%s  </ul>\n\n'
-               '  <h3>Methods</h3>\n  <ul class="methods">\n    <li><a href="index.html">%s</a> methods</li>\n%s'
-               '  </ul>\n</nav>\n'
-               % (this_page_list(sections), cls, method_list_html(module, cls)))
+    sidebar = '\n\n  <h3>This function</h3>\n  <ul>\n%s  </ul>\n</nav>\n' % sidebar_list
     page = (head + sidebar + '\n<main class="main">\n\n'
             + breadcrumb(module, cls, label) + '<h1><span class="fn">%s</span></h1>\n' % label
             + subtitle(['member of hbe::%s' % cls, opts['source']] + opts['tag'], opts['summary'])
-            + section_blocks(sections) + footer(cls))
+            + body + footer(cls))
     keep_if_valid(os.path.join(DOCS, module, cls, stem + '.html'), page)
 
 
@@ -307,11 +354,13 @@ def command_renav(argv):
         die('docs/%s/%s does not exist' % (module, cls))
     listing = method_list_html(module, cls)
     changed = 0
+    scanned = 0
     for page in sorted(f for f in os.listdir(folder) if f.endswith('.html')):
         path = os.path.join(folder, page)
         src = open(path, encoding='utf-8').read()
         block = re.search(r'(<h3>Methods</h3>\s*<ul class="methods">\s*)(.*?)(\s*</ul>)', src, re.S)
         if not block:
+            scanned += 1
             continue
         if page == 'index.html':
             replacement = block.group(1) + listing.rstrip('\n') + block.group(3)
@@ -328,6 +377,13 @@ def command_renav(argv):
             continue
         keep_if_valid(path, updated)
         changed += 1
+    if scanned:
+        # "0 re-synced" from a tree that carries no list anywhere is not the same claim as "0 needed
+        # changing", and a caller who cannot tell them apart will keep trusting a no-op.
+        print('renav: %d page(s) scanned, %d re-synced, %d carry no method list (the class page\'s '
+              'method table is the navigation surface)'
+              % (scanned + changed, changed, scanned))
+        return
     print('renav: %d page(s) in docs/%s/%s re-synced' % (changed, module, cls))
 
 
@@ -378,7 +434,9 @@ def _options(argv, value_keys, flag_keys):
             die('unknown option --%s' % key)
         index += 1
     for key, value in opts.items():
-        if value is None and key != 'label':
+        # `label` is cosmetic, and --sections / --body are one route each: a required-option check that
+        # demanded both would make the pair exclusive choice the caller is being asked to make impossible.
+        if value is None and key not in ('label', 'sections', 'body'):
             die('--%s is required' % key)
     opts.update(flags)
     return opts

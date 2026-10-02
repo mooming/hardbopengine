@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>TaskSystem — Core module &mdash; HardBop Engine API reference</title>
+<title>TaskSystem — Core module — HardBop Engine API reference</title>
 <link rel="stylesheet" href="../../assets/hbe-docs.css">
 </head>
 <body>
@@ -34,55 +34,8 @@
     <li><a href="#template">Template parameters</a></li>
     <li><a href="#properties">Class properties</a></li>
     <li><a href="#methods">Class methods</a></li>
-    <li><a href="#non-member">Non-member helpers</a></li>
+    <li><a href="#non-member">Non-member helper functions</a></li>
     <li><a href="#coverage">Coverage</a></li>
-  </ul>
-
-  <h3>Methods</h3>
-  <ul class="methods">
-                                <li><a href="get-num-hardware-threads.html">GetNumHardwareThreads</a></li>
-    <li><a href="set-thread-name.html">SetThreadName</a></li>
-    <li><a href="set-stream-index.html">SetStreamIndex</a></li>
-    <li><a href="get-current-stream-index.html">GetCurrentStreamIndex</a></li>
-    <li><a href="get-current-stream-name.html">GetCurrentStreamName</a></li>
-    <li><a href="get-current-thread-name.html">GetCurrentThreadName</a></li>
-    <li><a href="is-base-thread.html">IsBaseThread</a></li>
-    <li><a href="is-io-thread.html">IsIOThread</a></li>
-    <li><a href="get-base-task-stream-index.html">GetBaseTaskStreamIndex</a></li>
-    <li><a href="get-io-task-stream-index.html">GetIOTaskStreamIndex</a></li>
-    <li><a href="constructors.html">TaskSystem</a></li>
-    <li><a href="destructor.html">~TaskSystem</a></li>
-    <li><a href="initialize.html">Initialize</a></li>
-    <li><a href="request-shut-down.html">RequestShutDown</a></li>
-    <li><a href="request-other-streams-close.html">RequestOtherStreamsClose</a></li>
-    <li><a href="are-user-streams-closed.html">AreUserStreamsClosed</a></li>
-    <li><a href="join-and-clear.html">JoinAndClear</a></li>
-    <li><a href="update.html">Update</a></li>
-    <li><a href="run-budget-window-pass.html">RunBudgetWindowPass</a></li>
-    <li><a href="get-num-budget-windows-advanced.html">GetNumBudgetWindowsAdvanced</a></li>
-    <li><a href="enqueue.html">Enqueue</a></li>
-    <li><a href="dequeue.html">Dequeue</a></li>
-    <li><a href="enqueue-task.html">EnqueueTask</a></li>
-    <li><a href="dispatch-to-main-thread.html">DispatchToMainThread</a></li>
-    <li><a href="create-task.html">CreateTask</a></li>
-    <li><a href="find-task.html">FindTask</a></li>
-    <li><a href="release-task.html">ReleaseTask</a></li>
-    <li><a href="run-split.html">RunSplit</a></li>
-    <li><a href="parallel-for.html">ParallelFor</a></li>
-    <li><a href="set-successor.html">SetSuccessor</a></li>
-    <li><a href="get-successor.html">GetSuccessor</a></li>
-    <li><a href="set-abandoned-notice.html">SetAbandonedNotice</a></li>
-    <li><a href="dispatch-successor.html">DispatchSuccessor</a></li>
-    <li><a href="get-name.html">GetName</a></li>
-    <li><a href="is-running.html">IsRunning</a></li>
-    <li><a href="get-registry.html">GetRegistry</a></li>
-    <li><a href="get-stream-name.html">GetStreamName</a></li>
-    <li><a href="get-stream-index.html">GetStreamIndex</a></li>
-    <li><a href="has-stream.html">HasStream</a></li>
-    <li><a href="get-stream.html">GetStream</a></li>
-    <li><a href="get-base-task-stream.html">GetBaseTaskStream</a></li>
-    <li><a href="get-io-task-stream.html">GetIOTaskStream</a></li>
-    <li><a href="build-streams.html">BuildStreams</a></li>
   </ul>
 </nav>
 
@@ -91,13 +44,15 @@
 <p class="breadcrumb">
   <a href="../../index.html">Module Index</a> /
   <a href="../index.html">Core</a> /
-<a href="index.html">TaskSystem</a>
+  TaskSystem
 </p>
 
-<h1><span class="ty">TaskSystem</span></h1>
+<h1>TaskSystem</h1>
 <p class="subtitle">
-  the scheduler: a fixed set of streams, one shared general queue, a task registry that issues identities with generations,
-  and a shutdown that has to finish the reporting before it closes the executors carrying it
+  <span class="tag">Engine/Core/TaskSystem.h</span>
+  <span class="tag">final</span>
+  <span class="tag">namespace hbe</span>
+  the scheduler: a fixed set of streams, one shared general queue, and a task registry that issues identities with generations
 </p>
 
 <h2 id="description">Class description</h2>
@@ -171,7 +126,8 @@
 <div class="gap">
   <strong>Nothing in this class refuses a bad stream index in a shipped build.</strong> The indexed
   <a href="enqueue.html">Enqueue</a> and <a href="enqueue-task.html">EnqueueTask</a> assert and then drop the item;
-  <a href="get-stream.html">GetStream</a> hands back the base stream instead of failing; and the thread check in
+  <a href="get-stream.html">GetStream</a> hands back the base stream instead of failing
+  (<code>Engine/Core/TaskSystem.cpp:698-706</code>); and the thread check in
   <a href="build-streams.html">BuildStreams</a> is an <code>Assert</code>, which has an empty definition outside
   <code>__DEBUG__</code> (<code>Engine/Core/Debug.h:72-79</code>). Only <code>FatalAssert</code> and the logging paths survive.
   So the checks that exist are for Debug builds, and the behaviour that ships is the fallback — which makes
@@ -180,358 +136,228 @@
 
 <h2 id="template">Template parameters</h2>
 
-<p>None. <code>TaskSystem</code> is <code>final</code> and takes no template parameters. It declares no template member
-either: the one it had — the wait now documented as
-<a href="../../Test/TestHelper/drive-until.html"><code>TestHelper::DriveUntil</code></a> — left the class on 2026-10-02.</p>
+<p>None. <code>TaskSystem</code> is <code>final</code> and declares no template parameter, on the class or on any member.</p>
 
 <h2 id="properties">Class properties</h2>
 
 <table>
   <tr><th>Name</th><th>Declaration</th><th>What it means</th></tr>
   <tr><td><code>TThread</code></td><td><code>using TThread = std::thread;</code></td>
-    <td><span class="badge">member type</span> The thread a stream that owns one runs on. The base and IO streams own
-      none — they are driven</td></tr>
+    <td><span class="badge">member type</span> The thread a stream that owns one runs on; Base and IO own none</td></tr>
   <tr><td><code>TThreadID</code></td><td><code>using TThreadID = std::thread::id;</code></td>
-    <td><span class="badge">member type</span> Compared by <a href="get-stream-index.html">GetStreamIndex</a> and by
-      <a href="../../Test/TestHelper/drive-until.html"><code>TestHelper::DriveUntil</code></a>, which takes the system by
-      reference to make the comparison; stored once for the life of the object in
-      <code>engineLoopThreadID</code></td></tr>
+    <td><span class="badge">member type</span> The identity <a href="get-stream-index.html">GetStreamIndex</a> resolves, captured once as <code>engineLoopThreadID</code></td></tr>
   <tr><td><code>TStreamArray</code></td><td><code>using TStreamArray = Array&lt;TaskStream&gt;;</code></td>
-    <td><span class="badge">member type</span> Sized exactly once, by <a href="build-streams.html">BuildStreams</a>, for the
-      life of the object</td></tr>
+    <td><span class="badge">member type</span> Sized exactly once, by <a href="build-streams.html">BuildStreams</a>, for the life of the object</td></tr>
   <tr><td><code>TIndex</code></td><td><code>using TIndex = TStreamArray::TIndex;</code></td>
-    <td><span class="badge">member type</span> <code>int</code> (<code>Engine/Container/Array.h:20</code>) — every stream index
-      in the engine, and the type <code>NonStreamIndex</code> is -1 of</td></tr>
-  <tr><td><code>TMainThreadTask</code></td><td><code>using TMainThreadTask = void (*)(void* /*userData*/);</code></td>
-    <td><span class="badge">member type</span> The callable shape <a href="dispatch-to-main-thread.html">DispatchToMainThread</a>
-      posts. Not a <code>TRunnable</code>, and not a work item</td></tr>
+    <td><span class="badge">member type</span> <code>int</code> — every stream index in the engine, and the type <code>NonStreamIndex</code> is -1 of</td></tr>
+  <tr><td><code>TMainThreadTask</code></td><td><code>using TMainThreadTask = void (*)(void*);</code></td>
+    <td><span class="badge">member type</span> The callable shape <a href="dispatch-to-main-thread.html">DispatchToMainThread</a> posts — not a <code>TRunnable</code>, not a work item</td></tr>
   <tr><td><code>NonStreamIndex</code></td><td><code>static constexpr TIndex NonStreamIndex = static_cast&lt;TIndex&gt;(-1);</code></td>
-    <td><span class="badge">public static</span> The index of a thread that has not been given a stream. <strong>Not
-      zero</strong>: stream 0 is real, and a default of zero made every thread in the process report itself the base
-      stream</td></tr>
-  <tr><td><code>EngineLoopThreadName</code></td><td><code>static constexpr const char* EngineLoopThreadName = "EngineLoop";</code></td>
-    <td><span class="badge">public static</span> The name <a href="build-streams.html">BuildStreams</a> gives the thread that
-      drives <code>Engine::Run</code>. An engine-internal label — no operating-system thread name is ever set
-      (<a href="set-thread-name.html">SetThreadName</a>)</td></tr>
+    <td><span class="badge">public static</span> The index of a thread given no stream — <strong>not zero</strong>, because stream 0 is real</td></tr>
   <tr><td><code>BaseStreamIndex</code></td><td><code>static constexpr TIndex BaseStreamIndex = 0;</code></td>
-    <td><span class="badge">public static</span> The base stream, which rides the engine loop and is the last executor to
-      close</td></tr>
+    <td><span class="badge">public static</span> The base stream, which rides the engine loop and is the last executor to close</td></tr>
   <tr><td><code>IOStreamIndex</code></td><td><code>static constexpr TIndex IOStreamIndex = 1;</code></td>
-    <td><span class="badge">public static</span> The IO stream, driven by the logger's thread. Worker streams begin at
-      <code>IOStreamIndex + 1</code></td></tr>
+    <td><span class="badge">public static</span> The IO stream, driven by the logger's thread; worker streams begin at <code>IOStreamIndex + 1</code></td></tr>
   <tr><td><code>MaxStreamsPerSplit</code></td><td><code>static constexpr TIndex MaxStreamsPerSplit = 64;</code></td>
-    <td><span class="badge">public static</span> How many streams one split may spread across, so
-      <a href="parallel-for.html">ParallelFor</a>'s count form can keep its chosen list on the caller's stack. Declared in a
-      later block, after functions — a member-layout deviation the layout pass still owes</td></tr>
+    <td><span class="badge">public static</span> How many streams one split may spread across, so <a href="parallel-for.html">ParallelFor</a>'s count form keeps its chosen list on the caller's stack (<code>Engine/Core/TaskSystem.cpp:549-550</code>)</td></tr>
+  <tr><td><code>EngineLoopThreadName</code></td><td><code>static constexpr const char* EngineLoopThreadName = "EngineLoop";</code></td>
+    <td><span class="badge">public static</span> The engine-internal label for the thread driving <code>Engine::Run</code>; no operating-system thread name is ever set</td></tr>
   <tr><td><code>isRunning</code></td><td><code>std::atomic&lt;bool&gt; isRunning;</code></td>
-    <td><span class="badge">private</span> The run loop's condition. Set by <a href="build-streams.html">BuildStreams</a>,
-      cleared by <a href="request-shut-down.html">RequestShutDown</a>, read through
-      <a href="is-running.html">IsRunning</a></td></tr>
+    <td><span class="badge">private</span> The run loop's condition: set by <a href="build-streams.html">BuildStreams</a>, cleared by <a href="request-shut-down.html">RequestShutDown</a></td></tr>
   <tr><td><code>name</code></td><td><code>const StaticString name;</code></td>
-    <td><span class="badge">private</span> <code>"TaskSystem"</code>, from the initializer list — the log category, the filter
-      key, and the prefix of every message this class emits</td></tr>
+    <td><span class="badge">private</span> <code>"TaskSystem"</code>, from the initializer list — the log category and filter key</td></tr>
   <tr><td><code>numHardwareThreads</code></td><td><code>const TIndex numHardwareThreads;</code></td>
-    <td><span class="badge">private</span> Read once at construction and never re-read: the stream count for the life of the
-      object, including on a machine whose core count changes afterwards</td></tr>
+    <td><span class="badge">private</span> Read once at construction: the stream count for the life of the object, even if the core count changes</td></tr>
   <tr><td><code>engineLoopThreadID</code></td><td><code>const TThreadID engineLoopThreadID;</code></td>
-    <td><span class="badge">private</span> The constructing thread, captured so
-      <a href="build-streams.html">BuildStreams</a> and <a href="join-and-clear.html">JoinAndClear</a> can ask whether the
-      caller owns the run. Unexposed — there is no accessor for it</td></tr>
+    <td><span class="badge">private</span> The constructing thread, so <a href="build-streams.html">BuildStreams</a> and <a href="join-and-clear.html">JoinAndClear</a> can ask whether the caller owns the run; no accessor exposes it</td></tr>
   <tr><td><code>ioTaskThreadID</code></td><td><code>TThreadID ioTaskThreadID;</code></td>
-    <td><span class="badge">private</span> <strong>Never written and never read.</strong> Declared at
-      <code>Engine/Core/TaskSystem.h:43</code> and named nowhere else in <code>Engine/</code>: the IO stream's driver thread id
-      is recorded on the stream itself instead
-      (<a href="get-stream-index.html">GetStreamIndex</a> explains when)</td></tr>
+    <td><span class="badge">private</span> <strong>Never written and never read</strong> — declared at <code>Engine/Core/TaskSystem.h:42</code> and named nowhere else in <code>Engine/</code></td></tr>
   <tr><td><code>streams</code></td><td><code>TStreamArray streams;</code></td>
-    <td><span class="badge">private</span> Empty before <a href="initialize.html">Initialize</a> and again after
-      <a href="join-and-clear.html">JoinAndClear</a>, which is what <a href="has-stream.html">HasStream</a> exists to
-      catch</td></tr>
+    <td><span class="badge">private</span> Empty before <a href="initialize.html">Initialize</a> and again after <a href="join-and-clear.html">JoinAndClear</a>, which is what <a href="has-stream.html">HasStream</a> catches</td></tr>
   <tr><td><code>taskRegistry</code></td><td><code>TaskRegistry taskRegistry;</code></td>
-    <td><span class="badge">private</span> Every task record, issued with a generation so a stale identity resolves to nothing.
-      Exposed whole through <a href="get-registry.html">GetRegistry</a></td></tr>
+    <td><span class="badge">private</span> Every task record, issued with a generation; exposed whole through <a href="get-registry.html">GetRegistry</a></td></tr>
   <tr><td><code>taskQueueMutex</code></td><td><code>std::mutex taskQueueMutex;</code></td>
-    <td><span class="badge">private</span> One lock for the general queue: held by both
-      <a href="enqueue.html">Enqueue</a> and <a href="dequeue.html">Dequeue</a></td></tr>
+    <td><span class="badge">private</span> One lock for the general queue, held by <a href="enqueue.html">Enqueue</a> and <a href="dequeue.html">Dequeue</a></td></tr>
   <tr><td><code>taskQueue</code></td><td><code>BoundedPriorityQueue&lt;WorkItem&gt; taskQueue;</code></td>
-    <td><span class="badge">private</span> The general queue. <em>Bounded</em> in priority range (256 buckets), not in item
-      count — <code>Push</code> checks nothing</td></tr>
+    <td><span class="badge">private</span> The general queue — <em>bounded</em> in priority range (256 buckets), not in item count</td></tr>
   <tr><td><code>lastBudgetWindowAdvance</code></td><td><code>time::TTime lastBudgetWindowAdvance{};</code></td>
-    <td><span class="badge">private</span> When the budget window last closed. Unsynchronised on purpose: one caller, the base
-      stream's thread (<a href="run-budget-window-pass.html">RunBudgetWindowPass</a>)</td></tr>
+    <td><span class="badge">private</span> When the budget window last closed; unsynchronised because it has one caller, the base stream's thread</td></tr>
   <tr><td><code>numBudgetWindowsAdvanced</code></td><td><code>std::atomic&lt;std::size_t&gt; numBudgetWindowsAdvanced{0};</code></td>
-    <td><span class="badge">private</span> How many windows have closed — the only proof the pass is alive
-      (<a href="get-num-budget-windows-advanced.html">GetNumBudgetWindowsAdvanced</a>)</td></tr>
+    <td><span class="badge">private</span> How many windows have closed — the only proof the pass is alive</td></tr>
 </table>
 
 <h2 id="methods">Class methods</h2>
 
 <p>
-  One row per method name; the linked page carries every overload of that name, the parameters, the return value and an example.
-  Private members are included because they carry the rules the public ones depend on.
+  One row per method name, in header declaration order; the <strong>Link</strong> column is the page, which carries the
+  parameters, the return value and an example for every overload of that name. Private members are included because the
+  public ones depend on their rules.
 </p>
 
 <table class="methods">
-  <tr><th>Method</th><th>Signature</th><th>What a caller depends on</th></tr>
-
-	<tr>
-	  <td><a href="get-num-hardware-threads.html">GetNumHardwareThreads</a></td>
-	  <td class="sig"><span class="kw">static</span> TIndex GetNumHardwareThreads() noexcept</td>
-	  <td>The standard library’s concurrency hint, cast to int — and the only figure that decides how many streams exist.</td>
-	</tr>
-	<tr>
-	  <td><a href="set-thread-name.html">SetThreadName</a></td>
-	  <td class="sig"><span class="kw">static</span> void SetThreadName(StaticString name) noexcept</td>
-	  <td>Names the calling thread in a thread_local. Not the OS thread name: no platform API is called.</td>
-	</tr>
-	<tr>
-	  <td><a href="set-stream-index.html">SetStreamIndex</a></td>
-	  <td class="sig"><span class="kw">static</span> void SetStreamIndex(TIndex index) noexcept</td>
-	  <td>Claims a stream for the calling thread; claimed per pass on a driven stream, for life on a stream’s own thread.</td>
-	</tr>
-	<tr>
-	  <td><a href="get-current-stream-index.html">GetCurrentStreamIndex</a></td>
-	  <td class="sig"><span class="kw">static</span> TIndex GetCurrentStreamIndex() noexcept</td>
-	  <td>This thread’s claimed index, or NonStreamIndex — which is why IsBaseThread can answer at all.</td>
-	</tr>
-	<tr>
-	  <td><a href="get-current-stream-name.html">GetCurrentStreamName</a></td>
-	  <td class="sig"><span class="kw">static</span> StaticString GetCurrentStreamName() noexcept</td>
-	  <td>Returns the same thread_local name as GetCurrentThreadName — the two can never disagree.</td>
-	</tr>
-	<tr>
-	  <td><a href="get-current-thread-name.html">GetCurrentThreadName</a></td>
-	  <td class="sig"><span class="kw">static</span> StaticString GetCurrentThreadName() noexcept</td>
-	  <td>The door onto that name that the engine actually prints.</td>
-	</tr>
-	<tr>
-	  <td><a href="is-base-thread.html">IsBaseThread</a></td>
-	  <td class="sig"><span class="kw">static</span> bool IsBaseThread() noexcept</td>
-	  <td>True only while the caller claims stream 0. Not the constructing-thread question.</td>
-	</tr>
-	<tr>
-	  <td><a href="is-io-thread.html">IsIOThread</a></td>
-	  <td class="sig"><span class="kw">static</span> bool IsIOThread() noexcept</td>
-	  <td>True only on the logger’s thread, and only during a pass driving stream 1.</td>
-	</tr>
-	<tr>
-	  <td><a href="get-base-task-stream-index.html">GetBaseTaskStreamIndex</a></td>
-	  <td class="sig"><span class="kw">static</span> TIndex GetBaseTaskStreamIndex() noexcept</td>
-	  <td>0 — so no call site has to hard-code the base stream’s index.</td>
-	</tr>
-	<tr>
-	  <td><a href="get-io-task-stream-index.html">GetIOTaskStreamIndex</a></td>
-	  <td class="sig"><span class="kw">static</span> TIndex GetIOTaskStreamIndex() noexcept</td>
-	  <td>1 — and the number every worker range in the engine is measured from.</td>
-	</tr>
-	<tr>
-	  <td><a href="constructors.html">constructors</a></td>
-	  <td class="sig"><span class="fn">TaskSystem</span>() noexcept</td>
-	  <td>Records the constructing thread as the engine loop, reads the hardware thread count, starts nothing.</td>
-	</tr>
-	<tr>
-	  <td><a href="destructor.html">~TaskSystem</a></td>
-	  <td class="sig"><span class="fn">~TaskSystem</span>() noexcept</td>
-	  <td>Calls <a href="join-and-clear.html">JoinAndClear</a>, which is what keeps an unrun engine from terminating on live threads.</td>
-	</tr>
-	<tr>
-	  <td><a href="initialize.html">Initialize</a></td>
-	  <td class="sig">void Initialize() noexcept</td>
-	  <td>Reads four configuration parameters, sizes the registry, and builds every stream. Exactly once, on the constructing thread.</td>
-	</tr>
-	<tr>
-	  <td><a href="request-shut-down.html">RequestShutDown</a></td>
-	  <td class="sig">void RequestShutDown() noexcept</td>
-	  <td>Clears isRunning and asks everything but the base and IO streams to close. Ends the run without abandoning queued work.</td>
-	</tr>
-	<tr>
-	  <td><a href="request-other-streams-close.html">RequestOtherStreamsClose</a></td>
-	  <td class="sig">void RequestOtherStreamsClose() noexcept</td>
-	  <td>Asks every stream but the two engine streams to drain. Idempotent, and safe on a torn-down task system.</td>
-	</tr>
-	<tr>
-	  <td><a href="are-user-streams-closed.html">AreUserStreamsClosed</a></td>
-	  <td class="sig">bool AreUserStreamsClosed() noexcept</td>
-	  <td>The condition JoinAndClear waits on. Unguarded for an empty stream array, unlike its sibling.</td>
-	</tr>
-	<tr>
-	  <td><a href="join-and-clear.html">JoinAndClear</a></td>
-	  <td class="sig">void JoinAndClear() noexcept</td>
-	  <td>Asks, pumps for up to 2000 ms, flushes the logger, closes, joins and clears — the whole teardown, in one order that works.</td>
-	</tr>
-	<tr>
-	  <td><a href="update.html">Update</a></td>
-	  <td class="sig">void Update() noexcept</td>
-	  <td>One engine frame of base-stream work inside the base frame period, stopping at the first pass that finds nothing.</td>
-	</tr>
-	<tr>
-	  <td><a href="run-budget-window-pass.html">RunBudgetWindowPass</a></td>
-	  <td class="sig">void RunBudgetWindowPass() noexcept</td>
-	  <td>Closes every stream’s CPU-budget window once per base frame period, by request. Its caller is the base stream’s own pass.</td>
-	</tr>
-	<tr>
-	  <td><a href="get-num-budget-windows-advanced.html">GetNumBudgetWindowsAdvanced</a></td>
-	  <td class="sig">std::size_t GetNumBudgetWindowsAdvanced() const noexcept</td>
-	  <td>The witness that the budget pass is alive, since a reopened stream looks like an unthrottled one.</td>
-	</tr>
-	<tr>
-	  <td><a href="enqueue.html">Enqueue</a></td>
-	  <td class="sig">void Enqueue(const WorkItem&amp; task) noexcept<br>void Enqueue(TIndex streamIndex, const WorkItem&amp; task) noexcept<br>void Enqueue(TIndex streamIndex, const WorkItem&amp; task, StreamDrainPolicy::ELane lane) noexcept</td>
-	  <td>Three destinations: the shared general queue, or one stream’s FIFO or priority lane. A bad index drops the item silently outside Debug.</td>
-	</tr>
-	<tr>
-	  <td><a href="dequeue.html">Dequeue</a></td>
-	  <td class="sig">void Dequeue(std::optional&lt;WorkItem&gt;&amp; outTask) noexcept</td>
-	  <td>The taking side of the general queue, with an affinity test whose only live effect is to exclude non-stream threads.</td>
-	</tr>
-	<tr>
-	  <td><a href="enqueue-task.html">EnqueueTask</a></td>
-	  <td class="sig">void EnqueueTask(TIndex streamIndex, Task&amp; task, uint8_t priority = 0, StreamDrainPolicy::ELane lane = StreamDrainPolicy::ELane::Fifo) noexcept</td>
-	  <td>The customer’s entry point: declares the join, builds the one item that fills it, queues it.</td>
-	</tr>
-	<tr>
-	  <td><a href="dispatch-to-main-thread.html">DispatchToMainThread</a></td>
-	  <td class="sig">void DispatchToMainThread(TMainThreadTask task, void* userData, uint8_t priority = 128) noexcept</td>
-	  <td>Posts a callable to the engine-loop thread. Drained at the top of every pass, so there is no draining call.</td>
-	</tr>
-	<tr>
-	  <td><a href="create-task.html">CreateTask</a></td>
-	  <td class="sig">TaskID CreateTask(StaticString taskName, TRunnable func, void* userData) noexcept</td>
-	  <td>Asks the registry for a record. A null identity means the task will never run, and the create path never grows the table.</td>
-	</tr>
-	<tr>
-	  <td><a href="find-task.html">FindTask</a></td>
-	  <td class="sig">Task* FindTask(TaskID id) noexcept</td>
-	  <td>Resolves an identity through its generation. The pointer is not a lease.</td>
-	</tr>
-	<tr>
-	  <td><a href="release-task.html">ReleaseTask</a></td>
-	  <td class="sig">void ReleaseTask(TaskID id) noexcept</td>
-	  <td>Returns a record to the registry, advancing its generation so stale identities resolve to nothing.</td>
-	</tr>
-	<tr>
-	  <td><a href="run-split.html">RunSplit</a></td>
-	  <td class="sig">TaskID RunSplit(StaticString taskName, TRunnable func, void* userData, TIndex numItems, TIndex numSubJobs, const TIndex* streamIndices, TIndex numStreamIndices, uint8_t priority, TaskID successor, TIndex successorStream) noexcept</td>
-	  <td>The private half of ParallelFor: clamps, routes, then hands out contiguous ranges round-robin.</td>
-	</tr>
-	<tr>
-	  <td><a href="parallel-for.html">ParallelFor</a></td>
-	  <td class="sig">TaskID ParallelFor(StaticString taskName, TRunnable func, void* userData, TIndex numItems, TIndex numSubJobs, const TIndex* streamIndices, TIndex numStreamIndices, uint8_t priority = 0, TaskID successor = {}, TIndex successorStream = NonStreamIndex) noexcept<br>TaskID ParallelFor(StaticString taskName, TRunnable func, void* userData, TIndex numItems, TIndex numSubJobs, TIndex numStreams, uint8_t priority = 0, TaskID successor = {}, TIndex successorStream = NonStreamIndex) noexcept</td>
-	  <td>Split a job across streams and return without waiting. Naming the streams, or asking for a count of them.</td>
-	</tr>
-	<tr>
-	  <td><a href="set-successor.html">SetSuccessor</a></td>
-	  <td class="sig">void SetSuccessor(TaskID task, TaskID successor) noexcept</td>
-	  <td>Records who to dispatch when this join closes — recorded before the first item is queued, never after.</td>
-	</tr>
-	<tr>
-	  <td><a href="get-successor.html">GetSuccessor</a></td>
-	  <td class="sig">TaskID GetSuccessor(TaskID task) noexcept</td>
-	  <td>The recorded successor, or a null identity when nobody is waiting on the join.</td>
-	</tr>
-	<tr>
-	  <td><a href="set-abandoned-notice.html">SetAbandonedNotice</a></td>
-	  <td class="sig">void SetAbandonedNotice(TaskID task, FAbandonedNotice handler, void* userData = nullptr) noexcept</td>
-	  <td>Opts in to learning that work was dropped. The handler runs on whichever thread dropped it.</td>
-	</tr>
-	<tr>
-	  <td><a href="dispatch-successor.html">DispatchSuccessor</a></td>
-	  <td class="sig">void DispatchSuccessor(TaskID finishedTask) noexcept</td>
-	  <td>Copies the outcome onto the successor and queues it on the stream the packet names. Six refusals, four of them logged.</td>
-	</tr>
-	<tr>
-	  <td><a href="get-name.html">GetName</a></td>
-	  <td class="sig">StaticString GetName() const noexcept</td>
-	  <td>"TaskSystem" — the category every log line, filter and assert message is filed under.</td>
-	</tr>
-	<tr>
-	  <td><a href="is-running.html">IsRunning</a></td>
-	  <td class="sig">const std::atomic&lt;bool&gt;&amp; IsRunning() const noexcept</td>
-	  <td>The flag itself, read-only, so the run loop polls an atomic rather than a cached copy.</td>
-	</tr>
-	<tr>
-	  <td><a href="get-registry.html">GetRegistry</a></td>
-	  <td class="sig">TaskRegistry&amp; GetRegistry() noexcept</td>
-	  <td>The registry itself, for capacity and growth — which has a thread rule of its own.</td>
-	</tr>
-	<tr>
-	  <td><a href="get-stream-name.html">GetStreamName</a></td>
-	  <td class="sig">StaticString GetStreamName(int index) const noexcept</td>
-	  <td>The stream’s name, or "Unknown". The one accessor that answers a bad index with a word.</td>
-	</tr>
-	<tr>
-	  <td><a href="get-stream-index.html">GetStreamIndex</a></td>
-	  <td class="sig">TIndex GetStreamIndex(TThreadID id) const noexcept</td>
-	  <td>Which stream owns this OS thread, found by scanning. The scanned field is not synchronised.</td>
-	</tr>
-	<tr>
-	  <td><a href="has-stream.html">HasStream</a></td>
-	  <td class="sig">bool HasStream(TIndex index) const noexcept</td>
-	  <td>Whether the index exists right now. The precondition of everything that reaches a stream by number.</td>
-	</tr>
-	<tr>
-	  <td><a href="get-stream.html">GetStream</a></td>
-	  <td class="sig">TaskStream&amp; GetStream(int index) noexcept</td>
-	  <td>The stream at index — and an out-of-range index returns the base stream instead of failing.</td>
-	</tr>
-	<tr>
-	  <td><a href="get-base-task-stream.html">GetBaseTaskStream</a></td>
-	  <td class="sig">TaskStream&amp; GetBaseTaskStream() noexcept<br>const TaskStream&amp; GetBaseTaskStream() const noexcept</td>
-	  <td>Stream 0, with no bounds path at all. Nothing in the engine calls it.</td>
-	</tr>
-	<tr>
-	  <td><a href="get-io-task-stream.html">GetIOTaskStream</a></td>
-	  <td class="sig">TaskStream&amp; GetIOTaskStream() noexcept<br>const TaskStream&amp; GetIOTaskStream() const noexcept</td>
-	  <td>Stream 1 — the handle the logger needs in order to drive the stream that has no thread.</td>
-	</tr>
-	<tr>
-	  <td><a href="build-streams.html">BuildStreams</a></td>
-	  <td class="sig">void BuildStreams()</td>
-	  <td>Creates every stream and starts the ones that own threads. Private, once per instance, and its thread check is Debug-only.</td>
-	</tr>
+  <tr><th>Name</th><th>Signature</th><th>Link</th><th>What a caller depends on</th></tr>
+  <tr><td><code>GetNumHardwareThreads</code></td><td class="sig">static TIndex GetNumHardwareThreads() noexcept</td>
+    <td><a href="get-num-hardware-threads.html">get-num-hardware-threads.html</a></td>
+    <td>The standard library's concurrency hint cast to <code>int</code>, and the only figure that decides how many streams exist.</td></tr>
+  <tr><td><code>SetThreadName</code></td><td class="sig">static void SetThreadName(StaticString name) noexcept</td>
+    <td><a href="set-thread-name.html">set-thread-name.html</a></td>
+    <td>Names the calling thread in a <code>thread_local</code>; no operating-system thread name is set.</td></tr>
+  <tr><td><code>SetStreamIndex</code></td><td class="sig">static void SetStreamIndex(TIndex index) noexcept</td>
+    <td><a href="set-stream-index.html">set-stream-index.html</a></td>
+    <td>Claims a stream for the calling thread — for life on its own thread, per pass on a driven one.</td></tr>
+  <tr><td><code>GetCurrentStreamIndex</code></td><td class="sig">static TIndex GetCurrentStreamIndex() noexcept</td>
+    <td><a href="get-current-stream-index.html">get-current-stream-index.html</a></td>
+    <td>This thread's claimed index, or <code>NonStreamIndex</code> — which is how <code>IsBaseThread</code> can answer at all.</td></tr>
+  <tr><td><code>GetCurrentStreamName</code></td><td class="sig">static StaticString GetCurrentStreamName() noexcept</td>
+    <td><a href="get-current-stream-name.html">get-current-stream-name.html</a></td>
+    <td>Returns the same <code>thread_local</code> name as <code>GetCurrentThreadName</code>, so the two can never disagree.</td></tr>
+  <tr><td><code>GetCurrentThreadName</code></td><td class="sig">static StaticString GetCurrentThreadName() noexcept</td>
+    <td><a href="get-current-thread-name.html">get-current-thread-name.html</a></td>
+    <td>The door onto that name that the engine actually prints.</td></tr>
+  <tr><td><code>IsBaseThread</code></td><td class="sig">static bool IsBaseThread() noexcept</td>
+    <td><a href="is-base-thread.html">is-base-thread.html</a></td>
+    <td>True only while the caller claims stream 0 — not the constructing-thread question.</td></tr>
+  <tr><td><code>IsIOThread</code></td><td class="sig">static bool IsIOThread() noexcept</td>
+    <td><a href="is-io-thread.html">is-io-thread.html</a></td>
+    <td>True only on the logger's thread, and only during a pass driving stream 1.</td></tr>
+  <tr><td><code>GetBaseTaskStreamIndex</code></td><td class="sig">static TIndex GetBaseTaskStreamIndex() noexcept</td>
+    <td><a href="get-base-task-stream-index.html">get-base-task-stream-index.html</a></td>
+    <td><code>0</code>, so no call site has to hard-code the base stream's index.</td></tr>
+  <tr><td><code>GetIOTaskStreamIndex</code></td><td class="sig">static TIndex GetIOTaskStreamIndex() noexcept</td>
+    <td><a href="get-io-task-stream-index.html">get-io-task-stream-index.html</a></td>
+    <td><code>1</code>, and the number every worker range in the engine is measured from.</td></tr>
+  <tr><td><code>TaskSystem</code></td><td class="sig">TaskSystem() noexcept</td>
+    <td><a href="constructors.html">constructors.html</a></td>
+    <td>Records the constructing thread as the engine loop and reads the hardware thread count; starts nothing.</td></tr>
+  <tr><td><code>~TaskSystem</code></td><td class="sig">~TaskSystem() noexcept</td>
+    <td><a href="destructor.html">destructor.html</a></td>
+    <td>Calls <code>JoinAndClear</code>, which is what keeps an unrun engine from terminating on live threads.</td></tr>
+  <tr><td><code>Initialize</code></td><td class="sig">void Initialize() noexcept</td>
+    <td><a href="initialize.html">initialize.html</a></td>
+    <td>Reads four configuration parameters, sizes the registry and builds every stream — once, on the constructing thread.</td></tr>
+  <tr><td><code>RequestShutDown</code></td><td class="sig">void RequestShutDown() noexcept</td>
+    <td><a href="request-shut-down.html">request-shut-down.html</a></td>
+    <td>Clears <code>isRunning</code> and asks everything but the two engine streams to close; ends the run without abandoning queued work.</td></tr>
+  <tr><td><code>RequestOtherStreamsClose</code></td><td class="sig">void RequestOtherStreamsClose() noexcept</td>
+    <td><a href="request-other-streams-close.html">request-other-streams-close.html</a></td>
+    <td>Asks every stream but the two engine streams to drain; idempotent, and safe on a torn-down task system.</td></tr>
+  <tr><td><code>AreUserStreamsClosed</code></td><td class="sig">[[nodiscard]] bool AreUserStreamsClosed() noexcept</td>
+    <td><a href="are-user-streams-closed.html">are-user-streams-closed.html</a></td>
+    <td>The condition <code>JoinAndClear</code> waits on; unguarded for an empty stream array, unlike its sibling.</td></tr>
+  <tr><td><code>JoinAndClear</code></td><td class="sig">void JoinAndClear() noexcept</td>
+    <td><a href="join-and-clear.html">join-and-clear.html</a></td>
+    <td>Asks, pumps for up to 2000 ms, flushes the logger, closes, joins, clears — the whole teardown in one order that works.</td></tr>
+  <tr><td><code>Update</code></td><td class="sig">void Update() noexcept</td>
+    <td><a href="update.html">update.html</a></td>
+    <td>One engine frame of base-stream work inside the base frame period, stopping at the first pass that finds nothing.</td></tr>
+  <tr><td><code>RunBudgetWindowPass</code></td><td class="sig">void RunBudgetWindowPass() noexcept</td>
+    <td><a href="run-budget-window-pass.html">run-budget-window-pass.html</a></td>
+    <td>Closes every stream's CPU-budget window once per base frame period; its caller is the base stream's own pass.</td></tr>
+  <tr><td><code>GetNumBudgetWindowsAdvanced</code></td><td class="sig">[[nodiscard]] std::size_t GetNumBudgetWindowsAdvanced() const noexcept</td>
+    <td><a href="get-num-budget-windows-advanced.html">get-num-budget-windows-advanced.html</a></td>
+    <td>The witness that the budget pass is alive, since a reopened stream looks like an unthrottled one.</td></tr>
+  <tr><td><code>Enqueue</code><span class="badge">3 overloads</span></td><td class="sig">void Enqueue(const WorkItem&amp; task) noexcept<br>void Enqueue(TIndex streamIndex, const WorkItem&amp; task, StreamDrainPolicy::ELane lane) noexcept<br>void Enqueue(TIndex streamIndex, const WorkItem&amp; task) noexcept</td>
+    <td><a href="enqueue.html">enqueue.html</a></td>
+    <td>Three destinations: the shared general queue, or one stream's priority or FIFO lane. A bad index drops the item silently outside Debug.</td></tr>
+  <tr><td><code>Dequeue</code></td><td class="sig">void Dequeue(std::optional&lt;WorkItem&gt;&amp; outTask) noexcept</td>
+    <td><a href="dequeue.html">dequeue.html</a></td>
+    <td>The taking side of the general queue, with an affinity test whose only live effect is to exclude non-stream threads.</td></tr>
+  <tr><td><code>EnqueueTask</code></td><td class="sig">void EnqueueTask(TIndex streamIndex, Task&amp; task, uint8_t priority = 0, StreamDrainPolicy::ELane lane = StreamDrainPolicy::ELane::Fifo) noexcept</td>
+    <td><a href="enqueue-task.html">enqueue-task.html</a></td>
+    <td>The customer's entry point: declares the join, builds the one item that fills it, queues it.</td></tr>
+  <tr><td><code>DispatchToMainThread</code></td><td class="sig">void DispatchToMainThread(TMainThreadTask task, void* userData, uint8_t priority = 128) noexcept</td>
+    <td><a href="dispatch-to-main-thread.html">dispatch-to-main-thread.html</a></td>
+    <td>Posts a callable to the engine-loop thread; drained at the top of every pass, so there is no draining call.</td></tr>
+  <tr><td><code>CreateTask</code></td><td class="sig">[[nodiscard]] TaskID CreateTask(StaticString taskName, TRunnable func, void* userData) noexcept</td>
+    <td><a href="create-task.html">create-task.html</a></td>
+    <td>Asks the registry for a record; a null identity means the task never runs, and the create path never grows the table.</td></tr>
+  <tr><td><code>FindTask</code></td><td class="sig">[[nodiscard]] Task* FindTask(TaskID id) noexcept</td>
+    <td><a href="find-task.html">find-task.html</a></td>
+    <td>Resolves an identity through its generation; the returned pointer is not a lease.</td></tr>
+  <tr><td><code>ReleaseTask</code></td><td class="sig">void ReleaseTask(TaskID id) noexcept</td>
+    <td><a href="release-task.html">release-task.html</a></td>
+    <td>Returns a record to the registry, advancing its generation so stale identities resolve to nothing.</td></tr>
+  <tr><td><code>RunSplit</code></td><td class="sig">TaskID RunSplit(StaticString taskName, TRunnable func, void* userData, TIndex numItems, TIndex numSubJobs, const TIndex* streamIndices, TIndex numStreamIndices, uint8_t priority, TaskID successor, TIndex successorStream) noexcept</td>
+    <td><a href="run-split.html">run-split.html</a></td>
+    <td>The private half of <code>ParallelFor</code>: clamps, routes, then hands out contiguous ranges round-robin.</td></tr>
+  <tr><td><code>ParallelFor</code><span class="badge">2 overloads</span></td><td class="sig">[[nodiscard]] TaskID ParallelFor(StaticString taskName, TRunnable func, void* userData, TIndex numItems, TIndex numSubJobs, const TIndex* streamIndices, TIndex numStreamIndices, uint8_t priority = 0, TaskID successor = {}, TIndex successorStream = NonStreamIndex) noexcept<br>[[nodiscard]] TaskID ParallelFor(StaticString taskName, TRunnable func, void* userData, TIndex numItems, TIndex numSubJobs, TIndex numStreams, uint8_t priority = 0, TaskID successor = {}, TIndex successorStream = NonStreamIndex) noexcept</td>
+    <td><a href="parallel-for.html">parallel-for.html</a></td>
+    <td>Split a job across streams and return without waiting — by naming the streams, or by asking for a count of them.</td></tr>
+  <tr><td><code>SetSuccessor</code></td><td class="sig">void SetSuccessor(TaskID task, TaskID successor) noexcept</td>
+    <td><a href="set-successor.html">set-successor.html</a></td>
+    <td>Records who to dispatch when this join closes — recorded before the first item is queued, never after.</td></tr>
+  <tr><td><code>GetSuccessor</code></td><td class="sig">[[nodiscard]] TaskID GetSuccessor(TaskID task) noexcept</td>
+    <td><a href="get-successor.html">get-successor.html</a></td>
+    <td>The recorded successor, or a null identity when nobody is waiting on the join.</td></tr>
+  <tr><td><code>SetAbandonedNotice</code></td><td class="sig">void SetAbandonedNotice(TaskID task, FAbandonedNotice handler, void* userData = nullptr) noexcept</td>
+    <td><a href="set-abandoned-notice.html">set-abandoned-notice.html</a></td>
+    <td>Opts in to learning that work was dropped; the handler runs on whichever thread dropped it.</td></tr>
+  <tr><td><code>DispatchSuccessor</code></td><td class="sig">void DispatchSuccessor(TaskID finishedTask) noexcept</td>
+    <td><a href="dispatch-successor.html">dispatch-successor.html</a></td>
+    <td>Copies the outcome onto the successor and queues it on the stream the packet names; six refusals, four of them logged.</td></tr>
+  <tr><td><code>GetName</code></td><td class="sig">[[nodiscard]] StaticString GetName() const noexcept</td>
+    <td><a href="get-name.html">get-name.html</a></td>
+    <td><code>"TaskSystem"</code> — the category every log line, filter and assert message is filed under.</td></tr>
+  <tr><td><code>IsRunning</code></td><td class="sig">[[nodiscard]] bool IsRunning() const noexcept</td>
+    <td><a href="is-running.html">is-running.html</a></td>
+    <td>The run loop's continuation test, read with acquire ordering — <code>Engine::Run</code> polls this, it does not cache it.</td></tr>
+  <tr><td><code>GetRegistry</code></td><td class="sig">[[nodiscard]] TaskRegistry&amp; GetRegistry() noexcept</td>
+    <td><a href="get-registry.html">get-registry.html</a></td>
+    <td>The registry itself, for capacity and growth — which has a thread rule of its own.</td></tr>
+  <tr><td><code>GetStreamName</code></td><td class="sig">[[nodiscard]] StaticString GetStreamName(int index) const noexcept</td>
+    <td><a href="get-stream-name.html">get-stream-name.html</a></td>
+    <td>The stream's name, or <code>"Unknown"</code> — the one accessor that answers a bad index with a word.</td></tr>
+  <tr><td><code>GetStreamIndex</code></td><td class="sig">[[nodiscard]] TIndex GetStreamIndex(TThreadID id) const noexcept</td>
+    <td><a href="get-stream-index.html">get-stream-index.html</a></td>
+    <td>Which stream owns this operating-system thread, found by scanning a field that is not synchronised.</td></tr>
+  <tr><td><code>HasStream</code></td><td class="sig">[[nodiscard]] bool HasStream(TIndex index) const noexcept</td>
+    <td><a href="has-stream.html">has-stream.html</a></td>
+    <td>Whether the index exists right now — the precondition of everything that reaches a stream by number.</td></tr>
+  <tr><td><code>GetStream</code></td><td class="sig">TaskStream&amp; GetStream(int index) noexcept</td>
+    <td><a href="get-stream.html">get-stream.html</a></td>
+    <td>The stream at <code>index</code>; an out-of-range index returns the base stream instead of failing.</td></tr>
+  <tr><td><code>GetBaseTaskStream</code><span class="badge">2 overloads</span></td><td class="sig">TaskStream&amp; GetBaseTaskStream() noexcept<br>const TaskStream&amp; GetBaseTaskStream() const noexcept</td>
+    <td><a href="get-base-task-stream.html">get-base-task-stream.html</a></td>
+    <td>Stream 0, with no bounds path at all; nothing in the engine calls it.</td></tr>
+  <tr><td><code>GetIOTaskStream</code><span class="badge">2 overloads</span></td><td class="sig">TaskStream&amp; GetIOTaskStream() noexcept<br>const TaskStream&amp; GetIOTaskStream() const noexcept</td>
+    <td><a href="get-io-task-stream.html">get-io-task-stream.html</a></td>
+    <td>Stream 1 — the handle the logger needs in order to drive the stream that has no thread.</td></tr>
+  <tr><td><code>BuildStreams</code></td><td class="sig">void BuildStreams()</td>
+    <td><a href="build-streams.html">build-streams.html</a></td>
+    <td>Creates every stream and starts the ones that own threads; private, once per instance, and its thread check is Debug-only.</td></tr>
 </table>
 
 <h2 id="non-member">Non-member helper functions</h2>
 
-<p>None. <code>Engine/Core/TaskSystem.h</code> declares no free functions, no stream operator, and no literals; the
-thread-local state the static accessors read lives in an anonymous namespace inside
+<p>None. The thread-local state the <code>static</code> accessors read lives in an anonymous namespace inside
 <code>Engine/Core/TaskSystem.cpp</code> and is not part of the interface.</p>
 
 <h2 id="coverage">Coverage</h2>
 
 <table>
   <tr><th>Not documented here</th><th>Why</th></tr>
-  <tr><td><code>TaskStream</code>, its lanes and its drain policy</td><td>A separate class with its own rules. This page documents only what a
-    <code>TaskSystem</code> caller must know about streams; the pages above link to the stream behaviour they rely on, and
-    <code>docs/Core/TaskStream/</code> does not exist yet</td></tr>
+  <tr><td><code>TaskStream</code>, its lanes and its drain policy</td><td>A separate entry with its own rules; this page documents only
+    what a <code>TaskSystem</code> caller must know about streams</td></tr>
   <tr><td><code>TaskRegistry</code>, <code>Task</code>, <code>WorkItem</code>, <code>ResultPacket</code>,
     <code>TaskStreamAffinity</code>, <code>StreamDrainPolicy</code>, <code>CPUBudget</code></td>
-    <td>Each is its own entry. Contracts quoted here from them (generation semantics, the 128-byte packet, the 64-bit affinity
-      mask, the 255-subtask ceiling) were read from their headers; their pages are outstanding</td></tr>
-  <tr><td><code>TaskSystemTest</code> in <code>#ifdef __UNIT_TEST__</code> at the end of the header</td><td>Test-only. It owns a
+    <td>Each is its own entry; the contracts quoted here from them — generation semantics, the 128-byte packet, the 64-bit
+      affinity mask, the 255-subtask ceiling — were read from their headers</td></tr>
+  <tr><td><code>TaskSystemTest</code>, in <code>#ifdef __UNIT_TEST__</code> at the end of the header</td><td>Test-only; it owns a
     Coverage row on the module ledger rather than a page</td></tr>
-  <tr><td>The two silent returns in <a href="dispatch-successor.html">DispatchSuccessor</a></td>
-    <td>Documented on that page as rows 1 and 2 of its refusal table — recorded here because the header's prose claim "every
-      refusal is reported" is true only of the four that were decisions</td></tr>
-  <tr><td><code>ioTaskThreadID</code></td><td>A data member that is never written and never read; stated in the properties
-    table rather than omitted, because a reader will otherwise look for the code that maintains it</td></tr>
-  <tr><td>The affinity exclusion mechanism's other half</td><td>Described on <a href="dequeue.html">Dequeue</a>: nothing in the
-    engine calls <code>Unset</code>, so a stream that cannot use a general-queue item never hands it on. Stated as the code
-    stands, not as the design intends</td></tr>
-  <tr><td>The 64-stream affinity ceiling</td><td>Also on <a href="dequeue.html">Dequeue</a>: the mask is 64 bits wide while the
-    stream count is unbounded above, so streams 64 and up can never take general-queue work on a large machine</td></tr>
+  <tr><td>Two silent returns in <a href="dispatch-successor.html">DispatchSuccessor</a></td>
+    <td>Documented there as rows 1 and 2 of its refusal table — recorded here because "every refusal is reported" is true only of
+      the four that were decisions</td></tr>
+  <tr><td>The affinity exclusion mechanism's other half, and the 64-stream affinity ceiling</td><td>Both on
+    <a href="dequeue.html">Dequeue</a>: nothing in the engine calls <code>Unset</code>, so a stream that cannot use a
+    general-queue item never hands it on, and the mask is 64 bits wide while the stream count is unbounded above</td></tr>
   <tr><td>The wait that drives this class</td><td><a href="../../Test/TestHelper/drive-until.html"><code>TestHelper::DriveUntil</code></a>
-    and <a href="../../Test/TestHelper/report-drive-timeout.html"><code>TestHelper::ReportDriveTimeout</code></a> were
-    members of this class until 2026-10-02, when every one of the wait's fourteen callers turned out to be a test body.
-    They are documented in the <a href="../../Test/index.html">Test</a> module now, and the <a href="update.html">Update</a>,
-    <a href="get-stream.html">GetStream</a>, <a href="get-stream-index.html">GetStreamIndex</a>,
-    <a href="get-base-task-stream-index.html">GetBaseTaskStreamIndex</a> and
-    <a href="dispatch-to-main-thread.html">DispatchToMainThread</a> pages still point at them, because that is where a
-    reader who came looking for a TaskSystem member ends up</td></tr>
+    and <a href="../../Test/TestHelper/report-drive-timeout.html"><code>TestHelper::ReportDriveTimeout</code></a> were members of this
+    class until 2026-10-02 and are documented in the <a href="../../Test/index.html">Test</a> module; five pages here still point at
+    them, because that is where a reader who came looking for a <code>TaskSystem</code> member ends up</td></tr>
 </table>
-
 <footer class="prevnext">
-  <span><a href="../index.html">&larr; Core</a></span>
-  <span><a href="../index.html#classes">TaskSystem in the Core class list</a></span>
+  <span><a href="index.html">&larr; TaskSystem</a></span>
+  <span><a href="index.html#methods">All TaskSystem methods</a></span>
 </footer>
 
 </main>

@@ -17,6 +17,18 @@ families share one page.**
 
 Class directory and file names are the **source spelling**: `Array`, `TaskSystem`, `StaticStringID`.
 
+**A module page indexes; it does not document.** Every classes-table row links `<Class>/index.html` — never an
+in-page `#anchor` — because the module page is the only address a reader arriving from the site index has, and
+a row that scrolls instead of navigating strands the entire reference below it. `docs/Core/index.html` did
+exactly that: 6 of its 25 entries linked their class page at all, one file in the whole site linked a
+`TaskSystem` method page, and the embedded per-class sections it scrolled to had rotted into fiction — they
+advertised `Task::Start` and `Task::Wait`, which `Engine/Core/Task.h` does not declare, and omitted
+`ReserveSubTasks`, `SetRunnable` and `LoadIntoRecord`, which it does.
+
+So a module page holds: module description, the classes table, module variables, module functions, the
+**Usage in the engine** table (§5.4), and module Coverage. It holds no copy of any class's description,
+property list or method list — a second home for a claim is how the first one stops being checked.
+
 **The unit is a documented entry of the module page, not strictly a class.** Some entries are a macro set
 (`BuildConfig`) or a namespace of free functions (`EngineConfig`). They still get a folder and an `index.html`,
 because a link target and a sidebar entry are worth more than a taxonomically pure tree. Keep the AGENTS.md
@@ -53,6 +65,13 @@ functions → Coverage.
 
 **Method page:** Signature → Function description → Parameters → Return value → Examples.
 
+**The Signature section is the declaration, never the body.** Print the line the header carries, attributes
+and defaults included, and cite the definition as `<code>Engine/Core/TaskSystem.cpp:174</code>` in the
+description. A pasted body is implementation the reference does not own: it is the `.cpp`'s, it rots the
+moment the algorithm changes, and 15 of `Core/TaskSystem`'s 43 method pages had one. What the body proves is
+the guarantee — the clamp, the loop-exit condition, the lock scope — and that belongs in the description as a
+sentence with the same citation.
+
 Section headings are `<h2 id="…">` with these ids: class pages `description`, `template`, `properties`,
 `methods`, `non-member`, `coverage`; method pages `signature`, `description`, `parameters`, `return`, `example`.
 The sidebar's "This class" / "This function" list points at exactly those ids — no more, no fewer.
@@ -63,7 +82,11 @@ sidebar is the one place a reader uses to orient before they have read anything.
 
 ## 4. Tables
 
-Class properties — one row per alias **and** per data member:
+Class properties — one row per alias **and** per data member, in header declaration order. Three columns:
+`Name | Declaration | What it means`. **No link column** — a property owns no page, and a column that exists
+only to be empty reads as an unfinished table. The badge goes inside the description cell. The description is
+**one line**: a property's contract that needs three sentences is a contract about the mechanism, and the
+mechanism belongs to the method that owns it or to a design document.
 
 ```html
 <table>
@@ -93,20 +116,29 @@ middle column becomes **where it is read**: `Name | Read by | What it controls`,
 translation unit or "nothing". Naming the consumer is the whole value of such a table — a define nobody reads is
 a define that can rot, which is how `EngineAPIGuide` came to lie.
 
-Class methods — one row per **method name**, the name linking to its page, the overload count as a badge:
+Class methods — one row per **method name**, in header declaration order, four columns:
+`Name | Signature | Link | What a caller depends on`. The name is **not** the link: it is the identifier a
+caller copies, so it stays selectable plain text, and the fourth column is the address. The overload count is
+a badge beside the name, and every overload gets its own line in the signature cell.
 
 ```html
 <tr>
-  <td><a href="resize.html">Resize</a></td>
+  <td><code>Resize</code></td>
   <td class="sig">void Resize(TIndex newSize) noexcept</td>
-  <td>… one or two clauses a caller depends on …</td>
+  <td><a href="resize.html">resize.html</a></td>
+  <td>Grows in place, so every iterator into the array dies here.</td>
 </tr>
 <tr>
-  <td><a href="begin.html">begin</a><span class="badge">2 overloads</span></td>
+  <td><code>begin</code><span class="badge">2 overloads</span></td>
   <td class="sig">Iterator begin()<br>ConstIterator begin() const</td>
-  <td>…</td>
+  <td><a href="begin.html">begin.html</a></td>
+  <td>… one clause a caller depends on …</td>
 </tr>
 ```
+
+This table is the class's only method navigation. A reader arrives at it from the module page's classes table
+and leaves it for a method page — module, class, method — which is the whole path, and it is why no page
+carries a method list of its own (§9).
 
 Parameters — `Parameter | Type | Requirement`, one row per parameter, `<p>None.</p>` when there are none. For a
 function template with no ordinary arguments, give one row for each template parameter with Type set to
@@ -174,23 +206,30 @@ comment, `<span class="nu">` number, `<span class="st">` string. Spans are optio
 
 ## 9. Sidebar
 
-Copy verbatim from the exemplar and change only the `current` marker and the "Methods" list. The Modules list is
-identical on every page of a module, and a method page marks itself current in the Methods list. The Modules list
-on a class page marks **no** entry current; on a method page it also marks none.
+A page carries two sidebar lists and nothing else: the **Modules** list, identical on every page of a
+module, and **This class** / **This function** — the section anchors of the page under it. There is **no
+all-methods list**, on a class page or on a method page.
 
-A class whose members are aliases only has no method pages: replace the list with
-`<li>None — aliases only</li>` and keep the "Methods" heading, so the sidebar does not look half-written. Same
-for a macro set (`None — macros only`) and a namespace entry whose functions need no page
-(`None — see the module functions`). An `enum class` writes `None — an enumeration declares no members`; a plain
-data struct writes `None — data only`. **A namespace entry whose functions do carry a contract per §15 lists those
-pages** — `Config/EngineConfig` lists `get-max-system-memory-target.html`, and telling it to write "see the module
-functions" would point a reader at a table that links straight back to the page they are on. Those four phrasings
-are the whole vocabulary — inventing a fifth per module is how thirty pages end up saying
-the same absence thirty different ways. **Every class
-page carries the heading**, even when the honest content is a two-word absence: a missing heading cannot be told
+The list was 43 links repeated across 44 pages: 176 KB of `docs/Core/TaskSystem`'s 427 KB, 41.3 % of the
+bytes, every one of them a bare name whose description already sits beside the same target in the class
+page's method table. Navigation is **module page → class page → method page**, the class page's method table
+is the navigation surface, and a method page returns to it through the footer's `All <Class> methods`.
+
+The Modules list on a class page marks **no** entry current; on a method page it also marks none.
+
+A class whose members are aliases only has no method pages: its method table states that in one row —
+`None — aliases only` — and the same for a macro set (`None — macros only`), an `enum class` (`None — an
+enumeration declares no members`) and a plain data struct (`None — data only`). **A namespace entry whose
+functions do carry a contract per §15 lists those pages in its method table** — `Config/EngineConfig` lists
+`get-max-system-memory-target.html`, and telling it to write "see the module functions" would point a reader
+at a table that links straight back to the page they are on. Those four phrasings are the whole vocabulary —
+inventing a fifth per module is how thirty pages end up saying
+the same absence thirty different ways. **Every class page carries the `id="methods"` heading**, even when the
+honest content is a two-word absence: a missing heading cannot be told
 apart from an unfinished page. **An orchestrator brief does not override this file** — one brief told an alias
 family to write `None — see the module functions`, which §9 reserves for namespaces and which pointed at a
-section reading "None." If a brief and this file disagree, this file wins and the brief is the bug.
+section reading "None." If a brief and this file disagree, this file wins and the brief is the bug —
+except where the owner has ruled, which is what retired the sidebar list this sentence once defended.
 
 ## 10. Footer
 

@@ -135,8 +135,13 @@ def brace_depths(text):
         depths.setdefault(index, max_depth)
     return depths
 
-ENTRY = re.compile(r'^\s*(?:template\s*<[^>]*>\s*)?(class|struct|union|enum)\s+(?:class\s+)?([A-Za-z_]\w*)'
-                   r'\s*(?:final\b)?\s*(?::[^;{]*)?(?=[;{])', re.M)
+# An attribute-specifier-seq between the keyword and the name is invisible to a pattern that expects the
+# name first. `class alignas(std::uint64_t) ResultPacket final` matched nothing at all — `alignas` parsed as
+# the name, then the lookahead demanded `;` or `{` and found `(` — so a 158-line header with 48 comment lines
+# billed the gate nothing, and `comments.py --strip` would have deleted its prose with no page ever demanded.
+ENTRY = re.compile(r'^\s*(?:template\s*<[^>]*>\s*)?(class|struct|union|enum)\s+(?:class\s+)'
+                   r'?(?:(?:alignas\s*\([^)]*\)|\[\[[^\]]*\]\]|__attribute__\s*\(\(.*?\)\))\s*)*'
+                   r'([A-Za-z_]\w*)\s*(?:final\b)?\s*(?::[^;{]*)?(?=[;{])', re.M)
 NAMESPACE_HEAD = re.compile(r'(^|[^\w.])\bnamespace\b')
 ENUM_ANON = re.compile(r'^\s*enum\s+(?:class\s+)?[A-Za-z_]\w*\s*(?=\{|$)')
 MACRO_SET = re.compile(r'^\s*#\s*define\s+(HB_[A-Z0-9_]+|[A-Z][A-Z0-9_]{2,})\b')

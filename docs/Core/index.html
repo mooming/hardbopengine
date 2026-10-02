@@ -102,23 +102,23 @@
   <tr><td>Constants</td><td>Constant set</td><td>Constants.h</td><td>Byte multiples and mathematical constants — see <a href="#variables">Module variables</a></td></tr>
   <tr><td><a href="#runnable">Runnable</a></td><td>Alias</td><td>Runnable.h</td><td>Signature of a function a task executes</td></tr>
   <tr><td><a href="#task">Task</a></td><td>Class</td><td>Task.h</td><td>Unit of work, splittable into sub-tasks</td></tr>
-  <tr><td><a href="#workitem">WorkItem</a></td><td>Class</td><td>WorkItem.h</td><td>One index range <code>[start, end)</code> of a Task</td></tr>
+  <tr><td id="workitem"><a href="WorkItem/index.html">WorkItem</a></td><td>Class</td><td>WorkItem.h</td><td>One index range <code>[start, end)</code> of a Task</td></tr>
   <tr><td><a href="#taskstream">TaskStream</a></td><td>Class</td><td>TaskStream.h</td><td>Thread that processes tasks taken from a stream</td></tr>
   <tr><td><a href="#taskstreamaffinity">TaskStreamAffinity</a></td><td>Class template</td><td>TaskStreamAffinity.h</td><td>Bitmask of streams a task may run on</td></tr>
-  <tr><td><a href="#tasksystem">TaskSystem</a></td><td>Class</td><td>TaskSystem.h</td><td>Owns the streams and the general queue</td></tr>
+  <tr><td id="tasksystem"><a href="TaskSystem/index.html">TaskSystem</a></td><td>Class</td><td>TaskSystem.h</td><td>Owns the streams and the general queue</td></tr>
   <tr><td><a href="#mainthreadtaskqueue">MainThreadTaskQueue</a></td><td>Class</td><td>MainThreadTaskQueue.h</td><td>Thread-safe queue feeding the main thread</td></tr>
-  <tr><td><a href="#componentstate">ComponentState</a></td><td>Enum class</td><td>ComponentState.h</td><td>Lifecycle states of a component</td></tr>
+  <tr><td id="componentstate"><a href="ComponentState/index.html">ComponentState</a></td><td>Enum class</td><td>ComponentState.h</td><td>Lifecycle states of a component</td></tr>
   <tr><td><a href="#component">Component</a></td><td>Abstract class</td><td>Component.h</td><td>Base of every engine component</td></tr>
   <tr><td><a href="#componentsystem">ComponentSystem</a></td><td>Class template</td><td>ComponentSystem.h</td><td>Drives a component type through its lifecycle</td></tr>
   <tr><td><a href="#systemstatistics">SystemStatistics</a></td><td>Class</td><td>SystemStatistics.h</td><td>Frame, log and allocator counters and deltas</td></tr>
   <tr><td><a href="#componentstate">ComponentState</a></td><td>Enum class</td><td>ComponentState.h</td><td>The five lifecycle states a <code>Component</code> passes through</td></tr>
-  <tr><td><a href="#exception">Exception</a></td><td>Class</td><td>Exception.h</td><td>Throw-site formatter that prints on construction and keeps nothing</td></tr>
-  <tr><td><a href="#scopedtime">ScopedTime</a></td><td>Class</td><td>ScopedTime.h</td><td>RAII timer writing a duration on scope exit</td></tr>
-  <tr><td><a href="#scopedlock">ScopedLock</a></td><td>Class template</td><td>ScopedLock.h</td><td>RAII lock with optional wait profiling</td></tr>
+  <tr><td id="exception"><a href="Exception/index.html">Exception</a></td><td>Class</td><td>Exception.h</td><td>Throw-site formatter that prints on construction and keeps nothing</td></tr>
+  <tr><td id="scopedtime"><a href="ScopedTime/index.html">ScopedTime</a></td><td>Class</td><td>ScopedTime.h</td><td>RAII timer writing a duration on scope exit</td></tr>
+  <tr><td id="scopedlock"><a href="ScopedLock/index.html">ScopedLock</a></td><td>Class template</td><td>ScopedLock.h</td><td>RAII lock with optional wait profiling</td></tr>
   <tr><td><a href="#commandlinearguments">CommandLineArguments</a></td><td>Class</td><td>CommandLineArguments.h</td><td>Parsed command line held as strings</td></tr>
-  <tr><td><a href="#true-t">True_t</a></td><td>Class</td><td>CommonUtil.h</td><td>Type-level <em>true</em>, the tag a trait names when its property holds</td></tr>
-  <tr><td><a href="#false-t">False_t</a></td><td>Class</td><td>CommonUtil.h</td><td>Type-level <em>false</em>, the tag that selects the branch owning object lifetime</td></tr>
-  <tr><td><a href="#isreferencetype">IsReferenceType</a></td><td>Class template</td><td>CommonUtil.h</td><td>Is this an lvalue reference, and how many bytes does storing it need</td></tr>
+  <tr><td id="true-t"><a href="True_t/index.html">True_t</a></td><td>Class</td><td>CommonUtil.h</td><td>Type-level <em>true</em>, the tag a trait names when its property holds</td></tr>
+  <tr><td id="false-t"><a href="False_t/index.html">False_t</a></td><td>Class</td><td>CommonUtil.h</td><td>Type-level <em>false</em>, the tag that selects the branch owning object lifetime</td></tr>
+  <tr><td id="isreferencetype"><a href="IsReferenceType/index.html">IsReferenceType</a></td><td>Class template</td><td>CommonUtil.h</td><td>Is this an lvalue reference, and how many bytes does storing it need</td></tr>
   <tr><td>CommonUtil</td><td>Free functions</td><td>CommonUtil.h</td><td>See <a href="#functions">Module functions</a></td></tr>
   <tr><td>Debug</td><td>Free functions</td><td>Debug.h</td><td>See <a href="#functions">Module functions</a></td></tr>
   <tr><td>time</td><td>Namespace</td><td>Time.h</td><td>See <a href="#functions">Module functions</a></td></tr>
@@ -351,7 +351,7 @@ Debug and Dev and counted in every build by <code>GetProviderAskWhileSpentCount<
 <p>None. Code that is not a provider and wants a task to run uses <code>TaskSystem::EnqueueTask</code> rather than building an
 item.</p>
 
-<h2 id="workitem">WorkItem (<code>Engine/Core/WorkItem.h</code>)</h2>
+<h2>WorkItem (<code>Engine/Core/WorkItem.h</code>)</h2>
 <p><a href="WorkItem/index.html">Full class reference: <code>WorkItem</code> and its methods</a> — this section stays as the module-level summary; the folder page carries the field contracts, the ordering key, and the notice and age-clock rules.</p>
 
 <p class="muted">The queue item type: what a stream holds and pops, 56 bytes, engine-internal. Its construction is not a public
@@ -453,7 +453,7 @@ operation because an item built outside the engine bypasses the registry's bookk
 <h3>Non-member helper functions</h3>
 <p>The alias <code>TaskStreamAffinity</code> is the 64-bit instantiation the engine uses throughout.</p>
 
-<h2 id="tasksystem">TaskSystem (<code>Engine/Core/TaskSystem.h</code>)</h2>
+<h2>TaskSystem (<code>Engine/Core/TaskSystem.h</code>)</h2>
 <p><a href="TaskSystem/index.html">Full class reference: <code>TaskSystem</code> and its methods</a> — this section stays as the module-level summary; the folder page and its 45 method pages carry the lifecycle and thread rules, the refusal and clamp tables for splits and delivery, and the places where the shipped behaviour differs from what the header's comments claim.</p>
 
 <h3>Class description</h3>
@@ -551,7 +551,7 @@ operation because an item built outside the engine bypasses the registry's bookk
 <h3>Non-member helper functions</h3>
 <p>None.</p>
 
-<h2 id="componentstate">ComponentState (<code>Engine/Core/ComponentState.h</code>)</h2>
+<h2>ComponentState (<code>Engine/Core/ComponentState.h</code>)</h2>
 
 <h3>Class description</h3>
 <p>Every lifecycle state a component passes through.</p>
@@ -671,7 +671,7 @@ thread boundary at its own width with no layout question.</p>
 <h3>Class methods</h3>
 <p>None — an enumeration declares no members. The one namespace-scope helper is <code>operator&lt;&lt;</code>, which prints the enumerator's name by indexing a five-entry table with its number.</p>
 
-<h2 id="exception">Exception (<code>Engine/Core/Exception.h</code>)</h2>
+<h2>Exception (<code>Engine/Core/Exception.h</code>)</h2>
 <p><a href="Exception/index.html">Full class reference: <code>Exception</code> and its constructors</a> — this section stays as the module-level summary; the folder page carries the print-on-construction contract, the absence of <code>std::exception</code>, and the fact that no throw site exists in the repository.</p>
 
 <h3>Class description</h3>
@@ -700,7 +700,7 @@ the arguments to <code>PrintArgs</code> and stores nothing, which is why there i
 <h3>Non-member helper functions</h3>
 <p>None.</p>
 
-<h2 id="scopedtime">ScopedTime (<code>Engine/Core/ScopedTime.h</code>)</h2>
+<h2>ScopedTime (<code>Engine/Core/ScopedTime.h</code>)</h2>
 <p><a href="ScopedTime/index.html">Full class reference: <code>ScopedTime</code> and its methods</a> — this section stays as the module-level summary; the folder pages carry the overwrite-not-accumulate rule, the probe-verified statement that the guard is neither copyable nor movable, and the production call site that feeds a <code>Slow DeltaTime</code> warning.</p>
 
 <h3>Class description</h3>
@@ -726,7 +726,7 @@ the arguments to <code>PrintArgs</code> and stores nothing, which is why there i
 <h3>Non-member helper functions</h3>
 <p>None.</p>
 
-<h2 id="scopedlock">ScopedLock (<code>Engine/Core/ScopedLock.h</code>)</h2>
+<h2>ScopedLock (<code>Engine/Core/ScopedLock.h</code>)</h2>
 <p><a href="ScopedLock/index.html">Full class reference: <code>ScopedLock</code> and its methods</a> — this section stays as the module-level summary; the folder page carries the concept constraint, the two build shapes, the lifetime and thread rules, and the wait-plus-hold measurement rule.</p>
 
 <h3>Class description</h3>
@@ -767,7 +767,7 @@ the arguments to <code>PrintArgs</code> and stores nothing, which is why there i
 <h3>Non-member helper functions</h3>
 <p>None.</p>
 
-<h2 id="true-t">True_t (<code>Engine/Core/CommonUtil.h</code>)</h2>
+<h2>True_t (<code>Engine/Core/CommonUtil.h</code>)</h2>
 <p><a href="True_t/index.html">Full class reference: <code>True_t</code></a> — this section stays as the module-level summary; the folder page carries the dispatch mechanism, the sixteen <code>Optional</code> call sites it selects between, and why a tag is a compile-time argument rather than a runtime value.</p>
 
 <h3>Class description</h3>
@@ -779,7 +779,7 @@ the arguments to <code>PrintArgs</code> and stores nothing, which is why there i
 <h3>Class methods</h3>
 <p>None — the type declares no members.</p>
 
-<h2 id="false-t">False_t (<code>Engine/Core/CommonUtil.h</code>)</h2>
+<h2>False_t (<code>Engine/Core/CommonUtil.h</code>)</h2>
 <p><a href="False_t/index.html">Full class reference: <code>False_t</code></a> — this section stays as the module-level summary; the folder page carries the five <code>Optional</code> overloads this tag selects and what each does to object lifetime.</p>
 
 <h3>Class description</h3>
@@ -791,7 +791,7 @@ the arguments to <code>PrintArgs</code> and stores nothing, which is why there i
 <h3>Class methods</h3>
 <p>None — the type declares no members.</p>
 
-<h2 id="isreferencetype">IsReferenceType (<code>Engine/Core/CommonUtil.h</code>)</h2>
+<h2>IsReferenceType (<code>Engine/Core/CommonUtil.h</code>)</h2>
 <p><a href="IsReferenceType/index.html">Full class reference: <code>IsReferenceType</code></a> — this section stays as the module-level summary; the folder page carries the compiler-verified resolution rules, the storage-extent contract <code>Optional</code> depends on, and the <code>sizeof</code> asymmetry reported against <a href="../Memory/index.html">Memory</a>.</p>
 
 <h3>Class description</h3>
