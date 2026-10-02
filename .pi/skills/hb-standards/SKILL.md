@@ -129,8 +129,15 @@ reports a pass the other invalidated. `gate.sh` enforces it with `mkdir` slots
 
 ## Layer 1 — clang-format
 
-Enforces things that need real C++ parsing: Allman braces (break before every `{`,
-no exemptions, empty bodies included), tabs, 120 columns, blank-line placement.
+Enforces things that need real C++ parsing: Allman braces (break before every `{`, empty bodies
+included), tabs, 120 columns, blank-line *limits*.
+
+Two limits on what that sentence means. It caps how many blank lines may sit together; it does not
+decide where a group boundary belongs, so a file can be format-clean and still read as one dense slab
+— grouping is a reader's edit, layer 4's table of contents, not the formatter's. And where the formatter
+and Allman genuinely conflict with no knob to mediate, the formatter wins: clang-format 22 writes a
+`concept` body as `concept C = requires(T t) {`, has no `BraceWrapping` key for it, and `CLockable` in
+`Engine/Core/ScopedLock.h` therefore keeps the attached brace. Do not "fix" it back.
 
 ## Layer 2 — mechanical rule checks clang-format cannot do
 
@@ -143,7 +150,11 @@ alphabetical, exactly one blank line before the first code body).
 `Engine/CodingStandards.{h,cpp}` are exempt from the behavioural checks only:
 they carry deliberate BAD EXAMPLE blocks. Formatting, naming, hygiene and include
 checks still apply to them. To silence a specific line elsewhere, end it with
-`// hb-standards:ignore`.
+`// hb-standards:ignore` — and note what that directive is *not*: it is a waiver, not an eraser.
+`layout.py` reads it, suppresses the finding, and re-prints the member as `MEMBER-WAIVED` with a
+count in its summary line, because "not reported" and "clean" are different claims and a standing
+exception is the former. Where a waiver needs a reason, the reason goes in a design document, since
+engine sources carry no prose to hold it.
 
 ### What a script may fix, and what it hands off
 
@@ -217,6 +228,13 @@ gatekeepers now name the argument, suggest the module name and exit 3.
 Types, then all data, then all functions; each layer `public` → `protected` → `private`, `static`
 first inside each. The block table is in `docs/CodingStandards.md`. The checker asks clang, because
 C++ declarator syntax defeats patterns exactly here — see the traps below.
+
+One exception is forced by the language, not by taste: **a type whose definition needs a class constant
+follows that constant.** A nested type sized by `MaxProvidersPerLane`, or an alias bounded by
+`MaxQueueSize`, cannot name a name the compiler has not yet seen, so the order the table wants does not
+compile. Mark the type's own line `// hb-standards:ignore`, keep the constant directly above it, and put
+the reason in the module's design document. `layout.py` then reports `MEMBER-WAIVED` and prints
+`, N waived` — a file with a waiver is not a clean file, and must not print as one.
 
 Needs a compile database for the project's own flags: `cmake-build-debug/compile_commands.json`.
 Absent, the layer prints `[NONE]` and says so; a rule that could not run must never be readable as
@@ -488,10 +506,18 @@ was found and what was assumed.
 | Cite or drop | file, line, the verbatim text of that line, one sentence of why, the concrete edit, a confidence | `verify-findings.py <file.json>` rejects a finding whose file is missing, whose line is out of range, or whose evidence does not appear on or beside the cited line |
 | Merge | `python3 scripts/review_merge.py <dir>` | folds free-text rule names onto rule numbers, deduplicates by (file, line, rule), keeps the highest-confidence wording, marks a finding corroborated when both slices cited it |
 
-**Do not report**: anything clang-format fixes (braces, indentation, spacing, blank lines, include order);
-comment presence in `.cpp` files, which a scheduled migration owns; namespace bodies indented at column 1,
+**Do not report**: anything clang-format fixes (braces, indentation, spacing, blank-line *counts*,
+include order); comment presence in `.cpp` files, which a scheduled migration owns; namespace bodies
+indented at column 1,
 which is owner-confirmed legacy debt; speculative refactors, performance opinions, "consider renaming".
 A run that fills itself with those displaces the findings that were the point of the run.
+
+Blank lines carry one exception to that exclusion, because the formatter caps them but never places them:
+a declaration block whose members are separated by *no* consistent grouping — one concern indistinguishable
+from the next — is a readability finding worth reporting, and fixing it is whitespace only, so it is safe to
+hand to a reader. The reverse is a real hazard: `comments.py --strip` deletes the comment-only lines that used
+to sit between concerns, so a strip can flatten grouping that was there before it. Re-check grouping after
+stripping a header, not only before.
 
 **Exempt from the behavioural rules**: `Engine/CodingStandards.{h,cpp}`, whose job is to break them
 legibly, and `Applications/EngineTest/TestMain.cpp`, whose `__UNIT_TEST__` guard is intentionally `main()`'s
@@ -585,8 +611,16 @@ start.
   braces.
 - **`BraceWrapping` under a named `BreakBeforeBraces` is silently ignored.** Any new
   brace rule goes in the `Custom` table.
-- **Two blank lines after includes is not achievable.** clang-format collapses any
-  count to exactly one. `docs/CodingStandards.md` still says two and is stale.
+- **A `concept` body has no wrapping knob.** clang-format 22 wants `concept C = requires(T t) {`
+  attached, and `BraceWrapping: {AfterConcept: true}` is rejected outright — `unknown key`. The one
+  engine-wide exception to a broken opening brace, recorded in `docs/CodingStandards.md`.
+- **Blank lines: the formatter is a ceiling, not a floor.** `MaxEmptyLinesToKeep: 2` means three or
+  more collapse to two — between data members, before a function, before a comment — and one or two
+  both survive in every one of those positions. It never inserts a boundary, so grouping is invisible
+  to it and a badly grouped header passes layer 1. An earlier version of this bullet claimed two never
+  survives after includes and that `docs/CodingStandards.md` was stale for saying otherwise; both were
+  wrong, and the standard is now the measured version. Measure blank-line behaviour on a probe file
+  rather than remembering it.
 - **`build.sh` takes `-test`, not `-notest`** as `AGENTS.md` and
   `docs/HelperScript.md` claim. Without `-test`, `__UNIT_TEST__` is undefined and
   `TestMain.cpp` compiles to an empty `main`, so the test sources are never

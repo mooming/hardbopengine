@@ -127,14 +127,22 @@ To maintain high code quality and consistency, please adhere to the following gu
       #include "Config/ConfigParam.h"   // project headers, alphabetical
       #include "Log/Logger.h"
       ```
-    - After all include and define directives at the top of source files,
-      place **one** empty line before the first code body.
-      clang-format enforces this, and the rule is position-dependent, which is easy to
-      get wrong: before a `using namespace` both one and two blank lines survive (three
-      or more collapse to two), while before a namespace declaration, a function or a
-      comment only one survives (two or more collapse to one). Two is therefore legal
-      in exactly one position and wrong everywhere else, so always write one. This
-      clang-format offers no option with which to opt out of the collapse.
+    - After all include and define directives at the top of source files, place **one** empty line
+      before the first code body, and **one** after `#pragma once`.
+      The formatter is a **ceiling, not a floor**. This tree sets `MaxEmptyLinesToKeep: 2`, and measured
+      against it: three or more blank lines collapse to two in every position tried — between data
+      members, before a function, before a comment — while one or two both survive in all of them. The
+      formatter never *inserts* a boundary, so a file can be format-clean and grouped badly. These
+      numbers are a convention the formatter tolerates, not one it enforces.
+    - **Blank lines mark groups.** Members of one concern sit adjacent with no blank between them;
+      exactly one blank line separates two concerns; a block never opens or closes on a blank line. Two
+      blank lines is what the ceiling permits, not what the style wants — it reads as a paragraph break
+      of the wrong size, and prevailing practice agrees (45 of 50 Core and Memory headers put exactly
+      one after `#pragma once`).
+    - Two claims formerly made here were wrong and were measured out: that only one blank line survives
+      before a namespace declaration, function or comment (two survives at each), and that the formatter
+      "enforces" the one-line rule. Do not re-derive blank-line behaviour from prose — run the formatter
+      on a probe and read its output.
 - **System Compatibility**: Ensure every file ends with a newline character.
 - **Namespaces**: Do not indent code blocks contained within namespaces
   (`NamespaceIndentation: None`). This is a deliberate owner decision on record,
