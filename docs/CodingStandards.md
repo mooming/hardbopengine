@@ -193,7 +193,10 @@ To maintain high code quality and consistency, please adhere to the following gu
       on a paragraph it has not read. `.pi/skills/hb-standards/scripts/prove_regroup.py --whitespace-only`
       proves the reader's edit changed nothing but blank lines: it compares the file against the revision it
       came from and refuses if a non-blank line moved, appeared or disappeared. Grouping the declarations
-      inside one block of a class is the same edit under the same proof.
+      inside one block of a class is the same edit under the same proof. The format gate in turn compares
+      both sides through `blank_lines.py --collapse-seam`, which reduces A3's double blank to the single
+      blank clang-format produces, so the one position where this table and the formatter disagree cannot
+      fail a conforming file — and an A16 double blank anywhere else still shows up in that diff.
     - **Do not re-derive blank-line behaviour from prose, and do not probe through a file outside the
       repository.** Run the formatter on a probe and read its output; clang-format takes its style from the
       directory of the file it is handed, so a probe written to `/tmp` silently runs LLVM defaults while
@@ -249,8 +252,10 @@ To maintain high code quality and consistency, please adhere to the following gu
       what the formatter reproduces on every run. Do not buy it back with `SortIncludes: IgnoreCase`: in
       clang-format 22 that key is a mapping and the bare value is rejected as `not a mapping`, which makes
       the whole style file fail to load — the failure mode `.clang-format`'s own header warns about.
-    - Enforcement: `.pi/skills/hb-standards/scripts/includes.py` for B1-B5 and B7, the pre-process for
-      B2's sort while it is one block, and the build gate for B6. A deleted include is a token loss and is
+    - Enforcement: `.pi/skills/hb-standards/scripts/includes.py` for B1-B5 and `--prove-immutable <rev>` for
+      B7 — that proof prints the region and line counts it compared, because a region never compared must
+      not read as a region preserved — the pre-process for B2's sort while it is one block, and the build
+      gate for B6. A deleted include is a token loss and is
       declared in the fix manifest, which `prove_format.py` holds the editor to.
 - **System Compatibility**: Ensure every file ends with a newline character.
 - **Namespaces**: Do not indent code blocks contained within namespaces

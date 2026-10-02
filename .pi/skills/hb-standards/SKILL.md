@@ -144,9 +144,11 @@ brace. Do not "fix" it back.
 
 The third limit matters more than either of those, and it is why this layer is numbered one. The formatter
 *deletes* the second blank at the seam after the include preamble — measured at 1, 2, 3 and 4 blanks in,
-1 blank out, at every spelling of a first code body except a trailing comment. Layer 2b restores it. A run
-that stops here reports a file that is format-clean and non-conforming, which is the same trap as a green
-`ninja: no work to do`.
+1 blank out, at every spelling of a first code body except a trailing comment. Rule A3 wants it back, so the
+format gate compares both sides through `blank_lines.py --collapse-seam`, which removes exactly that one
+blank and nothing else; without it the gate would be measuring a file against a shape the standard forbids.
+Layer 2b still restores the seam by hand, because the gate tolerating the difference is not the same thing
+as the file having it.
 
 ## Layer 2 — mechanical rule checks clang-format cannot do
 
@@ -249,7 +251,10 @@ the seam, the duplicates and the below-preamble regions are.
 (`Engine/Math/Vector3.h:90`), where their position decides what is in scope where, and the
 `#ifdef __UNIT_TEST__` regions at the end of a file (`Engine/Core/TaskSystem.cpp:787-794`) are test-only
 surface that belongs after everything it tests. Hoisting either is a compile break dressed as a cleanup, so
-`includes.py` checks the preamble and separately proves the region below it came out byte-identical.
+`includes.py` checks the preamble and `--prove-immutable <rev>` proves the region below it came out
+byte-identical. That proof prints its counts (`4 file(s) compared; 4 region(s) of 3407 line(s); unmoved`)
+rather than staying silent when it passes, because a region that was never compared must not read as a
+region that survived the pass.
 
 **Removing an include is a reader's edit with a build behind it.** `includes.py --unused` prints candidates,
 and each has cleared two tests rather than one: ablation (does the file still compile with the line gone)
@@ -555,7 +560,7 @@ reorder can be checked by reading it. Work the pairs in order; nothing here need
 |---|---|---|
 | 0 snapshot | `git show HEAD:<file> > /tmp/pre_<name>.h` for each file | the snapshot exists — it is the only copy of the pre-deletion bytes |
 | 1 mechanical | `clang-format --style=file -i <files>`; `python3 scripts/autofix.py --manifest .Plans/fix/manifest-<pair>.json <files>`; `clang-format --style=file -i <files>` | the manifest names every token removed, and nothing else was touched |
-| 1b paragraphs | `python3 scripts/blank_lines.py <files>`, decide the seams by reading the file, `python3 scripts/includes.py <files>` | rule set A and B clean, the two blanks after the preamble present, and `python3 scripts/prove_regroup.py <file> --whitespace-only` proving only blank lines changed |
+| 1b paragraphs | `python3 scripts/blank_lines.py <files>`, decide the seams by reading the file, `python3 scripts/includes.py <files>`, and for any file carrying an include below the preamble `python3 scripts/includes.py --prove-immutable HEAD <files>` | rule set A and B clean, the two blanks after the preamble present, `--prove-immutable` reporting its region counts, and `python3 scripts/prove_regroup.py <file> --whitespace-only` proving only blank lines changed |
 | 2 layout | `python3 scripts/layout.py <files>`, edit, run it again | 0 findings, **and** `python3 scripts/layout.py --init-order <files>` at 0, because data moved |
 | 3 reference | `python3 scripts/docs_coverage.py check <mod>` and `scripts/docs_methods.py <mod>`, then `docs_page.py class` / `method` / `renav` / `check`; then replace the entry's doc block with its `/// API reference:` pointer line | both gates at 0 for the module, `htmlcheck` clean, and no `[NO POINTER]` row for an entry whose page now exists; step 4 is refused per file by `docs_coverage.py check-file <path>` until that file's own entries pass, which is what lets a finished header be cleaned while its neighbours are still owed pages |
 | 4 delete | `python3 scripts/comments.py <files>` for the count, then `--strip`, then `comments.py code_tokens <file> /tmp/pre_<name>.h` | token multisets identical per file, then `comments.py` reports 0 |
@@ -599,8 +604,8 @@ and siblings), which is the convention the tree already uses for prose that is n
 | `verify-findings.py` | reject review findings whose cited line does not exist or does not contain the quoted evidence |
 | `review_merge.py` | fold two independent review passes into one deduplicated finding set and mark the corroborated findings |
 | `prove_format.py` | prove a commit moved no code, per revision; `--manifest` holds a fixer to its declared tokens |
-| `blank_lines.py` | rule set A: the sixteen blank-line sizes, silent on the three that need a reader; `--fix` applies only the mechanical ones, `--selftest` runs its fixtures |
-| `includes.py` | rule set B: the preamble shape, plus `--unused` candidates that ablation *and* name provenance both clear; `--fix` rewrites the preamble only, `--selftest` runs its fixtures |
+| `blank_lines.py` | rule set A: the sixteen blank-line sizes, silent on the three that need a reader; `--collapse-seam` prints the shape clang-format produces, which is how the format gate can hold rule A3; `--selftest` runs 41 fixtures. **No `--fix`**: deleting a blank because a checker disapproved is the failure this layer exists to prevent |
+| `includes.py` | rule set B: the preamble shape; `--prove-immutable REV` proves rule B7's region came out byte-identical and prints its counts; `--unused` prints candidates that ablation *and* name provenance both clear; `--selftest` runs 10 fixtures. **No `--fix`**: a preamble rewritten by a script is a preamble nobody read |
 | `docs_page.py` | emit reference pages with correct chrome, validated before kept |
 
 `verify-findings.py` is not decoration. A model asked to audit files it never opened invents defects rather

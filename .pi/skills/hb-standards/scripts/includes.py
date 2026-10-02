@@ -521,6 +521,7 @@ def main(argv):
     rules = ('B1', 'B2', 'B3', 'B4', 'B5', 'B7')
     counts = dict((rule, 0) for rule in rules)
     total, dirty = 0, 0
+    b7 = {'files': 0, 'regions': 0, 'lines': 0, 'changed': 0}
     for path in args.files:
         try:
             with open(path, encoding='utf-8') as handle:
@@ -535,7 +536,13 @@ def main(argv):
             if before is None:
                 print('[NONE] includes — %s: not in %s, so there is nothing to compare' % (path, args.prove_immutable))
                 return 3
-            if below_preamble(before, path) != below_preamble(text, path):
+            was, now = below_preamble(before, path), below_preamble(text, path)
+            b7['files'] += 1
+            b7['lines'] += sum(1 for line in now.split('\n') if line.strip())
+            if now.strip():
+                b7['regions'] += 1
+            if was != now:
+                b7['changed'] += 1
                 findings.append(Finding('B7', 0, 'the region under the preamble changed, and rule B7 forbids it'))
 
         for finding in findings:
@@ -565,6 +572,17 @@ def main(argv):
                                                       for i in unverifiable)))
             for note in needed:
                 print('    %s' % note)
+
+    if args.prove_immutable:
+        # "No B7 finding" and "B7 was measured" are different claims, which is the same reason layout.py
+        # prints MEMBER-WAIVED instead of saying nothing: a region that never needed comparing must not read
+        # as a region that survived a pass. The counts are what a commit message cites.
+        verdict = '[PASS] B7' if not b7['changed'] else '[FAIL] B7'
+        moved = 'unmoved' if not b7['changed'] else '%d changed' % b7['changed']
+        print('%s — %d file(s) compared against %s; %d region(s) of %d line(s); %s; '
+              '%d file(s) hold no region below the preamble'
+              % (verdict, b7['files'], args.prove_immutable, b7['regions'], b7['lines'], moved,
+                 b7['files'] - b7['regions']))
 
     detail = ', '.join('%s=%d' % (rule, counts[rule]) for rule in rules if counts.get(rule))
     print('includes: %d finding(s) in %d file(s)%s' % (total, dirty, ' — ' + detail if detail else ''))
