@@ -570,6 +570,21 @@ def field_order(record):
     return order, seq
 
 
+def _same_position(one, other):
+    """Whether two clang source-location dicts name the same spot — by offset where they can.
+
+    The JSON is not consistent about `line`: in one real constructor dump, an implicit default-init carries
+    `{'offset': 1120, 'col': 2}` with no `line` at all while its sibling carries `line`. `offset` was on
+    every location the dump emitted, so offsets decide when both sides have them, and line-and-column still
+    decides the recorded fixtures, which were written before anyone noticed the difference.
+    """
+    if not one or not other:
+        return False
+    if one.get('offset') is not None and other.get('offset') is not None:
+        return one['offset'] == other['offset']
+    return (one.get('line'), one.get('col')) == (other.get('line'), other.get('col'))
+
+
 def written_initializers(record):
     """[(constructor name, line, [(field name, line, col)])] in the order they were written.
 
@@ -580,13 +595,17 @@ def written_initializers(record):
       is `FieldDecl`. Reading `name` off the initializer yields an empty string, every entry
       is then skipped, and the check reports clean whatever the source says.
     * This dump carries no `isWritten` flag, so an unwritten entry has to be recognised some
-      other way: its initializer expression is a `CXXDefaultInitExpr`, which is clang's own marker
-      for a default or in-class initializer the constructor never mentioned. An entry with no
-      source range at all is dropped too, but that test alone does not catch these — they carry a
-      range, and it is the *constructor's own* position. Counting them is not harmless: every one
-      of them sorts ahead of every written entry, so a class with any in-class initializer reports
-      a disorder in whichever member is declared last. That is a false finding on a correct file,
-      which is worse than a missed one, because the fix it asks for changes nothing.
+      other way. It is the *position*, not the node kind: clang places an initializer it generated
+      itself at the constructor's own location, and no written initializer can be there because the
+      constructor's location is its name token, while a written list begins after the parameter
+      list. `CXXDefaultInitExpr` is clang's marker for an in-class initializer and is kept as a
+      second test, but it is not sufficient — measured on `WindowTickProvider`, a member the
+      constructor never mentions *and that has no in-class initializer either* arrives as a plain
+      `CXXConstructExpr` at the constructor's offset, because `std::array` is default-constructed by
+      a call clang synthesises. A kind test misses that shape, and counting it reports a disorder in
+      whichever member it names: `taskSystem is initialised after frames`, in a file where `frames`
+      is written nowhere. That is a false finding on a correct file, which is worse than a missed
+      one, because the fix it asks for changes nothing.
     * Children arrive in **initialization** order, which Sema has already sorted to match
       declaration order. Comparing children order against declaration order compares the data
       with its own sort key and can never disagree, so the written order is reconstructed from
@@ -600,6 +619,7 @@ def written_initializers(record):
         node = unwrap(child)
         if node.get('kind') != 'CXXConstructorDecl' or node.get('isImplicit'):
             continue
+        ctor_at = node.get('loc')
         inits = []
         for inner in node.get('inner') or []:
             if inner.get('kind') != 'CXXCtorInitializer':
@@ -613,28 +633,34 @@ def written_initializers(record):
             first = next((e for e in inner.get('inner') or [] if (e.get('range') or {}).get('begin')), None)
             if first is None:
                 continue
-            if first.get('kind') == 'CXXDefaultInitExpr':
-                continue
             begin = first['range']['begin']
+            if first.get('kind') == 'CXXDefaultInitExpr' or _same_position(begin, ctor_at):
+                continue                                                # clang generated this one
             inits.append((name, begin.get('line', 0), begin.get('col', 0)))
         inits.sort(key=lambda entry: (entry[1], entry[2]))
         out.append((node.get('name') or 'constructor', (child.get('loc') or {}).get('line', 0), inits))
     return out
 
 
-def _fixture_init(field, kind, line, col, base=False):
+def _fixture_init(field, kind, line, col, base=False, offset=None):
     node = {'kind': 'CXXCtorInitializer'}
     if base:
         node['baseInit'] = {'qualType': 'Base'}
     else:
         node['anyInit'] = {'kind': 'FieldDecl', 'name': field}
-    node['inner'] = [{'kind': kind, 'range': {'begin': {'line': line, 'col': col}}}]
+    begin = {'line': line, 'col': col}
+    if offset is not None:
+        begin['offset'] = offset
+    node['inner'] = [{'kind': kind, 'range': {'begin': begin}}]
     return node
 
 
-def _fixture_record(inits):
+def _fixture_record(inits, ctor_offset=None):
+    loc = {'line': 10}
+    if ctor_offset is not None:
+        loc['offset'] = ctor_offset
     return {'kind': 'CXXRecordDecl', 'name': 'Probe',
-            'inner': [{'kind': 'CXXConstructorDecl', 'name': 'Probe', 'loc': {'line': 10}, 'inner': inits}]}
+            'inner': [{'kind': 'CXXConstructorDecl', 'name': 'Probe', 'loc': loc, 'inner': inits}]}
 
 
 def selftest():
@@ -662,6 +688,17 @@ def selftest():
         ('a base initializer is not a member',
          _fixture_record([_fixture_init('', 'CXXConstructExpr', 10, 2, base=True)]),
          []),
+        ('a member with no initializer at all arrives as a plain CXXConstructExpr at the constructor',
+         _fixture_record([_fixture_init('', 'CXXConstructExpr', 45, 2, base=True, offset=1120),
+                          _fixture_init('taskSystem', 'DeclRefExpr', 47, 16, offset=1283),
+                          _fixture_init('ticks', 'DeclRefExpr', 48, 11, offset=1307),
+                          _fixture_init('frames', 'CXXConstructExpr', 45, 2, offset=1120)], ctor_offset=1120),
+         ['taskSystem', 'ticks']),
+        ('and it must not hide a disorder that really is written',
+         _fixture_record([_fixture_init('b', 'DeclRefExpr', 11, 5, offset=200),
+                          _fixture_init('a', 'DeclRefExpr', 12, 5, offset=300),
+                          _fixture_init('implicit', 'CXXConstructExpr', 10, 2, offset=100)], ctor_offset=100),
+         ['b', 'a']),
     ]
     failures = 0
     for label, record, expected in cases:
