@@ -18,6 +18,11 @@ Four properties, and each fails loudly with the lines involved:
   4. informational: which contiguous blocks of the old file now sit in a different position, so the commit
      message can say what was regrouped instead of being asked to guess.
 
+`--whitespace-only` is the same harness for the stricter job of a blank-line pass, where no line of code
+may move at all: it compares the sequence of non-blank lines position by position rather than as a
+multiset, so two lines trading places is a failure instead of an invisible swap, and it skips the AST
+stage because a sequence that never moved cannot have re-sequenced a data member.
+
 Exit status: 0 proven, 1 a property failed, 3 the run could not complete — and "could not complete" is
 never reported as "passed", which is the same rule `check.sh` applies to a missing compile database.
 """
@@ -97,12 +102,33 @@ def moved_blocks(before, after):
     return moved
 
 
+def position_check(before, after):
+    """The first non-blank line that no longer sits where it sat, or None.
+
+    `--whitespace-only` asks a stricter question than a regrouping does. A blank-line pass may add a
+    blank, delete a blank, and nothing else, so every line of code has to sit at the same index in the
+    sequence of non-blank lines as it did before. The multiset check cannot see a swap: two lines that
+    trade places leave the multiset untouched, and in a source file that is a behaviour change, not a
+    layout change.
+    """
+    old = [line.rstrip() for line in before.split('\n') if line.strip()]
+    new = [line.rstrip() for line in after.split('\n') if line.strip()]
+    for index, (old_line, new_line) in enumerate(zip(old, new), 1):
+        if old_line != new_line:
+            return index, old_line, new_line
+    if len(old) != len(new):
+        return min(len(old), len(new)) + 1, (old[len(new):] or new[len(old):])[0], '(length differs)'
+    return None
+
+
 def main(argv):
     parser = argparse.ArgumentParser(description=__doc__.split('\n')[0])
     parser.add_argument('path', nargs='?')
     parser.add_argument('--against', default='HEAD', help='revision to compare the working file against (default HEAD)')
     parser.add_argument('--between', nargs=2, metavar=('REV_A', 'REV_B'),
                         help='compare two committed revisions instead of the working file, leaving the tree alone')
+    parser.add_argument('--whitespace-only', action='store_true',
+                        help='prove a blank-line pass: non-blank lines identical and in place, not merely present')
     parser.add_argument('--db', default='cmake-build-debug/compile_commands.json')
     parser.add_argument('--clang', default=None)
     opts = parser.parse_args(argv)
@@ -139,6 +165,15 @@ def main(argv):
         print('[PASS] every non-blank line survives unchanged — %d line(s), same multiset as %s'
               % (sum(Counter(line.rstrip() for line in after.split('\n') if line.strip()).values()), label))
 
+    if opts.whitespace_only:
+        shifted = position_check(before, after)
+        if shifted:
+            failures.append('a non-blank line moved, which a blank-line pass may never do')
+            print('[FAIL] line %d of the non-blank sequence was %s and is now %s'
+                  % (shifted[0], shifted[1][:70], shifted[2][:70]))
+        else:
+            print('[PASS] every non-blank line is still in place — only blank lines differ')
+
     identical = unit_test_check(before, after)
     if identical is None:
         print('[NONE] no %s region in this file' % UNIT_TEST_MARKER)
@@ -147,6 +182,17 @@ def main(argv):
     else:
         failures.append('the __UNIT_TEST__ region moved or changed')
         print('[FAIL] the %s region differs — test-only surface is not part of a regrouping' % UNIT_TEST_MARKER)
+
+    if opts.whitespace_only:
+        # "Identical and in place" already contains the data-member order: a sequence that has not moved
+        # cannot have re-sequenced anything, and asking clang to agree would be theatre with a compile
+        # attached. The AST stage belongs to a regrouping, where lines really do move.
+        print('[SKIP] %s — implied by every line sitting where it sat' % DATA_ORDER_NOTE)
+        if failures:
+            print('BLANK-LINE PASS NOT PROVEN — %s' % '; '.join(failures))
+            return 1
+        print('blank-line pass proven: only blank lines changed')
+        return 0
 
     try:
         entries, by_name = layout.read_compile_db(opts.db)
