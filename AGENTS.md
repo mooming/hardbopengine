@@ -104,6 +104,31 @@ whose own reference is finished.
       prose wearing a label's clothes and must go. Labels on data tables (`// 'A' (65)`
       indexing a glyph array) are not structural labels — position already encodes them.
 
+- **Blank lines are the paragraph structure of a file, and the sizes are fixed.** A blank line asserts
+  that the line under it belongs to a different thought than the line above it. A blank that separates
+  nothing is a defect to delete; a seam a reader needs — a new step in a function, a new concern in a
+  block, a paragraph that earns its own space, an outlier worth isolating — is a blank to write. Whether
+  a seam is real is a human judgement, made by whoever is holding the file and by no formatter; what a
+  seam is *worth* in blank lines is not a judgement, and `docs/CodingStandards.md` rule set A (A1-A16)
+  is the whole size table. Its one legal double blank is the seam after the include and define preamble;
+  no other position in a file may hold two consecutive blanks, and no closing brace may sit behind a
+  blank. `clang-format` forces exactly one blank at that seam before a `namespace`, a `class` or a
+  function definition, so formatter cleanliness is a **pre-process, not the definition of clean**: format
+  first, apply the table second, and never run `--apply` after the pass without redoing the pass.
+  `scripts/blank_lines.py` decides A1-A5, A10 and A13-A16 and is deliberately silent on the three rules
+  that need a reader.
+- **Includes are grouped, sorted, and hold nothing the file does not name.** Own header first and excluded
+  from the sort, then a `<…>` block, then a `"…"` block, each in written-path byte order, one blank line
+  between blocks, no path twice, project includes written root-relative (`"../Engine/Engine.h"` is a
+  finding). Sorting the project block by path is what groups it by directory — do not add per-directory
+  blank-line blocks. An include the file does not itself name is deleted, and a consumer that breaks gains
+  its own include rather than restoring the transitive one; the three-configuration build is the proof, so
+  the deletion is a reader's edit with a build behind it, never a pattern match. **Only the preamble is
+  rewritten:** the `#include "…CommonImpl.inl"` directives that sit inside a class body and the trailing
+  `#ifdef __UNIT_TEST__` include regions stay exactly where they stand. `docs/CodingStandards.md` rule set
+  B (B1-B7) carries the details; `scripts/includes.py` checks B1-B5 and prints B6 candidates as advice for a
+  human to confirm.
+
 ## Work Policy (must be strictly followed)
 
 **All agents must adhere to the following policies without exception.**

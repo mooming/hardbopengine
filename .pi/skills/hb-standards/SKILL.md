@@ -142,14 +142,20 @@ formatter wins: clang-format 22 writes a `concept` body as `concept C = requires
 `BraceWrapping` key for it, and `CLockable` in `Engine/Core/ScopedLock.h` therefore keeps the attached
 brace. Do not "fix" it back.
 
+The third limit matters more than either of those, and it is why this layer is numbered one. The formatter
+*deletes* the second blank at the seam after the include preamble — measured at 1, 2, 3 and 4 blanks in,
+1 blank out, at every spelling of a first code body except a trailing comment. Layer 2b restores it. A run
+that stops here reports a file that is format-clean and non-conforming, which is the same trap as a green
+`ninja: no work to do`.
+
 ## Layer 2 — mechanical rule checks clang-format cannot do
 
 Tab-vs-space indentation · joined empty bodies that survived the formatter ·
 no exceptions · no `std::move` on return (kills NRVO) · no `virtual` with
 `override` · no `m_` prefix · copyright header, trailing newline, trailing
-whitespace · include layout (own header → `<standard>` → `"project"`, each
-alphabetical, exactly one blank line before the first code body) · header
-minimality.
+whitespace · include preamble (own header → `<standard>` → `"project"`, each in
+byte order, one blank between blocks, and the two blanks before the first code
+body that layer 2b owns) · header minimality.
 
 ### Header minimality: declared in the header, defined in the source
 
@@ -214,6 +220,55 @@ with the tokens each file removed, and `prove_format.py HEAD --manifest .Plans/f
 explains a token loss only if the fixer declared exactly that loss. Verified in three directions: a
 declared fix passes, the same diff with no manifest fails, and one extra undeclared keyword removal
 under an otherwise valid manifest fails.
+
+## Layer 2b — the paragraphs and the includes, by hand (`blank_lines.py`, `includes.py`)
+
+Everything in this layer is a formatting rule clang-format cannot express, which makes it the layer where
+the model is the formatter. Run it after layer 1 and layer 2, before the comment sweep, so the seams are
+decided on the bytes that are about to be committed.
+
+**Blank lines — rule set A of `docs/CodingStandards.md`.** A blank asserts that what follows it is a
+different thought from what precedes it. A blank that separates nothing is a defect to delete; a seam a
+reader needs — a new step, a new concern, a paragraph that earns its space, an outlier worth isolating — is
+a blank to write. `blank_lines.py` decides the sizes it can see (A1-A5, A10, A13-A16) and is silent on A8,
+A9 and A11, which need a reader: it counts the blank after an access specifier without ever voting on
+whether a paragraph is real. Its count is an inventory of seams to look at, not a score to drive to zero —
+deleting a blank to satisfy a checker is the failure this layer exists to prevent. Three sizes worth
+memorising: the seam after the include and define preamble is **two** blanks and is the only legal double
+blank in a file (A3); no closing brace may sit behind a blank, `} // namespace hbe` included (A5); a
+`return` that is not the only statement in its scope is preceded by exactly one (A10).
+
+**Includes — rule set B.** `includes.py` checks the preamble: own header first and excluded from the sort,
+then `<…>`, then `"…"`, each in byte order, one blank between blocks, no path twice, project paths
+root-relative. The formatter already produces that shape — it groups by bracket type and sorts
+case-sensitively (`SortIncludes: {Enabled: true, IgnoreCase: false}`) — so the sort is rarely the finding;
+the seam, the duplicates and the below-preamble regions are.
+
+**Never move an include that sits below the preamble.** 83 files carry one. The
+`#include "MatrixCommonImpl.inl"` / `"VectorCommonImpl.inl"` directives sit *inside a class body*
+(`Engine/Math/Vector3.h:90`), where their position decides what is in scope where, and the
+`#ifdef __UNIT_TEST__` regions at the end of a file (`Engine/Core/TaskSystem.cpp:787-794`) are test-only
+surface that belongs after everything it tests. Hoisting either is a compile break dressed as a cleanup, so
+`includes.py` checks the preamble and separately proves the region below it came out byte-identical.
+
+**Removing an include is a reader's edit with a build behind it.** `includes.py --unused` prints candidates,
+and each has cleared two tests rather than one: ablation (does the file still compile with the line gone)
+and provenance (does the file spell any name that header declares, read from clang, not guessed). Ablation
+alone is unsound and the first version of this tool was wrong for it: `Engine/Core/TaskRegistry.cpp`
+compiles without `"Core/Debug.h"` because its own header drags it in transitively, yet it spells `Assert`
+on line 38. Recommending that deletion would be the reverse of the rule. Standard headers have no name
+table, so they are reported as "could not list", never as candidates, and a header file is refused outright
+— deleting an include from a header cannot be proved by compiling that header alone, only by the tree-wide
+build. Delete one candidate at a time, declare it in the manifest, let `gate.sh` prove it; when a consumer
+breaks it gains its own include and the transitive one is never restored.
+
+Two obligations this layer carries. A blank-line pass is proved by `prove_regroup.py --whitespace-only`,
+which compares the sequence of non-blank lines position by position so an accidental deletion or a swap of
+two lines is a refusal — the multiset comparison the same script uses for a regrouping cannot see two lines
+trading places. And when probing formatter behaviour, probe *inside* the repository: clang-format takes its
+style from the directory of the file it is handed, so a probe written to `/tmp` silently runs LLVM defaults
+while looking exactly like a verified result. Three claims in `docs/CodingStandards.md` reached the wrong
+answer by that route before this section existed.
 
 ## Layer 3 — the comment ban (`comments.py`)
 
@@ -486,7 +541,7 @@ One module — or one header inside a module too large to review at once, which 
 |---|---|---|
 | `<mod> judgement review` | the twelve rules above, two slicings, citations machine-checked, nothing edited | `verify-findings.py` passes every pass file; `review_merge.py` reports the unique count and the corroboration count — this list is what the next commit works from |
 | `<mod> layout and naming` | twelve-block reorder, `m_` and snake_case removal, `[[nodiscard]]`, `explicit`, `= default`, `out`-prefixed write-only parameters, named constants | `layout.py` reports 0 for the files **and** `layout.py --init-order` reports 0, because data moved; the module target compiles; **if the docs already describe the code, do this first**, otherwise pages quote signatures that are about to change |
-| `<mod> format` | `check.sh --apply`, or `--fix` for the mechanical subset as well | `prove_format.py HEAD~1 --manifest .Plans/fix-manifest.json` exits 0 with every file explained |
+| `<mod> format` | `check.sh --apply`, or `--fix` for the mechanical subset as well, then rule set A and rule set B by hand (layer 2b) | `prove_format.py HEAD~1 --manifest .Plans/fix-manifest.json` exits 0 with every file explained; `blank_lines.py` and `includes.py` report 0 for the files, and `prove_regroup.py <file> --whitespace-only` proves the paragraph edit moved no line |
 | `<mod> docs` | pages via `docs_page.py`, module index updated, each documented entry's header given its `/// API reference:` pointer, `.Plans/DOCS_COVERAGE.md` regenerated | `docs_coverage.py check <mod>` and `docs_methods.py <mod>` at 0, which includes 0 pages without a pointer; `htmlcheck.py` clean |
 | `<mod> comment ban` | `comments.py --strip` | `code_tokens` identical against the pre-strip snapshot; `comments.py` then reports 0 |
 | ledger and plan | `.Plans/DOCS_COVERAGE.md`, `JOURNAL.md` | the numbers in them re-measured, not carried forward |
@@ -500,6 +555,7 @@ reorder can be checked by reading it. Work the pairs in order; nothing here need
 |---|---|---|
 | 0 snapshot | `git show HEAD:<file> > /tmp/pre_<name>.h` for each file | the snapshot exists — it is the only copy of the pre-deletion bytes |
 | 1 mechanical | `clang-format --style=file -i <files>`; `python3 scripts/autofix.py --manifest .Plans/fix/manifest-<pair>.json <files>`; `clang-format --style=file -i <files>` | the manifest names every token removed, and nothing else was touched |
+| 1b paragraphs | `python3 scripts/blank_lines.py <files>`, decide the seams by reading the file, `python3 scripts/includes.py <files>` | rule set A and B clean, the two blanks after the preamble present, and `python3 scripts/prove_regroup.py <file> --whitespace-only` proving only blank lines changed |
 | 2 layout | `python3 scripts/layout.py <files>`, edit, run it again | 0 findings, **and** `python3 scripts/layout.py --init-order <files>` at 0, because data moved |
 | 3 reference | `python3 scripts/docs_coverage.py check <mod>` and `scripts/docs_methods.py <mod>`, then `docs_page.py class` / `method` / `renav` / `check`; then replace the entry's doc block with its `/// API reference:` pointer line | both gates at 0 for the module, `htmlcheck` clean, and no `[NO POINTER]` row for an entry whose page now exists; step 4 is refused per file by `docs_coverage.py check-file <path>` until that file's own entries pass, which is what lets a finished header be cleaned while its neighbours are still owed pages |
 | 4 delete | `python3 scripts/comments.py <files>` for the count, then `--strip`, then `comments.py code_tokens <file> /tmp/pre_<name>.h` | token multisets identical per file, then `comments.py` reports 0 |
@@ -543,6 +599,8 @@ and siblings), which is the convention the tree already uses for prose that is n
 | `verify-findings.py` | reject review findings whose cited line does not exist or does not contain the quoted evidence |
 | `review_merge.py` | fold two independent review passes into one deduplicated finding set and mark the corroborated findings |
 | `prove_format.py` | prove a commit moved no code, per revision; `--manifest` holds a fixer to its declared tokens |
+| `blank_lines.py` | rule set A: the sixteen blank-line sizes, silent on the three that need a reader; `--fix` applies only the mechanical ones, `--selftest` runs its fixtures |
+| `includes.py` | rule set B: the preamble shape, plus `--unused` candidates that ablation *and* name provenance both clear; `--fix` rewrites the preamble only, `--selftest` runs its fixtures |
 | `docs_page.py` | emit reference pages with correct chrome, validated before kept |
 
 `verify-findings.py` is not decoration. A model asked to audit files it never opened invents defects rather
@@ -569,6 +627,8 @@ Grep these in the changed hunks and fix by hand:
 | No snake_case member | a member is the token before `;`, and a type sits in the same position — `size_t MaxNameLength = 127;` is a type then a PascalCase name, so no grep separates them. The `m_` prefix is checked mechanically; this half of the rule is not |
 | `noexcept` | mark only what is provably exception-free; drop it where `new` is called |
 | Unit-test guard placement | an `#ifdef __UNIT_TEST__` region sits at the **end** of the file, one region per file |
+| Paragraph seams | whether a seam is a real thought boundary — `blank_lines.py` sizes a seam it can see and never decides that one exists, so a file with 0 findings can still be one dense slab |
+| An include is unused | whether the file really names nothing the include provides, once the header it owns has supplied half its vocabulary; `includes.py --unused` proposes, the build gate decides |
 
 ### Running a judgement review
 
