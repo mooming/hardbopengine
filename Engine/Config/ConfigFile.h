@@ -7,9 +7,9 @@
 #include "HSTL/HString.h"
 #include "HSTL/HUnorderedMap.h"
 
+
 namespace hbe
 {
-
 class ConfigFile final
 {
 public:
@@ -38,5 +38,4 @@ public:
 private:
 	void Parse(const char* fileName);
 };
-
 } // namespace hbe

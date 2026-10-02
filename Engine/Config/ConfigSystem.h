@@ -7,9 +7,9 @@
 
 #include "String/StaticStringID.h"
 
+
 namespace hbe
 {
-
 class StaticString;
 
 template <typename T, bool IsAtomic>

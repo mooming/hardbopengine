@@ -9,9 +9,9 @@
 #include "Core/Debug.h"
 #include "String/StaticString.h"
 
+
 namespace hbe
 {
-
 template <typename T, bool IsAtomic = false>
 class ConfigParam final
 {
@@ -93,5 +93,4 @@ using TConfigParam = ConfigParam<T, false>;
 
 template <typename T>
 using TAtomicConfigParam = ConfigParam<T, true>;
-
 } // namespace hbe

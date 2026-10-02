@@ -2,7 +2,6 @@
 
 #pragma once
 
-
 #ifdef __linux__
 #define PLATFORM_LINUX 1
 #elif defined __APPLE__
@@ -16,7 +15,6 @@ static_assert(false, "No platform defined. Please define PLATFORM_LINUX, PLATFOR
 #endif
 
 #define MAX_NUM_TASK_STREAMS 64
-
 
 #define ENGINE_MIN_HARDWARE_THREADS 4
 

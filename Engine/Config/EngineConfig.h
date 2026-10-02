@@ -4,19 +4,17 @@
 
 #include <cstdint>
 #include <cstdio>
+
 #include "BuildConfig.h"
+
 
 namespace hbe
 {
-
 namespace Config
 {
-
-
 static constexpr uint8_t EngineLogLevel = MEMORY_LOGGING_ENABLED ? 0 : 1;
 
 static constexpr uint8_t EngineLogLevelPrint = MEMORY_LOGGING_ENABLED ? 1 : 2;
-
 static_assert(EngineLogLevel <= EngineLogLevelPrint,
 			  "EngineLogLevelPrint should be greater than or equal to EngineLogLevel");
 
@@ -41,7 +39,5 @@ static constexpr int MaxConcurrentTasks = 32;
 static constexpr float DebugTimeOutMultiplier = 2.0f;
 
 [[nodiscard]] size_t GetMaxSystemMemoryTarget() noexcept;
-
 } // namespace Config
-
 } // namespace hbe

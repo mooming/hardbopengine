@@ -6,6 +6,7 @@
 #include <functional>
 #include <iostream>
 #include <unordered_map>
+
 #include "HSTL/HString.h"
 #include "String/StringUtil.h"
 
@@ -14,7 +15,6 @@ using namespace hbe;
 
 namespace hbe
 {
-
 ConfigFile::ConfigFile(const char* path)
 	: isValid(false)
 {

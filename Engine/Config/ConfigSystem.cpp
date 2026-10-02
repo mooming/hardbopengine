@@ -6,9 +6,9 @@
 #include "Log/Logger.h"
 #include "OSAL/Intrinsic.h"
 
+
 namespace hbe
 {
-
 namespace
 {
 template <typename T>
@@ -68,12 +68,12 @@ const TItem<T>& FindGetSet(const TMap<T>& map, const char* func, const StaticStr
 
 	return it->second;
 }
-
 } // namespace
 
 ConfigSystem& ConfigSystem::Get() noexcept
 {
 	static ConfigSystem instance;
+
 	return instance;
 }
 
@@ -505,5 +505,4 @@ void ConfigSystem::PrintAllParameters() const
 
 	log.Out("========================================================\n");
 }
-
 } // namespace hbe
