@@ -132,12 +132,14 @@ reports a pass the other invalidated. `gate.sh` enforces it with `mkdir` slots
 Enforces things that need real C++ parsing: Allman braces (break before every `{`, empty bodies
 included), tabs, 120 columns, blank-line *limits*.
 
-Two limits on what that sentence means. It caps how many blank lines may sit together; it does not
-decide where a group boundary belongs, so a file can be format-clean and still read as one dense slab
-— grouping is a reader's edit, layer 4's table of contents, not the formatter's. And where the formatter
-and Allman genuinely conflict with no knob to mediate, the formatter wins: clang-format 22 writes a
-`concept` body as `concept C = requires(T t) {`, has no `BraceWrapping` key for it, and `CLockable` in
-`Engine/Core/ScopedLock.h` therefore keeps the attached brace. Do not "fix" it back.
+Two limits on what that sentence means. It caps how many blank lines may sit together, and inserts one
+place only — `SeparateDefinitionBlocks: Always` puts a blank between definition blocks, so two inline
+member bodies can never sit adjacent. Everywhere else it leaves placement alone, so a file can be
+format-clean and still read as one dense slab: grouping is a reader's edit, layer 4's table of contents,
+not the formatter's. And where the formatter and Allman genuinely conflict with no knob to mediate, the
+formatter wins: clang-format 22 writes a `concept` body as `concept C = requires(T t) {`, has no
+`BraceWrapping` key for it, and `CLockable` in `Engine/Core/ScopedLock.h` therefore keeps the attached
+brace. Do not "fix" it back.
 
 ## Layer 2 — mechanical rule checks clang-format cannot do
 
@@ -614,13 +616,17 @@ start.
 - **A `concept` body has no wrapping knob.** clang-format 22 wants `concept C = requires(T t) {`
   attached, and `BraceWrapping: {AfterConcept: true}` is rejected outright — `unknown key`. The one
   engine-wide exception to a broken opening brace, recorded in `docs/CodingStandards.md`.
-- **Blank lines: the formatter is a ceiling, not a floor.** `MaxEmptyLinesToKeep: 2` means three or
-  more collapse to two — between data members, before a function, before a comment — and one or two
-  both survive in every one of those positions. It never inserts a boundary, so grouping is invisible
-  to it and a badly grouped header passes layer 1. An earlier version of this bullet claimed two never
-  survives after includes and that `docs/CodingStandards.md` was stale for saying otherwise; both were
-  wrong, and the standard is now the measured version. Measure blank-line behaviour on a probe file
-  rather than remembering it.
+- **Blank lines: the formatter is a ceiling, and one kind of floor.** `MaxEmptyLinesToKeep: 2` means
+  three or more collapse to two — between data members, before a function, before a comment — and one or
+  two both survive in every one of those positions. `SeparateDefinitionBlocks: Always` is the exception
+  that inserts: a blank appears between definition blocks whether you wanted one or not. Grouping is
+  otherwise invisible to it and a badly grouped header passes layer 1. An earlier version of this bullet
+  claimed two never survives after includes and that `docs/CodingStandards.md` was stale for permitting
+  two; both were wrong, and the standard now carries the measured behaviour.
+- **Probe clang-format through stdin, never a file outside the tree.** The style comes from the
+  directory of the file it is handed, so a probe in `/tmp` runs LLVM defaults while looking exactly like
+  a verified result. Two wrong claims reached the standard through that route; `clang-format --style=file -`
+  with the input on stdin uses the working tree's config and is the only form to trust.
 - **`build.sh` takes `-test`, not `-notest`** as `AGENTS.md` and
   `docs/HelperScript.md` claim. Without `-test`, `__UNIT_TEST__` is undefined and
   `TestMain.cpp` compiles to an empty `main`, so the test sources are never

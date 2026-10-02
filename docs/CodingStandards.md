@@ -129,11 +129,14 @@ To maintain high code quality and consistency, please adhere to the following gu
       ```
     - After all include and define directives at the top of source files, place **one** empty line
       before the first code body, and **one** after `#pragma once`.
-      The formatter is a **ceiling, not a floor**. This tree sets `MaxEmptyLinesToKeep: 2`, and measured
-      against it: three or more blank lines collapse to two in every position tried — between data
-      members, before a function, before a comment — while one or two both survive in all of them. The
-      formatter never *inserts* a boundary, so a file can be format-clean and grouped badly. These
-      numbers are a convention the formatter tolerates, not one it enforces.
+      The formatter is a **ceiling, and in one case a floor**. This tree sets `MaxEmptyLinesToKeep: 2`,
+      and measured against it: three or more blank lines collapse to two in every position tried —
+      between data members, before a function, before a comment — while one or two both survive in all
+      of them. It also *inserts* one place: `SeparateDefinitionBlocks: Always` puts a blank line between
+      definition blocks, so two inline member bodies can never be made adjacent, and a grouping that
+      wants them so is fighting the formatter. Everywhere else the formatter only caps, which is why a
+      file can be format-clean and grouped badly — grouping is a reader's edit, and these numbers are a
+      convention the formatter tolerates rather than one it enforces.
     - **Blank lines mark groups.** Members of one concern sit adjacent with no blank between them;
       exactly one blank line separates two concerns; a block never opens or closes on a blank line. Two
       blank lines is what the ceiling permits, not what the style wants — it reads as a paragraph break
@@ -142,7 +145,10 @@ To maintain high code quality and consistency, please adhere to the following gu
     - Two claims formerly made here were wrong and were measured out: that only one blank line survives
       before a namespace declaration, function or comment (two survives at each), and that the formatter
       "enforces" the one-line rule. Do not re-derive blank-line behaviour from prose — run the formatter
-      on a probe and read its output.
+      on a probe and read its output. **Probe through stdin, not a file outside the repository**:
+      clang-format takes its style from the directory of the file it is given, so a probe written to
+      `/tmp` silently runs LLVM defaults and "verifies" a config this tree does not use. That is how the
+      claim above came to be written down as measured.
 - **System Compatibility**: Ensure every file ends with a newline character.
 - **Namespaces**: Do not indent code blocks contained within namespaces
   (`NamespaceIndentation: None`). This is a deliberate owner decision on record,
