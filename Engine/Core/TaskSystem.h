@@ -70,12 +70,28 @@ public:
 	void Initialize() noexcept;
 	void RequestShutDown() noexcept;
 	void RequestOtherStreamsClose() noexcept;
-	void JoinAndClear() noexcept;
-	void Update() noexcept;
-
 	[[nodiscard]] bool AreOtherStreamsClosed() noexcept;
+	void JoinAndClear() noexcept;
+
+	void Update() noexcept;
+	void RunBudgetWindowPass() noexcept;
+	[[nodiscard]] std::size_t GetNumBudgetWindowsAdvanced() const noexcept;
+
+	void Enqueue(const WorkItem& task) noexcept;
+	void Dequeue(std::optional<WorkItem>& outTask) noexcept;
+
+	void Enqueue(TIndex streamIndex, const WorkItem& task, StreamDrainPolicy::ELane lane) noexcept;
+	void Enqueue(TIndex streamIndex, const WorkItem& task) noexcept;
+	void EnqueueTask(TIndex streamIndex, Task& task, uint8_t priority = 0,
+					 StreamDrainPolicy::ELane lane = StreamDrainPolicy::ELane::Fifo) noexcept;
+	void DispatchToMainThread(TMainThreadTask task, void* userData, uint8_t priority = 128) noexcept;
+
 	[[nodiscard]] TaskID CreateTask(StaticString taskName, TRunnable func, void* userData) noexcept;
 	[[nodiscard]] Task* FindTask(TaskID id) noexcept;
+	void ReleaseTask(TaskID id) noexcept;
+	TaskID RunSplit(StaticString taskName, TRunnable func, void* userData, TIndex numItems, TIndex numSubJobs,
+					const TIndex* streamIndices, TIndex numStreamIndices, uint8_t priority, TaskID successor,
+					TIndex successorStream) noexcept;
 	[[nodiscard]] TaskID ParallelFor(StaticString taskName, TRunnable func, void* userData, TIndex numItems,
 									 TIndex numSubJobs, const TIndex* streamIndices, TIndex numStreamIndices,
 									 uint8_t priority = 0, TaskID successor = {},
@@ -84,47 +100,20 @@ public:
 									 TIndex numSubJobs, TIndex numStreams, uint8_t priority = 0, TaskID successor = {},
 									 TIndex successorStream = NonStreamIndex) noexcept;
 
+	void SetSuccessor(TaskID task, TaskID successor) noexcept;
+	[[nodiscard]] TaskID GetSuccessor(TaskID task) noexcept;
+	void SetAbandonedNotice(TaskID task, FAbandonedNotice handler, void* userData = nullptr) noexcept;
+	void DispatchSuccessor(TaskID finishedTask) noexcept;
+
 	[[nodiscard]] StaticString GetName() const noexcept;
 	[[nodiscard]] bool IsRunning() const noexcept;
 	[[nodiscard]] TaskRegistry& GetRegistry() noexcept;
-
-	void RunBudgetWindowPass() noexcept;
-
-	[[nodiscard]] std::size_t GetNumBudgetWindowsAdvanced() const noexcept;
-
-	void Enqueue(const WorkItem& task) noexcept;
-	void Dequeue(std::optional<WorkItem>& outTask) noexcept;
-
-	void Enqueue(TIndex streamIndex, const WorkItem& task, StreamDrainPolicy::ELane lane) noexcept;
-	void Enqueue(TIndex streamIndex, const WorkItem& task) noexcept;
-
-	void EnqueueTask(TIndex streamIndex, Task& task, uint8_t priority = 0,
-					 StreamDrainPolicy::ELane lane = StreamDrainPolicy::ELane::Fifo) noexcept;
-
-	void DispatchToMainThread(TMainThreadTask task, void* userData, uint8_t priority = 128) noexcept;
-
-	void ReleaseTask(TaskID id) noexcept;
-
-	TaskID RunSplit(StaticString taskName, TRunnable func, void* userData, TIndex numItems, TIndex numSubJobs,
-					const TIndex* streamIndices, TIndex numStreamIndices, uint8_t priority, TaskID successor,
-					TIndex successorStream) noexcept;
-
-	void SetSuccessor(TaskID task, TaskID successor) noexcept;
-	[[nodiscard]] TaskID GetSuccessor(TaskID task) noexcept;
-
-	void SetAbandonedNotice(TaskID task, FAbandonedNotice handler, void* userData = nullptr) noexcept;
-
-	void DispatchSuccessor(TaskID finishedTask) noexcept;
-
 	[[nodiscard]] StaticString GetStreamName(int index) const noexcept;
 	[[nodiscard]] TIndex GetStreamIndex(TThreadID id) const noexcept;
-	TaskStream& GetStream(int index) noexcept;
-
 	[[nodiscard]] bool HasStream(TIndex index) const noexcept;
-
+	TaskStream& GetStream(int index) noexcept;
 	TaskStream& GetBaseTaskStream() noexcept;
 	const TaskStream& GetBaseTaskStream() const noexcept;
-
 	TaskStream& GetIOTaskStream() noexcept;
 	const TaskStream& GetIOTaskStream() const noexcept;
 
