@@ -1,5 +1,61 @@
 # Journal
 
+## 2026-10-02 14:29 — a member with no engine caller is a lie about the interface, so it moved
+
+**Cause.** The owner asked who calls `TaskSystem::DriveUntil`. Fourteen call sites, six in
+`Engine/OSAL/Window.cpp` and eight in `Engine/Core/TaskSystem.cpp`, and not one of them outside an
+`__UNIT_TEST__` region. Asked then whether it could live in the window example instead, which it cannot —
+`Examples/WindowExample` is a separate executable holding no test code at all, and the eight task-system
+callers could never link a file-static in another target's `Main.cpp`. The decision that came back was a
+`TestHelper` namespace, and that `ReportDriveTimeout` — which exists only to say a wait failed — goes with
+it, so the shipped class keeps no test-only surface at all.
+
+| Matter | Decision | Note |
+|---|---|---|
+| Where the wait lives | `Engine/Test/TestHelper.{h,cpp}`, `namespace hbe::TestHelper`, `TaskSystem&` as the first argument | Not a file-local helper: fourteen callers across three libraries cannot share one |
+| `ReportDriveTimeout` | Moves too, into the same namespace | Kept public on `TaskSystem`, it is a public member whose only caller is a test |
+| `hbe::WaitUntil` | Stays in `TestCollection.h` | Owner scope. Its absence is now a Coverage row on both the Test module page and the new entry page |
+| The staged sweep already in the index | Committed alone first, `b12c953` | It edited the same header this task had to edit; two changes in one commit cannot both be described |
+
+**Nothing inside the loop was rewritten, and one thing outside it had to be.** Two branches, the
+`NestedPumpGuard`, the `TaskSystem::Update` rather than `TaskStream::Update` choice, the 30 000 ms default,
+the counter decremented instead of a deadline re-read: carried across, with the log sentence proved
+byte-identical by comparing the concatenated literal against the text deleted from `TaskSystem.cpp` — a
+re-wrap that moved a word boundary would have altered a message a reader only meets after a failure.
+What did change is the order of two declarations. `ReportDriveTimeout` now sits **above** the template, and
+that is a language fact, not a grouping preference: the call passes `TaskSystem&`, `const char*` and
+`std::chrono::milliseconds`, so it is non-dependent and is looked up in the template's definition context,
+where a later declaration does not yet exist. The first version put it below and failed to compile. While
+both were members the order meant nothing, because a class body is read complete.
+
+**Two claims the reference had been making were about callers rather than reachability.** *"DriveUntil is
+the only place that pumps the base stream out of turn"* was written in `ba5f3a7`, and
+`TaskStream::SetNestedPumpAllowed` is a public member of the stream (`Engine/Core/TaskStream.h:382`), so
+that sentence always described one caller rather than one reachable entry point. And the Test module page
+still said *"3 headers, 3 sources"* while the directory held 4 — `Testlet.h` among them — and *"that is
+the module's entire free-function surface"* over a table of one row. Both are corrected, and
+`docs/Core/TaskSystem/index.html` keeps a Coverage row pointing at where the wait went, because a reader
+who greps for the member has to land somewhere that says where it is.
+
+**Two traps, both already paid for.** `docs_page.py class` lifts the module index's `<head>` and its
+legacy banner verbatim, and deepens only `href="../`-prefixed links — so a page generated under
+`docs/Test/` inherits the *"Lifecycle changed on 2026-10-02"* notice with twelve same-directory links that
+now point inside the new class folder, and `htmlcheck` rejects the page. Generate it with the banner
+lifted from the module index and restore the notice afterwards; the new page does not want it anyway.
+And `docs_coverage.py` does not read a namespace as an entry — `check-file Engine/Test/TestHelper.h` answers
+`[NO ENTRIES]` — so this API is documented without the gate that makes deleting a comment safe. It is the
+`EngineConfig` shape: `docs/Config/EngineConfig/` exists with nothing pointing at it from
+`Engine/Config/EngineConfig.h`, and `pointer_violation` could not accept such a pointer even if written,
+because `ENTRY_DECL` knows only `class`, `struct`, `union`, `enum`, `using` and `#define`.
+
+**Measured.** Gate on `3686c82`: `grep rule failures: 0`, `advisory: 0`, `build gate PASS 12/12`, EngineTest
+`59 collections, 375 testlets` in Dev, Debug and Release — the same totals the pre-commit baseline
+produced, which is the whole point of a move. `htmlcheck` over 99 pages: 0 problems. `comments.py` and
+`layout.py`: 0 findings on both new files. `docs_methods Core` still reports 197 methods without a page —
+unchanged, and it must stay unchanged, because the deleted pair owned pages and removing them cannot lower
+a deficit. `.Plans/DOCS_COVERAGE.md` regenerated rather than edited: it had `TaskSystem` down as owning no
+page and Core at 1467 comment lines, both measured before the header was cleaned.
+
 ## 2026-10-02 08:21 — two exceptions, and the difference between silence and a waiver
 
 **Cause.** The Core layout sweep ended on two findings that could not be fixed by moving anything, and the
