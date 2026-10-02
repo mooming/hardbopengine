@@ -86,7 +86,13 @@ def declarations(header, cls):
     one destructor in a class with six members.
     """
     src = strip_comments(open(header, encoding='utf-8').read())
-    body = src[src.index('{', src.index('class %s' % cls)) + 1:]
+    # `class` or `struct`, and anything the name may wear in between: `struct TaskID final` and
+    # `class alignas(std::uint64_t) ResultPacket final` are both declarations of the entry being asked about,
+    # and a literal `class <name>` search finds neither and reads the whole header as one declaration.
+    head = re.search(r'\b(?:class|struct)\s[^;{}]*\b%s\b[^;{}]*\{' % re.escape(cls), src)
+    if not head:
+        raise SystemExit('%s: %s declares no class or struct named %s' % (header, header, cls))
+    body = src[head.end():]
     out, depth, i = [], 0, 0
     while i < len(body):
         ch = body[i]
@@ -146,7 +152,9 @@ def signatures(folder, header, cls):
             name = 'operator' + spelling if spelling else label
         else:
             name = cls if stem == 'constructors' else ('~' + cls if stem == 'destructor' else label)
-        decls = grouped.get(name)
+        # A conversion operator is spelled `operator bool` on a page and collected as `operatorbool` here,
+        # because the space belongs to the reading and not to the grammar.
+        decls = grouped.get(name) or grouped.get(name.replace(' ', ''))
         if not decls:
             problems.append((stem, name, 'NOT IN HEADER')); continue
         block = '<pre><code>%s</code></pre>' % '\n\n'.join(
@@ -169,9 +177,17 @@ def signatures(folder, header, cls):
 
 
 if __name__ == '__main__':
-    folder = sys.argv[1]
+    # The docstring puts the command first and every author writes it that way, so accept either order
+    # rather than reporting a usage error two pages into somebody's run.
+    words = [a for a in sys.argv[1:] if a in ('reskin', 'signatures')]
+    rest = [a for a in sys.argv[1:] if a not in ('reskin', 'signatures')]
+    if len(words) != 1 or len(rest) < (1 if words[0] == 'reskin' else 3):
+        sys.exit(__doc__)
+    command, folder = words[0], rest[0]
+    if folder.count('/') < 2:
+        sys.exit('%s: expected a path like docs/<Module>/<Class>, got %s' % (command, folder))
     module, cls = folder.split('/')[-2], folder.split('/')[-1]
-    if sys.argv[2] == 'reskin':
+    if command == 'reskin':
         reskin(folder, module, cls)
     else:
-        signatures(folder, sys.argv[3], sys.argv[4])
+        signatures(folder, rest[1], rest[2])
